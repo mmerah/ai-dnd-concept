@@ -18,6 +18,7 @@ Run from the repo root; paths and `.env` resolve against the working directory.
 - Use strict Pydantic models at external, persistence, model, and tool boundaries.
 - Fail fast on invalid data, broken invariants, and incompatible state.
 - Keep code simple, readable, DRY, and KISS. Avoid speculative abstractions.
+- Use descriptive names that clearly tell the purpose of the object (names of file, classes, variables, methods, ...)
 - Optimize for maintainability over cleverness or premature flexibility.
 - Keep functions below 100 lines and files below 500 lines.
 - Comments explain only why and are as concise as possible.
