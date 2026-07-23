@@ -1,53 +1,43 @@
 {
-  "character": {
-    "name": "Kael",
-    "attributes": { "strength": 11, "dexterity": 13, "intellect": 12, "wisdom": 14 },
-    "hp": 10,
-    "max_hp": 10,
-    "inventory": ["a guttering lantern"],
-    "location": "the abbot's study"
-  },
-  "scenario": {
+  "meta": {
     "title": "The Whispering Vault",
-    "premise": "The abbey of Saint Corvin was abandoned in a single night. Kael has come for the sealed vault beneath it, and the abbot's study is the only room still lit.",
-    "entities": [
-      {
-        "id": "study",
-        "kind": "location",
-        "name": "the abbot's study",
-        "brief": "A cramped room of ledgers and cold candle stubs; a loose flagstone hides something under the desk.",
-        "known": true
-      },
-      {
-        "id": "mara",
-        "kind": "npc",
-        "name": "Mara",
-        "brief": "The abbey's last scribe, cautious and tired, still cataloguing books nobody will read.",
-        "known": true
-      },
-      {
-        "id": "tomas",
-        "kind": "npc",
-        "name": "Brother Tomas",
-        "brief": "A deaf old porter who sweeps the cloister and knows almost nothing about the vault.",
-        "known": true
-      },
-      {
-        "id": "elena",
-        "kind": "npc",
-        "name": "Elena",
-        "brief": "The vault's former archivist, hiding in the bell tower; she alone remembers the sealing rite.",
-        "known": false
-      },
-      {
-        "id": "vault_map",
-        "kind": "item",
-        "name": "the vault map",
-        "brief": "A creased chart of the undercroft, marking a stair the abbey's own plans deny.",
-        "known": false
-      }
-    ]
+    "premise": "The abbey of Saint Corvin was abandoned in a single night. Kael has come for the sealed vault beneath it, and the abbot's study is the only room still lit."
   },
-  "history": [],
-  "turn": 0
+  "entities": [
+    {
+      "id": "study",
+      "kind": "location",
+      "name": "the abbot's study",
+      "brief": "A cramped room of ledgers and cold candle stubs; a loose flagstone hides something under the desk.",
+      "known": true
+    },
+    {
+      "id": "mara",
+      "kind": "npc",
+      "name": "Mara",
+      "brief": "The abbey's last scribe, cautious and tired, still cataloguing books nobody will read.",
+      "known": true
+    },
+    {
+      "id": "tomas",
+      "kind": "npc",
+      "name": "Brother Tomas",
+      "brief": "A deaf old porter who sweeps the cloister and knows almost nothing about the vault.",
+      "known": true
+    },
+    {
+      "id": "elena",
+      "kind": "npc",
+      "name": "Elena",
+      "brief": "The vault's former archivist, hiding in the bell tower; she alone remembers the sealing rite.",
+      "known": false
+    },
+    {
+      "id": "vault_map",
+      "kind": "item",
+      "name": "the vault map",
+      "brief": "A creased chart of the undercroft, marking a stair the abbey's own plans deny.",
+      "known": false
+    }
+  ]
 }

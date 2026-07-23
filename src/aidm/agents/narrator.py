@@ -1,10 +1,8 @@
 """NARRATOR — the only role that writes to the player. Sees typed events, never Director prose."""
 
-from functools import cache
+from pydantic_ai.messages import ModelMessage
 
-from pydantic_ai import Agent
-
-from .llm import RETRIES, model
+from .llm import build_agent
 
 INSTRUCTIONS = """You are the NARRATOR of a tabletop RPG. Write what the player experiences, in \
 second person, present tense, 2-4 sentences. Be vivid and specific.
@@ -26,19 +24,14 @@ a success reveals a map and no map was found, there is no map in your prose.
 If a speaker is given, write their reply as dialogue in their voice. Sensory detail, mood and \
 minor colour are yours to invent freely.
 
+Entities may be labelled `name[id=...]`. The bracketed id is internal bookkeeping — write the \
+name only, never the id.
+
 Output prose only."""
 
 
-@cache
-def agent() -> Agent[None, str]:
-    return Agent(
-        model(),
-        name="narrator",
-        output_type=str,
-        instructions=INSTRUCTIONS,
-        retries=RETRIES,
-    )
+agent = build_agent("narrator", output_type=str, instructions=INSTRUCTIONS)
 
 
-async def narrate(prompt: str) -> str:
-    return (await agent().run(prompt)).output
+async def narrate(prompt: str, message_history: list[ModelMessage] | None = None) -> str:
+    return (await agent().run(prompt, message_history=message_history)).output

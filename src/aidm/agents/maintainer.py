@@ -1,11 +1,10 @@
 """MAINTAINER — grows the scenario to cover whatever the Narrator invented."""
 
-from functools import cache
-
-from pydantic_ai import Agent, NativeOutput
+from pydantic_ai import NativeOutput
+from pydantic_ai.messages import ModelMessage
 
 from ..domain.models import Growth
-from .llm import RETRIES, model
+from .llm import build_agent
 
 INSTRUCTIONS = """You are the MAINTAINER of a tabletop RPG world. You read what was just told to \
 the player and keep the world catalogue complete.
@@ -23,16 +22,8 @@ already accounted for and is not new.
 - Returning nothing is normal and is the right answer most turns."""
 
 
-@cache
-def agent() -> Agent[None, Growth]:
-    return Agent(
-        model(),
-        name="maintainer",
-        output_type=NativeOutput(Growth),
-        instructions=INSTRUCTIONS,
-        retries=RETRIES,
-    )
+agent = build_agent("maintainer", output_type=NativeOutput(Growth), instructions=INSTRUCTIONS)
 
 
-async def maintain(prompt: str) -> Growth:
-    return (await agent().run(prompt)).output
+async def maintain(prompt: str, message_history: list[ModelMessage] | None = None) -> Growth:
+    return (await agent().run(prompt, message_history=message_history)).output

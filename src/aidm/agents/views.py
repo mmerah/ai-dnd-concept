@@ -3,7 +3,7 @@
 from collections.abc import Sequence
 
 from ..config import settings
-from ..domain.models import Direction, Entity, GameState, GrowthRequest, find, find_by_name
+from ..domain.models import Direction, Entity, GameState, GrowthRequest, find
 
 
 def character(state: GameState) -> str:
@@ -16,13 +16,14 @@ def character(state: GameState) -> str:
     )
 
 
+def label(e: Entity) -> str:
+    """Every entity is shown as `name[id=...]`, so any role can reference it by the id it must use.
+    A prose-only role ignores the bracket; a role that emits ids reads it off directly."""
+    return f"{e.name}[id={e.id}]"
+
+
 def briefs(items: Sequence[Entity]) -> str:
-    return "\n".join(f"- {e.name} — {e.kind} — {e.brief}" for e in items) or "- (none)"
-
-
-def briefs_with_ids(items: Sequence[Entity]) -> str:
-    """Only the Director sees ids; it needs them to fill `speaker_id`."""
-    return "\n".join(f"- {e.name} — {e.kind}, id={e.id} — {e.brief}" for e in items) or "- (none)"
+    return "\n".join(f"- {label(e)} — {e.kind} — {e.brief}" for e in items) or "- (none)"
 
 
 def history(state: GameState) -> str:
@@ -31,16 +32,13 @@ def history(state: GameState) -> str:
 
 
 def speaker(state: GameState, direction: Direction) -> str:
-    """Fail fast: a hallucinated or hidden speaker would put words in a stranger's mouth."""
+    """Fail fast: a hidden or unknown speaker would put words in a stranger's mouth."""
     if direction.speaker_id is None:
         return "(none — narrate the scene)"
-    # the Director reliably answers with a name now and then; that is unambiguous enough to accept
-    entity = find(state.scenario, direction.speaker_id) or find_by_name(
-        state.scenario, direction.speaker_id
-    )
+    entity = find(state.world.entities, direction.speaker_id)
     if entity is None or not entity.known:
         raise ValueError(f"director named an unknown or hidden speaker: {direction.speaker_id!r}")
-    return f"{entity.name} — {entity.brief}"
+    return f"{label(entity)} — {entity.brief}"
 
 
 def request(item: GrowthRequest) -> str:

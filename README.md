@@ -4,15 +4,17 @@ A proof of concept: split the Dungeon Master into narrow roles so a small, fast 
 (gpt-oss-120b) stays consistent without losing creativity.
 
 ```
-prompt → DIRECTOR → ACTOR → NARRATOR → MAINTAINER → CREATOR → commit
-         Direction   Events  prose      Growth       Entity
+prompt → DIRECTOR → resolve → NARRATOR → MAINTAINER → CREATOR → commit
+         Direction   Events    prose      Growth       Entity
 ```
+
+`resolve` (`engine/resolve.py`) is the only non-LLM stage: pure Python, no model call.
 
 Two rules hold the design together:
 
-- **The model proposes, Python decides.** Tools never mutate anything: they resolve
-  deterministically, append a typed `Event`, and return one line. `apply(state, events)` is the
-  only thing that produces new state.
+- **The model proposes, Python decides.** The Director proposes a typed `plan` referencing canon by
+  id; `engine/resolve.py` turns it into events deterministically; `apply(state, events)` is the
+  only thing that produces new state. No LLM ever mutates state.
 - **Context is a policy, not an accident.** One table in `agents/context.py` is the complete
   answer to what each role sees. Read it there — it is the source of truth, not this file.
 
@@ -35,13 +37,17 @@ That panel is the point of the PoC. The **state** tab is the live `GameState`.
 ```
 src/aidm/
   domain/      pure data and the reducer — no LLM, no I/O
-  engine/      deterministic mechanics — no LLM, no I/O
+  engine/      deterministic mechanics + consequence resolution — no LLM, no I/O
   agents/      the provider, the context policy, one file per role
   pipeline.py  run_turn: the fixed sequence
   store.py     JSON persistence
   ui/          NiceGUI
-scenarios/     starting GameStates — a scenario file is just a GameState
+scenarios/     scenario definitions: premise + starting entities (no character)
+characters/    characters, loaded independently so one can be reused across scenarios
 ```
+
+A `GameState` is composed from a `ScenarioDef` and a `Character` at `new_game`; play only ever
+edits `state.world`, never the static `state.scenario` identity.
 
 The boundary that matters is `engine/` ← `agents/`: mechanics stay testable without an agent, and
 agents cannot decide outcomes. Growing the ruleset means growing `engine/`, not the role prompts.

@@ -10,7 +10,6 @@ class Turn(Frozen):
     prompt: str
     direction: Direction
     events: list[Event] = Field(default_factory=list)
-    report: str
     narration: str
     growth: Growth
     created: list[Entity] = Field(default_factory=list)

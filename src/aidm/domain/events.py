@@ -6,7 +6,7 @@ from typing import Annotated, Literal
 
 from pydantic import Field
 
-from .models import Ability, Entity, Frozen, GameState, find, updated
+from .models import Ability, Entity, EntityId, Frozen, GameState, find, updated
 
 
 class CheckRolled(Frozen):
@@ -53,7 +53,7 @@ class Moved(Frozen):
 
 class EntityDiscovered(Frozen):
     type: Literal["entity_discovered"] = "entity_discovered"
-    entity_id: str
+    entity_id: EntityId
     name: str
 
     @property
@@ -77,7 +77,7 @@ Event = Annotated[
 
 
 def _with_entities(state: GameState, entities: list[Entity]) -> GameState:
-    return updated(state, scenario=updated(state.scenario, entities=entities))
+    return updated(state, world=updated(state.world, entities=entities))
 
 
 def _apply_one(state: GameState, event: Event) -> GameState:
@@ -99,14 +99,14 @@ def _apply_one(state: GameState, event: Event) -> GameState:
         case Moved(location=location):
             return updated(state, character=updated(state.character, location=location))
         case EntityDiscovered(entity_id=entity_id):
-            if find(state.scenario, entity_id) is None:
+            if find(state.world.entities, entity_id) is None:
                 raise ValueError(f"cannot discover unknown entity {entity_id!r}")
             entities = [
-                updated(e, known=True) if e.id == entity_id else e for e in state.scenario.entities
+                updated(e, known=True) if e.id == entity_id else e for e in state.world.entities
             ]
             return _with_entities(state, entities)
         case EntityCreated(entity=entity):
-            return _with_entities(state, [*state.scenario.entities, entity])
+            return _with_entities(state, [*state.world.entities, entity])
 
 
 def apply(state: GameState, events: Sequence[Event]) -> GameState:

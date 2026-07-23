@@ -4,7 +4,15 @@ import pytest
 
 os.environ.setdefault("AI_API_KEY", "test")  # agents are built, never called, in tests
 
-from aidm.domain.models import Attributes, Character, Entity, GameState, Scenario  # noqa: E402
+from aidm.domain.models import (  # noqa: E402
+    Attributes,
+    Character,
+    Entity,
+    EntityId,
+    GameState,
+    ScenarioMeta,
+    WorldState,
+)
 
 
 @pytest.fixture
@@ -16,13 +24,14 @@ def state() -> GameState:
             inventory=["a lantern"],
             location="the study",
         ),
-        scenario=Scenario(
-            title="Test",
-            premise="A test.",
+        scenario=ScenarioMeta(title="Test", premise="A test."),
+        world=WorldState(
             entities=[
-                Entity(id="mara", kind="npc", name="Mara", brief="A scribe.", known=True),
-                Entity(id="elena", kind="npc", name="Elena", brief="An archivist."),
-                Entity(id="vault_map", kind="item", name="the vault map", brief="A chart."),
-            ],
+                Entity(id=EntityId("mara"), kind="npc", name="Mara", brief="A scribe.", known=True),
+                Entity(id=EntityId("elena"), kind="npc", name="Elena", brief="An archivist."),
+                Entity(
+                    id=EntityId("vault_map"), kind="item", name="the vault map", brief="A chart."
+                ),
+            ]
         ),
     )

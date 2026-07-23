@@ -2,12 +2,11 @@
 
 import re
 from collections.abc import Iterable
-from functools import cache
 
-from pydantic_ai import Agent, NativeOutput
+from pydantic_ai import NativeOutput
 
-from ..domain.models import Entity, EntityDetail, GrowthRequest
-from .llm import RETRIES, model
+from ..domain.models import Entity, EntityDetail, EntityId, GrowthRequest
+from .llm import build_agent
 
 INSTRUCTIONS = """You flesh out ONE new element of a tabletop RPG world. Stay consistent with the \
 scenario, with everything that already exists, and with the brief you are given. Contradict none \
@@ -25,15 +24,7 @@ repeating or contradicting anything.
 Invent nothing beyond this single element — no other names, no plot twists."""
 
 
-@cache
-def agent() -> Agent[None, EntityDetail]:
-    return Agent(
-        model(),
-        name="creator",
-        output_type=NativeOutput(EntityDetail),
-        instructions=INSTRUCTIONS,
-        retries=RETRIES,
-    )
+agent = build_agent("creator", output_type=NativeOutput(EntityDetail), instructions=INSTRUCTIONS)
 
 
 def slug(name: str, taken: Iterable[str]) -> str:
@@ -48,7 +39,7 @@ def slug(name: str, taken: Iterable[str]) -> str:
 async def create(prompt: str, request: GrowthRequest, taken: Iterable[str]) -> Entity:
     detail = (await agent().run(prompt)).output
     return Entity(
-        id=slug(request.name, taken),
+        id=EntityId(slug(request.name, taken)),
         kind=request.kind,
         name=request.name,
         brief=request.brief,

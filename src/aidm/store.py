@@ -3,7 +3,13 @@
 from pathlib import Path
 
 from .config import settings
-from .domain.models import SAVE_VERSION, GameState
+from .domain.models import (
+    SAVE_VERSION,
+    Character,
+    GameState,
+    ScenarioDef,
+    WorldState,
+)
 from .domain.turn import Turn
 
 ENCODING = "utf-8"  # narration is full of curly quotes; the platform default is not enough
@@ -17,10 +23,18 @@ def _trace_path(slug: str) -> Path:
     return settings().saves_dir / f"{slug}.trace.jsonl"
 
 
-def new_game(scenario: str) -> GameState:
-    """A scenario file is a starting GameState."""
-    path = settings().scenarios_dir / f"{scenario}.json"
-    return GameState.model_validate_json(path.read_text(encoding=ENCODING))
+def new_game(scenario: str, character: str = "kael") -> GameState:
+    """Compose a starting GameState from a scenario definition and an independent character."""
+    conf = settings()
+    scenario_path = conf.scenarios_dir / f"{scenario}.json"
+    character_path = conf.characters_dir / f"{character}.json"
+    definition = ScenarioDef.model_validate_json(scenario_path.read_text(encoding=ENCODING))
+    hero = Character.model_validate_json(character_path.read_text(encoding=ENCODING))
+    return GameState(
+        character=hero,
+        scenario=definition.meta,
+        world=WorldState(entities=definition.entities),
+    )
 
 
 def load(slug: str) -> GameState | None:

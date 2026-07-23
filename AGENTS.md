@@ -28,14 +28,14 @@ Run from the repo root; paths and `.env` resolve against the working directory.
 - The model proposes, Python decides. LLMs never mutate state. Agents output typed data (intents, events, or structured entity data) which is processed by deterministic Python rules.
 - The Reducer Pattern: State evolution is strictly centralized. `domain/events.py:apply(state, events)` is the only allowed mechanism for producing new state. Never mutate objects in place.
 - Dependency Direction: `domain/` and `engine/` import nothing from `agents/` and perform no I/O. Mechanics stay testable without an agent, and agents cannot decide outcomes. Growing the ruleset means growing `engine/`, not the role prompts.
-- Strict Role Boundaries: Each agent has a narrow, singular responsibility (Director plans, Actor executes, Narrator writes, Maintainer tracks, Creator invents).
+- Strict Role Boundaries: Each agent has a narrow, singular responsibility (Director plans and proposes the turn's typed mechanics, Narrator writes, Maintainer tracks, Creator invents). The Director's `plan` is resolved deterministically by `engine/resolve.py`.
 - Centralized Context Policy: `agents/context.py` is the absolute source of truth for what each role sees. If an agent needs new data, update the policy table there. Never inject raw state directly into prompt strings outside of this policy.
 - Narrator Blindness: The Narrator is uniquely kept blind to unrevealed canon. Never expose hidden world state, DCs, or dice rolls to the Narrator, as it writes what the player reads.
 
 ## Framework specifics
 
 - Pydantic V2: Use `model_validate`, `model_dump`, and native V2 config. Do not use V1 methods (`dict()`, `parse_obj`). Use the custom `updated(obj, **kwargs)` helper for copying frozen models.
-- Pydantic AI: Tools must use `RunContext` to access dependencies. Tools return short string summaries to the LLM but append typed `Event` objects to the injected `ActorDeps` to update the draft state.
+- Pydantic AI: Structured roles use `NativeOutput`; the Director validates its output against per-turn canon via `RunContext[DirectorDeps]` in an `output_validator` (raising `ModelRetry` on an off-menu id). Agents emit typed data only. `engine/resolve.py` maps the Director's `plan` to `Event`s, and `apply` alone mutates state.
 - NiceGUI: The UI is purely a reflection of `Session.state`. Use `@ui.refreshable` to handle state-driven reactivity. Keep domain logic completely out of the `ui/` directory.
 
 ## Testing and verification

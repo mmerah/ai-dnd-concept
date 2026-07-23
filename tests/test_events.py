@@ -8,7 +8,7 @@ from aidm.domain.events import (
     Moved,
     apply,
 )
-from aidm.domain.models import Entity, GameState
+from aidm.domain.models import Entity, EntityId, GameState
 
 
 def test_inventory_and_hp(state: GameState) -> None:
@@ -35,18 +35,20 @@ def test_move(state: GameState) -> None:
 
 
 def test_discover_reveals_only_the_target(state: GameState) -> None:
-    result = apply(state, [EntityDiscovered(entity_id="elena", name="Elena")])
-    known = {e.id: e.known for e in result.scenario.entities}
+    result = apply(state, [EntityDiscovered(entity_id=EntityId("elena"), name="Elena")])
+    known = {e.id: e.known for e in result.world.entities}
     assert known == {"mara": True, "elena": True, "vault_map": False}
 
 
 def test_create_appends(state: GameState) -> None:
-    elgin = Entity(id="elgin", kind="npc", name="Elgin", brief="An apothecary.", authored=False)
-    assert apply(state, [EntityCreated(entity=elgin)]).scenario.entities[-1] == elgin
+    elgin = Entity(
+        id=EntityId("elgin"), kind="npc", name="Elgin", brief="An apothecary.", authored=False
+    )
+    assert apply(state, [EntityCreated(entity=elgin)]).world.entities[-1] == elgin
 
 
 def test_impossible_events_fail_fast(state: GameState) -> None:
     with pytest.raises(ValueError):
-        apply(state, [EntityDiscovered(entity_id="nobody", name="Nobody")])
+        apply(state, [EntityDiscovered(entity_id=EntityId("nobody"), name="Nobody")])
     with pytest.raises(ValueError):
         apply(state, [InventoryChanged(item="a sword", delta=-1)])

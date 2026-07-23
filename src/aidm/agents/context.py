@@ -17,111 +17,121 @@ from . import views
 
 @dataclass(frozen=True, slots=True)
 class TurnContext:
-    """Everything any role could need. Fields fill in as the pipeline advances, hence the None."""
+    """What is always present by the time any role renders. Per-stage payloads (`Direction`,
+    `GrowthRequest`) are passed to `prompt_for` instead, so no renderer must None-guard."""
 
     state: GameState
     prompt: str
-    direction: Direction | None = None
     events: Sequence[Event] = ()
     narration: str = ""
-    request: GrowthRequest | None = None
 
 
-def _required[T](value: T | None, block: str) -> T:
-    if value is None:
-        raise ValueError(f"context block {block!r} was rendered before its data existed")
-    return value
+# Three block shapes: a plain block reads only the context; a direction/request block also takes
+# its stage payload, non-optional — which is what keeps the payload types free of `| None`.
+@dataclass(frozen=True, slots=True)
+class Block:
+    label: str
+    render: Callable[[TurnContext], str]
 
 
-Block = tuple[str, Callable[[TurnContext], str]]
+@dataclass(frozen=True, slots=True)
+class DirectionBlock:
+    label: str
+    render: Callable[[TurnContext, Direction], str]
 
-PREMISE: Block = ("SCENARIO", lambda c: f"{c.state.scenario.title}\n{c.state.scenario.premise}")
-CHARACTER: Block = ("CHARACTER", lambda c: views.character(c.state))
-KNOWN_ENTITIES: Block = ("KNOWN TO THE PLAYER", lambda c: views.briefs(known(c.state.scenario)))
-UNREVEALED_CANON_WITH_IDS: Block = (
+
+@dataclass(frozen=True, slots=True)
+class RequestBlock:
+    label: str
+    render: Callable[[TurnContext, GrowthRequest], str]
+
+
+AnyBlock = Block | DirectionBlock | RequestBlock
+
+PREMISE = Block("SCENARIO", lambda c: f"{c.state.scenario.title}\n{c.state.scenario.premise}")
+CHARACTER = Block("CHARACTER", lambda c: views.character(c.state))
+KNOWN_ENTITIES = Block("KNOWN TO THE PLAYER", lambda c: views.briefs(known(c.state.world.entities)))
+UNREVEALED_CANON = Block(
     "EXISTS BUT THE PLAYER DOES NOT KNOW IT YET",
-    lambda c: views.briefs_with_ids(hidden(c.state.scenario)),
+    lambda c: views.briefs(hidden(c.state.world.entities)),
 )
-UNREVEALED_CANON: Block = (
-    "EXISTS BUT THE PLAYER DOES NOT KNOW IT YET — reveal only what you are told to",
-    lambda c: views.briefs(hidden(c.state.scenario)),
+ENTITY_CATALOGUE = Block("EVERYTHING THAT EXISTS", lambda c: views.briefs(c.state.world.entities))
+RECENT_PLAY = Block("RECENT PLAY", lambda c: views.history(c.state))
+
+DIRECTOR_PLAN = DirectionBlock(
+    "THE DIRECTOR'S PLAN — what was meant, not what happened", lambda c, d: d.intent
 )
-ENTITY_CATALOGUE: Block = (
-    "EVERYTHING THAT EXISTS",
-    lambda c: views.briefs(c.state.scenario.entities),
-)
-RECENT_PLAY: Block = ("RECENT PLAY", lambda c: views.history(c.state))
+DIRECTOR_TONE = DirectionBlock("THE DIRECTOR ASKS FOR THIS TONE", lambda c, d: d.tone)
+SPEAKER = DirectionBlock("SPEAKER", lambda c, d: views.speaker(c.state, d))
+WHAT_HAPPENED = Block("WHAT HAPPENED", lambda c: render(c.events))
+NARRATION = Block("NARRATION", lambda c: c.narration)
+GROWTH_REQUEST = RequestBlock("CREATE", lambda c, r: views.request(r))
+PLAYER_PROMPT = Block("PLAYER", lambda c: c.prompt)
 
 
-def _guidance(c: TurnContext) -> str:
-    return _required(c.direction, "director guidance").guidance
+@dataclass(frozen=True, slots=True)
+class RolePolicy:
+    """A role's whole view: the blocks its prompt is built from, and whether it also receives play
+    history as native messages (the Creator alone reads it as the RECENT_PLAY text instead)."""
 
+    blocks: tuple[AnyBlock, ...]
+    native_history: bool = False
 
-# The same text, labelled for its reader: the Actor executes it, the Narrator only interprets by it.
-DIRECTOR_GUIDANCE: Block = ("THE DIRECTOR TELLS YOU", _guidance)
-DIRECTOR_PLAN: Block = ("THE DIRECTOR'S PLAN — what was meant, not what happened", _guidance)
-DIRECTOR_TONE: Block = (
-    "THE DIRECTOR ASKS FOR THIS TONE",
-    lambda c: _required(c.direction, "DIRECTOR_TONE").tone,
-)
-SPEAKER: Block = (
-    "SPEAKER",
-    lambda c: views.speaker(c.state, _required(c.direction, "SPEAKER")),
-)
-WHAT_HAPPENED: Block = ("WHAT HAPPENED", lambda c: render(c.events))
-NARRATION: Block = ("NARRATION", lambda c: c.narration)
-GROWTH_REQUEST: Block = ("CREATE", lambda c: views.request(_required(c.request, "GROWTH_REQUEST")))
-PLAYER_PROMPT: Block = ("PLAYER", lambda c: c.prompt)
 
 # The entire context policy of the application. Read a row to know what a role can and cannot see.
 # Only one omission is a rule rather than a judgement: the Narrator, alone among the roles, writes
 # text the player reads, so unrevealed canon never enters its context.
-CONTEXT: dict[Role, tuple[Block, ...]] = {
-    "director": (
-        PREMISE,
-        CHARACTER,
-        KNOWN_ENTITIES,
-        UNREVEALED_CANON_WITH_IDS,
-        RECENT_PLAY,
-        PLAYER_PROMPT,
+CONTEXT: dict[Role, RolePolicy] = {
+    "director": RolePolicy(
+        (PREMISE, CHARACTER, KNOWN_ENTITIES, UNREVEALED_CANON, PLAYER_PROMPT),
+        native_history=True,
     ),
-    "actor": (
-        PREMISE,
-        CHARACTER,
-        KNOWN_ENTITIES,
-        UNREVEALED_CANON,
-        RECENT_PLAY,
-        DIRECTOR_GUIDANCE,
-        PLAYER_PROMPT,
+    "narrator": RolePolicy(
+        (
+            PREMISE,
+            CHARACTER,
+            KNOWN_ENTITIES,
+            DIRECTOR_PLAN,  # before WHAT HAPPENED, so the truth of the turn reads last
+            DIRECTOR_TONE,
+            SPEAKER,
+            WHAT_HAPPENED,
+            PLAYER_PROMPT,
+        ),
+        native_history=True,
     ),
-    "narrator": (
-        PREMISE,
-        CHARACTER,
-        KNOWN_ENTITIES,
-        RECENT_PLAY,
-        DIRECTOR_PLAN,  # before WHAT HAPPENED, so the truth of the turn reads last
-        DIRECTOR_TONE,
-        SPEAKER,
-        WHAT_HAPPENED,
-        PLAYER_PROMPT,
+    "maintainer": RolePolicy(
+        (PREMISE, ENTITY_CATALOGUE, PLAYER_PROMPT, WHAT_HAPPENED, NARRATION),
+        native_history=True,
     ),
-    "maintainer": (
-        PREMISE,
-        ENTITY_CATALOGUE,
-        RECENT_PLAY,
-        PLAYER_PROMPT,
-        WHAT_HAPPENED,
-        NARRATION,
-    ),
-    "creator": (
-        PREMISE,
-        ENTITY_CATALOGUE,
-        RECENT_PLAY,
-        NARRATION,
-        GROWTH_REQUEST,
-    ),
+    "creator": RolePolicy((PREMISE, ENTITY_CATALOGUE, RECENT_PLAY, NARRATION, GROWTH_REQUEST)),
 }
 
 
-def prompt_for(role: Role, context: TurnContext) -> str:
-    return "\n\n".join(f"{label}:\n{block(context)}" for label, block in CONTEXT[role])
+def reads_history(role: Role) -> bool:
+    return CONTEXT[role].native_history
+
+
+def prompt_for(
+    role: Role,
+    context: TurnContext,
+    *,
+    direction: Direction | None = None,
+    request: GrowthRequest | None = None,
+) -> str:
+    """A direction/request block appears only in a role whose stage has that payload, so the
+    pipeline always supplies it; a missing one is a broken invariant."""
+    lines: list[str] = []
+    for block in CONTEXT[role].blocks:
+        match block:
+            case Block(label=label, render=render):
+                body = render(context)
+            case DirectionBlock(label=label, render=render):
+                if direction is None:
+                    raise ValueError(f"{label!r} rendered without a direction")
+                body = render(context, direction)
+            case RequestBlock(label=label, render=render):
+                if request is None:
+                    raise ValueError(f"{label!r} rendered without a request")
+                body = render(context, request)
+        lines.append(f"{label}:\n{body}")
+    return "\n\n".join(lines)

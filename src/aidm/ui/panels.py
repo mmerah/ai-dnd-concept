@@ -3,7 +3,7 @@
 from nicegui import ui
 
 from ..domain.events import render
-from ..domain.models import ROLES
+from ..domain.models import ROLES, Plan
 from ..domain.turn import Turn
 from .session import session
 
@@ -43,11 +43,22 @@ def trace_panel() -> None:
             _turn_trace(turn)
 
 
+def _plan(plan: Plan) -> str:
+    lines = [f"check: {plan.check.ability} DC {plan.check.dc}"] if plan.check else []
+    for label, group in (
+        ("always", plan.unconditional),
+        ("on success", plan.on_success),
+        ("on failure", plan.on_failure),
+    ):
+        lines += [f"{label}: {c.action} {c.model_dump(exclude={'action'})}" for c in group]
+    return "\n".join(lines) or "(no mechanics)"
+
+
 def _turn_trace(turn: Turn) -> None:
-    _section("DIRECTOR guidance (private)", turn.direction.guidance)
+    _section("DIRECTOR intent (to the narrator)", turn.direction.intent)
     _section("DIRECTOR tone (to the narrator)", turn.direction.tone)
-    _section("ACTOR events", render(turn.events))
-    _section("ACTOR report", turn.report)
+    _section("DIRECTOR plan (private)", _plan(turn.direction.plan))
+    _section("EVENTS", render(turn.events))
     _section("NARRATOR", turn.narration)
     requests = "\n".join(f"- {r.kind} {r.name}: {r.brief}" for r in turn.growth.requests)
     _section("MAINTAINER", requests or "- (nothing new)")

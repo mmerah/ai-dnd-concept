@@ -14,9 +14,7 @@ Status of the proof of concept, and where it should go. Kept short on purpose.
 
 ### Reliability
 
-- The Actor drops consequences. It reads the Director's prose and must call a tool per outcome. Measured: item consequence 2/2, NPC reveal 1/2. Or for example I see things like "discover_entity called." but no tool was called.
 - A dropped consequence is silent. The Maintainer only grows canon; nothing checks narration against events. The Narrator then describes something the state never recorded, and the turn commits looking healthy.
-- The Actor occasionally emits a tool call as message text (`{"name":"discover_entity",...}`) instead of a real call, so the tool never runs. Intermittent, provider-side; 4/4 correct on default OpenRouter routing when measured.
 - `finish_reason: "error"` from Groq when a structured role answers in prose under `tool_choice: required`. Worked around with `NativeOutput` (provider-enforced JSON schema) on Director, Maintainer and Creator. Worth re-checking if the model or routing changes.
 
 ### Canon quality
@@ -28,8 +26,7 @@ Status of the proof of concept, and where it should go. Kept short on purpose.
 
 ### Structure and scale
 
-- Conversation history: The history should be passed/constructed as intended by agentic workflows. The "Recent Play" context section would disappear. And player becomes a user message and DM (narration) becomes an assistant message. That history can be passed straight up to director/actor/narrator/maintainer. Maybe actor does not need it, for sure creator doesn't. Maybe configurable in same way the context is
-- Character is welded to the scenario file. A scenario file *is* a starting `GameState`, which is convenient now and blocks reusing a character across scenarios.
+- Loose/Canon distinction (be it engine or anywhere else) is a bit weird. Maybe it's the naming, or maybe it could simplified/cut?
 - History is the last 6 exchanges, verbatim. No summarisation, no retrieval; a long game silently forgets its own middle.
 - One hardcoded save slug and scenario, one module-level session, no scenario picker.
 - No undo. The save is a single current state, not a history of commits.
@@ -41,7 +38,6 @@ Status of the proof of concept, and where it should go. Kept short on purpose.
 
 ### Next, and highest value
 
-- Typed consequences on `Direction` (e.g. explicit success/failure effects) so the Actor stops re-parsing prose. Most likely fix for the weakest link. An alternative to discuss would be making the `Actor` have multiple passes.
 - Maintainer validation pass: check narration against events, retry the Narrator once on a contradiction. Turns silent desync into a visible, correctable failure.
 - A small eval harness over recorded turns, so reliability is measured rather than recalled.
 

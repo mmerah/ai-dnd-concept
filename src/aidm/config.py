@@ -16,6 +16,7 @@ class Settings(BaseSettings):
     history_window: int = 6
     saves_dir: Path = Path("saves")
     scenarios_dir: Path = Path("scenarios")
+    characters_dir: Path = Path("characters")
 
 
 @cache
