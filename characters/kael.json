@@ -3,6 +3,5 @@
   "attributes": { "strength": 11, "dexterity": 13, "intellect": 12, "wisdom": 14 },
   "hp": 10,
   "max_hp": 10,
-  "inventory": ["a guttering lantern"],
-  "location": "the abbot's study"
+  "inventory": ["a guttering lantern"]
 }

@@ -22,11 +22,19 @@ def state() -> GameState:
             name="Kael",
             attributes=Attributes(wisdom=14),
             inventory=["a lantern"],
-            location="the study",
+            location_id=EntityId("study"),
         ),
         scenario=ScenarioMeta(title="Test", premise="A test."),
         world=WorldState(
             entities=[
+                Entity(
+                    id=EntityId("study"),
+                    kind="location",
+                    name="the study",
+                    brief="A room.",
+                    known=True,
+                ),
+                Entity(id=EntityId("vault"), kind="location", name="the vault", brief="A crypt."),
                 Entity(id=EntityId("mara"), kind="npc", name="Mara", brief="A scribe.", known=True),
                 Entity(id=EntityId("elena"), kind="npc", name="Elena", brief="An archivist."),
                 Entity(

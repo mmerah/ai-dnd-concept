@@ -6,8 +6,9 @@ from pydantic import Field
 
 from .base import Ability, EntityId, Frozen
 
-# Canon vs loose items are separate variants so the model cannot express a contradictory pair, and
-# so canonicalization (id -> name) is the resolver's job, never the model's.
+# Canon vs loose items are separate variants so the model cannot express a contradictory pair.
+# Every canon reference is an id: canonicalization (id -> name) is the resolver's job, never the
+# model's. Only items have a loose variant — a place the player stands in must exist in canon.
 
 
 class Discover(Frozen):
@@ -42,7 +43,7 @@ class ModifyHp(Frozen):
 
 class Move(Frozen):
     action: Literal["move"] = "move"
-    location: str
+    entity_id: EntityId
 
 
 Consequence = Annotated[

@@ -31,13 +31,20 @@ def test_hp_is_clamped(state: GameState) -> None:
 
 
 def test_move(state: GameState) -> None:
-    assert apply(state, [Moved(location="the vault")]).character.location == "the vault"
+    moved = Moved(entity_id=EntityId("vault"), name="the vault")
+    assert apply(state, [moved]).character.location_id == "vault"
 
 
 def test_discover_reveals_only_the_target(state: GameState) -> None:
     result = apply(state, [EntityDiscovered(entity_id=EntityId("elena"), name="Elena")])
     known = {e.id: e.known for e in result.world.entities}
-    assert known == {"mara": True, "elena": True, "vault_map": False}
+    assert known == {
+        "study": True,
+        "vault": False,
+        "mara": True,
+        "elena": True,
+        "vault_map": False,
+    }
 
 
 def test_create_appends(state: GameState) -> None:
@@ -52,3 +59,5 @@ def test_impossible_events_fail_fast(state: GameState) -> None:
         apply(state, [EntityDiscovered(entity_id=EntityId("nobody"), name="Nobody")])
     with pytest.raises(ValueError):
         apply(state, [InventoryChanged(item="a sword", delta=-1)])
+    with pytest.raises(ValueError):
+        apply(state, [Moved(entity_id=EntityId("nowhere"), name="Nowhere")])

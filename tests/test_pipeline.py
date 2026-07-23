@@ -63,7 +63,7 @@ async def test_search_applies_mechanics_and_creates_nothing(state: GameState) ->
     kinds = [e.type for e in turn.events]
     assert kinds == ["check_rolled", "entity_discovered", "inventory_changed"]
     assert turn.state.character.inventory == ["a lantern", "the vault map"]
-    assert {e.id for e in turn.state.world.entities if e.known} == {"mara", "vault_map"}
+    assert {e.id for e in turn.state.world.entities if e.known} == {"study", "mara", "vault_map"}
     assert turn.created == []
     assert turn.state.turn == 1
     assert turn.state.history[-1].prompt == "I search the study."
@@ -84,8 +84,8 @@ async def test_existing_canon_is_revealed_not_created(state: GameState) -> None:
         )
         turn = await run_turn(state, "@Mara who can I ask for help?")
 
-    assert {e.id for e in turn.state.world.entities if e.known} == {"mara", "elena"}
-    assert len(turn.state.world.entities) == 3
+    assert {e.id for e in turn.state.world.entities if e.known} == {"study", "mara", "elena"}
+    assert turn.created == []  # revealed from canon, not grown
 
 
 async def test_an_unbacked_name_is_grown_not_resolved(state: GameState) -> None:
@@ -128,19 +128,48 @@ async def test_growth_is_capped(state: GameState) -> None:
     assert len(turn.created) == 3
 
 
-async def test_a_plan_with_an_unknown_id_is_rejected(state: GameState) -> None:
-    """The Director's output validator relocates the Actor's per-tool ModelRetry to id selection."""
+@pytest.mark.parametrize(
+    "consequence",
+    [
+        {"action": "discover", "entity_id": "ghost"},
+        {"action": "move", "entity_id": "ghost"},  # an id no list ever showed
+        {"action": "move", "entity_id": "mara"},  # a real id, but an npc is not a location
+        {"action": "gain_canon_item", "entity_id": "study"},  # a location is not an item
+    ],
+)
+async def test_a_plan_referencing_canon_wrongly_is_rejected(
+    state: GameState, consequence: dict[str, str]
+) -> None:
+    """The Director's output validator relocates the Actor's per-tool ModelRetry to id selection.
+    An id must both exist and name the kind of thing the consequence acts on."""
+    with ExitStack() as stack:
+        stubs(
+            stack,
+            director=structured(intent="i", tone="t", plan={"on_success": [consequence]}),
+        )
+        with pytest.raises(UnexpectedModelBehavior):
+            await direct("go", DirectorDeps(entities=state.world.entities))
+
+
+async def test_moving_to_hidden_canon_reveals_it_end_to_end(state: GameState) -> None:
+    """Reveal-on-arrival must survive the whole pipeline, not just the resolver."""
     with ExitStack() as stack:
         stubs(
             stack,
             director=structured(
-                intent="i",
-                tone="t",
-                plan={"on_success": [{"action": "discover", "entity_id": "ghost"}]},
+                intent="Kael descends toward the vault.",
+                tone="cold",
+                plan={"on_success": [{"action": "move", "entity_id": "vault"}]},
             ),
+            narrator=text("The stair opens into a low, cold chamber."),
+            maintainer=structured(requests=[]),
         )
-        with pytest.raises(UnexpectedModelBehavior):
-            await direct("go", DirectorDeps(entities=state.world.entities))
+        turn = await run_turn(state, "I go down to the vault.")
+
+    assert [e.type for e in turn.events] == ["entity_discovered", "moved"]
+    assert turn.state.character.location_id == "vault"
+    assert {e.id for e in turn.state.world.entities if e.known} == {"study", "vault", "mara"}
+    assert turn.created == []
 
 
 def test_exchanges_become_alternating_messages() -> None:

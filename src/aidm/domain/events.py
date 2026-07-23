@@ -44,11 +44,12 @@ class HpChanged(Frozen):
 
 class Moved(Frozen):
     type: Literal["moved"] = "moved"
-    location: str
+    entity_id: EntityId
+    name: str  # carried so the summary never leaks an id to the Narrator
 
     @property
     def summary(self) -> str:
-        return f"moved to {self.location}"
+        return f"moved to {self.name}"
 
 
 class EntityDiscovered(Frozen):
@@ -96,8 +97,10 @@ def _apply_one(state: GameState, event: Event) -> GameState:
         case HpChanged(delta=delta):
             hp = max(0, min(state.character.max_hp, state.character.hp + delta))
             return updated(state, character=updated(state.character, hp=hp))
-        case Moved(location=location):
-            return updated(state, character=updated(state.character, location=location))
+        case Moved(entity_id=entity_id):
+            if find(state.world.entities, entity_id) is None:
+                raise ValueError(f"cannot move to unknown entity {entity_id!r}")
+            return updated(state, character=updated(state.character, location_id=entity_id))
         case EntityDiscovered(entity_id=entity_id):
             if find(state.world.entities, entity_id) is None:
                 raise ValueError(f"cannot discover unknown entity {entity_id!r}")

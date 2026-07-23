@@ -6,20 +6,24 @@ from ..config import settings
 from ..domain.models import Direction, Entity, GameState, GrowthRequest, find
 
 
-def character(state: GameState) -> str:
-    c = state.character
-    attributes = ", ".join(f"{k} {v}" for k, v in c.attributes.model_dump().items())
-    inventory = ", ".join(c.inventory) or "empty"
-    return (
-        f"{c.name} — hp {c.hp}/{c.max_hp} — at {c.location}\n"
-        f"attributes: {attributes}\ninventory: {inventory}"
-    )
-
-
 def label(e: Entity) -> str:
     """Every entity is shown as `name[id=...]`, so any role can reference it by the id it must use.
     A prose-only role ignores the bracket; a role that emits ids reads it off directly."""
     return f"{e.name}[id={e.id}]"
+
+
+def character(state: GameState) -> str:
+    """Fail fast: standing outside canon would offer the Director a location id it cannot use."""
+    c = state.character
+    where = find(state.world.entities, c.location_id)
+    if where is None:
+        raise ValueError(f"character is at unknown location {c.location_id!r}")
+    attributes = ", ".join(f"{k} {v}" for k, v in c.attributes.model_dump().items())
+    inventory = ", ".join(c.inventory) or "empty"
+    return (
+        f"{c.name} — hp {c.hp}/{c.max_hp} — at {label(where)}\n"
+        f"attributes: {attributes}\ninventory: {inventory}"
+    )
 
 
 def briefs(items: Sequence[Entity]) -> str:

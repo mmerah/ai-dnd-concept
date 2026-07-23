@@ -3,6 +3,7 @@
     "title": "The Whispering Vault",
     "premise": "The abbey of Saint Corvin was abandoned in a single night. Kael has come for the sealed vault beneath it, and the abbot's study is the only room still lit."
   },
+  "starting_location_id": "study",
   "entities": [
     {
       "id": "study",
@@ -10,6 +11,27 @@
       "name": "the abbot's study",
       "brief": "A cramped room of ledgers and cold candle stubs; a loose flagstone hides something under the desk.",
       "known": true
+    },
+    {
+      "id": "cloister",
+      "kind": "location",
+      "name": "the cloister",
+      "brief": "A frost-rimed colonnade around a dead garden; Brother Tomas sweeps it to no purpose.",
+      "known": true
+    },
+    {
+      "id": "bell_tower",
+      "kind": "location",
+      "name": "the bell tower",
+      "brief": "A cramped climb of rotten ladders above the nave, its bell long since stilled.",
+      "known": false
+    },
+    {
+      "id": "vault",
+      "kind": "location",
+      "name": "the sealed vault",
+      "brief": "The undercroft chamber Kael came for, its door bearing a seal nobody living can read.",
+      "known": false
     },
     {
       "id": "mara",

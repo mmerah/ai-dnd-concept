@@ -35,6 +35,7 @@ from .plan import (
 from .state import (
     Attributes,
     Character,
+    CharacterSheet,
     Exchange,
     GameState,
     ScenarioDef,
@@ -48,6 +49,7 @@ __all__ = [
     "Ability",
     "Attributes",
     "Character",
+    "CharacterSheet",
     "Check",
     "Consequence",
     "Direction",

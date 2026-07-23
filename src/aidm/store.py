@@ -6,6 +6,7 @@ from .config import settings
 from .domain.models import (
     SAVE_VERSION,
     Character,
+    CharacterSheet,
     GameState,
     ScenarioDef,
     WorldState,
@@ -29,9 +30,9 @@ def new_game(scenario: str, character: str = "kael") -> GameState:
     scenario_path = conf.scenarios_dir / f"{scenario}.json"
     character_path = conf.characters_dir / f"{character}.json"
     definition = ScenarioDef.model_validate_json(scenario_path.read_text(encoding=ENCODING))
-    hero = Character.model_validate_json(character_path.read_text(encoding=ENCODING))
+    sheet = CharacterSheet.model_validate_json(character_path.read_text(encoding=ENCODING))
     return GameState(
-        character=hero,
+        character=Character(**sheet.model_dump(), location_id=definition.starting_location_id),
         scenario=definition.meta,
         world=WorldState(entities=definition.entities),
     )

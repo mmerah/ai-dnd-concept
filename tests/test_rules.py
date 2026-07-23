@@ -1,9 +1,11 @@
 from random import Random
 
-from aidm.domain.models import Attributes, Character
+from aidm.domain.models import Attributes, Character, EntityId
 from aidm.engine import rules
 
-KAEL = Character(name="Kael", attributes=Attributes(wisdom=14, strength=8), location="here")
+KAEL = Character(
+    name="Kael", attributes=Attributes(wisdom=14, strength=8), location_id=EntityId("here")
+)
 
 
 def test_modifier() -> None:

@@ -4,7 +4,7 @@ from random import Random
 
 import pytest
 
-from aidm.domain.events import CheckRolled, InventoryChanged, Moved
+from aidm.domain.events import CheckRolled, EntityDiscovered, InventoryChanged, Moved
 from aidm.domain.models import (
     Check,
     Discover,
@@ -26,13 +26,13 @@ PASS, FAIL = Random(0), Random(2)
 def test_no_check_applies_unconditional_then_success_branch(state: GameState) -> None:
     plan = Plan(
         unconditional=[ModifyHp(delta=-2)],
-        on_success=[Move(location="the vault")],
-        on_failure=[Move(location="the cell")],
+        on_success=[Move(entity_id=EntityId("vault"))],
+        on_failure=[Move(entity_id=EntityId("study"))],
     )
     events = resolve(plan, state, PASS)
-    assert [e.type for e in events] == ["hp_changed", "moved"]
-    moved = events[1]
-    assert isinstance(moved, Moved) and moved.location == "the vault"  # no check -> success
+    assert [e.type for e in events] == ["hp_changed", "entity_discovered", "moved"]
+    moved = events[2]
+    assert isinstance(moved, Moved) and moved.entity_id == "vault"  # no check -> success
 
 
 def test_check_success_selects_on_success(state: GameState) -> None:
@@ -65,6 +65,29 @@ def test_gain_canon_item_reveals_hidden_and_stores_the_name(state: GameState) ->
     gained = events[1]
     assert isinstance(gained, InventoryChanged)
     assert gained.item == "the vault map" and gained.delta == 1  # canonical name, not the id
+
+
+def test_move_to_a_hidden_location_reveals_it_on_arrival(state: GameState) -> None:
+    events = resolve(Plan(on_success=[Move(entity_id=EntityId("vault"))]), state, PASS)
+    assert [e.type for e in events] == ["entity_discovered", "moved"]
+    discovered, moved = events
+    assert isinstance(discovered, EntityDiscovered) and discovered.entity_id == "vault"
+    # the id drives state; the name rides along so the Narrator's summary never shows an id
+    assert isinstance(moved, Moved) and (moved.entity_id, moved.name) == ("vault", "the vault")
+
+
+def test_move_to_a_known_location_does_not_rediscover(state: GameState) -> None:
+    events = resolve(Plan(on_success=[Move(entity_id=EntityId("study"))]), state, PASS)
+    (moved,) = events
+    assert isinstance(moved, Moved) and moved.entity_id == "study"
+
+
+def test_a_consequence_used_on_the_wrong_kind_raises(state: GameState) -> None:
+    """Naming an npc where a location belongs is a broken invariant, not a silent coercion."""
+    with pytest.raises(ValueError, match="but it is a npc"):
+        resolve(Plan(on_success=[Move(entity_id=EntityId("mara"))]), state, PASS)
+    with pytest.raises(ValueError, match="but it is a location"):
+        resolve(Plan(on_success=[GainCanonItem(entity_id=EntityId("study"))]), state, PASS)
 
 
 def test_gain_loose_item_is_stored_verbatim(state: GameState) -> None:
