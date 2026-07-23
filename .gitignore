@@ -1,3 +1,15 @@
 # Environment
 .env
 
+# Python
+__pycache__/
+.venv/
+.pytest_cache/
+.ruff_cache/
+
+# Play data
+saves/
+
+# Repo formatter
+.repo_formatter.yaml
+repository.md

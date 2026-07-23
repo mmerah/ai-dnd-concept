@@ -1,0 +1,37 @@
+[project]
+name = "aidm"
+version = "0.1.0"
+description = "AI Dungeon Master — role-separated pipeline proof of concept"
+requires-python = ">=3.12"
+dependencies = [
+    "pydantic>=2.9",
+    "pydantic-settings>=2.5",
+    "pydantic-ai-slim[openai]>=1.0",
+    "nicegui>=2.0",
+]
+
+[dependency-groups]
+dev = ["pytest>=8", "pytest-asyncio>=0.24", "ruff>=0.6"]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/aidm"]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["tests"]
+
+[tool.basedpyright]
+include = ["src", "tests"]
+typeCheckingMode = "strict"
+reportUnusedCallResult = false        # NiceGUI's builder API returns elements by design
+reportUnannotatedClassAttribute = false  # pydantic's `model_config`
+
+[tool.ruff]
+line-length = 100
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B"]
