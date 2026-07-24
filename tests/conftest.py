@@ -9,9 +9,11 @@ os.environ.setdefault(  # agents are built, never called, in tests
 from aidm.domain.models import (  # noqa: E402
     Attributes,
     Character,
-    Entity,
     EntityId,
     GameState,
+    ItemEntity,
+    LocationEntity,
+    NpcEntity,
     ScenarioMeta,
     WorldState,
 )
@@ -23,33 +25,41 @@ def state() -> GameState:
         character=Character(
             name="Kael",
             attributes=Attributes(wisdom=14),
-            inventory=["a lantern"],
+            max_hp=10,
+            hp=10,
             location_id=EntityId("study"),
+            inventory=[EntityId("lantern")],  # held: lantern's location_id is None
         ),
         scenario=ScenarioMeta(title="Test", premise="A test."),
         world=WorldState(
             entities={
                 e.id: e
                 for e in [
-                    Entity(
-                        id=EntityId("study"),
-                        kind="location",
-                        name="the study",
-                        brief="A room.",
+                    LocationEntity(
+                        id=EntityId("study"), name="the study", brief="A room.", known=True
+                    ),
+                    LocationEntity(id=EntityId("vault"), name="the vault", brief="A crypt."),
+                    NpcEntity(
+                        id=EntityId("mara"),
+                        name="Mara",
+                        brief="A scribe.",
                         known=True,
+                        location_id=EntityId("study"),
                     ),
-                    Entity(
-                        id=EntityId("vault"), kind="location", name="the vault", brief="A crypt."
+                    NpcEntity(
+                        id=EntityId("elena"),
+                        name="Elena",
+                        brief="An archivist.",
+                        location_id=EntityId("study"),
                     ),
-                    Entity(
-                        id=EntityId("mara"), kind="npc", name="Mara", brief="A scribe.", known=True
-                    ),
-                    Entity(id=EntityId("elena"), kind="npc", name="Elena", brief="An archivist."),
-                    Entity(
+                    ItemEntity(
                         id=EntityId("vault_map"),
-                        kind="item",
                         name="the vault map",
                         brief="A chart.",
+                        location_id=EntityId("study"),  # lying in the study, hidden
+                    ),
+                    ItemEntity(
+                        id=EntityId("lantern"), name="a lantern", brief="A tin lantern.", known=True
                     ),
                 ]
             }

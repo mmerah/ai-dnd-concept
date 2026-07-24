@@ -38,28 +38,32 @@
       "kind": "npc",
       "name": "Mara",
       "brief": "The abbey's last scribe, cautious and tired, still cataloguing books nobody will read.",
-      "known": true
+      "known": true,
+      "location_id": "study"
     },
     {
       "id": "tomas",
       "kind": "npc",
       "name": "Brother Tomas",
       "brief": "A deaf old porter who sweeps the cloister and knows almost nothing about the vault.",
-      "known": true
+      "known": true,
+      "location_id": "cloister"
     },
     {
       "id": "elena",
       "kind": "npc",
       "name": "Elena",
       "brief": "The vault's former archivist, hiding in the bell tower; she alone remembers the sealing rite.",
-      "known": false
+      "known": false,
+      "location_id": "bell_tower"
     },
     {
       "id": "vault_map",
       "kind": "item",
       "name": "the vault map",
       "brief": "A creased chart of the undercroft, marking a stair the abbey's own plans deny.",
-      "known": false
+      "known": false,
+      "location_id": "study"
     }
   ]
 }

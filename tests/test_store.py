@@ -5,9 +5,9 @@ from pydantic import ValidationError
 
 from aidm.domain.models import CharacterSheet, ScenarioDef
 
-SHEET = {"name": "Kael", "inventory": ["a lantern"]}
+SHEET = {"name": "Kael", "starting_items": [{"name": "a lantern", "brief": "A tin lantern."}]}
 STUDY = {"id": "study", "kind": "location", "name": "the study", "brief": "A room.", "known": True}
-MARA = {"id": "mara", "kind": "npc", "name": "Mara", "brief": "A scribe."}
+MARA = {"id": "mara", "kind": "npc", "name": "Mara", "brief": "A scribe.", "location_id": "study"}
 META = {"title": "T", "premise": "P"}
 
 

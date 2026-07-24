@@ -11,8 +11,12 @@ Role = Literal["director", "narrator", "maintainer", "creator"]
 # Branded so a location or item name can never be passed where an entity id is expected.
 EntityId = NewType("EntityId", str)
 
+# The player is a Character, not a world entity, but positions and inventories reference actors by
+# id — so the player gets one reserved id. No scenario entity may claim it (validated in state.py).
+PLAYER_ID = EntityId("player")
+
 ROLES: tuple[Role, ...] = get_args(Role)
-SAVE_VERSION = 4
+SAVE_VERSION = 6
 
 
 class Frozen(BaseModel):

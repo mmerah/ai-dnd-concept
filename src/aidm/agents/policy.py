@@ -7,7 +7,8 @@ from .blocks import (
     DIRECTOR_TONE,
     ENTITY_CATALOGUE,
     GROWTH_REQUEST,
-    KNOWN_ENTITIES,
+    HERE,
+    KNOWN_ELSEWHERE,
     NARRATION,
     PLAYER_PROMPT,
     PREMISE,
@@ -21,14 +22,15 @@ from .context import Block, DirectionBlock, RequestBlock, RolePolicy, TurnContex
 # The entire context policy of the application.
 CONTEXT: dict[Role, RolePolicy] = {
     "director": RolePolicy(
-        (PREMISE, CHARACTER, KNOWN_ENTITIES, UNREVEALED_CANON, PLAYER_PROMPT),
+        (PREMISE, CHARACTER, HERE, KNOWN_ELSEWHERE, UNREVEALED_CANON, PLAYER_PROMPT),
         native_history=True,
     ),
     "narrator": RolePolicy(
         (
             PREMISE,
             CHARACTER,
-            KNOWN_ENTITIES,
+            HERE,
+            KNOWN_ELSEWHERE,
             DIRECTOR_PLAN,
             DIRECTOR_TONE,
             SPEAKER,

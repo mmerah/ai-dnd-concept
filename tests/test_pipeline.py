@@ -16,10 +16,14 @@ from aidm.agents import maintainer as maintainer_module
 from aidm.agents import narrator as narrator_module
 from aidm.agents.director import DirectorDeps, direct
 from aidm.agents.history import exchanges_to_messages
-from aidm.domain.models import EntityId, Exchange, GameState
+from aidm.domain.models import EntityId, Exchange, GameState, NpcEntity
 from aidm.pipeline import run_turn
 
 Stub = Callable[[list[ModelMessage], AgentInfo], ModelResponse]
+
+
+def deps(state: GameState) -> DirectorDeps:
+    return DirectorDeps(entities=state.world.entities, location=state.character.location_id)
 
 
 def structured(**output: object) -> Stub:
@@ -64,24 +68,29 @@ async def test_search_applies_mechanics_and_creates_nothing(state: GameState) ->
             director=structured(
                 intent="Kael feels along the flagstone for the vault map.",
                 tone="hushed",
-                mechanics={
-                    "check": {"ability": "wisdom", "dc": 12},
-                    "on_success": [{"action": "gain_item", "item_id": "vault_map"}],
-                },
+                mechanics=[
+                    {
+                        "action": "roll_check",
+                        "ability": "wisdom",
+                        "dc": 12,
+                        "on_success": [{"action": "take_item", "item_id": "vault_map"}],
+                    }
+                ],
             ),
             narrator=text("Your fingers find a creased chart beneath the flagstone."),
             maintainer=structured(requests=[]),
         )
         turn = await run_turn(state, "I search the study.", rng=Random(0))  # roll 13 + 2 >= 12
 
-    # gaining a canon item reveals it: inventory and canon can never disagree
+    # taking a canon item reveals it: inventory and canon can never disagree
     kinds = [e.type for e in turn.events]
-    assert kinds == ["check_rolled", "entity_discovered", "inventory_changed"]
-    assert turn.state.character.inventory == ["a lantern", "the vault map"]
+    assert kinds == ["check_rolled", "entity_discovered", "item_moved"]
+    assert turn.state.character.inventory == [EntityId("lantern"), EntityId("vault_map")]
     assert {e.id for e in turn.state.world.entities.values() if e.known} == {
         "study",
         "mara",
         "vault_map",
+        "lantern",
     }
     assert turn.created == []
     assert turn.state.turn == 1
@@ -96,7 +105,7 @@ async def test_existing_canon_is_revealed_not_created(state: GameState) -> None:
                 intent="Mara points Kael toward Elena.",
                 tone="wary",
                 speaker_id="mara",
-                mechanics={"on_success": [{"action": "discover", "entity_id": "elena"}]},
+                mechanics=[{"action": "discover", "entity_id": "elena"}],
             ),
             narrator=text("'Elena would know,' Mara says."),
             maintainer=structured(requests=[]),
@@ -104,7 +113,7 @@ async def test_existing_canon_is_revealed_not_created(state: GameState) -> None:
         turn = await run_turn(state, "@Mara who can I ask for help?")
 
     known_ids = {e.id for e in turn.state.world.entities.values() if e.known}
-    assert known_ids == {"study", "mara", "elena"}
+    assert known_ids == {"study", "mara", "elena", "lantern"}
     assert turn.created == []  # revealed from canon, not grown
 
 
@@ -128,8 +137,33 @@ async def test_an_unbacked_name_is_grown_not_resolved(state: GameState) -> None:
     assert turn.events == []  # an empty plan resolves to nothing
     (elgin,) = turn.created
     assert (elgin.id, elgin.known, elgin.authored) == ("elgin", True, False)
+    assert isinstance(elgin, NpcEntity) and elgin.location_id == "study"  # no location -> here
     assert list(turn.state.world.entities.values())[-1] == elgin  # created entities go last
     assert turn.state.world.entities[EntityId("vault")].known is False  # authored canon untouched
+
+
+async def test_a_grown_entity_is_placed_in_a_location_grown_the_same_turn(state: GameState) -> None:
+    """The Maintainer can request a new location and put a new NPC there in one batch; the location
+    is created first, so the NPC resolves to its minted id — not to the player's location."""
+    with ExitStack() as stack:
+        stubs(
+            stack,
+            director=structured(intent="i", tone="t"),
+            narrator=text("Beyond the arch, a monk named Anselm bends over a desk."),
+            maintainer=structured(
+                requests=[
+                    {"kind": "npc", "name": "Anselm", "brief": "A monk.", "location": "a crypt"},
+                    {"kind": "location", "name": "a crypt", "brief": "Cold stone."},
+                ]
+            ),
+            creator=structured(description="d", hook="h"),
+        )
+        turn = await run_turn(state, "What is beyond the arch?")
+
+    entities = turn.state.world.entities
+    crypt = next(e for e in entities.values() if e.name == "a crypt")
+    anselm = next(e for e in entities.values() if e.name == "Anselm")
+    assert isinstance(anselm, NpcEntity) and anselm.location_id == crypt.id  # not the study
 
 
 async def test_growth_is_capped(state: GameState) -> None:
@@ -156,7 +190,7 @@ async def test_growth_is_capped(state: GameState) -> None:
         {"action": "discover", "entity_id": "ghost"},
         {"action": "move", "location_id": "ghost"},  # an id no list ever showed
         {"action": "move", "location_id": "mara"},  # a real id, but an npc is not a location
-        {"action": "gain_item", "item_id": "study"},  # a location is not an item
+        {"action": "take_item", "item_id": "study"},  # a location is not an item
     ],
 )
 async def test_a_plan_referencing_canon_wrongly_is_rejected(
@@ -167,10 +201,44 @@ async def test_a_plan_referencing_canon_wrongly_is_rejected(
     with ExitStack() as stack:
         stubs(
             stack,
-            director=structured(intent="i", tone="t", mechanics={"on_success": [consequence]}),
+            director=structured(intent="i", tone="t", mechanics=[consequence]),
         )
         with pytest.raises(UnexpectedModelBehavior):
-            await direct("go", DirectorDeps(entities=state.world.entities))
+            await direct("go", deps(state))
+
+
+async def test_a_ref_bound_in_one_branch_cannot_be_used_in_another(state: GameState) -> None:
+    """A `roll_dice` bind lives only in its branch; only one branch runs, so referencing it from the
+    other branch would dangle at resolve time. The validator rejects it as a retry rather than
+    letting the resolver hard-fail the turn."""
+    dangling = {
+        "action": "roll_check",
+        "ability": "wisdom",
+        "dc": 10,
+        "on_success": [{"action": "roll_dice", "dice": "1d8", "bind": "dmg"}],
+        "on_failure": [{"action": "damage", "amount": {"ref": "dmg"}}],  # bound on the other branch
+    }
+    with ExitStack() as stack:
+        stubs(stack, director=structured(intent="i", tone="t", mechanics=[dangling]))
+        with pytest.raises(UnexpectedModelBehavior):
+            await direct("trap", deps(state))
+
+
+async def test_a_ref_reaching_a_bind_in_its_own_scope_is_accepted(state: GameState) -> None:
+    """A branch-level bind is visible to that branch's own later members, so this validates."""
+    scoped = {
+        "action": "roll_check",
+        "ability": "wisdom",
+        "dc": 10,
+        "on_success": [
+            {"action": "roll_dice", "dice": "1d6", "bind": "dmg"},
+            {"action": "damage", "amount": {"ref": "dmg"}},
+        ],
+    }
+    with ExitStack() as stack:
+        stubs(stack, director=structured(intent="i", tone="t", mechanics=[scoped]))
+        direction = await direct("trap", deps(state))
+    assert direction.mechanics[0].action == "roll_check"
 
 
 async def test_a_hidden_speaker_is_a_retry_not_a_downstream_failure(state: GameState) -> None:
@@ -179,7 +247,22 @@ async def test_a_hidden_speaker_is_a_retry_not_a_downstream_failure(state: GameS
     with ExitStack() as stack:
         stubs(stack, director=structured(intent="i", tone="t", speaker_id="elena"))  # known=False
         with pytest.raises(UnexpectedModelBehavior):
-            await direct("talk to her", DirectorDeps(entities=state.world.entities))
+            await direct("talk to her", deps(state))
+
+
+async def test_addressing_an_npc_who_is_elsewhere_is_a_retry(state: GameState) -> None:
+    """The bug this fixes: you could address any NPC from anywhere. With the player in the vault,
+    Mara (known, but in the study) is no longer a valid speaker."""
+    from aidm.domain.models import updated
+
+    in_vault = updated(state, character=updated(state.character, location_id=EntityId("vault")))
+    with ExitStack() as stack:
+        stubs(stack, director=structured(intent="i", tone="t", speaker_id="mara"))
+        with pytest.raises(UnexpectedModelBehavior):
+            await direct(
+                "talk to Mara",
+                deps(in_vault),
+            )
 
 
 async def test_moving_to_hidden_canon_reveals_it_end_to_end(state: GameState) -> None:
@@ -190,7 +273,7 @@ async def test_moving_to_hidden_canon_reveals_it_end_to_end(state: GameState) ->
             director=structured(
                 intent="Kael descends toward the vault.",
                 tone="cold",
-                mechanics={"on_success": [{"action": "move", "location_id": "vault"}]},
+                mechanics=[{"action": "move", "location_id": "vault"}],
             ),
             narrator=text("The stair opens into a low, cold chamber."),
             maintainer=structured(requests=[]),
@@ -200,7 +283,7 @@ async def test_moving_to_hidden_canon_reveals_it_end_to_end(state: GameState) ->
     assert [e.type for e in turn.events] == ["entity_discovered", "moved"]
     assert turn.state.character.location_id == "vault"
     known_ids = {e.id for e in turn.state.world.entities.values() if e.known}
-    assert known_ids == {"study", "vault", "mara"}
+    assert known_ids == {"study", "vault", "mara", "lantern"}
     assert turn.created == []
 
 
@@ -222,7 +305,7 @@ async def test_failing_role_leaves_state_untouched(state: GameState) -> None:
             director=structured(
                 intent="anything",
                 tone="grim",
-                mechanics={"unconditional": [{"action": "modify_hp", "delta": -3}]},
+                mechanics=[{"action": "damage", "amount": 3}],
             ),
             narrator=boom,
         )

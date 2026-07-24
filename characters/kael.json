@@ -1,7 +1,8 @@
 {
   "name": "Kael",
-  "attributes": { "strength": 11, "dexterity": 13, "intellect": 12, "wisdom": 14 },
-  "hp": 10,
-  "max_hp": 10,
-  "inventory": ["a guttering lantern"]
+  "starting_attributes": { "strength": 11, "dexterity": 13, "intellect": 12, "wisdom": 14 },
+  "starting_max_hp": 10,
+  "starting_items": [
+    { "name": "a guttering lantern", "brief": "A dented tin lantern whose flame will not hold still." }
+  ]
 }

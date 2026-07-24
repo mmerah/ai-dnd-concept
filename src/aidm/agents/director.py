@@ -6,7 +6,19 @@ from dataclasses import dataclass
 from pydantic_ai import ModelRetry, NativeOutput, RunContext
 from pydantic_ai.messages import ModelMessage
 
-from ..domain.models import CONSEQUENCE_TYPES, Consequence, Direction, Entity, EntityId
+from ..domain.models import (
+    CONSEQUENCE_TYPES,
+    Consequence,
+    Damage,
+    Direction,
+    Entity,
+    EntityId,
+    Heal,
+    NpcEntity,
+    Ref,
+    RollCheck,
+    RollDice,
+)
 from .llm import build_agent
 from .prompts.director import TEMPLATE
 
@@ -33,16 +45,48 @@ INSTRUCTIONS = TEMPLATE.replace("{consequences}", consequence_menu(CONSEQUENCE_T
 
 @dataclass
 class DirectorDeps:
-    """The turn's canon, for id validation in the output validator."""
+    """The turn's canon and the player's location, for id and co-location validation."""
 
     entities: Mapping[EntityId, Entity]
+    location: EntityId
+
+
+def _refs_used(consequence: Consequence) -> tuple[str, ...]:
+    """The bound-value names a consequence reads (only Damage/Heal, via a Ref amount)."""
+    if isinstance(consequence, (Damage, Heal)) and isinstance(consequence.amount, Ref):
+        return (consequence.amount.ref,)
+    return ()
+
+
+def _check_refs(consequences: Sequence[Consequence]) -> None:
+    """Every Ref must name a value a `roll_dice` bound and can reach: a bind is visible to later
+    consequences in its own sequence but never escapes its RollCheck branch, since only one branch
+    runs. Scoping lexically here turns a cross-branch leak into a retry, not a resolve-time fail."""
+
+    def walk(items: Sequence[Consequence], bound: set[str]) -> None:
+        scope = set(bound)  # sequence-level binds accumulate, visible to later siblings
+        for c in items:
+            for name in _refs_used(c):
+                if name not in scope:
+                    raise ModelRetry(f"reference {name!r} was never rolled by a roll_dice first")
+            match c:
+                case RollDice(bind=bind, then=then):
+                    walk(then, scope | {bind})  # `then` sees the new bind
+                    scope.add(bind)  # so do later siblings in this same sequence
+                case RollCheck(on_success=on_success, on_failure=on_failure):
+                    walk(on_success, scope)  # each branch is its own scope; a bind cannot escape it
+                    walk(on_failure, scope)
+                case _:
+                    pass
+
+    walk(consequences, set())
 
 
 def _validate_ids(ctx: RunContext[DirectorDeps], direction: Direction) -> Direction:
-    """Every id the Director chose must exist in the turn's canon, as the right kind, and a
-    speaker must be one the player already knows. All faults are retries, not errors: the model
-    can pick again from what it was shown."""
-    refs = direction.mechanics.canon_refs()
+    """Every id the Director chose must exist in the turn's canon, as the right kind; a speaker must
+    be one the player already knows; every Ref must resolve to an earlier roll. All faults are
+    retries, not errors: the model can pick again from what it was shown."""
+    refs = direction.canon_refs()
     if direction.speaker_id is not None:
         refs.append((direction.speaker_id, "npc"))
     canon = dict(ctx.deps.entities)
@@ -57,10 +101,14 @@ def _validate_ids(ctx: RunContext[DirectorDeps], direction: Direction) -> Direct
     )
     if mismatched:
         raise ModelRetry(f"wrong kind of entity: {'; '.join(mismatched)}.")
-    # A hidden speaker would put words in a stranger's mouth; catch it here as a retry rather than
-    # letting views.speaker hard-fail the turn downstream.
-    if direction.speaker_id is not None and not canon[direction.speaker_id].known:
+    # A hidden or absent speaker would put words in a stranger's mouth; catch it here as a retry
+    # rather than letting views.speaker hard-fail the turn downstream.
+    speaker = canon.get(direction.speaker_id) if direction.speaker_id is not None else None
+    if speaker is not None and not speaker.known:
         raise ModelRetry(f"speaker {direction.speaker_id!r} exists but the player has not met them")
+    if isinstance(speaker, NpcEntity) and speaker.location_id != ctx.deps.location:
+        raise ModelRetry(f"speaker {direction.speaker_id!r} is not at the player's location")
+    _check_refs(direction.mechanics)
     return direction
 
 

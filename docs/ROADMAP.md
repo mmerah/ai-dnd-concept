@@ -43,7 +43,6 @@ Status of the proof of concept, and where it should go. Kept short on purpose.
 ### Planned features
 
 - Locations are connected, they have a state.
-- NPC should be their own entities with their own location.
 - D&D 5e ruleset in `engine/`, replacing the micro-ruleset. The `engine/` ← `agents/` boundary exists for this.
 - Deterministic combat engine, driven by the same event/reducer model.
 - Character creator, decoupling the character from the scenario file.

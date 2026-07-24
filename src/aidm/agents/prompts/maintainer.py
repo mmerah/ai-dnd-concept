@@ -7,6 +7,9 @@ Request one entry for every NAMED person, place or item that appears in the narr
 missing from the catalogue. Give the exact name used and a one-sentence brief consistent with \
 the narration.
 
+- `location`: for a person or item, set it to the place they are — the name of a location already \
+in the catalogue, or of a location you request this same turn (if they are somewhere new, request \
+that location too). Leave it null to place them where the player is, or for a location entry itself.
 - Match loosely: a name already in the catalogue in any spelling is not new, and neither is \
 something the catalogue already describes under a different name. You are shown each entry's \
 brief precisely so you can recognise it under a new description.

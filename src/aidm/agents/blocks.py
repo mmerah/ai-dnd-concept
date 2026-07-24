@@ -1,20 +1,17 @@
 """The block vocabulary: the concrete renderable fragments a role's prompt is assembled from."""
 
-from ..domain.models import hidden, known
 from ..domain.reducer import render
 from . import views
 from .context import Block, DirectionBlock, RequestBlock
 
 PREMISE = Block("SCENARIO", lambda c: f"{c.state.scenario.title}\n{c.state.scenario.premise}")
 CHARACTER = Block("CHARACTER", lambda c: views.character(c.state))
-KNOWN_ENTITIES = Block("KNOWN TO THE PLAYER", lambda c: views.briefs(known(c.state.world.entities)))
+HERE = Block("HERE WITH THE PLAYER", lambda c: views.here(c.state))
+KNOWN_ELSEWHERE = Block("KNOWN TO THE PLAYER, BUT ELSEWHERE", lambda c: views.elsewhere(c.state))
 UNREVEALED_CANON = Block(
-    "EXISTS BUT THE PLAYER DOES NOT KNOW IT YET",
-    lambda c: views.briefs(hidden(c.state.world.entities)),
+    "EXISTS BUT THE PLAYER DOES NOT KNOW IT YET", lambda c: views.unrevealed(c.state)
 )
-ENTITY_CATALOGUE = Block(
-    "EVERYTHING THAT EXISTS", lambda c: views.briefs(c.state.world.entities.values())
-)
+ENTITY_CATALOGUE = Block("EVERYTHING THAT EXISTS", lambda c: views.catalogue(c.state))
 RECENT_PLAY = Block("RECENT PLAY", lambda c: views.history(c.recent))
 
 DIRECTOR_PLAN = DirectionBlock(
