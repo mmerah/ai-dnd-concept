@@ -2,7 +2,8 @@
 
 import pytest
 
-from aidm.agents.context import TurnContext, prompt_for
+from aidm.agents.context import TurnContext
+from aidm.agents.policy import prompt_for
 from aidm.domain.models import ROLES, Direction, EntityId, GameState, GrowthRequest
 
 DIRECTION = Direction(intent="Kael searches the study for anything hidden.", tone="hushed")

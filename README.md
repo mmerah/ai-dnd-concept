@@ -15,7 +15,7 @@ Two rules hold the design together:
 - **The model proposes, Python decides.** The Director proposes typed `mechanics` referencing canon
   by id; `engine/resolve.py` turns them into events deterministically; `apply(state, events)` is the
   only thing that produces new state. No LLM ever mutates state.
-- **Context is a policy, not an accident.** One table in `agents/context.py` is the complete
+- **Context is a policy, not an accident.** One table in `agents/policy.py` is the complete
   answer to what each role sees. Read it there — it is the source of truth, not this file.
 
 ## Run

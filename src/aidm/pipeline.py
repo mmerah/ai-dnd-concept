@@ -6,12 +6,13 @@ from random import Random
 
 from pydantic_ai.messages import ModelMessage
 
-from .agents.context import TurnContext, prompt_for, reads_history
+from .agents.context import TurnContext
 from .agents.creator import create
 from .agents.director import DirectorDeps, direct
 from .agents.history import exchanges_to_messages
 from .agents.maintainer import maintain
 from .agents.narrator import narrate
+from .agents.policy import prompt_for, reads_history
 from .config import settings
 from .domain.models import (
     Direction,
