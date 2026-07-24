@@ -2,7 +2,9 @@ import os
 
 import pytest
 
-os.environ.setdefault("AI_API_KEY", "test")  # agents are built, never called, in tests
+os.environ.setdefault(  # agents are built, never called, in tests
+    "PROVIDERS__OPENROUTER__API_KEY", "test"
+)
 
 from aidm.domain.models import (  # noqa: E402
     Attributes,
@@ -26,20 +28,30 @@ def state() -> GameState:
         ),
         scenario=ScenarioMeta(title="Test", premise="A test."),
         world=WorldState(
-            entities=[
-                Entity(
-                    id=EntityId("study"),
-                    kind="location",
-                    name="the study",
-                    brief="A room.",
-                    known=True,
-                ),
-                Entity(id=EntityId("vault"), kind="location", name="the vault", brief="A crypt."),
-                Entity(id=EntityId("mara"), kind="npc", name="Mara", brief="A scribe.", known=True),
-                Entity(id=EntityId("elena"), kind="npc", name="Elena", brief="An archivist."),
-                Entity(
-                    id=EntityId("vault_map"), kind="item", name="the vault map", brief="A chart."
-                ),
-            ]
+            entities={
+                e.id: e
+                for e in [
+                    Entity(
+                        id=EntityId("study"),
+                        kind="location",
+                        name="the study",
+                        brief="A room.",
+                        known=True,
+                    ),
+                    Entity(
+                        id=EntityId("vault"), kind="location", name="the vault", brief="A crypt."
+                    ),
+                    Entity(
+                        id=EntityId("mara"), kind="npc", name="Mara", brief="A scribe.", known=True
+                    ),
+                    Entity(id=EntityId("elena"), kind="npc", name="Elena", brief="An archivist."),
+                    Entity(
+                        id=EntityId("vault_map"),
+                        kind="item",
+                        name="the vault map",
+                        brief="A chart.",
+                    ),
+                ]
+            }
         ),
     )

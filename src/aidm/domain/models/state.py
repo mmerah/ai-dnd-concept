@@ -5,7 +5,7 @@ from typing import Self
 from pydantic import Field, model_validator
 
 from .base import SAVE_VERSION, EntityId, Frozen
-from .entities import Entity, find
+from .entities import Entity
 
 
 class Attributes(Frozen):
@@ -40,27 +40,46 @@ class ScenarioMeta(Frozen):
 
 
 class WorldState(Frozen):
-    """The live canon the reducer edits — everything discover/Maintainer/Creator touch."""
+    """The live canon the reducer edits — everything discover/Maintainer/Creator touch.
 
-    entities: list[Entity] = Field(default_factory=list)
+    Keyed by id so uniqueness is a guarantee, not an assumption; `Entity.id` is kept because an
+    entity travels standalone (through `EntityCreated`, `Turn.created`, `create()`'s return)."""
+
+    entities: dict[EntityId, Entity] = Field(default_factory=dict)
+
+    @model_validator(mode="after")
+    def _keys_match_ids(self) -> Self:
+        """The id is stored twice after a JSON round-trip; a mismatch would make lookups lie."""
+        wrong = [k for k, e in self.entities.items() if k != e.id]
+        if wrong:
+            raise ValueError(f"entity keys disagree with their ids: {wrong}")
+        return self
 
 
 class ScenarioDef(Frozen):
-    """The on-disk scenario file: static identity, starting canon, and where a character begins."""
+    """The on-disk scenario file: static identity, starting canon, and where a character begins.
+    Entities stay a JSON array — a list is the natural authoring shape; `as_world` keys them."""
 
     meta: ScenarioMeta
     starting_location_id: EntityId
     entities: list[Entity] = Field(default_factory=list)
 
     @model_validator(mode="after")
-    def _starting_location_exists(self) -> Self:
+    def _valid_scenario(self) -> Self:
         """Checked here so a malformed scenario fails at its own boundary, not mid-turn."""
-        entity = find(self.entities, self.starting_location_id)
-        if entity is None or entity.kind != "location":
+        ids = [e.id for e in self.entities]
+        duplicates = sorted({i for i in ids if ids.count(i) > 1})
+        if duplicates:
+            raise ValueError(f"scenario has duplicate entity ids: {duplicates}")
+        start = next((e for e in self.entities if e.id == self.starting_location_id), None)
+        if start is None or start.kind != "location":
             raise ValueError(
                 f"starting_location_id {self.starting_location_id!r} is not a location here"
             )
         return self
+
+    def as_world(self) -> WorldState:
+        return WorldState(entities={e.id: e for e in self.entities})
 
 
 class Exchange(Frozen):

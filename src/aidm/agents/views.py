@@ -1,9 +1,8 @@
 """Renderers for single context fragments. Pure string in, pure string out."""
 
-from collections.abc import Sequence
+from collections.abc import Iterable, Sequence
 
-from ..config import settings
-from ..domain.models import Direction, Entity, GameState, GrowthRequest, find
+from ..domain.models import Direction, Entity, Exchange, GameState, GrowthRequest, find
 
 
 def label(e: Entity) -> str:
@@ -26,12 +25,11 @@ def character(state: GameState) -> str:
     )
 
 
-def briefs(items: Sequence[Entity]) -> str:
+def briefs(items: Iterable[Entity]) -> str:
     return "\n".join(f"- {label(e)} — {e.kind} — {e.brief}" for e in items) or "- (none)"
 
 
-def history(state: GameState) -> str:
-    recent = state.history[-settings().history_window :]
+def history(recent: Sequence[Exchange]) -> str:
     return "\n\n".join(f"Player: {x.prompt}\nDM: {x.narration}" for x in recent) or "(nothing yet)"
 
 

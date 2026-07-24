@@ -37,7 +37,7 @@ def test_move(state: GameState) -> None:
 
 def test_discover_reveals_only_the_target(state: GameState) -> None:
     result = apply(state, [EntityDiscovered(entity_id=EntityId("elena"), name="Elena")])
-    known = {e.id: e.known for e in result.world.entities}
+    known = {e.id: e.known for e in result.world.entities.values()}
     assert known == {
         "study": True,
         "vault": False,
@@ -51,7 +51,8 @@ def test_create_appends(state: GameState) -> None:
     elgin = Entity(
         id=EntityId("elgin"), kind="npc", name="Elgin", brief="An apothecary.", authored=False
     )
-    assert apply(state, [EntityCreated(entity=elgin)]).world.entities[-1] == elgin
+    entities = apply(state, [EntityCreated(entity=elgin)]).world.entities
+    assert list(entities.values())[-1] == elgin
 
 
 def test_impossible_events_fail_fast(state: GameState) -> None:

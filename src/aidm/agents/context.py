@@ -6,6 +6,7 @@ from dataclasses import dataclass
 from ..domain.events import Event, render
 from ..domain.models import (
     Direction,
+    Exchange,
     GameState,
     GrowthRequest,
     Role,
@@ -24,6 +25,7 @@ class TurnContext:
     prompt: str
     events: Sequence[Event] = ()
     narration: str = ""
+    recent: Sequence[Exchange] = ()  # already windowed by the pipeline; the single history slice
 
 
 # Three block shapes: a plain block reads only the context; a direction/request block also takes
@@ -55,8 +57,10 @@ UNREVEALED_CANON = Block(
     "EXISTS BUT THE PLAYER DOES NOT KNOW IT YET",
     lambda c: views.briefs(hidden(c.state.world.entities)),
 )
-ENTITY_CATALOGUE = Block("EVERYTHING THAT EXISTS", lambda c: views.briefs(c.state.world.entities))
-RECENT_PLAY = Block("RECENT PLAY", lambda c: views.history(c.state))
+ENTITY_CATALOGUE = Block(
+    "EVERYTHING THAT EXISTS", lambda c: views.briefs(c.state.world.entities.values())
+)
+RECENT_PLAY = Block("RECENT PLAY", lambda c: views.history(c.recent))
 
 DIRECTOR_PLAN = DirectionBlock(
     "THE DIRECTOR'S PLAN — what was meant, not what happened", lambda c, d: d.intent

@@ -27,19 +27,19 @@ Invent nothing beyond this single element — no other names, no plot twists."""
 agent = build_agent("creator", output_type=NativeOutput(EntityDetail), instructions=INSTRUCTIONS)
 
 
-def slug(name: str, taken: Iterable[str]) -> str:
+def slug(name: str, taken: Iterable[EntityId]) -> EntityId:
     base = re.sub(r"[^a-z0-9]+", "_", name.lower()).strip("_") or "entity"
     used = set(taken)
-    candidate, n = base, 2
+    candidate, n = EntityId(base), 2
     while candidate in used:
-        candidate, n = f"{base}_{n}", n + 1
+        candidate, n = EntityId(f"{base}_{n}"), n + 1
     return candidate
 
 
-async def create(prompt: str, request: GrowthRequest, taken: Iterable[str]) -> Entity:
+async def create(prompt: str, request: GrowthRequest, taken: Iterable[EntityId]) -> Entity:
     detail = (await agent().run(prompt)).output
     return Entity(
-        id=EntityId(slug(request.name, taken)),
+        id=slug(request.name, taken),
         kind=request.kind,
         name=request.name,
         brief=request.brief,

@@ -21,18 +21,17 @@ Status of the proof of concept, and where it should go. Kept short on purpose.
 
 - The Maintainer grows eagerly. Passing mentions become entities — "the Whispering Vault", "the bell tower", "cracked vellum" all got created from scenery in narration.
 - Growth can only create, never deepen. An existing entity that the story develops gets no update; the Maintainer's only verb is "add".
-- The Creator can duplicate a name. `slug` dedupes the id (`elgin_2`), which hides the duplicate rather than preventing it.
 - Locations and inventory are free strings. `move_to("the crypt")` invents a place that no entity backs; only items are canonicalised against the catalogue.
 
 ### Structure and scale
 
-- Loose/Canon distinction (be it engine or anywhere else) is a bit weird. Maybe it's the naming, or maybe it could simplified/cut?
+- Mechanics feel wrong. I feel like there should be an ability check tool (like other tools/actions/consequences). And on success/failure you can have other consequences. Thing is you might want also a straight roll dice? And the value out of those dice rolls need to be available to following consequences/tools if needed. Only then can we implement true D&D 5e chain of consequences (ex: attack roll (or DC check) -> damage roll -> change hp using damage roll output. And the more complicated ones nvolving spells and whatnot).
 - History is the last 6 exchanges, verbatim. No summarisation, no retrieval; a long game silently forgets its own middle.
-- One hardcoded save slug and scenario, one module-level session, no scenario picker.
+- No scenario picker.
 - No undo. The save is a single current state, not a history of commits.
 - Five sequential model calls per turn, no streaming. The player waits on the whole pipeline.
 - The trace file grows unbounded and the trace panel only shows turns from this process.
-- Hardcoding the instructions is a maintainability issue, especially for giving tool lists. Each tool should have a concise guidance of how to use it and for what with examples, right in where it is defined. Then the instructions for each agent that use each tool can be made modular or generated depending on which tools the agent use. Maybe the list of tool the agent use is also made explicit. The model, the token budget, the reasoning level, ... all are things that should be configurable, modular and thus make all of this less of a maintainability issue
+- Per-consequence guidance and per-role model/budget/reasoning are now modular: each consequence carries its own `GUIDANCE` assembled into the Director prompt, and `config.py` holds a per-role table. What remains is the same for the other roles' tools (only the Director's mechanics are assembled today) and a general per-agent tool-list assembly.
 
 ## Direction
 

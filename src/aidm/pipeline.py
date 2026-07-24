@@ -1,6 +1,6 @@
 """The fixed turn pipeline: DIRECTOR -> NARRATOR -> MAINTAINER -> CREATOR -> commit."""
 
-from collections.abc import Callable
+from collections.abc import Callable, Sequence
 from dataclasses import replace
 from random import Random
 
@@ -14,8 +14,9 @@ from .agents.maintainer import maintain
 from .agents.narrator import narrate
 from .config import settings
 from .domain.events import EntityCreated, apply
-from .domain.models import Direction, Entity, Exchange, GameState, Growth, Role, updated
+from .domain.models import Direction, Entity, Exchange, GameState, GrowthRequest, Role, updated
 from .domain.turn import Turn
+from .engine.growth import screen
 from .engine.resolve import resolve
 
 
@@ -23,12 +24,14 @@ def _ignore(step: Role) -> None:
     """Default progress callback."""
 
 
-async def _grow(context: TurnContext, growth: Growth, prompts: dict[Role, str]) -> list[Entity]:
-    """The capped Maintainer -> Creator loop. Each creation feeds the next one's catalogue and
-    dedup, so the local context evolves; only the created entities escape."""
+async def _grow(
+    context: TurnContext, requests: Sequence[GrowthRequest], prompts: dict[Role, str]
+) -> list[Entity]:
+    """The Maintainer -> Creator loop over screened requests. Each creation feeds the next one's
+    catalogue and dedup, so the local context evolves; only the created entities escape."""
     created: list[Entity] = []
-    for request in growth.requests[: settings().max_growth]:
-        taken = [e.id for e in context.state.world.entities]
+    for request in requests:
+        taken = context.state.world.entities.keys()
         prompts["creator"] = prompt_for("creator", context, request=request)
         entity = await create(prompts["creator"], request, taken)
         created.append(entity)
@@ -55,16 +58,17 @@ async def run_turn(
         prompts[role] = prompt_for(role, context, direction=direction)
         return prompts[role]
 
-    history = exchanges_to_messages(state.history[-settings().history_window :])
+    recent = state.history[-settings().history_window :]
+    history = exchanges_to_messages(recent)
 
     def seen_by(role: Role) -> list[ModelMessage] | None:
         return history if reads_history(role) else None
 
-    context = TurnContext(state=state, prompt=prompt)
+    context = TurnContext(state=state, prompt=prompt, recent=recent)
     deps = DirectorDeps(entities=state.world.entities)
     direction = await direct(ask("director", context), deps, seen_by("director"))
 
-    events = resolve(direction.plan, state, rng or Random())
+    events = resolve(direction.mechanics, state, rng or Random())
     draft = apply(state, events)
 
     context = replace(context, state=draft, events=events)
@@ -74,7 +78,8 @@ async def run_turn(
     growth = await maintain(ask("maintainer", context), seen_by("maintainer"))
 
     step("creator")
-    created = await _grow(context, growth, prompts)
+    screened = screen(growth.requests, draft.world.entities, settings().max_growth)
+    created = await _grow(context, screened.accepted, prompts)
     draft = apply(draft, [EntityCreated(entity=entity) for entity in created])
 
     return Turn(
@@ -84,6 +89,7 @@ async def run_turn(
         narration=narration,
         growth=growth,
         created=created,
+        rejected=screened.rejected,
         state=_commit(draft, prompt, narration),
         prompts=prompts,
     )

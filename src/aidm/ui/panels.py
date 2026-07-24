@@ -3,9 +3,11 @@
 from nicegui import ui
 
 from ..domain.events import render
-from ..domain.models import ROLES, Plan
+from ..domain.models import ROLES, Mechanics, RejectedGrowth
 from ..domain.turn import Turn
-from .session import session
+from .session import Session
+
+_REJECTION_TEXT = {"duplicate_name": "name already exists", "over_cap": "over the growth cap"}
 
 
 def _section(title: str, body: str) -> None:
@@ -14,7 +16,7 @@ def _section(title: str, body: str) -> None:
 
 
 @ui.refreshable
-def chat() -> None:
+def chat(session: Session) -> None:
     if not session.state.history:
         ui.label(session.state.scenario.premise).classes("text-sm italic opacity-70")
     for exchange in session.state.history:
@@ -23,19 +25,19 @@ def chat() -> None:
 
 
 @ui.refreshable
-def role_badges() -> None:
+def role_badges(session: Session) -> None:
     for role in ROLES:
         colour = "primary" if session.step == role else "grey-7"
         ui.badge(role).props(f"color={colour}")
 
 
 @ui.refreshable
-def state_panel() -> None:
+def state_panel(session: Session) -> None:
     ui.code(session.state.model_dump_json(indent=2), language="json").classes("w-full text-xs")
 
 
 @ui.refreshable
-def trace_panel() -> None:
+def trace_panel(session: Session) -> None:
     if not session.turns:
         ui.label("No turns yet this session.").classes("opacity-60")
     for number, turn in reversed(list(enumerate(session.turns, 1))):
@@ -43,25 +45,34 @@ def trace_panel() -> None:
             _turn_trace(turn)
 
 
-def _plan(plan: Plan) -> str:
-    lines = [f"check: {plan.check.ability} DC {plan.check.dc}"] if plan.check else []
+def _mechanics(mechanics: Mechanics) -> str:
+    check = mechanics.check
+    lines = [f"check: {check.ability} DC {check.dc}"] if check else []
     for label, group in (
-        ("always", plan.unconditional),
-        ("on success", plan.on_success),
-        ("on failure", plan.on_failure),
+        ("always", mechanics.unconditional),
+        ("on success", mechanics.on_success),
+        ("on failure", mechanics.on_failure),
     ):
         lines += [f"{label}: {c.action} {c.model_dump(exclude={'action'})}" for c in group]
     return "\n".join(lines) or "(no mechanics)"
 
 
+def _rejected(rejected: list[RejectedGrowth]) -> str:
+    return "\n".join(
+        f"- {r.request.kind} {r.request.name}: {_REJECTION_TEXT[r.reason]}" for r in rejected
+    )
+
+
 def _turn_trace(turn: Turn) -> None:
     _section("DIRECTOR intent (to the narrator)", turn.direction.intent)
     _section("DIRECTOR tone (to the narrator)", turn.direction.tone)
-    _section("DIRECTOR plan (private)", _plan(turn.direction.plan))
+    _section("DIRECTOR mechanics (private)", _mechanics(turn.direction.mechanics))
     _section("EVENTS", render(turn.events))
     _section("NARRATOR", turn.narration)
     requests = "\n".join(f"- {r.kind} {r.name}: {r.brief}" for r in turn.growth.requests)
     _section("MAINTAINER", requests or "- (nothing new)")
+    if turn.rejected:
+        _section("MAINTAINER rejected", _rejected(turn.rejected))
     for entity in turn.created:
         detail = entity.detail.description if entity.detail else ""
         _section(f"CREATOR [{entity.kind}]", f"{entity.name} — {detail}")

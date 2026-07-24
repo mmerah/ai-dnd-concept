@@ -26,18 +26,19 @@ Run from the repo root; paths and `.env` resolve against the working directory.
 
 ## Domain & Architecture Invariants
 
-- The model proposes, Python decides. LLMs never mutate state. Agents output typed data (intents, events, or structured entity data) which is processed by deterministic Python rules.
-- The Reducer Pattern: State evolution is strictly centralized. `domain/events.py:apply(state, events)` is the only allowed mechanism for producing new state. Never mutate objects in place.
-- Dependency Direction: `domain/` and `engine/` import nothing from `agents/` and perform no I/O. Mechanics stay testable without an agent, and agents cannot decide outcomes. Growing the ruleset means growing `engine/`, not the role prompts.
-- Strict Role Boundaries: Each agent has a narrow, singular responsibility (Director plans and proposes the turn's typed mechanics, Narrator writes, Maintainer tracks, Creator invents). The Director's `plan` is resolved deterministically by `engine/resolve.py`.
-- Centralized Context Policy: `agents/context.py` is the absolute source of truth for what each role sees. If an agent needs new data, update the policy table there. Never inject raw state directly into prompt strings outside of this policy.
-- Narrator Blindness: The Narrator is uniquely kept blind to unrevealed canon. Never expose hidden world state, DCs, or dice rolls to the Narrator, as it writes what the player reads.
+- The model proposes, Python decides. LLMs never mutate state; agents emit typed data (intents, events, structured entities) that deterministic Python rules process.
+- Single reducer. State evolves in exactly one place — the reducer in `domain/`, applied to typed events. Never mutate state in place; always produce a new value.
+- Dependency direction. `domain/` and `engine/` import nothing from `agents/` and do no I/O, so mechanics stay testable without an agent and agents cannot decide outcomes. Growing the ruleset means growing `engine/`, not the role prompts.
+- Strict role boundaries. Each agent has one narrow responsibility. An agent's structured proposal is resolved by deterministic code in `engine/`, never by another prompt.
+- Centralized context policy. One place in `agents/` is the source of truth for what each role sees. Extend that policy rather than injecting raw state into prompt strings elsewhere.
+- Narrator blindness. The Narrator alone writes what the player reads, so it is never shown unrevealed canon, hidden state, DCs, or dice rolls.
 
 ## Framework specifics
 
-- Pydantic V2: Use `model_validate`, `model_dump`, and native V2 config. Do not use V1 methods (`dict()`, `parse_obj`). Use the custom `updated(obj, **kwargs)` helper for copying frozen models.
-- Pydantic AI: Structured roles use `NativeOutput`; the Director validates its output against per-turn canon via `RunContext[DirectorDeps]` in an `output_validator` (raising `ModelRetry` on an off-menu id). Agents emit typed data only. `engine/resolve.py` maps the Director's `plan` to `Event`s, and `apply` alone mutates state.
-- NiceGUI: The UI is purely a reflection of `Session.state`. Use `@ui.refreshable` to handle state-driven reactivity. Keep domain logic completely out of the `ui/` directory.
+- Pydantic V2 only. Use V2 APIs and native config, never V1 methods. Copy frozen models through the shared `updated` helper so validation still runs.
+- Pydantic AI. Structured roles emit validated typed output; per-turn validation lives in an output validator that asks the model to retry on invalid data, and never mutates state itself.
+- NiceGUI. The UI only reflects session state; keep all domain logic out of `ui/` and drive updates through refreshable views.
+- Per-role LLM settings (model, endpoint, retries, token budget, reasoning level) live in the config module, one entry per role — never hardcoded in a role module.
 
 ## Testing and verification
 

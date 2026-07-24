@@ -10,27 +10,31 @@ from .base import (
     Role,
     updated,
 )
+from .consequences import (
+    CONSEQUENCE_TYPES,
+    Consequence,
+    Discover,
+    GainImprovisedItem,
+    GainItem,
+    LoseImprovisedItem,
+    LoseItem,
+    ModifyHp,
+    Move,
+)
+from .direction import (
+    Check,
+    Direction,
+    Mechanics,
+)
 from .entities import (
     Entity,
     EntityDetail,
     Growth,
     GrowthRequest,
+    RejectedGrowth,
     find,
     hidden,
     known,
-)
-from .plan import (
-    Check,
-    Consequence,
-    Direction,
-    Discover,
-    GainCanonItem,
-    GainLooseItem,
-    LoseCanonItem,
-    LoseLooseItem,
-    ModifyHp,
-    Move,
-    Plan,
 )
 from .state import (
     Attributes,
@@ -44,6 +48,7 @@ from .state import (
 )
 
 __all__ = [
+    "CONSEQUENCE_TYPES",
     "ROLES",
     "SAVE_VERSION",
     "Ability",
@@ -59,17 +64,18 @@ __all__ = [
     "EntityId",
     "Exchange",
     "Frozen",
-    "GainCanonItem",
-    "GainLooseItem",
+    "GainImprovisedItem",
+    "GainItem",
     "GameState",
     "Growth",
     "GrowthRequest",
     "Kind",
-    "LoseCanonItem",
-    "LoseLooseItem",
+    "LoseImprovisedItem",
+    "LoseItem",
+    "Mechanics",
     "ModifyHp",
     "Move",
-    "Plan",
+    "RejectedGrowth",
     "Role",
     "ScenarioDef",
     "ScenarioMeta",

@@ -10,14 +10,16 @@ from pydantic_ai import UnexpectedModelBehavior
 from pydantic_ai.messages import ModelMessage, ModelRequest, ModelResponse, TextPart
 from pydantic_ai.models.function import AgentInfo, FunctionModel
 
-from aidm.agents import creator, director, maintainer, narrator
+from aidm.agents import creator as creator_module
+from aidm.agents import director as director_module
+from aidm.agents import maintainer as maintainer_module
+from aidm.agents import narrator as narrator_module
 from aidm.agents.director import DirectorDeps, direct
 from aidm.agents.history import exchanges_to_messages
-from aidm.domain.models import Exchange, GameState
+from aidm.domain.models import EntityId, Exchange, GameState
 from aidm.pipeline import run_turn
 
 Stub = Callable[[list[ModelMessage], AgentInfo], ModelResponse]
-ROLE_MODULES = (director, narrator, maintainer, creator)
 
 
 def structured(**output: object) -> Stub:
@@ -36,10 +38,23 @@ def text(body: str) -> Stub:
     return stub
 
 
-def stubs(stack: ExitStack, **roles: Stub) -> None:
-    by_name = {m.__name__.rsplit(".", 1)[1]: m for m in ROLE_MODULES}
-    for name, stub in roles.items():
-        stack.enter_context(by_name[name].agent().override(model=FunctionModel(stub)))
+def stubs(
+    stack: ExitStack,
+    *,
+    director: Stub | None = None,
+    narrator: Stub | None = None,
+    maintainer: Stub | None = None,
+    creator: Stub | None = None,
+) -> None:
+    """Explicit per-role params, so a renamed role module is a type error, not a KeyError."""
+    for module, stub in (
+        (director_module, director),
+        (narrator_module, narrator),
+        (maintainer_module, maintainer),
+        (creator_module, creator),
+    ):
+        if stub is not None:
+            stack.enter_context(module.agent().override(model=FunctionModel(stub)))
 
 
 async def test_search_applies_mechanics_and_creates_nothing(state: GameState) -> None:
@@ -49,9 +64,9 @@ async def test_search_applies_mechanics_and_creates_nothing(state: GameState) ->
             director=structured(
                 intent="Kael feels along the flagstone for the vault map.",
                 tone="hushed",
-                plan={
+                mechanics={
                     "check": {"ability": "wisdom", "dc": 12},
-                    "on_success": [{"action": "gain_canon_item", "entity_id": "vault_map"}],
+                    "on_success": [{"action": "gain_item", "item_id": "vault_map"}],
                 },
             ),
             narrator=text("Your fingers find a creased chart beneath the flagstone."),
@@ -63,7 +78,11 @@ async def test_search_applies_mechanics_and_creates_nothing(state: GameState) ->
     kinds = [e.type for e in turn.events]
     assert kinds == ["check_rolled", "entity_discovered", "inventory_changed"]
     assert turn.state.character.inventory == ["a lantern", "the vault map"]
-    assert {e.id for e in turn.state.world.entities if e.known} == {"study", "mara", "vault_map"}
+    assert {e.id for e in turn.state.world.entities.values() if e.known} == {
+        "study",
+        "mara",
+        "vault_map",
+    }
     assert turn.created == []
     assert turn.state.turn == 1
     assert turn.state.history[-1].prompt == "I search the study."
@@ -77,14 +96,15 @@ async def test_existing_canon_is_revealed_not_created(state: GameState) -> None:
                 intent="Mara points Kael toward Elena.",
                 tone="wary",
                 speaker_id="mara",
-                plan={"on_success": [{"action": "discover", "entity_id": "elena"}]},
+                mechanics={"on_success": [{"action": "discover", "entity_id": "elena"}]},
             ),
             narrator=text("'Elena would know,' Mara says."),
             maintainer=structured(requests=[]),
         )
         turn = await run_turn(state, "@Mara who can I ask for help?")
 
-    assert {e.id for e in turn.state.world.entities if e.known} == {"study", "mara", "elena"}
+    known_ids = {e.id for e in turn.state.world.entities.values() if e.known}
+    assert known_ids == {"study", "mara", "elena"}
     assert turn.created == []  # revealed from canon, not grown
 
 
@@ -108,8 +128,8 @@ async def test_an_unbacked_name_is_grown_not_resolved(state: GameState) -> None:
     assert turn.events == []  # an empty plan resolves to nothing
     (elgin,) = turn.created
     assert (elgin.id, elgin.known, elgin.authored) == ("elgin", True, False)
-    assert turn.state.world.entities[-1] == elgin
-    assert turn.state.world.entities[1].known is False  # authored canon untouched by growth
+    assert list(turn.state.world.entities.values())[-1] == elgin  # created entities go last
+    assert turn.state.world.entities[EntityId("vault")].known is False  # authored canon untouched
 
 
 async def test_growth_is_capped(state: GameState) -> None:
@@ -126,15 +146,17 @@ async def test_growth_is_capped(state: GameState) -> None:
         turn = await run_turn(state, "Who is here?")
 
     assert len(turn.created) == 3
+    # the 3 over-cap requests are recorded, not silently dropped
+    assert [r.reason for r in turn.rejected] == ["over_cap", "over_cap", "over_cap"]
 
 
 @pytest.mark.parametrize(
     "consequence",
     [
         {"action": "discover", "entity_id": "ghost"},
-        {"action": "move", "entity_id": "ghost"},  # an id no list ever showed
-        {"action": "move", "entity_id": "mara"},  # a real id, but an npc is not a location
-        {"action": "gain_canon_item", "entity_id": "study"},  # a location is not an item
+        {"action": "move", "location_id": "ghost"},  # an id no list ever showed
+        {"action": "move", "location_id": "mara"},  # a real id, but an npc is not a location
+        {"action": "gain_item", "item_id": "study"},  # a location is not an item
     ],
 )
 async def test_a_plan_referencing_canon_wrongly_is_rejected(
@@ -145,10 +167,19 @@ async def test_a_plan_referencing_canon_wrongly_is_rejected(
     with ExitStack() as stack:
         stubs(
             stack,
-            director=structured(intent="i", tone="t", plan={"on_success": [consequence]}),
+            director=structured(intent="i", tone="t", mechanics={"on_success": [consequence]}),
         )
         with pytest.raises(UnexpectedModelBehavior):
             await direct("go", DirectorDeps(entities=state.world.entities))
+
+
+async def test_a_hidden_speaker_is_a_retry_not_a_downstream_failure(state: GameState) -> None:
+    """A speaker the player has not met is caught as a retry in the validator, so it never reaches
+    the Narrator's hard-failing view."""
+    with ExitStack() as stack:
+        stubs(stack, director=structured(intent="i", tone="t", speaker_id="elena"))  # known=False
+        with pytest.raises(UnexpectedModelBehavior):
+            await direct("talk to her", DirectorDeps(entities=state.world.entities))
 
 
 async def test_moving_to_hidden_canon_reveals_it_end_to_end(state: GameState) -> None:
@@ -159,7 +190,7 @@ async def test_moving_to_hidden_canon_reveals_it_end_to_end(state: GameState) ->
             director=structured(
                 intent="Kael descends toward the vault.",
                 tone="cold",
-                plan={"on_success": [{"action": "move", "entity_id": "vault"}]},
+                mechanics={"on_success": [{"action": "move", "location_id": "vault"}]},
             ),
             narrator=text("The stair opens into a low, cold chamber."),
             maintainer=structured(requests=[]),
@@ -168,7 +199,8 @@ async def test_moving_to_hidden_canon_reveals_it_end_to_end(state: GameState) ->
 
     assert [e.type for e in turn.events] == ["entity_discovered", "moved"]
     assert turn.state.character.location_id == "vault"
-    assert {e.id for e in turn.state.world.entities if e.known} == {"study", "vault", "mara"}
+    known_ids = {e.id for e in turn.state.world.entities.values() if e.known}
+    assert known_ids == {"study", "vault", "mara"}
     assert turn.created == []
 
 
@@ -190,7 +222,7 @@ async def test_failing_role_leaves_state_untouched(state: GameState) -> None:
             director=structured(
                 intent="anything",
                 tone="grim",
-                plan={"unconditional": [{"action": "modify_hp", "delta": -3}]},
+                mechanics={"unconditional": [{"action": "modify_hp", "delta": -3}]},
             ),
             narrator=boom,
         )

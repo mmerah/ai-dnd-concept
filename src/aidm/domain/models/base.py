@@ -12,7 +12,7 @@ Role = Literal["director", "narrator", "maintainer", "creator"]
 EntityId = NewType("EntityId", str)
 
 ROLES: tuple[Role, ...] = get_args(Role)
-SAVE_VERSION = 3
+SAVE_VERSION = 4
 
 
 class Frozen(BaseModel):

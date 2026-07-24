@@ -9,7 +9,6 @@ from .domain.models import (
     CharacterSheet,
     GameState,
     ScenarioDef,
-    WorldState,
 )
 from .domain.turn import Turn
 
@@ -34,7 +33,7 @@ def new_game(scenario: str, character: str = "kael") -> GameState:
     return GameState(
         character=Character(**sheet.model_dump(), location_id=definition.starting_location_id),
         scenario=definition.meta,
-        world=WorldState(entities=definition.entities),
+        world=definition.as_world(),
     )
 
 

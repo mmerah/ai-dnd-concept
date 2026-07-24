@@ -1,6 +1,7 @@
-"""Canon entities, the requests to grow them, and the lookups over a plain entity sequence."""
+"""Canon entities, the requests to grow them, and the lookups over the live entity map."""
 
-from collections.abc import Sequence
+from collections.abc import Mapping
+from typing import Literal
 
 from pydantic import Field
 
@@ -34,13 +35,24 @@ class Growth(Frozen):
     requests: list[GrowthRequest] = Field(default_factory=list)
 
 
-def known(entities: Sequence[Entity]) -> list[Entity]:
-    return [e for e in entities if e.known]
+# `duplicate_name`: a name that already exists; `over_cap`: admissible but beyond the turn's budget.
+GrowthRejectionReason = Literal["duplicate_name", "over_cap"]
 
 
-def hidden(entities: Sequence[Entity]) -> list[Entity]:
-    return [e for e in entities if not e.known]
+class RejectedGrowth(Frozen):
+    """A growth request screening refused, with why — kept so the trace shows every drop."""
+
+    request: GrowthRequest
+    reason: GrowthRejectionReason
 
 
-def find(entities: Sequence[Entity], entity_id: EntityId) -> Entity | None:
-    return next((e for e in entities if e.id == entity_id), None)
+def known(entities: Mapping[EntityId, Entity]) -> list[Entity]:
+    return [e for e in entities.values() if e.known]
+
+
+def hidden(entities: Mapping[EntityId, Entity]) -> list[Entity]:
+    return [e for e in entities.values() if not e.known]
+
+
+def find(entities: Mapping[EntityId, Entity], entity_id: EntityId) -> Entity | None:
+    return entities.get(entity_id)

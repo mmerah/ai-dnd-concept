@@ -77,7 +77,7 @@ Event = Annotated[
 ]
 
 
-def _with_entities(state: GameState, entities: list[Entity]) -> GameState:
+def _with_entities(state: GameState, entities: dict[EntityId, Entity]) -> GameState:
     return updated(state, world=updated(state.world, entities=entities))
 
 
@@ -102,14 +102,17 @@ def _apply_one(state: GameState, event: Event) -> GameState:
                 raise ValueError(f"cannot move to unknown entity {entity_id!r}")
             return updated(state, character=updated(state.character, location_id=entity_id))
         case EntityDiscovered(entity_id=entity_id):
-            if find(state.world.entities, entity_id) is None:
+            entity = find(state.world.entities, entity_id)
+            if entity is None:
                 raise ValueError(f"cannot discover unknown entity {entity_id!r}")
-            entities = [
-                updated(e, known=True) if e.id == entity_id else e for e in state.world.entities
-            ]
-            return _with_entities(state, entities)
+            revealed = {**state.world.entities, entity_id: updated(entity, known=True)}
+            return _with_entities(state, revealed)
         case EntityCreated(entity=entity):
-            return _with_entities(state, [*state.world.entities, entity])
+            # A duplicate id is a broken invariant (hard fail here); a duplicate name is a
+            # judgement call screened before creation in engine/growth.py.
+            if entity.id in state.world.entities:
+                raise ValueError(f"entity id {entity.id!r} already exists")
+            return _with_entities(state, {**state.world.entities, entity.id: entity})
 
 
 def apply(state: GameState, events: Sequence[Event]) -> GameState:
