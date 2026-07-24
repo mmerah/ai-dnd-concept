@@ -5,7 +5,6 @@ from pathlib import Path
 from .config import settings
 from .domain.models import (
     SAVE_VERSION,
-    Character,
     CharacterSheet,
     GameState,
     ScenarioDef,
@@ -24,17 +23,15 @@ def _trace_path(slug: str) -> Path:
 
 
 def new_game(scenario: str, character: str = "kael") -> GameState:
-    """Compose a starting GameState from a scenario definition and an independent character."""
+    """Read a scenario definition and an independent character; the domain composes the state."""
     conf = settings()
-    scenario_path = conf.scenarios_dir / f"{scenario}.json"
-    character_path = conf.characters_dir / f"{character}.json"
-    definition = ScenarioDef.model_validate_json(scenario_path.read_text(encoding=ENCODING))
-    sheet = CharacterSheet.model_validate_json(character_path.read_text(encoding=ENCODING))
-    return GameState(
-        character=Character(**sheet.model_dump(), location_id=definition.starting_location_id),
-        scenario=definition.meta,
-        world=definition.as_world(),
+    definition = ScenarioDef.model_validate_json(
+        (conf.scenarios_dir / f"{scenario}.json").read_text(encoding=ENCODING)
     )
+    sheet = CharacterSheet.model_validate_json(
+        (conf.characters_dir / f"{character}.json").read_text(encoding=ENCODING)
+    )
+    return GameState.from_scenario(definition, sheet)
 
 
 def load(slug: str) -> GameState | None:

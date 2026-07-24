@@ -94,3 +94,9 @@ class GameState(Frozen):
     world: WorldState
     history: list[Exchange] = Field(default_factory=list)
     turn: int = 0
+
+    @classmethod
+    def from_scenario(cls, scenario: ScenarioDef, character: CharacterSheet) -> Self:
+        """Compose a starting state: a sheet placed at the scenario's start, over its canon."""
+        placed = Character(**character.model_dump(), location_id=scenario.starting_location_id)
+        return cls(character=placed, scenario=scenario.meta, world=scenario.as_world())
