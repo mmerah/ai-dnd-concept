@@ -16,8 +16,7 @@ class Attributes(Frozen):
 
 
 class CharacterSheet(Frozen):
-    """The on-disk character file: who they are, playable in any scenario. Deliberately has no
-    location — where they start belongs to the scenario, whose entity ids a sheet cannot know."""
+    """The on-disk character file: who they are, playable in any scenario."""
 
     name: str
     attributes: Attributes = Attributes()

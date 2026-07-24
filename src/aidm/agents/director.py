@@ -1,5 +1,4 @@
-"""DIRECTOR — owns world direction and the turn's mechanics. The only role that sees hidden canon,
-and the only role that chooses mechanics: it emits typed `Mechanics`, resolved in Python."""
+"""DIRECTOR — owns world direction and the turn's mechanics."""
 
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
@@ -13,7 +12,7 @@ from .prompts.director import TEMPLATE
 
 
 def consequence_menu(types: Sequence[type[Consequence]]) -> str:
-    """The Director's consequence reference, assembled from each class's own docstring, `GUIDANCE`
+    """Consequence reference assembled from each class's own docstring, `GUIDANCE`
     and field descriptions — so adding a consequence updates the prompt with no edit here."""
     lines: list[str] = []
     for consequence in types:

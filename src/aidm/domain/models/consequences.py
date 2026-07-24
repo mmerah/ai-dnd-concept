@@ -121,13 +121,7 @@ location_id `vault`."""
 
 
 Consequence = Annotated[
-    Discover
-    | GainItem
-    | LoseItem
-    | GainImprovisedItem
-    | LoseImprovisedItem
-    | ModifyHp
-    | Move,
+    Discover | GainItem | LoseItem | GainImprovisedItem | LoseImprovisedItem | ModifyHp | Move,
     Field(discriminator="action"),
 ]
 

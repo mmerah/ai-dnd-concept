@@ -61,9 +61,7 @@ async def run_turn(
     step = on_step or _ignore
     prompts: dict[Role, str] = {}
 
-    def ask(
-        role: Role, context: TurnContext, *, direction: Direction | None = None
-    ) -> str:
+    def ask(role: Role, context: TurnContext, *, direction: Direction | None = None) -> str:
         step(role)
         prompts[role] = prompt_for(role, context, direction=direction)
         return prompts[role]

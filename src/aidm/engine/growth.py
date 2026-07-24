@@ -1,5 +1,4 @@
-"""What the Maintainer asks to create, screened before the Creator runs. Pure: imports only
-`domain`, does no I/O. Deciding what may be created is exactly the rule `engine/` exists for."""
+"""What the Maintainer asks to create, screened before the Creator runs."""
 
 from collections.abc import Mapping, Sequence
 

@@ -1,5 +1,4 @@
-"""The Director's structured output: what should happen this turn and the mechanics to resolve it.
-Only `intent`/`tone`/speaker reach the Narrator; `mechanics` is resolved in Python."""
+"""The Director's structured output: what should happen this turn and mechanics to resolve it."""
 
 from pydantic import Field
 

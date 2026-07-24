@@ -1,5 +1,4 @@
-"""The block vocabulary: the concrete renderable fragments a role's prompt is assembled from.
-The `policy.py` CONTEXT table selects among these per role."""
+"""The block vocabulary: the concrete renderable fragments a role's prompt is assembled from."""
 
 from ..domain.models import hidden, known
 from ..domain.reducer import render

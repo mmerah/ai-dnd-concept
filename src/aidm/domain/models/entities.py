@@ -21,7 +21,7 @@ class Entity(Frozen):
     name: str
     brief: str
     detail: EntityDetail | None = None
-    known: bool = False  # revealed to the player; unknown entities are Director-only canon
+    known: bool = False  # revealed to the player
     authored: bool = True  # False once a Creator invented it mid-play
 
 

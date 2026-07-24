@@ -14,12 +14,13 @@ agent = build_agent("creator", output_type=NativeOutput(EntityDetail), instructi
 
 async def create(prompt: str, request: GrowthRequest, taken: Iterable[EntityId]) -> Entity:
     detail = (await agent().run(prompt)).output
+    # Entity created is already known by the player since the narrator mentioned it
     return Entity(
         id=slug(request.name, taken),
         kind=request.kind,
         name=request.name,
         brief=request.brief,
         detail=detail,
-        known=True,  # the player already heard about it
+        known=True,
         authored=False,
     )

@@ -1,5 +1,4 @@
-"""Play history as native LLM messages. Lives in `agents/`, never `domain/`: `ModelMessage` and
-friends are Pydantic-AI framework types, and `domain/` imports no framework."""
+"""Play history as native LLM messages."""
 
 from collections.abc import Sequence
 

@@ -1,5 +1,4 @@
-"""What each role is allowed to see. The CONTEXT table below is the whole policy — the source of
-truth for what enters every role's prompt."""
+"""What each role is allowed to see."""
 
 from ..domain.models import Direction, GrowthRequest, Role
 from .blocks import (
@@ -19,9 +18,7 @@ from .blocks import (
 )
 from .context import Block, DirectionBlock, RequestBlock, RolePolicy, TurnContext
 
-# The entire context policy of the application. Read a row to know what a role can and cannot see.
-# Only one omission is a rule rather than a judgement: the Narrator, alone among the roles, writes
-# text the player reads, so unrevealed canon never enters its context.
+# The entire context policy of the application.
 CONTEXT: dict[Role, RolePolicy] = {
     "director": RolePolicy(
         (PREMISE, CHARACTER, KNOWN_ENTITIES, UNREVEALED_CANON, PLAYER_PROMPT),
@@ -32,7 +29,7 @@ CONTEXT: dict[Role, RolePolicy] = {
             PREMISE,
             CHARACTER,
             KNOWN_ENTITIES,
-            DIRECTOR_PLAN,  # before WHAT HAPPENED, so the truth of the turn reads last
+            DIRECTOR_PLAN,
             DIRECTOR_TONE,
             SPEAKER,
             WHAT_HAPPENED,

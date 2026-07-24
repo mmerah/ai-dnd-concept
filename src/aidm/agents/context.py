@@ -1,5 +1,4 @@
-"""The render primitives: the per-turn context and the block shapes prompts are built from.
-The concrete block vocabulary lives in `blocks.py`; the policy table in `policy.py`."""
+"""The per-turn context and the block shapes prompts are built from."""
 
 from collections.abc import Callable, Sequence
 from dataclasses import dataclass
