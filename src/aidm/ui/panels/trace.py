@@ -1,10 +1,10 @@
-"""The panels. The trace is the point of the app: it shows what every role saw and produced."""
+"""The trace panel: for each turn, what every role saw and produced. The point of the app."""
 
 from nicegui import ui
 
-from ..domain.models import ROLES, Mechanics, RejectedGrowth, Turn
-from ..domain.reducer import render
-from .session import Session
+from ...domain.models import Mechanics, RejectedGrowth, Turn
+from ...domain.reducer import render
+from ..session import Session
 
 _REJECTION_TEXT = {"duplicate_name": "name already exists", "over_cap": "over the growth cap"}
 
@@ -12,27 +12,6 @@ _REJECTION_TEXT = {"duplicate_name": "name already exists", "over_cap": "over th
 def _section(title: str, body: str) -> None:
     ui.label(title).classes("text-xs font-bold opacity-60 mt-3")
     ui.label(body).classes("text-sm whitespace-pre-wrap")
-
-
-@ui.refreshable
-def chat(session: Session) -> None:
-    if not session.state.history:
-        ui.label(session.state.scenario.premise).classes("text-sm italic opacity-70")
-    for exchange in session.state.history:
-        ui.chat_message(exchange.prompt, name="You", sent=True)
-        ui.chat_message(exchange.narration, name="DM")
-
-
-@ui.refreshable
-def role_badges(session: Session) -> None:
-    for role in ROLES:
-        colour = "primary" if session.step == role else "grey-7"
-        ui.badge(role).props(f"color={colour}")
-
-
-@ui.refreshable
-def state_panel(session: Session) -> None:
-    ui.code(session.state.model_dump_json(indent=2), language="json").classes("w-full text-xs")
 
 
 @ui.refreshable
