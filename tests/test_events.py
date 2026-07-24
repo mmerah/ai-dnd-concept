@@ -1,14 +1,16 @@
 import pytest
 
-from aidm.domain.events import (
+from aidm.domain.models import (
+    Entity,
     EntityCreated,
     EntityDiscovered,
+    EntityId,
+    GameState,
     HpChanged,
     InventoryChanged,
     Moved,
-    apply,
 )
-from aidm.domain.models import Entity, EntityId, GameState
+from aidm.domain.reducer import apply
 
 
 def test_inventory_and_hp(state: GameState) -> None:

@@ -2,9 +2,8 @@
 
 from nicegui import ui
 
-from ..domain.events import render
-from ..domain.models import ROLES, Mechanics, RejectedGrowth
-from ..domain.turn import Turn
+from ..domain.models import ROLES, Mechanics, RejectedGrowth, Turn
+from ..domain.reducer import render
 from .session import Session
 
 _REJECTION_TEXT = {"duplicate_name": "name already exists", "over_cap": "over the growth cap"}

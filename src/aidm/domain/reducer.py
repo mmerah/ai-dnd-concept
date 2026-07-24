@@ -1,80 +1,22 @@
-"""Typed events and the single pure reducer. Nothing else in the app produces state."""
+"""The single pure reducer plus the player-visible projection. Nothing else produces state."""
 
 from collections.abc import Sequence
 from functools import reduce
-from typing import Annotated, Literal
 
-from pydantic import Field
-
-from .models import Ability, Entity, EntityId, Frozen, GameState, find, updated
-
-
-class CheckRolled(Frozen):
-    type: Literal["check_rolled"] = "check_rolled"
-    ability: Ability
-    dc: int
-    roll: int
-    total: int
-    success: bool
-
-    @property
-    def summary(self) -> str:
-        verdict = "SUCCESS" if self.success else "FAILURE"
-        return f"{self.ability} check: {self.roll} -> {self.total} vs DC {self.dc}: {verdict}"
-
-
-class InventoryChanged(Frozen):
-    type: Literal["inventory_changed"] = "inventory_changed"
-    item: str
-    delta: Literal[1, -1]
-
-    @property
-    def summary(self) -> str:
-        return f"{'gained' if self.delta > 0 else 'lost'} item: {self.item}"
-
-
-class HpChanged(Frozen):
-    type: Literal["hp_changed"] = "hp_changed"
-    delta: int
-
-    @property
-    def summary(self) -> str:
-        return f"hp {self.delta:+d}"
-
-
-class Moved(Frozen):
-    type: Literal["moved"] = "moved"
-    entity_id: EntityId
-    name: str  # carried so the summary never leaks an id to the Narrator
-
-    @property
-    def summary(self) -> str:
-        return f"moved to {self.name}"
-
-
-class EntityDiscovered(Frozen):
-    type: Literal["entity_discovered"] = "entity_discovered"
-    entity_id: EntityId
-    name: str
-
-    @property
-    def summary(self) -> str:
-        return f"learned of {self.name}"
-
-
-class EntityCreated(Frozen):
-    type: Literal["entity_created"] = "entity_created"
-    entity: Entity
-
-    @property
-    def summary(self) -> str:
-        return f"new {self.entity.kind}: {self.entity.name}"
-
-
-Event = Annotated[
-    CheckRolled | InventoryChanged | HpChanged | Moved | EntityDiscovered | EntityCreated,
-    Field(discriminator="type"),
-]
+from .models import (
+    CheckRolled,
+    Entity,
+    EntityCreated,
+    EntityDiscovered,
+    EntityId,
+    Event,
+    GameState,
+    HpChanged,
+    InventoryChanged,
+    Moved,
+    find,
+    updated,
+)
 
 
 def _with_entities(state: GameState, entities: dict[EntityId, Entity]) -> GameState:

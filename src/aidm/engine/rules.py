@@ -2,8 +2,7 @@
 
 from random import Random
 
-from ..domain.events import CheckRolled
-from ..domain.models import Ability, Attributes, Character
+from ..domain.models import Ability, Attributes, Character, CheckRolled
 
 DIE = 20
 

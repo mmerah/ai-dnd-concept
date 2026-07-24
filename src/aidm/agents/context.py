@@ -3,9 +3,9 @@
 from collections.abc import Callable, Sequence
 from dataclasses import dataclass
 
-from ..domain.events import Event, render
 from ..domain.models import (
     Direction,
+    Event,
     Exchange,
     GameState,
     GrowthRequest,
@@ -13,6 +13,7 @@ from ..domain.models import (
     hidden,
     known,
 )
+from ..domain.reducer import render
 from . import views
 
 

@@ -2,8 +2,11 @@
 
 from pydantic import Field
 
+from .base import Frozen, Role
+from .direction import Direction
+from .entities import Entity, Growth, RejectedGrowth
 from .events import Event
-from .models import Direction, Entity, Frozen, GameState, Growth, RejectedGrowth, Role
+from .state import GameState
 
 
 class Turn(Frozen):

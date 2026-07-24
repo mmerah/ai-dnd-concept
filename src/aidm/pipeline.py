@@ -13,9 +13,18 @@ from .agents.history import exchanges_to_messages
 from .agents.maintainer import maintain
 from .agents.narrator import narrate
 from .config import settings
-from .domain.events import EntityCreated, apply
-from .domain.models import Direction, Entity, Exchange, GameState, GrowthRequest, Role, updated
-from .domain.turn import Turn
+from .domain.models import (
+    Direction,
+    Entity,
+    EntityCreated,
+    Exchange,
+    GameState,
+    GrowthRequest,
+    Role,
+    Turn,
+    updated,
+)
+from .domain.reducer import apply
 from .engine.growth import screen
 from .engine.resolve import resolve
 

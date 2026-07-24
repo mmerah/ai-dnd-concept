@@ -4,18 +4,21 @@ from random import Random
 
 import pytest
 
-from aidm.domain.events import CheckRolled, EntityDiscovered, InventoryChanged, Moved
 from aidm.domain.models import (
     Check,
+    CheckRolled,
     Discover,
+    EntityDiscovered,
     EntityId,
     GainImprovisedItem,
     GainItem,
     GameState,
+    InventoryChanged,
     LoseItem,
     Mechanics,
     ModifyHp,
     Move,
+    Moved,
 )
 from aidm.engine.resolve import resolve
 

@@ -36,6 +36,15 @@ from .entities import (
     hidden,
     known,
 )
+from .events import (
+    CheckRolled,
+    EntityCreated,
+    EntityDiscovered,
+    Event,
+    HpChanged,
+    InventoryChanged,
+    Moved,
+)
 from .state import (
     Attributes,
     Character,
@@ -46,6 +55,7 @@ from .state import (
     ScenarioMeta,
     WorldState,
 )
+from .turn import Turn  # last: depends on .events, .direction, .state
 
 __all__ = [
     "CONSEQUENCE_TYPES",
@@ -56,12 +66,16 @@ __all__ = [
     "Character",
     "CharacterSheet",
     "Check",
+    "CheckRolled",
     "Consequence",
     "Direction",
     "Discover",
     "Entity",
+    "EntityCreated",
     "EntityDetail",
+    "EntityDiscovered",
     "EntityId",
+    "Event",
     "Exchange",
     "Frozen",
     "GainImprovisedItem",
@@ -69,16 +83,20 @@ __all__ = [
     "GameState",
     "Growth",
     "GrowthRequest",
+    "HpChanged",
+    "InventoryChanged",
     "Kind",
     "LoseImprovisedItem",
     "LoseItem",
     "Mechanics",
     "ModifyHp",
     "Move",
+    "Moved",
     "RejectedGrowth",
     "Role",
     "ScenarioDef",
     "ScenarioMeta",
+    "Turn",
     "WorldState",
     "find",
     "hidden",

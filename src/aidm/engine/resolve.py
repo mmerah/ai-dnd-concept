@@ -3,30 +3,28 @@ stays blind to intent/tone/speaker."""
 
 from random import Random
 
-from ..domain.events import (
-    EntityDiscovered,
-    Event,
-    HpChanged,
-    InventoryChanged,
-    Moved,
-    apply,
-)
 from ..domain.models import (
     Consequence,
     Discover,
     Entity,
+    EntityDiscovered,
     EntityId,
+    Event,
     GainImprovisedItem,
     GainItem,
     GameState,
+    HpChanged,
+    InventoryChanged,
     Kind,
     LoseImprovisedItem,
     LoseItem,
     Mechanics,
     ModifyHp,
     Move,
+    Moved,
     find,
 )
+from ..domain.reducer import apply
 from . import rules
 
 

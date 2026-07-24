@@ -9,8 +9,8 @@ from .domain.models import (
     CharacterSheet,
     GameState,
     ScenarioDef,
+    Turn,
 )
-from .domain.turn import Turn
 
 ENCODING = "utf-8"  # narration is full of curly quotes; the platform default is not enough
 

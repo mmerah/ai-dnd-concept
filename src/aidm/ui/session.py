@@ -7,8 +7,7 @@ from functools import cache
 from typing import Self
 
 from .. import store
-from ..domain.models import GameState, Role
-from ..domain.turn import Turn
+from ..domain.models import GameState, Role, Turn
 
 SLUG = "poc"
 SCENARIO = "whispering_vault"
