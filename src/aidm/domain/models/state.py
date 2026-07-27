@@ -6,7 +6,7 @@ from pydantic import Field, model_validator
 
 from ...utils.ids import slug
 from .base import PLAYER_ID, SAVE_VERSION, EntityId, Frozen
-from .entities import ActorEntity, Entity, ItemEntity, LocationEntity, make_entity
+from .entities import ActorEntity, Entity, ItemEntity, LocationEntity
 from .stats import Attributes, StatBlock
 
 
@@ -142,13 +142,11 @@ class GameState(Frozen):
         entities = dict(scenario.as_world().entities)
         inventory: list[EntityId] = []
         for item in character.starting_items:
-            entity = make_entity(
-                "item",
+            entity = ItemEntity(
                 id=slug(item.name, entities.keys()),
                 name=item.name,
                 brief=item.brief,
                 known=True,
-                authored=True,
             )
             entities[entity.id] = entity
             inventory.append(entity.id)

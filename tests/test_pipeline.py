@@ -189,12 +189,13 @@ async def test_growth_is_capped(state: GameState) -> None:
         {"action": "move", "location_id": "ghost"},  # an id no list ever showed
         {"action": "move", "location_id": "mara"},  # a real id, but an actor is not a location
         {"action": "take_item", "item_id": "study"},  # a location is not an item
+        {"action": "damage", "amount": 2, "target_id": "study"},  # a location has no hit points
         # the player is an actor in canon now, so naming them here passes the kind check
         {"action": "give_item", "item_id": "lantern", "actor_id": "player"},
     ],
 )
 async def test_a_plan_referencing_canon_wrongly_is_rejected(
-    state: GameState, consequence: dict[str, str]
+    state: GameState, consequence: dict[str, object]
 ) -> None:
     """The Director's output validator relocates the Actor's per-tool ModelRetry to id selection.
     An id must both exist and name the kind of thing the consequence acts on."""
@@ -207,38 +208,41 @@ async def test_a_plan_referencing_canon_wrongly_is_rejected(
             await direct("go", deps(state))
 
 
-async def test_a_ref_bound_in_one_branch_cannot_be_used_in_another(state: GameState) -> None:
-    """A `roll_dice` bind lives only in its branch; only one branch runs, so referencing it from the
-    other branch would dangle at resolve time. The validator rejects it as a retry rather than
-    letting the resolver hard-fail the turn."""
-    dangling = {
+async def test_a_bad_id_nested_in_a_branch_is_caught_as_well(state: GameState) -> None:
+    """Ids are read off every field marked `References`, in a check's branches as much as at the
+    top level — so a branch cannot smuggle an unknown id past the validator."""
+    nested = {
         "action": "roll_check",
         "ability": "wisdom",
         "dc": 10,
-        "on_success": [{"action": "roll_dice", "dice": "1d8", "bind": "dmg"}],
-        "on_failure": [{"action": "damage", "amount": {"ref": "dmg"}}],  # bound on the other branch
+        "on_failure": [{"action": "take_item", "item_id": "ghost"}],
     }
     with ExitStack() as stack:
-        stubs(stack, director=structured(intent="i", tone="t", mechanics=[dangling]))
+        stubs(stack, director=structured(intent="i", tone="t", mechanics=[nested]))
         with pytest.raises(UnexpectedModelBehavior):
-            await direct("trap", deps(state))
+            await direct("pry the lid", deps(state))
 
 
-async def test_a_ref_reaching_a_bind_in_its_own_scope_is_accepted(state: GameState) -> None:
-    """A branch-level bind is visible to that branch's own later members, so this validates."""
-    scoped = {
-        "action": "roll_check",
-        "ability": "wisdom",
-        "dc": 10,
-        "on_success": [
-            {"action": "roll_dice", "dice": "1d6", "bind": "dmg"},
-            {"action": "damage", "amount": {"ref": "dmg"}},
-        ],
-    }
+async def test_a_dice_amount_is_rolled_by_the_engine_not_chosen_by_the_director(
+    state: GameState,
+) -> None:
+    """Improvised randomness survives the fold: the Director names dice, the engine rolls them.
+    '2d1' is deterministic, so the player ends on 8 hp."""
     with ExitStack() as stack:
-        stubs(stack, director=structured(intent="i", tone="t", mechanics=[scoped]))
-        direction = await direct("trap", deps(state))
-    assert direction.mechanics[0].action == "roll_check"
+        stubs(
+            stack,
+            director=structured(
+                intent="A dart springs from the wall.",
+                tone="sharp",
+                mechanics=[{"action": "damage", "amount": "2d1"}],
+            ),
+            narrator=text("Something bites your calf."),
+            maintainer=structured(requests=[]),
+        )
+        turn = await run_turn(state, "I step on the loose flagstone.")
+
+    assert [e.type for e in turn.events] == ["dice_rolled", "hp_changed"]
+    assert turn.state.player.stats.hp == 8
 
 
 async def test_a_hidden_speaker_is_a_retry_not_a_downstream_failure(state: GameState) -> None:
@@ -250,19 +254,27 @@ async def test_a_hidden_speaker_is_a_retry_not_a_downstream_failure(state: GameS
             await direct("talk to her", deps(state))
 
 
-async def test_addressing_an_actor_who_is_elsewhere_is_a_retry(state: GameState) -> None:
-    """The bug this fixes: you could address any actor from anywhere. With the player in the vault,
-    Mara (known, but in the study) is no longer a valid speaker."""
+@pytest.mark.parametrize(
+    "direction",
+    [
+        {"speaker_id": "mara"},  # you could once address any actor from anywhere
+        {"mechanics": [{"action": "damage", "amount": 2, "target_id": "mara"}]},
+        {"mechanics": [{"action": "give_item", "item_id": "lantern", "actor_id": "mara"}]},
+    ],
+)
+async def test_acting_on_an_actor_who_is_elsewhere_is_a_retry(
+    state: GameState, direction: dict[str, object]
+) -> None:
+    """`References(present=True)` is one rule for every id that must be here with the player. With
+    the player in the vault, Mara (known, but in the study) is out of reach of all three — as a
+    retry the model can fix, never the dropped turn the resolver's own guard would cost."""
     player = updated(state.player, location_id=EntityId("vault"))
     entities = {**state.world.entities, PLAYER_ID: player}
     in_vault = updated(state, world=updated(state.world, entities=entities))
     with ExitStack() as stack:
-        stubs(stack, director=structured(intent="i", tone="t", speaker_id="mara"))
+        stubs(stack, director=structured(intent="i", tone="t", **direction))
         with pytest.raises(UnexpectedModelBehavior):
-            await direct(
-                "talk to Mara",
-                deps(in_vault),
-            )
+            await direct("reach for Mara", deps(in_vault))
 
 
 async def test_moving_to_hidden_canon_reveals_it_end_to_end(state: GameState) -> None:

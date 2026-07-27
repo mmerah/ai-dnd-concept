@@ -37,11 +37,13 @@ Status of the proof of concept, and where it should go. Kept short on purpose.
 
 ### Next, and highest value
 
+- pre-commit configuration (format, check, type safety, tests)
 - Maintainer validation pass: check narration against events, retry the Narrator once on a contradiction. Turns silent desync into a visible, correctable failure.
 - A small eval harness over recorded turns, so reliability is measured rather than recalled.
 
 ### Planned features
 
+- Use https://github.com/5e-bits/5e-database/tree/main as a 5e database (SRD 2014) in some way
 - Locations are connected, they have a state.
 - D&D 5e ruleset in `engine/`, replacing the micro-ruleset. The `engine/` ← `agents/` boundary exists for this.
 - Deterministic combat engine, driven by the same event/reducer model.

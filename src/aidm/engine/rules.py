@@ -18,23 +18,18 @@ def roll_check(actor: ActorEntity, ability: Ability, dc: int, rng: Random) -> Ch
     return CheckRolled(ability=ability, dc=dc, roll=roll, total=total, success=total >= dc)
 
 
-def roll_dice(
-    expression: dice.DiceExpr, rng: Random, ability_modifier: int | None = None
-) -> tuple[int, DiceRolled]:
-    total = sum(
-        term.sign * _magnitude(term, rng, ability_modifier) for term in dice.terms(expression)
-    )
+def roll_dice(expression: dice.SelfContainedDice, rng: Random) -> tuple[int, DiceRolled]:
+    total = sum(term.sign * _magnitude(term, rng) for term in dice.terms(expression))
     return total, DiceRolled(dice=expression, total=total)
 
 
-def _magnitude(term: dice.Term, rng: Random, ability_modifier: int | None) -> int:
-    """`MOD` with no modifier is a broken plan, not a silent zero."""
+def _magnitude(term: dice.Term, rng: Random) -> int:
+    """`MOD` belongs to the caster, and no role supplies one yet: `SelfContainedDice` refuses it at
+    the model boundary, so reaching it here is a broken plan, not a silent zero."""
     match term:
         case dice.DiceTerm(count=count, faces=faces):
             return sum(rng.randint(1, faces) for _ in range(count))
         case dice.ConstantTerm(value=value):
             return value
         case dice.ModifierTerm():
-            if ability_modifier is None:
-                raise ValueError("a dice expression using MOD needs an ability modifier")
-            return ability_modifier
+            raise ValueError(f"{dice.MOD} needs a caster's modifier, which nothing supplies")

@@ -1,6 +1,6 @@
 """DIRECTOR — owns world direction and the turn's mechanics."""
 
-from collections.abc import Iterator, Mapping, Sequence
+from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 
 from pydantic_ai import ModelRetry, NativeOutput, RunContext
@@ -11,15 +11,12 @@ from ..domain.models import (
     PLAYER_ID,
     ActorEntity,
     Consequence,
-    Damage,
     Direction,
     Entity,
     EntityId,
     GiveItem,
-    Heal,
-    Ref,
-    RollCheck,
-    RollDice,
+    References,
+    flatten,
 )
 from .llm import build_agent
 from .prompts.director import TEMPLATE
@@ -53,77 +50,51 @@ class DirectorDeps:
     location: EntityId
 
 
-def _flat(consequences: Sequence[Consequence]) -> Iterator[Consequence]:
-    for consequence in consequences:
-        yield consequence
-        yield from _flat(consequence.children())
-
-
-def _refs_used(consequence: Consequence) -> tuple[str, ...]:
-    """The bound-value names a consequence reads (only Damage/Heal, via a Ref amount)."""
-    if isinstance(consequence, (Damage, Heal)) and isinstance(consequence.amount, Ref):
-        return (consequence.amount.ref,)
-    return ()
-
-
-def _check_refs(consequences: Sequence[Consequence]) -> None:
-    """Every Ref must name a value a `roll_dice` bound and can reach: a bind is visible to later
-    consequences in its own sequence but never escapes its RollCheck branch, since only one branch
-    runs. Scoping lexically here turns a cross-branch leak into a retry, not a resolve-time fail."""
-
-    def walk(items: Sequence[Consequence], bound: set[str]) -> None:
-        scope = set(bound)  # sequence-level binds accumulate, visible to later siblings
-        for c in items:
-            for name in _refs_used(c):
-                if name not in scope:
-                    raise ModelRetry(f"reference {name!r} was never rolled by a roll_dice first")
-            match c:
-                case RollDice(bind=bind, then=then):
-                    walk(then, scope | {bind})  # `then` sees the new bind
-                    scope.add(bind)  # so do later siblings in this same sequence
-                case RollCheck(on_success=on_success, on_failure=on_failure):
-                    walk(on_success, scope)  # each branch is its own scope; a bind cannot escape it
-                    walk(on_failure, scope)
-                case _:
-                    pass
-
-    walk(consequences, set())
+def _elsewhere(entity: Entity, location: EntityId) -> bool:
+    """Only actors stand anywhere, and `present` marks actor fields alone — anything else has
+    already failed the kind check."""
+    return isinstance(entity, ActorEntity) and entity.location_id != location
 
 
 def _validate_ids(ctx: RunContext[DirectorDeps], direction: Direction) -> Direction:
-    """Every id the Director chose must exist in the turn's canon, as the right kind; a speaker must
-    be one the player already knows; every Ref must resolve to an earlier roll. All faults are
-    retries, not errors: the model can pick again from what it was shown."""
+    """Every id the Director chose must exist in the turn's canon, as the right kind, and stand
+    where the field says it must; a speaker must also be one the player already knows. All faults
+    are retries, not errors: the model can pick again from what it was shown."""
     refs = direction.canon_refs()
     if direction.speaker_id is not None:
-        refs.append((direction.speaker_id, "actor"))
+        # A speaker is addressed, so the same rule as any acted-on actor: here, and known below.
+        refs.append((direction.speaker_id, References("actor", present=True)))
     canon = dict(ctx.deps.entities)
+    location = ctx.deps.location
 
     # The player is an actor in canon now, so naming them where someone else is meant passes the
     # kind check below. Caught here as a retry rather than a dropped turn in the resolver.
     if direction.speaker_id == PLAYER_ID:
         raise ModelRetry("speaker_id must be an actor the player addresses, never the player")
-    if any(isinstance(c, GiveItem) and c.actor_id == PLAYER_ID for c in _flat(direction.mechanics)):
+    planned = flatten(direction.mechanics)  # branches included: a nested give is still a give
+    if any(isinstance(c, GiveItem) and c.actor_id == PLAYER_ID for c in planned):
         raise ModelRetry("give_item must name another actor: the player already holds the item")
 
     missing = sorted({i for i, _ in refs if i not in canon})
     if missing:
         raise ModelRetry(f"unknown entity id(s): {missing}. Use only ids you were shown.")
     mismatched = sorted(
-        f"{i} is a {canon[i].kind}, not a {kind}"
-        for i, kind in refs
-        if kind is not None and canon[i].kind != kind
+        f"{i} is a {canon[i].kind}, not a {need.kind}"
+        for i, need in refs
+        if need.kind is not None and canon[i].kind != need.kind
     )
     if mismatched:
         raise ModelRetry(f"wrong kind of entity: {'; '.join(mismatched)}.")
-    # A hidden or absent speaker would put words in a stranger's mouth; catch it here as a retry
-    # rather than letting views.speaker hard-fail the turn downstream.
+    # Acting on someone off-screen would narrate what the player never saw. A retry here, because
+    # the resolver's own guard would cost the player the whole turn.
+    absent = sorted({i for i, need in refs if need.present and _elsewhere(canon[i], location)})
+    if absent:
+        raise ModelRetry(f"not here with the player: {absent}. Move them here first, or act here.")
+    # A speaker the player has not met would put words in a stranger's mouth; catch it here rather
+    # than letting views.speaker hard-fail the turn downstream.
     speaker = canon.get(direction.speaker_id) if direction.speaker_id is not None else None
     if speaker is not None and not speaker.known:
         raise ModelRetry(f"speaker {direction.speaker_id!r} exists but the player has not met them")
-    if isinstance(speaker, ActorEntity) and speaker.location_id != ctx.deps.location:
-        raise ModelRetry(f"speaker {direction.speaker_id!r} is not at the player's location")
-    _check_refs(direction.mechanics)
     return direction
 
 

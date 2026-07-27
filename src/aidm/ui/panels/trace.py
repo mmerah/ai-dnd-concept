@@ -4,12 +4,9 @@ from collections.abc import Sequence
 
 from nicegui import ui
 
-from ...domain.models import Consequence, RejectedGrowth, Turn
+from ...domain.models import Consequence, RejectedGrowth, Turn, branches
 from ...domain.reducer import render
 from ..session import Session
-
-# Branch/child fields are rendered by the recursive walk, not dumped inline as opaque dicts.
-_NESTED_FIELDS = ("on_success", "on_failure", "then")
 
 _REJECTION_TEXT = {"duplicate_name": "name already exists", "over_cap": "over the growth cap"}
 
@@ -29,15 +26,15 @@ def trace_panel(session: Session) -> None:
 
 
 def _mechanics(mechanics: Sequence[Consequence]) -> str:
-    """Render the consequence tree, indenting each branch/child under its parent."""
+    """Render the consequence tree, indenting each branch under its parent. Branches are walked,
+    never dumped inline as opaque dicts."""
 
     def lines(items: Sequence[Consequence], depth: int) -> list[str]:
         out: list[str] = []
         for c in items:
-            fields = c.model_dump(exclude={"action", *_NESTED_FIELDS})
-            out.append(f"{'  ' * depth}{c.action} {fields}")
-            for name in _NESTED_FIELDS:
-                branch = getattr(c, name, None)
+            nested = branches(c)
+            out.append(f"{'  ' * depth}{c.action} {c.model_dump(exclude={'action', *nested})}")
+            for name, branch in nested.items():
                 if branch:
                     out.append(f"{'  ' * depth}  {name}:")
                     out += lines(branch, depth + 2)

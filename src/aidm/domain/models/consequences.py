@@ -1,35 +1,39 @@
 """The Director's closed, canon-referencing action vocabulary: the building blocks a turn's
 mechanics are assembled from. Each action documents and validates itself, independent of how they
 are grouped — which is why the vocabulary is its own module. Consequences form a recursive tree:
-`roll_check` nests its branches, `roll_dice` binds a value later consequences reference."""
+`roll_check` nests the branches its outcome selects between."""
 
-from collections.abc import Sequence
+from collections.abc import Iterator, Mapping, Sequence
+from dataclasses import dataclass
 from typing import Annotated, ClassVar, Literal, get_args
 
 from pydantic import Field
 
-from ...utils.dice import DiceExpr
+from ...utils.dice import SelfContainedDice
 from .base import ABILITIES, Ability, EntityId, Frozen, Kind
 
-# A canon reference is an id paired with the kind it must be; `None` means any kind (only
-# `discover` may reveal anything). Each consequence answers for its own references, so adding one
-# never needs a matching edit to a separate validation table.
-CanonRef = tuple[EntityId, Kind | None]
+
+@dataclass(frozen=True, slots=True)
+class References:
+    """Marks a field whose value is a canon id, and what that id must satisfy: a kind (`None`
+    accepts any, which only `discover` may do), and whether the entity must stand with the player.
+    Declaring it on the field is what keeps adding a consequence free of edits elsewhere."""
+
+    kind: Kind | None
+    present: bool = False
+
+
+# An id a consequence names, with what it must satisfy — the pair the Director validates against
+# the turn's canon.
+CanonRef = tuple[EntityId, References]
+
+# Dice to roll, or a flat number when nothing is left to chance. The roll is folded into the verb
+# that spends it, so no value ever has to flow between consequences; the sign lives in the verb too.
+Magnitude = SelfContainedDice | Annotated[int, Field(ge=0, strict=True)]
 
 # Canon and improvised items are separate variants so the model cannot express a contradictory
 # pair. Every canon reference is an id: canonicalization (id -> name) is the resolver's job, never
 # the model's. Only items may be improvised — a place the player stands in must exist in canon.
-
-
-class Ref(Frozen):
-    """A value read from a name a prior RollDice bound this turn."""
-
-    ref: str = Field(description="Name of a value bound earlier this turn by `roll_dice`.")
-
-
-# A literal magnitude, or a value a prior `roll_dice` bound. A Ref is always a positive roll, so a
-# damage/heal sign lives in the verb, never the value.
-Amount = Annotated[int, Field(ge=0)] | Ref
 
 
 class Discover(Frozen):
@@ -41,13 +45,9 @@ Example: the player studies a shelf and `ledger` is in your unrevealed list -> `
 entity_id `ledger`."""
 
     action: Literal["discover"] = "discover"
-    entity_id: EntityId = Field(description="Id of any canon entity, of any kind.")
-
-    def canon_refs(self) -> tuple[CanonRef, ...]:
-        return ((self.entity_id, None),)  # discover alone may reveal any kind
-
-    def children(self) -> tuple["Consequence", ...]:
-        return ()
+    entity_id: Annotated[EntityId, References(None)] = Field(
+        description="Id of any canon entity, of any kind."
+    )
 
 
 class TakeItem(Frozen):
@@ -58,13 +58,9 @@ and is at their location; it is revealed first if it was hidden.
 Example: they pocket the `vault_map` lying here -> `take_item` with item_id `vault_map`."""
 
     action: Literal["take_item"] = "take_item"
-    item_id: EntityId = Field(description="Id of a canon `item` at the player's location.")
-
-    def canon_refs(self) -> tuple[CanonRef, ...]:
-        return ((self.item_id, "item"),)
-
-    def children(self) -> tuple["Consequence", ...]:
-        return ()
+    item_id: Annotated[EntityId, References("item")] = Field(
+        description="Id of a canon `item` at the player's location."
+    )
 
 
 class DropItem(Frozen):
@@ -75,13 +71,9 @@ comes to rest where they stand.
 Example: they set the `vault_map` on the desk -> `drop_item` with item_id `vault_map`."""
 
     action: Literal["drop_item"] = "drop_item"
-    item_id: EntityId = Field(description="Id of a canon `item` the player is carrying.")
-
-    def canon_refs(self) -> tuple[CanonRef, ...]:
-        return ((self.item_id, "item"),)
-
-    def children(self) -> tuple["Consequence", ...]:
-        return ()
+    item_id: Annotated[EntityId, References("item")] = Field(
+        description="Id of a canon `item` the player is carrying."
+    )
 
 
 class GiveItem(Frozen):
@@ -93,16 +85,12 @@ Example: they hand the `vault_map` to Mara -> `give_item` with item_id `vault_ma
 `mara`."""
 
     action: Literal["give_item"] = "give_item"
-    item_id: EntityId = Field(description="Id of a canon `item` the player is carrying.")
-    actor_id: EntityId = Field(
+    item_id: Annotated[EntityId, References("item")] = Field(
+        description="Id of a canon `item` the player is carrying."
+    )
+    actor_id: Annotated[EntityId, References("actor", present=True)] = Field(
         description="Id of the `actor` receiving it, at the player's location."
     )
-
-    def canon_refs(self) -> tuple[CanonRef, ...]:
-        return ((self.item_id, "item"), (self.actor_id, "actor"))
-
-    def children(self) -> tuple["Consequence", ...]:
-        return ()
 
 
 class GainImprovisedItem(Frozen):
@@ -117,45 +105,34 @@ gravel'."""
     action: Literal["gain_improvised_item"] = "gain_improvised_item"
     item_name: str = Field(description="The item written out, e.g. 'a rusty spoon'.")
 
-    def canon_refs(self) -> tuple[CanonRef, ...]:
-        return ()
-
-    def children(self) -> tuple["Consequence", ...]:
-        return ()
-
 
 class Damage(Frozen):
-    """Reduce the character's hit points by an amount, literal or rolled."""
+    """Reduce an actor's hit points by dice you roll, or by a flat amount."""
 
-    GUIDANCE: ClassVar[str] = """Use when the character takes damage. `amount` is either a number \
-or a reference to a value a prior `roll_dice` bound.
-Example: a trap catches them -> `damage` with amount 4. Or after `roll_dice` bound `dmg`: \
-`damage` with amount {"ref": "dmg"}."""
+    GUIDANCE: ClassVar[str] = """Use when someone here takes damage. Prefer dice — '1d6', \
+'2d6 + 3' — and let them fall; a flat number is for harm with nothing left to chance. Whether a \
+blow lands is never yours to decide: put the damage in a `roll_check` branch.
+Example: a trap catches the player -> `damage` with amount '2d4'. Kael swings at Mara -> \
+`roll_check` whose on_success is `damage` with amount '1d8', target_id `mara`."""
 
     action: Literal["damage"] = "damage"
-    amount: Amount = Field(description='Hit points lost: a number >= 0, or {"ref": name}.')
-
-    def canon_refs(self) -> tuple[CanonRef, ...]:
-        return ()
-
-    def children(self) -> tuple["Consequence", ...]:
-        return ()
+    amount: Magnitude = Field(description="Hit points lost: dice like '2d6', or a number >= 0.")
+    target_id: Annotated[EntityId | None, References("actor", present=True)] = Field(
+        default=None, description="Id of the `actor` harmed, here with the player; omit for them."
+    )
 
 
 class Heal(Frozen):
-    """Restore the character's hit points by an amount, literal or rolled."""
+    """Restore an actor's hit points by dice you roll, or by a flat amount."""
 
-    GUIDANCE: ClassVar[str] = """Use when the character is healed. `amount` is a number or a \
-reference to a bound roll. Example: a poultice -> `heal` with amount 5."""
+    GUIDANCE: ClassVar[str] = """Use when someone here is healed; the same amount and target rules \
+as `damage`. Example: a poultice on the player -> `heal` with amount '1d4 + 2'."""
 
     action: Literal["heal"] = "heal"
-    amount: Amount = Field(description='Hit points restored: a number >= 0, or {"ref": name}.')
-
-    def canon_refs(self) -> tuple[CanonRef, ...]:
-        return ()
-
-    def children(self) -> tuple["Consequence", ...]:
-        return ()
+    amount: Magnitude = Field(description="Hit points restored: dice like '1d4', or a number >= 0.")
+    target_id: Annotated[EntityId | None, References("actor", present=True)] = Field(
+        default=None, description="Id of the `actor` healed, here with the player; omit for them."
+    )
 
 
 class Move(Frozen):
@@ -170,17 +147,12 @@ Example: "I go down to the vault" and `vault` is in your lists -> `move` with lo
 Mara walks off to the cloister -> `move` location_id `cloister`, actor_id `mara`."""
 
     action: Literal["move"] = "move"
-    location_id: EntityId = Field(description="Id of a canon entity whose kind is `location`.")
-    actor_id: EntityId | None = Field(
+    location_id: Annotated[EntityId, References("location")] = Field(
+        description="Id of a canon entity whose kind is `location`."
+    )
+    actor_id: Annotated[EntityId | None, References("actor")] = Field(
         default=None, description="Id of the `actor` to move; omit to move the player."
     )
-
-    def canon_refs(self) -> tuple[CanonRef, ...]:
-        base: tuple[CanonRef, ...] = ((self.location_id, "location"),)
-        return base if self.actor_id is None else (*base, (self.actor_id, "actor"))
-
-    def children(self) -> tuple["Consequence", ...]:
-        return ()
 
 
 class RollCheck(Frozen):
@@ -199,34 +171,6 @@ class RollCheck(Frozen):
         default_factory=list, description="Applied iff the check fails."
     )
 
-    def canon_refs(self) -> tuple[CanonRef, ...]:
-        return ()
-
-    def children(self) -> tuple["Consequence", ...]:
-        return (*self.on_success, *self.on_failure)
-
-
-class RollDice(Frozen):
-    """Roll dice, bind the total to a name, then apply consequences that may reference it."""
-
-    GUIDANCE: ClassVar[str] = """Use to roll damage or any random amount. `dice` is like '1d8' or \
-'2d6+3'. `bind` names the total so a following `damage`/`heal` can use it via {"ref": name}.
-Example: `roll_dice` dice '1d8' bind 'dmg', then in `then` a `damage` with amount {"ref": \
-"dmg"}."""
-
-    action: Literal["roll_dice"] = "roll_dice"
-    dice: DiceExpr = Field(description="e.g. '1d8', '2d6 + 3', '4d6 + 4'.")
-    bind: str = Field(description='Name to store the total under, for a later {"ref": name}.')
-    then: list["Consequence"] = Field(
-        default_factory=list, description="Consequences that may reference `bind`."
-    )
-
-    def canon_refs(self) -> tuple[CanonRef, ...]:
-        return ()
-
-    def children(self) -> tuple["Consequence", ...]:
-        return tuple(self.then)
-
 
 Consequence = Annotated[
     Discover
@@ -237,8 +181,7 @@ Consequence = Annotated[
     | Damage
     | Heal
     | Move
-    | RollCheck
-    | RollDice,
+    | RollCheck,
     Field(discriminator="action"),
 ]
 
@@ -246,15 +189,47 @@ Consequence = Annotated[
 # with the type. `get_args` erases to `Any`, but the union guarantees these are the member classes.
 CONSEQUENCE_TYPES: tuple[type[Consequence], ...] = get_args(get_args(Consequence)[0])
 
-# RollCheck/RollDice reference "Consequence" before the alias exists; bind the forward ref now.
+# RollCheck references "Consequence" before the alias exists; bind the forward ref now.
 RollCheck.model_rebuild()
-RollDice.model_rebuild()
+
+
+def branches(consequence: "Consequence") -> Mapping[str, Sequence["Consequence"]]:
+    """A consequence's nested plans, by the field holding each — named because the trace panel must
+    say which branch ran. This grows only when a new nesting shape appears, never per action."""
+    if isinstance(consequence, RollCheck):
+        return {"on_success": consequence.on_success, "on_failure": consequence.on_failure}
+    return {}
+
+
+def flatten(consequences: Sequence["Consequence"]) -> Iterator["Consequence"]:
+    """Every consequence in the tree, each before its own branches."""
+    for consequence in consequences:
+        yield consequence
+        for branch in branches(consequence).values():
+            yield from flatten(branch)
+
+
+def _own_refs(consequence: "Consequence") -> Iterator[CanonRef]:
+    """The ids a consequence itself names, read off each field's `References` marker. A shape the
+    scan cannot read is a hard error, never a skipped field: this is the only feed for the
+    Director's id validation, so silently reading nothing would let it name anything."""
+    for name, field in type(consequence).model_fields.items():
+        marker = next((m for m in field.metadata if isinstance(m, References)), None)
+        if marker is None:
+            continue
+        value: object = getattr(consequence, name)
+        match value:
+            case None:  # an omitted id names nobody: that is what "omit for the player" means
+                pass
+            case str():
+                yield EntityId(value), marker
+            case _:
+                raise TypeError(
+                    f"{type(consequence).__name__}.{name} is marked References "
+                    f"but holds a {type(value).__name__}"
+                )
 
 
 def all_canon_refs(consequences: Sequence["Consequence"]) -> list[CanonRef]:
-    """Every canon ref in a consequence tree, including nested branches."""
-    out: list[CanonRef] = []
-    for c in consequences:
-        out.extend(c.canon_refs())
-        out.extend(all_canon_refs(c.children()))
-    return out
+    """Every canon ref in a consequence tree, branches included."""
+    return [ref for consequence in flatten(consequences) for ref in _own_refs(consequence)]

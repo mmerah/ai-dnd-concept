@@ -25,8 +25,9 @@ player already knows AND who is here with them; never one they have not met or w
 
 `mechanics` — a list of consequences resolved in order, deterministically. All ids MUST be exact \
 ids from the lists above. Most consequences apply unconditionally; `roll_check` nests its \
-`on_success` / `on_failure` branches for an action that can fail; `roll_dice` binds a total that a \
-later `damage`/`heal` can reference. Leave the list empty if nothing mechanical is at stake.
+`on_success` / `on_failure` branches for an action that can fail. Where an amount is uncertain, \
+give the dice and let them fall rather than choosing the number yourself. Leave the list empty if \
+nothing mechanical is at stake.
 
 The consequences you can place in the list:
 

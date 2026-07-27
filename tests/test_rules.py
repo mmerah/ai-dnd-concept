@@ -3,8 +3,9 @@ from random import Random
 import pytest
 from pydantic import ValidationError
 
-from aidm.domain.models import PLAYER_ID, ActorEntity, Attributes, EntityId, RollDice, StatBlock
+from aidm.domain.models import PLAYER_ID, ActorEntity, Attributes, Damage, EntityId, StatBlock
 from aidm.engine import rules
+from aidm.utils import dice
 
 KAEL = ActorEntity(
     id=PLAYER_ID,
@@ -41,15 +42,16 @@ def test_roll_dice_sums_every_term(expression: str, total: int) -> None:
     assert (rolled, event.total) == (total, total)
 
 
-def test_mod_is_substituted_at_roll_time() -> None:
-    """`MOD` belongs to the actor, not the expression, so the roller supplies it."""
-    assert rules.roll_dice("1d1 + MOD", Random(0), ability_modifier=3)[0] == 4
-    with pytest.raises(ValueError, match="needs an ability modifier"):
-        rules.roll_dice("1d8 + MOD", Random(0))
+def test_mod_parses_but_no_role_may_roll_it() -> None:
+    """`MOD` belongs to the caster. Content packs carry it, so the grammar keeps it; a Director
+    amount is refused at the model boundary rather than dangling at resolve time."""
+    assert len(dice.terms("1d8 + MOD")) == 2
+    with pytest.raises(ValidationError):
+        Damage(amount="1d8 + MOD")
 
 
 def test_a_malformed_expression_fails_at_its_boundary() -> None:
     """The parse is the validation, so a bad expression never reaches a roll."""
     for expression in ("not-dice", "1d0", "0d6", "2d6 +", "1d6 + + 2"):
         with pytest.raises(ValidationError):
-            RollDice(dice=expression, bind="x")
+            Damage(amount=expression)

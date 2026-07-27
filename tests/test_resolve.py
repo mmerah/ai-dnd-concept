@@ -1,6 +1,6 @@
 """The resolver is the single sink from the Director's mechanics to events — pure, seeded.
-The mechanics are a recursive consequence list: `roll_check` nests branches, `roll_dice` binds a
-value a later `damage`/`heal` reads via `Ref`. Positions gate take/drop/give."""
+The mechanics are a recursive consequence list: `roll_check` nests branches, and a dice amount
+rolls inside the `damage`/`heal` that spends it. Positions gate take/drop/give/damage."""
 
 from random import Random
 
@@ -11,8 +11,10 @@ from aidm.domain.models import (
     CheckRolled,
     Consequence,
     Damage,
+    DiceRolled,
     Discover,
     DropItem,
+    Entity,
     EntityCreated,
     EntityDiscovered,
     EntityId,
@@ -24,9 +26,7 @@ from aidm.domain.models import (
     ItemMoved,
     Move,
     Moved,
-    Ref,
     RollCheck,
-    RollDice,
     TakeItem,
     updated,
 )
@@ -36,10 +36,17 @@ from aidm.engine.resolve import resolve
 PASS, FAIL = Random(0), Random(2)
 
 
-def relocated(state: GameState, entity_id: EntityId, location_id: EntityId) -> GameState:
-    entity = updated(state.world.entities[entity_id], location_id=location_id)
-    entities = {**state.world.entities, entity_id: entity}
+def replaced(state: GameState, entity: Entity) -> GameState:
+    entities = {**state.world.entities, entity.id: entity}
     return updated(state, world=updated(state.world, entities=entities))
+
+
+def relocated(state: GameState, entity_id: EntityId, location_id: EntityId) -> GameState:
+    return replaced(state, updated(state.world.entities[entity_id], location_id=location_id))
+
+
+def wounded(state: GameState, hp: int) -> GameState:
+    return replaced(state, updated(state.player, stats=updated(state.player.stats, hp=hp)))
 
 
 def test_top_level_consequences_all_apply_in_order(state: GameState) -> None:
@@ -85,8 +92,16 @@ def test_check_failure_selects_on_failure(state: GameState) -> None:
 
 
 def test_heal_adds_hp(state: GameState) -> None:
-    (hp,) = resolve([Heal(amount=3)], state, PASS)
+    (hp,) = resolve([Heal(amount=3)], wounded(state, 5), PASS)
     assert isinstance(hp, HpChanged) and hp.delta == 3
+
+
+def test_only_the_hit_points_that_moved_are_reported(state: GameState) -> None:
+    """`delta` is what the clamp applies, not what was asked for: the Narrator must never be told
+    of hit points that never moved, and a change of nothing is not an event at all."""
+    (hp,) = resolve([Damage(amount=99)], state, PASS)  # Kael has 10
+    assert isinstance(hp, HpChanged) and (hp.delta, hp.condition) == (-10, "down")
+    assert resolve([Heal(amount=3)], state, PASS) == []  # already at full health
 
 
 def test_take_a_present_item_reveals_it_and_moves_it_to_the_player(state: GameState) -> None:
@@ -202,34 +217,37 @@ def test_unknown_id_raises(state: GameState) -> None:
         resolve([TakeItem(item_id=EntityId("ghost"))], state, PASS)
 
 
-def test_roll_dice_binds_a_value_a_later_consequence_references(state: GameState) -> None:
-    """A `roll_dice` total binds to a name; a nested `damage` reads it via Ref. '1d1' is
-    deterministic, so the damage is exactly 1."""
-    mechanics: list[Consequence] = [
-        RollDice(dice="1d1", bind="dmg", then=[Damage(amount=Ref(ref="dmg"))])
-    ]
-    events = resolve(mechanics, state, PASS)
+def test_a_dice_amount_rolls_inside_the_change_it_pays_for(state: GameState) -> None:
+    """The roll and the hit points it costs are one consequence — no value flows between two.
+    '2d1' is deterministic, so the damage is exactly 2."""
+    events = resolve([Damage(amount="2d1")], state, PASS)
     assert [e.type for e in events] == ["dice_rolled", "hp_changed"]
-    hp = events[1]
-    assert isinstance(hp, HpChanged) and hp.delta == -1
+    rolled, hp = events
+    assert isinstance(rolled, DiceRolled) and rolled.dice == "2d1"
+    assert isinstance(hp, HpChanged) and hp.delta == -2
 
 
-def test_a_dangling_ref_raises_in_the_resolver(state: GameState) -> None:
-    """The Director validator catches this first; the resolver is the backstop."""
-    with pytest.raises(ValueError, match="never rolled"):
-        resolve([Damage(amount=Ref(ref="nope"))], state, PASS)
+def test_a_constant_amount_carries_no_die(state: GameState) -> None:
+    """'4' and 4 mean the same harm, so they must reach the Narrator as the same events."""
+    assert resolve([Damage(amount="4")], state, PASS) == resolve([Damage(amount=4)], state, PASS)
 
 
-def test_a_bind_made_inside_a_check_branch_does_not_leak_to_a_later_sibling(
-    state: GameState,
-) -> None:
-    """The success branch binds `dmg`, but the bind closes with the branch; a later top-level
-    `damage` cannot see it, so the resolver rejects the dangling ref instead of a stale value."""
-    mechanics: list[Consequence] = [
-        RollCheck(
-            ability="wisdom", dc=12, on_success=[RollDice(dice="1d6", bind="dmg")]
-        ),
-        Damage(amount=Ref(ref="dmg")),
-    ]
-    with pytest.raises(ValueError, match="never rolled"):
-        resolve(mechanics, state, PASS)
+def test_damage_can_target_another_actor_here(state: GameState) -> None:
+    """Mara has the commoner's 4 hp, so 3 leaves her badly hurt — the qualitative report the
+    Narrator gets instead of her exact hit points."""
+    events = resolve([Damage(amount=3, target_id=EntityId("mara"))], state, PASS)
+    (hp,) = events
+    assert isinstance(hp, HpChanged)
+    assert (hp.target_id, hp.delta, hp.condition) == ("mara", -3, "badly hurt")
+
+
+def test_damaging_an_unseen_actor_reveals_them_first(state: GameState) -> None:
+    """Elena is here but unrevealed; the events name her, so she must enter the player's view."""
+    events = resolve([Damage(amount=1, target_id=EntityId("elena"))], state, PASS)
+    assert [e.type for e in events] == ["entity_discovered", "hp_changed"]
+
+
+def test_damaging_an_actor_elsewhere_fails(state: GameState) -> None:
+    away = relocated(state, EntityId("mara"), EntityId("vault"))
+    with pytest.raises(ValueError, match="not at the player's location"):
+        resolve([Damage(amount=1, target_id=EntityId("mara"))], away, PASS)

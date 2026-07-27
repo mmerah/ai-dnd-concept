@@ -3,7 +3,7 @@
 from collections.abc import Mapping
 from typing import Annotated, Literal
 
-from pydantic import Field
+from pydantic import Field, TypeAdapter
 
 from .base import EntityId, Frozen, Kind
 from .stats import StatBlock
@@ -46,42 +46,19 @@ class ItemEntity(BaseEntity):
 
 
 # A `kind`-discriminated union: each kind owns its fields instead of a bag of optionals on one
-# class. `Entity` is a type alias, not constructible — build via a concrete class or `make_entity`.
+# class. `Entity` is a type alias, not constructible — instantiate a concrete class, or validate a
+# payload through the adapter when the kind is only known at runtime (the Creator).
 Entity = Annotated[ActorEntity | LocationEntity | ItemEntity, Field(discriminator="kind")]
 
+# The discriminator picks the class and `extra="forbid"` polices the fields, so "an actor must be
+# created in a location" is a ValidationError with no dispatch of our own.
+ENTITY_ADAPTER: TypeAdapter[Entity] = TypeAdapter(Entity)
 
-def make_entity(
-    kind: Kind,
-    *,
-    id: EntityId,
-    name: str,
-    brief: str,
-    location_id: EntityId | None = None,
-    detail: EntityDetail | None = None,
-    known: bool = False,
-    authored: bool = True,
-) -> Entity:
-    """Construct the concrete entity for a kind known only at runtime (Creator, improvised items).
-    Exhaustive on `Kind`, so a new kind is a type error here, not a silent gap. An actor must be
-    given a location; an item's `location_id` is None when it is created straight into an
-    inventory. An invented actor gets the default stat block — `engine/` owns better numbers."""
-    match kind:
-        case "actor":
-            if location_id is None:
-                raise ValueError("an actor must be created in a location")
-            return ActorEntity(
-                id=id, name=name, brief=brief, location_id=location_id,
-                detail=detail, known=known, authored=authored,
-            )
-        case "location":
-            return LocationEntity(
-                id=id, name=name, brief=brief, detail=detail, known=known, authored=authored
-            )
-        case "item":
-            return ItemEntity(
-                id=id, name=name, brief=brief, location_id=location_id,
-                detail=detail, known=known, authored=authored,
-            )
+
+def placement(kind: Kind, location_id: EntityId) -> dict[str, EntityId]:
+    """Where a new entity of this kind stands, as adapter input. Which kinds carry a location is
+    entity shape, so it is answered here rather than wherever an entity happens to be built."""
+    return {} if kind == "location" else {"location_id": location_id}
 
 
 class GrowthRequest(Frozen):

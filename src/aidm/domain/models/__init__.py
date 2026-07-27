@@ -15,7 +15,6 @@ from .base import (
 )
 from .consequences import (
     CONSEQUENCE_TYPES,
-    Amount,
     Consequence,
     Damage,
     Discover,
@@ -23,16 +22,19 @@ from .consequences import (
     GainImprovisedItem,
     GiveItem,
     Heal,
+    Magnitude,
     Move,
-    Ref,
+    References,
     RollCheck,
-    RollDice,
     TakeItem,
+    branches,
+    flatten,
 )
 from .direction import (
     Direction,
 )
 from .entities import (
+    ENTITY_ADAPTER,
     ActorEntity,
     BaseEntity,
     Entity,
@@ -43,7 +45,7 @@ from .entities import (
     LocationEntity,
     RejectedGrowth,
     find,
-    make_entity,
+    placement,
 )
 from .events import (
     CheckRolled,
@@ -70,12 +72,12 @@ from .turn import Turn  # last: depends on .events, .direction, .state
 
 __all__ = [
     "ABILITIES",
+    "ENTITY_ADAPTER",
     "CONSEQUENCE_TYPES",
     "ROLES",
     "SAVE_VERSION",
     "Ability",
     "ActorEntity",
-    "Amount",
     "Attributes",
     "BaseEntity",
     "CharacterSheet",
@@ -108,13 +110,13 @@ __all__ = [
     "ItemMoved",
     "Kind",
     "LocationEntity",
+    "Magnitude",
     "Move",
     "Moved",
     "PLAYER_ID",
-    "Ref",
+    "References",
     "RejectedGrowth",
     "RollCheck",
-    "RollDice",
     "Role",
     "ScenarioDef",
     "ScenarioMeta",
@@ -123,7 +125,9 @@ __all__ = [
     "TakeItem",
     "Turn",
     "WorldState",
+    "branches",
     "find",
-    "make_entity",
+    "flatten",
+    "placement",
     "updated",
 ]
