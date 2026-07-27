@@ -5,10 +5,18 @@ import pytest
 from aidm.agents import views
 from aidm.agents.context import TurnContext
 from aidm.agents.policy import prompt_for
-from aidm.domain.models import ROLES, Direction, EntityId, GameState, GrowthRequest, updated
+from aidm.domain.models import (
+    PLAYER_ID,
+    ROLES,
+    Direction,
+    EntityId,
+    GameState,
+    GrowthRequest,
+    updated,
+)
 
 DIRECTION = Direction(intent="Kael searches the study for anything hidden.", tone="hushed")
-REQUEST = GrowthRequest(kind="npc", name="Elgin", brief="An apothecary.")
+REQUEST = GrowthRequest(kind="actor", name="Elgin", brief="An apothecary.")
 
 
 def context(state: GameState) -> TurnContext:
@@ -37,14 +45,17 @@ def test_a_carried_item_keeps_its_id_and_brief(state: GameState) -> None:
     assert "- a lantern[id=lantern] — A tin lantern." in views.character(state)
 
 
-def test_an_item_in_an_npc_inventory_is_shown_with_its_holder(state: GameState) -> None:
+def test_an_item_in_another_actors_inventory_is_shown_with_its_holder(state: GameState) -> None:
     mara = updated(state.world.entities[EntityId("mara")], inventory=[EntityId("lantern")])
-    handed = updated(
-        state,
-        character=updated(state.character, inventory=[]),
-        world=updated(state.world, entities={**state.world.entities, EntityId("mara"): mara}),
-    )
+    player = updated(state.player, inventory=[])
+    entities = {**state.world.entities, EntityId("mara"): mara, PLAYER_ID: player}
+    handed = updated(state, world=updated(state.world, entities=entities))
     assert "a lantern[id=lantern] — item — held by Mara" in views.here(handed)
+
+
+def test_no_role_is_ever_shown_the_player_as_an_entity(state: GameState) -> None:
+    for view in (views.here, views.elsewhere, views.unrevealed, views.catalogue):
+        assert "[id=player]" not in view(state), view.__name__
 
 
 def test_narrator_reads_the_plan_before_the_outcome(state: GameState) -> None:

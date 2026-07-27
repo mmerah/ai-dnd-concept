@@ -4,19 +4,22 @@ from typing import Literal, NewType, get_args
 
 from pydantic import BaseModel, ConfigDict
 
-Ability = Literal["strength", "dexterity", "intellect", "wisdom"]
-Kind = Literal["npc", "location", "item"]
+# Spelled in full because that is how they are rendered to a role.
+Ability = Literal["strength", "dexterity", "constitution", "intelligence", "wisdom", "charisma"]
+Kind = Literal["actor", "location", "item"]
 Role = Literal["director", "narrator", "maintainer", "creator"]
+
+ABILITIES: tuple[Ability, ...] = get_args(Ability)
 
 # Branded so a location or item name can never be passed where an entity id is expected.
 EntityId = NewType("EntityId", str)
 
-# The player is a Character, not a world entity, but positions and inventories reference actors by
-# id — so the player gets one reserved id. No scenario entity may claim it (validated in state.py).
+# The player is an actor entity like any other, under one reserved id so events, inventories and
+# positions name them the same way they name anyone. No scenario entity may claim it (state.py).
 PLAYER_ID = EntityId("player")
 
 ROLES: tuple[Role, ...] = get_args(Role)
-SAVE_VERSION = 6
+SAVE_VERSION = 8
 
 
 class Frozen(BaseModel):

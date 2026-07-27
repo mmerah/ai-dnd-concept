@@ -1,29 +1,24 @@
 from random import Random
-from typing import get_args
 
 import pytest
 from pydantic import ValidationError
 
-from aidm.domain.models import Ability, Attributes, Character, EntityId, RollDice
+from aidm.domain.models import PLAYER_ID, ActorEntity, Attributes, EntityId, RollDice, StatBlock
 from aidm.engine import rules
 
-KAEL = Character(
+KAEL = ActorEntity(
+    id=PLAYER_ID,
     name="Kael",
-    attributes=Attributes(wisdom=14, strength=8),
-    max_hp=10,
-    hp=10,
+    brief="A relic-hunter.",
+    known=True,
     location_id=EntityId("here"),
+    stats=StatBlock(attributes=Attributes(wisdom=14, strength=8), max_hp=10, hp=10),
 )
 
 
-def test_every_ability_is_an_attribute() -> None:
-    """rules.modifier does getattr(attributes, ability); a divergence is a runtime error."""
-    assert set(get_args(Ability)) == set(Attributes.model_fields)
-
-
 def test_modifier() -> None:
-    assert rules.modifier(KAEL.attributes, "wisdom") == 2
-    assert rules.modifier(KAEL.attributes, "strength") == -1
+    assert rules.modifier(KAEL.stats.attributes, "wisdom") == 2
+    assert rules.modifier(KAEL.stats.attributes, "strength") == -1
 
 
 def test_roll_check_adds_the_modifier_and_compares_to_the_dc() -> None:
@@ -32,18 +27,29 @@ def test_roll_check_adds_the_modifier_and_compares_to_the_dc() -> None:
     assert check.success == (check.total >= 12)
 
 
-def test_roll_dice_sums_faces_and_applies_the_modifier() -> None:
-    total, event = rules.roll_dice("2d1+3", Random(0))  # 1 + 1 + 3, deterministic on d1
-    assert (total, event.dice, event.total) == (5, "2d1+3", 5)
+@pytest.mark.parametrize(
+    ("expression", "total"),
+    [
+        ("2d1+3", 5),  # d1 is deterministic, so every total below is exact
+        ("2d1 + 4d1", 6),  # the multi-term sum the old single-term pattern could not express
+        ("1d1-1", 0),
+        ("10", 10),  # a bare constant: 61 of the pack's heal values are exactly this
+    ],
+)
+def test_roll_dice_sums_every_term(expression: str, total: int) -> None:
+    rolled, event = rules.roll_dice(expression, Random(0))
+    assert (rolled, event.total) == (total, total)
 
 
-def test_roll_dice_rejects_a_malformed_spec() -> None:
-    with pytest.raises(ValueError, match="malformed dice spec"):
-        rules.roll_dice("not-dice", Random(0))
+def test_mod_is_substituted_at_roll_time() -> None:
+    """`MOD` belongs to the actor, not the expression, so the roller supplies it."""
+    assert rules.roll_dice("1d1 + MOD", Random(0), ability_modifier=3)[0] == 4
+    with pytest.raises(ValueError, match="needs an ability modifier"):
+        rules.roll_dice("1d8 + MOD", Random(0))
 
 
-def test_the_dice_field_rejects_a_zero_face_die() -> None:
-    """'1d0' would reach randint(1, 0) and crash; the shared pattern rejects it at the boundary."""
-    for spec in ("1d0", "0d6"):
+def test_a_malformed_expression_fails_at_its_boundary() -> None:
+    """The parse is the validation, so a bad expression never reaches a roll."""
+    for expression in ("not-dice", "1d0", "0d6", "2d6 +", "1d6 + + 2"):
         with pytest.raises(ValidationError):
-            RollDice(dice=spec, bind="x")
+            RollDice(dice=expression, bind="x")

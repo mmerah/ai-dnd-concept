@@ -6,6 +6,7 @@ from typing import Annotated, Literal
 from pydantic import Field
 
 from .base import EntityId, Frozen, Kind
+from .stats import StatBlock
 
 
 class EntityDetail(Frozen):
@@ -24,10 +25,13 @@ class BaseEntity(Frozen):
     authored: bool = True  # False once a Creator invented it mid-play
 
 
-class NpcEntity(BaseEntity):
-    kind: Literal["npc"] = "npc"
-    location_id: EntityId  # the location the NPC stands in
-    inventory: list[EntityId] = Field(default_factory=list)  # canon items the NPC carries
+class ActorEntity(BaseEntity):
+    """An actor, the player included."""
+
+    kind: Literal["actor"] = "actor"
+    location_id: EntityId  # the location the actor stands in
+    inventory: list[EntityId] = Field(default_factory=list)  # canon items the actor carries
+    stats: StatBlock = StatBlock()
 
 
 class LocationEntity(BaseEntity):
@@ -43,7 +47,7 @@ class ItemEntity(BaseEntity):
 
 # A `kind`-discriminated union: each kind owns its fields instead of a bag of optionals on one
 # class. `Entity` is a type alias, not constructible — build via a concrete class or `make_entity`.
-Entity = Annotated[NpcEntity | LocationEntity | ItemEntity, Field(discriminator="kind")]
+Entity = Annotated[ActorEntity | LocationEntity | ItemEntity, Field(discriminator="kind")]
 
 
 def make_entity(
@@ -58,13 +62,14 @@ def make_entity(
     authored: bool = True,
 ) -> Entity:
     """Construct the concrete entity for a kind known only at runtime (Creator, improvised items).
-    Exhaustive on `Kind`, so a new kind is a type error here, not a silent gap. An NPC must be given
-    a location; an item's `location_id` is None when it is created straight into an inventory."""
+    Exhaustive on `Kind`, so a new kind is a type error here, not a silent gap. An actor must be
+    given a location; an item's `location_id` is None when it is created straight into an
+    inventory. An invented actor gets the default stat block — `engine/` owns better numbers."""
     match kind:
-        case "npc":
+        case "actor":
             if location_id is None:
-                raise ValueError("an npc must be created in a location")
-            return NpcEntity(
+                raise ValueError("an actor must be created in a location")
+            return ActorEntity(
                 id=id, name=name, brief=brief, location_id=location_id,
                 detail=detail, known=known, authored=authored,
             )
@@ -83,8 +88,8 @@ class GrowthRequest(Frozen):
     kind: Kind
     name: str
     brief: str
-    # The name of the location an npc/item belongs in — an existing one, or a location requested in
-    # the same batch (created first). None places it where the player is. Ignored for a location.
+    # The name of the location an actor/item belongs in — an existing one, or a location requested
+    # in the same batch (created first). None places it where the player is. Ignored for a location.
     location: str | None = None
 
 

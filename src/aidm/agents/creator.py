@@ -16,7 +16,7 @@ async def create(
     prompt: str, request: GrowthRequest, taken: Iterable[EntityId], location: EntityId
 ) -> Entity:
     detail = (await agent().run(prompt)).output
-    # A grown npc/item appears in the scene just narrated, so it is placed at the player's location
+    # A grown actor/item appears in the scene just narrated, so it goes to the player's location
     # (`location` is ignored for a grown location). It is known: the narrator already named it.
     return make_entity(
         request.kind,

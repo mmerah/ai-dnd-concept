@@ -16,14 +16,18 @@ from aidm.agents import maintainer as maintainer_module
 from aidm.agents import narrator as narrator_module
 from aidm.agents.director import DirectorDeps, direct
 from aidm.agents.history import exchanges_to_messages
-from aidm.domain.models import EntityId, Exchange, GameState, NpcEntity
+from aidm.domain.models import PLAYER_ID, ActorEntity, EntityId, Exchange, GameState, updated
 from aidm.pipeline import run_turn
 
 Stub = Callable[[list[ModelMessage], AgentInfo], ModelResponse]
 
 
+def known_ids(state: GameState) -> set[EntityId]:
+    return {e.id for e in state.world.entities.values() if e.known and e.id != PLAYER_ID}
+
+
 def deps(state: GameState) -> DirectorDeps:
-    return DirectorDeps(entities=state.world.entities, location=state.character.location_id)
+    return DirectorDeps(entities=state.world.entities, location=state.player.location_id)
 
 
 def structured(**output: object) -> Stub:
@@ -85,13 +89,8 @@ async def test_search_applies_mechanics_and_creates_nothing(state: GameState) ->
     # taking a canon item reveals it: inventory and canon can never disagree
     kinds = [e.type for e in turn.events]
     assert kinds == ["check_rolled", "entity_discovered", "item_moved"]
-    assert turn.state.character.inventory == [EntityId("lantern"), EntityId("vault_map")]
-    assert {e.id for e in turn.state.world.entities.values() if e.known} == {
-        "study",
-        "mara",
-        "vault_map",
-        "lantern",
-    }
+    assert turn.state.player.inventory == [EntityId("lantern"), EntityId("vault_map")]
+    assert known_ids(turn.state) == {"study", "mara", "vault_map", "lantern"}
     assert turn.created == []
     assert turn.state.turn == 1
     assert turn.state.history[-1].prompt == "I search the study."
@@ -112,8 +111,7 @@ async def test_existing_canon_is_revealed_not_created(state: GameState) -> None:
         )
         turn = await run_turn(state, "@Mara who can I ask for help?")
 
-    known_ids = {e.id for e in turn.state.world.entities.values() if e.known}
-    assert known_ids == {"study", "mara", "elena", "lantern"}
+    assert known_ids(turn.state) == {"study", "mara", "elena", "lantern"}
     assert turn.created == []  # revealed from canon, not grown
 
 
@@ -128,7 +126,7 @@ async def test_an_unbacked_name_is_grown_not_resolved(state: GameState) -> None:
             ),
             narrator=text("'Try Elgin, the apothecary by the east gate,' he mutters."),
             maintainer=structured(
-                requests=[{"kind": "npc", "name": "Elgin", "brief": "An apothecary."}]
+                requests=[{"kind": "actor", "name": "Elgin", "brief": "An apothecary."}]
             ),
             creator=structured(description="A stooped herbalist.", hook="He trades in rumours."),
         )
@@ -137,7 +135,7 @@ async def test_an_unbacked_name_is_grown_not_resolved(state: GameState) -> None:
     assert turn.events == []  # an empty plan resolves to nothing
     (elgin,) = turn.created
     assert (elgin.id, elgin.known, elgin.authored) == ("elgin", True, False)
-    assert isinstance(elgin, NpcEntity) and elgin.location_id == "study"  # no location -> here
+    assert isinstance(elgin, ActorEntity) and elgin.location_id == "study"  # no location -> here
     assert list(turn.state.world.entities.values())[-1] == elgin  # created entities go last
     assert turn.state.world.entities[EntityId("vault")].known is False  # authored canon untouched
 
@@ -152,7 +150,7 @@ async def test_a_grown_entity_is_placed_in_a_location_grown_the_same_turn(state:
             narrator=text("Beyond the arch, a monk named Anselm bends over a desk."),
             maintainer=structured(
                 requests=[
-                    {"kind": "npc", "name": "Anselm", "brief": "A monk.", "location": "a crypt"},
+                    {"kind": "actor", "name": "Anselm", "brief": "A monk.", "location": "a crypt"},
                     {"kind": "location", "name": "a crypt", "brief": "Cold stone."},
                 ]
             ),
@@ -163,7 +161,7 @@ async def test_a_grown_entity_is_placed_in_a_location_grown_the_same_turn(state:
     entities = turn.state.world.entities
     crypt = next(e for e in entities.values() if e.name == "a crypt")
     anselm = next(e for e in entities.values() if e.name == "Anselm")
-    assert isinstance(anselm, NpcEntity) and anselm.location_id == crypt.id  # not the study
+    assert isinstance(anselm, ActorEntity) and anselm.location_id == crypt.id  # not the study
 
 
 async def test_growth_is_capped(state: GameState) -> None:
@@ -173,7 +171,7 @@ async def test_growth_is_capped(state: GameState) -> None:
             director=structured(intent="A crowd presses in.", tone="busy"),
             narrator=text("Names fly past you."),
             maintainer=structured(
-                requests=[{"kind": "npc", "name": f"N{i}", "brief": "b"} for i in range(6)]
+                requests=[{"kind": "actor", "name": f"N{i}", "brief": "b"} for i in range(6)]
             ),
             creator=structured(description="d", hook="h"),
         )
@@ -189,8 +187,10 @@ async def test_growth_is_capped(state: GameState) -> None:
     [
         {"action": "discover", "entity_id": "ghost"},
         {"action": "move", "location_id": "ghost"},  # an id no list ever showed
-        {"action": "move", "location_id": "mara"},  # a real id, but an npc is not a location
+        {"action": "move", "location_id": "mara"},  # a real id, but an actor is not a location
         {"action": "take_item", "item_id": "study"},  # a location is not an item
+        # the player is an actor in canon now, so naming them here passes the kind check
+        {"action": "give_item", "item_id": "lantern", "actor_id": "player"},
     ],
 )
 async def test_a_plan_referencing_canon_wrongly_is_rejected(
@@ -250,12 +250,12 @@ async def test_a_hidden_speaker_is_a_retry_not_a_downstream_failure(state: GameS
             await direct("talk to her", deps(state))
 
 
-async def test_addressing_an_npc_who_is_elsewhere_is_a_retry(state: GameState) -> None:
-    """The bug this fixes: you could address any NPC from anywhere. With the player in the vault,
+async def test_addressing_an_actor_who_is_elsewhere_is_a_retry(state: GameState) -> None:
+    """The bug this fixes: you could address any actor from anywhere. With the player in the vault,
     Mara (known, but in the study) is no longer a valid speaker."""
-    from aidm.domain.models import updated
-
-    in_vault = updated(state, character=updated(state.character, location_id=EntityId("vault")))
+    player = updated(state.player, location_id=EntityId("vault"))
+    entities = {**state.world.entities, PLAYER_ID: player}
+    in_vault = updated(state, world=updated(state.world, entities=entities))
     with ExitStack() as stack:
         stubs(stack, director=structured(intent="i", tone="t", speaker_id="mara"))
         with pytest.raises(UnexpectedModelBehavior):
@@ -281,9 +281,8 @@ async def test_moving_to_hidden_canon_reveals_it_end_to_end(state: GameState) ->
         turn = await run_turn(state, "I go down to the vault.")
 
     assert [e.type for e in turn.events] == ["entity_discovered", "moved"]
-    assert turn.state.character.location_id == "vault"
-    known_ids = {e.id for e in turn.state.world.entities.values() if e.known}
-    assert known_ids == {"study", "vault", "mara", "lantern"}
+    assert turn.state.player.location_id == "vault"
+    assert known_ids(turn.state) == {"study", "vault", "mara", "lantern"}
     assert turn.created == []
 
 

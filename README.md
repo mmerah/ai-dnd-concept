@@ -40,6 +40,7 @@ src/aidm/
   domain/      pure data and the reducer — no LLM, no I/O
   engine/      deterministic mechanics: resolve.py (mechanics -> events), growth.py (screen creations)
   agents/      the provider, the context policy, one file per role
+  utils/       shared primitives: id minting, dice expressions
   pipeline.py  run_turn: the fixed sequence
   store.py     JSON persistence
   ui/          NiceGUI
@@ -47,8 +48,9 @@ scenarios/     scenario definitions: premise + starting entities (no character)
 characters/    characters, loaded independently so one can be reused across scenarios
 ```
 
-A `GameState` is composed from a `ScenarioDef` and a `Character` at `new_game`; play only ever
-edits `state.world`, never the static `state.scenario` identity.
+A `GameState` is composed from a `ScenarioDef` and a `CharacterSheet` at `new_game`; play only ever
+edits `state.world`, never the static `state.scenario` identity. The player is an ordinary actor
+entity inside `state.world.entities`, under the reserved id `player`.
 
 The boundary that matters is `engine/` ← `agents/`: mechanics stay testable without an agent, and
 agents cannot decide outcomes. Growing the ruleset means growing `engine/`, not the role prompts.

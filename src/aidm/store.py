@@ -51,6 +51,7 @@ def save(slug: str, state: GameState) -> None:
 
 
 def append_trace(slug: str, turn: Turn) -> None:
+    """Write-only and unversioned: stamp a version before anything reads this back."""
     path = _trace_path(slug)
     path.parent.mkdir(parents=True, exist_ok=True)
     with path.open("a", encoding=ENCODING) as f:

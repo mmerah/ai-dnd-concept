@@ -4,7 +4,7 @@ from collections.abc import Sequence
 from functools import reduce
 
 from .models import (
-    PLAYER_ID,
+    ActorEntity,
     CheckRolled,
     DiceRolled,
     Entity,
@@ -18,7 +18,6 @@ from .models import (
     ItemMoved,
     LocationEntity,
     Moved,
-    NpcEntity,
     find,
     updated,
 )
@@ -28,59 +27,54 @@ def _with_entities(state: GameState, entities: dict[EntityId, Entity]) -> GameSt
     return updated(state, world=updated(state.world, entities=entities))
 
 
-def _move_actor(state: GameState, subject_id: EntityId, location_id: EntityId) -> GameState:
+def _actor(state: GameState, entity_id: EntityId, verb: str) -> ActorEntity:
+    actor = find(state.world.entities, entity_id)
+    if not isinstance(actor, ActorEntity):
+        raise ValueError(f"cannot {verb} {entity_id!r}: not an actor")
+    return actor
+
+
+def _move_actor(state: GameState, actor_id: EntityId, location_id: EntityId) -> GameState:
     if not isinstance(find(state.world.entities, location_id), LocationEntity):
         raise ValueError(f"cannot move to {location_id!r}: not a location")
-    if subject_id == PLAYER_ID:
-        return updated(state, character=updated(state.character, location_id=location_id))
-    npc = find(state.world.entities, subject_id)
-    if not isinstance(npc, NpcEntity):
-        raise ValueError(f"cannot move {subject_id!r}: not an npc")
-    moved = updated(npc, location_id=location_id)
-    return _with_entities(state, {**state.world.entities, subject_id: moved})
+    moved = updated(_actor(state, actor_id, "move"), location_id=location_id)
+    return _with_entities(state, {**state.world.entities, actor_id: moved})
 
 
-def _move_item(state: GameState, item_id: EntityId, to_id: EntityId, to_kind: str) -> GameState:
+def _move_item(state: GameState, item_id: EntityId, to_id: EntityId) -> GameState:
     entities = dict(state.world.entities)
     item = entities.get(item_id)
     if not isinstance(item, ItemEntity):
         raise ValueError(f"cannot move {item_id!r}: not a canon item")
-    # Lift the item out of wherever it rests — the player's inventory or any npc's — before placing
-    # it, so the held-xor-located invariant holds after every move.
-    inventory = [i for i in state.character.inventory if i != item_id]
+    # Lift the item out of whichever inventory holds it before placing it, so the held-xor-located
+    # invariant holds after every move.
     for holder_id, holder in list(entities.items()):
-        if isinstance(holder, NpcEntity) and item_id in holder.inventory:
+        if isinstance(holder, ActorEntity) and item_id in holder.inventory:
             kept = [i for i in holder.inventory if i != item_id]
             entities[holder_id] = updated(holder, inventory=kept)
-    match to_kind:
-        case "player":
-            inventory.append(item_id)
-            entities[item_id] = updated(item, location_id=None)
-        case "npc":
-            recipient = entities.get(to_id)
-            if not isinstance(recipient, NpcEntity):
-                raise ValueError(f"cannot give to {to_id!r}: not an npc")
-            entities[to_id] = updated(recipient, inventory=[*recipient.inventory, item_id])
-            entities[item_id] = updated(item, location_id=None)
-        case _:  # "location"
-            if not isinstance(entities.get(to_id), LocationEntity):
-                raise ValueError(f"cannot drop at {to_id!r}: not a location")
+    match entities.get(to_id):
+        case LocationEntity():
             entities[item_id] = updated(item, location_id=to_id)
-    character = updated(state.character, inventory=inventory)
-    return updated(state, character=character, world=updated(state.world, entities=entities))
+        case ActorEntity(inventory=inventory):
+            entities[to_id] = updated(entities[to_id], inventory=[*inventory, item_id])
+            entities[item_id] = updated(item, location_id=None)
+        case _:
+            raise ValueError(f"cannot move {item_id!r} to {to_id!r}: it holds nothing")
+    return _with_entities(state, entities)
 
 
 def _apply_one(state: GameState, event: Event) -> GameState:
     match event:
         case CheckRolled() | DiceRolled():  # evidence for the Narrator; consequences are separate
             return state
-        case ItemMoved(item_id=item_id, to_id=to_id, to_kind=to_kind):
-            return _move_item(state, item_id, to_id, to_kind)
-        case HpChanged(delta=delta):
-            hp = max(0, min(state.character.max_hp, state.character.hp + delta))
-            return updated(state, character=updated(state.character, hp=hp))
-        case Moved(subject_id=subject_id, location_id=location_id):
-            return _move_actor(state, subject_id, location_id)
+        case ItemMoved(item_id=item_id, to_id=to_id):
+            return _move_item(state, item_id, to_id)
+        case HpChanged(target_id=target_id, delta=delta):
+            actor = _actor(state, target_id, "change the hit points of")
+            hurt = updated(actor, stats=actor.stats.with_hp_delta(delta))
+            return _with_entities(state, {**state.world.entities, target_id: hurt})
+        case Moved(actor_id=actor_id, location_id=location_id):
+            return _move_actor(state, actor_id, location_id)
         case EntityDiscovered(entity_id=entity_id):
             entity = find(state.world.entities, entity_id)
             if entity is None:
@@ -101,5 +95,6 @@ def apply(state: GameState, events: Sequence[Event]) -> GameState:
 
 
 def render(events: Sequence[Event]) -> str:
-    """Player-visible event summaries — the Narrator's only source of truth."""
+    """Player-visible event summaries — the Narrator's only source of truth, and the whole of what
+    it is ever shown about this turn's mechanics."""
     return "\n".join(f"- {e.summary}" for e in events) or "- (nothing mechanical happened)"

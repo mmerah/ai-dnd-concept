@@ -1,4 +1,4 @@
-"""The character, the scenario identity vs. live world, and the whole-game state that ties them."""
+"""The character sheet, the scenario identity vs. live world, and the state that ties them."""
 
 from typing import Self
 
@@ -6,14 +6,8 @@ from pydantic import Field, model_validator
 
 from ...utils.ids import slug
 from .base import PLAYER_ID, SAVE_VERSION, EntityId, Frozen
-from .entities import Entity, ItemEntity, LocationEntity, NpcEntity, make_entity
-
-
-class Attributes(Frozen):
-    strength: int = 10
-    dexterity: int = 10
-    intellect: int = 10
-    wisdom: int = 10
+from .entities import ActorEntity, Entity, ItemEntity, LocationEntity, make_entity
+from .stats import Attributes, StatBlock
 
 
 class StartingItem(Frozen):
@@ -24,25 +18,14 @@ class StartingItem(Frozen):
 
 
 class CharacterSheet(Frozen):
-    """The on-disk character definition: identity and the `starting_` values a live Character is
-    seeded from. The instance, not the sheet, owns values a leveling system later evolves."""
+    """The on-disk character definition. The entity it seeds, not the sheet, owns values a leveling
+    system later evolves."""
 
     name: str
+    brief: str
     starting_attributes: Attributes = Attributes()
     starting_max_hp: int = 10
     starting_items: list[StartingItem] = Field(default_factory=list)
-
-
-class Character(Frozen):
-    """The live character the reducer edits. Not a CharacterSheet: starting values are snapshotted
-    at composition, then evolve here (future leveling raises max_hp/attributes on the instance)."""
-
-    name: str
-    attributes: Attributes
-    max_hp: int
-    hp: int
-    location_id: EntityId
-    inventory: list[EntityId] = Field(default_factory=list)
 
 
 class ScenarioMeta(Frozen):
@@ -84,6 +67,7 @@ class ScenarioDef(Frozen):
         duplicates = sorted({i for i in ids if ids.count(i) > 1})
         if duplicates:
             raise ValueError(f"scenario has duplicate entity ids: {duplicates}")
+        # A scenario must place any character, not just one it names; the sheet supplies the player.
         if PLAYER_ID in ids:
             raise ValueError(f"an entity claims the reserved player id {PLAYER_ID!r}")
         start = next((e for e in self.entities if e.id == self.starting_location_id), None)
@@ -104,32 +88,39 @@ class Exchange(Frozen):
 
 class GameState(Frozen):
     version: int = SAVE_VERSION
-    character: Character
     scenario: ScenarioMeta
     world: WorldState
     history: list[Exchange] = Field(default_factory=list)
     turn: int = 0
 
+    @property
+    def player(self) -> ActorEntity:
+        player = self.world.entities.get(PLAYER_ID)
+        if not isinstance(player, ActorEntity):
+            raise ValueError(f"the reserved id {PLAYER_ID!r} does not name an actor")
+        return player
+
     @model_validator(mode="after")
     def _consistent_world(self) -> Self:
-        """Positions and containment must agree, so lookups never lie: everyone stands in a real
+        """Positions and containment must agree, so lookups never lie: every actor stands in a real
         location, and every item is held by exactly one actor xor lies at one location."""
         entities = self.world.entities
 
         def is_location(entity_id: EntityId) -> bool:
             return isinstance(entities.get(entity_id), LocationEntity)
 
-        if not is_location(self.character.location_id):
-            raise ValueError(f"the player stands in {self.character.location_id!r}, not a location")
+        # Unrevealed canon is offered as a `discover` target; the player must never be one.
+        if not self.player.known:
+            raise ValueError("the player entity must be known")
 
-        holders = [(PLAYER_ID, self.character.inventory)]
-        holders += [(e.id, e.inventory) for e in entities.values() if isinstance(e, NpcEntity)]
         held: list[EntityId] = []
-        for holder_id, inventory in holders:
-            for item_id in inventory:
+        for actor in (e for e in entities.values() if isinstance(e, ActorEntity)):
+            if not is_location(actor.location_id):
+                raise ValueError(f"actor {actor.id!r} is not in a valid location")
+            for item_id in actor.inventory:
                 item = entities.get(item_id)
                 if not isinstance(item, ItemEntity):
-                    raise ValueError(f"{holder_id!r} holds {item_id!r}, which is not a canon item")
+                    raise ValueError(f"{actor.id!r} holds {item_id!r}, which is not a canon item")
                 if item.location_id is not None:
                     raise ValueError(f"held item {item_id!r} also lies at a location")
                 held.append(item_id)
@@ -137,23 +128,18 @@ class GameState(Frozen):
         if duplicated:
             raise ValueError(f"items held in more than one inventory: {duplicated}")
 
-        for entity in entities.values():
-            if isinstance(entity, NpcEntity) and not is_location(entity.location_id):
-                raise ValueError(f"npc {entity.id!r} is not in a valid location")
-            if isinstance(entity, ItemEntity):
-                located = entity.location_id
-                if located is None and entity.id not in held:
-                    raise ValueError(f"item {entity.id!r} is held by no one and lies nowhere")
-                if located is not None and not is_location(located):
-                    raise ValueError(f"item {entity.id!r} lies in a non-location")
+        for item in (e for e in entities.values() if isinstance(e, ItemEntity)):
+            if item.location_id is None and item.id not in held:
+                raise ValueError(f"item {item.id!r} is held by no one and lies nowhere")
+            if item.location_id is not None and not is_location(item.location_id):
+                raise ValueError(f"item {item.id!r} lies in a non-location")
         return self
 
     @classmethod
     def from_scenario(cls, scenario: ScenarioDef, character: CharacterSheet) -> Self:
         """A sheet placed at the scenario's start, over its canon. Starting items become canon items
         held by the player (location None), so an inventory holds real ids, not free text."""
-        world = scenario.as_world()
-        entities = dict(world.entities)
+        entities = dict(scenario.as_world().entities)
         inventory: list[EntityId] = []
         for item in character.starting_items:
             entity = make_entity(
@@ -166,12 +152,17 @@ class GameState(Frozen):
             )
             entities[entity.id] = entity
             inventory.append(entity.id)
-        placed = Character(
+        entities[PLAYER_ID] = ActorEntity(
+            id=PLAYER_ID,
             name=character.name,
-            attributes=character.starting_attributes,
-            max_hp=character.starting_max_hp,
-            hp=character.starting_max_hp,
+            brief=character.brief,
+            known=True,
             location_id=scenario.starting_location_id,
             inventory=inventory,
+            stats=StatBlock(
+                attributes=character.starting_attributes,
+                max_hp=character.starting_max_hp,
+                hp=character.starting_max_hp,
+            ),
         )
-        return cls(character=placed, scenario=scenario.meta, world=WorldState(entities=entities))
+        return cls(scenario=scenario.meta, world=WorldState(entities=entities))

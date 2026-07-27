@@ -37,7 +37,7 @@ def _ignore(step: Role) -> None:
 
 
 def _placement(request: GrowthRequest, state: GameState) -> EntityId:
-    """Where a grown npc/item stands: the location it names, matched to a canon location by name
+    """Where a grown actor/item stands: the location it names, matched to a canon location by name
     (existing or just created this batch), else the player's location. A grown location needs none;
     the id passed then is ignored by the Creator."""
     if request.location is not None:
@@ -45,15 +45,15 @@ def _placement(request: GrowthRequest, state: GameState) -> EntityId:
         for entity in state.world.entities.values():
             if isinstance(entity, LocationEntity) and entity.name.casefold() == wanted:
                 return entity.id
-    return state.character.location_id
+    return state.player.location_id
 
 
 async def _grow(
     context: TurnContext, requests: Sequence[GrowthRequest], prompts: dict[Role, str]
 ) -> list[Entity]:
     """The Maintainer -> Creator loop over screened requests. Locations are created first, so an
-    npc/item can name a location this same batch mints and be placed there; each creation feeds the
-    next one's catalogue and dedup, so the context evolves; only the created entities escape."""
+    actor/item can name a location this same batch mints and be placed there; each creation feeds
+    the next one's catalogue and dedup, so the context evolves; only the created entities escape."""
     created: list[Entity] = []
     for request in sorted(requests, key=lambda r: r.kind != "location"):
         state = context.state
@@ -89,7 +89,7 @@ async def run_turn(
         return history if reads_history(role) else None
 
     context = TurnContext(state=state, prompt=prompt, recent=recent)
-    deps = DirectorDeps(entities=state.world.entities, location=state.character.location_id)
+    deps = DirectorDeps(entities=state.world.entities, location=state.player.location_id)
     direction = await direct(ask("director", context), deps, seen_by("director"))
 
     events = resolve(direction.mechanics, state, rng or Random())

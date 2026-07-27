@@ -35,7 +35,7 @@
     },
     {
       "id": "mara",
-      "kind": "npc",
+      "kind": "actor",
       "name": "Mara",
       "brief": "The abbey's last scribe, cautious and tired, still cataloguing books nobody will read.",
       "known": true,
@@ -43,7 +43,7 @@
     },
     {
       "id": "tomas",
-      "kind": "npc",
+      "kind": "actor",
       "name": "Brother Tomas",
       "brief": "A deaf old porter who sweeps the cloister and knows almost nothing about the vault.",
       "known": true,
@@ -51,7 +51,7 @@
     },
     {
       "id": "elena",
-      "kind": "npc",
+      "kind": "actor",
       "name": "Elena",
       "brief": "The vault's former archivist, hiding in the bell tower; she alone remembers the sealing rite.",
       "known": false,

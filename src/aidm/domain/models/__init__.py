@@ -1,6 +1,8 @@
 """The domain vocabulary. Grouped in submodules; imported flat as `from ..domain.models import`."""
 
+from ...utils.dice import DiceExpr
 from .base import (
+    ABILITIES,
     PLAYER_ID,
     ROLES,
     SAVE_VERSION,
@@ -13,7 +15,6 @@ from .base import (
 )
 from .consequences import (
     CONSEQUENCE_TYPES,
-    DICE_PATTERN,
     Amount,
     Consequence,
     Damage,
@@ -32,6 +33,7 @@ from .direction import (
     Direction,
 )
 from .entities import (
+    ActorEntity,
     BaseEntity,
     Entity,
     EntityDetail,
@@ -39,7 +41,6 @@ from .entities import (
     GrowthRequest,
     ItemEntity,
     LocationEntity,
-    NpcEntity,
     RejectedGrowth,
     find,
     make_entity,
@@ -51,12 +52,11 @@ from .events import (
     EntityDiscovered,
     Event,
     HpChanged,
+    ItemDestination,
     ItemMoved,
     Moved,
 )
 from .state import (
-    Attributes,
-    Character,
     CharacterSheet,
     Exchange,
     GameState,
@@ -65,22 +65,25 @@ from .state import (
     StartingItem,
     WorldState,
 )
+from .stats import Attributes, Condition, StatBlock
 from .turn import Turn  # last: depends on .events, .direction, .state
 
 __all__ = [
+    "ABILITIES",
     "CONSEQUENCE_TYPES",
-    "DICE_PATTERN",
     "ROLES",
     "SAVE_VERSION",
     "Ability",
+    "ActorEntity",
     "Amount",
     "Attributes",
     "BaseEntity",
-    "Character",
     "CharacterSheet",
     "CheckRolled",
+    "Condition",
     "Consequence",
     "Damage",
+    "DiceExpr",
     "DiceRolled",
     "Direction",
     "Discover",
@@ -100,13 +103,13 @@ __all__ = [
     "GrowthRequest",
     "Heal",
     "HpChanged",
+    "ItemDestination",
     "ItemEntity",
     "ItemMoved",
     "Kind",
     "LocationEntity",
     "Move",
     "Moved",
-    "NpcEntity",
     "PLAYER_ID",
     "Ref",
     "RejectedGrowth",
@@ -116,6 +119,7 @@ __all__ = [
     "ScenarioDef",
     "ScenarioMeta",
     "StartingItem",
+    "StatBlock",
     "TakeItem",
     "Turn",
     "WorldState",

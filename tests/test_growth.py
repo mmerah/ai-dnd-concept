@@ -6,7 +6,7 @@ from aidm.engine.growth import screen
 
 
 def _req(name: str) -> GrowthRequest:
-    return GrowthRequest(kind="npc", name=name, brief="b")
+    return GrowthRequest(kind="actor", name=name, brief="b")
 
 
 def test_a_request_matching_an_existing_name_is_rejected(state: GameState) -> None:

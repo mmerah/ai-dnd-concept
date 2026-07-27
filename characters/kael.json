@@ -1,6 +1,14 @@
 {
   "name": "Kael",
-  "starting_attributes": { "strength": 11, "dexterity": 13, "intellect": 12, "wisdom": 14 },
+  "brief": "A scarred relic-hunter who came to the abbey for what is sealed beneath it.",
+  "starting_attributes": {
+    "strength": 11,
+    "dexterity": 13,
+    "constitution": 12,
+    "intelligence": 12,
+    "wisdom": 14,
+    "charisma": 10
+  },
   "starting_max_hp": 10,
   "starting_items": [
     { "name": "a guttering lantern", "brief": "A dented tin lantern whose flame will not hold still." }

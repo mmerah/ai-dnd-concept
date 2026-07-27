@@ -4,8 +4,9 @@ from typing import Annotated, Literal
 
 from pydantic import Field
 
-from .base import Ability, EntityId, Frozen
+from .base import PLAYER_ID, Ability, EntityId, Frozen
 from .entities import Entity
+from .stats import Condition
 
 
 class CheckRolled(Frozen):
@@ -22,23 +23,26 @@ class CheckRolled(Frozen):
         return f"{self.ability} check: {self.roll} -> {self.total} vs DC {self.dc}: {verdict}"
 
 
+ItemDestination = Literal["actor", "location"]
+
+
 class ItemMoved(Frozen):
-    """An item changes container. `to_kind` reads the destination for the Narrator's summary; the
-    reducer removes the item from wherever it was and places it at `to_id`."""
+    """An item changes container. `to_kind` shapes the sentence only; the reducer reads the
+    destination's own type, so the two can never disagree."""
 
     type: Literal["item_moved"] = "item_moved"
     item_id: EntityId
     item_name: str  # for the summary only; the ids drive state
-    to_id: EntityId  # a location, an npc, or PLAYER_ID
+    to_id: EntityId
     to_name: str
-    to_kind: Literal["player", "npc", "location"]
+    to_kind: ItemDestination
 
     @property
     def summary(self) -> str:
+        if self.to_id == PLAYER_ID:
+            return f"took {self.item_name}"
         match self.to_kind:
-            case "player":
-                return f"took {self.item_name}"
-            case "npc":
+            case "actor":
                 return f"gave {self.item_name} to {self.to_name}"
             case "location":
                 return f"left {self.item_name} at {self.to_name}"
@@ -56,26 +60,30 @@ class DiceRolled(Frozen):
 
 class HpChanged(Frozen):
     type: Literal["hp_changed"] = "hp_changed"
+    target_id: EntityId
+    target_name: str
     delta: int
+    condition: Condition  # the target's condition after the change
 
     @property
     def summary(self) -> str:
-        return f"hp {self.delta:+d}"
+        if self.target_id == PLAYER_ID:
+            return f"hp {self.delta:+d}"
+        return f"{self.target_name} is {self.condition}"
 
 
 class Moved(Frozen):
-    """An actor (the player, as PLAYER_ID, or an NPC) changes location. Names ride along so the
-    summary never leaks an id to the Narrator."""
+    """Names ride along so the summary never leaks an id."""
 
     type: Literal["moved"] = "moved"
-    subject_id: EntityId
-    subject_name: str
+    actor_id: EntityId
+    actor_name: str
     location_id: EntityId
     location_name: str
 
     @property
     def summary(self) -> str:
-        return f"{self.subject_name} moved to {self.location_name}"
+        return f"{self.actor_name} moved to {self.location_name}"
 
 
 class EntityDiscovered(Frozen):

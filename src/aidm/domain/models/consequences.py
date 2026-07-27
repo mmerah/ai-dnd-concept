@@ -8,17 +8,13 @@ from typing import Annotated, ClassVar, Literal, get_args
 
 from pydantic import Field
 
-from .base import Ability, EntityId, Frozen, Kind
+from ...utils.dice import DiceExpr
+from .base import ABILITIES, Ability, EntityId, Frozen, Kind
 
 # A canon reference is an id paired with the kind it must be; `None` means any kind (only
 # `discover` may reveal anything). Each consequence answers for its own references, so adding one
 # never needs a matching edit to a separate validation table.
 CanonRef = tuple[EntityId, Kind | None]
-
-# The dice grammar `NdM(+K|-K)`, shared by the RollDice field and the roller so they can't drift.
-# Digit counts are bounded so a pathological roll (millions of dice) can't stall a turn.
-# Groups: (count 1-999)d(faces 1-9999)(modifier ±1-999).
-DICE_PATTERN = r"^([1-9]\d{0,2})d([1-9]\d{0,3})([+-]\d{1,3})?$"
 
 # Canon and improvised items are separate variants so the model cannot express a contradictory
 # pair. Every canon reference is an id: canonicalization (id -> name) is the resolver's job, never
@@ -89,19 +85,21 @@ Example: they set the `vault_map` on the desk -> `drop_item` with item_id `vault
 
 
 class GiveItem(Frozen):
-    """The player hands a held item to an NPC who is here."""
+    """The player hands a held item to another actor who is here."""
 
-    GUIDANCE: ClassVar[str] = """Use when the player gives a carried item to an NPC at their \
-location; the item moves into that NPC's inventory.
-Example: they hand the `vault_map` to Mara -> `give_item` with item_id `vault_map`, npc_id \
+    GUIDANCE: ClassVar[str] = """Use when the player gives a carried item to someone at their \
+location; the item moves into that actor's inventory.
+Example: they hand the `vault_map` to Mara -> `give_item` with item_id `vault_map`, actor_id \
 `mara`."""
 
     action: Literal["give_item"] = "give_item"
     item_id: EntityId = Field(description="Id of a canon `item` the player is carrying.")
-    npc_id: EntityId = Field(description="Id of the `npc` receiving it, at the player's location.")
+    actor_id: EntityId = Field(
+        description="Id of the `actor` receiving it, at the player's location."
+    )
 
     def canon_refs(self) -> tuple[CanonRef, ...]:
-        return ((self.item_id, "item"), (self.npc_id, "npc"))
+        return ((self.item_id, "item"), (self.actor_id, "actor"))
 
     def children(self) -> tuple["Consequence", ...]:
         return ()
@@ -161,25 +159,25 @@ reference to a bound roll. Example: a poultice -> `heal` with amount 5."""
 
 
 class Move(Frozen):
-    """Move an actor to a location: the player by default, or a named NPC."""
+    """Move an actor to a location: the player by default, or another actor you name."""
 
-    GUIDANCE: ClassVar[str] = """Use when the player (or an NPC you name in `subject_id`) goes \
+    GUIDANCE: ClassVar[str] = """Use when the player (or an actor you name in `actor_id`) goes \
 somewhere that exists in canon, including somewhere not discovered yet — the player arriving, or \
-an NPC arriving where the player is, reveals it. If they head somewhere the world does not have, \
+someone arriving where the player is, reveals it. If they head somewhere the world does not have, \
 leave `move` out and let the narration take them toward it; the place becomes canon and you can \
 move them there on a later turn.
 Example: "I go down to the vault" and `vault` is in your lists -> `move` with location_id `vault`. \
-Mara walks off to the cloister -> `move` location_id `cloister`, subject_id `mara`."""
+Mara walks off to the cloister -> `move` location_id `cloister`, actor_id `mara`."""
 
     action: Literal["move"] = "move"
     location_id: EntityId = Field(description="Id of a canon entity whose kind is `location`.")
-    subject_id: EntityId | None = Field(
-        default=None, description="Id of the `npc` to move; omit to move the player."
+    actor_id: EntityId | None = Field(
+        default=None, description="Id of the `actor` to move; omit to move the player."
     )
 
     def canon_refs(self) -> tuple[CanonRef, ...]:
         base: tuple[CanonRef, ...] = ((self.location_id, "location"),)
-        return base if self.subject_id is None else (*base, (self.subject_id, "npc"))
+        return base if self.actor_id is None else (*base, (self.actor_id, "actor"))
 
     def children(self) -> tuple["Consequence", ...]:
         return ()
@@ -192,7 +190,7 @@ class RollCheck(Frozen):
 `on_success`, what failing does in `on_failure`; either may be empty."""
 
     action: Literal["roll_check"] = "roll_check"
-    ability: Ability = Field(description="strength, dexterity, intellect or wisdom.")
+    ability: Ability = Field(description=f"One of: {', '.join(ABILITIES)}.")
     dc: int = Field(description="5 easy, 10 moderate, 15 hard, 20 very hard.")
     on_success: list["Consequence"] = Field(
         default_factory=list, description="Applied iff the check passes."
@@ -217,7 +215,7 @@ Example: `roll_dice` dice '1d8' bind 'dmg', then in `then` a `damage` with amoun
 "dmg"}."""
 
     action: Literal["roll_dice"] = "roll_dice"
-    dice: str = Field(pattern=DICE_PATTERN, description="e.g. '1d8', '2d6+3'.")
+    dice: DiceExpr = Field(description="e.g. '1d8', '2d6 + 3', '4d6 + 4'.")
     bind: str = Field(description='Name to store the total under, for a later {"ref": name}.')
     then: list["Consequence"] = Field(
         default_factory=list, description="Consequences that may reference `bind`."

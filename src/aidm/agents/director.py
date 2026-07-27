@@ -1,6 +1,6 @@
 """DIRECTOR — owns world direction and the turn's mechanics."""
 
-from collections.abc import Mapping, Sequence
+from collections.abc import Iterator, Mapping, Sequence
 from dataclasses import dataclass
 
 from pydantic_ai import ModelRetry, NativeOutput, RunContext
@@ -8,13 +8,15 @@ from pydantic_ai.messages import ModelMessage
 
 from ..domain.models import (
     CONSEQUENCE_TYPES,
+    PLAYER_ID,
+    ActorEntity,
     Consequence,
     Damage,
     Direction,
     Entity,
     EntityId,
+    GiveItem,
     Heal,
-    NpcEntity,
     Ref,
     RollCheck,
     RollDice,
@@ -49,6 +51,12 @@ class DirectorDeps:
 
     entities: Mapping[EntityId, Entity]
     location: EntityId
+
+
+def _flat(consequences: Sequence[Consequence]) -> Iterator[Consequence]:
+    for consequence in consequences:
+        yield consequence
+        yield from _flat(consequence.children())
 
 
 def _refs_used(consequence: Consequence) -> tuple[str, ...]:
@@ -88,8 +96,15 @@ def _validate_ids(ctx: RunContext[DirectorDeps], direction: Direction) -> Direct
     retries, not errors: the model can pick again from what it was shown."""
     refs = direction.canon_refs()
     if direction.speaker_id is not None:
-        refs.append((direction.speaker_id, "npc"))
+        refs.append((direction.speaker_id, "actor"))
     canon = dict(ctx.deps.entities)
+
+    # The player is an actor in canon now, so naming them where someone else is meant passes the
+    # kind check below. Caught here as a retry rather than a dropped turn in the resolver.
+    if direction.speaker_id == PLAYER_ID:
+        raise ModelRetry("speaker_id must be an actor the player addresses, never the player")
+    if any(isinstance(c, GiveItem) and c.actor_id == PLAYER_ID for c in _flat(direction.mechanics)):
+        raise ModelRetry("give_item must name another actor: the player already holds the item")
 
     missing = sorted({i for i, _ in refs if i not in canon})
     if missing:
@@ -106,7 +121,7 @@ def _validate_ids(ctx: RunContext[DirectorDeps], direction: Direction) -> Direct
     speaker = canon.get(direction.speaker_id) if direction.speaker_id is not None else None
     if speaker is not None and not speaker.known:
         raise ModelRetry(f"speaker {direction.speaker_id!r} exists but the player has not met them")
-    if isinstance(speaker, NpcEntity) and speaker.location_id != ctx.deps.location:
+    if isinstance(speaker, ActorEntity) and speaker.location_id != ctx.deps.location:
         raise ModelRetry(f"speaker {direction.speaker_id!r} is not at the player's location")
     _check_refs(direction.mechanics)
     return direction
