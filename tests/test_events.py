@@ -3,7 +3,6 @@ import pytest
 from aidm.domain.models import (
     PLAYER_ID,
     ActorEntity,
-    Condition,
     EntityCreated,
     EntityDiscovered,
     EntityId,
@@ -12,14 +11,15 @@ from aidm.domain.models import (
     ItemEntity,
     ItemMoved,
     Moved,
+    Wounds,
 )
 from aidm.domain.reducer import apply, render
 
 MARA = EntityId("mara")
 
 
-def hurt(target_id: EntityId, name: str, delta: int, after: Condition = "hurt") -> HpChanged:
-    return HpChanged(target_id=target_id, target_name=name, delta=delta, condition=after)
+def hurt(target_id: EntityId, name: str, delta: int, after: Wounds = "hurt") -> HpChanged:
+    return HpChanged(target_id=target_id, target_name=name, delta=delta, wounds=after)
 
 
 def test_take_drop_and_hp(state: GameState) -> None:
@@ -86,7 +86,9 @@ def test_the_narrator_never_reads_another_actors_hit_points(state: GameState) ->
 
 def test_move_the_player(state: GameState) -> None:
     moved = Moved(
-        actor_id=PLAYER_ID, actor_name="Kael", location_id=EntityId("vault"),
+        actor_id=PLAYER_ID,
+        actor_name="Kael",
+        location_id=EntityId("vault"),
         location_name="the vault",
     )
     assert apply(state, [moved]).player.location_id == "vault"
@@ -94,7 +96,9 @@ def test_move_the_player(state: GameState) -> None:
 
 def test_move_another_actor(state: GameState) -> None:
     moved = Moved(
-        actor_id=MARA, actor_name="Mara", location_id=EntityId("vault"),
+        actor_id=MARA,
+        actor_name="Mara",
+        location_id=EntityId("vault"),
         location_name="the vault",
     )
     mara = apply(state, [moved]).world.entities[MARA]
@@ -117,7 +121,10 @@ def test_discover_reveals_only_the_target(state: GameState) -> None:
 
 def test_create_appends(state: GameState) -> None:
     elgin = ActorEntity(
-        id=EntityId("elgin"), name="Elgin", brief="An apothecary.", authored=False,
+        id=EntityId("elgin"),
+        name="Elgin",
+        brief="An apothecary.",
+        authored=False,
         location_id=EntityId("study"),
     )
     entities = apply(state, [EntityCreated(entity=elgin)]).world.entities
@@ -130,18 +137,27 @@ def test_impossible_events_fail_fast(state: GameState) -> None:
     with pytest.raises(ValueError):
         apply(
             state,
-            [ItemMoved(
-                item_id=EntityId("nobody"), item_name="a ghost", to_id=PLAYER_ID,
-                to_name="Kael", to_kind="actor",
-            )],
+            [
+                ItemMoved(
+                    item_id=EntityId("nobody"),
+                    item_name="a ghost",
+                    to_id=PLAYER_ID,
+                    to_name="Kael",
+                    to_kind="actor",
+                )
+            ],
         )
     with pytest.raises(ValueError):
         apply(
             state,
-            [Moved(
-                actor_id=PLAYER_ID, actor_name="Kael", location_id=EntityId("nowhere"),
-                location_name="Nowhere",
-            )],
+            [
+                Moved(
+                    actor_id=PLAYER_ID,
+                    actor_name="Kael",
+                    location_id=EntityId("nowhere"),
+                    location_name="Nowhere",
+                )
+            ],
         )
     with pytest.raises(ValueError):  # a location has no hit points
         apply(state, [hurt(EntityId("study"), "the study", -1)])

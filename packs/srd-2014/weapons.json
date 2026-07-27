@@ -1,0 +1,1001 @@
+[
+  {
+    "index": "club",
+    "name": "Club",
+    "cost": {
+      "quantity": 1,
+      "unit": "sp"
+    },
+    "weight": 2.0,
+    "desc": "",
+    "category": "Simple Melee",
+    "weapon_range": "Melee",
+    "damage": {
+      "dice": "1d4",
+      "damage_type": "bludgeoning"
+    },
+    "two_handed_damage": null,
+    "properties": [
+      "light",
+      "monk"
+    ],
+    "range": {
+      "normal": 5,
+      "long": null
+    },
+    "throw_range": null
+  },
+  {
+    "index": "dagger",
+    "name": "Dagger",
+    "cost": {
+      "quantity": 2,
+      "unit": "gp"
+    },
+    "weight": 1.0,
+    "desc": "",
+    "category": "Simple Melee",
+    "weapon_range": "Melee",
+    "damage": {
+      "dice": "1d4",
+      "damage_type": "piercing"
+    },
+    "two_handed_damage": null,
+    "properties": [
+      "finesse",
+      "light",
+      "thrown",
+      "monk"
+    ],
+    "range": {
+      "normal": 5,
+      "long": null
+    },
+    "throw_range": {
+      "normal": 20,
+      "long": 60
+    }
+  },
+  {
+    "index": "greatclub",
+    "name": "Greatclub",
+    "cost": {
+      "quantity": 2,
+      "unit": "sp"
+    },
+    "weight": 10.0,
+    "desc": "",
+    "category": "Simple Melee",
+    "weapon_range": "Melee",
+    "damage": {
+      "dice": "1d8",
+      "damage_type": "bludgeoning"
+    },
+    "two_handed_damage": null,
+    "properties": [
+      "two-handed"
+    ],
+    "range": {
+      "normal": 5,
+      "long": null
+    },
+    "throw_range": null
+  },
+  {
+    "index": "handaxe",
+    "name": "Handaxe",
+    "cost": {
+      "quantity": 5,
+      "unit": "gp"
+    },
+    "weight": 2.0,
+    "desc": "",
+    "category": "Simple Melee",
+    "weapon_range": "Melee",
+    "damage": {
+      "dice": "1d6",
+      "damage_type": "slashing"
+    },
+    "two_handed_damage": null,
+    "properties": [
+      "light",
+      "thrown",
+      "monk"
+    ],
+    "range": {
+      "normal": 5,
+      "long": null
+    },
+    "throw_range": {
+      "normal": 20,
+      "long": 60
+    }
+  },
+  {
+    "index": "javelin",
+    "name": "Javelin",
+    "cost": {
+      "quantity": 5,
+      "unit": "sp"
+    },
+    "weight": 2.0,
+    "desc": "",
+    "category": "Simple Melee",
+    "weapon_range": "Melee",
+    "damage": {
+      "dice": "1d6",
+      "damage_type": "piercing"
+    },
+    "two_handed_damage": null,
+    "properties": [
+      "thrown",
+      "monk"
+    ],
+    "range": {
+      "normal": 5,
+      "long": null
+    },
+    "throw_range": {
+      "normal": 30,
+      "long": 120
+    }
+  },
+  {
+    "index": "light-hammer",
+    "name": "Light hammer",
+    "cost": {
+      "quantity": 2,
+      "unit": "gp"
+    },
+    "weight": 2.0,
+    "desc": "",
+    "category": "Simple Melee",
+    "weapon_range": "Melee",
+    "damage": {
+      "dice": "1d4",
+      "damage_type": "bludgeoning"
+    },
+    "two_handed_damage": null,
+    "properties": [
+      "light",
+      "thrown",
+      "monk"
+    ],
+    "range": {
+      "normal": 5,
+      "long": null
+    },
+    "throw_range": {
+      "normal": 20,
+      "long": 60
+    }
+  },
+  {
+    "index": "mace",
+    "name": "Mace",
+    "cost": {
+      "quantity": 5,
+      "unit": "gp"
+    },
+    "weight": 4.0,
+    "desc": "",
+    "category": "Simple Melee",
+    "weapon_range": "Melee",
+    "damage": {
+      "dice": "1d6",
+      "damage_type": "bludgeoning"
+    },
+    "two_handed_damage": null,
+    "properties": [
+      "monk"
+    ],
+    "range": {
+      "normal": 5,
+      "long": null
+    },
+    "throw_range": null
+  },
+  {
+    "index": "quarterstaff",
+    "name": "Quarterstaff",
+    "cost": {
+      "quantity": 2,
+      "unit": "sp"
+    },
+    "weight": 4.0,
+    "desc": "",
+    "category": "Simple Melee",
+    "weapon_range": "Melee",
+    "damage": {
+      "dice": "1d6",
+      "damage_type": "bludgeoning"
+    },
+    "two_handed_damage": {
+      "dice": "1d8",
+      "damage_type": "bludgeoning"
+    },
+    "properties": [
+      "versatile",
+      "monk"
+    ],
+    "range": {
+      "normal": 5,
+      "long": null
+    },
+    "throw_range": null
+  },
+  {
+    "index": "sickle",
+    "name": "Sickle",
+    "cost": {
+      "quantity": 1,
+      "unit": "gp"
+    },
+    "weight": 2.0,
+    "desc": "",
+    "category": "Simple Melee",
+    "weapon_range": "Melee",
+    "damage": {
+      "dice": "1d4",
+      "damage_type": "slashing"
+    },
+    "two_handed_damage": null,
+    "properties": [
+      "light",
+      "monk"
+    ],
+    "range": {
+      "normal": 5,
+      "long": null
+    },
+    "throw_range": null
+  },
+  {
+    "index": "spear",
+    "name": "Spear",
+    "cost": {
+      "quantity": 1,
+      "unit": "gp"
+    },
+    "weight": 3.0,
+    "desc": "",
+    "category": "Simple Melee",
+    "weapon_range": "Melee",
+    "damage": {
+      "dice": "1d6",
+      "damage_type": "piercing"
+    },
+    "two_handed_damage": {
+      "dice": "1d8",
+      "damage_type": "piercing"
+    },
+    "properties": [
+      "thrown",
+      "versatile",
+      "monk"
+    ],
+    "range": {
+      "normal": 5,
+      "long": null
+    },
+    "throw_range": {
+      "normal": 20,
+      "long": 60
+    }
+  },
+  {
+    "index": "crossbow-light",
+    "name": "Crossbow, light",
+    "cost": {
+      "quantity": 25,
+      "unit": "gp"
+    },
+    "weight": 5.0,
+    "desc": "",
+    "category": "Simple Ranged",
+    "weapon_range": "Ranged",
+    "damage": {
+      "dice": "1d8",
+      "damage_type": "piercing"
+    },
+    "two_handed_damage": null,
+    "properties": [
+      "ammunition",
+      "loading",
+      "two-handed"
+    ],
+    "range": {
+      "normal": 80,
+      "long": 320
+    },
+    "throw_range": null
+  },
+  {
+    "index": "dart",
+    "name": "Dart",
+    "cost": {
+      "quantity": 5,
+      "unit": "cp"
+    },
+    "weight": 0.25,
+    "desc": "",
+    "category": "Simple Ranged",
+    "weapon_range": "Ranged",
+    "damage": {
+      "dice": "1d4",
+      "damage_type": "piercing"
+    },
+    "two_handed_damage": null,
+    "properties": [
+      "finesse",
+      "thrown"
+    ],
+    "range": {
+      "normal": 20,
+      "long": 60
+    },
+    "throw_range": {
+      "normal": 20,
+      "long": 60
+    }
+  },
+  {
+    "index": "shortbow",
+    "name": "Shortbow",
+    "cost": {
+      "quantity": 25,
+      "unit": "gp"
+    },
+    "weight": 2.0,
+    "desc": "",
+    "category": "Simple Ranged",
+    "weapon_range": "Ranged",
+    "damage": {
+      "dice": "1d6",
+      "damage_type": "piercing"
+    },
+    "two_handed_damage": null,
+    "properties": [
+      "ammunition",
+      "two-handed"
+    ],
+    "range": {
+      "normal": 80,
+      "long": 320
+    },
+    "throw_range": null
+  },
+  {
+    "index": "sling",
+    "name": "Sling",
+    "cost": {
+      "quantity": 1,
+      "unit": "sp"
+    },
+    "weight": 0.0,
+    "desc": "",
+    "category": "Simple Ranged",
+    "weapon_range": "Ranged",
+    "damage": {
+      "dice": "1d4",
+      "damage_type": "bludgeoning"
+    },
+    "two_handed_damage": null,
+    "properties": [
+      "ammunition"
+    ],
+    "range": {
+      "normal": 30,
+      "long": 120
+    },
+    "throw_range": null
+  },
+  {
+    "index": "battleaxe",
+    "name": "Battleaxe",
+    "cost": {
+      "quantity": 10,
+      "unit": "gp"
+    },
+    "weight": 4.0,
+    "desc": "",
+    "category": "Martial Melee",
+    "weapon_range": "Melee",
+    "damage": {
+      "dice": "1d8",
+      "damage_type": "slashing"
+    },
+    "two_handed_damage": {
+      "dice": "1d10",
+      "damage_type": "slashing"
+    },
+    "properties": [
+      "versatile"
+    ],
+    "range": {
+      "normal": 5,
+      "long": null
+    },
+    "throw_range": null
+  },
+  {
+    "index": "flail",
+    "name": "Flail",
+    "cost": {
+      "quantity": 10,
+      "unit": "gp"
+    },
+    "weight": 2.0,
+    "desc": "",
+    "category": "Martial Melee",
+    "weapon_range": "Melee",
+    "damage": {
+      "dice": "1d8",
+      "damage_type": "bludgeoning"
+    },
+    "two_handed_damage": null,
+    "properties": [],
+    "range": {
+      "normal": 5,
+      "long": null
+    },
+    "throw_range": null
+  },
+  {
+    "index": "glaive",
+    "name": "Glaive",
+    "cost": {
+      "quantity": 20,
+      "unit": "gp"
+    },
+    "weight": 6.0,
+    "desc": "",
+    "category": "Martial Melee",
+    "weapon_range": "Melee",
+    "damage": {
+      "dice": "1d10",
+      "damage_type": "slashing"
+    },
+    "two_handed_damage": null,
+    "properties": [
+      "heavy",
+      "reach",
+      "two-handed"
+    ],
+    "range": {
+      "normal": 5,
+      "long": null
+    },
+    "throw_range": null
+  },
+  {
+    "index": "greataxe",
+    "name": "Greataxe",
+    "cost": {
+      "quantity": 30,
+      "unit": "gp"
+    },
+    "weight": 7.0,
+    "desc": "",
+    "category": "Martial Melee",
+    "weapon_range": "Melee",
+    "damage": {
+      "dice": "1d12",
+      "damage_type": "slashing"
+    },
+    "two_handed_damage": null,
+    "properties": [
+      "heavy",
+      "two-handed"
+    ],
+    "range": {
+      "normal": 5,
+      "long": null
+    },
+    "throw_range": null
+  },
+  {
+    "index": "greatsword",
+    "name": "Greatsword",
+    "cost": {
+      "quantity": 50,
+      "unit": "gp"
+    },
+    "weight": 6.0,
+    "desc": "",
+    "category": "Martial Melee",
+    "weapon_range": "Melee",
+    "damage": {
+      "dice": "2d6",
+      "damage_type": "slashing"
+    },
+    "two_handed_damage": null,
+    "properties": [
+      "heavy",
+      "two-handed"
+    ],
+    "range": {
+      "normal": 5,
+      "long": null
+    },
+    "throw_range": null
+  },
+  {
+    "index": "halberd",
+    "name": "Halberd",
+    "cost": {
+      "quantity": 20,
+      "unit": "gp"
+    },
+    "weight": 6.0,
+    "desc": "",
+    "category": "Martial Melee",
+    "weapon_range": "Melee",
+    "damage": {
+      "dice": "1d10",
+      "damage_type": "slashing"
+    },
+    "two_handed_damage": null,
+    "properties": [
+      "heavy",
+      "reach",
+      "two-handed"
+    ],
+    "range": {
+      "normal": 5,
+      "long": null
+    },
+    "throw_range": null
+  },
+  {
+    "index": "lance",
+    "name": "Lance",
+    "cost": {
+      "quantity": 10,
+      "unit": "gp"
+    },
+    "weight": 6.0,
+    "desc": "",
+    "category": "Martial Melee",
+    "weapon_range": "Melee",
+    "damage": {
+      "dice": "1d12",
+      "damage_type": "piercing"
+    },
+    "two_handed_damage": null,
+    "properties": [
+      "reach",
+      "special"
+    ],
+    "range": {
+      "normal": 5,
+      "long": null
+    },
+    "throw_range": null
+  },
+  {
+    "index": "longsword",
+    "name": "Longsword",
+    "cost": {
+      "quantity": 15,
+      "unit": "gp"
+    },
+    "weight": 3.0,
+    "desc": "",
+    "category": "Martial Melee",
+    "weapon_range": "Melee",
+    "damage": {
+      "dice": "1d8",
+      "damage_type": "slashing"
+    },
+    "two_handed_damage": {
+      "dice": "1d10",
+      "damage_type": "slashing"
+    },
+    "properties": [
+      "versatile"
+    ],
+    "range": {
+      "normal": 5,
+      "long": null
+    },
+    "throw_range": null
+  },
+  {
+    "index": "maul",
+    "name": "Maul",
+    "cost": {
+      "quantity": 10,
+      "unit": "gp"
+    },
+    "weight": 10.0,
+    "desc": "",
+    "category": "Martial Melee",
+    "weapon_range": "Melee",
+    "damage": {
+      "dice": "2d6",
+      "damage_type": "bludgeoning"
+    },
+    "two_handed_damage": null,
+    "properties": [
+      "heavy",
+      "two-handed"
+    ],
+    "range": {
+      "normal": 5,
+      "long": null
+    },
+    "throw_range": null
+  },
+  {
+    "index": "morningstar",
+    "name": "Morningstar",
+    "cost": {
+      "quantity": 15,
+      "unit": "gp"
+    },
+    "weight": 4.0,
+    "desc": "",
+    "category": "Martial Melee",
+    "weapon_range": "Melee",
+    "damage": {
+      "dice": "1d8",
+      "damage_type": "piercing"
+    },
+    "two_handed_damage": null,
+    "properties": [],
+    "range": {
+      "normal": 5,
+      "long": null
+    },
+    "throw_range": null
+  },
+  {
+    "index": "pike",
+    "name": "Pike",
+    "cost": {
+      "quantity": 5,
+      "unit": "gp"
+    },
+    "weight": 18.0,
+    "desc": "",
+    "category": "Martial Melee",
+    "weapon_range": "Melee",
+    "damage": {
+      "dice": "1d10",
+      "damage_type": "piercing"
+    },
+    "two_handed_damage": null,
+    "properties": [
+      "heavy",
+      "reach",
+      "two-handed"
+    ],
+    "range": {
+      "normal": 5,
+      "long": null
+    },
+    "throw_range": null
+  },
+  {
+    "index": "rapier",
+    "name": "Rapier",
+    "cost": {
+      "quantity": 25,
+      "unit": "gp"
+    },
+    "weight": 2.0,
+    "desc": "",
+    "category": "Martial Melee",
+    "weapon_range": "Melee",
+    "damage": {
+      "dice": "1d8",
+      "damage_type": "piercing"
+    },
+    "two_handed_damage": null,
+    "properties": [
+      "finesse"
+    ],
+    "range": {
+      "normal": 5,
+      "long": null
+    },
+    "throw_range": null
+  },
+  {
+    "index": "scimitar",
+    "name": "Scimitar",
+    "cost": {
+      "quantity": 25,
+      "unit": "gp"
+    },
+    "weight": 3.0,
+    "desc": "",
+    "category": "Martial Melee",
+    "weapon_range": "Melee",
+    "damage": {
+      "dice": "1d6",
+      "damage_type": "slashing"
+    },
+    "two_handed_damage": null,
+    "properties": [
+      "finesse",
+      "light"
+    ],
+    "range": {
+      "normal": 5,
+      "long": null
+    },
+    "throw_range": null
+  },
+  {
+    "index": "shortsword",
+    "name": "Shortsword",
+    "cost": {
+      "quantity": 10,
+      "unit": "gp"
+    },
+    "weight": 2.0,
+    "desc": "",
+    "category": "Martial Melee",
+    "weapon_range": "Melee",
+    "damage": {
+      "dice": "1d6",
+      "damage_type": "piercing"
+    },
+    "two_handed_damage": null,
+    "properties": [
+      "finesse",
+      "light",
+      "monk"
+    ],
+    "range": {
+      "normal": 5,
+      "long": null
+    },
+    "throw_range": null
+  },
+  {
+    "index": "trident",
+    "name": "Trident",
+    "cost": {
+      "quantity": 5,
+      "unit": "gp"
+    },
+    "weight": 4.0,
+    "desc": "",
+    "category": "Martial Melee",
+    "weapon_range": "Melee",
+    "damage": {
+      "dice": "1d6",
+      "damage_type": "piercing"
+    },
+    "two_handed_damage": {
+      "dice": "1d8",
+      "damage_type": "piercing"
+    },
+    "properties": [
+      "thrown",
+      "versatile"
+    ],
+    "range": {
+      "normal": 5,
+      "long": null
+    },
+    "throw_range": {
+      "normal": 20,
+      "long": 60
+    }
+  },
+  {
+    "index": "war-pick",
+    "name": "War pick",
+    "cost": {
+      "quantity": 5,
+      "unit": "gp"
+    },
+    "weight": 2.0,
+    "desc": "",
+    "category": "Martial Melee",
+    "weapon_range": "Melee",
+    "damage": {
+      "dice": "1d8",
+      "damage_type": "piercing"
+    },
+    "two_handed_damage": null,
+    "properties": [],
+    "range": {
+      "normal": 5,
+      "long": null
+    },
+    "throw_range": null
+  },
+  {
+    "index": "warhammer",
+    "name": "Warhammer",
+    "cost": {
+      "quantity": 15,
+      "unit": "gp"
+    },
+    "weight": 2.0,
+    "desc": "",
+    "category": "Martial Melee",
+    "weapon_range": "Melee",
+    "damage": {
+      "dice": "1d8",
+      "damage_type": "bludgeoning"
+    },
+    "two_handed_damage": {
+      "dice": "1d10",
+      "damage_type": "bludgeoning"
+    },
+    "properties": [
+      "versatile"
+    ],
+    "range": {
+      "normal": 5,
+      "long": null
+    },
+    "throw_range": null
+  },
+  {
+    "index": "whip",
+    "name": "Whip",
+    "cost": {
+      "quantity": 2,
+      "unit": "gp"
+    },
+    "weight": 3.0,
+    "desc": "",
+    "category": "Martial Melee",
+    "weapon_range": "Melee",
+    "damage": {
+      "dice": "1d4",
+      "damage_type": "slashing"
+    },
+    "two_handed_damage": null,
+    "properties": [
+      "finesse",
+      "reach"
+    ],
+    "range": {
+      "normal": 5,
+      "long": null
+    },
+    "throw_range": null
+  },
+  {
+    "index": "blowgun",
+    "name": "Blowgun",
+    "cost": {
+      "quantity": 10,
+      "unit": "gp"
+    },
+    "weight": 1.0,
+    "desc": "",
+    "category": "Martial Ranged",
+    "weapon_range": "Ranged",
+    "damage": {
+      "dice": "1",
+      "damage_type": "piercing"
+    },
+    "two_handed_damage": null,
+    "properties": [
+      "ammunition",
+      "loading"
+    ],
+    "range": {
+      "normal": 25,
+      "long": 100
+    },
+    "throw_range": null
+  },
+  {
+    "index": "crossbow-hand",
+    "name": "Crossbow, hand",
+    "cost": {
+      "quantity": 75,
+      "unit": "gp"
+    },
+    "weight": 3.0,
+    "desc": "",
+    "category": "Martial Ranged",
+    "weapon_range": "Ranged",
+    "damage": {
+      "dice": "1d6",
+      "damage_type": "piercing"
+    },
+    "two_handed_damage": null,
+    "properties": [
+      "ammunition",
+      "light",
+      "loading"
+    ],
+    "range": {
+      "normal": 30,
+      "long": 120
+    },
+    "throw_range": null
+  },
+  {
+    "index": "crossbow-heavy",
+    "name": "Crossbow, heavy",
+    "cost": {
+      "quantity": 50,
+      "unit": "gp"
+    },
+    "weight": 18.0,
+    "desc": "",
+    "category": "Martial Ranged",
+    "weapon_range": "Ranged",
+    "damage": {
+      "dice": "1d10",
+      "damage_type": "piercing"
+    },
+    "two_handed_damage": null,
+    "properties": [
+      "ammunition",
+      "heavy",
+      "loading",
+      "two-handed"
+    ],
+    "range": {
+      "normal": 100,
+      "long": 400
+    },
+    "throw_range": null
+  },
+  {
+    "index": "longbow",
+    "name": "Longbow",
+    "cost": {
+      "quantity": 50,
+      "unit": "gp"
+    },
+    "weight": 2.0,
+    "desc": "",
+    "category": "Martial Ranged",
+    "weapon_range": "Ranged",
+    "damage": {
+      "dice": "1d8",
+      "damage_type": "piercing"
+    },
+    "two_handed_damage": null,
+    "properties": [
+      "ammunition",
+      "heavy",
+      "two-handed"
+    ],
+    "range": {
+      "normal": 150,
+      "long": 600
+    },
+    "throw_range": null
+  },
+  {
+    "index": "net",
+    "name": "Net",
+    "cost": {
+      "quantity": 1,
+      "unit": "gp"
+    },
+    "weight": 3.0,
+    "desc": "",
+    "category": "Martial Ranged",
+    "weapon_range": "Ranged",
+    "damage": null,
+    "two_handed_damage": null,
+    "properties": [
+      "thrown",
+      "special"
+    ],
+    "range": {
+      "normal": 5,
+      "long": 15
+    },
+    "throw_range": {
+      "normal": 5,
+      "long": 15
+    }
+  }
+]

@@ -9,8 +9,10 @@ from typing import Annotated, ClassVar, Literal, get_args
 
 from pydantic import Field
 
+from ...content.vocabulary import CONDITION_NAMES, ConditionName
 from ...utils.dice import SelfContainedDice
-from .base import ABILITIES, Ability, EntityId, Frozen, Kind
+from ...utils.models import ABILITIES, Ability, Frozen
+from .base import EntityId, Kind
 
 
 @dataclass(frozen=True, slots=True)
@@ -135,6 +137,24 @@ as `damage`. Example: a poultice on the player -> `heal` with amount '1d4 + 2'."
     )
 
 
+class ApplyCondition(Frozen):
+    """Put an actor under an SRD condition, or lift one they are already under."""
+
+    GUIDANCE: ClassVar[str] = """Use when someone here is blinded, grappled, frightened, knocked \
+prone and so on, and when that ends. A creature immune to the condition is unaffected — you do not \
+need to check, the rules do. Whether it takes hold is not yours to decide when it could be \
+resisted: put it in a `roll_check` branch.
+Example: the player slips on wet stone -> `apply_condition` with condition 'prone'. They stand up \
+again -> the same with ends true."""
+
+    action: Literal["apply_condition"] = "apply_condition"
+    condition: ConditionName = Field(description=f"One of: {', '.join(CONDITION_NAMES)}.")
+    ends: bool = Field(default=False, description="True to lift the condition instead of applying.")
+    target_id: Annotated[EntityId | None, References("actor", present=True)] = Field(
+        default=None, description="Id of the `actor` affected, here with the player; omit for them."
+    )
+
+
 class Move(Frozen):
     """Move an actor to a location: the player by default, or another actor you name."""
 
@@ -180,6 +200,7 @@ Consequence = Annotated[
     | GainImprovisedItem
     | Damage
     | Heal
+    | ApplyCondition
     | Move
     | RollCheck,
     Field(discriminator="action"),

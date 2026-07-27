@@ -99,6 +99,8 @@ class Settings(BaseSettings):
     saves_dir: Path = Path("saves")
     scenarios_dir: Path = Path("scenarios")
     characters_dir: Path = Path("characters")
+    # An explicit ordered list, never a directory scan, so load order is deterministic.
+    packs: list[Path] = [Path("packs") / "srd-2014"]
 
     @model_validator(mode="after")
     def _keys_present(self) -> Self:

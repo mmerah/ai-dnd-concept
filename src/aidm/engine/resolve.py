@@ -7,8 +7,11 @@ from collections.abc import Sequence
 from random import Random
 from typing import Literal
 
+from ..content.vocabulary import ConditionName
 from ..domain.models import (
     ActorEntity,
+    ApplyCondition,
+    ConditionChanged,
     Consequence,
     Damage,
     Discover,
@@ -63,6 +66,8 @@ def _walk(consequence: Consequence, draft: GameState, rng: Random) -> list[Event
             return _hp_events(draft, target_id, amount, rng, sign=-1)
         case Heal(amount=amount, target_id=target_id):
             return _hp_events(draft, target_id, amount, rng, sign=+1)
+        case ApplyCondition(condition=condition, ends=ends, target_id=target_id):
+            return _condition_events(draft, target_id, condition, active=not ends)
         case Discover(entity_id=entity_id):
             return _reveal(_entity(draft, entity_id))  # re-discovery is a no-op, not an error
         case Move(location_id=location_id, actor_id=actor_id):
@@ -142,6 +147,26 @@ def _hp_events(
     return events if changed.delta == 0 else [*events, changed]
 
 
+def _condition_events(
+    draft: GameState,
+    target_id: EntityId | None,
+    condition: ConditionName,
+    *,
+    active: bool,
+) -> list[Event]:
+    """Immunity and redundancy are absorbed, not narrated: a devil the poison never touched, or a
+    second helping of `prone`, changed nothing and so is not an event. `with_condition` is asked
+    rather than re-implemented, so the rule cannot drift from the one the reducer applies. The
+    reveal still happens, because the Director acted on someone the player must have seen."""
+    target = draft.player if target_id is None else _actor_here(draft, target_id)
+    if target.stats.with_condition(condition, active=active) == target.stats:
+        return _reveal(target)
+    changed = ConditionChanged(
+        target_id=target.id, target_name=target.name, condition=condition, active=active
+    )
+    return [*_reveal(target), changed]
+
+
 def _hp_changed(actor: ActorEntity, delta: int) -> HpChanged:
     """`delta` is what the clamp will actually apply, so the Narrator is never told of hit points
     that never moved: `with_hp_delta` stays the one clamp, here as much as in the reducer."""
@@ -150,7 +175,7 @@ def _hp_changed(actor: ActorEntity, delta: int) -> HpChanged:
         target_id=actor.id,
         target_name=actor.name,
         delta=after.hp - actor.stats.hp,
-        condition=after.condition,
+        wounds=after.wounds,
     )
 
 

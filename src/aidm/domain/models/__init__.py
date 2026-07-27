@@ -1,20 +1,18 @@
 """The domain vocabulary. Grouped in submodules; imported flat as `from ..domain.models import`."""
 
 from ...utils.dice import DiceExpr
+from ...utils.models import ABILITIES, Ability, Attributes, Frozen, updated
 from .base import (
-    ABILITIES,
     PLAYER_ID,
     ROLES,
     SAVE_VERSION,
-    Ability,
     EntityId,
-    Frozen,
     Kind,
     Role,
-    updated,
 )
 from .consequences import (
     CONSEQUENCE_TYPES,
+    ApplyCondition,
     Consequence,
     Damage,
     Discover,
@@ -49,6 +47,7 @@ from .entities import (
 )
 from .events import (
     CheckRolled,
+    ConditionChanged,
     DiceRolled,
     EntityCreated,
     EntityDiscovered,
@@ -67,7 +66,7 @@ from .state import (
     StartingItem,
     WorldState,
 )
-from .stats import Attributes, Condition, StatBlock
+from .stats import StatBlock, Wounds
 from .turn import Turn  # last: depends on .events, .direction, .state
 
 __all__ = [
@@ -78,11 +77,12 @@ __all__ = [
     "SAVE_VERSION",
     "Ability",
     "ActorEntity",
+    "ApplyCondition",
     "Attributes",
     "BaseEntity",
     "CharacterSheet",
     "CheckRolled",
-    "Condition",
+    "ConditionChanged",
     "Consequence",
     "Damage",
     "DiceExpr",
@@ -125,6 +125,7 @@ __all__ = [
     "TakeItem",
     "Turn",
     "WorldState",
+    "Wounds",
     "branches",
     "find",
     "flatten",

@@ -6,6 +6,7 @@ from functools import reduce
 from .models import (
     ActorEntity,
     CheckRolled,
+    ConditionChanged,
     DiceRolled,
     Entity,
     EntityCreated,
@@ -73,6 +74,11 @@ def _apply_one(state: GameState, event: Event) -> GameState:
             actor = _actor(state, target_id, "change the hit points of")
             hurt = updated(actor, stats=actor.stats.with_hp_delta(delta))
             return _with_entities(state, {**state.world.entities, target_id: hurt})
+        case ConditionChanged(target_id=target_id, condition=condition, active=active):
+            actor = _actor(state, target_id, "change the condition of")
+            stats = actor.stats.with_condition(condition, active=active)
+            under = updated(actor, stats=stats)
+            return _with_entities(state, {**state.world.entities, target_id: under})
         case Moved(actor_id=actor_id, location_id=location_id):
             return _move_actor(state, actor_id, location_id)
         case EntityDiscovered(entity_id=entity_id):

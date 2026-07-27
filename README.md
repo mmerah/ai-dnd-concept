@@ -38,19 +38,31 @@ That panel is the point of the PoC. The **state** tab is the live `GameState`.
 ```
 src/aidm/
   domain/      pure data and the reducer — no LLM, no I/O
-  engine/      deterministic mechanics: resolve.py (mechanics -> events), growth.py (screen creations)
+  engine/      deterministic mechanics: resolve.py (mechanics -> events), growth.py (screen
+               creations), bestiary.py (content records -> entities)
+  content/     the canonical 5e content model and the pack loader — imports nothing from domain/
   agents/      the provider, the context policy, one file per role
-  utils/       shared primitives: id minting, dice expressions
+  utils/       primitives shared by domain/ and content/: frozen models, abilities, dice, ids
   pipeline.py  run_turn: the fixed sequence
-  store.py     JSON persistence
+  store.py     JSON persistence, and the one place packs are read
   ui/          NiceGUI
 scenarios/     scenario definitions: premise + starting entities (no character)
 characters/    characters, loaded independently so one can be reused across scenarios
+packs/         content packs; `srd-2014` is 5e-bits/5e-database v5.10.0, projected and vendored
+               (12 collections, 1,310 records; progression is R7 — see REFACTOR.md §Step 8)
+scripts/       offline tools, not part of the app: import_srd.py + srd/ rebuild packs/srd-2014
 ```
 
 A `GameState` is composed from a `ScenarioDef` and a `CharacterSheet` at `new_game`; play only ever
 edits `state.world`, never the static `state.scenario` identity. The player is an ordinary actor
 entity inside `state.world.entities`, under the reserved id `player`.
+
+A content **pack** is a manifest plus narrow record collections, addressed by
+`ContentRef(pack, collection, index)` — never a bare slug, since `shield` is both a spell and a
+piece of armour. The projection *is* the format: `scripts/import_srd.py` converts a checkout of
+5e-database into it offline, and the result is committed, so the shipped pack is the edition pin. An
+entity naming a record has the numbers the reducer touches snapshotted into it at creation and reads
+everything descriptive live, which is why a save records the pack versions it was played against.
 
 The boundary that matters is `engine/` ← `agents/`: mechanics stay testable without an agent, and
 agents cannot decide outcomes. Growing the ruleset means growing `engine/`, not the role prompts.

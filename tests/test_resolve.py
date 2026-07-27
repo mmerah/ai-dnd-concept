@@ -8,7 +8,10 @@ import pytest
 
 from aidm.domain.models import (
     PLAYER_ID,
+    ActorEntity,
+    ApplyCondition,
     CheckRolled,
+    ConditionChanged,
     Consequence,
     Damage,
     DiceRolled,
@@ -30,6 +33,7 @@ from aidm.domain.models import (
     TakeItem,
     updated,
 )
+from aidm.domain.reducer import apply
 from aidm.engine.resolve import resolve
 
 # Kael's wisdom is 14 (+2). Random(0)'s first d20 is 13 (-> 15, passes DC 12); Random(2)'s is 2.
@@ -100,7 +104,7 @@ def test_only_the_hit_points_that_moved_are_reported(state: GameState) -> None:
     """`delta` is what the clamp applies, not what was asked for: the Narrator must never be told
     of hit points that never moved, and a change of nothing is not an event at all."""
     (hp,) = resolve([Damage(amount=99)], state, PASS)  # Kael has 10
-    assert isinstance(hp, HpChanged) and (hp.delta, hp.condition) == (-10, "down")
+    assert isinstance(hp, HpChanged) and (hp.delta, hp.wounds) == (-10, "down")
     assert resolve([Heal(amount=3)], state, PASS) == []  # already at full health
 
 
@@ -238,7 +242,7 @@ def test_damage_can_target_another_actor_here(state: GameState) -> None:
     events = resolve([Damage(amount=3, target_id=EntityId("mara"))], state, PASS)
     (hp,) = events
     assert isinstance(hp, HpChanged)
-    assert (hp.target_id, hp.delta, hp.condition) == ("mara", -3, "badly hurt")
+    assert (hp.target_id, hp.delta, hp.wounds) == ("mara", -3, "badly hurt")
 
 
 def test_damaging_an_unseen_actor_reveals_them_first(state: GameState) -> None:
@@ -251,3 +255,28 @@ def test_damaging_an_actor_elsewhere_fails(state: GameState) -> None:
     away = relocated(state, EntityId("mara"), EntityId("vault"))
     with pytest.raises(ValueError, match="not at the player's location"):
         resolve([Damage(amount=1, target_id=EntityId("mara"))], away, PASS)
+
+
+def test_a_condition_takes_hold_lifts_and_is_not_reapplied(state: GameState) -> None:
+    """Only a change is an event: a second helping of `prone` moved nothing, so the Narrator is not
+    told it did."""
+    prone = ApplyCondition(condition="prone")
+    (held,) = resolve([prone], state, PASS)
+    assert isinstance(held, ConditionChanged) and (held.condition, held.active) == ("prone", True)
+    after = apply(state, [held])
+    assert after.player.stats.conditions == ("prone",)
+    assert resolve([prone], after, PASS) == []
+    (lifted,) = resolve([updated(prone, ends=True)], after, PASS)
+    assert isinstance(lifted, ConditionChanged) and not lifted.active
+    assert apply(after, [lifted]).player.stats.conditions == ()
+
+
+def test_an_immune_actor_is_simply_unaffected(state: GameState) -> None:
+    """The rules decide, not the Director: it may name any condition and immunity absorbs it."""
+    mara = state.world.entities[EntityId("mara")]
+    assert isinstance(mara, ActorEntity)
+    immune = updated(mara, stats=updated(mara.stats, condition_immunities=("poisoned",)))
+    poisoned = ApplyCondition(condition="poisoned", target_id=EntityId("mara"))
+    assert resolve([poisoned], replaced(state, immune), PASS) == []
+    (changed,) = resolve([poisoned], state, PASS)
+    assert isinstance(changed, ConditionChanged) and changed.summary == "Mara is poisoned"

@@ -1,63 +1,53 @@
-"""Actor numbers: ability scores, hit points, and how they read to an onlooker."""
+"""Actor numbers: hit points, armour, conditions, and how a body reads to an onlooker."""
 
-from typing import Literal, Self, assert_never
+from typing import Literal, Self
 
 from pydantic import Field, model_validator
 
-from .base import Ability, Frozen, updated
+from ...content.vocabulary import ConditionName
+from ...utils.models import Attributes, Frozen, updated
 
-
-class Attributes(Frozen):
-    """`__getitem__` is exhaustive on `Ability`, so a drifting field is a type error."""
-
-    strength: int = 10
-    dexterity: int = 10
-    constitution: int = 10
-    intelligence: int = 10
-    wisdom: int = 10
-    charisma: int = 10
-
-    def __getitem__(self, ability: Ability) -> int:
-        match ability:
-            case "strength":
-                return self.strength
-            case "dexterity":
-                return self.dexterity
-            case "constitution":
-                return self.constitution
-            case "intelligence":
-                return self.intelligence
-            case "wisdom":
-                return self.wisdom
-            case "charisma":
-                return self.charisma
-            case _:
-                assert_never(ability)
-
-
-# All the Narrator may learn about another actor's hit points.
-Condition = Literal["unharmed", "hurt", "badly hurt", "down"]
+# All the Narrator may learn about another actor's hit points. Named for the wound it describes,
+# because `Condition` is the SRD's word for blinded/prone/stunned — a different idea entirely.
+Wounds = Literal["unharmed", "hurt", "badly hurt", "down"]
 
 
 class StatBlock(Frozen):
-    """Defaults are the SRD commoner, so an authored scenario or an invented actor can omit them."""
+    """Every number the reducer touches, and the whole of what a content record is snapshotted into.
+    Defaults are the SRD commoner, so an authored scenario or an invented actor can omit them."""
 
     attributes: Attributes = Attributes()
     max_hp: int = Field(default=4, ge=1)
     hp: int = Field(default=4, ge=0)
+    ac: int = Field(default=10, ge=0)
+    conditions: tuple[ConditionName, ...] = ()
+    # Snapshotted from the archetype like every other number the reducer reads: a pack bump must not
+    # be able to make a saved devil newly poisonable.
+    condition_immunities: tuple[ConditionName, ...] = ()
 
     @model_validator(mode="after")
-    def _hp_within_max(self) -> Self:
+    def _consistent_stats(self) -> Self:
         if self.hp > self.max_hp:
             raise ValueError(f"hp {self.hp} exceeds max_hp {self.max_hp}")
+        if held := sorted(set(self.conditions) & set(self.condition_immunities)):
+            raise ValueError(f"immune to conditions it suffers: {held}")
         return self
 
     def with_hp_delta(self, delta: int) -> Self:
         """The one clamp: the resolver describes and the reducer applies through this."""
         return updated(self, hp=max(0, min(self.max_hp, self.hp + delta)))
 
+    def with_condition(self, condition: ConditionName, *, active: bool) -> Self:
+        """The one place a condition moves. An immune or redundant change returns `self`, so a
+        caller comparing the result is asking the rules rather than restating them — the same shape
+        as `with_hp_delta`, where a clamped change simply moves nothing."""
+        if active and condition in self.condition_immunities:
+            return self
+        held = set(self.conditions) | {condition} if active else set(self.conditions) - {condition}
+        return updated(self, conditions=tuple(sorted(held)))
+
     @property
-    def condition(self) -> Condition:
+    def wounds(self) -> Wounds:
         if self.hp == 0:
             return "down"
         if self.hp * 2 <= self.max_hp:

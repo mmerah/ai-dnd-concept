@@ -1,9 +1,15 @@
-"""Composing a scenario-independent character sheet with the scenario that places it."""
+"""Composing a scenario-independent character sheet with the scenario that places it, and the two
+things a save is refused for."""
+
+from pathlib import Path
 
 import pytest
 from pydantic import ValidationError
 
-from aidm.domain.models import PLAYER_ID, CharacterSheet, GameState, ScenarioDef
+from aidm import store
+from aidm.config import settings
+from aidm.content import PackStamp
+from aidm.domain.models import PLAYER_ID, CharacterSheet, GameState, ScenarioDef, updated
 
 SHEET = {
     "name": "Kael",
@@ -55,7 +61,22 @@ def test_a_sheet_becomes_the_player_entity() -> None:
     definition = ScenarioDef.model_validate(
         {"meta": META, "starting_location_id": "study", "entities": [STUDY, MARA]}
     )
-    state = GameState.from_scenario(definition, CharacterSheet.model_validate(SHEET))
+    state = GameState.from_scenario(definition, CharacterSheet.model_validate(SHEET), [])
     assert state.player.id == PLAYER_ID
     assert state.player.known and state.player.location_id == "study"
     assert [state.world.entities[i].name for i in state.player.inventory] == ["a lantern"]
+
+
+def test_a_save_played_against_other_content_is_refused(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """An actor's stats were snapshotted from a pack version, so a bump would silently change the
+    game the save recorded. There are no migrations: fail loudly instead."""
+    monkeypatch.setattr(settings(), "saves_dir", tmp_path)
+    state = store.new_game("whispering_vault")
+    store.save("current", state)
+    assert store.load("current") == state
+
+    store.save("stale", updated(state, packs=[PackStamp(id="srd-2014", version="0.0.0")]))
+    with pytest.raises(ValueError, match="was played against"):
+        store.load("stale")

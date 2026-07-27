@@ -1,13 +1,16 @@
 """The character sheet, the scenario identity vs. live world, and the state that ties them."""
 
+from collections.abc import Sequence
 from typing import Self
 
 from pydantic import Field, model_validator
 
+from ...content import ContentRef, PackStamp
 from ...utils.ids import slug
-from .base import PLAYER_ID, SAVE_VERSION, EntityId, Frozen
+from ...utils.models import Attributes, Frozen
+from .base import PLAYER_ID, SAVE_VERSION, EntityId
 from .entities import ActorEntity, Entity, ItemEntity, LocationEntity
-from .stats import Attributes, StatBlock
+from .stats import StatBlock
 
 
 class StartingItem(Frozen):
@@ -15,6 +18,7 @@ class StartingItem(Frozen):
 
     name: str
     brief: str
+    ref: ContentRef | None = None
 
 
 class CharacterSheet(Frozen):
@@ -90,6 +94,8 @@ class GameState(Frozen):
     version: int = SAVE_VERSION
     scenario: ScenarioMeta
     world: WorldState
+    # The versions the entities' stats were snapshotted from; `store.load` refuses a mismatch.
+    packs: list[PackStamp] = Field(default_factory=list)
     history: list[Exchange] = Field(default_factory=list)
     turn: int = 0
 
@@ -136,9 +142,15 @@ class GameState(Frozen):
         return self
 
     @classmethod
-    def from_scenario(cls, scenario: ScenarioDef, character: CharacterSheet) -> Self:
+    def from_scenario(
+        cls,
+        scenario: ScenarioDef,
+        character: CharacterSheet,
+        packs: Sequence[PackStamp],
+    ) -> Self:
         """A sheet placed at the scenario's start, over its canon. Starting items become canon items
-        held by the player (location None), so an inventory holds real ids, not free text."""
+        held by the player (location None), so an inventory holds real ids, not free text. The pack
+        stamps are handed in because reading them means I/O, which `domain/` does not do."""
         entities = dict(scenario.as_world().entities)
         inventory: list[EntityId] = []
         for item in character.starting_items:
@@ -146,6 +158,7 @@ class GameState(Frozen):
                 id=slug(item.name, entities.keys()),
                 name=item.name,
                 brief=item.brief,
+                ref=item.ref,
                 known=True,
             )
             entities[entity.id] = entity
@@ -163,4 +176,4 @@ class GameState(Frozen):
                 hp=character.starting_max_hp,
             ),
         )
-        return cls(scenario=scenario.meta, world=WorldState(entities=entities))
+        return cls(scenario=scenario.meta, world=WorldState(entities=entities), packs=list(packs))

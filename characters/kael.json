@@ -11,6 +11,10 @@
   },
   "starting_max_hp": 10,
   "starting_items": [
-    { "name": "a guttering lantern", "brief": "A dented tin lantern whose flame will not hold still." }
+    {
+      "name": "a guttering lantern",
+      "brief": "A dented tin lantern whose flame will not hold still.",
+      "ref": { "pack": "srd-2014", "collection": "gear", "index": "lantern-hooded" }
+    }
   ]
 }

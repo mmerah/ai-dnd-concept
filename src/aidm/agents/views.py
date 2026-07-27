@@ -1,7 +1,20 @@
 """Renderers for single context fragments. Pure string in, pure string out."""
 
 from collections.abc import Iterable, Sequence
+from typing import assert_never
 
+from ..content import (
+    ContentMiss,
+    ContentRef,
+    DamageRoll,
+    Library,
+    MonsterAction,
+    MonsterAttack,
+    MonsterMultiattack,
+    MonsterProcedure,
+    MonsterRecord,
+    MonsterSave,
+)
 from ..domain.models import (
     PLAYER_ID,
     ActorEntity,
@@ -13,6 +26,7 @@ from ..domain.models import (
     GrowthRequest,
     ItemEntity,
     LocationEntity,
+    StatBlock,
     find,
 )
 
@@ -77,6 +91,98 @@ def here(state: GameState) -> str:
     return briefs((e for e in present(state) if e.known), state)
 
 
+def statblocks(state: GameState, library: Library) -> str:
+    """What the Director may act on for every actor standing here, and it alone — a typed slice,
+    never the record: a goblin is ~2,100 bytes pretty-printed and an adult red dragon ~6,100, which
+    would roughly double this role's whole input. Hit points are deliberately absent: `intent`
+    reaches the Narrator, so a number read here could be restated where the player would see it.
+    Conditions come from the entity, so an actor with no archetype behind it still shows them."""
+    lines = [
+        f"- {label(e)} — ac {e.stats.ac}{conditions(e.stats)}{_archetype(e.ref, library)}"
+        for e in present(state)
+        if isinstance(e, ActorEntity) and e.known
+    ]
+    return "\n".join(lines) or "- (none)"
+
+
+def conditions(stats: StatBlock) -> str:
+    """A condition nobody can read is a condition nobody can lift, so every view of an actor —
+    the player's own sheet included — says which ones hold."""
+    return f" — under {', '.join(stats.conditions)}" if stats.conditions else ""
+
+
+def _archetype(ref: ContentRef | None, library: Library) -> str:
+    """A miss is rendered, never skipped: a pack that lost a record must show in the trace. An
+    actor naming no record has no archetype to show, which is not a miss."""
+    if ref is None:
+        return ""
+    record = library.monster(ref)
+    if isinstance(record, ContentMiss):
+        return f" — {record.summary}"
+    return f"{_moves(record)}{_defences(record)}"
+
+
+def _moves(record: MonsterRecord) -> str:
+    """Only what the Director could turn into a consequence; a procedure it can only narrate is
+    left to the prose it already has. Legendary actions, reactions and traits carry to-hits, DCs
+    and damage of their own — a whole action economy the Director would otherwise never see."""
+    groups = (
+        ("", record.actions),
+        ("legendary: ", record.legendary_actions),
+        ("reaction: ", record.reactions),
+        ("trait: ", record.traits),
+    )
+    return "".join(
+        f" — {prefix}{'; '.join(rendered)}"
+        for prefix, actions in groups
+        if (rendered := [m for m in (_move(a) for a in actions) if m])
+    )
+
+
+def _move(action: MonsterAction) -> str:
+    """Exhaustive, so a new action shape must answer whether the Director can act on it rather
+    than silently rendering as nothing."""
+    when = f" [{action.usage}]" if action.usage is not None else ""
+    hurts = f" ({_damage(action.damage)})" if action.damage else ""
+    match action:
+        case MonsterAttack():
+            return f"{action.name} {action.attack_bonus:+d}{hurts}{when}"
+        case MonsterSave():
+            saved = f", {action.on_success} on a save" if action.on_success != "none" else ""
+            return f"{action.name} dc {action.dc} {action.save_ability}{hurts}{saved}{when}"
+        case MonsterMultiattack():
+            return f"{action.name}: {' or '.join(str(o) for o in action.options)}{when}"
+        case MonsterProcedure():
+            return ""
+        case _:
+            assert_never(action)
+
+
+def _defences(record: MonsterRecord) -> str:
+    """Resistances are what make a damage type worth choosing, and a condition immunity is the
+    difference between `apply_condition` landing and doing nothing — so the two are never merged:
+    `poison` is a damage type and `poisoned` a condition, and a role told "immune to poison,
+    poisoned" cannot tell which is which. Damage entries are upstream prose containing their own
+    commas ('bludgeoning, piercing, and slashing from nonmagical weapons'), so they are separated
+    by something prose does not contain."""
+    clauses = [
+        f"{verb} {' / '.join(entries)}"
+        for verb, entries in (
+            ("resists", record.damage_resistances),
+            ("immune to", record.damage_immunities),
+            ("vulnerable to", record.damage_vulnerabilities),
+        )
+        if entries
+    ]
+    if record.condition_immunities:
+        clauses.append(f"immune to the conditions {', '.join(record.condition_immunities)}")
+    return "".join(f" — {clause}" for clause in clauses)
+
+
+def _damage(rolls: Sequence[DamageRoll]) -> str:
+    return ", ".join(f"{roll.dice} {roll.damage_type}" for roll in rolls)
+
+
 def elsewhere(state: GameState) -> str:
     """Known entities away from here; the current location and carried items show elsewhere."""
     here_ids = {e.id for e in present(state)}
@@ -112,7 +218,8 @@ def character(state: GameState) -> str:
         raise ValueError(f"character holds unknown item id(s) {missing!r}")
     inventory = "\n".join(f"- {label(e)} — {e.brief}" for e in items if e is not None) or "- (none)"
     return (
-        f"{player.name} — hp {stats.hp}/{stats.max_hp} — at {label(where)}\n"
+        f"{player.name} — hp {stats.hp}/{stats.max_hp} — ac {stats.ac}"
+        f"{conditions(stats)} — at {label(where)}\n"
         f"attributes: {attributes}\ninventory:\n{inventory}"
     )
 

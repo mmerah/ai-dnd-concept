@@ -30,7 +30,7 @@ asyncio_mode = "auto"
 testpaths = ["tests"]
 
 [tool.basedpyright]
-include = ["src", "tests"]
+include = ["src", "tests", "scripts"]
 typeCheckingMode = "strict"
 reportUnusedCallResult = false        # NiceGUI's builder API returns elements by design
 reportUnannotatedClassAttribute = false  # pydantic's `model_config`

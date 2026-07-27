@@ -1,0 +1,210 @@
+[
+  {
+    "index": "padded-armor",
+    "name": "Padded Armor",
+    "cost": {
+      "quantity": 5,
+      "unit": "gp"
+    },
+    "weight": 8.0,
+    "desc": "",
+    "category": "Light",
+    "base_ac": 11,
+    "dex_bonus": true,
+    "max_dex_bonus": null,
+    "str_minimum": 0,
+    "stealth_disadvantage": true
+  },
+  {
+    "index": "leather-armor",
+    "name": "Leather Armor",
+    "cost": {
+      "quantity": 10,
+      "unit": "gp"
+    },
+    "weight": 10.0,
+    "desc": "",
+    "category": "Light",
+    "base_ac": 11,
+    "dex_bonus": true,
+    "max_dex_bonus": null,
+    "str_minimum": 0,
+    "stealth_disadvantage": false
+  },
+  {
+    "index": "studded-leather-armor",
+    "name": "Studded Leather Armor",
+    "cost": {
+      "quantity": 45,
+      "unit": "gp"
+    },
+    "weight": 13.0,
+    "desc": "",
+    "category": "Light",
+    "base_ac": 12,
+    "dex_bonus": true,
+    "max_dex_bonus": null,
+    "str_minimum": 0,
+    "stealth_disadvantage": false
+  },
+  {
+    "index": "hide-armor",
+    "name": "Hide Armor",
+    "cost": {
+      "quantity": 10,
+      "unit": "gp"
+    },
+    "weight": 12.0,
+    "desc": "",
+    "category": "Medium",
+    "base_ac": 12,
+    "dex_bonus": true,
+    "max_dex_bonus": 2,
+    "str_minimum": 0,
+    "stealth_disadvantage": false
+  },
+  {
+    "index": "chain-shirt",
+    "name": "Chain Shirt",
+    "cost": {
+      "quantity": 50,
+      "unit": "gp"
+    },
+    "weight": 20.0,
+    "desc": "",
+    "category": "Medium",
+    "base_ac": 13,
+    "dex_bonus": true,
+    "max_dex_bonus": 2,
+    "str_minimum": 0,
+    "stealth_disadvantage": false
+  },
+  {
+    "index": "scale-mail",
+    "name": "Scale Mail",
+    "cost": {
+      "quantity": 50,
+      "unit": "gp"
+    },
+    "weight": 45.0,
+    "desc": "",
+    "category": "Medium",
+    "base_ac": 14,
+    "dex_bonus": true,
+    "max_dex_bonus": 2,
+    "str_minimum": 0,
+    "stealth_disadvantage": true
+  },
+  {
+    "index": "breastplate",
+    "name": "Breastplate",
+    "cost": {
+      "quantity": 400,
+      "unit": "gp"
+    },
+    "weight": 20.0,
+    "desc": "",
+    "category": "Medium",
+    "base_ac": 14,
+    "dex_bonus": true,
+    "max_dex_bonus": 2,
+    "str_minimum": 0,
+    "stealth_disadvantage": false
+  },
+  {
+    "index": "half-plate-armor",
+    "name": "Half Plate Armor",
+    "cost": {
+      "quantity": 750,
+      "unit": "gp"
+    },
+    "weight": 40.0,
+    "desc": "",
+    "category": "Medium",
+    "base_ac": 15,
+    "dex_bonus": true,
+    "max_dex_bonus": 2,
+    "str_minimum": 0,
+    "stealth_disadvantage": true
+  },
+  {
+    "index": "ring-mail",
+    "name": "Ring Mail",
+    "cost": {
+      "quantity": 30,
+      "unit": "gp"
+    },
+    "weight": 40.0,
+    "desc": "",
+    "category": "Heavy",
+    "base_ac": 14,
+    "dex_bonus": false,
+    "max_dex_bonus": null,
+    "str_minimum": 0,
+    "stealth_disadvantage": true
+  },
+  {
+    "index": "chain-mail",
+    "name": "Chain Mail",
+    "cost": {
+      "quantity": 75,
+      "unit": "gp"
+    },
+    "weight": 55.0,
+    "desc": "",
+    "category": "Heavy",
+    "base_ac": 16,
+    "dex_bonus": false,
+    "max_dex_bonus": null,
+    "str_minimum": 13,
+    "stealth_disadvantage": true
+  },
+  {
+    "index": "splint-armor",
+    "name": "Splint Armor",
+    "cost": {
+      "quantity": 200,
+      "unit": "gp"
+    },
+    "weight": 60.0,
+    "desc": "",
+    "category": "Heavy",
+    "base_ac": 17,
+    "dex_bonus": false,
+    "max_dex_bonus": null,
+    "str_minimum": 15,
+    "stealth_disadvantage": true
+  },
+  {
+    "index": "plate-armor",
+    "name": "Plate Armor",
+    "cost": {
+      "quantity": 1500,
+      "unit": "gp"
+    },
+    "weight": 65.0,
+    "desc": "",
+    "category": "Heavy",
+    "base_ac": 18,
+    "dex_bonus": false,
+    "max_dex_bonus": null,
+    "str_minimum": 15,
+    "stealth_disadvantage": true
+  },
+  {
+    "index": "shield",
+    "name": "Shield",
+    "cost": {
+      "quantity": 10,
+      "unit": "gp"
+    },
+    "weight": 6.0,
+    "desc": "",
+    "category": "Shield",
+    "base_ac": 2,
+    "dex_bonus": false,
+    "max_dex_bonus": null,
+    "str_minimum": 0,
+    "stealth_disadvantage": false
+  }
+]

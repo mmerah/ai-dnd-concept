@@ -1,7 +1,10 @@
-"""JSON persistence. A save is exactly one GameState; the trace is append-only JSONL."""
+"""JSON persistence. A save is exactly one GameState; the trace is append-only JSONL; a pack is a
+directory of records."""
 
+from functools import cache
 from pathlib import Path
 
+from . import content
 from .config import settings
 from .domain.models import (
     SAVE_VERSION,
@@ -10,6 +13,7 @@ from .domain.models import (
     ScenarioDef,
     Turn,
 )
+from .engine import bestiary
 
 ENCODING = "utf-8"  # narration is full of curly quotes; the platform default is not enough
 
@@ -22,6 +26,12 @@ def _trace_path(slug: str) -> Path:
     return settings().saves_dir / f"{slug}.trace.jsonl"
 
 
+@cache
+def library() -> content.Library:
+    """The packs this build plays, read once — the pack list cannot change within a run."""
+    return content.load(settings().packs)
+
+
 def new_game(scenario: str, character: str = "kael") -> GameState:
     """Read a scenario definition and an independent character; the domain composes the state."""
     conf = settings()
@@ -31,16 +41,24 @@ def new_game(scenario: str, character: str = "kael") -> GameState:
     sheet = CharacterSheet.model_validate_json(
         (conf.characters_dir / f"{character}.json").read_text(encoding=ENCODING)
     )
-    return GameState.from_scenario(definition, sheet)
+    packs = library()
+    return bestiary.statted_world(GameState.from_scenario(definition, sheet, packs.stamps), packs)
 
 
 def load(slug: str) -> GameState | None:
+    """A save is unreadable if either the schema or the content under it moved: an entity's stats
+    were snapshotted from a pack version, so a bump would silently change the game it recorded."""
     path = _save_path(slug)
     if not path.exists():
         return None
     state = GameState.model_validate_json(path.read_text(encoding=ENCODING))
     if state.version != SAVE_VERSION:
         raise ValueError(f"save {slug!r} is v{state.version}, this build needs v{SAVE_VERSION}")
+    current = library().stamps
+    if state.packs != current:
+        raise ValueError(
+            f"save {slug!r} was played against {state.packs}, this build ships {current}"
+        )
     return state
 
 

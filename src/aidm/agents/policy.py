@@ -14,6 +14,7 @@ from .blocks import (
     PREMISE,
     RECENT_PLAY,
     SPEAKER,
+    STAT_BLOCKS,
     UNREVEALED_CANON,
     WHAT_HAPPENED,
 )
@@ -22,7 +23,7 @@ from .context import Block, DirectionBlock, RequestBlock, RolePolicy, TurnContex
 # The entire context policy of the application.
 CONTEXT: dict[Role, RolePolicy] = {
     "director": RolePolicy(
-        (PREMISE, CHARACTER, HERE, KNOWN_ELSEWHERE, UNREVEALED_CANON, PLAYER_PROMPT),
+        (PREMISE, CHARACTER, HERE, STAT_BLOCKS, KNOWN_ELSEWHERE, UNREVEALED_CANON, PLAYER_PROMPT),
         native_history=True,
     ),
     "narrator": RolePolicy(

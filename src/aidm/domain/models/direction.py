@@ -2,7 +2,8 @@
 
 from pydantic import Field
 
-from .base import EntityId, Frozen
+from ...utils.models import Frozen
+from .base import EntityId
 from .consequences import CanonRef, Consequence, all_canon_refs
 
 

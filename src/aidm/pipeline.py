@@ -14,6 +14,7 @@ from .agents.maintainer import maintain
 from .agents.narrator import narrate
 from .agents.policy import prompt_for, reads_history
 from .config import settings
+from .content import Library
 from .domain.models import (
     Direction,
     Entity,
@@ -70,6 +71,7 @@ async def run_turn(
     prompt: str,
     on_step: Callable[[Role], None] | None = None,
     *,
+    library: Library,
     rng: Random | None = None,
 ) -> Turn:
     """Run one full turn. Raises on any role failure, leaving `state` untouched. `rng` is injectable
@@ -88,7 +90,7 @@ async def run_turn(
     def seen_by(role: Role) -> list[ModelMessage] | None:
         return history if reads_history(role) else None
 
-    context = TurnContext(state=state, prompt=prompt, recent=recent)
+    context = TurnContext(state=state, prompt=prompt, library=library, recent=recent)
     deps = DirectorDeps(entities=state.world.entities, location=state.player.location_id)
     direction = await direct(ask("director", context), deps, seen_by("director"))
 

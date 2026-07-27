@@ -3,6 +3,7 @@
 from collections.abc import Callable, Sequence
 from dataclasses import dataclass
 
+from ..content import Library
 from ..domain.models import Direction, Event, Exchange, GameState, GrowthRequest
 
 
@@ -13,6 +14,7 @@ class TurnContext:
 
     state: GameState
     prompt: str
+    library: Library  # the loaded packs, injected so a test can play against a synthetic one
     events: Sequence[Event] = ()
     narration: str = ""
     recent: Sequence[Exchange] = ()  # already windowed by the pipeline; the single history slice

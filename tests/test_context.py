@@ -2,6 +2,7 @@
 
 import pytest
 
+from aidm import store
 from aidm.agents import views
 from aidm.agents.context import TurnContext
 from aidm.agents.policy import prompt_for
@@ -20,7 +21,12 @@ REQUEST = GrowthRequest(kind="actor", name="Elgin", brief="An apothecary.")
 
 
 def context(state: GameState) -> TurnContext:
-    return TurnContext(state=state, prompt="I search the study.", narration="You find nothing.")
+    return TurnContext(
+        state=state,
+        prompt="I search the study.",
+        library=store.library(),
+        narration="You find nothing.",
+    )
 
 
 def test_unrevealed_canon_never_reaches_the_narrator(state: GameState) -> None:

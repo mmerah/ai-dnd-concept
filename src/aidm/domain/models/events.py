@@ -4,9 +4,11 @@ from typing import Annotated, Literal
 
 from pydantic import Field
 
-from .base import PLAYER_ID, Ability, EntityId, Frozen
+from ...content.vocabulary import ConditionName
+from ...utils.models import Ability, Frozen
+from .base import PLAYER_ID, EntityId
 from .entities import Entity
-from .stats import Condition
+from .stats import Wounds
 
 
 class CheckRolled(Frozen):
@@ -63,13 +65,30 @@ class HpChanged(Frozen):
     target_id: EntityId
     target_name: str
     delta: int
-    condition: Condition  # the target's condition after the change
+    wounds: Wounds  # how the target reads after the change
 
     @property
     def summary(self) -> str:
         if self.target_id == PLAYER_ID:
             return f"hp {self.delta:+d}"
-        return f"{self.target_name} is {self.condition}"
+        return f"{self.target_name} is {self.wounds}"
+
+
+class ConditionChanged(Frozen):
+    """An SRD condition taking hold or lifting. Immunity is resolved before this is emitted, so the
+    event is only ever the change that happened."""
+
+    type: Literal["condition_changed"] = "condition_changed"
+    target_id: EntityId
+    target_name: str
+    condition: ConditionName
+    active: bool
+
+    @property
+    def summary(self) -> str:
+        who = "the player" if self.target_id == PLAYER_ID else self.target_name
+        held = "is" if self.active else "is no longer"
+        return f"{who} {held} {self.condition}"
 
 
 class Moved(Frozen):
@@ -110,6 +129,7 @@ Event = Annotated[
     | DiceRolled
     | ItemMoved
     | HpChanged
+    | ConditionChanged
     | Moved
     | EntityDiscovered
     | EntityCreated,

@@ -10,6 +10,7 @@ from pydantic_ai import UnexpectedModelBehavior
 from pydantic_ai.messages import ModelMessage, ModelRequest, ModelResponse, TextPart
 from pydantic_ai.models.function import AgentInfo, FunctionModel
 
+from aidm import store
 from aidm.agents import creator as creator_module
 from aidm.agents import director as director_module
 from aidm.agents import maintainer as maintainer_module
@@ -18,6 +19,8 @@ from aidm.agents.director import DirectorDeps, direct
 from aidm.agents.history import exchanges_to_messages
 from aidm.domain.models import PLAYER_ID, ActorEntity, EntityId, Exchange, GameState, updated
 from aidm.pipeline import run_turn
+
+LIBRARY = store.library()  # the shipped pack; no test here plays against a synthetic one
 
 Stub = Callable[[list[ModelMessage], AgentInfo], ModelResponse]
 
@@ -84,7 +87,8 @@ async def test_search_applies_mechanics_and_creates_nothing(state: GameState) ->
             narrator=text("Your fingers find a creased chart beneath the flagstone."),
             maintainer=structured(requests=[]),
         )
-        turn = await run_turn(state, "I search the study.", rng=Random(0))  # roll 13 + 2 >= 12
+        # roll 13 + 2 >= 12
+        turn = await run_turn(state, "I search the study.", rng=Random(0), library=LIBRARY)
 
     # taking a canon item reveals it: inventory and canon can never disagree
     kinds = [e.type for e in turn.events]
@@ -109,7 +113,7 @@ async def test_existing_canon_is_revealed_not_created(state: GameState) -> None:
             narrator=text("'Elena would know,' Mara says."),
             maintainer=structured(requests=[]),
         )
-        turn = await run_turn(state, "@Mara who can I ask for help?")
+        turn = await run_turn(state, "@Mara who can I ask for help?", library=LIBRARY)
 
     assert known_ids(turn.state) == {"study", "mara", "elena", "lantern"}
     assert turn.created == []  # revealed from canon, not grown
@@ -130,7 +134,7 @@ async def test_an_unbacked_name_is_grown_not_resolved(state: GameState) -> None:
             ),
             creator=structured(description="A stooped herbalist.", hook="He trades in rumours."),
         )
-        turn = await run_turn(state, "@Tomas who can I ask for help?")
+        turn = await run_turn(state, "@Tomas who can I ask for help?", library=LIBRARY)
 
     assert turn.events == []  # an empty plan resolves to nothing
     (elgin,) = turn.created
@@ -156,7 +160,7 @@ async def test_a_grown_entity_is_placed_in_a_location_grown_the_same_turn(state:
             ),
             creator=structured(description="d", hook="h"),
         )
-        turn = await run_turn(state, "What is beyond the arch?")
+        turn = await run_turn(state, "What is beyond the arch?", library=LIBRARY)
 
     entities = turn.state.world.entities
     crypt = next(e for e in entities.values() if e.name == "a crypt")
@@ -175,7 +179,7 @@ async def test_growth_is_capped(state: GameState) -> None:
             ),
             creator=structured(description="d", hook="h"),
         )
-        turn = await run_turn(state, "Who is here?")
+        turn = await run_turn(state, "Who is here?", library=LIBRARY)
 
     assert len(turn.created) == 3
     # the 3 over-cap requests are recorded, not silently dropped
@@ -239,7 +243,7 @@ async def test_a_dice_amount_is_rolled_by_the_engine_not_chosen_by_the_director(
             narrator=text("Something bites your calf."),
             maintainer=structured(requests=[]),
         )
-        turn = await run_turn(state, "I step on the loose flagstone.")
+        turn = await run_turn(state, "I step on the loose flagstone.", library=LIBRARY)
 
     assert [e.type for e in turn.events] == ["dice_rolled", "hp_changed"]
     assert turn.state.player.stats.hp == 8
@@ -290,7 +294,7 @@ async def test_moving_to_hidden_canon_reveals_it_end_to_end(state: GameState) ->
             narrator=text("The stair opens into a low, cold chamber."),
             maintainer=structured(requests=[]),
         )
-        turn = await run_turn(state, "I go down to the vault.")
+        turn = await run_turn(state, "I go down to the vault.", library=LIBRARY)
 
     assert [e.type for e in turn.events] == ["entity_discovered", "moved"]
     assert turn.state.player.location_id == "vault"
@@ -321,6 +325,6 @@ async def test_failing_role_leaves_state_untouched(state: GameState) -> None:
             narrator=boom,
         )
         with pytest.raises(RuntimeError):
-            await run_turn(state, "I kick the door.")
+            await run_turn(state, "I kick the door.", library=LIBRARY)
 
     assert state.model_dump_json() == before

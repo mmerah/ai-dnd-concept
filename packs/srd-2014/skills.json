@@ -1,0 +1,92 @@
+[
+  {
+    "index": "acrobatics",
+    "name": "Acrobatics",
+    "ability": "dexterity"
+  },
+  {
+    "index": "animal-handling",
+    "name": "Animal Handling",
+    "ability": "wisdom"
+  },
+  {
+    "index": "arcana",
+    "name": "Arcana",
+    "ability": "intelligence"
+  },
+  {
+    "index": "athletics",
+    "name": "Athletics",
+    "ability": "strength"
+  },
+  {
+    "index": "deception",
+    "name": "Deception",
+    "ability": "charisma"
+  },
+  {
+    "index": "history",
+    "name": "History",
+    "ability": "intelligence"
+  },
+  {
+    "index": "insight",
+    "name": "Insight",
+    "ability": "wisdom"
+  },
+  {
+    "index": "intimidation",
+    "name": "Intimidation",
+    "ability": "charisma"
+  },
+  {
+    "index": "investigation",
+    "name": "Investigation",
+    "ability": "intelligence"
+  },
+  {
+    "index": "medicine",
+    "name": "Medicine",
+    "ability": "wisdom"
+  },
+  {
+    "index": "nature",
+    "name": "Nature",
+    "ability": "intelligence"
+  },
+  {
+    "index": "perception",
+    "name": "Perception",
+    "ability": "wisdom"
+  },
+  {
+    "index": "performance",
+    "name": "Performance",
+    "ability": "charisma"
+  },
+  {
+    "index": "persuasion",
+    "name": "Persuasion",
+    "ability": "charisma"
+  },
+  {
+    "index": "religion",
+    "name": "Religion",
+    "ability": "intelligence"
+  },
+  {
+    "index": "sleight-of-hand",
+    "name": "Sleight of Hand",
+    "ability": "dexterity"
+  },
+  {
+    "index": "stealth",
+    "name": "Stealth",
+    "ability": "dexterity"
+  },
+  {
+    "index": "survival",
+    "name": "Survival",
+    "ability": "wisdom"
+  }
+]

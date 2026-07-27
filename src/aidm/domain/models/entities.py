@@ -5,7 +5,9 @@ from typing import Annotated, Literal
 
 from pydantic import Field, TypeAdapter
 
-from .base import EntityId, Frozen, Kind
+from ...content import ContentRef
+from ...utils.models import Frozen
+from .base import EntityId, Kind
 from .stats import StatBlock
 
 
@@ -20,6 +22,8 @@ class BaseEntity(Frozen):
     id: EntityId
     name: str
     brief: str
+    # The archetype this instance came from; `engine/bestiary.py` owns what that means.
+    ref: ContentRef | None = None
     detail: EntityDetail | None = None
     known: bool = False  # revealed to the player
     authored: bool = True  # False once a Creator invented it mid-play

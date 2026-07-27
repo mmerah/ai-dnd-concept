@@ -2,7 +2,8 @@
 
 from pydantic import Field
 
-from .base import Frozen, Role
+from ...utils.models import Frozen
+from .base import Role
 from .direction import Direction
 from .entities import Entity, Growth, RejectedGrowth
 from .events import Event

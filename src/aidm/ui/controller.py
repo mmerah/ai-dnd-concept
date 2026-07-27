@@ -2,6 +2,7 @@
 
 from nicegui import ui
 
+from .. import store
 from ..domain.models import Role
 from ..pipeline import run_turn
 from . import panels
@@ -26,7 +27,7 @@ async def submit(box: ui.input) -> None:
     session.busy = True  # no await since the check above, so this cannot interleave
     box.value = ""
     try:
-        turn = await run_turn(session.state, prompt, on_step=_on_step)
+        turn = await run_turn(session.state, prompt, on_step=_on_step, library=store.library())
         session.commit(turn)
     except Exception as exc:  # the UI must not crash; the turn is dropped whole, never half-applied
         ui.notify(f"{type(exc).__name__}: {exc}", type="negative", multi_line=True)

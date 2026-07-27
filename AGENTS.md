@@ -31,7 +31,7 @@ Run from the repo root; paths and `.env` resolve against the working directory.
 - Dependency direction. `domain/` and `engine/` import nothing from `agents/` and do no I/O, so mechanics stay testable without an agent and agents cannot decide outcomes. Growing the ruleset means growing `engine/`, not the role prompts.
 - Strict role boundaries. Each agent has one narrow responsibility. An agent's structured proposal is resolved by deterministic code in `engine/`, never by another prompt.
 - Centralized context policy. One place in `agents/` is the source of truth for what each role sees. Extend that policy rather than injecting raw state into prompt strings elsewhere.
-- Narrator blindness. The Narrator alone writes what the player reads, so it is never shown unrevealed canon, hidden state, DCs, or dice rolls.
+- Narrator blindness. The Narrator alone writes what the player reads, so it is never shown unrevealed canon or hidden state. It *is* shown `reducer.render(events)` — this turn's resolved outcome, including DCs and rolls — because it must not narrate an outcome that did not happen. `render` is the boundary: everything mechanical the Narrator may see passes through it, and nothing else does. `render` never emits an absolute hp or max_hp for a non-player actor; a monster's wounds are qualitative.
 
 ## Framework specifics
 
