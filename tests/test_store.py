@@ -9,13 +9,40 @@ from pydantic import ValidationError
 from aidm import store
 from aidm.config import settings
 from aidm.content import PackStamp
-from aidm.domain.models import PLAYER_ID, CharacterSheet, GameState, ScenarioDef, updated
+from aidm.domain.models import (
+    PLAYER_ID,
+    Advancement,
+    Attributes,
+    CharacterSheet,
+    GameState,
+    Origin,
+    Progression,
+    ScenarioDef,
+    updated,
+)
 
+CLASS_REF = {"pack": "srd-2014", "collection": "classes", "index": "fighter"}
 SHEET = {
     "name": "Kael",
     "brief": "A relic-hunter.",
+    "origin": {"class_ref": CLASS_REF},
     "starting_items": [{"name": "a lantern", "brief": "A tin lantern."}],
 }
+# Level 1 is engine work; `from_scenario` only places what it is handed, which is what keeps
+# `domain/` free of pack reads.
+START = Advancement(
+    progression=Progression(
+        origin=Origin.model_validate({"class_ref": CLASS_REF}),
+        level=1,
+        prof_bonus=2,
+        saving_throws=("strength", "constitution"),
+        proficiencies=(),
+        spell_slots={},
+        decisions={},
+    ),
+    attributes=Attributes(),
+    hp_gain=10,
+)
 STUDY = {"id": "study", "kind": "location", "name": "the study", "brief": "A room.", "known": True}
 MARA = {"id": "mara", "kind": "actor", "name": "Mara", "brief": "A scribe.", "location_id": "study"}
 META = {"title": "T", "premise": "P"}
@@ -57,14 +84,16 @@ def test_a_scenario_may_not_ship_the_player() -> None:
 
 def test_a_sheet_becomes_the_player_entity() -> None:
     """Composition puts the player in `world.entities` under the reserved id, holding real item
-    ids — so `_consistent_world` validates them like anyone else's."""
+    ids — so `_consistent_world` validates them like anyone else's. Hit points come from the
+    handed-in level, never from the sheet: only a class knows a hit die."""
     definition = ScenarioDef.model_validate(
         {"meta": META, "starting_location_id": "study", "entities": [STUDY, MARA]}
     )
-    state = GameState.from_scenario(definition, CharacterSheet.model_validate(SHEET), [])
+    state = GameState.from_scenario(definition, CharacterSheet.model_validate(SHEET), [], START)
     assert state.player.id == PLAYER_ID
     assert state.player.known and state.player.location_id == "study"
     assert [state.world.entities[i].name for i in state.player.inventory] == ["a lantern"]
+    assert state.player.stats.max_hp == 10 and state.player.progression == START.progression
 
 
 def test_a_save_played_against_other_content_is_refused(

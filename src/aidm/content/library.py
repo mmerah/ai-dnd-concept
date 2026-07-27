@@ -12,17 +12,27 @@ from .models import COLLECTIONS, Manifest, Pack, PackStamp
 from .records import (
     AlignmentRecord,
     ArmorRecord,
+    BackgroundRecord,
+    ClassRecord,
     Collection,
     ConditionRecord,
     ContentRef,
+    FeatRecord,
+    FeatureRecord,
     GearRecord,
     LanguageRecord,
+    LevelRecord,
     MagicItemRecord,
     MonsterRecord,
+    ProficiencyRecord,
+    RaceRecord,
     Record,
     SkillRecord,
     SpellRecord,
+    SubclassRecord,
+    SubraceRecord,
     ToolRecord,
+    TraitRecord,
     VehicleRecord,
     WeaponRecord,
 )
@@ -107,6 +117,37 @@ class Library(Frozen):
 
     def language(self, ref: ContentRef) -> LanguageRecord | ContentMiss:
         return self._lookup(ref, "languages", lambda p: p.languages)
+
+    def klass(self, ref: ContentRef) -> ClassRecord | ContentMiss:
+        """Not `class`, which is a keyword; the collection is still named `classes`."""
+        return self._lookup(ref, "classes", lambda p: p.classes)
+
+    def subclass(self, ref: ContentRef) -> SubclassRecord | ContentMiss:
+        return self._lookup(ref, "subclasses", lambda p: p.subclasses)
+
+    def level(self, ref: ContentRef) -> LevelRecord | ContentMiss:
+        return self._lookup(ref, "levels", lambda p: p.levels)
+
+    def feature(self, ref: ContentRef) -> FeatureRecord | ContentMiss:
+        return self._lookup(ref, "features", lambda p: p.features)
+
+    def race(self, ref: ContentRef) -> RaceRecord | ContentMiss:
+        return self._lookup(ref, "races", lambda p: p.races)
+
+    def subrace(self, ref: ContentRef) -> SubraceRecord | ContentMiss:
+        return self._lookup(ref, "subraces", lambda p: p.subraces)
+
+    def trait(self, ref: ContentRef) -> TraitRecord | ContentMiss:
+        return self._lookup(ref, "traits", lambda p: p.traits)
+
+    def background(self, ref: ContentRef) -> BackgroundRecord | ContentMiss:
+        return self._lookup(ref, "backgrounds", lambda p: p.backgrounds)
+
+    def feat(self, ref: ContentRef) -> FeatRecord | ContentMiss:
+        return self._lookup(ref, "feats", lambda p: p.feats)
+
+    def proficiency(self, ref: ContentRef) -> ProficiencyRecord | ContentMiss:
+        return self._lookup(ref, "proficiencies", lambda p: p.proficiencies)
 
     def resolves(self, ref: ContentRef) -> ContentMiss | None:
         """Why a ref does not resolve, or `None` if it does — what a load boundary needs before it

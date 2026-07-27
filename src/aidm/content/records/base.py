@@ -8,7 +8,7 @@ from ...utils.dice import DiceExpr
 from ...utils.models import Frozen
 from ..vocabulary import DamageType
 
-# The 12 collections this build projects. It is deliberately wider than the records that exist:
+# The 22 collections this build projects. It is deliberately wider than the records that exist:
 # `Manifest.provides` can only declare a gap in a collection it can name.
 Collection = Literal[
     "monsters",
@@ -23,9 +23,22 @@ Collection = Literal[
     "conditions",
     "alignments",
     "languages",
+    "classes",
+    "subclasses",
+    "levels",
+    "features",
+    "races",
+    "subraces",
+    "traits",
+    "backgrounds",
+    "feats",
+    "proficiencies",
 ]
 
 Slug = Annotated[str, Field(pattern=r"^[a-z0-9-]+$", max_length=64)]
+
+# Shared by monsters and races: a body's bulk is one vocabulary whichever kind of creature has it.
+CreatureSize = Literal["Tiny", "Small", "Medium", "Large", "Huge", "Gargantuan"]
 
 
 class ContentRef(Frozen):

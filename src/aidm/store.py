@@ -13,7 +13,7 @@ from .domain.models import (
     ScenarioDef,
     Turn,
 )
-from .engine import bestiary
+from .engine import campaign
 
 ENCODING = "utf-8"  # narration is full of curly quotes; the platform default is not enough
 
@@ -33,7 +33,7 @@ def library() -> content.Library:
 
 
 def new_game(scenario: str, character: str = "kael") -> GameState:
-    """Read a scenario definition and an independent character; the domain composes the state."""
+    """Read a scenario definition and an independent character; `engine/` composes the state."""
     conf = settings()
     definition = ScenarioDef.model_validate_json(
         (conf.scenarios_dir / f"{scenario}.json").read_text(encoding=ENCODING)
@@ -41,8 +41,7 @@ def new_game(scenario: str, character: str = "kael") -> GameState:
     sheet = CharacterSheet.model_validate_json(
         (conf.characters_dir / f"{character}.json").read_text(encoding=ENCODING)
     )
-    packs = library()
-    return bestiary.statted_world(GameState.from_scenario(definition, sheet, packs.stamps), packs)
+    return campaign.begin(definition, sheet, library())
 
 
 def load(slug: str) -> GameState | None:

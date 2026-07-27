@@ -8,6 +8,7 @@ from pydantic import Field, TypeAdapter
 from ...content import ContentRef
 from ...utils.models import Frozen
 from .base import EntityId, Kind
+from .progression import Progression
 from .stats import StatBlock
 
 
@@ -35,7 +36,12 @@ class ActorEntity(BaseEntity):
     kind: Literal["actor"] = "actor"
     location_id: EntityId  # the location the actor stands in
     inventory: list[EntityId] = Field(default_factory=list)  # canon items the actor carries
-    stats: StatBlock = StatBlock()
+    # A factory, not a shared instance: pydantic deep-copies a model default, and a `FrozenMap`
+    # field inside it holds a `mappingproxy`, which cannot be copied.
+    stats: StatBlock = Field(default_factory=StatBlock)
+    # The player's alone (`GameState` enforces it): no SRD monster has class levels, and building
+    # symmetric progression for NPCs statted by challenge rating would be a speculative abstraction.
+    progression: Progression | None = None
 
 
 class LocationEntity(BaseEntity):

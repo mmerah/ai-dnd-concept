@@ -1,0 +1,1661 @@
+[
+  {
+    "index": "barbarian",
+    "name": "Barbarian",
+    "hit_die": 12,
+    "saving_throws": [
+      "strength",
+      "constitution"
+    ],
+    "proficiencies": [
+      "light-armor",
+      "medium-armor",
+      "shields",
+      "simple-weapons",
+      "martial-weapons",
+      "saving-throw-str",
+      "saving-throw-con"
+    ],
+    "choices": [
+      {
+        "id": "barbarian-proficiency-1",
+        "prompt": "Choose two from Animal Handling, Athletics, Intimidation, Nature, Perception, and Survival",
+        "choose": 2,
+        "distinct": true,
+        "effect": "grant",
+        "options": [
+          {
+            "kind": "record",
+            "label": "Skill: Animal Handling",
+            "ref": {
+              "pack": "srd-2014",
+              "collection": "proficiencies",
+              "index": "skill-animal-handling"
+            }
+          },
+          {
+            "kind": "record",
+            "label": "Skill: Athletics",
+            "ref": {
+              "pack": "srd-2014",
+              "collection": "proficiencies",
+              "index": "skill-athletics"
+            }
+          },
+          {
+            "kind": "record",
+            "label": "Skill: Intimidation",
+            "ref": {
+              "pack": "srd-2014",
+              "collection": "proficiencies",
+              "index": "skill-intimidation"
+            }
+          },
+          {
+            "kind": "record",
+            "label": "Skill: Nature",
+            "ref": {
+              "pack": "srd-2014",
+              "collection": "proficiencies",
+              "index": "skill-nature"
+            }
+          },
+          {
+            "kind": "record",
+            "label": "Skill: Perception",
+            "ref": {
+              "pack": "srd-2014",
+              "collection": "proficiencies",
+              "index": "skill-perception"
+            }
+          },
+          {
+            "kind": "record",
+            "label": "Skill: Survival",
+            "ref": {
+              "pack": "srd-2014",
+              "collection": "proficiencies",
+              "index": "skill-survival"
+            }
+          }
+        ]
+      }
+    ],
+    "subclass": {
+      "level": 3,
+      "options": [
+        "berserker"
+      ]
+    },
+    "spellcasting_ability": null
+  },
+  {
+    "index": "bard",
+    "name": "Bard",
+    "hit_die": 8,
+    "saving_throws": [
+      "dexterity",
+      "charisma"
+    ],
+    "proficiencies": [
+      "light-armor",
+      "simple-weapons",
+      "longswords",
+      "rapiers",
+      "shortswords",
+      "hand-crossbows",
+      "saving-throw-dex",
+      "saving-throw-cha"
+    ],
+    "choices": [
+      {
+        "id": "bard-proficiency-1",
+        "prompt": "Choose any three",
+        "choose": 3,
+        "distinct": true,
+        "effect": "grant",
+        "options": [
+          {
+            "kind": "record",
+            "label": "Skill: Acrobatics",
+            "ref": {
+              "pack": "srd-2014",
+              "collection": "proficiencies",
+              "index": "skill-acrobatics"
+            }
+          },
+          {
+            "kind": "record",
+            "label": "Skill: Animal Handling",
+            "ref": {
+              "pack": "srd-2014",
+              "collection": "proficiencies",
+              "index": "skill-animal-handling"
+            }
+          },
+          {
+            "kind": "record",
+            "label": "Skill: Arcana",
+            "ref": {
+              "pack": "srd-2014",
+              "collection": "proficiencies",
+              "index": "skill-arcana"
+            }
+          },
+          {
+            "kind": "record",
+            "label": "Skill: Athletics",
+            "ref": {
+              "pack": "srd-2014",
+              "collection": "proficiencies",
+              "index": "skill-athletics"
+            }
+          },
+          {
+            "kind": "record",
+            "label": "Skill: Deception",
+            "ref": {
+              "pack": "srd-2014",
+              "collection": "proficiencies",
+              "index": "skill-deception"
+            }
+          },
+          {
+            "kind": "record",
+            "label": "Skill: History",
+            "ref": {
+              "pack": "srd-2014",
+              "collection": "proficiencies",
+              "index": "skill-history"
+            }
+          },
+          {
+            "kind": "record",
+            "label": "Skill: Insight",
+            "ref": {
+              "pack": "srd-2014",
+              "collection": "proficiencies",
+              "index": "skill-insight"
+            }
+          },
+          {
+            "kind": "record",
+            "label": "Skill: Intimidation",
+            "ref": {
+              "pack": "srd-2014",
+              "collection": "proficiencies",
+              "index": "skill-intimidation"
+            }
+          },
+          {
+            "kind": "record",
+            "label": "Skill: Investigation",
+            "ref": {
+              "pack": "srd-2014",
+              "collection": "proficiencies",
+              "index": "skill-investigation"
+            }
+          },
+          {
+            "kind": "record",
+            "label": "Skill: Medicine",
+            "ref": {
+              "pack": "srd-2014",
+              "collection": "proficiencies",
+              "index": "skill-medicine"
+            }
+          },
+          {
+            "kind": "record",
+            "label": "Skill: Nature",
+            "ref": {
+              "pack": "srd-2014",
+              "collection": "proficiencies",
+              "index": "skill-nature"
+            }
+          },
+          {
+            "kind": "record",
+            "label": "Skill: Perception",
+            "ref": {
+              "pack": "srd-2014",
+              "collection": "proficiencies",
+              "index": "skill-perception"
+            }
+          },
+          {
+            "kind": "record",
+            "label": "Skill: Performance",
+            "ref": {
+              "pack": "srd-2014",
+              "collection": "proficiencies",
+              "index": "skill-performance"
+            }
+          },
+          {
+            "kind": "record",
+            "label": "Skill: Persuasion",
+            "ref": {
+              "pack": "srd-2014",
+              "collection": "proficiencies",
+              "index": "skill-persuasion"
+            }
+          },
+          {
+            "kind": "record",
+            "label": "Skill: Religion",
+            "ref": {
+              "pack": "srd-2014",
+              "collection": "proficiencies",
+              "index": "skill-religion"
+            }
+          },
+          {
+            "kind": "record",
+            "label": "Skill: Sleight of Hand",
+            "ref": {
+              "pack": "srd-2014",
+              "collection": "proficiencies",
+              "index": "skill-sleight-of-hand"
+            }
+          },
+          {
+            "kind": "record",
+            "label": "Skill: Stealth",
+            "ref": {
+              "pack": "srd-2014",
+              "collection": "proficiencies",
+              "index": "skill-stealth"
+            }
+          },
+          {
+            "kind": "record",
+            "label": "Skill: Survival",
+            "ref": {
+              "pack": "srd-2014",
+              "collection": "proficiencies",
+              "index": "skill-survival"
+            }
+          }
+        ]
+      },
+      {
+        "id": "bard-proficiency-2",
+        "prompt": "Three musical instruments of your choice",
+        "choose": 3,
+        "distinct": true,
+        "effect": "grant",
+        "options": [
+          {
+            "kind": "record",
+            "label": "Bagpipes",
+            "ref": {
+              "pack": "srd-2014",
+              "collection": "proficiencies",
+              "index": "bagpipes"
+            }
+          },
+          {
+            "kind": "record",
+            "label": "Drum",
+            "ref": {
+              "pack": "srd-2014",
+              "collection": "proficiencies",
+              "index": "drum"
+            }
+          },
+          {
+            "kind": "record",
+            "label": "Dulcimer",
+            "ref": {
+              "pack": "srd-2014",
+              "collection": "proficiencies",
+              "index": "dulcimer"
+            }
+          },
+          {
+            "kind": "record",
+            "label": "Flute",
+            "ref": {
+              "pack": "srd-2014",
+              "collection": "proficiencies",
+              "index": "flute"
+            }
+          },
+          {
+            "kind": "record",
+            "label": "Lute",
+            "ref": {
+              "pack": "srd-2014",
+              "collection": "proficiencies",
+              "index": "lute"
+            }
+          },
+          {
+            "kind": "record",
+            "label": "Lyre",
+            "ref": {
+              "pack": "srd-2014",
+              "collection": "proficiencies",
+              "index": "lyre"
+            }
+          },
+          {
+            "kind": "record",
+            "label": "Horn",
+            "ref": {
+              "pack": "srd-2014",
+              "collection": "proficiencies",
+              "index": "horn"
+            }
+          },
+          {
+            "kind": "record",
+            "label": "Pan flute",
+            "ref": {
+              "pack": "srd-2014",
+              "collection": "proficiencies",
+              "index": "pan-flute"
+            }
+          },
+          {
+            "kind": "record",
+            "label": "Shawm",
+            "ref": {
+              "pack": "srd-2014",
+              "collection": "proficiencies",
+              "index": "shawm"
+            }
+          },
+          {
+            "kind": "record",
+            "label": "Viol",
+            "ref": {
+              "pack": "srd-2014",
+              "collection": "proficiencies",
+              "index": "viol"
+            }
+          }
+        ]
+      }
+    ],
+    "subclass": {
+      "level": 3,
+      "options": [
+        "lore"
+      ]
+    },
+    "spellcasting_ability": "charisma"
+  },
+  {
+    "index": "cleric",
+    "name": "Cleric",
+    "hit_die": 8,
+    "saving_throws": [
+      "wisdom",
+      "charisma"
+    ],
+    "proficiencies": [
+      "light-armor",
+      "medium-armor",
+      "shields",
+      "simple-weapons",
+      "saving-throw-wis",
+      "saving-throw-cha"
+    ],
+    "choices": [
+      {
+        "id": "cleric-proficiency-1",
+        "prompt": "Choose two from History, Insight, Medicine, Persuasion, and Religion",
+        "choose": 2,
+        "distinct": true,
+        "effect": "grant",
+        "options": [
+          {
+            "kind": "record",
+            "label": "Skill: History",
+            "ref": {
+              "pack": "srd-2014",
+              "collection": "proficiencies",
+              "index": "skill-history"
+            }
+          },
+          {
+            "kind": "record",
+            "label": "Skill: Insight",
+            "ref": {
+              "pack": "srd-2014",
+              "collection": "proficiencies",
+              "index": "skill-insight"
+            }
+          },
+          {
+            "kind": "record",
+            "label": "Skill: Medicine",
+            "ref": {
+              "pack": "srd-2014",
+              "collection": "proficiencies",
+              "index": "skill-medicine"
+            }
+          },
+          {
+            "kind": "record",
+            "label": "Skill: Persuasion",
+            "ref": {
+              "pack": "srd-2014",
+              "collection": "proficiencies",
+              "index": "skill-persuasion"
+            }
+          },
+          {
+            "kind": "record",
+            "label": "Skill: Religion",
+            "ref": {
+              "pack": "srd-2014",
+              "collection": "proficiencies",
+              "index": "skill-religion"
+            }
+          }
+        ]
+      }
+    ],
+    "subclass": {
+      "level": 1,
+      "options": [
+        "life"
+      ]
+    },
+    "spellcasting_ability": "wisdom"
+  },
+  {
+    "index": "druid",
+    "name": "Druid",
+    "hit_die": 8,
+    "saving_throws": [
+      "intelligence",
+      "wisdom"
+    ],
+    "proficiencies": [
+      "light-armor",
+      "medium-armor",
+      "shields",
+      "clubs",
+      "daggers",
+      "javelins",
+      "maces",
+      "quarterstaffs",
+      "sickles",
+      "spears",
+      "darts",
+      "slings",
+      "scimitars",
+      "herbalism-kit",
+      "saving-throw-int",
+      "saving-throw-wis"
+    ],
+    "choices": [
+      {
+        "id": "druid-proficiency-1",
+        "prompt": "Choose two from Arcana, Animal Handling, Insight, Medicine, Nature, Perception, Religion, and Survival",
+        "choose": 2,
+        "distinct": true,
+        "effect": "grant",
+        "options": [
+          {
+            "kind": "record",
+            "label": "Skill: Arcana",
+            "ref": {
+              "pack": "srd-2014",
+              "collection": "proficiencies",
+              "index": "skill-arcana"
+            }
+          },
+          {
+            "kind": "record",
+            "label": "Skill: Animal Handling",
+            "ref": {
+              "pack": "srd-2014",
+              "collection": "proficiencies",
+              "index": "skill-animal-handling"
+            }
+          },
+          {
+            "kind": "record",
+            "label": "Skill: Insight",
+            "ref": {
+              "pack": "srd-2014",
+              "collection": "proficiencies",
+              "index": "skill-insight"
+            }
+          },
+          {
+            "kind": "record",
+            "label": "Skill: Medicine",
+            "ref": {
+              "pack": "srd-2014",
+              "collection": "proficiencies",
+              "index": "skill-medicine"
+            }
+          },
+          {
+            "kind": "record",
+            "label": "Skill: Nature",
+            "ref": {
+              "pack": "srd-2014",
+              "collection": "proficiencies",
+              "index": "skill-nature"
+            }
+          },
+          {
+            "kind": "record",
+            "label": "Skill: Perception",
+            "ref": {
+              "pack": "srd-2014",
+              "collection": "proficiencies",
+              "index": "skill-perception"
+            }
+          },
+          {
+            "kind": "record",
+            "label": "Skill: Religion",
+            "ref": {
+              "pack": "srd-2014",
+              "collection": "proficiencies",
+              "index": "skill-religion"
+            }
+          },
+          {
+            "kind": "record",
+            "label": "Skill: Survival",
+            "ref": {
+              "pack": "srd-2014",
+              "collection": "proficiencies",
+              "index": "skill-survival"
+            }
+          }
+        ]
+      }
+    ],
+    "subclass": {
+      "level": 2,
+      "options": [
+        "land"
+      ]
+    },
+    "spellcasting_ability": "wisdom"
+  },
+  {
+    "index": "fighter",
+    "name": "Fighter",
+    "hit_die": 10,
+    "saving_throws": [
+      "strength",
+      "constitution"
+    ],
+    "proficiencies": [
+      "all-armor",
+      "shields",
+      "simple-weapons",
+      "martial-weapons",
+      "saving-throw-str",
+      "saving-throw-con"
+    ],
+    "choices": [
+      {
+        "id": "fighter-proficiency-1",
+        "prompt": "Choose two skills from Acrobatics, Animal Handling, Athletics, History, Insight, Intimidation, Perception, and Survival",
+        "choose": 2,
+        "distinct": true,
+        "effect": "grant",
+        "options": [
+          {
+            "kind": "record",
+            "label": "Skill: Acrobatics",
+            "ref": {
+              "pack": "srd-2014",
+              "collection": "proficiencies",
+              "index": "skill-acrobatics"
+            }
+          },
+          {
+            "kind": "record",
+            "label": "Skill: Animal Handling",
+            "ref": {
+              "pack": "srd-2014",
+              "collection": "proficiencies",
+              "index": "skill-animal-handling"
+            }
+          },
+          {
+            "kind": "record",
+            "label": "Skill: Athletics",
+            "ref": {
+              "pack": "srd-2014",
+              "collection": "proficiencies",
+              "index": "skill-athletics"
+            }
+          },
+          {
+            "kind": "record",
+            "label": "Skill: History",
+            "ref": {
+              "pack": "srd-2014",
+              "collection": "proficiencies",
+              "index": "skill-history"
+            }
+          },
+          {
+            "kind": "record",
+            "label": "Skill: Insight",
+            "ref": {
+              "pack": "srd-2014",
+              "collection": "proficiencies",
+              "index": "skill-insight"
+            }
+          },
+          {
+            "kind": "record",
+            "label": "Skill: Intimidation",
+            "ref": {
+              "pack": "srd-2014",
+              "collection": "proficiencies",
+              "index": "skill-intimidation"
+            }
+          },
+          {
+            "kind": "record",
+            "label": "Skill: Perception",
+            "ref": {
+              "pack": "srd-2014",
+              "collection": "proficiencies",
+              "index": "skill-perception"
+            }
+          },
+          {
+            "kind": "record",
+            "label": "Skill: Survival",
+            "ref": {
+              "pack": "srd-2014",
+              "collection": "proficiencies",
+              "index": "skill-survival"
+            }
+          }
+        ]
+      }
+    ],
+    "subclass": {
+      "level": 3,
+      "options": [
+        "champion"
+      ]
+    },
+    "spellcasting_ability": null
+  },
+  {
+    "index": "monk",
+    "name": "Monk",
+    "hit_die": 8,
+    "saving_throws": [
+      "strength",
+      "dexterity"
+    ],
+    "proficiencies": [
+      "simple-weapons",
+      "shortswords",
+      "saving-throw-dex",
+      "saving-throw-str"
+    ],
+    "choices": [
+      {
+        "id": "monk-proficiency-1",
+        "prompt": "Choose two from Acrobatics, Athletics, History, Insight, Religion, and Stealth",
+        "choose": 2,
+        "distinct": true,
+        "effect": "grant",
+        "options": [
+          {
+            "kind": "record",
+            "label": "Skill: Acrobatics",
+            "ref": {
+              "pack": "srd-2014",
+              "collection": "proficiencies",
+              "index": "skill-acrobatics"
+            }
+          },
+          {
+            "kind": "record",
+            "label": "Skill: Athletics",
+            "ref": {
+              "pack": "srd-2014",
+              "collection": "proficiencies",
+              "index": "skill-athletics"
+            }
+          },
+          {
+            "kind": "record",
+            "label": "Skill: History",
+            "ref": {
+              "pack": "srd-2014",
+              "collection": "proficiencies",
+              "index": "skill-history"
+            }
+          },
+          {
+            "kind": "record",
+            "label": "Skill: Insight",
+            "ref": {
+              "pack": "srd-2014",
+              "collection": "proficiencies",
+              "index": "skill-insight"
+            }
+          },
+          {
+            "kind": "record",
+            "label": "Skill: Religion",
+            "ref": {
+              "pack": "srd-2014",
+              "collection": "proficiencies",
+              "index": "skill-religion"
+            }
+          },
+          {
+            "kind": "record",
+            "label": "Skill: Stealth",
+            "ref": {
+              "pack": "srd-2014",
+              "collection": "proficiencies",
+              "index": "skill-stealth"
+            }
+          }
+        ]
+      },
+      {
+        "id": "monk-proficiency-2",
+        "prompt": "Choose one type of artisan’s tools or one musical instrument",
+        "choose": 1,
+        "distinct": true,
+        "effect": "grant",
+        "options": [
+          {
+            "kind": "record",
+            "label": "Alchemist's Supplies",
+            "ref": {
+              "pack": "srd-2014",
+              "collection": "proficiencies",
+              "index": "alchemists-supplies"
+            }
+          },
+          {
+            "kind": "record",
+            "label": "Brewer's Supplies",
+            "ref": {
+              "pack": "srd-2014",
+              "collection": "proficiencies",
+              "index": "brewers-supplies"
+            }
+          },
+          {
+            "kind": "record",
+            "label": "Calligrapher's Supplies",
+            "ref": {
+              "pack": "srd-2014",
+              "collection": "proficiencies",
+              "index": "calligraphers-supplies"
+            }
+          },
+          {
+            "kind": "record",
+            "label": "Carpenter's Tools",
+            "ref": {
+              "pack": "srd-2014",
+              "collection": "proficiencies",
+              "index": "carpenters-tools"
+            }
+          },
+          {
+            "kind": "record",
+            "label": "Cartographer's Tools",
+            "ref": {
+              "pack": "srd-2014",
+              "collection": "proficiencies",
+              "index": "cartographers-tools"
+            }
+          },
+          {
+            "kind": "record",
+            "label": "Cobbler's Tools",
+            "ref": {
+              "pack": "srd-2014",
+              "collection": "proficiencies",
+              "index": "cobblers-tools"
+            }
+          },
+          {
+            "kind": "record",
+            "label": "Cook's utensils",
+            "ref": {
+              "pack": "srd-2014",
+              "collection": "proficiencies",
+              "index": "cooks-utensils"
+            }
+          },
+          {
+            "kind": "record",
+            "label": "Glassblower's Tools",
+            "ref": {
+              "pack": "srd-2014",
+              "collection": "proficiencies",
+              "index": "glassblowers-tools"
+            }
+          },
+          {
+            "kind": "record",
+            "label": "Jeweler's Tools",
+            "ref": {
+              "pack": "srd-2014",
+              "collection": "proficiencies",
+              "index": "jewelers-tools"
+            }
+          },
+          {
+            "kind": "record",
+            "label": "Leatherworker's Tools",
+            "ref": {
+              "pack": "srd-2014",
+              "collection": "proficiencies",
+              "index": "leatherworkers-tools"
+            }
+          },
+          {
+            "kind": "record",
+            "label": "Mason's Tools",
+            "ref": {
+              "pack": "srd-2014",
+              "collection": "proficiencies",
+              "index": "masons-tools"
+            }
+          },
+          {
+            "kind": "record",
+            "label": "Painter's Supplies",
+            "ref": {
+              "pack": "srd-2014",
+              "collection": "proficiencies",
+              "index": "painters-supplies"
+            }
+          },
+          {
+            "kind": "record",
+            "label": "Potter's Tools",
+            "ref": {
+              "pack": "srd-2014",
+              "collection": "proficiencies",
+              "index": "potters-tools"
+            }
+          },
+          {
+            "kind": "record",
+            "label": "Smith's Tools",
+            "ref": {
+              "pack": "srd-2014",
+              "collection": "proficiencies",
+              "index": "smiths-tools"
+            }
+          },
+          {
+            "kind": "record",
+            "label": "Tinker's Tools",
+            "ref": {
+              "pack": "srd-2014",
+              "collection": "proficiencies",
+              "index": "tinkers-tools"
+            }
+          },
+          {
+            "kind": "record",
+            "label": "Weaver's Tools",
+            "ref": {
+              "pack": "srd-2014",
+              "collection": "proficiencies",
+              "index": "weavers-tools"
+            }
+          },
+          {
+            "kind": "record",
+            "label": "Woodcarver's Tools",
+            "ref": {
+              "pack": "srd-2014",
+              "collection": "proficiencies",
+              "index": "woodcarvers-tools"
+            }
+          },
+          {
+            "kind": "record",
+            "label": "Disguise Kit",
+            "ref": {
+              "pack": "srd-2014",
+              "collection": "proficiencies",
+              "index": "disguise-kit"
+            }
+          },
+          {
+            "kind": "record",
+            "label": "Forgery Kit",
+            "ref": {
+              "pack": "srd-2014",
+              "collection": "proficiencies",
+              "index": "forgery-kit"
+            }
+          },
+          {
+            "kind": "record",
+            "label": "Bagpipes",
+            "ref": {
+              "pack": "srd-2014",
+              "collection": "proficiencies",
+              "index": "bagpipes"
+            }
+          },
+          {
+            "kind": "record",
+            "label": "Drum",
+            "ref": {
+              "pack": "srd-2014",
+              "collection": "proficiencies",
+              "index": "drum"
+            }
+          },
+          {
+            "kind": "record",
+            "label": "Dulcimer",
+            "ref": {
+              "pack": "srd-2014",
+              "collection": "proficiencies",
+              "index": "dulcimer"
+            }
+          },
+          {
+            "kind": "record",
+            "label": "Flute",
+            "ref": {
+              "pack": "srd-2014",
+              "collection": "proficiencies",
+              "index": "flute"
+            }
+          },
+          {
+            "kind": "record",
+            "label": "Lute",
+            "ref": {
+              "pack": "srd-2014",
+              "collection": "proficiencies",
+              "index": "lute"
+            }
+          },
+          {
+            "kind": "record",
+            "label": "Lyre",
+            "ref": {
+              "pack": "srd-2014",
+              "collection": "proficiencies",
+              "index": "lyre"
+            }
+          },
+          {
+            "kind": "record",
+            "label": "Horn",
+            "ref": {
+              "pack": "srd-2014",
+              "collection": "proficiencies",
+              "index": "horn"
+            }
+          },
+          {
+            "kind": "record",
+            "label": "Pan flute",
+            "ref": {
+              "pack": "srd-2014",
+              "collection": "proficiencies",
+              "index": "pan-flute"
+            }
+          },
+          {
+            "kind": "record",
+            "label": "Shawm",
+            "ref": {
+              "pack": "srd-2014",
+              "collection": "proficiencies",
+              "index": "shawm"
+            }
+          },
+          {
+            "kind": "record",
+            "label": "Viol",
+            "ref": {
+              "pack": "srd-2014",
+              "collection": "proficiencies",
+              "index": "viol"
+            }
+          }
+        ]
+      }
+    ],
+    "subclass": {
+      "level": 3,
+      "options": [
+        "open-hand"
+      ]
+    },
+    "spellcasting_ability": null
+  },
+  {
+    "index": "paladin",
+    "name": "Paladin",
+    "hit_die": 10,
+    "saving_throws": [
+      "wisdom",
+      "charisma"
+    ],
+    "proficiencies": [
+      "all-armor",
+      "shields",
+      "simple-weapons",
+      "martial-weapons",
+      "saving-throw-wis",
+      "saving-throw-cha"
+    ],
+    "choices": [
+      {
+        "id": "paladin-proficiency-1",
+        "prompt": "Choose two from Athletics, Insight, Intimidation, Medicine, Persuasion, and Religion",
+        "choose": 2,
+        "distinct": true,
+        "effect": "grant",
+        "options": [
+          {
+            "kind": "record",
+            "label": "Skill: Athletics",
+            "ref": {
+              "pack": "srd-2014",
+              "collection": "proficiencies",
+              "index": "skill-athletics"
+            }
+          },
+          {
+            "kind": "record",
+            "label": "Skill: Insight",
+            "ref": {
+              "pack": "srd-2014",
+              "collection": "proficiencies",
+              "index": "skill-insight"
+            }
+          },
+          {
+            "kind": "record",
+            "label": "Skill: Intimidation",
+            "ref": {
+              "pack": "srd-2014",
+              "collection": "proficiencies",
+              "index": "skill-intimidation"
+            }
+          },
+          {
+            "kind": "record",
+            "label": "Skill: Medicine",
+            "ref": {
+              "pack": "srd-2014",
+              "collection": "proficiencies",
+              "index": "skill-medicine"
+            }
+          },
+          {
+            "kind": "record",
+            "label": "Skill: Persuasion",
+            "ref": {
+              "pack": "srd-2014",
+              "collection": "proficiencies",
+              "index": "skill-persuasion"
+            }
+          },
+          {
+            "kind": "record",
+            "label": "Skill: Religion",
+            "ref": {
+              "pack": "srd-2014",
+              "collection": "proficiencies",
+              "index": "skill-religion"
+            }
+          }
+        ]
+      }
+    ],
+    "subclass": {
+      "level": 3,
+      "options": [
+        "devotion"
+      ]
+    },
+    "spellcasting_ability": "charisma"
+  },
+  {
+    "index": "ranger",
+    "name": "Ranger",
+    "hit_die": 10,
+    "saving_throws": [
+      "strength",
+      "dexterity"
+    ],
+    "proficiencies": [
+      "light-armor",
+      "medium-armor",
+      "shields",
+      "simple-weapons",
+      "martial-weapons",
+      "saving-throw-dex",
+      "saving-throw-str"
+    ],
+    "choices": [
+      {
+        "id": "ranger-proficiency-1",
+        "prompt": "Choose three from Animal Handling, Athletics, Insight, Investigation, Nature, Perception, Stealth, and Survival",
+        "choose": 3,
+        "distinct": true,
+        "effect": "grant",
+        "options": [
+          {
+            "kind": "record",
+            "label": "Skill: Animal Handling",
+            "ref": {
+              "pack": "srd-2014",
+              "collection": "proficiencies",
+              "index": "skill-animal-handling"
+            }
+          },
+          {
+            "kind": "record",
+            "label": "Skill: Athletics",
+            "ref": {
+              "pack": "srd-2014",
+              "collection": "proficiencies",
+              "index": "skill-athletics"
+            }
+          },
+          {
+            "kind": "record",
+            "label": "Skill: Insight",
+            "ref": {
+              "pack": "srd-2014",
+              "collection": "proficiencies",
+              "index": "skill-insight"
+            }
+          },
+          {
+            "kind": "record",
+            "label": "Skill: Investigation",
+            "ref": {
+              "pack": "srd-2014",
+              "collection": "proficiencies",
+              "index": "skill-investigation"
+            }
+          },
+          {
+            "kind": "record",
+            "label": "Skill: Nature",
+            "ref": {
+              "pack": "srd-2014",
+              "collection": "proficiencies",
+              "index": "skill-nature"
+            }
+          },
+          {
+            "kind": "record",
+            "label": "Skill: Perception",
+            "ref": {
+              "pack": "srd-2014",
+              "collection": "proficiencies",
+              "index": "skill-perception"
+            }
+          },
+          {
+            "kind": "record",
+            "label": "Skill: Stealth",
+            "ref": {
+              "pack": "srd-2014",
+              "collection": "proficiencies",
+              "index": "skill-stealth"
+            }
+          },
+          {
+            "kind": "record",
+            "label": "Skill: Survival",
+            "ref": {
+              "pack": "srd-2014",
+              "collection": "proficiencies",
+              "index": "skill-survival"
+            }
+          }
+        ]
+      }
+    ],
+    "subclass": {
+      "level": 3,
+      "options": [
+        "hunter"
+      ]
+    },
+    "spellcasting_ability": "wisdom"
+  },
+  {
+    "index": "rogue",
+    "name": "Rogue",
+    "hit_die": 8,
+    "saving_throws": [
+      "dexterity",
+      "intelligence"
+    ],
+    "proficiencies": [
+      "light-armor",
+      "simple-weapons",
+      "longswords",
+      "rapiers",
+      "shortswords",
+      "hand-crossbows",
+      "thieves-tools",
+      "saving-throw-dex",
+      "saving-throw-int"
+    ],
+    "choices": [
+      {
+        "id": "rogue-proficiency-1",
+        "prompt": "Choose four from Acrobatics, Athletics, Deception, Insight, Intimidation, Investigation, Perception, Performance, Persuasion, Sleight of Hand, and Stealth",
+        "choose": 4,
+        "distinct": true,
+        "effect": "grant",
+        "options": [
+          {
+            "kind": "record",
+            "label": "Skill: Acrobatics",
+            "ref": {
+              "pack": "srd-2014",
+              "collection": "proficiencies",
+              "index": "skill-acrobatics"
+            }
+          },
+          {
+            "kind": "record",
+            "label": "Skill: Athletics",
+            "ref": {
+              "pack": "srd-2014",
+              "collection": "proficiencies",
+              "index": "skill-athletics"
+            }
+          },
+          {
+            "kind": "record",
+            "label": "Skill: Deception",
+            "ref": {
+              "pack": "srd-2014",
+              "collection": "proficiencies",
+              "index": "skill-deception"
+            }
+          },
+          {
+            "kind": "record",
+            "label": "Skill: Insight",
+            "ref": {
+              "pack": "srd-2014",
+              "collection": "proficiencies",
+              "index": "skill-insight"
+            }
+          },
+          {
+            "kind": "record",
+            "label": "Skill: Intimidation",
+            "ref": {
+              "pack": "srd-2014",
+              "collection": "proficiencies",
+              "index": "skill-intimidation"
+            }
+          },
+          {
+            "kind": "record",
+            "label": "Skill: Investigation",
+            "ref": {
+              "pack": "srd-2014",
+              "collection": "proficiencies",
+              "index": "skill-investigation"
+            }
+          },
+          {
+            "kind": "record",
+            "label": "Skill: Perception",
+            "ref": {
+              "pack": "srd-2014",
+              "collection": "proficiencies",
+              "index": "skill-perception"
+            }
+          },
+          {
+            "kind": "record",
+            "label": "Skill: Performance",
+            "ref": {
+              "pack": "srd-2014",
+              "collection": "proficiencies",
+              "index": "skill-performance"
+            }
+          },
+          {
+            "kind": "record",
+            "label": "Skill: Persuasion",
+            "ref": {
+              "pack": "srd-2014",
+              "collection": "proficiencies",
+              "index": "skill-persuasion"
+            }
+          },
+          {
+            "kind": "record",
+            "label": "Skill: Sleight of Hand",
+            "ref": {
+              "pack": "srd-2014",
+              "collection": "proficiencies",
+              "index": "skill-sleight-of-hand"
+            }
+          },
+          {
+            "kind": "record",
+            "label": "Skill: Stealth",
+            "ref": {
+              "pack": "srd-2014",
+              "collection": "proficiencies",
+              "index": "skill-stealth"
+            }
+          }
+        ]
+      }
+    ],
+    "subclass": {
+      "level": 3,
+      "options": [
+        "thief"
+      ]
+    },
+    "spellcasting_ability": null
+  },
+  {
+    "index": "sorcerer",
+    "name": "Sorcerer",
+    "hit_die": 6,
+    "saving_throws": [
+      "constitution",
+      "charisma"
+    ],
+    "proficiencies": [
+      "daggers",
+      "darts",
+      "slings",
+      "quarterstaffs",
+      "crossbows-light",
+      "saving-throw-con",
+      "saving-throw-cha"
+    ],
+    "choices": [
+      {
+        "id": "sorcerer-proficiency-1",
+        "prompt": "Choose two from Arcana, Deception, Insight, Intimidation, Persuasion, and Religion",
+        "choose": 2,
+        "distinct": true,
+        "effect": "grant",
+        "options": [
+          {
+            "kind": "record",
+            "label": "Skill: Arcana",
+            "ref": {
+              "pack": "srd-2014",
+              "collection": "proficiencies",
+              "index": "skill-arcana"
+            }
+          },
+          {
+            "kind": "record",
+            "label": "Skill: Deception",
+            "ref": {
+              "pack": "srd-2014",
+              "collection": "proficiencies",
+              "index": "skill-deception"
+            }
+          },
+          {
+            "kind": "record",
+            "label": "Skill: Insight",
+            "ref": {
+              "pack": "srd-2014",
+              "collection": "proficiencies",
+              "index": "skill-insight"
+            }
+          },
+          {
+            "kind": "record",
+            "label": "Skill: Intimidation",
+            "ref": {
+              "pack": "srd-2014",
+              "collection": "proficiencies",
+              "index": "skill-intimidation"
+            }
+          },
+          {
+            "kind": "record",
+            "label": "Skill: Persuasion",
+            "ref": {
+              "pack": "srd-2014",
+              "collection": "proficiencies",
+              "index": "skill-persuasion"
+            }
+          },
+          {
+            "kind": "record",
+            "label": "Skill: Religion",
+            "ref": {
+              "pack": "srd-2014",
+              "collection": "proficiencies",
+              "index": "skill-religion"
+            }
+          }
+        ]
+      }
+    ],
+    "subclass": {
+      "level": 1,
+      "options": [
+        "draconic"
+      ]
+    },
+    "spellcasting_ability": "charisma"
+  },
+  {
+    "index": "warlock",
+    "name": "Warlock",
+    "hit_die": 8,
+    "saving_throws": [
+      "wisdom",
+      "charisma"
+    ],
+    "proficiencies": [
+      "light-armor",
+      "simple-weapons",
+      "saving-throw-wis",
+      "saving-throw-cha"
+    ],
+    "choices": [
+      {
+        "id": "warlock-proficiency-1",
+        "prompt": "Choose two skills from Arcana, Deception, History, Intimidation, Investigation, Nature, and Religion",
+        "choose": 2,
+        "distinct": true,
+        "effect": "grant",
+        "options": [
+          {
+            "kind": "record",
+            "label": "Skill: Arcana",
+            "ref": {
+              "pack": "srd-2014",
+              "collection": "proficiencies",
+              "index": "skill-arcana"
+            }
+          },
+          {
+            "kind": "record",
+            "label": "Skill: Deception",
+            "ref": {
+              "pack": "srd-2014",
+              "collection": "proficiencies",
+              "index": "skill-deception"
+            }
+          },
+          {
+            "kind": "record",
+            "label": "Skill: History",
+            "ref": {
+              "pack": "srd-2014",
+              "collection": "proficiencies",
+              "index": "skill-history"
+            }
+          },
+          {
+            "kind": "record",
+            "label": "Skill: Intimidation",
+            "ref": {
+              "pack": "srd-2014",
+              "collection": "proficiencies",
+              "index": "skill-intimidation"
+            }
+          },
+          {
+            "kind": "record",
+            "label": "Skill: Investigation",
+            "ref": {
+              "pack": "srd-2014",
+              "collection": "proficiencies",
+              "index": "skill-investigation"
+            }
+          },
+          {
+            "kind": "record",
+            "label": "Skill: Nature",
+            "ref": {
+              "pack": "srd-2014",
+              "collection": "proficiencies",
+              "index": "skill-nature"
+            }
+          },
+          {
+            "kind": "record",
+            "label": "Skill: Religion",
+            "ref": {
+              "pack": "srd-2014",
+              "collection": "proficiencies",
+              "index": "skill-religion"
+            }
+          }
+        ]
+      }
+    ],
+    "subclass": {
+      "level": 1,
+      "options": [
+        "fiend"
+      ]
+    },
+    "spellcasting_ability": "charisma"
+  },
+  {
+    "index": "wizard",
+    "name": "Wizard",
+    "hit_die": 6,
+    "saving_throws": [
+      "intelligence",
+      "wisdom"
+    ],
+    "proficiencies": [
+      "daggers",
+      "darts",
+      "slings",
+      "quarterstaffs",
+      "crossbows-light",
+      "saving-throw-int",
+      "saving-throw-wis"
+    ],
+    "choices": [
+      {
+        "id": "wizard-proficiency-1",
+        "prompt": "Choose two from Arcana, History, Insight, Investigation, Medicine, and Religion",
+        "choose": 2,
+        "distinct": true,
+        "effect": "grant",
+        "options": [
+          {
+            "kind": "record",
+            "label": "Skill: Arcana",
+            "ref": {
+              "pack": "srd-2014",
+              "collection": "proficiencies",
+              "index": "skill-arcana"
+            }
+          },
+          {
+            "kind": "record",
+            "label": "Skill: History",
+            "ref": {
+              "pack": "srd-2014",
+              "collection": "proficiencies",
+              "index": "skill-history"
+            }
+          },
+          {
+            "kind": "record",
+            "label": "Skill: Insight",
+            "ref": {
+              "pack": "srd-2014",
+              "collection": "proficiencies",
+              "index": "skill-insight"
+            }
+          },
+          {
+            "kind": "record",
+            "label": "Skill: Investigation",
+            "ref": {
+              "pack": "srd-2014",
+              "collection": "proficiencies",
+              "index": "skill-investigation"
+            }
+          },
+          {
+            "kind": "record",
+            "label": "Skill: Medicine",
+            "ref": {
+              "pack": "srd-2014",
+              "collection": "proficiencies",
+              "index": "skill-medicine"
+            }
+          },
+          {
+            "kind": "record",
+            "label": "Skill: Religion",
+            "ref": {
+              "pack": "srd-2014",
+              "collection": "proficiencies",
+              "index": "skill-religion"
+            }
+          }
+        ]
+      }
+    ],
+    "subclass": {
+      "level": 2,
+      "options": [
+        "evocation"
+      ]
+    },
+    "spellcasting_ability": "intelligence"
+  }
+]

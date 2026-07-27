@@ -1,6 +1,23 @@
 {
   "name": "Kael",
   "brief": "A scarred relic-hunter who came to the abbey for what is sealed beneath it.",
+  "origin": {
+    "class_ref": {
+      "pack": "srd-2014",
+      "collection": "classes",
+      "index": "fighter"
+    },
+    "race_ref": {
+      "pack": "srd-2014",
+      "collection": "races",
+      "index": "half-elf"
+    },
+    "background_ref": {
+      "pack": "srd-2014",
+      "collection": "backgrounds",
+      "index": "acolyte"
+    }
+  },
   "starting_attributes": {
     "strength": 11,
     "dexterity": 13,
@@ -9,12 +26,39 @@
     "wisdom": 14,
     "charisma": 10
   },
-  "starting_max_hp": 10,
+  "decisions": {
+    "fighter-proficiency-1": [
+      "skill-athletics",
+      "skill-perception"
+    ],
+    "fighter-fighting-style-subfeature": [
+      "fighter-fighting-style-defense"
+    ],
+    "half-elf-ability-bonuses": [
+      "dexterity",
+      "constitution"
+    ],
+    "half-elf-languages": [
+      "undercommon"
+    ],
+    "skill-versatility-proficiency": [
+      "skill-investigation",
+      "skill-stealth"
+    ],
+    "acolyte-languages": [
+      "celestial",
+      "draconic"
+    ]
+  },
   "starting_items": [
     {
       "name": "a guttering lantern",
       "brief": "A dented tin lantern whose flame will not hold still.",
-      "ref": { "pack": "srd-2014", "collection": "gear", "index": "lantern-hooded" }
+      "ref": {
+        "pack": "srd-2014",
+        "collection": "gear",
+        "index": "lantern-hooded"
+      }
     }
   ]
 }

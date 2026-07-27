@@ -26,6 +26,7 @@ from ..domain.models import (
     GrowthRequest,
     ItemEntity,
     LocationEntity,
+    Progression,
     StatBlock,
     find,
 )
@@ -203,7 +204,27 @@ def catalogue(state: GameState) -> str:
     return briefs(canon_without_player(state), state)
 
 
-def character(state: GameState) -> str:
+def _klass(progression: Progression, library: Library) -> str:
+    """The player's class line: names from the pack, numbers from the snapshot. Only what a role
+    could use — a proficiency list is applied by the rules, never chosen by the Director."""
+    record = library.klass(progression.origin.class_ref)
+    if isinstance(record, ContentMiss):
+        return record.summary
+    subclass = progression.origin.subclass_ref
+    parts = [
+        f"level {progression.level} {record.name}"
+        + ("" if subclass is None else f" ({subclass.index})"),
+        f"proficiency +{progression.prof_bonus}",
+    ]
+    if record.spellcasting_ability is not None:
+        parts.append(f"casts with {record.spellcasting_ability}")
+    if progression.spell_slots:
+        slots = ", ".join(f"level {n} x{count}" for n, count in progression.spell_slots.items())
+        parts.append(f"spell slots {slots}")
+    return " — ".join(parts)
+
+
+def character(state: GameState, library: Library) -> str:
     """The player's own sheet, and the one place exact hit points are shown. Fail fast: standing
     outside canon, or holding an id no entity backs, would feed a role an unusable reference."""
     player = state.player
@@ -217,11 +238,14 @@ def character(state: GameState) -> str:
     if missing:
         raise ValueError(f"character holds unknown item id(s) {missing!r}")
     inventory = "\n".join(f"- {label(e)} — {e.brief}" for e in items if e is not None) or "- (none)"
-    return (
+    lines = [
         f"{player.name} — hp {stats.hp}/{stats.max_hp} — ac {stats.ac}"
-        f"{conditions(stats)} — at {label(where)}\n"
-        f"attributes: {attributes}\ninventory:\n{inventory}"
-    )
+        f"{conditions(stats)} — at {label(where)}",
+        *([] if player.progression is None else [_klass(player.progression, library)]),
+        f"attributes: {attributes}",
+        f"inventory:\n{inventory}",
+    ]
+    return "\n".join(lines)
 
 
 def history(recent: Sequence[Exchange]) -> str:

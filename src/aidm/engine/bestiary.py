@@ -19,6 +19,7 @@ def stat_block(monster: MonsterRecord) -> StatBlock:
         hp=monster.hit_points,
         ac=monster.armor_class,
         condition_immunities=monster.condition_immunities,
+        saving_throws=monster.saving_throws,
     )
 
 
@@ -61,7 +62,23 @@ def _named_by(collection: Collection) -> Kind | None:
             return "actor"
         case "weapons" | "armor" | "gear" | "tools" | "vehicles" | "magic_items":
             return "item"
-        case "spells" | "skills" | "conditions" | "alignments" | "languages":
+        case (
+            "spells"
+            | "skills"
+            | "conditions"
+            | "alignments"
+            | "languages"
+            | "classes"
+            | "subclasses"
+            | "levels"
+            | "features"
+            | "races"
+            | "subraces"
+            | "traits"
+            | "backgrounds"
+            | "feats"
+            | "proficiencies"
+        ):
             return None
         case _:
             assert_never(collection)

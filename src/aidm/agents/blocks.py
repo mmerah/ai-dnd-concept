@@ -5,7 +5,7 @@ from . import views
 from .context import Block, DirectionBlock, RequestBlock
 
 PREMISE = Block("SCENARIO", lambda c: f"{c.state.scenario.title}\n{c.state.scenario.premise}")
-CHARACTER = Block("CHARACTER", lambda c: views.character(c.state))
+CHARACTER = Block("CHARACTER", lambda c: views.character(c.state, c.library))
 HERE = Block("HERE WITH THE PLAYER", lambda c: views.here(c.state))
 STAT_BLOCKS = Block("STAT BLOCKS OF WHO IS HERE", lambda c: views.statblocks(c.state, c.library))
 KNOWN_ELSEWHERE = Block("KNOWN TO THE PLAYER, BUT ELSEWHERE", lambda c: views.elsewhere(c.state))

@@ -34,9 +34,12 @@ def page() -> None:
                 ui.button(icon="send", on_click=lambda: submit(box)).props("round")
         with splitter.after, ui.column().classes("w-full h-full gap-0"):
             with ui.tabs().classes("w-full") as tabs:
-                trace_tab, state_tab = ui.tab("trace"), ui.tab("state")
+                trace_tab = ui.tab("trace")
+                level_tab, state_tab = ui.tab("level up"), ui.tab("state")
             with ui.tab_panels(tabs, value=trace_tab).classes("w-full flex-grow"):
                 with ui.tab_panel(trace_tab), ui.scroll_area().classes("w-full h-full"):
                     panels.trace_panel(session)
+                with ui.tab_panel(level_tab), ui.scroll_area().classes("w-full h-full"):
+                    panels.progress_panel(session)
                 with ui.tab_panel(state_tab), ui.scroll_area().classes("w-full h-full"):
                     panels.state_panel(session)

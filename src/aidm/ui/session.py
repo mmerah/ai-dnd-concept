@@ -2,12 +2,15 @@
 value with a constructor, not built at import, so the scenario picker has somewhere to put its
 result."""
 
+from collections.abc import Sequence
 from dataclasses import dataclass, field
 from functools import cache
+from random import Random
 from typing import Self
 
 from .. import store
-from ..domain.models import GameState, Role, Turn
+from ..domain.models import Event, GameState, Role, Turn
+from ..domain.reducer import apply
 
 SLUG = "poc"
 SCENARIO = "whispering_vault"
@@ -21,6 +24,9 @@ class Session:
     turns: list[Turn] = field(default_factory=list)  # this process only; the save holds history
     busy: bool = False
     step: Role | None = None
+    # One stream for every roll this session makes, turns and level-ups alike, so a seeded session
+    # replays identically.
+    rng: Random = field(default_factory=Random)
 
     @classmethod
     def load(cls, slug: str, scenario: str) -> Self:
@@ -32,6 +38,12 @@ class Session:
         self.turns.append(turn)
         store.save(self.slug, self.state)
         store.append_trace(self.slug, turn)
+
+    def record(self, events: Sequence[Event]) -> None:
+        """Events produced outside a turn — a level-up. No role ran, so there is nothing to trace,
+        but the state still becomes durable through the one place that does that."""
+        self.state = apply(self.state, events)
+        store.save(self.slug, self.state)
 
     def restart(self) -> None:
         store.reset(self.slug)

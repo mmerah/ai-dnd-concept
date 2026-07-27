@@ -25,7 +25,7 @@ Status of the proof of concept, and where it should go. Kept short on purpose.
 
 ### Structure and scale
 
-- Mechanics feel wrong. I feel like there should be an ability check tool (like other tools/actions/consequences). And on success/failure you can have other consequences. Thing is you might want also a straight roll dice? And the value out of those dice rolls need to be available to following consequences/tools if needed. Only then can we implement true D&D 5e chain of consequences (ex: attack roll (or DC check) -> damage roll -> change hp using damage roll output. And the more complicated ones nvolving spells and whatnot).
+- Spellcasting is the last unbuilt compound procedure. `attack`, `roll_check`, `roll_save` and `apply_condition` each emit their whole chain from one typed proposal; `cast` needs spell-slot expenditure (state plus a rest mechanic) and a known-spell rule the SRD data does not carry, so it would mean inventing both. Monster spellcasting is projected and resolves; nothing casts yet.
 - History is the last 6 exchanges, verbatim. No summarisation, no retrieval; a long game silently forgets its own middle.
 - No scenario picker.
 - No undo. The save is a single current state, not a history of commits.
@@ -43,7 +43,6 @@ Status of the proof of concept, and where it should go. Kept short on purpose.
 
 ### Planned features
 
-- Use https://github.com/5e-bits/5e-database/tree/main as a 5e database (SRD 2014) in some way
 - Locations are connected, they have a state.
 - D&D 5e ruleset in `engine/`, replacing the micro-ruleset. The `engine/` ← `agents/` boundary exists for this.
 - Deterministic combat engine, driven by the same event/reducer model.

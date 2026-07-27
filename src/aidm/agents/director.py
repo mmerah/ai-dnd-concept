@@ -10,6 +10,7 @@ from ..domain.models import (
     CONSEQUENCE_TYPES,
     PLAYER_ID,
     ActorEntity,
+    Attack,
     Consequence,
     Direction,
     Entity,
@@ -50,6 +51,10 @@ class DirectorDeps:
     location: EntityId
 
 
+def _attacks_itself(attack: Attack) -> bool:
+    return (attack.attacker_id or PLAYER_ID) == (attack.target_id or PLAYER_ID)
+
+
 def _elsewhere(entity: Entity, location: EntityId) -> bool:
     """Only actors stand anywhere, and `present` marks actor fields alone — anything else has
     already failed the kind check."""
@@ -74,6 +79,9 @@ def _validate_ids(ctx: RunContext[DirectorDeps], direction: Direction) -> Direct
     planned = flatten(direction.mechanics)  # branches included: a nested give is still a give
     if any(isinstance(c, GiveItem) and c.actor_id == PLAYER_ID for c in planned):
         raise ModelRetry("give_item must name another actor: the player already holds the item")
+    # Both of an attack's ids default to the player, so naming one of them is what says "not you".
+    if any(isinstance(c, Attack) and _attacks_itself(c) for c in planned):
+        raise ModelRetry("attack must name at most one of attacker_id and target_id: they differ")
 
     missing = sorted({i for i, _ in refs if i not in canon})
     if missing:

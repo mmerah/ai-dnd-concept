@@ -7,9 +7,7 @@ from pydantic import Field
 from ...utils.dice import DiceExpr
 from ...utils.models import Ability, Attributes, Frozen, FrozenMap
 from ..vocabulary import ConditionName
-from .base import ContentRef, DamageRoll, Record, Slug
-
-MonsterSize = Literal["Tiny", "Small", "Medium", "Large", "Huge", "Gargantuan"]
+from .base import ContentRef, CreatureSize, DamageRoll, Record, Slug
 
 # One named action inside a multiattack routine, and how a save that lands is softened.
 AttackType = Literal["melee", "ranged", "ability", "magic"]
@@ -183,7 +181,7 @@ class Speed(Frozen):
 
 
 class MonsterRecord(Record):
-    size: MonsterSize
+    size: CreatureSize
     type: MonsterType
     challenge_rating: float = Field(ge=0)
     armor_class: int = Field(ge=0)

@@ -10,7 +10,13 @@ from .session import current_session
 
 
 def _refresh() -> None:
-    for panel in (panels.chat, panels.role_badges, panels.state_panel, panels.trace_panel):
+    for panel in (
+        panels.chat,
+        panels.progress_panel,
+        panels.role_badges,
+        panels.state_panel,
+        panels.trace_panel,
+    ):
         panel.refresh()
 
 
@@ -27,7 +33,13 @@ async def submit(box: ui.input) -> None:
     session.busy = True  # no await since the check above, so this cannot interleave
     box.value = ""
     try:
-        turn = await run_turn(session.state, prompt, on_step=_on_step, library=store.library())
+        turn = await run_turn(
+            session.state,
+            prompt,
+            on_step=_on_step,
+            library=store.library(),
+            rng=session.rng,
+        )
         session.commit(turn)
     except Exception as exc:  # the UI must not crash; the turn is dropped whole, never half-applied
         ui.notify(f"{type(exc).__name__}: {exc}", type="negative", multi_line=True)

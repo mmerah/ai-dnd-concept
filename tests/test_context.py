@@ -48,7 +48,7 @@ def test_known_entities_carry_their_ids_for_the_director(state: GameState) -> No
 def test_a_carried_item_keeps_its_id_and_brief(state: GameState) -> None:
     """Regression: an item in an inventory must stay in context, not drop to a bare name — the
     Director needs its id to drop or give it, and its brief to reason about it."""
-    assert "- a lantern[id=lantern] — A tin lantern." in views.character(state)
+    assert "- a lantern[id=lantern] — A tin lantern." in views.character(state, store.library())
 
 
 def test_an_item_in_another_actors_inventory_is_shown_with_its_holder(state: GameState) -> None:

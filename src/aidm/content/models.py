@@ -13,17 +13,27 @@ from ..utils.models import Frozen, FrozenMap
 from .records import (
     AlignmentRecord,
     ArmorRecord,
+    BackgroundRecord,
+    ClassRecord,
     Collection,
     ConditionRecord,
+    FeatRecord,
+    FeatureRecord,
     GearRecord,
     LanguageRecord,
+    LevelRecord,
     MagicItemRecord,
     MonsterRecord,
+    ProficiencyRecord,
+    RaceRecord,
     Record,
     SkillRecord,
     Slug,
     SpellRecord,
+    SubclassRecord,
+    SubraceRecord,
     ToolRecord,
+    TraitRecord,
     VehicleRecord,
     WeaponRecord,
 )
@@ -62,7 +72,7 @@ class Manifest(Frozen):
 
 
 # A pack that ships none of a collection. Pydantic builds each field its own default from this, so
-# the twelve below do not share one mapping.
+# the collections below do not share one mapping.
 _EMPTY = Field(default_factory=dict, validate_default=True)
 
 
@@ -82,6 +92,16 @@ class Pack(Frozen):
     conditions: FrozenMap[str, ConditionRecord] = _EMPTY
     alignments: FrozenMap[str, AlignmentRecord] = _EMPTY
     languages: FrozenMap[str, LanguageRecord] = _EMPTY
+    classes: FrozenMap[str, ClassRecord] = _EMPTY
+    subclasses: FrozenMap[str, SubclassRecord] = _EMPTY
+    levels: FrozenMap[str, LevelRecord] = _EMPTY
+    features: FrozenMap[str, FeatureRecord] = _EMPTY
+    races: FrozenMap[str, RaceRecord] = _EMPTY
+    subraces: FrozenMap[str, SubraceRecord] = _EMPTY
+    traits: FrozenMap[str, TraitRecord] = _EMPTY
+    backgrounds: FrozenMap[str, BackgroundRecord] = _EMPTY
+    feats: FrozenMap[str, FeatRecord] = _EMPTY
+    proficiencies: FrozenMap[str, ProficiencyRecord] = _EMPTY
 
     def collection(self, name: Collection) -> Mapping[str, Record]:
         match name:
@@ -109,6 +129,26 @@ class Pack(Frozen):
                 return self.alignments
             case "languages":
                 return self.languages
+            case "classes":
+                return self.classes
+            case "subclasses":
+                return self.subclasses
+            case "levels":
+                return self.levels
+            case "features":
+                return self.features
+            case "races":
+                return self.races
+            case "subraces":
+                return self.subraces
+            case "traits":
+                return self.traits
+            case "backgrounds":
+                return self.backgrounds
+            case "feats":
+                return self.feats
+            case "proficiencies":
+                return self.proficiencies
             case _:
                 assert_never(name)
 

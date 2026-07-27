@@ -10,6 +10,7 @@ from ...utils.ids import slug
 from ...utils.models import Attributes, Frozen
 from .base import PLAYER_ID, SAVE_VERSION, EntityId
 from .entities import ActorEntity, Entity, ItemEntity, LocationEntity
+from .progression import Advancement, Decisions, Origin
 from .stats import StatBlock
 
 
@@ -22,14 +23,20 @@ class StartingItem(Frozen):
 
 
 class CharacterSheet(Frozen):
-    """The on-disk character definition. The entity it seeds, not the sheet, owns values a leveling
-    system later evolves."""
+    """The on-disk character definition. The entity it seeds, not the sheet, owns values a level-up
+    evolves — so there is no starting hit point total here: `origin`'s class supplies the hit die,
+    and `engine/progression.py` supplies the formula.
+
+    `starting_attributes` is the base roll, before a race's bonuses; `decisions` are the level-1
+    picks, keyed by `ProgressionChoice.id`. Without either, character creation could not produce a
+    legal 5e character."""
 
     name: str
     brief: str
+    origin: Origin
     starting_attributes: Attributes = Attributes()
-    starting_max_hp: int = 10
-    starting_items: list[StartingItem] = Field(default_factory=list)
+    decisions: Decisions = Field(default_factory=dict, validate_default=True)
+    starting_items: tuple[StartingItem, ...] = ()
 
 
 class ScenarioMeta(Frozen):
@@ -118,6 +125,14 @@ class GameState(Frozen):
         # Unrevealed canon is offered as a `discover` target; the player must never be one.
         if not self.player.known:
             raise ValueError("the player entity must be known")
+        # Progression is the player's alone, so `LeveledUp` needs no target id to be unambiguous.
+        levelled = sorted(
+            e.id
+            for e in entities.values()
+            if isinstance(e, ActorEntity) and e.progression is not None and e.id != PLAYER_ID
+        )
+        if levelled:
+            raise ValueError(f"only the player may have progression: {levelled}")
 
         held: list[EntityId] = []
         for actor in (e for e in entities.values() if isinstance(e, ActorEntity)):
@@ -147,10 +162,12 @@ class GameState(Frozen):
         scenario: ScenarioDef,
         character: CharacterSheet,
         packs: Sequence[PackStamp],
+        start: Advancement,
     ) -> Self:
         """A sheet placed at the scenario's start, over its canon. Starting items become canon items
         held by the player (location None), so an inventory holds real ids, not free text. The pack
-        stamps are handed in because reading them means I/O, which `domain/` does not do."""
+        stamps and the level-1 `Advancement` are handed in because deriving either means reading a
+        pack, which `domain/` does not do."""
         entities = dict(scenario.as_world().entities)
         inventory: list[EntityId] = []
         for item in character.starting_items:
@@ -170,10 +187,7 @@ class GameState(Frozen):
             known=True,
             location_id=scenario.starting_location_id,
             inventory=inventory,
-            stats=StatBlock(
-                attributes=character.starting_attributes,
-                max_hp=character.starting_max_hp,
-                hp=character.starting_max_hp,
-            ),
+            stats=StatBlock(attributes=start.attributes, max_hp=start.hp_gain, hp=start.hp_gain),
+            progression=start.progression,
         )
         return cls(scenario=scenario.meta, world=WorldState(entities=entities), packs=list(packs))

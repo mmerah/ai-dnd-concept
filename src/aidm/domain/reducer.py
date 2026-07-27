@@ -5,8 +5,10 @@ from functools import reduce
 
 from .models import (
     ActorEntity,
-    CheckRolled,
+    Advancement,
+    AttackRolled,
     ConditionChanged,
+    DcRolled,
     DiceRolled,
     Entity,
     EntityCreated,
@@ -17,6 +19,7 @@ from .models import (
     HpChanged,
     ItemEntity,
     ItemMoved,
+    LeveledUp,
     LocationEntity,
     Moved,
     find,
@@ -66,8 +69,8 @@ def _move_item(state: GameState, item_id: EntityId, to_id: EntityId) -> GameStat
 
 def _apply_one(state: GameState, event: Event) -> GameState:
     match event:
-        case CheckRolled() | DiceRolled():  # evidence for the Narrator; consequences are separate
-            return state
+        case DcRolled() | DiceRolled() | AttackRolled():
+            return state  # evidence for the Narrator; the consequences are separate events
         case ItemMoved(item_id=item_id, to_id=to_id):
             return _move_item(state, item_id, to_id)
         case HpChanged(target_id=target_id, delta=delta):
@@ -87,12 +90,33 @@ def _apply_one(state: GameState, event: Event) -> GameState:
                 raise ValueError(f"cannot discover unknown entity {entity_id!r}")
             revealed = {**state.world.entities, entity_id: updated(entity, known=True)}
             return _with_entities(state, revealed)
+        case LeveledUp(advancement=advancement):
+            # The player's alone by invariant, so the event needs no target to be unambiguous.
+            return _grown(state, advancement)
         case EntityCreated(entity=entity):
             # A duplicate id is a broken invariant (hard fail here); a duplicate name is a
             # judgement call screened before creation in engine/growth.py.
             if entity.id in state.world.entities:
                 raise ValueError(f"entity id {entity.id!r} already exists")
             return _with_entities(state, {**state.world.entities, entity.id: entity})
+
+
+def _grown(state: GameState, advancement: Advancement) -> GameState:
+    """`hp_gain` is a gain, not a total, so the same level applied twice would grant it twice: the
+    advancement must be the very next level, and nothing but this checks that."""
+    player = state.player
+    held = player.progression
+    reached = advancement.progression.level
+    if held is None or reached != held.level + 1:
+        raise ValueError(f"cannot reach level {reached} from {held.level if held else 'no class'}")
+    stats = updated(
+        player.stats,
+        attributes=advancement.attributes,
+        max_hp=player.stats.max_hp + advancement.hp_gain,
+        hp=player.stats.hp + advancement.hp_gain,
+    )
+    grown = updated(player, stats=stats, progression=advancement.progression)
+    return _with_entities(state, {**state.world.entities, player.id: grown})
 
 
 def apply(state: GameState, events: Sequence[Event]) -> GameState:

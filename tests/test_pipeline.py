@@ -92,7 +92,7 @@ async def test_search_applies_mechanics_and_creates_nothing(state: GameState) ->
 
     # taking a canon item reveals it: inventory and canon can never disagree
     kinds = [e.type for e in turn.events]
-    assert kinds == ["check_rolled", "entity_discovered", "item_moved"]
+    assert kinds == ["dc_rolled", "entity_discovered", "item_moved"]
     assert turn.state.player.inventory == [EntityId("lantern"), EntityId("vault_map")]
     assert known_ids(turn.state) == {"study", "mara", "vault_map", "lantern"}
     assert turn.created == []

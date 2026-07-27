@@ -14,4 +14,4 @@ EntityId = NewType("EntityId", str)
 PLAYER_ID = EntityId("player")
 
 ROLES: tuple[Role, ...] = get_args(Role)
-SAVE_VERSION = 10
+SAVE_VERSION = 11

@@ -8,11 +8,22 @@ from ...content.vocabulary import ConditionName
 from ...utils.models import Ability, Frozen
 from .base import PLAYER_ID, EntityId
 from .entities import Entity
+from .progression import Advancement
 from .stats import Wounds
 
+# A check is attempted, a save resists something aimed at you. The numbers are the same shape; which
+# bonus applies is not, so the roll says which it was.
+RollKind = Literal["check", "save"]
 
-class CheckRolled(Frozen):
-    type: Literal["check_rolled"] = "check_rolled"
+
+class DcRolled(Frozen):
+    """What `DcRoll` resolves to, named for the base rather than for the check: a save is not a
+    check, and `kind` is the only thing separating them."""
+
+    type: Literal["dc_rolled"] = "dc_rolled"
+    actor_id: EntityId
+    actor_name: str
+    kind: RollKind
     ability: Ability
     dc: int
     roll: int
@@ -21,8 +32,34 @@ class CheckRolled(Frozen):
 
     @property
     def summary(self) -> str:
+        who = "" if self.actor_id == PLAYER_ID else f"{self.actor_name} "
         verdict = "SUCCESS" if self.success else "FAILURE"
-        return f"{self.ability} check: {self.roll} -> {self.total} vs DC {self.dc}: {verdict}"
+        return (
+            f"{who}{self.ability} {self.kind}: {self.roll} -> {self.total}"
+            f" vs DC {self.dc}: {verdict}"
+        )
+
+
+class AttackRolled(Frozen):
+    """A to-hit against a target's armour class. The Narrator is shown the AC for the same reason it
+    is shown a DC: it must not narrate a blow that missed."""
+
+    type: Literal["attack_rolled"] = "attack_rolled"
+    actor_name: str
+    target_name: str
+    weapon: str
+    roll: int
+    total: int
+    ac: int
+    hit: bool
+
+    @property
+    def summary(self) -> str:
+        outcome = "HIT" if self.hit else "MISS"
+        return (
+            f"{self.actor_name} attacks {self.target_name} with {self.weapon}:"
+            f" {self.roll} -> {self.total} vs ac {self.ac}: {outcome}"
+        )
 
 
 ItemDestination = Literal["actor", "location"]
@@ -124,14 +161,28 @@ class EntityCreated(Frozen):
         return f"new {self.entity.kind}: {self.entity.name}"
 
 
+class LeveledUp(Frozen):
+    """The player advanced. It names no target: progression is the player's alone, so an event that
+    could name someone else would contradict the invariant that says so."""
+
+    type: Literal["leveled_up"] = "leveled_up"
+    advancement: Advancement
+
+    @property
+    def summary(self) -> str:
+        return f"reached level {self.advancement.progression.level}"
+
+
 Event = Annotated[
-    CheckRolled
+    DcRolled
+    | AttackRolled
     | DiceRolled
     | ItemMoved
     | HpChanged
     | ConditionChanged
     | Moved
     | EntityDiscovered
-    | EntityCreated,
+    | EntityCreated
+    | LeveledUp,
     Field(discriminator="type"),
 ]

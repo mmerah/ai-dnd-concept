@@ -1,0 +1,1077 @@
+[
+  {
+    "index": "light-armor",
+    "name": "Light Armor",
+    "kind": "equipment",
+    "type": "Armor",
+    "equipment": [
+      "padded-armor",
+      "leather-armor",
+      "studded-leather-armor"
+    ]
+  },
+  {
+    "index": "medium-armor",
+    "name": "Medium Armor",
+    "kind": "equipment",
+    "type": "Armor",
+    "equipment": [
+      "hide-armor",
+      "chain-shirt",
+      "scale-mail",
+      "breastplate",
+      "half-plate-armor"
+    ]
+  },
+  {
+    "index": "heavy-armor",
+    "name": "Heavy Armor",
+    "kind": "equipment",
+    "type": "Armor",
+    "equipment": [
+      "ring-mail",
+      "chain-mail",
+      "splint-armor",
+      "plate-armor"
+    ]
+  },
+  {
+    "index": "all-armor",
+    "name": "All armor",
+    "kind": "equipment",
+    "type": "Armor",
+    "equipment": [
+      "padded-armor",
+      "leather-armor",
+      "studded-leather-armor",
+      "hide-armor",
+      "chain-shirt",
+      "scale-mail",
+      "breastplate",
+      "half-plate-armor",
+      "ring-mail",
+      "chain-mail",
+      "splint-armor",
+      "plate-armor",
+      "shield",
+      "adamantine-armor",
+      "animated-shield",
+      "armor",
+      "armor-of-invulnerability",
+      "armor-of-resistance",
+      "armor-of-vulnerability",
+      "arrow-catching-shield",
+      "demon-armor",
+      "dragon-scale-mail",
+      "dwarven-plate",
+      "elven-chain",
+      "glamoured-studded-leather-armor",
+      "mithral-armor",
+      "plate-armor-of-etherealness",
+      "shield-of-missile-attraction",
+      "spellguard-shield",
+      "armor-1",
+      "armor-2",
+      "armor-3",
+      "dragon-scale-mail-black",
+      "dragon-scale-mail-blue",
+      "dragon-scale-mail-brass",
+      "dragon-scale-mail-bronze",
+      "dragon-scale-mail-copper",
+      "dragon-scale-mail-gold",
+      "dragon-scale-mail-green",
+      "dragon-scale-mail-red",
+      "dragon-scale-mail-silver",
+      "dragon-scale-mail-white"
+    ]
+  },
+  {
+    "index": "padded-armor",
+    "name": "Padded Armor",
+    "kind": "equipment",
+    "type": "Armor",
+    "equipment": [
+      "padded-armor"
+    ]
+  },
+  {
+    "index": "leather-armor",
+    "name": "Leather Armor",
+    "kind": "equipment",
+    "type": "Armor",
+    "equipment": [
+      "leather-armor"
+    ]
+  },
+  {
+    "index": "studded-leather-armor",
+    "name": "Studded Leather Armor",
+    "kind": "equipment",
+    "type": "Armor",
+    "equipment": [
+      "studded-leather-armor"
+    ]
+  },
+  {
+    "index": "hide-armor",
+    "name": "Hide Armor",
+    "kind": "equipment",
+    "type": "Armor",
+    "equipment": [
+      "hide-armor"
+    ]
+  },
+  {
+    "index": "chain-shirt",
+    "name": "Chain Shirt",
+    "kind": "equipment",
+    "type": "Armor",
+    "equipment": [
+      "chain-shirt"
+    ]
+  },
+  {
+    "index": "scale-mail",
+    "name": "Scale Mail",
+    "kind": "equipment",
+    "type": "Armor",
+    "equipment": [
+      "scale-mail"
+    ]
+  },
+  {
+    "index": "breastplate",
+    "name": "Breastplate",
+    "kind": "equipment",
+    "type": "Armor",
+    "equipment": [
+      "breastplate"
+    ]
+  },
+  {
+    "index": "half-plate-armor",
+    "name": "Half Plate Armor",
+    "kind": "equipment",
+    "type": "Armor",
+    "equipment": [
+      "half-plate-armor"
+    ]
+  },
+  {
+    "index": "ring-mail",
+    "name": "Ring Mail",
+    "kind": "equipment",
+    "type": "Armor",
+    "equipment": [
+      "ring-mail"
+    ]
+  },
+  {
+    "index": "chain-mail",
+    "name": "Chain Mail",
+    "kind": "equipment",
+    "type": "Armor",
+    "equipment": [
+      "chain-mail"
+    ]
+  },
+  {
+    "index": "splint-armor",
+    "name": "Splint Armor",
+    "kind": "equipment",
+    "type": "Armor",
+    "equipment": [
+      "splint-armor"
+    ]
+  },
+  {
+    "index": "plate-armor",
+    "name": "Plate Armor",
+    "kind": "equipment",
+    "type": "Armor",
+    "equipment": [
+      "plate-armor"
+    ]
+  },
+  {
+    "index": "shields",
+    "name": "Shields",
+    "kind": "equipment",
+    "type": "Armor",
+    "equipment": [
+      "shield"
+    ]
+  },
+  {
+    "index": "simple-weapons",
+    "name": "Simple Weapons",
+    "kind": "equipment",
+    "type": "Weapons",
+    "equipment": [
+      "club",
+      "dagger",
+      "greatclub",
+      "handaxe",
+      "javelin",
+      "light-hammer",
+      "mace",
+      "quarterstaff",
+      "sickle",
+      "spear",
+      "crossbow-light",
+      "dart",
+      "shortbow",
+      "sling"
+    ]
+  },
+  {
+    "index": "martial-weapons",
+    "name": "Martial Weapons",
+    "kind": "equipment",
+    "type": "Weapons",
+    "equipment": [
+      "battleaxe",
+      "flail",
+      "glaive",
+      "greataxe",
+      "greatsword",
+      "halberd",
+      "lance",
+      "longsword",
+      "maul",
+      "morningstar",
+      "pike",
+      "rapier",
+      "scimitar",
+      "shortsword",
+      "trident",
+      "war-pick",
+      "warhammer",
+      "whip",
+      "blowgun",
+      "crossbow-hand",
+      "crossbow-heavy",
+      "longbow",
+      "net"
+    ]
+  },
+  {
+    "index": "clubs",
+    "name": "Clubs",
+    "kind": "equipment",
+    "type": "Weapons",
+    "equipment": [
+      "club"
+    ]
+  },
+  {
+    "index": "daggers",
+    "name": "Daggers",
+    "kind": "equipment",
+    "type": "Weapons",
+    "equipment": [
+      "dagger"
+    ]
+  },
+  {
+    "index": "greatclubs",
+    "name": "Greatclubs",
+    "kind": "equipment",
+    "type": "Weapons",
+    "equipment": [
+      "greatclub"
+    ]
+  },
+  {
+    "index": "handaxes",
+    "name": "Handaxes",
+    "kind": "equipment",
+    "type": "Weapons",
+    "equipment": [
+      "handaxe"
+    ]
+  },
+  {
+    "index": "javelins",
+    "name": "Javelins",
+    "kind": "equipment",
+    "type": "Weapons",
+    "equipment": [
+      "javelin"
+    ]
+  },
+  {
+    "index": "light-hammers",
+    "name": "Light hammers",
+    "kind": "equipment",
+    "type": "Weapons",
+    "equipment": [
+      "light-hammer"
+    ]
+  },
+  {
+    "index": "maces",
+    "name": "Maces",
+    "kind": "equipment",
+    "type": "Weapons",
+    "equipment": [
+      "mace"
+    ]
+  },
+  {
+    "index": "quarterstaffs",
+    "name": "Quarterstaffs",
+    "kind": "equipment",
+    "type": "Weapons",
+    "equipment": [
+      "quarterstaff"
+    ]
+  },
+  {
+    "index": "sickles",
+    "name": "Sickles",
+    "kind": "equipment",
+    "type": "Weapons",
+    "equipment": [
+      "sickle"
+    ]
+  },
+  {
+    "index": "spears",
+    "name": "Spears",
+    "kind": "equipment",
+    "type": "Weapons",
+    "equipment": [
+      "spear"
+    ]
+  },
+  {
+    "index": "crossbows-light",
+    "name": "Crossbows, light",
+    "kind": "equipment",
+    "type": "Weapons",
+    "equipment": [
+      "crossbow-light"
+    ]
+  },
+  {
+    "index": "darts",
+    "name": "Darts",
+    "kind": "equipment",
+    "type": "Weapons",
+    "equipment": [
+      "dart"
+    ]
+  },
+  {
+    "index": "shortbows",
+    "name": "Shortbows",
+    "kind": "equipment",
+    "type": "Weapons",
+    "equipment": [
+      "shortbow"
+    ]
+  },
+  {
+    "index": "slings",
+    "name": "Slings",
+    "kind": "equipment",
+    "type": "Weapons",
+    "equipment": [
+      "sling"
+    ]
+  },
+  {
+    "index": "battleaxes",
+    "name": "Battleaxes",
+    "kind": "equipment",
+    "type": "Weapons",
+    "equipment": [
+      "battleaxe"
+    ]
+  },
+  {
+    "index": "flails",
+    "name": "Flails",
+    "kind": "equipment",
+    "type": "Weapons",
+    "equipment": [
+      "flail"
+    ]
+  },
+  {
+    "index": "glaives",
+    "name": "Glaives",
+    "kind": "equipment",
+    "type": "Weapons",
+    "equipment": [
+      "glaive"
+    ]
+  },
+  {
+    "index": "greataxes",
+    "name": "Greataxes",
+    "kind": "equipment",
+    "type": "Weapons",
+    "equipment": [
+      "greataxe"
+    ]
+  },
+  {
+    "index": "greatswords",
+    "name": "Greatswords",
+    "kind": "equipment",
+    "type": "Weapons",
+    "equipment": [
+      "greatsword"
+    ]
+  },
+  {
+    "index": "halberds",
+    "name": "Halberds",
+    "kind": "equipment",
+    "type": "Weapons",
+    "equipment": [
+      "halberd"
+    ]
+  },
+  {
+    "index": "lances",
+    "name": "Lances",
+    "kind": "equipment",
+    "type": "Weapons",
+    "equipment": [
+      "lance"
+    ]
+  },
+  {
+    "index": "longswords",
+    "name": "Longswords",
+    "kind": "equipment",
+    "type": "Weapons",
+    "equipment": [
+      "longsword"
+    ]
+  },
+  {
+    "index": "mauls",
+    "name": "Mauls",
+    "kind": "equipment",
+    "type": "Weapons",
+    "equipment": [
+      "maul"
+    ]
+  },
+  {
+    "index": "morningstars",
+    "name": "Morningstars",
+    "kind": "equipment",
+    "type": "Weapons",
+    "equipment": [
+      "morningstar"
+    ]
+  },
+  {
+    "index": "pikes",
+    "name": "Pikes",
+    "kind": "equipment",
+    "type": "Weapons",
+    "equipment": [
+      "pike"
+    ]
+  },
+  {
+    "index": "rapiers",
+    "name": "Rapiers",
+    "kind": "equipment",
+    "type": "Weapons",
+    "equipment": [
+      "rapier"
+    ]
+  },
+  {
+    "index": "scimitars",
+    "name": "Scimitars",
+    "kind": "equipment",
+    "type": "Weapons",
+    "equipment": [
+      "scimitar"
+    ]
+  },
+  {
+    "index": "shortswords",
+    "name": "Shortswords",
+    "kind": "equipment",
+    "type": "Weapons",
+    "equipment": [
+      "shortsword"
+    ]
+  },
+  {
+    "index": "tridents",
+    "name": "Tridents",
+    "kind": "equipment",
+    "type": "Weapons",
+    "equipment": [
+      "trident"
+    ]
+  },
+  {
+    "index": "war-picks",
+    "name": "War picks",
+    "kind": "equipment",
+    "type": "Weapons",
+    "equipment": [
+      "war-pick"
+    ]
+  },
+  {
+    "index": "warhammers",
+    "name": "Warhammers",
+    "kind": "equipment",
+    "type": "Weapons",
+    "equipment": [
+      "warhammer"
+    ]
+  },
+  {
+    "index": "whips",
+    "name": "Whips",
+    "kind": "equipment",
+    "type": "Weapons",
+    "equipment": [
+      "whip"
+    ]
+  },
+  {
+    "index": "blowguns",
+    "name": "Blowguns",
+    "kind": "equipment",
+    "type": "Weapons",
+    "equipment": [
+      "blowgun"
+    ]
+  },
+  {
+    "index": "hand-crossbows",
+    "name": "Hand crossbows",
+    "kind": "equipment",
+    "type": "Weapons",
+    "equipment": [
+      "crossbow-hand"
+    ]
+  },
+  {
+    "index": "crossbows-heavy",
+    "name": "Crossbows, heavy",
+    "kind": "equipment",
+    "type": "Weapons",
+    "equipment": [
+      "crossbow-heavy"
+    ]
+  },
+  {
+    "index": "longbows",
+    "name": "Longbows",
+    "kind": "equipment",
+    "type": "Weapons",
+    "equipment": [
+      "longbow"
+    ]
+  },
+  {
+    "index": "nets",
+    "name": "Nets",
+    "kind": "equipment",
+    "type": "Weapons",
+    "equipment": [
+      "net"
+    ]
+  },
+  {
+    "index": "alchemists-supplies",
+    "name": "Alchemist's Supplies",
+    "kind": "equipment",
+    "type": "Artisan's Tools",
+    "equipment": [
+      "alchemists-supplies"
+    ]
+  },
+  {
+    "index": "brewers-supplies",
+    "name": "Brewer's Supplies",
+    "kind": "equipment",
+    "type": "Artisan's Tools",
+    "equipment": [
+      "brewers-supplies"
+    ]
+  },
+  {
+    "index": "calligraphers-supplies",
+    "name": "Calligrapher's Supplies",
+    "kind": "equipment",
+    "type": "Artisan's Tools",
+    "equipment": [
+      "calligraphers-supplies"
+    ]
+  },
+  {
+    "index": "carpenters-tools",
+    "name": "Carpenter's Tools",
+    "kind": "equipment",
+    "type": "Artisan's Tools",
+    "equipment": [
+      "carpenters-tools"
+    ]
+  },
+  {
+    "index": "cartographers-tools",
+    "name": "Cartographer's Tools",
+    "kind": "equipment",
+    "type": "Artisan's Tools",
+    "equipment": [
+      "cartographers-tools"
+    ]
+  },
+  {
+    "index": "cobblers-tools",
+    "name": "Cobbler's Tools",
+    "kind": "equipment",
+    "type": "Artisan's Tools",
+    "equipment": [
+      "cobblers-tools"
+    ]
+  },
+  {
+    "index": "cooks-utensils",
+    "name": "Cook's utensils",
+    "kind": "equipment",
+    "type": "Artisan's Tools",
+    "equipment": [
+      "cooks-utensils"
+    ]
+  },
+  {
+    "index": "glassblowers-tools",
+    "name": "Glassblower's Tools",
+    "kind": "equipment",
+    "type": "Artisan's Tools",
+    "equipment": [
+      "glassblowers-tools"
+    ]
+  },
+  {
+    "index": "jewelers-tools",
+    "name": "Jeweler's Tools",
+    "kind": "equipment",
+    "type": "Artisan's Tools",
+    "equipment": [
+      "jewelers-tools"
+    ]
+  },
+  {
+    "index": "leatherworkers-tools",
+    "name": "Leatherworker's Tools",
+    "kind": "equipment",
+    "type": "Artisan's Tools",
+    "equipment": [
+      "leatherworkers-tools"
+    ]
+  },
+  {
+    "index": "masons-tools",
+    "name": "Mason's Tools",
+    "kind": "equipment",
+    "type": "Artisan's Tools",
+    "equipment": [
+      "masons-tools"
+    ]
+  },
+  {
+    "index": "painters-supplies",
+    "name": "Painter's Supplies",
+    "kind": "equipment",
+    "type": "Artisan's Tools",
+    "equipment": [
+      "painters-supplies"
+    ]
+  },
+  {
+    "index": "potters-tools",
+    "name": "Potter's Tools",
+    "kind": "equipment",
+    "type": "Artisan's Tools",
+    "equipment": [
+      "potters-tools"
+    ]
+  },
+  {
+    "index": "smiths-tools",
+    "name": "Smith's Tools",
+    "kind": "equipment",
+    "type": "Artisan's Tools",
+    "equipment": [
+      "smiths-tools"
+    ]
+  },
+  {
+    "index": "tinkers-tools",
+    "name": "Tinker's Tools",
+    "kind": "equipment",
+    "type": "Artisan's Tools",
+    "equipment": [
+      "tinkers-tools"
+    ]
+  },
+  {
+    "index": "weavers-tools",
+    "name": "Weaver's Tools",
+    "kind": "equipment",
+    "type": "Artisan's Tools",
+    "equipment": [
+      "weavers-tools"
+    ]
+  },
+  {
+    "index": "woodcarvers-tools",
+    "name": "Woodcarver's Tools",
+    "kind": "equipment",
+    "type": "Artisan's Tools",
+    "equipment": [
+      "woodcarvers-tools"
+    ]
+  },
+  {
+    "index": "disguise-kit",
+    "name": "Disguise Kit",
+    "kind": "equipment",
+    "type": "Artisan's Tools",
+    "equipment": [
+      "disguise-kit"
+    ]
+  },
+  {
+    "index": "forgery-kit",
+    "name": "Forgery Kit",
+    "kind": "equipment",
+    "type": "Artisan's Tools",
+    "equipment": [
+      "forgery-kit"
+    ]
+  },
+  {
+    "index": "dice-set",
+    "name": "Dice Set",
+    "kind": "equipment",
+    "type": "Gaming Sets",
+    "equipment": [
+      "dice-set"
+    ]
+  },
+  {
+    "index": "playing-card-set",
+    "name": "Playing Card Set",
+    "kind": "equipment",
+    "type": "Gaming Sets",
+    "equipment": [
+      "playing-card-set"
+    ]
+  },
+  {
+    "index": "bagpipes",
+    "name": "Bagpipes",
+    "kind": "equipment",
+    "type": "Musical Instruments",
+    "equipment": [
+      "bagpipes"
+    ]
+  },
+  {
+    "index": "drum",
+    "name": "Drum",
+    "kind": "equipment",
+    "type": "Musical Instruments",
+    "equipment": [
+      "drum"
+    ]
+  },
+  {
+    "index": "dulcimer",
+    "name": "Dulcimer",
+    "kind": "equipment",
+    "type": "Musical Instruments",
+    "equipment": [
+      "dulcimer"
+    ]
+  },
+  {
+    "index": "flute",
+    "name": "Flute",
+    "kind": "equipment",
+    "type": "Musical Instruments",
+    "equipment": [
+      "flute"
+    ]
+  },
+  {
+    "index": "lute",
+    "name": "Lute",
+    "kind": "equipment",
+    "type": "Musical Instruments",
+    "equipment": [
+      "lute"
+    ]
+  },
+  {
+    "index": "lyre",
+    "name": "Lyre",
+    "kind": "equipment",
+    "type": "Musical Instruments",
+    "equipment": [
+      "lyre"
+    ]
+  },
+  {
+    "index": "horn",
+    "name": "Horn",
+    "kind": "equipment",
+    "type": "Musical Instruments",
+    "equipment": [
+      "horn"
+    ]
+  },
+  {
+    "index": "pan-flute",
+    "name": "Pan flute",
+    "kind": "equipment",
+    "type": "Musical Instruments",
+    "equipment": [
+      "pan-flute"
+    ]
+  },
+  {
+    "index": "shawm",
+    "name": "Shawm",
+    "kind": "equipment",
+    "type": "Musical Instruments",
+    "equipment": [
+      "shawm"
+    ]
+  },
+  {
+    "index": "viol",
+    "name": "Viol",
+    "kind": "equipment",
+    "type": "Musical Instruments",
+    "equipment": [
+      "viol"
+    ]
+  },
+  {
+    "index": "herbalism-kit",
+    "name": "Herbalism Kit",
+    "kind": "equipment",
+    "type": "Other",
+    "equipment": [
+      "herbalism-kit"
+    ]
+  },
+  {
+    "index": "navigators-tools",
+    "name": "Navigator's Tools",
+    "kind": "equipment",
+    "type": "Other",
+    "equipment": [
+      "navigators-tools"
+    ]
+  },
+  {
+    "index": "poisoners-kit",
+    "name": "Poisoner's Kit",
+    "kind": "equipment",
+    "type": "Other",
+    "equipment": [
+      "poisoners-kit"
+    ]
+  },
+  {
+    "index": "thieves-tools",
+    "name": "Thieves' Tools",
+    "kind": "equipment",
+    "type": "Other",
+    "equipment": [
+      "thieves-tools"
+    ]
+  },
+  {
+    "index": "land-vehicles",
+    "name": "Land Vehicles",
+    "kind": "equipment",
+    "type": "Vehicles",
+    "equipment": [
+      "carriage",
+      "cart",
+      "chariot",
+      "sled",
+      "wagon"
+    ]
+  },
+  {
+    "index": "water-vehicles",
+    "name": "Water Vehicles",
+    "kind": "equipment",
+    "type": "Vehicles",
+    "equipment": [
+      "galley",
+      "keelboat",
+      "longship",
+      "rowboat",
+      "sailing-ship",
+      "warship"
+    ]
+  },
+  {
+    "index": "saving-throw-str",
+    "name": "Saving Throw: STR",
+    "kind": "save",
+    "ability": "strength"
+  },
+  {
+    "index": "saving-throw-dex",
+    "name": "Saving Throw: DEX",
+    "kind": "save",
+    "ability": "dexterity"
+  },
+  {
+    "index": "saving-throw-con",
+    "name": "Saving Throw: CON",
+    "kind": "save",
+    "ability": "constitution"
+  },
+  {
+    "index": "saving-throw-int",
+    "name": "Saving Throw: INT",
+    "kind": "save",
+    "ability": "intelligence"
+  },
+  {
+    "index": "saving-throw-wis",
+    "name": "Saving Throw: WIS",
+    "kind": "save",
+    "ability": "wisdom"
+  },
+  {
+    "index": "saving-throw-cha",
+    "name": "Saving Throw: CHA",
+    "kind": "save",
+    "ability": "charisma"
+  },
+  {
+    "index": "skill-acrobatics",
+    "name": "Skill: Acrobatics",
+    "kind": "skill",
+    "skill": "acrobatics"
+  },
+  {
+    "index": "skill-animal-handling",
+    "name": "Skill: Animal Handling",
+    "kind": "skill",
+    "skill": "animal-handling"
+  },
+  {
+    "index": "skill-arcana",
+    "name": "Skill: Arcana",
+    "kind": "skill",
+    "skill": "arcana"
+  },
+  {
+    "index": "skill-athletics",
+    "name": "Skill: Athletics",
+    "kind": "skill",
+    "skill": "athletics"
+  },
+  {
+    "index": "skill-deception",
+    "name": "Skill: Deception",
+    "kind": "skill",
+    "skill": "deception"
+  },
+  {
+    "index": "skill-history",
+    "name": "Skill: History",
+    "kind": "skill",
+    "skill": "history"
+  },
+  {
+    "index": "skill-insight",
+    "name": "Skill: Insight",
+    "kind": "skill",
+    "skill": "insight"
+  },
+  {
+    "index": "skill-intimidation",
+    "name": "Skill: Intimidation",
+    "kind": "skill",
+    "skill": "intimidation"
+  },
+  {
+    "index": "skill-investigation",
+    "name": "Skill: Investigation",
+    "kind": "skill",
+    "skill": "investigation"
+  },
+  {
+    "index": "skill-medicine",
+    "name": "Skill: Medicine",
+    "kind": "skill",
+    "skill": "medicine"
+  },
+  {
+    "index": "skill-nature",
+    "name": "Skill: Nature",
+    "kind": "skill",
+    "skill": "nature"
+  },
+  {
+    "index": "skill-perception",
+    "name": "Skill: Perception",
+    "kind": "skill",
+    "skill": "perception"
+  },
+  {
+    "index": "skill-performance",
+    "name": "Skill: Performance",
+    "kind": "skill",
+    "skill": "performance"
+  },
+  {
+    "index": "skill-persuasion",
+    "name": "Skill: Persuasion",
+    "kind": "skill",
+    "skill": "persuasion"
+  },
+  {
+    "index": "skill-religion",
+    "name": "Skill: Religion",
+    "kind": "skill",
+    "skill": "religion"
+  },
+  {
+    "index": "skill-sleight-of-hand",
+    "name": "Skill: Sleight of Hand",
+    "kind": "skill",
+    "skill": "sleight-of-hand"
+  },
+  {
+    "index": "skill-stealth",
+    "name": "Skill: Stealth",
+    "kind": "skill",
+    "skill": "stealth"
+  },
+  {
+    "index": "skill-survival",
+    "name": "Skill: Survival",
+    "kind": "skill",
+    "skill": "survival"
+  }
+]

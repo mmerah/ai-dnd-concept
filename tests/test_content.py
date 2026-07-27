@@ -13,11 +13,17 @@ from aidm import store
 from aidm.agents import views
 from aidm.content import ContentMiss, ContentRef, load
 from aidm.content.records import (
+    ClassLevelRecord,
+    EquipmentProficiency,
     MonsterAttack,
     MonsterMultiattack,
     MonsterProcedure,
     MonsterSave,
+    RecordOption,
+    SaveProficiency,
+    SkillProficiency,
     SpellRecord,
+    SubclassLevelRecord,
 )
 from aidm.domain.models import ActorEntity, Entity, EntityId, GameState, ItemEntity, updated
 from aidm.engine import bestiary
@@ -29,6 +35,19 @@ MONSTERS = list(LIBRARY.packs[0].monsters.values())
 WEAPONS = list(LIBRARY.packs[0].weapons.values())
 ARMOR = list(LIBRARY.packs[0].armor.values())
 SPELLS = list(LIBRARY.packs[0].spells.values())
+PACK_RECORDS = LIBRARY.packs[0]
+CHOICES = [
+    choice
+    for records in (
+        PACK_RECORDS.classes,
+        PACK_RECORDS.features,
+        PACK_RECORDS.races,
+        PACK_RECORDS.traits,
+        PACK_RECORDS.backgrounds,
+    )
+    for record in records.values()
+    for choice in record.choices
+]
 
 # Upstream data defects, named so they fail loudly if their number changes.
 NO_DAMAGE = {"net"}  # a weapon that only restrains
@@ -70,8 +89,8 @@ def test_an_unresolved_ref_is_a_value_with_a_reason() -> None:
 
 
 def test_the_manifest_counts_every_collection_the_pack_ships() -> None:
-    """Twelve collections, and the count is what catches a half-written one — the failure a shape
-    test cannot see."""
+    """Twenty-two collections, and the count is what catches a half-written one — the failure a
+    shape test cannot see."""
     assert LIBRARY.packs[0].manifest.provides == {
         "monsters": 334,
         "weapons": 37,
@@ -85,6 +104,16 @@ def test_the_manifest_counts_every_collection_the_pack_ships() -> None:
         "conditions": 15,
         "alignments": 9,
         "languages": 16,
+        "classes": 12,
+        "subclasses": 12,
+        "levels": 290,
+        "features": 407,
+        "races": 9,
+        "subraces": 4,
+        "traits": 38,
+        "backgrounds": 1,
+        "feats": 1,
+        "proficiencies": 117,
     }
     with pytest.raises(ValidationError, match="promises 334 monsters"):
         updated(LIBRARY.packs[0], monsters={})
@@ -335,9 +364,84 @@ def test_a_condition_is_shown_on_anyone_who_holds_one() -> None:
         _with(state, blinded), LIBRARY
     )
     player = updated(state.player, stats=updated(state.player.stats, conditions=("prone",)))
-    assert "under prone" in views.character(_with(state, player))
+    assert "under prone" in views.character(_with(state, player), LIBRARY)
 
 
 def test_two_packs_cannot_claim_one_id() -> None:
     with pytest.raises(ValidationError, match="same id"):
         load([Path("packs") / PACK, Path("packs") / PACK])
+
+
+def test_a_level_record_is_a_class_one_or_a_subclass_one() -> None:
+    """Discriminated rather than a bag of optionals: 50 of the 290 carry features and nothing else,
+    and reading a missing `prof_bonus` as 0 would give a level-20 fighter a +0 to everything."""
+    levels = list(PACK_RECORDS.levels.values())
+    assert sum(isinstance(x, ClassLevelRecord) for x in levels) == 240
+    assert sum(isinstance(x, SubclassLevelRecord) for x in levels) == 50
+    # The cumulative totals the level-up diff is taken between.
+    fighter = [PACK_RECORDS.levels[f"fighter-{n}"] for n in range(1, 7)]
+    assert [x.ability_score_bonuses for x in fighter if isinstance(x, ClassLevelRecord)] == [
+        0,
+        0,
+        0,
+        1,
+        1,
+        2,
+    ]
+
+
+def test_every_class_can_be_played_and_ships_one_subclass() -> None:
+    """The SRD's stated gap: one subclass per class, chosen at the level it first grants
+    something."""
+    classes = list(PACK_RECORDS.classes.values())
+    assert len(classes) == 12
+    assert all(
+        record.subclass is not None and len(record.subclass.options) == 1 for record in classes
+    )
+    assert sum(1 for record in classes if record.spellcasting_ability) == 8
+    subclass = PACK_RECORDS.classes["cleric"].subclass
+    assert subclass is not None and subclass.level == 1  # a cleric picks a domain at level 1
+
+
+def test_a_choice_id_is_unique_pack_wide_and_every_option_resolves() -> None:
+    """A saved character's decisions are keyed by these ids, so a collision would silently re-point
+    a choice already made; a dangling option would be a pick that grants nothing."""
+    ids = [choice.id for choice in CHOICES]
+    assert len(ids) == len(set(ids)) == 41
+    refs = [o.ref for c in CHOICES for o in c.options if isinstance(o, RecordOption)]
+    assert len(refs) == 387
+    assert not [str(r) for r in refs if LIBRARY.resolves(r) is not None]
+
+
+def test_only_an_expertise_choice_doubles_rather_than_grants() -> None:
+    """Expertise offers every skill whether the character holds it or not, so a pick read as a grant
+    would hand out a proficiency the pack never gave them. Nothing else in the pack doubles."""
+    doubling = sorted(choice.id for choice in CHOICES if choice.effect == "double")
+    assert doubling == [
+        "bard-expertise-1-expertise",
+        "bard-expertise-2-expertise",
+        "rogue-expertise-1-expertise",
+        "rogue-expertise-2-expertise",
+    ]
+
+
+def test_a_nested_choice_is_flattened_by_unioning_its_arms() -> None:
+    """Exact wherever the arms spend the same number of picks. The monk's "one artisan's tool or one
+    musical instrument" is one pick from 19 + 10; `rogue-expertise-1`'s "two skills, or one skill
+    and thieves' tools" is two picks from 18 + 1. Disagreeing arms are refused by the importer."""
+    tools = PACK_RECORDS.classes["monk"].choices[1]
+    assert (tools.choose, len(tools.options)) == (1, 29)
+    (expertise,) = PACK_RECORDS.features["rogue-expertise-1"].choices
+    assert (expertise.choose, len(expertise.options)) == (2, 19)
+
+
+def test_a_proficiency_says_what_it_covers_rather_than_naming_a_category() -> None:
+    """An `equipment_category` reference is expanded to its members at import, so a to-hit asks
+    whether the weapon is in the set instead of re-deriving a category mid-turn."""
+    kinds = [type(p).__name__ for p in PACK_RECORDS.proficiencies.values()]
+    assert len(kinds) == 117
+    assert kinds.count(EquipmentProficiency.__name__) == 93
+    assert kinds.count(SkillProficiency.__name__) == 18
+    assert kinds.count(SaveProficiency.__name__) == 6
+    martial = PACK_RECORDS.proficiencies["martial-weapons"]
+    assert isinstance(martial, EquipmentProficiency) and len(martial.equipment) == 23

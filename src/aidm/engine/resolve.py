@@ -7,13 +7,17 @@ from collections.abc import Sequence
 from random import Random
 from typing import Literal
 
+from ..content import Library
 from ..content.vocabulary import ConditionName
 from ..domain.models import (
     ActorEntity,
     ApplyCondition,
+    Attack,
     ConditionChanged,
     Consequence,
     Damage,
+    DcRoll,
+    DcRolled,
     Discover,
     DropItem,
     Entity,
@@ -34,34 +38,43 @@ from ..domain.models import (
     Move,
     Moved,
     RollCheck,
+    RollSave,
     TakeItem,
     find,
 )
 from ..domain.reducer import apply
 from ..utils import dice
 from ..utils.ids import slug
-from . import rules
+from . import procedures, rules
 
 
-def resolve(mechanics: Sequence[Consequence], state: GameState, rng: Random) -> list[Event]:
+def resolve(
+    mechanics: Sequence[Consequence], state: GameState, rng: Random, library: Library
+) -> list[Event]:
     """Fold left to right, so each consequence sees the state its predecessors produced."""
     events: list[Event] = []
     for consequence in mechanics:
-        new = _walk(consequence, state, rng)
+        new = _walk(consequence, state, rng, library)
         events.extend(new)
         state = apply(state, new)
     return events
 
 
-def _walk(consequence: Consequence, draft: GameState, rng: Random) -> list[Event]:
+def _walk(consequence: Consequence, draft: GameState, rng: Random, library: Library) -> list[Event]:
     """Canon references canonicalize to `entity.name`, revealing an entity as it enters the player's
     view. An improvised item is promoted to a canon item so an inventory holds a real id."""
     player = draft.player
     match consequence:
-        case RollCheck(ability=ability, dc=dc, on_success=on_success, on_failure=on_failure):
+        case RollCheck(ability=ability, dc=dc):
             rolled = rules.roll_check(player, ability, dc, rng)
-            branch = on_success if rolled.success else on_failure
-            return [rolled, *resolve(branch, apply(draft, [rolled]), rng)]
+            return _branched((), rolled, consequence, draft, rng, library)
+        case RollSave(ability=ability, dc=dc, target_id=target_id):
+            target = _target(draft, target_id)
+            rolled = rules.roll_save(target, ability, dc, rng)
+            return _branched(_reveal(target), rolled, consequence, draft, rng, library)
+        case Attack(weapon=weapon, target_id=target_id, attacker_id=attacker_id):
+            attacker, target = _target(draft, attacker_id), _target(draft, target_id)
+            return _attack_events(draft, attacker, target, weapon, rng, library)
         case Damage(amount=amount, target_id=target_id):
             return _hp_events(draft, target_id, amount, rng, sign=-1)
         case Heal(amount=amount, target_id=target_id):
@@ -98,6 +111,41 @@ def _walk(consequence: Consequence, draft: GameState, rng: Random) -> list[Event
             )
             took = _item_moved(item, player.id, player.name, "actor")
             return [EntityCreated(entity=item), took]
+
+
+def _branched(
+    before: Sequence[Event],
+    rolled: DcRolled,
+    consequence: DcRoll,
+    draft: GameState,
+    rng: Random,
+    library: Library,
+) -> list[Event]:
+    """The roll and whatever preceded it, then only the branch the roll selected. The branch folds
+    against the state *all* of them produced, so a reveal already emitted is not emitted twice."""
+    emitted = [*before, rolled]
+    branch = consequence.on_success if rolled.success else consequence.on_failure
+    return [*emitted, *resolve(branch, apply(draft, emitted), rng, library)]
+
+
+def _attack_events(
+    draft: GameState,
+    attacker: ActorEntity,
+    target: ActorEntity,
+    weapon: str,
+    rng: Random,
+    library: Library,
+) -> list[Event]:
+    """A miss is still evidence, so the roll is emitted either way; the damage reuses the same hp
+    path as `damage`, so the clamp and the zero-delta rule cannot diverge from it."""
+    if attacker.id == target.id:
+        raise ValueError(f"cannot attack {target.id!r}: an actor does not strike at themselves")
+    swung = procedures.swing(draft, attacker, weapon, library)
+    rolled = procedures.strike(attacker, target, swung, rng)
+    seen: list[Event] = [*_reveal(attacker), *_reveal(target), rolled]
+    if not rolled.hit or swung.damage is None:
+        return seen
+    return [*seen, *_hp_events(apply(draft, seen), target.id, swung.damage, rng, sign=-1)]
 
 
 def _move(draft: GameState, location_id: EntityId, actor_id: EntityId | None) -> list[Event]:
@@ -139,7 +187,7 @@ def _hp_events(
     sign: Literal[1, -1],
 ) -> list[Event]:
     """Harming or healing someone unseen reveals them, since the events name them."""
-    target = draft.player if target_id is None else _actor_here(draft, target_id)
+    target = _target(draft, target_id)
     total, rolls = _magnitude(amount, rng)
     changed = _hp_changed(target, sign * total)
     # A change the clamp swallows whole is not an event: no hit point moved, so none is reported.
@@ -158,7 +206,7 @@ def _condition_events(
     second helping of `prone`, changed nothing and so is not an event. `with_condition` is asked
     rather than re-implemented, so the rule cannot drift from the one the reducer applies. The
     reveal still happens, because the Director acted on someone the player must have seen."""
-    target = draft.player if target_id is None else _actor_here(draft, target_id)
+    target = _target(draft, target_id)
     if target.stats.with_condition(condition, active=active) == target.stats:
         return _reveal(target)
     changed = ConditionChanged(
@@ -213,6 +261,12 @@ def _actor_here(state: GameState, entity_id: EntityId) -> ActorEntity:
     if actor.location_id != state.player.location_id:
         raise ValueError(f"cannot affect {entity_id!r}: not at the player's location")
     return actor
+
+
+def _target(state: GameState, entity_id: EntityId | None) -> ActorEntity:
+    """An omitted actor id is the player throughout the vocabulary — they are the one actor no role
+    is shown an id for."""
+    return state.player if entity_id is None else _actor_here(state, entity_id)
 
 
 def _item(state: GameState, entity_id: EntityId) -> ItemEntity:

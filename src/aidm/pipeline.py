@@ -94,7 +94,7 @@ async def run_turn(
     deps = DirectorDeps(entities=state.world.entities, location=state.player.location_id)
     direction = await direct(ask("director", context), deps, seen_by("director"))
 
-    events = resolve(direction.mechanics, state, rng or Random())
+    events = resolve(direction.mechanics, state, rng or Random(), library)
     draft = apply(state, events)
 
     context = replace(context, state=draft, events=events)

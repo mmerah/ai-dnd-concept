@@ -16,6 +16,16 @@
     "skills": 18,
     "conditions": 15,
     "alignments": 9,
-    "languages": 16
+    "languages": 16,
+    "classes": 12,
+    "subclasses": 12,
+    "levels": 290,
+    "features": 407,
+    "races": 9,
+    "subraces": 4,
+    "traits": 38,
+    "backgrounds": 1,
+    "feats": 1,
+    "proficiencies": 117
   }
 }

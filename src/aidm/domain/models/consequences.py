@@ -175,20 +175,70 @@ Mara walks off to the cloister -> `move` location_id `cloister`, actor_id `mara`
     )
 
 
-class RollCheck(Frozen):
-    """Roll an ability check against a DC, then apply the branch that the result selects."""
+class Attack(Frozen):
+    """One actor strikes at another with a weapon: the rules decide whether it lands, and for how
+    much."""
 
-    GUIDANCE: ClassVar[str] = """Use when an action can fail. Put what passing does in \
-`on_success`, what failing does in `on_failure`; either may be empty."""
+    GUIDANCE: ClassVar[str] = """Use for a deliberate blow — the player swinging, or someone here \
+swinging at them. Name the weapon exactly as you were shown it: one of the attacker's own attacks \
+from their stat block, or an item they carry. The to-hit roll, the target's armour and the damage \
+are all the rules' business, so there is nothing to wrap in a `roll_check`.
+Nobody strikes at themselves, so name at most one of the two ids.
+Example: the goblin lunges at the player -> `attack` with attacker_id `goblin`, weapon 'Scimitar'. \
+The player swings back -> `attack` with target_id `goblin`, weapon 'a notched longsword'."""
 
-    action: Literal["roll_check"] = "roll_check"
+    action: Literal["attack"] = "attack"
+    weapon: str = Field(
+        description="The attacker's own attack by name, or an item they carry, spelled as shown."
+    )
+    # Both ends default to the player, as every other target does: no role is ever shown the
+    # player's id, so a required one would make "the goblin swings at you" inexpressible.
+    target_id: Annotated[EntityId | None, References("actor", present=True)] = Field(
+        default=None,
+        description="Id of the `actor` struck at, here with the player; omit for them.",
+    )
+    attacker_id: Annotated[EntityId | None, References("actor", present=True)] = Field(
+        default=None, description="Id of the `actor` attacking; omit for the player."
+    )
+
+
+class DcRoll(Frozen):
+    """A d20 against a DC whose outcome selects between two nested plans. Both roll consequences
+    share this base, which is what keeps `branches()` a single `isinstance` for the whole
+    vocabulary — and what stops the two drifting apart in shape."""
+
     ability: Ability = Field(description=f"One of: {', '.join(ABILITIES)}.")
     dc: int = Field(description="5 easy, 10 moderate, 15 hard, 20 very hard.")
     on_success: list["Consequence"] = Field(
-        default_factory=list, description="Applied iff the check passes."
+        default_factory=list, description="Applied iff the roll succeeds."
     )
     on_failure: list["Consequence"] = Field(
-        default_factory=list, description="Applied iff the check fails."
+        default_factory=list, description="Applied iff the roll fails."
+    )
+
+
+class RollCheck(DcRoll):
+    """Roll the player's ability check against a DC, then apply the branch the result selects."""
+
+    GUIDANCE: ClassVar[str] = """Use when something the player attempts can fail. Put what passing \
+does in `on_success`, what failing does in `on_failure`; either may be empty."""
+
+    action: Literal["roll_check"] = "roll_check"
+
+
+class RollSave(DcRoll):
+    """Make an actor resist something aimed at them, then apply the branch the result selects."""
+
+    GUIDANCE: ClassVar[str] = """Use when something is done *to* someone and they may shrug it off \
+— a trap's gas, a spell, a shove. The difference from `roll_check` is who rolls and which bonus \
+applies; the rules know both.
+Example: gas floods the crypt -> `roll_save` ability 'constitution', dc 12, whose on_failure is \
+`damage` with amount '2d4'."""
+
+    action: Literal["roll_save"] = "roll_save"
+    target_id: Annotated[EntityId | None, References("actor", present=True)] = Field(
+        default=None,
+        description="Id of the `actor` resisting, here with the player; omit for them.",
     )
 
 
@@ -202,7 +252,9 @@ Consequence = Annotated[
     | Heal
     | ApplyCondition
     | Move
-    | RollCheck,
+    | Attack
+    | RollCheck
+    | RollSave,
     Field(discriminator="action"),
 ]
 
@@ -210,14 +262,15 @@ Consequence = Annotated[
 # with the type. `get_args` erases to `Any`, but the union guarantees these are the member classes.
 CONSEQUENCE_TYPES: tuple[type[Consequence], ...] = get_args(get_args(Consequence)[0])
 
-# RollCheck references "Consequence" before the alias exists; bind the forward ref now.
+# `DcRoll` references "Consequence" before the alias exists; bind the forward ref now.
 RollCheck.model_rebuild()
+RollSave.model_rebuild()
 
 
 def branches(consequence: "Consequence") -> Mapping[str, Sequence["Consequence"]]:
     """A consequence's nested plans, by the field holding each — named because the trace panel must
     say which branch ran. This grows only when a new nesting shape appears, never per action."""
-    if isinstance(consequence, RollCheck):
+    if isinstance(consequence, DcRoll):
         return {"on_success": consequence.on_success, "on_failure": consequence.on_failure}
     return {}
 
