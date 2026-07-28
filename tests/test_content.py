@@ -11,19 +11,25 @@ from pydantic import ValidationError
 
 from aidm import store
 from aidm.agents import views
+from aidm.agents.context import Scene
 from aidm.content import ContentMiss, ContentRef, load
 from aidm.content.records import (
+    ArmorRecord,
     ClassLevelRecord,
+    ConditionRecord,
     EquipmentProficiency,
+    GearRecord,
     MonsterAttack,
     MonsterMultiattack,
     MonsterProcedure,
+    MonsterRecord,
     MonsterSave,
     RecordOption,
     SaveProficiency,
     SkillProficiency,
     SpellRecord,
     SubclassLevelRecord,
+    ToolRecord,
 )
 from aidm.domain.models import ActorEntity, Entity, EntityId, GameState, ItemEntity, updated
 from aidm.engine import bestiary
@@ -68,8 +74,8 @@ def ref(collection: str, index: str, pack: str = PACK) -> ContentRef:
 def test_a_record_is_addressed_by_pack_collection_and_index() -> None:
     """`shield` is an Equipment *and* a Spell — one of 79 cross-collection collisions in this pack
     alone, which is why an index alone could never be the identity."""
-    armor = LIBRARY.armor(ref("armor", "shield"))
-    spell = LIBRARY.spell(ref("spells", "shield"))
+    armor = LIBRARY.get(ref("armor", "shield"), ArmorRecord)
+    spell = LIBRARY.get(ref("spells", "shield"), SpellRecord)
     assert not isinstance(armor, ContentMiss) and armor.base_ac == 2
     assert not isinstance(spell, ContentMiss) and spell.level == 1
 
@@ -77,15 +83,29 @@ def test_a_record_is_addressed_by_pack_collection_and_index() -> None:
 def test_an_unresolved_ref_is_a_value_with_a_reason() -> None:
     """A turn-time miss must degrade visibly: raising would let the pipeline eat the move."""
     misses = [
-        LIBRARY.monster(ref("monsters", "tarrasque-of-the-second-edition")),
-        LIBRARY.monster(ref("monsters", "goblin", pack="homebrew")),
-        LIBRARY.spell(ref("monsters", "goblin")),  # right index, wrong collection
+        LIBRARY.get(ref("monsters", "tarrasque-of-the-second-edition"), MonsterRecord),
+        LIBRARY.get(ref("monsters", "goblin", pack="homebrew"), MonsterRecord),
+        LIBRARY.get(ref("monsters", "goblin"), SpellRecord),  # right index, wrong collection
+        LIBRARY.get(ref("proficiencies", "skill-arcana"), SaveProficiency),  # wrong arm
     ]
     assert [m.reason for m in misses if isinstance(m, ContentMiss)] == [
         "unknown_index",
         "unknown_pack",
         "wrong_collection",
+        "wrong_type",
     ]
+
+
+def test_a_collection_is_reachable_the_moment_its_record_class_exists() -> None:
+    """The drift this replaced: `Pack` carried 22 collections and `Library` exposed 14 accessors,
+    so eight — tools and conditions among them — loaded, validated and were reachable by nothing.
+    The collection is read off the record class now, so the two cannot disagree."""
+    tools = LIBRARY.get(ref("tools", "thieves-tools"), ToolRecord)
+    assert not isinstance(tools, ContentMiss) and tools.tool_category == "Other Tools"
+    blinded = LIBRARY.get(ref("conditions", "blinded"), ConditionRecord)
+    assert not isinstance(blinded, ContentMiss) and blinded.desc
+    with pytest.raises(ValueError, match="unknown_index"):
+        LIBRARY.require(ref("tools", "sonic-screwdriver"), ToolRecord)
 
 
 def test_the_manifest_counts_every_collection_the_pack_ships() -> None:
@@ -132,8 +152,8 @@ def test_a_loaded_record_cannot_be_edited() -> None:
     """`store.library()` is cached, so every turn shares one record object: `frozen=True` guards a
     model's fields but not a dict inside one, and an edit here would outlive the turn that made
     it."""
-    goblin = LIBRARY.monster(ref("monsters", "goblin"))
-    fireball = LIBRARY.spell(ref("spells", "fireball"))
+    goblin = LIBRARY.get(ref("monsters", "goblin"), MonsterRecord)
+    fireball = LIBRARY.get(ref("spells", "fireball"), SpellRecord)
     assert not isinstance(goblin, ContentMiss) and not isinstance(fireball, ContentMiss)
     assert fireball.damage is not None
     for keyed in (goblin.saving_throws, goblin.skills, fireball.damage.at_slot_level):
@@ -168,9 +188,9 @@ def test_every_armor_carries_the_fields_the_importer_must_not_default() -> None:
 def test_an_item_entity_has_something_to_point_at() -> None:
     """The scenario's lantern was refless because gear did not exist; all five item collections do
     now, and `bestiary` lets an item name any of them."""
-    lantern = LIBRARY.gear(ref("gear", "lantern-hooded"))
+    lantern = LIBRARY.get(ref("gear", "lantern-hooded"), GearRecord)
     assert not isinstance(lantern, ContentMiss) and str(lantern.cost) == "5 gp"
-    pack = LIBRARY.gear(ref("gear", "burglars-pack"))
+    pack = LIBRARY.get(ref("gear", "burglars-pack"), GearRecord)
     assert not isinstance(pack, ContentMiss) and len(pack.contents) == 14
 
 
@@ -201,7 +221,7 @@ def test_every_action_is_an_attack_a_save_a_multiattack_or_named_prose() -> None
 def test_a_dragons_breath_is_limited_and_typed() -> None:
     """One upstream entry holds two breaths behind one recharge. Without `usage` the breath is
     unlimited, which is a different monster; without the flattening both breaths are prose."""
-    dragon = LIBRARY.monster(ref("monsters", "adult-brass-dragon"))
+    dragon = LIBRARY.get(ref("monsters", "adult-brass-dragon"), MonsterRecord)
     assert not isinstance(dragon, ContentMiss)
     breaths = [a for a in dragon.actions if a.name.startswith("Breath Weapons")]
     assert [b.name for b in breaths] == [
@@ -237,7 +257,7 @@ def test_a_monsters_own_spells_resolve_to_records() -> None:
 
 def test_a_monsters_traits_keep_their_mechanics() -> None:
     """The balor's Death Throes is a DC 20 save for 20d6 fire, flattened to a string before R6b."""
-    balor = LIBRARY.monster(ref("monsters", "balor"))
+    balor = LIBRARY.get(ref("monsters", "balor"), MonsterRecord)
     assert not isinstance(balor, ContentMiss)
     (throes,) = [t for t in balor.traits if t.name == "Death Throes"]
     assert isinstance(throes, MonsterSave)
@@ -266,11 +286,11 @@ def test_a_scaling_value_carries_one_damage_type() -> None:
 def test_a_monster_is_snapshotted_into_an_entity_not_read_live() -> None:
     """The numbers the reducer touches are copied in at creation; a pack bump must not be able to
     move a saved actor's hit points, nor make a devil newly poisonable."""
-    goblin = LIBRARY.monster(ref("monsters", "goblin"))
+    goblin = LIBRARY.get(ref("monsters", "goblin"), MonsterRecord)
     assert not isinstance(goblin, ContentMiss)
     stats = bestiary.stat_block(goblin)
     assert (stats.ac, stats.hp, stats.max_hp, stats.attributes["strength"]) == (15, 7, 7, 8)
-    zombie = LIBRARY.monster(ref("monsters", "zombie"))
+    zombie = LIBRARY.get(ref("monsters", "zombie"), MonsterRecord)
     assert not isinstance(zombie, ContentMiss)
     assert bestiary.stat_block(zombie).condition_immunities == ("poisoned",)
 
@@ -342,7 +362,7 @@ def test_the_directors_slice_is_the_mechanics_never_the_record() -> None:
     )
     assert isinstance(gargoyle, ActorEntity)
     under = updated(gargoyle, stats=updated(gargoyle.stats, conditions=("prone",)))
-    shown = views.statblocks(_with(state, under), LIBRARY)
+    shown = views.statblocks(Scene.of(_with(state, under)), LIBRARY)
     assert shown.endswith(
         "- a crouching gargoyle[id=gargoyle] — ac 15 — under prone"
         " — Multiattack: Bite x1 + Claws x1; Bite +4 (1d6+2 piercing); Claws +4 (1d6+2 slashing)"
@@ -362,10 +382,10 @@ def test_a_condition_is_shown_on_anyone_who_holds_one() -> None:
     assert isinstance(mara, ActorEntity)
     blinded = updated(mara, stats=updated(mara.stats, conditions=("blinded",)))
     assert "Mara[id=mara] — ac 10 — under blinded" in views.statblocks(
-        _with(state, blinded), LIBRARY
+        Scene.of(_with(state, blinded)), LIBRARY
     )
     player = updated(state.player, stats=updated(state.player.stats, conditions=("prone",)))
-    assert "under prone" in views.character(_with(state, player), LIBRARY)
+    assert "under prone" in views.character(Scene.of(_with(state, player)), LIBRARY)
 
 
 def test_two_packs_cannot_claim_one_id() -> None:

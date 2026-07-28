@@ -1,7 +1,7 @@
 """Loading packs from disk, and looking records up in them."""
 
 import json
-from collections.abc import Callable, Mapping, Sequence
+from collections.abc import Sequence
 from pathlib import Path
 from typing import Literal, Self
 
@@ -9,29 +9,14 @@ from pydantic import TypeAdapter, model_validator
 
 from ..utils.models import Frozen
 from .models import COLLECTIONS, Manifest, Pack, PackStamp
-from .records import (
-    ArmorRecord,
-    BackgroundRecord,
-    ClassRecord,
-    Collection,
-    ContentRef,
-    FeatureRecord,
-    GearRecord,
-    LevelRecord,
-    MonsterRecord,
-    ProficiencyRecord,
-    RaceRecord,
-    Record,
-    SpellRecord,
-    SubclassRecord,
-    SubraceRecord,
-    TraitRecord,
-    WeaponRecord,
-)
+from .records import Collection, ContentRef, Record
 
 ENCODING = "utf-8"
 
-MissReason = Literal["unknown_pack", "wrong_collection", "unknown_index"]
+# `wrong_type` is a record of another class under the ref — the level that is a subclass level, the
+# proficiency that is a skill rather than a save. It is a miss rather than a raise because asking
+# for a subtype is how a caller *tests* which arm a record is.
+MissReason = Literal["unknown_pack", "wrong_collection", "unknown_index", "wrong_type"]
 
 # Collections are JSON arrays on disk — the authoring shape — and keyed by index once loaded. Read
 # untyped so that one line covers every collection; `Pack` is what validates the records.
@@ -70,67 +55,38 @@ class Library(Frozen):
     def stamps(self) -> list[PackStamp]:
         return [p.manifest.stamp for p in self.packs]
 
-    # Hand-written rather than generated: these are what stop a caller asking for a monster and
-    # receiving the spell of that index, which is the whole point of the triple.
-    def monster(self, ref: ContentRef) -> MonsterRecord | ContentMiss:
-        return self._lookup(ref, "monsters", lambda p: p.monsters)
-
-    def weapon(self, ref: ContentRef) -> WeaponRecord | ContentMiss:
-        return self._lookup(ref, "weapons", lambda p: p.weapons)
-
-    def armor(self, ref: ContentRef) -> ArmorRecord | ContentMiss:
-        return self._lookup(ref, "armor", lambda p: p.armor)
-
-    def gear(self, ref: ContentRef) -> GearRecord | ContentMiss:
-        return self._lookup(ref, "gear", lambda p: p.gear)
-
-    def spell(self, ref: ContentRef) -> SpellRecord | ContentMiss:
-        return self._lookup(ref, "spells", lambda p: p.spells)
-
-    def klass(self, ref: ContentRef) -> ClassRecord | ContentMiss:
-        """Not `class`, which is a keyword; the collection is still named `classes`."""
-        return self._lookup(ref, "classes", lambda p: p.classes)
-
-    def subclass(self, ref: ContentRef) -> SubclassRecord | ContentMiss:
-        return self._lookup(ref, "subclasses", lambda p: p.subclasses)
-
-    def level(self, ref: ContentRef) -> LevelRecord | ContentMiss:
-        return self._lookup(ref, "levels", lambda p: p.levels)
-
-    def feature(self, ref: ContentRef) -> FeatureRecord | ContentMiss:
-        return self._lookup(ref, "features", lambda p: p.features)
-
-    def race(self, ref: ContentRef) -> RaceRecord | ContentMiss:
-        return self._lookup(ref, "races", lambda p: p.races)
-
-    def subrace(self, ref: ContentRef) -> SubraceRecord | ContentMiss:
-        return self._lookup(ref, "subraces", lambda p: p.subraces)
-
-    def trait(self, ref: ContentRef) -> TraitRecord | ContentMiss:
-        return self._lookup(ref, "traits", lambda p: p.traits)
-
-    def background(self, ref: ContentRef) -> BackgroundRecord | ContentMiss:
-        return self._lookup(ref, "backgrounds", lambda p: p.backgrounds)
-
-    def proficiency(self, ref: ContentRef) -> ProficiencyRecord | ContentMiss:
-        return self._lookup(ref, "proficiencies", lambda p: p.proficiencies)
-
-    def resolves(self, ref: ContentRef) -> ContentMiss | None:
-        """Why a ref does not resolve, or `None` if it does — what a load boundary needs before it
-        trusts a ref it will not itself read."""
-        found = self._lookup(ref, ref.collection, lambda p: p.collection(ref.collection))
-        return found if isinstance(found, ContentMiss) else None
-
-    def _lookup[R: Record](
-        self, ref: ContentRef, collection: Collection, of: Callable[[Pack], Mapping[str, R]]
-    ) -> R | ContentMiss:
-        if ref.collection != collection:
+    def get[R: Record](self, ref: ContentRef, kind: type[R]) -> R | ContentMiss:
+        """The typed lookup: the record class names its own collection, so a caller cannot ask for
+        a monster and receive the spell of that index."""
+        if ref.collection != kind.COLLECTION:
             return ContentMiss(ref=ref, reason="wrong_collection")
         pack = self._pack(ref)
         if pack is None:
             return ContentMiss(ref=ref, reason="unknown_pack")
-        record = of(pack).get(ref.index)
-        return record if record is not None else ContentMiss(ref=ref, reason="unknown_index")
+        record = pack.collection(ref.collection).get(ref.index)
+        if record is None:
+            return ContentMiss(ref=ref, reason="unknown_index")
+        if not isinstance(record, kind):
+            return ContentMiss(ref=ref, reason="wrong_type")
+        return record
+
+    def require[R: Record](self, ref: ContentRef, kind: type[R]) -> R:
+        """The fail-loud lookup, for callers outside a turn — composing a world, reaching a level.
+        Naming the intent here is what keeps them from translating misses back into raises."""
+        found = self.get(ref, kind)
+        if isinstance(found, ContentMiss):
+            raise ValueError(found.summary)
+        return found
+
+    def resolves(self, ref: ContentRef) -> ContentMiss | None:
+        """Why a ref does not resolve, or `None` if it does — what a load boundary needs before it
+        trusts a ref it will not itself read, whatever class the record turns out to be."""
+        pack = self._pack(ref)
+        if pack is None:
+            return ContentMiss(ref=ref, reason="unknown_pack")
+        if ref.index not in pack.collection(ref.collection):
+            return ContentMiss(ref=ref, reason="unknown_index")
+        return None
 
     def _pack(self, ref: ContentRef) -> Pack | None:
         return next((p for p in self.packs if p.manifest.id == ref.pack), None)

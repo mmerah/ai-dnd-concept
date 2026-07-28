@@ -1,6 +1,8 @@
 """The canonical record models, one module per family. The closed vocabularies they are typed by
 are reached through `content.vocabulary`, so each name has exactly one import path."""
 
+from collections.abc import Iterator
+
 from .base import (
     Coin,
     CoinUnit,
@@ -162,3 +164,18 @@ __all__ = [
     "WeaponReach",
     "WeaponRecord",
 ]
+
+
+def _shipped(record: type[Record]) -> Iterator[type[Record]]:
+    """The record classes a pack ships: a class nothing extends. Everything above one — `Record`,
+    `EquipmentRecord`, `VocabularyRecord` — is shared shape, and no collection holds it."""
+    subclasses = record.__subclasses__()
+    for subclass in subclasses:
+        yield from _shipped(subclass)
+    if not subclasses:
+        yield record
+
+
+# Checked here because every record module is imported above; see `Record` for why at all.
+if _undeclared := sorted(r.__name__ for r in _shipped(Record) if not hasattr(r, "COLLECTION")):
+    raise TypeError(f"record classes declaring no COLLECTION: {_undeclared}")

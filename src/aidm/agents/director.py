@@ -1,7 +1,6 @@
 """DIRECTOR — owns world direction and the turn's mechanics."""
 
-from collections.abc import Mapping, Sequence
-from dataclasses import dataclass
+from collections.abc import Sequence
 
 from pydantic_ai import ModelRetry, NativeOutput, RunContext
 from pydantic_ai.messages import ModelMessage
@@ -14,11 +13,11 @@ from ..domain.models import (
     Consequence,
     Direction,
     Entity,
-    EntityId,
     GiveItem,
     References,
     flatten,
 )
+from .context import Scene
 from .llm import build_agent
 from .prompts.director import TEMPLATE
 
@@ -43,25 +42,17 @@ def consequence_menu(types: Sequence[type[Consequence]]) -> str:
 INSTRUCTIONS = TEMPLATE.replace("{consequences}", consequence_menu(CONSEQUENCE_TYPES))
 
 
-@dataclass
-class DirectorDeps:
-    """The turn's canon and the player's location, for id and co-location validation."""
-
-    entities: Mapping[EntityId, Entity]
-    location: EntityId
-
-
 def _attacks_itself(attack: Attack) -> bool:
     return (attack.attacker_id or PLAYER_ID) == (attack.target_id or PLAYER_ID)
 
 
-def _elsewhere(entity: Entity, location: EntityId) -> bool:
+def _elsewhere(entity: Entity, scene: Scene) -> bool:
     """Only actors stand anywhere, and `present` marks actor fields alone — anything else has
     already failed the kind check."""
-    return isinstance(entity, ActorEntity) and entity.location_id != location
+    return isinstance(entity, ActorEntity) and not scene.is_here(entity)
 
 
-def _validate_ids(ctx: RunContext[DirectorDeps], direction: Direction) -> Direction:
+def _validate_ids(ctx: RunContext[Scene], direction: Direction) -> Direction:
     """Every id the Director chose must exist in the turn's canon, as the right kind, and stand
     where the field says it must; a speaker must also be one the player already knows. All faults
     are retries, not errors: the model can pick again from what it was shown."""
@@ -69,8 +60,8 @@ def _validate_ids(ctx: RunContext[DirectorDeps], direction: Direction) -> Direct
     if direction.speaker_id is not None:
         # A speaker is addressed, so the same rule as any acted-on actor: here, and known below.
         refs.append((direction.speaker_id, References("actor", present=True)))
-    canon = ctx.deps.entities
-    location = ctx.deps.location
+    scene = ctx.deps
+    canon = scene.canon
 
     # The player is an actor in canon now, so naming them where someone else is meant passes the
     # kind check below. Caught here as a retry rather than a dropped turn in the resolver.
@@ -93,7 +84,7 @@ def _validate_ids(ctx: RunContext[DirectorDeps], direction: Direction) -> Direct
         raise ModelRetry(f"wrong kind of entity: {'; '.join(mismatched)}.")
     # Acting on someone off-screen would narrate what the player never saw. A retry here, because
     # the resolver's own guard would cost the player the whole turn.
-    if absent := sorted({i for i, need in refs if need.present and _elsewhere(canon[i], location)}):
+    if absent := sorted({i for i, need in refs if need.present and _elsewhere(canon[i], scene)}):
         raise ModelRetry(f"not here with the player: {absent}. Move them here first, or act here.")
     # A speaker the player has not met would put words in a stranger's mouth; catch it here rather
     # than letting views.speaker hard-fail the turn downstream.
@@ -107,12 +98,14 @@ agent = build_agent(
     "director",
     output_type=NativeOutput(Direction),
     instructions=INSTRUCTIONS,
-    deps_type=DirectorDeps,
+    deps_type=Scene,
     output_validators=(_validate_ids,),
 )
 
 
 async def direct(
-    prompt: str, deps: DirectorDeps, message_history: list[ModelMessage] | None = None
+    prompt: str, scene: Scene, message_history: list[ModelMessage] | None = None
 ) -> Direction:
-    return (await agent().run(prompt, deps=deps, message_history=message_history)).output
+    """The `Scene` the prompt was built from is also what validates the ids it comes back with, so
+    the Director cannot be told one thing and checked against another."""
+    return (await agent().run(prompt, deps=scene, message_history=message_history)).output

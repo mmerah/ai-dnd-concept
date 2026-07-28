@@ -15,7 +15,8 @@ from aidm.agents import creator as creator_module
 from aidm.agents import director as director_module
 from aidm.agents import maintainer as maintainer_module
 from aidm.agents import narrator as narrator_module
-from aidm.agents.director import DirectorDeps, direct
+from aidm.agents.context import Scene
+from aidm.agents.director import direct
 from aidm.agents.history import exchanges_to_messages
 from aidm.domain.models import (
     PLAYER_ID,
@@ -37,8 +38,8 @@ def known_ids(state: GameState) -> set[EntityId]:
     return {e.id for e in state.world.entities.values() if e.known and e.id != PLAYER_ID}
 
 
-def deps(state: GameState) -> DirectorDeps:
-    return DirectorDeps(entities=state.world.entities, location=state.player.location_id)
+def scene(state: GameState) -> Scene:
+    return Scene.of(state)
 
 
 def structured(**output: object) -> Stub:
@@ -237,7 +238,7 @@ async def test_a_plan_referencing_canon_wrongly_is_rejected(
             director=structured(intent="i", tone="t", mechanics=[consequence]),
         )
         with pytest.raises(UnexpectedModelBehavior):
-            await direct("go", deps(state))
+            await direct("go", scene(state))
 
 
 async def test_a_bad_id_nested_in_a_branch_is_caught_as_well(state: GameState) -> None:
@@ -252,7 +253,7 @@ async def test_a_bad_id_nested_in_a_branch_is_caught_as_well(state: GameState) -
     with ExitStack() as stack:
         stubs(stack, director=structured(intent="i", tone="t", mechanics=[nested]))
         with pytest.raises(UnexpectedModelBehavior):
-            await direct("pry the lid", deps(state))
+            await direct("pry the lid", scene(state))
 
 
 async def test_a_dice_amount_is_rolled_by_the_engine_not_chosen_by_the_director(
@@ -283,7 +284,7 @@ async def test_a_hidden_speaker_is_a_retry_not_a_downstream_failure(state: GameS
     with ExitStack() as stack:
         stubs(stack, director=structured(intent="i", tone="t", speaker_id="elena"))  # known=False
         with pytest.raises(UnexpectedModelBehavior):
-            await direct("talk to her", deps(state))
+            await direct("talk to her", scene(state))
 
 
 @pytest.mark.parametrize(
@@ -306,7 +307,7 @@ async def test_acting_on_an_actor_who_is_elsewhere_is_a_retry(
     with ExitStack() as stack:
         stubs(stack, director=structured(intent="i", tone="t", **direction))
         with pytest.raises(UnexpectedModelBehavior):
-            await direct("reach for Mara", deps(in_vault))
+            await direct("reach for Mara", scene(in_vault))
 
 
 async def test_moving_to_hidden_canon_reveals_it_end_to_end(state: GameState) -> None:

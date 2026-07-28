@@ -1,6 +1,6 @@
 """What every record shares, and the reference that addresses one."""
 
-from typing import Annotated, Literal
+from typing import Annotated, ClassVar, Literal
 
 from pydantic import Field
 
@@ -54,8 +54,18 @@ class ContentRef(Frozen):
     def __str__(self) -> str:
         return f"{self.pack}/{self.collection}/{self.index}"
 
+    def sibling(self, collection: Collection, index: Slug) -> "ContentRef":
+        """A record addressed from this one. Every reference inside a pack is relative, because an
+        index alone says nothing about which pack wrote it."""
+        return ContentRef(pack=self.pack, collection=collection, index=index)
+
 
 class Record(Frozen):
+    """`COLLECTION` is what `Library.get` derives a lookup from, so a caller names a record class
+    and the collection follows. `records/__init__.py` checks every concrete class declares one,
+    because an omitted ClassVar is no static error."""
+
+    COLLECTION: ClassVar[Collection]
     index: Slug
     name: str
 

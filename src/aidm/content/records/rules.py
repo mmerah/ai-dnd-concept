@@ -10,7 +10,7 @@ from pydantic import field_validator
 
 from ...utils.models import Ability
 from ..vocabulary import ALIGNMENT_NAMES, CONDITION_NAMES, LANGUAGE_NAMES
-from .base import Record
+from .base import Collection, Record
 
 
 class VocabularyRecord(Record):
@@ -30,21 +30,25 @@ class VocabularyRecord(Record):
 
 
 class SkillRecord(Record):
+    COLLECTION: ClassVar[Collection] = "skills"
     ability: Ability
 
 
 class ConditionRecord(VocabularyRecord):
+    COLLECTION: ClassVar[Collection] = "conditions"
     VOCABULARY: ClassVar[tuple[str, ...]] = CONDITION_NAMES
     desc: str
 
 
 class AlignmentRecord(VocabularyRecord):
+    COLLECTION: ClassVar[Collection] = "alignments"
     VOCABULARY: ClassVar[tuple[str, ...]] = ALIGNMENT_NAMES
     abbreviation: str
     desc: str
 
 
 class LanguageRecord(VocabularyRecord):
+    COLLECTION: ClassVar[Collection] = "languages"
     VOCABULARY: ClassVar[tuple[str, ...]] = LANGUAGE_NAMES
     script: str | None = None  # Common has none of its own
     typical_speakers: tuple[str, ...] = ()

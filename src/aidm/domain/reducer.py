@@ -26,66 +26,48 @@ from .models import (
 )
 
 
-def _with_entities(state: GameState, entities: dict[EntityId, Entity]) -> GameState:
-    return updated(state, world=updated(state.world, entities=entities))
-
-
-def _actor(state: GameState, entity_id: EntityId, verb: str) -> ActorEntity:
-    actor = state.world.entities.get(entity_id)
-    if not isinstance(actor, ActorEntity):
-        raise ValueError(f"cannot {verb} {entity_id!r}: not an actor")
-    return actor
+def _replacing(state: GameState, entity: Entity) -> GameState:
+    return updated(state, world=state.world.replacing(entity))
 
 
 def _move_actor(state: GameState, actor_id: EntityId, location_id: EntityId) -> GameState:
-    if not isinstance(state.world.entities.get(location_id), LocationEntity):
-        raise ValueError(f"cannot move to {location_id!r}: not a location")
-    moved = updated(_actor(state, actor_id, "move"), location_id=location_id)
-    return _with_entities(state, {**state.world.entities, actor_id: moved})
+    world = state.world
+    world.require_kind(location_id, LocationEntity)  # its raise is the invariant: a real place
+    moved = updated(world.require_kind(actor_id, ActorEntity), location_id=location_id)
+    return _replacing(state, moved)
 
 
 def _move_item(state: GameState, item_id: EntityId, to_id: EntityId) -> GameState:
-    item = state.world.entities.get(item_id)
-    if not isinstance(item, ItemEntity):
-        raise ValueError(f"cannot move {item_id!r}: not a canon item")
-    if not isinstance(state.world.entities.get(to_id), ActorEntity | LocationEntity):
+    world = state.world
+    item = world.require_kind(item_id, ItemEntity)
+    if not isinstance(world.require(to_id), ActorEntity | LocationEntity):
         raise ValueError(f"cannot move {item_id!r} to {to_id!r}: it holds nothing")
-    moved = updated(item, container_id=to_id)
-    return _with_entities(state, {**state.world.entities, item_id: moved})
+    return _replacing(state, updated(item, container_id=to_id))
 
 
 def _apply_one(state: GameState, event: Event) -> GameState:
+    world = state.world
     match event:
         case DcRolled() | DiceRolled() | AttackRolled():
             return state  # evidence for the Narrator; the consequences are separate events
         case ItemMoved(item_id=item_id, to_id=to_id):
             return _move_item(state, item_id, to_id)
         case HpChanged(target_id=target_id, delta=delta):
-            actor = _actor(state, target_id, "change the hit points of")
-            hurt = updated(actor, stats=actor.stats.with_hp_delta(delta))
-            return _with_entities(state, {**state.world.entities, target_id: hurt})
+            actor = world.require_kind(target_id, ActorEntity)
+            return _replacing(state, updated(actor, stats=actor.stats.with_hp_delta(delta)))
         case ConditionChanged(target_id=target_id, condition=condition, active=active):
-            actor = _actor(state, target_id, "change the condition of")
+            actor = world.require_kind(target_id, ActorEntity)
             stats = actor.stats.with_condition(condition, active=active)
-            under = updated(actor, stats=stats)
-            return _with_entities(state, {**state.world.entities, target_id: under})
+            return _replacing(state, updated(actor, stats=stats))
         case Moved(actor_id=actor_id, location_id=location_id):
             return _move_actor(state, actor_id, location_id)
         case EntityDiscovered(entity_id=entity_id):
-            entity = state.world.entities.get(entity_id)
-            if entity is None:
-                raise ValueError(f"cannot discover unknown entity {entity_id!r}")
-            revealed = {**state.world.entities, entity_id: updated(entity, known=True)}
-            return _with_entities(state, revealed)
+            return _replacing(state, updated(world.require(entity_id), known=True))
         case LeveledUp(advancement=advancement):
             # The player's alone by invariant, so the event needs no target to be unambiguous.
             return _grown(state, advancement)
         case EntityCreated(entity=entity):
-            # A duplicate id is a broken invariant (hard fail here); a duplicate name is a
-            # judgement call screened before creation in engine/growth.py.
-            if entity.id in state.world.entities:
-                raise ValueError(f"entity id {entity.id!r} already exists")
-            return _with_entities(state, {**state.world.entities, entity.id: entity})
+            return updated(state, world=world.adding(entity))
 
 
 def _grown(state: GameState, advancement: Advancement) -> GameState:
@@ -102,8 +84,7 @@ def _grown(state: GameState, advancement: Advancement) -> GameState:
         max_hp=player.stats.max_hp + advancement.hp_gain,
         hp=player.stats.hp + advancement.hp_gain,
     )
-    grown = updated(player, stats=stats, progression=advancement.progression)
-    return _with_entities(state, {**state.world.entities, player.id: grown})
+    return _replacing(state, updated(player, stats=stats, progression=advancement.progression))
 
 
 def apply(state: GameState, events: Sequence[Event]) -> GameState:

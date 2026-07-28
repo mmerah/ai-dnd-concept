@@ -11,7 +11,7 @@ from collections.abc import Sequence
 from dataclasses import dataclass
 from random import Random
 
-from ..content import ContentMiss, ContentRef, Library, MonsterAttack, MonsterRecord
+from ..content import ContentMiss, Library, MonsterAttack, MonsterRecord
 from ..content.records import DamageRoll, EquipmentProficiency, WeaponRecord
 from ..domain.models import ActorEntity, AttackRolled, GameState, ItemEntity, Progression
 from ..utils import dice
@@ -32,7 +32,7 @@ def swing(state: GameState, attacker: ActorEntity, weapon: str, library: Library
     """An actor backed by a record strikes with one of its own attacks; anyone else strikes with a
     weapon they carry. Matched by name, because a name is what every role was shown."""
     ref = attacker.ref
-    record = None if ref is None else library.monster(ref)
+    record = None if ref is None else library.get(ref, MonsterRecord)
     if isinstance(record, MonsterRecord):
         return _own_attack(record, weapon)
     return _wielded(state, attacker, weapon, library)
@@ -82,7 +82,7 @@ def _held_weapon(
             continue
         if wanted not in (item.name.casefold(), item.ref.index):
             continue
-        found = library.weapon(item.ref)
+        found = library.get(item.ref, WeaponRecord)
         if not isinstance(found, ContentMiss):
             return item, found
     raise ValueError(f"{attacker.name} carries no weapon called {weapon!r}")
@@ -102,10 +102,10 @@ def _proficiency_bonus(progression: Progression, weapon: WeaponRecord, library: 
     """Zero unless one of the actor's proficiencies covers this weapon. Each proficiency already
     lists the equipment it covers — an `equipment_category` was expanded to its members at import —
     so nothing re-derives a category mid-turn."""
-    pack = progression.origin.class_ref.pack
     for index in progression.proficiencies:
-        found = library.proficiency(ContentRef(pack=pack, collection="proficiencies", index=index))
-        if isinstance(found, EquipmentProficiency) and weapon.index in found.equipment:
+        ref = progression.origin.class_ref.sibling("proficiencies", index)
+        found = library.get(ref, EquipmentProficiency)  # the wrong_type miss is the test
+        if not isinstance(found, ContentMiss) and weapon.index in found.equipment:
             return progression.prof_bonus
     return 0
 

@@ -15,6 +15,7 @@ from random import Random
 from ..content import ContentMiss, ContentRef, Library
 from ..content.records import (
     AbilityBonus,
+    BackgroundRecord,
     BonusOption,
     ChoiceEffect,
     ChoiceOption,
@@ -22,10 +23,13 @@ from ..content.records import (
     ClassRecord,
     FeatureRecord,
     ProgressionChoice,
+    RaceRecord,
     RecordOption,
     SaveProficiency,
     Slug,
     SubclassLevelRecord,
+    SubclassRecord,
+    SubraceRecord,
     TraitRecord,
 )
 from ..domain.models import (
@@ -61,7 +65,7 @@ class Pick:
 def pending(origin: Origin, level: int, library: Library) -> list[ProgressionChoice]:
     """Every decision reaching `level` requires. Level 1 also carries what comes with a race, a
     subrace, a background and a class rather than with a level."""
-    klass = _class(origin.class_ref, library)
+    klass = library.require(origin.class_ref, ClassRecord)
     choices = list(_origin_choices(origin, library)) if level == 1 else []
     chosen_now = klass.subclass is not None and klass.subclass.level == level
     if chosen_now and origin.subclass_ref is None:
@@ -72,7 +76,8 @@ def pending(origin: Origin, level: int, library: Library) -> list[ProgressionCho
     if improvements > 0:
         choices.append(_ability_choice(level, improvements))
     for index in (*reached.features, *_subclass_features(origin, level, library)):
-        choices.extend(_feature(origin.class_ref, index, library).choices)
+        ref = origin.class_ref.sibling("features", index)
+        choices.extend(library.require(ref, FeatureRecord).choices)
     return choices
 
 
@@ -80,7 +85,7 @@ def first_level(sheet: CharacterSheet, library: Library) -> Advancement:
     """A character at level 1. Hit points are the whole hit die, not a roll — the 5e rule, and what
     keeps a new game reproducible."""
     origin = sheet.origin
-    klass = _class(origin.class_ref, library)
+    klass = library.require(origin.class_ref, ClassRecord)
     picks = _taken(pending(origin, 1, library), sheet.decisions)
     attributes = _raised(sheet.starting_attributes, _bonuses(picks, _racial(origin, library)))
     reached = _class_level(origin.class_ref, 1, library)
@@ -110,7 +115,7 @@ def advance(actor: ActorEntity, decisions: Decisions, library: Library, rng: Ran
     picks = _taken(pending(current.origin, level, library), decisions)
     attributes = _raised(actor.stats.attributes, _bonuses(picks, {}))
     reached = _class_level(current.origin.class_ref, level, library)
-    klass = _class(current.origin.class_ref, library)
+    klass = library.require(current.origin.class_ref, ClassRecord)
     rolled, event = rules.roll_dice(f"1d{klass.hit_die}", rng)  # a well-formed term by construction
     progression = updated(
         current,
@@ -129,11 +134,11 @@ def advance(actor: ActorEntity, decisions: Decisions, library: Library, rng: Ran
 
 def _origin_choices(origin: Origin, library: Library) -> list[ProgressionChoice]:
     """A race's and a background's choices are made once, at level 1, along with the class's."""
-    choices = list(_class(origin.class_ref, library).choices)
+    choices = list(library.require(origin.class_ref, ClassRecord).choices)
     if origin.race_ref is not None:
-        choices += _get(library.race(origin.race_ref)).choices
+        choices += library.require(origin.race_ref, RaceRecord).choices
     if origin.background_ref is not None:
-        choices += _get(library.background(origin.background_ref)).choices
+        choices += library.require(origin.background_ref, BackgroundRecord).choices
     return choices + [c for trait in _traits(origin, library) for c in trait.choices]
 
 
@@ -142,27 +147,27 @@ def _granted(origin: Origin, library: Library) -> tuple[Slug, ...]:
 
     Save proficiencies are dropped: a class states them twice upstream, and `Progression`'s
     `saving_throws` is the one `rules.save_bonus` reads."""
-    granted = list(_class(origin.class_ref, library).proficiencies)
+    granted = list(library.require(origin.class_ref, ClassRecord).proficiencies)
     if origin.background_ref is not None:
-        granted += _get(library.background(origin.background_ref)).starting_proficiencies
+        background = library.require(origin.background_ref, BackgroundRecord)
+        granted += background.starting_proficiencies
     granted += [p for t in _traits(origin, library) for p in t.proficiencies]
-    pack = origin.class_ref.pack
-    return tuple(index for index in granted if not _is_save(pack, index, library))
+    return tuple(index for index in granted if not _is_save(origin.class_ref, index, library))
 
 
-def _is_save(pack: str, index: Slug, library: Library) -> bool:
-    ref = ContentRef(pack=pack, collection="proficiencies", index=index)
-    return isinstance(library.proficiency(ref), SaveProficiency)
+def _is_save(owner: ContentRef, index: Slug, library: Library) -> bool:
+    ref = owner.sibling("proficiencies", index)  # the wrong_type miss is the test
+    return not isinstance(library.get(ref, SaveProficiency), ContentMiss)
 
 
 def _traits(origin: Origin, library: Library) -> list[TraitRecord]:
     """Every trait a race and its subrace grant. A subrace's are additional, never a replacement."""
-    records: list[TraitRecord] = []
+    granted: list[tuple[ContentRef, Slug]] = []
     if (race := origin.race_ref) is not None:
-        records += [_trait(race, t, library) for t in _get(library.race(race)).traits]
+        granted += [(race, index) for index in library.require(race, RaceRecord).traits]
     if (subrace := origin.subrace_ref) is not None:
-        records += [_trait(subrace, t, library) for t in _get(library.subrace(subrace)).traits]
-    return records
+        granted += [(subrace, index) for index in library.require(subrace, SubraceRecord).traits]
+    return [library.require(o.sibling("traits", i), TraitRecord) for o, i in granted]
 
 
 def _racial(origin: Origin, library: Library) -> dict[Ability, int]:
@@ -170,9 +175,9 @@ def _racial(origin: Origin, library: Library) -> dict[Ability, int]:
     bonuses: dict[Ability, int] = {}
     fixed: list[AbilityBonus] = []
     if origin.race_ref is not None:
-        fixed += _get(library.race(origin.race_ref)).ability_bonuses
+        fixed += library.require(origin.race_ref, RaceRecord).ability_bonuses
     if origin.subrace_ref is not None:
-        fixed += _get(library.subrace(origin.subrace_ref)).ability_bonuses
+        fixed += library.require(origin.subrace_ref, SubraceRecord).ability_bonuses
     for bonus in fixed:
         bonuses[bonus.ability] = bonuses.get(bonus.ability, 0) + bonus.bonus
     return bonuses
@@ -185,11 +190,8 @@ def _subclass_choice(
     English sentence — `ClassRecord.subclass` is the pack's one machine-readable option set."""
     if klass.subclass is None:
         raise ValueError(f"class {klass.index!r} has no subclasses to choose from")
-    refs = [
-        ContentRef(pack=class_ref.pack, collection="subclasses", index=index)
-        for index in klass.subclass.options
-    ]
-    records = [_get(library.subclass(ref)) for ref in refs]
+    refs = [class_ref.sibling("subclasses", index) for index in klass.subclass.options]
+    records = [library.require(ref, SubclassRecord) for ref in refs]
     return ProgressionChoice(
         id=f"{klass.index}-subclass",
         prompt=f"choose your {records[0].flavor}",
@@ -293,46 +295,20 @@ def _hp_gain(rolled: int, attributes: Attributes) -> int:
 
 def _subclass_features(origin: Origin, level: int, library: Library) -> tuple[Slug, ...]:
     """A subclass grants features at a handful of levels only, so no record for this one is an
-    answer, not a miss."""
+    answer, not a miss — but a record that is not a subclass level is a broken pack."""
     if origin.subclass_ref is None:
         return ()
     ref = _level_ref(origin.subclass_ref, level)
-    record = library.level(ref)
-    if isinstance(record, ContentMiss):
+    if library.resolves(ref) is not None:
         return ()
-    if not isinstance(record, SubclassLevelRecord):
-        raise ValueError(f"{ref} is a class level record, not a subclass one")
-    return record.features
-
-
-def _class(ref: ContentRef, library: Library) -> ClassRecord:
-    return _get(library.klass(ref))
+    return library.require(ref, SubclassLevelRecord).features
 
 
 def _class_level(class_ref: ContentRef, level: int, library: Library) -> ClassLevelRecord:
-    record = _get(library.level(_level_ref(class_ref, level)))
-    if not isinstance(record, ClassLevelRecord):
-        raise ValueError(f"{class_ref.index} level {level} is a subclass record")
-    return record
+    return library.require(_level_ref(class_ref, level), ClassLevelRecord)
 
 
 def _level_ref(owner: ContentRef, level: int) -> ContentRef:
     """A level record's index is its owner's plus the level, which is what makes a level a lookup
     rather than a scan of all 290."""
-    return ContentRef(pack=owner.pack, collection="levels", index=f"{owner.index}-{level}")
-
-
-def _feature(class_ref: ContentRef, index: Slug, library: Library) -> FeatureRecord:
-    ref = ContentRef(pack=class_ref.pack, collection="features", index=index)
-    return _get(library.feature(ref))
-
-
-def _trait(owner: ContentRef, index: Slug, library: Library) -> TraitRecord:
-    return _get(library.trait(ContentRef(pack=owner.pack, collection="traits", index=index)))
-
-
-def _get[R](found: R | ContentMiss) -> R:
-    """Levelling is not a turn: a pack that cannot answer must fail loudly, not degrade."""
-    if isinstance(found, ContentMiss):
-        raise ValueError(found.summary)
-    return found
+    return owner.sibling("levels", f"{owner.index}-{level}")

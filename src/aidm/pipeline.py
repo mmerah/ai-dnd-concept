@@ -6,9 +6,9 @@ from random import Random
 
 from pydantic_ai.messages import ModelMessage
 
-from .agents.context import TurnContext
+from .agents.context import Scene, TurnContext
 from .agents.creator import create
-from .agents.director import DirectorDeps, direct
+from .agents.director import direct
 from .agents.history import exchanges_to_messages
 from .agents.maintainer import maintain
 from .agents.narrator import narrate
@@ -38,16 +38,16 @@ from .engine.growth import screen
 from .engine.resolve import resolve
 
 
-def _placement(request: GrowthRequest, state: GameState) -> EntityId:
+def _placement(request: GrowthRequest, scene: Scene) -> EntityId:
     """Where a grown actor/item stands: the location it names, matched to a canon location by name
     (existing or just created this batch), else the player's location. A grown location needs none;
     the id passed then is ignored by the Creator."""
     if request.location is not None:
         wanted = request.location.casefold()
-        for entity in state.world.entities.values():
+        for entity in scene.canon.values():
             if isinstance(entity, LocationEntity) and entity.name.casefold() == wanted:
                 return entity.id
-    return state.player.location_id
+    return scene.where.id
 
 
 async def _grow(
@@ -59,13 +59,13 @@ async def _grow(
     into escape."""
     created: list[Entity] = []
     for request in sorted(requests, key=lambda r: r.kind != "location"):
-        state = context.state
+        scene = context.scene
         prompts["creator"] = creator_prompt(context, request)
         entity = await create(
-            prompts["creator"], request, state.world.entities, _placement(request, state)
+            prompts["creator"], request, scene.canon, _placement(request, scene)
         )
         created.append(entity)
-        context = replace(context, state=apply(state, [EntityCreated(entity=entity)]))
+        context = replace(context, state=apply(context.state, [EntityCreated(entity=entity)]))
     return created, context.state
 
 
@@ -89,10 +89,9 @@ async def run_turn(
         return history if role in NATIVE_HISTORY else None
 
     context = TurnContext(state=state, prompt=prompt, library=library, recent=recent)
-    deps = DirectorDeps(entities=state.world.entities, location=state.player.location_id)
     step("director")
     prompts["director"] = director_prompt(context)
-    direction = await direct(prompts["director"], deps, seen_by("director"))
+    direction = await direct(prompts["director"], context.scene, seen_by("director"))
 
     events = resolve(direction.mechanics, state, rng or Random(), library)
     draft = apply(state, events)

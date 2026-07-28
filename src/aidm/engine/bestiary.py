@@ -37,7 +37,7 @@ def statted(entity: Entity, library: Library) -> Entity | ContentMiss:
         return entity if miss is None else miss
     if entity.stats != StatBlock():
         raise ValueError(f"actor {entity.id!r} names a record and also declares its own stats")
-    monster = library.monster(ref)
+    monster = library.get(ref, MonsterRecord)
     if isinstance(monster, ContentMiss):
         return monster
     return updated(entity, stats=stat_block(monster))

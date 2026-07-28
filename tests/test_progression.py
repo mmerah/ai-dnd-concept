@@ -12,7 +12,7 @@ import pytest
 from aidm import store
 from aidm.config import settings
 from aidm.content import ContentMiss, ContentRef
-from aidm.content.records import BonusOption, ProgressionChoice
+from aidm.content.records import BonusOption, MonsterRecord, ProgressionChoice
 from aidm.domain.models import (
     PLAYER_ID,
     ActorEntity,
@@ -257,7 +257,7 @@ def test_a_save_uses_the_record_s_bonus_or_the_player_s_proficiency() -> None:
     assert rules.save_bonus(player, "constitution") == rules.modifier(scores, "constitution") + 2
     assert rules.save_bonus(player, "wisdom") == rules.modifier(scores, "wisdom")
 
-    lich = LIBRARY.monster(ref("monsters", "lich"))
+    lich = LIBRARY.get(ref("monsters", "lich"), MonsterRecord)
     assert not isinstance(lich, ContentMiss)
     stats = bestiary.stat_block(lich)
     undead = updated(player, stats=stats, progression=None)

@@ -6,7 +6,7 @@ from typing import Self
 from pydantic import Field, model_validator
 
 from ...content import ContentRef, PackStamp
-from ...utils.models import EMPTY_FROZEN_MAP, Attributes, Frozen
+from ...utils.models import EMPTY_FROZEN_MAP, Attributes, Frozen, updated
 from .base import PLAYER_ID, SAVE_VERSION, EntityId, slug
 from .entities import ActorEntity, Entity, ItemEntity, LocationEntity
 from .progression import Advancement, Decisions, Origin
@@ -59,6 +59,45 @@ class WorldState(Frozen):
         if wrong := [k for k, e in self.entities.items() if k != e.id]:
             raise ValueError(f"entity keys disagree with their ids: {wrong}")
         return self
+
+    def require(self, entity_id: EntityId) -> Entity:
+        """Fail fast: an id nothing answers for is a broken plan."""
+        entity = self.entities.get(entity_id)
+        if entity is None:
+            raise ValueError(f"unknown entity id {entity_id!r}")
+        return entity
+
+    def require_kind[T: Entity](self, entity_id: EntityId, expected: type[T]) -> T:
+        """`expected` is a concrete class: `Entity` is a union, which `isinstance` cannot take."""
+        entity = self.require(entity_id)
+        if not isinstance(entity, expected):
+            raise ValueError(
+                f"used {entity_id!r} as {expected.__name__}, but it is a {entity.kind}"
+            )
+        return entity
+
+    def replacing(self, entity: Entity) -> Self:
+        """The only edit shape the reducer needs, so nothing copies the entity map by hand."""
+        return updated(self, entities={**self.entities, entity.id: entity})
+
+    def adding(self, entity: Entity) -> Self:
+        """A brand new entity. A duplicate id is a broken invariant, never an update: a name
+        collision is a judgement call screened in `engine/growth.py`, an id collision is not."""
+        if entity.id in self.entities:
+            raise ValueError(f"entity id {entity.id!r} already exists")
+        return self.replacing(entity)
+
+    def location_of(self, entity: Entity) -> EntityId | None:
+        """Where an entity is, or `None` for a location, which is not anywhere else. A carried item
+        is where its holder stands, so containment never hides something from its own room."""
+        match entity:
+            case LocationEntity():
+                return None
+            case ActorEntity():
+                return entity.location_id
+            case ItemEntity():
+                held_by = self.container_of(entity)
+                return held_by.id if isinstance(held_by, LocationEntity) else held_by.location_id
 
     def container_of(self, item: ItemEntity) -> ActorEntity | LocationEntity:
         """The actor carrying it or the location it lies at — `GameState` guarantees one of the

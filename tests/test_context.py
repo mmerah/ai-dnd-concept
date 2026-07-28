@@ -4,7 +4,7 @@ import pytest
 
 from aidm import store
 from aidm.agents import views
-from aidm.agents.context import TurnContext
+from aidm.agents.context import Scene, TurnContext
 from aidm.agents.prompting import (
     creator_prompt,
     director_prompt,
@@ -32,6 +32,27 @@ def context(state: GameState) -> TurnContext:
     )
 
 
+def test_the_scene_buckets_are_the_lists_a_role_is_shown(state: GameState) -> None:
+    """The exclusions are load-bearing: the room the player stands in and the items they carry are
+    named on their own, so neither reads as somewhere to go. `unrevealed` cuts across the rest."""
+    scene = Scene.of(state)
+    assert scene.where.id == "study"
+    assert [e.id for e in scene.carried] == ["lantern"]
+    assert [e.id for e in scene.here] == ["mara"]  # elena is here too, but unknown
+    assert [e.id for e in scene.elsewhere] == []
+    assert [e.id for e in scene.unrevealed] == ["vault", "elena", "vault_map"]
+
+
+def test_the_room_the_player_stands_in_stays_discoverable(state: GameState) -> None:
+    """It is `where`, so it is never offered as a place to go — but an unrevealed one is still a
+    legal `discover` target, and dropping it from that list would make it unreachable."""
+    study = state.world.entities[EntityId("study")]
+    dark = updated(state, world=state.world.replacing(updated(study, known=False)))
+    scene = Scene.of(dark)
+    assert study.id not in {e.id for e in (*scene.here, *scene.elsewhere)}
+    assert "the study[id=study]" in views.unrevealed(scene)
+
+
 def test_unrevealed_canon_never_reaches_the_narrator(state: GameState) -> None:
     """The Narrator alone writes what the player reads, so it is the one role kept in the dark."""
     ctx = context(state)
@@ -55,19 +76,20 @@ def test_known_entities_carry_their_ids_for_the_director(state: GameState) -> No
 def test_a_carried_item_keeps_its_id_and_brief(state: GameState) -> None:
     """Regression: an item in an inventory must stay in context, not drop to a bare name — the
     Director needs its id to drop or give it, and its brief to reason about it."""
-    assert "- a lantern[id=lantern] — A tin lantern." in views.character(state, store.library())
+    shown = views.character(Scene.of(state), store.library())
+    assert "- a lantern[id=lantern] — A tin lantern." in shown
 
 
 def test_an_item_another_actor_carries_is_shown_with_its_holder(state: GameState) -> None:
     lantern = updated(state.world.entities[EntityId("lantern")], container_id=EntityId("mara"))
     entities = {**state.world.entities, EntityId("lantern"): lantern}
     handed = updated(state, world=updated(state.world, entities=entities))
-    assert "a lantern[id=lantern] — item — held by Mara" in views.here(handed)
+    assert "a lantern[id=lantern] — item — held by Mara" in views.here(Scene.of(handed))
 
 
 def test_no_role_is_ever_shown_the_player_as_an_entity(state: GameState) -> None:
     for view in (views.here, views.elsewhere, views.unrevealed, views.catalogue):
-        assert "[id=player]" not in view(state), view.__name__
+        assert "[id=player]" not in view(Scene.of(state)), view.__name__
 
 
 def test_narrator_reads_the_plan_before_the_outcome(state: GameState) -> None:

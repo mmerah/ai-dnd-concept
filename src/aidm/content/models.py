@@ -1,8 +1,8 @@
 """A pack: a manifest and the records it provides.
 
 The record models themselves live in `records/`, one module per family. This module owns only what
-addresses and groups them, so adding a collection touches a field and a `Library` accessor — never
-the loader, the writer or the manifest check."""
+addresses and groups them, so adding a collection touches a field and the record's own
+`COLLECTION` — never the loader, the writer, the manifest check or a lookup."""
 
 from collections.abc import Mapping
 from typing import Self, cast, get_args
@@ -99,6 +99,9 @@ class Pack(Frozen):
     proficiencies: FrozenMap[str, ProficiencyRecord] = EMPTY_FROZEN_MAP
 
     def collection(self, name: Collection) -> Mapping[str, Record]:
+        """A field is named for the collection it holds, which is what makes this a lookup rather
+        than a hand-written table. The cast stays: `getattr` off a non-literal name is typed `Any`,
+        and an `Any` this code never wrote is worse than one it names."""
         return cast(Mapping[str, Record], getattr(self, name))
 
     @model_validator(mode="after")

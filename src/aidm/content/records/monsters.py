@@ -1,13 +1,13 @@
 """Monsters: the whole action economy, not just a to-hit and a damage die."""
 
-from typing import Annotated, Literal
+from typing import Annotated, ClassVar, Literal
 
 from pydantic import Field
 
 from ...utils.dice import DiceExpr
 from ...utils.models import EMPTY_FROZEN_MAP, Ability, Attributes, Frozen, FrozenMap
 from ..vocabulary import ConditionName
-from .base import ContentRef, CreatureSize, DamageRoll, Record, Slug
+from .base import Collection, ContentRef, CreatureSize, DamageRoll, Record, Slug
 
 # One named action inside a multiattack routine, and how a save that lands is softened.
 AttackType = Literal["melee", "ranged", "ability", "magic"]
@@ -181,6 +181,7 @@ class Speed(Frozen):
 
 
 class MonsterRecord(Record):
+    COLLECTION: ClassVar[Collection] = "monsters"
     size: CreatureSize
     type: MonsterType
     challenge_rating: float = Field(ge=0)
