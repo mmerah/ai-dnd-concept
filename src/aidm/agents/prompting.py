@@ -20,12 +20,12 @@ def _premise(context: TurnContext) -> tuple[str, str]:
 
 
 def director_prompt(context: TurnContext) -> str:
-    scene, library = context.scene, context.library
+    scene, content = context.scene, context.content
     return _sections(
         _premise(context),
-        ("CHARACTER", views.character(scene, library)),
+        ("CHARACTER", views.character(scene, content)),
         ("HERE WITH THE PLAYER", views.here(scene)),
-        ("STAT BLOCKS OF WHO IS HERE", views.statblocks(scene, library)),
+        ("STAT BLOCKS OF WHO IS HERE", views.statblocks(scene, content)),
         ("KNOWN TO THE PLAYER, BUT ELSEWHERE", views.elsewhere(scene)),
         ("EXISTS BUT THE PLAYER DOES NOT KNOW IT YET", views.unrevealed(scene)),
         ("PLAYER", context.prompt),
@@ -37,7 +37,7 @@ def narrator_prompt(context: TurnContext, direction: Direction) -> str:
     scene = context.scene
     return _sections(
         _premise(context),
-        ("CHARACTER", views.character(scene, context.library)),
+        ("CHARACTER", views.character(scene, context.content)),
         ("HERE WITH THE PLAYER", views.here(scene)),
         ("KNOWN TO THE PLAYER, BUT ELSEWHERE", views.elsewhere(scene)),
         ("THE DIRECTOR'S PLAN — what was meant, not what happened", direction.intent),

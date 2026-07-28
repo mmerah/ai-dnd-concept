@@ -1,13 +1,13 @@
 """Spells: the level, the save, and how the dice scale."""
 
-from typing import ClassVar, Literal
+from typing import Literal
 
 from pydantic import Field
 
 from ...utils.dice import DiceExpr
 from ...utils.models import EMPTY_FROZEN_MAP, Ability, Frozen, FrozenMap
 from ..vocabulary import DamageType, MagicSchool
-from .base import Collection, Record
+from .base import Record
 
 SpellAttackType = Literal["melee", "ranged"]
 SpellSaveOutcome = Literal["none", "half", "other"]
@@ -27,7 +27,6 @@ class SpellSave(Frozen):
 
 
 class SpellRecord(Record):
-    COLLECTION: ClassVar[Collection] = "spells"
     desc: str
     level: int = Field(ge=0, le=9)
     school: MagicSchool

@@ -8,28 +8,35 @@ from pathlib import Path
 
 import pytest
 from pydantic import ValidationError
-from support import library, new_game, ruleset
+from support import PACK_DIR, all_of, content, new_game, pack, ruleset
 
 from aidm.agents import views
 from aidm.agents.context import Scene
-from aidm.content import ContentMiss, ContentRef, Library, load
+from aidm.content import ContentMiss, ContentRef, load, loaded, write_pack
 from aidm.content.records import (
     ArmorRecord,
+    BackgroundRecord,
     ClassLevelRecord,
+    ClassRecord,
     ConditionRecord,
     EquipmentProficiency,
+    FeatureRecord,
     GearRecord,
     MonsterAttack,
     MonsterMultiattack,
     MonsterProcedure,
     MonsterRecord,
     MonsterSave,
+    RaceRecord,
+    Record,
     RecordOption,
     SaveProficiency,
     SkillProficiency,
     SpellRecord,
     SubclassLevelRecord,
     ToolRecord,
+    TraitRecord,
+    WeaponRecord,
 )
 from aidm.domain.models import (
     MAX_LEVEL,
@@ -45,22 +52,26 @@ from aidm.engine import bestiary
 from aidm.engine.pack_ruleset import compile_ruleset
 from aidm.utils import dice
 
-PACK = "srd-2014"
-LIBRARY = library()
+PACK_ID = "srd-2014"
+CONTENT = content()
 RULES = ruleset()
-MONSTERS = list(LIBRARY.packs[0].monsters.values())
-WEAPONS = list(LIBRARY.packs[0].weapons.values())
-ARMOR = list(LIBRARY.packs[0].armor.values())
-SPELLS = list(LIBRARY.packs[0].spells.values())
-PACK_RECORDS = LIBRARY.packs[0]
+PACK = pack()
+MONSTERS = list(all_of(PACK, "monsters", MonsterRecord).values())
+WEAPONS = list(all_of(PACK, "weapons", WeaponRecord).values())
+ARMOR = list(all_of(PACK, "armor", ArmorRecord).values())
+SPELLS = list(all_of(PACK, "spells", SpellRecord).values())
+CLASSES = all_of(PACK, "classes", ClassRecord)
+FEATURES = all_of(PACK, "features", FeatureRecord)
+LEVELS = all_of(PACK, "levels", Record)  # two arms; told apart by isinstance below
+PROFICIENCIES = all_of(PACK, "proficiencies", Record)
 CHOICES = [
     choice
     for records in (
-        PACK_RECORDS.classes,
-        PACK_RECORDS.features,
-        PACK_RECORDS.races,
-        PACK_RECORDS.traits,
-        PACK_RECORDS.backgrounds,
+        CLASSES,
+        FEATURES,
+        all_of(PACK, "races", RaceRecord),
+        all_of(PACK, "traits", TraitRecord),
+        all_of(PACK, "backgrounds", BackgroundRecord),
     )
     for record in records.values()
     for choice in record.choices
@@ -78,15 +89,15 @@ TWO_TYPES_IN_ONE_STRING = {"flame-strike", "ice-storm", "meteor-swarm"}
 UNCOUNTABLE_MULTIATTACK = {"hydra", "violet-fungus"}
 
 
-def ref(collection: str, index: str, pack: str = PACK) -> ContentRef:
+def ref(collection: str, index: str, pack: str = PACK_ID) -> ContentRef:
     return ContentRef.model_validate({"pack": pack, "collection": collection, "index": index})
 
 
 def test_a_record_is_addressed_by_pack_collection_and_index() -> None:
     """`shield` is an Equipment *and* a Spell — one of 79 cross-collection collisions in this pack
     alone, which is why an index alone could never be the identity."""
-    armor = LIBRARY.get(ref("armor", "shield"), ArmorRecord)
-    spell = LIBRARY.get(ref("spells", "shield"), SpellRecord)
+    armor = CONTENT.get(ref("armor", "shield"), ArmorRecord)
+    spell = CONTENT.get(ref("spells", "shield"), SpellRecord)
     assert not isinstance(armor, ContentMiss) and armor.base_ac == 2
     assert not isinstance(spell, ContentMiss) and spell.level == 1
 
@@ -94,10 +105,10 @@ def test_a_record_is_addressed_by_pack_collection_and_index() -> None:
 def test_an_unresolved_ref_is_a_value_with_a_reason() -> None:
     """A turn-time miss must degrade visibly: raising would let the pipeline eat the move."""
     misses = [
-        LIBRARY.get(ref("monsters", "tarrasque-of-the-second-edition"), MonsterRecord),
-        LIBRARY.get(ref("monsters", "goblin", pack="homebrew"), MonsterRecord),
-        LIBRARY.get(ref("monsters", "goblin"), SpellRecord),  # right index, wrong collection
-        LIBRARY.get(ref("proficiencies", "skill-arcana"), SaveProficiency),  # wrong arm
+        CONTENT.get(ref("monsters", "tarrasque-of-the-second-edition"), MonsterRecord),
+        CONTENT.get(ref("monsters", "goblin", pack="homebrew"), MonsterRecord),
+        CONTENT.get(ref("monsters", "goblin"), SpellRecord),  # right index, wrong collection
+        CONTENT.get(ref("proficiencies", "skill-arcana"), SaveProficiency),  # wrong arm
     ]
     assert [m.reason for m in misses if isinstance(m, ContentMiss)] == [
         "unknown_index",
@@ -108,21 +119,21 @@ def test_an_unresolved_ref_is_a_value_with_a_reason() -> None:
 
 
 def test_a_collection_is_reachable_the_moment_its_record_class_exists() -> None:
-    """The drift this replaced: `Pack` carried 22 collections and `Library` exposed 14 accessors,
+    """The drift this replaced: `Pack` carried 22 collections and the lookup exposed 14 accessors,
     so eight — tools and conditions among them — loaded, validated and were reachable by nothing.
-    The collection is read off the record class now, so the two cannot disagree."""
-    tools = LIBRARY.get(ref("tools", "thieves-tools"), ToolRecord)
+    One registry row is what makes a collection exist now, so the two cannot disagree."""
+    tools = CONTENT.get(ref("tools", "thieves-tools"), ToolRecord)
     assert not isinstance(tools, ContentMiss) and tools.tool_category == "Other Tools"
-    blinded = LIBRARY.get(ref("conditions", "blinded"), ConditionRecord)
+    blinded = CONTENT.get(ref("conditions", "blinded"), ConditionRecord)
     assert not isinstance(blinded, ContentMiss) and blinded.desc
     with pytest.raises(ValueError, match="unknown_index"):
-        LIBRARY.require(ref("tools", "sonic-screwdriver"), ToolRecord)
+        CONTENT.require(ref("tools", "sonic-screwdriver"), ToolRecord)
 
 
 def test_the_manifest_counts_every_collection_the_pack_ships() -> None:
     """Twenty-two collections, and the count is what catches a half-written one — the failure a
     shape test cannot see."""
-    assert LIBRARY.packs[0].manifest.provides == {
+    assert PACK.manifest.provides == {
         "monsters": 334,
         "weapons": 37,
         "armor": 13,
@@ -147,24 +158,53 @@ def test_the_manifest_counts_every_collection_the_pack_ships() -> None:
         "proficiencies": 117,
     }
     with pytest.raises(ValidationError, match="promises 334 monsters"):
-        updated(LIBRARY.packs[0], monsters={})
+        updated(PACK, records={**PACK.records, "monsters": {}})
+
+
+def test_a_loaded_pack_writes_back_byte_for_byte(tmp_path: Path) -> None:
+    """`scripts/srd/corrections` calls byte-identical round-trip the importer's regression check,
+    but that check is a manual re-import against an external 5e-database checkout. This is the
+    automated one: nothing else stands between a change to the pack shape and silent corruption."""
+    write_pack(tmp_path, PACK)
+    source = PACK_DIR
+    written = sorted(path.name for path in tmp_path.iterdir())
+    assert written == sorted(path.name for path in source.iterdir())
+    for name in written:
+        assert (tmp_path / name).read_bytes() == (source / name).read_bytes(), name
+
+
+def test_each_collection_is_validated_by_its_own_spec() -> None:
+    """What the routing buys: `monsters.json` cannot hold a level record, and a collection no
+    registry row names cannot load at all. Without it every record would be validated against the
+    bare `Record` base, which declares two fields."""
+    fighter = LEVELS["fighter-1"]
+    with pytest.raises(ValidationError, match="instance of MonsterRecord"):
+        updated(PACK, records={**PACK.records, "monsters": {"fighter-1": fighter}})
+    with pytest.raises(ValidationError, match="nonsense"):
+        updated(PACK, records={**PACK.records, "nonsense": {}})
+
+
+def test_a_pack_survives_being_dumped_and_revalidated() -> None:
+    """`updated()` round-trips through `model_dump`, so a record must keep the fields its own class
+    declares rather than the base's two — the failure that would make every edit lossy."""
+    goblin = all_of(updated(PACK), "monsters", MonsterRecord)["goblin"]
+    assert goblin.hit_points == 7 and len(goblin.actions) == 2
 
 
 def test_a_gap_must_be_declared_rather_than_left_out() -> None:
     """A count of 0 is how a pack says "this ships no backgrounds" up front. Silence could not
     carry that, so silence is refused."""
-    manifest = LIBRARY.packs[0].manifest
-    counted = {name: count for name, count in manifest.provides.items() if name != "languages"}
+    counted = {name: c for name, c in PACK.manifest.provides.items() if name != "languages"}
     with pytest.raises(ValidationError, match=r"no count for \['languages'\]"):
-        updated(manifest, provides=counted)
+        updated(PACK, manifest=updated(PACK.manifest, provides=counted))
 
 
 def test_a_loaded_record_cannot_be_edited() -> None:
     """The packs are loaded once, so every turn shares one record object: `frozen=True` guards a
     model's fields but not a dict inside one, and an edit here would outlive the turn that made
     it."""
-    goblin = LIBRARY.get(ref("monsters", "goblin"), MonsterRecord)
-    fireball = LIBRARY.get(ref("spells", "fireball"), SpellRecord)
+    goblin = CONTENT.get(ref("monsters", "goblin"), MonsterRecord)
+    fireball = CONTENT.get(ref("spells", "fireball"), SpellRecord)
     assert not isinstance(goblin, ContentMiss) and not isinstance(fireball, ContentMiss)
     assert fireball.damage is not None
     for keyed in (goblin.saving_throws, goblin.skills, fireball.damage.at_slot_level):
@@ -199,9 +239,9 @@ def test_every_armor_carries_the_fields_the_importer_must_not_default() -> None:
 def test_an_item_entity_has_something_to_point_at() -> None:
     """The scenario's lantern was refless because gear did not exist; all five item collections do
     now, and `bestiary` lets an item name any of them."""
-    lantern = LIBRARY.get(ref("gear", "lantern-hooded"), GearRecord)
+    lantern = CONTENT.get(ref("gear", "lantern-hooded"), GearRecord)
     assert not isinstance(lantern, ContentMiss) and str(lantern.cost) == "5 gp"
-    pack = LIBRARY.get(ref("gear", "burglars-pack"), GearRecord)
+    pack = CONTENT.get(ref("gear", "burglars-pack"), GearRecord)
     assert not isinstance(pack, ContentMiss) and len(pack.contents) == 14
 
 
@@ -232,7 +272,7 @@ def test_every_action_is_an_attack_a_save_a_multiattack_or_named_prose() -> None
 def test_a_dragons_breath_is_limited_and_typed() -> None:
     """One upstream entry holds two breaths behind one recharge. Without `usage` the breath is
     unlimited, which is a different monster; without the flattening both breaths are prose."""
-    dragon = LIBRARY.get(ref("monsters", "adult-brass-dragon"), MonsterRecord)
+    dragon = CONTENT.get(ref("monsters", "adult-brass-dragon"), MonsterRecord)
     assert not isinstance(dragon, ContentMiss)
     breaths = [a for a in dragon.actions if a.name.startswith("Breath Weapons")]
     assert [b.name for b in breaths] == [
@@ -263,12 +303,12 @@ def test_a_monsters_own_spells_resolve_to_records() -> None:
     mean the url was misread — the one reference this pack reconstructs rather than reads."""
     spells = [s for m in MONSTERS if m.spellcasting for s in m.spellcasting.spells]
     assert len(spells) == 313
-    assert not [s.ref for s in spells if LIBRARY.resolves(s.ref) is not None]
+    assert not [s.ref for s in spells if CONTENT.resolves(s.ref) is not None]
 
 
 def test_a_monsters_traits_keep_their_mechanics() -> None:
     """The balor's Death Throes is a DC 20 save for 20d6 fire, flattened to a string before R6b."""
-    balor = LIBRARY.get(ref("monsters", "balor"), MonsterRecord)
+    balor = CONTENT.get(ref("monsters", "balor"), MonsterRecord)
     assert not isinstance(balor, ContentMiss)
     (throes,) = [t for t in balor.traits if t.name == "Death Throes"]
     assert isinstance(throes, MonsterSave)
@@ -377,7 +417,7 @@ def test_the_directors_slice_is_the_mechanics_never_the_record() -> None:
     )
     assert isinstance(gargoyle, ActorEntity)
     under = updated(gargoyle, stats=updated(gargoyle.stats, conditions=("prone",)))
-    shown = views.statblocks(Scene.of(_with(state, under)), LIBRARY)
+    shown = views.statblocks(Scene.of(_with(state, under)), CONTENT)
     assert shown.endswith(
         "- a crouching gargoyle[id=gargoyle] — ac 15 — under prone"
         " — Multiattack: Bite x1 + Claws x1; Bite +4 (1d6+2 piercing); Claws +4 (1d6+2 slashing)"
@@ -397,25 +437,25 @@ def test_a_condition_is_shown_on_anyone_who_holds_one() -> None:
     assert isinstance(mara, ActorEntity)
     blinded = updated(mara, stats=updated(mara.stats, conditions=("blinded",)))
     assert "Mara[id=mara] — ac 10 — under blinded" in views.statblocks(
-        Scene.of(_with(state, blinded)), LIBRARY
+        Scene.of(_with(state, blinded)), CONTENT
     )
     player = updated(state.player, stats=updated(state.player.stats, conditions=("prone",)))
-    assert "under prone" in views.character(Scene.of(_with(state, player)), LIBRARY)
+    assert "under prone" in views.character(Scene.of(_with(state, player)), CONTENT)
 
 
 def test_two_packs_cannot_claim_one_id() -> None:
-    with pytest.raises(ValidationError, match="same id"):
-        load([Path("packs") / PACK, Path("packs") / PACK])
+    with pytest.raises(ValueError, match="same id"):
+        load([PACK_DIR, PACK_DIR])
 
 
 def test_a_level_record_is_a_class_one_or_a_subclass_one() -> None:
     """Discriminated rather than a bag of optionals: 50 of the 290 carry features and nothing else,
     and reading a missing `prof_bonus` as 0 would give a level-20 fighter a +0 to everything."""
-    levels = list(PACK_RECORDS.levels.values())
+    levels = list(LEVELS.values())
     assert sum(isinstance(x, ClassLevelRecord) for x in levels) == 240
     assert sum(isinstance(x, SubclassLevelRecord) for x in levels) == 50
     # The cumulative totals the level-up diff is taken between.
-    fighter = [PACK_RECORDS.levels[f"fighter-{n}"] for n in range(1, 7)]
+    fighter = [LEVELS[f"fighter-{n}"] for n in range(1, 7)]
     assert [x.ability_score_bonuses for x in fighter if isinstance(x, ClassLevelRecord)] == [
         0,
         0,
@@ -433,9 +473,9 @@ def test_every_class_grants_its_improvements_at_the_levels_5e_says() -> None:
     holds the fix; this asserts the whole corpus rather than the one record, because the next such
     defect will not be in the rogue."""
     extra = {"fighter": {6, 14}, "rogue": {10}}  # everyone else improves at 4, 8, 12, 16, 19 alone
-    for index in PACK_RECORDS.classes:
-        at = {4, 8, 12, 16, 19} | extra.get(index, set())
-        totals = [PACK_RECORDS.levels[f"{index}-{n}"] for n in range(1, MAX_LEVEL + 1)]
+    for klass in CLASSES:
+        at = {4, 8, 12, 16, 19} | extra.get(klass, set())
+        totals = [LEVELS[f"{klass}-{n}"] for n in range(1, MAX_LEVEL + 1)]
         assert [t.ability_score_bonuses for t in totals if isinstance(t, ClassLevelRecord)] == [
             sum(1 for level in at if level <= n) for n in range(1, MAX_LEVEL + 1)
         ]
@@ -447,23 +487,22 @@ def test_every_class_grants_its_improvements_at_the_levels_5e_says() -> None:
 def test_a_class_ladder_that_falls_is_refused_at_load_not_absorbed() -> None:
     """Why the defect was corrected rather than floored in the compiler: a pack whose totals fall is
     unplayable, and a level quietly offering nothing would hide it until a player got there."""
-    levels = PACK_RECORDS.levels
-    fallen = updated(levels["rogue-11"], ability_score_bonuses=2)
-    broken = updated(PACK_RECORDS, levels={**levels, "rogue-11": fallen})
+    fallen = updated(LEVELS["rogue-11"], ability_score_bonuses=2)
+    broken = updated(PACK, records={**PACK.records, "levels": {**LEVELS, "rogue-11": fallen}})
     with pytest.raises(ValueError, match="rogue-11: ability score improvements fall from 3 to 2"):
-        compile_ruleset(Library(packs=(broken,)))
+        compile_ruleset(loaded([broken]))
 
 
 def test_every_class_can_be_played_and_ships_one_subclass() -> None:
     """The SRD's stated gap: one subclass per class, chosen at the level it first grants
     something."""
-    classes = list(PACK_RECORDS.classes.values())
+    classes = list(CLASSES.values())
     assert len(classes) == 12
     assert all(
         record.subclass is not None and len(record.subclass.options) == 1 for record in classes
     )
     assert sum(1 for record in classes if record.spellcasting_ability) == 8
-    subclass = PACK_RECORDS.classes["cleric"].subclass
+    subclass = CLASSES["cleric"].subclass
     assert subclass is not None and subclass.level == 1  # a cleric picks a domain at level 1
 
 
@@ -474,7 +513,7 @@ def test_a_choice_id_is_unique_pack_wide_and_every_option_resolves() -> None:
     assert len(ids) == len(set(ids)) == 41
     refs = [o.ref for c in CHOICES for o in c.options if isinstance(o, RecordOption)]
     assert len(refs) == 387
-    assert not [str(r) for r in refs if LIBRARY.resolves(r) is not None]
+    assert not [str(r) for r in refs if CONTENT.resolves(r) is not None]
 
 
 def test_only_an_expertise_choice_doubles_rather_than_grants() -> None:
@@ -493,19 +532,19 @@ def test_a_nested_choice_is_flattened_by_unioning_its_arms() -> None:
     """Exact wherever the arms spend the same number of picks. The monk's "one artisan's tool or one
     musical instrument" is one pick from 19 + 10; `rogue-expertise-1`'s "two skills, or one skill
     and thieves' tools" is two picks from 18 + 1. Disagreeing arms are refused by the importer."""
-    tools = PACK_RECORDS.classes["monk"].choices[1]
+    tools = CLASSES["monk"].choices[1]
     assert (tools.choose, len(tools.options)) == (1, 29)
-    (expertise,) = PACK_RECORDS.features["rogue-expertise-1"].choices
+    (expertise,) = FEATURES["rogue-expertise-1"].choices
     assert (expertise.choose, len(expertise.options)) == (2, 19)
 
 
 def test_a_proficiency_says_what_it_covers_rather_than_naming_a_category() -> None:
     """An `equipment_category` reference is expanded to its members at import, so a to-hit asks
     whether the weapon is in the set instead of re-deriving a category mid-turn."""
-    kinds = [type(p).__name__ for p in PACK_RECORDS.proficiencies.values()]
+    kinds = [type(p).__name__ for p in PROFICIENCIES.values()]
     assert len(kinds) == 117
     assert kinds.count(EquipmentProficiency.__name__) == 93
     assert kinds.count(SkillProficiency.__name__) == 18
     assert kinds.count(SaveProficiency.__name__) == 6
-    martial = PACK_RECORDS.proficiencies["martial-weapons"]
+    martial = PROFICIENCIES["martial-weapons"]
     assert isinstance(martial, EquipmentProficiency) and len(martial.equipment) == 23

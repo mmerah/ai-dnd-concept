@@ -6,10 +6,10 @@ from collections.abc import Iterable, Sequence
 from typing import assert_never
 
 from ..content import (
+    Content,
     ContentMiss,
     ContentRef,
     DamageRoll,
-    Library,
     MonsterAction,
     MonsterAttack,
     MonsterMultiattack,
@@ -81,14 +81,14 @@ def catalogue(scene: Scene) -> str:
     return briefs(scene.shown, scene)
 
 
-def statblocks(scene: Scene, library: Library) -> str:
+def statblocks(scene: Scene, content: Content) -> str:
     """What the Director may act on for every actor standing here, and it alone — a typed slice,
     never the record: a goblin is ~2,100 bytes pretty-printed and an adult red dragon ~6,100, which
     would roughly double this role's whole input. Hit points are deliberately absent: `intent`
     reaches the Narrator, so a number read here could be restated where the player would see it.
     Conditions come from the entity, so an actor with no archetype behind it still shows them."""
     lines = [
-        f"- {label(e)} — ac {e.stats.ac}{conditions(e.stats)}{_archetype(e.ref, library)}"
+        f"- {label(e)} — ac {e.stats.ac}{conditions(e.stats)}{_archetype(e.ref, content)}"
         for e in scene.here
         if isinstance(e, ActorEntity)
     ]
@@ -101,12 +101,12 @@ def conditions(stats: StatBlock) -> str:
     return f" — under {', '.join(stats.conditions)}" if stats.conditions else ""
 
 
-def _archetype(ref: ContentRef | None, library: Library) -> str:
+def _archetype(ref: ContentRef | None, content: Content) -> str:
     """A miss is rendered, never skipped: a pack that lost a record must show in the trace. An
     actor naming no record has no archetype to show, which is not a miss."""
     if ref is None:
         return ""
-    record = library.get(ref, MonsterRecord)
+    record = content.get(ref, MonsterRecord)
     if isinstance(record, ContentMiss):
         return f" — {record.summary}"
     return f"{_moves(record)}{_defences(record)}"
@@ -173,10 +173,10 @@ def _damage(rolls: Sequence[DamageRoll]) -> str:
     return ", ".join(f"{roll.dice} {roll.damage_type}" for roll in rolls)
 
 
-def _klass(progression: Progression, library: Library) -> str:
+def _klass(progression: Progression, content: Content) -> str:
     """The player's class line: names from the pack, numbers from the snapshot. Only what a role
     could use — a proficiency list is applied by the rules, never chosen by the Director."""
-    record = library.get(progression.origin.class_ref, ClassRecord)
+    record = content.get(progression.origin.class_ref, ClassRecord)
     if isinstance(record, ContentMiss):
         return record.summary
     subclass = progression.origin.subclass_ref
@@ -193,7 +193,7 @@ def _klass(progression: Progression, library: Library) -> str:
     return " — ".join(parts)
 
 
-def character(scene: Scene, library: Library) -> str:
+def character(scene: Scene, content: Content) -> str:
     """The player's own sheet, and the one place exact hit points are shown."""
     player = scene.state.player
     stats = player.stats
@@ -207,7 +207,7 @@ def character(scene: Scene, library: Library) -> str:
     lines = [
         f"{player.name} — hp {stats.hp}/{stats.max_hp} — ac {stats.ac}"
         f"{conditions(stats)} — at {label(scene.where)}",
-        *([] if player.progression is None else [_klass(player.progression, library)]),
+        *([] if player.progression is None else [_klass(player.progression, content)]),
         f"attributes: {attributes}",
         f"inventory:\n{inventory}",
     ]

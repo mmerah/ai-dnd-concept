@@ -5,12 +5,23 @@ from collections.abc import Mapping
 from types import MappingProxyType
 from typing import Annotated, Literal, cast, get_args
 
-from pydantic import AfterValidator, BaseModel, ConfigDict, Field, PlainSerializer
+from pydantic import (
+    AfterValidator,
+    BaseModel,
+    ConfigDict,
+    Field,
+    SerializerFunctionWrapHandler,
+    WrapSerializer,
+)
 
 # Spelled in full because that is how they are rendered to a role.
 Ability = Literal["strength", "dexterity", "constitution", "intelligence", "wisdom", "charisma"]
 
 ABILITIES: tuple[Ability, ...] = get_args(Ability)
+
+# The one asymmetric entry here: a `domain/` concept `content/` needs, because a collection states
+# which kind of entity may name it.
+Kind = Literal["actor", "location", "item"]
 
 
 class Frozen(BaseModel):
@@ -21,10 +32,18 @@ def _immutable[K, V](mapping: Mapping[K, V]) -> Mapping[K, V]:
     return MappingProxyType(dict(mapping))
 
 
+def _as_dict[K, V](mapping: Mapping[K, V], serialize: SerializerFunctionWrapHandler) -> object:
+    """Wrapped, not plain: a `mappingproxy` is no dict, so the schema is handed one before it runs.
+    Serializing in its place would stop here, which a map nested in a map needs it not to."""
+    return serialize(dict(mapping))
+
+
 # `frozen=True` freezes a model's fields, never a dict one of them holds — so a keyed field on a
 # `Frozen` model is writable, and the packs are loaded once at startup, which makes one edit
 # permanent for every later turn.
-type FrozenMap[K, V] = Annotated[Mapping[K, V], AfterValidator(_immutable), PlainSerializer(dict)]
+type FrozenMap[K, V] = Annotated[
+    Mapping[K, V], AfterValidator(_immutable), WrapSerializer(_as_dict)
+]
 
 # A keyed field that ships empty. An unvalidated default would skip the validator above and hand
 # back the one mutable dict it exists to prevent. Fields declared with it never share one mapping.

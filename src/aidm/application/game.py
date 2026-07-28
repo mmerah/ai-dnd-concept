@@ -11,7 +11,7 @@ from collections.abc import Callable, Sequence
 from dataclasses import dataclass, field
 from random import Random
 
-from ..content import Library
+from ..content import Content
 from ..content.records import ProgressionChoice
 from ..domain.models import (
     MAX_LEVEL,
@@ -34,13 +34,13 @@ from .ports import SaveRepository, TraceSink
 class GameApplication:
     """Mutable, because a turn advances it; nothing it depends on is.
 
-    `library` is here alongside `ruleset` because the role prompts still render records — see
+    `content` is here alongside `ruleset` because the role prompts still render records — see
     `agents/views.py`. Every rule reads `ruleset`."""
 
     slug: str
     scenario: ScenarioDef
     sheet: CharacterSheet
-    library: Library
+    content: Content
     ruleset: Ruleset
     saves: SaveRepository
     traces: TraceSink
@@ -55,7 +55,7 @@ class GameApplication:
         """The save is read here because there is no application without a state: one that had to be
         opened after construction could be used before it was."""
         saved = self.saves.load(self.slug)
-        stamps = self.library.stamps
+        stamps = self.content.stamps
         self.state = self._begun() if saved is None else campaign.resumable(saved, stamps)
 
     async def submit(self, prompt: str, on_step: Callable[[Role], None] | None = None) -> Turn:
@@ -64,7 +64,7 @@ class GameApplication:
             self.state,
             prompt,
             on_step,
-            library=self.library,
+            content=self.content,
             ruleset=self.ruleset,
             options=self.options,
             rng=self.rng,
@@ -97,7 +97,7 @@ class GameApplication:
         self.saves.save(self.slug, self.state)
 
     def _begun(self) -> GameState:
-        return campaign.begin(self.scenario, self.sheet, self.ruleset, self.library.stamps)
+        return campaign.begin(self.scenario, self.sheet, self.ruleset, self.content.stamps)
 
     def _record(self, events: Sequence[Event]) -> None:
         self.state = apply(self.state, events)

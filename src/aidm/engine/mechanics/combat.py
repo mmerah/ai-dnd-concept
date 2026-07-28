@@ -1,19 +1,18 @@
 """Attacks."""
 
-from ...domain.models import EntityId, Event
+from ...domain.models import Attack, Event
 from .. import procedures
 from . import common, health
 from .resolution import Resolution
 
 
-def attack(
-    ctx: Resolution, attacker_id: EntityId | None, target_id: EntityId | None, weapon: str
-) -> list[Event]:
+def attack(ctx: Resolution, consequence: Attack) -> list[Event]:
     """A miss is still evidence, so the roll is emitted either way."""
-    attacker, target = ctx.target(attacker_id), ctx.target(target_id)
+    attacker = ctx.target(consequence.attacker_id)
+    target = ctx.target(consequence.target_id)
     if attacker.id == target.id:
         raise ValueError(f"cannot attack {target.id!r}: an actor does not strike at themselves")
-    swung = procedures.swing(ctx.state, attacker, weapon, ctx.ruleset)
+    swung = procedures.swing(ctx.state, attacker, consequence.weapon, ctx.ruleset)
     rolled = procedures.strike(attacker, target, swung, ctx.rng)
     seen: list[Event] = [*common.reveal(attacker), *common.reveal(target), rolled]
     if not rolled.hit or swung.damage is None:

@@ -5,10 +5,9 @@ format. This is the pack API plus the handful of record types the application it
 importer or a test that needs the rest imports `aidm.content.records` directly, and a caller that
 needs only a closed vocabulary imports `aidm.content.vocabulary` — which is all `domain/` does."""
 
-from .library import ContentMiss, Library, MissReason, load, write_pack
-from .models import COLLECTIONS, Manifest, Pack, PackStamp
+from .library import Content, ContentMiss, load, loaded, read_pack, write_pack
+from .models import Manifest, Pack, PackStamp
 from .records import (
-    Collection,
     ContentRef,
     DamageRoll,
     MonsterAction,
@@ -17,18 +16,16 @@ from .records import (
     MonsterProcedure,
     MonsterRecord,
     MonsterSave,
-    Record,
 )
+from .registry import COLLECTION_SPECS
 
 __all__ = [
-    "COLLECTIONS",
-    "Collection",
+    "COLLECTION_SPECS",
+    "Content",
     "ContentMiss",
     "ContentRef",
     "DamageRoll",
-    "Library",
     "Manifest",
-    "MissReason",
     "MonsterAction",
     "MonsterAttack",
     "MonsterMultiattack",
@@ -37,7 +34,8 @@ __all__ = [
     "MonsterSave",
     "Pack",
     "PackStamp",
-    "Record",
     "load",
+    "loaded",
+    "read_pack",
     "write_pack",
 ]

@@ -1,7 +1,7 @@
 """The context policy is the experiment: each role must see only what its job needs."""
 
 import pytest
-from support import library
+from support import content
 
 from aidm.agents import views
 from aidm.agents.context import Scene, TurnContext
@@ -27,7 +27,7 @@ def context(state: GameState) -> TurnContext:
     return TurnContext(
         state=state,
         prompt="I search the study.",
-        library=library(),
+        content=content(),
         narration="You find nothing.",
     )
 
@@ -76,7 +76,7 @@ def test_known_entities_carry_their_ids_for_the_director(state: GameState) -> No
 def test_a_carried_item_keeps_its_id_and_brief(state: GameState) -> None:
     """Regression: an item in an inventory must stay in context, not drop to a bare name — the
     Director needs its id to drop or give it, and its brief to reason about it."""
-    shown = views.character(Scene.of(state), library())
+    shown = views.character(Scene.of(state), content())
     assert "- a lantern[id=lantern] — A tin lantern." in shown
 
 

@@ -5,8 +5,8 @@ from typing import Annotated, Literal
 from pydantic import Field, TypeAdapter
 
 from ...content import ContentRef
-from ...utils.models import Frozen
-from .base import EntityId, Kind
+from ...utils.models import Frozen, Kind
+from .base import EntityId
 from .progression import Progression
 from .stats import StatBlock
 

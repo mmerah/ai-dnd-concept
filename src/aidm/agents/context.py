@@ -4,7 +4,7 @@ from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 from typing import Self
 
-from ..content import Library
+from ..content import Content
 from ..domain.models import (
     PLAYER_ID,
     Entity,
@@ -81,7 +81,7 @@ class TurnContext:
 
     state: GameState
     prompt: str
-    library: Library  # the loaded packs, injected so a test can play against a synthetic one
+    content: Content  # the loaded packs, injected so a test can play against a synthetic one
     events: Sequence[Event] = ()
     narration: str = ""
     recent: Sequence[Exchange] = ()  # already windowed by the pipeline; the single history slice

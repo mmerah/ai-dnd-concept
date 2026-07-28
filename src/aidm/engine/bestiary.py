@@ -4,10 +4,8 @@ An entity is an instance (this goblin, here, with 5 hp left); an archetype is ev
 the reducer touches are snapshotted at creation, so a pack bump cannot move a saved actor's hit
 points; everything descriptive or procedural is read live through `entity.ref`."""
 
-from typing import assert_never
-
-from ..content import Collection
-from ..domain.models import ActorEntity, Entity, GameState, Kind, StatBlock, updated
+from ..content import COLLECTION_SPECS
+from ..domain.models import ActorEntity, Entity, GameState, StatBlock, updated
 from .ruleset import ArchetypeRules
 
 
@@ -17,7 +15,7 @@ def statted(entity: Entity, ruleset: ArchetypeRules) -> Entity:
     ref = entity.ref
     if ref is None:
         return entity
-    if entity.kind != _named_by(ref.collection):
+    if entity.kind != COLLECTION_SPECS[ref.collection].entity:
         raise ValueError(f"a {entity.kind} may not name a {ref.collection} record: {entity.id!r}")
     if not isinstance(entity, ActorEntity):
         # Nothing reads an item's record at composition; that it exists is the whole check.
@@ -44,33 +42,3 @@ def statted_world(state: GameState, ruleset: ArchetypeRules) -> GameState:
         raise ValueError(f"the world references content nothing provides: {unbacked}")
     filled = {e.id: statted(e, ruleset) for e in entities}
     return updated(state, world=updated(state.world, entities=filled))
-
-
-def _named_by(collection: Collection) -> Kind | None:
-    """The one kind of entity that may name this collection, or `None` where none may — a spell is
-    cast, never stood next to. Exhaustive, so a new collection must answer the question."""
-    match collection:
-        case "monsters":
-            return "actor"
-        case "weapons" | "armor" | "gear" | "tools" | "vehicles" | "magic_items":
-            return "item"
-        case (
-            "spells"
-            | "skills"
-            | "conditions"
-            | "alignments"
-            | "languages"
-            | "classes"
-            | "subclasses"
-            | "levels"
-            | "features"
-            | "races"
-            | "subraces"
-            | "traits"
-            | "backgrounds"
-            | "feats"
-            | "proficiencies"
-        ):
-            return None
-        case _:
-            assert_never(collection)

@@ -1,13 +1,12 @@
 """The domain vocabulary. Grouped in submodules; imported flat as `from ..domain.models import`."""
 
 from ...utils.dice import DiceExpr
-from ...utils.models import ABILITIES, Ability, Attributes, Frozen, updated
+from ...utils.models import ABILITIES, Ability, Attributes, Frozen, Kind, updated
 from .base import (
     PLAYER_ID,
     ROLES,
     SAVE_VERSION,
     EntityId,
-    Kind,
     Role,
     slug,
 )

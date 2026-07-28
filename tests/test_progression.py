@@ -109,7 +109,7 @@ def test_a_level_up_is_the_diff_of_two_records_not_the_record() -> None:
 
 
 class SmallRules:
-    """A whole ruleset, hand-written. A synthetic `Library` could not be written this small — it
+    """A whole ruleset, hand-written. A synthetic `Content` could not be written this small — it
     would mean cross-consistent records across classes, levels, features, traits and proficiencies —
     so before the profiles, testing a levelling edge case meant finding an SRD class showing it."""
 

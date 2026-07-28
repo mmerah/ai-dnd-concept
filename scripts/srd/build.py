@@ -97,7 +97,7 @@ def build(checkout: Path) -> Pack:
         edition=EDITION,
         provides={name: len(records) for name, records in projected.items()},
     )
-    return Pack.model_validate({"manifest": manifest, **projected})
+    return Pack.model_validate({"manifest": manifest, "records": projected})
 
 
 def _subclass_levels(levels: Sequence[Level]) -> dict[str, int]:

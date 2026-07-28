@@ -11,8 +11,8 @@ from pydantic import Field
 
 from ...content.vocabulary import CONDITION_NAMES, ConditionName
 from ...utils.dice import SelfContainedDice
-from ...utils.models import ABILITIES, Ability, Frozen
-from .base import EntityId, Kind
+from ...utils.models import ABILITIES, Ability, Frozen, Kind
+from .base import PLAYER_ID, EntityId
 
 
 @dataclass(frozen=True, slots=True)
@@ -38,7 +38,17 @@ Magnitude = SelfContainedDice | Annotated[int, Field(ge=0, strict=True)]
 # the model's. Only items may be improvised — a place the player stands in must exist in canon.
 
 
-class Discover(Frozen):
+class Action(Frozen):
+    """One member of the vocabulary. `GUIDANCE` is deliberately *not* declared here: pyright
+    resolves an inherited ClassVar for every subclass, so declaring it would turn a member that
+    forgets its prompt text from a build error into a runtime one."""
+
+    def check(self) -> str | None:
+        """The retry message when this action contradicts itself; `None` when it is well formed."""
+        return None
+
+
+class Discover(Action):
     """Reveal something that already exists to the player."""
 
     GUIDANCE: ClassVar[str] = """Use when the player's action brings an existing but unrevealed \
@@ -52,7 +62,7 @@ entity_id `ledger`."""
     )
 
 
-class TakeItem(Frozen):
+class TakeItem(Action):
     """The player picks up a canon item that is here with them."""
 
     GUIDANCE: ClassVar[str] = """Use when the player takes an item that already exists in canon \
@@ -65,7 +75,7 @@ Example: they pocket the `vault_map` lying here -> `take_item` with item_id `vau
     )
 
 
-class DropItem(Frozen):
+class DropItem(Action):
     """The player drops a held item at their current location."""
 
     GUIDANCE: ClassVar[str] = """Use when the player puts down or discards an item they carry; it \
@@ -78,7 +88,7 @@ Example: they set the `vault_map` on the desk -> `drop_item` with item_id `vault
     )
 
 
-class GiveItem(Frozen):
+class GiveItem(Action):
     """The player hands a held item to another actor who is here."""
 
     GUIDANCE: ClassVar[str] = """Use when the player gives a carried item to someone at their \
@@ -94,8 +104,13 @@ Example: they hand the `vault_map` to Mara -> `give_item` with item_id `vault_ma
         description="Id of the `actor` receiving it, at the player's location."
     )
 
+    def check(self) -> str | None:
+        if self.actor_id == PLAYER_ID:
+            return "give_item must name another actor: the player already holds the item"
+        return None
 
-class GainImprovisedItem(Frozen):
+
+class GainImprovisedItem(Action):
     """The player picks up a minor item that has no canon entry."""
 
     # Resolution promotes this to a canon item so an inventory always holds real ids, not free text.
@@ -108,7 +123,7 @@ gravel'."""
     item_name: str = Field(description="The item written out, e.g. 'a rusty spoon'.")
 
 
-class Damage(Frozen):
+class Damage(Action):
     """Reduce an actor's hit points by dice you roll, or by a flat amount."""
 
     GUIDANCE: ClassVar[str] = """Use when someone here takes damage. Prefer dice — '1d6', \
@@ -124,7 +139,7 @@ Example: a trap catches the player -> `damage` with amount '2d4'. Kael swings at
     )
 
 
-class Heal(Frozen):
+class Heal(Action):
     """Restore an actor's hit points by dice you roll, or by a flat amount."""
 
     GUIDANCE: ClassVar[str] = """Use when someone here is healed; the same amount and target rules \
@@ -137,7 +152,7 @@ as `damage`. Example: a poultice on the player -> `heal` with amount '1d4 + 2'."
     )
 
 
-class ApplyCondition(Frozen):
+class ApplyCondition(Action):
     """Put an actor under an SRD condition, or lift one they are already under."""
 
     GUIDANCE: ClassVar[str] = """Use when someone here is blinded, grappled, frightened, knocked \
@@ -155,7 +170,7 @@ again -> the same with ends true."""
     )
 
 
-class Move(Frozen):
+class Move(Action):
     """Move an actor to a location: the player by default, or another actor you name."""
 
     GUIDANCE: ClassVar[str] = """Use when the player (or an actor you name in `actor_id`) goes \
@@ -175,7 +190,7 @@ Mara walks off to the cloister -> `move` location_id `cloister`, actor_id `mara`
     )
 
 
-class Attack(Frozen):
+class Attack(Action):
     """One actor strikes at another with a weapon: the rules decide whether it lands, and for how
     much."""
 
@@ -201,8 +216,13 @@ The player swings back -> `attack` with target_id `goblin`, weapon 'a notched lo
         default=None, description="Id of the `actor` attacking; omit for the player."
     )
 
+    def check(self) -> str | None:
+        if (self.attacker_id or PLAYER_ID) == (self.target_id or PLAYER_ID):
+            return "attack must name at most one of attacker_id and target_id: they differ"
+        return None
 
-class DcRoll(Frozen):
+
+class DcRoll(Action):
     """A d20 against a DC whose outcome selects between two nested plans. Both roll consequences
     share this base, which is what keeps `branches()` a single `isinstance` for the whole
     vocabulary — and what stops the two drifting apart in shape."""

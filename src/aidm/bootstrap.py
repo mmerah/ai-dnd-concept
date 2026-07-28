@@ -22,13 +22,13 @@ def create_application(
 ) -> GameApplication:
     """The whole wiring, in one expression: packs, the ruleset compiled from them, the two files a
     game lives in, and the per-turn budgets. Reading the save is the application's own first act."""
-    library = load(conf.packs)
+    content = load(conf.packs)
     return GameApplication(
         slug=slug,
         scenario=read_scenario(conf.scenarios_dir / f"{scenario}.json"),
         sheet=read_sheet(conf.characters_dir / f"{character}.json"),
-        library=library,
-        ruleset=compile_ruleset(library),
+        content=content,
+        ruleset=compile_ruleset(content),
         saves=FileSaves(conf.saves_dir),
         traces=FileTraces(conf.saves_dir),
         options=TurnOptions(history_window=conf.history_window, max_growth=conf.max_growth),

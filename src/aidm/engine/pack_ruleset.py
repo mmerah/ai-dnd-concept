@@ -12,13 +12,11 @@ from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 
 from ..content import (
-    Collection,
+    Content,
     ContentMiss,
     ContentRef,
-    Library,
     MonsterAttack,
     MonsterRecord,
-    Pack,
 )
 from ..content.records import (
     AbilityBonus,
@@ -58,14 +56,14 @@ class PackRuleset:
     """A `Ruleset` over loaded packs. Conformance is structural, checked at `compile_ruleset`'s
     return; nothing here is declared against the protocol twice."""
 
-    library: Library
+    content: Content
     # Precomputed because each replaced a per-turn scan: what a proficiency covers, and which
     # proficiencies restate a class's saving throws.
     covers: Mapping[ContentRef, frozenset[Slug]]
     saves: frozenset[ContentRef]
 
     def character(self, origin: Origin) -> CharacterProfile:
-        klass = self.library.require(origin.class_ref, ClassRecord)
+        klass = self.content.require(origin.class_ref, ClassRecord)
         traits = self._traits(origin)
         return CharacterProfile(
             hit_die=klass.hit_die,
@@ -91,13 +89,13 @@ class PackRuleset:
         )
 
     def archetype(self, ref: ContentRef) -> ArchetypeProfile | None:
-        record = self.library.get(ref, MonsterRecord)
+        record = self.content.get(ref, MonsterRecord)
         if isinstance(record, ContentMiss):
             return None
         return ArchetypeProfile(stats=_stats(record), attacks=_attacks(record))
 
     def weapon(self, ref: ContentRef) -> WeaponProfile | None:
-        record = self.library.get(ref, WeaponRecord)
+        record = self.content.get(ref, WeaponRecord)
         if isinstance(record, ContentMiss):
             return None
         return WeaponProfile(
@@ -112,7 +110,7 @@ class PackRuleset:
         return any(equipment in self.covers.get(ref, COVERS_NOTHING) for ref in refs)
 
     def provides(self, ref: ContentRef) -> bool:
-        return self.library.resolves(ref) is None
+        return self.content.resolves(ref) is None
 
     def _origin_choices(
         self, origin: Origin, klass: ClassRecord, traits: Sequence[TraitRecord]
@@ -120,9 +118,9 @@ class PackRuleset:
         """A race's and a background's choices are made once, at level 1, along with the class's."""
         choices = list(klass.choices)
         if origin.race_ref is not None:
-            choices += self.library.require(origin.race_ref, RaceRecord).choices
+            choices += self.content.require(origin.race_ref, RaceRecord).choices
         if origin.background_ref is not None:
-            choices += self.library.require(origin.background_ref, BackgroundRecord).choices
+            choices += self.content.require(origin.background_ref, BackgroundRecord).choices
         return tuple(choices + [c for trait in traits for c in trait.choices])
 
     def _granted(
@@ -133,7 +131,7 @@ class PackRuleset:
         fields is one that can disagree with itself."""
         granted = list(klass.proficiencies)
         if origin.background_ref is not None:
-            background = self.library.require(origin.background_ref, BackgroundRecord)
+            background = self.content.require(origin.background_ref, BackgroundRecord)
             granted += background.starting_proficiencies
         granted += [p for trait in traits for p in trait.proficiencies]
         held = (origin.class_ref.sibling("proficiencies", index) for index in granted)
@@ -144,20 +142,20 @@ class PackRuleset:
         replacement."""
         granted: list[tuple[ContentRef, Slug]] = []
         if (race := origin.race_ref) is not None:
-            granted += [(race, i) for i in self.library.require(race, RaceRecord).traits]
+            granted += [(race, i) for i in self.content.require(race, RaceRecord).traits]
         if (subrace := origin.subrace_ref) is not None:
-            granted += [(subrace, i) for i in self.library.require(subrace, SubraceRecord).traits]
+            granted += [(subrace, i) for i in self.content.require(subrace, SubraceRecord).traits]
         return tuple(
-            self.library.require(owner.sibling("traits", i), TraitRecord) for owner, i in granted
+            self.content.require(owner.sibling("traits", i), TraitRecord) for owner, i in granted
         )
 
     def _racial(self, origin: Origin) -> dict[Ability, int]:
         """A race's fixed bonuses, applied once to the sheet's base scores."""
         fixed: list[AbilityBonus] = []
         if origin.race_ref is not None:
-            fixed += self.library.require(origin.race_ref, RaceRecord).ability_bonuses
+            fixed += self.content.require(origin.race_ref, RaceRecord).ability_bonuses
         if origin.subrace_ref is not None:
-            fixed += self.library.require(origin.subrace_ref, SubraceRecord).ability_bonuses
+            fixed += self.content.require(origin.subrace_ref, SubraceRecord).ability_bonuses
         bonuses: dict[Ability, int] = {}
         for bonus in fixed:
             bonuses[bonus.ability] = bonuses.get(bonus.ability, 0) + bonus.bonus
@@ -166,11 +164,11 @@ class PackRuleset:
     def _subclass_choice(self, class_ref: ContentRef, level: int) -> ProgressionChoice | None:
         """Driven off the class: the feature announcing it (`martial-archetype`) carries only an
         English sentence, so `ClassRecord.subclass` is the one machine-readable option set."""
-        klass = self.library.require(class_ref, ClassRecord)
+        klass = self.content.require(class_ref, ClassRecord)
         if klass.subclass is None or klass.subclass.level != level:
             return None
         refs = [class_ref.sibling("subclasses", index) for index in klass.subclass.options]
-        records = [self.library.require(ref, SubclassRecord) for ref in refs]
+        records = [self.content.require(ref, SubclassRecord) for ref in refs]
         return ProgressionChoice(
             id=f"{klass.index}-subclass",
             prompt=f"choose your {records[0].flavor}",
@@ -189,41 +187,35 @@ class PackRuleset:
         ref = _level_ref(origin.subclass_ref, level)
         if not self.provides(ref):
             return ()
-        return self.library.require(ref, SubclassLevelRecord).features
+        return self.content.require(ref, SubclassLevelRecord).features
 
     def _class_level(self, class_ref: ContentRef, level: int) -> ClassLevelRecord:
-        return self.library.require(_level_ref(class_ref, level), ClassLevelRecord)
+        return self.content.require(_level_ref(class_ref, level), ClassLevelRecord)
 
     def _feature(self, class_ref: ContentRef, index: Slug) -> FeatureRecord:
-        return self.library.require(class_ref.sibling("features", index), FeatureRecord)
+        return self.content.require(class_ref.sibling("features", index), FeatureRecord)
 
 
-def compile_ruleset(library: Library) -> Ruleset:
+def compile_ruleset(content: Content) -> Ruleset:
     """Read the packs once, at load. Both indexes answer a question the engine asks every turn about
     data frozen until the next level-up, and every class ladder is walked here so an unplayable
     class is a startup failure rather than a dropped turn three levels into a campaign."""
     covers: dict[ContentRef, frozenset[Slug]] = {}
     saves: set[ContentRef] = set()
-    for pack in library.packs:
-        for record in pack.proficiencies.values():
-            ref = _ref(pack, "proficiencies", record.index)
-            if isinstance(record, EquipmentProficiency):
-                covers[ref] = frozenset(record.equipment)
-            elif isinstance(record, SaveProficiency):
-                saves.add(ref)
-    compiled = PackRuleset(library=library, covers=covers, saves=frozenset(saves))
-    for pack in library.packs:
-        for klass in pack.classes.values():
-            origin = Origin(class_ref=_ref(pack, "classes", klass.index))
-            for level in range(1, MAX_LEVEL + 1):
-                compiled.level(origin, level)
+    classes: list[ContentRef] = []
+    for ref, record in content.records.items():
+        if isinstance(record, EquipmentProficiency):
+            covers[ref] = frozenset(record.equipment)
+        elif isinstance(record, SaveProficiency):
+            saves.add(ref)
+        elif isinstance(record, ClassRecord):
+            classes.append(ref)
+    # The walk runs against the compiled ruleset, so it cannot join the scan above.
+    compiled = PackRuleset(content=content, covers=covers, saves=frozenset(saves))
+    for ref in classes:
+        for level in range(1, MAX_LEVEL + 1):
+            compiled.level(Origin(class_ref=ref), level)
     return compiled
-
-
-def _ref(pack: Pack, collection: Collection, index: Slug) -> ContentRef:
-    """A ref to a record read out of the pack holding it: a collection is keyed by index alone, and
-    an index alone addresses nothing."""
-    return ContentRef(pack=pack.manifest.id, collection=collection, index=index)
 
 
 def _level_ref(owner: ContentRef, level: int) -> ContentRef:

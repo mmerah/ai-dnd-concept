@@ -7,13 +7,10 @@ from pydantic_ai.messages import ModelMessage
 
 from ..domain.models import (
     CONSEQUENCE_TYPES,
-    PLAYER_ID,
     ActorEntity,
-    Attack,
     Consequence,
     Direction,
     Entity,
-    GiveItem,
     References,
     flatten,
 )
@@ -42,10 +39,6 @@ def consequence_menu(types: Sequence[type[Consequence]]) -> str:
 INSTRUCTIONS = TEMPLATE.replace("{consequences}", consequence_menu(CONSEQUENCE_TYPES))
 
 
-def _attacks_itself(attack: Attack) -> bool:
-    return (attack.attacker_id or PLAYER_ID) == (attack.target_id or PLAYER_ID)
-
-
 def _elsewhere(entity: Entity, scene: Scene) -> bool:
     """Only actors stand anywhere, and `present` marks actor fields alone — anything else has
     already failed the kind check."""
@@ -63,16 +56,11 @@ def _validate_ids(ctx: RunContext[Scene], direction: Direction) -> Direction:
     scene = ctx.deps
     canon = scene.canon
 
-    # The player is an actor in canon now, so naming them where someone else is meant passes the
-    # kind check below. Caught here as a retry rather than a dropped turn in the resolver.
-    if direction.speaker_id == PLAYER_ID:
-        raise ModelRetry("speaker_id must be an actor the player addresses, never the player")
-    planned = flatten(direction.mechanics)  # branches included: a nested give is still a give
-    if any(isinstance(c, GiveItem) and c.actor_id == PLAYER_ID for c in planned):
-        raise ModelRetry("give_item must name another actor: the player already holds the item")
-    # Both of an attack's ids default to the player, so naming one of them is what says "not you".
-    if any(isinstance(c, Attack) and _attacks_itself(c) for c in planned):
-        raise ModelRetry("attack must name at most one of attacker_id and target_id: they differ")
+    # Each action's own invariant, before any canon lookup; branches included, because a nested
+    # give is still a give.
+    for fault in (direction.check(), *(c.check() for c in flatten(direction.mechanics))):
+        if fault is not None:
+            raise ModelRetry(fault)
 
     if missing := sorted({i for i, _ in refs if i not in canon}):
         raise ModelRetry(f"unknown entity id(s): {missing}. Use only ids you were shown.")

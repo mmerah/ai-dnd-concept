@@ -1,6 +1,6 @@
 """What every record shares, and the reference that addresses one."""
 
-from typing import Annotated, ClassVar, Literal
+from typing import Annotated, Literal
 
 from pydantic import Field
 
@@ -61,11 +61,9 @@ class ContentRef(Frozen):
 
 
 class Record(Frozen):
-    """`COLLECTION` is what `Library.get` derives a lookup from, so a caller names a record class
-    and the collection follows. `records/__init__.py` checks every concrete class declares one,
-    because an omitted ClassVar is no static error."""
+    """What every record shares. Which collection holds a class is `registry.py`'s table, not a
+    ClassVar here: one table can be proved complete, 25 declarations cannot."""
 
-    COLLECTION: ClassVar[Collection]
     index: Slug
     name: str
 

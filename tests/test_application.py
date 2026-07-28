@@ -11,7 +11,7 @@ from random import Random
 import pytest
 from support import (
     OPTIONS,
-    library,
+    content,
     new_game,
     ruleset,
     scenario,
@@ -59,7 +59,7 @@ def application(saves: SaveRepository, traces: TraceSink) -> GameApplication:
         slug=SLUG,
         scenario=scenario(),
         sheet=sheet(),
-        library=library(),
+        content=content(),
         ruleset=ruleset(),
         saves=saves,
         traces=traces,

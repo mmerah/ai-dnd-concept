@@ -20,7 +20,7 @@ from .agents.prompting import (
     maintainer_prompt,
     narrator_prompt,
 )
-from .content import Library
+from .content import Content
 from .domain.models import (
     Entity,
     EntityCreated,
@@ -84,7 +84,7 @@ async def run_turn(
     prompt: str,
     on_step: Callable[[Role], None] | None = None,
     *,
-    library: Library,
+    content: Content,
     ruleset: Ruleset,
     options: TurnOptions,
     rng: Random | None = None,
@@ -93,7 +93,7 @@ async def run_turn(
     so the check outcome is deterministic under test; production leaves it defaulted.
 
     Both content handles are passed until the Narrator's and Director's views read profiles too: the
-    engine resolves against `ruleset`, and `views` still renders records out of `library`."""
+    engine resolves against `ruleset`, and `views` still renders records out of `content`."""
     step: Callable[[Role], None] = on_step or (lambda _: None)
     prompts: dict[Role, str] = {}
 
@@ -103,7 +103,7 @@ async def run_turn(
     def seen_by(role: Role) -> list[ModelMessage] | None:
         return history if role in NATIVE_HISTORY else None
 
-    context = TurnContext(state=state, prompt=prompt, library=library, recent=recent)
+    context = TurnContext(state=state, prompt=prompt, content=content, recent=recent)
     step("director")
     prompts["director"] = director_prompt(context)
     direction = await direct(prompts["director"], context.scene, seen_by("director"))

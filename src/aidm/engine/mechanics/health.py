@@ -3,19 +3,19 @@
 from random import Random
 from typing import Literal
 
-from ...domain.models import EntityId, Event, HpChanged, Magnitude
+from ...domain.models import Damage, EntityId, Event, Heal, HpChanged, Magnitude
 from ...utils import dice
 from .. import rules
 from . import common
 from .resolution import Resolution
 
 
-def damage(ctx: Resolution, target_id: EntityId | None, amount: Magnitude) -> list[Event]:
-    return hp_events(ctx, target_id, amount, sign=-1)
+def damage(ctx: Resolution, consequence: Damage) -> list[Event]:
+    return hp_events(ctx, consequence.target_id, consequence.amount, sign=-1)
 
 
-def heal(ctx: Resolution, target_id: EntityId | None, amount: Magnitude) -> list[Event]:
-    return hp_events(ctx, target_id, amount, sign=+1)
+def heal(ctx: Resolution, consequence: Heal) -> list[Event]:
+    return hp_events(ctx, consequence.target_id, consequence.amount, sign=+1)
 
 
 def hp_events(

@@ -1,11 +1,10 @@
-"""The domain's own vocabularies. The frozen base and the 5e ability names live in
+"""The domain's own vocabularies. The frozen base, the 5e ability names and `Kind` live in
 `utils/models.py` instead, because `content/` needs them and must not import `domain/`."""
 
 import re
 from collections.abc import Iterable
 from typing import Literal, NewType, get_args
 
-Kind = Literal["actor", "location", "item"]
 Role = Literal["director", "narrator", "maintainer", "creator"]
 
 # Branded so a location or item name can never be passed where an entity id is expected.

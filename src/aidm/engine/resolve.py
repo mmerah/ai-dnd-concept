@@ -62,26 +62,26 @@ def _walk(ctx: Resolution, consequence: Consequence) -> list[Event]:
             target = ctx.target(target_id)
             rolled = rules.roll_save(target, ability, dc, ctx.rng)
             return _branched(ctx, consequence, common.reveal(target), rolled)
-        case Attack(weapon=weapon, target_id=target_id, attacker_id=attacker_id):
-            return combat.attack(ctx, attacker_id, target_id, weapon)
-        case Damage(amount=amount, target_id=target_id):
-            return health.damage(ctx, target_id, amount)
-        case Heal(amount=amount, target_id=target_id):
-            return health.heal(ctx, target_id, amount)
-        case ApplyCondition(condition=condition, ends=ends, target_id=target_id):
-            return conditions.change(ctx, target_id, condition, active=not ends)
-        case Discover(entity_id=entity_id):
-            return common.reveal(ctx.entity(entity_id))  # re-discovery is a no-op, not an error
-        case Move(location_id=location_id, actor_id=actor_id):
-            return movement.move(ctx, location_id, actor_id)
-        case TakeItem(item_id=item_id):
-            return inventory.take(ctx, item_id)
-        case DropItem(item_id=item_id):
-            return inventory.drop(ctx, item_id)
-        case GiveItem(item_id=item_id, actor_id=actor_id):
-            return inventory.give(ctx, item_id, actor_id)
-        case GainImprovisedItem(item_name=item_name):
-            return inventory.improvise(ctx, item_name)
+        case Attack():
+            return combat.attack(ctx, consequence)
+        case Damage():
+            return health.damage(ctx, consequence)
+        case Heal():
+            return health.heal(ctx, consequence)
+        case ApplyCondition():
+            return conditions.change(ctx, consequence)
+        case Discover():  # re-discovery is a no-op, not an error
+            return common.reveal(ctx.entity(consequence.entity_id))
+        case Move():
+            return movement.move(ctx, consequence)
+        case TakeItem():
+            return inventory.take(ctx, consequence)
+        case DropItem():
+            return inventory.drop(ctx, consequence)
+        case GiveItem():
+            return inventory.give(ctx, consequence)
+        case GainImprovisedItem():
+            return inventory.improvise(ctx, consequence)
 
 
 def _branched(

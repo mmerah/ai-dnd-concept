@@ -6,13 +6,13 @@ walk a tree. Starting equipment is deliberately absent: it is inventory rather t
 `CharacterSheet.starting_items` already owns what a game begins with, and it is the only part of
 the tree that does not flatten exactly (see `scripts/srd/character.py`)."""
 
-from typing import Annotated, ClassVar, Literal, Self
+from typing import Annotated, Literal, Self
 
 from pydantic import Field, model_validator
 
 from ...utils.models import EMPTY_FROZEN_MAP, Ability, Frozen, FrozenMap
 from ..vocabulary import LanguageName
-from .base import Collection, ContentRef, CreatureSize, Record, Slug
+from .base import ContentRef, CreatureSize, Record, Slug
 
 
 class AbilityBonus(Frozen):
@@ -96,7 +96,6 @@ class SubclassChoice(Frozen):
 
 
 class ClassRecord(Record):
-    COLLECTION: ClassVar[Collection] = "classes"
     hit_die: int = Field(ge=1)
     saving_throws: tuple[Ability, ...]
     # Proficiency indexes granted outright; `choices` are the ones the player makes instead.
@@ -107,7 +106,6 @@ class ClassRecord(Record):
 
 
 class SubclassRecord(Record):
-    COLLECTION: ClassVar[Collection] = "subclasses"
     class_index: Slug
     flavor: str  # 'Martial Archetype' — what the class calls its subclasses
     desc: str
@@ -126,7 +124,6 @@ class ClassLevelRecord(Record):
     """A cumulative snapshot, never a delta: `ability_score_bonuses` runs 0, 0, 0, 1, 1, 2 over
     Fighter 1-6, so a level-up is the *diff* of two records. Applying one whole double-counts."""
 
-    COLLECTION: ClassVar[Collection] = "levels"
     kind: Literal["class"] = "class"
     level: int = Field(ge=1, le=20)
     class_index: Slug
@@ -140,7 +137,6 @@ class SubclassLevelRecord(Record):
     """What a subclass adds at a level, which is features and nothing else — discriminated from the
     class record rather than sharing it, so a missing `prof_bonus` cannot be read as 0."""
 
-    COLLECTION: ClassVar[Collection] = "levels"
     kind: Literal["subclass"] = "subclass"
     level: int = Field(ge=1, le=20)
     class_index: Slug
@@ -152,7 +148,6 @@ LevelRecord = Annotated[ClassLevelRecord | SubclassLevelRecord, Field(discrimina
 
 
 class FeatureRecord(Record):
-    COLLECTION: ClassVar[Collection] = "features"
     class_index: Slug
     level: int = Field(ge=1, le=20)
     desc: str
@@ -162,7 +157,6 @@ class FeatureRecord(Record):
 
 
 class RaceRecord(Record):
-    COLLECTION: ClassVar[Collection] = "races"
     speed: int = Field(ge=0)
     size: CreatureSize
     ability_bonuses: tuple[AbilityBonus, ...] = ()
@@ -178,7 +172,6 @@ class RaceRecord(Record):
 
 
 class SubraceRecord(Record):
-    COLLECTION: ClassVar[Collection] = "subraces"
     race_index: Slug
     desc: str
     ability_bonuses: tuple[AbilityBonus, ...] = ()
@@ -186,7 +179,6 @@ class SubraceRecord(Record):
 
 
 class TraitRecord(Record):
-    COLLECTION: ClassVar[Collection] = "traits"
     desc: str
     races: tuple[Slug, ...] = ()
     subraces: tuple[Slug, ...] = ()
@@ -196,7 +188,6 @@ class TraitRecord(Record):
 
 
 class BackgroundRecord(Record):
-    COLLECTION: ClassVar[Collection] = "backgrounds"
     feature_name: str
     feature_desc: str
     starting_proficiencies: tuple[Slug, ...] = ()
@@ -214,7 +205,6 @@ class AbilityRequirement(Frozen):
 
 
 class FeatRecord(Record):
-    COLLECTION: ClassVar[Collection] = "feats"
     desc: str
     prerequisites: tuple[AbilityRequirement, ...] = ()
 
@@ -229,20 +219,17 @@ class EquipmentProficiency(Record):
     `equipment_category` reference expanded to its members at import — so a to-hit asks whether the
     weapon is in the set and never re-derives a category mid-turn."""
 
-    COLLECTION: ClassVar[Collection] = "proficiencies"
     kind: Literal["equipment"] = "equipment"
     type: EquipmentProficiencyType
     equipment: tuple[Slug, ...] = Field(min_length=1)
 
 
 class SkillProficiency(Record):
-    COLLECTION: ClassVar[Collection] = "proficiencies"
     kind: Literal["skill"] = "skill"
     skill: Slug
 
 
 class SaveProficiency(Record):
-    COLLECTION: ClassVar[Collection] = "proficiencies"
     kind: Literal["save"] = "save"
     ability: Ability
 

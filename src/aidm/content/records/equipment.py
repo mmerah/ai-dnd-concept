@@ -5,13 +5,13 @@ union of kinds, not anything about weapons. They are projected as separate non-o
 discriminated on `equipment_category`, so a weapon that lost its damage is a load-time error rather
 than a silent +0."""
 
-from typing import ClassVar, Literal
+from typing import Literal
 
 from pydantic import Field
 
 from ...utils.models import Frozen
 from ..vocabulary import EquipmentCategory, WeaponProperty
-from .base import Coin, Collection, DamageRoll, Record, Slug
+from .base import Coin, DamageRoll, Record, Slug
 
 WeaponCategory = Literal["Simple Melee", "Simple Ranged", "Martial Melee", "Martial Ranged"]
 WeaponReach = Literal["Melee", "Ranged"]
@@ -37,7 +37,6 @@ class WeaponRange(Frozen):
 
 
 class WeaponRecord(EquipmentRecord):
-    COLLECTION: ClassVar[Collection] = "weapons"
     category: WeaponCategory
     weapon_range: WeaponReach
     damage: DamageRoll | None = None
@@ -49,7 +48,6 @@ class WeaponRecord(EquipmentRecord):
 
 
 class ArmorRecord(EquipmentRecord):
-    COLLECTION: ClassVar[Collection] = "armor"
     category: ArmorCategory
     base_ac: int = Field(ge=0)
     dex_bonus: bool
@@ -66,19 +64,16 @@ class PackContents(Frozen):
 
 
 class GearRecord(EquipmentRecord):
-    COLLECTION: ClassVar[Collection] = "gear"
     gear_category: EquipmentCategory
     quantity: int | None = None
     contents: tuple[PackContents, ...] = ()
 
 
 class ToolRecord(EquipmentRecord):
-    COLLECTION: ClassVar[Collection] = "tools"
     tool_category: ToolCategory
 
 
 class VehicleRecord(EquipmentRecord):
-    COLLECTION: ClassVar[Collection] = "vehicles"
     vehicle_category: VehicleCategory
     speed: str | None = None  # '50 ft/round', '3 mph' — two units, so not an int
     capacity: str | None = None
@@ -88,7 +83,6 @@ class MagicItemRecord(Record):
     """The one collection whose mechanics stay prose: a magic item's effect is written as English
     with no structured payload upstream, and the Director can only turn it into words."""
 
-    COLLECTION: ClassVar[Collection] = "magic_items"
     category: EquipmentCategory
     rarity: Rarity
     desc: str

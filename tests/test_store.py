@@ -5,7 +5,7 @@ from pathlib import Path
 
 import pytest
 from pydantic import ValidationError
-from support import library, new_game
+from support import content, new_game
 
 from aidm.content import PackStamp
 from aidm.domain.models import (
@@ -116,7 +116,7 @@ def test_a_save_is_refused_when_the_schema_or_the_content_under_it_moved() -> No
     """An actor's stats were snapshotted from a pack version, so a bump would silently change the
     game the save recorded. There are no migrations: fail loudly instead."""
     state = new_game()
-    stamps = library().stamps
+    stamps = content().stamps
     assert campaign.resumable(state, stamps) == state
     with pytest.raises(ValueError, match=f"needs v{SAVE_VERSION}"):
         campaign.resumable(updated(state, version=SAVE_VERSION - 1), stamps)

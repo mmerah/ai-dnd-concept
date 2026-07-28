@@ -5,9 +5,10 @@ does not need one — and cached, so the whole suite compiles the pack once. Eve
 frozen, which is what makes sharing them safe."""
 
 import json
-from collections.abc import Callable
+from collections.abc import Callable, Mapping
 from contextlib import ExitStack
 from functools import cache
+from pathlib import Path
 
 from pydantic_ai.messages import ModelMessage, ModelResponse, TextPart
 from pydantic_ai.models.function import AgentInfo, FunctionModel
@@ -17,7 +18,8 @@ from aidm.agents import director as director_module
 from aidm.agents import maintainer as maintainer_module
 from aidm.agents import narrator as narrator_module
 from aidm.config import settings
-from aidm.content import Library, load
+from aidm.content import Content, Pack, loaded, read_pack
+from aidm.content.records import Collection, Record, Slug
 from aidm.domain.models import CharacterSheet, GameState, ScenarioDef
 from aidm.engine import campaign
 from aidm.engine.pack_ruleset import compile_ruleset
@@ -25,6 +27,7 @@ from aidm.engine.ruleset import Ruleset
 from aidm.pipeline import TurnOptions
 from aidm.store import read_scenario, read_sheet
 
+PACK_DIR = settings().packs[0]
 SCENARIO = "whispering_vault"
 CHARACTER = "kael"
 OPTIONS = TurnOptions(history_window=6, max_growth=3)
@@ -33,13 +36,29 @@ Stub = Callable[[list[ModelMessage], AgentInfo], ModelResponse]
 
 
 @cache
-def library() -> Library:
-    return load(settings().packs)
+def pack(directory: Path = PACK_DIR) -> Pack:
+    """The shipped pack as authored, for the tests that assert the corpus rather than play it.
+    Cached per directory so the whole suite parses ~1,900 records once."""
+    return read_pack(directory)
+
+
+@cache
+def content() -> Content:
+    return loaded([pack(d) for d in settings().packs])
+
+
+def all_of[R: Record](pack: Pack, name: Collection, kind: type[R]) -> Mapping[Slug, R]:
+    """One collection of a pack, narrowed to the class the caller names. Here rather than on `Pack`
+    because only the corpus tests read a pack by collection; the application reads `Content`."""
+    found = pack.records.get(name, {})
+    if wrong := sorted(i for i, r in found.items() if not isinstance(r, kind)):
+        raise ValueError(f"{name} holds records that are no {kind.__name__}: {wrong}")
+    return {i: r for i, r in found.items() if isinstance(r, kind)}
 
 
 @cache
 def ruleset() -> Ruleset:
-    return compile_ruleset(library())
+    return compile_ruleset(content())
 
 
 @cache
@@ -55,7 +74,7 @@ def scenario(name: str = SCENARIO) -> ScenarioDef:
 @cache
 def new_game(name: str = SCENARIO, character: str = CHARACTER) -> GameState:
     """A composed level-1 game: the scenario's canon, statted, with the sheet placed in it."""
-    return campaign.begin(scenario(name), sheet(character), ruleset(), library().stamps)
+    return campaign.begin(scenario(name), sheet(character), ruleset(), content().stamps)
 
 
 def structured(**output: object) -> Stub:
