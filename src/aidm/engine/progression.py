@@ -5,32 +5,21 @@ than a turn outcome, and there is no "model proposes, Python decides" when the p
 outcome. `ui/` renders `pending()` and submits decisions, this module validates them and returns
 events, the reducer applies them — the same shape as `screen()` -> `create()` in `growth.py`.
 
-Level records are cumulative snapshots, so the ability score improvements a level grants are the
-**diff** of two records; `pending` is the one place that subtraction happens."""
+Progression *rules* only: which choices a level asks for, what a pick may and may not do, and the
+arithmetic of a raised score. Where those facts live in a pack is `ruleset.py`'s question."""
 
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 from random import Random
 
-from ..content import ContentMiss, ContentRef, Library
 from ..content.records import (
     AbilityBonus,
-    BackgroundRecord,
     BonusOption,
     ChoiceEffect,
     ChoiceOption,
-    ClassLevelRecord,
-    ClassRecord,
-    FeatureRecord,
     ProgressionChoice,
-    RaceRecord,
     RecordOption,
-    SaveProficiency,
     Slug,
-    SubclassLevelRecord,
-    SubclassRecord,
-    SubraceRecord,
-    TraitRecord,
 )
 from ..domain.models import (
     ABILITIES,
@@ -48,6 +37,7 @@ from ..domain.models import (
     updated,
 )
 from . import rules
+from .ruleset import ProgressionRules
 
 # 5e caps a score at 20, and an improvement is the only thing here that raises one.
 MAX_ABILITY_SCORE = 20
@@ -62,48 +52,46 @@ class Pick:
     option: ChoiceOption
 
 
-def pending(origin: Origin, level: int, library: Library) -> list[ProgressionChoice]:
+def pending(origin: Origin, level: int, ruleset: ProgressionRules) -> list[ProgressionChoice]:
     """Every decision reaching `level` requires. Level 1 also carries what comes with a race, a
     subrace, a background and a class rather than with a level."""
-    klass = library.require(origin.class_ref, ClassRecord)
-    choices = list(_origin_choices(origin, library)) if level == 1 else []
-    chosen_now = klass.subclass is not None and klass.subclass.level == level
-    if chosen_now and origin.subclass_ref is None:
-        choices.append(_subclass_choice(origin.class_ref, klass, library))
-    reached = _class_level(origin.class_ref, level, library)
-    before = _class_level(origin.class_ref, level - 1, library) if level > 1 else None
-    improvements = reached.ability_score_bonuses - (before.ability_score_bonuses if before else 0)
-    if improvements > 0:
-        choices.append(_ability_choice(level, improvements))
-    for index in (*reached.features, *_subclass_features(origin, level, library)):
-        ref = origin.class_ref.sibling("features", index)
-        choices.extend(library.require(ref, FeatureRecord).choices)
-    return choices
+    reached = ruleset.level(origin, level)
+    choices = list(ruleset.character(origin).choices) if level == 1 else []
+    # Chosen once and never unchosen, so a level that offers one again offers nothing.
+    if reached.subclass_choice is not None and origin.subclass_ref is None:
+        choices.append(reached.subclass_choice)
+    if reached.improvements > 0:
+        choices.append(_ability_choice(level, reached.improvements))
+    return [*choices, *reached.choices]
 
 
-def first_level(sheet: CharacterSheet, library: Library) -> Advancement:
+def first_level(sheet: CharacterSheet, ruleset: ProgressionRules) -> Advancement:
     """A character at level 1. Hit points are the whole hit die, not a roll — the 5e rule, and what
     keeps a new game reproducible."""
     origin = sheet.origin
-    klass = library.require(origin.class_ref, ClassRecord)
-    picks = _taken(pending(origin, 1, library), sheet.decisions)
-    attributes = _raised(sheet.starting_attributes, _bonuses(picks, _racial(origin, library)))
-    reached = _class_level(origin.class_ref, 1, library)
+    character = ruleset.character(origin)
+    picks = _taken(pending(origin, 1, ruleset), sheet.decisions)
+    attributes = _raised(sheet.starting_attributes, _bonuses(picks, character.ability_bonuses))
+    reached = ruleset.level(origin, 1)
     progression = Progression(
         origin=_with_subclass(origin, picks),
         level=1,
         prof_bonus=reached.prof_bonus,
-        saving_throws=klass.saving_throws,
-        proficiencies=_proficiencies(_granted(origin, library), picks),
-        spell_slots=_slots(reached),
+        saving_throws=character.saving_throws,
+        proficiencies=_proficiencies(character.proficiencies, picks),
+        spell_slots=reached.spell_slots,
         decisions=sheet.decisions,
     )
     return Advancement(
-        progression=progression, attributes=attributes, hp_gain=_hp_gain(klass.hit_die, attributes)
+        progression=progression,
+        attributes=attributes,
+        hp_gain=_hp_gain(character.hit_die, attributes),
     )
 
 
-def advance(actor: ActorEntity, decisions: Decisions, library: Library, rng: Random) -> list[Event]:
+def advance(
+    actor: ActorEntity, decisions: Decisions, ruleset: ProgressionRules, rng: Random
+) -> list[Event]:
     """One level, never several: the diff a level-up applies is only defined a step at a time. The
     hit die is rolled where the trace can see it fall."""
     current = actor.progression
@@ -112,95 +100,25 @@ def advance(actor: ActorEntity, decisions: Decisions, library: Library, rng: Ran
     if current.level >= MAX_LEVEL:
         raise ValueError(f"already at level {MAX_LEVEL}")
     level = current.level + 1
-    picks = _taken(pending(current.origin, level, library), decisions)
+    origin = current.origin
+    picks = _taken(pending(origin, level, ruleset), decisions)
     attributes = _raised(actor.stats.attributes, _bonuses(picks, {}))
-    reached = _class_level(current.origin.class_ref, level, library)
-    klass = library.require(current.origin.class_ref, ClassRecord)
-    rolled, event = rules.roll_dice(f"1d{klass.hit_die}", rng)  # a well-formed term by construction
+    reached = ruleset.level(origin, level)
+    hit_die = ruleset.character(origin).hit_die
+    rolled, event = rules.roll_dice(f"1d{hit_die}", rng)  # a well-formed term by construction
     progression = updated(
         current,
-        origin=_with_subclass(current.origin, picks),
+        origin=_with_subclass(origin, picks),
         level=level,
         prof_bonus=reached.prof_bonus,
         proficiencies=_proficiencies(current.proficiencies, picks),
-        spell_slots=_slots(reached),
+        spell_slots=reached.spell_slots,
         decisions={**current.decisions, **decisions},
     )
     gained = Advancement(
         progression=progression, attributes=attributes, hp_gain=_hp_gain(rolled, attributes)
     )
     return [event, LeveledUp(advancement=gained)]
-
-
-def _origin_choices(origin: Origin, library: Library) -> list[ProgressionChoice]:
-    """A race's and a background's choices are made once, at level 1, along with the class's."""
-    choices = list(library.require(origin.class_ref, ClassRecord).choices)
-    if origin.race_ref is not None:
-        choices += library.require(origin.race_ref, RaceRecord).choices
-    if origin.background_ref is not None:
-        choices += library.require(origin.background_ref, BackgroundRecord).choices
-    return choices + [c for trait in _traits(origin, library) for c in trait.choices]
-
-
-def _granted(origin: Origin, library: Library) -> tuple[Slug, ...]:
-    """Proficiencies a character has without choosing: the class's, the background's, a trait's.
-
-    Save proficiencies are dropped: a class states them twice upstream, and `Progression`'s
-    `saving_throws` is the one `rules.save_bonus` reads."""
-    granted = list(library.require(origin.class_ref, ClassRecord).proficiencies)
-    if origin.background_ref is not None:
-        background = library.require(origin.background_ref, BackgroundRecord)
-        granted += background.starting_proficiencies
-    granted += [p for t in _traits(origin, library) for p in t.proficiencies]
-    return tuple(index for index in granted if not _is_save(origin.class_ref, index, library))
-
-
-def _is_save(owner: ContentRef, index: Slug, library: Library) -> bool:
-    ref = owner.sibling("proficiencies", index)  # the wrong_type miss is the test
-    return not isinstance(library.get(ref, SaveProficiency), ContentMiss)
-
-
-def _traits(origin: Origin, library: Library) -> list[TraitRecord]:
-    """Every trait a race and its subrace grant. A subrace's are additional, never a replacement."""
-    granted: list[tuple[ContentRef, Slug]] = []
-    if (race := origin.race_ref) is not None:
-        granted += [(race, index) for index in library.require(race, RaceRecord).traits]
-    if (subrace := origin.subrace_ref) is not None:
-        granted += [(subrace, index) for index in library.require(subrace, SubraceRecord).traits]
-    return [library.require(o.sibling("traits", i), TraitRecord) for o, i in granted]
-
-
-def _racial(origin: Origin, library: Library) -> dict[Ability, int]:
-    """A race's fixed bonuses. Applied once, at level 1, to the sheet's base scores."""
-    bonuses: dict[Ability, int] = {}
-    fixed: list[AbilityBonus] = []
-    if origin.race_ref is not None:
-        fixed += library.require(origin.race_ref, RaceRecord).ability_bonuses
-    if origin.subrace_ref is not None:
-        fixed += library.require(origin.subrace_ref, SubraceRecord).ability_bonuses
-    for bonus in fixed:
-        bonuses[bonus.ability] = bonuses.get(bonus.ability, 0) + bonus.bonus
-    return bonuses
-
-
-def _subclass_choice(
-    class_ref: ContentRef, klass: ClassRecord, library: Library
-) -> ProgressionChoice:
-    """Driven off the class, because the feature announcing it (`martial-archetype`) carries only an
-    English sentence — `ClassRecord.subclass` is the pack's one machine-readable option set."""
-    if klass.subclass is None:
-        raise ValueError(f"class {klass.index!r} has no subclasses to choose from")
-    refs = [class_ref.sibling("subclasses", index) for index in klass.subclass.options]
-    records = [library.require(ref, SubclassRecord) for ref in refs]
-    return ProgressionChoice(
-        id=f"{klass.index}-subclass",
-        prompt=f"choose your {records[0].flavor}",
-        choose=1,
-        options=tuple(
-            RecordOption(label=record.name, ref=ref)
-            for ref, record in zip(refs, records, strict=True)
-        ),
-    )
 
 
 def _ability_choice(level: int, improvements: int) -> ProgressionChoice:
@@ -274,10 +192,6 @@ def _with_subclass(origin: Origin, picks: Sequence[Pick]) -> Origin:
     return origin if ref is None else updated(origin, subclass_ref=ref)
 
 
-def _slots(reached: ClassLevelRecord) -> Mapping[int, int]:
-    return reached.spellcasting.spell_slots if reached.spellcasting else {}
-
-
 def _raised(attributes: Attributes, bonuses: Mapping[Ability, int]) -> Attributes:
     """Raising past 20 is refused, not clamped: an improvement is permanent and a pick the engine
     silently swallowed would cost the player a choice they can never make again."""
@@ -291,24 +205,3 @@ def _raised(attributes: Attributes, bonuses: Mapping[Ability, int]) -> Attribute
 def _hp_gain(rolled: int, attributes: Attributes) -> int:
     """At least 1: a d6 class with a poor constitution would otherwise gain nothing for a level."""
     return max(1, rolled + rules.modifier(attributes, "constitution"))
-
-
-def _subclass_features(origin: Origin, level: int, library: Library) -> tuple[Slug, ...]:
-    """A subclass grants features at a handful of levels only, so no record for this one is an
-    answer, not a miss — but a record that is not a subclass level is a broken pack."""
-    if origin.subclass_ref is None:
-        return ()
-    ref = _level_ref(origin.subclass_ref, level)
-    if library.resolves(ref) is not None:
-        return ()
-    return library.require(ref, SubclassLevelRecord).features
-
-
-def _class_level(class_ref: ContentRef, level: int, library: Library) -> ClassLevelRecord:
-    return library.require(_level_ref(class_ref, level), ClassLevelRecord)
-
-
-def _level_ref(owner: ContentRef, level: int) -> ContentRef:
-    """A level record's index is its owner's plus the level, which is what makes a level a lookup
-    rather than a scan of all 290."""
-    return owner.sibling("levels", f"{owner.index}-{level}")

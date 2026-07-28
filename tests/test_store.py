@@ -1,25 +1,30 @@
-"""Composing a scenario-independent character sheet with the scenario that places it, and the two
-things a save is refused for."""
+"""Composing a scenario-independent character sheet with the scenario that places it, the two things
+a save is refused for, and the files both live in."""
 
 from pathlib import Path
 
 import pytest
 from pydantic import ValidationError
+from support import library, new_game
 
-from aidm import store
-from aidm.config import settings
 from aidm.content import PackStamp
 from aidm.domain.models import (
     PLAYER_ID,
+    SAVE_VERSION,
     Advancement,
     Attributes,
     CharacterSheet,
+    Direction,
     GameState,
+    Growth,
     Origin,
     Progression,
     ScenarioDef,
+    Turn,
     updated,
 )
+from aidm.engine import campaign
+from aidm.store import FileSaves, FileTraces
 
 CLASS_REF = {"pack": "srd-2014", "collection": "classes", "index": "fighter"}
 SHEET = {
@@ -96,16 +101,48 @@ def test_a_sheet_becomes_the_player_entity() -> None:
     assert state.player.stats.max_hp == 10 and state.player.progression == START.progression
 
 
-def test_a_save_played_against_other_content_is_refused(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-) -> None:
+def test_a_save_survives_a_round_trip_and_an_unsaved_slug_is_not_an_error(tmp_path: Path) -> None:
+    """`None` is how every first game starts, so a missing file is an answer rather than a fault."""
+    saves = FileSaves(tmp_path)
+    assert saves.load("nothing-here") is None
+    state = new_game()
+    saves.save("current", state)
+    assert saves.load("current") == state
+    saves.discard("current")
+    assert saves.load("current") is None
+
+
+def test_a_save_is_refused_when_the_schema_or_the_content_under_it_moved() -> None:
     """An actor's stats were snapshotted from a pack version, so a bump would silently change the
     game the save recorded. There are no migrations: fail loudly instead."""
-    monkeypatch.setattr(settings(), "saves_dir", tmp_path)
-    state = store.new_game("whispering_vault")
-    store.save("current", state)
-    assert store.load("current") == state
-
-    store.save("stale", updated(state, packs=[PackStamp(id="srd-2014", version="0.0.0")]))
+    state = new_game()
+    stamps = library().stamps
+    assert campaign.resumable(state, stamps) == state
+    with pytest.raises(ValueError, match=f"needs v{SAVE_VERSION}"):
+        campaign.resumable(updated(state, version=SAVE_VERSION - 1), stamps)
+    stale = updated(state, packs=[PackStamp(id="srd-2014", version="0.0.0")])
     with pytest.raises(ValueError, match="was played against"):
-        store.load("stale")
+        campaign.resumable(stale, stamps)
+
+
+def _turn(state: GameState, prompt: str) -> Turn:
+    return Turn(
+        prompt=prompt,
+        direction=Direction(intent="i", tone="t"),
+        narration="n",
+        growth=Growth(),
+        state=state,
+    )
+
+
+def test_the_trace_is_one_line_per_turn_and_only_ever_appended(tmp_path: Path) -> None:
+    """The trace panel is the point of the app, so a turn already written must never be rewritten by
+    a later one."""
+    traces = FileTraces(tmp_path)
+    state = new_game()
+    for prompt in ("I listen.", "I knock."):
+        traces.append("poc", _turn(state, prompt))
+    lines = (tmp_path / "poc.trace.jsonl").read_text(encoding="utf-8").splitlines()
+    assert [Turn.model_validate_json(line).prompt for line in lines] == ["I listen.", "I knock."]
+    traces.discard("poc")
+    assert not (tmp_path / "poc.trace.jsonl").exists()

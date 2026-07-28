@@ -5,21 +5,21 @@ from dataclasses import dataclass, replace
 from random import Random
 from typing import Self
 
-from ...content import Library
 from ...domain.models import ActorEntity, Entity, EntityId, Event, GameState, ItemEntity
 from ...domain.reducer import apply
+from ..ruleset import Ruleset
 
 
 @dataclass(frozen=True, slots=True)
 class Resolution:
-    """Everything a mechanic reads, so no slice threads `(state, rng, library)` by hand.
+    """Everything a mechanic reads, so no slice threads `(state, rng, ruleset)` by hand.
 
     The lookups are turn policy rather than entity lookup — "the player must have witnessed it"
     — which is why they live here beside the rng and not on `WorldState`."""
 
     state: GameState
     rng: Random
-    library: Library
+    ruleset: Ruleset
 
     def then(self, events: Sequence[Event]) -> Self:
         """The same context over the world those events produced."""

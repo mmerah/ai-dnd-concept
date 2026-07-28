@@ -1,10 +1,11 @@
-"""The turn-loop orchestration behind the page: submit a prompt, restart, and refresh the panels."""
+"""The turn-loop orchestration behind the page: submit a prompt, restart, and refresh the panels.
+
+Every line here is presentation: read the box, call one application method, redraw, report. No rule,
+no persistence and no content lookup lives on this side of `session.app`."""
 
 from nicegui import ui
 
-from .. import store
 from ..domain.models import Role
-from ..pipeline import run_turn
 from . import panels
 from .session import current_session
 
@@ -33,14 +34,7 @@ async def submit(box: ui.input) -> None:
     session.busy = True  # no await since the check above, so this cannot interleave
     box.value = ""
     try:
-        turn = await run_turn(
-            session.state,
-            prompt,
-            on_step=_on_step,
-            library=store.library(),
-            rng=session.rng,
-        )
-        session.commit(turn)
+        await session.app.submit(prompt, on_step=_on_step)
     except Exception as exc:  # the UI must not crash; the turn is dropped whole, never half-applied
         ui.notify(f"{type(exc).__name__}: {exc}", type="negative", multi_line=True)
     finally:
@@ -52,5 +46,5 @@ def restart() -> None:
     session = current_session()
     if session.busy:
         return
-    session.restart()
+    session.app.restart()
     _refresh()

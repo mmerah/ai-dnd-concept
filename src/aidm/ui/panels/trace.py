@@ -18,10 +18,10 @@ def _section(title: str, body: str) -> None:
 
 @ui.refreshable
 def trace_panel(session: Session) -> None:
-    if not session.turns:
+    if not session.app.turns:
         ui.label("No turns yet this session.").classes("opacity-60")
-    for number, turn in reversed(list(enumerate(session.turns, 1))):
-        with ui.expansion(f"turn {number}: {turn.prompt}", value=number == len(session.turns)):
+    for number, turn in reversed(list(enumerate(session.app.turns, 1))):
+        with ui.expansion(f"turn {number}: {turn.prompt}", value=number == len(session.app.turns)):
             _turn_trace(turn)
 
 

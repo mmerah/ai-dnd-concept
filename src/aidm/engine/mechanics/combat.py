@@ -13,7 +13,7 @@ def attack(
     attacker, target = ctx.target(attacker_id), ctx.target(target_id)
     if attacker.id == target.id:
         raise ValueError(f"cannot attack {target.id!r}: an actor does not strike at themselves")
-    swung = procedures.swing(ctx.state, attacker, weapon, ctx.library)
+    swung = procedures.swing(ctx.state, attacker, weapon, ctx.ruleset)
     rolled = procedures.strike(attacker, target, swung, ctx.rng)
     seen: list[Event] = [*common.reveal(attacker), *common.reveal(target), rolled]
     if not rolled.hit or swung.damage is None:

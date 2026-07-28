@@ -10,6 +10,7 @@ from aidm.content.records import Collection, ContentRef, Record, RecordOption
 
 from . import character as char
 from .common import PACK_ID
+from .corrections import corrected
 from .equipment import armor, gear, magic_item, tool, vehicle, weapon
 from .monsters import monster
 from .rules import alignment, condition, language, skill, spell
@@ -88,14 +89,15 @@ def build(checkout: Path) -> Pack:
             char.proficiency(p, categories) for p in read("Proficiencies", UpstreamProficiency)
         ),
     }
+    projected = corrected(collections)
     manifest = Manifest(
         id=PACK_ID,
         name="5e SRD (2014)",
         version=_version(checkout),
         edition=EDITION,
-        provides={name: len(records) for name, records in collections.items()},
+        provides={name: len(records) for name, records in projected.items()},
     )
-    return Pack.model_validate({"manifest": manifest, **collections})
+    return Pack.model_validate({"manifest": manifest, **projected})
 
 
 def _subclass_levels(levels: Sequence[Level]) -> dict[str, int]:

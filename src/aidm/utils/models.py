@@ -22,8 +22,8 @@ def _immutable[K, V](mapping: Mapping[K, V]) -> Mapping[K, V]:
 
 
 # `frozen=True` freezes a model's fields, never a dict one of them holds — so a keyed field on a
-# `Frozen` model is writable, and `store.library()` is cached, which makes one edit permanent for
-# every later turn.
+# `Frozen` model is writable, and the packs are loaded once at startup, which makes one edit
+# permanent for every later turn.
 type FrozenMap[K, V] = Annotated[Mapping[K, V], AfterValidator(_immutable), PlainSerializer(dict)]
 
 # A keyed field that ships empty. An unvalidated default would skip the validator above and hand

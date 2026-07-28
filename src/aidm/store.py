@@ -1,80 +1,77 @@
-"""JSON persistence. A save is exactly one GameState; the trace is append-only JSONL; a pack is a
-directory of records."""
+"""JSON persistence: paths in, values out.
 
-from functools import cache
+No configuration, no cache and no composition — every path is handed in, so nothing here decides
+where a game lives or what a new one is made of. A save is exactly one `GameState`; the trace is
+append-only JSONL; a scenario and a character sheet are read-only definitions.
+
+The two adapters implement `application/ports.py`. They are the only classes in this build that
+touch the filesystem."""
+
+from dataclasses import dataclass
 from pathlib import Path
 
-from . import content
-from .config import settings
-from .domain.models import (
-    SAVE_VERSION,
-    CharacterSheet,
-    GameState,
-    ScenarioDef,
-    Turn,
-)
-from .engine import campaign
+from .domain.models import CharacterSheet, GameState, ScenarioDef, Turn
 
 ENCODING = "utf-8"  # narration is full of curly quotes; the platform default is not enough
 
 
-def _save_path(slug: str) -> Path:
-    return settings().saves_dir / f"{slug}.json"
+def read_scenario(path: Path) -> ScenarioDef:
+    return ScenarioDef.model_validate_json(_text(path))
 
 
-def _trace_path(slug: str) -> Path:
-    return settings().saves_dir / f"{slug}.trace.jsonl"
+def read_sheet(path: Path) -> CharacterSheet:
+    return CharacterSheet.model_validate_json(_text(path))
 
 
-@cache
-def library() -> content.Library:
-    """The packs this build plays, read once — the pack list cannot change within a run."""
-    return content.load(settings().packs)
+@dataclass(frozen=True, slots=True)
+class FileSaves:
+    """One JSON file per slug, under one directory."""
+
+    directory: Path
+
+    def load(self, slug: str) -> GameState | None:
+        """`None` for a slug never saved — how every first game starts. Whether a save that *does*
+        exist may still be played is `campaign.resumable`'s question, not this one's."""
+        path = self._path(slug)
+        if not path.exists():
+            return None
+        return GameState.model_validate_json(_text(path))
+
+    def save(self, slug: str, state: GameState) -> None:
+        _write(self._path(slug), state.model_dump_json(indent=2))
+
+    def discard(self, slug: str) -> None:
+        self._path(slug).unlink(missing_ok=True)
+
+    def _path(self, slug: str) -> Path:
+        return self.directory / f"{slug}.json"
 
 
-def new_game(scenario: str, character: str = "kael") -> GameState:
-    """Read a scenario definition and an independent character; `engine/` composes the state."""
-    conf = settings()
-    definition = ScenarioDef.model_validate_json(
-        (conf.scenarios_dir / f"{scenario}.json").read_text(encoding=ENCODING)
-    )
-    sheet = CharacterSheet.model_validate_json(
-        (conf.characters_dir / f"{character}.json").read_text(encoding=ENCODING)
-    )
-    return campaign.begin(definition, sheet, library())
+@dataclass(frozen=True, slots=True)
+class FileTraces:
+    """One JSONL file per slug: a turn is appended and never rewritten, because the trace is the
+    record of what each role was shown. Unversioned — stamp a version before anything reads it
+    back."""
+
+    directory: Path
+
+    def append(self, slug: str, turn: Turn) -> None:
+        path = self._path(slug)
+        path.parent.mkdir(parents=True, exist_ok=True)
+        with path.open("a", encoding=ENCODING) as file:
+            file.write(turn.model_dump_json() + "\n")
+
+    def discard(self, slug: str) -> None:
+        self._path(slug).unlink(missing_ok=True)
+
+    def _path(self, slug: str) -> Path:
+        return self.directory / f"{slug}.trace.jsonl"
 
 
-def load(slug: str) -> GameState | None:
-    """A save is unreadable if either the schema or the content under it moved: an entity's stats
-    were snapshotted from a pack version, so a bump would silently change the game it recorded."""
-    path = _save_path(slug)
-    if not path.exists():
-        return None
-    state = GameState.model_validate_json(path.read_text(encoding=ENCODING))
-    if state.version != SAVE_VERSION:
-        raise ValueError(f"save {slug!r} is v{state.version}, this build needs v{SAVE_VERSION}")
-    current = library().stamps
-    if state.packs != current:
-        raise ValueError(
-            f"save {slug!r} was played against {state.packs}, this build ships {current}"
-        )
-    return state
+def _text(path: Path) -> str:
+    return path.read_text(encoding=ENCODING)
 
 
-def save(slug: str, state: GameState) -> None:
-    path = _save_path(slug)
+def _write(path: Path, body: str) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(state.model_dump_json(indent=2), encoding=ENCODING)
-
-
-def append_trace(slug: str, turn: Turn) -> None:
-    """Write-only and unversioned: stamp a version before anything reads this back."""
-    path = _trace_path(slug)
-    path.parent.mkdir(parents=True, exist_ok=True)
-    with path.open("a", encoding=ENCODING) as f:
-        f.write(turn.model_dump_json() + "\n")
-
-
-def reset(slug: str) -> None:
-    _save_path(slug).unlink(missing_ok=True)
-    _trace_path(slug).unlink(missing_ok=True)
+    path.write_text(body, encoding=ENCODING)

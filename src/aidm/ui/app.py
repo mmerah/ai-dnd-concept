@@ -18,7 +18,7 @@ def start() -> None:
 def page() -> None:
     session = current_session()
     with ui.header().classes("items-center gap-4"):
-        ui.label(session.state.scenario.title).classes("text-lg font-bold")
+        ui.label(session.app.state.scenario.title).classes("text-lg font-bold")
         with ui.row().classes("gap-1 items-center"):
             panels.role_badges(session)
         ui.space()

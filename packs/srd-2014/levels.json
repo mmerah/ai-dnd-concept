@@ -3172,7 +3172,7 @@
     "level": 11,
     "class_index": "rogue",
     "prof_bonus": 4,
-    "ability_score_bonuses": 2,
+    "ability_score_bonuses": 3,
     "features": [
       "reliable-talent"
     ],
@@ -3198,7 +3198,7 @@
     "level": 13,
     "class_index": "rogue",
     "prof_bonus": 5,
-    "ability_score_bonuses": 3,
+    "ability_score_bonuses": 4,
     "features": [
       "roguish-archetype-improvement-2"
     ],
@@ -3211,7 +3211,7 @@
     "level": 14,
     "class_index": "rogue",
     "prof_bonus": 5,
-    "ability_score_bonuses": 3,
+    "ability_score_bonuses": 4,
     "features": [
       "blindsense"
     ],
@@ -3224,7 +3224,7 @@
     "level": 15,
     "class_index": "rogue",
     "prof_bonus": 5,
-    "ability_score_bonuses": 3,
+    "ability_score_bonuses": 4,
     "features": [
       "slippery-mind"
     ],
@@ -3250,7 +3250,7 @@
     "level": 17,
     "class_index": "rogue",
     "prof_bonus": 6,
-    "ability_score_bonuses": 4,
+    "ability_score_bonuses": 5,
     "features": [
       "roguish-archetype-improvement-3"
     ],
@@ -3263,7 +3263,7 @@
     "level": 18,
     "class_index": "rogue",
     "prof_bonus": 6,
-    "ability_score_bonuses": 4,
+    "ability_score_bonuses": 5,
     "features": [
       "elusive"
     ],
@@ -3289,7 +3289,7 @@
     "level": 20,
     "class_index": "rogue",
     "prof_bonus": 6,
-    "ability_score_bonuses": 5,
+    "ability_score_bonuses": 6,
     "features": [
       "stroke-of-luck"
     ],

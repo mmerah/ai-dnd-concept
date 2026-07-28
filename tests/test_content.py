@@ -8,11 +8,11 @@ from pathlib import Path
 
 import pytest
 from pydantic import ValidationError
+from support import library, new_game, ruleset
 
-from aidm import store
 from aidm.agents import views
 from aidm.agents.context import Scene
-from aidm.content import ContentMiss, ContentRef, load
+from aidm.content import ContentMiss, ContentRef, Library, load
 from aidm.content.records import (
     ArmorRecord,
     ClassLevelRecord,
@@ -31,12 +31,23 @@ from aidm.content.records import (
     SubclassLevelRecord,
     ToolRecord,
 )
-from aidm.domain.models import ActorEntity, Entity, EntityId, GameState, ItemEntity, updated
+from aidm.domain.models import (
+    MAX_LEVEL,
+    ActorEntity,
+    Entity,
+    EntityId,
+    GameState,
+    ItemEntity,
+    Origin,
+    updated,
+)
 from aidm.engine import bestiary
+from aidm.engine.pack_ruleset import compile_ruleset
 from aidm.utils import dice
 
 PACK = "srd-2014"
-LIBRARY = store.library()
+LIBRARY = library()
+RULES = ruleset()
 MONSTERS = list(LIBRARY.packs[0].monsters.values())
 WEAPONS = list(LIBRARY.packs[0].weapons.values())
 ARMOR = list(LIBRARY.packs[0].armor.values())
@@ -149,7 +160,7 @@ def test_a_gap_must_be_declared_rather_than_left_out() -> None:
 
 
 def test_a_loaded_record_cannot_be_edited() -> None:
-    """`store.library()` is cached, so every turn shares one record object: `frozen=True` guards a
+    """The packs are loaded once, so every turn shares one record object: `frozen=True` guards a
     model's fields but not a dict inside one, and an edit here would outlive the turn that made
     it."""
     goblin = LIBRARY.get(ref("monsters", "goblin"), MonsterRecord)
@@ -286,13 +297,17 @@ def test_a_scaling_value_carries_one_damage_type() -> None:
 def test_a_monster_is_snapshotted_into_an_entity_not_read_live() -> None:
     """The numbers the reducer touches are copied in at creation; a pack bump must not be able to
     move a saved actor's hit points, nor make a devil newly poisonable."""
-    goblin = LIBRARY.get(ref("monsters", "goblin"), MonsterRecord)
-    assert not isinstance(goblin, ContentMiss)
-    stats = bestiary.stat_block(goblin)
+    goblin = RULES.archetype(ref("monsters", "goblin"))
+    assert goblin is not None
+    stats = goblin.stats
     assert (stats.ac, stats.hp, stats.max_hp, stats.attributes["strength"]) == (15, 7, 7, 8)
-    zombie = LIBRARY.get(ref("monsters", "zombie"), MonsterRecord)
-    assert not isinstance(zombie, ContentMiss)
-    assert bestiary.stat_block(zombie).condition_immunities == ("poisoned",)
+    zombie = RULES.archetype(ref("monsters", "zombie"))
+    assert zombie is not None and zombie.stats.condition_immunities == ("poisoned",)
+    # Every to-hit in the economy and nothing without one: the Director's swings resolve off these.
+    assert [(a.name, a.to_hit, a.damage) for a in goblin.attacks] == [
+        ("Scimitar", 4, "1d6+2"),
+        ("Shortbow", 4, "1d6+2"),
+    ]
 
 
 def test_an_authored_actor_is_statted_from_the_record_it_names() -> None:
@@ -303,7 +318,7 @@ def test_an_authored_actor_is_statted_from_the_record_it_names() -> None:
         location_id=EntityId("cloister"),
         ref=ref("monsters", "giant-rat"),
     )
-    statted = bestiary.statted(actor, LIBRARY)
+    statted = bestiary.statted(actor, RULES)
     assert isinstance(statted, ActorEntity) and statted.stats.ac == 12
     assert statted.name == "a bloated rat"  # the pack supplies numbers, the author the fiction
 
@@ -319,7 +334,7 @@ def test_an_entity_may_not_contradict_the_record_it_names() -> None:
         ref=ref("monsters", "giant-rat"),
     )
     with pytest.raises(ValueError, match="declares its own stats"):
-        bestiary.statted(updated(rat, stats={"hp": 3, "max_hp": 7}), LIBRARY)
+        bestiary.statted(updated(rat, stats={"hp": 3, "max_hp": 7}), RULES)
     trophy = ItemEntity(
         id=EntityId("rat_tail"),
         name="a rat's tail",
@@ -328,7 +343,7 @@ def test_an_entity_may_not_contradict_the_record_it_names() -> None:
         container_id=EntityId("cloister"),
     )
     with pytest.raises(ValueError, match="may not name a monsters record"):
-        bestiary.statted(trophy, LIBRARY)
+        bestiary.statted(trophy, RULES)
 
 
 def _with(state: GameState, entity: Entity) -> GameState:
@@ -340,15 +355,15 @@ def test_a_world_naming_content_nothing_provides_is_unplayable(state: GameState)
     """A character's starting item is held, not placed, so it only reaches this check once the
     world is composed — which is why the composed world is statted, not the scenario definition."""
     held = state.world.entities[EntityId("lantern")]
-    with pytest.raises(ValueError, match="unknown_index"):
-        bestiary.statted_world(_with(state, updated(held, ref=ref("weapons", "phaser"))), LIBRARY)
+    with pytest.raises(ValueError, match="nothing provides"):
+        bestiary.statted_world(_with(state, updated(held, ref=ref("weapons", "phaser"))), RULES)
 
 
 def test_the_directors_slice_is_the_mechanics_never_the_record() -> None:
     """A gargoyle record is thousands of bytes; this is the few hundred the Director can act on.
     Damage immunities and condition immunities stay apart: `poison` and `poisoned` are different
     words for different rules, and the prose entries carry commas of their own."""
-    state = store.new_game("whispering_vault")
+    state = new_game("whispering_vault")
     gargoyle = bestiary.statted(
         ActorEntity(
             id=EntityId("gargoyle"),
@@ -358,7 +373,7 @@ def test_the_directors_slice_is_the_mechanics_never_the_record() -> None:
             location_id=state.player.location_id,
             ref=ref("monsters", "gargoyle"),
         ),
-        LIBRARY,
+        RULES,
     )
     assert isinstance(gargoyle, ActorEntity)
     under = updated(gargoyle, stats=updated(gargoyle.stats, conditions=("prone",)))
@@ -377,7 +392,7 @@ def test_the_directors_slice_is_the_mechanics_never_the_record() -> None:
 def test_a_condition_is_shown_on_anyone_who_holds_one() -> None:
     """A condition no role can read is one the Director can never lift. It comes from the entity,
     so it shows on an invented actor that names no record, and on the player's own sheet."""
-    state = store.new_game("whispering_vault")
+    state = new_game("whispering_vault")
     mara = state.world.entities[EntityId("mara")]
     assert isinstance(mara, ActorEntity)
     blinded = updated(mara, stats=updated(mara.stats, conditions=("blinded",)))
@@ -409,6 +424,34 @@ def test_a_level_record_is_a_class_one_or_a_subclass_one() -> None:
         1,
         2,
     ]
+
+
+def test_every_class_grants_its_improvements_at_the_levels_5e_says() -> None:
+    """A published defect, corrected at import: upstream's rogue totals *fall* at 11 —
+    2,2,3,*2*,4 over levels 8-12 — and a level-up is the diff of two of them, so as published the
+    pack said level 11 takes an improvement away and level 12 grants two. `scripts/srd/corrections`
+    holds the fix; this asserts the whole corpus rather than the one record, because the next such
+    defect will not be in the rogue."""
+    extra = {"fighter": {6, 14}, "rogue": {10}}  # everyone else improves at 4, 8, 12, 16, 19 alone
+    for index in PACK_RECORDS.classes:
+        at = {4, 8, 12, 16, 19} | extra.get(index, set())
+        totals = [PACK_RECORDS.levels[f"{index}-{n}"] for n in range(1, MAX_LEVEL + 1)]
+        assert [t.ability_score_bonuses for t in totals if isinstance(t, ClassLevelRecord)] == [
+            sum(1 for level in at if level <= n) for n in range(1, MAX_LEVEL + 1)
+        ]
+    # What the defect cost: level 12 offered two improvements, and 11 and 13 offered none.
+    rogue = Origin(class_ref=ref("classes", "rogue"))
+    assert [RULES.level(rogue, n).improvements for n in range(8, 14)] == [1, 0, 1, 0, 1, 0]
+
+
+def test_a_class_ladder_that_falls_is_refused_at_load_not_absorbed() -> None:
+    """Why the defect was corrected rather than floored in the compiler: a pack whose totals fall is
+    unplayable, and a level quietly offering nothing would hide it until a player got there."""
+    levels = PACK_RECORDS.levels
+    fallen = updated(levels["rogue-11"], ability_score_bonuses=2)
+    broken = updated(PACK_RECORDS, levels={**levels, "rogue-11": fallen})
+    with pytest.raises(ValueError, match="rogue-11: ability score improvements fall from 3 to 2"):
+        compile_ruleset(Library(packs=(broken,)))
 
 
 def test_every_class_can_be_played_and_ships_one_subclass() -> None:

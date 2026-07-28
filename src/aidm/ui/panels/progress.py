@@ -1,22 +1,20 @@
 """The level-up panel: what the next level asks the player to decide.
 
-No LLM role takes part — a subclass is permanent identity, not a turn outcome. This renders
-`progression.pending()` and submits the picks; `engine/` validates them and the reducer applies the
-events it returns, so no rule lives here."""
+No LLM role takes part — a subclass is permanent identity, not a turn outcome. This renders the
+choices the application offers and submits the picks; `engine/` validates them and the reducer
+applies the events, so no rule lives here."""
 
 from nicegui import ui
 
-from ... import store
 from ...content.records import ProgressionChoice
 from ...domain.models import MAX_LEVEL
-from ...engine import progression
 from ..session import Session
 from .state import state_panel
 
 
 @ui.refreshable
 def progress_panel(session: Session) -> None:
-    player = session.state.player
+    player = session.app.state.player
     current = player.progression
     if current is None:
         ui.label("This character has no class, so there is nothing to advance.")
@@ -27,10 +25,10 @@ def progress_panel(session: Session) -> None:
         return
 
     level = current.level + 1
-    # `pending` fails fast on a pack that cannot answer, and this panel is redrawn after every turn.
-    # Reported here, an unplayable class costs the level-up tab instead of the whole page.
+    # The choices fail fast on a pack that cannot answer them, and this panel is redrawn every
+    # turn. Reported here, an unplayable class costs the level-up tab instead of the whole page.
     try:
-        choices = progression.pending(current.origin, level, store.library())
+        choices = session.app.pending_choices()
     except ValueError as exc:
         ui.label(f"Cannot read level {level}: {exc}").classes("text-negative")
         return
@@ -55,11 +53,10 @@ def _advance(session: Session, picks: dict[str, list[ui.select]]) -> None:
     list. The UI reports what it is told and decides nothing."""
     decisions = {id: tuple(str(s.value) for s in selects) for id, selects in picks.items()}
     try:
-        events = progression.advance(session.state.player, decisions, store.library(), session.rng)
+        session.app.advance(decisions)
     except ValueError as exc:
         ui.notify(str(exc), type="negative", multi_line=True)
         return
-    session.record(events)
     # Level, hit points and attributes all moved, and the state panel is where they are shown.
     progress_panel.refresh()
     state_panel.refresh()

@@ -150,7 +150,7 @@ class GameState(Frozen):
     version: int = SAVE_VERSION
     scenario: ScenarioMeta
     world: WorldState
-    # The versions the entities' stats were snapshotted from; `store.load` refuses a mismatch.
+    # The versions the entities' stats were snapshotted from; `campaign.resumable` refuses a bump.
     packs: list[PackStamp] = Field(default_factory=list)
     history: list[Exchange] = Field(default_factory=list)
     turn: int = 0

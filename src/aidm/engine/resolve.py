@@ -9,7 +9,6 @@ branch it selected, and that recursion runs over the whole vocabulary."""
 from collections.abc import Sequence
 from random import Random
 
-from ..content import Library
 from ..domain.models import (
     ApplyCondition,
     Attack,
@@ -32,12 +31,13 @@ from ..domain.models import (
 from . import rules
 from .mechanics import combat, common, conditions, health, inventory, movement
 from .mechanics.resolution import Resolution
+from .ruleset import Ruleset
 
 
 def resolve(
-    mechanics: Sequence[Consequence], state: GameState, rng: Random, library: Library
+    mechanics: Sequence[Consequence], state: GameState, rng: Random, ruleset: Ruleset
 ) -> list[Event]:
-    return _fold(Resolution(state=state, rng=rng, library=library), mechanics)
+    return _fold(Resolution(state=state, rng=rng, ruleset=ruleset), mechanics)
 
 
 def _fold(ctx: Resolution, mechanics: Sequence[Consequence]) -> list[Event]:

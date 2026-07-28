@@ -4,6 +4,7 @@ from collections.abc import Callable, Sequence
 from dataclasses import replace
 from random import Random
 
+from pydantic import Field
 from pydantic_ai.messages import ModelMessage
 
 from .agents.context import Scene, TurnContext
@@ -19,7 +20,6 @@ from .agents.prompting import (
     maintainer_prompt,
     narrator_prompt,
 )
-from .config import settings
 from .content import Library
 from .domain.models import (
     Entity,
@@ -36,6 +36,16 @@ from .domain.models import (
 from .domain.reducer import apply
 from .engine.growth import screen
 from .engine.resolve import resolve
+from .engine.ruleset import Ruleset
+from .utils.models import Frozen
+
+
+class TurnOptions(Frozen):
+    """How much past a turn is shown and how much canon it may grow. Handed in rather than read from
+    config here, so the pipeline has no global left to reach for."""
+
+    history_window: int = Field(ge=0)
+    max_growth: int = Field(ge=0)
 
 
 def _placement(request: GrowthRequest, scene: Scene) -> EntityId:
@@ -75,14 +85,19 @@ async def run_turn(
     on_step: Callable[[Role], None] | None = None,
     *,
     library: Library,
+    ruleset: Ruleset,
+    options: TurnOptions,
     rng: Random | None = None,
 ) -> Turn:
     """Run one full turn. Raises on any role failure, leaving `state` untouched. `rng` is injectable
-    so the check outcome is deterministic under test; production leaves it defaulted."""
+    so the check outcome is deterministic under test; production leaves it defaulted.
+
+    Both content handles are passed until the Narrator's and Director's views read profiles too: the
+    engine resolves against `ruleset`, and `views` still renders records out of `library`."""
     step: Callable[[Role], None] = on_step or (lambda _: None)
     prompts: dict[Role, str] = {}
 
-    recent = state.history[-settings().history_window :]
+    recent = state.history[-options.history_window :]
     history = exchanges_to_messages(recent)
 
     def seen_by(role: Role) -> list[ModelMessage] | None:
@@ -93,7 +108,7 @@ async def run_turn(
     prompts["director"] = director_prompt(context)
     direction = await direct(prompts["director"], context.scene, seen_by("director"))
 
-    events = resolve(direction.mechanics, state, rng or Random(), library)
+    events = resolve(direction.mechanics, state, rng or Random(), ruleset)
     draft = apply(state, events)
 
     context = replace(context, state=draft, events=events)
@@ -107,7 +122,7 @@ async def run_turn(
     growth = await maintain(prompts["maintainer"], seen_by("maintainer"))
 
     step("creator")
-    screened = screen(growth.requests, draft.world.entities, settings().max_growth)
+    screened = screen(growth.requests, draft.world.entities, options.max_growth)
     created, draft = await _grow(context, screened.accepted, prompts)
 
     return Turn(
