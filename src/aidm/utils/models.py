@@ -3,9 +3,9 @@
 
 from collections.abc import Mapping
 from types import MappingProxyType
-from typing import Annotated, Literal, assert_never, get_args
+from typing import Annotated, Literal, cast, get_args
 
-from pydantic import AfterValidator, BaseModel, ConfigDict, PlainSerializer
+from pydantic import AfterValidator, BaseModel, ConfigDict, Field, PlainSerializer
 
 # Spelled in full because that is how they are rendered to a role.
 Ability = Literal["strength", "dexterity", "constitution", "intelligence", "wisdom", "charisma"]
@@ -21,16 +21,14 @@ def _immutable[K, V](mapping: Mapping[K, V]) -> Mapping[K, V]:
     return MappingProxyType(dict(mapping))
 
 
-def _plain[K, V](mapping: Mapping[K, V]) -> dict[K, V]:
-    return dict(mapping)
-
-
 # `frozen=True` freezes a model's fields, never a dict one of them holds — so a keyed field on a
 # `Frozen` model is writable, and `store.library()` is cached, which makes one edit permanent for
-# every later turn. Every mapping field is declared with this. A field wanting an empty default
-# needs `Field(default_factory=dict, validate_default=True)`: an unvalidated default skips the
-# validator below and hands back the one mutable dict this exists to prevent.
-type FrozenMap[K, V] = Annotated[Mapping[K, V], AfterValidator(_immutable), PlainSerializer(_plain)]
+# every later turn.
+type FrozenMap[K, V] = Annotated[Mapping[K, V], AfterValidator(_immutable), PlainSerializer(dict)]
+
+# A keyed field that ships empty. An unvalidated default would skip the validator above and hand
+# back the one mutable dict it exists to prevent. Fields declared with it never share one mapping.
+EMPTY_FROZEN_MAP = Field(default_factory=dict, validate_default=True)
 
 
 def updated[T: Frozen](obj: T, **changes: object) -> T:
@@ -39,7 +37,7 @@ def updated[T: Frozen](obj: T, **changes: object) -> T:
 
 
 class Attributes(Frozen):
-    """`__getitem__` is exhaustive on `Ability`, so a drifting field is a type error."""
+    """One field per `Ability`, named for it, so `__getitem__` is a lookup by name."""
 
     strength: int = 10
     dexterity: int = 10
@@ -49,18 +47,9 @@ class Attributes(Frozen):
     charisma: int = 10
 
     def __getitem__(self, ability: Ability) -> int:
-        match ability:
-            case "strength":
-                return self.strength
-            case "dexterity":
-                return self.dexterity
-            case "constitution":
-                return self.constitution
-            case "intelligence":
-                return self.intelligence
-            case "wisdom":
-                return self.wisdom
-            case "charisma":
-                return self.charisma
-            case _:
-                assert_never(ability)
+        return cast(int, getattr(self, ability))
+
+
+# `__getitem__` is a getattr, this is what keeps a drifting field a startup failure rather than
+# an AttributeError mid-roll.
+assert set(ABILITIES) <= set(Attributes.model_fields), "an Ability has no Attributes field"

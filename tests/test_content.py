@@ -305,6 +305,7 @@ def test_an_entity_may_not_contradict_the_record_it_names() -> None:
         name="a rat's tail",
         brief="Trophy.",
         ref=ref("monsters", "giant-rat"),
+        container_id=EntityId("cloister"),
     )
     with pytest.raises(ValueError, match="may not name a monsters record"):
         bestiary.statted(trophy, LIBRARY)

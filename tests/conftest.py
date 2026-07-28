@@ -38,7 +38,6 @@ def state() -> GameState:
                         brief="A relic-hunter.",
                         known=True,
                         location_id=EntityId("study"),
-                        inventory=[EntityId("lantern")],  # held: lantern's location_id is None
                         stats=StatBlock(attributes=Attributes(wisdom=14), max_hp=10, hp=10),
                     ),
                     ActorEntity(
@@ -58,10 +57,14 @@ def state() -> GameState:
                         id=EntityId("vault_map"),
                         name="the vault map",
                         brief="A chart.",
-                        location_id=EntityId("study"),  # lying in the study, hidden
+                        container_id=EntityId("study"),
                     ),
                     ItemEntity(
-                        id=EntityId("lantern"), name="a lantern", brief="A tin lantern.", known=True
+                        id=EntityId("lantern"),
+                        name="a lantern",
+                        brief="A tin lantern.",
+                        known=True,
+                        container_id=PLAYER_ID,
                     ),
                 ]
             }

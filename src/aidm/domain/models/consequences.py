@@ -292,16 +292,14 @@ def _own_refs(consequence: "Consequence") -> Iterator[CanonRef]:
         if marker is None:
             continue
         value: object = getattr(consequence, name)
-        match value:
-            case None:  # an omitted id names nobody: that is what "omit for the player" means
-                pass
-            case str():
-                yield EntityId(value), marker
-            case _:
-                raise TypeError(
-                    f"{type(consequence).__name__}.{name} is marked References "
-                    f"but holds a {type(value).__name__}"
-                )
+        if value is None:  # an omitted id names nobody: that is what "omit for the player" means
+            continue
+        if not isinstance(value, str):
+            raise TypeError(
+                f"{type(consequence).__name__}.{name} is marked References "
+                f"but holds a {type(value).__name__}"
+            )
+        yield EntityId(value), marker
 
 
 def all_canon_refs(consequences: Sequence["Consequence"]) -> list[CanonRef]:

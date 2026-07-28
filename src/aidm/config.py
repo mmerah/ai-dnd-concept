@@ -5,7 +5,7 @@ cost and latency profile is read from one table rather than inferred from scatte
 
 from functools import cache
 from pathlib import Path
-from typing import Literal, Self
+from typing import Literal, Self, cast
 
 from pydantic import BaseModel, ConfigDict, Field, SecretStr, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -46,11 +46,7 @@ class Providers(BaseModel):
     )
 
     def for_name(self, name: ProviderName) -> ProviderConfig:
-        match name:
-            case "openrouter":
-                return self.openrouter
-            case "local":
-                return self.local
+        return cast(ProviderConfig, getattr(self, name))
 
 
 _DEFAULT_ROLE = RoleConfig(
@@ -72,16 +68,9 @@ class Roles(BaseModel):
     creator: RoleConfig = _DEFAULT_ROLE
 
     def for_role(self, role: Role) -> RoleConfig:
-        """Exhaustive on purpose: a new `Role` must not silently inherit another's budget."""
-        match role:
-            case "director":
-                return self.director
-            case "narrator":
-                return self.narrator
-            case "maintainer":
-                return self.maintainer
-            case "creator":
-                return self.creator
+        """A `Role` without a field must not silently inherit another's budget: `_keys_present`
+        calls this for every `Role`, so the `AttributeError` lands at startup."""
+        return cast(RoleConfig, getattr(self, role))
 
 
 class Settings(BaseSettings):

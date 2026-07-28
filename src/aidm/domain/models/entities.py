@@ -1,6 +1,5 @@
-"""Canon entities, the requests to grow them, and the lookups over the live entity map."""
+"""Canon entities and the requests to grow them."""
 
-from collections.abc import Mapping
 from typing import Annotated, Literal
 
 from pydantic import Field, TypeAdapter
@@ -35,7 +34,6 @@ class ActorEntity(BaseEntity):
 
     kind: Literal["actor"] = "actor"
     location_id: EntityId  # the location the actor stands in
-    inventory: list[EntityId] = Field(default_factory=list)  # canon items the actor carries
     # A factory, not a shared instance: pydantic deep-copies a model default, and a `FrozenMap`
     # field inside it holds a `mappingproxy`, which cannot be copied.
     stats: StatBlock = Field(default_factory=StatBlock)
@@ -50,9 +48,10 @@ class LocationEntity(BaseEntity):
 
 class ItemEntity(BaseEntity):
     kind: Literal["item"] = "item"
-    # Where the item lies, or None while an actor carries it (then it is in exactly one inventory).
-    # GameState enforces this held-xor-located invariant.
-    location_id: EntityId | None = None
+    # The location it lies at, or the actor carrying it. Always set: an item is somewhere.
+    # `GameState` enforces this names a location or an actor and never another item, which is what
+    # keeps containment one level deep and acyclic by construction.
+    container_id: EntityId
 
 
 # A `kind`-discriminated union: each kind owns its fields instead of a bag of optionals on one
@@ -66,9 +65,16 @@ ENTITY_ADAPTER: TypeAdapter[Entity] = TypeAdapter(Entity)
 
 
 def placement(kind: Kind, location_id: EntityId) -> dict[str, EntityId]:
-    """Where a new entity of this kind stands, as adapter input. Which kinds carry a location is
-    entity shape, so it is answered here rather than wherever an entity happens to be built."""
-    return {} if kind == "location" else {"location_id": location_id}
+    """Where a new entity of this kind stands, as adapter input. Which field names its place is
+    entity shape — an item names its container, an actor its location — so it is answered here
+    rather than wherever an entity happens to be built."""
+    match kind:
+        case "location":
+            return {}
+        case "actor":
+            return {"location_id": location_id}
+        case "item":
+            return {"container_id": location_id}
 
 
 class GrowthRequest(Frozen):
@@ -93,7 +99,3 @@ class RejectedGrowth(Frozen):
 
     request: GrowthRequest
     reason: GrowthRejectionReason
-
-
-def find(entities: Mapping[EntityId, Entity], entity_id: EntityId) -> Entity | None:
-    return entities.get(entity_id)

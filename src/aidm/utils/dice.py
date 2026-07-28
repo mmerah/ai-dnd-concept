@@ -52,8 +52,7 @@ def terms(expression: str) -> tuple[Term, ...]:
 def _term(word: str, sign: Sign) -> Term:
     if word == MOD:
         return ModifierTerm(sign=sign)
-    rolled = _DICE.match(word)
-    if rolled is not None:
+    if rolled := _DICE.match(word):
         return DiceTerm(sign=sign, count=int(rolled[1]), faces=int(rolled[2]))
     if _CONSTANT.match(word):
         return ConstantTerm(sign=sign, value=int(word))

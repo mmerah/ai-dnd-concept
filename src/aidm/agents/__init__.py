@@ -1,1 +1,1 @@
-"""One module per pipeline role, plus the context policy that decides what each role sees."""
+"""One module per pipeline role, plus the prompt builders that decide what each role sees."""

@@ -12,6 +12,7 @@ from aidm.domain.models import (
     ItemMoved,
     Moved,
     Wounds,
+    updated,
 )
 from aidm.domain.reducer import apply, render
 
@@ -44,13 +45,13 @@ def test_take_drop_and_hp(state: GameState) -> None:
         ],
     )
     # vault_map picked up, lantern dropped in the study
-    assert result.player.inventory == [EntityId("vault_map")]
+    carried = [e.id for e in result.world.carried_by(PLAYER_ID)]
+    assert carried == [EntityId("vault_map")]
     vault_map = result.world.entities[EntityId("vault_map")]
     lantern = result.world.entities[EntityId("lantern")]
-    assert isinstance(vault_map, ItemEntity) and vault_map.location_id is None  # held: no location
-    assert isinstance(lantern, ItemEntity) and lantern.location_id == "study"  # now lies here
+    assert isinstance(vault_map, ItemEntity) and vault_map.container_id == PLAYER_ID
+    assert isinstance(lantern, ItemEntity) and lantern.container_id == "study"  # now lies here
     assert result.player.stats.hp == 7
-    assert result.player.inventory is not state.player.inventory
 
 
 def test_give_moves_an_item_into_another_actors_inventory(state: GameState) -> None:
@@ -66,9 +67,8 @@ def test_give_moves_an_item_into_another_actors_inventory(state: GameState) -> N
             )
         ],
     )
-    assert result.player.inventory == []
-    mara = result.world.entities[MARA]
-    assert isinstance(mara, ActorEntity) and mara.inventory == [EntityId("lantern")]
+    assert result.world.carried_by(PLAYER_ID) == []
+    assert [e.id for e in result.world.carried_by(MARA)] == [EntityId("lantern")]
 
 
 def test_hp_is_clamped_for_every_actor(state: GameState) -> None:
@@ -161,3 +161,24 @@ def test_impossible_events_fail_fast(state: GameState) -> None:
         )
     with pytest.raises(ValueError):  # a location has no hit points
         apply(state, [hurt(EntityId("study"), "the study", -1)])
+
+
+@pytest.mark.parametrize(
+    ("entity_id", "field", "container"),
+    [
+        (EntityId("lantern"), "container_id", EntityId("vault_map")),  # an item holds nothing
+        (EntityId("lantern"), "container_id", EntityId("lantern")),  # nor does it hold itself
+        (EntityId("lantern"), "container_id", EntityId("nowhere")),  # nor does a ghost
+        (PLAYER_ID, "location_id", EntityId("mara")),  # an actor stands in a location, not a person
+    ],
+)
+def test_a_world_that_puts_something_nowhere_real_is_refused(
+    state: GameState, entity_id: EntityId, field: str, container: EntityId
+) -> None:
+    """One required container id per item is the whole point of the shape: what used to need a
+    held-xor-located reconciliation is now a single lookup that either resolves or raises."""
+    broken = updated(state.world.entities[entity_id], **{field: container})
+    with pytest.raises(ValueError):
+        updated(
+            state, world=updated(state.world, entities={**state.world.entities, entity_id: broken})
+        )

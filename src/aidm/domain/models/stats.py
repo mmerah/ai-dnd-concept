@@ -5,7 +5,7 @@ from typing import Literal, Self
 from pydantic import Field, model_validator
 
 from ...content.vocabulary import ConditionName
-from ...utils.models import Ability, Attributes, Frozen, FrozenMap, updated
+from ...utils.models import EMPTY_FROZEN_MAP, Ability, Attributes, Frozen, FrozenMap, updated
 
 # All the Narrator may learn about another actor's hit points. Named for the wound it describes,
 # because `Condition` is the SRD's word for blinded/prone/stunned — a different idea entirely.
@@ -23,7 +23,7 @@ class StatBlock(Frozen):
     conditions: tuple[ConditionName, ...] = ()
     # Absolute save bonuses, not modifiers, and only where the actor is good at a save: a monster's
     # come from its record. A player's come from `Progression`, so this stays empty for them.
-    saving_throws: FrozenMap[Ability, int] = Field(default_factory=dict, validate_default=True)
+    saving_throws: FrozenMap[Ability, int] = EMPTY_FROZEN_MAP
     # Snapshotted from the archetype like every other number the reducer reads: a pack bump must not
     # be able to make a saved devil newly poisonable.
     condition_immunities: tuple[ConditionName, ...] = ()

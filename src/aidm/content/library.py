@@ -10,30 +10,22 @@ from pydantic import TypeAdapter, model_validator
 from ..utils.models import Frozen
 from .models import COLLECTIONS, Manifest, Pack, PackStamp
 from .records import (
-    AlignmentRecord,
     ArmorRecord,
     BackgroundRecord,
     ClassRecord,
     Collection,
-    ConditionRecord,
     ContentRef,
-    FeatRecord,
     FeatureRecord,
     GearRecord,
-    LanguageRecord,
     LevelRecord,
-    MagicItemRecord,
     MonsterRecord,
     ProficiencyRecord,
     RaceRecord,
     Record,
-    SkillRecord,
     SpellRecord,
     SubclassRecord,
     SubraceRecord,
-    ToolRecord,
     TraitRecord,
-    VehicleRecord,
     WeaponRecord,
 )
 
@@ -67,12 +59,10 @@ class Library(Frozen):
     def _loadable_together(self) -> Self:
         """Pack load is an external boundary: a clash or a missing dependency must fail here."""
         ids = [p.manifest.id for p in self.packs]
-        clashing = sorted({i for i in ids if ids.count(i) > 1})
-        if clashing:
+        if clashing := sorted({i for i in ids if ids.count(i) > 1}):
             raise ValueError(f"two packs claim the same id: {clashing}")
         for pack in self.packs:
-            missing = sorted(set(pack.manifest.requires) - set(ids))
-            if missing:
+            if missing := sorted(set(pack.manifest.requires) - set(ids)):
                 raise ValueError(f"pack {pack.manifest.id!r} requires {missing}, not loaded")
         return self
 
@@ -94,29 +84,8 @@ class Library(Frozen):
     def gear(self, ref: ContentRef) -> GearRecord | ContentMiss:
         return self._lookup(ref, "gear", lambda p: p.gear)
 
-    def tool(self, ref: ContentRef) -> ToolRecord | ContentMiss:
-        return self._lookup(ref, "tools", lambda p: p.tools)
-
-    def vehicle(self, ref: ContentRef) -> VehicleRecord | ContentMiss:
-        return self._lookup(ref, "vehicles", lambda p: p.vehicles)
-
-    def magic_item(self, ref: ContentRef) -> MagicItemRecord | ContentMiss:
-        return self._lookup(ref, "magic_items", lambda p: p.magic_items)
-
     def spell(self, ref: ContentRef) -> SpellRecord | ContentMiss:
         return self._lookup(ref, "spells", lambda p: p.spells)
-
-    def skill(self, ref: ContentRef) -> SkillRecord | ContentMiss:
-        return self._lookup(ref, "skills", lambda p: p.skills)
-
-    def condition(self, ref: ContentRef) -> ConditionRecord | ContentMiss:
-        return self._lookup(ref, "conditions", lambda p: p.conditions)
-
-    def alignment(self, ref: ContentRef) -> AlignmentRecord | ContentMiss:
-        return self._lookup(ref, "alignments", lambda p: p.alignments)
-
-    def language(self, ref: ContentRef) -> LanguageRecord | ContentMiss:
-        return self._lookup(ref, "languages", lambda p: p.languages)
 
     def klass(self, ref: ContentRef) -> ClassRecord | ContentMiss:
         """Not `class`, which is a keyword; the collection is still named `classes`."""
@@ -143,21 +112,14 @@ class Library(Frozen):
     def background(self, ref: ContentRef) -> BackgroundRecord | ContentMiss:
         return self._lookup(ref, "backgrounds", lambda p: p.backgrounds)
 
-    def feat(self, ref: ContentRef) -> FeatRecord | ContentMiss:
-        return self._lookup(ref, "feats", lambda p: p.feats)
-
     def proficiency(self, ref: ContentRef) -> ProficiencyRecord | ContentMiss:
         return self._lookup(ref, "proficiencies", lambda p: p.proficiencies)
 
     def resolves(self, ref: ContentRef) -> ContentMiss | None:
         """Why a ref does not resolve, or `None` if it does — what a load boundary needs before it
         trusts a ref it will not itself read."""
-        pack = self._pack(ref)
-        if pack is None:
-            return ContentMiss(ref=ref, reason="unknown_pack")
-        if ref.index not in pack.collection(ref.collection):
-            return ContentMiss(ref=ref, reason="unknown_index")
-        return None
+        found = self._lookup(ref, ref.collection, lambda p: p.collection(ref.collection))
+        return found if isinstance(found, ContentMiss) else None
 
     def _lookup[R: Record](
         self, ref: ContentRef, collection: Collection, of: Callable[[Pack], Mapping[str, R]]
@@ -179,7 +141,13 @@ def load(directories: Sequence[Path]) -> Library:
 
 
 def _read_pack(directory: Path) -> Pack:
-    keyed = {name: _keyed(_records(directory, name)) for name in COLLECTIONS}
+    keyed: dict[Collection, dict[object, dict[str, object]]] = {}
+    for name in COLLECTIONS:
+        # No file is a pack that ships none of it — a gap its manifest declares. A record missing
+        # its `index` keys to `None`, which `Pack` rejects by type.
+        path = directory / f"{name}.json"
+        records = _RAW.validate_json(_text(path)) if path.exists() else []
+        keyed[name] = {record.get("index"): record for record in records}
     manifest = Manifest.model_validate_json(_text(directory / "manifest.json"))
     return Pack.model_validate({"manifest": manifest, **keyed})
 
@@ -192,17 +160,6 @@ def write_pack(directory: Path, pack: Pack) -> None:
     for name in COLLECTIONS:
         dumped = [record.model_dump(mode="json") for record in pack.collection(name).values()]
         _write(directory / f"{name}.json", json.dumps(dumped, indent=2, ensure_ascii=False))
-
-
-def _records(directory: Path, name: Collection) -> list[dict[str, object]]:
-    """A collection with no file is a pack that ships none of it — a gap its manifest declares."""
-    path = directory / f"{name}.json"
-    return _RAW.validate_json(_text(path)) if path.exists() else []
-
-
-def _keyed(records: Sequence[dict[str, object]]) -> dict[object, dict[str, object]]:
-    """A record missing its `index` produces a `None` key, which `Pack` rejects by type."""
-    return {record.get("index"): record for record in records}
 
 
 def _text(path: Path) -> str:

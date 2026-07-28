@@ -12,11 +12,16 @@ from .agents.director import DirectorDeps, direct
 from .agents.history import exchanges_to_messages
 from .agents.maintainer import maintain
 from .agents.narrator import narrate
-from .agents.policy import prompt_for, reads_history
+from .agents.prompting import (
+    NATIVE_HISTORY,
+    creator_prompt,
+    director_prompt,
+    maintainer_prompt,
+    narrator_prompt,
+)
 from .config import settings
 from .content import Library
 from .domain.models import (
-    Direction,
     Entity,
     EntityCreated,
     EntityId,
@@ -33,10 +38,6 @@ from .engine.growth import screen
 from .engine.resolve import resolve
 
 
-def _ignore(step: Role) -> None:
-    """Default progress callback."""
-
-
 def _placement(request: GrowthRequest, state: GameState) -> EntityId:
     """Where a grown actor/item stands: the location it names, matched to a canon location by name
     (existing or just created this batch), else the player's location. A grown location needs none;
@@ -51,19 +52,21 @@ def _placement(request: GrowthRequest, state: GameState) -> EntityId:
 
 async def _grow(
     context: TurnContext, requests: Sequence[GrowthRequest], prompts: dict[Role, str]
-) -> list[Entity]:
+) -> tuple[list[Entity], GameState]:
     """The Maintainer -> Creator loop over screened requests. Locations are created first, so an
     actor/item can name a location this same batch mints and be placed there; each creation feeds
-    the next one's catalogue and dedup, so the context evolves; only the created entities escape."""
+    the next one's catalogue and dedup, so only the created entities and the state they were folded
+    into escape."""
     created: list[Entity] = []
     for request in sorted(requests, key=lambda r: r.kind != "location"):
         state = context.state
-        taken = state.world.entities.keys()
-        prompts["creator"] = prompt_for("creator", context, request=request)
-        entity = await create(prompts["creator"], request, taken, _placement(request, state))
+        prompts["creator"] = creator_prompt(context, request)
+        entity = await create(
+            prompts["creator"], request, state.world.entities, _placement(request, state)
+        )
         created.append(entity)
         context = replace(context, state=apply(state, [EntityCreated(entity=entity)]))
-    return created
+    return created, context.state
 
 
 async def run_turn(
@@ -76,37 +79,37 @@ async def run_turn(
 ) -> Turn:
     """Run one full turn. Raises on any role failure, leaving `state` untouched. `rng` is injectable
     so the check outcome is deterministic under test; production leaves it defaulted."""
-    step = on_step or _ignore
+    step: Callable[[Role], None] = on_step or (lambda _: None)
     prompts: dict[Role, str] = {}
-
-    def ask(role: Role, context: TurnContext, *, direction: Direction | None = None) -> str:
-        step(role)
-        prompts[role] = prompt_for(role, context, direction=direction)
-        return prompts[role]
 
     recent = state.history[-settings().history_window :]
     history = exchanges_to_messages(recent)
 
     def seen_by(role: Role) -> list[ModelMessage] | None:
-        return history if reads_history(role) else None
+        return history if role in NATIVE_HISTORY else None
 
     context = TurnContext(state=state, prompt=prompt, library=library, recent=recent)
     deps = DirectorDeps(entities=state.world.entities, location=state.player.location_id)
-    direction = await direct(ask("director", context), deps, seen_by("director"))
+    step("director")
+    prompts["director"] = director_prompt(context)
+    direction = await direct(prompts["director"], deps, seen_by("director"))
 
     events = resolve(direction.mechanics, state, rng or Random(), library)
     draft = apply(state, events)
 
     context = replace(context, state=draft, events=events)
-    narration = await narrate(ask("narrator", context, direction=direction), seen_by("narrator"))
+    step("narrator")
+    prompts["narrator"] = narrator_prompt(context, direction)
+    narration = await narrate(prompts["narrator"], seen_by("narrator"))
 
     context = replace(context, narration=narration)
-    growth = await maintain(ask("maintainer", context), seen_by("maintainer"))
+    step("maintainer")
+    prompts["maintainer"] = maintainer_prompt(context)
+    growth = await maintain(prompts["maintainer"], seen_by("maintainer"))
 
     step("creator")
     screened = screen(growth.requests, draft.world.entities, settings().max_growth)
-    created = await _grow(context, screened.accepted, prompts)
-    draft = apply(draft, [EntityCreated(entity=entity) for entity in created])
+    created, draft = await _grow(context, screened.accepted, prompts)
 
     return Turn(
         prompt=prompt,
@@ -116,14 +119,10 @@ async def run_turn(
         growth=growth,
         created=created,
         rejected=screened.rejected,
-        state=_commit(draft, prompt, narration),
+        state=updated(
+            draft,
+            history=[*draft.history, Exchange(prompt=prompt, narration=narration)],
+            turn=draft.turn + 1,
+        ),
         prompts=prompts,
-    )
-
-
-def _commit(state: GameState, prompt: str, narration: str) -> GameState:
-    return updated(
-        state,
-        history=[*state.history, Exchange(prompt=prompt, narration=narration)],
-        turn=state.turn + 1,
     )

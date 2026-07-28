@@ -77,9 +77,8 @@ def _held_weapon(
     state: GameState, attacker: ActorEntity, weapon: str, library: Library
 ) -> tuple[ItemEntity, WeaponRecord]:
     wanted = weapon.casefold()
-    for item_id in attacker.inventory:
-        item = state.world.entities.get(item_id)
-        if not isinstance(item, ItemEntity) or item.ref is None:
+    for item in state.world.carried_by(attacker.id):
+        if item.ref is None:
             continue
         if wanted not in (item.name.casefold(), item.ref.index):
             continue

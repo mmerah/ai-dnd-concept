@@ -24,11 +24,9 @@ from ..domain.models import (
     Exchange,
     GameState,
     GrowthRequest,
-    ItemEntity,
     LocationEntity,
     Progression,
     StatBlock,
-    find,
 )
 
 
@@ -43,31 +41,20 @@ def canon_without_player(state: GameState) -> list[Entity]:
     return [e for e in state.world.entities.values() if e.id != PLAYER_ID]
 
 
-def _item_holder(state: GameState, item_id: EntityId) -> ActorEntity | None:
-    actors = (e for e in state.world.entities.values() if isinstance(e, ActorEntity))
-    return next((e for e in actors if item_id in e.inventory), None)
-
-
 def _place(entity: Entity, state: GameState) -> tuple[EntityId | None, str]:
     """Where to file an entity, and the suffix that says so. A carried item travels with its
     holder, so it stays in context once picked up rather than dropping to a bare name."""
-    entities = state.world.entities
-    match entity:
-        case LocationEntity():
-            return None, ""
-        case ActorEntity():
-            place = entities.get(entity.location_id)
-            return entity.location_id, f" — at {place.name}" if place else ""
-        case ItemEntity():
-            if entity.location_id is not None:
-                place = entities.get(entity.location_id)
-                return entity.location_id, f" — at {place.name}" if place else ""
-            holder = _item_holder(state, entity.id)
-            if holder is None:
-                raise ValueError(f"cannot place item {entity.id!r}: nobody holds it")
-            if holder.id == PLAYER_ID:
-                return holder.location_id, " — carried"
-            return holder.location_id, f" — held by {holder.name}"
+    if isinstance(entity, LocationEntity):
+        return None, ""
+    if isinstance(entity, ActorEntity):
+        place = state.world.entities.get(entity.location_id)
+        return entity.location_id, f" — at {place.name}" if place else ""
+    container = state.world.container_of(entity)
+    if isinstance(container, LocationEntity):
+        return container.id, f" — at {container.name}"
+    if container.id == PLAYER_ID:
+        return container.location_id, " — carried"
+    return container.location_id, f" — held by {container.name}"
 
 
 def briefs(items: Iterable[Entity], state: GameState) -> str:
@@ -80,7 +67,7 @@ def briefs(items: Iterable[Entity], state: GameState) -> str:
 def present(state: GameState) -> list[Entity]:
     """Everything filed at the player's location; their own items show under CHARACTER."""
     where = state.player.location_id
-    carried = set(state.player.inventory)
+    carried = {e.id for e in state.world.carried_by(PLAYER_ID)}
     return [
         e
         for e in canon_without_player(state)
@@ -188,7 +175,7 @@ def elsewhere(state: GameState) -> str:
     """Known entities away from here; the current location and carried items show elsewhere."""
     here_ids = {e.id for e in present(state)}
     current = state.player.location_id
-    carried = set(state.player.inventory)
+    carried = {e.id for e in state.world.carried_by(PLAYER_ID)}
 
     def shown(e: Entity) -> bool:
         return e.known and e.id not in here_ids and e.id != current and e.id not in carried
@@ -226,18 +213,22 @@ def _klass(progression: Progression, library: Library) -> str:
 
 def character(state: GameState, library: Library) -> str:
     """The player's own sheet, and the one place exact hit points are shown. Fail fast: standing
-    outside canon, or holding an id no entity backs, would feed a role an unusable reference."""
+    outside canon would feed a role an unusable reference."""
     player = state.player
-    where = find(state.world.entities, player.location_id)
+    where = state.world.entities.get(player.location_id)
     if where is None:
         raise ValueError(f"character is at unknown location {player.location_id!r}")
     stats = player.stats
     attributes = ", ".join(f"{k} {v}" for k, v in stats.attributes.model_dump().items())
-    items = [find(state.world.entities, i) for i in player.inventory]
-    missing = [i for i, e in zip(player.inventory, items, strict=True) if e is None]
-    if missing:
-        raise ValueError(f"character holds unknown item id(s) {missing!r}")
-    inventory = "\n".join(f"- {label(e)} — {e.brief}" for e in items if e is not None) or "- (none)"
+    # Sorted, not acquisition-ordered: order is a rendering concern, and a stable list keeps the
+    # prompt from churning as items are picked up.
+    inventory = (
+        "\n".join(
+            f"- {label(e)} — {e.brief}"
+            for e in sorted(state.world.carried_by(PLAYER_ID), key=lambda e: e.name)
+        )
+        or "- (none)"
+    )
     lines = [
         f"{player.name} — hp {stats.hp}/{stats.max_hp} — ac {stats.ac}"
         f"{conditions(stats)} — at {label(where)}",
@@ -256,7 +247,7 @@ def speaker(state: GameState, direction: Direction) -> str:
     """Fail fast: a hidden, unknown, or absent speaker would put words in a stranger's mouth."""
     if direction.speaker_id is None:
         return "(none — narrate the scene)"
-    entity = find(state.world.entities, direction.speaker_id)
+    entity = state.world.entities.get(direction.speaker_id)
     if entity is None or not entity.known or entity.id == PLAYER_ID:
         raise ValueError(f"director named an unknown or hidden speaker: {direction.speaker_id!r}")
     if _place(entity, state)[0] != state.player.location_id:

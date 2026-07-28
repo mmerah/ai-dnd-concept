@@ -10,7 +10,7 @@ from typing import Annotated, Literal, Self
 
 from pydantic import Field, model_validator
 
-from ...utils.models import Ability, Frozen, FrozenMap
+from ...utils.models import EMPTY_FROZEN_MAP, Ability, Frozen, FrozenMap
 from ..vocabulary import LanguageName
 from .base import ContentRef, CreatureSize, Record, Slug
 
@@ -115,7 +115,7 @@ class LevelSpellcasting(Frozen):
     """Only non-zero slot counts are kept: upstream writes levels 6-9 as an explicit 0 on 120 level
     records and omits them on 40, and both mean the same thing."""
 
-    spell_slots: FrozenMap[int, int] = Field(default_factory=dict, validate_default=True)
+    spell_slots: FrozenMap[int, int] = EMPTY_FROZEN_MAP
     cantrips_known: int | None = None
     spells_known: int | None = None
 

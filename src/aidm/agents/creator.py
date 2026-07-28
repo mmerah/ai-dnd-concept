@@ -11,8 +11,8 @@ from ..domain.models import (
     EntityId,
     GrowthRequest,
     placement,
+    slug,
 )
-from ..utils.ids import slug
 from .llm import build_agent
 from .prompts.creator import INSTRUCTIONS
 

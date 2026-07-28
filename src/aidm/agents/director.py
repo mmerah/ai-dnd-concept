@@ -69,7 +69,7 @@ def _validate_ids(ctx: RunContext[DirectorDeps], direction: Direction) -> Direct
     if direction.speaker_id is not None:
         # A speaker is addressed, so the same rule as any acted-on actor: here, and known below.
         refs.append((direction.speaker_id, References("actor", present=True)))
-    canon = dict(ctx.deps.entities)
+    canon = ctx.deps.entities
     location = ctx.deps.location
 
     # The player is an actor in canon now, so naming them where someone else is meant passes the
@@ -83,25 +83,22 @@ def _validate_ids(ctx: RunContext[DirectorDeps], direction: Direction) -> Direct
     if any(isinstance(c, Attack) and _attacks_itself(c) for c in planned):
         raise ModelRetry("attack must name at most one of attacker_id and target_id: they differ")
 
-    missing = sorted({i for i, _ in refs if i not in canon})
-    if missing:
+    if missing := sorted({i for i, _ in refs if i not in canon}):
         raise ModelRetry(f"unknown entity id(s): {missing}. Use only ids you were shown.")
-    mismatched = sorted(
+    if mismatched := sorted(
         f"{i} is a {canon[i].kind}, not a {need.kind}"
         for i, need in refs
         if need.kind is not None and canon[i].kind != need.kind
-    )
-    if mismatched:
+    ):
         raise ModelRetry(f"wrong kind of entity: {'; '.join(mismatched)}.")
     # Acting on someone off-screen would narrate what the player never saw. A retry here, because
     # the resolver's own guard would cost the player the whole turn.
-    absent = sorted({i for i, need in refs if need.present and _elsewhere(canon[i], location)})
-    if absent:
+    if absent := sorted({i for i, need in refs if need.present and _elsewhere(canon[i], location)}):
         raise ModelRetry(f"not here with the player: {absent}. Move them here first, or act here.")
     # A speaker the player has not met would put words in a stranger's mouth; catch it here rather
     # than letting views.speaker hard-fail the turn downstream.
-    speaker = canon.get(direction.speaker_id) if direction.speaker_id is not None else None
-    if speaker is not None and not speaker.known:
+    # `refs` carried the speaker through the `missing` check above, so it is in canon by here.
+    if direction.speaker_id is not None and not canon[direction.speaker_id].known:
         raise ModelRetry(f"speaker {direction.speaker_id!r} exists but the player has not met them")
     return direction
 

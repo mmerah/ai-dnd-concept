@@ -1,6 +1,8 @@
 """The domain's own vocabularies. The frozen base and the 5e ability names live in
 `utils/models.py` instead, because `content/` needs them and must not import `domain/`."""
 
+import re
+from collections.abc import Iterable
 from typing import Literal, NewType, get_args
 
 Kind = Literal["actor", "location", "item"]
@@ -14,4 +16,14 @@ EntityId = NewType("EntityId", str)
 PLAYER_ID = EntityId("player")
 
 ROLES: tuple[Role, ...] = get_args(Role)
-SAVE_VERSION = 11
+SAVE_VERSION = 12
+
+
+def slug(name: str, taken: Iterable[EntityId]) -> EntityId:
+    """Deterministic id-minting: a name becomes a unique, stable EntityId."""
+    base = re.sub(r"[^a-z0-9]+", "_", name.lower()).strip("_") or "entity"
+    used = set(taken)
+    candidate, n = EntityId(base), 2
+    while candidate in used:
+        candidate, n = EntityId(f"{base}_{n}"), n + 1
+    return candidate

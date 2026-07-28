@@ -72,7 +72,7 @@
       "name": "the vault map",
       "brief": "A creased chart of the undercroft, marking a stair the abbey's own plans deny.",
       "known": false,
-      "location_id": "study"
+      "container_id": "study"
     }
   ]
 }

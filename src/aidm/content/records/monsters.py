@@ -5,7 +5,7 @@ from typing import Annotated, Literal
 from pydantic import Field
 
 from ...utils.dice import DiceExpr
-from ...utils.models import Ability, Attributes, Frozen, FrozenMap
+from ...utils.models import EMPTY_FROZEN_MAP, Ability, Attributes, Frozen, FrozenMap
 from ..vocabulary import ConditionName
 from .base import ContentRef, CreatureSize, DamageRoll, Record, Slug
 
@@ -154,7 +154,7 @@ class MonsterSpellcasting(Frozen):
     dc: int | None = None
     modifier: int | None = None
     level: int | None = None
-    slots: FrozenMap[int, int] = Field(default_factory=dict, validate_default=True)
+    slots: FrozenMap[int, int] = EMPTY_FROZEN_MAP
     spells: tuple[MonsterSpell, ...] = ()
 
 
@@ -196,9 +196,9 @@ class MonsterRecord(Record):
     damage_immunities: tuple[str, ...] = ()
     damage_vulnerabilities: tuple[str, ...] = ()
     condition_immunities: tuple[ConditionName, ...] = ()
-    saving_throws: FrozenMap[Ability, int] = Field(default_factory=dict, validate_default=True)
+    saving_throws: FrozenMap[Ability, int] = EMPTY_FROZEN_MAP
     # Keyed by the index of a record in this pack's `skills`; the bonus is absolute, not a modifier.
-    skills: FrozenMap[Slug, int] = Field(default_factory=dict, validate_default=True)
+    skills: FrozenMap[Slug, int] = EMPTY_FROZEN_MAP
     actions: tuple[MonsterAction, ...] = ()
     legendary_actions: tuple[MonsterAction, ...] = ()
     reactions: tuple[MonsterAction, ...] = ()

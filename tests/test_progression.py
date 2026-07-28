@@ -212,9 +212,9 @@ def armed(state: GameState) -> GameState:
         brief="Old steel.",
         known=True,
         ref=ref("weapons", "longsword"),
+        container_id=PLAYER_ID,
     )
-    player = updated(state.player, inventory=[*state.player.inventory, sword.id])
-    entities = {**state.world.entities, goblin.id: goblin, sword.id: sword, PLAYER_ID: player}
+    entities = {**state.world.entities, goblin.id: goblin, sword.id: sword}
     return updated(state, world=updated(state.world, entities=entities))
 
 

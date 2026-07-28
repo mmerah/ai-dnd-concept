@@ -9,6 +9,7 @@ from .base import (
     EntityId,
     Kind,
     Role,
+    slug,
 )
 from .consequences import (
     CONSEQUENCE_TYPES,
@@ -45,7 +46,6 @@ from .entities import (
     ItemEntity,
     LocationEntity,
     RejectedGrowth,
-    find,
     placement,
 )
 from .events import (
@@ -151,8 +151,8 @@ __all__ = [
     "WorldState",
     "Wounds",
     "branches",
-    "find",
     "flatten",
     "placement",
+    "slug",
     "updated",
 ]

@@ -17,7 +17,15 @@ from aidm.agents import maintainer as maintainer_module
 from aidm.agents import narrator as narrator_module
 from aidm.agents.director import DirectorDeps, direct
 from aidm.agents.history import exchanges_to_messages
-from aidm.domain.models import PLAYER_ID, ActorEntity, EntityId, Exchange, GameState, updated
+from aidm.domain.models import (
+    PLAYER_ID,
+    ActorEntity,
+    EntityId,
+    Exchange,
+    GameState,
+    ItemEntity,
+    updated,
+)
 from aidm.pipeline import run_turn
 
 LIBRARY = store.library()  # the shipped pack; no test here plays against a synthetic one
@@ -93,7 +101,8 @@ async def test_search_applies_mechanics_and_creates_nothing(state: GameState) ->
     # taking a canon item reveals it: inventory and canon can never disagree
     kinds = [e.type for e in turn.events]
     assert kinds == ["dc_rolled", "entity_discovered", "item_moved"]
-    assert turn.state.player.inventory == [EntityId("lantern"), EntityId("vault_map")]
+    carried = {e.id for e in turn.state.world.carried_by(PLAYER_ID)}
+    assert carried == {EntityId("lantern"), EntityId("vault_map")}
     assert known_ids(turn.state) == {"study", "mara", "vault_map", "lantern"}
     assert turn.created == []
     assert turn.state.turn == 1
@@ -142,6 +151,25 @@ async def test_an_unbacked_name_is_grown_not_resolved(state: GameState) -> None:
     assert isinstance(elgin, ActorEntity) and elgin.location_id == "study"  # no location -> here
     assert list(turn.state.world.entities.values())[-1] == elgin  # created entities go last
     assert turn.state.world.entities[EntityId("vault")].known is False  # authored canon untouched
+
+
+async def test_a_grown_item_is_contained_by_the_place_it_appears(state: GameState) -> None:
+    """Each kind names its place through a different field, so growth must be exercised at every
+    kind: an item carries `container_id` where an actor carries `location_id`."""
+    with ExitStack() as stack:
+        stubs(
+            stack,
+            director=structured(intent="i", tone="t"),
+            narrator=text("A rusted key lies among the papers."),
+            maintainer=structured(
+                requests=[{"kind": "item", "name": "a rusted key", "brief": "Small and pitted."}]
+            ),
+            creator=structured(description="d", hook="h"),
+        )
+        turn = await run_turn(state, "I search the desk.", library=LIBRARY)
+
+    (key,) = turn.created
+    assert isinstance(key, ItemEntity) and key.container_id == "study"  # no location -> here
 
 
 async def test_a_grown_entity_is_placed_in_a_location_grown_the_same_turn(state: GameState) -> None:

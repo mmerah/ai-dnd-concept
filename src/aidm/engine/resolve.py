@@ -40,11 +40,10 @@ from ..domain.models import (
     RollCheck,
     RollSave,
     TakeItem,
-    find,
+    slug,
 )
 from ..domain.reducer import apply
 from ..utils import dice
-from ..utils.ids import slug
 from . import procedures, rules
 
 
@@ -86,13 +85,13 @@ def _walk(consequence: Consequence, draft: GameState, rng: Random, library: Libr
         case Move(location_id=location_id, actor_id=actor_id):
             return _move(draft, location_id, actor_id)
         case TakeItem(item_id=item_id):
-            item = _item(draft, item_id)
-            if item.location_id != player.location_id:
+            item = _of_kind(draft, item_id, ItemEntity)
+            if item.container_id != player.location_id:
                 raise ValueError(f"cannot take {item_id!r}: it is not at the player's location")
             return [*_reveal(item), _item_moved(item, player.id, player.name, "actor")]
         case DropItem(item_id=item_id):
             item = _held(draft, item_id, "drop")
-            here = _location(draft, player.location_id)
+            here = _of_kind(draft, player.location_id, LocationEntity)
             return [_item_moved(item, here.id, here.name, "location")]
         case GiveItem(item_id=item_id, actor_id=actor_id):
             item = _held(draft, item_id, "give")
@@ -105,7 +104,7 @@ def _walk(consequence: Consequence, draft: GameState, rng: Random, library: Libr
                 id=slug(item_name, draft.world.entities.keys()),
                 name=item_name,
                 brief=item_name,  # improvised: the brief is just the written-out name
-                location_id=player.location_id,  # created lying here, then picked up
+                container_id=player.location_id,  # created lying here, then picked up
                 known=True,
                 authored=False,
             )
@@ -151,11 +150,11 @@ def _attack_events(
 def _move(draft: GameState, location_id: EntityId, actor_id: EntityId | None) -> list[Event]:
     """Another actor's move must touch the player's location, so the summary never narrates
     movement the player could not witness; arriving where the player is also reveals them."""
-    dest = _location(draft, location_id)
+    dest = _of_kind(draft, location_id, LocationEntity)
     player = draft.player
     if actor_id is None or actor_id == player.id:  # arriving somewhere hidden reveals it
         return [*_reveal(dest), _moved(player, dest)]
-    actor = _actor(draft, actor_id)
+    actor = _of_kind(draft, actor_id, ActorEntity)
     if actor.location_id != player.location_id and dest.id != player.location_id:
         raise ValueError(f"cannot move {actor_id!r}: the player would not witness it")
     reveal = _reveal(actor) if dest.id == player.location_id else []
@@ -189,10 +188,17 @@ def _hp_events(
     """Harming or healing someone unseen reveals them, since the events name them."""
     target = _target(draft, target_id)
     total, rolls = _magnitude(amount, rng)
-    changed = _hp_changed(target, sign * total)
-    # A change the clamp swallows whole is not an event: no hit point moved, so none is reported.
+    # `with_hp_delta` stays the one clamp, here as much as in the reducer.
+    after = target.stats.with_hp_delta(sign * total)
+    delta = after.hp - target.stats.hp
     events: list[Event] = [*_reveal(target), *rolls]
-    return events if changed.delta == 0 else [*events, changed]
+    # A change the clamp swallows whole is not an event: no hit point moved, so none is reported.
+    if delta == 0:
+        return events
+    changed = HpChanged(
+        target_id=target.id, target_name=target.name, delta=delta, wounds=after.wounds
+    )
+    return [*events, changed]
 
 
 def _condition_events(
@@ -215,18 +221,6 @@ def _condition_events(
     return [*_reveal(target), changed]
 
 
-def _hp_changed(actor: ActorEntity, delta: int) -> HpChanged:
-    """`delta` is what the clamp will actually apply, so the Narrator is never told of hit points
-    that never moved: `with_hp_delta` stays the one clamp, here as much as in the reducer."""
-    after = actor.stats.with_hp_delta(delta)
-    return HpChanged(
-        target_id=actor.id,
-        target_name=actor.name,
-        delta=after.hp - actor.stats.hp,
-        wounds=after.wounds,
-    )
-
-
 def _item_moved(item: Entity, to_id: EntityId, to_name: str, to_kind: ItemDestination) -> ItemMoved:
     return ItemMoved(
         item_id=item.id, item_name=item.name, to_id=to_id, to_name=to_name, to_kind=to_kind
@@ -234,30 +228,26 @@ def _item_moved(item: Entity, to_id: EntityId, to_name: str, to_kind: ItemDestin
 
 
 def _entity(state: GameState, entity_id: EntityId) -> Entity:
-    entity = find(state.world.entities, entity_id)
+    entity = state.world.entities.get(entity_id)
     if entity is None:
         raise ValueError(f"mechanics referenced unknown entity id {entity_id!r}")
     return entity
 
 
-def _location(state: GameState, entity_id: EntityId) -> LocationEntity:
+def _of_kind[T: Entity](state: GameState, entity_id: EntityId, expected: type[T]) -> T:
+    """`expected` is a concrete class: `Entity` is a union, which `isinstance` cannot take."""
     entity = _entity(state, entity_id)
-    if not isinstance(entity, LocationEntity):
-        raise ValueError(f"mechanics used {entity_id!r} as a location, but it is a {entity.kind}")
-    return entity
-
-
-def _actor(state: GameState, entity_id: EntityId) -> ActorEntity:
-    entity = _entity(state, entity_id)
-    if not isinstance(entity, ActorEntity):
-        raise ValueError(f"mechanics used {entity_id!r} as an actor, but it is a {entity.kind}")
+    if not isinstance(entity, expected):
+        raise ValueError(
+            f"mechanics used {entity_id!r} as {expected.__name__}, but it is a {entity.kind}"
+        )
     return entity
 
 
 def _actor_here(state: GameState, entity_id: EntityId) -> ActorEntity:
     """An actor the player is standing with; anyone else is off-screen, and what the player never
     witnessed must not reach the Narrator."""
-    actor = _actor(state, entity_id)
+    actor = _of_kind(state, entity_id, ActorEntity)
     if actor.location_id != state.player.location_id:
         raise ValueError(f"cannot affect {entity_id!r}: not at the player's location")
     return actor
@@ -269,16 +259,9 @@ def _target(state: GameState, entity_id: EntityId | None) -> ActorEntity:
     return state.player if entity_id is None else _actor_here(state, entity_id)
 
 
-def _item(state: GameState, entity_id: EntityId) -> ItemEntity:
-    entity = _entity(state, entity_id)
-    if not isinstance(entity, ItemEntity):
-        raise ValueError(f"mechanics used {entity_id!r} as an item, but it is a {entity.kind}")
-    return entity
-
-
 def _held(state: GameState, entity_id: EntityId, verb: str) -> ItemEntity:
-    item = _item(state, entity_id)
-    if entity_id not in state.player.inventory:
+    item = _of_kind(state, entity_id, ItemEntity)
+    if item.container_id != state.player.id:
         raise ValueError(f"cannot {verb} {entity_id!r}: the player is not carrying it")
     return item
 

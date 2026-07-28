@@ -6,9 +6,8 @@ from typing import Self
 from pydantic import Field, model_validator
 
 from ...content import ContentRef, PackStamp
-from ...utils.ids import slug
-from ...utils.models import Attributes, Frozen
-from .base import PLAYER_ID, SAVE_VERSION, EntityId
+from ...utils.models import EMPTY_FROZEN_MAP, Attributes, Frozen
+from .base import PLAYER_ID, SAVE_VERSION, EntityId, slug
 from .entities import ActorEntity, Entity, ItemEntity, LocationEntity
 from .progression import Advancement, Decisions, Origin
 from .stats import StatBlock
@@ -35,7 +34,7 @@ class CharacterSheet(Frozen):
     brief: str
     origin: Origin
     starting_attributes: Attributes = Attributes()
-    decisions: Decisions = Field(default_factory=dict, validate_default=True)
+    decisions: Decisions = EMPTY_FROZEN_MAP
     starting_items: tuple[StartingItem, ...] = ()
 
 
@@ -57,15 +56,30 @@ class WorldState(Frozen):
     @model_validator(mode="after")
     def _keys_match_ids(self) -> Self:
         """The id is stored twice after a JSON round-trip; a mismatch would make lookups lie."""
-        wrong = [k for k, e in self.entities.items() if k != e.id]
-        if wrong:
+        if wrong := [k for k, e in self.entities.items() if k != e.id]:
             raise ValueError(f"entity keys disagree with their ids: {wrong}")
         return self
+
+    def container_of(self, item: ItemEntity) -> ActorEntity | LocationEntity:
+        """The actor carrying it or the location it lies at — `GameState` guarantees one of the
+        two, and this raise is what guarantees it."""
+        container = self.entities.get(item.container_id)
+        if not isinstance(container, ActorEntity | LocationEntity):
+            raise ValueError(f"item {item.id!r} is in {item.container_id!r}, which holds nothing")
+        return container
+
+    def carried_by(self, actor_id: EntityId) -> list[ItemEntity]:
+        """What an actor carries. Order is entity-map order; a view that shows it should sort."""
+        return [
+            e
+            for e in self.entities.values()
+            if isinstance(e, ItemEntity) and e.container_id == actor_id
+        ]
 
 
 class ScenarioDef(Frozen):
     """The on-disk scenario file: static identity, starting canon, and where a character begins.
-    Entities stay a JSON array — a list is the natural authoring shape; `as_world` keys them."""
+    Entities stay a JSON array — a list is the natural authoring shape."""
 
     meta: ScenarioMeta
     starting_location_id: EntityId
@@ -75,8 +89,7 @@ class ScenarioDef(Frozen):
     def _valid_scenario(self) -> Self:
         """Checked here so a malformed scenario fails at its own boundary, not mid-turn."""
         ids = [e.id for e in self.entities]
-        duplicates = sorted({i for i in ids if ids.count(i) > 1})
-        if duplicates:
+        if duplicates := sorted({i for i in ids if ids.count(i) > 1}):
             raise ValueError(f"scenario has duplicate entity ids: {duplicates}")
         # A scenario must place any character, not just one it names; the sheet supplies the player.
         if PLAYER_ID in ids:
@@ -87,9 +100,6 @@ class ScenarioDef(Frozen):
                 f"starting_location_id {self.starting_location_id!r} is not a location here"
             )
         return self
-
-    def as_world(self) -> WorldState:
-        return WorldState(entities={e.id: e for e in self.entities})
 
 
 class Exchange(Frozen):
@@ -115,45 +125,26 @@ class GameState(Frozen):
 
     @model_validator(mode="after")
     def _consistent_world(self) -> Self:
-        """Positions and containment must agree, so lookups never lie: every actor stands in a real
-        location, and every item is held by exactly one actor xor lies at one location."""
+        """Positions must be real, so lookups never lie: every actor stands in a location, and
+        every item is in something that can hold it."""
         entities = self.world.entities
-
-        def is_location(entity_id: EntityId) -> bool:
-            return isinstance(entities.get(entity_id), LocationEntity)
 
         # Unrevealed canon is offered as a `discover` target; the player must never be one.
         if not self.player.known:
             raise ValueError("the player entity must be known")
         # Progression is the player's alone, so `LeveledUp` needs no target id to be unambiguous.
-        levelled = sorted(
+        if levelled := sorted(
             e.id
             for e in entities.values()
             if isinstance(e, ActorEntity) and e.progression is not None and e.id != PLAYER_ID
-        )
-        if levelled:
+        ):
             raise ValueError(f"only the player may have progression: {levelled}")
 
-        held: list[EntityId] = []
         for actor in (e for e in entities.values() if isinstance(e, ActorEntity)):
-            if not is_location(actor.location_id):
+            if not isinstance(entities.get(actor.location_id), LocationEntity):
                 raise ValueError(f"actor {actor.id!r} is not in a valid location")
-            for item_id in actor.inventory:
-                item = entities.get(item_id)
-                if not isinstance(item, ItemEntity):
-                    raise ValueError(f"{actor.id!r} holds {item_id!r}, which is not a canon item")
-                if item.location_id is not None:
-                    raise ValueError(f"held item {item_id!r} also lies at a location")
-                held.append(item_id)
-        duplicated = sorted({i for i in held if held.count(i) > 1})
-        if duplicated:
-            raise ValueError(f"items held in more than one inventory: {duplicated}")
-
         for item in (e for e in entities.values() if isinstance(e, ItemEntity)):
-            if item.location_id is None and item.id not in held:
-                raise ValueError(f"item {item.id!r} is held by no one and lies nowhere")
-            if item.location_id is not None and not is_location(item.location_id):
-                raise ValueError(f"item {item.id!r} lies in a non-location")
+            self.world.container_of(item)  # its raise is the invariant: an actor xor a location
         return self
 
     @classmethod
@@ -165,11 +156,10 @@ class GameState(Frozen):
         start: Advancement,
     ) -> Self:
         """A sheet placed at the scenario's start, over its canon. Starting items become canon items
-        held by the player (location None), so an inventory holds real ids, not free text. The pack
-        stamps and the level-1 `Advancement` are handed in because deriving either means reading a
-        pack, which `domain/` does not do."""
-        entities = dict(scenario.as_world().entities)
-        inventory: list[EntityId] = []
+        contained by the player, so what they carry holds real ids, not free text. The pack stamps
+        and the level-1 `Advancement` are handed in because deriving either means reading a pack,
+        which `domain/` does not do."""
+        entities = {entity.id: entity for entity in scenario.entities}
         for item in character.starting_items:
             entity = ItemEntity(
                 id=slug(item.name, entities.keys()),
@@ -177,16 +167,15 @@ class GameState(Frozen):
                 brief=item.brief,
                 ref=item.ref,
                 known=True,
+                container_id=PLAYER_ID,  # inserted below; validation runs on the finished state
             )
             entities[entity.id] = entity
-            inventory.append(entity.id)
         entities[PLAYER_ID] = ActorEntity(
             id=PLAYER_ID,
             name=character.name,
             brief=character.brief,
             known=True,
             location_id=scenario.starting_location_id,
-            inventory=inventory,
             stats=StatBlock(attributes=start.attributes, max_hp=start.hp_gain, hp=start.hp_gain),
             progression=start.progression,
         )

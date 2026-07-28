@@ -92,7 +92,7 @@ def test_a_sheet_becomes_the_player_entity() -> None:
     state = GameState.from_scenario(definition, CharacterSheet.model_validate(SHEET), [], START)
     assert state.player.id == PLAYER_ID
     assert state.player.known and state.player.location_id == "study"
-    assert [state.world.entities[i].name for i in state.player.inventory] == ["a lantern"]
+    assert [e.name for e in state.world.carried_by(PLAYER_ID)] == ["a lantern"]
     assert state.player.stats.max_hp == 10 and state.player.progression == START.progression
 
 
