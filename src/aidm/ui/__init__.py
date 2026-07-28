@@ -1,1 +1,0 @@
-"""NiceGUI front end."""

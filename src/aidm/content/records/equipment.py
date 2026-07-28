@@ -1,10 +1,3 @@
-"""Everything an `item` entity can point at: weapons, armour, gear, tools, vehicles, magic items.
-
-Upstream ships all six as one 29-field type of which 24 are optional — optionality that states the
-union of kinds, not anything about weapons. They are projected as separate non-optional models
-discriminated on `equipment_category`, so a weapon that lost its damage is a load-time error rather
-than a silent +0."""
-
 from typing import Literal
 
 from pydantic import Field
@@ -25,13 +18,11 @@ Rarity = Literal["Common", "Uncommon", "Rare", "Very Rare", "Legendary", "Artifa
 
 class EquipmentRecord(Record):
     cost: Coin
-    weight: float | None = None  # 22 records carry none; a scroll weighs nothing worth tracking
+    weight: float | None = None
     desc: str = ""
 
 
 class WeaponRange(Frozen):
-    """Feet. Beyond `normal` an attack has disadvantage; beyond `long` it cannot be made."""
-
     normal: int = Field(ge=0)
     long: int | None = None
 
@@ -40,7 +31,6 @@ class WeaponRecord(EquipmentRecord):
     category: WeaponCategory
     weapon_range: WeaponReach
     damage: DamageRoll | None = None
-    # `versatile`'s consequence. The property is what says the two-handed grip is a choice.
     two_handed_damage: DamageRoll | None = None
     properties: tuple[WeaponProperty, ...] = ()
     range: WeaponRange
@@ -57,8 +47,6 @@ class ArmorRecord(EquipmentRecord):
 
 
 class PackContents(Frozen):
-    """What an equipment pack holds, by the index of another record in this collection."""
-
     index: Slug
     quantity: int = Field(ge=1)
 
@@ -75,14 +63,11 @@ class ToolRecord(EquipmentRecord):
 
 class VehicleRecord(EquipmentRecord):
     vehicle_category: VehicleCategory
-    speed: str | None = None  # '50 ft/round', '3 mph' — two units, so not an int
+    speed: str | None = None
     capacity: str | None = None
 
 
 class MagicItemRecord(Record):
-    """The one collection whose mechanics stay prose: a magic item's effect is written as English
-    with no structured payload upstream, and the Director can only turn it into words."""
-
     category: EquipmentCategory
     rarity: Rarity
     desc: str

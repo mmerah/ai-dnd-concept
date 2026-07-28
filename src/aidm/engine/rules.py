@@ -1,5 +1,3 @@
-"""The ruleset: d20 plus the right bonus against a number, plus free-form dice."""
-
 from random import Random
 
 from ..domain.models import (
@@ -21,8 +19,6 @@ def modifier(attributes: Attributes, ability: Ability) -> int:
 
 
 def save_bonus(actor: ActorEntity, ability: Ability) -> int:
-    """A monster's is snapshotted absolute from its record; a player's is the ability modifier plus
-    the proficiency bonus, on the saves their class is good at and nowhere else."""
     absolute = actor.stats.saving_throws.get(ability)
     if absolute is not None:
         return absolute
@@ -80,8 +76,6 @@ def _rolled(
 
 
 def _magnitude(term: dice.Term, rng: Random) -> int:
-    """`MOD` belongs to the caster, and no role supplies one yet: `SelfContainedDice` refuses it at
-    the model boundary, so reaching it here is a broken plan, not a silent zero."""
     match term:
         case dice.DiceTerm(count=count, faces=faces):
             return sum(rng.randint(1, faces) for _ in range(count))

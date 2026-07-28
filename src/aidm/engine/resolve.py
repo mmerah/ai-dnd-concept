@@ -1,11 +1,3 @@
-"""Director mechanics -> events. Pure: no LLM, no I/O; takes the consequence list only, so
-`engine/` stays blind to intent/tone/speaker.
-
-Routing and the fold: each mechanic lives in its own module under `mechanics/`, and the `match`
-below stays exhaustive so a new consequence is a build error here rather than a silently unhandled
-one. The two rolls are resolved here rather than in a slice because resolving one *is* folding the
-branch it selected, and that recursion runs over the whole vocabulary."""
-
 from collections.abc import Sequence
 from random import Random
 
@@ -41,7 +33,6 @@ def resolve(
 
 
 def _fold(ctx: Resolution, mechanics: Sequence[Consequence]) -> list[Event]:
-    """Fold left to right, so each consequence sees the state its predecessors produced."""
     events: list[Event] = []
     for consequence in mechanics:
         new = _walk(ctx, consequence)
@@ -51,14 +42,11 @@ def _fold(ctx: Resolution, mechanics: Sequence[Consequence]) -> list[Event]:
 
 
 def _walk(ctx: Resolution, consequence: Consequence) -> list[Event]:
-    """Each slice's guards fail fast on a broken plan; the Director's validator catches most of them
-    first, as a retry."""
     match consequence:
         case RollCheck(ability=ability, dc=dc):
             rolled = rules.roll_check(ctx.player, ability, dc, ctx.rng)
             return _branched(ctx, consequence, (), rolled)
         case RollSave(ability=ability, dc=dc, target_id=target_id):
-            # Unlike a check, a save may be rolled by someone the player has not met.
             target = ctx.target(target_id)
             rolled = rules.roll_save(target, ability, dc, ctx.rng)
             return _branched(ctx, consequence, common.reveal(target), rolled)
@@ -70,7 +58,7 @@ def _walk(ctx: Resolution, consequence: Consequence) -> list[Event]:
             return health.heal(ctx, consequence)
         case ApplyCondition():
             return conditions.change(ctx, consequence)
-        case Discover():  # re-discovery is a no-op, not an error
+        case Discover():
             return common.reveal(ctx.entity(consequence.entity_id))
         case Move():
             return movement.move(ctx, consequence)
@@ -87,8 +75,7 @@ def _walk(ctx: Resolution, consequence: Consequence) -> list[Event]:
 def _branched(
     ctx: Resolution, consequence: DcRoll, before: Sequence[Event], rolled: DcRolled
 ) -> list[Event]:
-    """The roll and whatever preceded it, then only the branch the roll selected. The branch folds
-    against the state *all* of them produced, so a reveal already emitted is not emitted twice."""
+    """Fold the selected branch against state after the roll and reveal."""
     emitted = [*before, rolled]
     branch = consequence.on_success if rolled.success else consequence.on_failure
     return [*emitted, *_fold(ctx.then(emitted), branch)]

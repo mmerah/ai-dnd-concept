@@ -2,50 +2,59 @@
 
 ## Commands
 
+Run from the repository root:
+
 ```bash
-uv run pytest              # deterministic, no network
+uv run pytest
 uv run ruff check
-uv run basedpyright        # strict mode; the enforcement behind "avoid Any"
-uv run python -m aidm      # http://localhost:8080
+uv run basedpyright
+uv run python -m aidm
 ```
 
-Run from the repo root; paths and `.env` resolve against the working directory.
+Tests must be deterministic and require no network.
 
-## Engineering principles
+## Engineering
 
-- Prefer functional programming: pure transformations, immutable values, explicit inputs, and side effects isolated at boundaries.
-- Use strict type safety throughout. Avoid `Any`, unchecked casts, and broad type suppressions.
-- Use strict Pydantic models at external, persistence, model, and tool boundaries.
+- Prefer pure transformations, immutable values, explicit inputs, and side effects isolated at boundaries.
+- Use strict types. Avoid `Any`, unchecked casts, and broad suppressions.
+- Validate external, persistence, model, and tool boundaries with strict Pydantic V2 models.
 - Fail fast on invalid data, broken invariants, and incompatible state.
-- Keep code simple, readable, DRY, and KISS. Avoid speculative abstractions.
-- Use descriptive names that clearly tell the purpose of the object (names of file, classes, variables, methods, ...)
-- Optimize for maintainability over cleverness or premature flexibility.
+- Keep code simple, DRY, and maintainable. Avoid speculative abstractions.
+- Use descriptive names before adding prose to explain code.
 - Keep functions below 100 lines and files below 500 lines.
-- Comments explain only why and are as concise as possible.
-- Docstrings are as short as possible and add only non-obvious information.
+- Comments explain only a non-obvious why: a constraint, tradeoff, invariant, or tooling exception.
+- Delete comments that narrate control flow, restate a name or type, give historical counts, or serve as architectural essays.
+- Keep directives such as `# pyright: ignore[...]` narrowly scoped and include rationale only when the directive is not self-explanatory.
+- Omit package and module docstrings by default. Never use them as file tours.
+- Omit docstrings when the signature and name are the complete contract.
+- Keep necessary docstrings to one concise sentence. Use multiple lines only when losing the detail would hide an important rationale or contract.
+- Treat docstrings consumed by reflection, Pydantic schemas, or LLM prompts as runtime behavior: preserve their meaning and verify changes.
 
-## Domain & Architecture Invariants
+## Architecture invariants
 
-- The model proposes, Python decides. LLMs never mutate state; agents emit typed data (intents, events, structured entities) that deterministic Python rules process.
-- Single reducer. State evolves in exactly one place — the reducer in `domain/`, applied to typed events. Never mutate state in place; always produce a new value.
-- Dependency direction. `domain/` and `engine/` import nothing from `agents/` and do no I/O, so mechanics stay testable without an agent and agents cannot decide outcomes. Growing the ruleset means growing `engine/`, not the role prompts.
-- Strict role boundaries. Each agent has one narrow responsibility. An agent's structured proposal is resolved by deterministic code in `engine/`, never by another prompt.
-- Centralized context policy. One place in `agents/` is the source of truth for what each role sees. Extend that policy rather than injecting raw state into prompt strings elsewhere.
-- Compiled content. `engine/` reads the profiles of `engine/ruleset.py`, never a pack record: `engine/pack_ruleset.py` is the one place that knows the storage shape, which is what lets a test hand the engine a synthetic ruleset. Content is derived, never authored twice — `scripts/srd/` narrows upstream into records, the compiler reads those records.
-- One composition root. `bootstrap.py` reads config, loads packs and names files; everything below it takes its collaborators as parameters. `store.py` is I/O over explicit paths, `application/` owns the open game behind its ports, and nothing under either reaches for a global.
-- Narrator blindness. The Narrator alone writes what the player reads, so it is never shown unrevealed canon or hidden state. It *is* shown `reducer.render(events)` — this turn's resolved outcome, including DCs and rolls — because it must not narrate an outcome that did not happen. `render` is the boundary: everything mechanical the Narrator may see passes through it, and nothing else does. `render` never emits an absolute hp or max_hp for a non-player actor; a monster's wounds are qualitative.
+- The model proposes typed data; deterministic Python decides outcomes and mutates no state directly.
+- State evolves only through the pure reducer in `domain/`, applied to typed events.
+- `domain/` and `engine/` import nothing from `agents/` and perform no I/O.
+- Each agent has one narrow role. Its proposal is resolved by `engine/`, never another prompt.
+- `agents/` owns one centralized context policy for what each role sees.
+- `engine/` reads compiled profiles from `engine/ruleset.py`; only `engine/pack_ruleset.py` knows pack storage shape.
+- Content is derived once: `scripts/srd/` narrows upstream records and the ruleset compiler reads them.
+- `bootstrap.py` is the composition root. Below it, collaborators and paths are explicit; no globals.
+- `application/` owns the open game behind ports, while `store.py` performs path-based I/O.
+- Only the Narrator writes player-facing prose and it never sees unrevealed canon or hidden state.
+- The Narrator sees mechanics only through `reducer.render(events)`.
+- `render` never exposes absolute or maximum HP for a non-player actor; wounds stay qualitative.
 
-## Framework specifics
+## Framework rules
 
-- Pydantic V2 only. Use V2 APIs and native config, never V1 methods. Copy frozen models through the shared `updated` helper so validation still runs.
-- Pydantic AI. Structured roles emit validated typed output; per-turn validation lives in an output validator that asks the model to retry on invalid data, and never mutates state itself.
-- NiceGUI. The UI only reflects session state; keep all domain logic out of `ui/` and drive updates through refreshable views.
-- Per-role LLM settings (model, endpoint, retries, token budget, reasoning level) live in the config module, one entry per role — never hardcoded in a role module.
+- Use Pydantic V2 APIs only. Copy frozen models through the shared `updated` helper so validation runs.
+- Pydantic AI roles return validated structured output. Per-turn validators request retries and never mutate state.
+- NiceGUI reflects session state only. Keep domain logic out of `ui/` and update refreshable views.
+- Keep each role's model, endpoint, retries, token budget, and reasoning level in `config.py`.
 
-## Testing and verification
+## Verification
 
-- Keep tests minimal and focused on core behavior and integrity boundaries.
-- Do not test exact creative prose, live model quality, or trivial wiring.
-- Tests must not require network access (stub model calls via Pydantic AI's FunctionModel or similar)
+- Test core behavior and integrity boundaries, not exact creative prose, live model quality, or trivial wiring.
+- Stub model calls with `FunctionModel` or an equivalent; never require network access.
 
-Update this file only when a rule is expected to remain true across project phases.
+Change this file only for rules expected to remain true across project phases.

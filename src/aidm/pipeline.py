@@ -1,5 +1,3 @@
-"""The fixed turn pipeline: DIRECTOR -> NARRATOR -> MAINTAINER -> CREATOR -> commit."""
-
 from collections.abc import Callable, Sequence
 from dataclasses import replace
 from random import Random
@@ -41,17 +39,11 @@ from .utils.models import Frozen
 
 
 class TurnOptions(Frozen):
-    """How much past a turn is shown and how much canon it may grow. Handed in rather than read from
-    config here, so the pipeline has no global left to reach for."""
-
     history_window: int = Field(ge=0)
     max_growth: int = Field(ge=0)
 
 
 def _placement(request: GrowthRequest, scene: Scene) -> EntityId:
-    """Where a grown actor/item stands: the location it names, matched to a canon location by name
-    (existing or just created this batch), else the player's location. A grown location needs none;
-    the id passed then is ignored by the Creator."""
     if request.location is not None:
         wanted = request.location.casefold()
         for entity in scene.canon.values():
@@ -63,17 +55,12 @@ def _placement(request: GrowthRequest, scene: Scene) -> EntityId:
 async def _grow(
     context: TurnContext, requests: Sequence[GrowthRequest], prompts: dict[Role, str]
 ) -> tuple[list[Entity], GameState]:
-    """The Maintainer -> Creator loop over screened requests. Locations are created first, so an
-    actor/item can name a location this same batch mints and be placed there; each creation feeds
-    the next one's catalogue and dedup, so only the created entities and the state they were folded
-    into escape."""
+    """Create locations first so later requests can refer to them."""
     created: list[Entity] = []
     for request in sorted(requests, key=lambda r: r.kind != "location"):
         scene = context.scene
         prompts["creator"] = creator_prompt(context, request)
-        entity = await create(
-            prompts["creator"], request, scene.canon, _placement(request, scene)
-        )
+        entity = await create(prompts["creator"], request, scene.canon, _placement(request, scene))
         created.append(entity)
         context = replace(context, state=apply(context.state, [EntityCreated(entity=entity)]))
     return created, context.state
@@ -89,11 +76,6 @@ async def run_turn(
     options: TurnOptions,
     rng: Random | None = None,
 ) -> Turn:
-    """Run one full turn. Raises on any role failure, leaving `state` untouched. `rng` is injectable
-    so the check outcome is deterministic under test; production leaves it defaulted.
-
-    Both content handles are passed until the Narrator's and Director's views read profiles too: the
-    engine resolves against `ruleset`, and `views` still renders records out of `content`."""
     step: Callable[[Role], None] = on_step or (lambda _: None)
     prompts: dict[Role, str] = {}
 

@@ -1,5 +1,3 @@
-"""The Maintainer's instructions: grows the catalogue to cover what the Narrator invented."""
-
 INSTRUCTIONS = """You are the MAINTAINER of a tabletop RPG world. You read what was just told to \
 the player and keep the world catalogue complete.
 

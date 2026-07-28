@@ -1,12 +1,3 @@
-"""The 5e compound procedures: what a proposal to strike someone resolves into.
-
-This is the reason progression had to land first. An archetype's to-hit and damage come with it;
-the player's are an ability modifier plus a proficiency bonus, and only a class and a level know
-either. Which end of that an actor is at is the only branch here.
-
-The chain of events an attack produces is assembled in `resolve.py`, alongside every other
-consequence's — this module answers only what the swing is worth."""
-
 from random import Random
 
 from ..content.records import Slug
@@ -19,8 +10,6 @@ from .ruleset import AttackProfile, CombatRules, WeaponProfile
 def swing(
     state: GameState, attacker: ActorEntity, weapon: str, ruleset: CombatRules
 ) -> AttackProfile:
-    """An actor backed by an archetype strikes with one of its own attacks; anyone else strikes with
-    a weapon they carry. Matched by name, because a name is what every role was shown."""
     ref = attacker.ref
     archetype = None if ref is None else ruleset.archetype(ref)
     if archetype is not None:
@@ -49,14 +38,11 @@ def _own_attack(
 def _wielded(
     state: GameState, attacker: ActorEntity, weapon: str, ruleset: CombatRules
 ) -> AttackProfile:
-    """The dice come from the weapon; the modifier and the proficiency bonus come from the wielder,
-    which is what nothing could supply before progression."""
     item, profile = _held_weapon(state, attacker, weapon, ruleset)
     ability = "dexterity" if _uses_dexterity(profile, attacker) else "strength"
     bonus = rules.modifier(attacker.stats.attributes, ability)
     return AttackProfile(
-        # The entity's name, not the record's: the fiction is what the player was ever told about.
-        name=item.name,
+        name=item.name,  # roles see entity names, not record names
         to_hit=bonus + _proficiency_bonus(attacker.progression, profile.index, ruleset),
         damage=None if profile.damage is None else _plus(profile.damage, bonus),
     )
@@ -75,7 +61,6 @@ def _held_weapon(
 
 
 def _uses_dexterity(weapon: WeaponProfile, attacker: ActorEntity) -> bool:
-    """A ranged weapon has no choice; finesse gives the wielder one, so take the better score."""
     if weapon.ranged:
         return True
     if not weapon.finesse:
@@ -87,8 +72,6 @@ def _uses_dexterity(weapon: WeaponProfile, attacker: ActorEntity) -> bool:
 def _proficiency_bonus(
     progression: Progression | None, equipment: Slug, ruleset: CombatRules
 ) -> int:
-    """Zero unless one of the actor's proficiencies covers this weapon — and zero for anyone with no
-    progression at all, which is every actor the pack did not stat."""
     if progression is None:
         return 0
     if not ruleset.proficient(progression.origin, progression.proficiencies, equipment):

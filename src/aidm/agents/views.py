@@ -1,7 +1,3 @@
-"""Renderers for single context fragments. A `Scene` bucket in, a string out: the buckets
-answered every "can the player see this" question, and only `speaker` re-checks an id a role
-named for itself."""
-
 from collections.abc import Iterable, Sequence
 from typing import assert_never
 
@@ -34,13 +30,10 @@ from .context import Scene
 
 
 def label(e: Entity) -> str:
-    """Every entity is shown as `name[id=...]`, so any role can reference it by the id it must use.
-    A prose-only role ignores the bracket; a role that emits ids reads it off directly."""
     return f"{e.name}[id={e.id}]"
 
 
 def _placement(entity: Entity, scene: Scene) -> str:
-    """The suffix saying where a thing is."""
     match entity:
         case LocationEntity():
             return ""
@@ -66,14 +59,10 @@ def here(scene: Scene) -> str:
 
 
 def elsewhere(scene: Scene) -> str:
-    """Known entities away from here. The player's own location and items are named elsewhere in the
-    prompt, which is why the partition keeps them out of this bucket."""
     return briefs(scene.elsewhere, scene)
 
 
 def unrevealed(scene: Scene) -> str:
-    """Everything the player has not learned of — here with them, elsewhere, carried, or the very
-    room they stand in. All of it is a legal `discover` target, so none of it may be filtered."""
     return briefs(scene.unrevealed, scene)
 
 
@@ -82,11 +71,7 @@ def catalogue(scene: Scene) -> str:
 
 
 def statblocks(scene: Scene, content: Content) -> str:
-    """What the Director may act on for every actor standing here, and it alone — a typed slice,
-    never the record: a goblin is ~2,100 bytes pretty-printed and an adult red dragon ~6,100, which
-    would roughly double this role's whole input. Hit points are deliberately absent: `intent`
-    reaches the Narrator, so a number read here could be restated where the player would see it.
-    Conditions come from the entity, so an actor with no archetype behind it still shows them."""
+    """Omit exact HP so Director intent cannot leak it to the Narrator."""
     lines = [
         f"- {label(e)} — ac {e.stats.ac}{conditions(e.stats)}{_archetype(e.ref, content)}"
         for e in scene.here
@@ -96,14 +81,10 @@ def statblocks(scene: Scene, content: Content) -> str:
 
 
 def conditions(stats: StatBlock) -> str:
-    """A condition nobody can read is a condition nobody can lift, so every view of an actor —
-    the player's own sheet included — says which ones hold."""
     return f" — under {', '.join(stats.conditions)}" if stats.conditions else ""
 
 
 def _archetype(ref: ContentRef | None, content: Content) -> str:
-    """A miss is rendered, never skipped: a pack that lost a record must show in the trace. An
-    actor naming no record has no archetype to show, which is not a miss."""
     if ref is None:
         return ""
     record = content.get(ref, MonsterRecord)
@@ -113,9 +94,6 @@ def _archetype(ref: ContentRef | None, content: Content) -> str:
 
 
 def _moves(record: MonsterRecord) -> str:
-    """Only what the Director could turn into a consequence; a procedure it can only narrate is
-    left to the prose it already has. Legendary actions, reactions and traits carry to-hits, DCs
-    and damage of their own — a whole action economy the Director would otherwise never see."""
     groups = (
         ("", record.actions),
         ("legendary: ", record.legendary_actions),
@@ -130,8 +108,6 @@ def _moves(record: MonsterRecord) -> str:
 
 
 def _move(action: MonsterAction) -> str:
-    """Exhaustive, so a new action shape must answer whether the Director can act on it rather
-    than silently rendering as nothing."""
     when = f" [{action.usage}]" if action.usage is not None else ""
     hurts = f" ({_damage(action.damage)})" if action.damage else ""
     match action:
@@ -149,12 +125,7 @@ def _move(action: MonsterAction) -> str:
 
 
 def _defences(record: MonsterRecord) -> str:
-    """Resistances are what make a damage type worth choosing, and a condition immunity is the
-    difference between `apply_condition` landing and doing nothing — so the two are never merged:
-    `poison` is a damage type and `poisoned` a condition, and a role told "immune to poison,
-    poisoned" cannot tell which is which. Damage entries are upstream prose containing their own
-    commas ('bludgeoning, piercing, and slashing from nonmagical weapons'), so they are separated
-    by something prose does not contain."""
+    """Use slashes because upstream damage prose contains commas."""
     clauses = [
         f"{verb} {' / '.join(entries)}"
         for verb, entries in (
@@ -174,8 +145,6 @@ def _damage(rolls: Sequence[DamageRoll]) -> str:
 
 
 def _klass(progression: Progression, content: Content) -> str:
-    """The player's class line: names from the pack, numbers from the snapshot. Only what a role
-    could use — a proficiency list is applied by the rules, never chosen by the Director."""
     record = content.get(progression.origin.class_ref, ClassRecord)
     if isinstance(record, ContentMiss):
         return record.summary
@@ -194,12 +163,11 @@ def _klass(progression: Progression, content: Content) -> str:
 
 
 def character(scene: Scene, content: Content) -> str:
-    """The player's own sheet, and the one place exact hit points are shown."""
+    """Show exact HP only for the player."""
     player = scene.state.player
     stats = player.stats
     attributes = ", ".join(f"{k} {v}" for k, v in stats.attributes.model_dump().items())
-    # Sorted, not acquisition-ordered: order is a rendering concern, and a stable list keeps the
-    # prompt from churning as items are picked up.
+    # Stable ordering avoids prompt churn.
     inventory = (
         "\n".join(f"- {label(e)} — {e.brief}" for e in sorted(scene.carried, key=lambda e: e.name))
         or "- (none)"
@@ -219,7 +187,6 @@ def history(recent: Sequence[Exchange]) -> str:
 
 
 def speaker(scene: Scene, direction: Direction) -> str:
-    """Fail fast: a hidden, unknown, or absent speaker would put words in a stranger's mouth."""
     if direction.speaker_id is None:
         return "(none — narrate the scene)"
     entity = scene.canon.get(direction.speaker_id)

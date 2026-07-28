@@ -1,8 +1,3 @@
-"""The Director's closed, canon-referencing action vocabulary: the building blocks a turn's
-mechanics are assembled from. Each action documents and validates itself, independent of how they
-are grouped — which is why the vocabulary is its own module. Consequences form a recursive tree:
-`roll_check` nests the branches its outcome selects between."""
-
 from collections.abc import Iterator, Mapping, Sequence
 from dataclasses import dataclass
 from typing import Annotated, ClassVar, Literal, get_args
@@ -17,34 +12,18 @@ from .base import PLAYER_ID, EntityId
 
 @dataclass(frozen=True, slots=True)
 class References:
-    """Marks a field whose value is a canon id, and what that id must satisfy: a kind (`None`
-    accepts any, which only `discover` may do), and whether the entity must stand with the player.
-    Declaring it on the field is what keeps adding a consequence free of edits elsewhere."""
-
     kind: Kind | None
     present: bool = False
 
 
-# An id a consequence names, with what it must satisfy — the pair the Director validates against
-# the turn's canon.
 CanonRef = tuple[EntityId, References]
 
-# Dice to roll, or a flat number when nothing is left to chance. The roll is folded into the verb
-# that spends it, so no value ever has to flow between consequences; the sign lives in the verb too.
+# The consuming action owns the sign, so magnitudes stay non-negative.
 Magnitude = SelfContainedDice | Annotated[int, Field(ge=0, strict=True)]
-
-# Canon and improvised items are separate variants so the model cannot express a contradictory
-# pair. Every canon reference is an id: canonicalization (id -> name) is the resolver's job, never
-# the model's. Only items may be improvised — a place the player stands in must exist in canon.
 
 
 class Action(Frozen):
-    """One member of the vocabulary. `GUIDANCE` is deliberately *not* declared here: pyright
-    resolves an inherited ClassVar for every subclass, so declaring it would turn a member that
-    forgets its prompt text from a build error into a runtime one."""
-
     def check(self) -> str | None:
-        """The retry message when this action contradicts itself; `None` when it is well formed."""
         return None
 
 
@@ -113,7 +92,6 @@ Example: they hand the `vault_map` to Mara -> `give_item` with item_id `vault_ma
 class GainImprovisedItem(Action):
     """The player picks up a minor item that has no canon entry."""
 
-    # Resolution promotes this to a canon item so an inventory always holds real ids, not free text.
     GUIDANCE: ClassVar[str] = """Use only for incidental things no entity backs and none should \
 — not worth making canon. Write the item out as free text.
 Example: they scoop up loose gravel -> `gain_improvised_item` with item_name 'a handful of \
@@ -191,8 +169,7 @@ Mara walks off to the cloister -> `move` location_id `cloister`, actor_id `mara`
 
 
 class Attack(Action):
-    """One actor strikes at another with a weapon: the rules decide whether it lands, and for how
-    much."""
+    """Strike another actor; the rules determine the hit and damage."""
 
     GUIDANCE: ClassVar[str] = """Use for a deliberate blow — the player swinging, or someone here \
 swinging at them. Name the weapon exactly as you were shown it: one of the attacker's own attacks \
@@ -206,8 +183,6 @@ The player swings back -> `attack` with target_id `goblin`, weapon 'a notched lo
     weapon: str = Field(
         description="The attacker's own attack by name, or an item they carry, spelled as shown."
     )
-    # Both ends default to the player, as every other target does: no role is ever shown the
-    # player's id, so a required one would make "the goblin swings at you" inexpressible.
     target_id: Annotated[EntityId | None, References("actor", present=True)] = Field(
         default=None,
         description="Id of the `actor` struck at, here with the player; omit for them.",
@@ -223,9 +198,7 @@ The player swings back -> `attack` with target_id `goblin`, weapon 'a notched lo
 
 
 class DcRoll(Action):
-    """A d20 against a DC whose outcome selects between two nested plans. Both roll consequences
-    share this base, which is what keeps `branches()` a single `isinstance` for the whole
-    vocabulary — and what stops the two drifting apart in shape."""
+    """A d20 roll whose result selects one nested branch."""
 
     ability: Ability = Field(description=f"One of: {', '.join(ABILITIES)}.")
     dc: int = Field(description="5 easy, 10 moderate, 15 hard, 20 very hard.")
@@ -278,25 +251,19 @@ Consequence = Annotated[
     Field(discriminator="action"),
 ]
 
-# One source for the union's members, so the Director's menu and any future walker stay in step
-# with the type. `get_args` erases to `Any`, but the union guarantees these are the member classes.
 CONSEQUENCE_TYPES: tuple[type[Consequence], ...] = get_args(get_args(Consequence)[0])
 
-# `DcRoll` references "Consequence" before the alias exists; bind the forward ref now.
 RollCheck.model_rebuild()
 RollSave.model_rebuild()
 
 
 def branches(consequence: "Consequence") -> Mapping[str, Sequence["Consequence"]]:
-    """A consequence's nested plans, by the field holding each — named because the trace panel must
-    say which branch ran. This grows only when a new nesting shape appears, never per action."""
     if isinstance(consequence, DcRoll):
         return {"on_success": consequence.on_success, "on_failure": consequence.on_failure}
     return {}
 
 
 def flatten(consequences: Sequence["Consequence"]) -> Iterator["Consequence"]:
-    """Every consequence in the tree, each before its own branches."""
     for consequence in consequences:
         yield consequence
         for branch in branches(consequence).values():
@@ -304,15 +271,12 @@ def flatten(consequences: Sequence["Consequence"]) -> Iterator["Consequence"]:
 
 
 def _own_refs(consequence: "Consequence") -> Iterator[CanonRef]:
-    """The ids a consequence itself names, read off each field's `References` marker. A shape the
-    scan cannot read is a hard error, never a skipped field: this is the only feed for the
-    Director's id validation, so silently reading nothing would let it name anything."""
     for name, field in type(consequence).model_fields.items():
         marker = next((m for m in field.metadata if isinstance(m, References)), None)
         if marker is None:
             continue
         value: object = getattr(consequence, name)
-        if value is None:  # an omitted id names nobody: that is what "omit for the player" means
+        if value is None:
             continue
         if not isinstance(value, str):
             raise TypeError(
@@ -323,5 +287,4 @@ def _own_refs(consequence: "Consequence") -> Iterator[CanonRef]:
 
 
 def all_canon_refs(consequences: Sequence["Consequence"]) -> list[CanonRef]:
-    """Every canon ref in a consequence tree, branches included."""
     return [ref for consequence in flatten(consequences) for ref in _own_refs(consequence)]

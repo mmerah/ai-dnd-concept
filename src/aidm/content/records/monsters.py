@@ -1,5 +1,3 @@
-"""Monsters: the whole action economy, not just a to-hit and a damage die."""
-
 from typing import Annotated, Literal
 
 from pydantic import Field
@@ -9,7 +7,6 @@ from ...utils.models import EMPTY_FROZEN_MAP, Ability, Attributes, Frozen, Froze
 from ..vocabulary import ConditionName
 from .base import ContentRef, CreatureSize, DamageRoll, Record, Slug
 
-# One named action inside a multiattack routine, and how a save that lands is softened.
 AttackType = Literal["melee", "ranged", "ability", "magic"]
 SaveOutcome = Literal["none", "half"]
 RestType = Literal["short", "long"]
@@ -33,10 +30,7 @@ MonsterType = Literal[
 ]
 
 
-# Each arm renders itself, so a role's view of an action never has to match on the shape.
 class RechargeOnRoll(Frozen):
-    """ "Recharge 5-6": the action returns when this roll meets `min_value`."""
-
     kind: Literal["recharge_on_roll"] = "recharge_on_roll"
     dice: DiceExpr
     min_value: int = Field(ge=1)
@@ -54,9 +48,6 @@ class PerDay(Frozen):
 
 
 class AtWill(Frozen):
-    """Unlimited, and stated rather than absent: a spell cast at will is a different threat from one
-    whose limit upstream simply did not record."""
-
     kind: Literal["at_will"] = "at_will"
 
     def __str__(self) -> str:
@@ -71,13 +62,11 @@ class RechargeAfterRest(Frozen):
         return f"recharges on a {' or '.join(self.rest_types)} rest"
 
 
-# Without this a dragon's breath is unlimited, which is a different monster.
 Usage = Annotated[RechargeOnRoll | PerDay | RechargeAfterRest | AtWill, Field(discriminator="kind")]
 
 
 class MonsterActionBase(Frozen):
-    """`damage` sits here rather than on the attack arm because 10 traits deal damage with neither a
-    to-hit nor a save (a fire elemental's Fire Form), and dropping it would be a silent loss."""
+    """Damage is shared because some traits have neither an attack nor a save."""
 
     name: str
     desc: str
@@ -85,8 +74,6 @@ class MonsterActionBase(Frozen):
     damage: tuple[DamageRoll, ...] = ()
 
 
-# Discriminated rather than a bag of optionals, so `engine/` cannot mistake a missing to-hit bonus
-# for +0.
 class MonsterAttack(MonsterActionBase):
     kind: Literal["attack"] = "attack"
     attack_bonus: int
@@ -100,8 +87,6 @@ class MonsterSave(MonsterActionBase):
 
 
 class MultiattackStep(Frozen):
-    """One named action, repeated `count` times — exactly what `attack()` will iterate."""
-
     action_name: str
     count: int = Field(ge=1)
     attack_type: AttackType
@@ -118,16 +103,12 @@ class MultiattackOption(Frozen):
 
 
 class MonsterMultiattack(MonsterActionBase):
-    """A routine of other actions. One option is a fixed routine; several is a choice between them,
-    which is the only difference between upstream's `actions` and `action_options` shapes."""
-
     kind: Literal["multiattack"] = "multiattack"
     options: tuple[MultiattackOption, ...] = Field(min_length=1)
 
 
 class MonsterProcedure(MonsterActionBase):
-    """An action this build still does not project mechanics for — a shapeshift, a summons. Prose
-    here means *not yet typed*, not *untypeable*."""
+    """Keeps untyped procedures so importing a pack remains lossless."""
 
     kind: Literal["procedure"] = "procedure"
 
@@ -139,9 +120,6 @@ MonsterAction = Annotated[
 
 
 class MonsterSpell(Frozen):
-    """Upstream carries `{name, level, url}` and no `index`, so the ref is derived from the url —
-    the one place a reference has to be reconstructed rather than read."""
-
     ref: ContentRef
     name: str
     level: int = Field(ge=0, le=9)
@@ -159,8 +137,6 @@ class MonsterSpellcasting(Frozen):
 
 
 class Senses(Frozen):
-    """Distances in feet. `passive_perception` is a DC the Director rolls stealth against."""
-
     passive_perception: int
     darkvision: int | None = None
     blindsight: int | None = None
@@ -169,8 +145,7 @@ class Senses(Frozen):
 
 
 class Speed(Frozen):
-    """Distances in feet; a mode the monster lacks is absent, which is not the same as 0 (a ghost
-    walks at 0 and flies at 40)."""
+    """Uses `None` for absent modes because zero is meaningful."""
 
     walk: int | None = None
     fly: int | None = None
@@ -190,14 +165,12 @@ class MonsterRecord(Record):
     attributes: Attributes
     speed: Speed
     senses: Senses
-    # Free prose upstream ('bludgeoning, piercing, and slashing from nonmagical weapons'), and no
-    # consequence carries a damage type yet: opaque until one does.
+    # Opaque until consequences carry damage types.
     damage_resistances: tuple[str, ...] = ()
     damage_immunities: tuple[str, ...] = ()
     damage_vulnerabilities: tuple[str, ...] = ()
     condition_immunities: tuple[ConditionName, ...] = ()
     saving_throws: FrozenMap[Ability, int] = EMPTY_FROZEN_MAP
-    # Keyed by the index of a record in this pack's `skills`; the bonus is absolute, not a modifier.
     skills: FrozenMap[Slug, int] = EMPTY_FROZEN_MAP
     actions: tuple[MonsterAction, ...] = ()
     legendary_actions: tuple[MonsterAction, ...] = ()

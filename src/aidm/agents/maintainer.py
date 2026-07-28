@@ -1,5 +1,3 @@
-"""MAINTAINER — grows the scenario to cover whatever the Narrator invented."""
-
 from pydantic_ai import NativeOutput
 from pydantic_ai.messages import ModelMessage
 

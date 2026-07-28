@@ -1,13 +1,8 @@
-"""The entire context policy of the application: one builder per role, and the signature of each
-is the policy — a role's prompt cannot be built without the payload its stage carries. Each builder
-binds the turn's `Scene` once, and the buckets it reads are what that role may see."""
-
 from ..domain.models import Direction, GrowthRequest, Role
 from ..domain.reducer import render
 from . import views
 from .context import TurnContext
 
-# The roles that also receive play history as native messages; the Creator reads it as RECENT PLAY.
 NATIVE_HISTORY: frozenset[Role] = frozenset({"director", "narrator", "maintainer"})
 
 
@@ -33,7 +28,7 @@ def director_prompt(context: TurnContext) -> str:
 
 
 def narrator_prompt(context: TurnContext, direction: Direction) -> str:
-    """No unrevealed canon and no catalogue: the Narrator alone writes what the player reads."""
+    """Exclude unrevealed canon from the role that writes player prose."""
     scene = context.scene
     return _sections(
         _premise(context),
@@ -43,7 +38,7 @@ def narrator_prompt(context: TurnContext, direction: Direction) -> str:
         ("THE DIRECTOR'S PLAN — what was meant, not what happened", direction.intent),
         ("THE DIRECTOR ASKS FOR THIS TONE", direction.tone),
         ("SPEAKER", views.speaker(scene, direction)),
-        # Last of the three, because a resolved outcome overrules the plan that asked for it.
+        # Resolved events must override intent.
         ("WHAT HAPPENED", render(context.events)),
         ("PLAYER", context.prompt),
     )

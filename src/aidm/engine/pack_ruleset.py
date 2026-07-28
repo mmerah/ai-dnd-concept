@@ -1,13 +1,3 @@
-"""Compiling loaded packs into the ruleset the engine reads.
-
-The one module that knows both shapes, so storage-shaped questions are answered here and nowhere
-else: a level record is a cumulative total, a proficiency lists the equipment it covers, a monster
-carries four action lists. `engine/` sees only the profiles that come out.
-
-Derived, never authored. `scripts/srd/` stays the boundary that narrows upstream into records, and
-this reads those records; a third representation only risks drift if something writes it by hand.
-"""
-
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 
@@ -53,12 +43,8 @@ COVERS_NOTHING: frozenset[Slug] = frozenset()
 
 @dataclass(frozen=True, slots=True)
 class PackRuleset:
-    """A `Ruleset` over loaded packs. Conformance is structural, checked at `compile_ruleset`'s
-    return; nothing here is declared against the protocol twice."""
-
     content: Content
-    # Precomputed because each replaced a per-turn scan: what a proficiency covers, and which
-    # proficiencies restate a class's saving throws.
+    # Precomputed to avoid per-turn content scans.
     covers: Mapping[ContentRef, frozenset[Slug]]
     saves: frozenset[ContentRef]
 
@@ -74,8 +60,7 @@ class PackRuleset:
         )
 
     def level(self, origin: Origin, level: int) -> LevelProfile:
-        """A level record is a running total, so what this level *adds* is the diff with the one
-        before it — the subtraction that must happen exactly once, and happens here."""
+        """Convert cumulative level records into per-level deltas."""
         reached = self._class_level(origin.class_ref, level)
         before = self._class_level(origin.class_ref, level - 1) if level > 1 else None
         features = (*reached.features, *self._subclass_features(origin, level))
@@ -115,7 +100,6 @@ class PackRuleset:
     def _origin_choices(
         self, origin: Origin, klass: ClassRecord, traits: Sequence[TraitRecord]
     ) -> tuple[ProgressionChoice, ...]:
-        """A race's and a background's choices are made once, at level 1, along with the class's."""
         choices = list(klass.choices)
         if origin.race_ref is not None:
             choices += self.content.require(origin.race_ref, RaceRecord).choices
@@ -126,9 +110,7 @@ class PackRuleset:
     def _granted(
         self, origin: Origin, klass: ClassRecord, traits: Sequence[TraitRecord]
     ) -> tuple[Slug, ...]:
-        """Proficiencies a character has without choosing: the class's, the background's, a trait's.
-        Save proficiencies are dropped — a class states them twice upstream, and one fact in two
-        fields is one that can disagree with itself."""
+        """Drop duplicate save records because the class already declares saving throws."""
         granted = list(klass.proficiencies)
         if origin.background_ref is not None:
             background = self.content.require(origin.background_ref, BackgroundRecord)
@@ -138,8 +120,6 @@ class PackRuleset:
         return tuple(ref.index for ref in held if ref not in self.saves)
 
     def _traits(self, origin: Origin) -> tuple[TraitRecord, ...]:
-        """Every trait a race and its subrace grant. A subrace's are additional, never a
-        replacement."""
         granted: list[tuple[ContentRef, Slug]] = []
         if (race := origin.race_ref) is not None:
             granted += [(race, i) for i in self.content.require(race, RaceRecord).traits]
@@ -150,7 +130,6 @@ class PackRuleset:
         )
 
     def _racial(self, origin: Origin) -> dict[Ability, int]:
-        """A race's fixed bonuses, applied once to the sheet's base scores."""
         fixed: list[AbilityBonus] = []
         if origin.race_ref is not None:
             fixed += self.content.require(origin.race_ref, RaceRecord).ability_bonuses
@@ -162,8 +141,7 @@ class PackRuleset:
         return bonuses
 
     def _subclass_choice(self, class_ref: ContentRef, level: int) -> ProgressionChoice | None:
-        """Driven off the class: the feature announcing it (`martial-archetype`) carries only an
-        English sentence, so `ClassRecord.subclass` is the one machine-readable option set."""
+        """Read subclass options from the class because its feature contains only prose."""
         klass = self.content.require(class_ref, ClassRecord)
         if klass.subclass is None or klass.subclass.level != level:
             return None
@@ -180,8 +158,6 @@ class PackRuleset:
         )
 
     def _subclass_features(self, origin: Origin, level: int) -> tuple[Slug, ...]:
-        """A subclass grants features at a handful of levels only, so no record for this one is an
-        answer, not a miss — but a record that is not a subclass level is a broken pack."""
         if origin.subclass_ref is None:
             return ()
         ref = _level_ref(origin.subclass_ref, level)
@@ -197,9 +173,7 @@ class PackRuleset:
 
 
 def compile_ruleset(content: Content) -> Ruleset:
-    """Read the packs once, at load. Both indexes answer a question the engine asks every turn about
-    data frozen until the next level-up, and every class ladder is walked here so an unplayable
-    class is a startup failure rather than a dropped turn three levels into a campaign."""
+    """Precompute lookups and validate every class ladder at startup."""
     covers: dict[ContentRef, frozenset[Slug]] = {}
     saves: set[ContentRef] = set()
     classes: list[ContentRef] = []
@@ -210,7 +184,6 @@ def compile_ruleset(content: Content) -> Ruleset:
             saves.add(ref)
         elif isinstance(record, ClassRecord):
             classes.append(ref)
-    # The walk runs against the compiled ruleset, so it cannot join the scan above.
     compiled = PackRuleset(content=content, covers=covers, saves=frozenset(saves))
     for ref in classes:
         for level in range(1, MAX_LEVEL + 1):
@@ -219,16 +192,11 @@ def compile_ruleset(content: Content) -> Ruleset:
 
 
 def _level_ref(owner: ContentRef, level: int) -> ContentRef:
-    """A level record's index is its owner's plus the level, which is what makes reaching one a
-    lookup rather than a scan of all 290."""
     return owner.sibling("levels", f"{owner.index}-{level}")
 
 
 def _improvements(reached: ClassLevelRecord, held: int) -> int:
-    """What this level adds to a cumulative total. A total that *falls* is a defective ladder, never
-    a level that takes an improvement away — refused here, where the load-time walk of every class
-    reaches it, rather than quietly offering the player nothing. `scripts/srd/corrections.py` is
-    where a published defect is corrected; the SRD rogue was one."""
+    """Reject decreasing cumulative totals as defective content."""
     gained = reached.ability_score_bonuses - held
     if gained < 0:
         raise ValueError(
@@ -239,8 +207,7 @@ def _improvements(reached: ClassLevelRecord, held: int) -> int:
 
 
 def _stats(monster: MonsterRecord) -> StatBlock:
-    """Fixed hit points, not `hit_points_roll`: a rolled value is unrecomputable, so the same
-    scenario would load differently each time."""
+    """Use fixed HP so composing the same scenario is deterministic."""
     return StatBlock(
         attributes=monster.attributes,
         max_hp=monster.hit_points,
@@ -252,8 +219,7 @@ def _stats(monster: MonsterRecord) -> StatBlock:
 
 
 def _attacks(monster: MonsterRecord) -> tuple[AttackProfile, ...]:
-    """Every action carrying a to-hit, wherever in the economy it sits. A record's damage dice
-    already include its own modifier — the goblin's scimitar is `1d6+2` — so nothing is added."""
+    """Preserve damage modifiers already embedded in monster dice."""
     actions = (*monster.actions, *monster.legendary_actions, *monster.reactions)
     return tuple(
         AttackProfile(name=a.name, to_hit=a.attack_bonus, damage=_summed(a.damage))
@@ -263,6 +229,5 @@ def _attacks(monster: MonsterRecord) -> tuple[AttackProfile, ...]:
 
 
 def _summed(rolls: Sequence[DamageRoll]) -> dice.SelfContainedDice | None:
-    """Summed across damage types: nothing resists one yet, so keeping them apart would be a
-    distinction no rule could act on."""
+    """Combine damage types until a rule can distinguish them."""
     return " + ".join(roll.dice for roll in rolls) if rolls else None

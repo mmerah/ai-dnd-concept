@@ -1,5 +1,3 @@
-"""The only place that knows about the model provider, and the one builder every role shares."""
-
 from collections.abc import Callable, Sequence
 from functools import cache
 from types import NoneType
@@ -22,21 +20,20 @@ def _provider(name: ProviderName) -> OpenAIProvider:
 
 @cache
 def model(role: Role) -> OpenAIChatModel:
-    """Deferred so importing a role never needs an API key."""
+    """Defer provider setup so importing roles needs no API key."""
     conf = settings().roles.for_role(role)
     return OpenAIChatModel(conf.model, provider=_provider(conf.provider))
 
 
 def build_agent[Deps, Out](
-    name: Role,  # a Role literal makes a typo a type error and keys the config lookup
+    name: Role,
     *,
     output_type: OutputSpec[Out],
     instructions: str,
     deps_type: type[Deps] = NoneType,
     output_validators: Sequence[OutputValidatorFunc[Deps, Out]] = (),
 ) -> Callable[[], Agent[Deps, Out]]:
-    """One wiring of per-role `config.py` settings for every role. Returns a cached accessor, so
-    `role.agent()` keeps working, tests can `.override(model=...)`, and `model()` stays deferred."""
+    """Return a cached accessor so tests can override agents before first use."""
 
     @cache
     def agent() -> Agent[Deps, Out]:

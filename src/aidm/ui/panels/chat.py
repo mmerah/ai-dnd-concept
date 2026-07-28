@@ -1,5 +1,3 @@
-"""The chat panel: the player's prompts and the DM's narration, in order."""
-
 from nicegui import ui
 
 from ..session import Session

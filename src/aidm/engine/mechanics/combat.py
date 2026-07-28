@@ -1,5 +1,3 @@
-"""Attacks."""
-
 from ...domain.models import Attack, Event
 from .. import procedures
 from . import common, health
@@ -7,7 +5,7 @@ from .resolution import Resolution
 
 
 def attack(ctx: Resolution, consequence: Attack) -> list[Event]:
-    """A miss is still evidence, so the roll is emitted either way."""
+    """Emit the roll even on a miss because it is Narrator evidence."""
     attacker = ctx.target(consequence.attacker_id)
     target = ctx.target(consequence.target_id)
     if attacker.id == target.id:

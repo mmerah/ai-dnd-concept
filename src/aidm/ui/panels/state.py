@@ -1,5 +1,3 @@
-"""The state panel: the whole GameState as JSON, for inspection."""
-
 from nicegui import ui
 
 from ..session import Session

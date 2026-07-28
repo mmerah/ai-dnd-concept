@@ -1,5 +1,3 @@
-"""The role badges: which role is currently working this turn."""
-
 from nicegui import ui
 
 from ...domain.models import ROLES

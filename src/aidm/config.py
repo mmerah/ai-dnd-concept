@@ -1,8 +1,3 @@
-"""Runtime configuration, loaded once from .env. Paths are relative to the working directory.
-
-Per-role model, endpoint, retries, token budget and reasoning level all live here, so a role's
-cost and latency profile is read from one table rather than inferred from scattered constants."""
-
 from functools import cache
 from pathlib import Path
 from typing import Literal, Self, cast
@@ -17,17 +12,13 @@ ReasoningEffort = Literal["none", "minimal", "low", "medium", "high", "xhigh", "
 
 
 class ProviderConfig(BaseModel):
-    """An endpoint. Keys never live in this file; they arrive from .env."""
-
     model_config = ConfigDict(frozen=True)
 
     base_url: str
-    api_key: SecretStr  # keeps the key out of ValidationError reprs
+    api_key: SecretStr  # avoids exposing keys in validation errors
 
 
 class RoleConfig(BaseModel):
-    """Every knob is required: a role's cost and latency profile should be read, not inferred."""
-
     model_config = ConfigDict(frozen=True)
 
     provider: ProviderName
@@ -52,15 +43,14 @@ class Providers(BaseModel):
 _DEFAULT_ROLE = RoleConfig(
     provider="openrouter",
     model="openai/gpt-oss-120b",
-    retries=3,  # small models mis-name things; let them be corrected instead of failing the turn
+    retries=3,
     max_tokens=2048,
     reasoning_effort="medium",
 )
 
 
 class Roles(BaseModel):
-    """One field per `Role`. A nested model rather than a dict, because only nested models merge
-    with env overrides such as `ROLES__MAINTAINER__MODEL`."""
+    """Uses fields because nested models support partial environment overrides."""
 
     director: RoleConfig = _DEFAULT_ROLE
     narrator: RoleConfig = _DEFAULT_ROLE
@@ -68,8 +58,6 @@ class Roles(BaseModel):
     creator: RoleConfig = _DEFAULT_ROLE
 
     def for_role(self, role: Role) -> RoleConfig:
-        """A `Role` without a field must not silently inherit another's budget: `_keys_present`
-        calls this for every `Role`, so the `AttributeError` lands at startup."""
         return cast(RoleConfig, getattr(self, role))
 
 
@@ -78,7 +66,7 @@ class Settings(BaseSettings):
         env_file=".env",
         extra="ignore",
         env_nested_delimiter="__",
-        nested_model_default_partial_update=True,  # without this, an env override needs every field
+        nested_model_default_partial_update=True,
     )
 
     providers: Providers = Providers()
@@ -88,12 +76,11 @@ class Settings(BaseSettings):
     saves_dir: Path = Path("saves")
     scenarios_dir: Path = Path("scenarios")
     characters_dir: Path = Path("characters")
-    # An explicit ordered list, never a directory scan, so load order is deterministic.
+    # Explicit ordering keeps pack precedence deterministic.
     packs: list[Path] = [Path("packs") / "srd-2014"]
 
     @model_validator(mode="after")
     def _keys_present(self) -> Self:
-        """Fail at startup, not on the first turn, if a role points at a keyless endpoint."""
         for role in ROLES:
             name = self.roles.for_role(role).provider
             if not self.providers.for_name(name).api_key.get_secret_value():

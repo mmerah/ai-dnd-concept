@@ -1,6 +1,3 @@
-"""The Director's instruction template. The `{consequences}` token is filled by director.py,
-which assembles the consequence menu from the typed classes."""
-
 TEMPLATE = """You are the DIRECTOR of a tabletop RPG. You decide what SHOULD happen this turn \
 and lay out the mechanics. You never write prose for the player.
 

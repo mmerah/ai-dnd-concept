@@ -1,17 +1,14 @@
-"""Actors moving between locations."""
-
 from ...domain.models import ActorEntity, Event, LocationEntity, Move, Moved
 from . import common
 from .resolution import Resolution
 
 
 def move(ctx: Resolution, consequence: Move) -> list[Event]:
-    """Another actor's move must touch the player's location, so the summary never narrates
-    movement the player could not witness; arriving where the player is also reveals them."""
+    """Reject NPC movement the player could not witness."""
     dest = ctx.of_kind(consequence.location_id, LocationEntity)
     player = ctx.player
     actor_id = consequence.actor_id
-    if actor_id is None or actor_id == player.id:  # arriving somewhere hidden reveals it
+    if actor_id is None or actor_id == player.id:
         return [*common.reveal(dest), _moved(player, dest)]
     actor = ctx.of_kind(actor_id, ActorEntity)
     if actor.location_id != player.location_id and dest.id != player.location_id:

@@ -1,5 +1,3 @@
-"""Spells: the level, the save, and how the dice scale."""
-
 from typing import Literal
 
 from pydantic import Field
@@ -14,8 +12,6 @@ SpellSaveOutcome = Literal["none", "half", "other"]
 
 
 class SpellDamage(Frozen):
-    """`damage_type` is absent on the two records whose damage is not typed damage."""
-
     damage_type: DamageType | None = None
     at_slot_level: FrozenMap[int, DiceExpr] = EMPTY_FROZEN_MAP
     at_character_level: FrozenMap[int, DiceExpr] = EMPTY_FROZEN_MAP
@@ -38,5 +34,4 @@ class SpellRecord(Record):
     attack_type: SpellAttackType | None = None
     save: SpellSave | None = None
     damage: SpellDamage | None = None
-    # `MOD` is the caster's modifier: substituted at resolve time, never at load.
     heal_at_slot_level: FrozenMap[int, DiceExpr] = EMPTY_FROZEN_MAP

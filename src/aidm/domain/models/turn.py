@@ -1,5 +1,3 @@
-"""The record of one played turn — what the trace panel and the trace file both hold."""
-
 from pydantic import Field
 
 from ...utils.models import Frozen
@@ -17,6 +15,6 @@ class Turn(Frozen):
     narration: str
     growth: Growth
     created: list[Entity] = Field(default_factory=list)
-    rejected: list[RejectedGrowth] = Field(default_factory=list)  # growth refused, kept visible
+    rejected: list[RejectedGrowth] = Field(default_factory=list)
     state: GameState
-    prompts: dict[Role, str] = Field(default_factory=dict)  # exactly what each role was shown
+    prompts: dict[Role, str] = Field(default_factory=dict)

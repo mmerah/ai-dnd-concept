@@ -1,6 +1,3 @@
-"""The canonical record models, one module per family. The closed vocabularies they are typed by
-are reached through `content.vocabulary`, so each name has exactly one import path."""
-
 from .base import (
     Coin,
     CoinUnit,

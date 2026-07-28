@@ -1,5 +1,3 @@
-"""The context every mechanic resolves against."""
-
 from collections.abc import Sequence
 from dataclasses import dataclass, replace
 from random import Random
@@ -12,17 +10,11 @@ from ..ruleset import Ruleset
 
 @dataclass(frozen=True, slots=True)
 class Resolution:
-    """Everything a mechanic reads, so no slice threads `(state, rng, ruleset)` by hand.
-
-    The lookups are turn policy rather than entity lookup — "the player must have witnessed it"
-    — which is why they live here beside the rng and not on `WorldState`."""
-
     state: GameState
     rng: Random
     ruleset: Ruleset
 
     def then(self, events: Sequence[Event]) -> Self:
-        """The same context over the world those events produced."""
         return replace(self, state=apply(self.state, events))
 
     @property
@@ -36,16 +28,14 @@ class Resolution:
         return self.state.world.require_kind(entity_id, expected)
 
     def actor_here(self, entity_id: EntityId) -> ActorEntity:
-        """An actor the player is standing with; anyone else is off-screen, and what the player
-        never witnessed must not reach the Narrator."""
+        """Reject off-screen actors to preserve Narrator blindness."""
         actor = self.of_kind(entity_id, ActorEntity)
         if actor.location_id != self.player.location_id:
             raise ValueError(f"cannot affect {entity_id!r}: not at the player's location")
         return actor
 
     def target(self, entity_id: EntityId | None) -> ActorEntity:
-        """An omitted actor id is the player throughout the vocabulary — they are the one actor no
-        role is shown an id for."""
+        """Default to the player because roles never see the player ID."""
         return self.player if entity_id is None else self.actor_here(entity_id)
 
     def held(self, entity_id: EntityId, verb: str) -> ItemEntity:

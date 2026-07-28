@@ -1,5 +1,3 @@
-"""What every record shares, and the reference that addresses one."""
-
 from typing import Annotated, Literal
 
 from pydantic import Field
@@ -8,8 +6,6 @@ from ...utils.dice import DiceExpr
 from ...utils.models import Frozen
 from ..vocabulary import DamageType
 
-# The 22 collections this build projects. It is deliberately wider than the records that exist:
-# `Manifest.provides` can only declare a gap in a collection it can name.
 Collection = Literal[
     "monsters",
     "weapons",
@@ -37,15 +33,11 @@ Collection = Literal[
 
 Slug = Annotated[str, Field(pattern=r"^[a-z0-9-]+$", max_length=64)]
 
-# Shared by monsters and races: a body's bulk is one vocabulary whichever kind of creature has it.
 CreatureSize = Literal["Tiny", "Small", "Medium", "Large", "Huge", "Gargantuan"]
 
 
 class ContentRef(Frozen):
-    """Where a record lives. The 2014 pack alone holds 79 cross-collection `index` collisions —
-    `shield` is a Spell and an Equipment, `goblin` a Language and a Monster — so a record's identity
-    is this triple, never a slug. Naming the pack also makes implicit last-wins shadowing between
-    packs unrepresentable: two packs cannot claim one ref."""
+    """Uses a triple because indexes collide across collections and packs."""
 
     pack: Slug
     collection: Collection
@@ -55,15 +47,10 @@ class ContentRef(Frozen):
         return f"{self.pack}/{self.collection}/{self.index}"
 
     def sibling(self, collection: Collection, index: Slug) -> "ContentRef":
-        """A record addressed from this one. Every reference inside a pack is relative, because an
-        index alone says nothing about which pack wrote it."""
         return ContentRef(pack=self.pack, collection=collection, index=index)
 
 
 class Record(Frozen):
-    """What every record shares. Which collection holds a class is `registry.py`'s table, not a
-    ClassVar here: one table can be proved complete, 25 declarations cannot."""
-
     index: Slug
     name: str
 

@@ -1,5 +1,3 @@
-"""Hit points, and the one clamp damage and healing both go through."""
-
 from random import Random
 from typing import Literal
 
@@ -21,15 +19,11 @@ def heal(ctx: Resolution, consequence: Heal) -> list[Event]:
 def hp_events(
     ctx: Resolution, target_id: EntityId | None, amount: Magnitude, *, sign: Literal[1, -1]
 ) -> list[Event]:
-    """Shared with `combat`, so the clamp and the zero-delta rule cannot diverge between a blow
-    and a trap."""
     target = ctx.target(target_id)
     total, rolls = _magnitude(amount, ctx.rng)
-    # `with_hp_delta` stays the one clamp, here as much as in the reducer.
     after = target.stats.with_hp_delta(sign * total)
     delta = after.hp - target.stats.hp
     events: list[Event] = [*common.reveal(target), *rolls]
-    # A change the clamp swallows whole is not an event: no hit point moved, so none is reported.
     if delta == 0:
         return events
     changed = HpChanged(
@@ -39,9 +33,6 @@ def hp_events(
 
 
 def _magnitude(amount: Magnitude, rng: Random) -> tuple[int, list[Event]]:
-    """The roll is folded into the change that spends it: dice fall here, so the Narrator gets the
-    die as evidence with no value flowing between consequences. A constant carries no die however
-    it is written, so `4` and `'4'` reach the Narrator identically."""
     if isinstance(amount, int):
         return amount, []
     total, rolled = rules.roll_dice(amount, rng)

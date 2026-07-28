@@ -1,9 +1,3 @@
-"""The level-up panel: what the next level asks the player to decide.
-
-No LLM role takes part — a subclass is permanent identity, not a turn outcome. This renders the
-choices the application offers and submits the picks; `engine/` validates them and the reducer
-applies the events, so no rule lives here."""
-
 from nicegui import ui
 
 from ...content.records import ProgressionChoice
@@ -25,8 +19,6 @@ def progress_panel(session: Session) -> None:
         return
 
     level = current.level + 1
-    # The choices fail fast on a pack that cannot answer them, and this panel is redrawn every
-    # turn. Reported here, an unplayable class costs the level-up tab instead of the whole page.
     try:
         choices = session.app.pending_choices()
     except ValueError as exc:
@@ -37,8 +29,7 @@ def progress_panel(session: Session) -> None:
 
 
 def _selects(choice: ProgressionChoice) -> list[ui.select]:
-    """One select per pick rather than one multi-select per choice: an ability score improvement may
-    legitimately spend both picks on the same score, which a multi-select cannot say."""
+    """Use separate selects because a choice may repeat an option."""
     return [
         ui.select(
             options={option.key: option.label for option in choice.options},
@@ -49,14 +40,11 @@ def _selects(choice: ProgressionChoice) -> list[ui.select]:
 
 
 def _advance(session: Session, picks: dict[str, list[ui.select]]) -> None:
-    """Every fault is the engine's to name: an unanswered choice, a repeat, an option not on the
-    list. The UI reports what it is told and decides nothing."""
     decisions = {id: tuple(str(s.value) for s in selects) for id, selects in picks.items()}
     try:
         session.app.advance(decisions)
     except ValueError as exc:
         ui.notify(str(exc), type="negative", multi_line=True)
         return
-    # Level, hit points and attributes all moved, and the state panel is where they are shown.
     progress_panel.refresh()
     state_panel.refresh()

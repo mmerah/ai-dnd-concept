@@ -1,5 +1,3 @@
-"""The Creator's instructions: fills in one entity requested by the Maintainer."""
-
 INSTRUCTIONS = """You flesh out ONE new element of a tabletop RPG world. Stay consistent with the \
 scenario, with everything that already exists, and with the brief you are given. Contradict none \
 of them.

@@ -1,5 +1,3 @@
-"""Page layout and the two actions a player can take: submit a prompt, restart the game."""
-
 from nicegui import ui
 
 from . import panels
@@ -8,10 +6,8 @@ from .session import current_session
 
 
 def start() -> None:
-    current_session()  # build once here so a bad save fails loudly at startup, not per page load
-    ui.run(  # pyright: ignore[reportUnknownMemberType] — NiceGUI's signature is untyped
-        title="AI Dungeon Master", reload=False, show=False
-    )
+    current_session()  # fail on a bad save at startup
+    ui.run(title="AI Dungeon Master", reload=False, show=False)  # pyright: ignore[reportUnknownMemberType]
 
 
 @ui.page("/")

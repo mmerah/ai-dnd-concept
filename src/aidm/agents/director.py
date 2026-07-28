@@ -1,5 +1,3 @@
-"""DIRECTOR — owns world direction and the turn's mechanics."""
-
 from collections.abc import Sequence
 
 from pydantic_ai import ModelRetry, NativeOutput, RunContext
@@ -20,12 +18,11 @@ from .prompts.director import TEMPLATE
 
 
 def consequence_menu(types: Sequence[type[Consequence]]) -> str:
-    """Consequence reference assembled from each class's own docstring, `GUIDANCE`
-    and field descriptions — so adding a consequence updates the prompt with no edit here."""
+    """Build prompt guidance from structured action metadata."""
     lines: list[str] = []
     for consequence in types:
         action = consequence.model_fields["action"].default
-        if not isinstance(action, str):  # a discriminator that is not a literal string is a bug
+        if not isinstance(action, str):
             raise TypeError(f"{consequence.__name__} has no literal action default")
         fields = "\n".join(
             f"  - `{name}`: {field.description}"
@@ -40,24 +37,17 @@ INSTRUCTIONS = TEMPLATE.replace("{consequences}", consequence_menu(CONSEQUENCE_T
 
 
 def _elsewhere(entity: Entity, scene: Scene) -> bool:
-    """Only actors stand anywhere, and `present` marks actor fields alone — anything else has
-    already failed the kind check."""
     return isinstance(entity, ActorEntity) and not scene.is_here(entity)
 
 
 def _validate_ids(ctx: RunContext[Scene], direction: Direction) -> Direction:
-    """Every id the Director chose must exist in the turn's canon, as the right kind, and stand
-    where the field says it must; a speaker must also be one the player already knows. All faults
-    are retries, not errors: the model can pick again from what it was shown."""
+    """Retry invalid IDs before resolution can drop the turn."""
     refs = direction.canon_refs()
     if direction.speaker_id is not None:
-        # A speaker is addressed, so the same rule as any acted-on actor: here, and known below.
         refs.append((direction.speaker_id, References("actor", present=True)))
     scene = ctx.deps
     canon = scene.canon
 
-    # Each action's own invariant, before any canon lookup; branches included, because a nested
-    # give is still a give.
     for fault in (direction.check(), *(c.check() for c in flatten(direction.mechanics))):
         if fault is not None:
             raise ModelRetry(fault)
@@ -70,13 +60,8 @@ def _validate_ids(ctx: RunContext[Scene], direction: Direction) -> Direction:
         if need.kind is not None and canon[i].kind != need.kind
     ):
         raise ModelRetry(f"wrong kind of entity: {'; '.join(mismatched)}.")
-    # Acting on someone off-screen would narrate what the player never saw. A retry here, because
-    # the resolver's own guard would cost the player the whole turn.
     if absent := sorted({i for i, need in refs if need.present and _elsewhere(canon[i], scene)}):
         raise ModelRetry(f"not here with the player: {absent}. Move them here first, or act here.")
-    # A speaker the player has not met would put words in a stranger's mouth; catch it here rather
-    # than letting views.speaker hard-fail the turn downstream.
-    # `refs` carried the speaker through the `missing` check above, so it is in canon by here.
     if direction.speaker_id is not None and not canon[direction.speaker_id].known:
         raise ModelRetry(f"speaker {direction.speaker_id!r} exists but the player has not met them")
     return direction
@@ -94,6 +79,4 @@ agent = build_agent(
 async def direct(
     prompt: str, scene: Scene, message_history: list[ModelMessage] | None = None
 ) -> Direction:
-    """The `Scene` the prompt was built from is also what validates the ids it comes back with, so
-    the Director cannot be told one thing and checked against another."""
     return (await agent().run(prompt, deps=scene, message_history=message_history)).output

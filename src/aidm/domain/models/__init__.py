@@ -1,5 +1,3 @@
-"""The domain vocabulary. Grouped in submodules; imported flat as `from ..domain.models import`."""
-
 from ...utils.dice import DiceExpr
 from ...utils.models import ABILITIES, Ability, Attributes, Frozen, Kind, updated
 from .base import (
@@ -79,7 +77,7 @@ from .state import (
     WorldState,
 )
 from .stats import StatBlock, Wounds
-from .turn import Turn  # last: depends on .events, .direction, .state
+from .turn import Turn
 
 __all__ = [
     "ABILITIES",

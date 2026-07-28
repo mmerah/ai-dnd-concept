@@ -1,8 +1,3 @@
-"""The turn-loop orchestration behind the page: submit a prompt, restart, and refresh the panels.
-
-Every line here is presentation: read the box, call one application method, redraw, report. No rule,
-no persistence and no content lookup lives on this side of `session.app`."""
-
 from nicegui import ui
 
 from ..domain.models import Role
@@ -31,11 +26,11 @@ async def submit(box: ui.input) -> None:
     prompt = (box.value or "").strip()
     if not prompt or session.busy:
         return
-    session.busy = True  # no await since the check above, so this cannot interleave
+    session.busy = True  # no await above, so concurrent submissions cannot pass the guard
     box.value = ""
     try:
         await session.app.submit(prompt, on_step=_on_step)
-    except Exception as exc:  # the UI must not crash; the turn is dropped whole, never half-applied
+    except Exception as exc:  # keep a failed turn from crashing the UI
         ui.notify(f"{type(exc).__name__}: {exc}", type="negative", multi_line=True)
     finally:
         session.busy, session.step = False, None

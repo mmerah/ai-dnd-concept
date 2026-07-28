@@ -1,5 +1,3 @@
-"""NARRATOR — the only role that writes to the player. Sees typed events, never Director prose."""
-
 from pydantic_ai.messages import ModelMessage
 
 from .llm import build_agent

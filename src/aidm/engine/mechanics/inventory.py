@@ -1,5 +1,3 @@
-"""The four ways an item changes hands."""
-
 from ...domain.models import (
     DropItem,
     Entity,
@@ -42,14 +40,14 @@ def give(ctx: Resolution, consequence: GiveItem) -> list[Event]:
 
 
 def improvise(ctx: Resolution, consequence: GainImprovisedItem) -> list[Event]:
-    """An improvised item is promoted to canon first, so an inventory only ever holds real ids."""
+    """Promote improvised items so inventories contain only canon IDs."""
     player = ctx.player
     written = consequence.item_name
     item = ItemEntity(
         id=slug(written, ctx.state.world.entities.keys()),
         name=written,
-        brief=written,  # improvised: the brief is just the written-out name
-        container_id=player.location_id,  # created lying here, then picked up
+        brief=written,
+        container_id=player.location_id,
         known=True,
         authored=False,
     )

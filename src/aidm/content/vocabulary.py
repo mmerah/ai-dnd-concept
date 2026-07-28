@@ -1,9 +1,4 @@
-"""The closed vocabularies a record field is typed by.
-
-Each is a whole SRD collection whose records carry nothing but a name and rulebook prose, so the
-collection *is* its index set. Spelling them as `Literal`s rather than slugs is what stops a field
-naming a collection it was never checked against: `light` is a Spell *and* a Weapon-Property,
-`evocation` a Magic-School *and* a Subclass, so a bare slug says nothing about which was meant."""
+"""Closed vocabularies prevent ambiguous bare slugs across collections."""
 
 from typing import Literal, get_args
 
@@ -34,7 +29,6 @@ MagicSchool = Literal[
     "evocation",
 ]
 
-# `exhaustion` is a 6-level track upstream and a flag here; nothing reads a level yet.
 ConditionName = Literal[
     "blinded",
     "charmed",
@@ -104,8 +98,6 @@ WeaponProperty = Literal[
     "versatile",
 ]
 
-# Both the broad kinds and the shelves within them; it is also what the 24 `equipment_category`
-# choice nodes R7 flattens will point at.
 EquipmentCategory = Literal[
     "weapon",
     "armor",

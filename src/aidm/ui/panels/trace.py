@@ -1,5 +1,3 @@
-"""The trace panel: for each turn, what every role saw and produced. The point of the app."""
-
 from collections.abc import Sequence
 
 from nicegui import ui
@@ -26,9 +24,6 @@ def trace_panel(session: Session) -> None:
 
 
 def _mechanics(mechanics: Sequence[Consequence]) -> str:
-    """Render the consequence tree, indenting each branch under its parent. Branches are walked,
-    never dumped inline as opaque dicts."""
-
     def lines(items: Sequence[Consequence], depth: int) -> list[str]:
         out: list[str] = []
         for c in items:
