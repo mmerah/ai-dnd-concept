@@ -418,14 +418,15 @@ def test_the_directors_slice_is_the_mechanics_never_the_record() -> None:
     under = updated(gargoyle, stats=updated(gargoyle.stats, conditions=("prone",)))
     shown = views.statblocks(Scene.of(_with(state, under)), RULES)
     assert shown.endswith(
-        "- a crouching gargoyle[id=gargoyle] — ac 15 — under prone"
+        "- a crouching gargoyle[id=gargoyle] (npc) — hp 52/52 — ac 15 — under prone"
+        " — attributes strength 15, dexterity 11, constitution 16, intelligence 6,"
+        " wisdom 11, charisma 7"
+        " — immune to the conditions exhaustion, petrified, poisoned"
         " — Multiattack: Bite x1 + Claws x1; Bite +4 (1d6+2 piercing); Claws +4 (1d6+2 slashing)"
         " — resists bludgeoning, piercing, and slashing from nonmagical weapons"
         " that aren't adamantine"
         " — immune to poison"
-        " — immune to the conditions exhaustion, petrified, poisoned"
     )
-    assert "hp" not in shown  # `intent` reaches the Narrator
 
 
 def test_a_condition_is_shown_on_anyone_who_holds_one() -> None:
@@ -435,7 +436,7 @@ def test_a_condition_is_shown_on_anyone_who_holds_one() -> None:
     mara = state.world.entities[EntityId("mara")]
     assert isinstance(mara, ActorEntity)
     blinded = updated(mara, stats=updated(mara.stats, conditions=("blinded",)))
-    assert "Mara[id=mara] — ac 10 — under blinded" in views.statblocks(
+    assert "Mara[id=mara] (npc) — hp 4/4 — ac 10 — under blinded" in views.statblocks(
         Scene.of(_with(state, blinded)), RULES
     )
     player = updated(state.player, stats=updated(state.player.stats, conditions=("prone",)))

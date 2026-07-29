@@ -14,7 +14,7 @@ from ..content.records.monsters import (
 from ..domain.models.base import PLAYER_ID
 from ..domain.models.direction import Direction
 from ..domain.models.entities import ActorEntity, Entity, GrowthRequest, ItemEntity, LocationEntity
-from ..domain.models.progression import Progression
+from ..domain.models.progression import MAX_LEVEL, Progression
 from ..domain.models.state import Exchange
 from ..domain.models.stats import StatBlock
 from ..engine.ruleset import NarrativeRules
@@ -23,6 +23,10 @@ from .context import Scene
 
 def label(e: Entity) -> str:
     return f"{e.name}[id={e.id}]"
+
+
+def _kind(entity: Entity) -> str:
+    return "npc" if isinstance(entity, ActorEntity) else entity.kind
 
 
 def _placement(entity: Entity, scene: Scene) -> str:
@@ -41,7 +45,9 @@ def _placement(entity: Entity, scene: Scene) -> str:
 
 def briefs(items: Iterable[Entity], scene: Scene) -> str:
     return (
-        "\n".join(f"- {label(e)} — {e.kind}{_placement(e, scene)} — {e.brief}" for e in items)
+        "\n".join(
+            f"- {label(e)} ({_kind(e)}){_placement(e, scene)} — {e.brief}" for e in items
+        )
         or "- (none)"
     )
 
@@ -63,13 +69,32 @@ def catalogue(scene: Scene) -> str:
 
 
 def statblocks(scene: Scene, rules: NarrativeRules) -> str:
-    """Omit exact HP so Director intent cannot leak it to the Narrator."""
     lines = [
-        f"- {label(e)} — ac {e.stats.ac}{conditions(e.stats)}{_archetype(e.ref, rules)}"
+        f"- {label(e)} (npc) — {_statline(e.stats)}{_archetype(e.ref, rules)}"
         for e in scene.here
         if isinstance(e, ActorEntity)
     ]
     return "\n".join(lines) or "- (none)"
+
+
+def _attributes(stats: StatBlock) -> str:
+    return ", ".join(f"{name} {score}" for name, score in stats.attributes.model_dump().items())
+
+
+def _statline(stats: StatBlock) -> str:
+    saving_throws = ", ".join(
+        f"{ability} {bonus:+d}" for ability, bonus in stats.saving_throws.items()
+    )
+    saves = f" — saves {saving_throws}" if stats.saving_throws else ""
+    immunities = (
+        f" — immune to the conditions {', '.join(stats.condition_immunities)}"
+        if stats.condition_immunities
+        else ""
+    )
+    return (
+        f"hp {stats.hp}/{stats.max_hp} — ac {stats.ac}{conditions(stats)}"
+        f" — attributes {_attributes(stats)}{saves}{immunities}"
+    )
 
 
 def conditions(stats: StatBlock) -> str:
@@ -127,8 +152,6 @@ def _defences(record: MonsterRecord) -> str:
         )
         if entries
     ]
-    if record.condition_immunities:
-        clauses.append(f"immune to the conditions {', '.join(record.condition_immunities)}")
     return "".join(f" — {clause}" for clause in clauses)
 
 
@@ -155,10 +178,8 @@ def _klass(progression: Progression, rules: NarrativeRules) -> str:
 
 
 def character(scene: Scene, rules: NarrativeRules) -> str:
-    """Show exact HP only for the player."""
     player = scene.state.player
     stats = player.stats
-    attributes = ", ".join(f"{k} {v}" for k, v in stats.attributes.model_dump().items())
     # Stable ordering avoids prompt churn.
     inventory = (
         "\n".join(f"- {label(e)} — {e.brief}" for e in sorted(scene.carried, key=lambda e: e.name))
@@ -168,10 +189,23 @@ def character(scene: Scene, rules: NarrativeRules) -> str:
         f"{player.name} — hp {stats.hp}/{stats.max_hp} — ac {stats.ac}"
         f"{conditions(stats)} — at {label(scene.where)}",
         *([] if player.progression is None else [_klass(player.progression, rules)]),
-        f"attributes: {attributes}",
+        f"attributes: {_attributes(stats)}",
         f"inventory:\n{inventory}",
     ]
     return "\n".join(lines)
+
+
+def level_up_status(scene: Scene) -> str:
+    current = scene.state.player.progression
+    if current is None:
+        return "unavailable — the player has no class"
+    if current.level >= MAX_LEVEL:
+        return f"unavailable — level {MAX_LEVEL} is the maximum"
+    if current.level_up_available:
+        return "already awarded — waiting for the player to complete it in the level-up UI"
+    return (
+        "not awarded — `level_up` unlocks the player's level-up UI when their achievements earn it"
+    )
 
 
 def history(recent: Sequence[Exchange]) -> str:
@@ -191,4 +225,5 @@ def speaker(scene: Scene, direction: Direction) -> str:
 
 def request(item: GrowthRequest) -> str:
     where = f"\nlocation: {item.location}" if item.location else ""
-    return f"a {item.kind} named {item.name}\nbrief: {item.brief}{where}"
+    kind = "an npc" if item.kind == "actor" else f"a {item.kind}"
+    return f"{kind} named {item.name}\nbrief: {item.brief}{where}"

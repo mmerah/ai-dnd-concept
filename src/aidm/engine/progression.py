@@ -11,7 +11,7 @@ from ..content.records.character import (
     RecordOption,
 )
 from ..domain.models.entities import ActorEntity
-from ..domain.models.events import Event, LeveledUp
+from ..domain.models.events import Event, LeveledUp, LevelUpAvailable
 from ..domain.models.progression import MAX_LEVEL, Advancement, Decisions, Origin, Progression
 from ..domain.models.state import CharacterSheet
 from ..utils.models import ABILITIES, Ability, Attributes, Slug, updated
@@ -25,6 +25,15 @@ MAX_ABILITY_SCORE = 20
 class Pick:
     choice: ProgressionChoice
     option: ChoiceOption
+
+
+def offer(actor: ActorEntity) -> list[Event]:
+    current = actor.progression
+    if current is None:
+        raise ValueError(f"{actor.id!r} has no progression to advance")
+    if current.level >= MAX_LEVEL:
+        raise ValueError(f"already at level {MAX_LEVEL}")
+    return [] if current.level_up_available else [LevelUpAvailable()]
 
 
 def pending(origin: Origin, level: int, ruleset: ProgressionRules) -> list[ProgressionChoice]:
@@ -79,6 +88,7 @@ def advance(
         current,
         origin=_with_subclass(origin, picks),
         level=level,
+        level_up_available=False,
         prof_bonus=reached.prof_bonus,
         proficiencies=_proficiencies(current.proficiencies, picks),
         spell_slots=reached.spell_slots,

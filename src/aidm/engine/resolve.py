@@ -12,6 +12,7 @@ from ..domain.models.consequences import (
     GainImprovisedItem,
     GiveItem,
     Heal,
+    LevelUp,
     Move,
     RollCheck,
     RollSave,
@@ -19,7 +20,7 @@ from ..domain.models.consequences import (
 )
 from ..domain.models.events import DcRolled, Event
 from ..domain.models.state import GameState
-from . import rules
+from . import progression, rules
 from .mechanics import combat, common, conditions, health, inventory, movement
 from .mechanics.resolution import Resolution
 from .ruleset import Ruleset
@@ -51,6 +52,8 @@ def _walk(ctx: Resolution, consequence: Consequence) -> list[Event]:
             return _branched(ctx, consequence, common.reveal(target), rolled)
         case Attack():
             return combat.attack(ctx, consequence)
+        case LevelUp():
+            return progression.offer(ctx.player)
         case Damage():
             return health.damage(ctx, consequence)
         case Heal():

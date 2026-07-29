@@ -143,6 +143,14 @@ class EntityCreated(Frozen):
         return f"new {self.entity.kind}: {self.entity.name}"
 
 
+class LevelUpAvailable(Frozen):
+    type: Literal["level_up_available"] = "level_up_available"
+
+    @property
+    def summary(self) -> str:
+        return "a level-up is available to the player"
+
+
 class LeveledUp(Frozen):
     type: Literal["leveled_up"] = "leveled_up"
     advancement: Advancement
@@ -162,6 +170,7 @@ Event = Annotated[
     | Moved
     | EntityDiscovered
     | EntityCreated
+    | LevelUpAvailable
     | LeveledUp,
     Field(discriminator="type"),
 ]

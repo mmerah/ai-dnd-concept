@@ -21,6 +21,7 @@ class Origin(Frozen):
 class Progression(Frozen):
     origin: Origin
     level: int = Field(ge=1, le=MAX_LEVEL)
+    level_up_available: bool = False
     prof_bonus: int = Field(ge=2)
     saving_throws: tuple[Ability, ...]
     proficiencies: tuple[Slug, ...]
@@ -31,6 +32,8 @@ class Progression(Frozen):
     def _no_repeated_proficiency(self) -> Self:
         if len(set(self.proficiencies)) != len(self.proficiencies):
             raise ValueError(f"proficiency held twice: {sorted(self.proficiencies)}")
+        if self.level_up_available and self.level >= MAX_LEVEL:
+            raise ValueError(f"level {MAX_LEVEL} cannot have another level-up available")
         return self
 
 

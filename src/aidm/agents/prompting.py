@@ -18,6 +18,7 @@ def director_prompt(context: TurnContext) -> str:
     return _sections(
         _premise(context),
         ("CHARACTER", views.character(scene, rules)),
+        ("LEVEL-UP STATUS", views.level_up_status(scene)),
         ("HERE WITH THE PLAYER", views.here(scene)),
         ("STAT BLOCKS OF WHO IS HERE", views.statblocks(scene, rules)),
         ("KNOWN TO THE PLAYER, BUT ELSEWHERE", views.elsewhere(scene)),

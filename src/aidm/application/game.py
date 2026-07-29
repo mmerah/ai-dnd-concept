@@ -51,11 +51,14 @@ class GameApplication:
 
     def pending_choices(self) -> list[ProgressionChoice]:
         current = self.state.player.progression
-        if current is None or current.level >= MAX_LEVEL:
+        if current is None or not current.level_up_available or current.level >= MAX_LEVEL:
             return []
         return progression.pending(current.origin, current.level + 1, self.ruleset)
 
     def advance(self, decisions: Decisions) -> None:
+        current = self.state.player.progression
+        if current is None or not current.level_up_available:
+            raise ValueError("no level-up has been awarded")
         self._record(progression.advance(self.state.player, decisions, self.ruleset, self.rng))
 
     def restart(self) -> None:

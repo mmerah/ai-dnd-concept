@@ -7,7 +7,7 @@ import pytest
 from pydantic_ai import UnexpectedModelBehavior
 from pydantic_ai.messages import ModelMessage, ModelRequest, ModelResponse
 from pydantic_ai.models.function import AgentInfo
-from support import OPTIONS, BareRules, structured, stubs, text
+from support import OPTIONS, BareRules, new_game, ruleset, structured, stubs, text
 
 from aidm.agents.context import Scene
 from aidm.agents.history import exchanges_to_messages
@@ -293,6 +293,34 @@ async def test_moving_to_hidden_canon_reveals_it_end_to_end(state: GameState) ->
     assert turn.state.player.location_id == "vault"
     assert known_ids(turn.state) == {"study", "vault", "mara", "lantern"}
     assert turn.created == []
+
+
+async def test_the_director_can_level_up_during_a_turn() -> None:
+    game = new_game()
+    mechanics: list[dict[str, object]] = [{"action": "level_up"}]
+    with ExitStack() as stack:
+        stubs(
+            stack,
+            director=structured(
+                intent="Kael's victory marks a new stage in his training.",
+                tone="triumphant",
+                mechanics=mechanics,
+            ),
+            narrator=text("Hard-won confidence settles into practiced instinct."),
+            maintainer=structured(requests=[]),
+        )
+        turn = await run_turn(
+            game,
+            "I return after sealing the vault.",
+            rng=Random(1),
+            ruleset=ruleset(),
+            options=OPTIONS,
+        )
+
+    assert [event.type for event in turn.events] == ["level_up_available"]
+    current = turn.state.player.progression
+    assert current is not None and current.level == 1
+    assert current.level_up_available
 
 
 def test_exchanges_become_alternating_messages() -> None:

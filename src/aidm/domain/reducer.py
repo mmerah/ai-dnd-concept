@@ -15,6 +15,7 @@ from .models.events import (
     HpChanged,
     ItemMoved,
     LeveledUp,
+    LevelUpAvailable,
     Moved,
 )
 from .models.progression import Advancement
@@ -58,6 +59,15 @@ def _apply_one(state: GameState, event: Event) -> GameState:
             return _move_actor(state, actor_id, location_id)
         case EntityDiscovered(entity_id=entity_id):
             return _replacing(state, updated(world.require(entity_id), known=True))
+        case LevelUpAvailable():
+            player = state.player
+            progression = player.progression
+            if progression is None:
+                raise ValueError("the player has no progression to unlock")
+            return _replacing(
+                state,
+                updated(player, progression=updated(progression, level_up_available=True)),
+            )
         case LeveledUp(advancement=advancement):
             return _grown(state, advancement)
         case EntityCreated(entity=entity):

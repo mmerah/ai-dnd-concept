@@ -10,10 +10,12 @@ from random import Random
 import pytest
 from support import new_game, ruleset, sheet
 
+from aidm.agents import views
+from aidm.agents.context import Scene
 from aidm.content.records.base import ContentRef
 from aidm.content.records.character import BonusOption, ProgressionChoice
 from aidm.domain.models.base import PLAYER_ID, EntityId
-from aidm.domain.models.consequences import Attack, Damage, RollSave
+from aidm.domain.models.consequences import Attack, Damage, LevelUp, RollSave
 from aidm.domain.models.entities import ActorEntity, ItemEntity
 from aidm.domain.models.events import LeveledUp
 from aidm.domain.models.progression import (
@@ -208,6 +210,32 @@ def test_levelling_rolls_the_hit_die_where_the_trace_can_see_it() -> None:
     after = apply(state, [rolled, gained]).player
     assert after.stats.max_hp - state.player.stats.max_hp == gained.advancement.hp_gain
     assert after.stats.hp == after.stats.max_hp
+
+
+def test_the_directors_level_up_consequence_unlocks_the_players_level_up() -> None:
+    state = new_game("whispering_vault")
+    events = resolve([LevelUp()], state, Random(1), RULES)
+    assert [event.type for event in events] == ["level_up_available"]
+    offered = apply(state, events)
+    assert offered.player.progression is not None
+    assert offered.player.progression.level == 1
+    assert offered.player.progression.level_up_available
+    assert resolve([LevelUp()], offered, Random(1), RULES) == []
+
+
+def test_the_player_answers_choices_after_the_director_awards_a_level() -> None:
+    state = levelled(new_game("whispering_vault"), 2)
+    assert "not awarded" in views.level_up_status(Scene.of(state))
+    state = apply(state, resolve([LevelUp()], state, Random(1), RULES))
+    assert "waiting for the player" in views.level_up_status(Scene.of(state))
+
+    decisions = first_of(state, 3)
+    events = progression.advance(state.player, decisions, RULES, Random(1))
+    after = apply(state, events).player
+    assert after.progression is not None
+    assert after.progression.level == 3
+    assert after.progression.origin.subclass_ref == ref("subclasses", "champion")
+    assert not after.progression.level_up_available
 
 
 def armed(state: GameState) -> GameState:

@@ -17,6 +17,9 @@ def progress_panel(session: Session) -> None:
     if current.level >= MAX_LEVEL:
         ui.label(f"Level {MAX_LEVEL} is the last.").classes("opacity-60")
         return
+    if not current.level_up_available:
+        ui.label("No level-up has been awarded yet. Keep playing.").classes("opacity-60")
+        return
 
     level = current.level + 1
     try:

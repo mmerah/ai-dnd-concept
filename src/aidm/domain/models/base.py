@@ -9,7 +9,7 @@ EntityId = NewType("EntityId", str)
 PLAYER_ID = EntityId("player")
 
 ROLES: tuple[Role, ...] = get_args(Role)
-SAVE_VERSION = 12
+SAVE_VERSION = 13
 
 
 def slug(name: str, taken: Iterable[EntityId]) -> EntityId:

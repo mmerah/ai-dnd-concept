@@ -101,6 +101,16 @@ gravel'."""
     item_name: str = Field(description="The item written out, e.g. 'a rusty spoon'.")
 
 
+class LevelUp(Action):
+    """Unlock the player's next level-up."""
+
+    GUIDANCE: ClassVar[str] = """Use once when the player's achievements earn a new level. This \
+unlocks the level-up UI where the player makes any character choices; it does not choose or apply \
+the level itself. Do not use it while LEVEL-UP STATUS says an award is already waiting."""
+
+    action: Literal["level_up"] = "level_up"
+
+
 class Damage(Action):
     """Reduce an actor's hit points by dice you roll, or by a flat amount."""
 
@@ -241,6 +251,7 @@ Consequence = Annotated[
     | DropItem
     | GiveItem
     | GainImprovisedItem
+    | LevelUp
     | Damage
     | Heal
     | ApplyCondition

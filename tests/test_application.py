@@ -117,10 +117,18 @@ def test_a_level_is_durable_without_a_turn_and_a_restart_discards_both() -> None
     saves, traces = MemorySaves(), MemoryTraces()
     app = application(saves, traces)
     traces.append(SLUG, _traced(app.state))
+    with pytest.raises(ValueError, match="no level-up has been awarded"):
+        app.advance({})
+    player = app.state.player
+    assert player.progression is not None
+    available = updated(player.progression, level_up_available=True)
+    player = updated(player, progression=available)
+    app.state = updated(app.state, world=app.state.world.replacing(player))
     app.advance({})  # a fighter's second level asks nothing
 
     advanced = app.state.player.progression
     assert advanced is not None and advanced.level == 2
+    assert not advanced.level_up_available
     assert saves.saved[SLUG] == app.state and traces.written  # durable, and no trace of its own
 
     app.restart()

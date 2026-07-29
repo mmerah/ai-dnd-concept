@@ -1,6 +1,7 @@
 from nicegui import ui
 
 from ..domain.models.base import Role
+from ..domain.models.events import LevelUpAvailable
 from .panels.chat import chat
 from .panels.progress import progress_panel
 from .panels.roles import role_badges
@@ -33,7 +34,9 @@ async def submit(box: ui.input) -> None:
     session.busy = True  # no await above, so concurrent submissions cannot pass the guard
     box.value = ""
     try:
-        await session.app.submit(prompt, on_step=_on_step)
+        turn = await session.app.submit(prompt, on_step=_on_step)
+        if any(isinstance(event, LevelUpAvailable) for event in turn.events):
+            ui.notify("Level-up unlocked. Open the Level Up tab to choose your advancement.")
     except Exception as exc:  # keep a failed turn from crashing the UI
         ui.notify(f"{type(exc).__name__}: {exc}", type="negative", multi_line=True)
     finally:
