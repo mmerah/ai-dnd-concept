@@ -2,7 +2,6 @@ from collections.abc import Iterable, Sequence
 from typing import assert_never
 
 from ..content import (
-    Content,
     ContentMiss,
     ContentRef,
     DamageRoll,
@@ -13,7 +12,6 @@ from ..content import (
     MonsterRecord,
     MonsterSave,
 )
-from ..content.records import ClassRecord
 from ..domain.models import (
     PLAYER_ID,
     ActorEntity,
@@ -26,6 +24,7 @@ from ..domain.models import (
     Progression,
     StatBlock,
 )
+from ..engine.ruleset import NarrativeRules
 from .context import Scene
 
 
@@ -70,10 +69,10 @@ def catalogue(scene: Scene) -> str:
     return briefs(scene.shown, scene)
 
 
-def statblocks(scene: Scene, content: Content) -> str:
+def statblocks(scene: Scene, rules: NarrativeRules) -> str:
     """Omit exact HP so Director intent cannot leak it to the Narrator."""
     lines = [
-        f"- {label(e)} — ac {e.stats.ac}{conditions(e.stats)}{_archetype(e.ref, content)}"
+        f"- {label(e)} — ac {e.stats.ac}{conditions(e.stats)}{_archetype(e.ref, rules)}"
         for e in scene.here
         if isinstance(e, ActorEntity)
     ]
@@ -84,10 +83,10 @@ def conditions(stats: StatBlock) -> str:
     return f" — under {', '.join(stats.conditions)}" if stats.conditions else ""
 
 
-def _archetype(ref: ContentRef | None, content: Content) -> str:
+def _archetype(ref: ContentRef | None, rules: NarrativeRules) -> str:
     if ref is None:
         return ""
-    record = content.get(ref, MonsterRecord)
+    record = rules.monster(ref)
     if isinstance(record, ContentMiss):
         return f" — {record.summary}"
     return f"{_moves(record)}{_defences(record)}"
@@ -144,8 +143,8 @@ def _damage(rolls: Sequence[DamageRoll]) -> str:
     return ", ".join(f"{roll.dice} {roll.damage_type}" for roll in rolls)
 
 
-def _klass(progression: Progression, content: Content) -> str:
-    record = content.get(progression.origin.class_ref, ClassRecord)
+def _klass(progression: Progression, rules: NarrativeRules) -> str:
+    record = rules.klass(progression.origin.class_ref)
     if isinstance(record, ContentMiss):
         return record.summary
     subclass = progression.origin.subclass_ref
@@ -162,7 +161,7 @@ def _klass(progression: Progression, content: Content) -> str:
     return " — ".join(parts)
 
 
-def character(scene: Scene, content: Content) -> str:
+def character(scene: Scene, rules: NarrativeRules) -> str:
     """Show exact HP only for the player."""
     player = scene.state.player
     stats = player.stats
@@ -175,7 +174,7 @@ def character(scene: Scene, content: Content) -> str:
     lines = [
         f"{player.name} — hp {stats.hp}/{stats.max_hp} — ac {stats.ac}"
         f"{conditions(stats)} — at {label(scene.where)}",
-        *([] if player.progression is None else [_klass(player.progression, content)]),
+        *([] if player.progression is None else [_klass(player.progression, rules)]),
         f"attributes: {attributes}",
         f"inventory:\n{inventory}",
     ]

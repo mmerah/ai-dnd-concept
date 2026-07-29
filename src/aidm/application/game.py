@@ -2,7 +2,6 @@ from collections.abc import Callable, Sequence
 from dataclasses import dataclass, field
 from random import Random
 
-from ..content import Content
 from ..content.records import ProgressionChoice
 from ..domain.models import (
     MAX_LEVEL,
@@ -26,7 +25,6 @@ class GameApplication:
     slug: str
     scenario: ScenarioDef
     sheet: CharacterSheet
-    content: Content
     ruleset: Ruleset
     saves: SaveRepository
     traces: TraceSink
@@ -37,7 +35,7 @@ class GameApplication:
 
     def __post_init__(self) -> None:
         saved = self.saves.load(self.slug)
-        stamps = self.content.stamps
+        stamps = self.ruleset.stamps
         self.state = self._begun() if saved is None else campaign.resumable(saved, stamps)
 
     async def submit(self, prompt: str, on_step: Callable[[Role], None] | None = None) -> Turn:
@@ -46,7 +44,6 @@ class GameApplication:
             self.state,
             prompt,
             on_step,
-            content=self.content,
             ruleset=self.ruleset,
             options=self.options,
             rng=self.rng,
@@ -74,7 +71,7 @@ class GameApplication:
         self.saves.save(self.slug, self.state)
 
     def _begun(self) -> GameState:
-        return campaign.begin(self.scenario, self.sheet, self.ruleset, self.content.stamps)
+        return campaign.begin(self.scenario, self.sheet, self.ruleset)
 
     def _record(self, events: Sequence[Event]) -> None:
         self.state = apply(self.state, events)

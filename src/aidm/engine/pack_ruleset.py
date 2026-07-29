@@ -7,6 +7,7 @@ from ..content import (
     ContentRef,
     MonsterAttack,
     MonsterRecord,
+    PackStamp,
 )
 from ..content.records import (
     AbilityBonus,
@@ -20,7 +21,6 @@ from ..content.records import (
     RaceRecord,
     RecordOption,
     SaveProficiency,
-    Slug,
     SubclassLevelRecord,
     SubclassRecord,
     SubraceRecord,
@@ -29,6 +29,7 @@ from ..content.records import (
 )
 from ..domain.models import MAX_LEVEL, Ability, Origin, StatBlock
 from ..utils import dice
+from ..utils.models import Slug
 from .ruleset import (
     ArchetypeProfile,
     AttackProfile,
@@ -47,6 +48,10 @@ class PackRuleset:
     # Precomputed to avoid per-turn content scans.
     covers: Mapping[ContentRef, frozenset[Slug]]
     saves: frozenset[ContentRef]
+
+    @property
+    def stamps(self) -> Sequence[PackStamp]:
+        return self.content.stamps
 
     def character(self, origin: Origin) -> CharacterProfile:
         klass = self.content.require(origin.class_ref, ClassRecord)
@@ -89,6 +94,12 @@ class PackRuleset:
             ranged=record.weapon_range == "Ranged",
             finesse="finesse" in record.properties,
         )
+
+    def monster(self, ref: ContentRef) -> MonsterRecord | ContentMiss:
+        return self.content.get(ref, MonsterRecord)
+
+    def klass(self, ref: ContentRef) -> ClassRecord | ContentMiss:
+        return self.content.get(ref, ClassRecord)
 
     def proficient(self, origin: Origin, held: Sequence[Slug], equipment: Slug) -> bool:
         refs = (origin.class_ref.sibling("proficiencies", index) for index in held)

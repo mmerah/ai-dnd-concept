@@ -9,7 +9,6 @@ from ..content.records import (
     ChoiceOption,
     ProgressionChoice,
     RecordOption,
-    Slug,
 )
 from ..domain.models import (
     ABILITIES,
@@ -26,6 +25,7 @@ from ..domain.models import (
     Progression,
     updated,
 )
+from ..utils.models import Slug
 from . import rules
 from .ruleset import ProgressionRules
 
@@ -174,5 +174,4 @@ def _raised(attributes: Attributes, bonuses: Mapping[Ability, int]) -> Attribute
 
 
 def _hp_gain(rolled: int, attributes: Attributes) -> int:
-    """Grant at least one HP per level."""
     return max(1, rolled + rules.modifier(attributes, "constitution"))

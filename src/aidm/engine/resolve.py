@@ -75,7 +75,6 @@ def _walk(ctx: Resolution, consequence: Consequence) -> list[Event]:
 def _branched(
     ctx: Resolution, consequence: DcRoll, before: Sequence[Event], rolled: DcRolled
 ) -> list[Event]:
-    """Fold the selected branch against state after the roll and reveal."""
     emitted = [*before, rolled]
     branch = consequence.on_success if rolled.success else consequence.on_failure
     return [*emitted, *_fold(ctx.then(emitted), branch)]

@@ -1,8 +1,8 @@
 from random import Random
 
-from ..content.records import Slug
 from ..domain.models import ActorEntity, AttackRolled, GameState, ItemEntity, Progression
 from ..utils import dice
+from ..utils.models import Slug
 from . import rules
 from .ruleset import AttackProfile, CombatRules, WeaponProfile
 

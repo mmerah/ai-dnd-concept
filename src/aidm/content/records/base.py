@@ -1,9 +1,9 @@
-from typing import Annotated, Literal
+from typing import Literal
 
 from pydantic import Field
 
 from ...utils.dice import DiceExpr
-from ...utils.models import Frozen
+from ...utils.models import Frozen, Slug
 from ..vocabulary import DamageType
 
 Collection = Literal[
@@ -30,8 +30,6 @@ Collection = Literal[
     "feats",
     "proficiencies",
 ]
-
-Slug = Annotated[str, Field(pattern=r"^[a-z0-9-]+$", max_length=64)]
 
 CreatureSize = Literal["Tiny", "Small", "Medium", "Large", "Huge", "Gargantuan"]
 

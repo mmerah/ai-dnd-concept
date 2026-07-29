@@ -1,7 +1,7 @@
 """The context policy is the experiment: each role must see only what its job needs."""
 
 import pytest
-from support import content
+from support import BareRules
 
 from aidm.agents import views
 from aidm.agents.context import Scene, TurnContext
@@ -11,6 +11,7 @@ from aidm.agents.prompting import (
     maintainer_prompt,
     narrator_prompt,
 )
+from aidm.content import ContentRef
 from aidm.domain.models import (
     Direction,
     EntityId,
@@ -21,13 +22,14 @@ from aidm.domain.models import (
 
 DIRECTION = Direction(intent="Kael searches the study for anything hidden.", tone="hushed")
 REQUEST = GrowthRequest(kind="actor", name="Elgin", brief="An apothecary.")
+GHOST = ContentRef(pack="srd-2014", collection="monsters", index="ghost")
 
 
 def context(state: GameState) -> TurnContext:
     return TurnContext(
         state=state,
         prompt="I search the study.",
-        content=content(),
+        rules=BareRules(),
         narration="You find nothing.",
     )
 
@@ -76,7 +78,7 @@ def test_known_entities_carry_their_ids_for_the_director(state: GameState) -> No
 def test_a_carried_item_keeps_its_id_and_brief(state: GameState) -> None:
     """Regression: an item in an inventory must stay in context, not drop to a bare name — the
     Director needs its id to drop or give it, and its brief to reason about it."""
-    shown = views.character(Scene.of(state), content())
+    shown = views.character(Scene.of(state), BareRules())
     assert "- a lantern[id=lantern] — A tin lantern." in shown
 
 
@@ -85,6 +87,15 @@ def test_an_item_another_actor_carries_is_shown_with_its_holder(state: GameState
     entities = {**state.world.entities, EntityId("lantern"): lantern}
     handed = updated(state, world=updated(state.world, entities=entities))
     assert "a lantern[id=lantern] — item — held by Mara" in views.here(Scene.of(handed))
+
+
+def test_a_record_the_pack_lost_is_rendered_not_skipped(state: GameState) -> None:
+    """A miss must reach the prompt: skipping it turns a stat block into a bare name, and the
+    Director then plans against a monster it cannot see the moves of."""
+    mara = state.world.entities[EntityId("mara")]
+    lost = updated(state, world=state.world.replacing(updated(mara, ref=GHOST)))
+    shown = views.statblocks(Scene.of(lost), BareRules())
+    assert "missing content srd-2014/monsters/ghost: unknown_pack" in shown
 
 
 def test_no_role_is_ever_shown_the_player_as_an_entity(state: GameState) -> None:

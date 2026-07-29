@@ -2,7 +2,6 @@ from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 from typing import Self
 
-from ..content import Content
 from ..domain.models import (
     PLAYER_ID,
     Entity,
@@ -13,6 +12,7 @@ from ..domain.models import (
     ItemEntity,
     LocationEntity,
 )
+from ..engine.ruleset import NarrativeRules
 
 
 @dataclass(frozen=True, slots=True)
@@ -64,7 +64,7 @@ class Scene:
 class TurnContext:
     state: GameState
     prompt: str
-    content: Content
+    rules: NarrativeRules
     events: Sequence[Event] = ()
     narration: str = ""
     recent: Sequence[Exchange] = ()

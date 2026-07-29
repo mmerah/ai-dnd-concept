@@ -13,13 +13,11 @@ CHARACTER = "kael"
 def create_application(
     conf: Settings, slug: str = SLUG, scenario: str = SCENARIO, character: str = CHARACTER
 ) -> GameApplication:
-    content = load(conf.packs)
     return GameApplication(
         slug=slug,
         scenario=read_scenario(conf.scenarios_dir / f"{scenario}.json"),
         sheet=read_sheet(conf.characters_dir / f"{character}.json"),
-        content=content,
-        ruleset=compile_ruleset(content),
+        ruleset=compile_ruleset(load(conf.packs)),
         saves=FileSaves(conf.saves_dir),
         traces=FileTraces(conf.saves_dir),
         options=TurnOptions(history_window=conf.history_window, max_growth=conf.max_growth),

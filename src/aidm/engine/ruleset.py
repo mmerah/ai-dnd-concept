@@ -3,11 +3,11 @@ from typing import Protocol
 
 from pydantic import Field
 
-from ..content import ContentRef
-from ..content.records import ProgressionChoice, Slug
+from ..content import ContentMiss, ContentRef, MonsterRecord, PackStamp
+from ..content.records import ClassRecord, ProgressionChoice
 from ..domain.models import Ability, Origin, StatBlock
 from ..utils import dice
-from ..utils.models import EMPTY_FROZEN_MAP, Frozen, FrozenMap
+from ..utils.models import EMPTY_FROZEN_MAP, Frozen, FrozenMap, Slug
 
 
 class CharacterProfile(Frozen):
@@ -60,5 +60,13 @@ class ProgressionRules(Protocol):
     def level(self, origin: Origin, level: int) -> LevelProfile: ...
 
 
-class Ruleset(ProgressionRules, CombatRules, Protocol):
-    pass
+class NarrativeRules(Protocol):
+    """A miss is returned rather than dropped so a pack that lost a record shows in the prompt."""
+
+    def monster(self, ref: ContentRef) -> MonsterRecord | ContentMiss: ...
+    def klass(self, ref: ContentRef) -> ClassRecord | ContentMiss: ...
+
+
+class Ruleset(ProgressionRules, CombatRules, NarrativeRules, Protocol):
+    @property
+    def stamps(self) -> Sequence[PackStamp]: ...

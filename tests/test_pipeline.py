@@ -7,11 +7,11 @@ import pytest
 from pydantic_ai import UnexpectedModelBehavior
 from pydantic_ai.messages import ModelMessage, ModelRequest, ModelResponse
 from pydantic_ai.models.function import AgentInfo
-from support import OPTIONS, content, ruleset, structured, stubs, text
+from support import OPTIONS, BareRules, structured, stubs, text
 
 from aidm.agents.context import Scene
-from aidm.agents.director import direct
 from aidm.agents.history import exchanges_to_messages
+from aidm.agents.stages import DIRECTOR
 from aidm.domain.models import (
     PLAYER_ID,
     ActorEntity,
@@ -23,8 +23,7 @@ from aidm.domain.models import (
 )
 from aidm.pipeline import run_turn
 
-CONTENT = content()  # the shipped pack; `views` still renders records out of it
-RULES = ruleset()
+RULES = BareRules()  # nothing in these turns names a record, so no pack is needed
 
 def known_ids(state: GameState) -> set[EntityId]:
     return {e.id for e in state.world.entities.values() if e.known and e.id != PLAYER_ID}
@@ -58,7 +57,6 @@ async def test_search_applies_mechanics_and_creates_nothing(state: GameState) ->
             state,
             "I search the study.",
             rng=Random(0),
-            content=CONTENT,
             ruleset=RULES,
             options=OPTIONS,
         )
@@ -88,7 +86,7 @@ async def test_existing_canon_is_revealed_not_created(state: GameState) -> None:
             maintainer=structured(requests=[]),
         )
         turn = await run_turn(
-            state, "@Mara who can I ask for help?", content=CONTENT, ruleset=RULES, options=OPTIONS
+            state, "@Mara who can I ask for help?", ruleset=RULES, options=OPTIONS
         )
 
     assert known_ids(turn.state) == {"study", "mara", "elena", "lantern"}
@@ -111,7 +109,7 @@ async def test_an_unbacked_name_is_grown_not_resolved(state: GameState) -> None:
             creator=structured(description="A stooped herbalist.", hook="He trades in rumours."),
         )
         turn = await run_turn(
-            state, "@Tomas who can I ask for help?", content=CONTENT, ruleset=RULES, options=OPTIONS
+            state, "@Tomas who can I ask for help?", ruleset=RULES, options=OPTIONS
         )
 
     assert turn.events == []  # an empty plan resolves to nothing
@@ -136,7 +134,7 @@ async def test_a_grown_item_is_contained_by_the_place_it_appears(state: GameStat
             creator=structured(description="d", hook="h"),
         )
         turn = await run_turn(
-            state, "I search the desk.", content=CONTENT, ruleset=RULES, options=OPTIONS
+            state, "I search the desk.", ruleset=RULES, options=OPTIONS
         )
 
     (key,) = turn.created
@@ -160,7 +158,7 @@ async def test_a_grown_entity_is_placed_in_a_location_grown_the_same_turn(state:
             creator=structured(description="d", hook="h"),
         )
         turn = await run_turn(
-            state, "What is beyond the arch?", content=CONTENT, ruleset=RULES, options=OPTIONS
+            state, "What is beyond the arch?", ruleset=RULES, options=OPTIONS
         )
 
     entities = turn.state.world.entities
@@ -181,7 +179,7 @@ async def test_growth_is_capped(state: GameState) -> None:
             creator=structured(description="d", hook="h"),
         )
         turn = await run_turn(
-            state, "Who is here?", content=CONTENT, ruleset=RULES, options=OPTIONS
+            state, "Who is here?", ruleset=RULES, options=OPTIONS
         )
 
     assert len(turn.created) == 3
@@ -212,7 +210,7 @@ async def test_a_plan_referencing_canon_wrongly_is_rejected(
             director=structured(intent="i", tone="t", mechanics=[consequence]),
         )
         with pytest.raises(UnexpectedModelBehavior):
-            await direct("go", scene(state))
+            await DIRECTOR.run("go", scene(state))
 
 
 async def test_a_bad_id_nested_in_a_branch_is_caught_as_well(state: GameState) -> None:
@@ -227,7 +225,7 @@ async def test_a_bad_id_nested_in_a_branch_is_caught_as_well(state: GameState) -
     with ExitStack() as stack:
         stubs(stack, director=structured(intent="i", tone="t", mechanics=[nested]))
         with pytest.raises(UnexpectedModelBehavior):
-            await direct("pry the lid", scene(state))
+            await DIRECTOR.run("pry the lid", scene(state))
 
 
 async def test_a_dice_amount_is_rolled_by_the_engine_not_chosen_by_the_director(
@@ -247,7 +245,7 @@ async def test_a_dice_amount_is_rolled_by_the_engine_not_chosen_by_the_director(
             maintainer=structured(requests=[]),
         )
         turn = await run_turn(
-            state, "I step on the loose flagstone.", content=CONTENT, ruleset=RULES, options=OPTIONS
+            state, "I step on the loose flagstone.", ruleset=RULES, options=OPTIONS
         )
 
     assert [e.type for e in turn.events] == ["dice_rolled", "hp_changed"]
@@ -260,7 +258,7 @@ async def test_a_hidden_speaker_is_a_retry_not_a_downstream_failure(state: GameS
     with ExitStack() as stack:
         stubs(stack, director=structured(intent="i", tone="t", speaker_id="elena"))  # known=False
         with pytest.raises(UnexpectedModelBehavior):
-            await direct("talk to her", scene(state))
+            await DIRECTOR.run("talk to her", scene(state))
 
 
 @pytest.mark.parametrize(
@@ -283,7 +281,7 @@ async def test_acting_on_an_actor_who_is_elsewhere_is_a_retry(
     with ExitStack() as stack:
         stubs(stack, director=structured(intent="i", tone="t", **direction))
         with pytest.raises(UnexpectedModelBehavior):
-            await direct("reach for Mara", scene(in_vault))
+            await DIRECTOR.run("reach for Mara", scene(in_vault))
 
 
 async def test_moving_to_hidden_canon_reveals_it_end_to_end(state: GameState) -> None:
@@ -300,7 +298,7 @@ async def test_moving_to_hidden_canon_reveals_it_end_to_end(state: GameState) ->
             maintainer=structured(requests=[]),
         )
         turn = await run_turn(
-            state, "I go down to the vault.", content=CONTENT, ruleset=RULES, options=OPTIONS
+            state, "I go down to the vault.", ruleset=RULES, options=OPTIONS
         )
 
     assert [e.type for e in turn.events] == ["entity_discovered", "moved"]
@@ -333,7 +331,7 @@ async def test_failing_role_leaves_state_untouched(state: GameState) -> None:
         )
         with pytest.raises(RuntimeError):
             await run_turn(
-                state, "I kick the door.", content=CONTENT, ruleset=RULES, options=OPTIONS
+                state, "I kick the door.", ruleset=RULES, options=OPTIONS
             )
 
     assert state.model_dump_json() == before

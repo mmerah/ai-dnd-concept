@@ -3,22 +3,17 @@ from dataclasses import replace
 from random import Random
 
 from pydantic import Field
-from pydantic_ai.messages import ModelMessage
 
 from .agents.context import Scene, TurnContext
 from .agents.creator import create
-from .agents.director import direct
 from .agents.history import exchanges_to_messages
-from .agents.maintainer import maintain
-from .agents.narrator import narrate
 from .agents.prompting import (
-    NATIVE_HISTORY,
     creator_prompt,
     director_prompt,
     maintainer_prompt,
     narrator_prompt,
 )
-from .content import Content
+from .agents.stages import DIRECTOR, MAINTAINER, NARRATOR
 from .domain.models import (
     Entity,
     EntityCreated,
@@ -71,7 +66,6 @@ async def run_turn(
     prompt: str,
     on_step: Callable[[Role], None] | None = None,
     *,
-    content: Content,
     ruleset: Ruleset,
     options: TurnOptions,
     rng: Random | None = None,
@@ -82,13 +76,10 @@ async def run_turn(
     recent = state.history[-options.history_window :]
     history = exchanges_to_messages(recent)
 
-    def seen_by(role: Role) -> list[ModelMessage] | None:
-        return history if role in NATIVE_HISTORY else None
-
-    context = TurnContext(state=state, prompt=prompt, content=content, recent=recent)
+    context = TurnContext(state=state, prompt=prompt, rules=ruleset, recent=recent)
     step("director")
     prompts["director"] = director_prompt(context)
-    direction = await direct(prompts["director"], context.scene, seen_by("director"))
+    direction = await DIRECTOR.run(prompts["director"], context.scene, history)
 
     events = resolve(direction.mechanics, state, rng or Random(), ruleset)
     draft = apply(state, events)
@@ -96,12 +87,12 @@ async def run_turn(
     context = replace(context, state=draft, events=events)
     step("narrator")
     prompts["narrator"] = narrator_prompt(context, direction)
-    narration = await narrate(prompts["narrator"], seen_by("narrator"))
+    narration = await NARRATOR.run(prompts["narrator"], None, history)
 
     context = replace(context, narration=narration)
     step("maintainer")
     prompts["maintainer"] = maintainer_prompt(context)
-    growth = await maintain(prompts["maintainer"], seen_by("maintainer"))
+    growth = await MAINTAINER.run(prompts["maintainer"], None, history)
 
     step("creator")
     screened = screen(growth.requests, draft.world.entities, options.max_growth)

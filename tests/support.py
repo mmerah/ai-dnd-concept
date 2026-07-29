@@ -5,7 +5,7 @@ does not need one — and cached, so the whole suite compiles the pack once. Eve
 frozen, which is what makes sharing them safe."""
 
 import json
-from collections.abc import Callable, Mapping
+from collections.abc import Callable, Mapping, Sequence
 from contextlib import ExitStack
 from functools import cache
 from pathlib import Path
@@ -13,19 +13,32 @@ from pathlib import Path
 from pydantic_ai.messages import ModelMessage, ModelResponse, TextPart
 from pydantic_ai.models.function import AgentInfo, FunctionModel
 
-from aidm.agents import creator as creator_module
-from aidm.agents import director as director_module
-from aidm.agents import maintainer as maintainer_module
-from aidm.agents import narrator as narrator_module
+from aidm.agents.stages import CREATOR, DIRECTOR, MAINTAINER, NARRATOR
 from aidm.config import settings
-from aidm.content import Content, Pack, loaded, read_pack
-from aidm.content.records import Collection, Record, Slug
-from aidm.domain.models import CharacterSheet, GameState, ScenarioDef
+from aidm.content import (
+    Content,
+    ContentMiss,
+    ContentRef,
+    MonsterRecord,
+    Pack,
+    PackStamp,
+    loaded,
+    read_pack,
+)
+from aidm.content.records import ClassRecord, Collection, Record
+from aidm.domain.models import CharacterSheet, GameState, Origin, ScenarioDef
 from aidm.engine import campaign
 from aidm.engine.pack_ruleset import compile_ruleset
-from aidm.engine.ruleset import Ruleset
+from aidm.engine.ruleset import (
+    ArchetypeProfile,
+    CharacterProfile,
+    LevelProfile,
+    Ruleset,
+    WeaponProfile,
+)
 from aidm.pipeline import TurnOptions
 from aidm.store import read_scenario, read_sheet
+from aidm.utils.models import Slug
 
 PACK_DIR = settings().packs[0]
 SCENARIO = "whispering_vault"
@@ -61,6 +74,36 @@ def ruleset() -> Ruleset:
     return compile_ruleset(content())
 
 
+class BareRules:
+    """A whole ruleset with no pack behind it, so a test that plays a turn loads no content."""
+
+    stamps: tuple[PackStamp, ...] = ()
+
+    def character(self, origin: Origin) -> CharacterProfile:
+        return CharacterProfile(hit_die=8, saving_throws=("wisdom",))
+
+    def level(self, origin: Origin, level: int) -> LevelProfile:
+        return LevelProfile(prof_bonus=2, improvements=0)
+
+    def archetype(self, ref: ContentRef) -> ArchetypeProfile | None:
+        return None
+
+    def weapon(self, ref: ContentRef) -> WeaponProfile | None:
+        return None
+
+    def proficient(self, origin: Origin, held: Sequence[Slug], equipment: Slug) -> bool:
+        return False
+
+    def provides(self, ref: ContentRef) -> bool:
+        return False
+
+    def monster(self, ref: ContentRef) -> MonsterRecord | ContentMiss:
+        return ContentMiss(ref=ref, reason="unknown_pack")
+
+    def klass(self, ref: ContentRef) -> ClassRecord | ContentMiss:
+        return ContentMiss(ref=ref, reason="unknown_pack")
+
+
 @cache
 def sheet(character: str = CHARACTER) -> CharacterSheet:
     return read_sheet(settings().characters_dir / f"{character}.json")
@@ -74,7 +117,7 @@ def scenario(name: str = SCENARIO) -> ScenarioDef:
 @cache
 def new_game(name: str = SCENARIO, character: str = CHARACTER) -> GameState:
     """A composed level-1 game: the scenario's canon, statted, with the sheet placed in it."""
-    return campaign.begin(scenario(name), sheet(character), ruleset(), content().stamps)
+    return campaign.begin(scenario(name), sheet(character), ruleset())
 
 
 def structured(**output: object) -> Stub:
@@ -101,13 +144,13 @@ def stubs(
     maintainer: Stub | None = None,
     creator: Stub | None = None,
 ) -> None:
-    """Pydantic AI's own seam, one role at a time. Explicit per-role params, so a renamed role
-    module is a type error rather than a KeyError."""
-    for module, stub in (
-        (director_module, director),
-        (narrator_module, narrator),
-        (maintainer_module, maintainer),
-        (creator_module, creator),
+    """Pydantic AI's own seam, one role at a time. Explicit per-role params, so a renamed stage is
+    a type error rather than a KeyError."""
+    for stage, stub in (
+        (DIRECTOR, director),
+        (NARRATOR, narrator),
+        (MAINTAINER, maintainer),
+        (CREATOR, creator),
     ):
         if stub is not None:
-            stack.enter_context(module.agent().override(model=FunctionModel(stub)))
+            stack.enter_context(stage.agent.override(model=FunctionModel(stub)))

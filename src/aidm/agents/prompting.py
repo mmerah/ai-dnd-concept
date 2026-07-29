@@ -1,9 +1,7 @@
-from ..domain.models import Direction, GrowthRequest, Role
+from ..domain.models import Direction, GrowthRequest
 from ..domain.reducer import render
 from . import views
 from .context import TurnContext
-
-NATIVE_HISTORY: frozenset[Role] = frozenset({"director", "narrator", "maintainer"})
 
 
 def _sections(*parts: tuple[str, str]) -> str:
@@ -15,12 +13,12 @@ def _premise(context: TurnContext) -> tuple[str, str]:
 
 
 def director_prompt(context: TurnContext) -> str:
-    scene, content = context.scene, context.content
+    scene, rules = context.scene, context.rules
     return _sections(
         _premise(context),
-        ("CHARACTER", views.character(scene, content)),
+        ("CHARACTER", views.character(scene, rules)),
         ("HERE WITH THE PLAYER", views.here(scene)),
-        ("STAT BLOCKS OF WHO IS HERE", views.statblocks(scene, content)),
+        ("STAT BLOCKS OF WHO IS HERE", views.statblocks(scene, rules)),
         ("KNOWN TO THE PLAYER, BUT ELSEWHERE", views.elsewhere(scene)),
         ("EXISTS BUT THE PLAYER DOES NOT KNOW IT YET", views.unrevealed(scene)),
         ("PLAYER", context.prompt),
@@ -32,7 +30,7 @@ def narrator_prompt(context: TurnContext, direction: Direction) -> str:
     scene = context.scene
     return _sections(
         _premise(context),
-        ("CHARACTER", views.character(scene, context.content)),
+        ("CHARACTER", views.character(scene, context.rules)),
         ("HERE WITH THE PLAYER", views.here(scene)),
         ("KNOWN TO THE PLAYER, BUT ELSEWHERE", views.elsewhere(scene)),
         ("THE DIRECTOR'S PLAN — what was meant, not what happened", direction.intent),

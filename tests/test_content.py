@@ -417,7 +417,7 @@ def test_the_directors_slice_is_the_mechanics_never_the_record() -> None:
     )
     assert isinstance(gargoyle, ActorEntity)
     under = updated(gargoyle, stats=updated(gargoyle.stats, conditions=("prone",)))
-    shown = views.statblocks(Scene.of(_with(state, under)), CONTENT)
+    shown = views.statblocks(Scene.of(_with(state, under)), RULES)
     assert shown.endswith(
         "- a crouching gargoyle[id=gargoyle] — ac 15 — under prone"
         " — Multiattack: Bite x1 + Claws x1; Bite +4 (1d6+2 piercing); Claws +4 (1d6+2 slashing)"
@@ -437,10 +437,10 @@ def test_a_condition_is_shown_on_anyone_who_holds_one() -> None:
     assert isinstance(mara, ActorEntity)
     blinded = updated(mara, stats=updated(mara.stats, conditions=("blinded",)))
     assert "Mara[id=mara] — ac 10 — under blinded" in views.statblocks(
-        Scene.of(_with(state, blinded)), CONTENT
+        Scene.of(_with(state, blinded)), RULES
     )
     player = updated(state.player, stats=updated(state.player.stats, conditions=("prone",)))
-    assert "under prone" in views.character(Scene.of(_with(state, player)), CONTENT)
+    assert "under prone" in views.character(Scene.of(_with(state, player)), RULES)
 
 
 def test_two_packs_cannot_claim_one_id() -> None:
