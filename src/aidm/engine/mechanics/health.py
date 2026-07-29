@@ -1,7 +1,9 @@
 from random import Random
 from typing import Literal
 
-from ...domain.models import Damage, EntityId, Event, Heal, HpChanged, Magnitude
+from ...domain.models.base import EntityId
+from ...domain.models.consequences import Damage, Heal, Magnitude
+from ...domain.models.events import Event, HpChanged
 from ...utils import dice
 from .. import rules
 from . import common

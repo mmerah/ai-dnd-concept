@@ -2,7 +2,7 @@ from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 from random import Random
 
-from ..content.records import (
+from ..content.records.character import (
     AbilityBonus,
     BonusOption,
     ChoiceEffect,
@@ -10,22 +10,11 @@ from ..content.records import (
     ProgressionChoice,
     RecordOption,
 )
-from ..domain.models import (
-    ABILITIES,
-    MAX_LEVEL,
-    Ability,
-    ActorEntity,
-    Advancement,
-    Attributes,
-    CharacterSheet,
-    Decisions,
-    Event,
-    LeveledUp,
-    Origin,
-    Progression,
-    updated,
-)
-from ..utils.models import Slug
+from ..domain.models.entities import ActorEntity
+from ..domain.models.events import Event, LeveledUp
+from ..domain.models.progression import MAX_LEVEL, Advancement, Decisions, Origin, Progression
+from ..domain.models.state import CharacterSheet
+from ..utils.models import ABILITIES, Ability, Attributes, Slug, updated
 from . import rules
 from .ruleset import ProgressionRules
 

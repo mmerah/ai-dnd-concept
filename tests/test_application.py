@@ -22,7 +22,12 @@ from support import (
 
 from aidm.application.game import GameApplication
 from aidm.application.ports import SaveRepository, TraceSink
-from aidm.domain.models import SAVE_VERSION, Direction, GameState, Growth, Turn, updated
+from aidm.domain.models.base import SAVE_VERSION
+from aidm.domain.models.direction import Direction
+from aidm.domain.models.entities import Growth
+from aidm.domain.models.state import GameState
+from aidm.domain.models.turn import Turn
+from aidm.utils.models import updated
 
 SLUG = "poc"
 

@@ -12,45 +12,44 @@ from support import PACK_DIR, all_of, content, new_game, pack, ruleset
 
 from aidm.agents import views
 from aidm.agents.context import Scene
-from aidm.content import ContentMiss, ContentRef, load, loaded, write_pack
-from aidm.content.records import (
-    ArmorRecord,
+from aidm.content.library import ContentMiss, load, loaded, write_pack
+from aidm.content.records.base import ContentRef, Record
+from aidm.content.records.character import (
     BackgroundRecord,
     ClassLevelRecord,
     ClassRecord,
-    ConditionRecord,
     EquipmentProficiency,
     FeatureRecord,
+    RaceRecord,
+    RecordOption,
+    SaveProficiency,
+    SkillProficiency,
+    SubclassLevelRecord,
+    TraitRecord,
+)
+from aidm.content.records.equipment import (
+    ArmorRecord,
     GearRecord,
+    ToolRecord,
+    WeaponRecord,
+)
+from aidm.content.records.monsters import (
     MonsterAttack,
     MonsterMultiattack,
     MonsterProcedure,
     MonsterRecord,
     MonsterSave,
-    RaceRecord,
-    Record,
-    RecordOption,
-    SaveProficiency,
-    SkillProficiency,
-    SpellRecord,
-    SubclassLevelRecord,
-    ToolRecord,
-    TraitRecord,
-    WeaponRecord,
 )
-from aidm.domain.models import (
-    MAX_LEVEL,
-    ActorEntity,
-    Entity,
-    EntityId,
-    GameState,
-    ItemEntity,
-    Origin,
-    updated,
-)
+from aidm.content.records.rules import ConditionRecord
+from aidm.content.records.spells import SpellRecord
+from aidm.domain.models.base import EntityId
+from aidm.domain.models.entities import ActorEntity, Entity, ItemEntity
+from aidm.domain.models.progression import MAX_LEVEL, Origin
+from aidm.domain.models.state import GameState
 from aidm.engine import bestiary
 from aidm.engine.pack_ruleset import compile_ruleset
 from aidm.utils import dice
+from aidm.utils.models import updated
 
 PACK_ID = "srd-2014"
 CONTENT = content()

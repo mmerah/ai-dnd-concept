@@ -1,12 +1,8 @@
 from pydantic_ai import ModelRetry, RunContext
 
-from ..domain.models import (
-    ActorEntity,
-    Direction,
-    Entity,
-    References,
-    flatten,
-)
+from ..domain.models.consequences import References, flatten
+from ..domain.models.direction import Direction
+from ..domain.models.entities import ActorEntity, Entity
 from .context import Scene
 
 

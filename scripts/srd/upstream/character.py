@@ -3,7 +3,7 @@ character half of proficiencies — everything reached through the recursive `Ch
 
 from pydantic import Field
 
-from aidm.content.records import CreatureSize
+from aidm.content.records.base import CreatureSize
 from aidm.content.vocabulary import LanguageName
 
 from .base import ApiRef, NamedRef, Upstream

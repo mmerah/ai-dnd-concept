@@ -5,8 +5,35 @@ from typing import get_args
 from pydantic import TypeAdapter
 
 from ..utils.models import Kind
-from . import records
-from .records import Collection, Record
+from .records.base import Collection, Record
+from .records.character import (
+    BackgroundRecord,
+    ClassLevelRecord,
+    ClassRecord,
+    EquipmentProficiency,
+    FeatRecord,
+    FeatureRecord,
+    LevelRecord,
+    ProficiencyRecord,
+    RaceRecord,
+    SaveProficiency,
+    SkillProficiency,
+    SubclassLevelRecord,
+    SubclassRecord,
+    SubraceRecord,
+    TraitRecord,
+)
+from .records.equipment import (
+    ArmorRecord,
+    GearRecord,
+    MagicItemRecord,
+    ToolRecord,
+    VehicleRecord,
+    WeaponRecord,
+)
+from .records.monsters import MonsterRecord
+from .records.rules import AlignmentRecord, ConditionRecord, LanguageRecord, SkillRecord
+from .records.spells import SpellRecord
 
 
 @dataclass(frozen=True, slots=True)
@@ -23,33 +50,33 @@ def _holding(record: type[Record], entity: Kind | None = None) -> CollectionSpec
 
 
 COLLECTION_SPECS: Mapping[Collection, CollectionSpec] = {
-    "monsters": _holding(records.MonsterRecord, "actor"),
-    "weapons": _holding(records.WeaponRecord, "item"),
-    "armor": _holding(records.ArmorRecord, "item"),
-    "gear": _holding(records.GearRecord, "item"),
-    "tools": _holding(records.ToolRecord, "item"),
-    "vehicles": _holding(records.VehicleRecord, "item"),
-    "magic_items": _holding(records.MagicItemRecord, "item"),
-    "spells": _holding(records.SpellRecord),
-    "skills": _holding(records.SkillRecord),
-    "conditions": _holding(records.ConditionRecord),
-    "alignments": _holding(records.AlignmentRecord),
-    "languages": _holding(records.LanguageRecord),
-    "classes": _holding(records.ClassRecord),
-    "subclasses": _holding(records.SubclassRecord),
+    "monsters": _holding(MonsterRecord, "actor"),
+    "weapons": _holding(WeaponRecord, "item"),
+    "armor": _holding(ArmorRecord, "item"),
+    "gear": _holding(GearRecord, "item"),
+    "tools": _holding(ToolRecord, "item"),
+    "vehicles": _holding(VehicleRecord, "item"),
+    "magic_items": _holding(MagicItemRecord, "item"),
+    "spells": _holding(SpellRecord),
+    "skills": _holding(SkillRecord),
+    "conditions": _holding(ConditionRecord),
+    "alignments": _holding(AlignmentRecord),
+    "languages": _holding(LanguageRecord),
+    "classes": _holding(ClassRecord),
+    "subclasses": _holding(SubclassRecord),
     "levels": CollectionSpec(
-        TypeAdapter[Record](records.LevelRecord),
-        (records.ClassLevelRecord, records.SubclassLevelRecord),
+        TypeAdapter[Record](LevelRecord),
+        (ClassLevelRecord, SubclassLevelRecord),
     ),
-    "features": _holding(records.FeatureRecord),
-    "races": _holding(records.RaceRecord),
-    "subraces": _holding(records.SubraceRecord),
-    "traits": _holding(records.TraitRecord),
-    "backgrounds": _holding(records.BackgroundRecord),
-    "feats": _holding(records.FeatRecord),
+    "features": _holding(FeatureRecord),
+    "races": _holding(RaceRecord),
+    "subraces": _holding(SubraceRecord),
+    "traits": _holding(TraitRecord),
+    "backgrounds": _holding(BackgroundRecord),
+    "feats": _holding(FeatRecord),
     "proficiencies": CollectionSpec(
-        TypeAdapter[Record](records.ProficiencyRecord),
-        (records.EquipmentProficiency, records.SkillProficiency, records.SaveProficiency),
+        TypeAdapter[Record](ProficiencyRecord),
+        (EquipmentProficiency, SkillProficiency, SaveProficiency),
     ),
 }
 

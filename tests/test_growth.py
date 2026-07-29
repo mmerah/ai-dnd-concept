@@ -1,7 +1,8 @@
 """Screening is deterministic policy: reject duplicate names, dedup within a batch, then cap —
 and every drop is recorded with its reason, never silently discarded."""
 
-from aidm.domain.models import GameState, GrowthRequest
+from aidm.domain.models.entities import GrowthRequest
+from aidm.domain.models.state import GameState
 from aidm.engine.growth import screen
 
 

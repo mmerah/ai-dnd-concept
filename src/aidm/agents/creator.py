@@ -1,13 +1,7 @@
 from collections.abc import Iterable
 
-from ..domain.models import (
-    ENTITY_ADAPTER,
-    Entity,
-    EntityId,
-    GrowthRequest,
-    placement,
-    slug,
-)
+from ..domain.models.base import EntityId, slug
+from ..domain.models.entities import ENTITY_ADAPTER, Entity, GrowthRequest, placement
 from .stages import CREATOR
 
 

@@ -4,7 +4,8 @@ rely on is asserted here rather than left to the next author to remember."""
 
 from typing import get_args
 
-from aidm.domain.models import CONSEQUENCE_TYPES, EntityId, References, RollCheck, branches
+from aidm.domain.models.base import EntityId
+from aidm.domain.models.consequences import CONSEQUENCE_TYPES, References, RollCheck, branches
 
 
 def mentions_an_id(annotation: object) -> bool:

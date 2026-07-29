@@ -14,23 +14,16 @@ from .agents.prompting import (
     narrator_prompt,
 )
 from .agents.stages import DIRECTOR, MAINTAINER, NARRATOR
-from .domain.models import (
-    Entity,
-    EntityCreated,
-    EntityId,
-    Exchange,
-    GameState,
-    GrowthRequest,
-    LocationEntity,
-    Role,
-    Turn,
-    updated,
-)
+from .domain.models.base import EntityId, Role
+from .domain.models.entities import Entity, GrowthRequest, LocationEntity
+from .domain.models.events import EntityCreated
+from .domain.models.state import Exchange, GameState
+from .domain.models.turn import Turn
 from .domain.reducer import apply
 from .engine.growth import screen
 from .engine.resolve import resolve
 from .engine.ruleset import Ruleset
-from .utils.models import Frozen
+from .utils.models import Frozen, updated
 
 
 class TurnOptions(Frozen):

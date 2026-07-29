@@ -1,6 +1,6 @@
 from .application.game import GameApplication
 from .config import Settings
-from .content import load
+from .content.library import load
 from .engine.pack_ruleset import compile_ruleset
 from .pipeline import TurnOptions
 from .store import FileSaves, FileTraces, read_scenario, read_sheet

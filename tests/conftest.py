@@ -6,18 +6,11 @@ os.environ.setdefault(  # agents are built, never called, in tests
     "PROVIDERS__OPENROUTER__API_KEY", "test"
 )
 
-from aidm.domain.models import (  # noqa: E402
-    PLAYER_ID,
-    ActorEntity,
-    Attributes,
-    EntityId,
-    GameState,
-    ItemEntity,
-    LocationEntity,
-    ScenarioMeta,
-    StatBlock,
-    WorldState,
-)
+from aidm.domain.models.base import PLAYER_ID, EntityId  # noqa: E402
+from aidm.domain.models.entities import ActorEntity, ItemEntity, LocationEntity  # noqa: E402
+from aidm.domain.models.state import GameState, ScenarioMeta, WorldState  # noqa: E402
+from aidm.domain.models.stats import StatBlock  # noqa: E402
+from aidm.utils.models import Attributes  # noqa: E402
 
 
 @pytest.fixture

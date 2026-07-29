@@ -1,4 +1,5 @@
-from ...domain.models import Entity, EntityDiscovered, Event
+from ...domain.models.entities import Entity
+from ...domain.models.events import EntityDiscovered, Event
 
 
 def reveal(entity: Entity) -> list[Event]:

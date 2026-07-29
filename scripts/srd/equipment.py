@@ -1,8 +1,8 @@
 """Weapons, armour, gear, tools, vehicles and magic items: one upstream type, six models."""
 
-from aidm.content.records import (
+from aidm.content.records.base import Coin
+from aidm.content.records.equipment import (
     ArmorRecord,
-    Coin,
     GearRecord,
     MagicItemRecord,
     PackContents,
@@ -13,7 +13,7 @@ from aidm.content.records import (
 )
 
 from .common import damage_roll, owner_of
-from .upstream import Equipment, MagicItem
+from .upstream.equipment import Equipment, MagicItem
 
 
 def _cost(item: Equipment) -> Coin:

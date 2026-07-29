@@ -11,7 +11,9 @@ from pydantic_ai.output import OutputSpec
 from pydantic_ai.providers.openai import OpenAIProvider
 
 from ..config import ProviderName, settings
-from ..domain.models import Direction, EntityDetail, Growth, Role
+from ..domain.models.base import Role
+from ..domain.models.direction import Direction
+from ..domain.models.entities import EntityDetail, Growth
 from . import instructions
 from .context import Scene
 from .director import validate_ids

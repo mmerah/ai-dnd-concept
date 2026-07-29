@@ -3,7 +3,8 @@ from typing import Self
 
 from pydantic import Field, model_validator
 
-from ...content import ContentRef, PackStamp
+from ...content.models import PackStamp
+from ...content.records.base import ContentRef
 from ...utils.models import EMPTY_FROZEN_MAP, Attributes, Frozen, updated
 from .base import PLAYER_ID, SAVE_VERSION, EntityId, slug
 from .entities import ActorEntity, Entity, ItemEntity, LocationEntity

@@ -2,16 +2,10 @@ from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 from typing import Self
 
-from ..domain.models import (
-    PLAYER_ID,
-    Entity,
-    EntityId,
-    Event,
-    Exchange,
-    GameState,
-    ItemEntity,
-    LocationEntity,
-)
+from ..domain.models.base import PLAYER_ID, EntityId
+from ..domain.models.entities import Entity, ItemEntity, LocationEntity
+from ..domain.models.events import Event
+from ..domain.models.state import Exchange, GameState
 from ..engine.ruleset import NarrativeRules
 
 

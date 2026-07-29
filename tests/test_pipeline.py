@@ -12,18 +12,14 @@ from support import OPTIONS, BareRules, structured, stubs, text
 from aidm.agents.context import Scene
 from aidm.agents.history import exchanges_to_messages
 from aidm.agents.stages import DIRECTOR
-from aidm.domain.models import (
-    PLAYER_ID,
-    ActorEntity,
-    EntityId,
-    Exchange,
-    GameState,
-    ItemEntity,
-    updated,
-)
+from aidm.domain.models.base import PLAYER_ID, EntityId
+from aidm.domain.models.entities import ActorEntity, ItemEntity
+from aidm.domain.models.state import Exchange, GameState
 from aidm.pipeline import run_turn
+from aidm.utils.models import updated
 
 RULES = BareRules()  # nothing in these turns names a record, so no pack is needed
+
 
 def known_ids(state: GameState) -> set[EntityId]:
     return {e.id for e in state.world.entities.values() if e.known and e.id != PLAYER_ID}
@@ -133,9 +129,7 @@ async def test_a_grown_item_is_contained_by_the_place_it_appears(state: GameStat
             ),
             creator=structured(description="d", hook="h"),
         )
-        turn = await run_turn(
-            state, "I search the desk.", ruleset=RULES, options=OPTIONS
-        )
+        turn = await run_turn(state, "I search the desk.", ruleset=RULES, options=OPTIONS)
 
     (key,) = turn.created
     assert isinstance(key, ItemEntity) and key.container_id == "study"  # no location -> here
@@ -157,9 +151,7 @@ async def test_a_grown_entity_is_placed_in_a_location_grown_the_same_turn(state:
             ),
             creator=structured(description="d", hook="h"),
         )
-        turn = await run_turn(
-            state, "What is beyond the arch?", ruleset=RULES, options=OPTIONS
-        )
+        turn = await run_turn(state, "What is beyond the arch?", ruleset=RULES, options=OPTIONS)
 
     entities = turn.state.world.entities
     crypt = next(e for e in entities.values() if e.name == "a crypt")
@@ -178,9 +170,7 @@ async def test_growth_is_capped(state: GameState) -> None:
             ),
             creator=structured(description="d", hook="h"),
         )
-        turn = await run_turn(
-            state, "Who is here?", ruleset=RULES, options=OPTIONS
-        )
+        turn = await run_turn(state, "Who is here?", ruleset=RULES, options=OPTIONS)
 
     assert len(turn.created) == 3
     # the 3 over-cap requests are recorded, not silently dropped
@@ -297,9 +287,7 @@ async def test_moving_to_hidden_canon_reveals_it_end_to_end(state: GameState) ->
             narrator=text("The stair opens into a low, cold chamber."),
             maintainer=structured(requests=[]),
         )
-        turn = await run_turn(
-            state, "I go down to the vault.", ruleset=RULES, options=OPTIONS
-        )
+        turn = await run_turn(state, "I go down to the vault.", ruleset=RULES, options=OPTIONS)
 
     assert [e.type for e in turn.events] == ["entity_discovered", "moved"]
     assert turn.state.player.location_id == "vault"
@@ -330,8 +318,6 @@ async def test_failing_role_leaves_state_untouched(state: GameState) -> None:
             narrator=boom,
         )
         with pytest.raises(RuntimeError):
-            await run_turn(
-                state, "I kick the door.", ruleset=RULES, options=OPTIONS
-            )
+            await run_turn(state, "I kick the door.", ruleset=RULES, options=OPTIONS)
 
     assert state.model_dump_json() == before

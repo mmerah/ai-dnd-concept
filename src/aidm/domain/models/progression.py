@@ -2,7 +2,7 @@ from typing import Self
 
 from pydantic import Field, model_validator
 
-from ...content import ContentRef
+from ...content.records.base import ContentRef
 from ...utils.models import Ability, Attributes, Frozen, FrozenMap, Slug
 
 MAX_LEVEL = 20

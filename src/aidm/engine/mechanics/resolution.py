@@ -3,7 +3,10 @@ from dataclasses import dataclass, replace
 from random import Random
 from typing import Self
 
-from ...domain.models import ActorEntity, Entity, EntityId, Event, GameState, ItemEntity
+from ...domain.models.base import EntityId
+from ...domain.models.entities import ActorEntity, Entity, ItemEntity
+from ...domain.models.events import Event
+from ...domain.models.state import GameState
 from ...domain.reducer import apply
 from ..ruleset import Ruleset
 

@@ -7,24 +7,16 @@ import pytest
 from pydantic import ValidationError
 from support import content, new_game
 
-from aidm.content import PackStamp
-from aidm.domain.models import (
-    PLAYER_ID,
-    SAVE_VERSION,
-    Advancement,
-    Attributes,
-    CharacterSheet,
-    Direction,
-    GameState,
-    Growth,
-    Origin,
-    Progression,
-    ScenarioDef,
-    Turn,
-    updated,
-)
+from aidm.content.models import PackStamp
+from aidm.domain.models.base import PLAYER_ID, SAVE_VERSION
+from aidm.domain.models.direction import Direction
+from aidm.domain.models.entities import Growth
+from aidm.domain.models.progression import Advancement, Origin, Progression
+from aidm.domain.models.state import CharacterSheet, GameState, ScenarioDef
+from aidm.domain.models.turn import Turn
 from aidm.engine import campaign
 from aidm.store import FileSaves, FileTraces
+from aidm.utils.models import Attributes, updated
 
 CLASS_REF = {"pack": "srd-2014", "collection": "classes", "index": "fighter"}
 SHEET = {

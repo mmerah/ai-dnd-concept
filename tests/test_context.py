@@ -11,14 +11,12 @@ from aidm.agents.prompting import (
     maintainer_prompt,
     narrator_prompt,
 )
-from aidm.content import ContentRef
-from aidm.domain.models import (
-    Direction,
-    EntityId,
-    GameState,
-    GrowthRequest,
-    updated,
-)
+from aidm.content.records.base import ContentRef
+from aidm.domain.models.base import EntityId
+from aidm.domain.models.direction import Direction
+from aidm.domain.models.entities import GrowthRequest
+from aidm.domain.models.state import GameState
+from aidm.utils.models import updated
 
 DIRECTION = Direction(intent="Kael searches the study for anything hidden.", tone="hushed")
 REQUEST = GrowthRequest(kind="actor", name="Elgin", brief="An apothecary.")

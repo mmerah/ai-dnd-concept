@@ -1,4 +1,6 @@
-from ...domain.models import ActorEntity, Event, LocationEntity, Move, Moved
+from ...domain.models.consequences import Move
+from ...domain.models.entities import ActorEntity, LocationEntity
+from ...domain.models.events import Event, Moved
 from . import common
 from .resolution import Resolution
 

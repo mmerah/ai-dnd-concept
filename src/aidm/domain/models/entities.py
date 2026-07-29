@@ -2,7 +2,7 @@ from typing import Annotated, Literal
 
 from pydantic import Field, TypeAdapter
 
-from ...content import ContentRef
+from ...content.records.base import ContentRef
 from ...utils.models import Frozen, Kind
 from .base import EntityId
 from .progression import Progression

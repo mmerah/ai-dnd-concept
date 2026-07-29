@@ -1,6 +1,6 @@
 from nicegui import ui
 
-from ...domain.models import ROLES
+from ...domain.models.base import ROLES
 from ..session import Session
 
 

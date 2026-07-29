@@ -2,7 +2,9 @@ from collections.abc import Sequence
 
 from nicegui import ui
 
-from ...domain.models import Consequence, RejectedGrowth, Turn, branches
+from ...domain.models.consequences import Consequence, branches
+from ...domain.models.entities import RejectedGrowth
+from ...domain.models.turn import Turn
 from ...domain.reducer import render
 from ..session import Session
 

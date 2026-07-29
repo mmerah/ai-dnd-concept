@@ -4,7 +4,7 @@ from functools import cache
 from ..application.game import GameApplication
 from ..bootstrap import create_application
 from ..config import settings
-from ..domain.models import Role
+from ..domain.models.base import Role
 
 
 @dataclass

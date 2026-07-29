@@ -2,8 +2,8 @@
 
 from collections.abc import Sequence
 
-from aidm.content.records import (
-    ContentRef,
+from aidm.content.records.base import ContentRef
+from aidm.content.records.monsters import (
     MonsterAction,
     MonsterAttack,
     MonsterMultiattack,
@@ -20,7 +20,7 @@ from aidm.content.records import (
 from aidm.utils.models import Ability, Attributes
 
 from .common import PACK_ID, ability, damages, feet, index_of, owner_of, usage
-from .upstream import (
+from .upstream.monsters import (
     Action,
     ActionOption,
     Monster,

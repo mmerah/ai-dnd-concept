@@ -2,7 +2,8 @@
 
 from pydantic import Field
 
-from aidm.content.records import AttackType, CreatureSize, MonsterType, RestType, SaveOutcome
+from aidm.content.records.base import CreatureSize
+from aidm.content.records.monsters import AttackType, MonsterType, RestType, SaveOutcome
 
 from .base import ApiRef, ConditionRef, Damage, Upstream
 

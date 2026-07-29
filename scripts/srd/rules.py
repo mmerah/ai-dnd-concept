@@ -1,17 +1,19 @@
 """Spells, skills, and the three vocabularies that ship a payload."""
 
-from aidm.content.records import (
+from aidm.content.records.rules import (
     AlignmentRecord,
     ConditionRecord,
     LanguageRecord,
     SkillRecord,
+)
+from aidm.content.records.spells import (
     SpellDamage,
     SpellRecord,
     SpellSave,
 )
 
 from .common import ability
-from .upstream import Alignment, Condition, Language, Skill, Spell, SpellDc, SpellScaling
+from .upstream.rules import Alignment, Condition, Language, Skill, Spell, SpellDc, SpellScaling
 
 
 def _spell_save(dc: SpellDc | None) -> SpellSave | None:

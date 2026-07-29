@@ -7,35 +7,35 @@ from random import Random
 import pytest
 from support import ruleset
 
-from aidm.domain.models import (
-    PLAYER_ID,
-    ActorEntity,
+from aidm.domain.models.base import PLAYER_ID, EntityId
+from aidm.domain.models.consequences import (
     ApplyCondition,
-    ConditionChanged,
     Consequence,
     Damage,
-    DcRolled,
-    DiceRolled,
     Discover,
     DropItem,
-    Entity,
-    EntityCreated,
-    EntityDiscovered,
-    EntityId,
     GainImprovisedItem,
-    GameState,
     GiveItem,
     Heal,
-    HpChanged,
-    ItemMoved,
     Move,
-    Moved,
     RollCheck,
     TakeItem,
-    updated,
 )
+from aidm.domain.models.entities import ActorEntity, Entity
+from aidm.domain.models.events import (
+    ConditionChanged,
+    DcRolled,
+    DiceRolled,
+    EntityCreated,
+    EntityDiscovered,
+    HpChanged,
+    ItemMoved,
+    Moved,
+)
+from aidm.domain.models.state import GameState
 from aidm.domain.reducer import apply
 from aidm.engine.resolve import resolve
+from aidm.utils.models import updated
 
 RULES = ruleset()  # `attack` reads a weapon profile and an archetype's own attack out of it
 

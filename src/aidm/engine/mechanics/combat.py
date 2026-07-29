@@ -1,4 +1,5 @@
-from ...domain.models import Attack, Event
+from ...domain.models.consequences import Attack
+from ...domain.models.events import Event
 from .. import procedures
 from . import common, health
 from .resolution import Resolution

@@ -5,7 +5,7 @@ from typing import Literal, Self, cast
 from pydantic import BaseModel, ConfigDict, Field, SecretStr, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
-from .domain.models import ROLES, Role
+from .domain.models.base import ROLES, Role
 
 ProviderName = Literal["openrouter", "local"]
 ReasoningEffort = Literal["none", "minimal", "low", "medium", "high", "xhigh", "max"]

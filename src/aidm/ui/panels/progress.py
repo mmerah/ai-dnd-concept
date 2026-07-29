@@ -1,7 +1,7 @@
 from nicegui import ui
 
-from ...content.records import ProgressionChoice
-from ...domain.models import MAX_LEVEL
+from ...content.records.character import ProgressionChoice
+from ...domain.models.progression import MAX_LEVEL
 from ..session import Session
 from .state import state_panel
 

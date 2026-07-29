@@ -2,7 +2,7 @@
 
 from pydantic import Field
 
-from aidm.content.records import SpellAttackType, SpellSaveOutcome
+from aidm.content.records.spells import SpellAttackType, SpellSaveOutcome
 from aidm.content.vocabulary import AlignmentName, ConditionName, LanguageName
 
 from .base import ApiRef, DamageTypeRef, SchoolRef, Upstream

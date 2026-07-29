@@ -5,9 +5,9 @@ from typing import Literal
 
 from pydantic import TypeAdapter
 
-from ..utils.models import EMPTY_FROZEN_MAP, Frozen, FrozenMap
+from ..utils.models import EMPTY_FROZEN_MAP, Frozen, FrozenMap, Slug
 from .models import Manifest, Pack, PackStamp
-from .records import Collection, ContentRef, Record, Slug
+from .records.base import Collection, ContentRef, Record
 from .registry import COLLECTION_OF, COLLECTION_SPECS
 
 ENCODING = "utf-8"

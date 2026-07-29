@@ -1,20 +1,18 @@
 import pytest
 
-from aidm.domain.models import (
-    PLAYER_ID,
-    ActorEntity,
+from aidm.domain.models.base import PLAYER_ID, EntityId
+from aidm.domain.models.entities import ActorEntity, ItemEntity
+from aidm.domain.models.events import (
     EntityCreated,
     EntityDiscovered,
-    EntityId,
-    GameState,
     HpChanged,
-    ItemEntity,
     ItemMoved,
     Moved,
-    Wounds,
-    updated,
 )
+from aidm.domain.models.state import GameState
+from aidm.domain.models.stats import Wounds
 from aidm.domain.reducer import apply, render
+from aidm.utils.models import updated
 
 MARA = EntityId("mara")
 

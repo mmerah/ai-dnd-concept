@@ -1,7 +1,8 @@
 from dataclasses import dataclass
 from pathlib import Path
 
-from .domain.models import CharacterSheet, GameState, ScenarioDef, Turn
+from .domain.models.state import CharacterSheet, GameState, ScenarioDef
+from .domain.models.turn import Turn
 
 ENCODING = "utf-8"
 

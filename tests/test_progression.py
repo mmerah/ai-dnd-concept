@@ -10,26 +10,22 @@ from random import Random
 import pytest
 from support import new_game, ruleset, sheet
 
-from aidm.content import ContentRef
-from aidm.content.records import BonusOption, ProgressionChoice
-from aidm.domain.models import (
-    PLAYER_ID,
-    ActorEntity,
-    Attack,
-    Damage,
+from aidm.content.records.base import ContentRef
+from aidm.content.records.character import BonusOption, ProgressionChoice
+from aidm.domain.models.base import PLAYER_ID, EntityId
+from aidm.domain.models.consequences import Attack, Damage, RollSave
+from aidm.domain.models.entities import ActorEntity, ItemEntity
+from aidm.domain.models.events import LeveledUp
+from aidm.domain.models.progression import (
     Decisions,
-    EntityId,
-    GameState,
-    ItemEntity,
-    LeveledUp,
     Origin,
-    RollSave,
-    updated,
 )
+from aidm.domain.models.state import GameState
 from aidm.domain.reducer import apply
 from aidm.engine import bestiary, procedures, progression, rules
 from aidm.engine.resolve import resolve
 from aidm.engine.ruleset import CharacterProfile, LevelProfile, ProgressionRules
+from aidm.utils.models import updated
 
 RULES = ruleset()
 SHEET = sheet()

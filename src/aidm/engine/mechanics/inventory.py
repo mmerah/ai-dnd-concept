@@ -1,18 +1,12 @@
-from ...domain.models import (
+from ...domain.models.base import EntityId, slug
+from ...domain.models.consequences import (
     DropItem,
-    Entity,
-    EntityCreated,
-    EntityId,
-    Event,
     GainImprovisedItem,
     GiveItem,
-    ItemDestination,
-    ItemEntity,
-    ItemMoved,
-    LocationEntity,
     TakeItem,
-    slug,
 )
+from ...domain.models.entities import Entity, ItemEntity, LocationEntity
+from ...domain.models.events import EntityCreated, Event, ItemDestination, ItemMoved
 from . import common
 from .resolution import Resolution
 

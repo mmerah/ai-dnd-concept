@@ -3,9 +3,13 @@ from random import Random
 import pytest
 from pydantic import ValidationError
 
-from aidm.domain.models import PLAYER_ID, ActorEntity, Attributes, Damage, EntityId, StatBlock
+from aidm.domain.models.base import PLAYER_ID, EntityId
+from aidm.domain.models.consequences import Damage
+from aidm.domain.models.entities import ActorEntity
+from aidm.domain.models.stats import StatBlock
 from aidm.engine import rules
 from aidm.utils import dice
+from aidm.utils.models import Attributes
 
 KAEL = ActorEntity(
     id=PLAYER_ID,

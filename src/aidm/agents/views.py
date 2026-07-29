@@ -1,10 +1,9 @@
 from collections.abc import Iterable, Sequence
 from typing import assert_never
 
-from ..content import (
-    ContentMiss,
-    ContentRef,
-    DamageRoll,
+from ..content.library import ContentMiss
+from ..content.records.base import ContentRef, DamageRoll
+from ..content.records.monsters import (
     MonsterAction,
     MonsterAttack,
     MonsterMultiattack,
@@ -12,18 +11,12 @@ from ..content import (
     MonsterRecord,
     MonsterSave,
 )
-from ..domain.models import (
-    PLAYER_ID,
-    ActorEntity,
-    Direction,
-    Entity,
-    Exchange,
-    GrowthRequest,
-    ItemEntity,
-    LocationEntity,
-    Progression,
-    StatBlock,
-)
+from ..domain.models.base import PLAYER_ID
+from ..domain.models.direction import Direction
+from ..domain.models.entities import ActorEntity, Entity, GrowthRequest, ItemEntity, LocationEntity
+from ..domain.models.progression import Progression
+from ..domain.models.state import Exchange
+from ..domain.models.stats import StatBlock
 from ..engine.ruleset import NarrativeRules
 from .context import Scene
 

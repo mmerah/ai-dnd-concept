@@ -2,17 +2,12 @@ from collections.abc import Callable, Sequence
 from dataclasses import dataclass, field
 from random import Random
 
-from ..content.records import ProgressionChoice
-from ..domain.models import (
-    MAX_LEVEL,
-    CharacterSheet,
-    Decisions,
-    Event,
-    GameState,
-    Role,
-    ScenarioDef,
-    Turn,
-)
+from ..content.records.character import ProgressionChoice
+from ..domain.models.base import Role
+from ..domain.models.events import Event
+from ..domain.models.progression import MAX_LEVEL, Decisions
+from ..domain.models.state import CharacterSheet, GameState, ScenarioDef
+from ..domain.models.turn import Turn
 from ..domain.reducer import apply
 from ..engine import campaign, progression
 from ..engine.ruleset import Ruleset

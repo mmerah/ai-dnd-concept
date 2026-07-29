@@ -3,10 +3,9 @@
 import re
 from collections.abc import Sequence
 
-from aidm.content.records import (
+from aidm.content.records.base import Collection, DamageRoll
+from aidm.content.records.monsters import (
     AtWill,
-    Collection,
-    DamageRoll,
     PerDay,
     RechargeAfterRest,
     RechargeOnRoll,
@@ -14,7 +13,8 @@ from aidm.content.records import (
 )
 from aidm.utils.models import Ability
 
-from .upstream import Damage, UpstreamUsage
+from .upstream.base import Damage
+from .upstream.monsters import UpstreamUsage
 
 # The database spells abilities two ways — `str` in Ability-Scores and Skills, `strength` in
 # Monsters. This map is the single place the abbreviation is resolved.

@@ -1,4 +1,5 @@
-from ...domain.models import ApplyCondition, ConditionChanged, Event
+from ...domain.models.consequences import ApplyCondition
+from ...domain.models.events import ConditionChanged, Event
 from . import common
 from .resolution import Resolution
 

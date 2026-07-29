@@ -5,9 +5,9 @@ projected as separate non-optional models."""
 
 from pydantic import Field
 
-from aidm.content.records import (
+from aidm.content.records.base import CoinUnit
+from aidm.content.records.equipment import (
     ArmorCategory,
-    CoinUnit,
     Rarity,
     ToolCategory,
     VehicleCategory,

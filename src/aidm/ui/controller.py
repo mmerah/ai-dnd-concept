@@ -1,24 +1,28 @@
 from nicegui import ui
 
-from ..domain.models import Role
-from . import panels
+from ..domain.models.base import Role
+from .panels.chat import chat
+from .panels.progress import progress_panel
+from .panels.roles import role_badges
+from .panels.state import state_panel
+from .panels.trace import trace_panel
 from .session import current_session
 
 
 def _refresh() -> None:
     for panel in (
-        panels.chat,
-        panels.progress_panel,
-        panels.role_badges,
-        panels.state_panel,
-        panels.trace_panel,
+        chat,
+        progress_panel,
+        role_badges,
+        state_panel,
+        trace_panel,
     ):
         panel.refresh()
 
 
 def _on_step(step: Role) -> None:
     current_session().step = step
-    panels.role_badges.refresh()
+    role_badges.refresh()
 
 
 async def submit(box: ui.input) -> None:

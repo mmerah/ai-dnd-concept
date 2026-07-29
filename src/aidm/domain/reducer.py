@@ -1,27 +1,24 @@
 from collections.abc import Sequence
 from functools import reduce
 
-from .models import (
-    ActorEntity,
-    Advancement,
+from ..utils.models import updated
+from .models.base import EntityId
+from .models.entities import ActorEntity, Entity, ItemEntity, LocationEntity
+from .models.events import (
     AttackRolled,
     ConditionChanged,
     DcRolled,
     DiceRolled,
-    Entity,
     EntityCreated,
     EntityDiscovered,
-    EntityId,
     Event,
-    GameState,
     HpChanged,
-    ItemEntity,
     ItemMoved,
     LeveledUp,
-    LocationEntity,
     Moved,
-    updated,
 )
+from .models.progression import Advancement
+from .models.state import GameState
 
 
 def _replacing(state: GameState, entity: Entity) -> GameState:

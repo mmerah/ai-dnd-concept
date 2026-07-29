@@ -1,15 +1,9 @@
 from random import Random
 
-from ..domain.models import (
-    Ability,
-    ActorEntity,
-    AttackRolled,
-    Attributes,
-    DcRolled,
-    DiceRolled,
-    RollKind,
-)
+from ..domain.models.entities import ActorEntity
+from ..domain.models.events import AttackRolled, DcRolled, DiceRolled, RollKind
 from ..utils import dice
+from ..utils.models import Ability, Attributes
 
 DIE = 20
 

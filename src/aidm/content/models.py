@@ -3,8 +3,8 @@ from typing import Self
 
 from pydantic import NonNegativeInt, SerializeAsAny, TypeAdapter, model_validator
 
-from ..utils.models import EMPTY_FROZEN_MAP, Frozen, FrozenMap
-from .records import Collection, ContentRef, Record, Slug
+from ..utils.models import EMPTY_FROZEN_MAP, Frozen, FrozenMap, Slug
+from .records.base import Collection, ContentRef, Record
 from .registry import COLLECTION_SPECS
 
 type _Routable = Mapping[Collection, Mapping[str, object]]

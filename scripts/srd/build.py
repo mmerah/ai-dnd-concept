@@ -5,8 +5,9 @@ from pathlib import Path
 
 from pydantic import TypeAdapter
 
-from aidm.content import Manifest, Pack
-from aidm.content.records import Collection, ContentRef, Record, RecordOption
+from aidm.content.models import Manifest, Pack
+from aidm.content.records.base import Collection, ContentRef, Record
+from aidm.content.records.character import RecordOption
 
 from . import character as char
 from .common import PACK_ID
@@ -14,28 +15,22 @@ from .corrections import corrected
 from .equipment import armor, gear, magic_item, tool, vehicle, weapon
 from .monsters import monster
 from .rules import alignment, condition, language, skill, spell
-from .upstream import (
-    Alignment,
+from .upstream.base import Upstream
+from .upstream.character import (
     Background,
     Class,
-    Condition,
-    Equipment,
-    EquipmentCategoryRecord,
     Feat,
     Feature,
-    Language,
     Level,
-    MagicItem,
-    Monster,
     Race,
-    Skill,
-    Spell,
     Subclass,
     Subrace,
     Trait,
-    Upstream,
     UpstreamProficiency,
 )
+from .upstream.equipment import Equipment, EquipmentCategoryRecord, MagicItem
+from .upstream.monsters import Monster
+from .upstream.rules import Alignment, Condition, Language, Skill, Spell
 
 EDITION = "2014"
 ENCODING = "utf-8"

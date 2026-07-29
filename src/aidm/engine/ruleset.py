@@ -3,11 +3,15 @@ from typing import Protocol
 
 from pydantic import Field
 
-from ..content import ContentMiss, ContentRef, MonsterRecord, PackStamp
-from ..content.records import ClassRecord, ProgressionChoice
-from ..domain.models import Ability, Origin, StatBlock
+from ..content.library import ContentMiss
+from ..content.models import PackStamp
+from ..content.records.base import ContentRef
+from ..content.records.character import ClassRecord, ProgressionChoice
+from ..content.records.monsters import MonsterRecord
+from ..domain.models.progression import Origin
+from ..domain.models.stats import StatBlock
 from ..utils import dice
-from ..utils.models import EMPTY_FROZEN_MAP, Frozen, FrozenMap, Slug
+from ..utils.models import EMPTY_FROZEN_MAP, Ability, Frozen, FrozenMap, Slug
 
 
 class CharacterProfile(Frozen):

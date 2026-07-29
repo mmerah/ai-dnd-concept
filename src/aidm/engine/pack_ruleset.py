@@ -1,20 +1,14 @@
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 
-from ..content import (
-    Content,
-    ContentMiss,
-    ContentRef,
-    MonsterAttack,
-    MonsterRecord,
-    PackStamp,
-)
-from ..content.records import (
+from ..content.library import Content, ContentMiss
+from ..content.models import PackStamp
+from ..content.records.base import ContentRef, DamageRoll
+from ..content.records.character import (
     AbilityBonus,
     BackgroundRecord,
     ClassLevelRecord,
     ClassRecord,
-    DamageRoll,
     EquipmentProficiency,
     FeatureRecord,
     ProgressionChoice,
@@ -25,11 +19,13 @@ from ..content.records import (
     SubclassRecord,
     SubraceRecord,
     TraitRecord,
-    WeaponRecord,
 )
-from ..domain.models import MAX_LEVEL, Ability, Origin, StatBlock
+from ..content.records.equipment import WeaponRecord
+from ..content.records.monsters import MonsterAttack, MonsterRecord
+from ..domain.models.progression import MAX_LEVEL, Origin
+from ..domain.models.stats import StatBlock
 from ..utils import dice
-from ..utils.models import Slug
+from ..utils.models import Ability, Slug
 from .ruleset import (
     ArchetypeProfile,
     AttackProfile,

@@ -1,6 +1,7 @@
 from typing import Protocol
 
-from ..domain.models import GameState, Turn
+from ..domain.models.state import GameState
+from ..domain.models.turn import Turn
 
 
 class SaveRepository(Protocol):

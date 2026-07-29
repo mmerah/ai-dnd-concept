@@ -16,19 +16,18 @@ project it."""
 
 from collections.abc import Iterator, Sequence
 
-from aidm.content.records import (
+from aidm.content.records.base import Collection, ContentRef
+from aidm.content.records.character import (
     AbilityBonus,
     BonusOption,
     ChoiceEffect,
     ChoiceOption,
-    Collection,
-    ContentRef,
     ProgressionChoice,
     RecordOption,
 )
 
 from .common import PACK_ID, ability
-from .upstream import Choice, Option
+from .upstream.character import Choice, Option
 
 
 def flatten(

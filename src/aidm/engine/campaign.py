@@ -1,7 +1,8 @@
 from collections.abc import Sequence
 
-from ..content import PackStamp
-from ..domain.models import SAVE_VERSION, CharacterSheet, GameState, ScenarioDef
+from ..content.models import PackStamp
+from ..domain.models.base import SAVE_VERSION
+from ..domain.models.state import CharacterSheet, GameState, ScenarioDef
 from . import bestiary, progression
 from .ruleset import Ruleset
 

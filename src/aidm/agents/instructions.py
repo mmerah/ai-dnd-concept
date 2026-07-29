@@ -1,6 +1,6 @@
 from collections.abc import Sequence
 
-from ..domain.models import CONSEQUENCE_TYPES, Consequence
+from ..domain.models.consequences import CONSEQUENCE_TYPES, Consequence
 
 
 def consequence_menu(types: Sequence[type[Consequence]]) -> str:

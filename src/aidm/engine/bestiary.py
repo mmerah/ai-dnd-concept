@@ -1,5 +1,8 @@
-from ..content import COLLECTION_SPECS
-from ..domain.models import ActorEntity, Entity, GameState, StatBlock, updated
+from ..content.registry import COLLECTION_SPECS
+from ..domain.models.entities import ActorEntity, Entity
+from ..domain.models.state import GameState
+from ..domain.models.stats import StatBlock
+from ..utils.models import updated
 from .ruleset import ArchetypeRules
 
 

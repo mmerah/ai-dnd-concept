@@ -1,4 +1,5 @@
-from ..domain.models import Direction, GrowthRequest
+from ..domain.models.direction import Direction
+from ..domain.models.entities import GrowthRequest
 from ..domain.reducer import render
 from . import views
 from .context import TurnContext

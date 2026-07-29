@@ -15,18 +15,13 @@ from pydantic_ai.models.function import AgentInfo, FunctionModel
 
 from aidm.agents.stages import CREATOR, DIRECTOR, MAINTAINER, NARRATOR
 from aidm.config import settings
-from aidm.content import (
-    Content,
-    ContentMiss,
-    ContentRef,
-    MonsterRecord,
-    Pack,
-    PackStamp,
-    loaded,
-    read_pack,
-)
-from aidm.content.records import ClassRecord, Collection, Record
-from aidm.domain.models import CharacterSheet, GameState, Origin, ScenarioDef
+from aidm.content.library import Content, ContentMiss, loaded, read_pack
+from aidm.content.models import Pack, PackStamp
+from aidm.content.records.base import Collection, ContentRef, Record
+from aidm.content.records.character import ClassRecord
+from aidm.content.records.monsters import MonsterRecord
+from aidm.domain.models.progression import Origin
+from aidm.domain.models.state import CharacterSheet, GameState, ScenarioDef
 from aidm.engine import campaign
 from aidm.engine.pack_ruleset import compile_ruleset
 from aidm.engine.ruleset import (

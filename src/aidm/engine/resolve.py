@@ -1,18 +1,15 @@
 from collections.abc import Sequence
 from random import Random
 
-from ..domain.models import (
+from ..domain.models.consequences import (
     ApplyCondition,
     Attack,
     Consequence,
     Damage,
     DcRoll,
-    DcRolled,
     Discover,
     DropItem,
-    Event,
     GainImprovisedItem,
-    GameState,
     GiveItem,
     Heal,
     Move,
@@ -20,6 +17,8 @@ from ..domain.models import (
     RollSave,
     TakeItem,
 )
+from ..domain.models.events import DcRolled, Event
+from ..domain.models.state import GameState
 from . import rules
 from .mechanics import combat, common, conditions, health, inventory, movement
 from .mechanics.resolution import Resolution

@@ -7,14 +7,14 @@ the tree whose arms spend different numbers of picks — the one part `flatten` 
 
 from collections.abc import Mapping, Sequence
 
-from aidm.content.records import (
+from aidm.content.records.base import Collection
+from aidm.content.records.character import (
     AbilityBonus,
     AbilityRequirement,
     BackgroundRecord,
     ChoiceOption,
     ClassLevelRecord,
     ClassRecord,
-    Collection,
     EquipmentProficiency,
     EquipmentProficiencyType,
     FeatRecord,
@@ -35,7 +35,7 @@ from aidm.content.records import (
 
 from .choices import flatten
 from .common import ability
-from .upstream import (
+from .upstream.character import (
     Background,
     Choice,
     Class,

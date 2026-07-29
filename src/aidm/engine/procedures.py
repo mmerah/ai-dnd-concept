@@ -1,6 +1,9 @@
 from random import Random
 
-from ..domain.models import ActorEntity, AttackRolled, GameState, ItemEntity, Progression
+from ..domain.models.entities import ActorEntity, ItemEntity
+from ..domain.models.events import AttackRolled
+from ..domain.models.progression import Progression
+from ..domain.models.state import GameState
 from ..utils import dice
 from ..utils.models import Slug
 from . import rules

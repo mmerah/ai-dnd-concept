@@ -9,9 +9,10 @@ import sys
 from collections.abc import Sequence
 from pathlib import Path
 
-from srd import PACK_ID, build
+from srd.build import build
+from srd.common import PACK_ID
 
-from aidm.content import write_pack
+from aidm.content.library import write_pack
 
 
 def main(argv: Sequence[str]) -> None:

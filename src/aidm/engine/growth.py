@@ -1,6 +1,8 @@
 from collections.abc import Mapping, Sequence
 
-from ..domain.models import Entity, EntityId, Frozen, GrowthRequest, RejectedGrowth
+from ..domain.models.base import EntityId
+from ..domain.models.entities import Entity, GrowthRequest, RejectedGrowth
+from ..utils.models import Frozen
 
 
 class Screened(Frozen):

@@ -8,7 +8,7 @@ from pydantic_ai.messages import (
     UserPromptPart,
 )
 
-from ..domain.models import Exchange
+from ..domain.models.state import Exchange
 
 
 def exchanges_to_messages(history: Sequence[Exchange]) -> list[ModelMessage]:
