@@ -27,6 +27,7 @@ from aidm.engine.pack_ruleset import compile_ruleset
 from aidm.engine.ruleset import (
     ArchetypeProfile,
     CharacterProfile,
+    FeatureProfile,
     LevelProfile,
     Ruleset,
     WeaponProfile,
@@ -79,6 +80,9 @@ class BareRules:
 
     def level(self, origin: Origin, level: int) -> LevelProfile:
         return LevelProfile(prof_bonus=2, improvements=0)
+
+    def feature(self, ref: ContentRef) -> FeatureProfile | ContentMiss:
+        return ContentMiss(ref=ref, reason="unknown_pack")
 
     def archetype(self, ref: ContentRef) -> ArchetypeProfile | None:
         return None

@@ -35,6 +35,7 @@ from aidm.content.records.character import (
 
 from .choices import flatten
 from .common import ability
+from .feature_mechanics import mechanics_for, replacements_for
 from .upstream.character import (
     Background,
     Choice,
@@ -168,6 +169,8 @@ def feature(record: Feature) -> FeatureRecord:
         subclass_index=None if record.subclass is None else record.subclass.index,
         parent=None if record.parent is None else record.parent.index,
         choices=tuple(choices),
+        mechanics=mechanics_for(record.index, has_choices=bool(choices)),
+        replaces=replacements_for(record.index),
     )
 
 

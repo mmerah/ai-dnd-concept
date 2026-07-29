@@ -14,10 +14,12 @@ from ..content.records.monsters import (
 from ..domain.models.base import PLAYER_ID
 from ..domain.models.direction import Direction
 from ..domain.models.entities import ActorEntity, Entity, GrowthRequest, ItemEntity, LocationEntity
-from ..domain.models.progression import MAX_LEVEL, Progression
+from ..domain.models.progression import MAX_LEVEL, Progression, feature_key
 from ..domain.models.state import Exchange
 from ..domain.models.stats import StatBlock
+from ..engine import features
 from ..engine.ruleset import NarrativeRules
+from ..utils.models import Attributes
 from .context import Scene
 
 
@@ -45,9 +47,7 @@ def _placement(entity: Entity, scene: Scene) -> str:
 
 def briefs(items: Iterable[Entity], scene: Scene) -> str:
     return (
-        "\n".join(
-            f"- {label(e)} ({_kind(e)}){_placement(e, scene)} — {e.brief}" for e in items
-        )
+        "\n".join(f"- {label(e)} ({_kind(e)}){_placement(e, scene)} — {e.brief}" for e in items)
         or "- (none)"
     )
 
@@ -177,6 +177,26 @@ def _klass(progression: Progression, rules: NarrativeRules) -> str:
     return " — ".join(parts)
 
 
+def _feature_list(
+    progression: Progression,
+    attributes: Attributes,
+    rules: NarrativeRules,
+) -> str:
+    lines: list[str] = []
+    for status in features.owned(progression, attributes, rules):
+        profile, pool = status.profile, status.pool
+        tags = [features.actionability(profile)]
+        if pool is not None:
+            tags += [f"{pool.remaining}/{pool.maximum} uses", f"{pool.recharge} rest"]
+        if features.directly_invokable(profile):
+            tags.append("depleted" if pool is not None and pool.remaining == 0 else "usable")
+        desc = " ".join(profile.desc.split())
+        lines.append(
+            f"- {profile.name}[id={feature_key(profile.ref)}] [{' — '.join(tags)}] — {desc}"
+        )
+    return "features:\n" + ("\n".join(lines) or "- (none)")
+
+
 def character(scene: Scene, rules: NarrativeRules) -> str:
     player = scene.state.player
     stats = player.stats
@@ -185,14 +205,33 @@ def character(scene: Scene, rules: NarrativeRules) -> str:
         "\n".join(f"- {label(e)} — {e.brief}" for e in sorted(scene.carried, key=lambda e: e.name))
         or "- (none)"
     )
+    progression = player.progression
     lines = [
         f"{player.name} — hp {stats.hp}/{stats.max_hp} — ac {stats.ac}"
         f"{conditions(stats)} — at {label(scene.where)}",
-        *([] if player.progression is None else [_klass(player.progression, rules)]),
+        *(
+            []
+            if progression is None
+            else [
+                _klass(progression, rules),
+                _feature_list(progression, stats.attributes, rules),
+            ]
+        ),
         f"attributes: {_attributes(stats)}",
         f"inventory:\n{inventory}",
     ]
     return "\n".join(lines)
+
+
+def narrator_character(scene: Scene) -> str:
+    player = scene.state.player
+    inventory = (
+        "\n".join(
+            f"- {item.name} — {item.brief}" for item in sorted(scene.carried, key=lambda e: e.name)
+        )
+        or "- (none)"
+    )
+    return f"{player.name} — at {scene.where.name}\ninventory:\n{inventory}"
 
 
 def level_up_status(scene: Scene) -> str:

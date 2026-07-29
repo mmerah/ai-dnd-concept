@@ -29,6 +29,8 @@ MagicSchool = Literal[
     "evocation",
 ]
 
+RestType = Literal["short", "long"]
+
 ConditionName = Literal[
     "blinded",
     "charmed",

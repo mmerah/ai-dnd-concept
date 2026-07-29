@@ -36,6 +36,8 @@ START = Advancement(
         proficiencies=(),
         spell_slots={},
         decisions={},
+        features=(),
+        feature_resources={},
     ),
     attributes=Attributes(),
     hp_gain=10,

@@ -14,13 +14,15 @@ from ..domain.models.consequences import (
     Heal,
     LevelUp,
     Move,
+    Rest,
     RollCheck,
     RollSave,
     TakeItem,
+    UseFeature,
 )
 from ..domain.models.events import DcRolled, Event
 from ..domain.models.state import GameState
-from . import progression, rules
+from . import features, progression, rules
 from .mechanics import combat, common, conditions, health, inventory, movement
 from .mechanics.resolution import Resolution
 from .ruleset import Ruleset
@@ -54,6 +56,10 @@ def _walk(ctx: Resolution, consequence: Consequence) -> list[Event]:
             return combat.attack(ctx, consequence)
         case LevelUp():
             return progression.offer(ctx.player)
+        case UseFeature():
+            return features.use(ctx, consequence)
+        case Rest():
+            return features.rest(ctx, consequence)
         case Damage():
             return health.damage(ctx, consequence)
         case Heal():

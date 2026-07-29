@@ -4,10 +4,11 @@ from typing import Annotated, ClassVar, Literal, get_args
 
 from pydantic import Field
 
-from ...content.vocabulary import CONDITION_NAMES, ConditionName
+from ...content.vocabulary import CONDITION_NAMES, ConditionName, RestType
 from ...utils.dice import SelfContainedDice
 from ...utils.models import ABILITIES, Ability, Frozen, Kind
 from .base import PLAYER_ID, EntityId
+from .progression import FeatureKey
 
 
 @dataclass(frozen=True, slots=True)
@@ -109,6 +110,33 @@ unlocks the level-up UI where the player makes any character choices; it does no
 the level itself. Do not use it while LEVEL-UP STATUS says an award is already waiting."""
 
     action: Literal["level_up"] = "level_up"
+
+
+class UseFeature(Action):
+    """Use one of the player's active class features."""
+
+    GUIDANCE: ClassVar[str] = """Use when the player invokes a feature marked `usable` in their \
+feature list. Copy its exact feature id. The rules verify ownership and remaining uses, and apply \
+effects marked `engine-resolved`. For a `description-guided` feature, propose any concrete \
+consequences the description requires alongside this activation."""
+
+    action: Literal["use_feature"] = "use_feature"
+    feature: FeatureKey = Field(description="Exact id of an owned feature marked `usable`.")
+    amount: int = Field(
+        default=1,
+        ge=1,
+        description="Resource points spent; use 1 unless the feature allows a chosen amount.",
+    )
+
+
+class Rest(Action):
+    """Complete a short or long rest."""
+
+    GUIDANCE: ClassVar[str] = """Use only when the fiction establishes that the player completes \
+the rest. This recharges eligible features; it does not invent healing or other rest benefits."""
+
+    action: Literal["rest"] = "rest"
+    rest: RestType = Field(description="The completed rest: `short` or `long`.")
 
 
 class Damage(Action):
@@ -252,6 +280,8 @@ Consequence = Annotated[
     | GiveItem
     | GainImprovisedItem
     | LevelUp
+    | UseFeature
+    | Rest
     | Damage
     | Heal
     | ApplyCondition

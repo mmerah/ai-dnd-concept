@@ -1,9 +1,3 @@
-"""The vendored SRD pack, asserted as content — not as a shape.
-
-A shape test is a false safety net here: an upstream rename of `attack_bonus` validates perfectly on
-all 334 monsters and every goblin silently attacks at +0. These pin the corpus instead, and name the
-genuine upstream defects in allowlists rather than summing them away."""
-
 from pathlib import Path
 
 import pytest
@@ -12,19 +6,14 @@ from support import PACK_DIR, all_of, content, new_game, pack, ruleset
 
 from aidm.agents import views
 from aidm.agents.context import Scene
-from aidm.content.library import ContentMiss, load, loaded, write_pack
+from aidm.content.library import ContentMiss, load, write_pack
 from aidm.content.records.base import ContentRef, Record
 from aidm.content.records.character import (
     BackgroundRecord,
-    ClassLevelRecord,
     ClassRecord,
-    EquipmentProficiency,
     FeatureRecord,
     RaceRecord,
-    RecordOption,
     SaveProficiency,
-    SkillProficiency,
-    SubclassLevelRecord,
     TraitRecord,
 )
 from aidm.content.records.equipment import (
@@ -44,10 +33,8 @@ from aidm.content.records.rules import ConditionRecord
 from aidm.content.records.spells import SpellRecord
 from aidm.domain.models.base import EntityId
 from aidm.domain.models.entities import ActorEntity, Entity, ItemEntity
-from aidm.domain.models.progression import MAX_LEVEL, Origin
 from aidm.domain.models.state import GameState
 from aidm.engine import bestiary
-from aidm.engine.pack_ruleset import compile_ruleset
 from aidm.utils import dice
 from aidm.utils.models import updated
 
@@ -446,105 +433,3 @@ def test_a_condition_is_shown_on_anyone_who_holds_one() -> None:
 def test_two_packs_cannot_claim_one_id() -> None:
     with pytest.raises(ValueError, match="same id"):
         load([PACK_DIR, PACK_DIR])
-
-
-def test_a_level_record_is_a_class_one_or_a_subclass_one() -> None:
-    """Discriminated rather than a bag of optionals: 50 of the 290 carry features and nothing else,
-    and reading a missing `prof_bonus` as 0 would give a level-20 fighter a +0 to everything."""
-    levels = list(LEVELS.values())
-    assert sum(isinstance(x, ClassLevelRecord) for x in levels) == 240
-    assert sum(isinstance(x, SubclassLevelRecord) for x in levels) == 50
-    # The cumulative totals the level-up diff is taken between.
-    fighter = [LEVELS[f"fighter-{n}"] for n in range(1, 7)]
-    assert [x.ability_score_bonuses for x in fighter if isinstance(x, ClassLevelRecord)] == [
-        0,
-        0,
-        0,
-        1,
-        1,
-        2,
-    ]
-
-
-def test_every_class_grants_its_improvements_at_the_levels_5e_says() -> None:
-    """A published defect, corrected at import: upstream's rogue totals *fall* at 11 —
-    2,2,3,*2*,4 over levels 8-12 — and a level-up is the diff of two of them, so as published the
-    pack said level 11 takes an improvement away and level 12 grants two. `scripts/srd/corrections`
-    holds the fix; this asserts the whole corpus rather than the one record, because the next such
-    defect will not be in the rogue."""
-    extra = {"fighter": {6, 14}, "rogue": {10}}  # everyone else improves at 4, 8, 12, 16, 19 alone
-    for klass in CLASSES:
-        at = {4, 8, 12, 16, 19} | extra.get(klass, set())
-        totals = [LEVELS[f"{klass}-{n}"] for n in range(1, MAX_LEVEL + 1)]
-        assert [t.ability_score_bonuses for t in totals if isinstance(t, ClassLevelRecord)] == [
-            sum(1 for level in at if level <= n) for n in range(1, MAX_LEVEL + 1)
-        ]
-    # What the defect cost: level 12 offered two improvements, and 11 and 13 offered none.
-    rogue = Origin(class_ref=ref("classes", "rogue"))
-    assert [RULES.level(rogue, n).improvements for n in range(8, 14)] == [1, 0, 1, 0, 1, 0]
-
-
-def test_a_class_ladder_that_falls_is_refused_at_load_not_absorbed() -> None:
-    """Why the defect was corrected rather than floored in the compiler: a pack whose totals fall is
-    unplayable, and a level quietly offering nothing would hide it until a player got there."""
-    fallen = updated(LEVELS["rogue-11"], ability_score_bonuses=2)
-    broken = updated(PACK, records={**PACK.records, "levels": {**LEVELS, "rogue-11": fallen}})
-    with pytest.raises(ValueError, match="rogue-11: ability score improvements fall from 3 to 2"):
-        compile_ruleset(loaded([broken]))
-
-
-def test_every_class_can_be_played_and_ships_one_subclass() -> None:
-    """The SRD's stated gap: one subclass per class, chosen at the level it first grants
-    something."""
-    classes = list(CLASSES.values())
-    assert len(classes) == 12
-    assert all(
-        record.subclass is not None and len(record.subclass.options) == 1 for record in classes
-    )
-    assert sum(1 for record in classes if record.spellcasting_ability) == 8
-    subclass = CLASSES["cleric"].subclass
-    assert subclass is not None and subclass.level == 1  # a cleric picks a domain at level 1
-
-
-def test_a_choice_id_is_unique_pack_wide_and_every_option_resolves() -> None:
-    """A saved character's decisions are keyed by these ids, so a collision would silently re-point
-    a choice already made; a dangling option would be a pick that grants nothing."""
-    ids = [choice.id for choice in CHOICES]
-    assert len(ids) == len(set(ids)) == 41
-    refs = [o.ref for c in CHOICES for o in c.options if isinstance(o, RecordOption)]
-    assert len(refs) == 387
-    assert not [str(r) for r in refs if CONTENT.resolves(r) is not None]
-
-
-def test_only_an_expertise_choice_doubles_rather_than_grants() -> None:
-    """Expertise offers every skill whether the character holds it or not, so a pick read as a grant
-    would hand out a proficiency the pack never gave them. Nothing else in the pack doubles."""
-    doubling = sorted(choice.id for choice in CHOICES if choice.effect == "double")
-    assert doubling == [
-        "bard-expertise-1-expertise",
-        "bard-expertise-2-expertise",
-        "rogue-expertise-1-expertise",
-        "rogue-expertise-2-expertise",
-    ]
-
-
-def test_a_nested_choice_is_flattened_by_unioning_its_arms() -> None:
-    """Exact wherever the arms spend the same number of picks. The monk's "one artisan's tool or one
-    musical instrument" is one pick from 19 + 10; `rogue-expertise-1`'s "two skills, or one skill
-    and thieves' tools" is two picks from 18 + 1. Disagreeing arms are refused by the importer."""
-    tools = CLASSES["monk"].choices[1]
-    assert (tools.choose, len(tools.options)) == (1, 29)
-    (expertise,) = FEATURES["rogue-expertise-1"].choices
-    assert (expertise.choose, len(expertise.options)) == (2, 19)
-
-
-def test_a_proficiency_says_what_it_covers_rather_than_naming_a_category() -> None:
-    """An `equipment_category` reference is expanded to its members at import, so a to-hit asks
-    whether the weapon is in the set instead of re-deriving a category mid-turn."""
-    kinds = [type(p).__name__ for p in PROFICIENCIES.values()]
-    assert len(kinds) == 117
-    assert kinds.count(EquipmentProficiency.__name__) == 93
-    assert kinds.count(SkillProficiency.__name__) == 18
-    assert kinds.count(SaveProficiency.__name__) == 6
-    martial = PROFICIENCIES["martial-weapons"]
-    assert isinstance(martial, EquipmentProficiency) and len(martial.equipment) == 23

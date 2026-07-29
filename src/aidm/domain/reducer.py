@@ -1,6 +1,7 @@
-from collections.abc import Sequence
+from collections.abc import Mapping, Sequence
 from functools import reduce
 
+from ..content.records.base import ContentRef
 from ..utils.models import updated
 from .models.base import EntityId
 from .models.entities import ActorEntity, Entity, ItemEntity, LocationEntity
@@ -12,13 +13,23 @@ from .models.events import (
     EntityCreated,
     EntityDiscovered,
     Event,
+    FeatureActivated,
+    FeatureUsed,
     HpChanged,
     ItemMoved,
     LeveledUp,
     LevelUpAvailable,
     Moved,
+    PoolRefilled,
+    Rested,
 )
-from .models.progression import Advancement
+from .models.progression import (
+    Advancement,
+    FeatureKey,
+    FeatureResourceState,
+    Progression,
+    feature_key,
+)
 from .models.state import GameState
 
 
@@ -44,7 +55,7 @@ def _move_item(state: GameState, item_id: EntityId, to_id: EntityId) -> GameStat
 def _apply_one(state: GameState, event: Event) -> GameState:
     world = state.world
     match event:
-        case DcRolled() | DiceRolled() | AttackRolled():
+        case DcRolled() | DiceRolled() | AttackRolled() | FeatureActivated():
             return state  # branches carry effects; rolls are evidence
         case ItemMoved(item_id=item_id, to_id=to_id):
             return _move_item(state, item_id, to_id)
@@ -68,6 +79,10 @@ def _apply_one(state: GameState, event: Event) -> GameState:
                 state,
                 updated(player, progression=updated(progression, level_up_available=True)),
             )
+        case FeatureUsed(ref=ref, spent=spent, remaining=remaining, maximum=maximum):
+            return _spent(state, ref, spent=spent, remaining=remaining, maximum=maximum)
+        case Rested(refilled=refilled):
+            return _refilled(state, refilled)
         case LeveledUp(advancement=advancement):
             return _grown(state, advancement)
         case EntityCreated(entity=entity):
@@ -88,6 +103,49 @@ def _grown(state: GameState, advancement: Advancement) -> GameState:
         hp=player.stats.hp + advancement.hp_gain,
     )
     return _replacing(state, updated(player, stats=stats, progression=advancement.progression))
+
+
+def _progression(state: GameState) -> Progression:
+    progression = state.player.progression
+    if progression is None:
+        raise ValueError("the player has no feature resources")
+    return progression
+
+
+def _with_resources(
+    state: GameState, resources: Mapping[FeatureKey, FeatureResourceState]
+) -> GameState:
+    player = state.player
+    progression = _progression(state)
+    return _replacing(
+        state, updated(player, progression=updated(progression, feature_resources=resources))
+    )
+
+
+def _spent(
+    state: GameState, ref: ContentRef, *, spent: int, remaining: int, maximum: int
+) -> GameState:
+    key = feature_key(ref)
+    held = _progression(state).feature_resources
+    before = held.get(key)
+    if before is None or maximum != before.maximum or remaining != before.remaining - spent:
+        raise ValueError(
+            f"cannot spend {spent} from {ref.index!r} resource {before} to {remaining}/{maximum}"
+        )
+    return _with_resources(state, {**held, key: updated(before, remaining=remaining)})
+
+
+def _refilled(state: GameState, refilled: Sequence[PoolRefilled]) -> GameState:
+    resources = dict(_progression(state).feature_resources)
+    for pool in refilled:
+        key = feature_key(pool.ref)
+        before = resources.get(key)
+        if before is None or before.maximum != pool.maximum:
+            raise ValueError(
+                f"cannot refill {pool.ref.index!r} resource {before} to {pool.maximum}"
+            )
+        resources[key] = updated(before, remaining=pool.maximum)
+    return _with_resources(state, resources)
 
 
 def apply(state: GameState, events: Sequence[Event]) -> GameState:

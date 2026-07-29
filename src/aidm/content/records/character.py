@@ -2,8 +2,9 @@ from typing import Annotated, Literal, Self
 
 from pydantic import Field, model_validator
 
+from ...utils.dice import PositiveDice
 from ...utils.models import EMPTY_FROZEN_MAP, Ability, Frozen, FrozenMap
-from ..vocabulary import LanguageName
+from ..vocabulary import LanguageName, RestType
 from .base import ContentRef, CreatureSize, Record, Slug
 
 
@@ -62,6 +63,11 @@ class ProgressionChoice(Frozen):
             raise ValueError(f"choice {self.id!r} offers one key twice: {sorted(keys)}")
         if self.distinct and self.choose > len(keys):
             raise ValueError(f"choice {self.id!r} asks for {self.choose} of {len(keys)} options")
+        if self.effect == "double" and any(
+            not isinstance(option, RecordOption) or option.ref.collection != "proficiencies"
+            for option in self.options
+        ):
+            raise ValueError(f"choice {self.id!r} can only double proficiencies")
         return self
 
     def option(self, key: str) -> ChoiceOption | None:
@@ -119,6 +125,109 @@ class SubclassLevelRecord(Record):
 LevelRecord = Annotated[ClassLevelRecord | SubclassLevelRecord, Field(discriminator="kind")]
 
 
+FeatureActivation = Literal["action", "bonus_action", "reaction", "special"]
+
+
+class LevelResourceMaximum(Frozen):
+    level: int = Field(ge=1, le=20)
+    maximum: int = Field(ge=1)
+
+
+class LevelScaledResourceMaximum(Frozen):
+    kind: Literal["level_scaled"] = "level_scaled"
+    levels: tuple[LevelResourceMaximum, ...] = Field(min_length=1)
+
+    @model_validator(mode="after")
+    def _in_level_order(self) -> Self:
+        ordered = tuple(entry.level for entry in self.levels)
+        if ordered != tuple(sorted(set(ordered))):
+            raise ValueError("resource maximum levels must be unique and increasing")
+        return self
+
+
+class AbilityModifierResourceMaximum(Frozen):
+    kind: Literal["ability_modifier"] = "ability_modifier"
+    ability: Ability
+    minimum: int = Field(default=1, ge=1)
+
+
+class ClassLevelResourceMaximum(Frozen):
+    kind: Literal["class_level"] = "class_level"
+    multiplier: int = Field(default=1, ge=1)
+
+
+DynamicResourceMaximum = Annotated[
+    LevelScaledResourceMaximum | AbilityModifierResourceMaximum | ClassLevelResourceMaximum,
+    Field(discriminator="kind"),
+]
+FeatureResourceMaximum = Annotated[int, Field(ge=1)] | DynamicResourceMaximum
+FeatureResourceCost = Annotated[int, Field(ge=1)] | Literal["variable"]
+
+
+class FeatureResource(Frozen):
+    maximum: FeatureResourceMaximum
+    recharge: RestType
+    # Names the feature whose pool this one spends from, rather than owning a pool of its own.
+    pool: Slug | None = None
+    cost: FeatureResourceCost = 1
+
+
+class SelfHealWithClassLevel(Frozen):
+    kind: Literal["self_heal_with_class_level"] = "self_heal_with_class_level"
+    dice: PositiveDice
+
+
+class RangedWeaponAttackBonus(Frozen):
+    kind: Literal["ranged_weapon_attack_bonus"] = "ranged_weapon_attack_bonus"
+    bonus: int
+
+
+ActiveFeatureEffect = Annotated[SelfHealWithClassLevel, Field(discriminator="kind")]
+PassiveFeatureEffect = Annotated[RangedWeaponAttackBonus, Field(discriminator="kind")]
+
+
+class ProgressionOnlyFeatureMechanics(Frozen):
+    kind: Literal["progression"] = "progression"
+
+
+class AgentFeatureMechanics(Frozen):
+    kind: Literal["agent"] = "agent"
+
+
+class ResourceFeatureMechanics(Frozen):
+    kind: Literal["resource"] = "resource"
+    resource: FeatureResource
+
+
+class AgentActiveFeatureMechanics(Frozen):
+    kind: Literal["agent_active"] = "agent_active"
+    activation: FeatureActivation
+    resource: FeatureResource | None = None
+
+
+class EngineActiveFeatureMechanics(Frozen):
+    kind: Literal["engine_active"] = "engine_active"
+    activation: FeatureActivation
+    resource: FeatureResource | None = None
+    effect: ActiveFeatureEffect
+
+
+class EnginePassiveFeatureMechanics(Frozen):
+    kind: Literal["engine_passive"] = "engine_passive"
+    effect: PassiveFeatureEffect
+
+
+FeatureMechanics = Annotated[
+    ProgressionOnlyFeatureMechanics
+    | AgentFeatureMechanics
+    | ResourceFeatureMechanics
+    | AgentActiveFeatureMechanics
+    | EngineActiveFeatureMechanics
+    | EnginePassiveFeatureMechanics,
+    Field(discriminator="kind"),
+]
+
+
 class FeatureRecord(Record):
     class_index: Slug
     level: int = Field(ge=1, le=20)
@@ -126,6 +235,8 @@ class FeatureRecord(Record):
     subclass_index: Slug | None = None
     parent: Slug | None = None
     choices: tuple[ProgressionChoice, ...] = ()
+    mechanics: FeatureMechanics
+    replaces: tuple[Slug, ...] = ()
 
 
 class RaceRecord(Record):

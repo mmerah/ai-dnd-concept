@@ -1,19 +1,26 @@
+from collections import Counter
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 
 from ..content.library import Content, ContentMiss
 from ..content.models import PackStamp
-from ..content.records.base import ContentRef, DamageRoll
+from ..content.records.base import ContentRef, DamageRoll, Record
 from ..content.records.character import (
     AbilityBonus,
+    AgentActiveFeatureMechanics,
     BackgroundRecord,
     ClassLevelRecord,
     ClassRecord,
+    EngineActiveFeatureMechanics,
+    EnginePassiveFeatureMechanics,
     EquipmentProficiency,
+    FeatureMechanics,
     FeatureRecord,
     ProgressionChoice,
+    ProgressionOnlyFeatureMechanics,
     RaceRecord,
     RecordOption,
+    ResourceFeatureMechanics,
     SaveProficiency,
     SubclassLevelRecord,
     SubclassRecord,
@@ -30,6 +37,7 @@ from .ruleset import (
     ArchetypeProfile,
     AttackProfile,
     CharacterProfile,
+    FeatureProfile,
     LevelProfile,
     Ruleset,
     WeaponProfile,
@@ -51,6 +59,8 @@ class PackRuleset:
 
     def character(self, origin: Origin) -> CharacterProfile:
         klass = self.content.require(origin.class_ref, ClassRecord)
+        if origin.subclass_ref is not None:
+            self._subclass(origin.class_ref, origin.subclass_ref)
         traits = self._traits(origin)
         return CharacterProfile(
             hit_die=klass.hit_die,
@@ -64,15 +74,35 @@ class PackRuleset:
         """Convert cumulative level records into per-level deltas."""
         reached = self._class_level(origin.class_ref, level)
         before = self._class_level(origin.class_ref, level - 1) if level > 1 else None
-        features = (*reached.features, *self._subclass_features(origin, level))
+        indexes = (*reached.features, *self._subclass_features(origin, level))
+        refs = tuple(origin.class_ref.sibling("features", index) for index in indexes)
+        records = tuple(self._feature_record(ref) for ref in refs)
+        for ref, record in zip(refs, records, strict=True):
+            if record.class_index != origin.class_ref.index:
+                raise ValueError(
+                    f"{ref}: feature belongs to class {record.class_index!r}, "
+                    f"not {origin.class_ref.index!r}"
+                )
+        features = tuple(
+            self._profile(ref, record)
+            for ref, record in zip(refs, records, strict=True)
+            if not isinstance(record.mechanics, ProgressionOnlyFeatureMechanics)
+        )
         held = before.ability_score_bonuses if before else 0
         return LevelProfile(
             prof_bonus=reached.prof_bonus,
             improvements=_improvements(reached, held),
             spell_slots=reached.spellcasting.spell_slots if reached.spellcasting else {},
-            choices=tuple(c for i in features for c in self._feature(origin.class_ref, i).choices),
+            choices=tuple(choice for record in records for choice in record.choices),
             subclass_choice=self._subclass_choice(origin.class_ref, level),
+            features=features,
         )
+
+    def feature(self, ref: ContentRef) -> FeatureProfile | ContentMiss:
+        record = self.content.get(ref, FeatureRecord)
+        if isinstance(record, ContentMiss):
+            return record
+        return self._profile(ref, record)
 
     def archetype(self, ref: ContentRef) -> ArchetypeProfile | None:
         record = self.content.get(ref, MonsterRecord)
@@ -153,7 +183,7 @@ class PackRuleset:
         if klass.subclass is None or klass.subclass.level != level:
             return None
         refs = [class_ref.sibling("subclasses", index) for index in klass.subclass.options]
-        records = [self.content.require(ref, SubclassRecord) for ref in refs]
+        records = [self._subclass(class_ref, ref) for ref in refs]
         return ProgressionChoice(
             id=f"{klass.index}-subclass",
             prompt=f"choose your {records[0].flavor}",
@@ -170,32 +200,166 @@ class PackRuleset:
         ref = _level_ref(origin.subclass_ref, level)
         if not self.provides(ref):
             return ()
-        return self.content.require(ref, SubclassLevelRecord).features
+        reached = self.content.require(ref, SubclassLevelRecord)
+        if (
+            reached.class_index != origin.class_ref.index
+            or reached.subclass_index != origin.subclass_ref.index
+            or reached.level != level
+        ):
+            raise ValueError(f"{ref}: level record does not match its class, subclass, and level")
+        return reached.features
 
     def _class_level(self, class_ref: ContentRef, level: int) -> ClassLevelRecord:
-        return self.content.require(_level_ref(class_ref, level), ClassLevelRecord)
+        ref = _level_ref(class_ref, level)
+        reached = self.content.require(ref, ClassLevelRecord)
+        if reached.class_index != class_ref.index or reached.level != level:
+            raise ValueError(f"{ref}: level record does not match its class and level")
+        return reached
 
-    def _feature(self, class_ref: ContentRef, index: Slug) -> FeatureRecord:
-        return self.content.require(class_ref.sibling("features", index), FeatureRecord)
+    def _feature_record(self, ref: ContentRef) -> FeatureRecord:
+        return self.content.require(ref, FeatureRecord)
+
+    def _subclass(self, class_ref: ContentRef, subclass_ref: ContentRef) -> SubclassRecord:
+        klass = self.content.require(class_ref, ClassRecord)
+        subclass = self.content.require(subclass_ref, SubclassRecord)
+        offered = () if klass.subclass is None else klass.subclass.options
+        if subclass.class_index != class_ref.index or subclass_ref.index not in offered:
+            raise ValueError(
+                f"{subclass_ref}: subclass is not offered by class {class_ref.index!r}"
+            )
+        return subclass
+
+    def _profile(self, ref: ContentRef, record: FeatureRecord) -> FeatureProfile:
+        self._validate_feature_resource(ref, record)
+        for choice in record.choices:
+            for option in choice.options:
+                if not isinstance(option, RecordOption) or option.ref.collection != "features":
+                    continue
+                granted = self._feature_record(option.ref)
+                if granted.class_index != record.class_index:
+                    raise ValueError(
+                        f"{record.index}: choice grants {granted.index} from "
+                        f"class {granted.class_index}"
+                    )
+        return FeatureProfile(
+            ref=ref,
+            name=record.name,
+            desc=record.desc,
+            mechanics=record.mechanics,
+            replaces=self._replacement_refs(ref, record),
+        )
+
+    def _validate_feature_resource(self, ref: ContentRef, record: FeatureRecord) -> None:
+        mechanics = record.mechanics
+        if isinstance(mechanics, ResourceFeatureMechanics):
+            if mechanics.resource.pool is not None:
+                raise ValueError(f"{record.index}: a resource feature cannot alias another pool")
+            return
+        if not isinstance(mechanics, AgentActiveFeatureMechanics | EngineActiveFeatureMechanics):
+            return
+        resource = mechanics.resource
+        if resource is None or resource.pool is None:
+            return
+        owner = self._feature_record(ref.sibling("features", resource.pool))
+        if owner.class_index != record.class_index:
+            raise ValueError(
+                f"{record.index}: resource pool {owner.index} belongs to {owner.class_index}"
+            )
+        if not isinstance(owner.mechanics, ResourceFeatureMechanics):
+            raise ValueError(f"{record.index}: {owner.index} is not a resource feature")
+        pool = owner.mechanics.resource
+        if (pool.maximum, pool.recharge) != (resource.maximum, resource.recharge):
+            raise ValueError(f"{record.index}: resource pool {owner.index} has different rules")
+
+    def _replacement_refs(self, ref: ContentRef, record: FeatureRecord) -> tuple[ContentRef, ...]:
+        replacements = tuple(ref.sibling("features", index) for index in record.replaces)
+        for replacement in replacements:
+            before = self._feature_record(replacement)
+            if before.class_index != record.class_index:
+                raise ValueError(
+                    f"{record.index}: replacement {before.index} belongs to {before.class_index}"
+                )
+            if before.level >= record.level:
+                raise ValueError(
+                    f"{record.index}: replacement {before.index} is not from an earlier level"
+                )
+            if not _same_mechanics_family(record.mechanics, before.mechanics):
+                raise ValueError(
+                    f"{record.index}: replacement {before.index} has different mechanics"
+                )
+        return replacements
+
+
+def _same_mechanics_family(current: FeatureMechanics, replaced: FeatureMechanics) -> bool:
+    match current, replaced:
+        case (
+            EngineActiveFeatureMechanics(effect=gained),
+            EngineActiveFeatureMechanics(effect=lost),
+        ) | (
+            EnginePassiveFeatureMechanics(effect=gained),
+            EnginePassiveFeatureMechanics(effect=lost),
+        ):
+            return gained.kind == lost.kind
+        case _:
+            return current.kind == replaced.kind
 
 
 def compile_ruleset(content: Content) -> Ruleset:
-    """Precompute lookups and validate every class ladder at startup."""
+    """Precompute lookups and validate progression and feature graphs."""
     covers: dict[ContentRef, frozenset[Slug]] = {}
     saves: set[ContentRef] = set()
     classes: list[ContentRef] = []
+    subclasses: list[tuple[ContentRef, SubclassRecord]] = []
+    features: list[ContentRef] = []
     for ref, record in content.records.items():
+        for choice in _record_choices(record):
+            for option in choice.options:
+                if isinstance(option, RecordOption) and (miss := content.resolves(option.ref)):
+                    raise ValueError(f"{choice.id}: {miss.summary}")
         if isinstance(record, EquipmentProficiency):
             covers[ref] = frozenset(record.equipment)
         elif isinstance(record, SaveProficiency):
             saves.add(ref)
         elif isinstance(record, ClassRecord):
             classes.append(ref)
+        elif isinstance(record, SubclassRecord):
+            subclasses.append((ref, record))
+        elif isinstance(record, FeatureRecord):
+            features.append(ref)
     compiled = PackRuleset(content=content, covers=covers, saves=frozenset(saves))
+    for ref in features:
+        if isinstance(miss := compiled.feature(ref), ContentMiss):
+            raise ValueError(miss.summary)
     for ref in classes:
-        for level in range(1, MAX_LEVEL + 1):
-            compiled.level(Origin(class_ref=ref), level)
+        _validate_career(compiled, Origin(class_ref=ref))
+    for ref, record in subclasses:
+        _validate_career(
+            compiled, Origin(class_ref=ref.sibling("classes", record.class_index), subclass_ref=ref)
+        )
     return compiled
+
+
+def _validate_career(compiled: PackRuleset, origin: Origin) -> None:
+    """Compile every level once, and reject a choice id reused across the levels of one career.
+
+    Decisions persist keyed by choice id, so a reuse would silently overwrite an earlier pick."""
+    offered = [choice.id for choice in compiled.character(origin).choices]
+    for level in range(1, MAX_LEVEL + 1):
+        reached = compiled.level(origin, level)
+        offered += [choice.id for choice in reached.choices]
+        if reached.subclass_choice is not None:
+            offered.append(reached.subclass_choice.id)
+    if repeated := sorted(id for id, count in Counter(offered).items() if count > 1):
+        raise ValueError(f"{origin.class_ref.index}: choice ids offered more than once: {repeated}")
+
+
+def _record_choices(record: Record) -> tuple[ProgressionChoice, ...]:
+    if isinstance(
+        record,
+        ClassRecord | FeatureRecord | RaceRecord | TraitRecord | BackgroundRecord,
+    ):
+        return record.choices
+    return ()
 
 
 def _level_ref(owner: ContentRef, level: int) -> ContentRef:

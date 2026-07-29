@@ -2,7 +2,8 @@ from typing import Annotated, Literal
 
 from pydantic import Field
 
-from ...content.vocabulary import ConditionName
+from ...content.records.base import ContentRef
+from ...content.vocabulary import ConditionName, RestType
 from ...utils.models import Ability, Frozen
 from .base import PLAYER_ID, EntityId
 from .entities import Entity
@@ -151,6 +152,46 @@ class LevelUpAvailable(Frozen):
         return "a level-up is available to the player"
 
 
+class FeatureUsed(Frozen):
+    type: Literal["feature_used"] = "feature_used"
+    ref: ContentRef
+    name: str
+    spent: int = Field(ge=1)
+    remaining: int = Field(ge=0)
+    maximum: int = Field(ge=1)
+
+    @property
+    def summary(self) -> str:
+        return f"used {self.name} ({self.remaining}/{self.maximum} uses remaining)"
+
+
+class FeatureActivated(Frozen):
+    type: Literal["feature_activated"] = "feature_activated"
+    ref: ContentRef
+    name: str
+
+    @property
+    def summary(self) -> str:
+        return f"activated {self.name}"
+
+
+class PoolRefilled(Frozen):
+    ref: ContentRef
+    name: str
+    maximum: int = Field(ge=1)
+
+
+class Rested(Frozen):
+    type: Literal["rested"] = "rested"
+    rest: RestType
+    refilled: tuple[PoolRefilled, ...] = ()
+
+    @property
+    def summary(self) -> str:
+        names = ", ".join(pool.name for pool in self.refilled)
+        return f"completed a {self.rest} rest" + (f"; recharged {names}" if names else "")
+
+
 class LeveledUp(Frozen):
     type: Literal["leveled_up"] = "leveled_up"
     advancement: Advancement
@@ -171,6 +212,9 @@ Event = Annotated[
     | EntityDiscovered
     | EntityCreated
     | LevelUpAvailable
+    | FeatureUsed
+    | FeatureActivated
+    | Rested
     | LeveledUp,
     Field(discriminator="type"),
 ]

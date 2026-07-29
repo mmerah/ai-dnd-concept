@@ -6,7 +6,7 @@ from ..domain.models.progression import Progression
 from ..domain.models.state import GameState
 from ..utils import dice
 from ..utils.models import Slug
-from . import rules
+from . import features, rules
 from .ruleset import AttackProfile, CombatRules, WeaponProfile
 
 
@@ -46,7 +46,13 @@ def _wielded(
     bonus = rules.modifier(attacker.stats.attributes, ability)
     return AttackProfile(
         name=item.name,  # roles see entity names, not record names
-        to_hit=bonus + _proficiency_bonus(attacker.progression, profile.index, ruleset),
+        to_hit=(
+            bonus
+            + _proficiency_bonus(attacker.progression, profile.index, ruleset)
+            + features.ranged_attack_bonus(
+                attacker.progression, attacker.stats.attributes, profile, ruleset
+            )
+        ),
         damage=None if profile.damage is None else _plus(profile.damage, bonus),
     )
 

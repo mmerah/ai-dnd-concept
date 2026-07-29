@@ -32,6 +32,9 @@ testpaths = ["tests"]
 [tool.basedpyright]
 include = ["src", "tests", "scripts"]
 typeCheckingMode = "strict"
+venvPath = "."
+venv = ".venv"
+pythonVersion = "3.12"
 reportUnusedCallResult = false        # NiceGUI's builder API returns elements by design
 reportUnannotatedClassAttribute = false  # pydantic's `model_config`
 

@@ -32,6 +32,11 @@ A game state is composed at `new_game` from a **scenario** (premise plus startin
 
 Content ships as **packs**: a manifest plus narrow record collections, addressed by a `(pack, collection, index)` triple rather than a bare slug. The shipped pack is a projection of 5e-database, converted offline by a script in the repo and committed, so the pack doubles as the edition pin. An entity that names a record snapshots the numbers the reducer touches at creation and reads everything descriptive live, which is why a save records the pack versions it was played against and refuses to load against different ones.
 
+Feature records carry strict mechanics data for actions and resource pools the engine can track.
+Features without a deterministic model remain `description-guided`: the Director applies their
+prose through ordinary typed consequences. Content-pack authors can use the same mechanics models,
+but a feature effect becomes engine-resolved only when the engine implements that effect type.
+
 ## Docs
 
 - `AGENTS.md`: engineering principles and the architectural invariants, in enforceable form.

@@ -2,14 +2,15 @@ from collections.abc import Callable, Sequence
 from dataclasses import dataclass, field
 from random import Random
 
-from ..content.records.character import ProgressionChoice
 from ..domain.models.base import Role
 from ..domain.models.events import Event
-from ..domain.models.progression import MAX_LEVEL, Decisions
+from ..domain.models.progression import Decisions
 from ..domain.models.state import CharacterSheet, GameState, ScenarioDef
 from ..domain.models.turn import Turn
 from ..domain.reducer import apply
-from ..engine import campaign, progression
+from ..engine import campaign, features, progression
+from ..engine.features import OwnedFeature
+from ..engine.progression import AdvancementPlan, LevelUpPreview
 from ..engine.ruleset import Ruleset
 from ..pipeline import TurnOptions, run_turn
 from .ports import SaveRepository, TraceSink
@@ -49,11 +50,25 @@ class GameApplication:
         self.traces.append(self.slug, turn)
         return turn
 
-    def pending_choices(self) -> list[ProgressionChoice]:
+    def level_up_preview(self) -> LevelUpPreview:
         current = self.state.player.progression
-        if current is None or not current.level_up_available or current.level >= MAX_LEVEL:
-            return []
-        return progression.pending(current.origin, current.level + 1, self.ruleset)
+        if current is None or not current.level_up_available:
+            raise ValueError("no level-up has been awarded")
+        return progression.preview(self.state.player, self.ruleset)
+
+    def level_up_plan(self, decisions: Decisions) -> AdvancementPlan:
+        current = self.state.player.progression
+        if current is None or not current.level_up_available:
+            raise ValueError("no level-up has been awarded")
+        return progression.plan(self.state.player, decisions, self.ruleset)
+
+    def owned_features(self) -> tuple[OwnedFeature, ...]:
+        current = self.state.player.progression
+        return (
+            ()
+            if current is None
+            else features.owned(current, self.state.player.stats.attributes, self.ruleset)
+        )
 
     def advance(self, decisions: Decisions) -> None:
         current = self.state.player.progression

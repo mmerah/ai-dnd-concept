@@ -2,6 +2,7 @@ from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 from random import Random
 
+from ..content.records.base import ContentRef
 from ..content.records.character import (
     AbilityBonus,
     BonusOption,
@@ -15,8 +16,9 @@ from ..domain.models.events import Event, LeveledUp, LevelUpAvailable
 from ..domain.models.progression import MAX_LEVEL, Advancement, Decisions, Origin, Progression
 from ..domain.models.state import CharacterSheet
 from ..utils.models import ABILITIES, Ability, Attributes, Slug, updated
+from . import features as class_features
 from . import rules
-from .ruleset import ProgressionRules
+from .ruleset import CharacterProfile, FeatureProfile, LevelProfile, ProgressionRules
 
 MAX_ABILITY_SCORE = 20
 
@@ -27,12 +29,55 @@ class Pick:
     option: ChoiceOption
 
 
-def offer(actor: ActorEntity) -> list[Event]:
+@dataclass(frozen=True, slots=True)
+class SpellSlotChange:
+    spell_level: int
+    before: int
+    after: int
+
+
+@dataclass(frozen=True, slots=True)
+class LevelBenefits:
+    level: int
+    hit_die: int
+    retroactive_hp_gain: int
+    prof_bonus_before: int
+    prof_bonus_after: int
+    spell_slot_changes: tuple[SpellSlotChange, ...]
+    features: tuple[FeatureProfile, ...]
+
+
+@dataclass(frozen=True, slots=True)
+class LevelUpPreview:
+    benefits: LevelBenefits
+    choices: tuple[ProgressionChoice, ...]
+
+
+@dataclass(frozen=True, slots=True)
+class ChoiceSelection:
+    prompt: str
+    labels: tuple[str, ...]
+
+
+@dataclass(frozen=True, slots=True)
+class AdvancementPlan:
+    benefits: LevelBenefits
+    selections: tuple[ChoiceSelection, ...]
+    progression: Progression
+    attributes: Attributes
+
+
+def _advancing(actor: ActorEntity) -> tuple[Progression, int]:
     current = actor.progression
     if current is None:
         raise ValueError(f"{actor.id!r} has no progression to advance")
     if current.level >= MAX_LEVEL:
         raise ValueError(f"already at level {MAX_LEVEL}")
+    return current, current.level + 1
+
+
+def offer(actor: ActorEntity) -> list[Event]:
+    current, _ = _advancing(actor)
     return [] if current.level_up_available else [LevelUpAvailable()]
 
 
@@ -46,21 +91,50 @@ def pending(origin: Origin, level: int, ruleset: ProgressionRules) -> list[Progr
     return [*choices, *reached.choices]
 
 
+def preview(actor: ActorEntity, ruleset: ProgressionRules) -> LevelUpPreview:
+    """Show the level before any choice is made, so no ability score has risen yet."""
+    current, level = _advancing(actor)
+    reached = ruleset.level(current.origin, level)
+    return LevelUpPreview(
+        benefits=_benefits(
+            current,
+            ruleset.character(current.origin),
+            reached,
+            reached.features,
+            retroactive_hp_gain=0,
+        ),
+        choices=_available(
+            current, actor.stats.attributes, pending(current.origin, level, ruleset)
+        ),
+    )
+
+
 def first_level(sheet: CharacterSheet, ruleset: ProgressionRules) -> Advancement:
     """Use the full hit die at level 1 for deterministic starting HP."""
     origin = sheet.origin
     character = ruleset.character(origin)
     picks = _taken(pending(origin, 1, ruleset), sheet.decisions)
     attributes = _raised(sheet.starting_attributes, _bonuses(picks, character.ability_bonuses))
+    origin = _with_subclass(origin, picks)
     reached = ruleset.level(origin, 1)
+    features, feature_resources = class_features.acquire(
+        (),
+        {},
+        (*reached.features, *_picked_features(picks, ruleset)),
+        ruleset=ruleset,
+        class_level=1,
+        attributes=attributes,
+    )
     progression = Progression(
-        origin=_with_subclass(origin, picks),
+        origin=origin,
         level=1,
         prof_bonus=reached.prof_bonus,
         saving_throws=character.saving_throws,
         proficiencies=_proficiencies(character.proficiencies, picks),
         spell_slots=reached.spell_slots,
         decisions=sheet.decisions,
+        features=features,
+        feature_resources=feature_resources,
     )
     return Advancement(
         progression=progression,
@@ -72,32 +146,58 @@ def first_level(sheet: CharacterSheet, ruleset: ProgressionRules) -> Advancement
 def advance(
     actor: ActorEntity, decisions: Decisions, ruleset: ProgressionRules, rng: Random
 ) -> list[Event]:
-    current = actor.progression
-    if current is None:
-        raise ValueError(f"{actor.id!r} has no progression to advance")
-    if current.level >= MAX_LEVEL:
-        raise ValueError(f"already at level {MAX_LEVEL}")
-    level = current.level + 1
-    origin = current.origin
-    picks = _taken(pending(origin, level, ruleset), decisions)
-    attributes = _raised(actor.stats.attributes, _bonuses(picks, {}))
-    reached = ruleset.level(origin, level)
-    hit_die = ruleset.character(origin).hit_die
-    rolled, event = rules.roll_dice(f"1d{hit_die}", rng)
-    progression = updated(
-        current,
-        origin=_with_subclass(origin, picks),
-        level=level,
-        level_up_available=False,
-        prof_bonus=reached.prof_bonus,
-        proficiencies=_proficiencies(current.proficiencies, picks),
-        spell_slots=reached.spell_slots,
-        decisions={**current.decisions, **decisions},
-    )
+    planned = plan(actor, decisions, ruleset)
+    rolled, event = rules.roll_dice(f"1d{planned.benefits.hit_die}", rng)
     gained = Advancement(
-        progression=progression, attributes=attributes, hp_gain=_hp_gain(rolled, attributes)
+        progression=planned.progression,
+        attributes=planned.attributes,
+        hp_gain=_hp_gain(rolled, planned.attributes) + planned.benefits.retroactive_hp_gain,
     )
     return [event, LeveledUp(advancement=gained)]
+
+
+def plan(actor: ActorEntity, decisions: Decisions, ruleset: ProgressionRules) -> AdvancementPlan:
+    current, level = _advancing(actor)
+    origin = current.origin
+    choices = _available(current, actor.stats.attributes, pending(origin, level, ruleset))
+    picks = _taken(choices, decisions)
+    attributes = _raised(actor.stats.attributes, _bonuses(picks, {}))
+    origin = _with_subclass(origin, picks)
+    reached = ruleset.level(origin, level)
+    grants = (*reached.features, *_picked_features(picks, ruleset))
+    features, feature_resources = class_features.acquire(
+        current.features,
+        current.feature_resources,
+        grants,
+        ruleset=ruleset,
+        class_level=level,
+        attributes=attributes,
+    )
+    return AdvancementPlan(
+        benefits=_benefits(
+            current,
+            ruleset.character(origin),
+            reached,
+            grants,
+            retroactive_hp_gain=_retroactive_hp_gain(
+                current.level, actor.stats.attributes, attributes
+            ),
+        ),
+        selections=_selections(choices, picks),
+        progression=updated(
+            current,
+            origin=origin,
+            level=level,
+            level_up_available=False,
+            prof_bonus=reached.prof_bonus,
+            proficiencies=_proficiencies(current.proficiencies, picks),
+            spell_slots=reached.spell_slots,
+            decisions={**current.decisions, **decisions},
+            features=features,
+            feature_resources=feature_resources,
+        ),
+        attributes=attributes,
+    )
 
 
 def _ability_choice(level: int, improvements: int) -> ProgressionChoice:
@@ -129,6 +229,43 @@ def _taken(choices: Sequence[ProgressionChoice], decisions: Decisions) -> list[P
     return picks
 
 
+def _available(
+    current: Progression,
+    attributes: Attributes,
+    choices: Sequence[ProgressionChoice],
+) -> tuple[ProgressionChoice, ...]:
+    available: list[ProgressionChoice] = []
+    held_features = set(current.features)
+    held_proficiencies = set(current.proficiencies)
+    for choice in choices:
+        options = tuple(
+            option
+            for option in choice.options
+            if _option_available(choice, option, attributes, held_features, held_proficiencies)
+        )
+        enough = len(options) >= choice.choose if choice.distinct else bool(options)
+        if choice.choose > 0 and not enough:
+            raise ValueError(f"choice {choice.id!r} has too few legal options")
+        available.append(updated(choice, options=options))
+    return tuple(available)
+
+
+def _option_available(
+    choice: ProgressionChoice,
+    option: ChoiceOption,
+    attributes: Attributes,
+    held_features: set[ContentRef],
+    held_proficiencies: set[Slug],
+) -> bool:
+    if isinstance(option, BonusOption):
+        return attributes[option.bonus.ability] < MAX_ABILITY_SCORE
+    if option.ref.collection == "features":
+        return option.ref not in held_features
+    if choice.effect == "double" and option.ref.collection == "proficiencies":
+        return option.ref.index in held_proficiencies
+    return True
+
+
 def _bonuses(picks: Sequence[Pick], base: Mapping[Ability, int]) -> dict[Ability, int]:
     bonuses = dict(base)
     for pick in picks:
@@ -158,9 +295,26 @@ def _proficiency_picks(picks: Sequence[Pick], effect: ChoiceEffect) -> list[Slug
 
 
 def _with_subclass(origin: Origin, picks: Sequence[Pick]) -> Origin:
-    chosen = (p.option.ref for p in picks if isinstance(p.option, RecordOption))
+    chosen = (
+        pick.option.ref
+        for pick in picks
+        if pick.choice.effect == "grant" and isinstance(pick.option, RecordOption)
+    )
     ref = next((r for r in chosen if r.collection == "subclasses"), None)
     return origin if ref is None else updated(origin, subclass_ref=ref)
+
+
+def _picked_features(
+    picks: Sequence[Pick], ruleset: ProgressionRules
+) -> tuple[FeatureProfile, ...]:
+    refs = (
+        pick.option.ref
+        for pick in picks
+        if pick.choice.effect == "grant"
+        and isinstance(pick.option, RecordOption)
+        and pick.option.ref.collection == "features"
+    )
+    return tuple(class_features.profile_of(ref, ruleset) for ref in refs)
 
 
 def _raised(attributes: Attributes, bonuses: Mapping[Ability, int]) -> Attributes:
@@ -174,3 +328,55 @@ def _raised(attributes: Attributes, bonuses: Mapping[Ability, int]) -> Attribute
 
 def _hp_gain(rolled: int, attributes: Attributes) -> int:
     return max(1, rolled + rules.modifier(attributes, "constitution"))
+
+
+def _retroactive_hp_gain(levels: int, before: Attributes, after: Attributes) -> int:
+    gained_modifier = rules.modifier(after, "constitution") - rules.modifier(before, "constitution")
+    if gained_modifier < 0:
+        raise ValueError("a level-up cannot reduce the constitution modifier")
+    return levels * gained_modifier
+
+
+def _spell_slot_changes(
+    before: Mapping[int, int], after: Mapping[int, int]
+) -> tuple[SpellSlotChange, ...]:
+    return tuple(
+        SpellSlotChange(
+            spell_level=level,
+            before=before.get(level, 0),
+            after=after.get(level, 0),
+        )
+        for level in sorted(set(before) | set(after))
+        if before.get(level, 0) != after.get(level, 0)
+    )
+
+
+def _benefits(
+    current: Progression,
+    character: CharacterProfile,
+    reached: LevelProfile,
+    features: Sequence[FeatureProfile],
+    *,
+    retroactive_hp_gain: int,
+) -> LevelBenefits:
+    return LevelBenefits(
+        level=current.level + 1,
+        hit_die=character.hit_die,
+        retroactive_hp_gain=retroactive_hp_gain,
+        prof_bonus_before=current.prof_bonus,
+        prof_bonus_after=reached.prof_bonus,
+        spell_slot_changes=_spell_slot_changes(current.spell_slots, reached.spell_slots),
+        features=tuple(features),
+    )
+
+
+def _selections(
+    choices: Sequence[ProgressionChoice], picks: Sequence[Pick]
+) -> tuple[ChoiceSelection, ...]:
+    return tuple(
+        ChoiceSelection(
+            prompt=choice.prompt,
+            labels=tuple(pick.option.label for pick in picks if pick.choice.id == choice.id),
+        )
+        for choice in choices
+    )

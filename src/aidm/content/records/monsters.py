@@ -4,12 +4,11 @@ from pydantic import Field
 
 from ...utils.dice import DiceExpr
 from ...utils.models import EMPTY_FROZEN_MAP, Ability, Attributes, Frozen, FrozenMap
-from ..vocabulary import ConditionName
+from ..vocabulary import ConditionName, RestType
 from .base import ContentRef, CreatureSize, DamageRoll, Record, Slug
 
 AttackType = Literal["melee", "ranged", "ability", "magic"]
 SaveOutcome = Literal["none", "half"]
-RestType = Literal["short", "long"]
 
 MonsterType = Literal[
     "aberration",

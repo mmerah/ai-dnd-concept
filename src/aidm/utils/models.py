@@ -17,7 +17,8 @@ ABILITIES: tuple[Ability, ...] = get_args(Ability)
 
 Kind = Literal["actor", "location", "item"]
 
-Slug = Annotated[str, Field(pattern=r"^[a-z0-9-]+$", max_length=64)]
+SLUG_MAX_LENGTH = 64
+Slug = Annotated[str, Field(pattern=r"^[a-z0-9-]+$", max_length=SLUG_MAX_LENGTH)]
 
 
 class Frozen(BaseModel):

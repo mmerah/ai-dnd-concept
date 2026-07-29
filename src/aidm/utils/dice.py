@@ -70,6 +70,18 @@ def _self_contained(expression: str) -> str:
     return expression
 
 
+def _positive(expression: str) -> str:
+    parsed = terms(expression)
+    if any(term.sign < 0 for term in parsed):
+        raise ValueError("a positive dice expression cannot subtract")
+    if not any(
+        isinstance(term, DiceTerm) or (isinstance(term, ConstantTerm) and term.value > 0)
+        for term in parsed
+    ):
+        raise ValueError("a positive dice expression must roll or add something")
+    return expression
+
+
 DiceExpr = Annotated[
     str,
     AfterValidator(_parseable),
@@ -78,3 +90,4 @@ DiceExpr = Annotated[
 
 # Role-written dice cannot leave a caster modifier unresolved.
 SelfContainedDice = Annotated[DiceExpr, AfterValidator(_self_contained)]
+PositiveDice = Annotated[SelfContainedDice, AfterValidator(_positive)]

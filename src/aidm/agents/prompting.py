@@ -32,7 +32,7 @@ def narrator_prompt(context: TurnContext, direction: Direction) -> str:
     scene = context.scene
     return _sections(
         _premise(context),
-        ("CHARACTER", views.character(scene, context.rules)),
+        ("CHARACTER", views.narrator_character(scene)),
         ("HERE WITH THE PLAYER", views.here(scene)),
         ("KNOWN TO THE PLAYER, BUT ELSEWHERE", views.elsewhere(scene)),
         ("THE DIRECTOR'S PLAN — what was meant, not what happened", direction.intent),

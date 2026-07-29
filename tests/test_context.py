@@ -118,6 +118,13 @@ def test_narrator_reads_the_plan_before_the_outcome(state: GameState) -> None:
     assert narrator.index(DIRECTION.intent) < narrator.index("WHAT HAPPENED")
 
 
+def test_narrator_receives_no_unresolved_character_mechanics(state: GameState) -> None:
+    narrator = narrator_prompt(context(state), DIRECTION)
+    assert "features:" not in narrator
+    assert "attributes:" not in narrator
+    assert "hp " not in narrator
+
+
 def test_a_known_speaker_is_rendered_by_id(state: GameState) -> None:
     direction = Direction(intent="i", tone="t", speaker_id=EntityId("mara"))
     narrator = narrator_prompt(context(state), direction)

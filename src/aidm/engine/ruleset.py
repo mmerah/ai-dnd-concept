@@ -6,7 +6,7 @@ from pydantic import Field
 from ..content.library import ContentMiss
 from ..content.models import PackStamp
 from ..content.records.base import ContentRef
-from ..content.records.character import ClassRecord, ProgressionChoice
+from ..content.records.character import ClassRecord, FeatureMechanics, ProgressionChoice
 from ..content.records.monsters import MonsterRecord
 from ..domain.models.progression import Origin
 from ..domain.models.stats import StatBlock
@@ -22,12 +22,21 @@ class CharacterProfile(Frozen):
     choices: tuple[ProgressionChoice, ...] = ()
 
 
+class FeatureProfile(Frozen):
+    ref: ContentRef
+    name: str
+    desc: str
+    mechanics: FeatureMechanics
+    replaces: tuple[ContentRef, ...] = ()
+
+
 class LevelProfile(Frozen):
     prof_bonus: int = Field(ge=2)
     improvements: int = Field(ge=0)
     spell_slots: FrozenMap[int, int] = EMPTY_FROZEN_MAP
     choices: tuple[ProgressionChoice, ...] = ()
     subclass_choice: ProgressionChoice | None = None
+    features: tuple[FeatureProfile, ...] = ()
 
 
 class AttackProfile(Frozen):
@@ -53,18 +62,22 @@ class ArchetypeRules(Protocol):
     def provides(self, ref: ContentRef) -> bool: ...
 
 
-class CombatRules(ArchetypeRules, Protocol):
+class FeatureRules(Protocol):
+    def feature(self, ref: ContentRef) -> FeatureProfile | ContentMiss: ...
+
+
+class CombatRules(ArchetypeRules, FeatureRules, Protocol):
     def weapon(self, ref: ContentRef) -> WeaponProfile | None: ...
 
     def proficient(self, origin: Origin, held: Sequence[Slug], equipment: Slug) -> bool: ...
 
 
-class ProgressionRules(Protocol):
+class ProgressionRules(FeatureRules, Protocol):
     def character(self, origin: Origin) -> CharacterProfile: ...
     def level(self, origin: Origin, level: int) -> LevelProfile: ...
 
 
-class NarrativeRules(Protocol):
+class NarrativeRules(FeatureRules, Protocol):
     """A miss is returned rather than dropped so a pack that lost a record shows in the prompt."""
 
     def monster(self, ref: ContentRef) -> MonsterRecord | ContentMiss: ...
