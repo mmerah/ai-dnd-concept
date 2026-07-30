@@ -11,6 +11,8 @@ from aidm.content.records.base import ContentRef
 from aidm.content.records.character import BonusOption, ProgressionChoice
 from aidm.domain.models.base import EntityId
 from aidm.domain.models.consequences import (
+    Cast,
+    Consequence,
     LevelUp,
     Rest,
     UseFeature,
@@ -18,9 +20,10 @@ from aidm.domain.models.consequences import (
 from aidm.domain.models.entities import ActorEntity
 from aidm.domain.models.events import LeveledUp
 from aidm.domain.models.progression import (
+    MAX_LEVEL,
     Decisions,
-    FeatureResourceState,
     Origin,
+    ResourceState,
 )
 from aidm.domain.models.state import GameState
 from aidm.domain.reducer import apply
@@ -50,20 +53,32 @@ def answers(choices: Sequence[ProgressionChoice]) -> Decisions:
     }
 
 
-def first_of(state: GameState, level: int) -> Decisions:
-    current = state.player.progression
-    assert current is not None
-    return answers(progression.pending(current.origin, level, RULES))
+def next_of(state: GameState) -> Decisions:
+    """Answer the next level from the preview, so an option already held is not picked twice."""
+    return answers(progression.preview(state.player, RULES).choices)
 
 
 def levelled(state: GameState, to: int) -> GameState:
     """Advance one level at a time, answering each level's choices with its first option."""
     current = state.player.progression
     assert current is not None
-    for level in range(current.level + 1, to + 1):
-        events = progression.advance(state.player, first_of(state, level), RULES, Random(1))
-        state = apply(state, events)
+    for _ in range(current.level + 1, to + 1):
+        state = apply(state, progression.advance(state.player, next_of(state), RULES, Random(1)))
     return state
+
+
+def started(klass: str, state: GameState) -> GameState:
+    """Replace the fighter the scenario composes with a level-1 character of another class."""
+    origin = Origin(class_ref=ref("classes", klass))
+    prepared = updated(SHEET, origin=origin, decisions={})
+    decisions = answers(progression.pending(origin, 1, RULES))
+    start = progression.first_level(updated(prepared, decisions=decisions), RULES)
+    player = updated(
+        state.player,
+        progression=start.progression,
+        stats=updated(state.player.stats, attributes=start.attributes),
+    )
+    return updated(state, world=state.world.replacing(player))
 
 
 def test_a_sheet_becomes_a_legal_level_one_character() -> None:
@@ -121,7 +136,7 @@ def test_a_level_preview_lists_every_level_two_gain_before_advancing() -> None:
 
 def test_the_confirmed_plan_contains_the_selected_subclass_grants() -> None:
     state = levelled(new_game("whispering_vault"), 2)
-    decisions = first_of(state, 3)
+    decisions = next_of(state)
     plan = progression.plan(state.player, decisions, RULES)
     assert [feature.ref.index for feature in plan.benefits.features] == ["improved-critical"]
     assert plan.selections[0].labels == ("Champion",)
@@ -234,12 +249,98 @@ def test_spell_slot_changes_show_pact_magic_moving_to_a_new_slot_level() -> None
             subclass_ref=ref("subclasses", "fiend"),
         ),
         level=2,
-        spell_slots={1: 2},
+        spell_slots={1: ResourceState(remaining=2, maximum=2, recharge="short")},
     )
     changes = progression.preview(updated(player, progression=warlock), RULES).benefits
     assert [
-        (change.spell_level, change.before, change.after) for change in changes.spell_slot_changes
+        (change.slot_level, change.before, change.after) for change in changes.spell_slot_changes
     ] == [(1, 2, 0), (2, 0, 2)]
+
+
+def test_a_known_caster_picks_its_repertoire_at_level_up_and_a_prepared_one_does_not() -> None:
+    """`spells_known` is a cumulative total for a known caster and null for a prepared one, which is
+    the only thing in the pack that tells the two kinds apart. A bard picks four spells at level 1
+    and one more at level 2; a wizard picks cantrips only, because preparation is not modelled."""
+    bard = started("bard", new_game("whispering_vault")).player.progression
+    assert bard is not None
+    assert len(bard.chosen_spells) == 2 + 4  # two cantrips known, four spells known
+    at_two = levelled(started("bard", new_game("whispering_vault")), 2).player.progression
+    assert at_two is not None and len(at_two.chosen_spells) == len(bard.chosen_spells) + 1
+
+    wizard = started("wizard", new_game("whispering_vault")).player.progression
+    assert wizard is not None
+    assert [c.id for c in progression.pending(wizard.origin, 1, RULES)] == [
+        "wizard-proficiency-1",
+        "wizard-cantrips-1",
+    ]
+    cantrips = ["acid-splash", "chill-touch", "dancing-lights"]
+    assert [spell.index for spell in wizard.chosen_spells] == cantrips
+
+
+def test_spell_slots_are_spent_recharged_by_the_right_rest_and_spent_again() -> None:
+    """Pact Magic flows through the same `spell_slots` field as every other class and returns on a
+    short rest, so the recharge has to travel with the slots rather than be assumed."""
+    comprehend = Cast(spell="srd-2014/spells/comprehend-languages", slot_level=1)
+
+    def remaining(state: GameState) -> dict[int, int]:
+        current = state.player.progression
+        assert current is not None
+        return {level: slot.remaining for level, slot in current.spell_slots.items()}
+
+    def resolved(state: GameState, *mechanics: Consequence) -> GameState:
+        return apply(state, resolve(mechanics, state, Random(1), RULES))
+
+    wizard = started("wizard", new_game("whispering_vault"))
+    assert remaining(wizard) == {1: 2}
+    spent = resolved(wizard, comprehend, comprehend)
+    assert remaining(spent) == {1: 0}
+    with pytest.raises(ValueError, match="no level 1 spell slot remains; finish a long rest"):
+        resolve([comprehend], spent, Random(1), RULES)
+    assert resolved(spent, Rest(rest="short")) == spent
+    rested = resolved(spent, Rest(rest="long"))
+    assert remaining(rested) == {1: 2}
+    assert remaining(resolved(rested, comprehend)) == {1: 1}
+
+    warlock = started("warlock", new_game("whispering_vault"))
+    pact = resolved(warlock, comprehend)
+    assert remaining(pact) == {1: 0}
+    assert remaining(resolved(pact, Rest(rest="short"))) == {1: 1}
+
+
+@pytest.mark.parametrize(
+    ("klass", "known", "slots", "recharge"),
+    [
+        ("bard", 22 + 4, {1: 4, 2: 3, 3: 3, 4: 3, 5: 3, 6: 2, 7: 2, 8: 1, 9: 1}, "long"),
+        ("warlock", 15 + 4, {5: 4}, "short"),
+    ],
+)
+def test_a_known_caster_reaches_level_twenty_with_the_srds_slots_and_repertoire(
+    klass: str, known: int, slots: dict[int, int], recharge: str
+) -> None:
+    """The picks accumulate and an already-held spell leaves the options, so the pool has to stay
+    deep enough for twenty levels. Pact Magic ends as one pool of four level-5 slots that a short
+    rest returns, which is why the recharge travels with the slots."""
+    state = started(klass, new_game("whispering_vault"))
+    for level in range(2, MAX_LEVEL + 1):
+        spread = _spread(progression.preview(state.player, RULES).choices, level)
+        state = apply(state, progression.advance(state.player, spread, RULES, Random(1)))
+    current = state.player.progression
+    assert current is not None and current.level == MAX_LEVEL
+    assert len(current.chosen_spells) == known
+    assert {n: slot.maximum for n, slot in current.spell_slots.items()} == slots
+    assert {slot.recharge for slot in current.spell_slots.values()} == {recharge}
+
+
+def _spread(choices: Sequence[ProgressionChoice], offset: int) -> Decisions:
+    """Cycle a repeatable choice, so twenty levels of improvements do not cap one ability at 20."""
+    return {
+        choice.id: tuple(option.key for option in choice.options[: choice.choose])
+        if choice.distinct
+        else tuple(
+            choice.options[(offset + n) % len(choice.options)].key for n in range(choice.choose)
+        )
+        for choice in choices
+    }
 
 
 def test_expertise_may_only_double_a_proficiency_the_character_already_holds() -> None:
@@ -370,7 +471,7 @@ def test_a_resource_upgrade_preserves_uses_spent(remaining: int, upgraded: int) 
     _, resources = features.acquire(
         (before.ref,),
         {
-            ACTION_SURGE: FeatureResourceState(
+            ACTION_SURGE: ResourceState(
                 remaining=remaining,
                 maximum=1,
                 recharge="short",
@@ -472,7 +573,7 @@ def test_the_player_answers_choices_after_the_director_awards_a_level() -> None:
     state = apply(state, resolve([LevelUp()], state, Random(1), RULES))
     assert "waiting for the player" in views.level_up_status(Scene.of(state))
 
-    decisions = first_of(state, 3)
+    decisions = next_of(state)
     events = progression.advance(state.player, decisions, RULES, Random(1))
     after = apply(state, events).player
     assert after.progression is not None

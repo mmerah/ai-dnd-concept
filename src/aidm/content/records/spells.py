@@ -1,11 +1,18 @@
-from typing import Literal
+from typing import Annotated, Literal
 
 from pydantic import Field
 
 from ...utils.dice import DiceExpr
-from ...utils.models import EMPTY_FROZEN_MAP, Ability, Frozen, FrozenMap
+from ...utils.models import EMPTY_FROZEN_MAP, Ability, Frozen, FrozenMap, Slug
 from ..vocabulary import DamageType, MagicSchool
 from .base import Record
+
+MAX_SPELL_LEVEL = 9
+
+# 0 is a cantrip, which costs no slot and scales off the caster's level instead.
+type SpellLevel = Annotated[int, Field(ge=0, le=MAX_SPELL_LEVEL)]
+# The level of a slot, which a cantrip never occupies.
+type SlotLevel = Annotated[int, Field(ge=1, le=MAX_SPELL_LEVEL)]
 
 SpellAttackType = Literal["melee", "ranged"]
 SpellSaveOutcome = Literal["none", "half", "other"]
@@ -24,8 +31,12 @@ class SpellSave(Frozen):
 
 class SpellRecord(Record):
     desc: str
-    level: int = Field(ge=0, le=9)
+    level: SpellLevel
     school: MagicSchool
+    # A spell no class may cast is unreachable content, so at least one list must name it.
+    classes: tuple[Slug, ...] = Field(min_length=1)
+    # Subclasses whose expanded list adds this spell to a class that could not otherwise cast it.
+    subclasses: tuple[Slug, ...] = ()
     casting_time: str
     range: str
     duration: str

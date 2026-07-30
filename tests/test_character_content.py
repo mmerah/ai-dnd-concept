@@ -93,7 +93,7 @@ def test_every_class_can_be_played_and_ships_one_subclass() -> None:
     assert all(
         record.subclass is not None and len(record.subclass.options) == 1 for record in classes
     )
-    assert sum(1 for record in classes if record.spellcasting_ability) == 8
+    assert sum(1 for record in classes if record.spellcasting) == 8
     subclass = CLASSES["cleric"].subclass
     assert subclass is not None and subclass.level == 1
 

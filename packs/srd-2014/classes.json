@@ -87,7 +87,7 @@
         "berserker"
       ]
     },
-    "spellcasting_ability": null
+    "spellcasting": null
   },
   {
     "index": "bard",
@@ -385,7 +385,10 @@
         "lore"
       ]
     },
-    "spellcasting_ability": "charisma"
+    "spellcasting": {
+      "ability": "charisma",
+      "slot_recharge": "long"
+    }
   },
   {
     "index": "cleric",
@@ -465,7 +468,10 @@
         "life"
       ]
     },
-    "spellcasting_ability": "wisdom"
+    "spellcasting": {
+      "ability": "wisdom",
+      "slot_recharge": "long"
+    }
   },
   {
     "index": "druid",
@@ -582,7 +588,10 @@
         "land"
       ]
     },
-    "spellcasting_ability": "wisdom"
+    "spellcasting": {
+      "ability": "wisdom",
+      "slot_recharge": "long"
+    }
   },
   {
     "index": "fighter",
@@ -689,7 +698,7 @@
         "champion"
       ]
     },
-    "spellcasting_ability": null
+    "spellcasting": null
   },
   {
     "index": "monk",
@@ -1046,7 +1055,7 @@
         "open-hand"
       ]
     },
-    "spellcasting_ability": null
+    "spellcasting": null
   },
   {
     "index": "paladin",
@@ -1135,7 +1144,10 @@
         "devotion"
       ]
     },
-    "spellcasting_ability": "charisma"
+    "spellcasting": {
+      "ability": "charisma",
+      "slot_recharge": "long"
+    }
   },
   {
     "index": "ranger",
@@ -1243,7 +1255,10 @@
         "hunter"
       ]
     },
-    "spellcasting_ability": "wisdom"
+    "spellcasting": {
+      "ability": "wisdom",
+      "slot_recharge": "long"
+    }
   },
   {
     "index": "rogue",
@@ -1380,7 +1395,7 @@
         "thief"
       ]
     },
-    "spellcasting_ability": null
+    "spellcasting": null
   },
   {
     "index": "sorcerer",
@@ -1470,7 +1485,10 @@
         "draconic"
       ]
     },
-    "spellcasting_ability": "charisma"
+    "spellcasting": {
+      "ability": "charisma",
+      "slot_recharge": "long"
+    }
   },
   {
     "index": "warlock",
@@ -1566,7 +1584,10 @@
         "fiend"
       ]
     },
-    "spellcasting_ability": "charisma"
+    "spellcasting": {
+      "ability": "charisma",
+      "slot_recharge": "short"
+    }
   },
   {
     "index": "wizard",
@@ -1656,6 +1677,9 @@
         "evocation"
       ]
     },
-    "spellcasting_ability": "intelligence"
+    "spellcasting": {
+      "ability": "intelligence",
+      "slot_recharge": "long"
+    }
   }
 ]

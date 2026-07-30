@@ -69,7 +69,7 @@ def _automatic_gains(benefits: LevelBenefits) -> None:
             ).classes("text-sm")
         for slots in benefits.spell_slot_changes:
             ui.label(
-                f"Level {slots.spell_level} spell slots: {slots.before} → {slots.after}."
+                f"Level {slots.slot_level} spell slots: {slots.before} → {slots.after}."
             ).classes("text-sm")
     ui.label("New features").classes("text-sm font-bold q-mt-md")
     if not benefits.features:
@@ -106,10 +106,10 @@ def _owned_features(session: Session) -> None:
 
 
 def _uses(status: OwnedFeature) -> str:
-    pool = status.pool
-    if pool is None:
+    if status.pool is None:
         return ""
-    return f"{pool.remaining}/{pool.maximum} uses — recharges on a {pool.recharge} rest"
+    state = status.pool.state
+    return f"{state.remaining}/{state.maximum} uses — recharges on a {state.recharge} rest"
 
 
 def _feature_card(profile: FeatureProfile, uses: str = "") -> None:

@@ -59,6 +59,25 @@ def is_constant(expression: str) -> bool:
     return all(isinstance(term, ConstantTerm) for term in terms(expression))
 
 
+def _word(term: DiceTerm | ConstantTerm) -> str:
+    return f"{term.count}d{term.faces}" if isinstance(term, DiceTerm) else str(term.value)
+
+
+def substituted(expression: str, modifier: int) -> str:
+    """Fold a caster's own modifier into every MOD term, so the result is rollable on its own.
+    Signs are recombined rather than pasted, because a negative modifier would leave '+ -2'."""
+    parsed = terms(expression)
+    if isinstance(parsed[0], ModifierTerm) and modifier < 0:
+        # A leading sign has no valid spelling, so this cannot be written rather than mis-signed.
+        raise ValueError(f"a leading {MOD} cannot carry the negative modifier {modifier}")
+    words: list[str] = []
+    for term in parsed:
+        negative = (term.sign < 0) != (isinstance(term, ModifierTerm) and modifier < 0)
+        word = str(abs(modifier)) if isinstance(term, ModifierTerm) else _word(term)
+        words.append(f"{'-' if negative else '+'} {word}" if words else word)
+    return " ".join(words)
+
+
 def _parseable(expression: str) -> str:
     terms(expression)
     return expression

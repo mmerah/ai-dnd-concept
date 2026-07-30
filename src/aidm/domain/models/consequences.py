@@ -4,11 +4,12 @@ from typing import Annotated, ClassVar, Literal, get_args
 
 from pydantic import Field
 
+from ...content.records.spells import MAX_SPELL_LEVEL, SpellLevel
 from ...content.vocabulary import CONDITION_NAMES, ConditionName, RestType
 from ...utils.dice import SelfContainedDice
 from ...utils.models import ABILITIES, Ability, Frozen, Kind
 from .base import PLAYER_ID, EntityId
-from .progression import FeatureKey
+from .progression import FeatureKey, SpellKey
 
 
 @dataclass(frozen=True, slots=True)
@@ -129,11 +130,34 @@ consequences the description requires alongside this activation."""
     )
 
 
+class Cast(Action):
+    """The player casts one of the spells they can cast; the rules spend the slot and resolve it."""
+
+    GUIDANCE: ClassVar[str] = """Use when the player casts a spell listed in their spell list. \
+Copy its exact spell id, and give the level of the slot they spend — the spell's own level or \
+higher, or 0 for a cantrip. The rules verify the spell, the slot and any attack roll, save, damage \
+or healing; whether it lands is never yours to decide, so do not wrap it in a `roll_check`. \
+Whatever the spell's description does beyond that is yours to propose as ordinary consequences \
+alongside it.
+Example: they hurl a fireball at the ghoul -> `cast` with spell \
+`srd-2014/spells/fireball`, slot_level 3, target_id `ghoul`."""
+
+    action: Literal["cast"] = "cast"
+    spell: SpellKey = Field(description="Exact id of a spell from the player's spell list.")
+    slot_level: SpellLevel = Field(
+        description=f"Level of the slot spent, 1-{MAX_SPELL_LEVEL}; 0 for a cantrip."
+    )
+    target_id: Annotated[EntityId | None, References("actor", present=True)] = Field(
+        default=None, description="Id of the `actor` aimed at, here with the player; omit for them."
+    )
+
+
 class Rest(Action):
     """Complete a short or long rest."""
 
     GUIDANCE: ClassVar[str] = """Use only when the fiction establishes that the player completes \
-the rest. This recharges eligible features; it does not invent healing or other rest benefits."""
+the rest. This recharges the features and spell slots that the rest is long enough to restore; it \
+does not invent healing or other rest benefits."""
 
     action: Literal["rest"] = "rest"
     rest: RestType = Field(description="The completed rest: `short` or `long`.")
@@ -281,6 +305,7 @@ Consequence = Annotated[
     | GainImprovisedItem
     | LevelUp
     | UseFeature
+    | Cast
     | Rest
     | Damage
     | Heal

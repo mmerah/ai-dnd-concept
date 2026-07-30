@@ -6,6 +6,7 @@ from typing import Self
 from ...domain.models.base import EntityId
 from ...domain.models.entities import ActorEntity, Entity, ItemEntity
 from ...domain.models.events import Event
+from ...domain.models.progression import Progression
 from ...domain.models.state import GameState
 from ...domain.reducer import apply
 from ..ruleset import Ruleset
@@ -23,6 +24,13 @@ class Resolution:
     @property
     def player(self) -> ActorEntity:
         return self.state.player
+
+    @property
+    def progression(self) -> Progression:
+        progression = self.player.progression
+        if progression is None:
+            raise ValueError("the player has no class")
+        return progression
 
     def entity(self, entity_id: EntityId) -> Entity:
         return self.state.world.require(entity_id)

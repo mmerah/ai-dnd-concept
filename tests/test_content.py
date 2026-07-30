@@ -14,6 +14,7 @@ from aidm.content.records.character import (
     FeatureRecord,
     RaceRecord,
     SaveProficiency,
+    SubclassRecord,
     TraitRecord,
 )
 from aidm.content.records.equipment import (
@@ -318,6 +319,36 @@ def test_a_scaling_value_carries_one_damage_type() -> None:
         if sum(isinstance(t, dice.DiceTerm) for t in dice.terms(expression)) > 1
     }
     assert multi == TWO_TYPES_IN_ONE_STRING
+
+
+def test_every_spell_names_the_classes_that_may_cast_it() -> None:
+    """Without this, nothing could say which class casts which spell and `cast` had no gate at all.
+    `subclasses` is not decoration: 132 entries add a spell to a class whose own list omits it —
+    Fireball to a Fiend warlock, Beacon of Hope to a Devotion paladin."""
+    listed = {klass for spell in SPELLS for klass in spell.classes}
+    assert listed == {record.index for record in CLASSES.values() if record.spellcasting}
+    fireball = CONTENT.get(ref("spells", "fireball"), SpellRecord)
+    assert not isinstance(fireball, ContentMiss)
+    assert fireball.classes == ("sorcerer", "wizard") and "fiend" in fireball.subclasses
+    expanded = {
+        (spell.index, subclass)
+        for spell in SPELLS
+        for subclass in spell.subclasses
+        if all_of(PACK, "subclasses", SubclassRecord)[subclass].class_index not in spell.classes
+    }
+    assert len(expanded) == 132
+
+
+def test_a_class_declares_how_its_slots_come_back() -> None:
+    """Upstream states the recharge only in the "Spell Slots" prose. Pact Magic returns on a short
+    rest and every other list on a long one, and the slots themselves carry no such field."""
+    recharges = {
+        index: record.spellcasting.slot_recharge
+        for index, record in CLASSES.items()
+        if record.spellcasting is not None
+    }
+    assert {index for index, rest in recharges.items() if rest == "short"} == {"warlock"}
+    assert len(recharges) == 8
 
 
 def test_a_monster_is_snapshotted_into_an_entity_not_read_live() -> None:

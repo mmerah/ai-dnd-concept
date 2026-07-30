@@ -8,10 +8,20 @@ from ..content.models import PackStamp
 from ..content.records.base import ContentRef
 from ..content.records.character import ClassRecord, FeatureMechanics, ProgressionChoice
 from ..content.records.monsters import MonsterRecord
+from ..content.records.spells import SpellLevel, SpellRecord
+from ..content.vocabulary import RestType
 from ..domain.models.progression import Origin
 from ..domain.models.stats import StatBlock
 from ..utils import dice
 from ..utils.models import EMPTY_FROZEN_MAP, Ability, Frozen, FrozenMap, Slug
+
+
+class SpellcastingProfile(Frozen):
+    ability: Ability
+    slot_recharge: RestType
+    # A prepared caster chooses from the whole class list each long rest; a known caster's
+    # repertoire is fixed at level-up, which is the only one this pack can record.
+    prepares: bool
 
 
 class CharacterProfile(Frozen):
@@ -20,6 +30,13 @@ class CharacterProfile(Frozen):
     proficiencies: tuple[Slug, ...] = ()
     ability_bonuses: FrozenMap[Ability, int] = EMPTY_FROZEN_MAP
     choices: tuple[ProgressionChoice, ...] = ()
+    spellcasting: SpellcastingProfile | None = None
+
+
+class SpellProfile(Frozen):
+    ref: ContentRef
+    name: str
+    level: SpellLevel
 
 
 class FeatureProfile(Frozen):
@@ -72,12 +89,23 @@ class CombatRules(ArchetypeRules, FeatureRules, Protocol):
     def proficient(self, origin: Origin, held: Sequence[Slug], equipment: Slug) -> bool: ...
 
 
-class ProgressionRules(FeatureRules, Protocol):
+class CharacterRules(Protocol):
     def character(self, origin: Origin) -> CharacterProfile: ...
+
+
+class ProgressionRules(CharacterRules, FeatureRules, Protocol):
     def level(self, origin: Origin, level: int) -> LevelProfile: ...
 
 
-class NarrativeRules(FeatureRules, Protocol):
+class SpellRules(Protocol):
+    def spell(self, ref: ContentRef) -> SpellRecord | ContentMiss: ...
+
+    def spell_list(self, origin: Origin) -> tuple[SpellProfile, ...]:
+        """Every spell the class, plus any chosen subclass, may ever cast."""
+        ...
+
+
+class NarrativeRules(CharacterRules, FeatureRules, SpellRules, Protocol):
     """A miss is returned rather than dropped so a pack that lost a record shows in the prompt."""
 
     def monster(self, ref: ContentRef) -> MonsterRecord | ContentMiss: ...

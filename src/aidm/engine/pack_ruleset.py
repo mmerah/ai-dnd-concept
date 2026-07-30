@@ -11,6 +11,7 @@ from ..content.records.character import (
     BackgroundRecord,
     ClassLevelRecord,
     ClassRecord,
+    ClassSpellcasting,
     EngineActiveFeatureMechanics,
     EnginePassiveFeatureMechanics,
     EquipmentProficiency,
@@ -29,6 +30,7 @@ from ..content.records.character import (
 )
 from ..content.records.equipment import WeaponRecord
 from ..content.records.monsters import MonsterAttack, MonsterRecord
+from ..content.records.spells import SpellRecord
 from ..domain.models.progression import MAX_LEVEL, Origin
 from ..domain.models.stats import StatBlock
 from ..utils import dice
@@ -40,6 +42,8 @@ from .ruleset import (
     FeatureProfile,
     LevelProfile,
     Ruleset,
+    SpellcastingProfile,
+    SpellProfile,
     WeaponProfile,
 )
 
@@ -52,6 +56,8 @@ class PackRuleset:
     # Precomputed to avoid per-turn content scans.
     covers: Mapping[ContentRef, frozenset[Slug]]
     saves: frozenset[ContentRef]
+    # Keyed by the class or subclass ref whose list names the spell.
+    casts: Mapping[ContentRef, tuple[SpellProfile, ...]]
 
     @property
     def stamps(self) -> Sequence[PackStamp]:
@@ -68,6 +74,7 @@ class PackRuleset:
             proficiencies=self._granted(origin, klass, traits),
             ability_bonuses=self._racial(origin),
             choices=self._origin_choices(origin, klass, traits),
+            spellcasting=self._spellcasting(origin.class_ref, klass.spellcasting),
         )
 
     def level(self, origin: Origin, level: int) -> LevelProfile:
@@ -93,7 +100,10 @@ class PackRuleset:
             prof_bonus=reached.prof_bonus,
             improvements=_improvements(reached, held),
             spell_slots=reached.spellcasting.spell_slots if reached.spellcasting else {},
-            choices=tuple(choice for record in records for choice in record.choices),
+            choices=(
+                *(choice for record in records for choice in record.choices),
+                *self._spell_choices(origin, reached, before),
+            ),
             subclass_choice=self._subclass_choice(origin.class_ref, level),
             features=features,
         )
@@ -123,6 +133,15 @@ class PackRuleset:
 
     def monster(self, ref: ContentRef) -> MonsterRecord | ContentMiss:
         return self.content.get(ref, MonsterRecord)
+
+    def spell(self, ref: ContentRef) -> SpellRecord | ContentMiss:
+        return self.content.get(ref, SpellRecord)
+
+    def spell_list(self, origin: Origin) -> tuple[SpellProfile, ...]:
+        listed = [*self.casts.get(origin.class_ref, ())]
+        if origin.subclass_ref is not None:
+            listed += self.casts.get(origin.subclass_ref, ())
+        return tuple(sorted(dict.fromkeys(listed), key=lambda s: (s.level, s.name)))
 
     def klass(self, ref: ContentRef) -> ClassRecord | ContentMiss:
         return self.content.get(ref, ClassRecord)
@@ -176,6 +195,69 @@ class PackRuleset:
         for bonus in fixed:
             bonuses[bonus.ability] = bonuses.get(bonus.ability, 0) + bonus.bonus
         return bonuses
+
+    def _spellcasting(
+        self, class_ref: ContentRef, casting: ClassSpellcasting | None
+    ) -> SpellcastingProfile | None:
+        """A known caster carries a `spells_known` count per level and a prepared caster does not,
+        so the level records are what tell the two apart."""
+        if casting is None:
+            return None
+        first = self._class_level(class_ref, 1).spellcasting
+        if first is None:
+            raise ValueError(f"{class_ref.index}: a casting class states no level 1 spellcasting")
+        return SpellcastingProfile(
+            ability=casting.ability,
+            slot_recharge=casting.slot_recharge,
+            prepares=first.spells_known is None,
+        )
+
+    def _spell_choices(
+        self, origin: Origin, reached: ClassLevelRecord, before: ClassLevelRecord | None
+    ) -> tuple[ProgressionChoice, ...]:
+        casting = reached.spellcasting
+        if casting is None:
+            return ()
+        previous = before.spellcasting if before is not None else None
+        cantrips_before = None if previous is None else previous.cantrips_known
+        spells_before = None if previous is None else previous.spells_known
+        top = max(casting.spell_slots, default=0)
+        return (
+            # A cantrip is picked from level 0 alone, a spell from every level with a slot.
+            *self._spell_choice(
+                origin,
+                reached.level,
+                noun="cantrip",
+                learned=_learned(reached.index, "cantrip", casting.cantrips_known, cantrips_before),
+                levels=range(1),
+            ),
+            *self._spell_choice(
+                origin,
+                reached.level,
+                noun="spell",
+                learned=_learned(reached.index, "spell", casting.spells_known, spells_before),
+                levels=range(1, top + 1),
+            ),
+        )
+
+    def _spell_choice(
+        self, origin: Origin, level: int, *, noun: str, learned: int, levels: range
+    ) -> tuple[ProgressionChoice, ...]:
+        """Empty when the level adds none, so a caster is never asked to learn nothing."""
+        if learned == 0:
+            return ()
+        return (
+            ProgressionChoice(
+                id=f"{origin.class_ref.index}-{noun}s-{level}",
+                prompt=f"learn {learned} new {noun}{'s' if learned > 1 else ''}",
+                choose=learned,
+                options=tuple(
+                    RecordOption(label=spell.name, ref=spell.ref)
+                    for spell in self.spell_list(origin)
+                    if spell.level in levels
+                ),
+            ),
+        )
 
     def _subclass_choice(self, class_ref: ContentRef, level: int) -> ProgressionChoice | None:
         """Read subclass options from the class because its feature contains only prose."""
@@ -290,6 +372,28 @@ class PackRuleset:
         return replacements
 
 
+def _index_spell(
+    casts: dict[ContentRef, list[SpellProfile]], ref: ContentRef, record: SpellRecord
+) -> None:
+    """Index a spell under every class and subclass list that names it."""
+    profile = SpellProfile(ref=ref, name=record.name, level=record.level)
+    owners = [ref.sibling("classes", index) for index in record.classes]
+    owners += [ref.sibling("subclasses", index) for index in record.subclasses]
+    for owner in owners:
+        casts.setdefault(owner, []).append(profile)
+
+
+def _learned(index: Slug, noun: str, total: int | None, before: int | None) -> int:
+    """Convert a cumulative known-spell total into the count this level adds; `None` is a prepared
+    caster, who learns nothing at a level-up."""
+    if total is None:
+        return 0
+    learned = total - (before or 0)
+    if learned < 0:
+        raise ValueError(f"{index}: {noun}s known fall from {before} to {total}")
+    return learned
+
+
 def _same_mechanics_family(current: FeatureMechanics, replaced: FeatureMechanics) -> bool:
     match current, replaced:
         case (
@@ -308,6 +412,7 @@ def compile_ruleset(content: Content) -> Ruleset:
     """Precompute lookups and validate progression and feature graphs."""
     covers: dict[ContentRef, frozenset[Slug]] = {}
     saves: set[ContentRef] = set()
+    casts: dict[ContentRef, list[SpellProfile]] = {}
     classes: list[ContentRef] = []
     subclasses: list[tuple[ContentRef, SubclassRecord]] = []
     features: list[ContentRef] = []
@@ -326,7 +431,14 @@ def compile_ruleset(content: Content) -> Ruleset:
             subclasses.append((ref, record))
         elif isinstance(record, FeatureRecord):
             features.append(ref)
-    compiled = PackRuleset(content=content, covers=covers, saves=frozenset(saves))
+        elif isinstance(record, SpellRecord):
+            _index_spell(casts, ref, record)
+    compiled = PackRuleset(
+        content=content,
+        covers=covers,
+        saves=frozenset(saves),
+        casts={owner: tuple(listed) for owner, listed in casts.items()},
+    )
     for ref in features:
         if isinstance(miss := compiled.feature(ref), ContentMiss):
             raise ValueError(miss.summary)

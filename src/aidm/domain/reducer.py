@@ -22,12 +22,15 @@ from .models.events import (
     Moved,
     PoolRefilled,
     Rested,
+    SlotsRefilled,
+    SpellCast,
+    SpellSlotSpent,
 )
 from .models.progression import (
     Advancement,
     FeatureKey,
-    FeatureResourceState,
     Progression,
+    ResourceState,
     feature_key,
 )
 from .models.state import GameState
@@ -55,7 +58,7 @@ def _move_item(state: GameState, item_id: EntityId, to_id: EntityId) -> GameStat
 def _apply_one(state: GameState, event: Event) -> GameState:
     world = state.world
     match event:
-        case DcRolled() | DiceRolled() | AttackRolled() | FeatureActivated():
+        case DcRolled() | DiceRolled() | AttackRolled() | FeatureActivated() | SpellCast():
             return state  # branches carry effects; rolls are evidence
         case ItemMoved(item_id=item_id, to_id=to_id):
             return _move_item(state, item_id, to_id)
@@ -81,8 +84,10 @@ def _apply_one(state: GameState, event: Event) -> GameState:
             )
         case FeatureUsed(ref=ref, spent=spent, remaining=remaining, maximum=maximum):
             return _spent(state, ref, spent=spent, remaining=remaining, maximum=maximum)
-        case Rested(refilled=refilled):
-            return _refilled(state, refilled)
+        case SpellSlotSpent(slot_level=level, remaining=remaining, maximum=maximum):
+            return _slot_spent(state, level, remaining=remaining, maximum=maximum)
+        case Rested(refilled=refilled, slots=slots):
+            return _refilled(state, refilled, slots)
         case LeveledUp(advancement=advancement):
             return _grown(state, advancement)
         case EntityCreated(entity=entity):
@@ -112,40 +117,69 @@ def _progression(state: GameState) -> Progression:
     return progression
 
 
-def _with_resources(
-    state: GameState, resources: Mapping[FeatureKey, FeatureResourceState]
+def _with_pools(
+    state: GameState,
+    feature_resources: Mapping[FeatureKey, ResourceState],
+    spell_slots: Mapping[int, ResourceState],
 ) -> GameState:
-    player = state.player
-    progression = _progression(state)
-    return _replacing(
-        state, updated(player, progression=updated(progression, feature_resources=resources))
+    progression = updated(
+        _progression(state), feature_resources=feature_resources, spell_slots=spell_slots
     )
+    return _replacing(state, updated(state.player, progression=progression))
 
 
 def _spent(
     state: GameState, ref: ContentRef, *, spent: int, remaining: int, maximum: int
 ) -> GameState:
     key = feature_key(ref)
-    held = _progression(state).feature_resources
+    progression = _progression(state)
+    held = progression.feature_resources
     before = held.get(key)
     if before is None or maximum != before.maximum or remaining != before.remaining - spent:
         raise ValueError(
             f"cannot spend {spent} from {ref.index!r} resource {before} to {remaining}/{maximum}"
         )
-    return _with_resources(state, {**held, key: updated(before, remaining=remaining)})
+    return _with_pools(
+        state, {**held, key: updated(before, remaining=remaining)}, progression.spell_slots
+    )
 
 
-def _refilled(state: GameState, refilled: Sequence[PoolRefilled]) -> GameState:
-    resources = dict(_progression(state).feature_resources)
+def _slot_spent(state: GameState, level: int, *, remaining: int, maximum: int) -> GameState:
+    progression = _progression(state)
+    held = progression.spell_slots
+    before = held.get(level)
+    if before is None or maximum != before.maximum or remaining != before.remaining - 1:
+        raise ValueError(
+            f"cannot spend a level {level} spell slot {before} to {remaining}/{maximum}"
+        )
+    return _with_pools(
+        state,
+        progression.feature_resources,
+        {**held, level: updated(before, remaining=remaining)},
+    )
+
+
+def _refilled(
+    state: GameState, refilled: Sequence[PoolRefilled], slots: Sequence[SlotsRefilled]
+) -> GameState:
+    progression = _progression(state)
+    resources = dict(progression.feature_resources)
     for pool in refilled:
         key = feature_key(pool.ref)
-        before = resources.get(key)
-        if before is None or before.maximum != pool.maximum:
-            raise ValueError(
-                f"cannot refill {pool.ref.index!r} resource {before} to {pool.maximum}"
-            )
-        resources[key] = updated(before, remaining=pool.maximum)
-    return _with_resources(state, resources)
+        resources[key] = _full(resources.get(key), pool.maximum, f"{pool.ref.index!r} resource")
+    spell_slots = dict(progression.spell_slots)
+    for slot in slots:
+        level = slot.slot_level
+        spell_slots[level] = _full(
+            spell_slots.get(level), slot.maximum, f"level {level} spell slots"
+        )
+    return _with_pools(state, resources, spell_slots)
+
+
+def _full(before: ResourceState | None, maximum: int, what: str) -> ResourceState:
+    if before is None or before.maximum != maximum:
+        raise ValueError(f"cannot refill {what} {before} to {maximum}")
+    return updated(before, remaining=maximum)
 
 
 def apply(state: GameState, events: Sequence[Event]) -> GameState:

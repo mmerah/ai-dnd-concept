@@ -25,7 +25,7 @@ Status of the proof of concept, and where it should go. Kept short on purpose.
 
 ### Structure and scale
 
-- Spellcasting is the last unbuilt compound procedure. `attack`, `roll_check`, `roll_save` and `apply_condition` each emit their whole chain from one typed proposal; `cast` needs spell-slot expenditure (state plus a rest mechanic) and a known-spell rule the SRD data does not carry, so it would mean inventing both. Monster spellcasting is projected and resolves; nothing casts yet.
+- Spell preparation is unmodelled. `cast` spends a slot and resolves attack rolls, saves, damage and healing; a known caster's repertoire is chosen at level-up from the pack's cumulative `spells_known`. A prepared caster has no per-rest decision channel, so their whole class list stays castable — an over-permission at the class boundary rather than an invented limit. Concentration and temporary HP have no state either, so a spell's duration is description-guided.
 - History is the last 6 exchanges, verbatim. No summarisation, no retrieval; a long game silently forgets its own middle.
 - No scenario picker.
 - No undo. The save is a single current state, not a history of commits.

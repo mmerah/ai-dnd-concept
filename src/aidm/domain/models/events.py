@@ -3,6 +3,7 @@ from typing import Annotated, Literal
 from pydantic import Field
 
 from ...content.records.base import ContentRef
+from ...content.records.spells import SlotLevel, SpellLevel
 from ...content.vocabulary import ConditionName, RestType
 from ...utils.models import Ability, Frozen
 from .base import PLAYER_ID, EntityId
@@ -175,9 +176,40 @@ class FeatureActivated(Frozen):
         return f"activated {self.name}"
 
 
+class SpellCast(Frozen):
+    type: Literal["spell_cast"] = "spell_cast"
+    ref: ContentRef
+    name: str
+    slot_level: SpellLevel
+
+    @property
+    def summary(self) -> str:
+        at = "" if self.slot_level == 0 else f" at level {self.slot_level}"
+        return f"cast {self.name}{at}"
+
+
+class SpellSlotSpent(Frozen):
+    type: Literal["spell_slot_spent"] = "spell_slot_spent"
+    slot_level: SlotLevel
+    remaining: int = Field(ge=0)
+    maximum: int = Field(ge=1)
+
+    @property
+    def summary(self) -> str:
+        return (
+            f"spent a level {self.slot_level} spell slot"
+            f" ({self.remaining}/{self.maximum} remaining)"
+        )
+
+
 class PoolRefilled(Frozen):
     ref: ContentRef
     name: str
+    maximum: int = Field(ge=1)
+
+
+class SlotsRefilled(Frozen):
+    slot_level: SlotLevel
     maximum: int = Field(ge=1)
 
 
@@ -185,11 +217,13 @@ class Rested(Frozen):
     type: Literal["rested"] = "rested"
     rest: RestType
     refilled: tuple[PoolRefilled, ...] = ()
+    slots: tuple[SlotsRefilled, ...] = ()
 
     @property
     def summary(self) -> str:
-        names = ", ".join(pool.name for pool in self.refilled)
-        return f"completed a {self.rest} rest" + (f"; recharged {names}" if names else "")
+        names = [pool.name for pool in self.refilled] + (["spell slots"] if self.slots else [])
+        recharged = f"; recharged {', '.join(names)}" if names else ""
+        return f"completed a {self.rest} rest{recharged}"
 
 
 class LeveledUp(Frozen):
@@ -214,6 +248,8 @@ Event = Annotated[
     | LevelUpAvailable
     | FeatureUsed
     | FeatureActivated
+    | SpellCast
+    | SpellSlotSpent
     | Rested
     | LeveledUp,
     Field(discriminator="type"),

@@ -35,6 +35,7 @@ START = Advancement(
         saving_throws=("strength", "constitution"),
         proficiencies=(),
         spell_slots={},
+        chosen_spells=(),
         decisions={},
         features=(),
         feature_resources={},

@@ -20,6 +20,7 @@ from aidm.content.models import Pack, PackStamp
 from aidm.content.records.base import Collection, ContentRef, Record
 from aidm.content.records.character import ClassRecord
 from aidm.content.records.monsters import MonsterRecord
+from aidm.content.records.spells import SpellRecord
 from aidm.domain.models.progression import Origin
 from aidm.domain.models.state import CharacterSheet, GameState, ScenarioDef
 from aidm.engine import campaign
@@ -30,6 +31,7 @@ from aidm.engine.ruleset import (
     FeatureProfile,
     LevelProfile,
     Ruleset,
+    SpellProfile,
     WeaponProfile,
 )
 from aidm.pipeline import TurnOptions
@@ -101,6 +103,12 @@ class BareRules:
 
     def klass(self, ref: ContentRef) -> ClassRecord | ContentMiss:
         return ContentMiss(ref=ref, reason="unknown_pack")
+
+    def spell(self, ref: ContentRef) -> SpellRecord | ContentMiss:
+        return ContentMiss(ref=ref, reason="unknown_pack")
+
+    def spell_list(self, origin: Origin) -> tuple[SpellProfile, ...]:
+        return ()
 
 
 @cache

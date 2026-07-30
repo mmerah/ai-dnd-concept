@@ -25,6 +25,8 @@ class Spell(Upstream):
     desc: list[str]
     level: int
     school: SchoolRef
+    classes: list[ApiRef]
+    subclasses: list[ApiRef] = Field(default_factory=list)
     casting_time: str
     range: str
     duration: str

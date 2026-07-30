@@ -4,6 +4,7 @@ from random import Random
 from ..domain.models.consequences import (
     ApplyCondition,
     Attack,
+    Cast,
     Consequence,
     Damage,
     DcRoll,
@@ -20,9 +21,9 @@ from ..domain.models.consequences import (
     TakeItem,
     UseFeature,
 )
-from ..domain.models.events import DcRolled, Event
+from ..domain.models.events import DcRolled, Event, Rested
 from ..domain.models.state import GameState
-from . import features, progression, rules
+from . import features, progression, rules, spells
 from .mechanics import combat, common, conditions, health, inventory, movement
 from .mechanics.resolution import Resolution
 from .ruleset import Ruleset
@@ -58,8 +59,16 @@ def _walk(ctx: Resolution, consequence: Consequence) -> list[Event]:
             return progression.offer(ctx.player)
         case UseFeature():
             return features.use(ctx, consequence)
-        case Rest():
-            return features.rest(ctx, consequence)
+        case Cast():
+            return spells.cast(ctx, consequence)
+        case Rest(rest=rest):
+            return [
+                Rested(
+                    rest=rest,
+                    refilled=features.recharged(ctx, rest),
+                    slots=spells.recharged(ctx, rest),
+                )
+            ]
         case Damage():
             return health.damage(ctx, consequence)
         case Heal():

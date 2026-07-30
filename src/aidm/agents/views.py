@@ -14,10 +14,10 @@ from ..content.records.monsters import (
 from ..domain.models.base import PLAYER_ID
 from ..domain.models.direction import Direction
 from ..domain.models.entities import ActorEntity, Entity, GrowthRequest, ItemEntity, LocationEntity
-from ..domain.models.progression import MAX_LEVEL, Progression, feature_key
+from ..domain.models.progression import MAX_LEVEL, Progression, feature_key, spell_key
 from ..domain.models.state import Exchange
 from ..domain.models.stats import StatBlock
-from ..engine import features
+from ..engine import features, spells
 from ..engine.ruleset import NarrativeRules
 from ..utils.models import Attributes
 from .context import Scene
@@ -169,12 +169,28 @@ def _klass(progression: Progression, rules: NarrativeRules) -> str:
         + ("" if subclass is None else f" ({subclass.index})"),
         f"proficiency +{progression.prof_bonus}",
     ]
-    if record.spellcasting_ability is not None:
-        parts.append(f"casts with {record.spellcasting_ability}")
+    if record.spellcasting is not None:
+        parts.append(f"casts with {record.spellcasting.ability}")
     if progression.spell_slots:
-        slots = ", ".join(f"level {n} x{count}" for n, count in progression.spell_slots.items())
+        slots = ", ".join(
+            f"level {n} {state.remaining}/{state.maximum} ({state.recharge} rest)"
+            for n, state in sorted(progression.spell_slots.items())
+        )
         parts.append(f"spell slots {slots}")
     return " — ".join(parts)
+
+
+def _spell_list(progression: Progression, rules: NarrativeRules) -> list[str]:
+    """Grouped by level and named only, because a caster's list runs to hundreds of entries."""
+    casting = rules.character(progression.origin).spellcasting
+    castable = () if casting is None else spells.repertoire(progression, casting, rules)
+    if not castable:
+        return []
+    levels: dict[int, list[str]] = {}
+    for spell in castable:
+        levels.setdefault(spell.level, []).append(f"{spell.name}[id={spell_key(spell.ref)}]")
+    lines = "\n".join(f"- level {level}: {', '.join(named)}" for level, named in levels.items())
+    return [f"spells:\n{lines}"]
 
 
 def _feature_list(
@@ -187,9 +203,11 @@ def _feature_list(
         profile, pool = status.profile, status.pool
         tags = [features.actionability(profile)]
         if pool is not None:
-            tags += [f"{pool.remaining}/{pool.maximum} uses", f"{pool.recharge} rest"]
+            state = pool.state
+            tags += [f"{state.remaining}/{state.maximum} uses", f"{state.recharge} rest"]
         if features.directly_invokable(profile):
-            tags.append("depleted" if pool is not None and pool.remaining == 0 else "usable")
+            depleted = pool is not None and pool.state.remaining == 0
+            tags.append("depleted" if depleted else "usable")
         desc = " ".join(profile.desc.split())
         lines.append(
             f"- {profile.name}[id={feature_key(profile.ref)}] [{' — '.join(tags)}] — {desc}"
@@ -215,6 +233,7 @@ def character(scene: Scene, rules: NarrativeRules) -> str:
             else [
                 _klass(progression, rules),
                 _feature_list(progression, stats.attributes, rules),
+                *_spell_list(progression, rules),
             ]
         ),
         f"attributes: {_attributes(stats)}",

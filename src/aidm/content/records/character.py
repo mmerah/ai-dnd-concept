@@ -81,13 +81,19 @@ class SubclassChoice(Frozen):
     options: tuple[Slug, ...] = Field(min_length=1)
 
 
+class ClassSpellcasting(Frozen):
+    ability: Ability
+    # Pact Magic returns on a short rest; every other list returns only on a long one.
+    slot_recharge: RestType
+
+
 class ClassRecord(Record):
     hit_die: int = Field(ge=1)
     saving_throws: tuple[Ability, ...]
     proficiencies: tuple[Slug, ...] = ()
     choices: tuple[ProgressionChoice, ...] = ()
     subclass: SubclassChoice | None = None
-    spellcasting_ability: Ability | None = None
+    spellcasting: ClassSpellcasting | None = None
 
 
 class SubclassRecord(Record):

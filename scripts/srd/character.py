@@ -15,6 +15,7 @@ from aidm.content.records.character import (
     ChoiceOption,
     ClassLevelRecord,
     ClassRecord,
+    ClassSpellcasting,
     EquipmentProficiency,
     EquipmentProficiencyType,
     FeatRecord,
@@ -32,6 +33,7 @@ from aidm.content.records.character import (
     SubraceRecord,
     TraitRecord,
 )
+from aidm.utils.models import Slug
 
 from .choices import flatten
 from .common import ability
@@ -50,6 +52,10 @@ from .upstream.character import (
     UpstreamAbilityBonus,
     UpstreamProficiency,
 )
+
+# Upstream states each class's slot recharge only inside the "Spell Slots" prose, so the one class
+# that regains slots on a short rest is named here rather than parsed out of a sentence.
+_SHORT_REST_SLOTS: frozenset[Slug] = frozenset({"warlock"})
 
 
 def _bonuses(entries: Sequence[UpstreamAbilityBonus]) -> tuple[AbilityBonus, ...]:
@@ -92,8 +98,13 @@ def klass(record: Class, subclass_levels: Mapping[str, int]) -> ClassRecord:
                 level=min(subclass_levels[s] for s in subclasses), options=subclasses
             )
         ),
-        spellcasting_ability=(
-            None if casting is None else ability(casting.spellcasting_ability.index)
+        spellcasting=(
+            None
+            if casting is None
+            else ClassSpellcasting(
+                ability=ability(casting.spellcasting_ability.index),
+                slot_recharge="short" if record.index in _SHORT_REST_SLOTS else "long",
+            )
         ),
     )
 

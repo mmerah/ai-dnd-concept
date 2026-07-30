@@ -39,6 +39,8 @@ def spell(record: Spell) -> SpellRecord:
         desc="\n\n".join(record.desc),
         level=record.level,
         school=record.school.index,
+        classes=tuple(c.index for c in record.classes),
+        subclasses=tuple(s.index for s in record.subclasses),
         casting_time=record.casting_time,
         range=record.range,
         duration=record.duration,

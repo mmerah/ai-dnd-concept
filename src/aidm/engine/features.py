@@ -17,18 +17,17 @@ from ..content.records.character import (
     SelfHealWithClassLevel,
 )
 from ..content.vocabulary import RestType
-from ..domain.models.consequences import Rest, UseFeature
+from ..domain.models.consequences import UseFeature
 from ..domain.models.events import (
     Event,
     FeatureActivated,
     FeatureUsed,
     PoolRefilled,
-    Rested,
 )
 from ..domain.models.progression import (
     FeatureKey,
-    FeatureResourceState,
     Progression,
+    ResourceState,
     feature_key,
 )
 from ..utils.models import Attributes
@@ -43,10 +42,8 @@ class FeaturePool:
     """The use counter a feature spends from, which several features may share."""
 
     ref: ContentRef
-    recharge: RestType
     cost: FeatureResourceCost
-    remaining: int
-    maximum: int
+    state: ResourceState
 
 
 @dataclass(frozen=True, slots=True)
@@ -115,13 +112,7 @@ def owned(
         statuses.append(
             OwnedFeature(
                 profile=profile,
-                pool=FeaturePool(
-                    ref=pool_ref,
-                    recharge=state.recharge,
-                    cost=resource.cost,
-                    remaining=state.remaining,
-                    maximum=state.maximum,
-                ),
+                pool=FeaturePool(ref=pool_ref, cost=resource.cost, state=state),
             )
         )
     if unknown := sorted(set(progression.feature_resources) - referenced):
@@ -131,13 +122,13 @@ def owned(
 
 def acquire(
     held: Sequence[ContentRef],
-    resources: Mapping[FeatureKey, FeatureResourceState],
+    resources: Mapping[FeatureKey, ResourceState],
     grants: Sequence[FeatureProfile],
     *,
     ruleset: FeatureRules,
     class_level: int,
     attributes: Attributes,
-) -> tuple[tuple[ContentRef, ...], dict[FeatureKey, FeatureResourceState]]:
+) -> tuple[tuple[ContentRef, ...], dict[FeatureKey, ResourceState]]:
     features = list(held)
     inherited_spent: dict[FeatureKey, int] = {}
     replaced_keys: set[FeatureKey] = set()
@@ -147,11 +138,7 @@ def acquire(
             raise ValueError(f"feature {grant.ref.index!r} replaces features not held: {missing}")
         keys = _pool_keys(replaced, ruleset)
         replaced_keys |= keys
-        spends = [
-            state.maximum - state.remaining
-            for key in keys
-            if (state := resources.get(key)) is not None
-        ]
+        spends = [state.spent for key in keys if (state := resources.get(key)) is not None]
         if len(spends) > 1:
             raise ValueError(f"feature {grant.ref.index!r} replaces multiple resource pools")
         if spends and (resource := pool_of(grant)) is not None:
@@ -164,7 +151,7 @@ def acquire(
     if unknown := sorted(set(resources) - set(pools) - replaced_keys):
         raise ValueError(f"feature resource counters are not referenced: {unknown}")
     states = {
-        key: FeatureResourceState(
+        key: ResourceState(
             remaining=max(0, maximum - _spent(resources.get(key), inherited_spent.get(key, 0))),
             maximum=maximum,
             recharge=recharge,
@@ -175,7 +162,7 @@ def acquire(
 
 
 def use(ctx: Resolution, consequence: UseFeature) -> list[Event]:
-    progression = _progression(ctx)
+    progression = ctx.progression
     status = _named(
         owned(progression, ctx.player.stats.attributes, ctx.ruleset), consequence.feature
     )
@@ -191,22 +178,17 @@ def use(ctx: Resolution, consequence: UseFeature) -> list[Event]:
             return [*spent, *health.hp_events(ctx.then(spent), None, amount, sign=1)]
 
 
-def rest(ctx: Resolution, consequence: Rest) -> list[Event]:
+def recharged(ctx: Resolution, completed: RestType) -> tuple[PoolRefilled, ...]:
     refilled = {
-        status.pool.ref: status.pool
-        for status in owned(_progression(ctx), ctx.player.stats.attributes, ctx.ruleset)
-        if status.pool is not None and _refills(status.pool, consequence.rest)
+        status.pool.ref: status.pool.state
+        for status in owned(ctx.progression, ctx.player.stats.attributes, ctx.ruleset)
+        if status.pool is not None and status.pool.state.refills(completed)
     }
-    return [
-        Rested(
-            rest=consequence.rest,
-            refilled=tuple(
-                # Named after the feature that owns the counter, not whoever spends from it.
-                PoolRefilled(ref=ref, name=profile_of(ref, ctx.ruleset).name, maximum=pool.maximum)
-                for ref, pool in refilled.items()
-            ),
-        )
-    ]
+    return tuple(
+        # Named after the feature that owns the counter, not whoever spends from it.
+        PoolRefilled(ref=ref, name=profile_of(ref, ctx.ruleset).name, maximum=state.maximum)
+        for ref, state in refilled.items()
+    )
 
 
 def ranged_attack_bonus(
@@ -277,8 +259,8 @@ def _pools(
     return pools
 
 
-def _spent(before: FeatureResourceState | None, inherited: int) -> int:
-    return inherited if before is None else before.maximum - before.remaining
+def _spent(before: ResourceState | None, inherited: int) -> int:
+    return inherited if before is None else before.spent
 
 
 def _spend(status: OwnedFeature, amount: int) -> list[Event]:
@@ -287,33 +269,23 @@ def _spend(status: OwnedFeature, amount: int) -> list[Event]:
         if amount != 1:
             raise ValueError(f"unlimited feature {status.profile.ref.index!r} takes no amount")
         return []
+    state = pool.state
     if pool.cost != "variable" and amount != pool.cost:
         raise ValueError(f"feature {status.profile.ref.index!r} costs {pool.cost} use")
-    if pool.remaining < amount:
+    if state.remaining < amount:
         raise ValueError(
-            f"feature {status.profile.ref.index!r} has {pool.remaining} uses left; "
-            f"finish a {pool.recharge} or longer rest"
+            f"feature {status.profile.ref.index!r} has {state.remaining} uses left; "
+            f"finish a {state.recharge} or longer rest"
         )
     return [
         FeatureUsed(
             ref=pool.ref,
             name=status.profile.name,
             spent=amount,
-            remaining=pool.remaining - amount,
-            maximum=pool.maximum,
+            remaining=state.remaining - amount,
+            maximum=state.maximum,
         )
     ]
-
-
-def _refills(pool: FeaturePool, completed: RestType) -> bool:
-    return pool.remaining < pool.maximum and (pool.recharge == "short" or completed == "long")
-
-
-def _progression(ctx: Resolution) -> Progression:
-    progression = ctx.player.progression
-    if progression is None:
-        raise ValueError("the player has no class features")
-    return progression
 
 
 def _named(statuses: Sequence[OwnedFeature], key: FeatureKey) -> OwnedFeature:
