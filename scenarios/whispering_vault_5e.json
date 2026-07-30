@@ -1,0 +1,92 @@
+{
+  "meta": {
+    "title": "The Whispering Vault — 5e",
+    "premise": "The abbey of Saint Corvin was abandoned in a single night. Kael has come for the sealed vault beneath it, and the abbot's study is the only room still lit."
+  },
+  "engine": {
+    "id": "dnd5e",
+    "rules_version": 1
+  },
+  "starting_location_id": "study",
+  "entities": [
+    {
+      "id": "study",
+      "kind": "location",
+      "name": "the abbot's study",
+      "brief": "A cramped room of ledgers and cold candle stubs; a loose flagstone hides something under the desk.",
+      "known": true
+    },
+    {
+      "id": "cloister",
+      "kind": "location",
+      "name": "the cloister",
+      "brief": "A frost-rimed colonnade around a dead garden; Brother Tomas sweeps it to no purpose.",
+      "known": true
+    },
+    {
+      "id": "bell_tower",
+      "kind": "location",
+      "name": "the bell tower",
+      "brief": "A cramped climb of rotten ladders above the nave, its bell long since stilled.",
+      "known": false
+    },
+    {
+      "id": "vault",
+      "kind": "location",
+      "name": "the sealed vault",
+      "brief": "The undercroft chamber Kael came for, its door bearing a seal nobody living can read.",
+      "known": false
+    },
+    {
+      "id": "mara",
+      "kind": "actor",
+      "name": "Mara",
+      "brief": "The abbey's last scribe, cautious and tired, still cataloguing books nobody will read.",
+      "known": true,
+      "location_id": "study"
+    },
+    {
+      "id": "tomas",
+      "kind": "actor",
+      "name": "Brother Tomas",
+      "brief": "A deaf old porter who sweeps the cloister and knows almost nothing about the vault.",
+      "known": true,
+      "location_id": "cloister"
+    },
+    {
+      "id": "elena",
+      "kind": "actor",
+      "name": "Elena",
+      "brief": "The vault's former archivist, hiding in the bell tower; she alone remembers the sealing rite.",
+      "known": false,
+      "location_id": "bell_tower"
+    },
+    {
+      "id": "cloister_rat",
+      "kind": "actor",
+      "name": "a bloated rat",
+      "brief": "It has grown fat on the dead garden and does not run from a lantern.",
+      "known": false,
+      "location_id": "cloister",
+      "engine_data": {
+        "engine": "dnd5e",
+        "schema_version": 1,
+        "payload": {
+          "ref": {
+            "pack": "srd-2014",
+            "collection": "monsters",
+            "index": "giant-rat"
+          }
+        }
+      }
+    },
+    {
+      "id": "vault_map",
+      "kind": "item",
+      "name": "the vault map",
+      "brief": "A creased chart of the undercroft, marking a stair the abbey's own plans deny.",
+      "known": false,
+      "container_id": "study"
+    }
+  ]
+}

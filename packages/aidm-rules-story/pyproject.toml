@@ -1,0 +1,17 @@
+[project]
+name = "aidm-rules-story"
+version = "0.1.0"
+description = "Narrative-first Story rules engine for AIDM"
+requires-python = ">=3.12"
+dependencies = [
+    "aidm-core",
+    "pydantic>=2.9",
+    "pydantic-ai-slim>=1.0",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/aidm_story"]

@@ -1,0 +1,107 @@
+import json
+
+from aidm.domain.base import PLAYER_ID
+from aidm.domain.direction import DirectionRecord
+from aidm.domain.entities import ActorEntity, Entity, ItemEntity, LocationEntity
+from aidm.domain.events import RuleEvent
+from aidm.domain.json import thaw_json
+
+from .codecs import ACTOR_STATE_CODEC, ITEM_STATE_CODEC
+from .constants import ENGINE_ID, SCHEMA_VERSION
+from .events import (
+    ApproachRaised,
+    ConditionApplied,
+    ConditionCleared,
+    GrowthMarked,
+    GrowthReset,
+    MaximumStressIncreased,
+    Revived,
+    RiskRolled,
+    StressChanged,
+    TagAdded,
+    TagRemoved,
+    TagRewritten,
+    TakenOut,
+    decode_story_event,
+)
+
+
+class StoryPresentation:
+    def entity_state(self, entity: Entity) -> str:
+        match entity:
+            case ActorEntity():
+                return self._actor_state(entity)
+            case ItemEntity():
+                return self._item_state(entity)
+            case LocationEntity():
+                return ""
+
+    def narrator_event(self, event: RuleEvent) -> str | None:
+        typed = decode_story_event(event, ENGINE_ID, SCHEMA_VERSION)
+        match typed:
+            case RiskRolled(actor_name=name, outcome=outcome):
+                return f"{name}'s attempt ends in a {outcome}"
+            case StressChanged(actor_name=name, before=before, after=after):
+                return (
+                    f"{name} recovers some composure"
+                    if after < before
+                    else f"{name} comes under more pressure"
+                )
+            case TakenOut(actor_name=name):
+                return f"{name} is taken out"
+            case Revived(actor_name=name):
+                return f"{name} is no longer taken out"
+            case ConditionApplied(actor_name=name, condition=condition):
+                return f"{name} is now {condition.name}"
+            case ConditionCleared(actor_name=name, condition=condition):
+                return f"{name} is no longer {condition.name}"
+            case ApproachRaised(approach=approach):
+                return f"the player's {approach} approach improves"
+            case TagAdded(tag=tag):
+                return f"the player gains {tag.name}"
+            case TagRemoved(tag=tag):
+                return f"the player leaves {tag.name} behind"
+            case TagRewritten(after=tag):
+                return f"the player's burden becomes {tag.name}"
+            case MaximumStressIncreased():
+                return "the player becomes more resilient"
+            case GrowthMarked() | GrowthReset():
+                return None
+
+    def trace_event(self, event: RuleEvent) -> str:
+        return decode_story_event(event, ENGINE_ID, SCHEMA_VERSION).summary
+
+    def trace_direction(self, direction: DirectionRecord) -> str:
+        if direction.engine != ENGINE_ID or direction.schema_version != SCHEMA_VERSION:
+            raise ValueError("direction record is not compatible with Story")
+        return json.dumps(thaw_json(direction.mechanics), indent=2)
+
+    @staticmethod
+    def _actor_state(actor: ActorEntity) -> str:
+        if actor.rules is None:
+            raise ValueError(f"Story actor {actor.id!r} has no rules")
+        state = ACTOR_STATE_CODEC.decode(actor.rules)
+        approaches = ", ".join(
+            f"{name} {value:+d}" for name, value in state.approaches.model_dump().items()
+        )
+        tags = ", ".join(f"{tag.name}[id={tag.id}, {tag.kind}]" for tag in state.tags)
+        conditions = ", ".join(
+            f"{condition.name}[id={condition.id}]" for condition in state.conditions
+        )
+        growth = f", growth {state.growth_marks}/3" if actor.id == PLAYER_ID else ""
+        status = "taken out" if state.taken_out else "active"
+        return (
+            f"{approaches}; "
+            f"stress {state.stress}/{state.max_stress}{growth}; "
+            f"status {status}; tags {tags or '(none)'}; "
+            f"conditions {conditions or '(none)'}"
+        )
+
+    @staticmethod
+    def _item_state(item: ItemEntity) -> str:
+        if item.rules is None:
+            raise ValueError(f"Story item {item.id!r} has no rules")
+        gear = ITEM_STATE_CODEC.decode(item.rules).gear
+        if gear is None:
+            return "gear benefit: (none)"
+        return f"gear benefit: {gear.name} — {gear.description}"

@@ -1,0 +1,80 @@
+{
+  "name": "Kael",
+  "brief": "A scarred relic-hunter who came to the abbey for what is sealed beneath it.",
+  "engine": {
+    "id": "dnd5e",
+    "rules_version": 1
+  },
+  "engine_data": {
+    "engine": "dnd5e",
+    "schema_version": 1,
+    "payload": {
+      "origin": {
+        "class_ref": {
+          "pack": "srd-2014",
+          "collection": "classes",
+          "index": "fighter"
+        },
+        "race_ref": {
+          "pack": "srd-2014",
+          "collection": "races",
+          "index": "half-elf"
+        },
+        "background_ref": {
+          "pack": "srd-2014",
+          "collection": "backgrounds",
+          "index": "acolyte"
+        }
+      },
+      "starting_attributes": {
+        "strength": 11,
+        "dexterity": 13,
+        "constitution": 12,
+        "intelligence": 12,
+        "wisdom": 14,
+        "charisma": 10
+      },
+      "decisions": {
+        "fighter-proficiency-1": [
+          "skill-athletics",
+          "skill-perception"
+        ],
+        "fighter-fighting-style-subfeature": [
+          "fighter-fighting-style-defense"
+        ],
+        "half-elf-ability-bonuses": [
+          "dexterity",
+          "constitution"
+        ],
+        "half-elf-languages": [
+          "undercommon"
+        ],
+        "skill-versatility-proficiency": [
+          "skill-investigation",
+          "skill-stealth"
+        ],
+        "acolyte-languages": [
+          "celestial",
+          "draconic"
+        ]
+      }
+    }
+  },
+  "starting_items": [
+    {
+      "name": "a guttering lantern",
+      "brief": "A dented tin lantern whose flame will not hold still.",
+      "engine_data": {
+        "engine": "dnd5e",
+        "schema_version": 1,
+        "payload": {
+          "ref": {
+            "pack": "srd-2014",
+            "collection": "gear",
+            "index": "lantern-hooded"
+          }
+        }
+      }
+    }
+  ]
+}

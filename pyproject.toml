@@ -1,42 +1,74 @@
 [project]
-name = "aidm"
+name = "aidm-workspace"
 version = "0.1.0"
-description = "AI Dungeon Master — role-separated pipeline proof of concept"
+description = "AI Dungeon Master workspace"
 requires-python = ">=3.12"
 dependencies = [
-    "pydantic>=2.9",
-    "pydantic-settings>=2.5",
-    "pydantic-ai-slim[openai]>=1.0",
-    "nicegui>=2.0",
+    "aidm-core",
+    "aidm-rules-5e",
+    "aidm-rules-story",
+    "aidm-ui",
 ]
 
 [dependency-groups]
 dev = [
     "basedpyright>=1.39.9",
     "pytest>=8",
- "pytest-asyncio>=0.24",
- "ruff>=0.6",
+    "pytest-asyncio>=0.24",
+    "ruff>=0.6",
 ]
 
-[build-system]
-requires = ["hatchling"]
-build-backend = "hatchling.build"
+[tool.uv]
+package = false
 
-[tool.hatch.build.targets.wheel]
-packages = ["src/aidm"]
+[tool.uv.workspace]
+members = [
+    "packages/aidm-core",
+    "packages/aidm-rules-story",
+    "packages/aidm-rules-5e",
+    "apps/aidm-ui",
+]
+
+[tool.uv.sources]
+aidm-core = { workspace = true }
+aidm-rules-story = { workspace = true }
+aidm-rules-5e = { workspace = true }
+aidm-ui = { workspace = true }
 
 [tool.pytest.ini_options]
+addopts = ["--import-mode=importlib"]
 asyncio_mode = "auto"
-testpaths = ["tests"]
+pythonpath = [
+    "packages/aidm-core/tests",
+    "packages/aidm-rules-story/tests",
+    "packages/aidm-rules-5e/tests",
+    "apps/aidm-ui/tests",
+]
+testpaths = [
+    "packages/aidm-core/tests",
+    "packages/aidm-rules-story/tests",
+    "packages/aidm-rules-5e/tests",
+    "apps/aidm-ui/tests",
+]
 
 [tool.basedpyright]
-include = ["src", "tests", "scripts"]
+include = ["packages", "apps"]
+extraPaths = [
+    "packages/aidm-core/src",
+    "packages/aidm-core/tests",
+    "packages/aidm-rules-story/src",
+    "packages/aidm-rules-story/tests",
+    "packages/aidm-rules-5e/src",
+    "packages/aidm-rules-5e/tests",
+    "apps/aidm-ui/src",
+    "apps/aidm-ui/tests",
+]
 typeCheckingMode = "strict"
 venvPath = "."
 venv = ".venv"
 pythonVersion = "3.12"
-reportUnusedCallResult = false        # NiceGUI's builder API returns elements by design
-reportUnannotatedClassAttribute = false  # pydantic's `model_config`
+reportUnusedCallResult = false # NiceGUI's builder API returns elements by design
+reportUnannotatedClassAttribute = false # pydantic's `model_config` is unannotated
 
 [tool.ruff]
 line-length = 100

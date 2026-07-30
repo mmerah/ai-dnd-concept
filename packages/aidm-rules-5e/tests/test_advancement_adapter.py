@@ -1,0 +1,90 @@
+from random import Random
+
+from aidm.domain.reducer import apply
+from aidm.utils.models import updated
+from aidm_5e.advancement import Dnd5eAdvancement, Dnd5eAdvancementDecisions
+from aidm_5e.codecs import ACTOR_STATE_CODEC
+from aidm_5e.domain.models.consequences import LevelUp
+from aidm_5e.domain.models.direction import Dnd5eDirection
+from aidm_5e.engine.progression import AdvancementPlan, LevelUpPreview
+from aidm_5e.models import Dnd5eActorState
+from fivee_progression_support import answers
+from fivee_test_support import initial_5e_game, ruleset
+
+
+def test_5e_advancement_status_and_full_adapter_flow() -> None:
+    engine, state = initial_5e_game()
+    advancement = Dnd5eAdvancement(ruleset())
+
+    status = advancement.status(state)
+
+    assert status.headline == "level 1"
+    assert status.progress == 1 / 20
+    assert "No level-up has been awarded" in status.detail[0]
+    assert any("Current class features" in line for line in status.detail)
+    assert any("Second Wind" in line and "1/1 uses" in line for line in status.detail)
+    assert not advancement.available(state)
+
+    offered = apply(
+        state,
+        engine.rules.resolve(
+            Dnd5eDirection(
+                intent="Kael earns a level.",
+                tone="triumphant",
+                mechanics=[LevelUp()],
+            ),
+            state,
+            Random(1),
+        ),
+        engine.rules,
+    )
+    assert advancement.available(offered)
+    assert advancement.status(offered).detail[0] == "Level 2 is ready."
+
+    preview = advancement.preview(offered)
+    assert isinstance(preview, LevelUpPreview)
+    decisions = Dnd5eAdvancementDecisions(decisions=answers(preview.choices))
+    plan = advancement.plan(offered, decisions)
+    assert isinstance(plan, AdvancementPlan)
+
+    events = advancement.advance(offered, decisions, Random(1))
+    advanced = apply(offered, events, engine.rules)
+
+    assert advanced.player.rules is not None
+    assert advancement.status(advanced).headline == "level 2"
+    assert not advancement.available(advanced)
+
+
+def test_5e_advancement_status_covers_classless_and_max_level_characters() -> None:
+    advancement = Dnd5eAdvancement(ruleset())
+    _, state = initial_5e_game()
+    assert state.player.rules is not None
+    actor = ACTOR_STATE_CODEC.decode(state.player.rules)
+    classless_rules = ACTOR_STATE_CODEC.encode(Dnd5eActorState(stats=actor.stats))
+    classless = updated(
+        state,
+        world=state.world.replacing(updated(state.player, rules=classless_rules)),
+    )
+
+    assert "no class" in advancement.status(classless).detail[0]
+
+    assert actor.progression is not None
+    maximum_rules = ACTOR_STATE_CODEC.encode(
+        updated(
+            actor,
+            progression=updated(
+                actor.progression,
+                level=20,
+                level_up_available=False,
+            ),
+        )
+    )
+    maximum = updated(
+        state,
+        world=state.world.replacing(updated(state.player, rules=maximum_rules)),
+    )
+
+    status = advancement.status(maximum)
+    assert status.headline == "level 20"
+    assert status.progress == 1.0
+    assert status.detail[0] == "Level 20 is the last."

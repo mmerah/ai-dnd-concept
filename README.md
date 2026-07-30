@@ -1,43 +1,63 @@
-# AI Dungeon Master — role-separated pipeline
+# AI Dungeon Master
 
-A proof of concept: split the Dungeon Master into narrow roles so a small, fast model (gpt-oss-120b) stays consistent without losing creativity.
+A role-separated narrative game platform with two first-party rules engines:
 
-```
+- **AIDM Story** — the default narrative-first, rules-light engine.
+- **AIDM 5e** — the D&D 5e implementation, isolated in its own rules package.
+
+```text
 prompt → DIRECTOR → resolve → NARRATOR → MAINTAINER → CREATOR → commit
          Direction   Events    prose      Growth       Entity
 ```
 
-Resolution is the only non-LLM stage: pure Python, no model call.
-
-Two rules hold the design together:
-
-- **The model proposes, Python decides.** The Director proposes typed mechanics that reference canon by id. The resolver turns them into events deterministically. Applying events to a state is the only thing that produces a new one. No LLM ever mutates state.
-- **Context is a policy.** Each role has exactly one prompt builder, and that builder's signature *is* the policy. What a role may see is decided in one place, never assembled ad hoc at a call site.
+The model proposes typed mechanics, the selected engine resolves them deterministically, and the
+core reducer is the only state commit path. Core owns each role's visible entities, while the
+selected engine annotates those entities with one shared state presentation. The Narrator receives
+no unrevealed canon; for visible entities it receives the same state as the other roles, with
+instructions to translate mechanics into fiction rather than recite stat blocks.
 
 ## Run
 
+From the repository root:
+
 ```bash
 uv sync
-uv run pytest              # deterministic, no network
-uv run python -m aidm      # http://localhost:8080
+uv run aidm
 ```
 
-Run from the repo root; paths and `.env` resolve against the working directory. `.env` needs `PROVIDERS__OPENROUTER__API_KEY` for OpenRouter.
+The app opens at <http://localhost:8080>. Configure
+`PROVIDERS__OPENROUTER__API_KEY` in `.env`. The home page lists saves and lets you choose a
+scenario and any character compatible with its engine. Story and 5e are both included. The game
+header always identifies the active engine and exact rules version.
 
-The **trace** tab shows what every role contributed and the verbatim prompt each one received. That panel is the point of the PoC. The **state** tab is the live game state.
+Run repository checks with:
 
-## How a game is put together
+```bash
+uv run ruff check
+uv run basedpyright
+uv run pytest
+```
 
-A game state is composed at `new_game` from a **scenario** (premise plus starting canon) and a **character**, kept in separate files so one character can be replayed across scenarios. Play only ever edits the live world, never the static scenario identity. The player is an ordinary actor entity inside that world, under a reserved id, so events and positions name them exactly as they name anyone else.
+## Workspace
 
-Content ships as **packs**: a manifest plus narrow record collections, addressed by a `(pack, collection, index)` triple rather than a bare slug. The shipped pack is a projection of 5e-database, converted offline by a script in the repo and committed, so the pack doubles as the edition pin. An entity that names a record snapshots the numbers the reducer touches at creation and reads everything descriptive live, which is why a save records the pack versions it was played against and refuses to load against different ones.
+```text
+packages/aidm-core/         engine-neutral state, reducer, pipeline, application, persistence
+packages/aidm-rules-story/  Story definitions, rules, events, presentation, advancement
+packages/aidm-rules-5e/     5e adapter, legacy mechanics, SRD data, importer, advancement
+apps/aidm-ui/               NiceGUI composition root and engine-specific UI adapters
+characters/                 explicit engine-selected character definitions
+scenarios/                  explicit engine-selected scenario definitions
+```
 
-Feature records carry strict mechanics data for actions and resource pools the engine can track.
-Features without a deterministic model remain `description-guided`: the Director applies their
-prose through ordinary typed consequences. Content-pack authors can use the same mechanics models,
-but a feature effect becomes engine-resolved only when the engine implements that effect type.
+The rules engines remain separate distributions, while the UI installs both first-party engines.
+The shipped SRD pack exists only inside the 5e wheel, and its exact pack stamp is part of 5e save
+compatibility.
+
+The **Trace** tab shows private Director mechanics, resolved events, and the exact prompt received
+by each role. The **State** tab shows the committed game state. **Advancement** delegates its
+engine-specific decisions through a UI-owned adapter.
 
 ## Docs
 
-- `AGENTS.md`: engineering principles and the architectural invariants, in enforceable form.
-- `docs/ROADMAP.md`: what is weak today, and what comes next.
+- `AGENTS.md`: durable engineering and architecture rules.
+- `docs/ROADMAP.md`: known weaknesses and possible next work.
