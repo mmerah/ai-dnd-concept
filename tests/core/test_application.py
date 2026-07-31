@@ -2,7 +2,6 @@ from dataclasses import dataclass, field
 from random import Random
 
 import pytest
-from core_test_support import TestEngine as _TestEngine
 from core_test_support import character, scenario, settings
 
 from aidm.agents.stages import director_stage, shared_stages
@@ -11,6 +10,7 @@ from aidm.domain.state import GameState
 from aidm.domain.turn import Turn
 from aidm.pipeline import TurnOptions
 from aidm.utils.models import updated
+from aidm_story.factory import build_story_engine
 
 
 @dataclass
@@ -45,7 +45,7 @@ class MemoryTraces:
 
 
 def application(saves: MemorySaves, traces: MemoryTraces) -> GameApplication:
-    engine = _TestEngine()
+    engine = build_story_engine()
     config = settings()
     return GameApplication(
         slug="poc",
@@ -79,14 +79,11 @@ def test_opening_does_not_save_and_restart_discards_durable_state() -> None:
     assert traces.turns == []
 
 
-def test_resume_rejects_an_exact_engine_stamp_mismatch() -> None:
+def test_resume_rejects_a_save_from_another_scenario() -> None:
     saves = MemorySaves()
     app = application(saves, MemoryTraces())
-    incompatible = updated(
-        app.state,
-        engine=updated(app.state.engine, rules_version=2),
-    )
-    saves.save("poc", incompatible)
+    elsewhere = updated(app.state.scenario, title="Another Vault")
+    saves.save("poc", updated(app.state, scenario=elsewhere))
 
-    with pytest.raises(ValueError, match="rules_version.*2.*1"):
+    with pytest.raises(ValueError, match="save scenario is 'Another Vault'"):
         application(saves, MemoryTraces())

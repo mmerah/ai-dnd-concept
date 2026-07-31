@@ -1,14 +1,6 @@
 from collections.abc import Sequence
 from random import Random
 
-from pydantic import BaseModel
-
-from aidm.domain.actions import (
-    CoreAction,
-    CoreActionRejected,
-    is_core_action,
-    resolve_core_action,
-)
 from aidm.domain.base import PLAYER_ID, EntityId
 from aidm.domain.entities import ActorEntity, ItemEntity
 from aidm.domain.events import Event, RuleEvent, RuleStatePatch
@@ -16,6 +8,12 @@ from aidm.domain.reducer import apply
 from aidm.domain.state import GameState
 from aidm.utils.models import updated
 
+from .actions import (
+    CoreAction,
+    CoreActionRejected,
+    is_core_action,
+    resolve_core_action,
+)
 from .codecs import ACTOR_STATE_CODEC, GAME_STATE_CODEC, ITEM_STATE_CODEC
 from .constants import ENGINE_ID, SCHEMA_VERSION
 from .direction import (
@@ -74,12 +72,10 @@ class StoryRules:
 
     def resolve(
         self,
-        direction: BaseModel,
+        direction: StoryDirection,
         state: GameState,
         rng: Random,
     ) -> list[Event]:
-        if not isinstance(direction, StoryDirection):
-            raise TypeError(f"Story rules received {type(direction).__name__}")
         return self._fold(state, direction.mechanics, rng)
 
     def _fold(
@@ -409,8 +405,8 @@ class StoryRules:
                 )
 
     def validate_state(self, state: GameState) -> None:
-        if state.engine.id != ENGINE_ID or state.engine.schema_version != SCHEMA_VERSION:
-            raise ValueError("Story rules received an incompatible state stamp")
+        if state.engine != ENGINE_ID:
+            raise ValueError(f"Story rules received a {state.engine!r} state")
         GAME_STATE_CODEC.decode(state.rules)
         for entity in state.world.entities.values():
             if isinstance(entity, ActorEntity):

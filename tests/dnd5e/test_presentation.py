@@ -8,7 +8,7 @@ from aidm_5e.domain.models.base import PLAYER_ID as LEGACY_PLAYER_ID
 from aidm_5e.domain.models.base import EntityId as LegacyEntityId
 from aidm_5e.domain.models.events import AttackRolled, HpChanged
 from aidm_5e.events import encode_dnd5e_event
-from aidm_5e.facade import Dnd5eEngine
+from aidm_5e.factory import dnd5e_engine
 
 
 def test_5e_presentation_exposes_full_state_for_every_visible_actor() -> None:
@@ -45,7 +45,7 @@ def test_5e_presentation_exposes_full_state_for_every_visible_actor() -> None:
 
 
 def test_5e_narrator_event_translates_committed_mechanics() -> None:
-    presentation = Dnd5eEngine(ruleset()).presentation
+    presentation = dnd5e_engine(ruleset()).presentation
     hp = encode_dnd5e_event(
         HpChanged(
             target_id=LegacyEntityId("mara"),
@@ -76,7 +76,7 @@ def test_5e_narrator_event_translates_committed_mechanics() -> None:
 
 
 def test_5e_narrator_may_receive_the_players_hp_delta() -> None:
-    presentation = Dnd5eEngine(ruleset()).presentation
+    presentation = dnd5e_engine(ruleset()).presentation
     hp = encode_dnd5e_event(
         HpChanged(
             target_id=LEGACY_PLAYER_ID,

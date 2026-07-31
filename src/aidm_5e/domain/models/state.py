@@ -1,11 +1,9 @@
-from collections.abc import Sequence
 from typing import Self
 
 from pydantic import Field, model_validator
 
 from aidm.utils.models import EMPTY_FROZEN_MAP
 
-from ...content.models import PackStamp
 from ...content.records.base import ContentRef
 from ...utils.models import Attributes, Frozen, updated
 from .base import PLAYER_ID, SAVE_VERSION, EntityId, slug
@@ -118,8 +116,6 @@ class GameState(Frozen):
     version: int = SAVE_VERSION
     scenario: ScenarioMeta
     world: WorldState
-    # Actor stats are snapshots, so pack versions must match on resume.
-    packs: list[PackStamp] = Field(default_factory=list)
     history: list[Exchange] = Field(default_factory=list)
     turn: int = 0
 
@@ -155,7 +151,6 @@ class GameState(Frozen):
         cls,
         scenario: ScenarioDef,
         character: CharacterSheet,
-        packs: Sequence[PackStamp],
         start: Advancement,
     ) -> Self:
         entities = {entity.id: entity for entity in scenario.entities}
@@ -178,4 +173,4 @@ class GameState(Frozen):
             stats=StatBlock(attributes=start.attributes, max_hp=start.hp_gain, hp=start.hp_gain),
             progression=start.progression,
         )
-        return cls(scenario=scenario.meta, world=WorldState(entities=entities), packs=list(packs))
+        return cls(scenario=scenario.meta, world=WorldState(entities=entities))

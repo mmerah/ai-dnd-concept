@@ -3,7 +3,7 @@ from typing import Annotated, TypeGuard
 
 from pydantic import Field, TypeAdapter
 
-from aidm.domain.base import Slug
+from aidm.domain.base import EngineId
 from aidm.domain.events import RuleEvent
 from aidm.domain.json import FrozenJson
 
@@ -42,7 +42,7 @@ DND5E_EVENT_ADAPTER: TypeAdapter[Dnd5eRuleEvent] = TypeAdapter(Dnd5eRuleEvent)
 
 def encode_dnd5e_event(
     event: Dnd5eRuleEvent,
-    engine: Slug,
+    engine: EngineId,
     schema_version: int,
 ) -> RuleEvent:
     return RuleEvent(
@@ -61,7 +61,7 @@ def _is_payload_mapping(
 
 def decode_dnd5e_event(
     event: RuleEvent,
-    engine: Slug,
+    engine: EngineId,
     schema_version: int,
 ) -> Dnd5eRuleEvent:
     if event.engine != engine:

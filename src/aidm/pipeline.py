@@ -1,12 +1,11 @@
 from collections.abc import Callable, Sequence
 from random import Random
 
-from pydantic import BaseModel, Field
+from pydantic import Field
 
 from .agents.context import (
     CreatorContext,
     DirectorContext,
-    DirectorScene,
     MaintainerContext,
     NarratorContext,
     build_catalogue_scene,
@@ -20,10 +19,9 @@ from .agents.prompting import (
     build_maintainer_prompt,
     build_narrator_prompt,
 )
-from .agents.stages import SharedStages, Stage
+from .agents.stages import DirectorStage, SharedStages
 from .domain.base import EntityId, Role, slug
-from .domain.direction import require_direction
-from .domain.engine import require_envelope
+from .domain.engine import require_engine
 from .domain.entities import (
     ActorEntity,
     Entity,
@@ -37,7 +35,7 @@ from .domain.growth import GrowthRequest, screen_growth
 from .domain.reducer import apply, narrator_evidence
 from .domain.state import Exchange, GameState
 from .domain.turn import Turn
-from .engine_api.contracts import RulesEngine
+from .engines import Direction, Engine, record, resolve
 from .utils.models import Frozen, updated
 
 
@@ -50,8 +48,8 @@ async def run_turn(
     state: GameState,
     prompt: str,
     *,
-    engine: RulesEngine,
-    director: Stage[DirectorScene, BaseModel],
+    engine: Engine,
+    director: DirectorStage,
     stages: SharedStages,
     options: TurnOptions,
     rng: Random,
@@ -73,23 +71,22 @@ async def run_turn(
     step("director")
     prompts["director"] = build_director_prompt(
         director_context,
-        engine.presentation,
+        engine.presentation.entity_state,
     )
-    direction = await director.run(prompts["director"], director_scene, history)
+    direction: Direction = await director.run(prompts["director"], director_scene, history)
 
-    events = engine.rules.resolve(direction, state, rng)
+    events = resolve(engine, direction, state, rng)
     draft = apply(state, events, engine.rules)
-    record = engine.director.record(direction)
-    require_direction(record, state.engine)
+    directed = record(engine, direction)
     evidence = narrator_evidence(events, engine.presentation.narrator_event)
 
     narrator_context = NarratorContext(
         scene=build_narrator_scene(draft, engine.presentation.entity_state),
         scenario_title=draft.scenario.title,
         scenario_premise=draft.scenario.premise,
-        intent=record.intent,
-        tone=record.tone,
-        speaker_id=record.speaker_id,
+        intent=directed.intent,
+        tone=directed.tone,
+        speaker_id=directed.speaker_id,
         evidence=evidence,
         prompt=prompt,
         recent=recent,
@@ -134,7 +131,7 @@ async def run_turn(
     engine.rules.validate_state(final)
     return Turn(
         prompt=prompt,
-        direction=record,
+        direction=directed,
         events=(*events, *creation_events),
         narrator_evidence=evidence,
         narration=narration,
@@ -153,7 +150,7 @@ async def _grow(
     recent: tuple[Exchange, ...],
     prompts: dict[Role, str],
     stages: SharedStages,
-    engine: RulesEngine,
+    engine: Engine,
 ) -> tuple[tuple[Entity, ...], tuple[Event, ...], GameState]:
     created: list[Entity] = []
     events: list[Event] = []
@@ -176,7 +173,7 @@ async def _grow(
         )
         rules = engine.lifecycle.rules_for_created_entity(entity, draft)
         if rules is not None:
-            require_envelope(rules, draft.engine, f"created entity {entity.id!r} rules")
+            require_engine(rules, draft.engine, f"created entity {entity.id!r} rules")
         entity = updated(entity, rules=rules)
         event = EntityCreated(entity=entity)
         draft = apply(draft, [event], engine.rules)

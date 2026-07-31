@@ -1,9 +1,4 @@
-from aidm.domain.base import Slug
-from aidm.domain.engine import EngineRef
-from aidm.engine_api.contracts import EngineDescriptor
+from aidm.domain.base import EngineId
 
-ENGINE_ID: Slug = "story"
-RULES_VERSION = 1
+ENGINE_ID: EngineId = "story"
 SCHEMA_VERSION = 1
-ENGINE_REF = EngineRef(id=ENGINE_ID, rules_version=RULES_VERSION)
-DESCRIPTOR = EngineDescriptor(ref=ENGINE_REF, schema_version=SCHEMA_VERSION)

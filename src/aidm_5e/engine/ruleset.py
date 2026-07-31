@@ -6,7 +6,6 @@ from pydantic import Field
 from aidm.utils.models import EMPTY_FROZEN_MAP, FrozenMap
 
 from ..content.library import ContentMiss
-from ..content.models import PackStamp
 from ..content.records.base import ContentRef, Record
 from ..content.records.character import ClassRecord, FeatureMechanics, ProgressionChoice
 from ..content.records.monsters import MonsterRecord
@@ -115,6 +114,4 @@ class NarrativeRules(CharacterRules, FeatureRules, SpellRules, Protocol):
     def record(self, ref: ContentRef) -> Record | ContentMiss: ...
 
 
-class Ruleset(ProgressionRules, CombatRules, NarrativeRules, Protocol):
-    @property
-    def stamps(self) -> Sequence[PackStamp]: ...
+class Ruleset(ProgressionRules, CombatRules, NarrativeRules, Protocol): ...

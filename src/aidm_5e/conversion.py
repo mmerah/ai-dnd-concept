@@ -1,4 +1,3 @@
-from collections.abc import Sequence
 
 from aidm.domain.base import EntityId
 from aidm.domain.engine import EngineData
@@ -20,7 +19,6 @@ from aidm.domain.state import GameState
 
 from .codecs import ACTOR_STATE_CODEC, ITEM_STATE_CODEC
 from .constants import ENGINE_ID, SCHEMA_VERSION
-from .content.models import PackStamp
 from .domain.models.base import EntityId as LegacyEntityId
 from .domain.models.entities import (
     ActorEntity as LegacyActor,
@@ -68,10 +66,7 @@ from .events import DND5E_EVENT_ADAPTER, Dnd5eRuleEvent, encode_dnd5e_event
 from .models import Dnd5eActorState, Dnd5eItemState
 
 
-def to_legacy_state(
-    state: GameState,
-    stamps: Sequence[PackStamp],
-) -> LegacyGameState:
+def to_legacy_state(state: GameState) -> LegacyGameState:
     entities = {
         LegacyEntityId(str(entity.id)): _to_legacy_entity(entity)
         for entity in state.world.entities.values()
@@ -82,7 +77,6 @@ def to_legacy_state(
             premise=state.scenario.premise,
         ),
         world=LegacyWorld(entities=entities),
-        packs=list(stamps),
         history=[
             LegacyExchange(prompt=exchange.prompt, narration=exchange.narration)
             for exchange in state.history

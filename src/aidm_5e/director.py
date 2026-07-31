@@ -1,14 +1,13 @@
 import json
 from random import Random
 
-from pydantic import BaseModel, TypeAdapter, ValidationError
+from pydantic import TypeAdapter, ValidationError
 from pydantic_ai import ModelRetry, NativeOutput, RunContext
 from pydantic_ai.output import OutputSpec
 
 from aidm.agents.context import DirectorScene
 from aidm.domain.base import EntityId
 from aidm.domain.direction import DirectionRecord
-from aidm.domain.engine import EngineStamp
 from aidm.domain.entities import ActorEntity
 
 from .agents.instructions import MECHANICS
@@ -24,16 +23,11 @@ _DRY_RUN_SEEDS = (2, 5)
 
 
 class Dnd5eDirector:
-    def __init__(
-        self,
-        rules: Dnd5eRules,
-        stamp: EngineStamp,
-    ) -> None:
+    def __init__(self, rules: Dnd5eRules) -> None:
         self._rules = rules
-        self._stamp = stamp
 
     @property
-    def output(self) -> OutputSpec[BaseModel]:
+    def output(self) -> OutputSpec[Dnd5eDirection]:
         return NativeOutput(Dnd5eDirection)
 
     def instructions(self) -> str:
@@ -42,10 +36,8 @@ class Dnd5eDirector:
     def validate(
         self,
         ctx: RunContext[DirectorScene],
-        direction: BaseModel,
-    ) -> BaseModel:
-        if not isinstance(direction, Dnd5eDirection):
-            raise TypeError(f"5e Director received {type(direction).__name__}")
+        direction: Dnd5eDirection,
+    ) -> Dnd5eDirection:
         scene = ctx.deps
         refs = [
             (EntityId(str(entity_id)), reference) for entity_id, reference in direction.canon_refs()
@@ -101,7 +93,7 @@ class Dnd5eDirector:
         return direction
 
     def _dry_run(self, direction: Dnd5eDirection, scene: DirectorScene) -> None:
-        state = state_from_scene(scene, self._stamp)
+        state = state_from_scene(scene, ENGINE_ID)
         for seed in _DRY_RUN_SEEDS:
             try:
                 _ = self._rules.resolve(direction, state, Random(seed))
@@ -110,9 +102,7 @@ class Dnd5eDirector:
             except ValueError as error:
                 raise ModelRetry(f"{error}. Propose mechanics this state allows.") from error
 
-    def record(self, direction: BaseModel) -> DirectionRecord:
-        if not isinstance(direction, Dnd5eDirection):
-            raise TypeError(f"5e Director received {type(direction).__name__}")
+    def record(self, direction: Dnd5eDirection) -> DirectionRecord:
         mechanics: object = json.loads(MECHANICS_ADAPTER.dump_json(direction.mechanics))
         return DirectionRecord.model_validate(
             {

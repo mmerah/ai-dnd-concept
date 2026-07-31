@@ -6,6 +6,8 @@ from ..domain.entities import ActorEntity, Entity, ItemEntity, LocationEntity
 from ..domain.state import Exchange, GameState, WorldState
 from ..utils.models import Frozen
 
+type EntityRenderer = Callable[[Entity], str]
+
 
 class DirectorScene(Frozen):
     game_rules: EngineData
@@ -123,7 +125,7 @@ def build_director_scene(state: GameState) -> DirectorScene:
 
 def build_narrator_scene(
     state: GameState,
-    entity_state: Callable[[Entity], str],
+    entity_state: EntityRenderer,
 ) -> NarratorScene:
     director = build_director_scene(state)
     return NarratorScene(
@@ -137,14 +139,14 @@ def build_narrator_scene(
 
 def build_catalogue_scene(
     state: GameState,
-    entity_state: Callable[[Entity], str],
+    entity_state: EntityRenderer,
 ) -> CatalogueScene:
     return CatalogueScene(catalogue=_catalogue(state, entity_state))
 
 
 def _narrator_view(
     entity: Entity,
-    entity_state: Callable[[Entity], str],
+    entity_state: EntityRenderer,
 ) -> NarratorEntityView:
     return NarratorEntityView(
         id=entity.id,
@@ -157,7 +159,7 @@ def _narrator_view(
 
 def _catalogue(
     state: GameState,
-    entity_state: Callable[[Entity], str],
+    entity_state: EntityRenderer,
 ) -> tuple[CatalogueEntityView, ...]:
     return tuple(
         CatalogueEntityView(

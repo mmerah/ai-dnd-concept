@@ -5,12 +5,12 @@ from ..domain.base import EntityId, Kind
 from ..domain.entities import Entity
 from ..domain.growth import GrowthRequest
 from ..domain.state import Exchange
-from ..engine_api.contracts import EnginePresentation
 from .context import (
     CatalogueEntityView,
     CreatorContext,
     DirectorContext,
     DirectorScene,
+    EntityRenderer,
     MaintainerContext,
     NarratorContext,
     NarratorEntityView,
@@ -29,24 +29,24 @@ def _premise(title: str, premise: str) -> tuple[str, str]:
 
 def build_director_prompt(
     context: DirectorContext,
-    presentation: EnginePresentation,
+    entity_state: EntityRenderer,
 ) -> str:
     scene = context.scene
     return _sections(
         (
             _premise(context.scenario_title, context.scenario_premise),
-            ("PLAYER CHARACTER", _director_character(scene, presentation)),
+            ("PLAYER CHARACTER", _director_character(scene, entity_state)),
             (
                 "HERE WITH THE PLAYER",
-                _director_entities(scene.here, scene, presentation),
+                _director_entities(scene.here, scene, entity_state),
             ),
             (
                 "KNOWN TO THE PLAYER, BUT ELSEWHERE",
-                _director_entities(scene.elsewhere, scene, presentation),
+                _director_entities(scene.elsewhere, scene, entity_state),
             ),
             (
                 "EXISTS BUT THE PLAYER DOES NOT KNOW IT YET",
-                _director_entities(scene.unrevealed, scene, presentation),
+                _director_entities(scene.unrevealed, scene, entity_state),
             ),
             ("PLAYER ACTION", context.prompt),
         )
@@ -105,19 +105,19 @@ def build_creator_prompt(
 
 def _director_character(
     scene: DirectorScene,
-    presentation: EnginePresentation,
+    entity_state: EntityRenderer,
 ) -> str:
     inventory = "\n".join(
         _with_state(
             f"- {_label(item)} — {item.brief}",
-            presentation.entity_state(item),
+            entity_state(item),
             "  ",
         )
         for item in sorted(scene.carried, key=lambda held: held.name)
     )
     player = _with_state(
         f"{_label(scene.player)} — {scene.player.brief} — at {_label(scene.where)}",
-        presentation.entity_state(scene.player),
+        entity_state(scene.player),
     )
     return f"{player}\ninventory:\n{inventory or '- (none)'}"
 
@@ -125,14 +125,14 @@ def _director_character(
 def _director_entities(
     entities: Sequence[Entity],
     scene: DirectorScene,
-    presentation: EnginePresentation,
+    entity_state: EntityRenderer,
 ) -> str:
     return (
         "\n".join(
             _with_state(
                 f"- {_label(entity)} ({_kind_label(entity.kind)})"
                 f"{_with_placement(entity_placement(entity, scene.canon))} — {entity.brief}",
-                presentation.entity_state(entity),
+                entity_state(entity),
                 "  ",
             )
             for entity in entities

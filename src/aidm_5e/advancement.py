@@ -2,9 +2,9 @@ from random import Random
 
 from pydantic import BaseModel
 
+from aidm.domain.engine import AdvancementStatus
 from aidm.domain.events import Event
 from aidm.domain.state import GameState
-from aidm.engine_api.contracts import AdvancementStatus
 from aidm.utils.models import Frozen
 
 from .codecs import ACTOR_STATE_CODEC
@@ -52,7 +52,7 @@ class Dnd5eAdvancement:
         )
 
     def preview(self, state: GameState) -> BaseModel:
-        player = to_legacy_state(state, self._ruleset.stamps).player
+        player = to_legacy_state(state).player
         if player.progression is None or not player.progression.level_up_available:
             raise ValueError("no 5e level-up has been awarded")
         return progression.preview(player, self._ruleset)
@@ -60,7 +60,7 @@ class Dnd5eAdvancement:
     def plan(self, state: GameState, decisions: BaseModel) -> BaseModel:
         if not isinstance(decisions, Dnd5eAdvancementDecisions):
             raise TypeError(f"5e advancement received {type(decisions).__name__}")
-        player = to_legacy_state(state, self._ruleset.stamps).player
+        player = to_legacy_state(state).player
         if player.progression is None or not player.progression.level_up_available:
             raise ValueError("no 5e level-up has been awarded")
         return progression.plan(player, decisions.decisions, self._ruleset)
@@ -73,7 +73,7 @@ class Dnd5eAdvancement:
     ) -> list[Event]:
         if not isinstance(decisions, Dnd5eAdvancementDecisions):
             raise TypeError(f"5e advancement received {type(decisions).__name__}")
-        player = to_legacy_state(state, self._ruleset.stamps).player
+        player = to_legacy_state(state).player
         if player.progression is None or not player.progression.level_up_available:
             raise ValueError("no 5e level-up has been awarded")
         events = progression.advance(

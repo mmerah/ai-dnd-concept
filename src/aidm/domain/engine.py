@@ -1,55 +1,54 @@
-from collections.abc import Sequence
-from typing import Self
+from pydantic import BaseModel, Field, TypeAdapter
 
-from pydantic import Field, model_validator
-
-from ..utils.models import Frozen
-from .base import Slug
+from ..utils.models import EMPTY_FROZEN_MAP, Frozen, FrozenMap
+from .base import EngineId, EntityId
 from .json import FrozenJson
 
 
-class EngineRef(Frozen):
-    id: Slug
-    rules_version: int = Field(ge=1)
-
-
-class DependencyStamp(Frozen):
-    kind: Slug
-    id: Slug
-    version: str
-
-
-class EngineStamp(Frozen):
-    id: Slug
-    rules_version: int = Field(ge=1)
-    schema_version: int = Field(ge=1)
-    dependencies: tuple[DependencyStamp, ...] = ()
-
-    @model_validator(mode="after")
-    def _normalized_dependencies(self) -> Self:
-        keys = [(dependency.kind, dependency.id) for dependency in self.dependencies]
-        if len(keys) != len(set(keys)):
-            raise ValueError("engine dependencies contain duplicate kind/id pairs")
-        if keys != sorted(keys):
-            raise ValueError("engine dependencies must be sorted by kind and id")
-        return self
-
-
 class EngineData(Frozen):
-    engine: Slug
+    engine: EngineId
     schema_version: int = Field(ge=1)
     payload: FrozenJson
 
 
-def dependency_stamps(stamps: Sequence[DependencyStamp]) -> tuple[DependencyStamp, ...]:
-    return tuple(sorted(stamps, key=lambda stamp: (stamp.kind, stamp.id)))
+class EngineInitialization(Frozen):
+    game_rules: EngineData
+    entity_rules: FrozenMap[EntityId, EngineData | None] = EMPTY_FROZEN_MAP
 
 
-def require_envelope(data: EngineData, stamp: EngineStamp, purpose: str) -> None:
-    if data.engine != stamp.id:
-        raise ValueError(f"{purpose} engine is {data.engine!r}, selected engine is {stamp.id!r}")
-    if data.schema_version != stamp.schema_version:
-        raise ValueError(
-            f"{purpose} schema_version is {data.schema_version}, "
-            f"selected engine schema_version is {stamp.schema_version}"
+class AdvancementStatus(Frozen):
+    headline: str
+    detail: tuple[str, ...] = ()
+    progress: float = Field(default=0.0, ge=0.0, le=1.0)
+
+
+def require_engine(data: EngineData, engine: EngineId, purpose: str) -> None:
+    if data.engine != engine:
+        raise ValueError(f"{purpose} engine is {data.engine!r}, selected engine is {engine!r}")
+
+
+class EngineCodec[ModelT: BaseModel]:
+    def __init__(self, model: type[ModelT], *, engine: EngineId, schema_version: int) -> None:
+        self.adapter = TypeAdapter(model)
+        self.engine: EngineId = engine
+        self.schema_version = schema_version
+
+    def decode(self, data: EngineData) -> ModelT:
+        if data.engine != self.engine:
+            raise ValueError(
+                f"engine payload is for {data.engine!r}, codec expects {self.engine!r}"
+            )
+        if data.schema_version != self.schema_version:
+            raise ValueError(
+                f"engine payload schema is {data.schema_version}, "
+                f"codec expects {self.schema_version}"
+            )
+        return self.adapter.validate_python(data.payload)
+
+    def encode(self, value: ModelT) -> EngineData:
+        validated = self.adapter.validate_python(value)
+        return EngineData(
+            engine=self.engine,
+            schema_version=self.schema_version,
+            payload=validated.model_dump(mode="json"),
         )

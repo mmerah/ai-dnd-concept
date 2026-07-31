@@ -2,7 +2,10 @@ from typing import Annotated, ClassVar, Literal
 
 from pydantic import Field, TypeAdapter
 
-from aidm.domain.actions import (
+from aidm.domain.base import EntityId, Slug
+from aidm.utils.models import Frozen
+
+from .actions import (
     CORE_ACTION_TYPES,
     CoreAction,
     Discover,
@@ -12,10 +15,6 @@ from aidm.domain.actions import (
     Move,
     TakeItem,
 )
-from aidm.domain.base import EntityId, Slug
-from aidm.domain.direction import DirectionBase
-from aidm.utils.models import Frozen
-
 from .models import StoryApproach, StoryCondition
 
 
@@ -191,7 +190,10 @@ STORY_CONSEQUENCE_ADAPTER: TypeAdapter[StoryConsequence] = TypeAdapter(StoryCons
 STORY_MECHANICS_ADAPTER: TypeAdapter[list[StoryConsequence]] = TypeAdapter(list[StoryConsequence])
 
 
-class StoryDirection(DirectionBase):
+class StoryDirection(Frozen):
+    intent: str
+    tone: str
+    speaker_id: EntityId | None = None
     mechanics: list[StoryConsequence] = Field(default_factory=list)
 
 

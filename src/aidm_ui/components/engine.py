@@ -1,12 +1,8 @@
 from dataclasses import dataclass
-from typing import Protocol
 
 from nicegui import ui
 
-
-class EngineIdentity(Protocol):
-    id: str
-    rules_version: int
+from aidm.domain.base import EngineId
 
 
 @dataclass(frozen=True, slots=True)
@@ -15,21 +11,15 @@ class EngineAppearance:
     colour: str
 
 
-def engine_appearance(engine: EngineIdentity) -> EngineAppearance:
-    match engine.id:
+def engine_appearance(engine: EngineId) -> EngineAppearance:
+    match engine:
         case "story":
-            name, colour = "STORY", "deep-purple-6"
+            return EngineAppearance(label="STORY", colour="deep-purple-6")
         case "dnd5e":
-            name, colour = "D&D 5E", "red-9"
-        case _:
-            name, colour = engine.id.upper(), "grey-8"
-    return EngineAppearance(
-        label=f"{name} · RULES V{engine.rules_version}",
-        colour=colour,
-    )
+            return EngineAppearance(label="D&D 5E", colour="red-9")
 
 
-def show_engine_badge(engine: EngineIdentity) -> None:
+def show_engine_badge(engine: EngineId) -> None:
     appearance = engine_appearance(engine)
     ui.badge(appearance.label).props(f"color={appearance.colour} text-color=white").classes(
         "text-sm font-bold q-px-md q-py-sm"

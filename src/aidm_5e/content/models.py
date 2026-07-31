@@ -14,11 +14,6 @@ _ROUTABLE: TypeAdapter[_Routable] = TypeAdapter(_Routable)
 _FIELDS: TypeAdapter[Mapping[str, object]] = TypeAdapter(Mapping[str, object])
 
 
-class PackStamp(Frozen):
-    id: Slug
-    version: str
-
-
 class Manifest(Frozen):
     id: Slug
     name: str
@@ -26,10 +21,6 @@ class Manifest(Frozen):
     edition: str
     requires: tuple[Slug, ...] = ()
     provides: FrozenMap[Collection, NonNegativeInt]
-
-    @property
-    def stamp(self) -> PackStamp:
-        return PackStamp(id=self.id, version=self.version)
 
 
 class Pack(Frozen):

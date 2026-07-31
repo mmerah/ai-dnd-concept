@@ -1,10 +1,7 @@
 {
   "name": "Kael",
   "brief": "A scarred relic-hunter who came to the abbey for what is sealed beneath it.",
-  "engine": {
-    "id": "story",
-    "rules_version": 1
-  },
+  "engine": "story",
   "engine_data": {
     "engine": "story",
     "schema_version": 1,

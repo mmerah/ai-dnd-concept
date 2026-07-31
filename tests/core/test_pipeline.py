@@ -75,7 +75,7 @@ async def test_an_engine_uses_the_shared_pipeline_and_safe_narrator_prompt() -> 
         "a_guttering_lantern",
         "vault_map",
     }
-    assert turn.direction.engine == "test-engine"
+    assert turn.direction.engine == "story"
     assert "Elena" not in turn.prompts["narrator"]
     assert "engine_data" not in turn.prompts["narrator"]
     assert turn.state.turn == 1

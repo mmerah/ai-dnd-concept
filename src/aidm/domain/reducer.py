@@ -3,7 +3,7 @@ from typing import Protocol
 
 from ..utils.models import updated
 from .base import EntityId
-from .engine import require_envelope
+from .engine import require_engine
 from .entities import ActorEntity, Entity, ItemEntity, LocationEntity
 from .events import (
     ActorMoved,
@@ -33,7 +33,7 @@ def _apply_core(state: GameState, event: CoreEvent) -> GameState:
     match event:
         case EntityCreated(entity=entity):
             if entity.rules is not None:
-                require_envelope(entity.rules, state.engine, f"created entity {entity.id!r} rules")
+                require_engine(entity.rules, state.engine, f"created entity {entity.id!r} rules")
             return updated(state, world=world.adding(entity))
         case EntityDiscovered(entity_id=entity_id):
             return _replace(state, updated(world.require(entity_id), known=True))
@@ -53,25 +53,20 @@ def _apply_patch(state: GameState, patch: RuleStatePatch) -> GameState:
     if unknown:
         raise ValueError(f"rule patch names unknown entity ids: {unknown}")
     game_rules = state.rules if patch.game_rules is None else patch.game_rules
-    require_envelope(game_rules, state.engine, "patched game rules")
+    require_engine(game_rules, state.engine, "patched game rules")
     entities: dict[EntityId, Entity] = dict(state.world.entities)
     for entity_id, rules in patch.entity_rules.items():
         if rules is not None:
-            require_envelope(rules, state.engine, f"patched entity {entity_id!r} rules")
+            require_engine(rules, state.engine, f"patched entity {entity_id!r} rules")
         entities[entity_id] = updated(entities[entity_id], rules=rules)
     return updated(state, rules=game_rules, world=WorldState(entities=entities))
 
 
 def apply_one(state: GameState, event: Event, rules: RuleReducer) -> GameState:
     if isinstance(event, RuleEvent):
-        if event.engine != state.engine.id:
+        if event.engine != state.engine:
             raise ValueError(
-                f"rule event engine is {event.engine!r}, state engine is {state.engine.id!r}"
-            )
-        if event.schema_version != state.engine.schema_version:
-            raise ValueError(
-                f"rule event schema is {event.schema_version}, "
-                f"state schema is {state.engine.schema_version}"
+                f"rule event engine is {event.engine!r}, state engine is {state.engine!r}"
             )
         next_state = _apply_patch(state, rules.apply(state, event))
     else:

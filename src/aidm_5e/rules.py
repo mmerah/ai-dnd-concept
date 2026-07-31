@@ -1,7 +1,5 @@
 from random import Random
 
-from pydantic import BaseModel
-
 from aidm.domain.base import EntityId
 from aidm.domain.engine import EngineData
 from aidm.domain.entities import ActorEntity, ItemEntity
@@ -28,19 +26,17 @@ class Dnd5eRules:
 
     def resolve(
         self,
-        direction: BaseModel,
+        direction: Dnd5eDirection,
         state: GameState,
         rng: Random,
     ) -> list[Event]:
-        if not isinstance(direction, Dnd5eDirection):
-            raise TypeError(f"5e rules received {type(direction).__name__}")
-        legacy = to_legacy_state(state, self._ruleset.stamps)
+        legacy = to_legacy_state(state)
         events = legacy_resolve(direction.mechanics, legacy, rng, self._ruleset)
         return [event_from_legacy(event) for event in events]
 
     def apply(self, state: GameState, event: RuleEvent) -> RuleStatePatch:
         typed = decode_dnd5e_event(event, ENGINE_ID, SCHEMA_VERSION)
-        before = to_legacy_state(state, self._ruleset.stamps)
+        before = to_legacy_state(state)
         after = legacy_apply(before, [typed])
         changed: dict[EntityId, EngineData | None] = {}
         for legacy_id, entity in after.world.entities.items():
@@ -52,10 +48,10 @@ class Dnd5eRules:
         return RuleStatePatch(entity_rules=changed)
 
     def validate_state(self, state: GameState) -> None:
-        if state.engine.id != ENGINE_ID or state.engine.schema_version != SCHEMA_VERSION:
-            raise ValueError("5e rules received an incompatible state stamp")
+        if state.engine != ENGINE_ID:
+            raise ValueError(f"5e rules received a {state.engine!r} state")
         GAME_STATE_CODEC.decode(state.rules)
-        to_legacy_state(state, self._ruleset.stamps)
+        to_legacy_state(state)
         for entity in state.world.entities.values():
             if isinstance(entity, ActorEntity):
                 if entity.rules is None:

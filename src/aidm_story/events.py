@@ -3,7 +3,7 @@ from typing import Annotated, Literal, TypeGuard
 
 from pydantic import Field, TypeAdapter
 
-from aidm.domain.base import EntityId, Slug
+from aidm.domain.base import EngineId, EntityId
 from aidm.domain.events import RuleEvent
 from aidm.domain.json import FrozenJson
 from aidm.utils.models import Frozen
@@ -182,7 +182,9 @@ type StoryRuleEvent = Annotated[
 STORY_EVENT_ADAPTER: TypeAdapter[StoryRuleEvent] = TypeAdapter(StoryRuleEvent)
 
 
-def encode_story_event(event: StoryRuleEvent, engine: Slug, schema_version: int) -> RuleEvent:
+def encode_story_event(
+    event: StoryRuleEvent, engine: EngineId, schema_version: int
+) -> RuleEvent:
     payload = event.model_dump(mode="json", exclude={"type"})
     return RuleEvent(
         engine=engine,
@@ -200,7 +202,7 @@ def _is_payload_mapping(
 
 def decode_story_event(
     event: RuleEvent,
-    engine: Slug,
+    engine: EngineId,
     schema_version: int,
 ) -> StoryRuleEvent:
     if event.engine != engine:

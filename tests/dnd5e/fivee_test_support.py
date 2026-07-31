@@ -4,6 +4,7 @@ from pathlib import Path
 
 import pytest
 
+from aidm.domain.base import SAVE_VERSION
 from aidm.domain.state import GameState as CoreGameState
 from aidm.domain.state import attach_initial_rules, world_from_definitions
 from aidm.store import read_character, read_scenario
@@ -24,7 +25,7 @@ from aidm_5e.domain.models.state import (
 from aidm_5e.domain.models.stats import StatBlock
 from aidm_5e.engine.pack_ruleset import compile_ruleset
 from aidm_5e.engine.ruleset import Ruleset
-from aidm_5e.facade import Dnd5eEngine
+from aidm_5e.factory import Dnd5eEngine, dnd5e_engine
 from aidm_5e.utils.models import Attributes, Slug
 
 REPOSITORY_ROOT = Path(__file__).parents[2]
@@ -153,17 +154,14 @@ def initial_5e_game(
 ) -> tuple[Dnd5eEngine, CoreGameState]:
     scenario = read_scenario(REPOSITORY_ROOT / "scenarios" / f"{name}.json")
     character_definition = read_character(REPOSITORY_ROOT / "characters" / f"{character}.json")
-    engine = Dnd5eEngine(ruleset())
+    engine = dnd5e_engine(ruleset())
     world = world_from_definitions(scenario, character_definition)
     initialized = engine.lifecycle.initialise(world, scenario, character_definition)
     core = CoreGameState(
-        engine=engine.stamp,
+        save_version=SAVE_VERSION,
+        engine=engine.id,
         scenario=scenario.meta,
-        world=attach_initial_rules(
-            world,
-            initialized.entity_rules,
-            engine.stamp,
-        ),
+        world=attach_initial_rules(world, initialized.entity_rules, engine.id),
         rules=initialized.game_rules,
     )
     return engine, core
@@ -175,4 +173,4 @@ def new_game(
     character: str = "kael_5e",
 ) -> GameState:
     _, core = initial_5e_game(name, character)
-    return to_legacy_state(core, ruleset().stamps)
+    return to_legacy_state(core)

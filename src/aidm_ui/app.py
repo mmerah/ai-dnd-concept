@@ -23,8 +23,7 @@ def start() -> None:
 def _register_pages(sessions: SessionRegistry) -> None:
     @ui.page("/")
     def _index() -> None:  # pyright: ignore[reportUnusedFunction]
-        composition = sessions.composition
-        home_page(composition.config, composition.installed_stamp)
+        home_page(sessions.composition.config)
 
     @ui.page("/game/{slug}/{scenario_name}/{character_name}")
     def _game(  # pyright: ignore[reportUnusedFunction]
@@ -40,7 +39,7 @@ def _game_page(session: Session) -> None:
     with ui.header().classes("items-center").style("gap: 1rem"):
         ui.button(icon="home", on_click=lambda: ui.navigate.to("/")).props("flat color=white round")
         ui.label(session.app.state.scenario.title).classes("text-lg font-bold")
-        show_engine_badge(session.app.engine.stamp)
+        show_engine_badge(session.app.engine.id)
         view.roles()
         ui.space()
         ui.button("restart", on_click=lambda: restart(view)).props("flat color=white dense")

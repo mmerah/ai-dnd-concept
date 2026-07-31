@@ -1,9 +1,8 @@
 from aidm.domain.base import PLAYER_ID, EntityId
 from aidm.domain.definitions import CharacterDefinition, ScenarioDefinition
-from aidm.domain.engine import EngineData
+from aidm.domain.engine import EngineData, EngineInitialization
 from aidm.domain.entities import ActorEntity, Entity, ItemEntity
 from aidm.domain.state import GameState, WorldState
-from aidm.engine_api.contracts import EngineInitialization
 
 from .codecs import (
     ACTOR_DEFINITION_CODEC,
@@ -78,8 +77,8 @@ class StoryLifecycle:
         entity: Entity,
         state: GameState,
     ) -> EngineData | None:
-        if state.engine.id != ENGINE_ID:
-            raise ValueError(f"Story lifecycle cannot initialize {state.engine.id!r} state")
+        if state.engine != ENGINE_ID:
+            raise ValueError(f"Story lifecycle cannot initialize {state.engine!r} state")
         if isinstance(entity, ActorEntity):
             return ACTOR_STATE_CODEC.encode(StoryActorState(approaches=DEFAULT_APPROACHES))
         if isinstance(entity, ItemEntity):

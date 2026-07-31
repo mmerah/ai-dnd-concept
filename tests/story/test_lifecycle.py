@@ -5,7 +5,7 @@ from aidm.domain.definitions import CharacterDefinition, ScenarioDefinition, Sce
 from aidm.domain.entities import LocationDefinition, StartingItemDefinition
 from aidm.domain.state import world_from_definitions
 from aidm_story.codecs import CHARACTER_CODEC, ITEM_DEFINITION_CODEC, ITEM_STATE_CODEC
-from aidm_story.constants import ENGINE_REF
+from aidm_story.constants import ENGINE_ID
 from aidm_story.lifecycle import StoryLifecycle
 from aidm_story.models import (
     DEFAULT_APPROACHES,
@@ -18,7 +18,7 @@ from aidm_story.models import (
 def _scenario() -> ScenarioDefinition:
     return ScenarioDefinition(
         meta=ScenarioMeta(title="Test scenario", premise="A place to test in."),
-        engine=ENGINE_REF,
+        engine=ENGINE_ID,
         starting_location_id=EntityId("hall"),
         entities=(LocationDefinition(id=EntityId("hall"), name="Hall", brief="A bare hall."),),
     )
@@ -38,7 +38,7 @@ def _character(starting_items: tuple[StartingItemDefinition, ...]) -> CharacterD
     return CharacterDefinition(
         name="Test Character",
         brief="A character built only for this test.",
-        engine=ENGINE_REF,
+        engine=ENGINE_ID,
         engine_data=CHARACTER_CODEC.encode(StoryCharacterData(approaches=DEFAULT_APPROACHES)),
         starting_items=starting_items,
     )

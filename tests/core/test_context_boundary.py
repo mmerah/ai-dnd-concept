@@ -1,5 +1,4 @@
 import pytest
-from core_test_support import TestPresentation
 from pydantic_ai.messages import ModelRequest, ModelResponse
 
 from aidm.agents.context import (
@@ -19,17 +18,37 @@ from aidm.agents.prompting import (
     build_narrator_prompt,
     prompt_id,
 )
-from aidm.domain.base import PLAYER_ID, EntityId
+from aidm.domain.base import PLAYER_ID, SAVE_VERSION, EntityId
 from aidm.domain.definitions import ScenarioMeta
-from aidm.domain.engine import EngineData, EngineStamp
 from aidm.domain.entities import ActorEntity, ItemEntity, LocationEntity
 from aidm.domain.growth import GrowthRequest
 from aidm.domain.state import Exchange, GameState, WorldState
 from aidm.utils.models import updated
+from aidm_story.codecs import ACTOR_STATE_CODEC, GAME_STATE_CODEC, ITEM_STATE_CODEC
+from aidm_story.models import DEFAULT_APPROACHES, StoryActorState, StoryGameState, StoryItemState
+from aidm_story.presentation import StoryPresentation
+
+ACTOR_RULES = ACTOR_STATE_CODEC.encode(StoryActorState(approaches=DEFAULT_APPROACHES))
+ITEM_RULES = ITEM_STATE_CODEC.encode(StoryItemState())
+
+
+def _state_line(entity_id: EntityId) -> str:
+    return StoryPresentation().entity_state(
+        ActorEntity(
+            id=entity_id,
+            name="Sample",
+            brief="Sample.",
+            location_id=EntityId("study"),
+            rules=ACTOR_RULES,
+        )
+    )
+
+
+ACTOR_LINE = _state_line(EntityId("mara"))
+PLAYER_LINE = _state_line(PLAYER_ID)
 
 
 def state() -> GameState:
-    rules = EngineData.model_validate({"engine": "test-engine", "schema_version": 1, "payload": {}})
     location = LocationEntity(
         id=EntityId("study"),
         name="Study",
@@ -42,14 +61,14 @@ def state() -> GameState:
         brief="A hunter.",
         known=True,
         location_id=location.id,
-        rules=rules,
+        rules=ACTOR_RULES,
     )
     hidden = ActorEntity(
         id=EntityId("hidden-actor"),
         name="The Secret",
         brief="Unrevealed canon.",
         location_id=location.id,
-        rules=rules,
+        rules=ACTOR_RULES,
     )
     mara = ActorEntity(
         id=EntityId("mara"),
@@ -57,7 +76,7 @@ def state() -> GameState:
         brief="A known scribe.",
         known=True,
         location_id=location.id,
-        rules=rules,
+        rules=ACTOR_RULES,
     )
     lantern = ItemEntity(
         id=EntityId("lantern"),
@@ -65,7 +84,7 @@ def state() -> GameState:
         brief="A dented light.",
         known=True,
         container_id=PLAYER_ID,
-        rules=rules,
+        rules=ITEM_RULES,
     )
     ledger = ItemEntity(
         id=EntityId("ledger"),
@@ -73,10 +92,11 @@ def state() -> GameState:
         brief="Mara's notes.",
         known=True,
         container_id=mara.id,
-        rules=rules,
+        rules=ITEM_RULES,
     )
     return GameState(
-        engine=EngineStamp(id="test-engine", rules_version=1, schema_version=1),
+        save_version=SAVE_VERSION,
+        engine="story",
         scenario=ScenarioMeta(title="Test", premise="Test"),
         world=WorldState(
             entities={
@@ -88,13 +108,13 @@ def state() -> GameState:
                 ledger.id: ledger,
             }
         ),
-        rules=rules,
+        rules=GAME_STATE_CODEC.encode(StoryGameState()),
     )
 
 
 def test_narrator_projection_has_visible_engine_state_but_no_hidden_canon_or_raw_rules() -> None:
     held = state()
-    presentation = TestPresentation()
+    presentation = StoryPresentation()
     director = build_director_scene(held)
     narrator = build_narrator_scene(held, presentation.entity_state)
 
@@ -118,8 +138,8 @@ def test_narrator_projection_has_visible_engine_state_but_no_hidden_canon_or_raw
             *narrator.elsewhere,
         )
     )
-    assert narrator.player.state == "value 0"
-    assert next(entity for entity in narrator.here if entity.id == "mara").state == "value 0"
+    assert narrator.player.state == PLAYER_LINE
+    assert next(entity for entity in narrator.here if entity.id == "mara").state == ACTOR_LINE
 
 
 def test_prompt_ids_escape_control_characters_and_bracket_delimiters() -> None:
@@ -139,7 +159,7 @@ def test_director_projection_preserves_ids_inventory_placement_and_hidden_canon(
             scenario_premise=held.scenario.premise,
             prompt="I look around.",
         ),
-        TestPresentation(),
+        StoryPresentation().entity_state,
     )
 
     assert "Kael[id=player]" in prompt
@@ -148,13 +168,13 @@ def test_director_projection_preserves_ids_inventory_placement_and_hidden_canon(
     assert "a ledger[id=ledger] (item) — held by Mara" in prompt
     assert "The Secret[id=hidden-actor]" in prompt
     assert "Study[id=study]" in prompt
-    assert "state: value 0" in prompt
+    assert f"state: {ACTOR_LINE}" in prompt
     assert PLAYER_ID not in {entity.id for entity in (*scene.here, *scene.unrevealed)}
 
 
 def test_narrator_prompt_orders_plan_before_outcome_and_checks_the_speaker() -> None:
     held = state()
-    scene = build_narrator_scene(held, TestPresentation().entity_state)
+    scene = build_narrator_scene(held, StoryPresentation().entity_state)
     context = NarratorContext(
         scene=scene,
         scenario_title=held.scenario.title,
@@ -169,7 +189,7 @@ def test_narrator_prompt_orders_plan_before_outcome_and_checks_the_speaker() -> 
     prompt = build_narrator_prompt(context)
 
     assert "Mara[id=mara] — A known scribe." in prompt
-    assert "state: value 0" in prompt
+    assert f"state: {ACTOR_LINE}" in prompt
     assert prompt.index("THE DIRECTOR'S PLAN") < prompt.index("WHAT HAPPENED")
     assert "The Secret" not in prompt
 
@@ -189,12 +209,12 @@ def test_catalogue_includes_existing_detail_and_engine_state() -> None:
     )
     held = updated(held, world=held.world.replacing(detailed))
 
-    scene = build_catalogue_scene(held, TestPresentation().entity_state)
+    scene = build_catalogue_scene(held, StoryPresentation().entity_state)
     shown = next(entity for entity in scene.catalogue if entity.id == "mara")
 
     assert shown.description == "She writes in a compact cipher."
     assert shown.hook == "Her missing folio points toward the vault."
-    assert shown.state == "value 0"
+    assert shown.state == ACTOR_LINE
 
     maintainer = build_maintainer_prompt(
         MaintainerContext(
@@ -218,7 +238,7 @@ def test_catalogue_includes_existing_detail_and_engine_state() -> None:
     for prompt in (maintainer, creator):
         assert "detail: She writes in a compact cipher." in prompt
         assert "hook: Her missing folio points toward the vault." in prompt
-        assert "state: value 0" in prompt
+        assert f"state: {ACTOR_LINE}" in prompt
 
 
 def test_exchanges_become_alternating_model_messages() -> None:

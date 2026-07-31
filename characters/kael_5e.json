@@ -1,10 +1,7 @@
 {
   "name": "Kael",
   "brief": "A scarred relic-hunter who came to the abbey for what is sealed beneath it.",
-  "engine": {
-    "id": "dnd5e",
-    "rules_version": 1
-  },
+  "engine": "dnd5e",
   "engine_data": {
     "engine": "dnd5e",
     "schema_version": 1,

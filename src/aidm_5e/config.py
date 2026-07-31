@@ -1,13 +1,9 @@
 from pathlib import Path
 
-from pydantic_settings import BaseSettings, SettingsConfigDict
+from pydantic import BaseModel, ConfigDict
 
 
-class Dnd5eConfig(BaseSettings):
-    model_config = SettingsConfigDict(
-        env_file=".env",
-        extra="ignore",
-        env_prefix="AIDM_DND5E_",
-    )
+class Dnd5eConfig(BaseModel):
+    model_config = ConfigDict(frozen=True)
 
     pack_paths: tuple[Path, ...] | None = None

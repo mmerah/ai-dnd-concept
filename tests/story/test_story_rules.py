@@ -4,11 +4,11 @@ from random import Random
 import pytest
 from story_test_support import initial_story_game, setback_direction
 
-from aidm.domain.actions import DropItem, TakeItem
 from aidm.domain.base import PLAYER_ID, EntityId
 from aidm.domain.direction import DirectionRecord
 from aidm.domain.events import RuleEvent
 from aidm.domain.reducer import apply
+from aidm_story.actions import DropItem, TakeItem
 from aidm_story.codecs import ACTOR_STATE_CODEC
 from aidm_story.direction import HelpfulGear, Risk, StoryConsequence, StoryDirection
 from aidm_story.events import decode_story_event

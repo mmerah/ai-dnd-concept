@@ -4,9 +4,9 @@ from typing import Self
 from pydantic import Field, model_validator
 
 from ..utils.models import EMPTY_FROZEN_MAP, Frozen, FrozenMap, updated
-from .base import PLAYER_ID, SAVE_VERSION, EntityId, slug
+from .base import PLAYER_ID, EngineId, EntityId, slug
 from .definitions import CharacterDefinition, ScenarioDefinition, ScenarioMeta
-from .engine import EngineData, EngineStamp, require_envelope
+from .engine import EngineData, require_engine
 from .entities import ActorEntity, Entity, ItemEntity, LocationEntity
 
 
@@ -74,8 +74,8 @@ class Exchange(Frozen):
 
 
 class GameState(Frozen):
-    version: int = SAVE_VERSION
-    engine: EngineStamp
+    save_version: int
+    engine: EngineId
     scenario: ScenarioMeta
     world: WorldState
     rules: EngineData
@@ -99,10 +99,10 @@ class GameState(Frozen):
                 raise ValueError(f"actor {actor.id!r} is not in a valid location")
         for item in (entity for entity in entities.values() if isinstance(entity, ItemEntity)):
             self.world.container_of(item)
-        require_envelope(self.rules, self.engine, "game rules")
+        require_engine(self.rules, self.engine, "game rules")
         for entity in entities.values():
             if entity.rules is not None:
-                require_envelope(entity.rules, self.engine, f"entity {entity.id!r} rules")
+                require_engine(entity.rules, self.engine, f"entity {entity.id!r} rules")
         return self
 
 
@@ -159,7 +159,7 @@ def world_from_definitions(
 def attach_initial_rules(
     world: WorldState,
     entity_rules: Mapping[EntityId, EngineData | None],
-    stamp: EngineStamp,
+    engine: EngineId,
 ) -> WorldState:
     unknown = sorted(set(entity_rules) - set(world.entities))
     if unknown:
@@ -168,6 +168,6 @@ def attach_initial_rules(
     for entity_id, entity in world.entities.items():
         rules = entity_rules.get(entity_id)
         if rules is not None:
-            require_envelope(rules, stamp, f"initial rules for entity {entity_id!r}")
+            require_engine(rules, engine, f"initial rules for entity {entity_id!r}")
         entities[entity_id] = updated(entity, rules=rules)
     return WorldState(entities=entities)

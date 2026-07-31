@@ -1,4 +1,4 @@
-from aidm.engine_api.codec import EngineCodec
+from aidm.domain.engine import EngineCodec
 
 from .constants import ENGINE_ID, SCHEMA_VERSION
 from .models import (

@@ -11,11 +11,16 @@ from pydantic_ai.models.openai import OpenAIChatModel, OpenAIChatModelSettings
 from pydantic_ai.output import OutputSpec
 from pydantic_ai.providers.openai import OpenAIProvider
 
+from aidm_5e.domain.models.direction import Dnd5eDirection
+from aidm_5e.factory import Dnd5eEngine
+from aidm_story.direction import StoryDirection
+from aidm_story.factory import StoryEngine
+
 from ..config import ProviderConfig, RoleConfig, Settings
 from ..domain.base import Role
 from ..domain.entities import EntityDetail
 from ..domain.growth import Growth
-from ..engine_api.contracts import RulesEngine
+from ..engines import Engine
 from . import instructions
 from .context import DirectorScene
 
@@ -74,19 +79,37 @@ class SharedStages:
     creator: Stage[None, EntityDetail]
 
 
-def director_stage(
-    engine: RulesEngine,
+type DirectorStage = Stage[DirectorScene, StoryDirection] | Stage[DirectorScene, Dnd5eDirection]
+
+
+def director_stage(engine: Engine, settings: Settings) -> DirectorStage:
+    """One branch per engine so the director's own direction type flows through the stage."""
+    match engine:
+        case StoryEngine(director=director):
+            return _director_stage(
+                director.instructions(), director.output, director.validate, settings
+            )
+        case Dnd5eEngine(director=director):
+            return _director_stage(
+                director.instructions(), director.output, director.validate, settings
+            )
+
+
+def _director_stage[D: BaseModel](
+    mechanics: str,
+    output: OutputSpec[D],
+    validate: OutputValidatorFunc[DirectorScene, D],
     settings: Settings,
-) -> Stage[DirectorScene, BaseModel]:
+) -> Stage[DirectorScene, D]:
     role = settings.roles.director
     return Stage(
         name="director",
-        instructions=f"{instructions.CORE_DIRECTOR}\n\n{engine.director.instructions()}",
-        output_type=engine.director.output,
+        instructions=f"{instructions.CORE_DIRECTOR}\n\n{mechanics}",
+        output_type=output,
         deps_type=DirectorScene,
         role=role,
         provider=settings.providers.for_name(role.provider),
-        validators=(engine.director.validate,),
+        validators=(validate,),
     )
 
 

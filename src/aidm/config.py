@@ -4,6 +4,8 @@ from typing import Literal, Self
 from pydantic import BaseModel, ConfigDict, Field, SecretStr, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
+from aidm_5e.config import Dnd5eConfig
+
 from .domain.base import ROLES, Role
 
 ProviderName = Literal["openrouter", "local"]
@@ -82,6 +84,7 @@ class Settings(BaseSettings):
 
     providers: Providers = Providers()
     roles: Roles = Roles()
+    dnd5e: Dnd5eConfig = Field(default_factory=Dnd5eConfig)
     max_growth: int = Field(default=3, ge=0)
     history_window: int = Field(default=6, ge=0)
     saves_dir: Path = Path("saves")

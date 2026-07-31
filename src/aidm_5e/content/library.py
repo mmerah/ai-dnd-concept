@@ -8,7 +8,7 @@ from pydantic import TypeAdapter
 from aidm.utils.models import EMPTY_FROZEN_MAP, FrozenMap
 
 from ..utils.models import Frozen, Slug
-from .models import Manifest, Pack, PackStamp
+from .models import Manifest, Pack
 from .records.base import Collection, ContentRef, Record
 from .registry import COLLECTION_OF, COLLECTION_SPECS
 
@@ -30,7 +30,7 @@ class ContentMiss(Frozen):
 
 
 class Content(Frozen):
-    stamps: tuple[PackStamp, ...] = ()
+    packs: tuple[Slug, ...] = ()
     records: FrozenMap[ContentRef, Record] = EMPTY_FROZEN_MAP
 
     def get[R: Record](self, ref: ContentRef, kind: type[R]) -> R | ContentMiss:
@@ -63,7 +63,7 @@ class Content(Frozen):
         return missing if missing is not None else self.records[ref]
 
     def provides(self, pack: Slug) -> bool:
-        return any(stamp.id == pack for stamp in self.stamps)
+        return pack in self.packs
 
 
 def loaded(packs: Sequence[Pack]) -> Content:
@@ -74,7 +74,7 @@ def loaded(packs: Sequence[Pack]) -> Content:
         if missing := sorted(set(pack.manifest.requires) - set(ids)):
             raise ValueError(f"pack {pack.manifest.id!r} requires {missing}, not loaded")
     return Content(
-        stamps=tuple(pack.manifest.stamp for pack in packs),
+        packs=tuple(pack.manifest.id for pack in packs),
         records={ref: record for pack in packs for ref, record in pack.addressed().items()},
     )
 

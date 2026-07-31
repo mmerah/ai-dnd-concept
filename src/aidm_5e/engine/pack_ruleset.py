@@ -3,7 +3,6 @@ from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 
 from ..content.library import Content, ContentMiss
-from ..content.models import PackStamp
 from ..content.records.base import ContentRef, DamageRoll, Record
 from ..content.records.character import (
     AbilityBonus,
@@ -56,10 +55,6 @@ class PackRuleset:
     covers: Mapping[ContentRef, frozenset[Slug]]
     saves: frozenset[ContentRef]
     casts: Mapping[ContentRef, tuple[SpellProfile, ...]]
-
-    @property
-    def stamps(self) -> Sequence[PackStamp]:
-        return self.content.stamps
 
     def character(self, origin: Origin) -> CharacterProfile:
         klass = self.content.require(origin.class_ref, ClassRecord)

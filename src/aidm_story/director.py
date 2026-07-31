@@ -1,12 +1,17 @@
 import json
 from random import Random
 
-from pydantic import BaseModel
 from pydantic_ai import ModelRetry, NativeOutput, RunContext
 from pydantic_ai.output import OutputSpec
 
 from aidm.agents.context import DirectorScene
-from aidm.domain.actions import (
+from aidm.domain.base import PLAYER_ID, SAVE_VERSION, EntityId
+from aidm.domain.definitions import ScenarioMeta
+from aidm.domain.direction import DirectionRecord
+from aidm.domain.entities import ActorEntity, Entity, ItemEntity
+from aidm.domain.state import GameState
+
+from .actions import (
     CoreAction,
     CoreActionUnion,
     DropItem,
@@ -16,13 +21,6 @@ from aidm.domain.actions import (
     action_references,
     is_core_action,
 )
-from aidm.domain.base import PLAYER_ID, EntityId
-from aidm.domain.definitions import ScenarioMeta
-from aidm.domain.direction import DirectionRecord
-from aidm.domain.engine import EngineStamp
-from aidm.domain.entities import ActorEntity, Entity, ItemEntity
-from aidm.domain.state import GameState
-
 from .codecs import ACTOR_STATE_CODEC, ITEM_STATE_CODEC
 from .constants import ENGINE_ID, SCHEMA_VERSION
 from .direction import (
@@ -48,12 +46,11 @@ type StoryActorConsequence = Risk | TakeStress | RecoverStress | ApplyCondition 
 
 
 class StoryDirector:
-    def __init__(self, rules: StoryRules, stamp: EngineStamp) -> None:
+    def __init__(self, rules: StoryRules) -> None:
         self._rules = rules
-        self._stamp = stamp
 
     @property
-    def output(self) -> OutputSpec[BaseModel]:
+    def output(self) -> OutputSpec[StoryDirection]:
         return NativeOutput(StoryDirection)
 
     def instructions(self) -> str:
@@ -62,10 +59,8 @@ class StoryDirector:
     def validate(
         self,
         ctx: RunContext[DirectorScene],
-        direction: BaseModel,
-    ) -> BaseModel:
-        if not isinstance(direction, StoryDirection):
-            raise TypeError(f"Story Director received {type(direction).__name__}")
+        direction: StoryDirection,
+    ) -> StoryDirection:
         scene = ctx.deps
         if direction.speaker_id == PLAYER_ID:
             raise ModelRetry("speaker_id names another actor, never the player")
@@ -78,7 +73,8 @@ class StoryDirector:
         for consequence in flatten(direction.mechanics):
             self._validate_consequence(scene, consequence)
         state = GameState(
-            engine=self._stamp,
+            save_version=SAVE_VERSION,
+            engine=ENGINE_ID,
             scenario=ScenarioMeta(title="validation", premise="validation"),
             world=scene.canon,
             rules=scene.game_rules,
@@ -89,9 +85,7 @@ class StoryDirector:
             raise ModelRetry(str(error)) from error
         return direction
 
-    def record(self, direction: BaseModel) -> DirectionRecord:
-        if not isinstance(direction, StoryDirection):
-            raise TypeError(f"Story Director received {type(direction).__name__}")
+    def record(self, direction: StoryDirection) -> DirectionRecord:
         mechanics: object = json.loads(STORY_MECHANICS_ADAPTER.dump_json(direction.mechanics))
         return DirectionRecord.model_validate(
             {

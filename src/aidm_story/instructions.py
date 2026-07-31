@@ -1,7 +1,6 @@
 from collections.abc import Sequence
 
-from aidm.domain.actions import CoreAction
-
+from .actions import CoreAction
 from .direction import STORY_CONSEQUENCE_TYPES, StoryAction
 
 

@@ -3,10 +3,7 @@
     "title": "The Whispering Vault — 5e",
     "premise": "The abbey of Saint Corvin was abandoned in a single night. Kael has come for the sealed vault beneath it, and the abbot's study is the only room still lit."
   },
-  "engine": {
-    "id": "dnd5e",
-    "rules_version": 1
-  },
+  "engine": "dnd5e",
   "starting_location_id": "study",
   "entities": [
     {

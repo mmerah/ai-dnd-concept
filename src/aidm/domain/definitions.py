@@ -3,8 +3,8 @@ from typing import Self
 from pydantic import model_validator
 
 from ..utils.models import Frozen
-from .base import PLAYER_ID, EntityId
-from .engine import EngineData, EngineRef, EngineStamp, require_envelope
+from .base import PLAYER_ID, EngineId, EntityId
+from .engine import EngineData, require_engine
 from .entities import EntityDefinition, StartingItemDefinition
 
 
@@ -16,14 +16,14 @@ class ScenarioMeta(Frozen):
 class CharacterDefinition(Frozen):
     name: str
     brief: str
-    engine: EngineRef
+    engine: EngineId
     engine_data: EngineData
     starting_items: tuple[StartingItemDefinition, ...] = ()
 
 
 class ScenarioDefinition(Frozen):
     meta: ScenarioMeta
-    engine: EngineRef
+    engine: EngineId
     engine_data: EngineData | None = None
     starting_location_id: EntityId
     entities: tuple[EntityDefinition, ...] = ()
@@ -57,18 +57,15 @@ class ScenarioDefinition(Frozen):
 def validate_definition_engines(
     scenario: ScenarioDefinition,
     character: CharacterDefinition,
-    stamp: EngineStamp,
+    engine: EngineId,
 ) -> None:
     if scenario.engine != character.engine:
         raise ValueError(
-            f"scenario engine is {scenario.engine.model_dump()}, "
-            f"character engine is {character.engine.model_dump()}"
+            f"scenario engine is {scenario.engine!r}, character engine is {character.engine!r}"
         )
-    selected = EngineRef(id=stamp.id, rules_version=stamp.rules_version)
-    if scenario.engine != selected:
+    if scenario.engine != engine:
         raise ValueError(
-            f"definition engine is {scenario.engine.model_dump()}, "
-            f"installed engine is {selected.model_dump()}"
+            f"definition engine is {scenario.engine!r}, installed engine is {engine!r}"
         )
     envelopes = [
         ("character engine_data", character.engine_data),
@@ -85,4 +82,4 @@ def validate_definition_engines(
         ],
     ]
     for purpose, envelope in envelopes:
-        require_envelope(envelope, stamp, purpose)
+        require_engine(envelope, engine, purpose)

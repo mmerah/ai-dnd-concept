@@ -1,17 +1,17 @@
 from random import Random
 
 import pytest
-from pydantic import BaseModel, ValidationError
+from pydantic import ValidationError
 from pydantic_ai import ModelRetry, RunContext
 from pydantic_ai.models.test import TestModel
 from pydantic_ai.usage import RunUsage
 from story_test_support import initial_story_game
 
 from aidm.agents.context import DirectorScene, build_director_scene
-from aidm.domain.actions import DropItem
 from aidm.domain.base import PLAYER_ID, EntityId
 from aidm.domain.events import Event
 from aidm.domain.state import GameState
+from aidm_story.actions import DropItem
 from aidm_story.direction import HelpfulGear, Risk, StoryDirection, TakeStress
 from aidm_story.director import StoryDirector
 from aidm_story.lifecycle import StoryLifecycle
@@ -76,12 +76,12 @@ def test_repeating_a_core_action_after_it_changes_state_retries() -> None:
 def test_a_genuine_validation_error_is_not_turned_into_a_retry() -> None:
     # Guards against copying 5e's `except ValueError`: ValidationError is a ValueError
     # subclass, so only the dedicated StoryProposalRejected may be caught here.
-    engine, state = initial_story_game()
+    _, state = initial_story_game()
 
     class _CorruptRules(StoryRules):
         def resolve(
             self,
-            direction: BaseModel,
+            direction: StoryDirection,
             state: GameState,
             rng: Random,
         ) -> list[Event]:
@@ -89,7 +89,7 @@ def test_a_genuine_validation_error_is_not_turned_into_a_retry() -> None:
             StoryActorState.model_validate({})
             return []
 
-    broken_director = StoryDirector(_CorruptRules(StoryLifecycle()), engine.stamp)
+    broken_director = StoryDirector(_CorruptRules(StoryLifecycle()))
     direction = StoryDirection(intent="Kael waits.", tone="quiet", mechanics=[])
 
     with pytest.raises(ValidationError):

@@ -1,10 +1,10 @@
-from aidm.domain.engine import EngineStamp
-from aidm_ui.components.engine import EngineAppearance, engine_appearance
+from aidm_ui.components.engine import engine_appearance
 
 
-def test_engine_badge_clearly_distinguishes_story_from_5e() -> None:
-    story = engine_appearance(EngineStamp(id="story", rules_version=1, schema_version=1))
-    dnd5e = engine_appearance(EngineStamp(id="dnd5e", rules_version=1, schema_version=1))
+def test_each_installed_engine_gets_a_distinct_badge() -> None:
+    story = engine_appearance("story")
+    dnd5e = engine_appearance("dnd5e")
 
-    assert story == EngineAppearance(label="STORY · RULES V1", colour="deep-purple-6")
-    assert dnd5e == EngineAppearance(label="D&D 5E · RULES V1", colour="red-9")
+    assert story.label == "STORY"
+    assert dnd5e.label == "D&D 5E"
+    assert story.colour != dnd5e.colour

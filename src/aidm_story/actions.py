@@ -4,12 +4,12 @@ from typing import Annotated, ClassVar, Literal, TypeGuard, assert_never
 
 from pydantic import Field
 
-from ..utils.models import Frozen
-from .base import PLAYER_ID, EntityId, Kind, slug
-from .engine import EngineData
-from .entities import ActorEntity, Entity, ItemEntity, LocationEntity
-from .events import ActorMoved, EntityCreated, EntityDiscovered, Event, ItemMoved
-from .state import GameState
+from aidm.domain.base import PLAYER_ID, EntityId, Kind, slug
+from aidm.domain.engine import EngineData
+from aidm.domain.entities import ActorEntity, Entity, ItemEntity, LocationEntity
+from aidm.domain.events import ActorMoved, EntityCreated, EntityDiscovered, Event, ItemMoved
+from aidm.domain.state import GameState
+from aidm.utils.models import Frozen
 
 
 @dataclass(frozen=True, slots=True)

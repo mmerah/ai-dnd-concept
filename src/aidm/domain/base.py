@@ -5,6 +5,7 @@ from typing import Annotated, Literal, NewType, get_args
 from pydantic import Field
 
 Role = Literal["director", "narrator", "maintainer", "creator"]
+EngineId = Literal["story", "dnd5e"]
 Kind = Literal["actor", "location", "item"]
 EntityId = NewType("EntityId", str)
 Slug = Annotated[str, Field(pattern=r"^[a-z0-9]+(?:-[a-z0-9]+)*$", max_length=64)]
@@ -12,7 +13,6 @@ Slug = Annotated[str, Field(pattern=r"^[a-z0-9]+(?:-[a-z0-9]+)*$", max_length=64
 PLAYER_ID = EntityId("player")
 ROLES: tuple[Role, ...] = get_args(Role)
 SAVE_VERSION = 16
-TRACE_VERSION = 1
 
 
 def slug(name: str, taken: Iterable[EntityId]) -> EntityId:

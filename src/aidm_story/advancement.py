@@ -4,10 +4,10 @@ from typing import Annotated, Literal, get_args
 from pydantic import BaseModel, Field, TypeAdapter
 
 from aidm.domain.base import PLAYER_ID, Slug, slug
+from aidm.domain.engine import AdvancementStatus
 from aidm.domain.entities import ItemEntity
 from aidm.domain.events import EntityCreated, Event
 from aidm.domain.state import GameState
-from aidm.engine_api.contracts import AdvancementStatus
 from aidm.utils.models import Frozen
 
 from .codecs import ACTOR_STATE_CODEC, ITEM_STATE_CODEC

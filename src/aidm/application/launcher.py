@@ -1,16 +1,14 @@
-from collections.abc import Callable, Mapping
+from collections.abc import Mapping
 from dataclasses import dataclass
+from textwrap import shorten
 
 from pydantic import BaseModel, ConfigDict, ValidationError
 
 from ..config import Settings
+from ..domain.base import EngineId
 from ..domain.definitions import CharacterDefinition, ScenarioDefinition
-from ..domain.engine import EngineRef, EngineStamp
 from ..domain.state import GameState
 from ..store import FileSaves, read_characters, read_scenarios
-from .compatibility import save_mismatches, stamp_mismatches
-
-type EngineStampLookup = Callable[[EngineRef], EngineStamp]
 
 
 class LauncherModel(BaseModel):
@@ -21,21 +19,21 @@ class ScenarioOption(LauncherModel):
     name: str
     title: str
     premise: str
-    engine: EngineRef
+    engine: EngineId
 
 
 class CharacterOption(LauncherModel):
     name: str
     title: str
     brief: str
-    engine: EngineRef
+    engine: EngineId
 
 
 class SaveOption(LauncherModel):
     slug: str
     scenario_title: str
     character_title: str
-    engine: EngineRef
+    engine: EngineId
     turn: int
     scenario_name: str | None
     character_name: str | None
@@ -148,7 +146,7 @@ class LauncherController:
         self.selected_character = compatible[0].name if compatible else None
 
 
-def load_catalog(config: Settings, installed_stamp: EngineStampLookup) -> LauncherCatalog:
+def load_catalog(config: Settings) -> LauncherCatalog:
     scenarios = read_scenarios(config.scenarios_dir)
     characters = read_characters(config.characters_dir)
     scenario_options = tuple(
@@ -176,19 +174,11 @@ def load_catalog(config: Settings, installed_stamp: EngineStampLookup) -> Launch
         try:
             state = files.load(slug)
         except (ValidationError, ValueError) as error:
-            unreadable.append(UnreadableSave(slug=slug, problem=str(error)))
+            unreadable.append(UnreadableSave(slug=slug, problem=_brief(error)))
             continue
         if state is None:
             continue
-        saves.append(
-            _save_option(
-                slug,
-                state,
-                scenarios,
-                characters,
-                installed_stamp,
-            )
-        )
+        saves.append(_save_option(slug, state, scenarios, characters))
     return LauncherCatalog(
         scenarios=scenario_options,
         characters=character_options,
@@ -202,21 +192,16 @@ def _save_option(
     state: GameState,
     scenarios: Mapping[str, ScenarioDefinition],
     characters: Mapping[str, CharacterDefinition],
-    installed_stamp: EngineStampLookup,
 ) -> SaveOption:
-    engine = EngineRef(
-        id=state.engine.id,
-        rules_version=state.engine.rules_version,
-    )
     scenario_names = [
         name
         for name, definition in scenarios.items()
-        if definition.engine == engine and definition.meta == state.scenario
+        if definition.engine == state.engine and definition.meta == state.scenario
     ]
     character_names = [
         name
         for name, definition in characters.items()
-        if definition.engine == engine
+        if definition.engine == state.engine
         and definition.name == state.player.name
         and definition.brief == state.player.brief
     ]
@@ -225,27 +210,18 @@ def _save_option(
         problems.append(f"matched {len(scenario_names)} scenarios")
     if len(character_names) != 1:
         problems.append(f"matched {len(character_names)} characters")
-    if len(scenario_names) == 1 and len(character_names) == 1:
-        problems.extend(
-            save_mismatches(
-                state,
-                scenarios[scenario_names[0]],
-                characters[character_names[0]],
-            )
-        )
-        try:
-            stamp = installed_stamp(scenarios[scenario_names[0]].engine)
-        except ValueError as error:
-            problems.append(str(error))
-        else:
-            problems.extend(stamp_mismatches(state, stamp))
     return SaveOption(
         slug=slug,
         scenario_title=state.scenario.title,
         character_title=state.player.name,
-        engine=engine,
+        engine=state.engine,
         turn=state.turn,
         scenario_name=scenario_names[0] if len(scenario_names) == 1 else None,
         character_name=character_names[0] if len(character_names) == 1 else None,
         problem="; ".join(problems) or None,
     )
+
+
+def _brief(error: Exception) -> str:
+    """A rejected save shows a one-line reason; a full validation traceback is unreadable."""
+    return shorten(str(error), width=200, placeholder=" ...")

@@ -3,7 +3,7 @@ from typing import Annotated, Literal
 from pydantic import Field
 
 from ..utils.models import EMPTY_FROZEN_MAP, Frozen, FrozenMap
-from .base import EntityId, Slug
+from .base import EngineId, EntityId, Slug
 from .engine import EngineData
 from .entities import Entity
 from .json import FrozenJson
@@ -45,7 +45,7 @@ type CoreEvent = Annotated[
 
 class RuleEvent(Frozen):
     type: Literal["rule_event"] = "rule_event"
-    engine: Slug
+    engine: EngineId
     schema_version: int = Field(ge=1)
     name: Slug
     payload: FrozenJson

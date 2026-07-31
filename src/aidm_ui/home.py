@@ -5,7 +5,6 @@ from nicegui import ui
 from nicegui.events import ValueChangeEventArguments
 
 from aidm.application.launcher import (
-    EngineStampLookup,
     LauncherController,
     SaveOption,
     load_catalog,
@@ -17,8 +16,8 @@ from .components.engine import show_engine_badge
 LOGGER = logging.getLogger(__name__)
 
 
-def home_page(config: Settings, installed_stamp: EngineStampLookup) -> None:
-    controller = LauncherController(load_catalog(config, installed_stamp))
+def home_page(config: Settings) -> None:
+    controller = LauncherController(load_catalog(config))
     with ui.header().classes("items-center").style("gap: 1rem"):
         ui.label("AI Dungeon Master").classes("text-lg font-bold")
         ui.space()
@@ -94,12 +93,12 @@ def _new_game(controller: LauncherController) -> None:
 
 def _action(controller: LauncherController) -> None:
     target = controller.new_game()
-    existing = next(
-        (save for save in controller.catalog.saves if save.slug == target.slug),
-        None,
-    )
-    if existing is not None and not existing.resumable:
-        ui.label(existing.problem or "This game's save cannot be resumed.").classes(
+    catalog = controller.catalog
+    existing = next((save for save in catalog.saves if save.slug == target.slug), None)
+    unreadable = next((save for save in catalog.unreadable if save.slug == target.slug), None)
+    if unreadable is not None or (existing is not None and not existing.resumable):
+        problem = unreadable.problem if unreadable is not None else existing and existing.problem
+        ui.label(problem or "This game's save cannot be resumed.").classes(
             "text-negative text-sm q-mt-md"
         )
         ui.label("Delete or fix the save to continue this game.").classes("text-xs opacity-60")

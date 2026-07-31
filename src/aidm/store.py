@@ -2,7 +2,9 @@ from dataclasses import dataclass
 from pathlib import Path
 from re import fullmatch
 
-from .domain.base import TRACE_VERSION
+from pydantic import BaseModel
+
+from .domain.base import SAVE_VERSION
 from .domain.definitions import CharacterDefinition, ScenarioDefinition
 from .domain.state import GameState
 from .domain.turn import Turn
@@ -37,18 +39,35 @@ def read_characters(directory: Path) -> dict[str, CharacterDefinition]:
     }
 
 
+class _StoredVersion(BaseModel):
+    """Probes the stored version before the rest is validated, so drift fails readably.
+
+    A file written before `save_version` existed reports as version 0 rather than as a
+    validation error naming this private model.
+    """
+
+    save_version: int = 0
+
+
+class _TracedVersion(BaseModel):
+    state: _StoredVersion = _StoredVersion()
+
+
+def _require_save_version(stored: int, what: str) -> None:
+    if stored != SAVE_VERSION:
+        raise ValueError(f"{what} is version {stored}, this build needs {SAVE_VERSION}")
+
+
 def read_turns(path: Path) -> tuple[Turn, ...]:
     if not path.exists():
         return ()
-    turns = tuple(
-        Turn.model_validate_json(line)
-        for line in path.read_text(encoding=ENCODING).splitlines()
-        if line
-    )
-    wrong = [turn.trace_version for turn in turns if turn.trace_version != TRACE_VERSION]
-    if wrong:
-        raise ValueError(f"trace version is {wrong[0]}, this build needs {TRACE_VERSION}")
-    return turns
+    turns: list[Turn] = []
+    for line in path.read_text(encoding=ENCODING).splitlines():
+        if not line:
+            continue
+        _require_save_version(_TracedVersion.model_validate_json(line).state.save_version, "trace")
+        turns.append(Turn.model_validate_json(line))
+    return tuple(turns)
 
 
 @dataclass(frozen=True, slots=True)
@@ -66,7 +85,9 @@ class FileSaves:
         path = self._path(slug)
         if not path.exists():
             return None
-        return GameState.model_validate_json(path.read_text(encoding=ENCODING))
+        body = path.read_text(encoding=ENCODING)
+        _require_save_version(_StoredVersion.model_validate_json(body).save_version, "save")
+        return GameState.model_validate_json(body)
 
     def save(self, slug: str, state: GameState) -> None:
         _write(self._path(slug), state.model_dump_json(indent=2))
