@@ -1,8 +1,7 @@
 from story_test_support import initial_story_game
 
-from aidm.agents.context import SceneSnapshot, VisibleScene
-from aidm.agents.prompting import render_narrator
-from aidm.engines import entity_renderer
+from aidm.engine import entity_renderer
+from aidm.prompts import SceneSnapshot, VisibleScene, render_narrator
 
 
 def test_story_narrator_receives_visible_actor_and_gear_state() -> None:

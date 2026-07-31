@@ -2,27 +2,23 @@ import pytest
 from core_test_support import updated, with_entity
 from pydantic_ai.messages import ModelRequest, ModelResponse
 
-from aidm.agents.context import EntityRenderer, SceneSnapshot, VisibleScene
-from aidm.agents.history import exchanges_to_messages
-from aidm.agents.prompting import (
+from aidm.agents import exchanges_to_messages
+from aidm.base import PLAYER_ID, SAVE_VERSION, ActorEntity, EntityId, ItemEntity, LocationEntity
+from aidm.content import ScenarioMeta
+from aidm.engines.story.presentation import StoryPresentation
+from aidm.engines.story.state import DEFAULT_APPROACHES, StoryActorState, StoryItemState, StoryState
+from aidm.growth import GrowthRequest
+from aidm.prompts import (
+    EntityRenderer,
+    SceneSnapshot,
+    VisibleScene,
     prompt_id,
     render_creator,
     render_director,
     render_maintainer,
     render_narrator,
 )
-from aidm.domain.base import PLAYER_ID, SAVE_VERSION, EntityId
-from aidm.domain.definitions import ScenarioMeta
-from aidm.domain.entities import ActorEntity, ItemEntity, LocationEntity
-from aidm.domain.growth import GrowthRequest
-from aidm.domain.state import Exchange, GameState, WorldState
-from aidm_story.models import (
-    DEFAULT_APPROACHES,
-    StoryActorState,
-    StoryItemState,
-    StoryState,
-)
-from aidm_story.presentation import StoryPresentation
+from aidm.world import Exchange, GameState, WorldState
 
 ACTOR_RULES = StoryActorState(approaches=DEFAULT_APPROACHES)
 ITEM_RULES = StoryItemState()

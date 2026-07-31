@@ -5,9 +5,9 @@ from pathlib import Path
 
 from pydantic import TypeAdapter
 
-from aidm_5e.content.models import Manifest, Pack
-from aidm_5e.content.records.base import Collection, ContentRef, Record
-from aidm_5e.content.records.character import RecordOption
+from aidm.engines.dnd5e.content.models import Manifest, Pack
+from aidm.engines.dnd5e.content.records.base import Collection, ContentRef, Record
+from aidm.engines.dnd5e.content.records.character import RecordOption
 
 from . import character as char
 from .common import PACK_ID

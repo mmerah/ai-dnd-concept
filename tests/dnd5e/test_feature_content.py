@@ -5,9 +5,10 @@ from core_test_support import updated
 from fivee_test_support import all_of, pack
 from pydantic import ValidationError
 
-from aidm_5e.content.library import ContentMiss, loaded
-from aidm_5e.content.records.base import ContentRef, Record
-from aidm_5e.content.records.character import (
+from aidm.engines.dnd5e.content.library import ContentMiss, loaded
+from aidm.engines.dnd5e.content.pack_ruleset import compile_ruleset
+from aidm.engines.dnd5e.content.records.base import ContentRef, Record
+from aidm.engines.dnd5e.content.records.character import (
     AbilityModifierResourceMaximum,
     AgentActiveFeatureMechanics,
     ClassLevelRecord,
@@ -21,7 +22,6 @@ from aidm_5e.content.records.character import (
     SelfHealWithClassLevel,
     SubclassLevelRecord,
 )
-from aidm_5e.engine.pack_ruleset import compile_ruleset
 
 PACK = pack()
 FEATURES = all_of(PACK, "features", FeatureRecord)

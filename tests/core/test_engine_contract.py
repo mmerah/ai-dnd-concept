@@ -2,14 +2,13 @@ from random import Random
 
 from core_test_support import character, initialized
 
-from aidm.domain.base import PLAYER_ID, EntityId
-from aidm.domain.entities import ActorEntity, ItemEntity
-from aidm.domain.state import GameState
-from aidm.engines import narrator_fact, trace_fact
-from aidm_story.actions import TakeItem
-from aidm_story.direction import Risk, StoryDirection
-from aidm_story.models import DEFAULT_APPROACHES, StoryCharacterData
-from aidm_story.state import story_state
+from aidm.base import PLAYER_ID, ActorEntity, EntityId, ItemEntity
+from aidm.engine import narrator_fact, trace_fact
+from aidm.engines.story.access import story_state
+from aidm.engines.story.actions import TakeItem
+from aidm.engines.story.direction import Risk, StoryDirection
+from aidm.engines.story.state import DEFAULT_APPROACHES, StoryCharacterData
+from aidm.world import GameState
 
 
 def test_engine_initialization_and_state_contract() -> None:

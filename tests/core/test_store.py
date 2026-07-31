@@ -6,13 +6,12 @@ import pytest
 from core_test_support import initialized, updated
 from fivee_test_support import initial_5e_game
 
-from aidm.domain.growth import Growth
-from aidm.domain.turn import Advance, Turn
-from aidm.engines import narrator_evidence, trace_fact
+from aidm.engine import narrator_evidence, trace_fact
+from aidm.engines.dnd5e.direction import Damage, Dnd5eDirection, LevelUp
+from aidm.engines.story.direction import StoryDirection
+from aidm.growth import Growth
 from aidm.store import ENCODING, FileSaves, FileTraces, load_character, load_scenario
-from aidm_5e.domain.models.consequences import Damage, LevelUp
-from aidm_5e.domain.models.direction import Dnd5eDirection
-from aidm_story.direction import StoryDirection
+from aidm.turn import Advance, Turn
 
 
 def test_save_and_trace_round_trip(tmp_path: Path) -> None:

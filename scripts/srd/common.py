@@ -3,15 +3,15 @@
 import re
 from collections.abc import Sequence
 
-from aidm_5e.content.records.base import Collection, DamageRoll
-from aidm_5e.content.records.monsters import (
+from aidm.engines.dnd5e.content.records.base import Collection, DamageRoll
+from aidm.engines.dnd5e.content.records.monsters import (
     AtWill,
     PerDay,
     RechargeAfterRest,
     RechargeOnRoll,
     Usage,
 )
-from aidm_5e.utils.models import Ability
+from aidm.engines.dnd5e.values import Ability
 
 from .upstream.base import Damage
 from .upstream.monsters import UpstreamUsage

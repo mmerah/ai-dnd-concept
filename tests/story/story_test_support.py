@@ -1,6 +1,6 @@
 from core_test_support import initialized as initial_story_game
 
-from aidm_story.direction import Risk, StoryConsequence, StoryDirection, TakeStress
+from aidm.engines.story.direction import Risk, StoryConsequence, StoryDirection, TakeStress
 
 __all__ = ["initial_story_game", "setback_direction"]
 

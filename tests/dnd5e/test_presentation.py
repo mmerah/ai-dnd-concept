@@ -1,12 +1,10 @@
 from fivee_test_support import initial_5e_game, ruleset
 
-from aidm.agents.context import SceneSnapshot, VisibleScene
-from aidm.agents.prompting import render_narrator
-from aidm.domain.base import PLAYER_ID, EntityId
-from aidm.domain.entities import ActorEntity
-from aidm.engines import entity_renderer
-from aidm_5e.domain.models.facts import AttackRolled, HpChanged
-from aidm_5e.factory import dnd5e_engine
+from aidm.base import PLAYER_ID, ActorEntity, EntityId
+from aidm.engine import entity_renderer
+from aidm.engines.dnd5e.engine import dnd5e_engine
+from aidm.engines.dnd5e.facts import AttackRolled, HpChanged
+from aidm.prompts import SceneSnapshot, VisibleScene, render_narrator
 
 
 def test_5e_presentation_exposes_full_state_for_every_visible_actor() -> None:

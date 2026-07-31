@@ -6,12 +6,12 @@ from fivee_test_support import content_ref as ref
 from fivee_test_support import player_of as player_of
 from fivee_test_support import ruleset, sheet
 
-import aidm_5e.engine.progression as progression
-from aidm.domain.base import PLAYER_ID
-from aidm.domain.state import GameState
-from aidm_5e.content.records.character import ProgressionChoice
-from aidm_5e.domain.models.progression import Decisions, Origin
-from aidm_5e.state import dnd5e_state
+import aidm.engines.dnd5e.progression as progression
+from aidm.base import PLAYER_ID
+from aidm.engines.dnd5e.access import dnd5e_state
+from aidm.engines.dnd5e.content.records.character import ProgressionChoice
+from aidm.engines.dnd5e.state import Decisions, Origin
+from aidm.world import GameState
 
 RULES = ruleset()
 SHEET = sheet()

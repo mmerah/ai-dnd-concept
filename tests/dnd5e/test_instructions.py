@@ -1,5 +1,5 @@
-from aidm_5e.domain.models.consequences import CONSEQUENCE_TYPES
-from aidm_5e.factory import build_dnd5e_engine
+from aidm.engines.dnd5e.direction import CONSEQUENCE_TYPES
+from aidm.engines.dnd5e.engine import build_dnd5e_engine
 
 
 def test_every_consequence_documents_itself_into_the_live_director_prompt() -> None:

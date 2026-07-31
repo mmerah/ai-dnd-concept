@@ -7,8 +7,8 @@ the tree whose arms spend different numbers of picks — the one part `flatten` 
 
 from collections.abc import Mapping, Sequence
 
-from aidm_5e.content.records.base import Collection
-from aidm_5e.content.records.character import (
+from aidm.engines.dnd5e.content.records.base import Collection
+from aidm.engines.dnd5e.content.records.character import (
     AbilityBonus,
     AbilityRequirement,
     BackgroundRecord,
@@ -33,7 +33,7 @@ from aidm_5e.content.records.character import (
     SubraceRecord,
     TraitRecord,
 )
-from aidm_5e.utils.models import Slug
+from aidm.engines.dnd5e.values import ContentSlug
 
 from .choices import flatten
 from .common import ability
@@ -55,7 +55,7 @@ from .upstream.character import (
 
 # Upstream states each class's slot recharge only inside the "Spell Slots" prose, so the one class
 # that regains slots on a short rest is named here rather than parsed out of a sentence.
-_SHORT_REST_SLOTS: frozenset[Slug] = frozenset({"warlock"})
+_SHORT_REST_SLOTS: frozenset[ContentSlug] = frozenset({"warlock"})
 
 
 def _bonuses(entries: Sequence[UpstreamAbilityBonus]) -> tuple[AbilityBonus, ...]:

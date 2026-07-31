@@ -5,14 +5,19 @@ from core_test_support import updated
 from fivee_test_support import content_ref as ref
 from fivee_test_support import new_game, ruleset, summary, with_actor, with_item
 
-from aidm.domain.base import PLAYER_ID, EntityId
-from aidm.domain.entities import ActorEntity, ItemEntity
-from aidm.domain.state import GameState
-from aidm_5e.domain.models.consequences import Attack, Damage, RollSave
-from aidm_5e.engine import bestiary, procedures, rules
-from aidm_5e.engine.resolve import resolve
-from aidm_5e.models import Dnd5eActor, Dnd5eActorDefinition, Dnd5eActorState, Dnd5eItemState
-from aidm_5e.state import actor_of, dnd5e_state
+from aidm.base import PLAYER_ID, ActorEntity, EntityId, ItemEntity
+from aidm.engines.dnd5e import bestiary, procedures
+from aidm.engines.dnd5e import rolls as rules
+from aidm.engines.dnd5e.access import actor_of, dnd5e_state
+from aidm.engines.dnd5e.direction import Attack, Damage, RollSave
+from aidm.engines.dnd5e.resolve import resolve
+from aidm.engines.dnd5e.state import (
+    Dnd5eActor,
+    Dnd5eActorDefinition,
+    Dnd5eActorState,
+    Dnd5eItemState,
+)
+from aidm.world import GameState
 
 RULES = ruleset()
 

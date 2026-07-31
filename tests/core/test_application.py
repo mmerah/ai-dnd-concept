@@ -5,18 +5,18 @@ import pytest
 from core_test_support import character, scenario, settings, updated
 from story_test_support import setback_direction
 
-from aidm.agents.stages import director_stage, shared_stages
-from aidm.application.game import GameApplication
-from aidm.domain.base import PLAYER_ID
-from aidm.domain.definitions import ScenarioMeta
-from aidm.domain.state import GameState
-from aidm.domain.turn import Advance, TraceEntry
-from aidm.engines import resolve
+from aidm.agents import director_stage, shared_stages
+from aidm.application import GameApplication
+from aidm.base import PLAYER_ID
+from aidm.content import ScenarioMeta
+from aidm.engine import resolve
+from aidm.engines.dnd5e.advancement import Dnd5eAdvancementDecisions
+from aidm.engines.story.access import story_state
+from aidm.engines.story.advancement import RaiseApproach
+from aidm.engines.story.engine import build_story_engine
 from aidm.pipeline import TurnOptions
-from aidm_5e.advancement import Dnd5eAdvancementDecisions
-from aidm_story.advancement import RaiseApproach
-from aidm_story.factory import build_story_engine
-from aidm_story.state import story_state
+from aidm.turn import Advance, TraceEntry
+from aidm.world import GameState
 
 
 @dataclass

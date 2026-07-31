@@ -4,11 +4,11 @@ from random import Random
 import pytest
 from story_test_support import initial_story_game, setback_direction
 
-from aidm.domain.base import PLAYER_ID, EntityId
-from aidm_story.actions import DropItem, TakeItem
-from aidm_story.direction import HelpfulGear, Risk, StoryConsequence, StoryDirection
-from aidm_story.facts import RiskRolled
-from aidm_story.state import story_state
+from aidm.base import PLAYER_ID, EntityId
+from aidm.engines.story.access import story_state
+from aidm.engines.story.actions import DropItem, TakeItem
+from aidm.engines.story.direction import HelpfulGear, Risk, StoryConsequence, StoryDirection
+from aidm.engines.story.facts import RiskRolled
 
 
 def test_story_trace_direction_serializes_typed_mechanics() -> None:

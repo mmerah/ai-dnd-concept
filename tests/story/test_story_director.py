@@ -7,14 +7,14 @@ from pydantic_ai.models.test import TestModel
 from pydantic_ai.usage import RunUsage
 from story_test_support import initial_story_game
 
-from aidm.domain.base import PLAYER_ID, EntityId
-from aidm.domain.state import GameState
-from aidm.domain.transition import Transition
-from aidm_story.actions import DropItem
-from aidm_story.direction import HelpfulGear, Risk, StoryDirection, TakeStress
-from aidm_story.director import StoryDirector
-from aidm_story.models import StoryActorState
-from aidm_story.rules import StoryRules
+from aidm.base import PLAYER_ID, EntityId
+from aidm.engines.story.actions import DropItem
+from aidm.engines.story.direction import HelpfulGear, Risk, StoryDirection, TakeStress
+from aidm.engines.story.director import StoryDirector
+from aidm.engines.story.rules import StoryRules
+from aidm.engines.story.state import StoryActorState
+from aidm.transition import Transition
+from aidm.world import GameState
 
 
 def _director_context(state: GameState) -> RunContext[GameState]:

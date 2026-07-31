@@ -2,9 +2,9 @@
 
 from pydantic import Field
 
-from aidm_5e.content.records.base import CreatureSize
-from aidm_5e.content.records.monsters import AttackType, MonsterType, SaveOutcome
-from aidm_5e.content.vocabulary import RestType
+from aidm.engines.dnd5e.content.records.base import CreatureSize
+from aidm.engines.dnd5e.content.records.monsters import AttackType, MonsterType, SaveOutcome
+from aidm.engines.dnd5e.content.vocabulary import RestType
 
 from .base import ApiRef, ConditionRef, Damage, Upstream
 

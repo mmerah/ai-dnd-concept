@@ -1,5 +1,5 @@
-from aidm_story.direction import STORY_CONSEQUENCE_TYPES
-from aidm_story.factory import build_story_engine
+from aidm.engines.story.direction import STORY_CONSEQUENCE_TYPES
+from aidm.engines.story.engine import build_story_engine
 
 
 def test_every_story_consequence_documents_itself_into_the_live_director_prompt() -> None:

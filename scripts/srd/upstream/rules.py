@@ -2,8 +2,8 @@
 
 from pydantic import Field
 
-from aidm_5e.content.records.spells import SpellAttackType, SpellSaveOutcome
-from aidm_5e.content.vocabulary import AlignmentName, ConditionName, LanguageName
+from aidm.engines.dnd5e.content.records.spells import SpellAttackType, SpellSaveOutcome
+from aidm.engines.dnd5e.content.vocabulary import AlignmentName, ConditionName, LanguageName
 
 from .base import ApiRef, DamageTypeRef, SchoolRef, Upstream
 

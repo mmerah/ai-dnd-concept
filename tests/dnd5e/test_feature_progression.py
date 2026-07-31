@@ -11,12 +11,12 @@ from fivee_progression_support import (
 )
 from fivee_test_support import new_game, player_of, summary, with_actor
 
-from aidm_5e.agents import views
-from aidm_5e.domain.models.consequences import LevelUp, Rest, UseFeature
-from aidm_5e.domain.models.progression import ResourceState
-from aidm_5e.engine import features, progression
-from aidm_5e.engine.resolve import resolve
-from aidm_5e.utils.models import Attributes
+from aidm.engines.dnd5e import features, progression
+from aidm.engines.dnd5e import presentation as views
+from aidm.engines.dnd5e.direction import LevelUp, Rest, UseFeature
+from aidm.engines.dnd5e.resolve import resolve
+from aidm.engines.dnd5e.state import ResourceState
+from aidm.engines.dnd5e.values import Attributes
 
 SECOND_WIND = "srd-2014/features/second-wind"
 ACTION_SURGE = "srd-2014/features/action-surge-1-use"

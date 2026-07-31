@@ -4,9 +4,9 @@ from pathlib import Path
 from core_test_support import updated
 from ui_test_support import SCENARIOS, ui_settings
 
-from aidm.application.launcher import LauncherController, load_catalog
+from aidm.application import LauncherController, load_catalog
 from aidm.store import ENCODING, FileSaves
-from aidm_ui.bootstrap import create_composition
+from aidm.ui.bootstrap import create_composition
 
 
 def _story_only(tmp_path: Path) -> Path:

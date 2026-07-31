@@ -4,10 +4,9 @@ from pydantic_ai import ModelRetry, RunContext
 from pydantic_ai.models.test import TestModel
 from pydantic_ai.usage import RunUsage
 
-from aidm.domain.base import EntityId
-from aidm.domain.state import GameState
-from aidm_5e.domain.models.consequences import Damage, DropItem, RollCheck
-from aidm_5e.domain.models.direction import Dnd5eDirection
+from aidm.base import EntityId
+from aidm.engines.dnd5e.direction import Damage, Dnd5eDirection, DropItem, RollCheck
+from aidm.world import GameState
 
 
 def _context(state: GameState) -> RunContext[GameState]:

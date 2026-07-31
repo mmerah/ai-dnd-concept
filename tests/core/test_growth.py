@@ -1,4 +1,4 @@
-from aidm.domain.growth import GrowthRequest, screen_growth
+from aidm.growth import GrowthRequest, screen_growth
 
 
 def request(name: str) -> GrowthRequest:

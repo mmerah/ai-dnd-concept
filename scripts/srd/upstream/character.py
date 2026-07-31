@@ -3,8 +3,8 @@ character half of proficiencies — everything reached through the recursive `Ch
 
 from pydantic import Field
 
-from aidm_5e.content.records.base import CreatureSize
-from aidm_5e.content.vocabulary import LanguageName
+from aidm.engines.dnd5e.content.records.base import CreatureSize
+from aidm.engines.dnd5e.content.vocabulary import LanguageName
 
 from .base import ApiRef, NamedRef, Upstream
 

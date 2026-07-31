@@ -4,12 +4,16 @@ from typing import Literal, Self
 from pydantic import BaseModel, ConfigDict, Field, SecretStr, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
-from aidm_5e.config import Dnd5eConfig
-
-from .domain.base import ROLES, Role
+from .base import ROLES, Role
 
 ProviderName = Literal["openrouter", "local"]
 ReasoningEffort = Literal["none", "minimal", "low", "medium", "high", "xhigh", "max"]
+
+
+class Dnd5eConfig(BaseModel):
+    model_config = ConfigDict(frozen=True)
+
+    pack_paths: tuple[Path, ...] | None = None
 
 
 class ProviderConfig(BaseModel):
@@ -101,3 +105,7 @@ class Settings(BaseSettings):
                     f"role {role!r} uses provider {provider_name!r}, which has no api_key"
                 )
         return self
+
+
+def load_settings() -> Settings:
+    return Settings.model_validate({})

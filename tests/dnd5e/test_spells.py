@@ -10,17 +10,14 @@ from fivee_progression_support import levelled, started
 from fivee_test_support import content_ref as ref
 from fivee_test_support import new_game, player_of, ruleset, with_actor
 
-from aidm.domain.base import EntityId
-from aidm.domain.entities import ActorEntity
-from aidm.domain.state import GameState
-from aidm_5e.domain.models.consequences import Cast
-from aidm_5e.domain.models.facts import DcRolled, DiceRolled, Emitted, HpChanged
-from aidm_5e.domain.models.progression import Progression
-from aidm_5e.engine import bestiary, spells
-from aidm_5e.engine.resolve import resolve
-from aidm_5e.models import Dnd5eActorDefinition
-from aidm_5e.state import actor_of
-from aidm_5e.utils import dice
+from aidm.base import ActorEntity, EntityId
+from aidm.engines.dnd5e import bestiary, dice, spells
+from aidm.engines.dnd5e.access import actor_of
+from aidm.engines.dnd5e.direction import Cast
+from aidm.engines.dnd5e.facts import DcRolled, DiceRolled, Emitted, HpChanged
+from aidm.engines.dnd5e.resolve import resolve
+from aidm.engines.dnd5e.state import Dnd5eActorDefinition, Progression
+from aidm.world import GameState
 
 RULES = ruleset()
 GARGOYLE = EntityId("gargoyle")

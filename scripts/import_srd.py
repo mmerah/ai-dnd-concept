@@ -1,5 +1,5 @@
 """One-shot, offline importer: a checkout of 5e-bits/5e-database becomes the shipped
-`aidm_5e/data/srd-2014/` pack.
+`aidm/engines/dnd5e/data/srd-2014/` pack.
 
     uv run python scripts/import_srd.py ../5e-database [out-dir]
 
@@ -14,11 +14,11 @@ from pathlib import Path
 from srd.build import build
 from srd.common import PACK_ID
 
-from aidm_5e.content.library import write_pack
+from aidm.engines.dnd5e.content.library import write_pack
 
 REPOSITORY_ROOT = Path(__file__).parent.parent
-SHIPPED_PACK_DIR = REPOSITORY_ROOT / "src" / "aidm_5e" / "data"
-SAVE_VERSION_FILE = REPOSITORY_ROOT / "src" / "aidm" / "domain" / "base.py"
+SHIPPED_PACK_DIR = REPOSITORY_ROOT / "src" / "aidm" / "engines" / "dnd5e" / "data"
+SAVE_VERSION_FILE = REPOSITORY_ROOT / "src" / "aidm" / "base.py"
 SAVE_VERSION_PATTERN = re.compile(r"^SAVE_VERSION = (\d+)$", re.MULTILINE)
 
 

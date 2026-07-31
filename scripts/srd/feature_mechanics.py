@@ -8,7 +8,7 @@ the safe default, so an unlisted feature is never wrong, only unautomated.
 Keyed by upstream index rather than parsed from the prose, because the prose states the numbers in
 sentences and a parser would fail silently on the wording it did not anticipate."""
 
-from aidm_5e.content.records.character import (
+from aidm.engines.dnd5e.content.records.character import (
     AbilityModifierResourceMaximum,
     AgentActiveFeatureMechanics,
     AgentFeatureMechanics,
@@ -27,10 +27,10 @@ from aidm_5e.content.records.character import (
     ResourceFeatureMechanics,
     SelfHealWithClassLevel,
 )
-from aidm_5e.content.vocabulary import RestType
-from aidm_5e.utils.models import Slug
+from aidm.engines.dnd5e.content.vocabulary import RestType
+from aidm.engines.dnd5e.values import ContentSlug
 
-_CLASS_OR_SUBCLASS_SELECTIONS: frozenset[Slug] = frozenset(
+_CLASS_OR_SUBCLASS_SELECTIONS: frozenset[ContentSlug] = frozenset(
     {
         "arcane-tradition",
         "bard-college",
@@ -49,7 +49,7 @@ _CLASS_OR_SUBCLASS_SELECTIONS: frozenset[Slug] = frozenset(
 
 # Upstream ships one feature per Channel Divinity capacity. The level-scaled maximum below already
 # covers every step, so the later two grant nothing and would otherwise duplicate the pool.
-_RESOURCE_CAPACITY_ANNOUNCEMENTS: frozenset[Slug] = frozenset(
+_RESOURCE_CAPACITY_ANNOUNCEMENTS: frozenset[ContentSlug] = frozenset(
     {
         "channel-divinity-2-rest",
         "channel-divinity-3-rest",
@@ -77,7 +77,7 @@ _KI_MAXIMUM = ClassLevelResourceMaximum()
 _LAY_ON_HANDS_MAXIMUM = ClassLevelResourceMaximum(multiplier=5)
 
 
-def mechanics_for(index: Slug, *, has_choices: bool = False) -> FeatureMechanics:
+def mechanics_for(index: ContentSlug, *, has_choices: bool = False) -> FeatureMechanics:
     """Project curated mechanics; unclassified upstream prose stays description-guided."""
     match index:
         case "rage":
@@ -159,8 +159,8 @@ def mechanics_for(index: Slug, *, has_choices: bool = False) -> FeatureMechanics
             return AgentFeatureMechanics()
 
 
-def replacements_for(index: Slug) -> tuple[Slug, ...]:
-    replacements: dict[Slug, Slug] = {
+def replacements_for(index: ContentSlug) -> tuple[ContentSlug, ...]:
+    replacements: dict[ContentSlug, ContentSlug] = {
         "action-surge-2-uses": "action-surge-1-use",
         "bardic-inspiration-d8": "bardic-inspiration-d6",
         "bardic-inspiration-d10": "bardic-inspiration-d8",
@@ -179,7 +179,7 @@ def _active(
     *,
     maximum: FeatureResourceMaximum,
     recharge: RestType,
-    pool: Slug | None = None,
+    pool: ContentSlug | None = None,
     cost: FeatureResourceCost = 1,
 ) -> AgentActiveFeatureMechanics:
     return AgentActiveFeatureMechanics(
@@ -193,7 +193,7 @@ def _active(
     )
 
 
-def _is_progression_only(index: Slug, has_choices: bool) -> bool:
+def _is_progression_only(index: ContentSlug, has_choices: bool) -> bool:
     return (
         has_choices
         or "-ability-score-improvement-" in index

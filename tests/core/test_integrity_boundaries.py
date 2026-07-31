@@ -2,16 +2,15 @@ import pytest
 from core_test_support import initialized, scenario, updated, with_entity
 from pydantic import ValidationError
 
-from aidm.domain.base import PLAYER_ID, EntityId
-from aidm.domain.definitions import Character, CharacterOverlay, CharacterProfile
-from aidm.domain.entities import ItemEntity
-from aidm.domain.state import WorldState
-from aidm_story.models import (
+from aidm.base import PLAYER_ID, EntityId, ItemEntity
+from aidm.content import Character, CharacterOverlay, CharacterProfile
+from aidm.engines.story.state import (
     DEFAULT_APPROACHES,
     StoryCharacterData,
     StoryGearTag,
     StoryItemDefinition,
 )
+from aidm.world import WorldState
 
 HELD = EntityId("frayed_rope")
 UNHELD = EntityId("silk_rope")

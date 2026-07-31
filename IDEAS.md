@@ -7,3 +7,4 @@
 - [] NPC can join/leave player party. NPC can also level-up.
 - [] Quest/Event/Hook system of some kind. Need brainstorming to decide the way to do that. Think about any kind of fiction book or D&D adventure: how would we have a general system to progress elements of a story, based on player actions but also in the background
 - [] Is there ideas from straightjacket github project that could be used? It seems the closest in what we want (https://github.com/aradix85/straightjacket)
+- [] Trim AGENTS.md out of the code-specific stuff that is subject to change.

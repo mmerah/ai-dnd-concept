@@ -2,13 +2,12 @@ from random import Random
 
 from story_test_support import initial_story_game, setback_direction
 
-from aidm.domain.base import PLAYER_ID
-from aidm.domain.entities import ItemEntity
-from aidm.domain.facts import EntityCreated
-from aidm_story.advancement import AcquireGear, IncreaseMaximumStress
-from aidm_story.facts import Revived
-from aidm_story.models import StoryGearTag
-from aidm_story.state import story_state
+from aidm.base import PLAYER_ID, ItemEntity
+from aidm.engines.story.access import story_state
+from aidm.engines.story.advancement import AcquireGear, IncreaseMaximumStress
+from aidm.engines.story.facts import Revived
+from aidm.engines.story.state import StoryGearTag
+from aidm.facts import EntityCreated
 
 
 def test_story_gear_advancement_creates_one_carried_core_item() -> None:

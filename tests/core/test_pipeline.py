@@ -8,12 +8,11 @@ from core_test_support import initialized, settings
 from pydantic_ai.messages import ModelMessage, ModelResponse, TextPart
 from pydantic_ai.models.function import AgentInfo, FunctionModel
 
-from aidm.agents.stages import director_stage, shared_stages
-from aidm.domain.base import PLAYER_ID
-from aidm.domain.entities import ActorEntity, ItemEntity, LocationEntity
+from aidm.agents import director_stage, shared_stages
+from aidm.base import PLAYER_ID, ActorEntity, ItemEntity, LocationEntity
+from aidm.engines.story.access import story_state
+from aidm.engines.story.state import DEFAULT_APPROACHES
 from aidm.pipeline import TurnOptions, run_turn
-from aidm_story.models import DEFAULT_APPROACHES
-from aidm_story.state import story_state
 
 type Stub = Callable[[list[ModelMessage], AgentInfo], ModelResponse]
 

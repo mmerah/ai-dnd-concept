@@ -5,38 +5,44 @@ from pathlib import Path
 import pytest
 from core_test_support import updated
 
-from aidm.domain.base import PLAYER_ID, SAVE_VERSION, EntityId
-from aidm.domain.definitions import ScenarioMeta
-from aidm.domain.entities import ActorEntity, ItemEntity, LocationEntity
-from aidm.domain.facts import (
+from aidm.base import (
+    PLAYER_ID,
+    SAVE_VERSION,
+    ActorEntity,
+    EntityId,
+    ItemEntity,
+    LocationEntity,
+)
+from aidm.content import ScenarioMeta, authored_world
+from aidm.engines.dnd5e.access import actor_of, dnd5e_state
+from aidm.engines.dnd5e.content.library import Content, loaded, read_pack
+from aidm.engines.dnd5e.content.models import Pack
+from aidm.engines.dnd5e.content.pack_ruleset import compile_ruleset
+from aidm.engines.dnd5e.content.records.base import Collection, ContentRef, Record
+from aidm.engines.dnd5e.engine import Dnd5eEngine, dnd5e_engine
+from aidm.engines.dnd5e.facts import Emitted
+from aidm.engines.dnd5e.ruleset import Ruleset
+from aidm.engines.dnd5e.state import (
+    Dnd5eActor,
+    Dnd5eActorState,
+    Dnd5eCharacterData,
+    Dnd5eItemState,
+    Dnd5eState,
+    StatBlock,
+)
+from aidm.engines.dnd5e.values import Attributes, ContentSlug
+from aidm.facts import (
     ActorMoved,
     EntityCreated,
     EntityDiscovered,
     ItemMoved,
     core_fact_summary,
 )
-from aidm.domain.state import GameState, WorldState, authored_world
 from aidm.store import load_character, load_scenario
-from aidm_5e.content.library import Content, loaded, read_pack
-from aidm_5e.content.models import Pack
-from aidm_5e.content.records.base import Collection, ContentRef, Record
-from aidm_5e.domain.models.facts import Emitted
-from aidm_5e.domain.models.stats import StatBlock
-from aidm_5e.engine.pack_ruleset import compile_ruleset
-from aidm_5e.engine.ruleset import Ruleset
-from aidm_5e.factory import Dnd5eEngine, dnd5e_engine
-from aidm_5e.models import (
-    Dnd5eActor,
-    Dnd5eActorState,
-    Dnd5eCharacterData,
-    Dnd5eItemState,
-    Dnd5eState,
-)
-from aidm_5e.state import actor_of, dnd5e_state
-from aidm_5e.utils.models import Attributes, Slug
+from aidm.world import GameState, WorldState
 
 REPOSITORY_ROOT = Path(__file__).parents[2]
-PACK_DIR = REPOSITORY_ROOT / "src" / "aidm_5e" / "data" / "srd-2014"
+PACK_DIR = REPOSITORY_ROOT / "src" / "aidm" / "engines" / "dnd5e" / "data" / "srd-2014"
 
 
 def content_ref(collection: str, index: str) -> ContentRef:
@@ -153,7 +159,7 @@ def all_of[R: Record](
     held: Pack,
     name: Collection,
     kind: type[R],
-) -> Mapping[Slug, R]:
+) -> Mapping[ContentSlug, R]:
     found = held.records.get(name, {})
     wrong = sorted(index for index, record in found.items() if not isinstance(record, kind))
     if wrong:

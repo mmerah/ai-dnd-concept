@@ -4,10 +4,9 @@ from core_test_support import updated
 from fivee_progression_support import answers
 from fivee_test_support import initial_5e_game, player_of, ruleset, with_actor
 
-from aidm_5e.advancement import Dnd5eAdvancement, Dnd5eAdvancementDecisions
-from aidm_5e.domain.models.consequences import LevelUp
-from aidm_5e.domain.models.direction import Dnd5eDirection
-from aidm_5e.models import Dnd5eActorState
+from aidm.engines.dnd5e.advancement import Dnd5eAdvancement, Dnd5eAdvancementDecisions
+from aidm.engines.dnd5e.direction import Dnd5eDirection, LevelUp
+from aidm.engines.dnd5e.state import Dnd5eActorState
 
 
 def test_5e_advancement_status_and_full_flow() -> None:

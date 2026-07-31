@@ -5,8 +5,8 @@ from re import fullmatch
 
 from pydantic import BaseModel, TypeAdapter
 
-from .domain.base import ENGINE_IDS, SAVE_VERSION, EngineId, Slug, content_id
-from .domain.definitions import (
+from .base import ENGINE_IDS, SAVE_VERSION, EngineId, Slug, content_id
+from .content import (
     Character,
     CharacterOverlay,
     CharacterProfile,
@@ -14,8 +14,8 @@ from .domain.definitions import (
     ScenarioOverlay,
     ScenarioWorld,
 )
-from .domain.state import GameState
-from .domain.turn import TraceEntry
+from .turn import TraceEntry
+from .world import GameState
 
 ENCODING = "utf-8"
 WORLD_FILE = "world.json"

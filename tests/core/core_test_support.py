@@ -2,13 +2,12 @@ from pathlib import Path
 
 from pydantic import BaseModel, SecretStr
 
+from aidm.base import SAVE_VERSION, Entity
 from aidm.config import ProviderConfig, Providers, Roles, Settings
-from aidm.domain.base import SAVE_VERSION
-from aidm.domain.definitions import Character, Scenario
-from aidm.domain.entities import Entity
-from aidm.domain.state import GameState, authored_world
+from aidm.content import Character, Scenario, authored_world
+from aidm.engines.story.engine import StoryEngine, build_story_engine
 from aidm.store import load_character, load_scenario
-from aidm_story.factory import StoryEngine, build_story_engine
+from aidm.world import GameState
 
 REPOSITORY_ROOT = Path(__file__).parents[2]
 SCENARIOS = REPOSITORY_ROOT / "scenarios"

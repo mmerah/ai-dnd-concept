@@ -4,15 +4,12 @@ import pytest
 from fivee_test_support import initial_5e_game
 from pydantic import ValidationError
 
-from aidm.domain.base import PLAYER_ID, EntityId
-from aidm.domain.entities import ActorEntity
-from aidm_5e.domain.models.consequences import Damage
-from aidm_5e.domain.models.direction import Dnd5eDirection
-from aidm_5e.domain.models.stats import StatBlock
-from aidm_5e.engine import rules
-from aidm_5e.models import Dnd5eActor, Dnd5eActorState
-from aidm_5e.utils import dice
-from aidm_5e.utils.models import Attributes
+from aidm.base import PLAYER_ID, ActorEntity, EntityId
+from aidm.engines.dnd5e import dice
+from aidm.engines.dnd5e import rolls as rules
+from aidm.engines.dnd5e.direction import Damage, Dnd5eDirection
+from aidm.engines.dnd5e.state import Dnd5eActor, Dnd5eActorState, StatBlock
+from aidm.engines.dnd5e.values import Attributes
 
 KAEL = Dnd5eActor(
     entity=ActorEntity(

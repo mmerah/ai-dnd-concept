@@ -11,8 +11,8 @@ fix raises here instead of silently patching nothing, which keeps this list from
 
 from collections.abc import Mapping
 
-from aidm_5e.content.records.base import Collection, Record
-from aidm_5e.utils.models import Slug
+from aidm.engines.dnd5e.content.records.base import Collection, Record
+from aidm.engines.dnd5e.values import ContentSlug
 
 # A 5e rogue takes an ability score improvement at 4, 8, 10, 12, 16 and 19, so the cumulative total
 # is the count of those levels reached: 0,0,0,1,1,1,1,2,2,3,3,4,4,4,4,5,5,5,6,6. Upstream is right
@@ -22,7 +22,7 @@ _ROGUE_IMPROVEMENTS = {11: 3, 13: 4, 14: 4, 15: 4, 17: 5, 18: 5, 20: 6}
 
 # Record -> the fields upstream got wrong, with the value the SRD states. Keyed by collection and
 # index, so a correction to any record of any collection is one line.
-CORRECTIONS: Mapping[Collection, Mapping[Slug, Mapping[str, object]]] = {
+CORRECTIONS: Mapping[Collection, Mapping[ContentSlug, Mapping[str, object]]] = {
     "levels": {
         f"rogue-{level}": {"ability_score_bonuses": total}
         for level, total in _ROGUE_IMPROVEMENTS.items()
@@ -42,7 +42,7 @@ def corrected(
 
 
 def _fixed(
-    records: Mapping[str, Record], fixes: Mapping[Slug, Mapping[str, object]]
+    records: Mapping[str, Record], fixes: Mapping[ContentSlug, Mapping[str, object]]
 ) -> dict[str, Record]:
     """Each correction revalidated through `updated`, so a field that upstream renamed away is a
     failure here rather than a silently dropped fix."""

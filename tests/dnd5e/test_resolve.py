@@ -10,11 +10,9 @@ from core_test_support import updated
 from fivee_test_support import blank_game, ruleset, with_actor
 from fivee_test_support import state as state
 
-from aidm.domain.base import PLAYER_ID, EntityId
-from aidm.domain.entities import Entity
-from aidm.domain.facts import ActorMoved, EntityCreated, EntityDiscovered, ItemMoved
-from aidm.domain.state import GameState
-from aidm_5e.domain.models.consequences import (
+from aidm.base import PLAYER_ID, Entity, EntityId
+from aidm.engines.dnd5e.access import actor_of, dnd5e_state
+from aidm.engines.dnd5e.direction import (
     ApplyCondition,
     Consequence,
     Damage,
@@ -27,9 +25,10 @@ from aidm_5e.domain.models.consequences import (
     RollCheck,
     TakeItem,
 )
-from aidm_5e.domain.models.facts import ConditionChanged, DcRolled, DiceRolled, HpChanged
-from aidm_5e.engine.resolve import resolve
-from aidm_5e.state import actor_of, dnd5e_state
+from aidm.engines.dnd5e.facts import ConditionChanged, DcRolled, DiceRolled, HpChanged
+from aidm.engines.dnd5e.resolve import resolve
+from aidm.facts import ActorMoved, EntityCreated, EntityDiscovered, ItemMoved
+from aidm.world import GameState
 
 RULES = ruleset()  # `attack` reads a weapon profile and an archetype's own attack out of it
 
