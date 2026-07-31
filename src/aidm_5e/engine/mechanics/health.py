@@ -1,31 +1,32 @@
 from random import Random
 from typing import Literal
 
-from ...domain.models.base import EntityId
+from aidm.domain.base import EntityId
+
 from ...domain.models.consequences import Damage, Heal, Magnitude
-from ...domain.models.events import Event, HpChanged
+from ...domain.models.events import Dnd5eEvent, HpChanged
 from ...utils import dice
 from .. import rules
 from . import common
 from .resolution import Resolution
 
 
-def damage(ctx: Resolution, consequence: Damage) -> list[Event]:
+def damage(ctx: Resolution, consequence: Damage) -> list[Dnd5eEvent]:
     return hp_events(ctx, consequence.target_id, consequence.amount, sign=-1)
 
 
-def heal(ctx: Resolution, consequence: Heal) -> list[Event]:
+def heal(ctx: Resolution, consequence: Heal) -> list[Dnd5eEvent]:
     return hp_events(ctx, consequence.target_id, consequence.amount, sign=+1)
 
 
 def hp_events(
     ctx: Resolution, target_id: EntityId | None, amount: Magnitude, *, sign: Literal[1, -1]
-) -> list[Event]:
+) -> list[Dnd5eEvent]:
     target = ctx.target(target_id)
     total, rolls = _magnitude(amount, ctx.rng)
     after = target.stats.with_hp_delta(sign * total)
     delta = after.hp - target.stats.hp
-    events: list[Event] = [*common.reveal(target), *rolls]
+    events: list[Dnd5eEvent] = [*common.reveal(target), *rolls]
     if delta == 0:
         return events
     changed = HpChanged(
@@ -34,7 +35,7 @@ def hp_events(
     return [*events, changed]
 
 
-def _magnitude(amount: Magnitude, rng: Random) -> tuple[int, list[Event]]:
+def _magnitude(amount: Magnitude, rng: Random) -> tuple[int, list[Dnd5eEvent]]:
     if isinstance(amount, int):
         return amount, []
     total, rolled = rules.roll_dice(amount, rng)

@@ -1,23 +1,24 @@
 from random import Random
 
-from core_test_support import initialized
+from core_test_support import character, initialized
 
 from aidm.domain.base import PLAYER_ID, EntityId
 from aidm.domain.entities import ActorEntity, ItemEntity
-from aidm.domain.events import RuleEvent
+from aidm.domain.events import EntityCreated, RuleEvent
 from aidm.domain.reducer import apply
 from aidm.domain.state import GameState
 from aidm_story.direction import StoryDirection
+from aidm_story.models import DEFAULT_APPROACHES, StoryCharacterData
+from aidm_story.state import story_state
 
 
-def test_engine_initialization_and_payload_contract() -> None:
+def test_engine_initialization_and_state_contract() -> None:
     engine, state = initialized()
+    sheet = character().engine_data
+    assert isinstance(sheet, StoryCharacterData)
 
-    assert state.engine == engine.id
-    assert state.player.rules is not None
-    for entity in state.world.entities.values():
-        if entity.rules is not None:
-            assert entity.rules.engine == state.engine
+    assert state.engine_id == engine.id
+    assert story_state(state).actor(PLAYER_ID).approaches == sheet.approaches
     engine.rules.validate_state(state)
 
     restored = GameState.model_validate_json(state.model_dump_json())
@@ -44,7 +45,7 @@ def test_engine_resolution_is_pure_seeded_and_core_applies_every_event() -> None
             assert rendered is None or str(event.payload) not in rendered
 
 
-def test_engine_initializes_creator_actor_and_item_rules() -> None:
+def test_a_created_entity_gains_engine_state_in_the_same_commit() -> None:
     engine, state = initialized()
     actor = ActorEntity(
         id=EntityId("created-actor"),
@@ -63,10 +64,7 @@ def test_engine_initializes_creator_actor_and_item_rules() -> None:
         container_id=PLAYER_ID,
     )
 
-    actor_rules = engine.lifecycle.rules_for_created_entity(actor, state)
-    item_rules = engine.lifecycle.rules_for_created_entity(item, state)
+    grown = apply(state, [EntityCreated(entity=actor), EntityCreated(entity=item)], engine.rules)
 
-    assert actor_rules is not None
-    assert item_rules is not None
-    assert actor_rules.engine == state.engine
-    assert item_rules.engine == state.engine
+    assert story_state(grown).actor(actor.id).approaches == DEFAULT_APPROACHES
+    assert story_state(grown).item(item.id).gear is None

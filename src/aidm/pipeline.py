@@ -21,7 +21,6 @@ from .agents.prompting import (
 )
 from .agents.stages import DirectorStage, SharedStages
 from .domain.base import EntityId, Role, slug
-from .domain.engine import require_engine
 from .domain.entities import (
     ActorEntity,
     Entity,
@@ -35,7 +34,7 @@ from .domain.growth import GrowthRequest, screen_growth
 from .domain.reducer import apply, narrator_evidence
 from .domain.state import Exchange, GameState
 from .domain.turn import Turn
-from .engines import Direction, Engine, record, resolve
+from .engines import Direction, Engine, entity_renderer, record, resolve
 from .utils.models import Frozen, updated
 
 
@@ -71,7 +70,7 @@ async def run_turn(
     step("director")
     prompts["director"] = build_director_prompt(
         director_context,
-        engine.presentation.entity_state,
+        entity_renderer(engine, state),
     )
     direction: Direction = await director.run(prompts["director"], director_scene, history)
 
@@ -81,7 +80,7 @@ async def run_turn(
     evidence = narrator_evidence(events, engine.presentation.narrator_event)
 
     narrator_context = NarratorContext(
-        scene=build_narrator_scene(draft, engine.presentation.entity_state),
+        scene=build_narrator_scene(draft, entity_renderer(engine, draft)),
         scenario_title=draft.scenario.title,
         scenario_premise=draft.scenario.premise,
         intent=directed.intent,
@@ -96,7 +95,7 @@ async def run_turn(
     narration = await stages.narrator.run(prompts["narrator"], None, history)
 
     maintainer_context = MaintainerContext(
-        scene=build_catalogue_scene(draft, engine.presentation.entity_state),
+        scene=build_catalogue_scene(draft, entity_renderer(engine, draft)),
         scenario_title=draft.scenario.title,
         scenario_premise=draft.scenario.premise,
         prompt=prompt,
@@ -157,7 +156,7 @@ async def _grow(
     draft = state
     for request in sorted(requests, key=lambda item: item.kind != "location"):
         context = CreatorContext(
-            scene=build_catalogue_scene(draft, engine.presentation.entity_state),
+            scene=build_catalogue_scene(draft, entity_renderer(engine, draft)),
             scenario_title=draft.scenario.title,
             scenario_premise=draft.scenario.premise,
             narration=narration,
@@ -171,10 +170,6 @@ async def _grow(
             draft,
             _requested_location(request, draft),
         )
-        rules = engine.lifecycle.rules_for_created_entity(entity, draft)
-        if rules is not None:
-            require_engine(rules, draft.engine, f"created entity {entity.id!r} rules")
-        entity = updated(entity, rules=rules)
         event = EntityCreated(entity=entity)
         draft = apply(draft, [event], engine.rules)
         created.append(entity)

@@ -1,6 +1,8 @@
 from collections.abc import Sequence
 from random import Random
 
+from aidm.domain.state import GameState
+
 from ..domain.models.consequences import (
     ApplyCondition,
     Attack,
@@ -21,8 +23,7 @@ from ..domain.models.consequences import (
     TakeItem,
     UseFeature,
 )
-from ..domain.models.events import DcRolled, Event, Rested
-from ..domain.models.state import GameState
+from ..domain.models.events import DcRolled, Dnd5eEvent, Rested
 from . import features, progression, rules, spells
 from .mechanics import combat, common, conditions, health, inventory, movement
 from .mechanics.resolution import Resolution
@@ -31,12 +32,12 @@ from .ruleset import Ruleset
 
 def resolve(
     mechanics: Sequence[Consequence], state: GameState, rng: Random, ruleset: Ruleset
-) -> list[Event]:
+) -> list[Dnd5eEvent]:
     return _fold(Resolution(state=state, rng=rng, ruleset=ruleset), mechanics)
 
 
-def _fold(ctx: Resolution, mechanics: Sequence[Consequence]) -> list[Event]:
-    events: list[Event] = []
+def _fold(ctx: Resolution, mechanics: Sequence[Consequence]) -> list[Dnd5eEvent]:
+    events: list[Dnd5eEvent] = []
     for consequence in mechanics:
         new = _walk(ctx, consequence)
         events.extend(new)
@@ -44,7 +45,7 @@ def _fold(ctx: Resolution, mechanics: Sequence[Consequence]) -> list[Event]:
     return events
 
 
-def _walk(ctx: Resolution, consequence: Consequence) -> list[Event]:
+def _walk(ctx: Resolution, consequence: Consequence) -> list[Dnd5eEvent]:
     match consequence:
         case RollCheck(ability=ability, dc=dc):
             rolled = rules.roll_check(ctx.player, ability, dc, ctx.rng)
@@ -90,8 +91,8 @@ def _walk(ctx: Resolution, consequence: Consequence) -> list[Event]:
 
 
 def _branched(
-    ctx: Resolution, consequence: DcRoll, before: Sequence[Event], rolled: DcRolled
-) -> list[Event]:
+    ctx: Resolution, consequence: DcRoll, before: Sequence[Dnd5eEvent], rolled: DcRolled
+) -> list[Dnd5eEvent]:
     emitted = [*before, rolled]
     branch = consequence.on_success if rolled.success else consequence.on_failure
     return [*emitted, *_fold(ctx.then(emitted), branch)]

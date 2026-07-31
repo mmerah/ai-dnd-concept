@@ -6,20 +6,22 @@ from random import Random
 
 import pytest
 from fivee_progression_support import levelled, started
-from fivee_test_support import new_game, ruleset
+from fivee_test_support import content_ref as ref
+from fivee_test_support import new_game, player_of, ruleset, with_actor
 
-from aidm_5e.content.records.base import ContentRef
-from aidm_5e.domain.models.base import EntityId
+from aidm.domain.base import EntityId
+from aidm.domain.entities import ActorEntity
+from aidm.domain.state import GameState
+from aidm.utils.models import updated
 from aidm_5e.domain.models.consequences import Cast
-from aidm_5e.domain.models.entities import ActorEntity
-from aidm_5e.domain.models.events import DcRolled, DiceRolled, Event, HpChanged
+from aidm_5e.domain.models.events import DcRolled, DiceRolled, Dnd5eEvent, HpChanged
 from aidm_5e.domain.models.progression import Progression
-from aidm_5e.domain.models.state import GameState
 from aidm_5e.domain.reducer import apply
 from aidm_5e.engine import bestiary, spells
 from aidm_5e.engine.resolve import resolve
+from aidm_5e.models import Dnd5eActorDefinition
+from aidm_5e.state import actor_of
 from aidm_5e.utils import dice
-from aidm_5e.utils.models import updated
 
 RULES = ruleset()
 GARGOYLE = EntityId("gargoyle")
@@ -31,21 +33,23 @@ SAVE_MADE, SAVE_MISSED = 0, 2
 def guarded(klass: str, level: int = 1) -> GameState:
     """A caster of `klass` with a gargoyle to aim at, whose 52 hp make half damage visible."""
     state = levelled(started(klass, new_game("whispering_vault_5e")), level)
-    gargoyle = bestiary.statted(
-        ActorEntity(
-            id=GARGOYLE,
-            name="a gargoyle",
-            brief="Stone until it is not.",
-            known=True,
-            location_id=state.player.location_id,
-            ref=ContentRef(pack="srd-2014", collection="monsters", index="gargoyle"),
-        ),
-        RULES,
+    gargoyle = ActorEntity(
+        id=GARGOYLE,
+        name="a gargoyle",
+        brief="Stone until it is not.",
+        known=True,
+        location_id=player_of(state).location_id,
     )
-    return updated(state, world=state.world.adding(gargoyle))
+    return with_actor(
+        state,
+        gargoyle,
+        bestiary.statted_actor(
+            GARGOYLE, Dnd5eActorDefinition(ref=ref("monsters", "gargoyle")), RULES
+        ),
+    )
 
 
-def cast(state: GameState, spell: str, slot_level: int, seed: int = 1) -> list[Event]:
+def cast(state: GameState, spell: str, slot_level: int, seed: int = 1) -> list[Dnd5eEvent]:
     return resolve(
         [Cast(spell=f"srd-2014/spells/{spell}", slot_level=slot_level, target_id=GARGOYLE)],
         state,
@@ -54,22 +58,21 @@ def cast(state: GameState, spell: str, slot_level: int, seed: int = 1) -> list[E
     )
 
 
-def rolled(events: list[Event]) -> DiceRolled:
+def rolled(events: list[Dnd5eEvent]) -> DiceRolled:
     (found,) = [event for event in events if isinstance(event, DiceRolled)]
     return found
 
 
-def saving_throw(events: list[Event]) -> DcRolled:
+def saving_throw(events: list[Dnd5eEvent]) -> DcRolled:
     (found,) = [event for event in events if isinstance(event, DcRolled)]
     return found
 
 
-def harm(state: GameState, events: list[Event]) -> int:
-    after = apply(state, events).world.require_kind(GARGOYLE, ActorEntity)
-    return GARGOYLE_HP - after.stats.hp
+def harm(state: GameState, events: list[Dnd5eEvent]) -> int:
+    return GARGOYLE_HP - actor_of(apply(state, events), GARGOYLE).stats.hp
 
 
-def hp_changed(events: list[Event]) -> HpChanged:
+def hp_changed(events: list[Dnd5eEvent]) -> HpChanged:
     (found,) = [event for event in events if isinstance(event, HpChanged)]
     return found
 
@@ -112,13 +115,15 @@ def test_a_healing_spell_substitutes_the_casters_modifier_before_rolling() -> No
     """Six SRD spells state `MOD` in their dice and `roll_dice` refuses it by design, so the
     spellcasting modifier has to be folded in first. Kael's wisdom is 14, so a cleric heals +2."""
     cleric = guarded("cleric")
-    hurt = updated(cleric.player, stats=updated(cleric.player.stats, hp=2))
-    wounded = updated(cleric, world=cleric.world.replacing(hurt))
+    caster = player_of(cleric)
+    wounded = with_actor(
+        cleric, caster.entity, updated(caster.state, stats=updated(caster.stats, hp=2))
+    )
     events = resolve(
         [Cast(spell="srd-2014/spells/cure-wounds", slot_level=1)], wounded, Random(1), RULES
     )
     assert rolled(events).dice == "1d8 + 2"
-    assert apply(wounded, events).player.stats.hp == 2 + rolled(events).total
+    assert player_of(apply(wounded, events)).stats.hp == 2 + rolled(events).total
 
 
 def test_a_negative_modifier_folds_its_sign_rather_than_being_pasted_in() -> None:
@@ -163,8 +168,8 @@ def castable(progression: Progression) -> set[str]:
 def test_a_prepared_caster_casts_its_class_list_and_a_known_caster_only_what_it_chose() -> None:
     """The kinds differ in what the pack can record: a wizard's preparation is not modelled, so the
     class list is the gate; a warlock chose its spells at level-up, so those are."""
-    wizard = guarded("wizard", level=5).player.progression
-    warlock = guarded("warlock").player.progression
+    wizard = player_of(guarded("wizard", level=5)).progression
+    warlock = player_of(guarded("warlock")).progression
     assert wizard is not None and warlock is not None
     prepared = castable(wizard)
     assert "fireball" in prepared and "fireball" not in {s.index for s in wizard.chosen_spells}

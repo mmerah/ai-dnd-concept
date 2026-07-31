@@ -3,21 +3,26 @@ from random import Random
 import pytest
 from pydantic import ValidationError
 
-from aidm_5e.domain.models.base import PLAYER_ID, EntityId
+from aidm.domain.base import PLAYER_ID, EntityId
+from aidm.domain.entities import ActorEntity
 from aidm_5e.domain.models.consequences import Damage
-from aidm_5e.domain.models.entities import ActorEntity
 from aidm_5e.domain.models.stats import StatBlock
 from aidm_5e.engine import rules
+from aidm_5e.models import Dnd5eActor, Dnd5eActorState
 from aidm_5e.utils import dice
 from aidm_5e.utils.models import Attributes
 
-KAEL = ActorEntity(
-    id=PLAYER_ID,
-    name="Kael",
-    brief="A relic-hunter.",
-    known=True,
-    location_id=EntityId("here"),
-    stats=StatBlock(attributes=Attributes(wisdom=14, strength=8), max_hp=10, hp=10),
+KAEL = Dnd5eActor(
+    entity=ActorEntity(
+        id=PLAYER_ID,
+        name="Kael",
+        brief="A relic-hunter.",
+        known=True,
+        location_id=EntityId("here"),
+    ),
+    state=Dnd5eActorState(
+        stats=StatBlock(attributes=Attributes(wisdom=14, strength=8), max_hp=10, hp=10)
+    ),
 )
 
 

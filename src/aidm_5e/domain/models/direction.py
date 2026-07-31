@@ -1,7 +1,8 @@
 from pydantic import Field
 
+from aidm.domain.base import PLAYER_ID, EntityId
+
 from ...utils.models import Frozen
-from .base import PLAYER_ID, EntityId
 from .consequences import CanonRef, Consequence, all_canon_refs
 
 

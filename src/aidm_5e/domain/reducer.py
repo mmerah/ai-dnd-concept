@@ -1,25 +1,33 @@
 from collections.abc import Mapping, Sequence
 from functools import reduce
 
+from aidm.domain.base import PLAYER_ID, EntityId
+from aidm.domain.entities import ActorEntity
+from aidm.domain.events import (
+    ActorMoved,
+    EntityCreated,
+    EntityDiscovered,
+    ItemMoved,
+)
+from aidm.domain.reducer import apply_core
+from aidm.domain.state import GameState
+from aidm.utils.models import updated
+
 from ..content.records.base import ContentRef
-from ..utils.models import updated
-from .models.base import EntityId
-from .models.entities import ActorEntity, Entity, ItemEntity, LocationEntity
+from ..models import Dnd5eActorState, Dnd5eState
+from ..state import created_state, dnd5e_state
 from .models.events import (
     AttackRolled,
     ConditionChanged,
     DcRolled,
     DiceRolled,
-    EntityCreated,
-    EntityDiscovered,
-    Event,
+    Dnd5eEvent,
+    Dnd5eRuleEvent,
     FeatureActivated,
     FeatureUsed,
     HpChanged,
-    ItemMoved,
     LeveledUp,
     LevelUpAvailable,
-    Moved,
     PoolRefilled,
     Rested,
     SlotsRefilled,
@@ -33,70 +41,54 @@ from .models.progression import (
     ResourceState,
     feature_key,
 )
-from .models.state import GameState
 
 
-def _replacing(state: GameState, entity: Entity) -> GameState:
-    return updated(state, world=state.world.replacing(entity))
-
-
-def _move_actor(state: GameState, actor_id: EntityId, location_id: EntityId) -> GameState:
-    world = state.world
-    world.require_kind(location_id, LocationEntity)
-    moved = updated(world.require_kind(actor_id, ActorEntity), location_id=location_id)
-    return _replacing(state, moved)
-
-
-def _move_item(state: GameState, item_id: EntityId, to_id: EntityId) -> GameState:
-    world = state.world
-    item = world.require_kind(item_id, ItemEntity)
-    if not isinstance(world.require(to_id), ActorEntity | LocationEntity):
-        raise ValueError(f"cannot move {item_id!r} to {to_id!r}: it holds nothing")
-    return _replacing(state, updated(item, container_id=to_id))
-
-
-def _apply_one(state: GameState, event: Event) -> GameState:
-    world = state.world
+def apply_rule(state: GameState, event: Dnd5eRuleEvent) -> Dnd5eState:
+    engine = dnd5e_state(state)
     match event:
         case DcRolled() | DiceRolled() | AttackRolled() | FeatureActivated() | SpellCast():
-            return state  # branches carry effects; rolls are evidence
-        case ItemMoved(item_id=item_id, to_id=to_id):
-            return _move_item(state, item_id, to_id)
+            return engine  # branches carry effects; rolls are evidence
         case HpChanged(target_id=target_id, delta=delta):
-            actor = world.require_kind(target_id, ActorEntity)
-            return _replacing(state, updated(actor, stats=actor.stats.with_hp_delta(delta)))
+            actor = _actor(state, engine, target_id)
+            stats = actor.stats.with_hp_delta(delta)
+            return engine.with_actor(target_id, updated(actor, stats=stats))
         case ConditionChanged(target_id=target_id, condition=condition, active=active):
-            actor = world.require_kind(target_id, ActorEntity)
+            actor = _actor(state, engine, target_id)
             stats = actor.stats.with_condition(condition, active=active)
-            return _replacing(state, updated(actor, stats=stats))
-        case Moved(actor_id=actor_id, location_id=location_id):
-            return _move_actor(state, actor_id, location_id)
-        case EntityDiscovered(entity_id=entity_id):
-            return _replacing(state, updated(world.require(entity_id), known=True))
+            return engine.with_actor(target_id, updated(actor, stats=stats))
         case LevelUpAvailable():
-            player = state.player
-            progression = player.progression
-            if progression is None:
-                raise ValueError("the player has no progression to unlock")
-            return _replacing(
-                state,
-                updated(player, progression=updated(progression, level_up_available=True)),
-            )
+            return _with_progression(engine, updated(_progression(engine), level_up_available=True))
         case FeatureUsed(ref=ref, spent=spent, remaining=remaining, maximum=maximum):
-            return _spent(state, ref, spent=spent, remaining=remaining, maximum=maximum)
+            return _spent(engine, ref, spent=spent, remaining=remaining, maximum=maximum)
         case SpellSlotSpent(slot_level=level, remaining=remaining, maximum=maximum):
-            return _slot_spent(state, level, remaining=remaining, maximum=maximum)
+            return _slot_spent(engine, level, remaining=remaining, maximum=maximum)
         case Rested(refilled=refilled, slots=slots):
-            return _refilled(state, refilled, slots)
+            return _refilled(engine, refilled, slots)
         case LeveledUp(advancement=advancement):
-            return _grown(state, advancement)
-        case EntityCreated(entity=entity):
-            return updated(state, world=world.adding(entity))
+            return _grown(engine, advancement)
 
 
-def _grown(state: GameState, advancement: Advancement) -> GameState:
+def apply(state: GameState, events: Sequence[Dnd5eEvent]) -> GameState:
+    """Fold a resolution's own events so a later mechanic reads what an earlier one produced."""
+    return reduce(_apply_one, events, state)
+
+
+def _apply_one(state: GameState, event: Dnd5eEvent) -> GameState:
+    match event:
+        case EntityCreated() | EntityDiscovered() | ActorMoved() | ItemMoved():
+            return apply_core(state, event, created_state)
+        case _:
+            return updated(state, engine=apply_rule(state, event))
+
+
+def _actor(state: GameState, engine: Dnd5eState, actor_id: EntityId) -> Dnd5eActorState:
+    state.world.require_kind(actor_id, ActorEntity)
+    return engine.actor(actor_id)
+
+
+def _grown(engine: Dnd5eState, advancement: Advancement) -> Dnd5eState:
     """Require the next level because applying an HP gain twice is not idempotent."""
-    player = state.player
+    player = engine.actor(PLAYER_ID)
     held = player.progression
     reached = advancement.progression.level
     if held is None or reached != held.level + 1:
@@ -107,32 +99,39 @@ def _grown(state: GameState, advancement: Advancement) -> GameState:
         max_hp=player.stats.max_hp + advancement.hp_gain,
         hp=player.stats.hp + advancement.hp_gain,
     )
-    return _replacing(state, updated(player, stats=stats, progression=advancement.progression))
+    return engine.with_actor(
+        PLAYER_ID, updated(player, stats=stats, progression=advancement.progression)
+    )
 
 
-def _progression(state: GameState) -> Progression:
-    progression = state.player.progression
+def _progression(engine: Dnd5eState) -> Progression:
+    progression = engine.actor(PLAYER_ID).progression
     if progression is None:
         raise ValueError("the player has no feature resources")
     return progression
 
 
+def _with_progression(engine: Dnd5eState, progression: Progression) -> Dnd5eState:
+    player = engine.actor(PLAYER_ID)
+    return engine.with_actor(PLAYER_ID, updated(player, progression=progression))
+
+
 def _with_pools(
-    state: GameState,
+    engine: Dnd5eState,
     feature_resources: Mapping[FeatureKey, ResourceState],
     spell_slots: Mapping[int, ResourceState],
-) -> GameState:
+) -> Dnd5eState:
     progression = updated(
-        _progression(state), feature_resources=feature_resources, spell_slots=spell_slots
+        _progression(engine), feature_resources=feature_resources, spell_slots=spell_slots
     )
-    return _replacing(state, updated(state.player, progression=progression))
+    return _with_progression(engine, progression)
 
 
 def _spent(
-    state: GameState, ref: ContentRef, *, spent: int, remaining: int, maximum: int
-) -> GameState:
+    engine: Dnd5eState, ref: ContentRef, *, spent: int, remaining: int, maximum: int
+) -> Dnd5eState:
     key = feature_key(ref)
-    progression = _progression(state)
+    progression = _progression(engine)
     held = progression.feature_resources
     before = held.get(key)
     if before is None or maximum != before.maximum or remaining != before.remaining - spent:
@@ -140,12 +139,12 @@ def _spent(
             f"cannot spend {spent} from {ref.index!r} resource {before} to {remaining}/{maximum}"
         )
     return _with_pools(
-        state, {**held, key: updated(before, remaining=remaining)}, progression.spell_slots
+        engine, {**held, key: updated(before, remaining=remaining)}, progression.spell_slots
     )
 
 
-def _slot_spent(state: GameState, level: int, *, remaining: int, maximum: int) -> GameState:
-    progression = _progression(state)
+def _slot_spent(engine: Dnd5eState, level: int, *, remaining: int, maximum: int) -> Dnd5eState:
+    progression = _progression(engine)
     held = progression.spell_slots
     before = held.get(level)
     if before is None or maximum != before.maximum or remaining != before.remaining - 1:
@@ -153,16 +152,16 @@ def _slot_spent(state: GameState, level: int, *, remaining: int, maximum: int) -
             f"cannot spend a level {level} spell slot {before} to {remaining}/{maximum}"
         )
     return _with_pools(
-        state,
+        engine,
         progression.feature_resources,
         {**held, level: updated(before, remaining=remaining)},
     )
 
 
 def _refilled(
-    state: GameState, refilled: Sequence[PoolRefilled], slots: Sequence[SlotsRefilled]
-) -> GameState:
-    progression = _progression(state)
+    engine: Dnd5eState, refilled: Sequence[PoolRefilled], slots: Sequence[SlotsRefilled]
+) -> Dnd5eState:
+    progression = _progression(engine)
     resources = dict(progression.feature_resources)
     for pool in refilled:
         key = feature_key(pool.ref)
@@ -173,14 +172,10 @@ def _refilled(
         spell_slots[level] = _full(
             spell_slots.get(level), slot.maximum, f"level {level} spell slots"
         )
-    return _with_pools(state, resources, spell_slots)
+    return _with_pools(engine, resources, spell_slots)
 
 
 def _full(before: ResourceState | None, maximum: int, what: str) -> ResourceState:
     if before is None or before.maximum != maximum:
         raise ValueError(f"cannot refill {what} {before} to {maximum}")
     return updated(before, remaining=maximum)
-
-
-def apply(state: GameState, events: Sequence[Event]) -> GameState:
-    return reduce(_apply_one, events, state)

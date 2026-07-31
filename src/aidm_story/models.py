@@ -2,6 +2,7 @@ from typing import Literal, Self
 
 from pydantic import Field, model_validator
 
+from aidm.domain.aggregate import EngineAggregate
 from aidm.domain.base import Slug
 from aidm.utils.models import Frozen
 
@@ -83,11 +84,12 @@ class StoryItemState(Frozen):
     gear: StoryGearTag | None = None
 
 
-class StoryGameState(Frozen):
-    pass
+class StoryState(EngineAggregate[StoryActorState, StoryItemState]):
+    engine: Literal["story"] = "story"
 
 
 class StoryCharacterData(Frozen):
+    engine: Literal["story"] = "story"
     approaches: StoryApproaches
     tags: tuple[StoryActorTag, ...] = ()
     max_stress: int = Field(default=5, ge=MIN_MAX_STRESS, le=MAX_MAX_STRESS)
@@ -103,6 +105,7 @@ class StoryCharacterData(Frozen):
 
 
 class StoryActorDefinition(Frozen):
+    engine: Literal["story"] = "story"
     approaches: StoryApproaches = StoryApproaches(
         bold=0,
         subtle=0,
@@ -125,6 +128,7 @@ class StoryActorDefinition(Frozen):
 
 
 class StoryItemDefinition(Frozen):
+    engine: Literal["story"] = "story"
     gear: StoryGearTag | None = None
 
     def runtime(self) -> StoryItemState:

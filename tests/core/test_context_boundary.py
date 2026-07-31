@@ -4,6 +4,7 @@ from pydantic_ai.messages import ModelRequest, ModelResponse
 from aidm.agents.context import (
     CreatorContext,
     DirectorContext,
+    EntityRenderer,
     MaintainerContext,
     NarratorContext,
     build_catalogue_scene,
@@ -24,24 +25,30 @@ from aidm.domain.entities import ActorEntity, ItemEntity, LocationEntity
 from aidm.domain.growth import GrowthRequest
 from aidm.domain.state import Exchange, GameState, WorldState
 from aidm.utils.models import updated
-from aidm_story.codecs import ACTOR_STATE_CODEC, GAME_STATE_CODEC, ITEM_STATE_CODEC
-from aidm_story.models import DEFAULT_APPROACHES, StoryActorState, StoryGameState, StoryItemState
+from aidm_story.models import (
+    DEFAULT_APPROACHES,
+    StoryActorState,
+    StoryItemState,
+    StoryState,
+)
 from aidm_story.presentation import StoryPresentation
 
-ACTOR_RULES = ACTOR_STATE_CODEC.encode(StoryActorState(approaches=DEFAULT_APPROACHES))
-ITEM_RULES = ITEM_STATE_CODEC.encode(StoryItemState())
+ACTOR_RULES = StoryActorState(approaches=DEFAULT_APPROACHES)
+ITEM_RULES = StoryItemState()
 
 
 def _state_line(entity_id: EntityId) -> str:
-    return StoryPresentation().entity_state(
-        ActorEntity(
-            id=entity_id,
-            name="Sample",
-            brief="Sample.",
-            location_id=EntityId("study"),
-            rules=ACTOR_RULES,
-        )
+    sample = ActorEntity(
+        id=entity_id, name="Sample", brief="Sample.", location_id=EntityId("study")
     )
+    return StoryPresentation().entity_state(sample, StoryState(actors={entity_id: ACTOR_RULES}))
+
+
+def _renderer(held: GameState) -> EntityRenderer:
+    engine = held.engine
+    assert isinstance(engine, StoryState)
+    presentation = StoryPresentation()
+    return lambda entity: presentation.entity_state(entity, engine)
 
 
 ACTOR_LINE = _state_line(EntityId("mara"))
@@ -61,14 +68,12 @@ def state() -> GameState:
         brief="A hunter.",
         known=True,
         location_id=location.id,
-        rules=ACTOR_RULES,
     )
     hidden = ActorEntity(
         id=EntityId("hidden-actor"),
         name="The Secret",
         brief="Unrevealed canon.",
         location_id=location.id,
-        rules=ACTOR_RULES,
     )
     mara = ActorEntity(
         id=EntityId("mara"),
@@ -76,7 +81,6 @@ def state() -> GameState:
         brief="A known scribe.",
         known=True,
         location_id=location.id,
-        rules=ACTOR_RULES,
     )
     lantern = ItemEntity(
         id=EntityId("lantern"),
@@ -84,7 +88,6 @@ def state() -> GameState:
         brief="A dented light.",
         known=True,
         container_id=PLAYER_ID,
-        rules=ITEM_RULES,
     )
     ledger = ItemEntity(
         id=EntityId("ledger"),
@@ -92,11 +95,9 @@ def state() -> GameState:
         brief="Mara's notes.",
         known=True,
         container_id=mara.id,
-        rules=ITEM_RULES,
     )
     return GameState(
         save_version=SAVE_VERSION,
-        engine="story",
         scenario=ScenarioMeta(title="Test", premise="Test"),
         world=WorldState(
             entities={
@@ -108,15 +109,17 @@ def state() -> GameState:
                 ledger.id: ledger,
             }
         ),
-        rules=GAME_STATE_CODEC.encode(StoryGameState()),
+        engine=StoryState(
+            actors={player.id: ACTOR_RULES, hidden.id: ACTOR_RULES, mara.id: ACTOR_RULES},
+            items={lantern.id: ITEM_RULES, ledger.id: ITEM_RULES},
+        ),
     )
 
 
 def test_narrator_projection_has_visible_engine_state_but_no_hidden_canon_or_raw_rules() -> None:
     held = state()
-    presentation = StoryPresentation()
     director = build_director_scene(held)
-    narrator = build_narrator_scene(held, presentation.entity_state)
+    narrator = build_narrator_scene(held, _renderer(held))
 
     assert [entity.id for entity in director.unrevealed] == ["hidden-actor"]
     dumped = narrator.model_dump()
@@ -159,7 +162,7 @@ def test_director_projection_preserves_ids_inventory_placement_and_hidden_canon(
             scenario_premise=held.scenario.premise,
             prompt="I look around.",
         ),
-        StoryPresentation().entity_state,
+        _renderer(held),
     )
 
     assert "Kael[id=player]" in prompt
@@ -174,7 +177,7 @@ def test_director_projection_preserves_ids_inventory_placement_and_hidden_canon(
 
 def test_narrator_prompt_orders_plan_before_outcome_and_checks_the_speaker() -> None:
     held = state()
-    scene = build_narrator_scene(held, StoryPresentation().entity_state)
+    scene = build_narrator_scene(held, _renderer(held))
     context = NarratorContext(
         scene=scene,
         scenario_title=held.scenario.title,
@@ -209,7 +212,7 @@ def test_catalogue_includes_existing_detail_and_engine_state() -> None:
     )
     held = updated(held, world=held.world.replacing(detailed))
 
-    scene = build_catalogue_scene(held, StoryPresentation().entity_state)
+    scene = build_catalogue_scene(held, _renderer(held))
     shown = next(entity for entity in scene.catalogue if entity.id == "mara")
 
     assert shown.description == "She writes in a compact cipher."

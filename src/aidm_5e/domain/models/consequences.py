@@ -4,11 +4,12 @@ from typing import Annotated, ClassVar, Literal, get_args
 
 from pydantic import Field
 
+from aidm.domain.base import PLAYER_ID, EntityId
+
 from ...content.records.spells import MAX_SPELL_LEVEL, SpellLevel
 from ...content.vocabulary import CONDITION_NAMES, ConditionName, RestType
 from ...utils.dice import SelfContainedDice
 from ...utils.models import ABILITIES, Ability, Frozen, Kind
-from .base import PLAYER_ID, EntityId
 from .progression import FeatureKey, SpellKey
 
 

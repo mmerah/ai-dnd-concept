@@ -1,11 +1,37 @@
-from typing import Self
+from typing import Annotated, Literal, Self
 
-from pydantic import model_validator
+from pydantic import Field, model_validator
+
+from aidm_5e.models import Dnd5eActorDefinition, Dnd5eCharacterData, Dnd5eItemDefinition
+from aidm_story.models import StoryActorDefinition, StoryCharacterData, StoryItemDefinition
 
 from ..utils.models import Frozen
 from .base import PLAYER_ID, EngineId, EntityId
-from .engine import EngineData, require_engine
-from .entities import EntityDefinition, StartingItemDefinition
+
+type ActorEngineData = Annotated[
+    StoryActorDefinition | Dnd5eActorDefinition,
+    Field(discriminator="engine"),
+]
+type ItemEngineData = Annotated[
+    StoryItemDefinition | Dnd5eItemDefinition,
+    Field(discriminator="engine"),
+]
+type CharacterEngineData = Annotated[
+    StoryCharacterData | Dnd5eCharacterData,
+    Field(discriminator="engine"),
+]
+type EngineData = ActorEngineData | ItemEngineData | CharacterEngineData
+
+
+def for_engine[T: EngineData](data: EngineData, expected: type[T]) -> T:
+    """Tags are checked once at load, so a mismatch here means the wrong engine is resolving."""
+    if not isinstance(data, expected):
+        raise ValueError(f"authored data is {data.engine!r}, not {expected.__name__}")
+    return data
+
+
+def for_engine_or_none[T: EngineData](data: EngineData | None, expected: type[T]) -> T | None:
+    return None if data is None else for_engine(data, expected)
 
 
 class ScenarioMeta(Frozen):
@@ -13,18 +39,55 @@ class ScenarioMeta(Frozen):
     premise: str
 
 
+class EntityDefinitionBase(Frozen):
+    id: EntityId
+    name: str
+    brief: str
+    known: bool = False
+
+
+class ActorDefinition(EntityDefinitionBase):
+    kind: Literal["actor"] = "actor"
+    location_id: EntityId
+    engine_data: ActorEngineData | None = None
+
+
+class ItemDefinition(EntityDefinitionBase):
+    kind: Literal["item"] = "item"
+    container_id: EntityId
+    engine_data: ItemEngineData | None = None
+
+
+class LocationDefinition(EntityDefinitionBase):
+    kind: Literal["location"] = "location"
+
+
+type EntityDefinition = Annotated[
+    ActorDefinition | ItemDefinition | LocationDefinition,
+    Field(discriminator="kind"),
+]
+
+
+class StartingItemDefinition(Frozen):
+    name: str
+    brief: str
+    engine_data: ItemEngineData | None = None
+
+
 class CharacterDefinition(Frozen):
     name: str
     brief: str
-    engine: EngineId
-    engine_data: EngineData
+    engine_data: CharacterEngineData
     starting_items: tuple[StartingItemDefinition, ...] = ()
+
+    @property
+    def engine(self) -> EngineId:
+        return self.engine_data.engine
 
 
 class ScenarioDefinition(Frozen):
     meta: ScenarioMeta
     engine: EngineId
-    engine_data: EngineData | None = None
     starting_location_id: EntityId
     entities: tuple[EntityDefinition, ...] = ()
 
@@ -59,27 +122,20 @@ def validate_definition_engines(
     character: CharacterDefinition,
     engine: EngineId,
 ) -> None:
-    if scenario.engine != character.engine:
-        raise ValueError(
-            f"scenario engine is {scenario.engine!r}, character engine is {character.engine!r}"
-        )
-    if scenario.engine != engine:
-        raise ValueError(
-            f"definition engine is {scenario.engine!r}, installed engine is {engine!r}"
-        )
-    envelopes = [
-        ("character engine_data", character.engine_data),
-        *([] if scenario.engine_data is None else [("scenario engine_data", scenario.engine_data)]),
+    authored = [
+        ("scenario", scenario.engine),
+        ("character", character.engine),
         *[
-            (f"scenario entity {entity.id!r} engine_data", entity.engine_data)
+            (f"scenario entity {entity.id!r} engine_data", entity.engine_data.engine)
             for entity in scenario.entities
-            if entity.engine_data is not None
+            if entity.kind != "location" and entity.engine_data is not None
         ],
         *[
-            (f"starting item {item.name!r} engine_data", item.engine_data)
+            (f"starting item {item.name!r} engine_data", item.engine_data.engine)
             for item in character.starting_items
             if item.engine_data is not None
         ],
     ]
-    for purpose, envelope in envelopes:
-        require_engine(envelope, engine, purpose)
+    for purpose, declared in authored:
+        if declared != engine:
+            raise ValueError(f"{purpose} engine is {declared!r}, selected engine is {engine!r}")

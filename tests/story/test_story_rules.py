@@ -9,9 +9,9 @@ from aidm.domain.direction import DirectionRecord
 from aidm.domain.events import RuleEvent
 from aidm.domain.reducer import apply
 from aidm_story.actions import DropItem, TakeItem
-from aidm_story.codecs import ACTOR_STATE_CODEC
 from aidm_story.direction import HelpfulGear, Risk, StoryConsequence, StoryDirection
 from aidm_story.events import decode_story_event
+from aidm_story.state import story_state
 
 
 def test_story_trace_direction_serializes_frozen_mechanics() -> None:
@@ -57,8 +57,7 @@ def test_story_risk_is_seeded_pure_and_applies_through_core() -> None:
     assert all(private not in safe for private in ("1+1", "difficulty", "modifier"))
 
     after = apply(state, events, engine.rules)
-    assert after.player.rules is not None
-    player = ACTOR_STATE_CODEC.decode(after.player.rules)
+    player = story_state(after).actor(PLAYER_ID)
     assert (player.growth_marks, player.stress) == (1, 1)
     engine.rules.validate_state(after)
 
@@ -111,4 +110,4 @@ def test_story_mode_can_take_an_existing_item_and_keep_its_rule_state() -> None:
     map_item = after.world.require(EntityId("vault_map"))
     assert map_item.known
     assert map_item in after.world.carried_by(PLAYER_ID)
-    assert map_item.rules is not None
+    assert story_state(after).item(map_item.id) is not None

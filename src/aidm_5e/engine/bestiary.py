@@ -1,35 +1,46 @@
+from aidm.domain.base import EntityId, Kind
+
+from ..content.records.base import ContentRef
 from ..content.registry import COLLECTION_SPECS
-from ..domain.models.entities import ActorEntity, Entity
-from ..domain.models.state import GameState
 from ..domain.models.stats import StatBlock
-from ..utils.models import updated
+from ..models import (
+    Dnd5eActorDefinition,
+    Dnd5eActorState,
+    Dnd5eItemDefinition,
+    Dnd5eItemState,
+)
 from .ruleset import ArchetypeRules
 
 
-def statted(entity: Entity, ruleset: ArchetypeRules) -> Entity:
-    ref = entity.ref
+def statted_actor(
+    actor_id: EntityId, authored: Dnd5eActorDefinition | None, ruleset: ArchetypeRules
+) -> Dnd5eActorState:
+    stats = None if authored is None else authored.stats
+    ref = None if authored is None else authored.ref
     if ref is None:
-        return entity
-    if entity.kind != COLLECTION_SPECS[ref.collection].entity:
-        raise ValueError(f"a {entity.kind} may not name a {ref.collection} record: {entity.id!r}")
-    if not isinstance(entity, ActorEntity):
-        if not ruleset.provides(ref):
-            raise ValueError(f"{entity.id!r} names {ref}, which nothing provides")
-        return entity
-    if entity.stats != StatBlock():
-        raise ValueError(f"actor {entity.id!r} names a record and also declares its own stats")
+        return Dnd5eActorState(stats=StatBlock() if stats is None else stats)
+    _require_backing(actor_id, "actor", ref, ruleset)
+    if stats is not None:
+        raise ValueError(f"actor {actor_id!r} names a record and also declares its own stats")
     archetype = ruleset.archetype(ref)
     if archetype is None:
-        raise ValueError(f"{entity.id!r} names {ref}, which is no archetype")
-    return updated(entity, stats=archetype.stats)
+        raise ValueError(f"{actor_id!r} names {ref}, which is no archetype")
+    return Dnd5eActorState(stats=archetype.stats, ref=ref)
 
 
-def statted_world(state: GameState, ruleset: ArchetypeRules) -> GameState:
-    entities = list(state.world.entities.values())
-    unbacked = sorted(
-        f"{e.id}: {e.ref}" for e in entities if e.ref is not None and not ruleset.provides(e.ref)
-    )
-    if unbacked:
-        raise ValueError(f"the world references content nothing provides: {unbacked}")
-    filled = {e.id: statted(e, ruleset) for e in entities}
-    return updated(state, world=updated(state.world, entities=filled))
+def statted_item(
+    item_id: EntityId, authored: Dnd5eItemDefinition | None, ruleset: ArchetypeRules
+) -> Dnd5eItemState:
+    ref = None if authored is None else authored.ref
+    if ref is not None:
+        _require_backing(item_id, "item", ref, ruleset)
+    return Dnd5eItemState(ref=ref)
+
+
+def _require_backing(
+    entity_id: EntityId, kind: Kind, ref: ContentRef, ruleset: ArchetypeRules
+) -> None:
+    if kind != COLLECTION_SPECS[ref.collection].entity:
+        raise ValueError(f"a {kind} may not name a {ref.collection} record: {entity_id!r}")
+    if not ruleset.provides(ref):
+        raise ValueError(f"{entity_id!r} names {ref}, which nothing provides")

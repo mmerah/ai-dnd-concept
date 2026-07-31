@@ -202,13 +202,7 @@ def _speaker(scene: NarratorScene, speaker_id: EntityId | None) -> str:
 
 
 def _catalogue(entities: Sequence[CatalogueEntityView]) -> str:
-    return (
-        "\n".join(
-            _catalogue_entry(entity)
-            for entity in entities
-        )
-        or "- (none)"
-    )
+    return "\n".join(_catalogue_entry(entity) for entity in entities) or "- (none)"
 
 
 def _catalogue_entry(entity: CatalogueEntityView) -> str:

@@ -2,17 +2,19 @@ from random import Random
 
 from pydantic import BaseModel
 
-from aidm.domain.engine import AdvancementStatus
+from aidm.domain.advancement import AdvancementStatus
+from aidm.domain.base import PLAYER_ID
 from aidm.domain.events import Event
 from aidm.domain.state import GameState
 from aidm.utils.models import Frozen
 
-from .codecs import ACTOR_STATE_CODEC
-from .conversion import event_from_legacy, to_legacy_state
+from .constants import ENGINE_ID, SCHEMA_VERSION
 from .domain.models.progression import MAX_LEVEL, Decisions
 from .engine import features, progression
 from .engine.ruleset import Ruleset
-from .models import Dnd5eActorState
+from .events import encode_dnd5e_event
+from .models import Dnd5eActor
+from .state import actor_of
 
 
 class Dnd5eAdvancementDecisions(Frozen):
@@ -24,15 +26,12 @@ class Dnd5eAdvancement:
         self._ruleset = ruleset
 
     def available(self, state: GameState) -> bool:
-        actor = self._player(state)
-        if actor is None:
-            return False
-        current = actor.progression
+        current = self._player(state).progression
         return current is not None and current.level_up_available
 
     def status(self, state: GameState) -> AdvancementStatus:
         actor = self._player(state)
-        if actor is None or actor.progression is None:
+        if actor.progression is None:
             return AdvancementStatus(
                 headline="5e advancement unavailable",
                 detail=("This character has no class, so there is nothing to advance.",),
@@ -52,18 +51,11 @@ class Dnd5eAdvancement:
         )
 
     def preview(self, state: GameState) -> BaseModel:
-        player = to_legacy_state(state).player
-        if player.progression is None or not player.progression.level_up_available:
-            raise ValueError("no 5e level-up has been awarded")
-        return progression.preview(player, self._ruleset)
+        return progression.preview(self._ready(state), self._ruleset)
 
     def plan(self, state: GameState, decisions: BaseModel) -> BaseModel:
-        if not isinstance(decisions, Dnd5eAdvancementDecisions):
-            raise TypeError(f"5e advancement received {type(decisions).__name__}")
-        player = to_legacy_state(state).player
-        if player.progression is None or not player.progression.level_up_available:
-            raise ValueError("no 5e level-up has been awarded")
-        return progression.plan(player, decisions.decisions, self._ruleset)
+        chosen = _decisions(decisions)
+        return progression.plan(self._ready(state), chosen, self._ruleset)
 
     def advance(
         self,
@@ -71,20 +63,14 @@ class Dnd5eAdvancement:
         decisions: BaseModel,
         rng: Random,
     ) -> list[Event]:
-        if not isinstance(decisions, Dnd5eAdvancementDecisions):
-            raise TypeError(f"5e advancement received {type(decisions).__name__}")
-        player = to_legacy_state(state).player
-        if player.progression is None or not player.progression.level_up_available:
-            raise ValueError("no 5e level-up has been awarded")
-        events = progression.advance(
-            player,
-            decisions.decisions,
-            self._ruleset,
-            rng,
-        )
-        return [event_from_legacy(event) for event in events]
+        chosen = _decisions(decisions)
+        events = progression.advance(self._ready(state), chosen, self._ruleset, rng)
+        encoded: list[Event] = [
+            encode_dnd5e_event(event, ENGINE_ID, SCHEMA_VERSION) for event in events
+        ]
+        return encoded
 
-    def _features(self, actor: Dnd5eActorState) -> tuple[str, ...]:
+    def _features(self, actor: Dnd5eActor) -> tuple[str, ...]:
         current = actor.progression
         if current is None:
             return ()
@@ -110,6 +96,17 @@ class Dnd5eAdvancement:
         )
 
     @staticmethod
-    def _player(state: GameState) -> Dnd5eActorState | None:
-        rules = state.player.rules
-        return None if rules is None else ACTOR_STATE_CODEC.decode(rules)
+    def _player(state: GameState) -> Dnd5eActor:
+        return actor_of(state, PLAYER_ID)
+
+    def _ready(self, state: GameState) -> Dnd5eActor:
+        player = self._player(state)
+        if player.progression is None or not player.progression.level_up_available:
+            raise ValueError("no 5e level-up has been awarded")
+        return player
+
+
+def _decisions(decisions: BaseModel) -> Decisions:
+    if not isinstance(decisions, Dnd5eAdvancementDecisions):
+        raise TypeError(f"5e advancement received {type(decisions).__name__}")
+    return decisions.decisions

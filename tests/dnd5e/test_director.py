@@ -1,16 +1,13 @@
 import pytest
-from fivee_test_support import initial_5e_game
-from pydantic import ValidationError
+from fivee_test_support import initial_5e_game, player_of
 from pydantic_ai import ModelRetry, RunContext
 from pydantic_ai.models.test import TestModel
 from pydantic_ai.usage import RunUsage
 
 from aidm.agents.context import DirectorScene, build_director_scene
-from aidm.domain.engine import EngineData
+from aidm.domain.base import EntityId
 from aidm.domain.json import thaw_json
 from aidm.domain.state import GameState
-from aidm.utils.models import updated
-from aidm_5e.domain.models.base import EntityId
 from aidm_5e.domain.models.consequences import Damage, DropItem, RollCheck
 from aidm_5e.domain.models.direction import Dnd5eDirection
 
@@ -44,7 +41,7 @@ def test_unknown_and_absent_references_return_actionable_retries() -> None:
 
 def test_dry_run_checks_both_roll_branches() -> None:
     engine, state = initial_5e_game()
-    (lantern,) = state.world.carried_by(state.player.id)
+    (lantern,) = state.world.carried_by(player_of(state).id)
     direction = Dnd5eDirection(
         intent="Kael may discard the same lantern twice.",
         tone="uncertain",
@@ -62,22 +59,6 @@ def test_dry_run_checks_both_roll_branches() -> None:
 
     with pytest.raises(ModelRetry, match="not carrying"):
         engine.director.validate(_context(state), direction)
-
-
-def test_corrupt_rules_data_fails_fast_instead_of_becoming_a_retry() -> None:
-    engine, state = initial_5e_game()
-    scene = build_director_scene(state)
-    player = updated(
-        scene.player,
-        rules=EngineData(engine="dnd5e", schema_version=1, payload={}),
-    )
-    world = scene.canon.replacing(player)
-    corrupt = updated(scene, player=player, canon=world)
-    context = RunContext(deps=corrupt, model=TestModel(), usage=RunUsage())
-    direction = Dnd5eDirection(intent="Kael waits.", tone="quiet")
-
-    with pytest.raises(ValidationError):
-        engine.director.validate(context, direction)
 
 
 def test_direction_records_preserve_the_5e_envelope_and_mechanics() -> None:

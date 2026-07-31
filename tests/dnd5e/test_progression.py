@@ -3,18 +3,19 @@ from random import Random
 
 import pytest
 from fivee_progression_support import RULES, SHEET, answers, levelled, next_of, ref, started
-from fivee_test_support import new_game
+from fivee_test_support import new_game, player_of, with_actor
 
+from aidm.domain.base import EntityId
+from aidm.domain.state import GameState
+from aidm.utils.models import updated
 from aidm_5e.content.library import ContentMiss
 from aidm_5e.content.records.base import ContentRef
 from aidm_5e.content.records.character import BonusOption, ProgressionChoice
-from aidm_5e.domain.models.base import EntityId
 from aidm_5e.domain.models.consequences import (
     Cast,
     Consequence,
     Rest,
 )
-from aidm_5e.domain.models.entities import ActorEntity
 from aidm_5e.domain.models.events import LeveledUp
 from aidm_5e.domain.models.progression import (
     MAX_LEVEL,
@@ -22,12 +23,12 @@ from aidm_5e.domain.models.progression import (
     Origin,
     ResourceState,
 )
-from aidm_5e.domain.models.state import GameState
 from aidm_5e.domain.reducer import apply
 from aidm_5e.engine import progression, rules
 from aidm_5e.engine.resolve import resolve
 from aidm_5e.engine.ruleset import CharacterProfile, FeatureProfile, LevelProfile, ProgressionRules
-from aidm_5e.utils.models import updated
+from aidm_5e.models import Dnd5eActor
+from aidm_5e.state import actor_of
 
 
 def test_a_sheet_becomes_a_legal_level_one_character() -> None:
@@ -64,16 +65,17 @@ def test_a_level_up_is_the_diff_of_two_records_not_the_record() -> None:
     assert [c.id for c in progression.pending(SHEET.origin, 4, RULES)] == ["ability-scores-4"]
     assert progression.pending(SHEET.origin, 5, RULES) == []
     at_five = levelled(state, 5)
-    player = at_five.player
-    assert player.progression is not None
-    assert player.progression.level == 5 and player.progression.prof_bonus == 3
+    player = player_of(at_five)
+    reached = player.progression
+    assert reached is not None
+    assert reached.level == 5 and reached.prof_bonus == 3
     # Two picks of +1 on one score is the "+2 to one ability" wording — the one repeatable choice.
-    raised = player.stats.attributes.strength - state.player.stats.attributes.strength
+    raised = player.stats.attributes.strength - player_of(state).stats.attributes.strength
     assert raised == 2
 
 
 def test_a_level_preview_lists_every_level_two_gain_before_advancing() -> None:
-    preview = progression.preview(new_game("whispering_vault_5e").player, RULES)
+    preview = progression.preview(player_of(new_game("whispering_vault_5e")), RULES)
     benefits = preview.benefits
     assert benefits.level == 2
     assert benefits.hit_die == 10
@@ -86,11 +88,11 @@ def test_a_level_preview_lists_every_level_two_gain_before_advancing() -> None:
 def test_the_confirmed_plan_contains_the_selected_subclass_grants() -> None:
     state = levelled(new_game("whispering_vault_5e"), 2)
     decisions = next_of(state)
-    plan = progression.plan(state.player, decisions, RULES)
+    plan = progression.plan(player_of(state), decisions, RULES)
     assert [feature.ref.index for feature in plan.benefits.features] == ["improved-critical"]
     assert plan.selections[0].labels == ("Champion",)
 
-    events = progression.advance(state.player, decisions, RULES, Random(1))
+    events = progression.advance(player_of(state), decisions, RULES, Random(1))
     gained = events[-1]
     assert isinstance(gained, LeveledUp)
     assert gained.advancement.progression == plan.progression
@@ -130,8 +132,9 @@ def test_a_subclass_is_chosen_off_the_class_at_the_level_it_first_grants_somethi
     `ClassRecord.subclass` is the only thing that could drive the choice."""
     assert [c.id for c in progression.pending(SHEET.origin, 3, RULES)] == ["fighter-subclass"]
     at_three = levelled(new_game("whispering_vault_5e"), 3)
-    assert at_three.player.progression is not None
-    chosen = at_three.player.progression.origin
+    reached = player_of(at_three).progression
+    assert reached is not None
+    chosen = reached.origin
     assert chosen.subclass_ref == ref("subclasses", "champion")
     # Chosen once and never again, at the level that offered it or any later one.
     assert progression.pending(chosen, 3, RULES) == []
@@ -146,9 +149,9 @@ def test_an_ability_score_improvement_may_spend_both_picks_on_one_score() -> Non
 
 def test_an_improvement_past_twenty_is_refused_rather_than_clamped() -> None:
     at_three = levelled(new_game("whispering_vault_5e"), 3)
-    player = at_three.player
+    player = player_of(at_three)
     maxed = updated(player.stats, attributes=updated(player.stats.attributes, strength=20))
-    actor = updated(player, stats=maxed)
+    actor = Dnd5eActor(entity=player.entity, state=updated(player.state, stats=maxed))
     (choice,) = progression.preview(actor, RULES).choices
     assert "strength" not in {option.key for option in choice.options}
     with pytest.raises(ValueError, match="does not offer 'strength'"):
@@ -161,7 +164,7 @@ def test_an_improvement_past_twenty_is_refused_rather_than_clamped() -> None:
 
 
 def test_a_constitution_increase_adds_hp_for_every_existing_level() -> None:
-    player = levelled(new_game("whispering_vault_5e"), 3).player
+    player = player_of(levelled(new_game("whispering_vault_5e"), 3))
     decisions = {"ability-scores-4": ("constitution", "constitution")}
     plan = progression.plan(player, decisions, RULES)
     assert plan.benefits.retroactive_hp_gain == 3
@@ -180,14 +183,14 @@ def test_a_constitution_increase_adds_hp_for_every_existing_level() -> None:
 
 
 def test_a_level_choice_does_not_offer_a_feature_already_held() -> None:
-    player = levelled(new_game("whispering_vault_5e"), 9).player
+    player = player_of(levelled(new_game("whispering_vault_5e"), 9))
     (choice,) = progression.preview(player, RULES).choices
     assert choice.id == "additional-fighting-style-subfeature"
     assert "fighter-fighting-style-defense" not in {option.key for option in choice.options}
 
 
 def test_spell_slot_changes_show_pact_magic_moving_to_a_new_slot_level() -> None:
-    player = new_game("whispering_vault_5e").player
+    player = player_of(new_game("whispering_vault_5e"))
     current = player.progression
     assert current is not None
     warlock = updated(
@@ -200,7 +203,8 @@ def test_spell_slot_changes_show_pact_magic_moving_to_a_new_slot_level() -> None
         level=2,
         spell_slots={1: ResourceState(remaining=2, maximum=2, recharge="short")},
     )
-    changes = progression.preview(updated(player, progression=warlock), RULES).benefits
+    caster = Dnd5eActor(entity=player.entity, state=updated(player.state, progression=warlock))
+    changes = progression.preview(caster, RULES).benefits
     assert [
         (change.slot_level, change.before, change.after) for change in changes.spell_slot_changes
     ] == [(1, 2, 0), (2, 0, 2)]
@@ -210,13 +214,13 @@ def test_a_known_caster_picks_its_repertoire_at_level_up_and_a_prepared_one_does
     """`spells_known` is a cumulative total for a known caster and null for a prepared one, which is
     the only thing in the pack that tells the two kinds apart. A bard picks four spells at level 1
     and one more at level 2; a wizard picks cantrips only, because preparation is not modelled."""
-    bard = started("bard", new_game("whispering_vault_5e")).player.progression
+    bard = player_of(started("bard", new_game("whispering_vault_5e"))).progression
     assert bard is not None
     assert len(bard.chosen_spells) == 2 + 4  # two cantrips known, four spells known
-    at_two = levelled(started("bard", new_game("whispering_vault_5e")), 2).player.progression
+    at_two = player_of(levelled(started("bard", new_game("whispering_vault_5e")), 2)).progression
     assert at_two is not None and len(at_two.chosen_spells) == len(bard.chosen_spells) + 1
 
-    wizard = started("wizard", new_game("whispering_vault_5e")).player.progression
+    wizard = player_of(started("wizard", new_game("whispering_vault_5e"))).progression
     assert wizard is not None
     assert [c.id for c in progression.pending(wizard.origin, 1, RULES)] == [
         "wizard-proficiency-1",
@@ -232,7 +236,7 @@ def test_spell_slots_are_spent_recharged_by_the_right_rest_and_spent_again() -> 
     comprehend = Cast(spell="srd-2014/spells/comprehend-languages", slot_level=1)
 
     def remaining(state: GameState) -> dict[int, int]:
-        current = state.player.progression
+        current = player_of(state).progression
         assert current is not None
         return {level: slot.remaining for level, slot in current.spell_slots.items()}
 
@@ -271,9 +275,9 @@ def test_a_known_caster_reaches_level_twenty_with_the_srds_slots_and_repertoire(
     rest returns, which is why the recharge travels with the slots."""
     state = started(klass, new_game("whispering_vault_5e"))
     for level in range(2, MAX_LEVEL + 1):
-        spread = _spread(progression.preview(state.player, RULES).choices, level)
-        state = apply(state, progression.advance(state.player, spread, RULES, Random(1)))
-    current = state.player.progression
+        spread = _spread(progression.preview(player_of(state), RULES).choices, level)
+        state = apply(state, progression.advance(player_of(state), spread, RULES, Random(1)))
+    current = player_of(state).progression
     assert current is not None and current.level == MAX_LEVEL
     assert len(current.chosen_spells) == known
     assert {n: slot.maximum for n, slot in current.spell_slots.items()} == slots
@@ -321,19 +325,17 @@ def test_only_the_player_may_have_progression() -> None:
     """`LeveledUp` names no target because of this rule; an NPC carrying progression would make the
     event ambiguous."""
     state = new_game("whispering_vault_5e")
-    mara = state.world.entities[EntityId("mara")]
-    assert isinstance(mara, ActorEntity)
-    levelled_npc = updated(mara, progression=state.player.progression)
-    entities = {**state.world.entities, mara.id: levelled_npc}
+    mara = actor_of(state, EntityId("mara"))
+    levelled_npc = updated(mara.state, progression=player_of(state).progression)
     with pytest.raises(ValueError, match="only the player may have progression"):
-        updated(state, world=updated(state.world, entities=entities))
+        with_actor(state, mara.entity, levelled_npc)
 
 
 def test_levelling_rolls_the_hit_die_where_the_trace_can_see_it() -> None:
     state = new_game("whispering_vault_5e")
-    rolled, gained = progression.advance(state.player, {}, RULES, Random(1))
+    rolled, gained = progression.advance(player_of(state), {}, RULES, Random(1))
     assert isinstance(gained, LeveledUp)
     assert rolled.summary.startswith("rolled 1d10:")
-    after = apply(state, [rolled, gained]).player
-    assert after.stats.max_hp - state.player.stats.max_hp == gained.advancement.hp_gain
+    after = player_of(apply(state, [rolled, gained]))
+    assert after.stats.max_hp - player_of(state).stats.max_hp == gained.advancement.hp_gain
     assert after.stats.hp == after.stats.max_hp

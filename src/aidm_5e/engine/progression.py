@@ -11,10 +11,9 @@ from ..content.records.character import (
     ProgressionChoice,
     RecordOption,
 )
-from ..domain.models.entities import ActorEntity
-from ..domain.models.events import Event, LeveledUp, LevelUpAvailable
+from ..domain.models.events import Dnd5eEvent, Dnd5eRuleEvent, LeveledUp, LevelUpAvailable
 from ..domain.models.progression import MAX_LEVEL, Advancement, Decisions, Origin, Progression
-from ..domain.models.state import CharacterSheet
+from ..models import Dnd5eActor, Dnd5eCharacterData
 from ..utils.models import ABILITIES, Ability, Attributes, Frozen, Slug, updated
 from . import features as class_features
 from . import rules, spells
@@ -65,7 +64,7 @@ class AdvancementPlan(Frozen):
     attributes: Attributes
 
 
-def _advancing(actor: ActorEntity) -> tuple[Progression, int]:
+def _advancing(actor: Dnd5eActor) -> tuple[Progression, int]:
     current = actor.progression
     if current is None:
         raise ValueError(f"{actor.id!r} has no progression to advance")
@@ -74,7 +73,7 @@ def _advancing(actor: ActorEntity) -> tuple[Progression, int]:
     return current, current.level + 1
 
 
-def offer(actor: ActorEntity) -> list[Event]:
+def offer(actor: Dnd5eActor) -> list[Dnd5eEvent]:
     current, _ = _advancing(actor)
     return [] if current.level_up_available else [LevelUpAvailable()]
 
@@ -89,7 +88,7 @@ def pending(origin: Origin, level: int, ruleset: ProgressionRules) -> list[Progr
     return [*choices, *reached.choices]
 
 
-def preview(actor: ActorEntity, ruleset: ProgressionRules) -> LevelUpPreview:
+def preview(actor: Dnd5eActor, ruleset: ProgressionRules) -> LevelUpPreview:
     """Show the level before any choice is made, so no ability score has risen yet."""
     current, level = _advancing(actor)
     reached = ruleset.level(current.origin, level)
@@ -107,12 +106,12 @@ def preview(actor: ActorEntity, ruleset: ProgressionRules) -> LevelUpPreview:
     )
 
 
-def first_level(sheet: CharacterSheet, ruleset: ProgressionRules) -> Advancement:
+def first_level(character: Dnd5eCharacterData, ruleset: ProgressionRules) -> Advancement:
     """Use the full hit die at level 1 for deterministic starting HP."""
-    origin = sheet.origin
-    character = ruleset.character(origin)
-    picks = _taken(pending(origin, 1, ruleset), sheet.decisions)
-    attributes = _raised(sheet.starting_attributes, _bonuses(picks, character.ability_bonuses))
+    origin = character.origin
+    profile = ruleset.character(origin)
+    picks = _taken(pending(origin, 1, ruleset), character.decisions)
+    attributes = _raised(character.starting_attributes, _bonuses(picks, profile.ability_bonuses))
     origin = _with_subclass(origin, picks)
     reached = ruleset.level(origin, 1)
     features, feature_resources = class_features.acquire(
@@ -127,24 +126,24 @@ def first_level(sheet: CharacterSheet, ruleset: ProgressionRules) -> Advancement
         origin=origin,
         level=1,
         prof_bonus=reached.prof_bonus,
-        saving_throws=character.saving_throws,
-        proficiencies=_proficiencies(character.proficiencies, picks),
-        spell_slots=spells.slots({}, reached.spell_slots, character.spellcasting),
+        saving_throws=profile.saving_throws,
+        proficiencies=_proficiencies(profile.proficiencies, picks),
+        spell_slots=spells.slots({}, reached.spell_slots, profile.spellcasting),
         chosen_spells=tuple(_picked(picks, "spells")),
-        decisions=sheet.decisions,
+        decisions=character.decisions,
         features=features,
         feature_resources=feature_resources,
     )
     return Advancement(
         progression=progression,
         attributes=attributes,
-        hp_gain=_hp_gain(character.hit_die, attributes),
+        hp_gain=_hp_gain(profile.hit_die, attributes),
     )
 
 
 def advance(
-    actor: ActorEntity, decisions: Decisions, ruleset: ProgressionRules, rng: Random
-) -> list[Event]:
+    actor: Dnd5eActor, decisions: Decisions, ruleset: ProgressionRules, rng: Random
+) -> list[Dnd5eRuleEvent]:
     planned = plan(actor, decisions, ruleset)
     rolled, event = rules.roll_dice(f"1d{planned.benefits.hit_die}", rng)
     gained = Advancement(
@@ -155,7 +154,7 @@ def advance(
     return [event, LeveledUp(advancement=gained)]
 
 
-def plan(actor: ActorEntity, decisions: Decisions, ruleset: ProgressionRules) -> AdvancementPlan:
+def plan(actor: Dnd5eActor, decisions: Decisions, ruleset: ProgressionRules) -> AdvancementPlan:
     current, level = _advancing(actor)
     origin = current.origin
     choices = _available(current, actor.stats.attributes, pending(origin, level, ruleset))

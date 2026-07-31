@@ -14,7 +14,6 @@ from aidm.domain.state import GameState
 from aidm_story.actions import DropItem
 from aidm_story.direction import HelpfulGear, Risk, StoryDirection, TakeStress
 from aidm_story.director import StoryDirector
-from aidm_story.lifecycle import StoryLifecycle
 from aidm_story.models import StoryActorState
 from aidm_story.rules import StoryRules
 
@@ -89,7 +88,7 @@ def test_a_genuine_validation_error_is_not_turned_into_a_retry() -> None:
             StoryActorState.model_validate({})
             return []
 
-    broken_director = StoryDirector(_CorruptRules(StoryLifecycle()))
+    broken_director = StoryDirector(_CorruptRules())
     direction = StoryDirection(intent="Kael waits.", tone="quiet", mechanics=[])
 
     with pytest.raises(ValidationError):

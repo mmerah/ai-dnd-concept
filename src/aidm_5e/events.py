@@ -1,42 +1,14 @@
 from collections.abc import Mapping
-from typing import Annotated, TypeGuard
+from typing import TypeGuard
 
-from pydantic import Field, TypeAdapter
+from pydantic import TypeAdapter
 
 from aidm.domain.base import EngineId
 from aidm.domain.events import RuleEvent
 from aidm.domain.json import FrozenJson
 
-from .domain.models.events import (
-    AttackRolled,
-    ConditionChanged,
-    DcRolled,
-    DiceRolled,
-    FeatureActivated,
-    FeatureUsed,
-    HpChanged,
-    LeveledUp,
-    LevelUpAvailable,
-    Rested,
-    SpellCast,
-    SpellSlotSpent,
-)
+from .domain.models.events import Dnd5eRuleEvent
 
-type Dnd5eRuleEvent = Annotated[
-    DcRolled
-    | AttackRolled
-    | DiceRolled
-    | HpChanged
-    | ConditionChanged
-    | LevelUpAvailable
-    | FeatureUsed
-    | FeatureActivated
-    | SpellCast
-    | SpellSlotSpent
-    | Rested
-    | LeveledUp,
-    Field(discriminator="type"),
-]
 DND5E_EVENT_ADAPTER: TypeAdapter[Dnd5eRuleEvent] = TypeAdapter(Dnd5eRuleEvent)
 
 

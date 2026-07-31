@@ -1,10 +1,10 @@
 from ...domain.models.consequences import ApplyCondition
-from ...domain.models.events import ConditionChanged, Event
+from ...domain.models.events import ConditionChanged, Dnd5eEvent
 from . import common
 from .resolution import Resolution
 
 
-def change(ctx: Resolution, consequence: ApplyCondition) -> list[Event]:
+def change(ctx: Resolution, consequence: ApplyCondition) -> list[Dnd5eEvent]:
     """Suppress unchanged conditions while still revealing the target."""
     target = ctx.target(consequence.target_id)
     active = not consequence.ends

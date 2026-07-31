@@ -4,7 +4,7 @@ rely on is asserted here rather than left to the next author to remember."""
 
 from typing import get_args
 
-from aidm_5e.domain.models.base import EntityId
+from aidm.domain.base import EntityId
 from aidm_5e.domain.models.consequences import CONSEQUENCE_TYPES, References, RollCheck, branches
 
 

@@ -93,7 +93,7 @@ class Dnd5eDirector:
         return direction
 
     def _dry_run(self, direction: Dnd5eDirection, scene: DirectorScene) -> None:
-        state = state_from_scene(scene, ENGINE_ID)
+        state = state_from_scene(scene)
         for seed in _DRY_RUN_SEEDS:
             try:
                 _ = self._rules.resolve(direction, state, Random(seed))

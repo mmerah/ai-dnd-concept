@@ -1,24 +1,21 @@
 from collections.abc import Sequence
 from random import Random
 
+from fivee_test_support import content_ref as ref
+from fivee_test_support import player_of as player_of
 from fivee_test_support import ruleset, sheet
 
 import aidm_5e.engine.progression as progression
-from aidm_5e.content.records.base import ContentRef
+from aidm.domain.base import PLAYER_ID
+from aidm.domain.state import GameState
+from aidm.utils.models import updated
 from aidm_5e.content.records.character import ProgressionChoice
 from aidm_5e.domain.models.progression import Decisions, Origin
-from aidm_5e.domain.models.state import GameState
 from aidm_5e.domain.reducer import apply
-from aidm_5e.utils.models import updated
+from aidm_5e.state import dnd5e_state
 
 RULES = ruleset()
 SHEET = sheet()
-SECOND_WIND = "srd-2014/features/second-wind"
-ACTION_SURGE = "srd-2014/features/action-surge-1-use"
-
-
-def ref(collection: str, index: str) -> ContentRef:
-    return ContentRef.model_validate({"pack": "srd-2014", "collection": collection, "index": index})
 
 
 def answers(choices: Sequence[ProgressionChoice]) -> Decisions:
@@ -31,16 +28,16 @@ def answers(choices: Sequence[ProgressionChoice]) -> Decisions:
 
 
 def next_of(state: GameState) -> Decisions:
-    return answers(progression.preview(state.player, RULES).choices)
+    return answers(progression.preview(player_of(state), RULES).choices)
 
 
 def levelled(state: GameState, to: int) -> GameState:
-    current = state.player.progression
+    current = player_of(state).progression
     assert current is not None
     for _ in range(current.level + 1, to + 1):
         state = apply(
             state,
-            progression.advance(state.player, next_of(state), RULES, Random(1)),
+            progression.advance(player_of(state), next_of(state), RULES, Random(1)),
         )
     return state
 
@@ -50,9 +47,11 @@ def started(klass: str, state: GameState) -> GameState:
     prepared = updated(SHEET, origin=origin, decisions={})
     decisions = answers(progression.pending(origin, 1, RULES))
     start = progression.first_level(updated(prepared, decisions=decisions), RULES)
+    engine = dnd5e_state(state)
+    held = engine.actor(PLAYER_ID)
     player = updated(
-        state.player,
+        held,
         progression=start.progression,
-        stats=updated(state.player.stats, attributes=start.attributes),
+        stats=updated(held.stats, attributes=start.attributes),
     )
-    return updated(state, world=state.world.replacing(player))
+    return updated(state, engine=engine.with_actor(PLAYER_ID, player))

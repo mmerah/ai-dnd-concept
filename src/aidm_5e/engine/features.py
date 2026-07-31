@@ -19,7 +19,7 @@ from ..content.records.character import (
 from ..content.vocabulary import RestType
 from ..domain.models.consequences import UseFeature
 from ..domain.models.events import (
-    Event,
+    Dnd5eEvent,
     FeatureActivated,
     FeatureUsed,
     PoolRefilled,
@@ -161,7 +161,7 @@ def acquire(
     return tuple(features), states
 
 
-def use(ctx: Resolution, consequence: UseFeature) -> list[Event]:
+def use(ctx: Resolution, consequence: UseFeature) -> list[Dnd5eEvent]:
     progression = ctx.progression
     status = _named(
         owned(progression, ctx.player.stats.attributes, ctx.ruleset), consequence.feature
@@ -263,7 +263,7 @@ def _spent(before: ResourceState | None, inherited: int) -> int:
     return inherited if before is None else before.spent
 
 
-def _spend(status: OwnedFeature, amount: int) -> list[Event]:
+def _spend(status: OwnedFeature, amount: int) -> list[Dnd5eEvent]:
     pool = status.pool
     if pool is None:
         if amount != 1:

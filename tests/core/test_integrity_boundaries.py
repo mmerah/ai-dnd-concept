@@ -4,27 +4,11 @@ from pydantic import ValidationError
 
 from aidm.domain.base import EntityId
 from aidm.domain.definitions import ScenarioDefinition
-from aidm.domain.engine import EngineData
 from aidm.domain.events import RuleEvent
 from aidm.domain.reducer import apply_one
-from aidm.domain.state import GameState, WorldState
+from aidm.domain.state import WorldState
 from aidm.utils.models import updated
-from aidm_story.codecs import ACTOR_STATE_CODEC
-
-
-def _foreign_data() -> EngineData:
-    return EngineData.model_validate({"engine": "dnd5e", "schema_version": 1, "payload": {}})
-
-
-def test_engine_codec_rejects_the_wrong_engine_and_schema() -> None:
-    """The codecs are the only remaining check on an engine payload's schema_version."""
-    _, state = initialized()
-    assert state.player.rules is not None
-
-    with pytest.raises(ValueError, match="codec expects 'story'"):
-        ACTOR_STATE_CODEC.decode(_foreign_data())
-    with pytest.raises(ValueError, match="codec expects 1"):
-        ACTOR_STATE_CODEC.decode(updated(state.player.rules, schema_version=2))
+from aidm_story.constants import ENGINE_ID, SCHEMA_VERSION
 
 
 def test_reducer_rejects_a_rule_event_from_another_engine() -> None:
@@ -33,6 +17,20 @@ def test_reducer_rejects_a_rule_event_from_another_engine() -> None:
 
     with pytest.raises(ValueError, match="rule event engine"):
         apply_one(state, event, engine.rules)
+
+
+def test_a_rule_event_from_another_payload_schema_is_refused() -> None:
+    """The decoder is the only guard left on `schema_version`; a stale payload must not decode."""
+    engine, state = initialized()
+    event = RuleEvent(
+        engine=ENGINE_ID,
+        schema_version=SCHEMA_VERSION + 1,
+        name="taken-out",
+        payload={"actor_id": "player", "actor_name": "Kael"},
+    )
+
+    with pytest.raises(ValueError, match="event schema"):
+        engine.rules.apply(state, event)
 
 
 def test_world_and_game_state_reject_inconsistent_topology() -> None:
@@ -57,9 +55,3 @@ def test_scenario_topology_is_validated_and_round_trips() -> None:
 
     restored = ScenarioDefinition.model_validate_json(scenario().model_dump_json())
     assert restored == scenario()
-
-
-def test_game_state_rejects_a_rules_envelope_from_another_engine() -> None:
-    _, state = initialized()
-    with pytest.raises(ValidationError, match="game rules engine"):
-        GameState.model_validate(state.model_dump(round_trip=True) | {"rules": _foreign_data()})

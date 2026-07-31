@@ -1,4 +1,7 @@
+- [] Codex: Comment simplification round
 - [] Multiple rounds of refactors: no change in behavior, improvements in consistency in the codebase, removing useless ceremony, SOLID/DRY/KISS, type safety, fail fast.
+- [] Refactor on codebase structure and organistation: Models in models/ or models.py instead of top of class or whatever. Delete unused or used-once stuff. Functional programming. Models are separated from the domain correctly. Structure is consistent. Better SOLID to better reason? Or would that be too much indirection?
+- [] Adding a new engine (e.g. ironsworn) should be as easy as possible
 - [] How to reduce lines of code? Maybe bake more 5e stuff into the srd-2014/*.json and thus the codebase can be more lean?
 - [] New content pack: SRD-2014 extension. New backgrounds, new feats, anything else?
 - [] NPC can join/leave player party. NPC can also level-up.

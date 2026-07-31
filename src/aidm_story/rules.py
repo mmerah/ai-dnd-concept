@@ -2,8 +2,8 @@ from collections.abc import Sequence
 from random import Random
 
 from aidm.domain.base import PLAYER_ID, EntityId
-from aidm.domain.entities import ActorEntity, ItemEntity
-from aidm.domain.events import Event, RuleEvent, RuleStatePatch
+from aidm.domain.entities import ActorEntity, Entity, ItemEntity
+from aidm.domain.events import Event, RuleEvent
 from aidm.domain.reducer import apply
 from aidm.domain.state import GameState
 from aidm.utils.models import updated
@@ -14,7 +14,6 @@ from .actions import (
     is_core_action,
     resolve_core_action,
 )
-from .codecs import ACTOR_STATE_CODEC, GAME_STATE_CODEC, ITEM_STATE_CODEC
 from .constants import ENGINE_ID, SCHEMA_VERSION
 from .direction import (
     ApplyCondition,
@@ -33,6 +32,7 @@ from .events import (
     ApproachRaised,
     ConditionApplied,
     ConditionCleared,
+    GearAcquired,
     GrowthMarked,
     GrowthReset,
     MaximumStressIncreased,
@@ -47,8 +47,8 @@ from .events import (
     decode_story_event,
     encode_story_event,
 )
-from .lifecycle import StoryLifecycle
-from .models import StoryActorState, StoryItemState
+from .models import StoryActorState, StoryItemState, StoryState
+from .state import created_state, story_state
 
 
 class StoryProposalRejected(ValueError):
@@ -67,9 +67,6 @@ type _PlayerRuleEvent = (
 
 
 class StoryRules:
-    def __init__(self, lifecycle: StoryLifecycle) -> None:
-        self._lifecycle = lifecycle
-
     def resolve(
         self,
         direction: StoryDirection,
@@ -102,11 +99,7 @@ class StoryRules:
             if not is_core_action(consequence):
                 raise TypeError(f"unsupported core action {type(consequence).__name__}")
             try:
-                return resolve_core_action(
-                    consequence,
-                    state,
-                    self._lifecycle.rules_for_created_entity,
-                )
+                return resolve_core_action(consequence, state)
             except CoreActionRejected as error:
                 raise StoryProposalRejected(str(error)) from error
         match consequence:
@@ -197,8 +190,7 @@ class StoryRules:
                     raise StoryProposalRejected(
                         f"gear item {item_id!r} is not carried by {actor_id!r}"
                     )
-                item_state = self._item(item)
-                if item_state.gear is None:
+                if story_state(state).item(item_id).gear is None:
                     raise StoryProposalRejected(f"item {item_id!r} has no Story gear benefit")
                 return 1
 
@@ -307,21 +299,27 @@ class StoryRules:
             )
         ]
 
-    def apply(self, state: GameState, event: RuleEvent) -> RuleStatePatch:
+    @staticmethod
+    def created(state: GameState, entity: Entity) -> StoryState:
+        return created_state(state, entity)
+
+    def apply(self, state: GameState, event: RuleEvent) -> StoryState:
         typed = decode_story_event(event, ENGINE_ID, SCHEMA_VERSION)
         match typed:
             case RiskRolled() | TakenOut() | Revived():
-                return RuleStatePatch()
+                return story_state(state)
+            case GearAcquired(item_id=item_id, gear=gear):
+                state.world.require_kind(item_id, ItemEntity)
+                return story_state(state).with_item(item_id, StoryItemState(gear=gear))
             case StressChanged():
                 actor, held = self._actor(state, typed.actor_id)
                 if (held.stress, held.max_stress) != (typed.before, typed.maximum):
                     raise ValueError("stress event does not match current actor state")
-                changed = updated(held, stress=typed.after)
-                return self._actor_patch(actor.id, changed)
+                return self._with_actor(state, actor.id, updated(held, stress=typed.after))
             case ConditionApplied():
                 actor, held = self._actor(state, typed.actor_id)
                 changed = updated(held, conditions=(*held.conditions, typed.condition))
-                return self._actor_patch(actor.id, changed)
+                return self._with_actor(state, actor.id, changed)
             case ConditionCleared():
                 actor, held = self._actor(state, typed.actor_id)
                 if typed.condition not in held.conditions:
@@ -334,49 +332,40 @@ class StoryRules:
                         if condition.id != typed.condition.id
                     ),
                 )
-                return self._actor_patch(actor.id, changed)
+                return self._with_actor(state, actor.id, changed)
             case _:
-                return self._apply_player_event(state.player, typed)
+                return self._apply_player_event(state, typed)
 
-    def _apply_player_event(
-        self,
-        player: ActorEntity,
-        typed: _PlayerRuleEvent,
-    ) -> RuleStatePatch:
-        player_state = self._actor_state(player)
+    def _apply_player_event(self, state: GameState, typed: _PlayerRuleEvent) -> StoryState:
+        player_state = story_state(state).actor(PLAYER_ID)
         match typed:
             case GrowthMarked():
                 if player_state.growth_marks != typed.before or typed.after != typed.before + 1:
                     raise ValueError("growth event does not match current player growth")
-                return self._actor_patch(
-                    PLAYER_ID,
-                    updated(player_state, growth_marks=typed.after),
+                return self._with_actor(
+                    state, PLAYER_ID, updated(player_state, growth_marks=typed.after)
                 )
             case GrowthReset():
                 if player_state.growth_marks != 3:
                     raise ValueError("growth can reset only from three")
-                return self._actor_patch(
-                    PLAYER_ID,
-                    updated(player_state, growth_marks=0),
-                )
+                return self._with_actor(state, PLAYER_ID, updated(player_state, growth_marks=0))
             case ApproachRaised():
                 before = player_state.approaches.score(typed.approach)
                 if before != typed.before or typed.after != before + 1:
                     raise ValueError("approach event does not match current approach")
                 approaches = updated(player_state.approaches, **{typed.approach: typed.after})
-                return self._actor_patch(
-                    PLAYER_ID,
-                    updated(player_state, approaches=approaches),
+                return self._with_actor(
+                    state, PLAYER_ID, updated(player_state, approaches=approaches)
                 )
             case TagAdded():
-                return self._actor_patch(
-                    PLAYER_ID,
-                    updated(player_state, tags=(*player_state.tags, typed.tag)),
+                return self._with_actor(
+                    state, PLAYER_ID, updated(player_state, tags=(*player_state.tags, typed.tag))
                 )
             case TagRemoved():
                 if typed.tag not in player_state.tags:
                     raise ValueError("removed Story tag is not active")
-                return self._actor_patch(
+                return self._with_actor(
+                    state,
                     PLAYER_ID,
                     updated(
                         player_state,
@@ -386,7 +375,8 @@ class StoryRules:
             case TagRewritten():
                 if typed.before not in player_state.tags:
                     raise ValueError("rewritten Story tag is not active")
-                return self._actor_patch(
+                return self._with_actor(
+                    state,
                     PLAYER_ID,
                     updated(
                         player_state,
@@ -399,26 +389,16 @@ class StoryRules:
             case MaximumStressIncreased():
                 if player_state.max_stress != typed.before or typed.after != typed.before + 1:
                     raise ValueError("maximum stress event does not match current maximum")
-                return self._actor_patch(
-                    PLAYER_ID,
-                    updated(player_state, max_stress=typed.after),
+                return self._with_actor(
+                    state, PLAYER_ID, updated(player_state, max_stress=typed.after)
                 )
 
     def validate_state(self, state: GameState) -> None:
-        if state.engine != ENGINE_ID:
-            raise ValueError(f"Story rules received a {state.engine!r} state")
-        GAME_STATE_CODEC.decode(state.rules)
-        for entity in state.world.entities.values():
-            if isinstance(entity, ActorEntity):
-                self._actor_state(entity)
-            elif isinstance(entity, ItemEntity):
-                self._item(entity)
-            elif entity.rules is not None:
-                raise ValueError(f"Story location {entity.id!r} must not have rules data")
+        story_state(state)
 
     @staticmethod
-    def _actor_patch(actor_id: EntityId, state: StoryActorState) -> RuleStatePatch:
-        return RuleStatePatch(entity_rules={actor_id: ACTOR_STATE_CODEC.encode(state)})
+    def _with_actor(state: GameState, actor_id: EntityId, actor: StoryActorState) -> StoryState:
+        return story_state(state).with_actor(actor_id, actor)
 
     def _actor_for_action(
         self,
@@ -433,16 +413,4 @@ class StoryRules:
         actor_id: EntityId,
     ) -> tuple[ActorEntity, StoryActorState]:
         actor = state.world.require_kind(actor_id, ActorEntity)
-        return actor, self._actor_state(actor)
-
-    @staticmethod
-    def _actor_state(actor: ActorEntity) -> StoryActorState:
-        if actor.rules is None:
-            raise ValueError(f"Story actor {actor.id!r} has no rules data")
-        return ACTOR_STATE_CODEC.decode(actor.rules)
-
-    @staticmethod
-    def _item(item: ItemEntity) -> StoryItemState:
-        if item.rules is None:
-            raise ValueError(f"Story item {item.id!r} has no rules data")
-        return ITEM_STATE_CODEC.decode(item.rules)
+        return actor, story_state(state).actor(actor_id)

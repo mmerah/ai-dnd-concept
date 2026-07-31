@@ -1,7 +1,7 @@
 from random import Random
 
-from ..domain.models.entities import ActorEntity
 from ..domain.models.events import AttackRolled, DcRolled, DiceRolled, RollKind
+from ..models import Dnd5eActor
 from ..utils import dice
 from ..utils.models import Ability, Attributes
 
@@ -12,7 +12,7 @@ def modifier(attributes: Attributes, ability: Ability) -> int:
     return (attributes[ability] - 10) // 2
 
 
-def save_bonus(actor: ActorEntity, ability: Ability) -> int:
+def save_bonus(actor: Dnd5eActor, ability: Ability) -> int:
     absolute = actor.stats.saving_throws.get(ability)
     if absolute is not None:
         return absolute
@@ -23,16 +23,16 @@ def save_bonus(actor: ActorEntity, ability: Ability) -> int:
     return base
 
 
-def roll_check(actor: ActorEntity, ability: Ability, dc: int, rng: Random) -> DcRolled:
+def roll_check(actor: Dnd5eActor, ability: Ability, dc: int, rng: Random) -> DcRolled:
     return _rolled(actor, ability, dc, modifier(actor.stats.attributes, ability), "check", rng)
 
 
-def roll_save(actor: ActorEntity, ability: Ability, dc: int, rng: Random) -> DcRolled:
+def roll_save(actor: Dnd5eActor, ability: Ability, dc: int, rng: Random) -> DcRolled:
     return _rolled(actor, ability, dc, save_bonus(actor, ability), "save", rng)
 
 
 def roll_attack(
-    actor: ActorEntity, target: ActorEntity, weapon: str, bonus: int, rng: Random
+    actor: Dnd5eActor, target: Dnd5eActor, weapon: str, bonus: int, rng: Random
 ) -> AttackRolled:
     roll = rng.randint(1, DIE)
     total = roll + bonus
@@ -53,7 +53,7 @@ def roll_dice(expression: dice.SelfContainedDice, rng: Random) -> tuple[int, Dic
 
 
 def _rolled(
-    actor: ActorEntity, ability: Ability, dc: int, bonus: int, kind: RollKind, rng: Random
+    actor: Dnd5eActor, ability: Ability, dc: int, bonus: int, kind: RollKind, rng: Random
 ) -> DcRolled:
     roll = rng.randint(1, DIE)
     total = roll + bonus

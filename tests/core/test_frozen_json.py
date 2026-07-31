@@ -2,12 +2,18 @@ from types import MappingProxyType
 
 import pytest
 
-from aidm.domain.engine import EngineData
+from aidm.domain.events import RuleEvent
 from aidm.utils.models import EMPTY_FROZEN_MAP, Frozen, FrozenMap, updated
 
 
 class _Defaulted(Frozen):
     entries: FrozenMap[str, int] = EMPTY_FROZEN_MAP
+
+
+def _event(payload: object) -> RuleEvent:
+    return RuleEvent.model_validate(
+        {"engine": "story", "schema_version": 1, "name": "probe", "payload": payload}
+    )
 
 
 def test_a_defaulted_frozen_map_is_immutable() -> None:
@@ -16,9 +22,7 @@ def test_a_defaulted_frozen_map_is_immutable() -> None:
 
 
 def test_updated_validates_so_a_copied_payload_stays_frozen() -> None:
-    data = EngineData.model_validate(
-        {"engine": "story", "schema_version": 1, "payload": {"a": [1]}}
-    )
+    data = _event({"a": [1]})
 
     copied = updated(data, payload={"b": [2]})
 
@@ -28,13 +32,7 @@ def test_updated_validates_so_a_copied_payload_stays_frozen() -> None:
 
 
 def test_engine_payload_is_recursively_immutable_and_json_round_trips() -> None:
-    data = EngineData.model_validate(
-        {
-            "engine": "story",
-            "schema_version": 1,
-            "payload": {"nested": [{"count": 2, "active": True}]},
-        }
-    )
+    data = _event({"nested": [{"count": 2, "active": True}]})
 
     assert isinstance(data.payload, MappingProxyType)
     nested = data.payload["nested"]
@@ -45,8 +43,8 @@ def test_engine_payload_is_recursively_immutable_and_json_round_trips() -> None:
     with pytest.raises(TypeError):
         item["count"] = 3  # pyright: ignore[reportIndexIssue]
 
-    assert (
-        data.model_dump_json() == '{"engine":"story","schema_version":1,'
+    assert data.model_dump_json() == (
+        '{"type":"rule_event","engine":"story","schema_version":1,"name":"probe",'
         '"payload":{"nested":[{"count":2,"active":true}]}}'
     )
 
@@ -54,4 +52,4 @@ def test_engine_payload_is_recursively_immutable_and_json_round_trips() -> None:
 @pytest.mark.parametrize("payload", [{1: "bad"}, {1, 2}, float("inf")])
 def test_engine_payload_rejects_non_json_values(payload: object) -> None:
     with pytest.raises(ValueError):
-        EngineData.model_validate({"engine": "story", "schema_version": 1, "payload": payload})
+        _event(payload)

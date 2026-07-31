@@ -5,9 +5,9 @@ from ..content.records.base import ContentRef
 from ..content.records.spells import SpellDamage, SpellRecord, SpellSave
 from ..content.vocabulary import RestType
 from ..domain.models.consequences import Cast
-from ..domain.models.entities import ActorEntity
-from ..domain.models.events import Event, SlotsRefilled, SpellCast, SpellSlotSpent
+from ..domain.models.events import Dnd5eEvent, SlotsRefilled, SpellCast, SpellSlotSpent
 from ..domain.models.progression import Progression, ResourceState, spell_ref
+from ..models import Dnd5eActor
 from ..utils import dice
 from . import rules
 from .mechanics import common, health
@@ -67,7 +67,7 @@ def repertoire(
     )
 
 
-def cast(ctx: Resolution, consequence: Cast) -> list[Event]:
+def cast(ctx: Resolution, consequence: Cast) -> list[Dnd5eEvent]:
     progression = ctx.progression
     casting = spellcasting(progression, ctx.ruleset)
     ref = spell_ref(consequence.spell)
@@ -88,7 +88,7 @@ def _castable(ctx: Resolution, ref: ContentRef, casting: SpellcastingProfile) ->
     return found
 
 
-def _spend(progression: Progression, record: SpellRecord, slot_level: int) -> list[Event]:
+def _spend(progression: Progression, record: SpellRecord, slot_level: int) -> list[Dnd5eEvent]:
     if record.level == 0:
         if slot_level != 0:
             raise ValueError(f"cantrip {record.index!r} spends no spell slot")
@@ -111,7 +111,7 @@ def _spend(progression: Progression, record: SpellRecord, slot_level: int) -> li
 
 def _effects(
     ctx: Resolution, consequence: Cast, record: SpellRecord, casting: SpellcastingProfile
-) -> list[Event]:
+) -> list[Dnd5eEvent]:
     """Resolve only what the record types; anything else the spell does stays description-guided."""
     progression = ctx.progression
     modifier = rules.modifier(ctx.player.stats.attributes, casting.ability)
@@ -150,7 +150,7 @@ def _scaled(table: Mapping[int, dice.DiceExpr], reached: int) -> dice.DiceExpr |
     return steps[-1] if steps else None
 
 
-def _aimed(ctx: Resolution, consequence: Cast, record: SpellRecord) -> ActorEntity:
+def _aimed(ctx: Resolution, consequence: Cast, record: SpellRecord) -> Dnd5eActor:
     """A roll needs someone other than the caster on the far side of it."""
     target = ctx.target(consequence.target_id)
     if target.id == ctx.player.id:
@@ -160,13 +160,13 @@ def _aimed(ctx: Resolution, consequence: Cast, record: SpellRecord) -> ActorEnti
 
 def _attacked(
     ctx: Resolution,
-    target: ActorEntity,
+    target: Dnd5eActor,
     name: str,
     bonus: int,
     amount: dice.SelfContainedDice | None,
-) -> list[Event]:
+) -> list[Dnd5eEvent]:
     rolled = rules.roll_attack(ctx.player, target, name, bonus, ctx.rng)
-    seen: list[Event] = [*common.reveal(target), rolled]
+    seen: list[Dnd5eEvent] = [*common.reveal(target), rolled]
     if not rolled.hit or amount is None:
         return seen
     return [*seen, *health.hp_events(ctx.then(seen), target.id, amount, sign=-1)]
@@ -174,13 +174,13 @@ def _attacked(
 
 def _saved(
     ctx: Resolution,
-    target: ActorEntity,
+    target: Dnd5eActor,
     save: SpellSave,
     dc: int,
     amount: dice.SelfContainedDice | None,
-) -> list[Event]:
+) -> list[Dnd5eEvent]:
     rolled = rules.roll_save(target, save.ability, dc, ctx.rng)
-    seen: list[Event] = [*common.reveal(target), rolled]
+    seen: list[Dnd5eEvent] = [*common.reveal(target), rolled]
     if amount is None:
         return seen
     if not rolled.success:

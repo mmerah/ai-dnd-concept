@@ -12,6 +12,8 @@ from aidm.agents.stages import director_stage, shared_stages
 from aidm.domain.base import PLAYER_ID
 from aidm.domain.entities import ActorEntity, ItemEntity, LocationEntity
 from aidm.pipeline import TurnOptions, run_turn
+from aidm_story.models import DEFAULT_APPROACHES
+from aidm_story.state import story_state
 
 type Stub = Callable[[list[ModelMessage], AgentInfo], ModelResponse]
 
@@ -151,9 +153,10 @@ async def test_creator_growth_receives_valid_engine_rules_before_commit() -> Non
     item = next(entity for entity in turn.created if isinstance(entity, ItemEntity))
     assert actor.location_id == location.id
     assert item.container_id == location.id
-    assert actor.rules is not None
-    assert item.rules is not None
-    assert location.rules is None
+    engine_state = story_state(turn.state)
+    assert engine_state.actor(actor.id).approaches == DEFAULT_APPROACHES
+    assert engine_state.item(item.id).gear is None
+    assert location.id not in engine_state.actors
     assert turn.narrator_evidence == "- (nothing mechanical happened)"
     assert "new actor" not in turn.prompts["narrator"]
     engine.rules.validate_state(turn.state)

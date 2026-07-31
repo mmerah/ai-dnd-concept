@@ -1,16 +1,15 @@
 from collections.abc import Callable
 
 from ..domain.base import PLAYER_ID, EntityId, Kind
-from ..domain.engine import EngineData
 from ..domain.entities import ActorEntity, Entity, ItemEntity, LocationEntity
-from ..domain.state import Exchange, GameState, WorldState
+from ..domain.state import EngineState, Exchange, GameState, WorldState
 from ..utils.models import Frozen
 
 type EntityRenderer = Callable[[Entity], str]
 
 
 class DirectorScene(Frozen):
-    game_rules: EngineData
+    engine: EngineState
     player: ActorEntity
     where: LocationEntity
     carried: tuple[ItemEntity, ...]
@@ -106,7 +105,7 @@ def build_director_scene(state: GameState) -> DirectorScene:
     placed = [entity for entity in shown if entity.id not in carried_ids and entity.id != where.id]
     locations = {entity.id: world.location_of(entity) for entity in placed}
     return DirectorScene(
-        game_rules=state.rules,
+        engine=state.engine,
         player=player,
         where=where,
         carried=carried,

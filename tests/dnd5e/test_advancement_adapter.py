@@ -1,12 +1,11 @@
 from random import Random
 
 from fivee_progression_support import answers
-from fivee_test_support import initial_5e_game, ruleset
+from fivee_test_support import initial_5e_game, player_of, ruleset, with_actor
 
 from aidm.domain.reducer import apply
 from aidm.utils.models import updated
 from aidm_5e.advancement import Dnd5eAdvancement, Dnd5eAdvancementDecisions
-from aidm_5e.codecs import ACTOR_STATE_CODEC
 from aidm_5e.domain.models.consequences import LevelUp
 from aidm_5e.domain.models.direction import Dnd5eDirection
 from aidm_5e.engine.progression import AdvancementPlan, LevelUpPreview
@@ -51,7 +50,6 @@ def test_5e_advancement_status_and_full_adapter_flow() -> None:
     events = advancement.advance(offered, decisions, Random(1))
     advanced = apply(offered, events, engine.rules)
 
-    assert advanced.player.rules is not None
     assert advancement.status(advanced).headline == "level 2"
     assert not advancement.available(advanced)
 
@@ -59,31 +57,17 @@ def test_5e_advancement_status_and_full_adapter_flow() -> None:
 def test_5e_advancement_status_covers_classless_and_max_level_characters() -> None:
     advancement = Dnd5eAdvancement(ruleset())
     _, state = initial_5e_game()
-    assert state.player.rules is not None
-    actor = ACTOR_STATE_CODEC.decode(state.player.rules)
-    classless_rules = ACTOR_STATE_CODEC.encode(Dnd5eActorState(stats=actor.stats))
-    classless = updated(
-        state,
-        world=state.world.replacing(updated(state.player, rules=classless_rules)),
-    )
+    player = player_of(state)
+    classless = with_actor(state, player.entity, Dnd5eActorState(stats=player.stats))
 
     assert "no class" in advancement.status(classless).detail[0]
 
-    assert actor.progression is not None
-    maximum_rules = ACTOR_STATE_CODEC.encode(
-        updated(
-            actor,
-            progression=updated(
-                actor.progression,
-                level=20,
-                level_up_available=False,
-            ),
-        )
+    assert player.progression is not None
+    at_twenty = updated(
+        player.state,
+        progression=updated(player.progression, level=20, level_up_available=False),
     )
-    maximum = updated(
-        state,
-        world=state.world.replacing(updated(state.player, rules=maximum_rules)),
-    )
+    maximum = with_actor(state, player.entity, at_twenty)
 
     status = advancement.status(maximum)
     assert status.headline == "level 20"

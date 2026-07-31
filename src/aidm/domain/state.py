@@ -1,13 +1,24 @@
-from collections.abc import Mapping
-from typing import Self
+from collections.abc import Iterable
+from typing import Annotated, Self
 
 from pydantic import Field, model_validator
 
+from aidm_5e.models import Dnd5eState
+from aidm_story.models import StoryState
+
 from ..utils.models import EMPTY_FROZEN_MAP, Frozen, FrozenMap, updated
 from .base import PLAYER_ID, EngineId, EntityId, slug
-from .definitions import CharacterDefinition, ScenarioDefinition, ScenarioMeta
-from .engine import EngineData, require_engine
-from .entities import ActorEntity, Entity, ItemEntity, LocationEntity
+from .definitions import (
+    ActorEngineData,
+    CharacterDefinition,
+    ItemEngineData,
+    ScenarioDefinition,
+    ScenarioMeta,
+)
+from .entities import ActorEntity, BaseEntity, Entity, ItemEntity, LocationEntity
+
+type EngineState = Annotated[StoryState | Dnd5eState, Field(discriminator="engine")]
+type EntityEngineData = ActorEngineData | ItemEngineData
 
 
 class WorldState(Frozen):
@@ -67,6 +78,9 @@ class WorldState(Frozen):
             if isinstance(entity, ItemEntity) and entity.container_id == actor_id
         )
 
+    def ids_of(self, kind: type[BaseEntity]) -> set[EntityId]:
+        return {entity.id for entity in self.entities.values() if isinstance(entity, kind)}
+
 
 class Exchange(Frozen):
     prompt: str
@@ -75,12 +89,15 @@ class Exchange(Frozen):
 
 class GameState(Frozen):
     save_version: int
-    engine: EngineId
     scenario: ScenarioMeta
     world: WorldState
-    rules: EngineData
+    engine: EngineState
     history: tuple[Exchange, ...] = ()
     turn: int = Field(default=0, ge=0)
+
+    @property
+    def engine_id(self) -> EngineId:
+        return self.engine.engine
 
     @property
     def player(self) -> ActorEntity:
@@ -99,18 +116,35 @@ class GameState(Frozen):
                 raise ValueError(f"actor {actor.id!r} is not in a valid location")
         for item in (entity for entity in entities.values() if isinstance(entity, ItemEntity)):
             self.world.container_of(item)
-        require_engine(self.rules, self.engine, "game rules")
-        for entity in entities.values():
-            if entity.rules is not None:
-                require_engine(entity.rules, self.engine, f"entity {entity.id!r} rules")
+        _require_same_ids(self.engine.actors, self.world.ids_of(ActorEntity), "actor")
+        _require_same_ids(self.engine.items, self.world.ids_of(ItemEntity), "item")
         return self
+
+
+def _require_same_ids(held: Iterable[EntityId], expected: set[EntityId], kind: str) -> None:
+    """Keep the engine side table from drifting once an entity is created or removed."""
+    tracked = set(held)
+    if tracked != expected:
+        missing = sorted(expected - tracked)
+        extra = sorted(tracked - expected)
+        raise ValueError(
+            f"engine {kind} state does not track the world: missing {missing}, unknown {extra}"
+        )
+
+
+class AuthoredWorld(Frozen):
+    """The composed world alongside the authored engine data, keyed by the id each entity got."""
+
+    world: WorldState
+    engine_data: FrozenMap[EntityId, EntityEngineData] = EMPTY_FROZEN_MAP
 
 
 def world_from_definitions(
     scenario: ScenarioDefinition,
     character: CharacterDefinition,
-) -> WorldState:
+) -> AuthoredWorld:
     entities: dict[EntityId, Entity] = {}
+    authored: dict[EntityId, EntityEngineData] = {}
     for definition in scenario.entities:
         match definition.kind:
             case "actor":
@@ -137,6 +171,8 @@ def world_from_definitions(
                     known=definition.known,
                 )
         entities[entity.id] = entity
+        if definition.kind != "location" and definition.engine_data is not None:
+            authored[entity.id] = definition.engine_data
     for item in character.starting_items:
         entity = ItemEntity(
             id=slug(item.name, entities),
@@ -146,6 +182,8 @@ def world_from_definitions(
             container_id=PLAYER_ID,
         )
         entities[entity.id] = entity
+        if item.engine_data is not None:
+            authored[entity.id] = item.engine_data
     entities[PLAYER_ID] = ActorEntity(
         id=PLAYER_ID,
         name=character.name,
@@ -153,21 +191,4 @@ def world_from_definitions(
         known=True,
         location_id=scenario.starting_location_id,
     )
-    return WorldState(entities=entities)
-
-
-def attach_initial_rules(
-    world: WorldState,
-    entity_rules: Mapping[EntityId, EngineData | None],
-    engine: EngineId,
-) -> WorldState:
-    unknown = sorted(set(entity_rules) - set(world.entities))
-    if unknown:
-        raise ValueError(f"engine initialization named unknown entity ids: {unknown}")
-    entities: dict[EntityId, Entity] = {}
-    for entity_id, entity in world.entities.items():
-        rules = entity_rules.get(entity_id)
-        if rules is not None:
-            require_engine(rules, engine, f"initial rules for entity {entity_id!r}")
-        entities[entity_id] = updated(entity, rules=rules)
-    return WorldState(entities=entities)
+    return AuthoredWorld(world=WorldState(entities=entities), engine_data=authored)

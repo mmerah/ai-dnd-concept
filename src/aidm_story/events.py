@@ -8,7 +8,7 @@ from aidm.domain.events import RuleEvent
 from aidm.domain.json import FrozenJson
 from aidm.utils.models import Frozen
 
-from .models import StoryActorTag, StoryApproach, StoryCondition
+from .models import StoryActorTag, StoryApproach, StoryCondition, StoryGearTag
 
 StoryOutcome = Literal["strong", "mixed", "setback"]
 
@@ -153,6 +153,17 @@ class TagRewritten(Frozen):
         return f"tag rewritten: {self.before.name}[id={self.before.id}] -> {self.after.name}"
 
 
+class GearAcquired(Frozen):
+    type: Literal["gear-acquired"] = "gear-acquired"
+    item_id: EntityId
+    item_name: str
+    gear: StoryGearTag
+
+    @property
+    def summary(self) -> str:
+        return f"gear acquired: {self.item_name} ({self.gear.name})"
+
+
 class MaximumStressIncreased(Frozen):
     type: Literal["maximum-stress-increased"] = "maximum-stress-increased"
     before: int
@@ -176,15 +187,14 @@ type StoryRuleEvent = Annotated[
     | TagAdded
     | TagRemoved
     | TagRewritten
+    | GearAcquired
     | MaximumStressIncreased,
     Field(discriminator="type"),
 ]
 STORY_EVENT_ADAPTER: TypeAdapter[StoryRuleEvent] = TypeAdapter(StoryRuleEvent)
 
 
-def encode_story_event(
-    event: StoryRuleEvent, engine: EngineId, schema_version: int
-) -> RuleEvent:
+def encode_story_event(event: StoryRuleEvent, engine: EngineId, schema_version: int) -> RuleEvent:
     payload = event.model_dump(mode="json", exclude={"type"})
     return RuleEvent(
         engine=engine,

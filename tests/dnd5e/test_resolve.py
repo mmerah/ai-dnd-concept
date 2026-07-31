@@ -5,10 +5,14 @@ rolls inside the `damage`/`heal` that spends it. Positions gate take/drop/give/d
 from random import Random
 
 import pytest
-from fivee_test_support import ruleset
+from fivee_test_support import ruleset, with_actor
 from fivee_test_support import state as state
 
-from aidm_5e.domain.models.base import PLAYER_ID, EntityId
+from aidm.domain.base import PLAYER_ID, EntityId
+from aidm.domain.entities import Entity
+from aidm.domain.events import ActorMoved, EntityCreated, EntityDiscovered, ItemMoved
+from aidm.domain.state import GameState
+from aidm.utils.models import updated
 from aidm_5e.domain.models.consequences import (
     ApplyCondition,
     Consequence,
@@ -22,21 +26,10 @@ from aidm_5e.domain.models.consequences import (
     RollCheck,
     TakeItem,
 )
-from aidm_5e.domain.models.entities import ActorEntity, Entity
-from aidm_5e.domain.models.events import (
-    ConditionChanged,
-    DcRolled,
-    DiceRolled,
-    EntityCreated,
-    EntityDiscovered,
-    HpChanged,
-    ItemMoved,
-    Moved,
-)
-from aidm_5e.domain.models.state import GameState
+from aidm_5e.domain.models.events import ConditionChanged, DcRolled, DiceRolled, HpChanged
 from aidm_5e.domain.reducer import apply
 from aidm_5e.engine.resolve import resolve
-from aidm_5e.utils.models import updated
+from aidm_5e.state import actor_of, dnd5e_state
 
 RULES = ruleset()  # `attack` reads a weapon profile and an archetype's own attack out of it
 
@@ -54,16 +47,21 @@ def relocated(state: GameState, entity_id: EntityId, location_id: EntityId) -> G
 
 
 def wounded(state: GameState, hp: int) -> GameState:
-    return replaced(state, updated(state.player, stats=updated(state.player.stats, hp=hp)))
+    player = actor_of(state, PLAYER_ID)
+    hurt = updated(player.state, stats=updated(player.stats, hp=hp))
+    return updated(state, engine=dnd5e_state(state).with_actor(PLAYER_ID, hurt))
 
 
 def test_top_level_consequences_all_apply_in_order(state: GameState) -> None:
     mechanics: list[Consequence] = [Damage(amount=2), Move(location_id=EntityId("vault"))]
     events = resolve(mechanics, state, PASS, RULES)
-    assert [e.type for e in events] == ["hp_changed", "entity_discovered", "moved"]
+    assert [e.type for e in events] == ["hp_changed", "entity_discovered", "actor_moved"]
     hp, moved = events[0], events[2]
     assert isinstance(hp, HpChanged) and hp.delta == -2
-    assert isinstance(moved, Moved) and (moved.actor_id, moved.location_id) == ("player", "vault")
+    assert isinstance(moved, ActorMoved) and (moved.actor_id, moved.location_id) == (
+        "player",
+        "vault",
+    )
 
 
 def test_check_success_selects_on_success(state: GameState) -> None:
@@ -159,10 +157,10 @@ def test_give_to_an_absent_actor_fails(state: GameState) -> None:
 
 def test_move_the_player_to_a_hidden_location_reveals_it(state: GameState) -> None:
     events = resolve([Move(location_id=EntityId("vault"))], state, PASS, RULES)
-    assert [e.type for e in events] == ["entity_discovered", "moved"]
+    assert [e.type for e in events] == ["entity_discovered", "actor_moved"]
     discovered, moved = events
     assert isinstance(discovered, EntityDiscovered) and discovered.entity_id == "vault"
-    assert isinstance(moved, Moved) and (moved.actor_id, moved.location_name) == (
+    assert isinstance(moved, ActorMoved) and (moved.actor_id, moved.location_name) == (
         "player",
         "the vault",
     )
@@ -170,20 +168,23 @@ def test_move_the_player_to_a_hidden_location_reveals_it(state: GameState) -> No
 
 def test_move_the_player_to_a_known_location_does_not_rediscover(state: GameState) -> None:
     (moved,) = resolve([Move(location_id=EntityId("study"))], state, PASS, RULES)
-    assert isinstance(moved, Moved) and moved.location_id == "study"
+    assert isinstance(moved, ActorMoved) and moved.location_id == "study"
 
 
 def test_move_a_known_actor_away_does_not_reveal(state: GameState) -> None:
     move = Move(location_id=EntityId("vault"), actor_id=EntityId("mara"))
     (moved,) = resolve([move], state, PASS, RULES)
-    assert isinstance(moved, Moved) and (moved.actor_id, moved.location_id) == ("mara", "vault")
+    assert isinstance(moved, ActorMoved) and (moved.actor_id, moved.location_id) == (
+        "mara",
+        "vault",
+    )
 
 
 def test_move_a_hidden_actor_into_the_room_reveals_it(state: GameState) -> None:
     """Elena is hidden and at the player's location; moving her here reveals her arrival."""
     arrive = Move(location_id=EntityId("study"), actor_id=EntityId("elena"))
     events = resolve([arrive], state, PASS, RULES)
-    assert [e.type for e in events] == ["entity_discovered", "moved"]
+    assert [e.type for e in events] == ["entity_discovered", "actor_moved"]
 
 
 def test_moving_an_actor_the_player_cannot_witness_fails(state: GameState) -> None:
@@ -269,19 +270,18 @@ def test_a_condition_takes_hold_lifts_and_is_not_reapplied(state: GameState) -> 
     (held,) = resolve([prone], state, PASS, RULES)
     assert isinstance(held, ConditionChanged) and (held.condition, held.active) == ("prone", True)
     after = apply(state, [held])
-    assert after.player.stats.conditions == ("prone",)
+    assert actor_of(after, PLAYER_ID).stats.conditions == ("prone",)
     assert resolve([prone], after, PASS, RULES) == []
     (lifted,) = resolve([updated(prone, ends=True)], after, PASS, RULES)
     assert isinstance(lifted, ConditionChanged) and not lifted.active
-    assert apply(after, [lifted]).player.stats.conditions == ()
+    assert actor_of(apply(after, [lifted]), PLAYER_ID).stats.conditions == ()
 
 
 def test_an_immune_actor_is_simply_unaffected(state: GameState) -> None:
     """The rules decide, not the Director: it may name any condition and immunity absorbs it."""
-    mara = state.world.entities[EntityId("mara")]
-    assert isinstance(mara, ActorEntity)
-    immune = updated(mara, stats=updated(mara.stats, condition_immunities=("poisoned",)))
+    mara = actor_of(state, EntityId("mara"))
+    immune = updated(mara.state, stats=updated(mara.stats, condition_immunities=("poisoned",)))
     poisoned = ApplyCondition(condition="poisoned", target_id=EntityId("mara"))
-    assert resolve([poisoned], replaced(state, immune), PASS, RULES) == []
+    assert resolve([poisoned], with_actor(state, mara.entity, immune), PASS, RULES) == []
     (changed,) = resolve([poisoned], state, PASS, RULES)
     assert isinstance(changed, ConditionChanged) and changed.summary == "Mara is poisoned"

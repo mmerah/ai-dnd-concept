@@ -196,12 +196,12 @@ def _save_option(
     scenario_names = [
         name
         for name, definition in scenarios.items()
-        if definition.engine == state.engine and definition.meta == state.scenario
+        if definition.engine == state.engine_id and definition.meta == state.scenario
     ]
     character_names = [
         name
         for name, definition in characters.items()
-        if definition.engine == state.engine
+        if definition.engine == state.engine_id
         and definition.name == state.player.name
         and definition.brief == state.player.brief
     ]
@@ -214,7 +214,7 @@ def _save_option(
         slug=slug,
         scenario_title=state.scenario.title,
         character_title=state.player.name,
-        engine=state.engine,
+        engine=state.engine_id,
         turn=state.turn,
         scenario_name=scenario_names[0] if len(scenario_names) == 1 else None,
         character_name=character_names[0] if len(character_names) == 1 else None,

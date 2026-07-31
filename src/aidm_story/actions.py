@@ -1,11 +1,9 @@
-from collections.abc import Callable
 from dataclasses import dataclass
 from typing import Annotated, ClassVar, Literal, TypeGuard, assert_never
 
 from pydantic import Field
 
 from aidm.domain.base import PLAYER_ID, EntityId, Kind, slug
-from aidm.domain.engine import EngineData
 from aidm.domain.entities import ActorEntity, Entity, ItemEntity, LocationEntity
 from aidm.domain.events import ActorMoved, EntityCreated, EntityDiscovered, Event, ItemMoved
 from aidm.domain.state import GameState
@@ -127,9 +125,6 @@ class CoreActionRejected(ValueError):
     pass
 
 
-type CreatedEntityRules = Callable[[Entity, GameState], EngineData | None]
-
-
 def is_core_action(value: object) -> TypeGuard[CoreActionUnion]:
     return isinstance(
         value,
@@ -155,11 +150,7 @@ def action_references(action: CoreActionUnion) -> tuple[tuple[EntityId, EntityRe
     return tuple(references)
 
 
-def resolve_core_action(
-    action: CoreActionUnion,
-    state: GameState,
-    rules_for_created_entity: CreatedEntityRules,
-) -> list[Event]:
+def resolve_core_action(action: CoreActionUnion, state: GameState) -> list[Event]:
     match action:
         case Discover(entity_id=entity_id):
             return _reveal(state.world.require(entity_id))
@@ -172,7 +163,7 @@ def resolve_core_action(
         case GiveItem():
             return _give(action, state)
         case GainImprovisedItem():
-            return _improvise(action, state, rules_for_created_entity)
+            return _improvise(action, state)
     assert_never(action)
 
 
@@ -264,11 +255,7 @@ def _give(action: GiveItem, state: GameState) -> list[Event]:
     ]
 
 
-def _improvise(
-    action: GainImprovisedItem,
-    state: GameState,
-    rules_for_created_entity: CreatedEntityRules,
-) -> list[Event]:
+def _improvise(action: GainImprovisedItem, state: GameState) -> list[Event]:
     player = state.player
     item = ItemEntity(
         id=slug(action.item_name, state.world.entities),
@@ -277,9 +264,6 @@ def _improvise(
         known=True,
         authored=False,
         container_id=player.location_id,
-    )
-    item = ItemEntity.model_validate(
-        item.model_dump() | {"rules": rules_for_created_entity(item, state)}
     )
     return [
         EntityCreated(entity=item),

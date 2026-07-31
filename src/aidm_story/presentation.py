@@ -6,12 +6,12 @@ from aidm.domain.entities import ActorEntity, Entity, ItemEntity, LocationEntity
 from aidm.domain.events import RuleEvent
 from aidm.domain.json import thaw_json
 
-from .codecs import ACTOR_STATE_CODEC, ITEM_STATE_CODEC
 from .constants import ENGINE_ID, SCHEMA_VERSION
 from .events import (
     ApproachRaised,
     ConditionApplied,
     ConditionCleared,
+    GearAcquired,
     GrowthMarked,
     GrowthReset,
     MaximumStressIncreased,
@@ -24,15 +24,16 @@ from .events import (
     TakenOut,
     decode_story_event,
 )
+from .models import StoryActorState, StoryItemState, StoryState
 
 
 class StoryPresentation:
-    def entity_state(self, entity: Entity) -> str:
+    def entity_state(self, entity: Entity, state: StoryState) -> str:
         match entity:
             case ActorEntity():
-                return self._actor_state(entity)
+                return self._actor_state(entity, state.actor(entity.id))
             case ItemEntity():
-                return self._item_state(entity)
+                return self._item_state(state.item(entity.id))
             case LocationEntity():
                 return ""
 
@@ -63,6 +64,8 @@ class StoryPresentation:
                 return f"the player leaves {tag.name} behind"
             case TagRewritten(after=tag):
                 return f"the player's burden becomes {tag.name}"
+            case GearAcquired(item_name=name):
+                return f"the player now carries {name}"
             case MaximumStressIncreased():
                 return "the player becomes more resilient"
             case GrowthMarked() | GrowthReset():
@@ -77,10 +80,7 @@ class StoryPresentation:
         return json.dumps(thaw_json(direction.mechanics), indent=2)
 
     @staticmethod
-    def _actor_state(actor: ActorEntity) -> str:
-        if actor.rules is None:
-            raise ValueError(f"Story actor {actor.id!r} has no rules")
-        state = ACTOR_STATE_CODEC.decode(actor.rules)
+    def _actor_state(actor: ActorEntity, state: StoryActorState) -> str:
         approaches = ", ".join(
             f"{name} {value:+d}" for name, value in state.approaches.model_dump().items()
         )
@@ -98,10 +98,8 @@ class StoryPresentation:
         )
 
     @staticmethod
-    def _item_state(item: ItemEntity) -> str:
-        if item.rules is None:
-            raise ValueError(f"Story item {item.id!r} has no rules")
-        gear = ITEM_STATE_CODEC.decode(item.rules).gear
+    def _item_state(state: StoryItemState) -> str:
+        gear = state.gear
         if gear is None:
             return "gear benefit: (none)"
         return f"gear benefit: {gear.name} — {gear.description}"

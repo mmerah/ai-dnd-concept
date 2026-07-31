@@ -22,10 +22,9 @@ class StoryEngine:
 
 
 def build_story_engine() -> StoryEngine:
-    lifecycle = StoryLifecycle()
-    rules = StoryRules(lifecycle)
+    rules = StoryRules()
     return StoryEngine(
-        lifecycle=lifecycle,
+        lifecycle=StoryLifecycle(),
         rules=rules,
         director=StoryDirector(rules),
         presentation=StoryPresentation(),

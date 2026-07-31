@@ -1,33 +1,29 @@
 {
   "name": "Kael",
   "brief": "A scarred relic-hunter who came to the abbey for what is sealed beneath it.",
-  "engine": "story",
   "engine_data": {
     "engine": "story",
-    "schema_version": 1,
-    "payload": {
-      "approaches": {
-        "bold": 2,
-        "subtle": 1,
-        "clever": 1,
-        "empathetic": 0
+    "approaches": {
+      "bold": 2,
+      "subtle": 1,
+      "clever": 1,
+      "empathetic": 0
+    },
+    "tags": [
+      {
+        "id": "relic-hunter",
+        "name": "Relic Hunter",
+        "kind": "edge",
+        "description": "Kael knows how old sanctums conceal what matters."
       },
-      "tags": [
-        {
-          "id": "relic-hunter",
-          "name": "Relic Hunter",
-          "kind": "edge",
-          "description": "Kael knows how old sanctums conceal what matters."
-        },
-        {
-          "id": "marked-by-the-past",
-          "name": "Marked by the Past",
-          "kind": "burden",
-          "description": "Old scars make certain memories hard to face."
-        }
-      ],
-      "max_stress": 5
-    }
+      {
+        "id": "marked-by-the-past",
+        "name": "Marked by the Past",
+        "kind": "burden",
+        "description": "Old scars make certain memories hard to face."
+      }
+    ],
+    "max_stress": 5
   },
   "starting_items": [
     {
@@ -35,12 +31,9 @@
       "brief": "A dented tin lantern whose flame will not hold still.",
       "engine_data": {
         "engine": "story",
-        "schema_version": 1,
-        "payload": {
-          "gear": {
-            "name": "Unsteady Lantern",
-            "description": "Its shifting light exposes seams and movement in deep shadow."
-          }
+        "gear": {
+          "name": "Unsteady Lantern",
+          "description": "Its shifting light exposes seams and movement in deep shadow."
         }
       }
     }

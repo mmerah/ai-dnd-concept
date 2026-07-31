@@ -2,10 +2,9 @@ from fivee_test_support import initial_5e_game, ruleset
 
 from aidm.agents.context import NarratorContext, build_narrator_scene
 from aidm.agents.prompting import build_narrator_prompt
-from aidm.domain.base import EntityId
+from aidm.domain.base import PLAYER_ID, EntityId
 from aidm.domain.entities import ActorEntity
-from aidm_5e.domain.models.base import PLAYER_ID as LEGACY_PLAYER_ID
-from aidm_5e.domain.models.base import EntityId as LegacyEntityId
+from aidm.engines import entity_renderer
 from aidm_5e.domain.models.events import AttackRolled, HpChanged
 from aidm_5e.events import encode_dnd5e_event
 from aidm_5e.factory import dnd5e_engine
@@ -15,8 +14,9 @@ def test_5e_presentation_exposes_full_state_for_every_visible_actor() -> None:
     engine, state = initial_5e_game()
     mara = state.world.require_kind(EntityId("mara"), ActorEntity)
 
-    player_state = engine.presentation.entity_state(state.player)
-    npc_state = engine.presentation.entity_state(mara)
+    describe = entity_renderer(engine, state)
+    player_state = describe(state.player)
+    npc_state = describe(mara)
 
     assert "hp 11/11" in player_state
     assert "ac 10" in player_state
@@ -26,7 +26,7 @@ def test_5e_presentation_exposes_full_state_for_every_visible_actor() -> None:
 
     prompt = build_narrator_prompt(
         NarratorContext(
-            scene=build_narrator_scene(state, engine.presentation.entity_state),
+            scene=build_narrator_scene(state, describe),
             scenario_title=state.scenario.title,
             scenario_premise=state.scenario.premise,
             intent="Mara watches Kael.",
@@ -48,7 +48,7 @@ def test_5e_narrator_event_translates_committed_mechanics() -> None:
     presentation = dnd5e_engine(ruleset()).presentation
     hp = encode_dnd5e_event(
         HpChanged(
-            target_id=LegacyEntityId("mara"),
+            target_id=EntityId("mara"),
             target_name="Mara",
             delta=-2,
             wounds="hurt",
@@ -79,7 +79,7 @@ def test_5e_narrator_may_receive_the_players_hp_delta() -> None:
     presentation = dnd5e_engine(ruleset()).presentation
     hp = encode_dnd5e_event(
         HpChanged(
-            target_id=LEGACY_PLAYER_ID,
+            target_id=PLAYER_ID,
             target_name="Kael",
             delta=-2,
             wounds="hurt",

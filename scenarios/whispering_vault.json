@@ -67,24 +67,21 @@
       "location_id": "cloister",
       "engine_data": {
         "engine": "story",
-        "schema_version": 1,
-        "payload": {
-          "approaches": {
-            "bold": 1,
-            "subtle": 2,
-            "clever": -1,
-            "empathetic": -1
-          },
-          "tags": [
-            {
-              "id": "disease-swollen",
-              "name": "Disease-Swollen",
-              "kind": "edge",
-              "description": "The rat is unnaturally hard to frighten or drive off."
-            }
-          ],
-          "max_stress": 3
-        }
+        "approaches": {
+          "bold": 1,
+          "subtle": 2,
+          "clever": -1,
+          "empathetic": -1
+        },
+        "tags": [
+          {
+            "id": "disease-swollen",
+            "name": "Disease-Swollen",
+            "kind": "edge",
+            "description": "The rat is unnaturally hard to frighten or drive off."
+          }
+        ],
+        "max_stress": 3
       }
     },
     {

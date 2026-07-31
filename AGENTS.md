@@ -40,7 +40,11 @@ Tests must be deterministic and require no network.
 
 - The model proposes typed data; deterministic Python decides outcomes and mutates no state directly.
 - State evolves only through the pure reducer in `aidm/domain/`, applied to typed events.
-- Core owns topology and commits; the selected rules package owns typed mechanics and rules-only patches.
+- Core owns topology and commits; the selected rules package owns typed mechanics and returns its own typed engine state.
+- `GameState.engine` is one `EngineAggregate` per engine, discriminated on the engine tag. Entities carry no rules field, and the state validator asserts those keys track the world's actor and item ids.
+- Engine state and authored engine data are typed unions, never JSON envelopes: a wrong-engine payload is unrepresentable rather than validated. Engines narrow authored data with `definitions.py::for_engine`.
+- Core assigns entity ids and hands each one's authored data back on `AuthoredWorld`. An engine never re-derives which definition became which entity.
+- Core applies topology; engines fold their own core events through `reducer.py::apply_core` rather than reimplementing it.
 - One distribution. `aidm_story/` imports no 5e code and vice versa; neither imports `aidm_ui/` or NiceGUI, and `aidm/` imports no UI. Enforced by `tests/core/test_package_boundary.py`.
 - `EngineId` is a closed literal. An engine is a concrete value built by `aidm/engines.py::engine_for`, and core pairs each engine with its own direction type there.
 - Each agent has one narrow role. Its proposal is resolved by the selected engine, never another prompt.
@@ -51,7 +55,7 @@ Tests must be deterministic and require no network.
 - `aidm/application/` owns the open game behind ports, while `aidm/store.py` performs path-based I/O.
 - `save_version` is the only compatibility gate. `store.py` refuses a stale save or trace at load; regenerating the SRD content pack bumps `SAVE_VERSION`.
 - Only the Narrator writes player-facing prose and it never sees unrevealed canon.
-- Every role sees engine state through engine-owned presentation; core owns which entities each role may see.
+- Every role sees engine state through engine-owned presentation, bound to the state it reads by `engines.py::entity_renderer`; core owns which entities each role may see.
 - The Narrator receives exact state for visible entities and translates mechanics into fiction instead of reciting stat blocks.
 
 ## Framework rules

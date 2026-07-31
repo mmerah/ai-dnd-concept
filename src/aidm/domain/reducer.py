@@ -2,8 +2,6 @@ from collections.abc import Callable, Sequence
 from typing import Protocol
 
 from ..utils.models import updated
-from .base import EntityId
-from .engine import require_engine
 from .entities import ActorEntity, Entity, ItemEntity, LocationEntity
 from .events import (
     ActorMoved,
@@ -13,14 +11,16 @@ from .events import (
     Event,
     ItemMoved,
     RuleEvent,
-    RuleStatePatch,
 )
 from .presentation import narrator_core_event
-from .state import GameState, WorldState
+from .state import EngineState, GameState
+
+type CreatedEngineState = Callable[[GameState, Entity], EngineState]
 
 
 class RuleReducer(Protocol):
-    def apply(self, state: GameState, event: RuleEvent) -> RuleStatePatch: ...
+    def apply(self, state: GameState, event: RuleEvent) -> EngineState: ...
+    def created(self, state: GameState, entity: Entity) -> EngineState: ...
     def validate_state(self, state: GameState) -> None: ...
 
 
@@ -28,13 +28,16 @@ def _replace(state: GameState, entity: Entity) -> GameState:
     return updated(state, world=state.world.replacing(entity))
 
 
-def _apply_core(state: GameState, event: CoreEvent) -> GameState:
+def apply_core(state: GameState, event: CoreEvent, created: CreatedEngineState) -> GameState:
+    """Core owns topology, so engines fold their own core events through this too."""
     world = state.world
     match event:
         case EntityCreated(entity=entity):
-            if entity.rules is not None:
-                require_engine(entity.rules, state.engine, f"created entity {entity.id!r} rules")
-            return updated(state, world=world.adding(entity))
+            return updated(
+                state,
+                world=world.adding(entity),
+                engine=created(state, entity),
+            )
         case EntityDiscovered(entity_id=entity_id):
             return _replace(state, updated(world.require(entity_id), known=True))
         case ActorMoved(actor_id=actor_id, location_id=location_id):
@@ -48,29 +51,15 @@ def _apply_core(state: GameState, event: CoreEvent) -> GameState:
             return _replace(state, updated(item, container_id=to_id))
 
 
-def _apply_patch(state: GameState, patch: RuleStatePatch) -> GameState:
-    unknown = sorted(set(patch.entity_rules) - set(state.world.entities))
-    if unknown:
-        raise ValueError(f"rule patch names unknown entity ids: {unknown}")
-    game_rules = state.rules if patch.game_rules is None else patch.game_rules
-    require_engine(game_rules, state.engine, "patched game rules")
-    entities: dict[EntityId, Entity] = dict(state.world.entities)
-    for entity_id, rules in patch.entity_rules.items():
-        if rules is not None:
-            require_engine(rules, state.engine, f"patched entity {entity_id!r} rules")
-        entities[entity_id] = updated(entities[entity_id], rules=rules)
-    return updated(state, rules=game_rules, world=WorldState(entities=entities))
-
-
 def apply_one(state: GameState, event: Event, rules: RuleReducer) -> GameState:
     if isinstance(event, RuleEvent):
-        if event.engine != state.engine:
+        if event.engine != state.engine_id:
             raise ValueError(
-                f"rule event engine is {event.engine!r}, state engine is {state.engine!r}"
+                f"rule event engine is {event.engine!r}, state engine is {state.engine_id!r}"
             )
-        next_state = _apply_patch(state, rules.apply(state, event))
+        next_state = updated(state, engine=rules.apply(state, event))
     else:
-        next_state = _apply_core(state, event)
+        next_state = apply_core(state, event, rules.created)
     rules.validate_state(next_state)
     return next_state
 

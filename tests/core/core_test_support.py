@@ -5,7 +5,7 @@ from pydantic import SecretStr
 from aidm.config import ProviderConfig, Providers, Roles, Settings
 from aidm.domain.base import SAVE_VERSION
 from aidm.domain.definitions import CharacterDefinition, ScenarioDefinition
-from aidm.domain.state import GameState, attach_initial_rules, world_from_definitions
+from aidm.domain.state import GameState, world_from_definitions
 from aidm.store import read_character, read_scenario
 from aidm_story.factory import StoryEngine, build_story_engine
 
@@ -24,14 +24,12 @@ def initialized() -> tuple[StoryEngine, GameState]:
     selected_scenario = scenario()
     selected_character = character()
     engine = build_story_engine()
-    world = world_from_definitions(selected_scenario, selected_character)
-    initial = engine.lifecycle.initialise(world, selected_scenario, selected_character)
+    authored = world_from_definitions(selected_scenario, selected_character)
     state = GameState(
         save_version=SAVE_VERSION,
-        engine=engine.id,
         scenario=selected_scenario.meta,
-        world=attach_initial_rules(world, initial.entity_rules, engine.id),
-        rules=initial.game_rules,
+        world=authored.world,
+        engine=engine.lifecycle.initialise(authored, selected_character.engine_data),
     )
     engine.rules.validate_state(state)
     return engine, state

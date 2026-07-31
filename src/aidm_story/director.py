@@ -21,7 +21,6 @@ from .actions import (
     action_references,
     is_core_action,
 )
-from .codecs import ACTOR_STATE_CODEC, ITEM_STATE_CODEC
 from .constants import ENGINE_ID, SCHEMA_VERSION
 from .direction import (
     STORY_MECHANICS_ADAPTER,
@@ -39,10 +38,16 @@ from .direction import (
     flatten,
 )
 from .instructions import MECHANICS
-from .models import StoryActorState
+from .models import StoryActorState, StoryState
 from .rules import StoryProposalRejected, StoryRules
 
 type StoryActorConsequence = Risk | TakeStress | RecoverStress | ApplyCondition | ClearCondition
+
+
+def _engine(scene: DirectorScene) -> StoryState:
+    if not isinstance(scene.engine, StoryState):
+        raise ValueError(f"Story director received a {scene.engine.engine!r} scene")
+    return scene.engine
 
 
 class StoryDirector:
@@ -74,10 +79,9 @@ class StoryDirector:
             self._validate_consequence(scene, consequence)
         state = GameState(
             save_version=SAVE_VERSION,
-            engine=ENGINE_ID,
             scenario=ScenarioMeta(title="validation", premise="validation"),
             world=scene.canon,
-            rules=scene.game_rules,
+            engine=_engine(scene),
         )
         try:
             self._rules.resolve(direction, state, Random(0))
@@ -128,7 +132,7 @@ class StoryDirector:
                 raise ModelRetry(f"actor {actor.id!r} has not been revealed")
             if not scene.is_here(actor):
                 raise ModelRetry(f"actor {actor.id!r} is not here with the player")
-        actor_state = self._actor_state(actor)
+        actor_state = _engine(scene).actor(actor.id)
         match consequence:
             case Risk():
                 if actor_state.taken_out:
@@ -164,7 +168,7 @@ class StoryDirector:
                 item = self._require(scene, item_id, ItemEntity)
                 if item.container_id != actor.id:
                     raise ModelRetry(f"gear item {item.id!r} is not carried by {actor.id!r}")
-                if item.rules is None or ITEM_STATE_CODEC.decode(item.rules).gear is None:
+                if _engine(scene).item(item_id).gear is None:
                     raise ModelRetry(f"item {item.id!r} has no gear benefit")
         match risk.hindering:
             case None:
@@ -199,12 +203,6 @@ class StoryDirector:
                         raise ModelRetry(f"movement of actor {actor_id!r} would not be witnessed")
             case _:
                 return
-
-    @staticmethod
-    def _actor_state(actor: ActorEntity) -> StoryActorState:
-        if actor.rules is None:
-            raise ValueError(f"Story actor {actor.id!r} has no rules data")
-        return ACTOR_STATE_CODEC.decode(actor.rules)
 
     @staticmethod
     def _require[T: Entity](

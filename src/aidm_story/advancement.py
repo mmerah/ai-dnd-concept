@@ -3,17 +3,17 @@ from typing import Annotated, Literal, get_args
 
 from pydantic import BaseModel, Field, TypeAdapter
 
+from aidm.domain.advancement import AdvancementStatus
 from aidm.domain.base import PLAYER_ID, Slug, slug
-from aidm.domain.engine import AdvancementStatus
 from aidm.domain.entities import ItemEntity
 from aidm.domain.events import EntityCreated, Event
 from aidm.domain.state import GameState
 from aidm.utils.models import Frozen
 
-from .codecs import ACTOR_STATE_CODEC, ITEM_STATE_CODEC
 from .constants import ENGINE_ID, SCHEMA_VERSION
 from .events import (
     ApproachRaised,
+    GearAcquired,
     GrowthReset,
     MaximumStressIncreased,
     Revived,
@@ -31,8 +31,8 @@ from .models import (
     StoryApproach,
     StoryApproaches,
     StoryGearTag,
-    StoryItemState,
 )
+from .state import story_state
 
 
 class RaiseApproach(Frozen):
@@ -197,9 +197,15 @@ class StoryAdvancement:
                     known=True,
                     authored=False,
                     container_id=PLAYER_ID,
-                    rules=ITEM_STATE_CODEC.encode(StoryItemState(gear=decision.gear)),
                 )
-                events = [EntityCreated(entity=item)]
+                events = [
+                    EntityCreated(entity=item),
+                    encode_story_event(
+                        GearAcquired(item_id=item.id, item_name=item.name, gear=decision.gear),
+                        ENGINE_ID,
+                        SCHEMA_VERSION,
+                    ),
+                ]
             case IncreaseMaximumStress():
                 after_max = player.max_stress + 1
                 events = [
@@ -283,7 +289,4 @@ class StoryAdvancement:
 
     @staticmethod
     def _player(state: GameState) -> StoryActorState:
-        rules = state.player.rules
-        if rules is None:
-            raise ValueError("Story player has no rules data")
-        return ACTOR_STATE_CODEC.decode(rules)
+        return story_state(state).actor(PLAYER_ID)

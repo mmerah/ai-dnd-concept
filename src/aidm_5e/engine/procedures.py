@@ -1,9 +1,11 @@
 from random import Random
 
-from ..domain.models.entities import ActorEntity, ItemEntity
+from aidm.domain.state import GameState
+
 from ..domain.models.events import AttackRolled
 from ..domain.models.progression import Progression
-from ..domain.models.state import GameState
+from ..models import Dnd5eActor, Dnd5eItem
+from ..state import carried_by
 from ..utils import dice
 from ..utils.models import Slug
 from . import features, rules
@@ -11,7 +13,7 @@ from .ruleset import AttackProfile, CombatRules, WeaponProfile
 
 
 def swing(
-    state: GameState, attacker: ActorEntity, weapon: str, ruleset: CombatRules
+    state: GameState, attacker: Dnd5eActor, weapon: str, ruleset: CombatRules
 ) -> AttackProfile:
     ref = attacker.ref
     archetype = None if ref is None else ruleset.archetype(ref)
@@ -21,7 +23,7 @@ def swing(
 
 
 def strike(
-    attacker: ActorEntity, target: ActorEntity, swung: AttackProfile, rng: Random
+    attacker: Dnd5eActor, target: Dnd5eActor, swung: AttackProfile, rng: Random
 ) -> AttackRolled:
     return rules.roll_attack(attacker, target, swung.name, swung.to_hit, rng)
 
@@ -39,7 +41,7 @@ def _own_attack(
 
 
 def _wielded(
-    state: GameState, attacker: ActorEntity, weapon: str, ruleset: CombatRules
+    state: GameState, attacker: Dnd5eActor, weapon: str, ruleset: CombatRules
 ) -> AttackProfile:
     item, profile = _held_weapon(state, attacker, weapon, ruleset)
     ability = "dexterity" if _uses_dexterity(profile, attacker) else "strength"
@@ -58,9 +60,9 @@ def _wielded(
 
 
 def _held_weapon(
-    state: GameState, attacker: ActorEntity, weapon: str, ruleset: CombatRules
-) -> tuple[ItemEntity, WeaponProfile]:
-    for item in state.world.carried_by(attacker.id):
+    state: GameState, attacker: Dnd5eActor, weapon: str, ruleset: CombatRules
+) -> tuple[Dnd5eItem, WeaponProfile]:
+    for item in carried_by(state, attacker.id):
         if item.ref is None or weapon.casefold() not in (item.name.casefold(), item.ref.index):
             continue
         found = ruleset.weapon(item.ref)
@@ -69,7 +71,7 @@ def _held_weapon(
     raise ValueError(f"{attacker.name} carries no weapon called {weapon!r}")
 
 
-def _uses_dexterity(weapon: WeaponProfile, attacker: ActorEntity) -> bool:
+def _uses_dexterity(weapon: WeaponProfile, attacker: Dnd5eActor) -> bool:
     if weapon.ranged:
         return True
     if not weapon.finesse:

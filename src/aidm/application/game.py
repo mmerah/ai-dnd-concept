@@ -5,20 +5,16 @@ from random import Random
 from pydantic import BaseModel
 
 from ..agents.stages import DirectorStage, SharedStages
+from ..domain.advancement import AdvancementStatus
 from ..domain.base import SAVE_VERSION, Role
 from ..domain.definitions import (
     CharacterDefinition,
     ScenarioDefinition,
     validate_definition_engines,
 )
-from ..domain.engine import AdvancementStatus
 from ..domain.events import Event
 from ..domain.reducer import apply
-from ..domain.state import (
-    GameState,
-    attach_initial_rules,
-    world_from_definitions,
-)
+from ..domain.state import GameState, world_from_definitions
 from ..domain.turn import Turn
 from ..engines import Advancement, Engine
 from ..pipeline import TurnOptions, run_turn
@@ -96,18 +92,12 @@ class GameApplication:
         self.turns = []
 
     def _begun(self) -> GameState:
-        world = world_from_definitions(self.scenario, self.character)
-        initialized = self.engine.lifecycle.initialise(
-            world,
-            self.scenario,
-            self.character,
-        )
+        authored = world_from_definitions(self.scenario, self.character)
         state = GameState(
             save_version=SAVE_VERSION,
-            engine=self.engine.id,
             scenario=self.scenario.meta,
-            world=attach_initial_rules(world, initialized.entity_rules, self.engine.id),
-            rules=initialized.game_rules,
+            world=authored.world,
+            engine=self.engine.lifecycle.initialise(authored, self.character.engine_data),
         )
         self.engine.rules.validate_state(state)
         return state

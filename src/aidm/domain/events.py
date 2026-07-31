@@ -2,9 +2,8 @@ from typing import Annotated, Literal
 
 from pydantic import Field
 
-from ..utils.models import EMPTY_FROZEN_MAP, Frozen, FrozenMap
+from ..utils.models import Frozen
 from .base import EngineId, EntityId, Slug
-from .engine import EngineData
 from .entities import Entity
 from .json import FrozenJson
 
@@ -28,13 +27,16 @@ class ActorMoved(Frozen):
     location_name: str
 
 
+type ItemDestination = Literal["actor", "location"]
+
+
 class ItemMoved(Frozen):
     type: Literal["item_moved"] = "item_moved"
     item_id: EntityId
     item_name: str
     to_id: EntityId
     to_name: str
-    to_kind: Literal["actor", "location"]
+    to_kind: ItemDestination
 
 
 type CoreEvent = Annotated[
@@ -52,8 +54,3 @@ class RuleEvent(Frozen):
 
 
 type Event = CoreEvent | RuleEvent
-
-
-class RuleStatePatch(Frozen):
-    game_rules: EngineData | None = None
-    entity_rules: FrozenMap[EntityId, EngineData | None] = EMPTY_FROZEN_MAP

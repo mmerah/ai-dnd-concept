@@ -1,10 +1,11 @@
 from pathlib import Path
 
 import pytest
-from fivee_test_support import PACK_DIR, all_of, content, new_game, pack, ruleset
-from fivee_test_support import state as state
+from fivee_test_support import PACK_DIR, all_of, content, new_game, pack, player_of, ruleset
 from pydantic import ValidationError
 
+from aidm.domain.base import EntityId
+from aidm.utils.models import updated
 from aidm_5e.agents import views
 from aidm_5e.content.library import ContentMiss, load, write_pack
 from aidm_5e.content.records.base import ContentRef, Record
@@ -32,12 +33,11 @@ from aidm_5e.content.records.monsters import (
 )
 from aidm_5e.content.records.rules import ConditionRecord
 from aidm_5e.content.records.spells import SpellRecord
-from aidm_5e.domain.models.base import EntityId
-from aidm_5e.domain.models.entities import ActorEntity, Entity, ItemEntity
-from aidm_5e.domain.models.state import GameState
+from aidm_5e.domain.models.stats import StatBlock
 from aidm_5e.engine import bestiary
+from aidm_5e.models import Dnd5eActorDefinition, Dnd5eItemDefinition
+from aidm_5e.state import actor_of
 from aidm_5e.utils import dice
-from aidm_5e.utils.models import updated
 
 PACK_ID = "srd-2014"
 CONTENT = content()
@@ -368,71 +368,36 @@ def test_a_monster_is_snapshotted_into_an_entity_not_read_live() -> None:
 
 
 def test_an_authored_actor_is_statted_from_the_record_it_names() -> None:
-    actor = ActorEntity(
-        id=EntityId("rat"),
-        name="a bloated rat",
-        brief="Fat on the dead garden.",
-        location_id=EntityId("cloister"),
-        ref=ref("monsters", "giant-rat"),
-    )
-    statted = bestiary.statted(actor, RULES)
-    assert isinstance(statted, ActorEntity) and statted.stats.ac == 12
-    assert statted.name == "a bloated rat"  # the pack supplies numbers, the author the fiction
+    authored = Dnd5eActorDefinition(ref=ref("monsters", "giant-rat"))
+    statted = bestiary.statted_actor(EntityId("rat"), authored, RULES)
+    assert statted.stats.ac == 12  # the pack supplies numbers, the author the fiction
 
 
 def test_an_entity_may_not_contradict_the_record_it_names() -> None:
     """Both are broken invariants, not content gaps: silently overwriting authored stats, or letting
     a lantern point at a monster, would put a lie in the save."""
-    rat = ActorEntity(
-        id=EntityId("rat"),
-        name="a bloated rat",
-        brief="Fat on the dead garden.",
-        location_id=EntityId("cloister"),
-        ref=ref("monsters", "giant-rat"),
-    )
+    giant_rat = ref("monsters", "giant-rat")
+    own_stats = Dnd5eActorDefinition(ref=giant_rat, stats=StatBlock(hp=3, max_hp=7))
     with pytest.raises(ValueError, match="declares its own stats"):
-        bestiary.statted(updated(rat, stats={"hp": 3, "max_hp": 7}), RULES)
-    trophy = ItemEntity(
-        id=EntityId("rat_tail"),
-        name="a rat's tail",
-        brief="Trophy.",
-        ref=ref("monsters", "giant-rat"),
-        container_id=EntityId("cloister"),
-    )
+        bestiary.statted_actor(EntityId("rat"), own_stats, RULES)
     with pytest.raises(ValueError, match="may not name a monsters record"):
-        bestiary.statted(trophy, RULES)
+        bestiary.statted_item(EntityId("rat_tail"), Dnd5eItemDefinition(ref=giant_rat), RULES)
 
 
-def _with(state: GameState, entity: Entity) -> GameState:
-    world = updated(state.world, entities={**state.world.entities, entity.id: entity})
-    return updated(state, world=world)
-
-
-def test_a_world_naming_content_nothing_provides_is_unplayable(state: GameState) -> None:
-    """A character's starting item is held, not placed, so it only reaches this check once the
-    world is composed — which is why the composed world is statted, not the scenario definition."""
-    held = state.world.entities[EntityId("lantern")]
+def test_content_nothing_provides_is_unplayable() -> None:
+    """A character's starting item is held, not placed, so it only reaches this check when the
+    engine state is composed — which is why the composed world is statted, not the definition."""
+    phaser = Dnd5eItemDefinition(ref=ref("weapons", "phaser"))
     with pytest.raises(ValueError, match="nothing provides"):
-        bestiary.statted_world(_with(state, updated(held, ref=ref("weapons", "phaser"))), RULES)
+        bestiary.statted_item(EntityId("lantern"), phaser, RULES)
 
 
 def test_the_directors_slice_is_the_mechanics_never_the_record() -> None:
     """A gargoyle record is thousands of bytes; this is the few hundred the Director can act on.
     Damage immunities and condition immunities stay apart: `poison` and `poisoned` are different
     words for different rules, and the prose entries carry commas of their own."""
-    state = new_game("whispering_vault_5e")
-    gargoyle = bestiary.statted(
-        ActorEntity(
-            id=EntityId("gargoyle"),
-            name="a crouching gargoyle",
-            brief="Stone until it is not.",
-            known=True,
-            location_id=state.player.location_id,
-            ref=ref("monsters", "gargoyle"),
-        ),
-        RULES,
-    )
-    assert isinstance(gargoyle, ActorEntity)
+    authored = Dnd5eActorDefinition(ref=ref("monsters", "gargoyle"))
+    gargoyle = bestiary.statted_actor(EntityId("gargoyle"), authored, RULES)
     under = updated(gargoyle, stats=updated(gargoyle.stats, conditions=("prone",)))
     shown = views.actor_state(under.stats, under.ref, RULES)
     assert shown == (
@@ -451,16 +416,16 @@ def test_a_condition_is_shown_on_anyone_who_holds_one() -> None:
     """A condition no role can read is one the Director can never lift. It comes from the entity,
     so it shows on an invented actor that names no record, and on the player's own sheet."""
     state = new_game("whispering_vault_5e")
-    mara = state.world.entities[EntityId("mara")]
-    assert isinstance(mara, ActorEntity)
-    blinded = updated(mara, stats=updated(mara.stats, conditions=("blinded",)))
+    mara = actor_of(state, EntityId("mara"))
+    blinded = updated(mara.state, stats=updated(mara.stats, conditions=("blinded",)))
     assert "hp 4/4 — ac 10 — under blinded" in views.actor_state(
         blinded.stats,
         blinded.ref,
         RULES,
     )
-    player = updated(state.player, stats=updated(state.player.stats, conditions=("prone",)))
-    assert "under prone" in views.player_state(player.stats, player.progression, RULES)
+    player = player_of(state)
+    prone = updated(player.stats, conditions=("prone",))
+    assert "under prone" in views.player_state(prone, player.progression, RULES)
 
 
 def test_two_packs_cannot_claim_one_id() -> None:

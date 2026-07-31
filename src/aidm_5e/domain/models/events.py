@@ -2,12 +2,13 @@ from typing import Annotated, Literal
 
 from pydantic import Field
 
+from aidm.domain.base import PLAYER_ID, EntityId
+from aidm.domain.events import CoreEvent
+
 from ...content.records.base import ContentRef
 from ...content.records.spells import SlotLevel, SpellLevel
 from ...content.vocabulary import ConditionName, RestType
 from ...utils.models import Ability, Frozen
-from .base import PLAYER_ID, EntityId
-from .entities import Entity
 from .progression import Advancement
 from .stats import Wounds
 
@@ -54,28 +55,6 @@ class AttackRolled(Frozen):
         )
 
 
-ItemDestination = Literal["actor", "location"]
-
-
-class ItemMoved(Frozen):
-    type: Literal["item_moved"] = "item_moved"
-    item_id: EntityId
-    item_name: str
-    to_id: EntityId
-    to_name: str
-    to_kind: ItemDestination
-
-    @property
-    def summary(self) -> str:
-        if self.to_id == PLAYER_ID:
-            return f"took {self.item_name}"
-        match self.to_kind:
-            case "actor":
-                return f"gave {self.item_name} to {self.to_name}"
-            case "location":
-                return f"left {self.item_name} at {self.to_name}"
-
-
 class DiceRolled(Frozen):
     type: Literal["dice_rolled"] = "dice_rolled"
     dice: str
@@ -112,37 +91,6 @@ class ConditionChanged(Frozen):
         who = "the player" if self.target_id == PLAYER_ID else self.target_name
         held = "is" if self.active else "is no longer"
         return f"{who} {held} {self.condition}"
-
-
-class Moved(Frozen):
-    type: Literal["moved"] = "moved"
-    actor_id: EntityId
-    actor_name: str
-    location_id: EntityId
-    location_name: str
-
-    @property
-    def summary(self) -> str:
-        return f"{self.actor_name} moved to {self.location_name}"
-
-
-class EntityDiscovered(Frozen):
-    type: Literal["entity_discovered"] = "entity_discovered"
-    entity_id: EntityId
-    name: str
-
-    @property
-    def summary(self) -> str:
-        return f"learned of {self.name}"
-
-
-class EntityCreated(Frozen):
-    type: Literal["entity_created"] = "entity_created"
-    entity: Entity
-
-    @property
-    def summary(self) -> str:
-        return f"new {self.entity.kind}: {self.entity.name}"
 
 
 class LevelUpAvailable(Frozen):
@@ -235,16 +183,12 @@ class LeveledUp(Frozen):
         return f"reached level {self.advancement.progression.level}"
 
 
-Event = Annotated[
+type Dnd5eRuleEvent = Annotated[
     DcRolled
     | AttackRolled
     | DiceRolled
-    | ItemMoved
     | HpChanged
     | ConditionChanged
-    | Moved
-    | EntityDiscovered
-    | EntityCreated
     | LevelUpAvailable
     | FeatureUsed
     | FeatureActivated
@@ -254,3 +198,5 @@ Event = Annotated[
     | LeveledUp,
     Field(discriminator="type"),
 ]
+
+type Dnd5eEvent = CoreEvent | Dnd5eRuleEvent

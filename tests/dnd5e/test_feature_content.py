@@ -4,6 +4,7 @@ import pytest
 from fivee_test_support import all_of, pack
 from pydantic import ValidationError
 
+from aidm.utils.models import updated
 from aidm_5e.content.library import ContentMiss, loaded
 from aidm_5e.content.records.base import ContentRef, Record
 from aidm_5e.content.records.character import (
@@ -21,7 +22,6 @@ from aidm_5e.content.records.character import (
     SubclassLevelRecord,
 )
 from aidm_5e.engine.pack_ruleset import compile_ruleset
-from aidm_5e.utils.models import updated
 
 PACK = pack()
 FEATURES = all_of(PACK, "features", FeatureRecord)

@@ -18,9 +18,7 @@ def consequence_menu(
             for name, field in consequence.model_fields.items()
             if name != "action" and field.description
         )
-        lines.append(
-            f"### `{action}` — {summary}\n{consequence.GUIDANCE}\n{fields}"
-        )
+        lines.append(f"### `{action}` — {summary}\n{consequence.GUIDANCE}\n{fields}")
     return "\n\n".join(lines)
 
 

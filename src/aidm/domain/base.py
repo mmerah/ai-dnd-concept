@@ -12,7 +12,7 @@ Slug = Annotated[str, Field(pattern=r"^[a-z0-9]+(?:-[a-z0-9]+)*$", max_length=64
 
 PLAYER_ID = EntityId("player")
 ROLES: tuple[Role, ...] = get_args(Role)
-SAVE_VERSION = 16
+SAVE_VERSION = 17
 
 
 def slug(name: str, taken: Iterable[EntityId]) -> EntityId:

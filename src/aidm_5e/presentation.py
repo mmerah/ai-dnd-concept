@@ -7,7 +7,6 @@ from aidm.domain.events import RuleEvent
 from aidm.domain.json import thaw_json
 
 from .agents import views
-from .codecs import ACTOR_STATE_CODEC, ITEM_STATE_CODEC
 from .constants import ENGINE_ID, SCHEMA_VERSION
 from .domain.models.events import (
     AttackRolled,
@@ -25,28 +24,24 @@ from .domain.models.events import (
 )
 from .engine.ruleset import Ruleset
 from .events import decode_dnd5e_event
+from .models import Dnd5eState
 
 
 class Dnd5ePresentation:
     def __init__(self, ruleset: Ruleset) -> None:
         self._ruleset = ruleset
 
-    def entity_state(self, entity: Entity) -> str:
+    def entity_state(self, entity: Entity, state: Dnd5eState) -> str:
         match entity:
             case ActorEntity():
-                if entity.rules is None:
-                    raise ValueError(f"5e actor {entity.id!r} has no rules")
-                state = ACTOR_STATE_CODEC.decode(entity.rules)
+                actor = state.actor(entity.id)
                 if entity.id == PLAYER_ID:
-                    sheet = views.player_state(state.stats, state.progression, self._ruleset)
-                    advancement = views.level_up_state(state.progression)
+                    sheet = views.player_state(actor.stats, actor.progression, self._ruleset)
+                    advancement = views.level_up_state(actor.progression)
                     return f"{sheet}\nadvancement: {advancement}"
-                return views.actor_state(state.stats, state.ref, self._ruleset)
+                return views.actor_state(actor.stats, actor.ref, self._ruleset)
             case ItemEntity():
-                if entity.rules is None:
-                    raise ValueError(f"5e item {entity.id!r} has no rules")
-                ref = ITEM_STATE_CODEC.decode(entity.rules).ref
-                return views.item_state(ref, self._ruleset)
+                return views.item_state(state.item(entity.id).ref, self._ruleset)
             case LocationEntity():
                 return ""
 

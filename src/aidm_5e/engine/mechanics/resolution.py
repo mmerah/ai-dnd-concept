@@ -3,12 +3,15 @@ from dataclasses import dataclass, replace
 from random import Random
 from typing import Self
 
-from ...domain.models.base import EntityId
-from ...domain.models.entities import ActorEntity, Entity, ItemEntity
-from ...domain.models.events import Event
+from aidm.domain.base import PLAYER_ID, EntityId
+from aidm.domain.entities import Entity
+from aidm.domain.state import GameState
+
+from ...domain.models.events import Dnd5eEvent
 from ...domain.models.progression import Progression
-from ...domain.models.state import GameState
 from ...domain.reducer import apply
+from ...models import Dnd5eActor, Dnd5eItem
+from ...state import actor_of, item_of
 from ..ruleset import Ruleset
 
 
@@ -18,12 +21,12 @@ class Resolution:
     rng: Random
     ruleset: Ruleset
 
-    def then(self, events: Sequence[Event]) -> Self:
+    def then(self, events: Sequence[Dnd5eEvent]) -> Self:
         return replace(self, state=apply(self.state, events))
 
     @property
-    def player(self) -> ActorEntity:
-        return self.state.player
+    def player(self) -> Dnd5eActor:
+        return actor_of(self.state, PLAYER_ID)
 
     @property
     def progression(self) -> Progression:
@@ -38,19 +41,22 @@ class Resolution:
     def of_kind[T: Entity](self, entity_id: EntityId, expected: type[T]) -> T:
         return self.state.world.require_kind(entity_id, expected)
 
-    def actor_here(self, entity_id: EntityId) -> ActorEntity:
+    def actor(self, entity_id: EntityId) -> Dnd5eActor:
+        return actor_of(self.state, entity_id)
+
+    def actor_here(self, entity_id: EntityId) -> Dnd5eActor:
         """Reject off-screen actors because this turn cannot visibly affect them."""
-        actor = self.of_kind(entity_id, ActorEntity)
+        actor = self.actor(entity_id)
         if actor.location_id != self.player.location_id:
             raise ValueError(f"cannot affect {entity_id!r}: not at the player's location")
         return actor
 
-    def target(self, entity_id: EntityId | None) -> ActorEntity:
+    def target(self, entity_id: EntityId | None) -> Dnd5eActor:
         """Default to the player because roles never see the player ID."""
         return self.player if entity_id is None else self.actor_here(entity_id)
 
-    def held(self, entity_id: EntityId, verb: str) -> ItemEntity:
-        item = self.of_kind(entity_id, ItemEntity)
+    def held(self, entity_id: EntityId, verb: str) -> Dnd5eItem:
+        item = item_of(self.state, entity_id)
         if item.container_id != self.player.id:
             raise ValueError(f"cannot {verb} {entity_id!r}: the player is not carrying it")
         return item
