@@ -1,14 +1,24 @@
 [project]
-name = "aidm-workspace"
+name = "aidm"
 version = "0.1.0"
-description = "AI Dungeon Master workspace"
+description = "AI Dungeon Master"
 requires-python = ">=3.12"
 dependencies = [
-    "aidm-core",
-    "aidm-rules-5e",
-    "aidm-rules-story",
-    "aidm-ui",
+    "nicegui>=2.0",
+    "pydantic>=2.9",
+    "pydantic-ai-slim[openai]>=1.0",
+    "pydantic-settings>=2.5",
 ]
+
+[project.scripts]
+aidm = "aidm_ui.app:start"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/aidm", "src/aidm_5e", "src/aidm_story", "src/aidm_ui"]
 
 [dependency-groups]
 dev = [
@@ -18,51 +28,15 @@ dev = [
     "ruff>=0.6",
 ]
 
-[tool.uv]
-package = false
-
-[tool.uv.workspace]
-members = [
-    "packages/aidm-core",
-    "packages/aidm-rules-story",
-    "packages/aidm-rules-5e",
-    "apps/aidm-ui",
-]
-
-[tool.uv.sources]
-aidm-core = { workspace = true }
-aidm-rules-story = { workspace = true }
-aidm-rules-5e = { workspace = true }
-aidm-ui = { workspace = true }
-
 [tool.pytest.ini_options]
 addopts = ["--import-mode=importlib"]
 asyncio_mode = "auto"
-pythonpath = [
-    "packages/aidm-core/tests",
-    "packages/aidm-rules-story/tests",
-    "packages/aidm-rules-5e/tests",
-    "apps/aidm-ui/tests",
-]
-testpaths = [
-    "packages/aidm-core/tests",
-    "packages/aidm-rules-story/tests",
-    "packages/aidm-rules-5e/tests",
-    "apps/aidm-ui/tests",
-]
+pythonpath = ["tests/core", "tests/story", "tests/dnd5e", "tests/ui"]
+testpaths = ["tests"]
 
 [tool.basedpyright]
-include = ["packages", "apps"]
-extraPaths = [
-    "packages/aidm-core/src",
-    "packages/aidm-core/tests",
-    "packages/aidm-rules-story/src",
-    "packages/aidm-rules-story/tests",
-    "packages/aidm-rules-5e/src",
-    "packages/aidm-rules-5e/tests",
-    "apps/aidm-ui/src",
-    "apps/aidm-ui/tests",
-]
+include = ["src", "tests", "scripts"]
+extraPaths = ["src", "tests/core", "tests/story", "tests/dnd5e", "tests/ui", "scripts"]
 typeCheckingMode = "strict"
 venvPath = "."
 venv = ".venv"

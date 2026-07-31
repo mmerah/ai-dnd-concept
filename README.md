@@ -38,20 +38,22 @@ uv run basedpyright
 uv run pytest
 ```
 
-## Workspace
+## Layout
 
 ```text
-packages/aidm-core/         engine-neutral state, reducer, pipeline, application, persistence
-packages/aidm-rules-story/  Story definitions, rules, events, presentation, advancement
-packages/aidm-rules-5e/     5e adapter, legacy mechanics, SRD data, importer, advancement
-apps/aidm-ui/               NiceGUI composition root and engine-specific UI adapters
-characters/                 explicit engine-selected character definitions
-scenarios/                  explicit engine-selected scenario definitions
+src/aidm/         engine-neutral state, reducer, pipeline, application, persistence
+src/aidm_story/   Story definitions, rules, events, presentation, advancement
+src/aidm_5e/      5e adapter, legacy mechanics, SRD data, advancement
+src/aidm_ui/      NiceGUI composition root and engine-specific UI adapters
+scripts/srd/      one-shot importer narrowing an upstream 5e-database checkout
+characters/       explicit engine-selected character definitions
+scenarios/        explicit engine-selected scenario definitions
+tests/            per-package suites: core, story, dnd5e, ui
 ```
 
-The rules engines remain separate distributions, while the UI installs both first-party engines.
-The shipped SRD pack exists only inside the 5e wheel, and its exact pack stamp is part of 5e save
-compatibility.
+One distribution. The import direction is enforced by `tests/core/test_package_boundary.py`: the
+core imports neither rules package nor NiceGUI. The shipped SRD pack is package data under
+`src/aidm_5e/data/`.
 
 The **Trace** tab shows private Director mechanics, resolved events, and the exact prompt received
 by each role. The **State** tab shows the committed game state. **Advancement** delegates its

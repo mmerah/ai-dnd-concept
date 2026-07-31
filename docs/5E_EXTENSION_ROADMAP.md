@@ -13,12 +13,12 @@ Read `CLAUDE.md` first; its engineering rules and architecture invariants govern
   in `domain/reducer.py::_spent` / `::_slot_spent` / `::_refilled`, and a consequence in
   `domain/models/consequences.py` dispatched in `engine/resolve.py`. Extend it; do not invent a
   third shape.
-- Bump `SAVE_VERSION` in `packages/aidm-core/src/aidm/domain/base.py` **once per phase** — each of
+- Bump `SAVE_VERSION` in `src/aidm/domain/base.py` **once per phase** — each of
   the three changes the persisted shape. It is 16 today, and it is the constant
   `aidm/application/game.py` enforces; `aidm_5e/domain/models/base.py`'s 15 belongs to the retained
   legacy 5e domain and gates nothing.
 - No phase needs a pack regeneration: every record these need already ships. If you find one that
-  does not, `packages/aidm-rules-5e/tests/test_content.py::test_a_loaded_pack_writes_back_byte_for_byte`
+  does not, `tests/dnd5e/test_content.py::test_a_loaded_pack_writes_back_byte_for_byte`
   is the regression check — the pack must stay a pure function of an external 5e-database checkout,
   which is not vendored.
 - `Dnd5ePresentation` is the only path from typed 5e state and events into role prompts. The
@@ -44,7 +44,7 @@ Three defects, one subsystem: `engine/rules.py` rolls a bare die and reads no pr
   the ability is in `progression.saving_throws`. Checks have no equivalent.
 - `rules._rolled` and `rules.roll_attack` each roll one `rng.randint(1, DIE)`. **There is no
   advantage or disadvantage concept anywhere in `aidm_5e`** — `grep -rn advantage
-  packages/aidm-rules-5e/src` returns exactly one hit, `ArmorRecord.stealth_disadvantage`, which
+  src/aidm_5e` returns exactly one hit, `ArmorRecord.stealth_disadvantage`, which
   nothing reads.
 - `DcRolled(actor_id, actor_name, kind, ability, dc, roll, total, success)` and
   `AttackRolled(actor_name, target_name, weapon, roll, total, ac, hit)` each carry a single `roll`,
@@ -87,7 +87,7 @@ Three defects, one subsystem: `engine/rules.py` rolls a bare die and reads no pr
 - `save_bonus` short-circuits on `stats.saving_throws`, which monsters carry as absolute numbers.
   Skill checks have no monster equivalent, so a monster's check stays the bare ability modifier —
   that is correct, not an omission.
-- `packages/aidm-rules-5e/tests/test_rules.py` pins the current single-die behaviour; expect it to
+- `tests/dnd5e/test_rules.py` pins the current single-die behaviour; expect it to
   move.
 
 ## Done when

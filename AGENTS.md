@@ -46,7 +46,7 @@ Tests must be deterministic and require no network.
 - Each agent has one narrow role. Its proposal is resolved by the selected engine, never another prompt.
 - `aidm/agents/` owns one centralized context policy for what each role sees.
 - The 5e engine reads compiled profiles from `aidm_5e/engine/ruleset.py`; only `pack_ruleset.py` knows pack storage shape.
-- 5e content is derived once: `packages/aidm-rules-5e/scripts/srd/` narrows upstream records.
+- 5e content is derived once: `scripts/srd/` narrows upstream records.
 - `aidm_ui/bootstrap.py` is the composition root. Below it, collaborators and paths are explicit; no globals.
 - `aidm/application/` owns the open game behind ports, while `aidm/store.py` performs path-based I/O.
 - Only the Narrator writes player-facing prose and it never sees unrevealed canon.

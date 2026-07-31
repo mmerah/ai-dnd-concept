@@ -8,7 +8,7 @@ Status of the proof of concept, and where it should go. Kept short on purpose.
   state.
 - The Narrator is the one role kept from unrevealed canon, because it alone writes to the player.
 - Every turn commits whole or not at all; a role failure leaves state untouched.
-- Context is per-role projection models (`packages/aidm-core/src/aidm/agents/context.py`), not
+- Context is per-role projection models (`src/aidm/agents/context.py`), not
   scattered f-strings.
 - Small output schemas and few tools per role.
 
