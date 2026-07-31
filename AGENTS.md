@@ -1,5 +1,9 @@
 # Repository guidance
 
+## Working with the maintainer
+
+The maintainer has ADHD. Load the `i-have-adhd` skill at the start of every session and shape all output according to it: lead with the next action, number multi-step work, restate progress each turn, no preamble or closing pleasantries.
+
 ## Commands
 
 Run from the repository root:
