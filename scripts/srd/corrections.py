@@ -12,7 +12,7 @@ fix raises here instead of silently patching nothing, which keeps this list from
 from collections.abc import Mapping
 
 from aidm_5e.content.records.base import Collection, Record
-from aidm_5e.utils.models import Slug, updated
+from aidm_5e.utils.models import Slug
 
 # A 5e rogue takes an ability score improvement at 4, 8, 10, 12, 16 and 19, so the cumulative total
 # is the count of those levels reached: 0,0,0,1,1,1,1,2,2,3,3,4,4,4,4,5,5,5,6,6. Upstream is right
@@ -51,7 +51,7 @@ def _fixed(
         before = corrected.get(index)
         if before is None:
             raise ValueError(f"correction names {index!r}, which the projection does not produce")
-        after = updated(before, **fields)
+        after = type(before).model_validate({**before.model_dump(round_trip=True), **fields})
         if after == before:
             raise ValueError(f"correction to {index!r} changes nothing: upstream fixed it, drop it")
         corrected[index] = after

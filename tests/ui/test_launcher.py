@@ -1,10 +1,10 @@
 from pathlib import Path
 
+from core_test_support import updated
 from ui_test_support import ui_settings
 
 from aidm.application.launcher import LauncherController, load_catalog
 from aidm.store import ENCODING, FileSaves
-from aidm.utils.models import updated
 from aidm_ui.bootstrap import create_composition
 
 

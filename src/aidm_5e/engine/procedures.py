@@ -2,7 +2,7 @@ from random import Random
 
 from aidm.domain.state import GameState
 
-from ..domain.models.events import AttackRolled
+from ..domain.models.facts import AttackRolled
 from ..domain.models.progression import Progression
 from ..models import Dnd5eActor, Dnd5eItem
 from ..state import carried_by

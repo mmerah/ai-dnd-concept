@@ -4,10 +4,12 @@ from typing import Annotated, ClassVar, Literal, TypeGuard, assert_never
 from pydantic import Field
 
 from aidm.domain.base import PLAYER_ID, EntityId, Kind, slug
-from aidm.domain.entities import ActorEntity, Entity, ItemEntity, LocationEntity
-from aidm.domain.events import ActorMoved, EntityCreated, EntityDiscovered, Event, ItemMoved
+from aidm.domain.entities import ActorEntity, ItemEntity, LocationEntity
+from aidm.domain.facts import CoreFact
 from aidm.domain.state import GameState
 from aidm.utils.models import Frozen
+
+from .state import created_state
 
 
 @dataclass(frozen=True, slots=True)
@@ -150,128 +152,77 @@ def action_references(action: CoreActionUnion) -> tuple[tuple[EntityId, EntityRe
     return tuple(references)
 
 
-def resolve_core_action(action: CoreActionUnion, state: GameState) -> list[Event]:
+def resolve_core_action(action: CoreActionUnion, draft: GameState) -> list[CoreFact]:
     match action:
         case Discover(entity_id=entity_id):
-            return _reveal(state.world.require(entity_id))
+            return draft.reveal(draft.world.require(entity_id))
         case Move():
-            return _move(action, state)
+            return _move(action, draft)
         case TakeItem():
-            return _take(action, state)
+            return _take(action, draft)
         case DropItem():
-            return _drop(action, state)
+            return _drop(action, draft)
         case GiveItem():
-            return _give(action, state)
+            return _give(action, draft)
         case GainImprovisedItem():
-            return _improvise(action, state)
+            return _improvise(action, draft)
     assert_never(action)
 
 
-def _reveal(entity: Entity) -> list[Event]:
-    return [] if entity.known else [EntityDiscovered(entity_id=entity.id, name=entity.name)]
-
-
-def _move(action: Move, state: GameState) -> list[Event]:
-    world = state.world
+def _move(action: Move, draft: GameState) -> list[CoreFact]:
+    world = draft.world
     destination = world.require_kind(action.location_id, LocationEntity)
-    player = state.player
+    player = draft.player
     if action.actor_id is None or action.actor_id == PLAYER_ID:
-        return [
-            *_reveal(destination),
-            ActorMoved(
-                actor_id=player.id,
-                actor_name=player.name,
-                location_id=destination.id,
-                location_name=destination.name,
-            ),
-        ]
+        return [*draft.reveal(destination), draft.move_actor(player, destination)]
     actor = world.require_kind(action.actor_id, ActorEntity)
     if actor.location_id != player.location_id and destination.id != player.location_id:
         raise CoreActionRejected(f"cannot move {actor.id!r}: the player would not witness it")
-    return [
-        *(_reveal(actor) if destination.id == player.location_id else []),
-        ActorMoved(
-            actor_id=actor.id,
-            actor_name=actor.name,
-            location_id=destination.id,
-            location_name=destination.name,
-        ),
-    ]
+    seen = draft.reveal(actor) if destination.id == player.location_id else []
+    return [*seen, draft.move_actor(actor, destination)]
 
 
-def _take(action: TakeItem, state: GameState) -> list[Event]:
-    item = state.world.require_kind(action.item_id, ItemEntity)
-    player = state.player
+def _take(action: TakeItem, draft: GameState) -> list[CoreFact]:
+    item = draft.world.require_kind(action.item_id, ItemEntity)
+    player = draft.player
     if item.container_id != player.location_id:
         raise CoreActionRejected(f"cannot take {item.id!r}: it is not at the player's location")
-    return [
-        *_reveal(item),
-        ItemMoved(
-            item_id=item.id,
-            item_name=item.name,
-            to_id=PLAYER_ID,
-            to_name=player.name,
-            to_kind="actor",
-        ),
-    ]
+    return [*draft.reveal(item), draft.move_item(item, player)]
 
 
-def _held(item_id: EntityId, state: GameState, verb: str) -> ItemEntity:
-    item = state.world.require_kind(item_id, ItemEntity)
+def _held(item_id: EntityId, draft: GameState, verb: str) -> ItemEntity:
+    item = draft.world.require_kind(item_id, ItemEntity)
     if item.container_id != PLAYER_ID:
         raise CoreActionRejected(f"cannot {verb} {item.id!r}: the player does not carry it")
     return item
 
 
-def _drop(action: DropItem, state: GameState) -> list[Event]:
-    item = _held(action.item_id, state, "drop")
-    location = state.world.require_kind(state.player.location_id, LocationEntity)
-    return [
-        ItemMoved(
-            item_id=item.id,
-            item_name=item.name,
-            to_id=location.id,
-            to_name=location.name,
-            to_kind="location",
-        )
-    ]
+def _drop(action: DropItem, draft: GameState) -> list[CoreFact]:
+    item = _held(action.item_id, draft, "drop")
+    location = draft.world.require_kind(draft.player.location_id, LocationEntity)
+    return [draft.move_item(item, location)]
 
 
-def _give(action: GiveItem, state: GameState) -> list[Event]:
-    item = _held(action.item_id, state, "give")
-    actor = state.world.require_kind(action.actor_id, ActorEntity)
+def _give(action: GiveItem, draft: GameState) -> list[CoreFact]:
+    item = _held(action.item_id, draft, "give")
+    actor = draft.world.require_kind(action.actor_id, ActorEntity)
     if actor.id == PLAYER_ID:
         raise CoreActionRejected("cannot give an item to the player: they already hold it")
-    if actor.location_id != state.player.location_id:
+    if actor.location_id != draft.player.location_id:
         raise CoreActionRejected(f"cannot give to {actor.id!r}: they are not here")
-    return [
-        ItemMoved(
-            item_id=item.id,
-            item_name=item.name,
-            to_id=actor.id,
-            to_name=actor.name,
-            to_kind="actor",
-        )
-    ]
+    return [draft.move_item(item, actor)]
 
 
-def _improvise(action: GainImprovisedItem, state: GameState) -> list[Event]:
-    player = state.player
+def _improvise(action: GainImprovisedItem, draft: GameState) -> list[CoreFact]:
+    player = draft.player
     item = ItemEntity(
-        id=slug(action.item_name, state.world.entities),
+        id=slug(action.item_name, draft.world.entities),
         name=action.item_name,
         brief=action.item_name,
         known=True,
         authored=False,
         container_id=player.location_id,
     )
-    return [
-        EntityCreated(entity=item),
-        ItemMoved(
-            item_id=item.id,
-            item_name=item.name,
-            to_id=player.id,
-            to_name=player.name,
-            to_kind="actor",
-        ),
-    ]
+    created = draft.add(item)
+    created_state(draft, item)
+    return [created, draft.move_item(item, player)]

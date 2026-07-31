@@ -1,22 +1,11 @@
-from typing import Protocol
+from aidm.domain.entities import BaseEntity, Entity
+from aidm.domain.facts import CoreFact
 
-from aidm.domain.base import EntityId
-from aidm.domain.events import EntityDiscovered
-
-from ...domain.models.events import Dnd5eEvent
-
-
-class Revealable(Protocol):
-    """Anything a rule can name: a core entity or an engine join view over one."""
-
-    @property
-    def id(self) -> EntityId: ...
-    @property
-    def name(self) -> str: ...
-    @property
-    def known(self) -> bool: ...
+from ...models import Dnd5eActor, Dnd5eItem
+from .resolution import Resolution
 
 
-def reveal(entity: Revealable) -> list[Dnd5eEvent]:
-    """Reveal hidden entities before an event names them."""
-    return [] if entity.known else [EntityDiscovered(entity_id=entity.id, name=entity.name)]
+def reveal(ctx: Resolution, target: Entity | Dnd5eActor | Dnd5eItem) -> list[CoreFact]:
+    """Reveal hidden entities before a fact names them."""
+    entity = target if isinstance(target, BaseEntity) else target.entity
+    return ctx.draft.reveal(entity)

@@ -11,10 +11,10 @@ from ..content.records.character import (
     ProgressionChoice,
     RecordOption,
 )
-from ..domain.models.events import Dnd5eEvent, Dnd5eRuleEvent, LeveledUp, LevelUpAvailable
+from ..domain.models.facts import Emitted, LeveledUp, LevelUpAvailable
 from ..domain.models.progression import MAX_LEVEL, Advancement, Decisions, Origin, Progression
 from ..models import Dnd5eActor, Dnd5eCharacterData
-from ..utils.models import ABILITIES, Ability, Attributes, Frozen, Slug, updated
+from ..utils.models import ABILITIES, Ability, Attributes, Frozen, Slug
 from . import features as class_features
 from . import rules, spells
 from .ruleset import CharacterProfile, FeatureProfile, LevelProfile, ProgressionRules
@@ -73,9 +73,12 @@ def _advancing(actor: Dnd5eActor) -> tuple[Progression, int]:
     return current, current.level + 1
 
 
-def offer(actor: Dnd5eActor) -> list[Dnd5eEvent]:
+def offer(actor: Dnd5eActor) -> list[Emitted]:
     current, _ = _advancing(actor)
-    return [] if current.level_up_available else [LevelUpAvailable()]
+    if current.level_up_available:
+        return []
+    current.level_up_available = True
+    return [LevelUpAvailable()]
 
 
 def pending(origin: Origin, level: int, ruleset: ProgressionRules) -> list[ProgressionChoice]:
@@ -143,15 +146,21 @@ def first_level(character: Dnd5eCharacterData, ruleset: ProgressionRules) -> Adv
 
 def advance(
     actor: Dnd5eActor, decisions: Decisions, ruleset: ProgressionRules, rng: Random
-) -> list[Dnd5eRuleEvent]:
+) -> list[Emitted]:
     planned = plan(actor, decisions, ruleset)
-    rolled, event = rules.roll_dice(f"1d{planned.benefits.hit_die}", rng)
+    rolled, roll = rules.roll_dice(f"1d{planned.benefits.hit_die}", rng)
     gained = Advancement(
         progression=planned.progression,
         attributes=planned.attributes,
         hp_gain=_hp_gain(rolled, planned.attributes) + planned.benefits.retroactive_hp_gain,
     )
-    return [event, LeveledUp(advancement=gained)]
+    stats = actor.state.stats
+    stats.attributes = gained.attributes
+    stats.max_hp += gained.hp_gain
+    stats.hp += gained.hp_gain
+    # Copy: the fact must record the level reached, not follow the draft it advanced.
+    actor.state.progression = gained.progression.model_copy(deep=True)
+    return [roll, LeveledUp(advancement=gained)]
 
 
 def plan(actor: Dnd5eActor, decisions: Decisions, ruleset: ProgressionRules) -> AdvancementPlan:
@@ -183,20 +192,23 @@ def plan(actor: Dnd5eActor, decisions: Decisions, ruleset: ProgressionRules) -> 
             ),
         ),
         selections=_selections(choices, picks),
-        progression=updated(
-            current,
-            origin=origin,
-            level=level,
-            level_up_available=False,
-            prof_bonus=reached.prof_bonus,
-            proficiencies=_proficiencies(current.proficiencies, picks),
-            spell_slots=spells.slots(
-                current.spell_slots, reached.spell_slots, character.spellcasting
-            ),
-            chosen_spells=tuple(dict.fromkeys([*current.chosen_spells, *_picked(picks, "spells")])),
-            decisions={**current.decisions, **decisions},
-            features=features,
-            feature_resources=feature_resources,
+        progression=current.model_copy(
+            update={
+                "origin": origin,
+                "level": level,
+                "level_up_available": False,
+                "prof_bonus": reached.prof_bonus,
+                "proficiencies": _proficiencies(current.proficiencies, picks),
+                "spell_slots": spells.slots(
+                    current.spell_slots, reached.spell_slots, character.spellcasting
+                ),
+                "chosen_spells": tuple(
+                    dict.fromkeys([*current.chosen_spells, *_picked(picks, "spells")])
+                ),
+                "decisions": {**current.decisions, **decisions},
+                "features": features,
+                "feature_resources": feature_resources,
+            }
         ),
         attributes=attributes,
     )
@@ -248,7 +260,7 @@ def _available(
         enough = len(options) >= choice.choose if choice.distinct else bool(options)
         if choice.choose > 0 and not enough:
             raise ValueError(f"choice {choice.id!r} has too few legal options")
-        available.append(updated(choice, options=options))
+        available.append(choice.model_copy(update={"options": options}))
     return tuple(available)
 
 
@@ -308,7 +320,7 @@ def _picked(picks: Sequence[Pick], collection: Collection) -> list[ContentRef]:
 
 def _with_subclass(origin: Origin, picks: Sequence[Pick]) -> Origin:
     ref = next(iter(_picked(picks, "subclasses")), None)
-    return origin if ref is None else updated(origin, subclass_ref=ref)
+    return origin if ref is None else origin.model_copy(update={"subclass_ref": ref})
 
 
 def _picked_features(
@@ -323,7 +335,7 @@ def _raised(attributes: Attributes, bonuses: Mapping[Ability, int]) -> Attribute
     over = sorted(f"{name} {score}" for name, score in raised.items() if score > MAX_ABILITY_SCORE)
     if over:
         raise ValueError(f"no ability may exceed {MAX_ABILITY_SCORE}: {', '.join(over)}")
-    return updated(attributes, **raised)
+    return Attributes.model_validate(attributes.model_dump() | raised)
 
 
 def _hp_gain(rolled: int, attributes: Attributes) -> int:

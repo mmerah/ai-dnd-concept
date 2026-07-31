@@ -1,11 +1,9 @@
-import json
 from random import Random
 
 from pydantic_ai import ModelRetry, NativeOutput, RunContext
 from pydantic_ai.output import OutputSpec
 
 from aidm.domain.base import PLAYER_ID, EntityId
-from aidm.domain.direction import DirectionRecord
 from aidm.domain.entities import ActorEntity, Entity, ItemEntity
 from aidm.domain.state import GameState
 
@@ -19,9 +17,7 @@ from .actions import (
     action_references,
     is_core_action,
 )
-from .constants import ENGINE_ID, SCHEMA_VERSION
 from .direction import (
-    STORY_MECHANICS_ADAPTER,
     ApplyCondition,
     ClearCondition,
     HelpfulActorTag,
@@ -76,19 +72,6 @@ class StoryDirector:
         except StoryProposalRejected as error:
             raise ModelRetry(str(error)) from error
         return direction
-
-    def record(self, direction: StoryDirection) -> DirectionRecord:
-        mechanics: object = json.loads(STORY_MECHANICS_ADAPTER.dump_json(direction.mechanics))
-        return DirectionRecord.model_validate(
-            {
-                "engine": ENGINE_ID,
-                "schema_version": SCHEMA_VERSION,
-                "intent": direction.intent,
-                "tone": direction.tone,
-                "speaker_id": direction.speaker_id,
-                "mechanics": mechanics,
-            }
-        )
 
     def _validate_consequence(
         self,

@@ -2,12 +2,12 @@ from collections.abc import Sequence
 from random import Random
 
 import pytest
+from core_test_support import updated
 from fivee_progression_support import RULES, SHEET, answers, levelled, next_of, ref, started
 from fivee_test_support import new_game, player_of, with_actor
 
 from aidm.domain.base import EntityId
 from aidm.domain.state import GameState
-from aidm.utils.models import updated
 from aidm_5e.content.library import ContentMiss
 from aidm_5e.content.records.base import ContentRef
 from aidm_5e.content.records.character import BonusOption, ProgressionChoice
@@ -16,14 +16,13 @@ from aidm_5e.domain.models.consequences import (
     Consequence,
     Rest,
 )
-from aidm_5e.domain.models.events import LeveledUp
+from aidm_5e.domain.models.facts import DiceRolled, LeveledUp
 from aidm_5e.domain.models.progression import (
     MAX_LEVEL,
     Decisions,
     Origin,
     ResourceState,
 )
-from aidm_5e.domain.reducer import apply
 from aidm_5e.engine import progression, rules
 from aidm_5e.engine.resolve import resolve
 from aidm_5e.engine.ruleset import CharacterProfile, FeatureProfile, LevelProfile, ProgressionRules
@@ -92,8 +91,8 @@ def test_the_confirmed_plan_contains_the_selected_subclass_grants() -> None:
     assert [feature.ref.index for feature in plan.benefits.features] == ["improved-critical"]
     assert plan.selections[0].labels == ("Champion",)
 
-    events = progression.advance(player_of(state), decisions, RULES, Random(1))
-    gained = events[-1]
+    facts = progression.advance(player_of(state), decisions, RULES, Random(1))
+    gained = facts[-1]
     assert isinstance(gained, LeveledUp)
     assert gained.advancement.progression == plan.progression
     assert gained.advancement.attributes == plan.attributes
@@ -164,20 +163,23 @@ def test_an_improvement_past_twenty_is_refused_rather_than_clamped() -> None:
 
 
 def test_a_constitution_increase_adds_hp_for_every_existing_level() -> None:
-    player = player_of(levelled(new_game("whispering_vault_5e"), 3))
+    """Each `advance` mutates the actor it levels, so the two spreads need their own player."""
     decisions = {"ability-scores-4": ("constitution", "constitution")}
-    plan = progression.plan(player, decisions, RULES)
+    third = player_of(levelled(new_game("whispering_vault_5e"), 3))
+    plan = progression.plan(third, decisions, RULES)
     assert plan.benefits.retroactive_hp_gain == 3
 
-    con_events = progression.advance(player, decisions, RULES, Random(1))
-    strength_events = progression.advance(
-        player,
+    con_facts = progression.advance(
+        player_of(levelled(new_game("whispering_vault_5e"), 3)), decisions, RULES, Random(1)
+    )
+    strength_facts = progression.advance(
+        player_of(levelled(new_game("whispering_vault_5e"), 3)),
         {"ability-scores-4": ("strength", "strength")},
         RULES,
         Random(1),
     )
-    con_level = con_events[-1]
-    strength_level = strength_events[-1]
+    con_level = con_facts[-1]
+    strength_level = strength_facts[-1]
     assert isinstance(con_level, LeveledUp) and isinstance(strength_level, LeveledUp)
     assert con_level.advancement.hp_gain == strength_level.advancement.hp_gain + 4
 
@@ -241,7 +243,8 @@ def test_spell_slots_are_spent_recharged_by_the_right_rest_and_spent_again() -> 
         return {level: slot.remaining for level, slot in current.spell_slots.items()}
 
     def resolved(state: GameState, *mechanics: Consequence) -> GameState:
-        return apply(state, resolve(mechanics, state, Random(1), RULES))
+        _ = resolve(mechanics, state, Random(1), RULES)
+        return state
 
     wizard = started("wizard", new_game("whispering_vault_5e"))
     assert remaining(wizard) == {1: 2}
@@ -249,7 +252,8 @@ def test_spell_slots_are_spent_recharged_by_the_right_rest_and_spent_again() -> 
     assert remaining(spent) == {1: 0}
     with pytest.raises(ValueError, match="no level 1 spell slot remains; finish a long rest"):
         resolve([comprehend], spent, Random(1), RULES)
-    assert resolved(spent, Rest(rest="short")) == spent
+    before_short_rest = spent.model_copy(deep=True)
+    assert resolved(spent, Rest(rest="short")) == before_short_rest
     rested = resolved(spent, Rest(rest="long"))
     assert remaining(rested) == {1: 2}
     assert remaining(resolved(rested, comprehend)) == {1: 1}
@@ -276,7 +280,7 @@ def test_a_known_caster_reaches_level_twenty_with_the_srds_slots_and_repertoire(
     state = started(klass, new_game("whispering_vault_5e"))
     for level in range(2, MAX_LEVEL + 1):
         spread = _spread(progression.preview(player_of(state), RULES).choices, level)
-        state = apply(state, progression.advance(player_of(state), spread, RULES, Random(1)))
+        _ = progression.advance(player_of(state), spread, RULES, Random(1))
     current = player_of(state).progression
     assert current is not None and current.level == MAX_LEVEL
     assert len(current.chosen_spells) == known
@@ -333,9 +337,11 @@ def test_only_the_player_may_have_progression() -> None:
 
 def test_levelling_rolls_the_hit_die_where_the_trace_can_see_it() -> None:
     state = new_game("whispering_vault_5e")
+    before = player_of(state).stats.max_hp
     rolled, gained = progression.advance(player_of(state), {}, RULES, Random(1))
     assert isinstance(gained, LeveledUp)
+    assert isinstance(rolled, DiceRolled)
     assert rolled.summary.startswith("rolled 1d10:")
-    after = player_of(apply(state, [rolled, gained]))
-    assert after.stats.max_hp - player_of(state).stats.max_hp == gained.advancement.hp_gain
+    after = player_of(state.committed())
+    assert after.stats.max_hp - before == gained.advancement.hp_gain
     assert after.stats.hp == after.stats.max_hp

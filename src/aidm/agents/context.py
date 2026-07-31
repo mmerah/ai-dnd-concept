@@ -3,7 +3,7 @@ from collections.abc import Callable, Iterable
 from ..domain.base import PLAYER_ID, EntityId
 from ..domain.entities import ActorEntity, Entity, ItemEntity, LocationEntity
 from ..domain.state import GameState, WorldState
-from ..utils.models import Frozen, FrozenMap, updated
+from ..utils.models import Frozen
 
 type EntityRenderer = Callable[[Entity], str]
 
@@ -14,7 +14,7 @@ class BaseScene(Frozen):
     inventory: tuple[ItemEntity, ...]
     here: tuple[Entity, ...]
     known_elsewhere: tuple[Entity, ...]
-    placements: FrozenMap[EntityId, str]
+    placements: dict[EntityId, str]
 
     def placement_of(self, entity: Entity) -> str:
         return self.placements[entity.id]
@@ -112,4 +112,4 @@ def _placement(entity: Entity, world: WorldState, nameable: frozenset[EntityId])
 
 def _undetailed[T: Entity](entity: T) -> T:
     """`detail.hook` is authored as canon the player has not reached, so the Narrator gets none."""
-    return updated(entity, detail=None)
+    return entity.model_copy(update={"detail": None})

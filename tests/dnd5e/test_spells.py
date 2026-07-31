@@ -5,6 +5,7 @@ description-guided, so these cover the slot, the gate and the outcomes the engin
 from random import Random
 
 import pytest
+from core_test_support import updated
 from fivee_progression_support import levelled, started
 from fivee_test_support import content_ref as ref
 from fivee_test_support import new_game, player_of, ruleset, with_actor
@@ -12,11 +13,9 @@ from fivee_test_support import new_game, player_of, ruleset, with_actor
 from aidm.domain.base import EntityId
 from aidm.domain.entities import ActorEntity
 from aidm.domain.state import GameState
-from aidm.utils.models import updated
 from aidm_5e.domain.models.consequences import Cast
-from aidm_5e.domain.models.events import DcRolled, DiceRolled, Dnd5eEvent, HpChanged
+from aidm_5e.domain.models.facts import DcRolled, DiceRolled, Emitted, HpChanged
 from aidm_5e.domain.models.progression import Progression
-from aidm_5e.domain.reducer import apply
 from aidm_5e.engine import bestiary, spells
 from aidm_5e.engine.resolve import resolve
 from aidm_5e.models import Dnd5eActorDefinition
@@ -49,7 +48,7 @@ def guarded(klass: str, level: int = 1) -> GameState:
     )
 
 
-def cast(state: GameState, spell: str, slot_level: int, seed: int = 1) -> list[Dnd5eEvent]:
+def cast(state: GameState, spell: str, slot_level: int, seed: int = 1) -> list[Emitted]:
     return resolve(
         [Cast(spell=f"srd-2014/spells/{spell}", slot_level=slot_level, target_id=GARGOYLE)],
         state,
@@ -58,33 +57,33 @@ def cast(state: GameState, spell: str, slot_level: int, seed: int = 1) -> list[D
     )
 
 
-def rolled(events: list[Dnd5eEvent]) -> DiceRolled:
-    (found,) = [event for event in events if isinstance(event, DiceRolled)]
+def rolled(facts: list[Emitted]) -> DiceRolled:
+    (found,) = [fact for fact in facts if isinstance(fact, DiceRolled)]
     return found
 
 
-def saving_throw(events: list[Dnd5eEvent]) -> DcRolled:
-    (found,) = [event for event in events if isinstance(event, DcRolled)]
+def saving_throw(facts: list[Emitted]) -> DcRolled:
+    (found,) = [fact for fact in facts if isinstance(fact, DcRolled)]
     return found
 
 
-def harm(state: GameState, events: list[Dnd5eEvent]) -> int:
-    return GARGOYLE_HP - actor_of(apply(state, events), GARGOYLE).stats.hp
+def harm(state: GameState) -> int:
+    return GARGOYLE_HP - actor_of(state, GARGOYLE).stats.hp
 
 
-def hp_changed(events: list[Dnd5eEvent]) -> HpChanged:
-    (found,) = [event for event in events if isinstance(event, HpChanged)]
+def hp_changed(facts: list[Emitted]) -> HpChanged:
+    (found,) = [fact for fact in facts if isinstance(fact, HpChanged)]
     return found
 
 
 def test_a_save_that_halves_on_success_halves_rather_than_skips() -> None:
     """`on_success: half` is the one save outcome the engine can own, and no dice expression can
     express half of itself, so the roll is emitted and its total halved after the fact."""
-    wizard = guarded("wizard", level=5)
-    saved = cast(wizard, "fireball", 3, SAVE_MADE)
-    failed = cast(wizard, "fireball", 3, SAVE_MISSED)
+    made, missed = guarded("wizard", level=5), guarded("wizard", level=5)
+    saved = cast(made, "fireball", 3, SAVE_MADE)
+    failed = cast(missed, "fireball", 3, SAVE_MISSED)
     assert saving_throw(saved).success and not saving_throw(failed).success
-    assert [event.type for event in saved] == [
+    assert [fact.fact for fact in saved] == [
         "spell_slot_spent",
         "spell_cast",
         "dc_rolled",
@@ -92,9 +91,9 @@ def test_a_save_that_halves_on_success_halves_rather_than_skips() -> None:
         "hp_changed",
     ]
     assert rolled(saved).dice == "8d6"
-    assert harm(wizard, saved) == rolled(saved).total // 2
-    assert harm(wizard, failed) == rolled(failed).total
-    # Event summaries stay concise even though the visible-state context carries exact HP.
+    assert harm(made) == rolled(saved).total // 2
+    assert harm(missed) == rolled(failed).total
+    # Fact summaries stay concise even though the visible-state context carries exact HP.
     assert hp_changed(saved).summary == "a gargoyle is hurt"
 
 
@@ -102,7 +101,7 @@ def test_an_attack_spell_rolls_to_hit_and_a_cantrip_scales_off_character_level()
     """`fire-bolt` carries no `at_slot_level` at all; its damage is `at_character_level`, and those
     steps are 1/5/11/17, so a level 5 wizard throws 2d10 rather than the table's first entry."""
     events = cast(guarded("wizard", level=5), "fire-bolt", 0, seed=0)  # seed 0 rolls a hit
-    assert [event.type for event in events] == [
+    assert [fact.fact for fact in events] == [
         "spell_cast",  # a cantrip spends no slot
         "attack_rolled",
         "dice_rolled",
@@ -119,11 +118,11 @@ def test_a_healing_spell_substitutes_the_casters_modifier_before_rolling() -> No
     wounded = with_actor(
         cleric, caster.entity, updated(caster.state, stats=updated(caster.stats, hp=2))
     )
-    events = resolve(
+    facts = resolve(
         [Cast(spell="srd-2014/spells/cure-wounds", slot_level=1)], wounded, Random(1), RULES
     )
-    assert rolled(events).dice == "1d8 + 2"
-    assert player_of(apply(wounded, events)).stats.hp == 2 + rolled(events).total
+    assert rolled(facts).dice == "1d8 + 2"
+    assert player_of(wounded).stats.hp == 2 + rolled(facts).total
 
 
 def test_a_negative_modifier_folds_its_sign_rather_than_being_pasted_in() -> None:

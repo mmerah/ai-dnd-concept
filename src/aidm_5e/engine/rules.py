@@ -1,6 +1,6 @@
 from random import Random
 
-from ..domain.models.events import AttackRolled, DcRolled, DiceRolled, RollKind
+from ..domain.models.facts import AttackRolled, DcRolled, DiceRolled, RollKind
 from ..models import Dnd5eActor
 from ..utils import dice
 from ..utils.models import Ability, Attributes

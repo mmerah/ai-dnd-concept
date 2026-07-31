@@ -12,10 +12,9 @@ from ..domain.definitions import (
     ScenarioDefinition,
     validate_definition_engines,
 )
-from ..domain.events import Event
-from ..domain.reducer import apply
 from ..domain.state import GameState, world_from_definitions
-from ..domain.turn import Turn
+from ..domain.transition import Fact
+from ..domain.turn import Advance, TraceEntry, Turn
 from ..engines import Advancement, Engine
 from ..pipeline import TurnOptions, run_turn
 from .ports import SaveRepository, TraceSink
@@ -33,7 +32,7 @@ class GameApplication:
     traces: TraceSink
     options: TurnOptions
     rng: Random = field(default_factory=Random)
-    turns: list[Turn] = field(default_factory=list)
+    entries: list[TraceEntry] = field(default_factory=list)
     state: GameState = field(init=False)
 
     def __post_init__(self) -> None:
@@ -43,7 +42,7 @@ class GameApplication:
             self.state = self._begun()
             return
         self.state = self._resumable(saved)
-        self.turns = list(self.traces.load(self.slug))
+        self.entries = list(self.traces.load(self.slug))
 
     async def submit(
         self,
@@ -62,7 +61,7 @@ class GameApplication:
             on_step=on_step,
         )
         self.state = turn.state
-        self.turns.append(turn)
+        self.entries.append(turn)
         self.saves.save(self.slug, self.state)
         self.traces.append(self.slug, turn)
         return turn
@@ -79,17 +78,21 @@ class GameApplication:
     def advancement_plan(self, decisions: BaseModel) -> BaseModel:
         return self._advancement().plan(self.state, decisions)
 
-    def advance(self, decisions: BaseModel) -> tuple[Event, ...]:
-        events = self._advancement().advance(self.state, decisions, self.rng)
-        self.state = apply(self.state, events, self.engine.rules)
+    def advance(self, decisions: BaseModel) -> tuple[Fact, ...]:
+        transition = self._advancement().advance(self.state, decisions, self.rng)
+        self.engine.rules.validate_state(transition.state)
+        self.state = transition.state
+        entry = Advance(facts=transition.facts, state=self.state)
+        self.entries.append(entry)
         self.saves.save(self.slug, self.state)
-        return tuple(events)
+        self.traces.append(self.slug, entry)
+        return transition.facts
 
     def restart(self) -> None:
         self.saves.discard(self.slug)
         self.traces.discard(self.slug)
         self.state = self._begun()
-        self.turns = []
+        self.entries = []
 
     def _begun(self) -> GameState:
         authored = world_from_definitions(self.scenario, self.character)

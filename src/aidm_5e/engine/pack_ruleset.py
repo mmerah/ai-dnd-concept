@@ -480,7 +480,7 @@ def _stats(monster: MonsterRecord) -> StatBlock:
         hp=monster.hit_points,
         ac=monster.armor_class,
         condition_immunities=monster.condition_immunities,
-        saving_throws=monster.saving_throws,
+        saving_throws=dict(monster.saving_throws),
     )
 
 

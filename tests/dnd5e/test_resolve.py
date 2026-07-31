@@ -1,18 +1,19 @@
-"""The resolver is the single sink from the Director's mechanics to events — pure, seeded.
+"""The resolver is the single sink from the Director's mechanics to facts. It mutates the draft
+it is handed and is seeded; `Dnd5eRules.resolve` is what drafts, so a caller's state is untouched.
 The mechanics are a recursive consequence list: `roll_check` nests branches, and a dice amount
 rolls inside the `damage`/`heal` that spends it. Positions gate take/drop/give/damage."""
 
 from random import Random
 
 import pytest
-from fivee_test_support import ruleset, with_actor
+from core_test_support import updated
+from fivee_test_support import blank_game, ruleset, with_actor
 from fivee_test_support import state as state
 
 from aidm.domain.base import PLAYER_ID, EntityId
 from aidm.domain.entities import Entity
-from aidm.domain.events import ActorMoved, EntityCreated, EntityDiscovered, ItemMoved
+from aidm.domain.facts import ActorMoved, EntityCreated, EntityDiscovered, ItemMoved
 from aidm.domain.state import GameState
-from aidm.utils.models import updated
 from aidm_5e.domain.models.consequences import (
     ApplyCondition,
     Consequence,
@@ -26,8 +27,7 @@ from aidm_5e.domain.models.consequences import (
     RollCheck,
     TakeItem,
 )
-from aidm_5e.domain.models.events import ConditionChanged, DcRolled, DiceRolled, HpChanged
-from aidm_5e.domain.reducer import apply
+from aidm_5e.domain.models.facts import ConditionChanged, DcRolled, DiceRolled, HpChanged
 from aidm_5e.engine.resolve import resolve
 from aidm_5e.state import actor_of, dnd5e_state
 
@@ -47,15 +47,15 @@ def relocated(state: GameState, entity_id: EntityId, location_id: EntityId) -> G
 
 
 def wounded(state: GameState, hp: int) -> GameState:
-    player = actor_of(state, PLAYER_ID)
-    hurt = updated(player.state, stats=updated(player.stats, hp=hp))
-    return updated(state, engine=dnd5e_state(state).with_actor(PLAYER_ID, hurt))
+    engine = dnd5e_state(state)
+    hurt = updated(engine.actor(PLAYER_ID), stats=updated(actor_of(state, PLAYER_ID).stats, hp=hp))
+    return updated(state, engine=updated(engine, actors={**engine.actors, PLAYER_ID: hurt}))
 
 
 def test_top_level_consequences_all_apply_in_order(state: GameState) -> None:
     mechanics: list[Consequence] = [Damage(amount=2), Move(location_id=EntityId("vault"))]
     events = resolve(mechanics, state, PASS, RULES)
-    assert [e.type for e in events] == ["hp_changed", "entity_discovered", "actor_moved"]
+    assert [e.fact for e in events] == ["hp_changed", "entity_discovered", "actor_moved"]
     hp, moved = events[0], events[2]
     assert isinstance(hp, HpChanged) and hp.delta == -2
     assert isinstance(moved, ActorMoved) and (moved.actor_id, moved.location_id) == (
@@ -75,7 +75,7 @@ def test_check_success_selects_on_success(state: GameState) -> None:
     ]
     events = resolve(mechanics, state, PASS, RULES)
     # improvised gain promotes the item to canon first, then adds it to inventory
-    assert [e.type for e in events] == ["dc_rolled", "entity_created", "item_moved"]
+    assert [e.fact for e in events] == ["dc_rolled", "entity_created", "item_moved"]
     rolled, created = events[0], events[1]
     assert isinstance(rolled, DcRolled) and rolled.success
     assert isinstance(created, EntityCreated) and created.entity.name == "a torch"
@@ -91,7 +91,7 @@ def test_check_failure_selects_on_failure(state: GameState) -> None:
         )
     ]
     events = resolve(mechanics, state, FAIL, RULES)
-    assert [e.type for e in events] == ["dc_rolled", "hp_changed"]
+    assert [e.fact for e in events] == ["dc_rolled", "hp_changed"]
     rolled, hp = events[0], events[1]
     assert isinstance(rolled, DcRolled) and not rolled.success
     assert isinstance(hp, HpChanged) and hp.delta == -5
@@ -104,15 +104,15 @@ def test_heal_adds_hp(state: GameState) -> None:
 
 def test_only_the_hit_points_that_moved_are_reported(state: GameState) -> None:
     """`delta` is what the clamp applies, not what was asked for: the Narrator must never be told
-    of hit points that never moved, and a change of nothing is not an event at all."""
+    of hit points that never moved, and a change of nothing is not a fact at all."""
     (hp,) = resolve([Damage(amount=99)], state, PASS, RULES)  # Kael has 10
     assert isinstance(hp, HpChanged) and (hp.delta, hp.wounds) == (-10, "down")
-    assert resolve([Heal(amount=3)], state, PASS, RULES) == []  # already at full health
+    assert resolve([Heal(amount=3)], blank_game(), PASS, RULES) == []  # already at full health
 
 
 def test_take_a_present_item_reveals_it_and_moves_it_to_the_player(state: GameState) -> None:
     events = resolve([TakeItem(item_id=EntityId("vault_map"))], state, PASS, RULES)
-    assert [e.type for e in events] == ["entity_discovered", "item_moved"]
+    assert [e.fact for e in events] == ["entity_discovered", "item_moved"]
     took = events[1]
     assert isinstance(took, ItemMoved)
     assert (took.item_id, took.item_name, took.to_id) == ("vault_map", "the vault map", PLAYER_ID)
@@ -157,7 +157,7 @@ def test_give_to_an_absent_actor_fails(state: GameState) -> None:
 
 def test_move_the_player_to_a_hidden_location_reveals_it(state: GameState) -> None:
     events = resolve([Move(location_id=EntityId("vault"))], state, PASS, RULES)
-    assert [e.type for e in events] == ["entity_discovered", "actor_moved"]
+    assert [e.fact for e in events] == ["entity_discovered", "actor_moved"]
     discovered, moved = events
     assert isinstance(discovered, EntityDiscovered) and discovered.entity_id == "vault"
     assert isinstance(moved, ActorMoved) and (moved.actor_id, moved.location_name) == (
@@ -184,7 +184,7 @@ def test_move_a_hidden_actor_into_the_room_reveals_it(state: GameState) -> None:
     """Elena is hidden and at the player's location; moving her here reveals her arrival."""
     arrive = Move(location_id=EntityId("study"), actor_id=EntityId("elena"))
     events = resolve([arrive], state, PASS, RULES)
-    assert [e.type for e in events] == ["entity_discovered", "actor_moved"]
+    assert [e.fact for e in events] == ["entity_discovered", "actor_moved"]
 
 
 def test_moving_an_actor_the_player_cannot_witness_fails(state: GameState) -> None:
@@ -205,7 +205,7 @@ def test_a_consequence_used_on_the_wrong_kind_raises(state: GameState) -> None:
 
 def test_gain_loose_item_is_promoted_to_canon(state: GameState) -> None:
     events = resolve([GainImprovisedItem(item_name="a rusty key")], state, PASS, RULES)
-    assert [e.type for e in events] == ["entity_created", "item_moved"]
+    assert [e.fact for e in events] == ["entity_created", "item_moved"]
     created, took = events
     assert isinstance(created, EntityCreated) and created.entity.name == "a rusty key"
     assert isinstance(took, ItemMoved) and took.item_id == created.entity.id
@@ -219,7 +219,7 @@ def test_redundant_discover_then_take_reveals_once(state: GameState) -> None:
     vault_map = EntityId("vault_map")
     mechanics: list[Consequence] = [Discover(entity_id=vault_map), TakeItem(item_id=vault_map)]
     events = resolve(mechanics, state, PASS, RULES)
-    assert [e.type for e in events] == ["entity_discovered", "item_moved"]
+    assert [e.fact for e in events] == ["entity_discovered", "item_moved"]
 
 
 def test_unknown_id_raises(state: GameState) -> None:
@@ -231,16 +231,16 @@ def test_a_dice_amount_rolls_inside_the_change_it_pays_for(state: GameState) -> 
     """The roll and the hit points it costs are one consequence — no value flows between two.
     '2d1' is deterministic, so the damage is exactly 2."""
     events = resolve([Damage(amount="2d1")], state, PASS, RULES)
-    assert [e.type for e in events] == ["dice_rolled", "hp_changed"]
+    assert [e.fact for e in events] == ["dice_rolled", "hp_changed"]
     rolled, hp = events
     assert isinstance(rolled, DiceRolled) and rolled.dice == "2d1"
     assert isinstance(hp, HpChanged) and hp.delta == -2
 
 
-def test_a_constant_amount_carries_no_die(state: GameState) -> None:
-    """'4' and 4 mean the same harm, so they must reach the Narrator as the same events."""
-    written = resolve([Damage(amount="4")], state, PASS, RULES)
-    assert written == resolve([Damage(amount=4)], state, PASS, RULES)
+def test_a_constant_amount_carries_no_die() -> None:
+    """'4' and 4 mean the same harm, so they must reach the Narrator as the same facts."""
+    written = resolve([Damage(amount="4")], blank_game(), PASS, RULES)
+    assert written == resolve([Damage(amount=4)], blank_game(), PASS, RULES)
 
 
 def test_damage_can_target_another_actor_here(state: GameState) -> None:
@@ -254,7 +254,7 @@ def test_damage_can_target_another_actor_here(state: GameState) -> None:
 def test_damaging_an_unseen_actor_reveals_them_first(state: GameState) -> None:
     """Elena is here but unrevealed; the events name her, so she must enter the player's view."""
     events = resolve([Damage(amount=1, target_id=EntityId("elena"))], state, PASS, RULES)
-    assert [e.type for e in events] == ["entity_discovered", "hp_changed"]
+    assert [e.fact for e in events] == ["entity_discovered", "hp_changed"]
 
 
 def test_damaging_an_actor_elsewhere_fails(state: GameState) -> None:
@@ -269,12 +269,11 @@ def test_a_condition_takes_hold_lifts_and_is_not_reapplied(state: GameState) -> 
     prone = ApplyCondition(condition="prone")
     (held,) = resolve([prone], state, PASS, RULES)
     assert isinstance(held, ConditionChanged) and (held.condition, held.active) == ("prone", True)
-    after = apply(state, [held])
-    assert actor_of(after, PLAYER_ID).stats.conditions == ("prone",)
-    assert resolve([prone], after, PASS, RULES) == []
-    (lifted,) = resolve([updated(prone, ends=True)], after, PASS, RULES)
+    assert actor_of(state, PLAYER_ID).stats.conditions == ("prone",)
+    assert resolve([prone], state, PASS, RULES) == []
+    (lifted,) = resolve([updated(prone, ends=True)], state, PASS, RULES)
     assert isinstance(lifted, ConditionChanged) and not lifted.active
-    assert actor_of(apply(after, [lifted]), PLAYER_ID).stats.conditions == ()
+    assert actor_of(state, PLAYER_ID).stats.conditions == ()
 
 
 def test_an_immune_actor_is_simply_unaffected(state: GameState) -> None:

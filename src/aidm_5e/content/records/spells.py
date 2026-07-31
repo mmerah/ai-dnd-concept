@@ -2,10 +2,8 @@ from typing import Annotated, Literal
 
 from pydantic import Field
 
-from aidm.utils.models import EMPTY_FROZEN_MAP, FrozenMap
-
 from ...utils.dice import DiceExpr
-from ...utils.models import Ability, Frozen, Slug
+from ...utils.models import EMPTY_FROZEN_MAP, Ability, Frozen, FrozenMap, Slug
 from ..vocabulary import DamageType, MagicSchool
 from .base import Record
 

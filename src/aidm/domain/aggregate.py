@@ -1,16 +1,14 @@
-from typing import Self
+from pydantic import BaseModel, Field
 
-from pydantic import BaseModel
-
-from ..utils.models import EMPTY_FROZEN_MAP, Frozen, FrozenMap, updated
+from ..utils.models import Mutable
 from .base import EntityId
 
 
-class EngineAggregate[ActorState: BaseModel, ItemState: BaseModel](Frozen):
+class EngineAggregate[ActorState: BaseModel, ItemState: BaseModel](Mutable):
     """An engine's id-keyed side table; the commit validator keeps its keys tracking the world."""
 
-    actors: FrozenMap[EntityId, ActorState] = EMPTY_FROZEN_MAP
-    items: FrozenMap[EntityId, ItemState] = EMPTY_FROZEN_MAP
+    actors: dict[EntityId, ActorState] = Field(default_factory=dict)
+    items: dict[EntityId, ItemState] = Field(default_factory=dict)
 
     def actor(self, actor_id: EntityId) -> ActorState:
         state = self.actors.get(actor_id)
@@ -23,9 +21,3 @@ class EngineAggregate[ActorState: BaseModel, ItemState: BaseModel](Frozen):
         if state is None:
             raise ValueError(f"{type(self).__name__} holds no item {item_id!r}")
         return state
-
-    def with_actor(self, actor_id: EntityId, state: ActorState) -> Self:
-        return updated(self, actors={**self.actors, actor_id: state})
-
-    def with_item(self, item_id: EntityId, state: ItemState) -> Self:
-        return updated(self, items={**self.items, item_id: state})

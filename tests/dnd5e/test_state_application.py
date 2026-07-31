@@ -2,100 +2,71 @@ import pytest
 from fivee_test_support import state as state
 
 from aidm.domain.base import PLAYER_ID, EntityId
-from aidm.domain.entities import ActorEntity, ItemEntity
-from aidm.domain.events import ActorMoved, EntityCreated, EntityDiscovered, ItemMoved
+from aidm.domain.entities import ActorEntity, ItemEntity, LocationEntity
 from aidm.domain.state import GameState
-from aidm.utils.models import updated
-from aidm_5e.domain.models.events import HpChanged
-from aidm_5e.domain.models.stats import Wounds
-from aidm_5e.domain.reducer import apply
-from aidm_5e.state import actor_of, dnd5e_state
+from aidm_5e.state import actor_of, created_state, dnd5e_state
 
 MARA = EntityId("mara")
 
 
-def hurt(target_id: EntityId, name: str, delta: int, after: Wounds = "hurt") -> HpChanged:
-    return HpChanged(target_id=target_id, target_name=name, delta=delta, wounds=after)
+def item(state: GameState, entity_id: str) -> ItemEntity:
+    return state.world.require_kind(EntityId(entity_id), ItemEntity)
+
+
+def where(state: GameState, entity_id: str) -> LocationEntity:
+    return state.world.require_kind(EntityId(entity_id), LocationEntity)
 
 
 def test_take_drop_and_hp(state: GameState) -> None:
-    result = apply(
-        state,
-        [
-            ItemMoved(
-                item_id=EntityId("vault_map"),
-                item_name="the vault map",
-                to_id=PLAYER_ID,
-                to_name="Kael",
-                to_kind="actor",
-            ),
-            ItemMoved(
-                item_id=EntityId("lantern"),
-                item_name="a lantern",
-                to_id=EntityId("study"),
-                to_name="the study",
-                to_kind="location",
-            ),
-            hurt(PLAYER_ID, "Kael", -3),
-        ],
-    )
+    _ = state.move_item(item(state, "vault_map"), state.player)
+    _ = state.move_item(item(state, "lantern"), where(state, "study"))
+    _ = actor_of(state, PLAYER_ID).stats.apply_hp_delta(-3)
+    result = state.committed()
+
     # vault_map picked up, lantern dropped in the study
     carried = [e.id for e in result.world.carried_by(PLAYER_ID)]
     assert carried == [EntityId("vault_map")]
-    vault_map = result.world.entities[EntityId("vault_map")]
-    lantern = result.world.entities[EntityId("lantern")]
-    assert isinstance(vault_map, ItemEntity) and vault_map.container_id == PLAYER_ID
-    assert isinstance(lantern, ItemEntity) and lantern.container_id == "study"  # now lies here
+    assert item(result, "vault_map").container_id == PLAYER_ID
+    assert item(result, "lantern").container_id == "study"  # now lies here
     assert actor_of(result, PLAYER_ID).stats.hp == 7
 
 
 def test_give_moves_an_item_into_another_actors_inventory(state: GameState) -> None:
-    result = apply(
-        state,
-        [
-            ItemMoved(
-                item_id=EntityId("lantern"),
-                item_name="a lantern",
-                to_id=MARA,
-                to_name="Mara",
-                to_kind="actor",
-            )
-        ],
-    )
+    mara = state.world.require_kind(MARA, ActorEntity)
+    _ = state.move_item(item(state, "lantern"), mara)
+    result = state.committed()
+
     assert result.world.carried_by(PLAYER_ID) == ()
     assert [e.id for e in result.world.carried_by(MARA)] == [EntityId("lantern")]
 
 
 def test_hp_is_clamped_for_every_actor(state: GameState) -> None:
-    down = apply(state, [hurt(PLAYER_ID, "Kael", -99, "down")])
-    assert actor_of(down, PLAYER_ID).stats.hp == 0
-    healed = apply(state, [hurt(PLAYER_ID, "Kael", 99, "unharmed")])
-    assert actor_of(healed, PLAYER_ID).stats.hp == 10
-    assert actor_of(apply(state, [hurt(MARA, "Mara", -99, "down")]), MARA).stats.hp == 0
+    player = actor_of(state, PLAYER_ID)
+    assert player.stats.apply_hp_delta(-99) == -10
+    assert player.stats.hp == 0
+    assert player.stats.apply_hp_delta(99) == 10
+    assert player.stats.hp == 10
+    mara = actor_of(state, MARA)
+    _ = mara.stats.apply_hp_delta(-99)
+    assert mara.stats.hp == 0
+    assert actor_of(state.committed(), MARA).stats.hp == 0
 
 
 def test_move_the_player(state: GameState) -> None:
-    moved = ActorMoved(
-        actor_id=PLAYER_ID,
-        actor_name="Kael",
-        location_id=EntityId("vault"),
-        location_name="the vault",
-    )
-    assert apply(state, [moved]).player.location_id == "vault"
+    _ = state.move_actor(state.player, where(state, "vault"))
+    assert state.committed().player.location_id == "vault"
 
 
 def test_move_another_actor(state: GameState) -> None:
-    moved = ActorMoved(
-        actor_id=MARA,
-        actor_name="Mara",
-        location_id=EntityId("vault"),
-        location_name="the vault",
-    )
-    assert actor_of(apply(state, [moved]), MARA).location_id == "vault"
+    mara = state.world.require_kind(MARA, ActorEntity)
+    _ = state.move_actor(mara, where(state, "vault"))
+    assert actor_of(state.committed(), MARA).location_id == "vault"
 
 
 def test_discover_reveals_only_the_target(state: GameState) -> None:
-    result = apply(state, [EntityDiscovered(entity_id=EntityId("elena"), name="Elena")])
+    _ = state.reveal(state.world.require(EntityId("elena")))
+    result = state.committed()
+
     known = {e.id: e.known for e in result.world.entities.values()}
     assert known == {
         "study": True,
@@ -108,6 +79,10 @@ def test_discover_reveals_only_the_target(state: GameState) -> None:
     }
 
 
+def test_revealing_a_known_entity_states_nothing(state: GameState) -> None:
+    assert state.reveal(state.world.require(EntityId("mara"))) == []
+
+
 def test_create_appends_and_gains_engine_state(state: GameState) -> None:
     elgin = ActorEntity(
         id=EntityId("elgin"),
@@ -116,41 +91,25 @@ def test_create_appends_and_gains_engine_state(state: GameState) -> None:
         authored=False,
         location_id=EntityId("study"),
     )
-    result = apply(state, [EntityCreated(entity=elgin)])
+    _ = state.add(elgin)
+    created_state(state, elgin)
+    result = state.committed()
+
     assert list(result.world.entities.values())[-1] == elgin
     assert dnd5e_state(result).actor(elgin.id).progression is None
 
 
-def test_impossible_events_fail_fast(state: GameState) -> None:
-    with pytest.raises(ValueError):
-        apply(state, [EntityDiscovered(entity_id=EntityId("nobody"), name="Nobody")])
-    with pytest.raises(ValueError):
-        apply(
-            state,
-            [
-                ItemMoved(
-                    item_id=EntityId("nobody"),
-                    item_name="a ghost",
-                    to_id=PLAYER_ID,
-                    to_name="Kael",
-                    to_kind="actor",
-                )
-            ],
-        )
-    with pytest.raises(ValueError):
-        apply(
-            state,
-            [
-                ActorMoved(
-                    actor_id=PLAYER_ID,
-                    actor_name="Kael",
-                    location_id=EntityId("nowhere"),
-                    location_name="Nowhere",
-                )
-            ],
-        )
-    with pytest.raises(ValueError):  # a location has no hit points
-        apply(state, [hurt(EntityId("study"), "the study", -1)])
+def test_impossible_topology_fails_fast(state: GameState) -> None:
+    with pytest.raises(ValueError, match="unknown entity id"):
+        state.reveal(state.world.require(EntityId("nobody")))
+    with pytest.raises(ValueError, match="unknown entity id"):
+        _ = item(state, "nobody")
+    with pytest.raises(ValueError, match="it is a location"):
+        _ = state.world.require_kind(EntityId("study"), ActorEntity)
+    with pytest.raises(ValueError, match="already exists"):
+        _ = state.add(state.player)
+    with pytest.raises(ValueError, match="it is a location"):  # a location has no hit points
+        _ = actor_of(state, EntityId("study"))
 
 
 @pytest.mark.parametrize(
@@ -167,15 +126,27 @@ def test_a_world_that_puts_something_nowhere_real_is_refused(
 ) -> None:
     """One required container id per item is the whole point of the shape: what used to need a
     held-xor-located reconciliation is now a single lookup that either resolves or raises."""
-    broken = updated(state.world.entities[entity_id], **{field: container})
+    setattr(state.world.entities[entity_id], field, container)
     with pytest.raises(ValueError):
-        updated(
-            state, world=updated(state.world, entities={**state.world.entities, entity_id: broken})
-        )
+        state.committed()
 
 
 def test_engine_state_must_track_every_world_actor(state: GameState) -> None:
-    orphan = dict(dnd5e_state(state).actors)
-    del orphan[MARA]
+    del dnd5e_state(state).actors[MARA]
     with pytest.raises(ValueError, match="does not track the world"):
-        updated(state, engine=updated(dnd5e_state(state), actors=orphan))
+        state.committed()
+
+
+def test_a_refused_commit_leaves_the_draft_and_its_source_alone(state: GameState) -> None:
+    """The draft is discarded, so a half-mutated one is safe; the caller rebinds only on success."""
+    committed = state.committed()
+    before = committed.model_dump_json()
+    draft = committed.draft()
+    _ = draft.move_actor(draft.player, where(draft, "vault"))
+    del dnd5e_state(draft).actors[MARA]
+
+    with pytest.raises(ValueError, match="does not track the world"):
+        draft.committed()
+
+    assert committed.model_dump_json() == before
+    assert draft.player.location_id == "vault"  # the failed draft keeps its half-applied change

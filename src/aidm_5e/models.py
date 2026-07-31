@@ -1,12 +1,12 @@
 from dataclasses import dataclass
 from typing import Literal, Self
 
-from pydantic import model_validator
+from pydantic import Field, model_validator
 
 from aidm.domain.aggregate import EngineAggregate
 from aidm.domain.base import PLAYER_ID, EntityId
 from aidm.domain.entities import ActorEntity, ItemEntity
-from aidm.utils.models import EMPTY_FROZEN_MAP
+from aidm.utils.models import Mutable
 
 from .content.records.base import ContentRef
 from .domain.models.progression import Decisions, Origin, Progression
@@ -16,13 +16,13 @@ from .utils.models import Attributes, Frozen
 type Dnd5eContentRef = ContentRef
 
 
-class Dnd5eActorState(Frozen):
+class Dnd5eActorState(Mutable):
     stats: StatBlock
     progression: Progression | None = None
     ref: Dnd5eContentRef | None = None
 
 
-class Dnd5eItemState(Frozen):
+class Dnd5eItemState(Mutable):
     ref: Dnd5eContentRef | None = None
 
 
@@ -104,7 +104,7 @@ class Dnd5eCharacterData(Frozen):
     engine: Literal["dnd5e"] = "dnd5e"
     origin: Origin
     starting_attributes: Attributes = Attributes()
-    decisions: Decisions = EMPTY_FROZEN_MAP
+    decisions: Decisions = Field(default_factory=dict)
 
 
 class Dnd5eActorDefinition(Frozen):

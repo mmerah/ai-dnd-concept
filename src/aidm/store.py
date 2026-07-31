@@ -2,12 +2,12 @@ from dataclasses import dataclass
 from pathlib import Path
 from re import fullmatch
 
-from pydantic import BaseModel
+from pydantic import BaseModel, TypeAdapter
 
 from .domain.base import SAVE_VERSION
 from .domain.definitions import CharacterDefinition, ScenarioDefinition
 from .domain.state import GameState
-from .domain.turn import Turn
+from .domain.turn import TraceEntry
 
 ENCODING = "utf-8"
 _SLUG_PATTERN = r"[a-z0-9][a-z0-9_-]*"
@@ -58,16 +58,19 @@ def _require_save_version(stored: int, what: str) -> None:
         raise ValueError(f"{what} is version {stored}, this build needs {SAVE_VERSION}")
 
 
-def read_turns(path: Path) -> tuple[Turn, ...]:
+TRACE_ADAPTER: TypeAdapter[TraceEntry] = TypeAdapter(TraceEntry)
+
+
+def read_trace(path: Path) -> tuple[TraceEntry, ...]:
     if not path.exists():
         return ()
-    turns: list[Turn] = []
+    entries: list[TraceEntry] = []
     for line in path.read_text(encoding=ENCODING).splitlines():
         if not line:
             continue
         _require_save_version(_TracedVersion.model_validate_json(line).state.save_version, "trace")
-        turns.append(Turn.model_validate_json(line))
-    return tuple(turns)
+        entries.append(TRACE_ADAPTER.validate_json(line))
+    return tuple(entries)
 
 
 @dataclass(frozen=True, slots=True)
@@ -103,14 +106,14 @@ class FileSaves:
 class FileTraces:
     directory: Path
 
-    def append(self, slug: str, turn: Turn) -> None:
+    def append(self, slug: str, entry: TraceEntry) -> None:
         path = self._path(slug)
         path.parent.mkdir(parents=True, exist_ok=True)
         with path.open("a", encoding=ENCODING) as file:
-            file.write(turn.model_dump_json() + "\n")
+            file.write(TRACE_ADAPTER.dump_json(entry).decode(ENCODING) + "\n")
 
-    def load(self, slug: str) -> tuple[Turn, ...]:
-        return read_turns(self._path(slug))
+    def load(self, slug: str) -> tuple[TraceEntry, ...]:
+        return read_trace(self._path(slug))
 
     def discard(self, slug: str) -> None:
         self._path(slug).unlink(missing_ok=True)

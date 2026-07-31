@@ -1,18 +1,16 @@
 import json
 
 from aidm.domain.base import PLAYER_ID
-from aidm.domain.direction import DirectionRecord
 from aidm.domain.entities import ActorEntity, Entity, ItemEntity, LocationEntity
-from aidm.domain.events import RuleEvent
-from aidm.domain.json import thaw_json
 
 from .agents import views
-from .constants import ENGINE_ID, SCHEMA_VERSION
-from .domain.models.events import (
+from .domain.models.direction import MECHANICS_ADAPTER, Dnd5eDirection
+from .domain.models.facts import (
     AttackRolled,
     ConditionChanged,
     DcRolled,
     DiceRolled,
+    Dnd5eFact,
     FeatureActivated,
     FeatureUsed,
     HpChanged,
@@ -23,7 +21,6 @@ from .domain.models.events import (
     SpellSlotSpent,
 )
 from .engine.ruleset import Ruleset
-from .events import decode_dnd5e_event
 from .models import Dnd5eState
 
 
@@ -45,9 +42,8 @@ class Dnd5ePresentation:
             case LocationEntity():
                 return ""
 
-    def narrator_event(self, event: RuleEvent) -> str | None:
-        typed = decode_dnd5e_event(event, ENGINE_ID, SCHEMA_VERSION)
-        match typed:
+    def narrator_fact(self, fact: Dnd5eFact) -> str | None:
+        match fact:
             case DcRolled(actor_name=name, success=success):
                 return f"{name} {'succeeds' if success else 'fails'}"
             case AttackRolled(
@@ -59,9 +55,9 @@ class Dnd5ePresentation:
             case DiceRolled():
                 return None
             case HpChanged():
-                return typed.summary
+                return fact.summary
             case ConditionChanged():
-                return typed.summary
+                return fact.summary
             case LevelUpAvailable():
                 return "an advancement is available to the player"
             case FeatureUsed(name=name):
@@ -73,14 +69,12 @@ class Dnd5ePresentation:
             case SpellSlotSpent():
                 return None
             case Rested():
-                return typed.summary
+                return fact.summary
             case LeveledUp():
-                return typed.summary
+                return fact.summary
 
-    def trace_event(self, event: RuleEvent) -> str:
-        return decode_dnd5e_event(event, ENGINE_ID, SCHEMA_VERSION).summary
+    def trace_fact(self, fact: Dnd5eFact) -> str:
+        return fact.summary
 
-    def trace_direction(self, direction: DirectionRecord) -> str:
-        if direction.engine != ENGINE_ID or direction.schema_version != SCHEMA_VERSION:
-            raise ValueError("direction record is not compatible with 5e")
-        return json.dumps(thaw_json(direction.mechanics), indent=2)
+    def trace_direction(self, direction: Dnd5eDirection) -> str:
+        return json.dumps(json.loads(MECHANICS_ADAPTER.dump_json(direction.mechanics)), indent=2)

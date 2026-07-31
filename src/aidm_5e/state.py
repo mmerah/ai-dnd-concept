@@ -1,5 +1,5 @@
 from aidm.domain.base import EntityId
-from aidm.domain.entities import ActorEntity, Entity, ItemEntity
+from aidm.domain.entities import ActorEntity, Entity, ItemEntity, LocationEntity
 from aidm.domain.state import GameState
 
 from .domain.models.stats import StatBlock
@@ -12,16 +12,16 @@ def dnd5e_state(state: GameState) -> Dnd5eState:
     return state.engine
 
 
-def created_state(state: GameState, entity: Entity) -> Dnd5eState:
+def created_state(draft: GameState, entity: Entity) -> None:
     """The mechanics a newly narrated entity starts with: none beyond an empty stat block."""
-    engine = dnd5e_state(state)
+    engine = dnd5e_state(draft)
     match entity:
         case ActorEntity():
-            return engine.with_actor(entity.id, Dnd5eActorState(stats=StatBlock()))
+            engine.actors[entity.id] = Dnd5eActorState(stats=StatBlock())
         case ItemEntity():
-            return engine.with_item(entity.id, Dnd5eItemState())
-        case _:
-            return engine
+            engine.items[entity.id] = Dnd5eItemState()
+        case LocationEntity():
+            return
 
 
 def actor_of(state: GameState, actor_id: EntityId) -> Dnd5eActor:

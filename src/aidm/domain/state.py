@@ -6,7 +6,7 @@ from pydantic import Field, model_validator
 from aidm_5e.models import Dnd5eState
 from aidm_story.models import StoryState
 
-from ..utils.models import EMPTY_FROZEN_MAP, Frozen, FrozenMap, updated
+from ..utils.models import Frozen, Mutable
 from .base import PLAYER_ID, EngineId, EntityId, slug
 from .definitions import (
     ActorEngineData,
@@ -16,13 +16,14 @@ from .definitions import (
     ScenarioMeta,
 )
 from .entities import ActorEntity, BaseEntity, Entity, ItemEntity, LocationEntity
+from .facts import ActorMoved, CoreFact, EntityCreated, EntityDiscovered, ItemMoved
 
 type EngineState = Annotated[StoryState | Dnd5eState, Field(discriminator="engine")]
 type EntityEngineData = ActorEngineData | ItemEngineData
 
 
-class WorldState(Frozen):
-    entities: FrozenMap[EntityId, Entity] = EMPTY_FROZEN_MAP
+class WorldState(Mutable):
+    entities: dict[EntityId, Entity] = Field(default_factory=dict)
 
     @model_validator(mode="after")
     def _keys_match_ids(self) -> Self:
@@ -44,14 +45,6 @@ class WorldState(Frozen):
                 f"used {entity_id!r} as {expected.__name__}, but it is a {entity.kind}"
             )
         return entity
-
-    def replacing(self, entity: Entity) -> Self:
-        return updated(self, entities={**self.entities, entity.id: entity})
-
-    def adding(self, entity: Entity) -> Self:
-        if entity.id in self.entities:
-            raise ValueError(f"entity id {entity.id!r} already exists")
-        return self.replacing(entity)
 
     def location_of(self, entity: Entity) -> EntityId | None:
         match entity:
@@ -87,7 +80,7 @@ class Exchange(Frozen):
     narration: str
 
 
-class GameState(Frozen):
+class GameState(Mutable):
     save_version: int
     scenario: ScenarioMeta
     world: WorldState
@@ -108,6 +101,46 @@ class GameState(Frozen):
 
     def is_here(self, entity: Entity) -> bool:
         return self.world.location_of(entity) == self.player.location_id
+
+    def draft(self) -> "GameState":
+        """A working copy a resolution mutates; a failed turn never replaces the committed state."""
+        return self.model_copy(deep=True)
+
+    def committed(self) -> "GameState":
+        """The one validation per transaction that replaces validating after every change."""
+        return GameState.model_validate(self.model_dump(round_trip=True))
+
+    def add(self, entity: Entity) -> EntityCreated:
+        """Copy into the fact, so a later move in the same turn cannot rewrite the record."""
+        if entity.id in self.world.entities:
+            raise ValueError(f"entity id {entity.id!r} already exists")
+        self.world.entities[entity.id] = entity
+        return EntityCreated(entity=entity.model_copy(deep=True))
+
+    def reveal(self, entity: Entity) -> list[CoreFact]:
+        if entity.known:
+            return []
+        entity.known = True
+        return [EntityDiscovered(entity_id=entity.id, name=entity.name)]
+
+    def move_actor(self, actor: ActorEntity, destination: LocationEntity) -> ActorMoved:
+        actor.location_id = destination.id
+        return ActorMoved(
+            actor_id=actor.id,
+            actor_name=actor.name,
+            location_id=destination.id,
+            location_name=destination.name,
+        )
+
+    def move_item(self, item: ItemEntity, destination: ActorEntity | LocationEntity) -> ItemMoved:
+        item.container_id = destination.id
+        return ItemMoved(
+            item_id=item.id,
+            item_name=item.name,
+            to_id=destination.id,
+            to_name=destination.name,
+            to_kind="actor" if isinstance(destination, ActorEntity) else "location",
+        )
 
     @model_validator(mode="after")
     def _consistent_world(self) -> Self:
@@ -139,7 +172,7 @@ class AuthoredWorld(Frozen):
     """The composed world alongside the authored engine data, keyed by the id each entity got."""
 
     world: WorldState
-    engine_data: FrozenMap[EntityId, EntityEngineData] = EMPTY_FROZEN_MAP
+    engine_data: dict[EntityId, EntityEngineData] = Field(default_factory=dict)
 
 
 def world_from_definitions(

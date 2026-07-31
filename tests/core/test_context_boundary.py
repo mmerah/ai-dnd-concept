@@ -1,4 +1,5 @@
 import pytest
+from core_test_support import updated, with_entity
 from pydantic_ai.messages import ModelRequest, ModelResponse
 
 from aidm.agents.context import EntityRenderer, SceneSnapshot, VisibleScene
@@ -15,7 +16,6 @@ from aidm.domain.definitions import ScenarioMeta
 from aidm.domain.entities import ActorEntity, ItemEntity, LocationEntity
 from aidm.domain.growth import GrowthRequest
 from aidm.domain.state import Exchange, GameState, WorldState
-from aidm.utils.models import updated
 from aidm_story.models import (
     DEFAULT_APPROACHES,
     StoryActorState,
@@ -33,7 +33,7 @@ HOOK = "Her missing folio points toward the vault."
 def _with_detail(held: GameState, entity_id: EntityId) -> GameState:
     entity = held.world.require_kind(entity_id, ActorEntity)
     detailed = updated(entity, detail={"description": DESCRIPTION, "hook": HOOK})
-    return updated(held, world=held.world.replacing(detailed))
+    return with_entity(held, detailed)
 
 
 def _state_line(entity_id: EntityId) -> str:
@@ -138,7 +138,7 @@ def test_the_narrators_view_has_no_field_that_could_hold_unrevealed_canon() -> N
 def test_a_placement_never_names_an_entity_the_player_has_not_met() -> None:
     held = state()
     ledger = held.world.require_kind(EntityId("ledger"), ItemEntity)
-    held = updated(held, world=held.world.replacing(updated(ledger, container_id="hidden-actor")))
+    held = with_entity(held, updated(ledger, container_id="hidden-actor"))
     snapshot = SceneSnapshot.of(held)
 
     assert snapshot.placement_of(ledger) == "held by The Secret"

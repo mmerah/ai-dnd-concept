@@ -5,61 +5,60 @@ import pytest
 from story_test_support import initial_story_game, setback_direction
 
 from aidm.domain.base import PLAYER_ID, EntityId
-from aidm.domain.direction import DirectionRecord
-from aidm.domain.events import RuleEvent
-from aidm.domain.reducer import apply
 from aidm_story.actions import DropItem, TakeItem
 from aidm_story.direction import HelpfulGear, Risk, StoryConsequence, StoryDirection
-from aidm_story.events import decode_story_event
+from aidm_story.facts import RiskRolled
 from aidm_story.state import story_state
 
 
-def test_story_trace_direction_serializes_frozen_mechanics() -> None:
+def test_story_trace_direction_serializes_typed_mechanics() -> None:
     engine, _ = initial_story_game()
-    direction = DirectionRecord.model_validate(
-        {
-            "engine": "story",
-            "schema_version": 1,
-            "intent": "Take a risk.",
-            "tone": "tense",
-            "speaker_id": None,
-            "mechanics": [{"action": "risk", "details": {"difficulty": 2}}],
-        }
+    direction = StoryDirection(
+        intent="Take a risk.",
+        tone="tense",
+        mechanics=[Risk(approach="bold", difficulty=2)],
     )
 
     assert json.loads(engine.presentation.trace_direction(direction)) == [
-        {"action": "risk", "details": {"difficulty": 2}}
+        {
+            "action": "risk",
+            "actor_id": None,
+            "approach": "bold",
+            "difficulty": 2,
+            "helpful": None,
+            "hindering": None,
+            "on_strong": [],
+            "on_mixed": [],
+            "on_setback": [],
+        }
     ]
 
 
-def test_story_risk_is_seeded_pure_and_applies_through_core() -> None:
+def test_story_risk_is_seeded_pure_and_commits_once() -> None:
     engine, state = initial_story_game()
     before = state.model_dump_json()
     direction = setback_direction(take_stress=True)
 
-    events = engine.rules.resolve(direction, state, Random(2))
+    transition = engine.rules.resolve(direction, state, Random(2))
 
-    assert events == engine.rules.resolve(direction, state, Random(2))
+    assert transition == engine.rules.resolve(direction, state, Random(2))
     assert state.model_dump_json() == before
-    assert [event.name if isinstance(event, RuleEvent) else event.type for event in events] == [
+    assert [fact.fact for fact in transition.facts] == [
         "risk-rolled",
         "growth-marked",
         "stress-changed",
     ]
-    rolled = events[0]
-    assert isinstance(rolled, RuleEvent)
-    typed = decode_story_event(rolled, "story", 1)
-    assert typed.type == "risk-rolled"
-    assert typed.dice == (1, 1)
-    assert typed.outcome == "setback"
-    safe = engine.presentation.narrator_event(rolled)
+    rolled = transition.facts[0]
+    assert isinstance(rolled, RiskRolled)
+    assert rolled.dice == (1, 1)
+    assert rolled.outcome == "setback"
+    safe = engine.presentation.narrator_fact(rolled)
     assert safe == "Kael's attempt ends in a setback"
     assert all(private not in safe for private in ("1+1", "difficulty", "modifier"))
 
-    after = apply(state, events, engine.rules)
-    player = story_state(after).actor(PLAYER_ID)
+    player = story_state(transition.state).actor(PLAYER_ID)
     assert (player.growth_marks, player.stress) == (1, 1)
-    engine.rules.validate_state(after)
+    engine.rules.validate_state(transition.state)
 
 
 def test_dropped_story_gear_cannot_grant_a_risk_bonus() -> None:
@@ -70,11 +69,7 @@ def test_dropped_story_gear_cannot_grant_a_risk_bonus() -> None:
         tone="quiet",
         mechanics=[DropItem(item_id=gear.id)],
     )
-    dropped = apply(
-        state,
-        engine.rules.resolve(drop, state, Random(0)),
-        engine.rules,
-    )
+    dropped = engine.rules.resolve(drop, state, Random(0)).state
     mechanics: list[StoryConsequence] = [
         Risk(
             approach="clever",
@@ -101,11 +96,7 @@ def test_story_mode_can_take_an_existing_item_and_keep_its_rule_state() -> None:
         mechanics=mechanics,
     )
 
-    after = apply(
-        state,
-        engine.rules.resolve(direction, state, Random(0)),
-        engine.rules,
-    )
+    after = engine.rules.resolve(direction, state, Random(0)).state
 
     map_item = after.world.require(EntityId("vault_map"))
     assert map_item.known

@@ -200,9 +200,92 @@ against" — an optional encoding an inconsistency rather than a fact.
   Diffed against a worktree at the previous commit over a fixture covering every branch — that is
   the *only* difference; the Director, Maintainer and Creator prompts are byte-identical
 
-## Next — item 4: resolution transaction
+## 4 — resolution transaction — done
 
-`Transition{state, facts}`, one mutable draft committed once. Deletes `RuleEvent`,
-`RuleStatePatch`, `domain/reducer.py`, `updated()`, `FrozenMap` and `domain/json.py`. Port the
-purity assertion in `test_engine_contract.py` first, and add explicit `engine` tags to both
-direction models and every fact model before persisting the union.
+- `Transition{state, facts}` is what an engine returns. `resolve` drafts (`state.model_copy(deep=True)`),
+  mechanics mutate that draft directly, and `commit()` revalidates it once —
+  `GameState.model_validate(working.model_dump(round_trip=True))`. The N per-event round trips
+  through `updated()` became 2 per turn (resolution, then growth + exchange)
+- Domain state models are mutable (`utils/models.py::Mutable`); values stay `Frozen`. `hp` is now
+  `stats.apply_hp_delta(-total)`, not a nested `updated(...)` chain
+- Typed facts replace the `RuleEvent` envelope. One three-part union discriminated on `source`
+  ("core" / "story" / "dnd5e") then `fact`; core renders its own topology facts and delegates the
+  engine's through `engines.py::narrator_fact` / `trace_fact` — the `isinstance` moved, it did not
+  vanish. No encode/decode, no `schema_version`, no JSON payload
+- `StoryDirection` and `Dnd5eDirection` carry an `engine` tag, so `Turn.direction` persists as a
+  discriminated union instead of `DirectionRecord{mechanics: FrozenJson}`. The Director's output
+  schema gains one const field; that is the price of not smart-union-guessing on reload
+- Core owns topology application: `GameState.add` / `reveal` / `move_actor` / `move_item` mutate and
+  return the core fact. Both engines call them, so `_reveal`/`common.reveal` and the two `_moved`
+  helpers collapsed. `add` copies the entity into `EntityCreated`, so a later move in the same turn
+  cannot rewrite the record
+- The 5e reducer's semantics moved into the mechanics that emit them: HP clamp into `health`,
+  conditions into `conditions`, `level_up_available` and the level-up into `progression`, feature and
+  slot spend into `features`/`spells`, rest refills into `recharged`. `Resolution.then` and
+  `StoryRules._fold`'s re-application are gone — a mechanic reads what the previous one wrote
+- Advancement is the second transaction: both `advance` methods return a `Transition`, and
+  `GameApplication.advance` appends an `Advance` trace entry. The trace is
+  `TraceEntry = Turn | Advance`, so a level-up shows in the trace panel
+- Deleted: `domain/{events,presentation,reducer,direction,json}.py`, `aidm_5e/events.py`,
+  `aidm_5e/domain/reducer.py`, `RuleEvent`, `DirectionRecord`, `FrozenJson`, `updated()`,
+  `EngineAggregate.with_actor`/`with_item`, `WorldState.replacing`/`adding`, both engines'
+  `SCHEMA_VERSION`, both `record()` methods, `Revealable`, the level-up replay guard (unreachable
+  once nothing replays). `SAVE_VERSION` bumped to 18
+- Deviation from the plan: `Frozen` and `FrozenMap` are not deleted outright. `Frozen` still marks
+  values that are never part of a draft — facts, directions, consequences, content records — and
+  `FrozenMap` survives inside `aidm_5e/utils/models.py` only. A pack loads once and every turn shares
+  its record objects, so an edit there outlives the turn that made it; `test_content.py`'s
+  "a loaded record cannot be edited" is the test that caught this the moment the annotation went
+- Gate green: 201 tests, ruff, basedpyright. The ported purity assertion holds for both engines
+  (`state.model_dump_json()` unchanged after `resolve`, same result for the same seed). New game +
+  save + resume verified for both engines; facts and directions round-trip through the trace; a
+  level-up commits through the same path and reloads as an `Advance`
+- 10,534 → 9,910 source lines
+
+## Review pass on 4
+
+An adversarial Opus review ran against the working tree. It confirmed no mechanics regression —
+every fact's `before`/`after`/`delta`/`remaining` and every emission order are value-identical to
+the previous commit, the deleted replay guards really are dead, and `commit()` round-trips int slot
+keys, `EntityId`, `Decisions` and the discriminated unions losslessly. Acted on its findings:
+
+- **Two aliasing holes, both latent, both fixed.** `bestiary.statted_actor` handed the authored
+  `StatBlock` object straight into runtime state — now that `StatBlock` is `Mutable` and pydantic
+  does not revalidate instances, two actors from one definition would share an HP pool and damage
+  would write back into the scenario the application holds for the process. `progression.advance`
+  assigned the same `Progression` object it put inside `LeveledUp`, so a "frozen" fact tracked the
+  draft. Both take a `model_copy(deep=True)`, as `GameState.add` already did
+- **The load-bearing purity test was vacuous.** Its direction had no mechanics, so "state unchanged
+  after resolve" held by construction — it passed with `draft` monkeypatched to the identity
+  function. It now takes an item and rolls a risk, and fails under both an identity draft and a
+  shallow copy (verified by sabotage)
+- `test_a_state_the_commit_refuses_is_never_the_committed_one` never made a commit refuse anything.
+  Rewritten: it half-applies a move, breaks the side table, asserts the commit raises, and asserts
+  the source state is untouched while the discarded draft keeps its half-applied change
+- Added the missing persistence coverage. A 5e `Turn` and an `Advance` now round-trip through
+  `FileTraces` and reload as `Dnd5eDirection` and 5e facts. Confirmed the tags are load-bearing:
+  stripping `engine` makes the union refuse to discriminate rather than guess
+- Added `Advance`'s only end-to-end test: `GameApplication.advance` saves, appends the trace entry,
+  and clears the advancement
+- Naming: `draft`/`commit` became `GameState.draft()` / `.committed()`, so the noun `draft` is no
+  longer shadowed by a function and the `working` variable disappears. Story's `Emitted` moved from
+  `rules.py` to `facts.py` beside `StoryFact`, which decouples advancement from rules.
+  `narrator_core_fact` + `trace_core_fact` collapsed into `core_fact_summary` — a core fact carries
+  nothing private, so one renderer is the honest shape
+- Trace panel: an advancement no longer claims a turn number of its own ("after turn N"), and the
+  dead `or "- (none)"` on evidence is gone
+- CLAUDE.md corrected: a turn runs **two** transactions, not one, and `Frozen` guards a model's own
+  fields, not its contents — the trap that produced both aliasing holes
+- Rejected nothing. The one SUSPECTED finding — a `ValidationError` escaping the 5e Director's dry
+  run now that `commit()` runs inside `resolve` — the reviewer could not reach and neither could I:
+  every state invariant is guarded by a mechanic first. It stays a note, not a change
+- 203 tests, ruff, basedpyright clean. Gate re-run: new game + save + resume identical for both
+  engines, facts and directions round-trip through the trace
+
+## Next — item 5: author-once scenarios and direct save identity
+
+`scenarios/<name>/{world,story,dnd5e}.json` and `characters/<name>/{base,story,dnd5e}.json`; an
+overlay's presence *is* the compatibility check. Deletes `EntityDefinitionBase` and its three
+subclasses, `StartingItemDefinition`, `world_from_definitions`'s rebuild, `validate_definition_engines`,
+`_save_option`'s reverse matching, and both `runtime()` methods. Save identity is persisted, not
+rediscovered.

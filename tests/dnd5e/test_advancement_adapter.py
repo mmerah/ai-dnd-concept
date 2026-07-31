@@ -1,10 +1,9 @@
 from random import Random
 
+from core_test_support import updated
 from fivee_progression_support import answers
 from fivee_test_support import initial_5e_game, player_of, ruleset, with_actor
 
-from aidm.domain.reducer import apply
-from aidm.utils.models import updated
 from aidm_5e.advancement import Dnd5eAdvancement, Dnd5eAdvancementDecisions
 from aidm_5e.domain.models.consequences import LevelUp
 from aidm_5e.domain.models.direction import Dnd5eDirection
@@ -25,19 +24,15 @@ def test_5e_advancement_status_and_full_adapter_flow() -> None:
     assert any("Second Wind" in line and "1/1 uses" in line for line in status.detail)
     assert not advancement.available(state)
 
-    offered = apply(
-        state,
-        engine.rules.resolve(
-            Dnd5eDirection(
-                intent="Kael earns a level.",
-                tone="triumphant",
-                mechanics=[LevelUp()],
-            ),
-            state,
-            Random(1),
+    offered = engine.rules.resolve(
+        Dnd5eDirection(
+            intent="Kael earns a level.",
+            tone="triumphant",
+            mechanics=[LevelUp()],
         ),
-        engine.rules,
-    )
+        state,
+        Random(1),
+    ).state
     assert advancement.available(offered)
     assert advancement.status(offered).detail[0] == "Level 2 is ready."
 
@@ -47,8 +42,7 @@ def test_5e_advancement_status_and_full_adapter_flow() -> None:
     plan = advancement.plan(offered, decisions)
     assert isinstance(plan, AdvancementPlan)
 
-    events = advancement.advance(offered, decisions, Random(1))
-    advanced = apply(offered, events, engine.rules)
+    advanced = advancement.advance(offered, decisions, Random(1)).state
 
     assert advancement.status(advanced).headline == "level 2"
     assert not advancement.available(advanced)

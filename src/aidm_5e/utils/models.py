@@ -1,14 +1,39 @@
+from collections.abc import Mapping
+from types import MappingProxyType
 from typing import Annotated, Literal, cast, get_args
 
-from pydantic import BaseModel, ConfigDict, Field
-
-from aidm.utils.models import updated as updated
+from pydantic import (
+    AfterValidator,
+    BaseModel,
+    ConfigDict,
+    Field,
+    SerializerFunctionWrapHandler,
+    WrapSerializer,
+)
 
 
 class Frozen(BaseModel):
     """Keep Pydantic's field hash because content references are mapping keys."""
 
     model_config = ConfigDict(extra="forbid", frozen=True)
+
+
+def _immutable[K, V](mapping: Mapping[K, V]) -> Mapping[K, V]:
+    return MappingProxyType(dict(mapping))
+
+
+def _as_dict[K, V](mapping: Mapping[K, V], serialize: SerializerFunctionWrapHandler) -> object:
+    return serialize(dict(mapping))
+
+
+type FrozenMap[K, V] = Annotated[
+    Mapping[K, V],
+    AfterValidator(_immutable),
+    WrapSerializer(_as_dict),
+]
+"""A pack loads once and every turn shares its records, so an edit would outlive its turn."""
+
+EMPTY_FROZEN_MAP = Field(default_factory=dict, validate_default=True)
 
 
 Ability = Literal["strength", "dexterity", "constitution", "intelligence", "wisdom", "charisma"]

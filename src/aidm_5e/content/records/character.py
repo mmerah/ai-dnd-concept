@@ -2,10 +2,8 @@ from typing import Annotated, Literal, Self
 
 from pydantic import Field, model_validator
 
-from aidm.utils.models import EMPTY_FROZEN_MAP, FrozenMap
-
 from ...utils.dice import PositiveDice
-from ...utils.models import Ability, Frozen
+from ...utils.models import EMPTY_FROZEN_MAP, Ability, Frozen, FrozenMap
 from ..vocabulary import LanguageName, RestType
 from .base import ContentRef, CreatureSize, Record, Slug
 

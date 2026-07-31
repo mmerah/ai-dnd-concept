@@ -1,7 +1,7 @@
 from typing import Protocol
 
 from ..domain.state import GameState
-from ..domain.turn import Turn
+from ..domain.turn import TraceEntry
 
 
 class SaveRepository(Protocol):
@@ -11,6 +11,6 @@ class SaveRepository(Protocol):
 
 
 class TraceSink(Protocol):
-    def append(self, slug: str, turn: Turn) -> None: ...
-    def load(self, slug: str) -> tuple[Turn, ...]: ...
+    def append(self, slug: str, entry: TraceEntry) -> None: ...
+    def load(self, slug: str) -> tuple[TraceEntry, ...]: ...
     def discard(self, slug: str) -> None: ...

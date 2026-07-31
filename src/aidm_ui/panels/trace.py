@@ -2,10 +2,10 @@ from collections.abc import Sequence
 
 from nicegui import ui
 
-from aidm.domain.events import RuleEvent
 from aidm.domain.growth import RejectedGrowth
-from aidm.domain.presentation import trace_core_event
-from aidm.domain.turn import Turn
+from aidm.domain.transition import Fact
+from aidm.domain.turn import Advance, TraceEntry, Turn
+from aidm.engines import Engine, trace_direction, trace_fact
 
 from ..session_model import Session
 
@@ -21,35 +21,37 @@ def _section(title: str, body: str) -> None:
 
 
 def trace_panel(session: Session) -> None:
-    if not session.app.turns:
+    entries = session.app.entries
+    if not entries:
         ui.label("No turns yet this session.").classes("opacity-60")
-    numbered = list(enumerate(session.app.turns, 1))
-    for number, turn in reversed(numbered):
-        with ui.expansion(
-            f"turn {number}: {turn.prompt}",
-            value=number == len(session.app.turns),
-        ):
-            _turn_trace(session, turn)
+    turns = 0
+    titles: list[str] = []
+    for entry in entries:
+        match entry:
+            case Turn(prompt=prompt):
+                turns += 1
+                titles.append(f"turn {turns}: {prompt}")
+            case Advance():
+                titles.append(f"after turn {turns}: advancement")
+    for index, entry in reversed(list(enumerate(entries))):
+        with ui.expansion(titles[index], value=index == len(entries) - 1):
+            _entry_trace(session.app.engine, entry)
 
 
-def _turn_trace(session: Session, turn: Turn) -> None:
-    presentation = session.app.engine.presentation
+def _entry_trace(engine: Engine, entry: TraceEntry) -> None:
+    match entry:
+        case Advance(facts=facts):
+            _section("ADVANCEMENT", _facts(engine, facts))
+        case Turn():
+            _turn_trace(engine, entry)
+
+
+def _turn_trace(engine: Engine, turn: Turn) -> None:
     _section("DIRECTOR intent (to the narrator)", turn.direction.intent)
     _section("DIRECTOR tone (to the narrator)", turn.direction.tone)
-    _section(
-        "DIRECTOR mechanics (private)",
-        presentation.trace_direction(turn.direction),
-    )
-    private = [
-        (
-            presentation.trace_event(event)
-            if isinstance(event, RuleEvent)
-            else trace_core_event(event)
-        )
-        for event in turn.events
-    ]
-    _section("EVENTS (private)", "\n".join(f"- {line}" for line in private) or "- (none)")
-    _section("NARRATOR-SAFE EVIDENCE", turn.narrator_evidence or "- (none)")
+    _section("DIRECTOR mechanics (private)", trace_direction(engine, turn.direction))
+    _section("FACTS (private)", _facts(engine, turn.facts))
+    _section("NARRATOR-SAFE EVIDENCE", turn.narrator_evidence)
     _section("NARRATOR", turn.narration)
     requests = "\n".join(
         f"- {request.kind} {request.name}: {request.brief}" for request in turn.growth.requests
@@ -63,6 +65,11 @@ def _turn_trace(session: Session, turn: Turn) -> None:
     with ui.expansion("what each role was shown").classes("w-full mt-3"):
         for role, prompt in turn.prompts.items():
             _section(role.upper(), prompt)
+
+
+def _facts(engine: Engine, facts: Sequence[Fact]) -> str:
+    lines = [f"- {trace_fact(engine, fact)}" for fact in facts]
+    return "\n".join(lines) or "- (none)"
 
 
 def _rejected(rejected: Sequence[RejectedGrowth]) -> str:

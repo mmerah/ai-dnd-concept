@@ -1,6 +1,7 @@
 from collections.abc import Sequence
 from random import Random
 
+from core_test_support import updated
 from fivee_test_support import content_ref as ref
 from fivee_test_support import player_of as player_of
 from fivee_test_support import ruleset, sheet
@@ -8,10 +9,8 @@ from fivee_test_support import ruleset, sheet
 import aidm_5e.engine.progression as progression
 from aidm.domain.base import PLAYER_ID
 from aidm.domain.state import GameState
-from aidm.utils.models import updated
 from aidm_5e.content.records.character import ProgressionChoice
 from aidm_5e.domain.models.progression import Decisions, Origin
-from aidm_5e.domain.reducer import apply
 from aidm_5e.state import dnd5e_state
 
 RULES = ruleset()
@@ -32,14 +31,13 @@ def next_of(state: GameState) -> Decisions:
 
 
 def levelled(state: GameState, to: int) -> GameState:
-    current = player_of(state).progression
+    """Draft first: `advance` mutates, and callers compare against the state they passed in."""
+    working = state.draft()
+    current = player_of(working).progression
     assert current is not None
     for _ in range(current.level + 1, to + 1):
-        state = apply(
-            state,
-            progression.advance(player_of(state), next_of(state), RULES, Random(1)),
-        )
-    return state
+        _ = progression.advance(player_of(working), next_of(working), RULES, Random(1))
+    return working.committed()
 
 
 def started(klass: str, state: GameState) -> GameState:
@@ -54,4 +52,4 @@ def started(klass: str, state: GameState) -> GameState:
         progression=start.progression,
         stats=updated(held.stats, attributes=start.attributes),
     )
-    return updated(state, engine=engine.with_actor(PLAYER_ID, player))
+    return updated(state, engine=updated(engine, actors={**engine.actors, PLAYER_ID: player}))

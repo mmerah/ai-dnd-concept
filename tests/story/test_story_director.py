@@ -8,8 +8,8 @@ from pydantic_ai.usage import RunUsage
 from story_test_support import initial_story_game
 
 from aidm.domain.base import PLAYER_ID, EntityId
-from aidm.domain.events import Event
 from aidm.domain.state import GameState
+from aidm.domain.transition import Transition
 from aidm_story.actions import DropItem
 from aidm_story.direction import HelpfulGear, Risk, StoryDirection, TakeStress
 from aidm_story.director import StoryDirector
@@ -81,10 +81,10 @@ def test_a_genuine_validation_error_is_not_turned_into_a_retry() -> None:
             direction: StoryDirection,
             state: GameState,
             rng: Random,
-        ) -> list[Event]:
-            del direction, state, rng
+        ) -> Transition:
+            del direction, rng
             StoryActorState.model_validate({})
-            return []
+            return Transition(state=state.draft().committed(), facts=())
 
     broken_director = StoryDirector(_CorruptRules())
     direction = StoryDirection(intent="Kael waits.", tone="quiet", mechanics=[])

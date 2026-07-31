@@ -1,6 +1,7 @@
 from random import Random
 
 import pytest
+from core_test_support import updated
 from fivee_progression_support import (
     RULES,
     SHEET,
@@ -13,10 +14,9 @@ from fivee_test_support import new_game, player_of, summary, with_actor
 from aidm_5e.agents import views
 from aidm_5e.domain.models.consequences import LevelUp, Rest, UseFeature
 from aidm_5e.domain.models.progression import ResourceState
-from aidm_5e.domain.reducer import apply
 from aidm_5e.engine import features, progression
 from aidm_5e.engine.resolve import resolve
-from aidm_5e.utils.models import Attributes, updated
+from aidm_5e.utils.models import Attributes
 
 SECOND_WIND = "srd-2014/features/second-wind"
 ACTION_SURGE = "srd-2014/features/action-surge-1-use"
@@ -49,20 +49,20 @@ def test_fighter_features_are_owned_spent_and_recharged() -> None:
     wounded = with_actor(
         state, player.entity, updated(player.state, stats=updated(player.stats, hp=1))
     )
-    events = resolve(
+    facts = resolve(
         [UseFeature(feature=SECOND_WIND), UseFeature(feature=ACTION_SURGE)],
         wounded,
         Random(1),
         RULES,
     )
-    assert [event.type for event in events] == [
+    assert [fact.fact for fact in facts] == [
         "feature_used",
         "dice_rolled",
         "hp_changed",
         "feature_used",
         "feature_activated",
     ]
-    spent = apply(wounded, events)
+    spent = wounded
     current = player_of(spent).progression
     assert current is not None
     assert {key: resource.remaining for key, resource in current.feature_resources.items()} == {
@@ -76,8 +76,8 @@ def test_fighter_features_are_owned_spent_and_recharged() -> None:
     with pytest.raises(ValueError, match="0 uses left"):
         resolve([UseFeature(feature=SECOND_WIND)], spent, Random(1), RULES)
 
-    rested = apply(spent, resolve([Rest(rest="short")], spent, Random(1), RULES))
-    current = player_of(rested).progression
+    _ = resolve([Rest(rest="short")], spent, Random(1), RULES)
+    current = player_of(spent).progression
     assert current is not None
     assert {key: resource.remaining for key, resource in current.feature_resources.items()} == {
         SECOND_WIND: 1,
@@ -142,22 +142,16 @@ def test_shared_and_scaled_resources_need_no_class_specific_engine_rules() -> No
         feature_resources=monk_resources,
     )
     player = player_of(state)
-    monk_state = with_actor(state, player.entity, updated(player.state, progression=monk))
-    spent = apply(
-        monk_state,
-        resolve(
-            [UseFeature(feature="srd-2014/features/flurry-of-blows")],
-            monk_state,
-            Random(1),
-            RULES,
-        ),
+    spent = with_actor(state, player.entity, updated(player.state, progression=monk))
+    _ = resolve(
+        [UseFeature(feature="srd-2014/features/flurry-of-blows")], spent, Random(1), RULES
     )
     monk_after = player_of(spent).progression
     assert monk_after is not None
     assert monk_after.feature_resources["srd-2014/features/ki"].remaining == 4
     (rested,) = resolve([Rest(rest="short")], spent, Random(1), RULES)
     assert summary(rested) == "completed a short rest; recharged Ki"
-    assert player_of(apply(spent, [rested])).progression == monk
+    assert player_of(spent).progression == monk
 
     _, bard_resources = features.acquire(
         (), {}, (inspiration,), ruleset=RULES, class_level=1, attributes=Attributes(charisma=16)
@@ -174,15 +168,9 @@ def test_shared_and_scaled_resources_need_no_class_specific_engine_rules() -> No
         features=(lay_on_hands.ref,),
         feature_resources=paladin_resources,
     )
-    paladin_state = with_actor(state, player.entity, updated(player.state, progression=paladin))
-    spent = apply(
-        paladin_state,
-        resolve(
-            [UseFeature(feature="srd-2014/features/lay-on-hands", amount=7)],
-            paladin_state,
-            Random(1),
-            RULES,
-        ),
+    spent = with_actor(state, player.entity, updated(player.state, progression=paladin))
+    _ = resolve(
+        [UseFeature(feature="srd-2014/features/lay-on-hands", amount=7)], spent, Random(1), RULES
     )
     paladin_after = player_of(spent).progression
     assert paladin_after is not None
@@ -191,24 +179,24 @@ def test_shared_and_scaled_resources_need_no_class_specific_engine_rules() -> No
 
 def test_the_directors_level_up_consequence_unlocks_the_players_level_up() -> None:
     state = new_game("whispering_vault_5e")
-    events = resolve([LevelUp()], state, Random(1), RULES)
-    assert [event.type for event in events] == ["level_up_available"]
-    offered = player_of(apply(state, events)).progression
+    facts = resolve([LevelUp()], state, Random(1), RULES)
+    assert [fact.fact for fact in facts] == ["level_up_available"]
+    offered = player_of(state).progression
     assert offered is not None
     assert offered.level == 1
     assert offered.level_up_available
-    assert resolve([LevelUp()], apply(state, events), Random(1), RULES) == []
+    assert resolve([LevelUp()], state, Random(1), RULES) == []
 
 
 def test_the_player_answers_choices_after_the_director_awards_a_level() -> None:
     state = levelled(new_game("whispering_vault_5e"), 2)
     assert "not awarded" in views.level_up_state(player_of(state).progression)
-    state = apply(state, resolve([LevelUp()], state, Random(1), RULES))
+    _ = resolve([LevelUp()], state, Random(1), RULES)
     assert "waiting for the player" in views.level_up_state(player_of(state).progression)
 
     decisions = next_of(state)
-    events = progression.advance(player_of(state), decisions, RULES, Random(1))
-    after = player_of(apply(state, events))
+    _ = progression.advance(player_of(state), decisions, RULES, Random(1))
+    after = player_of(state)
     assert after.progression is not None
     assert after.progression.level == 3
     assert after.progression.origin.subclass_ref == ref("subclasses", "champion")

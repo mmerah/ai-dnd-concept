@@ -5,9 +5,7 @@ from typing import Literal
 
 from pydantic import TypeAdapter
 
-from aidm.utils.models import EMPTY_FROZEN_MAP, FrozenMap
-
-from ..utils.models import Frozen, Slug
+from ..utils.models import EMPTY_FROZEN_MAP, Frozen, FrozenMap, Slug
 from .models import Manifest, Pack
 from .records.base import Collection, ContentRef, Record
 from .registry import COLLECTION_OF, COLLECTION_SPECS

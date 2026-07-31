@@ -4,7 +4,7 @@ from pydantic import Field, model_validator
 
 from aidm.domain.aggregate import EngineAggregate
 from aidm.domain.base import Slug
-from aidm.utils.models import Frozen
+from aidm.utils.models import Frozen, Mutable
 
 StoryApproach = Literal["bold", "subtle", "clever", "empathetic"]
 APPROACH_NAMES: tuple[StoryApproach, ...] = ("bold", "subtle", "clever", "empathetic")
@@ -52,7 +52,7 @@ class StoryCondition(Frozen):
     description: str = Field(description="The concrete constraint this puts on the actor.")
 
 
-class StoryActorState(Frozen):
+class StoryActorState(Mutable):
     approaches: StoryApproaches
     tags: tuple[StoryActorTag, ...] = ()
     stress: int = Field(default=0, ge=0)
@@ -80,7 +80,7 @@ class StoryGearTag(Frozen):
     description: str
 
 
-class StoryItemState(Frozen):
+class StoryItemState(Mutable):
     gear: StoryGearTag | None = None
 
 

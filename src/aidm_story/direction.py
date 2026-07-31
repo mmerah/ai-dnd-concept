@@ -191,6 +191,7 @@ STORY_MECHANICS_ADAPTER: TypeAdapter[list[StoryConsequence]] = TypeAdapter(list[
 
 
 class StoryDirection(Frozen):
+    engine: Literal["story"] = "story"
     intent: str
     tone: str
     speaker_id: EntityId | None = None

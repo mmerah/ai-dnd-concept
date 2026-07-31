@@ -1,11 +1,11 @@
 from pathlib import Path
 
 import pytest
+from core_test_support import updated
 from fivee_test_support import PACK_DIR, all_of, content, new_game, pack, player_of, ruleset
 from pydantic import ValidationError
 
 from aidm.domain.base import EntityId
-from aidm.utils.models import updated
 from aidm_5e.agents import views
 from aidm_5e.content.library import ContentMiss, load, write_pack
 from aidm_5e.content.records.base import ContentRef, Record

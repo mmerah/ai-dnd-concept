@@ -69,10 +69,7 @@ async def test_an_engine_uses_the_shared_pipeline_and_safe_narrator_prompt() -> 
             rng=Random(0),
         )
 
-    assert [event.type for event in turn.events] == [
-        "entity_discovered",
-        "item_moved",
-    ]
+    assert [fact.fact for fact in turn.facts] == ["entity_discovered", "item_moved"]
     assert {item.id for item in turn.state.world.carried_by(PLAYER_ID)} == {
         "a_guttering_lantern",
         "vault_map",

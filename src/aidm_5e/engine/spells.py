@@ -5,7 +5,7 @@ from ..content.records.base import ContentRef
 from ..content.records.spells import SpellDamage, SpellRecord, SpellSave
 from ..content.vocabulary import RestType
 from ..domain.models.consequences import Cast
-from ..domain.models.events import Dnd5eEvent, SlotsRefilled, SpellCast, SpellSlotSpent
+from ..domain.models.facts import Emitted, SlotsRefilled, SpellCast, SpellSlotSpent
 from ..domain.models.progression import Progression, ResourceState, spell_ref
 from ..models import Dnd5eActor
 from ..utils import dice
@@ -39,11 +39,14 @@ def slots(
 
 
 def recharged(ctx: Resolution, completed: RestType) -> tuple[SlotsRefilled, ...]:
-    return tuple(
-        SlotsRefilled(slot_level=level, maximum=state.maximum)
+    spent = [
+        (level, state)
         for level, state in sorted(ctx.progression.spell_slots.items())
         if state.refills(completed)
-    )
+    ]
+    for _, state in spent:
+        state.remaining = state.maximum
+    return tuple(SlotsRefilled(slot_level=level, maximum=state.maximum) for level, state in spent)
 
 
 def spellcasting(progression: Progression, rules: CharacterRules) -> SpellcastingProfile:
@@ -67,16 +70,16 @@ def repertoire(
     )
 
 
-def cast(ctx: Resolution, consequence: Cast) -> list[Dnd5eEvent]:
+def cast(ctx: Resolution, consequence: Cast) -> list[Emitted]:
     progression = ctx.progression
     casting = spellcasting(progression, ctx.ruleset)
     ref = spell_ref(consequence.spell)
     record = _castable(ctx, ref, casting)
-    spent = [
+    spent: list[Emitted] = [
         *_spend(progression, record, consequence.slot_level),
         SpellCast(ref=ref, name=record.name, slot_level=consequence.slot_level),
     ]
-    return [*spent, *_effects(ctx.then(spent), consequence, record, casting)]
+    return [*spent, *_effects(ctx, consequence, record, casting)]
 
 
 def _castable(ctx: Resolution, ref: ContentRef, casting: SpellcastingProfile) -> SpellRecord:
@@ -88,7 +91,7 @@ def _castable(ctx: Resolution, ref: ContentRef, casting: SpellcastingProfile) ->
     return found
 
 
-def _spend(progression: Progression, record: SpellRecord, slot_level: int) -> list[Dnd5eEvent]:
+def _spend(progression: Progression, record: SpellRecord, slot_level: int) -> list[Emitted]:
     if record.level == 0:
         if slot_level != 0:
             raise ValueError(f"cantrip {record.index!r} spends no spell slot")
@@ -104,14 +107,13 @@ def _spend(progression: Progression, record: SpellRecord, slot_level: int) -> li
         raise ValueError(
             f"no level {slot_level} spell slot remains; finish a {state.recharge} rest"
         )
-    return [
-        SpellSlotSpent(slot_level=slot_level, remaining=state.remaining - 1, maximum=state.maximum)
-    ]
+    state.remaining -= 1
+    return [SpellSlotSpent(slot_level=slot_level, remaining=state.remaining, maximum=state.maximum)]
 
 
 def _effects(
     ctx: Resolution, consequence: Cast, record: SpellRecord, casting: SpellcastingProfile
-) -> list[Dnd5eEvent]:
+) -> list[Emitted]:
     """Resolve only what the record types; anything else the spell does stays description-guided."""
     progression = ctx.progression
     modifier = rules.modifier(ctx.player.stats.attributes, casting.ability)
@@ -119,7 +121,7 @@ def _effects(
     healing = _scaled(record.heal_at_slot_level, slot_level)
     if healing is not None:
         healed = dice.substituted(healing, modifier)
-        return health.hp_events(ctx, consequence.target_id, healed, sign=1)
+        return health.hp_facts(ctx, consequence.target_id, healed, sign=1)
     harm = _harm(record.damage, slot_level, progression.level)
     amount = None if harm is None else dice.substituted(harm, modifier)
     # Three spells state both an attack and a save, where the save is a later stage their
@@ -132,7 +134,7 @@ def _effects(
         return _saved(ctx, _aimed(ctx, consequence, record), record.save, dc, amount)
     if amount is None:
         return []
-    return health.hp_events(ctx, consequence.target_id, amount, sign=-1)
+    return health.hp_facts(ctx, consequence.target_id, amount, sign=-1)
 
 
 def _harm(damage: SpellDamage | None, slot_level: int, class_level: int) -> dice.DiceExpr | None:
@@ -164,12 +166,12 @@ def _attacked(
     name: str,
     bonus: int,
     amount: dice.SelfContainedDice | None,
-) -> list[Dnd5eEvent]:
+) -> list[Emitted]:
     rolled = rules.roll_attack(ctx.player, target, name, bonus, ctx.rng)
-    seen: list[Dnd5eEvent] = [*common.reveal(target), rolled]
+    seen: list[Emitted] = [*common.reveal(ctx, target), rolled]
     if not rolled.hit or amount is None:
         return seen
-    return [*seen, *health.hp_events(ctx.then(seen), target.id, amount, sign=-1)]
+    return [*seen, *health.hp_facts(ctx, target.id, amount, sign=-1)]
 
 
 def _saved(
@@ -178,17 +180,16 @@ def _saved(
     save: SpellSave,
     dc: int,
     amount: dice.SelfContainedDice | None,
-) -> list[Dnd5eEvent]:
+) -> list[Emitted]:
     rolled = rules.roll_save(target, save.ability, dc, ctx.rng)
-    seen: list[Dnd5eEvent] = [*common.reveal(target), rolled]
+    seen: list[Emitted] = [*common.reveal(ctx, target), rolled]
     if amount is None:
         return seen
     if not rolled.success:
-        return [*seen, *health.hp_events(ctx.then(seen), target.id, amount, sign=-1)]
+        return [*seen, *health.hp_facts(ctx, target.id, amount, sign=-1)]
     if save.on_success != "half":
         # `other` is a spell-specific consequence, which stays with the description.
         return seen
     # No dice expression can express half of itself, so the roll lands and the total is halved.
     total, halving = rules.roll_dice(amount, ctx.rng)
-    seen = [*seen, halving]
-    return [*seen, *health.hp_events(ctx.then(seen), target.id, total // 2, sign=-1)]
+    return [*seen, halving, *health.hp_facts(ctx, target.id, total // 2, sign=-1)]

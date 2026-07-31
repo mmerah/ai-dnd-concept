@@ -2,7 +2,7 @@ from typing import Annotated, Self
 
 from pydantic import Field, model_validator
 
-from aidm.utils.models import FrozenMap
+from aidm.utils.models import Mutable
 
 from ...content.records.base import Collection, ContentRef
 from ...content.records.spells import SlotLevel
@@ -11,7 +11,7 @@ from ...utils.models import SLUG_MAX_LENGTH, Ability, Attributes, Frozen, Slug
 
 MAX_LEVEL = 20
 
-type Decisions = FrozenMap[Slug, tuple[Slug, ...]]
+type Decisions = dict[Slug, tuple[Slug, ...]]
 
 
 # A ContentRef flattened to a string, because a map key must survive a JSON round trip.
@@ -51,7 +51,7 @@ def spell_ref(key: SpellKey) -> ContentRef:
     return ContentRef(pack=pack, collection="spells", index=index)
 
 
-class ResourceState(Frozen):
+class ResourceState(Mutable):
     """A pool of uses that a rest refills: a feature's counter, or one level of spell slots."""
 
     remaining: int = Field(ge=0)
@@ -72,8 +72,8 @@ class ResourceState(Frozen):
         return self.spent > 0 and (self.recharge == "short" or completed == "long")
 
 
-type FeatureResources = FrozenMap[FeatureKey, ResourceState]
-type SpellSlots = FrozenMap[SlotLevel, ResourceState]
+type FeatureResources = dict[FeatureKey, ResourceState]
+type SpellSlots = dict[SlotLevel, ResourceState]
 
 
 class Origin(Frozen):
@@ -84,7 +84,7 @@ class Origin(Frozen):
     subclass_ref: ContentRef | None = None
 
 
-class Progression(Frozen):
+class Progression(Mutable):
     origin: Origin
     level: int = Field(ge=1, le=MAX_LEVEL)
     level_up_available: bool = False

@@ -2,10 +2,8 @@ from typing import Annotated, Literal
 
 from pydantic import Field
 
-from aidm.utils.models import EMPTY_FROZEN_MAP, FrozenMap
-
 from ...utils.dice import DiceExpr
-from ...utils.models import Ability, Attributes, Frozen
+from ...utils.models import EMPTY_FROZEN_MAP, Ability, Attributes, Frozen, FrozenMap
 from ..vocabulary import ConditionName, RestType
 from .base import ContentRef, CreatureSize, DamageRoll, Record, Slug
 

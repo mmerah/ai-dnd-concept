@@ -21,13 +21,12 @@ from .domain.entities import (
     LocationEntity,
     placement,
 )
-from .domain.events import EntityCreated, Event
 from .domain.growth import GrowthRequest, screen_growth
-from .domain.reducer import apply, narrator_evidence
 from .domain.state import Exchange, GameState
+from .domain.transition import Direction, Fact
 from .domain.turn import Turn
-from .engines import Direction, Engine, entity_renderer, record, resolve
-from .utils.models import Frozen, updated
+from .engines import Engine, entity_renderer, narrator_evidence, resolve
+from .utils.models import Frozen
 
 
 class TurnOptions(Frozen):
@@ -60,10 +59,9 @@ async def run_turn(
     )
     direction: Direction = await director.run(prompts["director"], state, history)
 
-    events = resolve(engine, direction, state, rng)
-    draft = apply(state, events, engine.rules)
-    directed = record(engine, direction)
-    evidence = narrator_evidence(events, engine.presentation.narrator_event)
+    transition = resolve(engine, direction, state, rng)
+    draft = transition.state.draft()
+    evidence = narrator_evidence(engine, transition.facts)
 
     after = SceneSnapshot.of(draft)
     describe = entity_renderer(engine, draft)
@@ -72,9 +70,9 @@ async def run_turn(
         VisibleScene.of(after),
         describe,
         draft.scenario,
-        intent=directed.intent,
-        tone=directed.tone,
-        speaker_id=directed.speaker_id,
+        intent=direction.intent,
+        tone=direction.tone,
+        speaker_id=direction.speaker_id,
         evidence=evidence,
         prompt=prompt,
     )
@@ -97,7 +95,7 @@ async def run_turn(
     )
 
     step("creator")
-    created, creation_events, draft = await _grow(
+    created, creation_facts = await _grow(
         draft,
         screened.accepted,
         narration,
@@ -106,16 +104,14 @@ async def run_turn(
         stages,
         engine,
     )
-    final = updated(
-        draft,
-        history=(*draft.history, Exchange(prompt=prompt, narration=narration)),
-        turn=draft.turn + 1,
-    )
+    draft.history = (*draft.history, Exchange(prompt=prompt, narration=narration))
+    draft.turn += 1
+    final = draft.committed()
     engine.rules.validate_state(final)
     return Turn(
         prompt=prompt,
-        direction=directed,
-        events=(*events, *creation_events),
+        direction=direction,
+        facts=(*transition.facts, *creation_facts),
         narrator_evidence=evidence,
         narration=narration,
         growth=growth,
@@ -127,17 +123,16 @@ async def run_turn(
 
 
 async def _grow(
-    state: GameState,
+    draft: GameState,
     requests: Sequence[GrowthRequest],
     narration: str,
     recent: tuple[Exchange, ...],
     prompts: dict[Role, str],
     stages: SharedStages,
     engine: Engine,
-) -> tuple[tuple[Entity, ...], tuple[Event, ...], GameState]:
+) -> tuple[tuple[Entity, ...], tuple[Fact, ...]]:
     created: list[Entity] = []
-    events: list[Event] = []
-    draft = state
+    facts: list[Fact] = []
     for request in sorted(requests, key=lambda item: item.kind != "location"):
         prompts["creator"] = render_creator(
             SceneSnapshot.of(draft),
@@ -154,11 +149,10 @@ async def _grow(
             draft,
             _requested_location(request, draft),
         )
-        event = EntityCreated(entity=entity)
-        draft = apply(draft, [event], engine.rules)
+        facts.append(draft.add(entity))
+        engine.rules.created(draft, entity)
         created.append(entity)
-        events.append(event)
-    return tuple(created), tuple(events), draft
+    return tuple(created), tuple(facts)
 
 
 def _created_entity(

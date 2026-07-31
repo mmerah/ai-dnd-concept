@@ -1,15 +1,27 @@
 from pathlib import Path
 
-from pydantic import SecretStr
+from pydantic import BaseModel, SecretStr
 
 from aidm.config import ProviderConfig, Providers, Roles, Settings
 from aidm.domain.base import SAVE_VERSION
 from aidm.domain.definitions import CharacterDefinition, ScenarioDefinition
+from aidm.domain.entities import Entity
 from aidm.domain.state import GameState, world_from_definitions
 from aidm.store import read_character, read_scenario
 from aidm_story.factory import StoryEngine, build_story_engine
 
 REPOSITORY_ROOT = Path(__file__).parents[2]
+
+
+def updated[T: BaseModel](model: T, **changes: object) -> T:
+    """A validating copy. Production commits once per turn; a test wants the check right here."""
+    return type(model).model_validate(model.model_dump(round_trip=True) | changes)
+
+
+def with_entity(state: GameState, entity: Entity) -> GameState:
+    return updated(
+        state, world=updated(state.world, entities={**state.world.entities, entity.id: entity})
+    )
 
 
 def scenario() -> ScenarioDefinition:

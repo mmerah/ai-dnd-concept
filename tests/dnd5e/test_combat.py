@@ -1,13 +1,13 @@
 from random import Random
 
 import pytest
+from core_test_support import updated
 from fivee_test_support import content_ref as ref
 from fivee_test_support import new_game, ruleset, summary, with_actor, with_item
 
 from aidm.domain.base import PLAYER_ID, EntityId
 from aidm.domain.entities import ActorEntity, ItemEntity
 from aidm.domain.state import GameState
-from aidm.utils.models import updated
 from aidm_5e.domain.models.consequences import Attack, Damage, RollSave
 from aidm_5e.engine import bestiary, procedures, rules
 from aidm_5e.engine.resolve import resolve
@@ -78,16 +78,17 @@ def test_archery_fighting_style_modifies_a_ranged_weapon_attack() -> None:
 
 
 def test_a_hit_deals_the_weapon_s_damage_and_a_miss_deals_nothing() -> None:
-    state = armed(new_game("whispering_vault_5e"))
     swung = Attack(weapon="Scimitar", attacker_id=EntityId("goblin"))
-    hit = resolve([swung], state, Random(0), RULES)
-    assert [event.type for event in hit] == ["attack_rolled", "dice_rolled", "hp_changed"]
+    hit = resolve([swung], armed(new_game("whispering_vault_5e")), Random(0), RULES)
+    assert [fact.fact for fact in hit] == ["attack_rolled", "dice_rolled", "hp_changed"]
     assert summary(hit[0]).endswith("13 -> 17 vs ac 10: HIT")
-    miss = resolve([swung], state, Random(2), RULES)
-    assert [event.type for event in miss] == ["attack_rolled"]
+    miss = resolve([swung], armed(new_game("whispering_vault_5e")), Random(2), RULES)
+    assert [fact.fact for fact in miss] == ["attack_rolled"]
     assert summary(miss[0]).endswith("2 -> 6 vs ac 10: MISS")
     with pytest.raises(ValueError, match="does not strike at themselves"):
-        resolve([Attack(weapon="Scimitar")], state, Random(0), RULES)
+        resolve(
+            [Attack(weapon="Scimitar")], armed(new_game("whispering_vault_5e")), Random(0), RULES
+        )
 
 
 def test_a_save_uses_the_record_s_bonus_or_the_player_s_proficiency() -> None:
@@ -114,9 +115,9 @@ def test_a_save_selects_its_branch_like_a_check_does() -> None:
         target_id=EntityId("goblin"),
         on_failure=[Attack(weapon="Scimitar", attacker_id=EntityId("goblin"))],
     )
-    events = resolve([gas], state, Random(0), RULES)
-    assert summary(events[0]) == "a goblin dexterity save: 13 -> 15 vs DC 25: FAILURE"
-    assert [event.type for event in events[1:]] == [
+    facts = resolve([gas], state, Random(0), RULES)
+    assert summary(facts[0]) == "a goblin dexterity save: 13 -> 15 vs DC 25: FAILURE"
+    assert [fact.fact for fact in facts[1:]] == [
         "attack_rolled",
         "dice_rolled",
         "hp_changed",
@@ -133,5 +134,5 @@ def test_a_save_on_someone_unseen_reveals_them_exactly_once() -> None:
         target_id=goblin.id,
         on_failure=[Damage(amount=1, target_id=goblin.id)],
     )
-    events = resolve([gas], unseen, Random(0), RULES)
-    assert [event.type for event in events] == ["entity_discovered", "dc_rolled", "hp_changed"]
+    facts = resolve([gas], unseen, Random(0), RULES)
+    assert [fact.fact for fact in facts] == ["entity_discovered", "dc_rolled", "hp_changed"]

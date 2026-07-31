@@ -18,14 +18,15 @@ def statted_actor(
     stats = None if authored is None else authored.stats
     ref = None if authored is None else authored.ref
     if ref is None:
-        return Dnd5eActorState(stats=StatBlock() if stats is None else stats)
+        # Copy: the authored definition outlives the game, and a stat block is mutable now.
+        return Dnd5eActorState(stats=StatBlock() if stats is None else stats.model_copy(deep=True))
     _require_backing(actor_id, "actor", ref, ruleset)
     if stats is not None:
         raise ValueError(f"actor {actor_id!r} names a record and also declares its own stats")
     archetype = ruleset.archetype(ref)
     if archetype is None:
         raise ValueError(f"{actor_id!r} names {ref}, which is no archetype")
-    return Dnd5eActorState(stats=archetype.stats, ref=ref)
+    return Dnd5eActorState(stats=archetype.stats.model_copy(deep=True), ref=ref)
 
 
 def statted_item(

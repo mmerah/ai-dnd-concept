@@ -3,7 +3,7 @@ from typing import Annotated, Literal
 from pydantic import Field
 
 from aidm.domain.base import PLAYER_ID, EntityId
-from aidm.domain.events import CoreEvent
+from aidm.domain.facts import CoreFact
 
 from ...content.records.base import ContentRef
 from ...content.records.spells import SlotLevel, SpellLevel
@@ -15,8 +15,12 @@ from .stats import Wounds
 RollKind = Literal["check", "save"]
 
 
-class DcRolled(Frozen):
-    type: Literal["dc_rolled"] = "dc_rolled"
+class Dnd5eFactBase(Frozen):
+    source: Literal["dnd5e"] = "dnd5e"
+
+
+class DcRolled(Dnd5eFactBase):
+    fact: Literal["dc_rolled"] = "dc_rolled"
     actor_id: EntityId
     actor_name: str
     kind: RollKind
@@ -36,8 +40,8 @@ class DcRolled(Frozen):
         )
 
 
-class AttackRolled(Frozen):
-    type: Literal["attack_rolled"] = "attack_rolled"
+class AttackRolled(Dnd5eFactBase):
+    fact: Literal["attack_rolled"] = "attack_rolled"
     actor_name: str
     target_name: str
     weapon: str
@@ -55,8 +59,8 @@ class AttackRolled(Frozen):
         )
 
 
-class DiceRolled(Frozen):
-    type: Literal["dice_rolled"] = "dice_rolled"
+class DiceRolled(Dnd5eFactBase):
+    fact: Literal["dice_rolled"] = "dice_rolled"
     dice: str
     total: int
 
@@ -65,8 +69,8 @@ class DiceRolled(Frozen):
         return f"rolled {self.dice}: {self.total}"
 
 
-class HpChanged(Frozen):
-    type: Literal["hp_changed"] = "hp_changed"
+class HpChanged(Dnd5eFactBase):
+    fact: Literal["hp_changed"] = "hp_changed"
     target_id: EntityId
     target_name: str
     delta: int
@@ -79,8 +83,8 @@ class HpChanged(Frozen):
         return f"{self.target_name} is {self.wounds}"
 
 
-class ConditionChanged(Frozen):
-    type: Literal["condition_changed"] = "condition_changed"
+class ConditionChanged(Dnd5eFactBase):
+    fact: Literal["condition_changed"] = "condition_changed"
     target_id: EntityId
     target_name: str
     condition: ConditionName
@@ -93,16 +97,16 @@ class ConditionChanged(Frozen):
         return f"{who} {held} {self.condition}"
 
 
-class LevelUpAvailable(Frozen):
-    type: Literal["level_up_available"] = "level_up_available"
+class LevelUpAvailable(Dnd5eFactBase):
+    fact: Literal["level_up_available"] = "level_up_available"
 
     @property
     def summary(self) -> str:
         return "a level-up is available to the player"
 
 
-class FeatureUsed(Frozen):
-    type: Literal["feature_used"] = "feature_used"
+class FeatureUsed(Dnd5eFactBase):
+    fact: Literal["feature_used"] = "feature_used"
     ref: ContentRef
     name: str
     spent: int = Field(ge=1)
@@ -114,8 +118,8 @@ class FeatureUsed(Frozen):
         return f"used {self.name} ({self.remaining}/{self.maximum} uses remaining)"
 
 
-class FeatureActivated(Frozen):
-    type: Literal["feature_activated"] = "feature_activated"
+class FeatureActivated(Dnd5eFactBase):
+    fact: Literal["feature_activated"] = "feature_activated"
     ref: ContentRef
     name: str
 
@@ -124,8 +128,8 @@ class FeatureActivated(Frozen):
         return f"activated {self.name}"
 
 
-class SpellCast(Frozen):
-    type: Literal["spell_cast"] = "spell_cast"
+class SpellCast(Dnd5eFactBase):
+    fact: Literal["spell_cast"] = "spell_cast"
     ref: ContentRef
     name: str
     slot_level: SpellLevel
@@ -136,8 +140,8 @@ class SpellCast(Frozen):
         return f"cast {self.name}{at}"
 
 
-class SpellSlotSpent(Frozen):
-    type: Literal["spell_slot_spent"] = "spell_slot_spent"
+class SpellSlotSpent(Dnd5eFactBase):
+    fact: Literal["spell_slot_spent"] = "spell_slot_spent"
     slot_level: SlotLevel
     remaining: int = Field(ge=0)
     maximum: int = Field(ge=1)
@@ -161,8 +165,8 @@ class SlotsRefilled(Frozen):
     maximum: int = Field(ge=1)
 
 
-class Rested(Frozen):
-    type: Literal["rested"] = "rested"
+class Rested(Dnd5eFactBase):
+    fact: Literal["rested"] = "rested"
     rest: RestType
     refilled: tuple[PoolRefilled, ...] = ()
     slots: tuple[SlotsRefilled, ...] = ()
@@ -174,8 +178,8 @@ class Rested(Frozen):
         return f"completed a {self.rest} rest{recharged}"
 
 
-class LeveledUp(Frozen):
-    type: Literal["leveled_up"] = "leveled_up"
+class LeveledUp(Dnd5eFactBase):
+    fact: Literal["leveled_up"] = "leveled_up"
     advancement: Advancement
 
     @property
@@ -183,7 +187,7 @@ class LeveledUp(Frozen):
         return f"reached level {self.advancement.progression.level}"
 
 
-type Dnd5eRuleEvent = Annotated[
+type Dnd5eFact = Annotated[
     DcRolled
     | AttackRolled
     | DiceRolled
@@ -196,7 +200,7 @@ type Dnd5eRuleEvent = Annotated[
     | SpellSlotSpent
     | Rested
     | LeveledUp,
-    Field(discriminator="type"),
+    Field(discriminator="fact"),
 ]
 
-type Dnd5eEvent = CoreEvent | Dnd5eRuleEvent
+type Emitted = CoreFact | Dnd5eFact

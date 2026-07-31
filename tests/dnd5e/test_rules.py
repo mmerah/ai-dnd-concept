@@ -1,11 +1,13 @@
 from random import Random
 
 import pytest
+from fivee_test_support import initial_5e_game
 from pydantic import ValidationError
 
 from aidm.domain.base import PLAYER_ID, EntityId
 from aidm.domain.entities import ActorEntity
 from aidm_5e.domain.models.consequences import Damage
+from aidm_5e.domain.models.direction import Dnd5eDirection
 from aidm_5e.domain.models.stats import StatBlock
 from aidm_5e.engine import rules
 from aidm_5e.models import Dnd5eActor, Dnd5eActorState
@@ -64,3 +66,20 @@ def test_a_malformed_expression_fails_at_its_boundary() -> None:
     for expression in ("not-dice", "1d0", "0d6", "2d6 +", "1d6 + + 2"):
         with pytest.raises(ValidationError):
             Damage(amount=expression)
+
+
+def test_5e_resolution_is_pure_seeded_and_commits_once() -> None:
+    """The mirror of the Story purity assertion: a shallow draft would corrupt committed state."""
+    engine, state = initial_5e_game()
+    direction = Dnd5eDirection(
+        intent="Kael strikes at Mara.",
+        tone="grim",
+        mechanics=[Damage(amount=2, target_id=EntityId("mara"))],
+    )
+    before = state.model_dump_json()
+
+    first = engine.rules.resolve(direction, state, Random(7))
+
+    assert first == engine.rules.resolve(direction, state, Random(7))
+    assert state.model_dump_json() == before
+    assert first.state is not state

@@ -23,7 +23,7 @@ from ..domain.models.consequences import (
     TakeItem,
     UseFeature,
 )
-from ..domain.models.events import DcRolled, Dnd5eEvent, Rested
+from ..domain.models.facts import DcRolled, Emitted, Rested
 from . import features, progression, rules, spells
 from .mechanics import combat, common, conditions, health, inventory, movement
 from .mechanics.resolution import Resolution
@@ -31,21 +31,19 @@ from .ruleset import Ruleset
 
 
 def resolve(
-    mechanics: Sequence[Consequence], state: GameState, rng: Random, ruleset: Ruleset
-) -> list[Dnd5eEvent]:
-    return _fold(Resolution(state=state, rng=rng, ruleset=ruleset), mechanics)
+    mechanics: Sequence[Consequence], draft: GameState, rng: Random, ruleset: Ruleset
+) -> list[Emitted]:
+    return _fold(Resolution(draft=draft, rng=rng, ruleset=ruleset), mechanics)
 
 
-def _fold(ctx: Resolution, mechanics: Sequence[Consequence]) -> list[Dnd5eEvent]:
-    events: list[Dnd5eEvent] = []
+def _fold(ctx: Resolution, mechanics: Sequence[Consequence]) -> list[Emitted]:
+    facts: list[Emitted] = []
     for consequence in mechanics:
-        new = _walk(ctx, consequence)
-        events.extend(new)
-        ctx = ctx.then(new)
-    return events
+        facts.extend(_walk(ctx, consequence))
+    return facts
 
 
-def _walk(ctx: Resolution, consequence: Consequence) -> list[Dnd5eEvent]:
+def _walk(ctx: Resolution, consequence: Consequence) -> list[Emitted]:
     match consequence:
         case RollCheck(ability=ability, dc=dc):
             rolled = rules.roll_check(ctx.player, ability, dc, ctx.rng)
@@ -53,7 +51,7 @@ def _walk(ctx: Resolution, consequence: Consequence) -> list[Dnd5eEvent]:
         case RollSave(ability=ability, dc=dc, target_id=target_id):
             target = ctx.target(target_id)
             rolled = rules.roll_save(target, ability, dc, ctx.rng)
-            return _branched(ctx, consequence, common.reveal(target), rolled)
+            return _branched(ctx, consequence, common.reveal(ctx, target), rolled)
         case Attack():
             return combat.attack(ctx, consequence)
         case LevelUp():
@@ -77,7 +75,7 @@ def _walk(ctx: Resolution, consequence: Consequence) -> list[Dnd5eEvent]:
         case ApplyCondition():
             return conditions.change(ctx, consequence)
         case Discover():
-            return common.reveal(ctx.entity(consequence.entity_id))
+            return [*common.reveal(ctx, ctx.entity(consequence.entity_id))]
         case Move():
             return movement.move(ctx, consequence)
         case TakeItem():
@@ -91,8 +89,7 @@ def _walk(ctx: Resolution, consequence: Consequence) -> list[Dnd5eEvent]:
 
 
 def _branched(
-    ctx: Resolution, consequence: DcRoll, before: Sequence[Dnd5eEvent], rolled: DcRolled
-) -> list[Dnd5eEvent]:
-    emitted = [*before, rolled]
+    ctx: Resolution, consequence: DcRoll, before: Sequence[Emitted], rolled: DcRolled
+) -> list[Emitted]:
     branch = consequence.on_success if rolled.success else consequence.on_failure
-    return [*emitted, *_fold(ctx.then(emitted), branch)]
+    return [*before, rolled, *_fold(ctx, branch)]

@@ -1,22 +1,17 @@
-import json
 from random import Random
 
-from pydantic import TypeAdapter, ValidationError
+from pydantic import ValidationError
 from pydantic_ai import ModelRetry, NativeOutput, RunContext
 from pydantic_ai.output import OutputSpec
 
 from aidm.domain.base import EntityId
-from aidm.domain.direction import DirectionRecord
 from aidm.domain.entities import ActorEntity
 from aidm.domain.state import GameState
 
 from .agents.instructions import MECHANICS
-from .constants import ENGINE_ID, SCHEMA_VERSION
-from .domain.models.consequences import Consequence, References, flatten
+from .domain.models.consequences import References, flatten
 from .domain.models.direction import Dnd5eDirection
 from .rules import Dnd5eRules
-
-MECHANICS_ADAPTER: TypeAdapter[list[Consequence]] = TypeAdapter(list[Consequence])
 
 _DRY_RUN_SEEDS = (2, 5)
 
@@ -99,16 +94,3 @@ class Dnd5eDirector:
                 raise
             except ValueError as error:
                 raise ModelRetry(f"{error}. Propose mechanics this state allows.") from error
-
-    def record(self, direction: Dnd5eDirection) -> DirectionRecord:
-        mechanics: object = json.loads(MECHANICS_ADAPTER.dump_json(direction.mechanics))
-        return DirectionRecord.model_validate(
-            {
-                "engine": ENGINE_ID,
-                "schema_version": SCHEMA_VERSION,
-                "intent": direction.intent,
-                "tone": direction.tone,
-                "speaker_id": direction.speaker_id,
-                "mechanics": mechanics,
-            }
-        )

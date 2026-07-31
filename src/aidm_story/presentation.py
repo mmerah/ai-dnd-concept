@@ -1,13 +1,10 @@
 import json
 
 from aidm.domain.base import PLAYER_ID
-from aidm.domain.direction import DirectionRecord
 from aidm.domain.entities import ActorEntity, Entity, ItemEntity, LocationEntity
-from aidm.domain.events import RuleEvent
-from aidm.domain.json import thaw_json
 
-from .constants import ENGINE_ID, SCHEMA_VERSION
-from .events import (
+from .direction import STORY_MECHANICS_ADAPTER, StoryDirection
+from .facts import (
     ApproachRaised,
     ConditionApplied,
     ConditionCleared,
@@ -17,12 +14,12 @@ from .events import (
     MaximumStressIncreased,
     Revived,
     RiskRolled,
+    StoryFact,
     StressChanged,
     TagAdded,
     TagRemoved,
     TagRewritten,
     TakenOut,
-    decode_story_event,
 )
 from .models import StoryActorState, StoryItemState, StoryState
 
@@ -37,9 +34,8 @@ class StoryPresentation:
             case LocationEntity():
                 return ""
 
-    def narrator_event(self, event: RuleEvent) -> str | None:
-        typed = decode_story_event(event, ENGINE_ID, SCHEMA_VERSION)
-        match typed:
+    def narrator_fact(self, fact: StoryFact) -> str | None:
+        match fact:
             case RiskRolled(actor_name=name, outcome=outcome):
                 return f"{name}'s attempt ends in a {outcome}"
             case StressChanged(actor_name=name, before=before, after=after):
@@ -71,13 +67,13 @@ class StoryPresentation:
             case GrowthMarked() | GrowthReset():
                 return None
 
-    def trace_event(self, event: RuleEvent) -> str:
-        return decode_story_event(event, ENGINE_ID, SCHEMA_VERSION).summary
+    def trace_fact(self, fact: StoryFact) -> str:
+        return fact.summary
 
-    def trace_direction(self, direction: DirectionRecord) -> str:
-        if direction.engine != ENGINE_ID or direction.schema_version != SCHEMA_VERSION:
-            raise ValueError("direction record is not compatible with Story")
-        return json.dumps(thaw_json(direction.mechanics), indent=2)
+    def trace_direction(self, direction: StoryDirection) -> str:
+        return json.dumps(
+            json.loads(STORY_MECHANICS_ADAPTER.dump_json(direction.mechanics)), indent=2
+        )
 
     @staticmethod
     def _actor_state(actor: ActorEntity, state: StoryActorState) -> str:

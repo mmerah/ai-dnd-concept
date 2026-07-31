@@ -3,8 +3,6 @@ from typing import Protocol
 
 from pydantic import Field
 
-from aidm.utils.models import EMPTY_FROZEN_MAP, FrozenMap
-
 from ..content.library import ContentMiss
 from ..content.records.base import ContentRef, Record
 from ..content.records.character import ClassRecord, FeatureMechanics, ProgressionChoice
@@ -14,7 +12,7 @@ from ..content.vocabulary import RestType
 from ..domain.models.progression import Origin
 from ..domain.models.stats import StatBlock
 from ..utils import dice
-from ..utils.models import Ability, Frozen, Slug
+from ..utils.models import EMPTY_FROZEN_MAP, Ability, Frozen, FrozenMap, Slug
 
 
 class SpellcastingProfile(Frozen):

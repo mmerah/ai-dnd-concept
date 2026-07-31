@@ -18,8 +18,8 @@ from ..content.records.character import (
 )
 from ..content.vocabulary import RestType
 from ..domain.models.consequences import UseFeature
-from ..domain.models.events import (
-    Dnd5eEvent,
+from ..domain.models.facts import (
+    Emitted,
     FeatureActivated,
     FeatureUsed,
     PoolRefilled,
@@ -161,7 +161,7 @@ def acquire(
     return tuple(features), states
 
 
-def use(ctx: Resolution, consequence: UseFeature) -> list[Dnd5eEvent]:
+def use(ctx: Resolution, consequence: UseFeature) -> list[Emitted]:
     progression = ctx.progression
     status = _named(
         owned(progression, ctx.player.stats.attributes, ctx.ruleset), consequence.feature
@@ -175,15 +175,18 @@ def use(ctx: Resolution, consequence: UseFeature) -> list[Dnd5eEvent]:
             return [*spent, FeatureActivated(ref=status.profile.ref, name=status.profile.name)]
         case EngineActiveFeatureMechanics(effect=SelfHealWithClassLevel(dice=healing_dice)):
             amount = f"{healing_dice} + {progression.level}"
-            return [*spent, *health.hp_events(ctx.then(spent), None, amount, sign=1)]
+            return [*spent, *health.hp_facts(ctx, None, amount, sign=1)]
 
 
 def recharged(ctx: Resolution, completed: RestType) -> tuple[PoolRefilled, ...]:
+    """Several features may share one counter, so refill each counter once."""
     refilled = {
         status.pool.ref: status.pool.state
         for status in owned(ctx.progression, ctx.player.stats.attributes, ctx.ruleset)
         if status.pool is not None and status.pool.state.refills(completed)
     }
+    for state in refilled.values():
+        state.remaining = state.maximum
     return tuple(
         # Named after the feature that owns the counter, not whoever spends from it.
         PoolRefilled(ref=ref, name=profile_of(ref, ctx.ruleset).name, maximum=state.maximum)
@@ -263,7 +266,7 @@ def _spent(before: ResourceState | None, inherited: int) -> int:
     return inherited if before is None else before.spent
 
 
-def _spend(status: OwnedFeature, amount: int) -> list[Dnd5eEvent]:
+def _spend(status: OwnedFeature, amount: int) -> list[Emitted]:
     pool = status.pool
     if pool is None:
         if amount != 1:
@@ -277,12 +280,13 @@ def _spend(status: OwnedFeature, amount: int) -> list[Dnd5eEvent]:
             f"feature {status.profile.ref.index!r} has {state.remaining} uses left; "
             f"finish a {state.recharge} or longer rest"
         )
+    state.remaining -= amount
     return [
         FeatureUsed(
             ref=pool.ref,
             name=status.profile.name,
             spent=amount,
-            remaining=state.remaining - amount,
+            remaining=state.remaining,
             maximum=state.maximum,
         )
     ]

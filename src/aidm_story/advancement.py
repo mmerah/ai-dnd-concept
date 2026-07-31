@@ -6,13 +6,13 @@ from pydantic import BaseModel, Field, TypeAdapter
 from aidm.domain.advancement import AdvancementStatus
 from aidm.domain.base import PLAYER_ID, Slug, slug
 from aidm.domain.entities import ItemEntity
-from aidm.domain.events import EntityCreated, Event
 from aidm.domain.state import GameState
+from aidm.domain.transition import Transition
 from aidm.utils.models import Frozen
 
-from .constants import ENGINE_ID, SCHEMA_VERSION
-from .events import (
+from .facts import (
     ApproachRaised,
+    Emitted,
     GearAcquired,
     GrowthReset,
     MaximumStressIncreased,
@@ -20,7 +20,6 @@ from .events import (
     TagAdded,
     TagRemoved,
     TagRewritten,
-    encode_story_event,
 )
 from .models import (
     GROWTH_REQUIRED,
@@ -31,6 +30,7 @@ from .models import (
     StoryApproach,
     StoryApproaches,
     StoryGearTag,
+    StoryItemState,
 )
 from .state import story_state
 
@@ -135,95 +135,76 @@ class StoryAdvancement:
         state: GameState,
         decisions: BaseModel,
         rng: Random,
-    ) -> list[Event]:
+    ) -> Transition:
         del rng
-        player = self._ready(state, decisions)
+        draft = state.draft()
+        player = self._ready(draft, decisions)
         decision = DECISION_ADAPTER.validate_python(decisions)
         self._validate_choice(player, decision)
-        events: list[Event]
+        facts: list[Emitted] = self._apply(draft, player, decision)
+        player.growth_marks = 0
+        return Transition(state=draft.committed(), facts=(*facts, GrowthReset()))
+
+    def _apply(
+        self,
+        draft: GameState,
+        player: StoryActorState,
+        decision: StoryAdvancementDecision,
+    ) -> list[Emitted]:
         match decision:
             case RaiseApproach(approach=approach):
                 before = player.approaches.score(approach)
-                events = [
-                    encode_story_event(
-                        ApproachRaised(approach=approach, before=before, after=before + 1),
-                        ENGINE_ID,
-                        SCHEMA_VERSION,
-                    )
-                ]
+                player.approaches = player.approaches.model_copy(update={approach: before + 1})
+                return [ApproachRaised(approach=approach, before=before, after=before + 1)]
             case AddTag():
-                events = [
-                    encode_story_event(
-                        TagAdded(
-                            tag=StoryActorTag(
-                                id=decision.id,
-                                name=decision.name,
-                                kind=decision.kind,
-                                description=decision.description,
-                            )
-                        ),
-                        ENGINE_ID,
-                        SCHEMA_VERSION,
-                    )
-                ]
+                tag = StoryActorTag(
+                    id=decision.id,
+                    name=decision.name,
+                    kind=decision.kind,
+                    description=decision.description,
+                )
+                player.tags = (*player.tags, tag)
+                return [TagAdded(tag=tag)]
             case RemoveBurden(id=tag_id):
-                events = [
-                    encode_story_event(
-                        TagRemoved(tag=self._burden(player, tag_id)), ENGINE_ID, SCHEMA_VERSION
-                    )
-                ]
+                burden = self._burden(player, tag_id)
+                player.tags = tuple(tag for tag in player.tags if tag.id != burden.id)
+                return [TagRemoved(tag=burden)]
             case RewriteBurden(id=tag_id):
-                before = self._burden(player, tag_id)
-                events = [
-                    encode_story_event(
-                        TagRewritten(
-                            before=before,
-                            after=StoryActorTag(
-                                id=before.id,
-                                name=decision.name,
-                                kind="burden",
-                                description=decision.description,
-                            ),
-                        ),
-                        ENGINE_ID,
-                        SCHEMA_VERSION,
-                    )
-                ]
+                before_tag = self._burden(player, tag_id)
+                after_tag = StoryActorTag(
+                    id=before_tag.id,
+                    name=decision.name,
+                    kind="burden",
+                    description=decision.description,
+                )
+                player.tags = tuple(
+                    after_tag if tag.id == before_tag.id else tag for tag in player.tags
+                )
+                return [TagRewritten(before=before_tag, after=after_tag)]
             case AcquireGear():
                 item = ItemEntity(
-                    id=slug(decision.item_name, state.world.entities),
+                    id=slug(decision.item_name, draft.world.entities),
                     name=decision.item_name,
                     brief=decision.item_brief,
                     known=True,
                     authored=False,
                     container_id=PLAYER_ID,
                 )
-                events = [
-                    EntityCreated(entity=item),
-                    encode_story_event(
-                        GearAcquired(item_id=item.id, item_name=item.name, gear=decision.gear),
-                        ENGINE_ID,
-                        SCHEMA_VERSION,
-                    ),
+                created = draft.add(item)
+                story_state(draft).items[item.id] = StoryItemState(gear=decision.gear)
+                return [
+                    created,
+                    GearAcquired(item_id=item.id, item_name=item.name, gear=decision.gear),
                 ]
             case IncreaseMaximumStress():
-                after_max = player.max_stress + 1
-                events = [
-                    encode_story_event(
-                        MaximumStressIncreased(before=player.max_stress, after=after_max),
-                        ENGINE_ID,
-                        SCHEMA_VERSION,
-                    )
+                before_max = player.max_stress
+                player.max_stress = before_max + 1
+                raised: list[Emitted] = [
+                    MaximumStressIncreased(before=before_max, after=player.max_stress)
                 ]
-                if player.taken_out:
-                    events.append(
-                        encode_story_event(
-                            Revived(actor_id=PLAYER_ID, actor_name=state.player.name),
-                            ENGINE_ID,
-                            SCHEMA_VERSION,
-                        )
-                    )
-        return [*events, encode_story_event(GrowthReset(), ENGINE_ID, SCHEMA_VERSION)]
+                if player.stress == before_max:
+                    raised.append(Revived(actor_id=PLAYER_ID, actor_name=draft.player.name))
+                return raised
 
     def _ready(
         self,

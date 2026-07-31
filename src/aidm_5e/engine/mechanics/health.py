@@ -4,38 +4,37 @@ from typing import Literal
 from aidm.domain.base import EntityId
 
 from ...domain.models.consequences import Damage, Heal, Magnitude
-from ...domain.models.events import Dnd5eEvent, HpChanged
+from ...domain.models.facts import Emitted, HpChanged
 from ...utils import dice
 from .. import rules
 from . import common
 from .resolution import Resolution
 
 
-def damage(ctx: Resolution, consequence: Damage) -> list[Dnd5eEvent]:
-    return hp_events(ctx, consequence.target_id, consequence.amount, sign=-1)
+def damage(ctx: Resolution, consequence: Damage) -> list[Emitted]:
+    return hp_facts(ctx, consequence.target_id, consequence.amount, sign=-1)
 
 
-def heal(ctx: Resolution, consequence: Heal) -> list[Dnd5eEvent]:
-    return hp_events(ctx, consequence.target_id, consequence.amount, sign=+1)
+def heal(ctx: Resolution, consequence: Heal) -> list[Emitted]:
+    return hp_facts(ctx, consequence.target_id, consequence.amount, sign=+1)
 
 
-def hp_events(
+def hp_facts(
     ctx: Resolution, target_id: EntityId | None, amount: Magnitude, *, sign: Literal[1, -1]
-) -> list[Dnd5eEvent]:
+) -> list[Emitted]:
     target = ctx.target(target_id)
     total, rolls = _magnitude(amount, ctx.rng)
-    after = target.stats.with_hp_delta(sign * total)
-    delta = after.hp - target.stats.hp
-    events: list[Dnd5eEvent] = [*common.reveal(target), *rolls]
+    facts: list[Emitted] = [*common.reveal(ctx, target), *rolls]
+    delta = target.stats.apply_hp_delta(sign * total)
     if delta == 0:
-        return events
+        return facts
     changed = HpChanged(
-        target_id=target.id, target_name=target.name, delta=delta, wounds=after.wounds
+        target_id=target.id, target_name=target.name, delta=delta, wounds=target.stats.wounds
     )
-    return [*events, changed]
+    return [*facts, changed]
 
 
-def _magnitude(amount: Magnitude, rng: Random) -> tuple[int, list[Dnd5eEvent]]:
+def _magnitude(amount: Magnitude, rng: Random) -> tuple[int, list[Emitted]]:
     if isinstance(amount, int):
         return amount, []
     total, rolled = rules.roll_dice(amount, rng)

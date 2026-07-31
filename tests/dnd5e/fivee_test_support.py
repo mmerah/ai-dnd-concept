@@ -3,19 +3,24 @@ from functools import cache
 from pathlib import Path
 
 import pytest
+from core_test_support import updated
 
 from aidm.domain.base import PLAYER_ID, SAVE_VERSION, EntityId
 from aidm.domain.definitions import ScenarioMeta
 from aidm.domain.entities import ActorEntity, ItemEntity, LocationEntity
-from aidm.domain.events import ActorMoved, EntityCreated, EntityDiscovered, ItemMoved
-from aidm.domain.presentation import trace_core_event
+from aidm.domain.facts import (
+    ActorMoved,
+    EntityCreated,
+    EntityDiscovered,
+    ItemMoved,
+    core_fact_summary,
+)
 from aidm.domain.state import GameState, WorldState, world_from_definitions
 from aidm.store import read_character, read_scenario
-from aidm.utils.models import updated
 from aidm_5e.content.library import Content, loaded, read_pack
 from aidm_5e.content.models import Pack
 from aidm_5e.content.records.base import Collection, ContentRef, Record
-from aidm_5e.domain.models.events import Dnd5eEvent
+from aidm_5e.domain.models.facts import Emitted
 from aidm_5e.domain.models.stats import StatBlock
 from aidm_5e.engine.pack_ruleset import compile_ruleset
 from aidm_5e.engine.ruleset import Ruleset
@@ -42,28 +47,30 @@ def player_of(state: GameState) -> Dnd5eActor:
     return actor_of(state, PLAYER_ID)
 
 
-def summary(event: Dnd5eEvent) -> str:
-    """Render either half of the 5e event union the way the trace panel does."""
-    match event:
+def summary(fact: Emitted) -> str:
+    """Render either half of the 5e fact union the way the trace panel does."""
+    match fact:
         case EntityCreated() | EntityDiscovered() | ActorMoved() | ItemMoved():
-            return trace_core_event(event)
+            return core_fact_summary(fact)
         case _:
-            return event.summary
+            return fact.summary
 
 
 def with_actor(state: GameState, entity: ActorEntity, actor: Dnd5eActorState) -> GameState:
+    engine = dnd5e_state(state)
     return updated(
         state,
-        world=state.world.replacing(entity),
-        engine=dnd5e_state(state).with_actor(entity.id, actor),
+        world=updated(state.world, entities={**state.world.entities, entity.id: entity}),
+        engine=updated(engine, actors={**engine.actors, entity.id: actor}),
     )
 
 
 def with_item(state: GameState, entity: ItemEntity, item: Dnd5eItemState) -> GameState:
+    engine = dnd5e_state(state)
     return updated(
         state,
-        world=state.world.replacing(entity),
-        engine=dnd5e_state(state).with_item(entity.id, item),
+        world=updated(state.world, entities={**state.world.entities, entity.id: entity}),
+        engine=updated(engine, items={**engine.items, entity.id: item}),
     )
 
 
@@ -183,8 +190,13 @@ def initial_5e_game(
 
 
 @cache
+def _opened(name: str, character: str) -> GameState:
+    return initial_5e_game(name, character)[1]
+
+
 def new_game(
     name: str = "whispering_vault_5e",
     character: str = "kael_5e",
 ) -> GameState:
-    return initial_5e_game(name, character)[1]
+    """A fresh copy every call: mechanics mutate the draft they are handed."""
+    return _opened(name, character).model_copy(deep=True)

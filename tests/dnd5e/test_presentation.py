@@ -5,8 +5,7 @@ from aidm.agents.prompting import render_narrator
 from aidm.domain.base import PLAYER_ID, EntityId
 from aidm.domain.entities import ActorEntity
 from aidm.engines import entity_renderer
-from aidm_5e.domain.models.events import AttackRolled, HpChanged
-from aidm_5e.events import encode_dnd5e_event
+from aidm_5e.domain.models.facts import AttackRolled, HpChanged
 from aidm_5e.factory import dnd5e_engine
 
 
@@ -42,48 +41,26 @@ def test_5e_presentation_exposes_full_state_for_every_visible_actor() -> None:
     assert "Elena" not in prompt
 
 
-def test_5e_narrator_event_translates_committed_mechanics() -> None:
+def test_5e_narrator_fact_translates_committed_mechanics() -> None:
     presentation = dnd5e_engine(ruleset()).presentation
-    hp = encode_dnd5e_event(
-        HpChanged(
-            target_id=EntityId("mara"),
-            target_name="Mara",
-            delta=-2,
-            wounds="hurt",
-        ),
-        "dnd5e",
-        1,
-    )
-    attack = encode_dnd5e_event(
-        AttackRolled(
-            actor_name="Kael",
-            target_name="Mara",
-            weapon="sword",
-            roll=11,
-            total=15,
-            ac=13,
-            hit=True,
-        ),
-        "dnd5e",
-        1,
+    hp = HpChanged(target_id=EntityId("mara"), target_name="Mara", delta=-2, wounds="hurt")
+    attack = AttackRolled(
+        actor_name="Kael",
+        target_name="Mara",
+        weapon="sword",
+        roll=11,
+        total=15,
+        ac=13,
+        hit=True,
     )
 
-    assert presentation.narrator_event(hp) == "Mara is hurt"
-    assert presentation.narrator_event(attack) == "Kael's attack hits Mara"
-    assert "vs ac 13" in presentation.trace_event(attack)
+    assert presentation.narrator_fact(hp) == "Mara is hurt"
+    assert presentation.narrator_fact(attack) == "Kael's attack hits Mara"
+    assert "vs ac 13" in presentation.trace_fact(attack)
 
 
 def test_5e_narrator_may_receive_the_players_hp_delta() -> None:
     presentation = dnd5e_engine(ruleset()).presentation
-    hp = encode_dnd5e_event(
-        HpChanged(
-            target_id=PLAYER_ID,
-            target_name="Kael",
-            delta=-2,
-            wounds="hurt",
-        ),
-        "dnd5e",
-        1,
-    )
+    hp = HpChanged(target_id=PLAYER_ID, target_name="Kael", delta=-2, wounds="hurt")
 
-    assert presentation.narrator_event(hp) == "hp -2"
+    assert presentation.narrator_fact(hp) == "hp -2"

@@ -3,9 +3,7 @@ from typing import Self
 
 from pydantic import NonNegativeInt, SerializeAsAny, TypeAdapter, model_validator
 
-from aidm.utils.models import EMPTY_FROZEN_MAP, FrozenMap
-
-from ..utils.models import Frozen, Slug
+from ..utils.models import EMPTY_FROZEN_MAP, Frozen, FrozenMap, Slug
 from .records.base import Collection, ContentRef, Record
 from .registry import COLLECTION_SPECS
 

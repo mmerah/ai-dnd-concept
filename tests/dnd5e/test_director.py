@@ -5,7 +5,6 @@ from pydantic_ai.models.test import TestModel
 from pydantic_ai.usage import RunUsage
 
 from aidm.domain.base import EntityId
-from aidm.domain.json import thaw_json
 from aidm.domain.state import GameState
 from aidm_5e.domain.models.consequences import Damage, DropItem, RollCheck
 from aidm_5e.domain.models.direction import Dnd5eDirection
@@ -54,17 +53,3 @@ def test_dry_run_checks_both_roll_branches() -> None:
 
     with pytest.raises(ModelRetry, match="not carrying"):
         engine.director.validate(_context(state), direction)
-
-
-def test_direction_records_preserve_the_5e_envelope_and_mechanics() -> None:
-    engine, _ = initial_5e_game()
-    direction = Dnd5eDirection(
-        intent="Kael endures a falling stone.",
-        tone="dangerous",
-        mechanics=[Damage(amount="1d4")],
-    )
-
-    record = engine.director.record(direction)
-
-    assert (record.engine, record.schema_version) == ("dnd5e", 1)
-    assert thaw_json(record.mechanics) == [{"action": "damage", "amount": "1d4", "target_id": None}]

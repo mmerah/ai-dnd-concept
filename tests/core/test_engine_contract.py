@@ -4,10 +4,10 @@ from core_test_support import character, initialized
 
 from aidm.domain.base import PLAYER_ID, EntityId
 from aidm.domain.entities import ActorEntity, ItemEntity
-from aidm.domain.events import EntityCreated, RuleEvent
-from aidm.domain.reducer import apply
 from aidm.domain.state import GameState
-from aidm_story.direction import StoryDirection
+from aidm.engines import narrator_fact, trace_fact
+from aidm_story.actions import TakeItem
+from aidm_story.direction import Risk, StoryDirection
 from aidm_story.models import DEFAULT_APPROACHES, StoryCharacterData
 from aidm_story.state import story_state
 
@@ -25,9 +25,16 @@ def test_engine_initialization_and_state_contract() -> None:
     assert restored == state
 
 
-def test_engine_resolution_is_pure_seeded_and_core_applies_every_event() -> None:
+def test_engine_resolution_is_pure_seeded_and_renders_every_fact() -> None:
+    """Load-bearing: a draft that shallow-copies would corrupt the committed state silently, so the
+    direction has to change state, take a core action and reach engine state to be worth asserting.
+    """
     engine, state = initialized()
-    direction = StoryDirection(intent="Wait.", tone="quiet")
+    direction = StoryDirection(
+        intent="Kael pockets the map, then chances it.",
+        tone="tense",
+        mechanics=[TakeItem(item_id=EntityId("vault_map")), Risk(approach="bold", difficulty=2)],
+    )
     before = state.model_dump_json()
 
     first = engine.rules.resolve(direction, state, Random(19))
@@ -35,14 +42,13 @@ def test_engine_resolution_is_pure_seeded_and_core_applies_every_event() -> None
 
     assert first == second
     assert state.model_dump_json() == before
-    provisional = state
-    for event in first:
-        provisional = apply(provisional, [event], engine.rules)
-        engine.rules.validate_state(provisional)
-        if isinstance(event, RuleEvent):
-            assert engine.presentation.trace_event(event)
-            rendered = engine.presentation.narrator_event(event)
-            assert rendered is None or str(event.payload) not in rendered
+    assert {fact.fact for fact in first.facts} >= {"entity_discovered", "item_moved", "risk-rolled"}
+    assert first.state.model_dump_json() != before
+    engine.rules.validate_state(first.state)
+    for fact in first.facts:
+        assert trace_fact(engine, fact)
+        rendered = narrator_fact(engine, fact)
+        assert rendered is None or str(fact.model_dump()) not in rendered
 
 
 def test_a_created_entity_gains_engine_state_in_the_same_commit() -> None:
@@ -64,7 +70,11 @@ def test_a_created_entity_gains_engine_state_in_the_same_commit() -> None:
         container_id=PLAYER_ID,
     )
 
-    grown = apply(state, [EntityCreated(entity=actor), EntityCreated(entity=item)], engine.rules)
+    working = state.draft()
+    for entity in (actor, item):
+        _ = working.add(entity)
+        engine.rules.created(working, entity)
+    grown = working.committed()
 
     assert story_state(grown).actor(actor.id).approaches == DEFAULT_APPROACHES
     assert story_state(grown).item(item.id).gear is None

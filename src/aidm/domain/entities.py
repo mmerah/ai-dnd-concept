@@ -2,7 +2,7 @@ from typing import Annotated, Literal
 
 from pydantic import Field
 
-from ..utils.models import Frozen
+from ..utils.models import Frozen, Mutable
 from .base import EntityId, Kind
 
 
@@ -11,7 +11,7 @@ class EntityDetail(Frozen):
     hook: str
 
 
-class BaseEntity(Frozen):
+class BaseEntity(Mutable):
     id: EntityId
     name: str
     brief: str

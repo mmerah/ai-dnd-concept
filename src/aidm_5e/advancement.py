@@ -4,15 +4,13 @@ from pydantic import BaseModel
 
 from aidm.domain.advancement import AdvancementStatus
 from aidm.domain.base import PLAYER_ID
-from aidm.domain.events import Event
 from aidm.domain.state import GameState
+from aidm.domain.transition import Transition
 from aidm.utils.models import Frozen
 
-from .constants import ENGINE_ID, SCHEMA_VERSION
 from .domain.models.progression import MAX_LEVEL, Decisions
 from .engine import features, progression
 from .engine.ruleset import Ruleset
-from .events import encode_dnd5e_event
 from .models import Dnd5eActor
 from .state import actor_of
 
@@ -62,13 +60,11 @@ class Dnd5eAdvancement:
         state: GameState,
         decisions: BaseModel,
         rng: Random,
-    ) -> list[Event]:
+    ) -> Transition:
         chosen = _decisions(decisions)
-        events = progression.advance(self._ready(state), chosen, self._ruleset, rng)
-        encoded: list[Event] = [
-            encode_dnd5e_event(event, ENGINE_ID, SCHEMA_VERSION) for event in events
-        ]
-        return encoded
+        draft = state.draft()
+        facts = progression.advance(self._ready(draft), chosen, self._ruleset, rng)
+        return Transition(state=draft.committed(), facts=tuple(facts))
 
     def _features(self, actor: Dnd5eActor) -> tuple[str, ...]:
         current = actor.progression

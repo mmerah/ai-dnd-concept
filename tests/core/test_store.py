@@ -1,14 +1,18 @@
 import json
 from pathlib import Path
+from random import Random
 
 import pytest
-from core_test_support import initialized
+from core_test_support import initialized, updated
+from fivee_test_support import initial_5e_game
 
-from aidm.domain.direction import DirectionRecord
 from aidm.domain.growth import Growth
-from aidm.domain.turn import Turn
+from aidm.domain.turn import Advance, Turn
+from aidm.engines import narrator_evidence, trace_fact
 from aidm.store import ENCODING, FileSaves, FileTraces
-from aidm.utils.models import updated
+from aidm_5e.domain.models.consequences import Damage, LevelUp
+from aidm_5e.domain.models.direction import Dnd5eDirection
+from aidm_story.direction import StoryDirection
 
 
 def test_save_and_trace_round_trip(tmp_path: Path) -> None:
@@ -23,14 +27,7 @@ def test_save_and_trace_round_trip(tmp_path: Path) -> None:
 
     turn = Turn(
         prompt="I listen.",
-        direction=DirectionRecord(
-            engine="story",
-            schema_version=1,
-            intent="Listen.",
-            tone="quiet",
-            speaker_id=None,
-            mechanics=(),
-        ),
+        direction=StoryDirection(intent="Listen.", tone="quiet"),
         narration="The abbey settles around you.",
         narrator_evidence="- learned of the vault",
         growth=Growth(),
@@ -39,7 +36,8 @@ def test_save_and_trace_round_trip(tmp_path: Path) -> None:
     )
     traces.append("current", turn)
     traces.append("current", updated(turn, prompt="I knock."))
-    assert [held.prompt for held in traces.load("current")] == [
+    loaded = [held for held in traces.load("current") if isinstance(held, Turn)]
+    assert [held.prompt for held in loaded] == [
         "I listen.",
         "I knock.",
     ]
@@ -48,6 +46,46 @@ def test_save_and_trace_round_trip(tmp_path: Path) -> None:
     traces.discard("current")
     assert saves.load("current") is None
     assert traces.load("current") == ()
+
+
+def test_a_trace_entry_reloads_as_the_engine_that_wrote_it(tmp_path: Path) -> None:
+    """The facts and the direction are bare unions on disk: without their tags, a reloaded 5e trace
+    would be smart-union-guessed into Story shapes."""
+    engine, state = initial_5e_game()
+    traces = FileTraces(tmp_path)
+    transition = engine.rules.resolve(
+        Dnd5eDirection(
+            intent="Kael endures a falling stone.",
+            tone="dangerous",
+            mechanics=[Damage(amount=2), LevelUp()],
+        ),
+        state,
+        Random(1),
+    )
+    turn = Turn(
+        prompt="I brace.",
+        direction=Dnd5eDirection(intent="Kael endures a falling stone.", tone="dangerous"),
+        facts=transition.facts,
+        narration="Dust falls.",
+        narrator_evidence=narrator_evidence(engine, transition.facts),
+        growth=Growth(),
+        state=transition.state,
+    )
+    advance = Advance(facts=transition.facts, state=transition.state)
+
+    traces.append("5e", turn)
+    traces.append("5e", advance)
+    reloaded = traces.load("5e")
+
+    assert reloaded == (turn, advance)
+    assert isinstance(reloaded[0], Turn) and isinstance(reloaded[0].direction, Dnd5eDirection)
+    assert isinstance(reloaded[1], Advance)
+    assert [type(fact).__name__ for fact in reloaded[0].facts] == [
+        type(fact).__name__ for fact in transition.facts
+    ]
+    assert [trace_fact(engine, fact) for fact in reloaded[1].facts] == [
+        trace_fact(engine, fact) for fact in transition.facts
+    ]
 
 
 def test_a_save_or_trace_from_another_build_is_refused(tmp_path: Path) -> None:
@@ -64,14 +102,7 @@ def test_a_save_or_trace_from_another_build_is_refused(tmp_path: Path) -> None:
         "stale",
         Turn(
             prompt="I listen.",
-            direction=DirectionRecord(
-                engine="story",
-                schema_version=1,
-                intent="Listen.",
-                tone="quiet",
-                speaker_id=None,
-                mechanics=(),
-            ),
+            direction=StoryDirection(intent="Listen.", tone="quiet"),
             narration="The abbey settles around you.",
             narrator_evidence="- nothing changed",
             growth=Growth(),
