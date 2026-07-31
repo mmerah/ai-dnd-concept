@@ -106,6 +106,9 @@ class GameState(Frozen):
             raise ValueError(f"the reserved id {PLAYER_ID!r} does not name an actor")
         return player
 
+    def is_here(self, entity: Entity) -> bool:
+        return self.world.location_of(entity) == self.player.location_id
+
     @model_validator(mode="after")
     def _consistent_world(self) -> Self:
         entities = self.world.entities

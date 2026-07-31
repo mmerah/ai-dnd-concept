@@ -4,9 +4,7 @@ from random import Random
 from pydantic_ai import ModelRetry, NativeOutput, RunContext
 from pydantic_ai.output import OutputSpec
 
-from aidm.agents.context import DirectorScene
-from aidm.domain.base import PLAYER_ID, SAVE_VERSION, EntityId
-from aidm.domain.definitions import ScenarioMeta
+from aidm.domain.base import PLAYER_ID, EntityId
 from aidm.domain.direction import DirectionRecord
 from aidm.domain.entities import ActorEntity, Entity, ItemEntity
 from aidm.domain.state import GameState
@@ -40,14 +38,9 @@ from .direction import (
 from .instructions import MECHANICS
 from .models import StoryActorState, StoryState
 from .rules import StoryProposalRejected, StoryRules
+from .state import story_state
 
 type StoryActorConsequence = Risk | TakeStress | RecoverStress | ApplyCondition | ClearCondition
-
-
-def _engine(scene: DirectorScene) -> StoryState:
-    if not isinstance(scene.engine, StoryState):
-        raise ValueError(f"Story director received a {scene.engine.engine!r} scene")
-    return scene.engine
 
 
 class StoryDirector:
@@ -63,26 +56,21 @@ class StoryDirector:
 
     def validate(
         self,
-        ctx: RunContext[DirectorScene],
+        ctx: RunContext[GameState],
         direction: StoryDirection,
     ) -> StoryDirection:
-        scene = ctx.deps
+        state = ctx.deps
+        engine = story_state(state)
         if direction.speaker_id == PLAYER_ID:
             raise ModelRetry("speaker_id names another actor, never the player")
         if direction.speaker_id is not None:
-            speaker = self._require(scene, direction.speaker_id, ActorEntity)
+            speaker = self._require(state, direction.speaker_id, ActorEntity)
             if not speaker.known:
                 raise ModelRetry(f"speaker {speaker.id!r} has not been revealed")
-            if not scene.is_here(speaker):
+            if not state.is_here(speaker):
                 raise ModelRetry(f"speaker {speaker.id!r} is not here with the player")
         for consequence in flatten(direction.mechanics):
-            self._validate_consequence(scene, consequence)
-        state = GameState(
-            save_version=SAVE_VERSION,
-            scenario=ScenarioMeta(title="validation", premise="validation"),
-            world=scene.canon,
-            engine=_engine(scene),
-        )
+            self._validate_consequence(state, engine, consequence)
         try:
             self._rules.resolve(direction, state, Random(0))
         except StoryProposalRejected as error:
@@ -104,7 +92,8 @@ class StoryDirector:
 
     def _validate_consequence(
         self,
-        scene: DirectorScene,
+        state: GameState,
+        engine: StoryState,
         consequence: StoryConsequence,
     ) -> None:
         if isinstance(consequence, CoreAction):
@@ -114,30 +103,30 @@ class StoryDirector:
             if fault is not None:
                 raise ModelRetry(fault)
             for entity_id, reference in action_references(consequence):
-                entity = scene.canon.entities.get(entity_id)
+                entity = state.world.entities.get(entity_id)
                 if entity is None:
                     raise ModelRetry(f"unknown entity id {entity_id!r}")
                 if reference.kind is not None and entity.kind != reference.kind:
                     raise ModelRetry(f"{entity_id!r} is a {entity.kind}, not a {reference.kind}")
-                if reference.present and not scene.is_here(entity):
+                if reference.present and not state.is_here(entity):
                     raise ModelRetry(f"{entity_id!r} is not here with the player")
-            self._validate_core_presence(scene, consequence)
+            self._validate_core_presence(state, consequence)
             return
         actor_id = self._actor_id(consequence)
         actor = (
-            scene.player if actor_id == PLAYER_ID else self._require(scene, actor_id, ActorEntity)
+            state.player if actor_id == PLAYER_ID else self._require(state, actor_id, ActorEntity)
         )
         if actor.id != PLAYER_ID:
             if not actor.known:
                 raise ModelRetry(f"actor {actor.id!r} has not been revealed")
-            if not scene.is_here(actor):
+            if not state.is_here(actor):
                 raise ModelRetry(f"actor {actor.id!r} is not here with the player")
-        actor_state = _engine(scene).actor(actor.id)
+        actor_state = engine.actor(actor.id)
         match consequence:
             case Risk():
                 if actor_state.taken_out:
                     raise ModelRetry(f"actor {actor.id!r} is taken out")
-                self._validate_factors(scene, actor, actor_state, consequence)
+                self._validate_factors(state, engine, actor, actor_state, consequence)
             case ClearCondition(condition_id=condition_id):
                 if not any(condition.id == condition_id for condition in actor_state.conditions):
                     raise ModelRetry(f"condition {condition_id!r} is not active on {actor.id!r}")
@@ -150,7 +139,8 @@ class StoryDirector:
 
     def _validate_factors(
         self,
-        scene: DirectorScene,
+        state: GameState,
+        engine: StoryState,
         actor: ActorEntity,
         actor_state: StoryActorState,
         risk: Risk,
@@ -165,10 +155,10 @@ class StoryDirector:
                         f"helpful tag {tag_id!r} is not an edge or bond on {actor.id!r}"
                     )
             case HelpfulGear(item_id=item_id):
-                item = self._require(scene, item_id, ItemEntity)
+                item = self._require(state, item_id, ItemEntity)
                 if item.container_id != actor.id:
                     raise ModelRetry(f"gear item {item.id!r} is not carried by {actor.id!r}")
-                if _engine(scene).item(item_id).gear is None:
+                if engine.item(item_id).gear is None:
                     raise ModelRetry(f"item {item.id!r} has no gear benefit")
         match risk.hindering:
             case None:
@@ -182,23 +172,24 @@ class StoryDirector:
                     raise ModelRetry(f"condition {condition_id!r} is not active on {actor.id!r}")
 
     @staticmethod
-    def _validate_core_presence(scene: DirectorScene, action: CoreActionUnion) -> None:
+    def _validate_core_presence(state: GameState, action: CoreActionUnion) -> None:
+        here = state.player.location_id
         match action:
             case TakeItem(item_id=item_id):
-                item = scene.canon.entities[item_id]
-                if not isinstance(item, ItemEntity) or item.container_id != scene.where.id:
+                item = state.world.entities[item_id]
+                if not isinstance(item, ItemEntity) or item.container_id != here:
                     raise ModelRetry(f"item {item_id!r} is not loose at the player's location")
             case DropItem(item_id=item_id) | GiveItem(item_id=item_id):
-                item = scene.canon.entities[item_id]
+                item = state.world.entities[item_id]
                 if not isinstance(item, ItemEntity) or item.container_id != PLAYER_ID:
                     raise ModelRetry(f"the player does not carry item {item_id!r}")
             case Move(actor_id=actor_id, location_id=location_id):
                 if actor_id is not None and actor_id != PLAYER_ID:
-                    actor = scene.canon.entities[actor_id]
+                    actor = state.world.entities[actor_id]
                     if (
                         not isinstance(actor, ActorEntity)
-                        or actor.location_id != scene.where.id
-                        and location_id != scene.where.id
+                        or actor.location_id != here
+                        and location_id != here
                     ):
                         raise ModelRetry(f"movement of actor {actor_id!r} would not be witnessed")
             case _:
@@ -206,11 +197,11 @@ class StoryDirector:
 
     @staticmethod
     def _require[T: Entity](
-        scene: DirectorScene,
+        state: GameState,
         entity_id: EntityId,
         expected: type[T],
     ) -> T:
-        entity = scene.canon.entities.get(entity_id)
+        entity = state.world.entities.get(entity_id)
         if entity is None:
             raise ModelRetry(f"unknown entity id {entity_id!r}")
         if not isinstance(entity, expected):

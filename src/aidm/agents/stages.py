@@ -20,9 +20,9 @@ from ..config import ProviderConfig, RoleConfig, Settings
 from ..domain.base import Role
 from ..domain.entities import EntityDetail
 from ..domain.growth import Growth
+from ..domain.state import GameState
 from ..engines import Engine
 from . import instructions
-from .context import DirectorScene
 
 
 @dataclass(frozen=True)
@@ -79,7 +79,7 @@ class SharedStages:
     creator: Stage[None, EntityDetail]
 
 
-type DirectorStage = Stage[DirectorScene, StoryDirection] | Stage[DirectorScene, Dnd5eDirection]
+type DirectorStage = Stage[GameState, StoryDirection] | Stage[GameState, Dnd5eDirection]
 
 
 def director_stage(engine: Engine, settings: Settings) -> DirectorStage:
@@ -98,15 +98,15 @@ def director_stage(engine: Engine, settings: Settings) -> DirectorStage:
 def _director_stage[D: BaseModel](
     mechanics: str,
     output: OutputSpec[D],
-    validate: OutputValidatorFunc[DirectorScene, D],
+    validate: OutputValidatorFunc[GameState, D],
     settings: Settings,
-) -> Stage[DirectorScene, D]:
+) -> Stage[GameState, D]:
     role = settings.roles.director
     return Stage(
         name="director",
         instructions=f"{instructions.CORE_DIRECTOR}\n\n{mechanics}",
         output_type=output,
-        deps_type=DirectorScene,
+        deps_type=GameState,
         role=role,
         provider=settings.providers.for_name(role.provider),
         validators=(validate,),

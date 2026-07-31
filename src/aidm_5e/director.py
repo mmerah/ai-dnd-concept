@@ -5,17 +5,16 @@ from pydantic import TypeAdapter, ValidationError
 from pydantic_ai import ModelRetry, NativeOutput, RunContext
 from pydantic_ai.output import OutputSpec
 
-from aidm.agents.context import DirectorScene
 from aidm.domain.base import EntityId
 from aidm.domain.direction import DirectionRecord
 from aidm.domain.entities import ActorEntity
+from aidm.domain.state import GameState
 
 from .agents.instructions import MECHANICS
 from .constants import ENGINE_ID, SCHEMA_VERSION
 from .domain.models.consequences import Consequence, References, flatten
 from .domain.models.direction import Dnd5eDirection
 from .rules import Dnd5eRules
-from .scene_state import state_from_scene
 
 MECHANICS_ADAPTER: TypeAdapter[list[Consequence]] = TypeAdapter(list[Consequence])
 
@@ -35,10 +34,10 @@ class Dnd5eDirector:
 
     def validate(
         self,
-        ctx: RunContext[DirectorScene],
+        ctx: RunContext[GameState],
         direction: Dnd5eDirection,
     ) -> Dnd5eDirection:
-        scene = ctx.deps
+        state = ctx.deps
         refs = [
             (EntityId(str(entity_id)), reference) for entity_id, reference in direction.canon_refs()
         ]
@@ -53,7 +52,7 @@ class Dnd5eDirector:
         faults.extend(consequence.check() for consequence in flatten(direction.mechanics))
         if fault := next((item for item in faults if item is not None), None):
             raise ModelRetry(fault)
-        canon = scene.canon.entities
+        canon = state.world.entities
         missing = sorted({entity_id for entity_id, _ in refs if entity_id not in canon})
         if missing:
             raise ModelRetry(f"unknown entity id(s): {missing}. Use only ids you were shown.")
@@ -71,7 +70,7 @@ class Dnd5eDirector:
             {
                 entity_id
                 for entity_id, reference in refs
-                if reference.present and not scene.is_here(canon[entity_id])
+                if reference.present and not state.is_here(canon[entity_id])
             }
         )
         if absent:
@@ -83,17 +82,16 @@ class Dnd5eDirector:
             if (
                 not isinstance(speaker, ActorEntity)
                 or not speaker.known
-                or not scene.is_here(speaker)
+                or not state.is_here(speaker)
             ):
                 raise ModelRetry(
                     f"speaker {str(direction.speaker_id)!r} must be an NPC the player has met "
                     "and who is here with them. Use null if nobody is being addressed."
                 )
-        self._dry_run(direction, scene)
+        self._dry_run(direction, state)
         return direction
 
-    def _dry_run(self, direction: Dnd5eDirection, scene: DirectorScene) -> None:
-        state = state_from_scene(scene)
+    def _dry_run(self, direction: Dnd5eDirection, state: GameState) -> None:
         for seed in _DRY_RUN_SEEDS:
             try:
                 _ = self._rules.resolve(direction, state, Random(seed))

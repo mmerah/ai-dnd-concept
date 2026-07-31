@@ -1,7 +1,7 @@
 from fivee_test_support import initial_5e_game, ruleset
 
-from aidm.agents.context import NarratorContext, build_narrator_scene
-from aidm.agents.prompting import build_narrator_prompt
+from aidm.agents.context import SceneSnapshot, VisibleScene
+from aidm.agents.prompting import render_narrator
 from aidm.domain.base import PLAYER_ID, EntityId
 from aidm.domain.entities import ActorEntity
 from aidm.engines import entity_renderer
@@ -24,17 +24,15 @@ def test_5e_presentation_exposes_full_state_for_every_visible_actor() -> None:
     assert "hp 4/4" in npc_state
     assert "ac 10" in npc_state
 
-    prompt = build_narrator_prompt(
-        NarratorContext(
-            scene=build_narrator_scene(state, describe),
-            scenario_title=state.scenario.title,
-            scenario_premise=state.scenario.premise,
-            intent="Mara watches Kael.",
-            tone="wary",
-            speaker_id=None,
-            evidence="- nothing changes",
-            prompt="I study Mara.",
-        )
+    prompt = render_narrator(
+        VisibleScene.of(SceneSnapshot.of(state)),
+        describe,
+        state.scenario,
+        intent="Mara watches Kael.",
+        tone="wary",
+        speaker_id=None,
+        evidence="- nothing changes",
+        prompt="I study Mara.",
     )
     assert "Mara[id=mara]" in prompt
     assert "hp 4/4" in prompt

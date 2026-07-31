@@ -3,21 +3,13 @@ from random import Random
 
 from pydantic import Field
 
-from .agents.context import (
-    CreatorContext,
-    DirectorContext,
-    MaintainerContext,
-    NarratorContext,
-    build_catalogue_scene,
-    build_director_scene,
-    build_narrator_scene,
-)
+from .agents.context import SceneSnapshot, VisibleScene
 from .agents.history import exchanges_to_messages
 from .agents.prompting import (
-    build_creator_prompt,
-    build_director_prompt,
-    build_maintainer_prompt,
-    build_narrator_prompt,
+    render_creator,
+    render_director,
+    render_maintainer,
+    render_narrator,
 )
 from .agents.stages import DirectorStage, SharedStages
 from .domain.base import EntityId, Role, slug
@@ -59,52 +51,44 @@ async def run_turn(
     recent = state.history[-options.history_window :]
     history = exchanges_to_messages(recent)
 
-    director_scene = build_director_scene(state)
-    director_context = DirectorContext(
-        scene=director_scene,
-        scenario_title=state.scenario.title,
-        scenario_premise=state.scenario.premise,
-        prompt=prompt,
-        recent=recent,
-    )
     step("director")
-    prompts["director"] = build_director_prompt(
-        director_context,
+    prompts["director"] = render_director(
+        SceneSnapshot.of(state),
         entity_renderer(engine, state),
+        state.scenario,
+        prompt,
     )
-    direction: Direction = await director.run(prompts["director"], director_scene, history)
+    direction: Direction = await director.run(prompts["director"], state, history)
 
     events = resolve(engine, direction, state, rng)
     draft = apply(state, events, engine.rules)
     directed = record(engine, direction)
     evidence = narrator_evidence(events, engine.presentation.narrator_event)
 
-    narrator_context = NarratorContext(
-        scene=build_narrator_scene(draft, entity_renderer(engine, draft)),
-        scenario_title=draft.scenario.title,
-        scenario_premise=draft.scenario.premise,
+    after = SceneSnapshot.of(draft)
+    describe = entity_renderer(engine, draft)
+    step("narrator")
+    prompts["narrator"] = render_narrator(
+        VisibleScene.of(after),
+        describe,
+        draft.scenario,
         intent=directed.intent,
         tone=directed.tone,
         speaker_id=directed.speaker_id,
         evidence=evidence,
         prompt=prompt,
-        recent=recent,
     )
-    step("narrator")
-    prompts["narrator"] = build_narrator_prompt(narrator_context)
     narration = await stages.narrator.run(prompts["narrator"], None, history)
 
-    maintainer_context = MaintainerContext(
-        scene=build_catalogue_scene(draft, entity_renderer(engine, draft)),
-        scenario_title=draft.scenario.title,
-        scenario_premise=draft.scenario.premise,
+    step("maintainer")
+    prompts["maintainer"] = render_maintainer(
+        after,
+        describe,
+        draft.scenario,
         prompt=prompt,
         evidence=evidence,
         narration=narration,
-        recent=recent,
     )
-    step("maintainer")
-    prompts["maintainer"] = build_maintainer_prompt(maintainer_context)
     growth = await stages.maintainer.run(prompts["maintainer"], None, history)
     screened = screen_growth(
         growth.requests,
@@ -155,14 +139,14 @@ async def _grow(
     events: list[Event] = []
     draft = state
     for request in sorted(requests, key=lambda item: item.kind != "location"):
-        context = CreatorContext(
-            scene=build_catalogue_scene(draft, entity_renderer(engine, draft)),
-            scenario_title=draft.scenario.title,
-            scenario_premise=draft.scenario.premise,
+        prompts["creator"] = render_creator(
+            SceneSnapshot.of(draft),
+            entity_renderer(engine, draft),
+            draft.scenario,
             narration=narration,
             recent=recent,
+            request=request,
         )
-        prompts["creator"] = build_creator_prompt(context, request)
         detail = await stages.creator.run(prompts["creator"], None)
         entity = _created_entity(
             request,

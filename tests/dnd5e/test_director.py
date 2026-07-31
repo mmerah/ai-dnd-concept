@@ -4,7 +4,6 @@ from pydantic_ai import ModelRetry, RunContext
 from pydantic_ai.models.test import TestModel
 from pydantic_ai.usage import RunUsage
 
-from aidm.agents.context import DirectorScene, build_director_scene
 from aidm.domain.base import EntityId
 from aidm.domain.json import thaw_json
 from aidm.domain.state import GameState
@@ -12,12 +11,8 @@ from aidm_5e.domain.models.consequences import Damage, DropItem, RollCheck
 from aidm_5e.domain.models.direction import Dnd5eDirection
 
 
-def _context(state: GameState) -> RunContext[DirectorScene]:
-    return RunContext(
-        deps=build_director_scene(state),
-        model=TestModel(),
-        usage=RunUsage(),
-    )
+def _context(state: GameState) -> RunContext[GameState]:
+    return RunContext(deps=state, model=TestModel(), usage=RunUsage())
 
 
 def test_unknown_and_absent_references_return_actionable_retries() -> None:

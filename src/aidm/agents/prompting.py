@@ -1,92 +1,111 @@
 import json
-from collections.abc import Iterable, Sequence
+from collections.abc import Callable, Iterable, Sequence
 
 from ..domain.base import EntityId, Kind
-from ..domain.entities import Entity
+from ..domain.definitions import ScenarioMeta
+from ..domain.entities import ActorEntity, Entity, ItemEntity, LocationEntity
 from ..domain.growth import GrowthRequest
 from ..domain.state import Exchange
-from .context import (
-    CatalogueEntityView,
-    CreatorContext,
-    DirectorContext,
-    DirectorScene,
-    EntityRenderer,
-    MaintainerContext,
-    NarratorContext,
-    NarratorEntityView,
-    NarratorScene,
-    entity_placement,
-)
+from .context import EntityRenderer, SceneSnapshot, VisibleScene
+
+type Placement = Callable[[Entity], str]
+type Label = Callable[[Entity], str]
 
 
-def _sections(parts: Iterable[tuple[str, str]]) -> str:
-    return "\n\n".join(f"{name}:\n{body}" for name, body in parts)
-
-
-def _premise(title: str, premise: str) -> tuple[str, str]:
-    return "SCENARIO", f"{title}\n{premise}"
-
-
-def build_director_prompt(
-    context: DirectorContext,
-    entity_state: EntityRenderer,
+def render_director(
+    scene: SceneSnapshot,
+    describe: EntityRenderer,
+    scenario: ScenarioMeta,
+    prompt: str,
 ) -> str:
-    scene = context.scene
     return _sections(
         (
-            _premise(context.scenario_title, context.scenario_premise),
-            ("PLAYER CHARACTER", _director_character(scene, entity_state)),
+            _premise(scenario),
+            (
+                "PLAYER CHARACTER",
+                _character(
+                    scene.player, scene.location, scene.inventory, describe, label=_labelled
+                ),
+            ),
             (
                 "HERE WITH THE PLAYER",
-                _director_entities(scene.here, scene, entity_state),
+                _entities(scene.here, describe, placement=scene.placement_of),
             ),
             (
                 "KNOWN TO THE PLAYER, BUT ELSEWHERE",
-                _director_entities(scene.elsewhere, scene, entity_state),
+                _entities(scene.known_elsewhere, describe, placement=scene.placement_of),
             ),
             (
                 "EXISTS BUT THE PLAYER DOES NOT KNOW IT YET",
-                _director_entities(scene.unrevealed, scene, entity_state),
+                _entities(scene.hidden, describe, placement=scene.placement_of),
             ),
-            ("PLAYER ACTION", context.prompt),
+            ("PLAYER ACTION", prompt),
         )
     )
 
 
-def build_narrator_prompt(context: NarratorContext) -> str:
-    scene = context.scene
+def render_narrator(
+    scene: VisibleScene,
+    describe: EntityRenderer,
+    scenario: ScenarioMeta,
+    *,
+    intent: str,
+    tone: str,
+    speaker_id: EntityId | None,
+    evidence: str,
+    prompt: str,
+) -> str:
     return _sections(
         (
-            _premise(context.scenario_title, context.scenario_premise),
-            ("PLAYER CHARACTER", _narrator_character(scene)),
-            ("HERE WITH THE PLAYER", _narrator_entities(scene.here)),
+            _premise(scenario),
+            (
+                "PLAYER CHARACTER",
+                _character(scene.player, scene.location, scene.inventory, describe, label=_named),
+            ),
+            (
+                "HERE WITH THE PLAYER",
+                _entities(scene.here, describe, placement=scene.placement_of),
+            ),
             (
                 "KNOWN TO THE PLAYER, BUT ELSEWHERE",
-                _narrator_entities(scene.elsewhere),
+                _entities(scene.known_elsewhere, describe, placement=scene.placement_of),
             ),
-            ("THE DIRECTOR'S PLAN — what was meant, not what happened", context.intent),
-            ("THE DIRECTOR ASKS FOR THIS TONE", context.tone),
-            ("SPEAKER", _speaker(scene, context.speaker_id)),
-            ("WHAT HAPPENED", context.evidence),
-            ("PLAYER ACTION", context.prompt),
+            ("THE DIRECTOR'S PLAN — what was meant, not what happened", intent),
+            ("THE DIRECTOR ASKS FOR THIS TONE", tone),
+            ("SPEAKER", _speaker(scene, speaker_id)),
+            ("WHAT HAPPENED", evidence),
+            ("PLAYER ACTION", prompt),
         )
     )
 
 
-def build_maintainer_prompt(context: MaintainerContext) -> str:
+def render_maintainer(
+    scene: SceneSnapshot,
+    describe: EntityRenderer,
+    scenario: ScenarioMeta,
+    *,
+    prompt: str,
+    evidence: str,
+    narration: str,
+) -> str:
     return _sections(
         (
-            _premise(context.scenario_title, context.scenario_premise),
-            ("EVERYTHING THAT EXISTS", _catalogue(context.scene.catalogue)),
-            ("PLAYER", context.prompt),
-            ("WHAT HAPPENED", context.evidence),
-            ("NARRATION", context.narration),
+            _premise(scenario),
+            ("EVERYTHING THAT EXISTS", _catalogue(scene, describe)),
+            ("PLAYER", prompt),
+            ("WHAT HAPPENED", evidence),
+            ("NARRATION", narration),
         )
     )
 
 
-def build_creator_prompt(
-    context: CreatorContext,
+def render_creator(
+    scene: SceneSnapshot,
+    describe: EntityRenderer,
+    scenario: ScenarioMeta,
+    *,
+    narration: str,
+    recent: Sequence[Exchange],
     request: GrowthRequest,
 ) -> str:
     where = f"\nlocation: {request.location}" if request.location else ""
@@ -94,55 +113,13 @@ def build_creator_prompt(
     wanted = f"{kind} named {request.name}\nbrief: {request.brief}{where}"
     return _sections(
         (
-            _premise(context.scenario_title, context.scenario_premise),
-            ("EVERYTHING THAT EXISTS", _catalogue(context.scene.catalogue)),
-            ("RECENT PLAY", _history(context.recent)),
-            ("NARRATION", context.narration),
+            _premise(scenario),
+            ("EVERYTHING THAT EXISTS", _catalogue(scene, describe)),
+            ("RECENT PLAY", _history(recent)),
+            ("NARRATION", narration),
             ("CREATE", wanted),
         )
     )
-
-
-def _director_character(
-    scene: DirectorScene,
-    entity_state: EntityRenderer,
-) -> str:
-    inventory = "\n".join(
-        _with_state(
-            f"- {_label(item)} — {item.brief}",
-            entity_state(item),
-            "  ",
-        )
-        for item in sorted(scene.carried, key=lambda held: held.name)
-    )
-    player = _with_state(
-        f"{_label(scene.player)} — {scene.player.brief} — at {_label(scene.where)}",
-        entity_state(scene.player),
-    )
-    return f"{player}\ninventory:\n{inventory or '- (none)'}"
-
-
-def _director_entities(
-    entities: Sequence[Entity],
-    scene: DirectorScene,
-    entity_state: EntityRenderer,
-) -> str:
-    return (
-        "\n".join(
-            _with_state(
-                f"- {_label(entity)} ({_kind_label(entity.kind)})"
-                f"{_with_placement(entity_placement(entity, scene.canon))} — {entity.brief}",
-                entity_state(entity),
-                "  ",
-            )
-            for entity in entities
-        )
-        or "- (none)"
-    )
-
-
-def _label(entity: Entity) -> str:
-    return f"{entity.name}[id={prompt_id(entity.id)}]"
 
 
 def prompt_id(entity_id: str) -> str:
@@ -150,12 +127,94 @@ def prompt_id(entity_id: str) -> str:
     return escaped.replace("[", "\\u005b").replace("]", "\\u005d")
 
 
+def _sections(parts: Iterable[tuple[str, str]]) -> str:
+    return "\n\n".join(f"{name}:\n{body}" for name, body in parts)
+
+
+def _premise(scenario: ScenarioMeta) -> tuple[str, str]:
+    return "SCENARIO", f"{scenario.title}\n{scenario.premise}"
+
+
+def _character(
+    player: ActorEntity,
+    location: LocationEntity,
+    inventory: Sequence[ItemEntity],
+    describe: EntityRenderer,
+    *,
+    label: Label,
+) -> str:
+    held = "\n".join(
+        _with_state(f"- {label(item)} — {item.brief}", describe(item), "  ")
+        for item in sorted(inventory, key=lambda item: item.name)
+    )
+    line = _with_state(
+        f"{label(player)} — {player.brief} — at {label(location)}",
+        describe(player),
+    )
+    return f"{line}\ninventory:\n{held or '- (none)'}"
+
+
+def _entities(
+    entities: Sequence[Entity],
+    describe: EntityRenderer,
+    *,
+    placement: Placement,
+) -> str:
+    return (
+        "\n".join(
+            _with_state(_headline(entity, placement(entity)), describe(entity), "  ")
+            for entity in entities
+        )
+        or "- (none)"
+    )
+
+
+def _catalogue(scene: SceneSnapshot, describe: EntityRenderer) -> str:
+    return (
+        "\n".join(
+            _with_state(
+                _headline(entity, scene.placement_of(entity)) + _detail(entity),
+                describe(entity),
+                "  ",
+            )
+            for entity in scene.catalogue()
+        )
+        or "- (none)"
+    )
+
+
+def _headline(entity: Entity, placement: str) -> str:
+    placed = f" — {placement}" if placement else ""
+    return f"- {_labelled(entity)} ({_kind_label(entity.kind)}){placed} — {entity.brief}"
+
+
+def _detail(entity: Entity) -> str:
+    if entity.detail is None:
+        return ""
+    described = f"\n  detail: {entity.detail.description}" if entity.detail.description else ""
+    hooked = f"\n  hook: {entity.detail.hook}" if entity.detail.hook else ""
+    return f"{described}{hooked}"
+
+
+def _speaker(scene: VisibleScene, speaker_id: EntityId | None) -> str:
+    if speaker_id is None:
+        return "(none — narrate the scene)"
+    speaker = next((entity for entity in scene.here if entity.id == speaker_id), None)
+    if not isinstance(speaker, ActorEntity):
+        raise ValueError(f"speaker {speaker_id!r} is not a visible actor here")
+    return f"{_labelled(speaker)} — {speaker.brief}"
+
+
+def _labelled(entity: Entity) -> str:
+    return f"{entity.name}[id={prompt_id(entity.id)}]"
+
+
+def _named(entity: Entity) -> str:
+    return entity.name
+
+
 def _kind_label(kind: Kind) -> str:
     return "npc" if kind == "actor" else kind
-
-
-def _with_placement(placement: str) -> str:
-    return f" — {placement}" if placement else ""
 
 
 def _with_state(line: str, state: str, indent: str = "") -> str:
@@ -163,58 +222,6 @@ def _with_state(line: str, state: str, indent: str = "") -> str:
         return line
     continued = state.replace("\n", f"\n{indent}       ")
     return f"{line}\n{indent}state: {continued}"
-
-
-def _narrator_character(scene: NarratorScene) -> str:
-    inventory = "\n".join(
-        _with_state(f"- {item.name} — {item.brief}", item.state, "  ")
-        for item in sorted(scene.carried, key=lambda held: held.name)
-    )
-    player = _with_state(
-        f"{scene.player.name} — {scene.player.brief} — at {scene.where.name}",
-        scene.player.state,
-    )
-    return f"{player}\ninventory:\n{inventory or '- (none)'}"
-
-
-def _narrator_entities(entities: Sequence[NarratorEntityView]) -> str:
-    return (
-        "\n".join(
-            _with_state(
-                f"- {entity.name}[id={prompt_id(entity.id)}] "
-                f"({_kind_label(entity.kind)}) — {entity.brief}",
-                entity.state,
-                "  ",
-            )
-            for entity in entities
-        )
-        or "- (none)"
-    )
-
-
-def _speaker(scene: NarratorScene, speaker_id: EntityId | None) -> str:
-    if speaker_id is None:
-        return "(none — narrate the scene)"
-    speaker = next((entity for entity in scene.here if entity.id == speaker_id), None)
-    if speaker is None or speaker.kind != "actor":
-        raise ValueError(f"speaker {speaker_id!r} is not a visible actor here")
-    return f"{speaker.name}[id={prompt_id(speaker.id)}] — {speaker.brief}"
-
-
-def _catalogue(entities: Sequence[CatalogueEntityView]) -> str:
-    return "\n".join(_catalogue_entry(entity) for entity in entities) or "- (none)"
-
-
-def _catalogue_entry(entity: CatalogueEntityView) -> str:
-    line = (
-        f"- {entity.name}[id={prompt_id(entity.id)}] ({_kind_label(entity.kind)})"
-        f"{_with_placement(entity.placement)} — {entity.brief}"
-    )
-    if entity.description:
-        line += f"\n  detail: {entity.description}"
-    if entity.hook:
-        line += f"\n  hook: {entity.hook}"
-    return _with_state(line, entity.state, "  ")
 
 
 def _history(recent: Sequence[Exchange]) -> str:

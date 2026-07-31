@@ -1,23 +1,14 @@
 import pytest
 from pydantic_ai.messages import ModelRequest, ModelResponse
 
-from aidm.agents.context import (
-    CreatorContext,
-    DirectorContext,
-    EntityRenderer,
-    MaintainerContext,
-    NarratorContext,
-    build_catalogue_scene,
-    build_director_scene,
-    build_narrator_scene,
-)
+from aidm.agents.context import EntityRenderer, SceneSnapshot, VisibleScene
 from aidm.agents.history import exchanges_to_messages
 from aidm.agents.prompting import (
-    build_creator_prompt,
-    build_director_prompt,
-    build_maintainer_prompt,
-    build_narrator_prompt,
     prompt_id,
+    render_creator,
+    render_director,
+    render_maintainer,
+    render_narrator,
 )
 from aidm.domain.base import PLAYER_ID, SAVE_VERSION, EntityId
 from aidm.domain.definitions import ScenarioMeta
@@ -35,6 +26,14 @@ from aidm_story.presentation import StoryPresentation
 
 ACTOR_RULES = StoryActorState(approaches=DEFAULT_APPROACHES)
 ITEM_RULES = StoryItemState()
+DESCRIPTION = "She writes in a compact cipher."
+HOOK = "Her missing folio points toward the vault."
+
+
+def _with_detail(held: GameState, entity_id: EntityId) -> GameState:
+    entity = held.world.require_kind(entity_id, ActorEntity)
+    detailed = updated(entity, detail={"description": DESCRIPTION, "hook": HOOK})
+    return updated(held, world=held.world.replacing(detailed))
 
 
 def _state_line(entity_id: EntityId) -> str:
@@ -116,33 +115,34 @@ def state() -> GameState:
     )
 
 
-def test_narrator_projection_has_visible_engine_state_but_no_hidden_canon_or_raw_rules() -> None:
-    held = state()
-    director = build_director_scene(held)
-    narrator = build_narrator_scene(held, _renderer(held))
+def test_the_narrators_view_has_no_field_that_could_hold_unrevealed_canon() -> None:
+    held = _with_detail(state(), EntityId("mara"))
+    snapshot = SceneSnapshot.of(held)
+    visible = VisibleScene.of(snapshot)
 
-    assert [entity.id for entity in director.unrevealed] == ["hidden-actor"]
-    dumped = narrator.model_dump()
-    assert "The Secret" not in str(dumped)
-    assert set(type(narrator).model_fields) == {
+    assert [entity.id for entity in snapshot.hidden] == ["hidden-actor"]
+    assert set(VisibleScene.model_fields) == {
         "player",
-        "where",
-        "carried",
+        "location",
+        "inventory",
         "here",
-        "elsewhere",
+        "known_elsewhere",
+        "placements",
     }
-    assert all(
-        "rules" not in type(entity).model_fields
-        for entity in (
-            narrator.player,
-            narrator.where,
-            *narrator.carried,
-            *narrator.here,
-            *narrator.elsewhere,
-        )
-    )
-    assert narrator.player.state == PLAYER_LINE
-    assert next(entity for entity in narrator.here if entity.id == "mara").state == ACTOR_LINE
+    dumped = str(visible.model_dump())
+    assert "The Secret" not in dumped
+    assert HOOK not in dumped
+    assert HOOK in str(snapshot.model_dump())
+
+
+def test_a_placement_never_names_an_entity_the_player_has_not_met() -> None:
+    held = state()
+    ledger = held.world.require_kind(EntityId("ledger"), ItemEntity)
+    held = updated(held, world=held.world.replacing(updated(ledger, container_id="hidden-actor")))
+    snapshot = SceneSnapshot.of(held)
+
+    assert snapshot.placement_of(ledger) == "held by The Secret"
+    assert VisibleScene.of(snapshot).placement_of(ledger) == ""
 
 
 def test_prompt_ids_escape_control_characters_and_bracket_delimiters() -> None:
@@ -154,16 +154,8 @@ def test_prompt_ids_escape_control_characters_and_bracket_delimiters() -> None:
 
 def test_director_projection_preserves_ids_inventory_placement_and_hidden_canon() -> None:
     held = state()
-    scene = build_director_scene(held)
-    prompt = build_director_prompt(
-        DirectorContext(
-            scene=scene,
-            scenario_title=held.scenario.title,
-            scenario_premise=held.scenario.premise,
-            prompt="I look around.",
-        ),
-        _renderer(held),
-    )
+    scene = SceneSnapshot.of(held)
+    prompt = render_director(scene, _renderer(held), held.scenario, "I look around.")
 
     assert "Kael[id=player]" in prompt
     assert "a lantern[id=lantern] — A dented light." in prompt
@@ -172,75 +164,64 @@ def test_director_projection_preserves_ids_inventory_placement_and_hidden_canon(
     assert "The Secret[id=hidden-actor]" in prompt
     assert "Study[id=study]" in prompt
     assert f"state: {ACTOR_LINE}" in prompt
-    assert PLAYER_ID not in {entity.id for entity in (*scene.here, *scene.unrevealed)}
+    assert PLAYER_ID not in {entity.id for entity in (*scene.here, *scene.hidden)}
 
 
 def test_narrator_prompt_orders_plan_before_outcome_and_checks_the_speaker() -> None:
     held = state()
-    scene = build_narrator_scene(held, _renderer(held))
-    context = NarratorContext(
-        scene=scene,
-        scenario_title=held.scenario.title,
-        scenario_premise=held.scenario.premise,
-        intent="Mara answers cautiously.",
-        tone="hushed",
-        speaker_id=EntityId("mara"),
-        evidence="- the map was found",
-        prompt="What does Mara say?",
-    )
+    scene = VisibleScene.of(SceneSnapshot.of(held))
 
-    prompt = build_narrator_prompt(context)
+    def render(speaker_id: EntityId) -> str:
+        return render_narrator(
+            scene,
+            _renderer(held),
+            held.scenario,
+            intent="Mara answers cautiously.",
+            tone="hushed",
+            speaker_id=speaker_id,
+            evidence="- the map was found",
+            prompt="What does Mara say?",
+        )
+
+    prompt = render(EntityId("mara"))
 
     assert "Mara[id=mara] — A known scribe." in prompt
+    assert f"state: {PLAYER_LINE}" in prompt
     assert f"state: {ACTOR_LINE}" in prompt
     assert prompt.index("THE DIRECTOR'S PLAN") < prompt.index("WHAT HAPPENED")
     assert "The Secret" not in prompt
 
     with pytest.raises(ValueError, match="visible actor here"):
-        build_narrator_prompt(updated(context, speaker_id=EntityId("hidden-actor")))
+        render(EntityId("hidden-actor"))
 
 
 def test_catalogue_includes_existing_detail_and_engine_state() -> None:
-    held = state()
-    mara = held.world.require_kind(EntityId("mara"), ActorEntity)
-    detailed = updated(
-        mara,
-        detail={
-            "description": "She writes in a compact cipher.",
-            "hook": "Her missing folio points toward the vault.",
-        },
+    held = _with_detail(state(), EntityId("mara"))
+
+    scene = SceneSnapshot.of(held)
+    describe = _renderer(held)
+
+    assert PLAYER_ID not in {entity.id for entity in scene.catalogue()}
+
+    maintainer = render_maintainer(
+        scene,
+        describe,
+        held.scenario,
+        prompt="Who is she?",
+        evidence="- nothing changed",
+        narration="Mara closes her folio.",
     )
-    held = updated(held, world=held.world.replacing(detailed))
-
-    scene = build_catalogue_scene(held, _renderer(held))
-    shown = next(entity for entity in scene.catalogue if entity.id == "mara")
-
-    assert shown.description == "She writes in a compact cipher."
-    assert shown.hook == "Her missing folio points toward the vault."
-    assert shown.state == ACTOR_LINE
-
-    maintainer = build_maintainer_prompt(
-        MaintainerContext(
-            scene=scene,
-            scenario_title=held.scenario.title,
-            scenario_premise=held.scenario.premise,
-            prompt="Who is she?",
-            evidence="- nothing changed",
-            narration="Mara closes her folio.",
-        )
-    )
-    creator = build_creator_prompt(
-        CreatorContext(
-            scene=scene,
-            scenario_title=held.scenario.title,
-            scenario_premise=held.scenario.premise,
-            narration="A courier enters.",
-        ),
-        GrowthRequest(kind="actor", name="Iven", brief="A rain-soaked courier."),
+    creator = render_creator(
+        scene,
+        describe,
+        held.scenario,
+        narration="A courier enters.",
+        recent=(),
+        request=GrowthRequest(kind="actor", name="Iven", brief="A rain-soaked courier."),
     )
     for prompt in (maintainer, creator):
-        assert "detail: She writes in a compact cipher." in prompt
-        assert "hook: Her missing folio points toward the vault." in prompt
+        assert f"detail: {DESCRIPTION}" in prompt
+        assert f"hook: {HOOK}" in prompt
         assert f"state: {ACTOR_LINE}" in prompt
 
 

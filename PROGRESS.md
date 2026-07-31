@@ -123,7 +123,86 @@ An adversarial Opus review ran against the staged item-2 diff. Acted on every fi
   setup out of a `pytest.raises` block
 - 206 tests, ruff, basedpyright clean. New game + save + resume verified for both engines
 
-## Next — item 3: one scene snapshot
+## 3 — one scene snapshot — done
 
-`SceneSnapshot` + `VisibleScene`, deleting the four `*Context` models and two of three scene
-builders. `aidm_5e/scene_state.py` dies once the Director stage takes the real `GameState`.
+- `SceneSnapshot.of(state)` is the one projection: `player`, `location`, `inventory`, `here`,
+  `known_elsewhere`, `hidden`, plus `canon` for the arbitrary lookups placement and the catalogue
+  need. `VisibleScene.of(snapshot)` drops `hidden` and `canon`
+- `render_narrator` takes `VisibleScene`, so the Narrator boundary is structural: there is no field
+  a leak could travel through. `VisibleScene` does **not** subclass `SceneSnapshot` — that would
+  make a snapshot substitutable and hand the guarantee back to renderer discipline
+- Four renderers replace four `*Context` models plus four prompt builders:
+  `render_director` / `render_narrator` / `render_maintainer` / `render_creator`, each taking the
+  scene, the bound `EntityRenderer`, and `ScenarioMeta`. `render_maintainer` and `render_creator`
+  stay separate because the two prompts differ in everything but the catalogue section
+- The Director stage's deps are the real `GameState`. Both directors validate against it, so
+  `aidm_5e/scene_state.py` and the `GameState` the Story director fabricated for its dry run are
+  gone, along with `DirectorScene.canon` / `.is_here`. `GameState.is_here` serves both engines
+- Deviation from the plan: renderers take the bound `EntityRenderer` rather than an
+  `(engine_state, presenter)` pair. `engines.py::entity_renderer` already binds a presenter to the
+  state it reads, and core cannot dispatch a presenter without the engine value
+- Deleted: `DirectorScene`, `NarratorScene`, `CatalogueScene`, `NarratorEntityView`,
+  `CatalogueEntityView`, `DirectorContext`, `NarratorContext`, `MaintainerContext`,
+  `CreatorContext`, all three scene builders, `entity_placement`, `aidm_5e/scene_state.py`
+- Only unused prompt inputs went with them: the Director, Narrator and Maintainer contexts each
+  carried a `recent` no prompt rendered. Only the Creator prompt shows history, and it still does
+- The three must-survive context-boundary assertions are ported: no hidden canon reaches the
+  Narrator (now half structural, half a prompt assertion), prompt ids escape control characters
+  and bracket delimiters, and a hidden speaker is rejected
+- Gate green: 207 tests, ruff, basedpyright. New game + save + resume verified for both engines
+  through the composition root
+- `context.py` + `prompting.py`: 414 → 346 lines. 10,732 → 10,534 source lines
+
+## Review pass on 3
+
+An adversarial Opus review ran against the working tree, on a fixture built to hit every render
+branch. Findings acted on:
+
+- **The Narrator boundary had regressed for `detail`.** The deleted `NarratorEntityView` carried
+  `{id, kind, name, brief, state}`; full entities carry `detail.hook`, which the Creator authors as
+  "one sentence about how it may matter later" — GM-only forward canon. No prompt rendered it, so
+  nothing leaked, but the guarantee had dropped from structural to renderer discipline. `_undetailed`
+  strips it in `VisibleScene.of`, and the boundary test now fails without that call
+- The ported boundary test could not have caught it: its only data assertion named the *hidden*
+  actor, which is excluded by construction. The fixture now gives a visible actor a detail
+- The Story director had lost its eager wrong-engine guard — `_engine(state)` was only reached from
+  the actor-consequence path, so an empty `mechanics` against a `Dnd5eState` validated. `validate`
+  now narrows once through the existing `state.py::story_state` and threads the result; the
+  duplicated private `_engine` is gone
+- `-> Self` on both `of` classmethods advertised subclassing that `cls(...)` cannot honour, and
+  `VisibleScene`'s whole point is that it is *not* substitutable. Both name their concrete class
+- `_character` took `SceneSnapshot | VisibleScene` — the one place in the Narrator path where
+  passing a `hidden`-bearing scene type-checked. It takes the player, location and inventory now
+- The three `Callable[[Entity], str]` parameters were positionally interchangeable. `label` and
+  `placement` are keyword-only, so a swap no longer type-checks
+
+Rejected, with reasons:
+
+- **The dry runs now round-trip the real `history`** rather than the empty history of the state the
+  deleted `scene_state.py` fabricated. Measured: 0.11 ms → 0.17 ms per `updated(GameState)` at 60
+  exchanges of realistic size. The world and engine state dominate, item 4 deletes `updated()`, and
+  a workaround would be dead code by then
+- A test asserting `VisibleScene` does not subclass `SceneSnapshot` would be redundant: inheriting
+  would add `hidden` and `canon` to `model_fields`, which the existing field-set assertion pins
+
+Reworked beyond the review, on maintainer instruction: the Narrator sees placement too. `placement`
+was briefly `Placement | None`, with None meaning "the Narrator's scene has no world to locate
+against" — an optional encoding an inconsistency rather than a fact.
+
+- `BaseScene` holds the five shared fields plus `placements`, an id-keyed map of rendered placement
+  text. `SceneSnapshot` and `VisibleScene` are siblings under it, so a snapshot still cannot reach
+  `render_narrator`, and the five field declarations are no longer duplicated
+- `_placements(world, entities, nameable)` computes it once per scene. `nameable` is the set of ids
+  whose names the reader may be told exist: every id for the Director, only met entities for the
+  Narrator. A known item held by an unmet actor therefore renders "held by The Secret" for the
+  Director and no placement at all for the Narrator — pinned by a test
+- Intended prompt change: the Narrator's `here` and `known_elsewhere` lines gain a placement suffix.
+  Diffed against a worktree at the previous commit over a fixture covering every branch — that is
+  the *only* difference; the Director, Maintainer and Creator prompts are byte-identical
+
+## Next — item 4: resolution transaction
+
+`Transition{state, facts}`, one mutable draft committed once. Deletes `RuleEvent`,
+`RuleStatePatch`, `domain/reducer.py`, `updated()`, `FrozenMap` and `domain/json.py`. Port the
+purity assertion in `test_engine_contract.py` first, and add explicit `engine` tags to both
+direction models and every fact model before persisting the union.

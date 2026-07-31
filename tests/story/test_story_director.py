@@ -7,7 +7,6 @@ from pydantic_ai.models.test import TestModel
 from pydantic_ai.usage import RunUsage
 from story_test_support import initial_story_game
 
-from aidm.agents.context import DirectorScene, build_director_scene
 from aidm.domain.base import PLAYER_ID, EntityId
 from aidm.domain.events import Event
 from aidm.domain.state import GameState
@@ -18,9 +17,8 @@ from aidm_story.models import StoryActorState
 from aidm_story.rules import StoryRules
 
 
-def _director_context(state: GameState) -> RunContext[DirectorScene]:
-    scene = build_director_scene(state)
-    return RunContext(deps=scene, model=TestModel(), usage=RunUsage())
+def _director_context(state: GameState) -> RunContext[GameState]:
+    return RunContext(deps=state, model=TestModel(), usage=RunUsage())
 
 
 def test_taking_an_actor_out_mid_turn_retries_instead_of_raising() -> None:
