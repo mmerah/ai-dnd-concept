@@ -1,7 +1,5 @@
 from random import Random
 
-from pydantic import BaseModel
-
 from aidm.domain.advancement import AdvancementStatus
 from aidm.domain.base import PLAYER_ID
 from aidm.domain.state import GameState
@@ -10,6 +8,7 @@ from aidm.utils.models import Frozen
 
 from .domain.models.progression import MAX_LEVEL, Decisions
 from .engine import features, progression
+from .engine.progression import AdvancementPlan, LevelUpPreview
 from .engine.ruleset import Ruleset
 from .models import Dnd5eActor
 from .state import actor_of
@@ -48,22 +47,29 @@ class Dnd5eAdvancement:
             progress=current.level / MAX_LEVEL,
         )
 
-    def preview(self, state: GameState) -> BaseModel:
+    def preview(self, state: GameState) -> LevelUpPreview:
         return progression.preview(self._ready(state), self._ruleset)
 
-    def plan(self, state: GameState, decisions: BaseModel) -> BaseModel:
-        chosen = _decisions(decisions)
-        return progression.plan(self._ready(state), chosen, self._ruleset)
+    def plan(
+        self,
+        state: GameState,
+        decisions: Dnd5eAdvancementDecisions,
+    ) -> AdvancementPlan:
+        return progression.plan(self._ready(state), decisions.decisions, self._ruleset)
 
     def advance(
         self,
         state: GameState,
-        decisions: BaseModel,
+        decisions: Dnd5eAdvancementDecisions,
         rng: Random,
     ) -> Transition:
-        chosen = _decisions(decisions)
         draft = state.draft()
-        facts = progression.advance(self._ready(draft), chosen, self._ruleset, rng)
+        facts = progression.advance(
+            self._ready(draft),
+            decisions.decisions,
+            self._ruleset,
+            rng,
+        )
         return Transition(state=draft.committed(), facts=tuple(facts))
 
     def _features(self, actor: Dnd5eActor) -> tuple[str, ...]:
@@ -100,9 +106,3 @@ class Dnd5eAdvancement:
         if player.progression is None or not player.progression.level_up_available:
             raise ValueError("no 5e level-up has been awarded")
         return player
-
-
-def _decisions(decisions: BaseModel) -> Decisions:
-    if not isinstance(decisions, Dnd5eAdvancementDecisions):
-        raise TypeError(f"5e advancement received {type(decisions).__name__}")
-    return decisions.decisions

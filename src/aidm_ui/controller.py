@@ -25,8 +25,8 @@ async def submit(view: GameView, box: ui.input) -> None:
         return
     session.busy = True
     box.value = ""
-    advancement_was_available = session.app.advancement_available()
     try:
+        advancement_was_available = session.app.advancement_available()
         await session.app.submit(prompt, on_step=lambda step: on_step(view, step))
         if not advancement_was_available and session.app.advancement_available():
             ui.notify("Advancement unlocked. Open the Advancement tab to choose it.")

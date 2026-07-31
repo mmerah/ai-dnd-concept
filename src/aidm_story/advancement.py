@@ -1,7 +1,7 @@
 from random import Random
-from typing import Annotated, Literal, get_args
+from typing import Annotated, Literal
 
-from pydantic import BaseModel, Field, TypeAdapter
+from pydantic import Field
 
 from aidm.domain.advancement import AdvancementStatus
 from aidm.domain.base import PLAYER_ID, Slug, slug
@@ -75,8 +75,6 @@ type StoryAdvancementDecision = Annotated[
     RaiseApproach | AddTag | RemoveBurden | RewriteBurden | AcquireGear | IncreaseMaximumStress,
     Field(discriminator="choice"),
 ]
-DECISION_ADAPTER: TypeAdapter[StoryAdvancementDecision] = TypeAdapter(StoryAdvancementDecision)
-DECISION_TYPES: tuple[type, ...] = get_args(get_args(StoryAdvancementDecision.__value__)[0])
 
 
 class StoryAdvancementPreview(Frozen):
@@ -96,7 +94,7 @@ class StoryAdvancement:
     def available(self, state: GameState) -> bool:
         return self._player(state).growth_marks == GROWTH_REQUIRED
 
-    def preview(self, state: GameState) -> BaseModel:
+    def preview(self, state: GameState) -> StoryAdvancementPreview:
         player = self._player(state)
         if player.growth_marks != GROWTH_REQUIRED:
             raise ValueError(f"Story advancement requires {GROWTH_REQUIRED} growth marks")
@@ -123,9 +121,12 @@ class StoryAdvancement:
             progress=1.0,
         )
 
-    def plan(self, state: GameState, decisions: BaseModel) -> BaseModel:
-        player = self._ready(state, decisions)
-        decision = DECISION_ADAPTER.validate_python(decisions)
+    def plan(
+        self,
+        state: GameState,
+        decision: StoryAdvancementDecision,
+    ) -> StoryAdvancementPlan:
+        player = self._ready(state)
         self._validate_choice(player, decision)
         summary = self._describe_choice(player, decision)
         return StoryAdvancementPlan(decision=decision, summary=summary)
@@ -133,13 +134,12 @@ class StoryAdvancement:
     def advance(
         self,
         state: GameState,
-        decisions: BaseModel,
+        decision: StoryAdvancementDecision,
         rng: Random,
     ) -> Transition:
         del rng
         draft = state.draft()
-        player = self._ready(draft, decisions)
-        decision = DECISION_ADAPTER.validate_python(decisions)
+        player = self._ready(draft)
         self._validate_choice(player, decision)
         facts: list[Emitted] = self._apply(draft, player, decision)
         player.growth_marks = 0
@@ -205,13 +205,7 @@ class StoryAdvancement:
                     raised.append(Revived(actor_id=PLAYER_ID, actor_name=draft.player.name))
                 return raised
 
-    def _ready(
-        self,
-        state: GameState,
-        decisions: BaseModel,
-    ) -> StoryActorState:
-        if not isinstance(decisions, DECISION_TYPES):
-            raise TypeError(f"Story advancement received {type(decisions).__name__}")
+    def _ready(self, state: GameState) -> StoryActorState:
         player = self._player(state)
         if player.growth_marks != GROWTH_REQUIRED:
             raise ValueError(f"Story advancement requires {GROWTH_REQUIRED} growth marks")

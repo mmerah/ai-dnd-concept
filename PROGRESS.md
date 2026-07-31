@@ -395,10 +395,18 @@ blocked on every content and save path. Findings acted on:
   smaller than before item 5 started. The correctness fixes cost lines the cuts had freed; that is
   the honest number, not the reviewer's −25 estimate
 
-## Next — item 6: engine-owned advancement
+## 6 — engine-owned advancement — done
 
-Register the renderer with its engine so concrete types flow end to end:
-`StoryAdvancement.preview() -> StoryAdvancementPreview` consumed by `StoryAdvancementUi`. Deletes
-the `AdvancementEngine` protocol's `BaseModel` signatures, `Composition.advancement_ui`'s
-`isinstance` dispatch, and every defensive `isinstance(preview, ...)` guard in the UI.
-`advancement/flow.py` stays.
+- Story and 5e `preview`, `plan`, and `advance` now take and return their concrete types; the
+  `BaseModel` signatures, runtime decision adapters, and defensive UI type guards are gone
+- The composition root memoises a private engine-bound renderer cache. `StoryAdvancementUi` owns a
+  `StoryEngine`, `Dnd5eAdvancementUi` owns a `Dnd5eEngine`, and `Session` requires its application
+  and renderer to share that exact engine instance; engine packages remain UI- and NiceGUI-free
+- Each renderer calls its concrete service directly. The shared confirmation flow passes the closed
+  Story/5e decision union to `GameApplication`; core pairs it with the selected engine and still owns
+  validation, save, and trace commits, so an arbitrary transition cannot pose as an advancement
+- The controller reads the engine's shared availability method inside its guarded submission flow;
+  the duplicate renderer delegates are gone and a failed query cannot leave the session busy
+- Gate green: 205 tests, `ruff check`, and `basedpyright`; Story advancement commit/save/trace and
+  the full 5e preview/plan/advance flow remain covered. Source delta: +18 lines for the closed
+  decision dispatch, engine/UI identity invariant, and fail-fast registration checks

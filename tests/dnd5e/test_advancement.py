@@ -7,11 +7,10 @@ from fivee_test_support import initial_5e_game, player_of, ruleset, with_actor
 from aidm_5e.advancement import Dnd5eAdvancement, Dnd5eAdvancementDecisions
 from aidm_5e.domain.models.consequences import LevelUp
 from aidm_5e.domain.models.direction import Dnd5eDirection
-from aidm_5e.engine.progression import AdvancementPlan, LevelUpPreview
 from aidm_5e.models import Dnd5eActorState
 
 
-def test_5e_advancement_status_and_full_adapter_flow() -> None:
+def test_5e_advancement_status_and_full_flow() -> None:
     engine, state = initial_5e_game()
     advancement = Dnd5eAdvancement(ruleset())
 
@@ -37,10 +36,9 @@ def test_5e_advancement_status_and_full_adapter_flow() -> None:
     assert advancement.status(offered).detail[0] == "Level 2 is ready."
 
     preview = advancement.preview(offered)
-    assert isinstance(preview, LevelUpPreview)
     decisions = Dnd5eAdvancementDecisions(decisions=answers(preview.choices))
     plan = advancement.plan(offered, decisions)
-    assert isinstance(plan, AdvancementPlan)
+    assert plan.benefits == preview.benefits
 
     advanced = advancement.advance(offered, decisions, Random(1)).state
 

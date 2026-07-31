@@ -1,4 +1,5 @@
 from collections.abc import Callable
+from dataclasses import dataclass
 
 from nicegui import ui
 
@@ -8,31 +9,32 @@ from aidm_5e.engine.features import actionability
 from aidm_5e.engine.progression import (
     AdvancementPlan,
     LevelBenefits,
-    LevelUpPreview,
 )
+from aidm_5e.factory import Dnd5eEngine
 
 from ..session_model import Session
 from .flow import confirm_advancement
 
 
+@dataclass(frozen=True, slots=True)
 class Dnd5eAdvancementUi:
+    engine: Dnd5eEngine
+
     def render(self, session: Session, refresh: Callable[[], None]) -> None:
-        status = session.app.advancement_status()
+        status = self.engine.advancement.status(session.app.state)
         ui.label(f"{session.app.state.player.name} — {status.headline}").classes(
             "text-sm font-bold"
         )
         ui.linear_progress(value=status.progress, show_value=False).classes("w-full")
         for line in status.detail:
             ui.label(line).classes("text-sm opacity-70 whitespace-pre-line")
-        if not session.app.advancement_available():
+        if not self.engine.advancement.available(session.app.state):
             return
         try:
-            preview = session.app.advancement_preview()
+            preview = self.engine.advancement.preview(session.app.state)
         except ValueError as error:
             ui.label(f"Cannot read the advancement: {error}").classes("text-negative text-sm")
             return
-        if not isinstance(preview, LevelUpPreview):
-            raise TypeError(f"5e UI received preview {type(preview).__name__}")
         self._benefits(preview.benefits)
         picks = self._choices(preview.choices)
         ui.button(
@@ -103,12 +105,10 @@ class Dnd5eAdvancementUi:
             }
         )
         try:
-            plan = session.app.advancement_plan(decisions)
-        except (TypeError, ValueError) as error:
+            plan = self.engine.advancement.plan(session.app.state, decisions)
+        except ValueError as error:
             ui.notify(str(error), type="negative", multi_line=True)
             return
-        if not isinstance(plan, AdvancementPlan):
-            raise TypeError(f"5e UI received plan {type(plan).__name__}")
         confirm_advancement(
             session,
             decisions,

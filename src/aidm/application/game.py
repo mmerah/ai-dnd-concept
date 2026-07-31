@@ -2,16 +2,13 @@ from collections.abc import Callable
 from dataclasses import dataclass, field
 from random import Random
 
-from pydantic import BaseModel
-
 from ..agents.stages import DirectorStage, SharedStages
-from ..domain.advancement import AdvancementStatus
 from ..domain.base import SAVE_VERSION, Role
 from ..domain.definitions import Character, Scenario
 from ..domain.state import GameState, authored_world
 from ..domain.transition import Fact
 from ..domain.turn import Advance, TraceEntry, Turn
-from ..engines import Advancement, Engine
+from ..engines import AdvancementDecision, Engine, resolve_advancement
 from ..pipeline import TurnOptions, run_turn
 from .ports import SaveRepository, TraceSink
 
@@ -61,20 +58,8 @@ class GameApplication:
         self.traces.append(self.slug, turn)
         return turn
 
-    def advancement_available(self) -> bool:
-        return self.engine.advancement.available(self.state)
-
-    def advancement_status(self) -> AdvancementStatus:
-        return self.engine.advancement.status(self.state)
-
-    def advancement_preview(self) -> BaseModel:
-        return self._advancement().preview(self.state)
-
-    def advancement_plan(self, decisions: BaseModel) -> BaseModel:
-        return self._advancement().plan(self.state, decisions)
-
-    def advance(self, decisions: BaseModel) -> tuple[Fact, ...]:
-        transition = self._advancement().advance(self.state, decisions, self.rng)
+    def advance(self, decision: AdvancementDecision) -> tuple[Fact, ...]:
+        transition = resolve_advancement(self.engine, decision, self.state, self.rng)
         self.engine.rules.validate_state(transition.state)
         self.state = transition.state
         entry = Advance(facts=transition.facts, state=self.state)
@@ -82,6 +67,9 @@ class GameApplication:
         self.saves.save(self.slug, self.state)
         self.traces.append(self.slug, entry)
         return transition.facts
+
+    def advancement_available(self) -> bool:
+        return self.engine.advancement.available(self.state)
 
     def restart(self) -> None:
         self.saves.discard(self.slug)
@@ -115,8 +103,3 @@ class GameApplication:
             )
         self.engine.rules.validate_state(state)
         return state
-
-    def _advancement(self) -> Advancement:
-        if not self.advancement_available():
-            raise ValueError("no advancement is available")
-        return self.engine.advancement

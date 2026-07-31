@@ -1,12 +1,13 @@
 from collections.abc import Sequence
 from random import Random
+from typing import Literal, overload
 
-from aidm_5e.advancement import Dnd5eAdvancement
+from aidm_5e.advancement import Dnd5eAdvancementDecisions
 from aidm_5e.domain.models.direction import Dnd5eDirection
 from aidm_5e.domain.models.facts import Dnd5eFactBase
 from aidm_5e.factory import Dnd5eEngine, build_dnd5e_engine
 from aidm_5e.models import Dnd5eState
-from aidm_story.advancement import StoryAdvancement
+from aidm_story.advancement import StoryAdvancementDecision
 from aidm_story.direction import StoryDirection
 from aidm_story.factory import StoryEngine, build_story_engine
 from aidm_story.facts import StoryFactBase
@@ -26,9 +27,17 @@ from .domain.state import GameState
 from .domain.transition import Direction, Fact, Transition
 
 type Engine = StoryEngine | Dnd5eEngine
-type Advancement = StoryAdvancement | Dnd5eAdvancement
+type AdvancementDecision = StoryAdvancementDecision | Dnd5eAdvancementDecisions
 
 NOTHING_MECHANICAL = "- (nothing mechanical happened)"
+
+
+@overload
+def engine_for(engine: Literal["story"], config: Settings) -> StoryEngine: ...
+
+
+@overload
+def engine_for(engine: Literal["dnd5e"], config: Settings) -> Dnd5eEngine: ...
 
 
 def engine_for(engine: EngineId, config: Settings) -> Engine:
@@ -47,6 +56,20 @@ def resolve(engine: Engine, direction: Direction, state: GameState, rng: Random)
             return engine.rules.resolve(direction, state, rng)
         case _:
             raise TypeError(f"{engine.id!r} engine received a {type(direction).__name__}")
+
+
+def resolve_advancement(
+    engine: Engine,
+    decision: AdvancementDecision,
+    state: GameState,
+    rng: Random,
+) -> Transition:
+    if isinstance(decision, Dnd5eAdvancementDecisions):
+        if isinstance(engine, Dnd5eEngine):
+            return engine.advancement.advance(state, decision, rng)
+    elif isinstance(engine, StoryEngine):
+        return engine.advancement.advance(state, decision, rng)
+    raise TypeError(f"{engine.id!r} engine received a {type(decision).__name__}")
 
 
 def trace_direction(engine: Engine, direction: Direction) -> str:

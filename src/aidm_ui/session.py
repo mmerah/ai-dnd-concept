@@ -35,10 +35,11 @@ class SessionRegistry:
             if origin != wanted:
                 raise ValueError(f"open session {slug!r} plays {origin}, not {wanted}")
             return session
+        advancement_ui = self.composition.advancement_ui(engine_id)
         application = self.composition.application(slug, scenario_id, character_id, engine_id)
         created = Session(
             app=application,
-            advancement=self.composition.advancement_ui(application.engine),
+            advancement=advancement_ui,
         )
         self._sessions[slug] = (wanted, created)
         return created

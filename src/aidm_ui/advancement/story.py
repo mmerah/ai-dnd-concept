@@ -1,7 +1,7 @@
 from collections.abc import Callable
+from dataclasses import dataclass
 
 from nicegui import ui
-from pydantic import BaseModel
 
 from aidm_story.advancement import (
     AcquireGear,
@@ -10,33 +10,36 @@ from aidm_story.advancement import (
     RaiseApproach,
     RemoveBurden,
     RewriteBurden,
+    StoryAdvancementDecision,
     StoryAdvancementPlan,
     StoryAdvancementPreview,
 )
+from aidm_story.factory import StoryEngine
 from aidm_story.models import APPROACH_NAMES, StoryApproach, StoryGearTag
 
 from ..session_model import Session
 from .flow import confirm_advancement
 
 
+@dataclass(frozen=True, slots=True)
 class StoryAdvancementUi:
+    engine: StoryEngine
+
     def render(self, session: Session, refresh: Callable[[], None]) -> None:
-        status = session.app.advancement_status()
+        status = self.engine.advancement.status(session.app.state)
         ui.label(f"{session.app.state.player.name} — {status.headline}").classes(
             "text-sm font-bold"
         )
         ui.linear_progress(value=status.progress, show_value=False).classes("w-full")
         for line in status.detail:
             ui.label(line).classes("text-sm opacity-70")
-        if not session.app.advancement_available():
+        if not self.engine.advancement.available(session.app.state):
             return
         try:
-            preview = session.app.advancement_preview()
+            preview = self.engine.advancement.preview(session.app.state)
         except ValueError as error:
             ui.label(f"Cannot read the advancement: {error}").classes("text-negative text-sm")
             return
-        if not isinstance(preview, StoryAdvancementPreview):
-            raise TypeError(f"Story UI received advancement preview {type(preview).__name__}")
         ui.label("Choose one advancement").classes("text-h6 q-mt-md")
         with ui.column().classes("w-full").style("gap: 0.75rem"):
             self._raise_approach(session, refresh, preview)
@@ -257,15 +260,13 @@ class StoryAdvancementUi:
         self,
         session: Session,
         refresh: Callable[[], None],
-        decision: BaseModel,
+        decision: StoryAdvancementDecision,
     ) -> None:
         try:
-            plan = session.app.advancement_plan(decision)
-        except (TypeError, ValueError) as error:
+            plan = self.engine.advancement.plan(session.app.state, decision)
+        except ValueError as error:
             ui.notify(str(error), type="negative", multi_line=True)
             return
-        if not isinstance(plan, StoryAdvancementPlan):
-            raise TypeError(f"Story UI received plan {type(plan).__name__}")
         confirm_advancement(
             session,
             decision,

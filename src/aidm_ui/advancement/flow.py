@@ -1,14 +1,15 @@
 from collections.abc import Callable
 
 from nicegui import ui
-from pydantic import BaseModel
+
+from aidm.engines import AdvancementDecision
 
 from ..session_model import Session
 
 
 def confirm_advancement(
     session: Session,
-    decisions: BaseModel,
+    decision: AdvancementDecision,
     refresh: Callable[[], None],
     title: str,
     confirm_label: str,
@@ -32,14 +33,14 @@ def confirm_advancement(
                 ui.button("Back", on_click=dialog.close).props("flat")
                 ui.button(
                     confirm_label,
-                    on_click=lambda: _commit(session, decisions, dialog, refresh),
+                    on_click=lambda: _commit(session, decision, dialog, refresh),
                 ).props("color=primary")
     dialog.open()
 
 
 def _commit(
     session: Session,
-    decisions: BaseModel,
+    decision: AdvancementDecision,
     dialog: ui.dialog,
     refresh: Callable[[], None],
 ) -> None:
@@ -47,7 +48,7 @@ def _commit(
         ui.notify("Finish the current turn first.", type="warning")
         return
     try:
-        _ = session.app.advance(decisions)
+        _ = session.app.advance(decision)
     except (TypeError, ValueError) as error:
         ui.notify(str(error), type="negative", multi_line=True)
         return

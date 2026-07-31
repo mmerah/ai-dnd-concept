@@ -13,6 +13,7 @@ from aidm.domain.state import GameState
 from aidm.domain.turn import Advance, TraceEntry
 from aidm.engines import resolve
 from aidm.pipeline import TurnOptions
+from aidm_5e.advancement import Dnd5eAdvancementDecisions
 from aidm_story.advancement import RaiseApproach
 from aidm_story.factory import build_story_engine
 from aidm_story.state import story_state
@@ -106,19 +107,25 @@ def test_resume_refuses_a_save_that_is_not_this_game(
 
 
 def test_advancement_commits_through_the_same_path_and_reaches_the_trace() -> None:
-    """A level-up is a transaction like a turn: it saves, and it shows up in the trace panel."""
+    """An advancement is a transaction like a turn: it saves and reaches the trace panel."""
     saves, traces = MemorySaves(), MemoryTraces()
     app = application(saves, traces)
     for _ in range(3):
         app.state = resolve(app.engine, setback_direction(), app.state, Random(2)).state
-    assert app.advancement_available()
-    before = story_state(app.state).actor(PLAYER_ID).approaches.bold
+    player = story_state(app.state).actor(PLAYER_ID)
+    assert player.growth_marks == 3
+    before = player.approaches.bold
+    decision = RaiseApproach(approach="bold")
 
-    facts = app.advance(RaiseApproach(approach="bold"))
+    with pytest.raises(TypeError, match="'story' engine received a Dnd5eAdvancementDecisions"):
+        app.advance(Dnd5eAdvancementDecisions(decisions={}))
+
+    facts = app.advance(decision)
 
     assert [fact.fact for fact in facts] == ["approach-raised", "growth-reset"]
-    assert story_state(app.state).actor(PLAYER_ID).approaches.bold == before + 1
-    assert not app.advancement_available()
+    player = story_state(app.state).actor(PLAYER_ID)
+    assert player.approaches.bold == before + 1
+    assert player.growth_marks == 0
     assert saves.states["poc"] == app.state
     (entry,) = traces.entries
     assert isinstance(entry, Advance) and entry.facts == facts and entry.state == app.state

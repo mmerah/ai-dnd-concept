@@ -4,11 +4,9 @@ from aidm.agents.stages import director_stage, shared_stages
 from aidm.application.game import GameApplication
 from aidm.config import Settings
 from aidm.domain.base import EngineId, Slug
-from aidm.engines import Engine, engine_for
+from aidm.engines import engine_for
 from aidm.pipeline import TurnOptions
 from aidm.store import FileSaves, FileTraces, load_character, load_scenario
-from aidm_5e.factory import Dnd5eEngine
-from aidm_story.factory import StoryEngine
 
 from .advancement.fivee import Dnd5eAdvancementUi
 from .advancement.story import StoryAdvancementUi
@@ -18,21 +16,30 @@ from .session_model import AdvancementUi
 @dataclass(frozen=True, slots=True)
 class Composition:
     config: Settings
-    engines: dict[EngineId, Engine] = field(default_factory=dict)
+    _advancement_uis: dict[EngineId, AdvancementUi] = field(
+        default_factory=dict, init=False, repr=False
+    )
 
-    def engine(self, engine_id: EngineId) -> Engine:
+    def advancement_ui(self, engine_id: EngineId) -> AdvancementUi:
         """Memoised: building the 5e engine compiles the whole content pack."""
-        existing = self.engines.get(engine_id)
+        existing = self._advancement_uis.get(engine_id)
         if existing is None:
-            existing = self.engines.setdefault(engine_id, engine_for(engine_id, self.config))
+            existing = self._build_advancement_ui(engine_id)
+            if existing.engine.id != engine_id:
+                raise ValueError(
+                    f"{engine_id!r} advancement UI is bound to {existing.engine.id!r}"
+                )
+            self._advancement_uis[engine_id] = existing
         return existing
 
-    def advancement_ui(self, engine: Engine) -> AdvancementUi:
-        match engine:
-            case StoryEngine():
-                return StoryAdvancementUi()
-            case Dnd5eEngine():
-                return Dnd5eAdvancementUi()
+    def _build_advancement_ui(self, engine_id: EngineId) -> AdvancementUi:
+        match engine_id:
+            case "story":
+                engine = engine_for("story", self.config)
+                return StoryAdvancementUi(engine)
+            case "dnd5e":
+                engine = engine_for("dnd5e", self.config)
+                return Dnd5eAdvancementUi(engine)
 
     def application(
         self,
@@ -42,7 +49,7 @@ class Composition:
         engine_id: EngineId,
     ) -> GameApplication:
         config = self.config
-        engine = self.engine(engine_id)
+        engine = self.advancement_ui(engine_id).engine
         return GameApplication(
             slug=slug,
             scenario=load_scenario(config.scenarios_dir, scenario_id, engine_id),
