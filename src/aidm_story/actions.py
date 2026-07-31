@@ -220,7 +220,6 @@ def _improvise(action: GainImprovisedItem, draft: GameState) -> list[CoreFact]:
         name=action.item_name,
         brief=action.item_name,
         known=True,
-        authored=False,
         container_id=player.location_id,
     )
     created = draft.add(item)

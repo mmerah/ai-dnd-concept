@@ -7,12 +7,8 @@ from pydantic import BaseModel
 from ..agents.stages import DirectorStage, SharedStages
 from ..domain.advancement import AdvancementStatus
 from ..domain.base import SAVE_VERSION, Role
-from ..domain.definitions import (
-    CharacterDefinition,
-    ScenarioDefinition,
-    validate_definition_engines,
-)
-from ..domain.state import GameState, world_from_definitions
+from ..domain.definitions import Character, Scenario
+from ..domain.state import GameState, authored_world
 from ..domain.transition import Fact
 from ..domain.turn import Advance, TraceEntry, Turn
 from ..engines import Advancement, Engine
@@ -23,8 +19,8 @@ from .ports import SaveRepository, TraceSink
 @dataclass
 class GameApplication:
     slug: str
-    scenario: ScenarioDefinition
-    character: CharacterDefinition
+    scenario: Scenario
+    character: Character
     engine: Engine
     director: DirectorStage
     stages: SharedStages
@@ -36,7 +32,6 @@ class GameApplication:
     state: GameState = field(init=False)
 
     def __post_init__(self) -> None:
-        validate_definition_engines(self.scenario, self.character, self.engine.id)
         saved = self.saves.load(self.slug)
         if saved is None:
             self.state = self._begun()
@@ -95,26 +90,28 @@ class GameApplication:
         self.entries = []
 
     def _begun(self) -> GameState:
-        authored = world_from_definitions(self.scenario, self.character)
+        authored = authored_world(self.scenario, self.character)
         state = GameState(
             save_version=SAVE_VERSION,
+            scenario_id=self.scenario.id,
+            character_id=self.character.id,
             scenario=self.scenario.meta,
             world=authored.world,
-            engine=self.engine.lifecycle.initialise(authored, self.character.engine_data),
+            engine=self.engine.lifecycle.initialise(authored, self.character.overlay.character),
         )
         self.engine.rules.validate_state(state)
         return state
 
     def _resumable(self, state: GameState) -> GameState:
+        if (state.scenario_id, state.character_id) != (self.scenario.id, self.character.id):
+            raise ValueError(
+                f"save is {state.scenario_id!r}/{state.character_id!r}, "
+                f"selected is {self.scenario.id!r}/{self.character.id!r}"
+            )
         if state.scenario != self.scenario.meta:
             raise ValueError(
                 f"save scenario is {state.scenario.title!r}, "
                 f"selected scenario is {self.scenario.meta.title!r}"
-            )
-        if (state.player.name, state.player.brief) != (self.character.name, self.character.brief):
-            raise ValueError(
-                f"save player is {state.player.name!r}, "
-                f"selected character is {self.character.name!r}"
             )
         self.engine.rules.validate_state(state)
         return state

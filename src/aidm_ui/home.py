@@ -10,6 +10,7 @@ from aidm.application.launcher import (
     load_catalog,
 )
 from aidm.config import Settings
+from aidm.domain.base import as_engine_id
 
 from .components.engine import show_engine_badge
 
@@ -26,7 +27,7 @@ def home_page(config: Settings) -> None:
     with ui.column().classes("w-full q-pa-lg items-center").style("gap: 1.5rem"):
         with ui.column().style("width: min(64rem, 100%); gap: 1.5rem"):
             ui.label("Begin an adventure").classes("text-h4 font-bold")
-            ui.label("Choose a scenario, then a character built for its rules engine.").classes(
+            ui.label("Choose a scenario, the rules to play it under, then a character.").classes(
                 "text-body1 opacity-70"
             )
             _new_game(controller)
@@ -38,57 +39,63 @@ def _new_game(controller: LauncherController) -> None:
     def form() -> None:
         with ui.card().classes("w-full q-pa-lg"):
             ui.label("New or current game").classes("text-h6 font-bold")
-            if controller.selected_scenario is None:
-                ui.label("No scenarios were found.").classes("text-negative")
+            if controller.selected_scenario is None or controller.selected_engine is None:
+                ui.label("No playable scenario was found.").classes("text-negative")
                 return
             scenario = controller.catalog.scenario(controller.selected_scenario)
-            show_engine_badge(scenario.engine)
+            show_engine_badge(controller.selected_engine)
             ui.select(
-                options={option.name: option.title for option in controller.catalog.scenarios},
+                options={option.id: option.title for option in controller.catalog.scenarios},
                 value=controller.selected_scenario,
                 label="Scenario",
-                on_change=choose_scenario,  # pyright: ignore[reportUnknownArgumentType]
+                on_change=_chosen("scenario", controller.choose_scenario, form.refresh),  # pyright: ignore[reportUnknownArgumentType]
             ).classes("w-full")
             ui.label(scenario.premise).classes("text-sm opacity-70")
+            ui.select(
+                options={engine: engine for engine in controller.available_engines()},
+                value=controller.selected_engine,
+                label="Rules",
+                on_change=_chosen(  # pyright: ignore[reportUnknownArgumentType]
+                    "engine",
+                    lambda value: controller.choose_engine(as_engine_id(value)),
+                    form.refresh,
+                ),
+            ).classes("w-full")
             compatible = controller.compatible_characters()
             ui.select(
-                options={option.name: f"{option.title} — {option.brief}" for option in compatible},
+                options={option.id: f"{option.title} — {option.brief}" for option in compatible},
                 value=controller.selected_character,
                 label="Character",
-                on_change=choose_character,  # pyright: ignore[reportUnknownArgumentType]
+                on_change=_chosen("character", controller.choose_character, form.refresh),  # pyright: ignore[reportUnknownArgumentType]
             ).classes("w-full")
             if not compatible:
-                ui.label("No character is compatible with this scenario's engine.").classes(
-                    "text-negative"
-                )
+                ui.label("No character is written for these rules.").classes("text-negative")
                 return
             _action(controller)
 
-    def choose_scenario(event: ValueChangeEventArguments[object]) -> None:
-        LOGGER.info("launcher scenario selected: %r", event.value)
-        if not isinstance(event.value, str):
-            ui.notify("Choose a scenario.", type="warning")
-            return
-        try:
-            controller.choose_scenario(event.value)
-        except ValueError as error:
-            ui.notify(str(error), type="negative")
-            return
-        form.refresh()
-
-    def choose_character(event: ValueChangeEventArguments[object]) -> None:
-        LOGGER.info("launcher character selected: %r", event.value)
-        if not isinstance(event.value, str):
-            ui.notify("Choose a character.", type="warning")
-            return
-        try:
-            controller.choose_character(event.value)
-        except ValueError as error:
-            ui.notify(str(error), type="negative")
-            return
-        form.refresh()
-
     form()
+
+
+def _chosen(
+    what: str,
+    choose: Callable[[str], None],
+    refresh: Callable[[], object],
+) -> Callable[[ValueChangeEventArguments[object]], None]:
+    """One handler per select: they differ only in the choice they record."""
+
+    def handle(event: ValueChangeEventArguments[object]) -> None:
+        LOGGER.info("launcher %s selected: %r", what, event.value)
+        if not isinstance(event.value, str):
+            ui.notify(f"Choose a {what}.", type="warning")
+            return
+        try:
+            choose(event.value)
+        except ValueError as error:
+            ui.notify(str(error), type="negative")
+            return
+        refresh()
+
+    return handle
 
 
 def _action(controller: LauncherController) -> None:
@@ -96,9 +103,9 @@ def _action(controller: LauncherController) -> None:
     catalog = controller.catalog
     existing = next((save for save in catalog.saves if save.slug == target.slug), None)
     unreadable = next((save for save in catalog.unreadable if save.slug == target.slug), None)
-    if unreadable is not None or (existing is not None and not existing.resumable):
-        problem = unreadable.problem if unreadable is not None else existing and existing.problem
-        ui.label(problem or "This game's save cannot be resumed.").classes(
+    blocked = unreadable or (existing if existing is not None and not existing.resumable else None)
+    if blocked is not None:
+        ui.label(blocked.problem or "This save cannot be resumed.").classes(
             "text-negative text-sm q-mt-md"
         )
         ui.label("Delete or fix the save to continue this game.").classes("text-xs opacity-60")

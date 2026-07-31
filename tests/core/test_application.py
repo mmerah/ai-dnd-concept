@@ -2,12 +2,13 @@ from dataclasses import dataclass, field
 from random import Random
 
 import pytest
-from core_test_support import character, scenario, settings
+from core_test_support import character, scenario, settings, updated
 from story_test_support import setback_direction
 
 from aidm.agents.stages import director_stage, shared_stages
 from aidm.application.game import GameApplication
 from aidm.domain.base import PLAYER_ID
+from aidm.domain.definitions import ScenarioMeta
 from aidm.domain.state import GameState
 from aidm.domain.turn import Advance, TraceEntry
 from aidm.engines import resolve
@@ -84,14 +85,23 @@ def test_opening_does_not_save_and_restart_discards_durable_state() -> None:
     assert traces.entries == []
 
 
-def test_resume_rejects_a_save_from_another_scenario() -> None:
+@pytest.mark.parametrize(
+    ("change", "message"),
+    (
+        ({"character_id": "someone-else"}, "save is 'whispering-vault'/'someone-else'"),
+        ({"scenario": ScenarioMeta(title="Another Vault", premise="Elsewhere.")}, "Another Vault"),
+    ),
+    ids=("another origin", "a scenario edited since the save"),
+)
+def test_resume_refuses_a_save_that_is_not_this_game(
+    change: dict[str, object], message: str
+) -> None:
+    """A save names its own origin by id; the meta comparison catches an edit under a kept id."""
     saves = MemorySaves()
     app = application(saves, MemoryTraces())
-    elsewhere = app.state.model_copy(deep=True)
-    elsewhere.scenario = elsewhere.scenario.model_copy(update={"title": "Another Vault"})
-    saves.save("poc", elsewhere)
+    saves.save("poc", updated(app.state, **change))
 
-    with pytest.raises(ValueError, match="save scenario is 'Another Vault'"):
+    with pytest.raises(ValueError, match=message):
         application(saves, MemoryTraces())
 
 

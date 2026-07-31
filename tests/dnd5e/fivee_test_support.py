@@ -15,8 +15,8 @@ from aidm.domain.facts import (
     ItemMoved,
     core_fact_summary,
 )
-from aidm.domain.state import GameState, WorldState, world_from_definitions
-from aidm.store import read_character, read_scenario
+from aidm.domain.state import GameState, WorldState, authored_world
+from aidm.store import load_character, load_scenario
 from aidm_5e.content.library import Content, loaded, read_pack
 from aidm_5e.content.models import Pack
 from aidm_5e.content.records.base import Collection, ContentRef, Record
@@ -114,6 +114,8 @@ def blank_game() -> GameState:
     ]
     return GameState(
         save_version=SAVE_VERSION,
+        scenario_id="whispering-vault",
+        character_id="kael",
         scenario=ScenarioMeta(title="Test", premise="A test."),
         world=WorldState(entities={entity.id: entity for entity in entities}),
         engine=Dnd5eState(
@@ -165,27 +167,28 @@ def ruleset() -> Ruleset:
 
 
 @cache
-def sheet(character: str = "kael_5e") -> Dnd5eCharacterData:
-    definition = read_character(REPOSITORY_ROOT / "characters" / f"{character}.json")
-    data = definition.engine_data
+def sheet(character: str = "kael") -> Dnd5eCharacterData:
+    data = load_character(REPOSITORY_ROOT / "characters", character, "dnd5e").overlay.character
     if not isinstance(data, Dnd5eCharacterData):
         raise ValueError(f"character {character!r} is not a 5e character")
     return data
 
 
 def initial_5e_game(
-    name: str = "whispering_vault_5e",
-    character: str = "kael_5e",
+    name: str = "whispering-vault",
+    character: str = "kael",
 ) -> tuple[Dnd5eEngine, GameState]:
-    scenario = read_scenario(REPOSITORY_ROOT / "scenarios" / f"{name}.json")
-    character_definition = read_character(REPOSITORY_ROOT / "characters" / f"{character}.json")
+    scenario = load_scenario(REPOSITORY_ROOT / "scenarios", name, "dnd5e")
+    played = load_character(REPOSITORY_ROOT / "characters", character, "dnd5e")
     engine = dnd5e_engine(ruleset())
-    authored = world_from_definitions(scenario, character_definition)
+    authored = authored_world(scenario, played)
     return engine, GameState(
         save_version=SAVE_VERSION,
+        scenario_id=scenario.id,
+        character_id=played.id,
         scenario=scenario.meta,
         world=authored.world,
-        engine=engine.lifecycle.initialise(authored, character_definition.engine_data),
+        engine=engine.lifecycle.initialise(authored, played.overlay.character),
     )
 
 
@@ -195,8 +198,8 @@ def _opened(name: str, character: str) -> GameState:
 
 
 def new_game(
-    name: str = "whispering_vault_5e",
-    character: str = "kael_5e",
+    name: str = "whispering-vault",
+    character: str = "kael",
 ) -> GameState:
     """A fresh copy every call: mechanics mutate the draft they are handed."""
     return _opened(name, character).model_copy(deep=True)

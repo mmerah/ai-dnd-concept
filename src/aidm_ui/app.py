@@ -1,5 +1,7 @@
 from nicegui import ui
 
+from aidm.domain.base import as_engine_id, content_id
+
 from .bootstrap import create_composition
 from .components.engine import show_engine_badge
 from .config import load_settings
@@ -25,13 +27,18 @@ def _register_pages(sessions: SessionRegistry) -> None:
     def _index() -> None:  # pyright: ignore[reportUnusedFunction]
         home_page(sessions.composition.config)
 
-    @ui.page("/game/{slug}/{scenario_name}/{character_name}")
+    @ui.page("/game/{slug}/{scenario}/{character}/{engine}")
     def _game(  # pyright: ignore[reportUnusedFunction]
         slug: str,
-        scenario_name: str,
-        character_name: str,
+        scenario: str,
+        character: str,
+        engine: str,
     ) -> None:
-        _game_page(sessions.session(slug, scenario_name, character_name))
+        _game_page(
+            sessions.session(
+                slug, content_id(scenario), content_id(character), as_engine_id(engine)
+            )
+        )
 
 
 def _game_page(session: Session) -> None:

@@ -17,7 +17,6 @@ class BaseEntity(Mutable):
     brief: str
     detail: EntityDetail | None = None
     known: bool = False
-    authored: bool = True
 
 
 class ActorEntity(BaseEntity):

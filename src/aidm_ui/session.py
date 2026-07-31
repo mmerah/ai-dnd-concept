@@ -1,42 +1,44 @@
 from dataclasses import dataclass, field
 
+from aidm.domain.base import EngineId, Slug
+
 from .bootstrap import Composition
 from .session_model import Session
 
 
 @dataclass(frozen=True, slots=True)
-class _RegisteredSession:
-    scenario_name: str
-    character_name: str
-    session: Session
+class _Origin:
+    scenario_id: Slug
+    character_id: Slug
+    engine_id: EngineId
+
+    def __str__(self) -> str:
+        return f"{self.scenario_id}/{self.character_id} under {self.engine_id}"
 
 
 @dataclass(slots=True)
 class SessionRegistry:
     composition: Composition
-    _sessions: dict[str, _RegisteredSession] = field(default_factory=dict)
+    _sessions: dict[str, tuple[_Origin, Session]] = field(default_factory=dict)
 
-    def session(self, slug: str, scenario_name: str, character_name: str) -> Session:
+    def session(
+        self,
+        slug: str,
+        scenario_id: Slug,
+        character_id: Slug,
+        engine_id: EngineId,
+    ) -> Session:
+        wanted = _Origin(scenario_id, character_id, engine_id)
         held = self._sessions.get(slug)
         if held is not None:
-            if (held.scenario_name, held.character_name) != (
-                scenario_name,
-                character_name,
-            ):
-                raise ValueError(
-                    f"open session {slug!r} uses "
-                    f"{held.scenario_name!r}/{held.character_name!r}, not "
-                    f"{scenario_name!r}/{character_name!r}"
-                )
-            return held.session
-        application = self.composition.application(slug, scenario_name, character_name)
+            origin, session = held
+            if origin != wanted:
+                raise ValueError(f"open session {slug!r} plays {origin}, not {wanted}")
+            return session
+        application = self.composition.application(slug, scenario_id, character_id, engine_id)
         created = Session(
             app=application,
             advancement=self.composition.advancement_ui(application.engine),
         )
-        self._sessions[slug] = _RegisteredSession(
-            scenario_name=scenario_name,
-            character_name=character_name,
-            session=created,
-        )
+        self._sessions[slug] = (wanted, created)
         return created

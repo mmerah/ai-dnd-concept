@@ -1,42 +1,78 @@
+from collections.abc import Iterator
 from dataclasses import dataclass
 from pathlib import Path
 from re import fullmatch
 
 from pydantic import BaseModel, TypeAdapter
 
-from .domain.base import SAVE_VERSION
-from .domain.definitions import CharacterDefinition, ScenarioDefinition
+from .domain.base import ENGINE_IDS, SAVE_VERSION, EngineId, Slug, content_id
+from .domain.definitions import (
+    Character,
+    CharacterOverlay,
+    CharacterProfile,
+    Scenario,
+    ScenarioOverlay,
+    ScenarioWorld,
+)
 from .domain.state import GameState
 from .domain.turn import TraceEntry
 
 ENCODING = "utf-8"
-_SLUG_PATTERN = r"[a-z0-9][a-z0-9_-]*"
+WORLD_FILE = "world.json"
+PROFILE_FILE = "base.json"
+_SAVE_SLUG_PATTERN = r"[a-z0-9][a-z0-9_-]*"
+
+type Playable[T] = Iterator[tuple[Slug, T, tuple[EngineId, ...]]]
 
 
-def read_scenario(path: Path) -> ScenarioDefinition:
-    return ScenarioDefinition.model_validate_json(path.read_text(encoding=ENCODING))
+def read_scenarios(directory: Path) -> Playable[ScenarioWorld]:
+    return _playable(directory, WORLD_FILE, ScenarioWorld)
 
 
-def read_character(path: Path) -> CharacterDefinition:
-    return CharacterDefinition.model_validate_json(path.read_text(encoding=ENCODING))
+def read_characters(directory: Path) -> Playable[CharacterProfile]:
+    return _playable(directory, PROFILE_FILE, CharacterProfile)
 
 
-def read_named_scenario(directory: Path, name: str) -> ScenarioDefinition:
-    return read_scenario(_safe_path(directory, name, ".json"))
+def load_scenario(directory: Path, name: Slug, engine: EngineId) -> Scenario:
+    folder = directory / content_id(name)
+    return Scenario(
+        id=name,
+        engine=engine,
+        world=_read(folder / WORLD_FILE, ScenarioWorld),
+        overlay=_read(folder / f"{engine}.json", ScenarioOverlay),
+    )
 
 
-def read_named_character(directory: Path, name: str) -> CharacterDefinition:
-    return read_character(_safe_path(directory, name, ".json"))
+def load_character(directory: Path, name: Slug, engine: EngineId) -> Character:
+    folder = directory / content_id(name)
+    return Character(
+        id=name,
+        engine=engine,
+        profile=_read(folder / PROFILE_FILE, CharacterProfile),
+        overlay=_read(folder / f"{engine}.json", CharacterOverlay),
+    )
 
 
-def read_scenarios(directory: Path) -> dict[str, ScenarioDefinition]:
-    return {_safe_stem(path.stem): read_scenario(path) for path in sorted(directory.glob("*.json"))}
+def _playable[T: BaseModel](directory: Path, canon: str, model: type[T]) -> Playable[T]:
+    """A directory holding no canon file is not content; one with no overlay plays under no rules.
+
+    Skipping both keeps a scratch directory or a half-written scenario out of the launcher instead
+    of failing the home screen, which is the only way into the app.
+    """
+    for path in sorted(directory.iterdir()):
+        if not (path / canon).is_file():
+            continue
+        engines: tuple[EngineId, ...] = tuple(
+            engine for engine in ENGINE_IDS if (path / f"{engine}.json").is_file()
+        )
+        if engines:
+            yield content_id(path.name), _read(path / canon, model), engines
 
 
-def read_characters(directory: Path) -> dict[str, CharacterDefinition]:
-    return {
-        _safe_stem(path.stem): read_character(path) for path in sorted(directory.glob("*.json"))
-    }
+def _read[T: BaseModel](path: Path, model: type[T]) -> T:
+    if not path.is_file():
+        raise ValueError(f"{path.parent.name!r} has no {path.name}")
+    return model.model_validate_json(path.read_text(encoding=ENCODING))
 
 
 class _StoredVersion(BaseModel):
@@ -81,7 +117,7 @@ class FileSaves:
         return tuple(
             path.stem
             for path in sorted(self.directory.glob("*.json"))
-            if fullmatch(_SLUG_PATTERN, path.stem) is not None
+            if fullmatch(_SAVE_SLUG_PATTERN, path.stem) is not None
         )
 
     def load(self, slug: str) -> GameState | None:
@@ -132,6 +168,6 @@ def _safe_path(directory: Path, stem: str, suffix: str) -> Path:
 
 
 def _safe_stem(stem: str) -> str:
-    if fullmatch(_SLUG_PATTERN, stem) is None:
+    if fullmatch(_SAVE_SLUG_PATTERN, stem) is None:
         raise ValueError(f"invalid storage slug {stem!r}")
     return stem

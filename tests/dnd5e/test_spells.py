@@ -31,7 +31,7 @@ SAVE_MADE, SAVE_MISSED = 0, 2
 
 def guarded(klass: str, level: int = 1) -> GameState:
     """A caster of `klass` with a gargoyle to aim at, whose 52 hp make half damage visible."""
-    state = levelled(started(klass, new_game("whispering_vault_5e")), level)
+    state = levelled(started(klass, new_game()), level)
     gargoyle = ActorEntity(
         id=GARGOYLE,
         name="a gargoyle",

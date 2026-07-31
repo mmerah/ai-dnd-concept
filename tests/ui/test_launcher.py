@@ -1,32 +1,58 @@
+import shutil
 from pathlib import Path
 
 from core_test_support import updated
-from ui_test_support import ui_settings
+from ui_test_support import SCENARIOS, ui_settings
 
 from aidm.application.launcher import LauncherController, load_catalog
 from aidm.store import ENCODING, FileSaves
 from aidm_ui.bootstrap import create_composition
 
 
-def test_launcher_filters_characters_by_the_scenario_engine(tmp_path: Path) -> None:
-    config = ui_settings(tmp_path)
-    catalog = load_catalog(config)
+def _story_only(tmp_path: Path) -> Path:
+    """A scenario ships one overlay per ruleset it supports, so removing one withdraws it."""
+    scenarios = tmp_path / "scenarios"
+    shutil.copytree(SCENARIOS, scenarios)
+    (scenarios / "whispering-vault" / "dnd5e.json").unlink()
+    return scenarios
+
+
+def test_an_overlay_decides_which_rules_a_scenario_offers(tmp_path: Path) -> None:
+    catalog = load_catalog(ui_settings(tmp_path))
     controller = LauncherController(catalog)
 
-    assert {scenario.engine for scenario in catalog.scenarios} == {"story", "dnd5e"}
-    controller.choose_scenario("whispering_vault_5e")
+    assert catalog.scenario("whispering-vault").engines == ("story", "dnd5e")
+    assert [option.id for option in catalog.characters] == ["kael"]
+    controller.choose_engine("dnd5e")
 
-    assert [character.name for character in controller.compatible_characters()] == ["kael_5e"]
+    assert [option.id for option in controller.compatible_characters()] == ["kael"]
     assert controller.new_game().model_dump() == {
-        "slug": "whispering_vault_5e--kael_5e",
-        "scenario_name": "whispering_vault_5e",
-        "character_name": "kael_5e",
+        "slug": "whispering-vault--kael--dnd5e",
+        "scenario_id": "whispering-vault",
+        "character_id": "kael",
+        "engine": "dnd5e",
     }
+
+
+def test_content_is_offered_only_for_the_rulesets_it_ships(tmp_path: Path) -> None:
+    """An overlay's presence is the whole compatibility check, so this item is the first that lets a
+    directory sit under `scenarios/` offering nothing. The home screen is the only way into the app,
+    so an unplayable directory has to be skipped rather than break it."""
+    scenarios = _story_only(tmp_path)
+    (scenarios / "notes").mkdir()
+    shutil.copytree(scenarios / "whispering-vault", scenarios / "aaa-draft")
+    (scenarios / "aaa-draft" / "story.json").unlink()
+
+    controller = LauncherController(load_catalog(ui_settings(tmp_path, scenarios)))
+
+    assert [option.id for option in controller.catalog.scenarios] == ["whispering-vault"]
+    assert controller.available_engines() == ("story",)
+    assert controller.selected_engine == "story"
 
 
 def test_launcher_lists_and_resolves_an_existing_save(tmp_path: Path) -> None:
     config = ui_settings(tmp_path)
-    application = create_composition(config).application("poc", "whispering_vault", "kael")
+    application = create_composition(config).application("poc", "whispering-vault", "kael", "story")
     FileSaves(tmp_path).save("old-story-game", application.state)
 
     controller = LauncherController(load_catalog(config))
@@ -39,42 +65,43 @@ def test_launcher_lists_and_resolves_an_existing_save(tmp_path: Path) -> None:
     )
     assert controller.resume(saved.slug).model_dump() == {
         "slug": "old-story-game",
-        "scenario_name": "whispering_vault",
-        "character_name": "kael",
+        "scenario_id": "whispering-vault",
+        "character_id": "kael",
+        "engine": "story",
     }
 
 
+def test_a_save_whose_rules_were_withdrawn_is_reported_not_offered(tmp_path: Path) -> None:
+    """The save still names its origin; that origin no longer ships the overlay it needs."""
+    config = ui_settings(tmp_path)
+    application = create_composition(config).application("poc", "whispering-vault", "kael", "dnd5e")
+    FileSaves(tmp_path).save("withdrawn", application.state)
+    withdrawn = ui_settings(tmp_path, _story_only(tmp_path))
+
+    saved = load_catalog(withdrawn).save("withdrawn")
+
+    assert not saved.resumable
+    assert saved.problem == "scenario 'whispering-vault' no longer offers the 'dnd5e' engine"
+
+
 def test_a_save_from_another_build_is_reported_not_offered(tmp_path: Path) -> None:
+    """Unreadable, not absent: offering it as a new game would crash on navigation."""
     config = ui_settings(tmp_path)
-    application = create_composition(config).application("poc", "whispering_vault", "kael")
-    state = application.state
-    FileSaves(tmp_path).save("stale", updated(state, save_version=state.save_version - 1))
-
-    catalog = load_catalog(config)
-
-    assert [save.slug for save in catalog.saves] == []
-    assert [broken.slug for broken in catalog.unreadable] == ["stale"]
-    assert "save is version" in catalog.unreadable[0].problem
-
-
-def test_an_unresumable_save_is_never_offered_as_a_new_game(tmp_path: Path) -> None:
-    """A save the loader refuses is unreadable, not absent: starting over would crash on open."""
-    config = ui_settings(tmp_path)
-    slug = "whispering_vault--kael"
-    application = create_composition(config).application(slug, "whispering_vault", "kael")
-    state = application.state
+    slug = "whispering-vault--kael--story"
+    state = create_composition(config).application(slug, "whispering-vault", "kael", "story").state
     FileSaves(tmp_path).save(slug, updated(state, save_version=state.save_version - 1))
 
     controller = LauncherController(load_catalog(config))
-    controller.choose_scenario("whispering_vault")
 
+    assert [save.slug for save in controller.catalog.saves] == []
+    assert [broken.slug for broken in controller.catalog.unreadable] == [slug]
+    assert "save is version" in controller.catalog.unreadable[0].problem
     assert controller.new_game().slug == slug
-    assert [save.slug for save in controller.catalog.unreadable] == [slug]
 
 
 def test_one_corrupt_save_does_not_hide_the_others_and_stays_readable(tmp_path: Path) -> None:
     config = ui_settings(tmp_path)
-    application = create_composition(config).application("poc", "whispering_vault", "kael")
+    application = create_composition(config).application("poc", "whispering-vault", "kael", "story")
     FileSaves(tmp_path).save("good", application.state)
     (tmp_path / "broken.json").write_text("{not json", encoding=ENCODING)
 

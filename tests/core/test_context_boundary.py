@@ -97,6 +97,8 @@ def state() -> GameState:
     )
     return GameState(
         save_version=SAVE_VERSION,
+        scenario_id="whispering-vault",
+        character_id="kael",
         scenario=ScenarioMeta(title="Test", premise="Test"),
         world=WorldState(
             entities={

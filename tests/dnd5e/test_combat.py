@@ -43,7 +43,7 @@ def armed(state: GameState) -> GameState:
 
 
 def test_a_to_hit_comes_from_the_record_for_a_monster_and_from_progression_for_the_player() -> None:
-    state = armed(new_game("whispering_vault_5e"))
+    state = armed(new_game())
     goblin = actor_of(state, EntityId("goblin"))
     assert procedures.swing(state, goblin, "scimitar", RULES).to_hit == 4
     mine = procedures.swing(state, actor_of(state, PLAYER_ID), "a notched longsword", RULES)
@@ -53,7 +53,7 @@ def test_a_to_hit_comes_from_the_record_for_a_monster_and_from_progression_for_t
 
 
 def test_archery_fighting_style_modifies_a_ranged_weapon_attack() -> None:
-    state = armed(new_game("whispering_vault_5e"))
+    state = armed(new_game())
     player = actor_of(state, PLAYER_ID)
     progression = player.progression
     assert progression is not None
@@ -79,20 +79,18 @@ def test_archery_fighting_style_modifies_a_ranged_weapon_attack() -> None:
 
 def test_a_hit_deals_the_weapon_s_damage_and_a_miss_deals_nothing() -> None:
     swung = Attack(weapon="Scimitar", attacker_id=EntityId("goblin"))
-    hit = resolve([swung], armed(new_game("whispering_vault_5e")), Random(0), RULES)
+    hit = resolve([swung], armed(new_game()), Random(0), RULES)
     assert [fact.fact for fact in hit] == ["attack_rolled", "dice_rolled", "hp_changed"]
     assert summary(hit[0]).endswith("13 -> 17 vs ac 10: HIT")
-    miss = resolve([swung], armed(new_game("whispering_vault_5e")), Random(2), RULES)
+    miss = resolve([swung], armed(new_game()), Random(2), RULES)
     assert [fact.fact for fact in miss] == ["attack_rolled"]
     assert summary(miss[0]).endswith("2 -> 6 vs ac 10: MISS")
     with pytest.raises(ValueError, match="does not strike at themselves"):
-        resolve(
-            [Attack(weapon="Scimitar")], armed(new_game("whispering_vault_5e")), Random(0), RULES
-        )
+        resolve([Attack(weapon="Scimitar")], armed(new_game()), Random(0), RULES)
 
 
 def test_a_save_uses_the_record_s_bonus_or_the_player_s_proficiency() -> None:
-    state = new_game("whispering_vault_5e")
+    state = new_game()
     player = actor_of(state, PLAYER_ID)
     assert player.progression is not None
     scores = player.stats.attributes
@@ -108,7 +106,7 @@ def test_a_save_uses_the_record_s_bonus_or_the_player_s_proficiency() -> None:
 
 
 def test_a_save_selects_its_branch_like_a_check_does() -> None:
-    state = armed(new_game("whispering_vault_5e"))
+    state = armed(new_game())
     gas = RollSave(
         ability="dexterity",
         dc=25,
@@ -125,7 +123,7 @@ def test_a_save_selects_its_branch_like_a_check_does() -> None:
 
 
 def test_a_save_on_someone_unseen_reveals_them_exactly_once() -> None:
-    state = armed(new_game("whispering_vault_5e"))
+    state = armed(new_game())
     goblin = state.world.require_kind(EntityId("goblin"), ActorEntity)
     unseen = with_actor(state, updated(goblin, known=False), dnd5e_state(state).actor(goblin.id))
     gas = RollSave(

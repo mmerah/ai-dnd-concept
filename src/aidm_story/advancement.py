@@ -187,7 +187,6 @@ class StoryAdvancement:
                     name=decision.item_name,
                     brief=decision.item_brief,
                     known=True,
-                    authored=False,
                     container_id=PLAYER_ID,
                 )
                 created = draft.add(item)

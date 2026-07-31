@@ -1,15 +1,6 @@
 import pytest
 from core_test_support import settings
 
-from aidm.config import RoleConfig
-from aidm.domain.base import ROLES
-
-
-def test_every_role_resolves_to_its_explicit_configuration() -> None:
-    config = settings()
-    for role in ROLES:
-        assert isinstance(config.roles.for_role(role), RoleConfig)
-
 
 def test_test_settings_ignore_ambient_environment(
     monkeypatch: pytest.MonkeyPatch,

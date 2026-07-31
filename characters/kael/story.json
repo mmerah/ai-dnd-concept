@@ -1,7 +1,5 @@
 {
-  "name": "Kael",
-  "brief": "A scarred relic-hunter who came to the abbey for what is sealed beneath it.",
-  "engine_data": {
+  "character": {
     "engine": "story",
     "approaches": {
       "bold": 2,
@@ -25,17 +23,13 @@
     ],
     "max_stress": 5
   },
-  "starting_items": [
-    {
-      "name": "a guttering lantern",
-      "brief": "A dented tin lantern whose flame will not hold still.",
-      "engine_data": {
-        "engine": "story",
-        "gear": {
-          "name": "Unsteady Lantern",
-          "description": "Its shifting light exposes seams and movement in deep shadow."
-        }
+  "items": {
+    "lantern": {
+      "engine": "story",
+      "gear": {
+        "name": "Unsteady Lantern",
+        "description": "Its shifting light exposes seams and movement in deep shadow."
       }
     }
-  ]
+  }
 }

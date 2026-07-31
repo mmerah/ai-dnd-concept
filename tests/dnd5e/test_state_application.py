@@ -88,7 +88,6 @@ def test_create_appends_and_gains_engine_state(state: GameState) -> None:
         id=EntityId("elgin"),
         name="Elgin",
         brief="An apothecary.",
-        authored=False,
         location_id=EntityId("study"),
     )
     _ = state.add(elgin)

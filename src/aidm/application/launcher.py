@@ -1,12 +1,11 @@
-from collections.abc import Mapping
+from collections.abc import Sequence
 from dataclasses import dataclass
 from textwrap import shorten
 
 from pydantic import BaseModel, ConfigDict, ValidationError
 
 from ..config import Settings
-from ..domain.base import EngineId
-from ..domain.definitions import CharacterDefinition, ScenarioDefinition
+from ..domain.base import EngineId, Slug
 from ..domain.state import GameState
 from ..store import FileSaves, read_characters, read_scenarios
 
@@ -15,37 +14,33 @@ class LauncherModel(BaseModel):
     model_config = ConfigDict(frozen=True)
 
 
-class ScenarioOption(LauncherModel):
-    name: str
+class ContentOption(LauncherModel):
+    id: Slug
     title: str
+    engines: tuple[EngineId, ...]
+
+
+class ScenarioOption(ContentOption):
     premise: str
-    engine: EngineId
 
 
-class CharacterOption(LauncherModel):
-    name: str
-    title: str
+class CharacterOption(ContentOption):
     brief: str
-    engine: EngineId
 
 
 class SaveOption(LauncherModel):
     slug: str
+    scenario_id: Slug
+    character_id: Slug
+    engine: EngineId
     scenario_title: str
     character_title: str
-    engine: EngineId
     turn: int
-    scenario_name: str | None
-    character_name: str | None
     problem: str | None = None
 
     @property
     def resumable(self) -> bool:
-        return (
-            self.problem is None
-            and self.scenario_name is not None
-            and self.character_name is not None
-        )
+        return self.problem is None
 
 
 class UnreadableSave(LauncherModel):
@@ -59,21 +54,15 @@ class LauncherCatalog(LauncherModel):
     saves: tuple[SaveOption, ...]
     unreadable: tuple[UnreadableSave, ...] = ()
 
-    def scenario(self, name: str) -> ScenarioOption:
-        found = next((option for option in self.scenarios if option.name == name), None)
+    def scenario(self, scenario_id: Slug) -> ScenarioOption:
+        found = next((option for option in self.scenarios if option.id == scenario_id), None)
         if found is None:
-            raise ValueError(f"unknown scenario {name!r}")
+            raise ValueError(f"unknown scenario {scenario_id!r}")
         return found
 
-    def character(self, name: str) -> CharacterOption:
-        found = next((option for option in self.characters if option.name == name), None)
-        if found is None:
-            raise ValueError(f"unknown character {name!r}")
-        return found
-
-    def compatible_characters(self, scenario_name: str) -> tuple[CharacterOption, ...]:
-        engine = self.scenario(scenario_name).engine
-        return tuple(character for character in self.characters if character.engine == engine)
+    def characters_for(self, engine: EngineId) -> tuple[CharacterOption, ...]:
+        """A character is playable under any engine it ships an overlay for."""
+        return tuple(option for option in self.characters if engine in option.engines)
 
     def save(self, slug: str) -> SaveOption:
         found = next((option for option in self.saves if option.slug == slug), None)
@@ -84,88 +73,103 @@ class LauncherCatalog(LauncherModel):
 
 class LaunchTarget(LauncherModel):
     slug: str
-    scenario_name: str
-    character_name: str
+    scenario_id: Slug
+    character_id: Slug
+    engine: EngineId
 
     @property
     def path(self) -> str:
-        return f"/game/{self.slug}/{self.scenario_name}/{self.character_name}"
+        return f"/game/{self.slug}/{self.scenario_id}/{self.character_id}/{self.engine}"
 
 
 @dataclass(slots=True)
 class LauncherController:
     catalog: LauncherCatalog
-    selected_scenario: str | None = None
-    selected_character: str | None = None
+    selected_scenario: Slug | None = None
+    selected_engine: EngineId | None = None
+    selected_character: Slug | None = None
 
     def __post_init__(self) -> None:
         if self.selected_scenario is None and self.catalog.scenarios:
-            self.selected_scenario = self.catalog.scenarios[0].name
-        self._select_first_compatible_character()
+            self.selected_scenario = self.catalog.scenarios[0].id
+        self._select_engine()
 
-    def choose_scenario(self, name: str) -> None:
-        self.catalog.scenario(name)
-        self.selected_scenario = name
-        compatible = self.compatible_characters()
-        if self.selected_character not in {character.name for character in compatible}:
-            self.selected_character = compatible[0].name if compatible else None
+    def choose_scenario(self, scenario_id: Slug) -> None:
+        self.catalog.scenario(scenario_id)
+        self.selected_scenario = scenario_id
+        self._select_engine()
 
-    def choose_character(self, name: str) -> None:
-        if name not in {character.name for character in self.compatible_characters()}:
+    def choose_engine(self, engine: EngineId) -> None:
+        if engine not in self.available_engines():
             raise ValueError(
-                f"character {name!r} is not compatible with scenario {self.selected_scenario!r}"
+                f"scenario {self.selected_scenario!r} has no {engine!r} rules written for it"
             )
-        self.selected_character = name
+        self.selected_engine = engine
+        self._select_character()
 
-    def compatible_characters(self) -> tuple[CharacterOption, ...]:
+    def choose_character(self, character_id: Slug) -> None:
+        if character_id not in {option.id for option in self.compatible_characters()}:
+            raise ValueError(
+                f"character {character_id!r} has no {self.selected_engine!r} sheet written for it"
+            )
+        self.selected_character = character_id
+
+    def available_engines(self) -> tuple[EngineId, ...]:
         if self.selected_scenario is None:
             return ()
-        return self.catalog.compatible_characters(self.selected_scenario)
+        return self.catalog.scenario(self.selected_scenario).engines
+
+    def compatible_characters(self) -> tuple[CharacterOption, ...]:
+        if self.selected_engine is None:
+            return ()
+        return self.catalog.characters_for(self.selected_engine)
 
     def new_game(self) -> LaunchTarget:
-        if self.selected_scenario is None or self.selected_character is None:
-            raise ValueError("choose a scenario and compatible character")
+        scenario, engine, character = (
+            self.selected_scenario,
+            self.selected_engine,
+            self.selected_character,
+        )
+        if scenario is None or engine is None or character is None:
+            raise ValueError("choose a scenario, its rules, and a character written for them")
         return LaunchTarget(
-            slug=f"{self.selected_scenario}--{self.selected_character}",
-            scenario_name=self.selected_scenario,
-            character_name=self.selected_character,
+            slug=f"{scenario}--{character}--{engine}",
+            scenario_id=scenario,
+            character_id=character,
+            engine=engine,
         )
 
     def resume(self, slug: str) -> LaunchTarget:
         saved = self.catalog.save(slug)
-        if saved.problem is not None or saved.scenario_name is None or saved.character_name is None:
-            raise ValueError(saved.problem or f"save {slug!r} cannot be resumed")
+        if saved.problem is not None:
+            raise ValueError(saved.problem)
         return LaunchTarget(
             slug=saved.slug,
-            scenario_name=saved.scenario_name,
-            character_name=saved.character_name,
+            scenario_id=saved.scenario_id,
+            character_id=saved.character_id,
+            engine=saved.engine,
         )
 
-    def _select_first_compatible_character(self) -> None:
+    def _select_engine(self) -> None:
+        engines = self.available_engines()
+        if self.selected_engine not in engines:
+            self.selected_engine = engines[0] if engines else None
+        self._select_character()
+
+    def _select_character(self) -> None:
         compatible = self.compatible_characters()
-        self.selected_character = compatible[0].name if compatible else None
+        if self.selected_character not in {option.id for option in compatible}:
+            self.selected_character = compatible[0].id if compatible else None
 
 
 def load_catalog(config: Settings) -> LauncherCatalog:
-    scenarios = read_scenarios(config.scenarios_dir)
-    characters = read_characters(config.characters_dir)
-    scenario_options = tuple(
-        ScenarioOption(
-            name=name,
-            title=definition.meta.title,
-            premise=definition.meta.premise,
-            engine=definition.engine,
-        )
-        for name, definition in scenarios.items()
+    scenarios = tuple(
+        ScenarioOption(id=name, title=world.meta.title, premise=world.meta.premise, engines=engines)
+        for name, world, engines in read_scenarios(config.scenarios_dir)
     )
-    character_options = tuple(
-        CharacterOption(
-            name=name,
-            title=definition.name,
-            brief=definition.brief,
-            engine=definition.engine,
-        )
-        for name, definition in characters.items()
+    characters = tuple(
+        CharacterOption(id=name, title=profile.name, brief=profile.brief, engines=engines)
+        for name, profile, engines in read_characters(config.characters_dir)
     )
     files = FileSaves(config.saves_dir)
     saves: list[SaveOption] = []
@@ -180,8 +184,8 @@ def load_catalog(config: Settings) -> LauncherCatalog:
             continue
         saves.append(_save_option(slug, state, scenarios, characters))
     return LauncherCatalog(
-        scenarios=scenario_options,
-        characters=character_options,
+        scenarios=scenarios,
+        characters=characters,
         saves=tuple(saves),
         unreadable=tuple(unreadable),
     )
@@ -190,36 +194,37 @@ def load_catalog(config: Settings) -> LauncherCatalog:
 def _save_option(
     slug: str,
     state: GameState,
-    scenarios: Mapping[str, ScenarioDefinition],
-    characters: Mapping[str, CharacterDefinition],
+    scenarios: Sequence[ContentOption],
+    characters: Sequence[ContentOption],
 ) -> SaveOption:
-    scenario_names = [
-        name
-        for name, definition in scenarios.items()
-        if definition.engine == state.engine_id and definition.meta == state.scenario
-    ]
-    character_names = [
-        name
-        for name, definition in characters.items()
-        if definition.engine == state.engine_id
-        and definition.name == state.player.name
-        and definition.brief == state.player.brief
-    ]
-    problems: list[str] = []
-    if len(scenario_names) != 1:
-        problems.append(f"matched {len(scenario_names)} scenarios")
-    if len(character_names) != 1:
-        problems.append(f"matched {len(character_names)} characters")
     return SaveOption(
         slug=slug,
+        scenario_id=state.scenario_id,
+        character_id=state.character_id,
+        engine=state.engine_id,
         scenario_title=state.scenario.title,
         character_title=state.player.name,
-        engine=state.engine_id,
         turn=state.turn,
-        scenario_name=scenario_names[0] if len(scenario_names) == 1 else None,
-        character_name=character_names[0] if len(character_names) == 1 else None,
-        problem="; ".join(problems) or None,
+        problem=_unplayable_reason(state, scenarios, characters),
     )
+
+
+def _unplayable_reason(
+    state: GameState,
+    scenarios: Sequence[ContentOption],
+    characters: Sequence[ContentOption],
+) -> str | None:
+    """A save names its own origin, so the only question left is whether that origin still plays."""
+    for purpose, wanted, offered in (
+        ("scenario", state.scenario_id, scenarios),
+        ("character", state.character_id, characters),
+    ):
+        found = next((option for option in offered if option.id == wanted), None)
+        if found is None:
+            return f"{purpose} {wanted!r} is gone"
+        if state.engine_id not in found.engines:
+            return f"{purpose} {wanted!r} no longer offers the {state.engine_id!r} engine"
+    return None
 
 
 def _brief(error: Exception) -> str:

@@ -23,7 +23,7 @@ ACTION_SURGE = "srd-2014/features/action-surge-1-use"
 
 
 def test_fighter_features_are_owned_spent_and_recharged() -> None:
-    state = levelled(new_game("whispering_vault_5e"), 2)
+    state = levelled(new_game(), 2)
     progression_state = player_of(state).progression
     assert progression_state is not None
     assert [feature.index for feature in progression_state.features] == [
@@ -132,7 +132,7 @@ def test_shared_and_scaled_resources_need_no_class_specific_engine_rules() -> No
     assert {key: resource.maximum for key, resource in monk_resources.items()} == {
         "srd-2014/features/ki": 5
     }
-    state = new_game("whispering_vault_5e")
+    state = new_game()
     current = player_of(state).progression
     assert current is not None
     monk = updated(
@@ -143,9 +143,7 @@ def test_shared_and_scaled_resources_need_no_class_specific_engine_rules() -> No
     )
     player = player_of(state)
     spent = with_actor(state, player.entity, updated(player.state, progression=monk))
-    _ = resolve(
-        [UseFeature(feature="srd-2014/features/flurry-of-blows")], spent, Random(1), RULES
-    )
+    _ = resolve([UseFeature(feature="srd-2014/features/flurry-of-blows")], spent, Random(1), RULES)
     monk_after = player_of(spent).progression
     assert monk_after is not None
     assert monk_after.feature_resources["srd-2014/features/ki"].remaining == 4
@@ -178,7 +176,7 @@ def test_shared_and_scaled_resources_need_no_class_specific_engine_rules() -> No
 
 
 def test_the_directors_level_up_consequence_unlocks_the_players_level_up() -> None:
-    state = new_game("whispering_vault_5e")
+    state = new_game()
     facts = resolve([LevelUp()], state, Random(1), RULES)
     assert [fact.fact for fact in facts] == ["level_up_available"]
     offered = player_of(state).progression
@@ -189,7 +187,7 @@ def test_the_directors_level_up_consequence_unlocks_the_players_level_up() -> No
 
 
 def test_the_player_answers_choices_after_the_director_awards_a_level() -> None:
-    state = levelled(new_game("whispering_vault_5e"), 2)
+    state = levelled(new_game(), 2)
     assert "not awarded" in views.level_up_state(player_of(state).progression)
     _ = resolve([LevelUp()], state, Random(1), RULES)
     assert "waiting for the player" in views.level_up_state(player_of(state).progression)

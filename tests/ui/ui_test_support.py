@@ -7,7 +7,10 @@ from aidm.config import ProviderConfig, Providers, Roles, Settings
 REPOSITORY_ROOT = Path(__file__).parents[2]
 
 
-def ui_settings(saves_dir: Path) -> Settings:
+SCENARIOS = REPOSITORY_ROOT / "scenarios"
+
+
+def ui_settings(saves_dir: Path, scenarios_dir: Path = SCENARIOS) -> Settings:
     return Settings(
         providers=Providers(
             openrouter=ProviderConfig(
@@ -18,7 +21,7 @@ def ui_settings(saves_dir: Path) -> Settings:
         roles=Roles(),
         max_growth=3,
         history_window=6,
-        scenarios_dir=REPOSITORY_ROOT / "scenarios",
+        scenarios_dir=scenarios_dir,
         characters_dir=REPOSITORY_ROOT / "characters",
         saves_dir=saves_dir,
     )

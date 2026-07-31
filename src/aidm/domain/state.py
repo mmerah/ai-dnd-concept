@@ -7,19 +7,12 @@ from aidm_5e.models import Dnd5eState
 from aidm_story.models import StoryState
 
 from ..utils.models import Frozen, Mutable
-from .base import PLAYER_ID, EngineId, EntityId, slug
-from .definitions import (
-    ActorEngineData,
-    CharacterDefinition,
-    ItemEngineData,
-    ScenarioDefinition,
-    ScenarioMeta,
-)
+from .base import PLAYER_ID, EngineId, EntityId, Slug
+from .definitions import Character, EntityEngineData, Scenario, ScenarioMeta
 from .entities import ActorEntity, BaseEntity, Entity, ItemEntity, LocationEntity
 from .facts import ActorMoved, CoreFact, EntityCreated, EntityDiscovered, ItemMoved
 
 type EngineState = Annotated[StoryState | Dnd5eState, Field(discriminator="engine")]
-type EntityEngineData = ActorEngineData | ItemEngineData
 
 
 class WorldState(Mutable):
@@ -82,6 +75,8 @@ class Exchange(Frozen):
 
 class GameState(Mutable):
     save_version: int
+    scenario_id: Slug
+    character_id: Slug
     scenario: ScenarioMeta
     world: WorldState
     engine: EngineState
@@ -175,56 +170,25 @@ class AuthoredWorld(Frozen):
     engine_data: dict[EntityId, EntityEngineData] = Field(default_factory=dict)
 
 
-def world_from_definitions(
-    scenario: ScenarioDefinition,
-    character: CharacterDefinition,
-) -> AuthoredWorld:
-    entities: dict[EntityId, Entity] = {}
-    authored: dict[EntityId, EntityEngineData] = {}
-    for definition in scenario.entities:
-        match definition.kind:
-            case "actor":
-                entity = ActorEntity(
-                    id=definition.id,
-                    name=definition.name,
-                    brief=definition.brief,
-                    known=definition.known,
-                    location_id=definition.location_id,
-                )
-            case "item":
-                entity = ItemEntity(
-                    id=definition.id,
-                    name=definition.name,
-                    brief=definition.brief,
-                    known=definition.known,
-                    container_id=definition.container_id,
-                )
-            case "location":
-                entity = LocationEntity(
-                    id=definition.id,
-                    name=definition.name,
-                    brief=definition.brief,
-                    known=definition.known,
-                )
-        entities[entity.id] = entity
-        if definition.kind != "location" and definition.engine_data is not None:
-            authored[entity.id] = definition.engine_data
-    for item in character.starting_items:
-        entity = ItemEntity(
-            id=slug(item.name, entities),
-            name=item.name,
-            brief=item.brief,
-            known=True,
-            container_id=PLAYER_ID,
-        )
-        entities[entity.id] = entity
-        if item.engine_data is not None:
-            authored[entity.id] = item.engine_data
-    entities[PLAYER_ID] = ActorEntity(
+def authored_world(scenario: Scenario, character: Character) -> AuthoredWorld:
+    player = ActorEntity(
         id=PLAYER_ID,
         name=character.name,
         brief=character.brief,
         known=True,
-        location_id=scenario.starting_location_id,
+        location_id=scenario.world.starting_location_id,
     )
-    return AuthoredWorld(world=WorldState(entities=entities), engine_data=authored)
+    entities: dict[EntityId, Entity] = {}
+    for entity in (*scenario.world.entities, *character.profile.items, player):
+        if entity.id in entities:
+            raise ValueError(f"authored entity id {entity.id!r} appears twice")
+        # Copy: the loaded files outlive the game, and entities are mutable now.
+        entities[entity.id] = entity.model_copy(deep=True)
+    return AuthoredWorld(
+        world=WorldState(entities=entities),
+        engine_data={
+            **scenario.overlay.actors,
+            **scenario.overlay.items,
+            **character.overlay.items,
+        },
+    )

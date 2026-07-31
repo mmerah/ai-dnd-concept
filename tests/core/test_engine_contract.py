@@ -14,7 +14,7 @@ from aidm_story.state import story_state
 
 def test_engine_initialization_and_state_contract() -> None:
     engine, state = initialized()
-    sheet = character().engine_data
+    sheet = character().overlay.character
     assert isinstance(sheet, StoryCharacterData)
 
     assert state.engine_id == engine.id
@@ -58,7 +58,6 @@ def test_a_created_entity_gains_engine_state_in_the_same_commit() -> None:
         name="A New Actor",
         brief="Newly introduced.",
         known=True,
-        authored=False,
         location_id=state.player.location_id,
     )
     item = ItemEntity(
@@ -66,7 +65,6 @@ def test_a_created_entity_gains_engine_state_in_the_same_commit() -> None:
         name="A New Item",
         brief="Newly introduced.",
         known=True,
-        authored=False,
         container_id=PLAYER_ID,
     )
 

@@ -168,7 +168,6 @@ def _created_entity(
         "brief": request.brief,
         "detail": detail,
         "known": True,
-        "authored": False,
     } | placement(request.kind, location)
     match request.kind:
         case "actor":

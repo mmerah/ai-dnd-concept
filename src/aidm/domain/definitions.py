@@ -1,4 +1,5 @@
-from typing import Annotated, Literal, Self
+from collections.abc import Mapping
+from typing import Annotated, Self
 
 from pydantic import Field, model_validator
 
@@ -6,7 +7,8 @@ from aidm_5e.models import Dnd5eActorDefinition, Dnd5eCharacterData, Dnd5eItemDe
 from aidm_story.models import StoryActorDefinition, StoryCharacterData, StoryItemDefinition
 
 from ..utils.models import Frozen
-from .base import PLAYER_ID, EngineId, EntityId
+from .base import PLAYER_ID, EngineId, EntityId, Kind, Slug
+from .entities import Entity, ItemEntity
 
 type ActorEngineData = Annotated[
     StoryActorDefinition | Dnd5eActorDefinition,
@@ -20,7 +22,8 @@ type CharacterEngineData = Annotated[
     StoryCharacterData | Dnd5eCharacterData,
     Field(discriminator="engine"),
 ]
-type EngineData = ActorEngineData | ItemEngineData | CharacterEngineData
+type EntityEngineData = ActorEngineData | ItemEngineData
+type EngineData = EntityEngineData | CharacterEngineData
 
 
 def for_engine[T: EngineData](data: EngineData, expected: type[T]) -> T:
@@ -39,57 +42,12 @@ class ScenarioMeta(Frozen):
     premise: str
 
 
-class EntityDefinitionBase(Frozen):
-    id: EntityId
-    name: str
-    brief: str
-    known: bool = False
+class ScenarioWorld(Frozen):
+    """`world.json`: the narrative canon, authored once for every ruleset."""
 
-
-class ActorDefinition(EntityDefinitionBase):
-    kind: Literal["actor"] = "actor"
-    location_id: EntityId
-    engine_data: ActorEngineData | None = None
-
-
-class ItemDefinition(EntityDefinitionBase):
-    kind: Literal["item"] = "item"
-    container_id: EntityId
-    engine_data: ItemEngineData | None = None
-
-
-class LocationDefinition(EntityDefinitionBase):
-    kind: Literal["location"] = "location"
-
-
-type EntityDefinition = Annotated[
-    ActorDefinition | ItemDefinition | LocationDefinition,
-    Field(discriminator="kind"),
-]
-
-
-class StartingItemDefinition(Frozen):
-    name: str
-    brief: str
-    engine_data: ItemEngineData | None = None
-
-
-class CharacterDefinition(Frozen):
-    name: str
-    brief: str
-    engine_data: CharacterEngineData
-    starting_items: tuple[StartingItemDefinition, ...] = ()
-
-    @property
-    def engine(self) -> EngineId:
-        return self.engine_data.engine
-
-
-class ScenarioDefinition(Frozen):
     meta: ScenarioMeta
-    engine: EngineId
     starting_location_id: EntityId
-    entities: tuple[EntityDefinition, ...] = ()
+    entities: tuple[Entity, ...] = ()
 
     @model_validator(mode="after")
     def _valid_topology(self) -> Self:
@@ -117,25 +75,93 @@ class ScenarioDefinition(Frozen):
         return self
 
 
-def validate_definition_engines(
-    scenario: ScenarioDefinition,
-    character: CharacterDefinition,
+class ScenarioOverlay(Frozen):
+    """`<engine>.json`: what one ruleset adds to the entities that need it."""
+
+    actors: dict[EntityId, ActorEngineData] = Field(default_factory=dict)
+    items: dict[EntityId, ItemEngineData] = Field(default_factory=dict)
+
+
+class CharacterProfile(Frozen):
+    """`base.json`: who the character is, and the gear they start holding."""
+
+    name: str
+    brief: str
+    items: tuple[ItemEntity, ...] = ()
+
+    @model_validator(mode="after")
+    def _held_and_known(self) -> Self:
+        """Own gear is known gear: an unknown carried item would be hidden canon inside the
+        inventory the Narrator is shown, so the two prompts would contradict each other."""
+        elsewhere = sorted(item.id for item in self.items if item.container_id != PLAYER_ID)
+        if elsewhere:
+            raise ValueError(f"a character's items start in their own hands: {elsewhere}")
+        unknown = sorted(item.id for item in self.items if not item.known)
+        if unknown:
+            raise ValueError(f"a character knows the gear they start with: {unknown}")
+        return self
+
+
+class CharacterOverlay(Frozen):
+    character: CharacterEngineData
+    items: dict[EntityId, ItemEngineData] = Field(default_factory=dict)
+
+
+class Scenario(Frozen):
+    """One authored world under the one engine this game selected."""
+
+    id: Slug
+    engine: EngineId
+    world: ScenarioWorld
+    overlay: ScenarioOverlay
+
+    @property
+    def meta(self) -> ScenarioMeta:
+        return self.world.meta
+
+    @model_validator(mode="after")
+    def _overlay_fits_the_world(self) -> Self:
+        kinds: dict[EntityId, Kind] = {entity.id: entity.kind for entity in self.world.entities}
+        _require_overlay(self.engine, self.overlay.actors, "actor", kinds)
+        _require_overlay(self.engine, self.overlay.items, "item", kinds)
+        return self
+
+
+class Character(Frozen):
+    id: Slug
+    engine: EngineId
+    profile: CharacterProfile
+    overlay: CharacterOverlay
+
+    @property
+    def name(self) -> str:
+        return self.profile.name
+
+    @property
+    def brief(self) -> str:
+        return self.profile.brief
+
+    @model_validator(mode="after")
+    def _overlay_fits_the_character(self) -> Self:
+        _require_engine(self.engine, "the character sheet", self.overlay.character)
+        kinds: dict[EntityId, Kind] = {item.id: item.kind for item in self.profile.items}
+        _require_overlay(self.engine, self.overlay.items, "item", kinds)
+        return self
+
+
+def _require_engine(engine: EngineId, purpose: str, data: EngineData) -> None:
+    if data.engine != engine:
+        raise ValueError(f"{purpose} holds {data.engine!r} data in the {engine!r} overlay")
+
+
+def _require_overlay(
     engine: EngineId,
+    overlay: Mapping[EntityId, EntityEngineData],
+    kind: Kind,
+    kinds: Mapping[EntityId, Kind],
 ) -> None:
-    authored = [
-        ("scenario", scenario.engine),
-        ("character", character.engine),
-        *[
-            (f"scenario entity {entity.id!r} engine_data", entity.engine_data.engine)
-            for entity in scenario.entities
-            if entity.kind != "location" and entity.engine_data is not None
-        ],
-        *[
-            (f"starting item {item.name!r} engine_data", item.engine_data.engine)
-            for item in character.starting_items
-            if item.engine_data is not None
-        ],
-    ]
-    for purpose, declared in authored:
-        if declared != engine:
-            raise ValueError(f"{purpose} engine is {declared!r}, selected engine is {engine!r}")
+    """An overlay keys off the authored ids, so a typo must fail at load, not go unread."""
+    for entity_id, data in overlay.items():
+        if kinds.get(entity_id) != kind:
+            raise ValueError(f"the {engine!r} overlay names {entity_id!r}, no authored {kind}")
+        _require_engine(engine, f"entity {entity_id!r}", data)

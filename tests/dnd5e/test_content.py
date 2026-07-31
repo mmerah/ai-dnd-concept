@@ -415,7 +415,7 @@ def test_the_directors_slice_is_the_mechanics_never_the_record() -> None:
 def test_a_condition_is_shown_on_anyone_who_holds_one() -> None:
     """A condition no role can read is one the Director can never lift. It comes from the entity,
     so it shows on an invented actor that names no record, and on the player's own sheet."""
-    state = new_game("whispering_vault_5e")
+    state = new_game()
     mara = actor_of(state, EntityId("mara"))
     blinded = updated(mara.state, stats=updated(mara.stats, conditions=("blinded",)))
     assert "hp 4/4 — ac 10 — under blinded" in views.actor_state(

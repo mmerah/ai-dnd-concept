@@ -46,7 +46,6 @@ def improvise(ctx: Resolution, consequence: GainImprovisedItem) -> list[Emitted]
         brief=written,
         container_id=player.location_id,
         known=True,
-        authored=False,
     )
     created = ctx.draft.add(item)
     created_state(ctx.draft, item)

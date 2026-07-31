@@ -3,15 +3,10 @@ from dataclasses import dataclass, field
 from aidm.agents.stages import director_stage, shared_stages
 from aidm.application.game import GameApplication
 from aidm.config import Settings
-from aidm.domain.base import EngineId
+from aidm.domain.base import EngineId, Slug
 from aidm.engines import Engine, engine_for
 from aidm.pipeline import TurnOptions
-from aidm.store import (
-    FileSaves,
-    FileTraces,
-    read_named_character,
-    read_named_scenario,
-)
+from aidm.store import FileSaves, FileTraces, load_character, load_scenario
 from aidm_5e.factory import Dnd5eEngine
 from aidm_story.factory import StoryEngine
 
@@ -42,17 +37,16 @@ class Composition:
     def application(
         self,
         slug: str,
-        scenario_name: str,
-        character_name: str,
+        scenario_id: Slug,
+        character_id: Slug,
+        engine_id: EngineId,
     ) -> GameApplication:
         config = self.config
-        scenario = read_named_scenario(config.scenarios_dir, scenario_name)
-        character = read_named_character(config.characters_dir, character_name)
-        engine = self.engine(scenario.engine)
+        engine = self.engine(engine_id)
         return GameApplication(
             slug=slug,
-            scenario=scenario,
-            character=character,
+            scenario=load_scenario(config.scenarios_dir, scenario_id, engine_id),
+            character=load_character(config.characters_dir, character_id, engine_id),
             engine=engine,
             director=director_stage(engine, config),
             stages=shared_stages(config),

@@ -9,7 +9,7 @@ from fivee_test_support import initial_5e_game
 from aidm.domain.growth import Growth
 from aidm.domain.turn import Advance, Turn
 from aidm.engines import narrator_evidence, trace_fact
-from aidm.store import ENCODING, FileSaves, FileTraces
+from aidm.store import ENCODING, FileSaves, FileTraces, load_character, load_scenario
 from aidm_5e.domain.models.consequences import Damage, LevelUp
 from aidm_5e.domain.models.direction import Dnd5eDirection
 from aidm_story.direction import StoryDirection
@@ -134,3 +134,11 @@ def test_storage_rejects_unsafe_slugs(tmp_path: Path, slug: str) -> None:
         saves.load(slug)
     with pytest.raises(ValueError, match="invalid storage slug"):
         traces.load(slug)
+
+
+def test_content_paths_reject_an_unsafe_id(tmp_path: Path) -> None:
+    """A game route supplies these ids, and each one names a directory."""
+    with pytest.raises(ValueError, match="invalid content id"):
+        load_scenario(tmp_path, "../escape", "story")
+    with pytest.raises(ValueError, match="invalid content id"):
+        load_character(tmp_path, "kael/../..", "story")

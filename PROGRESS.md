@@ -282,10 +282,123 @@ keys, `EntityId`, `Decisions` and the discriminated unions losslessly. Acted on 
 - 203 tests, ruff, basedpyright clean. Gate re-run: new game + save + resume identical for both
   engines, facts and directions round-trip through the trace
 
-## Next — item 5: author-once scenarios and direct save identity
+## 5 — author-once scenarios and direct save identity — done
 
-`scenarios/<name>/{world,story,dnd5e}.json` and `characters/<name>/{base,story,dnd5e}.json`; an
-overlay's presence *is* the compatibility check. Deletes `EntityDefinitionBase` and its three
-subclasses, `StartingItemDefinition`, `world_from_definitions`'s rebuild, `validate_definition_engines`,
-`_save_option`'s reverse matching, and both `runtime()` methods. Save identity is persisted, not
-rediscovered.
+- Content is `scenarios/whispering-vault/{world,story,dnd5e}.json` and
+  `characters/kael/{base,story,dnd5e}.json`. The canon is authored once: the two scenario files that
+  differed only in an engine tag, a title suffix and one entity's data are one `world.json` plus two
+  overlays, and the same for the character pair. 293 JSON lines of content became 220
+- `world.json` and `base.json` hold runtime `Entity` values directly. `EntityDefinitionBase`,
+  `ActorDefinition`, `ItemDefinition`, `LocationDefinition` and `StartingItemDefinition` are gone,
+  and with them `world_from_definitions`'s entity-by-entity rebuild — `authored_world` copies the
+  authored entities and adds the player, whose placement is the only cross-file fact
+- **Authored ids are the ids.** An overlay is `{actors: {id: data}, items: {id: data}}`, keyed off
+  what the author wrote, so `slug(name, taken)` no longer decides a starting item's id. It survives
+  only for entities the model creates mid-game
+- Split into `actors`/`items` rather than one map because `ActorEngineData` and `ItemEngineData`
+  discriminate on `engine` alone; a flat id→data map would need a two-field discriminator
+- `validate_definition_engines` (22 lines, four scan passes) is replaced by two model validators on
+  the composed `Scenario`/`Character`. They check the same engine tags **and** that every overlay id
+  names an authored entity of the right kind — a typo'd overlay key used to be silently unread
+- An overlay's presence *is* the compatibility check. `engines_offered` globs `<engine>.json`;
+  `EngineRef` matching in `compatible_characters` collapses to `engine in option.engines`
+- **New axis, forced by the design:** one scenario now offers several rulesets, so the engine is a
+  launcher choice. `LauncherController` gains `selected_engine` / `available_engines` /
+  `choose_engine`, the save slug is `<scenario>--<character>--<engine>`, and the game route carries
+  the engine. Narrowing a routed string goes through `base.py::engine_id`, since `EngineId` is closed
+- `GameState.scenario_id` / `character_id` are required and persisted. `_save_option`'s reverse
+  matching — matching a save's scenario meta, player name and player brief against every authored
+  file, then reporting how many candidates it hit — is one lookup: does that origin still ship the
+  overlay this save needs. `SaveOption.scenario_name`/`character_name` stop being optional
+- `_resumable` keeps the drift checks (scenario meta, player name and brief) and adds the id check.
+  The ids catch "wrong content"; the drift checks still catch "the author edited it since you saved"
+- Deviation from the plan: **`runtime()` stays** on `StoryActorDefinition`/`StoryItemDefinition`.
+  Merging authored and runtime engine models would put an `engine` discriminator field on every
+  entry of `GameState.engine.actors`/`items` and hand a `Mutable` authored object to runtime state —
+  the aliasing trap item 4's review closed twice. The authored/runtime split is real there
+- Deviation from the plan: `definitions.py` is not folded into the world module. Item 7 moves
+  `ScenarioMeta` into `world.py`; doing it now would mix authored and runtime shapes in a module
+  item 7 renames anyway
+- Intended prompt change: the lantern's id is `lantern`, not the derived `a_guttering_lantern`, and
+  the 5e scenario title lost its "— 5e" suffix. Both follow from authoring once
+- `SAVE_VERSION` bumped to 19
+- Gate green: 208 tests, ruff, basedpyright. New game + save + resume verified for both engines
+  through the composition root, with the resumed state equal to the committed one; a story-only
+  scenario (its `dnd5e.json` removed) offers Story alone and its save reports the withdrawal
+- 9,907 → 9,957 source lines. Item 5 is the one item that adds lines: the engine-selection axis and
+  directory-based loading cost more than the deleted hierarchy saved
+
+## Review pass on 5
+
+An adversarial Opus review ran against the working tree. It re-verified the things worth trusting —
+no authored object is aliased into runtime state (full object-graph identity check plus a
+scorch-and-recompose equivalence check, both engines), all four prompts × both engines are
+byte-identical to the previous commit apart from the two declared changes, the content decomposition
+is lossless, `LauncherController` is consistent after every public method, and path traversal is
+blocked on every content and save path. Findings acted on:
+
+- **Three correctness defects, all "a state item 5 made representable but did not validate".**
+  A scenario directory with no overlay was offered, selected first, and left the home screen showing
+  "No playable scenario was found." with no way to navigate — the only entry point to the app,
+  bricked by a half-written scenario. A stray `notes/` or `__pycache__/` directory under
+  `scenarios/` crashed `load_catalog` outright, because `_authored` yielded every subdirectory and
+  the name check ran before the "is this content" check. `store.py::_playable` now treats the canon
+  file as the "this is content" signal and an overlay as the "this is playable" signal, and skips
+  anything failing either — which also folded `read_scenarios`/`read_characters`/`engines_offered`
+  into one generator that no longer re-resolves each folder twice
+- **A starting item's `known` was authorable and unvalidated.** The deleted `StartingItemDefinition`
+  had no such field and core hard-coded `known=True`; `ItemEntity` defaults it to `False`. An
+  unknown carried item is simultaneously hidden canon to the Director and in the inventory the
+  Narrator is shown, since `SceneSnapshot.inventory` does not filter on `known`. `CharacterProfile`
+  now refuses it
+- **`_require_one_engine` was dead on arrival.** Its predecessor `validate_definition_engines` was
+  reachable because the engine came from the scenario while the character loaded independently; item
+  5 threads one engine id into both loaders and the engine value, so the guard could not fail. The
+  change destroyed the guard's reason and kept the guard. Deleted
+- **`BaseEntity.authored` is deleted.** It was written at four production sites and never read
+  anywhere — dead since before this item, but `world.json` validating as `Entity` made it authorable
+- Dropped `_resumable`'s player name/brief comparison. `state.scenario` is a *duplicate* of authored
+  data that core carries outside the world and renders in every prompt, so a stale copy changes
+  model output; the player entity is world state the game mutates, and comparing two of its thirty
+  sibling authored strings pinned nothing structural. The id check now carries the identity weight
+- `Slug` annotations on the routed ids were promising a check that never ran — `Slug` is `str` at the
+  type level and narrows nothing outside pydantic. `base.py::content_id` narrows both ids at the
+  route, as `as_engine_id` already did for the engine, so `Slug` downstream is a fact
+- Naming: `engine_id` clashed with a property, a field and four parameters (it forced `app.py` to
+  read `engine_id(engine)`) and is now `as_engine_id`. `CharacterBase` read like a base class in a
+  codebase with three real ones → `CharacterProfile`, field `Character.profile`. `_withdrawn`
+  returned `str | None` under a boolean's name → `_unplayable_reason`, and it now distinguishes
+  content that is gone from content that dropped an overlay
+- **Tests: 190 → 187 functions, and 3 of the 4 item 5 added are gone.** Deleted
+  `test_a_save_names_its_own_origin` (it asserted `_begun` copied two fields it was handed, and its
+  docstring described a resume it never performed) and the gear-collision lifecycle test, whose
+  premise — core deriving ids from names — item 5 deleted; its own rewritten docstring conceded it.
+  Merged the two stale-save launcher tests, the two resume-refusal tests, and the two
+  overlay-visibility tests. Moved the surviving `Character` validator tests out of
+  `tests/story/test_lifecycle.py` (deleted) into `test_integrity_boundaries.py`, where the code they
+  test lives. Dropped the `Scenario` round-trip assertion — `store.py` builds `Scenario`
+  field-by-field, so it is never deserialised in production. Added the only missing guard: a routed
+  content id that escapes its directory
+- Cut two pre-existing wiring tests the review flagged and the maintainer's "too many tests" covers:
+  `test_every_role_resolves_to_its_explicit_configuration` (its `isinstance` is the return
+  annotation, which basedpyright already checks) and `test_engine_badge.py` (`engine_appearance` is
+  an exhaustive match on a closed literal, so a new engine already cannot compile without a badge;
+  the test only pinned the colours). Kept the ambient-environment test — determinism is a
+  requirement, and that one guards it
+- Rejected one recommendation: the flat (scenario × engine) launcher option, which the reviewer
+  priced at −30 source lines. It pays for them by collapsing a `Slug` and an `EngineId` into one
+  parsed string, which is the wrong trade here
+- 208 → 205 tests, ruff, basedpyright clean. Both load-bearing tests re-verified by sabotage: a
+  shallow `draft()` fails 7 tests including the purity assertion, and an identity `_undetailed`
+  fails the Narrator boundary. Gate re-run: new game + save + resume for both engines, no aliasing
+- Net cost of item 5 fell from +58 to **+50 source lines**, and the test suite is 3 tests and 1 file
+  smaller than before item 5 started. The correctness fixes cost lines the cuts had freed; that is
+  the honest number, not the reviewer's −25 estimate
+
+## Next — item 6: engine-owned advancement
+
+Register the renderer with its engine so concrete types flow end to end:
+`StoryAdvancement.preview() -> StoryAdvancementPreview` consumed by `StoryAdvancementUi`. Deletes
+the `AdvancementEngine` protocol's `BaseModel` signatures, `Composition.advancement_ui`'s
+`isinstance` dispatch, and every defensive `isinstance(preview, ...)` guard in the UI.
+`advancement/flow.py` stays.
