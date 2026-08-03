@@ -194,7 +194,7 @@ def initial_5e_game(
         character_id=played.id,
         scenario=scenario.meta,
         world=authored.world,
-        engine=engine.lifecycle.initialise(authored, played.overlay.character),
+        engine=engine.initial_state(authored, played.overlay.character),
     )
 
 

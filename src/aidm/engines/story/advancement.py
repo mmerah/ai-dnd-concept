@@ -1,10 +1,10 @@
 from random import Random
-from typing import Annotated, Literal
+from typing import Annotated, Literal, TypeGuard
 
 from pydantic import Field
 
 from aidm.advancement import AdvancementStatus
-from aidm.base import PLAYER_ID, Frozen, ItemEntity, Slug, slug
+from aidm.base import PLAYER_ID, AdvancementDecision, Frozen, ItemEntity, Slug, slug
 from aidm.transition import Transition
 from aidm.world import GameState
 
@@ -33,12 +33,12 @@ from .state import (
 )
 
 
-class RaiseApproach(Frozen):
+class RaiseApproach(AdvancementDecision):
     choice: Literal["raise_approach"] = "raise_approach"
     approach: StoryApproach
 
 
-class AddTag(Frozen):
+class AddTag(AdvancementDecision):
     choice: Literal["add_tag"] = "add_tag"
     id: Slug
     name: str
@@ -46,26 +46,26 @@ class AddTag(Frozen):
     description: str
 
 
-class RemoveBurden(Frozen):
+class RemoveBurden(AdvancementDecision):
     choice: Literal["remove_burden"] = "remove_burden"
     id: Slug
 
 
-class RewriteBurden(Frozen):
+class RewriteBurden(AdvancementDecision):
     choice: Literal["rewrite_burden"] = "rewrite_burden"
     id: Slug
     name: str
     description: str
 
 
-class AcquireGear(Frozen):
+class AcquireGear(AdvancementDecision):
     choice: Literal["acquire_gear"] = "acquire_gear"
     item_name: str
     item_brief: str
     gear: StoryGearTag
 
 
-class IncreaseMaximumStress(Frozen):
+class IncreaseMaximumStress(AdvancementDecision):
     choice: Literal["increase_maximum_stress"] = "increase_maximum_stress"
 
 
@@ -73,6 +73,13 @@ type StoryAdvancementDecision = Annotated[
     RaiseApproach | AddTag | RemoveBurden | RewriteBurden | AcquireGear | IncreaseMaximumStress,
     Field(discriminator="choice"),
 ]
+
+
+def is_story_decision(value: object) -> TypeGuard[StoryAdvancementDecision]:
+    return isinstance(
+        value,
+        RaiseApproach | AddTag | RemoveBurden | RewriteBurden | AcquireGear | IncreaseMaximumStress,
+    )
 
 
 class StoryAdvancementPreview(Frozen):

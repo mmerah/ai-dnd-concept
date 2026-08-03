@@ -6,7 +6,7 @@ import pytest
 from core_test_support import initialized, updated
 from fivee_test_support import initial_5e_game
 
-from aidm.engine import narrator_evidence, trace_fact
+from aidm.engine import narrator_evidence, trace_line
 from aidm.engines.dnd5e.direction import Damage, Dnd5eDirection, LevelUp
 from aidm.engines.story.direction import StoryDirection
 from aidm.growth import Growth
@@ -51,7 +51,7 @@ def test_a_trace_entry_reloads_as_the_engine_that_wrote_it(tmp_path: Path) -> No
     would be smart-union-guessed into Story shapes."""
     engine, state = initial_5e_game()
     traces = FileTraces(tmp_path)
-    transition = engine.rules.resolve(
+    transition = engine.resolve(
         Dnd5eDirection(
             intent="Kael endures a falling stone.",
             tone="dangerous",
@@ -80,8 +80,8 @@ def test_a_trace_entry_reloads_as_the_engine_that_wrote_it(tmp_path: Path) -> No
     assert [type(fact).__name__ for fact in reloaded[0].facts] == [
         type(fact).__name__ for fact in transition.facts
     ]
-    assert [trace_fact(engine, fact) for fact in reloaded[1].facts] == [
-        trace_fact(engine, fact) for fact in transition.facts
+    assert [trace_line(engine, fact) for fact in reloaded[1].facts] == [
+        trace_line(engine, fact) for fact in transition.facts
     ]
 
 

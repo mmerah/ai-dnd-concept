@@ -3,8 +3,18 @@ from typing import Annotated, Self
 
 from pydantic import Field, model_validator
 
-from aidm.engines.dnd5e.state import Dnd5eState
-from aidm.engines.story.state import StoryState
+from aidm.engines.dnd5e.state import (
+    Dnd5eActorDefinition,
+    Dnd5eCharacterData,
+    Dnd5eItemDefinition,
+    Dnd5eState,
+)
+from aidm.engines.story.state import (
+    StoryActorDefinition,
+    StoryCharacterData,
+    StoryItemDefinition,
+    StoryState,
+)
 
 from .base import (
     PLAYER_ID,
@@ -22,6 +32,31 @@ from .base import (
 from .facts import ActorMoved, CoreFact, EntityCreated, EntityDiscovered, ItemMoved
 
 type EngineState = Annotated[StoryState | Dnd5eState, Field(discriminator="engine")]
+type ActorEngineData = Annotated[
+    StoryActorDefinition | Dnd5eActorDefinition,
+    Field(discriminator="engine"),
+]
+type ItemEngineData = Annotated[
+    StoryItemDefinition | Dnd5eItemDefinition,
+    Field(discriminator="engine"),
+]
+type CharacterEngineData = Annotated[
+    StoryCharacterData | Dnd5eCharacterData,
+    Field(discriminator="engine"),
+]
+type EntityEngineData = ActorEngineData | ItemEngineData
+type EngineData = EntityEngineData | CharacterEngineData
+
+
+def for_engine[T: EngineData](data: EngineData, expected: type[T]) -> T:
+    """Tags are checked once at load, so a mismatch here means the wrong engine is resolving."""
+    if not isinstance(data, expected):
+        raise ValueError(f"authored data is {data.engine!r}, not {expected.__name__}")
+    return data
+
+
+def for_engine_or_none[T: EngineData](data: EngineData | None, expected: type[T]) -> T | None:
+    return None if data is None else for_engine(data, expected)
 
 
 class WorldState(Mutable):

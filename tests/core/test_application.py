@@ -9,7 +9,6 @@ from aidm.agents import director_stage, shared_stages
 from aidm.application import GameSession, LaunchTarget, Runtime
 from aidm.base import PLAYER_ID
 from aidm.content import ScenarioMeta
-from aidm.engine import resolve
 from aidm.engines.dnd5e.advancement import Dnd5eAdvancementDecisions
 from aidm.engines.story.access import story_state
 from aidm.engines.story.advancement import RaiseApproach
@@ -82,7 +81,7 @@ def test_advancement_commits_through_the_same_path_and_reaches_the_trace(tmp_pat
     """An advancement is a transaction like a turn: it saves and reaches the trace panel."""
     game = session(tmp_path)
     for _ in range(3):
-        game.state = resolve(game.engine, setback_direction(), game.state, Random(2)).state
+        game.state = game.engine.resolve(setback_direction(), game.state, Random(2)).state
     player = story_state(game.state).actor(PLAYER_ID)
     assert player.growth_marks == 3
     before = player.approaches.bold

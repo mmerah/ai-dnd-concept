@@ -17,7 +17,7 @@ from .base import (
     placement,
     slug,
 )
-from .engine import Engine, entity_renderer, narrator_evidence, resolve
+from .engine import Engine, entity_renderer, narrator_evidence
 from .growth import GrowthRequest, screen_growth
 from .prompts import (
     SceneSnapshot,
@@ -70,7 +70,7 @@ async def run_turn(
     )
     direction: Direction = await director.run(prompts["director"], state, history)
 
-    transition = resolve(engine, direction, state, rng)
+    transition = engine.resolve(direction, state, rng)
     draft = transition.state.draft()
     evidence = narrator_evidence(engine, transition.facts)
 
@@ -118,7 +118,7 @@ async def run_turn(
     draft.history = (*draft.history, Exchange(prompt=prompt, narration=narration))
     draft.turn += 1
     final = draft.committed()
-    engine.rules.validate_state(final)
+    engine.validate_state(final)
     return TurnResult(
         state=final,
         turn=Turn(
@@ -163,7 +163,7 @@ async def _grow(
             _requested_location(request, draft),
         )
         facts.append(draft.add(entity))
-        engine.rules.created(draft, entity)
+        engine.created(draft, entity)
         created.append(entity)
     return tuple(created), tuple(facts)
 

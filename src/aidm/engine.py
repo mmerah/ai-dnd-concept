@@ -1,20 +1,16 @@
-from collections.abc import Sequence
+from collections.abc import Callable, Sequence
 from random import Random
-from typing import Literal, overload
+from typing import ClassVar, Protocol
 
-from aidm.engines.dnd5e.advancement import Dnd5eAdvancementDecisions
-from aidm.engines.dnd5e.direction import Dnd5eDirection
-from aidm.engines.dnd5e.engine import Dnd5eEngine, build_dnd5e_engine
-from aidm.engines.dnd5e.facts import Dnd5eFactBase
-from aidm.engines.dnd5e.state import Dnd5eState
-from aidm.engines.story.advancement import StoryAdvancementDecision
-from aidm.engines.story.direction import StoryDirection
-from aidm.engines.story.engine import StoryEngine, build_story_engine
-from aidm.engines.story.facts import StoryFactBase
-from aidm.engines.story.state import StoryState
+from pydantic_ai import RunContext
+from pydantic_ai.output import OutputSpec
 
-from .base import EngineId
+from aidm.engines.dnd5e.engine import build_dnd5e_engine
+from aidm.engines.story.engine import build_story_engine
+
+from .base import AdvancementDecision, EngineId, Entity
 from .config import Settings
+from .content import AuthoredWorld
 from .facts import (
     ActorMoved,
     EntityCreated,
@@ -24,102 +20,84 @@ from .facts import (
 )
 from .prompts import EntityRenderer
 from .transition import Direction, Fact, Transition
-from .world import GameState
-
-type Engine = StoryEngine | Dnd5eEngine
-type AdvancementDecision = StoryAdvancementDecision | Dnd5eAdvancementDecisions
+from .world import CharacterEngineData, EngineState, GameState
 
 NOTHING_MECHANICAL = "- (nothing mechanical happened)"
 
 
-@overload
-def engine_for(engine: Literal["story"], config: Settings) -> StoryEngine: ...
+class Engine(Protocol):
+    """One ruleset seen flat, so core never names a concrete engine."""
+
+    id: ClassVar[EngineId]
+
+    def initial_state(
+        self,
+        authored: AuthoredWorld,
+        character: CharacterEngineData,
+    ) -> EngineState: ...
+
+    def validate_state(self, state: GameState) -> None: ...
+
+    def created(self, draft: GameState, entity: Entity) -> None: ...
+
+    def resolve(self, direction: Direction, state: GameState, rng: Random) -> Transition: ...
+
+    def advance(
+        self,
+        decision: AdvancementDecision,
+        state: GameState,
+        rng: Random,
+    ) -> Transition: ...
+
+    def advancement_available(self, state: GameState) -> bool: ...
+
+    def director_output(self) -> OutputSpec[Direction]: ...
+
+    def director_instructions(self) -> str: ...
+
+    def validate_direction(
+        self,
+        ctx: RunContext[GameState],
+        direction: Direction,
+    ) -> Direction: ...
+
+    def entity_state(self, entity: Entity, state: GameState) -> str: ...
+
+    def narrator_fact(self, fact: Fact) -> str | None: ...
+
+    def trace_fact(self, fact: Fact) -> str: ...
+
+    def trace_direction(self, direction: Direction) -> str: ...
 
 
-@overload
-def engine_for(engine: Literal["dnd5e"], config: Settings) -> Dnd5eEngine: ...
+ENGINES: dict[EngineId, Callable[[Settings], Engine]] = {
+    "story": lambda _: build_story_engine(),
+    "dnd5e": lambda config: build_dnd5e_engine(config.dnd5e.pack_paths),
+}
 
 
 def engine_for(engine: EngineId, config: Settings) -> Engine:
-    match engine:
-        case "story":
-            return build_story_engine()
-        case "dnd5e":
-            return build_dnd5e_engine(config.dnd5e.pack_paths)
-
-
-def resolve(engine: Engine, direction: Direction, state: GameState, rng: Random) -> Transition:
-    match engine, direction:
-        case StoryEngine(), StoryDirection():
-            return engine.rules.resolve(direction, state, rng)
-        case Dnd5eEngine(), Dnd5eDirection():
-            return engine.rules.resolve(direction, state, rng)
-        case _:
-            raise TypeError(f"{engine.id!r} engine received a {type(direction).__name__}")
-
-
-def resolve_advancement(
-    engine: Engine,
-    decision: AdvancementDecision,
-    state: GameState,
-    rng: Random,
-) -> Transition:
-    if isinstance(decision, Dnd5eAdvancementDecisions):
-        if isinstance(engine, Dnd5eEngine):
-            return engine.advancement.advance(state, decision, rng)
-    elif isinstance(engine, StoryEngine):
-        return engine.advancement.advance(state, decision, rng)
-    raise TypeError(f"{engine.id!r} engine received a {type(decision).__name__}")
-
-
-def trace_direction(engine: Engine, direction: Direction) -> str:
-    match engine, direction:
-        case StoryEngine(), StoryDirection():
-            return engine.presentation.trace_direction(direction)
-        case Dnd5eEngine(), Dnd5eDirection():
-            return engine.presentation.trace_direction(direction)
-        case _:
-            raise TypeError(f"{engine.id!r} engine received a {type(direction).__name__}")
+    return ENGINES[engine](config)
 
 
 def narrator_evidence(engine: Engine, facts: Sequence[Fact]) -> str:
     lines = [
-        f"- {rendered}" for fact in facts if (rendered := narrator_fact(engine, fact)) is not None
+        f"- {rendered}" for fact in facts if (rendered := narrator_line(engine, fact)) is not None
     ]
     return "\n".join(lines) or NOTHING_MECHANICAL
 
 
-def narrator_fact(engine: Engine, fact: Fact) -> str | None:
-    match engine, fact:
-        case _, (EntityCreated() | EntityDiscovered() | ActorMoved() | ItemMoved()):
-            return core_fact_summary(fact)
-        case StoryEngine(), StoryFactBase():
-            return engine.presentation.narrator_fact(fact)
-        case Dnd5eEngine(), Dnd5eFactBase():
-            return engine.presentation.narrator_fact(fact)
-        case _:
-            raise TypeError(f"{engine.id!r} engine received a {type(fact).__name__}")
+def narrator_line(engine: Engine, fact: Fact) -> str | None:
+    if isinstance(fact, EntityCreated | EntityDiscovered | ActorMoved | ItemMoved):
+        return core_fact_summary(fact)
+    return engine.narrator_fact(fact)
 
 
-def trace_fact(engine: Engine, fact: Fact) -> str:
-    """Core renders its own facts and delegates the engine's; the dispatch moves, it does not go."""
-    match engine, fact:
-        case _, (EntityCreated() | EntityDiscovered() | ActorMoved() | ItemMoved()):
-            return core_fact_summary(fact)
-        case StoryEngine(), StoryFactBase():
-            return engine.presentation.trace_fact(fact)
-        case Dnd5eEngine(), Dnd5eFactBase():
-            return engine.presentation.trace_fact(fact)
-        case _:
-            raise TypeError(f"{engine.id!r} engine received a {type(fact).__name__}")
+def trace_line(engine: Engine, fact: Fact) -> str:
+    if isinstance(fact, EntityCreated | EntityDiscovered | ActorMoved | ItemMoved):
+        return core_fact_summary(fact)
+    return engine.trace_fact(fact)
 
 
 def entity_renderer(engine: Engine, state: GameState) -> EntityRenderer:
-    """Bind the engine presenter to the state it reads, so scene builders stay engine-blind."""
-    match engine, state.engine:
-        case StoryEngine(presentation=presentation), StoryState() as engine_state:
-            return lambda entity: presentation.entity_state(entity, engine_state)
-        case Dnd5eEngine(presentation=presentation), Dnd5eState() as engine_state:
-            return lambda entity: presentation.entity_state(entity, engine_state)
-        case _:
-            raise TypeError(f"{engine.id!r} engine received a {type(state.engine).__name__} state")
+    return lambda entity: engine.entity_state(entity, state)

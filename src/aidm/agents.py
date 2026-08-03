@@ -3,7 +3,6 @@ from dataclasses import dataclass
 from functools import cached_property
 from types import NoneType
 
-from pydantic import BaseModel
 from pydantic_ai import Agent, NativeOutput
 from pydantic_ai._output import OutputValidatorFunc  # pyright: ignore[reportPrivateImportUsage]
 from pydantic_ai.messages import (
@@ -17,16 +16,12 @@ from pydantic_ai.models.openai import OpenAIChatModel, OpenAIChatModelSettings
 from pydantic_ai.output import OutputSpec
 from pydantic_ai.providers.openai import OpenAIProvider
 
-from aidm.engines.dnd5e.direction import Dnd5eDirection
-from aidm.engines.dnd5e.engine import Dnd5eEngine
-from aidm.engines.story.direction import StoryDirection
-from aidm.engines.story.engine import StoryEngine
-
 from . import prompts
 from .base import EntityDetail, Role
 from .config import ProviderConfig, RoleConfig, Settings
 from .engine import Engine
 from .growth import Growth
+from .transition import Direction
 from .world import Exchange, GameState
 
 
@@ -84,37 +79,19 @@ class SharedStages:
     creator: Stage[None, EntityDetail]
 
 
-type DirectorStage = Stage[GameState, StoryDirection] | Stage[GameState, Dnd5eDirection]
+type DirectorStage = Stage[GameState, Direction]
 
 
 def director_stage(engine: Engine, settings: Settings) -> DirectorStage:
-    """One branch per engine so the director's own direction type flows through the stage."""
-    match engine:
-        case StoryEngine(director=director):
-            return _director_stage(
-                director.instructions(), director.output, director.validate, settings
-            )
-        case Dnd5eEngine(director=director):
-            return _director_stage(
-                director.instructions(), director.output, director.validate, settings
-            )
-
-
-def _director_stage[D: BaseModel](
-    mechanics: str,
-    output: OutputSpec[D],
-    validate: OutputValidatorFunc[GameState, D],
-    settings: Settings,
-) -> Stage[GameState, D]:
     role = settings.roles.director
     return Stage(
         name="director",
-        instructions=f"{prompts.CORE_DIRECTOR}\n\n{mechanics}",
-        output_type=output,
+        instructions=f"{prompts.CORE_DIRECTOR}\n\n{engine.director_instructions()}",
+        output_type=engine.director_output(),
         deps_type=GameState,
         role=role,
         provider=settings.providers.for_name(role.provider),
-        validators=(validate,),
+        validators=(engine.validate_direction,),
     )
 
 

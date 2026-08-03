@@ -1,7 +1,7 @@
 from random import Random
 
 from aidm.advancement import AdvancementStatus
-from aidm.base import PLAYER_ID, Frozen
+from aidm.base import PLAYER_ID, AdvancementDecision
 from aidm.transition import Transition
 from aidm.world import GameState
 
@@ -12,7 +12,7 @@ from .ruleset import Ruleset
 from .state import MAX_LEVEL, Decisions, Dnd5eActor
 
 
-class Dnd5eAdvancementDecisions(Frozen):
+class Dnd5eAdvancementDecisions(AdvancementDecision):
     decisions: Decisions
 
 

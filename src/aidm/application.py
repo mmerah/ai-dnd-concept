@@ -6,10 +6,10 @@ from textwrap import shorten
 from pydantic import BaseModel, ConfigDict, ValidationError
 
 from .agents import DirectorStage, SharedStages, director_stage, shared_stages
-from .base import SAVE_VERSION, EngineId, Role, Slug
+from .base import SAVE_VERSION, AdvancementDecision, EngineId, Role, Slug
 from .config import Settings
 from .content import Character, Scenario, authored_world
-from .engine import AdvancementDecision, Engine, engine_for, resolve_advancement
+from .engine import Engine, engine_for
 from .pipeline import TurnOptions, run_turn
 from .store import (
     FileSaves,
@@ -300,13 +300,13 @@ class GameSession:
         return result.turn
 
     def advance(self, decision: AdvancementDecision) -> tuple[Fact, ...]:
-        transition = resolve_advancement(self.engine, decision, self.state, self.rng)
-        self.engine.rules.validate_state(transition.state)
+        transition = self.engine.advance(decision, self.state, self.rng)
+        self.engine.validate_state(transition.state)
         self._commit(transition.state, Advance(facts=transition.facts))
         return transition.facts
 
     def advancement_available(self) -> bool:
-        return self.engine.advancement.available(self.state)
+        return self.engine.advancement_available(self.state)
 
     def restart(self) -> None:
         opening = self._begun()
@@ -329,9 +329,9 @@ class GameSession:
             character_id=self.character.id,
             scenario=self.scenario.meta,
             world=authored.world,
-            engine=self.engine.lifecycle.initialise(authored, self.character.overlay.character),
+            engine=self.engine.initial_state(authored, self.character.overlay.character),
         )
-        self.engine.rules.validate_state(state)
+        self.engine.validate_state(state)
         return state
 
     def _resumable(self, state: GameState) -> GameState:
@@ -345,7 +345,7 @@ class GameSession:
                 f"save scenario is {state.scenario.title!r}, "
                 f"selected scenario is {self.scenario.meta.title!r}"
             )
-        self.engine.rules.validate_state(state)
+        self.engine.validate_state(state)
         return state
 
 

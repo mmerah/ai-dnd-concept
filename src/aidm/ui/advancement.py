@@ -3,7 +3,7 @@ from collections.abc import Callable
 from nicegui import ui
 
 from aidm.application import GameSession
-from aidm.engine import AdvancementDecision
+from aidm.base import AdvancementDecision
 
 
 def confirm_advancement(

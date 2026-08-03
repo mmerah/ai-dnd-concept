@@ -44,14 +44,16 @@ Tests must be deterministic and require no network.
 - Core owns commits. Engines own typed mechanics and mutate the draft directly, including topology, through `GameState`'s `add`/`reveal`/`move_actor`/`move_item`.
 - A turn's facts are one persisted union — core topology facts plus each engine's own — discriminated on `source` then `fact`. Core renders its own and delegates the engine's in `engine.py`; directions carry the same `engine` tag so a reloaded trace never guesses.
 - `GameState.engine` is one `EngineAggregate` per engine, discriminated on the engine tag. Entities carry no rules field, and the state validator asserts those keys track the world's actor and item ids.
-- Engine state and authored engine data are typed unions, never JSON envelopes: a wrong-engine payload is unrepresentable rather than validated. Engines narrow authored data with `content.py::for_engine`.
+- Engine state and authored engine data are typed unions, never JSON envelopes: a wrong-engine payload is unrepresentable rather than validated. The unions live in `world.py`, and each engine narrows its own authored data with `for_engine`.
 - A scenario and a character are each authored once. `world.json` and `base.json` hold the canon as runtime `Entity` values, and one `<engine>.json` overlay per ruleset keys its data off those authored ids. An overlay's presence is the compatibility check; nothing else declares which rulesets play.
 - Authored ids are the ids. Core composes the authored files onto `AuthoredWorld` and hands each entity's engine data back under the id the author wrote; only entities the model creates get a derived `slug`. An engine never re-derives which definition became which entity.
 - A save names its own origin: `scenario_id` and `character_id` are persisted, so resuming loads content by id instead of rediscovering it by matching metadata.
 - One scenario offers several rulesets, so the engine is a launcher choice: it is part of the save slug and the game route, and `base.py::as_engine_id`/`content_id` narrow the routed strings at that boundary. Content offering no overlay is skipped rather than surfaced; the home screen is the only way into the app.
 - One distribution. `aidm/engines/story/` imports no 5e code and vice versa; neither engine imports `aidm/ui/` or NiceGUI, and the core modules import no UI. Enforced by `tests/core/test_package_boundary.py`, which resolves relative imports because the engines are siblings.
 - The import graph is acyclic, with no deferred or `TYPE_CHECKING` imports. `base.py` holds the leaf shapes `world.py` and both engines' `state.py` share, and an engine's `GameState` accessors live in its `access.py`, below the state models core imports.
-- `EngineId` is a closed literal. An engine is a concrete value built by `aidm/engine.py::engine_for`, and core pairs each engine with its own direction type there.
+- Adding an engine means one package and four declaration sites: `base.py` names engines only as the `EngineId` literal, `world.py` holds the state and authored-data unions, `transition.py` holds the fact and direction unions, and `engine.py` holds the `Engine` Protocol and the registry. No other core module imports an engine package; enforced by `tests/core/test_package_boundary.py`.
+- `EngineId` is a closed literal, and an engine is a value built from `engine.py::ENGINES`. Core sees one flat `Engine` Protocol and never names a concrete engine outside the declaration sites; each engine's façade widens to the persisted union and re-narrows, because parameters are contravariant.
+- A shared director check lives in `aidm/directing.py`: one `Reference` marker, and faults reported in a batch so the model retries knowing all of them. Commands stay engine-owned.
 - Each agent has one narrow role. Its proposal is resolved by the selected engine, never another prompt.
 - `aidm/prompts.py` owns one centralized context policy for what each role sees. `SceneSnapshot` is the one projection of a `GameState`; each renderer takes it plus the bound entity renderer, never a per-role DTO.
 - The 5e engine reads compiled profiles from `aidm/engines/dnd5e/ruleset.py`; only `content/pack_ruleset.py` knows pack storage shape.
@@ -61,7 +63,7 @@ Tests must be deterministic and require no network.
 - A trace entry records what occurred, never the resulting state.
 - `save_version` is the only compatibility gate. `store.py` refuses a stale save or trace at load, each trace entry carrying its own; regenerating the SRD content pack bumps `SAVE_VERSION`.
 - Only the Narrator writes player-facing prose and it never sees unrevealed canon. `render_narrator` takes `VisibleScene`, which has no field a leak could travel through; never widen it to `SceneSnapshot`.
-- Every role sees engine state through engine-owned presentation, bound to the state it reads by `engine.py::entity_renderer`; core owns which entities each role may see.
+- Every role sees engine state through engine-owned presentation, bound to the state it reads by `Engine.entity_state`; core owns which entities each role may see.
 - The Narrator receives exact state for visible entities and translates mechanics into fiction instead of reciting stat blocks.
 
 ## Framework rules

@@ -3,7 +3,7 @@ from collections.abc import Sequence
 from nicegui import ui
 
 from aidm.application import GameSession
-from aidm.engine import Engine, trace_direction, trace_fact
+from aidm.engine import Engine, trace_line
 from aidm.growth import RejectedGrowth
 from aidm.transition import Fact
 from aidm.turn import Advance, TraceEntry, Turn
@@ -48,7 +48,7 @@ def _entry_trace(engine: Engine, entry: TraceEntry) -> None:
 def _turn_trace(engine: Engine, turn: Turn) -> None:
     _section("DIRECTOR intent (to the narrator)", turn.direction.intent)
     _section("DIRECTOR tone (to the narrator)", turn.direction.tone)
-    _section("DIRECTOR mechanics (private)", trace_direction(engine, turn.direction))
+    _section("DIRECTOR mechanics (private)", engine.trace_direction(turn.direction))
     _section("FACTS (private)", _facts(engine, turn.facts))
     _section("NARRATOR-SAFE EVIDENCE", turn.narrator_evidence)
     _section("NARRATOR", turn.narration)
@@ -67,7 +67,7 @@ def _turn_trace(engine: Engine, turn: Turn) -> None:
 
 
 def _facts(engine: Engine, facts: Sequence[Fact]) -> str:
-    lines = [f"- {trace_fact(engine, fact)}" for fact in facts]
+    lines = [f"- {trace_line(engine, fact)}" for fact in facts]
     return "\n".join(lines) or "- (none)"
 
 

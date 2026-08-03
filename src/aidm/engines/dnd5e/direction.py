@@ -1,10 +1,10 @@
 from collections.abc import Iterator, Mapping, Sequence
-from dataclasses import dataclass
 from typing import Annotated, ClassVar, Literal, get_args
 
 from pydantic import Field, TypeAdapter
 
-from aidm.base import PLAYER_ID, EntityId, Kind
+from aidm.base import PLAYER_ID, EntityId
+from aidm.directing import Reference
 
 from .content.records.spells import MAX_SPELL_LEVEL, SpellLevel
 from .content.vocabulary import CONDITION_NAMES, ConditionName, RestType
@@ -12,14 +12,7 @@ from .dice import SelfContainedDice
 from .state import FeatureKey, SpellKey
 from .values import ABILITIES, Ability, Value
 
-
-@dataclass(frozen=True, slots=True)
-class References:
-    kind: Kind | None
-    present: bool = False
-
-
-CanonRef = tuple[EntityId, References]
+CanonRef = tuple[EntityId, Reference]
 
 # The consuming action owns the sign, so magnitudes stay non-negative.
 Magnitude = SelfContainedDice | Annotated[int, Field(ge=0, strict=True)]
@@ -39,7 +32,7 @@ Example: the player studies a shelf and `ledger` is in your unrevealed list -> `
 entity_id `ledger`."""
 
     action: Literal["discover"] = "discover"
-    entity_id: Annotated[EntityId, References(None)] = Field(
+    entity_id: Annotated[EntityId, Reference(None)] = Field(
         description="Id of any canon entity, of any kind."
     )
 
@@ -52,7 +45,7 @@ and is at their location; it is revealed first if it was hidden.
 Example: they pocket the `vault_map` lying here -> `take_item` with item_id `vault_map`."""
 
     action: Literal["take_item"] = "take_item"
-    item_id: Annotated[EntityId, References("item")] = Field(
+    item_id: Annotated[EntityId, Reference("item")] = Field(
         description="Id of a canon `item` at the player's location."
     )
 
@@ -65,7 +58,7 @@ comes to rest where they stand.
 Example: they set the `vault_map` on the desk -> `drop_item` with item_id `vault_map`."""
 
     action: Literal["drop_item"] = "drop_item"
-    item_id: Annotated[EntityId, References("item")] = Field(
+    item_id: Annotated[EntityId, Reference("item")] = Field(
         description="Id of a canon `item` the player is carrying."
     )
 
@@ -79,10 +72,10 @@ Example: they hand the `vault_map` to Mara -> `give_item` with item_id `vault_ma
 `mara`."""
 
     action: Literal["give_item"] = "give_item"
-    item_id: Annotated[EntityId, References("item")] = Field(
+    item_id: Annotated[EntityId, Reference("item")] = Field(
         description="Id of a canon `item` the player is carrying."
     )
-    actor_id: Annotated[EntityId, References("actor", present=True)] = Field(
+    actor_id: Annotated[EntityId, Reference("actor", present=True)] = Field(
         description="Id of the `actor` receiving it, at the player's location."
     )
 
@@ -148,7 +141,7 @@ Example: they hurl a fireball at the ghoul -> `cast` with spell \
     slot_level: SpellLevel = Field(
         description=f"Level of the slot spent, 1-{MAX_SPELL_LEVEL}; 0 for a cantrip."
     )
-    target_id: Annotated[EntityId | None, References("actor", present=True)] = Field(
+    target_id: Annotated[EntityId | None, Reference("actor", present=True)] = Field(
         default=None, description="Id of the `actor` aimed at, here with the player; omit for them."
     )
 
@@ -175,7 +168,7 @@ Example: a trap catches the player -> `damage` with amount '2d4'. Kael swings at
 
     action: Literal["damage"] = "damage"
     amount: Magnitude = Field(description="Hit points lost: dice like '2d6', or a number >= 0.")
-    target_id: Annotated[EntityId | None, References("actor", present=True)] = Field(
+    target_id: Annotated[EntityId | None, Reference("actor", present=True)] = Field(
         default=None, description="Id of the `actor` harmed, here with the player; omit for them."
     )
 
@@ -188,7 +181,7 @@ as `damage`. Example: a poultice on the player -> `heal` with amount '1d4 + 2'."
 
     action: Literal["heal"] = "heal"
     amount: Magnitude = Field(description="Hit points restored: dice like '1d4', or a number >= 0.")
-    target_id: Annotated[EntityId | None, References("actor", present=True)] = Field(
+    target_id: Annotated[EntityId | None, Reference("actor", present=True)] = Field(
         default=None, description="Id of the `actor` healed, here with the player; omit for them."
     )
 
@@ -206,7 +199,7 @@ again -> the same with ends true."""
     action: Literal["apply_condition"] = "apply_condition"
     condition: ConditionName = Field(description=f"One of: {', '.join(CONDITION_NAMES)}.")
     ends: bool = Field(default=False, description="True to lift the condition instead of applying.")
-    target_id: Annotated[EntityId | None, References("actor", present=True)] = Field(
+    target_id: Annotated[EntityId | None, Reference("actor", present=True)] = Field(
         default=None, description="Id of the `actor` affected, here with the player; omit for them."
     )
 
@@ -223,10 +216,10 @@ Example: "I go down to the vault" and `vault` is in your lists -> `move` with lo
 Mara walks off to the cloister -> `move` location_id `cloister`, actor_id `mara`."""
 
     action: Literal["move"] = "move"
-    location_id: Annotated[EntityId, References("location")] = Field(
+    location_id: Annotated[EntityId, Reference("location")] = Field(
         description="Id of a canon entity whose kind is `location`."
     )
-    actor_id: Annotated[EntityId | None, References("actor")] = Field(
+    actor_id: Annotated[EntityId | None, Reference("actor")] = Field(
         default=None, description="Id of the `actor` to move; omit to move the player."
     )
 
@@ -246,11 +239,11 @@ The player swings back -> `attack` with target_id `goblin`, weapon 'a notched lo
     weapon: str = Field(
         description="The attacker's own attack by name, or an item they carry, spelled as shown."
     )
-    target_id: Annotated[EntityId | None, References("actor", present=True)] = Field(
+    target_id: Annotated[EntityId | None, Reference("actor", present=True)] = Field(
         default=None,
         description="Id of the `actor` struck at, here with the player; omit for them.",
     )
-    attacker_id: Annotated[EntityId | None, References("actor", present=True)] = Field(
+    attacker_id: Annotated[EntityId | None, Reference("actor", present=True)] = Field(
         default=None, description="Id of the `actor` attacking; omit for the player."
     )
 
@@ -292,7 +285,7 @@ Example: gas floods the crypt -> `roll_save` ability 'constitution', dc 12, whos
 `damage` with amount '2d4'."""
 
     action: Literal["roll_save"] = "roll_save"
-    target_id: Annotated[EntityId | None, References("actor", present=True)] = Field(
+    target_id: Annotated[EntityId | None, Reference("actor", present=True)] = Field(
         default=None,
         description="Id of the `actor` resisting, here with the player; omit for them.",
     )
@@ -339,7 +332,7 @@ def flatten(consequences: Sequence["Consequence"]) -> Iterator["Consequence"]:
 
 def _own_refs(consequence: "Consequence") -> Iterator[CanonRef]:
     for name, field in type(consequence).model_fields.items():
-        marker = next((m for m in field.metadata if isinstance(m, References)), None)
+        marker = next((m for m in field.metadata if isinstance(m, Reference)), None)
         if marker is None:
             continue
         value: object = getattr(consequence, name)
@@ -347,7 +340,7 @@ def _own_refs(consequence: "Consequence") -> Iterator[CanonRef]:
             continue
         if not isinstance(value, str):
             raise TypeError(
-                f"{type(consequence).__name__}.{name} is marked References "
+                f"{type(consequence).__name__}.{name} is marked Reference "
                 f"but holds a {type(value).__name__}"
             )
         yield EntityId(value), marker
@@ -371,8 +364,3 @@ class Dnd5eDirection(Value):
 
     def canon_refs(self) -> list[CanonRef]:
         return all_canon_refs(self.mechanics)
-
-    def check(self) -> str | None:
-        if self.speaker_id == PLAYER_ID:
-            return "speaker_id must be an actor the player addresses, never the player"
-        return None

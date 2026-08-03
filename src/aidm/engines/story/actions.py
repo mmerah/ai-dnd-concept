@@ -1,4 +1,3 @@
-from dataclasses import dataclass
 from typing import Annotated, ClassVar, Literal, TypeGuard, assert_never
 
 from pydantic import Field
@@ -9,20 +8,14 @@ from aidm.base import (
     EntityId,
     Frozen,
     ItemEntity,
-    Kind,
     LocationEntity,
     slug,
 )
+from aidm.directing import Reference
 from aidm.facts import CoreFact
 from aidm.world import GameState
 
 from .access import created_state
-
-
-@dataclass(frozen=True, slots=True)
-class EntityReference:
-    kind: Kind | None
-    present: bool = False
 
 
 class CoreAction(Frozen):
@@ -40,7 +33,7 @@ unrevealed list: they notice it, are told of it, or reach it. Prefer this over i
 replacement."""
 
     action: Literal["discover"] = "discover"
-    entity_id: Annotated[EntityId, EntityReference(None)] = Field(
+    entity_id: Annotated[EntityId, Reference(None)] = Field(
         description="Exact id of the existing canon entity to reveal."
     )
 
@@ -52,10 +45,10 @@ class Move(CoreAction):
 move the player. Moving the player to an unrevealed location discovers it."""
 
     action: Literal["move"] = "move"
-    location_id: Annotated[EntityId, EntityReference("location")] = Field(
+    location_id: Annotated[EntityId, Reference("location")] = Field(
         description="Exact id of the canon location the actor enters."
     )
-    actor_id: Annotated[EntityId | None, EntityReference("actor")] = Field(
+    actor_id: Annotated[EntityId | None, Reference("actor")] = Field(
         default=None,
         description="Exact id of the actor to move; omit to move the player.",
     )
@@ -68,7 +61,7 @@ class TakeItem(CoreAction):
 location. The item is discovered automatically if it was unrevealed."""
 
     action: Literal["take_item"] = "take_item"
-    item_id: Annotated[EntityId, EntityReference("item")] = Field(
+    item_id: Annotated[EntityId, Reference("item")] = Field(
         description="Exact id of a loose canon item at the player's location."
     )
 
@@ -80,7 +73,7 @@ class DropItem(CoreAction):
 carrying an item in their inventory."""
 
     action: Literal["drop_item"] = "drop_item"
-    item_id: Annotated[EntityId, EntityReference("item")] = Field(
+    item_id: Annotated[EntityId, Reference("item")] = Field(
         description="Exact id of an item the player currently carries."
     )
 
@@ -92,10 +85,10 @@ class GiveItem(CoreAction):
 their location. The receiving actor then carries it."""
 
     action: Literal["give_item"] = "give_item"
-    item_id: Annotated[EntityId, EntityReference("item")] = Field(
+    item_id: Annotated[EntityId, Reference("item")] = Field(
         description="Exact id of an item the player currently carries."
     )
-    actor_id: Annotated[EntityId, EntityReference("actor", present=True)] = Field(
+    actor_id: Annotated[EntityId, Reference("actor", present=True)] = Field(
         description="Exact id of the receiving actor here with the player."
     )
 
@@ -141,11 +134,11 @@ def is_core_action(value: object) -> TypeGuard[CoreActionUnion]:
     )
 
 
-def action_references(action: CoreActionUnion) -> tuple[tuple[EntityId, EntityReference], ...]:
-    references: list[tuple[EntityId, EntityReference]] = []
+def action_references(action: CoreActionUnion) -> tuple[tuple[EntityId, Reference], ...]:
+    references: list[tuple[EntityId, Reference]] = []
     for name, field in type(action).model_fields.items():
         marker = next(
-            (item for item in field.metadata if isinstance(item, EntityReference)),
+            (item for item in field.metadata if isinstance(item, Reference)),
             None,
         )
         if marker is None:

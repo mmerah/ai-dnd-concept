@@ -44,9 +44,9 @@ def initialized() -> tuple[StoryEngine, GameState]:
         character_id=selected_character.id,
         scenario=selected_scenario.meta,
         world=authored.world,
-        engine=engine.lifecycle.initialise(authored, selected_character.overlay.character),
+        engine=engine.initial_state(authored, selected_character.overlay.character),
     )
-    engine.rules.validate_state(state)
+    engine.validate_state(state)
     return engine, state
 
 

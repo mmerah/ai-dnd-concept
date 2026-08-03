@@ -5,7 +5,8 @@ rely on is asserted here rather than left to the next author to remember."""
 from typing import get_args
 
 from aidm.base import EntityId
-from aidm.engines.dnd5e.direction import CONSEQUENCE_TYPES, References, RollCheck, branches
+from aidm.directing import Reference
+from aidm.engines.dnd5e.direction import CONSEQUENCE_TYPES, RollCheck, branches
 
 
 def mentions_an_id(annotation: object) -> bool:
@@ -13,13 +14,13 @@ def mentions_an_id(annotation: object) -> bool:
 
 
 def test_every_id_field_declares_what_it_references() -> None:
-    """An id field with no `References` marker is an id the Director may invent unchecked. This
+    """An id field with no `Reference` marker is an id the Director may invent unchecked. This
     also catches a marker written inside a union member or a list, where pydantic drops it from
     `field.metadata` and the scan would see nothing."""
     for consequence in CONSEQUENCE_TYPES:
         for name, field in consequence.model_fields.items():
             if mentions_an_id(field.annotation):
-                marked = any(isinstance(m, References) for m in field.metadata)
+                marked = any(isinstance(m, Reference) for m in field.metadata)
                 assert marked, f"{consequence.__name__}.{name} names an id but declares nothing"
 
 

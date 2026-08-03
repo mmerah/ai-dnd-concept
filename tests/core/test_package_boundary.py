@@ -9,6 +9,7 @@ FORBIDDEN = {
     "engines/story": {"aidm.engines.dnd5e", "aidm.ui", "nicegui"},
     "engines/dnd5e": {"aidm.engines.story", "aidm.ui", "nicegui"},
 }
+DECLARATION_SITES = {"world.py", "transition.py", "engine.py"}
 
 
 def _source_files(package: str) -> tuple[Path, ...]:
@@ -30,16 +31,19 @@ def _absolute(package: tuple[str, ...], node: ast.ImportFrom) -> str:
     return ".".join((*parent, node.module) if node.module else parent)
 
 
-def _imports(package: str) -> set[str]:
+def _file_imports(path: Path) -> set[str]:
     imports: set[str] = set()
-    for path in _source_files(package):
-        tree = ast.parse(path.read_text(encoding="utf-8"), filename=str(path))
-        for node in ast.walk(tree):
-            if isinstance(node, ast.Import):
-                imports.update(alias.name for alias in node.names)
-            elif isinstance(node, ast.ImportFrom):
-                imports.add(_absolute(_package_of(path), node))
+    tree = ast.parse(path.read_text(encoding="utf-8"), filename=str(path))
+    for node in ast.walk(tree):
+        if isinstance(node, ast.Import):
+            imports.update(alias.name for alias in node.names)
+        elif isinstance(node, ast.ImportFrom):
+            imports.add(_absolute(_package_of(path), node))
     return imports
+
+
+def _imports(package: str) -> set[str]:
+    return {name for path in _source_files(package) for name in _file_imports(path)}
 
 
 @pytest.mark.parametrize(("package", "forbidden"), FORBIDDEN.items())
@@ -54,3 +58,13 @@ def test_packages_import_only_in_the_allowed_direction(
         if any(name == root or name.startswith(f"{root}.") for root in forbidden)
     }
     assert not violations
+
+
+def test_only_the_declaration_sites_import_an_engine_package() -> None:
+    """Adding an engine touches four declaration sites; `base.py` names them as a literal only."""
+    naming = {
+        path.name
+        for path in _source_files("core")
+        if any(name.startswith("aidm.engines") for name in _file_imports(path))
+    }
+    assert naming == DECLARATION_SITES

@@ -57,6 +57,10 @@ def slug(name: str, taken: Iterable[EntityId]) -> EntityId:
     return candidate
 
 
+class AdvancementDecision(Frozen):
+    """What the player chose in an engine's advancement UI; the engine that minted it applies it."""
+
+
 class EngineAggregate[ActorState: BaseModel, ItemState: BaseModel](Mutable):
     """An engine side table whose keys track the world's actors and items."""
 

@@ -2,8 +2,8 @@ from random import Random
 
 from core_test_support import character, initialized
 
-from aidm.base import PLAYER_ID, ActorEntity, EntityId, ItemEntity
-from aidm.engine import narrator_fact, trace_fact
+from aidm.base import ENGINE_IDS, PLAYER_ID, ActorEntity, EntityId, ItemEntity
+from aidm.engine import ENGINES, narrator_line, trace_line
 from aidm.engines.story.access import story_state
 from aidm.engines.story.actions import TakeItem
 from aidm.engines.story.direction import Risk, StoryDirection
@@ -18,7 +18,7 @@ def test_engine_initialization_and_state_contract() -> None:
 
     assert state.engine_id == engine.id
     assert story_state(state).actor(PLAYER_ID).approaches == sheet.approaches
-    engine.rules.validate_state(state)
+    engine.validate_state(state)
 
     restored = GameState.model_validate_json(state.model_dump_json())
     assert restored == state
@@ -36,17 +36,17 @@ def test_engine_resolution_is_pure_seeded_and_renders_every_fact() -> None:
     )
     before = state.model_dump_json()
 
-    first = engine.rules.resolve(direction, state, Random(19))
-    second = engine.rules.resolve(direction, state, Random(19))
+    first = engine.resolve(direction, state, Random(19))
+    second = engine.resolve(direction, state, Random(19))
 
     assert first == second
     assert state.model_dump_json() == before
     assert {fact.fact for fact in first.facts} >= {"entity_discovered", "item_moved", "risk-rolled"}
     assert first.state.model_dump_json() != before
-    engine.rules.validate_state(first.state)
+    engine.validate_state(first.state)
     for fact in first.facts:
-        assert trace_fact(engine, fact)
-        rendered = narrator_fact(engine, fact)
+        assert trace_line(engine, fact)
+        rendered = narrator_line(engine, fact)
         assert rendered is None or str(fact.model_dump()) not in rendered
 
 
@@ -70,8 +70,13 @@ def test_a_created_entity_gains_engine_state_in_the_same_commit() -> None:
     working = state.draft()
     for entity in (actor, item):
         _ = working.add(entity)
-        engine.rules.created(working, entity)
+        engine.created(working, entity)
     grown = working.committed()
 
     assert story_state(grown).actor(actor.id).approaches == DEFAULT_APPROACHES
     assert story_state(grown).item(item.id).gear is None
+
+
+def test_every_engine_id_has_a_builder() -> None:
+    """`ENGINES` is data, so no `match` fails when a new `EngineId` arrives without a builder."""
+    assert set(ENGINES) == set(ENGINE_IDS)

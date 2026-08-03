@@ -155,7 +155,7 @@ async def test_creator_growth_receives_valid_engine_rules_before_commit() -> Non
     assert location.id not in engine_state.actors
     assert result.turn.narrator_evidence == "- (nothing mechanical happened)"
     assert "new actor" not in result.turn.prompts["narrator"]
-    engine.rules.validate_state(result.state)
+    engine.validate_state(result.state)
 
 
 async def test_a_failed_role_never_mutates_the_input_state() -> None:

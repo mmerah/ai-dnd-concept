@@ -5,10 +5,10 @@ from pydantic import ValidationError
 from pydantic_ai import ModelRetry, NativeOutput, RunContext
 from pydantic_ai.output import OutputSpec
 
-from aidm.base import ActorEntity, EntityId
+from aidm.directing import check_refs, check_speaker
 from aidm.world import GameState
 
-from .direction import CONSEQUENCE_TYPES, Consequence, Dnd5eDirection, References, flatten
+from .direction import CONSEQUENCE_TYPES, Consequence, Dnd5eDirection, flatten
 from .rules import Dnd5eRules
 
 
@@ -62,56 +62,11 @@ class Dnd5eDirector:
         direction: Dnd5eDirection,
     ) -> Dnd5eDirection:
         state = ctx.deps
-        refs = [
-            (EntityId(str(entity_id)), reference) for entity_id, reference in direction.canon_refs()
-        ]
-        if direction.speaker_id is not None:
-            refs.append(
-                (
-                    EntityId(str(direction.speaker_id)),
-                    References("actor", present=True),
-                )
-            )
-        faults = [direction.check()]
-        faults.extend(consequence.check() for consequence in flatten(direction.mechanics))
+        faults = [consequence.check() for consequence in flatten(direction.mechanics)]
+        faults.append(check_speaker(state, direction.speaker_id))
+        faults.append(check_refs(state, direction.canon_refs()))
         if fault := next((item for item in faults if item is not None), None):
             raise ModelRetry(fault)
-        canon = state.world.entities
-        missing = sorted({entity_id for entity_id, _ in refs if entity_id not in canon})
-        if missing:
-            raise ModelRetry(f"unknown entity id(s): {missing}. Use only ids you were shown.")
-        mismatched = sorted(
-            f"{entity_id} is a {canon[entity_id].kind}, not a {reference.kind}"
-            for entity_id, reference in refs
-            if reference.kind is not None and canon[entity_id].kind != reference.kind
-        )
-        if mismatched:
-            raise ModelRetry(
-                f"wrong kind of entity: {'; '.join(mismatched)}. "
-                "Use an id of the kind each field asks for."
-            )
-        absent = sorted(
-            {
-                entity_id
-                for entity_id, reference in refs
-                if reference.present and not state.is_here(canon[entity_id])
-            }
-        )
-        if absent:
-            raise ModelRetry(
-                f"not here with the player: {absent}. Move them here first, or act on who is here."
-            )
-        if direction.speaker_id is not None:
-            speaker = canon[EntityId(str(direction.speaker_id))]
-            if (
-                not isinstance(speaker, ActorEntity)
-                or not speaker.known
-                or not state.is_here(speaker)
-            ):
-                raise ModelRetry(
-                    f"speaker {str(direction.speaker_id)!r} must be an NPC the player has met "
-                    "and who is here with them. Use null if nobody is being addressed."
-                )
         self._dry_run(direction, state)
         return direction
 

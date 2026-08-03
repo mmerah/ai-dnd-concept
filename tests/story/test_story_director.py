@@ -91,3 +91,12 @@ def test_a_genuine_validation_error_is_not_turned_into_a_retry() -> None:
 
     with pytest.raises(ValidationError):
         broken_director.validate(_director_context(state), direction)
+
+
+def test_the_player_is_never_the_speaker() -> None:
+    """Shared by both engines: losing this lets the Director voice the player as an NPC."""
+    engine, state = initial_story_game()
+    direction = StoryDirection(intent="Kael answers himself.", tone="flat", speaker_id=PLAYER_ID)
+
+    with pytest.raises(ModelRetry, match="never the player"):
+        engine.director.validate(_director_context(state), direction)

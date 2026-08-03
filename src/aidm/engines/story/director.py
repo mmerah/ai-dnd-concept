@@ -5,6 +5,7 @@ from pydantic_ai import ModelRetry, NativeOutput, RunContext
 from pydantic_ai.output import OutputSpec
 
 from aidm.base import PLAYER_ID, ActorEntity, Entity, EntityId, ItemEntity
+from aidm.directing import check_refs, check_speaker
 from aidm.world import GameState
 
 from .access import story_state
@@ -29,7 +30,6 @@ from .direction import (
     RecoverStress,
     Risk,
     StoryAction,
-    StoryConsequence,
     StoryDirection,
     TakeStress,
     flatten,
@@ -96,44 +96,37 @@ class StoryDirector:
     ) -> StoryDirection:
         state = ctx.deps
         engine = story_state(state)
-        if direction.speaker_id == PLAYER_ID:
-            raise ModelRetry("speaker_id names another actor, never the player")
-        if direction.speaker_id is not None:
-            speaker = self._require(state, direction.speaker_id, ActorEntity)
-            if not speaker.known:
-                raise ModelRetry(f"speaker {speaker.id!r} has not been revealed")
-            if not state.is_here(speaker):
-                raise ModelRetry(f"speaker {speaker.id!r} is not here with the player")
-        for consequence in flatten(direction.mechanics):
-            self._validate_consequence(state, engine, consequence)
+        consequences = flatten(direction.mechanics)
+        core: list[CoreActionUnion] = []
+        for consequence in consequences:
+            if isinstance(consequence, CoreAction):
+                if not is_core_action(consequence):
+                    raise TypeError(f"unsupported core action {type(consequence).__name__}")
+                core.append(consequence)
+        faults = [action.check() for action in core]
+        faults.append(check_speaker(state, direction.speaker_id))
+        faults.append(
+            check_refs(state, [ref for action in core for ref in action_references(action)])
+        )
+        if fault := next((item for item in faults if item is not None), None):
+            raise ModelRetry(fault)
+        for action in core:
+            self._validate_core_presence(state, action)
+        for consequence in consequences:
+            if not isinstance(consequence, CoreAction):
+                self._validate_actor_consequence(state, engine, consequence)
         try:
             self._rules.resolve(direction, state, Random(0))
         except StoryProposalRejected as error:
             raise ModelRetry(str(error)) from error
         return direction
 
-    def _validate_consequence(
+    def _validate_actor_consequence(
         self,
         state: GameState,
         engine: StoryState,
-        consequence: StoryConsequence,
+        consequence: StoryActorConsequence,
     ) -> None:
-        if isinstance(consequence, CoreAction):
-            if not is_core_action(consequence):
-                raise TypeError(f"unsupported core action {type(consequence).__name__}")
-            fault = consequence.check()
-            if fault is not None:
-                raise ModelRetry(fault)
-            for entity_id, reference in action_references(consequence):
-                entity = state.world.entities.get(entity_id)
-                if entity is None:
-                    raise ModelRetry(f"unknown entity id {entity_id!r}")
-                if reference.kind is not None and entity.kind != reference.kind:
-                    raise ModelRetry(f"{entity_id!r} is a {entity.kind}, not a {reference.kind}")
-                if reference.present and not state.is_here(entity):
-                    raise ModelRetry(f"{entity_id!r} is not here with the player")
-            self._validate_core_presence(state, consequence)
-            return
         actor_id = self._actor_id(consequence)
         actor = (
             state.player if actor_id == PLAYER_ID else self._require(state, actor_id, ActorEntity)

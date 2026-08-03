@@ -20,3 +20,5 @@ def advancement_ui(engine: Engine) -> AdvancementUi:
             return StoryAdvancementUi(engine)
         case Dnd5eEngine():
             return Dnd5eAdvancementUi(engine)
+        case _:
+            raise TypeError(f"no advancement UI for the {engine.id!r} engine")
