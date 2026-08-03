@@ -45,8 +45,8 @@ def test_using_just_dropped_gear_retries_instead_of_raising() -> None:
         intent="Kael drops the lantern, then leans on its light anyway.",
         tone="uncertain",
         mechanics=[
-            DropItem(item_id=lantern.id),
-            Risk(approach="clever", difficulty=0, helpful=HelpfulGear(item_id=lantern.id)),
+            DropItem(item_id=lantern.entity.id),
+            Risk(approach="clever", difficulty=0, helpful=HelpfulGear(item_id=lantern.entity.id)),
         ],
     )
 
@@ -61,8 +61,8 @@ def test_repeating_a_core_action_after_it_changes_state_retries() -> None:
         intent="Kael tries to drop the same lantern twice.",
         tone="uncertain",
         mechanics=[
-            DropItem(item_id=lantern.id),
-            DropItem(item_id=lantern.id),
+            DropItem(item_id=lantern.entity.id),
+            DropItem(item_id=lantern.entity.id),
         ],
     )
 

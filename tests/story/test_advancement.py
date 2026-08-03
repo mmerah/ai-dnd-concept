@@ -3,7 +3,7 @@ from random import Random
 from story_test_support import initial_story_game, setback_direction
 
 from aidm.base import PLAYER_ID, ItemEntity
-from aidm.engines.story.access import story_state
+from aidm.engines.story.access import item_of, player_rules
 from aidm.engines.story.advancement import AcquireGear, IncreaseMaximumStress
 from aidm.engines.story.facts import Revived
 from aidm.engines.story.state import StoryGearTag
@@ -32,8 +32,8 @@ def test_story_gear_advancement_creates_one_carried_core_item() -> None:
     entity = after.world.require(created[0].entity.id)
     assert isinstance(entity, ItemEntity)
     assert entity.container_id == PLAYER_ID
-    assert story_state(after).item(entity.id).gear == decision.gear
-    assert story_state(after).actor(PLAYER_ID).growth_marks == 0
+    assert item_of(after, entity.id)[1].gear == decision.gear
+    assert player_rules(after).growth_marks == 0
     assert not engine.advancement.available(after)
 
 
@@ -44,13 +44,13 @@ def test_increasing_maximum_stress_revives_a_taken_out_player() -> None:
     engine, state = initial_story_game()
     for _ in range(5):
         state = engine.rules.resolve(setback_direction(take_stress=True), state, Random(2)).state
-    before = story_state(state).actor(PLAYER_ID)
+    before = player_rules(state)
     assert (before.stress, before.max_stress, before.taken_out) == (5, 5, True)
     assert engine.advancement.available(state)
 
     transition = engine.advancement.advance(state, IncreaseMaximumStress(), Random(0))
     assert len([fact for fact in transition.facts if isinstance(fact, Revived)]) == 1
 
-    player = story_state(transition.state).actor(PLAYER_ID)
+    player = player_rules(transition.state)
     assert (player.stress, player.max_stress) == (5, 6)
     assert player.taken_out is False

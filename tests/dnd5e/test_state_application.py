@@ -2,7 +2,8 @@ import pytest
 from fivee_test_support import state as state
 
 from aidm.base import PLAYER_ID, ActorEntity, EntityId, ItemEntity, LocationEntity
-from aidm.engines.dnd5e.access import actor_of, created_state, dnd5e_state
+from aidm.engines.dnd5e.access import actor_of
+from aidm.engines.dnd5e.state import Dnd5eActorState, StatBlock
 from aidm.world import GameState
 
 MARA = EntityId("mara")
@@ -23,7 +24,7 @@ def test_take_drop_and_hp(state: GameState) -> None:
     result = state.committed()
 
     # vault_map picked up, lantern dropped in the study
-    carried = [e.id for e in result.world.carried_by(PLAYER_ID)]
+    carried = [record.entity.id for record in result.world.carried_by(PLAYER_ID)]
     assert carried == [EntityId("vault_map")]
     assert item(result, "vault_map").container_id == PLAYER_ID
     assert item(result, "lantern").container_id == "study"  # now lies here
@@ -36,7 +37,7 @@ def test_give_moves_an_item_into_another_actors_inventory(state: GameState) -> N
     result = state.committed()
 
     assert result.world.carried_by(PLAYER_ID) == ()
-    assert [e.id for e in result.world.carried_by(MARA)] == [EntityId("lantern")]
+    assert [record.entity.id for record in result.world.carried_by(MARA)] == [EntityId("lantern")]
 
 
 def test_hp_is_clamped_for_every_actor(state: GameState) -> None:
@@ -66,7 +67,7 @@ def test_discover_reveals_only_the_target(state: GameState) -> None:
     _ = state.reveal(state.world.require(EntityId("elena")))
     result = state.committed()
 
-    known = {e.id: e.known for e in result.world.entities.values()}
+    known = {entity.id: entity.known for entity in result.world.entities()}
     assert known == {
         "study": True,
         "vault": False,
@@ -82,19 +83,19 @@ def test_revealing_a_known_entity_states_nothing(state: GameState) -> None:
     assert state.reveal(state.world.require(EntityId("mara"))) == []
 
 
-def test_create_appends_and_gains_engine_state(state: GameState) -> None:
+def test_create_appends_a_record_carrying_engine_state(state: GameState) -> None:
     elgin = ActorEntity(
         id=EntityId("elgin"),
         name="Elgin",
         brief="An apothecary.",
         location_id=EntityId("study"),
     )
-    _ = state.add(elgin)
-    created_state(state, elgin)
+    _ = state.add(elgin, Dnd5eActorState(stats=StatBlock()))
     result = state.committed()
 
-    assert list(result.world.entities.values())[-1] == elgin
-    assert dnd5e_state(result).actor(elgin.id).progression is None
+    assert list(result.world.actors)[-1] == elgin.id
+    assert actor_of(result, elgin.id).entity == elgin
+    assert actor_of(result, elgin.id).progression is None
 
 
 def test_impossible_topology_fails_fast(state: GameState) -> None:
@@ -105,7 +106,7 @@ def test_impossible_topology_fails_fast(state: GameState) -> None:
     with pytest.raises(ValueError, match="it is a location"):
         _ = state.world.require_kind(EntityId("study"), ActorEntity)
     with pytest.raises(ValueError, match="already exists"):
-        _ = state.add(state.player)
+        _ = state.add(state.player, Dnd5eActorState(stats=StatBlock()))
     with pytest.raises(ValueError, match="it is a location"):  # a location has no hit points
         _ = actor_of(state, EntityId("study"))
 
@@ -124,14 +125,8 @@ def test_a_world_that_puts_something_nowhere_real_is_refused(
 ) -> None:
     """One required container id per item is the whole point of the shape: what used to need a
     held-xor-located reconciliation is now a single lookup that either resolves or raises."""
-    setattr(state.world.entities[entity_id], field, container)
+    setattr(state.world.require(entity_id), field, container)
     with pytest.raises(ValueError):
-        state.committed()
-
-
-def test_engine_state_must_track_every_world_actor(state: GameState) -> None:
-    del dnd5e_state(state).actors[MARA]
-    with pytest.raises(ValueError, match="does not track the world"):
         state.committed()
 
 
@@ -141,9 +136,9 @@ def test_a_refused_commit_leaves_the_draft_and_its_source_alone(state: GameState
     before = committed.model_dump_json()
     draft = committed.draft()
     _ = draft.move_actor(draft.player, where(draft, "vault"))
-    del dnd5e_state(draft).actors[MARA]
+    item(draft, "lantern").container_id = EntityId("nowhere")
 
-    with pytest.raises(ValueError, match="does not track the world"):
+    with pytest.raises(ValueError, match="which holds nothing"):
         draft.committed()
 
     assert committed.model_dump_json() == before

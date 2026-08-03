@@ -1,5 +1,5 @@
 - [] Codex: Comment simplification round
-- [] Leaner AGENTS.md/CLAUDE.md, remove all elements that are subject to change (architecture concepts, file name, ...)
+- [x] Leaner AGENTS.md/CLAUDE.md, remove all elements that are subject to change (architecture concepts, file name, ...)
 - [] Multiple rounds of refactors: no change in behavior, improvements in consistency in the codebase, removing useless ceremony, SOLID/DRY/KISS, type safety, fail fast.
 - [] Refactor on codebase structure and organistation: Models in models/ or models.py instead of top of class or whatever. Delete unused or used-once stuff. Functional programming. Models are separated from the domain correctly. Structure is consistent. Better SOLID to better reason? Or would that be too much indirection?
 - [] Adding a new engine (e.g. ironsworn) should be as easy as possible
@@ -8,4 +8,4 @@
 - [] NPC can join/leave player party. NPC can also level-up.
 - [] Quest/Event/Hook system of some kind. Need brainstorming to decide the way to do that. Think about any kind of fiction book or D&D adventure: how would we have a general system to progress elements of a story, based on player actions but also in the background
 - [] Is there ideas from straightjacket github project that could be used? It seems the closest in what we want (https://github.com/aradix85/straightjacket)
-- [] Trim AGENTS.md out of the code-specific stuff that is subject to change.
+- [x] Trim AGENTS.md out of the code-specific stuff that is subject to change.

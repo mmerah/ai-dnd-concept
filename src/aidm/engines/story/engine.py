@@ -6,19 +6,24 @@ from pydantic_ai import RunContext
 from pydantic_ai.output import OutputSpec
 
 from aidm.base import (
-    PLAYER_ID,
     ActorEntity,
     AdvancementDecision,
     EngineId,
     Entity,
-    EntityId,
     ItemEntity,
+    LocationEntity,
 )
-from aidm.content import AuthoredWorld
+from aidm.content import AuthoredActor, AuthoredItem, AuthoredWorld, compose_world
 from aidm.transition import Direction, Fact, Transition
-from aidm.world import CharacterEngineData, GameState, for_engine, for_engine_or_none
+from aidm.world import (
+    CharacterEngineData,
+    EntityRules,
+    GameState,
+    WorldState,
+    for_engine,
+    for_engine_or_none,
+)
 
-from .access import story_state
 from .advancement import StoryAdvancement, StoryAdvancementDecision, is_story_decision
 from .direction import StoryDirection
 from .director import StoryDirector
@@ -32,7 +37,6 @@ from .state import (
     StoryCharacterData,
     StoryItemDefinition,
     StoryItemState,
-    StoryState,
 )
 
 ENGINE_ID: EngineId = "story"
@@ -46,39 +50,35 @@ class StoryEngine:
     advancement: StoryAdvancement
     id: ClassVar[EngineId] = ENGINE_ID
 
-    def initial_state(
+    def initial_world(
         self,
         authored: AuthoredWorld,
         character: CharacterEngineData,
-    ) -> StoryState:
+    ) -> WorldState:
         sheet = for_engine(character, StoryCharacterData)
-        actors: dict[EntityId, StoryActorState] = {
-            PLAYER_ID: StoryActorState(
+        return compose_world(
+            authored,
+            StoryActorState(
                 approaches=sheet.approaches,
                 tags=sheet.tags,
                 max_stress=sheet.max_stress,
-            )
-        }
-        items: dict[EntityId, StoryItemState] = {}
-        for entity in authored.world.entities.values():
-            data = authored.engine_data.get(entity.id)
-            if isinstance(entity, ActorEntity) and entity.id != PLAYER_ID:
-                actor = for_engine_or_none(data, StoryActorDefinition)
-                actors[entity.id] = (
-                    StoryActorState(approaches=DEFAULT_APPROACHES)
-                    if actor is None
-                    else actor.runtime()
-                )
-            elif isinstance(entity, ItemEntity):
-                item = for_engine_or_none(data, StoryItemDefinition)
-                items[entity.id] = StoryItemState() if item is None else item.runtime()
-        return StoryState(actors=actors, items=items)
+            ),
+            _actor_rules,
+            _item_rules,
+        )
 
     def validate_state(self, state: GameState) -> None:
-        self.rules.validate_state(state)
+        if state.engine != ENGINE_ID:
+            raise ValueError(f"Story received a {state.engine!r} game")
 
-    def created(self, draft: GameState, entity: Entity) -> None:
-        self.rules.created(draft, entity)
+    def default_rules(self, entity: Entity) -> EntityRules | None:
+        match entity:
+            case ActorEntity():
+                return StoryActorState(approaches=DEFAULT_APPROACHES)
+            case ItemEntity():
+                return StoryItemState()
+            case LocationEntity():
+                return None
 
     def resolve(self, direction: Direction, state: GameState, rng: Random) -> Transition:
         return self.rules.resolve(_direction(direction), state, rng)
@@ -103,8 +103,8 @@ class StoryEngine:
     def validate_direction(self, ctx: RunContext[GameState], direction: Direction) -> Direction:
         return self.director.validate(ctx, _direction(direction))
 
-    def entity_state(self, entity: Entity, state: GameState) -> str:
-        return self.presentation.entity_state(entity, story_state(state))
+    def entity_state(self, entity: Entity, rules: EntityRules) -> str:
+        return self.presentation.entity_state(entity, rules)
 
     def narrator_fact(self, fact: Fact) -> str | None:
         return self.presentation.narrator_fact(_fact(fact))
@@ -124,6 +124,18 @@ def build_story_engine() -> StoryEngine:
         presentation=StoryPresentation(),
         advancement=StoryAdvancement(),
     )
+
+
+def _actor_rules(authored: AuthoredActor) -> StoryActorState:
+    definition = for_engine_or_none(authored.data, StoryActorDefinition)
+    if definition is None:
+        return StoryActorState(approaches=DEFAULT_APPROACHES)
+    return definition.runtime()
+
+
+def _item_rules(authored: AuthoredItem) -> StoryItemState:
+    definition = for_engine_or_none(authored.data, StoryItemDefinition)
+    return StoryItemState() if definition is None else definition.runtime()
 
 
 def _direction(direction: Direction) -> StoryDirection:

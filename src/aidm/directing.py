@@ -15,10 +15,11 @@ class Reference:
 
 def check_refs(state: GameState, refs: Sequence[tuple[EntityId, Reference]]) -> str | None:
     """Every fault at once: a Director told all of them retries better than one told the first."""
-    canon = state.world.entities
-    missing = sorted({entity_id for entity_id, _ in refs if entity_id not in canon})
+    looked_up = {entity_id: state.world.find(entity_id) for entity_id, _ in refs}
+    missing = sorted(entity_id for entity_id, found in looked_up.items() if found is None)
     if missing:
         return f"unknown entity id(s): {missing}. Use only ids you were shown."
+    canon = {entity_id: found for entity_id, found in looked_up.items() if found is not None}
     mismatched = sorted(
         f"{entity_id} is a {canon[entity_id].kind}, not a {reference.kind}"
         for entity_id, reference in refs
@@ -47,7 +48,7 @@ def check_speaker(state: GameState, speaker_id: EntityId | None) -> str | None:
         return None
     if speaker_id == PLAYER_ID:
         return "speaker_id names another actor the player addresses, never the player."
-    speaker = state.world.entities.get(speaker_id)
+    speaker = state.world.find(speaker_id)
     if speaker is None:
         return f"unknown speaker id {speaker_id!r}. Use only ids you were shown, or null."
     if not isinstance(speaker, ActorEntity) or not speaker.known or not state.is_here(speaker):

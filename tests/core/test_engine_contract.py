@@ -4,7 +4,7 @@ from core_test_support import character, initialized
 
 from aidm.base import ENGINE_IDS, PLAYER_ID, ActorEntity, EntityId, ItemEntity
 from aidm.engine import ENGINES, narrator_line, trace_line
-from aidm.engines.story.access import story_state
+from aidm.engines.story.access import actor_of, item_of, player_rules
 from aidm.engines.story.actions import TakeItem
 from aidm.engines.story.direction import Risk, StoryDirection
 from aidm.engines.story.state import DEFAULT_APPROACHES, StoryCharacterData
@@ -16,8 +16,8 @@ def test_engine_initialization_and_state_contract() -> None:
     sheet = character().overlay.character
     assert isinstance(sheet, StoryCharacterData)
 
-    assert state.engine_id == engine.id
-    assert story_state(state).actor(PLAYER_ID).approaches == sheet.approaches
+    assert state.engine == engine.id
+    assert player_rules(state).approaches == sheet.approaches
     engine.validate_state(state)
 
     restored = GameState.model_validate_json(state.model_dump_json())
@@ -69,12 +69,11 @@ def test_a_created_entity_gains_engine_state_in_the_same_commit() -> None:
 
     working = state.draft()
     for entity in (actor, item):
-        _ = working.add(entity)
-        engine.created(working, entity)
+        _ = working.add(entity, engine.default_rules(entity))
     grown = working.committed()
 
-    assert story_state(grown).actor(actor.id).approaches == DEFAULT_APPROACHES
-    assert story_state(grown).item(item.id).gear is None
+    assert actor_of(grown, actor.id)[1].approaches == DEFAULT_APPROACHES
+    assert item_of(grown, item.id)[1].gear is None
 
 
 def test_every_engine_id_has_a_builder() -> None:

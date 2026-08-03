@@ -11,6 +11,7 @@ Run from the repository root:
 ```bash
 uv run pytest
 uv run ruff check
+uv run ruff format --check
 uv run basedpyright
 uv run aidm
 ```
@@ -24,6 +25,7 @@ Tests must be deterministic and require no network.
 - Validate external, persistence, model, and tool boundaries with strict Pydantic V2 models.
 - Fail fast on invalid data, broken invariants, and incompatible state.
 - Keep code simple, DRY, and maintainable. Avoid speculative abstractions.
+- Introduce a port only once a second implementation exists. A protocol that decouples core from a concrete choice earns its place on the first one.
 - Use descriptive names before adding prose to explain code.
 - Keep functions below 100 lines and files below 500 lines.
 - Comments explain only a non-obvious why: a constraint, tradeoff, invariant, or tooling exception.
@@ -34,48 +36,40 @@ Tests must be deterministic and require no network.
 - Keep necessary docstrings to one concise sentence. Use multiple lines only when losing the detail would hide an important rationale or contract.
 - Treat docstrings consumed by reflection, Pydantic schemas, or LLM prompts as runtime behavior: preserve their meaning and verify changes.
 - Keep package `__init__.py` files empty. Import from explicit module paths.
-- Keep imports at module scope. Resolve cycles by extracting leaf models or protocols, never with function-local imports.
+- Keep imports at module scope, and the import graph acyclic with no deferred or `TYPE_CHECKING` imports. Resolve a cycle by extracting the leaf shape both sides need.
 
-## Architecture invariants
+## Design rules
 
-- The model proposes typed data; deterministic Python decides outcomes and mutates no state directly.
-- State evolves through transactions: `state.draft()` copies, mechanics mutate that draft, `draft.committed()` revalidates it once. A turn runs two — the engine's resolution and the pipeline's growth-and-exchange — and an advancement runs its own. A failed transaction never replaces the committed state, and a committed `GameState` is never mutated again; enforced by the resolve-purity tests, not by the type system.
-- `Frozen` means the model's own fields cannot be reassigned, not that its contents are immutable: a `Frozen` fact may hold a `Mutable` model. Copy into a fact whatever the same transaction goes on to mutate.
-- Core owns commits. Engines own typed mechanics and mutate the draft directly, including topology, through `GameState`'s `add`/`reveal`/`move_actor`/`move_item`.
-- A turn's facts are one persisted union — core topology facts plus each engine's own — discriminated on `source` then `fact`. Core renders its own and delegates the engine's in `engine.py`; directions carry the same `engine` tag so a reloaded trace never guesses.
-- `GameState.engine` is one `EngineAggregate` per engine, discriminated on the engine tag. Entities carry no rules field, and the state validator asserts those keys track the world's actor and item ids.
-- Engine state and authored engine data are typed unions, never JSON envelopes: a wrong-engine payload is unrepresentable rather than validated. The unions live in `world.py`, and each engine narrows its own authored data with `for_engine`.
-- A scenario and a character are each authored once. `world.json` and `base.json` hold the canon as runtime `Entity` values, and one `<engine>.json` overlay per ruleset keys its data off those authored ids. An overlay's presence is the compatibility check; nothing else declares which rulesets play.
-- Authored ids are the ids. Core composes the authored files onto `AuthoredWorld` and hands each entity's engine data back under the id the author wrote; only entities the model creates get a derived `slug`. An engine never re-derives which definition became which entity.
-- A save names its own origin: `scenario_id` and `character_id` are persisted, so resuming loads content by id instead of rediscovering it by matching metadata.
-- One scenario offers several rulesets, so the engine is a launcher choice: it is part of the save slug and the game route, and `base.py::as_engine_id`/`content_id` narrow the routed strings at that boundary. Content offering no overlay is skipped rather than surfaced; the home screen is the only way into the app.
-- One distribution. `aidm/engines/story/` imports no 5e code and vice versa; neither engine imports `aidm/ui/` or NiceGUI, and the core modules import no UI. Enforced by `tests/core/test_package_boundary.py`, which resolves relative imports because the engines are siblings.
-- The import graph is acyclic, with no deferred or `TYPE_CHECKING` imports. `base.py` holds the leaf shapes `world.py` and both engines' `state.py` share, and an engine's `GameState` accessors live in its `access.py`, below the state models core imports.
-- Adding an engine means one package and four declaration sites: `base.py` names engines only as the `EngineId` literal, `world.py` holds the state and authored-data unions, `transition.py` holds the fact and direction unions, and `engine.py` holds the `Engine` Protocol and the registry. No other core module imports an engine package; enforced by `tests/core/test_package_boundary.py`.
-- `EngineId` is a closed literal, and an engine is a value built from `engine.py::ENGINES`. Core sees one flat `Engine` Protocol and never names a concrete engine outside the declaration sites; each engine's façade widens to the persisted union and re-narrows, because parameters are contravariant.
-- A shared director check lives in `aidm/directing.py`: one `Reference` marker, and faults reported in a batch so the model retries knowing all of them. Commands stay engine-owned.
-- Each agent has one narrow role. Its proposal is resolved by the selected engine, never another prompt.
-- `aidm/prompts.py` owns one centralized context policy for what each role sees. `SceneSnapshot` is the one projection of a `GameState`; each renderer takes it plus the bound entity renderer, never a per-role DTO.
-- The 5e engine reads compiled profiles from `aidm/engines/dnd5e/ruleset.py`; only `content/pack_ruleset.py` knows pack storage shape.
-- 5e content is derived once: `scripts/srd/` narrows upstream records. A pack loads once and every turn shares its records, so pack and compiled-profile maps stay frozen; runtime state maps are plain dicts.
-- `application.py::Runtime` is the composition root, built once by `aidm/ui/app.py`. Below it, collaborators and paths are explicit; no globals.
-- `aidm/application.py` owns the open game: a `GameSession` holds `FileSaves`/`FileTraces` directly, while `aidm/store.py` performs path-based I/O. A port returns only when a second implementation exists.
+- The model proposes typed data; deterministic Python decides every outcome. The model mutates no state.
+- State evolves through transactions: copy the committed state, let mechanics mutate the copy, revalidate the whole copy once at the end. A failed transaction never replaces the committed state, and committed state is never mutated again.
+- A frozen model's own fields cannot be reassigned, but its contents can still be mutable. Copy into a value whatever the same transaction goes on to mutate.
+- Core owns commits and topology. An engine owns typed mechanics and mutates the draft through the operations core exposes.
+- One engine is chosen at launch and seen through one flat protocol. Core never names a concrete engine outside the few declaration sites the type unions require.
+- An engine's state and its authored data are typed unions discriminated on a tag they persist, never JSON envelopes. A payload from the wrong engine should be unrepresentable; where the shape allows it, a validator must reject it rather than let it through.
+- Engines are independent: neither imports the other, and neither imports the UI. Core imports no UI.
+- A turn's facts and directions are one persisted union discriminated on the tag naming their origin, so a reloaded trace never guesses which engine wrote a line.
+- Content is authored once per scenario and per character, with one overlay per engine keyed off the authored ids. An overlay's presence is the compatibility check. Authored ids are the ids; only entities the model creates get a derived one.
+- A save names its own origin and its own format version. That version is the only compatibility gate: refuse a stale save rather than converting it.
 - A trace entry records what occurred, never the resulting state.
-- `save_version` is the only compatibility gate. `store.py` refuses a stale save or trace at load, each trace entry carrying its own; regenerating the SRD content pack bumps `SAVE_VERSION`.
-- Only the Narrator writes player-facing prose and it never sees unrevealed canon. `render_narrator` takes `VisibleScene`, which has no field a leak could travel through; never widen it to `SceneSnapshot`.
-- Every role sees engine state through engine-owned presentation, bound to the state it reads by `Engine.entity_state`; core owns which entities each role may see.
-- The Narrator receives exact state for visible entities and translates mechanics into fiction instead of reciting stat blocks.
+- Derived content is generated once by a script, loaded once, and shared frozen. Only runtime state is mutable. Regenerating it bumps the save format version.
+- One composition root, built once. Below it collaborators and paths are explicit; no globals.
+- Each role has one narrow job and one prompt. A proposal is resolved by the selected engine, never by another prompt.
+- One centralized policy decides what each role may see, from one projection of the state. No per-role DTOs.
+- Only the narrating role writes player-facing prose, and it never sees unrevealed canon: its input type must have no field a leak could travel through.
+- Every role sees engine state through engine-owned presentation. Core owns which entities a role may see.
+- The narrating role receives exact state for visible entities and translates mechanics into fiction instead of reciting stat blocks.
 
 ## Framework rules
 
 - Use Pydantic V2 APIs only. Validation runs at the transaction boundary, not per field change; `model_copy(update=...)` does not validate.
 - Pydantic AI roles return validated structured output. Per-turn validators request retries and never mutate state.
-- NiceGUI reflects session state only. Keep domain logic out of `aidm/ui/` and update refreshable views.
-- Keep each role's model, endpoint, retries, token budget, and reasoning level in `config.py`.
+- NiceGUI reflects session state only. Keep domain logic out of the UI package and update refreshable views.
+- Keep each role's model, endpoint, retries, token budget, and reasoning level in one config module.
 
 ## Verification
 
 - Test core behavior and integrity boundaries, not exact creative prose, live model quality, or trivial wiring.
 - Stub model calls with `FunctionModel` or an equivalent; never require network access.
 
-Change this file only for rules expected to remain true across project phases.
+Change this file only for a rule expected to hold across every future phase. A rule that a refactor
+can falsify does not belong here.

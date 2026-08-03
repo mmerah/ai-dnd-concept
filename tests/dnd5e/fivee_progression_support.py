@@ -4,11 +4,9 @@ from random import Random
 from core_test_support import updated
 from fivee_test_support import content_ref as ref
 from fivee_test_support import player_of as player_of
-from fivee_test_support import ruleset, sheet
+from fivee_test_support import ruleset, sheet, with_actor
 
 import aidm.engines.dnd5e.progression as progression
-from aidm.base import PLAYER_ID
-from aidm.engines.dnd5e.access import dnd5e_state
 from aidm.engines.dnd5e.content.records.character import ProgressionChoice
 from aidm.engines.dnd5e.state import Decisions, Origin
 from aidm.world import GameState
@@ -45,11 +43,10 @@ def started(klass: str, state: GameState) -> GameState:
     prepared = updated(SHEET, origin=origin, decisions={})
     decisions = answers(progression.pending(origin, 1, RULES))
     start = progression.first_level(updated(prepared, decisions=decisions), RULES)
-    engine = dnd5e_state(state)
-    held = engine.actor(PLAYER_ID)
+    held = player_of(state)
     player = updated(
-        held,
+        held.state,
         progression=start.progression,
         stats=updated(held.stats, attributes=start.attributes),
     )
-    return updated(state, engine=updated(engine, actors={**engine.actors, PLAYER_ID: player}))
+    return with_actor(state, held.entity, player)

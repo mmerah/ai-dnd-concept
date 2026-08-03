@@ -7,10 +7,9 @@ from story_test_support import setback_direction
 
 from aidm.agents import director_stage, shared_stages
 from aidm.application import GameSession, LaunchTarget, Runtime
-from aidm.base import PLAYER_ID
 from aidm.content import ScenarioMeta
 from aidm.engines.dnd5e.advancement import Dnd5eAdvancementDecisions
-from aidm.engines.story.access import story_state
+from aidm.engines.story.access import player_rules
 from aidm.engines.story.advancement import RaiseApproach
 from aidm.engines.story.engine import build_story_engine
 from aidm.pipeline import TurnOptions
@@ -82,7 +81,7 @@ def test_advancement_commits_through_the_same_path_and_reaches_the_trace(tmp_pat
     game = session(tmp_path)
     for _ in range(3):
         game.state = game.engine.resolve(setback_direction(), game.state, Random(2)).state
-    player = story_state(game.state).actor(PLAYER_ID)
+    player = player_rules(game.state)
     assert player.growth_marks == 3
     before = player.approaches.bold
     decision = RaiseApproach(approach="bold")
@@ -93,7 +92,7 @@ def test_advancement_commits_through_the_same_path_and_reaches_the_trace(tmp_pat
     facts = game.advance(decision)
 
     assert [fact.fact for fact in facts] == ["approach-raised", "growth-reset"]
-    player = story_state(game.state).actor(PLAYER_ID)
+    player = player_rules(game.state)
     assert player.approaches.bold == before + 1
     assert player.growth_marks == 0
     assert FileSaves(tmp_path).load("poc") == game.state

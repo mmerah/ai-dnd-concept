@@ -30,7 +30,7 @@ Slug = Annotated[str, Field(pattern=rf"^{SLUG_PATTERN}$", max_length=64)]
 PLAYER_ID = EntityId("player")
 ROLES: tuple[Role, ...] = get_args(Role)
 ENGINE_IDS: tuple[EngineId, ...] = get_args(EngineId)
-SAVE_VERSION = 19
+SAVE_VERSION = 20
 
 
 def as_engine_id(value: str) -> EngineId:
@@ -59,25 +59,6 @@ def slug(name: str, taken: Iterable[EntityId]) -> EntityId:
 
 class AdvancementDecision(Frozen):
     """What the player chose in an engine's advancement UI; the engine that minted it applies it."""
-
-
-class EngineAggregate[ActorState: BaseModel, ItemState: BaseModel](Mutable):
-    """An engine side table whose keys track the world's actors and items."""
-
-    actors: dict[EntityId, ActorState] = Field(default_factory=dict)
-    items: dict[EntityId, ItemState] = Field(default_factory=dict)
-
-    def actor(self, actor_id: EntityId) -> ActorState:
-        state = self.actors.get(actor_id)
-        if state is None:
-            raise ValueError(f"{type(self).__name__} holds no actor {actor_id!r}")
-        return state
-
-    def item(self, item_id: EntityId) -> ItemState:
-        state = self.items.get(item_id)
-        if state is None:
-            raise ValueError(f"{type(self).__name__} holds no item {item_id!r}")
-        return state
 
 
 class EntityDetail(Frozen):

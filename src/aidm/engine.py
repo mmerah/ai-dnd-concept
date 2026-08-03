@@ -8,7 +8,7 @@ from pydantic_ai.output import OutputSpec
 from aidm.engines.dnd5e.engine import build_dnd5e_engine
 from aidm.engines.story.engine import build_story_engine
 
-from .base import AdvancementDecision, EngineId, Entity
+from .base import ActorEntity, AdvancementDecision, EngineId, Entity, ItemEntity, LocationEntity
 from .config import Settings
 from .content import AuthoredWorld
 from .facts import (
@@ -20,7 +20,7 @@ from .facts import (
 )
 from .prompts import EntityRenderer
 from .transition import Direction, Fact, Transition
-from .world import CharacterEngineData, EngineState, GameState
+from .world import CharacterEngineData, EntityRules, GameState, WorldState
 
 NOTHING_MECHANICAL = "- (nothing mechanical happened)"
 
@@ -30,15 +30,17 @@ class Engine(Protocol):
 
     id: ClassVar[EngineId]
 
-    def initial_state(
+    def initial_world(
         self,
         authored: AuthoredWorld,
         character: CharacterEngineData,
-    ) -> EngineState: ...
+    ) -> WorldState: ...
 
     def validate_state(self, state: GameState) -> None: ...
 
-    def created(self, draft: GameState, entity: Entity) -> None: ...
+    def default_rules(self, entity: Entity) -> EntityRules | None:
+        """Baseline rules for an entity the Creator just narrated; `None` for a location."""
+        ...
 
     def resolve(self, direction: Direction, state: GameState, rng: Random) -> Transition: ...
 
@@ -61,7 +63,7 @@ class Engine(Protocol):
         direction: Direction,
     ) -> Direction: ...
 
-    def entity_state(self, entity: Entity, state: GameState) -> str: ...
+    def entity_state(self, entity: Entity, rules: EntityRules) -> str: ...
 
     def narrator_fact(self, fact: Fact) -> str | None: ...
 
@@ -100,4 +102,13 @@ def trace_line(engine: Engine, fact: Fact) -> str:
 
 
 def entity_renderer(engine: Engine, state: GameState) -> EntityRenderer:
-    return lambda entity: engine.entity_state(entity, state)
+    def describe(entity: Entity) -> str:
+        match entity:
+            case ActorEntity():
+                return engine.entity_state(entity, state.world.actor(entity.id).rules)
+            case ItemEntity():
+                return engine.entity_state(entity, state.world.item(entity.id).rules)
+            case LocationEntity():
+                return ""
+
+    return describe

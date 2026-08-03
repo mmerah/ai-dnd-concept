@@ -5,8 +5,10 @@ from pydantic_ai.messages import ModelRequest, ModelResponse
 from aidm.agents import exchanges_to_messages
 from aidm.base import PLAYER_ID, SAVE_VERSION, ActorEntity, EntityId, ItemEntity, LocationEntity
 from aidm.content import ScenarioMeta
+from aidm.engine import entity_renderer
+from aidm.engines.story.engine import build_story_engine
 from aidm.engines.story.presentation import StoryPresentation
-from aidm.engines.story.state import DEFAULT_APPROACHES, StoryActorState, StoryItemState, StoryState
+from aidm.engines.story.state import DEFAULT_APPROACHES, StoryActorState, StoryItemState
 from aidm.growth import GrowthRequest
 from aidm.prompts import (
     EntityRenderer,
@@ -18,7 +20,7 @@ from aidm.prompts import (
     render_maintainer,
     render_narrator,
 )
-from aidm.world import Exchange, GameState, WorldState
+from aidm.world import ActorRecord, Exchange, GameState, ItemRecord, WorldState
 
 ACTOR_RULES = StoryActorState(approaches=DEFAULT_APPROACHES)
 ITEM_RULES = StoryItemState()
@@ -30,24 +32,6 @@ def _with_detail(held: GameState, entity_id: EntityId) -> GameState:
     entity = held.world.require_kind(entity_id, ActorEntity)
     detailed = updated(entity, detail={"description": DESCRIPTION, "hook": HOOK})
     return with_entity(held, detailed)
-
-
-def _state_line(entity_id: EntityId) -> str:
-    sample = ActorEntity(
-        id=entity_id, name="Sample", brief="Sample.", location_id=EntityId("study")
-    )
-    return StoryPresentation().entity_state(sample, StoryState(actors={entity_id: ACTOR_RULES}))
-
-
-def _renderer(held: GameState) -> EntityRenderer:
-    engine = held.engine
-    assert isinstance(engine, StoryState)
-    presentation = StoryPresentation()
-    return lambda entity: presentation.entity_state(entity, engine)
-
-
-ACTOR_LINE = _state_line(EntityId("mara"))
-PLAYER_LINE = _state_line(PLAYER_ID)
 
 
 def state() -> GameState:
@@ -96,21 +80,33 @@ def state() -> GameState:
         scenario_id="whispering-vault",
         character_id="kael",
         scenario=ScenarioMeta(title="Test", premise="Test"),
+        engine="story",
         world=WorldState(
-            entities={
-                location.id: location,
-                player.id: player,
-                hidden.id: hidden,
-                mara.id: mara,
-                lantern.id: lantern,
-                ledger.id: ledger,
-            }
-        ),
-        engine=StoryState(
-            actors={player.id: ACTOR_RULES, hidden.id: ACTOR_RULES, mara.id: ACTOR_RULES},
-            items={lantern.id: ITEM_RULES, ledger.id: ITEM_RULES},
+            actors={
+                player.id: ActorRecord(entity=player, rules=ACTOR_RULES),
+                hidden.id: ActorRecord(entity=hidden, rules=ACTOR_RULES),
+                mara.id: ActorRecord(entity=mara, rules=ACTOR_RULES),
+            },
+            items={
+                lantern.id: ItemRecord(entity=lantern, rules=ITEM_RULES),
+                ledger.id: ItemRecord(entity=ledger, rules=ITEM_RULES),
+            },
+            locations={location.id: location},
         ),
     )
+
+
+def _state_line(entity_id: EntityId) -> str:
+    record = state().world.actor(entity_id)
+    return StoryPresentation().entity_state(record.entity, record.rules)
+
+
+def _renderer(held: GameState) -> EntityRenderer:
+    return entity_renderer(build_story_engine(), held)
+
+
+ACTOR_LINE = _state_line(EntityId("mara"))
+PLAYER_LINE = _state_line(PLAYER_ID)
 
 
 def test_the_narrators_view_has_no_field_that_could_hold_unrevealed_canon() -> None:

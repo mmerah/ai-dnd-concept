@@ -2,12 +2,7 @@ from typing import Literal, Self
 
 from pydantic import Field, model_validator
 
-from aidm.base import (
-    EngineAggregate,
-    Frozen,
-    Mutable,
-    Slug,
-)
+from aidm.base import Frozen, Mutable, Slug
 
 StoryApproach = Literal["bold", "subtle", "clever", "empathetic"]
 APPROACH_NAMES: tuple[StoryApproach, ...] = ("bold", "subtle", "clever", "empathetic")
@@ -56,6 +51,7 @@ class StoryCondition(Frozen):
 
 
 class StoryActorState(Mutable):
+    engine: Literal["story"] = "story"
     approaches: StoryApproaches
     tags: tuple[StoryActorTag, ...] = ()
     stress: int = Field(default=0, ge=0)
@@ -84,11 +80,8 @@ class StoryGearTag(Frozen):
 
 
 class StoryItemState(Mutable):
-    gear: StoryGearTag | None = None
-
-
-class StoryState(EngineAggregate[StoryActorState, StoryItemState]):
     engine: Literal["story"] = "story"
+    gear: StoryGearTag | None = None
 
 
 class StoryCharacterData(Frozen):

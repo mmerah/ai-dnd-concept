@@ -20,6 +20,7 @@ from aidm.engines.dnd5e.direction import (
 )
 from aidm.engines.dnd5e.facts import DiceRolled, LeveledUp
 from aidm.engines.dnd5e.resolve import resolve
+from aidm.engines.dnd5e.rules import Dnd5eRules
 from aidm.engines.dnd5e.ruleset import (
     CharacterProfile,
     FeatureProfile,
@@ -325,12 +326,13 @@ def test_a_save_proficiency_is_recorded_once() -> None:
 
 def test_only_the_player_may_have_progression() -> None:
     """`LeveledUp` names no target because of this rule; an NPC carrying progression would make the
-    event ambiguous."""
+    event ambiguous. The check runs at `validate_state`, not on every state construction."""
     state = new_game()
     mara = actor_of(state, EntityId("mara"))
     levelled_npc = updated(mara.state, progression=player_of(state).progression)
+    invalid = with_actor(state, mara.entity, levelled_npc)
     with pytest.raises(ValueError, match="only the player may have progression"):
-        with_actor(state, mara.entity, levelled_npc)
+        Dnd5eRules(RULES).validate_state(invalid)
 
 
 def test_levelling_rolls_the_hit_die_where_the_trace_can_see_it() -> None:

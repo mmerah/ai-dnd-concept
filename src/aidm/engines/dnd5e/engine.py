@@ -8,20 +8,25 @@ from pydantic_ai import RunContext
 from pydantic_ai.output import OutputSpec
 
 from aidm.base import (
-    PLAYER_ID,
     ActorEntity,
     AdvancementDecision,
     EngineId,
     Entity,
-    EntityId,
     ItemEntity,
+    LocationEntity,
 )
-from aidm.content import AuthoredWorld
+from aidm.content import AuthoredActor, AuthoredItem, AuthoredWorld, compose_world
 from aidm.transition import Direction, Fact, Transition
-from aidm.world import CharacterEngineData, GameState, for_engine, for_engine_or_none
+from aidm.world import (
+    CharacterEngineData,
+    EntityRules,
+    GameState,
+    WorldState,
+    for_engine,
+    for_engine_or_none,
+)
 
 from . import bestiary, progression
-from .access import dnd5e_state
 from .advancement import Dnd5eAdvancement, Dnd5eAdvancementDecisions
 from .content.library import load
 from .content.pack_ruleset import compile_ruleset
@@ -37,7 +42,6 @@ from .state import (
     Dnd5eCharacterData,
     Dnd5eItemDefinition,
     Dnd5eItemState,
-    Dnd5eState,
     StatBlock,
 )
 
@@ -54,37 +58,46 @@ class Dnd5eEngine:
     advancement: Dnd5eAdvancement
     id: ClassVar[EngineId] = ENGINE_ID
 
-    def initial_state(
+    def initial_world(
         self,
         authored: AuthoredWorld,
         character: CharacterEngineData,
-    ) -> Dnd5eState:
+    ) -> WorldState:
         sheet = for_engine(character, Dnd5eCharacterData)
         start = progression.first_level(sheet, self.ruleset)
-        actors: dict[EntityId, Dnd5eActorState] = {
-            PLAYER_ID: Dnd5eActorState(
+        return compose_world(
+            authored,
+            Dnd5eActorState(
                 stats=StatBlock(
                     attributes=start.attributes, max_hp=start.hp_gain, hp=start.hp_gain
                 ),
                 progression=start.progression,
-            )
-        }
-        items: dict[EntityId, Dnd5eItemState] = {}
-        for entity in authored.world.entities.values():
-            data = authored.engine_data.get(entity.id)
-            if isinstance(entity, ActorEntity) and entity.id != PLAYER_ID:
-                actor = for_engine_or_none(data, Dnd5eActorDefinition)
-                actors[entity.id] = bestiary.statted_actor(entity.id, actor, self.ruleset)
-            elif isinstance(entity, ItemEntity):
-                item = for_engine_or_none(data, Dnd5eItemDefinition)
-                items[entity.id] = bestiary.statted_item(entity.id, item, self.ruleset)
-        return Dnd5eState(actors=actors, items=items)
+            ),
+            self._actor_rules,
+            self._item_rules,
+        )
 
     def validate_state(self, state: GameState) -> None:
+        if state.engine != ENGINE_ID:
+            raise ValueError(f"5e received a {state.engine!r} game")
         self.rules.validate_state(state)
 
-    def created(self, draft: GameState, entity: Entity) -> None:
-        self.rules.created(draft, entity)
+    def default_rules(self, entity: Entity) -> EntityRules | None:
+        match entity:
+            case ActorEntity():
+                return Dnd5eActorState(stats=StatBlock())
+            case ItemEntity():
+                return Dnd5eItemState()
+            case LocationEntity():
+                return None
+
+    def _actor_rules(self, authored: AuthoredActor) -> Dnd5eActorState:
+        definition = for_engine_or_none(authored.data, Dnd5eActorDefinition)
+        return bestiary.statted_actor(authored.entity.id, definition, self.ruleset)
+
+    def _item_rules(self, authored: AuthoredItem) -> Dnd5eItemState:
+        definition = for_engine_or_none(authored.data, Dnd5eItemDefinition)
+        return bestiary.statted_item(authored.entity.id, definition, self.ruleset)
 
     def resolve(self, direction: Direction, state: GameState, rng: Random) -> Transition:
         return self.rules.resolve(_direction(direction), state, rng)
@@ -109,8 +122,8 @@ class Dnd5eEngine:
     def validate_direction(self, ctx: RunContext[GameState], direction: Direction) -> Direction:
         return self.director.validate(ctx, _direction(direction))
 
-    def entity_state(self, entity: Entity, state: GameState) -> str:
-        return self.presentation.entity_state(entity, dnd5e_state(state))
+    def entity_state(self, entity: Entity, rules: EntityRules) -> str:
+        return self.presentation.entity_state(entity, rules)
 
     def narrator_fact(self, fact: Fact) -> str | None:
         return self.presentation.narrator_fact(_fact(fact))

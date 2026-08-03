@@ -1,11 +1,11 @@
 from collections.abc import Sequence
 from random import Random
 
-from aidm.base import PLAYER_ID, ActorEntity, Entity, EntityId, ItemEntity
+from aidm.base import PLAYER_ID, ActorEntity, EntityId
 from aidm.transition import Transition
 from aidm.world import GameState
 
-from .access import created_state, story_state
+from .access import actor_of, item_of
 from .actions import (
     CoreAction,
     CoreActionRejected,
@@ -87,7 +87,7 @@ class StoryRules:
 
     def _risk(self, draft: GameState, risk: Risk, rng: Random) -> list[Emitted]:
         actor_id = PLAYER_ID if risk.actor_id is None else risk.actor_id
-        actor, held = self._actor(draft, actor_id)
+        actor, held = actor_of(draft, actor_id)
         if held.taken_out:
             raise StoryProposalRejected(
                 f"actor {actor.id!r} is taken out and cannot attempt a risk;"
@@ -144,12 +144,12 @@ class StoryRules:
                     )
                 return 1
             case HelpfulGear(item_id=item_id):
-                item = draft.world.require_kind(item_id, ItemEntity)
+                item, held = item_of(draft, item_id)
                 if item.container_id != actor_id:
                     raise StoryProposalRejected(
                         f"gear item {item_id!r} is not carried by {actor_id!r}"
                     )
-                if story_state(draft).item(item_id).gear is None:
+                if held.gear is None:
                     raise StoryProposalRejected(f"item {item_id!r} has no Story gear benefit")
                 return 1
 
@@ -239,23 +239,8 @@ class StoryRules:
         ]
 
     @staticmethod
-    def created(draft: GameState, entity: Entity) -> None:
-        created_state(draft, entity)
-
-    def validate_state(self, state: GameState) -> None:
-        story_state(state)
-
     def _actor_for_action(
-        self,
         draft: GameState,
         actor_id: EntityId | None,
     ) -> tuple[ActorEntity, StoryActorState]:
-        return self._actor(draft, PLAYER_ID if actor_id is None else actor_id)
-
-    @staticmethod
-    def _actor(
-        draft: GameState,
-        actor_id: EntityId,
-    ) -> tuple[ActorEntity, StoryActorState]:
-        actor = draft.world.require_kind(actor_id, ActorEntity)
-        return actor, story_state(draft).actor(actor_id)
+        return actor_of(draft, PLAYER_ID if actor_id is None else actor_id)

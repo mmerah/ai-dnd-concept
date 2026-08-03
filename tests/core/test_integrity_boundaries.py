@@ -2,8 +2,9 @@ import pytest
 from core_test_support import initialized, scenario, updated, with_entity
 from pydantic import ValidationError
 
-from aidm.base import PLAYER_ID, EntityId, ItemEntity
+from aidm.base import PLAYER_ID, EntityId, ItemEntity, LocationEntity
 from aidm.content import Character, CharacterOverlay, CharacterProfile
+from aidm.engines.dnd5e.state import Dnd5eActorState, StatBlock
 from aidm.engines.story.state import (
     DEFAULT_APPROACHES,
     StoryCharacterData,
@@ -44,9 +45,20 @@ def _rope(item_id: EntityId, *, known: bool = True) -> ItemEntity:
 
 def test_world_and_game_state_reject_inconsistent_topology() -> None:
     _, state = initialized()
+    player_record = state.world.actor(PLAYER_ID)
     with pytest.raises(ValidationError, match="keys disagree"):
         WorldState.model_validate(
-            {"entities": {"wrong-key": state.player.model_dump(round_trip=True)}}
+            {"actors": {"wrong-key": player_record.model_dump(round_trip=True)}}
+        )
+
+    location = state.world.require_kind(state.player.location_id, LocationEntity)
+    same_id_location = updated(location, id=PLAYER_ID)
+    with pytest.raises(ValidationError, match="more than one kind"):
+        WorldState.model_validate(
+            {
+                "actors": {PLAYER_ID: player_record.model_dump(round_trip=True)},
+                "locations": {PLAYER_ID: same_id_location.model_dump(round_trip=True)},
+            }
         )
 
     with pytest.raises(ValidationError, match="player entity must be known"):
@@ -54,6 +66,16 @@ def test_world_and_game_state_reject_inconsistent_topology() -> None:
 
     with pytest.raises(ValidationError, match="not in a valid location"):
         with_entity(state, updated(state.player, location_id=EntityId("missing")))
+
+
+def test_a_record_may_not_hold_another_engines_rules() -> None:
+    """A record pairs an entity with its rules, so a missing counterpart cannot be built; a
+    foreign engine tag is the only way the two halves can still disagree."""
+    _, state = initialized()
+    draft = state.draft()
+    draft.world.actor(PLAYER_ID).rules = Dnd5eActorState(stats=StatBlock())
+    with pytest.raises(ValidationError, match="records hold rules from another engine"):
+        draft.committed()
 
 
 def test_scenario_topology_is_validated() -> None:

@@ -5,6 +5,7 @@ from pydantic_ai.models.test import TestModel
 from pydantic_ai.usage import RunUsage
 
 from aidm.base import EntityId
+from aidm.engines.dnd5e.access import carried_by
 from aidm.engines.dnd5e.direction import Damage, Dnd5eDirection, DropItem, RollCheck
 from aidm.world import GameState
 
@@ -34,7 +35,7 @@ def test_unknown_and_absent_references_return_actionable_retries() -> None:
 
 def test_dry_run_checks_both_roll_branches() -> None:
     engine, state = initial_5e_game()
-    (lantern,) = state.world.carried_by(player_of(state).id)
+    (lantern,) = carried_by(state, player_of(state).id)
     direction = Dnd5eDirection(
         intent="Kael may discard the same lantern twice.",
         tone="uncertain",

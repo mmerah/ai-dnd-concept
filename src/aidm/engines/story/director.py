@@ -8,7 +8,7 @@ from aidm.base import PLAYER_ID, ActorEntity, Entity, EntityId, ItemEntity
 from aidm.directing import check_refs, check_speaker
 from aidm.world import GameState
 
-from .access import story_state
+from .access import actor_rules, item_rules
 from .actions import (
     CoreAction,
     CoreActionUnion,
@@ -35,7 +35,7 @@ from .direction import (
     flatten,
 )
 from .rules import StoryProposalRejected, StoryRules
-from .state import StoryActorState, StoryState
+from .state import StoryActorState
 
 type StoryActorConsequence = Risk | TakeStress | RecoverStress | ApplyCondition | ClearCondition
 
@@ -95,7 +95,6 @@ class StoryDirector:
         direction: StoryDirection,
     ) -> StoryDirection:
         state = ctx.deps
-        engine = story_state(state)
         consequences = flatten(direction.mechanics)
         core: list[CoreActionUnion] = []
         for consequence in consequences:
@@ -114,7 +113,7 @@ class StoryDirector:
             self._validate_core_presence(state, action)
         for consequence in consequences:
             if not isinstance(consequence, CoreAction):
-                self._validate_actor_consequence(state, engine, consequence)
+                self._validate_actor_consequence(state, consequence)
         try:
             self._rules.resolve(direction, state, Random(0))
         except StoryProposalRejected as error:
@@ -124,7 +123,6 @@ class StoryDirector:
     def _validate_actor_consequence(
         self,
         state: GameState,
-        engine: StoryState,
         consequence: StoryActorConsequence,
     ) -> None:
         actor_id = self._actor_id(consequence)
@@ -136,12 +134,12 @@ class StoryDirector:
                 raise ModelRetry(f"actor {actor.id!r} has not been revealed")
             if not state.is_here(actor):
                 raise ModelRetry(f"actor {actor.id!r} is not here with the player")
-        actor_state = engine.actor(actor.id)
+        actor_state = actor_rules(state.world.actor(actor.id).rules)
         match consequence:
             case Risk():
                 if actor_state.taken_out:
                     raise ModelRetry(f"actor {actor.id!r} is taken out")
-                self._validate_factors(state, engine, actor, actor_state, consequence)
+                self._validate_factors(state, actor, actor_state, consequence)
             case ClearCondition(condition_id=condition_id):
                 if not any(condition.id == condition_id for condition in actor_state.conditions):
                     raise ModelRetry(f"condition {condition_id!r} is not active on {actor.id!r}")
@@ -155,7 +153,6 @@ class StoryDirector:
     def _validate_factors(
         self,
         state: GameState,
-        engine: StoryState,
         actor: ActorEntity,
         actor_state: StoryActorState,
         risk: Risk,
@@ -173,7 +170,7 @@ class StoryDirector:
                 item = self._require(state, item_id, ItemEntity)
                 if item.container_id != actor.id:
                     raise ModelRetry(f"gear item {item.id!r} is not carried by {actor.id!r}")
-                if engine.item(item_id).gear is None:
+                if item_rules(state.world.item(item_id).rules).gear is None:
                     raise ModelRetry(f"item {item.id!r} has no gear benefit")
         match risk.hindering:
             case None:
@@ -191,16 +188,16 @@ class StoryDirector:
         here = state.player.location_id
         match action:
             case TakeItem(item_id=item_id):
-                item = state.world.entities[item_id]
+                item = state.world.find(item_id)
                 if not isinstance(item, ItemEntity) or item.container_id != here:
                     raise ModelRetry(f"item {item_id!r} is not loose at the player's location")
             case DropItem(item_id=item_id) | GiveItem(item_id=item_id):
-                item = state.world.entities[item_id]
+                item = state.world.find(item_id)
                 if not isinstance(item, ItemEntity) or item.container_id != PLAYER_ID:
                     raise ModelRetry(f"the player does not carry item {item_id!r}")
             case Move(actor_id=actor_id, location_id=location_id):
                 if actor_id is not None and actor_id != PLAYER_ID:
-                    actor = state.world.entities[actor_id]
+                    actor = state.world.find(actor_id)
                     if (
                         not isinstance(actor, ActorEntity)
                         or actor.location_id != here
@@ -216,7 +213,7 @@ class StoryDirector:
         entity_id: EntityId,
         expected: type[T],
     ) -> T:
-        entity = state.world.entities.get(entity_id)
+        entity = state.world.find(entity_id)
         if entity is None:
             raise ModelRetry(f"unknown entity id {entity_id!r}")
         if not isinstance(entity, expected):

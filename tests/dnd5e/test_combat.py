@@ -8,7 +8,7 @@ from fivee_test_support import new_game, ruleset, summary, with_actor, with_item
 from aidm.base import PLAYER_ID, ActorEntity, EntityId, ItemEntity
 from aidm.engines.dnd5e import bestiary, procedures
 from aidm.engines.dnd5e import rolls as rules
-from aidm.engines.dnd5e.access import actor_of, dnd5e_state
+from aidm.engines.dnd5e.access import actor_of
 from aidm.engines.dnd5e.direction import Attack, Damage, RollSave
 from aidm.engines.dnd5e.resolve import resolve
 from aidm.engines.dnd5e.state import (
@@ -130,7 +130,7 @@ def test_a_save_selects_its_branch_like_a_check_does() -> None:
 def test_a_save_on_someone_unseen_reveals_them_exactly_once() -> None:
     state = armed(new_game())
     goblin = state.world.require_kind(EntityId("goblin"), ActorEntity)
-    unseen = with_actor(state, updated(goblin, known=False), dnd5e_state(state).actor(goblin.id))
+    unseen = with_actor(state, updated(goblin, known=False), actor_of(state, goblin.id).state)
     gas = RollSave(
         ability="dexterity",
         dc=25,

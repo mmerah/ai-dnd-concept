@@ -3,14 +3,7 @@ from typing import Annotated, Literal, Self
 
 from pydantic import Field, model_validator
 
-from aidm.base import (
-    PLAYER_ID,
-    ActorEntity,
-    EngineAggregate,
-    EntityId,
-    ItemEntity,
-    Mutable,
-)
+from aidm.base import ActorEntity, EntityId, ItemEntity, Mutable
 
 from .content.records.base import Collection, ContentRef
 from .content.records.spells import SlotLevel
@@ -182,18 +175,20 @@ type Dnd5eContentRef = ContentRef
 
 
 class Dnd5eActorState(Mutable):
+    engine: Literal["dnd5e"] = "dnd5e"
     stats: StatBlock
     progression: Progression | None = None
     ref: Dnd5eContentRef | None = None
 
 
 class Dnd5eItemState(Mutable):
+    engine: Literal["dnd5e"] = "dnd5e"
     ref: Dnd5eContentRef | None = None
 
 
 @dataclass(frozen=True, slots=True)
 class Dnd5eActor:
-    """Joins core identity and placement with 5e mechanics so a rule reads one object."""
+    """A record narrowed to 5e: the same mutable halves, read as one object by every rule."""
 
     entity: ActorEntity
     state: Dnd5eActorState
@@ -247,22 +242,6 @@ class Dnd5eItem:
     @property
     def ref(self) -> Dnd5eContentRef | None:
         return self.state.ref
-
-
-class Dnd5eState(EngineAggregate[Dnd5eActorState, Dnd5eItemState]):
-    engine: Literal["dnd5e"] = "dnd5e"
-
-    @model_validator(mode="after")
-    def _only_the_player_advances(self) -> Self:
-        """`LeveledUp` names no target, so an NPC carrying progression would be ambiguous."""
-        levelled = sorted(
-            actor_id
-            for actor_id, actor in self.actors.items()
-            if actor.progression is not None and actor_id != PLAYER_ID
-        )
-        if levelled:
-            raise ValueError(f"only the player may have progression: {levelled}")
-        return self
 
 
 class Dnd5eCharacterData(Value):

@@ -1,10 +1,10 @@
 from random import Random
 
-from aidm.base import Entity
+from aidm.base import PLAYER_ID
 from aidm.transition import Transition
 from aidm.world import GameState
 
-from .access import created_state, dnd5e_state
+from .access import dnd5e_actor, dnd5e_item
 from .direction import Dnd5eDirection
 from .resolve import resolve as resolve_mechanics
 from .ruleset import Ruleset
@@ -19,15 +19,18 @@ class Dnd5eRules:
         facts = resolve_mechanics(direction.mechanics, draft, rng, self._ruleset)
         return Transition(state=draft.committed(), facts=tuple(facts))
 
-    @staticmethod
-    def created(draft: GameState, entity: Entity) -> None:
-        created_state(draft, entity)
-
     def validate_state(self, state: GameState) -> None:
-        engine = dnd5e_state(state)
-        for actor_id, actor in engine.actors.items():
+        actors = tuple(dnd5e_actor(record) for record in state.world.actors.values())
+        for actor in actors:
             if actor.ref is not None and not self._ruleset.provides(actor.ref):
-                raise ValueError(f"5e actor {actor_id!r} has unknown ref {actor.ref}")
-        for item_id, item in engine.items.items():
+                raise ValueError(f"5e actor {actor.id!r} has unknown ref {actor.ref}")
+        for record in state.world.items.values():
+            item = dnd5e_item(record)
             if item.ref is not None and not self._ruleset.provides(item.ref):
-                raise ValueError(f"5e item {item_id!r} has unknown ref {item.ref}")
+                raise ValueError(f"5e item {item.id!r} has unknown ref {item.ref}")
+        # `LeveledUp` names no target, so an NPC carrying progression would be ambiguous.
+        levelled = sorted(
+            actor.id for actor in actors if actor.progression is not None and actor.id != PLAYER_ID
+        )
+        if levelled:
+            raise ValueError(f"only the player may have progression: {levelled}")

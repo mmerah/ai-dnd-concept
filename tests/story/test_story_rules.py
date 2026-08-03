@@ -5,10 +5,11 @@ import pytest
 from story_test_support import initial_story_game, setback_direction
 
 from aidm.base import PLAYER_ID, EntityId
-from aidm.engines.story.access import story_state
+from aidm.engines.story.access import item_of, player_rules
 from aidm.engines.story.actions import DropItem, TakeItem
 from aidm.engines.story.direction import HelpfulGear, Risk, StoryConsequence, StoryDirection
 from aidm.engines.story.facts import RiskRolled
+from aidm.engines.story.state import StoryGearTag, StoryItemState
 
 
 def test_story_trace_direction_serializes_typed_mechanics() -> None:
@@ -56,9 +57,9 @@ def test_story_risk_is_seeded_pure_and_commits_once() -> None:
     assert safe == "Kael's attempt ends in a setback"
     assert all(private not in safe for private in ("1+1", "difficulty", "modifier"))
 
-    player = story_state(transition.state).actor(PLAYER_ID)
+    player = player_rules(transition.state)
     assert (player.growth_marks, player.stress) == (1, 1)
-    engine.rules.validate_state(transition.state)
+    engine.validate_state(transition.state)
 
 
 def test_dropped_story_gear_cannot_grant_a_risk_bonus() -> None:
@@ -67,14 +68,14 @@ def test_dropped_story_gear_cannot_grant_a_risk_bonus() -> None:
     drop = StoryDirection(
         intent="Kael puts down the lantern.",
         tone="quiet",
-        mechanics=[DropItem(item_id=gear.id)],
+        mechanics=[DropItem(item_id=gear.entity.id)],
     )
     dropped = engine.rules.resolve(drop, state, Random(0)).state
     mechanics: list[StoryConsequence] = [
         Risk(
             approach="clever",
             difficulty=0,
-            helpful=HelpfulGear(item_id=gear.id),
+            helpful=HelpfulGear(item_id=gear.entity.id),
         )
     ]
     risk = StoryDirection(
@@ -89,6 +90,10 @@ def test_dropped_story_gear_cannot_grant_a_risk_bonus() -> None:
 
 def test_story_mode_can_take_an_existing_item_and_keep_its_rule_state() -> None:
     engine, state = initial_story_game()
+    gear = StoryGearTag(name="Folded Chart", description="It marks the sealed stair.")
+    prepared = state.draft()
+    prepared.world.item(EntityId("vault_map")).rules = StoryItemState(gear=gear)
+    state = prepared.committed()
     mechanics: list[StoryConsequence] = [TakeItem(item_id=EntityId("vault_map"))]
     direction = StoryDirection(
         intent="Kael lifts the map from beneath the flagstone.",
@@ -100,5 +105,5 @@ def test_story_mode_can_take_an_existing_item_and_keep_its_rule_state() -> None:
 
     map_item = after.world.require(EntityId("vault_map"))
     assert map_item.known
-    assert map_item in after.world.carried_by(PLAYER_ID)
-    assert story_state(after).item(map_item.id) is not None
+    assert map_item in tuple(record.entity for record in after.world.carried_by(PLAYER_ID))
+    assert item_of(after, map_item.id)[1].gear == gear

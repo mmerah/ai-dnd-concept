@@ -6,12 +6,12 @@ rolls inside the `damage`/`heal` that spends it. Positions gate take/drop/give/d
 from random import Random
 
 import pytest
-from core_test_support import updated
+from core_test_support import updated, with_entity
 from fivee_test_support import blank_game, ruleset, with_actor
 from fivee_test_support import state as state
 
-from aidm.base import PLAYER_ID, Entity, EntityId
-from aidm.engines.dnd5e.access import actor_of, dnd5e_state
+from aidm.base import PLAYER_ID, EntityId
+from aidm.engines.dnd5e.access import actor_of
 from aidm.engines.dnd5e.direction import (
     ApplyCondition,
     Consequence,
@@ -36,19 +36,15 @@ RULES = ruleset()  # `attack` reads a weapon profile and an archetype's own atta
 PASS, FAIL = Random(0), Random(2)
 
 
-def replaced(state: GameState, entity: Entity) -> GameState:
-    entities = {**state.world.entities, entity.id: entity}
-    return updated(state, world=updated(state.world, entities=entities))
-
-
 def relocated(state: GameState, entity_id: EntityId, location_id: EntityId) -> GameState:
-    return replaced(state, updated(state.world.entities[entity_id], location_id=location_id))
+    moved = updated(state.world.require(entity_id), location_id=location_id)
+    return with_entity(state, moved)
 
 
 def wounded(state: GameState, hp: int) -> GameState:
-    engine = dnd5e_state(state)
-    hurt = updated(engine.actor(PLAYER_ID), stats=updated(actor_of(state, PLAYER_ID).stats, hp=hp))
-    return updated(state, engine=updated(engine, actors={**engine.actors, PLAYER_ID: hurt}))
+    player = actor_of(state, PLAYER_ID)
+    hurt = updated(player.state, stats=updated(player.stats, hp=hp))
+    return with_actor(state, player.entity, hurt)
 
 
 def test_top_level_consequences_all_apply_in_order(state: GameState) -> None:

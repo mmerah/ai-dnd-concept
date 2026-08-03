@@ -15,7 +15,7 @@ from aidm.directing import Reference
 from aidm.facts import CoreFact
 from aidm.world import GameState
 
-from .access import created_state
+from .state import StoryItemState
 
 
 class CoreAction(Frozen):
@@ -216,12 +216,11 @@ def _give(action: GiveItem, draft: GameState) -> list[CoreFact]:
 def _improvise(action: GainImprovisedItem, draft: GameState) -> list[CoreFact]:
     player = draft.player
     item = ItemEntity(
-        id=slug(action.item_name, draft.world.entities),
+        id=slug(action.item_name, draft.world.all_ids()),
         name=action.item_name,
         brief=action.item_name,
         known=True,
         container_id=player.location_id,
     )
-    created = draft.add(item)
-    created_state(draft, item)
+    created = draft.add(item, StoryItemState())
     return [created, draft.move_item(item, player)]

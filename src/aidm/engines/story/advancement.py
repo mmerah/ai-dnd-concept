@@ -8,7 +8,7 @@ from aidm.base import PLAYER_ID, AdvancementDecision, Frozen, ItemEntity, Slug, 
 from aidm.transition import Transition
 from aidm.world import GameState
 
-from .access import story_state
+from .access import player_rules
 from .facts import (
     ApproachRaised,
     Emitted,
@@ -97,10 +97,10 @@ class StoryAdvancementPlan(Frozen):
 
 class StoryAdvancement:
     def available(self, state: GameState) -> bool:
-        return self._player(state).growth_marks == GROWTH_REQUIRED
+        return player_rules(state).growth_marks == GROWTH_REQUIRED
 
     def preview(self, state: GameState) -> StoryAdvancementPreview:
-        player = self._player(state)
+        player = player_rules(state)
         if player.growth_marks != GROWTH_REQUIRED:
             raise ValueError(f"Story advancement requires {GROWTH_REQUIRED} growth marks")
         return StoryAdvancementPreview(
@@ -110,7 +110,7 @@ class StoryAdvancement:
         )
 
     def status(self, state: GameState) -> AdvancementStatus:
-        player = self._player(state)
+        player = player_rules(state)
         if player.growth_marks < GROWTH_REQUIRED:
             return AdvancementStatus(
                 headline="Story growth",
@@ -188,14 +188,13 @@ class StoryAdvancement:
                 return [TagRewritten(before=before_tag, after=after_tag)]
             case AcquireGear():
                 item = ItemEntity(
-                    id=slug(decision.item_name, draft.world.entities),
+                    id=slug(decision.item_name, draft.world.all_ids()),
                     name=decision.item_name,
                     brief=decision.item_brief,
                     known=True,
                     container_id=PLAYER_ID,
                 )
-                created = draft.add(item)
-                story_state(draft).items[item.id] = StoryItemState(gear=decision.gear)
+                created = draft.add(item, StoryItemState(gear=decision.gear))
                 return [
                     created,
                     GearAcquired(item_id=item.id, item_name=item.name, gear=decision.gear),
@@ -211,7 +210,7 @@ class StoryAdvancement:
                 return raised
 
     def _ready(self, state: GameState) -> StoryActorState:
-        player = self._player(state)
+        player = player_rules(state)
         if player.growth_marks != GROWTH_REQUIRED:
             raise ValueError(f"Story advancement requires {GROWTH_REQUIRED} growth marks")
         return player
@@ -265,7 +264,3 @@ class StoryAdvancement:
         if burden is None:
             raise ValueError(f"active burden {tag_id!r} does not exist")
         return burden
-
-    @staticmethod
-    def _player(state: GameState) -> StoryActorState:
-        return story_state(state).actor(PLAYER_ID)

@@ -2,9 +2,11 @@ import json
 from collections.abc import Sequence
 from typing import assert_never
 
-from aidm.base import PLAYER_ID, ActorEntity, Entity, ItemEntity, LocationEntity
+from aidm.base import PLAYER_ID, ActorEntity, Entity
+from aidm.world import EntityRules
 
 from . import features, spells
+from .access import actor_rules, item_rules
 from .content.library import ContentMiss
 from .content.records.base import ContentRef, DamageRoll
 from .content.records.monsters import (
@@ -32,7 +34,7 @@ from .facts import (
     SpellSlotSpent,
 )
 from .ruleset import Ruleset
-from .state import MAX_LEVEL, Dnd5eState, Progression, StatBlock, feature_key, spell_key
+from .state import MAX_LEVEL, Progression, StatBlock, feature_key, spell_key
 from .values import Attributes
 
 
@@ -40,19 +42,14 @@ class Dnd5ePresentation:
     def __init__(self, ruleset: Ruleset) -> None:
         self._ruleset = ruleset
 
-    def entity_state(self, entity: Entity, state: Dnd5eState) -> str:
-        match entity:
-            case ActorEntity():
-                actor = state.actor(entity.id)
-                if entity.id == PLAYER_ID:
-                    sheet = player_state(actor.stats, actor.progression, self._ruleset)
-                    advancement = level_up_state(actor.progression)
-                    return f"{sheet}\nadvancement: {advancement}"
-                return actor_state(actor.stats, actor.ref, self._ruleset)
-            case ItemEntity():
-                return item_state(state.item(entity.id).ref, self._ruleset)
-            case LocationEntity():
-                return ""
+    def entity_state(self, entity: Entity, rules: EntityRules) -> str:
+        if not isinstance(entity, ActorEntity):
+            return item_state(item_rules(rules).ref, self._ruleset)
+        actor = actor_rules(rules)
+        if entity.id != PLAYER_ID:
+            return actor_state(actor.stats, actor.ref, self._ruleset)
+        sheet = player_state(actor.stats, actor.progression, self._ruleset)
+        return f"{sheet}\nadvancement: {level_up_state(actor.progression)}"
 
     def narrator_fact(self, fact: Dnd5eFact) -> str | None:
         match fact:

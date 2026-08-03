@@ -31,8 +31,8 @@ class SceneSnapshot(BaseScene):
         world = state.world
         player = state.player
         location = world.require_kind(player.location_id, LocationEntity)
-        shown = [entity for entity in world.entities.values() if entity.id != PLAYER_ID]
-        inventory = world.carried_by(PLAYER_ID)
+        shown = [entity for entity in world.entities() if entity.id != PLAYER_ID]
+        inventory = tuple(record.entity for record in world.carried_by(PLAYER_ID))
         carried_ids = {item.id for item in inventory}
         placed = [
             entity for entity in shown if entity.id not in carried_ids and entity.id != location.id
@@ -54,11 +54,11 @@ class SceneSnapshot(BaseScene):
             ),
             hidden=tuple(entity for entity in shown if not entity.known),
             canon=world,
-            placements=_placements(world, world.entities.values(), frozenset(world.entities)),
+            placements=_placements(world, world.entities(), frozenset(world.all_ids())),
         )
 
     def catalogue(self) -> tuple[Entity, ...]:
-        return tuple(entity for entity in self.canon.entities.values() if entity.id != PLAYER_ID)
+        return tuple(entity for entity in self.canon.entities() if entity.id != PLAYER_ID)
 
 
 class VisibleScene(BaseScene):
@@ -74,7 +74,7 @@ class VisibleScene(BaseScene):
             *snapshot.here,
             *snapshot.known_elsewhere,
         )
-        met = frozenset(entity.id for entity in canon.entities.values() if entity.known)
+        met = frozenset(entity.id for entity in canon.entities() if entity.known)
         return cls(
             player=_undetailed(snapshot.player),
             location=_undetailed(snapshot.location),
@@ -99,7 +99,7 @@ def _placement(entity: Entity, world: WorldState, nameable: frozenset[EntityId])
         case LocationEntity():
             return ""
         case ActorEntity():
-            location = world.entities.get(entity.location_id)
+            location = world.find(entity.location_id)
             if location is None or location.id not in nameable:
                 return ""
             return f"at {location.name}"

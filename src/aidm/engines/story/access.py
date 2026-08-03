@@ -1,22 +1,31 @@
-from aidm.base import ActorEntity, Entity, ItemEntity, LocationEntity
-from aidm.world import GameState
+from aidm.base import PLAYER_ID, ActorEntity, EntityId, ItemEntity
+from aidm.world import EntityRules, GameState
 
-from .state import DEFAULT_APPROACHES, StoryActorState, StoryItemState, StoryState
-
-
-def story_state(state: GameState) -> StoryState:
-    if not isinstance(state.engine, StoryState):
-        raise ValueError(f"Story received a {state.engine_id!r} state")
-    return state.engine
+from .state import StoryActorState, StoryItemState
 
 
-def created_state(draft: GameState, entity: Entity) -> None:
-    """Give a newly narrated entity baseline Story state."""
-    engine = story_state(draft)
-    match entity:
-        case ActorEntity():
-            engine.actors[entity.id] = StoryActorState(approaches=DEFAULT_APPROACHES)
-        case ItemEntity():
-            engine.items[entity.id] = StoryItemState()
-        case LocationEntity():
-            return
+def actor_rules(rules: EntityRules) -> StoryActorState:
+    """A record's rules are a union; only the tag this engine wrote narrows here."""
+    if not isinstance(rules, StoryActorState):
+        raise ValueError(f"Story received {rules.engine!r} {type(rules).__name__}")
+    return rules
+
+
+def item_rules(rules: EntityRules) -> StoryItemState:
+    if not isinstance(rules, StoryItemState):
+        raise ValueError(f"Story received {rules.engine!r} {type(rules).__name__}")
+    return rules
+
+
+def actor_of(state: GameState, actor_id: EntityId) -> tuple[ActorEntity, StoryActorState]:
+    record = state.world.actor(actor_id)
+    return record.entity, actor_rules(record.rules)
+
+
+def item_of(state: GameState, item_id: EntityId) -> tuple[ItemEntity, StoryItemState]:
+    record = state.world.item(item_id)
+    return record.entity, item_rules(record.rules)
+
+
+def player_rules(state: GameState) -> StoryActorState:
+    return actor_rules(state.world.actor(PLAYER_ID).rules)

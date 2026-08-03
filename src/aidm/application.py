@@ -218,7 +218,7 @@ def _save_option(
         slug=slug,
         scenario_id=state.scenario_id,
         character_id=state.character_id,
-        engine=state.engine_id,
+        engine=state.engine,
         scenario_title=state.scenario.title,
         character_title=state.player.name,
         turn=state.turn,
@@ -239,8 +239,8 @@ def _unplayable_reason(
         found = next((option for option in offered if option.id == wanted), None)
         if found is None:
             return f"{purpose} {wanted!r} is gone"
-        if state.engine_id not in found.engines:
-            return f"{purpose} {wanted!r} no longer offers the {state.engine_id!r} engine"
+        if state.engine not in found.engines:
+            return f"{purpose} {wanted!r} no longer offers the {state.engine!r} engine"
     return None
 
 
@@ -328,8 +328,8 @@ class GameSession:
             scenario_id=self.scenario.id,
             character_id=self.character.id,
             scenario=self.scenario.meta,
-            world=authored.world,
-            engine=self.engine.initial_state(authored, self.character.overlay.character),
+            engine=self.engine.id,
+            world=self.engine.initial_world(authored, self.character.overlay.character),
         )
         self.engine.validate_state(state)
         return state

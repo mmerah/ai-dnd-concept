@@ -1,6 +1,5 @@
 from aidm.base import ItemEntity, LocationEntity, slug
 
-from ..access import created_state
 from ..direction import (
     DropItem,
     GainImprovisedItem,
@@ -8,6 +7,7 @@ from ..direction import (
     TakeItem,
 )
 from ..facts import Emitted
+from ..state import Dnd5eItemState
 from . import common
 from .resolution import Resolution
 
@@ -40,12 +40,11 @@ def improvise(ctx: Resolution, consequence: GainImprovisedItem) -> list[Emitted]
     player = ctx.player
     written = consequence.item_name
     item = ItemEntity(
-        id=slug(written, ctx.draft.world.entities),
+        id=slug(written, ctx.draft.world.all_ids()),
         name=written,
         brief=written,
         container_id=player.location_id,
         known=True,
     )
-    created = ctx.draft.add(item)
-    created_state(ctx.draft, item)
+    created = ctx.draft.add(item, Dnd5eItemState())
     return [created, ctx.draft.move_item(item, player.entity)]

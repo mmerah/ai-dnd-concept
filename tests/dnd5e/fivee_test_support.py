@@ -14,7 +14,7 @@ from aidm.base import (
     LocationEntity,
 )
 from aidm.content import ScenarioMeta, authored_world
-from aidm.engines.dnd5e.access import actor_of, dnd5e_state
+from aidm.engines.dnd5e.access import actor_of
 from aidm.engines.dnd5e.content.library import Content, loaded, read_pack
 from aidm.engines.dnd5e.content.models import Pack
 from aidm.engines.dnd5e.content.pack_ruleset import compile_ruleset
@@ -27,7 +27,6 @@ from aidm.engines.dnd5e.state import (
     Dnd5eActorState,
     Dnd5eCharacterData,
     Dnd5eItemState,
-    Dnd5eState,
     StatBlock,
 )
 from aidm.engines.dnd5e.values import Attributes, ContentSlug
@@ -39,7 +38,7 @@ from aidm.facts import (
     core_fact_summary,
 )
 from aidm.store import load_character, load_scenario
-from aidm.world import GameState, WorldState
+from aidm.world import ActorRecord, GameState, ItemRecord, WorldState
 
 REPOSITORY_ROOT = Path(__file__).parents[2]
 PACK_DIR = REPOSITORY_ROOT / "src" / "aidm" / "engines" / "dnd5e" / "data" / "srd-2014"
@@ -63,59 +62,78 @@ def summary(fact: Emitted) -> str:
 
 
 def with_actor(state: GameState, entity: ActorEntity, actor: Dnd5eActorState) -> GameState:
-    engine = dnd5e_state(state)
-    return updated(
-        state,
-        world=updated(state.world, entities={**state.world.entities, entity.id: entity}),
-        engine=updated(engine, actors={**engine.actors, entity.id: actor}),
-    )
+    world = state.world.model_copy(deep=True)
+    world.actors[entity.id] = ActorRecord(entity=entity, rules=actor)
+    return updated(state, world=world)
 
 
 def with_item(state: GameState, entity: ItemEntity, item: Dnd5eItemState) -> GameState:
-    engine = dnd5e_state(state)
-    return updated(
-        state,
-        world=updated(state.world, entities={**state.world.entities, entity.id: entity}),
-        engine=updated(engine, items={**engine.items, entity.id: item}),
-    )
+    world = state.world.model_copy(deep=True)
+    world.items[entity.id] = ItemRecord(entity=entity, rules=item)
+    return updated(state, world=world)
+
+
+def _actor(entity: ActorEntity, stats: StatBlock) -> ActorRecord:
+    return ActorRecord(entity=entity, rules=Dnd5eActorState(stats=stats))
+
+
+def _item(entity: ItemEntity) -> ItemRecord:
+    return ItemRecord(entity=entity, rules=Dnd5eItemState())
 
 
 def blank_game() -> GameState:
-    entities = [
+    locations = [
         LocationEntity(id=EntityId("study"), name="the study", brief="A room.", known=True),
         LocationEntity(id=EntityId("vault"), name="the vault", brief="A crypt."),
-        ActorEntity(
-            id=PLAYER_ID,
-            name="Kael",
-            brief="A relic-hunter.",
-            known=True,
-            location_id=EntityId("study"),
+    ]
+    actors = [
+        _actor(
+            ActorEntity(
+                id=PLAYER_ID,
+                name="Kael",
+                brief="A relic-hunter.",
+                known=True,
+                location_id=EntityId("study"),
+            ),
+            StatBlock(attributes=Attributes(wisdom=14), max_hp=10, hp=10),
         ),
-        ActorEntity(
-            id=EntityId("mara"),
-            name="Mara",
-            brief="A scribe.",
-            known=True,
-            location_id=EntityId("study"),
+        _actor(
+            ActorEntity(
+                id=EntityId("mara"),
+                name="Mara",
+                brief="A scribe.",
+                known=True,
+                location_id=EntityId("study"),
+            ),
+            StatBlock(),
         ),
-        ActorEntity(
-            id=EntityId("elena"),
-            name="Elena",
-            brief="An archivist.",
-            location_id=EntityId("study"),
+        _actor(
+            ActorEntity(
+                id=EntityId("elena"),
+                name="Elena",
+                brief="An archivist.",
+                location_id=EntityId("study"),
+            ),
+            StatBlock(),
         ),
-        ItemEntity(
-            id=EntityId("vault_map"),
-            name="the vault map",
-            brief="A chart.",
-            container_id=EntityId("study"),
+    ]
+    items = [
+        _item(
+            ItemEntity(
+                id=EntityId("vault_map"),
+                name="the vault map",
+                brief="A chart.",
+                container_id=EntityId("study"),
+            )
         ),
-        ItemEntity(
-            id=EntityId("lantern"),
-            name="a lantern",
-            brief="A tin lantern.",
-            known=True,
-            container_id=PLAYER_ID,
+        _item(
+            ItemEntity(
+                id=EntityId("lantern"),
+                name="a lantern",
+                brief="A tin lantern.",
+                known=True,
+                container_id=PLAYER_ID,
+            )
         ),
     ]
     return GameState(
@@ -123,19 +141,11 @@ def blank_game() -> GameState:
         scenario_id="whispering-vault",
         character_id="kael",
         scenario=ScenarioMeta(title="Test", premise="A test."),
-        world=WorldState(entities={entity.id: entity for entity in entities}),
-        engine=Dnd5eState(
-            actors={
-                PLAYER_ID: Dnd5eActorState(
-                    stats=StatBlock(attributes=Attributes(wisdom=14), max_hp=10, hp=10)
-                ),
-                EntityId("mara"): Dnd5eActorState(stats=StatBlock()),
-                EntityId("elena"): Dnd5eActorState(stats=StatBlock()),
-            },
-            items={
-                EntityId("vault_map"): Dnd5eItemState(),
-                EntityId("lantern"): Dnd5eItemState(),
-            },
+        engine="dnd5e",
+        world=WorldState(
+            actors={record.entity.id: record for record in actors},
+            items={record.entity.id: record for record in items},
+            locations={entity.id: entity for entity in locations},
         ),
     )
 
@@ -193,8 +203,8 @@ def initial_5e_game(
         scenario_id=scenario.id,
         character_id=played.id,
         scenario=scenario.meta,
-        world=authored.world,
-        engine=engine.initial_state(authored, played.overlay.character),
+        engine=engine.id,
+        world=engine.initial_world(authored, played.overlay.character),
     )
 
 

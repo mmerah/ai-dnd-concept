@@ -10,7 +10,7 @@ from pydantic_ai.models.function import AgentInfo, FunctionModel
 
 from aidm.agents import director_stage, shared_stages
 from aidm.base import PLAYER_ID, ActorEntity, ItemEntity, LocationEntity
-from aidm.engines.story.access import story_state
+from aidm.engines.story.access import actor_of, item_of
 from aidm.engines.story.state import DEFAULT_APPROACHES
 from aidm.pipeline import TurnOptions, run_turn
 
@@ -69,7 +69,7 @@ async def test_an_engine_uses_the_shared_pipeline_and_safe_narrator_prompt() -> 
         )
 
     assert [fact.fact for fact in result.turn.facts] == ["entity_discovered", "item_moved"]
-    assert {item.id for item in result.state.world.carried_by(PLAYER_ID)} == {
+    assert {record.entity.id for record in result.state.world.carried_by(PLAYER_ID)} == {
         "lantern",
         "vault_map",
     }
@@ -149,10 +149,9 @@ async def test_creator_growth_receives_valid_engine_rules_before_commit() -> Non
     item = next(entity for entity in result.turn.created if isinstance(entity, ItemEntity))
     assert actor.location_id == location.id
     assert item.container_id == location.id
-    engine_state = story_state(result.state)
-    assert engine_state.actor(actor.id).approaches == DEFAULT_APPROACHES
-    assert engine_state.item(item.id).gear is None
-    assert location.id not in engine_state.actors
+    assert actor_of(result.state, actor.id)[1].approaches == DEFAULT_APPROACHES
+    assert item_of(result.state, item.id)[1].gear is None
+    assert location.id not in result.state.world.actors
     assert result.turn.narrator_evidence == "- (nothing mechanical happened)"
     assert "new actor" not in result.turn.prompts["narrator"]
     engine.validate_state(result.state)

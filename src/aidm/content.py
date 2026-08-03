@@ -1,4 +1,4 @@
-from collections.abc import Mapping
+from collections.abc import Callable, Mapping
 from typing import Self
 
 from pydantic import Field, model_validator
@@ -12,14 +12,19 @@ from .base import (
     Frozen,
     ItemEntity,
     Kind,
+    LocationEntity,
     Slug,
 )
 from .world import (
     ActorEngineData,
+    ActorRecord,
+    ActorRules,
     CharacterEngineData,
     EngineData,
     EntityEngineData,
     ItemEngineData,
+    ItemRecord,
+    ItemRules,
     ScenarioMeta,
     WorldState,
 )
@@ -150,11 +155,22 @@ def _require_overlay(
         _require_engine(engine, f"entity {entity_id!r}", data)
 
 
-class AuthoredWorld(Frozen):
-    """A composed world with engine data keyed by authored entity id."""
+class AuthoredActor(Frozen):
+    entity: ActorEntity
+    data: ActorEngineData | None = None
 
-    world: WorldState
-    engine_data: dict[EntityId, EntityEngineData] = Field(default_factory=dict)
+
+class AuthoredItem(Frozen):
+    entity: ItemEntity
+    data: ItemEngineData | None = None
+
+
+class AuthoredWorld(Frozen):
+    """Every authored entity beside the engine data written for it, under the authored id."""
+
+    actors: dict[EntityId, AuthoredActor] = Field(default_factory=dict)
+    items: dict[EntityId, AuthoredItem] = Field(default_factory=dict)
+    locations: dict[EntityId, LocationEntity] = Field(default_factory=dict)
 
 
 def authored_world(scenario: Scenario, character: Character) -> AuthoredWorld:
@@ -165,17 +181,46 @@ def authored_world(scenario: Scenario, character: Character) -> AuthoredWorld:
         known=True,
         location_id=scenario.world.starting_location_id,
     )
-    entities: dict[EntityId, Entity] = {}
-    for entity in (*scenario.world.entities, *character.profile.items, player):
-        if entity.id in entities:
-            raise ValueError(f"authored entity id {entity.id!r} appears twice")
+    items_data = {**scenario.overlay.items, **character.overlay.items}
+    actors: dict[EntityId, AuthoredActor] = {}
+    items: dict[EntityId, AuthoredItem] = {}
+    locations: dict[EntityId, LocationEntity] = {}
+    seen: set[EntityId] = set()
+    for authored in (*scenario.world.entities, *character.profile.items, player):
+        if authored.id in seen:
+            raise ValueError(f"authored entity id {authored.id!r} appears twice")
+        seen.add(authored.id)
         # Loaded content outlives the mutable game state.
-        entities[entity.id] = entity.model_copy(deep=True)
-    return AuthoredWorld(
-        world=WorldState(entities=entities),
-        engine_data={
-            **scenario.overlay.actors,
-            **scenario.overlay.items,
-            **character.overlay.items,
+        entity = authored.model_copy(deep=True)
+        match entity:
+            case ActorEntity():
+                actors[entity.id] = AuthoredActor(
+                    entity=entity, data=scenario.overlay.actors.get(entity.id)
+                )
+            case ItemEntity():
+                items[entity.id] = AuthoredItem(entity=entity, data=items_data.get(entity.id))
+            case LocationEntity():
+                locations[entity.id] = entity
+    return AuthoredWorld(actors=actors, items=items, locations=locations)
+
+
+def compose_world(
+    authored: AuthoredWorld,
+    player: ActorRules,
+    actor_rules: Callable[[AuthoredActor], ActorRules],
+    item_rules: Callable[[AuthoredItem], ItemRules],
+) -> WorldState:
+    return WorldState(
+        actors={
+            actor_id: ActorRecord(
+                entity=record.entity,
+                rules=player if actor_id == PLAYER_ID else actor_rules(record),
+            )
+            for actor_id, record in authored.actors.items()
         },
+        items={
+            item_id: ItemRecord(entity=record.entity, rules=item_rules(record))
+            for item_id, record in authored.items.items()
+        },
+        locations=dict(authored.locations),
     )

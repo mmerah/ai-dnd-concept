@@ -2,12 +2,12 @@ from pathlib import Path
 
 from pydantic import BaseModel, SecretStr
 
-from aidm.base import SAVE_VERSION, Entity
+from aidm.base import SAVE_VERSION, ActorEntity, Entity, ItemEntity, LocationEntity
 from aidm.config import ProviderConfig, Providers, Roles, Settings
 from aidm.content import Character, Scenario, authored_world
 from aidm.engines.story.engine import StoryEngine, build_story_engine
 from aidm.store import load_character, load_scenario
-from aidm.world import GameState
+from aidm.world import ActorRecord, GameState, ItemRecord
 
 REPOSITORY_ROOT = Path(__file__).parents[2]
 SCENARIOS = REPOSITORY_ROOT / "scenarios"
@@ -20,9 +20,16 @@ def updated[T: BaseModel](model: T, **changes: object) -> T:
 
 
 def with_entity(state: GameState, entity: Entity) -> GameState:
-    return updated(
-        state, world=updated(state.world, entities={**state.world.entities, entity.id: entity})
-    )
+    """Replace one entity, keeping whatever rules its record already holds."""
+    world = state.world.model_copy(deep=True)
+    match entity:
+        case ActorEntity():
+            world.actors[entity.id] = ActorRecord(entity=entity, rules=world.actor(entity.id).rules)
+        case ItemEntity():
+            world.items[entity.id] = ItemRecord(entity=entity, rules=world.item(entity.id).rules)
+        case LocationEntity():
+            world.locations[entity.id] = entity
+    return updated(state, world=world)
 
 
 def scenario() -> Scenario:
@@ -43,8 +50,8 @@ def initialized() -> tuple[StoryEngine, GameState]:
         scenario_id=selected_scenario.id,
         character_id=selected_character.id,
         scenario=selected_scenario.meta,
-        world=authored.world,
-        engine=engine.initial_state(authored, selected_character.overlay.character),
+        engine=engine.id,
+        world=engine.initial_world(authored, selected_character.overlay.character),
     )
     engine.validate_state(state)
     return engine, state

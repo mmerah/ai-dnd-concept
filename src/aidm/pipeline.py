@@ -101,7 +101,7 @@ async def run_turn(
     growth = await stages.maintainer.run(prompts["maintainer"], None, history)
     screened = screen_growth(
         growth.requests,
-        {entity.name for entity in draft.world.entities.values()},
+        {entity.name for entity in draft.world.entities()},
         options.max_growth,
     )
 
@@ -162,8 +162,7 @@ async def _grow(
             draft,
             _requested_location(request, draft),
         )
-        facts.append(draft.add(entity))
-        engine.created(draft, entity)
+        facts.append(draft.add(entity, engine.default_rules(entity)))
         created.append(entity)
     return tuple(created), tuple(facts)
 
@@ -174,7 +173,7 @@ def _created_entity(
     state: GameState,
     location: EntityId,
 ) -> Entity:
-    entity_id = slug(request.name, state.world.entities)
+    entity_id = slug(request.name, state.world.all_ids())
     fields = {
         "id": entity_id,
         "name": request.name,
@@ -194,8 +193,8 @@ def _created_entity(
 def _requested_location(request: GrowthRequest, state: GameState) -> EntityId:
     if request.location is not None:
         wanted = request.location.casefold()
-        for entity in state.world.entities.values():
-            if isinstance(entity, LocationEntity) and entity.name.casefold() == wanted:
+        for entity in state.world.locations.values():
+            if entity.name.casefold() == wanted:
                 return entity.id
     return state.player.location_id
 
