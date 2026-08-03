@@ -5,14 +5,12 @@ from aidm.world import GameState
 from . import dice, features, rolls
 from .access import carried_by
 from .facts import AttackRolled
-from .ruleset import AttackProfile, CombatRules, WeaponProfile
+from .ruleset import AttackProfile, Ruleset, WeaponProfile
 from .state import Dnd5eActor, Dnd5eItem, Progression
 from .values import ContentSlug
 
 
-def swing(
-    state: GameState, attacker: Dnd5eActor, weapon: str, ruleset: CombatRules
-) -> AttackProfile:
+def swing(state: GameState, attacker: Dnd5eActor, weapon: str, ruleset: Ruleset) -> AttackProfile:
     ref = attacker.ref
     archetype = None if ref is None else ruleset.archetype(ref)
     if archetype is not None:
@@ -39,7 +37,7 @@ def _own_attack(
 
 
 def _wielded(
-    state: GameState, attacker: Dnd5eActor, weapon: str, ruleset: CombatRules
+    state: GameState, attacker: Dnd5eActor, weapon: str, ruleset: Ruleset
 ) -> AttackProfile:
     item, profile = _held_weapon(state, attacker, weapon, ruleset)
     ability = "dexterity" if _uses_dexterity(profile, attacker) else "strength"
@@ -58,7 +56,7 @@ def _wielded(
 
 
 def _held_weapon(
-    state: GameState, attacker: Dnd5eActor, weapon: str, ruleset: CombatRules
+    state: GameState, attacker: Dnd5eActor, weapon: str, ruleset: Ruleset
 ) -> tuple[Dnd5eItem, WeaponProfile]:
     for item in carried_by(state, attacker.id):
         if item.ref is None or weapon.casefold() not in (item.name.casefold(), item.ref.index):
@@ -79,7 +77,7 @@ def _uses_dexterity(weapon: WeaponProfile, attacker: Dnd5eActor) -> bool:
 
 
 def _proficiency_bonus(
-    progression: Progression | None, equipment: ContentSlug, ruleset: CombatRules
+    progression: Progression | None, equipment: ContentSlug, ruleset: Ruleset
 ) -> int:
     if progression is None:
         return 0

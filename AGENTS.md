@@ -56,9 +56,10 @@ Tests must be deterministic and require no network.
 - `aidm/prompts.py` owns one centralized context policy for what each role sees. `SceneSnapshot` is the one projection of a `GameState`; each renderer takes it plus the bound entity renderer, never a per-role DTO.
 - The 5e engine reads compiled profiles from `aidm/engines/dnd5e/ruleset.py`; only `content/pack_ruleset.py` knows pack storage shape.
 - 5e content is derived once: `scripts/srd/` narrows upstream records. A pack loads once and every turn shares its records, so pack and compiled-profile maps stay frozen; runtime state maps are plain dicts.
-- `aidm/ui/bootstrap.py` is the composition root. Below it, collaborators and paths are explicit; no globals.
-- `aidm/application.py` owns the open game behind ports, while `aidm/store.py` performs path-based I/O.
-- `save_version` is the only compatibility gate. `store.py` refuses a stale save or trace at load; regenerating the SRD content pack bumps `SAVE_VERSION`.
+- `application.py::Runtime` is the composition root, built once by `aidm/ui/app.py`. Below it, collaborators and paths are explicit; no globals.
+- `aidm/application.py` owns the open game: a `GameSession` holds `FileSaves`/`FileTraces` directly, while `aidm/store.py` performs path-based I/O. A port returns only when a second implementation exists.
+- A trace entry records what occurred, never the resulting state.
+- `save_version` is the only compatibility gate. `store.py` refuses a stale save or trace at load, each trace entry carrying its own; regenerating the SRD content pack bumps `SAVE_VERSION`.
 - Only the Narrator writes player-facing prose and it never sees unrevealed canon. `render_narrator` takes `VisibleScene`, which has no field a leak could travel through; never widen it to `SceneSnapshot`.
 - Every role sees engine state through engine-owned presentation, bound to the state it reads by `engine.py::entity_renderer`; core owns which entities each role may see.
 - The Narrator receives exact state for visible entities and translates mechanics into fiction instead of reciting stat blocks.

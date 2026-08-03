@@ -2,21 +2,22 @@ import logging
 
 from nicegui import ui
 
+from aidm.application import GameSession, LaunchTarget, Runtime
 from aidm.base import Role, as_engine_id, content_id
 from aidm.config import load_settings
 
-from .bootstrap import SessionRegistry, create_composition
 from .components.engine import show_engine_badge
+from .engines.registry import advancement_ui
 from .home import home_page
 from .panels import chat, roles, state, trace
-from .session import Session
 
 LOGGER = logging.getLogger(__name__)
 
 
 class GameView:
-    def __init__(self, session: Session) -> None:
+    def __init__(self, session: GameSession) -> None:
         self.session = session
+        self.advancement_ui = advancement_ui(session.engine)
 
     @ui.refreshable_method
     def chat(self) -> None:
@@ -32,7 +33,7 @@ class GameView:
 
     @ui.refreshable_method
     def advancement(self) -> None:
-        self.session.advancement.render(self.session, self.refresh_all)
+        self.advancement_ui.render(self.session, self.refresh_all)
 
     @ui.refreshable_method
     def state(self) -> None:
@@ -63,9 +64,9 @@ async def submit(view: GameView, box: ui.input) -> None:
     session.busy = True
     box.value = ""
     try:
-        advancement_was_available = session.app.advancement_available()
-        await session.app.submit(prompt, on_step=lambda step: on_step(view, step))
-        if not advancement_was_available and session.app.advancement_available():
+        advancement_was_available = session.advancement_available()
+        await session.submit(prompt, on_step=lambda step: on_step(view, step))
+        if not advancement_was_available and session.advancement_available():
             ui.notify("Advancement unlocked. Open the Advancement tab to choose it.")
     except Exception as error:
         ui.notify(f"{type(error).__name__}: {error}", type="negative", multi_line=True)
@@ -80,13 +81,12 @@ def restart(view: GameView) -> None:
     if session.busy:
         ui.notify("Finish the current turn first.", type="warning")
         return
-    session.app.restart()
+    session.restart()
     view.refresh_all()
 
 
 def start() -> None:
-    sessions = SessionRegistry(create_composition(load_settings()))
-    _register_pages(sessions)
+    _register_pages(Runtime(load_settings()))
     ui.run(  # pyright: ignore[reportUnknownMemberType]
         title="AI Dungeon Master",
         reload=False,
@@ -94,10 +94,10 @@ def start() -> None:
     )
 
 
-def _register_pages(sessions: SessionRegistry) -> None:
+def _register_pages(runtime: Runtime) -> None:
     @ui.page("/")
     def _index() -> None:  # pyright: ignore[reportUnusedFunction]
-        home_page(sessions.composition.config)
+        home_page(runtime.config)
 
     @ui.page("/game/{slug}/{scenario}/{character}/{engine}")
     def _game(  # pyright: ignore[reportUnusedFunction]
@@ -107,18 +107,23 @@ def _register_pages(sessions: SessionRegistry) -> None:
         engine: str,
     ) -> None:
         _game_page(
-            sessions.session(
-                slug, content_id(scenario), content_id(character), as_engine_id(engine)
+            runtime.session(
+                LaunchTarget(
+                    slug=slug,
+                    scenario_id=content_id(scenario),
+                    character_id=content_id(character),
+                    engine=as_engine_id(engine),
+                )
             )
         )
 
 
-def _game_page(session: Session) -> None:
+def _game_page(session: GameSession) -> None:
     view = GameView(session)
     with ui.header().classes("items-center").style("gap: 1rem"):
         ui.button(icon="home", on_click=lambda: ui.navigate.to("/")).props("flat color=white round")
-        ui.label(session.app.state.scenario.title).classes("text-lg font-bold")
-        show_engine_badge(session.app.engine.id)
+        ui.label(session.state.scenario.title).classes("text-lg font-bold")
+        show_engine_badge(session.engine.id)
         view.roles()
         ui.space()
         ui.button("restart", on_click=lambda: restart(view)).props("flat color=white dense")

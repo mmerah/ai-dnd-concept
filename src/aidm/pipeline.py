@@ -1,4 +1,5 @@
 from collections.abc import Callable, Sequence
+from dataclasses import dataclass
 from random import Random
 
 from pydantic import Field
@@ -36,6 +37,14 @@ class TurnOptions(Frozen):
     max_growth: int = Field(ge=0)
 
 
+@dataclass(frozen=True, slots=True)
+class TurnResult:
+    """The committed state and the entry recording how it was reached, kept apart."""
+
+    state: GameState
+    turn: Turn
+
+
 async def run_turn(
     state: GameState,
     prompt: str,
@@ -46,7 +55,7 @@ async def run_turn(
     options: TurnOptions,
     rng: Random,
     on_step: Callable[[Role], None] | None = None,
-) -> Turn:
+) -> TurnResult:
     step = on_step or _ignore_step
     prompts: dict[Role, str] = {}
     recent = state.history[-options.history_window :]
@@ -110,17 +119,19 @@ async def run_turn(
     draft.turn += 1
     final = draft.committed()
     engine.rules.validate_state(final)
-    return Turn(
-        prompt=prompt,
-        direction=direction,
-        facts=(*transition.facts, *creation_facts),
-        narrator_evidence=evidence,
-        narration=narration,
-        growth=growth,
-        created=created,
-        rejected=screened.rejected,
+    return TurnResult(
         state=final,
-        prompts=prompts,
+        turn=Turn(
+            prompt=prompt,
+            direction=direction,
+            facts=(*transition.facts, *creation_facts),
+            narrator_evidence=evidence,
+            narration=narration,
+            growth=growth,
+            created=created,
+            rejected=screened.rejected,
+            prompts=prompts,
+        ),
     )
 
 

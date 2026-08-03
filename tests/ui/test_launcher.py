@@ -4,9 +4,22 @@ from pathlib import Path
 from core_test_support import updated
 from ui_test_support import SCENARIOS, ui_settings
 
-from aidm.application import LauncherController, load_catalog
+from aidm.application import LauncherController, LaunchTarget, Runtime, load_catalog
+from aidm.base import EngineId
+from aidm.config import Settings
 from aidm.store import ENCODING, FileSaves
-from aidm.ui.bootstrap import create_composition
+from aidm.world import GameState
+
+
+def _opening_state(config: Settings, engine: EngineId) -> GameState:
+    """The launcher reads saves, so a test needs a state a real game would have written."""
+    target = LaunchTarget(
+        slug="poc",
+        scenario_id="whispering-vault",
+        character_id="kael",
+        engine=engine,
+    )
+    return Runtime(config).session(target).state
 
 
 def _story_only(tmp_path: Path) -> Path:
@@ -52,8 +65,7 @@ def test_content_is_offered_only_for_the_rulesets_it_ships(tmp_path: Path) -> No
 
 def test_launcher_lists_and_resolves_an_existing_save(tmp_path: Path) -> None:
     config = ui_settings(tmp_path)
-    application = create_composition(config).application("poc", "whispering-vault", "kael", "story")
-    FileSaves(tmp_path).save("old-story-game", application.state)
+    FileSaves(tmp_path).save("old-story-game", _opening_state(config, "story"))
 
     controller = LauncherController(load_catalog(config))
     saved = controller.catalog.save("old-story-game")
@@ -74,8 +86,7 @@ def test_launcher_lists_and_resolves_an_existing_save(tmp_path: Path) -> None:
 def test_a_save_whose_rules_were_withdrawn_is_reported_not_offered(tmp_path: Path) -> None:
     """The save still names its origin; that origin no longer ships the overlay it needs."""
     config = ui_settings(tmp_path)
-    application = create_composition(config).application("poc", "whispering-vault", "kael", "dnd5e")
-    FileSaves(tmp_path).save("withdrawn", application.state)
+    FileSaves(tmp_path).save("withdrawn", _opening_state(config, "dnd5e"))
     withdrawn = ui_settings(tmp_path, _story_only(tmp_path))
 
     saved = load_catalog(withdrawn).save("withdrawn")
@@ -88,7 +99,7 @@ def test_a_save_from_another_build_is_reported_not_offered(tmp_path: Path) -> No
     """Unreadable, not absent: offering it as a new game would crash on navigation."""
     config = ui_settings(tmp_path)
     slug = "whispering-vault--kael--story"
-    state = create_composition(config).application(slug, "whispering-vault", "kael", "story").state
+    state = _opening_state(config, "story")
     FileSaves(tmp_path).save(slug, updated(state, save_version=state.save_version - 1))
 
     controller = LauncherController(load_catalog(config))
@@ -101,8 +112,7 @@ def test_a_save_from_another_build_is_reported_not_offered(tmp_path: Path) -> No
 
 def test_one_corrupt_save_does_not_hide_the_others_and_stays_readable(tmp_path: Path) -> None:
     config = ui_settings(tmp_path)
-    application = create_composition(config).application("poc", "whispering-vault", "kael", "story")
-    FileSaves(tmp_path).save("good", application.state)
+    FileSaves(tmp_path).save("good", _opening_state(config, "story"))
     (tmp_path / "broken.json").write_text("{not json", encoding=ENCODING)
 
     catalog = load_catalog(config)

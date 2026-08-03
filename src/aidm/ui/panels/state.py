@@ -1,10 +1,10 @@
 from nicegui import ui
 
-from ..session import Session
+from aidm.application import GameSession
 
 
-def state_panel(session: Session) -> None:
+def state_panel(session: GameSession) -> None:
     ui.code(
-        session.app.state.model_dump_json(indent=2),
+        session.state.model_dump_json(indent=2),
         language="json",
     ).classes("w-full text-xs")

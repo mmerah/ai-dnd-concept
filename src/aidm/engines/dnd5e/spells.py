@@ -9,7 +9,7 @@ from .direction import Cast
 from .facts import Emitted, SlotsRefilled, SpellCast, SpellSlotSpent
 from .mechanics import common, health
 from .mechanics.resolution import Resolution
-from .ruleset import CharacterRules, SpellcastingProfile, SpellProfile, SpellRules
+from .ruleset import ProgressionRules, Ruleset, SpellcastingProfile, SpellProfile
 from .state import Dnd5eActor, Progression, ResourceState, spell_ref
 
 SAVE_DC_BASE = 8
@@ -47,7 +47,7 @@ def recharged(ctx: Resolution, completed: RestType) -> tuple[SlotsRefilled, ...]
     return tuple(SlotsRefilled(slot_level=level, maximum=state.maximum) for level, state in spent)
 
 
-def spellcasting(progression: Progression, ruleset: CharacterRules) -> SpellcastingProfile:
+def spellcasting(progression: Progression, ruleset: ProgressionRules) -> SpellcastingProfile:
     casting = ruleset.character(progression.origin).spellcasting
     if casting is None:
         raise ValueError(f"class {progression.origin.class_ref.index!r} casts no spells")
@@ -55,7 +55,7 @@ def spellcasting(progression: Progression, ruleset: CharacterRules) -> Spellcast
 
 
 def repertoire(
-    progression: Progression, casting: SpellcastingProfile, ruleset: SpellRules
+    progression: Progression, casting: SpellcastingProfile, ruleset: Ruleset
 ) -> tuple[SpellProfile, ...]:
     """Every spell the player may cast: the ones they chose, plus — for a prepared caster, whose
     preparation is not modelled — their whole class list up to the highest slot they hold."""

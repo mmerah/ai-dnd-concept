@@ -2,7 +2,7 @@ from aidm.base import EntityId, Kind
 
 from .content.records.base import ContentRef
 from .content.registry import COLLECTION_SPECS
-from .ruleset import ArchetypeRules
+from .ruleset import Ruleset
 from .state import (
     Dnd5eActorDefinition,
     Dnd5eActorState,
@@ -13,7 +13,7 @@ from .state import (
 
 
 def statted_actor(
-    actor_id: EntityId, authored: Dnd5eActorDefinition | None, ruleset: ArchetypeRules
+    actor_id: EntityId, authored: Dnd5eActorDefinition | None, ruleset: Ruleset
 ) -> Dnd5eActorState:
     stats = None if authored is None else authored.stats
     ref = None if authored is None else authored.ref
@@ -30,7 +30,7 @@ def statted_actor(
 
 
 def statted_item(
-    item_id: EntityId, authored: Dnd5eItemDefinition | None, ruleset: ArchetypeRules
+    item_id: EntityId, authored: Dnd5eItemDefinition | None, ruleset: Ruleset
 ) -> Dnd5eItemState:
     ref = None if authored is None else authored.ref
     if ref is not None:
@@ -38,9 +38,7 @@ def statted_item(
     return Dnd5eItemState(ref=ref)
 
 
-def _require_backing(
-    entity_id: EntityId, kind: Kind, ref: ContentRef, ruleset: ArchetypeRules
-) -> None:
+def _require_backing(entity_id: EntityId, kind: Kind, ref: ContentRef, ruleset: Ruleset) -> None:
     if kind != COLLECTION_SPECS[ref.collection].entity:
         raise ValueError(f"a {kind} may not name a {ref.collection} record: {entity_id!r}")
     if not ruleset.provides(ref):

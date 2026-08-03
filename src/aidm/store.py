@@ -85,10 +85,6 @@ class _StoredVersion(BaseModel):
     save_version: int = 0
 
 
-class _TracedVersion(BaseModel):
-    state: _StoredVersion = _StoredVersion()
-
-
 def _require_save_version(stored: int, what: str) -> None:
     if stored != SAVE_VERSION:
         raise ValueError(f"{what} is version {stored}, this build needs {SAVE_VERSION}")
@@ -104,7 +100,7 @@ def read_trace(path: Path) -> tuple[TraceEntry, ...]:
     for line in path.read_text(encoding=ENCODING).splitlines():
         if not line:
             continue
-        _require_save_version(_TracedVersion.model_validate_json(line).state.save_version, "trace")
+        _require_save_version(_StoredVersion.model_validate_json(line).save_version, "trace")
         entries.append(TRACE_ADAPTER.validate_json(line))
     return tuple(entries)
 

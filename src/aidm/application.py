@@ -2,17 +2,23 @@ from collections.abc import Callable, Sequence
 from dataclasses import dataclass, field
 from random import Random
 from textwrap import shorten
-from typing import Protocol
 
 from pydantic import BaseModel, ConfigDict, ValidationError
 
-from .agents import DirectorStage, SharedStages
+from .agents import DirectorStage, SharedStages, director_stage, shared_stages
 from .base import SAVE_VERSION, EngineId, Role, Slug
 from .config import Settings
 from .content import Character, Scenario, authored_world
-from .engine import AdvancementDecision, Engine, resolve_advancement
+from .engine import AdvancementDecision, Engine, engine_for, resolve_advancement
 from .pipeline import TurnOptions, run_turn
-from .store import FileSaves, read_characters, read_scenarios
+from .store import (
+    FileSaves,
+    FileTraces,
+    load_character,
+    load_scenario,
+    read_characters,
+    read_scenarios,
+)
 from .transition import Fact
 from .turn import Advance, TraceEntry, Turn
 from .world import GameState
@@ -88,6 +94,9 @@ class LaunchTarget(LauncherModel):
     @property
     def path(self) -> str:
         return f"/game/{self.slug}/{self.scenario_id}/{self.character_id}/{self.engine}"
+
+    def __str__(self) -> str:
+        return f"{self.scenario_id}/{self.character_id} under {self.engine}"
 
 
 @dataclass(slots=True)
@@ -240,34 +249,26 @@ def _brief(error: Exception) -> str:
     return shorten(str(error), width=200, placeholder=" ...")
 
 
-class SaveRepository(Protocol):
-    def load(self, slug: str) -> GameState | None: ...
-    def save(self, slug: str, state: GameState) -> None: ...
-    def discard(self, slug: str) -> None: ...
-
-
-class TraceSink(Protocol):
-    def append(self, slug: str, entry: TraceEntry) -> None: ...
-    def load(self, slug: str) -> tuple[TraceEntry, ...]: ...
-    def discard(self, slug: str) -> None: ...
-
-
 @dataclass
-class GameApplication:
-    slug: str
+class GameSession:
+    target: LaunchTarget
     scenario: Scenario
     character: Character
     engine: Engine
     director: DirectorStage
     stages: SharedStages
-    saves: SaveRepository
-    traces: TraceSink
+    saves: FileSaves
+    traces: FileTraces
     options: TurnOptions
     rng: Random = field(default_factory=Random)
     entries: list[TraceEntry] = field(default_factory=list)
+    busy: bool = False
+    step: Role | None = None
     state: GameState = field(init=False)
 
     def __post_init__(self) -> None:
+        if self.engine.id != self.target.engine:
+            raise ValueError(f"{self.target} was opened with the {self.engine.id!r} engine")
         saved = self.saves.load(self.slug)
         if saved is None:
             self.state = self._begun()
@@ -275,13 +276,17 @@ class GameApplication:
         self.state = self._resumable(saved)
         self.entries = list(self.traces.load(self.slug))
 
+    @property
+    def slug(self) -> str:
+        return self.target.slug
+
     async def submit(
         self,
         prompt: str,
         on_step: Callable[[Role], None] | None = None,
     ) -> Turn:
         """Commit only after the full turn succeeds."""
-        turn = await run_turn(
+        result = await run_turn(
             self.state,
             prompt,
             engine=self.engine,
@@ -291,30 +296,30 @@ class GameApplication:
             rng=self.rng,
             on_step=on_step,
         )
-        self.state = turn.state
-        self.entries.append(turn)
-        self.saves.save(self.slug, self.state)
-        self.traces.append(self.slug, turn)
-        return turn
+        self._commit(result.state, result.turn)
+        return result.turn
 
     def advance(self, decision: AdvancementDecision) -> tuple[Fact, ...]:
         transition = resolve_advancement(self.engine, decision, self.state, self.rng)
         self.engine.rules.validate_state(transition.state)
-        self.state = transition.state
-        entry = Advance(facts=transition.facts, state=self.state)
-        self.entries.append(entry)
-        self.saves.save(self.slug, self.state)
-        self.traces.append(self.slug, entry)
+        self._commit(transition.state, Advance(facts=transition.facts))
         return transition.facts
 
     def advancement_available(self) -> bool:
         return self.engine.advancement.available(self.state)
 
     def restart(self) -> None:
+        opening = self._begun()
         self.saves.discard(self.slug)
         self.traces.discard(self.slug)
-        self.state = self._begun()
+        self.state = opening
         self.entries = []
+
+    def _commit(self, state: GameState, entry: TraceEntry) -> None:
+        self.saves.save(self.slug, state)
+        self.traces.append(self.slug, entry)
+        self.state = state
+        self.entries.append(entry)
 
     def _begun(self) -> GameState:
         authored = authored_world(self.scenario, self.character)
@@ -342,3 +347,49 @@ class GameApplication:
             )
         self.engine.rules.validate_state(state)
         return state
+
+
+@dataclass(slots=True)
+class Runtime:
+    """The composition root: settings, the built engines, and the games currently open."""
+
+    config: Settings
+    _engines: dict[EngineId, Engine] = field(default_factory=dict, repr=False)
+    _sessions: dict[str, GameSession] = field(default_factory=dict, repr=False)
+
+    def engine(self, engine_id: EngineId) -> Engine:
+        """Memoised: building the 5e engine compiles the whole content pack."""
+        held = self._engines.get(engine_id)
+        if held is None:
+            held = engine_for(engine_id, self.config)
+            self._engines[engine_id] = held
+        return held
+
+    def session(self, target: LaunchTarget) -> GameSession:
+        """Memoised: a page render must not rebuild the game and drop the turn in flight."""
+        held = self._sessions.get(target.slug)
+        if held is not None:
+            if held.target != target:
+                raise ValueError(f"open session {target.slug!r} plays {held.target}, not {target}")
+            return held
+        opened = self._open(target)
+        self._sessions[target.slug] = opened
+        return opened
+
+    def _open(self, target: LaunchTarget) -> GameSession:
+        config = self.config
+        engine = self.engine(target.engine)
+        return GameSession(
+            target=target,
+            scenario=load_scenario(config.scenarios_dir, target.scenario_id, target.engine),
+            character=load_character(config.characters_dir, target.character_id, target.engine),
+            engine=engine,
+            director=director_stage(engine, config),
+            stages=shared_stages(config),
+            saves=FileSaves(config.saves_dir),
+            traces=FileTraces(config.saves_dir),
+            options=TurnOptions(
+                history_window=config.history_window,
+                max_growth=config.max_growth,
+            ),
+        )

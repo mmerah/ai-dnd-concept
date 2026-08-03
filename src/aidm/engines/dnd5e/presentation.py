@@ -31,7 +31,7 @@ from .facts import (
     SpellCast,
     SpellSlotSpent,
 )
-from .ruleset import NarrativeRules, Ruleset
+from .ruleset import Ruleset
 from .state import MAX_LEVEL, Dnd5eState, Progression, StatBlock, feature_key, spell_key
 from .values import Attributes
 
@@ -115,12 +115,12 @@ def _statline(stats: StatBlock) -> str:
 def actor_state(
     stats: StatBlock,
     ref: ContentRef | None,
-    rules: NarrativeRules,
+    rules: Ruleset,
 ) -> str:
     return f"{_statline(stats)}{_archetype(ref, rules)}"
 
 
-def item_state(ref: ContentRef | None, rules: NarrativeRules) -> str:
+def item_state(ref: ContentRef | None, rules: Ruleset) -> str:
     if ref is None:
         return "5e profile: (none)"
     record = rules.record(ref)
@@ -138,7 +138,7 @@ def conditions(stats: StatBlock) -> str:
     return f" — under {', '.join(stats.conditions)}" if stats.conditions else ""
 
 
-def _archetype(ref: ContentRef | None, rules: NarrativeRules) -> str:
+def _archetype(ref: ContentRef | None, rules: Ruleset) -> str:
     if ref is None:
         return ""
     record = rules.monster(ref)
@@ -196,7 +196,7 @@ def _damage(rolls: Sequence[DamageRoll]) -> str:
     return ", ".join(f"{roll.dice} {roll.damage_type}" for roll in rolls)
 
 
-def _klass(progression: Progression, rules: NarrativeRules) -> str:
+def _klass(progression: Progression, rules: Ruleset) -> str:
     record = rules.klass(progression.origin.class_ref)
     if isinstance(record, ContentMiss):
         return record.summary
@@ -217,7 +217,7 @@ def _klass(progression: Progression, rules: NarrativeRules) -> str:
     return " — ".join(parts)
 
 
-def _spell_list(progression: Progression, rules: NarrativeRules) -> list[str]:
+def _spell_list(progression: Progression, rules: Ruleset) -> list[str]:
     """Grouped by level and named only, because a caster's list runs to hundreds of entries."""
     casting = rules.character(progression.origin).spellcasting
     castable = () if casting is None else spells.repertoire(progression, casting, rules)
@@ -233,7 +233,7 @@ def _spell_list(progression: Progression, rules: NarrativeRules) -> list[str]:
 def _feature_list(
     progression: Progression,
     attributes: Attributes,
-    rules: NarrativeRules,
+    rules: Ruleset,
 ) -> str:
     lines: list[str] = []
     for status in features.owned(progression, attributes, rules):
@@ -255,7 +255,7 @@ def _feature_list(
 def player_state(
     stats: StatBlock,
     progression: Progression | None,
-    rules: NarrativeRules,
+    rules: Ruleset,
 ) -> str:
     lines = [
         f"hp {stats.hp}/{stats.max_hp} — ac {stats.ac}{conditions(stats)}",

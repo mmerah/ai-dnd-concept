@@ -27,7 +27,7 @@ from .facts import (
 )
 from .mechanics import health
 from .mechanics.resolution import Resolution
-from .ruleset import FeatureProfile, FeatureRules, WeaponProfile
+from .ruleset import FeatureProfile, ProgressionRules, WeaponProfile
 from .state import (
     FeatureKey,
     Progression,
@@ -52,7 +52,7 @@ class OwnedFeature:
     pool: FeaturePool | None = None
 
 
-def profile_of(ref: ContentRef, ruleset: FeatureRules) -> FeatureProfile:
+def profile_of(ref: ContentRef, ruleset: ProgressionRules) -> FeatureProfile:
     found = ruleset.feature(ref)
     if isinstance(found, ContentMiss):
         raise ValueError(found.summary)
@@ -88,7 +88,7 @@ def capacity(resource: FeatureResource, class_level: int, attributes: Attributes
 def owned(
     progression: Progression,
     attributes: Attributes,
-    ruleset: FeatureRules,
+    ruleset: ProgressionRules,
 ) -> tuple[OwnedFeature, ...]:
     statuses: list[OwnedFeature] = []
     referenced: set[FeatureKey] = set()
@@ -125,7 +125,7 @@ def acquire(
     resources: Mapping[FeatureKey, ResourceState],
     grants: Sequence[FeatureProfile],
     *,
-    ruleset: FeatureRules,
+    ruleset: ProgressionRules,
     class_level: int,
     attributes: Attributes,
 ) -> tuple[tuple[ContentRef, ...], dict[FeatureKey, ResourceState]]:
@@ -198,7 +198,7 @@ def ranged_attack_bonus(
     progression: Progression | None,
     attributes: Attributes,
     weapon: WeaponProfile,
-    ruleset: FeatureRules,
+    ruleset: ProgressionRules,
 ) -> int:
     if progression is None or not weapon.ranged:
         return 0
@@ -232,7 +232,7 @@ def actionability(profile: FeatureProfile) -> str:
             return "description-guided"
 
 
-def _pool_keys(features: set[ContentRef], ruleset: FeatureRules) -> set[FeatureKey]:
+def _pool_keys(features: set[ContentRef], ruleset: ProgressionRules) -> set[FeatureKey]:
     keys: set[FeatureKey] = set()
     for profile in (profile_of(ref, ruleset) for ref in features):
         if (resource := pool_of(profile)) is not None:
@@ -242,7 +242,7 @@ def _pool_keys(features: set[ContentRef], ruleset: FeatureRules) -> set[FeatureK
 
 def _pools(
     features: Sequence[ContentRef],
-    ruleset: FeatureRules,
+    ruleset: ProgressionRules,
     class_level: int,
     attributes: Attributes,
 ) -> dict[FeatureKey, tuple[RestType, int]]:

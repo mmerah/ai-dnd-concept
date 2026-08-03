@@ -58,7 +58,7 @@ async def test_an_engine_uses_the_shared_pipeline_and_safe_narrator_prompt() -> 
         stack.enter_context(
             stages.maintainer.agent.override(model=FunctionModel(structured(requests=[])))
         )
-        turn = await run_turn(
+        result = await run_turn(
             state,
             "I search beneath the desk.",
             engine=engine,
@@ -68,16 +68,16 @@ async def test_an_engine_uses_the_shared_pipeline_and_safe_narrator_prompt() -> 
             rng=Random(0),
         )
 
-    assert [fact.fact for fact in turn.facts] == ["entity_discovered", "item_moved"]
-    assert {item.id for item in turn.state.world.carried_by(PLAYER_ID)} == {
+    assert [fact.fact for fact in result.turn.facts] == ["entity_discovered", "item_moved"]
+    assert {item.id for item in result.state.world.carried_by(PLAYER_ID)} == {
         "lantern",
         "vault_map",
     }
-    assert turn.direction.engine == "story"
-    assert "Elena" not in turn.prompts["narrator"]
-    assert "engine_data" not in turn.prompts["narrator"]
-    assert turn.state.turn == 1
-    assert turn.state.history[-1].prompt == "I search beneath the desk."
+    assert result.turn.direction.engine == "story"
+    assert "Elena" not in result.turn.prompts["narrator"]
+    assert "engine_data" not in result.turn.prompts["narrator"]
+    assert result.state.turn == 1
+    assert result.state.history[-1].prompt == "I search beneath the desk."
 
 
 async def test_creator_growth_receives_valid_engine_rules_before_commit() -> None:
@@ -131,7 +131,7 @@ async def test_creator_growth_receives_valid_engine_rules_before_commit() -> Non
                 )
             )
         )
-        turn = await run_turn(
+        result = await run_turn(
             state,
             "Who comes through the door?",
             engine=engine,
@@ -141,21 +141,21 @@ async def test_creator_growth_receives_valid_engine_rules_before_commit() -> Non
             rng=Random(0),
         )
 
-    assert len(turn.created) == 3
-    assert any(isinstance(entity, ActorEntity) for entity in turn.created)
-    assert any(isinstance(entity, ItemEntity) for entity in turn.created)
-    location = next(entity for entity in turn.created if isinstance(entity, LocationEntity))
-    actor = next(entity for entity in turn.created if isinstance(entity, ActorEntity))
-    item = next(entity for entity in turn.created if isinstance(entity, ItemEntity))
+    assert len(result.turn.created) == 3
+    assert any(isinstance(entity, ActorEntity) for entity in result.turn.created)
+    assert any(isinstance(entity, ItemEntity) for entity in result.turn.created)
+    location = next(entity for entity in result.turn.created if isinstance(entity, LocationEntity))
+    actor = next(entity for entity in result.turn.created if isinstance(entity, ActorEntity))
+    item = next(entity for entity in result.turn.created if isinstance(entity, ItemEntity))
     assert actor.location_id == location.id
     assert item.container_id == location.id
-    engine_state = story_state(turn.state)
+    engine_state = story_state(result.state)
     assert engine_state.actor(actor.id).approaches == DEFAULT_APPROACHES
     assert engine_state.item(item.id).gear is None
     assert location.id not in engine_state.actors
-    assert turn.narrator_evidence == "- (nothing mechanical happened)"
-    assert "new actor" not in turn.prompts["narrator"]
-    engine.rules.validate_state(turn.state)
+    assert result.turn.narrator_evidence == "- (nothing mechanical happened)"
+    assert "new actor" not in result.turn.prompts["narrator"]
+    engine.rules.validate_state(result.state)
 
 
 async def test_a_failed_role_never_mutates_the_input_state() -> None:

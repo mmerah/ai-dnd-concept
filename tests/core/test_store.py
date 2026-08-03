@@ -30,7 +30,6 @@ def test_save_and_trace_round_trip(tmp_path: Path) -> None:
         narration="The abbey settles around you.",
         narrator_evidence="- learned of the vault",
         growth=Growth(),
-        state=state,
         prompts={"director": "exact director prompt"},
     )
     traces.append("current", turn)
@@ -68,9 +67,8 @@ def test_a_trace_entry_reloads_as_the_engine_that_wrote_it(tmp_path: Path) -> No
         narration="Dust falls.",
         narrator_evidence=narrator_evidence(engine, transition.facts),
         growth=Growth(),
-        state=transition.state,
     )
-    advance = Advance(facts=transition.facts, state=transition.state)
+    advance = Advance(facts=transition.facts)
 
     traces.append("5e", turn)
     traces.append("5e", advance)
@@ -105,7 +103,7 @@ def test_a_save_or_trace_from_another_build_is_refused(tmp_path: Path) -> None:
             narration="The abbey settles around you.",
             narrator_evidence="- nothing changed",
             growth=Growth(),
-            state=stale,
+            save_version=stale.save_version,
         ),
     )
     with pytest.raises(ValueError, match="trace is version"):

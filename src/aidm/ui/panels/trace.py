@@ -2,12 +2,11 @@ from collections.abc import Sequence
 
 from nicegui import ui
 
+from aidm.application import GameSession
 from aidm.engine import Engine, trace_direction, trace_fact
 from aidm.growth import RejectedGrowth
 from aidm.transition import Fact
 from aidm.turn import Advance, TraceEntry, Turn
-
-from ..session import Session
 
 REJECTION_TEXT = {
     "duplicate_name": "name already exists",
@@ -20,8 +19,8 @@ def _section(title: str, body: str) -> None:
     ui.label(body).classes("text-sm whitespace-pre-wrap")
 
 
-def trace_panel(session: Session) -> None:
-    entries = session.app.entries
+def trace_panel(session: GameSession) -> None:
+    entries = session.entries
     if not entries:
         ui.label("No turns yet this session.").classes("opacity-60")
     turns = 0
@@ -35,7 +34,7 @@ def trace_panel(session: Session) -> None:
                 titles.append(f"after turn {turns}: advancement")
     for index, entry in reversed(list(enumerate(entries))):
         with ui.expansion(titles[index], value=index == len(entries) - 1):
-            _entry_trace(session.app.engine, entry)
+            _entry_trace(session.engine, entry)
 
 
 def _entry_trace(engine: Engine, entry: TraceEntry) -> None:
