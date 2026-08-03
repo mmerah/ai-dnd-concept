@@ -27,7 +27,7 @@ Tests must be deterministic and require no network.
 - Keep code simple, DRY, and maintainable. Avoid speculative abstractions.
 - Introduce a port only once a second implementation exists. A protocol that decouples core from a concrete choice earns its place on the first one.
 - Use descriptive names before adding prose to explain code.
-- Keep functions below 100 lines and files below 500 lines.
+- Keep functions below 100 lines and files below 1000 lines.
 - Comments explain only a non-obvious why: a constraint, tradeoff, invariant, or tooling exception.
 - Delete comments that narrate control flow, restate a name or type, give historical counts, or serve as architectural essays.
 - Keep directives such as `# pyright: ignore[...]` narrowly scoped and include rationale only when the directive is not self-explanatory.
