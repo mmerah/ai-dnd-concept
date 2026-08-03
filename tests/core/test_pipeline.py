@@ -9,7 +9,7 @@ from pydantic_ai.messages import ModelMessage, ModelResponse, TextPart
 from pydantic_ai.models.function import AgentInfo, FunctionModel
 
 from aidm.agents import director_stage, shared_stages
-from aidm.base import PLAYER_ID, ActorEntity, ItemEntity, LocationEntity
+from aidm.base import PLAYER_ID
 from aidm.engines.story.access import actor_state, item_state
 from aidm.engines.story.state import DEFAULT_APPROACHES
 from aidm.pipeline import TurnOptions, run_turn
@@ -68,8 +68,8 @@ async def test_an_engine_uses_the_shared_pipeline_and_safe_narrator_prompt() -> 
             rng=Random(0),
         )
 
-    assert [fact.kind for fact in result.turn.facts] == ["entity_discovered", "item_moved"]
-    assert {record.entity.id for record in result.state.world.carried_by(PLAYER_ID)} == {
+    assert [fact.kind for fact in result.turn.facts] == ["entity_discovered", "entity_moved"]
+    assert {item.id for item in result.state.world.children(PLAYER_ID, "item")} == {
         "lantern",
         "vault_map",
     }
@@ -141,18 +141,15 @@ async def test_creator_growth_receives_valid_engine_rules_before_commit() -> Non
             rng=Random(0),
         )
 
-    assert len(result.turn.created) == 3
-    assert any(isinstance(entity, ActorEntity) for entity in result.turn.created)
-    assert any(isinstance(entity, ItemEntity) for entity in result.turn.created)
-    location = next(entity for entity in result.turn.created if isinstance(entity, LocationEntity))
-    actor = next(entity for entity in result.turn.created if isinstance(entity, ActorEntity))
-    item = next(entity for entity in result.turn.created if isinstance(entity, ItemEntity))
-    assert actor.location_id == location.id
-    assert item.container_id == location.id
+    created = {entity.kind: entity for entity in result.turn.created}
+    assert set(created) == {"location", "actor", "item"}
+    location, actor, item = created["location"], created["actor"], created["item"]
+    assert actor.parent_id == location.id
+    assert item.parent_id == location.id
+    assert location.parent_id is None
     world = result.state.world
-    assert actor_state(world.actor(actor.id).rules).approaches == DEFAULT_APPROACHES
-    assert item_state(world.item(item.id).rules).gear is None
-    assert location.id not in result.state.world.actors
+    assert actor_state(world.record(actor.id, "actor").rules).approaches == DEFAULT_APPROACHES
+    assert item_state(world.record(item.id, "item").rules).gear is None
     assert result.turn.narrator_evidence == "- (nothing mechanical happened)"
     assert "new actor" not in result.turn.prompts["narrator"]
     engine.validate_state(result.state)

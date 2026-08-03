@@ -4,7 +4,7 @@ from typing import ClassVar
 
 from pydantic import BaseModel
 
-from .base import PLAYER_ID, ActorEntity, EntityId, Frozen, Kind
+from .base import PLAYER_ID, EntityId, Frozen, Kind
 from .world import GameState
 
 
@@ -130,7 +130,7 @@ def check_speaker(state: GameState, speaker_id: EntityId | None) -> str | None:
     speaker = state.world.find(speaker_id)
     if speaker is None:
         return f"unknown speaker id {speaker_id!r}. Use only ids you were shown, or null."
-    if not isinstance(speaker, ActorEntity) or not speaker.known or not state.is_here(speaker):
+    if speaker.kind != "actor" or not speaker.known or not state.is_here(speaker):
         return (
             f"speaker {speaker_id!r} must be an NPC the player has met and who is here with them. "
             "Use null if nobody is being addressed."

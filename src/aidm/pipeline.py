@@ -5,17 +5,7 @@ from random import Random
 from pydantic import Field
 
 from .agents import DirectorStage, SharedStages, exchanges_to_messages
-from .base import (
-    ActorEntity,
-    Entity,
-    EntityDetail,
-    EntityId,
-    Frozen,
-    ItemEntity,
-    LocationEntity,
-    Role,
-    slug,
-)
+from .base import Entity, EntityDetail, EntityId, Frozen, Role, slug
 from .engine import Engine, entity_renderer, narrator_evidence
 from .facts import Fact
 from .growth import GrowthRequest, screen_growth
@@ -156,47 +146,31 @@ async def _grow(
             request=request,
         )
         detail = await stages.creator.run(prompts["creator"], None)
-        entity = _created_entity(
-            request,
-            detail,
-            draft,
-            _requested_location(request, draft),
-        )
+        entity = _created_entity(request, detail, draft)
         facts.append(draft.add(entity, engine.default_rules(entity)))
         created.append(entity)
     return tuple(created), tuple(facts)
 
 
-def _created_entity(
-    request: GrowthRequest,
-    detail: EntityDetail,
-    state: GameState,
-    location: EntityId,
-) -> Entity:
-    entity_id = slug(request.name, state.world.all_ids())
-    fields = {
-        "id": entity_id,
-        "name": request.name,
-        "brief": request.brief,
-        "detail": detail,
-        "known": True,
-    }
-    match request.kind:
-        case "actor":
-            return ActorEntity.model_validate(fields | {"location_id": location})
-        case "item":
-            return ItemEntity.model_validate(fields | {"container_id": location})
-        case "location":
-            return LocationEntity.model_validate(fields)
+def _created_entity(request: GrowthRequest, detail: EntityDetail, state: GameState) -> Entity:
+    return Entity(
+        id=slug(request.name, state.world.all_ids()),
+        kind=request.kind,
+        name=request.name,
+        brief=request.brief,
+        detail=detail,
+        known=True,
+        parent_id=None if request.kind == "location" else _requested_location(request, state),
+    )
 
 
 def _requested_location(request: GrowthRequest, state: GameState) -> EntityId:
     if request.location is not None:
         wanted = request.location.casefold()
-        for entity in state.world.locations.values():
+        for entity in state.world.entities("location"):
             if entity.name.casefold() == wanted:
                 return entity.id
-    return state.player.location_id
+    return state.player_location
 
 
 def _ignore_step(role: Role) -> None:

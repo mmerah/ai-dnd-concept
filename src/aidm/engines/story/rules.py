@@ -3,7 +3,7 @@ from random import Random
 from typing import Literal
 
 from aidm.actions import WorldActionRejected, is_world_action, resolve_world_action
-from aidm.base import PLAYER_ID, ActorEntity, EntityId
+from aidm.base import PLAYER_ID, Entity, EntityId
 from aidm.content import Rules
 from aidm.facts import Fact
 from aidm.transition import Direction, Transition
@@ -34,7 +34,7 @@ class StoryProposalRejected(ValueError):
 
 
 def _risk_rolled(
-    actor: ActorEntity,
+    actor: Entity,
     dice: tuple[int, int],
     approach: StoryApproach,
     approach_modifier: int,
@@ -66,7 +66,7 @@ def _risk_rolled(
     )
 
 
-def _stress_changed(actor: ActorEntity, before: int, after: int, maximum: int) -> Fact:
+def _stress_changed(actor: Entity, before: int, after: int, maximum: int) -> Fact:
     narrator = (
         f"{actor.name} recovers some composure"
         if after < before
@@ -87,7 +87,7 @@ def _stress_changed(actor: ActorEntity, before: int, after: int, maximum: int) -
     )
 
 
-def _taken_out(actor: ActorEntity) -> Fact:
+def _taken_out(actor: Entity) -> Fact:
     trace = f"{actor.name} is taken out"
     return Fact(
         source=ENGINE_ID,
@@ -98,7 +98,7 @@ def _taken_out(actor: ActorEntity) -> Fact:
     )
 
 
-def revived(actor: ActorEntity) -> Fact:
+def revived(actor: Entity) -> Fact:
     trace = f"{actor.name} is no longer taken out"
     return Fact(
         source=ENGINE_ID,
@@ -109,7 +109,7 @@ def revived(actor: ActorEntity) -> Fact:
     )
 
 
-def _condition_applied(actor: ActorEntity, condition: StoryCondition) -> Fact:
+def _condition_applied(actor: Entity, condition: StoryCondition) -> Fact:
     return Fact(
         source=ENGINE_ID,
         kind="condition_applied",
@@ -124,7 +124,7 @@ def _condition_applied(actor: ActorEntity, condition: StoryCondition) -> Fact:
     )
 
 
-def _condition_cleared(actor: ActorEntity, condition: StoryCondition) -> Fact:
+def _condition_cleared(actor: Entity, condition: StoryCondition) -> Fact:
     return Fact(
         source=ENGINE_ID,
         kind="condition_cleared",
@@ -251,7 +251,7 @@ class StoryRules:
                 return 1
             case HelpfulGear(item_id=item_id):
                 item, profile = world.item(item_id)
-                if item.container_id != actor_id:
+                if item.parent_id != actor_id:
                     raise StoryProposalRejected(
                         f"gear item {item_id!r} is not carried by {actor_id!r}"
                     )
@@ -320,7 +320,7 @@ class StoryRules:
     def _actor_for_action(
         world: StoryWorld,
         actor_id: EntityId | None,
-    ) -> tuple[ActorEntity, StoryActorState]:
+    ) -> tuple[Entity, StoryActorState]:
         return world.actor(PLAYER_ID if actor_id is None else actor_id)
 
 

@@ -8,9 +8,8 @@ from aidm.config import load_settings
 from aidm.registry import as_engine_id
 
 from .components.engine import show_engine_badge
-from .engines.registry import advancement_ui
 from .home import home_page
-from .panels import chat, roles, state, trace
+from .panels import advancement, chat, roles, state, trace
 
 LOGGER = logging.getLogger(__name__)
 
@@ -18,7 +17,6 @@ LOGGER = logging.getLogger(__name__)
 class GameView:
     def __init__(self, session: GameSession) -> None:
         self.session = session
-        self.advancement_ui = advancement_ui(session.engine)
 
     @ui.refreshable_method
     def chat(self) -> None:
@@ -34,7 +32,7 @@ class GameView:
 
     @ui.refreshable_method
     def advancement(self) -> None:
-        self.advancement_ui.render(self.session, self.refresh_all)
+        advancement.advancement_panel(self.session, self.refresh_all)
 
     @ui.refreshable_method
     def state(self) -> None:

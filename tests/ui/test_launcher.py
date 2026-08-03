@@ -7,9 +7,7 @@ from ui_test_support import SCENARIOS, ui_settings
 from aidm.application import LauncherController, LaunchTarget, Runtime, load_catalog
 from aidm.base import EngineId
 from aidm.config import Settings
-from aidm.registry import plugins
 from aidm.store import ENCODING, FileSaves
-from aidm.ui.engines.registry import advancement_ui
 from aidm.world import GameState
 
 
@@ -124,11 +122,3 @@ def test_one_corrupt_save_does_not_hide_the_others_and_stays_readable(tmp_path: 
     problem = catalog.unreadable[0].problem
     assert "\n" not in problem
     assert len(problem) <= 200
-
-
-def test_every_engine_ships_a_ui_found_by_convention(tmp_path: Path) -> None:
-    """The lookup is `aidm.ui.engines.<id>`, so nothing type-checks it for a newly added engine."""
-    config = ui_settings(tmp_path)
-
-    for plugin in plugins():
-        assert advancement_ui(plugin.build(config)) is not None

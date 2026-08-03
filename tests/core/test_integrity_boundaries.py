@@ -1,18 +1,18 @@
 from random import Random
 
 import pytest
-from core_test_support import STORY, initialized, scenario, updated, with_entity
+from core_test_support import STORY, character, initialized, scenario, updated, with_entity
 from pydantic import ValidationError
 
 from aidm.actions import TakeItem
-from aidm.base import PLAYER_ID, EngineId, EntityId, ItemEntity, LocationEntity
+from aidm.base import PLAYER_ID, EngineId, Entity, EntityId
 from aidm.content import (
+    AuthoredEntity,
+    AuthoredWorld,
     Character,
     CharacterOverlay,
     CharacterProfile,
-    Scenario,
-    ScenarioOverlay,
-    ScenarioWorld,
+    authored_world,
 )
 from aidm.engines.dnd5e.state import Dnd5eActorState, StatBlock
 from aidm.engines.story.state import (
@@ -22,13 +22,13 @@ from aidm.engines.story.state import (
     StoryItemDefinition,
 )
 from aidm.transition import Direction
-from aidm.world import ScenarioMeta, WorldState
+from aidm.world import WorldState
 
 HELD = EntityId("frayed_rope")
 UNHELD = EntityId("silk_rope")
 
 
-def _character(*, holds: ItemEntity, gear_for: EntityId) -> Character:
+def _character(*, holds: Entity, gear_for: EntityId) -> Character:
     return Character(
         id="test-character",
         engine=STORY,
@@ -48,46 +48,65 @@ def _character(*, holds: ItemEntity, gear_for: EntityId) -> Character:
     )
 
 
-def _rope(item_id: EntityId, *, known: bool = True) -> ItemEntity:
-    return ItemEntity(
-        id=item_id, name="rope", brief="A length of rope.", known=known, container_id=PLAYER_ID
+def _rope(item_id: EntityId, *, known: bool = True) -> Entity:
+    return Entity(
+        id=item_id,
+        kind="item",
+        name="rope",
+        brief="A length of rope.",
+        known=known,
+        parent_id=PLAYER_ID,
     )
 
 
 def test_world_and_game_state_reject_inconsistent_topology() -> None:
     _, state = initialized()
-    player_record = state.world.actor(PLAYER_ID)
+    player_record = state.world.record(PLAYER_ID)
     with pytest.raises(ValidationError, match="keys disagree"):
         WorldState.model_validate(
-            {"actors": {"wrong-key": player_record.model_dump(round_trip=True)}}
-        )
-
-    location = state.world.require_kind(state.player.location_id, LocationEntity)
-    same_id_location = updated(location, id=PLAYER_ID)
-    with pytest.raises(ValidationError, match="more than one kind"):
-        WorldState.model_validate(
-            {
-                "actors": {PLAYER_ID: player_record.model_dump(round_trip=True)},
-                "locations": {PLAYER_ID: same_id_location.model_dump(round_trip=True)},
-            }
+            {"records": {"wrong-key": player_record.model_dump(round_trip=True)}}
         )
 
     with pytest.raises(ValidationError, match="player entity must be known"):
         with_entity(state, updated(state.player, known=False))
 
     with pytest.raises(ValidationError, match="not in a valid location"):
-        with_entity(state, updated(state.player, location_id=EntityId("missing")))
+        with_entity(state, updated(state.player, parent_id=EntityId("missing")))
+
+    carried = state.world.children(PLAYER_ID, "item")[0]
+    with pytest.raises(ValidationError, match="cannot be inside anything"):
+        with_entity(state, updated(carried, kind="location"))
 
 
 def test_a_record_may_not_hold_another_engines_payload() -> None:
     """The gate has to fire on a resumed save too, not only on the turn that wrote the payload."""
     engine, state = initialized()
     draft = state.draft()
-    draft.world.actor(PLAYER_ID).rules = Dnd5eActorState(stats=StatBlock()).model_dump(mode="json")
+    draft.world.record(PLAYER_ID).rules = Dnd5eActorState(stats=StatBlock()).model_dump(mode="json")
 
     engine.validate_state(state)
     with pytest.raises(ValidationError):
         engine.validate_state(draft.committed())
+
+
+def test_an_engine_refuses_a_payload_for_a_kind_it_defines_no_rules_for() -> None:
+    """A location holds a record now, so only the engine can call a location payload an authoring
+    error, and it has to say so at launch."""
+    engine, _ = initialized()
+    selected = character()
+    authored = authored_world(scenario(), selected)
+    location = next(
+        record for record in authored.entities.values() if record.entity.kind == "location"
+    )
+    poisoned = AuthoredWorld(
+        entities={
+            **authored.entities,
+            location.entity.id: AuthoredEntity(entity=location.entity, rules={"gear": None}),
+        }
+    )
+
+    with pytest.raises(ValueError, match="location"):
+        engine.initial_world(poisoned, selected.overlay.character)
 
 
 def test_a_direction_from_another_engine_is_refused() -> None:
@@ -111,25 +130,8 @@ def test_scenario_topology_is_validated() -> None:
 
 def test_an_overlay_may_not_name_an_entity_the_author_never_wrote() -> None:
     """An overlay keys off authored ids, so a typo must fail at load, not go silently unread."""
-    with pytest.raises(ValidationError, match="is not authored"):
+    with pytest.raises(ValidationError, match="unauthored ids"):
         _character(holds=_rope(HELD), gear_for=UNHELD)
-
-
-def test_an_overlay_may_not_name_a_location() -> None:
-    """Core still owns which kinds bear rules; only Phase B gives a location a payload."""
-    where = EntityId("study")
-    world = ScenarioWorld(
-        meta=ScenarioMeta(title="A Room", premise="Only a room."),
-        starting_location_id=where,
-        entities=(LocationEntity(id=where, name="Study", brief="A cramped room.", known=True),),
-    )
-    with pytest.raises(ValidationError, match="is a location and takes no rules"):
-        Scenario(
-            id="test-scenario",
-            engine=STORY,
-            world=world,
-            overlay=ScenarioOverlay(entities={where: {}}),
-        )
 
 
 def test_a_character_knows_the_gear_they_start_with() -> None:

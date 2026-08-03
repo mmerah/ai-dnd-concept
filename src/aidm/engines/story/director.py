@@ -4,7 +4,7 @@ from pydantic_ai import ModelRetry, NativeOutput, RunContext
 from pydantic_ai.output import OutputSpec
 
 from aidm.actions import DropItem, GiveItem, Move, TakeItem
-from aidm.base import PLAYER_ID, ActorEntity, Entity, EntityId, ItemEntity
+from aidm.base import PLAYER_ID, Entity, EntityId, Kind
 from aidm.directing import check_proposal, consequence_menu, walk_consequences
 from aidm.transition import Direction
 from aidm.world import GameState
@@ -93,15 +93,13 @@ class StoryDirector:
         consequence: StoryActorConsequence,
     ) -> None:
         actor_id = self._actor_id(consequence)
-        actor = (
-            state.player if actor_id == PLAYER_ID else self._require(state, actor_id, ActorEntity)
-        )
+        actor = state.player if actor_id == PLAYER_ID else self._require(state, actor_id, "actor")
         if actor.id != PLAYER_ID:
             if not actor.known:
                 raise ModelRetry(f"actor {actor.id!r} has not been revealed")
             if not state.is_here(actor):
                 raise ModelRetry(f"actor {actor.id!r} is not here with the player")
-        sheet = actor_state(state.world.actor(actor.id).rules)
+        sheet = actor_state(state.world.record(actor.id, "actor").rules)
         match consequence:
             case Risk():
                 if sheet.taken_out:
@@ -120,7 +118,7 @@ class StoryDirector:
     def _validate_factors(
         self,
         state: GameState,
-        actor: ActorEntity,
+        actor: Entity,
         sheet: StoryActorState,
         risk: Risk,
     ) -> None:
@@ -134,10 +132,10 @@ class StoryDirector:
                         f"helpful tag {tag_id!r} is not an edge or bond on {actor.id!r}"
                     )
             case HelpfulGear(item_id=item_id):
-                item = self._require(state, item_id, ItemEntity)
-                if item.container_id != actor.id:
+                item = self._require(state, item_id, "item")
+                if item.parent_id != actor.id:
                     raise ModelRetry(f"gear item {item.id!r} is not carried by {actor.id!r}")
-                if item_state(state.world.item(item_id).rules).gear is None:
+                if item_state(state.world.record(item_id, "item").rules).gear is None:
                     raise ModelRetry(f"item {item.id!r} has no gear benefit")
         match risk.hindering:
             case None:
@@ -152,22 +150,23 @@ class StoryDirector:
 
     @staticmethod
     def _check_core_presence(state: GameState, action: StoryConsequence) -> str | None:
-        here = state.player.location_id
+        here = state.player_location
         match action:
             case TakeItem(item_id=item_id):
                 item = state.world.find(item_id)
-                if not isinstance(item, ItemEntity) or item.container_id != here:
+                if item is None or item.kind != "item" or item.parent_id != here:
                     return f"item {item_id!r} is not loose at the player's location"
             case DropItem(item_id=item_id) | GiveItem(item_id=item_id):
                 item = state.world.find(item_id)
-                if not isinstance(item, ItemEntity) or item.container_id != PLAYER_ID:
+                if item is None or item.kind != "item" or item.parent_id != PLAYER_ID:
                     return f"the player does not carry item {item_id!r}"
             case Move(actor_id=actor_id, location_id=location_id):
                 if actor_id is not None and actor_id != PLAYER_ID:
                     actor = state.world.find(actor_id)
                     if (
-                        not isinstance(actor, ActorEntity)
-                        or actor.location_id != here
+                        actor is None
+                        or actor.kind != "actor"
+                        or actor.parent_id != here
                         and location_id != here
                     ):
                         return f"movement of actor {actor_id!r} would not be witnessed"
@@ -176,14 +175,10 @@ class StoryDirector:
         return None
 
     @staticmethod
-    def _require[T: Entity](
-        state: GameState,
-        entity_id: EntityId,
-        expected: type[T],
-    ) -> T:
+    def _require(state: GameState, entity_id: EntityId, expected: Kind) -> Entity:
         entity = state.world.find(entity_id)
         if entity is None:
             raise ModelRetry(f"unknown entity id {entity_id!r}")
-        if not isinstance(entity, expected):
-            raise ModelRetry(f"{entity_id!r} is a {entity.kind}, not a {expected.__name__}")
+        if entity.kind != expected:
+            raise ModelRetry(f"{entity_id!r} is a {entity.kind}, not a {expected}")
         return entity

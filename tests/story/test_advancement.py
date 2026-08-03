@@ -2,28 +2,71 @@ from random import Random
 
 from story_test_support import initial_story_game, setback_direction
 
-from aidm.base import PLAYER_ID, EntityId, ItemEntity
+from aidm.advancement import AdvancementChoice, AdvancementOption, SelectField
+from aidm.base import PLAYER_ID, EntityId
 from aidm.engines.story.access import player_state
-from aidm.engines.story.advancement import AcquireGear, IncreaseMaximumStress, dump_decision
+from aidm.engines.story.advancement import IncreaseMaximumStress, dump_decision
 from aidm.engines.story.direction import dump_direction
-from aidm.engines.story.state import StoryGearTag
+
+
+def _values(option: AdvancementOption) -> dict[str, tuple[str, ...]]:
+    return {
+        field.id: tuple(choice.key for choice in field.options[: field.choose])
+        if isinstance(field, SelectField)
+        else ("written-in",)
+        for field in option.fields
+    }
+
+
+def test_every_offered_option_round_trips_through_the_generic_form() -> None:
+    """Each option id is its decision's discriminator and each field id that decision's field
+    name, so a rename on either side has to break here rather than in the renderer."""
+    engine, state = initial_story_game()
+    for _ in range(3):
+        state = engine.resolve(dump_direction(setback_direction()), state, Random(2)).state
+
+    form = engine.advancement_form(state)
+
+    assert {option.id for option in form.options} == {
+        "raise_approach",
+        "add_tag",
+        "remove_burden",
+        "rewrite_burden",
+        "acquire_gear",
+        "increase_maximum_stress",
+    }
+    for option in form.options:
+        choice = AdvancementChoice(option_id=option.id, values=_values(option))
+        assert engine.advancement_review(state, choice).decision.choice["choice"] == option.id
 
 
 def test_story_gear_advancement_creates_one_carried_core_item() -> None:
+    """`acquire_gear` is the one option whose fields do not map one-to-one: `gear` is nested."""
     engine, state = initial_story_game()
     for _ in range(3):
         state = engine.resolve(dump_direction(setback_direction()), state, Random(2)).state
     assert engine.advancement_available(state)
 
-    decision = AcquireGear(
-        item_name="a silver compass",
-        item_brief="Its needle points toward unfinished promises.",
-        gear=StoryGearTag(
-            name="Promise Compass",
-            description="It finds paths connected to a sincere vow.",
+    form = engine.advancement_form(state)
+    gear = next(option for option in form.options if option.id == "acquire_gear")
+    review = engine.advancement_review(
+        state,
+        AdvancementChoice(
+            option_id=gear.id,
+            values={
+                "item_name": ("a silver compass",),
+                "item_brief": ("Its needle points toward unfinished promises.",),
+                "gear_name": ("Promise Compass",),
+                "gear_description": ("It finds paths connected to a sincere vow.",),
+            },
         ),
     )
-    transition = engine.advance(dump_decision(decision), state, Random(0))
+
+    assert review.decision.choice["gear"] == {
+        "name": "Promise Compass",
+        "description": "It finds paths connected to a sincere vow.",
+    }
+    transition = engine.advance(review.decision, state, Random(0))
     created = [fact for fact in transition.facts if fact.kind == "entity_created"]
     assert len(created) == 1
     gear_facts = [fact for fact in transition.facts if fact.kind == "gear_acquired"]
@@ -33,8 +76,8 @@ def test_story_gear_advancement_creates_one_carried_core_item() -> None:
     entity_id = created[0].data["entity_id"]
     assert isinstance(entity_id, str)
     entity = after.world.require(EntityId(entity_id))
-    assert isinstance(entity, ItemEntity)
-    assert entity.container_id == PLAYER_ID
+    assert entity.kind == "item"
+    assert entity.parent_id == PLAYER_ID
     assert player_state(after).growth_marks == 0
     assert not engine.advancement_available(after)
 

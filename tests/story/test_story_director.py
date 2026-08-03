@@ -36,13 +36,13 @@ def test_taking_an_actor_out_mid_turn_retries_instead_of_raising() -> None:
 def test_using_just_dropped_gear_retries_instead_of_raising() -> None:
     _, state = initial_story_game()
     director = StoryDirector(StoryRules())
-    (lantern,) = state.world.carried_by(PLAYER_ID)
+    (lantern,) = state.world.children(PLAYER_ID, "item")
     direction = StoryDirection(
         intent="Kael drops the lantern, then leans on its light anyway.",
         tone="uncertain",
         mechanics=[
-            DropItem(item_id=lantern.entity.id),
-            Risk(approach="clever", difficulty=0, helpful=HelpfulGear(item_id=lantern.entity.id)),
+            DropItem(item_id=lantern.id),
+            Risk(approach="clever", difficulty=0, helpful=HelpfulGear(item_id=lantern.id)),
         ],
     )
 

@@ -5,7 +5,7 @@ from core_test_support import updated
 from fivee_test_support import actor_of, new_game, ruleset, summary, with_actor, with_item
 from fivee_test_support import content_ref as ref
 
-from aidm.base import PLAYER_ID, ActorEntity, EntityId, ItemEntity
+from aidm.base import PLAYER_ID, Entity, EntityId
 from aidm.engines.dnd5e import bestiary, procedures
 from aidm.engines.dnd5e import rolls as rules
 from aidm.engines.dnd5e.access import Dnd5eWorld
@@ -23,12 +23,13 @@ RULES = ruleset()
 
 
 def armed(state: GameState) -> GameState:
-    goblin = ActorEntity(
+    goblin = Entity(
         id=EntityId("goblin"),
+        kind="actor",
         name="a goblin",
         brief="Small and mean.",
         known=True,
-        location_id=actor_of(state, PLAYER_ID).location_id,
+        parent_id=actor_of(state, PLAYER_ID).entity.parent_id,
     )
     authored = Dnd5eActorDefinition(ref=ref("monsters", "goblin"))
     state = with_actor(
@@ -36,12 +37,13 @@ def armed(state: GameState) -> GameState:
         goblin,
         bestiary.statted_actor(goblin.id, authored.model_dump(mode="json"), RULES),
     )
-    sword = ItemEntity(
+    sword = Entity(
         id=EntityId("sword"),
+        kind="item",
         name="a notched longsword",
         brief="Old steel.",
         known=True,
-        container_id=PLAYER_ID,
+        parent_id=PLAYER_ID,
     )
     return with_item(state, sword, Dnd5eItemState(ref=ref("weapons", "longsword")))
 
@@ -70,12 +72,13 @@ def test_archery_fighting_style_modifies_a_ranged_weapon_attack() -> None:
     )
     archer = updated(player.state, progression=updated(progression, features=held))
     state = with_actor(state, player.entity, archer)
-    bow = ItemEntity(
+    bow = Entity(
         id=EntityId("bow"),
+        kind="item",
         name="a yew longbow",
         brief="A tall bow polished smooth by use.",
         known=True,
-        container_id=PLAYER_ID,
+        parent_id=PLAYER_ID,
     )
     state = with_item(state, bow, Dnd5eItemState(ref=ref("weapons", "longbow")))
     world = Dnd5eWorld(state=state)
@@ -123,7 +126,7 @@ def test_a_save_selects_its_branch_and_reveals_the_target_exactly_once() -> None
     assert summary(facts[0]) == "a goblin dexterity save: 13 -> 15 vs DC 25: FAILURE"
     assert [fact.kind for fact in facts[1:]] == ["attack_rolled", "dice_rolled", "hp_changed"]
 
-    goblin = state.world.require_kind(EntityId("goblin"), ActorEntity)
+    goblin = state.world.require_kind(EntityId("goblin"), "actor")
     unseen = with_actor(state, updated(goblin, known=False), actor_of(state, goblin.id).state)
     gas_on_hidden = RollSave(
         ability="dexterity",

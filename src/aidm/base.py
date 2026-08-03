@@ -29,7 +29,7 @@ Slug = Annotated[str, Field(pattern=rf"^{SLUG_PATTERN}$", max_length=64)]
 
 PLAYER_ID = EntityId("player")
 ROLES: tuple[Role, ...] = get_args(Role)
-SAVE_VERSION = 21
+SAVE_VERSION = 22
 
 
 def content_id(value: str) -> Slug:
@@ -60,26 +60,12 @@ class EntityDetail(Frozen):
     hook: str
 
 
-class BaseEntity(Mutable):
+class Entity(Mutable):
     id: EntityId
+    kind: Kind
     name: str
     brief: str
     detail: EntityDetail | None = None
     known: bool = False
-
-
-class ActorEntity(BaseEntity):
-    kind: Literal["actor"] = "actor"
-    location_id: EntityId
-
-
-class ItemEntity(BaseEntity):
-    kind: Literal["item"] = "item"
-    container_id: EntityId
-
-
-class LocationEntity(BaseEntity):
-    kind: Literal["location"] = "location"
-
-
-type Entity = Annotated[ActorEntity | ItemEntity | LocationEntity, Field(discriminator="kind")]
+    # Which kinds may hold which is one rule, in `world.check_placement`.
+    parent_id: EntityId | None = None

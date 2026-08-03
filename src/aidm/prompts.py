@@ -1,7 +1,7 @@
 import json
 from collections.abc import Callable, Iterable, Sequence
 
-from .base import PLAYER_ID, ActorEntity, Entity, EntityId, Frozen, ItemEntity, Kind, LocationEntity
+from .base import PLAYER_ID, Entity, EntityId, Frozen, Kind
 from .growth import GrowthRequest
 from .world import Exchange, GameState, ScenarioMeta, WorldState
 
@@ -11,9 +11,9 @@ type Label = Callable[[Entity], str]
 
 
 class BaseScene(Frozen):
-    player: ActorEntity
-    location: LocationEntity
-    inventory: tuple[ItemEntity, ...]
+    player: Entity
+    location: Entity
+    inventory: tuple[Entity, ...]
     here: tuple[Entity, ...]
     known_elsewhere: tuple[Entity, ...]
     placements: dict[EntityId, str]
@@ -30,9 +30,9 @@ class SceneSnapshot(BaseScene):
     def of(cls, state: GameState) -> "SceneSnapshot":
         world = state.world
         player = state.player
-        location = world.require_kind(player.location_id, LocationEntity)
+        location = world.require_kind(state.player_location, "location")
         shown = [entity for entity in world.entities() if entity.id != PLAYER_ID]
-        inventory = tuple(record.entity for record in world.carried_by(PLAYER_ID))
+        inventory = world.children(PLAYER_ID, "item")
         carried_ids = {item.id for item in inventory}
         placed = [
             entity for entity in shown if entity.id not in carried_ids and entity.id != location.id
@@ -95,24 +95,15 @@ def _placements(
 
 def _placement(entity: Entity, world: WorldState, nameable: frozenset[EntityId]) -> str:
     """A placement names its holder only where the reader may be told that holder exists."""
-    match entity:
-        case LocationEntity():
-            return ""
-        case ActorEntity():
-            location = world.find(entity.location_id)
-            if location is None or location.id not in nameable:
-                return ""
-            return f"at {location.name}"
-        case ItemEntity():
-            container = world.container_of(entity)
-            if container.id not in nameable:
-                return ""
-            if isinstance(container, LocationEntity):
-                return f"at {container.name}"
-            return "carried" if container.id == PLAYER_ID else f"held by {container.name}"
+    holder = world.parent_of(entity)
+    if holder is None or holder.id not in nameable:
+        return ""
+    if holder.kind == "location":
+        return f"at {holder.name}"
+    return "carried" if holder.id == PLAYER_ID else f"held by {holder.name}"
 
 
-def _undetailed[T: Entity](entity: T) -> T:
+def _undetailed(entity: Entity) -> Entity:
     """`detail.hook` is authored as canon the player has not reached, so the Narrator gets none."""
     return entity.model_copy(update={"detail": None})
 
@@ -241,9 +232,9 @@ def _premise(scenario: ScenarioMeta) -> tuple[str, str]:
 
 
 def _character(
-    player: ActorEntity,
-    location: LocationEntity,
-    inventory: Sequence[ItemEntity],
+    player: Entity,
+    location: Entity,
+    inventory: Sequence[Entity],
     describe: EntityRenderer,
     *,
     label: Label,
@@ -305,7 +296,7 @@ def _speaker(scene: VisibleScene, speaker_id: EntityId | None) -> str:
     if speaker_id is None:
         return "(none — narrate the scene)"
     speaker = next((entity for entity in scene.here if entity.id == speaker_id), None)
-    if not isinstance(speaker, ActorEntity):
+    if speaker is None or speaker.kind != "actor":
         raise ValueError(f"speaker {speaker_id!r} is not a visible actor here")
     return f"{_labelled(speaker)} — {speaker.brief}"
 

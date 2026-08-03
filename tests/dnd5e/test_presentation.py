@@ -1,13 +1,13 @@
 from fivee_test_support import initial_5e_game
 
-from aidm.base import ActorEntity, EntityId
+from aidm.base import EntityId
 from aidm.engine import entity_renderer
 from aidm.prompts import SceneSnapshot, VisibleScene, render_narrator
 
 
 def test_5e_presentation_exposes_full_state_for_every_visible_actor() -> None:
     engine, state = initial_5e_game()
-    mara = state.world.require_kind(EntityId("mara"), ActorEntity)
+    mara = state.world.require_kind(EntityId("mara"), "actor")
 
     describe = entity_renderer(engine, state)
     player_state = describe(state.player)

@@ -33,15 +33,13 @@ class Dnd5eWorld:
         return self.actor(PLAYER_ID)
 
     def actors(self) -> tuple[Dnd5eActor, ...]:
-        return tuple(self.actor(actor_id) for actor_id in self.state.world.actors)
+        return tuple(self.actor(entity.id) for entity in self.state.world.entities("actor"))
 
     def items(self) -> tuple[Dnd5eItem, ...]:
-        return tuple(self.item(item_id) for item_id in self.state.world.items)
+        return tuple(self.item(entity.id) for entity in self.state.world.entities("item"))
 
     def carried_by(self, actor_id: EntityId) -> tuple[Dnd5eItem, ...]:
-        return tuple(
-            self.item(record.entity.id) for record in self.state.world.carried_by(actor_id)
-        )
+        return tuple(self.item(entity.id) for entity in self.state.world.children(actor_id, "item"))
 
     def commit(self) -> GameState:
         return self._records.commit()

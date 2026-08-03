@@ -1,4 +1,4 @@
-from aidm.base import PLAYER_ID, ActorEntity, Entity
+from aidm.base import PLAYER_ID, Entity
 from aidm.content import Rules
 
 from .access import actor_state, item_state
@@ -7,12 +7,16 @@ from .state import StoryActorState, StoryItemState
 
 class StoryPresentation:
     def entity_state(self, entity: Entity, rules: Rules) -> str:
-        if isinstance(entity, ActorEntity):
-            return self._actor_state(entity, actor_state(rules))
-        return self._item_state(item_state(rules))
+        match entity.kind:
+            case "actor":
+                return self._actor_state(entity, actor_state(rules))
+            case "item":
+                return self._item_state(item_state(rules))
+            case "location":
+                return ""
 
     @staticmethod
-    def _actor_state(actor: ActorEntity, state: StoryActorState) -> str:
+    def _actor_state(actor: Entity, state: StoryActorState) -> str:
         approaches = ", ".join(
             f"{name} {value:+d}" for name, value in state.approaches.model_dump().items()
         )

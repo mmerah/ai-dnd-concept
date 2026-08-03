@@ -2,7 +2,7 @@ import json
 from collections.abc import Sequence
 from typing import assert_never
 
-from aidm.base import PLAYER_ID, ActorEntity, Entity
+from aidm.base import PLAYER_ID, Entity
 from aidm.content import Rules
 
 from . import features, spells
@@ -27,13 +27,17 @@ class Dnd5ePresentation:
         self._ruleset = ruleset
 
     def entity_state(self, entity: Entity, rules: Rules) -> str:
-        if not isinstance(entity, ActorEntity):
-            return item_summary(item_state(rules).ref, self._ruleset)
-        actor = actor_state(rules)
-        if entity.id != PLAYER_ID:
-            return actor_summary(actor.stats, actor.ref, self._ruleset)
-        sheet = player_state(actor.stats, actor.progression, self._ruleset)
-        return f"{sheet}\nadvancement: {level_up_state(actor.progression)}"
+        match entity.kind:
+            case "item":
+                return item_summary(item_state(rules).ref, self._ruleset)
+            case "location":
+                return ""
+            case "actor":
+                actor = actor_state(rules)
+                if entity.id != PLAYER_ID:
+                    return actor_summary(actor.stats, actor.ref, self._ruleset)
+                sheet = player_state(actor.stats, actor.progression, self._ruleset)
+                return f"{sheet}\nadvancement: {level_up_state(actor.progression)}"
 
 
 def _attributes(stats: StatBlock) -> str:

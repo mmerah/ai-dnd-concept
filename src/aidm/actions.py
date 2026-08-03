@@ -3,11 +3,13 @@ from typing import Annotated, Literal, TypeGuard, assert_never
 
 from pydantic import Field
 
-from .base import PLAYER_ID, ActorEntity, EntityId, ItemEntity, LocationEntity, slug
+from .base import PLAYER_ID, Entity, EntityId, slug
 from .content import Rules
 from .directing import ConsequenceBase, Reference
 from .facts import Fact
 from .world import GameState
+
+_NOT_CARRIED = "the player does not carry it"
 
 
 class Discover(ConsequenceBase):
@@ -137,51 +139,67 @@ def resolve_world_action(
 
 
 def _move(action: Move, draft: GameState) -> list[Fact]:
-    destination = draft.world.require_kind(action.location_id, LocationEntity)
-    player = draft.player
+    destination = draft.world.require_kind(action.location_id, "location")
+    here = draft.player_location
     if action.actor_id is None or action.actor_id == PLAYER_ID:
-        return [*draft.reveal(destination), draft.move_actor(player, destination)]
-    actor = draft.world.require_kind(action.actor_id, ActorEntity)
-    if actor.location_id != player.location_id and destination.id != player.location_id:
+        return [*draft.reveal(destination), draft.move(draft.player, destination)]
+    actor = draft.world.require_kind(action.actor_id, "actor")
+    if actor.parent_id != here and destination.id != here:
         raise WorldActionRejected(f"cannot move {actor.id!r}: the player would not witness it")
-    revealed = draft.reveal(actor) if destination.id == player.location_id else []
-    return [*revealed, draft.move_actor(actor, destination)]
+    revealed = draft.reveal(actor) if destination.id == here else []
+    return [*revealed, draft.move(actor, destination)]
+
+
+def _relocate(
+    draft: GameState,
+    item_id: EntityId,
+    *,
+    origin: EntityId,
+    destination: Entity,
+    requirement: str,
+) -> list[Fact]:
+    """The player has seen any item they may move, so one reveal serves all three actions."""
+    item = draft.world.require_kind(item_id, "item")
+    if item.parent_id != origin:
+        raise WorldActionRejected(f"cannot move {item.id!r}: {requirement}")
+    return [*draft.reveal(item), draft.move(item, destination)]
 
 
 def _take(action: TakeItem, draft: GameState) -> list[Fact]:
-    item = draft.world.require_kind(action.item_id, ItemEntity)
-    player = draft.player
-    if item.container_id != player.location_id:
-        raise WorldActionRejected(f"cannot take {item.id!r}: it is not at the player's location")
-    return [*draft.reveal(item), draft.move_item(item, player)]
-
-
-def _held(item_id: EntityId, draft: GameState, verb: str) -> ItemEntity:
-    item = draft.world.require_kind(item_id, ItemEntity)
-    if item.container_id != PLAYER_ID:
-        raise WorldActionRejected(
-            f"cannot {verb} {item.id!r}: the player is not carrying it; "
-            "the player does not carry it"
-        )
-    return item
+    return _relocate(
+        draft,
+        action.item_id,
+        origin=draft.player_location,
+        destination=draft.player,
+        requirement="it is not at the player's location",
+    )
 
 
 def _drop(action: DropItem, draft: GameState) -> list[Fact]:
-    item = _held(action.item_id, draft, "drop")
-    location = draft.world.require_kind(draft.player.location_id, LocationEntity)
-    return [draft.move_item(item, location)]
+    return _relocate(
+        draft,
+        action.item_id,
+        origin=PLAYER_ID,
+        destination=draft.world.require_kind(draft.player_location, "location"),
+        requirement=_NOT_CARRIED,
+    )
 
 
 def _give(action: GiveItem, draft: GameState) -> list[Fact]:
-    item = _held(action.item_id, draft, "give")
-    actor = draft.world.require_kind(action.actor_id, ActorEntity)
+    actor = draft.world.require_kind(action.actor_id, "actor")
     if actor.id == PLAYER_ID:
         raise WorldActionRejected("cannot give an item to the player: they already hold it")
-    if actor.location_id != draft.player.location_id:
+    if actor.parent_id != draft.player_location:
         raise WorldActionRejected(
             f"cannot give to {actor.id!r}: they are not at the player's location"
         )
-    return [draft.move_item(item, actor)]
+    return _relocate(
+        draft,
+        action.item_id,
+        origin=PLAYER_ID,
+        destination=actor,
+        requirement=_NOT_CARRIED,
+    )
 
 
 def _improvise(
@@ -189,13 +207,13 @@ def _improvise(
     draft: GameState,
     improvised_item_rules: Callable[[], Rules],
 ) -> list[Fact]:
-    player = draft.player
-    item = ItemEntity(
+    item = Entity(
         id=slug(action.item_name, draft.world.all_ids()),
+        kind="item",
         name=action.item_name,
         brief=action.item_name,
         known=True,
-        container_id=player.location_id,
+        parent_id=draft.player_location,
     )
     created = draft.add(item, improvised_item_rules())
-    return [created, draft.move_item(item, player)]
+    return [created, draft.move(item, draft.player)]

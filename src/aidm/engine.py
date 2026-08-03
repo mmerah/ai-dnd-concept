@@ -4,7 +4,8 @@ from random import Random
 
 from pydantic_ai.output import OutputSpec
 
-from .base import ActorEntity, AdvancementDecision, EngineId, Entity, ItemEntity, LocationEntity
+from .advancement import AdvancementChoice, AdvancementForm, AdvancementReview, AdvancementStatus
+from .base import AdvancementDecision, EngineId, Entity
 from .content import AuthoredWorld, Rules
 from .facts import Fact
 from .prompts import EntityRenderer
@@ -25,11 +26,12 @@ class Engine:
     resolve: Callable[[Direction, GameState, Random], Transition]
     advance: Callable[[AdvancementDecision, GameState, Random], Transition]
     advancement_available: Callable[[GameState], bool]
+    advancement_status: Callable[[GameState], AdvancementStatus]
+    advancement_form: Callable[[GameState], AdvancementForm]
+    advancement_review: Callable[[GameState, AdvancementChoice], AdvancementReview]
     director_output: OutputSpec[Direction]
     director_instructions: str
     entity_state: Callable[[Entity, Rules], str]
-    # The engine's own advancement collaborator; only that engine's UI module narrows it.
-    advancement: object
 
 
 def narrator_evidence(facts: Sequence[Fact]) -> str:
@@ -38,13 +40,4 @@ def narrator_evidence(facts: Sequence[Fact]) -> str:
 
 
 def entity_renderer(engine: Engine, state: GameState) -> EntityRenderer:
-    def describe(entity: Entity) -> str:
-        match entity:
-            case ActorEntity():
-                return engine.entity_state(entity, state.world.actor(entity.id).rules)
-            case ItemEntity():
-                return engine.entity_state(entity, state.world.item(entity.id).rules)
-            case LocationEntity():
-                return ""
-
-    return describe
+    return lambda entity: engine.entity_state(entity, state.world.record(entity.id).rules)

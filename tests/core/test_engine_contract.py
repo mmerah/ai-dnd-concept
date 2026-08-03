@@ -3,7 +3,7 @@ from random import Random
 from core_test_support import character, initialized, settings
 
 from aidm.actions import TakeItem
-from aidm.base import PLAYER_ID, ActorEntity, EntityId, ItemEntity
+from aidm.base import PLAYER_ID, Entity, EntityId
 from aidm.engines.story.access import actor_state, item_state, player_state
 from aidm.engines.story.direction import Risk, StoryDirection, dump_direction
 from aidm.engines.story.state import DEFAULT_APPROACHES, StoryCharacterData
@@ -47,7 +47,7 @@ def test_engine_resolution_is_pure_seeded_and_renders_every_fact() -> None:
     assert state.model_dump_json() == before
     assert {fact.kind for fact in first.facts} >= {
         "entity_discovered",
-        "item_moved",
+        "entity_moved",
         "risk_rolled",
     }
     assert {fact.source for fact in first.facts} == {"core", engine.id}
@@ -60,19 +60,21 @@ def test_engine_resolution_is_pure_seeded_and_renders_every_fact() -> None:
 
 def test_a_created_entity_gains_engine_state_in_the_same_commit() -> None:
     engine, state = initialized()
-    actor = ActorEntity(
+    actor = Entity(
         id=EntityId("created-actor"),
+        kind="actor",
         name="A New Actor",
         brief="Newly introduced.",
         known=True,
-        location_id=state.player.location_id,
+        parent_id=state.player_location,
     )
-    item = ItemEntity(
+    item = Entity(
         id=EntityId("created-item"),
+        kind="item",
         name="A New Item",
         brief="Newly introduced.",
         known=True,
-        container_id=PLAYER_ID,
+        parent_id=PLAYER_ID,
     )
 
     working = state.draft()
@@ -81,8 +83,8 @@ def test_a_created_entity_gains_engine_state_in_the_same_commit() -> None:
     grown = working.committed()
 
     engine.validate_state(grown)
-    assert actor_state(grown.world.actor(actor.id).rules).approaches == DEFAULT_APPROACHES
-    assert item_state(grown.world.item(item.id).rules).gear is None
+    assert actor_state(grown.world.record(actor.id, "actor").rules).approaches == DEFAULT_APPROACHES
+    assert item_state(grown.world.record(item.id, "item").rules).gear is None
 
 
 def test_every_registered_engine_builds_itself() -> None:

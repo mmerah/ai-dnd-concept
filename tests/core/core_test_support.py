@@ -2,13 +2,13 @@ from pathlib import Path
 
 from pydantic import BaseModel, SecretStr
 
-from aidm.base import SAVE_VERSION, ActorEntity, EngineId, Entity, ItemEntity, LocationEntity
+from aidm.base import SAVE_VERSION, EngineId, Entity
 from aidm.config import ProviderConfig, Providers, Roles, Settings
 from aidm.content import Character, Scenario, authored_world
 from aidm.engine import Engine
 from aidm.engines.story.engine import build_story_engine
 from aidm.store import load_character, load_scenario
-from aidm.world import ActorRecord, GameState, ItemRecord
+from aidm.world import GameState, Record
 
 REPOSITORY_ROOT = Path(__file__).parents[2]
 SCENARIOS = REPOSITORY_ROOT / "scenarios"
@@ -25,13 +25,7 @@ def updated[T: BaseModel](model: T, **changes: object) -> T:
 def with_entity(state: GameState, entity: Entity) -> GameState:
     """Replace one entity, keeping whatever payload its record already holds."""
     world = state.world.model_copy(deep=True)
-    match entity:
-        case ActorEntity():
-            world.actors[entity.id] = ActorRecord(entity=entity, rules=world.actor(entity.id).rules)
-        case ItemEntity():
-            world.items[entity.id] = ItemRecord(entity=entity, rules=world.item(entity.id).rules)
-        case LocationEntity():
-            world.locations[entity.id] = entity
+    world.records[entity.id] = Record(entity=entity, rules=world.record(entity.id).rules)
     return updated(state, world=world)
 
 

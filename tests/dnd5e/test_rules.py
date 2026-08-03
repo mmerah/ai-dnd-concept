@@ -5,7 +5,7 @@ import pytest
 from fivee_test_support import initial_5e_game
 from pydantic import ValidationError
 
-from aidm.base import PLAYER_ID, ActorEntity, EntityId
+from aidm.base import PLAYER_ID, Entity, EntityId
 from aidm.engines.dnd5e import dice
 from aidm.engines.dnd5e import rolls as rules
 from aidm.engines.dnd5e.direction import Damage, Dnd5eDirection, dump_direction
@@ -13,12 +13,13 @@ from aidm.engines.dnd5e.state import Dnd5eActor, Dnd5eActorState, StatBlock
 from aidm.engines.dnd5e.values import Attributes
 
 KAEL = Dnd5eActor(
-    entity=ActorEntity(
+    entity=Entity(
         id=PLAYER_ID,
+        kind="actor",
         name="Kael",
         brief="A relic-hunter.",
         known=True,
-        location_id=EntityId("here"),
+        parent_id=EntityId("here"),
     ),
     state=Dnd5eActorState(
         stats=StatBlock(attributes=Attributes(wisdom=14, strength=8), max_hp=10, hp=10)

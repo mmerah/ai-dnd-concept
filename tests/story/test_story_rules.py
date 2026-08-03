@@ -41,9 +41,9 @@ def test_story_mode_can_take_an_existing_item_and_keep_its_rule_state() -> None:
     engine, state = initial_story_game()
     gear = StoryGearTag(name="Folded Chart", description="It marks the sealed stair.")
     prepared = state.draft()
-    prepared.world.item(EntityId("vault_map")).rules = StoryItemState(gear=gear).model_dump(
-        mode="json"
-    )
+    prepared.world.record(EntityId("vault_map"), "item").rules = StoryItemState(
+        gear=gear
+    ).model_dump(mode="json")
     state = prepared.committed()
     mechanics: list[StoryConsequence] = [TakeItem(item_id=EntityId("vault_map"))]
     direction = dump_direction(
@@ -58,5 +58,5 @@ def test_story_mode_can_take_an_existing_item_and_keep_its_rule_state() -> None:
 
     map_item = after.world.require(EntityId("vault_map"))
     assert map_item.known
-    assert map_item in tuple(record.entity for record in after.world.carried_by(PLAYER_ID))
-    assert item_state(after.world.item(map_item.id).rules).gear == gear
+    assert map_item in after.world.children(PLAYER_ID, "item")
+    assert item_state(after.world.record(map_item.id, "item").rules).gear == gear

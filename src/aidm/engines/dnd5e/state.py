@@ -3,7 +3,7 @@ from typing import Annotated, Literal, Self
 
 from pydantic import Field, model_validator
 
-from aidm.base import ActorEntity, EntityId, ItemEntity, Mutable
+from aidm.base import Entity, EntityId, Mutable
 
 from .content.records.base import Collection, ContentRef
 from .content.records.spells import SlotLevel
@@ -188,7 +188,7 @@ class Dnd5eItemState(Mutable):
 class Dnd5eActor:
     """A record narrowed to 5e: the same mutable halves, read as one object by every rule."""
 
-    entity: ActorEntity
+    entity: Entity
     state: Dnd5eActorState
 
     @property
@@ -202,10 +202,6 @@ class Dnd5eActor:
     @property
     def known(self) -> bool:
         return self.entity.known
-
-    @property
-    def location_id(self) -> EntityId:
-        return self.entity.location_id
 
     @property
     def stats(self) -> StatBlock:
@@ -222,7 +218,7 @@ class Dnd5eActor:
 
 @dataclass(frozen=True, slots=True)
 class Dnd5eItem:
-    entity: ItemEntity
+    entity: Entity
     state: Dnd5eItemState
 
     @property
@@ -232,10 +228,6 @@ class Dnd5eItem:
     @property
     def name(self) -> str:
         return self.entity.name
-
-    @property
-    def container_id(self) -> EntityId:
-        return self.entity.container_id
 
     @property
     def ref(self) -> Dnd5eContentRef | None:

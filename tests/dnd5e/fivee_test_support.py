@@ -5,22 +5,15 @@ from pathlib import Path
 import pytest
 from core_test_support import updated
 
-from aidm.base import (
-    PLAYER_ID,
-    SAVE_VERSION,
-    ActorEntity,
-    EngineId,
-    EntityId,
-    ItemEntity,
-    LocationEntity,
-)
+from aidm.base import PLAYER_ID, SAVE_VERSION, EngineId, Entity, EntityId
 from aidm.content import ScenarioMeta, authored_world
 from aidm.engine import Engine
 from aidm.engines.dnd5e.access import Dnd5eWorld
 from aidm.engines.dnd5e.content.library import Content, loaded, read_pack
 from aidm.engines.dnd5e.content.models import Pack
 from aidm.engines.dnd5e.content.pack_ruleset import compile_ruleset
-from aidm.engines.dnd5e.content.records.base import Collection, ContentRef, Record
+from aidm.engines.dnd5e.content.records.base import Collection, ContentRef
+from aidm.engines.dnd5e.content.records.base import Record as ContentRecord
 from aidm.engines.dnd5e.engine import dnd5e_engine
 from aidm.engines.dnd5e.ruleset import Ruleset
 from aidm.engines.dnd5e.state import (
@@ -34,7 +27,7 @@ from aidm.engines.dnd5e.state import (
 from aidm.engines.dnd5e.values import Attributes, ContentSlug
 from aidm.facts import Fact
 from aidm.store import load_character, load_scenario
-from aidm.world import ActorRecord, GameState, ItemRecord, WorldState
+from aidm.world import GameState, Record, WorldState
 
 REPOSITORY_ROOT = Path(__file__).parents[2]
 PACK_DIR = REPOSITORY_ROOT / "src" / "aidm" / "engines" / "dnd5e" / "data" / "srd-2014"
@@ -64,78 +57,85 @@ def summary(fact: Fact) -> str:
     return fact.trace
 
 
-def with_actor(state: GameState, entity: ActorEntity, actor: Dnd5eActorState) -> GameState:
+def with_actor(state: GameState, entity: Entity, actor: Dnd5eActorState) -> GameState:
     world = state.world.model_copy(deep=True)
-    world.actors[entity.id] = ActorRecord(entity=entity, rules=actor.model_dump(mode="json"))
+    world.records[entity.id] = Record(entity=entity, rules=actor.model_dump(mode="json"))
     return updated(state, world=world)
 
 
-def with_item(state: GameState, entity: ItemEntity, item: Dnd5eItemState) -> GameState:
+def with_item(state: GameState, entity: Entity, item: Dnd5eItemState) -> GameState:
     world = state.world.model_copy(deep=True)
-    world.items[entity.id] = ItemRecord(entity=entity, rules=item.model_dump(mode="json"))
+    world.records[entity.id] = Record(entity=entity, rules=item.model_dump(mode="json"))
     return updated(state, world=world)
 
 
-def _actor(entity: ActorEntity, stats: StatBlock) -> ActorRecord:
-    return ActorRecord(entity=entity, rules=Dnd5eActorState(stats=stats).model_dump(mode="json"))
+def _actor(entity: Entity, stats: StatBlock) -> Record:
+    return Record(entity=entity, rules=Dnd5eActorState(stats=stats).model_dump(mode="json"))
 
 
-def _item(entity: ItemEntity) -> ItemRecord:
-    return ItemRecord(entity=entity, rules=Dnd5eItemState().model_dump(mode="json"))
+def _item(entity: Entity) -> Record:
+    return Record(entity=entity, rules=Dnd5eItemState().model_dump(mode="json"))
 
 
 def blank_game() -> GameState:
     locations = [
-        LocationEntity(id=EntityId("study"), name="the study", brief="A room.", known=True),
-        LocationEntity(id=EntityId("vault"), name="the vault", brief="A crypt."),
+        Entity(
+            id=EntityId("study"), kind="location", name="the study", brief="A room.", known=True
+        ),
+        Entity(id=EntityId("vault"), kind="location", name="the vault", brief="A crypt."),
     ]
     actors = [
         _actor(
-            ActorEntity(
+            Entity(
                 id=PLAYER_ID,
+                kind="actor",
                 name="Kael",
                 brief="A relic-hunter.",
                 known=True,
-                location_id=EntityId("study"),
+                parent_id=EntityId("study"),
             ),
             StatBlock(attributes=Attributes(wisdom=14), max_hp=10, hp=10),
         ),
         _actor(
-            ActorEntity(
+            Entity(
                 id=EntityId("mara"),
+                kind="actor",
                 name="Mara",
                 brief="A scribe.",
                 known=True,
-                location_id=EntityId("study"),
+                parent_id=EntityId("study"),
             ),
             StatBlock(),
         ),
         _actor(
-            ActorEntity(
+            Entity(
                 id=EntityId("elena"),
+                kind="actor",
                 name="Elena",
                 brief="An archivist.",
-                location_id=EntityId("study"),
+                parent_id=EntityId("study"),
             ),
             StatBlock(),
         ),
     ]
     items = [
         _item(
-            ItemEntity(
+            Entity(
                 id=EntityId("vault_map"),
+                kind="item",
                 name="the vault map",
                 brief="A chart.",
-                container_id=EntityId("study"),
+                parent_id=EntityId("study"),
             )
         ),
         _item(
-            ItemEntity(
+            Entity(
                 id=EntityId("lantern"),
+                kind="item",
                 name="a lantern",
                 brief="A tin lantern.",
                 known=True,
-                container_id=PLAYER_ID,
+                parent_id=PLAYER_ID,
             )
         ),
     ]
@@ -146,9 +146,10 @@ def blank_game() -> GameState:
         scenario=ScenarioMeta(title="Test", premise="A test."),
         engine=EngineId("dnd5e"),
         world=WorldState(
-            actors={record.entity.id: record for record in actors},
-            items={record.entity.id: record for record in items},
-            locations={entity.id: entity for entity in locations},
+            records={
+                record.entity.id: record
+                for record in (*actors, *items, *(Record(entity=e) for e in locations))
+            }
         ),
     )
 
@@ -168,7 +169,7 @@ def content() -> Content:
     return loaded([pack()])
 
 
-def all_of[R: Record](
+def all_of[R: ContentRecord](
     held: Pack,
     name: Collection,
     kind: type[R],

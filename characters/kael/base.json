@@ -8,7 +8,7 @@
       "name": "a guttering lantern",
       "brief": "A dented tin lantern whose flame will not hold still.",
       "known": true,
-      "container_id": "player"
+      "parent_id": "player"
     }
   ]
 }

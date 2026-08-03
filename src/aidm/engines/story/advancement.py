@@ -1,15 +1,25 @@
 from random import Random
 from typing import Annotated, Literal
 
-from pydantic import Field, TypeAdapter
+from pydantic import Field, JsonValue, TypeAdapter
 
-from aidm.advancement import AdvancementStatus
+from aidm.advancement import (
+    AdvancementChoice,
+    AdvancementForm,
+    AdvancementOption,
+    AdvancementReview,
+    AdvancementStatus,
+    Block,
+    SelectField,
+    SelectOption,
+    TextField,
+)
 from aidm.base import (
     PLAYER_ID,
     AdvancementDecision,
+    Entity,
     EntityId,
     Frozen,
-    ItemEntity,
     Slug,
     slug,
 )
@@ -21,13 +31,13 @@ from .access import StoryWorld, player_state
 from .identity import ENGINE_ID
 from .rules import revived
 from .state import (
+    APPROACH_NAMES,
     GROWTH_REQUIRED,
     MAX_APPROACH,
     MAX_MAX_STRESS,
     StoryActorState,
     StoryActorTag,
     StoryApproach,
-    StoryApproaches,
     StoryGearTag,
     StoryItemState,
 )
@@ -163,31 +173,28 @@ def _require_full_growth(player: StoryActorState) -> None:
         raise ValueError(f"Story advancement requires {GROWTH_REQUIRED} growth marks")
 
 
-class StoryAdvancementPreview(Frozen):
-    approaches: StoryApproaches
-    tags: tuple[StoryActorTag, ...]
-    max_stress: int
-    approach_limit: int = MAX_APPROACH
-    max_stress_limit: int = MAX_MAX_STRESS
-
-
-class StoryAdvancementPlan(Frozen):
-    decision: StoryAdvancementDecision
-    summary: str
+def _payload(choice: AdvancementChoice) -> dict[str, JsonValue]:
+    """Every option id and field id is exactly the matching decision's discriminator and field
+    name, except `acquire_gear`, whose `gear` is a nested model the form flattens into two."""
+    if choice.option_id == "acquire_gear":
+        return {
+            "choice": choice.option_id,
+            "item_name": choice.one("item_name"),
+            "item_brief": choice.one("item_brief"),
+            "gear": {
+                "name": choice.one("gear_name"),
+                "description": choice.one("gear_description"),
+            },
+        }
+    return {
+        "choice": choice.option_id,
+        **{field_id: choice.one(field_id) for field_id in choice.values},
+    }
 
 
 class StoryAdvancement:
     def available(self, state: GameState) -> bool:
         return player_state(state).growth_marks == GROWTH_REQUIRED
-
-    def preview(self, state: GameState) -> StoryAdvancementPreview:
-        player = player_state(state)
-        _require_full_growth(player)
-        return StoryAdvancementPreview(
-            approaches=player.approaches,
-            tags=player.tags,
-            max_stress=player.max_stress,
-        )
 
     def status(self, state: GameState) -> AdvancementStatus:
         player = player_state(state)
@@ -206,16 +213,110 @@ class StoryAdvancement:
             progress=1.0,
         )
 
-    def plan(
-        self,
-        state: GameState,
-        decision: StoryAdvancementDecision,
-    ) -> StoryAdvancementPlan:
+    def form(self, state: GameState) -> AdvancementForm:
         player = player_state(state)
         _require_full_growth(player)
-        self._validate_choice(player, decision)
-        summary = self._describe_choice(player, decision)
-        return StoryAdvancementPlan(decision=decision, summary=summary)
+        options: list[AdvancementOption] = []
+
+        approach_options = tuple(
+            SelectOption(key=name, label=f"{name.capitalize()} ({score:+d} → {score + 1:+d})")
+            for name in APPROACH_NAMES
+            if (score := player.approaches.score(name)) < MAX_APPROACH
+        )
+        if approach_options:
+            options.append(
+                AdvancementOption(
+                    id="raise_approach",
+                    heading="Raise an approach",
+                    action="Review approach increase",
+                    fields=(
+                        SelectField(id="approach", label="Approach", options=approach_options),
+                    ),
+                )
+            )
+
+        options.append(
+            AdvancementOption(
+                id="add_tag",
+                heading="Add an edge or bond",
+                action="Review new tag",
+                fields=(
+                    TextField(id="id", label="Id (lowercase words joined by hyphens)"),
+                    TextField(id="name", label="Name"),
+                    SelectField(
+                        id="kind",
+                        label="Kind",
+                        options=(
+                            SelectOption(key="edge", label="Edge"),
+                            SelectOption(key="bond", label="Bond"),
+                        ),
+                    ),
+                    TextField(id="description", label="Description"),
+                ),
+            )
+        )
+
+        burdens = tuple(tag for tag in player.tags if tag.kind == "burden")
+        if burdens:
+            burden_options = tuple(SelectOption(key=tag.id, label=tag.name) for tag in burdens)
+            options.append(
+                AdvancementOption(
+                    id="remove_burden",
+                    heading="Remove a burden",
+                    action="Review removing burden",
+                    fields=(SelectField(id="id", label="Burden", options=burden_options),),
+                )
+            )
+            options.append(
+                AdvancementOption(
+                    id="rewrite_burden",
+                    heading="Rewrite a burden",
+                    action="Review rewritten burden",
+                    fields=(
+                        SelectField(id="id", label="Burden", options=burden_options),
+                        TextField(id="name", label="Rewritten name"),
+                        TextField(id="description", label="Rewritten description"),
+                    ),
+                )
+            )
+
+        options.append(
+            AdvancementOption(
+                id="acquire_gear",
+                heading="Acquire Story gear",
+                action="Review new gear",
+                fields=(
+                    TextField(id="item_name", label="Item name"),
+                    TextField(id="item_brief", label="Item brief"),
+                    TextField(id="gear_name", label="Gear benefit name"),
+                    TextField(id="gear_description", label="Gear benefit description"),
+                ),
+            )
+        )
+
+        if player.max_stress < MAX_MAX_STRESS:
+            options.append(
+                AdvancementOption(
+                    id="increase_maximum_stress",
+                    heading="Increase maximum stress",
+                    action="Review resilience increase",
+                )
+            )
+
+        return AdvancementForm(title="Choose one advancement", options=tuple(options))
+
+    def review(self, state: GameState, choice: AdvancementChoice) -> AdvancementReview:
+        player = player_state(state)
+        _require_full_growth(player)
+        typed = DECISION_ADAPTER.validate_python(_payload(choice))
+        self._validate_choice(player, typed)
+        summary = self._describe_choice(player, typed)
+        return AdvancementReview(
+            title="Confirm Story advancement",
+            confirm_label="Confirm advancement",
+            blocks=(Block(heading="This advancement", lines=(summary,)),),
+            decision=dump_decision(typed),
+        )
 
     def advance(
         self,
@@ -270,12 +371,13 @@ class StoryAdvancement:
                 )
                 return [_tag_rewritten(before_tag, after_tag)]
             case AcquireGear():
-                item = ItemEntity(
+                item = Entity(
                     id=slug(decision.item_name, records.state.world.all_ids()),
+                    kind="item",
                     name=decision.item_name,
                     brief=decision.item_brief,
                     known=True,
-                    container_id=PLAYER_ID,
+                    parent_id=PLAYER_ID,
                 )
                 created = records.state.add(
                     item, StoryItemState(gear=decision.gear).model_dump(mode="json")

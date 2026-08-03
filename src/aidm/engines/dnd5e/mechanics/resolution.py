@@ -38,7 +38,7 @@ class Resolution:
     def actor_here(self, entity_id: EntityId) -> Dnd5eActor:
         """Reject off-screen actors because this turn cannot visibly affect them."""
         actor = self.actor(entity_id)
-        if actor.location_id != self.player.location_id:
+        if actor.entity.parent_id != self.player.entity.parent_id:
             raise ValueError(f"cannot affect {entity_id!r}: not at the player's location")
         return actor
 

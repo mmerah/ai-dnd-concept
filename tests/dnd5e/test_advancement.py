@@ -1,16 +1,20 @@
 from random import Random
 
 from core_test_support import updated
-from fivee_progression_support import answers
 from fivee_test_support import initial_5e_game, player_of, ruleset, with_actor
 
-from aidm.engines.dnd5e.advancement import (
-    Dnd5eAdvancement,
-    Dnd5eAdvancementDecisions,
-    dump_decision,
-)
+from aidm.advancement import AdvancementChoice, FormField, SelectField
+from aidm.engines.dnd5e.advancement import Dnd5eAdvancement
 from aidm.engines.dnd5e.direction import Dnd5eDirection, LevelUp, dump_direction
 from aidm.engines.dnd5e.state import Dnd5eActorState
+
+
+def _answer(fields: tuple[FormField, ...]) -> dict[str, tuple[str, ...]]:
+    values: dict[str, tuple[str, ...]] = {}
+    for field in fields:
+        assert isinstance(field, SelectField)
+        values[field.id] = tuple(option.key for option in field.options[: field.choose])
+    return values
 
 
 def test_5e_advancement_status_and_full_flow() -> None:
@@ -32,12 +36,12 @@ def test_5e_advancement_status_and_full_flow() -> None:
     assert advancement.available(offered)
     assert advancement.status(offered).detail[0] == "Level 2 is ready."
 
-    preview = advancement.preview(offered)
-    decisions = Dnd5eAdvancementDecisions(decisions=answers(preview.choices))
-    plan = advancement.plan(offered, decisions)
-    assert plan.benefits == preview.benefits
+    form = advancement.form(offered)
+    option = form.options[0]
+    choice = AdvancementChoice(option_id=option.id, values=_answer(option.fields))
+    review = advancement.review(offered, choice)
 
-    advanced = advancement.advance(dump_decision(decisions), offered, Random(1)).state
+    advanced = advancement.advance(review.decision, offered, Random(1)).state
 
     assert advancement.status(advanced).headline == "level 2"
     assert not advancement.available(advanced)

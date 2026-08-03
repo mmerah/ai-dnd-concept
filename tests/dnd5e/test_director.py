@@ -84,5 +84,5 @@ def test_dry_run_checks_both_roll_branches() -> None:
         ],
     )
 
-    with pytest.raises(ModelRetry, match="not carrying"):
+    with pytest.raises(ModelRetry, match="does not carry it"):
         _propose(engine, state, direction)

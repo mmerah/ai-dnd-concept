@@ -1,7 +1,7 @@
 import pytest
 from core_test_support import STORY, updated, with_entity
 
-from aidm.base import PLAYER_ID, SAVE_VERSION, ActorEntity, EntityId, ItemEntity, LocationEntity
+from aidm.base import PLAYER_ID, SAVE_VERSION, Entity, EntityId, Kind
 from aidm.content import ScenarioMeta
 from aidm.engine import entity_renderer
 from aidm.engines.story.engine import build_story_engine
@@ -18,7 +18,7 @@ from aidm.prompts import (
     render_maintainer,
     render_narrator,
 )
-from aidm.world import ActorRecord, GameState, ItemRecord, WorldState
+from aidm.world import GameState, Record, WorldState
 
 ACTOR_RULES = StoryActorState(approaches=DEFAULT_APPROACHES).model_dump(mode="json")
 ITEM_RULES = StoryItemState().model_dump(mode="json")
@@ -27,51 +27,25 @@ HOOK = "Her missing folio points toward the vault."
 
 
 def _with_detail(held: GameState, entity_id: EntityId) -> GameState:
-    entity = held.world.require_kind(entity_id, ActorEntity)
+    entity = held.world.require_kind(entity_id, "actor")
     detailed = updated(entity, detail={"description": DESCRIPTION, "hook": HOOK})
     return with_entity(held, detailed)
 
 
+def _entity(entity_id: str, kind: Kind, name: str, brief: str, **fields: object) -> Entity:
+    return Entity.model_validate(
+        {"id": entity_id, "kind": kind, "name": name, "brief": brief} | fields
+    )
+
+
 def state() -> GameState:
-    location = LocationEntity(
-        id=EntityId("study"),
-        name="Study",
-        brief="A small room.",
-        known=True,
-    )
-    player = ActorEntity(
-        id=PLAYER_ID,
-        name="Kael",
-        brief="A hunter.",
-        known=True,
-        location_id=location.id,
-    )
-    hidden = ActorEntity(
-        id=EntityId("hidden-actor"),
-        name="The Secret",
-        brief="Unrevealed canon.",
-        location_id=location.id,
-    )
-    mara = ActorEntity(
-        id=EntityId("mara"),
-        name="Mara",
-        brief="A known scribe.",
-        known=True,
-        location_id=location.id,
-    )
-    lantern = ItemEntity(
-        id=EntityId("lantern"),
-        name="a lantern",
-        brief="A dented light.",
-        known=True,
-        container_id=PLAYER_ID,
-    )
-    ledger = ItemEntity(
-        id=EntityId("ledger"),
-        name="a ledger",
-        brief="Mara's notes.",
-        known=True,
-        container_id=mara.id,
+    entities = (
+        _entity("study", "location", "Study", "A small room.", known=True),
+        _entity("player", "actor", "Kael", "A hunter.", known=True, parent_id="study"),
+        _entity("hidden-actor", "actor", "The Secret", "Unrevealed canon.", parent_id="study"),
+        _entity("mara", "actor", "Mara", "A known scribe.", known=True, parent_id="study"),
+        _entity("lantern", "item", "a lantern", "A dented light.", known=True, parent_id=PLAYER_ID),
+        _entity("ledger", "item", "a ledger", "Mara's notes.", known=True, parent_id="mara"),
     )
     return GameState(
         save_version=SAVE_VERSION,
@@ -80,16 +54,13 @@ def state() -> GameState:
         scenario=ScenarioMeta(title="Test", premise="Test"),
         engine=STORY,
         world=WorldState(
-            actors={
-                player.id: ActorRecord(entity=player, rules=ACTOR_RULES),
-                hidden.id: ActorRecord(entity=hidden, rules=ACTOR_RULES),
-                mara.id: ActorRecord(entity=mara, rules=ACTOR_RULES),
-            },
-            items={
-                lantern.id: ItemRecord(entity=lantern, rules=ITEM_RULES),
-                ledger.id: ItemRecord(entity=ledger, rules=ITEM_RULES),
-            },
-            locations={location.id: location},
+            records={
+                entity.id: Record(
+                    entity=entity,
+                    rules={"location": {}, "actor": ACTOR_RULES, "item": ITEM_RULES}[entity.kind],
+                )
+                for entity in entities
+            }
         ),
     )
 
@@ -99,7 +70,7 @@ def _renderer(held: GameState) -> EntityRenderer:
 
 
 ACTOR_LINE = StoryPresentation().entity_state(
-    state().world.actor(EntityId("mara")).entity,
+    state().world.require_kind(EntityId("mara"), "actor"),
     ACTOR_RULES,
 )
 
@@ -126,8 +97,8 @@ def test_the_narrators_view_has_no_field_that_could_hold_unrevealed_canon() -> N
 
 def test_a_placement_never_names_an_entity_the_player_has_not_met() -> None:
     held = state()
-    ledger = held.world.require_kind(EntityId("ledger"), ItemEntity)
-    held = with_entity(held, updated(ledger, container_id="hidden-actor"))
+    ledger = held.world.require_kind(EntityId("ledger"), "item")
+    held = with_entity(held, updated(ledger, parent_id="hidden-actor"))
     snapshot = SceneSnapshot.of(held)
 
     assert snapshot.placement_of(ledger) == "held by The Secret"

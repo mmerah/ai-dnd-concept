@@ -39,16 +39,16 @@ def resolve(mechanics: list[Consequence], state: GameState, rng: Random = PASS) 
 
 
 def relocated(state: GameState, entity_id: EntityId, location_id: EntityId) -> GameState:
-    moved = updated(state.world.require(entity_id), location_id=location_id)
+    moved = updated(state.world.require(entity_id), parent_id=location_id)
     return with_entity(state, moved)
 
 
 def test_top_level_consequences_all_apply_in_order(state: GameState) -> None:
     events = resolve([Damage(amount=2), Move(location_id=EntityId("vault"))], state)
-    assert [e.kind for e in events] == ["hp_changed", "entity_discovered", "actor_moved"]
+    assert [e.kind for e in events] == ["hp_changed", "entity_discovered", "entity_moved"]
     hp, moved = events[0], events[2]
     assert hp.data["delta"] == -2
-    assert (moved.data["actor_id"], moved.data["location_id"]) == ("player", "vault")
+    assert (moved.data["entity_id"], moved.data["to_id"]) == ("player", "vault")
 
 
 def test_check_selects_the_branch_the_roll_decides(state: GameState) -> None:
@@ -62,7 +62,7 @@ def test_check_selects_the_branch_the_roll_decides(state: GameState) -> None:
     ]
     passed = resolve(mechanics, state, PASS)
     # improvised gain promotes the item to canon first, then adds it to inventory
-    assert [e.kind for e in passed] == ["dc_rolled", "entity_created", "item_moved"]
+    assert [e.kind for e in passed] == ["dc_rolled", "entity_created", "entity_moved"]
     assert passed[0].data["success"] is True
     assert passed[1].data["name"] == "a torch"
 
@@ -89,15 +89,15 @@ def test_heal_and_damage_clamp_and_report_only_real_change(state: GameState) -> 
 
 def test_take_gates_on_position(state: GameState) -> None:
     took = resolve([TakeItem(item_id=EntityId("vault_map"))], state)[1]
-    assert (took.data["item_id"], took.data["to_id"]) == ("vault_map", PLAYER_ID)
+    assert (took.data["entity_id"], took.data["to_id"]) == ("vault_map", PLAYER_ID)
     with pytest.raises(ValueError, match="not at the player's location"):
         resolve([TakeItem(item_id=EntityId("lantern"))], state)  # carried, not lying here
 
 
 def test_drop_gates_on_carrying(state: GameState) -> None:
     (dropped,) = resolve([DropItem(item_id=EntityId("lantern"))], state)
-    assert (dropped.data["item_id"], dropped.data["to_kind"]) == ("lantern", "location")
-    with pytest.raises(ValueError, match="not carrying"):
+    assert (dropped.data["entity_id"], dropped.data["to_kind"]) == ("lantern", "location")
+    with pytest.raises(ValueError, match="does not carry it"):
         resolve([DropItem(item_id=EntityId("vault_map"))], state)
 
 
@@ -111,14 +111,14 @@ def test_give_gates_on_carrying_and_the_recipients_position(state: GameState) ->
         resolve([GiveItem(item_id=EntityId("lantern"), actor_id=EntityId("mara"))], away)
 
     (given,) = resolve([GiveItem(item_id=EntityId("lantern"), actor_id=EntityId("mara"))], state)
-    assert (given.data["item_id"], given.data["to_id"]) == ("lantern", "mara")
+    assert (given.data["entity_id"], given.data["to_id"]) == ("lantern", "mara")
 
 
 def test_move_the_player_reveals_only_a_hidden_destination(state: GameState) -> None:
     hidden = resolve([Move(location_id=EntityId("vault"))], state.model_copy(deep=True))
-    assert [e.kind for e in hidden] == ["entity_discovered", "actor_moved"]
+    assert [e.kind for e in hidden] == ["entity_discovered", "entity_moved"]
     (known,) = resolve([Move(location_id=EntityId("study"))], state)
-    assert known.data["location_id"] == "study"
+    assert known.data["to_id"] == "study"
 
 
 def test_moving_another_actor_reveals_only_if_the_player_witnesses_it(state: GameState) -> None:
@@ -126,9 +126,9 @@ def test_moving_another_actor_reveals_only_if_the_player_witnesses_it(state: Gam
         [Move(location_id=EntityId("vault"), actor_id=EntityId("mara"))],
         state.model_copy(deep=True),
     )
-    assert known[0].data["actor_id"] == "mara"
+    assert known[0].data["entity_id"] == "mara"
     hidden = resolve([Move(location_id=EntityId("study"), actor_id=EntityId("elena"))], state)
-    assert [e.kind for e in hidden] == ["entity_discovered", "actor_moved"]
+    assert [e.kind for e in hidden] == ["entity_discovered", "entity_moved"]
 
     in_vault = relocated(state, PLAYER_ID, EntityId("vault"))
     with pytest.raises(ValueError, match="would not witness"):
@@ -145,7 +145,7 @@ def test_a_consequence_used_on_the_wrong_kind_raises(state: GameState) -> None:
 def test_gain_loose_item_is_promoted_to_canon(state: GameState) -> None:
     created, took = resolve([GainImprovisedItem(item_name="a rusty key")], state)
     assert created.data["name"] == "a rusty key"
-    assert took.data["item_id"] == created.data["entity_id"]
+    assert took.data["entity_id"] == created.data["entity_id"]
 
 
 def test_discover_is_idempotent_and_composes_with_take(state: GameState) -> None:
@@ -153,7 +153,7 @@ def test_discover_is_idempotent_and_composes_with_take(state: GameState) -> None
 
     vault_map = EntityId("vault_map")
     events = resolve([Discover(entity_id=vault_map), TakeItem(item_id=vault_map)], state)
-    assert [e.kind for e in events] == ["entity_discovered", "item_moved"]
+    assert [e.kind for e in events] == ["entity_discovered", "entity_moved"]
 
 
 def test_unknown_id_raises(state: GameState) -> None:

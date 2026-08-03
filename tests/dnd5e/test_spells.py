@@ -7,7 +7,7 @@ from fivee_progression_support import levelled, started
 from fivee_test_support import actor_of, new_game, player_of, ruleset, with_actor
 from fivee_test_support import content_ref as ref
 
-from aidm.base import ActorEntity, EntityId
+from aidm.base import Entity, EntityId
 from aidm.engines.dnd5e import bestiary, dice, spells
 from aidm.engines.dnd5e.access import Dnd5eWorld
 from aidm.engines.dnd5e.direction import Cast
@@ -27,12 +27,13 @@ SAVE_MADE, SAVE_MISSED = 0, 2
 def guarded(klass: str, level: int = 1) -> GameState:
     """A caster of `klass` with a gargoyle to aim at, whose 52 hp make half damage visible."""
     state = levelled(started(klass, new_game()), level)
-    gargoyle = ActorEntity(
+    gargoyle = Entity(
         id=GARGOYLE,
+        kind="actor",
         name="a gargoyle",
         brief="Stone until it is not.",
         known=True,
-        location_id=player_of(state).location_id,
+        parent_id=player_of(state).entity.parent_id,
     )
     authored = Dnd5eActorDefinition(ref=ref("monsters", "gargoyle"))
     return with_actor(

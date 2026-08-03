@@ -41,23 +41,10 @@ Tests must be deterministic and require no network.
 ## Design rules
 
 - The model proposes typed data; deterministic Python decides every outcome. The model mutates no state.
-- State evolves through transactions: copy the committed state, let mechanics mutate the copy, revalidate the whole copy once at the end. A failed transaction never replaces the committed state, and committed state is never mutated again.
-- A frozen model's own fields cannot be reassigned, but its contents can still be mutable. Copy into a value whatever the same transaction goes on to mutate.
-- Core owns commits and topology. An engine owns typed mechanics and mutates the draft through the operations core exposes.
-- One engine is chosen at launch and seen through one flat record of callables. Core names no concrete engine: adding one is a single line in `registry.ENGINE_MODULES` plus that engine's own package.
-- An engine's state, authored data, proposed mechanics, and advancement choices cross the seam as opaque JSON tagged with the engine that owns it. That engine validates every payload at its own boundary, so a foreign or malformed one fails at launch or at the transaction edge, never mid-resolution.
-- Engines are independent: neither imports the other, and neither imports the UI. Core imports no UI.
-- A persisted fact or direction is one flat type carrying the id of the engine that wrote it, so a reloaded trace never has to guess.
-- Content is authored once per scenario and per character, with one overlay per engine keyed off the authored ids. An overlay's presence is the compatibility check. Authored ids are the ids; only entities the model creates get a derived one.
-- A save names its own origin and its own format version. That version is the only compatibility gate: refuse a stale save rather than converting it.
-- A trace entry records what occurred, never the resulting state.
-- Derived content is generated once by a script, loaded once, and shared frozen. Only runtime state is mutable. Regenerating it bumps the save format version.
-- One composition root, built once. Below it collaborators and paths are explicit; no globals.
-- Each role has one narrow job and one prompt. A proposal is resolved by the selected engine, never by another prompt.
-- One centralized policy decides what each role may see, from one projection of the state. No per-role DTOs.
+- State evolves through transactions: copy the committed state, mutate the copy, revalidate the whole copy once at the end. A failed transaction never replaces the committed state, and committed state is never mutated again.
 - Only the narrating role writes player-facing prose, and it never sees unrevealed canon: its input type must have no field a leak could travel through.
-- Every role sees engine state through engine-owned presentation. Core owns which entities a role may see.
-- The narrating role receives exact state for visible entities and translates mechanics into fiction instead of reciting stat blocks.
+- One composition root, built once. Below it collaborators and paths are explicit; no globals.
+- A save names its own origin and its own format version. That version is the only compatibility gate: refuse a stale save rather than converting it.
 
 ## Framework rules
 

@@ -1,6 +1,15 @@
 from random import Random
 
-from aidm.advancement import AdvancementStatus
+from aidm.advancement import (
+    AdvancementChoice,
+    AdvancementForm,
+    AdvancementOption,
+    AdvancementReview,
+    AdvancementStatus,
+    Block,
+    SelectField,
+    SelectOption,
+)
 from aidm.base import AdvancementDecision, Frozen
 from aidm.transition import Transition
 from aidm.world import GameState
@@ -8,7 +17,7 @@ from aidm.world import GameState
 from . import features, progression
 from .access import Dnd5eWorld
 from .identity import ENGINE_ID
-from .progression import AdvancementPlan, LevelUpPreview
+from .progression import LevelBenefits
 from .ruleset import Ruleset
 from .state import MAX_LEVEL, Decisions, Dnd5eActor
 
@@ -27,6 +36,30 @@ def load_decision(decision: AdvancementDecision) -> Dnd5eAdvancementDecisions:
     if decision.engine != ENGINE_ID:
         raise ValueError(f"5e received a {decision.engine!r} decision")
     return Dnd5eAdvancementDecisions.model_validate(decision.choice)
+
+
+def _benefit_blocks(benefits: LevelBenefits) -> tuple[Block, ...]:
+    lines = [f"Hit die: d{benefits.hit_die} (rolled by the engine on confirm)"]
+    if benefits.retroactive_hp_gain:
+        lines.append(
+            f"Retroactive hit points from a raised constitution: +{benefits.retroactive_hp_gain}"
+        )
+    if benefits.prof_bonus_after > benefits.prof_bonus_before:
+        lines.append(f"Proficiency +{benefits.prof_bonus_before} → +{benefits.prof_bonus_after}")
+    lines.extend(
+        f"Level {change.slot_level} slots: {change.before} → {change.after}"
+        for change in benefits.spell_slot_changes
+    )
+    return (
+        Block(heading=f"Level {benefits.level}", lines=tuple(lines)),
+        *(
+            Block(
+                heading=f"{feature.name} — {features.actionability(feature)}",
+                lines=(feature.desc,),
+            )
+            for feature in benefits.features
+        ),
+    )
 
 
 class Dnd5eAdvancement:
@@ -58,16 +91,64 @@ class Dnd5eAdvancement:
             progress=current.level / MAX_LEVEL,
         )
 
-    def preview(self, state: GameState) -> LevelUpPreview:
-        return progression.preview(self._checked(self._player(state)), self._ruleset)
-
-    def plan(
-        self,
-        state: GameState,
-        decisions: Dnd5eAdvancementDecisions,
-    ) -> AdvancementPlan:
+    def form(self, state: GameState) -> AdvancementForm:
         player = self._checked(self._player(state))
-        return progression.plan(player, decisions.decisions, self._ruleset)
+        preview = progression.preview(player, self._ruleset)
+        benefits = preview.benefits
+        fields = tuple(
+            SelectField(
+                id=choice.id,
+                label=choice.prompt,
+                options=tuple(
+                    SelectOption(key=option.key, label=option.label) for option in choice.options
+                ),
+                choose=choice.choose,
+                note=(
+                    f"Choose {choice.choose} different options."
+                    if choice.distinct and choice.choose > 1
+                    else ""
+                ),
+            )
+            for choice in preview.choices
+        )
+        return AdvancementForm(
+            title=f"Level {benefits.level} preview",
+            blocks=_benefit_blocks(benefits),
+            options=(
+                AdvancementOption(
+                    id="level_up",
+                    heading=f"Level {benefits.level}",
+                    action=f"Review level {benefits.level}",
+                    note="No decisions are required." if not preview.choices else "",
+                    fields=fields,
+                ),
+            ),
+        )
+
+    def review(self, state: GameState, choice: AdvancementChoice) -> AdvancementReview:
+        if choice.option_id != "level_up":
+            raise ValueError(f"5e does not offer advancement option {choice.option_id!r}")
+        player = self._checked(self._player(state))
+        decisions = Dnd5eAdvancementDecisions(decisions=dict(choice.values))
+        plan = progression.plan(player, decisions.decisions, self._ruleset)
+        blocks = _benefit_blocks(plan.benefits)
+        if plan.selections:
+            blocks = (
+                *blocks,
+                Block(
+                    heading="Your choices",
+                    lines=tuple(
+                        f"{selection.prompt.capitalize()}: {', '.join(selection.labels)}"
+                        for selection in plan.selections
+                    ),
+                ),
+            )
+        return AdvancementReview(
+            title=f"Confirm level {plan.benefits.level}",
+            confirm_label=f"Confirm level {plan.benefits.level}",
+            blocks=blocks,
+            decision=dump_decision(decisions),
+        )
 
     def advance(self, decision: AdvancementDecision, state: GameState, rng: Random) -> Transition:
         decisions = load_decision(decision)
