@@ -2,16 +2,19 @@ from pathlib import Path
 
 from pydantic import BaseModel, SecretStr
 
-from aidm.base import SAVE_VERSION, ActorEntity, Entity, ItemEntity, LocationEntity
+from aidm.base import SAVE_VERSION, ActorEntity, EngineId, Entity, ItemEntity, LocationEntity
 from aidm.config import ProviderConfig, Providers, Roles, Settings
 from aidm.content import Character, Scenario, authored_world
-from aidm.engines.story.engine import StoryEngine, build_story_engine
+from aidm.engine import Engine
+from aidm.engines.story.engine import build_story_engine
 from aidm.store import load_character, load_scenario
 from aidm.world import ActorRecord, GameState, ItemRecord
 
 REPOSITORY_ROOT = Path(__file__).parents[2]
 SCENARIOS = REPOSITORY_ROOT / "scenarios"
 CHARACTERS = REPOSITORY_ROOT / "characters"
+STORY = EngineId("story")
+DND5E = EngineId("dnd5e")
 
 
 def updated[T: BaseModel](model: T, **changes: object) -> T:
@@ -20,7 +23,7 @@ def updated[T: BaseModel](model: T, **changes: object) -> T:
 
 
 def with_entity(state: GameState, entity: Entity) -> GameState:
-    """Replace one entity, keeping whatever rules its record already holds."""
+    """Replace one entity, keeping whatever payload its record already holds."""
     world = state.world.model_copy(deep=True)
     match entity:
         case ActorEntity():
@@ -33,14 +36,14 @@ def with_entity(state: GameState, entity: Entity) -> GameState:
 
 
 def scenario() -> Scenario:
-    return load_scenario(SCENARIOS, "whispering-vault", "story")
+    return load_scenario(SCENARIOS, "whispering-vault", STORY)
 
 
 def character() -> Character:
-    return load_character(CHARACTERS, "kael", "story")
+    return load_character(CHARACTERS, "kael", STORY)
 
 
-def initialized() -> tuple[StoryEngine, GameState]:
+def initialized() -> tuple[Engine, GameState]:
     selected_scenario = scenario()
     selected_character = character()
     engine = build_story_engine()

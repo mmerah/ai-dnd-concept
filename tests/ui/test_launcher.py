@@ -1,13 +1,15 @@
 import shutil
 from pathlib import Path
 
-from core_test_support import updated
+from core_test_support import DND5E, STORY, updated
 from ui_test_support import SCENARIOS, ui_settings
 
 from aidm.application import LauncherController, LaunchTarget, Runtime, load_catalog
 from aidm.base import EngineId
 from aidm.config import Settings
+from aidm.registry import plugins
 from aidm.store import ENCODING, FileSaves
+from aidm.ui.engines.registry import advancement_ui
 from aidm.world import GameState
 
 
@@ -36,7 +38,7 @@ def test_an_overlay_decides_which_rules_a_scenario_offers(tmp_path: Path) -> Non
 
     assert catalog.scenario("whispering-vault").engines == ("story", "dnd5e")
     assert [option.id for option in catalog.characters] == ["kael"]
-    controller.choose_engine("dnd5e")
+    controller.choose_engine(DND5E)
 
     assert [option.id for option in controller.compatible_characters()] == ["kael"]
     assert controller.new_game().model_dump() == {
@@ -65,7 +67,7 @@ def test_content_is_offered_only_for_the_rulesets_it_ships(tmp_path: Path) -> No
 
 def test_launcher_lists_and_resolves_an_existing_save(tmp_path: Path) -> None:
     config = ui_settings(tmp_path)
-    FileSaves(tmp_path).save("old-story-game", _opening_state(config, "story"))
+    FileSaves(tmp_path).save("old-story-game", _opening_state(config, STORY))
 
     controller = LauncherController(load_catalog(config))
     saved = controller.catalog.save("old-story-game")
@@ -86,7 +88,7 @@ def test_launcher_lists_and_resolves_an_existing_save(tmp_path: Path) -> None:
 def test_a_save_whose_rules_were_withdrawn_is_reported_not_offered(tmp_path: Path) -> None:
     """The save still names its origin; that origin no longer ships the overlay it needs."""
     config = ui_settings(tmp_path)
-    FileSaves(tmp_path).save("withdrawn", _opening_state(config, "dnd5e"))
+    FileSaves(tmp_path).save("withdrawn", _opening_state(config, DND5E))
     withdrawn = ui_settings(tmp_path, _story_only(tmp_path))
 
     saved = load_catalog(withdrawn).save("withdrawn")
@@ -99,7 +101,7 @@ def test_a_save_from_another_build_is_reported_not_offered(tmp_path: Path) -> No
     """Unreadable, not absent: offering it as a new game would crash on navigation."""
     config = ui_settings(tmp_path)
     slug = "whispering-vault--kael--story"
-    state = _opening_state(config, "story")
+    state = _opening_state(config, STORY)
     FileSaves(tmp_path).save(slug, updated(state, save_version=state.save_version - 1))
 
     controller = LauncherController(load_catalog(config))
@@ -112,7 +114,7 @@ def test_a_save_from_another_build_is_reported_not_offered(tmp_path: Path) -> No
 
 def test_one_corrupt_save_does_not_hide_the_others_and_stays_readable(tmp_path: Path) -> None:
     config = ui_settings(tmp_path)
-    FileSaves(tmp_path).save("good", _opening_state(config, "story"))
+    FileSaves(tmp_path).save("good", _opening_state(config, STORY))
     (tmp_path / "broken.json").write_text("{not json", encoding=ENCODING)
 
     catalog = load_catalog(config)
@@ -122,3 +124,11 @@ def test_one_corrupt_save_does_not_hide_the_others_and_stays_readable(tmp_path: 
     problem = catalog.unreadable[0].problem
     assert "\n" not in problem
     assert len(problem) <= 200
+
+
+def test_every_engine_ships_a_ui_found_by_convention(tmp_path: Path) -> None:
+    """The lookup is `aidm.ui.engines.<id>`, so nothing type-checks it for a newly added engine."""
+    config = ui_settings(tmp_path)
+
+    for plugin in plugins():
+        assert advancement_ui(plugin.build(config)) is not None

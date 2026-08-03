@@ -1,10 +1,10 @@
 from dataclasses import dataclass
 from random import Random
 
-from aidm.base import PLAYER_ID, EntityId
+from aidm.base import EntityId
 from aidm.world import GameState
 
-from ..access import actor_of
+from ..access import Dnd5eWorld
 from ..ruleset import Ruleset
 from ..state import Dnd5eActor, Progression
 
@@ -13,13 +13,17 @@ from ..state import Dnd5eActor, Progression
 class Resolution:
     """The draft a turn's mechanics mutate, with the dice and rules they read."""
 
-    draft: GameState
+    world: Dnd5eWorld
     rng: Random
     ruleset: Ruleset
 
     @property
+    def draft(self) -> GameState:
+        return self.world.state
+
+    @property
     def player(self) -> Dnd5eActor:
-        return actor_of(self.draft, PLAYER_ID)
+        return self.world.player()
 
     @property
     def progression(self) -> Progression:
@@ -29,7 +33,7 @@ class Resolution:
         return progression
 
     def actor(self, entity_id: EntityId) -> Dnd5eActor:
-        return actor_of(self.draft, entity_id)
+        return self.world.actor(entity_id)
 
     def actor_here(self, entity_id: EntityId) -> Dnd5eActor:
         """Reject off-screen actors because this turn cannot visibly affect them."""

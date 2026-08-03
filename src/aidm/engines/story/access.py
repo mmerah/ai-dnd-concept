@@ -1,31 +1,23 @@
-from aidm.base import PLAYER_ID, ActorEntity, EntityId, ItemEntity
-from aidm.world import EntityRules, GameState
+from aidm.base import PLAYER_ID
+from aidm.content import Rules
+from aidm.world import EngineRecords, GameState
 
 from .state import StoryActorState, StoryItemState
 
 
-def actor_rules(rules: EntityRules) -> StoryActorState:
-    """A record's rules are a union; only the tag this engine wrote narrows here."""
-    if not isinstance(rules, StoryActorState):
-        raise ValueError(f"Story received {rules.engine!r} {type(rules).__name__}")
-    return rules
+def actor_state(rules: Rules) -> StoryActorState:
+    return StoryActorState.model_validate(rules)
 
 
-def item_rules(rules: EntityRules) -> StoryItemState:
-    if not isinstance(rules, StoryItemState):
-        raise ValueError(f"Story received {rules.engine!r} {type(rules).__name__}")
-    return rules
+def item_state(rules: Rules) -> StoryItemState:
+    return StoryItemState.model_validate(rules)
 
 
-def actor_of(state: GameState, actor_id: EntityId) -> tuple[ActorEntity, StoryActorState]:
-    record = state.world.actor(actor_id)
-    return record.entity, actor_rules(record.rules)
+def player_state(state: GameState) -> StoryActorState:
+    """A detached read for reporting only; mutating it does nothing until a `StoryWorld` flushes."""
+    return actor_state(state.world.actor(PLAYER_ID).rules)
 
 
-def item_of(state: GameState, item_id: EntityId) -> tuple[ItemEntity, StoryItemState]:
-    record = state.world.item(item_id)
-    return record.entity, item_rules(record.rules)
-
-
-def player_rules(state: GameState) -> StoryActorState:
-    return actor_rules(state.world.actor(PLAYER_ID).rules)
+class StoryWorld(EngineRecords[StoryActorState, StoryItemState]):
+    def __init__(self, state: GameState) -> None:
+        super().__init__(state, StoryActorState, StoryItemState)

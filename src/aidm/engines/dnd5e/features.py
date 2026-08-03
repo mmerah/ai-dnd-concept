@@ -1,6 +1,8 @@
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 
+from aidm.facts import Fact
+
 from . import rolls
 from .content.library import ContentMiss
 from .content.records.base import ContentRef
@@ -19,12 +21,7 @@ from .content.records.character import (
 )
 from .content.vocabulary import RestType
 from .direction import UseFeature
-from .facts import (
-    Emitted,
-    FeatureActivated,
-    FeatureUsed,
-    PoolRefilled,
-)
+from .identity import ENGINE_ID
 from .mechanics import health
 from .mechanics.resolution import Resolution
 from .ruleset import FeatureProfile, ProgressionRules, WeaponProfile
@@ -161,7 +158,7 @@ def acquire(
     return tuple(features), states
 
 
-def use(ctx: Resolution, consequence: UseFeature) -> list[Emitted]:
+def use(ctx: Resolution, consequence: UseFeature) -> list[Fact]:
     progression = ctx.progression
     status = _named(
         owned(progression, ctx.player.stats.attributes, ctx.ruleset), consequence.feature
@@ -172,13 +169,13 @@ def use(ctx: Resolution, consequence: UseFeature) -> list[Emitted]:
     spent = _spend(status, consequence.amount)
     match mechanics:
         case AgentActiveFeatureMechanics():
-            return [*spent, FeatureActivated(ref=status.profile.ref, name=status.profile.name)]
+            return [*spent, _feature_activated(status.profile)]
         case EngineActiveFeatureMechanics(effect=SelfHealWithClassLevel(dice=healing_dice)):
             amount = f"{healing_dice} + {progression.level}"
             return [*spent, *health.hp_facts(ctx, None, amount, sign=1)]
 
 
-def recharged(ctx: Resolution, completed: RestType) -> tuple[PoolRefilled, ...]:
+def recharged(ctx: Resolution, completed: RestType) -> tuple[str, ...]:
     """Several features may share one counter, so refill each counter once."""
     refilled = {
         status.pool.ref: status.pool.state
@@ -187,10 +184,18 @@ def recharged(ctx: Resolution, completed: RestType) -> tuple[PoolRefilled, ...]:
     }
     for state in refilled.values():
         state.remaining = state.maximum
-    return tuple(
-        # Named after the feature that owns the counter, not whoever spends from it.
-        PoolRefilled(ref=ref, name=profile_of(ref, ctx.ruleset).name, maximum=state.maximum)
-        for ref, state in refilled.items()
+    # Named after the feature that owns the counter, not whoever spends from it.
+    return tuple(profile_of(ref, ctx.ruleset).name for ref in refilled)
+
+
+def _feature_activated(profile: FeatureProfile) -> Fact:
+    trace = f"activated {profile.name}"
+    return Fact(
+        source=ENGINE_ID,
+        kind="feature_activated",
+        trace=trace,
+        narrator=trace,
+        data={"ref": str(profile.ref), "name": profile.name},
     )
 
 
@@ -266,7 +271,7 @@ def _spent(before: ResourceState | None, inherited: int) -> int:
     return inherited if before is None else before.spent
 
 
-def _spend(status: OwnedFeature, amount: int) -> list[Emitted]:
+def _spend(status: OwnedFeature, amount: int) -> list[Fact]:
     pool = status.pool
     if pool is None:
         if amount != 1:
@@ -281,15 +286,25 @@ def _spend(status: OwnedFeature, amount: int) -> list[Emitted]:
             f"finish a {state.recharge} or longer rest"
         )
     state.remaining -= amount
-    return [
-        FeatureUsed(
-            ref=pool.ref,
-            name=status.profile.name,
-            spent=amount,
-            remaining=state.remaining,
-            maximum=state.maximum,
-        )
-    ]
+    return [_feature_used(status.profile, amount, state)]
+
+
+def _feature_used(profile: FeatureProfile, spent: int, state: ResourceState) -> Fact:
+    name = profile.name
+    trace = f"used {name} ({state.remaining}/{state.maximum} uses remaining)"
+    return Fact(
+        source=ENGINE_ID,
+        kind="feature_used",
+        trace=trace,
+        narrator=f"used {name}",
+        data={
+            "ref": str(profile.ref),
+            "name": name,
+            "spent": spent,
+            "remaining": state.remaining,
+            "maximum": state.maximum,
+        },
+    )
 
 
 def _named(statuses: Sequence[OwnedFeature], key: FeatureKey) -> OwnedFeature:

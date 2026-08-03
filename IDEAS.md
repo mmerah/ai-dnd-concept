@@ -9,3 +9,5 @@
 - [] Quest/Event/Hook system of some kind. Need brainstorming to decide the way to do that. Think about any kind of fiction book or D&D adventure: how would we have a general system to progress elements of a story, based on player actions but also in the background
 - [] Is there ideas from straightjacket github project that could be used? It seems the closest in what we want (https://github.com/aradix85/straightjacket)
 - [x] Trim AGENTS.md out of the code-specific stuff that is subject to change.
+- [] Conversation/Message history: passed straight but without context. Would be nice if it had location where the message happened at least, would help when agent receive a list of message
+- [] Engines: more modular? what about combat? should it also be similar to advancement where it ships with a UI as well. Thus we can have a 5e combat, story combat or any other combat system that the engine define?

@@ -2,6 +2,8 @@ from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 from random import Random
 
+from aidm.facts import Fact
+
 from . import features as class_features
 from . import rolls, spells
 from .content.records.base import Collection, ContentRef
@@ -13,7 +15,7 @@ from .content.records.character import (
     ProgressionChoice,
     RecordOption,
 )
-from .facts import Emitted, LeveledUp, LevelUpAvailable
+from .identity import ENGINE_ID
 from .ruleset import CharacterProfile, FeatureProfile, LevelProfile, ProgressionRules
 from .state import (
     MAX_LEVEL,
@@ -80,12 +82,19 @@ def _advancing(actor: Dnd5eActor) -> tuple[Progression, int]:
     return current, current.level + 1
 
 
-def offer(actor: Dnd5eActor) -> list[Emitted]:
+def offer(actor: Dnd5eActor) -> list[Fact]:
     current, _ = _advancing(actor)
     if current.level_up_available:
         return []
     current.level_up_available = True
-    return [LevelUpAvailable()]
+    return [
+        Fact(
+            source=ENGINE_ID,
+            kind="level_up_available",
+            trace="a level-up is available to the player",
+            narrator="an advancement is available to the player",
+        )
+    ]
 
 
 def pending(origin: Origin, level: int, ruleset: ProgressionRules) -> list[ProgressionChoice]:
@@ -153,7 +162,7 @@ def first_level(character: Dnd5eCharacterData, ruleset: ProgressionRules) -> Adv
 
 def advance(
     actor: Dnd5eActor, decisions: Decisions, ruleset: ProgressionRules, rng: Random
-) -> list[Emitted]:
+) -> list[Fact]:
     planned = plan(actor, decisions, ruleset)
     rolled, roll = rolls.roll_dice(f"1d{planned.benefits.hit_die}", rng)
     gained = Advancement(
@@ -167,7 +176,23 @@ def advance(
     stats.hp += gained.hp_gain
     # Copy: the fact must record the level reached, not follow the draft it advanced.
     actor.state.progression = gained.progression.model_copy(deep=True)
-    return [roll, LeveledUp(advancement=gained)]
+    return [roll, _leveled_up(gained)]
+
+
+def _leveled_up(advancement: Advancement) -> Fact:
+    level = advancement.progression.level
+    trace = f"reached level {level}"
+    return Fact(
+        source=ENGINE_ID,
+        kind="leveled_up",
+        trace=trace,
+        narrator=trace,
+        data={
+            "level": level,
+            "hp_gain": advancement.hp_gain,
+            "attributes": advancement.attributes.model_dump(mode="json"),
+        },
+    )
 
 
 def plan(actor: Dnd5eActor, decisions: Decisions, ruleset: ProgressionRules) -> AdvancementPlan:

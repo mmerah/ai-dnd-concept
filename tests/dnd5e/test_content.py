@@ -2,13 +2,21 @@ from pathlib import Path
 
 import pytest
 from core_test_support import updated
-from fivee_test_support import PACK_DIR, all_of, content, new_game, pack, player_of, ruleset
+from fivee_test_support import (
+    PACK_DIR,
+    actor_of,
+    all_of,
+    content,
+    new_game,
+    pack,
+    player_of,
+    ruleset,
+)
 from pydantic import ValidationError
 
 from aidm.base import EntityId
 from aidm.engines.dnd5e import bestiary, dice
 from aidm.engines.dnd5e import presentation as views
-from aidm.engines.dnd5e.access import actor_of
 from aidm.engines.dnd5e.content.library import ContentMiss, load, write_pack
 from aidm.engines.dnd5e.content.records.base import ContentRef, Record
 from aidm.engines.dnd5e.content.records.character import (
@@ -367,7 +375,7 @@ def test_a_monster_is_snapshotted_into_an_entity_not_read_live() -> None:
 
 def test_an_authored_actor_is_statted_from_the_record_it_names() -> None:
     authored = Dnd5eActorDefinition(ref=ref("monsters", "giant-rat"))
-    statted = bestiary.statted_actor(EntityId("rat"), authored, RULES)
+    statted = bestiary.statted_actor(EntityId("rat"), authored.model_dump(mode="json"), RULES)
     assert statted.stats.ac == 12  # the pack supplies numbers, the author the fiction
 
 
@@ -377,9 +385,10 @@ def test_an_entity_may_not_contradict_the_record_it_names() -> None:
     giant_rat = ref("monsters", "giant-rat")
     own_stats = Dnd5eActorDefinition(ref=giant_rat, stats=StatBlock(hp=3, max_hp=7))
     with pytest.raises(ValueError, match="declares its own stats"):
-        bestiary.statted_actor(EntityId("rat"), own_stats, RULES)
+        bestiary.statted_actor(EntityId("rat"), own_stats.model_dump(mode="json"), RULES)
     with pytest.raises(ValueError, match="may not name a monsters record"):
-        bestiary.statted_item(EntityId("rat_tail"), Dnd5eItemDefinition(ref=giant_rat), RULES)
+        item_def = Dnd5eItemDefinition(ref=giant_rat)
+        bestiary.statted_item(EntityId("rat_tail"), item_def.model_dump(mode="json"), RULES)
 
 
 def test_content_nothing_provides_is_unplayable() -> None:
@@ -387,7 +396,7 @@ def test_content_nothing_provides_is_unplayable() -> None:
     engine state is composed — which is why the composed world is statted, not the definition."""
     phaser = Dnd5eItemDefinition(ref=ref("weapons", "phaser"))
     with pytest.raises(ValueError, match="nothing provides"):
-        bestiary.statted_item(EntityId("lantern"), phaser, RULES)
+        bestiary.statted_item(EntityId("lantern"), phaser.model_dump(mode="json"), RULES)
 
 
 def test_the_directors_slice_is_the_mechanics_never_the_record() -> None:
@@ -395,9 +404,9 @@ def test_the_directors_slice_is_the_mechanics_never_the_record() -> None:
     Damage immunities and condition immunities stay apart: `poison` and `poisoned` are different
     words for different rules, and the prose entries carry commas of their own."""
     authored = Dnd5eActorDefinition(ref=ref("monsters", "gargoyle"))
-    gargoyle = bestiary.statted_actor(EntityId("gargoyle"), authored, RULES)
+    gargoyle = bestiary.statted_actor(EntityId("gargoyle"), authored.model_dump(mode="json"), RULES)
     under = updated(gargoyle, stats=updated(gargoyle.stats, conditions=("prone",)))
-    shown = views.actor_state(under.stats, under.ref, RULES)
+    shown = views.actor_summary(under.stats, under.ref, RULES)
     assert shown == (
         "hp 52/52 — ac 15 — under prone"
         " — attributes strength 15, dexterity 11, constitution 16, intelligence 6,"
@@ -416,7 +425,7 @@ def test_a_condition_is_shown_on_anyone_who_holds_one() -> None:
     state = new_game()
     mara = actor_of(state, EntityId("mara"))
     blinded = updated(mara.state, stats=updated(mara.stats, conditions=("blinded",)))
-    assert "hp 4/4 — ac 10 — under blinded" in views.actor_state(
+    assert "hp 4/4 — ac 10 — under blinded" in views.actor_summary(
         blinded.stats,
         blinded.ref,
         RULES,

@@ -9,7 +9,6 @@ FORBIDDEN = {
     "engines/story": {"aidm.engines.dnd5e", "aidm.ui", "nicegui"},
     "engines/dnd5e": {"aidm.engines.story", "aidm.ui", "nicegui"},
 }
-DECLARATION_SITES = {"world.py", "transition.py", "engine.py"}
 
 
 def _source_files(package: str) -> tuple[Path, ...]:
@@ -60,11 +59,11 @@ def test_packages_import_only_in_the_allowed_direction(
     assert not violations
 
 
-def test_only_the_declaration_sites_import_an_engine_package() -> None:
-    """Adding an engine touches four declaration sites; `base.py` names them as a literal only."""
+def test_no_core_file_imports_an_engine_package() -> None:
+    """Adding an engine is one line in `registry.ENGINE_MODULES`, the only place naming one."""
     naming = {
         path.name
         for path in _source_files("core")
         if any(name.startswith("aidm.engines") for name in _file_imports(path))
     }
-    assert naming == DECLARATION_SITES
+    assert naming == set()

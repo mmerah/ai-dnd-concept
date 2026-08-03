@@ -36,7 +36,7 @@ Tests must be deterministic and require no network.
 - Keep necessary docstrings to one concise sentence. Use multiple lines only when losing the detail would hide an important rationale or contract.
 - Treat docstrings consumed by reflection, Pydantic schemas, or LLM prompts as runtime behavior: preserve their meaning and verify changes.
 - Keep package `__init__.py` files empty. Import from explicit module paths.
-- Keep imports at module scope, and the import graph acyclic with no deferred or `TYPE_CHECKING` imports. Resolve a cycle by extracting the leaf shape both sides need.
+- Keep imports at module scope, and the import graph acyclic with no deferred or `TYPE_CHECKING` imports. Plugin discovery is the one exception: core imports an engine module by name to read the plugin it declares. Resolve a cycle by extracting the leaf shape both sides need.
 
 ## Design rules
 
@@ -44,10 +44,10 @@ Tests must be deterministic and require no network.
 - State evolves through transactions: copy the committed state, let mechanics mutate the copy, revalidate the whole copy once at the end. A failed transaction never replaces the committed state, and committed state is never mutated again.
 - A frozen model's own fields cannot be reassigned, but its contents can still be mutable. Copy into a value whatever the same transaction goes on to mutate.
 - Core owns commits and topology. An engine owns typed mechanics and mutates the draft through the operations core exposes.
-- One engine is chosen at launch and seen through one flat protocol. Core never names a concrete engine outside the few declaration sites the type unions require.
-- An engine's state and its authored data are typed unions discriminated on a tag they persist, never JSON envelopes. A payload from the wrong engine should be unrepresentable; where the shape allows it, a validator must reject it rather than let it through.
+- One engine is chosen at launch and seen through one flat record of callables. Core names no concrete engine: adding one is a single line in `registry.ENGINE_MODULES` plus that engine's own package.
+- An engine's state, authored data, proposed mechanics, and advancement choices cross the seam as opaque JSON tagged with the engine that owns it. That engine validates every payload at its own boundary, so a foreign or malformed one fails at launch or at the transaction edge, never mid-resolution.
 - Engines are independent: neither imports the other, and neither imports the UI. Core imports no UI.
-- A turn's facts and directions are one persisted union discriminated on the tag naming their origin, so a reloaded trace never guesses which engine wrote a line.
+- A persisted fact or direction is one flat type carrying the id of the engine that wrote it, so a reloaded trace never has to guess.
 - Content is authored once per scenario and per character, with one overlay per engine keyed off the authored ids. An overlay's presence is the compatibility check. Authored ids are the ids; only entities the model creates get a derived one.
 - A save names its own origin and its own format version. That version is the only compatibility gate: refuse a stale save rather than converting it.
 - A trace entry records what occurred, never the resulting state.

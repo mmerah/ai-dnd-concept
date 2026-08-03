@@ -1,6 +1,5 @@
 {
   "character": {
-    "engine": "dnd5e",
     "origin": {
       "class_ref": {
         "pack": "srd-2014",
@@ -51,9 +50,8 @@
       ]
     }
   },
-  "items": {
+  "entities": {
     "lantern": {
-      "engine": "dnd5e",
       "ref": {
         "pack": "srd-2014",
         "collection": "gear",

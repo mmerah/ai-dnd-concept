@@ -1,8 +1,9 @@
 import pytest
+from fivee_test_support import actor_of
 from fivee_test_support import state as state
 
 from aidm.base import PLAYER_ID, ActorEntity, EntityId, ItemEntity, LocationEntity
-from aidm.engines.dnd5e.access import actor_of
+from aidm.engines.dnd5e.access import Dnd5eWorld
 from aidm.engines.dnd5e.state import Dnd5eActorState, StatBlock
 from aidm.world import GameState
 
@@ -20,8 +21,9 @@ def where(state: GameState, entity_id: str) -> LocationEntity:
 def test_take_drop_and_hp(state: GameState) -> None:
     _ = state.move_item(item(state, "vault_map"), state.player)
     _ = state.move_item(item(state, "lantern"), where(state, "study"))
-    _ = actor_of(state, PLAYER_ID).stats.apply_hp_delta(-3)
-    result = state.committed()
+    world = Dnd5eWorld(state=state)
+    _ = world.player().stats.apply_hp_delta(-3)
+    result = world.commit()
 
     # vault_map picked up, lantern dropped in the study
     carried = [record.entity.id for record in result.world.carried_by(PLAYER_ID)]
@@ -41,15 +43,16 @@ def test_give_moves_an_item_into_another_actors_inventory(state: GameState) -> N
 
 
 def test_hp_is_clamped_for_every_actor(state: GameState) -> None:
-    player = actor_of(state, PLAYER_ID)
+    world = Dnd5eWorld(state=state)
+    player = world.player()
     assert player.stats.apply_hp_delta(-99) == -10
     assert player.stats.hp == 0
     assert player.stats.apply_hp_delta(99) == 10
     assert player.stats.hp == 10
-    mara = actor_of(state, MARA)
+    mara = world.actor(MARA)
     _ = mara.stats.apply_hp_delta(-99)
     assert mara.stats.hp == 0
-    assert actor_of(state.committed(), MARA).stats.hp == 0
+    assert actor_of(world.commit(), MARA).stats.hp == 0
 
 
 def test_move_the_player(state: GameState) -> None:
@@ -90,7 +93,7 @@ def test_create_appends_a_record_carrying_engine_state(state: GameState) -> None
         brief="An apothecary.",
         location_id=EntityId("study"),
     )
-    _ = state.add(elgin, Dnd5eActorState(stats=StatBlock()))
+    _ = state.add(elgin, Dnd5eActorState(stats=StatBlock()).model_dump(mode="json"))
     result = state.committed()
 
     assert list(result.world.actors)[-1] == elgin.id
@@ -106,7 +109,7 @@ def test_impossible_topology_fails_fast(state: GameState) -> None:
     with pytest.raises(ValueError, match="it is a location"):
         _ = state.world.require_kind(EntityId("study"), ActorEntity)
     with pytest.raises(ValueError, match="already exists"):
-        _ = state.add(state.player, Dnd5eActorState(stats=StatBlock()))
+        _ = state.add(state.player, Dnd5eActorState(stats=StatBlock()).model_dump(mode="json"))
     with pytest.raises(ValueError, match="it is a location"):  # a location has no hit points
         _ = actor_of(state, EntityId("study"))
 

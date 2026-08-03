@@ -9,8 +9,10 @@ from .agents import DirectorStage, SharedStages, director_stage, shared_stages
 from .base import SAVE_VERSION, AdvancementDecision, EngineId, Role, Slug
 from .config import Settings
 from .content import Character, Scenario, authored_world
-from .engine import Engine, engine_for
+from .engine import Engine
+from .facts import Fact
 from .pipeline import TurnOptions, run_turn
+from .registry import build_engine
 from .store import (
     FileSaves,
     FileTraces,
@@ -19,7 +21,6 @@ from .store import (
     read_characters,
     read_scenarios,
 )
-from .transition import Fact
 from .turn import Advance, TraceEntry, Turn
 from .world import GameState
 
@@ -361,7 +362,7 @@ class Runtime:
         """Memoised: building the 5e engine compiles the whole content pack."""
         held = self._engines.get(engine_id)
         if held is None:
-            held = engine_for(engine_id, self.config)
+            held = build_engine(engine_id, self.config)
             self._engines[engine_id] = held
         return held
 

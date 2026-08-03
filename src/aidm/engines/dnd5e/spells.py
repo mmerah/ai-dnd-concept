@@ -1,12 +1,14 @@
 from collections.abc import Mapping
 
+from aidm.facts import Fact
+
 from . import dice, rolls
 from .content.library import ContentMiss
 from .content.records.base import ContentRef
 from .content.records.spells import SpellDamage, SpellRecord, SpellSave
 from .content.vocabulary import RestType
 from .direction import Cast
-from .facts import Emitted, SlotsRefilled, SpellCast, SpellSlotSpent
+from .identity import ENGINE_ID
 from .mechanics import common, health
 from .mechanics.resolution import Resolution
 from .ruleset import ProgressionRules, Ruleset, SpellcastingProfile, SpellProfile
@@ -36,7 +38,7 @@ def slots(
     }
 
 
-def recharged(ctx: Resolution, completed: RestType) -> tuple[SlotsRefilled, ...]:
+def recharged(ctx: Resolution, completed: RestType) -> tuple[int, ...]:
     spent = [
         (level, state)
         for level, state in sorted(ctx.progression.spell_slots.items())
@@ -44,7 +46,7 @@ def recharged(ctx: Resolution, completed: RestType) -> tuple[SlotsRefilled, ...]
     ]
     for _, state in spent:
         state.remaining = state.maximum
-    return tuple(SlotsRefilled(slot_level=level, maximum=state.maximum) for level, state in spent)
+    return tuple(level for level, _ in spent)
 
 
 def spellcasting(progression: Progression, ruleset: ProgressionRules) -> SpellcastingProfile:
@@ -68,16 +70,28 @@ def repertoire(
     )
 
 
-def cast(ctx: Resolution, consequence: Cast) -> list[Emitted]:
+def cast(ctx: Resolution, consequence: Cast) -> list[Fact]:
     progression = ctx.progression
     casting = spellcasting(progression, ctx.ruleset)
     ref = spell_ref(consequence.spell)
     record = _castable(ctx, ref, casting)
-    spent: list[Emitted] = [
+    spent: list[Fact] = [
         *_spend(progression, record, consequence.slot_level),
-        SpellCast(ref=ref, name=record.name, slot_level=consequence.slot_level),
+        _spell_cast(ref, record.name, consequence.slot_level),
     ]
     return [*spent, *_effects(ctx, consequence, record, casting)]
+
+
+def _spell_cast(ref: ContentRef, name: str, slot_level: int) -> Fact:
+    at = "" if slot_level == 0 else f" at level {slot_level}"
+    trace = f"cast {name}{at}"
+    return Fact(
+        source=ENGINE_ID,
+        kind="spell_cast",
+        trace=trace,
+        narrator=f"cast {name}",
+        data={"ref": str(ref), "name": name, "slot_level": slot_level},
+    )
 
 
 def _castable(ctx: Resolution, ref: ContentRef, casting: SpellcastingProfile) -> SpellRecord:
@@ -89,7 +103,7 @@ def _castable(ctx: Resolution, ref: ContentRef, casting: SpellcastingProfile) ->
     return found
 
 
-def _spend(progression: Progression, record: SpellRecord, slot_level: int) -> list[Emitted]:
+def _spend(progression: Progression, record: SpellRecord, slot_level: int) -> list[Fact]:
     if record.level == 0:
         if slot_level != 0:
             raise ValueError(f"cantrip {record.index!r} spends no spell slot")
@@ -106,12 +120,23 @@ def _spend(progression: Progression, record: SpellRecord, slot_level: int) -> li
             f"no level {slot_level} spell slot remains; finish a {state.recharge} rest"
         )
     state.remaining -= 1
-    return [SpellSlotSpent(slot_level=slot_level, remaining=state.remaining, maximum=state.maximum)]
+    return [_spell_slot_spent(slot_level, state)]
+
+
+def _spell_slot_spent(slot_level: int, state: ResourceState) -> Fact:
+    trace = f"spent a level {slot_level} spell slot ({state.remaining}/{state.maximum} remaining)"
+    return Fact(
+        source=ENGINE_ID,
+        kind="spell_slot_spent",
+        trace=trace,
+        narrator=None,
+        data={"slot_level": slot_level, "remaining": state.remaining, "maximum": state.maximum},
+    )
 
 
 def _effects(
     ctx: Resolution, consequence: Cast, record: SpellRecord, casting: SpellcastingProfile
-) -> list[Emitted]:
+) -> list[Fact]:
     """Resolve only what the record types; anything else the spell does stays description-guided."""
     progression = ctx.progression
     modifier = rolls.modifier(ctx.player.stats.attributes, casting.ability)
@@ -164,10 +189,10 @@ def _attacked(
     name: str,
     bonus: int,
     amount: dice.SelfContainedDice | None,
-) -> list[Emitted]:
-    rolled = rolls.roll_attack(ctx.player, target, name, bonus, ctx.rng)
-    seen: list[Emitted] = [*common.reveal(ctx, target), rolled]
-    if not rolled.hit or amount is None:
+) -> list[Fact]:
+    struck = rolls.roll_attack(ctx.player, target, name, bonus, ctx.rng)
+    seen: list[Fact] = [*common.reveal(ctx, target), struck.fact]
+    if not struck.hit or amount is None:
         return seen
     return [*seen, *health.hp_facts(ctx, target.id, amount, sign=-1)]
 
@@ -178,9 +203,9 @@ def _saved(
     save: SpellSave,
     dc: int,
     amount: dice.SelfContainedDice | None,
-) -> list[Emitted]:
+) -> list[Fact]:
     rolled = rolls.roll_save(target, save.ability, dc, ctx.rng)
-    seen: list[Emitted] = [*common.reveal(ctx, target), rolled]
+    seen: list[Fact] = [*common.reveal(ctx, target), rolled.fact]
     if amount is None:
         return seen
     if not rolled.success:

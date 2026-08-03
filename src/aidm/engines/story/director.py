@@ -6,9 +6,10 @@ from pydantic_ai.output import OutputSpec
 from aidm.actions import DropItem, GiveItem, Move, TakeItem
 from aidm.base import PLAYER_ID, ActorEntity, Entity, EntityId, ItemEntity
 from aidm.directing import check_proposal, consequence_menu, walk_consequences
+from aidm.transition import Direction
 from aidm.world import GameState
 
-from .access import actor_rules, item_rules
+from .access import actor_state, item_state
 from .direction import (
     STORY_CONSEQUENCE_TYPES,
     ApplyCondition,
@@ -23,6 +24,7 @@ from .direction import (
     StoryDirection,
     TakeStress,
     branches,
+    dump_direction,
 )
 from .rules import StoryProposalRejected, StoryRules
 from .state import StoryActorState
@@ -53,19 +55,18 @@ class StoryDirector:
     def __init__(self, rules: StoryRules) -> None:
         self._rules = rules
 
-    @property
-    def output(self) -> OutputSpec[StoryDirection]:
-        return NativeOutput(StoryDirection)
+    def output(self) -> OutputSpec[Direction]:
+        def direct(ctx: RunContext[GameState], proposal: StoryDirection) -> Direction:
+            return self.check(ctx.deps, proposal)
+
+        return NativeOutput(direct, name="StoryDirection")
 
     def instructions(self) -> str:
         return MECHANICS
 
-    def validate(
-        self,
-        ctx: RunContext[GameState],
-        direction: StoryDirection,
-    ) -> StoryDirection:
-        state = ctx.deps
+    def check(self, state: GameState, direction: StoryDirection) -> Direction:
+        """Every fault the model can fix becomes a retry; the flat direction is what core keeps."""
+        flat = dump_direction(direction)
         if fault := check_proposal(
             state,
             direction.mechanics,
@@ -81,10 +82,10 @@ class StoryDirector:
             ):
                 self._validate_actor_consequence(state, consequence)
         try:
-            self._rules.resolve(direction, state, Random(0))
+            self._rules.resolve(flat, state, Random(0))
         except StoryProposalRejected as error:
             raise ModelRetry(str(error)) from error
-        return direction
+        return flat
 
     def _validate_actor_consequence(
         self,
@@ -100,14 +101,14 @@ class StoryDirector:
                 raise ModelRetry(f"actor {actor.id!r} has not been revealed")
             if not state.is_here(actor):
                 raise ModelRetry(f"actor {actor.id!r} is not here with the player")
-        actor_state = actor_rules(state.world.actor(actor.id).rules)
+        sheet = actor_state(state.world.actor(actor.id).rules)
         match consequence:
             case Risk():
-                if actor_state.taken_out:
+                if sheet.taken_out:
                     raise ModelRetry(f"actor {actor.id!r} is taken out")
-                self._validate_factors(state, actor, actor_state, consequence)
+                self._validate_factors(state, actor, sheet, consequence)
             case ClearCondition(condition_id=condition_id):
-                if not any(condition.id == condition_id for condition in actor_state.conditions):
+                if not any(condition.id == condition_id for condition in sheet.conditions):
                     raise ModelRetry(f"condition {condition_id!r} is not active on {actor.id!r}")
             case ApplyCondition() | TakeStress() | RecoverStress():
                 return
@@ -120,14 +121,14 @@ class StoryDirector:
         self,
         state: GameState,
         actor: ActorEntity,
-        actor_state: StoryActorState,
+        sheet: StoryActorState,
         risk: Risk,
     ) -> None:
         match risk.helpful:
             case None:
                 pass
             case HelpfulActorTag(id=tag_id):
-                tag = next((tag for tag in actor_state.tags if tag.id == tag_id), None)
+                tag = next((tag for tag in sheet.tags if tag.id == tag_id), None)
                 if tag is None or tag.kind not in ("edge", "bond"):
                     raise ModelRetry(
                         f"helpful tag {tag_id!r} is not an edge or bond on {actor.id!r}"
@@ -136,17 +137,17 @@ class StoryDirector:
                 item = self._require(state, item_id, ItemEntity)
                 if item.container_id != actor.id:
                     raise ModelRetry(f"gear item {item.id!r} is not carried by {actor.id!r}")
-                if item_rules(state.world.item(item_id).rules).gear is None:
+                if item_state(state.world.item(item_id).rules).gear is None:
                     raise ModelRetry(f"item {item.id!r} has no gear benefit")
         match risk.hindering:
             case None:
                 pass
             case HinderingBurden(id=tag_id):
-                tag = next((tag for tag in actor_state.tags if tag.id == tag_id), None)
+                tag = next((tag for tag in sheet.tags if tag.id == tag_id), None)
                 if tag is None or tag.kind != "burden":
                     raise ModelRetry(f"hindering tag {tag_id!r} is not a burden on {actor.id!r}")
             case HinderingCondition(id=condition_id):
-                if not any(condition.id == condition_id for condition in actor_state.conditions):
+                if not any(condition.id == condition_id for condition in sheet.conditions):
                     raise ModelRetry(f"condition {condition_id!r} is not active on {actor.id!r}")
 
     @staticmethod

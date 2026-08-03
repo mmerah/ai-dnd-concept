@@ -1,7 +1,7 @@
 from collections.abc import Callable, Mapping
 from typing import Self
 
-from pydantic import Field, model_validator
+from pydantic import Field, JsonValue, model_validator
 
 from .base import (
     PLAYER_ID,
@@ -15,19 +15,10 @@ from .base import (
     LocationEntity,
     Slug,
 )
-from .world import (
-    ActorEngineData,
-    ActorRecord,
-    ActorRules,
-    CharacterEngineData,
-    EngineData,
-    EntityEngineData,
-    ItemEngineData,
-    ItemRecord,
-    ItemRules,
-    ScenarioMeta,
-    WorldState,
-)
+from .world import ActorRecord, ItemRecord, ScenarioMeta, WorldState
+
+type Rules = dict[str, JsonValue]
+RULES_BEARING: tuple[Kind, ...] = ("actor", "item")
 
 
 class ScenarioWorld(Frozen):
@@ -66,8 +57,7 @@ class ScenarioWorld(Frozen):
 class ScenarioOverlay(Frozen):
     """`<engine>.json`: what one ruleset adds to the entities that need it."""
 
-    actors: dict[EntityId, ActorEngineData] = Field(default_factory=dict)
-    items: dict[EntityId, ItemEngineData] = Field(default_factory=dict)
+    entities: dict[EntityId, Rules] = Field(default_factory=dict)
 
 
 class CharacterProfile(Frozen):
@@ -91,8 +81,8 @@ class CharacterProfile(Frozen):
 
 
 class CharacterOverlay(Frozen):
-    character: CharacterEngineData
-    items: dict[EntityId, ItemEngineData] = Field(default_factory=dict)
+    character: Rules
+    entities: dict[EntityId, Rules] = Field(default_factory=dict)
 
 
 class Scenario(Frozen):
@@ -109,9 +99,11 @@ class Scenario(Frozen):
 
     @model_validator(mode="after")
     def _overlay_fits_the_world(self) -> Self:
-        kinds: dict[EntityId, Kind] = {entity.id: entity.kind for entity in self.world.entities}
-        _require_overlay(self.engine, self.overlay.actors, "actor", kinds)
-        _require_overlay(self.engine, self.overlay.items, "item", kinds)
+        _require_overlay(
+            self.engine,
+            self.overlay.entities,
+            {entity.id: entity.kind for entity in self.world.entities},
+        )
         return self
 
 
@@ -131,42 +123,42 @@ class Character(Frozen):
 
     @model_validator(mode="after")
     def _overlay_fits_the_character(self) -> Self:
-        _require_engine(self.engine, "the character sheet", self.overlay.character)
-        kinds: dict[EntityId, Kind] = {item.id: item.kind for item in self.profile.items}
-        _require_overlay(self.engine, self.overlay.items, "item", kinds)
+        _require_overlay(
+            self.engine,
+            self.overlay.entities,
+            {item.id: item.kind for item in self.profile.items},
+        )
         return self
-
-
-def _require_engine(engine: EngineId, purpose: str, data: EngineData) -> None:
-    if data.engine != engine:
-        raise ValueError(f"{purpose} holds {data.engine!r} data in the {engine!r} overlay")
 
 
 def _require_overlay(
     engine: EngineId,
-    overlay: Mapping[EntityId, EntityEngineData],
-    kind: Kind,
+    overlay: Mapping[EntityId, Rules],
     kinds: Mapping[EntityId, Kind],
 ) -> None:
     """An overlay keys off the authored ids, so a typo must fail at load, not go unread."""
-    for entity_id, data in overlay.items():
-        if kinds.get(entity_id) != kind:
-            raise ValueError(f"the {engine!r} overlay names {entity_id!r}, no authored {kind}")
-        _require_engine(engine, f"entity {entity_id!r}", data)
+    for entity_id in overlay:
+        kind = kinds.get(entity_id)
+        if kind is None:
+            raise ValueError(f"the {engine!r} overlay names {entity_id!r}, which is not authored")
+        if kind not in RULES_BEARING:
+            raise ValueError(
+                f"the {engine!r} overlay names {entity_id!r}, which is a {kind} and takes no rules"
+            )
 
 
 class AuthoredActor(Frozen):
     entity: ActorEntity
-    data: ActorEngineData | None = None
+    rules: Rules = Field(default_factory=dict)
 
 
 class AuthoredItem(Frozen):
     entity: ItemEntity
-    data: ItemEngineData | None = None
+    rules: Rules = Field(default_factory=dict)
 
 
 class AuthoredWorld(Frozen):
-    """Every authored entity beside the engine data written for it, under the authored id."""
+    """Every authored entity beside the engine payload written for it, under the authored id."""
 
     actors: dict[EntityId, AuthoredActor] = Field(default_factory=dict)
     items: dict[EntityId, AuthoredItem] = Field(default_factory=dict)
@@ -181,7 +173,7 @@ def authored_world(scenario: Scenario, character: Character) -> AuthoredWorld:
         known=True,
         location_id=scenario.world.starting_location_id,
     )
-    items_data = {**scenario.overlay.items, **character.overlay.items}
+    overlay = {**scenario.overlay.entities, **character.overlay.entities}
     actors: dict[EntityId, AuthoredActor] = {}
     items: dict[EntityId, AuthoredItem] = {}
     locations: dict[EntityId, LocationEntity] = {}
@@ -192,13 +184,12 @@ def authored_world(scenario: Scenario, character: Character) -> AuthoredWorld:
         seen.add(authored.id)
         # Loaded content outlives the mutable game state.
         entity = authored.model_copy(deep=True)
+        rules = dict(overlay.get(entity.id, {}))
         match entity:
             case ActorEntity():
-                actors[entity.id] = AuthoredActor(
-                    entity=entity, data=scenario.overlay.actors.get(entity.id)
-                )
+                actors[entity.id] = AuthoredActor(entity=entity, rules=rules)
             case ItemEntity():
-                items[entity.id] = AuthoredItem(entity=entity, data=items_data.get(entity.id))
+                items[entity.id] = AuthoredItem(entity=entity, rules=rules)
             case LocationEntity():
                 locations[entity.id] = entity
     return AuthoredWorld(actors=actors, items=items, locations=locations)
@@ -206,9 +197,9 @@ def authored_world(scenario: Scenario, character: Character) -> AuthoredWorld:
 
 def compose_world(
     authored: AuthoredWorld,
-    player: ActorRules,
-    actor_rules: Callable[[AuthoredActor], ActorRules],
-    item_rules: Callable[[AuthoredItem], ItemRules],
+    player: Rules,
+    actor_rules: Callable[[AuthoredActor], Rules],
+    item_rules: Callable[[AuthoredItem], Rules],
 ) -> WorldState:
     return WorldState(
         actors={

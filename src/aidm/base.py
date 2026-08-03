@@ -2,7 +2,7 @@ import re
 from collections.abc import Iterable
 from typing import Annotated, Literal, NewType, get_args
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, JsonValue
 
 
 class Frozen(BaseModel):
@@ -21,24 +21,15 @@ class Mutable(BaseModel):
 
 
 Role = Literal["director", "narrator", "maintainer", "creator"]
-EngineId = Literal["story", "dnd5e"]
 Kind = Literal["actor", "location", "item"]
+EngineId = NewType("EngineId", str)
 EntityId = NewType("EntityId", str)
 SLUG_PATTERN = r"[a-z0-9]+(?:-[a-z0-9]+)*"
 Slug = Annotated[str, Field(pattern=rf"^{SLUG_PATTERN}$", max_length=64)]
 
 PLAYER_ID = EntityId("player")
 ROLES: tuple[Role, ...] = get_args(Role)
-ENGINE_IDS: tuple[EngineId, ...] = get_args(EngineId)
-SAVE_VERSION = 20
-
-
-def as_engine_id(value: str) -> EngineId:
-    """Narrow a routed string; an unknown engine is a bug, not a choice."""
-    for engine in ENGINE_IDS:
-        if engine == value:
-            return engine
-    raise ValueError(f"unknown engine {value!r}")
+SAVE_VERSION = 21
 
 
 def content_id(value: str) -> Slug:
@@ -58,7 +49,10 @@ def slug(name: str, taken: Iterable[EntityId]) -> EntityId:
 
 
 class AdvancementDecision(Frozen):
-    """What the player chose in an engine's advancement UI; the engine that minted it applies it."""
+    """What the player chose in an engine's advancement UI, flat so core never types the choice."""
+
+    engine: EngineId
+    choice: dict[str, JsonValue] = Field(default_factory=dict)
 
 
 class EntityDetail(Frozen):
@@ -89,13 +83,3 @@ class LocationEntity(BaseEntity):
 
 
 type Entity = Annotated[ActorEntity | ItemEntity | LocationEntity, Field(discriminator="kind")]
-
-
-def placement(kind: Kind, location_id: EntityId) -> dict[str, EntityId]:
-    match kind:
-        case "location":
-            return {}
-        case "actor":
-            return {"location_id": location_id}
-        case "item":
-            return {"container_id": location_id}

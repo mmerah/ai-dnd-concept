@@ -13,10 +13,12 @@ from aidm.actions import (
 )
 from aidm.base import PLAYER_ID, EntityId
 from aidm.directing import ConsequenceBase, Reference
+from aidm.transition import Direction
 
 from .content.records.spells import MAX_SPELL_LEVEL, SpellLevel
 from .content.vocabulary import CONDITION_NAMES, ConditionName, RestType
 from .dice import SelfContainedDice
+from .identity import ENGINE_ID
 from .state import FeatureKey, SpellKey
 from .values import ABILITIES, Ability, Value
 
@@ -240,8 +242,25 @@ MECHANICS_ADAPTER: TypeAdapter[list[Consequence]] = TypeAdapter(list[Consequence
 class Dnd5eDirection(Value):
     """A proposed attempt, not a resolved outcome."""
 
-    engine: Literal["dnd5e"] = "dnd5e"
     intent: str
     tone: str
     speaker_id: EntityId | None = None
     mechanics: list[Consequence] = Field(default_factory=list)
+
+
+def dump_direction(proposal: Dnd5eDirection) -> Direction:
+    """The Director proposes typed mechanics; core only ever holds the flat blob."""
+    return Direction(
+        engine=ENGINE_ID,
+        intent=proposal.intent,
+        tone=proposal.tone,
+        speaker_id=proposal.speaker_id,
+        mechanics=MECHANICS_ADAPTER.dump_python(proposal.mechanics, mode="json"),
+    )
+
+
+def load_mechanics(direction: Direction) -> list[Consequence]:
+    """The tag is checked too: core actions validate under either engine, so shape cannot decide."""
+    if direction.engine != ENGINE_ID:
+        raise ValueError(f"5e received a {direction.engine!r} direction")
+    return MECHANICS_ADAPTER.validate_python(direction.mechanics)

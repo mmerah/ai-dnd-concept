@@ -2,26 +2,38 @@ from pathlib import Path
 from random import Random
 
 import pytest
-from core_test_support import character, scenario, settings, updated
-from story_test_support import setback_direction
+from core_test_support import DND5E, STORY, character, scenario, settings, updated
 
 from aidm.agents import director_stage, shared_stages
 from aidm.application import GameSession, LaunchTarget, Runtime
+from aidm.base import AdvancementDecision
 from aidm.content import ScenarioMeta
-from aidm.engines.dnd5e.advancement import Dnd5eAdvancementDecisions
-from aidm.engines.story.access import player_rules
-from aidm.engines.story.advancement import RaiseApproach
+from aidm.engines.story.access import player_state
+from aidm.engines.story.advancement import RaiseApproach, dump_decision
+from aidm.engines.story.direction import Risk, StoryDirection, dump_direction
 from aidm.engines.story.engine import build_story_engine
 from aidm.pipeline import TurnOptions
 from aidm.store import FileSaves, FileTraces
+from aidm.transition import Direction
 from aidm.turn import Advance
 
 TARGET = LaunchTarget(
     slug="poc",
     scenario_id="whispering-vault",
     character_id="kael",
-    engine="story",
+    engine=STORY,
 )
+
+
+def setback_direction() -> Direction:
+    """An extreme risk against an unraised approach: seeded, this always earns a growth mark."""
+    return dump_direction(
+        StoryDirection(
+            intent="Kael attempts something dangerous.",
+            tone="tense",
+            mechanics=[Risk(approach="empathetic", difficulty=2)],
+        )
+    )
 
 
 def session(directory: Path) -> GameSession:
@@ -81,18 +93,18 @@ def test_advancement_commits_through_the_same_path_and_reaches_the_trace(tmp_pat
     game = session(tmp_path)
     for _ in range(3):
         game.state = game.engine.resolve(setback_direction(), game.state, Random(2)).state
-    player = player_rules(game.state)
+    player = player_state(game.state)
     assert player.growth_marks == 3
     before = player.approaches.bold
     decision = RaiseApproach(approach="bold")
 
-    with pytest.raises(TypeError, match="'story' engine received a Dnd5eAdvancementDecisions"):
-        game.advance(Dnd5eAdvancementDecisions(decisions={}))
+    with pytest.raises(ValueError, match="dnd5e"):
+        game.advance(AdvancementDecision(engine=DND5E))
 
-    facts = game.advance(decision)
+    facts = game.advance(dump_decision(decision))
 
-    assert [fact.fact for fact in facts] == ["approach-raised", "growth-reset"]
-    player = player_rules(game.state)
+    assert [fact.kind for fact in facts] == ["approach_raised", "growth_reset"]
+    player = player_state(game.state)
     assert player.approaches.bold == before + 1
     assert player.growth_marks == 0
     assert FileSaves(tmp_path).load("poc") == game.state

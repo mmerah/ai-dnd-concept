@@ -1,7 +1,6 @@
 {
-  "actors": {
+  "entities": {
     "cloister_rat": {
-      "engine": "dnd5e",
       "ref": {
         "pack": "srd-2014",
         "collection": "monsters",

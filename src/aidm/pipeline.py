@@ -14,10 +14,10 @@ from .base import (
     ItemEntity,
     LocationEntity,
     Role,
-    placement,
     slug,
 )
 from .engine import Engine, entity_renderer, narrator_evidence
+from .facts import Fact
 from .growth import GrowthRequest, screen_growth
 from .prompts import (
     SceneSnapshot,
@@ -27,7 +27,7 @@ from .prompts import (
     render_maintainer,
     render_narrator,
 )
-from .transition import Direction, Fact
+from .transition import Direction
 from .turn import Turn
 from .world import Exchange, GameState
 
@@ -180,12 +180,12 @@ def _created_entity(
         "brief": request.brief,
         "detail": detail,
         "known": True,
-    } | placement(request.kind, location)
+    }
     match request.kind:
         case "actor":
-            return ActorEntity.model_validate(fields)
+            return ActorEntity.model_validate(fields | {"location_id": location})
         case "item":
-            return ItemEntity.model_validate(fields)
+            return ItemEntity.model_validate(fields | {"container_id": location})
         case "location":
             return LocationEntity.model_validate(fields)
 

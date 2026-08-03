@@ -3,10 +3,10 @@ from collections.abc import Sequence
 from typing import assert_never
 
 from aidm.base import PLAYER_ID, ActorEntity, Entity
-from aidm.world import EntityRules
+from aidm.content import Rules
 
 from . import features, spells
-from .access import actor_rules, item_rules
+from .access import actor_state, item_state
 from .content.library import ContentMiss
 from .content.records.base import ContentRef, DamageRoll
 from .content.records.monsters import (
@@ -17,7 +17,6 @@ from .content.records.monsters import (
     MonsterRecord,
     MonsterSave,
 )
-from .direction import MECHANICS_ADAPTER, Dnd5eDirection
 from .ruleset import Ruleset
 from .state import MAX_LEVEL, Progression, StatBlock, feature_key, spell_key
 from .values import Attributes
@@ -27,17 +26,14 @@ class Dnd5ePresentation:
     def __init__(self, ruleset: Ruleset) -> None:
         self._ruleset = ruleset
 
-    def entity_state(self, entity: Entity, rules: EntityRules) -> str:
+    def entity_state(self, entity: Entity, rules: Rules) -> str:
         if not isinstance(entity, ActorEntity):
-            return item_state(item_rules(rules).ref, self._ruleset)
-        actor = actor_rules(rules)
+            return item_summary(item_state(rules).ref, self._ruleset)
+        actor = actor_state(rules)
         if entity.id != PLAYER_ID:
-            return actor_state(actor.stats, actor.ref, self._ruleset)
+            return actor_summary(actor.stats, actor.ref, self._ruleset)
         sheet = player_state(actor.stats, actor.progression, self._ruleset)
         return f"{sheet}\nadvancement: {level_up_state(actor.progression)}"
-
-    def trace_direction(self, direction: Dnd5eDirection) -> str:
-        return json.dumps(json.loads(MECHANICS_ADAPTER.dump_json(direction.mechanics)), indent=2)
 
 
 def _attributes(stats: StatBlock) -> str:
@@ -60,7 +56,7 @@ def _statline(stats: StatBlock) -> str:
     )
 
 
-def actor_state(
+def actor_summary(
     stats: StatBlock,
     ref: ContentRef | None,
     rules: Ruleset,
@@ -68,7 +64,7 @@ def actor_state(
     return f"{_statline(stats)}{_archetype(ref, rules)}"
 
 
-def item_state(ref: ContentRef | None, rules: Ruleset) -> str:
+def item_summary(ref: ContentRef | None, rules: Ruleset) -> str:
     if ref is None:
         return "5e profile: (none)"
     record = rules.record(ref)

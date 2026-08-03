@@ -1,17 +1,34 @@
+from collections.abc import Callable
+from typing import cast
+
 import pytest
-from fivee_test_support import initial_5e_game, player_of
-from pydantic_ai import ModelRetry, RunContext
+from fivee_test_support import carried_by, initial_5e_game, player_of
+from pydantic_ai import ModelRetry, NativeOutput, RunContext
 from pydantic_ai.models.test import TestModel
 from pydantic_ai.usage import RunUsage
 
 from aidm.base import EntityId
-from aidm.engines.dnd5e.access import carried_by
+from aidm.engine import Engine
 from aidm.engines.dnd5e.direction import Attack, Damage, Dnd5eDirection, DropItem, RollCheck
+from aidm.transition import Direction
 from aidm.world import GameState
 
 
 def _context(state: GameState) -> RunContext[GameState]:
     return RunContext(deps=state, model=TestModel(), usage=RunUsage())
+
+
+def _propose(engine: Engine, state: GameState, proposal: Dnd5eDirection) -> None:
+    """Drive the whole Director path: dump, check, and dry-run, as the model's own call would.
+
+    `director_output` is built as a `NativeOutput` wrapping one output function; narrow to that
+    concrete shape by hand, since the seam's declared type is the broader `OutputSpec` union."""
+    native = cast(NativeOutput[Direction], engine.director_output)
+    direct = cast(
+        Callable[[RunContext[GameState], Dnd5eDirection], Direction],
+        native.outputs,
+    )
+    _ = direct(_context(state), proposal)
 
 
 def test_nested_faults_and_absent_references_return_actionable_retries() -> None:
@@ -40,13 +57,13 @@ def test_nested_faults_and_absent_references_return_actionable_retries() -> None
     )
 
     with pytest.raises(ModelRetry, match="Use only ids you were shown") as retry:
-        engine.director.validate(_context(state), unknown)
+        _propose(engine, state, unknown)
     assert "missing_success" in str(retry.value)
     assert "missing_failure" in str(retry.value)
     with pytest.raises(ModelRetry, match="attack must name at most one"):
-        engine.director.validate(_context(state), invalid)
+        _propose(engine, state, invalid)
     with pytest.raises(ModelRetry, match="Move them here first"):
-        engine.director.validate(_context(state), absent)
+        _propose(engine, state, absent)
 
 
 def test_dry_run_checks_both_roll_branches() -> None:
@@ -68,4 +85,4 @@ def test_dry_run_checks_both_roll_branches() -> None:
     )
 
     with pytest.raises(ModelRetry, match="not carrying"):
-        engine.director.validate(_context(state), direction)
+        _propose(engine, state, direction)

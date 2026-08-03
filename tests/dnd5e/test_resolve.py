@@ -1,17 +1,12 @@
-"""The resolver is the single sink from the Director's mechanics to facts. It mutates the draft
-it is handed and is seeded; `Dnd5eRules.resolve` is what drafts, so a caller's state is untouched.
-The mechanics are a recursive consequence list: `roll_check` nests branches, and a dice amount
-rolls inside the `damage`/`heal` that spends it. Positions gate take/drop/give/damage."""
-
 from random import Random
 
 import pytest
 from core_test_support import updated, with_entity
-from fivee_test_support import blank_game, ruleset, with_actor
+from fivee_test_support import actor_of, blank_game, ruleset, with_actor
 from fivee_test_support import state as state
 
 from aidm.base import PLAYER_ID, EntityId
-from aidm.engines.dnd5e.access import actor_of
+from aidm.engines.dnd5e.access import Dnd5eWorld
 from aidm.engines.dnd5e.direction import (
     ApplyCondition,
     Consequence,
@@ -25,9 +20,8 @@ from aidm.engines.dnd5e.direction import (
     RollCheck,
     TakeItem,
 )
-from aidm.engines.dnd5e.facts import ConditionChanged, DcRolled, DiceRolled, HpChanged
-from aidm.engines.dnd5e.resolve import resolve
-from aidm.facts import ActorMoved, EntityCreated, EntityDiscovered, ItemMoved
+from aidm.engines.dnd5e.resolve import resolve as _resolve
+from aidm.facts import Fact
 from aidm.world import GameState
 
 RULES = ruleset()  # `attack` reads a weapon profile and an archetype's own attack out of it
@@ -36,30 +30,28 @@ RULES = ruleset()  # `attack` reads a weapon profile and an archetype's own atta
 PASS, FAIL = Random(0), Random(2)
 
 
+def resolve(mechanics: list[Consequence], state: GameState, rng: Random = PASS) -> list[Fact]:
+    """Commit so a later call in the same test sees an earlier call's typed-state mutation."""
+    world = Dnd5eWorld(state=state)
+    facts = _resolve(mechanics, world, rng, RULES)
+    _ = world.commit()
+    return facts
+
+
 def relocated(state: GameState, entity_id: EntityId, location_id: EntityId) -> GameState:
     moved = updated(state.world.require(entity_id), location_id=location_id)
     return with_entity(state, moved)
 
 
-def wounded(state: GameState, hp: int) -> GameState:
-    player = actor_of(state, PLAYER_ID)
-    hurt = updated(player.state, stats=updated(player.stats, hp=hp))
-    return with_actor(state, player.entity, hurt)
-
-
 def test_top_level_consequences_all_apply_in_order(state: GameState) -> None:
-    mechanics: list[Consequence] = [Damage(amount=2), Move(location_id=EntityId("vault"))]
-    events = resolve(mechanics, state, PASS, RULES)
-    assert [e.fact for e in events] == ["hp_changed", "entity_discovered", "actor_moved"]
+    events = resolve([Damage(amount=2), Move(location_id=EntityId("vault"))], state)
+    assert [e.kind for e in events] == ["hp_changed", "entity_discovered", "actor_moved"]
     hp, moved = events[0], events[2]
-    assert isinstance(hp, HpChanged) and hp.delta == -2
-    assert isinstance(moved, ActorMoved) and (moved.actor_id, moved.location_id) == (
-        "player",
-        "vault",
-    )
+    assert hp.data["delta"] == -2
+    assert (moved.data["actor_id"], moved.data["location_id"]) == ("player", "vault")
 
 
-def test_check_success_selects_on_success(state: GameState) -> None:
+def test_check_selects_the_branch_the_roll_decides(state: GameState) -> None:
     mechanics: list[Consequence] = [
         RollCheck(
             ability="wisdom",
@@ -68,206 +60,143 @@ def test_check_success_selects_on_success(state: GameState) -> None:
             on_failure=[Damage(amount=5)],
         )
     ]
-    events = resolve(mechanics, state, PASS, RULES)
+    passed = resolve(mechanics, state, PASS)
     # improvised gain promotes the item to canon first, then adds it to inventory
-    assert [e.fact for e in events] == ["dc_rolled", "entity_created", "item_moved"]
-    rolled, created = events[0], events[1]
-    assert isinstance(rolled, DcRolled) and rolled.success
-    assert isinstance(created, EntityCreated) and created.entity.name == "a torch"
+    assert [e.kind for e in passed] == ["dc_rolled", "entity_created", "item_moved"]
+    assert passed[0].data["success"] is True
+    assert passed[1].data["name"] == "a torch"
+
+    failed = resolve(mechanics, state, FAIL)
+    assert [e.kind for e in failed] == ["dc_rolled", "hp_changed"]
+    assert failed[0].data["success"] is False
+    assert failed[1].data["delta"] == -5
 
 
-def test_check_failure_selects_on_failure(state: GameState) -> None:
-    mechanics: list[Consequence] = [
-        RollCheck(
-            ability="wisdom",
-            dc=12,
-            on_success=[GainImprovisedItem(item_name="a torch")],
-            on_failure=[Damage(amount=5)],
-        )
-    ]
-    events = resolve(mechanics, state, FAIL, RULES)
-    assert [e.fact for e in events] == ["dc_rolled", "hp_changed"]
-    rolled, hp = events[0], events[1]
-    assert isinstance(rolled, DcRolled) and not rolled.success
-    assert isinstance(hp, HpChanged) and hp.delta == -5
-
-
-def test_heal_adds_hp(state: GameState) -> None:
-    (hp,) = resolve([Heal(amount=3)], wounded(state, 5), PASS, RULES)
-    assert isinstance(hp, HpChanged) and hp.delta == 3
-
-
-def test_only_the_hit_points_that_moved_are_reported(state: GameState) -> None:
+def test_heal_and_damage_clamp_and_report_only_real_change(state: GameState) -> None:
     """`delta` is what the clamp applies, not what was asked for: the Narrator must never be told
     of hit points that never moved, and a change of nothing is not a fact at all."""
-    (hp,) = resolve([Damage(amount=99)], state, PASS, RULES)  # Kael has 10
-    assert isinstance(hp, HpChanged) and (hp.delta, hp.wounds) == (-10, "down")
-    assert resolve([Heal(amount=3)], blank_game(), PASS, RULES) == []  # already at full health
+    player = actor_of(state, PLAYER_ID)
+    low_hp_state = with_actor(
+        state, player.entity, updated(player.state, stats=updated(player.stats, hp=5))
+    )
+    (hp,) = resolve([Heal(amount=3)], low_hp_state)
+    assert hp.data["delta"] == 3
+
+    (overkill,) = resolve([Damage(amount=99)], state)  # Kael has 10
+    assert (overkill.data["delta"], overkill.data["wounds"]) == (-10, "down")
+    assert resolve([Heal(amount=3)], blank_game()) == []  # already at full health
 
 
-def test_take_a_present_item_reveals_it_and_moves_it_to_the_player(state: GameState) -> None:
-    events = resolve([TakeItem(item_id=EntityId("vault_map"))], state, PASS, RULES)
-    assert [e.fact for e in events] == ["entity_discovered", "item_moved"]
-    took = events[1]
-    assert isinstance(took, ItemMoved)
-    assert (took.item_id, took.item_name, took.to_id) == ("vault_map", "the vault map", PLAYER_ID)
-
-
-def test_take_something_not_here_fails(state: GameState) -> None:
-    """The lantern is carried (no location), so it is not lying here to be taken."""
+def test_take_gates_on_position(state: GameState) -> None:
+    took = resolve([TakeItem(item_id=EntityId("vault_map"))], state)[1]
+    assert (took.data["item_id"], took.data["to_id"]) == ("vault_map", PLAYER_ID)
     with pytest.raises(ValueError, match="not at the player's location"):
-        resolve([TakeItem(item_id=EntityId("lantern"))], state, PASS, RULES)
+        resolve([TakeItem(item_id=EntityId("lantern"))], state)  # carried, not lying here
 
 
-def test_drop_puts_a_held_item_at_the_players_location(state: GameState) -> None:
-    (dropped,) = resolve([DropItem(item_id=EntityId("lantern"))], state, PASS, RULES)
-    assert isinstance(dropped, ItemMoved)
-    assert (dropped.item_id, dropped.to_id, dropped.to_kind) == ("lantern", "study", "location")
-
-
-def test_drop_something_not_held_fails(state: GameState) -> None:
+def test_drop_gates_on_carrying(state: GameState) -> None:
+    (dropped,) = resolve([DropItem(item_id=EntityId("lantern"))], state)
+    assert (dropped.data["item_id"], dropped.data["to_kind"]) == ("lantern", "location")
     with pytest.raises(ValueError, match="not carrying"):
-        resolve([DropItem(item_id=EntityId("vault_map"))], state, PASS, RULES)
+        resolve([DropItem(item_id=EntityId("vault_map"))], state)
 
 
-def test_give_hands_a_held_item_to_a_present_actor(state: GameState) -> None:
-    give = GiveItem(item_id=EntityId("lantern"), actor_id=EntityId("mara"))
-    (given,) = resolve([give], state, PASS, RULES)
-    assert isinstance(given, ItemMoved)
-    assert (given.item_id, given.to_id, given.to_kind) == ("lantern", "mara", "actor")
-
-
-def test_giving_an_item_to_the_player_is_refused(state: GameState) -> None:
+def test_give_gates_on_carrying_and_the_recipients_position(state: GameState) -> None:
     with pytest.raises(ValueError, match="already hold it"):
-        resolve([GiveItem(item_id=EntityId("lantern"), actor_id=PLAYER_ID)], state, PASS, RULES)
-
-
-def test_give_to_an_absent_actor_fails(state: GameState) -> None:
-    """Move Mara away first, then giving to her must fail: she is no longer here."""
+        resolve(
+            [GiveItem(item_id=EntityId("lantern"), actor_id=PLAYER_ID)], state.model_copy(deep=True)
+        )
     away = relocated(state, EntityId("mara"), EntityId("vault"))
     with pytest.raises(ValueError, match="not at the player's location"):
-        give = GiveItem(item_id=EntityId("lantern"), actor_id=EntityId("mara"))
-        resolve([give], away, PASS, RULES)
+        resolve([GiveItem(item_id=EntityId("lantern"), actor_id=EntityId("mara"))], away)
+
+    (given,) = resolve([GiveItem(item_id=EntityId("lantern"), actor_id=EntityId("mara"))], state)
+    assert (given.data["item_id"], given.data["to_id"]) == ("lantern", "mara")
 
 
-def test_move_the_player_to_a_hidden_location_reveals_it(state: GameState) -> None:
-    events = resolve([Move(location_id=EntityId("vault"))], state, PASS, RULES)
-    assert [e.fact for e in events] == ["entity_discovered", "actor_moved"]
-    discovered, moved = events
-    assert isinstance(discovered, EntityDiscovered) and discovered.entity_id == "vault"
-    assert isinstance(moved, ActorMoved) and (moved.actor_id, moved.location_name) == (
-        "player",
-        "the vault",
+def test_move_the_player_reveals_only_a_hidden_destination(state: GameState) -> None:
+    hidden = resolve([Move(location_id=EntityId("vault"))], state.model_copy(deep=True))
+    assert [e.kind for e in hidden] == ["entity_discovered", "actor_moved"]
+    (known,) = resolve([Move(location_id=EntityId("study"))], state)
+    assert known.data["location_id"] == "study"
+
+
+def test_moving_another_actor_reveals_only_if_the_player_witnesses_it(state: GameState) -> None:
+    known = resolve(
+        [Move(location_id=EntityId("vault"), actor_id=EntityId("mara"))],
+        state.model_copy(deep=True),
     )
+    assert known[0].data["actor_id"] == "mara"
+    hidden = resolve([Move(location_id=EntityId("study"), actor_id=EntityId("elena"))], state)
+    assert [e.kind for e in hidden] == ["entity_discovered", "actor_moved"]
 
-
-def test_move_the_player_to_a_known_location_does_not_rediscover(state: GameState) -> None:
-    (moved,) = resolve([Move(location_id=EntityId("study"))], state, PASS, RULES)
-    assert isinstance(moved, ActorMoved) and moved.location_id == "study"
-
-
-def test_move_a_known_actor_away_does_not_reveal(state: GameState) -> None:
-    move = Move(location_id=EntityId("vault"), actor_id=EntityId("mara"))
-    (moved,) = resolve([move], state, PASS, RULES)
-    assert isinstance(moved, ActorMoved) and (moved.actor_id, moved.location_id) == (
-        "mara",
-        "vault",
-    )
-
-
-def test_move_a_hidden_actor_into_the_room_reveals_it(state: GameState) -> None:
-    """Elena is hidden and at the player's location; moving her here reveals her arrival."""
-    arrive = Move(location_id=EntityId("study"), actor_id=EntityId("elena"))
-    events = resolve([arrive], state, PASS, RULES)
-    assert [e.fact for e in events] == ["entity_discovered", "actor_moved"]
-
-
-def test_moving_an_actor_the_player_cannot_witness_fails(state: GameState) -> None:
-    """With the player in the vault, a move touching only the study is off-screen: the resolver
-    refuses it rather than narrating movement the player never saw."""
     in_vault = relocated(state, PLAYER_ID, EntityId("vault"))
-    move = Move(location_id=EntityId("study"), actor_id=EntityId("mara"))
     with pytest.raises(ValueError, match="would not witness"):
-        resolve([move], in_vault, PASS, RULES)
+        resolve([Move(location_id=EntityId("study"), actor_id=EntityId("mara"))], in_vault)
 
 
 def test_a_consequence_used_on_the_wrong_kind_raises(state: GameState) -> None:
     with pytest.raises(ValueError, match="but it is a actor"):
-        resolve([Move(location_id=EntityId("mara"))], state, PASS, RULES)
+        resolve([Move(location_id=EntityId("mara"))], state)
     with pytest.raises(ValueError, match="but it is a location"):
-        resolve([TakeItem(item_id=EntityId("study"))], state, PASS, RULES)
+        resolve([TakeItem(item_id=EntityId("study"))], state)
 
 
 def test_gain_loose_item_is_promoted_to_canon(state: GameState) -> None:
-    events = resolve([GainImprovisedItem(item_name="a rusty key")], state, PASS, RULES)
-    assert [e.fact for e in events] == ["entity_created", "item_moved"]
-    created, took = events
-    assert isinstance(created, EntityCreated) and created.entity.name == "a rusty key"
-    assert isinstance(took, ItemMoved) and took.item_id == created.entity.id
+    created, took = resolve([GainImprovisedItem(item_name="a rusty key")], state)
+    assert created.data["name"] == "a rusty key"
+    assert took.data["item_id"] == created.data["entity_id"]
 
 
-def test_discovering_a_known_entity_is_a_noop(state: GameState) -> None:
-    assert resolve([Discover(entity_id=EntityId("mara"))], state, PASS, RULES) == []
+def test_discover_is_idempotent_and_composes_with_take(state: GameState) -> None:
+    assert resolve([Discover(entity_id=EntityId("mara"))], state) == []
 
-
-def test_redundant_discover_then_take_reveals_once(state: GameState) -> None:
     vault_map = EntityId("vault_map")
-    mechanics: list[Consequence] = [Discover(entity_id=vault_map), TakeItem(item_id=vault_map)]
-    events = resolve(mechanics, state, PASS, RULES)
-    assert [e.fact for e in events] == ["entity_discovered", "item_moved"]
+    events = resolve([Discover(entity_id=vault_map), TakeItem(item_id=vault_map)], state)
+    assert [e.kind for e in events] == ["entity_discovered", "item_moved"]
 
 
 def test_unknown_id_raises(state: GameState) -> None:
     with pytest.raises(ValueError, match="unknown entity id"):
-        resolve([TakeItem(item_id=EntityId("ghost"))], state, PASS, RULES)
+        resolve([TakeItem(item_id=EntityId("ghost"))], state)
 
 
 def test_a_dice_amount_rolls_inside_the_change_it_pays_for(state: GameState) -> None:
     """The roll and the hit points it costs are one consequence — no value flows between two.
-    '2d1' is deterministic, so the damage is exactly 2."""
-    events = resolve([Damage(amount="2d1")], state, PASS, RULES)
-    assert [e.fact for e in events] == ["dice_rolled", "hp_changed"]
-    rolled, hp = events
-    assert isinstance(rolled, DiceRolled) and rolled.dice == "2d1"
-    assert isinstance(hp, HpChanged) and hp.delta == -2
+    '2d1' is deterministic, so the damage is exactly 2. A bare constant carries no die at all,
+    so '4' and 4 must reach the Narrator as the same facts."""
+    rolled, hp = resolve([Damage(amount="2d1")], state)
+    assert (rolled.kind, rolled.data["dice"]) == ("dice_rolled", "2d1")
+    assert hp.data["delta"] == -2
+    assert resolve([Damage(amount="4")], blank_game()) == resolve([Damage(amount=4)], blank_game())
 
 
-def test_a_constant_amount_carries_no_die() -> None:
-    """'4' and 4 mean the same harm, so they must reach the Narrator as the same facts."""
-    written = resolve([Damage(amount="4")], blank_game(), PASS, RULES)
-    assert written == resolve([Damage(amount=4)], blank_game(), PASS, RULES)
+def test_damage_can_target_another_actor_here_and_reveals_them_first(state: GameState) -> None:
+    """Mara has 4 hp, so 3 damage leaves the event's concise wounds summary badly hurt. Elena is
+    here but unrevealed, so damaging her must enter the player's view first."""
+    (hp,) = resolve([Damage(amount=3, target_id=EntityId("mara"))], state)
+    assert (hp.data["target_id"], hp.data["delta"], hp.data["wounds"]) == ("mara", -3, "badly hurt")
 
-
-def test_damage_can_target_another_actor_here(state: GameState) -> None:
-    """Mara has 4 hp, so 3 damage leaves the event's concise wounds summary badly hurt."""
-    events = resolve([Damage(amount=3, target_id=EntityId("mara"))], state, PASS, RULES)
-    (hp,) = events
-    assert isinstance(hp, HpChanged)
-    assert (hp.target_id, hp.delta, hp.wounds) == ("mara", -3, "badly hurt")
-
-
-def test_damaging_an_unseen_actor_reveals_them_first(state: GameState) -> None:
-    """Elena is here but unrevealed; the events name her, so she must enter the player's view."""
-    events = resolve([Damage(amount=1, target_id=EntityId("elena"))], state, PASS, RULES)
-    assert [e.fact for e in events] == ["entity_discovered", "hp_changed"]
+    events = resolve([Damage(amount=1, target_id=EntityId("elena"))], state)
+    assert [e.kind for e in events] == ["entity_discovered", "hp_changed"]
 
 
 def test_damaging_an_actor_elsewhere_fails(state: GameState) -> None:
     away = relocated(state, EntityId("mara"), EntityId("vault"))
     with pytest.raises(ValueError, match="not at the player's location"):
-        resolve([Damage(amount=1, target_id=EntityId("mara"))], away, PASS, RULES)
+        resolve([Damage(amount=1, target_id=EntityId("mara"))], away)
 
 
 def test_a_condition_takes_hold_lifts_and_is_not_reapplied(state: GameState) -> None:
     """Only a change is an event: a second helping of `prone` moved nothing, so the Narrator is not
     told it did."""
     prone = ApplyCondition(condition="prone")
-    (held,) = resolve([prone], state, PASS, RULES)
-    assert isinstance(held, ConditionChanged) and (held.condition, held.active) == ("prone", True)
+    (held,) = resolve([prone], state)
+    assert (held.data["condition"], held.data["active"]) == ("prone", True)
     assert actor_of(state, PLAYER_ID).stats.conditions == ("prone",)
-    assert resolve([prone], state, PASS, RULES) == []
-    (lifted,) = resolve([updated(prone, ends=True)], state, PASS, RULES)
-    assert isinstance(lifted, ConditionChanged) and not lifted.active
+    assert resolve([prone], state) == []
+    (lifted,) = resolve([updated(prone, ends=True)], state)
+    assert lifted.data["active"] is False
     assert actor_of(state, PLAYER_ID).stats.conditions == ()
 
 
@@ -276,6 +205,6 @@ def test_an_immune_actor_is_simply_unaffected(state: GameState) -> None:
     mara = actor_of(state, EntityId("mara"))
     immune = updated(mara.state, stats=updated(mara.stats, condition_immunities=("poisoned",)))
     poisoned = ApplyCondition(condition="poisoned", target_id=EntityId("mara"))
-    assert resolve([poisoned], with_actor(state, mara.entity, immune), PASS, RULES) == []
-    (changed,) = resolve([poisoned], state, PASS, RULES)
-    assert isinstance(changed, ConditionChanged) and changed.trace_summary == "Mara is poisoned"
+    assert resolve([poisoned], with_actor(state, mara.entity, immune)) == []
+    (changed,) = resolve([poisoned], state)
+    assert changed.trace == "Mara is poisoned"

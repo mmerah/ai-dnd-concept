@@ -5,7 +5,7 @@ from re import fullmatch
 
 from pydantic import BaseModel, TypeAdapter
 
-from .base import ENGINE_IDS, SAVE_VERSION, EngineId, Slug, content_id
+from .base import SAVE_VERSION, EngineId, Slug, content_id
 from .content import (
     Character,
     CharacterOverlay,
@@ -14,6 +14,7 @@ from .content import (
     ScenarioOverlay,
     ScenarioWorld,
 )
+from .registry import engine_ids
 from .turn import TraceEntry
 from .world import GameState
 
@@ -62,9 +63,7 @@ def _playable[T: BaseModel](directory: Path, canon: str, model: type[T]) -> Play
     for path in sorted(directory.iterdir()):
         if not (path / canon).is_file():
             continue
-        engines: tuple[EngineId, ...] = tuple(
-            engine for engine in ENGINE_IDS if (path / f"{engine}.json").is_file()
-        )
+        engines = tuple(engine for engine in engine_ids() if (path / f"{engine}.json").is_file())
         if engines:
             yield content_id(path.name), _read(path / canon, model), engines
 

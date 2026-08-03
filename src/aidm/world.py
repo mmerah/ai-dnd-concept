@@ -1,22 +1,7 @@
 from collections.abc import Iterator
-from typing import Annotated, Self
+from typing import Self
 
-from pydantic import Field, model_validator
-
-from aidm.engines.dnd5e.state import (
-    Dnd5eActorDefinition,
-    Dnd5eActorState,
-    Dnd5eCharacterData,
-    Dnd5eItemDefinition,
-    Dnd5eItemState,
-)
-from aidm.engines.story.state import (
-    StoryActorDefinition,
-    StoryActorState,
-    StoryCharacterData,
-    StoryItemDefinition,
-    StoryItemState,
-)
+from pydantic import Field, JsonValue, model_validator
 
 from .base import (
     PLAYER_ID,
@@ -31,46 +16,17 @@ from .base import (
     Mutable,
     Slug,
 )
-from .facts import ActorMoved, CoreFact, EntityCreated, EntityDiscovered, ItemMoved
-
-type ActorRules = Annotated[StoryActorState | Dnd5eActorState, Field(discriminator="engine")]
-type ItemRules = Annotated[StoryItemState | Dnd5eItemState, Field(discriminator="engine")]
-type EntityRules = ActorRules | ItemRules
-type ActorEngineData = Annotated[
-    StoryActorDefinition | Dnd5eActorDefinition,
-    Field(discriminator="engine"),
-]
-type ItemEngineData = Annotated[
-    StoryItemDefinition | Dnd5eItemDefinition,
-    Field(discriminator="engine"),
-]
-type CharacterEngineData = Annotated[
-    StoryCharacterData | Dnd5eCharacterData,
-    Field(discriminator="engine"),
-]
-type EntityEngineData = ActorEngineData | ItemEngineData
-type EngineData = EntityEngineData | CharacterEngineData
+from .facts import CORE, Fact
 
 
-def for_engine[T: EngineData](data: EngineData, expected: type[T]) -> T:
-    """Tags are checked once at load, so a mismatch here means the wrong engine is resolving."""
-    if not isinstance(data, expected):
-        raise ValueError(f"authored data is {data.engine!r}, not {expected.__name__}")
-    return data
+class Record[T: Entity](Mutable):
+    entity: T
+    # Opaque here on purpose: the selected engine validates and rewrites its own payload.
+    rules: dict[str, JsonValue] = Field(default_factory=dict)
 
 
-def for_engine_or_none[T: EngineData](data: EngineData | None, expected: type[T]) -> T | None:
-    return None if data is None else for_engine(data, expected)
-
-
-class ActorRecord(Mutable):
-    entity: ActorEntity
-    rules: ActorRules
-
-
-class ItemRecord(Mutable):
-    entity: ItemEntity
-    rules: ItemRules
+ActorRecord = Record[ActorEntity]
+ItemRecord = Record[ItemEntity]
 
 
 class WorldState(Mutable):
@@ -206,45 +162,80 @@ class GameState(Mutable):
         """The one validation per transaction that replaces validating after every change."""
         return GameState.model_validate(self.model_dump(round_trip=True))
 
-    def add(self, entity: Entity, rules: EntityRules | None) -> EntityCreated:
+    def add(self, entity: Entity, rules: dict[str, JsonValue]) -> Fact:
         """Copy into the fact, so a later move in the same turn cannot rewrite the record."""
         if self.world.find(entity.id) is not None:
             raise ValueError(f"entity id {entity.id!r} already exists")
-        if rules is not None and rules.engine != self.engine:
-            raise ValueError(f"{entity.id!r} takes {rules.engine!r} rules in {self.engine!r}")
-        if isinstance(entity, ActorEntity) and isinstance(rules, StoryActorState | Dnd5eActorState):
-            self.world.actors[entity.id] = ActorRecord(entity=entity, rules=rules)
-        elif isinstance(entity, ItemEntity) and isinstance(rules, StoryItemState | Dnd5eItemState):
-            self.world.items[entity.id] = ItemRecord(entity=entity, rules=rules)
-        elif isinstance(entity, LocationEntity) and rules is None:
-            self.world.locations[entity.id] = entity
-        else:
-            raise ValueError(f"{entity.kind} {entity.id!r} cannot take {type(rules).__name__}")
-        return EntityCreated(entity=entity.model_copy(deep=True))
+        match entity:
+            case ActorEntity():
+                self.world.actors[entity.id] = ActorRecord(entity=entity, rules=rules)
+            case ItemEntity():
+                self.world.items[entity.id] = ItemRecord(entity=entity, rules=rules)
+            case LocationEntity():
+                if rules:
+                    raise ValueError(f"location {entity.id!r} cannot carry engine rules")
+                self.world.locations[entity.id] = entity
+        summary = f"new {entity.kind}: {entity.name}"
+        return Fact(
+            source=CORE,
+            kind="entity_created",
+            trace=summary,
+            narrator=summary,
+            data={"entity_id": entity.id, "kind": entity.kind, "name": entity.name},
+        )
 
-    def reveal(self, entity: Entity) -> list[CoreFact]:
+    def reveal(self, entity: Entity) -> list[Fact]:
         if entity.known:
             return []
         entity.known = True
-        return [EntityDiscovered(entity_id=entity.id, name=entity.name)]
+        summary = f"learned of {entity.name}"
+        return [
+            Fact(
+                source=CORE,
+                kind="entity_discovered",
+                trace=summary,
+                narrator=summary,
+                data={"entity_id": entity.id, "name": entity.name},
+            )
+        ]
 
-    def move_actor(self, actor: ActorEntity, destination: LocationEntity) -> ActorMoved:
+    def move_actor(self, actor: ActorEntity, destination: LocationEntity) -> Fact:
         actor.location_id = destination.id
-        return ActorMoved(
-            actor_id=actor.id,
-            actor_name=actor.name,
-            location_id=destination.id,
-            location_name=destination.name,
+        summary = f"{actor.name} moved to {destination.name}"
+        return Fact(
+            source=CORE,
+            kind="actor_moved",
+            trace=summary,
+            narrator=summary,
+            data={
+                "actor_id": actor.id,
+                "actor_name": actor.name,
+                "location_id": destination.id,
+                "location_name": destination.name,
+            },
         )
 
-    def move_item(self, item: ItemEntity, destination: ActorEntity | LocationEntity) -> ItemMoved:
+    def move_item(self, item: ItemEntity, destination: ActorEntity | LocationEntity) -> Fact:
         item.container_id = destination.id
-        return ItemMoved(
-            item_id=item.id,
-            item_name=item.name,
-            to_id=destination.id,
-            to_name=destination.name,
-            to_kind="actor" if isinstance(destination, ActorEntity) else "location",
+        to_actor = isinstance(destination, ActorEntity)
+        if destination.id == PLAYER_ID:
+            summary = f"took {item.name}"
+        elif to_actor:
+            summary = f"gave {item.name} to {destination.name}"
+        else:
+            summary = f"left {item.name} at {destination.name}"
+        return Fact(
+            source=CORE,
+            kind="item_moved",
+            trace=summary,
+            narrator=summary,
+            data={
+                "item_id": item.id,
+                "item_name": item.name,
+                "to_id": destination.id,
+                "to_name": destination.name,
+                "to_kind": "actor" if to_actor else "location",
+            },
         )
 
     @model_validator(mode="after")
@@ -257,15 +248,41 @@ class GameState(Mutable):
                 raise ValueError(f"actor {record.entity.id!r} is not in a valid location")
         for record in world.items.values():
             _ = world.container_of(record.entity)
-        _require_one_engine(world, self.engine)
         return self
 
 
-def _require_one_engine(world: WorldState, engine: EngineId) -> None:
-    """A per-record tag makes a mixed world representable, so only this keeps it out."""
-    foreign = sorted(
-        [record.entity.id for record in world.actors.values() if record.rules.engine != engine]
-        + [record.entity.id for record in world.items.values() if record.rules.engine != engine]
-    )
-    if foreign:
-        raise ValueError(f"records hold rules from another engine than {engine!r}: {foreign}")
+class EngineRecords[A: Mutable, I: Mutable]:
+    """Cached so two mechanics mutate one payload; `commit` flushes back only what it handed out."""
+
+    def __init__(self, state: GameState, actor_state: type[A], item_state: type[I]) -> None:
+        self.state = state
+        self._actor_state = actor_state
+        self._item_state = item_state
+        self._actors: dict[EntityId, A] = {}
+        self._items: dict[EntityId, I] = {}
+
+    def actor(self, actor_id: EntityId) -> tuple[ActorEntity, A]:
+        record = self.state.world.actor(actor_id)
+        payload = self._actors.get(actor_id)
+        if payload is None:
+            payload = self._actor_state.model_validate(record.rules)
+            self._actors[actor_id] = payload
+        return record.entity, payload
+
+    def item(self, item_id: EntityId) -> tuple[ItemEntity, I]:
+        record = self.state.world.item(item_id)
+        payload = self._items.get(item_id)
+        if payload is None:
+            payload = self._item_state.model_validate(record.rules)
+            self._items[item_id] = payload
+        return record.entity, payload
+
+    def player(self) -> tuple[ActorEntity, A]:
+        return self.actor(PLAYER_ID)
+
+    def commit(self) -> GameState:
+        for actor_id, payload in self._actors.items():
+            self.state.world.actor(actor_id).rules = payload.model_dump(mode="json")
+        for item_id, payload in self._items.items():
+            self.state.world.item(item_id).rules = payload.model_dump(mode="json")
+        return self.state.committed()

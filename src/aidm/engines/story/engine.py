@@ -1,32 +1,13 @@
-from dataclasses import dataclass
-from random import Random
-from typing import ClassVar
+from aidm.base import ActorEntity, Entity, ItemEntity, LocationEntity
+from aidm.content import AuthoredActor, AuthoredItem, AuthoredWorld, Rules, compose_world
+from aidm.engine import Engine
+from aidm.registry import EnginePlugin
+from aidm.world import GameState, WorldState
 
-from pydantic_ai import RunContext
-from pydantic_ai.output import OutputSpec
-
-from aidm.base import (
-    ActorEntity,
-    AdvancementDecision,
-    EngineId,
-    Entity,
-    ItemEntity,
-    LocationEntity,
-)
-from aidm.content import AuthoredActor, AuthoredItem, AuthoredWorld, compose_world
-from aidm.transition import Direction, Transition
-from aidm.world import (
-    CharacterEngineData,
-    EntityRules,
-    GameState,
-    WorldState,
-    for_engine,
-    for_engine_or_none,
-)
-
-from .advancement import StoryAdvancement, StoryAdvancementDecision, is_story_decision
-from .direction import StoryDirection
+from .access import actor_state, item_state
+from .advancement import StoryAdvancement
 from .director import StoryDirector
+from .identity import ENGINE_ID
 from .presentation import StoryPresentation
 from .rules import StoryRules
 from .state import (
@@ -38,106 +19,69 @@ from .state import (
     StoryItemState,
 )
 
-ENGINE_ID: EngineId = "story"
+
+def _actor_rules(authored: AuthoredActor) -> Rules:
+    """An empty payload validates into the same defaults an unauthored actor would have taken."""
+    return StoryActorDefinition.model_validate(authored.rules).runtime().model_dump(mode="json")
 
 
-@dataclass(frozen=True, slots=True)
-class StoryEngine:
-    rules: StoryRules
-    director: StoryDirector
-    presentation: StoryPresentation
-    advancement: StoryAdvancement
-    id: ClassVar[EngineId] = ENGINE_ID
-
-    def initial_world(
-        self,
-        authored: AuthoredWorld,
-        character: CharacterEngineData,
-    ) -> WorldState:
-        sheet = for_engine(character, StoryCharacterData)
-        return compose_world(
-            authored,
-            StoryActorState(
-                approaches=sheet.approaches,
-                tags=sheet.tags,
-                max_stress=sheet.max_stress,
-            ),
-            _actor_rules,
-            _item_rules,
-        )
-
-    def validate_state(self, state: GameState) -> None:
-        if state.engine != ENGINE_ID:
-            raise ValueError(f"Story received a {state.engine!r} game")
-
-    def default_rules(self, entity: Entity) -> EntityRules | None:
-        match entity:
-            case ActorEntity():
-                return StoryActorState(approaches=DEFAULT_APPROACHES)
-            case ItemEntity():
-                return StoryItemState()
-            case LocationEntity():
-                return None
-
-    def resolve(self, direction: Direction, state: GameState, rng: Random) -> Transition:
-        return self.rules.resolve(_direction(direction), state, rng)
-
-    def advance(
-        self,
-        decision: AdvancementDecision,
-        state: GameState,
-        rng: Random,
-    ) -> Transition:
-        return self.advancement.advance(state, _decision(decision), rng)
-
-    def advancement_available(self, state: GameState) -> bool:
-        return self.advancement.available(state)
-
-    def director_output(self) -> OutputSpec[Direction]:
-        return self.director.output
-
-    def director_instructions(self) -> str:
-        return self.director.instructions()
-
-    def validate_direction(self, ctx: RunContext[GameState], direction: Direction) -> Direction:
-        return self.director.validate(ctx, _direction(direction))
-
-    def entity_state(self, entity: Entity, rules: EntityRules) -> str:
-        return self.presentation.entity_state(entity, rules)
-
-    def trace_direction(self, direction: Direction) -> str:
-        return self.presentation.trace_direction(_direction(direction))
+def _item_rules(authored: AuthoredItem) -> Rules:
+    return StoryItemDefinition.model_validate(authored.rules).runtime().model_dump(mode="json")
 
 
-def build_story_engine() -> StoryEngine:
+def _initial_world(authored: AuthoredWorld, character: Rules) -> WorldState:
+    sheet = StoryCharacterData.model_validate(character)
+    player = StoryActorState(
+        approaches=sheet.approaches,
+        tags=sheet.tags,
+        max_stress=sheet.max_stress,
+    )
+    return compose_world(authored, player.model_dump(mode="json"), _actor_rules, _item_rules)
+
+
+def _validate_state(state: GameState) -> None:
+    """Replaces core's deleted `_require_one_engine`: a foreign or malformed payload breaks here,
+    not mid-combat."""
+    if state.engine != ENGINE_ID:
+        raise ValueError(f"Story received a {state.engine!r} game")
+    for record in state.world.actors.values():
+        actor_state(record.rules)
+    for record in state.world.items.values():
+        item_state(record.rules)
+
+
+def _default_rules(entity: Entity) -> Rules:
+    match entity:
+        case ActorEntity():
+            return StoryActorState(approaches=DEFAULT_APPROACHES).model_dump(mode="json")
+        case ItemEntity():
+            return StoryItemState().model_dump(mode="json")
+        case LocationEntity():
+            return {}
+
+
+def build_story_engine() -> Engine:
     rules = StoryRules()
-    return StoryEngine(
-        rules=rules,
-        director=StoryDirector(rules),
-        presentation=StoryPresentation(),
-        advancement=StoryAdvancement(),
+    director = StoryDirector(rules)
+    presentation = StoryPresentation()
+    advancement = StoryAdvancement()
+    return Engine(
+        id=ENGINE_ID,
+        initial_world=_initial_world,
+        validate_state=_validate_state,
+        default_rules=_default_rules,
+        resolve=rules.resolve,
+        advance=advancement.advance,
+        advancement_available=advancement.available,
+        director_output=director.output(),
+        director_instructions=director.instructions(),
+        entity_state=presentation.entity_state,
+        advancement=advancement,
     )
 
 
-def _actor_rules(authored: AuthoredActor) -> StoryActorState:
-    definition = for_engine_or_none(authored.data, StoryActorDefinition)
-    if definition is None:
-        return StoryActorState(approaches=DEFAULT_APPROACHES)
-    return definition.runtime()
-
-
-def _item_rules(authored: AuthoredItem) -> StoryItemState:
-    definition = for_engine_or_none(authored.data, StoryItemDefinition)
-    return StoryItemState() if definition is None else definition.runtime()
-
-
-def _direction(direction: Direction) -> StoryDirection:
-    if not isinstance(direction, StoryDirection):
-        raise TypeError(f"{ENGINE_ID!r} engine received a {type(direction).__name__}")
-    return direction
-
-
-def _decision(decision: AdvancementDecision) -> StoryAdvancementDecision:
-    if not is_story_decision(decision):
-        raise TypeError(f"{ENGINE_ID!r} engine received a {type(decision).__name__}")
-    return decision
+PLUGIN = EnginePlugin(
+    id=ENGINE_ID,
+    build=lambda _: build_story_engine(),
+    badge=("STORY", "deep-purple-6"),
+)

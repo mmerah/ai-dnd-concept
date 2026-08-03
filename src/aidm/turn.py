@@ -3,8 +3,9 @@ from typing import Annotated, Literal
 from pydantic import Field
 
 from .base import SAVE_VERSION, Entity, Frozen, Role
+from .facts import Fact
 from .growth import Growth, RejectedGrowth
-from .transition import Direction, Fact
+from .transition import Direction
 
 
 class TraceEntryBase(Frozen):

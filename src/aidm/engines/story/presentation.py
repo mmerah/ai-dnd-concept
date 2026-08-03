@@ -1,23 +1,15 @@
-import json
-
 from aidm.base import PLAYER_ID, ActorEntity, Entity
-from aidm.world import EntityRules
+from aidm.content import Rules
 
-from .access import actor_rules, item_rules
-from .direction import STORY_MECHANICS_ADAPTER, StoryDirection
+from .access import actor_state, item_state
 from .state import StoryActorState, StoryItemState
 
 
 class StoryPresentation:
-    def entity_state(self, entity: Entity, rules: EntityRules) -> str:
+    def entity_state(self, entity: Entity, rules: Rules) -> str:
         if isinstance(entity, ActorEntity):
-            return self._actor_state(entity, actor_rules(rules))
-        return self._item_state(item_rules(rules))
-
-    def trace_direction(self, direction: StoryDirection) -> str:
-        return json.dumps(
-            json.loads(STORY_MECHANICS_ADAPTER.dump_json(direction.mechanics)), indent=2
-        )
+            return self._actor_state(entity, actor_state(rules))
+        return self._item_state(item_state(rules))
 
     @staticmethod
     def _actor_state(actor: ActorEntity, state: StoryActorState) -> str:

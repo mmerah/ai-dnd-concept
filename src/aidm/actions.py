@@ -3,10 +3,11 @@ from typing import Annotated, Literal, TypeGuard, assert_never
 
 from pydantic import Field
 
-from .base import PLAYER_ID, ActorEntity, Entity, EntityId, ItemEntity, LocationEntity, slug
+from .base import PLAYER_ID, ActorEntity, EntityId, ItemEntity, LocationEntity, slug
+from .content import Rules
 from .directing import ConsequenceBase, Reference
-from .facts import CoreFact
-from .world import EntityRules, GameState
+from .facts import Fact
+from .world import GameState
 
 
 class Discover(ConsequenceBase):
@@ -117,8 +118,8 @@ def is_world_action(value: object) -> TypeGuard[WorldAction]:
 def resolve_world_action(
     action: WorldAction,
     draft: GameState,
-    default_rules: Callable[[Entity], EntityRules | None],
-) -> list[CoreFact]:
+    improvised_item_rules: Callable[[], Rules],
+) -> list[Fact]:
     match action:
         case Discover(entity_id=entity_id):
             return draft.reveal(draft.world.require(entity_id))
@@ -131,11 +132,11 @@ def resolve_world_action(
         case GiveItem():
             return _give(action, draft)
         case GainImprovisedItem():
-            return _improvise(action, draft, default_rules)
+            return _improvise(action, draft, improvised_item_rules)
     assert_never(action)
 
 
-def _move(action: Move, draft: GameState) -> list[CoreFact]:
+def _move(action: Move, draft: GameState) -> list[Fact]:
     destination = draft.world.require_kind(action.location_id, LocationEntity)
     player = draft.player
     if action.actor_id is None or action.actor_id == PLAYER_ID:
@@ -147,7 +148,7 @@ def _move(action: Move, draft: GameState) -> list[CoreFact]:
     return [*revealed, draft.move_actor(actor, destination)]
 
 
-def _take(action: TakeItem, draft: GameState) -> list[CoreFact]:
+def _take(action: TakeItem, draft: GameState) -> list[Fact]:
     item = draft.world.require_kind(action.item_id, ItemEntity)
     player = draft.player
     if item.container_id != player.location_id:
@@ -165,13 +166,13 @@ def _held(item_id: EntityId, draft: GameState, verb: str) -> ItemEntity:
     return item
 
 
-def _drop(action: DropItem, draft: GameState) -> list[CoreFact]:
+def _drop(action: DropItem, draft: GameState) -> list[Fact]:
     item = _held(action.item_id, draft, "drop")
     location = draft.world.require_kind(draft.player.location_id, LocationEntity)
     return [draft.move_item(item, location)]
 
 
-def _give(action: GiveItem, draft: GameState) -> list[CoreFact]:
+def _give(action: GiveItem, draft: GameState) -> list[Fact]:
     item = _held(action.item_id, draft, "give")
     actor = draft.world.require_kind(action.actor_id, ActorEntity)
     if actor.id == PLAYER_ID:
@@ -186,8 +187,8 @@ def _give(action: GiveItem, draft: GameState) -> list[CoreFact]:
 def _improvise(
     action: GainImprovisedItem,
     draft: GameState,
-    default_rules: Callable[[Entity], EntityRules | None],
-) -> list[CoreFact]:
+    improvised_item_rules: Callable[[], Rules],
+) -> list[Fact]:
     player = draft.player
     item = ItemEntity(
         id=slug(action.item_name, draft.world.all_ids()),
@@ -196,5 +197,5 @@ def _improvise(
         known=True,
         container_id=player.location_id,
     )
-    created = draft.add(item, default_rules(item))
+    created = draft.add(item, improvised_item_rules())
     return [created, draft.move_item(item, player)]

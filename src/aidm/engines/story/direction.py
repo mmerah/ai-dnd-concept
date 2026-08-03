@@ -13,7 +13,9 @@ from aidm.actions import (
 )
 from aidm.base import EntityId, Frozen, Slug
 from aidm.directing import ConsequenceBase
+from aidm.transition import Direction
 
+from .identity import ENGINE_ID
 from .state import StoryApproach, StoryCondition
 
 
@@ -190,11 +192,28 @@ STORY_MECHANICS_ADAPTER: TypeAdapter[list[StoryConsequence]] = TypeAdapter(list[
 
 
 class StoryDirection(Frozen):
-    engine: Literal["story"] = "story"
     intent: str
     tone: str
     speaker_id: EntityId | None = None
     mechanics: list[StoryConsequence] = Field(default_factory=list)
+
+
+def dump_direction(proposal: StoryDirection) -> Direction:
+    """The Director proposes typed mechanics; core only ever holds the flat blob."""
+    return Direction(
+        engine=ENGINE_ID,
+        intent=proposal.intent,
+        tone=proposal.tone,
+        speaker_id=proposal.speaker_id,
+        mechanics=STORY_MECHANICS_ADAPTER.dump_python(proposal.mechanics, mode="json"),
+    )
+
+
+def load_mechanics(direction: Direction) -> list[StoryConsequence]:
+    """The tag is checked too: core actions validate under either engine, so shape cannot decide."""
+    if direction.engine != ENGINE_ID:
+        raise ValueError(f"Story received a {direction.engine!r} direction")
+    return STORY_MECHANICS_ADAPTER.validate_python(direction.mechanics)
 
 
 def branches(consequence: StoryConsequence) -> tuple[list[StoryConsequence], ...]:

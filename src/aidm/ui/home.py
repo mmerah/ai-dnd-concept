@@ -9,8 +9,8 @@ from aidm.application import (
     SaveOption,
     load_catalog,
 )
-from aidm.base import as_engine_id
 from aidm.config import Settings
+from aidm.registry import as_engine_id
 
 from .components.engine import show_engine_badge
 

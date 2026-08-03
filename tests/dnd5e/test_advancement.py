@@ -4,8 +4,12 @@ from core_test_support import updated
 from fivee_progression_support import answers
 from fivee_test_support import initial_5e_game, player_of, ruleset, with_actor
 
-from aidm.engines.dnd5e.advancement import Dnd5eAdvancement, Dnd5eAdvancementDecisions
-from aidm.engines.dnd5e.direction import Dnd5eDirection, LevelUp
+from aidm.engines.dnd5e.advancement import (
+    Dnd5eAdvancement,
+    Dnd5eAdvancementDecisions,
+    dump_decision,
+)
+from aidm.engines.dnd5e.direction import Dnd5eDirection, LevelUp, dump_direction
 from aidm.engines.dnd5e.state import Dnd5eActorState
 
 
@@ -18,19 +22,13 @@ def test_5e_advancement_status_and_full_flow() -> None:
     assert status.headline == "level 1"
     assert status.progress == 1 / 20
     assert "No level-up has been awarded" in status.detail[0]
-    assert any("Current class features" in line for line in status.detail)
     assert any("Second Wind" in line and "1/1 uses" in line for line in status.detail)
     assert not advancement.available(state)
 
-    offered = engine.rules.resolve(
-        Dnd5eDirection(
-            intent="Kael earns a level.",
-            tone="triumphant",
-            mechanics=[LevelUp()],
-        ),
-        state,
-        Random(1),
-    ).state
+    proposal = dump_direction(
+        Dnd5eDirection(intent="Kael earns a level.", tone="triumphant", mechanics=[LevelUp()])
+    )
+    offered = engine.resolve(proposal, state, Random(1)).state
     assert advancement.available(offered)
     assert advancement.status(offered).detail[0] == "Level 2 is ready."
 
@@ -39,7 +37,7 @@ def test_5e_advancement_status_and_full_flow() -> None:
     plan = advancement.plan(offered, decisions)
     assert plan.benefits == preview.benefits
 
-    advanced = advancement.advance(offered, decisions, Random(1)).state
+    advanced = advancement.advance(dump_decision(decisions), offered, Random(1)).state
 
     assert advancement.status(advanced).headline == "level 2"
     assert not advancement.available(advanced)

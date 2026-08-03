@@ -2,19 +2,18 @@ from random import Random
 
 from story_test_support import initial_story_game, setback_direction
 
-from aidm.base import PLAYER_ID, ItemEntity
-from aidm.engines.story.access import item_of, player_rules
-from aidm.engines.story.advancement import AcquireGear, IncreaseMaximumStress
-from aidm.engines.story.facts import Revived
+from aidm.base import PLAYER_ID, EntityId, ItemEntity
+from aidm.engines.story.access import player_state
+from aidm.engines.story.advancement import AcquireGear, IncreaseMaximumStress, dump_decision
+from aidm.engines.story.direction import dump_direction
 from aidm.engines.story.state import StoryGearTag
-from aidm.facts import EntityCreated
 
 
 def test_story_gear_advancement_creates_one_carried_core_item() -> None:
     engine, state = initial_story_game()
     for _ in range(3):
-        state = engine.rules.resolve(setback_direction(), state, Random(2)).state
-    assert engine.advancement.available(state)
+        state = engine.resolve(dump_direction(setback_direction()), state, Random(2)).state
+    assert engine.advancement_available(state)
 
     decision = AcquireGear(
         item_name="a silver compass",
@@ -24,17 +23,20 @@ def test_story_gear_advancement_creates_one_carried_core_item() -> None:
             description="It finds paths connected to a sincere vow.",
         ),
     )
-    transition = engine.advancement.advance(state, decision, Random(0))
-    created = [fact for fact in transition.facts if isinstance(fact, EntityCreated)]
+    transition = engine.advance(dump_decision(decision), state, Random(0))
+    created = [fact for fact in transition.facts if fact.kind == "entity_created"]
     assert len(created) == 1
+    gear_facts = [fact for fact in transition.facts if fact.kind == "gear_acquired"]
+    assert len(gear_facts) == 1
 
     after = transition.state
-    entity = after.world.require(created[0].entity.id)
+    entity_id = created[0].data["entity_id"]
+    assert isinstance(entity_id, str)
+    entity = after.world.require(EntityId(entity_id))
     assert isinstance(entity, ItemEntity)
     assert entity.container_id == PLAYER_ID
-    assert item_of(after, entity.id)[1].gear == decision.gear
-    assert player_rules(after).growth_marks == 0
-    assert not engine.advancement.available(after)
+    assert player_state(after).growth_marks == 0
+    assert not engine.advancement_available(after)
 
 
 def test_increasing_maximum_stress_revives_a_taken_out_player() -> None:
@@ -43,14 +45,15 @@ def test_increasing_maximum_stress_revives_a_taken_out_player() -> None:
     # growth and stack five stress, exactly reaching Kael's default max_stress of 5.
     engine, state = initial_story_game()
     for _ in range(5):
-        state = engine.rules.resolve(setback_direction(take_stress=True), state, Random(2)).state
-    before = player_rules(state)
+        direction = dump_direction(setback_direction(take_stress=True))
+        state = engine.resolve(direction, state, Random(2)).state
+    before = player_state(state)
     assert (before.stress, before.max_stress, before.taken_out) == (5, 5, True)
-    assert engine.advancement.available(state)
+    assert engine.advancement_available(state)
 
-    transition = engine.advancement.advance(state, IncreaseMaximumStress(), Random(0))
-    assert len([fact for fact in transition.facts if isinstance(fact, Revived)]) == 1
+    transition = engine.advance(dump_decision(IncreaseMaximumStress()), state, Random(0))
+    assert len([fact for fact in transition.facts if fact.kind == "revived"]) == 1
 
-    player = player_rules(transition.state)
+    player = player_state(transition.state)
     assert (player.stress, player.max_stress) == (5, 6)
     assert player.taken_out is False

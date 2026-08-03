@@ -4,6 +4,7 @@ from dataclasses import dataclass
 from nicegui import ui
 
 from aidm.application import GameSession
+from aidm.engine import Engine
 from aidm.engines.story.advancement import (
     AcquireGear,
     AddTag,
@@ -11,30 +12,32 @@ from aidm.engines.story.advancement import (
     RaiseApproach,
     RemoveBurden,
     RewriteBurden,
+    StoryAdvancement,
     StoryAdvancementDecision,
     StoryAdvancementPlan,
     StoryAdvancementPreview,
+    dump_decision,
 )
-from aidm.engines.story.engine import StoryEngine
 from aidm.engines.story.state import APPROACH_NAMES, StoryApproach, StoryGearTag
 
 from ..advancement import confirm_advancement
+from .registry import AdvancementUiPlugin
 
 
 @dataclass(frozen=True, slots=True)
 class StoryAdvancementUi:
-    engine: StoryEngine
+    advancement: StoryAdvancement
 
     def render(self, session: GameSession, refresh: Callable[[], None]) -> None:
-        status = self.engine.advancement.status(session.state)
+        status = self.advancement.status(session.state)
         ui.label(f"{session.state.player.name} — {status.headline}").classes("text-sm font-bold")
         ui.linear_progress(value=status.progress, show_value=False).classes("w-full")
         for line in status.detail:
             ui.label(line).classes("text-sm opacity-70")
-        if not self.engine.advancement.available(session.state):
+        if not self.advancement.available(session.state):
             return
         try:
-            preview = self.engine.advancement.preview(session.state)
+            preview = self.advancement.preview(session.state)
         except ValueError as error:
             ui.label(f"Cannot read the advancement: {error}").classes("text-negative text-sm")
             return
@@ -261,13 +264,13 @@ class StoryAdvancementUi:
         decision: StoryAdvancementDecision,
     ) -> None:
         try:
-            plan = self.engine.advancement.plan(session.state, decision)
+            plan = self.advancement.plan(session.state, decision)
         except ValueError as error:
             ui.notify(str(error), type="negative", multi_line=True)
             return
         confirm_advancement(
             session,
-            decision,
+            dump_decision(decision),
             refresh,
             title="Confirm Story advancement",
             confirm_label="Confirm advancement",
@@ -284,3 +287,13 @@ def _text(value: object) -> str | None:
         return None
     stripped = value.strip()
     return stripped or None
+
+
+def _advancement_ui(engine: Engine) -> StoryAdvancementUi:
+    advancement = engine.advancement
+    if not isinstance(advancement, StoryAdvancement):
+        raise TypeError(f"the {engine.id!r} engine offers no Story advancement")
+    return StoryAdvancementUi(advancement)
+
+
+ADVANCEMENT_UI = AdvancementUiPlugin(build=_advancement_ui)

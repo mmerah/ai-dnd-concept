@@ -1,19 +1,13 @@
 from pathlib import Path
 from typing import Literal, Self
 
-from pydantic import BaseModel, ConfigDict, Field, SecretStr, model_validator
+from pydantic import BaseModel, ConfigDict, Field, JsonValue, SecretStr, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
-from .base import ROLES, Role
+from .base import ROLES, EngineId, Role
 
 ProviderName = Literal["openrouter", "local"]
 ReasoningEffort = Literal["none", "minimal", "low", "medium", "high", "xhigh", "max"]
-
-
-class Dnd5eConfig(BaseModel):
-    model_config = ConfigDict(frozen=True)
-
-    pack_paths: tuple[Path, ...] | None = None
 
 
 class ProviderConfig(BaseModel):
@@ -88,7 +82,8 @@ class Settings(BaseSettings):
 
     providers: Providers = Providers()
     roles: Roles = Roles()
-    dnd5e: Dnd5eConfig = Field(default_factory=Dnd5eConfig)
+    # One section per engine, validated by the engine that reads it inside its own build.
+    engines: dict[EngineId, dict[str, JsonValue]] = Field(default_factory=dict)
     max_growth: int = Field(default=3, ge=0)
     history_window: int = Field(default=6, ge=0)
     saves_dir: Path = Path("saves")

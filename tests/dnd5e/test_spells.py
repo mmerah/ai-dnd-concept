@@ -1,22 +1,20 @@
-"""Casting is the one compound procedure that reads the spell corpus: a slot is spent, then the
-record's own attack roll, save, damage or healing resolves. Anything the record does not type stays
-description-guided, so these cover the slot, the gate and the outcomes the engine owns."""
-
 from random import Random
+from typing import cast as as_int
 
 import pytest
 from core_test_support import updated
 from fivee_progression_support import levelled, started
+from fivee_test_support import actor_of, new_game, player_of, ruleset, with_actor
 from fivee_test_support import content_ref as ref
-from fivee_test_support import new_game, player_of, ruleset, with_actor
 
 from aidm.base import ActorEntity, EntityId
 from aidm.engines.dnd5e import bestiary, dice, spells
-from aidm.engines.dnd5e.access import actor_of
+from aidm.engines.dnd5e.access import Dnd5eWorld
 from aidm.engines.dnd5e.direction import Cast
-from aidm.engines.dnd5e.facts import DcRolled, DiceRolled, Emitted, HpChanged
-from aidm.engines.dnd5e.resolve import resolve
+from aidm.engines.dnd5e.resolve import resolve as _resolve
+from aidm.engines.dnd5e.ruleset import Ruleset
 from aidm.engines.dnd5e.state import Dnd5eActorDefinition, Progression
+from aidm.facts import Fact
 from aidm.world import GameState
 
 RULES = ruleset()
@@ -36,31 +34,42 @@ def guarded(klass: str, level: int = 1) -> GameState:
         known=True,
         location_id=player_of(state).location_id,
     )
+    authored = Dnd5eActorDefinition(ref=ref("monsters", "gargoyle"))
     return with_actor(
         state,
         gargoyle,
-        bestiary.statted_actor(
-            GARGOYLE, Dnd5eActorDefinition(ref=ref("monsters", "gargoyle")), RULES
-        ),
+        bestiary.statted_actor(GARGOYLE, authored.model_dump(mode="json"), RULES),
     )
 
 
-def cast(state: GameState, spell: str, slot_level: int, seed: int = 1) -> list[Emitted]:
-    return resolve(
+def cast(state: GameState, spell: str, slot_level: int, seed: int = 1) -> list[Fact]:
+    world = Dnd5eWorld(state=state)
+    facts = _resolve(
         [Cast(spell=f"srd-2014/spells/{spell}", slot_level=slot_level, target_id=GARGOYLE)],
-        state,
+        world,
         Random(seed),
         RULES,
     )
+    _ = world.commit()
+    return facts
 
 
-def rolled(facts: list[Emitted]) -> DiceRolled:
-    (found,) = [fact for fact in facts if isinstance(fact, DiceRolled)]
+def rolled(facts: list[Fact]) -> Fact:
+    (found,) = [fact for fact in facts if fact.kind == "dice_rolled"]
     return found
 
 
-def saving_throw(facts: list[Emitted]) -> DcRolled:
-    (found,) = [fact for fact in facts if isinstance(fact, DcRolled)]
+def resolve(
+    mechanics: list[Cast], state: GameState, rng: Random, ruleset: Ruleset = RULES
+) -> list[Fact]:
+    world = Dnd5eWorld(state=state)
+    facts = _resolve(mechanics, world, rng, ruleset)
+    _ = world.commit()
+    return facts
+
+
+def saving_throw(facts: list[Fact]) -> Fact:
+    (found,) = [fact for fact in facts if fact.kind == "dc_rolled"]
     return found
 
 
@@ -68,8 +77,8 @@ def harm(state: GameState) -> int:
     return GARGOYLE_HP - actor_of(state, GARGOYLE).stats.hp
 
 
-def hp_changed(facts: list[Emitted]) -> HpChanged:
-    (found,) = [fact for fact in facts if isinstance(fact, HpChanged)]
+def hp_changed(facts: list[Fact]) -> Fact:
+    (found,) = [fact for fact in facts if fact.kind == "hp_changed"]
     return found
 
 
@@ -79,31 +88,31 @@ def test_a_save_that_halves_on_success_halves_rather_than_skips() -> None:
     made, missed = guarded("wizard", level=5), guarded("wizard", level=5)
     saved = cast(made, "fireball", 3, SAVE_MADE)
     failed = cast(missed, "fireball", 3, SAVE_MISSED)
-    assert saving_throw(saved).success and not saving_throw(failed).success
-    assert [fact.fact for fact in saved] == [
+    assert saving_throw(saved).data["success"] and not saving_throw(failed).data["success"]
+    assert [fact.kind for fact in saved] == [
         "spell_slot_spent",
         "spell_cast",
         "dc_rolled",
         "dice_rolled",
         "hp_changed",
     ]
-    assert rolled(saved).dice == "8d6"
-    assert harm(made) == rolled(saved).total // 2
-    assert harm(missed) == rolled(failed).total
-    assert hp_changed(saved).trace_summary == "a gargoyle is hurt"
+    assert rolled(saved).data["dice"] == "8d6"
+    assert harm(made) == as_int(int, rolled(saved).data["total"]) // 2
+    assert harm(missed) == rolled(failed).data["total"]
+    assert hp_changed(saved).trace == "a gargoyle is hurt"
 
 
 def test_an_attack_spell_rolls_to_hit_and_a_cantrip_scales_off_character_level() -> None:
     """`fire-bolt` carries no `at_slot_level` at all; its damage is `at_character_level`, and those
     steps are 1/5/11/17, so a level 5 wizard throws 2d10 rather than the table's first entry."""
     events = cast(guarded("wizard", level=5), "fire-bolt", 0, seed=0)  # seed 0 rolls a hit
-    assert [fact.fact for fact in events] == [
+    assert [fact.kind for fact in events] == [
         "spell_cast",  # a cantrip spends no slot
         "attack_rolled",
         "dice_rolled",
         "hp_changed",
     ]
-    assert rolled(events).dice == "2d10"
+    assert rolled(events).data["dice"] == "2d10"
 
 
 def test_a_healing_spell_substitutes_the_casters_modifier_before_rolling() -> None:
@@ -117,8 +126,8 @@ def test_a_healing_spell_substitutes_the_casters_modifier_before_rolling() -> No
     facts = resolve(
         [Cast(spell="srd-2014/spells/cure-wounds", slot_level=1)], wounded, Random(1), RULES
     )
-    assert rolled(facts).dice == "1d8 + 2"
-    assert player_of(wounded).stats.hp == 2 + rolled(facts).total
+    assert rolled(facts).data["dice"] == "1d8 + 2"
+    assert player_of(wounded).stats.hp == 2 + as_int(int, rolled(facts).data["total"])
 
 
 def test_a_negative_modifier_folds_its_sign_rather_than_being_pasted_in() -> None:

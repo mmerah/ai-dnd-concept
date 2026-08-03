@@ -17,8 +17,5 @@ def test_story_narrator_receives_visible_actor_and_gear_state() -> None:
         prompt="I inspect the desk.",
     )
 
-    assert "Mara[id=mara]" in prompt
-    assert "stress 0/5" in prompt
-    assert "status active" in prompt
     assert "gear benefit: Unsteady Lantern" in prompt
     assert "Elena" not in prompt

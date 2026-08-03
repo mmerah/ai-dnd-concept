@@ -1,4 +1,5 @@
 from aidm.base import EntityId, Kind
+from aidm.content import Rules
 
 from .content.records.base import ContentRef
 from .content.registry import COLLECTION_SPECS
@@ -12,11 +13,9 @@ from .state import (
 )
 
 
-def statted_actor(
-    actor_id: EntityId, authored: Dnd5eActorDefinition | None, ruleset: Ruleset
-) -> Dnd5eActorState:
-    stats = None if authored is None else authored.stats
-    ref = None if authored is None else authored.ref
+def statted_actor(actor_id: EntityId, rules: Rules, ruleset: Ruleset) -> Dnd5eActorState:
+    authored = Dnd5eActorDefinition.model_validate(rules)
+    stats, ref = authored.stats, authored.ref
     if ref is None:
         # Copy: the authored definition outlives the game, and a stat block is mutable now.
         return Dnd5eActorState(stats=StatBlock() if stats is None else stats.model_copy(deep=True))
@@ -29,13 +28,11 @@ def statted_actor(
     return Dnd5eActorState(stats=archetype.stats.model_copy(deep=True), ref=ref)
 
 
-def statted_item(
-    item_id: EntityId, authored: Dnd5eItemDefinition | None, ruleset: Ruleset
-) -> Dnd5eItemState:
-    ref = None if authored is None else authored.ref
-    if ref is not None:
-        _require_backing(item_id, "item", ref, ruleset)
-    return Dnd5eItemState(ref=ref)
+def statted_item(item_id: EntityId, rules: Rules, ruleset: Ruleset) -> Dnd5eItemState:
+    authored = Dnd5eItemDefinition.model_validate(rules)
+    if authored.ref is not None:
+        _require_backing(item_id, "item", authored.ref, ruleset)
+    return Dnd5eItemState(ref=authored.ref)
 
 
 def _require_backing(entity_id: EntityId, kind: Kind, ref: ContentRef, ruleset: Ruleset) -> None:

@@ -4,29 +4,34 @@ from dataclasses import dataclass
 from nicegui import ui
 
 from aidm.application import GameSession
-from aidm.engines.dnd5e.advancement import Dnd5eAdvancementDecisions
+from aidm.engine import Engine
+from aidm.engines.dnd5e.advancement import (
+    Dnd5eAdvancement,
+    Dnd5eAdvancementDecisions,
+    dump_decision,
+)
 from aidm.engines.dnd5e.content.records.character import ProgressionChoice
-from aidm.engines.dnd5e.engine import Dnd5eEngine
 from aidm.engines.dnd5e.features import actionability
 from aidm.engines.dnd5e.progression import AdvancementPlan, LevelBenefits
 
 from ..advancement import confirm_advancement
+from .registry import AdvancementUiPlugin
 
 
 @dataclass(frozen=True, slots=True)
 class Dnd5eAdvancementUi:
-    engine: Dnd5eEngine
+    advancement: Dnd5eAdvancement
 
     def render(self, session: GameSession, refresh: Callable[[], None]) -> None:
-        status = self.engine.advancement.status(session.state)
+        status = self.advancement.status(session.state)
         ui.label(f"{session.state.player.name} — {status.headline}").classes("text-sm font-bold")
         ui.linear_progress(value=status.progress, show_value=False).classes("w-full")
         for line in status.detail:
             ui.label(line).classes("text-sm opacity-70 whitespace-pre-line")
-        if not self.engine.advancement.available(session.state):
+        if not self.advancement.available(session.state):
             return
         try:
-            preview = self.engine.advancement.preview(session.state)
+            preview = self.advancement.preview(session.state)
         except ValueError as error:
             ui.label(f"Cannot read the advancement: {error}").classes("text-negative text-sm")
             return
@@ -100,13 +105,13 @@ class Dnd5eAdvancementUi:
             }
         )
         try:
-            plan = self.engine.advancement.plan(session.state, decisions)
+            plan = self.advancement.plan(session.state, decisions)
         except ValueError as error:
             ui.notify(str(error), type="negative", multi_line=True)
             return
         confirm_advancement(
             session,
-            decisions,
+            dump_decision(decisions),
             refresh,
             title=f"Confirm level {plan.benefits.level}",
             confirm_label=f"Confirm level {plan.benefits.level}",
@@ -119,3 +124,13 @@ class Dnd5eAdvancementUi:
             ui.label(f"{selection.prompt.capitalize()}: {', '.join(selection.labels)}").classes(
                 "text-sm"
             )
+
+
+def _advancement_ui(engine: Engine) -> Dnd5eAdvancementUi:
+    advancement = engine.advancement
+    if not isinstance(advancement, Dnd5eAdvancement):
+        raise TypeError(f"the {engine.id!r} engine offers no 5e advancement")
+    return Dnd5eAdvancementUi(advancement)
+
+
+ADVANCEMENT_UI = AdvancementUiPlugin(build=_advancement_ui)

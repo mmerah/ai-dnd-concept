@@ -175,14 +175,12 @@ type Dnd5eContentRef = ContentRef
 
 
 class Dnd5eActorState(Mutable):
-    engine: Literal["dnd5e"] = "dnd5e"
     stats: StatBlock
     progression: Progression | None = None
     ref: Dnd5eContentRef | None = None
 
 
 class Dnd5eItemState(Mutable):
-    engine: Literal["dnd5e"] = "dnd5e"
     ref: Dnd5eContentRef | None = None
 
 
@@ -245,18 +243,15 @@ class Dnd5eItem:
 
 
 class Dnd5eCharacterData(Value):
-    engine: Literal["dnd5e"] = "dnd5e"
     origin: Origin
     starting_attributes: Attributes = Attributes()
     decisions: Decisions = Field(default_factory=dict)
 
 
 class Dnd5eActorDefinition(Value):
-    engine: Literal["dnd5e"] = "dnd5e"
     ref: Dnd5eContentRef | None = None
     stats: StatBlock | None = None
 
 
 class Dnd5eItemDefinition(Value):
-    engine: Literal["dnd5e"] = "dnd5e"
     ref: Dnd5eContentRef | None = None

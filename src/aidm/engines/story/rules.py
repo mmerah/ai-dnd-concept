@@ -1,12 +1,15 @@
 from collections.abc import Sequence
 from random import Random
+from typing import Literal
 
 from aidm.actions import WorldActionRejected, is_world_action, resolve_world_action
-from aidm.base import PLAYER_ID, ActorEntity, Entity, EntityId, ItemEntity
-from aidm.transition import Transition
-from aidm.world import EntityRules, GameState
+from aidm.base import PLAYER_ID, ActorEntity, EntityId
+from aidm.content import Rules
+from aidm.facts import Fact
+from aidm.transition import Direction, Transition
+from aidm.world import GameState
 
-from .access import actor_of, item_of
+from .access import StoryWorld
 from .direction import (
     ApplyCondition,
     ClearCondition,
@@ -17,101 +20,209 @@ from .direction import (
     RecoverStress,
     Risk,
     StoryConsequence,
-    StoryDirection,
     TakeStress,
+    load_mechanics,
 )
-from .facts import (
-    ConditionApplied,
-    ConditionCleared,
-    Emitted,
-    GrowthMarked,
-    Revived,
-    RiskRolled,
-    StoryOutcome,
-    StressChanged,
-    TakenOut,
-)
-from .state import GROWTH_REQUIRED, StoryActorState, StoryItemState
+from .identity import ENGINE_ID
+from .state import GROWTH_REQUIRED, StoryActorState, StoryApproach, StoryCondition, StoryItemState
+
+StoryOutcome = Literal["strong", "mixed", "setback"]
 
 
 class StoryProposalRejected(ValueError):
     """A proposed direction the rules cannot resolve; the Director turns this into a retry."""
 
 
+def _risk_rolled(
+    actor: ActorEntity,
+    dice: tuple[int, int],
+    approach: StoryApproach,
+    approach_modifier: int,
+    helpful_modifier: int,
+    hindering_modifier: int,
+    difficulty: int,
+    total: int,
+    outcome: StoryOutcome,
+) -> Fact:
+    modifiers = approach_modifier + helpful_modifier + hindering_modifier - difficulty
+    trace = f"{actor.name} risk: {dice[0]}+{dice[1]} {modifiers:+d} = {total}: {outcome}"
+    return Fact(
+        source=ENGINE_ID,
+        kind="risk_rolled",
+        trace=trace,
+        narrator=f"{actor.name}'s attempt ends in a {outcome}",
+        data={
+            "actor_id": actor.id,
+            "actor_name": actor.name,
+            "dice": list(dice),
+            "approach": approach,
+            "approach_modifier": approach_modifier,
+            "helpful_modifier": helpful_modifier,
+            "hindering_modifier": hindering_modifier,
+            "difficulty": difficulty,
+            "total": total,
+            "outcome": outcome,
+        },
+    )
+
+
+def _stress_changed(actor: ActorEntity, before: int, after: int, maximum: int) -> Fact:
+    narrator = (
+        f"{actor.name} recovers some composure"
+        if after < before
+        else f"{actor.name} comes under more pressure"
+    )
+    return Fact(
+        source=ENGINE_ID,
+        kind="stress_changed",
+        trace=f"{actor.name} stress {before}->{after}/{maximum}",
+        narrator=narrator,
+        data={
+            "actor_id": actor.id,
+            "actor_name": actor.name,
+            "before": before,
+            "after": after,
+            "maximum": maximum,
+        },
+    )
+
+
+def _taken_out(actor: ActorEntity) -> Fact:
+    trace = f"{actor.name} is taken out"
+    return Fact(
+        source=ENGINE_ID,
+        kind="taken_out",
+        trace=trace,
+        narrator=trace,
+        data={"actor_id": actor.id, "actor_name": actor.name},
+    )
+
+
+def revived(actor: ActorEntity) -> Fact:
+    trace = f"{actor.name} is no longer taken out"
+    return Fact(
+        source=ENGINE_ID,
+        kind="revived",
+        trace=trace,
+        narrator=trace,
+        data={"actor_id": actor.id, "actor_name": actor.name},
+    )
+
+
+def _condition_applied(actor: ActorEntity, condition: StoryCondition) -> Fact:
+    return Fact(
+        source=ENGINE_ID,
+        kind="condition_applied",
+        trace=f"{actor.name} gains condition {condition.name}[id={condition.id}]",
+        narrator=f"{actor.name} is now {condition.name}",
+        data={
+            "actor_id": actor.id,
+            "actor_name": actor.name,
+            "condition_id": condition.id,
+            "condition_name": condition.name,
+        },
+    )
+
+
+def _condition_cleared(actor: ActorEntity, condition: StoryCondition) -> Fact:
+    return Fact(
+        source=ENGINE_ID,
+        kind="condition_cleared",
+        trace=f"{actor.name} loses condition {condition.name}[id={condition.id}]",
+        narrator=f"{actor.name} is no longer {condition.name}",
+        data={
+            "actor_id": actor.id,
+            "actor_name": actor.name,
+            "condition_id": condition.id,
+            "condition_name": condition.name,
+        },
+    )
+
+
+def _growth_marked(before: int, after: int) -> Fact:
+    return Fact(
+        source=ENGINE_ID,
+        kind="growth_marked",
+        trace=f"growth {before}->{after}/{GROWTH_REQUIRED}",
+        narrator=None,
+        data={"before": before, "after": after, "required": GROWTH_REQUIRED},
+    )
+
+
 class StoryRules:
-    def resolve(self, direction: StoryDirection, state: GameState, rng: Random) -> Transition:
-        draft = state.draft()
-        facts = self._fold(draft, direction.mechanics, rng)
-        return Transition(state=draft.committed(), facts=tuple(facts))
+    def resolve(self, direction: Direction, state: GameState, rng: Random) -> Transition:
+        mechanics = load_mechanics(direction)
+        world = StoryWorld(state.draft())
+        facts = self._fold(world, mechanics, rng)
+        return Transition(state=world.commit(), facts=tuple(facts))
 
     def _fold(
         self,
-        draft: GameState,
+        world: StoryWorld,
         mechanics: Sequence[StoryConsequence],
         rng: Random,
-    ) -> list[Emitted]:
-        emitted: list[Emitted] = []
+    ) -> list[Fact]:
+        emitted: list[Fact] = []
         for consequence in mechanics:
-            emitted.extend(self._resolve_one(draft, consequence, rng))
+            emitted.extend(self._resolve_one(world, consequence, rng))
         return emitted
 
     def _resolve_one(
         self,
-        draft: GameState,
+        world: StoryWorld,
         consequence: StoryConsequence,
         rng: Random,
-    ) -> list[Emitted]:
+    ) -> list[Fact]:
         if is_world_action(consequence):
             try:
-                return list(resolve_world_action(consequence, draft, _default_rules))
+                return list(resolve_world_action(consequence, world.state, _improvised_item_rules))
             except WorldActionRejected as error:
                 raise StoryProposalRejected(str(error)) from error
         match consequence:
             case Risk():
-                return self._risk(draft, consequence, rng)
+                return self._risk(world, consequence, rng)
             case TakeStress():
-                return self._take_stress(draft, consequence)
+                return self._take_stress(world, consequence)
             case RecoverStress():
-                return self._recover_stress(draft, consequence)
+                return self._recover_stress(world, consequence)
             case ApplyCondition():
-                return self._apply_condition(draft, consequence)
+                return self._apply_condition(world, consequence)
             case ClearCondition():
-                return self._clear_condition(draft, consequence)
+                return self._clear_condition(world, consequence)
             case _:
                 raise TypeError(f"unsupported Story consequence {type(consequence).__name__}")
 
-    def _risk(self, draft: GameState, risk: Risk, rng: Random) -> list[Emitted]:
+    def _risk(self, world: StoryWorld, risk: Risk, rng: Random) -> list[Fact]:
         actor_id = PLAYER_ID if risk.actor_id is None else risk.actor_id
-        actor, held = actor_of(draft, actor_id)
-        if held.taken_out:
+        actor, sheet = world.actor(actor_id)
+        if sheet.taken_out:
             raise StoryProposalRejected(
                 f"actor {actor.id!r} is taken out and cannot attempt a risk;"
                 " recover_stress must bring them back below max_stress first"
             )
-        helpful = self._helpful_modifier(draft, actor_id, held, risk)
-        hindering = self._hindering_modifier(held, risk)
+        helpful = self._helpful_modifier(world, actor_id, sheet, risk)
+        hindering = self._hindering_modifier(sheet, risk)
         dice = (rng.randint(1, 6), rng.randint(1, 6))
-        approach = held.approaches.score(risk.approach)
+        approach = sheet.approaches.score(risk.approach)
         total = sum(dice) + approach + helpful + hindering - risk.difficulty
         outcome: StoryOutcome = "strong" if total >= 10 else "mixed" if total >= 7 else "setback"
-        emitted: list[Emitted] = [
-            RiskRolled(
-                actor_id=actor.id,
-                actor_name=actor.name,
-                dice=dice,
-                approach=risk.approach,
-                approach_modifier=approach,
-                helpful_modifier=helpful,
-                hindering_modifier=hindering,
-                difficulty=risk.difficulty,
-                total=total,
-                outcome=outcome,
+        emitted: list[Fact] = [
+            _risk_rolled(
+                actor,
+                dice,
+                risk.approach,
+                approach,
+                helpful,
+                hindering,
+                risk.difficulty,
+                total,
+                outcome,
             )
         ]
-        if outcome == "setback" and actor.id == PLAYER_ID and held.growth_marks < GROWTH_REQUIRED:
-            before = held.growth_marks
-            held.growth_marks = before + 1
-            emitted.append(GrowthMarked(before=before, after=held.growth_marks))
+        if outcome == "setback" and actor.id == PLAYER_ID and sheet.growth_marks < GROWTH_REQUIRED:
+            before = sheet.growth_marks
+            sheet.growth_marks = before + 1
+            emitted.append(_growth_marked(before, sheet.growth_marks))
         branch = (
             risk.on_strong
             if outcome == "strong"
@@ -119,11 +230,11 @@ class StoryRules:
             if outcome == "mixed"
             else risk.on_setback
         )
-        return [*emitted, *self._fold(draft, branch, rng)]
+        return [*emitted, *self._fold(world, branch, rng)]
 
     def _helpful_modifier(
         self,
-        draft: GameState,
+        world: StoryWorld,
         actor_id: EntityId,
         actor: StoryActorState,
         risk: Risk,
@@ -139,12 +250,12 @@ class StoryRules:
                     )
                 return 1
             case HelpfulGear(item_id=item_id):
-                item, held = item_of(draft, item_id)
+                item, profile = world.item(item_id)
                 if item.container_id != actor_id:
                     raise StoryProposalRejected(
                         f"gear item {item_id!r} is not carried by {actor_id!r}"
                     )
-                if held.gear is None:
+                if profile.gear is None:
                     raise StoryProposalRejected(f"item {item_id!r} has no Story gear benefit")
                 return 1
 
@@ -165,81 +276,53 @@ class StoryRules:
                     )
                 return -1
 
-    def _take_stress(self, draft: GameState, action: TakeStress) -> list[Emitted]:
-        actor, held = self._actor_for_action(draft, action.actor_id)
-        if held.stress == held.max_stress:
+    def _take_stress(self, world: StoryWorld, action: TakeStress) -> list[Fact]:
+        actor, sheet = self._actor_for_action(world, action.actor_id)
+        if sheet.stress == sheet.max_stress:
             return []
-        before = held.stress
-        held.stress = min(held.max_stress, before + action.amount)
-        emitted: list[Emitted] = [
-            StressChanged(
-                actor_id=actor.id,
-                actor_name=actor.name,
-                before=before,
-                after=held.stress,
-                maximum=held.max_stress,
-            )
-        ]
-        if held.taken_out:
-            emitted.append(TakenOut(actor_id=actor.id, actor_name=actor.name))
+        before = sheet.stress
+        sheet.stress = min(sheet.max_stress, before + action.amount)
+        emitted: list[Fact] = [_stress_changed(actor, before, sheet.stress, sheet.max_stress)]
+        if sheet.taken_out:
+            emitted.append(_taken_out(actor))
         return emitted
 
-    def _recover_stress(self, draft: GameState, action: RecoverStress) -> list[Emitted]:
-        actor, held = self._actor_for_action(draft, action.actor_id)
-        if held.stress == 0:
+    def _recover_stress(self, world: StoryWorld, action: RecoverStress) -> list[Fact]:
+        actor, sheet = self._actor_for_action(world, action.actor_id)
+        if sheet.stress == 0:
             return []
-        before = held.stress
-        held.stress = max(0, before - action.amount)
-        emitted: list[Emitted] = [
-            StressChanged(
-                actor_id=actor.id,
-                actor_name=actor.name,
-                before=before,
-                after=held.stress,
-                maximum=held.max_stress,
-            )
-        ]
-        if before == held.max_stress and not held.taken_out:
-            emitted.append(Revived(actor_id=actor.id, actor_name=actor.name))
+        before = sheet.stress
+        sheet.stress = max(0, before - action.amount)
+        emitted: list[Fact] = [_stress_changed(actor, before, sheet.stress, sheet.max_stress)]
+        if before == sheet.max_stress and not sheet.taken_out:
+            emitted.append(revived(actor))
         return emitted
 
-    def _apply_condition(self, draft: GameState, action: ApplyCondition) -> list[Emitted]:
-        actor, held = self._actor_for_action(draft, action.actor_id)
-        if any(condition.id == action.condition.id for condition in held.conditions):
+    def _apply_condition(self, world: StoryWorld, action: ApplyCondition) -> list[Fact]:
+        actor, sheet = self._actor_for_action(world, action.actor_id)
+        if any(condition.id == action.condition.id for condition in sheet.conditions):
             return []
-        held.conditions = (*held.conditions, action.condition)
-        return [
-            ConditionApplied(
-                actor_id=actor.id,
-                actor_name=actor.name,
-                condition=action.condition,
-            )
-        ]
+        sheet.conditions = (*sheet.conditions, action.condition)
+        return [_condition_applied(actor, action.condition)]
 
-    def _clear_condition(self, draft: GameState, action: ClearCondition) -> list[Emitted]:
-        actor, held = self._actor_for_action(draft, action.actor_id)
+    def _clear_condition(self, world: StoryWorld, action: ClearCondition) -> list[Fact]:
+        actor, sheet = self._actor_for_action(world, action.actor_id)
         condition = next(
-            (condition for condition in held.conditions if condition.id == action.condition_id),
+            (condition for condition in sheet.conditions if condition.id == action.condition_id),
             None,
         )
         if condition is None:
             return []
-        held.conditions = tuple(item for item in held.conditions if item.id != condition.id)
-        return [
-            ConditionCleared(
-                actor_id=actor.id,
-                actor_name=actor.name,
-                condition=condition,
-            )
-        ]
+        sheet.conditions = tuple(item for item in sheet.conditions if item.id != condition.id)
+        return [_condition_cleared(actor, condition)]
 
     @staticmethod
     def _actor_for_action(
-        draft: GameState,
+        world: StoryWorld,
         actor_id: EntityId | None,
     ) -> tuple[ActorEntity, StoryActorState]:
-        return actor_of(draft, PLAYER_ID if actor_id is None else actor_id)
+        return world.actor(PLAYER_ID if actor_id is None else actor_id)
 
 
-def _default_rules(entity: Entity) -> EntityRules | None:
-    return StoryItemState() if isinstance(entity, ItemEntity) else None
+def _improvised_item_rules() -> Rules:
+    return StoryItemState().model_dump(mode="json")

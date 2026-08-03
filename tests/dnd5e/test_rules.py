@@ -1,4 +1,5 @@
 from random import Random
+from typing import cast
 
 import pytest
 from fivee_test_support import initial_5e_game
@@ -7,7 +8,7 @@ from pydantic import ValidationError
 from aidm.base import PLAYER_ID, ActorEntity, EntityId
 from aidm.engines.dnd5e import dice
 from aidm.engines.dnd5e import rolls as rules
-from aidm.engines.dnd5e.direction import Damage, Dnd5eDirection
+from aidm.engines.dnd5e.direction import Damage, Dnd5eDirection, dump_direction
 from aidm.engines.dnd5e.state import Dnd5eActor, Dnd5eActorState, StatBlock
 from aidm.engines.dnd5e.values import Attributes
 
@@ -32,8 +33,10 @@ def test_modifier() -> None:
 
 def test_roll_check_adds_the_modifier_and_compares_to_the_dc() -> None:
     check = rules.roll_check(KAEL, "wisdom", dc=12, rng=Random(0))
-    assert check.total == check.roll + 2
-    assert check.success == (check.total >= 12)
+    total = cast(int, check.fact.data["total"])
+    roll = cast(int, check.fact.data["roll"])
+    assert total == roll + 2
+    assert check.success == (total >= 12)
 
 
 @pytest.mark.parametrize(
@@ -46,8 +49,8 @@ def test_roll_check_adds_the_modifier_and_compares_to_the_dc() -> None:
     ],
 )
 def test_roll_dice_sums_every_term(expression: str, total: int) -> None:
-    rolled, event = rules.roll_dice(expression, Random(0))
-    assert (rolled, event.total) == (total, total)
+    rolled, fact = rules.roll_dice(expression, Random(0))
+    assert (rolled, fact.data["total"]) == (total, total)
 
 
 def test_mod_parses_but_no_role_may_roll_it() -> None:
@@ -68,15 +71,17 @@ def test_a_malformed_expression_fails_at_its_boundary() -> None:
 def test_5e_resolution_is_pure_seeded_and_commits_once() -> None:
     """The mirror of the Story purity assertion: a shallow draft would corrupt committed state."""
     engine, state = initial_5e_game()
-    direction = Dnd5eDirection(
-        intent="Kael strikes at Mara.",
-        tone="grim",
-        mechanics=[Damage(amount=2, target_id=EntityId("mara"))],
+    direction = dump_direction(
+        Dnd5eDirection(
+            intent="Kael strikes at Mara.",
+            tone="grim",
+            mechanics=[Damage(amount=2, target_id=EntityId("mara"))],
+        )
     )
     before = state.model_dump_json()
 
-    first = engine.rules.resolve(direction, state, Random(7))
+    first = engine.resolve(direction, state, Random(7))
 
-    assert first == engine.rules.resolve(direction, state, Random(7))
+    assert first == engine.resolve(direction, state, Random(7))
     assert state.model_dump_json() == before
     assert first.state is not state

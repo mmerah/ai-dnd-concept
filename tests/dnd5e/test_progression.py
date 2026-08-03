@@ -1,15 +1,16 @@
 from collections.abc import Sequence
 from random import Random
+from typing import cast
 
 import pytest
 from core_test_support import updated
 from fivee_progression_support import RULES, SHEET, answers, levelled, next_of, ref, started
-from fivee_test_support import new_game, player_of, with_actor
+from fivee_test_support import actor_of, new_game, player_of, with_actor
 
 from aidm.base import EntityId
 from aidm.engines.dnd5e import progression
 from aidm.engines.dnd5e import rolls as rules
-from aidm.engines.dnd5e.access import actor_of
+from aidm.engines.dnd5e.access import Dnd5eWorld
 from aidm.engines.dnd5e.content.library import ContentMiss
 from aidm.engines.dnd5e.content.records.base import ContentRef
 from aidm.engines.dnd5e.content.records.character import BonusOption, ProgressionChoice
@@ -18,8 +19,7 @@ from aidm.engines.dnd5e.direction import (
     Consequence,
     Rest,
 )
-from aidm.engines.dnd5e.facts import DiceRolled, LeveledUp
-from aidm.engines.dnd5e.resolve import resolve
+from aidm.engines.dnd5e.resolve import resolve as _resolve
 from aidm.engines.dnd5e.rules import Dnd5eRules
 from aidm.engines.dnd5e.ruleset import (
     CharacterProfile,
@@ -94,9 +94,9 @@ def test_the_confirmed_plan_contains_the_selected_subclass_grants() -> None:
 
     facts = progression.advance(player_of(state), decisions, RULES, Random(1))
     gained = facts[-1]
-    assert isinstance(gained, LeveledUp)
-    assert gained.advancement.progression == plan.progression
-    assert gained.advancement.attributes == plan.attributes
+    assert gained.kind == "leveled_up"
+    assert gained.data["level"] == plan.progression.level
+    assert gained.data["attributes"] == plan.attributes.model_dump(mode="json")
 
 
 class SmallRules:
@@ -179,8 +179,8 @@ def test_a_constitution_increase_adds_hp_for_every_existing_level() -> None:
     )
     con_level = con_facts[-1]
     strength_level = strength_facts[-1]
-    assert isinstance(con_level, LeveledUp) and isinstance(strength_level, LeveledUp)
-    assert con_level.advancement.hp_gain == strength_level.advancement.hp_gain + 4
+    assert con_level.kind == strength_level.kind == "leveled_up"
+    assert cast(int, con_level.data["hp_gain"]) == cast(int, strength_level.data["hp_gain"]) + 4
 
 
 def test_a_level_choice_does_not_offer_a_feature_already_held() -> None:
@@ -242,15 +242,16 @@ def test_spell_slots_are_spent_recharged_by_the_right_rest_and_spent_again() -> 
         return {level: slot.remaining for level, slot in current.spell_slots.items()}
 
     def resolved(state: GameState, *mechanics: Consequence) -> GameState:
-        _ = resolve(mechanics, state, Random(1), RULES)
-        return state
+        world = Dnd5eWorld(state=state)
+        _ = _resolve(list(mechanics), world, Random(1), RULES)
+        return world.commit()
 
     wizard = started("wizard", new_game())
     assert remaining(wizard) == {1: 2}
     spent = resolved(wizard, comprehend, comprehend)
     assert remaining(spent) == {1: 0}
     with pytest.raises(ValueError, match="no level 1 spell slot remains; finish a long rest"):
-        resolve([comprehend], spent, Random(1), RULES)
+        resolved(spent, comprehend)
     before_short_rest = spent.model_copy(deep=True)
     assert resolved(spent, Rest(rest="short")) == before_short_rest
     rested = resolved(spent, Rest(rest="long"))
@@ -278,8 +279,10 @@ def test_a_known_caster_reaches_level_twenty_with_the_srds_slots_and_repertoire(
     rest returns, which is why the recharge travels with the slots."""
     state = started(klass, new_game())
     for level in range(2, MAX_LEVEL + 1):
-        spread = _spread(progression.preview(player_of(state), RULES).choices, level)
-        _ = progression.advance(player_of(state), spread, RULES, Random(1))
+        world = Dnd5eWorld(state=state)
+        spread = _spread(progression.preview(world.player(), RULES).choices, level)
+        _ = progression.advance(world.player(), spread, RULES, Random(1))
+        state = world.commit()
     current = player_of(state).progression
     assert current is not None and current.level == MAX_LEVEL
     assert len(current.chosen_spells) == known
@@ -338,10 +341,11 @@ def test_only_the_player_may_have_progression() -> None:
 def test_levelling_rolls_the_hit_die_where_the_trace_can_see_it() -> None:
     state = new_game()
     before = player_of(state).stats.max_hp
-    rolled, gained = progression.advance(player_of(state), {}, RULES, Random(1))
-    assert isinstance(gained, LeveledUp)
-    assert isinstance(rolled, DiceRolled)
-    assert rolled.trace_summary.startswith("rolled 1d10:")
-    after = player_of(state.committed())
-    assert after.stats.max_hp - before == gained.advancement.hp_gain
+    world = Dnd5eWorld(state=state)
+    roll, gained = progression.advance(world.player(), {}, RULES, Random(1))
+    assert gained.kind == "leveled_up"
+    assert roll.kind == "dice_rolled"
+    assert roll.trace.startswith("rolled 1d10:")
+    after = player_of(world.commit())
+    assert after.stats.max_hp - before == gained.data["hp_gain"]
     assert after.stats.hp == after.stats.max_hp

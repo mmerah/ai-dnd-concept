@@ -1,6 +1,5 @@
 {
   "character": {
-    "engine": "story",
     "approaches": {
       "bold": 2,
       "subtle": 1,
@@ -23,9 +22,8 @@
     ],
     "max_stress": 5
   },
-  "items": {
+  "entities": {
     "lantern": {
-      "engine": "story",
       "gear": {
         "name": "Unsteady Lantern",
         "description": "Its shifting light exposes seams and movement in deep shadow."

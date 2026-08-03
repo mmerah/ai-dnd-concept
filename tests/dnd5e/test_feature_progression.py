@@ -13,13 +13,27 @@ from fivee_test_support import new_game, player_of, summary, with_actor
 
 from aidm.engines.dnd5e import features, progression
 from aidm.engines.dnd5e import presentation as views
-from aidm.engines.dnd5e.direction import LevelUp, Rest, UseFeature
-from aidm.engines.dnd5e.resolve import resolve
+from aidm.engines.dnd5e.access import Dnd5eWorld
+from aidm.engines.dnd5e.direction import Consequence, LevelUp, Rest, UseFeature
+from aidm.engines.dnd5e.resolve import resolve as _resolve
+from aidm.engines.dnd5e.ruleset import Ruleset
 from aidm.engines.dnd5e.state import ResourceState
 from aidm.engines.dnd5e.values import Attributes
+from aidm.facts import Fact
+from aidm.world import GameState
 
 SECOND_WIND = "srd-2014/features/second-wind"
 ACTION_SURGE = "srd-2014/features/action-surge-1-use"
+
+
+def resolve(
+    mechanics: list[Consequence], state: GameState, rng: Random, ruleset: Ruleset
+) -> list[Fact]:
+    """Commit so a later call in the same test sees an earlier call's typed-state mutation."""
+    world = Dnd5eWorld(state=state)
+    facts = _resolve(mechanics, world, rng, ruleset)
+    _ = world.commit()
+    return facts
 
 
 def test_fighter_features_are_owned_spent_and_recharged() -> None:
@@ -55,7 +69,7 @@ def test_fighter_features_are_owned_spent_and_recharged() -> None:
         Random(1),
         RULES,
     )
-    assert [fact.fact for fact in facts] == [
+    assert [fact.kind for fact in facts] == [
         "feature_used",
         "dice_rolled",
         "hp_changed",
@@ -178,7 +192,7 @@ def test_shared_and_scaled_resources_need_no_class_specific_engine_rules() -> No
 def test_the_directors_level_up_consequence_unlocks_the_players_level_up() -> None:
     state = new_game()
     facts = resolve([LevelUp()], state, Random(1), RULES)
-    assert [fact.fact for fact in facts] == ["level_up_available"]
+    assert [fact.kind for fact in facts] == ["level_up_available"]
     offered = player_of(state).progression
     assert offered is not None
     assert offered.level == 1
@@ -193,7 +207,9 @@ def test_the_player_answers_choices_after_the_director_awards_a_level() -> None:
     assert "waiting for the player" in views.level_up_state(player_of(state).progression)
 
     decisions = next_of(state)
-    _ = progression.advance(player_of(state), decisions, RULES, Random(1))
+    world = Dnd5eWorld(state=state)
+    _ = progression.advance(world.player(), decisions, RULES, Random(1))
+    state = world.commit()
     after = player_of(state)
     assert after.progression is not None
     assert after.progression.level == 3

@@ -7,6 +7,7 @@ from fivee_test_support import player_of as player_of
 from fivee_test_support import ruleset, sheet, with_actor
 
 import aidm.engines.dnd5e.progression as progression
+from aidm.engines.dnd5e.access import Dnd5eWorld
 from aidm.engines.dnd5e.content.records.character import ProgressionChoice
 from aidm.engines.dnd5e.state import Decisions, Origin
 from aidm.world import GameState
@@ -29,13 +30,17 @@ def next_of(state: GameState) -> Decisions:
 
 
 def levelled(state: GameState, to: int) -> GameState:
-    """Draft first: `advance` mutates, and callers compare against the state they passed in."""
+    """Draft first: `advance` mutates, and callers compare against the state they passed in.
+    Commit after every level so the next iteration's `next_of` reads the level it just reached —
+    hydration is a fresh copy now, not the record's own object."""
     working = state.draft()
     current = player_of(working).progression
     assert current is not None
     for _ in range(current.level + 1, to + 1):
-        _ = progression.advance(player_of(working), next_of(working), RULES, Random(1))
-    return working.committed()
+        world = Dnd5eWorld(state=working)
+        _ = progression.advance(world.player(), next_of(working), RULES, Random(1))
+        working = world.commit()
+    return working
 
 
 def started(klass: str, state: GameState) -> GameState:

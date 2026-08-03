@@ -1,26 +1,22 @@
 from random import Random
 
-from aidm.world import GameState
-
 from . import dice, features, rolls
-from .access import carried_by
-from .facts import AttackRolled
+from .access import Dnd5eWorld
+from .rolls import Struck
 from .ruleset import AttackProfile, Ruleset, WeaponProfile
 from .state import Dnd5eActor, Dnd5eItem, Progression
 from .values import ContentSlug
 
 
-def swing(state: GameState, attacker: Dnd5eActor, weapon: str, ruleset: Ruleset) -> AttackProfile:
+def swing(world: Dnd5eWorld, attacker: Dnd5eActor, weapon: str, ruleset: Ruleset) -> AttackProfile:
     ref = attacker.ref
     archetype = None if ref is None else ruleset.archetype(ref)
     if archetype is not None:
         return _own_attack(archetype.attacks, attacker.name, weapon)
-    return _wielded(state, attacker, weapon, ruleset)
+    return _wielded(world, attacker, weapon, ruleset)
 
 
-def strike(
-    attacker: Dnd5eActor, target: Dnd5eActor, swung: AttackProfile, rng: Random
-) -> AttackRolled:
+def strike(attacker: Dnd5eActor, target: Dnd5eActor, swung: AttackProfile, rng: Random) -> Struck:
     return rolls.roll_attack(attacker, target, swung.name, swung.to_hit, rng)
 
 
@@ -37,9 +33,9 @@ def _own_attack(
 
 
 def _wielded(
-    state: GameState, attacker: Dnd5eActor, weapon: str, ruleset: Ruleset
+    world: Dnd5eWorld, attacker: Dnd5eActor, weapon: str, ruleset: Ruleset
 ) -> AttackProfile:
-    item, profile = _held_weapon(state, attacker, weapon, ruleset)
+    item, profile = _held_weapon(world, attacker, weapon, ruleset)
     ability = "dexterity" if _uses_dexterity(profile, attacker) else "strength"
     bonus = rolls.modifier(attacker.stats.attributes, ability)
     return AttackProfile(
@@ -56,9 +52,9 @@ def _wielded(
 
 
 def _held_weapon(
-    state: GameState, attacker: Dnd5eActor, weapon: str, ruleset: Ruleset
+    world: Dnd5eWorld, attacker: Dnd5eActor, weapon: str, ruleset: Ruleset
 ) -> tuple[Dnd5eItem, WeaponProfile]:
-    for item in carried_by(state, attacker.id):
+    for item in world.carried_by(attacker.id):
         if item.ref is None or weapon.casefold() not in (item.name.casefold(), item.ref.index):
             continue
         found = ruleset.weapon(item.ref)

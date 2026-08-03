@@ -4,7 +4,6 @@ from functools import cached_property
 from types import NoneType
 
 from pydantic_ai import Agent, NativeOutput
-from pydantic_ai._output import OutputValidatorFunc  # pyright: ignore[reportPrivateImportUsage]
 from pydantic_ai.messages import (
     ModelMessage,
     ModelRequest,
@@ -33,7 +32,6 @@ class Stage[Deps, Out]:
     deps_type: type[Deps]
     role: RoleConfig
     provider: ProviderConfig
-    validators: tuple[OutputValidatorFunc[Deps, Out], ...] = ()
 
     @cached_property
     def agent(self) -> Agent[Deps, Out]:
@@ -42,7 +40,7 @@ class Stage[Deps, Out]:
             api_key=self.provider.api_key.get_secret_value(),
         )
         model = OpenAIChatModel(self.role.model, provider=provider)
-        built = Agent(
+        return Agent(
             model,
             name=self.name,
             output_type=self.output_type,
@@ -54,9 +52,6 @@ class Stage[Deps, Out]:
                 openai_reasoning_effort=self.role.reasoning_effort,
             ),
         )
-        for validator in self.validators:
-            built.output_validator(validator)
-        return built
 
     async def run(
         self,
@@ -86,12 +81,11 @@ def director_stage(engine: Engine, settings: Settings) -> DirectorStage:
     role = settings.roles.director
     return Stage(
         name="director",
-        instructions=f"{prompts.CORE_DIRECTOR}\n\n{engine.director_instructions()}",
-        output_type=engine.director_output(),
+        instructions=f"{prompts.CORE_DIRECTOR}\n\n{engine.director_instructions}",
+        output_type=engine.director_output,
         deps_type=GameState,
         role=role,
         provider=settings.providers.for_name(role.provider),
-        validators=(engine.validate_direction,),
     )
 
 

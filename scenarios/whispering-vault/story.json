@@ -1,7 +1,6 @@
 {
-  "actors": {
+  "entities": {
     "cloister_rat": {
-      "engine": "story",
       "approaches": {
         "bold": 1,
         "subtle": 2,

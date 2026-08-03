@@ -1,11 +1,11 @@
+import json
 from collections.abc import Sequence
 
 from nicegui import ui
 
 from aidm.application import GameSession
-from aidm.engine import Engine
+from aidm.facts import Fact
 from aidm.growth import RejectedGrowth
-from aidm.transition import Fact
 from aidm.turn import Advance, TraceEntry, Turn
 
 REJECTION_TEXT = {
@@ -34,21 +34,21 @@ def trace_panel(session: GameSession) -> None:
                 titles.append(f"after turn {turns}: advancement")
     for index, entry in reversed(list(enumerate(entries))):
         with ui.expansion(titles[index], value=index == len(entries) - 1):
-            _entry_trace(session.engine, entry)
+            _entry_trace(entry)
 
 
-def _entry_trace(engine: Engine, entry: TraceEntry) -> None:
+def _entry_trace(entry: TraceEntry) -> None:
     match entry:
         case Advance(facts=facts):
             _section("ADVANCEMENT", _facts(facts))
         case Turn():
-            _turn_trace(engine, entry)
+            _turn_trace(entry)
 
 
-def _turn_trace(engine: Engine, turn: Turn) -> None:
+def _turn_trace(turn: Turn) -> None:
     _section("DIRECTOR intent (to the narrator)", turn.direction.intent)
     _section("DIRECTOR tone (to the narrator)", turn.direction.tone)
-    _section("DIRECTOR mechanics (private)", engine.trace_direction(turn.direction))
+    _section("DIRECTOR mechanics (private)", json.dumps(turn.direction.mechanics, indent=2))
     _section("FACTS (private)", _facts(turn.facts))
     _section("NARRATOR-SAFE EVIDENCE", turn.narrator_evidence)
     _section("NARRATOR", turn.narration)
@@ -67,7 +67,7 @@ def _turn_trace(engine: Engine, turn: Turn) -> None:
 
 
 def _facts(facts: Sequence[Fact]) -> str:
-    lines = [f"- {fact.trace_summary}" for fact in facts]
+    lines = [f"- {fact.trace}" for fact in facts]
     return "\n".join(lines) or "- (none)"
 
 

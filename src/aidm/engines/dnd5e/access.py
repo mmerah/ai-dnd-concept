@@ -1,37 +1,47 @@
-from aidm.base import EntityId
-from aidm.world import ActorRecord, EntityRules, GameState, ItemRecord
+from aidm.base import PLAYER_ID, EntityId
+from aidm.content import Rules
+from aidm.world import EngineRecords, GameState
 
 from .state import Dnd5eActor, Dnd5eActorState, Dnd5eItem, Dnd5eItemState
 
 
-def actor_rules(rules: EntityRules) -> Dnd5eActorState:
-    """A record's rules are a union; only the tag this engine wrote narrows here."""
-    if not isinstance(rules, Dnd5eActorState):
-        raise ValueError(f"5e received {rules.engine!r} {type(rules).__name__}")
-    return rules
+def actor_state(rules: Rules) -> Dnd5eActorState:
+    return Dnd5eActorState.model_validate(rules)
 
 
-def item_rules(rules: EntityRules) -> Dnd5eItemState:
-    if not isinstance(rules, Dnd5eItemState):
-        raise ValueError(f"5e received {rules.engine!r} {type(rules).__name__}")
-    return rules
+def item_state(rules: Rules) -> Dnd5eItemState:
+    return Dnd5eItemState.model_validate(rules)
 
 
-def dnd5e_actor(record: ActorRecord) -> Dnd5eActor:
-    return Dnd5eActor(entity=record.entity, state=actor_rules(record.rules))
+class Dnd5eWorld:
+    def __init__(self, state: GameState) -> None:
+        self._records = EngineRecords(state, Dnd5eActorState, Dnd5eItemState)
 
+    @property
+    def state(self) -> GameState:
+        return self._records.state
 
-def dnd5e_item(record: ItemRecord) -> Dnd5eItem:
-    return Dnd5eItem(entity=record.entity, state=item_rules(record.rules))
+    def actor(self, actor_id: EntityId) -> Dnd5eActor:
+        entity, state = self._records.actor(actor_id)
+        return Dnd5eActor(entity=entity, state=state)
 
+    def item(self, item_id: EntityId) -> Dnd5eItem:
+        entity, state = self._records.item(item_id)
+        return Dnd5eItem(entity=entity, state=state)
 
-def actor_of(state: GameState, actor_id: EntityId) -> Dnd5eActor:
-    return dnd5e_actor(state.world.actor(actor_id))
+    def player(self) -> Dnd5eActor:
+        return self.actor(PLAYER_ID)
 
+    def actors(self) -> tuple[Dnd5eActor, ...]:
+        return tuple(self.actor(actor_id) for actor_id in self.state.world.actors)
 
-def item_of(state: GameState, item_id: EntityId) -> Dnd5eItem:
-    return dnd5e_item(state.world.item(item_id))
+    def items(self) -> tuple[Dnd5eItem, ...]:
+        return tuple(self.item(item_id) for item_id in self.state.world.items)
 
+    def carried_by(self, actor_id: EntityId) -> tuple[Dnd5eItem, ...]:
+        return tuple(
+            self.item(record.entity.id) for record in self.state.world.carried_by(actor_id)
+        )
 
-def carried_by(state: GameState, actor_id: EntityId) -> tuple[Dnd5eItem, ...]:
-    return tuple(dnd5e_item(record) for record in state.world.carried_by(actor_id))
+    def commit(self) -> GameState:
+        return self._records.commit()

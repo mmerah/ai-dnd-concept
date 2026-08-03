@@ -51,7 +51,6 @@ class StoryCondition(Frozen):
 
 
 class StoryActorState(Mutable):
-    engine: Literal["story"] = "story"
     approaches: StoryApproaches
     tags: tuple[StoryActorTag, ...] = ()
     stress: int = Field(default=0, ge=0)
@@ -80,12 +79,10 @@ class StoryGearTag(Frozen):
 
 
 class StoryItemState(Mutable):
-    engine: Literal["story"] = "story"
     gear: StoryGearTag | None = None
 
 
 class StoryCharacterData(Frozen):
-    engine: Literal["story"] = "story"
     approaches: StoryApproaches
     tags: tuple[StoryActorTag, ...] = ()
     max_stress: int = Field(default=5, ge=MIN_MAX_STRESS, le=MAX_MAX_STRESS)
@@ -101,7 +98,6 @@ class StoryCharacterData(Frozen):
 
 
 class StoryActorDefinition(Frozen):
-    engine: Literal["story"] = "story"
     approaches: StoryApproaches = StoryApproaches(
         bold=0,
         subtle=0,
@@ -124,7 +120,6 @@ class StoryActorDefinition(Frozen):
 
 
 class StoryItemDefinition(Frozen):
-    engine: Literal["story"] = "story"
     gear: StoryGearTag | None = None
 
     def runtime(self) -> StoryItemState:

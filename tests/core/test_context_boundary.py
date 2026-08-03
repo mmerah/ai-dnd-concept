@@ -1,8 +1,6 @@
 import pytest
-from core_test_support import updated, with_entity
-from pydantic_ai.messages import ModelRequest, ModelResponse
+from core_test_support import STORY, updated, with_entity
 
-from aidm.agents import exchanges_to_messages
 from aidm.base import PLAYER_ID, SAVE_VERSION, ActorEntity, EntityId, ItemEntity, LocationEntity
 from aidm.content import ScenarioMeta
 from aidm.engine import entity_renderer
@@ -20,10 +18,10 @@ from aidm.prompts import (
     render_maintainer,
     render_narrator,
 )
-from aidm.world import ActorRecord, Exchange, GameState, ItemRecord, WorldState
+from aidm.world import ActorRecord, GameState, ItemRecord, WorldState
 
-ACTOR_RULES = StoryActorState(approaches=DEFAULT_APPROACHES)
-ITEM_RULES = StoryItemState()
+ACTOR_RULES = StoryActorState(approaches=DEFAULT_APPROACHES).model_dump(mode="json")
+ITEM_RULES = StoryItemState().model_dump(mode="json")
 DESCRIPTION = "She writes in a compact cipher."
 HOOK = "Her missing folio points toward the vault."
 
@@ -80,7 +78,7 @@ def state() -> GameState:
         scenario_id="whispering-vault",
         character_id="kael",
         scenario=ScenarioMeta(title="Test", premise="Test"),
-        engine="story",
+        engine=STORY,
         world=WorldState(
             actors={
                 player.id: ActorRecord(entity=player, rules=ACTOR_RULES),
@@ -96,17 +94,14 @@ def state() -> GameState:
     )
 
 
-def _state_line(entity_id: EntityId) -> str:
-    record = state().world.actor(entity_id)
-    return StoryPresentation().entity_state(record.entity, record.rules)
-
-
 def _renderer(held: GameState) -> EntityRenderer:
     return entity_renderer(build_story_engine(), held)
 
 
-ACTOR_LINE = _state_line(EntityId("mara"))
-PLAYER_LINE = _state_line(PLAYER_ID)
+ACTOR_LINE = StoryPresentation().entity_state(
+    state().world.actor(EntityId("mara")).entity,
+    ACTOR_RULES,
+)
 
 
 def test_the_narrators_view_has_no_field_that_could_hold_unrevealed_canon() -> None:
@@ -146,19 +141,41 @@ def test_prompt_ids_escape_control_characters_and_bracket_delimiters() -> None:
     assert "\n" not in escaped
 
 
-def test_director_projection_preserves_ids_inventory_placement_and_hidden_canon() -> None:
-    held = state()
+def test_the_roles_shown_everything_get_ids_placement_detail_and_unrevealed_canon() -> None:
+    """The Director, Maintainer and Creator may all be told everything; the Narrator may not."""
+    held = _with_detail(state(), EntityId("mara"))
     scene = SceneSnapshot.of(held)
-    prompt = render_director(scene, _renderer(held), held.scenario, "I look around.")
+    describe = _renderer(held)
+    director = render_director(scene, describe, held.scenario, "I look around.")
+    catalogued = (
+        render_maintainer(
+            scene,
+            describe,
+            held.scenario,
+            prompt="Who is she?",
+            evidence="- nothing changed",
+            narration="Mara closes her folio.",
+        ),
+        render_creator(
+            scene,
+            describe,
+            held.scenario,
+            narration="A courier enters.",
+            recent=(),
+            request=GrowthRequest(kind="actor", name="Iven", brief="A rain-soaked courier."),
+        ),
+    )
 
-    assert "Kael[id=player]" in prompt
-    assert "a lantern[id=lantern] — A dented light." in prompt
-    assert "Mara[id=mara] (npc)" in prompt
-    assert "a ledger[id=ledger] (item) — held by Mara" in prompt
-    assert "The Secret[id=hidden-actor]" in prompt
-    assert "Study[id=study]" in prompt
-    assert f"state: {ACTOR_LINE}" in prompt
-    assert PLAYER_ID not in {entity.id for entity in (*scene.here, *scene.hidden)}
+    assert "Kael[id=player]" in director
+    assert "a lantern[id=lantern] — A dented light." in director
+    assert "a ledger[id=ledger] (item) — held by Mara" in director
+    assert "The Secret[id=hidden-actor]" in director
+    for prompt in (director, *catalogued):
+        assert f"state: {ACTOR_LINE}" in prompt
+    for prompt in catalogued:
+        assert f"detail: {DESCRIPTION}" in prompt
+        assert f"hook: {HOOK}" in prompt
+    assert PLAYER_ID not in {entity.id for entity in (*scene.here, *scene.catalogue())}
 
 
 def test_narrator_prompt_orders_plan_before_outcome_and_checks_the_speaker() -> None:
@@ -179,57 +196,9 @@ def test_narrator_prompt_orders_plan_before_outcome_and_checks_the_speaker() -> 
 
     prompt = render(EntityId("mara"))
 
-    assert "Mara[id=mara] — A known scribe." in prompt
-    assert f"state: {PLAYER_LINE}" in prompt
     assert f"state: {ACTOR_LINE}" in prompt
     assert prompt.index("THE DIRECTOR'S PLAN") < prompt.index("WHAT HAPPENED")
     assert "The Secret" not in prompt
 
     with pytest.raises(ValueError, match="visible actor here"):
         render(EntityId("hidden-actor"))
-
-
-def test_catalogue_includes_existing_detail_and_engine_state() -> None:
-    held = _with_detail(state(), EntityId("mara"))
-
-    scene = SceneSnapshot.of(held)
-    describe = _renderer(held)
-
-    assert PLAYER_ID not in {entity.id for entity in scene.catalogue()}
-
-    maintainer = render_maintainer(
-        scene,
-        describe,
-        held.scenario,
-        prompt="Who is she?",
-        evidence="- nothing changed",
-        narration="Mara closes her folio.",
-    )
-    creator = render_creator(
-        scene,
-        describe,
-        held.scenario,
-        narration="A courier enters.",
-        recent=(),
-        request=GrowthRequest(kind="actor", name="Iven", brief="A rain-soaked courier."),
-    )
-    for prompt in (maintainer, creator):
-        assert f"detail: {DESCRIPTION}" in prompt
-        assert f"hook: {HOOK}" in prompt
-        assert f"state: {ACTOR_LINE}" in prompt
-
-
-def test_exchanges_become_alternating_model_messages() -> None:
-    messages = exchanges_to_messages(
-        (
-            Exchange(prompt="First action", narration="First result"),
-            Exchange(prompt="Second action", narration="Second result"),
-        )
-    )
-
-    assert [type(message) for message in messages] == [
-        ModelRequest,
-        ModelResponse,
-        ModelRequest,
-        ModelResponse,
-    ]

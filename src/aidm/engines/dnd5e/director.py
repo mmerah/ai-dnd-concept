@@ -4,9 +4,10 @@ from pydantic_ai import ModelRetry, NativeOutput, RunContext
 from pydantic_ai.output import OutputSpec
 
 from aidm.directing import check_proposal, consequence_menu
+from aidm.transition import Direction
 from aidm.world import GameState
 
-from .direction import CONSEQUENCE_TYPES, Dnd5eDirection, branches
+from .direction import CONSEQUENCE_TYPES, Dnd5eDirection, branches, dump_direction
 from .rules import Dnd5eProposalRejected, Dnd5eRules
 
 _MECHANICS_TEMPLATE = """`mechanics` — a list of 5e consequences resolved in order, \
@@ -30,30 +31,28 @@ class Dnd5eDirector:
     def __init__(self, rules: Dnd5eRules) -> None:
         self._rules = rules
 
-    @property
-    def output(self) -> OutputSpec[Dnd5eDirection]:
-        return NativeOutput(Dnd5eDirection)
+    def output(self) -> OutputSpec[Direction]:
+        def direct(ctx: RunContext[GameState], proposal: Dnd5eDirection) -> Direction:
+            return self.check(ctx.deps, proposal)
+
+        return NativeOutput(direct, name="Dnd5eDirection")
 
     def instructions(self) -> str:
         return MECHANICS
 
-    def validate(
-        self,
-        ctx: RunContext[GameState],
-        direction: Dnd5eDirection,
-    ) -> Dnd5eDirection:
-        state = ctx.deps
+    def check(self, state: GameState, proposal: Dnd5eDirection) -> Direction:
+        flat = dump_direction(proposal)
         if fault := check_proposal(
             state,
-            direction.mechanics,
-            direction.speaker_id,
+            proposal.mechanics,
+            proposal.speaker_id,
             lambda consequence: branches(consequence).values(),
         ):
             raise ModelRetry(fault)
-        self._dry_run(direction, state)
-        return direction
+        self._dry_run(flat, state)
+        return flat
 
-    def _dry_run(self, direction: Dnd5eDirection, state: GameState) -> None:
+    def _dry_run(self, direction: Direction, state: GameState) -> None:
         for seed in _DRY_RUN_SEEDS:
             try:
                 _ = self._rules.resolve(direction, state, Random(seed))
