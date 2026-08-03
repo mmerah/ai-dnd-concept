@@ -1,17 +1,12 @@
 from collections.abc import Sequence
 from random import Random
 
-from aidm.base import PLAYER_ID, ActorEntity, EntityId
+from aidm.actions import WorldActionRejected, is_world_action, resolve_world_action
+from aidm.base import PLAYER_ID, ActorEntity, Entity, EntityId, ItemEntity
 from aidm.transition import Transition
-from aidm.world import GameState
+from aidm.world import EntityRules, GameState
 
 from .access import actor_of, item_of
-from .actions import (
-    CoreAction,
-    CoreActionRejected,
-    is_core_action,
-    resolve_core_action,
-)
 from .direction import (
     ApplyCondition,
     ClearCondition,
@@ -36,7 +31,7 @@ from .facts import (
     StressChanged,
     TakenOut,
 )
-from .state import GROWTH_REQUIRED, StoryActorState
+from .state import GROWTH_REQUIRED, StoryActorState, StoryItemState
 
 
 class StoryProposalRejected(ValueError):
@@ -66,12 +61,10 @@ class StoryRules:
         consequence: StoryConsequence,
         rng: Random,
     ) -> list[Emitted]:
-        if isinstance(consequence, CoreAction):
-            if not is_core_action(consequence):
-                raise TypeError(f"unsupported core action {type(consequence).__name__}")
+        if is_world_action(consequence):
             try:
-                return list(resolve_core_action(consequence, draft))
-            except CoreActionRejected as error:
+                return list(resolve_world_action(consequence, draft, _default_rules))
+            except WorldActionRejected as error:
                 raise StoryProposalRejected(str(error)) from error
         match consequence:
             case Risk():
@@ -84,6 +77,8 @@ class StoryRules:
                 return self._apply_condition(draft, consequence)
             case ClearCondition():
                 return self._clear_condition(draft, consequence)
+            case _:
+                raise TypeError(f"unsupported Story consequence {type(consequence).__name__}")
 
     def _risk(self, draft: GameState, risk: Risk, rng: Random) -> list[Emitted]:
         actor_id = PLAYER_ID if risk.actor_id is None else risk.actor_id
@@ -244,3 +239,7 @@ class StoryRules:
         actor_id: EntityId | None,
     ) -> tuple[ActorEntity, StoryActorState]:
         return actor_of(draft, PLAYER_ID if actor_id is None else actor_id)
+
+
+def _default_rules(entity: Entity) -> EntityRules | None:
+    return StoryItemState() if isinstance(entity, ItemEntity) else None

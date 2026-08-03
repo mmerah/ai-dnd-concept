@@ -72,7 +72,7 @@ async def run_turn(
 
     transition = engine.resolve(direction, state, rng)
     draft = transition.state.draft()
-    evidence = narrator_evidence(engine, transition.facts)
+    evidence = narrator_evidence(transition.facts)
 
     after = SceneSnapshot.of(draft)
     describe = entity_renderer(engine, draft)

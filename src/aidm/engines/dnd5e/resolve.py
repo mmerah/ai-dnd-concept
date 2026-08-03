@@ -1,7 +1,9 @@
 from collections.abc import Sequence
 from random import Random
 
-from aidm.world import GameState
+from aidm.actions import is_world_action, resolve_world_action
+from aidm.base import Entity, ItemEntity
+from aidm.world import EntityRules, GameState
 
 from . import features, progression, rolls, spells
 from .direction import (
@@ -11,23 +13,18 @@ from .direction import (
     Consequence,
     Damage,
     DcRoll,
-    Discover,
-    DropItem,
-    GainImprovisedItem,
-    GiveItem,
     Heal,
     LevelUp,
-    Move,
     Rest,
     RollCheck,
     RollSave,
-    TakeItem,
     UseFeature,
 )
 from .facts import DcRolled, Emitted, Rested
-from .mechanics import combat, common, conditions, health, inventory, movement
+from .mechanics import combat, common, conditions, health
 from .mechanics.resolution import Resolution
 from .ruleset import Ruleset
+from .state import Dnd5eItemState
 
 
 def resolve(
@@ -44,6 +41,8 @@ def _fold(ctx: Resolution, mechanics: Sequence[Consequence]) -> list[Emitted]:
 
 
 def _walk(ctx: Resolution, consequence: Consequence) -> list[Emitted]:
+    if is_world_action(consequence):
+        return list(resolve_world_action(consequence, ctx.draft, _default_rules))
     match consequence:
         case RollCheck(ability=ability, dc=dc):
             rolled = rolls.roll_check(ctx.player, ability, dc, ctx.rng)
@@ -74,18 +73,14 @@ def _walk(ctx: Resolution, consequence: Consequence) -> list[Emitted]:
             return health.heal(ctx, consequence)
         case ApplyCondition():
             return conditions.change(ctx, consequence)
-        case Discover():
-            return [*common.reveal(ctx, ctx.entity(consequence.entity_id))]
-        case Move():
-            return movement.move(ctx, consequence)
-        case TakeItem():
-            return inventory.take(ctx, consequence)
-        case DropItem():
-            return inventory.drop(ctx, consequence)
-        case GiveItem():
-            return inventory.give(ctx, consequence)
-        case GainImprovisedItem():
-            return inventory.improvise(ctx, consequence)
+        case _:
+            raise TypeError(f"unsupported 5e consequence {type(consequence).__name__}")
+
+
+def _default_rules(entity: Entity) -> EntityRules | None:
+    if not isinstance(entity, ItemEntity):
+        raise TypeError(f"5e cannot improvise a {entity.kind}")
+    return Dnd5eItemState()
 
 
 def _branched(

@@ -30,13 +30,6 @@ from aidm.engines.dnd5e.state import (
     StatBlock,
 )
 from aidm.engines.dnd5e.values import Attributes, ContentSlug
-from aidm.facts import (
-    ActorMoved,
-    EntityCreated,
-    EntityDiscovered,
-    ItemMoved,
-    core_fact_summary,
-)
 from aidm.store import load_character, load_scenario
 from aidm.world import ActorRecord, GameState, ItemRecord, WorldState
 
@@ -53,12 +46,7 @@ def player_of(state: GameState) -> Dnd5eActor:
 
 
 def summary(fact: Emitted) -> str:
-    """Render either half of the 5e fact union the way the trace panel does."""
-    match fact:
-        case EntityCreated() | EntityDiscovered() | ActorMoved() | ItemMoved():
-            return core_fact_summary(fact)
-        case _:
-            return fact.summary
+    return fact.trace_summary
 
 
 def with_actor(state: GameState, entity: ActorEntity, actor: Dnd5eActorState) -> GameState:

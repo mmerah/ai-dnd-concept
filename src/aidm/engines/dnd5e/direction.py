@@ -1,10 +1,18 @@
-from collections.abc import Iterator, Mapping, Sequence
+from collections.abc import Mapping, Sequence
 from typing import Annotated, ClassVar, Literal, get_args
 
 from pydantic import Field, TypeAdapter
 
+from aidm.actions import (
+    Discover,
+    DropItem,
+    GainImprovisedItem,
+    GiveItem,
+    Move,
+    TakeItem,
+)
 from aidm.base import PLAYER_ID, EntityId
-from aidm.directing import Reference
+from aidm.directing import ConsequenceBase, Reference
 
 from .content.records.spells import MAX_SPELL_LEVEL, SpellLevel
 from .content.vocabulary import CONDITION_NAMES, ConditionName, RestType
@@ -12,89 +20,12 @@ from .dice import SelfContainedDice
 from .state import FeatureKey, SpellKey
 from .values import ABILITIES, Ability, Value
 
-CanonRef = tuple[EntityId, Reference]
-
 # The consuming action owns the sign, so magnitudes stay non-negative.
 Magnitude = SelfContainedDice | Annotated[int, Field(ge=0, strict=True)]
 
 
-class Action(Value):
-    def check(self) -> str | None:
-        return None
-
-
-class Discover(Action):
-    """Reveal something that already exists to the player."""
-
-    GUIDANCE: ClassVar[str] = """Use when the player's action brings an existing but unrevealed \
-entity into view — they notice it, are told of it, or reach it. May reveal any kind.
-Example: the player studies a shelf and `ledger` is in your unrevealed list -> `discover` with \
-entity_id `ledger`."""
-
-    action: Literal["discover"] = "discover"
-    entity_id: Annotated[EntityId, Reference(None)] = Field(
-        description="Id of any canon entity, of any kind."
-    )
-
-
-class TakeItem(Action):
-    """The player picks up a canon item that is here with them."""
-
-    GUIDANCE: ClassVar[str] = """Use when the player takes an item that already exists in canon \
-and is at their location; it is revealed first if it was hidden.
-Example: they pocket the `vault_map` lying here -> `take_item` with item_id `vault_map`."""
-
-    action: Literal["take_item"] = "take_item"
-    item_id: Annotated[EntityId, Reference("item")] = Field(
-        description="Id of a canon `item` at the player's location."
-    )
-
-
-class DropItem(Action):
-    """The player drops a held item at their current location."""
-
-    GUIDANCE: ClassVar[str] = """Use when the player puts down or discards an item they carry; it \
-comes to rest where they stand.
-Example: they set the `vault_map` on the desk -> `drop_item` with item_id `vault_map`."""
-
-    action: Literal["drop_item"] = "drop_item"
-    item_id: Annotated[EntityId, Reference("item")] = Field(
-        description="Id of a canon `item` the player is carrying."
-    )
-
-
-class GiveItem(Action):
-    """The player hands a held item to another actor who is here."""
-
-    GUIDANCE: ClassVar[str] = """Use when the player gives a carried item to someone at their \
-location; the item moves into that actor's inventory.
-Example: they hand the `vault_map` to Mara -> `give_item` with item_id `vault_map`, actor_id \
-`mara`."""
-
-    action: Literal["give_item"] = "give_item"
-    item_id: Annotated[EntityId, Reference("item")] = Field(
-        description="Id of a canon `item` the player is carrying."
-    )
-    actor_id: Annotated[EntityId, Reference("actor", present=True)] = Field(
-        description="Id of the `actor` receiving it, at the player's location."
-    )
-
-    def check(self) -> str | None:
-        if self.actor_id == PLAYER_ID:
-            return "give_item must name another actor: the player already holds the item"
-        return None
-
-
-class GainImprovisedItem(Action):
-    """The player picks up a minor item that has no canon entry."""
-
-    GUIDANCE: ClassVar[str] = """Use only for incidental things no entity backs and none should \
-— not worth making canon. Write the item out as free text.
-Example: they scoop up loose gravel -> `gain_improvised_item` with item_name 'a handful of \
-gravel'."""
-
-    action: Literal["gain_improvised_item"] = "gain_improvised_item"
-    item_name: str = Field(description="The item written out, e.g. 'a rusty spoon'.")
+class Action(ConsequenceBase):
+    pass
 
 
 class LevelUp(Action):
@@ -204,26 +135,6 @@ again -> the same with ends true."""
     )
 
 
-class Move(Action):
-    """Move an actor to a location: the player by default, or another actor you name."""
-
-    GUIDANCE: ClassVar[str] = """Use when the player (or an actor you name in `actor_id`) goes \
-somewhere that exists in canon, including somewhere not discovered yet — the player arriving, or \
-someone arriving where the player is, reveals it. If they head somewhere the world does not have, \
-leave `move` out and let the narration take them toward it; the place becomes canon and you can \
-move them there on a later turn.
-Example: "I go down to the vault" and `vault` is in your lists -> `move` with location_id `vault`. \
-Mara walks off to the cloister -> `move` location_id `cloister`, actor_id `mara`."""
-
-    action: Literal["move"] = "move"
-    location_id: Annotated[EntityId, Reference("location")] = Field(
-        description="Id of a canon entity whose kind is `location`."
-    )
-    actor_id: Annotated[EntityId | None, Reference("actor")] = Field(
-        default=None, description="Id of the `actor` to move; omit to move the player."
-    )
-
-
 class Attack(Action):
     """Strike another actor; the rules determine the hit and damage."""
 
@@ -323,33 +234,6 @@ def branches(consequence: "Consequence") -> Mapping[str, Sequence["Consequence"]
     return {}
 
 
-def flatten(consequences: Sequence["Consequence"]) -> Iterator["Consequence"]:
-    for consequence in consequences:
-        yield consequence
-        for branch in branches(consequence).values():
-            yield from flatten(branch)
-
-
-def _own_refs(consequence: "Consequence") -> Iterator[CanonRef]:
-    for name, field in type(consequence).model_fields.items():
-        marker = next((m for m in field.metadata if isinstance(m, Reference)), None)
-        if marker is None:
-            continue
-        value: object = getattr(consequence, name)
-        if value is None:
-            continue
-        if not isinstance(value, str):
-            raise TypeError(
-                f"{type(consequence).__name__}.{name} is marked Reference "
-                f"but holds a {type(value).__name__}"
-            )
-        yield EntityId(value), marker
-
-
-def all_canon_refs(consequences: Sequence["Consequence"]) -> list[CanonRef]:
-    return [ref for consequence in flatten(consequences) for ref in _own_refs(consequence)]
-
-
 MECHANICS_ADAPTER: TypeAdapter[list[Consequence]] = TypeAdapter(list[Consequence])
 
 
@@ -361,6 +245,3 @@ class Dnd5eDirection(Value):
     tone: str
     speaker_id: EntityId | None = None
     mechanics: list[Consequence] = Field(default_factory=list)
-
-    def canon_refs(self) -> list[CanonRef]:
-        return all_canon_refs(self.mechanics)

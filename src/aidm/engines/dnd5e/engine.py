@@ -16,7 +16,7 @@ from aidm.base import (
     LocationEntity,
 )
 from aidm.content import AuthoredActor, AuthoredItem, AuthoredWorld, compose_world
-from aidm.transition import Direction, Fact, Transition
+from aidm.transition import Direction, Transition
 from aidm.world import (
     CharacterEngineData,
     EntityRules,
@@ -32,7 +32,6 @@ from .content.library import load
 from .content.pack_ruleset import compile_ruleset
 from .direction import Dnd5eDirection
 from .director import Dnd5eDirector
-from .facts import Dnd5eFact
 from .presentation import Dnd5ePresentation
 from .rules import Dnd5eRules
 from .ruleset import Ruleset
@@ -125,12 +124,6 @@ class Dnd5eEngine:
     def entity_state(self, entity: Entity, rules: EntityRules) -> str:
         return self.presentation.entity_state(entity, rules)
 
-    def narrator_fact(self, fact: Fact) -> str | None:
-        return self.presentation.narrator_fact(_fact(fact))
-
-    def trace_fact(self, fact: Fact) -> str:
-        return self.presentation.trace_fact(_fact(fact))
-
     def trace_direction(self, direction: Direction) -> str:
         return self.presentation.trace_direction(_direction(direction))
 
@@ -155,12 +148,6 @@ def _direction(direction: Direction) -> Dnd5eDirection:
     if not isinstance(direction, Dnd5eDirection):
         raise TypeError(f"{ENGINE_ID!r} engine received a {type(direction).__name__}")
     return direction
-
-
-def _fact(fact: Fact) -> Dnd5eFact:
-    if fact.source != "dnd5e":
-        raise TypeError(f"{ENGINE_ID!r} engine received a {type(fact).__name__}")
-    return fact
 
 
 def _decision(decision: AdvancementDecision) -> Dnd5eAdvancementDecisions:

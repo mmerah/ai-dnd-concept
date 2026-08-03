@@ -278,4 +278,4 @@ def test_an_immune_actor_is_simply_unaffected(state: GameState) -> None:
     poisoned = ApplyCondition(condition="poisoned", target_id=EntityId("mara"))
     assert resolve([poisoned], with_actor(state, mara.entity, immune), PASS, RULES) == []
     (changed,) = resolve([poisoned], state, PASS, RULES)
-    assert isinstance(changed, ConditionChanged) and changed.summary == "Mara is poisoned"
+    assert isinstance(changed, ConditionChanged) and changed.trace_summary == "Mara is poisoned"

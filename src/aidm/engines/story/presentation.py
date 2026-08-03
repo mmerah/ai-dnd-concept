@@ -5,23 +5,6 @@ from aidm.world import EntityRules
 
 from .access import actor_rules, item_rules
 from .direction import STORY_MECHANICS_ADAPTER, StoryDirection
-from .facts import (
-    ApproachRaised,
-    ConditionApplied,
-    ConditionCleared,
-    GearAcquired,
-    GrowthMarked,
-    GrowthReset,
-    MaximumStressIncreased,
-    Revived,
-    RiskRolled,
-    StoryFact,
-    StressChanged,
-    TagAdded,
-    TagRemoved,
-    TagRewritten,
-    TakenOut,
-)
 from .state import StoryActorState, StoryItemState
 
 
@@ -30,42 +13,6 @@ class StoryPresentation:
         if isinstance(entity, ActorEntity):
             return self._actor_state(entity, actor_rules(rules))
         return self._item_state(item_rules(rules))
-
-    def narrator_fact(self, fact: StoryFact) -> str | None:
-        match fact:
-            case RiskRolled(actor_name=name, outcome=outcome):
-                return f"{name}'s attempt ends in a {outcome}"
-            case StressChanged(actor_name=name, before=before, after=after):
-                return (
-                    f"{name} recovers some composure"
-                    if after < before
-                    else f"{name} comes under more pressure"
-                )
-            case TakenOut(actor_name=name):
-                return f"{name} is taken out"
-            case Revived(actor_name=name):
-                return f"{name} is no longer taken out"
-            case ConditionApplied(actor_name=name, condition=condition):
-                return f"{name} is now {condition.name}"
-            case ConditionCleared(actor_name=name, condition=condition):
-                return f"{name} is no longer {condition.name}"
-            case ApproachRaised(approach=approach):
-                return f"the player's {approach} approach improves"
-            case TagAdded(tag=tag):
-                return f"the player gains {tag.name}"
-            case TagRemoved(tag=tag):
-                return f"the player leaves {tag.name} behind"
-            case TagRewritten(after=tag):
-                return f"the player's burden becomes {tag.name}"
-            case GearAcquired(item_name=name):
-                return f"the player now carries {name}"
-            case MaximumStressIncreased():
-                return "the player becomes more resilient"
-            case GrowthMarked() | GrowthReset():
-                return None
-
-    def trace_fact(self, fact: StoryFact) -> str:
-        return fact.summary
 
     def trace_direction(self, direction: StoryDirection) -> str:
         return json.dumps(

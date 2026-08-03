@@ -90,8 +90,7 @@ def test_a_save_that_halves_on_success_halves_rather_than_skips() -> None:
     assert rolled(saved).dice == "8d6"
     assert harm(made) == rolled(saved).total // 2
     assert harm(missed) == rolled(failed).total
-    # Fact summaries stay concise even though the visible-state context carries exact HP.
-    assert hp_changed(saved).summary == "a gargoyle is hurt"
+    assert hp_changed(saved).trace_summary == "a gargoyle is hurt"
 
 
 def test_an_attack_spell_rolls_to_hit_and_a_cantrip_scales_off_character_level() -> None:

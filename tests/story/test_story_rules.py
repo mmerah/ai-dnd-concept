@@ -4,9 +4,9 @@ from random import Random
 import pytest
 from story_test_support import initial_story_game, setback_direction
 
+from aidm.actions import DropItem, TakeItem
 from aidm.base import PLAYER_ID, EntityId
 from aidm.engines.story.access import item_of, player_rules
-from aidm.engines.story.actions import DropItem, TakeItem
 from aidm.engines.story.direction import HelpfulGear, Risk, StoryConsequence, StoryDirection
 from aidm.engines.story.facts import RiskRolled
 from aidm.engines.story.state import StoryGearTag, StoryItemState
@@ -53,7 +53,7 @@ def test_story_risk_is_seeded_pure_and_commits_once() -> None:
     assert isinstance(rolled, RiskRolled)
     assert rolled.dice == (1, 1)
     assert rolled.outcome == "setback"
-    safe = engine.presentation.narrator_fact(rolled)
+    safe = rolled.narrator_summary
     assert safe == "Kael's attempt ends in a setback"
     assert all(private not in safe for private in ("1+1", "difficulty", "modifier"))
 

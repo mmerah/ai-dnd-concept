@@ -6,7 +6,7 @@ from pydantic_ai.usage import RunUsage
 
 from aidm.base import EntityId
 from aidm.engines.dnd5e.access import carried_by
-from aidm.engines.dnd5e.direction import Damage, Dnd5eDirection, DropItem, RollCheck
+from aidm.engines.dnd5e.direction import Attack, Damage, Dnd5eDirection, DropItem, RollCheck
 from aidm.world import GameState
 
 
@@ -14,12 +14,24 @@ def _context(state: GameState) -> RunContext[GameState]:
     return RunContext(deps=state, model=TestModel(), usage=RunUsage())
 
 
-def test_unknown_and_absent_references_return_actionable_retries() -> None:
+def test_nested_faults_and_absent_references_return_actionable_retries() -> None:
     engine, state = initial_5e_game()
     unknown = Dnd5eDirection(
         intent="Something impossible happens.",
         tone="uncertain",
-        mechanics=[Damage(amount=1, target_id=EntityId("missing"))],
+        mechanics=[
+            RollCheck(
+                ability="strength",
+                dc=10,
+                on_success=[Damage(amount=1, target_id=EntityId("missing_success"))],
+                on_failure=[Damage(amount=1, target_id=EntityId("missing_failure"))],
+            )
+        ],
+    )
+    invalid = Dnd5eDirection(
+        intent="Kael attacks himself.",
+        tone="uncertain",
+        mechanics=[RollCheck(ability="strength", dc=10, on_failure=[Attack(weapon="Longsword")])],
     )
     absent = Dnd5eDirection(
         intent="Kael harms someone in another room.",
@@ -27,8 +39,12 @@ def test_unknown_and_absent_references_return_actionable_retries() -> None:
         mechanics=[Damage(amount=1, target_id=EntityId("tomas"))],
     )
 
-    with pytest.raises(ModelRetry, match="Use only ids you were shown"):
+    with pytest.raises(ModelRetry, match="Use only ids you were shown") as retry:
         engine.director.validate(_context(state), unknown)
+    assert "missing_success" in str(retry.value)
+    assert "missing_failure" in str(retry.value)
+    with pytest.raises(ModelRetry, match="attack must name at most one"):
+        engine.director.validate(_context(state), invalid)
     with pytest.raises(ModelRetry, match="Move them here first"):
         engine.director.validate(_context(state), absent)
 

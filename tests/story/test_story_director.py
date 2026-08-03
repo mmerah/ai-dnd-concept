@@ -7,8 +7,8 @@ from pydantic_ai.models.test import TestModel
 from pydantic_ai.usage import RunUsage
 from story_test_support import initial_story_game
 
+from aidm.actions import DropItem
 from aidm.base import PLAYER_ID, EntityId
-from aidm.engines.story.actions import DropItem
 from aidm.engines.story.direction import HelpfulGear, Risk, StoryDirection, TakeStress
 from aidm.engines.story.director import StoryDirector
 from aidm.engines.story.rules import StoryRules

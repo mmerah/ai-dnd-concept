@@ -1,32 +1,13 @@
-from collections.abc import Sequence
 from random import Random
 
-from pydantic import ValidationError
 from pydantic_ai import ModelRetry, NativeOutput, RunContext
 from pydantic_ai.output import OutputSpec
 
-from aidm.directing import check_refs, check_speaker
+from aidm.directing import check_proposal, consequence_menu
 from aidm.world import GameState
 
-from .direction import CONSEQUENCE_TYPES, Consequence, Dnd5eDirection, flatten
-from .rules import Dnd5eRules
-
-
-def consequence_menu(types: Sequence[type[Consequence]]) -> str:
-    """Each consequence's docstring, GUIDANCE and field descriptions are prompt text."""
-    lines: list[str] = []
-    for consequence in types:
-        action = consequence.model_fields["action"].default
-        if not isinstance(action, str):
-            raise TypeError(f"{consequence.__name__} has no literal action default")
-        fields = "\n".join(
-            f"  - `{name}`: {field.description}"
-            for name, field in consequence.model_fields.items()
-            if name != "action" and field.description
-        )
-        lines.append(f"### `{action}` — {consequence.__doc__}\n{consequence.GUIDANCE}\n{fields}")
-    return "\n\n".join(lines)
-
+from .direction import CONSEQUENCE_TYPES, Dnd5eDirection, branches
+from .rules import Dnd5eProposalRejected, Dnd5eRules
 
 _MECHANICS_TEMPLATE = """`mechanics` — a list of 5e consequences resolved in order, \
 deterministically. All ids MUST be exact ids from the lists above. Most consequences apply \
@@ -62,10 +43,12 @@ class Dnd5eDirector:
         direction: Dnd5eDirection,
     ) -> Dnd5eDirection:
         state = ctx.deps
-        faults = [consequence.check() for consequence in flatten(direction.mechanics)]
-        faults.append(check_speaker(state, direction.speaker_id))
-        faults.append(check_refs(state, direction.canon_refs()))
-        if fault := next((item for item in faults if item is not None), None):
+        if fault := check_proposal(
+            state,
+            direction.mechanics,
+            direction.speaker_id,
+            lambda consequence: branches(consequence).values(),
+        ):
             raise ModelRetry(fault)
         self._dry_run(direction, state)
         return direction
@@ -74,7 +57,5 @@ class Dnd5eDirector:
         for seed in _DRY_RUN_SEEDS:
             try:
                 _ = self._rules.resolve(direction, state, Random(seed))
-            except ValidationError:
-                raise
-            except ValueError as error:
+            except Dnd5eProposalRejected as error:
                 raise ModelRetry(f"{error}. Propose mechanics this state allows.") from error

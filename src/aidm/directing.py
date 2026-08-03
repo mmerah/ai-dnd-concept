@@ -1,16 +1,95 @@
-from collections.abc import Sequence
+from collections.abc import Callable, Iterable, Iterator, Sequence
 from dataclasses import dataclass
+from typing import ClassVar
 
-from .base import PLAYER_ID, ActorEntity, EntityId, Kind
+from pydantic import BaseModel
+
+from .base import PLAYER_ID, ActorEntity, EntityId, Frozen, Kind
 from .world import GameState
+
+
+class ConsequenceBase(Frozen):
+    GUIDANCE: ClassVar[str] = ""
+
+    def check(self) -> str | None:
+        return None
 
 
 @dataclass(frozen=True, slots=True)
 class Reference:
-    """What an id in a proposed command must name to be resolvable."""
-
     kind: Kind | None
     present: bool = False
+
+
+type Branches[T] = Callable[[T], Iterable[Sequence[T]]]
+type StaticCheck[T] = Callable[[GameState, T], str | None]
+
+
+def consequence_menu(types: Sequence[type[ConsequenceBase]]) -> str:
+    lines: list[str] = []
+    for consequence in types:
+        action = consequence.model_fields["action"].default
+        summary = consequence.__doc__
+        if not isinstance(action, str) or summary is None:
+            raise TypeError(f"{consequence.__name__} has incomplete prompt documentation")
+        fields = "\n".join(
+            f"  - `{name}`: {field.description}"
+            for name, field in consequence.model_fields.items()
+            if name != "action" and field.description
+        )
+        lines.append(f"### `{action}` — {summary}\n{consequence.GUIDANCE}\n{fields}")
+    return "\n\n".join(lines)
+
+
+def walk_consequences[T](consequences: Sequence[T], branches: Branches[T]) -> Iterator[T]:
+    for consequence in consequences:
+        yield consequence
+        for branch in branches(consequence):
+            yield from walk_consequences(branch, branches)
+
+
+def consequence_references(
+    consequence: BaseModel,
+) -> tuple[tuple[EntityId, Reference], ...]:
+    references: list[tuple[EntityId, Reference]] = []
+    for name, field in type(consequence).model_fields.items():
+        marker = next((item for item in field.metadata if isinstance(item, Reference)), None)
+        if marker is None:
+            continue
+        value: object = getattr(consequence, name)
+        if value is None:
+            continue
+        if not isinstance(value, str):
+            raise TypeError(
+                f"{type(consequence).__name__}.{name} is marked Reference "
+                f"but holds a {type(value).__name__}"
+            )
+        references.append((EntityId(value), marker))
+    return tuple(references)
+
+
+def check_proposal[T: ConsequenceBase](
+    state: GameState,
+    consequences: Sequence[T],
+    speaker_id: EntityId | None,
+    branches: Branches[T],
+    extra_checks: Sequence[StaticCheck[T]] = (),
+) -> str | None:
+    flattened = tuple(walk_consequences(consequences, branches))
+    faults = [consequence.check() for consequence in flattened]
+    faults.append(check_speaker(state, speaker_id))
+    faults.append(
+        check_refs(
+            state,
+            [
+                reference
+                for consequence in flattened
+                for reference in consequence_references(consequence)
+            ],
+        )
+    )
+    faults.extend(check(state, consequence) for check in extra_checks for consequence in flattened)
+    return next((fault for fault in faults if fault is not None), None)
 
 
 def check_refs(state: GameState, refs: Sequence[tuple[EntityId, Reference]]) -> str | None:

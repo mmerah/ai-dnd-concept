@@ -1,8 +1,7 @@
-from fivee_test_support import initial_5e_game, ruleset
+from fivee_test_support import initial_5e_game
 
 from aidm.base import PLAYER_ID, ActorEntity, EntityId
 from aidm.engine import entity_renderer
-from aidm.engines.dnd5e.engine import dnd5e_engine
 from aidm.engines.dnd5e.facts import AttackRolled, HpChanged
 from aidm.prompts import SceneSnapshot, VisibleScene, render_narrator
 
@@ -40,7 +39,6 @@ def test_5e_presentation_exposes_full_state_for_every_visible_actor() -> None:
 
 
 def test_5e_narrator_fact_translates_committed_mechanics() -> None:
-    presentation = dnd5e_engine(ruleset()).presentation
     hp = HpChanged(target_id=EntityId("mara"), target_name="Mara", delta=-2, wounds="hurt")
     attack = AttackRolled(
         actor_name="Kael",
@@ -52,13 +50,12 @@ def test_5e_narrator_fact_translates_committed_mechanics() -> None:
         hit=True,
     )
 
-    assert presentation.narrator_fact(hp) == "Mara is hurt"
-    assert presentation.narrator_fact(attack) == "Kael's attack hits Mara"
-    assert "vs ac 13" in presentation.trace_fact(attack)
+    assert hp.narrator_summary == "Mara is hurt"
+    assert attack.narrator_summary == "Kael's attack hits Mara"
+    assert "vs ac 13" in attack.trace_summary
 
 
 def test_5e_narrator_may_receive_the_players_hp_delta() -> None:
-    presentation = dnd5e_engine(ruleset()).presentation
     hp = HpChanged(target_id=PLAYER_ID, target_name="Kael", delta=-2, wounds="hurt")
 
-    assert presentation.narrator_fact(hp) == "hp -2"
+    assert hp.narrator_summary == "hp -2"

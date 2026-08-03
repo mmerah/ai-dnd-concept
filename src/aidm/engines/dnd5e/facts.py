@@ -3,7 +3,7 @@ from typing import Annotated, Literal
 from pydantic import Field
 
 from aidm.base import PLAYER_ID, EntityId
-from aidm.facts import CoreFact
+from aidm.facts import CoreFact, FactBase
 
 from .content.records.base import ContentRef
 from .content.records.spells import SlotLevel, SpellLevel
@@ -14,7 +14,7 @@ from .values import Ability, Value
 RollKind = Literal["check", "save"]
 
 
-class Dnd5eFactBase(Value):
+class Dnd5eFactBase(FactBase):
     source: Literal["dnd5e"] = "dnd5e"
 
 
@@ -30,13 +30,17 @@ class DcRolled(Dnd5eFactBase):
     success: bool
 
     @property
-    def summary(self) -> str:
+    def trace_summary(self) -> str:
         who = "" if self.actor_id == PLAYER_ID else f"{self.actor_name} "
         verdict = "SUCCESS" if self.success else "FAILURE"
         return (
             f"{who}{self.ability} {self.kind}: {self.roll} -> {self.total}"
             f" vs DC {self.dc}: {verdict}"
         )
+
+    @property
+    def narrator_summary(self) -> str:
+        return f"{self.actor_name} {'succeeds' if self.success else 'fails'}"
 
 
 class AttackRolled(Dnd5eFactBase):
@@ -50,12 +54,16 @@ class AttackRolled(Dnd5eFactBase):
     hit: bool
 
     @property
-    def summary(self) -> str:
+    def trace_summary(self) -> str:
         outcome = "HIT" if self.hit else "MISS"
         return (
             f"{self.actor_name} attacks {self.target_name} with {self.weapon}:"
             f" {self.roll} -> {self.total} vs ac {self.ac}: {outcome}"
         )
+
+    @property
+    def narrator_summary(self) -> str:
+        return f"{self.actor_name}'s attack {'hits' if self.hit else 'misses'} {self.target_name}"
 
 
 class DiceRolled(Dnd5eFactBase):
@@ -64,8 +72,12 @@ class DiceRolled(Dnd5eFactBase):
     total: int
 
     @property
-    def summary(self) -> str:
+    def trace_summary(self) -> str:
         return f"rolled {self.dice}: {self.total}"
+
+    @property
+    def narrator_summary(self) -> None:
+        return None
 
 
 class HpChanged(Dnd5eFactBase):
@@ -76,7 +88,7 @@ class HpChanged(Dnd5eFactBase):
     wounds: Wounds
 
     @property
-    def summary(self) -> str:
+    def trace_summary(self) -> str:
         if self.target_id == PLAYER_ID:
             return f"hp {self.delta:+d}"
         return f"{self.target_name} is {self.wounds}"
@@ -90,7 +102,7 @@ class ConditionChanged(Dnd5eFactBase):
     active: bool
 
     @property
-    def summary(self) -> str:
+    def trace_summary(self) -> str:
         who = "the player" if self.target_id == PLAYER_ID else self.target_name
         held = "is" if self.active else "is no longer"
         return f"{who} {held} {self.condition}"
@@ -100,8 +112,12 @@ class LevelUpAvailable(Dnd5eFactBase):
     fact: Literal["level_up_available"] = "level_up_available"
 
     @property
-    def summary(self) -> str:
+    def trace_summary(self) -> str:
         return "a level-up is available to the player"
+
+    @property
+    def narrator_summary(self) -> str:
+        return "an advancement is available to the player"
 
 
 class FeatureUsed(Dnd5eFactBase):
@@ -113,8 +129,12 @@ class FeatureUsed(Dnd5eFactBase):
     maximum: int = Field(ge=1)
 
     @property
-    def summary(self) -> str:
+    def trace_summary(self) -> str:
         return f"used {self.name} ({self.remaining}/{self.maximum} uses remaining)"
+
+    @property
+    def narrator_summary(self) -> str:
+        return f"used {self.name}"
 
 
 class FeatureActivated(Dnd5eFactBase):
@@ -123,7 +143,7 @@ class FeatureActivated(Dnd5eFactBase):
     name: str
 
     @property
-    def summary(self) -> str:
+    def trace_summary(self) -> str:
         return f"activated {self.name}"
 
 
@@ -134,9 +154,13 @@ class SpellCast(Dnd5eFactBase):
     slot_level: SpellLevel
 
     @property
-    def summary(self) -> str:
+    def trace_summary(self) -> str:
         at = "" if self.slot_level == 0 else f" at level {self.slot_level}"
         return f"cast {self.name}{at}"
+
+    @property
+    def narrator_summary(self) -> str:
+        return f"cast {self.name}"
 
 
 class SpellSlotSpent(Dnd5eFactBase):
@@ -146,11 +170,15 @@ class SpellSlotSpent(Dnd5eFactBase):
     maximum: int = Field(ge=1)
 
     @property
-    def summary(self) -> str:
+    def trace_summary(self) -> str:
         return (
             f"spent a level {self.slot_level} spell slot"
             f" ({self.remaining}/{self.maximum} remaining)"
         )
+
+    @property
+    def narrator_summary(self) -> None:
+        return None
 
 
 class PoolRefilled(Value):
@@ -171,7 +199,7 @@ class Rested(Dnd5eFactBase):
     slots: tuple[SlotsRefilled, ...] = ()
 
     @property
-    def summary(self) -> str:
+    def trace_summary(self) -> str:
         names = [pool.name for pool in self.refilled] + (["spell slots"] if self.slots else [])
         recharged = f"; recharged {', '.join(names)}" if names else ""
         return f"completed a {self.rest} rest{recharged}"
@@ -182,7 +210,7 @@ class LeveledUp(Dnd5eFactBase):
     advancement: Advancement
 
     @property
-    def summary(self) -> str:
+    def trace_summary(self) -> str:
         return f"reached level {self.advancement.progression.level}"
 
 

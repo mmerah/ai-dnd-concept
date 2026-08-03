@@ -341,7 +341,7 @@ def test_levelling_rolls_the_hit_die_where_the_trace_can_see_it() -> None:
     rolled, gained = progression.advance(player_of(state), {}, RULES, Random(1))
     assert isinstance(gained, LeveledUp)
     assert isinstance(rolled, DiceRolled)
-    assert rolled.summary.startswith("rolled 1d10:")
+    assert rolled.trace_summary.startswith("rolled 1d10:")
     after = player_of(state.committed())
     assert after.stats.max_hp - before == gained.advancement.hp_gain
     assert after.stats.hp == after.stats.max_hp

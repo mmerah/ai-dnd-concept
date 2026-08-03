@@ -1,24 +1,14 @@
-from collections.abc import Sequence
 from random import Random
 
 from pydantic_ai import ModelRetry, NativeOutput, RunContext
 from pydantic_ai.output import OutputSpec
 
+from aidm.actions import DropItem, GiveItem, Move, TakeItem
 from aidm.base import PLAYER_ID, ActorEntity, Entity, EntityId, ItemEntity
-from aidm.directing import check_refs, check_speaker
+from aidm.directing import check_proposal, consequence_menu, walk_consequences
 from aidm.world import GameState
 
 from .access import actor_rules, item_rules
-from .actions import (
-    CoreAction,
-    CoreActionUnion,
-    DropItem,
-    GiveItem,
-    Move,
-    TakeItem,
-    action_references,
-    is_core_action,
-)
 from .direction import (
     STORY_CONSEQUENCE_TYPES,
     ApplyCondition,
@@ -29,34 +19,15 @@ from .direction import (
     HinderingCondition,
     RecoverStress,
     Risk,
-    StoryAction,
+    StoryConsequence,
     StoryDirection,
     TakeStress,
-    flatten,
+    branches,
 )
 from .rules import StoryProposalRejected, StoryRules
 from .state import StoryActorState
 
 type StoryActorConsequence = Risk | TakeStress | RecoverStress | ApplyCondition | ClearCondition
-
-
-def consequence_menu(
-    types: Sequence[type[CoreAction] | type[StoryAction]],
-) -> str:
-    """Each consequence's docstring, GUIDANCE and field descriptions are prompt text."""
-    lines: list[str] = []
-    for consequence in types:
-        action = consequence.model_fields["action"].default
-        summary = consequence.__doc__
-        if not isinstance(action, str) or summary is None:
-            raise TypeError(f"{consequence.__name__} has incomplete prompt documentation")
-        fields = "\n".join(
-            f"  - `{name}`: {field.description}"
-            for name, field in consequence.model_fields.items()
-            if name != "action" and field.description
-        )
-        lines.append(f"### `{action}` — {summary}\n{consequence.GUIDANCE}\n{fields}")
-    return "\n\n".join(lines)
 
 
 _MECHANICS_TEMPLATE = """`mechanics` — an ordered list of Story consequences. The deterministic \
@@ -95,24 +66,19 @@ class StoryDirector:
         direction: StoryDirection,
     ) -> StoryDirection:
         state = ctx.deps
-        consequences = flatten(direction.mechanics)
-        core: list[CoreActionUnion] = []
-        for consequence in consequences:
-            if isinstance(consequence, CoreAction):
-                if not is_core_action(consequence):
-                    raise TypeError(f"unsupported core action {type(consequence).__name__}")
-                core.append(consequence)
-        faults = [action.check() for action in core]
-        faults.append(check_speaker(state, direction.speaker_id))
-        faults.append(
-            check_refs(state, [ref for action in core for ref in action_references(action)])
-        )
-        if fault := next((item for item in faults if item is not None), None):
+        if fault := check_proposal(
+            state,
+            direction.mechanics,
+            direction.speaker_id,
+            branches,
+            (self._check_core_presence,),
+        ):
             raise ModelRetry(fault)
-        for action in core:
-            self._validate_core_presence(state, action)
-        for consequence in consequences:
-            if not isinstance(consequence, CoreAction):
+        for consequence in walk_consequences(direction.mechanics, branches):
+            if isinstance(
+                consequence,
+                Risk | TakeStress | RecoverStress | ApplyCondition | ClearCondition,
+            ):
                 self._validate_actor_consequence(state, consequence)
         try:
             self._rules.resolve(direction, state, Random(0))
@@ -184,17 +150,17 @@ class StoryDirector:
                     raise ModelRetry(f"condition {condition_id!r} is not active on {actor.id!r}")
 
     @staticmethod
-    def _validate_core_presence(state: GameState, action: CoreActionUnion) -> None:
+    def _check_core_presence(state: GameState, action: StoryConsequence) -> str | None:
         here = state.player.location_id
         match action:
             case TakeItem(item_id=item_id):
                 item = state.world.find(item_id)
                 if not isinstance(item, ItemEntity) or item.container_id != here:
-                    raise ModelRetry(f"item {item_id!r} is not loose at the player's location")
+                    return f"item {item_id!r} is not loose at the player's location"
             case DropItem(item_id=item_id) | GiveItem(item_id=item_id):
                 item = state.world.find(item_id)
                 if not isinstance(item, ItemEntity) or item.container_id != PLAYER_ID:
-                    raise ModelRetry(f"the player does not carry item {item_id!r}")
+                    return f"the player does not carry item {item_id!r}"
             case Move(actor_id=actor_id, location_id=location_id):
                 if actor_id is not None and actor_id != PLAYER_ID:
                     actor = state.world.find(actor_id)
@@ -203,9 +169,10 @@ class StoryDirector:
                         or actor.location_id != here
                         and location_id != here
                     ):
-                        raise ModelRetry(f"movement of actor {actor_id!r} would not be witnessed")
+                        return f"movement of actor {actor_id!r} would not be witnessed"
             case _:
-                return
+                pass
+        return None
 
     @staticmethod
     def _require[T: Entity](

@@ -11,13 +11,6 @@ from aidm.engines.story.engine import build_story_engine
 from .base import ActorEntity, AdvancementDecision, EngineId, Entity, ItemEntity, LocationEntity
 from .config import Settings
 from .content import AuthoredWorld
-from .facts import (
-    ActorMoved,
-    EntityCreated,
-    EntityDiscovered,
-    ItemMoved,
-    core_fact_summary,
-)
 from .prompts import EntityRenderer
 from .transition import Direction, Fact, Transition
 from .world import CharacterEngineData, EntityRules, GameState, WorldState
@@ -65,10 +58,6 @@ class Engine(Protocol):
 
     def entity_state(self, entity: Entity, rules: EntityRules) -> str: ...
 
-    def narrator_fact(self, fact: Fact) -> str | None: ...
-
-    def trace_fact(self, fact: Fact) -> str: ...
-
     def trace_direction(self, direction: Direction) -> str: ...
 
 
@@ -82,23 +71,9 @@ def engine_for(engine: EngineId, config: Settings) -> Engine:
     return ENGINES[engine](config)
 
 
-def narrator_evidence(engine: Engine, facts: Sequence[Fact]) -> str:
-    lines = [
-        f"- {rendered}" for fact in facts if (rendered := narrator_line(engine, fact)) is not None
-    ]
+def narrator_evidence(facts: Sequence[Fact]) -> str:
+    lines = [f"- {rendered}" for fact in facts if (rendered := fact.narrator_summary) is not None]
     return "\n".join(lines) or NOTHING_MECHANICAL
-
-
-def narrator_line(engine: Engine, fact: Fact) -> str | None:
-    if isinstance(fact, EntityCreated | EntityDiscovered | ActorMoved | ItemMoved):
-        return core_fact_summary(fact)
-    return engine.narrator_fact(fact)
-
-
-def trace_line(engine: Engine, fact: Fact) -> str:
-    if isinstance(fact, EntityCreated | EntityDiscovered | ActorMoved | ItemMoved):
-        return core_fact_summary(fact)
-    return engine.trace_fact(fact)
 
 
 def entity_renderer(engine: Engine, state: GameState) -> EntityRenderer:

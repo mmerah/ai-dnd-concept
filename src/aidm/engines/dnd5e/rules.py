@@ -1,5 +1,7 @@
 from random import Random
 
+from pydantic import ValidationError
+
 from aidm.base import PLAYER_ID
 from aidm.transition import Transition
 from aidm.world import GameState
@@ -10,13 +12,22 @@ from .resolve import resolve as resolve_mechanics
 from .ruleset import Ruleset
 
 
+class Dnd5eProposalRejected(ValueError):
+    pass
+
+
 class Dnd5eRules:
     def __init__(self, ruleset: Ruleset) -> None:
         self._ruleset = ruleset
 
     def resolve(self, direction: Dnd5eDirection, state: GameState, rng: Random) -> Transition:
         draft = state.draft()
-        facts = resolve_mechanics(direction.mechanics, draft, rng, self._ruleset)
+        try:
+            facts = resolve_mechanics(direction.mechanics, draft, rng, self._ruleset)
+        except ValidationError:
+            raise
+        except ValueError as error:
+            raise Dnd5eProposalRejected(str(error)) from error
         return Transition(state=draft.committed(), facts=tuple(facts))
 
     def validate_state(self, state: GameState) -> None:

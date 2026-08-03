@@ -18,21 +18,6 @@ from .content.records.monsters import (
     MonsterSave,
 )
 from .direction import MECHANICS_ADAPTER, Dnd5eDirection
-from .facts import (
-    AttackRolled,
-    ConditionChanged,
-    DcRolled,
-    DiceRolled,
-    Dnd5eFact,
-    FeatureActivated,
-    FeatureUsed,
-    HpChanged,
-    LeveledUp,
-    LevelUpAvailable,
-    Rested,
-    SpellCast,
-    SpellSlotSpent,
-)
 from .ruleset import Ruleset
 from .state import MAX_LEVEL, Progression, StatBlock, feature_key, spell_key
 from .values import Attributes
@@ -50,40 +35,6 @@ class Dnd5ePresentation:
             return actor_state(actor.stats, actor.ref, self._ruleset)
         sheet = player_state(actor.stats, actor.progression, self._ruleset)
         return f"{sheet}\nadvancement: {level_up_state(actor.progression)}"
-
-    def narrator_fact(self, fact: Dnd5eFact) -> str | None:
-        match fact:
-            case DcRolled(actor_name=name, success=success):
-                return f"{name} {'succeeds' if success else 'fails'}"
-            case AttackRolled(
-                actor_name=actor,
-                target_name=target,
-                hit=hit,
-            ):
-                return f"{actor}'s attack {'hits' if hit else 'misses'} {target}"
-            case DiceRolled():
-                return None
-            case HpChanged():
-                return fact.summary
-            case ConditionChanged():
-                return fact.summary
-            case LevelUpAvailable():
-                return "an advancement is available to the player"
-            case FeatureUsed(name=name):
-                return f"used {name}"
-            case FeatureActivated(name=name):
-                return f"activated {name}"
-            case SpellCast(name=name):
-                return f"cast {name}"
-            case SpellSlotSpent():
-                return None
-            case Rested():
-                return fact.summary
-            case LeveledUp():
-                return fact.summary
-
-    def trace_fact(self, fact: Dnd5eFact) -> str:
-        return fact.summary
 
     def trace_direction(self, direction: Dnd5eDirection) -> str:
         return json.dumps(json.loads(MECHANICS_ADAPTER.dump_json(direction.mechanics)), indent=2)

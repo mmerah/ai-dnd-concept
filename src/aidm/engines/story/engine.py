@@ -14,7 +14,7 @@ from aidm.base import (
     LocationEntity,
 )
 from aidm.content import AuthoredActor, AuthoredItem, AuthoredWorld, compose_world
-from aidm.transition import Direction, Fact, Transition
+from aidm.transition import Direction, Transition
 from aidm.world import (
     CharacterEngineData,
     EntityRules,
@@ -27,7 +27,6 @@ from aidm.world import (
 from .advancement import StoryAdvancement, StoryAdvancementDecision, is_story_decision
 from .direction import StoryDirection
 from .director import StoryDirector
-from .facts import StoryFact
 from .presentation import StoryPresentation
 from .rules import StoryRules
 from .state import (
@@ -106,12 +105,6 @@ class StoryEngine:
     def entity_state(self, entity: Entity, rules: EntityRules) -> str:
         return self.presentation.entity_state(entity, rules)
 
-    def narrator_fact(self, fact: Fact) -> str | None:
-        return self.presentation.narrator_fact(_fact(fact))
-
-    def trace_fact(self, fact: Fact) -> str:
-        return self.presentation.trace_fact(_fact(fact))
-
     def trace_direction(self, direction: Direction) -> str:
         return self.presentation.trace_direction(_direction(direction))
 
@@ -142,12 +135,6 @@ def _direction(direction: Direction) -> StoryDirection:
     if not isinstance(direction, StoryDirection):
         raise TypeError(f"{ENGINE_ID!r} engine received a {type(direction).__name__}")
     return direction
-
-
-def _fact(fact: Fact) -> StoryFact:
-    if fact.source != "story":
-        raise TypeError(f"{ENGINE_ID!r} engine received a {type(fact).__name__}")
-    return fact
 
 
 def _decision(decision: AdvancementDecision) -> StoryAdvancementDecision:

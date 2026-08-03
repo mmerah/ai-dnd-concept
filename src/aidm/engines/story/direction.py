@@ -2,11 +2,8 @@ from typing import Annotated, ClassVar, Literal
 
 from pydantic import Field, TypeAdapter
 
-from aidm.base import EntityId, Frozen, Slug
-
-from .actions import (
-    CORE_ACTION_TYPES,
-    CoreAction,
+from aidm.actions import (
+    WORLD_ACTION_TYPES,
     Discover,
     DropItem,
     GainImprovisedItem,
@@ -14,6 +11,9 @@ from .actions import (
     Move,
     TakeItem,
 )
+from aidm.base import EntityId, Frozen, Slug
+from aidm.directing import ConsequenceBase
+
 from .state import StoryApproach, StoryCondition
 
 
@@ -51,8 +51,8 @@ type HinderingRef = Annotated[
 ]
 
 
-class StoryAction(Frozen):
-    GUIDANCE: ClassVar[str] = ""
+class StoryAction(ConsequenceBase):
+    pass
 
 
 class Risk(StoryAction):
@@ -179,8 +179,8 @@ STORY_ACTION_TYPES: tuple[type[StoryAction], ...] = (
     ApplyCondition,
     ClearCondition,
 )
-STORY_CONSEQUENCE_TYPES: tuple[type[CoreAction] | type[StoryAction], ...] = (
-    *CORE_ACTION_TYPES,
+STORY_CONSEQUENCE_TYPES: tuple[type[ConsequenceBase], ...] = (
+    *WORLD_ACTION_TYPES,
     *STORY_ACTION_TYPES,
 )
 
@@ -201,12 +201,3 @@ def branches(consequence: StoryConsequence) -> tuple[list[StoryConsequence], ...
     if isinstance(consequence, Risk):
         return consequence.on_strong, consequence.on_mixed, consequence.on_setback
     return ()
-
-
-def flatten(consequences: list[StoryConsequence]) -> tuple[StoryConsequence, ...]:
-    flattened: list[StoryConsequence] = []
-    for consequence in consequences:
-        flattened.append(consequence)
-        for branch in branches(consequence):
-            flattened.extend(flatten(branch))
-    return tuple(flattened)

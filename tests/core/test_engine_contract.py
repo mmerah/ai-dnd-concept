@@ -2,10 +2,10 @@ from random import Random
 
 from core_test_support import character, initialized
 
+from aidm.actions import TakeItem
 from aidm.base import ENGINE_IDS, PLAYER_ID, ActorEntity, EntityId, ItemEntity
-from aidm.engine import ENGINES, narrator_line, trace_line
+from aidm.engine import ENGINES
 from aidm.engines.story.access import actor_of, item_of, player_rules
-from aidm.engines.story.actions import TakeItem
 from aidm.engines.story.direction import Risk, StoryDirection
 from aidm.engines.story.state import DEFAULT_APPROACHES, StoryCharacterData
 from aidm.world import GameState
@@ -45,8 +45,8 @@ def test_engine_resolution_is_pure_seeded_and_renders_every_fact() -> None:
     assert first.state.model_dump_json() != before
     engine.validate_state(first.state)
     for fact in first.facts:
-        assert trace_line(engine, fact)
-        rendered = narrator_line(engine, fact)
+        assert fact.trace_summary
+        rendered = fact.narrator_summary
         assert rendered is None or str(fact.model_dump()) not in rendered
 
 
