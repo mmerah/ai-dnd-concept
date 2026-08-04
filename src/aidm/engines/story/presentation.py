@@ -1,8 +1,7 @@
 from aidm.base import PLAYER_ID, Entity
 from aidm.content import Rules
 
-from .access import actor_state, item_state
-from .state import StoryActorState, StoryItemState
+from .state import StoryActorState, StoryItemState, actor_state, item_state
 
 
 class StoryPresentation:

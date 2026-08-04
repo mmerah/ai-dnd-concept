@@ -4,15 +4,12 @@ from typing import cast as as_int
 import pytest
 from core_test_support import updated
 from fivee_progression_support import levelled, started
-from fivee_test_support import actor_of, new_game, player_of, ruleset, with_actor
+from fivee_test_support import actor_of, new_game, player_of, ruleset, turn_of, with_actor
 from fivee_test_support import content_ref as ref
+from pydantic_ai import ModelRetry
 
 from aidm.base import Entity, EntityId
 from aidm.engines.dnd5e import bestiary, dice, spells
-from aidm.engines.dnd5e.access import Dnd5eWorld
-from aidm.engines.dnd5e.direction import Cast
-from aidm.engines.dnd5e.resolve import resolve as _resolve
-from aidm.engines.dnd5e.ruleset import Ruleset
 from aidm.engines.dnd5e.state import Dnd5eActorDefinition, Progression
 from aidm.facts import Fact
 from aidm.world import GameState
@@ -43,30 +40,22 @@ def guarded(klass: str, level: int = 1) -> GameState:
     )
 
 
-def cast(state: GameState, spell: str, slot_level: int, seed: int = 1) -> list[Fact]:
-    world = Dnd5eWorld(state=state)
-    facts = _resolve(
-        [Cast(spell=f"srd-2014/spells/{spell}", slot_level=slot_level, target_id=GARGOYLE)],
-        world,
-        Random(seed),
-        RULES,
+def cast(
+    state: GameState, spell: str, slot_level: int, seed: int = 1
+) -> tuple[list[Fact], GameState]:
+    turn = turn_of(state, Random(seed))
+    facts = turn.call(
+        turn.tools.cast,
+        spell=f"srd-2014/spells/{spell}",
+        slot_level=slot_level,
+        target_id=GARGOYLE,
     )
-    _ = world.commit()
-    return facts
+    return facts, turn.committed()
 
 
 def rolled(facts: list[Fact]) -> Fact:
     (found,) = [fact for fact in facts if fact.kind == "dice_rolled"]
     return found
-
-
-def resolve(
-    mechanics: list[Cast], state: GameState, rng: Random, ruleset: Ruleset = RULES
-) -> list[Fact]:
-    world = Dnd5eWorld(state=state)
-    facts = _resolve(mechanics, world, rng, ruleset)
-    _ = world.commit()
-    return facts
 
 
 def saving_throw(facts: list[Fact]) -> Fact:
@@ -87,8 +76,8 @@ def test_a_save_that_halves_on_success_halves_rather_than_skips() -> None:
     """`on_success: half` is the one save outcome the engine can own, and no dice expression can
     express half of itself, so the roll is emitted and its total halved after the fact."""
     made, missed = guarded("wizard", level=5), guarded("wizard", level=5)
-    saved = cast(made, "fireball", 3, SAVE_MADE)
-    failed = cast(missed, "fireball", 3, SAVE_MISSED)
+    saved, made_after = cast(made, "fireball", 3, SAVE_MADE)
+    failed, missed_after = cast(missed, "fireball", 3, SAVE_MISSED)
     assert saving_throw(saved).data["success"] and not saving_throw(failed).data["success"]
     assert [fact.kind for fact in saved] == [
         "spell_slot_spent",
@@ -98,15 +87,15 @@ def test_a_save_that_halves_on_success_halves_rather_than_skips() -> None:
         "hp_changed",
     ]
     assert rolled(saved).data["dice"] == "8d6"
-    assert harm(made) == as_int(int, rolled(saved).data["total"]) // 2
-    assert harm(missed) == rolled(failed).data["total"]
+    assert harm(made_after) == as_int(int, rolled(saved).data["total"]) // 2
+    assert harm(missed_after) == rolled(failed).data["total"]
     assert hp_changed(saved).trace == "a gargoyle is hurt"
 
 
 def test_an_attack_spell_rolls_to_hit_and_a_cantrip_scales_off_character_level() -> None:
     """`fire-bolt` carries no `at_slot_level` at all; its damage is `at_character_level`, and those
     steps are 1/5/11/17, so a level 5 wizard throws 2d10 rather than the table's first entry."""
-    events = cast(guarded("wizard", level=5), "fire-bolt", 0, seed=0)  # seed 0 rolls a hit
+    events, _ = cast(guarded("wizard", level=5), "fire-bolt", 0, seed=0)  # seed 0 rolls a hit
     assert [fact.kind for fact in events] == [
         "spell_cast",  # a cantrip spends no slot
         "attack_rolled",
@@ -124,11 +113,10 @@ def test_a_healing_spell_substitutes_the_casters_modifier_before_rolling() -> No
     wounded = with_actor(
         cleric, caster.entity, updated(caster.state, stats=updated(caster.stats, hp=2))
     )
-    facts = resolve(
-        [Cast(spell="srd-2014/spells/cure-wounds", slot_level=1)], wounded, Random(1), RULES
-    )
+    turn = turn_of(wounded, Random(1))
+    facts = turn.call(turn.tools.cast, spell="srd-2014/spells/cure-wounds", slot_level=1)
     assert rolled(facts).data["dice"] == "1d8 + 2"
-    assert player_of(wounded).stats.hp == 2 + as_int(int, rolled(facts).data["total"])
+    assert player_of(turn.committed()).stats.hp == 2 + as_int(int, rolled(facts).data["total"])
 
 
 def test_a_negative_modifier_folds_its_sign_rather_than_being_pasted_in() -> None:
@@ -153,16 +141,25 @@ def test_a_negative_modifier_folds_its_sign_rather_than_being_pasted_in() -> Non
 def test_an_illegal_cast_is_refused_rather_than_resolved(
     spell: str, slot_level: int, fault: str
 ) -> None:
-    with pytest.raises(ValueError, match=fault):
+    with pytest.raises(ModelRetry, match=fault):
         cast(guarded("wizard", level=5), spell, slot_level)
 
 
 def test_a_class_that_casts_nothing_and_a_spell_aimed_at_its_caster_are_refused() -> None:
-    with pytest.raises(ValueError, match="class 'fighter' casts no spells"):
+    with pytest.raises(ModelRetry, match="class 'fighter' casts no spells"):
         cast(guarded("fighter"), "fireball", 3)
     wizard = guarded("wizard", level=5)
-    with pytest.raises(ValueError, match="needs a target other than the caster"):
-        resolve([Cast(spell="srd-2014/spells/fireball", slot_level=3)], wizard, Random(1), RULES)
+    turn = turn_of(wizard, Random(1))
+    with pytest.raises(ModelRetry, match="needs a target other than the caster"):
+        turn.call(turn.tools.cast, spell="srd-2014/spells/fireball", slot_level=3)
+    # Dancing Lights types no effect to aim, so nothing downstream would read the id.
+    with pytest.raises(ModelRetry, match="unknown entity id"):
+        turn.call(
+            turn.tools.cast,
+            spell="srd-2014/spells/dancing-lights",
+            slot_level=0,
+            target_id=EntityId("nobody"),
+        )
 
 
 def castable(progression: Progression) -> set[str]:

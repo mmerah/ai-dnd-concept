@@ -191,38 +191,3 @@ def _move_summary(entity: Entity, destination: Entity) -> str:
     if destination.kind == "actor":
         return f"gave {entity.name} to {destination.name}"
     return f"left {entity.name} at {destination.name}"
-
-
-class EngineRecords[A: Mutable, I: Mutable]:
-    """Cached so two mechanics mutate one payload; `commit` flushes back only what it handed out."""
-
-    def __init__(self, state: GameState, actor_state: type[A], item_state: type[I]) -> None:
-        self.state = state
-        self._actor_state = actor_state
-        self._item_state = item_state
-        self._actors: dict[EntityId, A] = {}
-        self._items: dict[EntityId, I] = {}
-
-    def actor(self, actor_id: EntityId) -> tuple[Entity, A]:
-        record = self.state.world.record(actor_id, "actor")
-        payload = self._actors.get(actor_id)
-        if payload is None:
-            payload = self._actor_state.model_validate(record.rules)
-            self._actors[actor_id] = payload
-        return record.entity, payload
-
-    def item(self, item_id: EntityId) -> tuple[Entity, I]:
-        record = self.state.world.record(item_id, "item")
-        payload = self._items.get(item_id)
-        if payload is None:
-            payload = self._item_state.model_validate(record.rules)
-            self._items[item_id] = payload
-        return record.entity, payload
-
-    def player(self) -> tuple[Entity, A]:
-        return self.actor(PLAYER_ID)
-
-    def commit(self) -> GameState:
-        for entity_id, payload in (*self._actors.items(), *self._items.items()):
-            self.state.world.record(entity_id).rules = payload.model_dump(mode="json")
-        return self.state.committed()

@@ -37,7 +37,6 @@ Term = DiceTerm | ConstantTerm | ModifierTerm
 
 
 def terms(expression: str) -> tuple[Term, ...]:
-    """Reject leading signs because the consuming action owns the outcome's sign."""
     pieces = _OPERATORS.split(expression.replace(" ", ""))
     parsed = [_term(pieces[0], 1)]
     for operator, word in zip(pieces[1::2], pieces[2::2], strict=True):
@@ -64,8 +63,6 @@ def _word(term: DiceTerm | ConstantTerm) -> str:
 
 
 def substituted(expression: str, modifier: int) -> str:
-    """Fold a caster's own modifier into every MOD term, so the result is rollable on its own.
-    Signs are recombined rather than pasted, because a negative modifier would leave '+ -2'."""
     parsed = terms(expression)
     if isinstance(parsed[0], ModifierTerm) and modifier < 0:
         # A leading sign has no valid spelling, so this cannot be written rather than mis-signed.
@@ -110,3 +107,6 @@ DiceExpr = Annotated[
 # Role-written dice cannot leave a caster modifier unresolved.
 SelfContainedDice = Annotated[DiceExpr, AfterValidator(_self_contained)]
 PositiveDice = Annotated[SelfContainedDice, AfterValidator(_positive)]
+
+# The consuming action owns the sign, so magnitudes stay non-negative.
+Magnitude = SelfContainedDice | Annotated[int, Field(ge=0, strict=True)]

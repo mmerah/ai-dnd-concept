@@ -1,18 +1,20 @@
 from collections.abc import Mapping
 
+from pydantic_ai import ModelRetry
+
+from aidm.base import EntityId
 from aidm.facts import Fact
 
 from . import dice, rolls
+from .access import Dnd5eWorld
 from .content.library import ContentMiss
 from .content.records.base import ContentRef
-from .content.records.spells import SpellDamage, SpellRecord, SpellSave
+from .content.records.spells import SpellDamage, SpellLevel, SpellRecord, SpellSave
 from .content.vocabulary import RestType
-from .direction import Cast
 from .identity import ENGINE_ID
 from .mechanics import common, health
-from .mechanics.resolution import Resolution
 from .ruleset import ProgressionRules, Ruleset, SpellcastingProfile, SpellProfile
-from .state import Dnd5eActor, Progression, ResourceState, spell_ref
+from .state import Dnd5eActor, Progression, ResourceState, SpellKey, spell_ref
 
 SAVE_DC_BASE = 8
 
@@ -38,10 +40,10 @@ def slots(
     }
 
 
-def recharged(ctx: Resolution, completed: RestType) -> tuple[int, ...]:
+def recharged(world: Dnd5eWorld, completed: RestType) -> tuple[int, ...]:
     spent = [
         (level, state)
-        for level, state in sorted(ctx.progression.spell_slots.items())
+        for level, state in sorted(world.progression().spell_slots.items())
         if state.refills(completed)
     ]
     for _, state in spent:
@@ -52,15 +54,13 @@ def recharged(ctx: Resolution, completed: RestType) -> tuple[int, ...]:
 def spellcasting(progression: Progression, ruleset: ProgressionRules) -> SpellcastingProfile:
     casting = ruleset.character(progression.origin).spellcasting
     if casting is None:
-        raise ValueError(f"class {progression.origin.class_ref.index!r} casts no spells")
+        raise ModelRetry(f"class {progression.origin.class_ref.index!r} casts no spells")
     return casting
 
 
 def repertoire(
     progression: Progression, casting: SpellcastingProfile, ruleset: Ruleset
 ) -> tuple[SpellProfile, ...]:
-    """Every spell the player may cast: the ones they chose, plus — for a prepared caster, whose
-    preparation is not modelled — their whole class list up to the highest slot they hold."""
     chosen = set(progression.chosen_spells)
     prepared = range(1, max(progression.spell_slots, default=0) + 1)
     return tuple(
@@ -70,16 +70,20 @@ def repertoire(
     )
 
 
-def cast(ctx: Resolution, consequence: Cast) -> list[Fact]:
-    progression = ctx.progression
-    casting = spellcasting(progression, ctx.ruleset)
-    ref = spell_ref(consequence.spell)
-    record = _castable(ctx, ref, casting)
+def cast(
+    world: Dnd5eWorld, spell: SpellKey, slot_level: SpellLevel, target_id: EntityId | None
+) -> list[Fact]:
+    progression = world.progression()
+    casting = spellcasting(progression, world.ruleset)
+    ref = spell_ref(spell)
+    record = _castable(world, ref, casting)
+    # resolved even when the record types no effect to aim
+    target = world.target(target_id)
     spent: list[Fact] = [
-        *_spend(progression, record, consequence.slot_level),
-        _spell_cast(ref, record.name, consequence.slot_level),
+        *_spend(progression, record, slot_level),
+        _spell_cast(ref, record.name, slot_level),
     ]
-    return [*spent, *_effects(ctx, consequence, record, casting)]
+    return [*spent, *_effects(world, slot_level, target, record, casting)]
 
 
 def _spell_cast(ref: ContentRef, name: str, slot_level: int) -> Fact:
@@ -94,10 +98,12 @@ def _spell_cast(ref: ContentRef, name: str, slot_level: int) -> Fact:
     )
 
 
-def _castable(ctx: Resolution, ref: ContentRef, casting: SpellcastingProfile) -> SpellRecord:
-    if not any(spell.ref == ref for spell in repertoire(ctx.progression, casting, ctx.ruleset)):
-        raise ValueError(f"the player cannot cast {ref.index!r}")
-    found = ctx.ruleset.spell(ref)
+def _castable(world: Dnd5eWorld, ref: ContentRef, casting: SpellcastingProfile) -> SpellRecord:
+    if not any(
+        spell.ref == ref for spell in repertoire(world.progression(), casting, world.ruleset)
+    ):
+        raise ModelRetry(f"the player cannot cast {ref.index!r}")
+    found = world.ruleset.spell(ref)
     if isinstance(found, ContentMiss):
         raise ValueError(found.summary)
     return found
@@ -106,17 +112,17 @@ def _castable(ctx: Resolution, ref: ContentRef, casting: SpellcastingProfile) ->
 def _spend(progression: Progression, record: SpellRecord, slot_level: int) -> list[Fact]:
     if record.level == 0:
         if slot_level != 0:
-            raise ValueError(f"cantrip {record.index!r} spends no spell slot")
+            raise ModelRetry(f"cantrip {record.index!r} spends no spell slot")
         return []
     if slot_level < record.level:
-        raise ValueError(
+        raise ModelRetry(
             f"spell {record.index!r} is level {record.level}; a level {slot_level} slot is too low"
         )
     state = progression.spell_slots.get(slot_level)
     if state is None:
-        raise ValueError(f"the player has no level {slot_level} spell slots")
+        raise ModelRetry(f"the player has no level {slot_level} spell slots")
     if state.remaining == 0:
-        raise ValueError(
+        raise ModelRetry(
             f"no level {slot_level} spell slot remains; finish a {state.recharge} rest"
         )
     state.remaining -= 1
@@ -135,29 +141,30 @@ def _spell_slot_spent(slot_level: int, state: ResourceState) -> Fact:
 
 
 def _effects(
-    ctx: Resolution, consequence: Cast, record: SpellRecord, casting: SpellcastingProfile
+    world: Dnd5eWorld,
+    slot_level: SpellLevel,
+    target: Dnd5eActor,
+    record: SpellRecord,
+    casting: SpellcastingProfile,
 ) -> list[Fact]:
     """Resolve only what the record types; anything else the spell does stays description-guided."""
-    progression = ctx.progression
-    modifier = rolls.modifier(ctx.player.stats.attributes, casting.ability)
-    slot_level = consequence.slot_level
+    progression = world.progression()
+    modifier = rolls.modifier(world.player().stats.attributes, casting.ability)
     healing = _scaled(record.heal_at_slot_level, slot_level)
     if healing is not None:
         healed = dice.substituted(healing, modifier)
-        return health.hp_facts(ctx, consequence.target_id, healed, sign=1)
+        return health.hp_facts(world, target.id, healed, sign=1)
     harm = _harm(record.damage, slot_level, progression.level)
     amount = None if harm is None else dice.substituted(harm, modifier)
-    # Three spells state both an attack and a save, where the save is a later stage their
-    # description owns; the attack roll is the one that decides whether the spell lands at all.
     if record.attack_type is not None:
         bonus = progression.prof_bonus + modifier
-        return _attacked(ctx, _aimed(ctx, consequence, record), record.name, bonus, amount)
+        return _attacked(world, _aimed(world, target, record), record.name, bonus, amount)
     if record.save is not None:
         dc = SAVE_DC_BASE + progression.prof_bonus + modifier
-        return _saved(ctx, _aimed(ctx, consequence, record), record.save, dc, amount)
+        return _saved(world, _aimed(world, target, record), record.save, dc, amount)
     if amount is None:
         return []
-    return health.hp_facts(ctx, consequence.target_id, amount, sign=-1)
+    return health.hp_facts(world, target.id, amount, sign=-1)
 
 
 def _harm(damage: SpellDamage | None, slot_level: int, class_level: int) -> dice.DiceExpr | None:
@@ -175,44 +182,42 @@ def _scaled(table: Mapping[int, dice.DiceExpr], reached: int) -> dice.DiceExpr |
     return steps[-1] if steps else None
 
 
-def _aimed(ctx: Resolution, consequence: Cast, record: SpellRecord) -> Dnd5eActor:
+def _aimed(world: Dnd5eWorld, target: Dnd5eActor, record: SpellRecord) -> Dnd5eActor:
     """A roll needs someone other than the caster on the far side of it."""
-    target = ctx.target(consequence.target_id)
-    if target.id == ctx.player.id:
-        raise ValueError(f"spell {record.index!r} needs a target other than the caster")
+    if target.id == world.player().id:
+        raise ModelRetry(f"spell {record.index!r} needs a target other than the caster")
     return target
 
 
 def _attacked(
-    ctx: Resolution,
+    world: Dnd5eWorld,
     target: Dnd5eActor,
     name: str,
     bonus: int,
     amount: dice.SelfContainedDice | None,
 ) -> list[Fact]:
-    struck = rolls.roll_attack(ctx.player, target, name, bonus, ctx.rng)
-    seen: list[Fact] = [*common.reveal(ctx, target), struck.fact]
+    struck = rolls.roll_attack(world.player(), target, name, bonus, world.rng)
+    seen: list[Fact] = [*common.reveal(world, target), struck.fact]
     if not struck.hit or amount is None:
         return seen
-    return [*seen, *health.hp_facts(ctx, target.id, amount, sign=-1)]
+    return [*seen, *health.hp_facts(world, target.id, amount, sign=-1)]
 
 
 def _saved(
-    ctx: Resolution,
+    world: Dnd5eWorld,
     target: Dnd5eActor,
     save: SpellSave,
     dc: int,
     amount: dice.SelfContainedDice | None,
 ) -> list[Fact]:
-    rolled = rolls.roll_save(target, save.ability, dc, ctx.rng)
-    seen: list[Fact] = [*common.reveal(ctx, target), rolled.fact]
+    rolled = rolls.roll_save(target, save.ability, dc, world.rng)
+    seen: list[Fact] = [*common.reveal(world, target), rolled.fact]
     if amount is None:
         return seen
     if not rolled.success:
-        return [*seen, *health.hp_facts(ctx, target.id, amount, sign=-1)]
+        return [*seen, *health.hp_facts(world, target.id, amount, sign=-1)]
     if save.on_success != "half":
         # `other` is a spell-specific consequence, which stays with the description.
         return seen
-    # No dice expression can express half of itself, so the roll lands and the total is halved.
-    total, halving = rolls.roll_dice(amount, ctx.rng)
-    return [*seen, halving, *health.hp_facts(ctx, target.id, total // 2, sign=-1)]
+    total, halving = rolls.roll_dice(amount, world.rng)
+    return [*seen, halving, *health.hp_facts(world, target.id, total // 2, sign=-1)]

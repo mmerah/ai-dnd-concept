@@ -1,14 +1,17 @@
-from collections.abc import Mapping
+from collections.abc import Callable, Mapping
+from dataclasses import dataclass
 from functools import cache
 from pathlib import Path
+from random import Random
 
 import pytest
-from core_test_support import updated
+from core_test_support import tool_context, turn_context, updated
+from pydantic_ai import RunContext
 
 from aidm.base import PLAYER_ID, SAVE_VERSION, EngineId, Entity, EntityId
 from aidm.content import ScenarioMeta, authored_world
 from aidm.engine import Engine
-from aidm.engines.dnd5e.access import Dnd5eWorld
+from aidm.engines.dnd5e.access import read_actor, read_item
 from aidm.engines.dnd5e.content.library import Content, loaded, read_pack
 from aidm.engines.dnd5e.content.models import Pack
 from aidm.engines.dnd5e.content.pack_ruleset import compile_ruleset
@@ -24,9 +27,11 @@ from aidm.engines.dnd5e.state import (
     Dnd5eItemState,
     StatBlock,
 )
+from aidm.engines.dnd5e.tools import Dnd5eTools
 from aidm.engines.dnd5e.values import Attributes, ContentSlug
 from aidm.facts import Fact
 from aidm.store import load_character, load_scenario
+from aidm.tools import TurnContext
 from aidm.world import GameState, Record, WorldState
 
 REPOSITORY_ROOT = Path(__file__).parents[2]
@@ -38,15 +43,15 @@ def content_ref(collection: str, index: str) -> ContentRef:
 
 
 def actor_of(state: GameState, actor_id: EntityId) -> Dnd5eActor:
-    return Dnd5eWorld(state=state).actor(actor_id)
+    return read_actor(state, actor_id)
 
 
 def item_of(state: GameState, item_id: EntityId) -> Dnd5eItem:
-    return Dnd5eWorld(state=state).item(item_id)
+    return read_item(state, item_id)
 
 
 def carried_by(state: GameState, actor_id: EntityId) -> tuple[Dnd5eItem, ...]:
-    return Dnd5eWorld(state=state).carried_by(actor_id)
+    return tuple(read_item(state, entity.id) for entity in state.world.children(actor_id, "item"))
 
 
 def player_of(state: GameState) -> Dnd5eActor:
@@ -223,3 +228,30 @@ def new_game(
 ) -> GameState:
     """A fresh copy every call: mechanics mutate the draft they are handed."""
     return _opened(name, character).model_copy(deep=True)
+
+
+@dataclass(frozen=True, slots=True)
+class Turn:
+    """One turn's draft, plus the tools that act on it, as the Director's loop would."""
+
+    context: TurnContext
+    run: RunContext[TurnContext]
+    tools: Dnd5eTools
+
+    @property
+    def draft(self) -> GameState:
+        return self.context.draft
+
+    def call(self, tool: Callable[..., str], **arguments: object) -> list[Fact]:
+        """Only the facts this call appended, so a test reads one action at a time."""
+        before = len(self.context.facts)
+        _ = tool(self.run, **arguments)
+        return self.context.facts[before:]
+
+    def committed(self) -> GameState:
+        return self.context.draft.committed()
+
+
+def turn_of(state: GameState, rng: Random | None = None) -> Turn:
+    context = turn_context(dnd5e_engine(ruleset()), state, rng)
+    return Turn(context=context, run=tool_context(context), tools=Dnd5eTools(ruleset()))

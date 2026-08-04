@@ -1,5 +1,7 @@
 from random import Random
 
+from pydantic_ai import ModelRetry
+
 from . import dice, features, rolls
 from .access import Dnd5eWorld
 from .rolls import Struck
@@ -26,7 +28,7 @@ def _own_attack(
     wanted = weapon.casefold()
     found = next((a for a in attacks if a.name.casefold() == wanted), None)
     if found is None:
-        raise ValueError(
+        raise ModelRetry(
             f"{attacker_name} has no attack called {weapon!r}; it has {[a.name for a in attacks]}"
         )
     return found
@@ -60,7 +62,7 @@ def _held_weapon(
         found = ruleset.weapon(item.ref)
         if found is not None:
             return item, found
-    raise ValueError(f"{attacker.name} carries no weapon called {weapon!r}")
+    raise ModelRetry(f"{attacker.name} carries no weapon called {weapon!r}")
 
 
 def _uses_dexterity(weapon: WeaponProfile, attacker: Dnd5eActor) -> bool:

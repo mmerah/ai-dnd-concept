@@ -1,14 +1,29 @@
 from random import Random
 
-from core_test_support import character, initialized, settings
+from core_test_support import character, initialized, settings, tool_context, turn_context
 
-from aidm.actions import TakeItem
 from aidm.base import PLAYER_ID, Entity, EntityId
-from aidm.engines.story.access import actor_state, item_state, player_state
-from aidm.engines.story.direction import Risk, StoryDirection, dump_direction
-from aidm.engines.story.state import DEFAULT_APPROACHES, StoryCharacterData
+from aidm.engine import Engine
+from aidm.engines.story.state import (
+    DEFAULT_APPROACHES,
+    StoryCharacterData,
+    actor_state,
+    item_state,
+    player_state,
+)
+from aidm.engines.story.tools import risk
+from aidm.facts import Fact
 from aidm.registry import engine_ids, plugins
+from aidm.tools import take_item
 from aidm.world import GameState
+
+
+def _turn(engine: Engine, state: GameState) -> tuple[GameState, tuple[Fact, ...]]:
+    context = turn_context(engine, state, Random(19))
+    run = tool_context(context)
+    _ = take_item(run, EntityId("vault_map"))
+    _ = risk(run, approach="bold", difficulty=2)
+    return context.draft.committed(), tuple(context.facts)
 
 
 def test_engine_initialization_and_state_contract() -> None:
@@ -23,37 +38,26 @@ def test_engine_initialization_and_state_contract() -> None:
     assert restored == state
 
 
-def test_engine_resolution_is_pure_seeded_and_renders_every_fact() -> None:
+def test_tool_resolution_is_pure_seeded_and_renders_every_fact() -> None:
     """Load-bearing: a draft that shallow-copies would corrupt the committed state silently, so the
-    direction has to change state, take a core action and reach engine state to be worth asserting.
+    turn has to touch both a core action and engine state to be worth asserting.
     """
     engine, state = initialized()
-    direction = dump_direction(
-        StoryDirection(
-            intent="Kael pockets the map, then chances it.",
-            tone="tense",
-            mechanics=[
-                TakeItem(item_id=EntityId("vault_map")),
-                Risk(approach="bold", difficulty=2),
-            ],
-        )
-    )
     before = state.model_dump_json()
 
-    first = engine.resolve(direction, state, Random(19))
-    second = engine.resolve(direction, state, Random(19))
+    first_state, first_facts = _turn(engine, state)
 
-    assert first == second
+    assert (first_state, first_facts) == _turn(engine, state)
     assert state.model_dump_json() == before
-    assert {fact.kind for fact in first.facts} >= {
+    assert {fact.kind for fact in first_facts} >= {
         "entity_discovered",
         "entity_moved",
         "risk_rolled",
     }
-    assert {fact.source for fact in first.facts} == {"core", engine.id}
-    assert first.state.model_dump_json() != before
-    engine.validate_state(first.state)
-    for fact in first.facts:
+    assert {fact.source for fact in first_facts} == {"core", engine.id}
+    assert first_state.model_dump_json() != before
+    engine.validate_state(first_state)
+    for fact in first_facts:
         assert fact.trace
         assert fact.narrator is None or str(fact.data) not in fact.narrator
 

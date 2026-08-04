@@ -3,18 +3,17 @@ from random import Random
 
 import pytest
 from core_test_support import DND5E, STORY, character, scenario, settings, updated
+from story_test_support import setback
 
 from aidm.agents import director_stage, shared_stages
 from aidm.application import GameSession, LaunchTarget, Runtime
 from aidm.base import AdvancementDecision
 from aidm.content import ScenarioMeta
-from aidm.engines.story.access import player_state
 from aidm.engines.story.advancement import RaiseApproach, dump_decision
-from aidm.engines.story.direction import Risk, StoryDirection, dump_direction
 from aidm.engines.story.engine import build_story_engine
+from aidm.engines.story.state import player_state
 from aidm.pipeline import TurnOptions
 from aidm.store import FileSaves, FileTraces
-from aidm.transition import Direction
 from aidm.turn import Advance
 
 TARGET = LaunchTarget(
@@ -23,17 +22,6 @@ TARGET = LaunchTarget(
     character_id="kael",
     engine=STORY,
 )
-
-
-def setback_direction() -> Direction:
-    """An extreme risk against an unraised approach: seeded, this always earns a growth mark."""
-    return dump_direction(
-        StoryDirection(
-            intent="Kael attempts something dangerous.",
-            tone="tense",
-            mechanics=[Risk(approach="empathetic", difficulty=2)],
-        )
-    )
 
 
 def session(directory: Path) -> GameSession:
@@ -92,7 +80,7 @@ def test_advancement_commits_through_the_same_path_and_reaches_the_trace(tmp_pat
     """An advancement is a transaction like a turn: it saves and reaches the trace panel."""
     game = session(tmp_path)
     for _ in range(3):
-        game.state = game.engine.resolve(setback_direction(), game.state, Random(2)).state
+        game.state = setback(game.engine, game.state)[0]
     player = player_state(game.state)
     assert player.growth_marks == 3
     before = player.approaches.bold

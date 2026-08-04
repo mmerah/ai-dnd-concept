@@ -6,8 +6,9 @@ import pytest
 SOURCE = Path(__file__).parents[2] / "src" / "aidm"
 FORBIDDEN = {
     "core": {"aidm.ui", "nicegui"},
-    "engines/story": {"aidm.engines.dnd5e", "aidm.ui", "nicegui"},
-    "engines/dnd5e": {"aidm.engines.story", "aidm.ui", "nicegui"},
+    # An engine ships its own panels, so it may import nicegui; `aidm.ui` stays closed to it.
+    "engines/story": {"aidm.engines.dnd5e", "aidm.ui"},
+    "engines/dnd5e": {"aidm.engines.story", "aidm.ui"},
 }
 
 

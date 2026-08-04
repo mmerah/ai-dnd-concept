@@ -1,4 +1,3 @@
-import json
 from collections.abc import Sequence
 
 from nicegui import ui
@@ -46,9 +45,8 @@ def _entry_trace(entry: TraceEntry) -> None:
 
 
 def _turn_trace(turn: Turn) -> None:
-    _section("DIRECTOR intent (to the narrator)", turn.direction.intent)
-    _section("DIRECTOR tone (to the narrator)", turn.direction.tone)
-    _section("DIRECTOR mechanics (private)", json.dumps(turn.direction.mechanics, indent=2))
+    _section("DIRECTOR intent (to the narrator)", turn.notes.intent)
+    _section("DIRECTOR tone (to the narrator)", turn.notes.tone)
     _section("FACTS (private)", _facts(turn.facts))
     _section("NARRATOR-SAFE EVIDENCE", turn.narrator_evidence)
     _section("NARRATOR", turn.narration)

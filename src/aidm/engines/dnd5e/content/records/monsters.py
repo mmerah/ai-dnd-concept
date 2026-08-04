@@ -164,7 +164,7 @@ class MonsterRecord(Record):
     attributes: Attributes
     speed: Speed
     senses: Senses
-    # Opaque until consequences carry damage types.
+    # Opaque until damage carries a type.
     damage_resistances: tuple[str, ...] = ()
     damage_immunities: tuple[str, ...] = ()
     damage_vulnerabilities: tuple[str, ...] = ()

@@ -1,24 +1,29 @@
+from collections.abc import Sequence
 from random import Random
 
 from core_test_support import updated
-from fivee_test_support import initial_5e_game, player_of, ruleset, with_actor
+from fivee_test_support import initial_5e_game, player_of, ruleset, turn_of, with_actor
 
-from aidm.advancement import AdvancementChoice, FormField, SelectField
-from aidm.engines.dnd5e.advancement import Dnd5eAdvancement
-from aidm.engines.dnd5e.direction import Dnd5eDirection, LevelUp, dump_direction
-from aidm.engines.dnd5e.state import Dnd5eActorState
+from aidm.engines.dnd5e.advancement import (
+    Dnd5eAdvancement,
+    Dnd5eAdvancementDecisions,
+    benefit_sections,
+    dump_decision,
+    plan_sections,
+)
+from aidm.engines.dnd5e.content.records.character import ProgressionChoice
+from aidm.engines.dnd5e.state import Decisions, Dnd5eActorState
 
 
-def _answer(fields: tuple[FormField, ...]) -> dict[str, tuple[str, ...]]:
-    values: dict[str, tuple[str, ...]] = {}
-    for field in fields:
-        assert isinstance(field, SelectField)
-        values[field.id] = tuple(option.key for option in field.options[: field.choose])
-    return values
+def _answer(choices: Sequence[ProgressionChoice]) -> Decisions:
+    return {
+        choice.id: tuple(option.key for option in choice.options[: choice.choose])
+        for choice in choices
+    }
 
 
 def test_5e_advancement_status_and_full_flow() -> None:
-    engine, state = initial_5e_game()
+    _, state = initial_5e_game()
     advancement = Dnd5eAdvancement(ruleset())
 
     status = advancement.status(state)
@@ -29,19 +34,23 @@ def test_5e_advancement_status_and_full_flow() -> None:
     assert any("Second Wind" in line and "1/1 uses" in line for line in status.detail)
     assert not advancement.available(state)
 
-    proposal = dump_direction(
-        Dnd5eDirection(intent="Kael earns a level.", tone="triumphant", mechanics=[LevelUp()])
-    )
-    offered = engine.resolve(proposal, state, Random(1)).state
+    turn = turn_of(state, Random(1))
+    _ = turn.call(turn.tools.level_up)
+    offered = turn.committed()
     assert advancement.available(offered)
     assert advancement.status(offered).detail[0] == "Level 2 is ready."
 
-    form = advancement.form(offered)
-    option = form.options[0]
-    choice = AdvancementChoice(option_id=option.id, values=_answer(option.fields))
-    review = advancement.review(offered, choice)
+    preview = advancement.preview(offered)
+    decisions = Dnd5eAdvancementDecisions(decisions=_answer(preview.choices))
+    plan = advancement.plan(offered, decisions.decisions)
+    assert plan.benefits.level == 2
+    # The panel renders these verbatim, so the level's prose is only proved here.
+    level_section = benefit_sections(preview.benefits)[0]
+    assert level_section.heading == "Level 2"
+    assert any("Hit die" in line for line in level_section.lines)
+    assert plan_sections(plan)[0].heading == "Level 2"
 
-    advanced = advancement.advance(review.decision, offered, Random(1)).state
+    advanced = advancement.advance(dump_decision(decisions), offered, Random(1)).state
 
     assert advancement.status(advanced).headline == "level 2"
     assert not advancement.available(advanced)

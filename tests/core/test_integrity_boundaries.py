@@ -1,11 +1,8 @@
-from random import Random
-
 import pytest
 from core_test_support import STORY, character, initialized, scenario, updated, with_entity
 from pydantic import ValidationError
 
-from aidm.actions import TakeItem
-from aidm.base import PLAYER_ID, EngineId, Entity, EntityId
+from aidm.base import PLAYER_ID, Entity, EntityId
 from aidm.content import (
     AuthoredEntity,
     AuthoredWorld,
@@ -21,7 +18,6 @@ from aidm.engines.story.state import (
     StoryGearTag,
     StoryItemDefinition,
 )
-from aidm.transition import Direction
 from aidm.world import WorldState
 
 HELD = EntityId("frayed_rope")
@@ -107,20 +103,6 @@ def test_an_engine_refuses_a_payload_for_a_kind_it_defines_no_rules_for() -> Non
 
     with pytest.raises(ValueError, match="location"):
         engine.initial_world(poisoned, selected.overlay.character)
-
-
-def test_a_direction_from_another_engine_is_refused() -> None:
-    """Core actions validate under either engine, so only the tag can reject a foreign direction."""
-    engine, state = initialized()
-    foreign = Direction(
-        engine=EngineId("dnd5e"),
-        intent="Kael reaches for the map.",
-        tone="tense",
-        mechanics=[TakeItem(item_id=EntityId("vault_map")).model_dump(mode="json")],
-    )
-
-    with pytest.raises(ValueError, match="received a 'dnd5e' direction"):
-        engine.resolve(foreign, state, Random(0))
 
 
 def test_scenario_topology_is_validated() -> None:

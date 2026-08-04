@@ -3,16 +3,14 @@ from pathlib import Path
 from random import Random
 
 import pytest
-from core_test_support import STORY, initialized, updated
-from fivee_test_support import initial_5e_game
+from core_test_support import STORY, initialized, tool_context, turn_context, updated
+from fivee_test_support import initial_5e_game, ruleset
 
 from aidm.engine import narrator_evidence
-from aidm.engines.dnd5e.direction import Damage, Dnd5eDirection, LevelUp
-from aidm.engines.dnd5e.direction import dump_direction as dump_5e
-from aidm.engines.story.direction import StoryDirection
-from aidm.engines.story.direction import dump_direction as dump_story
+from aidm.engines.dnd5e.tools import Dnd5eTools
 from aidm.growth import Growth
 from aidm.store import ENCODING, FileSaves, FileTraces, load_character, load_scenario
+from aidm.tools import DirectorNotes
 from aidm.turn import Advance, Turn
 
 
@@ -28,7 +26,7 @@ def test_save_and_trace_round_trip(tmp_path: Path) -> None:
 
     turn = Turn(
         prompt="I listen.",
-        direction=dump_story(StoryDirection(intent="Listen.", tone="quiet")),
+        notes=DirectorNotes(intent="Listen.", tone="quiet"),
         narration="The abbey settles around you.",
         narrator_evidence="- learned of the vault",
         growth=Growth(),
@@ -49,32 +47,35 @@ def test_save_and_trace_round_trip(tmp_path: Path) -> None:
 
 
 def test_a_trace_entry_names_the_engine_that_wrote_it(tmp_path: Path) -> None:
-    """A fact and a direction are flat on disk, so the source tag is all a reload has to tell it
-    which engine wrote the line — and the mechanics blob has to survive the round trip untouched."""
+    """A fact and a direction are flat on disk, so the source tag alone is what tells a reload
+    which engine wrote the line — there is no mechanics blob any more."""
     engine, state = initial_5e_game()
     traces = FileTraces(tmp_path)
-    proposal = Dnd5eDirection(
-        intent="Kael endures a falling stone.",
-        tone="dangerous",
-        mechanics=[Damage(amount=2), LevelUp()],
-    )
-    transition = engine.resolve(dump_5e(proposal), state, Random(1))
+    context = turn_context(engine, state, Random(1))
+    run = tool_context(context)
+    tools = Dnd5eTools(ruleset())
+    _ = tools.damage(run, amount=2)
+    _ = tools.level_up(run)
+    facts = tuple(context.facts)
     turn = Turn(
         prompt="I brace.",
-        direction=dump_5e(proposal),
-        facts=transition.facts,
+        notes=DirectorNotes(intent="Kael endures a falling stone.", tone="dangerous"),
+        facts=facts,
         narration="Dust falls.",
-        narrator_evidence=narrator_evidence(transition.facts),
+        narrator_evidence=narrator_evidence(facts),
         growth=Growth(),
     )
-    advance = Advance(facts=transition.facts)
+    advance = Advance(facts=facts)
 
     traces.append("5e", turn)
     traces.append("5e", advance)
     reloaded = traces.load("5e")
 
     assert reloaded == (turn, advance)
-    assert isinstance(reloaded[0], Turn) and reloaded[0].direction.engine == "dnd5e"
+    assert (
+        isinstance(reloaded[0], Turn)
+        and reloaded[0].notes.intent == "Kael endures a falling stone."
+    )
     assert isinstance(reloaded[1], Advance)
     assert {fact.source for fact in reloaded[1].facts} == {"dnd5e"}
 
@@ -101,7 +102,7 @@ def test_a_save_or_trace_from_another_build_is_refused(tmp_path: Path) -> None:
         "stale",
         Turn(
             prompt="I listen.",
-            direction=dump_story(StoryDirection(intent="Listen.", tone="quiet")),
+            notes=DirectorNotes(intent="Listen.", tone="quiet"),
             narration="The abbey settles around you.",
             narrator_evidence="- nothing changed",
             growth=Growth(),

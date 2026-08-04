@@ -2,6 +2,8 @@ from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 from random import Random
 
+from pydantic_ai import ModelRetry
+
 from aidm.facts import Fact
 
 from . import features as class_features
@@ -78,7 +80,7 @@ def _advancing(actor: Dnd5eActor) -> tuple[Progression, int]:
     if current is None:
         raise ValueError(f"{actor.id!r} has no progression to advance")
     if current.level >= MAX_LEVEL:
-        raise ValueError(f"already at level {MAX_LEVEL}")
+        raise ModelRetry(f"already at level {MAX_LEVEL}")
     return current, current.level + 1
 
 

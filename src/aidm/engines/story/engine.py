@@ -4,12 +4,9 @@ from aidm.engine import Engine
 from aidm.registry import EnginePlugin
 from aidm.world import GameState, WorldState
 
-from .access import actor_state, item_state
-from .advancement import StoryAdvancement
-from .director import StoryDirector
+from .advancement import advance, available
 from .identity import ENGINE_ID
 from .presentation import StoryPresentation
-from .rules import StoryRules
 from .state import (
     DEFAULT_APPROACHES,
     StoryActorDefinition,
@@ -17,7 +14,11 @@ from .state import (
     StoryCharacterData,
     StoryItemDefinition,
     StoryItemState,
+    actor_state,
+    item_state,
 )
+from .tools import DIRECTOR_INSTRUCTIONS, story_toolset
+from .ui import advancement_panel
 
 
 def _no_location_rules(entity_id: EntityId, rules: Rules) -> None:
@@ -79,23 +80,17 @@ def _default_rules(entity: Entity) -> Rules:
 
 
 def build_story_engine() -> Engine:
-    rules = StoryRules()
-    director = StoryDirector(rules)
     presentation = StoryPresentation()
-    advancement = StoryAdvancement()
     return Engine(
         id=ENGINE_ID,
         initial_world=_initial_world,
         validate_state=_validate_state,
         default_rules=_default_rules,
-        resolve=rules.resolve,
-        advance=advancement.advance,
-        advancement_available=advancement.available,
-        advancement_status=advancement.status,
-        advancement_form=advancement.form,
-        advancement_review=advancement.review,
-        director_output=director.output(),
-        director_instructions=director.instructions(),
+        advance=advance,
+        advancement_available=available,
+        advancement_panel=advancement_panel,
+        director_toolset=story_toolset(),
+        director_instructions=DIRECTOR_INSTRUCTIONS,
         entity_state=presentation.entity_state,
     )
 

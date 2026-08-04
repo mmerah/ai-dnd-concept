@@ -1,7 +1,7 @@
 from collections.abc import Sequence
 from pathlib import Path
 
-from aidm.base import Entity, EntityId
+from aidm.base import PLAYER_ID, Entity, EntityId
 from aidm.config import Settings
 from aidm.content import AuthoredEntity, AuthoredWorld, Rules, compose_world
 from aidm.engine import Engine
@@ -9,15 +9,16 @@ from aidm.registry import EnginePlugin
 from aidm.world import GameState, WorldState
 
 from . import bestiary, progression
+from .access import read_actor, read_item
 from .advancement import Dnd5eAdvancement
 from .content.library import load
 from .content.pack_ruleset import compile_ruleset
-from .director import Dnd5eDirector
 from .identity import ENGINE_ID
 from .presentation import Dnd5ePresentation
-from .rules import Dnd5eRules
 from .ruleset import Ruleset
 from .state import Dnd5eActorState, Dnd5eCharacterData, Dnd5eItemState, StatBlock
+from .tools import DIRECTOR_INSTRUCTIONS, Dnd5eTools
+from .ui import advancement_panel_for
 from .values import Value
 
 SHIPPED_PACK = Path(__file__).parent / "data" / "srd-2014"
@@ -37,9 +38,25 @@ def build_dnd5e_engine(pack_paths: Sequence[Path] | None = None) -> Engine:
     return dnd5e_engine(ruleset)
 
 
+def _validate_payloads(state: GameState, ruleset: Ruleset) -> None:
+    """A foreign or malformed payload breaks here, not mid-combat."""
+    actors = tuple(read_actor(state, entity.id) for entity in state.world.entities("actor"))
+    for actor in actors:
+        if actor.ref is not None and not ruleset.provides(actor.ref):
+            raise ValueError(f"5e actor {actor.id!r} has unknown ref {actor.ref}")
+    for entity in state.world.entities("item"):
+        item = read_item(state, entity.id)
+        if item.ref is not None and not ruleset.provides(item.ref):
+            raise ValueError(f"5e item {item.id!r} has unknown ref {item.ref}")
+    # `LeveledUp` names no target, so an NPC carrying progression would be ambiguous.
+    levelled = sorted(
+        actor.id for actor in actors if actor.progression is not None and actor.id != PLAYER_ID
+    )
+    if levelled:
+        raise ValueError(f"only the player may have progression: {levelled}")
+
+
 def dnd5e_engine(ruleset: Ruleset) -> Engine:
-    rules = Dnd5eRules(ruleset)
-    director = Dnd5eDirector(rules)
     presentation = Dnd5ePresentation(ruleset)
     advancement = Dnd5eAdvancement(ruleset)
 
@@ -70,7 +87,7 @@ def dnd5e_engine(ruleset: Ruleset) -> Engine:
         for record in state.world.records.values():
             if record.entity.kind == "location":
                 _no_location_rules(record.entity.id, record.rules)
-        rules.validate_state(state)
+        _validate_payloads(state, ruleset)
 
     def default_rules(entity: Entity) -> Rules:
         match entity.kind:
@@ -86,14 +103,11 @@ def dnd5e_engine(ruleset: Ruleset) -> Engine:
         initial_world=initial_world,
         validate_state=validate_state,
         default_rules=default_rules,
-        resolve=rules.resolve,
         advance=advancement.advance,
         advancement_available=advancement.available,
-        advancement_status=advancement.status,
-        advancement_form=advancement.form,
-        advancement_review=advancement.review,
-        director_output=director.output(),
-        director_instructions=director.instructions(),
+        advancement_panel=advancement_panel_for(advancement),
+        director_toolset=Dnd5eTools(ruleset).toolset(),
+        director_instructions=DIRECTOR_INSTRUCTIONS,
         entity_state=presentation.entity_state,
     )
 

@@ -1,4 +1,5 @@
 - [] Codex: Comment simplification round
+- [] Cleaner codebase: the global CONFIG_VARIABLES look very unclean everytime I see them. Wonder how we could do that a bit better.
 - [x] Leaner AGENTS.md/CLAUDE.md, remove all elements that are subject to change (architecture concepts, file name, ...)
 - [] Multiple rounds of refactors: no change in behavior, improvements in consistency in the codebase, removing useless ceremony, SOLID/DRY/KISS, type safety, fail fast.
 - [] Refactor on codebase structure and organistation: Models in models/ or models.py instead of top of class or whatever. Delete unused or used-once stuff. Functional programming. Models are separated from the domain correctly. Structure is consistent. Better SOLID to better reason? Or would that be too much indirection?

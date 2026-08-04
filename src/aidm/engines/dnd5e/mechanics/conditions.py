@@ -1,22 +1,22 @@
-from aidm.base import PLAYER_ID
+from aidm.base import PLAYER_ID, EntityId
 from aidm.facts import Fact
 
+from ..access import Dnd5eWorld
 from ..content.vocabulary import ConditionName
-from ..direction import ApplyCondition
 from ..identity import ENGINE_ID
 from ..state import Dnd5eActor
 from . import common
-from .resolution import Resolution
 
 
-def change(ctx: Resolution, consequence: ApplyCondition) -> list[Fact]:
-    """Suppress unchanged conditions while still revealing the target."""
-    target = ctx.target(consequence.target_id)
-    active = not consequence.ends
-    seen: list[Fact] = [*common.reveal(ctx, target)]
-    if not target.stats.apply_condition(consequence.condition, active=active):
+def change(
+    world: Dnd5eWorld, target_id: EntityId | None, condition: ConditionName, *, ends: bool
+) -> list[Fact]:
+    target = world.target(target_id)
+    active = not ends
+    seen: list[Fact] = [*common.reveal(world, target)]
+    if not target.stats.apply_condition(condition, active=active):
         return seen
-    return [*seen, _condition_changed(target, consequence.condition, active=active)]
+    return [*seen, _condition_changed(target, condition, active=active)]
 
 
 def _condition_changed(target: Dnd5eActor, condition: ConditionName, *, active: bool) -> Fact:

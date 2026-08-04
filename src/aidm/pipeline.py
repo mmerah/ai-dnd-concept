@@ -17,7 +17,7 @@ from .prompts import (
     render_maintainer,
     render_narrator,
 )
-from .transition import Direction
+from .tools import TurnContext
 from .turn import Turn
 from .world import Exchange, GameState
 
@@ -58,11 +58,15 @@ async def run_turn(
         state.scenario,
         prompt,
     )
-    direction: Direction = await director.run(prompts["director"], state, history)
+    context = TurnContext(
+        draft=state.draft(), rng=rng, facts=[], default_rules=engine.default_rules
+    )
+    notes = await director.run(prompts["director"], context, history)
 
-    transition = engine.resolve(direction, state, rng)
-    draft = transition.state.draft()
-    evidence = narrator_evidence(transition.facts)
+    facts = tuple(context.facts)
+    # Commit what the tools did before anyone reads it
+    draft = context.draft.committed().draft()
+    evidence = narrator_evidence(facts)
 
     after = SceneSnapshot.of(draft)
     describe = entity_renderer(engine, draft)
@@ -71,9 +75,9 @@ async def run_turn(
         VisibleScene.of(after),
         describe,
         draft.scenario,
-        intent=direction.intent,
-        tone=direction.tone,
-        speaker_id=direction.speaker_id,
+        intent=notes.intent,
+        tone=notes.tone,
+        speaker_id=notes.speaker_id,
         evidence=evidence,
         prompt=prompt,
     )
@@ -113,8 +117,8 @@ async def run_turn(
         state=final,
         turn=Turn(
             prompt=prompt,
-            direction=direction,
-            facts=(*transition.facts, *creation_facts),
+            notes=notes,
+            facts=(*facts, *creation_facts),
             narrator_evidence=evidence,
             narration=narration,
             growth=growth,

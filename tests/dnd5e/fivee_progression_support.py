@@ -37,7 +37,7 @@ def levelled(state: GameState, to: int) -> GameState:
     current = player_of(working).progression
     assert current is not None
     for _ in range(current.level + 1, to + 1):
-        world = Dnd5eWorld(state=working)
+        world = Dnd5eWorld(state=working, rng=Random(1), ruleset=RULES)
         _ = progression.advance(world.player(), next_of(working), RULES, Random(1))
         working = world.commit()
     return working

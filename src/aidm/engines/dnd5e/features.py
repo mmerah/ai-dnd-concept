@@ -1,9 +1,12 @@
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 
+from pydantic_ai import ModelRetry
+
 from aidm.facts import Fact
 
 from . import rolls
+from .access import Dnd5eWorld
 from .content.library import ContentMiss
 from .content.records.base import ContentRef
 from .content.records.character import (
@@ -20,10 +23,8 @@ from .content.records.character import (
     SelfHealWithClassLevel,
 )
 from .content.vocabulary import RestType
-from .direction import UseFeature
 from .identity import ENGINE_ID
 from .mechanics import health
-from .mechanics.resolution import Resolution
 from .ruleset import FeatureProfile, ProgressionRules, WeaponProfile
 from .state import (
     FeatureKey,
@@ -36,8 +37,6 @@ from .values import Attributes
 
 @dataclass(frozen=True, slots=True)
 class FeaturePool:
-    """The use counter a feature spends from, which several features may share."""
-
     ref: ContentRef
     cost: FeatureResourceCost
     state: ResourceState
@@ -158,34 +157,32 @@ def acquire(
     return tuple(features), states
 
 
-def use(ctx: Resolution, consequence: UseFeature) -> list[Fact]:
-    progression = ctx.progression
-    status = _named(
-        owned(progression, ctx.player.stats.attributes, ctx.ruleset), consequence.feature
-    )
+def use(world: Dnd5eWorld, feature: FeatureKey, amount: int) -> list[Fact]:
+    progression = world.progression()
+    status = _named(owned(progression, world.player().stats.attributes, world.ruleset), feature)
     mechanics = status.profile.mechanics
     if not isinstance(mechanics, AgentActiveFeatureMechanics | EngineActiveFeatureMechanics):
-        raise ValueError(f"feature {consequence.feature!r} is not directly invokable")
-    spent = _spend(status, consequence.amount)
+        raise ModelRetry(f"feature {feature!r} is not directly invokable")
+    spent = _spend(status, amount)
     match mechanics:
         case AgentActiveFeatureMechanics():
             return [*spent, _feature_activated(status.profile)]
         case EngineActiveFeatureMechanics(effect=SelfHealWithClassLevel(dice=healing_dice)):
-            amount = f"{healing_dice} + {progression.level}"
-            return [*spent, *health.hp_facts(ctx, None, amount, sign=1)]
+            healing = f"{healing_dice} + {progression.level}"
+            return [*spent, *health.hp_facts(world, None, healing, sign=1)]
 
 
-def recharged(ctx: Resolution, completed: RestType) -> tuple[str, ...]:
+def recharged(world: Dnd5eWorld, completed: RestType) -> tuple[str, ...]:
     """Several features may share one counter, so refill each counter once."""
     refilled = {
         status.pool.ref: status.pool.state
-        for status in owned(ctx.progression, ctx.player.stats.attributes, ctx.ruleset)
+        for status in owned(world.progression(), world.player().stats.attributes, world.ruleset)
         if status.pool is not None and status.pool.state.refills(completed)
     }
     for state in refilled.values():
         state.remaining = state.maximum
     # Named after the feature that owns the counter, not whoever spends from it.
-    return tuple(profile_of(ref, ctx.ruleset).name for ref in refilled)
+    return tuple(profile_of(ref, world.ruleset).name for ref in refilled)
 
 
 def _feature_activated(profile: FeatureProfile) -> Fact:
@@ -275,13 +272,13 @@ def _spend(status: OwnedFeature, amount: int) -> list[Fact]:
     pool = status.pool
     if pool is None:
         if amount != 1:
-            raise ValueError(f"unlimited feature {status.profile.ref.index!r} takes no amount")
+            raise ModelRetry(f"unlimited feature {status.profile.ref.index!r} takes no amount")
         return []
     state = pool.state
     if pool.cost != "variable" and amount != pool.cost:
-        raise ValueError(f"feature {status.profile.ref.index!r} costs {pool.cost} use")
+        raise ModelRetry(f"feature {status.profile.ref.index!r} costs {pool.cost} use")
     if state.remaining < amount:
-        raise ValueError(
+        raise ModelRetry(
             f"feature {status.profile.ref.index!r} has {state.remaining} uses left; "
             f"finish a {state.recharge} or longer rest"
         )
@@ -310,7 +307,7 @@ def _feature_used(profile: FeatureProfile, spent: int, state: ResourceState) -> 
 def _named(statuses: Sequence[OwnedFeature], key: FeatureKey) -> OwnedFeature:
     found = next((status for status in statuses if feature_key(status.profile.ref) == key), None)
     if found is None:
-        raise ValueError(f"the player does not hold feature {key!r}")
+        raise ModelRetry(f"the player does not hold feature {key!r}")
     return found
 
 

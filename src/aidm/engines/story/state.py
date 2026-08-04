@@ -2,7 +2,9 @@ from typing import Literal, Self
 
 from pydantic import Field, model_validator
 
-from aidm.base import Frozen, Mutable, Slug
+from aidm.base import PLAYER_ID, EntityId, Frozen, Mutable, Slug
+from aidm.content import Rules
+from aidm.world import GameState
 
 StoryApproach = Literal["bold", "subtle", "clever", "empathetic"]
 APPROACH_NAMES: tuple[StoryApproach, ...] = ("bold", "subtle", "clever", "empathetic")
@@ -127,3 +129,28 @@ class StoryItemDefinition(Frozen):
 
 
 DEFAULT_APPROACHES = StoryApproaches(bold=0, subtle=0, clever=0, empathetic=0)
+
+
+def actor_state(rules: Rules) -> StoryActorState:
+    return StoryActorState.model_validate(rules)
+
+
+def item_state(rules: Rules) -> StoryItemState:
+    return StoryItemState.model_validate(rules)
+
+
+def read_actor(state: GameState, actor_id: EntityId) -> StoryActorState:
+    """A detached copy: nothing lands in the record until `write_actor` dumps it back."""
+    return actor_state(state.world.record(actor_id, "actor").rules)
+
+
+def write_actor(state: GameState, actor_id: EntityId, sheet: StoryActorState) -> None:
+    state.world.record(actor_id, "actor").rules = sheet.model_dump(mode="json")
+
+
+def read_item(state: GameState, item_id: EntityId) -> StoryItemState:
+    return item_state(state.world.record(item_id, "item").rules)
+
+
+def player_state(state: GameState) -> StoryActorState:
+    return read_actor(state, PLAYER_ID)

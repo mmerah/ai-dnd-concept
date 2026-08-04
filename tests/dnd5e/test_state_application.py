@@ -1,5 +1,7 @@
+from random import Random
+
 import pytest
-from fivee_test_support import actor_of
+from fivee_test_support import actor_of, ruleset
 from fivee_test_support import state as state
 
 from aidm.base import PLAYER_ID, Entity, EntityId
@@ -8,6 +10,10 @@ from aidm.engines.dnd5e.state import Dnd5eActorState, StatBlock
 from aidm.world import GameState
 
 MARA = EntityId("mara")
+
+
+def world_of(state: GameState) -> Dnd5eWorld:
+    return Dnd5eWorld(state=state, rng=Random(0), ruleset=ruleset())
 
 
 def item(state: GameState, entity_id: str) -> Entity:
@@ -21,7 +27,7 @@ def where(state: GameState, entity_id: str) -> Entity:
 def test_take_drop_and_hp(state: GameState) -> None:
     _ = state.move(item(state, "vault_map"), state.player)
     _ = state.move(item(state, "lantern"), where(state, "study"))
-    world = Dnd5eWorld(state=state)
+    world = world_of(state)
     _ = world.player().stats.apply_hp_delta(-3)
     result = world.commit()
 
@@ -43,7 +49,7 @@ def test_give_moves_an_item_into_another_actors_inventory(state: GameState) -> N
 
 
 def test_hp_is_clamped_for_every_actor(state: GameState) -> None:
-    world = Dnd5eWorld(state=state)
+    world = world_of(state)
     player = world.player()
     assert player.stats.apply_hp_delta(-99) == -10
     assert player.stats.hp == 0

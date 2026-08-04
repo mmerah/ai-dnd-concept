@@ -2,15 +2,17 @@ from random import Random
 from typing import cast
 
 import pytest
-from fivee_test_support import initial_5e_game
-from pydantic import ValidationError
+from fivee_test_support import initial_5e_game, turn_of
+from pydantic import TypeAdapter, ValidationError
 
 from aidm.base import PLAYER_ID, Entity, EntityId
 from aidm.engines.dnd5e import dice
 from aidm.engines.dnd5e import rolls as rules
-from aidm.engines.dnd5e.direction import Damage, Dnd5eDirection, dump_direction
+from aidm.engines.dnd5e.dice import Magnitude
 from aidm.engines.dnd5e.state import Dnd5eActor, Dnd5eActorState, StatBlock
 from aidm.engines.dnd5e.values import Attributes
+
+MAGNITUDE: TypeAdapter[Magnitude] = TypeAdapter(Magnitude)
 
 KAEL = Dnd5eActor(
     entity=Entity(
@@ -59,30 +61,26 @@ def test_mod_parses_but_no_role_may_roll_it() -> None:
     amount is refused at the model boundary rather than dangling at resolve time."""
     assert len(dice.terms("1d8 + MOD")) == 2
     with pytest.raises(ValidationError):
-        Damage(amount="1d8 + MOD")
+        MAGNITUDE.validate_python("1d8 + MOD")
 
 
 def test_a_malformed_expression_fails_at_its_boundary() -> None:
     """The parse is the validation, so a bad expression never reaches a roll."""
     for expression in ("not-dice", "1d0", "0d6", "2d6 +", "1d6 + + 2"):
         with pytest.raises(ValidationError):
-            Damage(amount=expression)
+            MAGNITUDE.validate_python(expression)
 
 
 def test_5e_resolution_is_pure_seeded_and_commits_once() -> None:
     """The mirror of the Story purity assertion: a shallow draft would corrupt committed state."""
-    engine, state = initial_5e_game()
-    direction = dump_direction(
-        Dnd5eDirection(
-            intent="Kael strikes at Mara.",
-            tone="grim",
-            mechanics=[Damage(amount=2, target_id=EntityId("mara"))],
-        )
-    )
+    _, state = initial_5e_game()
     before = state.model_dump_json()
 
-    first = engine.resolve(direction, state, Random(7))
+    first = turn_of(state, Random(7))
+    first.call(first.tools.damage, amount=2, target_id=EntityId("mara"))
+    second = turn_of(state, Random(7))
+    second.call(second.tools.damage, amount=2, target_id=EntityId("mara"))
 
-    assert first == engine.resolve(direction, state, Random(7))
+    assert first.committed() == second.committed()
     assert state.model_dump_json() == before
-    assert first.state is not state
+    assert first.committed() is not state

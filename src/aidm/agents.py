@@ -14,14 +14,15 @@ from pydantic_ai.messages import (
 from pydantic_ai.models.openai import OpenAIChatModel, OpenAIChatModelSettings
 from pydantic_ai.output import OutputSpec
 from pydantic_ai.providers.openai import OpenAIProvider
+from pydantic_ai.toolsets import AbstractToolset
 
 from . import prompts
 from .base import EntityDetail, Role
 from .config import ProviderConfig, RoleConfig, Settings
 from .engine import Engine
 from .growth import Growth
-from .transition import Direction
-from .world import Exchange, GameState
+from .tools import DirectorNotes, TurnContext, director_notes, world_toolset
+from .world import Exchange
 
 
 @dataclass(frozen=True)
@@ -32,6 +33,7 @@ class Stage[Deps, Out]:
     deps_type: type[Deps]
     role: RoleConfig
     provider: ProviderConfig
+    toolsets: Sequence[AbstractToolset[Deps]] = ()
 
     @cached_property
     def agent(self) -> Agent[Deps, Out]:
@@ -46,6 +48,7 @@ class Stage[Deps, Out]:
             output_type=self.output_type,
             instructions=self.instructions,
             deps_type=self.deps_type,
+            toolsets=list(self.toolsets),
             retries=self.role.retries,
             model_settings=OpenAIChatModelSettings(
                 max_tokens=self.role.max_tokens,
@@ -74,7 +77,7 @@ class SharedStages:
     creator: Stage[None, EntityDetail]
 
 
-type DirectorStage = Stage[GameState, Direction]
+type DirectorStage = Stage[TurnContext, DirectorNotes]
 
 
 def director_stage(engine: Engine, settings: Settings) -> DirectorStage:
@@ -82,10 +85,11 @@ def director_stage(engine: Engine, settings: Settings) -> DirectorStage:
     return Stage(
         name="director",
         instructions=f"{prompts.CORE_DIRECTOR}\n\n{engine.director_instructions}",
-        output_type=engine.director_output,
-        deps_type=GameState,
+        output_type=NativeOutput(director_notes, name="DirectorNotes"),
+        deps_type=TurnContext,
         role=role,
         provider=settings.providers.for_name(role.provider),
+        toolsets=(world_toolset(), engine.director_toolset),
     )
 
 

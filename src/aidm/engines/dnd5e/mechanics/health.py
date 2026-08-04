@@ -5,27 +5,19 @@ from aidm.base import PLAYER_ID, EntityId
 from aidm.facts import Fact
 
 from .. import dice, rolls
-from ..direction import Damage, Heal, Magnitude
+from ..access import Dnd5eWorld
+from ..dice import Magnitude
 from ..identity import ENGINE_ID
 from ..state import Dnd5eActor
 from . import common
-from .resolution import Resolution
-
-
-def damage(ctx: Resolution, consequence: Damage) -> list[Fact]:
-    return hp_facts(ctx, consequence.target_id, consequence.amount, sign=-1)
-
-
-def heal(ctx: Resolution, consequence: Heal) -> list[Fact]:
-    return hp_facts(ctx, consequence.target_id, consequence.amount, sign=+1)
 
 
 def hp_facts(
-    ctx: Resolution, target_id: EntityId | None, amount: Magnitude, *, sign: Literal[1, -1]
+    world: Dnd5eWorld, target_id: EntityId | None, amount: Magnitude, *, sign: Literal[1, -1]
 ) -> list[Fact]:
-    target = ctx.target(target_id)
-    total, rolled = _magnitude(amount, ctx.rng)
-    facts: list[Fact] = [*common.reveal(ctx, target), *rolled]
+    target = world.target(target_id)
+    total, rolled = _magnitude(amount, world.rng)
+    facts: list[Fact] = [*common.reveal(world, target), *rolled]
     delta = target.stats.apply_hp_delta(sign * total)
     if delta == 0:
         return facts

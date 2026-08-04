@@ -1,23 +1,14 @@
+from dataclasses import dataclass
 from random import Random
 
-from aidm.advancement import (
-    AdvancementChoice,
-    AdvancementForm,
-    AdvancementOption,
-    AdvancementReview,
-    AdvancementStatus,
-    Block,
-    SelectField,
-    SelectOption,
-)
 from aidm.base import AdvancementDecision, Frozen
 from aidm.transition import Transition
 from aidm.world import GameState
 
 from . import features, progression
-from .access import Dnd5eWorld
+from .access import Dnd5eWorld, read_player
 from .identity import ENGINE_ID
-from .progression import LevelBenefits
+from .progression import AdvancementPlan, LevelBenefits, LevelUpPreview
 from .ruleset import Ruleset
 from .state import MAX_LEVEL, Decisions, Dnd5eActor
 
@@ -27,18 +18,31 @@ class Dnd5eAdvancementDecisions(Frozen):
 
 
 def dump_decision(decisions: Dnd5eAdvancementDecisions) -> AdvancementDecision:
-    """The UI mints the typed choice; core carries only the blob."""
     return AdvancementDecision(engine=ENGINE_ID, choice=decisions.model_dump(mode="json"))
 
 
 def load_decision(decision: AdvancementDecision) -> Dnd5eAdvancementDecisions:
-    """Validate the blob back; a decision from another engine cannot survive this."""
     if decision.engine != ENGINE_ID:
         raise ValueError(f"5e received a {decision.engine!r} decision")
     return Dnd5eAdvancementDecisions.model_validate(decision.choice)
 
 
-def _benefit_blocks(benefits: LevelBenefits) -> tuple[Block, ...]:
+@dataclass(frozen=True, slots=True)
+class Section:
+    """A heading and the lines under it, for the engine's own panel."""
+
+    heading: str
+    lines: tuple[str, ...]
+
+
+@dataclass(frozen=True, slots=True)
+class LevelStatus:
+    headline: str
+    detail: tuple[str, ...]
+    progress: float
+
+
+def benefit_sections(benefits: LevelBenefits) -> tuple[Section, ...]:
     lines = [f"Hit die: d{benefits.hit_die} (rolled by the engine on confirm)"]
     if benefits.retroactive_hp_gain:
         lines.append(
@@ -51,13 +55,29 @@ def _benefit_blocks(benefits: LevelBenefits) -> tuple[Block, ...]:
         for change in benefits.spell_slot_changes
     )
     return (
-        Block(heading=f"Level {benefits.level}", lines=tuple(lines)),
+        Section(heading=f"Level {benefits.level}", lines=tuple(lines)),
         *(
-            Block(
+            Section(
                 heading=f"{feature.name} — {features.actionability(feature)}",
                 lines=(feature.desc,),
             )
             for feature in benefits.features
+        ),
+    )
+
+
+def plan_sections(plan: AdvancementPlan) -> tuple[Section, ...]:
+    sections = benefit_sections(plan.benefits)
+    if not plan.selections:
+        return sections
+    return (
+        *sections,
+        Section(
+            heading="Your choices",
+            lines=tuple(
+                f"{selection.prompt.capitalize()}: {', '.join(selection.labels)}"
+                for selection in plan.selections
+            ),
         ),
     )
 
@@ -70,12 +90,13 @@ class Dnd5eAdvancement:
         current = self._player(state).progression
         return current is not None and current.level_up_available
 
-    def status(self, state: GameState) -> AdvancementStatus:
+    def status(self, state: GameState) -> LevelStatus:
         actor = self._player(state)
         if actor.progression is None:
-            return AdvancementStatus(
+            return LevelStatus(
                 headline="5e advancement unavailable",
                 detail=("This character has no class, so there is nothing to advance.",),
+                progress=0.0,
             )
         current = actor.progression
         features_detail = self._features(actor)
@@ -85,74 +106,23 @@ class Dnd5eAdvancement:
             detail = (f"Level {current.level + 1} is ready.", *features_detail)
         else:
             detail = ("No level-up has been awarded yet. Keep playing.", *features_detail)
-        return AdvancementStatus(
+        return LevelStatus(
             headline=f"level {current.level}",
             detail=detail,
             progress=current.level / MAX_LEVEL,
         )
 
-    def form(self, state: GameState) -> AdvancementForm:
+    def preview(self, state: GameState) -> LevelUpPreview:
         player = self._checked(self._player(state))
-        preview = progression.preview(player, self._ruleset)
-        benefits = preview.benefits
-        fields = tuple(
-            SelectField(
-                id=choice.id,
-                label=choice.prompt,
-                options=tuple(
-                    SelectOption(key=option.key, label=option.label) for option in choice.options
-                ),
-                choose=choice.choose,
-                note=(
-                    f"Choose {choice.choose} different options."
-                    if choice.distinct and choice.choose > 1
-                    else ""
-                ),
-            )
-            for choice in preview.choices
-        )
-        return AdvancementForm(
-            title=f"Level {benefits.level} preview",
-            blocks=_benefit_blocks(benefits),
-            options=(
-                AdvancementOption(
-                    id="level_up",
-                    heading=f"Level {benefits.level}",
-                    action=f"Review level {benefits.level}",
-                    note="No decisions are required." if not preview.choices else "",
-                    fields=fields,
-                ),
-            ),
-        )
+        return progression.preview(player, self._ruleset)
 
-    def review(self, state: GameState, choice: AdvancementChoice) -> AdvancementReview:
-        if choice.option_id != "level_up":
-            raise ValueError(f"5e does not offer advancement option {choice.option_id!r}")
+    def plan(self, state: GameState, decisions: Decisions) -> AdvancementPlan:
         player = self._checked(self._player(state))
-        decisions = Dnd5eAdvancementDecisions(decisions=dict(choice.values))
-        plan = progression.plan(player, decisions.decisions, self._ruleset)
-        blocks = _benefit_blocks(plan.benefits)
-        if plan.selections:
-            blocks = (
-                *blocks,
-                Block(
-                    heading="Your choices",
-                    lines=tuple(
-                        f"{selection.prompt.capitalize()}: {', '.join(selection.labels)}"
-                        for selection in plan.selections
-                    ),
-                ),
-            )
-        return AdvancementReview(
-            title=f"Confirm level {plan.benefits.level}",
-            confirm_label=f"Confirm level {plan.benefits.level}",
-            blocks=blocks,
-            decision=dump_decision(decisions),
-        )
+        return progression.plan(player, decisions, self._ruleset)
 
     def advance(self, decision: AdvancementDecision, state: GameState, rng: Random) -> Transition:
         decisions = load_decision(decision)
-        world = Dnd5eWorld(state=state.draft())
+        world = Dnd5eWorld(state=state.draft(), rng=rng, ruleset=self._ruleset)
         player = self._checked(world.player())
         facts = progression.advance(player, decisions.decisions, self._ruleset, rng)
         return Transition(state=world.commit(), facts=tuple(facts))
@@ -184,7 +154,7 @@ class Dnd5eAdvancement:
 
     @staticmethod
     def _player(state: GameState) -> Dnd5eActor:
-        return Dnd5eWorld(state=state).player()
+        return read_player(state)
 
     @staticmethod
     def _checked(player: Dnd5eActor) -> Dnd5eActor:

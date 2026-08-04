@@ -5,7 +5,8 @@ from typing import cast
 import pytest
 from core_test_support import updated
 from fivee_progression_support import RULES, SHEET, answers, levelled, next_of, ref, started
-from fivee_test_support import actor_of, new_game, player_of, with_actor
+from fivee_test_support import Turn, actor_of, new_game, player_of, turn_of, with_actor
+from pydantic_ai import ModelRetry
 
 from aidm.base import EntityId
 from aidm.engines.dnd5e import progression
@@ -14,13 +15,7 @@ from aidm.engines.dnd5e.access import Dnd5eWorld
 from aidm.engines.dnd5e.content.library import ContentMiss
 from aidm.engines.dnd5e.content.records.base import ContentRef
 from aidm.engines.dnd5e.content.records.character import BonusOption, ProgressionChoice
-from aidm.engines.dnd5e.direction import (
-    Cast,
-    Consequence,
-    Rest,
-)
-from aidm.engines.dnd5e.resolve import resolve as _resolve
-from aidm.engines.dnd5e.rules import Dnd5eRules
+from aidm.engines.dnd5e.engine import dnd5e_engine
 from aidm.engines.dnd5e.ruleset import (
     CharacterProfile,
     FeatureProfile,
@@ -234,34 +229,50 @@ def test_a_known_caster_picks_its_repertoire_at_level_up_and_a_prepared_one_does
 def test_spell_slots_are_spent_recharged_by_the_right_rest_and_spent_again() -> None:
     """Pact Magic flows through the same `spell_slots` field as every other class and returns on a
     short rest, so the recharge has to travel with the slots rather than be assumed."""
-    comprehend = Cast(spell="srd-2014/spells/comprehend-languages", slot_level=1)
 
     def remaining(state: GameState) -> dict[int, int]:
         current = player_of(state).progression
         assert current is not None
         return {level: slot.remaining for level, slot in current.spell_slots.items()}
 
-    def resolved(state: GameState, *mechanics: Consequence) -> GameState:
-        world = Dnd5eWorld(state=state)
-        _ = _resolve(list(mechanics), world, Random(1), RULES)
-        return world.commit()
+    def cast_comprehend(turn: Turn) -> None:
+        turn.call(turn.tools.cast, spell="srd-2014/spells/comprehend-languages", slot_level=1)
 
     wizard = started("wizard", new_game())
     assert remaining(wizard) == {1: 2}
-    spent = resolved(wizard, comprehend, comprehend)
+
+    turn = turn_of(wizard, Random(1))
+    cast_comprehend(turn)
+    cast_comprehend(turn)
+    spent = turn.committed()
     assert remaining(spent) == {1: 0}
-    with pytest.raises(ValueError, match="no level 1 spell slot remains; finish a long rest"):
-        resolved(spent, comprehend)
+
+    with pytest.raises(ModelRetry, match="no level 1 spell slot remains; finish a long rest"):
+        cast_comprehend(turn_of(spent, Random(1)))
+
     before_short_rest = spent.model_copy(deep=True)
-    assert resolved(spent, Rest(rest="short")) == before_short_rest
-    rested = resolved(spent, Rest(rest="long"))
+    short_rest = turn_of(spent, Random(1))
+    short_rest.call(short_rest.tools.rest, rest="short")
+    assert short_rest.committed() == before_short_rest
+
+    long_rest = turn_of(spent, Random(1))
+    long_rest.call(long_rest.tools.rest, rest="long")
+    rested = long_rest.committed()
     assert remaining(rested) == {1: 2}
-    assert remaining(resolved(rested, comprehend)) == {1: 1}
+
+    cast_again = turn_of(rested, Random(1))
+    cast_comprehend(cast_again)
+    assert remaining(cast_again.committed()) == {1: 1}
 
     warlock = started("warlock", new_game())
-    pact = resolved(warlock, comprehend)
+    pact_cast = turn_of(warlock, Random(1))
+    cast_comprehend(pact_cast)
+    pact = pact_cast.committed()
     assert remaining(pact) == {1: 0}
-    assert remaining(resolved(pact, Rest(rest="short"))) == {1: 1}
+
+    pact_rest = turn_of(pact, Random(1))
+    pact_rest.call(pact_rest.tools.rest, rest="short")
+    assert remaining(pact_rest.committed()) == {1: 1}
 
 
 @pytest.mark.parametrize(
@@ -279,7 +290,7 @@ def test_a_known_caster_reaches_level_twenty_with_the_srds_slots_and_repertoire(
     rest returns, which is why the recharge travels with the slots."""
     state = started(klass, new_game())
     for level in range(2, MAX_LEVEL + 1):
-        world = Dnd5eWorld(state=state)
+        world = Dnd5eWorld(state=state, rng=Random(1), ruleset=RULES)
         spread = _spread(progression.preview(world.player(), RULES).choices, level)
         _ = progression.advance(world.player(), spread, RULES, Random(1))
         state = world.commit()
@@ -335,13 +346,13 @@ def test_only_the_player_may_have_progression() -> None:
     levelled_npc = updated(mara.state, progression=player_of(state).progression)
     invalid = with_actor(state, mara.entity, levelled_npc)
     with pytest.raises(ValueError, match="only the player may have progression"):
-        Dnd5eRules(RULES).validate_state(invalid)
+        dnd5e_engine(RULES).validate_state(invalid)
 
 
 def test_levelling_rolls_the_hit_die_where_the_trace_can_see_it() -> None:
     state = new_game()
     before = player_of(state).stats.max_hp
-    world = Dnd5eWorld(state=state)
+    world = Dnd5eWorld(state=state, rng=Random(1), ruleset=RULES)
     roll, gained = progression.advance(world.player(), {}, RULES, Random(1))
     assert gained.kind == "leveled_up"
     assert roll.kind == "dice_rolled"

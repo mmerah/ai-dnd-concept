@@ -5,7 +5,7 @@ from pydantic import Field
 from .base import SAVE_VERSION, Entity, Frozen, Role
 from .facts import Fact
 from .growth import Growth, RejectedGrowth
-from .transition import Direction
+from .tools import DirectorNotes
 
 
 class TraceEntryBase(Frozen):
@@ -18,7 +18,7 @@ class TraceEntryBase(Frozen):
 class Turn(TraceEntryBase):
     entry: Literal["turn"] = "turn"
     prompt: str
-    direction: Direction
+    notes: DirectorNotes
     narrator_evidence: str
     narration: str
     growth: Growth
