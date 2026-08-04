@@ -14,7 +14,7 @@ from aidm.core.base import (
 )
 from aidm.core.engine import Transition
 from aidm.core.facts import Fact
-from aidm.core.world import GameState
+from aidm.core.world import EngineRules, GameState
 
 from .identity import ENGINE_ID
 from .rules import revived
@@ -28,8 +28,9 @@ from .state import (
     StoryApproach,
     StoryGearTag,
     StoryItemState,
-    player_state,
-    write_actor,
+    StoryRules,
+    StoryState,
+    actor_of,
 )
 
 
@@ -224,25 +225,26 @@ def _burden(player: StoryActorState, tag_id: Slug) -> StoryActorTag:
     return found
 
 
-def available(state: GameState) -> bool:
-    return player_state(state).growth_marks == GROWTH_REQUIRED
+def available[R: EngineRules](state: GameState[R]) -> bool:
+    return actor_of(state, PLAYER_ID).growth_marks == GROWTH_REQUIRED
 
 
-def advance(decision: AdvancementDecision, state: GameState, rng: Random) -> Transition:
+def advance(
+    decision: AdvancementDecision, state: StoryState, rng: Random
+) -> Transition[StoryRules]:
     del rng
     typed = load_decision(decision)
     draft = state.draft()
-    player = player_state(draft)
+    player = actor_of(draft, PLAYER_ID)
     _require_full_growth(player)
     validate_choice(player, typed)
     facts = _apply(draft, player, typed)
     player.growth_marks = 0
-    write_actor(draft, PLAYER_ID, player)
     return Transition(state=draft.committed(), facts=(*facts, _growth_reset()))
 
 
 def _apply(
-    draft: GameState,
+    draft: StoryState,
     player: StoryActorState,
     decision: StoryAdvancementDecision,
 ) -> list[Fact]:
@@ -285,7 +287,7 @@ def _apply(
                 known=True,
                 parent_id=PLAYER_ID,
             )
-            created = draft.add(item, StoryItemState(gear=decision.gear).model_dump(mode="json"))
+            created = draft.add(item, StoryItemState(gear=decision.gear))
             return [created, _gear_acquired(item.id, item.name, decision.gear)]
         case IncreaseMaximumStress():
             before_max = player.max_stress

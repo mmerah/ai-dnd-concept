@@ -3,7 +3,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from re import fullmatch
 
-from pydantic import BaseModel, TypeAdapter
+from pydantic import BaseModel, ConfigDict, TypeAdapter
 
 from .base import SAVE_VERSION, EngineId, Slug, content_id
 from .content import (
@@ -16,7 +16,7 @@ from .content import (
 )
 from .registry import engine_ids
 from .turn import TraceEntry
-from .world import GameState
+from .world import EngineRules, GameState, ScenarioMeta
 
 ENCODING = "utf-8"
 WORLD_FILE = "world.json"
@@ -89,6 +89,17 @@ def _require_save_version(stored: int, what: str) -> None:
         raise ValueError(f"{what} is version {stored}, this build needs {SAVE_VERSION}")
 
 
+class SaveShell(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+
+    save_version: int = 0
+    engine: EngineId
+    scenario_id: Slug
+    character_id: Slug
+    scenario: ScenarioMeta
+    turn: int
+
+
 TRACE_ADAPTER: TypeAdapter[TraceEntry] = TypeAdapter(TraceEntry)
 
 
@@ -115,15 +126,25 @@ class FileSaves:
             if fullmatch(_SAVE_SLUG_PATTERN, path.stem) is not None
         )
 
-    def load(self, slug: str) -> GameState | None:
+    def shell(self, slug: str) -> SaveShell | None:
+        path = self._path(slug)
+        if not path.exists():
+            return None
+        shell = SaveShell.model_validate_json(path.read_text(encoding=ENCODING))
+        _require_save_version(shell.save_version, "save")
+        return shell
+
+    def load(
+        self, slug: str, state_type: type[GameState[EngineRules]]
+    ) -> GameState[EngineRules] | None:
         path = self._path(slug)
         if not path.exists():
             return None
         body = path.read_text(encoding=ENCODING)
         _require_save_version(_StoredVersion.model_validate_json(body).save_version, "save")
-        return GameState.model_validate_json(body)
+        return state_type.model_validate_json(body)
 
-    def save(self, slug: str, state: GameState) -> None:
+    def save(self, slug: str, state: GameState[EngineRules]) -> None:
         _write(self._path(slug), state.model_dump_json(indent=2))
 
     def discard(self, slug: str) -> None:

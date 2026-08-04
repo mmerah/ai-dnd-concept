@@ -11,7 +11,6 @@ from aidm.core.content import (
     CharacterProfile,
     authored_world,
 )
-from aidm.core.world import WorldState
 from aidm.engines.dnd5e.state import Dnd5eActorState, StatBlock
 from aidm.engines.story.state import (
     DEFAULT_APPROACHES,
@@ -59,7 +58,7 @@ def test_world_and_game_state_reject_inconsistent_topology() -> None:
     _, state = initialized()
     player_record = state.world.record(PLAYER_ID)
     with pytest.raises(ValidationError, match="keys disagree"):
-        WorldState.model_validate(
+        type(state.world).model_validate(
             {"records": {"wrong-key": player_record.model_dump(round_trip=True)}}
         )
 
@@ -70,19 +69,22 @@ def test_world_and_game_state_reject_inconsistent_topology() -> None:
         with_entity(state, updated(state.player, parent_id=EntityId("missing")))
 
     carried = state.world.children(PLAYER_ID, "item")[0]
-    with pytest.raises(ValidationError, match="cannot be inside anything"):
+    with pytest.raises(ValidationError, match="is a location with item rules"):
         with_entity(state, updated(carried, kind="location"))
 
 
+# Dumping the foreign payload trips Pydantic's serializer warning before validation rejects it.
+@pytest.mark.filterwarnings("ignore::UserWarning")
 def test_a_record_may_not_hold_another_engines_payload() -> None:
     """The gate has to fire on a resumed save too, not only on the turn that wrote the payload."""
     engine, state = initialized()
     draft = state.draft()
-    draft.world.record(PLAYER_ID).rules = Dnd5eActorState(stats=StatBlock()).model_dump(mode="json")
+    draft.world.record(PLAYER_ID).rules = Dnd5eActorState(stats=StatBlock())
 
-    engine.validate_state(state)
     with pytest.raises(ValidationError):
-        engine.validate_state(draft.committed())
+        draft.committed()
+    with pytest.raises(ValidationError):
+        engine.state_type.model_validate(draft.model_dump(round_trip=True))
 
 
 def test_an_engine_refuses_a_payload_for_a_kind_it_defines_no_rules_for() -> None:
@@ -101,7 +103,7 @@ def test_an_engine_refuses_a_payload_for_a_kind_it_defines_no_rules_for() -> Non
         }
     )
 
-    with pytest.raises(ValueError, match="location"):
+    with pytest.raises(ValueError, match="(?i)location"):
         engine.initial_world(poisoned, selected.overlay.character)
 
 

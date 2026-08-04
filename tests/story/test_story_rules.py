@@ -5,7 +5,7 @@ from story_test_support import initial_story_game, setback
 
 from aidm.core.base import PLAYER_ID, EntityId
 from aidm.core.tools import take_item
-from aidm.engines.story.state import StoryGearTag, StoryItemState, item_state, player_state
+from aidm.engines.story.state import StoryGearTag, StoryItemState, actor_of, item_of
 
 
 def test_story_risk_is_seeded_pure_and_commits_once() -> None:
@@ -24,7 +24,7 @@ def test_story_risk_is_seeded_pure_and_commits_once() -> None:
     assert safe == "Kael's attempt ends in a setback"
     assert safe is not None and all(private not in safe for private in ("1+1", "difficulty"))
 
-    player = player_state(after)
+    player = actor_of(after, PLAYER_ID)
     assert (player.growth_marks, player.stress) == (1, 1)
     engine.validate_state(after)
 
@@ -34,9 +34,7 @@ def test_story_mode_can_take_an_existing_item_and_keep_its_rule_state() -> None:
     engine, state = initial_story_game()
     gear = StoryGearTag(name="Folded Chart", description="It marks the sealed stair.")
     prepared = state.draft()
-    prepared.world.record(EntityId("vault_map"), "item").rules = StoryItemState(
-        gear=gear
-    ).model_dump(mode="json")
+    prepared.world.record(EntityId("vault_map"), "item").rules = StoryItemState(gear=gear)
     context = turn_context(engine, prepared.committed(), Random(0))
 
     _ = take_item(tool_context(context), EntityId("vault_map"))
@@ -45,4 +43,4 @@ def test_story_mode_can_take_an_existing_item_and_keep_its_rule_state() -> None:
     map_item = after.world.require(EntityId("vault_map"))
     assert map_item.known
     assert map_item in after.world.children(PLAYER_ID, "item")
-    assert item_state(after.world.record(map_item.id, "item").rules).gear == gear
+    assert item_of(after, map_item.id).gear == gear

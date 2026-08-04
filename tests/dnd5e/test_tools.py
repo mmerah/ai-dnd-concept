@@ -7,18 +7,18 @@ from fivee_test_support import state as state
 from pydantic_ai import ModelRetry
 
 from aidm.core.base import PLAYER_ID, EntityId
-from aidm.core.world import GameState
+from aidm.engines.dnd5e.state import Dnd5eState
 
 # Kael's wisdom is 14 (+2). Random(0)'s first d20 is 13 (-> 15, passes DC 12); Random(2)'s is 2.
 PASS, FAIL = Random(0), Random(2)
 
 
-def relocated(state: GameState, entity_id: EntityId, location_id: EntityId) -> GameState:
+def relocated(state: Dnd5eState, entity_id: EntityId, location_id: EntityId) -> Dnd5eState:
     moved = updated(state.world.require(entity_id), parent_id=location_id)
     return with_entity(state, moved)
 
 
-def test_heal_and_damage_clamp_and_report_only_real_change(state: GameState) -> None:
+def test_heal_and_damage_clamp_and_report_only_real_change(state: Dnd5eState) -> None:
     """`delta` is what the clamp applies, not what was asked for: the Narrator must never be told
     of hit points that never moved, and a change of nothing is not a fact at all."""
     player = actor_of(state, PLAYER_ID)
@@ -36,7 +36,7 @@ def test_heal_and_damage_clamp_and_report_only_real_change(state: GameState) -> 
     assert healthy.call(healthy.tools.heal, amount=3) == []  # already at full health
 
 
-def test_a_dice_amount_rolls_inside_the_change_it_pays_for(state: GameState) -> None:
+def test_a_dice_amount_rolls_inside_the_change_it_pays_for(state: Dnd5eState) -> None:
     """The roll and the hit points it costs are one tool call — no value flows between two.
     '2d1' is deterministic, so the damage is exactly 2. A bare constant carries no die at all,
     so '4' and 4 must reach the Narrator as the same facts."""
@@ -52,7 +52,7 @@ def test_a_dice_amount_rolls_inside_the_change_it_pays_for(state: GameState) -> 
     )
 
 
-def test_damage_reaches_only_an_actor_here_and_reveals_them_first(state: GameState) -> None:
+def test_damage_reaches_only_an_actor_here_and_reveals_them_first(state: Dnd5eState) -> None:
     """Mara has 4 hp, so 3 damage leaves the event's concise wounds summary badly hurt. Elena is
     here but unrevealed, so damaging her must enter the player's view first."""
     turn = turn_of(state)
@@ -67,7 +67,7 @@ def test_damage_reaches_only_an_actor_here_and_reveals_them_first(state: GameSta
         _ = away.call(away.tools.damage, amount=1, target_id=EntityId("mara"))
 
 
-def test_a_condition_takes_hold_lifts_and_is_not_reapplied(state: GameState) -> None:
+def test_a_condition_takes_hold_lifts_and_is_not_reapplied(state: Dnd5eState) -> None:
     """Only a change is an event: a second helping of `prone` moved nothing, so the Narrator is not
     told it did."""
     turn = turn_of(state)
@@ -80,7 +80,7 @@ def test_a_condition_takes_hold_lifts_and_is_not_reapplied(state: GameState) -> 
     assert actor_of(turn.committed(), PLAYER_ID).stats.conditions == ()
 
 
-def test_an_immune_actor_is_simply_unaffected(state: GameState) -> None:
+def test_an_immune_actor_is_simply_unaffected(state: Dnd5eState) -> None:
     """The rules decide, not the Director: it may name any condition and immunity absorbs it."""
     mara = actor_of(state, EntityId("mara"))
     immune = updated(mara.state, stats=updated(mara.stats, condition_immunities=("poisoned",)))
@@ -93,7 +93,7 @@ def test_an_immune_actor_is_simply_unaffected(state: GameState) -> None:
     assert changed.trace == "Mara is poisoned"
 
 
-def test_a_roll_reports_its_outcome_instead_of_deciding_what_follows(state: GameState) -> None:
+def test_a_roll_reports_its_outcome_instead_of_deciding_what_follows(state: Dnd5eState) -> None:
     """The point of the tool loop: the Director reads a real result before it acts on it."""
     passed = turn_of(state, PASS)
     (rolled,) = passed.call(passed.tools.roll_check, ability="wisdom", dc=12)

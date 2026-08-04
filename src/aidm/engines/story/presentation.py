@@ -1,17 +1,17 @@
 from aidm.core.base import PLAYER_ID, Entity
-from aidm.core.content import Rules
+from aidm.core.world import BareLocation
 
-from .state import StoryActorState, StoryItemState, actor_state, item_state
+from .state import StoryActorState, StoryItemState, StoryRules
 
 
 class StoryPresentation:
-    def entity_state(self, entity: Entity, rules: Rules) -> str:
-        match entity.kind:
-            case "actor":
-                return self._actor_state(entity, actor_state(rules))
-            case "item":
-                return self._item_state(item_state(rules))
-            case "location":
+    def entity_state(self, entity: Entity, rules: StoryRules) -> str:
+        match rules:
+            case StoryActorState():
+                return self._actor_state(entity, rules)
+            case StoryItemState():
+                return self._item_state(rules)
+            case BareLocation():
                 return ""
 
     @staticmethod

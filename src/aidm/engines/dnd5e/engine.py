@@ -1,12 +1,12 @@
 from collections.abc import Sequence
 from pathlib import Path
 
-from aidm.core.base import PLAYER_ID, Entity, EntityId
+from aidm.core.base import PLAYER_ID, Entity
 from aidm.core.config import Settings
 from aidm.core.content import AuthoredEntity, AuthoredWorld, Rules, compose_world
 from aidm.core.engine import Engine
 from aidm.core.registry import EnginePlugin
-from aidm.core.world import GameState, WorldState
+from aidm.core.world import BareLocation
 
 from . import bestiary, progression
 from .access import read_actor, read_item
@@ -16,7 +16,15 @@ from .content.pack_ruleset import compile_ruleset
 from .identity import ENGINE_ID
 from .presentation import Dnd5ePresentation
 from .ruleset import Ruleset
-from .state import Dnd5eActorState, Dnd5eCharacterData, Dnd5eItemState, StatBlock
+from .state import (
+    Dnd5eActorState,
+    Dnd5eCharacterData,
+    Dnd5eItemState,
+    Dnd5eRules,
+    Dnd5eState,
+    Dnd5eWorldState,
+    StatBlock,
+)
 from .tools import DIRECTOR_INSTRUCTIONS, Dnd5eTools
 from .ui import advancement_panel_for
 from .values import Value
@@ -24,21 +32,16 @@ from .values import Value
 SHIPPED_PACK = Path(__file__).parent / "packs" / "srd-2014"
 
 
-def _no_location_rules(entity_id: EntityId, rules: Rules) -> None:
-    if rules:
-        raise ValueError(f"location {entity_id!r} carries 5e rules, but 5e defines none")
-
-
 class Dnd5eConfig(Value):
     pack_paths: tuple[Path, ...] | None = None
 
 
-def build_dnd5e_engine(pack_paths: Sequence[Path] | None = None) -> Engine:
+def build_dnd5e_engine(pack_paths: Sequence[Path] | None = None) -> Engine[Dnd5eRules]:
     ruleset = compile_ruleset(load((SHIPPED_PACK,) if pack_paths is None else tuple(pack_paths)))
     return dnd5e_engine(ruleset)
 
 
-def _validate_payloads(state: GameState, ruleset: Ruleset) -> None:
+def _validate_payloads(state: Dnd5eState, ruleset: Ruleset) -> None:
     """A foreign or malformed payload breaks here, not mid-combat."""
     actors = tuple(read_actor(state, entity.id) for entity in state.world.entities("actor"))
     for actor in actors:
@@ -56,63 +59,52 @@ def _validate_payloads(state: GameState, ruleset: Ruleset) -> None:
         raise ValueError(f"only the player may have progression: {levelled}")
 
 
-def dnd5e_engine(ruleset: Ruleset) -> Engine:
-    presentation = Dnd5ePresentation(ruleset)
+def dnd5e_engine(ruleset: Ruleset) -> Engine[Dnd5eRules]:
     advancement = Dnd5eAdvancement(ruleset)
 
-    def entity_rules(authored: AuthoredEntity) -> Rules:
+    def entity_rules(authored: AuthoredEntity) -> Dnd5eRules:
         match authored.entity.kind:
             case "actor":
-                statted = bestiary.statted_actor(authored.entity.id, authored.rules, ruleset)
-                return statted.model_dump(mode="json")
+                return bestiary.statted_actor(authored.entity.id, authored.rules, ruleset)
             case "item":
-                statted = bestiary.statted_item(authored.entity.id, authored.rules, ruleset)
-                return statted.model_dump(mode="json")
+                return bestiary.statted_item(authored.entity.id, authored.rules, ruleset)
             case "location":
-                _no_location_rules(authored.entity.id, authored.rules)
-                return {}
+                return BareLocation.model_validate(authored.rules)
 
-    def initial_world(authored: AuthoredWorld, character: Rules) -> WorldState:
+    def initial_world(authored: AuthoredWorld, character: Rules) -> Dnd5eWorldState:
         sheet = Dnd5eCharacterData.model_validate(character)
         start = progression.first_level(sheet, ruleset)
         player = Dnd5eActorState(
             stats=StatBlock(attributes=start.attributes, max_hp=start.hp_gain, hp=start.hp_gain),
             progression=start.progression,
         )
-        return compose_world(authored, player.model_dump(mode="json"), entity_rules)
+        return compose_world(Dnd5eWorldState, authored, player, entity_rules)
 
-    def validate_state(state: GameState) -> None:
-        if state.engine != ENGINE_ID:
-            raise ValueError(f"5e received a {state.engine!r} game")
-        for record in state.world.records.values():
-            if record.entity.kind == "location":
-                _no_location_rules(record.entity.id, record.rules)
-        _validate_payloads(state, ruleset)
-
-    def default_rules(entity: Entity) -> Rules:
+    def default_rules(entity: Entity) -> Dnd5eRules:
         match entity.kind:
             case "actor":
-                return Dnd5eActorState(stats=StatBlock()).model_dump(mode="json")
+                return Dnd5eActorState(stats=StatBlock())
             case "item":
-                return Dnd5eItemState().model_dump(mode="json")
+                return Dnd5eItemState()
             case "location":
-                return {}
+                return BareLocation()
 
     return Engine(
         id=ENGINE_ID,
+        state_type=Dnd5eState,
         initial_world=initial_world,
-        validate_state=validate_state,
+        validate_state=lambda state: _validate_payloads(state, ruleset),
         default_rules=default_rules,
         advance=advancement.advance,
         advancement_available=advancement.available,
         advancement_panel=advancement_panel_for(advancement),
-        director_toolset=Dnd5eTools(ruleset).toolset(),
+        toolsets={"director": Dnd5eTools(ruleset).toolset()},
         director_instructions=DIRECTOR_INSTRUCTIONS,
-        entity_state=presentation.entity_state,
+        entity_state=Dnd5ePresentation(ruleset).entity_state,
     )
 
 
-def _build(config: Settings) -> Engine:
+def _build(config: Settings) -> Engine[Dnd5eRules]:
     section = Dnd5eConfig.model_validate(config.engines.get(ENGINE_ID, {}))
     return build_dnd5e_engine(section.pack_paths)
 

@@ -7,7 +7,6 @@ from fivee_test_support import content_ref as ref
 from pydantic_ai import ModelRetry
 
 from aidm.core.base import PLAYER_ID, Entity, EntityId
-from aidm.core.world import GameState
 from aidm.engines.dnd5e import bestiary, procedures
 from aidm.engines.dnd5e import rolls as rules
 from aidm.engines.dnd5e.access import Dnd5eWorld
@@ -16,12 +15,13 @@ from aidm.engines.dnd5e.state import (
     Dnd5eActorDefinition,
     Dnd5eActorState,
     Dnd5eItemState,
+    Dnd5eState,
 )
 
 RULES = ruleset()
 
 
-def armed(state: GameState) -> GameState:
+def armed(state: Dnd5eState) -> Dnd5eState:
     goblin = Entity(
         id=EntityId("goblin"),
         kind="actor",

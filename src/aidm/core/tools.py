@@ -8,9 +8,8 @@ from pydantic_ai import ModelRetry, RunContext
 from pydantic_ai.toolsets import FunctionToolset
 
 from .base import PLAYER_ID, Entity, EntityId, Frozen, Kind, slug
-from .content import Rules
 from .facts import Fact
-from .world import GameState
+from .world import EngineRules, GameState
 
 
 class DirectorNotes(Frozen):
@@ -22,13 +21,13 @@ class DirectorNotes(Frozen):
 
 
 @dataclass
-class TurnContext:
+class TurnContext[R: EngineRules]:
     """The deps every director tool receives; owns this turn's draft transaction."""
 
-    draft: GameState
+    draft: GameState[R]
     rng: Random
     facts: list[Fact]
-    default_rules: Callable[[Entity], Rules]
+    default_rules: Callable[[Entity], R]
 
     def record(self, facts: Sequence[Fact]) -> str:
         """A tool ends here: the facts it appended are also what the model reads back."""
@@ -36,14 +35,14 @@ class TurnContext:
         return "; ".join(fact.trace for fact in facts) or "nothing changed"
 
 
-def require(state: GameState, entity_id: EntityId) -> Entity:
+def require[R: EngineRules](state: GameState[R], entity_id: EntityId) -> Entity:
     entity = state.world.find(entity_id)
     if entity is None:
         raise ModelRetry(f"unknown entity id {entity_id!r}. Use only ids you were shown.")
     return entity
 
 
-def require_kind(state: GameState, entity_id: EntityId, kind: Kind) -> Entity:
+def require_kind[R: EngineRules](state: GameState[R], entity_id: EntityId, kind: Kind) -> Entity:
     entity = require(state, entity_id)
     if entity.kind != kind:
         raise ModelRetry(
@@ -53,7 +52,7 @@ def require_kind(state: GameState, entity_id: EntityId, kind: Kind) -> Entity:
     return entity
 
 
-def require_actor_here(state: GameState, actor_id: EntityId | None) -> Entity:
+def require_actor_here[R: EngineRules](state: GameState[R], actor_id: EntityId | None) -> Entity:
     if actor_id is None or actor_id == PLAYER_ID:
         return state.player
     actor = require_kind(state, actor_id, "actor")
@@ -65,14 +64,14 @@ def require_actor_here(state: GameState, actor_id: EntityId | None) -> Entity:
     return actor
 
 
-def require_carried(state: GameState, item_id: EntityId) -> Entity:
+def require_carried[R: EngineRules](state: GameState[R], item_id: EntityId) -> Entity:
     item = require_kind(state, item_id, "item")
     if item.parent_id != PLAYER_ID:
         raise ModelRetry(f"the player does not carry item {item_id!r}")
     return item
 
 
-def check_speaker(state: GameState, speaker_id: EntityId | None) -> str | None:
+def check_speaker[R: EngineRules](state: GameState[R], speaker_id: EntityId | None) -> str | None:
     """The player is addressed, never the speaker: losing this lets the Director voice them."""
     if speaker_id is None:
         return None
@@ -89,14 +88,16 @@ def check_speaker(state: GameState, speaker_id: EntityId | None) -> str | None:
     return None
 
 
-def director_notes(ctx: RunContext[TurnContext], notes: DirectorNotes) -> DirectorNotes:
+def director_notes[R: EngineRules](
+    ctx: RunContext[TurnContext[R]], notes: DirectorNotes
+) -> DirectorNotes:
     if fault := check_speaker(ctx.deps.draft, notes.speaker_id):
         raise ModelRetry(fault)
     return notes
 
 
-def discover(
-    ctx: RunContext[TurnContext],
+def discover[R: EngineRules](
+    ctx: RunContext[TurnContext[R]],
     entity_id: Annotated[
         EntityId, Field(description="Exact id of the existing canon entity to reveal.")
     ],
@@ -110,8 +111,8 @@ def discover(
     return deps.record(deps.draft.reveal(require(deps.draft, entity_id)))
 
 
-def move(
-    ctx: RunContext[TurnContext],
+def move[R: EngineRules](
+    ctx: RunContext[TurnContext[R]],
     location_id: Annotated[
         EntityId, Field(description="Exact id of the canon location the actor enters.")
     ],
@@ -138,8 +139,8 @@ def move(
     return deps.record([*revealed, draft.move(actor, destination)])
 
 
-def take_item(
-    ctx: RunContext[TurnContext],
+def take_item[R: EngineRules](
+    ctx: RunContext[TurnContext[R]],
     item_id: Annotated[
         EntityId, Field(description="Exact id of a loose canon item at the player's location.")
     ],
@@ -156,8 +157,8 @@ def take_item(
     return deps.record([*deps.draft.reveal(item), deps.draft.move(item, deps.draft.player)])
 
 
-def drop_item(
-    ctx: RunContext[TurnContext],
+def drop_item[R: EngineRules](
+    ctx: RunContext[TurnContext[R]],
     item_id: Annotated[
         EntityId, Field(description="Exact id of an item the player currently carries.")
     ],
@@ -173,8 +174,8 @@ def drop_item(
     return deps.record([*deps.draft.reveal(item), deps.draft.move(item, here)])
 
 
-def give_item(
-    ctx: RunContext[TurnContext],
+def give_item[R: EngineRules](
+    ctx: RunContext[TurnContext[R]],
     item_id: Annotated[
         EntityId, Field(description="Exact id of an item the player currently carries.")
     ],
@@ -195,8 +196,8 @@ def give_item(
     return deps.record([*deps.draft.reveal(item), deps.draft.move(item, actor)])
 
 
-def gain_improvised_item(
-    ctx: RunContext[TurnContext],
+def gain_improvised_item[R: EngineRules](
+    ctx: RunContext[TurnContext[R]],
     item_name: Annotated[
         str,
         Field(
@@ -224,7 +225,7 @@ def gain_improvised_item(
     return deps.record([created, deps.draft.move(item, deps.draft.player)])
 
 
-def world_toolset() -> FunctionToolset[TurnContext]:
-    return FunctionToolset[TurnContext](
+def world_toolset() -> FunctionToolset[TurnContext[EngineRules]]:
+    return FunctionToolset[TurnContext[EngineRules]](
         [discover, move, take_item, drop_item, give_item, gain_improvised_item]
     )

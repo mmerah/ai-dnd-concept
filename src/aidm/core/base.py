@@ -29,7 +29,7 @@ Slug = Annotated[str, Field(pattern=rf"^{SLUG_PATTERN}$", max_length=64)]
 
 PLAYER_ID = EntityId("player")
 ROLES: tuple[Role, ...] = get_args(Role)
-SAVE_VERSION = 23
+SAVE_VERSION = 24
 
 
 def content_id(value: str) -> Slug:

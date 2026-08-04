@@ -1,10 +1,9 @@
-from typing import Literal, Self
+from typing import Annotated, Literal, Self
 
 from pydantic import Field, model_validator
 
-from aidm.core.base import PLAYER_ID, EntityId, Frozen, Mutable, Slug
-from aidm.core.content import Rules
-from aidm.core.world import GameState
+from aidm.core.base import EntityId, Frozen, Slug
+from aidm.core.world import BareLocation, EngineRules, GameState, WorldState, rules_of
 
 StoryApproach = Literal["bold", "subtle", "clever", "empathetic"]
 APPROACH_NAMES: tuple[StoryApproach, ...] = ("bold", "subtle", "clever", "empathetic")
@@ -33,6 +32,9 @@ class StoryApproaches(Frozen):
                 return self.empathetic
 
 
+DEFAULT_APPROACHES = StoryApproaches(bold=0, subtle=0, clever=0, empathetic=0)
+
+
 class StoryActorTag(Frozen):
     id: Slug
     name: str
@@ -52,7 +54,8 @@ class StoryCondition(Frozen):
     description: str = Field(description="The concrete constraint this puts on the actor.")
 
 
-class StoryActorState(Mutable):
+class StoryActorState(EngineRules):
+    kind: Literal["actor"] = "actor"  # pyright: ignore[reportIncompatibleVariableOverride]
     approaches: StoryApproaches
     tags: tuple[StoryActorTag, ...] = ()
     stress: int = Field(default=0, ge=0)
@@ -80,8 +83,16 @@ class StoryGearTag(Frozen):
     description: str
 
 
-class StoryItemState(Mutable):
+class StoryItemState(EngineRules):
+    kind: Literal["item"] = "item"  # pyright: ignore[reportIncompatibleVariableOverride]
     gear: StoryGearTag | None = None
+
+
+type StoryRules = Annotated[
+    StoryActorState | StoryItemState | BareLocation, Field(discriminator="kind")
+]
+StoryState = GameState[StoryRules]
+StoryWorldState = WorldState[StoryRules]
 
 
 class StoryCharacterData(Frozen):
@@ -100,12 +111,7 @@ class StoryCharacterData(Frozen):
 
 
 class StoryActorDefinition(Frozen):
-    approaches: StoryApproaches = StoryApproaches(
-        bold=0,
-        subtle=0,
-        clever=0,
-        empathetic=0,
-    )
+    approaches: StoryApproaches = DEFAULT_APPROACHES
     tags: tuple[StoryActorTag, ...] = ()
     stress: int = Field(default=0, ge=0)
     max_stress: int = Field(default=5, ge=MIN_MAX_STRESS, le=MAX_MAX_STRESS)
@@ -128,29 +134,9 @@ class StoryItemDefinition(Frozen):
         return StoryItemState(gear=self.gear)
 
 
-DEFAULT_APPROACHES = StoryApproaches(bold=0, subtle=0, clever=0, empathetic=0)
+def actor_of[R: EngineRules](state: GameState[R], actor_id: EntityId) -> StoryActorState:
+    return rules_of(state.world.record(actor_id, "actor"), StoryActorState)
 
 
-def actor_state(rules: Rules) -> StoryActorState:
-    return StoryActorState.model_validate(rules)
-
-
-def item_state(rules: Rules) -> StoryItemState:
-    return StoryItemState.model_validate(rules)
-
-
-def read_actor(state: GameState, actor_id: EntityId) -> StoryActorState:
-    """A detached copy: nothing lands in the record until `write_actor` dumps it back."""
-    return actor_state(state.world.record(actor_id, "actor").rules)
-
-
-def write_actor(state: GameState, actor_id: EntityId, sheet: StoryActorState) -> None:
-    state.world.record(actor_id, "actor").rules = sheet.model_dump(mode="json")
-
-
-def read_item(state: GameState, item_id: EntityId) -> StoryItemState:
-    return item_state(state.world.record(item_id, "item").rules)
-
-
-def player_state(state: GameState) -> StoryActorState:
-    return read_actor(state, PLAYER_ID)
+def item_of[R: EngineRules](state: GameState[R], item_id: EntityId) -> StoryItemState:
+    return rules_of(state.world.record(item_id, "item"), StoryItemState)

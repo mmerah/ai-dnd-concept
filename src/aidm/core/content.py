@@ -4,7 +4,7 @@ from typing import Self
 from pydantic import Field, JsonValue, model_validator
 
 from .base import PLAYER_ID, EngineId, Entity, EntityId, Frozen, Slug
-from .world import Record, ScenarioMeta, WorldState, check_placement
+from .world import EngineRules, ScenarioMeta, WorldState, check_placement
 
 type Rules = dict[str, JsonValue]
 
@@ -153,17 +153,17 @@ def authored_world(scenario: Scenario, character: Character) -> AuthoredWorld:
     return AuthoredWorld(entities=entities)
 
 
-def compose_world(
+def compose_world[R: EngineRules](
+    world_type: type[WorldState[R]],
     authored: AuthoredWorld,
-    player: Rules,
-    rules: Callable[[AuthoredEntity], Rules],
-) -> WorldState:
-    return WorldState(
-        records={
-            entity_id: Record(
-                entity=record.entity,
-                rules=player if entity_id == PLAYER_ID else rules(record),
-            )
-            for entity_id, record in authored.entities.items()
+    player: R,
+    rules: Callable[[AuthoredEntity], R],
+) -> WorldState[R]:
+    records = {
+        entity_id: {
+            "entity": record.entity,
+            "rules": player if entity_id == PLAYER_ID else rules(record),
         }
-    )
+        for entity_id, record in authored.entities.items()
+    }
+    return world_type.model_validate({"records": records})

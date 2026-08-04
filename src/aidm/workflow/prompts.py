@@ -1,10 +1,10 @@
 import json
-from collections.abc import Callable, Iterable, Sequence
+from collections.abc import Callable, Iterable, Mapping, Sequence
 
 from ..core.base import PLAYER_ID, Entity, EntityId, Frozen, Kind
 from ..core.engine import EntityRenderer
 from ..core.turn import GrowthRequest
-from ..core.world import Exchange, GameState, ScenarioMeta, WorldState
+from ..core.world import EngineRules, Exchange, GameState, ScenarioMeta
 
 type Placement = Callable[[Entity], str]
 type Label = Callable[[Entity], str]
@@ -24,14 +24,16 @@ class BaseScene(Frozen):
 
 class SceneSnapshot(BaseScene):
     hidden: tuple[Entity, ...]
-    canon: WorldState
+    canon: tuple[Entity, ...]
 
     @classmethod
-    def of(cls, state: GameState) -> "SceneSnapshot":
+    def of[R: EngineRules](cls, state: GameState[R]) -> "SceneSnapshot":
         world = state.world
         player = state.player
         location = world.require_kind(state.player_location, "location")
-        shown = [entity for entity in world.entities() if entity.id != PLAYER_ID]
+        canon = tuple(world.entities())
+        by_id = {entity.id: entity for entity in canon}
+        shown = [entity for entity in canon if entity.id != PLAYER_ID]
         inventory = world.children(PLAYER_ID, "item")
         carried_ids = {item.id for item in inventory}
         placed = [
@@ -53,12 +55,12 @@ class SceneSnapshot(BaseScene):
                 if entity.known and entity.id in locations and locations[entity.id] != location.id
             ),
             hidden=tuple(entity for entity in shown if not entity.known),
-            canon=world,
-            placements=_placements(world, world.entities(), frozenset(world.all_ids())),
+            canon=canon,
+            placements=_placements(by_id, canon, frozenset(by_id)),
         )
 
     def catalogue(self) -> tuple[Entity, ...]:
-        return tuple(entity for entity in self.canon.entities() if entity.id != PLAYER_ID)
+        return tuple(entity for entity in self.canon if entity.id != PLAYER_ID)
 
 
 class VisibleScene(BaseScene):
@@ -66,7 +68,7 @@ class VisibleScene(BaseScene):
 
     @classmethod
     def of(cls, snapshot: SceneSnapshot) -> "VisibleScene":
-        canon = snapshot.canon
+        by_id = {entity.id: entity for entity in snapshot.canon}
         shown = (
             snapshot.player,
             snapshot.location,
@@ -74,28 +76,30 @@ class VisibleScene(BaseScene):
             *snapshot.here,
             *snapshot.known_elsewhere,
         )
-        met = frozenset(entity.id for entity in canon.entities() if entity.known)
+        met = frozenset(entity.id for entity in snapshot.canon if entity.known)
         return cls(
             player=_undetailed(snapshot.player),
             location=_undetailed(snapshot.location),
             inventory=tuple(_undetailed(item) for item in snapshot.inventory),
             here=tuple(_undetailed(entity) for entity in snapshot.here),
             known_elsewhere=tuple(_undetailed(entity) for entity in snapshot.known_elsewhere),
-            placements=_placements(canon, shown, met),
+            placements=_placements(by_id, shown, met),
         )
 
 
 def _placements(
-    world: WorldState,
+    by_id: Mapping[EntityId, Entity],
     entities: Iterable[Entity],
     nameable: frozenset[EntityId],
 ) -> dict[EntityId, str]:
-    return {entity.id: _placement(entity, world, nameable) for entity in entities}
+    return {entity.id: _placement(entity, by_id, nameable) for entity in entities}
 
 
-def _placement(entity: Entity, world: WorldState, nameable: frozenset[EntityId]) -> str:
+def _placement(
+    entity: Entity, by_id: Mapping[EntityId, Entity], nameable: frozenset[EntityId]
+) -> str:
     """A placement names its holder only where the reader may be told that holder exists."""
-    holder = world.parent_of(entity)
+    holder = None if entity.parent_id is None else by_id[entity.parent_id]
     if holder is None or holder.id not in nameable:
         return ""
     if holder.kind == "location":

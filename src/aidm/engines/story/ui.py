@@ -5,6 +5,7 @@ from typing import Literal
 
 from nicegui import ui
 
+from aidm.core.base import PLAYER_ID
 from aidm.core.engine import AdvancementSubmit, CurrentState, entered_text
 
 from .advancement import (
@@ -29,7 +30,7 @@ from .state import (
     StoryActorTag,
     StoryApproach,
     StoryGearTag,
-    player_state,
+    actor_of,
 )
 
 _TAG_KINDS: dict[str, Literal["edge", "bond"]] = {"edge": "edge", "bond": "bond"}
@@ -48,7 +49,7 @@ def advancement_panel(
     refresh: Callable[[], None],
 ) -> None:
     current = state()
-    player = player_state(current)
+    player = actor_of(current, PLAYER_ID)
     ready = available(current)
     headline = "Story growth ready" if ready else "Story growth"
     ui.label(f"{current.player.name} — {headline}").classes("text-sm font-bold")
@@ -198,7 +199,7 @@ def _stress_card(ctx: _Ctx) -> None:
 
 
 def _review(ctx: _Ctx, build: Callable[[], StoryAdvancementDecision | None]) -> None:
-    player = player_state(ctx.state())
+    player = actor_of(ctx.state(), PLAYER_ID)
     try:
         decision = build()
         if decision is None:

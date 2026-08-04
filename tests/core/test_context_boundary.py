@@ -5,10 +5,16 @@ from aidm.core.base import PLAYER_ID, SAVE_VERSION, Entity, EntityId, Kind
 from aidm.core.content import ScenarioMeta
 from aidm.core.engine import EntityRenderer, entity_renderer
 from aidm.core.turn import GrowthRequest
-from aidm.core.world import GameState, Record, WorldState
+from aidm.core.world import BareLocation, EngineRules
 from aidm.engines.story.engine import build_story_engine
 from aidm.engines.story.presentation import StoryPresentation
-from aidm.engines.story.state import DEFAULT_APPROACHES, StoryActorState, StoryItemState
+from aidm.engines.story.state import (
+    DEFAULT_APPROACHES,
+    StoryActorState,
+    StoryItemState,
+    StoryState,
+    StoryWorldState,
+)
 from aidm.workflow.prompts import (
     SceneSnapshot,
     VisibleScene,
@@ -19,13 +25,13 @@ from aidm.workflow.prompts import (
     render_narrator,
 )
 
-ACTOR_RULES = StoryActorState(approaches=DEFAULT_APPROACHES).model_dump(mode="json")
-ITEM_RULES = StoryItemState().model_dump(mode="json")
+ACTOR_RULES = StoryActorState(approaches=DEFAULT_APPROACHES)
+ITEM_RULES = StoryItemState()
 DESCRIPTION = "She writes in a compact cipher."
 HOOK = "Her missing folio points toward the vault."
 
 
-def _with_detail(held: GameState, entity_id: EntityId) -> GameState:
+def _with_detail(held: StoryState, entity_id: EntityId) -> StoryState:
     entity = held.world.require_kind(entity_id, "actor")
     detailed = updated(entity, detail={"description": DESCRIPTION, "hook": HOOK})
     return with_entity(held, detailed)
@@ -37,7 +43,17 @@ def _entity(entity_id: str, kind: Kind, name: str, brief: str, **fields: object)
     )
 
 
-def state() -> GameState:
+def _rules(kind: Kind) -> EngineRules:
+    match kind:
+        case "location":
+            return BareLocation()
+        case "actor":
+            return ACTOR_RULES
+        case "item":
+            return ITEM_RULES
+
+
+def state() -> StoryState:
     entities = (
         _entity("study", "location", "Study", "A small room.", known=True),
         _entity("player", "actor", "Kael", "A hunter.", known=True, parent_id="study"),
@@ -46,25 +62,24 @@ def state() -> GameState:
         _entity("lantern", "item", "a lantern", "A dented light.", known=True, parent_id=PLAYER_ID),
         _entity("ledger", "item", "a ledger", "Mara's notes.", known=True, parent_id="mara"),
     )
-    return GameState(
+    return StoryState(
         save_version=SAVE_VERSION,
         scenario_id="whispering-vault",
         character_id="kael",
         scenario=ScenarioMeta(title="Test", premise="Test"),
         engine=STORY,
-        world=WorldState(
-            records={
-                entity.id: Record(
-                    entity=entity,
-                    rules={"location": {}, "actor": ACTOR_RULES, "item": ITEM_RULES}[entity.kind],
-                )
-                for entity in entities
+        world=StoryWorldState.model_validate(
+            {
+                "records": {
+                    entity.id: {"entity": entity, "rules": _rules(entity.kind)}
+                    for entity in entities
+                }
             }
         ),
     )
 
 
-def _renderer(held: GameState) -> EntityRenderer:
+def _renderer(held: StoryState) -> EntityRenderer:
     return entity_renderer(build_story_engine(), held)
 
 

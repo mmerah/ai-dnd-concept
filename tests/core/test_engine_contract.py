@@ -3,22 +3,22 @@ from random import Random
 from core_test_support import character, initialized, settings, tool_context, turn_context
 
 from aidm.core.base import PLAYER_ID, Entity, EntityId
-from aidm.core.engine import Engine
 from aidm.core.facts import Fact
-from aidm.core.registry import engine_ids, plugins
+from aidm.core.registry import AnyEngine, build_engine, engine_ids, plugins
 from aidm.core.tools import take_item
-from aidm.core.world import GameState
+from aidm.core.world import EngineRules, GameState
 from aidm.engines.story.state import (
     DEFAULT_APPROACHES,
     StoryCharacterData,
-    actor_state,
-    item_state,
-    player_state,
+    actor_of,
+    item_of,
 )
 from aidm.engines.story.tools import risk
 
 
-def _turn(engine: Engine, state: GameState) -> tuple[GameState, tuple[Fact, ...]]:
+def _turn(
+    engine: AnyEngine, state: GameState[EngineRules]
+) -> tuple[GameState[EngineRules], tuple[Fact, ...]]:
     context = turn_context(engine, state, Random(19))
     run = tool_context(context)
     _ = take_item(run, EntityId("vault_map"))
@@ -31,10 +31,10 @@ def test_engine_initialization_and_state_contract() -> None:
     sheet = StoryCharacterData.model_validate(character().overlay.character)
 
     assert state.engine == engine.id
-    assert player_state(state).approaches == sheet.approaches
+    assert actor_of(state, PLAYER_ID).approaches == sheet.approaches
     engine.validate_state(state)
 
-    restored = GameState.model_validate_json(state.model_dump_json())
+    restored = engine.state_type.model_validate_json(state.model_dump_json())
     assert restored == state
 
 
@@ -87,8 +87,8 @@ def test_a_created_entity_gains_engine_state_in_the_same_commit() -> None:
     grown = working.committed()
 
     engine.validate_state(grown)
-    assert actor_state(grown.world.record(actor.id, "actor").rules).approaches == DEFAULT_APPROACHES
-    assert item_state(grown.world.record(item.id, "item").rules).gear is None
+    assert actor_of(grown, actor.id).approaches == DEFAULT_APPROACHES
+    assert item_of(grown, item.id).gear is None
 
 
 def test_every_registered_engine_builds_itself() -> None:
@@ -98,6 +98,6 @@ def test_every_registered_engine_builds_itself() -> None:
 
     assert engine_ids() == tuple(plugin.id for plugin in registered)
     for plugin in registered:
-        built = plugin.build(config)
+        built = build_engine(plugin.id, config)
         assert built.id == plugin.id
         assert all(plugin.badge)

@@ -5,7 +5,7 @@ from pathlib import Path
 from random import Random
 
 import pytest
-from core_test_support import tool_context, turn_context, updated
+from core_test_support import tool_context, turn_context
 from pydantic_ai import RunContext
 
 from aidm.core.base import PLAYER_ID, SAVE_VERSION, EngineId, Entity, EntityId
@@ -14,7 +14,7 @@ from aidm.core.engine import Engine
 from aidm.core.facts import Fact
 from aidm.core.store import load_character, load_scenario
 from aidm.core.tools import TurnContext
-from aidm.core.world import GameState, Record, WorldState
+from aidm.core.world import BareLocation, Record
 from aidm.engines.dnd5e.access import read_actor, read_item
 from aidm.engines.dnd5e.content.library import Content, loaded, read_pack
 from aidm.engines.dnd5e.content.models import Pack
@@ -29,6 +29,9 @@ from aidm.engines.dnd5e.state import (
     Dnd5eCharacterData,
     Dnd5eItem,
     Dnd5eItemState,
+    Dnd5eRules,
+    Dnd5eState,
+    Dnd5eWorldState,
     StatBlock,
 )
 from aidm.engines.dnd5e.tools import Dnd5eTools
@@ -42,19 +45,19 @@ def content_ref(collection: str, index: str) -> ContentRef:
     return ContentRef.model_validate({"pack": "srd-2014", "collection": collection, "index": index})
 
 
-def actor_of(state: GameState, actor_id: EntityId) -> Dnd5eActor:
+def actor_of(state: Dnd5eState, actor_id: EntityId) -> Dnd5eActor:
     return read_actor(state, actor_id)
 
 
-def item_of(state: GameState, item_id: EntityId) -> Dnd5eItem:
+def item_of(state: Dnd5eState, item_id: EntityId) -> Dnd5eItem:
     return read_item(state, item_id)
 
 
-def carried_by(state: GameState, actor_id: EntityId) -> tuple[Dnd5eItem, ...]:
+def carried_by(state: Dnd5eState, actor_id: EntityId) -> tuple[Dnd5eItem, ...]:
     return tuple(read_item(state, entity.id) for entity in state.world.children(actor_id, "item"))
 
 
-def player_of(state: GameState) -> Dnd5eActor:
+def player_of(state: Dnd5eState) -> Dnd5eActor:
     return actor_of(state, PLAYER_ID)
 
 
@@ -62,27 +65,27 @@ def summary(fact: Fact) -> str:
     return fact.trace
 
 
-def with_actor(state: GameState, entity: Entity, actor: Dnd5eActorState) -> GameState:
-    world = state.world.model_copy(deep=True)
-    world.records[entity.id] = Record(entity=entity, rules=actor.model_dump(mode="json"))
-    return updated(state, world=world)
+def with_actor(state: Dnd5eState, entity: Entity, actor: Dnd5eActorState) -> Dnd5eState:
+    draft = state.draft()
+    draft.world.records[entity.id] = Record(entity=entity, rules=actor)
+    return draft.committed()
 
 
-def with_item(state: GameState, entity: Entity, item: Dnd5eItemState) -> GameState:
-    world = state.world.model_copy(deep=True)
-    world.records[entity.id] = Record(entity=entity, rules=item.model_dump(mode="json"))
-    return updated(state, world=world)
+def with_item(state: Dnd5eState, entity: Entity, item: Dnd5eItemState) -> Dnd5eState:
+    draft = state.draft()
+    draft.world.records[entity.id] = Record(entity=entity, rules=item)
+    return draft.committed()
 
 
-def _actor(entity: Entity, stats: StatBlock) -> Record:
-    return Record(entity=entity, rules=Dnd5eActorState(stats=stats).model_dump(mode="json"))
+def _actor(entity: Entity, stats: StatBlock) -> tuple[Entity, Dnd5eActorState]:
+    return entity, Dnd5eActorState(stats=stats)
 
 
-def _item(entity: Entity) -> Record:
-    return Record(entity=entity, rules=Dnd5eItemState().model_dump(mode="json"))
+def _item(entity: Entity) -> tuple[Entity, Dnd5eItemState]:
+    return entity, Dnd5eItemState()
 
 
-def blank_game() -> GameState:
+def blank_game() -> Dnd5eState:
     locations = [
         Entity(
             id=EntityId("study"), kind="location", name="the study", brief="A room.", known=True
@@ -144,23 +147,22 @@ def blank_game() -> GameState:
             )
         ),
     ]
-    return GameState(
+    records = {entity.id: {"entity": entity, "rules": rules} for entity, rules in (*actors, *items)}
+    records |= {
+        location.id: {"entity": location, "rules": BareLocation()} for location in locations
+    }
+    return Dnd5eState(
         save_version=SAVE_VERSION,
         scenario_id="whispering-vault",
         character_id="kael",
         scenario=ScenarioMeta(title="Test", premise="A test."),
         engine=EngineId("dnd5e"),
-        world=WorldState(
-            records={
-                record.entity.id: record
-                for record in (*actors, *items, *(Record(entity=e) for e in locations))
-            }
-        ),
+        world=Dnd5eWorldState.model_validate({"records": records}),
     )
 
 
 @pytest.fixture
-def state() -> GameState:
+def state() -> Dnd5eState:
     return blank_game()
 
 
@@ -202,12 +204,12 @@ def sheet(character: str = "kael") -> Dnd5eCharacterData:
 def initial_5e_game(
     name: str = "whispering-vault",
     character: str = "kael",
-) -> tuple[Engine, GameState]:
+) -> tuple[Engine[Dnd5eRules], Dnd5eState]:
     scenario = load_scenario(REPOSITORY_ROOT / "scenarios", name, EngineId("dnd5e"))
     played = load_character(REPOSITORY_ROOT / "characters", character, EngineId("dnd5e"))
     engine = dnd5e_engine(ruleset())
     authored = authored_world(scenario, played)
-    return engine, GameState(
+    return engine, Dnd5eState(
         save_version=SAVE_VERSION,
         scenario_id=scenario.id,
         character_id=played.id,
@@ -218,14 +220,14 @@ def initial_5e_game(
 
 
 @cache
-def _opened(name: str, character: str) -> GameState:
+def _opened(name: str, character: str) -> Dnd5eState:
     return initial_5e_game(name, character)[1]
 
 
 def new_game(
     name: str = "whispering-vault",
     character: str = "kael",
-) -> GameState:
+) -> Dnd5eState:
     """A fresh copy every call: mechanics mutate the draft they are handed."""
     return _opened(name, character).model_copy(deep=True)
 
@@ -234,12 +236,12 @@ def new_game(
 class Turn:
     """One turn's draft, plus the tools that act on it, as the Director's loop would."""
 
-    context: TurnContext
-    run: RunContext[TurnContext]
+    context: TurnContext[Dnd5eRules]
+    run: RunContext[TurnContext[Dnd5eRules]]
     tools: Dnd5eTools
 
     @property
-    def draft(self) -> GameState:
+    def draft(self) -> Dnd5eState:
         return self.context.draft
 
     def call(self, tool: Callable[..., str], **arguments: object) -> list[Fact]:
@@ -248,10 +250,10 @@ class Turn:
         _ = tool(self.run, **arguments)
         return self.context.facts[before:]
 
-    def committed(self) -> GameState:
+    def committed(self) -> Dnd5eState:
         return self.context.draft.committed()
 
 
-def turn_of(state: GameState, rng: Random | None = None) -> Turn:
+def turn_of(state: Dnd5eState, rng: Random | None = None) -> Turn:
     context = turn_context(dnd5e_engine(ruleset()), state, rng)
     return Turn(context=context, run=tool_context(context), tools=Dnd5eTools(ruleset()))

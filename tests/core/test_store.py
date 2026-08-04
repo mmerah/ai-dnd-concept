@@ -5,6 +5,7 @@ from random import Random
 import pytest
 from core_test_support import STORY, initialized, tool_context, turn_context, updated
 from fivee_test_support import initial_5e_game, ruleset
+from pydantic import ValidationError
 
 from aidm.core.engine import narrator_evidence
 from aidm.core.store import ENCODING, FileSaves, FileTraces, load_character, load_scenario
@@ -14,13 +15,14 @@ from aidm.engines.dnd5e.tools import Dnd5eTools
 
 
 def test_save_and_trace_round_trip(tmp_path: Path) -> None:
-    _, state = initialized()
+    engine, state = initialized()
     saves = FileSaves(tmp_path)
     traces = FileTraces(tmp_path)
-    assert saves.load("missing") is None
+    assert saves.load("missing", engine.state_type) is None
+    assert saves.shell("missing") is None
 
     saves.save("current", state)
-    assert saves.load("current") == state
+    assert saves.load("current", engine.state_type) == state
     assert saves.slugs() == ("current",)
 
     turn = Turn(
@@ -41,8 +43,23 @@ def test_save_and_trace_round_trip(tmp_path: Path) -> None:
 
     saves.discard("current")
     traces.discard("current")
-    assert saves.load("current") is None
+    assert saves.load("current", engine.state_type) is None
     assert traces.load("current") == ()
+
+
+def test_shell_reads_a_save_whose_world_is_garbage(tmp_path: Path) -> None:
+    engine, state = initialized()
+    saves = FileSaves(tmp_path)
+    body = json.loads(state.model_dump_json())
+    body["world"] = {"records": {"player": "garbage"}}
+    (tmp_path / "broken.json").write_text(json.dumps(body), encoding=ENCODING)
+
+    shell = saves.shell("broken")
+
+    assert shell is not None
+    assert (shell.engine, shell.scenario_id, shell.turn) == (STORY, "whispering-vault", 0)
+    with pytest.raises(ValidationError):
+        saves.load("broken", engine.state_type)
 
 
 def test_a_trace_entry_names_the_engine_that_wrote_it(tmp_path: Path) -> None:
@@ -81,21 +98,23 @@ def test_a_trace_entry_names_the_engine_that_wrote_it(tmp_path: Path) -> None:
 
 def test_a_save_or_trace_from_another_build_is_refused(tmp_path: Path) -> None:
     """A file written before `save_version` existed reads as version 0, not as a schema error."""
-    _, state = initialized()
+    engine, state = initialized()
     saves = FileSaves(tmp_path)
     traces = FileTraces(tmp_path)
     stale = updated(state, save_version=state.save_version - 1)
 
     saves.save("stale", stale)
     with pytest.raises(ValueError, match="save is version"):
-        saves.load("stale")
+        saves.load("stale", engine.state_type)
+    with pytest.raises(ValueError, match="save is version"):
+        saves.shell("stale")
 
     saves.save("ancient", state)
     body = json.loads((tmp_path / "ancient.json").read_text(encoding=ENCODING))
     del body["save_version"]
     (tmp_path / "ancient.json").write_text(json.dumps(body), encoding=ENCODING)
     with pytest.raises(ValueError, match="save is version 0"):
-        saves.load("ancient")
+        saves.load("ancient", engine.state_type)
 
     traces.append(
         "stale",
@@ -114,11 +133,12 @@ def test_a_save_or_trace_from_another_build_is_refused(tmp_path: Path) -> None:
 
 @pytest.mark.parametrize("slug", ("../escape", "/absolute", "bad slug", ""))
 def test_storage_rejects_unsafe_slugs(tmp_path: Path, slug: str) -> None:
+    engine, _ = initialized()
     saves = FileSaves(tmp_path)
     traces = FileTraces(tmp_path)
 
     with pytest.raises(ValueError, match="invalid storage slug"):
-        saves.load(slug)
+        saves.load(slug, engine.state_type)
     with pytest.raises(ValueError, match="invalid storage slug"):
         traces.load(slug)
 

@@ -9,7 +9,7 @@ from pydantic_ai.messages import ModelMessage, ModelResponse, TextPart, ToolCall
 from pydantic_ai.models.function import AgentInfo, FunctionModel
 
 from aidm.core.base import PLAYER_ID
-from aidm.engines.story.state import DEFAULT_APPROACHES, actor_state, item_state
+from aidm.engines.story.state import DEFAULT_APPROACHES, actor_of, item_of
 from aidm.workflow.agents import director_stage, shared_stages
 from aidm.workflow.pipeline import TurnOptions, run_turn
 
@@ -122,7 +122,7 @@ async def test_the_director_reacts_to_a_real_outcome_before_it_settles_the_turn(
         "growth_marked",
         "stress_changed",
     ]
-    player = actor_state(result.state.world.record(PLAYER_ID, "actor").rules)
+    player = actor_of(result.state, PLAYER_ID)
     assert (player.growth_marks, player.stress) == (1, 1)
     engine.validate_state(result.state)
 
@@ -208,9 +208,8 @@ async def test_creator_growth_receives_valid_engine_rules_before_commit() -> Non
     assert actor.parent_id == location.id
     assert item.parent_id == location.id
     assert location.parent_id is None
-    world = result.state.world
-    assert actor_state(world.record(actor.id, "actor").rules).approaches == DEFAULT_APPROACHES
-    assert item_state(world.record(item.id, "item").rules).gear is None
+    assert actor_of(result.state, actor.id).approaches == DEFAULT_APPROACHES
+    assert item_of(result.state, item.id).gear is None
     assert result.turn.narrator_evidence == "- (nothing mechanical happened)"
     assert "new actor" not in result.turn.prompts["narrator"]
     engine.validate_state(result.state)

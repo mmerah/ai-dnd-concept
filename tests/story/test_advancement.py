@@ -24,7 +24,7 @@ from aidm.engines.story.state import (
     StoryActorState,
     StoryApproaches,
     StoryGearTag,
-    player_state,
+    actor_of,
 )
 
 
@@ -32,7 +32,7 @@ def test_each_advancement_writes_what_it_promises_and_spends_the_growth() -> Non
     engine, state = initial_story_game()
     for _ in range(3):
         state = setback(engine, state)[0]
-    before = player_state(state)
+    before = actor_of(state, PLAYER_ID)
     burden = burdens(before)[0]
     cases: tuple[tuple[StoryAdvancementDecision, str, Callable[[StoryActorState], bool]], ...] = (
         (
@@ -61,7 +61,7 @@ def test_each_advancement_writes_what_it_promises_and_spends_the_growth() -> Non
         transition = engine.advance(dump_decision(decision), state, Random(0))
 
         assert [fact.kind for fact in transition.facts] == [kind, "growth_reset"]
-        after = player_state(transition.state)
+        after = actor_of(transition.state, PLAYER_ID)
         assert written(after)
         assert after.growth_marks == 0
 
@@ -69,7 +69,7 @@ def test_each_advancement_writes_what_it_promises_and_spends_the_growth() -> Non
 def test_capped_advancements_are_not_offered() -> None:
     """The panel renders whatever these report, so a cap that stops applying stops being visible."""
     _, state = initial_story_game()
-    player = player_state(state)
+    player = actor_of(state, PLAYER_ID)
     capped = player.model_copy(
         update={
             "approaches": StoryApproaches(**dict.fromkeys(APPROACH_NAMES, MAX_APPROACH)),
@@ -110,7 +110,7 @@ def test_story_gear_advancement_creates_one_carried_core_item() -> None:
     entity = after.world.require(EntityId(entity_id))
     assert entity.kind == "item"
     assert entity.parent_id == PLAYER_ID
-    assert player_state(after).growth_marks == 0
+    assert actor_of(after, PLAYER_ID).growth_marks == 0
     assert not engine.advancement_available(after)
 
 
@@ -121,13 +121,13 @@ def test_increasing_maximum_stress_revives_a_taken_out_player() -> None:
     engine, state = initial_story_game()
     for _ in range(5):
         state = setback(engine, state, stress=True)[0]
-    before = player_state(state)
+    before = actor_of(state, PLAYER_ID)
     assert (before.stress, before.max_stress, before.taken_out) == (5, 5, True)
     assert engine.advancement_available(state)
 
     transition = engine.advance(dump_decision(IncreaseMaximumStress()), state, Random(0))
     assert len([fact for fact in transition.facts if fact.kind == "revived"]) == 1
 
-    player = player_state(transition.state)
+    player = actor_of(transition.state, PLAYER_ID)
     assert (player.stress, player.max_stress) == (5, 6)
     assert player.taken_out is False

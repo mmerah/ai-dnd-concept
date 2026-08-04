@@ -1,16 +1,16 @@
 from dataclasses import dataclass
 from random import Random
 
-from aidm.core.base import AdvancementDecision, Frozen
+from aidm.core.base import PLAYER_ID, AdvancementDecision, Frozen
 from aidm.core.engine import Transition
-from aidm.core.world import GameState
+from aidm.core.world import EngineRules, GameState
 
 from . import features, progression
-from .access import Dnd5eWorld, read_player
+from .access import Dnd5eWorld, read_actor
 from .identity import ENGINE_ID
 from .progression import AdvancementPlan, LevelBenefits, LevelUpPreview
 from .ruleset import Ruleset
-from .state import MAX_LEVEL, Decisions, Dnd5eActor
+from .state import MAX_LEVEL, Decisions, Dnd5eActor, Dnd5eRules, Dnd5eState
 
 
 class Dnd5eAdvancementDecisions(Frozen):
@@ -86,12 +86,12 @@ class Dnd5eAdvancement:
     def __init__(self, ruleset: Ruleset) -> None:
         self._ruleset = ruleset
 
-    def available(self, state: GameState) -> bool:
-        current = self._player(state).progression
+    def available[R: EngineRules](self, state: GameState[R]) -> bool:
+        current = read_actor(state, PLAYER_ID).progression
         return current is not None and current.level_up_available
 
-    def status(self, state: GameState) -> LevelStatus:
-        actor = self._player(state)
+    def status[R: EngineRules](self, state: GameState[R]) -> LevelStatus:
+        actor = read_actor(state, PLAYER_ID)
         if actor.progression is None:
             return LevelStatus(
                 headline="5e advancement unavailable",
@@ -112,15 +112,17 @@ class Dnd5eAdvancement:
             progress=current.level / MAX_LEVEL,
         )
 
-    def preview(self, state: GameState) -> LevelUpPreview:
-        player = self._checked(self._player(state))
+    def preview[R: EngineRules](self, state: GameState[R]) -> LevelUpPreview:
+        player = self._checked(read_actor(state, PLAYER_ID))
         return progression.preview(player, self._ruleset)
 
-    def plan(self, state: GameState, decisions: Decisions) -> AdvancementPlan:
-        player = self._checked(self._player(state))
+    def plan[R: EngineRules](self, state: GameState[R], decisions: Decisions) -> AdvancementPlan:
+        player = self._checked(read_actor(state, PLAYER_ID))
         return progression.plan(player, decisions, self._ruleset)
 
-    def advance(self, decision: AdvancementDecision, state: GameState, rng: Random) -> Transition:
+    def advance(
+        self, decision: AdvancementDecision, state: Dnd5eState, rng: Random
+    ) -> Transition[Dnd5eRules]:
         decisions = load_decision(decision)
         world = Dnd5eWorld(state=state.draft(), rng=rng, ruleset=self._ruleset)
         player = self._checked(world.player())
@@ -151,10 +153,6 @@ class Dnd5eAdvancement:
             f"{feature.profile.name} — {features.actionability(feature.profile)}"
             f"{use_status} — {feature.profile.desc}"
         )
-
-    @staticmethod
-    def _player(state: GameState) -> Dnd5eActor:
-        return read_player(state)
 
     @staticmethod
     def _checked(player: Dnd5eActor) -> Dnd5eActor:

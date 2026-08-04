@@ -10,10 +10,10 @@ from aidm.core.base import SAVE_VERSION, EngineId, Entity
 from aidm.core.config import ProviderConfig, Providers, Roles, Settings
 from aidm.core.content import Character, Scenario, authored_world
 from aidm.core.engine import Engine
+from aidm.core.registry import AnyEngine, build_engine
 from aidm.core.store import load_character, load_scenario
 from aidm.core.tools import TurnContext
-from aidm.core.world import GameState, Record
-from aidm.engines.story.engine import build_story_engine
+from aidm.core.world import EngineRules, GameState
 
 REPOSITORY_ROOT = Path(__file__).parents[2]
 SCENARIOS = REPOSITORY_ROOT / "scenarios"
@@ -27,11 +27,11 @@ def updated[T: BaseModel](model: T, **changes: object) -> T:
     return type(model).model_validate(model.model_dump(round_trip=True) | changes)
 
 
-def with_entity(state: GameState, entity: Entity) -> GameState:
+def with_entity[R: EngineRules](state: GameState[R], entity: Entity) -> GameState[R]:
     """Replace one entity, keeping whatever payload its record already holds."""
-    world = state.world.model_copy(deep=True)
-    world.records[entity.id] = Record(entity=entity, rules=world.record(entity.id).rules)
-    return updated(state, world=world)
+    draft = state.draft()
+    draft.world.record(entity.id).entity = entity
+    return draft.committed()
 
 
 def scenario() -> Scenario:
@@ -42,12 +42,12 @@ def character() -> Character:
     return load_character(CHARACTERS, "kael", STORY)
 
 
-def initialized() -> tuple[Engine, GameState]:
+def initialized() -> tuple[AnyEngine, GameState[EngineRules]]:
     selected_scenario = scenario()
     selected_character = character()
-    engine = build_story_engine()
+    engine = build_engine(STORY, settings())
     authored = authored_world(selected_scenario, selected_character)
-    state = GameState(
+    state = engine.state_type(
         save_version=SAVE_VERSION,
         scenario_id=selected_scenario.id,
         character_id=selected_character.id,
@@ -59,7 +59,9 @@ def initialized() -> tuple[Engine, GameState]:
     return engine, state
 
 
-def turn_context(engine: Engine, state: GameState, rng: Random | None = None) -> TurnContext:
+def turn_context[R: EngineRules](
+    engine: Engine[R], state: GameState[R], rng: Random | None = None
+) -> TurnContext[R]:
     return TurnContext(
         draft=state.draft(),
         rng=Random(0) if rng is None else rng,
@@ -68,7 +70,7 @@ def turn_context(engine: Engine, state: GameState, rng: Random | None = None) ->
     )
 
 
-def tool_context(deps: TurnContext) -> RunContext[TurnContext]:
+def tool_context[R: EngineRules](deps: TurnContext[R]) -> RunContext[TurnContext[R]]:
     """Tools take a `RunContext`; a test builds one instead of running an agent."""
     return RunContext(deps=deps, model=TestModel(), usage=RunUsage())
 

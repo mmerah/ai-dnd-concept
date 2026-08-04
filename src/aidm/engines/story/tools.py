@@ -7,6 +7,7 @@ from pydantic_ai.toolsets import FunctionToolset
 from aidm.core.base import PLAYER_ID, Entity, EntityId, Slug
 from aidm.core.facts import Fact
 from aidm.core.tools import TurnContext, require_actor_here, require_kind
+from aidm.core.world import EngineRules
 
 from . import rules
 from .state import (
@@ -14,9 +15,9 @@ from .state import (
     StoryActorState,
     StoryApproach,
     StoryCondition,
-    read_actor,
-    read_item,
-    write_actor,
+    StoryRules,
+    actor_of,
+    item_of,
 )
 
 DIRECTOR_INSTRUCTIONS = """Story uses stress and conditions instead of hit points. Stress tracks \
@@ -34,11 +35,13 @@ ActorArg = Annotated[
 ]
 
 
-def _actor(deps: TurnContext, actor_id: EntityId | None) -> tuple[Entity, StoryActorState]:
+def _actor[R: EngineRules](
+    deps: TurnContext[R], actor_id: EntityId | None
+) -> tuple[Entity, StoryActorState]:
     actor = require_actor_here(deps.draft, actor_id)
     if actor.id != PLAYER_ID and not actor.known:
         raise ModelRetry(f"actor {actor.id!r} has not been revealed")
-    return actor, read_actor(deps.draft, actor.id)
+    return actor, actor_of(deps.draft, actor.id)
 
 
 def _tag_modifier(sheet: StoryActorState, tag_id: Slug, kinds: tuple[str, ...]) -> None:
@@ -54,8 +57,8 @@ def _require_condition(sheet: StoryActorState, condition_id: Slug) -> StoryCondi
     return condition
 
 
-def _helpful_modifier(
-    deps: TurnContext,
+def _helpful_modifier[R: EngineRules](
+    deps: TurnContext[R],
     actor: Entity,
     sheet: StoryActorState,
     tag_id: Slug | None,
@@ -70,7 +73,7 @@ def _helpful_modifier(
         item = require_kind(deps.draft, gear_id, "item")
         if item.parent_id != actor.id:
             raise ModelRetry(f"gear item {gear_id!r} is not carried by {actor.id!r}")
-        if read_item(deps.draft, gear_id).gear is None:
+        if item_of(deps.draft, gear_id).gear is None:
             raise ModelRetry(f"item {gear_id!r} has no Story gear benefit")
         return 1
     return 0
@@ -92,8 +95,8 @@ def _hindering_modifier(
     return 0
 
 
-def risk(
-    ctx: RunContext[TurnContext],
+def risk[R: EngineRules](
+    ctx: RunContext[TurnContext[R]],
     approach: Annotated[
         StoryApproach,
         Field(description="How the actor acts: bold, subtle, clever, or empathetic."),
@@ -150,12 +153,11 @@ def risk(
         before = sheet.growth_marks
         sheet.growth_marks = before + 1
         facts.append(rules.growth_marked(before, sheet.growth_marks))
-    write_actor(deps.draft, actor.id, sheet)
     return deps.record(facts)
 
 
-def take_stress(
-    ctx: RunContext[TurnContext],
+def take_stress[R: EngineRules](
+    ctx: RunContext[TurnContext[R]],
     amount: Annotated[int, Field(gt=0, description="Positive stress gained.")],
     actor_id: ActorArg = None,
 ) -> str:
@@ -173,12 +175,11 @@ def take_stress(
     facts: list[Fact] = [rules.stress_changed(actor, before, sheet.stress, sheet.max_stress)]
     if sheet.taken_out:
         facts.append(rules.taken_out(actor))
-    write_actor(deps.draft, actor.id, sheet)
     return deps.record(facts)
 
 
-def recover_stress(
-    ctx: RunContext[TurnContext],
+def recover_stress[R: EngineRules](
+    ctx: RunContext[TurnContext[R]],
     amount: Annotated[int, Field(gt=0, description="Positive stress recovered.")],
     actor_id: ActorArg = None,
 ) -> str:
@@ -197,12 +198,11 @@ def recover_stress(
     facts: list[Fact] = [rules.stress_changed(actor, before, sheet.stress, sheet.max_stress)]
     if before == sheet.max_stress and not sheet.taken_out:
         facts.append(rules.revived(actor))
-    write_actor(deps.draft, actor.id, sheet)
     return deps.record(facts)
 
 
-def apply_condition(
-    ctx: RunContext[TurnContext],
+def apply_condition[R: EngineRules](
+    ctx: RunContext[TurnContext[R]],
     condition: Annotated[
         StoryCondition, Field(description="The persistent injury or status to record.")
     ],
@@ -219,12 +219,11 @@ def apply_condition(
     if any(active.id == condition.id for active in sheet.conditions):
         return deps.record([])
     sheet.conditions = (*sheet.conditions, condition)
-    write_actor(deps.draft, actor.id, sheet)
     return deps.record([rules.condition_applied(actor, condition)])
 
 
-def clear_condition(
-    ctx: RunContext[TurnContext],
+def clear_condition[R: EngineRules](
+    ctx: RunContext[TurnContext[R]],
     condition_id: Annotated[Slug, Field(description="Exact id of the active condition to remove.")],
     actor_id: ActorArg = None,
 ) -> str:
@@ -237,11 +236,10 @@ def clear_condition(
     actor, sheet = _actor(deps, actor_id)
     condition = _require_condition(sheet, condition_id)
     sheet.conditions = tuple(item for item in sheet.conditions if item.id != condition.id)
-    write_actor(deps.draft, actor.id, sheet)
     return deps.record([rules.condition_cleared(actor, condition)])
 
 
-def story_toolset() -> FunctionToolset[TurnContext]:
-    return FunctionToolset[TurnContext](
+def story_toolset() -> FunctionToolset[TurnContext[StoryRules]]:
+    return FunctionToolset[TurnContext[StoryRules]](
         [risk, take_stress, recover_stress, apply_condition, clear_condition]
     )

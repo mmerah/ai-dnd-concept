@@ -1,8 +1,8 @@
-from aidm.core.base import Entity, EntityId
+from aidm.core.base import Entity
 from aidm.core.content import AuthoredEntity, AuthoredWorld, Rules, compose_world
 from aidm.core.engine import Engine
 from aidm.core.registry import EnginePlugin
-from aidm.core.world import GameState, WorldState
+from aidm.core.world import BareLocation
 
 from .advancement import advance, available
 from .identity import ENGINE_ID
@@ -14,84 +14,58 @@ from .state import (
     StoryCharacterData,
     StoryItemDefinition,
     StoryItemState,
-    actor_state,
-    item_state,
+    StoryRules,
+    StoryState,
+    StoryWorldState,
 )
 from .tools import DIRECTOR_INSTRUCTIONS, story_toolset
 from .ui import advancement_panel
 
 
-def _no_location_rules(entity_id: EntityId, rules: Rules) -> None:
-    if rules:
-        raise ValueError(f"location {entity_id!r} carries Story rules, but Story defines none")
-
-
-def _entity_rules(authored: AuthoredEntity) -> Rules:
+def _entity_rules(authored: AuthoredEntity) -> StoryRules:
     """An empty payload validates into the same defaults an unauthored entity would have taken."""
     match authored.entity.kind:
         case "actor":
-            return (
-                StoryActorDefinition.model_validate(authored.rules)
-                .runtime()
-                .model_dump(mode="json")
-            )
+            return StoryActorDefinition.model_validate(authored.rules).runtime()
         case "item":
-            return (
-                StoryItemDefinition.model_validate(authored.rules).runtime().model_dump(mode="json")
-            )
+            return StoryItemDefinition.model_validate(authored.rules).runtime()
         case "location":
-            _no_location_rules(authored.entity.id, authored.rules)
-            return {}
+            return BareLocation.model_validate(authored.rules)
 
 
-def _initial_world(authored: AuthoredWorld, character: Rules) -> WorldState:
+def _initial_world(authored: AuthoredWorld, character: Rules) -> StoryWorldState:
     sheet = StoryCharacterData.model_validate(character)
     player = StoryActorState(
         approaches=sheet.approaches,
         tags=sheet.tags,
         max_stress=sheet.max_stress,
     )
-    return compose_world(authored, player.model_dump(mode="json"), _entity_rules)
+    return compose_world(StoryWorldState, authored, player, _entity_rules)
 
 
-def _validate_state(state: GameState) -> None:
-    """Replaces core's deleted `_require_one_engine`: a foreign or malformed payload breaks here,
-    not mid-combat."""
-    if state.engine != ENGINE_ID:
-        raise ValueError(f"Story received a {state.engine!r} game")
-    for record in state.world.records.values():
-        match record.entity.kind:
-            case "actor":
-                actor_state(record.rules)
-            case "item":
-                item_state(record.rules)
-            case "location":
-                _no_location_rules(record.entity.id, record.rules)
-
-
-def _default_rules(entity: Entity) -> Rules:
+def _default_rules(entity: Entity) -> StoryRules:
     match entity.kind:
         case "actor":
-            return StoryActorState(approaches=DEFAULT_APPROACHES).model_dump(mode="json")
+            return StoryActorState(approaches=DEFAULT_APPROACHES)
         case "item":
-            return StoryItemState().model_dump(mode="json")
+            return StoryItemState()
         case "location":
-            return {}
+            return BareLocation()
 
 
-def build_story_engine() -> Engine:
-    presentation = StoryPresentation()
+def build_story_engine() -> Engine[StoryRules]:
     return Engine(
         id=ENGINE_ID,
+        state_type=StoryState,
         initial_world=_initial_world,
-        validate_state=_validate_state,
+        validate_state=lambda state: None,
         default_rules=_default_rules,
         advance=advance,
         advancement_available=available,
         advancement_panel=advancement_panel,
-        director_toolset=story_toolset(),
+        toolsets={"director": story_toolset()},
         director_instructions=DIRECTOR_INSTRUCTIONS,
-        entity_state=presentation.entity_state,
+        entity_state=StoryPresentation().entity_state,
     )
 
 

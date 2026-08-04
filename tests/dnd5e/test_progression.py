@@ -9,7 +9,6 @@ from fivee_test_support import Turn, actor_of, new_game, player_of, turn_of, wit
 from pydantic_ai import ModelRetry
 
 from aidm.core.base import EntityId
-from aidm.core.world import GameState
 from aidm.engines.dnd5e import progression
 from aidm.engines.dnd5e import rolls as rules
 from aidm.engines.dnd5e.access import Dnd5eWorld
@@ -23,7 +22,14 @@ from aidm.engines.dnd5e.ruleset import (
     LevelProfile,
     ProgressionRules,
 )
-from aidm.engines.dnd5e.state import MAX_LEVEL, Decisions, Dnd5eActor, Origin, ResourceState
+from aidm.engines.dnd5e.state import (
+    MAX_LEVEL,
+    Decisions,
+    Dnd5eActor,
+    Dnd5eState,
+    Origin,
+    ResourceState,
+)
 
 
 def test_a_sheet_becomes_a_legal_level_one_character() -> None:
@@ -230,7 +236,7 @@ def test_spell_slots_are_spent_recharged_by_the_right_rest_and_spent_again() -> 
     """Pact Magic flows through the same `spell_slots` field as every other class and returns on a
     short rest, so the recharge has to travel with the slots rather than be assumed."""
 
-    def remaining(state: GameState) -> dict[int, int]:
+    def remaining(state: Dnd5eState) -> dict[int, int]:
         current = player_of(state).progression
         assert current is not None
         return {level: slot.remaining for level, slot in current.spell_slots.items()}

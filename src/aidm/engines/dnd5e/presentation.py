@@ -3,10 +3,9 @@ from collections.abc import Sequence
 from typing import assert_never
 
 from aidm.core.base import PLAYER_ID, Entity
-from aidm.core.content import Rules
+from aidm.core.world import BareLocation
 
 from . import features, spells
-from .access import actor_state, item_state
 from .content.library import ContentMiss
 from .content.records.base import ContentRef, DamageRoll
 from .content.records.monsters import (
@@ -18,7 +17,16 @@ from .content.records.monsters import (
     MonsterSave,
 )
 from .ruleset import Ruleset
-from .state import MAX_LEVEL, Progression, StatBlock, feature_key, spell_key
+from .state import (
+    MAX_LEVEL,
+    Dnd5eActorState,
+    Dnd5eItemState,
+    Dnd5eRules,
+    Progression,
+    StatBlock,
+    feature_key,
+    spell_key,
+)
 from .values import Attributes
 
 
@@ -26,18 +34,17 @@ class Dnd5ePresentation:
     def __init__(self, ruleset: Ruleset) -> None:
         self._ruleset = ruleset
 
-    def entity_state(self, entity: Entity, rules: Rules) -> str:
-        match entity.kind:
-            case "item":
-                return item_summary(item_state(rules).ref, self._ruleset)
-            case "location":
+    def entity_state(self, entity: Entity, rules: Dnd5eRules) -> str:
+        match rules:
+            case Dnd5eItemState():
+                return item_summary(rules.ref, self._ruleset)
+            case BareLocation():
                 return ""
-            case "actor":
-                actor = actor_state(rules)
+            case Dnd5eActorState():
                 if entity.id != PLAYER_ID:
-                    return actor_summary(actor.stats, actor.ref, self._ruleset)
-                sheet = player_state(actor.stats, actor.progression, self._ruleset)
-                return f"{sheet}\nadvancement: {level_up_state(actor.progression)}"
+                    return actor_summary(rules.stats, rules.ref, self._ruleset)
+                sheet = player_state(rules.stats, rules.progression, self._ruleset)
+                return f"{sheet}\nadvancement: {level_up_state(rules.progression)}"
 
 
 def _attributes(stats: StatBlock) -> str:

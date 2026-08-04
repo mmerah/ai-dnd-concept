@@ -10,9 +10,8 @@ from pydantic_ai import ModelRetry
 
 from aidm.core.base import Entity, EntityId
 from aidm.core.facts import Fact
-from aidm.core.world import GameState
 from aidm.engines.dnd5e import bestiary, dice, spells
-from aidm.engines.dnd5e.state import Dnd5eActorDefinition, Progression
+from aidm.engines.dnd5e.state import Dnd5eActorDefinition, Dnd5eState, Progression
 
 RULES = ruleset()
 GARGOYLE = EntityId("gargoyle")
@@ -21,7 +20,7 @@ GARGOYLE_HP = 52
 SAVE_MADE, SAVE_MISSED = 0, 2
 
 
-def guarded(klass: str, level: int = 1) -> GameState:
+def guarded(klass: str, level: int = 1) -> Dnd5eState:
     """A caster of `klass` with a gargoyle to aim at, whose 52 hp make half damage visible."""
     state = levelled(started(klass, new_game()), level)
     gargoyle = Entity(
@@ -41,8 +40,8 @@ def guarded(klass: str, level: int = 1) -> GameState:
 
 
 def cast(
-    state: GameState, spell: str, slot_level: int, seed: int = 1
-) -> tuple[list[Fact], GameState]:
+    state: Dnd5eState, spell: str, slot_level: int, seed: int = 1
+) -> tuple[list[Fact], Dnd5eState]:
     turn = turn_of(state, Random(seed))
     facts = turn.call(
         turn.tools.cast,
@@ -63,7 +62,7 @@ def saving_throw(facts: list[Fact]) -> Fact:
     return found
 
 
-def harm(state: GameState) -> int:
+def harm(state: Dnd5eState) -> int:
     return GARGOYLE_HP - actor_of(state, GARGOYLE).stats.hp
 
 

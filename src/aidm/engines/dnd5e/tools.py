@@ -16,7 +16,7 @@ from .content.vocabulary import CONDITION_NAMES, ConditionName, RestType
 from .dice import Magnitude
 from .identity import ENGINE_ID
 from .ruleset import Ruleset
-from .state import FeatureKey, SpellKey
+from .state import Dnd5eRules, FeatureKey, SpellKey
 from .values import ABILITIES, Ability
 
 DIRECTOR_INSTRUCTIONS = """The 5e rules roll every die, spend every resource, and decide every \
@@ -38,8 +38,8 @@ class Dnd5eTools:
     def __init__(self, ruleset: Ruleset) -> None:
         self._ruleset = ruleset
 
-    def toolset(self) -> FunctionToolset[TurnContext]:
-        return FunctionToolset[TurnContext](
+    def toolset(self) -> FunctionToolset[TurnContext[Dnd5eRules]]:
+        return FunctionToolset[TurnContext[Dnd5eRules]](
             [
                 self.attack,
                 self.roll_check,
@@ -54,15 +54,15 @@ class Dnd5eTools:
             ]
         )
 
-    def _apply(self, deps: TurnContext, resolve: Callable[[Dnd5eWorld], list[Fact]]) -> str:
-        world = Dnd5eWorld(state=deps.draft, rng=deps.rng, ruleset=self._ruleset)
-        facts = resolve(world)
-        world.flush()
+    def _apply(
+        self, deps: TurnContext[Dnd5eRules], resolve: Callable[[Dnd5eWorld], list[Fact]]
+    ) -> str:
+        facts = resolve(Dnd5eWorld(state=deps.draft, rng=deps.rng, ruleset=self._ruleset))
         return deps.record(facts)
 
     def attack(
         self,
-        ctx: RunContext[TurnContext],
+        ctx: RunContext[TurnContext[Dnd5eRules]],
         weapon: Annotated[
             str,
             Field(
@@ -94,7 +94,7 @@ class Dnd5eTools:
 
     def roll_check(
         self,
-        ctx: RunContext[TurnContext],
+        ctx: RunContext[TurnContext[Dnd5eRules]],
         ability: Annotated[Ability, Field(description=f"One of: {', '.join(ABILITIES)}.")],
         dc: Annotated[int, Field(description="5 easy, 10 moderate, 15 hard, 20 very hard.")],
     ) -> str:
@@ -110,7 +110,7 @@ class Dnd5eTools:
 
     def roll_save(
         self,
-        ctx: RunContext[TurnContext],
+        ctx: RunContext[TurnContext[Dnd5eRules]],
         ability: Annotated[Ability, Field(description=f"One of: {', '.join(ABILITIES)}.")],
         dc: Annotated[int, Field(description="5 easy, 10 moderate, 15 hard, 20 very hard.")],
         target_id: Annotated[
@@ -136,7 +136,7 @@ class Dnd5eTools:
 
     def cast(
         self,
-        ctx: RunContext[TurnContext],
+        ctx: RunContext[TurnContext[Dnd5eRules]],
         spell: Annotated[
             SpellKey, Field(description="Exact id of a spell from the player's spell list.")
         ],
@@ -160,7 +160,7 @@ class Dnd5eTools:
 
     def use_feature(
         self,
-        ctx: RunContext[TurnContext],
+        ctx: RunContext[TurnContext[Dnd5eRules]],
         feature: Annotated[
             FeatureKey, Field(description="Exact id of an owned feature marked `usable`.")
         ],
@@ -183,7 +183,7 @@ class Dnd5eTools:
 
     def rest(
         self,
-        ctx: RunContext[TurnContext],
+        ctx: RunContext[TurnContext[Dnd5eRules]],
         rest: Annotated[RestType, Field(description="The completed rest: `short` or `long`.")],
     ) -> str:
         """Complete a short or long rest.
@@ -196,7 +196,7 @@ class Dnd5eTools:
 
     def damage(
         self,
-        ctx: RunContext[TurnContext],
+        ctx: RunContext[TurnContext[Dnd5eRules]],
         amount: Annotated[
             Magnitude, Field(description="Hit points lost: dice like '2d6', or a number >= 0.")
         ],
@@ -214,7 +214,7 @@ class Dnd5eTools:
 
     def heal(
         self,
-        ctx: RunContext[TurnContext],
+        ctx: RunContext[TurnContext[Dnd5eRules]],
         amount: Annotated[
             Magnitude, Field(description="Hit points restored: dice like '1d4', or a number >= 0.")
         ],
@@ -230,7 +230,7 @@ class Dnd5eTools:
 
     def apply_condition(
         self,
-        ctx: RunContext[TurnContext],
+        ctx: RunContext[TurnContext[Dnd5eRules]],
         condition: Annotated[
             ConditionName, Field(description=f"One of: {', '.join(CONDITION_NAMES)}.")
         ],
@@ -251,7 +251,7 @@ class Dnd5eTools:
             lambda world: mechanics.change_condition(world, target_id, condition, ends=ends),
         )
 
-    def level_up(self, ctx: RunContext[TurnContext]) -> str:
+    def level_up(self, ctx: RunContext[TurnContext[Dnd5eRules]]) -> str:
         """Unlock the player's next level-up.
 
         Use once when the player's achievements earn a new level. This unlocks the level-up UI

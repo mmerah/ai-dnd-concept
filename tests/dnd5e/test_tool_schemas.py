@@ -1,12 +1,11 @@
 from fivee_test_support import ruleset
 from pydantic import BaseModel, JsonValue
-from pydantic_ai.toolsets import FunctionToolset
 
-from aidm.core.tools import TurnContext, world_toolset
+from aidm.core.tools import world_toolset
 from aidm.engines.dnd5e.tools import Dnd5eTools
 from aidm.engines.story.tools import story_toolset
 
-TOOLSETS: tuple[FunctionToolset[TurnContext], ...] = (
+TOOLSETS = (
     world_toolset(),
     story_toolset(),
     Dnd5eTools(ruleset()).toolset(),

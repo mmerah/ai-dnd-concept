@@ -4,6 +4,7 @@ from typing import Annotated, Literal, Self
 from pydantic import Field, model_validator
 
 from aidm.core.base import Entity, EntityId, Mutable
+from aidm.core.world import BareLocation, EngineRules, GameState, WorldState
 
 from .content.records.base import Collection, ContentRef
 from .content.records.spells import SlotLevel
@@ -171,17 +172,23 @@ class StatBlock(Mutable):
         return "hurt" if self.hp < self.max_hp else "unharmed"
 
 
-type Dnd5eContentRef = ContentRef
-
-
-class Dnd5eActorState(Mutable):
+class Dnd5eActorState(EngineRules):
+    kind: Literal["actor"] = "actor"  # pyright: ignore[reportIncompatibleVariableOverride]
     stats: StatBlock
     progression: Progression | None = None
-    ref: Dnd5eContentRef | None = None
+    ref: ContentRef | None = None
 
 
-class Dnd5eItemState(Mutable):
-    ref: Dnd5eContentRef | None = None
+class Dnd5eItemState(EngineRules):
+    kind: Literal["item"] = "item"  # pyright: ignore[reportIncompatibleVariableOverride]
+    ref: ContentRef | None = None
+
+
+type Dnd5eRules = Annotated[
+    Dnd5eActorState | Dnd5eItemState | BareLocation, Field(discriminator="kind")
+]
+Dnd5eState = GameState[Dnd5eRules]
+Dnd5eWorldState = WorldState[Dnd5eRules]
 
 
 @dataclass(frozen=True, slots=True)
@@ -212,7 +219,7 @@ class Dnd5eActor:
         return self.state.progression
 
     @property
-    def ref(self) -> Dnd5eContentRef | None:
+    def ref(self) -> ContentRef | None:
         return self.state.ref
 
 
@@ -230,7 +237,7 @@ class Dnd5eItem:
         return self.entity.name
 
     @property
-    def ref(self) -> Dnd5eContentRef | None:
+    def ref(self) -> ContentRef | None:
         return self.state.ref
 
 
@@ -241,9 +248,9 @@ class Dnd5eCharacterData(Value):
 
 
 class Dnd5eActorDefinition(Value):
-    ref: Dnd5eContentRef | None = None
+    ref: ContentRef | None = None
     stats: StatBlock | None = None
 
 
 class Dnd5eItemDefinition(Value):
-    ref: Dnd5eContentRef | None = None
+    ref: ContentRef | None = None

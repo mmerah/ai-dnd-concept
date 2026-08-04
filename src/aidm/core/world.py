@@ -1,7 +1,7 @@
 from collections.abc import Iterator, Mapping
-from typing import Self
+from typing import Literal, Self
 
-from pydantic import Field, JsonValue, model_validator
+from pydantic import Field, model_validator
 
 from .base import PLAYER_ID, EngineId, Entity, EntityId, Frozen, Kind, Mutable, Slug
 from .facts import CORE, Fact
@@ -26,14 +26,36 @@ def check_placement(entity: Entity, holder: Entity | None) -> None:
         raise ValueError(f"{entity.kind} {entity.id!r} is in a {holder.kind}, which cannot hold it")
 
 
-class Record(Mutable):
+class EngineRules(Mutable):
+    kind: Kind
+
+
+class BareLocation(EngineRules):
+    # The Literal narrowing is the discriminator pattern; every payload subclass repeats it.
+    kind: Literal["location"] = "location"  # pyright: ignore[reportIncompatibleVariableOverride]
+
+
+class Record[R: EngineRules](Mutable):
     entity: Entity
-    # Opaque here on purpose: the selected engine validates and rewrites its own payload.
-    rules: dict[str, JsonValue] = Field(default_factory=dict)
+    rules: R
+
+    @model_validator(mode="after")
+    def _kind_agrees(self) -> Self:
+        if self.rules.kind != self.entity.kind:
+            raise ValueError(
+                f"{self.entity.id!r} is a {self.entity.kind} with {self.rules.kind} rules"
+            )
+        return self
 
 
-class WorldState(Mutable):
-    records: dict[EntityId, Record] = Field(default_factory=dict)
+def rules_of[R: EngineRules, T: EngineRules](record: Record[R], cls: type[T]) -> T:
+    if not isinstance(record.rules, cls):
+        raise ValueError(f"{record.entity.id!r} carries no {cls.__name__}")
+    return record.rules
+
+
+class WorldState[R: EngineRules](Mutable):
+    records: dict[EntityId, Record[R]] = Field(default_factory=dict)
 
     @model_validator(mode="after")
     def _keys_match_ids(self) -> Self:
@@ -56,7 +78,7 @@ class WorldState(Mutable):
         record = self.records.get(entity_id)
         return None if record is None else record.entity
 
-    def record(self, entity_id: EntityId, kind: Kind | None = None) -> Record:
+    def record(self, entity_id: EntityId, kind: Kind | None = None) -> Record[R]:
         record = self.records.get(entity_id)
         if record is None:
             raise ValueError(f"unknown entity id {entity_id!r}")
@@ -69,9 +91,6 @@ class WorldState(Mutable):
 
     def require_kind(self, entity_id: EntityId, kind: Kind) -> Entity:
         return self.record(entity_id, kind).entity
-
-    def parent_of(self, entity: Entity) -> Entity | None:
-        return None if entity.parent_id is None else self.require(entity.parent_id)
 
     def children(self, entity_id: EntityId, kind: Kind | None = None) -> tuple[Entity, ...]:
         return tuple(entity for entity in self.entities(kind) if entity.parent_id == entity_id)
@@ -94,13 +113,13 @@ class ScenarioMeta(Frozen):
     premise: str
 
 
-class GameState(Mutable):
+class GameState[R: EngineRules](Mutable):
     save_version: int
     scenario_id: Slug
     character_id: Slug
     scenario: ScenarioMeta
     engine: EngineId
-    world: WorldState
+    world: WorldState[R]
     history: tuple[Exchange, ...] = ()
     turn: int = Field(default=0, ge=0)
 
@@ -118,15 +137,15 @@ class GameState(Mutable):
     def is_here(self, entity: Entity) -> bool:
         return self.world.location_of(entity) == self.player_location
 
-    def draft(self) -> "GameState":
+    def draft(self) -> Self:
         """A working copy a resolution mutates; a failed turn never replaces the committed state."""
         return self.model_copy(deep=True)
 
-    def committed(self) -> "GameState":
-        """The one validation per transaction that replaces validating after every change."""
-        return GameState.model_validate(self.model_dump(round_trip=True))
+    def committed(self) -> Self:
+        """One validation per transaction; `type(self)` revalidates payloads as the union."""
+        return type(self).model_validate(self.model_dump(round_trip=True))
 
-    def add(self, entity: Entity, rules: dict[str, JsonValue]) -> Fact:
+    def add(self, entity: Entity, rules: R) -> Fact:
         """Copy into the fact, so a later move in the same turn cannot rewrite the record."""
         if self.world.find(entity.id) is not None:
             raise ValueError(f"entity id {entity.id!r} already exists")
@@ -177,7 +196,7 @@ class GameState(Mutable):
         if not self.player.known:
             raise ValueError("the player entity must be known")
         for entity in self.world.entities():
-            # `find`, not `parent_of`: a dangling id is a topology fault, not a lookup failure.
+            # `find`, not `require`: a dangling id is a topology fault, not a lookup failure.
             holder = None if entity.parent_id is None else self.world.find(entity.parent_id)
             check_placement(entity, holder)
         return self

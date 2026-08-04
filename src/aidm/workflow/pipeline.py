@@ -5,11 +5,12 @@ from random import Random
 from pydantic import Field
 
 from ..core.base import Entity, EntityDetail, EntityId, Frozen, Role, slug
-from ..core.engine import Engine, entity_renderer, narrator_evidence
+from ..core.engine import entity_renderer, narrator_evidence
 from ..core.facts import Fact
+from ..core.registry import AnyEngine
 from ..core.tools import TurnContext
 from ..core.turn import GrowthRequest, Turn, screen_growth
-from ..core.world import Exchange, GameState
+from ..core.world import EngineRules, Exchange, GameState
 from .agents import DirectorStage, SharedStages, exchanges_to_messages
 from .prompts import (
     SceneSnapshot,
@@ -30,15 +31,15 @@ class TurnOptions(Frozen):
 class TurnResult:
     """The committed state and the entry recording how it was reached, kept apart."""
 
-    state: GameState
+    state: GameState[EngineRules]
     turn: Turn
 
 
 async def run_turn(
-    state: GameState,
+    state: GameState[EngineRules],
     prompt: str,
     *,
-    engine: Engine,
+    engine: AnyEngine,
     director: DirectorStage,
     stages: SharedStages,
     options: TurnOptions,
@@ -129,13 +130,13 @@ async def run_turn(
 
 
 async def _grow(
-    draft: GameState,
+    draft: GameState[EngineRules],
     requests: Sequence[GrowthRequest],
     narration: str,
     recent: tuple[Exchange, ...],
     prompts: dict[Role, str],
     stages: SharedStages,
-    engine: Engine,
+    engine: AnyEngine,
 ) -> tuple[tuple[Entity, ...], tuple[Fact, ...]]:
     created: list[Entity] = []
     facts: list[Fact] = []
@@ -155,7 +156,9 @@ async def _grow(
     return tuple(created), tuple(facts)
 
 
-def _created_entity(request: GrowthRequest, detail: EntityDetail, state: GameState) -> Entity:
+def _created_entity(
+    request: GrowthRequest, detail: EntityDetail, state: GameState[EngineRules]
+) -> Entity:
     return Entity(
         id=slug(request.name, state.world.all_ids()),
         kind=request.kind,
@@ -167,7 +170,7 @@ def _created_entity(request: GrowthRequest, detail: EntityDetail, state: GameSta
     )
 
 
-def _requested_location(request: GrowthRequest, state: GameState) -> EntityId:
+def _requested_location(request: GrowthRequest, state: GameState[EngineRules]) -> EntityId:
     if request.location is not None:
         wanted = request.location.casefold()
         for entity in state.world.entities("location"):

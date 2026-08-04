@@ -1,10 +1,12 @@
 from collections.abc import Callable
 from dataclasses import dataclass
 from importlib import import_module
+from typing import cast
 
 from .base import EngineId
 from .config import Settings
 from .engine import Engine
+from .world import EngineRules
 
 ENGINE_MODULES: tuple[str, ...] = (
     "aidm.engines.story.engine",
@@ -12,13 +14,14 @@ ENGINE_MODULES: tuple[str, ...] = (
 )
 PLUGIN = "PLUGIN"
 
+type AnyEngine = Engine[EngineRules]
+
 
 @dataclass(frozen=True, slots=True)
 class EnginePlugin:
     id: EngineId
-    build: Callable[[Settings], Engine]
+    build: Callable[[Settings], object]
     badge: tuple[str, str]
-    """Label and colour: the only thing the UI needs to know about a ruleset it cannot name."""
 
 
 def plugins() -> tuple[EnginePlugin, ...]:
@@ -40,8 +43,11 @@ def plugin_for(engine_id: EngineId) -> EnginePlugin:
     return found
 
 
-def build_engine(engine_id: EngineId, config: Settings) -> Engine:
-    return plugin_for(engine_id).build(config)
+def build_engine(engine_id: EngineId, config: Settings) -> AnyEngine:
+    built = plugin_for(engine_id).build(config)
+    if not isinstance(built, Engine):
+        raise ValueError(f"engine {engine_id!r} built a {type(built).__name__}, not an Engine")
+    return cast(AnyEngine, built)
 
 
 def as_engine_id(value: str) -> EngineId:

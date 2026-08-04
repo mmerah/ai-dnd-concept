@@ -5,13 +5,13 @@ import pytest
 from core_test_support import DND5E, STORY, character, scenario, settings, updated
 from story_test_support import setback
 
-from aidm.core.base import AdvancementDecision
+from aidm.core.base import PLAYER_ID, AdvancementDecision
 from aidm.core.content import ScenarioMeta
+from aidm.core.registry import build_engine
 from aidm.core.store import FileSaves, FileTraces
 from aidm.core.turn import Advance
 from aidm.engines.story.advancement import RaiseApproach, dump_decision
-from aidm.engines.story.engine import build_story_engine
-from aidm.engines.story.state import player_state
+from aidm.engines.story.state import actor_of
 from aidm.workflow.agents import director_stage, shared_stages
 from aidm.workflow.pipeline import TurnOptions
 from aidm.workflow.session import GameSession, LaunchTarget, Runtime
@@ -25,8 +25,8 @@ TARGET = LaunchTarget(
 
 
 def session(directory: Path) -> GameSession:
-    engine = build_story_engine()
     config = settings()
+    engine = build_engine(STORY, config)
     return GameSession(
         target=TARGET,
         scenario=scenario(),
@@ -53,7 +53,7 @@ def test_opening_does_not_save_and_restart_discards_durable_state(tmp_path: Path
     game.restart()
     assert game.state.turn == 0
     assert game.entries == []
-    assert saves.load("poc") is None
+    assert saves.load("poc", game.engine.state_type) is None
     assert traces.load("poc") == ()
 
 
@@ -81,7 +81,7 @@ def test_advancement_commits_through_the_same_path_and_reaches_the_trace(tmp_pat
     game = session(tmp_path)
     for _ in range(3):
         game.state = setback(game.engine, game.state)[0]
-    player = player_state(game.state)
+    player = actor_of(game.state, PLAYER_ID)
     assert player.growth_marks == 3
     before = player.approaches.bold
     decision = RaiseApproach(approach="bold")
@@ -92,10 +92,10 @@ def test_advancement_commits_through_the_same_path_and_reaches_the_trace(tmp_pat
     facts = game.advance(dump_decision(decision))
 
     assert [fact.kind for fact in facts] == ["approach_raised", "growth_reset"]
-    player = player_state(game.state)
+    player = actor_of(game.state, PLAYER_ID)
     assert player.approaches.bold == before + 1
     assert player.growth_marks == 0
-    assert FileSaves(tmp_path).load("poc") == game.state
+    assert FileSaves(tmp_path).load("poc", game.engine.state_type) == game.state
     (entry,) = FileTraces(tmp_path).load("poc")
     assert isinstance(entry, Advance) and entry.facts == facts
     assert game.entries == [entry]

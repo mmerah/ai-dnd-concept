@@ -17,7 +17,7 @@ from aidm.core.tools import (
     move,
     take_item,
 )
-from aidm.core.world import GameState
+from aidm.core.world import EngineRules, GameState
 
 BELL_TOWER = EntityId("bell_tower")
 ELENA = EntityId("elena")
@@ -31,10 +31,12 @@ VAULT_MAP = EntityId("vault_map")
 class Turn:
     """One turn's draft and the tools acting on it, as the Director's loop would."""
 
-    def __init__(self, state: GameState | None = None) -> None:
+    def __init__(self, state: GameState[EngineRules] | None = None) -> None:
         engine, opened = initialized()
-        self.context: TurnContext = turn_context(engine, opened if state is None else state)
-        self.run: RunContext[TurnContext] = tool_context(self.context)
+        self.context: TurnContext[EngineRules] = turn_context(
+            engine, opened if state is None else state
+        )
+        self.run: RunContext[TurnContext[EngineRules]] = tool_context(self.context)
 
     def call(self, tool: Callable[..., str], **arguments: object) -> list[Fact]:
         """Only the facts this call appended, so a test reads one action at a time."""
@@ -43,11 +45,11 @@ class Turn:
         return self.context.facts[before:]
 
 
-def opened() -> GameState:
+def opened() -> GameState[EngineRules]:
     return initialized()[1]
 
 
-def relocated(entity_id: EntityId, location_id: EntityId) -> GameState:
+def relocated(entity_id: EntityId, location_id: EntityId) -> GameState[EngineRules]:
     state = opened()
     return with_entity(state, updated(state.world.require(entity_id), parent_id=location_id))
 

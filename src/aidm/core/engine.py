@@ -1,4 +1,4 @@
-from collections.abc import Callable, Sequence
+from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass
 from random import Random
 
@@ -8,14 +8,14 @@ from .base import AdvancementDecision, EngineId, Entity
 from .content import AuthoredWorld, Rules
 from .facts import Fact
 from .tools import TurnContext
-from .world import GameState, WorldState
+from .world import EngineRules, GameState, WorldState
 
 NOTHING_MECHANICAL = "- (nothing mechanical happened)"
 
 
 @dataclass(frozen=True, slots=True)
-class Transition:
-    state: GameState
+class Transition[R: EngineRules]:
+    state: GameState[R]
     facts: tuple[Fact, ...]
 
 
@@ -23,7 +23,7 @@ type EntityRenderer = Callable[[Entity], str]
 
 # True once the decision is committed; a rejected one leaves the panel's inputs intact.
 type AdvancementSubmit = Callable[[AdvancementDecision], bool]
-type CurrentState = Callable[[], GameState]
+type CurrentState = Callable[[], GameState[EngineRules]]
 type AdvancementPanel = Callable[[CurrentState, AdvancementSubmit, Callable[[], None]], None]
 
 
@@ -35,17 +35,18 @@ def entered_text(value: object) -> str | None:
 
 
 @dataclass(frozen=True, slots=True)
-class Engine:
+class Engine[R: EngineRules]:
     id: EngineId
-    initial_world: Callable[[AuthoredWorld, Rules], WorldState]
-    validate_state: Callable[[GameState], None]
-    default_rules: Callable[[Entity], Rules]
-    advance: Callable[[AdvancementDecision, GameState, Random], Transition]
-    advancement_available: Callable[[GameState], bool]
+    state_type: type[GameState[R]]
+    initial_world: Callable[[AuthoredWorld, Rules], WorldState[R]]
+    validate_state: Callable[[GameState[R]], None]
+    default_rules: Callable[[Entity], R]
+    advance: Callable[[AdvancementDecision, GameState[R], Random], Transition[R]]
+    advancement_available: Callable[[GameState[R]], bool]
     advancement_panel: AdvancementPanel
-    director_toolset: AbstractToolset[TurnContext]
+    toolsets: Mapping[str, AbstractToolset[TurnContext[R]]]
     director_instructions: str
-    entity_state: Callable[[Entity, Rules], str]
+    entity_state: Callable[[Entity, R], str]
 
 
 def narrator_evidence(facts: Sequence[Fact]) -> str:
@@ -53,5 +54,5 @@ def narrator_evidence(facts: Sequence[Fact]) -> str:
     return "\n".join(lines) or NOTHING_MECHANICAL
 
 
-def entity_renderer(engine: Engine, state: GameState) -> EntityRenderer:
+def entity_renderer[R: EngineRules](engine: Engine[R], state: GameState[R]) -> EntityRenderer:
     return lambda entity: engine.entity_state(entity, state.world.record(entity.id).rules)

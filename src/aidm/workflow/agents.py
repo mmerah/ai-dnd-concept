@@ -18,10 +18,10 @@ from pydantic_ai.toolsets import AbstractToolset
 
 from ..core.base import EntityDetail, Role
 from ..core.config import ProviderConfig, RoleConfig, Settings
-from ..core.engine import Engine
+from ..core.registry import AnyEngine
 from ..core.tools import DirectorNotes, TurnContext, director_notes, world_toolset
 from ..core.turn import Growth
-from ..core.world import Exchange
+from ..core.world import EngineRules, Exchange
 from . import prompts
 
 
@@ -77,10 +77,10 @@ class SharedStages:
     creator: Stage[None, EntityDetail]
 
 
-type DirectorStage = Stage[TurnContext, DirectorNotes]
+type DirectorStage = Stage[TurnContext[EngineRules], DirectorNotes]
 
 
-def director_stage(engine: Engine, settings: Settings) -> DirectorStage:
+def director_stage(engine: AnyEngine, settings: Settings) -> DirectorStage:
     role = settings.roles.director
     return Stage(
         name="director",
@@ -89,7 +89,7 @@ def director_stage(engine: Engine, settings: Settings) -> DirectorStage:
         deps_type=TurnContext,
         role=role,
         provider=settings.providers.for_name(role.provider),
-        toolsets=(world_toolset(), engine.director_toolset),
+        toolsets=(world_toolset(), engine.toolsets["director"]),
     )
 
 

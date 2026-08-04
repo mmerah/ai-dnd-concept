@@ -5,26 +5,25 @@ from fivee_test_support import actor_of, ruleset
 from fivee_test_support import state as state
 
 from aidm.core.base import PLAYER_ID, Entity, EntityId
-from aidm.core.world import GameState
 from aidm.engines.dnd5e.access import Dnd5eWorld
-from aidm.engines.dnd5e.state import Dnd5eActorState, StatBlock
+from aidm.engines.dnd5e.state import Dnd5eActorState, Dnd5eState, StatBlock
 
 MARA = EntityId("mara")
 
 
-def world_of(state: GameState) -> Dnd5eWorld:
+def world_of(state: Dnd5eState) -> Dnd5eWorld:
     return Dnd5eWorld(state=state, rng=Random(0), ruleset=ruleset())
 
 
-def item(state: GameState, entity_id: str) -> Entity:
+def item(state: Dnd5eState, entity_id: str) -> Entity:
     return state.world.require_kind(EntityId(entity_id), "item")
 
 
-def where(state: GameState, entity_id: str) -> Entity:
+def where(state: Dnd5eState, entity_id: str) -> Entity:
     return state.world.require_kind(EntityId(entity_id), "location")
 
 
-def test_take_drop_and_hp(state: GameState) -> None:
+def test_take_drop_and_hp(state: Dnd5eState) -> None:
     _ = state.move(item(state, "vault_map"), state.player)
     _ = state.move(item(state, "lantern"), where(state, "study"))
     world = world_of(state)
@@ -39,7 +38,7 @@ def test_take_drop_and_hp(state: GameState) -> None:
     assert actor_of(result, PLAYER_ID).stats.hp == 7
 
 
-def test_give_moves_an_item_into_another_actors_inventory(state: GameState) -> None:
+def test_give_moves_an_item_into_another_actors_inventory(state: Dnd5eState) -> None:
     mara = state.world.require_kind(MARA, "actor")
     _ = state.move(item(state, "lantern"), mara)
     result = state.committed()
@@ -48,7 +47,7 @@ def test_give_moves_an_item_into_another_actors_inventory(state: GameState) -> N
     assert [entity.id for entity in result.world.children(MARA, "item")] == [EntityId("lantern")]
 
 
-def test_hp_is_clamped_for_every_actor(state: GameState) -> None:
+def test_hp_is_clamped_for_every_actor(state: Dnd5eState) -> None:
     world = world_of(state)
     player = world.player()
     assert player.stats.apply_hp_delta(-99) == -10
@@ -61,18 +60,18 @@ def test_hp_is_clamped_for_every_actor(state: GameState) -> None:
     assert actor_of(world.commit(), MARA).stats.hp == 0
 
 
-def test_move_the_player(state: GameState) -> None:
+def test_move_the_player(state: Dnd5eState) -> None:
     _ = state.move(state.player, where(state, "vault"))
     assert state.committed().player_location == "vault"
 
 
-def test_move_another_actor(state: GameState) -> None:
+def test_move_another_actor(state: Dnd5eState) -> None:
     mara = state.world.require_kind(MARA, "actor")
     _ = state.move(mara, where(state, "vault"))
     assert actor_of(state.committed(), MARA).entity.parent_id == "vault"
 
 
-def test_discover_reveals_only_the_target(state: GameState) -> None:
+def test_discover_reveals_only_the_target(state: Dnd5eState) -> None:
     _ = state.reveal(state.world.require(EntityId("elena")))
     result = state.committed()
 
@@ -88,11 +87,11 @@ def test_discover_reveals_only_the_target(state: GameState) -> None:
     }
 
 
-def test_revealing_a_known_entity_states_nothing(state: GameState) -> None:
+def test_revealing_a_known_entity_states_nothing(state: Dnd5eState) -> None:
     assert state.reveal(state.world.require(EntityId("mara"))) == []
 
 
-def test_create_appends_a_record_carrying_engine_state(state: GameState) -> None:
+def test_create_appends_a_record_carrying_engine_state(state: Dnd5eState) -> None:
     elgin = Entity(
         id=EntityId("elgin"),
         kind="actor",
@@ -100,7 +99,7 @@ def test_create_appends_a_record_carrying_engine_state(state: GameState) -> None
         brief="An apothecary.",
         parent_id=EntityId("study"),
     )
-    _ = state.add(elgin, Dnd5eActorState(stats=StatBlock()).model_dump(mode="json"))
+    _ = state.add(elgin, Dnd5eActorState(stats=StatBlock()))
     result = state.committed()
 
     assert list(result.world.entities("actor"))[-1].id == elgin.id
@@ -108,7 +107,7 @@ def test_create_appends_a_record_carrying_engine_state(state: GameState) -> None
     assert actor_of(result, elgin.id).progression is None
 
 
-def test_impossible_topology_fails_fast(state: GameState) -> None:
+def test_impossible_topology_fails_fast(state: Dnd5eState) -> None:
     with pytest.raises(ValueError, match="unknown entity id"):
         state.reveal(state.world.require(EntityId("nobody")))
     with pytest.raises(ValueError, match="unknown entity id"):
@@ -116,7 +115,7 @@ def test_impossible_topology_fails_fast(state: GameState) -> None:
     with pytest.raises(ValueError, match="it is a location"):
         _ = state.world.require_kind(EntityId("study"), "actor")
     with pytest.raises(ValueError, match="already exists"):
-        _ = state.add(state.player, Dnd5eActorState(stats=StatBlock()).model_dump(mode="json"))
+        _ = state.add(state.player, Dnd5eActorState(stats=StatBlock()))
     with pytest.raises(ValueError, match="it is a location"):  # a location has no hit points
         _ = actor_of(state, EntityId("study"))
 
@@ -131,7 +130,7 @@ def test_impossible_topology_fails_fast(state: GameState) -> None:
     ],
 )
 def test_a_world_that_puts_something_nowhere_real_is_refused(
-    state: GameState, entity_id: EntityId, container: EntityId
+    state: Dnd5eState, entity_id: EntityId, container: EntityId
 ) -> None:
     """One required parent id per entity is the whole point of the shape: what used to need a
     held-xor-located reconciliation is now a single lookup that either resolves or raises."""
@@ -140,7 +139,7 @@ def test_a_world_that_puts_something_nowhere_real_is_refused(
         state.committed()
 
 
-def test_a_refused_commit_leaves_the_draft_and_its_source_alone(state: GameState) -> None:
+def test_a_refused_commit_leaves_the_draft_and_its_source_alone(state: Dnd5eState) -> None:
     """The draft is discarded, so a half-mutated one is safe; the caller rebinds only on success."""
     committed = state.committed()
     before = committed.model_dump_json()
