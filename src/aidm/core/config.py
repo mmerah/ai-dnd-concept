@@ -4,7 +4,7 @@ from typing import Literal, Self
 from pydantic import BaseModel, ConfigDict, Field, JsonValue, SecretStr, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
-from .base import ROLES, EngineId, Role
+from .base import EngineId
 
 ProviderName = Literal["openrouter", "local"]
 ReasoningEffort = Literal["none", "minimal", "low", "medium", "high", "xhigh", "max"]
@@ -20,11 +20,11 @@ class ProviderConfig(BaseModel):
 class RoleConfig(BaseModel):
     model_config = ConfigDict(frozen=True)
 
-    provider: ProviderName
-    model: str
-    retries: int = Field(ge=0)
-    max_tokens: int = Field(ge=1)
-    reasoning_effort: ReasoningEffort
+    provider: ProviderName = "openrouter"
+    model: str = "openai/gpt-oss-120b"
+    retries: int = Field(default=3, ge=0)
+    max_tokens: int = Field(default=2048, ge=1)
+    reasoning_effort: ReasoningEffort = "medium"
 
 
 class Providers(BaseModel):
@@ -45,33 +45,6 @@ class Providers(BaseModel):
                 return self.local
 
 
-DEFAULT_ROLE = RoleConfig(
-    provider="openrouter",
-    model="openai/gpt-oss-120b",
-    retries=3,
-    max_tokens=2048,
-    reasoning_effort="medium",
-)
-
-
-class Roles(BaseModel):
-    director: RoleConfig = DEFAULT_ROLE
-    narrator: RoleConfig = DEFAULT_ROLE
-    maintainer: RoleConfig = DEFAULT_ROLE
-    creator: RoleConfig = DEFAULT_ROLE
-
-    def for_role(self, role: Role) -> RoleConfig:
-        match role:
-            case "director":
-                return self.director
-            case "narrator":
-                return self.narrator
-            case "maintainer":
-                return self.maintainer
-            case "creator":
-                return self.creator
-
-
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(
         env_file=".env",
@@ -81,7 +54,7 @@ class Settings(BaseSettings):
     )
 
     providers: Providers = Providers()
-    roles: Roles = Roles()
+    roles: dict[str, RoleConfig] = Field(default_factory=dict)
     # One section per engine, validated by the engine that reads it inside its own build.
     engines: dict[EngineId, dict[str, JsonValue]] = Field(default_factory=dict)
     max_growth: int = Field(default=3, ge=0)
@@ -90,15 +63,18 @@ class Settings(BaseSettings):
     scenarios_dir: Path = Path("scenarios")
     characters_dir: Path = Path("characters")
 
+    def role(self, name: str) -> RoleConfig:
+        found = self.roles.get(name, RoleConfig())
+        if not self.providers.for_name(found.provider).api_key.get_secret_value():
+            raise ValueError(
+                f"role {name!r} uses provider {found.provider!r}, which has no api_key"
+            )
+        return found
+
     @model_validator(mode="after")
     def _keys_present(self) -> Self:
-        for role in ROLES:
-            provider_name = self.roles.for_role(role).provider
-            provider = self.providers.for_name(provider_name)
-            if not provider.api_key.get_secret_value():
-                raise ValueError(
-                    f"role {role!r} uses provider {provider_name!r}, which has no api_key"
-                )
+        for name in self.roles:
+            self.role(name)
         return self
 
 

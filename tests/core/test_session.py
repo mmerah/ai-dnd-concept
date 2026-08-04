@@ -12,8 +12,7 @@ from aidm.core.store import FileSaves, FileTraces
 from aidm.core.turn import Advance
 from aidm.engines.story.advancement import RaiseApproach, dump_decision
 from aidm.engines.story.state import actor_of
-from aidm.workflow.agents import director_stage, shared_stages
-from aidm.workflow.pipeline import TurnOptions
+from aidm.workflow.pipeline import TurnOptions, default_cast
 from aidm.workflow.session import GameSession, LaunchTarget, Runtime
 
 TARGET = LaunchTarget(
@@ -27,16 +26,16 @@ TARGET = LaunchTarget(
 def session(directory: Path) -> GameSession:
     config = settings()
     engine = build_engine(STORY, config)
+    options = TurnOptions(history_window=6, max_growth=3)
     return GameSession(
         target=TARGET,
         scenario=scenario(),
         character=character(),
         engine=engine,
-        director=director_stage(engine, config),
-        stages=shared_stages(config),
+        script=default_cast(engine, config).script(engine, options),
         saves=FileSaves(directory),
         traces=FileTraces(directory),
-        options=TurnOptions(history_window=6, max_growth=3),
+        options=options,
         rng=Random(1),
     )
 

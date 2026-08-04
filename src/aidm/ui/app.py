@@ -2,7 +2,7 @@ import logging
 
 from nicegui import ui
 
-from aidm.core.base import Role, content_id
+from aidm.core.base import content_id
 from aidm.core.config import load_settings
 from aidm.core.registry import as_engine_id
 from aidm.workflow.session import GameSession, LaunchTarget, Runtime
@@ -46,7 +46,7 @@ class GameView:
         self.state.refresh()
 
 
-def on_step(view: GameView, step: Role) -> None:
+def on_step(view: GameView, step: str) -> None:
     view.session.step = step
     view.roles.refresh()
 

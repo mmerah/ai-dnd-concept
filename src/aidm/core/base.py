@@ -1,6 +1,6 @@
 import re
 from collections.abc import Iterable
-from typing import Annotated, Literal, NewType, get_args
+from typing import Annotated, Literal, NewType
 
 from pydantic import BaseModel, ConfigDict, Field, JsonValue
 
@@ -20,7 +20,6 @@ class Mutable(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
 
-Role = Literal["director", "narrator", "maintainer", "creator"]
 Kind = Literal["actor", "location", "item"]
 EngineId = NewType("EngineId", str)
 EntityId = NewType("EntityId", str)
@@ -28,7 +27,6 @@ SLUG_PATTERN = r"[a-z0-9]+(?:-[a-z0-9]+)*"
 Slug = Annotated[str, Field(pattern=rf"^{SLUG_PATTERN}$", max_length=64)]
 
 PLAYER_ID = EntityId("player")
-ROLES: tuple[Role, ...] = get_args(Role)
 SAVE_VERSION = 24
 
 

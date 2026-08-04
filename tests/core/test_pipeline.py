@@ -10,8 +10,7 @@ from pydantic_ai.models.function import AgentInfo, FunctionModel
 
 from aidm.core.base import PLAYER_ID
 from aidm.engines.story.state import DEFAULT_APPROACHES, actor_of, item_of
-from aidm.workflow.agents import director_stage, shared_stages
-from aidm.workflow.pipeline import TurnOptions, run_turn
+from aidm.workflow.pipeline import TurnOptions, TurnWorkspace, default_cast, run_turn
 
 type Stub = Callable[[list[ModelMessage], AgentInfo], ModelResponse]
 
@@ -41,36 +40,40 @@ def scripted(*responses: ModelResponse) -> Stub:
 
 NOTES = structured(intent="Kael finds the map beneath the flagstone.", tone="hushed")
 
+OPTIONS = TurnOptions(history_window=6, max_growth=3)
+
 
 async def test_an_engine_uses_the_shared_pipeline_and_safe_narrator_prompt() -> None:
     engine, state = initialized()
-    config = settings()
-    director = director_stage(engine, config)
-    stages = shared_stages(config)
+    members = default_cast(engine, settings())
+    steps: list[str] = []
     with ExitStack() as stack:
         stack.enter_context(
-            director.agent.override(
+            members.director.agent.override(
                 model=FunctionModel(scripted(calling("take_item", item_id="vault_map"), NOTES))
             )
         )
         stack.enter_context(
-            stages.narrator.agent.override(
+            members.narrator.agent.override(
                 model=FunctionModel(scripted(text("A creased chart slides into your hand.")))
             )
         )
         stack.enter_context(
-            stages.maintainer.agent.override(model=FunctionModel(scripted(structured(requests=[]))))
+            members.maintainer.agent.override(
+                model=FunctionModel(scripted(structured(requests=[])))
+            )
         )
         result = await run_turn(
             state,
             "I search beneath the desk.",
             engine=engine,
-            director=director,
-            stages=stages,
-            options=TurnOptions(history_window=6, max_growth=3),
+            script=members.script(engine, OPTIONS),
+            options=OPTIONS,
             rng=Random(0),
+            on_step=steps.append,
         )
 
+    assert steps == ["director", "narrator", "maintainer", "creator"]
     assert [fact.kind for fact in result.turn.facts] == ["entity_discovered", "entity_moved"]
     assert {item.id for item in result.state.world.children(PLAYER_ID, "item")} == {
         "lantern",
@@ -86,12 +89,10 @@ async def test_an_engine_uses_the_shared_pipeline_and_safe_narrator_prompt() -> 
 async def test_the_director_reacts_to_a_real_outcome_before_it_settles_the_turn() -> None:
     """The point of the tool loop: the roll happens first, and the model answers what it read."""
     engine, state = initialized()
-    config = settings()
-    director = director_stage(engine, config)
-    stages = shared_stages(config)
+    members = default_cast(engine, settings())
     with ExitStack() as stack:
         stack.enter_context(
-            director.agent.override(
+            members.director.agent.override(
                 model=FunctionModel(
                     scripted(
                         calling("risk", approach="empathetic", difficulty=2),
@@ -102,18 +103,19 @@ async def test_the_director_reacts_to_a_real_outcome_before_it_settles_the_turn(
             )
         )
         stack.enter_context(
-            stages.narrator.agent.override(model=FunctionModel(scripted(text("You falter."))))
+            members.narrator.agent.override(model=FunctionModel(scripted(text("You falter."))))
         )
         stack.enter_context(
-            stages.maintainer.agent.override(model=FunctionModel(scripted(structured(requests=[]))))
+            members.maintainer.agent.override(
+                model=FunctionModel(scripted(structured(requests=[])))
+            )
         )
         result = await run_turn(
             state,
             "I plead with the door.",
             engine=engine,
-            director=director,
-            stages=stages,
-            options=TurnOptions(history_window=6, max_growth=3),
+            script=members.script(engine, OPTIONS),
+            options=OPTIONS,
             rng=Random(2),
         )
 
@@ -129,22 +131,22 @@ async def test_the_director_reacts_to_a_real_outcome_before_it_settles_the_turn(
 
 async def test_creator_growth_receives_valid_engine_rules_before_commit() -> None:
     engine, state = initialized()
-    config = settings()
-    director = director_stage(engine, config)
-    stages = shared_stages(config)
+    members = default_cast(engine, settings())
     with ExitStack() as stack:
         stack.enter_context(
-            director.agent.override(
+            members.director.agent.override(
                 model=FunctionModel(
                     scripted(structured(intent="Someone approaches.", tone="curious"))
                 )
             )
         )
         stack.enter_context(
-            stages.narrator.agent.override(model=FunctionModel(scripted(text("A courier enters."))))
+            members.narrator.agent.override(
+                model=FunctionModel(scripted(text("A courier enters.")))
+            )
         )
         stack.enter_context(
-            stages.maintainer.agent.override(
+            members.maintainer.agent.override(
                 model=FunctionModel(
                     scripted(
                         structured(
@@ -173,7 +175,7 @@ async def test_creator_growth_receives_valid_engine_rules_before_commit() -> Non
             )
         )
         stack.enter_context(
-            stages.creator.agent.override(
+            members.creator.agent.override(
                 model=FunctionModel(
                     scripted(
                         structured(
@@ -196,9 +198,8 @@ async def test_creator_growth_receives_valid_engine_rules_before_commit() -> Non
             state,
             "Who comes through the door?",
             engine=engine,
-            director=director,
-            stages=stages,
-            options=TurnOptions(history_window=6, max_growth=3),
+            script=members.script(engine, OPTIONS),
+            options=OPTIONS,
             rng=Random(0),
         )
 
@@ -217,9 +218,7 @@ async def test_creator_growth_receives_valid_engine_rules_before_commit() -> Non
 
 async def test_a_failed_role_never_mutates_the_input_state() -> None:
     engine, state = initialized()
-    config = settings()
-    director = director_stage(engine, config)
-    stages = shared_stages(config)
+    members = default_cast(engine, settings())
 
     def boom(messages: list[ModelMessage], info: AgentInfo) -> ModelResponse:
         del messages, info
@@ -228,7 +227,7 @@ async def test_a_failed_role_never_mutates_the_input_state() -> None:
     before = state.model_dump_json()
     with ExitStack() as stack:
         stack.enter_context(
-            director.agent.override(
+            members.director.agent.override(
                 model=FunctionModel(
                     scripted(
                         calling("take_item", item_id="vault_map"),
@@ -237,16 +236,47 @@ async def test_a_failed_role_never_mutates_the_input_state() -> None:
                 )
             )
         )
-        stack.enter_context(stages.narrator.agent.override(model=FunctionModel(boom)))
+        stack.enter_context(members.narrator.agent.override(model=FunctionModel(boom)))
         with pytest.raises(RuntimeError, match="narrator exploded"):
             await run_turn(
                 state,
                 "I take the map.",
                 engine=engine,
-                director=director,
-                stages=stages,
-                options=TurnOptions(history_window=6, max_growth=3),
+                script=members.script(engine, OPTIONS),
+                options=OPTIONS,
                 rng=Random(0),
             )
 
     assert state.model_dump_json() == before
+
+
+async def test_a_script_takes_an_extra_step_without_core_edits() -> None:
+    engine, state = initialized()
+    members = default_cast(engine, settings())
+
+    async def echo(ws: TurnWorkspace) -> None:
+        ws.prompts["echo"] = "extra step ran"
+
+    steps: list[str] = []
+    with ExitStack() as stack:
+        stack.enter_context(members.director.agent.override(model=FunctionModel(scripted(NOTES))))
+        stack.enter_context(
+            members.narrator.agent.override(model=FunctionModel(scripted(text("You wait."))))
+        )
+        stack.enter_context(
+            members.maintainer.agent.override(
+                model=FunctionModel(scripted(structured(requests=[])))
+            )
+        )
+        result = await run_turn(
+            state,
+            "I wait.",
+            engine=engine,
+            script=(*members.script(engine, OPTIONS), ("echo", echo)),
+            options=OPTIONS,
+            rng=Random(0),
+            on_step=steps.append,
+        )
+
+    assert steps == ["director", "narrator", "maintainer", "creator", "echo"]
+    assert result.turn.prompts["echo"] == "extra step ran"

@@ -7,7 +7,7 @@ from pydantic_ai.models.test import TestModel
 from pydantic_ai.usage import RunUsage
 
 from aidm.core.base import SAVE_VERSION, EngineId, Entity
-from aidm.core.config import ProviderConfig, Providers, Roles, Settings
+from aidm.core.config import ProviderConfig, Providers, Settings
 from aidm.core.content import Character, Scenario, authored_world
 from aidm.core.engine import Engine
 from aidm.core.registry import AnyEngine, build_engine
@@ -83,7 +83,6 @@ def settings() -> Settings:
                 api_key=SecretStr("test"),
             )
         ),
-        roles=Roles(),
         max_growth=3,
         history_window=6,
         saves_dir=Path("saves"),

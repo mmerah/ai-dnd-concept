@@ -5,7 +5,7 @@ from textwrap import shorten
 
 from pydantic import BaseModel, ConfigDict, ValidationError
 
-from ..core.base import SAVE_VERSION, AdvancementDecision, EngineId, Role, Slug
+from ..core.base import SAVE_VERSION, AdvancementDecision, EngineId, Slug
 from ..core.config import Settings
 from ..core.content import Character, Scenario, authored_world
 from ..core.facts import Fact
@@ -21,8 +21,7 @@ from ..core.store import (
 )
 from ..core.turn import Advance, TraceEntry, Turn
 from ..core.world import EngineRules, GameState
-from .agents import DirectorStage, SharedStages, director_stage, shared_stages
-from .pipeline import TurnOptions, run_turn
+from .pipeline import TurnOptions, TurnScript, default_cast, run_turn
 
 
 class LauncherModel(BaseModel):
@@ -257,15 +256,14 @@ class GameSession:
     scenario: Scenario
     character: Character
     engine: AnyEngine
-    director: DirectorStage
-    stages: SharedStages
+    script: TurnScript
     saves: FileSaves
     traces: FileTraces
     options: TurnOptions
     rng: Random = field(default_factory=Random)
     entries: list[TraceEntry] = field(default_factory=list)
     busy: bool = False
-    step: Role | None = None
+    step: str | None = None
     state: GameState[EngineRules] = field(init=False)
 
     def __post_init__(self) -> None:
@@ -285,18 +283,21 @@ class GameSession:
     def slug(self) -> str:
         return self.target.slug
 
+    @property
+    def role_names(self) -> tuple[str, ...]:
+        return tuple(name for name, _ in self.script)
+
     async def submit(
         self,
         prompt: str,
-        on_step: Callable[[Role], None] | None = None,
+        on_step: Callable[[str], None] | None = None,
     ) -> Turn:
         """Commit only after the full turn succeeds."""
         result = await run_turn(
             self.state,
             prompt,
             engine=self.engine,
-            director=self.director,
-            stages=self.stages,
+            script=self.script,
             options=self.options,
             rng=self.rng,
             on_step=on_step,
@@ -384,17 +385,17 @@ class Runtime:
     def _open(self, target: LaunchTarget) -> GameSession:
         config = self.config
         engine = self.engine(target.engine)
+        options = TurnOptions(
+            history_window=config.history_window,
+            max_growth=config.max_growth,
+        )
         return GameSession(
             target=target,
             scenario=load_scenario(config.scenarios_dir, target.scenario_id, target.engine),
             character=load_character(config.characters_dir, target.character_id, target.engine),
             engine=engine,
-            director=director_stage(engine, config),
-            stages=shared_stages(config),
+            script=default_cast(engine, config).script(engine, options),
             saves=FileSaves(config.saves_dir),
             traces=FileTraces(config.saves_dir),
-            options=TurnOptions(
-                history_window=config.history_window,
-                max_growth=config.max_growth,
-            ),
+            options=options,
         )

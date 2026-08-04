@@ -2,7 +2,7 @@ from typing import Annotated, Literal
 
 from pydantic import Field
 
-from .base import SAVE_VERSION, Entity, Frozen, Kind, Role
+from .base import SAVE_VERSION, Entity, Frozen, Kind
 from .facts import Fact
 from .tools import DirectorNotes
 
@@ -74,7 +74,7 @@ class Turn(TraceEntryBase):
     growth: Growth
     created: tuple[Entity, ...] = ()
     rejected: tuple[RejectedGrowth, ...] = ()
-    prompts: dict[Role, str] = Field(default_factory=dict)
+    prompts: dict[str, str] = Field(default_factory=dict)
 
 
 class Advance(TraceEntryBase):

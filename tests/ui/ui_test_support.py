@@ -2,7 +2,7 @@ from pathlib import Path
 
 from pydantic import SecretStr
 
-from aidm.core.config import ProviderConfig, Providers, Roles, Settings
+from aidm.core.config import ProviderConfig, Providers, Settings
 
 REPOSITORY_ROOT = Path(__file__).parents[2]
 
@@ -18,7 +18,6 @@ def ui_settings(saves_dir: Path, scenarios_dir: Path = SCENARIOS) -> Settings:
                 api_key=SecretStr("test"),
             )
         ),
-        roles=Roles(),
         max_growth=3,
         history_window=6,
         scenarios_dir=scenarios_dir,
