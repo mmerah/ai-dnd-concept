@@ -50,6 +50,10 @@ Status of the proof of concept, and where it should go. Kept short on purpose.
 - Character creator, decoupling the character from the scenario file.
 - AI scenario creator — from a premise, or ingested from a PDF.
 - More roles and per-role tools; the context projections and `Role` literal already scale to this.
+- Engine referee: a rules-verification role that runs after the Director, fed the content pack's
+  rules text (srd-2014, datasworn) and optionally an external reference (e.g. the D&D 5e API),
+  and checks the Director's mechanical interpretation before commit. Recovers rule accuracy the
+  lenient architecture trades away, as a measured layer instead of typed code.
 - Image and voice generation for flavour, behind an interface, never on the turn's critical path.
 - UI growth: character sheet, journal, known-world panel.
 - Memory system
