@@ -1,8 +1,8 @@
 from fivee_test_support import initial_5e_game
 
-from aidm.base import EntityId
-from aidm.engine import entity_renderer
-from aidm.prompts import SceneSnapshot, VisibleScene, render_narrator
+from aidm.kernel.base import EntityId
+from aidm.kernel.engine import entity_renderer
+from aidm.workflow.prompts import SceneSnapshot, VisibleScene, render_narrator
 
 
 def test_5e_presentation_exposes_full_state_for_every_visible_actor() -> None:

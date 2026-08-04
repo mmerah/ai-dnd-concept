@@ -6,8 +6,8 @@ from fivee_test_support import actor_of, blank_game, turn_of, with_actor
 from fivee_test_support import state as state
 from pydantic_ai import ModelRetry
 
-from aidm.base import PLAYER_ID, EntityId
-from aidm.world import GameState
+from aidm.kernel.base import PLAYER_ID, EntityId
+from aidm.kernel.world import GameState
 
 # Kael's wisdom is 14 (+2). Random(0)'s first d20 is 13 (-> 15, passes DC 12); Random(2)'s is 2.
 PASS, FAIL = Random(0), Random(2)

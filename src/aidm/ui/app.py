@@ -2,10 +2,10 @@ import logging
 
 from nicegui import ui
 
-from aidm.application import GameSession, LaunchTarget, Runtime
-from aidm.base import Role, content_id
-from aidm.config import load_settings
-from aidm.registry import as_engine_id
+from aidm.kernel.application import GameSession, LaunchTarget, Runtime
+from aidm.kernel.base import Role, content_id
+from aidm.kernel.config import load_settings
+from aidm.kernel.registry import as_engine_id
 
 from .components.engine import show_engine_badge
 from .home import home_page

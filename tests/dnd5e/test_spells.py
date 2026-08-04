@@ -8,11 +8,11 @@ from fivee_test_support import actor_of, new_game, player_of, ruleset, turn_of, 
 from fivee_test_support import content_ref as ref
 from pydantic_ai import ModelRetry
 
-from aidm.base import Entity, EntityId
-from aidm.engines.dnd5e import bestiary, dice, spells
-from aidm.engines.dnd5e.state import Dnd5eActorDefinition, Progression
-from aidm.facts import Fact
-from aidm.world import GameState
+from aidm.kernel.base import Entity, EntityId
+from aidm.kernel.facts import Fact
+from aidm.kernel.world import GameState
+from aidm.plugins.dnd5e import bestiary, dice, spells
+from aidm.plugins.dnd5e.state import Dnd5eActorDefinition, Progression
 
 RULES = ruleset()
 GARGOYLE = EntityId("gargoyle")

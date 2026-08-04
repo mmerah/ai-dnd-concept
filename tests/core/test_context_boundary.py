@@ -1,15 +1,15 @@
 import pytest
 from core_test_support import STORY, updated, with_entity
 
-from aidm.base import PLAYER_ID, SAVE_VERSION, Entity, EntityId, Kind
-from aidm.content import ScenarioMeta
-from aidm.engine import entity_renderer
-from aidm.engines.story.engine import build_story_engine
-from aidm.engines.story.presentation import StoryPresentation
-from aidm.engines.story.state import DEFAULT_APPROACHES, StoryActorState, StoryItemState
-from aidm.growth import GrowthRequest
-from aidm.prompts import (
-    EntityRenderer,
+from aidm.kernel.base import PLAYER_ID, SAVE_VERSION, Entity, EntityId, Kind
+from aidm.kernel.content import ScenarioMeta
+from aidm.kernel.engine import EntityRenderer, entity_renderer
+from aidm.kernel.world import GameState, Record, WorldState
+from aidm.plugins.story.engine import build_story_engine
+from aidm.plugins.story.presentation import StoryPresentation
+from aidm.plugins.story.state import DEFAULT_APPROACHES, StoryActorState, StoryItemState
+from aidm.workflow.growth import GrowthRequest
+from aidm.workflow.prompts import (
     SceneSnapshot,
     VisibleScene,
     prompt_id,
@@ -18,7 +18,6 @@ from aidm.prompts import (
     render_maintainer,
     render_narrator,
 )
-from aidm.world import GameState, Record, WorldState
 
 ACTOR_RULES = StoryActorState(approaches=DEFAULT_APPROACHES).model_dump(mode="json")
 ITEM_RULES = StoryItemState().model_dump(mode="json")

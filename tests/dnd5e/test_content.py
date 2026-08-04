@@ -14,12 +14,12 @@ from fivee_test_support import (
 )
 from pydantic import ValidationError
 
-from aidm.base import EntityId
-from aidm.engines.dnd5e import bestiary, dice
-from aidm.engines.dnd5e import presentation as views
-from aidm.engines.dnd5e.content.library import ContentMiss, load, write_pack
-from aidm.engines.dnd5e.content.records.base import ContentRef, Record
-from aidm.engines.dnd5e.content.records.character import (
+from aidm.kernel.base import EntityId
+from aidm.plugins.dnd5e import bestiary, dice
+from aidm.plugins.dnd5e import presentation as views
+from aidm.plugins.dnd5e.content.library import ContentMiss, load, write_pack
+from aidm.plugins.dnd5e.content.records.base import ContentRef, Record
+from aidm.plugins.dnd5e.content.records.character import (
     BackgroundRecord,
     ClassRecord,
     FeatureRecord,
@@ -28,22 +28,22 @@ from aidm.engines.dnd5e.content.records.character import (
     SubclassRecord,
     TraitRecord,
 )
-from aidm.engines.dnd5e.content.records.equipment import (
+from aidm.plugins.dnd5e.content.records.equipment import (
     ArmorRecord,
     GearRecord,
     ToolRecord,
     WeaponRecord,
 )
-from aidm.engines.dnd5e.content.records.monsters import (
+from aidm.plugins.dnd5e.content.records.monsters import (
     MonsterAttack,
     MonsterMultiattack,
     MonsterProcedure,
     MonsterRecord,
     MonsterSave,
 )
-from aidm.engines.dnd5e.content.records.rules import ConditionRecord
-from aidm.engines.dnd5e.content.records.spells import SpellRecord
-from aidm.engines.dnd5e.state import Dnd5eActorDefinition, Dnd5eItemDefinition, StatBlock
+from aidm.plugins.dnd5e.content.records.rules import ConditionRecord
+from aidm.plugins.dnd5e.content.records.spells import SpellRecord
+from aidm.plugins.dnd5e.state import Dnd5eActorDefinition, Dnd5eItemDefinition, StatBlock
 
 PACK_ID = "srd-2014"
 CONTENT = content()

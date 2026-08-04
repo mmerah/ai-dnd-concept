@@ -6,14 +6,14 @@ from pydantic_ai import RunContext
 from pydantic_ai.models.test import TestModel
 from pydantic_ai.usage import RunUsage
 
-from aidm.base import SAVE_VERSION, EngineId, Entity
-from aidm.config import ProviderConfig, Providers, Roles, Settings
-from aidm.content import Character, Scenario, authored_world
-from aidm.engine import Engine
-from aidm.engines.story.engine import build_story_engine
-from aidm.store import load_character, load_scenario
-from aidm.tools import TurnContext
-from aidm.world import GameState, Record
+from aidm.kernel.base import SAVE_VERSION, EngineId, Entity
+from aidm.kernel.config import ProviderConfig, Providers, Roles, Settings
+from aidm.kernel.content import Character, Scenario, authored_world
+from aidm.kernel.engine import Engine
+from aidm.kernel.store import load_character, load_scenario
+from aidm.kernel.world import GameState, Record
+from aidm.plugins.story.engine import build_story_engine
+from aidm.workflow.tools import TurnContext
 
 REPOSITORY_ROOT = Path(__file__).parents[2]
 SCENARIOS = REPOSITORY_ROOT / "scenarios"

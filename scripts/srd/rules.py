@@ -1,12 +1,12 @@
 """Spells, skills, and the three vocabularies that ship a payload."""
 
-from aidm.engines.dnd5e.content.records.rules import (
+from aidm.plugins.dnd5e.content.records.rules import (
     AlignmentRecord,
     ConditionRecord,
     LanguageRecord,
     SkillRecord,
 )
-from aidm.engines.dnd5e.content.records.spells import (
+from aidm.plugins.dnd5e.content.records.spells import (
     SpellDamage,
     SpellRecord,
     SpellSave,

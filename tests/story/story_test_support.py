@@ -3,10 +3,10 @@ from random import Random
 from core_test_support import initialized as initial_story_game
 from core_test_support import tool_context, turn_context
 
-from aidm.engine import Engine
-from aidm.engines.story.tools import risk, take_stress
-from aidm.facts import Fact
-from aidm.world import GameState
+from aidm.kernel.engine import Engine
+from aidm.kernel.facts import Fact
+from aidm.kernel.world import GameState
+from aidm.plugins.story.tools import risk, take_stress
 
 __all__ = ["initial_story_game", "setback"]
 

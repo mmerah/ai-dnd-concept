@@ -4,23 +4,22 @@ from pathlib import Path
 import pytest
 
 SOURCE = Path(__file__).parents[2] / "src" / "aidm"
+CORE = ("kernel", "workflow")
 FORBIDDEN = {
-    "core": {"aidm.ui", "nicegui"},
+    "kernel": {"aidm.ui", "nicegui"},
+    "workflow": {"aidm.ui", "nicegui"},
     # An engine ships its own panels, so it may import nicegui; `aidm.ui` stays closed to it.
-    "engines/story": {"aidm.engines.dnd5e", "aidm.ui"},
-    "engines/dnd5e": {"aidm.engines.story", "aidm.ui"},
+    "plugins/story": {"aidm.plugins.dnd5e", "aidm.ui"},
+    "plugins/dnd5e": {"aidm.plugins.story", "aidm.ui"},
 }
 
 
 def _source_files(package: str) -> tuple[Path, ...]:
-    if package == "core":
-        return tuple(SOURCE.glob("*.py"))
     return tuple((SOURCE / package).rglob("*.py"))
 
 
 def _package_of(path: Path) -> tuple[str, ...]:
-    parts = path.relative_to(SOURCE.parent).with_suffix("").parts
-    return parts if parts[-1] == "__init__" else parts[:-1]
+    return path.relative_to(SOURCE.parent).with_suffix("").parts[:-1]
 
 
 def _absolute(package: tuple[str, ...], node: ast.ImportFrom) -> str:
@@ -64,7 +63,8 @@ def test_no_core_file_imports_an_engine_package() -> None:
     """Adding an engine is one line in `registry.ENGINE_MODULES`, the only place naming one."""
     naming = {
         path.name
-        for path in _source_files("core")
-        if any(name.startswith("aidm.engines") for name in _file_imports(path))
+        for package in CORE
+        for path in _source_files(package)
+        if any(name.startswith("aidm.plugins") for name in _file_imports(path))
     }
     assert naming == set()

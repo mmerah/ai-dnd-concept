@@ -2,8 +2,8 @@ from collections.abc import Callable
 
 from nicegui import ui
 
-from aidm.application import GameSession
-from aidm.base import AdvancementDecision
+from aidm.kernel.application import GameSession
+from aidm.kernel.base import AdvancementDecision
 
 
 def advancement_panel(session: GameSession, refresh: Callable[[], None]) -> None:

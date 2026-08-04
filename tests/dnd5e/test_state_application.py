@@ -4,10 +4,10 @@ import pytest
 from fivee_test_support import actor_of, ruleset
 from fivee_test_support import state as state
 
-from aidm.base import PLAYER_ID, Entity, EntityId
-from aidm.engines.dnd5e.access import Dnd5eWorld
-from aidm.engines.dnd5e.state import Dnd5eActorState, StatBlock
-from aidm.world import GameState
+from aidm.kernel.base import PLAYER_ID, Entity, EntityId
+from aidm.kernel.world import GameState
+from aidm.plugins.dnd5e.access import Dnd5eWorld
+from aidm.plugins.dnd5e.state import Dnd5eActorState, StatBlock
 
 MARA = EntityId("mara")
 

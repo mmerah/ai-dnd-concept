@@ -9,7 +9,7 @@ Status of the proof of concept, and where it should go. Kept short on purpose.
 - The Narrator is the one role kept from unrevealed canon, because it alone writes to the player.
 - Every turn commits whole or not at all; a role failure leaves state untouched.
 - Context comes from `SceneSnapshot` and the Narrator-only `VisibleScene` in
-  `src/aidm/prompts.py`, not scattered f-strings.
+  `src/aidm/workflow/prompts.py`, not scattered f-strings.
 - Small output schemas and few tools per role.
 
 ## Known weaknesses
@@ -45,7 +45,7 @@ Status of the proof of concept, and where it should go. Kept short on purpose.
 ### Planned features
 
 - Locations are connected, they have a state.
-- Continue 5e mechanics inside `aidm/engines/dnd5e/` without widening core state.
+- Continue 5e mechanics inside `aidm/plugins/dnd5e/` without widening core state.
 - Expand Story consequences only where narrative play demonstrates a concrete need.
 - Character creator, decoupling the character from the scenario file.
 - AI scenario creator — from a premise, or ingested from a PDF.

@@ -4,15 +4,15 @@ from random import Random
 from core_test_support import updated
 from fivee_test_support import initial_5e_game, player_of, ruleset, turn_of, with_actor
 
-from aidm.engines.dnd5e.advancement import (
+from aidm.plugins.dnd5e.advancement import (
     Dnd5eAdvancement,
     Dnd5eAdvancementDecisions,
     benefit_sections,
     dump_decision,
     plan_sections,
 )
-from aidm.engines.dnd5e.content.records.character import ProgressionChoice
-from aidm.engines.dnd5e.state import Decisions, Dnd5eActorState
+from aidm.plugins.dnd5e.content.records.character import ProgressionChoice
+from aidm.plugins.dnd5e.state import Decisions, Dnd5eActorState
 
 
 def _answer(choices: Sequence[ProgressionChoice]) -> Decisions:

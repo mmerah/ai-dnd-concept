@@ -3,9 +3,9 @@ from random import Random
 from core_test_support import tool_context, turn_context
 from story_test_support import initial_story_game, setback
 
-from aidm.base import PLAYER_ID, EntityId
-from aidm.engines.story.state import StoryGearTag, StoryItemState, item_state, player_state
-from aidm.tools import take_item
+from aidm.kernel.base import PLAYER_ID, EntityId
+from aidm.plugins.story.state import StoryGearTag, StoryItemState, item_state, player_state
+from aidm.workflow.tools import take_item
 
 
 def test_story_risk_is_seeded_pure_and_commits_once() -> None:

@@ -5,16 +5,16 @@ import pytest
 from core_test_support import DND5E, STORY, character, scenario, settings, updated
 from story_test_support import setback
 
-from aidm.agents import director_stage, shared_stages
-from aidm.application import GameSession, LaunchTarget, Runtime
-from aidm.base import AdvancementDecision
-from aidm.content import ScenarioMeta
-from aidm.engines.story.advancement import RaiseApproach, dump_decision
-from aidm.engines.story.engine import build_story_engine
-from aidm.engines.story.state import player_state
-from aidm.pipeline import TurnOptions
-from aidm.store import FileSaves, FileTraces
-from aidm.turn import Advance
+from aidm.kernel.application import GameSession, LaunchTarget, Runtime
+from aidm.kernel.base import AdvancementDecision
+from aidm.kernel.content import ScenarioMeta
+from aidm.kernel.store import FileSaves, FileTraces
+from aidm.plugins.story.advancement import RaiseApproach, dump_decision
+from aidm.plugins.story.engine import build_story_engine
+from aidm.plugins.story.state import player_state
+from aidm.workflow.agents import director_stage, shared_stages
+from aidm.workflow.pipeline import TurnOptions
+from aidm.workflow.turn import Advance
 
 TARGET = LaunchTarget(
     slug="poc",

@@ -2,10 +2,10 @@ from collections.abc import Sequence
 
 from nicegui import ui
 
-from aidm.application import GameSession
-from aidm.facts import Fact
-from aidm.growth import RejectedGrowth
-from aidm.turn import Advance, TraceEntry, Turn
+from aidm.kernel.application import GameSession
+from aidm.kernel.facts import Fact
+from aidm.workflow.growth import RejectedGrowth
+from aidm.workflow.turn import Advance, TraceEntry, Turn
 
 REJECTION_TEXT = {
     "duplicate_name": "name already exists",
