@@ -1,0 +1,32 @@
+{
+  "id": "short-rest-recharge",
+  "engine": "dnd5e",
+  "tags": [
+    "rest"
+  ],
+  "scenario": "whispering-vault",
+  "character": "bram",
+  "setup": [
+    {
+      "probe": "place",
+      "entity": "player",
+      "location": "cloister"
+    },
+    {
+      "probe": "set_pool",
+      "pool": "second-wind",
+      "remaining": 0
+    }
+  ],
+  "prompt": "We sit against the cloister wall and take an hour to breathe and bind up.",
+  "checks": [
+    {
+      "probe": "pool_value",
+      "entity": "player",
+      "pool": "second-wind",
+      "min": 1,
+      "max": 1
+    }
+  ],
+  "runs": 3
+}

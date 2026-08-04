@@ -1,0 +1,53 @@
+{
+  "character": {
+    "origin": {
+      "class_ref": {
+        "pack": "srd-2014",
+        "collection": "classes",
+        "index": "wizard"
+      },
+      "race_ref": {
+        "pack": "srd-2014",
+        "collection": "races",
+        "index": "elf"
+      },
+      "background_ref": {
+        "pack": "srd-2014",
+        "collection": "backgrounds",
+        "index": "acolyte"
+      }
+    },
+    "starting_attributes": {
+      "strength": 8,
+      "dexterity": 14,
+      "constitution": 13,
+      "intelligence": 15,
+      "wisdom": 12,
+      "charisma": 10
+    },
+    "decisions": {
+      "wizard-proficiency-1": [
+        "skill-arcana",
+        "skill-investigation"
+      ],
+      "wizard-cantrips-1": [
+        "fire-bolt",
+        "mage-hand",
+        "prestidigitation"
+      ],
+      "acolyte-languages": [
+        "celestial",
+        "draconic"
+      ]
+    }
+  },
+  "entities": {
+    "spellbook": {
+      "ref": {
+        "pack": "srd-2014",
+        "collection": "gear",
+        "index": "spellbook"
+      }
+    }
+  }
+}

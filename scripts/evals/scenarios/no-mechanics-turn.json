@@ -1,0 +1,17 @@
+{
+  "id": "no-mechanics-turn",
+  "engine": "dnd5e",
+  "tags": [
+    "checks"
+  ],
+  "scenario": "whispering-vault",
+  "character": "kael",
+  "setup": [],
+  "prompt": "I ask Mara whether she has eaten anything today.",
+  "checks": [
+    {
+      "probe": "no_state_change"
+    }
+  ],
+  "runs": 3
+}

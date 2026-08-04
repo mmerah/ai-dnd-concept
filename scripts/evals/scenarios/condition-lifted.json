@@ -1,0 +1,33 @@
+{
+  "id": "condition-lifted",
+  "engine": "dnd5e",
+  "tags": [
+    "conditions"
+  ],
+  "scenario": "whispering-vault",
+  "character": "bram",
+  "setup": [
+    {
+      "probe": "place",
+      "entity": "player",
+      "location": "cloister"
+    },
+    {
+      "probe": "reveal",
+      "entity": "cloister_rat"
+    },
+    {
+      "probe": "add_tag",
+      "tag": "poisoned"
+    }
+  ],
+  "prompt": "The sickness finally passes and I shake off the poison.",
+  "checks": [
+    {
+      "probe": "has_tag",
+      "tag": "poisoned",
+      "present": false
+    }
+  ],
+  "runs": 3
+}

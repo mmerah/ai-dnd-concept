@@ -1,0 +1,34 @@
+{
+  "id": "condition-rider",
+  "engine": "dnd5e",
+  "tags": [
+    "combat",
+    "conditions"
+  ],
+  "scenario": "whispering-vault",
+  "character": "bram",
+  "setup": [
+    {
+      "probe": "place",
+      "entity": "player",
+      "location": "cloister"
+    },
+    {
+      "probe": "reveal",
+      "entity": "cloister_rat"
+    }
+  ],
+  "prompt": "I grab the rat and flip it onto its back so it cannot right itself.",
+  "checks": [
+    {
+      "probe": "attack_roll_happened",
+      "min": 1
+    },
+    {
+      "probe": "has_tag",
+      "entity": "cloister_rat",
+      "tag": "prone"
+    }
+  ],
+  "runs": 3
+}

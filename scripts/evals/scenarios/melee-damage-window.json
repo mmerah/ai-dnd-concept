@@ -1,0 +1,53 @@
+{
+  "id": "melee-damage-window",
+  "engine": "dnd5e",
+  "tags": [
+    "combat"
+  ],
+  "scenario": "whispering-vault",
+  "character": "bram",
+  "setup": [
+    {
+      "probe": "place",
+      "entity": "player",
+      "location": "cloister"
+    },
+    {
+      "probe": "reveal",
+      "entity": "cloister_rat"
+    },
+    {
+      "probe": "set_number",
+      "entity": "cloister_rat",
+      "key": "max-hp",
+      "value": 40
+    },
+    {
+      "probe": "set_pool",
+      "entity": "cloister_rat",
+      "pool": "hp",
+      "remaining": 40
+    },
+    {
+      "probe": "set_number",
+      "entity": "cloister_rat",
+      "key": "armor-class",
+      "value": 1
+    }
+  ],
+  "prompt": "I take one swing at the rat with my longsword, and nothing more.",
+  "checks": [
+    {
+      "probe": "attack_roll_happened",
+      "min": 1
+    },
+    {
+      "probe": "pool_delta",
+      "entity": "cloister_rat",
+      "pool": "hp",
+      "min": -11,
+      "max": -4
+    }
+  ],
+  "runs": 3
+}

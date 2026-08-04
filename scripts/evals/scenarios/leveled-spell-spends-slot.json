@@ -1,0 +1,62 @@
+{
+  "id": "leveled-spell-spends-slot",
+  "engine": "dnd5e",
+  "tags": [
+    "combat",
+    "spells"
+  ],
+  "scenario": "whispering-vault",
+  "character": "elowen",
+  "setup": [
+    {
+      "probe": "set_level",
+      "value": 3
+    },
+    {
+      "probe": "place",
+      "entity": "player",
+      "location": "cloister"
+    },
+    {
+      "probe": "reveal",
+      "entity": "cloister_rat"
+    },
+    {
+      "probe": "set_number",
+      "entity": "cloister_rat",
+      "key": "max-hp",
+      "value": 40
+    },
+    {
+      "probe": "set_pool",
+      "entity": "cloister_rat",
+      "pool": "hp",
+      "remaining": 40
+    }
+  ],
+  "prompt": "I cast magic missile at the rat, and do nothing else this turn.",
+  "checks": [
+    {
+      "probe": "pool_delta",
+      "entity": "player",
+      "pool": "slot-1",
+      "min": -1,
+      "max": -1
+    },
+    {
+      "probe": "pool_delta",
+      "entity": "player",
+      "pool": "slot-2",
+      "min": 0,
+      "max": 0
+    },
+    {
+      "probe": "pool_delta",
+      "entity": "cloister_rat",
+      "pool": "hp",
+      "min": -15,
+      "max": -6
+    }
+  ],
+  "runs": 3
+}

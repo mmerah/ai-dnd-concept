@@ -1,0 +1,18 @@
+{
+  "id": "level-up-offer",
+  "engine": "dnd5e",
+  "tags": [
+    "advancement"
+  ],
+  "scenario": "whispering-vault",
+  "character": "kael",
+  "setup": [],
+  "prompt": "I finish deciphering the vault seal. Years of chasing this script are behind me, and I have grown past the hunter who walked in here.",
+  "checks": [
+    {
+      "probe": "has_tag",
+      "tag": "advancement-ready"
+    }
+  ],
+  "runs": 3
+}

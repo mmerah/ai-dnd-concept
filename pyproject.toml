@@ -36,7 +36,15 @@ testpaths = ["tests"]
 
 [tool.basedpyright]
 include = ["src", "tests", "scripts"]
-extraPaths = ["src", "tests/core", "tests/story", "tests/dnd5e", "tests/ui", "scripts"]
+extraPaths = [
+  "src",
+  "tests/core",
+  "tests/story",
+  "tests/dnd5e",
+  "tests/ui",
+  "scripts",
+  "scripts/evals",
+]
 typeCheckingMode = "strict"
 venvPath = "."
 venv = ".venv"

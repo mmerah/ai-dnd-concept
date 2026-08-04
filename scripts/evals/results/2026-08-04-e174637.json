@@ -1,0 +1,643 @@
+{
+  "date": "2026-08-04",
+  "commit": "e174637",
+  "model": "openai/gpt-oss-120b",
+  "retries": 3,
+  "overall": 0.6984126984126984,
+  "completion": 0.9206349206349206,
+  "interpretation": 0.7586206896551724,
+  "by_tag": {
+    "advancement": 0.0,
+    "checks": 0.6666666666666666,
+    "combat": 0.6888888888888889,
+    "conditions": 0.8333333333333334,
+    "rest": 1.0,
+    "spells": 0.6111111111111112
+  },
+  "cases": [
+    {
+      "id": "ability-check-dc",
+      "tags": [
+        "checks"
+      ],
+      "rate": 0.3333333333333333,
+      "completion": 0.6666666666666666,
+      "runs": [
+        {
+          "run": 0,
+          "passed": false,
+          "error": "UnexpectedModelBehavior: Tool 'roll_check' exceeded max retries count of 3. Consider raising the retry limit, or see the docs on tool retries: https://ai.pydantic.dev/tools-advanced/#tool-retries",
+          "failures": []
+        },
+        {
+          "run": 1,
+          "passed": false,
+          "error": null,
+          "failures": [
+            "0 rolls against a target number, wanted at least 1",
+            "nothing was rolled against a target number"
+          ]
+        },
+        {
+          "run": 2,
+          "passed": true,
+          "error": null,
+          "failures": []
+        }
+      ]
+    },
+    {
+      "id": "cantrip-spell-attack",
+      "tags": [
+        "combat",
+        "spells"
+      ],
+      "rate": 1.0,
+      "completion": 1.0,
+      "runs": [
+        {
+          "run": 0,
+          "passed": true,
+          "error": null,
+          "failures": []
+        },
+        {
+          "run": 1,
+          "passed": true,
+          "error": null,
+          "failures": []
+        },
+        {
+          "run": 2,
+          "passed": true,
+          "error": null,
+          "failures": []
+        }
+      ]
+    },
+    {
+      "id": "condition-lifted",
+      "tags": [
+        "conditions"
+      ],
+      "rate": 1.0,
+      "completion": 1.0,
+      "runs": [
+        {
+          "run": 0,
+          "passed": true,
+          "error": null,
+          "failures": []
+        },
+        {
+          "run": 1,
+          "passed": true,
+          "error": null,
+          "failures": []
+        },
+        {
+          "run": 2,
+          "passed": true,
+          "error": null,
+          "failures": []
+        }
+      ]
+    },
+    {
+      "id": "condition-rider",
+      "tags": [
+        "combat",
+        "conditions"
+      ],
+      "rate": 0.6666666666666666,
+      "completion": 1.0,
+      "runs": [
+        {
+          "run": 0,
+          "passed": true,
+          "error": null,
+          "failures": []
+        },
+        {
+          "run": 1,
+          "passed": false,
+          "error": null,
+          "failures": [
+            "cloister_rat tag 'prone' is absent"
+          ]
+        },
+        {
+          "run": 2,
+          "passed": true,
+          "error": null,
+          "failures": []
+        }
+      ]
+    },
+    {
+      "id": "dropped-to-zero",
+      "tags": [
+        "combat"
+      ],
+      "rate": 1.0,
+      "completion": 1.0,
+      "runs": [
+        {
+          "run": 0,
+          "passed": true,
+          "error": null,
+          "failures": []
+        },
+        {
+          "run": 1,
+          "passed": true,
+          "error": null,
+          "failures": []
+        },
+        {
+          "run": 2,
+          "passed": true,
+          "error": null,
+          "failures": []
+        }
+      ]
+    },
+    {
+      "id": "empty-slot-refusal",
+      "tags": [
+        "combat",
+        "spells"
+      ],
+      "rate": 0.6666666666666666,
+      "completion": 1.0,
+      "runs": [
+        {
+          "run": 0,
+          "passed": false,
+          "error": null,
+          "failures": [
+            "player slot-1 was 1, wanted 0..0"
+          ]
+        },
+        {
+          "run": 1,
+          "passed": true,
+          "error": null,
+          "failures": []
+        },
+        {
+          "run": 2,
+          "passed": true,
+          "error": null,
+          "failures": []
+        }
+      ]
+    },
+    {
+      "id": "healing-clamped-at-max",
+      "tags": [
+        "combat"
+      ],
+      "rate": 1.0,
+      "completion": 1.0,
+      "runs": [
+        {
+          "run": 0,
+          "passed": true,
+          "error": null,
+          "failures": []
+        },
+        {
+          "run": 1,
+          "passed": true,
+          "error": null,
+          "failures": []
+        },
+        {
+          "run": 2,
+          "passed": true,
+          "error": null,
+          "failures": []
+        }
+      ]
+    },
+    {
+      "id": "high-ac-miss",
+      "tags": [
+        "combat"
+      ],
+      "rate": 1.0,
+      "completion": 1.0,
+      "runs": [
+        {
+          "run": 0,
+          "passed": true,
+          "error": null,
+          "failures": []
+        },
+        {
+          "run": 1,
+          "passed": true,
+          "error": null,
+          "failures": []
+        },
+        {
+          "run": 2,
+          "passed": true,
+          "error": null,
+          "failures": []
+        }
+      ]
+    },
+    {
+      "id": "level-up-offer",
+      "tags": [
+        "advancement"
+      ],
+      "rate": 0.0,
+      "completion": 1.0,
+      "runs": [
+        {
+          "run": 0,
+          "passed": false,
+          "error": null,
+          "failures": [
+            "player tag 'advancement-ready' is absent"
+          ]
+        },
+        {
+          "run": 1,
+          "passed": false,
+          "error": null,
+          "failures": [
+            "player tag 'advancement-ready' is absent"
+          ]
+        },
+        {
+          "run": 2,
+          "passed": false,
+          "error": null,
+          "failures": [
+            "player tag 'advancement-ready' is absent"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "leveled-spell-spends-slot",
+      "tags": [
+        "combat",
+        "spells"
+      ],
+      "rate": 0.6666666666666666,
+      "completion": 1.0,
+      "runs": [
+        {
+          "run": 0,
+          "passed": false,
+          "error": null,
+          "failures": [
+            "cloister_rat hp delta was -22, wanted -15..-6"
+          ]
+        },
+        {
+          "run": 1,
+          "passed": true,
+          "error": null,
+          "failures": []
+        },
+        {
+          "run": 2,
+          "passed": true,
+          "error": null,
+          "failures": []
+        }
+      ]
+    },
+    {
+      "id": "long-rest-recharge",
+      "tags": [
+        "rest",
+        "spells"
+      ],
+      "rate": 1.0,
+      "completion": 1.0,
+      "runs": [
+        {
+          "run": 0,
+          "passed": true,
+          "error": null,
+          "failures": []
+        },
+        {
+          "run": 1,
+          "passed": true,
+          "error": null,
+          "failures": []
+        },
+        {
+          "run": 2,
+          "passed": true,
+          "error": null,
+          "failures": []
+        }
+      ]
+    },
+    {
+      "id": "melee-attack-basic",
+      "tags": [
+        "combat"
+      ],
+      "rate": 1.0,
+      "completion": 1.0,
+      "runs": [
+        {
+          "run": 0,
+          "passed": true,
+          "error": null,
+          "failures": []
+        },
+        {
+          "run": 1,
+          "passed": true,
+          "error": null,
+          "failures": []
+        },
+        {
+          "run": 2,
+          "passed": true,
+          "error": null,
+          "failures": []
+        }
+      ]
+    },
+    {
+      "id": "melee-damage-window",
+      "tags": [
+        "combat"
+      ],
+      "rate": 0.6666666666666666,
+      "completion": 1.0,
+      "runs": [
+        {
+          "run": 0,
+          "passed": true,
+          "error": null,
+          "failures": []
+        },
+        {
+          "run": 1,
+          "passed": true,
+          "error": null,
+          "failures": []
+        },
+        {
+          "run": 2,
+          "passed": false,
+          "error": null,
+          "failures": [
+            "cloister_rat hp delta was -20, wanted -11..-4"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "monster-attack-on-player",
+      "tags": [
+        "combat"
+      ],
+      "rate": 0.0,
+      "completion": 0.0,
+      "runs": [
+        {
+          "run": 0,
+          "passed": false,
+          "error": "UnexpectedModelBehavior: Tool 'attack' exceeded max retries count of 3. Consider raising the retry limit, or see the docs on tool retries: https://ai.pydantic.dev/tools-advanced/#tool-retries",
+          "failures": []
+        },
+        {
+          "run": 1,
+          "passed": false,
+          "error": "UnexpectedModelBehavior: Tool 'attack' exceeded max retries count of 3. Consider raising the retry limit, or see the docs on tool retries: https://ai.pydantic.dev/tools-advanced/#tool-retries",
+          "failures": []
+        },
+        {
+          "run": 2,
+          "passed": false,
+          "error": "UnexpectedModelBehavior: Tool 'attack' exceeded max retries count of 3. Consider raising the retry limit, or see the docs on tool retries: https://ai.pydantic.dev/tools-advanced/#tool-retries",
+          "failures": []
+        }
+      ]
+    },
+    {
+      "id": "no-mechanics-turn",
+      "tags": [
+        "checks"
+      ],
+      "rate": 1.0,
+      "completion": 1.0,
+      "runs": [
+        {
+          "run": 0,
+          "passed": true,
+          "error": null,
+          "failures": []
+        },
+        {
+          "run": 1,
+          "passed": true,
+          "error": null,
+          "failures": []
+        },
+        {
+          "run": 2,
+          "passed": true,
+          "error": null,
+          "failures": []
+        }
+      ]
+    },
+    {
+      "id": "ranged-damage-window",
+      "tags": [
+        "combat"
+      ],
+      "rate": 0.3333333333333333,
+      "completion": 1.0,
+      "runs": [
+        {
+          "run": 0,
+          "passed": false,
+          "error": null,
+          "failures": [
+            "cloister_rat hp delta was -11, wanted -8..-3"
+          ]
+        },
+        {
+          "run": 1,
+          "passed": true,
+          "error": null,
+          "failures": []
+        },
+        {
+          "run": 2,
+          "passed": false,
+          "error": null,
+          "failures": [
+            "cloister_rat hp delta was -14, wanted -8..-3"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "save-for-half",
+      "tags": [
+        "combat",
+        "spells"
+      ],
+      "rate": 0.0,
+      "completion": 1.0,
+      "runs": [
+        {
+          "run": 0,
+          "passed": false,
+          "error": null,
+          "failures": [
+            "player slot-1 delta was -2, wanted -1..-1"
+          ]
+        },
+        {
+          "run": 1,
+          "passed": false,
+          "error": null,
+          "failures": [
+            "player slot-1 delta was -2, wanted -1..-1"
+          ]
+        },
+        {
+          "run": 2,
+          "passed": false,
+          "error": null,
+          "failures": [
+            "player slot-1 delta was -2, wanted -1..-1"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "self-heal-scaling",
+      "tags": [
+        "combat"
+      ],
+      "rate": 1.0,
+      "completion": 1.0,
+      "runs": [
+        {
+          "run": 0,
+          "passed": true,
+          "error": null,
+          "failures": []
+        },
+        {
+          "run": 1,
+          "passed": true,
+          "error": null,
+          "failures": []
+        },
+        {
+          "run": 2,
+          "passed": true,
+          "error": null,
+          "failures": []
+        }
+      ]
+    },
+    {
+      "id": "short-rest-recharge",
+      "tags": [
+        "rest"
+      ],
+      "rate": 1.0,
+      "completion": 1.0,
+      "runs": [
+        {
+          "run": 0,
+          "passed": true,
+          "error": null,
+          "failures": []
+        },
+        {
+          "run": 1,
+          "passed": true,
+          "error": null,
+          "failures": []
+        },
+        {
+          "run": 2,
+          "passed": true,
+          "error": null,
+          "failures": []
+        }
+      ]
+    },
+    {
+      "id": "single-action-discipline",
+      "tags": [
+        "combat"
+      ],
+      "rate": 1.0,
+      "completion": 1.0,
+      "runs": [
+        {
+          "run": 0,
+          "passed": true,
+          "error": null,
+          "failures": []
+        },
+        {
+          "run": 1,
+          "passed": true,
+          "error": null,
+          "failures": []
+        },
+        {
+          "run": 2,
+          "passed": true,
+          "error": null,
+          "failures": []
+        }
+      ]
+    },
+    {
+      "id": "upcast-damage-scaling",
+      "tags": [
+        "combat",
+        "spells"
+      ],
+      "rate": 0.3333333333333333,
+      "completion": 0.6666666666666666,
+      "runs": [
+        {
+          "run": 0,
+          "passed": false,
+          "error": "UnexpectedModelBehavior: Tool 'damage' exceeded max retries count of 3. Consider raising the retry limit, or see the docs on tool retries: https://ai.pydantic.dev/tools-advanced/#tool-retries",
+          "failures": []
+        },
+        {
+          "run": 1,
+          "passed": false,
+          "error": null,
+          "failures": [
+            "cloister_rat hp delta was -30, wanted -20..-8"
+          ]
+        },
+        {
+          "run": 2,
+          "passed": true,
+          "error": null,
+          "failures": []
+        }
+      ]
+    }
+  ]
+}
