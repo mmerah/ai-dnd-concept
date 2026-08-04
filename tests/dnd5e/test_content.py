@@ -12,13 +12,20 @@ from fivee_test_support import (
     player_of,
     ruleset,
 )
-from pydantic import ValidationError
 
 from aidm.core.base import EntityId
+from aidm.core.packs import (
+    ContentMiss,
+    ContentRef,
+    Pack,
+    Record,
+    load,
+    read_pack,
+    validate_pack,
+    write_pack,
+)
 from aidm.engines.dnd5e import bestiary, dice
 from aidm.engines.dnd5e import presentation as views
-from aidm.engines.dnd5e.content.library import ContentMiss, load, write_pack
-from aidm.engines.dnd5e.content.records.base import ContentRef, Record
 from aidm.engines.dnd5e.content.records.character import (
     BackgroundRecord,
     ClassRecord,
@@ -43,6 +50,7 @@ from aidm.engines.dnd5e.content.records.monsters import (
 )
 from aidm.engines.dnd5e.content.records.rules import ConditionRecord
 from aidm.engines.dnd5e.content.records.spells import SpellRecord
+from aidm.engines.dnd5e.content.registry import PACK_FORMAT
 from aidm.engines.dnd5e.state import Dnd5eActorDefinition, Dnd5eItemDefinition, StatBlock
 
 PACK_ID = "srd-2014"
@@ -86,6 +94,11 @@ def ref(collection: str, index: str, pack: str = PACK_ID) -> ContentRef:
     return ContentRef.model_validate({"pack": pack, "collection": collection, "index": index})
 
 
+def repacked(**changes: object) -> Pack:
+    """Keeps the records as live instances: a dumped one no longer revalidates without a format."""
+    return Pack.model_validate({"manifest": PACK.manifest, "records": PACK.records, **changes})
+
+
 def test_a_record_is_addressed_by_pack_collection_and_index() -> None:
     """`shield` is an Equipment *and* a Spell — one of 79 cross-collection collisions in this pack
     alone, which is why an index alone could never be the identity."""
@@ -100,13 +113,11 @@ def test_an_unresolved_ref_is_a_value_with_a_reason() -> None:
     misses = [
         CONTENT.get(ref("monsters", "tarrasque-of-the-second-edition"), MonsterRecord),
         CONTENT.get(ref("monsters", "goblin", pack="homebrew"), MonsterRecord),
-        CONTENT.get(ref("monsters", "goblin"), SpellRecord),  # right index, wrong collection
         CONTENT.get(ref("proficiencies", "skill-arcana"), SaveProficiency),  # wrong arm
     ]
     assert [m.reason for m in misses if isinstance(m, ContentMiss)] == [
         "unknown_index",
         "unknown_pack",
-        "wrong_collection",
         "wrong_type",
     ]
 
@@ -150,46 +161,43 @@ def test_the_manifest_counts_every_collection_the_pack_ships() -> None:
         "feats": 1,
         "proficiencies": 117,
     }
-    with pytest.raises(ValidationError, match="promises 334 monsters"):
-        updated(PACK, records={**PACK.records, "monsters": {}})
+    with pytest.raises(ValueError, match="promises 334 monsters"):
+        validate_pack(repacked(records={**PACK.records, "monsters": {}}), PACK_FORMAT)
 
 
 def test_a_loaded_pack_writes_back_byte_for_byte(tmp_path: Path) -> None:
     """`scripts/srd/corrections` calls byte-identical round-trip the importer's regression check,
     but that check is a manual re-import against an external 5e-database checkout. This is the
-    automated one: nothing else stands between a change to the pack shape and silent corruption."""
+    automated one: nothing else stands between a change to the pack shape and silent corruption.
+    Reading the copy back proves the dump kept each record's own fields, not the base's two."""
     write_pack(tmp_path, PACK)
     source = PACK_DIR
     written = sorted(path.name for path in tmp_path.iterdir())
     assert written == sorted(path.name for path in source.iterdir())
     for name in written:
         assert (tmp_path / name).read_bytes() == (source / name).read_bytes(), name
+    assert read_pack(tmp_path, PACK_FORMAT) == PACK
 
 
-def test_each_collection_is_validated_by_its_own_spec() -> None:
+def test_each_collection_holds_only_what_its_spec_accepts() -> None:
     """What the routing buys: `monsters.json` cannot hold a level record, and a collection no
     registry row names cannot load at all. Without it every record would be validated against the
     bare `Record` base, which declares two fields."""
     fighter = LEVELS["fighter-1"]
-    with pytest.raises(ValidationError, match="instance of MonsterRecord"):
-        updated(PACK, records={**PACK.records, "monsters": {"fighter-1": fighter}})
-    with pytest.raises(ValidationError, match="nonsense"):
-        updated(PACK, records={**PACK.records, "nonsense": {}})
-
-
-def test_a_pack_survives_being_dumped_and_revalidated() -> None:
-    """`updated()` round-trips through `model_dump`, so a record must keep the fields its own class
-    declares rather than the base's two — the failure that would make every edit lossy."""
-    goblin = all_of(updated(PACK), "monsters", MonsterRecord)["goblin"]
-    assert goblin.hit_points == 7 and len(goblin.actions) == 2
+    with pytest.raises(ValueError, match="no MonsterRecord"):
+        validate_pack(
+            repacked(records={**PACK.records, "monsters": {"fighter-1": fighter}}), PACK_FORMAT
+        )
+    with pytest.raises(ValueError, match="nonsense"):
+        validate_pack(repacked(records={**PACK.records, "nonsense": {}}), PACK_FORMAT)
 
 
 def test_a_gap_must_be_declared_rather_than_left_out() -> None:
     """A count of 0 is how a pack says "this ships no backgrounds" up front. Silence could not
     carry that, so silence is refused."""
     counted = {name: c for name, c in PACK.manifest.provides.items() if name != "languages"}
-    with pytest.raises(ValidationError, match=r"no count for \['languages'\]"):
-        updated(PACK, manifest=updated(PACK.manifest, provides=counted))
+    with pytest.raises(ValueError, match=r"no count for \['languages'\]"):
+        validate_pack(repacked(manifest=updated(PACK.manifest, provides=counted)), PACK_FORMAT)
 
 
 def test_a_loaded_record_cannot_be_edited() -> None:
@@ -437,4 +445,4 @@ def test_a_condition_is_shown_on_anyone_who_holds_one() -> None:
 
 def test_two_packs_cannot_claim_one_id() -> None:
     with pytest.raises(ValueError, match="same id"):
-        load([PACK_DIR, PACK_DIR])
+        load([PACK_DIR, PACK_DIR], PACK_FORMAT)

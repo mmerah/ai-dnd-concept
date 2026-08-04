@@ -2,9 +2,8 @@ import pytest
 from core_test_support import updated
 from fivee_test_support import all_of, content, pack, ruleset
 
-from aidm.engines.dnd5e.content.library import loaded
+from aidm.core.packs import ContentRef, Record, loaded
 from aidm.engines.dnd5e.content.pack_ruleset import compile_ruleset
-from aidm.engines.dnd5e.content.records.base import ContentRef, Record
 from aidm.engines.dnd5e.content.records.character import (
     BackgroundRecord,
     ClassLevelRecord,

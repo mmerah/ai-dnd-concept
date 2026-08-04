@@ -12,15 +12,15 @@ from aidm.core.base import PLAYER_ID, SAVE_VERSION, EngineId, Entity, EntityId
 from aidm.core.content import ScenarioMeta, authored_world
 from aidm.core.engine import Engine
 from aidm.core.facts import Fact
+from aidm.core.packs import Content, ContentRef, ContentSlug, Pack, loaded, read_pack
+from aidm.core.packs import Record as ContentRecord
 from aidm.core.store import load_character, load_scenario
 from aidm.core.tools import TurnContext
 from aidm.core.world import BareLocation, Record
 from aidm.engines.dnd5e.access import read_actor, read_item
-from aidm.engines.dnd5e.content.library import Content, loaded, read_pack
-from aidm.engines.dnd5e.content.models import Pack
 from aidm.engines.dnd5e.content.pack_ruleset import compile_ruleset
-from aidm.engines.dnd5e.content.records.base import Collection, ContentRef
-from aidm.engines.dnd5e.content.records.base import Record as ContentRecord
+from aidm.engines.dnd5e.content.records.base import Collection
+from aidm.engines.dnd5e.content.registry import PACK_FORMAT
 from aidm.engines.dnd5e.engine import dnd5e_engine
 from aidm.engines.dnd5e.ruleset import Ruleset
 from aidm.engines.dnd5e.state import (
@@ -35,7 +35,7 @@ from aidm.engines.dnd5e.state import (
     StatBlock,
 )
 from aidm.engines.dnd5e.tools import Dnd5eTools
-from aidm.engines.dnd5e.values import Attributes, ContentSlug
+from aidm.engines.dnd5e.values import Attributes
 
 REPOSITORY_ROOT = Path(__file__).parents[2]
 PACK_DIR = REPOSITORY_ROOT / "src" / "aidm" / "engines" / "dnd5e" / "packs" / "srd-2014"
@@ -168,7 +168,7 @@ def state() -> Dnd5eState:
 
 @cache
 def pack(directory: Path = PACK_DIR) -> Pack:
-    return read_pack(directory)
+    return read_pack(directory, PACK_FORMAT)
 
 
 @cache

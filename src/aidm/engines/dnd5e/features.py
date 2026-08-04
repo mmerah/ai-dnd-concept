@@ -4,11 +4,10 @@ from dataclasses import dataclass
 from pydantic_ai import ModelRetry
 
 from aidm.core.facts import Fact
+from aidm.core.packs import ContentMiss, ContentRef
 
 from . import rolls
 from .access import Dnd5eWorld
-from .content.library import ContentMiss
-from .content.records.base import ContentRef
 from .content.records.character import (
     AbilityModifierResourceMaximum,
     AgentActiveFeatureMechanics,

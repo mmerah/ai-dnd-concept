@@ -5,14 +5,15 @@ from aidm.core.base import PLAYER_ID, Entity
 from aidm.core.config import Settings
 from aidm.core.content import AuthoredEntity, AuthoredWorld, Rules, compose_world
 from aidm.core.engine import Engine
+from aidm.core.packs import Value, load
 from aidm.core.registry import EnginePlugin
 from aidm.core.world import BareLocation
 
 from . import bestiary, progression
 from .access import read_actor, read_item
 from .advancement import Dnd5eAdvancement
-from .content.library import load
 from .content.pack_ruleset import compile_ruleset
+from .content.registry import PACK_FORMAT
 from .identity import ENGINE_ID
 from .presentation import Dnd5ePresentation
 from .ruleset import Ruleset
@@ -27,7 +28,6 @@ from .state import (
 )
 from .tools import DIRECTOR_INSTRUCTIONS, Dnd5eTools
 from .ui import advancement_panel_for
-from .values import Value
 
 SHIPPED_PACK = Path(__file__).parent / "packs" / "srd-2014"
 
@@ -37,7 +37,9 @@ class Dnd5eConfig(Value):
 
 
 def build_dnd5e_engine(pack_paths: Sequence[Path] | None = None) -> Engine[Dnd5eRules]:
-    ruleset = compile_ruleset(load((SHIPPED_PACK,) if pack_paths is None else tuple(pack_paths)))
+    ruleset = compile_ruleset(
+        load((SHIPPED_PACK,) if pack_paths is None else tuple(pack_paths), PACK_FORMAT)
+    )
     return dnd5e_engine(ruleset)
 
 
@@ -47,6 +49,11 @@ def _validate_payloads(state: Dnd5eState, ruleset: Ruleset) -> None:
     for actor in actors:
         if actor.ref is not None and not ruleset.provides(actor.ref):
             raise ValueError(f"5e actor {actor.id!r} has unknown ref {actor.ref}")
+        if actor.progression is None:
+            continue
+        unknown = sorted(str(r) for r in actor.progression.origin.refs if not ruleset.provides(r))
+        if unknown:
+            raise ValueError(f"5e actor {actor.id!r} has unknown origin refs {unknown}")
     for entity in state.world.entities("item"):
         item = read_item(state, entity.id)
         if item.ref is not None and not ruleset.provides(item.ref):

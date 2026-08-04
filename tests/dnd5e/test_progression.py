@@ -9,11 +9,10 @@ from fivee_test_support import Turn, actor_of, new_game, player_of, turn_of, wit
 from pydantic_ai import ModelRetry
 
 from aidm.core.base import EntityId
+from aidm.core.packs import ContentMiss, ContentRef
 from aidm.engines.dnd5e import progression
 from aidm.engines.dnd5e import rolls as rules
 from aidm.engines.dnd5e.access import Dnd5eWorld
-from aidm.engines.dnd5e.content.library import ContentMiss
-from aidm.engines.dnd5e.content.records.base import ContentRef
 from aidm.engines.dnd5e.content.records.character import BonusOption, ProgressionChoice
 from aidm.engines.dnd5e.engine import dnd5e_engine
 from aidm.engines.dnd5e.ruleset import (
@@ -353,6 +352,18 @@ def test_only_the_player_may_have_progression() -> None:
     invalid = with_actor(state, mara.entity, levelled_npc)
     with pytest.raises(ValueError, match="only the player may have progression"):
         dnd5e_engine(RULES).validate_state(invalid)
+
+
+def test_an_origin_may_only_name_records_the_packs_provide() -> None:
+    """A `ContentRef` carries no collection allowlist, so a save whose class ref points nowhere must
+    break at load rather than mid-level-up."""
+    state = new_game()
+    progressed = player_of(state).state.progression
+    assert progressed is not None
+    origin = progressed.origin
+    progressed.origin = updated(origin, class_ref=updated(origin.class_ref, index="fighter-of-9"))
+    with pytest.raises(ValueError, match="unknown origin refs"):
+        dnd5e_engine(RULES).validate_state(state)
 
 
 def test_levelling_rolls_the_hit_die_where_the_trace_can_see_it() -> None:

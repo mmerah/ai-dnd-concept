@@ -5,9 +5,8 @@ from core_test_support import updated
 from fivee_test_support import all_of, pack
 from pydantic import ValidationError
 
-from aidm.engines.dnd5e.content.library import ContentMiss, loaded
+from aidm.core.packs import ContentMiss, ContentRef, Record, loaded
 from aidm.engines.dnd5e.content.pack_ruleset import compile_ruleset
-from aidm.engines.dnd5e.content.records.base import ContentRef, Record
 from aidm.engines.dnd5e.content.records.character import (
     AbilityModifierResourceMaximum,
     AgentActiveFeatureMechanics,

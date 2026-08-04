@@ -1,12 +1,12 @@
 from collections.abc import Iterator, Mapping
-from dataclasses import dataclass
 from typing import get_args
 
 from pydantic import TypeAdapter
 
 from aidm.core.base import Kind
+from aidm.core.packs import CollectionSpec, PackFormat, Record
 
-from .records.base import Collection, Record
+from .records.base import Collection
 from .records.character import (
     BackgroundRecord,
     ClassLevelRecord,
@@ -37,20 +37,12 @@ from .records.rules import AlignmentRecord, ConditionRecord, LanguageRecord, Ski
 from .records.spells import SpellRecord
 
 
-@dataclass(frozen=True, slots=True)
-class CollectionSpec:
-    """Keeps classes explicit to avoid depending on Pydantic internals."""
-
-    adapter: TypeAdapter[Record]
-    classes: tuple[type[Record], ...]
-    entity: Kind | None = None
-
-
 def _holding(record: type[Record], entity: Kind | None = None) -> CollectionSpec:
     return CollectionSpec(TypeAdapter[Record](record), (record,), entity)
 
 
-COLLECTION_SPECS: Mapping[Collection, CollectionSpec] = {
+# Keyed by `str`, not `Collection`: a `ContentRef` names a collection the way any engine's does.
+COLLECTION_SPECS: Mapping[str, CollectionSpec] = {
     "monsters": _holding(MonsterRecord, "actor"),
     "weapons": _holding(WeaponRecord, "item"),
     "armor": _holding(ArmorRecord, "item"),
@@ -81,9 +73,7 @@ COLLECTION_SPECS: Mapping[Collection, CollectionSpec] = {
     ),
 }
 
-COLLECTION_OF: Mapping[type[Record], Collection] = {
-    cls: name for name, spec in COLLECTION_SPECS.items() for cls in spec.classes
-}
+PACK_FORMAT = PackFormat(COLLECTION_SPECS)
 
 
 def _concrete(record: type[Record]) -> Iterator[type[Record]]:
@@ -94,8 +84,14 @@ def _concrete(record: type[Record]) -> Iterator[type[Record]]:
         yield record
 
 
-# Prove the static key type and runtime routing table stay synchronized.
-if _unspecified := sorted(set(get_args(Collection)) - set(COLLECTION_SPECS)):
-    raise TypeError(f"collections with no spec: {_unspecified}")
-if _unrouted := sorted(r.__name__ for r in _concrete(Record) if r not in COLLECTION_OF):
+# Prove the static key type and runtime routing table stay synchronized. `Record` is core's, so the
+# walk keeps to this engine's own records: another engine's are not this table's to route.
+if _drift := sorted(set(get_args(Collection)) ^ set(COLLECTION_SPECS)):
+    raise TypeError(f"collections the spec table and the literal disagree on: {_drift}")
+if _unrouted := sorted(
+    record.__name__
+    for record in _concrete(Record)
+    if record.__module__.startswith(f"{__package__}.records")
+    and not any(record in spec.classes for spec in COLLECTION_SPECS.values())
+):
     raise TypeError(f"record classes in no collection: {_unrouted}")

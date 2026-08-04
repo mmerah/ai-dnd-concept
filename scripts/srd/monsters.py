@@ -2,7 +2,7 @@
 
 from collections.abc import Sequence
 
-from aidm.engines.dnd5e.content.records.base import ContentRef
+from aidm.core.packs import ContentRef
 from aidm.engines.dnd5e.content.records.monsters import (
     MonsterAction,
     MonsterAttack,

@@ -2,9 +2,10 @@ from typing import Literal
 
 from pydantic import Field
 
-from ...values import ContentSlug, Value
+from aidm.core.packs import ContentSlug, Record, Value
+
 from ..vocabulary import EquipmentCategory, WeaponProperty
-from .base import Coin, DamageRoll, Record
+from .base import Coin, DamageRoll
 
 WeaponCategory = Literal["Simple Melee", "Simple Ranged", "Martial Melee", "Martial Ranged"]
 WeaponReach = Literal["Melee", "Ranged"]

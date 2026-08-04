@@ -8,6 +8,7 @@ the safe default, so an unlisted feature is never wrong, only unautomated.
 Keyed by upstream index rather than parsed from the prose, because the prose states the numbers in
 sentences and a parser would fail silently on the wording it did not anticipate."""
 
+from aidm.core.packs import ContentSlug
 from aidm.engines.dnd5e.content.records.character import (
     AbilityModifierResourceMaximum,
     AgentActiveFeatureMechanics,
@@ -28,7 +29,6 @@ from aidm.engines.dnd5e.content.records.character import (
     SelfHealWithClassLevel,
 )
 from aidm.engines.dnd5e.content.vocabulary import RestType
-from aidm.engines.dnd5e.values import ContentSlug
 
 _CLASS_OR_SUBCLASS_SELECTIONS: frozenset[ContentSlug] = frozenset(
     {

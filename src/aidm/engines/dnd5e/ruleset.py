@@ -3,15 +3,23 @@ from typing import Protocol
 
 from pydantic import Field
 
+from aidm.core.packs import (
+    EMPTY_FROZEN_MAP,
+    ContentMiss,
+    ContentRef,
+    ContentSlug,
+    FrozenMap,
+    Record,
+    Value,
+)
+
 from . import dice
-from .content.library import ContentMiss
-from .content.records.base import ContentRef, Record
 from .content.records.character import ClassRecord, FeatureMechanics, ProgressionChoice
 from .content.records.monsters import MonsterRecord
 from .content.records.spells import SpellLevel, SpellRecord
 from .content.vocabulary import RestType
 from .state import Origin, StatBlock
-from .values import EMPTY_FROZEN_MAP, Ability, ContentSlug, FrozenMap, Value
+from .values import Ability
 
 
 class SpellcastingProfile(Value):

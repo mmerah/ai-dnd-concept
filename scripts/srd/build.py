@@ -5,9 +5,10 @@ from pathlib import Path
 
 from pydantic import TypeAdapter
 
-from aidm.engines.dnd5e.content.models import Manifest, Pack
-from aidm.engines.dnd5e.content.records.base import Collection, ContentRef, Record
+from aidm.core.packs import ContentRef, Manifest, Pack, Record, validate_pack
+from aidm.engines.dnd5e.content.records.base import Collection
 from aidm.engines.dnd5e.content.records.character import RecordOption
+from aidm.engines.dnd5e.content.registry import PACK_FORMAT
 
 from . import character as char
 from .common import PACK_ID
@@ -92,7 +93,9 @@ def build(checkout: Path) -> Pack:
         edition=EDITION,
         provides={name: len(records) for name, records in projected.items()},
     )
-    return Pack.model_validate({"manifest": manifest, "records": projected})
+    pack = Pack.model_validate({"manifest": manifest, "records": projected})
+    validate_pack(pack, PACK_FORMAT)
+    return pack
 
 
 def _subclass_levels(levels: Sequence[Level]) -> dict[str, int]:

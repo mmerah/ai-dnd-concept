@@ -2,12 +2,13 @@ from random import Random
 
 from pydantic_ai import ModelRetry
 
+from aidm.core.packs import ContentSlug
+
 from . import dice, features, rolls
 from .access import Dnd5eWorld
 from .rolls import Struck
 from .ruleset import AttackProfile, Ruleset, WeaponProfile
 from .state import Dnd5eActor, Dnd5eItem, Progression
-from .values import ContentSlug
 
 
 def swing(world: Dnd5eWorld, attacker: Dnd5eActor, weapon: str, ruleset: Ruleset) -> AttackProfile:

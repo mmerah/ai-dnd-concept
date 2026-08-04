@@ -2,6 +2,8 @@ from collections import Counter
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 
+from aidm.core.packs import Content, ContentMiss, ContentRef, ContentSlug, Record
+
 from .. import dice
 from ..ruleset import (
     ArchetypeProfile,
@@ -15,9 +17,8 @@ from ..ruleset import (
     WeaponProfile,
 )
 from ..state import MAX_LEVEL, Origin, StatBlock
-from ..values import Ability, ContentSlug
-from .library import Content, ContentMiss
-from .records.base import ContentRef, DamageRoll, Record
+from ..values import Ability
+from .records.base import DamageRoll
 from .records.character import (
     AbilityBonus,
     AgentActiveFeatureMechanics,

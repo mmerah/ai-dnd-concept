@@ -2,10 +2,12 @@ from typing import Annotated, Literal, Self
 
 from pydantic import Field, model_validator
 
+from aidm.core.packs import EMPTY_FROZEN_MAP, ContentRef, ContentSlug, FrozenMap, Record, Value
+
 from ...dice import PositiveDice
-from ...values import EMPTY_FROZEN_MAP, Ability, ContentSlug, FrozenMap, Value
+from ...values import Ability
 from ..vocabulary import LanguageName, RestType
-from .base import ContentRef, CreatureSize, Record
+from .base import CreatureSize
 
 
 class AbilityBonus(Value):

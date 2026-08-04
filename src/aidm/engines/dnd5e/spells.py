@@ -4,11 +4,10 @@ from pydantic_ai import ModelRetry
 
 from aidm.core.base import EntityId
 from aidm.core.facts import Fact
+from aidm.core.packs import ContentMiss, ContentRef
 
 from . import dice, mechanics, rolls
 from .access import Dnd5eWorld
-from .content.library import ContentMiss
-from .content.records.base import ContentRef
 from .content.records.spells import SpellDamage, SpellLevel, SpellRecord, SpellSave
 from .content.vocabulary import RestType
 from .identity import ENGINE_ID

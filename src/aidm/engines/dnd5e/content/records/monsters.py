@@ -2,10 +2,12 @@ from typing import Annotated, Literal
 
 from pydantic import Field
 
+from aidm.core.packs import EMPTY_FROZEN_MAP, ContentRef, ContentSlug, FrozenMap, Record, Value
+
 from ...dice import DiceExpr
-from ...values import EMPTY_FROZEN_MAP, Ability, Attributes, ContentSlug, FrozenMap, Value
+from ...values import Ability, Attributes
 from ..vocabulary import ConditionName, RestType
-from .base import ContentRef, CreatureSize, DamageRoll, Record
+from .base import CreatureSize, DamageRoll
 
 AttackType = Literal["melee", "ranged", "ability", "magic"]
 SaveOutcome = Literal["none", "half"]

@@ -2,10 +2,11 @@ from typing import Annotated, Literal
 
 from pydantic import Field
 
+from aidm.core.packs import EMPTY_FROZEN_MAP, ContentSlug, FrozenMap, Record, Value
+
 from ...dice import DiceExpr
-from ...values import EMPTY_FROZEN_MAP, Ability, ContentSlug, FrozenMap, Value
+from ...values import Ability
 from ..vocabulary import DamageType, MagicSchool
-from .base import Record
 
 MAX_SPELL_LEVEL = 9
 

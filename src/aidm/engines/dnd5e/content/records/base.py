@@ -2,8 +2,9 @@ from typing import Literal
 
 from pydantic import Field
 
+from aidm.core.packs import Value
+
 from ...dice import DiceExpr
-from ...values import ContentSlug, Value
 from ..vocabulary import DamageType
 
 Collection = Literal[
@@ -32,25 +33,6 @@ Collection = Literal[
 ]
 
 CreatureSize = Literal["Tiny", "Small", "Medium", "Large", "Huge", "Gargantuan"]
-
-
-class ContentRef(Value):
-    """Uses a triple because indexes collide across collections and packs."""
-
-    pack: ContentSlug
-    collection: Collection
-    index: ContentSlug
-
-    def __str__(self) -> str:
-        return f"{self.pack}/{self.collection}/{self.index}"
-
-    def sibling(self, collection: Collection, index: ContentSlug) -> "ContentRef":
-        return ContentRef(pack=self.pack, collection=collection, index=index)
-
-
-class Record(Value):
-    index: ContentSlug
-    name: str
 
 
 class DamageRoll(Value):

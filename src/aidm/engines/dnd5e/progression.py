@@ -5,10 +5,11 @@ from random import Random
 from pydantic_ai import ModelRetry
 
 from aidm.core.facts import Fact
+from aidm.core.packs import ContentRef, ContentSlug, Value
 
 from . import features as class_features
 from . import rolls, spells
-from .content.records.base import Collection, ContentRef
+from .content.records.base import Collection
 from .content.records.character import (
     AbilityBonus,
     BonusOption,
@@ -28,7 +29,7 @@ from .state import (
     Origin,
     Progression,
 )
-from .values import ABILITIES, Ability, Attributes, ContentSlug, Value
+from .values import ABILITIES, Ability, Attributes
 
 MAX_ABILITY_SCORE = 20
 

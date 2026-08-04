@@ -1,7 +1,7 @@
 from aidm.core.base import EntityId, Kind
 from aidm.core.content import Rules
+from aidm.core.packs import ContentRef
 
-from .content.records.base import ContentRef
 from .content.registry import COLLECTION_SPECS
 from .ruleset import Ruleset
 from .state import (
@@ -36,7 +36,8 @@ def statted_item(item_id: EntityId, rules: Rules, ruleset: Ruleset) -> Dnd5eItem
 
 
 def _require_backing(entity_id: EntityId, kind: Kind, ref: ContentRef, ruleset: Ruleset) -> None:
-    if kind != COLLECTION_SPECS[ref.collection].entity:
+    spec = COLLECTION_SPECS.get(ref.collection)
+    if spec is None or kind != spec.entity:
         raise ValueError(f"a {kind} may not name a {ref.collection} record: {entity_id!r}")
     if not ruleset.provides(ref):
         raise ValueError(f"{entity_id!r} names {ref}, which nothing provides")

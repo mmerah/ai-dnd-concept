@@ -7,6 +7,7 @@ the tree whose arms spend different numbers of picks — the one part `flatten` 
 
 from collections.abc import Mapping, Sequence
 
+from aidm.core.packs import ContentSlug
 from aidm.engines.dnd5e.content.records.base import Collection
 from aidm.engines.dnd5e.content.records.character import (
     AbilityBonus,
@@ -33,7 +34,6 @@ from aidm.engines.dnd5e.content.records.character import (
     SubraceRecord,
     TraitRecord,
 )
-from aidm.engines.dnd5e.values import ContentSlug
 
 from .choices import flatten
 from .common import ability

@@ -2,9 +2,10 @@ from typing import ClassVar
 
 from pydantic import field_validator
 
+from aidm.core.packs import Record
+
 from ...values import Ability
 from ..vocabulary import ALIGNMENT_NAMES, CONDITION_NAMES, LANGUAGE_NAMES
-from .base import Record
 
 
 class VocabularyRecord(Record):

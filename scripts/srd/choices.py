@@ -16,7 +16,8 @@ project it."""
 
 from collections.abc import Iterator, Sequence
 
-from aidm.engines.dnd5e.content.records.base import Collection, ContentRef
+from aidm.core.packs import ContentRef
+from aidm.engines.dnd5e.content.records.base import Collection
 from aidm.engines.dnd5e.content.records.character import (
     AbilityBonus,
     BonusOption,

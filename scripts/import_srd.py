@@ -14,7 +14,7 @@ from pathlib import Path
 from srd.build import build
 from srd.common import PACK_ID
 
-from aidm.engines.dnd5e.content.library import write_pack
+from aidm.core.packs import write_pack
 
 REPOSITORY_ROOT = Path(__file__).parent.parent
 SHIPPED_PACK_DIR = REPOSITORY_ROOT / "src" / "aidm" / "engines" / "dnd5e" / "packs"

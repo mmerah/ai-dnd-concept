@@ -4,12 +4,13 @@ from typing import Annotated, Literal, Self
 from pydantic import Field, model_validator
 
 from aidm.core.base import Entity, EntityId, Mutable
+from aidm.core.packs import CONTENT_SLUG_MAX_LENGTH, ContentRef, ContentSlug, Value
 from aidm.core.world import BareLocation, EngineRules, GameState, WorldState
 
-from .content.records.base import Collection, ContentRef
+from .content.records.base import Collection
 from .content.records.spells import SlotLevel
 from .content.vocabulary import ConditionName, RestType
-from .values import CONTENT_SLUG_MAX_LENGTH, Ability, Attributes, ContentSlug, Value
+from .values import Ability, Attributes
 
 MAX_LEVEL = 20
 
@@ -84,6 +85,11 @@ class Origin(Value):
     subrace_ref: ContentRef | None = None
     background_ref: ContentRef | None = None
     subclass_ref: ContentRef | None = None
+
+    @property
+    def refs(self) -> tuple[ContentRef, ...]:
+        chosen = (self.race_ref, self.subrace_ref, self.background_ref, self.subclass_ref)
+        return (self.class_ref, *(ref for ref in chosen if ref is not None))
 
 
 class Progression(Mutable):
