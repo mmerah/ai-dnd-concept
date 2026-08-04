@@ -1,7 +1,7 @@
 from fivee_test_support import initial_5e_game
 
-from aidm.kernel.base import EntityId
-from aidm.kernel.engine import entity_renderer
+from aidm.core.base import EntityId
+from aidm.core.engine import entity_renderer
 from aidm.workflow.prompts import SceneSnapshot, VisibleScene, render_narrator
 
 

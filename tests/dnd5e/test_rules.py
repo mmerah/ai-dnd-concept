@@ -5,12 +5,12 @@ import pytest
 from fivee_test_support import initial_5e_game, turn_of
 from pydantic import TypeAdapter, ValidationError
 
-from aidm.kernel.base import PLAYER_ID, Entity, EntityId
-from aidm.plugins.dnd5e import dice
-from aidm.plugins.dnd5e import rolls as rules
-from aidm.plugins.dnd5e.dice import Magnitude
-from aidm.plugins.dnd5e.state import Dnd5eActor, Dnd5eActorState, StatBlock
-from aidm.plugins.dnd5e.values import Attributes
+from aidm.core.base import PLAYER_ID, Entity, EntityId
+from aidm.engines.dnd5e import dice
+from aidm.engines.dnd5e import rolls as rules
+from aidm.engines.dnd5e.dice import Magnitude
+from aidm.engines.dnd5e.state import Dnd5eActor, Dnd5eActorState, StatBlock
+from aidm.engines.dnd5e.values import Attributes
 
 MAGNITUDE: TypeAdapter[Magnitude] = TypeAdapter(Magnitude)
 

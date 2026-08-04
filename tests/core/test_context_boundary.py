@@ -1,14 +1,14 @@
 import pytest
 from core_test_support import STORY, updated, with_entity
 
-from aidm.kernel.base import PLAYER_ID, SAVE_VERSION, Entity, EntityId, Kind
-from aidm.kernel.content import ScenarioMeta
-from aidm.kernel.engine import EntityRenderer, entity_renderer
-from aidm.kernel.world import GameState, Record, WorldState
-from aidm.plugins.story.engine import build_story_engine
-from aidm.plugins.story.presentation import StoryPresentation
-from aidm.plugins.story.state import DEFAULT_APPROACHES, StoryActorState, StoryItemState
-from aidm.workflow.growth import GrowthRequest
+from aidm.core.base import PLAYER_ID, SAVE_VERSION, Entity, EntityId, Kind
+from aidm.core.content import ScenarioMeta
+from aidm.core.engine import EntityRenderer, entity_renderer
+from aidm.core.turn import GrowthRequest
+from aidm.core.world import GameState, Record, WorldState
+from aidm.engines.story.engine import build_story_engine
+from aidm.engines.story.presentation import StoryPresentation
+from aidm.engines.story.state import DEFAULT_APPROACHES, StoryActorState, StoryItemState
 from aidm.workflow.prompts import (
     SceneSnapshot,
     VisibleScene,

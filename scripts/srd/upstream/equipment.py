@@ -5,8 +5,8 @@ projected as separate non-optional models."""
 
 from pydantic import Field
 
-from aidm.plugins.dnd5e.content.records.base import CoinUnit
-from aidm.plugins.dnd5e.content.records.equipment import (
+from aidm.engines.dnd5e.content.records.base import CoinUnit
+from aidm.engines.dnd5e.content.records.equipment import (
     ArmorCategory,
     Rarity,
     ToolCategory,
@@ -14,7 +14,7 @@ from aidm.plugins.dnd5e.content.records.equipment import (
     WeaponCategory,
     WeaponReach,
 )
-from aidm.plugins.dnd5e.content.vocabulary import EquipmentCategory
+from aidm.engines.dnd5e.content.vocabulary import EquipmentCategory
 
 from .base import ApiRef, CategoryRef, Damage, PropertyRef, Upstream
 

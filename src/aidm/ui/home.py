@@ -4,13 +4,13 @@ from collections.abc import Callable
 from nicegui import ui
 from nicegui.events import ValueChangeEventArguments
 
-from aidm.kernel.application import (
+from aidm.core.config import Settings
+from aidm.core.registry import as_engine_id
+from aidm.workflow.session import (
     LauncherController,
     SaveOption,
     load_catalog,
 )
-from aidm.kernel.config import Settings
-from aidm.kernel.registry import as_engine_id
 
 from .components.engine import show_engine_badge
 

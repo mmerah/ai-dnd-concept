@@ -41,11 +41,11 @@ uv run pytest
 ## Layout
 
 ```text
-src/aidm/kernel/          engine-neutral world, content, persistence, composition
-src/aidm/workflow/        the turn loop, its agents, director tools, prompts
-src/aidm/plugins/story/   Story state, rules, presentation, advancement
-src/aidm/plugins/dnd5e/   5e mechanics, compiled profiles, SRD pack, advancement
-src/aidm/ui/              NiceGUI composition root
+src/aidm/core/            engine-neutral world, facts, tools, content, persistence
+src/aidm/workflow/        the turn loop, its agents, prompts, session composition root
+src/aidm/engines/story/   Story state, rules, presentation, advancement
+src/aidm/engines/dnd5e/   5e mechanics, compiled profiles, SRD pack, advancement
+src/aidm/ui/              NiceGUI shell: renders state, submits decisions
 scripts/srd/      one-shot importer narrowing an upstream 5e-database checkout
 characters/       shared character canon plus one overlay per supported engine
 scenarios/        shared world canon plus one overlay per supported engine
@@ -53,8 +53,8 @@ tests/            per-package suites: core, story, dnd5e, ui
 ```
 
 One distribution. The import direction is enforced by `tests/core/test_package_boundary.py`: the
-engines do not import each other or `aidm.ui`, and the kernel and workflow import neither the UI
-nor NiceGUI. The shipped SRD pack is package data under `src/aidm/plugins/dnd5e/packs/`.
+engines do not import each other or `aidm.ui`, and core and workflow import neither the UI
+nor NiceGUI. The shipped SRD pack is package data under `src/aidm/engines/dnd5e/packs/`.
 
 The **Trace** tab shows private Director mechanics, resolved facts, and the exact prompt received
 by each role. The **State** tab shows the committed game state. **Advancement** delegates its

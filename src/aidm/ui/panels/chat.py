@@ -1,6 +1,6 @@
 from nicegui import ui
 
-from aidm.kernel.application import GameSession
+from aidm.workflow.session import GameSession
 
 
 def chat(session: GameSession) -> None:

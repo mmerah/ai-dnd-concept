@@ -6,12 +6,11 @@ import pytest
 from core_test_support import STORY, initialized, tool_context, turn_context, updated
 from fivee_test_support import initial_5e_game, ruleset
 
-from aidm.kernel.engine import narrator_evidence
-from aidm.kernel.store import ENCODING, FileSaves, FileTraces, load_character, load_scenario
-from aidm.plugins.dnd5e.tools import Dnd5eTools
-from aidm.workflow.growth import Growth
-from aidm.workflow.tools import DirectorNotes
-from aidm.workflow.turn import Advance, Turn
+from aidm.core.engine import narrator_evidence
+from aidm.core.store import ENCODING, FileSaves, FileTraces, load_character, load_scenario
+from aidm.core.tools import DirectorNotes
+from aidm.core.turn import Advance, Growth, Turn
+from aidm.engines.dnd5e.tools import Dnd5eTools
 
 
 def test_save_and_trace_round_trip(tmp_path: Path) -> None:

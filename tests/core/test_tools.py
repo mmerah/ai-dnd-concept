@@ -4,10 +4,9 @@ import pytest
 from core_test_support import initialized, tool_context, turn_context, updated, with_entity
 from pydantic_ai import ModelRetry, RunContext
 
-from aidm.kernel.base import PLAYER_ID, EntityId
-from aidm.kernel.facts import Fact
-from aidm.kernel.world import GameState
-from aidm.workflow.tools import (
+from aidm.core.base import PLAYER_ID, EntityId
+from aidm.core.facts import Fact
+from aidm.core.tools import (
     DirectorNotes,
     TurnContext,
     director_notes,
@@ -18,6 +17,7 @@ from aidm.workflow.tools import (
     move,
     take_item,
 )
+from aidm.core.world import GameState
 
 BELL_TOWER = EntityId("bell_tower")
 ELENA = EntityId("elena")

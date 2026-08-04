@@ -1,10 +1,10 @@
 import json
 from collections.abc import Callable, Iterable, Sequence
 
-from ..kernel.base import PLAYER_ID, Entity, EntityId, Frozen, Kind
-from ..kernel.engine import EntityRenderer
-from ..kernel.world import Exchange, GameState, ScenarioMeta, WorldState
-from .growth import GrowthRequest
+from ..core.base import PLAYER_ID, Entity, EntityId, Frozen, Kind
+from ..core.engine import EntityRenderer
+from ..core.turn import GrowthRequest
+from ..core.world import Exchange, GameState, ScenarioMeta, WorldState
 
 type Placement = Callable[[Entity], str]
 type Label = Callable[[Entity], str]

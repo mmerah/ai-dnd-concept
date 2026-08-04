@@ -6,12 +6,12 @@ from fivee_test_support import actor_of, new_game, ruleset, summary, turn_of, wi
 from fivee_test_support import content_ref as ref
 from pydantic_ai import ModelRetry
 
-from aidm.kernel.base import PLAYER_ID, Entity, EntityId
-from aidm.kernel.world import GameState
-from aidm.plugins.dnd5e import bestiary, procedures
-from aidm.plugins.dnd5e import rolls as rules
-from aidm.plugins.dnd5e.access import Dnd5eWorld
-from aidm.plugins.dnd5e.state import (
+from aidm.core.base import PLAYER_ID, Entity, EntityId
+from aidm.core.world import GameState
+from aidm.engines.dnd5e import bestiary, procedures
+from aidm.engines.dnd5e import rolls as rules
+from aidm.engines.dnd5e.access import Dnd5eWorld
+from aidm.engines.dnd5e.state import (
     Dnd5eActor,
     Dnd5eActorDefinition,
     Dnd5eActorState,

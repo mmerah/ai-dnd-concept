@@ -1,7 +1,7 @@
 """Weapons, armour, gear, tools, vehicles and magic items: one upstream type, six models."""
 
-from aidm.plugins.dnd5e.content.records.base import Coin
-from aidm.plugins.dnd5e.content.records.equipment import (
+from aidm.engines.dnd5e.content.records.base import Coin
+from aidm.engines.dnd5e.content.records.equipment import (
     ArmorRecord,
     GearRecord,
     MagicItemRecord,

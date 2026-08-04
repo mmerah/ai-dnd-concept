@@ -8,21 +8,22 @@ import pytest
 from core_test_support import tool_context, turn_context, updated
 from pydantic_ai import RunContext
 
-from aidm.kernel.base import PLAYER_ID, SAVE_VERSION, EngineId, Entity, EntityId
-from aidm.kernel.content import ScenarioMeta, authored_world
-from aidm.kernel.engine import Engine
-from aidm.kernel.facts import Fact
-from aidm.kernel.store import load_character, load_scenario
-from aidm.kernel.world import GameState, Record, WorldState
-from aidm.plugins.dnd5e.access import read_actor, read_item
-from aidm.plugins.dnd5e.content.library import Content, loaded, read_pack
-from aidm.plugins.dnd5e.content.models import Pack
-from aidm.plugins.dnd5e.content.pack_ruleset import compile_ruleset
-from aidm.plugins.dnd5e.content.records.base import Collection, ContentRef
-from aidm.plugins.dnd5e.content.records.base import Record as ContentRecord
-from aidm.plugins.dnd5e.engine import dnd5e_engine
-from aidm.plugins.dnd5e.ruleset import Ruleset
-from aidm.plugins.dnd5e.state import (
+from aidm.core.base import PLAYER_ID, SAVE_VERSION, EngineId, Entity, EntityId
+from aidm.core.content import ScenarioMeta, authored_world
+from aidm.core.engine import Engine
+from aidm.core.facts import Fact
+from aidm.core.store import load_character, load_scenario
+from aidm.core.tools import TurnContext
+from aidm.core.world import GameState, Record, WorldState
+from aidm.engines.dnd5e.access import read_actor, read_item
+from aidm.engines.dnd5e.content.library import Content, loaded, read_pack
+from aidm.engines.dnd5e.content.models import Pack
+from aidm.engines.dnd5e.content.pack_ruleset import compile_ruleset
+from aidm.engines.dnd5e.content.records.base import Collection, ContentRef
+from aidm.engines.dnd5e.content.records.base import Record as ContentRecord
+from aidm.engines.dnd5e.engine import dnd5e_engine
+from aidm.engines.dnd5e.ruleset import Ruleset
+from aidm.engines.dnd5e.state import (
     Dnd5eActor,
     Dnd5eActorState,
     Dnd5eCharacterData,
@@ -30,12 +31,11 @@ from aidm.plugins.dnd5e.state import (
     Dnd5eItemState,
     StatBlock,
 )
-from aidm.plugins.dnd5e.tools import Dnd5eTools
-from aidm.plugins.dnd5e.values import Attributes, ContentSlug
-from aidm.workflow.tools import TurnContext
+from aidm.engines.dnd5e.tools import Dnd5eTools
+from aidm.engines.dnd5e.values import Attributes, ContentSlug
 
 REPOSITORY_ROOT = Path(__file__).parents[2]
-PACK_DIR = REPOSITORY_ROOT / "src" / "aidm" / "plugins" / "dnd5e" / "packs" / "srd-2014"
+PACK_DIR = REPOSITORY_ROOT / "src" / "aidm" / "engines" / "dnd5e" / "packs" / "srd-2014"
 
 
 def content_ref(collection: str, index: str) -> ContentRef:

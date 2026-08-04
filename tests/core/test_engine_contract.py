@@ -2,20 +2,20 @@ from random import Random
 
 from core_test_support import character, initialized, settings, tool_context, turn_context
 
-from aidm.kernel.base import PLAYER_ID, Entity, EntityId
-from aidm.kernel.engine import Engine
-from aidm.kernel.facts import Fact
-from aidm.kernel.registry import engine_ids, plugins
-from aidm.kernel.world import GameState
-from aidm.plugins.story.state import (
+from aidm.core.base import PLAYER_ID, Entity, EntityId
+from aidm.core.engine import Engine
+from aidm.core.facts import Fact
+from aidm.core.registry import engine_ids, plugins
+from aidm.core.tools import take_item
+from aidm.core.world import GameState
+from aidm.engines.story.state import (
     DEFAULT_APPROACHES,
     StoryCharacterData,
     actor_state,
     item_state,
     player_state,
 )
-from aidm.plugins.story.tools import risk
-from aidm.workflow.tools import take_item
+from aidm.engines.story.tools import risk
 
 
 def _turn(engine: Engine, state: GameState) -> tuple[GameState, tuple[Fact, ...]]:

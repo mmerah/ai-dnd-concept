@@ -8,22 +8,22 @@ from fivee_progression_support import RULES, SHEET, answers, levelled, next_of, 
 from fivee_test_support import Turn, actor_of, new_game, player_of, turn_of, with_actor
 from pydantic_ai import ModelRetry
 
-from aidm.kernel.base import EntityId
-from aidm.kernel.world import GameState
-from aidm.plugins.dnd5e import progression
-from aidm.plugins.dnd5e import rolls as rules
-from aidm.plugins.dnd5e.access import Dnd5eWorld
-from aidm.plugins.dnd5e.content.library import ContentMiss
-from aidm.plugins.dnd5e.content.records.base import ContentRef
-from aidm.plugins.dnd5e.content.records.character import BonusOption, ProgressionChoice
-from aidm.plugins.dnd5e.engine import dnd5e_engine
-from aidm.plugins.dnd5e.ruleset import (
+from aidm.core.base import EntityId
+from aidm.core.world import GameState
+from aidm.engines.dnd5e import progression
+from aidm.engines.dnd5e import rolls as rules
+from aidm.engines.dnd5e.access import Dnd5eWorld
+from aidm.engines.dnd5e.content.library import ContentMiss
+from aidm.engines.dnd5e.content.records.base import ContentRef
+from aidm.engines.dnd5e.content.records.character import BonusOption, ProgressionChoice
+from aidm.engines.dnd5e.engine import dnd5e_engine
+from aidm.engines.dnd5e.ruleset import (
     CharacterProfile,
     FeatureProfile,
     LevelProfile,
     ProgressionRules,
 )
-from aidm.plugins.dnd5e.state import MAX_LEVEL, Decisions, Dnd5eActor, Origin, ResourceState
+from aidm.engines.dnd5e.state import MAX_LEVEL, Decisions, Dnd5eActor, Origin, ResourceState
 
 
 def test_a_sheet_becomes_a_legal_level_one_character() -> None:

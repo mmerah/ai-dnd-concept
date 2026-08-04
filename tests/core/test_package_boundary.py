@@ -4,18 +4,21 @@ from pathlib import Path
 import pytest
 
 SOURCE = Path(__file__).parents[2] / "src" / "aidm"
-CORE = ("kernel", "workflow")
+ENGINE_BLIND = ("core", "workflow")
 FORBIDDEN = {
-    "kernel": {"aidm.ui", "nicegui"},
+    "core": {"aidm.workflow", "aidm.ui", "nicegui"},
     "workflow": {"aidm.ui", "nicegui"},
     # An engine ships its own panels, so it may import nicegui; `aidm.ui` stays closed to it.
-    "plugins/story": {"aidm.plugins.dnd5e", "aidm.ui"},
-    "plugins/dnd5e": {"aidm.plugins.story", "aidm.ui"},
+    "engines/story": {"aidm.workflow", "aidm.engines.dnd5e", "aidm.ui"},
+    "engines/dnd5e": {"aidm.workflow", "aidm.engines.story", "aidm.ui"},
+    "ui": {"aidm.engines"},
 }
 
 
 def _source_files(package: str) -> tuple[Path, ...]:
-    return tuple((SOURCE / package).rglob("*.py"))
+    files = tuple((SOURCE / package).rglob("*.py"))
+    assert files, f"no python files under src/aidm/{package}: renamed without updating the tables?"
+    return files
 
 
 def _package_of(path: Path) -> tuple[str, ...]:
@@ -63,8 +66,8 @@ def test_no_core_file_imports_an_engine_package() -> None:
     """Adding an engine is one line in `registry.ENGINE_MODULES`, the only place naming one."""
     naming = {
         path.name
-        for package in CORE
+        for package in ENGINE_BLIND
         for path in _source_files(package)
-        if any(name.startswith("aidm.plugins") for name in _file_imports(path))
+        if any(name.startswith("aidm.engines") for name in _file_imports(path))
     }
     assert naming == set()

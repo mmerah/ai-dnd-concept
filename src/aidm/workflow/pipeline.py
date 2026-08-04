@@ -4,12 +4,13 @@ from random import Random
 
 from pydantic import Field
 
-from ..kernel.base import Entity, EntityDetail, EntityId, Frozen, Role, slug
-from ..kernel.engine import Engine, entity_renderer, narrator_evidence
-from ..kernel.facts import Fact
-from ..kernel.world import Exchange, GameState
+from ..core.base import Entity, EntityDetail, EntityId, Frozen, Role, slug
+from ..core.engine import Engine, entity_renderer, narrator_evidence
+from ..core.facts import Fact
+from ..core.tools import TurnContext
+from ..core.turn import GrowthRequest, Turn, screen_growth
+from ..core.world import Exchange, GameState
 from .agents import DirectorStage, SharedStages, exchanges_to_messages
-from .growth import GrowthRequest, screen_growth
 from .prompts import (
     SceneSnapshot,
     VisibleScene,
@@ -18,8 +19,6 @@ from .prompts import (
     render_maintainer,
     render_narrator,
 )
-from .tools import TurnContext
-from .turn import Turn
 
 
 class TurnOptions(Frozen):

@@ -1,7 +1,7 @@
 from nicegui import ui
 
-from aidm.kernel.base import EngineId
-from aidm.kernel.registry import plugin_for
+from aidm.core.base import EngineId
+from aidm.core.registry import plugin_for
 
 
 def show_engine_badge(engine: EngineId) -> None:

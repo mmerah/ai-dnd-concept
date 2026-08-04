@@ -6,7 +6,7 @@ value named rather than being narrowed later by a hand-written `match` per vocab
 
 from pydantic import BaseModel, ConfigDict, Field
 
-from aidm.plugins.dnd5e.content.vocabulary import (
+from aidm.engines.dnd5e.content.vocabulary import (
     ConditionName,
     DamageType,
     EquipmentCategory,

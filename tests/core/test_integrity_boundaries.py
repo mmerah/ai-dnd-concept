@@ -2,8 +2,8 @@ import pytest
 from core_test_support import STORY, character, initialized, scenario, updated, with_entity
 from pydantic import ValidationError
 
-from aidm.kernel.base import PLAYER_ID, Entity, EntityId
-from aidm.kernel.content import (
+from aidm.core.base import PLAYER_ID, Entity, EntityId
+from aidm.core.content import (
     AuthoredEntity,
     AuthoredWorld,
     Character,
@@ -11,9 +11,9 @@ from aidm.kernel.content import (
     CharacterProfile,
     authored_world,
 )
-from aidm.kernel.world import WorldState
-from aidm.plugins.dnd5e.state import Dnd5eActorState, StatBlock
-from aidm.plugins.story.state import (
+from aidm.core.world import WorldState
+from aidm.engines.dnd5e.state import Dnd5eActorState, StatBlock
+from aidm.engines.story.state import (
     DEFAULT_APPROACHES,
     StoryCharacterData,
     StoryGearTag,

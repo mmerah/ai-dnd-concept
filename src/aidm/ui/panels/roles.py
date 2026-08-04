@@ -1,7 +1,7 @@
 from nicegui import ui
 
-from aidm.kernel.application import GameSession
-from aidm.kernel.base import ROLES
+from aidm.core.base import ROLES
+from aidm.workflow.session import GameSession
 
 
 def role_badges(session: GameSession) -> None:

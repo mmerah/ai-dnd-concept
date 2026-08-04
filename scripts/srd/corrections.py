@@ -11,8 +11,8 @@ fix raises here instead of silently patching nothing, which keeps this list from
 
 from collections.abc import Mapping
 
-from aidm.plugins.dnd5e.content.records.base import Collection, Record
-from aidm.plugins.dnd5e.values import ContentSlug
+from aidm.engines.dnd5e.content.records.base import Collection, Record
+from aidm.engines.dnd5e.values import ContentSlug
 
 # A 5e rogue takes an ability score improvement at 4, 8, 10, 12, 16 and 19, so the cumulative total
 # is the count of those levels reached: 0,0,0,1,1,1,1,2,2,3,3,4,4,4,4,5,5,5,6,6. Upstream is right

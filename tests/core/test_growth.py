@@ -1,4 +1,4 @@
-from aidm.workflow.growth import GrowthRequest, screen_growth
+from aidm.core.turn import GrowthRequest, screen_growth
 
 
 def request(name: str) -> GrowthRequest:

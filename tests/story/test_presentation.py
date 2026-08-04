@@ -1,6 +1,6 @@
 from story_test_support import initial_story_game
 
-from aidm.kernel.engine import entity_renderer
+from aidm.core.engine import entity_renderer
 from aidm.workflow.prompts import SceneSnapshot, VisibleScene, render_narrator
 
 

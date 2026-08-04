@@ -16,13 +16,13 @@ from pydantic_ai.output import OutputSpec
 from pydantic_ai.providers.openai import OpenAIProvider
 from pydantic_ai.toolsets import AbstractToolset
 
-from ..kernel.base import EntityDetail, Role
-from ..kernel.config import ProviderConfig, RoleConfig, Settings
-from ..kernel.engine import Engine
-from ..kernel.world import Exchange
+from ..core.base import EntityDetail, Role
+from ..core.config import ProviderConfig, RoleConfig, Settings
+from ..core.engine import Engine
+from ..core.tools import DirectorNotes, TurnContext, director_notes, world_toolset
+from ..core.turn import Growth
+from ..core.world import Exchange
 from . import prompts
-from .growth import Growth
-from .tools import DirectorNotes, TurnContext, director_notes, world_toolset
 
 
 @dataclass(frozen=True)

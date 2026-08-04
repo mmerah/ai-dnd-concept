@@ -8,8 +8,8 @@ from core_test_support import initialized, settings
 from pydantic_ai.messages import ModelMessage, ModelResponse, TextPart, ToolCallPart
 from pydantic_ai.models.function import AgentInfo, FunctionModel
 
-from aidm.kernel.base import PLAYER_ID
-from aidm.plugins.story.state import DEFAULT_APPROACHES, actor_state, item_state
+from aidm.core.base import PLAYER_ID
+from aidm.engines.story.state import DEFAULT_APPROACHES, actor_state, item_state
 from aidm.workflow.agents import director_stage, shared_stages
 from aidm.workflow.pipeline import TurnOptions, run_turn
 

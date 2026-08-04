@@ -3,8 +3,8 @@ from random import Random
 
 from story_test_support import initial_story_game, setback
 
-from aidm.kernel.base import PLAYER_ID, EntityId
-from aidm.plugins.story.advancement import (
+from aidm.core.base import PLAYER_ID, EntityId
+from aidm.engines.story.advancement import (
     AcquireGear,
     AddTag,
     IncreaseMaximumStress,
@@ -17,7 +17,7 @@ from aidm.plugins.story.advancement import (
     raisable_approaches,
     stress_raisable,
 )
-from aidm.plugins.story.state import (
+from aidm.engines.story.state import (
     APPROACH_NAMES,
     MAX_APPROACH,
     MAX_MAX_STRESS,

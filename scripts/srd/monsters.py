@@ -2,8 +2,8 @@
 
 from collections.abc import Sequence
 
-from aidm.plugins.dnd5e.content.records.base import ContentRef
-from aidm.plugins.dnd5e.content.records.monsters import (
+from aidm.engines.dnd5e.content.records.base import ContentRef
+from aidm.engines.dnd5e.content.records.monsters import (
     MonsterAction,
     MonsterAttack,
     MonsterMultiattack,
@@ -17,7 +17,7 @@ from aidm.plugins.dnd5e.content.records.monsters import (
     Senses,
     Speed,
 )
-from aidm.plugins.dnd5e.values import Ability, Attributes
+from aidm.engines.dnd5e.values import Ability, Attributes
 
 from .common import PACK_ID, ability, damages, feet, index_of, owner_of, usage
 from .upstream.monsters import (
