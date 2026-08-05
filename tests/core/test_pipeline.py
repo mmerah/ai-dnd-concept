@@ -55,6 +55,11 @@ async def test_an_engine_uses_the_shared_pipeline_and_safe_narrator_prompt() -> 
             )
         )
         stack.enter_context(
+            members.referee.agent.override(
+                model=FunctionModel(scripted(structured(objection=None)))
+            )
+        )
+        stack.enter_context(
             members.narrator.agent.override(
                 model=FunctionModel(scripted(text("A creased chart slides into your hand.")))
             )
@@ -74,13 +79,12 @@ async def test_an_engine_uses_the_shared_pipeline_and_safe_narrator_prompt() -> 
             on_step=steps.append,
         )
 
-    assert steps == ["director", "narrator", "maintainer", "creator"]
+    assert steps == ["director", "referee", "narrator", "maintainer", "creator"]
     assert [fact.kind for fact in result.turn.facts] == ["entity_discovered", "entity_moved"]
     assert {item.id for item in result.state.world.children(PLAYER_ID, "item")} == {
         "lantern",
         "vault_map",
     }
-    assert result.turn.notes.tone == "hushed"
     assert "Elena" not in result.turn.prompts["narrator"]
     assert "engine_data" not in result.turn.prompts["narrator"]
     assert result.state.turn == 1
@@ -107,6 +111,11 @@ async def test_the_director_reacts_to_a_real_outcome_before_it_settles_the_turn(
                         structured(intent="Kael pushes too hard.", tone="tense"),
                     )
                 )
+            )
+        )
+        stack.enter_context(
+            members.referee.agent.override(
+                model=FunctionModel(scripted(structured(objection=None)))
             )
         )
         stack.enter_context(
@@ -140,6 +149,11 @@ async def test_creator_growth_receives_valid_engine_rules_before_commit() -> Non
                 model=FunctionModel(
                     scripted(structured(intent="Someone approaches.", tone="curious"))
                 )
+            )
+        )
+        stack.enter_context(
+            members.referee.agent.override(
+                model=FunctionModel(scripted(structured(objection=None)))
             )
         )
         stack.enter_context(
@@ -240,6 +254,11 @@ async def test_a_failed_role_never_mutates_the_input_state() -> None:
                 )
             )
         )
+        stack.enter_context(
+            members.referee.agent.override(
+                model=FunctionModel(scripted(structured(objection=None)))
+            )
+        )
         stack.enter_context(members.narrator.agent.override(model=FunctionModel(boom)))
         with pytest.raises(RuntimeError, match="narrator exploded"):
             await run_turn(
@@ -265,6 +284,11 @@ async def test_a_script_takes_an_extra_step_without_core_edits() -> None:
     with ExitStack() as stack:
         stack.enter_context(members.director.agent.override(model=FunctionModel(scripted(NOTES))))
         stack.enter_context(
+            members.referee.agent.override(
+                model=FunctionModel(scripted(structured(objection=None)))
+            )
+        )
+        stack.enter_context(
             members.narrator.agent.override(model=FunctionModel(scripted(text("You wait."))))
         )
         stack.enter_context(
@@ -282,5 +306,61 @@ async def test_a_script_takes_an_extra_step_without_core_edits() -> None:
             on_step=steps.append,
         )
 
-    assert steps == ["director", "narrator", "maintainer", "creator", "echo"]
+    assert steps == ["director", "referee", "narrator", "maintainer", "creator", "echo"]
     assert result.turn.prompts["echo"] == "extra step ran"
+
+
+async def test_an_objection_continues_the_director_once_and_commits_its_correction() -> None:
+    engine, state = initialized()
+    members = default_cast(engine, settings())
+    with ExitStack() as stack:
+        stack.enter_context(
+            members.director.agent.override(
+                model=FunctionModel(
+                    scripted(
+                        structured(intent="Kael hesitates.", tone="flat"),
+                        calling(
+                            "adjust",
+                            entity_id="player",
+                            counter="stress",
+                            delta=1,
+                            reason="the strain of forcing the door",
+                        ),
+                        structured(intent="Kael forces the door.", tone="tense"),
+                    )
+                )
+            )
+        )
+        stack.enter_context(
+            members.referee.agent.override(
+                model=FunctionModel(
+                    scripted(
+                        structured(
+                            objection="The player forced the door and nothing was rolled;"
+                            " resolve the risk now."
+                        )
+                    )
+                )
+            )
+        )
+        stack.enter_context(
+            members.narrator.agent.override(model=FunctionModel(scripted(text("The door gives."))))
+        )
+        stack.enter_context(
+            members.maintainer.agent.override(
+                model=FunctionModel(scripted(structured(requests=[])))
+            )
+        )
+        result = await run_turn(
+            state,
+            "I force the door.",
+            engine=engine,
+            script=members.script(engine, OPTIONS),
+            options=OPTIONS,
+            rng=Random(0),
+        )
+
+    assert [fact.kind for fact in result.turn.facts] == ["referee_objection", "counter_changed"]
+    assert result.turn.notes.intent == "Kael forces the door."
+    assert player_sheet(result.state).counters["stress"].current == 1
+    assert "forced the door" not in result.turn.narrator_evidence

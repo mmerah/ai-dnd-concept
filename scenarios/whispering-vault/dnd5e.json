@@ -1,7 +1,18 @@
 {
   "entities": {
     "cloister_rat": {
-      "refs": [{ "pack": "srd-2014", "collection": "monsters", "index": "giant-rat" }]
+      "refs": [
+        {
+          "pack": "srd-2014",
+          "collection": "monsters",
+          "index": "giant-rat"
+        }
+      ]
+    },
+    "vault": {
+      "numbers": {
+        "milestone-level": 2
+      }
     }
   }
 }

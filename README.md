@@ -6,15 +6,16 @@ A role-separated narrative game platform with two first-party rules engines:
 - **AIDM 5e** — the D&D 5e implementation, isolated in its own engine package.
 
 ```text
-prompt → DIRECTOR → resolve + commit → NARRATOR → MAINTAINER → CREATOR → growth + commit
-         Direction   typed facts          prose         Growth       Entity
+prompt → DIRECTOR → REFEREE → NARRATOR → MAINTAINER → CREATOR → growth + commit
+         tools+commit  check     prose        Growth      Entity
 ```
 
-The model proposes typed mechanics, the selected engine resolves them deterministically against a
-draft, and core commits a fully revalidated state. Core owns each role's visible entities, while
-the selected engine annotates those entities with one shared state presentation. The Narrator
-receives no unrevealed canon; for visible entities it receives the same state as the other roles, with
-instructions to translate mechanics into fiction rather than recite stat blocks.
+The model acts only through typed tools that resolve deterministically against a draft, and core
+commits a fully revalidated state. An engine is data plus a small shim: a sheet template, lenient
+content records, and a prose rules procedure the model interprets. The Referee checks the
+Director's recorded facts against that procedure and can send the turn back once. The Narrator
+receives no unrevealed canon; for visible entities it receives the same state as the other roles,
+with instructions to translate mechanics into fiction rather than recite stat blocks.
 
 ## Run
 
@@ -41,12 +42,13 @@ uv run pytest
 ## Layout
 
 ```text
-src/aidm/core/            engine-neutral world, facts, tools, content, persistence
+src/aidm/core/            engine-neutral world, sheet, mechanics tools, content, persistence
 src/aidm/workflow/        the turn loop, its agents, prompts, session composition root
-src/aidm/engines/story/   Story state, rules, presentation, advancement
-src/aidm/engines/dnd5e/   5e mechanics, compiled profiles, SRD pack, advancement
+src/aidm/engines/story/   Story engine: spec, director procedure, shim
+src/aidm/engines/dnd5e/   5e engine: spec, director procedure, SRD pack, shim
 src/aidm/ui/              NiceGUI shell: renders state, submits decisions
-scripts/srd/      one-shot importer narrowing an upstream 5e-database checkout
+scripts/srd/      one-shot importer projecting an upstream 5e-database checkout into the pack
+scripts/evals/    live-model eval harness, run manually and never from pytest
 characters/       shared character canon plus one overlay per supported engine
 scenarios/        shared world canon plus one overlay per supported engine
 tests/            per-package suites: core, story, dnd5e, ui
@@ -57,10 +59,11 @@ engines do not import each other or `aidm.ui`, and core and workflow import neit
 nor NiceGUI. The shipped SRD pack is package data under `src/aidm/engines/dnd5e/packs/`.
 
 The **Trace** tab shows private Director mechanics, resolved facts, and the exact prompt received
-by each role. The **State** tab shows the committed game state. **Advancement** delegates its
-engine-specific decisions to a panel the engine ships.
+by each role. The **State** tab shows the committed game state. **Advancement** drafts a proposal
+through an advisor role; the player reviews each change and its reason, then confirms.
 
 ## Docs
 
 - `AGENTS.md`: durable engineering and architecture rules.
 - `docs/ROADMAP.md`: known weaknesses and possible next work.
+- `IDEAS.md`: loose ends and the idea backlog.

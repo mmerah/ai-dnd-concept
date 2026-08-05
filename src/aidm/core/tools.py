@@ -8,7 +8,7 @@ from pydantic_ai import ModelRetry, RunContext
 from pydantic_ai.toolsets import FunctionToolset
 
 from .base import PLAYER_ID, Entity, EntityId, Frozen, Kind, slug
-from .facts import Fact
+from .facts import CORE, Fact
 from .world import EngineRules, GameState
 
 
@@ -18,6 +18,20 @@ class DirectorNotes(Frozen):
     intent: str
     tone: str
     speaker_id: EntityId | None = None
+
+
+class RefereeVerdict(Frozen):
+    """The Referee's ruling on the Director's settled turn."""
+
+    objection: Annotated[str, Field(min_length=1)] | None = Field(
+        default=None,
+        description="Null when the turn stands; otherwise what the Director must correct now, "
+        "in one or two sentences.",
+    )
+
+
+def objection_fact(objection: str) -> Fact:
+    return Fact(source=CORE, kind="referee_objection", trace=objection)
 
 
 @dataclass

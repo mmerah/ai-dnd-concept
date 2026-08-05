@@ -11,7 +11,14 @@ from ..core.base import Entity, EntityDetail, EntityId, Frozen, slug
 from ..core.config import Settings
 from ..core.engine import entity_renderer, narrator_evidence
 from ..core.registry import AnyEngine
-from ..core.tools import DirectorNotes, TurnContext, director_notes, world_toolset
+from ..core.tools import (
+    DirectorNotes,
+    RefereeVerdict,
+    TurnContext,
+    director_notes,
+    objection_fact,
+    world_toolset,
+)
 from ..core.turn import Growth, GrowthRequest, RejectedGrowth, Turn, screen_growth
 from ..core.world import EngineRules, Exchange, GameState
 from . import prompts
@@ -39,6 +46,7 @@ class TurnWorkspace:
     context: TurnContext[EngineRules]
     recent: tuple[Exchange, ...]
     prompts: dict[str, str] = field(default_factory=dict)
+    director_messages: list[ModelMessage] = field(default_factory=list)
     notes: DirectorNotes | None = None
     evidence: str = ""
     narration: str = ""
@@ -52,6 +60,12 @@ type StepFn = Callable[[TurnWorkspace], Awaitable[None]]
 type TurnScript = tuple[tuple[str, StepFn], ...]
 
 
+def _commit_tools(ws: TurnWorkspace) -> None:
+    """Commit what the tools did before anyone reads it."""
+    ws.context.draft = ws.context.draft.committed().draft()
+    ws.evidence = narrator_evidence(ws.context.facts)
+
+
 def director_step(
     role: Stage[TurnContext[EngineRules], DirectorNotes], engine: AnyEngine
 ) -> StepFn:
@@ -60,10 +74,39 @@ def director_step(
         ws.prompts[role.name] = prompts.render_director(
             SceneSnapshot.of(draft), entity_renderer(engine, draft), draft.scenario, ws.prompt
         )
-        ws.notes = await role.run(ws.prompts[role.name], ws.context, ws.history)
-        # Commit what the tools did before anyone reads it
-        ws.context.draft = draft.committed().draft()
-        ws.evidence = narrator_evidence(ws.context.facts)
+        ws.notes, ws.director_messages = await role.converse(
+            ws.prompts[role.name], ws.context, ws.history
+        )
+        _commit_tools(ws)
+
+    return run
+
+
+def referee_step(
+    role: Stage[None, RefereeVerdict],
+    director: Stage[TurnContext[EngineRules], DirectorNotes],
+) -> StepFn:
+    async def run(ws: TurnWorkspace) -> None:
+        notes = ws.notes
+        if notes is None:
+            raise ValueError("referee_step ran before a director step settled the turn")
+        recorded = "\n".join(f"- {fact.trace}" for fact in ws.context.facts)
+        ws.prompts[role.name] = prompts.render_referee(
+            ws.prompts[director.name],
+            recorded or "- (no tool call recorded anything)",
+            notes.intent,
+        )
+        verdict = await role.run(ws.prompts[role.name], None)
+        if verdict.objection is None:
+            return
+        ws.context.facts.append(objection_fact(verdict.objection))
+        ws.notes, ws.director_messages = await director.converse(
+            f"REFEREE: {verdict.objection}\n"
+            "Correct this with your tools now, then answer with your notes again.",
+            ws.context,
+            ws.director_messages,
+        )
+        _commit_tools(ws)
 
     return run
 
@@ -133,6 +176,7 @@ def creator_step(role: Stage[None, EntityDetail], engine: AnyEngine) -> StepFn:
 @dataclass(frozen=True, slots=True)
 class Cast:
     director: Stage[TurnContext[EngineRules], DirectorNotes]
+    referee: Stage[None, RefereeVerdict]
     narrator: Stage[None, str]
     maintainer: Stage[None, Growth]
     creator: Stage[None, EntityDetail]
@@ -140,6 +184,7 @@ class Cast:
     def script(self, engine: AnyEngine, options: TurnOptions) -> TurnScript:
         return (
             (self.director.name, director_step(self.director, engine)),
+            (self.referee.name, referee_step(self.referee, self.director)),
             (self.narrator.name, narrator_step(self.narrator, engine)),
             (self.maintainer.name, maintainer_step(self.maintainer, engine, options)),
             (self.creator.name, creator_step(self.creator, engine)),
@@ -155,6 +200,13 @@ def default_cast(engine: AnyEngine, settings: Settings) -> Cast:
             output_type=NativeOutput(director_notes, name="DirectorNotes"),
             deps_type=TurnContext,
             toolsets=(world_toolset(), engine.toolsets["director"]),
+        ),
+        referee=stage(
+            "referee",
+            settings,
+            instructions=f"{prompts.REFEREE}\n\n{engine.director_instructions}",
+            output_type=NativeOutput(RefereeVerdict),
+            deps_type=NoneType,
         ),
         narrator=stage(
             "narrator", settings, instructions=prompts.NARRATOR, output_type=str, deps_type=NoneType

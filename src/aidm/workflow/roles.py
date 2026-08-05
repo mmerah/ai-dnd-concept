@@ -51,8 +51,15 @@ class Stage[Deps, Out]:
         )
 
     async def run(self, prompt: str, deps: Deps, recent: Sequence[ModelMessage] = ()) -> Out:
+        output, _ = await self.converse(prompt, deps, recent)
+        return output
+
+    async def converse(
+        self, prompt: str, deps: Deps, recent: Sequence[ModelMessage] = ()
+    ) -> tuple[Out, list[ModelMessage]]:
+        """`run`, keeping the conversation so a caller can continue it with a follow-up."""
         result = await self.agent.run(prompt, deps=deps, message_history=list(recent))
-        return result.output
+        return result.output, result.all_messages()
 
 
 def stage[Deps, Out](

@@ -5,6 +5,7 @@ from fivee_test_support import dnd5e_game, dnd5e_session, ready
 from pydantic_ai.messages import ModelMessage, ModelResponse, TextPart
 from pydantic_ai.models.function import AgentInfo, FunctionModel
 
+from aidm.core.base import PLAYER_ID, EntityId
 from aidm.core.packs import ContentRef
 from aidm.core.sheet import (
     AddRef,
@@ -14,6 +15,7 @@ from aidm.core.sheet import (
     SheetDelta,
     player_sheet,
 )
+from aidm.core.tools import require
 from aidm.engines.dnd5e.engine import ADVANCEMENT_READY
 
 ACTION_SURGE = ContentRef(pack="srd-2014", collection="features", index="action-surge-1-use")
@@ -50,6 +52,19 @@ def test_the_ready_tag_opens_the_next_level_row() -> None:
     assert offer.prompt.startswith("Fighter 2")
     assert offer.options == (ACTION_SURGE,)
     assert offer.choose == 1
+
+
+def test_standing_at_a_scenario_milestone_opens_the_offer_without_the_tag() -> None:
+    engine, state = dnd5e_game()
+    draft = state.draft()
+    _ = draft.move(require(draft, PLAYER_ID), require(draft, EntityId("vault")))
+    at_vault = draft.committed()
+
+    assert engine.proposal.offered(at_vault) is not None
+
+    leveled = at_vault.draft()
+    player_sheet(leveled).numbers["level"] = 2
+    assert engine.proposal.offered(leveled) is None
 
 
 def test_a_pick_outside_the_offer_and_a_level_that_does_not_move_are_both_refused() -> None:

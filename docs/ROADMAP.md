@@ -27,7 +27,7 @@ Status of the proof of concept, and where it should go. Kept short on purpose.
 
 ### Structure and scale
 
-- Spell preparation is unmodelled. `cast` spends a slot and resolves attack rolls, saves, damage and healing; a known caster's repertoire is chosen at level-up from the pack's cumulative `spells_known`. A prepared caster has no per-rest decision channel, so their whole class list stays castable — an over-permission at the class boundary rather than an invented limit. Concentration and temporary HP have no state either, so a spell's duration is description-guided.
+- Spell preparation is unmodelled: a caster's whole known list stays castable — an over-permission at the class boundary rather than an invented limit. Concentration is a sheet note the Director maintains; temporary HP has no state, so a spell's duration is description-guided.
 - History is the last 6 exchanges, verbatim. No summarisation, no retrieval; a long game silently forgets its own middle.
 - No undo. The save is a single current state, not a history of commits.
 - Four sequential role calls per ordinary turn, plus one Creator call per accepted growth request, with no streaming.
@@ -40,12 +40,12 @@ Status of the proof of concept, and where it should go. Kept short on purpose.
 
 - pre-commit configuration (format, check, type safety, tests)
 - Maintainer validation pass: check narration against facts, retry the Narrator once on a contradiction. Turns silent desync into a visible, correctable failure.
-- A small eval harness over recorded turns, so reliability is measured rather than recalled.
 
 ### Planned features
 
 - Locations are connected, they have a state.
-- Continue 5e mechanics inside `aidm/engines/dnd5e/` without widening core state. 5e content has plently of "numbers" and "notes". Can we have an actual entity (character) with a race, subrace, class, level, ... and have actual proper state depending on what we have (e.g. armor equipped change AC, traits are actionable and granted depending on the race, level up work and grants new spells/features/..., ... need state for currency/hp/ac/spell slots/...)
+- Deepen 5e play where the lenient shape is still thin: prepared casting, equipment state beyond
+  armour, temporary HP.
 - Expand Story consequences only where narrative play demonstrates a concrete need.
 - Character creator, decoupling the character from the scenario file.
 - AI scenario creator — from a premise, or ingested from a PDF.
@@ -55,10 +55,9 @@ Status of the proof of concept, and where it should go. Kept short on purpose.
   detail. Two ways to spend it better: render compactly where the shape allows it, and make the
   render prompt-aware, expanding a spell or a feature in full only when the turn's prompt reaches
   for it and leaving the rest as a name. Measure it against the eval suite, not by eye.
-- Engine referee: a rules-verification role that runs after the Director, fed the content pack's
-  rules text (srd-2014, datasworn) and optionally an external reference (e.g. the D&D 5e API),
-  and checks the Director's mechanical interpretation before commit. Recovers rule accuracy the
-  lenient architecture trades away, as a measured layer instead of typed code.
+- Referee depth: the role exists and objects on the engine's own rules text before commit. It does
+  not yet consult an external reference (e.g. the D&D 5e API), and it guarantees only that an
+  objection was raised — see the loose ends in `IDEAS.md`.
 - Image and voice generation for flavour, behind an interface, never on the turn's critical path.
 - UI growth: character sheet, journal, known-world panel.
 - Memory system

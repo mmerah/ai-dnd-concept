@@ -14,3 +14,6 @@ saves/
 # Repo formatter
 .repo_formatter.yaml
 repository.md
+
+# Eval output
+scripts/evals/results/

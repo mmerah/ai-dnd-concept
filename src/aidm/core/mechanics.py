@@ -75,6 +75,8 @@ class Mechanics:
         Work out the bonuses yourself from the sheet and the rules text, and put them in the
         expression. Give `vs` whenever the roll can fail, and read the SUCCESS or FAILURE back
         before you apply anything that follows from it.
+        Example: roll(dice="1d20+5", reason="longsword vs the guard", vs=14) — then on SUCCESS,
+        roll(dice="1d8+3", reason="longsword damage").
         """
         deps = ctx.deps
         first = _evaluate(dice, deps.rng)
@@ -98,6 +100,7 @@ class Mechanics:
 
         Use for damage, healing, stress, and any pool that is spent or restored by an amount. The
         change is clamped to the counter's own bounds, and the fact reports what actually landed.
+        Example: adjust(entity_id="guard", counter="hp", delta=-7, reason="longsword hit").
         """
         deps = ctx.deps
         entity, sheet, seen = self._target(deps, entity_id)
@@ -178,6 +181,8 @@ class Mechanics:
 
         Use when something takes hold beyond this moment; whether it takes hold is not yours to
         decide when it could be resisted, so roll for that first.
+        Example: add_tag(entity_id="guard", tag_id="poisoned", name="Poisoned",
+        text="Its attacks and checks falter while the venom holds.").
         """
         deps = ctx.deps
         entity, sheet, seen = self._target(deps, entity_id)
@@ -193,7 +198,10 @@ class Mechanics:
         entity_id: TargetArg,
         tag_id: Annotated[Slug, Field(description="Exact id of a tag the entity carries.")],
     ) -> str:
-        """Lift a tag an entity carries, when the fiction ends it."""
+        """Lift a tag an entity carries, when the fiction ends it.
+
+        Example: remove_tag(entity_id="guard", tag_id="poisoned").
+        """
         deps = ctx.deps
         entity, sheet, seen = self._target(deps, entity_id)
         tag = sheet.tag(tag_id)
@@ -215,6 +223,7 @@ class Mechanics:
 
         Use for bookkeeping the fiction needs remembered and no counter or tag holds, such as what
         a caster is concentrating on. Writing a key again replaces what it held.
+        Example: set_note(entity_id="player", key="concentration", text="charm-beast").
         """
         deps = ctx.deps
         entity, sheet, seen = self._target(deps, entity_id)
@@ -238,6 +247,7 @@ class Mechanics:
 
         Use only for a standing change to what an entity is — armour worn, a permanent blessing.
         Never for the outcome of this turn: pools that go up and down are counters.
+        Example: set_number(entity_id="player", key="armor-class", value=16) after donning mail.
         """
         deps = ctx.deps
         entity, sheet, seen = self._target(deps, entity_id)

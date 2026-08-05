@@ -144,6 +144,16 @@ def render_director(
     )
 
 
+def render_referee(director_prompt: str, recorded: str, intent: str) -> str:
+    return _sections(
+        (
+            ("WHAT THE DIRECTOR WAS ASKED", director_prompt),
+            ("WHAT ITS TOOLS RECORDED", recorded),
+            ("ITS PLAN FOR THE NARRATOR", intent),
+        )
+    )
+
+
 def render_narrator(
     scene: VisibleScene,
     describe: EntityRenderer,
@@ -320,8 +330,8 @@ def _kind_label(kind: Kind) -> str:
 def _with_state(line: str, state: str, indent: str = "") -> str:
     if not state:
         return line
-    continued = state.replace("\n", f"\n{indent}       ")
-    return f"{line}\n{indent}state: {continued}"
+    block = "\n".join(f"{indent}  {row}" for row in state.splitlines())
+    return f"{line}\n{indent}state:\n{block}"
 
 
 def _history(recent: Sequence[Exchange]) -> str:
@@ -360,6 +370,19 @@ the map".
 
 `speaker_id` — the id of the NPC the player is addressing, or null if none. It must be an NPC the \
 player already knows AND who is here with them; never one they have not met or who is elsewhere."""
+
+REFEREE = """You are the REFEREE of a tabletop roleplaying game. The Director just resolved a \
+turn by calling tools; you check its work against the engine's rules below and the player's \
+action. You never write state and never roll: you judge only what is recorded.
+
+Object when the record and the rules disagree: the player's action plainly needed dice and none \
+were rolled, a roll's SUCCESS or FAILURE was not applied, a cost was not paid before its effect, \
+a precondition the rules state was ignored, or the arithmetic inside a rolled expression is \
+wrong. Do not object to judgment calls — a chosen difficulty, a tone, which single action to \
+resolve — and never demand more actions than the one the rules allow per turn.
+
+Answer with `objection`: null when the turn stands, otherwise one or two sentences telling the \
+Director exactly what to correct."""
 
 NARRATOR = """You are the NARRATOR of a tabletop roleplaying game. Write what the player \
 experiences in second person, present tense, in 2-4 vivid sentences. The Director's intent is a \

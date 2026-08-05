@@ -7,13 +7,14 @@ from aidm.core.enginepack import load_engine
 from aidm.core.packs import Content, ContentMiss, ContentRef, LenientRecord, Value
 from aidm.core.registry import EnginePlugin
 from aidm.core.sheet import Sheet, SheetDelta, apply_delta, player_sheet
-from aidm.core.world import GameState
+from aidm.core.world import GameState, rules_of
 
 from .identity import ENGINE_ID
 
 ENGINE_DIR = Path(__file__).parent
 ADVANCEMENT_READY = "advancement-ready"
 LEVEL = "level"
+MILESTONE_LEVEL = "milestone-level"
 
 
 class Dnd5eConfig(Value):
@@ -22,7 +23,7 @@ class Dnd5eConfig(Value):
 
 def _offered(state: GameState[Sheet], content: Content) -> AdvancementOffer | None:
     sheet = player_sheet(state)
-    if sheet.tag(ADVANCEMENT_READY) is None:
+    if sheet.tag(ADVANCEMENT_READY) is None and not _milestone_reached(state, sheet):
         return None
     next_level = sheet.numbers[LEVEL] + 1
     record = content.get(_level_ref(sheet, next_level), LenientRecord)
@@ -37,8 +38,16 @@ def _offered(state: GameState[Sheet], content: Content) -> AdvancementOffer | No
     )
 
 
+def _milestone_reached(state: GameState[Sheet], sheet: Sheet) -> bool:
+    """A milestone is a fact the scenario states, not a judgment: a location's `milestone-level`
+    opens the offer to any player standing there below it."""
+    here = rules_of(state.world.record(state.player_location), Sheet)
+    earned = here.numbers.get(MILESTONE_LEVEL)
+    return earned is not None and sheet.numbers[LEVEL] < earned
+
+
 def _check(state: GameState[Sheet], offer: AdvancementOffer, delta: SheetDelta) -> str | None:
-    """5e's own caps: the level moves by exactly one, and the tag that opened the offer is spent."""
+    """5e's own caps: the level moves by exactly one, and a tag that opened the offer is spent."""
     del offer
     before = player_sheet(state)
     after = before.model_copy(deep=True)
@@ -46,7 +55,7 @@ def _check(state: GameState[Sheet], offer: AdvancementOffer, delta: SheetDelta) 
     reached = before.numbers[LEVEL] + 1
     if after.numbers[LEVEL] != reached:
         return f"this level-up reaches level {reached}: set `{LEVEL}` to exactly that"
-    if after.tag(ADVANCEMENT_READY) is not None:
+    if before.tag(ADVANCEMENT_READY) is not None and after.tag(ADVANCEMENT_READY) is not None:
         return f"the level-up is spent by removing the {ADVANCEMENT_READY!r} tag"
     return None
 

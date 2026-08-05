@@ -25,7 +25,7 @@ from aidm.core.registry import AnyEngine, build_engine
 from aidm.core.store import load_character, load_scenario
 from aidm.core.tools import TurnContext
 from aidm.core.world import EngineRules, GameState
-from aidm.workflow.pipeline import TurnWorkspace, default_cast, director_step
+from aidm.workflow.pipeline import TurnWorkspace, default_cast, director_step, referee_step
 
 EVALS = Path(__file__).parent
 SCENARIOS = EVALS / "scenarios"
@@ -234,7 +234,9 @@ async def _turn(case: EvalCase, run: int, config: Settings) -> Outcome:
         draft=before.draft(), rng=rng, facts=[], default_rules=engine.default_rules
     )
     workspace = TurnWorkspace(prompt=case.prompt, history=[], context=context, recent=())
-    await director_step(default_cast(engine, config).director, engine)(workspace)
+    cast = default_cast(engine, config)
+    await director_step(cast.director, engine)(workspace)
+    await referee_step(cast.referee, cast.director)(workspace)
     after = context.draft.committed()
     engine.validate_state(after)
     return Outcome(before=before, after=after, facts=tuple(context.facts))
