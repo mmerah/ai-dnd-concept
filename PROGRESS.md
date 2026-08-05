@@ -158,8 +158,19 @@ Story evals measured twice at `654154e`, recorded in `BASELINE.md` and `results/
 completion 100%**, identical scenario by scenario across both runs. `story-risk-single-roll` 100%
 (the risk procedure carries), `story-no-risk-needed` 66.7%, **`story-taken-out-cannot-risk` 33.3%**
 — the Director rolls for a taken-out actor in 4 of 6 runs. Of the four checks Story stopped
-enforcing in code, that is the one that actually regressed, and the fix is a wording change:
-the ban is a trailing clause of a stress bullet instead of a precondition of the risk procedure.
+enforcing in code, that is the one that actually regressed.
+
+**The cause is not isolated.** The ban is a trailing clause of a stress bullet rather than a
+precondition of the risk procedure, so the wording is a candidate — but so is the director model:
+`openai/gpt-oss-120b` is a weak reader for a conditional precondition it must apply before acting.
+Two experiments separate them, cheapest first: (1) hoist the ban into `A RISK` and re-run — if it
+clears, it was wording; (2) re-run the same suite with a stronger `director` model and no wording
+change — if it clears, it was the model. Do not conflate the two in one run. **Experiment 1 is
+applied and unmeasured**: `director.md` now opens `A RISK` with the taken-out precondition and
+states it once. The 33.3% above is the rate for the wording at `654154e`, not for this one. Beyond both sits the
+roadmap's engine referee (`docs/ROADMAP.md`), which is the structural answer to a precondition an
+instruction cannot make stick: a post-Director check would catch "rolled for a taken-out actor"
+whatever the model did.
 
 ### Decisions taken
 

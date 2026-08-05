@@ -107,6 +107,15 @@ recorded as one of three outcomes, and the suite reports all three:
 `retries` is recorded with each run because it changes completion directly. A comparison is only valid
 between runs with the same `retries` and the same model.
 
+## If you change the director model
+
+The gate below is a comparison, so both sides must be measured on the same model. Raising the model
+is a good idea and it is also a **window that closes**: phase 3 deletes the typed 5e engine, and
+after that there is nothing left to re-baseline against. So if a stronger `director` model is ever
+going to be the one the gate runs on, re-measure the 5e suite on it **before** phase 3 lands, record
+it beside the baseline below as a second baseline, and say which one phase 3 is being judged against.
+Changing the model and the engine in the same step measures neither.
+
 ## The phase-3 gate
 
 Phase 3 deletes the typed 5e engine and moves attack bonuses, save DCs and upcast scaling into the
