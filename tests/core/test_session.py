@@ -1,43 +1,13 @@
 from pathlib import Path
-from random import Random
 
 import pytest
-from core_test_support import DND5E, STORY, character, scenario, settings, updated
-from story_test_support import setback
+from core_test_support import settings, updated
+from story_test_support import TARGET
+from story_test_support import story_session as session
 
-from aidm.core.base import PLAYER_ID, AdvancementDecision
 from aidm.core.content import ScenarioMeta
-from aidm.core.registry import build_engine
 from aidm.core.store import FileSaves, FileTraces
-from aidm.core.turn import Advance
-from aidm.engines.story.advancement import RaiseApproach, dump_decision
-from aidm.engines.story.state import actor_of
-from aidm.workflow.pipeline import TurnOptions, default_cast
-from aidm.workflow.session import GameSession, LaunchTarget, Runtime
-
-TARGET = LaunchTarget(
-    slug="poc",
-    scenario_id="whispering-vault",
-    character_id="kael",
-    engine=STORY,
-)
-
-
-def session(directory: Path) -> GameSession:
-    config = settings()
-    engine = build_engine(STORY, config)
-    options = TurnOptions(history_window=6, max_growth=3)
-    return GameSession(
-        target=TARGET,
-        scenario=scenario(),
-        character=character(),
-        engine=engine,
-        script=default_cast(engine, config).script(engine, options),
-        saves=FileSaves(directory),
-        traces=FileTraces(directory),
-        options=options,
-        rng=Random(1),
-    )
+from aidm.workflow.session import Runtime
 
 
 def test_opening_does_not_save_and_restart_discards_durable_state(tmp_path: Path) -> None:
@@ -73,31 +43,6 @@ def test_resume_refuses_a_save_that_is_not_this_game(
 
     with pytest.raises(ValueError, match=message):
         session(tmp_path)
-
-
-def test_advancement_commits_through_the_same_path_and_reaches_the_trace(tmp_path: Path) -> None:
-    """An advancement is a transaction like a turn: it saves and reaches the trace panel."""
-    game = session(tmp_path)
-    for _ in range(3):
-        game.state = setback(game.engine, game.state)[0]
-    player = actor_of(game.state, PLAYER_ID)
-    assert player.growth_marks == 3
-    before = player.approaches.bold
-    decision = RaiseApproach(approach="bold")
-
-    with pytest.raises(ValueError, match="dnd5e"):
-        game.advance(AdvancementDecision(engine=DND5E))
-
-    facts = game.advance(dump_decision(decision))
-
-    assert [fact.kind for fact in facts] == ["approach_raised", "growth_reset"]
-    player = actor_of(game.state, PLAYER_ID)
-    assert player.approaches.bold == before + 1
-    assert player.growth_marks == 0
-    assert FileSaves(tmp_path).load("poc", game.engine.state_type) == game.state
-    (entry,) = FileTraces(tmp_path).load("poc")
-    assert isinstance(entry, Advance) and entry.facts == facts
-    assert game.entries == [entry]
 
 
 def test_one_open_game_per_slug_and_it_keeps_the_origin_it_was_opened_with(tmp_path: Path) -> None:

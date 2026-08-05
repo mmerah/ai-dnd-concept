@@ -8,7 +8,6 @@ from aidm.engines.dnd5e.advancement import (
     Dnd5eAdvancement,
     Dnd5eAdvancementDecisions,
     benefit_sections,
-    dump_decision,
     plan_sections,
 )
 from aidm.engines.dnd5e.content.records.character import ProgressionChoice
@@ -50,7 +49,7 @@ def test_5e_advancement_status_and_full_flow() -> None:
     assert any("Hit die" in line for line in level_section.lines)
     assert plan_sections(plan)[0].heading == "Level 2"
 
-    advanced = advancement.advance(dump_decision(decisions), offered, Random(1)).state
+    advanced = advancement.advance(decisions, offered, Random(1)).state
 
     assert advancement.status(advanced).headline == "level 2"
     assert not advancement.available(advanced)

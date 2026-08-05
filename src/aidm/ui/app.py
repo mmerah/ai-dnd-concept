@@ -63,9 +63,9 @@ async def submit(view: GameView, box: ui.input) -> None:
     session.busy = True
     box.value = ""
     try:
-        advancement_was_available = session.advancement_available()
+        was_offered = session.offer() is not None
         await session.submit(prompt, on_step=lambda step: on_step(view, step))
-        if not advancement_was_available and session.advancement_available():
+        if not was_offered and session.offer() is not None:
             ui.notify("Advancement unlocked. Open the Advancement tab to choose it.")
     except Exception as error:
         ui.notify(f"{type(error).__name__}: {error}", type="negative", multi_line=True)

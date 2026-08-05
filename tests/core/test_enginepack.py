@@ -1,15 +1,14 @@
 import json
-from collections.abc import Callable
 from pathlib import Path
-from random import Random
 
 import pytest
 
-from aidm.core.base import PLAYER_ID, SAVE_VERSION, AdvancementDecision, EngineId, Entity, EntityId
+from aidm.core.base import PLAYER_ID, SAVE_VERSION, EngineId, Entity, EntityId
 from aidm.core.content import AuthoredEntity, AuthoredWorld
-from aidm.core.engine import AdvancementSubmit, CurrentState, Engine, Transition
+from aidm.core.engine import AdvancementOffer, Engine
 from aidm.core.enginepack import load_engine
 from aidm.core.packs import (
+    Content,
     ContentRef,
     LenientRecord,
     Manifest,
@@ -18,7 +17,7 @@ from aidm.core.packs import (
     read_pack,
     write_pack,
 )
-from aidm.core.sheet import Counter, Sheet
+from aidm.core.sheet import Counter, Sheet, SheetDelta
 from aidm.core.world import GameState, Record, ScenarioMeta, WorldState
 
 PACK = Pack(
@@ -53,37 +52,24 @@ SPEC = {
 }
 
 
-def _advance(
-    decision: AdvancementDecision, state: GameState[Sheet], rng: Random
-) -> Transition[Sheet]:
-    raise AssertionError("advance is not exercised by this test")
+def _offered(state: GameState[Sheet], content: Content) -> AdvancementOffer | None:
+    return None
 
 
-def _advancement_available(state: GameState[Sheet]) -> bool:
-    return False
-
-
-def _advancement_panel(
-    current: CurrentState, submit: AdvancementSubmit, close: Callable[[], None]
-) -> None:
+def _check(state: GameState[Sheet], offer: AdvancementOffer, delta: SheetDelta) -> str | None:
     return None
 
 
 def _engine_dir(tmp_path: Path) -> Path:
     (tmp_path / "spec.json").write_text(json.dumps(SPEC), encoding="utf-8")
     (tmp_path / "director.md").write_text("Test procedure.\n", encoding="utf-8")
+    (tmp_path / "advancement.md").write_text("Test growth.\n", encoding="utf-8")
     write_pack(tmp_path / "packs" / "testpack", PACK)
     return tmp_path
 
 
 def _engine(tmp_path: Path) -> Engine[Sheet]:
-    return load_engine(
-        _engine_dir(tmp_path),
-        EngineId("test"),
-        advance=_advance,
-        advancement_available=_advancement_available,
-        advancement_panel=_advancement_panel,
-    )
+    return load_engine(_engine_dir(tmp_path), EngineId("test"), offered=_offered, check=_check)
 
 
 def _minimal_state(engine: Engine[Sheet], player_sheet: Sheet) -> GameState[Sheet]:

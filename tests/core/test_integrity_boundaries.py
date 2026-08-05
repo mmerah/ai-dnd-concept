@@ -11,13 +11,8 @@ from aidm.core.content import (
     CharacterProfile,
     authored_world,
 )
+from aidm.core.sheet import SheetDefinition, SheetTag
 from aidm.engines.dnd5e.state import Dnd5eActorState, StatBlock
-from aidm.engines.story.state import (
-    DEFAULT_APPROACHES,
-    StoryCharacterData,
-    StoryGearTag,
-    StoryItemDefinition,
-)
 
 HELD = EntityId("frayed_rope")
 UNHELD = EntityId("silk_rope")
@@ -33,10 +28,10 @@ def _character(*, holds: Entity, gear_for: EntityId) -> Character:
             items=(holds,),
         ),
         overlay=CharacterOverlay(
-            character=StoryCharacterData(approaches=DEFAULT_APPROACHES).model_dump(mode="json"),
+            character=SheetDefinition().model_dump(mode="json"),
             entities={
-                gear_for: StoryItemDefinition(
-                    gear=StoryGearTag(name="Silk Rope", description="Braided silk.")
+                gear_for: SheetDefinition(
+                    tags=(SheetTag(id="silk-rope", name="Silk Rope", text="(gear) Braided silk."),)
                 ).model_dump(mode="json")
             },
         ),
@@ -73,8 +68,6 @@ def test_world_and_game_state_reject_inconsistent_topology() -> None:
         with_entity(state, updated(carried, kind="location"))
 
 
-# Dumping the foreign payload trips Pydantic's serializer warning before validation rejects it.
-@pytest.mark.filterwarnings("ignore::UserWarning")
 def test_a_record_may_not_hold_another_engines_payload() -> None:
     """The gate has to fire on a resumed save too, not only on the turn that wrote the payload."""
     engine, state = initialized()
@@ -87,9 +80,9 @@ def test_a_record_may_not_hold_another_engines_payload() -> None:
         engine.state_type.model_validate(draft.model_dump(round_trip=True))
 
 
-def test_an_engine_refuses_a_payload_for_a_kind_it_defines_no_rules_for() -> None:
-    """A location holds a record now, so only the engine can call a location payload an authoring
-    error, and it has to say so at launch."""
+def test_an_engine_refuses_an_authored_payload_it_cannot_read() -> None:
+    """Every kind takes a sheet now, so forbid-extra on the authored overlay is what is left of the
+    guard — and it has to fire at launch, not on the turn that first reads the entity."""
     engine, _ = initialized()
     selected = character()
     authored = authored_world(scenario(), selected)
@@ -103,7 +96,7 @@ def test_an_engine_refuses_a_payload_for_a_kind_it_defines_no_rules_for() -> Non
         }
     )
 
-    with pytest.raises(ValueError, match="(?i)location"):
+    with pytest.raises(ValueError, match="gear"):
         engine.initial_world(poisoned, selected.overlay.character)
 
 

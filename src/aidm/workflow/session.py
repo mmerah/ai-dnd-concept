@@ -5,11 +5,13 @@ from textwrap import shorten
 
 from pydantic import BaseModel, ConfigDict, ValidationError
 
-from ..core.base import SAVE_VERSION, AdvancementDecision, EngineId, Slug
+from ..core.base import SAVE_VERSION, EngineId, Slug
 from ..core.config import Settings
 from ..core.content import Character, Scenario, authored_world
+from ..core.engine import AdvancementOffer
 from ..core.facts import Fact
 from ..core.registry import AnyEngine, build_engine
+from ..core.sheet import SheetDelta, apply_delta, player_sheet
 from ..core.store import (
     FileSaves,
     FileTraces,
@@ -22,6 +24,8 @@ from ..core.store import (
 from ..core.turn import Advance, TraceEntry, Turn
 from ..core.world import EngineRules, GameState
 from .pipeline import TurnOptions, TurnScript, default_cast, run_turn
+from .proposals import AdvisorContext, advisor, render_proposal
+from .roles import Stage
 
 
 class LauncherModel(BaseModel):
@@ -257,6 +261,7 @@ class GameSession:
     character: Character
     engine: AnyEngine
     script: TurnScript
+    advisor: Stage[AdvisorContext, SheetDelta]
     saves: FileSaves
     traces: FileTraces
     options: TurnOptions
@@ -264,6 +269,7 @@ class GameSession:
     entries: list[TraceEntry] = field(default_factory=list)
     busy: bool = False
     step: str | None = None
+    drafted: SheetDelta | None = None
     state: GameState[EngineRules] = field(init=False)
 
     def __post_init__(self) -> None:
@@ -305,14 +311,36 @@ class GameSession:
         self._commit(result.state, result.turn)
         return result.turn
 
-    def advance(self, decision: AdvancementDecision) -> tuple[Fact, ...]:
-        transition = self.engine.advance(decision, self.state, self.rng)
-        self.engine.validate_state(transition.state)
-        self._commit(transition.state, Advance(facts=transition.facts))
-        return transition.facts
+    def offer(self) -> AdvancementOffer | None:
+        return self.engine.proposal.offered(self.state)
 
-    def advancement_available(self) -> bool:
-        return self.engine.advancement_available(self.state)
+    async def propose(self, intent: str) -> SheetDelta:
+        """The advisor drafts the change; nothing is committed until the player confirms it."""
+        offer = self._offered()
+        deps = AdvisorContext(engine=self.engine, state=self.state, offer=offer)
+        return await self.advisor.run(render_proposal(self.state, offer, intent), deps)
+
+    def preview(self, delta: SheetDelta) -> tuple[Fact, ...]:
+        """What the change would write, read off a throwaway copy, not the committed sheet."""
+        return apply_delta(player_sheet(self.state).model_copy(deep=True), delta)
+
+    def apply_proposal(self, delta: SheetDelta) -> tuple[Fact, ...]:
+        offer = self._offered()
+        refused = self.engine.proposal.violation(self.state, offer, delta)
+        if refused is not None:
+            raise ValueError(refused)
+        draft = self.state.draft()
+        facts = apply_delta(player_sheet(draft), delta)
+        state = draft.committed()
+        self.engine.validate_state(state)
+        self._commit(state, Advance(facts=facts))
+        return facts
+
+    def _offered(self) -> AdvancementOffer:
+        offer = self.offer()
+        if offer is None:
+            raise ValueError("no advancement is on offer")
+        return offer
 
     def restart(self) -> None:
         opening = self._begun()
@@ -320,6 +348,7 @@ class GameSession:
         self.traces.discard(self.slug)
         self.state = opening
         self.entries = []
+        self.drafted = None
 
     def _commit(self, state: GameState[EngineRules], entry: TraceEntry) -> None:
         self.saves.save(self.slug, state)
@@ -395,6 +424,7 @@ class Runtime:
             character=load_character(config.characters_dir, target.character_id, target.engine),
             engine=engine,
             script=default_cast(engine, config).script(engine, options),
+            advisor=advisor(engine, config),
             saves=FileSaves(config.saves_dir),
             traces=FileTraces(config.saves_dir),
             options=options,

@@ -126,6 +126,109 @@ Both engines still build and run unchanged; nothing was deleted.
 3. `EngineSpec.collections` carries no entity kind, so `CollectionSpec.entity` (the 5e kind guard on
    authored refs) has no lenient equivalent — accepted, as the plan's "legality thins out".
 
-## Phases 2–3
+## Phase 2 — Story on the Sheet, advancement as a proposal flow — done, staged, not committed
 
-Not started.
+- [x] Story is data + a 55-line shim: `spec.json` (approach numbers, stress/growth counters),
+      `director.md` (the risk procedure), `advancement.md` (advisor guidance), `engine.py`
+- [x] **Deleted**: `story/{state,tools,rules,advancement,presentation,ui}.py` (1,089 lines)
+- [x] Re-authored `characters/kael/story.json` and `scenarios/whispering-vault/story.json` as
+      `SheetDefinition` payloads (same authored facts: approaches, stress cap, edges/burdens, gear)
+- [x] `core/sheet.py` — `SheetDelta` (7 typed changes, each with a `why`), `apply_delta`,
+      `player_sheet`
+- [x] `core/engine.py` — `AdvancementOffer`, `ProposalSpec`, `offer_violation`; **deleted**
+      `advance`, `advancement_available`, `advancement_panel`, `Transition`, `entered_text` and the
+      panel aliases. `AdvancementDecision` deleted from `core/base.py`
+- [x] `workflow/proposals.py` (69) — the `advisor` role, its instructions, the one legality rule
+      (`violation`) shared by the retry and the commit, and the prompt renderer
+- [x] `workflow/session.py` — `advance` → `offer` / `propose` / `preview` / `apply_proposal`
+- [x] `ui/panels/advancement.py` (86) — the one generic panel: intent → Propose → the drafted
+      changes with their reasons → Confirm
+- [x] 5e keeps building: its shim passes a `ProposalSpec` that offers nothing and refuses
+      everything; `dnd5e/ui.py` deleted
+- [x] `SAVE_VERSION` 24 → 25
+- [x] Evals: probes read `Sheet` payloads as well as typed 5e, `dice_rolled` with a `vs` counts as a
+      contested roll, and three `story` scenarios were added
+- [x] Gates green: 197 tests pass, `ruff check`, `ruff format --check`, `basedpyright` clean
+- [x] **src 8,200 lines** (budget ≤ 8,400; phase 1 left 9,149)
+
+Not done, and it needs a live model: playing a Story risk and a growth advancement through
+`uv run aidm`, and recording a `story` eval rate in `results/`. Every eval *setup* was verified
+offline (all 24 cases compose and apply).
+
+### Decisions taken
+
+- **The offer carries its content, not a ref.** `AdvancementOffer` holds `prompt`, `text`,
+  `options`, `choose` — already resolved — so neither the panel nor the advisor reaches into a
+  pack. `load_engine` hands `Content` to the engine's `offered`, which is the one place that reads
+  it. `ProposalSpec.check` therefore takes `(state, offer, delta)` and no `LenientRecord`.
+- **The mechanical half of legality is core's, not each engine's.** `offer_violation` checks the
+  picks against `options`/`choose` *and* trial-applies the delta to a copy, so the advisor retries
+  on anything `apply_delta` would refuse and no engine repeats those checks. `check` is left with
+  the engine's own caps — Story's is 12 lines.
+- **The advisor retries through pydantic-ai, not a hand-rolled loop**: an output validator raises
+  `ModelRetry` with the violation, so the role's configured `retries` govern it like every other.
+- **`SetNumber` writes a key the sheet does not have; counters must be granted.** Advancement is
+  where a sheet grows, and the player reads every change before confirming — but a counter needs
+  bounds, so `GrantCounter` is explicit and `ChangeCounter` refuses an unknown key.
+- **`Record.rules` became `SerializeAsAny`.** With one payload type shared by every engine, dumping
+  a foreign payload silently serialised it down to a blank `Sheet` and the commit accepted it. The
+  integrity suite caught it; the annotation makes the foreign fields survive the dump so
+  forbid-extra refuses them. This restores a guarantee the typed unions gave for free.
+- **5e level-up is offline for this phase**, as the plan accepts: `offered` returns None so the
+  panel simply says nothing is on offer, and `check` raises. `AdvancementDecision` and `Transition`
+  moved into `dnd5e/advancement.py`, which phase 3 deletes whole.
+- **Story keeps no recharge labels.** Stress comes back through the fiction (`adjust`), not through
+  a rest, so `spec.json` maps nothing and `recharge` refills nothing for Story.
+- **The probe vocabulary now spans both eras.** `pool`/`tag`/`set_number` resolve against `Sheet`
+  counters, tags and numbers when the payload is a sheet, and against `StatBlock`/`Progression`
+  when it is typed 5e — so the 5e scenarios and the new Story ones run from one suite.
+
+### What Story stopped verifying in code
+
+Accepted with eyes open, per the plan. Three of the four are now eval scenarios
+(`story-risk-single-roll`, `story-taken-out-cannot-risk`, `story-no-risk-needed`). The fourth — a
+claimed helpful tag that does not exist — is not reachable by outcome-level probes, because the
+`+1` lives inside the dice expression the Director wrote; `BASELINE.md` records why no probe was
+built for it.
+
+### Limits this shape accepts
+
+- **A proposal writes the player's sheet and nothing else.** Story's old `acquire_gear`, which
+  created a carried item, is no longer expressible; gear now arrives through the fiction (the
+  Maintainer creates the item, the Director tags it). An engine whose advancement touches a
+  companion or the world would need more than a `SheetDelta`.
+- **`choose` is exact, not a maximum.** "Pick up to two" cannot be offered; a record that means it
+  has to be split into offers that each take a fixed count.
+
+### Review pass
+
+- **The legality rule became `ProposalSpec.violation`** — `offer_violation` and the workflow's
+  `violation()` were two names for halves of one rule; the method holds the whole rule where the
+  spec lives, and the deps type is now `AdvisorContext` (the proposal is the delta, not the deps).
+- **Fixed: the trial-apply now revalidates the trial sheet.** `apply_delta` never raised on a
+  delta that leaves an invalid sheet (`SetNumber` on a counter key — the misname crossover — or a
+  counter maximum below its minimum), so such a proposal passed the advisor's retry and only blew
+  up as a ValidationError at commit. The retry now catches everything the commit would refuse.
+- **Fixed: `restart()` clears `drafted`** — a stale draft survived a restart and reappeared in the
+  panel when growth next filled.
+- **Fixed: the review panel no longer crashes on a stale draft** — a turn between propose and
+  confirm can change the sheet under the draft, and `preview` raised mid-render.
+- Cut: the picks-vs-options rule gained the test the plan asked for; the shipped-content
+  value-pinning test in `tests/story/` deleted (composition is `test_shipped_content`'s job,
+  merging is `test_sheet`'s); `preview` copies the player's sheet, not the whole state.
+- **Instruction text stays split on purpose**: engine-owned procedure is data (`.md` in the engine
+  dir, loaded by `load_engine`), core role text is code (`prompts.py`/`proposals.py` constants
+  coupled to the output types and renderers beside them). 5e's `DIRECTOR_INSTRUCTIONS` is the one
+  outlier and phase 3 deletes it with its module.
+
+### Carried into phase 3
+
+1. 5e's `ProposalSpec` is a stub. 3.1 gives it the real one: the `advancement-ready` tag opens the
+   offer, the level record's `options`/`choose` bind the picks.
+2. `dnd5e/advancement.py` still exports `status`/`Section`/`benefit_sections`/`plan_sections`,
+   reachable only from its own tests now that the panel is gone. They die with the module.
+3. `probes._actor` is still the typed-5e-only path, used by `set_level`; phase 3 deletes it along
+   with `_resource`, `_progression` and the `attack_rolled`/`dc_rolled` fact kinds.
+4. Story's template is per kind, so every NPC carries an unused `growth 0/3` counter in its render.
+   Harmless, and the price of templates keyed by kind rather than by entity.
+5. `phase 3 entry gate`: re-read `scripts/evals/BASELINE.md` before starting.

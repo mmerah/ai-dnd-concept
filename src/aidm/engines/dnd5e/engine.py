@@ -4,14 +4,13 @@ from pathlib import Path
 from aidm.core.base import PLAYER_ID, Entity
 from aidm.core.config import Settings
 from aidm.core.content import AuthoredEntity, AuthoredWorld, Rules, compose_world
-from aidm.core.engine import Engine
+from aidm.core.engine import Engine, ProposalSpec
 from aidm.core.packs import Value, load
 from aidm.core.registry import EnginePlugin
 from aidm.core.world import BareLocation
 
 from . import bestiary, progression
 from .access import read_actor, read_item
-from .advancement import Dnd5eAdvancement
 from .content.pack_ruleset import compile_ruleset
 from .content.registry import PACK_FORMAT
 from .identity import ENGINE_ID
@@ -27,9 +26,18 @@ from .state import (
     StatBlock,
 )
 from .tools import DIRECTOR_INSTRUCTIONS, Dnd5eTools
-from .ui import advancement_panel_for
 
 SHIPPED_PACK = Path(__file__).parent / "packs" / "srd-2014"
+
+
+def _offline(*_: object) -> str:
+    raise ValueError("5e advancement is offline until 5e moves onto the Sheet")
+
+
+# Typed 5e keeps no Sheet, so it offers nothing this phase; phase 3 gives it a real spec.
+_PROPOSAL: ProposalSpec[Dnd5eRules] = ProposalSpec(
+    offered=lambda _state: None, instructions="", check=_offline
+)
 
 
 class Dnd5eConfig(Value):
@@ -67,8 +75,6 @@ def _validate_payloads(state: Dnd5eState, ruleset: Ruleset) -> None:
 
 
 def dnd5e_engine(ruleset: Ruleset) -> Engine[Dnd5eRules]:
-    advancement = Dnd5eAdvancement(ruleset)
-
     def entity_rules(authored: AuthoredEntity) -> Dnd5eRules:
         match authored.entity.kind:
             case "actor":
@@ -102,9 +108,7 @@ def dnd5e_engine(ruleset: Ruleset) -> Engine[Dnd5eRules]:
         initial_world=initial_world,
         validate_state=lambda state: _validate_payloads(state, ruleset),
         default_rules=default_rules,
-        advance=advancement.advance,
-        advancement_available=advancement.available,
-        advancement_panel=advancement_panel_for(advancement),
+        proposal=_PROPOSAL,
         toolsets={"director": Dnd5eTools(ruleset).toolset()},
         director_instructions=DIRECTOR_INSTRUCTIONS,
         entity_state=Dnd5ePresentation(ruleset).entity_state,

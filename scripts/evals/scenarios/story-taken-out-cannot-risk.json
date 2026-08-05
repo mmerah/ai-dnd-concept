@@ -1,0 +1,33 @@
+{
+  "id": "story-taken-out-cannot-risk",
+  "engine": "story",
+  "tags": [
+    "story"
+  ],
+  "scenario": "whispering-vault",
+  "character": "kael",
+  "setup": [
+    {
+      "probe": "set_pool",
+      "entity": "player",
+      "pool": "stress",
+      "remaining": 5
+    }
+  ],
+  "prompt": "I force the vault door open with everything I have left.",
+  "checks": [
+    {
+      "probe": "attack_roll_happened",
+      "min": 0,
+      "max": 0
+    },
+    {
+      "probe": "pool_value",
+      "entity": "player",
+      "pool": "stress",
+      "min": 5,
+      "max": 5
+    }
+  ],
+  "runs": 3
+}

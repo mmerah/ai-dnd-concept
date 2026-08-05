@@ -4,17 +4,10 @@ from core_test_support import STORY, updated, with_entity
 from aidm.core.base import PLAYER_ID, SAVE_VERSION, Entity, EntityId, Kind
 from aidm.core.content import ScenarioMeta
 from aidm.core.engine import EntityRenderer, entity_renderer
+from aidm.core.sheet import Counter, Sheet
 from aidm.core.turn import GrowthRequest
-from aidm.core.world import BareLocation, EngineRules
+from aidm.core.world import GameState, WorldState
 from aidm.engines.story.engine import build_story_engine
-from aidm.engines.story.presentation import StoryPresentation
-from aidm.engines.story.state import (
-    DEFAULT_APPROACHES,
-    StoryActorState,
-    StoryItemState,
-    StoryState,
-    StoryWorldState,
-)
 from aidm.workflow.prompts import (
     SceneSnapshot,
     VisibleScene,
@@ -25,13 +18,17 @@ from aidm.workflow.prompts import (
     render_narrator,
 )
 
-ACTOR_RULES = StoryActorState(approaches=DEFAULT_APPROACHES)
-ITEM_RULES = StoryItemState()
+ACTOR_RULES = Sheet(
+    kind="actor",
+    numbers={"bold": 0, "subtle": 0, "clever": 0, "empathetic": 0},
+    counters={"stress": Counter(current=0, maximum=5), "growth": Counter(current=0, maximum=3)},
+)
+ITEM_RULES = Sheet(kind="item")
 DESCRIPTION = "She writes in a compact cipher."
 HOOK = "Her missing folio points toward the vault."
 
 
-def _with_detail(held: StoryState, entity_id: EntityId) -> StoryState:
+def _with_detail(held: GameState[Sheet], entity_id: EntityId) -> GameState[Sheet]:
     entity = held.world.require_kind(entity_id, "actor")
     detailed = updated(entity, detail={"description": DESCRIPTION, "hook": HOOK})
     return with_entity(held, detailed)
@@ -43,17 +40,17 @@ def _entity(entity_id: str, kind: Kind, name: str, brief: str, **fields: object)
     )
 
 
-def _rules(kind: Kind) -> EngineRules:
+def _rules(kind: Kind) -> Sheet:
     match kind:
         case "location":
-            return BareLocation()
+            return Sheet(kind="location")
         case "actor":
             return ACTOR_RULES
         case "item":
             return ITEM_RULES
 
 
-def state() -> StoryState:
+def state() -> GameState[Sheet]:
     entities = (
         _entity("study", "location", "Study", "A small room.", known=True),
         _entity("player", "actor", "Kael", "A hunter.", known=True, parent_id="study"),
@@ -62,13 +59,13 @@ def state() -> StoryState:
         _entity("lantern", "item", "a lantern", "A dented light.", known=True, parent_id=PLAYER_ID),
         _entity("ledger", "item", "a ledger", "Mara's notes.", known=True, parent_id="mara"),
     )
-    return StoryState(
+    return GameState[Sheet](
         save_version=SAVE_VERSION,
         scenario_id="whispering-vault",
         character_id="kael",
         scenario=ScenarioMeta(title="Test", premise="Test"),
         engine=STORY,
-        world=StoryWorldState.model_validate(
+        world=WorldState[Sheet].model_validate(
             {
                 "records": {
                     entity.id: {"entity": entity, "rules": _rules(entity.kind)}
@@ -79,14 +76,8 @@ def state() -> StoryState:
     )
 
 
-def _renderer(held: StoryState) -> EntityRenderer:
+def _renderer(held: GameState[Sheet]) -> EntityRenderer:
     return entity_renderer(build_story_engine(), held)
-
-
-ACTOR_LINE = StoryPresentation().entity_state(
-    state().world.require_kind(EntityId("mara"), "actor"),
-    ACTOR_RULES,
-)
 
 
 def test_the_narrators_view_has_no_field_that_could_hold_unrevealed_canon() -> None:
@@ -156,7 +147,7 @@ def test_the_roles_shown_everything_get_ids_placement_detail_and_unrevealed_cano
     assert "a ledger[id=ledger] (item) — held by Mara" in director
     assert "The Secret[id=hidden-actor]" in director
     for prompt in (director, *catalogued):
-        assert f"state: {ACTOR_LINE}" in prompt
+        assert "counters: growth 0/3, stress 0/5" in prompt
     for prompt in catalogued:
         assert f"detail: {DESCRIPTION}" in prompt
         assert f"hook: {HOOK}" in prompt
@@ -181,7 +172,7 @@ def test_narrator_prompt_orders_plan_before_outcome_and_checks_the_speaker() -> 
 
     prompt = render(EntityId("mara"))
 
-    assert f"state: {ACTOR_LINE}" in prompt
+    assert "counters: growth 0/3, stress 0/5" in prompt
     assert prompt.index("THE DIRECTOR'S PLAN") < prompt.index("WHAT HAPPENED")
     assert "The Secret" not in prompt
 

@@ -1,0 +1,24 @@
+{
+  "templates": {
+    "actor": {
+      "numbers": {
+        "bold": 0,
+        "subtle": 0,
+        "clever": 0,
+        "empathetic": 0
+      },
+      "counters": {
+        "stress": {
+          "current": 0,
+          "maximum": 5
+        },
+        "growth": {
+          "current": 0,
+          "maximum": 3
+        }
+      }
+    }
+  },
+  "recharge": {},
+  "collections": []
+}

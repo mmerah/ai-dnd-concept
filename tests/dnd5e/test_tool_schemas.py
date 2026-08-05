@@ -1,13 +1,14 @@
 from fivee_test_support import ruleset
 from pydantic import BaseModel, JsonValue
 
+from aidm.core.mechanics import Mechanics
+from aidm.core.packs import Content
 from aidm.core.tools import world_toolset
 from aidm.engines.dnd5e.tools import Dnd5eTools
-from aidm.engines.story.tools import story_toolset
 
 TOOLSETS = (
     world_toolset(),
-    story_toolset(),
+    Mechanics(content=Content(packs=(), records={}), refills={}).toolset(),
     Dnd5eTools(ruleset()).toolset(),
 )
 

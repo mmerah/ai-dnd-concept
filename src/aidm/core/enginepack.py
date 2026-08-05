@@ -1,10 +1,9 @@
 from collections.abc import Callable, Mapping, Sequence
 from pathlib import Path
-from random import Random
 
-from .base import AdvancementDecision, EngineId, Entity, Kind, Slug
+from .base import EngineId, Entity, Kind, Slug
 from .content import AuthoredEntity, AuthoredWorld, Rules, compose_world
-from .engine import AdvancementPanel, Engine, Transition
+from .engine import AdvancementOffer, Engine, ProposalSpec
 from .mechanics import Mechanics
 from .packs import (
     EMPTY_FROZEN_MAP,
@@ -18,8 +17,11 @@ from .packs import (
     lenient_format,
     load,
 )
-from .sheet import Sheet, SheetDefinition, SheetTemplate, render_sheet
+from .sheet import Sheet, SheetDefinition, SheetDelta, SheetTemplate, render_sheet
 from .world import GameState, WorldState
+
+type Offered = Callable[[GameState[Sheet], Content], AdvancementOffer | None]
+type Check = Callable[[GameState[Sheet], AdvancementOffer, SheetDelta], str | None]
 
 
 class EngineSpec(Value):
@@ -37,9 +39,8 @@ def load_engine(
     engine_id: EngineId,
     pack_paths: Sequence[Path] | None = None,
     *,
-    advance: Callable[[AdvancementDecision, GameState[Sheet], Random], Transition[Sheet]],
-    advancement_available: Callable[[GameState[Sheet]], bool],
-    advancement_panel: AdvancementPanel,
+    offered: Offered,
+    check: Check,
 ) -> Engine[Sheet]:
     spec = EngineSpec.model_validate_json(_text(engine_dir / "spec.json"))
     directories = _packs(engine_dir) if pack_paths is None else tuple(pack_paths)
@@ -64,9 +65,11 @@ def load_engine(
         initial_world=initial_world,
         validate_state=lambda state: _validate(state, spec, content),
         default_rules=default_rules,
-        advance=advance,
-        advancement_available=advancement_available,
-        advancement_panel=advancement_panel,
+        proposal=ProposalSpec(
+            offered=lambda state: offered(state, content),
+            instructions=_text(engine_dir / "advancement.md"),
+            check=check,
+        ),
         toolsets={"director": Mechanics(content=content, refills=spec.recharge).toolset()},
         director_instructions=_text(engine_dir / "director.md"),
         entity_state=render_sheet,

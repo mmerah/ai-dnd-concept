@@ -1,7 +1,7 @@
 from collections.abc import Iterator, Mapping
 from typing import Literal, Self
 
-from pydantic import Field, model_validator
+from pydantic import Field, SerializeAsAny, model_validator
 
 from .base import PLAYER_ID, EngineId, Entity, EntityId, Frozen, Kind, Mutable, Slug
 from .facts import CORE, Fact
@@ -37,7 +37,9 @@ class BareLocation(EngineRules):
 
 class Record[R: EngineRules](Mutable):
     entity: Entity
-    rules: R
+    # `SerializeAsAny`, so a foreign payload dumps its own fields and the commit refuses them
+    # instead of silently serialising down to whatever this engine's payload type declares.
+    rules: SerializeAsAny[R]
 
     @model_validator(mode="after")
     def _kind_agrees(self) -> Self:

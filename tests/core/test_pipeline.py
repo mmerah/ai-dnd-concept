@@ -9,7 +9,8 @@ from pydantic_ai.messages import ModelMessage, ModelResponse, TextPart, ToolCall
 from pydantic_ai.models.function import AgentInfo, FunctionModel
 
 from aidm.core.base import PLAYER_ID
-from aidm.engines.story.state import DEFAULT_APPROACHES, actor_of, item_of
+from aidm.core.sheet import Sheet, player_sheet
+from aidm.core.world import rules_of
 from aidm.workflow.pipeline import TurnOptions, TurnWorkspace, default_cast, run_turn
 
 type Stub = Callable[[list[ModelMessage], AgentInfo], ModelResponse]
@@ -95,8 +96,14 @@ async def test_the_director_reacts_to_a_real_outcome_before_it_settles_the_turn(
             members.director.agent.override(
                 model=FunctionModel(
                     scripted(
-                        calling("risk", approach="empathetic", difficulty=2),
-                        calling("take_stress", amount=1),
+                        calling("roll", dice="2d6+0", reason="pleading with the door", vs=7),
+                        calling(
+                            "adjust",
+                            entity_id="player",
+                            counter="stress",
+                            delta=1,
+                            reason="the strain of pleading",
+                        ),
                         structured(intent="Kael pushes too hard.", tone="tense"),
                     )
                 )
@@ -119,13 +126,8 @@ async def test_the_director_reacts_to_a_real_outcome_before_it_settles_the_turn(
             rng=Random(2),
         )
 
-    assert [fact.kind for fact in result.turn.facts] == [
-        "risk_rolled",
-        "growth_marked",
-        "stress_changed",
-    ]
-    player = actor_of(result.state, PLAYER_ID)
-    assert (player.growth_marks, player.stress) == (1, 1)
+    assert [fact.kind for fact in result.turn.facts] == ["dice_rolled", "counter_changed"]
+    assert player_sheet(result.state).counters["stress"].current == 1
     engine.validate_state(result.state)
 
 
@@ -209,8 +211,10 @@ async def test_creator_growth_receives_valid_engine_rules_before_commit() -> Non
     assert actor.parent_id == location.id
     assert item.parent_id == location.id
     assert location.parent_id is None
-    assert actor_of(result.state, actor.id).approaches == DEFAULT_APPROACHES
-    assert item_of(result.state, item.id).gear is None
+    actor_sheet = rules_of(result.state.world.record(actor.id), Sheet)
+    item_sheet = rules_of(result.state.world.record(item.id), Sheet)
+    assert {"stress", "growth"} <= set(actor_sheet.counters)
+    assert item_sheet.numbers == {} and item_sheet.counters == {}
     assert result.turn.narrator_evidence == "- (nothing mechanical happened)"
     assert "new actor" not in result.turn.prompts["narrator"]
     engine.validate_state(result.state)

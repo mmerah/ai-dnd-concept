@@ -1,76 +1,55 @@
-from aidm.core.base import Entity
-from aidm.core.content import AuthoredEntity, AuthoredWorld, Rules, compose_world
-from aidm.core.engine import Engine
+from pathlib import Path
+
+from aidm.core.engine import AdvancementOffer, Engine
+from aidm.core.enginepack import load_engine
+from aidm.core.packs import Content
 from aidm.core.registry import EnginePlugin
-from aidm.core.world import BareLocation
+from aidm.core.sheet import Sheet, SheetDelta, apply_delta, player_sheet
+from aidm.core.world import GameState
 
-from .advancement import advance, available
 from .identity import ENGINE_ID
-from .presentation import StoryPresentation
-from .state import (
-    DEFAULT_APPROACHES,
-    StoryActorDefinition,
-    StoryActorState,
-    StoryCharacterData,
-    StoryItemDefinition,
-    StoryItemState,
-    StoryRules,
-    StoryState,
-    StoryWorldState,
+
+ENGINE_DIR = Path(__file__).parent
+APPROACHES = ("bold", "subtle", "clever", "empathetic")
+MAX_APPROACH = 3
+MAX_STRESS = 7
+GROWTH_REQUIRED = 3
+OFFER = AdvancementOffer(
+    prompt="Three growth marks are ready to spend.",
+    text=(
+        "Say how the character has changed. One change only: raise an approach, gain an edge or "
+        "a bond, leave a burden behind or rewrite it, or become more resilient."
+    ),
 )
-from .tools import DIRECTOR_INSTRUCTIONS, story_toolset
-from .ui import advancement_panel
 
 
-def _entity_rules(authored: AuthoredEntity) -> StoryRules:
-    """An empty payload validates into the same defaults an unauthored entity would have taken."""
-    match authored.entity.kind:
-        case "actor":
-            return StoryActorDefinition.model_validate(authored.rules).runtime()
-        case "item":
-            return StoryItemDefinition.model_validate(authored.rules).runtime()
-        case "location":
-            return BareLocation.model_validate(authored.rules)
+def _offered(state: GameState[Sheet], content: Content) -> AdvancementOffer | None:
+    del content  # Story ships no packs, so nothing binds its growth to a record.
+    growth = player_sheet(state).counters["growth"]
+    return OFFER if growth.current >= GROWTH_REQUIRED else None
 
 
-def _initial_world(authored: AuthoredWorld, character: Rules) -> StoryWorldState:
-    sheet = StoryCharacterData.model_validate(character)
-    player = StoryActorState(
-        approaches=sheet.approaches,
-        tags=sheet.tags,
-        max_stress=sheet.max_stress,
-    )
-    return compose_world(StoryWorldState, authored, player, _entity_rules)
+def _check(state: GameState[Sheet], offer: AdvancementOffer, delta: SheetDelta) -> str | None:
+    """Story's own caps, read off the sheet the delta would leave behind."""
+    del offer
+    after = player_sheet(state).model_copy(deep=True)
+    _ = apply_delta(after, delta)
+    if raised := sorted(name for name in APPROACHES if after.numbers[name] > MAX_APPROACH):
+        return f"an approach cannot pass +{MAX_APPROACH}: {raised}"
+    stress = after.counters["stress"].maximum
+    if stress is not None and stress > MAX_STRESS:
+        return f"the stress maximum cannot pass {MAX_STRESS}, and this proposal reaches {stress}"
+    if after.counters["growth"].current != 0:
+        return f"the {GROWTH_REQUIRED} growth marks must be spent: take the growth counter to 0"
+    return None
 
 
-def _default_rules(entity: Entity) -> StoryRules:
-    match entity.kind:
-        case "actor":
-            return StoryActorState(approaches=DEFAULT_APPROACHES)
-        case "item":
-            return StoryItemState()
-        case "location":
-            return BareLocation()
-
-
-def build_story_engine() -> Engine[StoryRules]:
-    return Engine(
-        id=ENGINE_ID,
-        state_type=StoryState,
-        initial_world=_initial_world,
-        validate_state=lambda state: None,
-        default_rules=_default_rules,
-        advance=advance,
-        advancement_available=available,
-        advancement_panel=advancement_panel,
-        toolsets={"director": story_toolset()},
-        director_instructions=DIRECTOR_INSTRUCTIONS,
-        entity_state=StoryPresentation().entity_state,
-    )
+def build_story_engine() -> Engine[Sheet]:
+    return load_engine(ENGINE_DIR, ENGINE_ID, offered=_offered, check=_check)
 
 
 PLUGIN = EnginePlugin(
     id=ENGINE_ID,
-    build=lambda _: build_story_engine(),
+    build=lambda _config: build_story_engine(),
     badge=("STORY", "deep-purple-6"),
 )

@@ -1,30 +1,27 @@
 from dataclasses import dataclass
 from random import Random
 
-from aidm.core.base import PLAYER_ID, AdvancementDecision, Frozen
-from aidm.core.engine import Transition
+from aidm.core.base import PLAYER_ID, Frozen
+from aidm.core.facts import Fact
 from aidm.core.world import EngineRules, GameState
 
 from . import features, progression
 from .access import Dnd5eWorld, read_actor
-from .identity import ENGINE_ID
 from .progression import AdvancementPlan, LevelBenefits, LevelUpPreview
 from .ruleset import Ruleset
-from .state import MAX_LEVEL, Decisions, Dnd5eActor, Dnd5eRules, Dnd5eState
+from .state import MAX_LEVEL, Decisions, Dnd5eActor, Dnd5eState
 
 
 class Dnd5eAdvancementDecisions(Frozen):
     decisions: Decisions
 
 
-def dump_decision(decisions: Dnd5eAdvancementDecisions) -> AdvancementDecision:
-    return AdvancementDecision(engine=ENGINE_ID, choice=decisions.model_dump(mode="json"))
+@dataclass(frozen=True, slots=True)
+class Transition:
+    """5e's own advance result, kept here until phase 3 deletes this module."""
 
-
-def load_decision(decision: AdvancementDecision) -> Dnd5eAdvancementDecisions:
-    if decision.engine != ENGINE_ID:
-        raise ValueError(f"5e received a {decision.engine!r} decision")
-    return Dnd5eAdvancementDecisions.model_validate(decision.choice)
+    state: Dnd5eState
+    facts: tuple[Fact, ...]
 
 
 @dataclass(frozen=True, slots=True)
@@ -121,9 +118,8 @@ class Dnd5eAdvancement:
         return progression.plan(player, decisions, self._ruleset)
 
     def advance(
-        self, decision: AdvancementDecision, state: Dnd5eState, rng: Random
-    ) -> Transition[Dnd5eRules]:
-        decisions = load_decision(decision)
+        self, decisions: Dnd5eAdvancementDecisions, state: Dnd5eState, rng: Random
+    ) -> Transition:
         world = Dnd5eWorld(state=state.draft(), rng=rng, ruleset=self._ruleset)
         player = self._checked(world.player())
         facts = progression.advance(player, decisions.decisions, self._ruleset, rng)

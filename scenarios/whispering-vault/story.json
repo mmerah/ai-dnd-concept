@@ -1,21 +1,25 @@
 {
   "entities": {
     "cloister_rat": {
-      "approaches": {
+      "numbers": {
         "bold": 1,
         "subtle": 2,
         "clever": -1,
         "empathetic": -1
       },
+      "counters": {
+        "stress": {
+          "current": 0,
+          "maximum": 3
+        }
+      },
       "tags": [
         {
           "id": "disease-swollen",
           "name": "Disease-Swollen",
-          "kind": "edge",
-          "description": "The rat is unnaturally hard to frighten or drive off."
+          "text": "(edge) The rat is unnaturally hard to frighten or drive off."
         }
-      ],
-      "max_stress": 3
+      ]
     }
   }
 }

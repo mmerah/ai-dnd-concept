@@ -1,12 +1,13 @@
 from collections.abc import Mapping
 from types import MappingProxyType
-from typing import Self
+from typing import Annotated, Literal, Self
 
 from pydantic import Field, model_validator
 
-from .base import Entity, Frozen, Kind, Mutable, Slug
+from .base import PLAYER_ID, Entity, Frozen, Kind, Mutable, Slug
+from .facts import CORE, Fact
 from .packs import EMPTY_FROZEN_MAP, ContentRef, FrozenMap, Value
-from .world import EngineRules
+from .world import EngineRules, GameState, rules_of
 
 _NO_NUMBERS: Mapping[Slug, int] = MappingProxyType({})
 
@@ -115,6 +116,134 @@ class SheetDefinition(Value):
             notes=dict(self.notes),
             refs=self.refs,
         )
+
+
+def player_sheet[R: EngineRules](state: GameState[R]) -> Sheet:
+    return rules_of(state.world.record(PLAYER_ID), Sheet)
+
+
+class DeltaItem(Frozen):
+    why: str = Field(description="One short sentence saying what earns this change.")
+
+
+class SetNumber(DeltaItem):
+    op: Literal["set-number"] = "set-number"
+    key: Slug = Field(description="The number's key, as the sheet spells it.")
+    value: int = Field(description="What the number becomes.")
+
+
+class GrantCounter(DeltaItem):
+    op: Literal["grant-counter"] = "grant-counter"
+    key: Slug = Field(description="Key for a pool the sheet does not have yet.")
+    current: int
+    maximum: int | None = Field(default=None, description="Omit for an unbounded pool.")
+    minimum: int = 0
+    recharge: str | None = Field(default=None, description="A recharge label of this engine.")
+
+
+class ChangeCounter(DeltaItem):
+    op: Literal["change-counter"] = "change-counter"
+    key: Slug = Field(description="Key of a pool the sheet already has.")
+    delta: int = Field(default=0, description="How much the current value moves.")
+    maximum: int | None = Field(default=None, description="A new maximum; omit to keep it.")
+
+
+class AddTag(DeltaItem):
+    op: Literal["add-tag"] = "add-tag"
+    tag: SheetTag
+
+
+class RemoveTag(DeltaItem):
+    op: Literal["remove-tag"] = "remove-tag"
+    tag_id: Slug = Field(description="Exact id of a tag the sheet carries.")
+
+
+class AddRef(DeltaItem):
+    op: Literal["add-ref"] = "add-ref"
+    ref: ContentRef = Field(description="One of the picks the offer allows.")
+
+
+class SetNote(DeltaItem):
+    op: Literal["set-note"] = "set-note"
+    key: Slug
+    text: str = Field(description="The note; empty clears the key.")
+
+
+type DeltaChange = Annotated[
+    SetNumber | GrantCounter | ChangeCounter | AddTag | RemoveTag | AddRef | SetNote,
+    Field(discriminator="op"),
+]
+
+
+class SheetDelta(Frozen):
+    """What advancement writes onto the player's sheet, each change carrying its reason."""
+
+    changes: tuple[DeltaChange, ...] = ()
+
+
+def apply_delta(sheet: Sheet, delta: SheetDelta) -> tuple[Fact, ...]:
+    """Mutates a draft's sheet; the transaction's commit revalidates the whole copy."""
+    return tuple(_applied(sheet, change) for change in delta.changes)
+
+
+def _applied(sheet: Sheet, change: DeltaChange) -> Fact:
+    match change:
+        case SetNumber(key=key, value=value):
+            # Advancement is where a sheet grows, so an unheld key is written, not refused.
+            before = sheet.numbers.get(key)
+            sheet.numbers[key] = value
+            return _delta_fact(change, f"{key} {before} -> {value}")
+        case GrantCounter(key=key):
+            if key in sheet.counters:
+                raise ValueError(f"counter {key!r} exists; change it instead of granting it")
+            counter = Counter(
+                current=change.current,
+                maximum=change.maximum,
+                minimum=change.minimum,
+                recharge=change.recharge,
+            )
+            sheet.counters[key] = counter
+            return _delta_fact(change, f"{key} granted at {pool(counter)}")
+        case ChangeCounter(key=key, delta=amount, maximum=maximum):
+            counter = _held_counter(sheet, key)
+            if maximum is not None:
+                counter.maximum = maximum
+            counter.current = counter.clamped(counter.current + amount)
+            return _delta_fact(change, f"{key} -> {pool(counter)}")
+        case AddTag(tag=tag):
+            if sheet.tag(tag.id) is not None:
+                raise ValueError(f"tag {tag.id!r} is already on the sheet")
+            sheet.tags.append(tag)
+            return _delta_fact(change, f"gained {tag.name}[id={tag.id}]")
+        case RemoveTag(tag_id=tag_id):
+            held = sheet.tag(tag_id)
+            if held is None:
+                raise ValueError(f"no tag {tag_id!r} on the sheet")
+            sheet.tags.remove(held)
+            return _delta_fact(change, f"lost {held.name}[id={tag_id}]")
+        case AddRef(ref=ref):
+            if ref in sheet.refs:
+                raise ValueError(f"content {ref} is already on the sheet")
+            sheet.refs = (*sheet.refs, ref)
+            return _delta_fact(change, f"gained content {ref}")
+        case SetNote(key=key, text=text):
+            if text:
+                sheet.notes[key] = text
+            elif sheet.notes.pop(key, None) is None:
+                raise ValueError(f"no note {key!r} to clear")
+            return _delta_fact(change, f"note {key}: {text or '(cleared)'}")
+
+
+def _held_counter(sheet: Sheet, key: str) -> Counter:
+    counter = sheet.counters.get(key)
+    if counter is None:
+        known = ", ".join(sorted(sheet.counters)) or "(none)"
+        raise ValueError(f"no counter {key!r} on the sheet. Its counters are: {known}")
+    return counter
+
+
+def _delta_fact(change: DeltaItem, summary: str) -> Fact:
+    return Fact(source=CORE, kind="advanced", trace=f"{summary} ({change.why})")
 
 
 def render_sheet(_entity: Entity, sheet: Sheet) -> str:

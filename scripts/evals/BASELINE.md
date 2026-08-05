@@ -71,8 +71,17 @@ them at all. Faking them would produce a baseline number with nothing behind it:
 - **concentration replacing a previous spell** — the typed engine holds no concentration state.
   Phase 3 makes it a `Sheet` note; add the scenario then.
 
-Phase 2 adds 2–3 Story scenarios covering what Story stops verifying in code (a claimed helpful tag
-that does not exist, growth not auto-marked, risks while taken out, the outcome band).
+Phase 2 added three `story` scenarios covering what Story stopped verifying in code once it moved
+onto the Sheet — `story-risk-single-roll` (one roll per risk, rolled against the 7 band, growth
+marked at most once), `story-taken-out-cannot-risk` (a taken-out actor is not rolled for at all),
+and `story-no-risk-needed` (no roll where nothing is at stake). The fourth lost check, that a
+claimed helpful tag actually exists on the sheet, is **not** measurable through the probes: they
+read committed state and facts, and the `+1` lives inside the dice expression the director wrote.
+It would need a probe that parses `dice_rolled.data["dice"]`; that is deliberately not built,
+because a probe that reads the expression is a probe that would have to change again in phase 3.
+
+The `story` tag is not part of the phase-3 gate below: the gate compares the same 5e suite before
+and after, and Story only ever ran on the lenient substrate.
 
 ### One-sided checks
 

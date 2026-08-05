@@ -2,7 +2,7 @@ import re
 from collections.abc import Iterable
 from typing import Annotated, Literal, NewType
 
-from pydantic import BaseModel, ConfigDict, Field, JsonValue
+from pydantic import BaseModel, ConfigDict, Field
 
 
 class Frozen(BaseModel):
@@ -27,7 +27,7 @@ SLUG_PATTERN = r"[a-z0-9]+(?:-[a-z0-9]+)*"
 Slug = Annotated[str, Field(pattern=rf"^{SLUG_PATTERN}$", max_length=64)]
 
 PLAYER_ID = EntityId("player")
-SAVE_VERSION = 24
+SAVE_VERSION = 25
 
 
 def content_id(value: str) -> Slug:
@@ -44,13 +44,6 @@ def slug(name: str, taken: Iterable[EntityId]) -> EntityId:
     while candidate in used:
         candidate, number = EntityId(f"{base}_{number}"), number + 1
     return candidate
-
-
-class AdvancementDecision(Frozen):
-    """What the player chose in an engine's advancement UI, flat so core never types the choice."""
-
-    engine: EngineId
-    choice: dict[str, JsonValue] = Field(default_factory=dict)
 
 
 class EntityDetail(Frozen):
