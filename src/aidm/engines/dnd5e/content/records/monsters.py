@@ -2,9 +2,9 @@ from typing import Annotated, Literal
 
 from pydantic import Field
 
+from aidm.core.dice import DiceExpr
 from aidm.core.packs import EMPTY_FROZEN_MAP, ContentRef, ContentSlug, FrozenMap, Record, Value
 
-from ...dice import DiceExpr
 from ...values import Ability, Attributes
 from ..vocabulary import ConditionName, RestType
 from .base import CreatureSize, DamageRoll

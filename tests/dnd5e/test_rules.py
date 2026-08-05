@@ -5,10 +5,10 @@ import pytest
 from fivee_test_support import initial_5e_game, turn_of
 from pydantic import TypeAdapter, ValidationError
 
+from aidm.core import dice
 from aidm.core.base import PLAYER_ID, Entity, EntityId
-from aidm.engines.dnd5e import dice
+from aidm.core.dice import Magnitude
 from aidm.engines.dnd5e import rolls as rules
-from aidm.engines.dnd5e.dice import Magnitude
 from aidm.engines.dnd5e.state import Dnd5eActor, Dnd5eActorState, StatBlock
 from aidm.engines.dnd5e.values import Attributes
 

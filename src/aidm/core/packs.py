@@ -3,7 +3,7 @@ from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 from pathlib import Path
 from types import MappingProxyType
-from typing import Annotated, Literal
+from typing import Annotated, Literal, Self
 
 from pydantic import (
     AfterValidator,
@@ -15,9 +15,10 @@ from pydantic import (
     SerializerFunctionWrapHandler,
     TypeAdapter,
     WrapSerializer,
+    model_validator,
 )
 
-from .base import Kind
+from .base import Kind, Slug
 
 ENCODING = "utf-8"
 
@@ -74,6 +75,25 @@ class ContentRef(Value):
 class Record(Value):
     index: ContentSlug
     name: str
+
+
+class LenientRecord(Record):
+    """Everything mechanical beyond a few numbers lives in `text`, for a role to interpret."""
+
+    text: str = ""
+    numbers: FrozenMap[Slug, int] = EMPTY_FROZEN_MAP
+    tags: tuple[Slug, ...] = ()
+    # A record that IS a choice names the legal picks; a bare index would be ambiguous.
+    options: tuple[ContentRef, ...] = ()
+    choose: int | None = None
+
+    @model_validator(mode="after")
+    def _choice_is_whole(self) -> Self:
+        if (self.choose is None) != (not self.options):
+            raise ValueError("options and choose are set together, or neither is")
+        if self.choose is not None and not 1 <= self.choose <= len(self.options):
+            raise ValueError(f"cannot choose {self.choose} of {len(self.options)} options")
+        return self
 
 
 @dataclass(frozen=True, slots=True)
@@ -219,6 +239,12 @@ def validate_pack(pack: Pack, pack_format: PackFormat) -> None:
         declared = pack.manifest.provides[name]
         if declared != len(records):
             raise ValueError(f"manifest promises {declared} {name}, the pack ships {len(records)}")
+
+
+def lenient_format(collections: Sequence[CollectionName]) -> PackFormat:
+    """Every collection of a lenient pack holds the one record shape."""
+    spec = CollectionSpec(TypeAdapter[Record](LenientRecord), (LenientRecord,))
+    return PackFormat({name: spec for name in collections})
 
 
 def _read(path: Path, adapter: TypeAdapter[Record]) -> list[Record]:

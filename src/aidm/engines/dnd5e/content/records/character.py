@@ -2,9 +2,9 @@ from typing import Annotated, Literal, Self
 
 from pydantic import Field, model_validator
 
+from aidm.core.dice import PositiveDice
 from aidm.core.packs import EMPTY_FROZEN_MAP, ContentRef, ContentSlug, FrozenMap, Record, Value
 
-from ...dice import PositiveDice
 from ...values import Ability
 from ..vocabulary import LanguageName, RestType
 from .base import CreatureSize

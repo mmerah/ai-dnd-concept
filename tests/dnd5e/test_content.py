@@ -13,6 +13,7 @@ from fivee_test_support import (
     ruleset,
 )
 
+from aidm.core import dice
 from aidm.core.base import EntityId
 from aidm.core.packs import (
     ContentMiss,
@@ -24,7 +25,7 @@ from aidm.core.packs import (
     validate_pack,
     write_pack,
 )
-from aidm.engines.dnd5e import bestiary, dice
+from aidm.engines.dnd5e import bestiary
 from aidm.engines.dnd5e import presentation as views
 from aidm.engines.dnd5e.content.records.character import (
     BackgroundRecord,

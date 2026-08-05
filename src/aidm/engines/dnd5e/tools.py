@@ -6,6 +6,7 @@ from pydantic_ai import RunContext
 from pydantic_ai.toolsets import FunctionToolset
 
 from aidm.core.base import EntityId
+from aidm.core.dice import Magnitude
 from aidm.core.facts import Fact
 from aidm.core.tools import TurnContext
 
@@ -13,7 +14,6 @@ from . import features, mechanics, progression, rolls, spells
 from .access import Dnd5eWorld
 from .content.records.spells import MAX_SPELL_LEVEL, SpellLevel
 from .content.vocabulary import CONDITION_NAMES, ConditionName, RestType
-from .dice import Magnitude
 from .identity import ENGINE_ID
 from .ruleset import Ruleset
 from .state import Dnd5eRules, FeatureKey, SpellKey

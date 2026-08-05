@@ -2,9 +2,9 @@ from collections import Counter
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 
+from aidm.core import dice
 from aidm.core.packs import Content, ContentMiss, ContentRef, ContentSlug, Record
 
-from .. import dice
 from ..ruleset import (
     ArchetypeProfile,
     AttackProfile,

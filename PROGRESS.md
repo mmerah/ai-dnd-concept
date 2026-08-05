@@ -62,7 +62,70 @@ Baseline at `e174637`, `openai/gpt-oss-120b`, `retries=3`, 63 turns per suite, m
    creates them: advantage via keep-highest (phase 1's `roll(mode=...)`) and concentration replacing a
    previous spell (a phase-3 `Sheet` note).
 
-## Phase 1–3
+## Phase 1 — substrate — done, staged, not committed
 
-Not started. Phase 1 begins with `core/sheet.py`, `core/mechanics.py`, `core/enginepack.py` and the
-`git mv` of `dice.py` into core; it also amends CLAUDE.md's first Design rule as the plan quotes.
+- [x] `git mv src/aidm/engines/dnd5e/dice.py src/aidm/core/dice.py`, importers moved to absolute
+      `aidm.core.dice` (11 src files, 3 test files); the file itself is byte-identical
+- [x] `core/sheet.py` (146) — `Counter`, `CounterTemplate`, `SheetTag`, `SheetTemplate`, `Sheet`,
+      `SheetDefinition.runtime`, `render_sheet`
+- [x] `core/mechanics.py` (370) — `Mechanics` toolset: `roll`, `adjust`, `spend`, `recharge`,
+      `add_tag`, `remove_tag`, `set_note`, `set_number`, `read_content`
+- [x] `core/enginepack.py` (107) — `EngineSpec`, `load_engine`
+- [x] `core/packs.py` — `LenientRecord` + `lenient_format`
+- [x] CLAUDE.md's first Design rule amended as the plan quotes
+- [x] Tests: `tests/core/test_sheet.py`, `test_mechanics.py`, `test_enginepack.py`, and the
+      ride-along `test_shipped_content.py` (both engines compose shipped kael + whispering-vault)
+- [x] Adversarial review pass applied (below)
+- [x] Gates green: 200 tests pass, `ruff check`, `ruff format --check`, `basedpyright` clean
+- [x] **src 9,149 lines** (budget ≤ 9,150; baseline 8,497)
+
+Both engines still build and run unchanged; nothing was deleted.
+
+### Decisions taken
+
+- **`load_engine` takes the engine id as an argument** rather than reading it from `spec.json`.
+  `identity.py` stays the single source of the id the plugin registers, so a spec and a plugin
+  cannot disagree.
+- **`mechanics.py` takes the recharge map, not the `EngineSpec`.** `enginepack` imports `mechanics`;
+  passing the spec back would close the cycle, so the leaf shape (`Mapping[str, Sequence[str]]`)
+  crosses instead.
+- **`add_tag` takes flat arguments** (`tag_id`, `name`, `text`) rather than the plan's nested
+  `SheetTag`, per the phase-0 finding that nested tool arguments cost ~5% of turns.
+- **`read_content` takes the ref as one `pack/collection/index` string** — exactly the spelling
+  `render_sheet` shows — so the model copies rather than decomposes. Authored overlays still use the
+  structured `ContentRef` object; only the tool boundary is flat.
+- **`roll` evaluates the whole expression twice for `keep-highest`/`keep-lowest`** and reports the
+  dropped total in the trace, so advantage never needs a second call.
+- **Notes and numbers carry `narrator=None` always**, not only while the entity is unknown: they are
+  bookkeeping, and the fiction behind them is already the Director's `intent` to write.
+- **`Sheet.refs` numbers land through the template** — a key the template declares a counter becomes
+  that counter full (`hp: 7` → 7/7); any other key becomes a number.
+
+### Review pass
+
+- **Fixed a hole in `validate_state`**: the missing-key check unioned the template's numbers and
+  counters before subtracting the sheet's, so a sheet holding `hp` as a *number* satisfied a
+  template that declares `hp` a *counter* — the exact crossover the misname guard exists to refuse.
+  Each side is now checked against its own.
+- **Fixed `runtime` precedence**: a key the author declares as a counter and a backing record ships
+  as a number raised "both a number and a counter" instead of letting the author win. Record numbers
+  now skip any key the definition itself states.
+- **Two invariants moved to load time**: `CounterTemplate` validates that it instantiates, so a bad
+  `spec.json` fails when the engine loads rather than on the turn that first grows an entity; and a
+  counter with a `recharge` label but no `maximum` is refused, since `recharge` can never refill it.
+- Cut: `read_content` now uses `Content.get`, single-use constants and `EMPTY_TEMPLATE` inlined,
+  a misleading docstring and four tests deleted or merged (director-instructions wiring, a
+  tautological `player.known`, two validator tests, one single-use fixture).
+
+### Carried into phase 2
+
+1. `load_engine` is not wired to an engine yet — phase 2's Story shim is its first consumer, and the
+   `advance`/`advancement_available`/`advancement_panel` pass-throughs die with it in 2.2.
+2. No `director.md` exists yet; the one-action-per-turn line from phase-0 finding 1 goes into the
+   first one written.
+3. `EngineSpec.collections` carries no entity kind, so `CollectionSpec.entity` (the 5e kind guard on
+   authored refs) has no lenient equivalent — accepted, as the plan's "legality thins out".
+
+## Phases 2–3
+
+Not started.

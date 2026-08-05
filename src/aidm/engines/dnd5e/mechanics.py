@@ -3,13 +3,14 @@ from typing import Literal
 
 from pydantic_ai import ModelRetry
 
+from aidm.core import dice
 from aidm.core.base import PLAYER_ID, Entity, EntityId
+from aidm.core.dice import Magnitude
 from aidm.core.facts import Fact
 
-from . import dice, procedures, rolls
+from . import procedures, rolls
 from .access import Dnd5eWorld
 from .content.vocabulary import ConditionName
-from .dice import Magnitude
 from .identity import ENGINE_ID
 from .state import Dnd5eActor, Dnd5eItem
 

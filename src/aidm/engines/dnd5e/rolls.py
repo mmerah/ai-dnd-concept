@@ -2,10 +2,10 @@ from dataclasses import dataclass
 from random import Random
 from typing import Literal
 
+from aidm.core import dice
 from aidm.core.base import PLAYER_ID
 from aidm.core.facts import Fact
 
-from . import dice
 from .identity import ENGINE_ID
 from .state import Dnd5eActor
 from .values import Ability, Attributes

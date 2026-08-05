@@ -2,9 +2,10 @@ from random import Random
 
 from pydantic_ai import ModelRetry
 
+from aidm.core import dice
 from aidm.core.packs import ContentSlug
 
-from . import dice, features, rolls
+from . import features, rolls
 from .access import Dnd5eWorld
 from .rolls import Struck
 from .ruleset import AttackProfile, Ruleset, WeaponProfile

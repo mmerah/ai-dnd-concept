@@ -2,9 +2,9 @@ from typing import Literal
 
 from pydantic import Field
 
+from aidm.core.dice import DiceExpr
 from aidm.core.packs import Value
 
-from ...dice import DiceExpr
 from ..vocabulary import DamageType
 
 Collection = Literal[

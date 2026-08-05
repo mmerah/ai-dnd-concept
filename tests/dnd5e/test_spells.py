@@ -8,9 +8,10 @@ from fivee_test_support import actor_of, new_game, player_of, ruleset, turn_of, 
 from fivee_test_support import content_ref as ref
 from pydantic_ai import ModelRetry
 
+from aidm.core import dice
 from aidm.core.base import Entity, EntityId
 from aidm.core.facts import Fact
-from aidm.engines.dnd5e import bestiary, dice, spells
+from aidm.engines.dnd5e import bestiary, spells
 from aidm.engines.dnd5e.state import Dnd5eActorDefinition, Dnd5eState, Progression
 
 RULES = ruleset()

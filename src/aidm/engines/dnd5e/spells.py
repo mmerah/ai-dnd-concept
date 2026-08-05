@@ -2,11 +2,12 @@ from collections.abc import Mapping
 
 from pydantic_ai import ModelRetry
 
+from aidm.core import dice
 from aidm.core.base import EntityId
 from aidm.core.facts import Fact
 from aidm.core.packs import ContentMiss, ContentRef
 
-from . import dice, mechanics, rolls
+from . import mechanics, rolls
 from .access import Dnd5eWorld
 from .content.records.spells import SpellDamage, SpellLevel, SpellRecord, SpellSave
 from .content.vocabulary import RestType

@@ -3,6 +3,7 @@ from typing import Protocol
 
 from pydantic import Field
 
+from aidm.core import dice
 from aidm.core.packs import (
     EMPTY_FROZEN_MAP,
     ContentMiss,
@@ -13,7 +14,6 @@ from aidm.core.packs import (
     Value,
 )
 
-from . import dice
 from .content.records.character import ClassRecord, FeatureMechanics, ProgressionChoice
 from .content.records.monsters import MonsterRecord
 from .content.records.spells import SpellLevel, SpellRecord
