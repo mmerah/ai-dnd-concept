@@ -1,9 +1,5 @@
-"""Probes name state in post-refactor terms and resolve them against the shape this checkout has.
-
-A scenario says `pool: "slot-1"` or `tag: "advancement-ready"`; under typed 5e those land on
-`StatBlock` and `Progression`, under an engine already on the substrate they are `Sheet` keys.
-Only this module changes as engines cross over.
-"""
+"""Probes name state the way a sheet spells it — `pool: "slot-1"`, `tag: "advancement-ready"`,
+`key: "armor-class"` — and resolve it against the entity's `Sheet`."""
 
 from collections.abc import Sequence
 from dataclasses import dataclass
@@ -14,33 +10,20 @@ from typing import Annotated, Literal
 from pydantic import Field, JsonValue
 
 from aidm.core.base import PLAYER_ID, EntityId, Frozen
+from aidm.core.enginepack import EngineSpec
 from aidm.core.facts import Fact
-from aidm.core.packs import load
+from aidm.core.packs import ENCODING, Content, ContentRef, LenientRecord, lenient_format, load
 from aidm.core.registry import AnyEngine
 from aidm.core.sheet import Counter, Sheet, SheetTag
 from aidm.core.world import EngineRules, GameState
-from aidm.engines.dnd5e.access import read_actor
-from aidm.engines.dnd5e.advancement import Dnd5eAdvancement, Dnd5eAdvancementDecisions
-from aidm.engines.dnd5e.content.pack_ruleset import compile_ruleset
-from aidm.engines.dnd5e.content.registry import PACK_FORMAT
-from aidm.engines.dnd5e.content.vocabulary import CONDITION_NAMES, ConditionName
-from aidm.engines.dnd5e.engine import SHIPPED_PACK
-from aidm.engines.dnd5e.progression import offer
-from aidm.engines.dnd5e.ruleset import Ruleset
-from aidm.engines.dnd5e.state import Dnd5eActorState, Dnd5eState, Progression, ResourceState
-from aidm.engines.dnd5e.values import ABILITIES, Attributes
+from aidm.engines.dnd5e.engine import ENGINE_DIR
 
 HP = "hp"
 MAX_HP = "max-hp"
-ARMOR_CLASS = "armor-class"
+LEVEL = "level"
 SLOT_PREFIX = "slot-"
-ADVANCEMENT_READY = "advancement-ready"
-# Every roll compared against a target number: an attack against AC, a check or save against a DC,
-# and the substrate's single `roll` whenever it was given something to beat.
-CONTESTED_KINDS = ("attack_rolled", "dc_rolled", "dice_rolled")
-TARGET_FIELDS = ("ac", "dc", "vs")
-# Keyed by plain str so a scenario's tag can be looked up without widening the literal away.
-CONDITIONS: dict[str, ConditionName] = {name: name for name in CONDITION_NAMES}
+LONG_REST = "long-rest"
+CONTESTED_KIND = "dice_rolled"
 
 
 class Place(Frozen):
@@ -134,8 +117,6 @@ type CheckStep = Annotated[
 
 @dataclass(slots=True)
 class Setup:
-    """The state a scenario's setup steps build, before the director sees it."""
-
     engine: AnyEngine
     state: GameState[EngineRules]
     rng: Random
@@ -143,8 +124,6 @@ class Setup:
 
 @dataclass(frozen=True, slots=True)
 class Outcome:
-    """What one turn produced, in the terms checks are written against."""
-
     before: GameState[EngineRules]
     after: GameState[EngineRules]
     facts: tuple[Fact, ...]
@@ -198,29 +177,19 @@ def _apply(setup: Setup, step: SetupStep) -> None:
         case Reveal():
             state.reveal(state.world.require(step.entity))
         case SetPool():
-            _write_pool(_payload(state, step.entity), step.entity, step.pool, step.remaining)
+            _write_pool(_sheet(state, step.entity), step.entity, step.pool, step.remaining)
         case SetNumber():
-            _write_number(_payload(state, step.entity), step.key, step.value)
+            _write_number(_sheet(state, step.entity), step.entity, step.key, step.value)
         case SetLevel():
-            _level_up_to(setup, step.value)
+            _level_up_to(state, step.value)
         case AddTag():
-            _write_tag(_payload(state, step.entity), step.tag)
+            _sheet(state, step.entity).tags.append(SheetTag(id=step.tag, name=step.tag))
 
 
-type ActorPayload = Dnd5eActorState | Sheet
-
-
-def _payload(state: GameState[EngineRules], entity_id: EntityId) -> ActorPayload:
+def _sheet(state: GameState[EngineRules], entity_id: EntityId) -> Sheet:
     rules = state.world.record(entity_id, "actor").rules
-    if not isinstance(rules, Dnd5eActorState | Sheet):
-        raise ValueError(f"{entity_id!r} carries {type(rules).__name__}, which no probe reads yet")
-    return rules
-
-
-def _actor(state: GameState[EngineRules], entity_id: EntityId) -> Dnd5eActorState:
-    rules = _payload(state, entity_id)
-    if not isinstance(rules, Dnd5eActorState):
-        raise ValueError(f"{entity_id!r} is on the Sheet, and this probe reads typed 5e only")
+    if not isinstance(rules, Sheet):
+        raise ValueError(f"{entity_id!r} carries {type(rules).__name__}, which no probe reads")
     return rules
 
 
@@ -232,126 +201,63 @@ def _counter(sheet: Sheet, entity_id: EntityId, pool: str) -> Counter:
     return found
 
 
-def _progression(actor: Dnd5eActorState, entity_id: EntityId) -> Progression:
-    if actor.progression is None:
-        raise ValueError(f"{entity_id!r} has no progression, so it holds no slots and no level")
-    return actor.progression
-
-
-def _resource(actor: Dnd5eActorState, entity_id: EntityId, pool: str) -> ResourceState:
-    """A slot level, or the use pool of the one owned feature whose index is `pool`."""
-    progression = _progression(actor, entity_id)
-    if pool.startswith(SLOT_PREFIX):
-        level = _slot_level(pool)
-        found = progression.spell_slots.get(level)
-        if found is None:
-            held = sorted(progression.spell_slots)
-            raise ValueError(f"{entity_id!r} holds no {pool} slots; it has levels {held}")
-        return found
-    matched = [
-        state for key, state in progression.feature_resources.items() if key.endswith(f"/{pool}")
-    ]
-    if len(matched) != 1:
-        held = sorted(progression.feature_resources)
-        raise ValueError(f"{entity_id!r} has no single feature pool {pool!r}; it has {held}")
-    return matched[0]
-
-
-def _slot_level(pool: str) -> int:
-    digits = pool.removeprefix(SLOT_PREFIX)
-    if not digits.isdigit():
-        raise ValueError(f"pool {pool!r} names no slot level")
-    return int(digits)
-
-
 def _pool(state: GameState[EngineRules], entity_id: EntityId, pool: str) -> int:
-    payload = _payload(state, entity_id)
-    if isinstance(payload, Sheet):
-        return _counter(payload, entity_id, pool).current
-    if pool == HP:
-        return payload.stats.hp
-    return _resource(payload, entity_id, pool).remaining
+    return _counter(_sheet(state, entity_id), entity_id, pool).current
 
 
-def _write_pool(payload: ActorPayload, entity_id: EntityId, pool: str, remaining: int) -> None:
-    if isinstance(payload, Sheet):
-        _counter(payload, entity_id, pool).current = remaining
-        return
-    if pool == HP:
-        payload.stats.hp = remaining
-        return
-    resource = _resource(payload, entity_id, pool)
-    if remaining > resource.maximum:
-        raise ValueError(f"{entity_id!r} {pool} holds at most {resource.maximum}, not {remaining}")
-    resource.remaining = remaining
+def _write_pool(sheet: Sheet, entity_id: EntityId, pool: str, remaining: int) -> None:
+    counter = _counter(sheet, entity_id, pool)
+    if counter.maximum is not None and remaining > counter.maximum:
+        raise ValueError(f"{entity_id!r} {pool} holds at most {counter.maximum}, not {remaining}")
+    counter.current = remaining
 
 
-def _write_number(payload: ActorPayload, key: str, value: int) -> None:
-    if isinstance(payload, Sheet):
-        if key not in payload.numbers:
-            raise ValueError(f"no number {key!r} on the sheet; it has {sorted(payload.numbers)}")
-        payload.numbers[key] = value
-        return
-    actor = payload
-    if key == ARMOR_CLASS:
-        actor.stats.ac = value
-        return
+def _write_number(sheet: Sheet, entity_id: EntityId, key: str, value: int) -> None:
+    """`max-hp` is a counter's bound rather than a number, and the only key spelled that way."""
     if key == MAX_HP:
-        actor.stats.max_hp = value
-        actor.stats.hp = min(actor.stats.hp, value)
+        counter = _counter(sheet, entity_id, HP)
+        counter.maximum = value
+        counter.current = min(counter.current, value)
         return
-    if key in ABILITIES:
-        raised = {**actor.stats.attributes.model_dump(), key: value}
-        actor.stats.attributes = Attributes.model_validate(raised)
-        return
-    raise ValueError(f"no 5e number is named {key!r}: use {ARMOR_CLASS}, {MAX_HP}, or an ability")
-
-
-def _write_tag(payload: ActorPayload, tag: str) -> None:
-    if isinstance(payload, Sheet):
-        payload.tags.append(SheetTag(id=tag, name=tag))
-        return
-    condition = CONDITIONS.get(tag)
-    if condition is None:
-        raise ValueError(f"no 5e condition is named {tag!r}: {sorted(CONDITIONS)}")
-    payload.stats.apply_condition(condition, active=True)
+    if key not in sheet.numbers:
+        raise ValueError(f"{entity_id!r} has no number {key!r}; it has {sorted(sheet.numbers)}")
+    sheet.numbers[key] = value
 
 
 def _tags(state: GameState[EngineRules], entity_id: EntityId) -> frozenset[str]:
-    """Conditions under typed 5e, plus the level-up flag the substrate keeps as a real tag."""
-    payload = _payload(state, entity_id)
-    if isinstance(payload, Sheet):
-        return frozenset(tag.id for tag in payload.tags)
-    held: set[str] = set(payload.stats.conditions)
-    if payload.progression is not None and payload.progression.level_up_available:
-        held.add(ADVANCEMENT_READY)
-    return frozenset(held)
+    return frozenset(tag.id for tag in _sheet(state, entity_id).tags)
 
 
-def _level_up_to(setup: Setup, level: int) -> None:
-    """Typed 5e starts every character at level 1, so a higher level has to be played out."""
-    advancement = Dnd5eAdvancement(_shipped_ruleset())
-    while (reached := _progression(_actor(setup.state, PLAYER_ID), PLAYER_ID).level) < level:
-        offer(read_actor(setup.state, PLAYER_ID))
-        committed = setup.state.committed()
-        decisions = {
-            choice.id: tuple(option.key for option in choice.options[: choice.choose])
-            for choice in advancement.preview(committed).choices
-        }
-        typed = Dnd5eAdvancementDecisions(decisions=decisions)
-        # The probe holds the engine-neutral state type, and `GameState` is invariant, so the
-        # 5e-only advance is reached by revalidating into its payload union and back out.
-        as_5e = Dnd5eState.model_validate(committed.model_dump(round_trip=True))
-        advanced = advancement.advance(typed, as_5e, setup.rng).state
-        setup.state = type(setup.state).model_validate(advanced.model_dump(round_trip=True))
-        if _progression(_actor(setup.state, PLAYER_ID), PLAYER_ID).level == reached:
-            raise ValueError(f"level {reached} did not advance, so level {level} is unreachable")
+def _level_up_to(state: GameState[EngineRules], level: int) -> None:
+    """Characters are authored at level 1, so a scenario that wants a higher one applies the
+    class's own level rows: what they raise is exactly what the advisor would raise."""
+    sheet = _sheet(state, PLAYER_ID)
+    content = shipped_content()
+    for step in range(sheet.numbers[LEVEL] + 1, level + 1):
+        _apply_level(sheet, content.require(_level_ref(sheet, step), LenientRecord))
+
+
+def _level_ref(sheet: Sheet, level: int) -> ContentRef:
+    classes = [ref for ref in sheet.refs if ref.collection == "classes"]
+    if len(classes) != 1:
+        raise ValueError(f"a levelled character holds exactly one class ref, not {classes}")
+    return classes[0].sibling("levels", f"{classes[0].index}-{level}")
+
+
+def _apply_level(sheet: Sheet, record: LenientRecord) -> None:
+    for key, value in record.numbers.items():
+        if key.startswith(SLOT_PREFIX):
+            slot = sheet.counters.setdefault(key, Counter(current=0, maximum=0, recharge=LONG_REST))
+            slot.maximum, slot.current = value, value
+        elif key in sheet.numbers:
+            sheet.numbers[key] = value
 
 
 @cache
-def _shipped_ruleset() -> Ruleset:
-    """The probe's own copy: `Engine` exposes no advancement preview to pick level choices from."""
-    return compile_ruleset(load((SHIPPED_PACK,), PACK_FORMAT))
+def shipped_content() -> Content:
+    """The probe's own read of the pack: `Engine` exposes no content to look a level up in."""
+    spec = EngineSpec.model_validate_json((ENGINE_DIR / "spec.json").read_text(encoding=ENCODING))
+    return load((ENGINE_DIR / "packs" / "srd-2014",), lenient_format(spec.collections))
 
 
 def _contested(facts: Sequence[Fact]) -> tuple[Fact, ...]:
@@ -372,15 +278,11 @@ def _targets_within(facts: Sequence[Fact], step: RollTarget) -> str | None:
 
 
 def _target_of(fact: Fact) -> int | None:
-    """A substrate `roll` given no `vs` was rolled against nothing; the 5e kinds always name one."""
-    if fact.kind not in CONTESTED_KINDS:
+    """A `roll` given no `vs` was rolled against nothing, so it is not a contested roll."""
+    if fact.kind != CONTESTED_KIND:
         return None
-    named = [fact.data[name] for name in TARGET_FIELDS if fact.data.get(name) is not None]
-    if not named:
-        if fact.kind == "dice_rolled":
-            return None
-        raise ValueError(f"{fact.kind!r} records no target number: {sorted(fact.data)}")
-    return _as_int(named[0], "target number")
+    target = fact.data.get("vs")
+    return None if target is None else _as_int(target, "target number")
 
 
 def _as_int(value: JsonValue, name: str) -> int:

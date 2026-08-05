@@ -1,10 +1,9 @@
 """One-shot, offline importer: a checkout of 5e-bits/5e-database becomes the shipped
-`aidm/engines/dnd5e/packs/srd-2014/` pack.
+`aidm/engines/dnd5e/packs/srd-2014/` lenient pack.
 
     uv run python scripts/import_srd.py ../5e-database [out-dir]
 
-Run it by hand and commit the result: the shipped pack *is* the edition pin. The projection itself
-lives in `srd/`, one module per record family."""
+Run it by hand and commit the result: the shipped pack *is* the edition pin."""
 
 import re
 import sys
@@ -12,7 +11,7 @@ from collections.abc import Sequence
 from pathlib import Path
 
 from srd.build import build
-from srd.common import PACK_ID
+from srd.project import PACK_ID
 
 from aidm.core.packs import write_pack
 

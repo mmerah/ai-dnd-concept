@@ -3,9 +3,9 @@ from dataclasses import dataclass
 from pydantic_ai import ModelRetry, NativeOutput, RunContext
 
 from ..core.config import Settings
-from ..core.engine import AdvancementOffer
+from ..core.engine import AdvancementOffer, entity_renderer
 from ..core.registry import AnyEngine
-from ..core.sheet import SheetDelta, player_sheet, render_sheet
+from ..core.sheet import SheetDelta
 from ..core.world import EngineRules, GameState
 from .roles import Stage, stage
 
@@ -49,13 +49,15 @@ def advisor(engine: AnyEngine, settings: Settings) -> Stage[AdvisorContext, Shee
     return built
 
 
-def render_proposal(state: GameState[EngineRules], offer: AdvancementOffer, intent: str) -> str:
+def render_proposal(
+    engine: AnyEngine, state: GameState[EngineRules], offer: AdvancementOffer, intent: str
+) -> str:
     player = state.player
     sections = (
         ("ON OFFER", offer.prompt),
         ("RULES TEXT", offer.text),
         (f"PICK EXACTLY {offer.choose}", "\n".join(f"- {ref}" for ref in offer.options)),
-        ("THE CHARACTER", f"{player.name}\n{render_sheet(player, player_sheet(state))}"),
+        ("THE CHARACTER", f"{player.name}\n{entity_renderer(engine, state)(player)}"),
         ("WHAT THE PLAYER WANTS", intent),
     )
     return "\n\n".join(f"{title}\n{body}" for title, body in sections if body)

@@ -265,4 +265,172 @@ pure-conversation prompt, and 0 in 6 under every other model. It is a one-sided 
 
 ### Phase 3 — lenient engine on the Sheet
 
-Not measured yet.
+**Measured, and inside the thresholds.** The typed 5e engine is deleted and 5e runs on the `Sheet`.
+The gate suite is:
+
+```bash
+uv run python scripts/evals/run.py --only dnd5e --runs 3
+```
+
+`--only` now also accepts an engine id, and `dnd5e` selects exactly the 21 scenarios the baseline
+above was measured on. Without it the runner would mix in the three phase-2 `story` scenarios and
+move `overall` and `interpretation` against a baseline that never contained them; `combat` would be
+unaffected, but two of the three gate numbers would not compare like with like.
+
+**The suite was frozen for the measurement.** Phase 0 owes two scenarios — advantage via
+`keep-highest` and concentration replacing a spell — and phase 3 is the release that makes the
+second expressible (a `Sheet` note). Adding either before the measurement would have changed the
+denominator the gate is compared against, so both stay on the closing-out list and are written now
+that the rates are recorded.
+
+#### Measured — the gate passes
+
+Commit `1b1f3b0`, 2026-08-05, `openai/gpt-oss-120b`, `retries=3`, the same 21 scenarios × 3 runs = 63
+turns as the baseline, run twice: `results/2026-08-05-1b1f3b0-oss-120b-a.json` (A) and
+`…-b.json` (B).
+
+| Metric | A | B | **Phase 3 (mean)** | Baseline | Move | Threshold | |
+|---|---|---|---|---|---|---|---|
+| interpretation | 87.3% | 89.5% | **88.4%** | 74.2% | **+14.2** | within 12 | pass, above the band |
+| completion | 100% | 90.5% | **95.2%** | 95.2% | **0.0** | ≥ 85.2% | pass |
+| combat | 95.6% | 82.2% | **88.9%** | 67.8% | **+21.1** | within 12 | pass, above the band |
+| overall | 87.3% | 81.0% | **84.1%** | 70.6% | +13.5 | — | |
+
+| Tag | A | B | **Mean** | Baseline | Condition 4 |
+|---|---|---|---|---|---|
+| combat | 95.6% | 82.2% | **88.9%** | 67.8% | held |
+| spells | 88.9% | 72.2% | **80.6%** | 55.6% | held |
+| conditions | 83.3% | 50.0% | **66.7%** | 83.3% | held |
+| rest | 66.7% | 100% | **83.3%** | 100% | held |
+| checks | 83.3% | 100% | **91.7%** | 83.3% | held |
+| advancement | 0% | 0% | **0%** | 0% | not covered — it was never above 50% |
+
+**Conditions 2 and 4 are satisfied as written. Conditions 1 and 3 are satisfied in direction but not
+literally**: "within 12 points" reads as a two-sided band, and interpretation and `combat` both left
+it *upward*, by 14.2 and 21.1 points. The band exists to bound how far interpretation may degrade
+when arithmetic moves from code into the Director, so a move in this direction is what the phase was
+for and the gate passes. Recording it here so no later reader takes a symmetric reading of
+"within 12" as having been quietly met.
+
+Drift between A and B is 2.2 points on interpretation, 9.5 on completion, 13.4 on `combat` and up to
+33 on the six-run tags — the same envelope the baseline's two identical-code runs showed, and the
+reason no single run is read on its own. Every one of B's six lost turns was a tool-argument retry
+(`spend`, `adjust`, `read_content`, `add_tag`), not bad arithmetic; A lost none.
+
+**Phase-0 finding 1 landed.** `single-action-discipline` stays 100%, and `save-for-half` — 0% at
+baseline because the director cast burning hands twice in one turn — is 100%/67% with the
+one-action-per-turn rule opening `director.md`. `spells` rose 25 points, which is where the
+double-casting used to be counted.
+
+**Phase-0 finding 2 landed too, and reads both ways.** Flat tool arguments took A to 100%
+completion, but B shows the shapes can still cost turns; mean completion is exactly the baseline's
+95.2%, so the toolset is no harder to call than the typed one, not yet demonstrably easier.
+
+**`level-up-offer` is 0% in 6 of 6 runs, and the pre-registered diagnosis now resolves.** Phase 0
+wrote: "if the rate stays at 0 the cause is the instructions, not the tool shape". The tool shape
+changed completely — a dedicated `level_up` tool became `add_tag("advancement-ready")` — and the rate
+did not move, so the instruction is the cause. The likely fault is placement: `director.md` puts
+ADVANCEMENT last, after everything a turn usually needs, which is the same mistake in kind as the
+phase-2 taken-out ban being the last clause of a bullet. Fixing it means editing `director.md` and
+re-measuring, which is a change to the thing under test, so it happens *after* this merge, not inside
+it. `advancement` was 0% at baseline too, so it cannot trip condition 4 either way.
+
+What changed under the suite, and where it can move the numbers:
+
+- Attack bonuses, save DCs, damage scaling and the half-on-a-save rule are now the Director's
+  arithmetic against `engines/dnd5e/director.md`, not code. This is what the gate exists to measure.
+- `director.md` opens with the one-action-per-turn rule (phase-0 finding 1) and states every
+  precondition before the procedure it guards (the phase-2 wording finding): the slot is spent
+  before the spell resolves, a hit is read back before damage.
+- The player's `armor-class` is authored content instead of a hard-coded 10 (phase-0 finding 3):
+  Kael 12, Bram 12, Elowen 13, each 10 + their Dexterity modifier. `monster-attack-on-player` is the
+  scenario this touches — the rat's +4 now meets AC 12, so its hit rate falls by 10 points and its
+  `hp` window is unchanged.
+- Ability scores are authored post-racial-bonus, so Bram is Strength 17 where the typed engine
+  computed it. Every `*-damage-window` bound was checked against the same modifier, so no bound moved.
+- One tool call replaced several: `roll`, `adjust`, `spend`, `recharge`, `add_tag`, `set_note`. Watch
+  **completion** — phase-0 finding 2 predicted flat arguments would help it, and this is the first
+  measurement that can show it.
+
+#### Measured again, on the enriched pack — the gate holds, the content pass did not
+
+Run C, `results/2026-08-05-1b1f3b0-oss-120b-c.json`, one run of the same 21 scenarios at
+`retries=3`, on the tree carrying the full content projection.
+
+| Metric | A (lean) | B (lean) | **C (enriched)** | Baseline | C vs baseline | Threshold |
+|---|---|---|---|---|---|---|
+| interpretation | 87.3% | 89.5% | **63.3%** | 74.2% | −10.9 | within 12: **pass** |
+| completion | 100% | 90.5% | **95.2%** | 95.2% | 0.0 | ≥ 85.2%: **pass** |
+| combat | 95.6% | 82.2% | **66.7%** | 67.8% | −1.1 | within 12: **pass** |
+| overall | 87.3% | 81.0% | **60.3%** | 70.6% | — | — |
+
+No tag that was above 50% at baseline reached 0, so condition 4 holds too. **The pre-registered gate
+passes on every condition** — and reading that as vindication would be a mistake. The honest signal
+is the comparison the gate cannot make: against A and B, on the same suite and model, interpretation
+fell **25 points** while the observed A↔B drift on that metric was **2.2**. That is a regression the
+content pass caused, not noise.
+
+**What failed, and how.** The dominant failure string is `0 rolls against a target number` — the
+Director ended the turn without rolling, on prompts that named the action ("I swing my longsword at
+the rat"). It appears in `ability-check-dc`, `condition-rider`, `dropped-to-zero`,
+`melee-attack-basic`, `melee-damage-window`, `monster-attack-on-player`, `ranged-damage-window` and
+all three runs of `save-for-half`, which scored 0% by doing nothing at all. Three further turns died
+on `Tool 'roll' exceeded max retries`. `rest` fell to 33% the same way: `recharge` was never called.
+This is *under-acting*, the failure direction phase 2 recorded for `granite-4.1-8b` and
+`deepseek-v4-flash` — now in `gpt-oss-120b`, whose context roughly tripled when every record's
+mechanics moved into the per-turn render.
+
+**The reading**: correct content in front of the Director is not the same as correct play, and past
+some volume it costs. That is what `REFACTOR-LENIENT.md`'s new phase 3.5 exists to address — a
+referee to carry completion, a reorganised context, and a writing pass over instructions and tool
+descriptions.
+
+**A flaw in this record, now fixed.** A, B and C are all stamped `1b1f3b0`: the runner recorded
+`git rev-parse HEAD` while the tree under it was uncommitted and changed twice between runs. Two of
+these three records were therefore indistinguishable after the fact, which is the one thing a
+results file exists to prevent. `run.py::_commit` now appends a short hash of `git diff HEAD`, so an
+uncommitted tree stamps as `1b1f3b0+0ac89c6`. The three records above are annotated by hand as
+lean (A, B) and enriched (C) because they cannot be told apart from their contents.
+
+#### Measured, then changed: a re-measurement is owed
+
+The rates above were measured at `1b1f3b0`. Review passes **after** the measurement changed what
+the Director reads, so those rates describe the measured commit, not the staged code:
+
+- Backing records now render **beside their refs** in the scene render: a ref no longer copies
+  notes onto the sheet; each `content` line shows the record's name, notes and tags. Spells
+  carry structured notes projected from upstream data — level, save, attack, damage, heal, the
+  full scaling ladder, area, range — plus concentration/ritual/component tags; weapons their
+  damage dice, property tags and range numbers; armour discrete AC numbers and tags; monsters
+  speeds, senses, save/skill bonuses, immunities, multiattack and limited-use lines. The damage
+  dice, save DCs and upcast ladders the `combat` and `spells` scenarios test are in the render
+  itself, with no `read_content` round-trip. Two of B's six lost turns were `read_content`
+  retries, so completion can move as well as interpretation.
+- `director.md`'s THE SHEET, AN ATTACK, A SPELL, A CHECK OR A SAVE and `set_number` sections
+  teach the new lines (finesse, versatile, `level=cantrip`, `scaling`, armour arithmetic,
+  monster save bonuses, passive perception).
+- The pack was regenerated from the same pinned checkout (`3f5593e`), record count unchanged
+  (2,201). Three importer fixes also feed the render: multi-AC monsters no longer truncate to
+  the first entry, breath-variant dragons regained their breath lines, and damage-less save
+  actions appear in `attacks`.
+
+- The content-completion pass finished the projection: every structured upstream field is now
+  projected or has a written reason in `PROGRESS.md`. Under this suite the visible changes are
+  monsters (choice-shaped multiattacks on 33 monsters, one/two-handed damage variants on 16,
+  the assassin's save-gated poison, spell/slot lists on 36 casters, lycanthrope/vampire forms,
+  worn-armor names in AC lines, lore paragraphs), melee weapons **losing** their misleading
+  `Range: 5 ft.` line and `range-normal` number, weapon damage gaining
+  `damage-dice-count`/`damage-die` numbers and a type tag **beside** the `damage=1d8 slashing`
+  note the Director already copied (the note was briefly removed; the `*-damage-window` scenarios
+  run on exactly that path, so it is back and `director.md` points at it), equipment gaining
+  `cost-*`/`quantity`/vehicle `speed`/`capacity-lb` numbers, and spells gaining a `classes` note.
+  The scene render and `read_content` both carry more per record than at `1b1f3b0`.
+- **`director.md` changed**: the ADVANCEMENT section (last in the file, `level-up-offer` 0% in
+  6 of 6 runs) moved into the opening rules block, wording near-identical — the phase-2
+  hoist-the-buried-rule lesson applied to the one rule the Director never reached. The next run
+  measures this fix; `level-up-offer` is the scenario to read first.
+
+`monster-attack-on-player` is the scenario most exposed to the render changes: the rat's line
+carries its attack, size and challenge rating inline. Re-run `uv run python
+scripts/evals/run.py --only dnd5e --runs 3` (twice, as above) and append the rates here before
+merge.

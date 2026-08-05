@@ -12,10 +12,16 @@ from aidm.core.content import (
     authored_world,
 )
 from aidm.core.sheet import SheetDefinition, SheetTag
-from aidm.engines.dnd5e.state import Dnd5eActorState, StatBlock
+from aidm.core.world import EngineRules
 
 HELD = EntityId("frayed_rope")
 UNHELD = EntityId("silk_rope")
+
+
+class ForeignRules(EngineRules):
+    """A payload shape no real engine declares, standing in for a second engine's rules."""
+
+    hoard: int = 0
 
 
 def _character(*, holds: Entity, gear_for: EntityId) -> Character:
@@ -72,7 +78,7 @@ def test_a_record_may_not_hold_another_engines_payload() -> None:
     """The gate has to fire on a resumed save too, not only on the turn that wrote the payload."""
     engine, state = initialized()
     draft = state.draft()
-    draft.world.record(PLAYER_ID).rules = Dnd5eActorState(stats=StatBlock())
+    draft.world.record(PLAYER_ID).rules = ForeignRules(kind="actor")
 
     with pytest.raises(ValidationError):
         draft.committed()

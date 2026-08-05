@@ -4,8 +4,6 @@ from typing import Annotated, Literal
 
 from pydantic import AfterValidator, Field
 
-MOD = "MOD"
-
 # Bounds prevent model-written expressions from stalling a turn.
 _DICE = re.compile(r"^([1-9]\d{0,2})d([1-9]\d{0,3})$")
 _CONSTANT = re.compile(r"^\d{1,4}$")
@@ -28,12 +26,7 @@ class ConstantTerm:
     value: int
 
 
-@dataclass(frozen=True, slots=True)
-class ModifierTerm:
-    sign: Sign
-
-
-Term = DiceTerm | ConstantTerm | ModifierTerm
+Term = DiceTerm | ConstantTerm
 
 
 def terms(expression: str) -> tuple[Term, ...]:
@@ -45,8 +38,6 @@ def terms(expression: str) -> tuple[Term, ...]:
 
 
 def _term(word: str, sign: Sign) -> Term:
-    if word == MOD:
-        return ModifierTerm(sign=sign)
     if rolled := _DICE.match(word):
         return DiceTerm(sign=sign, count=int(rolled[1]), faces=int(rolled[2]))
     if _CONSTANT.match(word):
@@ -54,47 +45,8 @@ def _term(word: str, sign: Sign) -> Term:
     raise ValueError(f"malformed dice term {word!r}")
 
 
-def is_constant(expression: str) -> bool:
-    return all(isinstance(term, ConstantTerm) for term in terms(expression))
-
-
-def _word(term: DiceTerm | ConstantTerm) -> str:
-    return f"{term.count}d{term.faces}" if isinstance(term, DiceTerm) else str(term.value)
-
-
-def substituted(expression: str, modifier: int) -> str:
-    parsed = terms(expression)
-    if isinstance(parsed[0], ModifierTerm) and modifier < 0:
-        # A leading sign has no valid spelling, so this cannot be written rather than mis-signed.
-        raise ValueError(f"a leading {MOD} cannot carry the negative modifier {modifier}")
-    words: list[str] = []
-    for term in parsed:
-        negative = (term.sign < 0) != (isinstance(term, ModifierTerm) and modifier < 0)
-        word = str(abs(modifier)) if isinstance(term, ModifierTerm) else _word(term)
-        words.append(f"{'-' if negative else '+'} {word}" if words else word)
-    return " ".join(words)
-
-
 def _parseable(expression: str) -> str:
-    terms(expression)
-    return expression
-
-
-def _self_contained(expression: str) -> str:
-    if any(isinstance(term, ModifierTerm) for term in terms(expression)):
-        raise ValueError(f"{MOD} is a caster's own modifier and cannot be rolled on its own")
-    return expression
-
-
-def _positive(expression: str) -> str:
-    parsed = terms(expression)
-    if any(term.sign < 0 for term in parsed):
-        raise ValueError("a positive dice expression cannot subtract")
-    if not any(
-        isinstance(term, DiceTerm) or (isinstance(term, ConstantTerm) and term.value > 0)
-        for term in parsed
-    ):
-        raise ValueError("a positive dice expression must roll or add something")
+    _ = terms(expression)
     return expression
 
 
@@ -103,10 +55,3 @@ DiceExpr = Annotated[
     AfterValidator(_parseable),
     Field(max_length=MAX_LENGTH, examples=["1d8", "2d6 + 3", "1d4 - 1"]),
 ]
-
-# Role-written dice cannot leave a caster modifier unresolved.
-SelfContainedDice = Annotated[DiceExpr, AfterValidator(_self_contained)]
-PositiveDice = Annotated[SelfContainedDice, AfterValidator(_positive)]
-
-# The consuming action owns the sign, so magnitudes stay non-negative.
-Magnitude = SelfContainedDice | Annotated[int, Field(ge=0, strict=True)]

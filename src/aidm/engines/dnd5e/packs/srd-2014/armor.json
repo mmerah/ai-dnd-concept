@@ -2,209 +2,205 @@
   {
     "index": "padded-armor",
     "name": "Padded Armor",
-    "cost": {
-      "quantity": 5,
-      "unit": "gp"
+    "text": "Light armour. AC 11 + Dex modifier. Disadvantage on Stealth. Cost 5 gp. Weight 8 lb.",
+    "numbers": {
+      "cost-gp": 5,
+      "armor-base": 11
     },
-    "weight": 8.0,
-    "desc": "",
-    "category": "Light",
-    "base_ac": 11,
-    "dex_bonus": true,
-    "max_dex_bonus": null,
-    "str_minimum": 0,
-    "stealth_disadvantage": true
+    "notes": {},
+    "tags": [
+      "add-dex-modifier",
+      "stealth-disadvantage"
+    ],
+    "options": [],
+    "choose": null
   },
   {
     "index": "leather-armor",
     "name": "Leather Armor",
-    "cost": {
-      "quantity": 10,
-      "unit": "gp"
+    "text": "Light armour. AC 11 + Dex modifier. Cost 10 gp. Weight 10 lb.",
+    "numbers": {
+      "cost-gp": 10,
+      "armor-base": 11
     },
-    "weight": 10.0,
-    "desc": "",
-    "category": "Light",
-    "base_ac": 11,
-    "dex_bonus": true,
-    "max_dex_bonus": null,
-    "str_minimum": 0,
-    "stealth_disadvantage": false
+    "notes": {},
+    "tags": [
+      "add-dex-modifier"
+    ],
+    "options": [],
+    "choose": null
   },
   {
     "index": "studded-leather-armor",
     "name": "Studded Leather Armor",
-    "cost": {
-      "quantity": 45,
-      "unit": "gp"
+    "text": "Light armour. AC 12 + Dex modifier. Cost 45 gp. Weight 13 lb.",
+    "numbers": {
+      "cost-gp": 45,
+      "armor-base": 12
     },
-    "weight": 13.0,
-    "desc": "",
-    "category": "Light",
-    "base_ac": 12,
-    "dex_bonus": true,
-    "max_dex_bonus": null,
-    "str_minimum": 0,
-    "stealth_disadvantage": false
+    "notes": {},
+    "tags": [
+      "add-dex-modifier"
+    ],
+    "options": [],
+    "choose": null
   },
   {
     "index": "hide-armor",
     "name": "Hide Armor",
-    "cost": {
-      "quantity": 10,
-      "unit": "gp"
+    "text": "Medium armour. AC 12 + Dex modifier (max 2). Cost 10 gp. Weight 12 lb.",
+    "numbers": {
+      "cost-gp": 10,
+      "armor-base": 12,
+      "dex-limit": 2
     },
-    "weight": 12.0,
-    "desc": "",
-    "category": "Medium",
-    "base_ac": 12,
-    "dex_bonus": true,
-    "max_dex_bonus": 2,
-    "str_minimum": 0,
-    "stealth_disadvantage": false
+    "notes": {},
+    "tags": [
+      "add-dex-modifier"
+    ],
+    "options": [],
+    "choose": null
   },
   {
     "index": "chain-shirt",
     "name": "Chain Shirt",
-    "cost": {
-      "quantity": 50,
-      "unit": "gp"
+    "text": "Medium armour. AC 13 + Dex modifier (max 2). Cost 50 gp. Weight 20 lb.",
+    "numbers": {
+      "cost-gp": 50,
+      "armor-base": 13,
+      "dex-limit": 2
     },
-    "weight": 20.0,
-    "desc": "",
-    "category": "Medium",
-    "base_ac": 13,
-    "dex_bonus": true,
-    "max_dex_bonus": 2,
-    "str_minimum": 0,
-    "stealth_disadvantage": false
+    "notes": {},
+    "tags": [
+      "add-dex-modifier"
+    ],
+    "options": [],
+    "choose": null
   },
   {
     "index": "scale-mail",
     "name": "Scale Mail",
-    "cost": {
-      "quantity": 50,
-      "unit": "gp"
+    "text": "Medium armour. AC 14 + Dex modifier (max 2). Disadvantage on Stealth. Cost 50 gp. Weight 45 lb.",
+    "numbers": {
+      "cost-gp": 50,
+      "armor-base": 14,
+      "dex-limit": 2
     },
-    "weight": 45.0,
-    "desc": "",
-    "category": "Medium",
-    "base_ac": 14,
-    "dex_bonus": true,
-    "max_dex_bonus": 2,
-    "str_minimum": 0,
-    "stealth_disadvantage": true
+    "notes": {},
+    "tags": [
+      "add-dex-modifier",
+      "stealth-disadvantage"
+    ],
+    "options": [],
+    "choose": null
   },
   {
     "index": "breastplate",
     "name": "Breastplate",
-    "cost": {
-      "quantity": 400,
-      "unit": "gp"
+    "text": "Medium armour. AC 14 + Dex modifier (max 2). Cost 400 gp. Weight 20 lb.",
+    "numbers": {
+      "cost-gp": 400,
+      "armor-base": 14,
+      "dex-limit": 2
     },
-    "weight": 20.0,
-    "desc": "",
-    "category": "Medium",
-    "base_ac": 14,
-    "dex_bonus": true,
-    "max_dex_bonus": 2,
-    "str_minimum": 0,
-    "stealth_disadvantage": false
+    "notes": {},
+    "tags": [
+      "add-dex-modifier"
+    ],
+    "options": [],
+    "choose": null
   },
   {
     "index": "half-plate-armor",
     "name": "Half Plate Armor",
-    "cost": {
-      "quantity": 750,
-      "unit": "gp"
+    "text": "Medium armour. AC 15 + Dex modifier (max 2). Disadvantage on Stealth. Cost 750 gp. Weight 40 lb.",
+    "numbers": {
+      "cost-gp": 750,
+      "armor-base": 15,
+      "dex-limit": 2
     },
-    "weight": 40.0,
-    "desc": "",
-    "category": "Medium",
-    "base_ac": 15,
-    "dex_bonus": true,
-    "max_dex_bonus": 2,
-    "str_minimum": 0,
-    "stealth_disadvantage": true
+    "notes": {},
+    "tags": [
+      "add-dex-modifier",
+      "stealth-disadvantage"
+    ],
+    "options": [],
+    "choose": null
   },
   {
     "index": "ring-mail",
     "name": "Ring Mail",
-    "cost": {
-      "quantity": 30,
-      "unit": "gp"
+    "text": "Heavy armour. AC 14. Disadvantage on Stealth. Cost 30 gp. Weight 40 lb.",
+    "numbers": {
+      "cost-gp": 30,
+      "armor-base": 14
     },
-    "weight": 40.0,
-    "desc": "",
-    "category": "Heavy",
-    "base_ac": 14,
-    "dex_bonus": false,
-    "max_dex_bonus": null,
-    "str_minimum": 0,
-    "stealth_disadvantage": true
+    "notes": {},
+    "tags": [
+      "stealth-disadvantage"
+    ],
+    "options": [],
+    "choose": null
   },
   {
     "index": "chain-mail",
     "name": "Chain Mail",
-    "cost": {
-      "quantity": 75,
-      "unit": "gp"
+    "text": "Heavy armour. AC 16. Strength 13 required. Disadvantage on Stealth. Cost 75 gp. Weight 55 lb.",
+    "numbers": {
+      "cost-gp": 75,
+      "armor-base": 16,
+      "strength-minimum": 13
     },
-    "weight": 55.0,
-    "desc": "",
-    "category": "Heavy",
-    "base_ac": 16,
-    "dex_bonus": false,
-    "max_dex_bonus": null,
-    "str_minimum": 13,
-    "stealth_disadvantage": true
+    "notes": {},
+    "tags": [
+      "stealth-disadvantage"
+    ],
+    "options": [],
+    "choose": null
   },
   {
     "index": "splint-armor",
     "name": "Splint Armor",
-    "cost": {
-      "quantity": 200,
-      "unit": "gp"
+    "text": "Heavy armour. AC 17. Strength 15 required. Disadvantage on Stealth. Cost 200 gp. Weight 60 lb.",
+    "numbers": {
+      "cost-gp": 200,
+      "armor-base": 17,
+      "strength-minimum": 15
     },
-    "weight": 60.0,
-    "desc": "",
-    "category": "Heavy",
-    "base_ac": 17,
-    "dex_bonus": false,
-    "max_dex_bonus": null,
-    "str_minimum": 15,
-    "stealth_disadvantage": true
+    "notes": {},
+    "tags": [
+      "stealth-disadvantage"
+    ],
+    "options": [],
+    "choose": null
   },
   {
     "index": "plate-armor",
     "name": "Plate Armor",
-    "cost": {
-      "quantity": 1500,
-      "unit": "gp"
+    "text": "Heavy armour. AC 18. Strength 15 required. Disadvantage on Stealth. Cost 1500 gp. Weight 65 lb.",
+    "numbers": {
+      "cost-gp": 1500,
+      "armor-base": 18,
+      "strength-minimum": 15
     },
-    "weight": 65.0,
-    "desc": "",
-    "category": "Heavy",
-    "base_ac": 18,
-    "dex_bonus": false,
-    "max_dex_bonus": null,
-    "str_minimum": 15,
-    "stealth_disadvantage": true
+    "notes": {},
+    "tags": [
+      "stealth-disadvantage"
+    ],
+    "options": [],
+    "choose": null
   },
   {
     "index": "shield",
     "name": "Shield",
-    "cost": {
-      "quantity": 10,
-      "unit": "gp"
+    "text": "Shield armour. AC +2. Cost 10 gp. Weight 6 lb.",
+    "numbers": {
+      "cost-gp": 10,
+      "armor-bonus": 2
     },
-    "weight": 6.0,
-    "desc": "",
-    "category": "Shield",
-    "base_ac": 2,
-    "dex_bonus": false,
-    "max_dex_bonus": null,
-    "str_minimum": 0,
-    "stealth_disadvantage": false
+    "notes": {},
+    "tags": [],
+    "options": [],
+    "choose": null
   }
 ]

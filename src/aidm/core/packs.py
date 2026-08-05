@@ -81,7 +81,11 @@ class LenientRecord(Record):
     """Everything mechanical beyond a few numbers lives in `text`, for a role to interpret."""
 
     text: str = ""
+    # Numbers land on the sheet of any entity that refs the record, so a record reffed in
+    # multiplicity (a spell, a feature) must leave them empty or keys collide. Notes and tags
+    # never touch a sheet — they render beside the ref — so any record may carry them.
     numbers: FrozenMap[Slug, int] = EMPTY_FROZEN_MAP
+    notes: FrozenMap[Slug, str] = EMPTY_FROZEN_MAP
     tags: tuple[Slug, ...] = ()
     # A record that IS a choice names the legal picks; a bare index would be ambiguous.
     options: tuple[ContentRef, ...] = ()
@@ -119,6 +123,8 @@ class Manifest(Value):
     edition: str
     requires: tuple[ContentSlug, ...] = ()
     provides: FrozenMap[CollectionName, NonNegativeInt]
+    # A version string alone lets upstream content churn smuggle into a schema-only regeneration.
+    source_commit: str | None = None
 
 
 class Pack(Value):

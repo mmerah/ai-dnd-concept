@@ -2,1076 +2,1171 @@
   {
     "index": "light-armor",
     "name": "Light Armor",
-    "kind": "equipment",
-    "type": "Armor",
-    "equipment": [
-      "padded-armor",
-      "leather-armor",
-      "studded-leather-armor"
-    ]
+    "text": "Armor proficiency: Light Armor.",
+    "numbers": {},
+    "notes": {},
+    "tags": [],
+    "options": [],
+    "choose": null
   },
   {
     "index": "medium-armor",
     "name": "Medium Armor",
-    "kind": "equipment",
-    "type": "Armor",
-    "equipment": [
-      "hide-armor",
-      "chain-shirt",
-      "scale-mail",
-      "breastplate",
-      "half-plate-armor"
-    ]
+    "text": "Armor proficiency: Medium Armor.",
+    "numbers": {},
+    "notes": {},
+    "tags": [],
+    "options": [],
+    "choose": null
   },
   {
     "index": "heavy-armor",
     "name": "Heavy Armor",
-    "kind": "equipment",
-    "type": "Armor",
-    "equipment": [
-      "ring-mail",
-      "chain-mail",
-      "splint-armor",
-      "plate-armor"
-    ]
+    "text": "Armor proficiency: Heavy Armor.",
+    "numbers": {},
+    "notes": {},
+    "tags": [],
+    "options": [],
+    "choose": null
   },
   {
     "index": "all-armor",
     "name": "All armor",
-    "kind": "equipment",
-    "type": "Armor",
-    "equipment": [
-      "padded-armor",
-      "leather-armor",
-      "studded-leather-armor",
-      "hide-armor",
-      "chain-shirt",
-      "scale-mail",
-      "breastplate",
-      "half-plate-armor",
-      "ring-mail",
-      "chain-mail",
-      "splint-armor",
-      "plate-armor",
-      "shield",
-      "adamantine-armor",
-      "animated-shield",
-      "armor",
-      "armor-of-invulnerability",
-      "armor-of-resistance",
-      "armor-of-vulnerability",
-      "arrow-catching-shield",
-      "demon-armor",
-      "dragon-scale-mail",
-      "dwarven-plate",
-      "elven-chain",
-      "glamoured-studded-leather-armor",
-      "mithral-armor",
-      "plate-armor-of-etherealness",
-      "shield-of-missile-attraction",
-      "spellguard-shield",
-      "armor-1",
-      "armor-2",
-      "armor-3",
-      "dragon-scale-mail-black",
-      "dragon-scale-mail-blue",
-      "dragon-scale-mail-brass",
-      "dragon-scale-mail-bronze",
-      "dragon-scale-mail-copper",
-      "dragon-scale-mail-gold",
-      "dragon-scale-mail-green",
-      "dragon-scale-mail-red",
-      "dragon-scale-mail-silver",
-      "dragon-scale-mail-white"
-    ]
+    "text": "Armor proficiency: Armor.",
+    "numbers": {},
+    "notes": {},
+    "tags": [],
+    "options": [],
+    "choose": null
   },
   {
     "index": "padded-armor",
     "name": "Padded Armor",
-    "kind": "equipment",
-    "type": "Armor",
-    "equipment": [
-      "padded-armor"
-    ]
+    "text": "Armor proficiency: Padded Armor.",
+    "numbers": {},
+    "notes": {},
+    "tags": [],
+    "options": [],
+    "choose": null
   },
   {
     "index": "leather-armor",
     "name": "Leather Armor",
-    "kind": "equipment",
-    "type": "Armor",
-    "equipment": [
-      "leather-armor"
-    ]
+    "text": "Armor proficiency: Leather Armor.",
+    "numbers": {},
+    "notes": {},
+    "tags": [],
+    "options": [],
+    "choose": null
   },
   {
     "index": "studded-leather-armor",
     "name": "Studded Leather Armor",
-    "kind": "equipment",
-    "type": "Armor",
-    "equipment": [
-      "studded-leather-armor"
-    ]
+    "text": "Armor proficiency: Studded Leather Armor.",
+    "numbers": {},
+    "notes": {},
+    "tags": [],
+    "options": [],
+    "choose": null
   },
   {
     "index": "hide-armor",
     "name": "Hide Armor",
-    "kind": "equipment",
-    "type": "Armor",
-    "equipment": [
-      "hide-armor"
-    ]
+    "text": "Armor proficiency: Hide Armor.",
+    "numbers": {},
+    "notes": {},
+    "tags": [],
+    "options": [],
+    "choose": null
   },
   {
     "index": "chain-shirt",
     "name": "Chain Shirt",
-    "kind": "equipment",
-    "type": "Armor",
-    "equipment": [
-      "chain-shirt"
-    ]
+    "text": "Armor proficiency: Chain Shirt.",
+    "numbers": {},
+    "notes": {},
+    "tags": [],
+    "options": [],
+    "choose": null
   },
   {
     "index": "scale-mail",
     "name": "Scale Mail",
-    "kind": "equipment",
-    "type": "Armor",
-    "equipment": [
-      "scale-mail"
-    ]
+    "text": "Armor proficiency: Scale Mail.",
+    "numbers": {},
+    "notes": {},
+    "tags": [],
+    "options": [],
+    "choose": null
   },
   {
     "index": "breastplate",
     "name": "Breastplate",
-    "kind": "equipment",
-    "type": "Armor",
-    "equipment": [
-      "breastplate"
-    ]
+    "text": "Armor proficiency: Breastplate.",
+    "numbers": {},
+    "notes": {},
+    "tags": [],
+    "options": [],
+    "choose": null
   },
   {
     "index": "half-plate-armor",
     "name": "Half Plate Armor",
-    "kind": "equipment",
-    "type": "Armor",
-    "equipment": [
-      "half-plate-armor"
-    ]
+    "text": "Armor proficiency: Half Plate Armor.",
+    "numbers": {},
+    "notes": {},
+    "tags": [],
+    "options": [],
+    "choose": null
   },
   {
     "index": "ring-mail",
     "name": "Ring Mail",
-    "kind": "equipment",
-    "type": "Armor",
-    "equipment": [
-      "ring-mail"
-    ]
+    "text": "Armor proficiency: Ring Mail.",
+    "numbers": {},
+    "notes": {},
+    "tags": [],
+    "options": [],
+    "choose": null
   },
   {
     "index": "chain-mail",
     "name": "Chain Mail",
-    "kind": "equipment",
-    "type": "Armor",
-    "equipment": [
-      "chain-mail"
-    ]
+    "text": "Armor proficiency: Chain Mail.",
+    "numbers": {},
+    "notes": {},
+    "tags": [],
+    "options": [],
+    "choose": null
   },
   {
     "index": "splint-armor",
     "name": "Splint Armor",
-    "kind": "equipment",
-    "type": "Armor",
-    "equipment": [
-      "splint-armor"
-    ]
+    "text": "Armor proficiency: Splint Armor.",
+    "numbers": {},
+    "notes": {},
+    "tags": [],
+    "options": [],
+    "choose": null
   },
   {
     "index": "plate-armor",
     "name": "Plate Armor",
-    "kind": "equipment",
-    "type": "Armor",
-    "equipment": [
-      "plate-armor"
-    ]
+    "text": "Armor proficiency: Plate Armor.",
+    "numbers": {},
+    "notes": {},
+    "tags": [],
+    "options": [],
+    "choose": null
   },
   {
     "index": "shields",
     "name": "Shields",
-    "kind": "equipment",
-    "type": "Armor",
-    "equipment": [
-      "shield"
-    ]
+    "text": "Armor proficiency: Shield.",
+    "numbers": {},
+    "notes": {},
+    "tags": [],
+    "options": [],
+    "choose": null
   },
   {
     "index": "simple-weapons",
     "name": "Simple Weapons",
-    "kind": "equipment",
-    "type": "Weapons",
-    "equipment": [
-      "club",
-      "dagger",
-      "greatclub",
-      "handaxe",
-      "javelin",
-      "light-hammer",
-      "mace",
-      "quarterstaff",
-      "sickle",
-      "spear",
-      "crossbow-light",
-      "dart",
-      "shortbow",
-      "sling"
-    ]
+    "text": "Weapons proficiency: Simple Weapons.",
+    "numbers": {},
+    "notes": {},
+    "tags": [],
+    "options": [],
+    "choose": null
   },
   {
     "index": "martial-weapons",
     "name": "Martial Weapons",
-    "kind": "equipment",
-    "type": "Weapons",
-    "equipment": [
-      "battleaxe",
-      "flail",
-      "glaive",
-      "greataxe",
-      "greatsword",
-      "halberd",
-      "lance",
-      "longsword",
-      "maul",
-      "morningstar",
-      "pike",
-      "rapier",
-      "scimitar",
-      "shortsword",
-      "trident",
-      "war-pick",
-      "warhammer",
-      "whip",
-      "blowgun",
-      "crossbow-hand",
-      "crossbow-heavy",
-      "longbow",
-      "net"
-    ]
+    "text": "Weapons proficiency: Martial Weapons.",
+    "numbers": {},
+    "notes": {},
+    "tags": [],
+    "options": [],
+    "choose": null
   },
   {
     "index": "clubs",
     "name": "Clubs",
-    "kind": "equipment",
-    "type": "Weapons",
-    "equipment": [
-      "club"
-    ]
+    "text": "Weapons proficiency: Club.",
+    "numbers": {},
+    "notes": {},
+    "tags": [],
+    "options": [],
+    "choose": null
   },
   {
     "index": "daggers",
     "name": "Daggers",
-    "kind": "equipment",
-    "type": "Weapons",
-    "equipment": [
-      "dagger"
-    ]
+    "text": "Weapons proficiency: Dagger.",
+    "numbers": {},
+    "notes": {},
+    "tags": [],
+    "options": [],
+    "choose": null
   },
   {
     "index": "greatclubs",
     "name": "Greatclubs",
-    "kind": "equipment",
-    "type": "Weapons",
-    "equipment": [
-      "greatclub"
-    ]
+    "text": "Weapons proficiency: Greatclub.",
+    "numbers": {},
+    "notes": {},
+    "tags": [],
+    "options": [],
+    "choose": null
   },
   {
     "index": "handaxes",
     "name": "Handaxes",
-    "kind": "equipment",
-    "type": "Weapons",
-    "equipment": [
-      "handaxe"
-    ]
+    "text": "Weapons proficiency: Handaxe.",
+    "numbers": {},
+    "notes": {},
+    "tags": [],
+    "options": [],
+    "choose": null
   },
   {
     "index": "javelins",
     "name": "Javelins",
-    "kind": "equipment",
-    "type": "Weapons",
-    "equipment": [
-      "javelin"
-    ]
+    "text": "Weapons proficiency: Javelin.",
+    "numbers": {},
+    "notes": {},
+    "tags": [],
+    "options": [],
+    "choose": null
   },
   {
     "index": "light-hammers",
     "name": "Light hammers",
-    "kind": "equipment",
-    "type": "Weapons",
-    "equipment": [
-      "light-hammer"
-    ]
+    "text": "Weapons proficiency: Light hammer.",
+    "numbers": {},
+    "notes": {},
+    "tags": [],
+    "options": [],
+    "choose": null
   },
   {
     "index": "maces",
     "name": "Maces",
-    "kind": "equipment",
-    "type": "Weapons",
-    "equipment": [
-      "mace"
-    ]
+    "text": "Weapons proficiency: Mace.",
+    "numbers": {},
+    "notes": {},
+    "tags": [],
+    "options": [],
+    "choose": null
   },
   {
     "index": "quarterstaffs",
     "name": "Quarterstaffs",
-    "kind": "equipment",
-    "type": "Weapons",
-    "equipment": [
-      "quarterstaff"
-    ]
+    "text": "Weapons proficiency: Quarterstaff.",
+    "numbers": {},
+    "notes": {},
+    "tags": [],
+    "options": [],
+    "choose": null
   },
   {
     "index": "sickles",
     "name": "Sickles",
-    "kind": "equipment",
-    "type": "Weapons",
-    "equipment": [
-      "sickle"
-    ]
+    "text": "Weapons proficiency: Sickle.",
+    "numbers": {},
+    "notes": {},
+    "tags": [],
+    "options": [],
+    "choose": null
   },
   {
     "index": "spears",
     "name": "Spears",
-    "kind": "equipment",
-    "type": "Weapons",
-    "equipment": [
-      "spear"
-    ]
+    "text": "Weapons proficiency: Spear.",
+    "numbers": {},
+    "notes": {},
+    "tags": [],
+    "options": [],
+    "choose": null
   },
   {
     "index": "crossbows-light",
     "name": "Crossbows, light",
-    "kind": "equipment",
-    "type": "Weapons",
-    "equipment": [
-      "crossbow-light"
-    ]
+    "text": "Weapons proficiency: Crossbow, light.",
+    "numbers": {},
+    "notes": {},
+    "tags": [],
+    "options": [],
+    "choose": null
   },
   {
     "index": "darts",
     "name": "Darts",
-    "kind": "equipment",
-    "type": "Weapons",
-    "equipment": [
-      "dart"
-    ]
+    "text": "Weapons proficiency: Dart.",
+    "numbers": {},
+    "notes": {},
+    "tags": [],
+    "options": [],
+    "choose": null
   },
   {
     "index": "shortbows",
     "name": "Shortbows",
-    "kind": "equipment",
-    "type": "Weapons",
-    "equipment": [
-      "shortbow"
-    ]
+    "text": "Weapons proficiency: Shortbow.",
+    "numbers": {},
+    "notes": {},
+    "tags": [],
+    "options": [],
+    "choose": null
   },
   {
     "index": "slings",
     "name": "Slings",
-    "kind": "equipment",
-    "type": "Weapons",
-    "equipment": [
-      "sling"
-    ]
+    "text": "Weapons proficiency: Sling.",
+    "numbers": {},
+    "notes": {},
+    "tags": [],
+    "options": [],
+    "choose": null
   },
   {
     "index": "battleaxes",
     "name": "Battleaxes",
-    "kind": "equipment",
-    "type": "Weapons",
-    "equipment": [
-      "battleaxe"
-    ]
+    "text": "Weapons proficiency: Battleaxe.",
+    "numbers": {},
+    "notes": {},
+    "tags": [],
+    "options": [],
+    "choose": null
   },
   {
     "index": "flails",
     "name": "Flails",
-    "kind": "equipment",
-    "type": "Weapons",
-    "equipment": [
-      "flail"
-    ]
+    "text": "Weapons proficiency: Flail.",
+    "numbers": {},
+    "notes": {},
+    "tags": [],
+    "options": [],
+    "choose": null
   },
   {
     "index": "glaives",
     "name": "Glaives",
-    "kind": "equipment",
-    "type": "Weapons",
-    "equipment": [
-      "glaive"
-    ]
+    "text": "Weapons proficiency: Glaive.",
+    "numbers": {},
+    "notes": {},
+    "tags": [],
+    "options": [],
+    "choose": null
   },
   {
     "index": "greataxes",
     "name": "Greataxes",
-    "kind": "equipment",
-    "type": "Weapons",
-    "equipment": [
-      "greataxe"
-    ]
+    "text": "Weapons proficiency: Greataxe.",
+    "numbers": {},
+    "notes": {},
+    "tags": [],
+    "options": [],
+    "choose": null
   },
   {
     "index": "greatswords",
     "name": "Greatswords",
-    "kind": "equipment",
-    "type": "Weapons",
-    "equipment": [
-      "greatsword"
-    ]
+    "text": "Weapons proficiency: Greatsword.",
+    "numbers": {},
+    "notes": {},
+    "tags": [],
+    "options": [],
+    "choose": null
   },
   {
     "index": "halberds",
     "name": "Halberds",
-    "kind": "equipment",
-    "type": "Weapons",
-    "equipment": [
-      "halberd"
-    ]
+    "text": "Weapons proficiency: Halberd.",
+    "numbers": {},
+    "notes": {},
+    "tags": [],
+    "options": [],
+    "choose": null
   },
   {
     "index": "lances",
     "name": "Lances",
-    "kind": "equipment",
-    "type": "Weapons",
-    "equipment": [
-      "lance"
-    ]
+    "text": "Weapons proficiency: Lance.",
+    "numbers": {},
+    "notes": {},
+    "tags": [],
+    "options": [],
+    "choose": null
   },
   {
     "index": "longswords",
     "name": "Longswords",
-    "kind": "equipment",
-    "type": "Weapons",
-    "equipment": [
-      "longsword"
-    ]
+    "text": "Weapons proficiency: Longsword.",
+    "numbers": {},
+    "notes": {},
+    "tags": [],
+    "options": [],
+    "choose": null
   },
   {
     "index": "mauls",
     "name": "Mauls",
-    "kind": "equipment",
-    "type": "Weapons",
-    "equipment": [
-      "maul"
-    ]
+    "text": "Weapons proficiency: Maul.",
+    "numbers": {},
+    "notes": {},
+    "tags": [],
+    "options": [],
+    "choose": null
   },
   {
     "index": "morningstars",
     "name": "Morningstars",
-    "kind": "equipment",
-    "type": "Weapons",
-    "equipment": [
-      "morningstar"
-    ]
+    "text": "Weapons proficiency: Morningstar.",
+    "numbers": {},
+    "notes": {},
+    "tags": [],
+    "options": [],
+    "choose": null
   },
   {
     "index": "pikes",
     "name": "Pikes",
-    "kind": "equipment",
-    "type": "Weapons",
-    "equipment": [
-      "pike"
-    ]
+    "text": "Weapons proficiency: Pike.",
+    "numbers": {},
+    "notes": {},
+    "tags": [],
+    "options": [],
+    "choose": null
   },
   {
     "index": "rapiers",
     "name": "Rapiers",
-    "kind": "equipment",
-    "type": "Weapons",
-    "equipment": [
-      "rapier"
-    ]
+    "text": "Weapons proficiency: Rapier.",
+    "numbers": {},
+    "notes": {},
+    "tags": [],
+    "options": [],
+    "choose": null
   },
   {
     "index": "scimitars",
     "name": "Scimitars",
-    "kind": "equipment",
-    "type": "Weapons",
-    "equipment": [
-      "scimitar"
-    ]
+    "text": "Weapons proficiency: Scimitar.",
+    "numbers": {},
+    "notes": {},
+    "tags": [],
+    "options": [],
+    "choose": null
   },
   {
     "index": "shortswords",
     "name": "Shortswords",
-    "kind": "equipment",
-    "type": "Weapons",
-    "equipment": [
-      "shortsword"
-    ]
+    "text": "Weapons proficiency: Shortsword.",
+    "numbers": {},
+    "notes": {},
+    "tags": [],
+    "options": [],
+    "choose": null
   },
   {
     "index": "tridents",
     "name": "Tridents",
-    "kind": "equipment",
-    "type": "Weapons",
-    "equipment": [
-      "trident"
-    ]
+    "text": "Weapons proficiency: Trident.",
+    "numbers": {},
+    "notes": {},
+    "tags": [],
+    "options": [],
+    "choose": null
   },
   {
     "index": "war-picks",
     "name": "War picks",
-    "kind": "equipment",
-    "type": "Weapons",
-    "equipment": [
-      "war-pick"
-    ]
+    "text": "Weapons proficiency: War pick.",
+    "numbers": {},
+    "notes": {},
+    "tags": [],
+    "options": [],
+    "choose": null
   },
   {
     "index": "warhammers",
     "name": "Warhammers",
-    "kind": "equipment",
-    "type": "Weapons",
-    "equipment": [
-      "warhammer"
-    ]
+    "text": "Weapons proficiency: Warhammer.",
+    "numbers": {},
+    "notes": {},
+    "tags": [],
+    "options": [],
+    "choose": null
   },
   {
     "index": "whips",
     "name": "Whips",
-    "kind": "equipment",
-    "type": "Weapons",
-    "equipment": [
-      "whip"
-    ]
+    "text": "Weapons proficiency: Whip.",
+    "numbers": {},
+    "notes": {},
+    "tags": [],
+    "options": [],
+    "choose": null
   },
   {
     "index": "blowguns",
     "name": "Blowguns",
-    "kind": "equipment",
-    "type": "Weapons",
-    "equipment": [
-      "blowgun"
-    ]
+    "text": "Weapons proficiency: Blowgun.",
+    "numbers": {},
+    "notes": {},
+    "tags": [],
+    "options": [],
+    "choose": null
   },
   {
     "index": "hand-crossbows",
     "name": "Hand crossbows",
-    "kind": "equipment",
-    "type": "Weapons",
-    "equipment": [
-      "crossbow-hand"
-    ]
+    "text": "Weapons proficiency: Crossbow, hand.",
+    "numbers": {},
+    "notes": {},
+    "tags": [],
+    "options": [],
+    "choose": null
   },
   {
     "index": "crossbows-heavy",
     "name": "Crossbows, heavy",
-    "kind": "equipment",
-    "type": "Weapons",
-    "equipment": [
-      "crossbow-heavy"
-    ]
+    "text": "Weapons proficiency: Crossbow, heavy.",
+    "numbers": {},
+    "notes": {},
+    "tags": [],
+    "options": [],
+    "choose": null
   },
   {
     "index": "longbows",
     "name": "Longbows",
-    "kind": "equipment",
-    "type": "Weapons",
-    "equipment": [
-      "longbow"
-    ]
+    "text": "Weapons proficiency: Longbow.",
+    "numbers": {},
+    "notes": {},
+    "tags": [],
+    "options": [],
+    "choose": null
   },
   {
     "index": "nets",
     "name": "Nets",
-    "kind": "equipment",
-    "type": "Weapons",
-    "equipment": [
-      "net"
-    ]
+    "text": "Weapons proficiency: Net.",
+    "numbers": {},
+    "notes": {},
+    "tags": [],
+    "options": [],
+    "choose": null
   },
   {
     "index": "alchemists-supplies",
     "name": "Alchemist's Supplies",
-    "kind": "equipment",
-    "type": "Artisan's Tools",
-    "equipment": [
-      "alchemists-supplies"
-    ]
+    "text": "Artisan's Tools proficiency: Alchemist's Supplies.",
+    "numbers": {},
+    "notes": {},
+    "tags": [],
+    "options": [],
+    "choose": null
   },
   {
     "index": "brewers-supplies",
     "name": "Brewer's Supplies",
-    "kind": "equipment",
-    "type": "Artisan's Tools",
-    "equipment": [
-      "brewers-supplies"
-    ]
+    "text": "Artisan's Tools proficiency: Brewer's Supplies.",
+    "numbers": {},
+    "notes": {},
+    "tags": [],
+    "options": [],
+    "choose": null
   },
   {
     "index": "calligraphers-supplies",
     "name": "Calligrapher's Supplies",
-    "kind": "equipment",
-    "type": "Artisan's Tools",
-    "equipment": [
-      "calligraphers-supplies"
-    ]
+    "text": "Artisan's Tools proficiency: Calligrapher's Supplies.",
+    "numbers": {},
+    "notes": {},
+    "tags": [],
+    "options": [],
+    "choose": null
   },
   {
     "index": "carpenters-tools",
     "name": "Carpenter's Tools",
-    "kind": "equipment",
-    "type": "Artisan's Tools",
-    "equipment": [
-      "carpenters-tools"
-    ]
+    "text": "Artisan's Tools proficiency: Carpenter's Tools.",
+    "numbers": {},
+    "notes": {},
+    "tags": [],
+    "options": [],
+    "choose": null
   },
   {
     "index": "cartographers-tools",
     "name": "Cartographer's Tools",
-    "kind": "equipment",
-    "type": "Artisan's Tools",
-    "equipment": [
-      "cartographers-tools"
-    ]
+    "text": "Artisan's Tools proficiency: Cartographer's Tools.",
+    "numbers": {},
+    "notes": {},
+    "tags": [],
+    "options": [],
+    "choose": null
   },
   {
     "index": "cobblers-tools",
     "name": "Cobbler's Tools",
-    "kind": "equipment",
-    "type": "Artisan's Tools",
-    "equipment": [
-      "cobblers-tools"
-    ]
+    "text": "Artisan's Tools proficiency: Cobbler's Tools.",
+    "numbers": {},
+    "notes": {},
+    "tags": [],
+    "options": [],
+    "choose": null
   },
   {
     "index": "cooks-utensils",
     "name": "Cook's utensils",
-    "kind": "equipment",
-    "type": "Artisan's Tools",
-    "equipment": [
-      "cooks-utensils"
-    ]
+    "text": "Artisan's Tools proficiency: Cook's utensils.",
+    "numbers": {},
+    "notes": {},
+    "tags": [],
+    "options": [],
+    "choose": null
   },
   {
     "index": "glassblowers-tools",
     "name": "Glassblower's Tools",
-    "kind": "equipment",
-    "type": "Artisan's Tools",
-    "equipment": [
-      "glassblowers-tools"
-    ]
+    "text": "Artisan's Tools proficiency: Glassblower's Tools.",
+    "numbers": {},
+    "notes": {},
+    "tags": [],
+    "options": [],
+    "choose": null
   },
   {
     "index": "jewelers-tools",
     "name": "Jeweler's Tools",
-    "kind": "equipment",
-    "type": "Artisan's Tools",
-    "equipment": [
-      "jewelers-tools"
-    ]
+    "text": "Artisan's Tools proficiency: Jeweler's Tools.",
+    "numbers": {},
+    "notes": {},
+    "tags": [],
+    "options": [],
+    "choose": null
   },
   {
     "index": "leatherworkers-tools",
     "name": "Leatherworker's Tools",
-    "kind": "equipment",
-    "type": "Artisan's Tools",
-    "equipment": [
-      "leatherworkers-tools"
-    ]
+    "text": "Artisan's Tools proficiency: Leatherworker's Tools.",
+    "numbers": {},
+    "notes": {},
+    "tags": [],
+    "options": [],
+    "choose": null
   },
   {
     "index": "masons-tools",
     "name": "Mason's Tools",
-    "kind": "equipment",
-    "type": "Artisan's Tools",
-    "equipment": [
-      "masons-tools"
-    ]
+    "text": "Artisan's Tools proficiency: Mason's Tools.",
+    "numbers": {},
+    "notes": {},
+    "tags": [],
+    "options": [],
+    "choose": null
   },
   {
     "index": "painters-supplies",
     "name": "Painter's Supplies",
-    "kind": "equipment",
-    "type": "Artisan's Tools",
-    "equipment": [
-      "painters-supplies"
-    ]
+    "text": "Artisan's Tools proficiency: Painter's Supplies.",
+    "numbers": {},
+    "notes": {},
+    "tags": [],
+    "options": [],
+    "choose": null
   },
   {
     "index": "potters-tools",
     "name": "Potter's Tools",
-    "kind": "equipment",
-    "type": "Artisan's Tools",
-    "equipment": [
-      "potters-tools"
-    ]
+    "text": "Artisan's Tools proficiency: Potter's Tools.",
+    "numbers": {},
+    "notes": {},
+    "tags": [],
+    "options": [],
+    "choose": null
   },
   {
     "index": "smiths-tools",
     "name": "Smith's Tools",
-    "kind": "equipment",
-    "type": "Artisan's Tools",
-    "equipment": [
-      "smiths-tools"
-    ]
+    "text": "Artisan's Tools proficiency: Smith's Tools.",
+    "numbers": {},
+    "notes": {},
+    "tags": [],
+    "options": [],
+    "choose": null
   },
   {
     "index": "tinkers-tools",
     "name": "Tinker's Tools",
-    "kind": "equipment",
-    "type": "Artisan's Tools",
-    "equipment": [
-      "tinkers-tools"
-    ]
+    "text": "Artisan's Tools proficiency: Tinker's Tools.",
+    "numbers": {},
+    "notes": {},
+    "tags": [],
+    "options": [],
+    "choose": null
   },
   {
     "index": "weavers-tools",
     "name": "Weaver's Tools",
-    "kind": "equipment",
-    "type": "Artisan's Tools",
-    "equipment": [
-      "weavers-tools"
-    ]
+    "text": "Artisan's Tools proficiency: Weaver's Tools.",
+    "numbers": {},
+    "notes": {},
+    "tags": [],
+    "options": [],
+    "choose": null
   },
   {
     "index": "woodcarvers-tools",
     "name": "Woodcarver's Tools",
-    "kind": "equipment",
-    "type": "Artisan's Tools",
-    "equipment": [
-      "woodcarvers-tools"
-    ]
+    "text": "Artisan's Tools proficiency: Woodcarver's Tools.",
+    "numbers": {},
+    "notes": {},
+    "tags": [],
+    "options": [],
+    "choose": null
   },
   {
     "index": "disguise-kit",
     "name": "Disguise Kit",
-    "kind": "equipment",
-    "type": "Artisan's Tools",
-    "equipment": [
-      "disguise-kit"
-    ]
+    "text": "Artisan's Tools proficiency: Disguise Kit.",
+    "numbers": {},
+    "notes": {},
+    "tags": [],
+    "options": [],
+    "choose": null
   },
   {
     "index": "forgery-kit",
     "name": "Forgery Kit",
-    "kind": "equipment",
-    "type": "Artisan's Tools",
-    "equipment": [
-      "forgery-kit"
-    ]
+    "text": "Artisan's Tools proficiency: Forgery Kit.",
+    "numbers": {},
+    "notes": {},
+    "tags": [],
+    "options": [],
+    "choose": null
   },
   {
     "index": "dice-set",
     "name": "Dice Set",
-    "kind": "equipment",
-    "type": "Gaming Sets",
-    "equipment": [
-      "dice-set"
-    ]
+    "text": "Gaming Sets proficiency: Dice Set.",
+    "numbers": {},
+    "notes": {},
+    "tags": [],
+    "options": [],
+    "choose": null
   },
   {
     "index": "playing-card-set",
     "name": "Playing Card Set",
-    "kind": "equipment",
-    "type": "Gaming Sets",
-    "equipment": [
-      "playing-card-set"
-    ]
+    "text": "Gaming Sets proficiency: Playing Card Set.",
+    "numbers": {},
+    "notes": {},
+    "tags": [],
+    "options": [],
+    "choose": null
   },
   {
     "index": "bagpipes",
     "name": "Bagpipes",
-    "kind": "equipment",
-    "type": "Musical Instruments",
-    "equipment": [
-      "bagpipes"
-    ]
+    "text": "Musical Instruments proficiency: Bagpipes.",
+    "numbers": {},
+    "notes": {},
+    "tags": [],
+    "options": [],
+    "choose": null
   },
   {
     "index": "drum",
     "name": "Drum",
-    "kind": "equipment",
-    "type": "Musical Instruments",
-    "equipment": [
-      "drum"
-    ]
+    "text": "Musical Instruments proficiency: Drum.",
+    "numbers": {},
+    "notes": {},
+    "tags": [],
+    "options": [],
+    "choose": null
   },
   {
     "index": "dulcimer",
     "name": "Dulcimer",
-    "kind": "equipment",
-    "type": "Musical Instruments",
-    "equipment": [
-      "dulcimer"
-    ]
+    "text": "Musical Instruments proficiency: Dulcimer.",
+    "numbers": {},
+    "notes": {},
+    "tags": [],
+    "options": [],
+    "choose": null
   },
   {
     "index": "flute",
     "name": "Flute",
-    "kind": "equipment",
-    "type": "Musical Instruments",
-    "equipment": [
-      "flute"
-    ]
+    "text": "Musical Instruments proficiency: Flute.",
+    "numbers": {},
+    "notes": {},
+    "tags": [],
+    "options": [],
+    "choose": null
   },
   {
     "index": "lute",
     "name": "Lute",
-    "kind": "equipment",
-    "type": "Musical Instruments",
-    "equipment": [
-      "lute"
-    ]
+    "text": "Musical Instruments proficiency: Lute.",
+    "numbers": {},
+    "notes": {},
+    "tags": [],
+    "options": [],
+    "choose": null
   },
   {
     "index": "lyre",
     "name": "Lyre",
-    "kind": "equipment",
-    "type": "Musical Instruments",
-    "equipment": [
-      "lyre"
-    ]
+    "text": "Musical Instruments proficiency: Lyre.",
+    "numbers": {},
+    "notes": {},
+    "tags": [],
+    "options": [],
+    "choose": null
   },
   {
     "index": "horn",
     "name": "Horn",
-    "kind": "equipment",
-    "type": "Musical Instruments",
-    "equipment": [
-      "horn"
-    ]
+    "text": "Musical Instruments proficiency: Horn.",
+    "numbers": {},
+    "notes": {},
+    "tags": [],
+    "options": [],
+    "choose": null
   },
   {
     "index": "pan-flute",
     "name": "Pan flute",
-    "kind": "equipment",
-    "type": "Musical Instruments",
-    "equipment": [
-      "pan-flute"
-    ]
+    "text": "Musical Instruments proficiency: Pan flute.",
+    "numbers": {},
+    "notes": {},
+    "tags": [],
+    "options": [],
+    "choose": null
   },
   {
     "index": "shawm",
     "name": "Shawm",
-    "kind": "equipment",
-    "type": "Musical Instruments",
-    "equipment": [
-      "shawm"
-    ]
+    "text": "Musical Instruments proficiency: Shawm.",
+    "numbers": {},
+    "notes": {},
+    "tags": [],
+    "options": [],
+    "choose": null
   },
   {
     "index": "viol",
     "name": "Viol",
-    "kind": "equipment",
-    "type": "Musical Instruments",
-    "equipment": [
-      "viol"
-    ]
+    "text": "Musical Instruments proficiency: Viol.",
+    "numbers": {},
+    "notes": {},
+    "tags": [],
+    "options": [],
+    "choose": null
   },
   {
     "index": "herbalism-kit",
     "name": "Herbalism Kit",
-    "kind": "equipment",
-    "type": "Other",
-    "equipment": [
-      "herbalism-kit"
-    ]
+    "text": "Other proficiency: Herbalism Kit.",
+    "numbers": {},
+    "notes": {},
+    "tags": [],
+    "options": [],
+    "choose": null
   },
   {
     "index": "navigators-tools",
     "name": "Navigator's Tools",
-    "kind": "equipment",
-    "type": "Other",
-    "equipment": [
-      "navigators-tools"
-    ]
+    "text": "Other proficiency: Navigator's Tools.",
+    "numbers": {},
+    "notes": {},
+    "tags": [],
+    "options": [],
+    "choose": null
   },
   {
     "index": "poisoners-kit",
     "name": "Poisoner's Kit",
-    "kind": "equipment",
-    "type": "Other",
-    "equipment": [
-      "poisoners-kit"
-    ]
+    "text": "Other proficiency: Poisoner's Kit.",
+    "numbers": {},
+    "notes": {},
+    "tags": [],
+    "options": [],
+    "choose": null
   },
   {
     "index": "thieves-tools",
     "name": "Thieves' Tools",
-    "kind": "equipment",
-    "type": "Other",
-    "equipment": [
-      "thieves-tools"
-    ]
+    "text": "Other proficiency: Thieves' Tools.",
+    "numbers": {},
+    "notes": {},
+    "tags": [],
+    "options": [],
+    "choose": null
   },
   {
     "index": "land-vehicles",
     "name": "Land Vehicles",
-    "kind": "equipment",
-    "type": "Vehicles",
-    "equipment": [
-      "carriage",
-      "cart",
-      "chariot",
-      "sled",
-      "wagon"
-    ]
+    "text": "Vehicles proficiency: Land Vehicles.",
+    "numbers": {},
+    "notes": {},
+    "tags": [],
+    "options": [],
+    "choose": null
   },
   {
     "index": "water-vehicles",
     "name": "Water Vehicles",
-    "kind": "equipment",
-    "type": "Vehicles",
-    "equipment": [
-      "galley",
-      "keelboat",
-      "longship",
-      "rowboat",
-      "sailing-ship",
-      "warship"
-    ]
+    "text": "Vehicles proficiency: Waterborne Vehicles.",
+    "numbers": {},
+    "notes": {},
+    "tags": [],
+    "options": [],
+    "choose": null
   },
   {
     "index": "saving-throw-str",
     "name": "Saving Throw: STR",
-    "kind": "save",
-    "ability": "strength"
+    "text": "Saving Throws proficiency: STR.",
+    "numbers": {},
+    "notes": {},
+    "tags": [],
+    "options": [],
+    "choose": null
   },
   {
     "index": "saving-throw-dex",
     "name": "Saving Throw: DEX",
-    "kind": "save",
-    "ability": "dexterity"
+    "text": "Saving Throws proficiency: DEX.",
+    "numbers": {},
+    "notes": {},
+    "tags": [],
+    "options": [],
+    "choose": null
   },
   {
     "index": "saving-throw-con",
     "name": "Saving Throw: CON",
-    "kind": "save",
-    "ability": "constitution"
+    "text": "Saving Throws proficiency: CON.",
+    "numbers": {},
+    "notes": {},
+    "tags": [],
+    "options": [],
+    "choose": null
   },
   {
     "index": "saving-throw-int",
     "name": "Saving Throw: INT",
-    "kind": "save",
-    "ability": "intelligence"
+    "text": "Saving Throws proficiency: INT.",
+    "numbers": {},
+    "notes": {},
+    "tags": [],
+    "options": [],
+    "choose": null
   },
   {
     "index": "saving-throw-wis",
     "name": "Saving Throw: WIS",
-    "kind": "save",
-    "ability": "wisdom"
+    "text": "Saving Throws proficiency: WIS.",
+    "numbers": {},
+    "notes": {},
+    "tags": [],
+    "options": [],
+    "choose": null
   },
   {
     "index": "saving-throw-cha",
     "name": "Saving Throw: CHA",
-    "kind": "save",
-    "ability": "charisma"
+    "text": "Saving Throws proficiency: CHA.",
+    "numbers": {},
+    "notes": {},
+    "tags": [],
+    "options": [],
+    "choose": null
   },
   {
     "index": "skill-acrobatics",
     "name": "Skill: Acrobatics",
-    "kind": "skill",
-    "skill": "acrobatics"
+    "text": "Skills proficiency: Acrobatics.",
+    "numbers": {},
+    "notes": {},
+    "tags": [],
+    "options": [],
+    "choose": null
   },
   {
     "index": "skill-animal-handling",
     "name": "Skill: Animal Handling",
-    "kind": "skill",
-    "skill": "animal-handling"
+    "text": "Skills proficiency: Animal Handling.",
+    "numbers": {},
+    "notes": {},
+    "tags": [],
+    "options": [],
+    "choose": null
   },
   {
     "index": "skill-arcana",
     "name": "Skill: Arcana",
-    "kind": "skill",
-    "skill": "arcana"
+    "text": "Skills proficiency: Arcana.",
+    "numbers": {},
+    "notes": {},
+    "tags": [],
+    "options": [],
+    "choose": null
   },
   {
     "index": "skill-athletics",
     "name": "Skill: Athletics",
-    "kind": "skill",
-    "skill": "athletics"
+    "text": "Skills proficiency: Athletics.",
+    "numbers": {},
+    "notes": {},
+    "tags": [],
+    "options": [],
+    "choose": null
   },
   {
     "index": "skill-deception",
     "name": "Skill: Deception",
-    "kind": "skill",
-    "skill": "deception"
+    "text": "Skills proficiency: Deception.",
+    "numbers": {},
+    "notes": {},
+    "tags": [],
+    "options": [],
+    "choose": null
   },
   {
     "index": "skill-history",
     "name": "Skill: History",
-    "kind": "skill",
-    "skill": "history"
+    "text": "Skills proficiency: History.",
+    "numbers": {},
+    "notes": {},
+    "tags": [],
+    "options": [],
+    "choose": null
   },
   {
     "index": "skill-insight",
     "name": "Skill: Insight",
-    "kind": "skill",
-    "skill": "insight"
+    "text": "Skills proficiency: Insight.",
+    "numbers": {},
+    "notes": {},
+    "tags": [],
+    "options": [],
+    "choose": null
   },
   {
     "index": "skill-intimidation",
     "name": "Skill: Intimidation",
-    "kind": "skill",
-    "skill": "intimidation"
+    "text": "Skills proficiency: Intimidation.",
+    "numbers": {},
+    "notes": {},
+    "tags": [],
+    "options": [],
+    "choose": null
   },
   {
     "index": "skill-investigation",
     "name": "Skill: Investigation",
-    "kind": "skill",
-    "skill": "investigation"
+    "text": "Skills proficiency: Investigation.",
+    "numbers": {},
+    "notes": {},
+    "tags": [],
+    "options": [],
+    "choose": null
   },
   {
     "index": "skill-medicine",
     "name": "Skill: Medicine",
-    "kind": "skill",
-    "skill": "medicine"
+    "text": "Skills proficiency: Medicine.",
+    "numbers": {},
+    "notes": {},
+    "tags": [],
+    "options": [],
+    "choose": null
   },
   {
     "index": "skill-nature",
     "name": "Skill: Nature",
-    "kind": "skill",
-    "skill": "nature"
+    "text": "Skills proficiency: Nature.",
+    "numbers": {},
+    "notes": {},
+    "tags": [],
+    "options": [],
+    "choose": null
   },
   {
     "index": "skill-perception",
     "name": "Skill: Perception",
-    "kind": "skill",
-    "skill": "perception"
+    "text": "Skills proficiency: Perception.",
+    "numbers": {},
+    "notes": {},
+    "tags": [],
+    "options": [],
+    "choose": null
   },
   {
     "index": "skill-performance",
     "name": "Skill: Performance",
-    "kind": "skill",
-    "skill": "performance"
+    "text": "Skills proficiency: Performance.",
+    "numbers": {},
+    "notes": {},
+    "tags": [],
+    "options": [],
+    "choose": null
   },
   {
     "index": "skill-persuasion",
     "name": "Skill: Persuasion",
-    "kind": "skill",
-    "skill": "persuasion"
+    "text": "Skills proficiency: Persuasion.",
+    "numbers": {},
+    "notes": {},
+    "tags": [],
+    "options": [],
+    "choose": null
   },
   {
     "index": "skill-religion",
     "name": "Skill: Religion",
-    "kind": "skill",
-    "skill": "religion"
+    "text": "Skills proficiency: Religion.",
+    "numbers": {},
+    "notes": {},
+    "tags": [],
+    "options": [],
+    "choose": null
   },
   {
     "index": "skill-sleight-of-hand",
     "name": "Skill: Sleight of Hand",
-    "kind": "skill",
-    "skill": "sleight-of-hand"
+    "text": "Skills proficiency: Sleight of Hand.",
+    "numbers": {},
+    "notes": {},
+    "tags": [],
+    "options": [],
+    "choose": null
   },
   {
     "index": "skill-stealth",
     "name": "Skill: Stealth",
-    "kind": "skill",
-    "skill": "stealth"
+    "text": "Skills proficiency: Stealth.",
+    "numbers": {},
+    "notes": {},
+    "tags": [],
+    "options": [],
+    "choose": null
   },
   {
     "index": "skill-survival",
     "name": "Skill: Survival",
-    "kind": "skill",
-    "skill": "survival"
+    "text": "Skills proficiency: Survival.",
+    "numbers": {},
+    "notes": {},
+    "tags": [],
+    "options": [],
+    "choose": null
   }
 ]

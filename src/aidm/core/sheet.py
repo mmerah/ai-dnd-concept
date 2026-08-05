@@ -1,4 +1,4 @@
-from collections.abc import Mapping
+from collections.abc import Callable, Mapping
 from types import MappingProxyType
 from typing import Annotated, Literal, Self
 
@@ -6,8 +6,10 @@ from pydantic import Field, model_validator
 
 from .base import PLAYER_ID, Entity, Frozen, Kind, Mutable, Slug
 from .facts import CORE, Fact
-from .packs import EMPTY_FROZEN_MAP, ContentRef, FrozenMap, Value
+from .packs import EMPTY_FROZEN_MAP, ContentRef, FrozenMap, LenientRecord, Value
 from .world import EngineRules, GameState, rules_of
+
+type ResolveRef = Callable[[ContentRef], LenientRecord | None]
 
 _NO_NUMBERS: Mapping[Slug, int] = MappingProxyType({})
 
@@ -246,18 +248,37 @@ def _delta_fact(change: DeltaItem, summary: str) -> Fact:
     return Fact(source=CORE, kind="advanced", trace=f"{summary} ({change.why})")
 
 
-def render_sheet(_entity: Entity, sheet: Sheet) -> str:
-    """Refs render by name only: their text enters a turn through `read_content`, so a render
-    stays a few lines however large the pack is."""
+def render_sheet(_entity: Entity, sheet: Sheet, resolve: ResolveRef | None = None) -> str:
+    """With a resolver, each ref renders as one line of its record's notes and tags — the key
+    facts, not the text, which still enters a turn only through `read_content`."""
     counters = ", ".join(_counter(key, sheet.counters[key]) for key in sorted(sheet.counters))
     sections = (
         ("numbers", ", ".join(f"{key} {value}" for key, value in sorted(sheet.numbers.items()))),
         ("counters", counters),
         ("tags", ", ".join(_tag(tag) for tag in sheet.tags)),
         ("notes", "; ".join(f"{key}={value}" for key, value in sorted(sheet.notes.items()))),
-        ("content", ", ".join(str(ref) for ref in sheet.refs)),
+        ("content", _refs(sheet.refs, resolve)),
     )
-    return "\n".join(f"{name}: {body}" for name, body in sections if body)
+    return "\n".join(
+        f"{name}:{body}" if body.startswith("\n") else f"{name}: {body}"
+        for name, body in sections
+        if body
+    )
+
+
+def _refs(refs: tuple[ContentRef, ...], resolve: ResolveRef | None) -> str:
+    if resolve is None:
+        return ", ".join(str(ref) for ref in refs)
+    return "".join(f"\n- {_ref_line(ref, resolve(ref))}" for ref in refs)
+
+
+def _ref_line(ref: ContentRef, record: LenientRecord | None) -> str:
+    if record is None:
+        return str(ref)
+    facts = "; ".join(
+        (*(f"{key}={value}" for key, value in sorted(record.notes.items())), *record.tags)
+    )
+    return f"{record.name} [{ref}]" + (f" — {facts}" if facts else "")
 
 
 def pool(counter: Counter) -> str:

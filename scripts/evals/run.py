@@ -1,6 +1,6 @@
 """Live-model eval harness for the Director. Never run from pytest: it needs the network.
 
-    uv run python scripts/evals/run.py [--only <tag|id>] [--runs N] [--concurrency N]
+    uv run python scripts/evals/run.py [--only <engine|tag|id>] [--runs N] [--concurrency N]
 
 Each scenario builds a real game from shipped content, applies its setup, runs the director stage
 alone, then checks the committed draft and the recorded facts. Rates land in `results/`.
@@ -11,6 +11,7 @@ import subprocess
 import sys
 from collections.abc import Sequence
 from datetime import date
+from hashlib import sha1
 from pathlib import Path
 from random import Random
 
@@ -33,7 +34,7 @@ RESULTS = EVALS / "results"
 EVAL_CHARACTERS = EVALS / "characters"
 SEED = 1000
 FLAGS = ("--only", "--runs", "--concurrency")
-USAGE = "usage: run.py [--only <tag|id>] [--runs N] [--concurrency N]"
+USAGE = "usage: run.py [--only <engine|tag|id>] [--runs N] [--concurrency N]"
 
 _ENGINES: dict[EngineId, AnyEngine] = {}
 
@@ -214,7 +215,7 @@ def parse_options(argv: Sequence[str]) -> Options:
 
 def selected(cases: Sequence[EvalCase], options: Options) -> tuple[EvalCase, ...]:
     only = options.only
-    chosen = [case for case in cases if only is None or only in case.tags or only == case.id]
+    chosen = [case for case in cases if only is None or only in _names(case)]
     if not chosen:
         raise SystemExit(f"no eval scenario matches {only!r}")
     runs = options.runs
@@ -286,10 +287,21 @@ def _percent(rate: float) -> str:
 
 
 def _commit() -> str:
-    done = subprocess.run(
-        ("git", "rev-parse", "--short", "HEAD"), capture_output=True, check=True, text=True
-    )
+    """Names the tree, not just HEAD: three runs of this suite were stamped with one sha while the
+    pack under them changed twice, which made two of the records uncomparable after the fact."""
+    head = _git("rev-parse", "--short", "HEAD")
+    changes = _git("diff", "HEAD")
+    return head if not changes else f"{head}+{sha1(changes.encode()).hexdigest()[:7]}"
+
+
+def _git(*arguments: str) -> str:
+    done = subprocess.run(("git", *arguments), capture_output=True, check=True, text=True)
     return done.stdout.strip()
+
+
+def _names(case: EvalCase) -> frozenset[str]:
+    """An engine id selects a whole suite, which is what a gate comparison needs."""
+    return frozenset({case.id, case.engine, *case.tags})
 
 
 def main(argv: Sequence[str]) -> None:

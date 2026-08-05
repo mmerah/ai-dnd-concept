@@ -8,7 +8,7 @@ from pydantic_ai import ModelRetry, RunContext
 from pydantic_ai.toolsets import FunctionToolset
 
 from .base import Entity, EntityId, Slug
-from .dice import ConstantTerm, DiceTerm, ModifierTerm, SelfContainedDice, terms
+from .dice import ConstantTerm, DiceExpr, DiceTerm, terms
 from .facts import CORE, Fact
 from .packs import Content, ContentMiss, ContentRef, LenientRecord
 from .sheet import Counter, Sheet, SheetTag, pool
@@ -55,7 +55,7 @@ class Mechanics:
         self,
         ctx: RunContext[TurnContext[Sheet]],
         dice: Annotated[
-            SelfContainedDice,
+            DiceExpr,
             Field(description="The whole expression, bonuses included: '1d20 + 5', '2d6 + 3'."),
         ],
         reason: Annotated[
@@ -286,8 +286,6 @@ def _evaluate(expression: str, rng: Random) -> Rolled:
                 total += sign * sum(rolled)
             case ConstantTerm(sign=sign, value=value):
                 total += sign * value
-            case ModifierTerm():
-                raise ValueError("a self-contained expression cannot carry an unresolved modifier")
     return Rolled(total=total, dice=tuple(dice))
 
 
@@ -359,10 +357,12 @@ def _reference(ref: str) -> ContentRef:
 
 def _rendered(record: LenientRecord, ref: str) -> str:
     numbers = ", ".join(f"{key} {value}" for key, value in sorted(record.numbers.items()))
+    notes = "; ".join(f"{key}={value}" for key, value in sorted(record.notes.items()))
     options = ", ".join(str(option) for option in record.options)
     lines = [
         f"{record.name} [{ref}]",
         *([f"numbers: {numbers}"] if numbers else []),
+        *([f"notes: {notes}"] if notes else []),
         *([f"tags: {', '.join(record.tags)}"] if record.tags else []),
         *([f"choose {record.choose} of: {options}"] if options else []),
         *([record.text] if record.text else []),

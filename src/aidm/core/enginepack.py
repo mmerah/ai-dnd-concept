@@ -10,6 +10,7 @@ from .packs import (
     ENCODING,
     CollectionName,
     Content,
+    ContentMiss,
     ContentRef,
     FrozenMap,
     LenientRecord,
@@ -59,6 +60,13 @@ def load_engine(
     def default_rules(entity: Entity) -> Sheet:
         return SheetDefinition().runtime(entity.kind, spec.template(entity.kind))
 
+    def resolve(ref: ContentRef) -> LenientRecord | None:
+        found = content.get(ref, LenientRecord)
+        return None if isinstance(found, ContentMiss) else found
+
+    def entity_state(entity: Entity, sheet: Sheet) -> str:
+        return render_sheet(entity, sheet, resolve)
+
     return Engine(
         id=engine_id,
         state_type=GameState[Sheet],
@@ -72,13 +80,15 @@ def load_engine(
         ),
         toolsets={"director": Mechanics(content=content, refills=spec.recharge).toolset()},
         director_instructions=_text(engine_dir / "director.md"),
-        entity_state=render_sheet,
+        entity_state=entity_state,
     )
 
 
 def _backing(refs: Sequence[ContentRef], content: Content) -> Mapping[Slug, int]:
-    """A monster is authored as one ref, so its record's numbers land on its sheet."""
-    return {k: v for ref in refs for k, v in content.require(ref, LenientRecord).numbers.items()}
+    """A monster is authored as one ref, so its record's numbers land on its sheet. Notes and
+    tags stay on the record: `render_sheet` shows them beside the ref, collision-free."""
+    records = [content.require(ref, LenientRecord) for ref in refs]
+    return {k: v for record in records for k, v in record.numbers.items()}
 
 
 def _validate(state: GameState[Sheet], spec: EngineSpec, content: Content) -> None:

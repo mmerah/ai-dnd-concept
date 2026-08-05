@@ -33,8 +33,9 @@ PACK = Pack(
             "giant-rat": LenientRecord(
                 index="giant-rat",
                 name="Giant Rat",
-                text="Bite +4, 1d4 piercing.",
+                text="Keen smell, pack tactics.",
                 numbers={"hp": 7, "armor-class": 12},
+                notes={"attacks": "Bite +4 to hit, 1d4+2 piercing"},
             )
         }
     },
@@ -103,7 +104,8 @@ def test_default_rules_gives_a_grown_actor_the_templates_canonical_keys(tmp_path
     assert sheet.numbers["armor-class"] == 10
 
 
-def test_an_authored_ref_backs_the_sheet_with_the_records_numbers(tmp_path: Path) -> None:
+def test_an_authored_ref_backs_the_sheet_with_numbers_and_renders_its_notes(tmp_path: Path) -> None:
+    """Record numbers land on the sheet; notes and tags stay on the record and render by the ref."""
     engine = _engine(tmp_path)
     goblin = Entity(id=EntityId("goblin"), kind="actor", name="Goblin", brief="", known=True)
     authored = AuthoredWorld(
@@ -122,6 +124,9 @@ def test_an_authored_ref_backs_the_sheet_with_the_records_numbers(tmp_path: Path
     sheet = world.record(goblin.id).rules
     assert sheet.counters["hp"] == Counter(current=7, maximum=7, recharge="long-rest")
     assert sheet.numbers["armor-class"] == 12
+    assert sheet.notes == {}
+    rendered = engine.entity_state(goblin, sheet)
+    assert "- Giant Rat [testpack/monsters/giant-rat] — attacks=Bite +4 to hit" in rendered
 
 
 def test_validate_state_rejects_a_sheet_missing_a_canonical_key(tmp_path: Path) -> None:

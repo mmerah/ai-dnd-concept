@@ -1,0 +1,54 @@
+{
+  "templates": {
+    "actor": {
+      "numbers": {
+        "strength": 10,
+        "dexterity": 10,
+        "constitution": 10,
+        "intelligence": 10,
+        "wisdom": 10,
+        "charisma": 10,
+        "armor-class": 10
+      },
+      "counters": {
+        "hp": {
+          "current": 1,
+          "maximum": 1
+        }
+      }
+    }
+  },
+  "recharge": {
+    "short-rest": [
+      "short-rest"
+    ],
+    "long-rest": [
+      "short-rest",
+      "long-rest"
+    ]
+  },
+  "collections": [
+    "monsters",
+    "weapons",
+    "armor",
+    "gear",
+    "tools",
+    "vehicles",
+    "magic_items",
+    "spells",
+    "skills",
+    "conditions",
+    "alignments",
+    "languages",
+    "classes",
+    "subclasses",
+    "levels",
+    "features",
+    "races",
+    "subraces",
+    "traits",
+    "backgrounds",
+    "feats",
+    "proficiencies"
+  ]
+}

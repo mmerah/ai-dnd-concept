@@ -1,121 +1,69 @@
 from collections.abc import Sequence
 from pathlib import Path
 
-from aidm.core.base import PLAYER_ID, Entity
 from aidm.core.config import Settings
-from aidm.core.content import AuthoredEntity, AuthoredWorld, Rules, compose_world
-from aidm.core.engine import Engine, ProposalSpec
-from aidm.core.packs import Value, load
+from aidm.core.engine import AdvancementOffer, Engine
+from aidm.core.enginepack import load_engine
+from aidm.core.packs import Content, ContentMiss, ContentRef, LenientRecord, Value
 from aidm.core.registry import EnginePlugin
-from aidm.core.world import BareLocation
+from aidm.core.sheet import Sheet, SheetDelta, apply_delta, player_sheet
+from aidm.core.world import GameState
 
-from . import bestiary, progression
-from .access import read_actor, read_item
-from .content.pack_ruleset import compile_ruleset
-from .content.registry import PACK_FORMAT
 from .identity import ENGINE_ID
-from .presentation import Dnd5ePresentation
-from .ruleset import Ruleset
-from .state import (
-    Dnd5eActorState,
-    Dnd5eCharacterData,
-    Dnd5eItemState,
-    Dnd5eRules,
-    Dnd5eState,
-    Dnd5eWorldState,
-    StatBlock,
-)
-from .tools import DIRECTOR_INSTRUCTIONS, Dnd5eTools
 
-SHIPPED_PACK = Path(__file__).parent / "packs" / "srd-2014"
-
-
-def _offline(*_: object) -> str:
-    raise ValueError("5e advancement is offline until 5e moves onto the Sheet")
-
-
-# Typed 5e keeps no Sheet, so it offers nothing this phase; phase 3 gives it a real spec.
-_PROPOSAL: ProposalSpec[Dnd5eRules] = ProposalSpec(
-    offered=lambda _state: None, instructions="", check=_offline
-)
+ENGINE_DIR = Path(__file__).parent
+ADVANCEMENT_READY = "advancement-ready"
+LEVEL = "level"
 
 
 class Dnd5eConfig(Value):
     pack_paths: tuple[Path, ...] | None = None
 
 
-def build_dnd5e_engine(pack_paths: Sequence[Path] | None = None) -> Engine[Dnd5eRules]:
-    ruleset = compile_ruleset(
-        load((SHIPPED_PACK,) if pack_paths is None else tuple(pack_paths), PACK_FORMAT)
-    )
-    return dnd5e_engine(ruleset)
-
-
-def _validate_payloads(state: Dnd5eState, ruleset: Ruleset) -> None:
-    """A foreign or malformed payload breaks here, not mid-combat."""
-    actors = tuple(read_actor(state, entity.id) for entity in state.world.entities("actor"))
-    for actor in actors:
-        if actor.ref is not None and not ruleset.provides(actor.ref):
-            raise ValueError(f"5e actor {actor.id!r} has unknown ref {actor.ref}")
-        if actor.progression is None:
-            continue
-        unknown = sorted(str(r) for r in actor.progression.origin.refs if not ruleset.provides(r))
-        if unknown:
-            raise ValueError(f"5e actor {actor.id!r} has unknown origin refs {unknown}")
-    for entity in state.world.entities("item"):
-        item = read_item(state, entity.id)
-        if item.ref is not None and not ruleset.provides(item.ref):
-            raise ValueError(f"5e item {item.id!r} has unknown ref {item.ref}")
-    # `LeveledUp` names no target, so an NPC carrying progression would be ambiguous.
-    levelled = sorted(
-        actor.id for actor in actors if actor.progression is not None and actor.id != PLAYER_ID
-    )
-    if levelled:
-        raise ValueError(f"only the player may have progression: {levelled}")
-
-
-def dnd5e_engine(ruleset: Ruleset) -> Engine[Dnd5eRules]:
-    def entity_rules(authored: AuthoredEntity) -> Dnd5eRules:
-        match authored.entity.kind:
-            case "actor":
-                return bestiary.statted_actor(authored.entity.id, authored.rules, ruleset)
-            case "item":
-                return bestiary.statted_item(authored.entity.id, authored.rules, ruleset)
-            case "location":
-                return BareLocation.model_validate(authored.rules)
-
-    def initial_world(authored: AuthoredWorld, character: Rules) -> Dnd5eWorldState:
-        sheet = Dnd5eCharacterData.model_validate(character)
-        start = progression.first_level(sheet, ruleset)
-        player = Dnd5eActorState(
-            stats=StatBlock(attributes=start.attributes, max_hp=start.hp_gain, hp=start.hp_gain),
-            progression=start.progression,
-        )
-        return compose_world(Dnd5eWorldState, authored, player, entity_rules)
-
-    def default_rules(entity: Entity) -> Dnd5eRules:
-        match entity.kind:
-            case "actor":
-                return Dnd5eActorState(stats=StatBlock())
-            case "item":
-                return Dnd5eItemState()
-            case "location":
-                return BareLocation()
-
-    return Engine(
-        id=ENGINE_ID,
-        state_type=Dnd5eState,
-        initial_world=initial_world,
-        validate_state=lambda state: _validate_payloads(state, ruleset),
-        default_rules=default_rules,
-        proposal=_PROPOSAL,
-        toolsets={"director": Dnd5eTools(ruleset).toolset()},
-        director_instructions=DIRECTOR_INSTRUCTIONS,
-        entity_state=Dnd5ePresentation(ruleset).entity_state,
+def _offered(state: GameState[Sheet], content: Content) -> AdvancementOffer | None:
+    sheet = player_sheet(state)
+    if sheet.tag(ADVANCEMENT_READY) is None:
+        return None
+    next_level = sheet.numbers[LEVEL] + 1
+    record = content.get(_level_ref(sheet, next_level), LenientRecord)
+    if isinstance(record, ContentMiss):
+        # The class runs out of level rows at 20, which is the end of advancement, not a fault.
+        return None
+    return AdvancementOffer(
+        prompt=f"{record.name} is ready to take.",
+        text=record.text,
+        options=record.options,
+        choose=record.choose or 0,
     )
 
 
-def _build(config: Settings) -> Engine[Dnd5eRules]:
+def _check(state: GameState[Sheet], offer: AdvancementOffer, delta: SheetDelta) -> str | None:
+    """5e's own caps: the level moves by exactly one, and the tag that opened the offer is spent."""
+    del offer
+    before = player_sheet(state)
+    after = before.model_copy(deep=True)
+    _ = apply_delta(after, delta)
+    reached = before.numbers[LEVEL] + 1
+    if after.numbers[LEVEL] != reached:
+        return f"this level-up reaches level {reached}: set `{LEVEL}` to exactly that"
+    if after.tag(ADVANCEMENT_READY) is not None:
+        return f"the level-up is spent by removing the {ADVANCEMENT_READY!r} tag"
+    return None
+
+
+def _level_ref(sheet: Sheet, level: int) -> ContentRef:
+    classes = [ref for ref in sheet.refs if ref.collection == "classes"]
+    if len(classes) != 1:
+        held = ", ".join(str(ref) for ref in classes) or "(none)"
+        raise ValueError(f"a 5e character advances by exactly one class, and this one holds {held}")
+    return classes[0].sibling("levels", f"{classes[0].index}-{level}")
+
+
+def build_dnd5e_engine(pack_paths: Sequence[Path] | None = None) -> Engine[Sheet]:
+    return load_engine(ENGINE_DIR, ENGINE_ID, pack_paths, offered=_offered, check=_check)
+
+
+def _build(config: Settings) -> Engine[Sheet]:
     section = Dnd5eConfig.model_validate(config.engines.get(ENGINE_ID, {}))
     return build_dnd5e_engine(section.pack_paths)
 

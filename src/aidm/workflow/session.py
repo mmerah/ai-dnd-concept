@@ -318,7 +318,7 @@ class GameSession:
         """The advisor drafts the change; nothing is committed until the player confirms it."""
         offer = self._offered()
         deps = AdvisorContext(engine=self.engine, state=self.state, offer=offer)
-        return await self.advisor.run(render_proposal(self.state, offer, intent), deps)
+        return await self.advisor.run(render_proposal(self.engine, self.state, offer, intent), deps)
 
     def preview(self, delta: SheetDelta) -> tuple[Fact, ...]:
         """What the change would write, read off a throwaway copy, not the committed sheet."""

@@ -494,6 +494,97 @@ Verification: gates green; the eval exit gate above; play a combat turn and a le
 
 ---
 
+## Phase 3.5 — the Director is carrying too much
+
+Not a rollback. Phase 3's thesis held: engines are data, a pack plus a ~70-line shim, and the same
+substrate runs two rulesets. What phase 3 also measured is the bill for it, and phase 3.5 is where
+that bill gets paid.
+
+**The evidence, on the frozen 21-scenario 5e suite, same model and `retries=3` throughout:**
+
+| Tree | interpretation | completion | combat |
+|---|---|---|---|
+| typed 5e (baseline) | 74.2% | 95.2% | 67.8% |
+| lenient, lean pack (2 runs) | 87.3 / 89.5% | 100 / 90.5% | 95.6 / 82.2% |
+| lenient, enriched pack (1 run) | **63.3%** | 95.2% | **66.7%** |
+
+The enriched pack put every record's mechanics into the per-turn render — damage dice, save DCs,
+upcast ladders, monster attack lines — and interpretation fell 25 points against a run-to-run drift
+of 2.2. The dominant failure is not wrong arithmetic. It is **`0 rolls against a target number`**:
+the Director did not act at all, on turns whose prompt named the action. Three more turns died with
+`Tool 'roll' exceeded max retries`. That is the *under-acting* signature phase 2 recorded for small
+models, now appearing in the model this project keeps, as its context grew.
+
+The reading: more correct content in front of the Director does not buy more correct play, and past
+some point it costs. The rules-facing role is being asked to read a large disorganised context,
+choose a procedure, do the arithmetic, and emit well-formed tool calls, all in one pass. Phase 3.5
+splits that load. **It plans; it does not prescribe** — the three sections below state intent and
+constraints, and the implementation plan is written separately against them.
+
+### 3.5.1 A referee role
+
+The Director fails in two ways the substrate can see: it emits a tool call the schema refuses until
+retries run out, and it ends a turn without having called a tool the turn plainly needed. Both are
+mechanical, both are detectable from the turn's own record, and neither needs the rules to be
+re-encoded in Python to catch.
+
+A referee is a second role placed **before or after the Director** — the plan decides which, and the
+choice is itself part of the work. Before, it constrains what the Director is asked to do; after, it
+checks what the Director did against the facts recorded in the `Turn` trace and can send the turn
+back. The substrate was built for the second option: every tool call already records its facts, and
+`docs/ROADMAP.md` has carried "engine referee" since phase 2 for exactly this.
+
+- **Target**: completion at or near 100%, and the `0 rolls` class of failure caught rather than
+  committed. Interpretation should rise as a consequence, not as a separate ambition.
+- **Constraint**: the referee never writes state. It rules, retries, or reports; the Director's
+  tools remain the only path into the draft, and the narrating role's context boundary is untouched.
+- **Constraint**: it must not become the typed engine again. A referee that hard-codes 5e arithmetic
+  has undone phase 3. It reads the same content the Director reads.
+- **Cost to weigh**: another sequential model call per turn, on a pipeline that already makes four.
+
+### 3.5.2 Context organisation
+
+Read the director prompt as a human. It is confusing and disorganised — sections in no deliberate
+order, the same fact reachable three ways, entity renders and instructions interleaved without a
+hierarchy a reader could hold. The enriched pack made an existing weakness load-bearing rather than
+creating a new one.
+
+- **Target**: a prompt whose structure a person can follow at a glance — what is happening, who is
+  here, what this actor can do, what the rules say, what is being asked.
+- **Constraint**: `SceneSnapshot` and the Narrator-only `VisibleScene` in `workflow/prompts.py` stay
+  the single place context is projected; this is a reorganisation, not new plumbing scattered
+  through the pipeline.
+- **Constraint**: the leak boundary is not negotiable. Whatever is reorganised, the narrating role
+  still cannot see unrevealed canon.
+- **Open question the plan must answer**: whether the fix is ordering and headings alone, or whether
+  the render must also become selective — `docs/ROADMAP.md`'s prompt-aware renderer, expanding a
+  spell only when the turn reaches for it. The measurement decides; do not assume less content is
+  the answer, because the lean pack scored well *and* left the Director guessing damage dice.
+
+### 3.5.3 Instructions and tool descriptions
+
+`director.md` grew by accretion across three phases and has never had a writing pass. The tool
+docstrings in `core/mechanics.py` are the Director's only description of its own instruments, and
+they carry no examples — worked examples in a tool description are among the cheapest known
+improvements to tool-calling reliability, and this project has never tried them.
+
+- **Target**: fewer, sharper instructions; each tool described with at least one concrete call.
+- **Constraint**: `core/mechanics.py` is shared by every engine, so its docstrings stay
+  engine-neutral. 5e-specific wording belongs in `engines/dnd5e/director.md`.
+- **Constraint**: these docstrings are runtime behaviour, per CLAUDE.md — a change to them is a
+  change to the prompt, and is measured, not eyeballed.
+- **Known lever, already proven twice**: placement. A rule the Director never reaches does not fire.
+  Phase 2 moved a buried precondition to the front of its procedure and went 33% → 100%; phase 3
+  moved the advancement trigger out of the last section for the same reason.
+
+### How phase 3.5 is judged
+
+The same frozen 21-scenario suite, `--only dnd5e --runs 3`, run twice, compared against the three
+trees in the table above — **not** against the typed baseline, which phase 3 already cleared. Change
+one thing at a time and measure it; the whole point of the phase is that this project can no longer
+tell which of several simultaneous changes moved a number. Budget is not the constraint here: `src`
+may grow, and a referee that buys 30 points of completion is worth more than the lines it costs.
+
 ## Closing out
 
 Not a phase: what phases 0–3 knowingly left, gathered here so it is not rediscovered. Written

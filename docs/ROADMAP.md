@@ -45,11 +45,16 @@ Status of the proof of concept, and where it should go. Kept short on purpose.
 ### Planned features
 
 - Locations are connected, they have a state.
-- Continue 5e mechanics inside `aidm/engines/dnd5e/` without widening core state.
+- Continue 5e mechanics inside `aidm/engines/dnd5e/` without widening core state. 5e content has plently of "numbers" and "notes". Can we have an actual entity (character) with a race, subrace, class, level, ... and have actual proper state depending on what we have (e.g. armor equipped change AC, traits are actionable and granted depending on the race, level up work and grants new spells/features/..., ... need state for currency/hp/ac/spell slots/...)
 - Expand Story consequences only where narrative play demonstrates a concrete need.
 - Character creator, decoupling the character from the scenario file.
 - AI scenario creator — from a premise, or ingested from a PDF.
 - More roles and per-role tools; the context projections and `Role` literal already scale to this.
+- Token-efficient rendering. An entity render resolves every ref it holds inline, so a 5e caster
+  costs more tokens than a Story character — legitimately, since the arithmetic lives in that
+  detail. Two ways to spend it better: render compactly where the shape allows it, and make the
+  render prompt-aware, expanding a spell or a feature in full only when the turn's prompt reaches
+  for it and leaving the rest as a name. Measure it against the eval suite, not by eye.
 - Engine referee: a rules-verification role that runs after the Director, fed the content pack's
   rules text (srd-2014, datasworn) and optionally an external reference (e.g. the D&D 5e API),
   and checks the Director's mechanical interpretation before commit. Recovers rule accuracy the

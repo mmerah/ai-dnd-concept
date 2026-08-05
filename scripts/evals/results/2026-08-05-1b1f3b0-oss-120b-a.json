@@ -1,0 +1,633 @@
+{
+  "date": "2026-08-05",
+  "commit": "1b1f3b0",
+  "model": "openai/gpt-oss-120b",
+  "retries": 3,
+  "overall": 0.873015873015873,
+  "completion": 1.0,
+  "interpretation": 0.873015873015873,
+  "by_tag": {
+    "advancement": 0.0,
+    "checks": 0.8333333333333334,
+    "combat": 0.9555555555555556,
+    "conditions": 0.8333333333333334,
+    "rest": 0.6666666666666666,
+    "spells": 0.8888888888888888
+  },
+  "cases": [
+    {
+      "id": "ability-check-dc",
+      "tags": [
+        "checks"
+      ],
+      "rate": 0.6666666666666666,
+      "completion": 1.0,
+      "runs": [
+        {
+          "run": 0,
+          "passed": false,
+          "error": null,
+          "failures": [
+            "0 rolls against a target number, wanted at least 1",
+            "nothing was rolled against a target number"
+          ]
+        },
+        {
+          "run": 1,
+          "passed": true,
+          "error": null,
+          "failures": []
+        },
+        {
+          "run": 2,
+          "passed": true,
+          "error": null,
+          "failures": []
+        }
+      ]
+    },
+    {
+      "id": "cantrip-spell-attack",
+      "tags": [
+        "combat",
+        "spells"
+      ],
+      "rate": 0.6666666666666666,
+      "completion": 1.0,
+      "runs": [
+        {
+          "run": 0,
+          "passed": true,
+          "error": null,
+          "failures": []
+        },
+        {
+          "run": 1,
+          "passed": false,
+          "error": null,
+          "failures": [
+            "0 rolls against a target number, wanted at least 1",
+            "nothing was rolled against a target number"
+          ]
+        },
+        {
+          "run": 2,
+          "passed": true,
+          "error": null,
+          "failures": []
+        }
+      ]
+    },
+    {
+      "id": "condition-lifted",
+      "tags": [
+        "conditions"
+      ],
+      "rate": 1.0,
+      "completion": 1.0,
+      "runs": [
+        {
+          "run": 0,
+          "passed": true,
+          "error": null,
+          "failures": []
+        },
+        {
+          "run": 1,
+          "passed": true,
+          "error": null,
+          "failures": []
+        },
+        {
+          "run": 2,
+          "passed": true,
+          "error": null,
+          "failures": []
+        }
+      ]
+    },
+    {
+      "id": "condition-rider",
+      "tags": [
+        "combat",
+        "conditions"
+      ],
+      "rate": 0.6666666666666666,
+      "completion": 1.0,
+      "runs": [
+        {
+          "run": 0,
+          "passed": false,
+          "error": null,
+          "failures": [
+            "cloister_rat tag 'prone' is absent"
+          ]
+        },
+        {
+          "run": 1,
+          "passed": true,
+          "error": null,
+          "failures": []
+        },
+        {
+          "run": 2,
+          "passed": true,
+          "error": null,
+          "failures": []
+        }
+      ]
+    },
+    {
+      "id": "dropped-to-zero",
+      "tags": [
+        "combat"
+      ],
+      "rate": 1.0,
+      "completion": 1.0,
+      "runs": [
+        {
+          "run": 0,
+          "passed": true,
+          "error": null,
+          "failures": []
+        },
+        {
+          "run": 1,
+          "passed": true,
+          "error": null,
+          "failures": []
+        },
+        {
+          "run": 2,
+          "passed": true,
+          "error": null,
+          "failures": []
+        }
+      ]
+    },
+    {
+      "id": "empty-slot-refusal",
+      "tags": [
+        "combat",
+        "spells"
+      ],
+      "rate": 1.0,
+      "completion": 1.0,
+      "runs": [
+        {
+          "run": 0,
+          "passed": true,
+          "error": null,
+          "failures": []
+        },
+        {
+          "run": 1,
+          "passed": true,
+          "error": null,
+          "failures": []
+        },
+        {
+          "run": 2,
+          "passed": true,
+          "error": null,
+          "failures": []
+        }
+      ]
+    },
+    {
+      "id": "healing-clamped-at-max",
+      "tags": [
+        "combat"
+      ],
+      "rate": 1.0,
+      "completion": 1.0,
+      "runs": [
+        {
+          "run": 0,
+          "passed": true,
+          "error": null,
+          "failures": []
+        },
+        {
+          "run": 1,
+          "passed": true,
+          "error": null,
+          "failures": []
+        },
+        {
+          "run": 2,
+          "passed": true,
+          "error": null,
+          "failures": []
+        }
+      ]
+    },
+    {
+      "id": "high-ac-miss",
+      "tags": [
+        "combat"
+      ],
+      "rate": 1.0,
+      "completion": 1.0,
+      "runs": [
+        {
+          "run": 0,
+          "passed": true,
+          "error": null,
+          "failures": []
+        },
+        {
+          "run": 1,
+          "passed": true,
+          "error": null,
+          "failures": []
+        },
+        {
+          "run": 2,
+          "passed": true,
+          "error": null,
+          "failures": []
+        }
+      ]
+    },
+    {
+      "id": "level-up-offer",
+      "tags": [
+        "advancement"
+      ],
+      "rate": 0.0,
+      "completion": 1.0,
+      "runs": [
+        {
+          "run": 0,
+          "passed": false,
+          "error": null,
+          "failures": [
+            "player tag 'advancement-ready' is absent"
+          ]
+        },
+        {
+          "run": 1,
+          "passed": false,
+          "error": null,
+          "failures": [
+            "player tag 'advancement-ready' is absent"
+          ]
+        },
+        {
+          "run": 2,
+          "passed": false,
+          "error": null,
+          "failures": [
+            "player tag 'advancement-ready' is absent"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "leveled-spell-spends-slot",
+      "tags": [
+        "combat",
+        "spells"
+      ],
+      "rate": 1.0,
+      "completion": 1.0,
+      "runs": [
+        {
+          "run": 0,
+          "passed": true,
+          "error": null,
+          "failures": []
+        },
+        {
+          "run": 1,
+          "passed": true,
+          "error": null,
+          "failures": []
+        },
+        {
+          "run": 2,
+          "passed": true,
+          "error": null,
+          "failures": []
+        }
+      ]
+    },
+    {
+      "id": "long-rest-recharge",
+      "tags": [
+        "rest",
+        "spells"
+      ],
+      "rate": 0.6666666666666666,
+      "completion": 1.0,
+      "runs": [
+        {
+          "run": 0,
+          "passed": false,
+          "error": null,
+          "failures": [
+            "player slot-1 was 0, wanted 4..4",
+            "player slot-2 was 0, wanted 2..2"
+          ]
+        },
+        {
+          "run": 1,
+          "passed": true,
+          "error": null,
+          "failures": []
+        },
+        {
+          "run": 2,
+          "passed": true,
+          "error": null,
+          "failures": []
+        }
+      ]
+    },
+    {
+      "id": "melee-attack-basic",
+      "tags": [
+        "combat"
+      ],
+      "rate": 1.0,
+      "completion": 1.0,
+      "runs": [
+        {
+          "run": 0,
+          "passed": true,
+          "error": null,
+          "failures": []
+        },
+        {
+          "run": 1,
+          "passed": true,
+          "error": null,
+          "failures": []
+        },
+        {
+          "run": 2,
+          "passed": true,
+          "error": null,
+          "failures": []
+        }
+      ]
+    },
+    {
+      "id": "melee-damage-window",
+      "tags": [
+        "combat"
+      ],
+      "rate": 1.0,
+      "completion": 1.0,
+      "runs": [
+        {
+          "run": 0,
+          "passed": true,
+          "error": null,
+          "failures": []
+        },
+        {
+          "run": 1,
+          "passed": true,
+          "error": null,
+          "failures": []
+        },
+        {
+          "run": 2,
+          "passed": true,
+          "error": null,
+          "failures": []
+        }
+      ]
+    },
+    {
+      "id": "monster-attack-on-player",
+      "tags": [
+        "combat"
+      ],
+      "rate": 1.0,
+      "completion": 1.0,
+      "runs": [
+        {
+          "run": 0,
+          "passed": true,
+          "error": null,
+          "failures": []
+        },
+        {
+          "run": 1,
+          "passed": true,
+          "error": null,
+          "failures": []
+        },
+        {
+          "run": 2,
+          "passed": true,
+          "error": null,
+          "failures": []
+        }
+      ]
+    },
+    {
+      "id": "no-mechanics-turn",
+      "tags": [
+        "checks"
+      ],
+      "rate": 1.0,
+      "completion": 1.0,
+      "runs": [
+        {
+          "run": 0,
+          "passed": true,
+          "error": null,
+          "failures": []
+        },
+        {
+          "run": 1,
+          "passed": true,
+          "error": null,
+          "failures": []
+        },
+        {
+          "run": 2,
+          "passed": true,
+          "error": null,
+          "failures": []
+        }
+      ]
+    },
+    {
+      "id": "ranged-damage-window",
+      "tags": [
+        "combat"
+      ],
+      "rate": 1.0,
+      "completion": 1.0,
+      "runs": [
+        {
+          "run": 0,
+          "passed": true,
+          "error": null,
+          "failures": []
+        },
+        {
+          "run": 1,
+          "passed": true,
+          "error": null,
+          "failures": []
+        },
+        {
+          "run": 2,
+          "passed": true,
+          "error": null,
+          "failures": []
+        }
+      ]
+    },
+    {
+      "id": "save-for-half",
+      "tags": [
+        "combat",
+        "spells"
+      ],
+      "rate": 1.0,
+      "completion": 1.0,
+      "runs": [
+        {
+          "run": 0,
+          "passed": true,
+          "error": null,
+          "failures": []
+        },
+        {
+          "run": 1,
+          "passed": true,
+          "error": null,
+          "failures": []
+        },
+        {
+          "run": 2,
+          "passed": true,
+          "error": null,
+          "failures": []
+        }
+      ]
+    },
+    {
+      "id": "self-heal-scaling",
+      "tags": [
+        "combat"
+      ],
+      "rate": 1.0,
+      "completion": 1.0,
+      "runs": [
+        {
+          "run": 0,
+          "passed": true,
+          "error": null,
+          "failures": []
+        },
+        {
+          "run": 1,
+          "passed": true,
+          "error": null,
+          "failures": []
+        },
+        {
+          "run": 2,
+          "passed": true,
+          "error": null,
+          "failures": []
+        }
+      ]
+    },
+    {
+      "id": "short-rest-recharge",
+      "tags": [
+        "rest"
+      ],
+      "rate": 0.6666666666666666,
+      "completion": 1.0,
+      "runs": [
+        {
+          "run": 0,
+          "passed": true,
+          "error": null,
+          "failures": []
+        },
+        {
+          "run": 1,
+          "passed": true,
+          "error": null,
+          "failures": []
+        },
+        {
+          "run": 2,
+          "passed": false,
+          "error": null,
+          "failures": [
+            "player second-wind was 0, wanted 1..1"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "single-action-discipline",
+      "tags": [
+        "combat"
+      ],
+      "rate": 1.0,
+      "completion": 1.0,
+      "runs": [
+        {
+          "run": 0,
+          "passed": true,
+          "error": null,
+          "failures": []
+        },
+        {
+          "run": 1,
+          "passed": true,
+          "error": null,
+          "failures": []
+        },
+        {
+          "run": 2,
+          "passed": true,
+          "error": null,
+          "failures": []
+        }
+      ]
+    },
+    {
+      "id": "upcast-damage-scaling",
+      "tags": [
+        "combat",
+        "spells"
+      ],
+      "rate": 1.0,
+      "completion": 1.0,
+      "runs": [
+        {
+          "run": 0,
+          "passed": true,
+          "error": null,
+          "failures": []
+        },
+        {
+          "run": 1,
+          "passed": true,
+          "error": null,
+          "failures": []
+        },
+        {
+          "run": 2,
+          "passed": true,
+          "error": null,
+          "failures": []
+        }
+      ]
+    }
+  ]
+}

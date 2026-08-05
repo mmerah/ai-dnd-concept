@@ -2,64 +2,49 @@
   {
     "index": "hill-dwarf",
     "name": "Hill Dwarf",
-    "race_index": "dwarf",
-    "desc": "As a hill dwarf, you have keen senses, deep intuition, and remarkable resilience.",
-    "ability_bonuses": [
-      {
-        "ability": "wisdom",
-        "bonus": 1
-      }
-    ],
-    "traits": [
-      "dwarven-toughness"
-    ]
+    "text": "Subrace of Dwarf.\n\nAs a hill dwarf, you have keen senses, deep intuition, and remarkable resilience.\n\nAbility scores: WIS +1.\n\nTraits: Dwarven Toughness.",
+    "numbers": {},
+    "notes": {
+      "ability-bonuses": "WIS +1"
+    },
+    "tags": [],
+    "options": [],
+    "choose": null
   },
   {
     "index": "high-elf",
     "name": "High Elf",
-    "race_index": "elf",
-    "desc": "As a high elf, you have a keen mind and a mastery of at least the basics of magic. In many fantasy gaming worlds, there are two kinds of high elves. One type is haughty and reclusive, believing themselves to be superior to non-elves and even other elves. The other type is more common and more friendly, and often encountered among humans and other races.",
-    "ability_bonuses": [
-      {
-        "ability": "intelligence",
-        "bonus": 1
-      }
-    ],
-    "traits": [
-      "elf-weapon-training",
-      "high-elf-cantrip",
-      "extra-language"
-    ]
+    "text": "Subrace of Elf.\n\nAs a high elf, you have a keen mind and a mastery of at least the basics of magic. In many fantasy gaming worlds, there are two kinds of high elves. One type is haughty and reclusive, believing themselves to be superior to non-elves and even other elves. The other type is more common and more friendly, and often encountered among humans and other races.\n\nAbility scores: INT +1.\n\nTraits: Elf Weapon Training, High Elf Cantrip, Extra Language.",
+    "numbers": {},
+    "notes": {
+      "ability-bonuses": "INT +1"
+    },
+    "tags": [],
+    "options": [],
+    "choose": null
   },
   {
     "index": "lightfoot-halfling",
     "name": "Lightfoot Halfling",
-    "race_index": "halfling",
-    "desc": "As a lightfoot halfling, you can easily hide from notice, even using other people as cover. You're inclined to be affable and get along well with others. Lightfoots are more prone to wanderlust than other halflings, and often dwell alongside other races or take up a nomadic life.",
-    "ability_bonuses": [
-      {
-        "ability": "charisma",
-        "bonus": 1
-      }
-    ],
-    "traits": [
-      "naturally-stealthy"
-    ]
+    "text": "Subrace of Halfling.\n\nAs a lightfoot halfling, you can easily hide from notice, even using other people as cover. You're inclined to be affable and get along well with others. Lightfoots are more prone to wanderlust than other halflings, and often dwell alongside other races or take up a nomadic life.\n\nAbility scores: CHA +1.\n\nTraits: Naturally Stealthy.",
+    "numbers": {},
+    "notes": {
+      "ability-bonuses": "CHA +1"
+    },
+    "tags": [],
+    "options": [],
+    "choose": null
   },
   {
     "index": "rock-gnome",
     "name": "Rock Gnome",
-    "race_index": "gnome",
-    "desc": "As a rock gnome, you have a natural inventiveness and hardiness beyond that of other gnomes.",
-    "ability_bonuses": [
-      {
-        "ability": "constitution",
-        "bonus": 1
-      }
-    ],
-    "traits": [
-      "artificers-lore",
-      "tinker"
-    ]
+    "text": "Subrace of Gnome.\n\nAs a rock gnome, you have a natural inventiveness and hardiness beyond that of other gnomes.\n\nAbility scores: CON +1.\n\nTraits: Artificer's Lore, Tinker.",
+    "numbers": {},
+    "notes": {
+      "ability-bonuses": "CON +1"
+    },
+    "tags": [],
+    "options": [],
+    "choose": null
   }
 ]

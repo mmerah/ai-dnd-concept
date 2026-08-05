@@ -1,17 +1,15 @@
 import json
 from pathlib import Path
-from random import Random
 
 import pytest
-from core_test_support import STORY, initialized, tool_context, turn_context, updated
-from fivee_test_support import initial_5e_game, ruleset
+from core_test_support import STORY, initialized, updated
 from pydantic import ValidationError
 
 from aidm.core.engine import narrator_evidence
+from aidm.core.facts import CORE, Fact
 from aidm.core.store import ENCODING, FileSaves, FileTraces, load_character, load_scenario
 from aidm.core.tools import DirectorNotes
 from aidm.core.turn import Advance, Growth, Turn
-from aidm.engines.dnd5e.tools import Dnd5eTools
 
 
 def test_save_and_trace_round_trip(tmp_path: Path) -> None:
@@ -62,17 +60,13 @@ def test_shell_reads_a_save_whose_world_is_garbage(tmp_path: Path) -> None:
         saves.load("broken", engine.state_type)
 
 
-def test_a_trace_entry_names_the_engine_that_wrote_it(tmp_path: Path) -> None:
-    """A fact and a direction are flat on disk, so the source tag alone is what tells a reload
-    which engine wrote the line — there is no mechanics blob any more."""
-    engine, state = initial_5e_game()
+def test_a_trace_round_trips_its_turn_and_advance_entries(tmp_path: Path) -> None:
+    """A Turn and an Advance, each carrying real facts, survive an append and a reload unchanged."""
     traces = FileTraces(tmp_path)
-    context = turn_context(engine, state, Random(1))
-    run = tool_context(context)
-    tools = Dnd5eTools(ruleset())
-    _ = tools.damage(run, amount=2)
-    _ = tools.level_up(run)
-    facts = tuple(context.facts)
+    facts = (
+        Fact(source=CORE, kind="dice_rolled", trace="a falling stone: 1d6 [4] -> 4"),
+        Fact(source=CORE, kind="counter_changed", trace="Kael stress +1 -> 1/5", narrator="hurt"),
+    )
     turn = Turn(
         prompt="I brace.",
         notes=DirectorNotes(intent="Kael endures a falling stone.", tone="dangerous"),
@@ -93,7 +87,6 @@ def test_a_trace_entry_names_the_engine_that_wrote_it(tmp_path: Path) -> None:
         and reloaded[0].notes.intent == "Kael endures a falling stone."
     )
     assert isinstance(reloaded[1], Advance)
-    assert {fact.source for fact in reloaded[1].facts} == {"dnd5e"}
 
 
 def test_a_save_or_trace_from_another_build_is_refused(tmp_path: Path) -> None:
