@@ -40,9 +40,9 @@ Tests must be deterministic and require no network.
 
 ## Design rules
 
-- The model acts only through typed tools. A tool validates, resolves deterministically, and
-  records facts against the turn's draft; the model never writes state; every roll and every
-  ledger change goes through a tool that validates and records facts.
+- The model proposes typed, validated output; engine code resolves it deterministically against
+  the turn's draft and records facts. The model never writes state; every roll and every ledger
+  change happens in resolver code, never in model output.
 - State evolves through transactions: copy the committed state, mutate the copy, revalidate the whole copy once at the end. A failed transaction never replaces the committed state, and committed state is never mutated again.
 - Only the narrating role writes player-facing prose, and it never sees unrevealed canon: its input type must have no field a leak could travel through.
 - One composition root, built once. Below it collaborators and paths are explicit; no globals.
@@ -51,7 +51,7 @@ Tests must be deterministic and require no network.
 ## Framework rules
 
 - Use Pydantic V2 APIs only. Validation runs at the transaction boundary, not per field change; `model_copy(update=...)` does not validate.
-- Pydantic AI roles return validated structured output. Tools and validators request retries with `ModelRetry`; a tool mutates only the turn draft, and only after its checks pass.
+- Pydantic AI roles return validated structured output. Tools and output validators request retries with `ModelRetry`; tools are read-only lookups — mutation belongs to resolvers.
 - NiceGUI reflects session state only. Keep domain logic out of the UI package and update refreshable views. A panel only renders state and submits typed decisions.
 - Keep each role's model, endpoint, retries, token budget, and reasoning level in one config module.
 

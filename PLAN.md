@@ -599,6 +599,46 @@ Commit: `docs(evals): structured-plan results vs baseline`.
    are now stale) and strike the resolved loose ends in `IDEAS.md`.
 3. Full gate; final commit.
 
+## Phase 8 — investigate the residual failures (≈half a day)
+
+The Phase 6 verdict (in `baseline.md`) left four failure signatures, all stable across three
+suites now that drift is 4 points instead of 28. None was diagnosed beyond its probe message —
+that is this phase. Investigate first; change a prompt only once a captured plan shows *why* the
+model wrote what it wrote.
+
+What is failing, pooled over 207 turns:
+
+| signature | cases | evidence so far |
+|---|---|---|
+| conditions 0/18 | `condition-lifted`, `condition-rider` | no `remove-tag`/`add-tag` ever appears in effects or branches; the rider's attack roll does happen |
+| rest 72% | `long-rest-recharge` (44%) | `slot-1` left at 0 — the turn completes but no `rest` action resolves |
+| wrong attacker | `monster-attack-on-player` (44%) | the plan attacks the rat instead of resolving the rat's attack on the player: rat hp −5, wanted 0 |
+| healing edge | `healing-clamped-at-max` (89%) | one run in nine leaves hp delta 0 |
+
+1. **Capture the plans.** The results JSON records probe failures but not what the Director
+   answered, so every hypothesis below is currently unverifiable. Add the dumped plan (and the
+   retry reasons it burned) to `RunRecord` — results are gitignored, so the schema is free to
+   grow. Re-run the four cases with `--runs 9`; read the plans, not the rates.
+2. **Classify each miss** against exactly three suspects, in this order: the schema steers wrong
+   (the model cannot find where a condition goes — an `actions.py` field description problem);
+   the prompt never teaches it (`director.md` names the effect ops but shows no condition being
+   added or lifted — `examples.json` has no branch carrying `add-tag`); or `check_plan` refuses
+   something legal and the retries wander (visible as burned retries in the captured plans).
+   For `monster-attack-on-player` the suspect is different: the prompt's reading of *who acts
+   this turn* — check whether `CORE_DIRECTOR` ever says an NPC can be the turn's actor.
+3. **Fix in the owning file only** — a `director.md` section, an `examples.json` entry, a field
+   description. Resolver changes need the captured plan to prove the resolver wrong first.
+   Scenario JSON and probes stay untouched: comparability is still the point.
+4. **Re-measure**: the touched cases at `--runs 9` for signal, then one full suite (drift now
+   permits a single-suite read) appended to `baseline.md` with one line per fix landed.
+5. **Duration, separately and last**: 8.9s pooled vs the 7.8s criterion, with per-run means of
+   11.0/8.4/7.1 on identical code — the spread is provider-side. Check whether the director's
+   `reasoning_effort`/`max_tokens` in config buy anything before concluding routing decides it;
+   do not gate the phase on this.
+
+Gate + commit: `docs(evals): residual failures diagnosed` (or the fixes' own message if they land
+in the same pass).
+
 ## Risks the implementer should expect
 
 - **One big schema also strains small models.** The mitigation is already in the design: field

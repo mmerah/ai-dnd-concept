@@ -6,16 +6,17 @@ A role-separated narrative game platform with two first-party rules engines:
 - **AIDM 5e** — the D&D 5e implementation, isolated in its own engine package.
 
 ```text
-prompt → DIRECTOR → REFEREE → NARRATOR → MAINTAINER → CREATOR → growth + commit
-         tools+commit  check     prose        Growth      Entity
+prompt → DIRECTOR → resolve → NARRATOR → MAINTAINER → CREATOR → growth + commit
+          one plan   engine code  prose      Growth      Entity
 ```
 
-The model acts only through typed tools that resolve deterministically against a draft, and core
-commits a fully revalidated state. An engine is data plus a small shim: a sheet template, lenient
-content records, and a prose rules procedure the model interprets. The Referee checks the
-Director's recorded facts against that procedure and can send the turn back once. The Narrator
-receives no unrevealed canon; for visible entities it receives the same state as the other roles,
-with instructions to translate mechanics into fiction rather than recite stat blocks.
+The Director answers with one structured turn plan — the single action resolved this turn, its
+fiction consequences keyed by outcome, and unconditional effects. Engine code validates the plan
+against committed state, resolves it deterministically on a draft (rolls, costs, intrinsic
+outcomes), and core commits a fully revalidated state. An engine is data plus typed actions and
+their resolvers: a sheet template, lenient content records, and the rules procedure in code. The
+Narrator receives no unrevealed canon; for visible entities it receives the same state as the
+other roles, with instructions to translate mechanics into fiction rather than recite stat blocks.
 
 ## Run
 
@@ -42,7 +43,7 @@ uv run pytest
 ## Layout
 
 ```text
-src/aidm/core/            engine-neutral world, sheet, mechanics tools, content, persistence
+src/aidm/core/            engine-neutral world, sheet, effects, plans, content, persistence
 src/aidm/workflow/        the turn loop, its agents, prompts, session composition root
 src/aidm/engines/story/   Story engine: spec, director procedure, shim
 src/aidm/engines/dnd5e/   5e engine: spec, director procedure, SRD pack, shim
@@ -58,7 +59,7 @@ One distribution. The import direction is enforced by `tests/core/test_package_b
 engines do not import each other or `aidm.ui`, and core and workflow import neither the UI
 nor NiceGUI. The shipped SRD pack is package data under `src/aidm/engines/dnd5e/packs/`.
 
-The **Trace** tab shows private Director mechanics, resolved facts, and the exact prompt received
+The **Trace** tab shows the Director's plan, resolved facts, and the exact prompt received
 by each role. The **State** tab shows the committed game state. **Advancement** drafts a proposal
 through an advisor role; the player reviews each change and its reason, then confirms.
 

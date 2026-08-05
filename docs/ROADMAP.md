@@ -10,7 +10,8 @@ Status of the proof of concept, and where it should go. Kept short on purpose.
 - Every turn commits whole or not at all; a role failure leaves state untouched.
 - Context comes from `SceneSnapshot` and the Narrator-only `VisibleScene` in
   `src/aidm/workflow/prompts.py`, not scattered f-strings.
-- Small output schemas and few tools per role.
+- One structured plan from the Director, resolved by engine code; the only role tool left is the
+  read-only rules lookup.
 
 ## Known weaknesses
 
@@ -27,10 +28,10 @@ Status of the proof of concept, and where it should go. Kept short on purpose.
 
 ### Structure and scale
 
-- Spell preparation is unmodelled: a caster's whole known list stays castable — an over-permission at the class boundary rather than an invented limit. Concentration is a sheet note the Director maintains; temporary HP has no state, so a spell's duration is description-guided.
+- Spell preparation is unmodelled: a caster's whole known list stays castable — an over-permission at the class boundary rather than an invented limit. Concentration is a sheet note the resolver writes; temporary HP has no state, so a spell's duration is description-guided.
 - History is the last 6 exchanges, verbatim. No summarisation, no retrieval; a long game silently forgets its own middle.
 - No undo. The save is a single current state, not a history of commits.
-- Four sequential role calls per ordinary turn, plus one Creator call per accepted growth request, with no streaming.
+- Three sequential role calls per ordinary turn (Director, Narrator, Maintainer), plus one Creator call per accepted growth request, with no streaming.
 - The trace file grows unbounded and the trace panel loads the entire history on resume.
 - Per-role model, budget, reasoning, and retries are configurable. Engine-specific Director instructions remain owned by each rules package.
 
@@ -55,9 +56,6 @@ Status of the proof of concept, and where it should go. Kept short on purpose.
   detail. Two ways to spend it better: render compactly where the shape allows it, and make the
   render prompt-aware, expanding a spell or a feature in full only when the turn's prompt reaches
   for it and leaving the rest as a name. Measure it against the eval suite, not by eye.
-- Referee depth: the role exists and objects on the engine's own rules text before commit. It does
-  not yet consult an external reference (e.g. the D&D 5e API), and it guarantees only that an
-  objection was raised — see the loose ends in `IDEAS.md`.
 - Image and voice generation for flavour, behind an interface, never on the turn's critical path.
 - UI growth: character sheet, journal, known-world panel.
 - Memory system

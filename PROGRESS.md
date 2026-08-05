@@ -225,3 +225,24 @@ after verification.
   branches or effects. Same shape for `rest`'s misses and `monster-attack-on-player`: action/effect
   selection, all taught in `director.md`/`examples.json`. That is the iteration target; the
   architecture stands. No milestone_earned scenario was added.
+
+## Phase 7 — cleanup — DONE
+
+- No dead code left to delete: the migration defaults died in Phase 4, `tools.py`/`mechanics.py`/
+  the referee in Phase 5, and grep for `DirectorNotes` / `RefereeVerdict` / `world_toolset` /
+  `Mechanics(` / `referee` hits nothing in `src`, `scripts`, or `tests` (the `_verdict` helpers in
+  `dice.py`/`resolve.py` are live outcome-label code, unrelated). No referee config key ever
+  existed — `roles` is a plain dict. This phase became documentation only.
+- `AGENTS.md` (CLAUDE.md symlinks it): the "model acts only through typed tools" design rule was
+  falsified by the redesign — rewritten as "the model proposes typed, validated output; engine
+  code resolves it"; the framework rule now says tools are read-only lookups and mutation belongs
+  to resolvers.
+- `README.md`: pipeline diagram is director → resolve → narrator → maintainer → creator; the
+  referee paragraph replaced with the plan/resolver description; layout line and Trace-tab line
+  updated (plan instead of mechanics tools).
+- `docs/ROADMAP.md`: referee-depth direction bullet deleted; "four sequential role calls" is now
+  three; concentration note ownership moved to the resolver; the "small output schemas and few
+  tools" invariant reworded to the one-plan shape.
+- `IDEAS.md`: struck the measured-drift and referee loose ends; the advancement-ready one
+  rewritten for `milestone_earned` (still unmeasured — no scenario tags advancement).
+- Gate green; staged, not committed.
