@@ -18,15 +18,18 @@ from pathlib import Path
 from random import Random
 
 from probes import CheckStep, Outcome, Setup, SetupStep, apply_setup, check
-from pydantic import Field
+from pydantic import Field, JsonValue
+from pydantic_ai.messages import ModelMessage, ModelRequest, RetryPromptPart
 
 from aidm.core.base import SAVE_VERSION, EngineId, Frozen, Slug
 from aidm.core.config import Settings, load_settings
 from aidm.core.content import authored_world
+from aidm.core.engine import entity_renderer
 from aidm.core.registry import AnyEngine, build_engine
 from aidm.core.store import load_character, load_scenario
 from aidm.core.world import EngineRules, GameState
-from aidm.workflow.pipeline import TurnWorkspace, default_cast, director_step, resolve_step
+from aidm.workflow.pipeline import PlanContext, TurnWorkspace, default_cast, resolve_step
+from aidm.workflow.prompts import SceneSnapshot, render_director
 
 EVALS = Path(__file__).parent
 SCENARIOS = EVALS / "scenarios"
@@ -66,6 +69,11 @@ class RunRecord(Frozen):
     duration_s: float = Field(default=0.0, ge=0.0)
     error: str | None = None
     failures: tuple[str, ...] = ()
+    # Diagnosis: the plan the Director settled on, the validator refusals it burned on the way,
+    # and each recorded fact's trace line.
+    plan: JsonValue = None
+    retries: tuple[str, ...] = ()
+    facts: tuple[str, ...] = ()
 
     @property
     def completed(self) -> bool:
@@ -131,7 +139,7 @@ async def run_case(case: EvalCase, run: int, config: Settings) -> RunRecord:
     """A failed turn is this run's failure: a live model must never abort the suite."""
     started = time.perf_counter()
     try:
-        outcome = await _turn(case, run, config)
+        outcome, plan, retries = await _turn(case, run, config)
     except Exception as error:
         elapsed = time.perf_counter() - started
         return RunRecord(
@@ -139,7 +147,15 @@ async def run_case(case: EvalCase, run: int, config: Settings) -> RunRecord:
         )
     elapsed = time.perf_counter() - started
     failures = tuple(reason for step in case.checks if (reason := check(outcome, step)) is not None)
-    return RunRecord(run=run, passed=not failures, duration_s=elapsed, failures=failures)
+    return RunRecord(
+        run=run,
+        passed=not failures,
+        duration_s=elapsed,
+        failures=failures,
+        plan=plan,
+        retries=retries,
+        facts=tuple(fact.trace for fact in outcome.facts),
+    )
 
 
 async def run_suite(cases: Sequence[EvalCase], config: Settings, concurrency: int) -> SuiteRecord:
@@ -236,7 +252,9 @@ def selected(cases: Sequence[EvalCase], options: Options) -> tuple[EvalCase, ...
     )
 
 
-async def _turn(case: EvalCase, run: int, config: Settings) -> Outcome:
+async def _turn(
+    case: EvalCase, run: int, config: Settings
+) -> tuple[Outcome, JsonValue, tuple[str, ...]]:
     engine = _engine(case.engine, config)
     rng = Random(SEED + run)
     before = apply_setup(
@@ -246,11 +264,28 @@ async def _turn(case: EvalCase, run: int, config: Settings) -> Outcome:
         prompt=case.prompt, history=[], state=before, draft=before.draft(), rng=rng, recent=()
     )
     cast = default_cast(engine, config)
-    await director_step(cast.director, engine)(workspace)
+    # The agent is run directly rather than through `director_step`: only the run result carries
+    # the retry exchanges a diagnosis needs, and the step returns none of it.
+    rendered = render_director(
+        SceneSnapshot.of(before), entity_renderer(engine, before), before.scenario, case.prompt
+    )
+    result = await cast.director.agent.run(rendered, deps=PlanContext(engine=engine, state=before))
+    workspace.plan = result.output
     await resolve_step(engine)(workspace)
     after = workspace.draft.committed()
     engine.validate_state(after)
-    return Outcome(before=before, after=after, facts=tuple(workspace.facts))
+    outcome = Outcome(before=before, after=after, facts=tuple(workspace.facts))
+    return outcome, result.output.model_dump(mode="json"), _retry_reasons(result.all_messages())
+
+
+def _retry_reasons(messages: Sequence[ModelMessage]) -> tuple[str, ...]:
+    return tuple(
+        part.model_response()
+        for message in messages
+        if isinstance(message, ModelRequest)
+        for part in message.parts
+        if isinstance(part, RetryPromptPart)
+    )
 
 
 def _engine(engine_id: EngineId, config: Settings) -> AnyEngine:

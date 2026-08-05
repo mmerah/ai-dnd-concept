@@ -11,6 +11,7 @@ from pydantic_ai.messages import (
     ModelResponse,
     RetryPromptPart,
     TextPart,
+    ToolCallPart,
 )
 from pydantic_ai.models.function import AgentInfo, FunctionModel
 
@@ -28,6 +29,11 @@ def structured(**output: object) -> ModelResponse:
     return ModelResponse(parts=[TextPart(json.dumps(output))])
 
 
+def plan(**output: object) -> ModelResponse:
+    """The director answers by calling the plan tool, as ToolOutput presents it."""
+    return ModelResponse(parts=[ToolCallPart(tool_name="turn_plan", args=json.dumps(output))])
+
+
 def text(body: str) -> ModelResponse:
     return ModelResponse(parts=[TextPart(body)])
 
@@ -43,7 +49,7 @@ def scripted(*responses: ModelResponse) -> Stub:
     return stub
 
 
-PLAN = structured(intent="Kael finds the map beneath the flagstone.", tone="hushed")
+PLAN = plan(intent="Kael finds the map beneath the flagstone.", tone="hushed")
 
 OPTIONS = TurnOptions(history_window=6, max_growth=3)
 
@@ -57,7 +63,7 @@ async def test_an_engine_uses_the_shared_pipeline_and_safe_narrator_prompt() -> 
             members.director.agent.override(
                 model=FunctionModel(
                     scripted(
-                        structured(
+                        plan(
                             intent="Kael finds the map beneath the flagstone.",
                             tone="hushed",
                             effects=[{"op": "take-item", "item_id": "vault_map"}],
@@ -116,7 +122,7 @@ async def test_the_resolver_applies_only_the_branch_of_the_outcome_rolled() -> N
             members.director.agent.override(
                 model=FunctionModel(
                     scripted(
-                        structured(
+                        plan(
                             intent="Kael pleads with the door.",
                             tone="tense",
                             action={
@@ -162,12 +168,12 @@ async def test_an_illegal_plan_is_retried_with_the_reason() -> None:
     engine, state = initialized()
     members = default_cast(engine, settings())
     responses = scripted(
-        structured(
+        plan(
             intent="Kael waits.",
             tone="flat",
             branches=[{"outcome": "strong", "effects": ()}],
         ),
-        structured(intent="Kael waits.", tone="flat"),
+        plan(intent="Kael waits.", tone="flat"),
     )
     calls: list[list[ModelMessage]] = []
 
@@ -209,9 +215,7 @@ async def test_creator_growth_receives_valid_engine_rules_before_commit() -> Non
     with ExitStack() as stack:
         stack.enter_context(
             members.director.agent.override(
-                model=FunctionModel(
-                    scripted(structured(intent="Someone approaches.", tone="curious"))
-                )
+                model=FunctionModel(scripted(plan(intent="Someone approaches.", tone="curious")))
             )
         )
         stack.enter_context(
@@ -306,7 +310,7 @@ async def test_a_failed_role_never_mutates_the_input_state() -> None:
             members.director.agent.override(
                 model=FunctionModel(
                     scripted(
-                        structured(
+                        plan(
                             intent="Kael takes the hidden map.",
                             tone="grim",
                             effects=[{"op": "take-item", "item_id": "vault_map"}],

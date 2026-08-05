@@ -350,9 +350,13 @@ for known and unrevealed entities alike, never the name.
 
 The plan is the whole turn:
 
-`action` — the single action resolved this turn, or null when nothing mechanical happens. The \
-engine rolls it and applies its intrinsic consequences itself: never write damage, costs, or \
-bookkeeping the action already implies anywhere in the plan.
+`action` — the single action resolved this turn, or null when nothing mechanical happens. Its \
+actor is whoever the fiction puts on the acting side: when the player's words have someone else \
+act — a monster lunging at them — plan that actor's action, not a reaction by the player. The \
+engine computes and applies the action's own arithmetic — rolls, damage, healing, costs: never \
+write those anywhere in the plan. Everything else an outcome changes — a condition taking hold \
+or ending, something revealed, someone moving — happens only if a branch or an effect writes it; \
+the engine never adds it for you.
 
 `branches` — fiction consequences keyed by the action's outcome labels, applied only to the one \
 outcome that occurs. At most one branch per label, and only labels the action allows.

@@ -55,7 +55,10 @@ class TurnPlanBase(Frozen):
     branches: tuple[OutcomeBranch, ...] = Field(
         default=(),
         description="Consequences keyed by outcome: at most one branch per label, and only labels "
-        "this action allows. Outcomes that do not occur simply never apply.",
+        "this action allows. Outcomes that do not occur simply never apply. An action rolled to "
+        "cause a lasting change — a condition taking hold or lifted, something revealed — must "
+        "carry that change in the matching outcome's branch: with no branch, even success "
+        "changes nothing.",
     )
 
 

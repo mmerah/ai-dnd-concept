@@ -115,3 +115,64 @@ never writes `add-tag`/`remove-tag` into branches or effects. That is one prompt
 effect vocabulary in `director.md`/`examples.json` — not a resolver. `rest`'s misses and
 `monster-attack-on-player` are the same shape: action selection, taught in the same file. Iterate
 there; the architecture stands.
+
+---
+
+# Phase 8 — residual failures diagnosed
+
+date: 2026-08-05   model: openai/gpt-oss-120b   retries: 3   over the staged tree on 3d7c936
+
+Method: the harness now records what Phase 6 could not see — `RunRecord` carries the Director's
+dumped plan, every validator refusal it burned, and each fact's trace. The four signatures were
+re-run at `--runs 9` and the plans read before anything was touched. Scenarios and probes are
+unchanged.
+
+## What the captured plans showed
+
+| signature | cause found in the plans | fix (owning file) | case, before → after |
+|---|---|---|---|
+| conditions 0/18 | branches always `[]`: with `NativeOutput`, gpt-oss-120b **never once emitted an `Effect` object** — 60+ plans, zero effects/branches, unmoved by prompt fixes, `reasoning_effort=high`, `max_tokens=8192` | director output mode → `ToolOutput` (`pipeline.py`), plus condition teaching below | 0% → 70% (n=10); 67% in the final suite |
+| monster-attack 44% | 5/9 plans had the player counter-attack the rat; nothing said the turn's actor can be an NPC | `CORE_DIRECTOR`: the actor is whoever the fiction puts on the acting side | 22% → 100% (n=9) |
+| rest 72% | misses resolved the prompt's first clause ("I barricade the door…") as an `improvise`; the sleep never ran | `director.md` rest bullet + `Rest` docstring: the rest is the action, preparations are intent | 33% → 67% (n=9); 100% in the final suite |
+| healing 89% | the one miss in nine is a degenerate generation (null action, mojibake tone) — same family as the `Invalid JSON: trailing characters` retries: gpt-oss channel bleed, provider-side | none owed | 89%, unchanged |
+
+Condition teaching also landed where it belongs even though prompts alone measured zero effect on
+this model: `remove-tag` next to `add-tag` in `director.md`, the `check` example lifting
+`poisoned`, and the branches/`Check` schema descriptions saying a roll settles only what its
+branches write.
+
+Exonerated by the same capture: `check_plan` (its only refusals steered retries correctly), the
+resolver, and the schema itself — a different model through the identical pipeline wrote the
+taught branches on the first try (one diagnostic probe only). Two side findings for the record:
+Anthropic models 400 on the plan schema through OpenRouter (`ge`/`le` bounds survive because
+`OpenAIChatModel`'s transformer runs for every provider), and `reasoning_effort=high` starves the
+2048-token budget before any output.
+
+## One suite, before and after the output-mode switch (n=69 each)
+
+| metric | NativeOutput + prompt fixes | ToolOutput | Phase 6 pooled |
+|---|---|---|---|
+| overall | 87% | 86% | 86% |
+| completion | 100% | 88% | 100% |
+| interpretation | 87% | **97%** | 86% |
+| mean duration/turn (s) | 16.9 (contended) | **3.1** | 8.9 |
+| conditions | 0% | **67%** | 0% |
+| rest | 67% | **100%** | 72% |
+| checks / combat / spells / story | 100 / 91 / 83 / 100 | 83 / 87 / 72 / 78 | 100 / 89 / 91 / 100 |
+
+## Verdict
+
+The architecture and the prompts were never the conditions problem: the model's output mode was.
+Through `response_format` gpt-oss-120b answers with the minimal legal plan; through a tool call it
+uses the whole effect vocabulary. The switch buys interpretation (97%) and duration (3.1s — under
+the Phase 6 criterion's 7.8s bar at last), and moves every dead tag.
+
+The cost is completion: all 8 deaths (12%) are one crash — the ROADMAP-documented Groq
+`finish_reason: "error"` under `tool_choice: required`, which now surfaces as an unparsable
+response. That is provider routing, not turn structure; excluding the offending provider via
+OpenRouter routing preferences is the follow-up. Per-tag dips against Phase 6 (`spells` 72%,
+`story` 78%) are those same deaths landing unevenly across 3-run cases, not new quality misses:
+interpretation on completed turns is the highest measured on this pipeline.
+
+The `NativeOutput` roles stay: a live maintainer probe returned both growth requests 3/3 — the
+suppression is specific to the Director's 21-`$defs` schema, not to native output as such.

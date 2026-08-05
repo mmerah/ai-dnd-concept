@@ -18,7 +18,7 @@ Status of the proof of concept, and where it should go. Kept short on purpose.
 ### Reliability
 
 - A dropped consequence is silent. The Maintainer only grows canon; nothing checks narration against facts. The Narrator then describes something the state never recorded, and the turn commits looking healthy.
-- `finish_reason: "error"` from Groq when a structured role answers in prose under `tool_choice: required`. Worked around with `NativeOutput` (provider-enforced JSON schema) on Director, Maintainer and Creator. Worth re-checking if the model or routing changes.
+- `finish_reason: "error"` from Groq when a structured role answers in prose under `tool_choice: required`. The Director is back on tool output regardless: under `NativeOutput` gpt-oss-120b never emitted a single plan effect (Phase 8 in `baseline.md`), and the Groq crash costs ~12% of eval turns where the empty plans cost every conditions case. Maintainer and Creator stay on `NativeOutput`, which their small schemas handle. Excluding the failing provider via OpenRouter routing preferences would recover the deaths.
 
 ### Canon quality
 

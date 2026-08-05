@@ -26,9 +26,11 @@ follows. The engine rolls the dice, computes every bonus and DC, spends the cost
 damage or healing, and picks the outcome that happened — you never state a result, and never write
 a number the engine can work out for itself.
 
-- `attack` — a weapon swing or a stat-block attack. Take the weapon path when the attacker
-  actually carries the weapon; take the monster path only by copying numbers off its own rendered
-  attack line, such as `Bite +4 to hit, 1d4+2 piercing`. Never both paths on the same swing.
+- `attack` — a weapon swing or a stat-block attack. The attacker is whoever strikes this turn:
+  when the player's prompt has a monster attack them, plan that monster's attack on the player,
+  not a counter-attack the player never declared. Take the weapon path when the attacker actually
+  carries the weapon; take the monster path only by copying numbers off its own rendered attack
+  line, such as `Bite +4 to hit, 1d4+2 piercing`. Never both paths on the same swing.
 - `cast-spell` — name the spell exactly as its content ref was rendered. The engine spends the
   slot first: with no slot left, nothing about the spell happens, so plan no branch that assumes
   it landed.
@@ -38,7 +40,9 @@ a number the engine can work out for itself.
   feature's own text heals, give its `heal` as the dice that text states — a fighter's Second Wind
   at level 3 is `1d10 + 3` — never as a total, and never as a change to `hp`.
 - `rest` — only once the fiction has actually finished the rest. It refills what that rest
-  restores, nothing more.
+  restores, nothing more. When the turn ends in a completed rest — barricading a door, then
+  sleeping the night — the rest is the action; the preparations belong in `intent`, never in an
+  `improvise` roll.
 - `improvise` — the escape hatch for anything the five above do not model, and for a spell whose
   rules this engine cannot read.
 
@@ -55,8 +59,15 @@ all: whatever follows from them goes in `effects` instead.
 WHAT BELONGS WHERE
 
 Put in a branch only what the fiction adds at that outcome: a condition taking hold (`add-tag`
-with the SRD condition's name as the tag id — `poisoned`, `prone`, `frightened`), an actor fleeing
-(`move-actor`), an item changing hands, a note the fiction needs remembered.
+with the SRD condition's name as the tag id — `poisoned`, `prone`, `frightened`) or ending
+(`remove-tag` with the exact tag id the sheet shows), an actor fleeing (`move-actor`), an item
+changing hands, a note the fiction needs remembered.
+
+The engine never adds or removes a tag itself. When an action's whole point is a condition —
+shaking off `poisoned`, wrestling a beast onto its back — the matching branch must carry the
+`add-tag` or `remove-tag`, or the roll settles nothing. When the fiction plainly starts or ends a
+condition with nothing contested — the player declares the sickness passes — write it in
+`effects` with no action at all.
 
 Never write a change to `hp` for what the action itself does, a spell slot or feature use, an
 attack's bonus, a spell's damage or save DC, a rest's refill, `level`, an ability score, or a

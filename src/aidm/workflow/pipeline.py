@@ -4,7 +4,7 @@ from random import Random
 from types import NoneType
 
 from pydantic import Field
-from pydantic_ai import ModelRetry, NativeOutput, RunContext
+from pydantic_ai import ModelRetry, NativeOutput, RunContext, ToolOutput
 from pydantic_ai.messages import ModelMessage
 
 from ..core.base import Entity, EntityDetail, EntityId, Frozen, slug
@@ -179,7 +179,7 @@ def director_stage(engine: AnyEngine, settings: Settings) -> Stage[PlanContext, 
         "director",
         settings,
         instructions=f"{prompts.CORE_DIRECTOR}\n\n{engine.director_instructions}",
-        output_type=NativeOutput(engine.plan_type, name="TurnPlan"),
+        output_type=ToolOutput(engine.plan_type, name="turn_plan"),
         deps_type=PlanContext,
         toolsets=(engine.toolsets["director"],),
     )

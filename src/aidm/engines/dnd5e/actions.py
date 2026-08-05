@@ -68,7 +68,9 @@ class CastSpell(Frozen):
 
 
 class Check(Frozen):
-    """An ability check or a saving throw against a difficulty the Director sets."""
+    """An ability check or a saving throw against a difficulty the Director sets. The roll
+    settles only what `branches` write: a check made to gain or shed a condition needs that
+    tag change in its `success` branch."""
 
     act: Literal["check"] = "check"
     actor_id: EntityId = Field(description="Exact id of the actor rolling, here with the player.")
@@ -99,7 +101,8 @@ class UseFeature(Frozen):
 
 
 class Rest(Frozen):
-    """A rest the fiction has finished, refilling what that rest restores and nothing else."""
+    """A rest the fiction has finished, refilling what that rest restores and nothing else.
+    A turn that prepares and then sleeps is a rest, not a check on the preparations."""
 
     act: Literal["rest"] = "rest"
     actor_id: EntityId = Field(description="Exact id of the resting actor, here with the player.")
