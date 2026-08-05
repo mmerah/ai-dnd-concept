@@ -494,6 +494,42 @@ Verification: gates green; the eval exit gate above; play a combat turn and a le
 
 ---
 
+## Closing out
+
+Not a phase: what phases 0–3 knowingly left, gathered here so it is not rediscovered. Written
+during phase 2, from what the live runs taught.
+
+**One item is not deferrable.** If the `director` model is ever to change, the 5e suite must be
+re-baselined on the new model *before* phase 3 deletes the typed engine — after that there is
+nothing left to compare against. See "If you change the director model" in
+`scripts/evals/BASELINE.md`. Everything below can wait until the deletion is done.
+
+1. **Eval coverage the earlier phases owe.** Phase 0 named two required scenarios it could not
+   write and assigned each to the phase that creates the capability: advantage via `keep-highest`
+   (created in phase 1) and concentration replacing a spell (created in phase 3). Neither exists.
+   Write both and record their rates.
+2. **The one-sided story checks.** `story-taken-out-cannot-risk` counts only *contested* rolls, so
+   a `roll` without `vs` slips past it; `story-no-risk-needed` also passes when the Director does
+   nothing at all. Either accept them as fabrication detectors — as `BASELINE.md` already does for
+   two 5e cases — or add a probe that counts every `dice_rolled`. Decide, and write the decision
+   down.
+3. **The player's `armor-class`.** Phase-0 finding 3: it was hard-coded to 10 in the typed engine,
+   never derived from dexterity or worn armour. Phase 3 is supposed to make it a number the content
+   and the level rows set; confirm it did, because nothing fails loudly if it did not.
+4. **The engine referee** (`docs/ROADMAP.md`). Phase 2 measured a precondition an instruction could
+   not make stick — the Director rolled for a taken-out actor in 4 of 6 runs. That is the shape of
+   miss a post-Director verification stage exists to catch, and the substrate already records every
+   tool call's facts in the `Turn` trace for it. Decide whether the interpretation rates justify
+   building it; if they do, it is a role, not a rewrite.
+5. **Two limits the proposal flow accepts**, worth revisiting only when a third engine wants them:
+   a proposal writes the player's sheet and nothing else (Story lost its gear-acquisition
+   advancement), and `choose` is an exact count, so "pick up to two" cannot be offered.
+6. **Prove "engines are data" with a third engine.** The claim is that ironsworn or a homebrew
+   ruleset costs a pack plus a ~40–60 line shim. Until one exists, that is untested, and the
+   substrate's assumptions have only ever been checked against the two engines that shaped it.
+
+---
+
 ## Importer and regression
 
 The vendored pack `src/aidm/engines/dnd5e/packs/srd-2014` is generated from an external
