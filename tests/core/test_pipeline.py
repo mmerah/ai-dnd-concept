@@ -5,7 +5,13 @@ from random import Random
 
 import pytest
 from core_test_support import initialized, settings
-from pydantic_ai.messages import ModelMessage, ModelResponse, TextPart, ToolCallPart
+from pydantic_ai.messages import (
+    ModelMessage,
+    ModelRequest,
+    ModelResponse,
+    RetryPromptPart,
+    TextPart,
+)
 from pydantic_ai.models.function import AgentInfo, FunctionModel
 
 from aidm.core.base import PLAYER_ID
@@ -14,6 +20,8 @@ from aidm.core.world import rules_of
 from aidm.workflow.pipeline import TurnOptions, TurnWorkspace, default_cast, run_turn
 
 type Stub = Callable[[list[ModelMessage], AgentInfo], ModelResponse]
+
+STEPS = ("director", "resolve", "narrator", "maintainer", "creator")
 
 
 def structured(**output: object) -> ModelResponse:
@@ -24,12 +32,8 @@ def text(body: str) -> ModelResponse:
     return ModelResponse(parts=[TextPart(body)])
 
 
-def calling(tool: str, **arguments: object) -> ModelResponse:
-    return ModelResponse(parts=[ToolCallPart(tool_name=tool, args=arguments)])
-
-
 def scripted(*responses: ModelResponse) -> Stub:
-    """Call N answers with response N, because a tool loop asks the model more than once."""
+    """Call N answers with response N, because a retried output asks the model again."""
     remaining = iter(responses)
 
     def stub(messages: list[ModelMessage], info: AgentInfo) -> ModelResponse:
@@ -39,7 +43,7 @@ def scripted(*responses: ModelResponse) -> Stub:
     return stub
 
 
-NOTES = structured(intent="Kael finds the map beneath the flagstone.", tone="hushed")
+PLAN = structured(intent="Kael finds the map beneath the flagstone.", tone="hushed")
 
 OPTIONS = TurnOptions(history_window=6, max_growth=3)
 
@@ -51,12 +55,15 @@ async def test_an_engine_uses_the_shared_pipeline_and_safe_narrator_prompt() -> 
     with ExitStack() as stack:
         stack.enter_context(
             members.director.agent.override(
-                model=FunctionModel(scripted(calling("take_item", item_id="vault_map"), NOTES))
-            )
-        )
-        stack.enter_context(
-            members.referee.agent.override(
-                model=FunctionModel(scripted(structured(objection=None)))
+                model=FunctionModel(
+                    scripted(
+                        structured(
+                            intent="Kael finds the map beneath the flagstone.",
+                            tone="hushed",
+                            effects=[{"op": "take-item", "item_id": "vault_map"}],
+                        )
+                    )
+                )
             )
         )
         stack.enter_context(
@@ -79,7 +86,7 @@ async def test_an_engine_uses_the_shared_pipeline_and_safe_narrator_prompt() -> 
             on_step=steps.append,
         )
 
-    assert steps == ["director", "referee", "narrator", "maintainer", "creator"]
+    assert tuple(steps) == STEPS
     assert [fact.kind for fact in result.turn.facts] == ["entity_discovered", "entity_moved"]
     assert {item.id for item in result.state.world.children(PLAYER_ID, "item")} == {
         "lantern",
@@ -91,31 +98,38 @@ async def test_an_engine_uses_the_shared_pipeline_and_safe_narrator_prompt() -> 
     assert result.state.history[-1].prompt == "I search beneath the desk."
 
 
-async def test_the_director_reacts_to_a_real_outcome_before_it_settles_the_turn() -> None:
-    """The point of the tool loop: the roll happens first, and the model answers what it read."""
+async def test_the_resolver_applies_only_the_branch_of_the_outcome_rolled() -> None:
+    """The point of the redesign: the engine rolls, picks the outcome, and applies its branch."""
     engine, state = initialized()
     members = default_cast(engine, settings())
+
+    def branch(outcome: str) -> dict[str, object]:
+        return {
+            "outcome": outcome,
+            "effects": [
+                {"op": "add-tag", "entity_id": "player", "tag_id": outcome, "name": outcome}
+            ],
+        }
+
     with ExitStack() as stack:
         stack.enter_context(
             members.director.agent.override(
                 model=FunctionModel(
                     scripted(
-                        calling("roll", dice="2d6+0", reason="pleading with the door", vs=7),
-                        calling(
-                            "adjust",
-                            entity_id="player",
-                            counter="stress",
-                            delta=1,
-                            reason="the strain of pleading",
-                        ),
-                        structured(intent="Kael pushes too hard.", tone="tense"),
+                        structured(
+                            intent="Kael pleads with the door.",
+                            tone="tense",
+                            action={
+                                "act": "risk",
+                                "actor_id": "player",
+                                "approach": "empathetic",
+                                "difficulty": "risky",
+                                "stakes": "pleading with the door",
+                            },
+                            branches=[branch("strong"), branch("mixed"), branch("setback")],
+                        )
                     )
                 )
-            )
-        )
-        stack.enter_context(
-            members.referee.agent.override(
-                model=FunctionModel(scripted(structured(objection=None)))
             )
         )
         stack.enter_context(
@@ -135,9 +149,58 @@ async def test_the_director_reacts_to_a_real_outcome_before_it_settles_the_turn(
             rng=Random(2),
         )
 
-    assert [fact.kind for fact in result.turn.facts] == ["dice_rolled", "counter_changed"]
-    assert player_sheet(result.state).counters["stress"].current == 1
+    rolled = next(fact for fact in result.turn.facts if fact.kind == "dice_rolled")
+    total = rolled.data["total"]
+    assert isinstance(total, int)
+    expected = "strong" if total >= 10 else "mixed" if total >= 7 else "setback"
+    held = {tag.id for tag in player_sheet(result.state).tags}
+    assert held & {"strong", "mixed", "setback"} == {expected}
     engine.validate_state(result.state)
+
+
+async def test_an_illegal_plan_is_retried_with_the_reason() -> None:
+    engine, state = initialized()
+    members = default_cast(engine, settings())
+    responses = scripted(
+        structured(
+            intent="Kael waits.",
+            tone="flat",
+            branches=[{"outcome": "strong", "effects": ()}],
+        ),
+        structured(intent="Kael waits.", tone="flat"),
+    )
+    calls: list[list[ModelMessage]] = []
+
+    def recording(messages: list[ModelMessage], info: AgentInfo) -> ModelResponse:
+        calls.append(list(messages))
+        return responses(messages, info)
+
+    with ExitStack() as stack:
+        stack.enter_context(members.director.agent.override(model=FunctionModel(recording)))
+        stack.enter_context(
+            members.narrator.agent.override(model=FunctionModel(scripted(text("You wait."))))
+        )
+        stack.enter_context(
+            members.maintainer.agent.override(
+                model=FunctionModel(scripted(structured(requests=[])))
+            )
+        )
+        result = await run_turn(
+            state,
+            "I wait.",
+            engine=engine,
+            script=members.script(engine, OPTIONS),
+            options=OPTIONS,
+            rng=Random(0),
+        )
+
+    assert result.turn.plan["intent"] == "Kael waits."
+    assert result.turn.plan["branches"] == []
+    assert result.turn.facts == ()
+    retry = calls[-1][-1]
+    assert isinstance(retry, ModelRequest)
+    reasons = [part.content for part in retry.parts if isinstance(part, RetryPromptPart)]
+    assert any("settles no outcome" in str(reason) for reason in reasons)
 
 
 async def test_creator_growth_receives_valid_engine_rules_before_commit() -> None:
@@ -149,11 +212,6 @@ async def test_creator_growth_receives_valid_engine_rules_before_commit() -> Non
                 model=FunctionModel(
                     scripted(structured(intent="Someone approaches.", tone="curious"))
                 )
-            )
-        )
-        stack.enter_context(
-            members.referee.agent.override(
-                model=FunctionModel(scripted(structured(objection=None)))
             )
         )
         stack.enter_context(
@@ -248,15 +306,13 @@ async def test_a_failed_role_never_mutates_the_input_state() -> None:
             members.director.agent.override(
                 model=FunctionModel(
                     scripted(
-                        calling("take_item", item_id="vault_map"),
-                        structured(intent="Kael takes the hidden map.", tone="grim"),
+                        structured(
+                            intent="Kael takes the hidden map.",
+                            tone="grim",
+                            effects=[{"op": "take-item", "item_id": "vault_map"}],
+                        )
                     )
                 )
-            )
-        )
-        stack.enter_context(
-            members.referee.agent.override(
-                model=FunctionModel(scripted(structured(objection=None)))
             )
         )
         stack.enter_context(members.narrator.agent.override(model=FunctionModel(boom)))
@@ -282,12 +338,7 @@ async def test_a_script_takes_an_extra_step_without_core_edits() -> None:
 
     steps: list[str] = []
     with ExitStack() as stack:
-        stack.enter_context(members.director.agent.override(model=FunctionModel(scripted(NOTES))))
-        stack.enter_context(
-            members.referee.agent.override(
-                model=FunctionModel(scripted(structured(objection=None)))
-            )
-        )
+        stack.enter_context(members.director.agent.override(model=FunctionModel(scripted(PLAN))))
         stack.enter_context(
             members.narrator.agent.override(model=FunctionModel(scripted(text("You wait."))))
         )
@@ -306,61 +357,5 @@ async def test_a_script_takes_an_extra_step_without_core_edits() -> None:
             on_step=steps.append,
         )
 
-    assert steps == ["director", "referee", "narrator", "maintainer", "creator", "echo"]
+    assert tuple(steps) == (*STEPS, "echo")
     assert result.turn.prompts["echo"] == "extra step ran"
-
-
-async def test_an_objection_continues_the_director_once_and_commits_its_correction() -> None:
-    engine, state = initialized()
-    members = default_cast(engine, settings())
-    with ExitStack() as stack:
-        stack.enter_context(
-            members.director.agent.override(
-                model=FunctionModel(
-                    scripted(
-                        structured(intent="Kael hesitates.", tone="flat"),
-                        calling(
-                            "adjust",
-                            entity_id="player",
-                            counter="stress",
-                            delta=1,
-                            reason="the strain of forcing the door",
-                        ),
-                        structured(intent="Kael forces the door.", tone="tense"),
-                    )
-                )
-            )
-        )
-        stack.enter_context(
-            members.referee.agent.override(
-                model=FunctionModel(
-                    scripted(
-                        structured(
-                            objection="The player forced the door and nothing was rolled;"
-                            " resolve the risk now."
-                        )
-                    )
-                )
-            )
-        )
-        stack.enter_context(
-            members.narrator.agent.override(model=FunctionModel(scripted(text("The door gives."))))
-        )
-        stack.enter_context(
-            members.maintainer.agent.override(
-                model=FunctionModel(scripted(structured(requests=[])))
-            )
-        )
-        result = await run_turn(
-            state,
-            "I force the door.",
-            engine=engine,
-            script=members.script(engine, OPTIONS),
-            options=OPTIONS,
-            rng=Random(0),
-        )
-
-    assert [fact.kind for fact in result.turn.facts] == ["referee_objection", "counter_changed"]
-    assert result.turn.notes.intent == "Kael forces the door."
-    assert player_sheet(result.state).counters["stress"].current == 1
-    assert "forced the door" not in result.turn.narrator_evidence

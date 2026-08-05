@@ -3,7 +3,8 @@
     uv run python scripts/evals/run.py [--only <engine|tag|id>] [--runs N] [--concurrency N]
 
 Each scenario builds a real game from shipped content, applies its setup, runs the director stage
-alone, then checks the committed draft and the recorded facts. Rates land in `results/`.
+and the engine resolver, then checks the committed state and the recorded facts. Rates land in
+`results/`.
 """
 
 import asyncio
@@ -24,9 +25,8 @@ from aidm.core.config import Settings, load_settings
 from aidm.core.content import authored_world
 from aidm.core.registry import AnyEngine, build_engine
 from aidm.core.store import load_character, load_scenario
-from aidm.core.tools import TurnContext
 from aidm.core.world import EngineRules, GameState
-from aidm.workflow.pipeline import TurnWorkspace, default_cast, director_step, referee_step
+from aidm.workflow.pipeline import TurnWorkspace, default_cast, director_step, resolve_step
 
 EVALS = Path(__file__).parent
 SCENARIOS = EVALS / "scenarios"
@@ -87,7 +87,7 @@ class SuiteRecord(Frozen):
     model: str
     retries: int
     overall: float
-    # Turns that reached a director answer at all; the rest died on tool-argument retries.
+    # Turns that reached a legal plan at all; the rest died on plan-validation retries.
     completion: float
     # Pass rate among completed turns: the rules-interpretation signal, with crashes taken out.
     interpretation: float
@@ -201,7 +201,7 @@ def summarise(suite: SuiteRecord) -> str:
     lines = [
         f"overall {_percent(suite.overall)} — {suite.model} @ {suite.commit}",
         f"  turns completed: {_percent(suite.completion)}"
-        f" (retries {suite.retries}; the rest died on tool-argument retries)",
+        f" (retries {suite.retries}; the rest died on plan-validation retries)",
         f"  checks passed when completed: {_percent(suite.interpretation)}",
         f"  mean duration/turn: {suite.mean_duration_s:.1f}s",
         "",
@@ -242,16 +242,15 @@ async def _turn(case: EvalCase, run: int, config: Settings) -> Outcome:
     before = apply_setup(
         Setup(engine=engine, state=initial_state(case, engine, config), rng=rng), case.setup
     )
-    context = TurnContext(
-        draft=before.draft(), rng=rng, facts=[], default_rules=engine.default_rules
+    workspace = TurnWorkspace(
+        prompt=case.prompt, history=[], state=before, draft=before.draft(), rng=rng, recent=()
     )
-    workspace = TurnWorkspace(prompt=case.prompt, history=[], context=context, recent=())
     cast = default_cast(engine, config)
     await director_step(cast.director, engine)(workspace)
-    await referee_step(cast.referee, cast.director)(workspace)
-    after = context.draft.committed()
+    await resolve_step(engine)(workspace)
+    after = workspace.draft.committed()
     engine.validate_state(after)
-    return Outcome(before=before, after=after, facts=tuple(context.facts))
+    return Outcome(before=before, after=after, facts=tuple(workspace.facts))
 
 
 def _engine(engine_id: EngineId, config: Settings) -> AnyEngine:

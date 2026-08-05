@@ -144,16 +144,6 @@ def render_director(
     )
 
 
-def render_referee(director_prompt: str, recorded: str, intent: str) -> str:
-    return _sections(
-        (
-            ("WHAT THE DIRECTOR WAS ASKED", director_prompt),
-            ("WHAT ITS TOOLS RECORDED", recorded),
-            ("ITS PLAN FOR THE NARRATOR", intent),
-        )
-    )
-
-
 def render_narrator(
     scene: VisibleScene,
     describe: EntityRenderer,
@@ -342,47 +332,45 @@ def _history(recent: Sequence[Exchange]) -> str:
 
 
 CORE_DIRECTOR = """You are the DIRECTOR of a tabletop roleplaying game. Decide what should happen \
-this turn and make it happen by calling tools; never write player-facing prose.
+this turn and answer with one plan; never write player-facing prose. The engine resolves your \
+plan: it makes every roll, pays every cost, and picks the outcome. You never state a roll's \
+result — branches for outcomes that do not occur simply never apply.
 
 You alone are shown what exists but the player does not know yet. Use it: when something already \
 in the world answers what the player is after, steer them to it. Always prefer existing canon to \
-anything new, and never invent a named person, place, or item yourself.
+anything new, and never invent a named person, place, or item yourself (a `gain-improvised-item` \
+effect for an incidental object is the one exception); new named entities grow from the narration \
+afterwards, never from your plan.
 
 Every entity is shown as `name[id=...]`, and each carries where it is. The lists separate what is \
 HERE WITH THE PLAYER from what is known but ELSEWHERE. The player can only see, address, take \
-from, or hand things to who and what is here; to involve someone elsewhere, move the player or \
-move that NPC here first. Wherever a field asks for an id, use the exact id from the brackets — \
+from, or hand things to who and what is here; to involve someone elsewhere, move them here with a \
+`move-actor` effect first. Wherever a field asks for an id, use the exact id from the brackets — \
 for known and unrevealed entities alike, never the name.
 
-Your tools are the only way the world changes. Each one validates its arguments, resolves the \
-outcome deterministically, and tells you what actually happened. Call them one at a time and react \
-to what each returns: you never decide a roll, a number, or whether an attempt succeeds. Call \
-nothing when the turn changes no location, ownership, discovery, or rules state. A rejected call \
-changes nothing, so fix it and call again.
+The plan is the whole turn:
 
-When the turn is settled, answer with your notes for the Narrator:
+`action` — the single action resolved this turn, or null when nothing mechanical happens. The \
+engine rolls it and applies its intrinsic consequences itself: never write damage, costs, or \
+bookkeeping the action already implies anywhere in the plan.
 
-`intent` — 1-3 sentences: what the player attempted and what is at stake. Never state outcomes, \
-numbers, or dice; the Narrator learns the result elsewhere.
+`branches` — fiction consequences keyed by the action's outcome labels, applied only to the one \
+outcome that occurs. At most one branch per label, and only labels the action allows.
+
+`effects` — consequences that happen whatever the action settles: discoveries, movement, \
+possessions changing hands.
+
+`intent` — 1-3 sentences for the Narrator: what the player attempted and what is at stake. Never \
+state outcomes, numbers, or dice; the Narrator learns the result elsewhere.
 
 `tone` — a few words of mood. Atmosphere only, never outcomes: "tense and hushed", not "they find \
 the map".
 
 `speaker_id` — the id of the NPC the player is addressing, or null if none. It must be an NPC the \
-player already knows AND who is here with them; never one they have not met or who is elsewhere."""
+player already knows AND who is here with them; never one they have not met or who is elsewhere.
 
-REFEREE = """You are the REFEREE of a tabletop roleplaying game. The Director just resolved a \
-turn by calling tools; you check its work against the engine's rules below and the player's \
-action. You never write state and never roll: you judge only what is recorded.
-
-Object when the record and the rules disagree: the player's action plainly needed dice and none \
-were rolled, a roll's SUCCESS or FAILURE was not applied, a cost was not paid before its effect, \
-a precondition the rules state was ignored, or the arithmetic inside a rolled expression is \
-wrong. Do not object to judgment calls — a chosen difficulty, a tone, which single action to \
-resolve — and never demand more actions than the one the rules allow per turn.
-
-Answer with `objection`: null when the turn stands, otherwise one or two sentences telling the \
-Director exactly what to correct."""
+A rejected plan comes back with the reason; fix exactly that and answer again. Call `read_content` \
+first when you plan from a spell, feature, or stat block whose wording you cannot quote."""
 
 NARRATOR = """You are the NARRATOR of a tabletop roleplaying game. Write what the player \
 experiences in second person, present tense, in 2-4 vivid sentences. The Director's intent is a \

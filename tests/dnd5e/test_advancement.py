@@ -15,7 +15,6 @@ from aidm.core.sheet import (
     SheetDelta,
     player_sheet,
 )
-from aidm.core.tools import require
 from aidm.engines.dnd5e.advance import ADVANCEMENT_READY
 
 ACTION_SURGE = ContentRef(pack="srd-2014", collection="features", index="action-surge-1-use")
@@ -57,7 +56,7 @@ def test_the_ready_tag_opens_the_next_level_row() -> None:
 def test_standing_at_a_scenario_milestone_opens_the_offer_without_the_tag() -> None:
     engine, state = dnd5e_game()
     draft = state.draft()
-    _ = draft.move(require(draft, PLAYER_ID), require(draft, EntityId("vault")))
+    _ = draft.move(draft.world.require(PLAYER_ID), draft.world.require(EntityId("vault")))
     at_vault = draft.committed()
 
     assert engine.proposal.offered(at_vault) is not None

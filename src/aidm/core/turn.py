@@ -1,10 +1,9 @@
 from typing import Annotated, Literal
 
-from pydantic import Field
+from pydantic import Field, JsonValue
 
 from .base import SAVE_VERSION, Entity, Frozen, Kind
 from .facts import Fact
-from .tools import DirectorNotes
 
 
 class GrowthRequest(Frozen):
@@ -68,7 +67,7 @@ class TraceEntryBase(Frozen):
 class Turn(TraceEntryBase):
     entry: Literal["turn"] = "turn"
     prompt: str
-    notes: DirectorNotes
+    plan: dict[str, JsonValue]
     narrator_evidence: str
     narration: str
     growth: Growth

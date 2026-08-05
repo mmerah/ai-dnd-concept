@@ -90,6 +90,20 @@ def test_check_plan_refuses_what_the_procedure_cannot_resolve() -> None:
     assert "TAKEN OUT" in _refusal(engine, taken_out.committed(), _plan(actor_id=PLAYER_ID))
 
 
+def test_check_plan_refuses_a_speaker_the_narrator_may_not_voice() -> None:
+    """The speaker guard is what keeps the Narrator from voicing the player or an unmet NPC."""
+    engine, state = story_game()
+
+    def addressed(speaker_id: EntityId | None) -> StoryPlan:
+        return StoryPlan(intent="Kael speaks up.", tone="low", speaker_id=speaker_id)
+
+    assert engine.check_plan(state, addressed(EntityId("mara"))) is None
+    assert "never the player" in _refusal(engine, state, addressed(PLAYER_ID))
+    assert "unknown speaker" in _refusal(engine, state, addressed(EntityId("nobody")))
+    for absent in (EntityId("tomas"), EntityId("elena")):
+        assert "met and who is here" in _refusal(engine, state, addressed(absent))
+
+
 def test_growth_opens_an_offer_and_storys_own_caps_refuse_what_breaks_them() -> None:
     engine, state = story_game()
     assert engine.proposal.offered(state) is None

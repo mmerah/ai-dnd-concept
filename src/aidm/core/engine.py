@@ -12,7 +12,6 @@ from .facts import Fact
 from .packs import ContentRef
 from .plan import TurnPlanBase
 from .sheet import AddRef, Sheet, SheetDelta, apply_delta, player_sheet
-from .tools import TurnContext
 from .world import EngineRules, GameState, WorldState
 
 NOTHING_MECHANICAL = "- (nothing mechanical happened)"
@@ -81,7 +80,7 @@ class Engine[R: EngineRules]:
     validate_state: Callable[[GameState[R]], None]
     default_rules: Callable[[Entity], R]
     proposal: ProposalSpec[R]
-    toolsets: Mapping[str, AbstractToolset[TurnContext[R]]]
+    toolsets: Mapping[str, AbstractToolset[object]]
     director_instructions: str
     entity_state: Callable[[Entity, R], str]
     plan_type: type[TurnPlanBase]

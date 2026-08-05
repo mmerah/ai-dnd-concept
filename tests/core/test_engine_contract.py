@@ -1,31 +1,30 @@
-from random import Random
-
-from core_test_support import initialized, settings, tool_context, turn_context
+from core_test_support import initialized, settings
 from story_test_support import story_game
 
 from aidm.core.base import PLAYER_ID, Entity, EntityId
+from aidm.core.effects import AdjustCounter, TakeItem, apply_effect
 from aidm.core.engine import Engine
 from aidm.core.facts import Fact
-from aidm.core.mechanics import Mechanics
-from aidm.core.packs import Content
 from aidm.core.registry import build_engine, engine_ids, plugins
 from aidm.core.sheet import Sheet, player_sheet
-from aidm.core.tools import take_item
 from aidm.core.world import GameState, rules_of
-
-MECHANICS = Mechanics(content=Content(packs=(), records={}), refills={})
 
 
 def _turn(
     engine: Engine[Sheet], state: GameState[Sheet]
 ) -> tuple[GameState[Sheet], tuple[Fact, ...]]:
-    context = turn_context(engine, state, Random(19))
-    run = tool_context(context)
-    _ = take_item(run, EntityId("vault_map"))
-    _ = MECHANICS.adjust(
-        run, entity_id=PLAYER_ID, counter="stress", delta=1, reason="the strain of prying"
-    )
-    return context.draft.committed(), tuple(context.facts)
+    draft = state.draft()
+    facts = [
+        *apply_effect(draft, TakeItem(item_id=EntityId("vault_map")), engine.default_rules),
+        *apply_effect(
+            draft,
+            AdjustCounter(
+                entity_id=PLAYER_ID, counter="stress", delta=1, reason="the strain of prying"
+            ),
+            engine.default_rules,
+        ),
+    ]
+    return draft.committed(), tuple(facts)
 
 
 def test_engine_initialization_and_state_contract() -> None:
@@ -39,7 +38,7 @@ def test_engine_initialization_and_state_contract() -> None:
     assert restored == state
 
 
-def test_tool_resolution_is_pure_seeded_and_renders_every_fact() -> None:
+def test_effect_resolution_is_pure_and_renders_every_fact() -> None:
     """Load-bearing: a draft that shallow-copies would corrupt the committed state silently, so the
     turn has to touch both a core action and engine state to be worth asserting.
     """

@@ -1,18 +1,12 @@
 from pathlib import Path
-from random import Random
 
 from pydantic import BaseModel, SecretStr
-from pydantic_ai import RunContext
-from pydantic_ai.models.test import TestModel
-from pydantic_ai.usage import RunUsage
 
 from aidm.core.base import SAVE_VERSION, EngineId, Entity
 from aidm.core.config import ProviderConfig, Providers, Settings
 from aidm.core.content import Character, Scenario, authored_world
-from aidm.core.engine import Engine
 from aidm.core.registry import AnyEngine, build_engine
 from aidm.core.store import load_character, load_scenario
-from aidm.core.tools import TurnContext
 from aidm.core.world import EngineRules, GameState
 
 REPOSITORY_ROOT = Path(__file__).parents[2]
@@ -57,22 +51,6 @@ def initialized() -> tuple[AnyEngine, GameState[EngineRules]]:
     )
     engine.validate_state(state)
     return engine, state
-
-
-def turn_context[R: EngineRules](
-    engine: Engine[R], state: GameState[R], rng: Random | None = None
-) -> TurnContext[R]:
-    return TurnContext(
-        draft=state.draft(),
-        rng=Random(0) if rng is None else rng,
-        facts=[],
-        default_rules=engine.default_rules,
-    )
-
-
-def tool_context[R: EngineRules](deps: TurnContext[R]) -> RunContext[TurnContext[R]]:
-    """Tools take a `RunContext`; a test builds one instead of running an agent."""
-    return RunContext(deps=deps, model=TestModel(), usage=RunUsage())
 
 
 def settings() -> Settings:

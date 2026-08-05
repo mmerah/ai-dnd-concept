@@ -2,6 +2,10 @@ import json
 from pathlib import Path
 
 import pytest
+from pydantic_ai import ModelRetry, RunContext
+from pydantic_ai.models.test import TestModel
+from pydantic_ai.toolsets import AbstractToolset
+from pydantic_ai.usage import RunUsage
 
 from aidm.core.base import PLAYER_ID, SAVE_VERSION, EngineId, Entity, EntityId
 from aidm.core.content import AuthoredEntity, AuthoredWorld
@@ -161,6 +165,28 @@ def test_validate_state_rejects_a_sheet_naming_an_unresolved_ref(tmp_path: Path)
 
     with pytest.raises(ValueError, match="missing content"):
         engine.validate_state(state)
+
+
+async def _read_content(toolset: AbstractToolset[object], ref: str) -> str:
+    """Tools take a `RunContext`; a test builds one instead of running an agent."""
+    ctx = RunContext[object](deps=object(), model=TestModel(), usage=RunUsage())
+    tools = await toolset.get_tools(ctx)
+    rendered = await toolset.call_tool("read_content", {"ref": ref}, ctx, tools["read_content"])
+    assert isinstance(rendered, str)
+    return rendered
+
+
+async def test_read_content_renders_the_record_and_refuses_a_bad_ref(tmp_path: Path) -> None:
+    toolset = _engine(tmp_path).toolsets["director"]
+
+    rendered = await _read_content(toolset, "testpack/monsters/giant-rat")
+    assert rendered.startswith("Giant Rat [testpack/monsters/giant-rat]")
+    assert "numbers: armor-class 12, hp 7" in rendered
+    assert "Keen smell, pack tactics." in rendered
+    with pytest.raises(ModelRetry, match="pack/collection/index"):
+        _ = await _read_content(toolset, "malformed")
+    with pytest.raises(ModelRetry, match="missing content"):
+        _ = await _read_content(toolset, "testpack/monsters/absent")
 
 
 def test_lenient_format_round_trips_a_pack_byte_for_byte(tmp_path: Path) -> None:

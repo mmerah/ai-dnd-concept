@@ -3,14 +3,16 @@ from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass
 from pathlib import Path
 from random import Random
+from typing import Annotated
 
-from pydantic import JsonValue, TypeAdapter
+from pydantic import Field, JsonValue, TypeAdapter
+from pydantic_ai import ModelRetry
+from pydantic_ai.toolsets import FunctionToolset
 
 from .base import EngineId, Entity, Kind, Slug
 from .content import AuthoredEntity, AuthoredWorld, Rules, compose_world
 from .engine import AdvancementOffer, Engine, ProposalSpec
 from .facts import Fact
-from .mechanics import Mechanics
 from .packs import (
     EMPTY_FROZEN_MAP,
     ENCODING,
@@ -23,6 +25,7 @@ from .packs import (
     Value,
     lenient_format,
     load,
+    parse_ref,
 )
 from .plan import TurnPlanBase
 from .sheet import Sheet, SheetDefinition, SheetDelta, SheetTemplate, render_sheet
@@ -98,7 +101,7 @@ def load_engine(
             instructions=_text(engine_dir / "advancement.md"),
             check=check,
         ),
-        toolsets={"director": Mechanics(content=content, refills=spec.recharge).toolset()},
+        toolsets={"director": _director_toolset(content)},
         director_instructions=_text(engine_dir / "director.md") + _examples(engine_dir, plan_type),
         entity_state=entity_state,
         plan_type=plan_type,
@@ -117,6 +120,44 @@ def _examples(engine_dir: Path, plan_type: type[TurnPlanBase]) -> str:
         return ""
     header = "## Worked plans\n\nOne plan per action; a field left out sits at its default."
     return "\n\n" + "\n\n".join([header, *blocks])
+
+
+def _director_toolset(content: Content) -> FunctionToolset[object]:
+    def read_content(
+        ref: Annotated[
+            str, Field(description="A content ref written `pack/collection/index`, as shown.")
+        ],
+    ) -> str:
+        """Read the rules text of one content record.
+
+        Use before planning from a spell, feature, or monster action whose wording you cannot
+        quote. It reads canon and changes nothing.
+        """
+        try:
+            reference = parse_ref(ref)
+        except ValueError as malformed:
+            raise ModelRetry(str(malformed)) from malformed
+        found = content.get(reference, LenientRecord)
+        if isinstance(found, ContentMiss):
+            raise ModelRetry(found.summary)
+        return _record_text(found, ref)
+
+    return FunctionToolset[object]([read_content])
+
+
+def _record_text(record: LenientRecord, ref: str) -> str:
+    numbers = ", ".join(f"{key} {value}" for key, value in sorted(record.numbers.items()))
+    notes = "; ".join(f"{key}={value}" for key, value in sorted(record.notes.items()))
+    options = ", ".join(str(option) for option in record.options)
+    lines = [
+        f"{record.name} [{ref}]",
+        *([f"numbers: {numbers}"] if numbers else []),
+        *([f"notes: {notes}"] if notes else []),
+        *([f"tags: {', '.join(record.tags)}"] if record.tags else []),
+        *([f"choose {record.choose} of: {options}"] if options else []),
+        *([record.text] if record.text else []),
+    ]
+    return "\n".join(lines)
 
 
 def _backing(refs: Sequence[ContentRef], content: Content) -> Mapping[Slug, int]:

@@ -4,21 +4,16 @@ from random import Random
 from types import NoneType
 
 from pydantic import Field
-from pydantic_ai import NativeOutput
+from pydantic_ai import ModelRetry, NativeOutput, RunContext
 from pydantic_ai.messages import ModelMessage
 
 from ..core.base import Entity, EntityDetail, EntityId, Frozen, slug
 from ..core.config import Settings
+from ..core.effects import apply_effect
 from ..core.engine import entity_renderer, narrator_evidence
+from ..core.facts import Fact
+from ..core.plan import TurnPlanBase
 from ..core.registry import AnyEngine
-from ..core.tools import (
-    DirectorNotes,
-    RefereeVerdict,
-    TurnContext,
-    director_notes,
-    objection_fact,
-    world_toolset,
-)
 from ..core.turn import Growth, GrowthRequest, RejectedGrowth, Turn, screen_growth
 from ..core.world import EngineRules, Exchange, GameState
 from . import prompts
@@ -39,15 +34,25 @@ class TurnResult:
     turn: Turn
 
 
+@dataclass(frozen=True, slots=True)
+class PlanContext:
+    """What the Director's output validator judges a plan against: the untouched committed state."""
+
+    engine: AnyEngine
+    state: GameState[EngineRules]
+
+
 @dataclass
 class TurnWorkspace:
     prompt: str
     history: list[ModelMessage]
-    context: TurnContext[EngineRules]
+    state: GameState[EngineRules]
+    draft: GameState[EngineRules]
+    rng: Random
     recent: tuple[Exchange, ...]
+    facts: list[Fact] = field(default_factory=list)
     prompts: dict[str, str] = field(default_factory=dict)
-    director_messages: list[ModelMessage] = field(default_factory=list)
-    notes: DirectorNotes | None = None
+    plan: TurnPlanBase | None = None
     evidence: str = ""
     narration: str = ""
     growth: Growth | None = None
@@ -55,75 +60,54 @@ class TurnWorkspace:
     rejected: tuple[RejectedGrowth, ...] = ()
     created: tuple[Entity, ...] = ()
 
+    def settled(self) -> TurnPlanBase:
+        if self.plan is None:
+            raise ValueError("this step ran before a director step settled the plan")
+        return self.plan
+
 
 type StepFn = Callable[[TurnWorkspace], Awaitable[None]]
 type TurnScript = tuple[tuple[str, StepFn], ...]
 
 
-def _commit_tools(ws: TurnWorkspace) -> None:
-    """Commit what the tools did before anyone reads it."""
-    ws.context.draft = ws.context.draft.committed().draft()
-    ws.evidence = narrator_evidence(ws.context.facts)
-
-
-def director_step(
-    role: Stage[TurnContext[EngineRules], DirectorNotes], engine: AnyEngine
-) -> StepFn:
+def director_step(role: Stage[PlanContext, TurnPlanBase], engine: AnyEngine) -> StepFn:
     async def run(ws: TurnWorkspace) -> None:
-        draft = ws.context.draft
+        state = ws.state
         ws.prompts[role.name] = prompts.render_director(
-            SceneSnapshot.of(draft), entity_renderer(engine, draft), draft.scenario, ws.prompt
+            SceneSnapshot.of(state), entity_renderer(engine, state), state.scenario, ws.prompt
         )
-        ws.notes, ws.director_messages = await role.converse(
-            ws.prompts[role.name], ws.context, ws.history
+        ws.plan = await role.run(
+            ws.prompts[role.name], PlanContext(engine=engine, state=state), ws.history
         )
-        _commit_tools(ws)
 
     return run
 
 
-def referee_step(
-    role: Stage[None, RefereeVerdict],
-    director: Stage[TurnContext[EngineRules], DirectorNotes],
-) -> StepFn:
+def resolve_step(engine: AnyEngine) -> StepFn:
+    """Pure code: the action's procedure on the draft, then the plan's unconditional effects."""
+
     async def run(ws: TurnWorkspace) -> None:
-        notes = ws.notes
-        if notes is None:
-            raise ValueError("referee_step ran before a director step settled the turn")
-        recorded = "\n".join(f"- {fact.trace}" for fact in ws.context.facts)
-        ws.prompts[role.name] = prompts.render_referee(
-            ws.prompts[director.name],
-            recorded or "- (no tool call recorded anything)",
-            notes.intent,
-        )
-        verdict = await role.run(ws.prompts[role.name], None)
-        if verdict.objection is None:
-            return
-        ws.context.facts.append(objection_fact(verdict.objection))
-        ws.notes, ws.director_messages = await director.converse(
-            f"REFEREE: {verdict.objection}\n"
-            "Correct this with your tools now, then answer with your notes again.",
-            ws.context,
-            ws.director_messages,
-        )
-        _commit_tools(ws)
+        plan = ws.settled()
+        ws.facts.extend(engine.resolve_action(ws.draft, plan, ws.rng))
+        for effect in plan.effects:
+            ws.facts.extend(apply_effect(ws.draft, effect, engine.default_rules))
+        ws.draft = ws.draft.committed().draft()
+        ws.evidence = narrator_evidence(ws.facts)
 
     return run
 
 
 def narrator_step(role: Stage[None, str], engine: AnyEngine) -> StepFn:
     async def run(ws: TurnWorkspace) -> None:
-        notes = ws.notes
-        if notes is None:
-            raise ValueError("narrator_step ran before a director step settled the turn")
-        draft = ws.context.draft
+        plan = ws.settled()
+        draft = ws.draft
         ws.prompts[role.name] = prompts.render_narrator(
             VisibleScene.of(SceneSnapshot.of(draft)),
             entity_renderer(engine, draft),
             draft.scenario,
-            intent=notes.intent,
-            tone=notes.tone,
-            speaker_id=notes.speaker_id,
+            intent=plan.intent,
+            tone=plan.tone,
+            speaker_id=plan.speaker_id,
             evidence=ws.evidence,
             prompt=ws.prompt,
         )
@@ -134,7 +118,7 @@ def narrator_step(role: Stage[None, str], engine: AnyEngine) -> StepFn:
 
 def maintainer_step(role: Stage[None, Growth], engine: AnyEngine, options: TurnOptions) -> StepFn:
     async def run(ws: TurnWorkspace) -> None:
-        draft = ws.context.draft
+        draft = ws.draft
         ws.prompts[role.name] = prompts.render_maintainer(
             SceneSnapshot.of(draft),
             entity_renderer(engine, draft),
@@ -155,7 +139,7 @@ def maintainer_step(role: Stage[None, Growth], engine: AnyEngine, options: TurnO
 
 def creator_step(role: Stage[None, EntityDetail], engine: AnyEngine) -> StepFn:
     async def run(ws: TurnWorkspace) -> None:
-        draft = ws.context.draft
+        draft = ws.draft
         for request in sorted(ws.accepted, key=lambda item: item.kind != "location"):
             ws.prompts[role.name] = prompts.render_creator(
                 SceneSnapshot.of(draft),
@@ -167,7 +151,7 @@ def creator_step(role: Stage[None, EntityDetail], engine: AnyEngine) -> StepFn:
             )
             detail = await role.run(ws.prompts[role.name], None)
             entity = _created_entity(request, detail, draft)
-            ws.context.facts.append(draft.add(entity, engine.default_rules(entity)))
+            ws.facts.append(draft.add(entity, engine.default_rules(entity)))
             ws.created = (*ws.created, entity)
 
     return run
@@ -175,8 +159,7 @@ def creator_step(role: Stage[None, EntityDetail], engine: AnyEngine) -> StepFn:
 
 @dataclass(frozen=True, slots=True)
 class Cast:
-    director: Stage[TurnContext[EngineRules], DirectorNotes]
-    referee: Stage[None, RefereeVerdict]
+    director: Stage[PlanContext, TurnPlanBase]
     narrator: Stage[None, str]
     maintainer: Stage[None, Growth]
     creator: Stage[None, EntityDetail]
@@ -184,30 +167,37 @@ class Cast:
     def script(self, engine: AnyEngine, options: TurnOptions) -> TurnScript:
         return (
             (self.director.name, director_step(self.director, engine)),
-            (self.referee.name, referee_step(self.referee, self.director)),
+            ("resolve", resolve_step(engine)),
             (self.narrator.name, narrator_step(self.narrator, engine)),
             (self.maintainer.name, maintainer_step(self.maintainer, engine, options)),
             (self.creator.name, creator_step(self.creator, engine)),
         )
 
 
+def director_stage(engine: AnyEngine, settings: Settings) -> Stage[PlanContext, TurnPlanBase]:
+    built = stage(
+        "director",
+        settings,
+        instructions=f"{prompts.CORE_DIRECTOR}\n\n{engine.director_instructions}",
+        output_type=NativeOutput(engine.plan_type, name="TurnPlan"),
+        deps_type=PlanContext,
+        toolsets=(engine.toolsets["director"],),
+    )
+
+    def legal(ctx: RunContext[PlanContext], plan: TurnPlanBase) -> TurnPlanBase:
+        deps = ctx.deps
+        refused = deps.engine.check_plan(deps.state, plan)
+        if refused is not None:
+            raise ModelRetry(refused)
+        return plan
+
+    _ = built.agent.output_validator(legal)
+    return built
+
+
 def default_cast(engine: AnyEngine, settings: Settings) -> Cast:
     return Cast(
-        director=stage(
-            "director",
-            settings,
-            instructions=f"{prompts.CORE_DIRECTOR}\n\n{engine.director_instructions}",
-            output_type=NativeOutput(director_notes, name="DirectorNotes"),
-            deps_type=TurnContext,
-            toolsets=(world_toolset(), engine.toolsets["director"]),
-        ),
-        referee=stage(
-            "referee",
-            settings,
-            instructions=f"{prompts.REFEREE}\n\n{engine.director_instructions}",
-            output_type=NativeOutput(RefereeVerdict),
-            deps_type=NoneType,
-        ),
+        director=director_stage(engine, settings),
         narrator=stage(
             "narrator", settings, instructions=prompts.NARRATOR, output_type=str, deps_type=NoneType
         ),
@@ -242,24 +232,25 @@ async def run_turn(
     ws = TurnWorkspace(
         prompt=prompt,
         history=exchanges_to_messages(recent),
-        context=TurnContext(
-            draft=state.draft(), rng=rng, facts=[], default_rules=engine.default_rules
-        ),
+        state=state,
+        draft=state.draft(),
+        rng=rng,
         recent=recent,
     )
     for name, step in script:
         if on_step is not None:
             on_step(name)
         await step(ws)
-    if ws.notes is None:
-        raise ValueError("script finished without director notes")
+    plan = ws.plan
+    if plan is None:
+        raise ValueError("script finished without a turn plan")
     if not ws.narration:
         raise ValueError("script finished without a narration")
     if ws.growth is None:
         raise ValueError("script finished without growth")
     if len(ws.created) < len(ws.accepted):
         raise ValueError("script finished with accepted growth requests uncreated")
-    draft = ws.context.draft
+    draft = ws.draft
     draft.history = (*draft.history, Exchange(prompt=prompt, narration=ws.narration))
     draft.turn += 1
     final = draft.committed()
@@ -268,8 +259,8 @@ async def run_turn(
         state=final,
         turn=Turn(
             prompt=prompt,
-            notes=ws.notes,
-            facts=tuple(ws.context.facts),
+            plan=plan.model_dump(mode="json"),
+            facts=tuple(ws.facts),
             narrator_evidence=ws.evidence,
             narration=ws.narration,
             growth=ws.growth,

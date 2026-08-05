@@ -2,11 +2,27 @@ from collections.abc import Callable, Sequence
 
 from pydantic import Field, ValidationError
 
-from .base import Entity, EntityId, Frozen, Slug
+from .base import PLAYER_ID, Entity, EntityId, Frozen, Slug
 from .effects import Effect, apply_effect
 from .facts import Fact
-from .tools import check_speaker
 from .world import EngineRules, GameState
+
+
+def check_speaker[R: EngineRules](state: GameState[R], speaker_id: EntityId | None) -> str | None:
+    """The player is addressed, never the speaker: losing this lets the Director voice them."""
+    if speaker_id is None:
+        return None
+    if speaker_id == PLAYER_ID:
+        return "speaker_id names another actor the player addresses, never the player."
+    speaker = state.world.find(speaker_id)
+    if speaker is None:
+        return f"unknown speaker id {speaker_id!r}. Use only ids you were shown, or null."
+    if speaker.kind != "actor" or not speaker.known or not state.is_here(speaker):
+        return (
+            f"speaker {speaker_id!r} must be an NPC the player has met and who is here with them. "
+            "Use null if nobody is being addressed."
+        )
+    return None
 
 
 class OutcomeBranch(Frozen):

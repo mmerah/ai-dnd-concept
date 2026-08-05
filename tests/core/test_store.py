@@ -8,7 +8,6 @@ from pydantic import ValidationError
 from aidm.core.engine import narrator_evidence
 from aidm.core.facts import CORE, Fact
 from aidm.core.store import ENCODING, FileSaves, FileTraces, load_character, load_scenario
-from aidm.core.tools import DirectorNotes
 from aidm.core.turn import Advance, Growth, Turn
 
 
@@ -25,7 +24,7 @@ def test_save_and_trace_round_trip(tmp_path: Path) -> None:
 
     turn = Turn(
         prompt="I listen.",
-        notes=DirectorNotes(intent="Listen.", tone="quiet"),
+        plan={"intent": "Listen.", "tone": "quiet"},
         narration="The abbey settles around you.",
         narrator_evidence="- learned of the vault",
         growth=Growth(),
@@ -69,7 +68,7 @@ def test_a_trace_round_trips_its_turn_and_advance_entries(tmp_path: Path) -> Non
     )
     turn = Turn(
         prompt="I brace.",
-        notes=DirectorNotes(intent="Kael endures a falling stone.", tone="dangerous"),
+        plan={"intent": "Kael endures a falling stone.", "tone": "dangerous"},
         facts=facts,
         narration="Dust falls.",
         narrator_evidence=narrator_evidence(facts),
@@ -84,7 +83,7 @@ def test_a_trace_round_trips_its_turn_and_advance_entries(tmp_path: Path) -> Non
     assert reloaded == (turn, advance)
     assert (
         isinstance(reloaded[0], Turn)
-        and reloaded[0].notes.intent == "Kael endures a falling stone."
+        and reloaded[0].plan["intent"] == "Kael endures a falling stone."
     )
     assert isinstance(reloaded[1], Advance)
 
@@ -113,7 +112,7 @@ def test_a_save_or_trace_from_another_build_is_refused(tmp_path: Path) -> None:
         "stale",
         Turn(
             prompt="I listen.",
-            notes=DirectorNotes(intent="Listen.", tone="quiet"),
+            plan={"intent": "Listen.", "tone": "quiet"},
             narration="The abbey settles around you.",
             narrator_evidence="- nothing changed",
             growth=Growth(),

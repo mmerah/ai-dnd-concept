@@ -160,4 +160,53 @@ Adversarial review of the staged tree; two defects confirmed and fixed, three cu
 - Phase 5 note: `core/plan.py` imports `check_speaker` from `core/tools.py`; move those 15 lines
   into `plan.py` when the deletion pass guts `tools.py`.
 
-## Phase 5 — pipeline rewire — NOT STARTED
+## Phase 5 — pipeline rewire — DONE
+
+- `workflow/pipeline.py` rewritten: the script is director → **resolve** (pure code) → narrator →
+  maintainer → creator. `director_stage` builds the stage with `NativeOutput(engine.plan_type)`,
+  toolset `read_content` only, deps `PlanContext(engine, committed state)`, and an output validator
+  calling `engine.check_plan` → `ModelRetry(reason)` (the advisor's `legal` pattern). `resolve_step`
+  runs `engine.resolve_action` on the draft, then applies `plan.effects`, then commit-redrafts and
+  renders the evidence. `TurnWorkspace` carries `state`/`draft`/`plan`/`facts`; the referee step,
+  `Cast.referee`, and the objection round are gone.
+- `core/tools.py` and `core/mechanics.py` **deleted whole**. `check_speaker` moved into `plan.py`;
+  `read_content` (+ its record renderer) moved into `enginepack.py` as `_director_toolset`, reusing
+  `packs.parse_ref`. `Engine.toolsets` is `Mapping[str, AbstractToolset[object]]` — pydantic-ai's
+  deps typevar is contravariant, so the `object`-typed toolset serves the director's typed deps.
+- `Turn.plan: dict[str, JsonValue]` (the typed plan dumped at record time) replaces
+  `notes: DirectorNotes`; `SAVE_VERSION` 26 → 27. The trace panel shows the plan as one JSON block.
+- `CORE_DIRECTOR` rewritten for the plan shape (action / branches / effects / intent / tone /
+  speaker); `REFEREE` and `render_referee` deleted. Narrator/Maintainer/Creator prompts untouched.
+- `scripts/evals/run.py`: `_turn` runs `director_step` + `resolve_step` on a `TurnWorkspace`;
+  scenario JSON and probes unchanged, so Phase 6 stays comparable.
+- Tests: `test_tools.py`/`test_mechanics.py` deleted (superseded by `test_effects.py`);
+  `test_pipeline.py` stubs plans with `FunctionModel` — including a branch-selection turn (the
+  applied tag must match the rolled outcome) and an illegal plan retried through the validator;
+  `test_engine_contract` drives effects instead of tools; `core_test_support` lost the tool helpers.
+- Live smoke (in place of the manual UI turn): one eval case per engine with the rewired harness —
+  `story-risk-single-roll`, `melee-damage-window`, `leveled-spell-spends-slot`, all 100% on one run,
+  5e turns at 5–6s against the 15.6s baseline mean.
+- Gate green: pytest 98 passed, ruff check, ruff format --check, basedpyright 0 errors.
+
+## Review pass over phase 5 — DONE
+
+Adversarial review of the staged rewire; four defects fixed, two cuts, several findings rejected
+after verification.
+
+- **The retry test now proves the reason reaches the model**: the director stub records each model
+  call and the test asserts the retry request carries a `RetryPromptPart` containing the refusal —
+  before, a validator that swallowed the reason still passed.
+- **Coverage that died with its file but not its subject restored**: `check_speaker` (now in
+  `plan.py`) regained its five refusal cases in `tests/story/test_story_engine.py`;
+  `read_content` (now in `enginepack.py`) regained render/malformed-ref/miss cases in
+  `tests/core/test_enginepack.py`, driven through the real toolset API.
+- **Stale prose in the eval harness**: docstring and `completion` wording still described the
+  tool-calling director; reworded, JSON schema and probes untouched.
+- Cuts: `Stage.converse` folded into `run` (only the deleted referee loop needed the split
+  conversation); the single-use `RESOLVE` constant inlined. Net src −12 lines.
+- Rejected after verification (recorded so Phase 7 does not rehunt them): resolve-time branch
+  refusals fail the turn loudly by design; no raising path in either `check_plan`; the
+  `toolsets` single-key mapping and `plan.intent` exposure predate this phase; the harness's
+  double commit is idempotent; `Turn.plan` round-trips engine extras through `TRACE_ADAPTER`.
+- Gate green: pytest 100 passed, ruff check, ruff format --check, basedpyright 0 errors.
+- Staged, not committed. Suggested message: `feat(pipeline): one plan in, resolved by the engine`.
