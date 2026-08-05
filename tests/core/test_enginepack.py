@@ -17,6 +17,7 @@ from aidm.core.packs import (
     read_pack,
     write_pack,
 )
+from aidm.core.plan import TurnPlanBase
 from aidm.core.sheet import Counter, Sheet, SheetDelta
 from aidm.core.world import GameState, Record, ScenarioMeta, WorldState
 
@@ -65,12 +66,22 @@ def _engine_dir(tmp_path: Path) -> Path:
     (tmp_path / "spec.json").write_text(json.dumps(SPEC), encoding="utf-8")
     (tmp_path / "director.md").write_text("Test procedure.\n", encoding="utf-8")
     (tmp_path / "advancement.md").write_text("Test growth.\n", encoding="utf-8")
+    (tmp_path / "examples.json").write_text("[]\n", encoding="utf-8")
     write_pack(tmp_path / "packs" / "testpack", PACK)
     return tmp_path
 
 
 def _engine(tmp_path: Path) -> Engine[Sheet]:
-    return load_engine(_engine_dir(tmp_path), EngineId("test"), offered=_offered, check=_check)
+    """A pack loader test needs no procedure, so this engine resolves nothing."""
+    return load_engine(
+        _engine_dir(tmp_path),
+        EngineId("test"),
+        offered=_offered,
+        check=_check,
+        plan_type=TurnPlanBase,
+        check_plan=lambda parts, state, plan: None,
+        resolve_action=lambda parts, draft, plan, rng: [],
+    )
 
 
 def _minimal_state(engine: Engine[Sheet], player_sheet: Sheet) -> GameState[Sheet]:

@@ -10,7 +10,8 @@ from aidm.core.registry import build_engine
 from aidm.core.sheet import Sheet, player_sheet
 from aidm.core.store import FileSaves, FileTraces
 from aidm.core.world import EngineRules, GameState
-from aidm.engines.story.engine import GROWTH_REQUIRED, build_story_engine
+from aidm.engines.story.advance import GROWTH_REQUIRED
+from aidm.engines.story.engine import build_story_engine
 from aidm.workflow.pipeline import TurnOptions, default_cast
 from aidm.workflow.proposals import advisor
 from aidm.workflow.session import GameSession, LaunchTarget

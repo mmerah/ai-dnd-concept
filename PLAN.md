@@ -396,8 +396,10 @@ deleted (their bodies live on in `effects.py` and the resolvers — port, don't 
 
 - Prompt scope (every hidden entity still rendered to the Director). GPT's proposal §7 is a
   separate, later experiment — changing it now would blur the eval comparison.
-- Advancement (`proposals.py`, `SheetDelta`) — already the target pattern. Unifying `SheetDelta`
-  with `Effect` is a follow-up cleanup, not part of this redesign.
+- Advancement (`proposals.py`, `SheetDelta`) — already the target pattern. `SheetDelta` and `Effect`
+  stay separate for good: three of their five shared ops differ on purpose (a delta `SetNumber`
+  grows a sheet with keys it does not hold, where the effect refuses them; `GrantCounter`/`AddRef`
+  have no effect counterpart), so a merged type needs mode flags and grows.
 - Content pack format, importer scripts, scenario/character files, `Sheet`, `GameState`.
 
 ---
@@ -485,6 +487,67 @@ Gate + commit.
    Seed `Random` for exact roll assertions.
 
 Gate + commit.
+
+## Phase 4.5 — one engine shape, and worked examples in the prompt (≈half a day)
+
+Why: with both engines landed, they disagree on structure. Story is one 201-line `engine.py` doing
+content, actions, resolution and advancement at once; 5e is `engine.py` + `actions.py` +
+`content5e.py` + `resolve.py`, and nothing tells a reader which shape is the shape. An engine is
+the one thing a future contributor writes from scratch, so its skeleton must be learnable once.
+This phase moves code and adds examples. It changes no rule, no fact, and no trace wording.
+
+### The layout, identical in both engines
+
+| file | holds |
+|---|---|
+| `engine.py` | the `load_engine(...)` call and `PLUGIN`, and nothing else (~25 lines) |
+| `actions.py` | the action models, the engine's plan type, its outcome labels, its example plans |
+| `resolve.py` | `check_plan` and `resolve_action` |
+| `advance.py` | `offered` and `check` — the `ProposalSpec` half, today buried in both `engine.py`s |
+| `content.py` | pack-record normalisers. 5e only: Story ships no packs, so the file's absence is the information |
+| `spec.json`, `director.md`, `advancement.md` | unchanged |
+
+1. Rename `engines/dnd5e/content5e.py` to `content.py`; move `_offered`/`_check`/`_level_ref`/
+   `_milestone_reached` out of `engines/dnd5e/engine.py` into `advance.py`, and Story's `_offered`/
+   `_check` likewise. Split Story's `Risk`/`StoryPlan` into `actions.py` and its `_check_plan`/
+   `_resolve_action` into `resolve.py`.
+2. One rule keeps the package acyclic: **no sibling imports `engine.py`** — it is the assembly
+   root. Sheet-key constants two modules share live with whichever module owns the vocabulary:
+   `advance.py` owns `ADVANCEMENT_READY` and `LEVEL`, and `resolve.py` imports them from there.
+3. Do not make `core` discover these modules by name. Loading `<pkg>.resolve:check_plan` by string
+   is plugin magic that fights explicit collaborators and the acyclic-import rule; `Engine`
+   already requires `plan_type`/`check_plan`/`resolve_action`, and that is the enforcement. What
+   this phase adds is a convention a reader can see, not a type.
+4. Do not move rules into `spec.json`. Templates, the recharge map and the collection list are
+   genuine tables; `2d6` versus 7, or `8 + proficiency + modifier`, is procedure, and expressing
+   procedure as data grows an interpreter bigger than the code it replaces.
+
+### Worked examples
+
+The field descriptions teach one field at a time; nothing yet shows the model a whole filled plan.
+Each engine gains one example **per action**, in a new `examples.json` beside `director.md`: a JSON
+array of plan objects, each written lean (only the fields it sets, discriminators included).
+
+Prompt data, not code: sixty lines of nested constructors per engine buries the action models a
+reader came to `actions.py` for. The guarantee an instance would have given is kept by validating
+every entry against the engine's `plan_type` while `load_engine` reads it, so an example that
+drifts from its action fails every test that builds the engine instead of misleading the model.
+
+1. `core/enginepack.py`: `_examples(engine_dir, plan_type)` reads, validates, and renders the file
+   under a short header, and `load_engine` appends the block to `director_instructions`. That keeps
+   the assembly in the one place that already reads `director.md`, so Phase 5's `prompts.py`
+   rewrite needs no part of this.
+2. One example per action, each showing the branches that action allows (and none for the
+   uncontested ones) — the labels are the thing models get wrong.
+3. Test: for each engine, the rendered instructions name each `act` exactly once, and the action
+   union is no longer than the acts the test lists. That is what keeps examples from rotting as
+   actions grow.
+
+Note for Phase 6: examples change how the model is steered, so the re-eval measures the redesign
+*and* the examples together. The per-tag numbers still say where a miss lives, but a verdict cannot
+attribute the delta to the architecture alone.
+
+Gate + commit: `refactor(engines): one shape per engine, and examples in the prompt`.
 
 ## Phase 5 — pipeline rewire (≈1 day)
 

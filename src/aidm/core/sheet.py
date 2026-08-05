@@ -4,7 +4,7 @@ from typing import Annotated, Literal, Self
 
 from pydantic import Field, model_validator
 
-from .base import PLAYER_ID, Entity, Frozen, Kind, Mutable, Slug
+from .base import PLAYER_ID, Entity, EntityId, Frozen, Kind, Mutable, Slug
 from .facts import CORE, Fact
 from .packs import EMPTY_FROZEN_MAP, ContentRef, FrozenMap, LenientRecord, Value
 from .world import EngineRules, GameState, rules_of
@@ -120,8 +120,12 @@ class SheetDefinition(Value):
         )
 
 
+def sheet_of[R: EngineRules](state: GameState[R], entity_id: EntityId) -> Sheet:
+    return rules_of(state.world.record(entity_id), Sheet)
+
+
 def player_sheet[R: EngineRules](state: GameState[R]) -> Sheet:
-    return rules_of(state.world.record(PLAYER_ID), Sheet)
+    return sheet_of(state, PLAYER_ID)
 
 
 class DeltaItem(Frozen):

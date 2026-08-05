@@ -1,0 +1,163 @@
+[
+  {
+    "intent": "Kael cuts down at the rat worrying his boot.",
+    "tone": "quick and ugly",
+    "branches": [
+      {
+        "outcome": "success",
+        "effects": [
+          {
+            "op": "add-tag",
+            "entity_id": "cloister_rat",
+            "tag_id": "limping",
+            "name": "Limping",
+            "text": "A hind leg drags behind it."
+          }
+        ]
+      },
+      {
+        "outcome": "failure",
+        "effects": [
+          {
+            "op": "add-tag",
+            "entity_id": "player",
+            "tag_id": "crowded",
+            "name": "Crowded",
+            "text": "The wasted swing let the rat inside his reach."
+          }
+        ]
+      }
+    ],
+    "action": {
+      "act": "attack",
+      "attacker_id": "player",
+      "target_id": "cloister_rat",
+      "weapon_item_id": "kaels_longsword"
+    }
+  },
+  {
+    "intent": "Kael speaks the words off the scroll and fire fans out at the rat.",
+    "tone": "sudden, bright",
+    "branches": [
+      {
+        "outcome": "success",
+        "effects": [
+          {
+            "op": "add-tag",
+            "entity_id": "cloister_rat",
+            "tag_id": "scorched",
+            "name": "Scorched",
+            "text": "Its fur is burnt away in patches."
+          }
+        ]
+      },
+      {
+        "outcome": "failure",
+        "effects": [
+          {
+            "op": "set-note",
+            "entity_id": "study",
+            "key": "scorch-marks",
+            "text": "The floorboards are blackened where the fire washed past."
+          }
+        ]
+      }
+    ],
+    "action": {
+      "act": "cast-spell",
+      "caster_id": "player",
+      "spell": "srd-2014/spells/burning-hands",
+      "slot_level": 1,
+      "target_id": "cloister_rat"
+    }
+  },
+  {
+    "intent": "Kael works the loose flagstone up, listening for anyone the scrape might reach.",
+    "tone": "careful, held breath",
+    "branches": [
+      {
+        "outcome": "success",
+        "effects": [
+          {
+            "op": "reveal",
+            "entity_id": "vault"
+          }
+        ]
+      },
+      {
+        "outcome": "failure",
+        "effects": [
+          {
+            "op": "add-tag",
+            "entity_id": "player",
+            "tag_id": "overheard",
+            "name": "Overheard",
+            "text": "The stone rang, and the cloister heard it."
+          }
+        ]
+      }
+    ],
+    "action": {
+      "act": "check",
+      "actor_id": "player",
+      "bonus": 4,
+      "dc": 15,
+      "reason": "prising the loose flagstone up quietly"
+    }
+  },
+  {
+    "intent": "Kael leans on the wall, drags one breath in, and forces himself upright.",
+    "tone": "ragged",
+    "action": {
+      "act": "use-feature",
+      "actor_id": "player",
+      "counter": "second-wind",
+      "heal": "1d10 + 1"
+    }
+  },
+  {
+    "intent": "Kael sleeps the night through, the vault open and the whispering done.",
+    "tone": "worn quiet",
+    "action": {
+      "act": "rest",
+      "actor_id": "player",
+      "label": "long-rest"
+    },
+    "milestone_earned": true
+  },
+  {
+    "intent": "Kael levers the abbot's seal off the vault door with the crowbar.",
+    "tone": "grinding, final",
+    "branches": [
+      {
+        "outcome": "success",
+        "effects": [
+          {
+            "op": "set-note",
+            "entity_id": "vault",
+            "key": "seal",
+            "text": "The abbot's seal is off; the door is only a door now."
+          }
+        ]
+      },
+      {
+        "outcome": "failure",
+        "effects": [
+          {
+            "op": "add-tag",
+            "entity_id": "vault",
+            "tag_id": "jammed-seal",
+            "name": "Jammed Seal",
+            "text": "The bent seal now binds the door shut."
+          }
+        ]
+      }
+    ],
+    "action": {
+      "act": "improvise",
+      "dice": "1d20 + 3",
+      "vs": 13,
+      "reason": "levering the abbot's seal off the vault door"
+    }
+  }
+]

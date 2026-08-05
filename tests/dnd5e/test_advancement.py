@@ -16,7 +16,7 @@ from aidm.core.sheet import (
     player_sheet,
 )
 from aidm.core.tools import require
-from aidm.engines.dnd5e.engine import ADVANCEMENT_READY
+from aidm.engines.dnd5e.advance import ADVANCEMENT_READY
 
 ACTION_SURGE = ContentRef(pack="srd-2014", collection="features", index="action-surge-1-use")
 SECOND_WIND = ContentRef(pack="srd-2014", collection="features", index="second-wind")

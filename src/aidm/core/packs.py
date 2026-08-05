@@ -14,6 +14,7 @@ from pydantic import (
     SerializeAsAny,
     SerializerFunctionWrapHandler,
     TypeAdapter,
+    ValidationError,
     WrapSerializer,
     model_validator,
 )
@@ -47,7 +48,6 @@ type FrozenMap[K, V] = Annotated[
     AfterValidator(_immutable),
     WrapSerializer(_as_dict),
 ]
-"""A pack loads once and every turn shares its records, so an edit would outlive its turn."""
 
 EMPTY_FROZEN_MAP = Field(default_factory=dict, validate_default=True)
 
@@ -204,6 +204,17 @@ def loaded(packs: Sequence[Pack]) -> Content:
 
 def load(directories: Sequence[Path], pack_format: PackFormat) -> Content:
     return loaded([read_pack(d, pack_format) for d in directories])
+
+
+def parse_ref(text: str) -> ContentRef:
+    """A model names a record as one string, so a malformed one must read back as a refusal."""
+    parts = text.split("/")
+    if len(parts) != 3:
+        raise ValueError(f"malformed ref {text!r}: write it as `pack/collection/index`")
+    try:
+        return ContentRef(pack=parts[0], collection=parts[1], index=parts[2])
+    except ValidationError as invalid:
+        raise ValueError(f"malformed ref {text!r}: {invalid.errors()[0]['msg']}") from invalid
 
 
 def read_pack(directory: Path, pack_format: PackFormat) -> Pack:

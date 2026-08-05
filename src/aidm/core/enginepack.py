@@ -1,9 +1,15 @@
+import json
 from collections.abc import Callable, Mapping, Sequence
+from dataclasses import dataclass
 from pathlib import Path
+from random import Random
+
+from pydantic import JsonValue, TypeAdapter
 
 from .base import EngineId, Entity, Kind, Slug
 from .content import AuthoredEntity, AuthoredWorld, Rules, compose_world
 from .engine import AdvancementOffer, Engine, ProposalSpec
+from .facts import Fact
 from .mechanics import Mechanics
 from .packs import (
     EMPTY_FROZEN_MAP,
@@ -18,11 +24,14 @@ from .packs import (
     lenient_format,
     load,
 )
+from .plan import TurnPlanBase
 from .sheet import Sheet, SheetDefinition, SheetDelta, SheetTemplate, render_sheet
 from .world import GameState, WorldState
 
 type Offered = Callable[[GameState[Sheet], Content], AdvancementOffer | None]
 type Check = Callable[[GameState[Sheet], AdvancementOffer, SheetDelta], str | None]
+type PartsPlanCheck = Callable[[EngineParts, GameState[Sheet], TurnPlanBase], str | None]
+type PartsResolver = Callable[[EngineParts, GameState[Sheet], TurnPlanBase, Random], list[Fact]]
 
 
 class EngineSpec(Value):
@@ -35,6 +44,13 @@ class EngineSpec(Value):
         return self.templates.get(kind, SheetTemplate())
 
 
+@dataclass(frozen=True, slots=True)
+class EngineParts:
+    content: Content
+    spec: EngineSpec
+    default_rules: Callable[[Entity], Sheet]
+
+
 def load_engine(
     engine_dir: Path,
     engine_id: EngineId,
@@ -42,6 +58,9 @@ def load_engine(
     *,
     offered: Offered,
     check: Check,
+    plan_type: type[TurnPlanBase],
+    check_plan: PartsPlanCheck,
+    resolve_action: PartsResolver,
 ) -> Engine[Sheet]:
     spec = EngineSpec.model_validate_json(_text(engine_dir / "spec.json"))
     directories = _packs(engine_dir) if pack_paths is None else tuple(pack_paths)
@@ -67,6 +86,7 @@ def load_engine(
     def entity_state(entity: Entity, sheet: Sheet) -> str:
         return render_sheet(entity, sheet, resolve)
 
+    parts = EngineParts(content=content, spec=spec, default_rules=default_rules)
     return Engine(
         id=engine_id,
         state_type=GameState[Sheet],
@@ -79,20 +99,32 @@ def load_engine(
             check=check,
         ),
         toolsets={"director": Mechanics(content=content, refills=spec.recharge).toolset()},
-        director_instructions=_text(engine_dir / "director.md"),
+        director_instructions=_text(engine_dir / "director.md") + _examples(engine_dir, plan_type),
         entity_state=entity_state,
+        plan_type=plan_type,
+        check_plan=lambda state, plan: check_plan(parts, state, plan),
+        resolve_action=lambda draft, plan, rng: resolve_action(parts, draft, plan, rng),
     )
 
 
+def _examples(engine_dir: Path, plan_type: type[TurnPlanBase]) -> str:
+    entries = TypeAdapter(list[JsonValue]).validate_json(_text(engine_dir / "examples.json"))
+    blocks: list[str] = []
+    for number, entry in enumerate(entries, start=1):
+        _ = plan_type.model_validate(entry)
+        blocks.append(f"Example {number}:\n\n```json\n{json.dumps(entry, indent=2)}\n```")
+    if not blocks:
+        return ""
+    header = "## Worked plans\n\nOne plan per action; a field left out sits at its default."
+    return "\n\n" + "\n\n".join([header, *blocks])
+
+
 def _backing(refs: Sequence[ContentRef], content: Content) -> Mapping[Slug, int]:
-    """A monster is authored as one ref, so its record's numbers land on its sheet. Notes and
-    tags stay on the record: `render_sheet` shows them beside the ref, collision-free."""
     records = [content.require(ref, LenientRecord) for ref in refs]
     return {k: v for record in records for k, v in record.numbers.items()}
 
 
 def _validate(state: GameState[Sheet], spec: EngineSpec, content: Content) -> None:
-    """The other half of the misname guard: a sheet keeps its kind's keys and its refs resolve."""
     for record in state.world.records.values():
         entity, sheet = record.entity, record.rules
         template = spec.template(entity.kind)

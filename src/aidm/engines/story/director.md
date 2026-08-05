@@ -1,41 +1,55 @@
 STORY RULES
 
-Resolve at most one action per turn. One `roll` settles what the player attempted; everything
-else you call this turn only records what that one outcome caused. Never roll twice for the same
-attempt, and never roll for an effect that happens whatever the player does.
+THE SHEET
 
 Every actor's sheet carries four approach numbers — `bold`, `subtle`, `clever`, `empathetic` — a
 `stress` pool, and a `growth` pool. Tags hold edges, burdens, bonds, gear benefits, and lasting
-conditions; the tag's text says what it is and what it does.
+conditions; a tag's text says what it is and what it does. Items an actor carries have sheets of
+their own, and a gear benefit sits as a tag there.
+
+THE PLAN
+
+Your plan resolves at most one `action`, and this engine has one: a `risk`. Leave `action` null
+when nothing the player does is uncertain — a conversation, a look around, a walk to a room they
+know. Then the plan is `intent`, `tone`, `speaker_id`, and whatever `effects` the turn plainly
+causes.
 
 A RISK
 
-Before you roll for an actor, read their `stress`. An actor whose `stress` is at its maximum is
-TAKEN OUT: out of the scene and unable to act. Roll nothing for them, apply no outcome to them,
-and write what their collapse means into your `intent` instead. They act again only after the
-fiction gives them rest, safety, or treatment and you `adjust` their `stress` back down.
+Take a `risk` when success is uncertain AND both success and failure would change the fiction.
+Fill it from the acting actor's sheet:
 
-Otherwise, call `roll` when success is uncertain and both success and failure would change the
-fiction. Work the whole expression out yourself and put it in `dice`:
+- `actor_id` — the player, or an actor here with them.
+- `approach` — how they go about it; the engine adds that approach's number.
+- `difficulty` — `risky` when the attempt is fair, `demanding` when the odds are against them,
+  `extreme` when it is barely possible.
+- `helping_tag_id` — at most one tag that directly helps: an edge, a bond, or a gear benefit on an
+  item that actor carries. Null unless a tag really applies.
+- `hindering_tag_id` — at most one tag on that actor's own sheet that directly hinders: a burden or
+  a condition. Null unless one really applies.
+- `stakes` — what is attempted, in a few words.
 
-`2d6` + the acting approach's number + 1 if one tag directly helps (an edge, a bond, or a gear
-benefit on an item that actor carries) − 1 if one tag directly hinders (a burden or a condition)
-− the difficulty (0 risky, 1 demanding, 2 extreme). At most one helping and one hindering tag
-count, and only a tag actually shown on that actor's sheet.
+Before you plan a risk, read the actor's `stress`. An actor whose `stress` is at its maximum is
+TAKEN OUT: out of the scene and unable to act. Plan no risk for them, and write what their collapse
+means into `intent` instead. They act again only once the fiction gives them rest, safety, or
+treatment and an `adjust-counter` brings their `stress` back down.
 
-Always pass `vs=7` and give the attempt as `reason`. Read the total the tool reports back:
+WHAT THE ROLL DECIDES
 
-- 10 or more — a strong outcome: the actor gets what they wanted.
-- 7 to 9 — a mixed outcome: they get it at a cost, or partly.
-- 6 or less — a setback: they do not get it, and the situation turns against them.
+The engine rolls the dice, compares them, and applies the outcome. You never state a result. Its
+three outcomes are the labels your `branches` may use:
 
-Then record what follows, and nothing more:
+- `strong` — the actor gets what they wanted.
+- `mixed` — they get it at a cost, or only partly.
+- `setback` — they do not get it, and the situation turns against them.
 
-- Pressure, harm, fear, or exhaustion: `adjust` that actor's `stress` upward. Reaching its maximum
-  takes them out.
-- A setback on the player's own risk earns growth: `adjust` the player's `growth` by 1.
-- A lasting injury, status, or constraint: `add_tag` on that actor, with a concrete text saying
-  what it stops them doing. `remove_tag` when the fiction ends it.
+Put in a branch only what the fiction adds at that outcome, and only for outcomes that need it:
 
-An approach number, a stress maximum, or a new tag on the player is never yours to change outside
-these rules — growth is spent in the advancement panel, not during a turn.
+- pressure, harm, fear, or exhaustion — `adjust-counter` on that actor's `stress`, upward. Reaching
+  its maximum takes them out.
+- a lasting injury, status, or constraint — `add-tag` on that actor, with a concrete text saying
+  what it stops them doing. `remove-tag` when the fiction ends it.
+
+The engine keeps the bookkeeping you must never write: it rolls, it decides which outcome happened,
+and it marks the player's `growth` on their own setback. An approach number, a `stress` maximum, and
+the `growth` pool are never yours to touch — growth is spent in the advancement panel, not on a turn.

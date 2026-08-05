@@ -1,5 +1,6 @@
 from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass
+from random import Random
 from typing import Self
 
 from pydantic import Field, ValidationError, model_validator
@@ -9,6 +10,7 @@ from .base import EngineId, Entity, Frozen
 from .content import AuthoredWorld, Rules
 from .facts import Fact
 from .packs import ContentRef
+from .plan import TurnPlanBase
 from .sheet import AddRef, Sheet, SheetDelta, apply_delta, player_sheet
 from .tools import TurnContext
 from .world import EngineRules, GameState, WorldState
@@ -16,6 +18,11 @@ from .world import EngineRules, GameState, WorldState
 NOTHING_MECHANICAL = "- (nothing mechanical happened)"
 
 type EntityRenderer = Callable[[Entity], str]
+type PlanCheck[R: EngineRules] = Callable[[GameState[R], TurnPlanBase], str | None]
+"""Judges the untouched committed state and returns the refusal. It must not raise: an output
+validator turns an exception into a dead turn instead of a retry."""
+type ActionResolver[R: EngineRules] = Callable[[GameState[R], TurnPlanBase, Random], list[Fact]]
+"""Mutates the draft: the action's rolls, its intrinsic consequences, and the branch taken."""
 
 
 class AdvancementOffer(Frozen):
@@ -77,6 +84,9 @@ class Engine[R: EngineRules]:
     toolsets: Mapping[str, AbstractToolset[TurnContext[R]]]
     director_instructions: str
     entity_state: Callable[[Entity, R], str]
+    plan_type: type[TurnPlanBase]
+    check_plan: PlanCheck[R]
+    resolve_action: ActionResolver[R]
 
 
 def narrator_evidence(facts: Sequence[Fact]) -> str:

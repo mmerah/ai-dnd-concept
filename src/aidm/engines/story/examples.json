@@ -1,0 +1,57 @@
+[
+  {
+    "intent": "Kael sets his shoulder to the sealed door while the whispering rises behind him.",
+    "tone": "strained, urgent",
+    "branches": [
+      {
+        "outcome": "strong",
+        "effects": [
+          {
+            "op": "move-actor",
+            "location_id": "vault"
+          }
+        ]
+      },
+      {
+        "outcome": "mixed",
+        "effects": [
+          {
+            "op": "adjust-counter",
+            "entity_id": "player",
+            "counter": "stress",
+            "delta": 1,
+            "reason": "the door gives, and something inside answers"
+          }
+        ]
+      },
+      {
+        "outcome": "setback",
+        "effects": [
+          {
+            "op": "adjust-counter",
+            "entity_id": "player",
+            "counter": "stress",
+            "delta": 2,
+            "reason": "the seal holds and the whispering finds him"
+          },
+          {
+            "op": "add-tag",
+            "entity_id": "player",
+            "tag_id": "ears-ringing",
+            "name": "Ears Ringing",
+            "text": "(condition) The whispering drowns out anything said softly."
+          }
+        ]
+      }
+    ],
+    "action": {
+      "act": "risk",
+      "actor_id": "player",
+      "approach": "bold",
+      "difficulty": "demanding",
+      "helping_tag_id": "relic-hunter",
+      "hindering_tag_id": "marked-by-the-past",
+      "stakes": "forcing the sealed vault door"
+    }
+  }
+]
