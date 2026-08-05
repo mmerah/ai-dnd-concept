@@ -151,9 +151,15 @@ Both engines still build and run unchanged; nothing was deleted.
 - [x] Gates green: 197 tests pass, `ruff check`, `ruff format --check`, `basedpyright` clean
 - [x] **src 8,200 lines** (budget ≤ 8,400; phase 1 left 9,149)
 
-Not done, and it needs a live model: playing a Story risk and a growth advancement through
-`uv run aidm`, and recording a `story` eval rate in `results/`. Every eval *setup* was verified
-offline (all 24 cases compose and apply).
+Played end to end in `uv run aidm`: three risk turns earned 3 growth, and the advancement panel
+raised `bold` 2 → +3 and spent the marks (`saves/` trace confirms one `Advance` entry).
+
+Story evals measured twice at `654154e`, recorded in `BASELINE.md` and `results/`: **overall 66.7%,
+completion 100%**, identical scenario by scenario across both runs. `story-risk-single-roll` 100%
+(the risk procedure carries), `story-no-risk-needed` 66.7%, **`story-taken-out-cannot-risk` 33.3%**
+— the Director rolls for a taken-out actor in 4 of 6 runs. Of the four checks Story stopped
+enforcing in code, that is the one that actually regressed, and the fix is a wording change:
+the ban is a trailing clause of a stress bullet instead of a precondition of the risk procedure.
 
 ### Decisions taken
 

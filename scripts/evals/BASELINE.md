@@ -186,6 +186,41 @@ One scenario's bound was corrected **after** these runs: `ability-check-dc` acce
 8–20, which rejects the DC 5 "easy" tier that `roll_check` itself documents. It now accepts 5–20. The
 change can only raise that scenario's rate, so the recorded 83.3% `checks` baseline is a lower bound.
 
+### Phase 2 — Story on the substrate
+
+Commit `654154e`, 2026-08-05, same model and `retries=3` as the baseline, 3 scenarios × 3 runs = 9
+turns per suite, run twice: `results/2026-08-05-654154e-1.json` (A) and
+`results/2026-08-05-654154e.json` (B). These do not feed the phase-3 gate — that gate compares the
+same 5e suite before and after, and Story only ever ran on the lenient substrate.
+
+| Metric | A | B |
+|---|---|---|
+| overall | 66.7% | 66.7% |
+| completion | 100% | 100% |
+| interpretation | 66.7% | 66.7% |
+
+| Scenario | A | B |
+|---|---|---|
+| `story-risk-single-roll` | 100% | 100% |
+| `story-no-risk-needed` | 66.7% | 66.7% |
+| `story-taken-out-cannot-risk` | 33.3% | 33.3% |
+
+Both runs agree scenario by scenario, so these are the engine's real rates at this wording.
+
+**The risk procedure holds.** `story-risk-single-roll` passed 6 of 6: one contested roll, rolled
+against 7, and growth marked at most once. That is the arithmetic chain Story's deleted `risk` tool
+used to own, now carried by `director.md` plus `roll`.
+
+**The taken-out ban does not hold.** 4 of 6 runs rolled for an actor already at maximum stress.
+Typed Story refused this in code — `risk` raised `ModelRetry` when `taken_out` — and as prose it is
+the one of the four lost checks that actually regressed. The instruction exists, but it is the last
+clause of a bullet about stress rather than a precondition of the risk procedure. The cheap fix is
+to hoist it into the `A RISK` section and re-measure; do not read a later improvement as noise, the
+33.3% is reproducible.
+
+`story-no-risk-needed` fails 1 run in 3 by changing the world on a pure-conversation prompt. It is a
+one-sided check, so read the 66.7% as "one turn in three invented state", not as a score.
+
 ### Phase 3 — lenient engine on the Sheet
 
 Not measured yet.
