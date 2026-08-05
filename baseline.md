@@ -63,3 +63,55 @@ this drift a 15-point move on one 69-turn suite is unreadable. Compare the redes
 pooled 37%, over the same 207-turn budget (three suites, or `--runs 9`), and read per-tag numbers
 only where n is large — `combat` (135) and `spells` (54). `checks`, `conditions`, and `rest` have
 18 turns each; one case flipping moves them 33 points.
+
+---
+
+# Redesign — structured-plan director
+
+commit: b7f65bc   date: 2026-08-05   model: openai/gpt-oss-120b   retries: 3
+Same harness, scenarios, probes, and 207-turn budget (three suites) as the baseline.
+
+| metric | pooled (n=207) | run 1 | run 2 | run 3 | spread | baseline pooled | delta |
+|---|---|---|---|---|---|---|---|
+| overall | 86% | 88% | 84% | 86% | 4 | 33% | +53 |
+| completion | 100% | 99% | 100% | 100% | 1 | 89% | +11 |
+| interpretation | 86% | 90% | 84% | 86% | 6 | 37% | +49 |
+| mean duration/turn (s) | 8.9 | 11.0 | 8.4 | 7.1 | 3.9 | 15.6 | −6.7 |
+
+| tag | pooled | n | run 1 | run 2 | run 3 | baseline pooled | delta |
+|---|---|---|---|---|---|---|---|
+| checks | 100% | 18 | 100% | 100% | 100% | 67% | +33 |
+| combat | 89% | 135 | 91% | 87% | 89% | 27% | +62 |
+| conditions | 0% | 18 | 0% | 0% | 0% | 17% | −17 |
+| rest | 72% | 18 | 83% | 67% | 67% | 6% | +66 |
+| spells | 91% | 54 | 94% | 89% | 89% | 30% | +61 |
+| story | 100% | 27 | 100% | 100% | 100% | 63% | +37 |
+
+## Worst cases
+
+| case | mean of 9 | dominant failure |
+|---|---|---|
+| condition-lifted | 0% | `poisoned` never removed — the plan writes no `remove-tag` effect |
+| condition-rider | 0% | the attack rolls, but no branch adds `prone` on success |
+| long-rest-recharge | 44% | `slot-1` not refilled — the rest never resolved as a `rest` action |
+| monster-attack-on-player | 44% | the model attacked the rat instead: rat hp −5, wanted 0 |
+| healing-clamped-at-max | 89% | one run left hp delta 0 |
+
+## Verdict
+
+Against the Phase 6 criteria: **interpretation 86% clears baseline + 15 (52%) by 34 points**, and
+`spells` (91%, n=54) clears its 0.8 floor. `rest` lands at 72% — up 66 points from 6% but short of
+its 0.8 floor. Mean duration 8.9s misses "half of baseline" (7.8s) by 1.1s, with per-run means of
+11.0/8.4/7.1 — provider latency, not turn structure, decides it, and run 3 is under the bar. No tag
+sits below baseline − drift.
+
+Two structural notes beyond the criteria. First, the drift that made the baseline unreadable is
+gone: overall moved 4 points across three suites where the baseline moved 28, so a single suite is
+now meaningful. Second, completion is 100% — the retries-exhausted deaths (22 of 207 baseline
+turns) disappeared with the tool loop.
+
+The one flat failure is `conditions` (0/18, both cases, every run, same two reasons): the model
+never writes `add-tag`/`remove-tag` into branches or effects. That is one prompt section — the
+effect vocabulary in `director.md`/`examples.json` — not a resolver. `rest`'s misses and
+`monster-attack-on-player` are the same shape: action selection, taught in the same file. Iterate
+there; the architecture stands.

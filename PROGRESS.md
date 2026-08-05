@@ -209,4 +209,19 @@ after verification.
   `toolsets` single-key mapping and `plan.intent` exposure predate this phase; the harness's
   double commit is idempotent; `Turn.plan` round-trips engine extras through `TRACE_ADAPTER`.
 - Gate green: pytest 100 passed, ruff check, ruff format --check, basedpyright 0 errors.
-- Staged, not committed. Suggested message: `feat(pipeline): one plan in, resolved by the engine`.
+- Committed as b7f65bc `feat(pipeline): one plan in, resolved by the engine`.
+
+## Phase 6 — re-eval and verdict — DONE
+
+- Three suites (207 turns, matching the baseline budget per baseline.md's own gate note), pooled:
+  overall 86%, completion 100%, interpretation 86%, 8.9s/turn — against 33% / 89% / 37% / 15.6s.
+  Full tables and the verdict are appended to `baseline.md`.
+- Criteria: interpretation clears baseline+15 by 34 points; `spells` 91% clears its 0.8 floor;
+  `rest` 72% (from 6%) misses the 0.8 floor; duration 8.9s misses 7.8s by 1.1s (per-run 11.0 /
+  8.4 / 7.1 — provider latency decides it). No tag below baseline − drift.
+- Drift collapsed: overall spread 4 points across suites vs 28 at baseline, so one suite is now
+  readable. Zero retries-exhausted deaths (baseline had 22/207).
+- The flat failure is `conditions` 0/18 — the model never writes `add-tag`/`remove-tag` into
+  branches or effects. Same shape for `rest`'s misses and `monster-attack-on-player`: action/effect
+  selection, all taught in `director.md`/`examples.json`. That is the iteration target; the
+  architecture stands. No milestone_earned scenario was added.
