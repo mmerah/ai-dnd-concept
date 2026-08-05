@@ -9,6 +9,7 @@ alone, then checks the committed draft and the recorded facts. Rates land in `re
 import asyncio
 import subprocess
 import sys
+import time
 from collections.abc import Sequence
 from datetime import date
 from hashlib import sha1
@@ -62,6 +63,7 @@ class RunRecord(Frozen):
 
     run: int
     passed: bool
+    duration_s: float = Field(default=0.0, ge=0.0)
     error: str | None = None
     failures: tuple[str, ...] = ()
 
@@ -75,6 +77,7 @@ class CaseRecord(Frozen):
     tags: tuple[str, ...]
     rate: float
     completion: float
+    mean_duration_s: float
     runs: tuple[RunRecord, ...] = Field(min_length=1)
 
 
@@ -88,6 +91,7 @@ class SuiteRecord(Frozen):
     completion: float
     # Pass rate among completed turns: the rules-interpretation signal, with crashes taken out.
     interpretation: float
+    mean_duration_s: float
     by_tag: dict[str, float]
     cases: tuple[CaseRecord, ...]
 
@@ -125,12 +129,17 @@ def initial_state(case: EvalCase, engine: AnyEngine, config: Settings) -> GameSt
 
 async def run_case(case: EvalCase, run: int, config: Settings) -> RunRecord:
     """A failed turn is this run's failure: a live model must never abort the suite."""
+    started = time.perf_counter()
     try:
         outcome = await _turn(case, run, config)
     except Exception as error:
-        return RunRecord(run=run, passed=False, error=f"{type(error).__name__}: {error}")
+        elapsed = time.perf_counter() - started
+        return RunRecord(
+            run=run, passed=False, duration_s=elapsed, error=f"{type(error).__name__}: {error}"
+        )
+    elapsed = time.perf_counter() - started
     failures = tuple(reason for step in case.checks if (reason := check(outcome, step)) is not None)
-    return RunRecord(run=run, passed=not failures, failures=failures)
+    return RunRecord(run=run, passed=not failures, duration_s=elapsed, failures=failures)
 
 
 async def run_suite(cases: Sequence[EvalCase], config: Settings, concurrency: int) -> SuiteRecord:
@@ -153,6 +162,7 @@ async def run_suite(cases: Sequence[EvalCase], config: Settings, concurrency: in
             tags=case.tags,
             rate=_rate(by_case[case.id]),
             completion=_completion(by_case[case.id]),
+            mean_duration_s=_mean_duration(by_case[case.id]),
             runs=tuple(by_case[case.id]),
         )
         for case in cases
@@ -168,6 +178,7 @@ async def run_suite(cases: Sequence[EvalCase], config: Settings, concurrency: in
         overall=_rate(every),
         completion=_completion(every),
         interpretation=_rate(finished),
+        mean_duration_s=_mean_duration(every),
         by_tag={tag: _tag_rate(results, tag) for tag in sorted(_tags(results))},
         cases=results,
     )
@@ -192,6 +203,7 @@ def summarise(suite: SuiteRecord) -> str:
         f"  turns completed: {_percent(suite.completion)}"
         f" (retries {suite.retries}; the rest died on tool-argument retries)",
         f"  checks passed when completed: {_percent(suite.interpretation)}",
+        f"  mean duration/turn: {suite.mean_duration_s:.1f}s",
         "",
     ]
     lines.extend(f"  {tag}: {_percent(rate)}" for tag, rate in sorted(suite.by_tag.items()))
@@ -274,6 +286,10 @@ def _rate(runs: Sequence[RunRecord]) -> float:
 
 def _completion(runs: Sequence[RunRecord]) -> float:
     return sum(record.completed for record in runs) / len(runs) if runs else 0.0
+
+
+def _mean_duration(runs: Sequence[RunRecord]) -> float:
+    return sum(record.duration_s for record in runs) / len(runs) if runs else 0.0
 
 
 def _tag_rate(cases: Sequence[CaseRecord], tag: str) -> float:
