@@ -499,20 +499,22 @@ Verification: gates green; the eval exit gate above; play a combat turn and a le
 Not a phase: what phases 0–3 knowingly left, gathered here so it is not rediscovered. Written
 during phase 2, from what the live runs taught.
 
-**One item is not deferrable.** If the `director` model is ever to change, the 5e suite must be
-re-baselined on the new model *before* phase 3 deletes the typed engine — after that there is
-nothing left to compare against. See "If you change the director model" in
-`scripts/evals/BASELINE.md`. Everything below can wait until the deletion is done.
+The director model question is **settled**: four models were compared during phase 2 and
+`openai/gpt-oss-120b` stays, so the phase-3 gate compares like with like and needs no second
+baseline. If that is ever revisited, re-baselining is only possible *before* phase 3 deletes the
+typed engine — see "If you change the director model" in `scripts/evals/BASELINE.md`. Everything
+below can wait until the deletion is done.
 
 1. **Eval coverage the earlier phases owe.** Phase 0 named two required scenarios it could not
    write and assigned each to the phase that creates the capability: advantage via `keep-highest`
    (created in phase 1) and concentration replacing a spell (created in phase 3). Neither exists.
    Write both and record their rates.
-2. **The one-sided story checks.** `story-taken-out-cannot-risk` counts only *contested* rolls, so
-   a `roll` without `vs` slips past it; `story-no-risk-needed` also passes when the Director does
-   nothing at all. Either accept them as fabrication detectors — as `BASELINE.md` already does for
-   two 5e cases — or add a probe that counts every `dice_rolled`. Decide, and write the decision
-   down.
+2. **The one-sided story checks, and what a run record keeps.** Two of the three story scenarios
+   also pass when the Director does nothing, so a model that never rolls scores 67% on the suite —
+   the phase-2 model comparison hit exactly that and could not rank the small models because of it.
+   Add a probe that counts every `dice_rolled`, not only the contested ones, so "did not roll" and
+   "rolled without `vs`" stop reading alike; and record the turn's fact traces on a failed run,
+   because `RunRecord` keeps failures only, which is why that question is currently unanswerable.
 3. **The player's `armor-class`.** Phase-0 finding 3: it was hard-coded to 10 in the typed engine,
    never derived from dexterity or worn armour. Phase 3 is supposed to make it a number the content
    and the level rows set; confirm it did, because nothing fails loudly if it did not.

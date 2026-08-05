@@ -160,14 +160,17 @@ completion 100%**, identical scenario by scenario across both runs. `story-risk-
 — the Director rolls for a taken-out actor in 4 of 6 runs. Of the four checks Story stopped
 enforcing in code, that is the one that actually regressed.
 
-**The cause is not isolated.** The ban is a trailing clause of a stress bullet rather than a
-precondition of the risk procedure, so the wording is a candidate — but so is the director model:
-`openai/gpt-oss-120b` is a weak reader for a conditional precondition it must apply before acting.
-Two experiments separate them, cheapest first: (1) hoist the ban into `A RISK` and re-run — if it
-clears, it was wording; (2) re-run the same suite with a stronger `director` model and no wording
-change — if it clears, it was the model. Do not conflate the two in one run. **Experiment 1 is
-applied and unmeasured**: `director.md` now opens `A RISK` with the taken-out precondition and
-states it once. The 33.3% above is the rate for the wording at `654154e`, not for this one. Beyond both sits the
+**The cause was the wording.** Hoisting the ban into `A RISK` as a precondition, stated once, took
+`story-taken-out-cannot-risk` from 33.3% to **100% in 6 of 6 runs on the same model**, and the suite
+from 66.7% to 88.9% (`87a6b17`, two runs, identical). A precondition has to be read before the
+procedure it guards.
+
+Four director models were then compared on the same suite and wording — `gpt-oss-120b`,
+`claude-sonnet-5`, `deepseek-v4-flash`, `granite-4.1-8b`. Rates and the reading are in
+`BASELINE.md`; the short version is that failures split by direction (the strongest model
+over-acts, the small fast ones under-act), `gpt-oss-120b` fails in neither and stays the director
+model, and the phase-3 gate therefore needs no second baseline. It also showed the story suite
+cannot yet rank models: two of its three scenarios pass when the Director does nothing. Beyond both sits the
 roadmap's engine referee (`docs/ROADMAP.md`), which is the structural answer to a precondition an
 instruction cannot make stick: a post-Director check would catch "rolled for a taken-out actor"
 whatever the model did.

@@ -109,12 +109,15 @@ between runs with the same `retries` and the same model.
 
 ## If you change the director model
 
-The gate below is a comparison, so both sides must be measured on the same model. Raising the model
-is a good idea and it is also a **window that closes**: phase 3 deletes the typed 5e engine, and
-after that there is nothing left to re-baseline against. So if a stronger `director` model is ever
-going to be the one the gate runs on, re-measure the 5e suite on it **before** phase 3 lands, record
-it beside the baseline below as a second baseline, and say which one phase 3 is being judged against.
-Changing the model and the engine in the same step measures neither.
+**Decided during phase 2: `openai/gpt-oss-120b` stays.** Four models were compared on the story
+suite (table below) and it was the only one that failed in neither direction. The phase-3 gate below
+therefore compares like with like and needs no second baseline.
+
+If that decision is ever revisited, the gate is a comparison, so both sides must be measured on the
+same model — and it is a **window that closes**: phase 3 deletes the typed 5e engine, and after that
+there is nothing left to re-baseline against. Re-measure the 5e suite on the new model *before*
+phase 3 lands, record it beside the baseline as a second baseline, and say which one phase 3 is
+judged against. Changing the model and the engine in one step measures neither.
 
 ## The phase-3 gate
 
@@ -220,15 +223,45 @@ Both runs agree scenario by scenario, so these are the engine's real rates at th
 against 7, and growth marked at most once. That is the arithmetic chain Story's deleted `risk` tool
 used to own, now carried by `director.md` plus `roll`.
 
-**The taken-out ban does not hold.** 4 of 6 runs rolled for an actor already at maximum stress.
+**The taken-out ban did not hold.** 4 of 6 runs rolled for an actor already at maximum stress.
 Typed Story refused this in code — `risk` raised `ModelRetry` when `taken_out` — and as prose it is
-the one of the four lost checks that actually regressed. The instruction exists, but it is the last
-clause of a bullet about stress rather than a precondition of the risk procedure. The cheap fix is
-to hoist it into the `A RISK` section and re-measure; do not read a later improvement as noise, the
-33.3% is reproducible.
+the one of the four lost checks that regressed. The instruction existed, but as the last clause of
+a bullet about stress rather than a precondition of the risk procedure.
 
-`story-no-risk-needed` fails 1 run in 3 by changing the world on a pure-conversation prompt. It is a
-one-sided check, so read the 66.7% as "one turn in three invented state", not as a score.
+### Phase 2, after the wording fix — and four models compared
+
+Commit `87a6b17`: `director.md` now opens `A RISK` with the taken-out precondition, stated once.
+Same suite, same `retries=3`, 2 runs per model. Files `results/2026-08-05-87a6b17-<model>-{1,2}.json`.
+
+| Director model | overall | `no-risk-needed` | `risk-single-roll` | `taken-out-cannot-risk` |
+|---|---|---|---|---|
+| `openai/gpt-oss-120b` | 89% / 89% | 67% / 67% | 100% / 100% | **100% / 100%** |
+| `anthropic/claude-sonnet-5` | 89% / 67% | 100% / 100% | 100% / 100% | 67% / 0% |
+| `deepseek/deepseek-v4-flash-0731` | 67% / 78% | 100% / 100% | 0% / 33% | 100% / 100% |
+| `ibm-granite/granite-4.1-8b` | 67% / 67% | 100% / 100% | **0% / 0%** | 100% / 100% |
+
+**The wording was the cause, not the model.** On the same model as the 33.3% measurement,
+`story-taken-out-cannot-risk` went to 100% in 6 of 6 runs and the suite from 66.7% to 88.9%. A
+precondition has to be read *before* the procedure it guards, not after it. That is a general
+lesson for every `director.md` written from here.
+
+**Failure modes split by direction, and the strongest model is not the best one here.**
+`claude-sonnet-5` fails only by *over-acting* — it rolls for a taken-out actor, the same eagerness
+phase 0 recorded as multi-action turns — while `granite-4.1-8b` and `deepseek-v4-flash` fail only by
+*under-acting*: `risk-single-roll` reports "nothing was rolled against a target number".
+`gpt-oss-120b` passes both directions and is the model this project keeps.
+
+**Read the small models' 67% carefully — it is mostly one-sidedness, not competence.** Two of the
+three story scenarios (`no-risk-needed`, `taken-out-cannot-risk`) also pass when the Director does
+nothing at all, so a model that never rolls scores 67% on this suite. Granite's 0%/0% on the only
+scenario that requires an action is consistent with exactly that, and its two 100%s are not evidence
+against it. The suite cannot currently tell "did not roll" from "rolled without `vs`" either,
+because a run record stores its failures and not the turn's facts. Do not rank models on this suite
+until that is fixed — the closing-out list in `REFACTOR-LENIENT.md` carries the item.
+
+`story-no-risk-needed` fails 1 run in 3 under `gpt-oss-120b` by changing the world on a
+pure-conversation prompt, and 0 in 6 under every other model. It is a one-sided check, so read the
+66.7% as "one turn in three invented state", not as a score.
 
 ### Phase 3 — lenient engine on the Sheet
 
