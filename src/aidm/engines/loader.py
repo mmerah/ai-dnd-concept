@@ -229,7 +229,7 @@ def _examples(engine_dir: Path, plan_type: type[TurnPlanBase]) -> str:
         blocks.append(f"Example {number}:\n\n```json\n{json.dumps(entry, indent=2)}\n```")
     if not blocks:
         return ""
-    header = "## Worked plans\n\nOne plan per action; a field left out sits at its default."
+    header = "## Worked plans\n\nOne plan per turn; a field left out sits at its default."
     return "\n\n" + "\n\n".join([header, *blocks])
 
 
@@ -248,7 +248,9 @@ def _effect_vocabulary() -> str:
         "## Effects\n\nEvery effect, one example each. Ids, keys, and tags here are "
         "illustrative: use the exact ids the scene shows and the counter keys on that "
         "entity's own sheet. Most turns need few or no effects: an empty `effects` with "
-        "no branches is a normal plan."
+        "no branches is a normal plan. But a turn whose fiction starts or ends a lasting "
+        "state — a condition taking hold or passing — must write that tag change, with "
+        "or without an action: nothing records it otherwise."
     )
     return f"\n\n{header}\n\n```json\n{lines}\n```"
 

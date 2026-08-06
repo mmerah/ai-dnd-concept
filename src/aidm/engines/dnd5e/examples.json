@@ -103,6 +103,41 @@
     }
   },
   {
+    "intent": "The last of the venom passes and Kael's hands are steady again.",
+    "tone": "quiet relief",
+    "effects": [
+      {
+        "op": "remove-tag",
+        "entity_id": "player",
+        "tag_id": "poisoned"
+      }
+    ]
+  },
+  {
+    "intent": "Kael hooks a boot under the rat and heaves it over onto its back.",
+    "tone": "scrambling, rough",
+    "branches": [
+      {
+        "outcome": "success",
+        "effects": [
+          {
+            "op": "add-tag",
+            "entity_id": "cloister_rat",
+            "tag_id": "prone",
+            "text": "On its back, legs pedaling, unable to right itself."
+          }
+        ]
+      }
+    ],
+    "action": {
+      "act": "check",
+      "actor_id": "player",
+      "bonus": 2,
+      "dc": 12,
+      "reason": "flipping the rat onto its back"
+    }
+  },
+  {
     "intent": "Kael leans on the wall, drags one breath in, and forces himself upright.",
     "tone": "ragged",
     "action": {

@@ -25,7 +25,8 @@
       "min": 1
     },
     {
-      "probe": "has_tag",
+      "probe": "branch_adds_tag",
+      "outcome": "success",
       "entity": "cloister_rat",
       "tag": "prone"
     }

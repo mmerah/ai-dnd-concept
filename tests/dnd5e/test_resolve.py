@@ -1,3 +1,4 @@
+import json
 from random import Random
 from typing import get_args
 
@@ -239,6 +240,30 @@ def test_the_bookkeeping_actions_spend_heal_recharge_and_gate_advancement() -> N
     assert ignored_facts == []
 
 
+def test_a_plan_with_json_stringified_nested_fields_validates_as_if_nested() -> None:
+    """Some OpenAI-compatible backends deliver a tool call's nested arguments as JSON strings;
+    a retry cannot repair that transport quirk, so the plan boundary decodes it."""
+    action = {"act": "attack", "actor_id": "player", "target_id": RAT, "weapon_item_id": SWORD}
+    hit = {"op": "add-tag", "entity_id": RAT, "tag_id": "wounded"}
+    nested = {
+        "intent": "Bram swings his longsword at the bloated rat.",
+        "tone": "quick and sharp",
+        "action": action,
+        "branches": [{"outcome": SUCCESS, "effects": [hit]}],
+    }
+    stringified = {
+        **nested,
+        "action": json.dumps(nested["action"]),
+        "branches": json.dumps(nested["branches"]),
+    }
+    assert Dnd5ePlan.model_validate(stringified) == Dnd5ePlan.model_validate(nested)
+
+
+def test_a_string_field_that_merely_looks_like_json_is_left_alone() -> None:
+    plan = Dnd5ePlan.model_validate({"intent": "[Bram] {waves}", "tone": "flat"})
+    assert plan.intent == "[Bram] {waves}"
+
+
 def test_every_action_is_worked_through_in_the_directors_instructions() -> None:
     """An action without an example teaches the model nothing: coverage is asserted, not hoped."""
     engine, _ = dnd5e_game()
@@ -246,7 +271,7 @@ def test_every_action_is_worked_through_in_the_directors_instructions() -> None:
 
     assert len(union) == len(ACTS)
     for act in ACTS:
-        assert engine.director_instructions.count(f'"act": "{act}"') == 1
+        assert engine.director_instructions.count(f'"act": "{act}"') >= 1
 
 
 def test_a_cast_checks_its_target_and_a_roll_never_names_an_unrevealed_actor() -> None:

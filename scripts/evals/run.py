@@ -274,8 +274,13 @@ async def _turn(
     await resolve_step(engine)(workspace)
     after = workspace.draft.committed()
     engine.validate_state(after)
-    outcome = Outcome(before=before, after=after, facts=tuple(workspace.facts))
-    return outcome, result.output.model_dump(mode="json"), _retry_reasons(result.all_messages())
+    outcome = Outcome(
+        before=before,
+        after=after,
+        facts=tuple(workspace.facts),
+        plan=result.output.model_dump(mode="json"),
+    )
+    return outcome, outcome.plan, _retry_reasons(result.all_messages())
 
 
 def _retry_reasons(messages: Sequence[ModelMessage]) -> tuple[str, ...]:

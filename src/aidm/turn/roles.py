@@ -36,6 +36,12 @@ class Stage[Deps, Out]:
             api_key=self.provider.api_key.get_secret_value(),
         )
         model = OpenAIChatModel(self.role.model, provider=provider)
+        settings = OpenAIChatModelSettings(
+            max_tokens=self.role.max_tokens,
+            openai_reasoning_effort=self.role.reasoning_effort,
+        )
+        if self.role.temperature is not None:
+            settings["temperature"] = self.role.temperature
         return Agent(
             model,
             name=self.name,
@@ -44,10 +50,7 @@ class Stage[Deps, Out]:
             deps_type=self.deps_type,
             toolsets=list(self.toolsets),
             retries=self.role.retries,
-            model_settings=OpenAIChatModelSettings(
-                max_tokens=self.role.max_tokens,
-                openai_reasoning_effort=self.role.reasoning_effort,
-            ),
+            model_settings=settings,
         )
 
     async def run(self, prompt: str, deps: Deps, recent: Sequence[ModelMessage] = ()) -> Out:

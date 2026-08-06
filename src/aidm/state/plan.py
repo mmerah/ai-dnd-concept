@@ -1,6 +1,8 @@
+import json
 from collections.abc import Callable, Sequence
+from typing import cast
 
-from pydantic import Field, ValidationError
+from pydantic import Field, ValidationError, model_validator
 
 from .base import PLAYER_ID, Entity, EntityId, Frozen, Slug
 from .effects import Effect, apply_effect
@@ -37,6 +39,25 @@ class OutcomeBranch(Frozen):
 
 class TurnPlanBase(Frozen):
     """One turn, answered in one plan: the engine rolls, picks the outcome, and applies it."""
+
+    @model_validator(mode="before")
+    @classmethod
+    def _decode_stringified_fields(cls, data: object) -> object:
+        """Some OpenAI-compatible backends serialize a tool call's nested arguments as JSON
+        strings; the payload inside is valid, so decode it instead of dying on the transport."""
+        if not isinstance(data, dict):
+            return data
+        decoded = cast("dict[object, object]", data).copy()
+        for key, value in decoded.items():
+            if not isinstance(value, str) or value[:1] not in "{[":
+                continue
+            try:
+                loaded = json.loads(value)
+            except ValueError:
+                continue
+            if isinstance(loaded, (dict, list)):
+                decoded[key] = loaded
+        return decoded
 
     intent: str = Field(
         description="1-3 sentences for the Narrator: what the player attempted and what is at "

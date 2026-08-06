@@ -103,7 +103,7 @@ needs no flag from you.
 
 ## Effects
 
-Every effect, one example each. Ids, keys, and tags here are illustrative: use the exact ids the scene shows and the counter keys on that entity's own sheet. Most turns need few or no effects: an empty `effects` with no branches is a normal plan.
+Every effect, one example each. Ids, keys, and tags here are illustrative: use the exact ids the scene shows and the counter keys on that entity's own sheet. Most turns need few or no effects: an empty `effects` with no branches is a normal plan. But a turn whose fiction starts or ends a lasting state — a condition taking hold or passing — must write that tag change, with or without an action: nothing records it otherwise.
 
 ```json
 {"op": "reveal", "entity_id": "hidden-cellar"}
@@ -120,7 +120,7 @@ Every effect, one example each. Ids, keys, and tags here are illustrative: use t
 
 ## Worked plans
 
-One plan per action; a field left out sits at its default.
+One plan per turn; a field left out sits at its default.
 
 Example 1:
 
@@ -244,6 +244,51 @@ Example 4:
 
 ```json
 {
+  "intent": "The last of the venom passes and Kael's hands are steady again.",
+  "tone": "quiet relief",
+  "effects": [
+    {
+      "op": "remove-tag",
+      "entity_id": "player",
+      "tag_id": "poisoned"
+    }
+  ]
+}
+```
+
+Example 5:
+
+```json
+{
+  "intent": "Kael hooks a boot under the rat and heaves it over onto its back.",
+  "tone": "scrambling, rough",
+  "branches": [
+    {
+      "outcome": "success",
+      "effects": [
+        {
+          "op": "add-tag",
+          "entity_id": "cloister_rat",
+          "tag_id": "prone",
+          "text": "On its back, legs pedaling, unable to right itself."
+        }
+      ]
+    }
+  ],
+  "action": {
+    "act": "check",
+    "actor_id": "player",
+    "bonus": 2,
+    "dc": 12,
+    "reason": "flipping the rat onto its back"
+  }
+}
+```
+
+Example 6:
+
+```json
+{
   "intent": "Kael leans on the wall, drags one breath in, and forces himself upright.",
   "tone": "ragged",
   "action": {
@@ -255,7 +300,7 @@ Example 4:
 }
 ```
 
-Example 5:
+Example 7:
 
 ```json
 {
@@ -270,7 +315,7 @@ Example 5:
 }
 ```
 
-Example 6:
+Example 8:
 
 ```json
 {

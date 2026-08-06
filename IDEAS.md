@@ -1,6 +1,6 @@
 ## Loose ends
 
-- [] Investigation: bring the eval suite to 100%. Right now 'condition' related fail often and 'story-no-risk-needed' as well (model calls an action when not needed). ROLES__DIRECTOR__MODEL='qwen/qwen3.6-27b' is extremely reliable and a good candidate for eval run comparison. 120b is faster and cheaper though but not as reliable. But if qwen 27b can reach 100% (it only fails at condition-lifted/rider) then the loose end is closed. It always fails there though so something is definitely off (look /home/toto/repos/ai-dnd-concept/scripts/evals/results/2026-08-06-f974934+ca1d91a.json). Settled by the two `eb4d8d3` suites: the header sentence added to counter no-op turns did **not** move `story-no-risk-needed` (4/6, unchanged), so that case is not a prompt-wording problem. `condition-lifted`/`condition-rider` are still the two lifetime signatures. See the last section of `baseline.md`.
+- [] Investigate: Use eval to benchmark model performance. Objective: gpt-oss-20b across the board performs as well as possible
 
 ## Ideas
 

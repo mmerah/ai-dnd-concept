@@ -25,6 +25,7 @@ class RoleConfig(BaseModel):
     retries: int = Field(default=3, ge=0)
     max_tokens: int = Field(default=2048, ge=1)
     reasoning_effort: ReasoningEffort = "medium"
+    temperature: float | None = Field(default=None, ge=0.0, le=2.0)
 
 
 class Providers(BaseModel):

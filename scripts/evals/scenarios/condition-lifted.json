@@ -18,7 +18,8 @@
     },
     {
       "probe": "add_tag",
-      "tag": "poisoned"
+      "tag": "poisoned",
+      "text": "Rat venom still sits in the blood."
     }
   ],
   "prompt": "The sickness finally passes and I shake off the poison.",

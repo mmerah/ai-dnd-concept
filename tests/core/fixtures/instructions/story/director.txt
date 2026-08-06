@@ -79,7 +79,7 @@ the `growth` pool are never yours to touch — growth is spent in the advancemen
 
 ## Effects
 
-Every effect, one example each. Ids, keys, and tags here are illustrative: use the exact ids the scene shows and the counter keys on that entity's own sheet. Most turns need few or no effects: an empty `effects` with no branches is a normal plan.
+Every effect, one example each. Ids, keys, and tags here are illustrative: use the exact ids the scene shows and the counter keys on that entity's own sheet. Most turns need few or no effects: an empty `effects` with no branches is a normal plan. But a turn whose fiction starts or ends a lasting state — a condition taking hold or passing — must write that tag change, with or without an action: nothing records it otherwise.
 
 ```json
 {"op": "reveal", "entity_id": "hidden-cellar"}
@@ -96,7 +96,7 @@ Every effect, one example each. Ids, keys, and tags here are illustrative: use t
 
 ## Worked plans
 
-One plan per action; a field left out sits at its default.
+One plan per turn; a field left out sits at its default.
 
 Example 1:
 

@@ -58,6 +58,7 @@ class AddTag(Frozen):
     probe: Literal["add_tag"] = "add_tag"
     entity: EntityId = PLAYER_ID
     tag: str
+    text: str = ""
 
 
 type SetupStep = Annotated[
@@ -95,6 +96,16 @@ class AttackRollHappened(Frozen):
     max: int | None = Field(default=None, ge=0)
 
 
+class BranchAddsTag(Frozen):
+    """Asserts the plan itself, not the die: the seeds make some runs' d20 a guaranteed miss, so a
+    state check gated on the success branch firing would measure the roll, never the Director."""
+
+    probe: Literal["branch_adds_tag"] = "branch_adds_tag"
+    outcome: str = "success"
+    entity: EntityId
+    tag: str
+
+
 class RollTarget(Frozen):
     """Bounds every target number rolled against: a chosen DC, or a target's armour class."""
 
@@ -108,7 +119,13 @@ class NoStateChange(Frozen):
 
 
 type CheckStep = Annotated[
-    PoolDelta | PoolValue | HasTag | AttackRollHappened | RollTarget | NoStateChange,
+    PoolDelta
+    | PoolValue
+    | HasTag
+    | AttackRollHappened
+    | BranchAddsTag
+    | RollTarget
+    | NoStateChange,
     Field(discriminator="probe"),
 ]
 
@@ -125,6 +142,7 @@ class Outcome:
     before: GameState
     after: GameState
     facts: tuple[Fact, ...]
+    plan: JsonValue = None
 
 
 def apply_setup(setup: Setup, steps: Sequence[SetupStep]) -> GameState:
@@ -151,6 +169,12 @@ def check(outcome: Outcome, step: CheckStep) -> str | None:
             if held == step.present:
                 return None
             return f"{step.entity} tag {step.tag!r} is {'absent' if step.present else 'present'}"
+        case BranchAddsTag():
+            if _branch_adds_tag(outcome.plan, step):
+                return None
+            return (
+                f"the plan's {step.outcome!r} branch does not add tag {step.tag!r} to {step.entity}"
+            )
         case AttackRollHappened():
             rolled = len(_contested(outcome.facts))
             if step.max is None:
@@ -181,7 +205,9 @@ def _apply(setup: Setup, step: SetupStep) -> None:
         case SetLevel():
             _level_up_to(setup.engine.content, state, step.value)
         case AddTag():
-            _sheet(state, step.entity).tags.append(SheetTag(id=step.tag, name=step.tag))
+            # Mirrors the runtime `add-tag` effect, so the rendered scene matches real play.
+            name = step.tag.replace("-", " ").title()
+            _sheet(state, step.entity).tags.append(SheetTag(id=step.tag, name=name, text=step.text))
 
 
 def _sheet(state: GameState, entity_id: EntityId) -> Sheet:
@@ -238,6 +264,27 @@ def _apply_level(sheet: Sheet, record: Record) -> None:
             slot.maximum, slot.current = value, value
         elif key in sheet.numbers:
             sheet.numbers[key] = value
+
+
+def _branch_adds_tag(plan: JsonValue, step: BranchAddsTag) -> bool:
+    if not isinstance(plan, dict):
+        return False
+    branches = plan.get("branches")
+    if not isinstance(branches, list):
+        return False
+    return any(
+        isinstance(branch, dict)
+        and branch.get("outcome") == step.outcome
+        and isinstance(effects := branch.get("effects"), list)
+        and any(
+            isinstance(effect, dict)
+            and effect.get("op") == "add-tag"
+            and effect.get("entity_id") == step.entity
+            and effect.get("tag_id") == step.tag
+            for effect in effects
+        )
+        for branch in branches
+    )
 
 
 def _contested(facts: Sequence[Fact]) -> tuple[Fact, ...]:
