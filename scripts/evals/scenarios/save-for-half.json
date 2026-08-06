@@ -13,6 +13,11 @@
       "value": 3
     },
     {
+      "probe": "set_pool",
+      "pool": "slot-2",
+      "remaining": 0
+    },
+    {
       "probe": "place",
       "entity": "player",
       "location": "cloister"

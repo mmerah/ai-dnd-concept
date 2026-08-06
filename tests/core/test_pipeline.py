@@ -1,14 +1,22 @@
+import json
 from contextlib import ExitStack
 from random import Random
 
 import pytest
 from core_test_support import initialized, plan, scripted, settings, structured, text
-from pydantic_ai.messages import ModelMessage, ModelRequest, ModelResponse, RetryPromptPart
+from pydantic_ai.messages import (
+    ModelMessage,
+    ModelRequest,
+    ModelResponse,
+    RetryPromptPart,
+    ToolCallPart,
+)
 from pydantic_ai.models.function import AgentInfo, FunctionModel
 
 from aidm.state.base import PLAYER_ID
 from aidm.state.world import player_sheet, sheet_of
 from aidm.turn.pipeline import TurnOptions, TurnWorkspace, default_cast, run_turn
+from aidm.turn.roles import ChannelSafeModel
 
 STEPS = ("director", "resolve", "narrator", "maintainer", "creator")
 
@@ -123,6 +131,72 @@ async def test_the_resolver_applies_only_the_branch_of_the_outcome_rolled() -> N
     held = {tag.id for tag in player_sheet(result.state).tags}
     assert held & {"strong", "mixed", "setback"} == {expected}
     engine.validate_state(result.state)
+
+
+async def test_a_plan_answered_as_plain_text_json_settles_the_turn() -> None:
+    """Small models often emit the plan JSON as text before obeying the tool call; the text
+    fallback accepts it so the turn costs no retry round trip."""
+    engine, state = initialized()
+    members = default_cast(engine, settings())
+    spoken = 'Here is the plan:\n{"intent": "Kael waits by the rail.", "tone": "flat"}'
+    with ExitStack() as stack:
+        stack.enter_context(
+            members.director.agent.override(model=FunctionModel(scripted(text(spoken))))
+        )
+        stack.enter_context(
+            members.narrator.agent.override(model=FunctionModel(scripted(text("You wait."))))
+        )
+        stack.enter_context(
+            members.maintainer.agent.override(
+                model=FunctionModel(scripted(structured(requests=[])))
+            )
+        )
+        result = await run_turn(
+            state,
+            "I wait.",
+            engine=engine,
+            script=members.script(engine, OPTIONS),
+            options=OPTIONS,
+            rng=Random(0),
+        )
+
+    assert result.turn.plan["intent"] == "Kael waits by the rail."
+    assert result.turn.facts == ()
+
+
+async def test_a_tool_call_with_a_channel_marker_in_its_name_still_lands() -> None:
+    engine, state = initialized()
+    members = default_cast(engine, settings())
+    marked = ModelResponse(
+        parts=[
+            ToolCallPart(
+                tool_name="turn_plan<|channel|>json",
+                args=json.dumps({"intent": "Kael waits by the rail.", "tone": "flat"}),
+            )
+        ]
+    )
+    with ExitStack() as stack:
+        stack.enter_context(
+            members.director.agent.override(model=ChannelSafeModel(FunctionModel(scripted(marked))))
+        )
+        stack.enter_context(
+            members.narrator.agent.override(model=FunctionModel(scripted(text("You wait."))))
+        )
+        stack.enter_context(
+            members.maintainer.agent.override(
+                model=FunctionModel(scripted(structured(requests=[])))
+            )
+        )
+        result = await run_turn(
+            state,
+            "I wait.",
+            engine=engine,
+            script=members.script(engine, OPTIONS),
+            options=OPTIONS,
+            rng=Random(0),
+        )
+
+    assert result.turn.plan["intent"] == "Kael waits by the rail."
 
 
 async def test_an_illegal_plan_is_retried_with_the_reason() -> None:

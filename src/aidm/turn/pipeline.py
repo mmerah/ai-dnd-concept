@@ -3,8 +3,8 @@ from dataclasses import dataclass, field
 from random import Random
 from types import NoneType
 
-from pydantic import Field
-from pydantic_ai import ModelRetry, NativeOutput, RunContext, ToolOutput
+from pydantic import Field, ValidationError
+from pydantic_ai import ModelRetry, NativeOutput, RunContext, TextOutput, ToolOutput
 from pydantic_ai.messages import ModelMessage
 
 from aidm.config import Settings
@@ -174,12 +174,30 @@ class Cast:
         )
 
 
+def plan_from_text(plan_type: type[TurnPlanBase]) -> Callable[[str], TurnPlanBase]:
+    def parse(text: str) -> TurnPlanBase:
+        start, end = text.find("{"), text.rfind("}")
+        if start < 0 or end <= start:
+            raise ModelRetry("Answer with one `turn_plan` tool call.")
+        try:
+            return plan_type.model_validate_json(text[start : end + 1])
+        except ValidationError as invalid:
+            first = invalid.errors()[0]
+            where = ".".join(str(loc) for loc in first["loc"])
+            raise ModelRetry(f"the plan did not validate — {where}: {first['msg']}") from invalid
+
+    return parse
+
+
 def director_stage(engine: Engine, settings: Settings) -> Stage[PlanContext, TurnPlanBase]:
     built = stage(
         "director",
         settings,
         instructions=f"{prompts.CORE_DIRECTOR}\n\n{engine.director_instructions}",
-        output_type=ToolOutput(engine.plan_type, name="turn_plan"),
+        output_type=[
+            ToolOutput(engine.plan_type, name="turn_plan"),
+            TextOutput(plan_from_text(engine.plan_type)),
+        ],
         deps_type=PlanContext,
         toolsets=(engine.director_toolset,),
     )

@@ -1,7 +1,5 @@
 ## Loose ends
 
-- [] Investigate: Use eval to benchmark model performance. Objective: gpt-oss-20b across the board performs as well as possible
-
 ## Ideas
 
 - [] Eval coverage owed: an advantage scenario, a concentration-replacing-a-spell scenario, and

@@ -237,3 +237,35 @@ sentence added to counter no-op regressions did **not** move `story-no-risk-need
 pooled — the same 67% as before, from 3/3 then 1/3. Prompt wording is not what decides that case.
 `conditions` stays the standing residual with both lifetime signatures intact (`poisoned` not
 removed 4/6, the `prone` rider not added 2/6).
+
+---
+
+# gpt-oss-20b as director — transport catches and one engine guard
+
+date: 2026-08-06   model: openai/gpt-oss-20b   retries: 3   over the staged tree on `af15866`
+
+The first 20b suite (86%) buried its signal under transport noise: 88 retry exchanges in 69
+turns — ~66 were the model answering with the plan JSON as *plain text* and being nagged into a
+tool call (one wasted round trip per turn), 7 were harmony channel markers bleeding into the tool
+name (`turn_plan<|channel|>json`), 2 deaths were the documented `finish_reason: "error"` crash
+under forced tool choice. Three fixes, each test-locked: a `TextOutput` fallback that parses the
+plan from text (same `check_plan` gate, and tool choice is no longer forced), a `ChannelSafeModel`
+wrapper stripping the channel marker, and a `check_plan` refusal when a plan writes the counter
+the engine already pays (`slot-N` for a cast, the feature's own counter) — after the noise
+cleared, `slot-N` at −2 for one cast was the dominant residual.
+
+| suite (n=69) | overall | completion | interpretation | duration | note |
+|---|---|---|---|---|---|
+| before | 86% | 93% | 92% | 11.4s | 88 retry exchanges; 5 deaths |
+| + fallback & stripping | 88% | 93% | 95% | 23.5s | nags 66 → 0; slow hour; 3 deaths were the 2048 thinking overrun |
+| + `MAX_TOKENS=4096` (env) | 88% | 99% | 90% | 13.6s | token deaths gone; double-spend visible (3 fails); results file lost to a cleanup mistake, numbers preserved here |
+| + double-spend guard | **93%** | 99% | 94% | 12.4s | `upcast-damage-scaling` 3/3; best 20b suite recorded |
+
+One eval fix fell out: `save-for-half` asserted `slot-1` −1 but a legal *upcast* from slot 2 also
+answers the prompt; the setup now empties `slot-2` (4/4 on the probe). Run 20b with
+`ROLES__DIRECTOR__MAX_TOKENS=4096`.
+
+Residuals, none transport or resolver: `story-no-risk-needed` 33% (the lifetime no-op signature),
+`condition-lifted` 67% (the same OpenRouter backend coin every model shows — at temperature 0 the
+condition write is byte-stable per backend, so the lever is the account-level ignore list), and one
+thinking overrun even at 4096.

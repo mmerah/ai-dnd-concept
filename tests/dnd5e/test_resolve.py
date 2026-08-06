@@ -18,7 +18,7 @@ from aidm.engines.dnd5e.actions import (
 from aidm.engines.dnd5e.advance import ADVANCEMENT_READY
 from aidm.engines.loader import Engine
 from aidm.state.base import PLAYER_ID, EntityId, Frozen
-from aidm.state.effects import AddTag
+from aidm.state.effects import AddTag, SpendCounter
 from aidm.state.plan import OutcomeBranch
 from aidm.state.world import GameState, player_sheet, sheet_of
 
@@ -133,6 +133,34 @@ def test_a_stat_block_attack_needs_exactly_one_source_for_its_numbers() -> None:
 
     neither = Attack(actor_id=RAT, target_id=PLAYER_ID)
     assert "needs either a `weapon_item_id`" in _refusal(engine, ready, _plan(neither))
+
+
+def test_a_plan_that_also_writes_the_cost_the_engine_pays_is_refused() -> None:
+    """gpt-oss-20b's dominant residual: the engine spends the cast's slot, and the plan writes a
+    second spend on top, landing `slot-N` at −2 for one cast."""
+    engine, state = dnd5e_game()
+    ready = wizardly(armed(state))
+    cast = CastSpell(
+        actor_id=PLAYER_ID, spell="srd-2014/spells/magic-missile", slot_level=1, target_id=RAT
+    )
+    manual = SpendCounter(entity_id=PLAYER_ID, counter="slot-1", amount=1)
+
+    doubled = _plan(cast).model_copy(update={"effects": (manual,)})
+    assert "already spends 'slot-1'" in _refusal(engine, ready, doubled)
+
+    branched = _plan(
+        cast,
+        branches=(OutcomeBranch(outcome=SUCCESS, effects=(manual,)),),
+    )
+    assert "already spends 'slot-1'" in _refusal(engine, ready, branched)
+
+    second_wind = UseFeature(actor_id=PLAYER_ID, counter="second-wind", heal="1d10 + 1")
+    drained = _plan(second_wind).model_copy(
+        update={"effects": (SpendCounter(entity_id=PLAYER_ID, counter="second-wind", amount=1),)}
+    )
+    assert "already spends 'second-wind'" in _refusal(engine, ready, drained)
+
+    assert engine.check_plan(ready, _plan(cast)) is None
 
 
 def test_a_cast_spends_its_slot_before_anything_follows() -> None:

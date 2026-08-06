@@ -63,7 +63,32 @@ def check_plan(engine: Engine, state: GameState, plan: TurnPlanBase) -> str | No
         labels = _labels(engine, action)
     except ValueError as refused:
         return str(refused)
+    if paid_twice := _double_spend(fivee):
+        return paid_twice
     return check_plan_base(state, fivee, labels, engine.default_rules)
+
+
+def _double_spend(fivee: Dnd5ePlan) -> str | None:
+    written = (*fivee.effects, *(effect for branch in fivee.branches for effect in branch.effects))
+    for effect in written:
+        if isinstance(effect, (SpendCounter, AdjustCounter)) and _engine_paid(
+            fivee.action, effect.counter
+        ):
+            return (
+                f"the engine already spends {effect.counter!r} for this action: "
+                "drop that effect and let the engine pay the cost"
+            )
+    return None
+
+
+def _engine_paid(action: Dnd5eAction | None, counter: str) -> bool:
+    match action:
+        case CastSpell():
+            return counter.startswith(SLOT)
+        case UseFeature():
+            return counter == action.counter
+        case _:
+            return False
 
 
 def resolve_action(engine: Engine, draft: GameState, plan: TurnPlanBase, rng: Random) -> list[Fact]:

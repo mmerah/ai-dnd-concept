@@ -8,15 +8,36 @@ from pydantic_ai.messages import (
     ModelRequest,
     ModelResponse,
     TextPart,
+    ToolCallPart,
     UserPromptPart,
 )
+from pydantic_ai.models import ModelRequestParameters
 from pydantic_ai.models.openai import OpenAIChatModel, OpenAIChatModelSettings
+from pydantic_ai.models.wrapper import WrapperModel
 from pydantic_ai.output import OutputSpec
 from pydantic_ai.providers.openai import OpenAIProvider
+from pydantic_ai.settings import ModelSettings
 from pydantic_ai.toolsets import AbstractToolset
 
 from aidm.config import ProviderConfig, RoleConfig, Settings
 from aidm.state.world import Exchange
+
+
+class ChannelSafeModel(WrapperModel):
+    """gpt-oss models sometimes append their harmony channel marker to a tool call's name
+    (`turn_plan<|channel|>json`); the call is otherwise well-formed, so strip the marker."""
+
+    async def request(
+        self,
+        messages: list[ModelMessage],
+        model_settings: ModelSettings | None,
+        model_request_parameters: ModelRequestParameters,
+    ) -> ModelResponse:
+        response = await super().request(messages, model_settings, model_request_parameters)
+        for part in response.parts:
+            if type(part) is ToolCallPart and "<|" in part.tool_name:
+                part.tool_name = part.tool_name.split("<|", 1)[0]
+        return response
 
 
 @dataclass(frozen=True)
@@ -35,7 +56,7 @@ class Stage[Deps, Out]:
             base_url=self.provider.base_url,
             api_key=self.provider.api_key.get_secret_value(),
         )
-        model = OpenAIChatModel(self.role.model, provider=provider)
+        model = ChannelSafeModel(OpenAIChatModel(self.role.model, provider=provider))
         settings = OpenAIChatModelSettings(
             max_tokens=self.role.max_tokens,
             openai_reasoning_effort=self.role.reasoning_effort,
