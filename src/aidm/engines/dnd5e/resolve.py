@@ -48,7 +48,6 @@ DEFAULT_LEVEL = 1
 MILESTONE_TAG = AddTag(
     entity_id=PLAYER_ID,
     tag_id=ADVANCEMENT_READY,
-    name="Ready to advance",
     text="The story has earned a level.",
 )
 
@@ -131,7 +130,7 @@ def _resolved(
 def _attack(
     draft: GameState[Sheet], parts: EngineParts, action: Attack, rng: Random
 ) -> tuple[list[Fact], Slug]:
-    attacker = require_actor_here(draft, action.attacker_id)
+    attacker = require_actor_here(draft, action.actor_id)
     target = require_actor_here(draft, action.target_id)
     facts = _seen(draft, attacker, target)
     to_hit, damage, damage_bonus = _attack_terms(draft, parts, attacker, action)
@@ -188,7 +187,7 @@ def _attack_terms(
 def _cast(
     draft: GameState[Sheet], parts: EngineParts, action: CastSpell, rng: Random
 ) -> tuple[list[Fact], Slug | None]:
-    caster = require_actor_here(draft, action.caster_id)
+    caster = require_actor_here(draft, action.actor_id)
     sheet = sheet_of(draft, caster.id)
     spell = _spell(parts, action)
     modifier = _spell_modifier(parts, sheet)

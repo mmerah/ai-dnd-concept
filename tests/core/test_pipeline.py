@@ -66,7 +66,7 @@ async def test_an_engine_uses_the_shared_pipeline_and_safe_narrator_prompt() -> 
                         plan(
                             intent="Kael finds the map beneath the flagstone.",
                             tone="hushed",
-                            effects=[{"op": "take-item", "item_id": "vault_map"}],
+                            effects=[{"op": "move-item", "item_id": "vault_map"}],
                         )
                     )
                 )
@@ -112,9 +112,7 @@ async def test_the_resolver_applies_only_the_branch_of_the_outcome_rolled() -> N
     def branch(outcome: str) -> dict[str, object]:
         return {
             "outcome": outcome,
-            "effects": [
-                {"op": "add-tag", "entity_id": "player", "tag_id": outcome, "name": outcome}
-            ],
+            "effects": [{"op": "add-tag", "entity_id": "player", "tag_id": outcome}],
         }
 
     with ExitStack() as stack:
@@ -313,7 +311,7 @@ async def test_a_failed_role_never_mutates_the_input_state() -> None:
                         plan(
                             intent="Kael takes the hidden map.",
                             tone="grim",
-                            effects=[{"op": "take-item", "item_id": "vault_map"}],
+                            effects=[{"op": "move-item", "item_id": "vault_map"}],
                         )
                     )
                 )

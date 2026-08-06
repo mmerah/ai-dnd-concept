@@ -38,7 +38,6 @@
             "op": "add-tag",
             "entity_id": "player",
             "tag_id": "ears-ringing",
-            "name": "Ears Ringing",
             "text": "(condition) The whispering drowns out anything said softly."
           }
         ]

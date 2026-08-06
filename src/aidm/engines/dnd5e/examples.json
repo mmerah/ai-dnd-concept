@@ -10,7 +10,6 @@
             "op": "add-tag",
             "entity_id": "cloister_rat",
             "tag_id": "limping",
-            "name": "Limping",
             "text": "A hind leg drags behind it."
           }
         ]
@@ -22,7 +21,6 @@
             "op": "add-tag",
             "entity_id": "player",
             "tag_id": "crowded",
-            "name": "Crowded",
             "text": "The wasted swing let the rat inside his reach."
           }
         ]
@@ -30,7 +28,7 @@
     ],
     "action": {
       "act": "attack",
-      "attacker_id": "player",
+      "actor_id": "player",
       "target_id": "cloister_rat",
       "weapon_item_id": "kaels_longsword"
     }
@@ -46,7 +44,6 @@
             "op": "add-tag",
             "entity_id": "cloister_rat",
             "tag_id": "scorched",
-            "name": "Scorched",
             "text": "Its fur is burnt away in patches."
           }
         ]
@@ -65,7 +62,7 @@
     ],
     "action": {
       "act": "cast-spell",
-      "caster_id": "player",
+      "actor_id": "player",
       "spell": "srd-2014/spells/burning-hands",
       "slot_level": 1,
       "target_id": "cloister_rat"
@@ -92,7 +89,6 @@
             "op": "add-tag",
             "entity_id": "player",
             "tag_id": "shaking",
-            "name": "Shaking",
             "text": "The venom still has hold of his hands."
           }
         ]
@@ -146,7 +142,6 @@
             "op": "add-tag",
             "entity_id": "vault",
             "tag_id": "jammed-seal",
-            "name": "Jammed Seal",
             "text": "The bent seal now binds the door shut."
           }
         ]

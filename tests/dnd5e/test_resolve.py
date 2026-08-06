@@ -23,12 +23,8 @@ from aidm.engines.dnd5e.actions import (
 from aidm.engines.dnd5e.advance import ADVANCEMENT_READY
 
 ACTS = ("attack", "cast-spell", "check", "use-feature", "rest", "improvise")
-WOUNDED = OutcomeBranch(
-    outcome=SUCCESS, effects=(AddTag(entity_id=RAT, tag_id="wounded", name="Wounded"),)
-)
-UNSCATHED = OutcomeBranch(
-    outcome=FAILURE, effects=(AddTag(entity_id=RAT, tag_id="unscathed", name="Unscathed"),)
-)
+WOUNDED = OutcomeBranch(outcome=SUCCESS, effects=(AddTag(entity_id=RAT, tag_id="wounded"),))
+UNSCATHED = OutcomeBranch(outcome=FAILURE, effects=(AddTag(entity_id=RAT, tag_id="unscathed"),))
 
 
 def _plan(
@@ -80,7 +76,7 @@ def test_a_weapon_attack_that_hits_rolls_damage_and_applies_the_success_branch()
     ready = _hp_ceiling(armed(state), RAT, 40)
     hit = _set_number(ready, RAT, "armor-class", 1)
     plan = _plan(
-        Attack(attacker_id=PLAYER_ID, target_id=RAT, weapon_item_id=SWORD),
+        Attack(actor_id=PLAYER_ID, target_id=RAT, weapon_item_id=SWORD),
         branches=(WOUNDED, UNSCATHED),
     )
     assert engine.check_plan(hit, plan) is None
@@ -107,7 +103,7 @@ def test_the_same_attack_missing_leaves_the_rat_untouched() -> None:
     ready = armed(state)
     miss = _set_number(ready, RAT, "armor-class", 26)
     plan = _plan(
-        Attack(attacker_id=PLAYER_ID, target_id=RAT, weapon_item_id=SWORD),
+        Attack(actor_id=PLAYER_ID, target_id=RAT, weapon_item_id=SWORD),
         branches=(WOUNDED, UNSCATHED),
     )
 
@@ -126,18 +122,18 @@ def test_a_stat_block_attack_needs_exactly_one_source_for_its_numbers() -> None:
     engine, state = dnd5e_game()
     ready = armed(state)
 
-    stat_block = Attack(attacker_id=RAT, target_id=PLAYER_ID, attack_bonus=4, damage="1d4+2")
+    stat_block = Attack(actor_id=RAT, target_id=PLAYER_ID, attack_bonus=4, damage="1d4+2")
     plan = _plan(stat_block)
     assert engine.check_plan(ready, plan) is None
     facts = engine.resolve_action(ready.draft(), plan, Random(1))
     assert _number(facts[0].data["vs"]) == 12  # Kael's own armour class
 
     both = Attack(
-        attacker_id=RAT, target_id=PLAYER_ID, weapon_item_id=SWORD, attack_bonus=4, damage="1d4+2"
+        actor_id=RAT, target_id=PLAYER_ID, weapon_item_id=SWORD, attack_bonus=4, damage="1d4+2"
     )
     assert "leave `attack_bonus` and `damage` null" in _refusal(engine, ready, _plan(both))
 
-    neither = Attack(attacker_id=RAT, target_id=PLAYER_ID)
+    neither = Attack(actor_id=RAT, target_id=PLAYER_ID)
     assert "needs either a `weapon_item_id`" in _refusal(engine, ready, _plan(neither))
 
 
@@ -148,7 +144,7 @@ def test_a_cast_spends_its_slot_before_anything_follows() -> None:
     ready = wizardly(armed(state))
 
     from_one = CastSpell(
-        caster_id=PLAYER_ID, spell="srd-2014/spells/magic-missile", slot_level=1, target_id=RAT
+        actor_id=PLAYER_ID, spell="srd-2014/spells/magic-missile", slot_level=1, target_id=RAT
     )
     plan_one = _plan(from_one)
     assert engine.check_plan(ready, plan_one) is None
@@ -160,7 +156,7 @@ def test_a_cast_spends_its_slot_before_anything_follows() -> None:
     assert 6 <= _number(damage_one.data["total"]) <= 15
 
     from_two = CastSpell(
-        caster_id=PLAYER_ID, spell="srd-2014/spells/magic-missile", slot_level=2, target_id=RAT
+        actor_id=PLAYER_ID, spell="srd-2014/spells/magic-missile", slot_level=2, target_id=RAT
     )
     plan_two = _plan(from_two)
     draft_two = ready.draft()
@@ -182,7 +178,7 @@ def test_a_save_based_spell_rolls_a_fixed_dc_and_halves_on_a_saved_target() -> N
     ready = _hp_ceiling(wizardly(armed(state)), RAT, 100)
     plan = _plan(
         CastSpell(
-            caster_id=PLAYER_ID, spell="srd-2014/spells/burning-hands", slot_level=1, target_id=RAT
+            actor_id=PLAYER_ID, spell="srd-2014/spells/burning-hands", slot_level=1, target_id=RAT
         )
     )
 
@@ -264,7 +260,7 @@ def test_a_cast_checks_its_target_and_a_roll_never_names_an_unrevealed_actor() -
 
     away = _plan(
         CastSpell(
-            caster_id=PLAYER_ID,
+            actor_id=PLAYER_ID,
             spell="srd-2014/spells/cure-wounds",
             slot_level=1,
             target_id=EntityId("mara"),
@@ -274,5 +270,5 @@ def test_a_cast_checks_its_target_and_a_roll_never_names_an_unrevealed_actor() -
 
     draft = ready.draft()
     draft.world.record(RAT).entity.known = False
-    attack = _plan(Attack(attacker_id=PLAYER_ID, target_id=RAT, weapon_item_id=SWORD))
+    attack = _plan(Attack(actor_id=PLAYER_ID, target_id=RAT, weapon_item_id=SWORD))
     assert engine.resolve_action(draft, attack, Random(4))[0].kind == "entity_discovered"

@@ -15,7 +15,7 @@ SPEND = ChangeCounter(why="the marks are spent", key="growth", delta=-GROWTH_REQ
 RAT = EntityId("cloister_rat")
 STRONG = OutcomeBranch(
     outcome="strong",
-    effects=(AddTag(entity_id=PLAYER_ID, tag_id="sure-footed", name="Sure-footed"),),
+    effects=(AddTag(entity_id=PLAYER_ID, tag_id="sure-footed"),),
 )
 SETBACK = OutcomeBranch(
     outcome="setback",

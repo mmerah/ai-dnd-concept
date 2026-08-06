@@ -5,17 +5,15 @@ from aidm.core.base import PLAYER_ID, EntityId
 from aidm.core.effects import (
     AddTag,
     AdjustCounter,
-    DropItem,
     Effect,
     GainImprovisedItem,
-    GiveItem,
     MoveActor,
+    MoveItem,
     RemoveTag,
     Reveal,
     SetNote,
     SetNumber,
     SpendCounter,
-    TakeItem,
     apply_effect,
 )
 from aidm.core.facts import Fact
@@ -53,13 +51,13 @@ def test_world_effects_move_and_reveal_only_what_the_player_witnesses() -> None:
 
     assert turn(Reveal(entity_id=MARA)) == []
     assert turn.kinds(Reveal(entity_id=VAULT_MAP)) == ["entity_discovered"]
-    arrived = MoveActor(location_id=STUDY, actor_id=ELENA)
+    arrived = MoveActor(location_id=STUDY, entity_id=ELENA)
     assert turn.kinds(arrived) == ["entity_discovered", "entity_moved"]
-    assert turn.kinds(MoveActor(location_id=VAULT, actor_id=MARA)) == ["entity_moved"]
+    assert turn.kinds(MoveActor(location_id=VAULT, entity_id=MARA)) == ["entity_moved"]
     assert turn.kinds(MoveActor(location_id=VAULT)) == ["entity_discovered", "entity_moved"]
 
     with pytest.raises(ValueError, match="would not be witnessed"):
-        _ = turn(MoveActor(location_id=CLOISTER, actor_id=TOMAS))
+        _ = turn(MoveActor(location_id=CLOISTER, entity_id=TOMAS))
     with pytest.raises(ValueError, match="is a actor, not a location"):
         _ = turn(MoveActor(location_id=MARA))
     with pytest.raises(ValueError, match="unknown entity id"):
@@ -69,11 +67,15 @@ def test_world_effects_move_and_reveal_only_what_the_player_witnesses() -> None:
 def test_inventory_effects_gate_on_position_and_carrying() -> None:
     turn = Applied()
 
-    took = turn(TakeItem(item_id=VAULT_MAP))[1]
+    took = turn(MoveItem(item_id=VAULT_MAP))[1]
     assert (took.data["entity_id"], took.data["to_id"]) == (VAULT_MAP, PLAYER_ID)
-    (dropped,) = turn(DropItem(item_id=LANTERN))
+    with pytest.raises(ValueError, match="already carries"):
+        _ = turn(MoveItem(item_id=VAULT_MAP))
+    with pytest.raises(ValueError, match="player's own location"):
+        _ = turn(MoveItem(item_id=LANTERN, to_id=VAULT))
+    (dropped,) = turn(MoveItem(item_id=LANTERN, to_id=STUDY))
     assert (dropped.data["entity_id"], dropped.data["to_kind"]) == (LANTERN, "location")
-    (given,) = turn(GiveItem(item_id=VAULT_MAP, actor_id=MARA))
+    (given,) = turn(MoveItem(item_id=VAULT_MAP, to_id=MARA))
     assert (given.data["entity_id"], given.data["to_id"]) == (VAULT_MAP, MARA)
 
     created, carried = turn(GainImprovisedItem(item_name="a rusty key"))
@@ -81,13 +83,11 @@ def test_inventory_effects_gate_on_position_and_carrying() -> None:
     assert carried.data["entity_id"] == created.data["entity_id"]
 
     with pytest.raises(ValueError, match="not loose at the player's location"):
-        _ = turn(TakeItem(item_id=VAULT_MAP))
+        _ = turn(MoveItem(item_id=VAULT_MAP))
     with pytest.raises(ValueError, match="does not carry"):
-        _ = turn(DropItem(item_id=VAULT_MAP))
-    with pytest.raises(ValueError, match="already holds the item"):
-        _ = turn(GiveItem(item_id=LANTERN, actor_id=PLAYER_ID))
+        _ = turn(MoveItem(item_id=VAULT_MAP, to_id=STUDY))
     with pytest.raises(ValueError, match="not here with the player"):
-        _ = turn(GiveItem(item_id=LANTERN, actor_id=TOMAS))
+        _ = turn(MoveItem(item_id=LANTERN, to_id=TOMAS))
 
 
 def test_counter_effects_clamp_what_lands_and_spending_refuses_an_empty_pool() -> None:
@@ -112,7 +112,7 @@ def test_sheet_effects_round_trip_and_refuse_what_the_sheet_does_not_hold() -> N
     turn = Applied()
     sheet = sheet_of(turn.draft, PLAYER_ID)
 
-    (tagged,) = turn(AddTag(entity_id=PLAYER_ID, tag_id="hunted", name="Hunted", text="watched"))
+    (tagged,) = turn(AddTag(entity_id=PLAYER_ID, tag_id="hunted", text="watched"))
     assert tagged.data["tag_id"] == "hunted"
     assert sheet.tag("hunted") is not None
     assert turn.kinds(RemoveTag(entity_id=PLAYER_ID, tag_id="hunted")) == ["tag_removed"]
@@ -131,7 +131,7 @@ def test_sheet_effects_round_trip_and_refuse_what_the_sheet_does_not_hold() -> N
     with pytest.raises(ValueError, match="has no number"):
         _ = turn(SetNumber(entity_id=PLAYER_ID, key="mana", value=1))
     with pytest.raises(ValueError, match="already carries the tag"):
-        _ = turn(AddTag(entity_id=PLAYER_ID, tag_id="relic-hunter", name="Relic Hunter"))
+        _ = turn(AddTag(entity_id=PLAYER_ID, tag_id="relic-hunter"))
 
 
 def test_acting_on_an_unrevealed_actor_reveals_it_before_its_sheet_changes() -> None:

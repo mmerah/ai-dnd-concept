@@ -1,5 +1,5 @@
 from collections.abc import Callable, Mapping
-from typing import Annotated, Literal
+from typing import Annotated, Literal, get_args
 
 from pydantic import Field, JsonValue
 
@@ -30,32 +30,25 @@ class MoveActor(Frozen):
     reveals it."""
 
     op: Literal["move-actor"] = "move-actor"
-    location_id: EntityId = Field(description="Exact id of the location the actor enters.")
-    actor_id: EntityId | None = Field(
+    entity_id: EntityId | None = Field(
         default=None, description="Exact id of the actor to move; null moves the player."
     )
+    location_id: EntityId = Field(description="Exact id of the location the actor enters.")
 
 
-class TakeItem(Frozen):
-    """The player picks up a loose canon item lying at their own location."""
+class MoveItem(Frozen):
+    """Move one item within the player's reach: pick it up, set it down here, or hand it to an
+    actor here."""
 
-    op: Literal["take-item"] = "take-item"
-    item_id: EntityId = Field(description="Exact id of a loose item at the player's location.")
-
-
-class DropItem(Frozen):
-    """The player leaves a carried item behind at their location."""
-
-    op: Literal["drop-item"] = "drop-item"
-    item_id: EntityId = Field(description="Exact id of an item the player carries.")
-
-
-class GiveItem(Frozen):
-    """The player hands a carried item to another actor who is here."""
-
-    op: Literal["give-item"] = "give-item"
-    item_id: EntityId = Field(description="Exact id of an item the player carries.")
-    actor_id: EntityId = Field(description="Exact id of the receiving actor, here with the player.")
+    op: Literal["move-item"] = "move-item"
+    item_id: EntityId = Field(
+        description="Exact id of the item: one the player carries, or one loose at their location."
+    )
+    to_id: EntityId | None = Field(
+        default=None,
+        description="Exact id of the receiver: an actor here with the player, or the player's own "
+        "location to set the item down. Null hands the item to the player.",
+    )
 
 
 class GainImprovisedItem(Frozen):
@@ -88,12 +81,12 @@ class SpendCounter(Frozen):
 
 
 class AddTag(Frozen):
-    """Put a lasting condition, edge, or burden on an entity."""
+    """Put a lasting condition, edge, or burden on an entity. The sheet shows the id written
+    out: `battle-worn` appears as Battle Worn."""
 
     op: Literal["add-tag"] = "add-tag"
     entity_id: TargetId
     tag_id: Slug = Field(description="Stable slug for the tag, such as `poisoned`.")
-    name: str = Field(min_length=1, description="Short name shown on the sheet.")
     text: str = Field(
         default="", description="The constraint or benefit it puts on the entity, in prose."
     )
@@ -130,9 +123,7 @@ class SetNumber(Frozen):
 type Effect = Annotated[
     Reveal
     | MoveActor
-    | TakeItem
-    | DropItem
-    | GiveItem
+    | MoveItem
     | GainImprovisedItem
     | AdjustCounter
     | SpendCounter
@@ -142,6 +133,11 @@ type Effect = Annotated[
     | SetNumber,
     Field(discriminator="op"),
 ]
+
+
+def effect_ops() -> frozenset[str]:
+    union, _ = get_args(Effect.__value__)
+    return frozenset(member.model_fields["op"].default for member in get_args(union))
 
 
 def apply_effect[R: EngineRules](
@@ -154,21 +150,8 @@ def apply_effect[R: EngineRules](
             return draft.reveal(_require(draft, entity_id))
         case MoveActor():
             return _move_actor(draft, effect)
-        case TakeItem(item_id=item_id):
-            item = _require_kind(draft, item_id, "item")
-            if item.parent_id != draft.player_location:
-                raise ValueError(f"item {item_id!r} is not loose at the player's location")
-            return [*draft.reveal(item), draft.move(item, draft.player)]
-        case DropItem(item_id=item_id):
-            here = draft.world.require(draft.player_location)
-            item = _require_carried(draft, item_id)
-            return [*draft.reveal(item), draft.move(item, here)]
-        case GiveItem(item_id=item_id, actor_id=actor_id):
-            if actor_id == PLAYER_ID:
-                raise ValueError("give-item names another actor: the player already holds the item")
-            actor = require_actor_here(draft, actor_id)
-            item = _require_carried(draft, item_id)
-            return [*draft.reveal(item), draft.move(item, actor)]
+        case MoveItem():
+            return _move_item(draft, effect)
         case GainImprovisedItem(item_name=item_name):
             return _improvise(draft, item_name, default_rules)
         case AdjustCounter():
@@ -254,7 +237,7 @@ def _target[R: EngineRules](
 def _move_actor[R: EngineRules](draft: GameState[R], effect: MoveActor) -> list[Fact]:
     destination = _require_kind(draft, effect.location_id, "location")
     here = draft.player_location
-    actor_id = effect.actor_id
+    actor_id = effect.entity_id
     if actor_id is None or actor_id == PLAYER_ID:
         return [*draft.reveal(destination), draft.move(draft.player, destination)]
     actor = _require_kind(draft, actor_id, "actor")
@@ -262,6 +245,25 @@ def _move_actor[R: EngineRules](draft: GameState[R], effect: MoveActor) -> list[
         raise ValueError(f"movement of actor {actor_id!r} would not be witnessed")
     revealed = draft.reveal(actor) if destination.id == here else []
     return [*revealed, draft.move(actor, destination)]
+
+
+def _move_item[R: EngineRules](draft: GameState[R], effect: MoveItem) -> list[Fact]:
+    to_id = effect.to_id
+    if to_id is None or to_id == PLAYER_ID:
+        item = _require_kind(draft, effect.item_id, "item")
+        if item.parent_id == PLAYER_ID:
+            raise ValueError(f"the player already carries item {effect.item_id!r}")
+        if item.parent_id != draft.player_location:
+            raise ValueError(f"item {effect.item_id!r} is not loose at the player's location")
+        return [*draft.reveal(item), draft.move(item, draft.player)]
+    receiver = _require(draft, to_id)
+    if receiver.kind == "location":
+        if receiver.id != draft.player_location:
+            raise ValueError("an item is set down at the player's own location, nowhere else")
+    else:
+        receiver = require_actor_here(draft, to_id)
+    item = _require_carried(draft, effect.item_id)
+    return [*draft.reveal(item), draft.move(item, receiver)]
 
 
 def _improvise[R: EngineRules](
@@ -307,8 +309,9 @@ def _add_tag[R: EngineRules](draft: GameState[R], effect: AddTag) -> list[Fact]:
     entity, sheet, seen = _target(draft, effect.entity_id)
     if sheet.tag(effect.tag_id) is not None:
         raise ValueError(f"{entity.name} already carries the tag {effect.tag_id!r}")
-    sheet.tags.append(SheetTag(id=effect.tag_id, name=effect.name, text=effect.text))
-    trace = f"{entity.name} is {effect.name}"
+    name = effect.tag_id.replace("-", " ").title()
+    sheet.tags.append(SheetTag(id=effect.tag_id, name=name, text=effect.text))
+    trace = f"{entity.name} is {name}"
     return [*seen, entity_fact(entity, "tag_added", trace, {"tag_id": effect.tag_id})]
 
 

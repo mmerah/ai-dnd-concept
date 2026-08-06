@@ -176,3 +176,32 @@ interpretation on completed turns is the highest measured on this pipeline.
 
 The `NativeOutput` roles stay: a live maintainer probe returned both growth requests 3/3 — the
 suppression is specific to the Director's 21-`$defs` schema, not to native output as such.
+
+---
+
+# Simplification batch — one naming convention, fewer ops, core effect examples
+
+date: 2026-08-06   model: openai/gpt-oss-120b   retries: 3   Groq excluded via OpenRouter
+Same harness and 207-turn budget (three suites: 90% / 94% / 94%).
+
+What changed: every action names its actor `actor_id` and every effect its target `entity_id`;
+`take-item`/`drop-item`/`give-item` merged into `move-item` (12 → 10 ops); `AddTag` lost `name`
+(derived from the slug); `Rest.label` became a `Literal`; and a core `examples.json` now shows
+every effect op once in every engine's director instructions, with a load-time check that the
+file and the union agree. Save version 28.
+
+| metric | pooled (n=207) | Phase 8 ToolOutput suite | Phase 6 pooled |
+|---|---|---|---|
+| overall | 93% | 86% | 86% |
+| completion | 100% | 88% | 100% |
+| mean duration/turn (s) | 2.5 | 3.1 | 8.9 |
+
+Tags pooled: checks 94%, combat 96%, spells 98%, rest 89%, story 89%, conditions 72%. The
+Phase 8 completion deaths were provider routing; with Groq excluded none recurred.
+
+Two residuals. `conditions` (72%) keeps its two lifetime signatures — `poisoned` not removed
+3/9, the `prone` rider not added 2/9 — now sampling variance on one branch write, not the old
+structural zero. New and attributable: the no-op cases regressed (`story-no-risk-needed` 67% in
+every suite, `no-mechanics-turn` once) — the cookbook invites writing an effect on uneventful
+turns. Countered in the same commit by one header sentence: an empty `effects` with no branches
+is a normal plan. Unmeasured at commit time; check it in the next full run.

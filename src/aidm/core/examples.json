@@ -1,0 +1,56 @@
+[
+  {
+    "op": "reveal",
+    "entity_id": "hidden-cellar"
+  },
+  {
+    "op": "move-actor",
+    "entity_id": "pale-hound",
+    "location_id": "courtyard"
+  },
+  {
+    "op": "move-item",
+    "item_id": "iron-key",
+    "to_id": "warden"
+  },
+  {
+    "op": "gain-improvised-item",
+    "item_name": "a handful of gravel"
+  },
+  {
+    "op": "adjust-counter",
+    "entity_id": "warden",
+    "counter": "hp",
+    "delta": -3,
+    "reason": "clawed"
+  },
+  {
+    "op": "spend-counter",
+    "entity_id": "player",
+    "counter": "rations",
+    "amount": 1
+  },
+  {
+    "op": "add-tag",
+    "entity_id": "warden",
+    "tag_id": "shaken",
+    "text": "(condition) Rattled and wary until they regroup."
+  },
+  {
+    "op": "remove-tag",
+    "entity_id": "player",
+    "tag_id": "poisoned"
+  },
+  {
+    "op": "set-note",
+    "entity_id": "player",
+    "key": "concentration",
+    "text": "concentrating on the ward"
+  },
+  {
+    "op": "set-number",
+    "entity_id": "player",
+    "key": "armor-class",
+    "value": 16
+  }
+]

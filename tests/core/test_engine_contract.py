@@ -2,7 +2,7 @@ from core_test_support import initialized, settings
 from story_test_support import story_game
 
 from aidm.core.base import PLAYER_ID, Entity, EntityId
-from aidm.core.effects import AdjustCounter, TakeItem, apply_effect
+from aidm.core.effects import AdjustCounter, MoveItem, apply_effect
 from aidm.core.engine import Engine
 from aidm.core.facts import Fact
 from aidm.core.registry import build_engine, engine_ids, plugins
@@ -15,7 +15,7 @@ def _turn(
 ) -> tuple[GameState[Sheet], tuple[Fact, ...]]:
     draft = state.draft()
     facts = [
-        *apply_effect(draft, TakeItem(item_id=EntityId("vault_map")), engine.default_rules),
+        *apply_effect(draft, MoveItem(item_id=EntityId("vault_map")), engine.default_rules),
         *apply_effect(
             draft,
             AdjustCounter(

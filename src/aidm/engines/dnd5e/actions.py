@@ -23,7 +23,7 @@ class Attack(Frozen):
     """One attack with a carried weapon, or one attack line off the attacker's own stat block."""
 
     act: Literal["attack"] = "attack"
-    attacker_id: EntityId = Field(description="Exact id of the attacker, here with the player.")
+    actor_id: EntityId = Field(description="Exact id of the attacker, here with the player.")
     target_id: EntityId = Field(description="Exact id of what is attacked, here with the player.")
     weapon_item_id: EntityId | None = Field(
         default=None,
@@ -50,7 +50,7 @@ class CastSpell(Frozen):
     """One spell, resolved from its record: the engine spends the slot before anything follows."""
 
     act: Literal["cast-spell"] = "cast-spell"
-    caster_id: EntityId = Field(description="Exact id of the caster, here with the player.")
+    actor_id: EntityId = Field(description="Exact id of the caster, here with the player.")
     spell: str = Field(
         min_length=1,
         description="The spell's content ref, written `pack/collection/index` exactly as rendered.",
@@ -106,7 +106,7 @@ class Rest(Frozen):
 
     act: Literal["rest"] = "rest"
     actor_id: EntityId = Field(description="Exact id of the resting actor, here with the player.")
-    label: Slug = Field(description="Which rest was taken: `short-rest` or `long-rest`.")
+    label: Literal["short-rest", "long-rest"] = Field(description="Which rest was taken.")
 
 
 class Improvise(Frozen):

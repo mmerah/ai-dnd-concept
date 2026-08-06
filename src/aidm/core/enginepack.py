@@ -11,6 +11,7 @@ from pydantic_ai.toolsets import FunctionToolset
 
 from .base import EngineId, Entity, Kind, Slug
 from .content import AuthoredEntity, AuthoredWorld, Rules, compose_world
+from .effects import Effect, effect_ops
 from .engine import AdvancementOffer, Engine, ProposalSpec
 from .facts import Fact
 from .packs import (
@@ -102,7 +103,9 @@ def load_engine(
             check=check,
         ),
         toolsets={"director": _director_toolset(content)},
-        director_instructions=_text(engine_dir / "director.md") + _examples(engine_dir, plan_type),
+        director_instructions=_text(engine_dir / "director.md")
+        + _effect_vocabulary()
+        + _examples(engine_dir, plan_type),
         entity_state=entity_state,
         plan_type=plan_type,
         check_plan=lambda state, plan: check_plan(parts, state, plan),
@@ -120,6 +123,26 @@ def _examples(engine_dir: Path, plan_type: type[TurnPlanBase]) -> str:
         return ""
     header = "## Worked plans\n\nOne plan per action; a field left out sits at its default."
     return "\n\n" + "\n\n".join([header, *blocks])
+
+
+def _effect_vocabulary() -> str:
+    entries = TypeAdapter(list[JsonValue]).validate_json(
+        _text(Path(__file__).parent / "examples.json")
+    )
+    checked = TypeAdapter(list[Effect]).validate_python(entries)
+    if (
+        len(checked) != len(effect_ops())
+        or frozenset(entry.op for entry in checked) != effect_ops()
+    ):
+        raise ValueError("core examples.json must show every effect op exactly once")
+    lines = "\n".join(json.dumps(entry) for entry in entries)
+    header = (
+        "## Effects\n\nEvery effect, one example each. Ids, keys, and tags here are "
+        "illustrative: use the exact ids the scene shows and the counter keys on that "
+        "entity's own sheet. Most turns need few or no effects: an empty `effects` with "
+        "no branches is a normal plan."
+    )
+    return f"\n\n{header}\n\n```json\n{lines}\n```"
 
 
 def _director_toolset(content: Content) -> FunctionToolset[object]:
