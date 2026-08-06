@@ -11,16 +11,16 @@ from .content import AuthoredWorld, Rules
 from .facts import Fact
 from .packs import ContentRef
 from .plan import TurnPlanBase
-from .sheet import AddRef, Sheet, SheetDelta, apply_delta, player_sheet
-from .world import EngineRules, GameState, WorldState
+from .sheet import AddRef, Sheet, SheetDelta, apply_delta
+from .world import GameState, WorldState, player_sheet
 
 NOTHING_MECHANICAL = "- (nothing mechanical happened)"
 
 type EntityRenderer = Callable[[Entity], str]
-type PlanCheck[R: EngineRules] = Callable[[GameState[R], TurnPlanBase], str | None]
+type PlanCheck = Callable[[GameState, TurnPlanBase], str | None]
 """Judges the untouched committed state and returns the refusal. It must not raise: an output
 validator turns an exception into a dead turn instead of a retry."""
-type ActionResolver[R: EngineRules] = Callable[[GameState[R], TurnPlanBase, Random], list[Fact]]
+type ActionResolver = Callable[[GameState, TurnPlanBase, Random], list[Fact]]
 """Mutates the draft: the action's rolls, its intrinsic consequences, and the branch taken."""
 
 
@@ -41,16 +41,14 @@ class AdvancementOffer(Frozen):
 
 
 @dataclass(frozen=True, slots=True)
-class ProposalSpec[R: EngineRules]:
+class ProposalSpec:
     """How one engine offers advancement and judges what the advisor proposes for it."""
 
-    offered: Callable[[GameState[R]], AdvancementOffer | None]
+    offered: Callable[[GameState], AdvancementOffer | None]
     instructions: str
-    check: Callable[[GameState[R], AdvancementOffer, SheetDelta], str | None]
+    check: Callable[[GameState, AdvancementOffer, SheetDelta], str | None]
 
-    def violation(
-        self, state: GameState[R], offer: AdvancementOffer, delta: SheetDelta
-    ) -> str | None:
+    def violation(self, state: GameState, offer: AdvancementOffer, delta: SheetDelta) -> str | None:
         """One legality rule for the advisor's retry and for the commit, so neither can drift:
         the picks are on offer, the delta leaves a valid sheet, and the engine's caps hold."""
         picked = [change.ref for change in delta.changes if isinstance(change, AddRef)]
@@ -73,19 +71,18 @@ class ProposalSpec[R: EngineRules]:
 
 
 @dataclass(frozen=True, slots=True)
-class Engine[R: EngineRules]:
+class Engine:
     id: EngineId
-    state_type: type[GameState[R]]
-    initial_world: Callable[[AuthoredWorld, Rules], WorldState[R]]
-    validate_state: Callable[[GameState[R]], None]
-    default_rules: Callable[[Entity], R]
-    proposal: ProposalSpec[R]
+    initial_world: Callable[[AuthoredWorld, Rules], WorldState]
+    validate_state: Callable[[GameState], None]
+    default_rules: Callable[[Entity], Sheet]
+    proposal: ProposalSpec
     toolsets: Mapping[str, AbstractToolset[object]]
     director_instructions: str
-    entity_state: Callable[[Entity, R], str]
+    entity_state: Callable[[Entity, Sheet], str]
     plan_type: type[TurnPlanBase]
-    check_plan: PlanCheck[R]
-    resolve_action: ActionResolver[R]
+    check_plan: PlanCheck
+    resolve_action: ActionResolver
 
 
 def narrator_evidence(facts: Sequence[Fact]) -> str:
@@ -93,5 +90,5 @@ def narrator_evidence(facts: Sequence[Fact]) -> str:
     return "\n".join(lines) or NOTHING_MECHANICAL
 
 
-def entity_renderer[R: EngineRules](engine: Engine[R], state: GameState[R]) -> EntityRenderer:
+def entity_renderer(engine: Engine, state: GameState) -> EntityRenderer:
     return lambda entity: engine.entity_state(entity, state.world.record(entity.id).rules)

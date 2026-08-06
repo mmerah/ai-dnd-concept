@@ -8,9 +8,10 @@ from story_test_support import grown, story_game, story_session
 
 from aidm.core.engine import AdvancementOffer
 from aidm.core.packs import ContentRef
-from aidm.core.sheet import AddRef, ChangeCounter, SetNumber, SheetDelta, player_sheet
+from aidm.core.sheet import AddRef, ChangeCounter, SetNumber, SheetDelta
 from aidm.core.store import FileSaves, FileTraces
 from aidm.core.turn import Advance
+from aidm.core.world import player_sheet
 
 SPEND = ChangeCounter(why="the three marks are spent", key="growth", delta=-3)
 LEGAL = SheetDelta(changes=(SetNumber(why="hard-won patience", key="clever", value=2), SPEND))
@@ -53,7 +54,7 @@ def test_confirming_commits_exactly_the_proposed_delta(tmp_path: Path) -> None:
     ]
     assert game.entries == [Advance(facts=facts)]
     assert FileTraces(tmp_path).load("poc") == (Advance(facts=facts),)
-    assert FileSaves(tmp_path).load("poc", game.engine.state_type) == game.state
+    assert FileSaves(tmp_path).load("poc") == game.state
     assert game.offer() is None
 
 
@@ -92,4 +93,4 @@ def test_a_refused_proposal_leaves_the_committed_state_untouched(tmp_path: Path)
 
     assert game.state.model_dump_json() == before
     assert game.entries == []
-    assert FileSaves(tmp_path).load("poc", game.engine.state_type) is None
+    assert FileSaves(tmp_path).load("poc") is None

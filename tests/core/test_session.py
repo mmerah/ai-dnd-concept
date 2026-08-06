@@ -22,7 +22,7 @@ def test_opening_does_not_save_and_restart_discards_durable_state(tmp_path: Path
     game.restart()
     assert game.state.turn == 0
     assert game.entries == []
-    assert saves.load("poc", game.engine.state_type) is None
+    assert saves.load("poc") is None
     assert traces.load("poc") == ()
 
 

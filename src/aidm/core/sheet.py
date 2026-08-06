@@ -4,10 +4,9 @@ from typing import Annotated, Literal, Self
 
 from pydantic import Field, model_validator
 
-from .base import PLAYER_ID, Entity, EntityId, Frozen, Kind, Mutable, Slug
+from .base import Entity, Frozen, Kind, Mutable, Slug
 from .facts import CORE, Fact
 from .packs import EMPTY_FROZEN_MAP, ContentRef, FrozenMap, LenientRecord, Value
-from .world import EngineRules, GameState, rules_of
 
 type ResolveRef = Callable[[ContentRef], LenientRecord | None]
 
@@ -66,7 +65,8 @@ class SheetTemplate(Value):
     counters: FrozenMap[Slug, CounterTemplate] = EMPTY_FROZEN_MAP
 
 
-class Sheet(EngineRules):
+class Sheet(Mutable):
+    kind: Kind
     numbers: dict[Slug, int] = Field(default_factory=dict)
     counters: dict[Slug, Counter] = Field(default_factory=dict)
     tags: list[SheetTag] = Field(default_factory=list)
@@ -118,14 +118,6 @@ class SheetDefinition(Value):
             notes=dict(self.notes),
             refs=self.refs,
         )
-
-
-def sheet_of[R: EngineRules](state: GameState[R], entity_id: EntityId) -> Sheet:
-    return rules_of(state.world.record(entity_id), Sheet)
-
-
-def player_sheet[R: EngineRules](state: GameState[R]) -> Sheet:
-    return sheet_of(state, PLAYER_ID)
 
 
 class DeltaItem(Frozen):

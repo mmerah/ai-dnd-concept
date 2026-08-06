@@ -5,8 +5,8 @@ from pydantic import Field, JsonValue
 
 from .base import PLAYER_ID, Entity, EntityId, Frozen, Kind, Slug, slug
 from .facts import CORE, Fact
-from .sheet import Counter, Sheet, SheetTag, pool, sheet_of
-from .world import EngineRules, GameState
+from .sheet import Counter, Sheet, SheetTag, pool
+from .world import GameState, sheet_of
 
 TargetId = Annotated[
     EntityId,
@@ -140,8 +140,8 @@ def effect_ops() -> frozenset[str]:
     return frozenset(member.model_fields["op"].default for member in get_args(union))
 
 
-def apply_effect[R: EngineRules](
-    draft: GameState[R], effect: Effect, default_rules: Callable[[Entity], R]
+def apply_effect(
+    draft: GameState, effect: Effect, default_rules: Callable[[Entity], Sheet]
 ) -> list[Fact]:
     """Mutates the draft, raising `ValueError` with a model-readable reason on a refused
     precondition. There is no separate check: a plan is validated by trial-applying it."""
@@ -168,7 +168,7 @@ def apply_effect[R: EngineRules](
             return _set_number(draft, effect)
 
 
-def require_actor_here[R: EngineRules](state: GameState[R], actor_id: EntityId | None) -> Entity:
+def require_actor_here(state: GameState, actor_id: EntityId | None) -> Entity:
     if actor_id is None or actor_id == PLAYER_ID:
         return state.player
     actor = _require_kind(state, actor_id, "actor")
@@ -180,14 +180,14 @@ def require_actor_here[R: EngineRules](state: GameState[R], actor_id: EntityId |
     return actor
 
 
-def _require[R: EngineRules](state: GameState[R], entity_id: EntityId) -> Entity:
+def _require(state: GameState, entity_id: EntityId) -> Entity:
     entity = state.world.find(entity_id)
     if entity is None:
         raise ValueError(f"unknown entity id {entity_id!r}. Use only ids you were shown.")
     return entity
 
 
-def _require_kind[R: EngineRules](state: GameState[R], entity_id: EntityId, kind: Kind) -> Entity:
+def _require_kind(state: GameState, entity_id: EntityId, kind: Kind) -> Entity:
     entity = _require(state, entity_id)
     if entity.kind != kind:
         raise ValueError(
@@ -197,7 +197,7 @@ def _require_kind[R: EngineRules](state: GameState[R], entity_id: EntityId, kind
     return entity
 
 
-def _require_carried[R: EngineRules](state: GameState[R], item_id: EntityId) -> Entity:
+def _require_carried(state: GameState, item_id: EntityId) -> Entity:
     item = _require_kind(state, item_id, "item")
     if item.parent_id != PLAYER_ID:
         raise ValueError(f"the player does not carry item {item_id!r}")
@@ -225,16 +225,14 @@ def entity_fact(
     )
 
 
-def _target[R: EngineRules](
-    draft: GameState[R], entity_id: EntityId
-) -> tuple[Entity, Sheet, list[Fact]]:
+def _target(draft: GameState, entity_id: EntityId) -> tuple[Entity, Sheet, list[Fact]]:
     """A place or a thing is not revealed by being acted on, so no unlearned name leaks."""
     entity = _require(draft, entity_id)
     seen = draft.reveal(require_actor_here(draft, entity_id)) if entity.kind == "actor" else []
     return entity, sheet_of(draft, entity_id), seen
 
 
-def _move_actor[R: EngineRules](draft: GameState[R], effect: MoveActor) -> list[Fact]:
+def _move_actor(draft: GameState, effect: MoveActor) -> list[Fact]:
     destination = _require_kind(draft, effect.location_id, "location")
     here = draft.player_location
     actor_id = effect.entity_id
@@ -247,7 +245,7 @@ def _move_actor[R: EngineRules](draft: GameState[R], effect: MoveActor) -> list[
     return [*revealed, draft.move(actor, destination)]
 
 
-def _move_item[R: EngineRules](draft: GameState[R], effect: MoveItem) -> list[Fact]:
+def _move_item(draft: GameState, effect: MoveItem) -> list[Fact]:
     to_id = effect.to_id
     if to_id is None or to_id == PLAYER_ID:
         item = _require_kind(draft, effect.item_id, "item")
@@ -266,8 +264,8 @@ def _move_item[R: EngineRules](draft: GameState[R], effect: MoveItem) -> list[Fa
     return [*draft.reveal(item), draft.move(item, receiver)]
 
 
-def _improvise[R: EngineRules](
-    draft: GameState[R], item_name: str, default_rules: Callable[[Entity], R]
+def _improvise(
+    draft: GameState, item_name: str, default_rules: Callable[[Entity], Sheet]
 ) -> list[Fact]:
     item = Entity(
         id=slug(item_name, draft.world.all_ids()),
@@ -281,7 +279,7 @@ def _improvise[R: EngineRules](
     return [created, draft.move(item, draft.player)]
 
 
-def _adjust[R: EngineRules](draft: GameState[R], effect: AdjustCounter) -> list[Fact]:
+def _adjust(draft: GameState, effect: AdjustCounter) -> list[Fact]:
     entity, sheet, seen = _target(draft, effect.entity_id)
     held = _counter_of(sheet, entity, effect.counter)
     before = held.current
@@ -292,7 +290,7 @@ def _adjust[R: EngineRules](draft: GameState[R], effect: AdjustCounter) -> list[
     return [*seen, _changed(entity, effect.counter, held, landed, effect.reason)]
 
 
-def _spend[R: EngineRules](draft: GameState[R], effect: SpendCounter) -> list[Fact]:
+def _spend(draft: GameState, effect: SpendCounter) -> list[Fact]:
     entity, sheet, seen = _target(draft, effect.entity_id)
     held = _counter_of(sheet, entity, effect.counter)
     if held.current - effect.amount < held.minimum:
@@ -305,7 +303,7 @@ def _spend[R: EngineRules](draft: GameState[R], effect: SpendCounter) -> list[Fa
     return [*seen, _changed(entity, effect.counter, held, -effect.amount, spent)]
 
 
-def _add_tag[R: EngineRules](draft: GameState[R], effect: AddTag) -> list[Fact]:
+def _add_tag(draft: GameState, effect: AddTag) -> list[Fact]:
     entity, sheet, seen = _target(draft, effect.entity_id)
     if sheet.tag(effect.tag_id) is not None:
         raise ValueError(f"{entity.name} already carries the tag {effect.tag_id!r}")
@@ -315,7 +313,7 @@ def _add_tag[R: EngineRules](draft: GameState[R], effect: AddTag) -> list[Fact]:
     return [*seen, entity_fact(entity, "tag_added", trace, {"tag_id": effect.tag_id})]
 
 
-def _remove_tag[R: EngineRules](draft: GameState[R], effect: RemoveTag) -> list[Fact]:
+def _remove_tag(draft: GameState, effect: RemoveTag) -> list[Fact]:
     entity, sheet, seen = _target(draft, effect.entity_id)
     tag = sheet.tag(effect.tag_id)
     if tag is None:
@@ -326,7 +324,7 @@ def _remove_tag[R: EngineRules](draft: GameState[R], effect: RemoveTag) -> list[
     return [*seen, entity_fact(entity, "tag_removed", trace, {"tag_id": effect.tag_id})]
 
 
-def _set_note[R: EngineRules](draft: GameState[R], effect: SetNote) -> list[Fact]:
+def _set_note(draft: GameState, effect: SetNote) -> list[Fact]:
     entity, sheet, seen = _target(draft, effect.entity_id)
     if not effect.text:
         if sheet.notes.pop(effect.key, None) is None:
@@ -339,7 +337,7 @@ def _set_note[R: EngineRules](draft: GameState[R], effect: SetNote) -> list[Fact
     return [*seen, entity_fact(entity, "note_set", trace, data, narrate=False)]
 
 
-def _set_number[R: EngineRules](draft: GameState[R], effect: SetNumber) -> list[Fact]:
+def _set_number(draft: GameState, effect: SetNumber) -> list[Fact]:
     entity, sheet, seen = _target(draft, effect.entity_id)
     if effect.key not in sheet.numbers:
         held = ", ".join(sorted(sheet.numbers)) or "(none)"

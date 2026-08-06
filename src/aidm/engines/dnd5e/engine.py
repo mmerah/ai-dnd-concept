@@ -6,7 +6,6 @@ from aidm.core.engine import Engine
 from aidm.core.enginepack import load_engine
 from aidm.core.packs import Value
 from aidm.core.registry import EnginePlugin
-from aidm.core.sheet import Sheet
 
 from .actions import Dnd5ePlan
 from .advance import check, offered
@@ -20,7 +19,7 @@ class Dnd5eConfig(Value):
     pack_paths: tuple[Path, ...] | None = None
 
 
-def build_dnd5e_engine(pack_paths: Sequence[Path] | None = None) -> Engine[Sheet]:
+def build_dnd5e_engine(pack_paths: Sequence[Path] | None = None) -> Engine:
     return load_engine(
         ENGINE_DIR,
         ENGINE_ID,
@@ -33,7 +32,7 @@ def build_dnd5e_engine(pack_paths: Sequence[Path] | None = None) -> Engine[Sheet
     )
 
 
-def _build(config: Settings) -> Engine[Sheet]:
+def _build(config: Settings) -> Engine:
     section = Dnd5eConfig.model_validate(config.engines.get(ENGINE_ID, {}))
     return build_dnd5e_engine(section.pack_paths)
 

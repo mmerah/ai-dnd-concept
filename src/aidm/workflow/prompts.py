@@ -4,7 +4,7 @@ from collections.abc import Callable, Iterable, Mapping, Sequence
 from ..core.base import PLAYER_ID, Entity, EntityId, Frozen, Kind
 from ..core.engine import EntityRenderer
 from ..core.turn import GrowthRequest
-from ..core.world import EngineRules, Exchange, GameState, ScenarioMeta
+from ..core.world import Exchange, GameState, ScenarioMeta
 
 type Placement = Callable[[Entity], str]
 type Label = Callable[[Entity], str]
@@ -27,7 +27,7 @@ class SceneSnapshot(BaseScene):
     canon: tuple[Entity, ...]
 
     @classmethod
-    def of[R: EngineRules](cls, state: GameState[R]) -> "SceneSnapshot":
+    def of(cls, state: GameState) -> "SceneSnapshot":
         world = state.world
         player = state.player
         location = world.require_kind(state.player_location, "location")

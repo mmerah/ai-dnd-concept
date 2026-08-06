@@ -9,9 +9,10 @@ from pydantic_ai.models.function import AgentInfo
 from aidm.core.base import SAVE_VERSION, EngineId, Entity
 from aidm.core.config import ProviderConfig, Providers, Settings
 from aidm.core.content import Character, Scenario, authored_world
-from aidm.core.registry import AnyEngine, build_engine
+from aidm.core.engine import Engine
+from aidm.core.registry import build_engine
 from aidm.core.store import load_character, load_scenario
-from aidm.core.world import EngineRules, GameState
+from aidm.core.world import GameState
 
 type Stub = Callable[[list[ModelMessage], AgentInfo], ModelResponse]
 
@@ -27,7 +28,7 @@ def updated[T: BaseModel](model: T, **changes: object) -> T:
     return type(model).model_validate(model.model_dump(round_trip=True) | changes)
 
 
-def with_entity[R: EngineRules](state: GameState[R], entity: Entity) -> GameState[R]:
+def with_entity(state: GameState, entity: Entity) -> GameState:
     """Replace one entity, keeping whatever payload its record already holds."""
     draft = state.draft()
     draft.world.record(entity.id).entity = entity
@@ -42,13 +43,13 @@ def character() -> Character:
     return load_character(CHARACTERS, "kael", STORY)
 
 
-def game(engine_id: EngineId) -> tuple[AnyEngine, GameState[EngineRules]]:
+def game(engine_id: EngineId) -> tuple[Engine, GameState]:
     """The shipped scenario and character, composed under one engine."""
     selected_scenario = load_scenario(SCENARIOS, "whispering-vault", engine_id)
     selected_character = load_character(CHARACTERS, "kael", engine_id)
     engine = build_engine(engine_id, settings())
     authored = authored_world(selected_scenario, selected_character)
-    state = engine.state_type(
+    state = GameState(
         save_version=SAVE_VERSION,
         scenario_id=selected_scenario.id,
         character_id=selected_character.id,
@@ -60,7 +61,7 @@ def game(engine_id: EngineId) -> tuple[AnyEngine, GameState[EngineRules]]:
     return engine, state
 
 
-def initialized() -> tuple[AnyEngine, GameState[EngineRules]]:
+def initialized() -> tuple[Engine, GameState]:
     return game(STORY)
 
 

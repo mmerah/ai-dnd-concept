@@ -5,7 +5,7 @@ from aidm.core.base import SAVE_VERSION, EngineId
 from aidm.core.content import authored_world
 from aidm.core.registry import build_engine, engine_ids
 from aidm.core.store import load_character, load_scenario
-from aidm.core.world import EngineRules, GameState
+from aidm.core.world import GameState
 
 
 @pytest.mark.parametrize("engine_id", engine_ids())
@@ -15,7 +15,7 @@ def test_shipped_content_composes_under_every_registered_engine(engine_id: Engin
     authored = authored_world(selected_scenario, selected_character)
     engine = build_engine(engine_id, settings())
 
-    state: GameState[EngineRules] = engine.state_type(
+    state = GameState(
         save_version=SAVE_VERSION,
         scenario_id=selected_scenario.id,
         character_id=selected_character.id,

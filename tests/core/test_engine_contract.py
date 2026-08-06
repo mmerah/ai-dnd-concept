@@ -6,13 +6,10 @@ from aidm.core.effects import AdjustCounter, MoveItem, apply_effect
 from aidm.core.engine import Engine
 from aidm.core.facts import Fact
 from aidm.core.registry import build_engine, engine_ids, plugins
-from aidm.core.sheet import Sheet, player_sheet
-from aidm.core.world import GameState, rules_of
+from aidm.core.world import GameState, player_sheet, sheet_of
 
 
-def _turn(
-    engine: Engine[Sheet], state: GameState[Sheet]
-) -> tuple[GameState[Sheet], tuple[Fact, ...]]:
+def _turn(engine: Engine, state: GameState) -> tuple[GameState, tuple[Fact, ...]]:
     draft = state.draft()
     facts = [
         *apply_effect(draft, MoveItem(item_id=EntityId("vault_map")), engine.default_rules),
@@ -34,7 +31,7 @@ def test_engine_initialization_and_state_contract() -> None:
     assert player_sheet(state).numbers["bold"] == 2
     engine.validate_state(state)
 
-    restored = engine.state_type.model_validate_json(state.model_dump_json())
+    restored = GameState.model_validate_json(state.model_dump_json())
     assert restored == state
 
 
@@ -86,8 +83,8 @@ def test_a_created_entity_gains_engine_state_in_the_same_commit() -> None:
     grown = working.committed()
 
     engine.validate_state(grown)
-    actor_sheet = rules_of(grown.world.record(actor.id), Sheet)
-    item_sheet = rules_of(grown.world.record(item.id), Sheet)
+    actor_sheet = sheet_of(grown, actor.id)
+    item_sheet = sheet_of(grown, item.id)
     assert "stress" in actor_sheet.counters
     assert set(actor_sheet.numbers) == {"bold", "subtle", "clever", "empathetic"}
     assert not item_sheet.numbers

@@ -1,19 +1,19 @@
 from pathlib import Path
 from random import Random
 
-from core_test_support import CHARACTERS, DND5E, SCENARIOS, settings
+from core_test_support import CHARACTERS, DND5E, SCENARIOS, game, settings
 
-from aidm.core.base import PLAYER_ID, SAVE_VERSION, Entity, EntityId
-from aidm.core.content import Character, Scenario, authored_world
+from aidm.core.base import PLAYER_ID, Entity, EntityId
+from aidm.core.content import Character, Scenario
 from aidm.core.engine import Engine
 from aidm.core.enginepack import EngineSpec
 from aidm.core.packs import ENCODING, ContentRef, PackFormat, lenient_format
 from aidm.core.registry import build_engine
-from aidm.core.sheet import Counter, Sheet, SheetDefinition, SheetTag, SheetTemplate, player_sheet
+from aidm.core.sheet import Counter, SheetDefinition, SheetTag, SheetTemplate
 from aidm.core.store import FileSaves, FileTraces, load_character, load_scenario
-from aidm.core.world import EngineRules, GameState, Record
+from aidm.core.world import GameState, Record, player_sheet
 from aidm.engines.dnd5e.advance import ADVANCEMENT_READY
-from aidm.engines.dnd5e.engine import ENGINE_DIR, build_dnd5e_engine
+from aidm.engines.dnd5e.engine import ENGINE_DIR
 from aidm.workflow.pipeline import TurnOptions, default_cast
 from aidm.workflow.proposals import advisor
 from aidm.workflow.session import GameSession, LaunchTarget
@@ -40,22 +40,8 @@ def pack_format() -> PackFormat:
     return lenient_format(spec.collections)
 
 
-def dnd5e_game() -> tuple[Engine[Sheet], GameState[Sheet]]:
-    engine = build_dnd5e_engine()
-    selected_scenario, selected_character = scenario(), character()
-    state = engine.state_type(
-        save_version=SAVE_VERSION,
-        scenario_id=selected_scenario.id,
-        character_id=selected_character.id,
-        scenario=selected_scenario.meta,
-        engine=engine.id,
-        world=engine.initial_world(
-            authored_world(selected_scenario, selected_character),
-            selected_character.overlay.character,
-        ),
-    )
-    engine.validate_state(state)
-    return engine, state
+def dnd5e_game() -> tuple[Engine, GameState]:
+    return game(DND5E)
 
 
 def dnd5e_session(directory: Path) -> GameSession:
@@ -75,14 +61,14 @@ def dnd5e_session(directory: Path) -> GameSession:
     )
 
 
-def ready[R: EngineRules](state: GameState[R]) -> GameState[R]:
+def ready(state: GameState) -> GameState:
     """The state the Director leaves when the story earns a level."""
     draft = state.draft()
     player_sheet(draft).tags.append(SheetTag(id=ADVANCEMENT_READY, name="Ready to advance"))
     return draft.committed()
 
 
-def armed(state: GameState[Sheet]) -> GameState[Sheet]:
+def armed(state: GameState) -> GameState:
     """Kael in the cloister with the rat, a longsword and a shortbow, and a fighter's scores:
     the shipped character carries neither weapon, and every 5e attack needs one."""
     draft = state.draft()
@@ -102,7 +88,7 @@ def armed(state: GameState[Sheet]) -> GameState[Sheet]:
     return draft.committed()
 
 
-def wizardly(state: GameState[Sheet]) -> GameState[Sheet]:
+def wizardly(state: GameState) -> GameState:
     """The same character as a wizard: the 5e spellcasting ability is read off the class record."""
     draft = state.draft()
     sheet = player_sheet(draft)

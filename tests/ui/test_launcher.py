@@ -7,11 +7,11 @@ from ui_test_support import SCENARIOS, ui_settings
 from aidm.core.base import EngineId
 from aidm.core.config import Settings
 from aidm.core.store import ENCODING, FileSaves
-from aidm.core.world import EngineRules, GameState
+from aidm.core.world import GameState
 from aidm.workflow.session import LauncherController, LaunchTarget, Runtime, load_catalog
 
 
-def _opening_state(config: Settings, engine: EngineId) -> GameState[EngineRules]:
+def _opening_state(config: Settings, engine: EngineId) -> GameState:
     """The launcher reads saves, so a test needs a state a real game would have written."""
     target = LaunchTarget(
         slug="poc",

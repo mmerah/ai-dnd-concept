@@ -32,10 +32,10 @@ from .plan import TurnPlanBase
 from .sheet import Sheet, SheetDefinition, SheetDelta, SheetTemplate, render_sheet
 from .world import GameState, WorldState
 
-type Offered = Callable[[GameState[Sheet], Content], AdvancementOffer | None]
-type Check = Callable[[GameState[Sheet], AdvancementOffer, SheetDelta], str | None]
-type PartsPlanCheck = Callable[[EngineParts, GameState[Sheet], TurnPlanBase], str | None]
-type PartsResolver = Callable[[EngineParts, GameState[Sheet], TurnPlanBase, Random], list[Fact]]
+type Offered = Callable[[GameState, Content], AdvancementOffer | None]
+type Check = Callable[[GameState, AdvancementOffer, SheetDelta], str | None]
+type PartsPlanCheck = Callable[[EngineParts, GameState, TurnPlanBase], str | None]
+type PartsResolver = Callable[[EngineParts, GameState, TurnPlanBase, Random], list[Fact]]
 
 
 class EngineSpec(Value):
@@ -65,7 +65,7 @@ def load_engine(
     plan_type: type[TurnPlanBase],
     check_plan: PartsPlanCheck,
     resolve_action: PartsResolver,
-) -> Engine[Sheet]:
+) -> Engine:
     spec = EngineSpec.model_validate_json(_text(engine_dir / "spec.json"))
     directories = _packs(engine_dir) if pack_paths is None else tuple(pack_paths)
     content = load(directories, lenient_format(spec.collections))
@@ -77,8 +77,8 @@ def load_engine(
     def entity_rules(authored: AuthoredEntity) -> Sheet:
         return sheet(authored.entity.kind, authored.rules)
 
-    def initial_world(authored: AuthoredWorld, character: Rules) -> WorldState[Sheet]:
-        return compose_world(WorldState[Sheet], authored, sheet("actor", character), entity_rules)
+    def initial_world(authored: AuthoredWorld, character: Rules) -> WorldState:
+        return compose_world(authored, sheet("actor", character), entity_rules)
 
     def default_rules(entity: Entity) -> Sheet:
         return SheetDefinition().runtime(entity.kind, spec.template(entity.kind))
@@ -93,7 +93,6 @@ def load_engine(
     parts = EngineParts(content=content, spec=spec, default_rules=default_rules)
     return Engine(
         id=engine_id,
-        state_type=GameState[Sheet],
         initial_world=initial_world,
         validate_state=lambda state: _validate(state, spec, content),
         default_rules=default_rules,
@@ -188,7 +187,7 @@ def _backing(refs: Sequence[ContentRef], content: Content) -> Mapping[Slug, int]
     return {k: v for record in records for k, v in record.numbers.items()}
 
 
-def _validate(state: GameState[Sheet], spec: EngineSpec, content: Content) -> None:
+def _validate(state: GameState, spec: EngineSpec, content: Content) -> None:
     for record in state.world.records.values():
         entity, sheet = record.entity, record.rules
         template = spec.template(entity.kind)

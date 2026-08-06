@@ -24,10 +24,10 @@ from pydantic_ai.messages import ModelMessage, ModelRequest, RetryPromptPart
 from aidm.core.base import SAVE_VERSION, EngineId, Frozen, Slug
 from aidm.core.config import Settings, load_settings
 from aidm.core.content import authored_world
-from aidm.core.engine import entity_renderer
-from aidm.core.registry import AnyEngine, build_engine
+from aidm.core.engine import Engine, entity_renderer
+from aidm.core.registry import build_engine
 from aidm.core.store import load_character, load_scenario
-from aidm.core.world import EngineRules, GameState
+from aidm.core.world import GameState
 from aidm.workflow.pipeline import PlanContext, TurnWorkspace, default_cast, resolve_step
 from aidm.workflow.prompts import SceneSnapshot, render_director
 
@@ -40,7 +40,7 @@ SEED = 1000
 FLAGS = ("--only", "--runs", "--concurrency")
 USAGE = "usage: run.py [--only <engine|tag|id>] [--runs N] [--concurrency N]"
 
-_ENGINES: dict[EngineId, AnyEngine] = {}
+_ENGINES: dict[EngineId, Engine] = {}
 
 
 class Options(Frozen):
@@ -118,10 +118,10 @@ def load_cases(directory: Path = SCENARIOS) -> tuple[EvalCase, ...]:
     return cases
 
 
-def initial_state(case: EvalCase, engine: AnyEngine, config: Settings) -> GameState[EngineRules]:
+def initial_state(case: EvalCase, engine: Engine, config: Settings) -> GameState:
     scenario = load_scenario(config.scenarios_dir, case.scenario, case.engine)
     character = load_character(_character_dir(case.character, config), case.character, case.engine)
-    state = engine.state_type(
+    state = GameState(
         save_version=SAVE_VERSION,
         scenario_id=scenario.id,
         character_id=character.id,
@@ -288,7 +288,7 @@ def _retry_reasons(messages: Sequence[ModelMessage]) -> tuple[str, ...]:
     )
 
 
-def _engine(engine_id: EngineId, config: Settings) -> AnyEngine:
+def _engine(engine_id: EngineId, config: Settings) -> Engine:
     """Memoised: building 5e compiles the whole content pack."""
     held = _ENGINES.get(engine_id)
     if held is None:

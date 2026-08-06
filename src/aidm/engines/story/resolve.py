@@ -8,8 +8,8 @@ from aidm.core.effects import AdjustCounter, apply_effect, require_actor_here
 from aidm.core.enginepack import EngineParts
 from aidm.core.facts import Fact
 from aidm.core.plan import TurnPlanBase, apply_branch, check_plan_base
-from aidm.core.sheet import Sheet, sheet_of
-from aidm.core.world import GameState
+from aidm.core.sheet import Sheet
+from aidm.core.world import GameState, sheet_of
 
 from .actions import OUTCOMES, Difficulty, Risk, StoryPlan
 
@@ -28,14 +28,14 @@ def _story_plan(plan: TurnPlanBase) -> StoryPlan:
     return plan
 
 
-def _helps(state: GameState[Sheet], actor: Entity, sheet: Sheet, tag_id: Slug) -> bool:
+def _helps(state: GameState, actor: Entity, sheet: Sheet, tag_id: Slug) -> bool:
     if sheet.tag(tag_id) is not None:
         return True
     carried = state.world.children(actor.id, "item")
     return any(sheet_of(state, item.id).tag(tag_id) is not None for item in carried)
 
 
-def _refused(state: GameState[Sheet], action: Risk) -> str | None:
+def _refused(state: GameState, action: Risk) -> str | None:
     try:
         actor = require_actor_here(state, action.actor_id)
     except ValueError as unreadable:
@@ -59,7 +59,7 @@ def _refused(state: GameState[Sheet], action: Risk) -> str | None:
     return None
 
 
-def check_plan(parts: EngineParts, state: GameState[Sheet], plan: TurnPlanBase) -> str | None:
+def check_plan(parts: EngineParts, state: GameState, plan: TurnPlanBase) -> str | None:
     story = _story_plan(plan)
     action = story.action
     if action is None:
@@ -68,7 +68,7 @@ def check_plan(parts: EngineParts, state: GameState[Sheet], plan: TurnPlanBase) 
 
 
 def resolve_action(
-    parts: EngineParts, draft: GameState[Sheet], plan: TurnPlanBase, rng: Random
+    parts: EngineParts, draft: GameState, plan: TurnPlanBase, rng: Random
 ) -> list[Fact]:
     action = _story_plan(plan).action
     if action is None:

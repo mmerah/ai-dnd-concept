@@ -17,8 +17,8 @@ from aidm.core.effects import (
 from aidm.core.enginepack import EngineParts
 from aidm.core.facts import Fact
 from aidm.core.plan import TurnPlanBase, apply_branch, check_plan_base
-from aidm.core.sheet import Sheet, player_sheet, sheet_of
-from aidm.core.world import GameState
+from aidm.core.sheet import Sheet
+from aidm.core.world import GameState, player_sheet, sheet_of
 
 from .actions import (
     CONTESTED,
@@ -52,7 +52,7 @@ MILESTONE_TAG = AddTag(
 )
 
 
-def check_plan(parts: EngineParts, state: GameState[Sheet], plan: TurnPlanBase) -> str | None:
+def check_plan(parts: EngineParts, state: GameState, plan: TurnPlanBase) -> str | None:
     try:
         fivee = _dnd5e_plan(plan)
         action = fivee.action
@@ -67,7 +67,7 @@ def check_plan(parts: EngineParts, state: GameState[Sheet], plan: TurnPlanBase) 
 
 
 def resolve_action(
-    parts: EngineParts, draft: GameState[Sheet], plan: TurnPlanBase, rng: Random
+    parts: EngineParts, draft: GameState, plan: TurnPlanBase, rng: Random
 ) -> list[Fact]:
     fivee = _dnd5e_plan(plan)
     facts, outcome = _resolved(draft, parts, fivee.action, rng)
@@ -98,7 +98,7 @@ def _labels(parts: EngineParts, action: Dnd5eAction | None) -> frozenset[Slug]:
 
 
 def _resolved(
-    draft: GameState[Sheet], parts: EngineParts, action: Dnd5eAction | None, rng: Random
+    draft: GameState, parts: EngineParts, action: Dnd5eAction | None, rng: Random
 ) -> tuple[list[Fact], Slug | None]:
     match action:
         case None:
@@ -128,7 +128,7 @@ def _resolved(
 
 
 def _attack(
-    draft: GameState[Sheet], parts: EngineParts, action: Attack, rng: Random
+    draft: GameState, parts: EngineParts, action: Attack, rng: Random
 ) -> tuple[list[Fact], Slug]:
     attacker = require_actor_here(draft, action.actor_id)
     target = require_actor_here(draft, action.target_id)
@@ -153,7 +153,7 @@ def _attack(
 
 
 def _attack_terms(
-    state: GameState[Sheet], parts: EngineParts, attacker: Entity, action: Attack
+    state: GameState, parts: EngineParts, attacker: Entity, action: Attack
 ) -> tuple[int, DiceExpr, int]:
     if action.weapon_item_id is None:
         if action.attack_bonus is None or action.damage is None:
@@ -185,7 +185,7 @@ def _attack_terms(
 
 
 def _cast(
-    draft: GameState[Sheet], parts: EngineParts, action: CastSpell, rng: Random
+    draft: GameState, parts: EngineParts, action: CastSpell, rng: Random
 ) -> tuple[list[Fact], Slug | None]:
     caster = require_actor_here(draft, action.actor_id)
     sheet = sheet_of(draft, caster.id)
@@ -209,7 +209,7 @@ def _cast(
 
 
 def _contest(
-    draft: GameState[Sheet],
+    draft: GameState,
     parts: EngineParts,
     action: CastSpell,
     spell: SpellFacts,
@@ -237,7 +237,7 @@ def _contest(
 
 
 def _spell_effect(
-    draft: GameState[Sheet],
+    draft: GameState,
     parts: EngineParts,
     action: CastSpell,
     spell: SpellFacts,
@@ -266,7 +266,7 @@ def _spell_effect(
 
 
 def _feature(
-    draft: GameState[Sheet], parts: EngineParts, action: UseFeature, rng: Random
+    draft: GameState, parts: EngineParts, action: UseFeature, rng: Random
 ) -> tuple[list[Fact], None]:
     actor = require_actor_here(draft, action.actor_id)
     facts = _seen(draft, actor)
@@ -278,7 +278,7 @@ def _feature(
     return facts, None
 
 
-def _rest(draft: GameState[Sheet], parts: EngineParts, action: Rest) -> tuple[list[Fact], None]:
+def _rest(draft: GameState, parts: EngineParts, action: Rest) -> tuple[list[Fact], None]:
     actor = require_actor_here(draft, action.actor_id)
     refilled = _refilled_by(parts, action.label)
     seen = _seen(draft, actor)
@@ -333,20 +333,20 @@ def _slot_spent(action: CastSpell, spell: SpellFacts) -> int | None:
     return action.slot_level
 
 
-def _spell_target(state: GameState[Sheet], action: CastSpell, spell: SpellFacts) -> Entity:
+def _spell_target(state: GameState, action: CastSpell, spell: SpellFacts) -> Entity:
     if action.target_id is None:
         raise ValueError(f"{spell.name} is aimed at a creature: name its `target_id`")
     return require_actor_here(state, action.target_id)
 
 
-def _carried(state: GameState[Sheet], holder: Entity, item_id: EntityId) -> Entity:
+def _carried(state: GameState, holder: Entity, item_id: EntityId) -> Entity:
     item = state.world.record(item_id, "item").entity
     if item.parent_id != holder.id:
         raise ValueError(f"{holder.name} does not carry item {item_id!r}")
     return item
 
 
-def _armor_class(state: GameState[Sheet], target: Entity) -> int:
+def _armor_class(state: GameState, target: Entity) -> int:
     return sheet_of(state, target.id).numbers[ARMOR_CLASS]
 
 
@@ -362,21 +362,19 @@ def _refilled_by(parts: EngineParts, label: str) -> Sequence[str]:
     return refilled
 
 
-def _spend(
-    draft: GameState[Sheet], parts: EngineParts, entity_id: EntityId, counter: Slug
-) -> list[Fact]:
+def _spend(draft: GameState, parts: EngineParts, entity_id: EntityId, counter: Slug) -> list[Fact]:
     cost = SpendCounter(entity_id=entity_id, counter=counter, amount=1)
     return apply_effect(draft, cost, parts.default_rules)
 
 
 def _harm(
-    draft: GameState[Sheet], parts: EngineParts, entity_id: EntityId, delta: int, reason: str
+    draft: GameState, parts: EngineParts, entity_id: EntityId, delta: int, reason: str
 ) -> list[Fact]:
     change = AdjustCounter(entity_id=entity_id, counter=HP, delta=delta, reason=reason)
     return apply_effect(draft, change, parts.default_rules)
 
 
-def _seen(draft: GameState[Sheet], *actors: Entity) -> list[Fact]:
+def _seen(draft: GameState, *actors: Entity) -> list[Fact]:
     """Acting reveals an actor, as applying an effect to them does: the roll's fact names them in
     prose the Narrator reads."""
     return [fact for actor in actors for fact in draft.reveal(actor)]

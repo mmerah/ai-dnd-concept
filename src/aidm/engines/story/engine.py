@@ -3,7 +3,6 @@ from pathlib import Path
 from aidm.core.engine import Engine
 from aidm.core.enginepack import load_engine
 from aidm.core.registry import EnginePlugin
-from aidm.core.sheet import Sheet
 
 from .actions import StoryPlan
 from .advance import check, offered
@@ -13,7 +12,7 @@ from .resolve import check_plan, resolve_action
 ENGINE_DIR = Path(__file__).parent
 
 
-def build_story_engine() -> Engine[Sheet]:
+def build_story_engine() -> Engine:
     return load_engine(
         ENGINE_DIR,
         ENGINE_ID,

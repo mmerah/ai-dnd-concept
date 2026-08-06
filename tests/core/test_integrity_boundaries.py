@@ -12,16 +12,9 @@ from aidm.core.content import (
     authored_world,
 )
 from aidm.core.sheet import SheetDefinition, SheetTag
-from aidm.core.world import EngineRules
 
 HELD = EntityId("frayed_rope")
 UNHELD = EntityId("silk_rope")
-
-
-class ForeignRules(EngineRules):
-    """A payload shape no real engine declares, standing in for a second engine's rules."""
-
-    hoard: int = 0
 
 
 def _character(*, holds: Entity, gear_for: EntityId) -> Character:
@@ -72,18 +65,6 @@ def test_world_and_game_state_reject_inconsistent_topology() -> None:
     carried = state.world.children(PLAYER_ID, "item")[0]
     with pytest.raises(ValidationError, match="is a location with item rules"):
         with_entity(state, updated(carried, kind="location"))
-
-
-def test_a_record_may_not_hold_another_engines_payload() -> None:
-    """The gate has to fire on a resumed save too, not only on the turn that wrote the payload."""
-    engine, state = initialized()
-    draft = state.draft()
-    draft.world.record(PLAYER_ID).rules = ForeignRules(kind="actor")
-
-    with pytest.raises(ValidationError):
-        draft.committed()
-    with pytest.raises(ValidationError):
-        engine.state_type.model_validate(draft.model_dump(round_trip=True))
 
 
 def test_an_engine_refuses_an_authored_payload_it_cannot_read() -> None:

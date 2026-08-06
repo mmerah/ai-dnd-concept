@@ -38,7 +38,36 @@ Plan: `PLAN.md`. One section per phase; each ends green on
   three field-description edits each fail their own fixture and nothing else.
 - Gate green: 115 passed, ruff clean, basedpyright 0 errors.
 
-## Next — Phase 1: collapse the generic
+## Phase 1 — collapse the generic — DONE
 
-Start at `src/aidm/core/sheet.py`: `Sheet(Mutable)` gains `kind: Kind` declared **first** in the
-body, so the serialized field order stays byte-identical. The golden fixtures must pass unchanged.
+- `core/sheet.py`: `Sheet(Mutable)` declares `kind: Kind` first, so the serialized field order is
+  what inheriting from `EngineRules` produced. `core/world.py`: `EngineRules`, `BareLocation` and
+  `rules_of` deleted; `Record.rules: Sheet` (no `SerializeAsAny`); `Record`, `WorldState`,
+  `GameState` lost the type parameter. The transaction and every validator are untouched.
+- **Not in PLAN.md, forced by the import graph:** `sheet_of`/`player_sheet` moved from `sheet.py`
+  to `world.py`. With `Record.rules: Sheet`, `world` imports `sheet`, so `sheet` may no longer
+  import `world`. Import lines changed in 17 files; the two bodies are now one attribute read.
+- De-genericized across `core/` (`effects`, `plan`, `content.compose_world`, `engine`,
+  `enginepack`, `store`), `workflow/`, both engines, `scripts/evals/`, and the tests.
+- `Engine.state_type` deleted with the generic it erased: call sites construct `GameState(...)`
+  and `GameState.model_validate_json(...)` directly. `FileSaves.load(slug)` drops its
+  `state_type` parameter for the same reason.
+- `registry.AnyEngine` + its `cast` deleted; `build_engine` returns `Engine` and keeps the
+  `isinstance` check on the plugin's `object`-typed build.
+- `dnd5e/advance._level_ref` is now public `level_ref`; `scripts/evals/probes.py` imports it
+  instead of carrying its own copy, and its `_sheet` re-narrowing is gone.
+- Only erasure-shaped test removed: `test_a_record_may_not_hold_another_engines_payload` (with
+  `ForeignRules`) — with one concrete payload there is no foreign payload to refuse.
+  `test_package_boundary.py` needed no change.
+- Review pass: `story_game`/`dnd5e_game` now delegate to `game(engine_id)` — their reason to
+  exist was the `Sheet`-typed return the collapse erased; `compose_world` lost its always-
+  `WorldState` `world_type` parameter; two now-redundant `GameState` annotations deleted.
+- Gate green: 114 passed (115 minus that one), ruff clean, basedpyright 0 errors. **The golden
+  fixtures pass unchanged and were never regenerated** — the phase's real proof. Net −112 lines.
+
+## Next — Phase 2: one loader, four hooks
+
+Merge `core/registry.py` and `core/enginepack.py` into `core/engine.py`: typed `EnginePlugin`,
+one `build_engine(plugin_module, settings)`, derived behaviour as methods. Delete `EngineParts`,
+`ProposalSpec`, and the closure wrapping; re-sign the four hooks to take `Engine` first. Story
+collapses to one `rules.py`. The golden fixtures must again pass unchanged.

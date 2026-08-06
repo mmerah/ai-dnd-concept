@@ -8,10 +8,10 @@ from pydantic import BaseModel, ConfigDict, ValidationError
 from ..core.base import SAVE_VERSION, EngineId, Slug
 from ..core.config import Settings
 from ..core.content import Character, Scenario, authored_world
-from ..core.engine import AdvancementOffer
+from ..core.engine import AdvancementOffer, Engine
 from ..core.facts import Fact
-from ..core.registry import AnyEngine, build_engine
-from ..core.sheet import SheetDelta, apply_delta, player_sheet
+from ..core.registry import build_engine
+from ..core.sheet import SheetDelta, apply_delta
 from ..core.store import (
     FileSaves,
     FileTraces,
@@ -22,7 +22,7 @@ from ..core.store import (
     read_scenarios,
 )
 from ..core.turn import Advance, TraceEntry, Turn
-from ..core.world import EngineRules, GameState
+from ..core.world import GameState, player_sheet
 from .pipeline import TurnOptions, TurnScript, default_cast, run_turn
 from .proposals import AdvisorContext, advisor, render_proposal
 from .roles import Stage
@@ -259,7 +259,7 @@ class GameSession:
     target: LaunchTarget
     scenario: Scenario
     character: Character
-    engine: AnyEngine
+    engine: Engine
     script: TurnScript
     advisor: Stage[AdvisorContext, SheetDelta]
     saves: FileSaves
@@ -270,7 +270,7 @@ class GameSession:
     busy: bool = False
     step: str | None = None
     drafted: SheetDelta | None = None
-    state: GameState[EngineRules] = field(init=False)
+    state: GameState = field(init=False)
 
     def __post_init__(self) -> None:
         if self.engine.id != self.target.engine:
@@ -278,7 +278,7 @@ class GameSession:
         shell = self.saves.shell(self.slug)
         if shell is not None and shell.engine != self.engine.id:
             raise ValueError(f"save {self.slug!r} plays {shell.engine!r}, not {self.engine.id!r}")
-        saved = None if shell is None else self.saves.load(self.slug, self.engine.state_type)
+        saved = None if shell is None else self.saves.load(self.slug)
         if saved is None:
             self.state = self._begun()
             return
@@ -350,15 +350,15 @@ class GameSession:
         self.entries = []
         self.drafted = None
 
-    def _commit(self, state: GameState[EngineRules], entry: TraceEntry) -> None:
+    def _commit(self, state: GameState, entry: TraceEntry) -> None:
         self.saves.save(self.slug, state)
         self.traces.append(self.slug, entry)
         self.state = state
         self.entries.append(entry)
 
-    def _begun(self) -> GameState[EngineRules]:
+    def _begun(self) -> GameState:
         authored = authored_world(self.scenario, self.character)
-        state = self.engine.state_type(
+        state = GameState(
             save_version=SAVE_VERSION,
             scenario_id=self.scenario.id,
             character_id=self.character.id,
@@ -369,7 +369,7 @@ class GameSession:
         self.engine.validate_state(state)
         return state
 
-    def _resumable(self, state: GameState[EngineRules]) -> GameState[EngineRules]:
+    def _resumable(self, state: GameState) -> GameState:
         if (state.scenario_id, state.character_id) != (self.scenario.id, self.character.id):
             raise ValueError(
                 f"save is {state.scenario_id!r}/{state.character_id!r}, "
@@ -389,10 +389,10 @@ class Runtime:
     """The composition root: settings, the built engines, and the games currently open."""
 
     config: Settings
-    _engines: dict[EngineId, AnyEngine] = field(default_factory=dict, repr=False)
+    _engines: dict[EngineId, Engine] = field(default_factory=dict, repr=False)
     _sessions: dict[str, GameSession] = field(default_factory=dict, repr=False)
 
-    def engine(self, engine_id: EngineId) -> AnyEngine:
+    def engine(self, engine_id: EngineId) -> Engine:
         """Memoised: building the 5e engine compiles the whole content pack."""
         held = self._engines.get(engine_id)
         if held is None:

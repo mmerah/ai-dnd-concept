@@ -1,10 +1,11 @@
 from collections.abc import Iterator, Mapping
-from typing import Literal, Self
+from typing import Self
 
-from pydantic import Field, SerializeAsAny, model_validator
+from pydantic import Field, model_validator
 
 from .base import PLAYER_ID, EngineId, Entity, EntityId, Frozen, Kind, Mutable, Slug
 from .facts import CORE, Fact
+from .sheet import Sheet
 
 _HOLDERS: Mapping[Kind, tuple[Kind, ...]] = {
     "actor": ("location",),
@@ -26,20 +27,9 @@ def check_placement(entity: Entity, holder: Entity | None) -> None:
         raise ValueError(f"{entity.kind} {entity.id!r} is in a {holder.kind}, which cannot hold it")
 
 
-class EngineRules(Mutable):
-    kind: Kind
-
-
-class BareLocation(EngineRules):
-    # The Literal narrowing is the discriminator pattern; every payload subclass repeats it.
-    kind: Literal["location"] = "location"  # pyright: ignore[reportIncompatibleVariableOverride]
-
-
-class Record[R: EngineRules](Mutable):
+class Record(Mutable):
     entity: Entity
-    # `SerializeAsAny`, so a foreign payload dumps its own fields and the commit refuses them
-    # instead of silently serialising down to whatever this engine's payload type declares.
-    rules: SerializeAsAny[R]
+    rules: Sheet
 
     @model_validator(mode="after")
     def _kind_agrees(self) -> Self:
@@ -50,14 +40,8 @@ class Record[R: EngineRules](Mutable):
         return self
 
 
-def rules_of[R: EngineRules, T: EngineRules](record: Record[R], cls: type[T]) -> T:
-    if not isinstance(record.rules, cls):
-        raise ValueError(f"{record.entity.id!r} carries no {cls.__name__}")
-    return record.rules
-
-
-class WorldState[R: EngineRules](Mutable):
-    records: dict[EntityId, Record[R]] = Field(default_factory=dict)
+class WorldState(Mutable):
+    records: dict[EntityId, Record] = Field(default_factory=dict)
 
     @model_validator(mode="after")
     def _keys_match_ids(self) -> Self:
@@ -80,7 +64,7 @@ class WorldState[R: EngineRules](Mutable):
         record = self.records.get(entity_id)
         return None if record is None else record.entity
 
-    def record(self, entity_id: EntityId, kind: Kind | None = None) -> Record[R]:
+    def record(self, entity_id: EntityId, kind: Kind | None = None) -> Record:
         record = self.records.get(entity_id)
         if record is None:
             raise ValueError(f"unknown entity id {entity_id!r}")
@@ -115,13 +99,13 @@ class ScenarioMeta(Frozen):
     premise: str
 
 
-class GameState[R: EngineRules](Mutable):
+class GameState(Mutable):
     save_version: int
     scenario_id: Slug
     character_id: Slug
     scenario: ScenarioMeta
     engine: EngineId
-    world: WorldState[R]
+    world: WorldState
     history: tuple[Exchange, ...] = ()
     turn: int = Field(default=0, ge=0)
 
@@ -144,10 +128,10 @@ class GameState[R: EngineRules](Mutable):
         return self.model_copy(deep=True)
 
     def committed(self) -> Self:
-        """One validation per transaction; `type(self)` revalidates payloads as the union."""
+        """One validation per transaction, over the whole copy rather than per field change."""
         return type(self).model_validate(self.model_dump(round_trip=True))
 
-    def add(self, entity: Entity, rules: R) -> Fact:
+    def add(self, entity: Entity, rules: Sheet) -> Fact:
         """Copy into the fact, so a later move in the same turn cannot rewrite the record."""
         if self.world.find(entity.id) is not None:
             raise ValueError(f"entity id {entity.id!r} already exists")
@@ -202,6 +186,14 @@ class GameState[R: EngineRules](Mutable):
             holder = None if entity.parent_id is None else self.world.find(entity.parent_id)
             check_placement(entity, holder)
         return self
+
+
+def sheet_of(state: GameState, entity_id: EntityId) -> Sheet:
+    return state.world.record(entity_id).rules
+
+
+def player_sheet(state: GameState) -> Sheet:
+    return sheet_of(state, PLAYER_ID)
 
 
 def _move_summary(entity: Entity, destination: Entity) -> str:

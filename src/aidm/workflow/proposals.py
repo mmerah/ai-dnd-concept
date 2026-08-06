@@ -3,10 +3,9 @@ from dataclasses import dataclass
 from pydantic_ai import ModelRetry, NativeOutput, RunContext
 
 from ..core.config import Settings
-from ..core.engine import AdvancementOffer, entity_renderer
-from ..core.registry import AnyEngine
+from ..core.engine import AdvancementOffer, Engine, entity_renderer
 from ..core.sheet import SheetDelta
-from ..core.world import EngineRules, GameState
+from ..core.world import GameState
 from .roles import Stage, stage
 
 CORE_ADVISOR = """You are the ADVISOR of a tabletop roleplaying game. The player has earned an \
@@ -24,12 +23,12 @@ again."""
 
 @dataclass(frozen=True, slots=True)
 class AdvisorContext:
-    engine: AnyEngine
-    state: GameState[EngineRules]
+    engine: Engine
+    state: GameState
     offer: AdvancementOffer
 
 
-def advisor(engine: AnyEngine, settings: Settings) -> Stage[AdvisorContext, SheetDelta]:
+def advisor(engine: Engine, settings: Settings) -> Stage[AdvisorContext, SheetDelta]:
     built = stage(
         "advisor",
         settings,
@@ -49,9 +48,7 @@ def advisor(engine: AnyEngine, settings: Settings) -> Stage[AdvisorContext, Shee
     return built
 
 
-def render_proposal(
-    engine: AnyEngine, state: GameState[EngineRules], offer: AdvancementOffer, intent: str
-) -> str:
+def render_proposal(engine: Engine, state: GameState, offer: AdvancementOffer, intent: str) -> str:
     player = state.player
     sections = (
         ("ON OFFER", offer.prompt),

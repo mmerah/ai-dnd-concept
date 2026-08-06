@@ -5,10 +5,11 @@ from pydantic import Field, ValidationError
 from .base import PLAYER_ID, Entity, EntityId, Frozen, Slug
 from .effects import Effect, apply_effect
 from .facts import Fact
-from .world import EngineRules, GameState
+from .sheet import Sheet
+from .world import GameState
 
 
-def check_speaker[R: EngineRules](state: GameState[R], speaker_id: EntityId | None) -> str | None:
+def check_speaker(state: GameState, speaker_id: EntityId | None) -> str | None:
     """The player is addressed, never the speaker: losing this lets the Director voice them."""
     if speaker_id is None:
         return None
@@ -62,11 +63,11 @@ class TurnPlanBase(Frozen):
     )
 
 
-def apply_branch[R: EngineRules](
-    draft: GameState[R],
+def apply_branch(
+    draft: GameState,
     plan: TurnPlanBase,
     outcome: Slug,
-    default_rules: Callable[[Entity], R],
+    default_rules: Callable[[Entity], Sheet],
 ) -> list[Fact]:
     """An outcome the model wrote no branch for is fine: not every outcome needs consequences."""
     branch = next((held for held in plan.branches if held.outcome == outcome), None)
@@ -77,11 +78,11 @@ def apply_branch[R: EngineRules](
     ]
 
 
-def check_plan_base[R: EngineRules](
-    state: GameState[R],
+def check_plan_base(
+    state: GameState,
     plan: TurnPlanBase,
     labels: frozenset[Slug],
-    default_rules: Callable[[Entity], R],
+    default_rules: Callable[[Entity], Sheet],
 ) -> str | None:
     """What every engine's plan check shares: the speaker guard, the outcome labels this action
     allows, and a trial application of the effects against the state as it stands."""
@@ -106,8 +107,8 @@ def check_plan_base[R: EngineRules](
     return None
 
 
-def _trial[R: EngineRules](
-    state: GameState[R], effects: Sequence[Effect], default_rules: Callable[[Entity], R]
+def _trial(
+    state: GameState, effects: Sequence[Effect], default_rules: Callable[[Entity], Sheet]
 ) -> str | None:
     draft = state.draft()
     try:

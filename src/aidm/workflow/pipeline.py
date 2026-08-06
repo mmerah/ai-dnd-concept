@@ -10,12 +10,11 @@ from pydantic_ai.messages import ModelMessage
 from ..core.base import Entity, EntityDetail, EntityId, Frozen, slug
 from ..core.config import Settings
 from ..core.effects import apply_effect
-from ..core.engine import entity_renderer, narrator_evidence
+from ..core.engine import Engine, entity_renderer, narrator_evidence
 from ..core.facts import Fact
 from ..core.plan import TurnPlanBase
-from ..core.registry import AnyEngine
 from ..core.turn import Growth, GrowthRequest, RejectedGrowth, Turn, screen_growth
-from ..core.world import EngineRules, Exchange, GameState
+from ..core.world import Exchange, GameState
 from . import prompts
 from .prompts import SceneSnapshot, VisibleScene
 from .roles import Stage, exchanges_to_messages, stage
@@ -30,7 +29,7 @@ class TurnOptions(Frozen):
 class TurnResult:
     """The committed state and the entry recording how it was reached, kept apart."""
 
-    state: GameState[EngineRules]
+    state: GameState
     turn: Turn
 
 
@@ -38,16 +37,16 @@ class TurnResult:
 class PlanContext:
     """What the Director's output validator judges a plan against: the untouched committed state."""
 
-    engine: AnyEngine
-    state: GameState[EngineRules]
+    engine: Engine
+    state: GameState
 
 
 @dataclass
 class TurnWorkspace:
     prompt: str
     history: list[ModelMessage]
-    state: GameState[EngineRules]
-    draft: GameState[EngineRules]
+    state: GameState
+    draft: GameState
     rng: Random
     recent: tuple[Exchange, ...]
     facts: list[Fact] = field(default_factory=list)
@@ -70,7 +69,7 @@ type StepFn = Callable[[TurnWorkspace], Awaitable[None]]
 type TurnScript = tuple[tuple[str, StepFn], ...]
 
 
-def director_step(role: Stage[PlanContext, TurnPlanBase], engine: AnyEngine) -> StepFn:
+def director_step(role: Stage[PlanContext, TurnPlanBase], engine: Engine) -> StepFn:
     async def run(ws: TurnWorkspace) -> None:
         state = ws.state
         ws.prompts[role.name] = prompts.render_director(
@@ -83,7 +82,7 @@ def director_step(role: Stage[PlanContext, TurnPlanBase], engine: AnyEngine) -> 
     return run
 
 
-def resolve_step(engine: AnyEngine) -> StepFn:
+def resolve_step(engine: Engine) -> StepFn:
     """Pure code: the action's procedure on the draft, then the plan's unconditional effects."""
 
     async def run(ws: TurnWorkspace) -> None:
@@ -97,7 +96,7 @@ def resolve_step(engine: AnyEngine) -> StepFn:
     return run
 
 
-def narrator_step(role: Stage[None, str], engine: AnyEngine) -> StepFn:
+def narrator_step(role: Stage[None, str], engine: Engine) -> StepFn:
     async def run(ws: TurnWorkspace) -> None:
         plan = ws.settled()
         draft = ws.draft
@@ -116,7 +115,7 @@ def narrator_step(role: Stage[None, str], engine: AnyEngine) -> StepFn:
     return run
 
 
-def maintainer_step(role: Stage[None, Growth], engine: AnyEngine, options: TurnOptions) -> StepFn:
+def maintainer_step(role: Stage[None, Growth], engine: Engine, options: TurnOptions) -> StepFn:
     async def run(ws: TurnWorkspace) -> None:
         draft = ws.draft
         ws.prompts[role.name] = prompts.render_maintainer(
@@ -137,7 +136,7 @@ def maintainer_step(role: Stage[None, Growth], engine: AnyEngine, options: TurnO
     return run
 
 
-def creator_step(role: Stage[None, EntityDetail], engine: AnyEngine) -> StepFn:
+def creator_step(role: Stage[None, EntityDetail], engine: Engine) -> StepFn:
     async def run(ws: TurnWorkspace) -> None:
         draft = ws.draft
         for request in sorted(ws.accepted, key=lambda item: item.kind != "location"):
@@ -164,7 +163,7 @@ class Cast:
     maintainer: Stage[None, Growth]
     creator: Stage[None, EntityDetail]
 
-    def script(self, engine: AnyEngine, options: TurnOptions) -> TurnScript:
+    def script(self, engine: Engine, options: TurnOptions) -> TurnScript:
         return (
             (self.director.name, director_step(self.director, engine)),
             ("resolve", resolve_step(engine)),
@@ -174,7 +173,7 @@ class Cast:
         )
 
 
-def director_stage(engine: AnyEngine, settings: Settings) -> Stage[PlanContext, TurnPlanBase]:
+def director_stage(engine: Engine, settings: Settings) -> Stage[PlanContext, TurnPlanBase]:
     built = stage(
         "director",
         settings,
@@ -195,7 +194,7 @@ def director_stage(engine: AnyEngine, settings: Settings) -> Stage[PlanContext, 
     return built
 
 
-def default_cast(engine: AnyEngine, settings: Settings) -> Cast:
+def default_cast(engine: Engine, settings: Settings) -> Cast:
     return Cast(
         director=director_stage(engine, settings),
         narrator=stage(
@@ -219,10 +218,10 @@ def default_cast(engine: AnyEngine, settings: Settings) -> Cast:
 
 
 async def run_turn(
-    state: GameState[EngineRules],
+    state: GameState,
     prompt: str,
     *,
-    engine: AnyEngine,
+    engine: Engine,
     script: TurnScript,
     options: TurnOptions,
     rng: Random,
@@ -271,9 +270,7 @@ async def run_turn(
     )
 
 
-def _created_entity(
-    request: GrowthRequest, detail: EntityDetail, state: GameState[EngineRules]
-) -> Entity:
+def _created_entity(request: GrowthRequest, detail: EntityDetail, state: GameState) -> Entity:
     return Entity(
         id=slug(request.name, state.world.all_ids()),
         kind=request.kind,
@@ -285,7 +282,7 @@ def _created_entity(
     )
 
 
-def _requested_location(request: GrowthRequest, state: GameState[EngineRules]) -> EntityId:
+def _requested_location(request: GrowthRequest, state: GameState) -> EntityId:
     if request.location is not None:
         wanted = request.location.casefold()
         for entity in state.world.entities("location"):

@@ -8,13 +8,13 @@ from story_test_support import grown
 
 from aidm.core.base import EngineId
 from aidm.core.registry import engine_ids
-from aidm.core.world import EngineRules, GameState
+from aidm.core.world import GameState
 from aidm.workflow.pipeline import default_cast
 from aidm.workflow.proposals import advisor, render_proposal
 
 WANTED = "I want to strike harder."
 
-type OfferReady = Callable[[GameState[EngineRules]], GameState[EngineRules]]
+type OfferReady = Callable[[GameState], GameState]
 
 # What each engine needs of a state before it offers an advancement to render the prompt from.
 READY_FOR_ADVANCEMENT: Mapping[EngineId, OfferReady] = {STORY: grown, DND5E: ready}

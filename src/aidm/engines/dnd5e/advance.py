@@ -1,19 +1,19 @@
 from aidm.core.engine import AdvancementOffer
 from aidm.core.packs import Content, ContentMiss, ContentRef, LenientRecord
-from aidm.core.sheet import Sheet, SheetDelta, apply_delta, player_sheet
-from aidm.core.world import GameState, rules_of
+from aidm.core.sheet import Sheet, SheetDelta, apply_delta
+from aidm.core.world import GameState, player_sheet, sheet_of
 
 ADVANCEMENT_READY = "advancement-ready"
 LEVEL = "level"
 MILESTONE_LEVEL = "milestone-level"
 
 
-def offered(state: GameState[Sheet], content: Content) -> AdvancementOffer | None:
+def offered(state: GameState, content: Content) -> AdvancementOffer | None:
     sheet = player_sheet(state)
     if sheet.tag(ADVANCEMENT_READY) is None and not _milestone_reached(state, sheet):
         return None
     next_level = sheet.numbers[LEVEL] + 1
-    record = content.get(_level_ref(sheet, next_level), LenientRecord)
+    record = content.get(level_ref(sheet, next_level), LenientRecord)
     if isinstance(record, ContentMiss):
         # The class runs out of level rows at 20, which is the end of advancement, not a fault.
         return None
@@ -25,13 +25,13 @@ def offered(state: GameState[Sheet], content: Content) -> AdvancementOffer | Non
     )
 
 
-def _milestone_reached(state: GameState[Sheet], sheet: Sheet) -> bool:
-    here = rules_of(state.world.record(state.player_location), Sheet)
+def _milestone_reached(state: GameState, sheet: Sheet) -> bool:
+    here = sheet_of(state, state.player_location)
     earned = here.numbers.get(MILESTONE_LEVEL)
     return earned is not None and sheet.numbers[LEVEL] < earned
 
 
-def check(state: GameState[Sheet], offer: AdvancementOffer, delta: SheetDelta) -> str | None:
+def check(state: GameState, offer: AdvancementOffer, delta: SheetDelta) -> str | None:
     del offer
     before = player_sheet(state)
     after = before.model_copy(deep=True)
@@ -44,7 +44,7 @@ def check(state: GameState[Sheet], offer: AdvancementOffer, delta: SheetDelta) -
     return None
 
 
-def _level_ref(sheet: Sheet, level: int) -> ContentRef:
+def level_ref(sheet: Sheet, level: int) -> ContentRef:
     classes = [ref for ref in sheet.refs if ref.collection == "classes"]
     if len(classes) != 1:
         held = ", ".join(str(ref) for ref in classes) or "(none)"

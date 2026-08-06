@@ -58,11 +58,11 @@ SPEC = {
 }
 
 
-def _offered(state: GameState[Sheet], content: Content) -> AdvancementOffer | None:
+def _offered(state: GameState, content: Content) -> AdvancementOffer | None:
     return None
 
 
-def _check(state: GameState[Sheet], offer: AdvancementOffer, delta: SheetDelta) -> str | None:
+def _check(state: GameState, offer: AdvancementOffer, delta: SheetDelta) -> str | None:
     return None
 
 
@@ -75,7 +75,7 @@ def _engine_dir(tmp_path: Path) -> Path:
     return tmp_path
 
 
-def _engine(tmp_path: Path) -> Engine[Sheet]:
+def _engine(tmp_path: Path) -> Engine:
     """A pack loader test needs no procedure, so this engine resolves nothing."""
     return load_engine(
         _engine_dir(tmp_path),
@@ -88,18 +88,18 @@ def _engine(tmp_path: Path) -> Engine[Sheet]:
     )
 
 
-def _minimal_state(engine: Engine[Sheet], player_sheet: Sheet) -> GameState[Sheet]:
+def _minimal_state(engine: Engine, player_sheet: Sheet) -> GameState:
     vault = Entity(id=EntityId("vault"), kind="location", name="Vault", brief="", known=True)
     player = Entity(
         id=PLAYER_ID, kind="actor", name="Kael", brief="", known=True, parent_id=vault.id
     )
-    world = WorldState[Sheet](
+    world = WorldState(
         records={
             vault.id: Record(entity=vault, rules=Sheet(kind="location")),
             PLAYER_ID: Record(entity=player, rules=player_sheet),
         }
     )
-    return GameState[Sheet](
+    return GameState(
         save_version=SAVE_VERSION,
         scenario_id="vault",
         character_id="kael",

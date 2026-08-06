@@ -6,8 +6,8 @@ from aidm.core.base import PLAYER_ID, EntityId
 from aidm.core.effects import AddTag, AdjustCounter
 from aidm.core.engine import Engine
 from aidm.core.plan import OutcomeBranch
-from aidm.core.sheet import ChangeCounter, SetNumber, Sheet, SheetDelta, player_sheet, sheet_of
-from aidm.core.world import GameState
+from aidm.core.sheet import ChangeCounter, SetNumber, SheetDelta
+from aidm.core.world import GameState, player_sheet, sheet_of
 from aidm.engines.story.actions import Risk, StoryPlan
 from aidm.engines.story.advance import GROWTH_REQUIRED
 
@@ -36,7 +36,7 @@ def _plan(**action: object) -> StoryPlan:
     )
 
 
-def _certain(state: GameState[Sheet], bonus: int) -> GameState[Sheet]:
+def _certain(state: GameState, bonus: int) -> GameState:
     """2d6 spans 2..12, so an approach this far out of range fixes the outcome under any seed."""
     draft = state.draft()
     player_sheet(draft).numbers["bold"] = bonus
@@ -128,7 +128,7 @@ def test_the_one_action_is_worked_through_in_the_directors_instructions() -> Non
     assert engine.director_instructions.count('"act": "risk"') == 1
 
 
-def _refusal(engine: Engine[Sheet], state: GameState[Sheet], plan: StoryPlan) -> str:
+def _refusal(engine: Engine, state: GameState, plan: StoryPlan) -> str:
     refused = engine.check_plan(state, plan)
     assert refused is not None
     return refused

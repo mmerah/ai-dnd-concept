@@ -7,8 +7,7 @@ from pydantic_ai.messages import ModelMessage, ModelRequest, ModelResponse, Retr
 from pydantic_ai.models.function import AgentInfo, FunctionModel
 
 from aidm.core.base import PLAYER_ID
-from aidm.core.sheet import Sheet, player_sheet
-from aidm.core.world import rules_of
+from aidm.core.world import player_sheet, sheet_of
 from aidm.workflow.pipeline import TurnOptions, TurnWorkspace, default_cast, run_turn
 
 STEPS = ("director", "resolve", "narrator", "maintainer", "creator")
@@ -249,8 +248,8 @@ async def test_creator_growth_receives_valid_engine_rules_before_commit() -> Non
     assert actor.parent_id == location.id
     assert item.parent_id == location.id
     assert location.parent_id is None
-    actor_sheet = rules_of(result.state.world.record(actor.id), Sheet)
-    item_sheet = rules_of(result.state.world.record(item.id), Sheet)
+    actor_sheet = sheet_of(result.state, actor.id)
+    item_sheet = sheet_of(result.state, item.id)
     assert {"stress", "growth"} <= set(actor_sheet.counters)
     assert item_sheet.numbers == {} and item_sheet.counters == {}
     assert result.turn.narrator_evidence == "- (nothing mechanical happened)"

@@ -28,7 +28,7 @@ DESCRIPTION = "She writes in a compact cipher."
 HOOK = "Her missing folio points toward the vault."
 
 
-def _with_detail(held: GameState[Sheet], entity_id: EntityId) -> GameState[Sheet]:
+def _with_detail(held: GameState, entity_id: EntityId) -> GameState:
     entity = held.world.require_kind(entity_id, "actor")
     detailed = updated(entity, detail={"description": DESCRIPTION, "hook": HOOK})
     return with_entity(held, detailed)
@@ -50,7 +50,7 @@ def _rules(kind: Kind) -> Sheet:
             return ITEM_RULES
 
 
-def state() -> GameState[Sheet]:
+def state() -> GameState:
     entities = (
         _entity("study", "location", "Study", "A small room.", known=True),
         _entity("player", "actor", "Kael", "A hunter.", known=True, parent_id="study"),
@@ -59,13 +59,13 @@ def state() -> GameState[Sheet]:
         _entity("lantern", "item", "a lantern", "A dented light.", known=True, parent_id=PLAYER_ID),
         _entity("ledger", "item", "a ledger", "Mara's notes.", known=True, parent_id="mara"),
     )
-    return GameState[Sheet](
+    return GameState(
         save_version=SAVE_VERSION,
         scenario_id="whispering-vault",
         character_id="kael",
         scenario=ScenarioMeta(title="Test", premise="Test"),
         engine=STORY,
-        world=WorldState[Sheet].model_validate(
+        world=WorldState.model_validate(
             {
                 "records": {
                     entity.id: {"entity": entity, "rules": _rules(entity.kind)}
@@ -76,7 +76,7 @@ def state() -> GameState[Sheet]:
     )
 
 
-def _renderer(held: GameState[Sheet]) -> EntityRenderer:
+def _renderer(held: GameState) -> EntityRenderer:
     return entity_renderer(build_story_engine(), held)
 
 

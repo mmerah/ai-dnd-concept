@@ -1,20 +1,16 @@
 from collections.abc import Callable
 from dataclasses import dataclass
 from importlib import import_module
-from typing import cast
 
 from .base import EngineId
 from .config import Settings
 from .engine import Engine
-from .world import EngineRules
 
 ENGINE_MODULES: tuple[str, ...] = (
     "aidm.engines.story.engine",
     "aidm.engines.dnd5e.engine",
 )
 PLUGIN = "PLUGIN"
-
-type AnyEngine = Engine[EngineRules]
 
 
 @dataclass(frozen=True, slots=True)
@@ -43,11 +39,11 @@ def plugin_for(engine_id: EngineId) -> EnginePlugin:
     return found
 
 
-def build_engine(engine_id: EngineId, config: Settings) -> AnyEngine:
+def build_engine(engine_id: EngineId, config: Settings) -> Engine:
     built = plugin_for(engine_id).build(config)
     if not isinstance(built, Engine):
         raise ValueError(f"engine {engine_id!r} built a {type(built).__name__}, not an Engine")
-    return cast(AnyEngine, built)
+    return built
 
 
 def as_engine_id(value: str) -> EngineId:

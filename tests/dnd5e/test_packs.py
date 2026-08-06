@@ -4,8 +4,7 @@ from fivee_test_support import PACK_DIR, dnd5e_game, pack_format
 
 from aidm.core.base import EntityId
 from aidm.core.packs import ENCODING, ContentRef, LenientRecord, read_pack, write_pack
-from aidm.core.sheet import Sheet, player_sheet
-from aidm.core.world import rules_of
+from aidm.core.world import player_sheet
 
 GIANT_RAT = ContentRef(pack="srd-2014", collection="monsters", index="giant-rat")
 RAT = EntityId("cloister_rat")
@@ -47,7 +46,7 @@ def test_a_monster_ref_becomes_the_monsters_sheet() -> None:
     assert isinstance(record, LenientRecord)
 
     world_record = state.world.record(RAT)
-    sheet = rules_of(world_record, Sheet)
+    sheet = world_record.rules
 
     assert sheet.counters["hp"].current == record.numbers["hp"]
     assert sheet.counters["hp"].maximum == record.numbers["hp"]

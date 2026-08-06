@@ -17,8 +17,7 @@ from aidm.core.effects import (
     apply_effect,
 )
 from aidm.core.facts import Fact
-from aidm.core.sheet import sheet_of
-from aidm.core.world import EngineRules, GameState
+from aidm.core.world import sheet_of
 
 CLOISTER = EntityId("cloister")
 STUDY = EntityId("study")
@@ -37,7 +36,7 @@ class Applied:
     def __init__(self) -> None:
         engine, state = initialized()
         self.engine = engine
-        self.draft: GameState[EngineRules] = state.draft()
+        self.draft = state.draft()
 
     def __call__(self, effect: Effect) -> list[Fact]:
         return apply_effect(self.draft, effect, self.engine.default_rules)

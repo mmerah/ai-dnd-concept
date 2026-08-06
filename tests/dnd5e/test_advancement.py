@@ -7,14 +7,8 @@ from pydantic_ai.models.function import AgentInfo, FunctionModel
 
 from aidm.core.base import PLAYER_ID, EntityId
 from aidm.core.packs import ContentRef
-from aidm.core.sheet import (
-    AddRef,
-    ChangeCounter,
-    RemoveTag,
-    SetNumber,
-    SheetDelta,
-    player_sheet,
-)
+from aidm.core.sheet import AddRef, ChangeCounter, RemoveTag, SetNumber, SheetDelta
+from aidm.core.world import player_sheet
 from aidm.engines.dnd5e.advance import ADVANCEMENT_READY
 
 ACTION_SURGE = ContentRef(pack="srd-2014", collection="features", index="action-surge-1-use")

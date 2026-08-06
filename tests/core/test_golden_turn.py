@@ -10,7 +10,7 @@ from pydantic_ai.models.function import FunctionModel
 
 from aidm.core.base import EngineId
 from aidm.core.registry import engine_ids
-from aidm.core.world import EngineRules, Exchange, GameState
+from aidm.core.world import Exchange, GameState
 from aidm.workflow.pipeline import TurnOptions, TurnResult, default_cast, run_turn
 
 PROMPT = "I lever up the loose flagstone and listen at the vault door."
@@ -80,7 +80,7 @@ SCRIPTS: Mapping[EngineId, ModelResponse] = {
 }
 
 
-def _behind(state: GameState[EngineRules]) -> GameState[EngineRules]:
+def _behind(state: GameState) -> GameState:
     draft = state.draft()
     draft.history = HISTORY
     return draft.committed()

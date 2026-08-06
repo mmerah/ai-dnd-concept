@@ -10,12 +10,13 @@ from typing import Annotated, Literal
 from pydantic import Field, JsonValue
 
 from aidm.core.base import PLAYER_ID, EntityId, Frozen
+from aidm.core.engine import Engine
 from aidm.core.enginepack import EngineSpec
 from aidm.core.facts import Fact
-from aidm.core.packs import ENCODING, Content, ContentRef, LenientRecord, lenient_format, load
-from aidm.core.registry import AnyEngine
+from aidm.core.packs import ENCODING, Content, LenientRecord, lenient_format, load
 from aidm.core.sheet import Counter, Sheet, SheetTag
-from aidm.core.world import EngineRules, GameState
+from aidm.core.world import GameState
+from aidm.engines.dnd5e.advance import level_ref
 from aidm.engines.dnd5e.engine import ENGINE_DIR
 
 HP = "hp"
@@ -117,19 +118,19 @@ type CheckStep = Annotated[
 
 @dataclass(slots=True)
 class Setup:
-    engine: AnyEngine
-    state: GameState[EngineRules]
+    engine: Engine
+    state: GameState
     rng: Random
 
 
 @dataclass(frozen=True, slots=True)
 class Outcome:
-    before: GameState[EngineRules]
-    after: GameState[EngineRules]
+    before: GameState
+    after: GameState
     facts: tuple[Fact, ...]
 
 
-def apply_setup(setup: Setup, steps: Sequence[SetupStep]) -> GameState[EngineRules]:
+def apply_setup(setup: Setup, steps: Sequence[SetupStep]) -> GameState:
     """Commit once at the end, so a setup that breaks an invariant fails before the model runs."""
     for step in steps:
         _apply(setup, step)
@@ -186,11 +187,8 @@ def _apply(setup: Setup, step: SetupStep) -> None:
             _sheet(state, step.entity).tags.append(SheetTag(id=step.tag, name=step.tag))
 
 
-def _sheet(state: GameState[EngineRules], entity_id: EntityId) -> Sheet:
-    rules = state.world.record(entity_id, "actor").rules
-    if not isinstance(rules, Sheet):
-        raise ValueError(f"{entity_id!r} carries {type(rules).__name__}, which no probe reads")
-    return rules
+def _sheet(state: GameState, entity_id: EntityId) -> Sheet:
+    return state.world.record(entity_id, "actor").rules
 
 
 def _counter(sheet: Sheet, entity_id: EntityId, pool: str) -> Counter:
@@ -201,7 +199,7 @@ def _counter(sheet: Sheet, entity_id: EntityId, pool: str) -> Counter:
     return found
 
 
-def _pool(state: GameState[EngineRules], entity_id: EntityId, pool: str) -> int:
+def _pool(state: GameState, entity_id: EntityId, pool: str) -> int:
     return _counter(_sheet(state, entity_id), entity_id, pool).current
 
 
@@ -224,24 +222,17 @@ def _write_number(sheet: Sheet, entity_id: EntityId, key: str, value: int) -> No
     sheet.numbers[key] = value
 
 
-def _tags(state: GameState[EngineRules], entity_id: EntityId) -> frozenset[str]:
+def _tags(state: GameState, entity_id: EntityId) -> frozenset[str]:
     return frozenset(tag.id for tag in _sheet(state, entity_id).tags)
 
 
-def _level_up_to(state: GameState[EngineRules], level: int) -> None:
+def _level_up_to(state: GameState, level: int) -> None:
     """Characters are authored at level 1, so a scenario that wants a higher one applies the
     class's own level rows: what they raise is exactly what the advisor would raise."""
     sheet = _sheet(state, PLAYER_ID)
     content = shipped_content()
     for step in range(sheet.numbers[LEVEL] + 1, level + 1):
-        _apply_level(sheet, content.require(_level_ref(sheet, step), LenientRecord))
-
-
-def _level_ref(sheet: Sheet, level: int) -> ContentRef:
-    classes = [ref for ref in sheet.refs if ref.collection == "classes"]
-    if len(classes) != 1:
-        raise ValueError(f"a levelled character holds exactly one class ref, not {classes}")
-    return classes[0].sibling("levels", f"{classes[0].index}-{level}")
+        _apply_level(sheet, content.require(level_ref(sheet, step), LenientRecord))
 
 
 def _apply_level(sheet: Sheet, record: LenientRecord) -> None:

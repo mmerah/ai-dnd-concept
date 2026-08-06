@@ -8,8 +8,7 @@ from aidm.core.base import PLAYER_ID, EntityId, Frozen
 from aidm.core.effects import AddTag
 from aidm.core.engine import Engine
 from aidm.core.plan import OutcomeBranch
-from aidm.core.sheet import Sheet, player_sheet, sheet_of
-from aidm.core.world import GameState
+from aidm.core.world import GameState, player_sheet, sheet_of
 from aidm.engines.dnd5e.actions import (
     FAILURE,
     SUCCESS,
@@ -42,21 +41,19 @@ def _plan(
     )
 
 
-def _refusal(engine: Engine[Sheet], state: GameState[Sheet], plan: Dnd5ePlan) -> str:
+def _refusal(engine: Engine, state: GameState, plan: Dnd5ePlan) -> str:
     refused = engine.check_plan(state, plan)
     assert refused is not None
     return refused
 
 
-def _set_number(
-    state: GameState[Sheet], entity_id: EntityId, key: str, value: int
-) -> GameState[Sheet]:
+def _set_number(state: GameState, entity_id: EntityId, key: str, value: int) -> GameState:
     draft = state.draft()
     sheet_of(draft, entity_id).numbers[key] = value
     return draft.committed()
 
 
-def _hp_ceiling(state: GameState[Sheet], entity_id: EntityId, maximum: int) -> GameState[Sheet]:
+def _hp_ceiling(state: GameState, entity_id: EntityId, maximum: int) -> GameState:
     """Raises a target's hp ceiling so a damage window is never clipped by its own max."""
     draft = state.draft()
     counter = sheet_of(draft, entity_id).counters["hp"]

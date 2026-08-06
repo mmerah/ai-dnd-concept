@@ -16,7 +16,7 @@ from .content import (
 )
 from .registry import engine_ids
 from .turn import TraceEntry
-from .world import EngineRules, GameState, ScenarioMeta
+from .world import GameState, ScenarioMeta
 
 ENCODING = "utf-8"
 WORLD_FILE = "world.json"
@@ -134,17 +134,15 @@ class FileSaves:
         _require_save_version(shell.save_version, "save")
         return shell
 
-    def load(
-        self, slug: str, state_type: type[GameState[EngineRules]]
-    ) -> GameState[EngineRules] | None:
+    def load(self, slug: str) -> GameState | None:
         path = self._path(slug)
         if not path.exists():
             return None
         body = path.read_text(encoding=ENCODING)
         _require_save_version(_StoredVersion.model_validate_json(body).save_version, "save")
-        return state_type.model_validate_json(body)
+        return GameState.model_validate_json(body)
 
-    def save(self, slug: str, state: GameState[EngineRules]) -> None:
+    def save(self, slug: str, state: GameState) -> None:
         _write(self._path(slug), state.model_dump_json(indent=2))
 
     def discard(self, slug: str) -> None:
