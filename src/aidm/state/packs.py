@@ -30,7 +30,7 @@ _RAW: TypeAdapter[list[dict[str, object]]] = TypeAdapter(list[dict[str, object]]
 
 
 class Value(BaseModel):
-    """Keeps Pydantic's field hash, unlike `aidm.core.base.Frozen`: refs key the ruleset maps."""
+    """Keeps Pydantic's field hash, unlike `aidm.state.base.Frozen`: refs key the ruleset maps."""
 
     model_config = ConfigDict(extra="forbid", frozen=True)
 

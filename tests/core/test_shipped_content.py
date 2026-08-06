@@ -1,11 +1,12 @@
 import pytest
 from core_test_support import CHARACTERS, SCENARIOS, settings
 
-from aidm.core.base import SAVE_VERSION, EngineId
-from aidm.core.content import authored_world
-from aidm.core.registry import build_engine, engine_ids
-from aidm.core.store import load_character, load_scenario
-from aidm.core.world import GameState
+from aidm.app.session import build_engine
+from aidm.content.authored import authored_world
+from aidm.content.store import load_character, load_scenario
+from aidm.engines.loader import engine_ids
+from aidm.state.base import SAVE_VERSION, EngineId
+from aidm.state.world import GameState
 
 
 @pytest.mark.parametrize("engine_id", engine_ids())

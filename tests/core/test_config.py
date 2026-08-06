@@ -1,7 +1,7 @@
 import pytest
 from pydantic import SecretStr
 
-from aidm.core.config import ProviderConfig, Providers, RoleConfig, Settings
+from aidm.config import ProviderConfig, Providers, RoleConfig, Settings
 
 
 def keyed_providers() -> Providers:

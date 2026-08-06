@@ -2,8 +2,8 @@ from typing import Literal
 
 from pydantic import Field
 
-from aidm.core.base import EntityId, Frozen, Slug
-from aidm.core.plan import TurnPlanBase
+from aidm.state.base import EntityId, Frozen, Slug
+from aidm.state.plan import TurnPlanBase
 
 Approach = Literal["bold", "subtle", "clever", "empathetic"]
 Difficulty = Literal["risky", "demanding", "extreme"]

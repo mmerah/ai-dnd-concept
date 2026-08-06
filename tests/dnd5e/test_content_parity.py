@@ -4,8 +4,8 @@ from pathlib import Path
 from fivee_test_support import PACK_DIR, pack_format
 from golden_test_support import golden_json
 
-from aidm.core.packs import CollectionName, LenientRecord, Pack, Record, read_pack
 from aidm.engines.dnd5e.content import SpellFacts, WeaponFacts
+from aidm.state.packs import CollectionName, LenientRecord, Pack, Record, read_pack
 
 FIXTURE = Path(__file__).parent / "fixtures" / "mechanics_parity.json"
 

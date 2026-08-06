@@ -5,9 +5,9 @@ from core_test_support import settings, updated
 from story_test_support import TARGET
 from story_test_support import story_session as session
 
-from aidm.core.content import ScenarioMeta
-from aidm.core.store import FileSaves, FileTraces
-from aidm.workflow.session import Runtime
+from aidm.app.session import Runtime
+from aidm.content.authored import ScenarioMeta
+from aidm.content.store import FileSaves, FileTraces
 
 
 def test_opening_does_not_save_and_restart_discards_durable_state(tmp_path: Path) -> None:

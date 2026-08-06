@@ -9,7 +9,7 @@ Status of the proof of concept, and where it should go. Kept short on purpose.
 - The Narrator is the one role kept from unrevealed canon, because it alone writes to the player.
 - Every turn commits whole or not at all; a role failure leaves state untouched.
 - Context comes from `SceneSnapshot` and the Narrator-only `VisibleScene` in
-  `src/aidm/workflow/prompts.py`, not scattered f-strings.
+  `src/aidm/turn/prompts.py`, not scattered f-strings.
 - One structured plan from the Director, resolved by engine code; the only role tool left is the
   read-only rules lookup.
 

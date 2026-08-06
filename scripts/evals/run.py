@@ -21,15 +21,15 @@ from probes import CheckStep, Outcome, Setup, SetupStep, apply_setup, check
 from pydantic import Field, JsonValue
 from pydantic_ai.messages import ModelMessage, ModelRequest, RetryPromptPart
 
-from aidm.core.base import SAVE_VERSION, EngineId, Frozen, Slug
-from aidm.core.config import Settings, load_settings
-from aidm.core.content import authored_world
-from aidm.core.engine import Engine, entity_renderer
-from aidm.core.registry import build_engine
-from aidm.core.store import load_character, load_scenario
-from aidm.core.world import GameState
-from aidm.workflow.pipeline import PlanContext, TurnWorkspace, default_cast, resolve_step
-from aidm.workflow.prompts import SceneSnapshot, render_director
+from aidm.app.session import build_engine
+from aidm.config import Settings, load_settings
+from aidm.content.authored import authored_world
+from aidm.content.store import load_character, load_scenario
+from aidm.engines.loader import Engine
+from aidm.state.base import SAVE_VERSION, EngineId, Frozen, Slug
+from aidm.state.world import GameState
+from aidm.turn.pipeline import PlanContext, TurnWorkspace, default_cast, resolve_step
+from aidm.turn.prompts import SceneSnapshot, render_director
 
 EVALS = Path(__file__).parent
 SCENARIOS = EVALS / "scenarios"
@@ -267,7 +267,7 @@ async def _turn(
     # The agent is run directly rather than through `director_step`: only the run result carries
     # the retry exchanges a diagnosis needs, and the step returns none of it.
     rendered = render_director(
-        SceneSnapshot.of(before), entity_renderer(engine, before), before.scenario, case.prompt
+        SceneSnapshot.of(before), engine.renderer(before), before.scenario, case.prompt
     )
     result = await cast.director.agent.run(rendered, deps=PlanContext(engine=engine, state=before))
     workspace.plan = result.output

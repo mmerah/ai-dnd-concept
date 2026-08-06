@@ -5,11 +5,11 @@ from fivee_test_support import dnd5e_game, dnd5e_session, ready
 from pydantic_ai.messages import ModelMessage, ModelResponse, TextPart
 from pydantic_ai.models.function import AgentInfo, FunctionModel
 
-from aidm.core.base import PLAYER_ID, EntityId
-from aidm.core.packs import ContentRef
-from aidm.core.sheet import AddRef, ChangeCounter, RemoveTag, SetNumber, SheetDelta
-from aidm.core.world import player_sheet
 from aidm.engines.dnd5e.advance import ADVANCEMENT_READY
+from aidm.state.base import PLAYER_ID, EntityId
+from aidm.state.packs import ContentRef
+from aidm.state.sheet import AddRef, ChangeCounter, RemoveTag, SetNumber, SheetDelta
+from aidm.state.world import player_sheet
 
 ACTION_SURGE = ContentRef(pack="srd-2014", collection="features", index="action-surge-1-use")
 SECOND_WIND = ContentRef(pack="srd-2014", collection="features", index="second-wind")
@@ -37,9 +37,9 @@ def _answers(*deltas: SheetDelta) -> FunctionModel:
 
 def test_the_ready_tag_opens_the_next_level_row() -> None:
     engine, state = dnd5e_game()
-    assert engine.proposal.offered(state) is None
+    assert engine.offered(state) is None
 
-    offer = engine.proposal.offered(ready(state))
+    offer = engine.offered(ready(state))
 
     assert offer is not None
     assert offer.prompt.startswith("Fighter 2")
@@ -53,23 +53,23 @@ def test_standing_at_a_scenario_milestone_opens_the_offer_without_the_tag() -> N
     _ = draft.move(draft.world.require(PLAYER_ID), draft.world.require(EntityId("vault")))
     at_vault = draft.committed()
 
-    assert engine.proposal.offered(at_vault) is not None
+    assert engine.offered(at_vault) is not None
 
     leveled = at_vault.draft()
     player_sheet(leveled).numbers["level"] = 2
-    assert engine.proposal.offered(leveled) is None
+    assert engine.offered(leveled) is None
 
 
 def test_a_pick_outside_the_offer_and_a_level_that_does_not_move_are_both_refused() -> None:
     engine, state = dnd5e_game()
     advancing = ready(state)
-    offer = engine.proposal.offered(advancing)
+    offer = engine.offered(advancing)
     assert offer is not None
     outside = SheetDelta(changes=(AddRef(why="a feature already held", ref=SECOND_WIND), SPENT))
 
-    assert engine.proposal.violation(advancing, offer, LEGAL) is None
-    assert "not on offer" in str(engine.proposal.violation(advancing, offer, outside))
-    assert "level 2" in str(engine.proposal.violation(advancing, offer, WRONG_LEVEL))
+    assert engine.violation(advancing, offer, LEGAL) is None
+    assert "not on offer" in str(engine.violation(advancing, offer, outside))
+    assert "level 2" in str(engine.violation(advancing, offer, WRONG_LEVEL))
 
 
 async def test_a_refused_proposal_is_retried_and_the_confirmed_one_commits(tmp_path: Path) -> None:

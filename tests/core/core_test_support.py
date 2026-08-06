@@ -6,13 +6,13 @@ from pydantic import BaseModel, SecretStr
 from pydantic_ai.messages import ModelMessage, ModelResponse, TextPart, ToolCallPart
 from pydantic_ai.models.function import AgentInfo
 
-from aidm.core.base import SAVE_VERSION, EngineId, Entity
-from aidm.core.config import ProviderConfig, Providers, Settings
-from aidm.core.content import Character, Scenario, authored_world
-from aidm.core.engine import Engine
-from aidm.core.registry import build_engine
-from aidm.core.store import load_character, load_scenario
-from aidm.core.world import GameState
+from aidm.app.session import build_engine
+from aidm.config import ProviderConfig, Providers, Settings
+from aidm.content.authored import Character, Scenario, authored_world
+from aidm.content.store import load_character, load_scenario
+from aidm.engines.loader import Engine
+from aidm.state.base import SAVE_VERSION, EngineId, Entity
+from aidm.state.world import GameState
 
 type Stub = Callable[[list[ModelMessage], AgentInfo], ModelResponse]
 

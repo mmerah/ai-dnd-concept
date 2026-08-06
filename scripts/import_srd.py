@@ -13,11 +13,11 @@ from pathlib import Path
 from srd.build import build
 from srd.project import PACK_ID
 
-from aidm.core.packs import write_pack
+from aidm.state.packs import write_pack
 
 REPOSITORY_ROOT = Path(__file__).parent.parent
 SHIPPED_PACK_DIR = REPOSITORY_ROOT / "src" / "aidm" / "engines" / "dnd5e" / "packs"
-SAVE_VERSION_FILE = REPOSITORY_ROOT / "src" / "aidm" / "core" / "base.py"
+SAVE_VERSION_FILE = REPOSITORY_ROOT / "src" / "aidm" / "state" / "base.py"
 SAVE_VERSION_PATTERN = re.compile(r"^SAVE_VERSION = (\d+)$", re.MULTILINE)
 
 

@@ -15,8 +15,8 @@ from pydantic_ai.output import OutputSpec
 from pydantic_ai.providers.openai import OpenAIProvider
 from pydantic_ai.toolsets import AbstractToolset
 
-from ..core.config import ProviderConfig, RoleConfig, Settings
-from ..core.world import Exchange
+from aidm.config import ProviderConfig, RoleConfig, Settings
+from aidm.state.world import Exchange
 
 
 @dataclass(frozen=True)

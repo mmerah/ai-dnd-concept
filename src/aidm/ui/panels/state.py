@@ -1,6 +1,6 @@
 from nicegui import ui
 
-from aidm.workflow.session import GameSession
+from aidm.app.session import GameSession
 
 
 def state_panel(session: GameSession) -> None:

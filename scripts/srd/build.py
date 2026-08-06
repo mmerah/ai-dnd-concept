@@ -4,8 +4,8 @@ from pathlib import Path
 
 from pydantic import TypeAdapter
 
-from aidm.core.enginepack import EngineSpec
-from aidm.core.packs import (
+from aidm.engines.loader import EngineSpec
+from aidm.state.packs import (
     ENCODING,
     CollectionName,
     LenientRecord,

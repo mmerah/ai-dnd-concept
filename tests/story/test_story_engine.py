@@ -2,14 +2,14 @@ from random import Random
 
 from story_test_support import grown, story_game
 
-from aidm.core.base import PLAYER_ID, EntityId
-from aidm.core.effects import AddTag, AdjustCounter
-from aidm.core.engine import Engine
-from aidm.core.plan import OutcomeBranch
-from aidm.core.sheet import ChangeCounter, SetNumber, SheetDelta
-from aidm.core.world import GameState, player_sheet, sheet_of
+from aidm.engines.loader import Engine
 from aidm.engines.story.actions import Risk, StoryPlan
 from aidm.engines.story.advance import GROWTH_REQUIRED
+from aidm.state.base import PLAYER_ID, EntityId
+from aidm.state.effects import AddTag, AdjustCounter
+from aidm.state.plan import OutcomeBranch
+from aidm.state.sheet import ChangeCounter, SetNumber, SheetDelta
+from aidm.state.world import GameState, player_sheet, sheet_of
 
 SPEND = ChangeCounter(why="the marks are spent", key="growth", delta=-GROWTH_REQUIRED)
 RAT = EntityId("cloister_rat")
@@ -106,19 +106,19 @@ def test_check_plan_refuses_a_speaker_the_narrator_may_not_voice() -> None:
 
 def test_growth_opens_an_offer_and_storys_own_caps_refuse_what_breaks_them() -> None:
     engine, state = story_game()
-    assert engine.proposal.offered(state) is None
+    assert engine.offered(state) is None
 
     ready = grown(state)
-    offer = engine.proposal.offered(ready)
+    offer = engine.offered(ready)
     assert offer is not None
 
     legal = SheetDelta(changes=(SetNumber(why="patience earned", key="clever", value=2), SPEND))
     over_cap = SheetDelta(changes=(SetNumber(why="greed", key="bold", value=4), SPEND))
     unspent = SheetDelta(changes=(SetNumber(why="free lunch", key="clever", value=2),))
 
-    assert engine.proposal.check(ready, offer, legal) is None
-    assert engine.proposal.check(ready, offer, over_cap) == "an approach cannot pass +3: ['bold']"
-    assert "must be spent" in str(engine.proposal.check(ready, offer, unspent))
+    assert engine.violation(ready, offer, legal) is None
+    assert engine.violation(ready, offer, over_cap) == "an approach cannot pass +3: ['bold']"
+    assert "must be spent" in str(engine.violation(ready, offer, unspent))
 
 
 def test_the_one_action_is_worked_through_in_the_directors_instructions() -> None:

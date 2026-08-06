@@ -5,10 +5,9 @@ import pytest
 from core_test_support import STORY, initialized, updated
 from pydantic import ValidationError
 
-from aidm.core.engine import narrator_evidence
-from aidm.core.facts import CORE, Fact
-from aidm.core.store import ENCODING, FileSaves, FileTraces, load_character, load_scenario
-from aidm.core.turn import Advance, Growth, Turn
+from aidm.content.store import ENCODING, FileSaves, FileTraces, load_character, load_scenario
+from aidm.state.facts import CORE, Fact, narrator_evidence
+from aidm.state.turn import Advance, Growth, Turn
 
 
 def test_save_and_trace_round_trip(tmp_path: Path) -> None:

@@ -2,7 +2,7 @@ from pathlib import Path
 
 from pydantic import SecretStr
 
-from aidm.core.config import ProviderConfig, Providers, Settings
+from aidm.config import ProviderConfig, Providers, Settings
 
 REPOSITORY_ROOT = Path(__file__).parents[2]
 

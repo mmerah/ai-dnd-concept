@@ -1,19 +1,19 @@
-from aidm.core.engine import AdvancementOffer
-from aidm.core.packs import Content, ContentMiss, ContentRef, LenientRecord
-from aidm.core.sheet import Sheet, SheetDelta, apply_delta
-from aidm.core.world import GameState, player_sheet, sheet_of
+from aidm.engines.loader import Engine
+from aidm.state.packs import ContentMiss, ContentRef, LenientRecord
+from aidm.state.sheet import AdvancementOffer, Sheet, SheetDelta, apply_delta
+from aidm.state.world import GameState, player_sheet, sheet_of
 
 ADVANCEMENT_READY = "advancement-ready"
 LEVEL = "level"
 MILESTONE_LEVEL = "milestone-level"
 
 
-def offered(state: GameState, content: Content) -> AdvancementOffer | None:
+def offered(engine: Engine, state: GameState) -> AdvancementOffer | None:
     sheet = player_sheet(state)
     if sheet.tag(ADVANCEMENT_READY) is None and not _milestone_reached(state, sheet):
         return None
     next_level = sheet.numbers[LEVEL] + 1
-    record = content.get(level_ref(sheet, next_level), LenientRecord)
+    record = engine.content.get(level_ref(sheet, next_level), LenientRecord)
     if isinstance(record, ContentMiss):
         # The class runs out of level rows at 20, which is the end of advancement, not a fault.
         return None
@@ -31,8 +31,7 @@ def _milestone_reached(state: GameState, sheet: Sheet) -> bool:
     return earned is not None and sheet.numbers[LEVEL] < earned
 
 
-def check(state: GameState, offer: AdvancementOffer, delta: SheetDelta) -> str | None:
-    del offer
+def check_delta(state: GameState, delta: SheetDelta) -> str | None:
     before = player_sheet(state)
     after = before.model_copy(deep=True)
     _ = apply_delta(after, delta)

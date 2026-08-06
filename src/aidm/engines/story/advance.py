@@ -1,7 +1,6 @@
-from aidm.core.engine import AdvancementOffer
-from aidm.core.packs import Content
-from aidm.core.sheet import SheetDelta, apply_delta
-from aidm.core.world import GameState, player_sheet
+from aidm.engines.loader import Engine
+from aidm.state.sheet import AdvancementOffer, SheetDelta, apply_delta
+from aidm.state.world import GameState, player_sheet
 
 from .actions import APPROACHES
 
@@ -17,15 +16,14 @@ OFFER = AdvancementOffer(
 )
 
 
-def offered(state: GameState, content: Content) -> AdvancementOffer | None:
-    del content  # Story ships no packs, so nothing binds its growth to a record.
+def offered(engine: Engine, state: GameState) -> AdvancementOffer | None:
+    del engine  # Story ships no packs, so nothing binds its growth to a record.
     growth = player_sheet(state).counters["growth"]
     return OFFER if growth.current >= GROWTH_REQUIRED else None
 
 
-def check(state: GameState, offer: AdvancementOffer, delta: SheetDelta) -> str | None:
+def check_delta(state: GameState, delta: SheetDelta) -> str | None:
     """Story's own caps, read off the sheet the delta would leave behind."""
-    del offer
     after = player_sheet(state).model_copy(deep=True)
     _ = apply_delta(after, delta)
     if raised := sorted(name for name in APPROACHES if after.numbers[name] > MAX_APPROACH):

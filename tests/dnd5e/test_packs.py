@@ -2,9 +2,9 @@ from pathlib import Path
 
 from fivee_test_support import PACK_DIR, dnd5e_game, pack_format
 
-from aidm.core.base import EntityId
-from aidm.core.packs import ENCODING, ContentRef, LenientRecord, read_pack, write_pack
-from aidm.core.world import player_sheet
+from aidm.state.base import EntityId
+from aidm.state.packs import ENCODING, ContentRef, LenientRecord, read_pack, write_pack
+from aidm.state.world import player_sheet
 
 GIANT_RAT = ContentRef(pack="srd-2014", collection="monsters", index="giant-rat")
 RAT = EntityId("cloister_rat")

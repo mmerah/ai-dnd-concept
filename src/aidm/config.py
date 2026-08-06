@@ -1,10 +1,10 @@
 from pathlib import Path
 from typing import Literal, Self
 
-from pydantic import BaseModel, ConfigDict, Field, JsonValue, SecretStr, model_validator
+from pydantic import BaseModel, ConfigDict, Field, SecretStr, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
-from .base import EngineId
+from aidm.state.base import EngineId
 
 ProviderName = Literal["openrouter", "local"]
 ReasoningEffort = Literal["none", "minimal", "low", "medium", "high", "xhigh", "max"]
@@ -45,6 +45,13 @@ class Providers(BaseModel):
                 return self.local
 
 
+class EngineConfig(BaseModel):
+    model_config = ConfigDict(frozen=True, extra="forbid")
+
+    # Where this engine's packs are read from; unset means the ones its own directory ships.
+    pack_paths: tuple[Path, ...] | None = None
+
+
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(
         env_file=".env",
@@ -55,13 +62,15 @@ class Settings(BaseSettings):
 
     providers: Providers = Providers()
     roles: dict[str, RoleConfig] = Field(default_factory=dict)
-    # One section per engine, validated by the engine that reads it inside its own build.
-    engines: dict[EngineId, dict[str, JsonValue]] = Field(default_factory=dict)
+    engines: dict[EngineId, EngineConfig] = Field(default_factory=dict)
     max_growth: int = Field(default=3, ge=0)
     history_window: int = Field(default=6, ge=0)
     saves_dir: Path = Path("saves")
     scenarios_dir: Path = Path("scenarios")
     characters_dir: Path = Path("characters")
+
+    def engine(self, engine_id: EngineId) -> EngineConfig:
+        return self.engines.get(engine_id, EngineConfig())
 
     def role(self, name: str) -> RoleConfig:
         found = self.roles.get(name, RoleConfig())

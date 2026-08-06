@@ -7,14 +7,15 @@ from pydantic import Field
 from pydantic_ai import ModelRetry, NativeOutput, RunContext, ToolOutput
 from pydantic_ai.messages import ModelMessage
 
-from ..core.base import Entity, EntityDetail, EntityId, Frozen, slug
-from ..core.config import Settings
-from ..core.effects import apply_effect
-from ..core.engine import Engine, entity_renderer, narrator_evidence
-from ..core.facts import Fact
-from ..core.plan import TurnPlanBase
-from ..core.turn import Growth, GrowthRequest, RejectedGrowth, Turn, screen_growth
-from ..core.world import Exchange, GameState
+from aidm.config import Settings
+from aidm.engines.loader import Engine
+from aidm.state.base import Entity, EntityDetail, EntityId, Frozen, slug
+from aidm.state.effects import apply_effect
+from aidm.state.facts import Fact, narrator_evidence
+from aidm.state.plan import TurnPlanBase
+from aidm.state.turn import Growth, GrowthRequest, RejectedGrowth, Turn, screen_growth
+from aidm.state.world import Exchange, GameState
+
 from . import prompts
 from .prompts import SceneSnapshot, VisibleScene
 from .roles import Stage, exchanges_to_messages, stage
@@ -73,7 +74,7 @@ def director_step(role: Stage[PlanContext, TurnPlanBase], engine: Engine) -> Ste
     async def run(ws: TurnWorkspace) -> None:
         state = ws.state
         ws.prompts[role.name] = prompts.render_director(
-            SceneSnapshot.of(state), entity_renderer(engine, state), state.scenario, ws.prompt
+            SceneSnapshot.of(state), engine.renderer(state), state.scenario, ws.prompt
         )
         ws.plan = await role.run(
             ws.prompts[role.name], PlanContext(engine=engine, state=state), ws.history
@@ -102,7 +103,7 @@ def narrator_step(role: Stage[None, str], engine: Engine) -> StepFn:
         draft = ws.draft
         ws.prompts[role.name] = prompts.render_narrator(
             VisibleScene.of(SceneSnapshot.of(draft)),
-            entity_renderer(engine, draft),
+            engine.renderer(draft),
             draft.scenario,
             intent=plan.intent,
             tone=plan.tone,
@@ -120,7 +121,7 @@ def maintainer_step(role: Stage[None, Growth], engine: Engine, options: TurnOpti
         draft = ws.draft
         ws.prompts[role.name] = prompts.render_maintainer(
             SceneSnapshot.of(draft),
-            entity_renderer(engine, draft),
+            engine.renderer(draft),
             draft.scenario,
             prompt=ws.prompt,
             evidence=ws.evidence,
@@ -142,7 +143,7 @@ def creator_step(role: Stage[None, EntityDetail], engine: Engine) -> StepFn:
         for request in sorted(ws.accepted, key=lambda item: item.kind != "location"):
             ws.prompts[role.name] = prompts.render_creator(
                 SceneSnapshot.of(draft),
-                entity_renderer(engine, draft),
+                engine.renderer(draft),
                 draft.scenario,
                 narration=ws.narration,
                 recent=ws.recent,
@@ -180,7 +181,7 @@ def director_stage(engine: Engine, settings: Settings) -> Stage[PlanContext, Tur
         instructions=f"{prompts.CORE_DIRECTOR}\n\n{engine.director_instructions}",
         output_type=ToolOutput(engine.plan_type, name="turn_plan"),
         deps_type=PlanContext,
-        toolsets=(engine.toolsets["director"],),
+        toolsets=(engine.director_toolset,),
     )
 
     def legal(ctx: RunContext[PlanContext], plan: TurnPlanBase) -> TurnPlanBase:

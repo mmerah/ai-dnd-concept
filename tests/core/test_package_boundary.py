@@ -4,14 +4,19 @@ from pathlib import Path
 import pytest
 
 SOURCE = Path(__file__).parents[2] / "src" / "aidm"
-ENGINE_BLIND = ("core", "workflow")
+ENGINES = ("aidm.engines.story", "aidm.engines.dnd5e")
+# One direction: state <- content <- engines <- turn <- app <- ui, with `aidm.config` a leaf
+# every layer may read. An engine ships its own panels, so it may import nicegui; `aidm.ui` and
+# the other engine stay closed to it.
 FORBIDDEN = {
-    "core": {"aidm.workflow", "aidm.ui", "nicegui"},
-    "workflow": {"aidm.ui", "nicegui"},
-    # An engine ships its own panels, so it may import nicegui; `aidm.ui` stays closed to it.
-    "engines/story": {"aidm.workflow", "aidm.engines.dnd5e", "aidm.ui"},
-    "engines/dnd5e": {"aidm.workflow", "aidm.engines.story", "aidm.ui"},
+    "state": {"aidm.content", "aidm.engines", "aidm.turn", "aidm.app", "aidm.ui", "nicegui"},
+    "content": {"aidm.engines", "aidm.turn", "aidm.app", "aidm.ui", "nicegui"},
+    "engines": {"aidm.turn", "aidm.app", "aidm.ui"},
+    "turn": {"aidm.app", "aidm.ui", "nicegui"},
+    "app": {"aidm.ui", "nicegui"},
     "ui": {"aidm.engines"},
+    "engines/story": {"aidm.engines.dnd5e"},
+    "engines/dnd5e": {"aidm.engines.story"},
 }
 
 
@@ -62,12 +67,12 @@ def test_packages_import_only_in_the_allowed_direction(
     assert not violations
 
 
-def test_no_core_file_imports_an_engine_package() -> None:
-    """Adding an engine is one line in `registry.ENGINE_MODULES`, the only place naming one."""
+def test_only_the_loader_names_a_concrete_engine() -> None:
+    """Adding an engine is one line in `loader.ENGINE_MODULES`, the only place naming one."""
     naming = {
-        path.name
-        for package in ENGINE_BLIND
-        for path in _source_files(package)
-        if any(name.startswith("aidm.engines") for name in _file_imports(path))
+        str(path.relative_to(SOURCE))
+        for path in SOURCE.rglob("*.py")
+        if path.parts[-2] not in ("story", "dnd5e")
+        if any(name.startswith(ENGINES) for name in _file_imports(path))
     }
     assert naming == set()

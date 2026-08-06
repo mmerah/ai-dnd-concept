@@ -2,9 +2,9 @@ from typing import Annotated, Literal
 
 from pydantic import Field
 
-from aidm.core.base import EntityId, Frozen, Slug
-from aidm.core.dice import DiceExpr, RollMode
-from aidm.core.plan import TurnPlanBase
+from aidm.state.base import EntityId, Frozen, Slug
+from aidm.state.dice import DiceExpr, RollMode
+from aidm.state.plan import TurnPlanBase
 
 SUCCESS: Slug = "success"
 FAILURE: Slug = "failure"

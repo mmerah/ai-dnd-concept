@@ -4,13 +4,13 @@ from collections.abc import Callable
 from nicegui import ui
 from nicegui.events import ValueChangeEventArguments
 
-from aidm.core.config import Settings
-from aidm.core.registry import as_engine_id
-from aidm.workflow.session import (
+from aidm.app.launcher import (
     LauncherController,
     SaveOption,
+    as_engine_id,
     load_catalog,
 )
+from aidm.config import Settings
 
 from .components.engine import show_engine_badge
 
@@ -43,7 +43,7 @@ def _new_game(controller: LauncherController) -> None:
                 ui.label("No playable scenario was found.").classes("text-negative")
                 return
             scenario = controller.catalog.scenario(controller.selected_scenario)
-            show_engine_badge(controller.selected_engine)
+            show_engine_badge(controller.catalog.badge(controller.selected_engine))
             ui.select(
                 options={option.id: option.title for option in controller.catalog.scenarios},
                 value=controller.selected_scenario,
@@ -154,7 +154,7 @@ def _saved_card(controller: LauncherController, saved: SaveOption) -> None:
                 ui.label(f"{saved.character_title} · turn {saved.turn}").classes(
                     "text-sm opacity-70"
                 )
-            show_engine_badge(saved.engine)
+            show_engine_badge(controller.catalog.badge(saved.engine))
             if saved.resumable:
                 ui.button(
                     "Resume",

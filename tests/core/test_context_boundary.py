@@ -1,14 +1,13 @@
 import pytest
-from core_test_support import STORY, updated, with_entity
+from core_test_support import STORY, game, updated, with_entity
 
-from aidm.core.base import PLAYER_ID, SAVE_VERSION, Entity, EntityId, Kind
-from aidm.core.content import ScenarioMeta
-from aidm.core.engine import EntityRenderer, entity_renderer
-from aidm.core.sheet import Counter, Sheet
-from aidm.core.turn import GrowthRequest
-from aidm.core.world import GameState, WorldState
-from aidm.engines.story.engine import build_story_engine
-from aidm.workflow.prompts import (
+from aidm.content.authored import ScenarioMeta
+from aidm.engines.loader import EntityRenderer
+from aidm.state.base import PLAYER_ID, SAVE_VERSION, Entity, EntityId, Kind
+from aidm.state.sheet import Counter, Sheet
+from aidm.state.turn import GrowthRequest
+from aidm.state.world import GameState, WorldState
+from aidm.turn.prompts import (
     SceneSnapshot,
     VisibleScene,
     prompt_id,
@@ -77,7 +76,8 @@ def state() -> GameState:
 
 
 def _renderer(held: GameState) -> EntityRenderer:
-    return entity_renderer(build_story_engine(), held)
+    engine, _ = game(STORY)
+    return engine.renderer(held)
 
 
 def test_the_narrators_view_has_no_field_that_could_hold_unrevealed_canon() -> None:

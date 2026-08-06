@@ -1,8 +1,6 @@
 import pytest
 from fivee_test_support import PACK_DIR, pack_format
 
-from aidm.core.packs import Content, ContentRef, LenientRecord, load
-from aidm.core.sheet import Sheet
 from aidm.engines.dnd5e.content import (
     Amount,
     SpellFacts,
@@ -11,6 +9,8 @@ from aidm.engines.dnd5e.content import (
     spellcasting_ability,
     weapon_of,
 )
+from aidm.state.packs import Content, ContentRef, LenientRecord, load
+from aidm.state.sheet import Sheet
 
 LONGSWORD = ContentRef(pack="srd-2014", collection="weapons", index="longsword")
 SHORTBOW = ContentRef(pack="srd-2014", collection="weapons", index="shortbow")

@@ -7,8 +7,8 @@ from collections.abc import Iterable, Mapping, Sequence
 
 from pydantic import TypeAdapter
 
-from aidm.core.dice import ConstantTerm, DiceTerm, terms
-from aidm.core.packs import ContentRef, LenientRecord
+from aidm.state.dice import ConstantTerm, DiceTerm, terms
+from aidm.state.packs import ContentRef, LenientRecord
 
 from . import upstream as up
 

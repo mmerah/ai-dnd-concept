@@ -2,10 +2,10 @@ import logging
 
 from nicegui import ui
 
-from aidm.core.base import content_id
-from aidm.core.config import load_settings
-from aidm.core.registry import as_engine_id
-from aidm.workflow.session import GameSession, LaunchTarget, Runtime
+from aidm.app.launcher import LaunchTarget, as_engine_id
+from aidm.app.session import GameSession, Runtime
+from aidm.config import load_settings
+from aidm.state.base import content_id
 
 from .components.engine import show_engine_badge
 from .home import home_page
@@ -122,7 +122,7 @@ def _game_page(session: GameSession) -> None:
     with ui.header().classes("items-center").style("gap: 1rem"):
         ui.button(icon="home", on_click=lambda: ui.navigate.to("/")).props("flat color=white round")
         ui.label(session.state.scenario.title).classes("text-lg font-bold")
-        show_engine_badge(session.engine.id)
+        show_engine_badge(session.engine.badge)
         view.roles()
         ui.space()
         ui.button("restart", on_click=lambda: restart(view)).props("flat color=white dense")

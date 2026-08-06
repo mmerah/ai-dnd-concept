@@ -3,9 +3,10 @@ from random import Random
 
 from pydantic import JsonValue
 
-from aidm.core.base import PLAYER_ID, Entity, EntityId, Slug
-from aidm.core.dice import DiceExpr, roll
-from aidm.core.effects import (
+from aidm.engines.loader import Engine
+from aidm.state.base import PLAYER_ID, Entity, EntityId, Slug
+from aidm.state.dice import DiceExpr, roll
+from aidm.state.effects import (
     AddTag,
     AdjustCounter,
     SetNote,
@@ -14,11 +15,10 @@ from aidm.core.effects import (
     entity_fact,
     require_actor_here,
 )
-from aidm.core.enginepack import EngineParts
-from aidm.core.facts import Fact
-from aidm.core.plan import TurnPlanBase, apply_branch, check_plan_base
-from aidm.core.sheet import Sheet
-from aidm.core.world import GameState, player_sheet, sheet_of
+from aidm.state.facts import Fact
+from aidm.state.plan import TurnPlanBase, apply_branch, check_plan_base
+from aidm.state.sheet import Sheet
+from aidm.state.world import GameState, player_sheet, sheet_of
 
 from .actions import (
     CONTESTED,
@@ -52,29 +52,27 @@ MILESTONE_TAG = AddTag(
 )
 
 
-def check_plan(parts: EngineParts, state: GameState, plan: TurnPlanBase) -> str | None:
+def check_plan(engine: Engine, state: GameState, plan: TurnPlanBase) -> str | None:
     try:
         fivee = _dnd5e_plan(plan)
         action = fivee.action
         if action is not None:
             # The resolver raises every refusal the check owes the model, so trial it on a draft
             # that is thrown away rather than stating each precondition twice.
-            _ = _resolved(state.draft(), parts, action, Random(0))
-        labels = _labels(parts, action)
+            _ = _resolved(state.draft(), engine, action, Random(0))
+        labels = _labels(engine, action)
     except ValueError as refused:
         return str(refused)
-    return check_plan_base(state, fivee, labels, parts.default_rules)
+    return check_plan_base(state, fivee, labels, engine.default_rules)
 
 
-def resolve_action(
-    parts: EngineParts, draft: GameState, plan: TurnPlanBase, rng: Random
-) -> list[Fact]:
+def resolve_action(engine: Engine, draft: GameState, plan: TurnPlanBase, rng: Random) -> list[Fact]:
     fivee = _dnd5e_plan(plan)
-    facts, outcome = _resolved(draft, parts, fivee.action, rng)
+    facts, outcome = _resolved(draft, engine, fivee.action, rng)
     if outcome is not None:
-        facts.extend(apply_branch(draft, plan, outcome, parts.default_rules))
+        facts.extend(apply_branch(draft, plan, outcome, engine.default_rules))
     if fivee.milestone_earned and player_sheet(draft).tag(ADVANCEMENT_READY) is None:
-        facts.extend(apply_effect(draft, MILESTONE_TAG, parts.default_rules))
+        facts.extend(apply_effect(draft, MILESTONE_TAG, engine.default_rules))
     return facts
 
 
@@ -84,10 +82,10 @@ def _dnd5e_plan(plan: TurnPlanBase) -> Dnd5ePlan:
     return plan
 
 
-def _labels(parts: EngineParts, action: Dnd5eAction | None) -> frozenset[Slug]:
+def _labels(engine: Engine, action: Dnd5eAction | None) -> frozenset[Slug]:
     match action:
         case CastSpell():
-            spell = _spell(parts, action)
+            spell = _spell(engine, action)
             return CONTESTED if spell.attack or spell.save_ability is not None else UNCONTESTED
         case Improvise():
             return CONTESTED if action.vs is not None else UNCONTESTED
@@ -98,15 +96,15 @@ def _labels(parts: EngineParts, action: Dnd5eAction | None) -> frozenset[Slug]:
 
 
 def _resolved(
-    draft: GameState, parts: EngineParts, action: Dnd5eAction | None, rng: Random
+    draft: GameState, engine: Engine, action: Dnd5eAction | None, rng: Random
 ) -> tuple[list[Fact], Slug | None]:
     match action:
         case None:
             return [], None
         case Attack():
-            return _attack(draft, parts, action, rng)
+            return _attack(draft, engine, action, rng)
         case CastSpell():
-            return _cast(draft, parts, action, rng)
+            return _cast(draft, engine, action, rng)
         case Check():
             actor = require_actor_here(draft, action.actor_id)
             rolled, fact = roll(
@@ -119,21 +117,21 @@ def _resolved(
             )
             return [*_seen(draft, actor), fact], _verdict(rolled.total >= action.dc)
         case UseFeature():
-            return _feature(draft, parts, action, rng)
+            return _feature(draft, engine, action, rng)
         case Rest():
-            return _rest(draft, parts, action)
+            return _rest(draft, engine, action)
         case Improvise():
             rolled, fact = roll(action.dice, action.reason, rng, vs=action.vs, mode=action.mode)
             return [fact], None if action.vs is None else _verdict(rolled.total >= action.vs)
 
 
 def _attack(
-    draft: GameState, parts: EngineParts, action: Attack, rng: Random
+    draft: GameState, engine: Engine, action: Attack, rng: Random
 ) -> tuple[list[Fact], Slug]:
     attacker = require_actor_here(draft, action.actor_id)
     target = require_actor_here(draft, action.target_id)
     facts = _seen(draft, attacker, target)
-    to_hit, damage, damage_bonus = _attack_terms(draft, parts, attacker, action)
+    to_hit, damage, damage_bonus = _attack_terms(draft, engine, attacker, action)
     armor_class = _armor_class(draft, target)
     rolled, fact = roll(
         D20,
@@ -148,12 +146,12 @@ def _attack(
         return facts, FAILURE
     hurt, damage_fact = roll(damage, f"{attacker.name}'s damage", rng, bonus=damage_bonus)
     facts.append(damage_fact)
-    facts.extend(_harm(draft, parts, target.id, -hurt.total, f"{attacker.name}'s attack"))
+    facts.extend(_harm(draft, engine, target.id, -hurt.total, f"{attacker.name}'s attack"))
     return facts, SUCCESS
 
 
 def _attack_terms(
-    state: GameState, parts: EngineParts, attacker: Entity, action: Attack
+    state: GameState, engine: Engine, attacker: Entity, action: Attack
 ) -> tuple[int, DiceExpr, int]:
     if action.weapon_item_id is None:
         if action.attack_bonus is None or action.damage is None:
@@ -168,7 +166,7 @@ def _attack_terms(
             "null when you name a `weapon_item_id`"
         )
     item = _carried(state, attacker, action.weapon_item_id)
-    weapon = weapon_of(parts.content, sheet_of(state, item.id))
+    weapon = weapon_of(engine.content, sheet_of(state, item.id))
     if weapon is None:
         raise ValueError(
             f"{item.name} is no weapon. Attack with a weapon the attacker carries, or give "
@@ -185,32 +183,32 @@ def _attack_terms(
 
 
 def _cast(
-    draft: GameState, parts: EngineParts, action: CastSpell, rng: Random
+    draft: GameState, engine: Engine, action: CastSpell, rng: Random
 ) -> tuple[list[Fact], Slug | None]:
     caster = require_actor_here(draft, action.actor_id)
     sheet = sheet_of(draft, caster.id)
-    spell = _spell(parts, action)
-    modifier = _spell_modifier(parts, sheet)
+    spell = _spell(engine, action)
+    modifier = _spell_modifier(engine, sheet)
     slot = _slot_spent(action, spell)
     facts = _seen(draft, caster)
     if action.target_id is not None:
         facts.extend(_seen(draft, require_actor_here(draft, action.target_id)))
     if slot is not None:
-        facts.extend(_spend(draft, parts, caster.id, f"{SLOT}{slot}"))
-    outcome, contest = _contest(draft, parts, action, spell, caster, modifier, rng)
+        facts.extend(_spend(draft, engine, caster.id, f"{SLOT}{slot}"))
+    outcome, contest = _contest(draft, engine, action, spell, caster, modifier, rng)
     facts.extend(contest)
     # A cantrip spends no slot, so it is the caster's own level that scales it.
     scale = slot if slot is not None else sheet.numbers.get(LEVEL, DEFAULT_LEVEL)
-    facts.extend(_spell_effect(draft, parts, action, spell, caster, modifier, scale, outcome, rng))
+    facts.extend(_spell_effect(draft, engine, action, spell, caster, modifier, scale, outcome, rng))
     if spell.concentration:
         note = SetNote(entity_id=caster.id, key=CONCENTRATION, text=spell.name)
-        facts.extend(apply_effect(draft, note, parts.default_rules))
+        facts.extend(apply_effect(draft, note, engine.default_rules))
     return facts, outcome
 
 
 def _contest(
     draft: GameState,
-    parts: EngineParts,
+    engine: Engine,
     action: CastSpell,
     spell: SpellFacts,
     caster: Entity,
@@ -238,7 +236,7 @@ def _contest(
 
 def _spell_effect(
     draft: GameState,
-    parts: EngineParts,
+    engine: Engine,
     action: CastSpell,
     spell: SpellFacts,
     caster: Entity,
@@ -256,31 +254,31 @@ def _spell_effect(
         rolled, fact = roll(damage.dice, f"{spell.name} damage", rng, bonus=damage.bonus(modifier))
         total = rolled.total // 2 if outcome == FAILURE else rolled.total
         facts.append(fact)
-        facts.extend(_harm(draft, parts, target.id, -total, spell.name))
+        facts.extend(_harm(draft, engine, target.id, -total, spell.name))
     if (heal := spell.heal_at(scale)) is not None:
         healed = require_actor_here(draft, action.target_id or caster.id)
         rolled, fact = roll(heal.dice, f"{spell.name} healing", rng, bonus=heal.bonus(modifier))
         facts.append(fact)
-        facts.extend(_harm(draft, parts, healed.id, rolled.total, spell.name))
+        facts.extend(_harm(draft, engine, healed.id, rolled.total, spell.name))
     return facts
 
 
 def _feature(
-    draft: GameState, parts: EngineParts, action: UseFeature, rng: Random
+    draft: GameState, engine: Engine, action: UseFeature, rng: Random
 ) -> tuple[list[Fact], None]:
     actor = require_actor_here(draft, action.actor_id)
     facts = _seen(draft, actor)
-    facts.extend(_spend(draft, parts, actor.id, action.counter))
+    facts.extend(_spend(draft, engine, actor.id, action.counter))
     if action.heal is not None:
         rolled, fact = roll(action.heal, f"{actor.name} draws on {action.counter}", rng)
         facts.append(fact)
-        facts.extend(_harm(draft, parts, actor.id, rolled.total, action.counter))
+        facts.extend(_harm(draft, engine, actor.id, rolled.total, action.counter))
     return facts, None
 
 
-def _rest(draft: GameState, parts: EngineParts, action: Rest) -> tuple[list[Fact], None]:
+def _rest(draft: GameState, engine: Engine, action: Rest) -> tuple[list[Fact], None]:
     actor = require_actor_here(draft, action.actor_id)
-    refilled = _refilled_by(parts, action.label)
+    refilled = _refilled_by(engine, action.label)
     seen = _seen(draft, actor)
     sheet = sheet_of(draft, actor.id)
     keys: list[str] = []
@@ -297,8 +295,8 @@ def _rest(draft: GameState, parts: EngineParts, action: Rest) -> tuple[list[Fact
     return [*seen, entity_fact(actor, "recharged", trace, data)], None
 
 
-def _spell(parts: EngineParts, action: CastSpell) -> SpellFacts:
-    spell = spell_of(parts.content, action.spell)
+def _spell(engine: Engine, action: CastSpell) -> SpellFacts:
+    spell = spell_of(engine.content, action.spell)
     if spell is None:
         raise ValueError(
             f"the rules for {action.spell} are not written in a form this engine resolves: "
@@ -307,8 +305,8 @@ def _spell(parts: EngineParts, action: CastSpell) -> SpellFacts:
     return spell
 
 
-def _spell_modifier(parts: EngineParts, sheet: Sheet) -> int:
-    ability = spellcasting_ability(parts.content, sheet)
+def _spell_modifier(engine: Engine, sheet: Sheet) -> int:
+    ability = spellcasting_ability(engine.content, sheet)
     if ability is None:
         raise ValueError(
             "this actor's class casts no spells, so it has no spellcasting ability: resolve what "
@@ -354,24 +352,24 @@ def _modifier(sheet: Sheet, ability: Slug) -> int:
     return (sheet.numbers[ability] - 10) // 2
 
 
-def _refilled_by(parts: EngineParts, label: str) -> Sequence[str]:
-    refilled = parts.spec.recharge.get(label)
+def _refilled_by(engine: Engine, label: str) -> Sequence[str]:
+    refilled = engine.spec.recharge.get(label)
     if refilled is None:
-        known = ", ".join(sorted(parts.spec.recharge)) or "(nothing)"
+        known = ", ".join(sorted(engine.spec.recharge)) or "(nothing)"
         raise ValueError(f"unknown rest {label!r}. This engine rests on: {known}")
     return refilled
 
 
-def _spend(draft: GameState, parts: EngineParts, entity_id: EntityId, counter: Slug) -> list[Fact]:
+def _spend(draft: GameState, engine: Engine, entity_id: EntityId, counter: Slug) -> list[Fact]:
     cost = SpendCounter(entity_id=entity_id, counter=counter, amount=1)
-    return apply_effect(draft, cost, parts.default_rules)
+    return apply_effect(draft, cost, engine.default_rules)
 
 
 def _harm(
-    draft: GameState, parts: EngineParts, entity_id: EntityId, delta: int, reason: str
+    draft: GameState, engine: Engine, entity_id: EntityId, delta: int, reason: str
 ) -> list[Fact]:
     change = AdjustCounter(entity_id=entity_id, counter=HP, delta=delta, reason=reason)
-    return apply_effect(draft, change, parts.default_rules)
+    return apply_effect(draft, change, engine.default_rules)
 
 
 def _seen(draft: GameState, *actors: Entity) -> list[Fact]:

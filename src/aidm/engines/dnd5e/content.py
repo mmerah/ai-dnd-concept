@@ -2,10 +2,10 @@ import re
 from collections.abc import Mapping
 from types import MappingProxyType
 
-from aidm.core.base import Frozen, Slug
-from aidm.core.dice import DiceExpr
-from aidm.core.packs import Content, ContentMiss, LenientRecord, parse_ref
-from aidm.core.sheet import Sheet
+from aidm.state.base import Frozen, Slug
+from aidm.state.dice import DiceExpr
+from aidm.state.packs import Content, ContentMiss, LenientRecord, parse_ref
+from aidm.state.sheet import Sheet
 
 ABILITIES: Mapping[str, Slug] = MappingProxyType(
     {

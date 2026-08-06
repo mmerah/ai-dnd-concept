@@ -3,21 +3,20 @@ from random import Random
 
 from core_test_support import CHARACTERS, DND5E, SCENARIOS, game, settings
 
-from aidm.core.base import PLAYER_ID, Entity, EntityId
-from aidm.core.content import Character, Scenario
-from aidm.core.engine import Engine
-from aidm.core.enginepack import EngineSpec
-from aidm.core.packs import ENCODING, ContentRef, PackFormat, lenient_format
-from aidm.core.registry import build_engine
-from aidm.core.sheet import Counter, SheetDefinition, SheetTag, SheetTemplate
-from aidm.core.store import FileSaves, FileTraces, load_character, load_scenario
-from aidm.core.world import GameState, Record, player_sheet
+from aidm.app.session import GameSession, LaunchTarget, build_engine
+from aidm.content.authored import Character, Scenario
+from aidm.content.store import FileSaves, FileTraces, load_character, load_scenario
 from aidm.engines.dnd5e.advance import ADVANCEMENT_READY
-from aidm.engines.dnd5e.engine import ENGINE_DIR
-from aidm.workflow.pipeline import TurnOptions, default_cast
-from aidm.workflow.proposals import advisor
-from aidm.workflow.session import GameSession, LaunchTarget
+from aidm.engines.dnd5e.rules import PLUGIN
+from aidm.engines.loader import Engine, EngineSpec
+from aidm.state.base import PLAYER_ID, Entity, EntityId
+from aidm.state.packs import ENCODING, ContentRef, PackFormat, lenient_format
+from aidm.state.sheet import Counter, SheetDefinition, SheetTag, SheetTemplate
+from aidm.state.world import GameState, Record, player_sheet
+from aidm.turn.advancement import advisor
+from aidm.turn.pipeline import TurnOptions, default_cast
 
+ENGINE_DIR = PLUGIN.engine_dir
 PACK_DIR = ENGINE_DIR / "packs" / "srd-2014"
 RAT = EntityId("cloister_rat")
 CLOISTER = EntityId("cloister")

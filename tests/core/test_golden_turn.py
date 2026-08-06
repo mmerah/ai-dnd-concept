@@ -8,10 +8,10 @@ from golden_test_support import FIXTURES, dumped, golden
 from pydantic_ai.messages import ModelResponse
 from pydantic_ai.models.function import FunctionModel
 
-from aidm.core.base import EngineId
-from aidm.core.registry import engine_ids
-from aidm.core.world import Exchange, GameState
-from aidm.workflow.pipeline import TurnOptions, TurnResult, default_cast, run_turn
+from aidm.engines.loader import engine_ids
+from aidm.state.base import EngineId
+from aidm.state.world import Exchange, GameState
+from aidm.turn.pipeline import TurnOptions, TurnResult, default_cast, run_turn
 
 PROMPT = "I lever up the loose flagstone and listen at the vault door."
 # Played turns, so the history window, its rendering, and its replay as messages all run on real

@@ -2,8 +2,7 @@ import pytest
 from core_test_support import STORY, character, initialized, scenario, updated, with_entity
 from pydantic import ValidationError
 
-from aidm.core.base import PLAYER_ID, Entity, EntityId
-from aidm.core.content import (
+from aidm.content.authored import (
     AuthoredEntity,
     AuthoredWorld,
     Character,
@@ -11,7 +10,8 @@ from aidm.core.content import (
     CharacterProfile,
     authored_world,
 )
-from aidm.core.sheet import SheetDefinition, SheetTag
+from aidm.state.base import PLAYER_ID, Entity, EntityId
+from aidm.state.sheet import SheetDefinition, SheetTag
 
 HELD = EntityId("frayed_rope")
 UNHELD = EntityId("silk_rope")

@@ -6,12 +6,11 @@ from pydantic_ai.messages import ModelMessage, ModelResponse, TextPart
 from pydantic_ai.models.function import AgentInfo, FunctionModel
 from story_test_support import grown, story_game, story_session
 
-from aidm.core.engine import AdvancementOffer
-from aidm.core.packs import ContentRef
-from aidm.core.sheet import AddRef, ChangeCounter, SetNumber, SheetDelta
-from aidm.core.store import FileSaves, FileTraces
-from aidm.core.turn import Advance
-from aidm.core.world import player_sheet
+from aidm.content.store import FileSaves, FileTraces
+from aidm.state.packs import ContentRef
+from aidm.state.sheet import AddRef, AdvancementOffer, ChangeCounter, SetNumber, SheetDelta
+from aidm.state.turn import Advance
+from aidm.state.world import player_sheet
 
 SPEND = ChangeCounter(why="the three marks are spent", key="growth", delta=-3)
 LEGAL = SheetDelta(changes=(SetNumber(why="hard-won patience", key="clever", value=2), SPEND))
@@ -64,7 +63,7 @@ def test_picks_are_checked_against_the_offer_and_the_trial_sheet_must_validate()
     ward = ContentRef(pack="growth", collection="paths", index="ward")
     feast = ContentRef(pack="growth", collection="paths", index="feast")
     offer = AdvancementOffer(prompt="Choose a path.", options=(blade, ward), choose=1)
-    judge = engine.proposal.violation
+    judge = engine.violation
 
     def pick(ref: ContentRef) -> AddRef:
         return AddRef(why="the chosen path", ref=ref)

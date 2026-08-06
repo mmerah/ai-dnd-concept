@@ -2,14 +2,14 @@ from collections.abc import Mapping
 from random import Random
 from types import MappingProxyType
 
-from aidm.core.base import PLAYER_ID, Entity, Slug
-from aidm.core.dice import roll
-from aidm.core.effects import AdjustCounter, apply_effect, require_actor_here
-from aidm.core.enginepack import EngineParts
-from aidm.core.facts import Fact
-from aidm.core.plan import TurnPlanBase, apply_branch, check_plan_base
-from aidm.core.sheet import Sheet
-from aidm.core.world import GameState, sheet_of
+from aidm.engines.loader import Engine
+from aidm.state.base import PLAYER_ID, Entity, Slug
+from aidm.state.dice import roll
+from aidm.state.effects import AdjustCounter, apply_effect, require_actor_here
+from aidm.state.facts import Fact
+from aidm.state.plan import TurnPlanBase, apply_branch, check_plan_base
+from aidm.state.sheet import Sheet
+from aidm.state.world import GameState, sheet_of
 
 from .actions import OUTCOMES, Difficulty, Risk, StoryPlan
 
@@ -20,6 +20,35 @@ STRONG_FROM = 10
 GROWTH_MARK = AdjustCounter(
     entity_id=PLAYER_ID, counter="growth", delta=1, reason="a setback earns growth"
 )
+
+
+def check_plan(engine: Engine, state: GameState, plan: TurnPlanBase) -> str | None:
+    story = _story_plan(plan)
+    action = story.action
+    if action is None:
+        return check_plan_base(state, story, frozenset[Slug](), engine.default_rules)
+    return _refused(state, action) or check_plan_base(state, story, OUTCOMES, engine.default_rules)
+
+
+def resolve_action(engine: Engine, draft: GameState, plan: TurnPlanBase, rng: Random) -> list[Fact]:
+    action = _story_plan(plan).action
+    if action is None:
+        return []
+    actor = require_actor_here(draft, action.actor_id)
+    sheet = sheet_of(draft, actor.id)
+    bonus = (
+        sheet.numbers[action.approach]
+        + (1 if action.helping_tag_id is not None else 0)
+        - (1 if action.hindering_tag_id is not None else 0)
+        - PENALTY[action.difficulty]
+    )
+    rolled, fact = roll(DICE, action.stakes, rng, vs=TARGET, bonus=bonus)
+    outcome = _outcome(rolled.total)
+    facts = [*draft.reveal(actor), fact]
+    if outcome == "setback" and actor.id == PLAYER_ID:
+        facts.extend(apply_effect(draft, GROWTH_MARK, engine.default_rules))
+    facts.extend(apply_branch(draft, plan, outcome, engine.default_rules))
+    return facts
 
 
 def _story_plan(plan: TurnPlanBase) -> StoryPlan:
@@ -57,37 +86,6 @@ def _refused(state: GameState, action: Risk) -> str | None:
             "so nothing helps them here"
         )
     return None
-
-
-def check_plan(parts: EngineParts, state: GameState, plan: TurnPlanBase) -> str | None:
-    story = _story_plan(plan)
-    action = story.action
-    if action is None:
-        return check_plan_base(state, story, frozenset[Slug](), parts.default_rules)
-    return _refused(state, action) or check_plan_base(state, story, OUTCOMES, parts.default_rules)
-
-
-def resolve_action(
-    parts: EngineParts, draft: GameState, plan: TurnPlanBase, rng: Random
-) -> list[Fact]:
-    action = _story_plan(plan).action
-    if action is None:
-        return []
-    actor = require_actor_here(draft, action.actor_id)
-    sheet = sheet_of(draft, actor.id)
-    bonus = (
-        sheet.numbers[action.approach]
-        + (1 if action.helping_tag_id is not None else 0)
-        - (1 if action.hindering_tag_id is not None else 0)
-        - PENALTY[action.difficulty]
-    )
-    rolled, fact = roll(DICE, action.stakes, rng, vs=TARGET, bonus=bonus)
-    outcome = _outcome(rolled.total)
-    facts = [*draft.reveal(actor), fact]
-    if outcome == "setback" and actor.id == PLAYER_ID:
-        facts.extend(apply_effect(draft, GROWTH_MARK, parts.default_rules))
-    facts.extend(apply_branch(draft, plan, outcome, parts.default_rules))
-    return facts
 
 
 def _outcome(total: int) -> Slug:

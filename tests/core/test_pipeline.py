@@ -6,9 +6,9 @@ from core_test_support import initialized, plan, scripted, settings, structured,
 from pydantic_ai.messages import ModelMessage, ModelRequest, ModelResponse, RetryPromptPart
 from pydantic_ai.models.function import AgentInfo, FunctionModel
 
-from aidm.core.base import PLAYER_ID
-from aidm.core.world import player_sheet, sheet_of
-from aidm.workflow.pipeline import TurnOptions, TurnWorkspace, default_cast, run_turn
+from aidm.state.base import PLAYER_ID
+from aidm.state.world import player_sheet, sheet_of
+from aidm.turn.pipeline import TurnOptions, TurnWorkspace, default_cast, run_turn
 
 STEPS = ("director", "resolve", "narrator", "maintainer", "creator")
 

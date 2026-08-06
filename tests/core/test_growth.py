@@ -1,4 +1,4 @@
-from aidm.core.turn import GrowthRequest, screen_growth
+from aidm.state.turn import GrowthRequest, screen_growth
 
 
 def request(name: str) -> GrowthRequest:

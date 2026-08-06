@@ -4,11 +4,12 @@ from pathlib import Path
 from core_test_support import DND5E, STORY, updated
 from ui_test_support import SCENARIOS, ui_settings
 
-from aidm.core.base import EngineId
-from aidm.core.config import Settings
-from aidm.core.store import ENCODING, FileSaves
-from aidm.core.world import GameState
-from aidm.workflow.session import LauncherController, LaunchTarget, Runtime, load_catalog
+from aidm.app.launcher import LauncherController, LaunchTarget, load_catalog
+from aidm.app.session import Runtime
+from aidm.config import Settings
+from aidm.content.store import ENCODING, FileSaves
+from aidm.state.base import EngineId
+from aidm.state.world import GameState
 
 
 def _opening_state(config: Settings, engine: EngineId) -> GameState:

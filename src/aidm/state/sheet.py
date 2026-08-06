@@ -173,6 +173,22 @@ type DeltaChange = Annotated[
 ]
 
 
+class AdvancementOffer(Frozen):
+    """One pending advancement, already resolved out of content: the panel and the advisor read
+    this and nothing else, so neither needs to reach into a pack."""
+
+    prompt: str
+    text: str = ""
+    options: tuple[ContentRef, ...] = ()
+    choose: int = Field(default=0, ge=0)
+
+    @model_validator(mode="after")
+    def _choice_is_whole(self) -> Self:
+        if self.choose > len(self.options):
+            raise ValueError(f"cannot choose {self.choose} of {len(self.options)} options")
+        return self
+
+
 class SheetDelta(Frozen):
     """What advancement writes onto the player's sheet, each change carrying its reason."""
 

@@ -1,10 +1,10 @@
 import json
 from collections.abc import Callable, Iterable, Mapping, Sequence
 
-from ..core.base import PLAYER_ID, Entity, EntityId, Frozen, Kind
-from ..core.engine import EntityRenderer
-from ..core.turn import GrowthRequest
-from ..core.world import Exchange, GameState, ScenarioMeta
+from aidm.engines.loader import EntityRenderer
+from aidm.state.base import PLAYER_ID, Entity, EntityId, Frozen, Kind
+from aidm.state.turn import GrowthRequest
+from aidm.state.world import Exchange, GameState, ScenarioMeta
 
 type Placement = Callable[[Entity], str]
 type Label = Callable[[Entity], str]

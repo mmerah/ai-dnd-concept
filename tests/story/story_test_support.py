@@ -3,14 +3,13 @@ from random import Random
 
 from core_test_support import STORY, character, game, scenario, settings
 
-from aidm.core.engine import Engine
-from aidm.core.registry import build_engine
-from aidm.core.store import FileSaves, FileTraces
-from aidm.core.world import GameState, player_sheet
+from aidm.app.session import GameSession, LaunchTarget, build_engine
+from aidm.content.store import FileSaves, FileTraces
+from aidm.engines.loader import Engine
 from aidm.engines.story.advance import GROWTH_REQUIRED
-from aidm.workflow.pipeline import TurnOptions, default_cast
-from aidm.workflow.proposals import advisor
-from aidm.workflow.session import GameSession, LaunchTarget
+from aidm.state.world import GameState, player_sheet
+from aidm.turn.advancement import advisor
+from aidm.turn.pipeline import TurnOptions, default_cast
 
 TARGET = LaunchTarget(
     slug="poc",

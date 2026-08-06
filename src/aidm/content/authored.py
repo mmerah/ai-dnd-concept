@@ -3,9 +3,9 @@ from typing import Self
 
 from pydantic import Field, JsonValue, model_validator
 
-from .base import PLAYER_ID, EngineId, Entity, EntityId, Frozen, Slug
-from .sheet import Sheet
-from .world import ScenarioMeta, WorldState, check_placement
+from aidm.state.base import PLAYER_ID, EngineId, Entity, EntityId, Frozen, Slug
+from aidm.state.sheet import Sheet
+from aidm.state.world import ScenarioMeta, WorldState, check_placement
 
 type Rules = dict[str, JsonValue]
 
@@ -72,8 +72,6 @@ class CharacterOverlay(Frozen):
 
 
 class Scenario(Frozen):
-    """One authored world under the one engine this game selected."""
-
     id: Slug
     engine: EngineId
     world: ScenarioWorld
@@ -127,8 +125,6 @@ class AuthoredEntity(Frozen):
 
 
 class AuthoredWorld(Frozen):
-    """Every authored entity beside the engine payload written for it, under the authored id."""
-
     entities: dict[EntityId, AuthoredEntity] = Field(default_factory=dict)
 
 

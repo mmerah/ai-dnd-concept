@@ -2,9 +2,8 @@ from collections.abc import Callable
 
 from nicegui import ui
 
-from aidm.core.engine import AdvancementOffer
-from aidm.core.sheet import SheetDelta
-from aidm.workflow.session import GameSession
+from aidm.app.session import GameSession
+from aidm.state.sheet import AdvancementOffer, SheetDelta
 
 
 def advancement_panel(session: GameSession, refresh: Callable[[], None]) -> None:

@@ -43,10 +43,13 @@ uv run pytest
 ## Layout
 
 ```text
-src/aidm/core/            engine-neutral world, sheet, effects, plans, content, persistence
-src/aidm/workflow/        the turn loop, its agents, prompts, session composition root
-src/aidm/engines/story/   Story engine: spec, director procedure, shim
-src/aidm/engines/dnd5e/   5e engine: spec, director procedure, SRD pack, shim
+src/aidm/state/           the deterministic machine: world, sheet, effects, plans, dice, trace
+src/aidm/content/         authored scenarios and characters, saves and traces
+src/aidm/engines/         the loader, plus one directory per engine
+src/aidm/turn/            the turn loop, its agents, prompts, advancement
+src/aidm/app/             composition root: launcher catalog, sessions, runtime
+src/aidm/engines/story/   Story engine: spec, director procedure, rules
+src/aidm/engines/dnd5e/   5e engine: spec, director procedure, SRD pack, rules
 src/aidm/ui/              NiceGUI shell: renders state, submits decisions
 scripts/srd/      one-shot importer projecting an upstream 5e-database checkout into the pack
 scripts/evals/    live-model eval harness, run manually and never from pytest
@@ -55,9 +58,10 @@ scenarios/        shared world canon plus one overlay per supported engine
 tests/            per-package suites: core, story, dnd5e, ui
 ```
 
-One distribution. The import direction is enforced by `tests/core/test_package_boundary.py`: the
-engines do not import each other or `aidm.ui`, and core and workflow import neither the UI
-nor NiceGUI. The shipped SRD pack is package data under `src/aidm/engines/dnd5e/packs/`.
+One distribution. The import direction — `state <- content <- engines <- turn <- app <- ui`, with
+`aidm/config.py` a leaf every layer may read — is enforced by
+`tests/core/test_package_boundary.py`: the engines do not import each other or `aidm.ui`, and
+nothing below `app` imports the UI or NiceGUI. The shipped SRD pack is package data under `src/aidm/engines/dnd5e/packs/`.
 
 The **Trace** tab shows the Director's plan, resolved facts, and the exact prompt received
 by each role. The **State** tab shows the committed game state. **Advancement** drafts a proposal

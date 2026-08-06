@@ -6,11 +6,11 @@ from fivee_test_support import ready
 from golden_test_support import FIXTURES, golden
 from story_test_support import grown
 
-from aidm.core.base import EngineId
-from aidm.core.registry import engine_ids
-from aidm.core.world import GameState
-from aidm.workflow.pipeline import default_cast
-from aidm.workflow.proposals import advisor, render_proposal
+from aidm.engines.loader import engine_ids
+from aidm.state.base import EngineId
+from aidm.state.world import GameState
+from aidm.turn.advancement import advisor, render_proposal
+from aidm.turn.pipeline import default_cast
 
 WANTED = "I want to strike harder."
 
@@ -40,7 +40,7 @@ def test_every_role_assembles_the_same_instructions(engine_id: EngineId) -> None
 def test_the_advisor_prompt_renders_unchanged(engine_id: EngineId) -> None:
     engine, state = game(engine_id)
     earned = READY_FOR_ADVANCEMENT[engine_id](state)
-    offer = engine.proposal.offered(earned)
+    offer = engine.offered(earned)
     assert offer is not None
     golden(
         FIXTURES / "prompts" / engine_id / "advisor.txt",

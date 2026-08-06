@@ -2,8 +2,8 @@ import pytest
 from core_test_support import game
 from golden_test_support import FIXTURES, dumped, golden
 
-from aidm.core.base import SAVE_VERSION, EngineId
-from aidm.core.registry import engine_ids
+from aidm.engines.loader import engine_ids
+from aidm.state.base import SAVE_VERSION, EngineId
 
 # The version the golden state and turn fixtures were cut at. Only the pack regeneration of the
 # collapse refactor's Phase 4 may move it, and it regenerates those fixtures in the same commit.

@@ -7,12 +7,10 @@ from pydantic_ai.models.test import TestModel
 from pydantic_ai.toolsets import AbstractToolset
 from pydantic_ai.usage import RunUsage
 
-from aidm.core.base import PLAYER_ID, SAVE_VERSION, EngineId, Entity, EntityId
-from aidm.core.content import AuthoredEntity, AuthoredWorld
-from aidm.core.engine import AdvancementOffer, Engine
-from aidm.core.enginepack import load_engine
-from aidm.core.packs import (
-    Content,
+from aidm.content.authored import AuthoredEntity, AuthoredWorld
+from aidm.engines.loader import Engine, EnginePlugin, load_engine
+from aidm.state.base import PLAYER_ID, SAVE_VERSION, EngineId, Entity, EntityId
+from aidm.state.packs import (
     ContentRef,
     LenientRecord,
     Manifest,
@@ -21,9 +19,9 @@ from aidm.core.packs import (
     read_pack,
     write_pack,
 )
-from aidm.core.plan import TurnPlanBase
-from aidm.core.sheet import Counter, Sheet, SheetDelta
-from aidm.core.world import GameState, Record, ScenarioMeta, WorldState
+from aidm.state.plan import TurnPlanBase
+from aidm.state.sheet import Counter, Sheet
+from aidm.state.world import GameState, Record, ScenarioMeta, WorldState
 
 PACK = Pack(
     manifest=Manifest(
@@ -58,14 +56,6 @@ SPEC = {
 }
 
 
-def _offered(state: GameState, content: Content) -> AdvancementOffer | None:
-    return None
-
-
-def _check(state: GameState, offer: AdvancementOffer, delta: SheetDelta) -> str | None:
-    return None
-
-
 def _engine_dir(tmp_path: Path) -> Path:
     (tmp_path / "spec.json").write_text(json.dumps(SPEC), encoding="utf-8")
     (tmp_path / "director.md").write_text("Test procedure.\n", encoding="utf-8")
@@ -77,15 +67,17 @@ def _engine_dir(tmp_path: Path) -> Path:
 
 def _engine(tmp_path: Path) -> Engine:
     """A pack loader test needs no procedure, so this engine resolves nothing."""
-    return load_engine(
-        _engine_dir(tmp_path),
-        EngineId("test"),
-        offered=_offered,
-        check=_check,
+    plugin = EnginePlugin(
+        id=EngineId("test"),
+        badge=("TEST", "grey-6"),
+        engine_dir=_engine_dir(tmp_path),
         plan_type=TurnPlanBase,
-        check_plan=lambda parts, state, plan: None,
-        resolve_action=lambda parts, draft, plan, rng: [],
+        check_plan=lambda engine, state, plan: None,
+        resolve_action=lambda engine, draft, plan, rng: [],
+        offered=lambda engine, state: None,
+        check_delta=lambda state, delta: None,
     )
+    return load_engine(plugin)
 
 
 def _minimal_state(engine: Engine, player_sheet: Sheet) -> GameState:
@@ -177,7 +169,7 @@ async def _read_content(toolset: AbstractToolset[object], ref: str) -> str:
 
 
 async def test_read_content_renders_the_record_and_refuses_a_bad_ref(tmp_path: Path) -> None:
-    toolset = _engine(tmp_path).toolsets["director"]
+    toolset = _engine(tmp_path).director_toolset
 
     rendered = await _read_content(toolset, "testpack/monsters/giant-rat")
     assert rendered.startswith("Giant Rat [testpack/monsters/giant-rat]")

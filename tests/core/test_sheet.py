@@ -1,7 +1,7 @@
 import pytest
 from pydantic import ValidationError
 
-from aidm.core.sheet import (
+from aidm.state.sheet import (
     Counter,
     CounterTemplate,
     Sheet,

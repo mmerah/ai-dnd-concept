@@ -4,10 +4,10 @@ from golden_test_support import FIXTURES, golden_json
 from pydantic import BaseModel
 from pydantic_ai.toolsets import AbstractToolset, FunctionToolset
 
-from aidm.core.base import EngineId, EntityDetail
-from aidm.core.registry import engine_ids
-from aidm.core.sheet import SheetDelta
-from aidm.core.turn import Growth
+from aidm.engines.loader import engine_ids
+from aidm.state.base import EngineId, EntityDetail
+from aidm.state.sheet import SheetDelta
+from aidm.state.turn import Growth
 
 # A role's output schema is sent to the model, so its field descriptions steer it exactly as the
 # instructions do. These three are engine-independent; the plan type is the director's own.
@@ -31,7 +31,7 @@ def test_the_director_is_offered_the_same_tools(engine_id: EngineId) -> None:
     engine, _ = game(engine_id)
     golden_json(
         FIXTURES / "schemas" / engine_id / "director_tools.json",
-        _definitions(engine.toolsets["director"]),
+        _definitions(engine.director_toolset),
     )
 
 

@@ -3,21 +3,18 @@
 
 from collections.abc import Sequence
 from dataclasses import dataclass
-from functools import cache
 from random import Random
 from typing import Annotated, Literal
 
 from pydantic import Field, JsonValue
 
-from aidm.core.base import PLAYER_ID, EntityId, Frozen
-from aidm.core.engine import Engine
-from aidm.core.enginepack import EngineSpec
-from aidm.core.facts import Fact
-from aidm.core.packs import ENCODING, Content, LenientRecord, lenient_format, load
-from aidm.core.sheet import Counter, Sheet, SheetTag
-from aidm.core.world import GameState
 from aidm.engines.dnd5e.advance import level_ref
-from aidm.engines.dnd5e.engine import ENGINE_DIR
+from aidm.engines.loader import Engine
+from aidm.state.base import PLAYER_ID, EntityId, Frozen
+from aidm.state.facts import Fact
+from aidm.state.packs import Content, LenientRecord
+from aidm.state.sheet import Counter, Sheet, SheetTag
+from aidm.state.world import GameState
 
 HP = "hp"
 MAX_HP = "max-hp"
@@ -182,7 +179,7 @@ def _apply(setup: Setup, step: SetupStep) -> None:
         case SetNumber():
             _write_number(_sheet(state, step.entity), step.entity, step.key, step.value)
         case SetLevel():
-            _level_up_to(state, step.value)
+            _level_up_to(setup.engine.content, state, step.value)
         case AddTag():
             _sheet(state, step.entity).tags.append(SheetTag(id=step.tag, name=step.tag))
 
@@ -226,11 +223,10 @@ def _tags(state: GameState, entity_id: EntityId) -> frozenset[str]:
     return frozenset(tag.id for tag in _sheet(state, entity_id).tags)
 
 
-def _level_up_to(state: GameState, level: int) -> None:
+def _level_up_to(content: Content, state: GameState, level: int) -> None:
     """Characters are authored at level 1, so a scenario that wants a higher one applies the
     class's own level rows: what they raise is exactly what the advisor would raise."""
     sheet = _sheet(state, PLAYER_ID)
-    content = shipped_content()
     for step in range(sheet.numbers[LEVEL] + 1, level + 1):
         _apply_level(sheet, content.require(level_ref(sheet, step), LenientRecord))
 
@@ -242,13 +238,6 @@ def _apply_level(sheet: Sheet, record: LenientRecord) -> None:
             slot.maximum, slot.current = value, value
         elif key in sheet.numbers:
             sheet.numbers[key] = value
-
-
-@cache
-def shipped_content() -> Content:
-    """The probe's own read of the pack: `Engine` exposes no content to look a level up in."""
-    spec = EngineSpec.model_validate_json((ENGINE_DIR / "spec.json").read_text(encoding=ENCODING))
-    return load((ENGINE_DIR / "packs" / "srd-2014",), lenient_format(spec.collections))
 
 
 def _contested(facts: Sequence[Fact]) -> tuple[Fact, ...]:

@@ -1,12 +1,15 @@
-from collections.abc import Iterator
+from collections.abc import Iterator, Sequence
 from dataclasses import dataclass
 from pathlib import Path
 from re import fullmatch
 
 from pydantic import BaseModel, ConfigDict, TypeAdapter
 
-from .base import SAVE_VERSION, EngineId, Slug, content_id
-from .content import (
+from aidm.state.base import SAVE_VERSION, EngineId, Slug, content_id
+from aidm.state.turn import TraceEntry
+from aidm.state.world import GameState, ScenarioMeta
+
+from .authored import (
     Character,
     CharacterOverlay,
     CharacterProfile,
@@ -14,9 +17,6 @@ from .content import (
     ScenarioOverlay,
     ScenarioWorld,
 )
-from .registry import engine_ids
-from .turn import TraceEntry
-from .world import GameState, ScenarioMeta
 
 ENCODING = "utf-8"
 WORLD_FILE = "world.json"
@@ -26,12 +26,12 @@ _SAVE_SLUG_PATTERN = r"[a-z0-9][a-z0-9_-]*"
 type Playable[T] = Iterator[tuple[Slug, T, tuple[EngineId, ...]]]
 
 
-def read_scenarios(directory: Path) -> Playable[ScenarioWorld]:
-    return _playable(directory, WORLD_FILE, ScenarioWorld)
+def read_scenarios(directory: Path, engines: Sequence[EngineId]) -> Playable[ScenarioWorld]:
+    return _playable(directory, WORLD_FILE, ScenarioWorld, engines)
 
 
-def read_characters(directory: Path) -> Playable[CharacterProfile]:
-    return _playable(directory, PROFILE_FILE, CharacterProfile)
+def read_characters(directory: Path, engines: Sequence[EngineId]) -> Playable[CharacterProfile]:
+    return _playable(directory, PROFILE_FILE, CharacterProfile, engines)
 
 
 def load_scenario(directory: Path, name: Slug, engine: EngineId) -> Scenario:
@@ -54,7 +54,9 @@ def load_character(directory: Path, name: Slug, engine: EngineId) -> Character:
     )
 
 
-def _playable[T: BaseModel](directory: Path, canon: str, model: type[T]) -> Playable[T]:
+def _playable[T: BaseModel](
+    directory: Path, canon: str, model: type[T], engines: Sequence[EngineId]
+) -> Playable[T]:
     """A directory holding no canon file is not content; one with no overlay plays under no rules.
 
     Skipping both keeps a scratch directory or a half-written scenario out of the launcher instead
@@ -63,9 +65,9 @@ def _playable[T: BaseModel](directory: Path, canon: str, model: type[T]) -> Play
     for path in sorted(directory.iterdir()):
         if not (path / canon).is_file():
             continue
-        engines = tuple(engine for engine in engine_ids() if (path / f"{engine}.json").is_file())
-        if engines:
-            yield content_id(path.name), _read(path / canon, model), engines
+        written = tuple(engine for engine in engines if (path / f"{engine}.json").is_file())
+        if written:
+            yield content_id(path.name), _read(path / canon, model), written
 
 
 def _read[T: BaseModel](path: Path, model: type[T]) -> T:
@@ -75,11 +77,8 @@ def _read[T: BaseModel](path: Path, model: type[T]) -> T:
 
 
 class _StoredVersion(BaseModel):
-    """Probes the stored version before the rest is validated, so drift fails readably.
-
-    A file written before `save_version` existed reports as version 0 rather than as a
-    validation error naming this private model.
-    """
+    """Probes the stored version before the rest is validated, so drift fails readably: a file
+    written before `save_version` existed reports as 0, not as an error naming this model."""
 
     save_version: int = 0
 

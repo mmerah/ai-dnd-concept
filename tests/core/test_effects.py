@@ -1,8 +1,8 @@
 import pytest
 from core_test_support import initialized
 
-from aidm.core.base import PLAYER_ID, EntityId
-from aidm.core.effects import (
+from aidm.state.base import PLAYER_ID, EntityId
+from aidm.state.effects import (
     AddTag,
     AdjustCounter,
     Effect,
@@ -16,8 +16,8 @@ from aidm.core.effects import (
     SpendCounter,
     apply_effect,
 )
-from aidm.core.facts import Fact
-from aidm.core.world import sheet_of
+from aidm.state.facts import Fact
+from aidm.state.world import sheet_of
 
 CLOISTER = EntityId("cloister")
 STUDY = EntityId("study")
