@@ -1,6 +1,10 @@
+import json
+from collections.abc import Callable
 from pathlib import Path
 
 from pydantic import BaseModel, SecretStr
+from pydantic_ai.messages import ModelMessage, ModelResponse, TextPart, ToolCallPart
+from pydantic_ai.models.function import AgentInfo
 
 from aidm.core.base import SAVE_VERSION, EngineId, Entity
 from aidm.core.config import ProviderConfig, Providers, Settings
@@ -8,6 +12,8 @@ from aidm.core.content import Character, Scenario, authored_world
 from aidm.core.registry import AnyEngine, build_engine
 from aidm.core.store import load_character, load_scenario
 from aidm.core.world import EngineRules, GameState
+
+type Stub = Callable[[list[ModelMessage], AgentInfo], ModelResponse]
 
 REPOSITORY_ROOT = Path(__file__).parents[2]
 SCENARIOS = REPOSITORY_ROOT / "scenarios"
@@ -36,10 +42,11 @@ def character() -> Character:
     return load_character(CHARACTERS, "kael", STORY)
 
 
-def initialized() -> tuple[AnyEngine, GameState[EngineRules]]:
-    selected_scenario = scenario()
-    selected_character = character()
-    engine = build_engine(STORY, settings())
+def game(engine_id: EngineId) -> tuple[AnyEngine, GameState[EngineRules]]:
+    """The shipped scenario and character, composed under one engine."""
+    selected_scenario = load_scenario(SCENARIOS, "whispering-vault", engine_id)
+    selected_character = load_character(CHARACTERS, "kael", engine_id)
+    engine = build_engine(engine_id, settings())
     authored = authored_world(selected_scenario, selected_character)
     state = engine.state_type(
         save_version=SAVE_VERSION,
@@ -51,6 +58,34 @@ def initialized() -> tuple[AnyEngine, GameState[EngineRules]]:
     )
     engine.validate_state(state)
     return engine, state
+
+
+def initialized() -> tuple[AnyEngine, GameState[EngineRules]]:
+    return game(STORY)
+
+
+def structured(**output: object) -> ModelResponse:
+    return ModelResponse(parts=[TextPart(json.dumps(output))])
+
+
+def plan(**output: object) -> ModelResponse:
+    """The director answers by calling the plan tool, as ToolOutput presents it."""
+    return ModelResponse(parts=[ToolCallPart(tool_name="turn_plan", args=json.dumps(output))])
+
+
+def text(body: str) -> ModelResponse:
+    return ModelResponse(parts=[TextPart(body)])
+
+
+def scripted(*responses: ModelResponse) -> Stub:
+    """Call N answers with response N, because a retried output asks the model again."""
+    remaining = iter(responses)
+
+    def stub(messages: list[ModelMessage], info: AgentInfo) -> ModelResponse:
+        del messages, info
+        return next(remaining)
+
+    return stub
 
 
 def settings() -> Settings:

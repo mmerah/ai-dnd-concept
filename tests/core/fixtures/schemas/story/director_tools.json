@@ -1,0 +1,19 @@
+[
+  {
+    "name": "read_content",
+    "description": "Read the rules text of one content record.\n\nUse before planning from a spell, feature, or monster action whose wording you cannot\nquote. It reads canon and changes nothing.",
+    "parameters": {
+      "additionalProperties": false,
+      "properties": {
+        "ref": {
+          "description": "A content ref written `pack/collection/index`, as shown.",
+          "type": "string"
+        }
+      },
+      "required": [
+        "ref"
+      ],
+      "type": "object"
+    }
+  }
+]

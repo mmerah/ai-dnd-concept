@@ -1,0 +1,119 @@
+from collections.abc import Mapping
+from contextlib import ExitStack
+from random import Random
+
+import pytest
+from core_test_support import DND5E, STORY, game, plan, scripted, settings, structured, text
+from golden_test_support import FIXTURES, dumped, golden
+from pydantic_ai.messages import ModelResponse
+from pydantic_ai.models.function import FunctionModel
+
+from aidm.core.base import EngineId
+from aidm.core.registry import engine_ids
+from aidm.core.world import EngineRules, Exchange, GameState
+from aidm.workflow.pipeline import TurnOptions, TurnResult, default_cast, run_turn
+
+PROMPT = "I lever up the loose flagstone and listen at the vault door."
+# Played turns, so the history window, its rendering, and its replay as messages all run on real
+# exchanges rather than on an empty tuple.
+HISTORY = (
+    Exchange(prompt="I try the vault door.", narration="The iron handle does not turn."),
+    Exchange(
+        prompt="I look for another way in.",
+        narration="A flagstone by the wall sits proud of its neighbours.",
+    ),
+)
+NARRATION = "The flagstone lifts. Beyond the door, something shifts its weight and waits."
+OPTIONS = TurnOptions(history_window=6, max_growth=3)
+SEED = 11
+# One unconditional effect every engine shares, so the two traces differ only by their action.
+TAKE_THE_MAP = {"op": "move-item", "item_id": "vault_map"}
+REQUESTS = [
+    {"kind": "actor", "name": "Sister Auber", "brief": "A lay sister who keeps the vault keys."}
+]
+DETAIL = structured(
+    description="She has kept the abbey's keys for thirty years.",
+    hook="She knows which doors were sealed and by whom.",
+)
+TURN_PROMPTS = ("director", "narrator", "maintainer", "creator")
+
+
+def _branch(outcome: str) -> dict[str, object]:
+    return {
+        "outcome": outcome,
+        "effects": [{"op": "add-tag", "entity_id": "player", "tag_id": outcome}],
+    }
+
+
+def _plan(action: dict[str, object], outcomes: tuple[str, ...]) -> ModelResponse:
+    return plan(
+        intent="Kael prises the flagstone loose and listens for what waits beyond the door.",
+        tone="hushed and close",
+        effects=[TAKE_THE_MAP],
+        action=action,
+        branches=[_branch(outcome) for outcome in outcomes],
+    )
+
+
+# The same fiction under both engines, resolved by each one's own action and outcome labels.
+SCRIPTS: Mapping[EngineId, ModelResponse] = {
+    STORY: _plan(
+        {
+            "act": "risk",
+            "actor_id": "player",
+            "approach": "subtle",
+            "difficulty": "demanding",
+            "stakes": "listening past the vault door unheard",
+        },
+        ("strong", "mixed", "setback"),
+    ),
+    DND5E: _plan(
+        {
+            "act": "check",
+            "actor_id": "player",
+            "bonus": 2,
+            "dc": 12,
+            "reason": "listening past the vault door",
+        },
+        ("success", "failure"),
+    ),
+}
+
+
+def _behind(state: GameState[EngineRules]) -> GameState[EngineRules]:
+    draft = state.draft()
+    draft.history = HISTORY
+    return draft.committed()
+
+
+async def _played(engine_id: EngineId) -> TurnResult:
+    engine, state = game(engine_id)
+    cast = default_cast(engine, settings())
+    with ExitStack() as stack:
+        for role, model in (
+            (cast.director, FunctionModel(scripted(SCRIPTS[engine_id]))),
+            (cast.narrator, FunctionModel(scripted(text(NARRATION)))),
+            (cast.maintainer, FunctionModel(scripted(structured(requests=REQUESTS)))),
+            (cast.creator, FunctionModel(scripted(DETAIL))),
+        ):
+            stack.enter_context(role.agent.override(model=model))
+        return await run_turn(
+            _behind(state),
+            PROMPT,
+            engine=engine,
+            script=cast.script(engine, OPTIONS),
+            options=OPTIONS,
+            rng=Random(SEED),
+        )
+
+
+@pytest.mark.parametrize("engine_id", engine_ids())
+async def test_a_scripted_turn_renders_and_records_unchanged(engine_id: EngineId) -> None:
+    result = await _played(engine_id)
+
+    assert tuple(result.turn.prompts) == TURN_PROMPTS
+    for name, rendered in result.turn.prompts.items():
+        golden(FIXTURES / "prompts" / engine_id / f"{name}.txt", rendered)
+    # The prompts live in their own fixtures; the trace holds everything else the turn recorded.
+    golden(FIXTURES / "turn" / f"{engine_id}.json", dumped(result.turn, exclude={"prompts"}))
+    golden(FIXTURES / "save" / f"{engine_id}.json", dumped(result.state))

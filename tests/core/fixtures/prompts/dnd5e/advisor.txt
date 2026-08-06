@@ -1,0 +1,31 @@
+ON OFFER
+Fighter 2 is ready to take.
+
+RULES TEXT
+Fighter, level 2. Proficiency bonus: +2.
+
+Features gained: Action Surge (1 use).
+
+This level's numbers: action surges 1.
+
+PICK EXACTLY 1
+- srd-2014/features/action-surge-1-use
+
+THE CHARACTER
+Kael
+numbers: armor-class 12, charisma 12, constitution 13, dexterity 14, hit-die 10, intelligence 12, level 1, proficiency-bonus 2, speed 30, starting-gold 15, strength 11, wisdom 14
+counters: hp 11/11, second-wind 1/1 (short-rest)
+tags: Ready to advance[id=advancement-ready]
+content:
+- Fighter [srd-2014/classes/fighter] — saving-throws=STR, CON
+- Half-Elf [srd-2014/races/half-elf] — ability-bonuses=CHA +2, choose 2 others +1; size=Medium
+- Acolyte [srd-2014/backgrounds/acolyte]
+- Second Wind [srd-2014/features/second-wind]
+- Fighting Style: Defense [srd-2014/features/fighter-fighting-style-defense] — parent=Fighting Style
+- Skill: Athletics [srd-2014/proficiencies/skill-athletics]
+- Skill: Perception [srd-2014/proficiencies/skill-perception]
+- Skill: Investigation [srd-2014/proficiencies/skill-investigation]
+- Skill: Stealth [srd-2014/proficiencies/skill-stealth]
+
+WHAT THE PLAYER WANTS
+I want to strike harder.

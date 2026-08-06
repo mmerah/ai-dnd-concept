@@ -1,0 +1,19 @@
+{
+  "additionalProperties": false,
+  "properties": {
+    "description": {
+      "title": "Description",
+      "type": "string"
+    },
+    "hook": {
+      "title": "Hook",
+      "type": "string"
+    }
+  },
+  "required": [
+    "description",
+    "hook"
+  ],
+  "title": "EntityDetail",
+  "type": "object"
+}

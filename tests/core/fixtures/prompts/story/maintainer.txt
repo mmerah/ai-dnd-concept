@@ -1,0 +1,42 @@
+SCENARIO:
+The Whispering Vault
+The abbey of Saint Corvin was abandoned in a single night. Kael has come for the sealed vault beneath it, and the abbot's study is the only room still lit.
+
+EVERYTHING THAT EXISTS:
+- the abbot's study[id=study] (location) — A cramped room of ledgers and cold candle stubs; a loose flagstone hides something under the desk.
+- the cloister[id=cloister] (location) — A frost-rimed colonnade around a dead garden; Brother Tomas sweeps it to no purpose.
+- the bell tower[id=bell_tower] (location) — A cramped climb of rotten ladders above the nave, its bell long since stilled.
+- the sealed vault[id=vault] (location) — The undercroft chamber Kael came for, its door bearing a seal nobody living can read.
+- Mara[id=mara] (npc) — at the abbot's study — The abbey's last scribe, cautious and tired, still cataloguing books nobody will read.
+  state:
+    numbers: bold 0, clever 0, empathetic 0, subtle 0
+    counters: growth 0/3, stress 0/5
+- Brother Tomas[id=tomas] (npc) — at the cloister — A deaf old porter who sweeps the cloister and knows almost nothing about the vault.
+  state:
+    numbers: bold 0, clever 0, empathetic 0, subtle 0
+    counters: growth 0/3, stress 0/5
+- Elena[id=elena] (npc) — at the bell tower — The vault's former archivist, hiding in the bell tower; she alone remembers the sealing rite.
+  state:
+    numbers: bold 0, clever 0, empathetic 0, subtle 0
+    counters: growth 0/3, stress 0/5
+- a bloated rat[id=cloister_rat] (npc) — at the cloister — It has grown fat on the dead garden and does not run from a lantern.
+  state:
+    numbers: bold 1, clever -1, empathetic -1, subtle 2
+    counters: growth 0/3, stress 0/3
+    tags: Disease-Swollen[id=disease-swollen] — (edge) The rat is unnaturally hard to frighten or drive off.
+- the vault map[id=vault_map] (item) — carried — A creased chart of the undercroft, marking a stair the abbey's own plans deny.
+- a guttering lantern[id=lantern] (item) — carried — A dented tin lantern whose flame will not hold still.
+  state:
+    tags: Unsteady Lantern[id=unsteady-lantern] — (gear) Its shifting light exposes seams and movement in deep shadow.
+
+PLAYER:
+I lever up the loose flagstone and listen at the vault door.
+
+WHAT HAPPENED:
+- listening past the vault door unheard: success
+- Kael is Mixed
+- learned of the vault map
+- took the vault map
+
+NARRATION:
+The flagstone lifts. Beyond the door, something shifts its weight and waits.

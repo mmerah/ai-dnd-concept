@@ -1,0 +1,5700 @@
+{
+  "spells": {
+    "acid-arrow": {
+      "name": "Acid Arrow",
+      "level": 2,
+      "attack": true,
+      "save_ability": null,
+      "half_on_save": false,
+      "damage": {
+        "dice": "4d4",
+        "with_modifier": false
+      },
+      "heal": null,
+      "scaling": [
+        [
+          3,
+          {
+            "dice": "5d4",
+            "with_modifier": false
+          }
+        ],
+        [
+          4,
+          {
+            "dice": "6d4",
+            "with_modifier": false
+          }
+        ],
+        [
+          5,
+          {
+            "dice": "7d4",
+            "with_modifier": false
+          }
+        ],
+        [
+          6,
+          {
+            "dice": "8d4",
+            "with_modifier": false
+          }
+        ],
+        [
+          7,
+          {
+            "dice": "9d4",
+            "with_modifier": false
+          }
+        ],
+        [
+          8,
+          {
+            "dice": "10d4",
+            "with_modifier": false
+          }
+        ],
+        [
+          9,
+          {
+            "dice": "11d4",
+            "with_modifier": false
+          }
+        ]
+      ],
+      "concentration": false
+    },
+    "acid-splash": {
+      "name": "Acid Splash",
+      "level": null,
+      "attack": false,
+      "save_ability": "dexterity",
+      "half_on_save": false,
+      "damage": {
+        "dice": "1d6",
+        "with_modifier": false
+      },
+      "heal": null,
+      "scaling": [
+        [
+          5,
+          {
+            "dice": "2d6",
+            "with_modifier": false
+          }
+        ],
+        [
+          11,
+          {
+            "dice": "3d6",
+            "with_modifier": false
+          }
+        ],
+        [
+          17,
+          {
+            "dice": "4d6",
+            "with_modifier": false
+          }
+        ]
+      ],
+      "concentration": false
+    },
+    "aid": {
+      "name": "Aid",
+      "level": 2,
+      "attack": false,
+      "save_ability": null,
+      "half_on_save": false,
+      "damage": null,
+      "heal": {
+        "dice": "5",
+        "with_modifier": false
+      },
+      "scaling": [
+        [
+          3,
+          {
+            "dice": "10",
+            "with_modifier": false
+          }
+        ],
+        [
+          4,
+          {
+            "dice": "15",
+            "with_modifier": false
+          }
+        ],
+        [
+          5,
+          {
+            "dice": "20",
+            "with_modifier": false
+          }
+        ],
+        [
+          6,
+          {
+            "dice": "25",
+            "with_modifier": false
+          }
+        ],
+        [
+          7,
+          {
+            "dice": "30",
+            "with_modifier": false
+          }
+        ],
+        [
+          8,
+          {
+            "dice": "35",
+            "with_modifier": false
+          }
+        ],
+        [
+          9,
+          {
+            "dice": "40",
+            "with_modifier": false
+          }
+        ]
+      ],
+      "concentration": false
+    },
+    "alarm": {
+      "name": "Alarm",
+      "level": 1,
+      "attack": false,
+      "save_ability": null,
+      "half_on_save": false,
+      "damage": null,
+      "heal": null,
+      "scaling": [],
+      "concentration": false
+    },
+    "alter-self": {
+      "name": "Alter Self",
+      "level": 2,
+      "attack": false,
+      "save_ability": null,
+      "half_on_save": false,
+      "damage": null,
+      "heal": null,
+      "scaling": [],
+      "concentration": true
+    },
+    "animal-friendship": {
+      "name": "Animal Friendship",
+      "level": 1,
+      "attack": false,
+      "save_ability": "wisdom",
+      "half_on_save": false,
+      "damage": null,
+      "heal": null,
+      "scaling": [],
+      "concentration": false
+    },
+    "animal-messenger": {
+      "name": "Animal Messenger",
+      "level": 2,
+      "attack": false,
+      "save_ability": null,
+      "half_on_save": false,
+      "damage": null,
+      "heal": null,
+      "scaling": [],
+      "concentration": false
+    },
+    "animal-shapes": {
+      "name": "Animal Shapes",
+      "level": 8,
+      "attack": false,
+      "save_ability": null,
+      "half_on_save": false,
+      "damage": null,
+      "heal": null,
+      "scaling": [],
+      "concentration": true
+    },
+    "animate-dead": {
+      "name": "Animate Dead",
+      "level": 3,
+      "attack": false,
+      "save_ability": null,
+      "half_on_save": false,
+      "damage": null,
+      "heal": null,
+      "scaling": [],
+      "concentration": false
+    },
+    "animate-objects": {
+      "name": "Animate Objects",
+      "level": 5,
+      "attack": false,
+      "save_ability": null,
+      "half_on_save": false,
+      "damage": null,
+      "heal": null,
+      "scaling": [],
+      "concentration": true
+    },
+    "antilife-shell": {
+      "name": "Antilife Shell",
+      "level": 5,
+      "attack": false,
+      "save_ability": null,
+      "half_on_save": false,
+      "damage": null,
+      "heal": null,
+      "scaling": [],
+      "concentration": true
+    },
+    "antimagic-field": {
+      "name": "Antimagic Field",
+      "level": 8,
+      "attack": false,
+      "save_ability": null,
+      "half_on_save": false,
+      "damage": null,
+      "heal": null,
+      "scaling": [],
+      "concentration": true
+    },
+    "antipathy-sympathy": {
+      "name": "Antipathy/Sympathy",
+      "level": 8,
+      "attack": false,
+      "save_ability": null,
+      "half_on_save": false,
+      "damage": null,
+      "heal": null,
+      "scaling": [],
+      "concentration": false
+    },
+    "arcane-eye": {
+      "name": "Arcane Eye",
+      "level": 4,
+      "attack": false,
+      "save_ability": null,
+      "half_on_save": false,
+      "damage": null,
+      "heal": null,
+      "scaling": [],
+      "concentration": true
+    },
+    "arcane-hand": {
+      "name": "Arcane Hand",
+      "level": 5,
+      "attack": false,
+      "save_ability": null,
+      "half_on_save": false,
+      "damage": null,
+      "heal": null,
+      "scaling": [],
+      "concentration": true
+    },
+    "arcane-lock": {
+      "name": "Arcane Lock",
+      "level": 2,
+      "attack": false,
+      "save_ability": null,
+      "half_on_save": false,
+      "damage": null,
+      "heal": null,
+      "scaling": [],
+      "concentration": false
+    },
+    "arcane-sword": {
+      "name": "Arcane Sword",
+      "level": 7,
+      "attack": true,
+      "save_ability": null,
+      "half_on_save": false,
+      "damage": {
+        "dice": "3d10",
+        "with_modifier": false
+      },
+      "heal": null,
+      "scaling": [],
+      "concentration": true
+    },
+    "arcanists-magic-aura": {
+      "name": "Arcanist's Magic Aura",
+      "level": 2,
+      "attack": false,
+      "save_ability": null,
+      "half_on_save": false,
+      "damage": null,
+      "heal": null,
+      "scaling": [],
+      "concentration": false
+    },
+    "astral-projection": {
+      "name": "Astral Projection",
+      "level": 9,
+      "attack": false,
+      "save_ability": null,
+      "half_on_save": false,
+      "damage": null,
+      "heal": null,
+      "scaling": [],
+      "concentration": false
+    },
+    "augury": {
+      "name": "Augury",
+      "level": 2,
+      "attack": false,
+      "save_ability": null,
+      "half_on_save": false,
+      "damage": null,
+      "heal": null,
+      "scaling": [],
+      "concentration": false
+    },
+    "awaken": {
+      "name": "Awaken",
+      "level": 5,
+      "attack": false,
+      "save_ability": null,
+      "half_on_save": false,
+      "damage": null,
+      "heal": null,
+      "scaling": [],
+      "concentration": false
+    },
+    "bane": {
+      "name": "Bane",
+      "level": 1,
+      "attack": false,
+      "save_ability": "charisma",
+      "half_on_save": false,
+      "damage": null,
+      "heal": null,
+      "scaling": [],
+      "concentration": true
+    },
+    "banishment": {
+      "name": "Banishment",
+      "level": 4,
+      "attack": false,
+      "save_ability": "charisma",
+      "half_on_save": false,
+      "damage": null,
+      "heal": null,
+      "scaling": [],
+      "concentration": true
+    },
+    "barkskin": {
+      "name": "Barkskin",
+      "level": 2,
+      "attack": false,
+      "save_ability": null,
+      "half_on_save": false,
+      "damage": null,
+      "heal": null,
+      "scaling": [],
+      "concentration": true
+    },
+    "beacon-of-hope": {
+      "name": "Beacon of Hope",
+      "level": 3,
+      "attack": false,
+      "save_ability": null,
+      "half_on_save": false,
+      "damage": null,
+      "heal": null,
+      "scaling": [],
+      "concentration": true
+    },
+    "bestow-curse": {
+      "name": "Bestow Curse",
+      "level": 3,
+      "attack": false,
+      "save_ability": "wisdom",
+      "half_on_save": false,
+      "damage": null,
+      "heal": null,
+      "scaling": [],
+      "concentration": true
+    },
+    "black-tentacles": {
+      "name": "Black Tentacles",
+      "level": 4,
+      "attack": false,
+      "save_ability": "dexterity",
+      "half_on_save": false,
+      "damage": {
+        "dice": "3d6",
+        "with_modifier": false
+      },
+      "heal": null,
+      "scaling": [],
+      "concentration": true
+    },
+    "blade-barrier": {
+      "name": "Blade Barrier",
+      "level": 6,
+      "attack": false,
+      "save_ability": "dexterity",
+      "half_on_save": true,
+      "damage": {
+        "dice": "6d10",
+        "with_modifier": false
+      },
+      "heal": null,
+      "scaling": [],
+      "concentration": true
+    },
+    "bless": {
+      "name": "Bless",
+      "level": 1,
+      "attack": false,
+      "save_ability": null,
+      "half_on_save": false,
+      "damage": null,
+      "heal": null,
+      "scaling": [],
+      "concentration": true
+    },
+    "blight": {
+      "name": "Blight",
+      "level": 4,
+      "attack": false,
+      "save_ability": "constitution",
+      "half_on_save": true,
+      "damage": {
+        "dice": "8d8",
+        "with_modifier": false
+      },
+      "heal": null,
+      "scaling": [
+        [
+          5,
+          {
+            "dice": "9d8",
+            "with_modifier": false
+          }
+        ],
+        [
+          6,
+          {
+            "dice": "10d8",
+            "with_modifier": false
+          }
+        ],
+        [
+          7,
+          {
+            "dice": "11d8",
+            "with_modifier": false
+          }
+        ],
+        [
+          8,
+          {
+            "dice": "12d8",
+            "with_modifier": false
+          }
+        ],
+        [
+          9,
+          {
+            "dice": "13d8",
+            "with_modifier": false
+          }
+        ]
+      ],
+      "concentration": false
+    },
+    "blindness-deafness": {
+      "name": "Blindness/Deafness",
+      "level": 2,
+      "attack": false,
+      "save_ability": "constitution",
+      "half_on_save": false,
+      "damage": null,
+      "heal": null,
+      "scaling": [],
+      "concentration": false
+    },
+    "blink": {
+      "name": "Blink",
+      "level": 3,
+      "attack": false,
+      "save_ability": null,
+      "half_on_save": false,
+      "damage": null,
+      "heal": null,
+      "scaling": [],
+      "concentration": false
+    },
+    "blur": {
+      "name": "Blur",
+      "level": 2,
+      "attack": false,
+      "save_ability": null,
+      "half_on_save": false,
+      "damage": null,
+      "heal": null,
+      "scaling": [],
+      "concentration": true
+    },
+    "branding-smite": {
+      "name": "Branding Smite",
+      "level": 2,
+      "attack": false,
+      "save_ability": null,
+      "half_on_save": false,
+      "damage": {
+        "dice": "2d6",
+        "with_modifier": false
+      },
+      "heal": null,
+      "scaling": [
+        [
+          3,
+          {
+            "dice": "3d6",
+            "with_modifier": false
+          }
+        ],
+        [
+          4,
+          {
+            "dice": "4d6",
+            "with_modifier": false
+          }
+        ],
+        [
+          5,
+          {
+            "dice": "5d6",
+            "with_modifier": false
+          }
+        ],
+        [
+          6,
+          {
+            "dice": "6d6",
+            "with_modifier": false
+          }
+        ],
+        [
+          7,
+          {
+            "dice": "7d6",
+            "with_modifier": false
+          }
+        ],
+        [
+          8,
+          {
+            "dice": "8d6",
+            "with_modifier": false
+          }
+        ],
+        [
+          9,
+          {
+            "dice": "9d6",
+            "with_modifier": false
+          }
+        ]
+      ],
+      "concentration": true
+    },
+    "burning-hands": {
+      "name": "Burning Hands",
+      "level": 1,
+      "attack": false,
+      "save_ability": "dexterity",
+      "half_on_save": true,
+      "damage": {
+        "dice": "3d6",
+        "with_modifier": false
+      },
+      "heal": null,
+      "scaling": [
+        [
+          2,
+          {
+            "dice": "4d6",
+            "with_modifier": false
+          }
+        ],
+        [
+          3,
+          {
+            "dice": "5d6",
+            "with_modifier": false
+          }
+        ],
+        [
+          4,
+          {
+            "dice": "6d6",
+            "with_modifier": false
+          }
+        ],
+        [
+          5,
+          {
+            "dice": "7d6",
+            "with_modifier": false
+          }
+        ],
+        [
+          6,
+          {
+            "dice": "8d6",
+            "with_modifier": false
+          }
+        ],
+        [
+          7,
+          {
+            "dice": "9d6",
+            "with_modifier": false
+          }
+        ],
+        [
+          8,
+          {
+            "dice": "10d6",
+            "with_modifier": false
+          }
+        ],
+        [
+          9,
+          {
+            "dice": "11d6",
+            "with_modifier": false
+          }
+        ]
+      ],
+      "concentration": false
+    },
+    "call-lightning": {
+      "name": "Call Lightning",
+      "level": 3,
+      "attack": false,
+      "save_ability": null,
+      "half_on_save": false,
+      "damage": {
+        "dice": "3d10",
+        "with_modifier": false
+      },
+      "heal": null,
+      "scaling": [
+        [
+          4,
+          {
+            "dice": "4d10",
+            "with_modifier": false
+          }
+        ],
+        [
+          5,
+          {
+            "dice": "5d10",
+            "with_modifier": false
+          }
+        ],
+        [
+          6,
+          {
+            "dice": "6d10",
+            "with_modifier": false
+          }
+        ],
+        [
+          7,
+          {
+            "dice": "7d10",
+            "with_modifier": false
+          }
+        ],
+        [
+          8,
+          {
+            "dice": "8d10",
+            "with_modifier": false
+          }
+        ],
+        [
+          9,
+          {
+            "dice": "9d10",
+            "with_modifier": false
+          }
+        ]
+      ],
+      "concentration": true
+    },
+    "calm-emotions": {
+      "name": "Calm Emotions",
+      "level": 2,
+      "attack": false,
+      "save_ability": "charisma",
+      "half_on_save": false,
+      "damage": null,
+      "heal": null,
+      "scaling": [],
+      "concentration": true
+    },
+    "chain-lightning": {
+      "name": "Chain Lightning",
+      "level": 6,
+      "attack": false,
+      "save_ability": "dexterity",
+      "half_on_save": true,
+      "damage": {
+        "dice": "10d8",
+        "with_modifier": false
+      },
+      "heal": null,
+      "scaling": [],
+      "concentration": false
+    },
+    "charm-person": {
+      "name": "Charm Person",
+      "level": 1,
+      "attack": false,
+      "save_ability": "wisdom",
+      "half_on_save": false,
+      "damage": null,
+      "heal": null,
+      "scaling": [],
+      "concentration": false
+    },
+    "chill-touch": {
+      "name": "Chill Touch",
+      "level": null,
+      "attack": true,
+      "save_ability": null,
+      "half_on_save": false,
+      "damage": {
+        "dice": "1d8",
+        "with_modifier": false
+      },
+      "heal": null,
+      "scaling": [
+        [
+          5,
+          {
+            "dice": "2d8",
+            "with_modifier": false
+          }
+        ],
+        [
+          11,
+          {
+            "dice": "3d8",
+            "with_modifier": false
+          }
+        ],
+        [
+          17,
+          {
+            "dice": "4d8",
+            "with_modifier": false
+          }
+        ]
+      ],
+      "concentration": false
+    },
+    "circle-of-death": {
+      "name": "Circle of Death",
+      "level": 6,
+      "attack": false,
+      "save_ability": "constitution",
+      "half_on_save": true,
+      "damage": {
+        "dice": "8d6",
+        "with_modifier": false
+      },
+      "heal": null,
+      "scaling": [
+        [
+          7,
+          {
+            "dice": "10d6",
+            "with_modifier": false
+          }
+        ],
+        [
+          8,
+          {
+            "dice": "12d6",
+            "with_modifier": false
+          }
+        ],
+        [
+          9,
+          {
+            "dice": "14d6",
+            "with_modifier": false
+          }
+        ]
+      ],
+      "concentration": false
+    },
+    "clairvoyance": {
+      "name": "Clairvoyance",
+      "level": 3,
+      "attack": false,
+      "save_ability": null,
+      "half_on_save": false,
+      "damage": null,
+      "heal": null,
+      "scaling": [],
+      "concentration": true
+    },
+    "clone": {
+      "name": "Clone",
+      "level": 8,
+      "attack": false,
+      "save_ability": null,
+      "half_on_save": false,
+      "damage": null,
+      "heal": null,
+      "scaling": [],
+      "concentration": false
+    },
+    "cloudkill": {
+      "name": "Cloudkill",
+      "level": 5,
+      "attack": false,
+      "save_ability": "constitution",
+      "half_on_save": true,
+      "damage": {
+        "dice": "5d8",
+        "with_modifier": false
+      },
+      "heal": null,
+      "scaling": [
+        [
+          6,
+          {
+            "dice": "6d8",
+            "with_modifier": false
+          }
+        ],
+        [
+          7,
+          {
+            "dice": "7d8",
+            "with_modifier": false
+          }
+        ],
+        [
+          8,
+          {
+            "dice": "8d8",
+            "with_modifier": false
+          }
+        ],
+        [
+          9,
+          {
+            "dice": "9d8",
+            "with_modifier": false
+          }
+        ]
+      ],
+      "concentration": true
+    },
+    "color-spray": {
+      "name": "Color Spray",
+      "level": 1,
+      "attack": false,
+      "save_ability": null,
+      "half_on_save": false,
+      "damage": null,
+      "heal": null,
+      "scaling": [],
+      "concentration": false
+    },
+    "command": {
+      "name": "Command",
+      "level": 1,
+      "attack": false,
+      "save_ability": "wisdom",
+      "half_on_save": false,
+      "damage": null,
+      "heal": null,
+      "scaling": [],
+      "concentration": false
+    },
+    "commune": {
+      "name": "Commune",
+      "level": 5,
+      "attack": false,
+      "save_ability": null,
+      "half_on_save": false,
+      "damage": null,
+      "heal": null,
+      "scaling": [],
+      "concentration": false
+    },
+    "commune-with-nature": {
+      "name": "Commune With Nature",
+      "level": 5,
+      "attack": false,
+      "save_ability": null,
+      "half_on_save": false,
+      "damage": null,
+      "heal": null,
+      "scaling": [],
+      "concentration": false
+    },
+    "comprehend-languages": {
+      "name": "Comprehend Languages",
+      "level": 1,
+      "attack": false,
+      "save_ability": null,
+      "half_on_save": false,
+      "damage": null,
+      "heal": null,
+      "scaling": [],
+      "concentration": false
+    },
+    "compulsion": {
+      "name": "Compulsion",
+      "level": 4,
+      "attack": false,
+      "save_ability": "wisdom",
+      "half_on_save": false,
+      "damage": null,
+      "heal": null,
+      "scaling": [],
+      "concentration": true
+    },
+    "cone-of-cold": {
+      "name": "Cone of Cold",
+      "level": 5,
+      "attack": false,
+      "save_ability": "constitution",
+      "half_on_save": true,
+      "damage": {
+        "dice": "8d8",
+        "with_modifier": false
+      },
+      "heal": null,
+      "scaling": [
+        [
+          6,
+          {
+            "dice": "9d8",
+            "with_modifier": false
+          }
+        ],
+        [
+          7,
+          {
+            "dice": "10d8",
+            "with_modifier": false
+          }
+        ],
+        [
+          8,
+          {
+            "dice": "11d8",
+            "with_modifier": false
+          }
+        ],
+        [
+          9,
+          {
+            "dice": "12d8",
+            "with_modifier": false
+          }
+        ]
+      ],
+      "concentration": false
+    },
+    "confusion": {
+      "name": "Confusion",
+      "level": 4,
+      "attack": false,
+      "save_ability": "wisdom",
+      "half_on_save": false,
+      "damage": null,
+      "heal": null,
+      "scaling": [],
+      "concentration": true
+    },
+    "conjure-animals": {
+      "name": "Conjure Animals",
+      "level": 3,
+      "attack": false,
+      "save_ability": null,
+      "half_on_save": false,
+      "damage": null,
+      "heal": null,
+      "scaling": [],
+      "concentration": true
+    },
+    "conjure-celestial": {
+      "name": "Conjure Celestial",
+      "level": 7,
+      "attack": false,
+      "save_ability": null,
+      "half_on_save": false,
+      "damage": null,
+      "heal": null,
+      "scaling": [],
+      "concentration": true
+    },
+    "conjure-elemental": {
+      "name": "Conjure Elemental",
+      "level": 5,
+      "attack": false,
+      "save_ability": null,
+      "half_on_save": false,
+      "damage": null,
+      "heal": null,
+      "scaling": [],
+      "concentration": true
+    },
+    "conjure-fey": {
+      "name": "Conjure Fey",
+      "level": 6,
+      "attack": false,
+      "save_ability": null,
+      "half_on_save": false,
+      "damage": null,
+      "heal": null,
+      "scaling": [],
+      "concentration": true
+    },
+    "conjure-minor-elementals": {
+      "name": "Conjure Minor Elementals",
+      "level": 4,
+      "attack": false,
+      "save_ability": null,
+      "half_on_save": false,
+      "damage": null,
+      "heal": null,
+      "scaling": [],
+      "concentration": true
+    },
+    "conjure-woodland-beings": {
+      "name": "Conjure Woodland Beings",
+      "level": 4,
+      "attack": false,
+      "save_ability": null,
+      "half_on_save": false,
+      "damage": null,
+      "heal": null,
+      "scaling": [],
+      "concentration": true
+    },
+    "contact-other-plane": {
+      "name": "Contact Other Plane",
+      "level": 5,
+      "attack": false,
+      "save_ability": "intelligence",
+      "half_on_save": false,
+      "damage": null,
+      "heal": null,
+      "scaling": [],
+      "concentration": false
+    },
+    "contagion": {
+      "name": "Contagion",
+      "level": 5,
+      "attack": true,
+      "save_ability": "constitution",
+      "half_on_save": false,
+      "damage": null,
+      "heal": null,
+      "scaling": [],
+      "concentration": false
+    },
+    "contingency": {
+      "name": "Contingency",
+      "level": 6,
+      "attack": false,
+      "save_ability": null,
+      "half_on_save": false,
+      "damage": null,
+      "heal": null,
+      "scaling": [],
+      "concentration": false
+    },
+    "continual-flame": {
+      "name": "Continual Flame",
+      "level": 2,
+      "attack": false,
+      "save_ability": null,
+      "half_on_save": false,
+      "damage": null,
+      "heal": null,
+      "scaling": [],
+      "concentration": false
+    },
+    "control-water": {
+      "name": "Control Water",
+      "level": 4,
+      "attack": false,
+      "save_ability": "strength",
+      "half_on_save": true,
+      "damage": {
+        "dice": "2d8",
+        "with_modifier": false
+      },
+      "heal": null,
+      "scaling": [],
+      "concentration": true
+    },
+    "control-weather": {
+      "name": "Control Weather",
+      "level": 8,
+      "attack": false,
+      "save_ability": null,
+      "half_on_save": false,
+      "damage": null,
+      "heal": null,
+      "scaling": [],
+      "concentration": true
+    },
+    "counterspell": {
+      "name": "Counterspell",
+      "level": 3,
+      "attack": false,
+      "save_ability": null,
+      "half_on_save": false,
+      "damage": null,
+      "heal": null,
+      "scaling": [],
+      "concentration": false
+    },
+    "create-food-and-water": {
+      "name": "Create Food and Water",
+      "level": 3,
+      "attack": false,
+      "save_ability": null,
+      "half_on_save": false,
+      "damage": null,
+      "heal": null,
+      "scaling": [],
+      "concentration": false
+    },
+    "create-undead": {
+      "name": "Create Undead",
+      "level": 6,
+      "attack": false,
+      "save_ability": null,
+      "half_on_save": false,
+      "damage": null,
+      "heal": null,
+      "scaling": [],
+      "concentration": false
+    },
+    "create-or-destroy-water": {
+      "name": "Create or Destroy Water",
+      "level": 1,
+      "attack": false,
+      "save_ability": null,
+      "half_on_save": false,
+      "damage": null,
+      "heal": null,
+      "scaling": [],
+      "concentration": false
+    },
+    "creation": {
+      "name": "Creation",
+      "level": 5,
+      "attack": false,
+      "save_ability": null,
+      "half_on_save": false,
+      "damage": null,
+      "heal": null,
+      "scaling": [],
+      "concentration": false
+    },
+    "cure-wounds": {
+      "name": "Cure Wounds",
+      "level": 1,
+      "attack": false,
+      "save_ability": null,
+      "half_on_save": false,
+      "damage": null,
+      "heal": {
+        "dice": "1d8",
+        "with_modifier": true
+      },
+      "scaling": [
+        [
+          2,
+          {
+            "dice": "2d8",
+            "with_modifier": true
+          }
+        ],
+        [
+          3,
+          {
+            "dice": "3d8",
+            "with_modifier": true
+          }
+        ],
+        [
+          4,
+          {
+            "dice": "4d8",
+            "with_modifier": true
+          }
+        ],
+        [
+          5,
+          {
+            "dice": "5d8",
+            "with_modifier": true
+          }
+        ],
+        [
+          6,
+          {
+            "dice": "6d8",
+            "with_modifier": true
+          }
+        ],
+        [
+          7,
+          {
+            "dice": "7d8",
+            "with_modifier": true
+          }
+        ],
+        [
+          8,
+          {
+            "dice": "8d8",
+            "with_modifier": true
+          }
+        ],
+        [
+          9,
+          {
+            "dice": "9d8",
+            "with_modifier": true
+          }
+        ]
+      ],
+      "concentration": false
+    },
+    "dancing-lights": {
+      "name": "Dancing Lights",
+      "level": null,
+      "attack": false,
+      "save_ability": null,
+      "half_on_save": false,
+      "damage": null,
+      "heal": null,
+      "scaling": [],
+      "concentration": true
+    },
+    "darkness": {
+      "name": "Darkness",
+      "level": 2,
+      "attack": false,
+      "save_ability": null,
+      "half_on_save": false,
+      "damage": null,
+      "heal": null,
+      "scaling": [],
+      "concentration": true
+    },
+    "darkvision": {
+      "name": "Darkvision",
+      "level": 2,
+      "attack": false,
+      "save_ability": null,
+      "half_on_save": false,
+      "damage": null,
+      "heal": null,
+      "scaling": [],
+      "concentration": false
+    },
+    "daylight": {
+      "name": "Daylight",
+      "level": 3,
+      "attack": false,
+      "save_ability": null,
+      "half_on_save": false,
+      "damage": null,
+      "heal": null,
+      "scaling": [],
+      "concentration": false
+    },
+    "death-ward": {
+      "name": "Death Ward",
+      "level": 4,
+      "attack": false,
+      "save_ability": null,
+      "half_on_save": false,
+      "damage": null,
+      "heal": null,
+      "scaling": [],
+      "concentration": false
+    },
+    "delayed-blast-fireball": {
+      "name": "Delayed Blast Fireball",
+      "level": 7,
+      "attack": false,
+      "save_ability": "dexterity",
+      "half_on_save": true,
+      "damage": {
+        "dice": "12d6",
+        "with_modifier": false
+      },
+      "heal": null,
+      "scaling": [
+        [
+          8,
+          {
+            "dice": "13d6",
+            "with_modifier": false
+          }
+        ],
+        [
+          9,
+          {
+            "dice": "14d6",
+            "with_modifier": false
+          }
+        ]
+      ],
+      "concentration": true
+    },
+    "demiplane": {
+      "name": "Demiplane",
+      "level": 8,
+      "attack": false,
+      "save_ability": null,
+      "half_on_save": false,
+      "damage": null,
+      "heal": null,
+      "scaling": [],
+      "concentration": false
+    },
+    "detect-evil-and-good": {
+      "name": "Detect Evil and Good",
+      "level": 1,
+      "attack": false,
+      "save_ability": null,
+      "half_on_save": false,
+      "damage": null,
+      "heal": null,
+      "scaling": [],
+      "concentration": true
+    },
+    "detect-magic": {
+      "name": "Detect Magic",
+      "level": 1,
+      "attack": false,
+      "save_ability": null,
+      "half_on_save": false,
+      "damage": null,
+      "heal": null,
+      "scaling": [],
+      "concentration": true
+    },
+    "detect-poison-and-disease": {
+      "name": "Detect Poison and Disease",
+      "level": 1,
+      "attack": false,
+      "save_ability": null,
+      "half_on_save": false,
+      "damage": null,
+      "heal": null,
+      "scaling": [],
+      "concentration": true
+    },
+    "detect-thoughts": {
+      "name": "Detect Thoughts",
+      "level": 2,
+      "attack": false,
+      "save_ability": null,
+      "half_on_save": false,
+      "damage": null,
+      "heal": null,
+      "scaling": [],
+      "concentration": true
+    },
+    "dimension-door": {
+      "name": "Dimension Door",
+      "level": 4,
+      "attack": false,
+      "save_ability": null,
+      "half_on_save": false,
+      "damage": {
+        "dice": "4d6",
+        "with_modifier": false
+      },
+      "heal": null,
+      "scaling": [],
+      "concentration": false
+    },
+    "disguise-self": {
+      "name": "Disguise Self",
+      "level": 1,
+      "attack": false,
+      "save_ability": null,
+      "half_on_save": false,
+      "damage": null,
+      "heal": null,
+      "scaling": [],
+      "concentration": false
+    },
+    "disintegrate": {
+      "name": "Disintegrate",
+      "level": 6,
+      "attack": false,
+      "save_ability": "dexterity",
+      "half_on_save": false,
+      "damage": {
+        "dice": "10d6 + 40",
+        "with_modifier": false
+      },
+      "heal": null,
+      "scaling": [],
+      "concentration": false
+    },
+    "dispel-evil-and-good": {
+      "name": "Dispel Evil and Good",
+      "level": 5,
+      "attack": false,
+      "save_ability": "charisma",
+      "half_on_save": false,
+      "damage": null,
+      "heal": null,
+      "scaling": [],
+      "concentration": true
+    },
+    "dispel-magic": {
+      "name": "Dispel Magic",
+      "level": 3,
+      "attack": false,
+      "save_ability": null,
+      "half_on_save": false,
+      "damage": null,
+      "heal": null,
+      "scaling": [],
+      "concentration": false
+    },
+    "divination": {
+      "name": "Divination",
+      "level": 4,
+      "attack": false,
+      "save_ability": null,
+      "half_on_save": false,
+      "damage": null,
+      "heal": null,
+      "scaling": [],
+      "concentration": false
+    },
+    "divine-favor": {
+      "name": "Divine Favor",
+      "level": 1,
+      "attack": false,
+      "save_ability": null,
+      "half_on_save": false,
+      "damage": {
+        "dice": "1d4",
+        "with_modifier": false
+      },
+      "heal": null,
+      "scaling": [],
+      "concentration": true
+    },
+    "divine-word": {
+      "name": "Divine Word",
+      "level": 7,
+      "attack": false,
+      "save_ability": "charisma",
+      "half_on_save": false,
+      "damage": null,
+      "heal": null,
+      "scaling": [],
+      "concentration": false
+    },
+    "dominate-beast": {
+      "name": "Dominate Beast",
+      "level": 4,
+      "attack": false,
+      "save_ability": "wisdom",
+      "half_on_save": false,
+      "damage": null,
+      "heal": null,
+      "scaling": [],
+      "concentration": true
+    },
+    "dominate-monster": {
+      "name": "Dominate Monster",
+      "level": 8,
+      "attack": false,
+      "save_ability": "wisdom",
+      "half_on_save": false,
+      "damage": null,
+      "heal": null,
+      "scaling": [],
+      "concentration": true
+    },
+    "dominate-person": {
+      "name": "Dominate Person",
+      "level": 5,
+      "attack": false,
+      "save_ability": "wisdom",
+      "half_on_save": false,
+      "damage": null,
+      "heal": null,
+      "scaling": [],
+      "concentration": true
+    },
+    "dream": {
+      "name": "Dream",
+      "level": 5,
+      "attack": false,
+      "save_ability": "wisdom",
+      "half_on_save": false,
+      "damage": {
+        "dice": "3d6",
+        "with_modifier": false
+      },
+      "heal": null,
+      "scaling": [],
+      "concentration": false
+    },
+    "druidcraft": {
+      "name": "Druidcraft",
+      "level": null,
+      "attack": false,
+      "save_ability": null,
+      "half_on_save": false,
+      "damage": null,
+      "heal": null,
+      "scaling": [],
+      "concentration": false
+    },
+    "earthquake": {
+      "name": "Earthquake",
+      "level": 8,
+      "attack": false,
+      "save_ability": null,
+      "half_on_save": false,
+      "damage": null,
+      "heal": null,
+      "scaling": [],
+      "concentration": true
+    },
+    "eldritch-blast": {
+      "name": "Eldritch Blast",
+      "level": null,
+      "attack": true,
+      "save_ability": null,
+      "half_on_save": false,
+      "damage": {
+        "dice": "1d10",
+        "with_modifier": false
+      },
+      "heal": null,
+      "scaling": [
+        [
+          5,
+          {
+            "dice": "1d10",
+            "with_modifier": false
+          }
+        ],
+        [
+          11,
+          {
+            "dice": "1d10",
+            "with_modifier": false
+          }
+        ],
+        [
+          17,
+          {
+            "dice": "1d10",
+            "with_modifier": false
+          }
+        ]
+      ],
+      "concentration": false
+    },
+    "enhance-ability": {
+      "name": "Enhance Ability",
+      "level": 2,
+      "attack": false,
+      "save_ability": null,
+      "half_on_save": false,
+      "damage": null,
+      "heal": null,
+      "scaling": [],
+      "concentration": true
+    },
+    "enlarge-reduce": {
+      "name": "Enlarge/Reduce",
+      "level": 2,
+      "attack": false,
+      "save_ability": "constitution",
+      "half_on_save": false,
+      "damage": null,
+      "heal": null,
+      "scaling": [],
+      "concentration": true
+    },
+    "entangle": {
+      "name": "Entangle",
+      "level": 1,
+      "attack": false,
+      "save_ability": "strength",
+      "half_on_save": false,
+      "damage": null,
+      "heal": null,
+      "scaling": [],
+      "concentration": true
+    },
+    "enthrall": {
+      "name": "Enthrall",
+      "level": 2,
+      "attack": false,
+      "save_ability": "wisdom",
+      "half_on_save": false,
+      "damage": null,
+      "heal": null,
+      "scaling": [],
+      "concentration": false
+    },
+    "etherealness": {
+      "name": "Etherealness",
+      "level": 7,
+      "attack": false,
+      "save_ability": null,
+      "half_on_save": false,
+      "damage": null,
+      "heal": null,
+      "scaling": [],
+      "concentration": false
+    },
+    "expeditious-retreat": {
+      "name": "Expeditious Retreat",
+      "level": 1,
+      "attack": false,
+      "save_ability": null,
+      "half_on_save": false,
+      "damage": null,
+      "heal": null,
+      "scaling": [],
+      "concentration": true
+    },
+    "eyebite": {
+      "name": "Eyebite",
+      "level": 6,
+      "attack": false,
+      "save_ability": "wisdom",
+      "half_on_save": false,
+      "damage": null,
+      "heal": null,
+      "scaling": [],
+      "concentration": true
+    },
+    "fabricate": {
+      "name": "Fabricate",
+      "level": 4,
+      "attack": false,
+      "save_ability": null,
+      "half_on_save": false,
+      "damage": null,
+      "heal": null,
+      "scaling": [],
+      "concentration": false
+    },
+    "faerie-fire": {
+      "name": "Faerie Fire",
+      "level": 1,
+      "attack": false,
+      "save_ability": "dexterity",
+      "half_on_save": false,
+      "damage": null,
+      "heal": null,
+      "scaling": [],
+      "concentration": true
+    },
+    "faithful-hound": {
+      "name": "Faithful Hound",
+      "level": 4,
+      "attack": true,
+      "save_ability": null,
+      "half_on_save": false,
+      "damage": {
+        "dice": "4d8",
+        "with_modifier": false
+      },
+      "heal": null,
+      "scaling": [],
+      "concentration": false
+    },
+    "false-life": {
+      "name": "False Life",
+      "level": 1,
+      "attack": false,
+      "save_ability": null,
+      "half_on_save": false,
+      "damage": null,
+      "heal": {
+        "dice": "1d4 + 4",
+        "with_modifier": false
+      },
+      "scaling": [
+        [
+          2,
+          {
+            "dice": "1d4 + 9",
+            "with_modifier": false
+          }
+        ],
+        [
+          3,
+          {
+            "dice": "1d4 + 14",
+            "with_modifier": false
+          }
+        ],
+        [
+          4,
+          {
+            "dice": "1d4 + 19",
+            "with_modifier": false
+          }
+        ],
+        [
+          5,
+          {
+            "dice": "1d4 + 24",
+            "with_modifier": false
+          }
+        ],
+        [
+          6,
+          {
+            "dice": "1d4 + 29",
+            "with_modifier": false
+          }
+        ],
+        [
+          7,
+          {
+            "dice": "1d4 + 34",
+            "with_modifier": false
+          }
+        ],
+        [
+          8,
+          {
+            "dice": "1d4 + 39",
+            "with_modifier": false
+          }
+        ],
+        [
+          9,
+          {
+            "dice": "1d4 + 44",
+            "with_modifier": false
+          }
+        ]
+      ],
+      "concentration": false
+    },
+    "fear": {
+      "name": "Fear",
+      "level": 3,
+      "attack": false,
+      "save_ability": "wisdom",
+      "half_on_save": false,
+      "damage": null,
+      "heal": null,
+      "scaling": [],
+      "concentration": true
+    },
+    "feather-fall": {
+      "name": "Feather Fall",
+      "level": 1,
+      "attack": false,
+      "save_ability": null,
+      "half_on_save": false,
+      "damage": null,
+      "heal": null,
+      "scaling": [],
+      "concentration": false
+    },
+    "feeblemind": {
+      "name": "Feeblemind",
+      "level": 8,
+      "attack": false,
+      "save_ability": "intelligence",
+      "half_on_save": false,
+      "damage": {
+        "dice": "4d6",
+        "with_modifier": false
+      },
+      "heal": null,
+      "scaling": [],
+      "concentration": false
+    },
+    "find-familiar": {
+      "name": "Find Familiar",
+      "level": 1,
+      "attack": false,
+      "save_ability": null,
+      "half_on_save": false,
+      "damage": null,
+      "heal": null,
+      "scaling": [],
+      "concentration": false
+    },
+    "find-steed": {
+      "name": "Find Steed",
+      "level": 2,
+      "attack": false,
+      "save_ability": null,
+      "half_on_save": false,
+      "damage": null,
+      "heal": null,
+      "scaling": [],
+      "concentration": false
+    },
+    "find-traps": {
+      "name": "Find Traps",
+      "level": 2,
+      "attack": false,
+      "save_ability": null,
+      "half_on_save": false,
+      "damage": null,
+      "heal": null,
+      "scaling": [],
+      "concentration": false
+    },
+    "find-the-path": {
+      "name": "Find the Path",
+      "level": 6,
+      "attack": false,
+      "save_ability": null,
+      "half_on_save": false,
+      "damage": null,
+      "heal": null,
+      "scaling": [],
+      "concentration": true
+    },
+    "finger-of-death": {
+      "name": "Finger of Death",
+      "level": 7,
+      "attack": false,
+      "save_ability": "constitution",
+      "half_on_save": true,
+      "damage": {
+        "dice": "7d8 + 30",
+        "with_modifier": false
+      },
+      "heal": null,
+      "scaling": [],
+      "concentration": false
+    },
+    "fire-bolt": {
+      "name": "Fire Bolt",
+      "level": null,
+      "attack": true,
+      "save_ability": null,
+      "half_on_save": false,
+      "damage": {
+        "dice": "1d10",
+        "with_modifier": false
+      },
+      "heal": null,
+      "scaling": [
+        [
+          5,
+          {
+            "dice": "2d10",
+            "with_modifier": false
+          }
+        ],
+        [
+          11,
+          {
+            "dice": "3d10",
+            "with_modifier": false
+          }
+        ],
+        [
+          17,
+          {
+            "dice": "4d10",
+            "with_modifier": false
+          }
+        ]
+      ],
+      "concentration": false
+    },
+    "fire-shield": {
+      "name": "Fire Shield",
+      "level": 4,
+      "attack": false,
+      "save_ability": null,
+      "half_on_save": false,
+      "damage": {
+        "dice": "2d8",
+        "with_modifier": false
+      },
+      "heal": null,
+      "scaling": [],
+      "concentration": false
+    },
+    "fire-storm": {
+      "name": "Fire Storm",
+      "level": 7,
+      "attack": false,
+      "save_ability": "dexterity",
+      "half_on_save": true,
+      "damage": {
+        "dice": "7d10",
+        "with_modifier": false
+      },
+      "heal": null,
+      "scaling": [],
+      "concentration": false
+    },
+    "fireball": {
+      "name": "Fireball",
+      "level": 3,
+      "attack": false,
+      "save_ability": "dexterity",
+      "half_on_save": true,
+      "damage": {
+        "dice": "8d6",
+        "with_modifier": false
+      },
+      "heal": null,
+      "scaling": [
+        [
+          4,
+          {
+            "dice": "9d6",
+            "with_modifier": false
+          }
+        ],
+        [
+          5,
+          {
+            "dice": "10d6",
+            "with_modifier": false
+          }
+        ],
+        [
+          6,
+          {
+            "dice": "11d6",
+            "with_modifier": false
+          }
+        ],
+        [
+          7,
+          {
+            "dice": "12d6",
+            "with_modifier": false
+          }
+        ],
+        [
+          8,
+          {
+            "dice": "13d6",
+            "with_modifier": false
+          }
+        ],
+        [
+          9,
+          {
+            "dice": "14d6",
+            "with_modifier": false
+          }
+        ]
+      ],
+      "concentration": false
+    },
+    "flame-blade": {
+      "name": "Flame Blade",
+      "level": 2,
+      "attack": false,
+      "save_ability": null,
+      "half_on_save": false,
+      "damage": {
+        "dice": "3d6",
+        "with_modifier": false
+      },
+      "heal": null,
+      "scaling": [
+        [
+          4,
+          {
+            "dice": "4d6",
+            "with_modifier": false
+          }
+        ],
+        [
+          6,
+          {
+            "dice": "5d6",
+            "with_modifier": false
+          }
+        ],
+        [
+          8,
+          {
+            "dice": "6d6",
+            "with_modifier": false
+          }
+        ]
+      ],
+      "concentration": true
+    },
+    "flame-strike": {
+      "name": "Flame Strike",
+      "level": 5,
+      "attack": false,
+      "save_ability": "dexterity",
+      "half_on_save": true,
+      "damage": {
+        "dice": "4d6 + 4d6",
+        "with_modifier": false
+      },
+      "heal": null,
+      "scaling": [
+        [
+          6,
+          {
+            "dice": "4d6 + 5d6",
+            "with_modifier": false
+          }
+        ],
+        [
+          7,
+          {
+            "dice": "4d6 + 6d6",
+            "with_modifier": false
+          }
+        ],
+        [
+          8,
+          {
+            "dice": "4d6 + 7d6",
+            "with_modifier": false
+          }
+        ],
+        [
+          9,
+          {
+            "dice": "4d6 + 8d6",
+            "with_modifier": false
+          }
+        ]
+      ],
+      "concentration": false
+    },
+    "flaming-sphere": {
+      "name": "Flaming Sphere",
+      "level": 2,
+      "attack": false,
+      "save_ability": null,
+      "half_on_save": false,
+      "damage": {
+        "dice": "2d6",
+        "with_modifier": false
+      },
+      "heal": null,
+      "scaling": [
+        [
+          3,
+          {
+            "dice": "3d6",
+            "with_modifier": false
+          }
+        ],
+        [
+          4,
+          {
+            "dice": "4d6",
+            "with_modifier": false
+          }
+        ],
+        [
+          5,
+          {
+            "dice": "5d6",
+            "with_modifier": false
+          }
+        ],
+        [
+          6,
+          {
+            "dice": "6d6",
+            "with_modifier": false
+          }
+        ],
+        [
+          7,
+          {
+            "dice": "7d6",
+            "with_modifier": false
+          }
+        ],
+        [
+          8,
+          {
+            "dice": "8d6",
+            "with_modifier": false
+          }
+        ],
+        [
+          9,
+          {
+            "dice": "9d6",
+            "with_modifier": false
+          }
+        ]
+      ],
+      "concentration": true
+    },
+    "flesh-to-stone": {
+      "name": "Flesh to Stone",
+      "level": 6,
+      "attack": false,
+      "save_ability": "constitution",
+      "half_on_save": false,
+      "damage": null,
+      "heal": null,
+      "scaling": [],
+      "concentration": true
+    },
+    "floating-disk": {
+      "name": "Floating Disk",
+      "level": 1,
+      "attack": false,
+      "save_ability": null,
+      "half_on_save": false,
+      "damage": null,
+      "heal": null,
+      "scaling": [],
+      "concentration": false
+    },
+    "fly": {
+      "name": "Fly",
+      "level": 3,
+      "attack": false,
+      "save_ability": null,
+      "half_on_save": false,
+      "damage": null,
+      "heal": null,
+      "scaling": [],
+      "concentration": true
+    },
+    "fog-cloud": {
+      "name": "Fog Cloud",
+      "level": 1,
+      "attack": false,
+      "save_ability": null,
+      "half_on_save": false,
+      "damage": null,
+      "heal": null,
+      "scaling": [],
+      "concentration": true
+    },
+    "forbiddance": {
+      "name": "Forbiddance",
+      "level": 6,
+      "attack": false,
+      "save_ability": null,
+      "half_on_save": false,
+      "damage": null,
+      "heal": null,
+      "scaling": [],
+      "concentration": false
+    },
+    "forcecage": {
+      "name": "Forcecage",
+      "level": 7,
+      "attack": false,
+      "save_ability": null,
+      "half_on_save": false,
+      "damage": null,
+      "heal": null,
+      "scaling": [],
+      "concentration": false
+    },
+    "foresight": {
+      "name": "Foresight",
+      "level": 9,
+      "attack": false,
+      "save_ability": null,
+      "half_on_save": false,
+      "damage": null,
+      "heal": null,
+      "scaling": [],
+      "concentration": false
+    },
+    "freedom-of-movement": {
+      "name": "Freedom of Movement",
+      "level": 4,
+      "attack": false,
+      "save_ability": null,
+      "half_on_save": false,
+      "damage": null,
+      "heal": null,
+      "scaling": [],
+      "concentration": false
+    },
+    "freezing-sphere": {
+      "name": "Freezing Sphere",
+      "level": 6,
+      "attack": false,
+      "save_ability": "constitution",
+      "half_on_save": true,
+      "damage": {
+        "dice": "10d6",
+        "with_modifier": false
+      },
+      "heal": null,
+      "scaling": [],
+      "concentration": false
+    },
+    "gaseous-form": {
+      "name": "Gaseous Form",
+      "level": 3,
+      "attack": false,
+      "save_ability": null,
+      "half_on_save": false,
+      "damage": null,
+      "heal": null,
+      "scaling": [],
+      "concentration": true
+    },
+    "gate": {
+      "name": "Gate",
+      "level": 9,
+      "attack": false,
+      "save_ability": null,
+      "half_on_save": false,
+      "damage": null,
+      "heal": null,
+      "scaling": [],
+      "concentration": true
+    },
+    "geas": {
+      "name": "Geas",
+      "level": 5,
+      "attack": false,
+      "save_ability": "wisdom",
+      "half_on_save": false,
+      "damage": null,
+      "heal": null,
+      "scaling": [],
+      "concentration": false
+    },
+    "gentle-repose": {
+      "name": "Gentle Repose",
+      "level": 2,
+      "attack": false,
+      "save_ability": null,
+      "half_on_save": false,
+      "damage": null,
+      "heal": null,
+      "scaling": [],
+      "concentration": false
+    },
+    "giant-insect": {
+      "name": "Giant Insect",
+      "level": 4,
+      "attack": false,
+      "save_ability": null,
+      "half_on_save": false,
+      "damage": null,
+      "heal": null,
+      "scaling": [],
+      "concentration": true
+    },
+    "glibness": {
+      "name": "Glibness",
+      "level": 8,
+      "attack": false,
+      "save_ability": null,
+      "half_on_save": false,
+      "damage": null,
+      "heal": null,
+      "scaling": [],
+      "concentration": false
+    },
+    "globe-of-invulnerability": {
+      "name": "Globe of Invulnerability",
+      "level": 6,
+      "attack": false,
+      "save_ability": null,
+      "half_on_save": false,
+      "damage": null,
+      "heal": null,
+      "scaling": [],
+      "concentration": true
+    },
+    "glyph-of-warding": {
+      "name": "Glyph of Warding",
+      "level": 3,
+      "attack": false,
+      "save_ability": null,
+      "half_on_save": false,
+      "damage": null,
+      "heal": null,
+      "scaling": [],
+      "concentration": false
+    },
+    "goodberry": {
+      "name": "Goodberry",
+      "level": 1,
+      "attack": false,
+      "save_ability": null,
+      "half_on_save": false,
+      "damage": null,
+      "heal": null,
+      "scaling": [],
+      "concentration": false
+    },
+    "grease": {
+      "name": "Grease",
+      "level": 1,
+      "attack": false,
+      "save_ability": "dexterity",
+      "half_on_save": false,
+      "damage": null,
+      "heal": null,
+      "scaling": [],
+      "concentration": false
+    },
+    "greater-invisibility": {
+      "name": "Greater Invisibility",
+      "level": 4,
+      "attack": false,
+      "save_ability": null,
+      "half_on_save": false,
+      "damage": null,
+      "heal": null,
+      "scaling": [],
+      "concentration": true
+    },
+    "greater-restoration": {
+      "name": "Greater Restoration",
+      "level": 5,
+      "attack": false,
+      "save_ability": null,
+      "half_on_save": false,
+      "damage": null,
+      "heal": null,
+      "scaling": [],
+      "concentration": false
+    },
+    "guardian-of-faith": {
+      "name": "Guardian of Faith",
+      "level": 4,
+      "attack": false,
+      "save_ability": "dexterity",
+      "half_on_save": true,
+      "damage": {
+        "dice": "20",
+        "with_modifier": false
+      },
+      "heal": null,
+      "scaling": [],
+      "concentration": false
+    },
+    "guards-and-wards": {
+      "name": "Guards and Wards",
+      "level": 6,
+      "attack": false,
+      "save_ability": null,
+      "half_on_save": false,
+      "damage": null,
+      "heal": null,
+      "scaling": [],
+      "concentration": false
+    },
+    "guidance": {
+      "name": "Guidance",
+      "level": null,
+      "attack": false,
+      "save_ability": null,
+      "half_on_save": false,
+      "damage": null,
+      "heal": null,
+      "scaling": [],
+      "concentration": true
+    },
+    "guiding-bolt": {
+      "name": "Guiding Bolt",
+      "level": 1,
+      "attack": true,
+      "save_ability": null,
+      "half_on_save": false,
+      "damage": {
+        "dice": "4d6",
+        "with_modifier": false
+      },
+      "heal": null,
+      "scaling": [
+        [
+          2,
+          {
+            "dice": "5d6",
+            "with_modifier": false
+          }
+        ],
+        [
+          3,
+          {
+            "dice": "6d6",
+            "with_modifier": false
+          }
+        ],
+        [
+          4,
+          {
+            "dice": "7d6",
+            "with_modifier": false
+          }
+        ],
+        [
+          5,
+          {
+            "dice": "8d6",
+            "with_modifier": false
+          }
+        ],
+        [
+          6,
+          {
+            "dice": "9d6",
+            "with_modifier": false
+          }
+        ],
+        [
+          7,
+          {
+            "dice": "10d6",
+            "with_modifier": false
+          }
+        ],
+        [
+          8,
+          {
+            "dice": "11d6",
+            "with_modifier": false
+          }
+        ],
+        [
+          9,
+          {
+            "dice": "12d6",
+            "with_modifier": false
+          }
+        ]
+      ],
+      "concentration": false
+    },
+    "gust-of-wind": {
+      "name": "Gust of Wind",
+      "level": 2,
+      "attack": false,
+      "save_ability": "strength",
+      "half_on_save": false,
+      "damage": null,
+      "heal": null,
+      "scaling": [],
+      "concentration": true
+    },
+    "hallow": {
+      "name": "Hallow",
+      "level": 5,
+      "attack": false,
+      "save_ability": "charisma",
+      "half_on_save": false,
+      "damage": null,
+      "heal": null,
+      "scaling": [],
+      "concentration": false
+    },
+    "hallucinatory-terrain": {
+      "name": "Hallucinatory Terrain",
+      "level": 4,
+      "attack": false,
+      "save_ability": null,
+      "half_on_save": false,
+      "damage": null,
+      "heal": null,
+      "scaling": [],
+      "concentration": false
+    },
+    "harm": {
+      "name": "Harm",
+      "level": 6,
+      "attack": false,
+      "save_ability": "constitution",
+      "half_on_save": true,
+      "damage": {
+        "dice": "14d6",
+        "with_modifier": false
+      },
+      "heal": null,
+      "scaling": [],
+      "concentration": false
+    },
+    "haste": {
+      "name": "Haste",
+      "level": 3,
+      "attack": false,
+      "save_ability": null,
+      "half_on_save": false,
+      "damage": null,
+      "heal": null,
+      "scaling": [],
+      "concentration": true
+    },
+    "heal": {
+      "name": "Heal",
+      "level": 6,
+      "attack": false,
+      "save_ability": null,
+      "half_on_save": false,
+      "damage": null,
+      "heal": {
+        "dice": "70",
+        "with_modifier": false
+      },
+      "scaling": [
+        [
+          7,
+          {
+            "dice": "80",
+            "with_modifier": false
+          }
+        ],
+        [
+          8,
+          {
+            "dice": "90",
+            "with_modifier": false
+          }
+        ],
+        [
+          9,
+          {
+            "dice": "100",
+            "with_modifier": false
+          }
+        ]
+      ],
+      "concentration": false
+    },
+    "healing-word": {
+      "name": "Healing Word",
+      "level": 1,
+      "attack": false,
+      "save_ability": null,
+      "half_on_save": false,
+      "damage": null,
+      "heal": {
+        "dice": "1d4",
+        "with_modifier": true
+      },
+      "scaling": [
+        [
+          2,
+          {
+            "dice": "2d4",
+            "with_modifier": true
+          }
+        ],
+        [
+          3,
+          {
+            "dice": "3d4",
+            "with_modifier": true
+          }
+        ],
+        [
+          4,
+          {
+            "dice": "4d4",
+            "with_modifier": true
+          }
+        ],
+        [
+          5,
+          {
+            "dice": "5d4",
+            "with_modifier": true
+          }
+        ],
+        [
+          6,
+          {
+            "dice": "6d4",
+            "with_modifier": true
+          }
+        ],
+        [
+          7,
+          {
+            "dice": "7d4",
+            "with_modifier": true
+          }
+        ],
+        [
+          8,
+          {
+            "dice": "8d4",
+            "with_modifier": true
+          }
+        ],
+        [
+          9,
+          {
+            "dice": "9d4",
+            "with_modifier": true
+          }
+        ]
+      ],
+      "concentration": false
+    },
+    "heat-metal": {
+      "name": "Heat Metal",
+      "level": 2,
+      "attack": false,
+      "save_ability": "constitution",
+      "half_on_save": false,
+      "damage": {
+        "dice": "2d8",
+        "with_modifier": false
+      },
+      "heal": null,
+      "scaling": [
+        [
+          3,
+          {
+            "dice": "3d8",
+            "with_modifier": false
+          }
+        ],
+        [
+          4,
+          {
+            "dice": "4d8",
+            "with_modifier": false
+          }
+        ],
+        [
+          5,
+          {
+            "dice": "5d8",
+            "with_modifier": false
+          }
+        ],
+        [
+          6,
+          {
+            "dice": "6d8",
+            "with_modifier": false
+          }
+        ],
+        [
+          7,
+          {
+            "dice": "7d8",
+            "with_modifier": false
+          }
+        ],
+        [
+          8,
+          {
+            "dice": "8d8",
+            "with_modifier": false
+          }
+        ],
+        [
+          9,
+          {
+            "dice": "9d8",
+            "with_modifier": false
+          }
+        ]
+      ],
+      "concentration": true
+    },
+    "hellish-rebuke": {
+      "name": "Hellish Rebuke",
+      "level": 1,
+      "attack": false,
+      "save_ability": "dexterity",
+      "half_on_save": true,
+      "damage": {
+        "dice": "2d10",
+        "with_modifier": false
+      },
+      "heal": null,
+      "scaling": [
+        [
+          2,
+          {
+            "dice": "3d10",
+            "with_modifier": false
+          }
+        ],
+        [
+          3,
+          {
+            "dice": "4d10",
+            "with_modifier": false
+          }
+        ],
+        [
+          4,
+          {
+            "dice": "5d10",
+            "with_modifier": false
+          }
+        ],
+        [
+          5,
+          {
+            "dice": "6d10",
+            "with_modifier": false
+          }
+        ],
+        [
+          6,
+          {
+            "dice": "7d10",
+            "with_modifier": false
+          }
+        ],
+        [
+          7,
+          {
+            "dice": "8d10",
+            "with_modifier": false
+          }
+        ],
+        [
+          8,
+          {
+            "dice": "9d10",
+            "with_modifier": false
+          }
+        ],
+        [
+          9,
+          {
+            "dice": "10d10",
+            "with_modifier": false
+          }
+        ]
+      ],
+      "concentration": false
+    },
+    "heroes-feast": {
+      "name": "Heroes' Feast",
+      "level": 6,
+      "attack": false,
+      "save_ability": null,
+      "half_on_save": false,
+      "damage": null,
+      "heal": null,
+      "scaling": [],
+      "concentration": false
+    },
+    "heroism": {
+      "name": "Heroism",
+      "level": 1,
+      "attack": false,
+      "save_ability": null,
+      "half_on_save": false,
+      "damage": null,
+      "heal": null,
+      "scaling": [],
+      "concentration": true
+    },
+    "hideous-laughter": {
+      "name": "Hideous Laughter",
+      "level": 1,
+      "attack": false,
+      "save_ability": "wisdom",
+      "half_on_save": false,
+      "damage": null,
+      "heal": null,
+      "scaling": [],
+      "concentration": true
+    },
+    "hold-monster": {
+      "name": "Hold Monster",
+      "level": 5,
+      "attack": false,
+      "save_ability": "wisdom",
+      "half_on_save": false,
+      "damage": null,
+      "heal": null,
+      "scaling": [],
+      "concentration": true
+    },
+    "hold-person": {
+      "name": "Hold Person",
+      "level": 2,
+      "attack": false,
+      "save_ability": "wisdom",
+      "half_on_save": false,
+      "damage": null,
+      "heal": null,
+      "scaling": [],
+      "concentration": true
+    },
+    "holy-aura": {
+      "name": "Holy Aura",
+      "level": 8,
+      "attack": false,
+      "save_ability": null,
+      "half_on_save": false,
+      "damage": null,
+      "heal": null,
+      "scaling": [],
+      "concentration": true
+    },
+    "hunters-mark": {
+      "name": "Hunter's Mark",
+      "level": 1,
+      "attack": false,
+      "save_ability": null,
+      "half_on_save": false,
+      "damage": null,
+      "heal": null,
+      "scaling": [],
+      "concentration": true
+    },
+    "hypnotic-pattern": {
+      "name": "Hypnotic Pattern",
+      "level": 3,
+      "attack": false,
+      "save_ability": "wisdom",
+      "half_on_save": false,
+      "damage": null,
+      "heal": null,
+      "scaling": [],
+      "concentration": true
+    },
+    "ice-storm": {
+      "name": "Ice Storm",
+      "level": 4,
+      "attack": false,
+      "save_ability": "dexterity",
+      "half_on_save": true,
+      "damage": {
+        "dice": "2d8 + 4d6",
+        "with_modifier": false
+      },
+      "heal": null,
+      "scaling": [
+        [
+          5,
+          {
+            "dice": "3d8 + 4d6",
+            "with_modifier": false
+          }
+        ],
+        [
+          6,
+          {
+            "dice": "4d8 + 4d6",
+            "with_modifier": false
+          }
+        ],
+        [
+          7,
+          {
+            "dice": "5d8 + 4d6",
+            "with_modifier": false
+          }
+        ],
+        [
+          8,
+          {
+            "dice": "6d8 + 4d6",
+            "with_modifier": false
+          }
+        ],
+        [
+          9,
+          {
+            "dice": "7d8 + 4d6",
+            "with_modifier": false
+          }
+        ]
+      ],
+      "concentration": false
+    },
+    "identify": {
+      "name": "Identify",
+      "level": 1,
+      "attack": false,
+      "save_ability": null,
+      "half_on_save": false,
+      "damage": null,
+      "heal": null,
+      "scaling": [],
+      "concentration": false
+    },
+    "illusory-script": {
+      "name": "Illusory Script",
+      "level": 1,
+      "attack": false,
+      "save_ability": null,
+      "half_on_save": false,
+      "damage": null,
+      "heal": null,
+      "scaling": [],
+      "concentration": false
+    },
+    "imprisonment": {
+      "name": "Imprisonment",
+      "level": 9,
+      "attack": false,
+      "save_ability": "wisdom",
+      "half_on_save": false,
+      "damage": null,
+      "heal": null,
+      "scaling": [],
+      "concentration": false
+    },
+    "incendiary-cloud": {
+      "name": "Incendiary Cloud",
+      "level": 8,
+      "attack": false,
+      "save_ability": "dexterity",
+      "half_on_save": true,
+      "damage": {
+        "dice": "10d8",
+        "with_modifier": false
+      },
+      "heal": null,
+      "scaling": [],
+      "concentration": true
+    },
+    "inflict-wounds": {
+      "name": "Inflict Wounds",
+      "level": 1,
+      "attack": true,
+      "save_ability": null,
+      "half_on_save": false,
+      "damage": {
+        "dice": "3d10",
+        "with_modifier": false
+      },
+      "heal": null,
+      "scaling": [
+        [
+          2,
+          {
+            "dice": "4d10",
+            "with_modifier": false
+          }
+        ],
+        [
+          3,
+          {
+            "dice": "5d10",
+            "with_modifier": false
+          }
+        ],
+        [
+          4,
+          {
+            "dice": "6d10",
+            "with_modifier": false
+          }
+        ],
+        [
+          5,
+          {
+            "dice": "7d10",
+            "with_modifier": false
+          }
+        ],
+        [
+          6,
+          {
+            "dice": "8d10",
+            "with_modifier": false
+          }
+        ],
+        [
+          7,
+          {
+            "dice": "9d10",
+            "with_modifier": false
+          }
+        ],
+        [
+          8,
+          {
+            "dice": "10d10",
+            "with_modifier": false
+          }
+        ],
+        [
+          9,
+          {
+            "dice": "11d10",
+            "with_modifier": false
+          }
+        ]
+      ],
+      "concentration": false
+    },
+    "insect-plague": {
+      "name": "Insect Plague",
+      "level": 5,
+      "attack": false,
+      "save_ability": "constitution",
+      "half_on_save": true,
+      "damage": {
+        "dice": "4d10",
+        "with_modifier": false
+      },
+      "heal": null,
+      "scaling": [
+        [
+          6,
+          {
+            "dice": "5d10",
+            "with_modifier": false
+          }
+        ],
+        [
+          7,
+          {
+            "dice": "6d10",
+            "with_modifier": false
+          }
+        ],
+        [
+          8,
+          {
+            "dice": "7d10",
+            "with_modifier": false
+          }
+        ],
+        [
+          9,
+          {
+            "dice": "8d10",
+            "with_modifier": false
+          }
+        ]
+      ],
+      "concentration": true
+    },
+    "instant-summons": {
+      "name": "Instant Summons",
+      "level": 6,
+      "attack": false,
+      "save_ability": null,
+      "half_on_save": false,
+      "damage": null,
+      "heal": null,
+      "scaling": [],
+      "concentration": false
+    },
+    "invisibility": {
+      "name": "Invisibility",
+      "level": 2,
+      "attack": false,
+      "save_ability": null,
+      "half_on_save": false,
+      "damage": null,
+      "heal": null,
+      "scaling": [],
+      "concentration": true
+    },
+    "irresistible-dance": {
+      "name": "Irresistible Dance",
+      "level": 6,
+      "attack": false,
+      "save_ability": null,
+      "half_on_save": false,
+      "damage": null,
+      "heal": null,
+      "scaling": [],
+      "concentration": true
+    },
+    "jump": {
+      "name": "Jump",
+      "level": 1,
+      "attack": false,
+      "save_ability": null,
+      "half_on_save": false,
+      "damage": null,
+      "heal": null,
+      "scaling": [],
+      "concentration": false
+    },
+    "knock": {
+      "name": "Knock",
+      "level": 2,
+      "attack": false,
+      "save_ability": null,
+      "half_on_save": false,
+      "damage": null,
+      "heal": null,
+      "scaling": [],
+      "concentration": false
+    },
+    "legend-lore": {
+      "name": "Legend Lore",
+      "level": 5,
+      "attack": false,
+      "save_ability": null,
+      "half_on_save": false,
+      "damage": null,
+      "heal": null,
+      "scaling": [],
+      "concentration": false
+    },
+    "lesser-restoration": {
+      "name": "Lesser Restoration",
+      "level": 2,
+      "attack": false,
+      "save_ability": null,
+      "half_on_save": false,
+      "damage": null,
+      "heal": null,
+      "scaling": [],
+      "concentration": false
+    },
+    "levitate": {
+      "name": "Levitate",
+      "level": 2,
+      "attack": false,
+      "save_ability": null,
+      "half_on_save": false,
+      "damage": null,
+      "heal": null,
+      "scaling": [],
+      "concentration": true
+    },
+    "light": {
+      "name": "Light",
+      "level": null,
+      "attack": false,
+      "save_ability": "dexterity",
+      "half_on_save": false,
+      "damage": null,
+      "heal": null,
+      "scaling": [],
+      "concentration": false
+    },
+    "lightning-bolt": {
+      "name": "Lightning Bolt",
+      "level": 3,
+      "attack": false,
+      "save_ability": "dexterity",
+      "half_on_save": true,
+      "damage": {
+        "dice": "8d6",
+        "with_modifier": false
+      },
+      "heal": null,
+      "scaling": [
+        [
+          4,
+          {
+            "dice": "9d6",
+            "with_modifier": false
+          }
+        ],
+        [
+          5,
+          {
+            "dice": "10d6",
+            "with_modifier": false
+          }
+        ],
+        [
+          6,
+          {
+            "dice": "11d6",
+            "with_modifier": false
+          }
+        ],
+        [
+          7,
+          {
+            "dice": "12d6",
+            "with_modifier": false
+          }
+        ],
+        [
+          8,
+          {
+            "dice": "13d6",
+            "with_modifier": false
+          }
+        ],
+        [
+          9,
+          {
+            "dice": "14d6",
+            "with_modifier": false
+          }
+        ]
+      ],
+      "concentration": false
+    },
+    "locate-animals-or-plants": {
+      "name": "Locate Animals or Plants",
+      "level": 2,
+      "attack": false,
+      "save_ability": null,
+      "half_on_save": false,
+      "damage": null,
+      "heal": null,
+      "scaling": [],
+      "concentration": false
+    },
+    "locate-creature": {
+      "name": "Locate Creature",
+      "level": 4,
+      "attack": false,
+      "save_ability": null,
+      "half_on_save": false,
+      "damage": null,
+      "heal": null,
+      "scaling": [],
+      "concentration": true
+    },
+    "locate-object": {
+      "name": "Locate Object",
+      "level": 2,
+      "attack": false,
+      "save_ability": null,
+      "half_on_save": false,
+      "damage": null,
+      "heal": null,
+      "scaling": [],
+      "concentration": true
+    },
+    "longstrider": {
+      "name": "Longstrider",
+      "level": 1,
+      "attack": false,
+      "save_ability": null,
+      "half_on_save": false,
+      "damage": null,
+      "heal": null,
+      "scaling": [],
+      "concentration": false
+    },
+    "mage-armor": {
+      "name": "Mage Armor",
+      "level": 1,
+      "attack": false,
+      "save_ability": null,
+      "half_on_save": false,
+      "damage": null,
+      "heal": null,
+      "scaling": [],
+      "concentration": false
+    },
+    "mage-hand": {
+      "name": "Mage Hand",
+      "level": null,
+      "attack": false,
+      "save_ability": null,
+      "half_on_save": false,
+      "damage": null,
+      "heal": null,
+      "scaling": [],
+      "concentration": false
+    },
+    "magic-circle": {
+      "name": "Magic Circle",
+      "level": 3,
+      "attack": false,
+      "save_ability": "charisma",
+      "half_on_save": false,
+      "damage": null,
+      "heal": null,
+      "scaling": [],
+      "concentration": false
+    },
+    "magic-jar": {
+      "name": "Magic Jar",
+      "level": 6,
+      "attack": false,
+      "save_ability": "charisma",
+      "half_on_save": false,
+      "damage": null,
+      "heal": null,
+      "scaling": [],
+      "concentration": false
+    },
+    "magic-missile": {
+      "name": "Magic Missile",
+      "level": 1,
+      "attack": false,
+      "save_ability": null,
+      "half_on_save": false,
+      "damage": {
+        "dice": "3d4 + 3",
+        "with_modifier": false
+      },
+      "heal": null,
+      "scaling": [
+        [
+          2,
+          {
+            "dice": "4d4 + 4",
+            "with_modifier": false
+          }
+        ],
+        [
+          3,
+          {
+            "dice": "5d4 + 5",
+            "with_modifier": false
+          }
+        ],
+        [
+          4,
+          {
+            "dice": "6d4 + 6",
+            "with_modifier": false
+          }
+        ],
+        [
+          5,
+          {
+            "dice": "7d4 + 7",
+            "with_modifier": false
+          }
+        ],
+        [
+          6,
+          {
+            "dice": "8d4 + 8",
+            "with_modifier": false
+          }
+        ],
+        [
+          7,
+          {
+            "dice": "9d4 + 9",
+            "with_modifier": false
+          }
+        ],
+        [
+          8,
+          {
+            "dice": "10d4 + 10",
+            "with_modifier": false
+          }
+        ],
+        [
+          9,
+          {
+            "dice": "11d4 + 11",
+            "with_modifier": false
+          }
+        ]
+      ],
+      "concentration": false
+    },
+    "magic-mouth": {
+      "name": "Magic Mouth",
+      "level": 2,
+      "attack": false,
+      "save_ability": null,
+      "half_on_save": false,
+      "damage": null,
+      "heal": null,
+      "scaling": [],
+      "concentration": false
+    },
+    "magic-weapon": {
+      "name": "Magic Weapon",
+      "level": 2,
+      "attack": false,
+      "save_ability": null,
+      "half_on_save": false,
+      "damage": null,
+      "heal": null,
+      "scaling": [],
+      "concentration": true
+    },
+    "magnificent-mansion": {
+      "name": "Magnificent Mansion",
+      "level": 7,
+      "attack": false,
+      "save_ability": null,
+      "half_on_save": false,
+      "damage": null,
+      "heal": null,
+      "scaling": [],
+      "concentration": false
+    },
+    "major-image": {
+      "name": "Major Image",
+      "level": 3,
+      "attack": false,
+      "save_ability": null,
+      "half_on_save": false,
+      "damage": null,
+      "heal": null,
+      "scaling": [],
+      "concentration": true
+    },
+    "mass-cure-wounds": {
+      "name": "Mass Cure Wounds",
+      "level": 5,
+      "attack": false,
+      "save_ability": null,
+      "half_on_save": false,
+      "damage": null,
+      "heal": {
+        "dice": "3d8",
+        "with_modifier": true
+      },
+      "scaling": [
+        [
+          6,
+          {
+            "dice": "4d8",
+            "with_modifier": true
+          }
+        ],
+        [
+          7,
+          {
+            "dice": "5d8",
+            "with_modifier": true
+          }
+        ],
+        [
+          8,
+          {
+            "dice": "6d8",
+            "with_modifier": true
+          }
+        ],
+        [
+          9,
+          {
+            "dice": "7d8",
+            "with_modifier": true
+          }
+        ]
+      ],
+      "concentration": false
+    },
+    "mass-heal": {
+      "name": "Mass Heal",
+      "level": 9,
+      "attack": false,
+      "save_ability": null,
+      "half_on_save": false,
+      "damage": null,
+      "heal": {
+        "dice": "700",
+        "with_modifier": false
+      },
+      "scaling": [],
+      "concentration": false
+    },
+    "mass-healing-word": {
+      "name": "Mass Healing Word",
+      "level": 3,
+      "attack": false,
+      "save_ability": null,
+      "half_on_save": false,
+      "damage": null,
+      "heal": {
+        "dice": "1d4",
+        "with_modifier": true
+      },
+      "scaling": [
+        [
+          4,
+          {
+            "dice": "2d4",
+            "with_modifier": true
+          }
+        ],
+        [
+          5,
+          {
+            "dice": "3d4",
+            "with_modifier": true
+          }
+        ],
+        [
+          6,
+          {
+            "dice": "4d4",
+            "with_modifier": true
+          }
+        ],
+        [
+          7,
+          {
+            "dice": "5d4",
+            "with_modifier": true
+          }
+        ],
+        [
+          8,
+          {
+            "dice": "6d4",
+            "with_modifier": true
+          }
+        ],
+        [
+          9,
+          {
+            "dice": "7d4",
+            "with_modifier": true
+          }
+        ]
+      ],
+      "concentration": false
+    },
+    "mass-suggestion": {
+      "name": "Mass Suggestion",
+      "level": 6,
+      "attack": false,
+      "save_ability": "wisdom",
+      "half_on_save": false,
+      "damage": null,
+      "heal": null,
+      "scaling": [],
+      "concentration": false
+    },
+    "maze": {
+      "name": "Maze",
+      "level": 8,
+      "attack": false,
+      "save_ability": null,
+      "half_on_save": false,
+      "damage": null,
+      "heal": null,
+      "scaling": [],
+      "concentration": true
+    },
+    "meld-into-stone": {
+      "name": "Meld Into Stone",
+      "level": 3,
+      "attack": false,
+      "save_ability": null,
+      "half_on_save": false,
+      "damage": null,
+      "heal": null,
+      "scaling": [],
+      "concentration": false
+    },
+    "mending": {
+      "name": "Mending",
+      "level": null,
+      "attack": false,
+      "save_ability": null,
+      "half_on_save": false,
+      "damage": null,
+      "heal": null,
+      "scaling": [],
+      "concentration": false
+    },
+    "message": {
+      "name": "Message",
+      "level": null,
+      "attack": false,
+      "save_ability": null,
+      "half_on_save": false,
+      "damage": null,
+      "heal": null,
+      "scaling": [],
+      "concentration": false
+    },
+    "meteor-swarm": {
+      "name": "Meteor Swarm",
+      "level": 9,
+      "attack": false,
+      "save_ability": "dexterity",
+      "half_on_save": true,
+      "damage": {
+        "dice": "20d6 + 20d6",
+        "with_modifier": false
+      },
+      "heal": null,
+      "scaling": [],
+      "concentration": false
+    },
+    "mind-blank": {
+      "name": "Mind Blank",
+      "level": 8,
+      "attack": false,
+      "save_ability": null,
+      "half_on_save": false,
+      "damage": null,
+      "heal": null,
+      "scaling": [],
+      "concentration": false
+    },
+    "minor-illusion": {
+      "name": "Minor Illusion",
+      "level": null,
+      "attack": false,
+      "save_ability": null,
+      "half_on_save": false,
+      "damage": null,
+      "heal": null,
+      "scaling": [],
+      "concentration": false
+    },
+    "mirage-arcane": {
+      "name": "Mirage Arcane",
+      "level": 7,
+      "attack": false,
+      "save_ability": null,
+      "half_on_save": false,
+      "damage": null,
+      "heal": null,
+      "scaling": [],
+      "concentration": false
+    },
+    "mirror-image": {
+      "name": "Mirror Image",
+      "level": 2,
+      "attack": false,
+      "save_ability": null,
+      "half_on_save": false,
+      "damage": null,
+      "heal": null,
+      "scaling": [],
+      "concentration": false
+    },
+    "mislead": {
+      "name": "Mislead",
+      "level": 5,
+      "attack": false,
+      "save_ability": null,
+      "half_on_save": false,
+      "damage": null,
+      "heal": null,
+      "scaling": [],
+      "concentration": true
+    },
+    "misty-step": {
+      "name": "Misty Step",
+      "level": 2,
+      "attack": false,
+      "save_ability": null,
+      "half_on_save": false,
+      "damage": null,
+      "heal": null,
+      "scaling": [],
+      "concentration": false
+    },
+    "modify-memory": {
+      "name": "Modify Memory",
+      "level": 5,
+      "attack": false,
+      "save_ability": "wisdom",
+      "half_on_save": false,
+      "damage": null,
+      "heal": null,
+      "scaling": [],
+      "concentration": true
+    },
+    "moonbeam": {
+      "name": "Moonbeam",
+      "level": 2,
+      "attack": false,
+      "save_ability": "constitution",
+      "half_on_save": true,
+      "damage": {
+        "dice": "2d10",
+        "with_modifier": false
+      },
+      "heal": null,
+      "scaling": [
+        [
+          3,
+          {
+            "dice": "3d10",
+            "with_modifier": false
+          }
+        ],
+        [
+          4,
+          {
+            "dice": "4d10",
+            "with_modifier": false
+          }
+        ],
+        [
+          5,
+          {
+            "dice": "5d10",
+            "with_modifier": false
+          }
+        ],
+        [
+          6,
+          {
+            "dice": "6d10",
+            "with_modifier": false
+          }
+        ],
+        [
+          7,
+          {
+            "dice": "7d10",
+            "with_modifier": false
+          }
+        ],
+        [
+          8,
+          {
+            "dice": "8d10",
+            "with_modifier": false
+          }
+        ],
+        [
+          9,
+          {
+            "dice": "9d10",
+            "with_modifier": false
+          }
+        ]
+      ],
+      "concentration": true
+    },
+    "move-earth": {
+      "name": "Move Earth",
+      "level": 6,
+      "attack": false,
+      "save_ability": null,
+      "half_on_save": false,
+      "damage": null,
+      "heal": null,
+      "scaling": [],
+      "concentration": true
+    },
+    "nondetection": {
+      "name": "Nondetection",
+      "level": 3,
+      "attack": false,
+      "save_ability": null,
+      "half_on_save": false,
+      "damage": null,
+      "heal": null,
+      "scaling": [],
+      "concentration": false
+    },
+    "pass-without-trace": {
+      "name": "Pass Without Trace",
+      "level": 2,
+      "attack": false,
+      "save_ability": null,
+      "half_on_save": false,
+      "damage": null,
+      "heal": null,
+      "scaling": [],
+      "concentration": true
+    },
+    "passwall": {
+      "name": "Passwall",
+      "level": 5,
+      "attack": false,
+      "save_ability": null,
+      "half_on_save": false,
+      "damage": null,
+      "heal": null,
+      "scaling": [],
+      "concentration": false
+    },
+    "phantasmal-killer": {
+      "name": "Phantasmal Killer",
+      "level": 4,
+      "attack": false,
+      "save_ability": "wisdom",
+      "half_on_save": false,
+      "damage": {
+        "dice": "4d10",
+        "with_modifier": false
+      },
+      "heal": null,
+      "scaling": [],
+      "concentration": true
+    },
+    "phantom-steed": {
+      "name": "Phantom Steed",
+      "level": 3,
+      "attack": false,
+      "save_ability": null,
+      "half_on_save": false,
+      "damage": null,
+      "heal": null,
+      "scaling": [],
+      "concentration": false
+    },
+    "planar-ally": {
+      "name": "Planar Ally",
+      "level": 6,
+      "attack": false,
+      "save_ability": null,
+      "half_on_save": false,
+      "damage": null,
+      "heal": null,
+      "scaling": [],
+      "concentration": false
+    },
+    "planar-binding": {
+      "name": "Planar Binding",
+      "level": 5,
+      "attack": false,
+      "save_ability": "charisma",
+      "half_on_save": false,
+      "damage": null,
+      "heal": null,
+      "scaling": [],
+      "concentration": false
+    },
+    "plane-shift": {
+      "name": "Plane Shift",
+      "level": 7,
+      "attack": true,
+      "save_ability": "charisma",
+      "half_on_save": false,
+      "damage": null,
+      "heal": null,
+      "scaling": [],
+      "concentration": false
+    },
+    "plant-growth": {
+      "name": "Plant Growth",
+      "level": 3,
+      "attack": false,
+      "save_ability": null,
+      "half_on_save": false,
+      "damage": null,
+      "heal": null,
+      "scaling": [],
+      "concentration": false
+    },
+    "poison-spray": {
+      "name": "Poison Spray",
+      "level": null,
+      "attack": false,
+      "save_ability": "constitution",
+      "half_on_save": false,
+      "damage": {
+        "dice": "1d12",
+        "with_modifier": false
+      },
+      "heal": null,
+      "scaling": [
+        [
+          5,
+          {
+            "dice": "2d12",
+            "with_modifier": false
+          }
+        ],
+        [
+          11,
+          {
+            "dice": "3d12",
+            "with_modifier": false
+          }
+        ],
+        [
+          17,
+          {
+            "dice": "4d12",
+            "with_modifier": false
+          }
+        ]
+      ],
+      "concentration": false
+    },
+    "polymorph": {
+      "name": "Polymorph",
+      "level": 4,
+      "attack": false,
+      "save_ability": "wisdom",
+      "half_on_save": false,
+      "damage": null,
+      "heal": null,
+      "scaling": [],
+      "concentration": true
+    },
+    "power-word-kill": {
+      "name": "Power Word Kill",
+      "level": 9,
+      "attack": false,
+      "save_ability": null,
+      "half_on_save": false,
+      "damage": null,
+      "heal": null,
+      "scaling": [],
+      "concentration": false
+    },
+    "power-word-stun": {
+      "name": "Power Word Stun",
+      "level": 8,
+      "attack": false,
+      "save_ability": null,
+      "half_on_save": false,
+      "damage": null,
+      "heal": null,
+      "scaling": [],
+      "concentration": false
+    },
+    "prayer-of-healing": {
+      "name": "Prayer of Healing",
+      "level": 2,
+      "attack": false,
+      "save_ability": null,
+      "half_on_save": false,
+      "damage": null,
+      "heal": {
+        "dice": "2d8",
+        "with_modifier": true
+      },
+      "scaling": [
+        [
+          3,
+          {
+            "dice": "3d8",
+            "with_modifier": true
+          }
+        ],
+        [
+          4,
+          {
+            "dice": "4d8",
+            "with_modifier": true
+          }
+        ],
+        [
+          5,
+          {
+            "dice": "5d8",
+            "with_modifier": true
+          }
+        ],
+        [
+          6,
+          {
+            "dice": "6d8",
+            "with_modifier": true
+          }
+        ],
+        [
+          7,
+          {
+            "dice": "7d8",
+            "with_modifier": true
+          }
+        ],
+        [
+          8,
+          {
+            "dice": "8d8",
+            "with_modifier": true
+          }
+        ],
+        [
+          9,
+          {
+            "dice": "9d8",
+            "with_modifier": true
+          }
+        ]
+      ],
+      "concentration": false
+    },
+    "prestidigitation": {
+      "name": "Prestidigitation",
+      "level": null,
+      "attack": false,
+      "save_ability": null,
+      "half_on_save": false,
+      "damage": null,
+      "heal": null,
+      "scaling": [],
+      "concentration": false
+    },
+    "prismatic-spray": {
+      "name": "Prismatic Spray",
+      "level": 7,
+      "attack": false,
+      "save_ability": "dexterity",
+      "half_on_save": false,
+      "damage": {
+        "dice": "10d6",
+        "with_modifier": false
+      },
+      "heal": null,
+      "scaling": [],
+      "concentration": false
+    },
+    "prismatic-wall": {
+      "name": "Prismatic Wall",
+      "level": 9,
+      "attack": false,
+      "save_ability": null,
+      "half_on_save": false,
+      "damage": null,
+      "heal": null,
+      "scaling": [],
+      "concentration": false
+    },
+    "private-sanctum": {
+      "name": "Private Sanctum",
+      "level": 4,
+      "attack": false,
+      "save_ability": null,
+      "half_on_save": false,
+      "damage": null,
+      "heal": null,
+      "scaling": [],
+      "concentration": false
+    },
+    "produce-flame": {
+      "name": "Produce Flame",
+      "level": null,
+      "attack": true,
+      "save_ability": null,
+      "half_on_save": false,
+      "damage": {
+        "dice": "1d8",
+        "with_modifier": false
+      },
+      "heal": null,
+      "scaling": [
+        [
+          5,
+          {
+            "dice": "2d8",
+            "with_modifier": false
+          }
+        ],
+        [
+          11,
+          {
+            "dice": "3d8",
+            "with_modifier": false
+          }
+        ],
+        [
+          17,
+          {
+            "dice": "4d8",
+            "with_modifier": false
+          }
+        ]
+      ],
+      "concentration": false
+    },
+    "programmed-illusion": {
+      "name": "Programmed Illusion",
+      "level": 6,
+      "attack": false,
+      "save_ability": null,
+      "half_on_save": false,
+      "damage": null,
+      "heal": null,
+      "scaling": [],
+      "concentration": false
+    },
+    "project-image": {
+      "name": "Project Image",
+      "level": 7,
+      "attack": false,
+      "save_ability": null,
+      "half_on_save": false,
+      "damage": null,
+      "heal": null,
+      "scaling": [],
+      "concentration": true
+    },
+    "protection-from-energy": {
+      "name": "Protection From Energy",
+      "level": 3,
+      "attack": false,
+      "save_ability": null,
+      "half_on_save": false,
+      "damage": null,
+      "heal": null,
+      "scaling": [],
+      "concentration": true
+    },
+    "protection-from-evil-and-good": {
+      "name": "Protection from Evil and Good",
+      "level": 1,
+      "attack": false,
+      "save_ability": null,
+      "half_on_save": false,
+      "damage": null,
+      "heal": null,
+      "scaling": [],
+      "concentration": true
+    },
+    "protection-from-poison": {
+      "name": "Protection from Poison",
+      "level": 2,
+      "attack": false,
+      "save_ability": null,
+      "half_on_save": false,
+      "damage": null,
+      "heal": null,
+      "scaling": [],
+      "concentration": false
+    },
+    "purify-food-and-drink": {
+      "name": "Purify Food and Drink",
+      "level": 1,
+      "attack": false,
+      "save_ability": null,
+      "half_on_save": false,
+      "damage": null,
+      "heal": null,
+      "scaling": [],
+      "concentration": false
+    },
+    "raise-dead": {
+      "name": "Raise Dead",
+      "level": 5,
+      "attack": false,
+      "save_ability": null,
+      "half_on_save": false,
+      "damage": null,
+      "heal": null,
+      "scaling": [],
+      "concentration": false
+    },
+    "ray-of-enfeeblement": {
+      "name": "Ray of Enfeeblement",
+      "level": 2,
+      "attack": true,
+      "save_ability": "constitution",
+      "half_on_save": false,
+      "damage": null,
+      "heal": null,
+      "scaling": [],
+      "concentration": true
+    },
+    "ray-of-frost": {
+      "name": "Ray of Frost",
+      "level": null,
+      "attack": true,
+      "save_ability": null,
+      "half_on_save": false,
+      "damage": {
+        "dice": "1d8",
+        "with_modifier": false
+      },
+      "heal": null,
+      "scaling": [
+        [
+          5,
+          {
+            "dice": "2d8",
+            "with_modifier": false
+          }
+        ],
+        [
+          11,
+          {
+            "dice": "3d8",
+            "with_modifier": false
+          }
+        ],
+        [
+          17,
+          {
+            "dice": "4d8",
+            "with_modifier": false
+          }
+        ]
+      ],
+      "concentration": false
+    },
+    "regenerate": {
+      "name": "Regenerate",
+      "level": 7,
+      "attack": false,
+      "save_ability": null,
+      "half_on_save": false,
+      "damage": null,
+      "heal": {
+        "dice": "4d8 + 15",
+        "with_modifier": false
+      },
+      "scaling": [],
+      "concentration": false
+    },
+    "reincarnate": {
+      "name": "Reincarnate",
+      "level": 5,
+      "attack": false,
+      "save_ability": null,
+      "half_on_save": false,
+      "damage": null,
+      "heal": null,
+      "scaling": [],
+      "concentration": false
+    },
+    "remove-curse": {
+      "name": "Remove Curse",
+      "level": 3,
+      "attack": false,
+      "save_ability": null,
+      "half_on_save": false,
+      "damage": null,
+      "heal": null,
+      "scaling": [],
+      "concentration": false
+    },
+    "resilient-sphere": {
+      "name": "Resilient Sphere",
+      "level": 4,
+      "attack": false,
+      "save_ability": "dexterity",
+      "half_on_save": false,
+      "damage": null,
+      "heal": null,
+      "scaling": [],
+      "concentration": true
+    },
+    "resistance": {
+      "name": "Resistance",
+      "level": null,
+      "attack": false,
+      "save_ability": null,
+      "half_on_save": false,
+      "damage": null,
+      "heal": null,
+      "scaling": [],
+      "concentration": true
+    },
+    "resurrection": {
+      "name": "Resurrection",
+      "level": 7,
+      "attack": false,
+      "save_ability": null,
+      "half_on_save": false,
+      "damage": null,
+      "heal": null,
+      "scaling": [],
+      "concentration": false
+    },
+    "reverse-gravity": {
+      "name": "Reverse Gravity",
+      "level": 7,
+      "attack": false,
+      "save_ability": "dexterity",
+      "half_on_save": false,
+      "damage": null,
+      "heal": null,
+      "scaling": [],
+      "concentration": true
+    },
+    "revivify": {
+      "name": "Revivify",
+      "level": 3,
+      "attack": false,
+      "save_ability": null,
+      "half_on_save": false,
+      "damage": null,
+      "heal": null,
+      "scaling": [],
+      "concentration": false
+    },
+    "rope-trick": {
+      "name": "Rope Trick",
+      "level": 2,
+      "attack": false,
+      "save_ability": null,
+      "half_on_save": false,
+      "damage": null,
+      "heal": null,
+      "scaling": [],
+      "concentration": false
+    },
+    "sacred-flame": {
+      "name": "Sacred Flame",
+      "level": null,
+      "attack": false,
+      "save_ability": "dexterity",
+      "half_on_save": false,
+      "damage": {
+        "dice": "1d8",
+        "with_modifier": false
+      },
+      "heal": null,
+      "scaling": [
+        [
+          5,
+          {
+            "dice": "2d8",
+            "with_modifier": false
+          }
+        ],
+        [
+          11,
+          {
+            "dice": "3d8",
+            "with_modifier": false
+          }
+        ],
+        [
+          17,
+          {
+            "dice": "4d8",
+            "with_modifier": false
+          }
+        ]
+      ],
+      "concentration": false
+    },
+    "sanctuary": {
+      "name": "Sanctuary",
+      "level": 1,
+      "attack": false,
+      "save_ability": null,
+      "half_on_save": false,
+      "damage": null,
+      "heal": null,
+      "scaling": [],
+      "concentration": false
+    },
+    "scorching-ray": {
+      "name": "Scorching Ray",
+      "level": 2,
+      "attack": false,
+      "save_ability": null,
+      "half_on_save": false,
+      "damage": {
+        "dice": "2d6",
+        "with_modifier": false
+      },
+      "heal": null,
+      "scaling": [],
+      "concentration": false
+    },
+    "scrying": {
+      "name": "Scrying",
+      "level": 5,
+      "attack": false,
+      "save_ability": "wisdom",
+      "half_on_save": false,
+      "damage": null,
+      "heal": null,
+      "scaling": [],
+      "concentration": true
+    },
+    "secret-chest": {
+      "name": "Secret Chest",
+      "level": 4,
+      "attack": false,
+      "save_ability": null,
+      "half_on_save": false,
+      "damage": null,
+      "heal": null,
+      "scaling": [],
+      "concentration": false
+    },
+    "see-invisibility": {
+      "name": "See Invisibility",
+      "level": 2,
+      "attack": false,
+      "save_ability": null,
+      "half_on_save": false,
+      "damage": null,
+      "heal": null,
+      "scaling": [],
+      "concentration": false
+    },
+    "seeming": {
+      "name": "Seeming",
+      "level": 5,
+      "attack": false,
+      "save_ability": null,
+      "half_on_save": false,
+      "damage": null,
+      "heal": null,
+      "scaling": [],
+      "concentration": false
+    },
+    "sending": {
+      "name": "Sending",
+      "level": 3,
+      "attack": false,
+      "save_ability": null,
+      "half_on_save": false,
+      "damage": null,
+      "heal": null,
+      "scaling": [],
+      "concentration": false
+    },
+    "sequester": {
+      "name": "Sequester",
+      "level": 7,
+      "attack": false,
+      "save_ability": null,
+      "half_on_save": false,
+      "damage": null,
+      "heal": null,
+      "scaling": [],
+      "concentration": false
+    },
+    "shapechange": {
+      "name": "Shapechange",
+      "level": 9,
+      "attack": false,
+      "save_ability": null,
+      "half_on_save": false,
+      "damage": null,
+      "heal": null,
+      "scaling": [],
+      "concentration": true
+    },
+    "shatter": {
+      "name": "Shatter",
+      "level": 2,
+      "attack": false,
+      "save_ability": "constitution",
+      "half_on_save": true,
+      "damage": {
+        "dice": "3d8",
+        "with_modifier": false
+      },
+      "heal": null,
+      "scaling": [
+        [
+          3,
+          {
+            "dice": "4d8",
+            "with_modifier": false
+          }
+        ],
+        [
+          4,
+          {
+            "dice": "5d8",
+            "with_modifier": false
+          }
+        ],
+        [
+          5,
+          {
+            "dice": "6d8",
+            "with_modifier": false
+          }
+        ],
+        [
+          6,
+          {
+            "dice": "7d8",
+            "with_modifier": false
+          }
+        ],
+        [
+          7,
+          {
+            "dice": "8d8",
+            "with_modifier": false
+          }
+        ],
+        [
+          8,
+          {
+            "dice": "9d8",
+            "with_modifier": false
+          }
+        ],
+        [
+          9,
+          {
+            "dice": "10d8",
+            "with_modifier": false
+          }
+        ]
+      ],
+      "concentration": false
+    },
+    "shield": {
+      "name": "Shield",
+      "level": 1,
+      "attack": false,
+      "save_ability": null,
+      "half_on_save": false,
+      "damage": null,
+      "heal": null,
+      "scaling": [],
+      "concentration": false
+    },
+    "shield-of-faith": {
+      "name": "Shield of Faith",
+      "level": 1,
+      "attack": false,
+      "save_ability": null,
+      "half_on_save": false,
+      "damage": null,
+      "heal": null,
+      "scaling": [],
+      "concentration": true
+    },
+    "shillelagh": {
+      "name": "Shillelagh",
+      "level": null,
+      "attack": false,
+      "save_ability": null,
+      "half_on_save": false,
+      "damage": null,
+      "heal": null,
+      "scaling": [],
+      "concentration": false
+    },
+    "shocking-grasp": {
+      "name": "Shocking Grasp",
+      "level": null,
+      "attack": true,
+      "save_ability": null,
+      "half_on_save": false,
+      "damage": {
+        "dice": "1d8",
+        "with_modifier": false
+      },
+      "heal": null,
+      "scaling": [
+        [
+          5,
+          {
+            "dice": "2d8",
+            "with_modifier": false
+          }
+        ],
+        [
+          11,
+          {
+            "dice": "3d8",
+            "with_modifier": false
+          }
+        ],
+        [
+          17,
+          {
+            "dice": "4d8",
+            "with_modifier": false
+          }
+        ]
+      ],
+      "concentration": false
+    },
+    "silence": {
+      "name": "Silence",
+      "level": 2,
+      "attack": false,
+      "save_ability": null,
+      "half_on_save": false,
+      "damage": null,
+      "heal": null,
+      "scaling": [],
+      "concentration": true
+    },
+    "silent-image": {
+      "name": "Silent Image",
+      "level": 1,
+      "attack": false,
+      "save_ability": null,
+      "half_on_save": false,
+      "damage": null,
+      "heal": null,
+      "scaling": [],
+      "concentration": true
+    },
+    "simulacrum": {
+      "name": "Simulacrum",
+      "level": 7,
+      "attack": false,
+      "save_ability": null,
+      "half_on_save": false,
+      "damage": null,
+      "heal": null,
+      "scaling": [],
+      "concentration": false
+    },
+    "sleep": {
+      "name": "Sleep",
+      "level": 1,
+      "attack": false,
+      "save_ability": null,
+      "half_on_save": false,
+      "damage": {
+        "dice": "5d8",
+        "with_modifier": false
+      },
+      "heal": null,
+      "scaling": [],
+      "concentration": false
+    },
+    "sleet-storm": {
+      "name": "Sleet Storm",
+      "level": 3,
+      "attack": false,
+      "save_ability": null,
+      "half_on_save": false,
+      "damage": null,
+      "heal": null,
+      "scaling": [],
+      "concentration": true
+    },
+    "slow": {
+      "name": "Slow",
+      "level": 3,
+      "attack": false,
+      "save_ability": "wisdom",
+      "half_on_save": false,
+      "damage": null,
+      "heal": null,
+      "scaling": [],
+      "concentration": true
+    },
+    "spare-the-dying": {
+      "name": "Spare the Dying",
+      "level": null,
+      "attack": false,
+      "save_ability": null,
+      "half_on_save": false,
+      "damage": null,
+      "heal": null,
+      "scaling": [],
+      "concentration": false
+    },
+    "speak-with-animals": {
+      "name": "Speak with Animals",
+      "level": 1,
+      "attack": false,
+      "save_ability": null,
+      "half_on_save": false,
+      "damage": null,
+      "heal": null,
+      "scaling": [],
+      "concentration": false
+    },
+    "speak-with-dead": {
+      "name": "Speak with Dead",
+      "level": 3,
+      "attack": false,
+      "save_ability": null,
+      "half_on_save": false,
+      "damage": null,
+      "heal": null,
+      "scaling": [],
+      "concentration": false
+    },
+    "speak-with-plants": {
+      "name": "Speak with Plants",
+      "level": 3,
+      "attack": false,
+      "save_ability": null,
+      "half_on_save": false,
+      "damage": null,
+      "heal": null,
+      "scaling": [],
+      "concentration": false
+    },
+    "spider-climb": {
+      "name": "Spider Climb",
+      "level": 2,
+      "attack": false,
+      "save_ability": null,
+      "half_on_save": false,
+      "damage": null,
+      "heal": null,
+      "scaling": [],
+      "concentration": true
+    },
+    "spike-growth": {
+      "name": "Spike Growth",
+      "level": 2,
+      "attack": false,
+      "save_ability": null,
+      "half_on_save": false,
+      "damage": null,
+      "heal": null,
+      "scaling": [],
+      "concentration": true
+    },
+    "spirit-guardians": {
+      "name": "Spirit Guardians",
+      "level": 3,
+      "attack": false,
+      "save_ability": null,
+      "half_on_save": false,
+      "damage": null,
+      "heal": null,
+      "scaling": [],
+      "concentration": true
+    },
+    "spiritual-weapon": {
+      "name": "Spiritual Weapon",
+      "level": 2,
+      "attack": true,
+      "save_ability": null,
+      "half_on_save": false,
+      "damage": {
+        "dice": "1d8",
+        "with_modifier": true
+      },
+      "heal": null,
+      "scaling": [
+        [
+          3,
+          {
+            "dice": "1d8",
+            "with_modifier": true
+          }
+        ],
+        [
+          4,
+          {
+            "dice": "2d8",
+            "with_modifier": true
+          }
+        ],
+        [
+          5,
+          {
+            "dice": "2d8",
+            "with_modifier": true
+          }
+        ],
+        [
+          6,
+          {
+            "dice": "3d8",
+            "with_modifier": true
+          }
+        ],
+        [
+          7,
+          {
+            "dice": "3d8",
+            "with_modifier": true
+          }
+        ],
+        [
+          8,
+          {
+            "dice": "4d8",
+            "with_modifier": true
+          }
+        ],
+        [
+          9,
+          {
+            "dice": "4d8",
+            "with_modifier": true
+          }
+        ]
+      ],
+      "concentration": false
+    },
+    "stinking-cloud": {
+      "name": "Stinking Cloud",
+      "level": 3,
+      "attack": false,
+      "save_ability": "constitution",
+      "half_on_save": false,
+      "damage": null,
+      "heal": null,
+      "scaling": [],
+      "concentration": true
+    },
+    "stone-shape": {
+      "name": "Stone Shape",
+      "level": 4,
+      "attack": false,
+      "save_ability": null,
+      "half_on_save": false,
+      "damage": null,
+      "heal": null,
+      "scaling": [],
+      "concentration": false
+    },
+    "stoneskin": {
+      "name": "Stoneskin",
+      "level": 4,
+      "attack": false,
+      "save_ability": null,
+      "half_on_save": false,
+      "damage": null,
+      "heal": null,
+      "scaling": [],
+      "concentration": true
+    },
+    "storm-of-vengeance": {
+      "name": "Storm of Vengeance",
+      "level": 9,
+      "attack": false,
+      "save_ability": "constitution",
+      "half_on_save": false,
+      "damage": {
+        "dice": "2d6",
+        "with_modifier": false
+      },
+      "heal": null,
+      "scaling": [],
+      "concentration": true
+    },
+    "suggestion": {
+      "name": "Suggestion",
+      "level": 2,
+      "attack": false,
+      "save_ability": "wisdom",
+      "half_on_save": false,
+      "damage": null,
+      "heal": null,
+      "scaling": [],
+      "concentration": true
+    },
+    "sunbeam": {
+      "name": "Sunbeam",
+      "level": 6,
+      "attack": false,
+      "save_ability": "constitution",
+      "half_on_save": true,
+      "damage": {
+        "dice": "6d8",
+        "with_modifier": false
+      },
+      "heal": null,
+      "scaling": [],
+      "concentration": true
+    },
+    "sunburst": {
+      "name": "Sunburst",
+      "level": 8,
+      "attack": false,
+      "save_ability": "constitution",
+      "half_on_save": true,
+      "damage": {
+        "dice": "12d6",
+        "with_modifier": false
+      },
+      "heal": null,
+      "scaling": [],
+      "concentration": false
+    },
+    "symbol": {
+      "name": "Symbol",
+      "level": 7,
+      "attack": false,
+      "save_ability": null,
+      "half_on_save": false,
+      "damage": null,
+      "heal": null,
+      "scaling": [],
+      "concentration": false
+    },
+    "telekinesis": {
+      "name": "Telekinesis",
+      "level": 5,
+      "attack": false,
+      "save_ability": null,
+      "half_on_save": false,
+      "damage": null,
+      "heal": null,
+      "scaling": [],
+      "concentration": true
+    },
+    "telepathic-bond": {
+      "name": "Telepathic Bond",
+      "level": 5,
+      "attack": false,
+      "save_ability": null,
+      "half_on_save": false,
+      "damage": null,
+      "heal": null,
+      "scaling": [],
+      "concentration": false
+    },
+    "teleport": {
+      "name": "Teleport",
+      "level": 7,
+      "attack": false,
+      "save_ability": null,
+      "half_on_save": false,
+      "damage": null,
+      "heal": null,
+      "scaling": [],
+      "concentration": false
+    },
+    "teleportation-circle": {
+      "name": "Teleportation Circle",
+      "level": 5,
+      "attack": false,
+      "save_ability": null,
+      "half_on_save": false,
+      "damage": null,
+      "heal": null,
+      "scaling": [],
+      "concentration": false
+    },
+    "thaumaturgy": {
+      "name": "Thaumaturgy",
+      "level": null,
+      "attack": false,
+      "save_ability": null,
+      "half_on_save": false,
+      "damage": null,
+      "heal": null,
+      "scaling": [],
+      "concentration": false
+    },
+    "thunderwave": {
+      "name": "Thunderwave",
+      "level": 1,
+      "attack": false,
+      "save_ability": "constitution",
+      "half_on_save": true,
+      "damage": {
+        "dice": "2d8",
+        "with_modifier": false
+      },
+      "heal": null,
+      "scaling": [
+        [
+          2,
+          {
+            "dice": "3d8",
+            "with_modifier": false
+          }
+        ],
+        [
+          3,
+          {
+            "dice": "4d8",
+            "with_modifier": false
+          }
+        ],
+        [
+          4,
+          {
+            "dice": "5d8",
+            "with_modifier": false
+          }
+        ],
+        [
+          5,
+          {
+            "dice": "6d8",
+            "with_modifier": false
+          }
+        ],
+        [
+          6,
+          {
+            "dice": "7d8",
+            "with_modifier": false
+          }
+        ],
+        [
+          7,
+          {
+            "dice": "8d8",
+            "with_modifier": false
+          }
+        ],
+        [
+          8,
+          {
+            "dice": "9d8",
+            "with_modifier": false
+          }
+        ],
+        [
+          9,
+          {
+            "dice": "10d8",
+            "with_modifier": false
+          }
+        ]
+      ],
+      "concentration": false
+    },
+    "time-stop": {
+      "name": "Time Stop",
+      "level": 9,
+      "attack": false,
+      "save_ability": null,
+      "half_on_save": false,
+      "damage": null,
+      "heal": null,
+      "scaling": [],
+      "concentration": false
+    },
+    "tiny-hut": {
+      "name": "Tiny Hut",
+      "level": 3,
+      "attack": false,
+      "save_ability": null,
+      "half_on_save": false,
+      "damage": null,
+      "heal": null,
+      "scaling": [],
+      "concentration": false
+    },
+    "tongues": {
+      "name": "Tongues",
+      "level": 3,
+      "attack": false,
+      "save_ability": null,
+      "half_on_save": false,
+      "damage": null,
+      "heal": null,
+      "scaling": [],
+      "concentration": false
+    },
+    "transport-via-plants": {
+      "name": "Transport via Plants",
+      "level": 6,
+      "attack": false,
+      "save_ability": null,
+      "half_on_save": false,
+      "damage": null,
+      "heal": null,
+      "scaling": [],
+      "concentration": false
+    },
+    "tree-stride": {
+      "name": "Tree Stride",
+      "level": 5,
+      "attack": false,
+      "save_ability": null,
+      "half_on_save": false,
+      "damage": null,
+      "heal": null,
+      "scaling": [],
+      "concentration": true
+    },
+    "true-polymorph": {
+      "name": "True Polymorph",
+      "level": 9,
+      "attack": false,
+      "save_ability": null,
+      "half_on_save": false,
+      "damage": null,
+      "heal": null,
+      "scaling": [],
+      "concentration": true
+    },
+    "true-resurrection": {
+      "name": "True Resurrection",
+      "level": 9,
+      "attack": false,
+      "save_ability": null,
+      "half_on_save": false,
+      "damage": null,
+      "heal": null,
+      "scaling": [],
+      "concentration": false
+    },
+    "true-seeing": {
+      "name": "True Seeing",
+      "level": 6,
+      "attack": false,
+      "save_ability": null,
+      "half_on_save": false,
+      "damage": null,
+      "heal": null,
+      "scaling": [],
+      "concentration": false
+    },
+    "true-strike": {
+      "name": "True Strike",
+      "level": null,
+      "attack": false,
+      "save_ability": null,
+      "half_on_save": false,
+      "damage": null,
+      "heal": null,
+      "scaling": [],
+      "concentration": true
+    },
+    "unseen-servant": {
+      "name": "Unseen Servant",
+      "level": 1,
+      "attack": false,
+      "save_ability": null,
+      "half_on_save": false,
+      "damage": null,
+      "heal": null,
+      "scaling": [],
+      "concentration": false
+    },
+    "vampiric-touch": {
+      "name": "Vampiric Touch",
+      "level": 3,
+      "attack": true,
+      "save_ability": null,
+      "half_on_save": false,
+      "damage": {
+        "dice": "3d6",
+        "with_modifier": false
+      },
+      "heal": null,
+      "scaling": [
+        [
+          4,
+          {
+            "dice": "4d6",
+            "with_modifier": false
+          }
+        ],
+        [
+          5,
+          {
+            "dice": "5d6",
+            "with_modifier": false
+          }
+        ],
+        [
+          6,
+          {
+            "dice": "6d6",
+            "with_modifier": false
+          }
+        ],
+        [
+          7,
+          {
+            "dice": "7d6",
+            "with_modifier": false
+          }
+        ],
+        [
+          8,
+          {
+            "dice": "8d6",
+            "with_modifier": false
+          }
+        ],
+        [
+          9,
+          {
+            "dice": "9d6",
+            "with_modifier": false
+          }
+        ]
+      ],
+      "concentration": true
+    },
+    "vicious-mockery": {
+      "name": "Vicious Mockery",
+      "level": null,
+      "attack": false,
+      "save_ability": "wisdom",
+      "half_on_save": false,
+      "damage": {
+        "dice": "1d4",
+        "with_modifier": false
+      },
+      "heal": null,
+      "scaling": [
+        [
+          5,
+          {
+            "dice": "2d4",
+            "with_modifier": false
+          }
+        ],
+        [
+          11,
+          {
+            "dice": "3d4",
+            "with_modifier": false
+          }
+        ],
+        [
+          17,
+          {
+            "dice": "4d4",
+            "with_modifier": false
+          }
+        ]
+      ],
+      "concentration": false
+    },
+    "wall-of-fire": {
+      "name": "Wall of Fire",
+      "level": 4,
+      "attack": false,
+      "save_ability": "dexterity",
+      "half_on_save": true,
+      "damage": {
+        "dice": "5d8",
+        "with_modifier": false
+      },
+      "heal": null,
+      "scaling": [],
+      "concentration": true
+    },
+    "wall-of-force": {
+      "name": "Wall of Force",
+      "level": 5,
+      "attack": false,
+      "save_ability": null,
+      "half_on_save": false,
+      "damage": null,
+      "heal": null,
+      "scaling": [],
+      "concentration": true
+    },
+    "wall-of-ice": {
+      "name": "Wall of Ice",
+      "level": 6,
+      "attack": false,
+      "save_ability": "dexterity",
+      "half_on_save": true,
+      "damage": {
+        "dice": "10d6",
+        "with_modifier": false
+      },
+      "heal": null,
+      "scaling": [
+        [
+          7,
+          {
+            "dice": "12d6",
+            "with_modifier": false
+          }
+        ],
+        [
+          8,
+          {
+            "dice": "14d6",
+            "with_modifier": false
+          }
+        ],
+        [
+          9,
+          {
+            "dice": "16d6",
+            "with_modifier": false
+          }
+        ]
+      ],
+      "concentration": true
+    },
+    "wall-of-stone": {
+      "name": "Wall of Stone",
+      "level": 5,
+      "attack": false,
+      "save_ability": null,
+      "half_on_save": false,
+      "damage": null,
+      "heal": null,
+      "scaling": [],
+      "concentration": true
+    },
+    "wall-of-thorns": {
+      "name": "Wall of Thorns",
+      "level": 6,
+      "attack": false,
+      "save_ability": "dexterity",
+      "half_on_save": true,
+      "damage": {
+        "dice": "7d8",
+        "with_modifier": false
+      },
+      "heal": null,
+      "scaling": [
+        [
+          7,
+          {
+            "dice": "8d8",
+            "with_modifier": false
+          }
+        ],
+        [
+          8,
+          {
+            "dice": "9d8",
+            "with_modifier": false
+          }
+        ],
+        [
+          9,
+          {
+            "dice": "10d8",
+            "with_modifier": false
+          }
+        ]
+      ],
+      "concentration": true
+    },
+    "warding-bond": {
+      "name": "Warding Bond",
+      "level": 2,
+      "attack": false,
+      "save_ability": null,
+      "half_on_save": false,
+      "damage": null,
+      "heal": null,
+      "scaling": [],
+      "concentration": false
+    },
+    "water-breathing": {
+      "name": "Water Breathing",
+      "level": 3,
+      "attack": false,
+      "save_ability": null,
+      "half_on_save": false,
+      "damage": null,
+      "heal": null,
+      "scaling": [],
+      "concentration": false
+    },
+    "water-walk": {
+      "name": "Water Walk",
+      "level": 3,
+      "attack": false,
+      "save_ability": null,
+      "half_on_save": false,
+      "damage": null,
+      "heal": null,
+      "scaling": [],
+      "concentration": false
+    },
+    "web": {
+      "name": "Web",
+      "level": 2,
+      "attack": false,
+      "save_ability": null,
+      "half_on_save": false,
+      "damage": null,
+      "heal": null,
+      "scaling": [],
+      "concentration": true
+    },
+    "weird": {
+      "name": "Weird",
+      "level": 9,
+      "attack": false,
+      "save_ability": "wisdom",
+      "half_on_save": false,
+      "damage": null,
+      "heal": null,
+      "scaling": [],
+      "concentration": true
+    },
+    "wind-walk": {
+      "name": "Wind Walk",
+      "level": 6,
+      "attack": false,
+      "save_ability": null,
+      "half_on_save": false,
+      "damage": null,
+      "heal": null,
+      "scaling": [],
+      "concentration": false
+    },
+    "wind-wall": {
+      "name": "Wind Wall",
+      "level": 3,
+      "attack": false,
+      "save_ability": "strength",
+      "half_on_save": true,
+      "damage": {
+        "dice": "3d8",
+        "with_modifier": false
+      },
+      "heal": null,
+      "scaling": [],
+      "concentration": true
+    },
+    "wish": {
+      "name": "Wish",
+      "level": 9,
+      "attack": false,
+      "save_ability": null,
+      "half_on_save": false,
+      "damage": null,
+      "heal": null,
+      "scaling": [],
+      "concentration": false
+    },
+    "word-of-recall": {
+      "name": "Word of Recall",
+      "level": 6,
+      "attack": false,
+      "save_ability": null,
+      "half_on_save": false,
+      "damage": null,
+      "heal": null,
+      "scaling": [],
+      "concentration": false
+    },
+    "zone-of-truth": {
+      "name": "Zone of Truth",
+      "level": 2,
+      "attack": false,
+      "save_ability": null,
+      "half_on_save": false,
+      "damage": null,
+      "heal": null,
+      "scaling": [],
+      "concentration": false
+    }
+  },
+  "weapons": {
+    "club": {
+      "damage": "1d4",
+      "versatile_damage": null,
+      "ranged": false,
+      "finesse": false
+    },
+    "dagger": {
+      "damage": "1d4",
+      "versatile_damage": null,
+      "ranged": false,
+      "finesse": true
+    },
+    "greatclub": {
+      "damage": "1d8",
+      "versatile_damage": null,
+      "ranged": false,
+      "finesse": false
+    },
+    "handaxe": {
+      "damage": "1d6",
+      "versatile_damage": null,
+      "ranged": false,
+      "finesse": false
+    },
+    "javelin": {
+      "damage": "1d6",
+      "versatile_damage": null,
+      "ranged": false,
+      "finesse": false
+    },
+    "light-hammer": {
+      "damage": "1d4",
+      "versatile_damage": null,
+      "ranged": false,
+      "finesse": false
+    },
+    "mace": {
+      "damage": "1d6",
+      "versatile_damage": null,
+      "ranged": false,
+      "finesse": false
+    },
+    "quarterstaff": {
+      "damage": "1d6",
+      "versatile_damage": "1d8",
+      "ranged": false,
+      "finesse": false
+    },
+    "sickle": {
+      "damage": "1d4",
+      "versatile_damage": null,
+      "ranged": false,
+      "finesse": false
+    },
+    "spear": {
+      "damage": "1d6",
+      "versatile_damage": "1d8",
+      "ranged": false,
+      "finesse": false
+    },
+    "crossbow-light": {
+      "damage": "1d8",
+      "versatile_damage": null,
+      "ranged": true,
+      "finesse": false
+    },
+    "dart": {
+      "damage": "1d4",
+      "versatile_damage": null,
+      "ranged": true,
+      "finesse": true
+    },
+    "shortbow": {
+      "damage": "1d6",
+      "versatile_damage": null,
+      "ranged": true,
+      "finesse": false
+    },
+    "sling": {
+      "damage": "1d4",
+      "versatile_damage": null,
+      "ranged": true,
+      "finesse": false
+    },
+    "battleaxe": {
+      "damage": "1d8",
+      "versatile_damage": "1d10",
+      "ranged": false,
+      "finesse": false
+    },
+    "flail": {
+      "damage": "1d8",
+      "versatile_damage": null,
+      "ranged": false,
+      "finesse": false
+    },
+    "glaive": {
+      "damage": "1d10",
+      "versatile_damage": null,
+      "ranged": false,
+      "finesse": false
+    },
+    "greataxe": {
+      "damage": "1d12",
+      "versatile_damage": null,
+      "ranged": false,
+      "finesse": false
+    },
+    "greatsword": {
+      "damage": "2d6",
+      "versatile_damage": null,
+      "ranged": false,
+      "finesse": false
+    },
+    "halberd": {
+      "damage": "1d10",
+      "versatile_damage": null,
+      "ranged": false,
+      "finesse": false
+    },
+    "lance": {
+      "damage": "1d12",
+      "versatile_damage": null,
+      "ranged": false,
+      "finesse": false
+    },
+    "longsword": {
+      "damage": "1d8",
+      "versatile_damage": "1d10",
+      "ranged": false,
+      "finesse": false
+    },
+    "maul": {
+      "damage": "2d6",
+      "versatile_damage": null,
+      "ranged": false,
+      "finesse": false
+    },
+    "morningstar": {
+      "damage": "1d8",
+      "versatile_damage": null,
+      "ranged": false,
+      "finesse": false
+    },
+    "pike": {
+      "damage": "1d10",
+      "versatile_damage": null,
+      "ranged": false,
+      "finesse": false
+    },
+    "rapier": {
+      "damage": "1d8",
+      "versatile_damage": null,
+      "ranged": false,
+      "finesse": true
+    },
+    "scimitar": {
+      "damage": "1d6",
+      "versatile_damage": null,
+      "ranged": false,
+      "finesse": true
+    },
+    "shortsword": {
+      "damage": "1d6",
+      "versatile_damage": null,
+      "ranged": false,
+      "finesse": true
+    },
+    "trident": {
+      "damage": "1d6",
+      "versatile_damage": "1d8",
+      "ranged": false,
+      "finesse": false
+    },
+    "war-pick": {
+      "damage": "1d8",
+      "versatile_damage": null,
+      "ranged": false,
+      "finesse": false
+    },
+    "warhammer": {
+      "damage": "1d8",
+      "versatile_damage": "1d10",
+      "ranged": false,
+      "finesse": false
+    },
+    "whip": {
+      "damage": "1d4",
+      "versatile_damage": null,
+      "ranged": false,
+      "finesse": true
+    },
+    "blowgun": {
+      "damage": "1d1",
+      "versatile_damage": null,
+      "ranged": true,
+      "finesse": false
+    },
+    "crossbow-hand": {
+      "damage": "1d6",
+      "versatile_damage": null,
+      "ranged": true,
+      "finesse": false
+    },
+    "crossbow-heavy": {
+      "damage": "1d10",
+      "versatile_damage": null,
+      "ranged": true,
+      "finesse": false
+    },
+    "longbow": {
+      "damage": "1d8",
+      "versatile_damage": null,
+      "ranged": true,
+      "finesse": false
+    },
+    "net": null
+  }
+}

@@ -1,13 +1,6 @@
 ## Loose ends
 
-- [] Investigation: bring the eval suite to 100%. What Phase 8 left (see baseline.md): the Groq
-  `finish_reason: "error"` deaths (8/69 turns — gpt-oss answers a `tool_choice: required` call
-  in prose; an OpenRouter routing preference excluding that provider needs a `RoleConfig` knob,
-  then re-measure `spells`/`story`/`checks`, whose dips are those deaths, not quality); the
-  conditions text-fallback (after a "Please include your response in a tool call" retry the model
-  settles on a minimal branchless plan — 2/10 runs); and the roll-gated condition probes (a
-  perfect plan still fails when the d20 misses, so 100% on `conditions` means deciding whether
-  the probe should read the branch instead of the outcome).
+- [] Investigation: bring the eval suite to 100%. Right now 'condition' related fail often and 'story-no-risk-needed' as well (model calls an action when not needed)
 
 ## Ideas
 

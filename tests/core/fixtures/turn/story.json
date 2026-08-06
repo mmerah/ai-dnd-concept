@@ -1,0 +1,152 @@
+{
+  "save_version": 28,
+  "facts": [
+    {
+      "source": "core",
+      "kind": "dice_rolled",
+      "trace": "listening past the vault door unheard: 2d6 [4, 5] -> 9 vs 7: SUCCESS",
+      "narrator": "listening past the vault door unheard: success",
+      "data": {
+        "dice": "2d6",
+        "mode": "normal",
+        "rolled": [
+          4,
+          5
+        ],
+        "total": 9,
+        "vs": 7,
+        "success": true,
+        "reason": "listening past the vault door unheard"
+      }
+    },
+    {
+      "source": "core",
+      "kind": "tag_added",
+      "trace": "Kael is Mixed",
+      "narrator": "Kael is Mixed",
+      "data": {
+        "entity_id": "player",
+        "tag_id": "mixed"
+      }
+    },
+    {
+      "source": "core",
+      "kind": "entity_discovered",
+      "trace": "learned of the vault map",
+      "narrator": "learned of the vault map",
+      "data": {
+        "entity_id": "vault_map",
+        "name": "the vault map"
+      }
+    },
+    {
+      "source": "core",
+      "kind": "entity_moved",
+      "trace": "took the vault map",
+      "narrator": "took the vault map",
+      "data": {
+        "entity_id": "vault_map",
+        "entity_name": "the vault map",
+        "to_id": "player",
+        "to_name": "Kael",
+        "to_kind": "actor"
+      }
+    },
+    {
+      "source": "core",
+      "kind": "entity_created",
+      "trace": "new actor: Sister Auber",
+      "narrator": "new actor: Sister Auber",
+      "data": {
+        "entity_id": "sister_auber",
+        "kind": "actor",
+        "name": "Sister Auber"
+      }
+    }
+  ],
+  "entry": "turn",
+  "prompt": "I lever up the loose flagstone and listen at the vault door.",
+  "plan": {
+    "intent": "Kael prises the flagstone loose and listens for what waits beyond the door.",
+    "tone": "hushed and close",
+    "speaker_id": null,
+    "effects": [
+      {
+        "op": "move-item",
+        "item_id": "vault_map",
+        "to_id": null
+      }
+    ],
+    "branches": [
+      {
+        "outcome": "strong",
+        "effects": [
+          {
+            "op": "add-tag",
+            "entity_id": "player",
+            "tag_id": "strong",
+            "text": ""
+          }
+        ]
+      },
+      {
+        "outcome": "mixed",
+        "effects": [
+          {
+            "op": "add-tag",
+            "entity_id": "player",
+            "tag_id": "mixed",
+            "text": ""
+          }
+        ]
+      },
+      {
+        "outcome": "setback",
+        "effects": [
+          {
+            "op": "add-tag",
+            "entity_id": "player",
+            "tag_id": "setback",
+            "text": ""
+          }
+        ]
+      }
+    ],
+    "action": {
+      "act": "risk",
+      "actor_id": "player",
+      "approach": "subtle",
+      "difficulty": "demanding",
+      "helping_tag_id": null,
+      "hindering_tag_id": null,
+      "stakes": "listening past the vault door unheard"
+    }
+  },
+  "narrator_evidence": "- listening past the vault door unheard: success\n- Kael is Mixed\n- learned of the vault map\n- took the vault map",
+  "narration": "The flagstone lifts. Beyond the door, something shifts its weight and waits.",
+  "growth": {
+    "requests": [
+      {
+        "kind": "actor",
+        "name": "Sister Auber",
+        "brief": "A lay sister who keeps the vault keys.",
+        "location": null
+      }
+    ]
+  },
+  "created": [
+    {
+      "id": "sister_auber",
+      "kind": "actor",
+      "name": "Sister Auber",
+      "brief": "A lay sister who keeps the vault keys.",
+      "detail": {
+        "description": "She has kept the abbey's keys for thirty years.",
+        "hook": "She knows which doors were sealed and by whom."
+      },
+      "known": true,
+      "parent_id": "study"
+    }
+  ],
+  "rejected": []
+}

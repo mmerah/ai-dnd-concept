@@ -1,0 +1,374 @@
+{
+  "$defs": {
+    "AddRef": {
+      "additionalProperties": false,
+      "properties": {
+        "why": {
+          "description": "One short sentence saying what earns this change.",
+          "title": "Why",
+          "type": "string"
+        },
+        "op": {
+          "const": "add-ref",
+          "default": "add-ref",
+          "title": "Op",
+          "type": "string"
+        },
+        "ref": {
+          "$ref": "#/$defs/ContentRef",
+          "description": "One of the picks the offer allows."
+        }
+      },
+      "required": [
+        "why",
+        "ref"
+      ],
+      "title": "AddRef",
+      "type": "object"
+    },
+    "AddTag": {
+      "additionalProperties": false,
+      "properties": {
+        "why": {
+          "description": "One short sentence saying what earns this change.",
+          "title": "Why",
+          "type": "string"
+        },
+        "op": {
+          "const": "add-tag",
+          "default": "add-tag",
+          "title": "Op",
+          "type": "string"
+        },
+        "tag": {
+          "$ref": "#/$defs/SheetTag"
+        }
+      },
+      "required": [
+        "why",
+        "tag"
+      ],
+      "title": "AddTag",
+      "type": "object"
+    },
+    "ChangeCounter": {
+      "additionalProperties": false,
+      "properties": {
+        "why": {
+          "description": "One short sentence saying what earns this change.",
+          "title": "Why",
+          "type": "string"
+        },
+        "op": {
+          "const": "change-counter",
+          "default": "change-counter",
+          "title": "Op",
+          "type": "string"
+        },
+        "key": {
+          "description": "Key of a pool the sheet already has.",
+          "maxLength": 64,
+          "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$",
+          "title": "Key",
+          "type": "string"
+        },
+        "delta": {
+          "default": 0,
+          "description": "How much the current value moves.",
+          "title": "Delta",
+          "type": "integer"
+        },
+        "maximum": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "A new maximum; omit to keep it.",
+          "title": "Maximum"
+        }
+      },
+      "required": [
+        "why",
+        "key"
+      ],
+      "title": "ChangeCounter",
+      "type": "object"
+    },
+    "ContentRef": {
+      "additionalProperties": false,
+      "description": "Uses a triple because indexes collide across collections and packs.",
+      "properties": {
+        "pack": {
+          "maxLength": 64,
+          "pattern": "^[a-z0-9-]+$",
+          "title": "Pack",
+          "type": "string"
+        },
+        "collection": {
+          "maxLength": 64,
+          "pattern": "^[a-z][a-z0-9_]*$",
+          "title": "Collection",
+          "type": "string"
+        },
+        "index": {
+          "maxLength": 64,
+          "pattern": "^[a-z0-9-]+$",
+          "title": "Index",
+          "type": "string"
+        }
+      },
+      "required": [
+        "pack",
+        "collection",
+        "index"
+      ],
+      "title": "ContentRef",
+      "type": "object"
+    },
+    "DeltaChange": {
+      "discriminator": {
+        "mapping": {
+          "add-ref": "#/$defs/AddRef",
+          "add-tag": "#/$defs/AddTag",
+          "change-counter": "#/$defs/ChangeCounter",
+          "grant-counter": "#/$defs/GrantCounter",
+          "remove-tag": "#/$defs/RemoveTag",
+          "set-note": "#/$defs/SetNote",
+          "set-number": "#/$defs/SetNumber"
+        },
+        "propertyName": "op"
+      },
+      "oneOf": [
+        {
+          "$ref": "#/$defs/SetNumber"
+        },
+        {
+          "$ref": "#/$defs/GrantCounter"
+        },
+        {
+          "$ref": "#/$defs/ChangeCounter"
+        },
+        {
+          "$ref": "#/$defs/AddTag"
+        },
+        {
+          "$ref": "#/$defs/RemoveTag"
+        },
+        {
+          "$ref": "#/$defs/AddRef"
+        },
+        {
+          "$ref": "#/$defs/SetNote"
+        }
+      ]
+    },
+    "GrantCounter": {
+      "additionalProperties": false,
+      "properties": {
+        "why": {
+          "description": "One short sentence saying what earns this change.",
+          "title": "Why",
+          "type": "string"
+        },
+        "op": {
+          "const": "grant-counter",
+          "default": "grant-counter",
+          "title": "Op",
+          "type": "string"
+        },
+        "key": {
+          "description": "Key for a pool the sheet does not have yet.",
+          "maxLength": 64,
+          "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$",
+          "title": "Key",
+          "type": "string"
+        },
+        "current": {
+          "title": "Current",
+          "type": "integer"
+        },
+        "maximum": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Omit for an unbounded pool.",
+          "title": "Maximum"
+        },
+        "minimum": {
+          "default": 0,
+          "title": "Minimum",
+          "type": "integer"
+        },
+        "recharge": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "A recharge label of this engine.",
+          "title": "Recharge"
+        }
+      },
+      "required": [
+        "why",
+        "key",
+        "current"
+      ],
+      "title": "GrantCounter",
+      "type": "object"
+    },
+    "RemoveTag": {
+      "additionalProperties": false,
+      "properties": {
+        "why": {
+          "description": "One short sentence saying what earns this change.",
+          "title": "Why",
+          "type": "string"
+        },
+        "op": {
+          "const": "remove-tag",
+          "default": "remove-tag",
+          "title": "Op",
+          "type": "string"
+        },
+        "tag_id": {
+          "description": "Exact id of a tag the sheet carries.",
+          "maxLength": 64,
+          "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$",
+          "title": "Tag Id",
+          "type": "string"
+        }
+      },
+      "required": [
+        "why",
+        "tag_id"
+      ],
+      "title": "RemoveTag",
+      "type": "object"
+    },
+    "SetNote": {
+      "additionalProperties": false,
+      "properties": {
+        "why": {
+          "description": "One short sentence saying what earns this change.",
+          "title": "Why",
+          "type": "string"
+        },
+        "op": {
+          "const": "set-note",
+          "default": "set-note",
+          "title": "Op",
+          "type": "string"
+        },
+        "key": {
+          "maxLength": 64,
+          "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$",
+          "title": "Key",
+          "type": "string"
+        },
+        "text": {
+          "description": "The note; empty clears the key.",
+          "title": "Text",
+          "type": "string"
+        }
+      },
+      "required": [
+        "why",
+        "key",
+        "text"
+      ],
+      "title": "SetNote",
+      "type": "object"
+    },
+    "SetNumber": {
+      "additionalProperties": false,
+      "properties": {
+        "why": {
+          "description": "One short sentence saying what earns this change.",
+          "title": "Why",
+          "type": "string"
+        },
+        "op": {
+          "const": "set-number",
+          "default": "set-number",
+          "title": "Op",
+          "type": "string"
+        },
+        "key": {
+          "description": "The number's key, as the sheet spells it.",
+          "maxLength": 64,
+          "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$",
+          "title": "Key",
+          "type": "string"
+        },
+        "value": {
+          "description": "What the number becomes.",
+          "title": "Value",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "why",
+        "key",
+        "value"
+      ],
+      "title": "SetNumber",
+      "type": "object"
+    },
+    "SheetTag": {
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "maxLength": 64,
+          "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$",
+          "title": "Id",
+          "type": "string"
+        },
+        "name": {
+          "title": "Name",
+          "type": "string"
+        },
+        "text": {
+          "default": "",
+          "title": "Text",
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "name"
+      ],
+      "title": "SheetTag",
+      "type": "object"
+    }
+  },
+  "additionalProperties": false,
+  "description": "What advancement writes onto the player's sheet, each change carrying its reason.",
+  "properties": {
+    "changes": {
+      "default": [],
+      "items": {
+        "$ref": "#/$defs/DeltaChange"
+      },
+      "title": "Changes",
+      "type": "array"
+    }
+  },
+  "title": "SheetDelta",
+  "type": "object"
+}

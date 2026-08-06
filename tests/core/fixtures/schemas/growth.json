@@ -1,0 +1,61 @@
+{
+  "$defs": {
+    "GrowthRequest": {
+      "additionalProperties": false,
+      "properties": {
+        "kind": {
+          "enum": [
+            "actor",
+            "location",
+            "item"
+          ],
+          "title": "Kind",
+          "type": "string"
+        },
+        "name": {
+          "description": "The exact name used in the narration.",
+          "title": "Name",
+          "type": "string"
+        },
+        "brief": {
+          "description": "One sentence describing it, consistent with the narration.",
+          "title": "Brief",
+          "type": "string"
+        },
+        "location": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "For a person or item, the place they are: a location already in the catalogue, or one requested this same turn. Null places them where the player is, and is also correct for a location entry itself.",
+          "title": "Location"
+        }
+      },
+      "required": [
+        "kind",
+        "name",
+        "brief"
+      ],
+      "title": "GrowthRequest",
+      "type": "object"
+    }
+  },
+  "additionalProperties": false,
+  "properties": {
+    "requests": {
+      "default": [],
+      "items": {
+        "$ref": "#/$defs/GrowthRequest"
+      },
+      "title": "Requests",
+      "type": "array"
+    }
+  },
+  "title": "Growth",
+  "type": "object"
+}

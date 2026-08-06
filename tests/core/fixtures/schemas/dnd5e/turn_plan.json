@@ -1,0 +1,861 @@
+{
+  "$defs": {
+    "AddTag": {
+      "additionalProperties": false,
+      "description": "Put a lasting condition, edge, or burden on an entity. The sheet shows the id written\nout: `battle-worn` appears as Battle Worn.",
+      "properties": {
+        "op": {
+          "const": "add-tag",
+          "default": "add-tag",
+          "title": "Op",
+          "type": "string"
+        },
+        "entity_id": {
+          "description": "Exact id of the entity affected; an actor must be here with the player.",
+          "title": "Entity Id",
+          "type": "string"
+        },
+        "tag_id": {
+          "description": "Stable slug for the tag, such as `poisoned`.",
+          "maxLength": 64,
+          "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$",
+          "title": "Tag Id",
+          "type": "string"
+        },
+        "text": {
+          "default": "",
+          "description": "The constraint or benefit it puts on the entity, in prose.",
+          "title": "Text",
+          "type": "string"
+        }
+      },
+      "required": [
+        "entity_id",
+        "tag_id"
+      ],
+      "title": "AddTag",
+      "type": "object"
+    },
+    "AdjustCounter": {
+      "additionalProperties": false,
+      "description": "Move a counter up or down. The change is clamped to the counter's own bounds.",
+      "properties": {
+        "op": {
+          "const": "adjust-counter",
+          "default": "adjust-counter",
+          "title": "Op",
+          "type": "string"
+        },
+        "entity_id": {
+          "description": "Exact id of the entity affected; an actor must be here with the player.",
+          "title": "Entity Id",
+          "type": "string"
+        },
+        "counter": {
+          "description": "Exact key of one of that entity's counters, as its sheet spells it.",
+          "maxLength": 64,
+          "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$",
+          "title": "Counter",
+          "type": "string"
+        },
+        "delta": {
+          "description": "How much the pool moves: negative to reduce.",
+          "title": "Delta",
+          "type": "integer"
+        },
+        "reason": {
+          "description": "What changed the pool, in a few words.",
+          "minLength": 1,
+          "title": "Reason",
+          "type": "string"
+        }
+      },
+      "required": [
+        "entity_id",
+        "counter",
+        "delta",
+        "reason"
+      ],
+      "title": "AdjustCounter",
+      "type": "object"
+    },
+    "Attack": {
+      "additionalProperties": false,
+      "description": "One attack with a carried weapon, or one attack line off the attacker's own stat block.",
+      "properties": {
+        "act": {
+          "const": "attack",
+          "default": "attack",
+          "title": "Act",
+          "type": "string"
+        },
+        "actor_id": {
+          "description": "Exact id of the attacker, here with the player.",
+          "title": "Actor Id",
+          "type": "string"
+        },
+        "target_id": {
+          "description": "Exact id of what is attacked, here with the player.",
+          "title": "Target Id",
+          "type": "string"
+        },
+        "weapon_item_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Exact id of a weapon item the attacker carries. Null when the attack comes from a stat block instead.",
+          "title": "Weapon Item Id"
+        },
+        "attack_bonus": {
+          "anyOf": [
+            {
+              "maximum": 30,
+              "minimum": -10,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "To-hit bonus copied off a stat block's attack line, such as 4 for `Bite +4 to hit`. Null whenever a weapon item is named.",
+          "title": "Attack Bonus"
+        },
+        "damage": {
+          "anyOf": [
+            {
+              "examples": [
+                "1d8",
+                "2d6 + 3",
+                "1d4 - 1"
+              ],
+              "maxLength": 64,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Damage dice copied off that same line, such as `1d4+2`. Null whenever a weapon item is named.",
+          "title": "Damage"
+        },
+        "two_handed": {
+          "default": false,
+          "description": "True only for a versatile weapon wielded in both hands.",
+          "title": "Two Handed",
+          "type": "boolean"
+        },
+        "mode": {
+          "default": "normal",
+          "description": "`advantage` or `disadvantage` when the fiction grants it; one roll either.",
+          "enum": [
+            "normal",
+            "advantage",
+            "disadvantage"
+          ],
+          "title": "Mode",
+          "type": "string"
+        }
+      },
+      "required": [
+        "actor_id",
+        "target_id"
+      ],
+      "title": "Attack",
+      "type": "object"
+    },
+    "CastSpell": {
+      "additionalProperties": false,
+      "description": "One spell, resolved from its record: the engine spends the slot before anything follows.",
+      "properties": {
+        "act": {
+          "const": "cast-spell",
+          "default": "cast-spell",
+          "title": "Act",
+          "type": "string"
+        },
+        "actor_id": {
+          "description": "Exact id of the caster, here with the player.",
+          "title": "Actor Id",
+          "type": "string"
+        },
+        "spell": {
+          "description": "The spell's content ref, written `pack/collection/index` exactly as rendered.",
+          "minLength": 1,
+          "title": "Spell",
+          "type": "string"
+        },
+        "slot_level": {
+          "anyOf": [
+            {
+              "maximum": 9,
+              "minimum": 1,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "The spell-slot level it is cast from; a higher one upcasts it. Null for a cantrip, which spends nothing.",
+          "title": "Slot Level"
+        },
+        "target_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Exact id of the one creature it is aimed at, here with the player. Null only when the spell touches nobody.",
+          "title": "Target Id"
+        }
+      },
+      "required": [
+        "actor_id",
+        "spell"
+      ],
+      "title": "CastSpell",
+      "type": "object"
+    },
+    "Check": {
+      "additionalProperties": false,
+      "description": "An ability check or a saving throw against a difficulty the Director sets. The roll\nsettles only what `branches` write: a check made to gain or shed a condition needs that\ntag change in its `success` branch.",
+      "properties": {
+        "act": {
+          "const": "check",
+          "default": "check",
+          "title": "Act",
+          "type": "string"
+        },
+        "actor_id": {
+          "description": "Exact id of the actor rolling, here with the player.",
+          "title": "Actor Id",
+          "type": "string"
+        },
+        "bonus": {
+          "description": "The actor's own bonus: their ability modifier, plus `proficiency-bonus` only where they are proficient.",
+          "maximum": 30,
+          "minimum": -10,
+          "title": "Bonus",
+          "type": "integer"
+        },
+        "dc": {
+          "description": "What the roll must reach: 5 easy, 10 moderate, 15 hard, 20 very hard.",
+          "maximum": 40,
+          "minimum": 1,
+          "title": "Dc",
+          "type": "integer"
+        },
+        "reason": {
+          "description": "What is being tested, in a few words.",
+          "minLength": 1,
+          "title": "Reason",
+          "type": "string"
+        },
+        "mode": {
+          "default": "normal",
+          "description": "`advantage` or `disadvantage` when the fiction grants it; one roll either.",
+          "enum": [
+            "normal",
+            "advantage",
+            "disadvantage"
+          ],
+          "title": "Mode",
+          "type": "string"
+        }
+      },
+      "required": [
+        "actor_id",
+        "bonus",
+        "dc",
+        "reason"
+      ],
+      "title": "Check",
+      "type": "object"
+    },
+    "Dnd5eAction": {
+      "discriminator": {
+        "mapping": {
+          "attack": "#/$defs/Attack",
+          "cast-spell": "#/$defs/CastSpell",
+          "check": "#/$defs/Check",
+          "improvise": "#/$defs/Improvise",
+          "rest": "#/$defs/Rest",
+          "use-feature": "#/$defs/UseFeature"
+        },
+        "propertyName": "act"
+      },
+      "oneOf": [
+        {
+          "$ref": "#/$defs/Attack"
+        },
+        {
+          "$ref": "#/$defs/CastSpell"
+        },
+        {
+          "$ref": "#/$defs/Check"
+        },
+        {
+          "$ref": "#/$defs/UseFeature"
+        },
+        {
+          "$ref": "#/$defs/Rest"
+        },
+        {
+          "$ref": "#/$defs/Improvise"
+        }
+      ]
+    },
+    "Effect": {
+      "discriminator": {
+        "mapping": {
+          "add-tag": "#/$defs/AddTag",
+          "adjust-counter": "#/$defs/AdjustCounter",
+          "gain-improvised-item": "#/$defs/GainImprovisedItem",
+          "move-actor": "#/$defs/MoveActor",
+          "move-item": "#/$defs/MoveItem",
+          "remove-tag": "#/$defs/RemoveTag",
+          "reveal": "#/$defs/Reveal",
+          "set-note": "#/$defs/SetNote",
+          "set-number": "#/$defs/SetNumber",
+          "spend-counter": "#/$defs/SpendCounter"
+        },
+        "propertyName": "op"
+      },
+      "oneOf": [
+        {
+          "$ref": "#/$defs/Reveal"
+        },
+        {
+          "$ref": "#/$defs/MoveActor"
+        },
+        {
+          "$ref": "#/$defs/MoveItem"
+        },
+        {
+          "$ref": "#/$defs/GainImprovisedItem"
+        },
+        {
+          "$ref": "#/$defs/AdjustCounter"
+        },
+        {
+          "$ref": "#/$defs/SpendCounter"
+        },
+        {
+          "$ref": "#/$defs/AddTag"
+        },
+        {
+          "$ref": "#/$defs/RemoveTag"
+        },
+        {
+          "$ref": "#/$defs/SetNote"
+        },
+        {
+          "$ref": "#/$defs/SetNumber"
+        }
+      ]
+    },
+    "GainImprovisedItem": {
+      "additionalProperties": false,
+      "description": "Give the player an ordinary incidental object that is not in canon and is not worth a canon\nentry of its own. Never a substitute for an item that already exists.",
+      "properties": {
+        "op": {
+          "const": "gain-improvised-item",
+          "default": "gain-improvised-item",
+          "title": "Op",
+          "type": "string"
+        },
+        "item_name": {
+          "description": "The object written out, such as 'a handful of gravel'.",
+          "minLength": 1,
+          "title": "Item Name",
+          "type": "string"
+        }
+      },
+      "required": [
+        "item_name"
+      ],
+      "title": "GainImprovisedItem",
+      "type": "object"
+    },
+    "Improvise": {
+      "additionalProperties": false,
+      "description": "The roll for anything the other actions do not model, this engine's rules included.",
+      "properties": {
+        "act": {
+          "const": "improvise",
+          "default": "improvise",
+          "title": "Act",
+          "type": "string"
+        },
+        "dice": {
+          "description": "The whole expression, bonuses included: `1d20 + 3`.",
+          "examples": [
+            "1d8",
+            "2d6 + 3",
+            "1d4 - 1"
+          ],
+          "maxLength": 64,
+          "title": "Dice",
+          "type": "string"
+        },
+        "vs": {
+          "anyOf": [
+            {
+              "maximum": 40,
+              "minimum": 1,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "The number the total must reach; null when nothing is contested.",
+          "title": "Vs"
+        },
+        "reason": {
+          "description": "What is being rolled, in a few words.",
+          "minLength": 1,
+          "title": "Reason",
+          "type": "string"
+        },
+        "mode": {
+          "default": "normal",
+          "description": "`advantage` or `disadvantage` when the fiction grants it; one roll either.",
+          "enum": [
+            "normal",
+            "advantage",
+            "disadvantage"
+          ],
+          "title": "Mode",
+          "type": "string"
+        }
+      },
+      "required": [
+        "dice",
+        "reason"
+      ],
+      "title": "Improvise",
+      "type": "object"
+    },
+    "MoveActor": {
+      "additionalProperties": false,
+      "description": "Move an actor who actually changes location. Moving the player to an unrevealed location\nreveals it.",
+      "properties": {
+        "op": {
+          "const": "move-actor",
+          "default": "move-actor",
+          "title": "Op",
+          "type": "string"
+        },
+        "entity_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Exact id of the actor to move; null moves the player.",
+          "title": "Entity Id"
+        },
+        "location_id": {
+          "description": "Exact id of the location the actor enters.",
+          "title": "Location Id",
+          "type": "string"
+        }
+      },
+      "required": [
+        "location_id"
+      ],
+      "title": "MoveActor",
+      "type": "object"
+    },
+    "MoveItem": {
+      "additionalProperties": false,
+      "description": "Move one item within the player's reach: pick it up, set it down here, or hand it to an\nactor here.",
+      "properties": {
+        "op": {
+          "const": "move-item",
+          "default": "move-item",
+          "title": "Op",
+          "type": "string"
+        },
+        "item_id": {
+          "description": "Exact id of the item: one the player carries, or one loose at their location.",
+          "title": "Item Id",
+          "type": "string"
+        },
+        "to_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Exact id of the receiver: an actor here with the player, or the player's own location to set the item down. Null hands the item to the player.",
+          "title": "To Id"
+        }
+      },
+      "required": [
+        "item_id"
+      ],
+      "title": "MoveItem",
+      "type": "object"
+    },
+    "OutcomeBranch": {
+      "additionalProperties": false,
+      "description": "What follows in the fiction if the action lands on this outcome, and only then.",
+      "properties": {
+        "outcome": {
+          "description": "One outcome label the chosen action allows.",
+          "maxLength": 64,
+          "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$",
+          "title": "Outcome",
+          "type": "string"
+        },
+        "effects": {
+          "default": [],
+          "description": "What that outcome causes in the world.",
+          "items": {
+            "$ref": "#/$defs/Effect"
+          },
+          "title": "Effects",
+          "type": "array"
+        }
+      },
+      "required": [
+        "outcome"
+      ],
+      "title": "OutcomeBranch",
+      "type": "object"
+    },
+    "RemoveTag": {
+      "additionalProperties": false,
+      "description": "Lift a tag an entity carries, when the fiction ends it.",
+      "properties": {
+        "op": {
+          "const": "remove-tag",
+          "default": "remove-tag",
+          "title": "Op",
+          "type": "string"
+        },
+        "entity_id": {
+          "description": "Exact id of the entity affected; an actor must be here with the player.",
+          "title": "Entity Id",
+          "type": "string"
+        },
+        "tag_id": {
+          "description": "Exact id of a tag the entity carries.",
+          "maxLength": 64,
+          "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$",
+          "title": "Tag Id",
+          "type": "string"
+        }
+      },
+      "required": [
+        "entity_id",
+        "tag_id"
+      ],
+      "title": "RemoveTag",
+      "type": "object"
+    },
+    "Rest": {
+      "additionalProperties": false,
+      "description": "A rest the fiction has finished, refilling what that rest restores and nothing else.\nA turn that prepares and then sleeps is a rest, not a check on the preparations.",
+      "properties": {
+        "act": {
+          "const": "rest",
+          "default": "rest",
+          "title": "Act",
+          "type": "string"
+        },
+        "actor_id": {
+          "description": "Exact id of the resting actor, here with the player.",
+          "title": "Actor Id",
+          "type": "string"
+        },
+        "label": {
+          "description": "Which rest was taken.",
+          "enum": [
+            "short-rest",
+            "long-rest"
+          ],
+          "title": "Label",
+          "type": "string"
+        }
+      },
+      "required": [
+        "actor_id",
+        "label"
+      ],
+      "title": "Rest",
+      "type": "object"
+    },
+    "Reveal": {
+      "additionalProperties": false,
+      "description": "Reveal an entity that exists but the player does not know yet: they notice it, are told of\nit, or reach it. Prefer this over inventing a replacement.",
+      "properties": {
+        "op": {
+          "const": "reveal",
+          "default": "reveal",
+          "title": "Op",
+          "type": "string"
+        },
+        "entity_id": {
+          "description": "Exact id of the unrevealed canon entity.",
+          "title": "Entity Id",
+          "type": "string"
+        }
+      },
+      "required": [
+        "entity_id"
+      ],
+      "title": "Reveal",
+      "type": "object"
+    },
+    "SetNote": {
+      "additionalProperties": false,
+      "description": "Write freeform bookkeeping the fiction needs remembered and no counter or tag holds, such as\nwhat a caster concentrates on. Writing a key again replaces what it held.",
+      "properties": {
+        "op": {
+          "const": "set-note",
+          "default": "set-note",
+          "title": "Op",
+          "type": "string"
+        },
+        "entity_id": {
+          "description": "Exact id of the entity affected; an actor must be here with the player.",
+          "title": "Entity Id",
+          "type": "string"
+        },
+        "key": {
+          "description": "What the note is about, such as `concentration`.",
+          "maxLength": 64,
+          "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$",
+          "title": "Key",
+          "type": "string"
+        },
+        "text": {
+          "description": "The note; empty clears whatever the key held.",
+          "title": "Text",
+          "type": "string"
+        }
+      },
+      "required": [
+        "entity_id",
+        "key",
+        "text"
+      ],
+      "title": "SetNote",
+      "type": "object"
+    },
+    "SetNumber": {
+      "additionalProperties": false,
+      "description": "Set a number the fiction has lastingly changed — armour worn, a permanent blessing. Never\nfor this turn's outcome: pools that go up and down are counters.",
+      "properties": {
+        "op": {
+          "const": "set-number",
+          "default": "set-number",
+          "title": "Op",
+          "type": "string"
+        },
+        "entity_id": {
+          "description": "Exact id of the entity affected; an actor must be here with the player.",
+          "title": "Entity Id",
+          "type": "string"
+        },
+        "key": {
+          "description": "Exact key of a number already on that sheet.",
+          "maxLength": 64,
+          "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$",
+          "title": "Key",
+          "type": "string"
+        },
+        "value": {
+          "description": "What the number becomes.",
+          "title": "Value",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "entity_id",
+        "key",
+        "value"
+      ],
+      "title": "SetNumber",
+      "type": "object"
+    },
+    "SpendCounter": {
+      "additionalProperties": false,
+      "description": "Pay from a counter, which refuses outright when the pool cannot cover it.",
+      "properties": {
+        "op": {
+          "const": "spend-counter",
+          "default": "spend-counter",
+          "title": "Op",
+          "type": "string"
+        },
+        "entity_id": {
+          "description": "Exact id of the entity affected; an actor must be here with the player.",
+          "title": "Entity Id",
+          "type": "string"
+        },
+        "counter": {
+          "description": "Exact key of one of that entity's counters, as its sheet spells it.",
+          "maxLength": 64,
+          "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$",
+          "title": "Counter",
+          "type": "string"
+        },
+        "amount": {
+          "description": "How much of the pool is spent.",
+          "minimum": 1,
+          "title": "Amount",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "entity_id",
+        "counter",
+        "amount"
+      ],
+      "title": "SpendCounter",
+      "type": "object"
+    },
+    "UseFeature": {
+      "additionalProperties": false,
+      "description": "Spend one use of a limited-use feature and apply what its own text gives.",
+      "properties": {
+        "act": {
+          "const": "use-feature",
+          "default": "use-feature",
+          "title": "Act",
+          "type": "string"
+        },
+        "actor_id": {
+          "description": "Exact id of the actor using it, here with the player",
+          "title": "Actor Id",
+          "type": "string"
+        },
+        "counter": {
+          "description": "Exact key of that feature's counter, as the sheet spells it.",
+          "maxLength": 64,
+          "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$",
+          "title": "Counter",
+          "type": "string"
+        },
+        "heal": {
+          "anyOf": [
+            {
+              "examples": [
+                "1d8",
+                "2d6 + 3",
+                "1d4 - 1"
+              ],
+              "maxLength": 64,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "The healing dice the feature's own text gives, bonuses included, such as `1d10 + 3`. Null when it heals nothing.",
+          "title": "Heal"
+        }
+      },
+      "required": [
+        "actor_id",
+        "counter"
+      ],
+      "title": "UseFeature",
+      "type": "object"
+    }
+  },
+  "additionalProperties": false,
+  "properties": {
+    "intent": {
+      "description": "1-3 sentences for the Narrator: what the player attempted and what is at stake. Never an outcome, a number, or a die.",
+      "title": "Intent",
+      "type": "string"
+    },
+    "tone": {
+      "description": "A few words of mood. Atmosphere only: 'tense and hushed', not 'they find it'.",
+      "title": "Tone",
+      "type": "string"
+    },
+    "speaker_id": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "Exact id of the NPC the player addresses — one they have met and who is here with them — or null if nobody is addressed.",
+      "title": "Speaker Id"
+    },
+    "effects": {
+      "default": [],
+      "description": "Consequences that happen whatever the action settles.",
+      "items": {
+        "$ref": "#/$defs/Effect"
+      },
+      "title": "Effects",
+      "type": "array"
+    },
+    "branches": {
+      "default": [],
+      "description": "Consequences keyed by outcome: at most one branch per label, and only labels this action allows. Outcomes that do not occur simply never apply. An action rolled to cause a lasting change — a condition taking hold or lifted, something revealed — must carry that change in the matching outcome's branch: with no branch, even success changes nothing.",
+      "items": {
+        "$ref": "#/$defs/OutcomeBranch"
+      },
+      "title": "Branches",
+      "type": "array"
+    },
+    "action": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/Dnd5eAction"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "The one action this turn resolves, or null when nothing needs resolving."
+    },
+    "milestone_earned": {
+      "default": false,
+      "description": "True only when the story itself has plainly earned the player a level: a mystery solved, a threat ended. The engine opens the level-up.",
+      "title": "Milestone Earned",
+      "type": "boolean"
+    }
+  },
+  "required": [
+    "intent",
+    "tone"
+  ],
+  "title": "Dnd5ePlan",
+  "type": "object"
+}

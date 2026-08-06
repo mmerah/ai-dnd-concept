@@ -1,0 +1,58 @@
+SCENARIO:
+The Whispering Vault
+The abbey of Saint Corvin was abandoned in a single night. Kael has come for the sealed vault beneath it, and the abbot's study is the only room still lit.
+
+PLAYER CHARACTER:
+Kael — A scarred relic-hunter who came to the abbey for what is sealed beneath it. — at the abbot's study
+state:
+  numbers: armor-class 12, charisma 12, constitution 13, dexterity 14, hit-die 10, intelligence 12, level 1, proficiency-bonus 2, speed 30, starting-gold 15, strength 11, wisdom 14
+  counters: hp 11/11, second-wind 1/1 (short-rest)
+  tags: Success[id=success]
+  content:
+  - Fighter [srd-2014/classes/fighter] — saving-throws=STR, CON
+  - Half-Elf [srd-2014/races/half-elf] — ability-bonuses=CHA +2, choose 2 others +1; size=Medium
+  - Acolyte [srd-2014/backgrounds/acolyte]
+  - Second Wind [srd-2014/features/second-wind]
+  - Fighting Style: Defense [srd-2014/features/fighter-fighting-style-defense] — parent=Fighting Style
+  - Skill: Athletics [srd-2014/proficiencies/skill-athletics]
+  - Skill: Perception [srd-2014/proficiencies/skill-perception]
+  - Skill: Investigation [srd-2014/proficiencies/skill-investigation]
+  - Skill: Stealth [srd-2014/proficiencies/skill-stealth]
+inventory:
+- a guttering lantern — A dented tin lantern whose flame will not hold still.
+  state:
+    numbers: cost-gp 5
+    content:
+    - Lantern, hooded [srd-2014/gear/lantern-hooded]
+- the vault map — A creased chart of the undercroft, marking a stair the abbey's own plans deny.
+
+HERE WITH THE PLAYER:
+- Mara[id=mara] (npc) — at the abbot's study — The abbey's last scribe, cautious and tired, still cataloguing books nobody will read.
+  state:
+    numbers: armor-class 10, charisma 10, constitution 10, dexterity 10, intelligence 10, strength 10, wisdom 10
+    counters: hp 1/1
+
+KNOWN TO THE PLAYER, BUT ELSEWHERE:
+- the cloister[id=cloister] (location) — A frost-rimed colonnade around a dead garden; Brother Tomas sweeps it to no purpose.
+- Brother Tomas[id=tomas] (npc) — at the cloister — A deaf old porter who sweeps the cloister and knows almost nothing about the vault.
+  state:
+    numbers: armor-class 10, charisma 10, constitution 10, dexterity 10, intelligence 10, strength 10, wisdom 10
+    counters: hp 1/1
+
+THE DIRECTOR'S PLAN — what was meant, not what happened:
+Kael prises the flagstone loose and listens for what waits beyond the door.
+
+THE DIRECTOR ASKS FOR THIS TONE:
+hushed and close
+
+SPEAKER:
+(none — narrate the scene)
+
+WHAT HAPPENED:
+- Kael: listening past the vault door: success
+- Kael is Success
+- learned of the vault map
+- took the vault map
+
+PLAYER ACTION:
+I lever up the loose flagstone and listen at the vault door.

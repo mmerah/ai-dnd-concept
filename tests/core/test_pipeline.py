@@ -1,18 +1,9 @@
-import json
-from collections.abc import Callable
 from contextlib import ExitStack
 from random import Random
 
 import pytest
-from core_test_support import initialized, settings
-from pydantic_ai.messages import (
-    ModelMessage,
-    ModelRequest,
-    ModelResponse,
-    RetryPromptPart,
-    TextPart,
-    ToolCallPart,
-)
+from core_test_support import initialized, plan, scripted, settings, structured, text
+from pydantic_ai.messages import ModelMessage, ModelRequest, ModelResponse, RetryPromptPart
 from pydantic_ai.models.function import AgentInfo, FunctionModel
 
 from aidm.core.base import PLAYER_ID
@@ -20,34 +11,7 @@ from aidm.core.sheet import Sheet, player_sheet
 from aidm.core.world import rules_of
 from aidm.workflow.pipeline import TurnOptions, TurnWorkspace, default_cast, run_turn
 
-type Stub = Callable[[list[ModelMessage], AgentInfo], ModelResponse]
-
 STEPS = ("director", "resolve", "narrator", "maintainer", "creator")
-
-
-def structured(**output: object) -> ModelResponse:
-    return ModelResponse(parts=[TextPart(json.dumps(output))])
-
-
-def plan(**output: object) -> ModelResponse:
-    """The director answers by calling the plan tool, as ToolOutput presents it."""
-    return ModelResponse(parts=[ToolCallPart(tool_name="turn_plan", args=json.dumps(output))])
-
-
-def text(body: str) -> ModelResponse:
-    return ModelResponse(parts=[TextPart(body)])
-
-
-def scripted(*responses: ModelResponse) -> Stub:
-    """Call N answers with response N, because a retried output asks the model again."""
-    remaining = iter(responses)
-
-    def stub(messages: list[ModelMessage], info: AgentInfo) -> ModelResponse:
-        del messages, info
-        return next(remaining)
-
-    return stub
-
 
 PLAN = plan(intent="Kael finds the map beneath the flagstone.", tone="hushed")
 

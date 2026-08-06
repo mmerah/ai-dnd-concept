@@ -1,0 +1,557 @@
+{
+  "$defs": {
+    "AddTag": {
+      "additionalProperties": false,
+      "description": "Put a lasting condition, edge, or burden on an entity. The sheet shows the id written\nout: `battle-worn` appears as Battle Worn.",
+      "properties": {
+        "op": {
+          "const": "add-tag",
+          "default": "add-tag",
+          "title": "Op",
+          "type": "string"
+        },
+        "entity_id": {
+          "description": "Exact id of the entity affected; an actor must be here with the player.",
+          "title": "Entity Id",
+          "type": "string"
+        },
+        "tag_id": {
+          "description": "Stable slug for the tag, such as `poisoned`.",
+          "maxLength": 64,
+          "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$",
+          "title": "Tag Id",
+          "type": "string"
+        },
+        "text": {
+          "default": "",
+          "description": "The constraint or benefit it puts on the entity, in prose.",
+          "title": "Text",
+          "type": "string"
+        }
+      },
+      "required": [
+        "entity_id",
+        "tag_id"
+      ],
+      "title": "AddTag",
+      "type": "object"
+    },
+    "AdjustCounter": {
+      "additionalProperties": false,
+      "description": "Move a counter up or down. The change is clamped to the counter's own bounds.",
+      "properties": {
+        "op": {
+          "const": "adjust-counter",
+          "default": "adjust-counter",
+          "title": "Op",
+          "type": "string"
+        },
+        "entity_id": {
+          "description": "Exact id of the entity affected; an actor must be here with the player.",
+          "title": "Entity Id",
+          "type": "string"
+        },
+        "counter": {
+          "description": "Exact key of one of that entity's counters, as its sheet spells it.",
+          "maxLength": 64,
+          "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$",
+          "title": "Counter",
+          "type": "string"
+        },
+        "delta": {
+          "description": "How much the pool moves: negative to reduce.",
+          "title": "Delta",
+          "type": "integer"
+        },
+        "reason": {
+          "description": "What changed the pool, in a few words.",
+          "minLength": 1,
+          "title": "Reason",
+          "type": "string"
+        }
+      },
+      "required": [
+        "entity_id",
+        "counter",
+        "delta",
+        "reason"
+      ],
+      "title": "AdjustCounter",
+      "type": "object"
+    },
+    "Effect": {
+      "discriminator": {
+        "mapping": {
+          "add-tag": "#/$defs/AddTag",
+          "adjust-counter": "#/$defs/AdjustCounter",
+          "gain-improvised-item": "#/$defs/GainImprovisedItem",
+          "move-actor": "#/$defs/MoveActor",
+          "move-item": "#/$defs/MoveItem",
+          "remove-tag": "#/$defs/RemoveTag",
+          "reveal": "#/$defs/Reveal",
+          "set-note": "#/$defs/SetNote",
+          "set-number": "#/$defs/SetNumber",
+          "spend-counter": "#/$defs/SpendCounter"
+        },
+        "propertyName": "op"
+      },
+      "oneOf": [
+        {
+          "$ref": "#/$defs/Reveal"
+        },
+        {
+          "$ref": "#/$defs/MoveActor"
+        },
+        {
+          "$ref": "#/$defs/MoveItem"
+        },
+        {
+          "$ref": "#/$defs/GainImprovisedItem"
+        },
+        {
+          "$ref": "#/$defs/AdjustCounter"
+        },
+        {
+          "$ref": "#/$defs/SpendCounter"
+        },
+        {
+          "$ref": "#/$defs/AddTag"
+        },
+        {
+          "$ref": "#/$defs/RemoveTag"
+        },
+        {
+          "$ref": "#/$defs/SetNote"
+        },
+        {
+          "$ref": "#/$defs/SetNumber"
+        }
+      ]
+    },
+    "GainImprovisedItem": {
+      "additionalProperties": false,
+      "description": "Give the player an ordinary incidental object that is not in canon and is not worth a canon\nentry of its own. Never a substitute for an item that already exists.",
+      "properties": {
+        "op": {
+          "const": "gain-improvised-item",
+          "default": "gain-improvised-item",
+          "title": "Op",
+          "type": "string"
+        },
+        "item_name": {
+          "description": "The object written out, such as 'a handful of gravel'.",
+          "minLength": 1,
+          "title": "Item Name",
+          "type": "string"
+        }
+      },
+      "required": [
+        "item_name"
+      ],
+      "title": "GainImprovisedItem",
+      "type": "object"
+    },
+    "MoveActor": {
+      "additionalProperties": false,
+      "description": "Move an actor who actually changes location. Moving the player to an unrevealed location\nreveals it.",
+      "properties": {
+        "op": {
+          "const": "move-actor",
+          "default": "move-actor",
+          "title": "Op",
+          "type": "string"
+        },
+        "entity_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Exact id of the actor to move; null moves the player.",
+          "title": "Entity Id"
+        },
+        "location_id": {
+          "description": "Exact id of the location the actor enters.",
+          "title": "Location Id",
+          "type": "string"
+        }
+      },
+      "required": [
+        "location_id"
+      ],
+      "title": "MoveActor",
+      "type": "object"
+    },
+    "MoveItem": {
+      "additionalProperties": false,
+      "description": "Move one item within the player's reach: pick it up, set it down here, or hand it to an\nactor here.",
+      "properties": {
+        "op": {
+          "const": "move-item",
+          "default": "move-item",
+          "title": "Op",
+          "type": "string"
+        },
+        "item_id": {
+          "description": "Exact id of the item: one the player carries, or one loose at their location.",
+          "title": "Item Id",
+          "type": "string"
+        },
+        "to_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Exact id of the receiver: an actor here with the player, or the player's own location to set the item down. Null hands the item to the player.",
+          "title": "To Id"
+        }
+      },
+      "required": [
+        "item_id"
+      ],
+      "title": "MoveItem",
+      "type": "object"
+    },
+    "OutcomeBranch": {
+      "additionalProperties": false,
+      "description": "What follows in the fiction if the action lands on this outcome, and only then.",
+      "properties": {
+        "outcome": {
+          "description": "One outcome label the chosen action allows.",
+          "maxLength": 64,
+          "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$",
+          "title": "Outcome",
+          "type": "string"
+        },
+        "effects": {
+          "default": [],
+          "description": "What that outcome causes in the world.",
+          "items": {
+            "$ref": "#/$defs/Effect"
+          },
+          "title": "Effects",
+          "type": "array"
+        }
+      },
+      "required": [
+        "outcome"
+      ],
+      "title": "OutcomeBranch",
+      "type": "object"
+    },
+    "RemoveTag": {
+      "additionalProperties": false,
+      "description": "Lift a tag an entity carries, when the fiction ends it.",
+      "properties": {
+        "op": {
+          "const": "remove-tag",
+          "default": "remove-tag",
+          "title": "Op",
+          "type": "string"
+        },
+        "entity_id": {
+          "description": "Exact id of the entity affected; an actor must be here with the player.",
+          "title": "Entity Id",
+          "type": "string"
+        },
+        "tag_id": {
+          "description": "Exact id of a tag the entity carries.",
+          "maxLength": 64,
+          "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$",
+          "title": "Tag Id",
+          "type": "string"
+        }
+      },
+      "required": [
+        "entity_id",
+        "tag_id"
+      ],
+      "title": "RemoveTag",
+      "type": "object"
+    },
+    "Reveal": {
+      "additionalProperties": false,
+      "description": "Reveal an entity that exists but the player does not know yet: they notice it, are told of\nit, or reach it. Prefer this over inventing a replacement.",
+      "properties": {
+        "op": {
+          "const": "reveal",
+          "default": "reveal",
+          "title": "Op",
+          "type": "string"
+        },
+        "entity_id": {
+          "description": "Exact id of the unrevealed canon entity.",
+          "title": "Entity Id",
+          "type": "string"
+        }
+      },
+      "required": [
+        "entity_id"
+      ],
+      "title": "Reveal",
+      "type": "object"
+    },
+    "Risk": {
+      "additionalProperties": false,
+      "description": "The one thing this engine resolves: an uncertain attempt, settled by 2d6 against a 7.",
+      "properties": {
+        "act": {
+          "const": "risk",
+          "default": "risk",
+          "title": "Act",
+          "type": "string"
+        },
+        "actor_id": {
+          "description": "Exact id of the actor taking the risk: the player, or an actor here.",
+          "title": "Actor Id",
+          "type": "string"
+        },
+        "approach": {
+          "description": "How they go about it; that approach's number on their sheet is the bonus.",
+          "enum": [
+            "bold",
+            "subtle",
+            "clever",
+            "empathetic"
+          ],
+          "title": "Approach",
+          "type": "string"
+        },
+        "difficulty": {
+          "description": "How hard it is: risky costs nothing, demanding -1, extreme -2.",
+          "enum": [
+            "risky",
+            "demanding",
+            "extreme"
+          ],
+          "title": "Difficulty",
+          "type": "string"
+        },
+        "helping_tag_id": {
+          "anyOf": [
+            {
+              "maxLength": 64,
+              "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Exact id of the one tag that directly helps — an edge, a bond, or a gear benefit on an item that actor carries. Null when none does.",
+          "title": "Helping Tag Id"
+        },
+        "hindering_tag_id": {
+          "anyOf": [
+            {
+              "maxLength": 64,
+              "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Exact id of the one tag on that actor's sheet that directly hinders — a burden or a condition. Null when none does.",
+          "title": "Hindering Tag Id"
+        },
+        "stakes": {
+          "description": "What is attempted, in a few words; it names the roll.",
+          "minLength": 1,
+          "title": "Stakes",
+          "type": "string"
+        }
+      },
+      "required": [
+        "actor_id",
+        "approach",
+        "difficulty",
+        "stakes"
+      ],
+      "title": "Risk",
+      "type": "object"
+    },
+    "SetNote": {
+      "additionalProperties": false,
+      "description": "Write freeform bookkeeping the fiction needs remembered and no counter or tag holds, such as\nwhat a caster concentrates on. Writing a key again replaces what it held.",
+      "properties": {
+        "op": {
+          "const": "set-note",
+          "default": "set-note",
+          "title": "Op",
+          "type": "string"
+        },
+        "entity_id": {
+          "description": "Exact id of the entity affected; an actor must be here with the player.",
+          "title": "Entity Id",
+          "type": "string"
+        },
+        "key": {
+          "description": "What the note is about, such as `concentration`.",
+          "maxLength": 64,
+          "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$",
+          "title": "Key",
+          "type": "string"
+        },
+        "text": {
+          "description": "The note; empty clears whatever the key held.",
+          "title": "Text",
+          "type": "string"
+        }
+      },
+      "required": [
+        "entity_id",
+        "key",
+        "text"
+      ],
+      "title": "SetNote",
+      "type": "object"
+    },
+    "SetNumber": {
+      "additionalProperties": false,
+      "description": "Set a number the fiction has lastingly changed — armour worn, a permanent blessing. Never\nfor this turn's outcome: pools that go up and down are counters.",
+      "properties": {
+        "op": {
+          "const": "set-number",
+          "default": "set-number",
+          "title": "Op",
+          "type": "string"
+        },
+        "entity_id": {
+          "description": "Exact id of the entity affected; an actor must be here with the player.",
+          "title": "Entity Id",
+          "type": "string"
+        },
+        "key": {
+          "description": "Exact key of a number already on that sheet.",
+          "maxLength": 64,
+          "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$",
+          "title": "Key",
+          "type": "string"
+        },
+        "value": {
+          "description": "What the number becomes.",
+          "title": "Value",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "entity_id",
+        "key",
+        "value"
+      ],
+      "title": "SetNumber",
+      "type": "object"
+    },
+    "SpendCounter": {
+      "additionalProperties": false,
+      "description": "Pay from a counter, which refuses outright when the pool cannot cover it.",
+      "properties": {
+        "op": {
+          "const": "spend-counter",
+          "default": "spend-counter",
+          "title": "Op",
+          "type": "string"
+        },
+        "entity_id": {
+          "description": "Exact id of the entity affected; an actor must be here with the player.",
+          "title": "Entity Id",
+          "type": "string"
+        },
+        "counter": {
+          "description": "Exact key of one of that entity's counters, as its sheet spells it.",
+          "maxLength": 64,
+          "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$",
+          "title": "Counter",
+          "type": "string"
+        },
+        "amount": {
+          "description": "How much of the pool is spent.",
+          "minimum": 1,
+          "title": "Amount",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "entity_id",
+        "counter",
+        "amount"
+      ],
+      "title": "SpendCounter",
+      "type": "object"
+    }
+  },
+  "additionalProperties": false,
+  "properties": {
+    "intent": {
+      "description": "1-3 sentences for the Narrator: what the player attempted and what is at stake. Never an outcome, a number, or a die.",
+      "title": "Intent",
+      "type": "string"
+    },
+    "tone": {
+      "description": "A few words of mood. Atmosphere only: 'tense and hushed', not 'they find it'.",
+      "title": "Tone",
+      "type": "string"
+    },
+    "speaker_id": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "Exact id of the NPC the player addresses — one they have met and who is here with them — or null if nobody is addressed.",
+      "title": "Speaker Id"
+    },
+    "effects": {
+      "default": [],
+      "description": "Consequences that happen whatever the action settles.",
+      "items": {
+        "$ref": "#/$defs/Effect"
+      },
+      "title": "Effects",
+      "type": "array"
+    },
+    "branches": {
+      "default": [],
+      "description": "Consequences keyed by outcome: at most one branch per label, and only labels this action allows. Outcomes that do not occur simply never apply. An action rolled to cause a lasting change — a condition taking hold or lifted, something revealed — must carry that change in the matching outcome's branch: with no branch, even success changes nothing.",
+      "items": {
+        "$ref": "#/$defs/OutcomeBranch"
+      },
+      "title": "Branches",
+      "type": "array"
+    },
+    "action": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/Risk"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "The one risk this turn resolves, or null when nothing is uncertain enough to roll for."
+    }
+  },
+  "required": [
+    "intent",
+    "tone"
+  ],
+  "title": "StoryPlan",
+  "type": "object"
+}
