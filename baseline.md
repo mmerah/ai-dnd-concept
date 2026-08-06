@@ -205,3 +205,35 @@ structural zero. New and attributable: the no-op cases regressed (`story-no-risk
 every suite, `no-mechanics-turn` once) — the cookbook invites writing an effect on uneventful
 turns. Countered in the same commit by one header sentence: an empty `effects` with no branches
 is a normal plan. Unmeasured at commit time; check it in the next full run.
+
+---
+
+# Collapse refactor — no-change confirmation
+
+date: 2026-08-06   model: openai/gpt-oss-120b   retries: 3   commit: `eb4d8d3` (+ staged docs)
+Two suites, 138 turns. Save version 38.
+
+The refactor it confirms changed no prompt: the concrete `Sheet`, one engine loader with four
+hooks, the package reorg, and typed pack records for every collection are representation only,
+and the golden fixtures moved by their `save_version` line alone. This run is the live check that
+the fixtures were not lying.
+
+| metric | suite 1 | suite 2 | mean | previous pooled (n=207) |
+|---|---|---|---|---|
+| overall | 94% | 90% | 92% | 93% |
+| completion | 99% | 99% | 99% | 100% |
+| mean duration/turn (s) | 3.8 | 6.9 | — | 2.5 |
+
+Tags, suite 1 / suite 2: checks 100/100, combat 96/98, spells 89/100, rest 83/100, story 100/67,
+conditions 67/33. **No movement outside suite-to-suite variance** — at 6 turns per tag per suite,
+one case flipping is 33 points. Duration is provider contention, not the pipeline.
+
+Both deaths are provider-side, neither new: one all-`None` `ChatCompletion` (the Groq
+`finish_reason: "error"` shape the ROADMAP documents, so the OpenRouter exclusion did not hold for
+that call), and one 2048-token budget exhausted before any output.
+
+The open question the previous section left is now answered, and the answer is no: the header
+sentence added to counter no-op regressions did **not** move `story-no-risk-needed`. It is 4/6
+pooled — the same 67% as before, from 3/3 then 1/3. Prompt wording is not what decides that case.
+`conditions` stays the standing residual with both lifetime signatures intact (`poisoned` not
+removed 4/6, the `prone` rider not added 2/6).

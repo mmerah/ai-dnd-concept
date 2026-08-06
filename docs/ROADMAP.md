@@ -4,14 +4,12 @@ Status of the proof of concept, and where it should go. Kept short on purpose.
 
 ## Invariants worth preserving
 
-- The model proposes, Python decides. Engines resolve against a draft; only a revalidated commit
-  replaces state.
+- The model proposes, Python decides. Engines resolve against a draft; only a revalidated commit replaces state.
 - The Narrator is the one role kept from unrevealed canon, because it alone writes to the player.
 - Every turn commits whole or not at all; a role failure leaves state untouched.
-- Context comes from `SceneSnapshot` and the Narrator-only `VisibleScene` in
-  `src/aidm/turn/prompts.py`, not scattered f-strings.
-- One structured plan from the Director, resolved by engine code; the only role tool left is the
-  read-only rules lookup.
+- Context comes from `SceneSnapshot` and the Narrator-only `VisibleScene` in `src/aidm/turn/prompts.py`, not scattered f-strings.
+- One structured plan from the Director, resolved by engine code; the only role tool left is the read-only rules lookup.
+- A pack ships typed records and the engine reads their fields; nothing parses rules prose at run time. What the model reads is rendered from those fields, so the two cannot drift.
 
 ## Known weaknesses
 
@@ -51,11 +49,7 @@ Status of the proof of concept, and where it should go. Kept short on purpose.
 - Character creator, decoupling the character from the scenario file.
 - AI scenario creator — from a premise, or ingested from a PDF.
 - More roles and per-role tools; the context projections and `Role` literal already scale to this.
-- Token-efficient rendering. An entity render resolves every ref it holds inline, so a 5e caster
-  costs more tokens than a Story character — legitimately, since the arithmetic lives in that
-  detail. Two ways to spend it better: render compactly where the shape allows it, and make the
-  render prompt-aware, expanding a spell or a feature in full only when the turn's prompt reaches
-  for it and leaving the rest as a name. Measure it against the eval suite, not by eye.
+- Token-efficient rendering. An entity render resolves every ref it holds inline, so a 5e caster costs more tokens than a Story character — legitimately, since the arithmetic lives in that detail. Two ways to spend it better: render compactly where the shape allows it, and make the render prompt-aware, expanding a spell or a feature in full only when the turn's prompt reaches for it and leaving the rest as a name. Measure it against the eval suite, not by eye.
 - Image and voice generation for flavour, behind an interface, never on the turn's critical path.
 - UI growth: character sheet, journal, known-world panel.
 - Memory system
