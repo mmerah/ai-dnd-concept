@@ -35,7 +35,9 @@ a number the engine can work out for itself.
   slot first: with no slot left, nothing about the spell happens, so plan no branch that assumes
   it landed.
 - `check` — an ability check or a saving throw, resolved by a single roll against a target
-  number.
+  number. Reach for it whenever the attempt could plausibly fail at a cost — searching under
+  pressure, sneaking, climbing, persuading a reluctant NPC, recalling obscure lore. When in
+  doubt between a check and no action, take the check.
 - `use-feature` — spend one use of a limited-use counter, named as the sheet spells it. Where the
   feature's own text heals, give its `heal` as the dice that text states — a fighter's Second Wind
   at level 3 is `1d10 + 3` — never as a total, and never as a change to `hp`.

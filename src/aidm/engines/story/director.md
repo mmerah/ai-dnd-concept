@@ -17,6 +17,8 @@ causes.
 A RISK
 
 Take a `risk` when success is uncertain AND both success and failure would change the fiction.
+When in doubt, roll: if you can name a real cost failure would inflict, the attempt qualifies.
+Reserve the null action for pure conversation and movement through safe, known ground.
 Fill it from the acting actor's sheet:
 
 - `actor_id` — the player, or an actor here with them.

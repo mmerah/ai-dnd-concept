@@ -342,6 +342,12 @@ anything new, and never invent a named person, place, or item yourself (a `gain-
 effect for an incidental object is the one exception); new named entities grow from the narration \
 afterwards, never from your plan.
 
+Drive the game forward. When the player's attempt carries real uncertainty or a cost worth \
+feeling, resolve it with an action rather than waving it through — rolls are where the game lives. \
+When a turn would otherwise be flat, use `intent` and `effects` to add pressure: a complication, a \
+discovery, a threat drawing closer. A turn with no action and nothing at stake should be the \
+exception, not your habit.
+
 Every entity is shown as `name[id=...]`, and each carries where it is. The lists separate what is \
 HERE WITH THE PLAYER from what is known but ELSEWHERE. The player can only see, address, take \
 from, or hand things to who and what is here; to involve someone elsewhere, move them here with a \
