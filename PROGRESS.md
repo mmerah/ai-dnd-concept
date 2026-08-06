@@ -150,7 +150,162 @@ Run against the staged Phases 2–3 diff; everything below is folded in and gree
   improvement, but a turn-pipeline change, not a layout one. Left for a later phase.
 - `src/` is 55 lines lighter than HEAD across Phases 2–3, with 9 modules deleted and 3 added.
 
-## Next — Phase 4: typed pack mechanics
+## Phase 4 — typed pack mechanics — DONE
 
-Blocked on a checkout of `5e-bits/5e-database` at `manifest.json`'s `source_commit`. Both script
-repoints Phase 3 owed it are in. `EnginePlugin` gains `record_types` there, in one line.
+- Unblocked: `5e-bits/5e-database` cloned and checked out at `manifest.json`'s `source_commit`
+  (`3f5593e`, v5.10.0). **Before touching anything**, the importer was run against it and the
+  output diffed against the shipped pack: byte-identical across all 23 files. Every later claim
+  rests on that baseline.
+- `engines/dnd5e/records.py` (new): `SpellAmount`, `SpellRecord`, `WeaponRecord`, and the `ABILITIES`
+  abbreviation map moved off `content.py` — the importer and the engine now share one definition.
+  The records *are* the facts types: `damage_at`/`heal_at`/`dice` are methods on them, so no second
+  model is parsed out of the first.
+- `EnginePlugin.record_types` landed in one line as Phase 2 predicted, with
+  `packs.pack_format(collections, record_types)` replacing `lenient_format`, which is deleted.
+  5e declares `{"spells": SpellRecord, "weapons": WeaponRecord}`; the story engine passes nothing
+  and stays all-lenient.
+- `scripts/srd/project.py` emits the typed fields from upstream structure, never from its own notes.
+  `_equipment_text` was extracted so `weapon()` builds a `WeaponRecord` without duplicating the
+  cost/weight/prose assembly. The importer **fails fast** where the old parser degraded silently: an
+  unknown save ability, or a `MOD` term anywhere but trailing, raises at build time instead of
+  demoting the spell to `improvise` at play time.
+- Pack regenerated: only `spells.json` and `weapons.json` changed, and only by the added fields —
+  every pre-existing field is byte-equal on all 319 spells and 37 weapons. `SAVE_VERSION` 28 → 29.
+- **The parity gate passes with `mechanics_parity.json` unmodified.** All 356 records reproduce the
+  fixture exactly, and the one weapon that typed to null (no damage dice) still does.
+  PLAN.md expected a short list of spells that stop falling back to `improvise`: **the list is
+  empty.** The old regex parser succeeded on every shipped record, so this phase is pure
+  representation — the improvement is that the guarantee is now build-time, not that any spell moved.
+- `content.py` 196 → 41 lines: three lookups reading fields. The regexes, `Amount.parsed`,
+  `_scaling`, `_scaled` and both `from_record` parsers are gone.
+- `resolve.py`: `SpellFacts` → `SpellRecord` throughout, and the `_spell` wrapper is deleted with
+  the refusal it carried (*"the rules for X are not written in a form this engine resolves"*) —
+  `spell_of` now returns a typed record or raises, so that branch was unreachable. The weapon guard
+  folds the dice lookup into its existing check; its refusal string is untouched.
+- Golden fixtures: 6 regenerated, one line each — `save_version` only. Prompts, schemas and trace
+  shape did not move, which is the point: the new fields reach the resolver, never the model, since
+  `_record_text` and `_ref_line` render named fields only.
+- Gate green: 117 passed, ruff clean, basedpyright 0 errors.
+
+### Adversarial review pass (fable) — folded in
+
+- **Two claims in this section were false and are corrected above.** `lenient_format` was *not*
+  deleted — the edit silently no-op'd and nothing type-checks an unused public function; it is
+  deleted now. And the "new" round-trip test duplicated
+  `tests/dnd5e/test_packs.py::test_a_loaded_pack_writes_back_byte_for_byte`, which already
+  round-trips the shipped pack through the typed `pack_format()`; the duplicate is removed.
+- `test_content.py` trimmed to the method logic — `dice()`'s versatile pick, `damage_at`/`heal_at`
+  thresholds, `bonus()`. Asserts that only restated a field already locked per-record by
+  `mechanics_parity.json` are gone.
+- `records.ABILITIES` → `ABILITY_BY_ABBREVIATION`: it maps `"INT"` → `"intelligence"`, and the old
+  name collided with `project.ABILITIES` (the six ability names), which had forced an import alias.
+- `pack_format` lost a single-element-loop trick that bound a local inside a dict comprehension;
+  the plain loop is the same length. `SpellLevel` and `_Ladder` inlined at their one use each.
+- Reported and **not** acted on: the importer walks the damage ladder twice, once for prose notes
+  and once for the typed fields — the notes could be rendered *from* the typed fields, deleting
+  `_ladder`/`_dice` (~15 lines), but byte-identity would have to be proven. PLAN.md scopes
+  redundancy cleanup out of this phase; left as a follow-up.
+- Reviewer confirmed the duplication between `notes`/`numbers` and the typed fields is load-bearing,
+  not dead weight: weapon `numbers` reach sheets via `_backing` (and `_weapon_dice` derives the
+  typed dice *from* them, so the two cannot drift), while `notes`/`text` are the model's view.
+- The importer re-run after every review edit still reproduces the shipped pack byte for byte.
+
+## Typed pack, all collections — DONE
+
+Follow-on to Phase 4, on the maintainer's call: every collection typed the way spells/weapons
+were, notes/numbers gone as generic bags, the model's view rendered from typed fields.
+
+- **(c)** `content.py` merged into `records.py` and deleted: 5e now differs from story by one
+  extra module. `weapon_of`/`spell_of`/`spellcasting_ability` unchanged in behaviour.
+- **(a)** The importer's spell prose renders *from* the typed fields (`SpellAmount.prose`,
+  `scaling_prose`); the parallel ladder walk (`_ladder`/`_dice`/`_spell_damage`) is deleted.
+  Proven by importer-output byte-identity against the pre-change pack.
+- **(b) architecture:** `Record` (state/packs.py) gained `text`/`tags`/`options`/`choose` — they
+  are structural and every consumer (advancement, rendering) reads them on any collection — plus
+  two overridable methods, `sheet_numbers()` and `noted()`, both empty by default. Typed records
+  subclass `Record` and compute both from typed fields. Core (`_backing`, `_record_text`,
+  `_ref_line`, advance, probes) calls the methods polymorphically — no 5e knowledge in `state/`
+  or `loader.py`, and the story engine is untouched. The candidate sketch survived contact whole;
+  the one addition it needed was moving the four structural fields onto the base so advancement
+  and the `read_content` render read any collection.
+- All 22 collections typed across `records.py` (16 record classes, one per collection but for
+  `gear`/`tools`; open-ended per-class ladders and monster proficiencies stay
+  `FrozenMap[Slug, int]` fields — typed values, honest keys).
+  Five text-only collections (conditions, languages, alignments, feats, proficiencies) validate
+  as plain `Record`, so a stray bag fails at load.
+- **Byte-equality of the model view** was the gate for every increment: a script diffed
+  name/text/tags/options/choose/`noted()`/`sheet_numbers()` (order-sensitive) for all ~2,200
+  records against the pre-change pack. **One accepted change:** the blowgun's damage renders
+  `1d1 piercing` instead of `1 piercing` — the same normalization its sheet numbers already
+  made. Everything else is byte-identical.
+- `mechanics_parity.json` passes **unmodified**: `attack`/`half_on_save` became derived
+  properties over `attack_type`/`save_success`, so the resolver and the parity extraction are
+  value-identical; the test now spells the fixture's keys explicitly.
+- Importer fail-fasts added: scaling step must agree with spell level (leveled = slot,
+  cantrip = character level), breath-weapon damage type must match its trait, two-handed damage
+  implies versatile, unknown attack types and save outcomes raise.
+- `SAVE_VERSION` 29 → 35 (one bump per green increment). Golden fixtures changed by their
+  `save_version` line only — prompts, schemas, trace shape, and sheet renders did not move.
+- Gate green after every increment: 117 passed, ruff clean, basedpyright 0 errors.
+
+### Adversarial review pass (opus) — folded in
+
+- **`LenientRecord` is deleted.** It had zero production users once every collection was typed:
+  the `_choice_is_whole` validator and the four structural fields had already moved to `Record`,
+  so all it still carried was the `numbers`/`notes` bags and the two overrides returning them.
+  `pack_format` now defaults an unmapped collection to bare `Record`, which is what the five
+  prose-only collections already ask for. `tests/core/test_loader.py` declares its own record
+  class instead, so the loader tests now prove `record_types` works for *any* engine's shape
+  rather than for a shape only the test used.
+- `CollectionSpec` went with it: `PackFormat` is now `collection -> record class`. Its `classes`
+  tuple never held more than one class, its `adapter` is `held.model_validate`, and its `entity`
+  field was read by nothing.
+- One dialect per concept in `records.py`: `_numbered` mirrors `_noted` (twelve
+  `{} if x is None else {...}` blocks gone), `_save_note`/`_damage_note`/`_area_note`/
+  `_bonus_note`/`_scaling_prose` are shared by the classes that had copies, `TraitRecord.
+  save_success` takes the same `SaveSuccess` literal as `SpellRecord` (and the same
+  set-together validator), and the importer narrows it through `_save_success` like the spell
+  path. A render diff over all ~2,200 records — name/text/tags/options/choose/`noted()`/
+  `sheet_numbers()`, order-sensitive — is byte-identical.
+- The importer stopped building number bags to read one key back out of:
+  `_passive_perception`, `_capacity_pounds` and `_vehicle_speed` return their values,
+  `_damage_numbers` folded into `_weapon_dice`, `_feet_numbers` lost a dead `prefix`, and a
+  monster's spellcasting is scanned once, not twice. Pack output stays byte-identical.
+- `scripts/srd/project.py` stays at ~1,150 lines by decision, now stated in its docstring: a
+  one-shot offline importer, not runtime code.
+- Corrected here: this section claimed ~20 record classes (there are 16) and described
+  `LenientRecord` as still carrying the bags.
+
+## Consistency follow-ups — DONE
+
+The four findings the opus review left to the maintainer, all taken. `SAVE_VERSION` 35 → 38.
+
+- `advance.py` reads a level row as `LevelRecord` instead of the bare `Record`. No pack or fixture
+  change; the stronger type was free.
+- **Dragonborn `damage_type` casing.** `TraitRecord.damage_type` stored `"Fire"` where
+  `SpellRecord`'s stored `"fire"`, and `_damage_note` carried a `.lower()` that existed only to
+  compensate for that one caller. The trait now stores the `Slug` and the helper stops
+  compensating. Ten draconic-ancestry traits' `damage-type` note reads `fire`, not `Fire` — the one
+  accepted model-visible change.
+- **`ClassRecord` stores slugs.** `saving_throws` and `spellcasting` held abbreviations
+  (`"STR"`, `"INT"`) against the file's own convention — store the slug, render the abbreviation
+  through `ABBREVIATION_BY_ABILITY`, as `SpellRecord.save_ability` already did. **The rendered notes
+  are byte-identical** (`INT, WIS` / `INT`); only the stored fields changed. `spellcasting_ability`
+  is now a plain field read: the last abbreviation lookup on the engine's read path is gone.
+- **Languages, alignments, proficiencies and feats typed**, leaving `conditions` as the only
+  genuinely prose-only collection. `_ability` (was `_save_ability`) is now the one importer helper
+  for abbreviation → slug, fail-fast, shared by spells, traits, classes and feats.
+- **Deliberately no `noted()` on those four.** The first attempt rendered the new fields as notes
+  and put `category=Skills; reference=Athletics` beside every proficiency on Kael's sheet — in the
+  director, narrator *and* advisor prompts — where the record's own name already reads
+  `Skill: Athletics`. The fields are for code to act on; the model's view was already right. Their
+  `text` is restored byte-identical, so the pack diff is added fields only and the model sees no
+  change. A typed field earns its place by being actionable, not by being rendered.
+- Gate green: 117 passed, ruff clean, basedpyright 0 errors. Parity fixture unmodified, golden
+  fixtures moved only by `save_version`, importer still reproduces the shipped pack byte for byte.
+
+## Next — Phase 5: docs and loose ends
+
+Strike the resolved IDEAS.md lines, refresh `docs/ROADMAP.md` where it names dead modules, and
+optionally run one eval suite as a no-change confirmation. README and one ROADMAP path were already
+pulled forward in Phase 3.

@@ -3,47 +3,79 @@
     "index": "darkvision",
     "name": "Darkvision",
     "text": "You have superior vision in dark and dim conditions. You can see in dim light within 60 feet of you as if it were bright light, and in darkness as if it were dim light. You cannot discern color in darkness, only shades of gray.",
-    "numbers": {},
-    "notes": {
-      "races": "Dwarf, Elf, Gnome, Half-Elf, Half-Orc, Tiefling"
-    },
     "tags": [],
     "options": [],
-    "choose": null
+    "choose": null,
+    "damage_type": null,
+    "save_ability": null,
+    "save_success": null,
+    "damage": null,
+    "scaling": [],
+    "area": null,
+    "uses": null,
+    "grants_proficiency": [],
+    "races": [
+      "Dwarf",
+      "Elf",
+      "Gnome",
+      "Half-Elf",
+      "Half-Orc",
+      "Tiefling"
+    ],
+    "subraces": [],
+    "parent": null
   },
   {
     "index": "dwarven-resilience",
     "name": "Dwarven Resilience",
     "text": "You have advantage on saving throws against poison, and you have resistance against poison damage.",
-    "numbers": {},
-    "notes": {
-      "races": "Dwarf"
-    },
     "tags": [],
     "options": [],
-    "choose": null
+    "choose": null,
+    "damage_type": null,
+    "save_ability": null,
+    "save_success": null,
+    "damage": null,
+    "scaling": [],
+    "area": null,
+    "uses": null,
+    "grants_proficiency": [],
+    "races": [
+      "Dwarf"
+    ],
+    "subraces": [],
+    "parent": null
   },
   {
     "index": "dwarven-combat-training",
     "name": "Dwarven Combat Training",
     "text": "You have proficiency with the battleaxe, handaxe, light hammer, and warhammer.",
-    "numbers": {},
-    "notes": {
-      "grants-proficiency": "Battleaxes, Handaxes, Light hammers, Warhammers",
-      "races": "Dwarf"
-    },
     "tags": [],
     "options": [],
-    "choose": null
+    "choose": null,
+    "damage_type": null,
+    "save_ability": null,
+    "save_success": null,
+    "damage": null,
+    "scaling": [],
+    "area": null,
+    "uses": null,
+    "grants_proficiency": [
+      "Battleaxes",
+      "Handaxes",
+      "Light hammers",
+      "Warhammers"
+    ],
+    "races": [
+      "Dwarf"
+    ],
+    "subraces": [],
+    "parent": null
   },
   {
     "index": "tool-proficiency",
     "name": "Tool Proficiency",
     "text": "You gain proficiency with the artisan's tools of your choice: smith's tools, brewer's supplies, or mason's tools.",
-    "numbers": {},
-    "notes": {
-      "races": "Dwarf"
-    },
     "tags": [],
     "options": [
       {
@@ -62,90 +94,159 @@
         "index": "masons-tools"
       }
     ],
-    "choose": 1
+    "choose": 1,
+    "damage_type": null,
+    "save_ability": null,
+    "save_success": null,
+    "damage": null,
+    "scaling": [],
+    "area": null,
+    "uses": null,
+    "grants_proficiency": [],
+    "races": [
+      "Dwarf"
+    ],
+    "subraces": [],
+    "parent": null
   },
   {
     "index": "stonecunning",
     "name": "Stonecunning",
     "text": "Whenever you make an Intelligence (History) check related to the origin of stonework, you are considered proficient in the History skill and add double your proficiency bonus to the check, instead of your normal proficiency bonus.",
-    "numbers": {},
-    "notes": {
-      "races": "Dwarf"
-    },
     "tags": [],
     "options": [],
-    "choose": null
+    "choose": null,
+    "damage_type": null,
+    "save_ability": null,
+    "save_success": null,
+    "damage": null,
+    "scaling": [],
+    "area": null,
+    "uses": null,
+    "grants_proficiency": [],
+    "races": [
+      "Dwarf"
+    ],
+    "subraces": [],
+    "parent": null
   },
   {
     "index": "dwarven-toughness",
     "name": "Dwarven Toughness",
     "text": "Your hit point maximum increases by 1, and it increases by 1 every time you gain a level.",
-    "numbers": {},
-    "notes": {
-      "subraces": "Hill Dwarf"
-    },
     "tags": [],
     "options": [],
-    "choose": null
+    "choose": null,
+    "damage_type": null,
+    "save_ability": null,
+    "save_success": null,
+    "damage": null,
+    "scaling": [],
+    "area": null,
+    "uses": null,
+    "grants_proficiency": [],
+    "races": [],
+    "subraces": [
+      "Hill Dwarf"
+    ],
+    "parent": null
   },
   {
     "index": "keen-senses",
     "name": "Keen Senses",
     "text": "You have proficiency in the Perception skill.",
-    "numbers": {},
-    "notes": {
-      "grants-proficiency": "Skill: Perception",
-      "races": "Elf"
-    },
     "tags": [],
     "options": [],
-    "choose": null
+    "choose": null,
+    "damage_type": null,
+    "save_ability": null,
+    "save_success": null,
+    "damage": null,
+    "scaling": [],
+    "area": null,
+    "uses": null,
+    "grants_proficiency": [
+      "Skill: Perception"
+    ],
+    "races": [
+      "Elf"
+    ],
+    "subraces": [],
+    "parent": null
   },
   {
     "index": "fey-ancestry",
     "name": "Fey Ancestry",
     "text": "You have advantage on saving throws against being charmed, and magic cannot put you to sleep.",
-    "numbers": {},
-    "notes": {
-      "races": "Elf, Half-Elf"
-    },
     "tags": [],
     "options": [],
-    "choose": null
+    "choose": null,
+    "damage_type": null,
+    "save_ability": null,
+    "save_success": null,
+    "damage": null,
+    "scaling": [],
+    "area": null,
+    "uses": null,
+    "grants_proficiency": [],
+    "races": [
+      "Elf",
+      "Half-Elf"
+    ],
+    "subraces": [],
+    "parent": null
   },
   {
     "index": "trance",
     "name": "Trance",
     "text": "Elves do not need to sleep. Instead, they meditate deeply, remaining semiconscious, for 4 hours a day. (The Common word for such meditation is \"trance.\") While meditating, you can dream after a fashion; such dreams are actually mental exercises that have become reflexive through years of practice. After resting this way, you gain the same benefit that a human does from 8 hours of sleep.",
-    "numbers": {},
-    "notes": {
-      "races": "Elf"
-    },
     "tags": [],
     "options": [],
-    "choose": null
+    "choose": null,
+    "damage_type": null,
+    "save_ability": null,
+    "save_success": null,
+    "damage": null,
+    "scaling": [],
+    "area": null,
+    "uses": null,
+    "grants_proficiency": [],
+    "races": [
+      "Elf"
+    ],
+    "subraces": [],
+    "parent": null
   },
   {
     "index": "elf-weapon-training",
     "name": "Elf Weapon Training",
     "text": "You have proficiency with the longsword, shortsword, shortbow, and longbow.",
-    "numbers": {},
-    "notes": {
-      "grants-proficiency": "Longswords, Shortswords, Shortbows, Longbows",
-      "subraces": "High Elf"
-    },
     "tags": [],
     "options": [],
-    "choose": null
+    "choose": null,
+    "damage_type": null,
+    "save_ability": null,
+    "save_success": null,
+    "damage": null,
+    "scaling": [],
+    "area": null,
+    "uses": null,
+    "grants_proficiency": [
+      "Longswords",
+      "Shortswords",
+      "Shortbows",
+      "Longbows"
+    ],
+    "races": [],
+    "subraces": [
+      "High Elf"
+    ],
+    "parent": null
   },
   {
     "index": "high-elf-cantrip",
     "name": "High Elf Cantrip",
     "text": "You know one cantrip of your choice form the wizard spell list. Intelligence is your spellcasting ability for it.",
-    "numbers": {},
-    "notes": {
-      "subraces": "High Elf"
-    },
     "tags": [],
     "options": [
       {
@@ -219,16 +320,25 @@
         "index": "poison-spray"
       }
     ],
-    "choose": 1
+    "choose": 1,
+    "damage_type": null,
+    "save_ability": null,
+    "save_success": null,
+    "damage": null,
+    "scaling": [],
+    "area": null,
+    "uses": null,
+    "grants_proficiency": [],
+    "races": [],
+    "subraces": [
+      "High Elf"
+    ],
+    "parent": null
   },
   {
     "index": "extra-language",
     "name": "Extra Language",
     "text": "You can speak, read, and write one extra language of your choice.",
-    "numbers": {},
-    "notes": {
-      "subraces": "High Elf"
-    },
     "tags": [],
     "options": [
       {
@@ -302,64 +412,109 @@
         "index": "undercommon"
       }
     ],
-    "choose": 1
+    "choose": 1,
+    "damage_type": null,
+    "save_ability": null,
+    "save_success": null,
+    "damage": null,
+    "scaling": [],
+    "area": null,
+    "uses": null,
+    "grants_proficiency": [],
+    "races": [],
+    "subraces": [
+      "High Elf"
+    ],
+    "parent": null
   },
   {
     "index": "lucky",
     "name": "Lucky",
     "text": "When you roll a 1 on the d20 for an attack roll, ability check, or saving throw, you can reroll the die and must use the new roll.",
-    "numbers": {},
-    "notes": {
-      "races": "Halfling"
-    },
     "tags": [],
     "options": [],
-    "choose": null
+    "choose": null,
+    "damage_type": null,
+    "save_ability": null,
+    "save_success": null,
+    "damage": null,
+    "scaling": [],
+    "area": null,
+    "uses": null,
+    "grants_proficiency": [],
+    "races": [
+      "Halfling"
+    ],
+    "subraces": [],
+    "parent": null
   },
   {
     "index": "brave",
     "name": "Brave",
     "text": "You have advantage on saving throw against being frightened.",
-    "numbers": {},
-    "notes": {
-      "races": "Halfling"
-    },
     "tags": [],
     "options": [],
-    "choose": null
+    "choose": null,
+    "damage_type": null,
+    "save_ability": null,
+    "save_success": null,
+    "damage": null,
+    "scaling": [],
+    "area": null,
+    "uses": null,
+    "grants_proficiency": [],
+    "races": [
+      "Halfling"
+    ],
+    "subraces": [],
+    "parent": null
   },
   {
     "index": "halfling-nimbleness",
     "name": "Halfling Nimbleness",
     "text": "You can move through the space of any creature that is of a size larger than yours.",
-    "numbers": {},
-    "notes": {
-      "races": "Halfling"
-    },
     "tags": [],
     "options": [],
-    "choose": null
+    "choose": null,
+    "damage_type": null,
+    "save_ability": null,
+    "save_success": null,
+    "damage": null,
+    "scaling": [],
+    "area": null,
+    "uses": null,
+    "grants_proficiency": [],
+    "races": [
+      "Halfling"
+    ],
+    "subraces": [],
+    "parent": null
   },
   {
     "index": "naturally-stealthy",
     "name": "Naturally Stealthy",
     "text": "You can attempt to hide even when you are obscured only by a creature that is at least one size larger than you.",
-    "numbers": {},
-    "notes": {
-      "subraces": "Lightfoot Halfling"
-    },
     "tags": [],
     "options": [],
-    "choose": null
+    "choose": null,
+    "damage_type": null,
+    "save_ability": null,
+    "save_success": null,
+    "damage": null,
+    "scaling": [],
+    "area": null,
+    "uses": null,
+    "grants_proficiency": [],
+    "races": [],
+    "subraces": [
+      "Lightfoot Halfling"
+    ],
+    "parent": null
   },
   {
     "index": "draconic-ancestry",
     "name": "Draconic Ancestry",
     "text": "You have draconic ancestry. Choose one type of dragon from the Draconic Ancestry table. Your breath weapon and damage resistance are determined by the dragon type, as shown in the table.",
-    "numbers": {},
-    "notes": {
-      "races": "Dragonborn"
-    },
     "tags": [],
     "options": [
       {
@@ -413,267 +568,622 @@
         "index": "draconic-ancestry-white"
       }
     ],
-    "choose": 1
+    "choose": 1,
+    "damage_type": null,
+    "save_ability": null,
+    "save_success": null,
+    "damage": null,
+    "scaling": [],
+    "area": null,
+    "uses": null,
+    "grants_proficiency": [],
+    "races": [
+      "Dragonborn"
+    ],
+    "subraces": [],
+    "parent": null
   },
   {
     "index": "draconic-ancestry-black",
     "name": "Draconic Ancestry (Black)",
     "text": "You have draconic ancestry. Choose one type of dragon from the Draconic Ancestry table. Your breath weapon and damage resistance are determined by the dragon type, as shown in the table.",
-    "numbers": {},
-    "notes": {
-      "damage-type": "Acid",
-      "save": "DEX (half on success)",
-      "damage": "2d6 acid",
-      "scaling": "level 6: 3d6, level 11: 4d6, level 16: 5d6",
-      "area": "30-foot line",
-      "uses": "1/rest",
-      "races": "Dragonborn",
-      "parent": "Draconic Ancestry"
-    },
     "tags": [],
     "options": [],
-    "choose": null
+    "choose": null,
+    "damage_type": "acid",
+    "save_ability": "dexterity",
+    "save_success": "half",
+    "damage": {
+      "dice": "2d6",
+      "with_modifier": false
+    },
+    "scaling": [
+      [
+        6,
+        {
+          "dice": "3d6",
+          "with_modifier": false
+        }
+      ],
+      [
+        11,
+        {
+          "dice": "4d6",
+          "with_modifier": false
+        }
+      ],
+      [
+        16,
+        {
+          "dice": "5d6",
+          "with_modifier": false
+        }
+      ]
+    ],
+    "area": {
+      "shape": "line",
+      "size": 30
+    },
+    "uses": "1/rest",
+    "grants_proficiency": [],
+    "races": [
+      "Dragonborn"
+    ],
+    "subraces": [],
+    "parent": "Draconic Ancestry"
   },
   {
     "index": "draconic-ancestry-blue",
     "name": "Draconic Ancestry (Blue)",
     "text": "You have draconic ancestry. Choose one type of dragon from the Draconic Ancestry table. Your breath weapon and damage resistance are determined by the dragon type, as shown in the table.",
-    "numbers": {},
-    "notes": {
-      "damage-type": "Lightning",
-      "save": "DEX (half on success)",
-      "damage": "2d6 lightning",
-      "scaling": "level 6: 3d6, level 11: 4d6, level 16: 5d6",
-      "area": "30-foot line",
-      "uses": "1/rest",
-      "races": "Dragonborn",
-      "parent": "Draconic Ancestry"
-    },
     "tags": [],
     "options": [],
-    "choose": null
+    "choose": null,
+    "damage_type": "lightning",
+    "save_ability": "dexterity",
+    "save_success": "half",
+    "damage": {
+      "dice": "2d6",
+      "with_modifier": false
+    },
+    "scaling": [
+      [
+        6,
+        {
+          "dice": "3d6",
+          "with_modifier": false
+        }
+      ],
+      [
+        11,
+        {
+          "dice": "4d6",
+          "with_modifier": false
+        }
+      ],
+      [
+        16,
+        {
+          "dice": "5d6",
+          "with_modifier": false
+        }
+      ]
+    ],
+    "area": {
+      "shape": "line",
+      "size": 30
+    },
+    "uses": "1/rest",
+    "grants_proficiency": [],
+    "races": [
+      "Dragonborn"
+    ],
+    "subraces": [],
+    "parent": "Draconic Ancestry"
   },
   {
     "index": "draconic-ancestry-brass",
     "name": "Draconic Ancestry (Brass)",
     "text": "You have draconic ancestry. Choose one type of dragon from the Draconic Ancestry table. Your breath weapon and damage resistance are determined by the dragon type, as shown in the table.",
-    "numbers": {},
-    "notes": {
-      "damage-type": "Fire",
-      "save": "DEX (half on success)",
-      "damage": "2d6 fire",
-      "scaling": "level 6: 3d6, level 11: 4d6, level 16: 5d6",
-      "area": "30-foot line",
-      "uses": "1/rest",
-      "races": "Dragonborn",
-      "parent": "Draconic Ancestry"
-    },
     "tags": [],
     "options": [],
-    "choose": null
+    "choose": null,
+    "damage_type": "fire",
+    "save_ability": "dexterity",
+    "save_success": "half",
+    "damage": {
+      "dice": "2d6",
+      "with_modifier": false
+    },
+    "scaling": [
+      [
+        6,
+        {
+          "dice": "3d6",
+          "with_modifier": false
+        }
+      ],
+      [
+        11,
+        {
+          "dice": "4d6",
+          "with_modifier": false
+        }
+      ],
+      [
+        16,
+        {
+          "dice": "5d6",
+          "with_modifier": false
+        }
+      ]
+    ],
+    "area": {
+      "shape": "line",
+      "size": 30
+    },
+    "uses": "1/rest",
+    "grants_proficiency": [],
+    "races": [
+      "Dragonborn"
+    ],
+    "subraces": [],
+    "parent": "Draconic Ancestry"
   },
   {
     "index": "draconic-ancestry-bronze",
     "name": "Draconic Ancestry (Bronze)",
     "text": "You have draconic ancestry. Choose one type of dragon from the Draconic Ancestry table. Your breath weapon and damage resistance are determined by the dragon type, as shown in the table.",
-    "numbers": {},
-    "notes": {
-      "damage-type": "Lightning",
-      "save": "DEX (half on success)",
-      "damage": "2d6 lightning",
-      "scaling": "level 6: 3d6, level 11: 4d6, level 16: 5d6",
-      "area": "30-foot line",
-      "uses": "1/rest",
-      "races": "Dragonborn",
-      "parent": "Draconic Ancestry"
-    },
     "tags": [],
     "options": [],
-    "choose": null
+    "choose": null,
+    "damage_type": "lightning",
+    "save_ability": "dexterity",
+    "save_success": "half",
+    "damage": {
+      "dice": "2d6",
+      "with_modifier": false
+    },
+    "scaling": [
+      [
+        6,
+        {
+          "dice": "3d6",
+          "with_modifier": false
+        }
+      ],
+      [
+        11,
+        {
+          "dice": "4d6",
+          "with_modifier": false
+        }
+      ],
+      [
+        16,
+        {
+          "dice": "5d6",
+          "with_modifier": false
+        }
+      ]
+    ],
+    "area": {
+      "shape": "line",
+      "size": 30
+    },
+    "uses": "1/rest",
+    "grants_proficiency": [],
+    "races": [
+      "Dragonborn"
+    ],
+    "subraces": [],
+    "parent": "Draconic Ancestry"
   },
   {
     "index": "draconic-ancestry-copper",
     "name": "Draconic Ancestry (Copper)",
     "text": "You have draconic ancestry. Choose one type of dragon from the Draconic Ancestry table. Your breath weapon and damage resistance are determined by the dragon type, as shown in the table.",
-    "numbers": {},
-    "notes": {
-      "damage-type": "Acid",
-      "save": "DEX (half on success)",
-      "damage": "2d6 acid",
-      "scaling": "level 6: 3d6, level 11: 4d6, level 16: 5d6",
-      "area": "30-foot line",
-      "uses": "1/rest",
-      "races": "Dragonborn",
-      "parent": "Draconic Ancestry"
-    },
     "tags": [],
     "options": [],
-    "choose": null
+    "choose": null,
+    "damage_type": "acid",
+    "save_ability": "dexterity",
+    "save_success": "half",
+    "damage": {
+      "dice": "2d6",
+      "with_modifier": false
+    },
+    "scaling": [
+      [
+        6,
+        {
+          "dice": "3d6",
+          "with_modifier": false
+        }
+      ],
+      [
+        11,
+        {
+          "dice": "4d6",
+          "with_modifier": false
+        }
+      ],
+      [
+        16,
+        {
+          "dice": "5d6",
+          "with_modifier": false
+        }
+      ]
+    ],
+    "area": {
+      "shape": "line",
+      "size": 30
+    },
+    "uses": "1/rest",
+    "grants_proficiency": [],
+    "races": [
+      "Dragonborn"
+    ],
+    "subraces": [],
+    "parent": "Draconic Ancestry"
   },
   {
     "index": "draconic-ancestry-gold",
     "name": "Draconic Ancestry (Gold)",
     "text": "You have draconic ancestry. Choose one type of dragon from the Draconic Ancestry table. Your breath weapon and damage resistance are determined by the dragon type, as shown in the table.",
-    "numbers": {},
-    "notes": {
-      "damage-type": "Fire",
-      "save": "DEX (half on success)",
-      "damage": "2d6 fire",
-      "scaling": "level 6: 3d6, level 11: 4d6, level 16: 5d6",
-      "area": "15-foot cone",
-      "uses": "1/rest",
-      "races": "Dragonborn",
-      "parent": "Draconic Ancestry"
-    },
     "tags": [],
     "options": [],
-    "choose": null
+    "choose": null,
+    "damage_type": "fire",
+    "save_ability": "dexterity",
+    "save_success": "half",
+    "damage": {
+      "dice": "2d6",
+      "with_modifier": false
+    },
+    "scaling": [
+      [
+        6,
+        {
+          "dice": "3d6",
+          "with_modifier": false
+        }
+      ],
+      [
+        11,
+        {
+          "dice": "4d6",
+          "with_modifier": false
+        }
+      ],
+      [
+        16,
+        {
+          "dice": "5d6",
+          "with_modifier": false
+        }
+      ]
+    ],
+    "area": {
+      "shape": "cone",
+      "size": 15
+    },
+    "uses": "1/rest",
+    "grants_proficiency": [],
+    "races": [
+      "Dragonborn"
+    ],
+    "subraces": [],
+    "parent": "Draconic Ancestry"
   },
   {
     "index": "draconic-ancestry-green",
     "name": "Draconic Ancestry (Green)",
     "text": "You have draconic ancestry. Choose one type of dragon from the Draconic Ancestry table. Your breath weapon and damage resistance are determined by the dragon type, as shown in the table.",
-    "numbers": {},
-    "notes": {
-      "damage-type": "Poison",
-      "save": "CON (half on success)",
-      "damage": "2d6 poison",
-      "scaling": "level 6: 3d6, level 11: 4d6, level 16: 5d6",
-      "area": "15-foot cone",
-      "uses": "1/rest",
-      "races": "Dragonborn",
-      "parent": "Draconic Ancestry"
-    },
     "tags": [],
     "options": [],
-    "choose": null
+    "choose": null,
+    "damage_type": "poison",
+    "save_ability": "constitution",
+    "save_success": "half",
+    "damage": {
+      "dice": "2d6",
+      "with_modifier": false
+    },
+    "scaling": [
+      [
+        6,
+        {
+          "dice": "3d6",
+          "with_modifier": false
+        }
+      ],
+      [
+        11,
+        {
+          "dice": "4d6",
+          "with_modifier": false
+        }
+      ],
+      [
+        16,
+        {
+          "dice": "5d6",
+          "with_modifier": false
+        }
+      ]
+    ],
+    "area": {
+      "shape": "cone",
+      "size": 15
+    },
+    "uses": "1/rest",
+    "grants_proficiency": [],
+    "races": [
+      "Dragonborn"
+    ],
+    "subraces": [],
+    "parent": "Draconic Ancestry"
   },
   {
     "index": "draconic-ancestry-red",
     "name": "Draconic Ancestry (Red)",
     "text": "You have draconic ancestry. Choose one type of dragon from the Draconic Ancestry table. Your breath weapon and damage resistance are determined by the dragon type, as shown in the table.",
-    "numbers": {},
-    "notes": {
-      "damage-type": "Fire",
-      "save": "DEX (half on success)",
-      "damage": "2d6 fire",
-      "scaling": "level 6: 3d6, level 11: 4d6, level 16: 5d6",
-      "area": "15-foot cone",
-      "uses": "1/rest",
-      "races": "Dragonborn",
-      "parent": "Draconic Ancestry"
-    },
     "tags": [],
     "options": [],
-    "choose": null
+    "choose": null,
+    "damage_type": "fire",
+    "save_ability": "dexterity",
+    "save_success": "half",
+    "damage": {
+      "dice": "2d6",
+      "with_modifier": false
+    },
+    "scaling": [
+      [
+        6,
+        {
+          "dice": "3d6",
+          "with_modifier": false
+        }
+      ],
+      [
+        11,
+        {
+          "dice": "4d6",
+          "with_modifier": false
+        }
+      ],
+      [
+        16,
+        {
+          "dice": "5d6",
+          "with_modifier": false
+        }
+      ]
+    ],
+    "area": {
+      "shape": "cone",
+      "size": 15
+    },
+    "uses": "1/rest",
+    "grants_proficiency": [],
+    "races": [
+      "Dragonborn"
+    ],
+    "subraces": [],
+    "parent": "Draconic Ancestry"
   },
   {
     "index": "draconic-ancestry-silver",
     "name": "Draconic Ancestry (Silver)",
     "text": "You have draconic ancestry. Choose one type of dragon from the Draconic Ancestry table. Your breath weapon and damage resistance are determined by the dragon type, as shown in the table.",
-    "numbers": {},
-    "notes": {
-      "damage-type": "Cold",
-      "save": "CON (half on success)",
-      "damage": "2d6 cold",
-      "scaling": "level 6: 3d6, level 11: 4d6, level 16: 5d6",
-      "area": "15-foot cone",
-      "uses": "1/rest",
-      "races": "Dragonborn",
-      "parent": "Draconic Ancestry"
-    },
     "tags": [],
     "options": [],
-    "choose": null
+    "choose": null,
+    "damage_type": "cold",
+    "save_ability": "constitution",
+    "save_success": "half",
+    "damage": {
+      "dice": "2d6",
+      "with_modifier": false
+    },
+    "scaling": [
+      [
+        6,
+        {
+          "dice": "3d6",
+          "with_modifier": false
+        }
+      ],
+      [
+        11,
+        {
+          "dice": "4d6",
+          "with_modifier": false
+        }
+      ],
+      [
+        16,
+        {
+          "dice": "5d6",
+          "with_modifier": false
+        }
+      ]
+    ],
+    "area": {
+      "shape": "cone",
+      "size": 15
+    },
+    "uses": "1/rest",
+    "grants_proficiency": [],
+    "races": [
+      "Dragonborn"
+    ],
+    "subraces": [],
+    "parent": "Draconic Ancestry"
   },
   {
     "index": "draconic-ancestry-white",
     "name": "Draconic Ancestry (White)",
     "text": "You have draconic ancestry. Choose one type of dragon from the Draconic Ancestry table. Your breath weapon and damage resistance are determined by the dragon type, as shown in the table.",
-    "numbers": {},
-    "notes": {
-      "damage-type": "Cold",
-      "save": "CON (half on success)",
-      "damage": "2d6 cold",
-      "scaling": "level 6: 3d6, level 11: 4d6, level 16: 5d6",
-      "area": "15-foot cone",
-      "uses": "1/rest",
-      "races": "Dragonborn",
-      "parent": "Draconic Ancestry"
-    },
     "tags": [],
     "options": [],
-    "choose": null
+    "choose": null,
+    "damage_type": "cold",
+    "save_ability": "constitution",
+    "save_success": "half",
+    "damage": {
+      "dice": "2d6",
+      "with_modifier": false
+    },
+    "scaling": [
+      [
+        6,
+        {
+          "dice": "3d6",
+          "with_modifier": false
+        }
+      ],
+      [
+        11,
+        {
+          "dice": "4d6",
+          "with_modifier": false
+        }
+      ],
+      [
+        16,
+        {
+          "dice": "5d6",
+          "with_modifier": false
+        }
+      ]
+    ],
+    "area": {
+      "shape": "cone",
+      "size": 15
+    },
+    "uses": "1/rest",
+    "grants_proficiency": [],
+    "races": [
+      "Dragonborn"
+    ],
+    "subraces": [],
+    "parent": "Draconic Ancestry"
   },
   {
     "index": "breath-weapon",
     "name": "Breath Weapon",
     "text": "You can use your action to exhale destructive energy. Your draconic ancestry determines the size, shape, and damage type of the exhalation.\n\nWhen you use your breath weapon, each creature in the area of the exhalation must make a saving throw, the type of which is determined by your draconic ancestry. The DC for this saving throw equals 8 + your Constitution modifier + your proficiency bonus. A creature takes 2d6 damage on a failed save, and half as much damage on a successful one. The damage increases to 3d6 at 6th level, 4d6 at 11th level, and 5d6 at 16th level.\n\nAfter you use your breath weapon, you cannot use it again until you complete a short or long rest.",
-    "numbers": {},
-    "notes": {
-      "races": "Dragonborn"
-    },
     "tags": [],
     "options": [],
-    "choose": null
+    "choose": null,
+    "damage_type": null,
+    "save_ability": null,
+    "save_success": null,
+    "damage": null,
+    "scaling": [],
+    "area": null,
+    "uses": null,
+    "grants_proficiency": [],
+    "races": [
+      "Dragonborn"
+    ],
+    "subraces": [],
+    "parent": null
   },
   {
     "index": "damage-resistance",
     "name": "Damage Resistance",
     "text": "You have resistance to the damage type associated with your draconic ancestry.",
-    "numbers": {},
-    "notes": {
-      "races": "Dragonborn"
-    },
     "tags": [],
     "options": [],
-    "choose": null
+    "choose": null,
+    "damage_type": null,
+    "save_ability": null,
+    "save_success": null,
+    "damage": null,
+    "scaling": [],
+    "area": null,
+    "uses": null,
+    "grants_proficiency": [],
+    "races": [
+      "Dragonborn"
+    ],
+    "subraces": [],
+    "parent": null
   },
   {
     "index": "gnome-cunning",
     "name": "Gnome Cunning",
     "text": "You have advantage on all Intelligence, Wisdom, and Charisma saving throws against magic.",
-    "numbers": {},
-    "notes": {
-      "races": "Gnome"
-    },
     "tags": [],
     "options": [],
-    "choose": null
+    "choose": null,
+    "damage_type": null,
+    "save_ability": null,
+    "save_success": null,
+    "damage": null,
+    "scaling": [],
+    "area": null,
+    "uses": null,
+    "grants_proficiency": [],
+    "races": [
+      "Gnome"
+    ],
+    "subraces": [],
+    "parent": null
   },
   {
     "index": "artificers-lore",
     "name": "Artificer's Lore",
     "text": "Whenever you make an Intelligence (History) check related to magic items, alchemical objects, or technological devices, you can add twice your proficiency bonus, instead of any proficiency bonus you normally apply.",
-    "numbers": {},
-    "notes": {
-      "subraces": "Rock Gnome"
-    },
     "tags": [],
     "options": [],
-    "choose": null
+    "choose": null,
+    "damage_type": null,
+    "save_ability": null,
+    "save_success": null,
+    "damage": null,
+    "scaling": [],
+    "area": null,
+    "uses": null,
+    "grants_proficiency": [],
+    "races": [],
+    "subraces": [
+      "Rock Gnome"
+    ],
+    "parent": null
   },
   {
     "index": "tinker",
     "name": "Tinker",
     "text": "You have proficiency with artisan's tools (tinker's tools). Using those tools, you can spend 1 hour and 10 gp worth of materials to construct a Tiny clockwork device (AC 5, 1 hp). The device ceases to function after 24 hours (unless you spend 1 hour repairing it to keep the device functioning), or when you use your action to dismantle it; at that time, you can reclaim the materials used to create it. You can have up to three such devices active at a time.\n\nWhen you create a device, choose one of the following options:\n\nClockwork Toy: This toy is a clockwork animal, monster, or person, such as a frog, mouse, bird, dragon, or soldier. When placed on the ground, the toy moves 5 feet across the ground on each of your turns in a random direction. It makes noises as appropriate to the creature it represents.\n\nFire Starter: The device produces a miniature flame, which you can use to light a candle, torch, or campfire. Using the device requires your action.\n\nMusic Box: When opened, this music box plays a single song at a moderate volume. The box stops playing when it reaches the song's end or when it is closed.",
-    "numbers": {},
-    "notes": {
-      "grants-proficiency": "Tinker's Tools",
-      "subraces": "Rock Gnome"
-    },
     "tags": [],
     "options": [],
-    "choose": null
+    "choose": null,
+    "damage_type": null,
+    "save_ability": null,
+    "save_success": null,
+    "damage": null,
+    "scaling": [],
+    "area": null,
+    "uses": null,
+    "grants_proficiency": [
+      "Tinker's Tools"
+    ],
+    "races": [],
+    "subraces": [
+      "Rock Gnome"
+    ],
+    "parent": null
   },
   {
     "index": "skill-versatility",
     "name": "Skill Versatility",
     "text": "You gain proficiency in two skills of your choice.",
-    "numbers": {},
-    "notes": {
-      "races": "Half-Elf"
-    },
     "tags": [],
     "options": [
       {
@@ -767,67 +1277,126 @@
         "index": "skill-survival"
       }
     ],
-    "choose": 2
+    "choose": 2,
+    "damage_type": null,
+    "save_ability": null,
+    "save_success": null,
+    "damage": null,
+    "scaling": [],
+    "area": null,
+    "uses": null,
+    "grants_proficiency": [],
+    "races": [
+      "Half-Elf"
+    ],
+    "subraces": [],
+    "parent": null
   },
   {
     "index": "menacing",
     "name": "Menacing",
     "text": "You gain proficiency in the Intimidation skill.",
-    "numbers": {},
-    "notes": {
-      "grants-proficiency": "Skill: Intimidation",
-      "races": "Half-Orc"
-    },
     "tags": [],
     "options": [],
-    "choose": null
+    "choose": null,
+    "damage_type": null,
+    "save_ability": null,
+    "save_success": null,
+    "damage": null,
+    "scaling": [],
+    "area": null,
+    "uses": null,
+    "grants_proficiency": [
+      "Skill: Intimidation"
+    ],
+    "races": [
+      "Half-Orc"
+    ],
+    "subraces": [],
+    "parent": null
   },
   {
     "index": "relentless-endurance",
     "name": "Relentless Endurance",
     "text": "When you are reduced to 0 hit points but not killed outright, you can drop to 1 hit point instead. you cannot use this feature again until you finish a long rest.",
-    "numbers": {},
-    "notes": {
-      "races": "Half-Orc"
-    },
     "tags": [],
     "options": [],
-    "choose": null
+    "choose": null,
+    "damage_type": null,
+    "save_ability": null,
+    "save_success": null,
+    "damage": null,
+    "scaling": [],
+    "area": null,
+    "uses": null,
+    "grants_proficiency": [],
+    "races": [
+      "Half-Orc"
+    ],
+    "subraces": [],
+    "parent": null
   },
   {
     "index": "savage-attacks",
     "name": "Savage Attacks",
     "text": "When you score a critical hit with a melee weapon attack, you can roll one of the weapon's damage dice one additional time and add it to the extra damage of the critical hit.",
-    "numbers": {},
-    "notes": {
-      "races": "Half-Orc"
-    },
     "tags": [],
     "options": [],
-    "choose": null
+    "choose": null,
+    "damage_type": null,
+    "save_ability": null,
+    "save_success": null,
+    "damage": null,
+    "scaling": [],
+    "area": null,
+    "uses": null,
+    "grants_proficiency": [],
+    "races": [
+      "Half-Orc"
+    ],
+    "subraces": [],
+    "parent": null
   },
   {
     "index": "hellish-resistance",
     "name": "Hellish Resistance",
     "text": "You have resistance to fire damage.",
-    "numbers": {},
-    "notes": {
-      "races": "Tiefling"
-    },
     "tags": [],
     "options": [],
-    "choose": null
+    "choose": null,
+    "damage_type": null,
+    "save_ability": null,
+    "save_success": null,
+    "damage": null,
+    "scaling": [],
+    "area": null,
+    "uses": null,
+    "grants_proficiency": [],
+    "races": [
+      "Tiefling"
+    ],
+    "subraces": [],
+    "parent": null
   },
   {
     "index": "infernal-legacy",
     "name": "Infernal Legacy",
     "text": "You know the thaumaturgy cantrip. When you reach 3rd level, you can cast the hellish rebuke spell as a 2nd-level spell once with this trait and regain the ability to do so when you finish a long rest. When you reach 5th level, you can cast the darkness spell once with this trait and regain the ability to do so when you finish a long rest. Charisma is your spellcasting ability for these spells.",
-    "numbers": {},
-    "notes": {
-      "races": "Tiefling"
-    },
     "tags": [],
     "options": [],
-    "choose": null
+    "choose": null,
+    "damage_type": null,
+    "save_ability": null,
+    "save_success": null,
+    "damage": null,
+    "scaling": [],
+    "area": null,
+    "uses": null,
+    "grants_proficiency": [],
+    "races": [
+      "Tiefling"
+    ],
+    "subraces": [],
+    "parent": null
   }
 ]

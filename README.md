@@ -14,7 +14,7 @@ The Director answers with one structured turn plan — the single action resolve
 fiction consequences keyed by outcome, and unconditional effects. Engine code validates the plan
 against committed state, resolves it deterministically on a draft (rolls, costs, intrinsic
 outcomes), and core commits a fully revalidated state. An engine is data plus typed actions and
-their resolvers: a sheet template, lenient content records, and the rules procedure in code. The
+their resolvers: a sheet template, typed content records, and the rules procedure in code. The
 Narrator receives no unrevealed canon; for visible entities it receives the same state as the
 other roles, with instructions to translate mechanics into fiction rather than recite stat blocks.
 

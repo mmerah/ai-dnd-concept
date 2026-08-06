@@ -3,502 +3,600 @@
     "index": "camel",
     "name": "Camel",
     "text": "Mounts and Other Animals. Speed 50 ft/round. Capacity: 480 lb. Cost 50 gp.",
-    "numbers": {
-      "cost-gp": 50,
-      "speed": 50,
-      "capacity-lb": 480
-    },
-    "notes": {},
     "tags": [],
     "options": [],
-    "choose": null
+    "choose": null,
+    "cost": {
+      "unit": "gp",
+      "amount": 50
+    },
+    "speed": 50,
+    "speed_mph": null,
+    "capacity_lb": 480
   },
   {
     "index": "donkey",
     "name": "Donkey",
     "text": "Mounts and Other Animals. Speed 40 ft/round. Capacity: 420 lb. Cost 8 gp.",
-    "numbers": {
-      "cost-gp": 8,
-      "speed": 40,
-      "capacity-lb": 420
-    },
-    "notes": {},
     "tags": [],
     "options": [],
-    "choose": null
+    "choose": null,
+    "cost": {
+      "unit": "gp",
+      "amount": 8
+    },
+    "speed": 40,
+    "speed_mph": null,
+    "capacity_lb": 420
   },
   {
     "index": "mule",
     "name": "Mule",
     "text": "Mounts and Other Animals. Speed 40 ft/round. Capacity: 420 lb. Cost 8 gp.",
-    "numbers": {
-      "cost-gp": 8,
-      "speed": 40,
-      "capacity-lb": 420
-    },
-    "notes": {},
     "tags": [],
     "options": [],
-    "choose": null
+    "choose": null,
+    "cost": {
+      "unit": "gp",
+      "amount": 8
+    },
+    "speed": 40,
+    "speed_mph": null,
+    "capacity_lb": 420
   },
   {
     "index": "elephant",
     "name": "Elephant",
     "text": "Mounts and Other Animals. Speed 40 ft/round. Capacity: 1,320 lb. Cost 200 gp.",
-    "numbers": {
-      "cost-gp": 200,
-      "speed": 40,
-      "capacity-lb": 1320
-    },
-    "notes": {},
     "tags": [],
     "options": [],
-    "choose": null
+    "choose": null,
+    "cost": {
+      "unit": "gp",
+      "amount": 200
+    },
+    "speed": 40,
+    "speed_mph": null,
+    "capacity_lb": 1320
   },
   {
     "index": "horse-draft",
     "name": "Horse, draft",
     "text": "Mounts and Other Animals. Speed 40 ft/round. Capacity: 540 lb. Cost 50 gp.",
-    "numbers": {
-      "cost-gp": 50,
-      "speed": 40,
-      "capacity-lb": 540
-    },
-    "notes": {},
     "tags": [],
     "options": [],
-    "choose": null
+    "choose": null,
+    "cost": {
+      "unit": "gp",
+      "amount": 50
+    },
+    "speed": 40,
+    "speed_mph": null,
+    "capacity_lb": 540
   },
   {
     "index": "horse-riding",
     "name": "Horse, riding",
     "text": "Mounts and Other Animals. Speed 60 ft/round. Capacity: 480 lb. Cost 75 gp.",
-    "numbers": {
-      "cost-gp": 75,
-      "speed": 60,
-      "capacity-lb": 480
-    },
-    "notes": {},
     "tags": [],
     "options": [],
-    "choose": null
+    "choose": null,
+    "cost": {
+      "unit": "gp",
+      "amount": 75
+    },
+    "speed": 60,
+    "speed_mph": null,
+    "capacity_lb": 480
   },
   {
     "index": "mastiff",
     "name": "Mastiff",
     "text": "Mounts and Other Animals. Speed 40 ft/round. Capacity: 195 lb. Cost 25 gp.",
-    "numbers": {
-      "cost-gp": 25,
-      "speed": 40,
-      "capacity-lb": 195
-    },
-    "notes": {},
     "tags": [],
     "options": [],
-    "choose": null
+    "choose": null,
+    "cost": {
+      "unit": "gp",
+      "amount": 25
+    },
+    "speed": 40,
+    "speed_mph": null,
+    "capacity_lb": 195
   },
   {
     "index": "pony",
     "name": "Pony",
     "text": "Mounts and Other Animals. Speed 40 ft/round. Capacity: 225 lb. Cost 30 gp.",
-    "numbers": {
-      "cost-gp": 30,
-      "speed": 40,
-      "capacity-lb": 225
-    },
-    "notes": {},
     "tags": [],
     "options": [],
-    "choose": null
+    "choose": null,
+    "cost": {
+      "unit": "gp",
+      "amount": 30
+    },
+    "speed": 40,
+    "speed_mph": null,
+    "capacity_lb": 225
   },
   {
     "index": "warhorse",
     "name": "Warhorse",
     "text": "Mounts and Other Animals. Speed 60 ft/round. Capacity: 540 lb. Cost 400 gp.",
-    "numbers": {
-      "cost-gp": 400,
-      "speed": 60,
-      "capacity-lb": 540
-    },
-    "notes": {},
     "tags": [],
     "options": [],
-    "choose": null
+    "choose": null,
+    "cost": {
+      "unit": "gp",
+      "amount": 400
+    },
+    "speed": 60,
+    "speed_mph": null,
+    "capacity_lb": 540
   },
   {
     "index": "barding-padded",
     "name": "Barding: Padded",
     "text": "Tack, Harness, and Drawn Vehicles. Cost 20 gp. Weight 16 lb.\n\nBarding is armor designed to protect an animal's head, neck, chest, and body. Any type of armor shown on the Armor table can be purchased as barding. The cost is four times the equivalent armor made for humanoids, and it weighs twice as much.",
-    "numbers": {
-      "cost-gp": 20
-    },
-    "notes": {},
     "tags": [],
     "options": [],
-    "choose": null
+    "choose": null,
+    "cost": {
+      "unit": "gp",
+      "amount": 20
+    },
+    "speed": null,
+    "speed_mph": null,
+    "capacity_lb": null
   },
   {
     "index": "barding-leather",
     "name": "Barding: Leather",
     "text": "Tack, Harness, and Drawn Vehicles. Cost 40 gp. Weight 20 lb.\n\nBarding is armor designed to protect an animal's head, neck, chest, and body. Any type of armor shown on the Armor table can be purchased as barding. The cost is four times the equivalent armor made for humanoids, and it weighs twice as much.",
-    "numbers": {
-      "cost-gp": 40
-    },
-    "notes": {},
     "tags": [],
     "options": [],
-    "choose": null
+    "choose": null,
+    "cost": {
+      "unit": "gp",
+      "amount": 40
+    },
+    "speed": null,
+    "speed_mph": null,
+    "capacity_lb": null
   },
   {
     "index": "barding-studded-leather",
     "name": "Barding: Studded Leather",
     "text": "Tack, Harness, and Drawn Vehicles. Cost 180 gp. Weight 26 lb.\n\nBarding is armor designed to protect an animal's head, neck, chest, and body. Any type of armor shown on the Armor table can be purchased as barding. The cost is four times the equivalent armor made for humanoids, and it weighs twice as much.",
-    "numbers": {
-      "cost-gp": 180
-    },
-    "notes": {},
     "tags": [],
     "options": [],
-    "choose": null
+    "choose": null,
+    "cost": {
+      "unit": "gp",
+      "amount": 180
+    },
+    "speed": null,
+    "speed_mph": null,
+    "capacity_lb": null
   },
   {
     "index": "barding-hide",
     "name": "Barding: Hide",
     "text": "Tack, Harness, and Drawn Vehicles. Cost 40 gp. Weight 24 lb.\n\nBarding is armor designed to protect an animal's head, neck, chest, and body. Any type of armor shown on the Armor table can be purchased as barding. The cost is four times the equivalent armor made for humanoids, and it weighs twice as much.",
-    "numbers": {
-      "cost-gp": 40
-    },
-    "notes": {},
     "tags": [],
     "options": [],
-    "choose": null
+    "choose": null,
+    "cost": {
+      "unit": "gp",
+      "amount": 40
+    },
+    "speed": null,
+    "speed_mph": null,
+    "capacity_lb": null
   },
   {
     "index": "barding-chain-shirt",
     "name": "Barding: Chain shirt",
     "text": "Tack, Harness, and Drawn Vehicles. Cost 200 gp. Weight 40 lb.\n\nBarding is armor designed to protect an animal's head, neck, chest, and body. Any type of armor shown on the Armor table can be purchased as barding. The cost is four times the equivalent armor made for humanoids, and it weighs twice as much.",
-    "numbers": {
-      "cost-gp": 200
-    },
-    "notes": {},
     "tags": [],
     "options": [],
-    "choose": null
+    "choose": null,
+    "cost": {
+      "unit": "gp",
+      "amount": 200
+    },
+    "speed": null,
+    "speed_mph": null,
+    "capacity_lb": null
   },
   {
     "index": "barding-scale-mail",
     "name": "Barding: Scale mail",
     "text": "Tack, Harness, and Drawn Vehicles. Cost 200 gp. Weight 90 lb.\n\nBarding is armor designed to protect an animal's head, neck, chest, and body. Any type of armor shown on the Armor table can be purchased as barding. The cost is four times the equivalent armor made for humanoids, and it weighs twice as much.",
-    "numbers": {
-      "cost-gp": 200
-    },
-    "notes": {},
     "tags": [],
     "options": [],
-    "choose": null
+    "choose": null,
+    "cost": {
+      "unit": "gp",
+      "amount": 200
+    },
+    "speed": null,
+    "speed_mph": null,
+    "capacity_lb": null
   },
   {
     "index": "barding-breastplate",
     "name": "Barding: Breastplate",
     "text": "Tack, Harness, and Drawn Vehicles. Cost 1600 gp. Weight 40 lb.\n\nBarding is armor designed to protect an animal's head, neck, chest, and body. Any type of armor shown on the Armor table can be purchased as barding. The cost is four times the equivalent armor made for humanoids, and it weighs twice as much.",
-    "numbers": {
-      "cost-gp": 1600
-    },
-    "notes": {},
     "tags": [],
     "options": [],
-    "choose": null
+    "choose": null,
+    "cost": {
+      "unit": "gp",
+      "amount": 1600
+    },
+    "speed": null,
+    "speed_mph": null,
+    "capacity_lb": null
   },
   {
     "index": "barding-half-plate",
     "name": "Barding: Half plate",
     "text": "Tack, Harness, and Drawn Vehicles. Cost 3000 gp. Weight 80 lb.\n\nBarding is armor designed to protect an animal's head, neck, chest, and body. Any type of armor shown on the Armor table can be purchased as barding. The cost is four times the equivalent armor made for humanoids, and it weighs twice as much.",
-    "numbers": {
-      "cost-gp": 3000
-    },
-    "notes": {},
     "tags": [],
     "options": [],
-    "choose": null
+    "choose": null,
+    "cost": {
+      "unit": "gp",
+      "amount": 3000
+    },
+    "speed": null,
+    "speed_mph": null,
+    "capacity_lb": null
   },
   {
     "index": "barding-ring-mail",
     "name": "Barding: Ring mail",
     "text": "Tack, Harness, and Drawn Vehicles. Cost 12 gp. Weight 80 lb.\n\nBarding is armor designed to protect an animal's head, neck, chest, and body. Any type of armor shown on the Armor table can be purchased as barding. The cost is four times the equivalent armor made for humanoids, and it weighs twice as much.",
-    "numbers": {
-      "cost-gp": 12
-    },
-    "notes": {},
     "tags": [],
     "options": [],
-    "choose": null
+    "choose": null,
+    "cost": {
+      "unit": "gp",
+      "amount": 12
+    },
+    "speed": null,
+    "speed_mph": null,
+    "capacity_lb": null
   },
   {
     "index": "barding-chain-mail",
     "name": "Barding: Chain mail",
     "text": "Tack, Harness, and Drawn Vehicles. Cost 300 gp. Weight 110 lb.\n\nBarding is armor designed to protect an animal's head, neck, chest, and body. Any type of armor shown on the Armor table can be purchased as barding. The cost is four times the equivalent armor made for humanoids, and it weighs twice as much.",
-    "numbers": {
-      "cost-gp": 300
-    },
-    "notes": {},
     "tags": [],
     "options": [],
-    "choose": null
+    "choose": null,
+    "cost": {
+      "unit": "gp",
+      "amount": 300
+    },
+    "speed": null,
+    "speed_mph": null,
+    "capacity_lb": null
   },
   {
     "index": "barding-splint",
     "name": "Barding: Splint",
     "text": "Tack, Harness, and Drawn Vehicles. Cost 800 gp. Weight 120 lb.\n\nBarding is armor designed to protect an animal's head, neck, chest, and body. Any type of armor shown on the Armor table can be purchased as barding. The cost is four times the equivalent armor made for humanoids, and it weighs twice as much.",
-    "numbers": {
-      "cost-gp": 800
-    },
-    "notes": {},
     "tags": [],
     "options": [],
-    "choose": null
+    "choose": null,
+    "cost": {
+      "unit": "gp",
+      "amount": 800
+    },
+    "speed": null,
+    "speed_mph": null,
+    "capacity_lb": null
   },
   {
     "index": "barding-plate",
     "name": "Barding: Plate",
     "text": "Tack, Harness, and Drawn Vehicles. Cost 6000 gp. Weight 130 lb.\n\nBarding is armor designed to protect an animal's head, neck, chest, and body. Any type of armor shown on the Armor table can be purchased as barding. The cost is four times the equivalent armor made for humanoids, and it weighs twice as much.",
-    "numbers": {
-      "cost-gp": 6000
-    },
-    "notes": {},
     "tags": [],
     "options": [],
-    "choose": null
+    "choose": null,
+    "cost": {
+      "unit": "gp",
+      "amount": 6000
+    },
+    "speed": null,
+    "speed_mph": null,
+    "capacity_lb": null
   },
   {
     "index": "bit-and-bridle",
     "name": "Bit and bridle",
     "text": "Tack, Harness, and Drawn Vehicles. Cost 2 gp. Weight 1 lb.",
-    "numbers": {
-      "cost-gp": 2
-    },
-    "notes": {},
     "tags": [],
     "options": [],
-    "choose": null
+    "choose": null,
+    "cost": {
+      "unit": "gp",
+      "amount": 2
+    },
+    "speed": null,
+    "speed_mph": null,
+    "capacity_lb": null
   },
   {
     "index": "carriage",
     "name": "Carriage",
     "text": "Tack, Harness, and Drawn Vehicles. Cost 100 gp. Weight 600 lb.",
-    "numbers": {
-      "cost-gp": 100
-    },
-    "notes": {},
     "tags": [],
     "options": [],
-    "choose": null
+    "choose": null,
+    "cost": {
+      "unit": "gp",
+      "amount": 100
+    },
+    "speed": null,
+    "speed_mph": null,
+    "capacity_lb": null
   },
   {
     "index": "cart",
     "name": "Cart",
     "text": "Tack, Harness, and Drawn Vehicles. Cost 15 gp. Weight 200 lb.",
-    "numbers": {
-      "cost-gp": 15
-    },
-    "notes": {},
     "tags": [],
     "options": [],
-    "choose": null
+    "choose": null,
+    "cost": {
+      "unit": "gp",
+      "amount": 15
+    },
+    "speed": null,
+    "speed_mph": null,
+    "capacity_lb": null
   },
   {
     "index": "chariot",
     "name": "Chariot",
     "text": "Tack, Harness, and Drawn Vehicles. Cost 250 gp. Weight 100 lb.",
-    "numbers": {
-      "cost-gp": 250
-    },
-    "notes": {},
     "tags": [],
     "options": [],
-    "choose": null
+    "choose": null,
+    "cost": {
+      "unit": "gp",
+      "amount": 250
+    },
+    "speed": null,
+    "speed_mph": null,
+    "capacity_lb": null
   },
   {
     "index": "animal-feed-1-day",
     "name": "Animal Feed (1 day)",
     "text": "Tack, Harness, and Drawn Vehicles. Cost 5 cp. Weight 10 lb.",
-    "numbers": {
-      "cost-cp": 5
-    },
-    "notes": {},
     "tags": [],
     "options": [],
-    "choose": null
+    "choose": null,
+    "cost": {
+      "unit": "cp",
+      "amount": 5
+    },
+    "speed": null,
+    "speed_mph": null,
+    "capacity_lb": null
   },
   {
     "index": "saddle-exotic",
     "name": "Saddle, Exotic",
     "text": "Tack, Harness, and Drawn Vehicles. Cost 60 gp. Weight 50 lb.\n\nAn exotic saddle is required for riding any aquatic or flying mount.",
-    "numbers": {
-      "cost-gp": 60
-    },
-    "notes": {},
     "tags": [],
     "options": [],
-    "choose": null
+    "choose": null,
+    "cost": {
+      "unit": "gp",
+      "amount": 60
+    },
+    "speed": null,
+    "speed_mph": null,
+    "capacity_lb": null
   },
   {
     "index": "saddle-military",
     "name": "Saddle, Military",
     "text": "Tack, Harness, and Drawn Vehicles. Cost 20 gp. Weight 30 lb.\n\nA military saddle braces the rider, helping you keep your seat on an active mount in battle. It gives you advantage on any check you make to remain mounted.",
-    "numbers": {
-      "cost-gp": 20
-    },
-    "notes": {},
     "tags": [],
     "options": [],
-    "choose": null
+    "choose": null,
+    "cost": {
+      "unit": "gp",
+      "amount": 20
+    },
+    "speed": null,
+    "speed_mph": null,
+    "capacity_lb": null
   },
   {
     "index": "saddle-pack",
     "name": "Saddle, Pack",
     "text": "Tack, Harness, and Drawn Vehicles. Cost 5 gp. Weight 15 lb.",
-    "numbers": {
-      "cost-gp": 5
-    },
-    "notes": {},
     "tags": [],
     "options": [],
-    "choose": null
+    "choose": null,
+    "cost": {
+      "unit": "gp",
+      "amount": 5
+    },
+    "speed": null,
+    "speed_mph": null,
+    "capacity_lb": null
   },
   {
     "index": "saddle-riding",
     "name": "Saddle, Riding",
     "text": "Tack, Harness, and Drawn Vehicles. Cost 10 gp. Weight 25 lb.",
-    "numbers": {
-      "cost-gp": 10
-    },
-    "notes": {},
     "tags": [],
     "options": [],
-    "choose": null
+    "choose": null,
+    "cost": {
+      "unit": "gp",
+      "amount": 10
+    },
+    "speed": null,
+    "speed_mph": null,
+    "capacity_lb": null
   },
   {
     "index": "saddlebags",
     "name": "Saddlebags",
     "text": "Tack, Harness, and Drawn Vehicles. Cost 4 gp. Weight 8 lb.",
-    "numbers": {
-      "cost-gp": 4
-    },
-    "notes": {},
     "tags": [],
     "options": [],
-    "choose": null
+    "choose": null,
+    "cost": {
+      "unit": "gp",
+      "amount": 4
+    },
+    "speed": null,
+    "speed_mph": null,
+    "capacity_lb": null
   },
   {
     "index": "sled",
     "name": "Sled",
     "text": "Tack, Harness, and Drawn Vehicles. Cost 20 gp. Weight 300 lb.",
-    "numbers": {
-      "cost-gp": 20
-    },
-    "notes": {},
     "tags": [],
     "options": [],
-    "choose": null
+    "choose": null,
+    "cost": {
+      "unit": "gp",
+      "amount": 20
+    },
+    "speed": null,
+    "speed_mph": null,
+    "capacity_lb": null
   },
   {
     "index": "stabling-1-day",
     "name": "Stabling (1 day)",
     "text": "Tack, Harness, and Drawn Vehicles. Cost 5 sp. Weight 0 lb.",
-    "numbers": {
-      "cost-sp": 5
-    },
-    "notes": {},
     "tags": [],
     "options": [],
-    "choose": null
+    "choose": null,
+    "cost": {
+      "unit": "sp",
+      "amount": 5
+    },
+    "speed": null,
+    "speed_mph": null,
+    "capacity_lb": null
   },
   {
     "index": "wagon",
     "name": "Wagon",
     "text": "Tack, Harness, and Drawn Vehicles. Cost 35 gp. Weight 400 lb.",
-    "numbers": {
-      "cost-gp": 35
-    },
-    "notes": {},
     "tags": [],
     "options": [],
-    "choose": null
+    "choose": null,
+    "cost": {
+      "unit": "gp",
+      "amount": 35
+    },
+    "speed": null,
+    "speed_mph": null,
+    "capacity_lb": null
   },
   {
     "index": "galley",
     "name": "Galley",
     "text": "Waterborne Vehicles. Speed 4 mph. Cost 30000 gp.",
-    "numbers": {
-      "cost-gp": 30000,
-      "speed-mph": 4
-    },
-    "notes": {},
     "tags": [],
     "options": [],
-    "choose": null
+    "choose": null,
+    "cost": {
+      "unit": "gp",
+      "amount": 30000
+    },
+    "speed": null,
+    "speed_mph": 4,
+    "capacity_lb": null
   },
   {
     "index": "keelboat",
     "name": "Keelboat",
     "text": "Waterborne Vehicles. Speed 1 mph. Cost 3000 gp.\n\nKeelboats and rowboats are used on lakes and rivers. If going downstream, add the speed of the current (typically 3 miles per hour) to the speed of the vehicle. These vehicles can't be rowed against any significant current, but they can be pulled upstream by draft animals on the shores. A rowboat weighs 100 pounds, in case adventurers carry it over land.",
-    "numbers": {
-      "cost-gp": 3000,
-      "speed-mph": 1
-    },
-    "notes": {},
     "tags": [],
     "options": [],
-    "choose": null
+    "choose": null,
+    "cost": {
+      "unit": "gp",
+      "amount": 3000
+    },
+    "speed": null,
+    "speed_mph": 1,
+    "capacity_lb": null
   },
   {
     "index": "longship",
     "name": "Longship",
     "text": "Waterborne Vehicles. Speed 3 mph. Cost 10000 gp.",
-    "numbers": {
-      "cost-gp": 10000,
-      "speed-mph": 3
-    },
-    "notes": {},
     "tags": [],
     "options": [],
-    "choose": null
+    "choose": null,
+    "cost": {
+      "unit": "gp",
+      "amount": 10000
+    },
+    "speed": null,
+    "speed_mph": 3,
+    "capacity_lb": null
   },
   {
     "index": "rowboat",
     "name": "Rowboat",
     "text": "Waterborne Vehicles. Speed 1.5 mph. Cost 50 gp.\n\nKeelboats and rowboats are used on lakes and rivers. If going downstream, add the speed of the current (typically 3 miles per hour) to the speed of the vehicle. These vehicles can't be rowed against any significant current, but they can be pulled upstream by draft animals on the shores. A rowboat weighs 100 pounds, in case adventurers carry it over land.",
-    "numbers": {
-      "cost-gp": 50
-    },
-    "notes": {},
     "tags": [],
     "options": [],
-    "choose": null
+    "choose": null,
+    "cost": {
+      "unit": "gp",
+      "amount": 50
+    },
+    "speed": null,
+    "speed_mph": null,
+    "capacity_lb": null
   },
   {
     "index": "sailing-ship",
     "name": "Sailing ship",
     "text": "Waterborne Vehicles. Speed 2 mph. Cost 10000 gp.",
-    "numbers": {
-      "cost-gp": 10000,
-      "speed-mph": 2
-    },
-    "notes": {},
     "tags": [],
     "options": [],
-    "choose": null
+    "choose": null,
+    "cost": {
+      "unit": "gp",
+      "amount": 10000
+    },
+    "speed": null,
+    "speed_mph": 2,
+    "capacity_lb": null
   },
   {
     "index": "warship",
     "name": "Warship",
     "text": "Waterborne Vehicles. Speed 2.5 mph. Cost 25000 gp.",
-    "numbers": {
-      "cost-gp": 25000
-    },
-    "notes": {},
     "tags": [],
     "options": [],
-    "choose": null
+    "choose": null,
+    "cost": {
+      "unit": "gp",
+      "amount": 25000
+    },
+    "speed": null,
+    "speed_mph": null,
+    "capacity_lb": null
   }
 ]

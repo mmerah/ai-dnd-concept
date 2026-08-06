@@ -6,9 +6,9 @@ from pydantic import Field, model_validator
 
 from .base import Entity, Frozen, Kind, Mutable, Slug
 from .facts import CORE, Fact
-from .packs import EMPTY_FROZEN_MAP, ContentRef, FrozenMap, LenientRecord, Value
+from .packs import EMPTY_FROZEN_MAP, ContentRef, FrozenMap, Record, Value
 
-type ResolveRef = Callable[[ContentRef], LenientRecord | None]
+type ResolveRef = Callable[[ContentRef], Record | None]
 
 _NO_NUMBERS: Mapping[Slug, int] = MappingProxyType({})
 
@@ -284,11 +284,11 @@ def _refs(refs: tuple[ContentRef, ...], resolve: ResolveRef | None) -> str:
     return "".join(f"\n- {_ref_line(ref, resolve(ref))}" for ref in refs)
 
 
-def _ref_line(ref: ContentRef, record: LenientRecord | None) -> str:
+def _ref_line(ref: ContentRef, record: Record | None) -> str:
     if record is None:
         return str(ref)
     facts = "; ".join(
-        (*(f"{key}={value}" for key, value in sorted(record.notes.items())), *record.tags)
+        (*(f"{key}={value}" for key, value in sorted(record.noted().items())), *record.tags)
     )
     return f"{record.name} [{ref}]" + (f" — {facts}" if facts else "")
 

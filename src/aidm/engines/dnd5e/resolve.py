@@ -35,7 +35,7 @@ from .actions import (
     UseFeature,
 )
 from .advance import ADVANCEMENT_READY, LEVEL
-from .content import SpellFacts, spell_of, spellcasting_ability, weapon_of
+from .records import SpellRecord, spell_of, spellcasting_ability, weapon_of
 
 ARMOR_CLASS = "armor-class"
 CONCENTRATION = "concentration"
@@ -85,7 +85,7 @@ def _dnd5e_plan(plan: TurnPlanBase) -> Dnd5ePlan:
 def _labels(engine: Engine, action: Dnd5eAction | None) -> frozenset[Slug]:
     match action:
         case CastSpell():
-            spell = _spell(engine, action)
+            spell = spell_of(engine.content, action.spell)
             return CONTESTED if spell.attack or spell.save_ability is not None else UNCONTESTED
         case Improvise():
             return CONTESTED if action.vs is not None else UNCONTESTED
@@ -167,7 +167,7 @@ def _attack_terms(
         )
     item = _carried(state, attacker, action.weapon_item_id)
     weapon = weapon_of(engine.content, sheet_of(state, item.id))
-    if weapon is None:
+    if weapon is None or (damage := weapon.dice(action.two_handed)) is None:
         raise ValueError(
             f"{item.name} is no weapon. Attack with a weapon the attacker carries, or give "
             "`attack_bonus` and `damage` yourself."
@@ -179,7 +179,7 @@ def _attack_terms(
         ability = max(strength, dexterity)
     else:
         ability = dexterity if weapon.ranged else strength
-    return ability + sheet.numbers.get(PROFICIENCY, 0), weapon.dice(action.two_handed), ability
+    return ability + sheet.numbers.get(PROFICIENCY, 0), damage, ability
 
 
 def _cast(
@@ -187,7 +187,7 @@ def _cast(
 ) -> tuple[list[Fact], Slug | None]:
     caster = require_actor_here(draft, action.actor_id)
     sheet = sheet_of(draft, caster.id)
-    spell = _spell(engine, action)
+    spell = spell_of(engine.content, action.spell)
     modifier = _spell_modifier(engine, sheet)
     slot = _slot_spent(action, spell)
     facts = _seen(draft, caster)
@@ -210,7 +210,7 @@ def _contest(
     draft: GameState,
     engine: Engine,
     action: CastSpell,
-    spell: SpellFacts,
+    spell: SpellRecord,
     caster: Entity,
     modifier: int,
     rng: Random,
@@ -238,7 +238,7 @@ def _spell_effect(
     draft: GameState,
     engine: Engine,
     action: CastSpell,
-    spell: SpellFacts,
+    spell: SpellRecord,
     caster: Entity,
     modifier: int,
     scale: int,
@@ -295,16 +295,6 @@ def _rest(draft: GameState, engine: Engine, action: Rest) -> tuple[list[Fact], N
     return [*seen, entity_fact(actor, "recharged", trace, data)], None
 
 
-def _spell(engine: Engine, action: CastSpell) -> SpellFacts:
-    spell = spell_of(engine.content, action.spell)
-    if spell is None:
-        raise ValueError(
-            f"the rules for {action.spell} are not written in a form this engine resolves: "
-            "resolve it with `improvise` instead"
-        )
-    return spell
-
-
 def _spell_modifier(engine: Engine, sheet: Sheet) -> int:
     ability = spellcasting_ability(engine.content, sheet)
     if ability is None:
@@ -315,7 +305,7 @@ def _spell_modifier(engine: Engine, sheet: Sheet) -> int:
     return _modifier(sheet, ability)
 
 
-def _slot_spent(action: CastSpell, spell: SpellFacts) -> int | None:
+def _slot_spent(action: CastSpell, spell: SpellRecord) -> int | None:
     if spell.level is None:
         if action.slot_level is not None:
             raise ValueError(f"{spell.name} is a cantrip: it spends no slot, so leave it null")
@@ -331,7 +321,7 @@ def _slot_spent(action: CastSpell, spell: SpellFacts) -> int | None:
     return action.slot_level
 
 
-def _spell_target(state: GameState, action: CastSpell, spell: SpellFacts) -> Entity:
+def _spell_target(state: GameState, action: CastSpell, spell: SpellRecord) -> Entity:
     if action.target_id is None:
         raise ValueError(f"{spell.name} is aimed at a creature: name its `target_id`")
     return require_actor_here(state, action.target_id)

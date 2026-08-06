@@ -3,160 +3,211 @@
     "index": "common",
     "name": "Common",
     "text": "Standard language. Script: Common. Typical speakers: Humans.",
-    "numbers": {},
-    "notes": {},
     "tags": [],
     "options": [],
-    "choose": null
+    "choose": null,
+    "category": "Standard",
+    "script": "Common",
+    "typical_speakers": [
+      "Humans"
+    ]
   },
   {
     "index": "dwarvish",
     "name": "Dwarvish",
     "text": "Standard language. Script: Dwarvish. Typical speakers: Dwarves.",
-    "numbers": {},
-    "notes": {},
     "tags": [],
     "options": [],
-    "choose": null
+    "choose": null,
+    "category": "Standard",
+    "script": "Dwarvish",
+    "typical_speakers": [
+      "Dwarves"
+    ]
   },
   {
     "index": "elvish",
     "name": "Elvish",
     "text": "Standard language. Script: Elvish. Typical speakers: Elves.",
-    "numbers": {},
-    "notes": {},
     "tags": [],
     "options": [],
-    "choose": null
+    "choose": null,
+    "category": "Standard",
+    "script": "Elvish",
+    "typical_speakers": [
+      "Elves"
+    ]
   },
   {
     "index": "giant",
     "name": "Giant",
     "text": "Standard language. Script: Dwarvish. Typical speakers: Ogres, Giants.",
-    "numbers": {},
-    "notes": {},
     "tags": [],
     "options": [],
-    "choose": null
+    "choose": null,
+    "category": "Standard",
+    "script": "Dwarvish",
+    "typical_speakers": [
+      "Ogres",
+      "Giants"
+    ]
   },
   {
     "index": "gnomish",
     "name": "Gnomish",
     "text": "Standard language. Script: Dwarvish. Typical speakers: Gnomes.",
-    "numbers": {},
-    "notes": {},
     "tags": [],
     "options": [],
-    "choose": null
+    "choose": null,
+    "category": "Standard",
+    "script": "Dwarvish",
+    "typical_speakers": [
+      "Gnomes"
+    ]
   },
   {
     "index": "goblin",
     "name": "Goblin",
     "text": "Standard language. Script: Dwarvish. Typical speakers: Goblinoids.",
-    "numbers": {},
-    "notes": {},
     "tags": [],
     "options": [],
-    "choose": null
+    "choose": null,
+    "category": "Standard",
+    "script": "Dwarvish",
+    "typical_speakers": [
+      "Goblinoids"
+    ]
   },
   {
     "index": "halfling",
     "name": "Halfling",
     "text": "Standard language. Script: Common. Typical speakers: Halflings.",
-    "numbers": {},
-    "notes": {},
     "tags": [],
     "options": [],
-    "choose": null
+    "choose": null,
+    "category": "Standard",
+    "script": "Common",
+    "typical_speakers": [
+      "Halflings"
+    ]
   },
   {
     "index": "orc",
     "name": "Orc",
     "text": "Standard language. Script: Dwarvish. Typical speakers: Orcs.",
-    "numbers": {},
-    "notes": {},
     "tags": [],
     "options": [],
-    "choose": null
+    "choose": null,
+    "category": "Standard",
+    "script": "Dwarvish",
+    "typical_speakers": [
+      "Orcs"
+    ]
   },
   {
     "index": "abyssal",
     "name": "Abyssal",
     "text": "Exotic language. Script: Infernal. Typical speakers: Demons.",
-    "numbers": {},
-    "notes": {},
     "tags": [],
     "options": [],
-    "choose": null
+    "choose": null,
+    "category": "Exotic",
+    "script": "Infernal",
+    "typical_speakers": [
+      "Demons"
+    ]
   },
   {
     "index": "celestial",
     "name": "Celestial",
     "text": "Exotic language. Script: Celestial. Typical speakers: Celestials.",
-    "numbers": {},
-    "notes": {},
     "tags": [],
     "options": [],
-    "choose": null
+    "choose": null,
+    "category": "Exotic",
+    "script": "Celestial",
+    "typical_speakers": [
+      "Celestials"
+    ]
   },
   {
     "index": "draconic",
     "name": "Draconic",
     "text": "Exotic language. Script: Draconic. Typical speakers: Dragons, Dragonborn.",
-    "numbers": {},
-    "notes": {},
     "tags": [],
     "options": [],
-    "choose": null
+    "choose": null,
+    "category": "Exotic",
+    "script": "Draconic",
+    "typical_speakers": [
+      "Dragons",
+      "Dragonborn"
+    ]
   },
   {
     "index": "deep-speech",
     "name": "Deep Speech",
     "text": "Exotic language. Typical speakers: Aboleths, Cloakers.",
-    "numbers": {},
-    "notes": {},
     "tags": [],
     "options": [],
-    "choose": null
+    "choose": null,
+    "category": "Exotic",
+    "script": "",
+    "typical_speakers": [
+      "Aboleths",
+      "Cloakers"
+    ]
   },
   {
     "index": "infernal",
     "name": "Infernal",
     "text": "Exotic language. Script: Infernal. Typical speakers: Devils.",
-    "numbers": {},
-    "notes": {},
     "tags": [],
     "options": [],
-    "choose": null
+    "choose": null,
+    "category": "Exotic",
+    "script": "Infernal",
+    "typical_speakers": [
+      "Devils"
+    ]
   },
   {
     "index": "primordial",
     "name": "Primordial",
     "text": "Exotic language. Script: Dwarvish. Typical speakers: Elementals.",
-    "numbers": {},
-    "notes": {},
     "tags": [],
     "options": [],
-    "choose": null
+    "choose": null,
+    "category": "Exotic",
+    "script": "Dwarvish",
+    "typical_speakers": [
+      "Elementals"
+    ]
   },
   {
     "index": "sylvan",
     "name": "Sylvan",
     "text": "Exotic language. Script: Elvish. Typical speakers: Fey creatures.",
-    "numbers": {},
-    "notes": {},
     "tags": [],
     "options": [],
-    "choose": null
+    "choose": null,
+    "category": "Exotic",
+    "script": "Elvish",
+    "typical_speakers": [
+      "Fey creatures"
+    ]
   },
   {
     "index": "undercommon",
     "name": "Undercommon",
     "text": "Exotic language. Script: Elvish. Typical speakers: Underdark traders.",
-    "numbers": {},
-    "notes": {},
     "tags": [],
     "options": [],
-    "choose": null
+    "choose": null,
+    "category": "Exotic",
+    "script": "Elvish",
+    "typical_speakers": [
+      "Underdark traders"
+    ]
   }
 ]

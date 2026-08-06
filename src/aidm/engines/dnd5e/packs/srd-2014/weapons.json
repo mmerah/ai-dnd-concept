@@ -3,14 +3,6 @@
     "index": "club",
     "name": "Club",
     "text": "Simple Melee weapon. Damage: 1d4 bludgeoning. Properties: Light, Monk. Cost 1 sp. Weight 2 lb.",
-    "numbers": {
-      "cost-sp": 1,
-      "damage-dice-count": 1,
-      "damage-die": 4
-    },
-    "notes": {
-      "damage": "1d4 bludgeoning"
-    },
     "tags": [
       "melee",
       "bludgeoning",
@@ -18,22 +10,23 @@
       "monk"
     ],
     "options": [],
-    "choose": null
+    "choose": null,
+    "damage": "1d4",
+    "damage_type": "bludgeoning",
+    "versatile_damage": null,
+    "ranged": false,
+    "finesse": false,
+    "cost": {
+      "unit": "sp",
+      "amount": 1
+    },
+    "range": null,
+    "thrown": null
   },
   {
     "index": "dagger",
     "name": "Dagger",
     "text": "Simple Melee weapon. Damage: 1d4 piercing. Thrown range: 20/60 ft. Properties: Finesse, Light, Thrown, Monk. Cost 2 gp. Weight 1 lb.",
-    "numbers": {
-      "cost-gp": 2,
-      "damage-dice-count": 1,
-      "damage-die": 4,
-      "thrown-normal": 20,
-      "thrown-long": 60
-    },
-    "notes": {
-      "damage": "1d4 piercing"
-    },
     "tags": [
       "melee",
       "piercing",
@@ -43,42 +36,49 @@
       "monk"
     ],
     "options": [],
-    "choose": null
+    "choose": null,
+    "damage": "1d4",
+    "damage_type": "piercing",
+    "versatile_damage": null,
+    "ranged": false,
+    "finesse": true,
+    "cost": {
+      "unit": "gp",
+      "amount": 2
+    },
+    "range": null,
+    "thrown": {
+      "normal": 20,
+      "long": 60
+    }
   },
   {
     "index": "greatclub",
     "name": "Greatclub",
     "text": "Simple Melee weapon. Damage: 1d8 bludgeoning. Properties: Two-Handed. Cost 2 sp. Weight 10 lb.",
-    "numbers": {
-      "cost-sp": 2,
-      "damage-dice-count": 1,
-      "damage-die": 8
-    },
-    "notes": {
-      "damage": "1d8 bludgeoning"
-    },
     "tags": [
       "melee",
       "bludgeoning",
       "two-handed"
     ],
     "options": [],
-    "choose": null
+    "choose": null,
+    "damage": "1d8",
+    "damage_type": "bludgeoning",
+    "versatile_damage": null,
+    "ranged": false,
+    "finesse": false,
+    "cost": {
+      "unit": "sp",
+      "amount": 2
+    },
+    "range": null,
+    "thrown": null
   },
   {
     "index": "handaxe",
     "name": "Handaxe",
     "text": "Simple Melee weapon. Damage: 1d6 slashing. Thrown range: 20/60 ft. Properties: Light, Thrown, Monk. Cost 5 gp. Weight 2 lb.",
-    "numbers": {
-      "cost-gp": 5,
-      "damage-dice-count": 1,
-      "damage-die": 6,
-      "thrown-normal": 20,
-      "thrown-long": 60
-    },
-    "notes": {
-      "damage": "1d6 slashing"
-    },
     "tags": [
       "melee",
       "slashing",
@@ -87,22 +87,26 @@
       "monk"
     ],
     "options": [],
-    "choose": null
+    "choose": null,
+    "damage": "1d6",
+    "damage_type": "slashing",
+    "versatile_damage": null,
+    "ranged": false,
+    "finesse": false,
+    "cost": {
+      "unit": "gp",
+      "amount": 5
+    },
+    "range": null,
+    "thrown": {
+      "normal": 20,
+      "long": 60
+    }
   },
   {
     "index": "javelin",
     "name": "Javelin",
     "text": "Simple Melee weapon. Damage: 1d6 piercing. Thrown range: 30/120 ft. Properties: Thrown, Monk. Cost 5 sp. Weight 2 lb.",
-    "numbers": {
-      "cost-sp": 5,
-      "damage-dice-count": 1,
-      "damage-die": 6,
-      "thrown-normal": 30,
-      "thrown-long": 120
-    },
-    "notes": {
-      "damage": "1d6 piercing"
-    },
     "tags": [
       "melee",
       "piercing",
@@ -110,22 +114,26 @@
       "monk"
     ],
     "options": [],
-    "choose": null
+    "choose": null,
+    "damage": "1d6",
+    "damage_type": "piercing",
+    "versatile_damage": null,
+    "ranged": false,
+    "finesse": false,
+    "cost": {
+      "unit": "sp",
+      "amount": 5
+    },
+    "range": null,
+    "thrown": {
+      "normal": 30,
+      "long": 120
+    }
   },
   {
     "index": "light-hammer",
     "name": "Light hammer",
     "text": "Simple Melee weapon. Damage: 1d4 bludgeoning. Thrown range: 20/60 ft. Properties: Light, Thrown, Monk. Cost 2 gp. Weight 2 lb.",
-    "numbers": {
-      "cost-gp": 2,
-      "damage-dice-count": 1,
-      "damage-die": 4,
-      "thrown-normal": 20,
-      "thrown-long": 60
-    },
-    "notes": {
-      "damage": "1d4 bludgeoning"
-    },
     "tags": [
       "melee",
       "bludgeoning",
@@ -134,42 +142,49 @@
       "monk"
     ],
     "options": [],
-    "choose": null
+    "choose": null,
+    "damage": "1d4",
+    "damage_type": "bludgeoning",
+    "versatile_damage": null,
+    "ranged": false,
+    "finesse": false,
+    "cost": {
+      "unit": "gp",
+      "amount": 2
+    },
+    "range": null,
+    "thrown": {
+      "normal": 20,
+      "long": 60
+    }
   },
   {
     "index": "mace",
     "name": "Mace",
     "text": "Simple Melee weapon. Damage: 1d6 bludgeoning. Properties: Monk. Cost 5 gp. Weight 4 lb.",
-    "numbers": {
-      "cost-gp": 5,
-      "damage-dice-count": 1,
-      "damage-die": 6
-    },
-    "notes": {
-      "damage": "1d6 bludgeoning"
-    },
     "tags": [
       "melee",
       "bludgeoning",
       "monk"
     ],
     "options": [],
-    "choose": null
+    "choose": null,
+    "damage": "1d6",
+    "damage_type": "bludgeoning",
+    "versatile_damage": null,
+    "ranged": false,
+    "finesse": false,
+    "cost": {
+      "unit": "gp",
+      "amount": 5
+    },
+    "range": null,
+    "thrown": null
   },
   {
     "index": "quarterstaff",
     "name": "Quarterstaff",
     "text": "Simple Melee weapon. Damage: 1d6 bludgeoning (two-handed 1d8 bludgeoning). Properties: Versatile, Monk. Cost 2 sp. Weight 4 lb.",
-    "numbers": {
-      "cost-sp": 2,
-      "damage-dice-count": 1,
-      "damage-die": 6,
-      "two-handed-damage-dice-count": 1,
-      "two-handed-damage-die": 8
-    },
-    "notes": {
-      "damage": "1d6 bludgeoning (two-handed 1d8 bludgeoning)"
-    },
     "tags": [
       "melee",
       "bludgeoning",
@@ -177,20 +192,23 @@
       "monk"
     ],
     "options": [],
-    "choose": null
+    "choose": null,
+    "damage": "1d6",
+    "damage_type": "bludgeoning",
+    "versatile_damage": "1d8",
+    "ranged": false,
+    "finesse": false,
+    "cost": {
+      "unit": "sp",
+      "amount": 2
+    },
+    "range": null,
+    "thrown": null
   },
   {
     "index": "sickle",
     "name": "Sickle",
     "text": "Simple Melee weapon. Damage: 1d4 slashing. Properties: Light, Monk. Cost 1 gp. Weight 2 lb.",
-    "numbers": {
-      "cost-gp": 1,
-      "damage-dice-count": 1,
-      "damage-die": 4
-    },
-    "notes": {
-      "damage": "1d4 slashing"
-    },
     "tags": [
       "melee",
       "slashing",
@@ -198,24 +216,23 @@
       "monk"
     ],
     "options": [],
-    "choose": null
+    "choose": null,
+    "damage": "1d4",
+    "damage_type": "slashing",
+    "versatile_damage": null,
+    "ranged": false,
+    "finesse": false,
+    "cost": {
+      "unit": "gp",
+      "amount": 1
+    },
+    "range": null,
+    "thrown": null
   },
   {
     "index": "spear",
     "name": "Spear",
     "text": "Simple Melee weapon. Damage: 1d6 piercing (two-handed 1d8 piercing). Thrown range: 20/60 ft. Properties: Thrown, Versatile, Monk. Cost 1 gp. Weight 3 lb.",
-    "numbers": {
-      "cost-gp": 1,
-      "damage-dice-count": 1,
-      "damage-die": 6,
-      "two-handed-damage-dice-count": 1,
-      "two-handed-damage-die": 8,
-      "thrown-normal": 20,
-      "thrown-long": 60
-    },
-    "notes": {
-      "damage": "1d6 piercing (two-handed 1d8 piercing)"
-    },
     "tags": [
       "melee",
       "piercing",
@@ -224,22 +241,26 @@
       "monk"
     ],
     "options": [],
-    "choose": null
+    "choose": null,
+    "damage": "1d6",
+    "damage_type": "piercing",
+    "versatile_damage": "1d8",
+    "ranged": false,
+    "finesse": false,
+    "cost": {
+      "unit": "gp",
+      "amount": 1
+    },
+    "range": null,
+    "thrown": {
+      "normal": 20,
+      "long": 60
+    }
   },
   {
     "index": "crossbow-light",
     "name": "Crossbow, light",
     "text": "Simple Ranged weapon. Damage: 1d8 piercing. Range: 80/320 ft. Properties: Ammunition, Loading, Two-Handed. Cost 25 gp. Weight 5 lb.",
-    "numbers": {
-      "cost-gp": 25,
-      "damage-dice-count": 1,
-      "damage-die": 8,
-      "range-normal": 80,
-      "range-long": 320
-    },
-    "notes": {
-      "damage": "1d8 piercing"
-    },
     "tags": [
       "ranged",
       "piercing",
@@ -248,24 +269,26 @@
       "two-handed"
     ],
     "options": [],
-    "choose": null
+    "choose": null,
+    "damage": "1d8",
+    "damage_type": "piercing",
+    "versatile_damage": null,
+    "ranged": true,
+    "finesse": false,
+    "cost": {
+      "unit": "gp",
+      "amount": 25
+    },
+    "range": {
+      "normal": 80,
+      "long": 320
+    },
+    "thrown": null
   },
   {
     "index": "dart",
     "name": "Dart",
     "text": "Simple Ranged weapon. Damage: 1d4 piercing. Range: 20/60 ft. Thrown range: 20/60 ft. Properties: Finesse, Thrown. Cost 5 cp. Weight 0.25 lb.",
-    "numbers": {
-      "cost-cp": 5,
-      "damage-dice-count": 1,
-      "damage-die": 4,
-      "range-normal": 20,
-      "range-long": 60,
-      "thrown-normal": 20,
-      "thrown-long": 60
-    },
-    "notes": {
-      "damage": "1d4 piercing"
-    },
     "tags": [
       "ranged",
       "piercing",
@@ -273,22 +296,29 @@
       "thrown"
     ],
     "options": [],
-    "choose": null
+    "choose": null,
+    "damage": "1d4",
+    "damage_type": "piercing",
+    "versatile_damage": null,
+    "ranged": true,
+    "finesse": true,
+    "cost": {
+      "unit": "cp",
+      "amount": 5
+    },
+    "range": {
+      "normal": 20,
+      "long": 60
+    },
+    "thrown": {
+      "normal": 20,
+      "long": 60
+    }
   },
   {
     "index": "shortbow",
     "name": "Shortbow",
     "text": "Simple Ranged weapon. Damage: 1d6 piercing. Range: 80/320 ft. Properties: Ammunition, Two-Handed. Cost 25 gp. Weight 2 lb.",
-    "numbers": {
-      "cost-gp": 25,
-      "damage-dice-count": 1,
-      "damage-die": 6,
-      "range-normal": 80,
-      "range-long": 320
-    },
-    "notes": {
-      "damage": "1d6 piercing"
-    },
     "tags": [
       "ranged",
       "piercing",
@@ -296,83 +326,97 @@
       "two-handed"
     ],
     "options": [],
-    "choose": null
+    "choose": null,
+    "damage": "1d6",
+    "damage_type": "piercing",
+    "versatile_damage": null,
+    "ranged": true,
+    "finesse": false,
+    "cost": {
+      "unit": "gp",
+      "amount": 25
+    },
+    "range": {
+      "normal": 80,
+      "long": 320
+    },
+    "thrown": null
   },
   {
     "index": "sling",
     "name": "Sling",
     "text": "Simple Ranged weapon. Damage: 1d4 bludgeoning. Range: 30/120 ft. Properties: Ammunition. Cost 1 sp. Weight 0 lb.",
-    "numbers": {
-      "cost-sp": 1,
-      "damage-dice-count": 1,
-      "damage-die": 4,
-      "range-normal": 30,
-      "range-long": 120
-    },
-    "notes": {
-      "damage": "1d4 bludgeoning"
-    },
     "tags": [
       "ranged",
       "bludgeoning",
       "ammunition"
     ],
     "options": [],
-    "choose": null
+    "choose": null,
+    "damage": "1d4",
+    "damage_type": "bludgeoning",
+    "versatile_damage": null,
+    "ranged": true,
+    "finesse": false,
+    "cost": {
+      "unit": "sp",
+      "amount": 1
+    },
+    "range": {
+      "normal": 30,
+      "long": 120
+    },
+    "thrown": null
   },
   {
     "index": "battleaxe",
     "name": "Battleaxe",
     "text": "Martial Melee weapon. Damage: 1d8 slashing (two-handed 1d10 slashing). Properties: Versatile. Cost 10 gp. Weight 4 lb.",
-    "numbers": {
-      "cost-gp": 10,
-      "damage-dice-count": 1,
-      "damage-die": 8,
-      "two-handed-damage-dice-count": 1,
-      "two-handed-damage-die": 10
-    },
-    "notes": {
-      "damage": "1d8 slashing (two-handed 1d10 slashing)"
-    },
     "tags": [
       "melee",
       "slashing",
       "versatile"
     ],
     "options": [],
-    "choose": null
+    "choose": null,
+    "damage": "1d8",
+    "damage_type": "slashing",
+    "versatile_damage": "1d10",
+    "ranged": false,
+    "finesse": false,
+    "cost": {
+      "unit": "gp",
+      "amount": 10
+    },
+    "range": null,
+    "thrown": null
   },
   {
     "index": "flail",
     "name": "Flail",
     "text": "Martial Melee weapon. Damage: 1d8 bludgeoning. Cost 10 gp. Weight 2 lb.",
-    "numbers": {
-      "cost-gp": 10,
-      "damage-dice-count": 1,
-      "damage-die": 8
-    },
-    "notes": {
-      "damage": "1d8 bludgeoning"
-    },
     "tags": [
       "melee",
       "bludgeoning"
     ],
     "options": [],
-    "choose": null
+    "choose": null,
+    "damage": "1d8",
+    "damage_type": "bludgeoning",
+    "versatile_damage": null,
+    "ranged": false,
+    "finesse": false,
+    "cost": {
+      "unit": "gp",
+      "amount": 10
+    },
+    "range": null,
+    "thrown": null
   },
   {
     "index": "glaive",
     "name": "Glaive",
     "text": "Martial Melee weapon. Damage: 1d10 slashing. Properties: Heavy, Reach, Two-Handed. Cost 20 gp. Weight 6 lb.",
-    "numbers": {
-      "cost-gp": 20,
-      "damage-dice-count": 1,
-      "damage-die": 10
-    },
-    "notes": {
-      "damage": "1d10 slashing"
-    },
     "tags": [
       "melee",
       "slashing",
@@ -381,20 +425,23 @@
       "two-handed"
     ],
     "options": [],
-    "choose": null
+    "choose": null,
+    "damage": "1d10",
+    "damage_type": "slashing",
+    "versatile_damage": null,
+    "ranged": false,
+    "finesse": false,
+    "cost": {
+      "unit": "gp",
+      "amount": 20
+    },
+    "range": null,
+    "thrown": null
   },
   {
     "index": "greataxe",
     "name": "Greataxe",
     "text": "Martial Melee weapon. Damage: 1d12 slashing. Properties: Heavy, Two-Handed. Cost 30 gp. Weight 7 lb.",
-    "numbers": {
-      "cost-gp": 30,
-      "damage-dice-count": 1,
-      "damage-die": 12
-    },
-    "notes": {
-      "damage": "1d12 slashing"
-    },
     "tags": [
       "melee",
       "slashing",
@@ -402,20 +449,23 @@
       "two-handed"
     ],
     "options": [],
-    "choose": null
+    "choose": null,
+    "damage": "1d12",
+    "damage_type": "slashing",
+    "versatile_damage": null,
+    "ranged": false,
+    "finesse": false,
+    "cost": {
+      "unit": "gp",
+      "amount": 30
+    },
+    "range": null,
+    "thrown": null
   },
   {
     "index": "greatsword",
     "name": "Greatsword",
     "text": "Martial Melee weapon. Damage: 2d6 slashing. Properties: Heavy, Two-Handed. Cost 50 gp. Weight 6 lb.",
-    "numbers": {
-      "cost-gp": 50,
-      "damage-dice-count": 2,
-      "damage-die": 6
-    },
-    "notes": {
-      "damage": "2d6 slashing"
-    },
     "tags": [
       "melee",
       "slashing",
@@ -423,20 +473,23 @@
       "two-handed"
     ],
     "options": [],
-    "choose": null
+    "choose": null,
+    "damage": "2d6",
+    "damage_type": "slashing",
+    "versatile_damage": null,
+    "ranged": false,
+    "finesse": false,
+    "cost": {
+      "unit": "gp",
+      "amount": 50
+    },
+    "range": null,
+    "thrown": null
   },
   {
     "index": "halberd",
     "name": "Halberd",
     "text": "Martial Melee weapon. Damage: 1d10 slashing. Properties: Heavy, Reach, Two-Handed. Cost 20 gp. Weight 6 lb.",
-    "numbers": {
-      "cost-gp": 20,
-      "damage-dice-count": 1,
-      "damage-die": 10
-    },
-    "notes": {
-      "damage": "1d10 slashing"
-    },
     "tags": [
       "melee",
       "slashing",
@@ -445,20 +498,23 @@
       "two-handed"
     ],
     "options": [],
-    "choose": null
+    "choose": null,
+    "damage": "1d10",
+    "damage_type": "slashing",
+    "versatile_damage": null,
+    "ranged": false,
+    "finesse": false,
+    "cost": {
+      "unit": "gp",
+      "amount": 20
+    },
+    "range": null,
+    "thrown": null
   },
   {
     "index": "lance",
     "name": "Lance",
     "text": "Martial Melee weapon. Damage: 1d12 piercing. Properties: Reach, Special. Cost 10 gp. Weight 6 lb.\n\nYou have disadvantage when you use a lance to attack a target within 5 feet of you. Also, a lance requires two hands to wield when you aren't mounted.",
-    "numbers": {
-      "cost-gp": 10,
-      "damage-dice-count": 1,
-      "damage-die": 12
-    },
-    "notes": {
-      "damage": "1d12 piercing"
-    },
     "tags": [
       "melee",
       "piercing",
@@ -466,42 +522,46 @@
       "special"
     ],
     "options": [],
-    "choose": null
+    "choose": null,
+    "damage": "1d12",
+    "damage_type": "piercing",
+    "versatile_damage": null,
+    "ranged": false,
+    "finesse": false,
+    "cost": {
+      "unit": "gp",
+      "amount": 10
+    },
+    "range": null,
+    "thrown": null
   },
   {
     "index": "longsword",
     "name": "Longsword",
     "text": "Martial Melee weapon. Damage: 1d8 slashing (two-handed 1d10 slashing). Properties: Versatile. Cost 15 gp. Weight 3 lb.",
-    "numbers": {
-      "cost-gp": 15,
-      "damage-dice-count": 1,
-      "damage-die": 8,
-      "two-handed-damage-dice-count": 1,
-      "two-handed-damage-die": 10
-    },
-    "notes": {
-      "damage": "1d8 slashing (two-handed 1d10 slashing)"
-    },
     "tags": [
       "melee",
       "slashing",
       "versatile"
     ],
     "options": [],
-    "choose": null
+    "choose": null,
+    "damage": "1d8",
+    "damage_type": "slashing",
+    "versatile_damage": "1d10",
+    "ranged": false,
+    "finesse": false,
+    "cost": {
+      "unit": "gp",
+      "amount": 15
+    },
+    "range": null,
+    "thrown": null
   },
   {
     "index": "maul",
     "name": "Maul",
     "text": "Martial Melee weapon. Damage: 2d6 bludgeoning. Properties: Heavy, Two-Handed. Cost 10 gp. Weight 10 lb.",
-    "numbers": {
-      "cost-gp": 10,
-      "damage-dice-count": 2,
-      "damage-die": 6
-    },
-    "notes": {
-      "damage": "2d6 bludgeoning"
-    },
     "tags": [
       "melee",
       "bludgeoning",
@@ -509,39 +569,45 @@
       "two-handed"
     ],
     "options": [],
-    "choose": null
+    "choose": null,
+    "damage": "2d6",
+    "damage_type": "bludgeoning",
+    "versatile_damage": null,
+    "ranged": false,
+    "finesse": false,
+    "cost": {
+      "unit": "gp",
+      "amount": 10
+    },
+    "range": null,
+    "thrown": null
   },
   {
     "index": "morningstar",
     "name": "Morningstar",
     "text": "Martial Melee weapon. Damage: 1d8 piercing. Cost 15 gp. Weight 4 lb.",
-    "numbers": {
-      "cost-gp": 15,
-      "damage-dice-count": 1,
-      "damage-die": 8
-    },
-    "notes": {
-      "damage": "1d8 piercing"
-    },
     "tags": [
       "melee",
       "piercing"
     ],
     "options": [],
-    "choose": null
+    "choose": null,
+    "damage": "1d8",
+    "damage_type": "piercing",
+    "versatile_damage": null,
+    "ranged": false,
+    "finesse": false,
+    "cost": {
+      "unit": "gp",
+      "amount": 15
+    },
+    "range": null,
+    "thrown": null
   },
   {
     "index": "pike",
     "name": "Pike",
     "text": "Martial Melee weapon. Damage: 1d10 piercing. Properties: Heavy, Reach, Two-Handed. Cost 5 gp. Weight 18 lb.",
-    "numbers": {
-      "cost-gp": 5,
-      "damage-dice-count": 1,
-      "damage-die": 10
-    },
-    "notes": {
-      "damage": "1d10 piercing"
-    },
     "tags": [
       "melee",
       "piercing",
@@ -550,40 +616,46 @@
       "two-handed"
     ],
     "options": [],
-    "choose": null
+    "choose": null,
+    "damage": "1d10",
+    "damage_type": "piercing",
+    "versatile_damage": null,
+    "ranged": false,
+    "finesse": false,
+    "cost": {
+      "unit": "gp",
+      "amount": 5
+    },
+    "range": null,
+    "thrown": null
   },
   {
     "index": "rapier",
     "name": "Rapier",
     "text": "Martial Melee weapon. Damage: 1d8 piercing. Properties: Finesse. Cost 25 gp. Weight 2 lb.",
-    "numbers": {
-      "cost-gp": 25,
-      "damage-dice-count": 1,
-      "damage-die": 8
-    },
-    "notes": {
-      "damage": "1d8 piercing"
-    },
     "tags": [
       "melee",
       "piercing",
       "finesse"
     ],
     "options": [],
-    "choose": null
+    "choose": null,
+    "damage": "1d8",
+    "damage_type": "piercing",
+    "versatile_damage": null,
+    "ranged": false,
+    "finesse": true,
+    "cost": {
+      "unit": "gp",
+      "amount": 25
+    },
+    "range": null,
+    "thrown": null
   },
   {
     "index": "scimitar",
     "name": "Scimitar",
     "text": "Martial Melee weapon. Damage: 1d6 slashing. Properties: Finesse, Light. Cost 25 gp. Weight 3 lb.",
-    "numbers": {
-      "cost-gp": 25,
-      "damage-dice-count": 1,
-      "damage-die": 6
-    },
-    "notes": {
-      "damage": "1d6 slashing"
-    },
     "tags": [
       "melee",
       "slashing",
@@ -591,20 +663,23 @@
       "light"
     ],
     "options": [],
-    "choose": null
+    "choose": null,
+    "damage": "1d6",
+    "damage_type": "slashing",
+    "versatile_damage": null,
+    "ranged": false,
+    "finesse": true,
+    "cost": {
+      "unit": "gp",
+      "amount": 25
+    },
+    "range": null,
+    "thrown": null
   },
   {
     "index": "shortsword",
     "name": "Shortsword",
     "text": "Martial Melee weapon. Damage: 1d6 piercing. Properties: Finesse, Light, Monk. Cost 10 gp. Weight 2 lb.",
-    "numbers": {
-      "cost-gp": 10,
-      "damage-dice-count": 1,
-      "damage-die": 6
-    },
-    "notes": {
-      "damage": "1d6 piercing"
-    },
     "tags": [
       "melee",
       "piercing",
@@ -613,24 +688,23 @@
       "monk"
     ],
     "options": [],
-    "choose": null
+    "choose": null,
+    "damage": "1d6",
+    "damage_type": "piercing",
+    "versatile_damage": null,
+    "ranged": false,
+    "finesse": true,
+    "cost": {
+      "unit": "gp",
+      "amount": 10
+    },
+    "range": null,
+    "thrown": null
   },
   {
     "index": "trident",
     "name": "Trident",
     "text": "Martial Melee weapon. Damage: 1d6 piercing (two-handed 1d8 piercing). Thrown range: 20/60 ft. Properties: Thrown, Versatile. Cost 5 gp. Weight 4 lb.",
-    "numbers": {
-      "cost-gp": 5,
-      "damage-dice-count": 1,
-      "damage-die": 6,
-      "two-handed-damage-dice-count": 1,
-      "two-handed-damage-die": 8,
-      "thrown-normal": 20,
-      "thrown-long": 60
-    },
-    "notes": {
-      "damage": "1d6 piercing (two-handed 1d8 piercing)"
-    },
     "tags": [
       "melee",
       "piercing",
@@ -638,61 +712,71 @@
       "versatile"
     ],
     "options": [],
-    "choose": null
+    "choose": null,
+    "damage": "1d6",
+    "damage_type": "piercing",
+    "versatile_damage": "1d8",
+    "ranged": false,
+    "finesse": false,
+    "cost": {
+      "unit": "gp",
+      "amount": 5
+    },
+    "range": null,
+    "thrown": {
+      "normal": 20,
+      "long": 60
+    }
   },
   {
     "index": "war-pick",
     "name": "War pick",
     "text": "Martial Melee weapon. Damage: 1d8 piercing. Cost 5 gp. Weight 2 lb.",
-    "numbers": {
-      "cost-gp": 5,
-      "damage-dice-count": 1,
-      "damage-die": 8
-    },
-    "notes": {
-      "damage": "1d8 piercing"
-    },
     "tags": [
       "melee",
       "piercing"
     ],
     "options": [],
-    "choose": null
+    "choose": null,
+    "damage": "1d8",
+    "damage_type": "piercing",
+    "versatile_damage": null,
+    "ranged": false,
+    "finesse": false,
+    "cost": {
+      "unit": "gp",
+      "amount": 5
+    },
+    "range": null,
+    "thrown": null
   },
   {
     "index": "warhammer",
     "name": "Warhammer",
     "text": "Martial Melee weapon. Damage: 1d8 bludgeoning (two-handed 1d10 bludgeoning). Properties: Versatile. Cost 15 gp. Weight 2 lb.",
-    "numbers": {
-      "cost-gp": 15,
-      "damage-dice-count": 1,
-      "damage-die": 8,
-      "two-handed-damage-dice-count": 1,
-      "two-handed-damage-die": 10
-    },
-    "notes": {
-      "damage": "1d8 bludgeoning (two-handed 1d10 bludgeoning)"
-    },
     "tags": [
       "melee",
       "bludgeoning",
       "versatile"
     ],
     "options": [],
-    "choose": null
+    "choose": null,
+    "damage": "1d8",
+    "damage_type": "bludgeoning",
+    "versatile_damage": "1d10",
+    "ranged": false,
+    "finesse": false,
+    "cost": {
+      "unit": "gp",
+      "amount": 15
+    },
+    "range": null,
+    "thrown": null
   },
   {
     "index": "whip",
     "name": "Whip",
     "text": "Martial Melee weapon. Damage: 1d4 slashing. Properties: Finesse, Reach. Cost 2 gp. Weight 3 lb.",
-    "numbers": {
-      "cost-gp": 2,
-      "damage-dice-count": 1,
-      "damage-die": 4
-    },
-    "notes": {
-      "damage": "1d4 slashing"
-    },
     "tags": [
       "melee",
       "slashing",
@@ -700,22 +784,23 @@
       "reach"
     ],
     "options": [],
-    "choose": null
+    "choose": null,
+    "damage": "1d4",
+    "damage_type": "slashing",
+    "versatile_damage": null,
+    "ranged": false,
+    "finesse": true,
+    "cost": {
+      "unit": "gp",
+      "amount": 2
+    },
+    "range": null,
+    "thrown": null
   },
   {
     "index": "blowgun",
     "name": "Blowgun",
-    "text": "Martial Ranged weapon. Damage: 1 piercing. Range: 25/100 ft. Properties: Ammunition, Loading. Cost 10 gp. Weight 1 lb.",
-    "numbers": {
-      "cost-gp": 10,
-      "damage-dice-count": 1,
-      "damage-die": 1,
-      "range-normal": 25,
-      "range-long": 100
-    },
-    "notes": {
-      "damage": "1 piercing"
-    },
+    "text": "Martial Ranged weapon. Damage: 1d1 piercing. Range: 25/100 ft. Properties: Ammunition, Loading. Cost 10 gp. Weight 1 lb.",
     "tags": [
       "ranged",
       "piercing",
@@ -723,22 +808,26 @@
       "loading"
     ],
     "options": [],
-    "choose": null
+    "choose": null,
+    "damage": "1d1",
+    "damage_type": "piercing",
+    "versatile_damage": null,
+    "ranged": true,
+    "finesse": false,
+    "cost": {
+      "unit": "gp",
+      "amount": 10
+    },
+    "range": {
+      "normal": 25,
+      "long": 100
+    },
+    "thrown": null
   },
   {
     "index": "crossbow-hand",
     "name": "Crossbow, hand",
     "text": "Martial Ranged weapon. Damage: 1d6 piercing. Range: 30/120 ft. Properties: Ammunition, Light, Loading. Cost 75 gp. Weight 3 lb.",
-    "numbers": {
-      "cost-gp": 75,
-      "damage-dice-count": 1,
-      "damage-die": 6,
-      "range-normal": 30,
-      "range-long": 120
-    },
-    "notes": {
-      "damage": "1d6 piercing"
-    },
     "tags": [
       "ranged",
       "piercing",
@@ -747,22 +836,26 @@
       "loading"
     ],
     "options": [],
-    "choose": null
+    "choose": null,
+    "damage": "1d6",
+    "damage_type": "piercing",
+    "versatile_damage": null,
+    "ranged": true,
+    "finesse": false,
+    "cost": {
+      "unit": "gp",
+      "amount": 75
+    },
+    "range": {
+      "normal": 30,
+      "long": 120
+    },
+    "thrown": null
   },
   {
     "index": "crossbow-heavy",
     "name": "Crossbow, heavy",
     "text": "Martial Ranged weapon. Damage: 1d10 piercing. Range: 100/400 ft. Properties: Ammunition, Heavy, Loading, Two-Handed. Cost 50 gp. Weight 18 lb.",
-    "numbers": {
-      "cost-gp": 50,
-      "damage-dice-count": 1,
-      "damage-die": 10,
-      "range-normal": 100,
-      "range-long": 400
-    },
-    "notes": {
-      "damage": "1d10 piercing"
-    },
     "tags": [
       "ranged",
       "piercing",
@@ -772,22 +865,26 @@
       "two-handed"
     ],
     "options": [],
-    "choose": null
+    "choose": null,
+    "damage": "1d10",
+    "damage_type": "piercing",
+    "versatile_damage": null,
+    "ranged": true,
+    "finesse": false,
+    "cost": {
+      "unit": "gp",
+      "amount": 50
+    },
+    "range": {
+      "normal": 100,
+      "long": 400
+    },
+    "thrown": null
   },
   {
     "index": "longbow",
     "name": "Longbow",
     "text": "Martial Ranged weapon. Damage: 1d8 piercing. Range: 150/600 ft. Properties: Ammunition, Heavy, Two-Handed. Cost 50 gp. Weight 2 lb.",
-    "numbers": {
-      "cost-gp": 50,
-      "damage-dice-count": 1,
-      "damage-die": 8,
-      "range-normal": 150,
-      "range-long": 600
-    },
-    "notes": {
-      "damage": "1d8 piercing"
-    },
     "tags": [
       "ranged",
       "piercing",
@@ -796,26 +893,49 @@
       "two-handed"
     ],
     "options": [],
-    "choose": null
+    "choose": null,
+    "damage": "1d8",
+    "damage_type": "piercing",
+    "versatile_damage": null,
+    "ranged": true,
+    "finesse": false,
+    "cost": {
+      "unit": "gp",
+      "amount": 50
+    },
+    "range": {
+      "normal": 150,
+      "long": 600
+    },
+    "thrown": null
   },
   {
     "index": "net",
     "name": "Net",
     "text": "Martial Ranged weapon. Range: 5/15 ft. Thrown range: 5/15 ft. Properties: Thrown, Special. Cost 1 gp. Weight 3 lb.\n\nA Large or smaller creature hit by a net is restrained until it is freed. A net has no effect on creatures that are formless, or creatures that are Huge or larger. A creature can use its action to make a DC 10 Strength check, freeing itself or another creature within its reach on a success. Dealing 5 slashing damage to the net (AC 10) also frees the creature without harming it, ending the effect and destroying the net. When you use an action, bonus action, or reaction to attack with a net, you can make only one attack regardless of the number of attacks you can normally make.",
-    "numbers": {
-      "cost-gp": 1,
-      "range-normal": 5,
-      "range-long": 15,
-      "thrown-normal": 5,
-      "thrown-long": 15
-    },
-    "notes": {},
     "tags": [
       "ranged",
       "thrown",
       "special"
     ],
     "options": [],
-    "choose": null
+    "choose": null,
+    "damage": null,
+    "damage_type": null,
+    "versatile_damage": null,
+    "ranged": true,
+    "finesse": false,
+    "cost": {
+      "unit": "gp",
+      "amount": 1
+    },
+    "range": {
+      "normal": 5,
+      "long": 15
+    },
+    "thrown": {
+      "normal": 5,
+      "long": 15
+    }
   }
 ]

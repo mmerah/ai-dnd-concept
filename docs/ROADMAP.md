@@ -45,7 +45,7 @@ Status of the proof of concept, and where it should go. Kept short on purpose.
 ### Planned features
 
 - Locations are connected, they have a state.
-- Deepen 5e play where the lenient shape is still thin: prepared casting, equipment state beyond
+- Deepen 5e play where the record shapes are still thin: prepared casting, equipment state beyond
   armour, temporary HP.
 - Expand Story consequences only where narrative play demonstrates a concrete need.
 - Character creator, decoupling the character from the scenario file.

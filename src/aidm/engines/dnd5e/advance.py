@@ -1,7 +1,9 @@
 from aidm.engines.loader import Engine
-from aidm.state.packs import ContentMiss, ContentRef, LenientRecord
+from aidm.state.packs import ContentMiss, ContentRef
 from aidm.state.sheet import AdvancementOffer, Sheet, SheetDelta, apply_delta
 from aidm.state.world import GameState, player_sheet, sheet_of
+
+from .records import LevelRecord
 
 ADVANCEMENT_READY = "advancement-ready"
 LEVEL = "level"
@@ -13,7 +15,7 @@ def offered(engine: Engine, state: GameState) -> AdvancementOffer | None:
     if sheet.tag(ADVANCEMENT_READY) is None and not _milestone_reached(state, sheet):
         return None
     next_level = sheet.numbers[LEVEL] + 1
-    record = engine.content.get(level_ref(sheet, next_level), LenientRecord)
+    record = engine.content.get(level_ref(sheet, next_level), LevelRecord)
     if isinstance(record, ContentMiss):
         # The class runs out of level rows at 20, which is the end of advancement, not a fault.
         return None

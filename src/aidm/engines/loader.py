@@ -4,6 +4,7 @@ from dataclasses import dataclass
 from importlib import import_module
 from pathlib import Path
 from random import Random
+from types import MappingProxyType
 from typing import Annotated
 
 from pydantic import Field, JsonValue, TypeAdapter, ValidationError
@@ -22,10 +23,11 @@ from aidm.state.packs import (
     ContentMiss,
     ContentRef,
     FrozenMap,
-    LenientRecord,
+    PackFormat,
+    Record,
     Value,
-    lenient_format,
     load,
+    pack_format,
     parse_ref,
 )
 from aidm.state.plan import TurnPlanBase
@@ -80,6 +82,10 @@ class EnginePlugin:
     resolve_action: ActionResolver
     offered: Offered
     check_delta: DeltaCheck
+    record_types: Mapping[CollectionName, type[Record]] = MappingProxyType({})
+
+    def pack_format(self, spec: EngineSpec) -> PackFormat:
+        return pack_format(spec.collections, self.record_types)
 
 
 @dataclass(frozen=True, slots=True)
@@ -167,8 +173,8 @@ class Engine:
     def _entity_rules(self, authored: AuthoredEntity) -> Sheet:
         return self._sheet(authored.entity.kind, authored.rules)
 
-    def _record(self, ref: ContentRef) -> LenientRecord | None:
-        found = self.content.get(ref, LenientRecord)
+    def _record(self, ref: ContentRef) -> Record | None:
+        found = self.content.get(ref, Record)
         return None if isinstance(found, ContentMiss) else found
 
 
@@ -195,7 +201,7 @@ def load_engine(plugin: EnginePlugin, pack_paths: Sequence[Path] | None = None) 
     engine_dir = plugin.engine_dir
     spec = EngineSpec.model_validate_json(_text(engine_dir / "spec.json"))
     directories = _packs(engine_dir) if pack_paths is None else tuple(pack_paths)
-    content = load(directories, lenient_format(spec.collections))
+    content = load(directories, plugin.pack_format(spec))
     return Engine(
         plugin=plugin,
         spec=spec,
@@ -262,7 +268,7 @@ def _director_toolset(content: Content) -> FunctionToolset[object]:
             reference = parse_ref(ref)
         except ValueError as malformed:
             raise ModelRetry(str(malformed)) from malformed
-        found = content.get(reference, LenientRecord)
+        found = content.get(reference, Record)
         if isinstance(found, ContentMiss):
             raise ModelRetry(found.summary)
         return _record_text(found, ref)
@@ -270,9 +276,9 @@ def _director_toolset(content: Content) -> FunctionToolset[object]:
     return FunctionToolset[object]([read_content])
 
 
-def _record_text(record: LenientRecord, ref: str) -> str:
-    numbers = ", ".join(f"{key} {value}" for key, value in sorted(record.numbers.items()))
-    notes = "; ".join(f"{key}={value}" for key, value in sorted(record.notes.items()))
+def _record_text(record: Record, ref: str) -> str:
+    numbers = ", ".join(f"{key} {value}" for key, value in sorted(record.sheet_numbers().items()))
+    notes = "; ".join(f"{key}={value}" for key, value in sorted(record.noted().items()))
     options = ", ".join(str(option) for option in record.options)
     lines = [
         f"{record.name} [{ref}]",
@@ -286,8 +292,8 @@ def _record_text(record: LenientRecord, ref: str) -> str:
 
 
 def _backing(refs: Sequence[ContentRef], content: Content) -> Mapping[Slug, int]:
-    records = [content.require(ref, LenientRecord) for ref in refs]
-    return {k: v for record in records for k, v in record.numbers.items()}
+    records = [content.require(ref, Record) for ref in refs]
+    return {k: v for record in records for k, v in record.sheet_numbers().items()}
 
 
 def _packs(engine_dir: Path) -> tuple[Path, ...]:

@@ -10,7 +10,7 @@ from aidm.engines.dnd5e.advance import ADVANCEMENT_READY
 from aidm.engines.dnd5e.rules import PLUGIN
 from aidm.engines.loader import Engine, EngineSpec
 from aidm.state.base import PLAYER_ID, Entity, EntityId
-from aidm.state.packs import ENCODING, ContentRef, PackFormat, lenient_format
+from aidm.state.packs import ENCODING, ContentRef, PackFormat
 from aidm.state.sheet import Counter, SheetDefinition, SheetTag, SheetTemplate
 from aidm.state.world import GameState, Record, player_sheet
 from aidm.turn.advancement import advisor
@@ -36,7 +36,7 @@ def character() -> Character:
 
 def pack_format() -> PackFormat:
     spec = EngineSpec.model_validate_json((ENGINE_DIR / "spec.json").read_text(encoding=ENCODING))
-    return lenient_format(spec.collections)
+    return PLUGIN.pack_format(spec)
 
 
 def dnd5e_game() -> tuple[Engine, GameState]:

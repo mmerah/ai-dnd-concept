@@ -1,5 +1,5 @@
 """One-shot, offline importer: a checkout of 5e-bits/5e-database becomes the shipped
-`aidm/engines/dnd5e/packs/srd-2014/` lenient pack.
+`aidm/engines/dnd5e/packs/srd-2014/` pack.
 
     uv run python scripts/import_srd.py ../5e-database [out-dir]
 

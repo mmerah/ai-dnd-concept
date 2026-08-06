@@ -1,14 +1,53 @@
-"""One upstream record becomes one `LenientRecord`. Numbers land on the sheet of any entity that
-refs the record, so only records that back one entity — monsters, equipment, a character's single
-class — carry them; a spell reffed five times would collide. Notes and tags never touch a sheet:
-they render beside the ref, so every record may carry its mechanics there."""
+"""One upstream record becomes one typed pack record: mechanics land in typed fields, and each
+record class renders the model's view and its sheet numbers from them, so this importer writes no
+prose bags. A record reffed in multiplicity — a spell, a feature — must leave its `sheet_numbers`
+empty, or the keys collide on every sheet that refs it.
+
+Over CLAUDE.md's 1000-line cap by decision: a one-shot, offline importer, run by hand, output
+vendored. It is one projection per upstream type, not runtime code, and splitting it would only
+scatter that correspondence."""
 
 from collections.abc import Iterable, Mapping, Sequence
+from typing import Literal
 
 from pydantic import TypeAdapter
 
-from aidm.state.dice import ConstantTerm, DiceTerm, terms
-from aidm.state.packs import ContentRef, LenientRecord
+from aidm.engines.dnd5e.records import (
+    ABILITY_BY_ABBREVIATION,
+    AbilityBonus,
+    AbilityMinimum,
+    AlignmentRecord,
+    ArmorRecord,
+    BackgroundRecord,
+    ClassRecord,
+    Cost,
+    FeatRecord,
+    FeatureChoice,
+    FeatureRecord,
+    GearRecord,
+    LanguageRecord,
+    LevelRecord,
+    MagicItemRecord,
+    MonsterRecord,
+    ProficiencyRecord,
+    RaceRecord,
+    Reach,
+    SaveSuccess,
+    SkillRecord,
+    SpellAmount,
+    SpellArea,
+    SpellGrant,
+    SpellRecord,
+    SubclassRecord,
+    SubraceRecord,
+    TraitRecord,
+    VehicleRecord,
+    WeaponRecord,
+    weapon_damage_note,
+)
+from aidm.state.base import Slug
+from aidm.state.dice import ConstantTerm, DiceExpr, DiceTerm, terms
+from aidm.state.packs import ContentRef, Record
 
 from . import upstream as up
 
@@ -17,6 +56,7 @@ _SLOT_CREATIONS: TypeAdapter[list[up.SlotCreation]] = TypeAdapter(list[up.SlotCr
 PACK_ID = "srd-2014"
 ABILITIES = ("strength", "dexterity", "constitution", "intelligence", "wisdom", "charisma")
 MAX_SPELL_LEVEL = 9
+_MODIFIER_TERM = " + MOD"
 
 type Options = Mapping[str, tuple[ContentRef, ...]]
 
@@ -25,13 +65,15 @@ def ref(collection: str, index: str) -> ContentRef:
     return ContentRef(pack=PACK_ID, collection=collection, index=index)
 
 
-def described(record: up.Described) -> LenientRecord:
-    return LenientRecord(index=record.index, name=record.name, text=_prose(record.desc))
+def described(record: up.Described) -> Record:
+    return Record(index=record.index, name=record.name, text=_prose(record.desc))
 
 
-def monster(record: up.Monster) -> LenientRecord:
+def monster(record: up.Monster) -> MonsterRecord:
     every_action = (*record.special_abilities, *record.actions, *record.legendary_actions)
-    return LenientRecord(
+    casting = _monster_spellcasting(record.special_abilities)
+    spells, slots = _monster_spell_lists(casting)
+    return MonsterRecord(
         index=record.index,
         name=record.name,
         text=_joined(
@@ -57,32 +99,6 @@ def monster(record: up.Monster) -> LenientRecord:
             _actions("Legendary actions", record.legendary_actions),
             _prose(record.desc),
         ),
-        numbers={
-            "armor-class": record.armor_class[0].value,
-            "hp": record.hit_points,
-            "xp": record.xp,
-            "proficiency-bonus": record.proficiency_bonus,
-            **{name: getattr(record, name) for name in ABILITIES},
-            **{entry.proficiency.index: entry.value for entry in record.proficiencies},
-            **_feet_numbers("speed-", record.speed),
-            **_feet_numbers("", record.senses),
-            **_passive_perception(record.senses),
-            **_monster_spellcasting(record.special_abilities),
-        },
-        notes={
-            **_noted("attacks", "; ".join(_attack_lines(every_action))),
-            **_noted("multiattack", _multiattack(record.actions)),
-            **_noted("limited-use", _limited_use(every_action)),
-            **_noted("damage-vulnerabilities", ", ".join(record.damage_vulnerabilities)),
-            **_noted("damage-resistances", ", ".join(record.damage_resistances)),
-            **_noted("damage-immunities", ", ".join(record.damage_immunities)),
-            **_noted("condition-immunities", _names(record.condition_immunities)),
-            # Form names carry commas of their own ('Vampire, Bat Form'), so join on semicolons.
-            **_noted("forms", "; ".join(entry.name for entry in record.forms)),
-            **_monster_spell_notes(record.special_abilities),
-            "size": record.size,
-            "challenge-rating": _challenge(record.challenge_rating),
-        },
         tags=(
             _slug(record.type),
             *((_slug(record.subtype),) if record.subtype else ()),
@@ -94,6 +110,30 @@ def monster(record: up.Monster) -> LenientRecord:
                 else ()
             ),
         ),
+        armor_class=record.armor_class[0].value,
+        hp=record.hit_points,
+        xp=record.xp,
+        proficiency_bonus=record.proficiency_bonus,
+        **{name: getattr(record, name) for name in ABILITIES},
+        proficiencies={entry.proficiency.index: entry.value for entry in record.proficiencies},
+        speeds=_feet_numbers(record.speed),
+        sense_ranges=_feet_numbers(record.senses),
+        passive_perception=_passive_perception(record.senses),
+        spell_save_dc=None if casting is None else casting.dc,
+        spell_attack_bonus=None if casting is None else casting.modifier,
+        attacks=tuple(_attack_lines(every_action)),
+        multiattack=_multiattack(record.actions) or None,
+        limited_use=_limited_use(every_action),
+        damage_vulnerabilities=tuple(record.damage_vulnerabilities),
+        damage_resistances=tuple(record.damage_resistances),
+        damage_immunities=tuple(record.damage_immunities),
+        condition_immunities=tuple(entry.name for entry in record.condition_immunities),
+        # Form names carry commas of their own ('Vampire, Bat Form'); noted() joins on semicolons.
+        forms=tuple(entry.name for entry in record.forms),
+        spells=spells,
+        slots=slots,
+        size=record.size,
+        challenge_rating=_challenge(record.challenge_rating),
     )
 
 
@@ -111,7 +151,7 @@ def _challenge(rating: float) -> str:
     return {0.125: "1/8", 0.25: "1/4", 0.5: "1/2"}.get(rating, f"{rating:g}")
 
 
-def _feet_numbers(prefix: str, values: Mapping[str, object]) -> Mapping[str, int]:
+def _feet_numbers(values: Mapping[str, object]) -> Mapping[str, int]:
     """Distances written '40 ft.' become whole feet; anything else stays where it was."""
     found: dict[str, int] = {}
     for name, value in values.items():
@@ -119,45 +159,34 @@ def _feet_numbers(prefix: str, values: Mapping[str, object]) -> Mapping[str, int
             continue
         head = value.split()[0]
         if head.isdigit() and value.endswith(("ft.", "this radius)")):
-            found[f"{prefix}{_key(name)}"] = int(head)
+            found[_key(name)] = int(head)
     return found
 
 
-def _passive_perception(senses: Mapping[str, str | int]) -> Mapping[str, int]:
+def _passive_perception(senses: Mapping[str, str | int]) -> int | None:
     found = senses.get("passive_perception")
-    return {"passive-perception": found} if isinstance(found, int) else {}
+    return found if isinstance(found, int) else None
 
 
-def _monster_spellcasting(abilities: Sequence[up.Action]) -> Mapping[str, int]:
-    for entry in abilities:
-        casting = entry.spellcasting
-        if casting is not None:
-            return {
-                **({} if casting.dc is None else {"spell-save-dc": casting.dc}),
-                **({} if casting.modifier is None else {"spell-attack-bonus": casting.modifier}),
-            }
-    return {}
+def _monster_spellcasting(abilities: Sequence[up.Action]) -> up.MonsterSpellcasting | None:
+    return next((entry.spellcasting for entry in abilities if entry.spellcasting is not None), None)
 
 
-def _monster_spell_notes(abilities: Sequence[up.Action]) -> Mapping[str, str]:
-    for entry in abilities:
-        casting = entry.spellcasting
-        if casting is None:
-            continue
-        by_level: dict[int, list[str]] = {}
-        for known in casting.spells:
-            by_level.setdefault(known.level, []).append(known.name)
-        spells = "; ".join(
-            f"{'cantrips' if level == 0 else f'level {level}'}: {', '.join(names)}"
-            for level, names in sorted(by_level.items())
-        )
-        slots = ", ".join(
-            f"level {number} x{count}"
-            for number, count in sorted((int(at), count) for at, count in casting.slots.items())
-            if count > 0
-        )
-        return {**_noted("spells", spells), **_noted("slots", slots)}
-    return {}
+def _monster_spell_lists(
+    casting: up.MonsterSpellcasting | None,
+) -> tuple[tuple[tuple[int, tuple[str, ...]], ...], tuple[tuple[int, int], ...]]:
+    if casting is None:
+        return (), ()
+    by_level: dict[int, list[str]] = {}
+    for known in casting.spells:
+        by_level.setdefault(known.level, []).append(known.name)
+    spells = tuple((level, tuple(names)) for level, names in sorted(by_level.items()))
+    slots = tuple(
+        (number, count)
+        for number, count in sorted((int(at), count) for at, count in casting.slots.items())
+        if count > 0
+    )
+    return spells, slots
 
 
 def _multiattack(actions: Sequence[up.Action]) -> str:
@@ -178,11 +207,11 @@ def _action_group(option: up.ActionRefOption) -> str:
     return ""
 
 
-def _limited_use(actions: Sequence[up.Action]) -> str:
+def _limited_use(actions: Sequence[up.Action]) -> tuple[str, ...]:
     parts = [
         f"{action.name}: {_usage(action.usage)}" for action in actions if action.usage is not None
     ]
-    return "; ".join(dict.fromkeys(parts))
+    return tuple(dict.fromkeys(parts))
 
 
 def _usage(usage: up.Usage) -> str:
@@ -203,7 +232,7 @@ def _slug(name: str) -> str:
     return "-".join(part for part in name.lower().replace(",", " ").split() if part)
 
 
-def spell(record: up.Spell) -> LenientRecord:
+def spell(record: up.Spell) -> SpellRecord:
     kind = "cantrip" if record.level == 0 else f"level {record.level} spell"
     material = f" ({record.material})" if record.material else ""
     marks = [
@@ -211,9 +240,11 @@ def spell(record: up.Spell) -> LenientRecord:
         for word, on in (("ritual", record.ritual), ("concentration", record.concentration))
         if on
     ]
-    damage, damage_scaling = _spell_damage(record.damage)
-    heal, heal_scaling = _ladder(record.heal_at_slot_level, "slot")
-    return LenientRecord(
+    _spell_scales_as_rendered(record)
+    cast_damage, damage_ladder = _amounts(_damage_rungs(record.damage))
+    cast_heal, heal_ladder = _amounts(record.heal_at_slot_level)
+    area = record.area_of_effect
+    return SpellRecord(
         index=record.index,
         name=record.name,
         text=_joined(
@@ -228,116 +259,149 @@ def spell(record: up.Spell) -> LenientRecord:
             "" if record.dc is None else record.dc.desc,
             _optional("**At higher levels**", _prose(record.higher_level)),
         ),
-        notes={
-            "level": "cantrip" if record.level == 0 else str(record.level),
-            **_noted("attack", f"{record.attack_type} spell attack" if record.attack_type else ""),
-            **_noted("save", _spell_save(record.dc)),
-            **_noted("damage", damage),
-            **_noted("heal", heal),
-            **_noted("scaling", damage_scaling or heal_scaling),
-            **_noted("area", _area(record.area_of_effect)),
-            "range": record.range,
-            **_noted("casting-time", _exceptional(record.casting_time, "1 action")),
-            **_noted("duration", _exceptional(record.duration, "Instantaneous")),
-            **_noted("classes", _names(record.classes)),
-            **_noted("subclasses", _names(record.subclasses)),
-        },
         tags=(*marks, *(COMPONENTS[part] for part in record.components if part in COMPONENTS)),
+        level=None if record.level == 0 else record.level,
+        school=_slug(record.school.name),
+        attack_type=_attack_type(record.attack_type),
+        save_ability=None if record.dc is None else _ability(record.dc.dc_type.name),
+        save_success=None if record.dc is None else _save_success(record.dc.dc_success),
+        damage=cast_damage,
+        damage_type=_spell_damage_type(record.damage, cast_damage),
+        heal=cast_heal,
+        scaling=damage_ladder or heal_ladder,
+        concentration=record.concentration,
+        area=None if area is None else SpellArea(shape=area.type, size=area.size),
+        range=record.range,
+        casting_time=record.casting_time,
+        duration=record.duration,
+        classes=tuple(entry.name for entry in record.classes),
+        subclasses=tuple(entry.name for entry in record.subclasses),
     )
 
 
 COMPONENTS = {"V": "verbal", "S": "somatic", "M": "material"}
 
 
-def _exceptional(value: str, default: str) -> str:
-    """The default is every caster's assumption; only a departure earns a note."""
-    return "" if value == default else value
+def _spell_scales_as_rendered(record: up.Spell) -> None:
+    """`SpellRecord.noted` derives the scaling step from `level`, so a rung keyed the other way
+    must fail here, not render wrong."""
+    damage = record.damage
+    by_slot = bool(damage and damage.damage_at_slot_level) or bool(record.heal_at_slot_level)
+    by_level = bool(damage and damage.damage_at_character_level)
+    if record.level == 0 and by_slot:
+        raise ValueError(f"cantrip {record.index!r} scales by slot")
+    if record.level > 0 and by_level:
+        raise ValueError(f"leveled spell {record.index!r} scales by character level")
 
 
-def _spell_save(dc: up.SpellDc | None) -> str:
-    return "" if dc is None else _save(dc.dc_type.name, dc.dc_success)
+def _attack_type(value: str) -> Literal["melee", "ranged"] | None:
+    match value:
+        case "":
+            return None
+        case "melee" | "ranged":
+            return value
+        case _:
+            raise ValueError(f"spell attack type {value!r} is unknown")
 
 
-def _save(ability: str, success: str) -> str:
-    outcome = {
-        "half": "half on success",
-        "none": "no effect on success",
-        "other": "see text",
-    }.get(success)
-    return ability + (f" ({outcome})" if outcome else "")
+def _save_success(value: str) -> SaveSuccess:
+    match value:
+        case "half" | "none" | "other":
+            return value
+        case _:
+            raise ValueError(f"save outcome {value!r} is unknown")
 
 
-def _spell_damage(damage: up.SpellDamage | None) -> tuple[str, str]:
+def _spell_damage_type(damage: up.SpellDamage | None, base: SpellAmount | None) -> Slug | None:
+    """Typed only beside dice: a spell whose damage lives in its text keeps the type there too."""
+    if damage is None or base is None or damage.damage_type is None:
+        return None
+    return damage.damage_type.name.lower()
+
+
+def _damage_rungs(damage: up.SpellDamage | None) -> Mapping[str, str]:
     if damage is None:
-        return "", ""
-    by_slot, by_level = damage.damage_at_slot_level, damage.damage_at_character_level
-    base, scaling = _ladder(by_slot or by_level, "slot" if by_slot else "level")
-    suffix = f" {damage.damage_type.name.lower()}" if base and damage.damage_type else ""
-    return base + suffix, scaling
+        return {}
+    return damage.damage_at_slot_level or damage.damage_at_character_level
 
 
-def _ladder(rungs: Mapping[str, str], step: str) -> tuple[str, str]:
-    """The lowest rung is what the spell does as cast; the rest become the scaling note."""
-    if not rungs:
-        return "", ""
+def _amounts(
+    rungs: Mapping[str, str],
+) -> tuple[SpellAmount | None, tuple[tuple[int, SpellAmount], ...]]:
+    """The lowest rung is the spell as cast; the rest is the ladder it scales along."""
     ordered = sorted(rungs.items(), key=lambda rung: int(rung[0]))
-    base = _dice(ordered[0][1])
-    rest = ", ".join(f"{step} {at}: {_dice(dice)}" for at, dice in ordered[1:])
-    return base, rest
+    if not ordered:
+        return None, ()
+    return _amount(ordered[0][1]), tuple((int(at), _amount(dice)) for at, dice in ordered[1:])
 
 
-def _dice(dice: str) -> str:
-    return dice.replace("MOD", "spellcasting modifier")
+def _amount(dice: str) -> SpellAmount:
+    modified = dice.endswith(_MODIFIER_TERM)
+    expression = dice[: -len(_MODIFIER_TERM)] if modified else dice
+    if "MOD" in expression:
+        raise ValueError(f"spell amount {dice!r} places its modifier where this importer cannot")
+    return SpellAmount(dice=expression, with_modifier=modified)
 
 
-def _area(area: up.AreaOfEffect | None) -> str:
-    return "" if area is None else f"{area.size}-foot {area.type}"
+def _ability(name: str) -> Slug:
+    ability = ABILITY_BY_ABBREVIATION.get(name)
+    if ability is None:
+        raise ValueError(f"spell save against unknown ability {name!r}")
+    return ability
 
 
-def weapon(record: up.Equipment) -> LenientRecord:
-    two_handed = _damage(record.two_handed_damage)
-    damage = _damage(record.damage) + (f" (two-handed {two_handed})" if two_handed else "")
+def weapon(record: up.Equipment) -> WeaponRecord:
     # Every melee weapon carries `range.normal: 5` as baseline reach — even `reach` weapons —
     # so projecting it would misread as a ranged attack distance; `throw_range` is real either way.
     ranged = record.weapon_range == "Ranged"
-    return _equipment(
-        record,
-        f"{record.category_range} weapon.",
-        _optional("Damage", damage),
-        _optional("Range", _range(record.range)) if ranged else "",
-        _optional("Thrown range", _range(record.throw_range)),
-        _optional("Properties", _names(record.properties)),
-        after=_prose(record.special),
-        numbers={
-            **_damage_numbers("", record.damage),
-            **_damage_numbers("two-handed-", record.two_handed_damage),
-            **(_reach("range", record.range) if ranged else {}),
-            **_reach("thrown", record.throw_range),
-        },
-        # The numbers are for a rules checker; `roll` takes an expression, so the Director copies
-        # this rather than concatenating a count and a die on the turn it swings.
-        notes={"damage": damage} if damage else {},
+    properties = {entry.index for entry in record.properties}
+    if record.two_handed_damage is not None and "versatile" not in properties:
+        raise ValueError(f"weapon {record.index!r} has two-handed damage but is not versatile")
+    dice = _weapon_dice(record.damage)
+    versatile = _weapon_dice(record.two_handed_damage) if "versatile" in properties else None
+    kinds = _damage_type_tag(record)
+    damage_type = kinds[0] if kinds else None
+    return WeaponRecord(
+        index=record.index,
+        name=record.name,
+        text=_equipment_text(
+            record,
+            f"{record.category_range} weapon.",
+            _optional("Damage", weapon_damage_note(dice, damage_type, versatile)),
+            _optional("Range", _range(record.range)) if ranged else "",
+            _optional("Thrown range", _range(record.throw_range)),
+            _optional("Properties", _names(record.properties)),
+            after=_prose(record.special),
+        ),
         tags=(
             *((record.weapon_range.lower(),) if record.weapon_range else ()),
-            *_damage_type_tag(record),
+            *kinds,
             *(entry.index for entry in record.properties),
         ),
+        damage=dice,
+        damage_type=damage_type,
+        versatile_damage=versatile,
+        ranged=ranged,
+        finesse="finesse" in properties,
+        cost=_cost_of(record.cost),
+        range=_reach_of(record.range) if ranged else None,
+        thrown=_reach_of(record.throw_range),
     )
 
 
-def _damage_numbers(prefix: str, damage: up.Damage | None) -> Mapping[str, int]:
-    """`1d8` lands as dice-count and die; the blowgun's flat `1` becomes one one-sided die so
-    the same two keys always spell the roll."""
+def _weapon_dice(damage: up.Damage | None) -> DiceExpr | None:
+    """The blowgun's flat `1` becomes one one-sided die, so one expression always spells the
+    roll."""
     if damage is None or not damage.damage_dice:
-        return {}
+        return None
     parsed = terms(damage.damage_dice)
     if len(parsed) != 1:
         raise ValueError(f"weapon damage {damage.damage_dice!r} is not a single term")
     match parsed[0]:
         case DiceTerm(count=count, faces=faces):
-            return {f"{prefix}damage-dice-count": count, f"{prefix}damage-die": faces}
+            return f"{count}d{faces}"
         case ConstantTerm(value=value):
-            return {f"{prefix}damage-dice-count": value, f"{prefix}damage-die": 1}
+            return f"{value}d1"
 
 
 def _damage_type_tag(record: up.Equipment) -> tuple[str, ...]:
@@ -351,31 +415,38 @@ def _damage_type_tag(record: up.Equipment) -> tuple[str, ...]:
     return tuple(kinds)
 
 
-def _reach(prefix: str, entry: up.Range | None) -> Mapping[str, int]:
+def _reach_of(entry: up.Range | None) -> Reach | None:
     if entry is None:
-        return {}
-    limit = {} if entry.long is None else {f"{prefix}-long": entry.long}
-    return {f"{prefix}-normal": entry.normal, **limit}
+        return None
+    return Reach(normal=entry.normal, long=entry.long)
 
 
-def armor(record: up.Equipment) -> LenientRecord:
+def _cost_of(cost: up.Quantity | None) -> Cost | None:
+    return None if cost is None else Cost(unit=cost.unit, amount=_whole(cost, "cost"))
+
+
+def armor(record: up.Equipment) -> ArmorRecord:
     value = record.armor_class
     if value is None:
         raise ValueError(f"armour {record.index!r} carries no armour class")
     shield = record.armor_category == "Shield"
-    return _equipment(
-        record,
-        f"{record.armor_category} armour.",
-        _armor_formula(record, value, shield=shield),
-        numbers={
-            **({"armor-bonus": value.base} if shield else {"armor-base": value.base}),
-            **({} if value.max_bonus is None else {"dex-limit": value.max_bonus}),
-            **({"strength-minimum": record.str_minimum} if record.str_minimum else {}),
-        },
+    return ArmorRecord(
+        index=record.index,
+        name=record.name,
+        text=_equipment_text(
+            record,
+            f"{record.armor_category} armour.",
+            _armor_formula(record, value, shield=shield),
+        ),
         tags=(
             *(("add-dex-modifier",) if value.dex_bonus else ()),
             *(("stealth-disadvantage",) if record.stealth_disadvantage else ()),
         ),
+        cost=_cost_of(record.cost),
+        base=value.base,
+        shield=shield,
+        dex_limit=value.max_bonus,
+        strength_minimum=record.str_minimum or None,
     )
 
 
@@ -392,48 +463,61 @@ def _armor_formula(record: up.Equipment, value: up.ArmorValue, *, shield: bool) 
     )
 
 
-def gear(record: up.Equipment) -> LenientRecord:
+def gear(record: up.Equipment) -> GearRecord:
     bundle = record.quantity
-    return _equipment(
-        record,
-        f"{_category(record)}.",
-        "" if bundle is None else f"Bundle of {bundle}.",
-        _optional("Capacity", record.capacity),
-        _optional("Contents", _contained(record.contents)),
-        numbers={} if bundle is None else {"quantity": bundle},
+    return GearRecord(
+        index=record.index,
+        name=record.name,
+        text=_equipment_text(
+            record,
+            f"{_category(record)}.",
+            "" if bundle is None else f"Bundle of {bundle}.",
+            _optional("Capacity", record.capacity),
+            _optional("Contents", _contained(record.contents)),
+        ),
+        cost=_cost_of(record.cost),
+        quantity=bundle,
     )
 
 
-def vehicle(record: up.Equipment) -> LenientRecord:
+def vehicle(record: up.Equipment) -> VehicleRecord:
     speed = "" if record.speed is None else f"Speed {record.speed.quantity:g} {record.speed.unit}."
-    return _equipment(
-        record,
-        f"{_category(record)}.",
-        speed,
-        _optional("Capacity", record.capacity),
-        numbers={**_vehicle_speed(record.speed), **_capacity_pounds(record.capacity)},
+    per_round, mph = _vehicle_speed(record.speed)
+    return VehicleRecord(
+        index=record.index,
+        name=record.name,
+        text=_equipment_text(
+            record,
+            f"{_category(record)}.",
+            speed,
+            _optional("Capacity", record.capacity),
+        ),
+        cost=_cost_of(record.cost),
+        speed=per_round,
+        speed_mph=mph,
+        capacity_lb=_capacity_pounds(record.capacity),
     )
 
 
-def _vehicle_speed(speed: up.Quantity | None) -> Mapping[str, int]:
-    """A mount's ft/round speed shares the `speed` key monsters and races use; a ship's
-    miles-per-hour pace is a different quantity and keeps its unit in the key."""
+def _vehicle_speed(speed: up.Quantity | None) -> tuple[int | None, int | None]:
+    """A mount's ft/round pace is the `speed` monsters and races carry; a ship's miles per hour is
+    a different quantity, so it lands in its own field."""
     if speed is None:
-        return {}
-    key = {"ft/round": "speed", "mph": "speed-mph"}.get(speed.unit)
-    if key is None:
-        raise ValueError(f"vehicle speed unit {speed.unit!r} fits no number key")
+        return None, None
+    if speed.unit not in ("ft/round", "mph"):
+        raise ValueError(f"vehicle speed unit {speed.unit!r} fits no speed field")
     # The rowboat's 1.5 mph is no integer; its speed stays on the text line.
     if speed.quantity != int(speed.quantity):
-        return {}
-    return {key: int(speed.quantity)}
+        return None, None
+    whole = int(speed.quantity)
+    return (whole, None) if speed.unit == "ft/round" else (None, whole)
 
 
-def _capacity_pounds(capacity: str) -> Mapping[str, int]:
+def _capacity_pounds(capacity: str) -> int | None:
     head, _, tail = capacity.partition(" ")
     if tail != "lb." or not (weight := head.replace(",", "")).isdigit():
-        return {}
-    return {"capacity-lb": int(weight)}
+        return None
+    return int(weight)
 
 
 def _category(record: up.Equipment) -> str:
@@ -448,26 +532,24 @@ def _contained(contents: Sequence[up.Contained]) -> str:
     return ", ".join(f"{entry.item.name} x{entry.quantity}" for entry in contents)
 
 
-def magic_item(record: up.MagicItem) -> LenientRecord:
-    return LenientRecord(
+def magic_item(record: up.MagicItem) -> MagicItemRecord:
+    return MagicItemRecord(
         index=record.index,
         name=record.name,
         text=_joined(
             f"{record.equipment_category.name}, {record.rarity.name.lower()}.", _prose(record.desc)
         ),
-        notes={
-            "category": record.equipment_category.name,
-            "rarity": record.rarity.name,
-            **_noted("variants", _names(record.variants)),
-        },
         tags=("variant",) if record.variant else (),
+        category=record.equipment_category.name,
+        rarity=record.rarity.name,
+        variants=tuple(entry.name for entry in record.variants),
     )
 
 
-def race(record: up.Race) -> LenientRecord:
+def race(record: up.Race) -> RaceRecord:
     languages = record.language_options
     picks = _choice_refs("languages", languages)
-    return LenientRecord(
+    return RaceRecord(
         index=record.index,
         name=record.name,
         text=_joined(
@@ -487,13 +569,17 @@ def race(record: up.Race) -> LenientRecord:
             _optional("Subraces", _names(record.subraces)),
             _optional("Alignment", record.alignment),
         ),
-        numbers={"speed": record.speed},
-        notes={
-            **_noted("ability-bonuses", _race_bonuses(record)),
-            "size": record.size,
-        },
         options=picks,
         choose=languages.choose if picks and languages is not None else None,
+        speed=record.speed,
+        size=record.size,
+        ability_bonuses=tuple(
+            AbilityBonus(ability=b.ability_score.name, bonus=b.bonus)
+            for b in record.ability_bonuses
+        ),
+        floating_bonus_choose=(
+            None if record.ability_bonus_options is None else record.ability_bonus_options.choose
+        ),
     )
 
 
@@ -504,8 +590,8 @@ def _race_bonuses(record: up.Race) -> str:
     return ", ".join(part for part in (_bonuses(record.ability_bonuses), extra) if part)
 
 
-def subrace(record: up.Subrace) -> LenientRecord:
-    return LenientRecord(
+def subrace(record: up.Subrace) -> SubraceRecord:
+    return SubraceRecord(
         index=record.index,
         name=record.name,
         text=_joined(
@@ -514,11 +600,15 @@ def subrace(record: up.Subrace) -> LenientRecord:
             _optional("Ability scores", _bonuses(record.ability_bonuses)),
             _optional("Traits", _names(record.racial_traits)),
         ),
-        notes=_noted("ability-bonuses", _bonuses(record.ability_bonuses)),
+        race=record.race.name,
+        ability_bonuses=tuple(
+            AbilityBonus(ability=bonus.ability_score.name, bonus=bonus.bonus)
+            for bonus in record.ability_bonuses
+        ),
     )
 
 
-def background(record: up.Background) -> LenientRecord:
+def background(record: up.Background) -> BackgroundRecord:
     feature = record.feature
     gold = record.starting_gold
     languages = (
@@ -526,7 +616,7 @@ def background(record: up.Background) -> LenientRecord:
         if record.language_options is None
         else f"Choose {_plural(record.language_options.choose, 'language')}."
     )
-    return LenientRecord(
+    return BackgroundRecord(
         index=record.index,
         name=record.name,
         text=_joined(
@@ -542,7 +632,7 @@ def background(record: up.Background) -> LenientRecord:
             _roleplay_table("Bonds", record.bonds),
             _roleplay_table("Flaws", record.flaws),
         ),
-        numbers={} if gold is None else {"starting-gold": _whole(gold, "starting gold")},
+        starting_gold=None if gold is None else _whole(gold, "starting gold"),
     )
 
 
@@ -569,9 +659,9 @@ def _roleplay_option(option: up.Option | str) -> str:
     return body
 
 
-def klass(record: up.Class) -> LenientRecord:
+def klass(record: up.Class) -> ClassRecord:
     casting = record.spellcasting
-    return LenientRecord(
+    return ClassRecord(
         index=record.index,
         name=record.name,
         text=_joined(
@@ -591,11 +681,9 @@ def klass(record: up.Class) -> LenientRecord:
                 for entry in (casting.info if casting else [])
             ),
         ),
-        numbers={"hit-die": record.hit_die},
-        notes={
-            **_noted("saving-throws", _names(record.saving_throws)),
-            **_noted("spellcasting", "" if casting is None else casting.spellcasting_ability.name),
-        },
+        hit_die=record.hit_die,
+        saving_throws=tuple(_ability(entry.name) for entry in record.saving_throws),
+        spellcasting=None if casting is None else _ability(casting.spellcasting_ability.name),
     )
 
 
@@ -636,37 +724,36 @@ def _option_minima(choice: up.Choice) -> str:
     )
 
 
-def subclass(record: up.Subclass) -> LenientRecord:
-    return LenientRecord(
+def subclass(record: up.Subclass) -> SubclassRecord:
+    return SubclassRecord(
         index=record.index,
         name=record.name,
         text=_joined(
             f"{record.class_.name} {record.subclass_flavor.lower()}.", _prose(record.desc)
         ),
-        notes=_noted("subclass-spells", _subclass_spells(record.spells)),
+        klass=record.class_.name,
+        flavor=record.subclass_flavor,
+        spell_grants=tuple(
+            SpellGrant(
+                gate=", ".join(p.name for p in entry.prerequisites) or "always",
+                spell=entry.spell.name,
+            )
+            for entry in record.spells
+        ),
     )
 
 
-def _subclass_spells(entries: Sequence[up.SubclassSpell]) -> str:
-    """The domain-spell table: which spells arrive at which class level, always prepared."""
-    grouped: dict[str, list[str]] = {}
-    for entry in entries:
-        gate = ", ".join(p.name for p in entry.prerequisites) or "always"
-        grouped.setdefault(gate, []).append(entry.spell.name)
-    return "; ".join(f"{gate}: {', '.join(spells)}" for gate, spells in grouped.items())
-
-
-def skill(record: up.Skill) -> LenientRecord:
-    return LenientRecord(
+def skill(record: up.Skill) -> SkillRecord:
+    return SkillRecord(
         index=record.index,
         name=record.name,
         text=_joined(f"{record.ability_score.name} skill.", _prose(record.desc)),
-        notes={"ability": record.ability_score.name},
+        ability=record.ability_score.name,
     )
 
 
-def language(record: up.Language) -> LenientRecord:
-    return LenientRecord(
+def language(record: up.Language) -> LanguageRecord:
+    return LanguageRecord(
         index=record.index,
         name=record.name,
         text=_line(
@@ -674,54 +761,77 @@ def language(record: up.Language) -> LenientRecord:
             _optional("Script", record.script),
             _optional("Typical speakers", ", ".join(record.typical_speakers)),
         ),
+        category=record.type,
+        script=record.script,
+        typical_speakers=tuple(record.typical_speakers),
     )
 
 
-def alignment(record: up.Alignment) -> LenientRecord:
-    return LenientRecord(
+def alignment(record: up.Alignment) -> AlignmentRecord:
+    return AlignmentRecord(
         index=record.index,
         name=record.name,
         text=_joined(f"Abbreviated {record.abbreviation}.", _prose(record.desc)),
+        abbreviation=record.abbreviation,
     )
 
 
-def trait(record: up.Trait) -> LenientRecord:
+def trait(record: up.Trait) -> TraitRecord:
     """Dragonborn breath weapons are the one trait with spell-grade structure; project it the
     way `spell` does, so the render carries the save, dice and ladder."""
     specific = record.trait_specific
     breath = None if specific is None else specific.breath_weapon
-    damage, scaling = ("", "") if breath is None else _spell_damage(next(iter(breath.damage), None))
+    entry = None if breath is None else next(iter(breath.damage), None)
+    _breath_scales_as_rendered(record, entry)
+    damage_type = specific.damage_type.name.lower() if specific and specific.damage_type else None
+    _breath_damage_type_agrees(record, entry, damage_type)
+    base, ladder = _amounts(_damage_rungs(entry))
     collection, choice = _trait_choice(record)
     picks = _choice_refs(collection, choice)
-    return LenientRecord(
+    dc = None if breath is None else breath.dc
+    return TraitRecord(
         index=record.index,
         name=record.name,
         text=_prose(record.desc),
-        notes={
-            **_noted(
-                "damage-type",
-                specific.damage_type.name if specific and specific.damage_type else "",
-            ),
-            **_noted(
-                "save",
-                ""
-                if breath is None or breath.dc is None
-                else _save(breath.dc.dc_type.name, breath.dc.success_type),
-            ),
-            **_noted("damage", damage),
-            **_noted("scaling", scaling),
-            **_noted("area", "" if breath is None else _area(breath.area_of_effect)),
-            **_noted(
-                "uses", "" if breath is None or breath.usage is None else _usage(breath.usage)
-            ),
-            **_noted("grants-proficiency", _names(record.proficiencies)),
-            **_noted("races", _names(record.races)),
-            **_noted("subraces", _names(record.subraces)),
-            **_noted("parent", record.parent.name if record.parent else ""),
-        },
         options=picks,
         choose=choice.choose if picks and choice is not None else None,
+        damage_type=damage_type,
+        save_ability=None if dc is None else _ability(dc.dc_type.name),
+        save_success=None if dc is None else _save_success(dc.success_type),
+        damage=base,
+        scaling=ladder,
+        area=(
+            None
+            if breath is None or breath.area_of_effect is None
+            else SpellArea(shape=breath.area_of_effect.type, size=breath.area_of_effect.size)
+        ),
+        uses=_usage(breath.usage) if breath is not None and breath.usage is not None else None,
+        grants_proficiency=tuple(entry.name for entry in record.proficiencies),
+        races=tuple(entry.name for entry in record.races),
+        subraces=tuple(entry.name for entry in record.subraces),
+        parent=record.parent.name if record.parent else None,
     )
+
+
+def _breath_scales_as_rendered(record: up.Trait, entry: up.SpellDamage | None) -> None:
+    """`TraitRecord.noted` renders the ladder with step 'level', so a breath weapon keyed by
+    slot must fail here, not render wrong."""
+    if entry is not None and entry.damage_at_slot_level:
+        raise ValueError(f"trait {record.index!r} breath weapon scales by slot, not level")
+
+
+def _breath_damage_type_agrees(
+    record: up.Trait, entry: up.SpellDamage | None, damage_type: str | None
+) -> None:
+    """The damage note's suffix comes from the record's single `damage_type` field, so a breath
+    entry naming a different type would render silently wrong."""
+    if entry is None or entry.damage_type is None:
+        return
+    if damage_type is None or entry.damage_type.name.lower() != damage_type:
+        raise ValueError(
+            f"trait {record.index!r} breath damage type {entry.damage_type.name!r} "
+            f"disagrees with damage-type {damage_type!r}"
+        )
 
 
 def _trait_choice(record: up.Trait) -> tuple[str, up.Choice | None]:
@@ -740,11 +850,15 @@ def _trait_choice(record: up.Trait) -> tuple[str, up.Choice | None]:
     return found[0] if found else ("", None)
 
 
-def feat(record: up.Feat) -> LenientRecord:
-    return LenientRecord(
+def feat(record: up.Feat) -> FeatRecord:
+    return FeatRecord(
         index=record.index,
         name=record.name,
         text=_joined(_optional("Prerequisite", _minima(record.prerequisites)), _prose(record.desc)),
+        prerequisites=tuple(
+            AbilityMinimum(ability=_ability(entry.ability_score.name), minimum=entry.minimum_score)
+            for entry in record.prerequisites
+        ),
     )
 
 
@@ -752,64 +866,62 @@ def _minima(entries: Sequence[up.Prerequisite]) -> str:
     return ", ".join(f"{entry.ability_score.name} {entry.minimum_score}" for entry in entries)
 
 
-def proficiency(record: up.Proficiency) -> LenientRecord:
-    return LenientRecord(
+def proficiency(record: up.Proficiency) -> ProficiencyRecord:
+    return ProficiencyRecord(
         index=record.index,
         name=record.name,
         text=f"{record.type} proficiency: {record.reference.name}.",
+        category=record.type,
+        reference=record.reference.name,
     )
 
 
-def feature(record: up.Feature) -> LenientRecord:
+def feature(record: up.Feature) -> FeatureRecord:
     owner = record.subclass or record.class_
     choice = subfeature_options(record)
-    return LenientRecord(
+    specific = record.feature_specific
+    return FeatureRecord(
         index=record.index,
         name=record.name,
         text=_joined(
             f"{owner.name if owner else 'Feature'} feature, level {record.level}.",
             _prose(record.desc),
         ),
-        notes={
-            **_noted("requires", _feature_requires(record.prerequisites)),
-            **_noted("choose", _feature_choice(record.feature_specific)),
-            **_noted("invocations", _invocations(record.feature_specific)),
-            **_noted("parent", record.parent.name if record.parent else ""),
-        },
         options=choice,
         choose=1 if choice else None,
+        level=record.level,
+        requires=_feature_requires(record.prerequisites),
+        pick=_feature_choice(specific),
+        # Flat, not a `Choice`: how many a warlock knows is the level row's `invocations-known`.
+        invocations=() if specific is None else tuple(entry.name for entry in specific.invocations),
+        parent=record.parent.name if record.parent else None,
     )
 
 
-def _invocations(specific: up.FeatureSpecific | None) -> str:
-    """Flat, not a `Choice`: how many a warlock knows is the level row's `invocations-known`."""
-    return "" if specific is None else _names(specific.invocations)
-
-
-def _feature_requires(entries: Sequence[up.FeaturePrerequisite]) -> str:
+def _feature_requires(entries: Sequence[up.FeaturePrerequisite]) -> tuple[str, ...]:
     def one(entry: up.FeaturePrerequisite) -> str:
         if entry.type == "level" and entry.level:
             return f"level {entry.level}"
         # Feature and spell prerequisites arrive as API paths; the tail is the index.
         return (entry.feature or entry.spell).rsplit("/", 1)[-1]
 
-    return ", ".join(line for entry in entries if (line := one(entry)))
+    return tuple(line for entry in entries if (line := one(entry)))
 
 
-def _feature_choice(specific: up.FeatureSpecific | None) -> str:
+def _feature_choice(specific: up.FeatureSpecific | None) -> FeatureChoice | None:
     if specific is None:
-        return ""
+        return None
     for what, choice in (
         ("skill proficiencies for expertise", specific.expertise_options),
         ("favored enemy", specific.enemy_type_options),
         ("favored terrain", specific.terrain_type_options),
     ):
         if choice is not None:
-            named = ", ".join(
+            among = tuple(
                 name for option in choice.options.options if (name := _option_name(option))
             )
-            return _line(f"{choice.choose} {what}", _optional("from", named))
-    return ""
+            return FeatureChoice(count=choice.choose, what=what, among=among)
+    return None
 
 
 def _option_name(option: up.Option | str) -> str:
@@ -818,7 +930,7 @@ def _option_name(option: up.Option | str) -> str:
     return option.string or (option.item.name if option.item else "")
 
 
-def level(record: up.Level, options: Options) -> LenientRecord:
+def level(record: up.Level, options: Options) -> LevelRecord:
     owner = record.subclass or record.class_
     picks = tuple(
         pick
@@ -827,7 +939,9 @@ def level(record: up.Level, options: Options) -> LenientRecord:
     )
     specific = {**record.class_specific, **record.subclass_specific}
     whole = _whole_numbers(specific)
-    return LenientRecord(
+    cantrips_known = count if (count := record.spellcasting.get("cantrips_known", 0)) > 0 else None
+    spells_known = count if (count := record.spellcasting.get("spells_known", 0)) > 0 else None
+    return LevelRecord(
         index=record.index,
         name=f"{owner.name} {record.level}",
         text=_joined(
@@ -842,19 +956,6 @@ def level(record: up.Level, options: Options) -> LenientRecord:
             _optional("Spell slots", _slots(record.spellcasting)),
             _optional("This level's numbers", _pairs(whole)),
         ),
-        numbers={
-            "level": record.level,
-            **({} if record.prof_bonus is None else {"proficiency-bonus": record.prof_bonus}),
-            **_known_spells(record.spellcasting),
-            **(
-                {}
-                if not record.ability_score_bonuses
-                else {"ability-score-bonuses": record.ability_score_bonuses}
-            ),
-            **{f"slot-{n}": count for n, count in _slot_maxima(record.spellcasting)},
-            **{_key(name): value for name, value in whole.items()},
-        },
-        notes=_level_notes(specific),
         tags=tuple(
             _key(name)
             for name in ("wild_shape_fly", "wild_shape_swim")
@@ -862,39 +963,45 @@ def level(record: up.Level, options: Options) -> LenientRecord:
         ),
         options=picks,
         choose=len(record.features) or None,
+        level=record.level,
+        proficiency_bonus=record.prof_bonus,
+        cantrips_known=cantrips_known,
+        spells_known=spells_known,
+        ability_score_bonuses=record.ability_score_bonuses or None,
+        slots=tuple(_slot_maxima(record.spellcasting)),
+        class_numbers={_key(name): value for name, value in whole.items()},
+        dice_ladders=_level_dice_ladders(specific),
+        cr_caps=_level_cr_caps(specific),
+        slot_creation=_level_slot_creation(specific),
+        unlimited=tuple(_key(name) for name, value in specific.items() if value == UNLIMITED),
     )
 
 
-def _known_spells(spellcasting: Mapping[str, int]) -> Mapping[str, int]:
-    return {
-        _key(name): count
-        for name in ("cantrips_known", "spells_known")
-        if (count := spellcasting.get(name, 0)) > 0
-    }
-
-
-def _level_notes(specific: Mapping[str, object]) -> Mapping[str, str]:
-    """The class ladders `_whole_numbers` cannot carry: damage dice, fractional CR caps, the
-    sorcerer's slot-creation table, and the unlimited sentinel."""
-    notes: dict[str, str] = {}
+def _level_dice_ladders(specific: Mapping[str, object]) -> Mapping[str, DiceExpr]:
+    ladders: dict[str, DiceExpr] = {}
     for name in ("sneak_attack", "martial_arts"):
         if isinstance(raw := specific.get(name), Mapping):
             dice = up.DieLadder.model_validate(raw)
-            notes[_key(name)] = f"{dice.dice_count}d{dice.dice_value}"
+            ladders[_key(name)] = f"{dice.dice_count}d{dice.dice_value}"
+    return ladders
+
+
+def _level_cr_caps(specific: Mapping[str, object]) -> Mapping[str, str]:
+    caps: dict[str, str] = {}
     for name in ("wild_shape_max_cr", "destroy_undead_cr"):
         value = specific.get(name)
         if isinstance(value, int | float) and not isinstance(value, bool) and value > 0:
-            notes[_key(name)] = _challenge(float(value))
-    if isinstance(ladder := specific.get("creating_spell_slots"), list) and ladder:
-        rows = _SLOT_CREATIONS.validate_python(ladder)
-        notes["creating-spell-slots"] = ", ".join(
-            f"slot {row.spell_slot_level} for {row.sorcery_point_cost} sorcery points"
-            for row in rows
-        )
-    for name, value in specific.items():
-        if value == UNLIMITED:
-            notes[_key(name)] = "unlimited"
-    return notes
+            caps[_key(name)] = _challenge(float(value))
+    return caps
+
+
+def _level_slot_creation(specific: Mapping[str, object]) -> tuple[tuple[int, int], ...]:
+    """The sorcerer's slot-creation table: `_whole_numbers` cannot carry it, it is not a number."""
+    ladder = specific.get("creating_spell_slots")
+    if not (isinstance(ladder, list) and ladder):
+        return ()
+    rows = _SLOT_CREATIONS.validate_python(ladder)
+    return tuple((row.spell_slot_level, row.sorcery_point_cost) for row in rows)
 
 
 def subfeature_options(record: up.Feature) -> tuple[ContentRef, ...]:
@@ -909,7 +1016,7 @@ UNLIMITED = 9999
 
 def _whole_numbers(values: Mapping[str, object]) -> Mapping[str, int]:
     """Only the whole numbers: dice ladders, fractions and the unlimited sentinel go through
-    `_level_notes` instead."""
+    `_level_dice_ladders`, `_level_cr_caps` and `unlimited` instead."""
     return {
         name: value
         for name, value in values.items()
@@ -928,32 +1035,10 @@ def _slots(spellcasting: Mapping[str, int]) -> str:
     return ", ".join(f"level {number} x{count}" for number, count in _slot_maxima(spellcasting))
 
 
-def _equipment(
-    record: up.Equipment,
-    *lines: str,
-    after: str = "",
-    numbers: Mapping[str, int] | None = None,
-    notes: Mapping[str, str] | None = None,
-    tags: tuple[str, ...] = (),
-) -> LenientRecord:
+def _equipment_text(record: up.Equipment, *lines: str, after: str = "") -> str:
     cost = "" if record.cost is None else f"Cost {record.cost.quantity:g} {record.cost.unit}."
     weight = "" if record.weight is None else f"Weight {record.weight:g} lb."
-    return LenientRecord(
-        index=record.index,
-        name=record.name,
-        text=_joined(_line(*lines, cost, weight), _prose(record.desc), after),
-        numbers={**_cost_number(record.cost), **(numbers or {})},
-        notes=notes or {},
-        tags=tags,
-    )
-
-
-def _cost_number(cost: up.Quantity | None) -> Mapping[str, int]:
-    """Unit-named keys (`cost-gp 15`, `cost-sp 2`): every upstream price is whole in its own
-    coin, and one normalized copper key would misstate 15 gp as 1500."""
-    if cost is None:
-        return {}
-    return {f"cost-{cost.unit}": _whole(cost, "cost")}
+    return _joined(_line(*lines, cost, weight), _prose(record.desc), after)
 
 
 def _attack_lines(actions: Sequence[up.Action]) -> Iterable[str]:
@@ -997,10 +1082,6 @@ def _save_line(name: str, save: up.SaveDc, dice: str) -> str:
     half = ", half on save" if save.success_type == "half" else ""
     withdice = f", {dice}" if dice else ""
     return f"{name} DC {save.dc_value} {save.dc_type.name}{withdice}{half}"
-
-
-def _noted(key: str, body: str) -> Mapping[str, str]:
-    return {key: body} if body else {}
 
 
 def _choice_refs(collection: str, choice: up.Choice | None) -> tuple[ContentRef, ...]:

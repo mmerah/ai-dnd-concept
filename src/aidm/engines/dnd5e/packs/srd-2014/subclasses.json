@@ -3,128 +3,476 @@
     "index": "berserker",
     "name": "Berserker",
     "text": "Barbarian primal path.\n\nFor some barbarians, rage is a means to an end--that end being violence. The Path of the Berserker is a path of untrammeled fury, slick with blood. As you enter the berserker's rage, you thrill in the chaos of battle, heedless of your own health or well-being.",
-    "numbers": {},
-    "notes": {},
     "tags": [],
     "options": [],
-    "choose": null
+    "choose": null,
+    "klass": "Barbarian",
+    "flavor": "Primal Path",
+    "spell_grants": []
   },
   {
     "index": "lore",
     "name": "Lore",
     "text": "Bard bard college.\n\nBards of the College of Lore know something about most things, collecting bits of knowledge from sources as diverse as scholarly tomes and peasant tales. Whether singing folk ballads in taverns or elaborate compositions in royal courts, these bards use their gifts to hold audiences spellbound. When the applause dies down, the audience members might find themselves questioning everything they held to be true, from their faith in the priesthood of the local temple to their loyalty to the king. The loyalty of these bards lies in the pursuit of beauty and truth, not in fealty to a monarch or following the tenets of a deity. A noble who keeps such a bard as a herald or advisor knows that the bard would rather be honest than politic. The college's members gather in libraries and sometimes in actual colleges, complete with classrooms and dormitories, to share their lore with one another. They also meet at festivals or affairs of state, where they can expose corruption, unravel lies, and poke fun at self-important figures of authority.",
-    "numbers": {},
-    "notes": {},
     "tags": [],
     "options": [],
-    "choose": null
+    "choose": null,
+    "klass": "Bard",
+    "flavor": "Bard College",
+    "spell_grants": []
   },
   {
     "index": "life",
     "name": "Life",
     "text": "Cleric divine domain.\n\nThe Life domain focuses on the vibrant positive energy--one of the fundamental forces of the universe--that sustains all life. The gods of life promote vitality and health through healing the sick and wounded, caring for those in need, and driving away the forces of death and undeath. Almost any non-evil deity can claim influence over this domain, particularly agricultural deities, sun gods, gods of healing or endurance, and gods of home and community.",
-    "numbers": {},
-    "notes": {
-      "subclass-spells": "Cleric 1: Bless, Cure Wounds; Cleric 3: Lesser Restoration, Spiritual Weapon; Cleric 5: Beacon of Hope, Revivify; Cleric 7: Death Ward; Cleric 9: Mass Cure Wounds, Raise Dead"
-    },
     "tags": [],
     "options": [],
-    "choose": null
+    "choose": null,
+    "klass": "Cleric",
+    "flavor": "Divine Domain",
+    "spell_grants": [
+      {
+        "gate": "Cleric 1",
+        "spell": "Bless"
+      },
+      {
+        "gate": "Cleric 1",
+        "spell": "Cure Wounds"
+      },
+      {
+        "gate": "Cleric 3",
+        "spell": "Lesser Restoration"
+      },
+      {
+        "gate": "Cleric 3",
+        "spell": "Spiritual Weapon"
+      },
+      {
+        "gate": "Cleric 5",
+        "spell": "Beacon of Hope"
+      },
+      {
+        "gate": "Cleric 5",
+        "spell": "Revivify"
+      },
+      {
+        "gate": "Cleric 7",
+        "spell": "Death Ward"
+      },
+      {
+        "gate": "Cleric 9",
+        "spell": "Mass Cure Wounds"
+      },
+      {
+        "gate": "Cleric 9",
+        "spell": "Raise Dead"
+      }
+    ]
   },
   {
     "index": "land",
     "name": "Land",
     "text": "Druid druid circle.\n\nThe Circle of the Land is made up of mystics and sages who safeguard ancient knowledge and rites through a vast oral tradition. These druids meet within sacred circles of trees or standing stones to whisper primal secrets in Druidic. The circle's wisest members preside as the chief priests of communities that hold to the Old Faith and serve as advisors to the rulers of those folk. As a member of this circle, your magic is influenced by the land where you were initiated into the circle's mysterious rites.",
-    "numbers": {},
-    "notes": {
-      "subclass-spells": "Druid 3, Circle of the Land: Arctic: Hold Person, Spike Growth; Druid 5, Circle of the Land: Arctic: Sleet Storm, Slow; Druid 7, Circle of the Land: Arctic: Freedom of Movement, Ice Storm; Druid 9, Circle of the Land: Arctic: Commune With Nature, Cone of Cold; Druid 3, Circle of the Land: Coast: Mirror Image, Misty Step; Druid 5, Circle of the Land: Coast: Water Breathing, Water Walk; Druid 7, Circle of the Land: Coast: Control Water, Freedom of Movement; Druid 9, Circle of the Land: Coast: Conjure Elemental, Scrying; Druid 3, Circle of the Land: Desert: Blur, Silence; Druid 5, Circle of the Land: Desert: Create Food and Water, Protection From Energy; Druid 7, Circle of the Land: Desert: Blight, Hallucinatory Terrain; Druid 9, Circle of the Land: Desert: Insect Plague, Wall of Stone; Druid 3, Circle of the Land: Forest: Barkskin, Spider Climb; Druid 5, Circle of the Land: Forest: Call Lightning, Plant Growth; Druid 7, Circle of the Land: Forest: Divination, Freedom of Movement; Druid 9, Circle of the Land: Forest: Commune With Nature, Tree Stride; Druid 3, Circle of the Land: Grassland: Invisibility, Pass Without Trace; Druid 5, Circle of the Land: Grassland: Daylight, Haste; Druid 7, Circle of the Land: Grassland: Divination, Freedom of Movement; Druid 9, Circle of the Land: Grassland: Dream, Insect Plague; Druid 3, Circle of the Land: Mountain: Spider Climb, Spike Growth; Druid 5, Circle of the Land: Mountain: Lightning Bolt, Meld Into Stone; Druid 7, Circle of the Land: Mountain: Stone Shape, Stoneskin; Druid 9, Circle of the Land: Mountain: Passwall, Wall of Stone; Druid 3, Circle of the Land: Swamp: Acid Arrow, Darkness; Druid 5, Circle of the Land: Swamp: Water Walk, Stinking Cloud; Druid 7, Circle of the Land: Swamp: Freedom of Movement, Locate Creature; Druid 9, Circle of the Land: Swamp: Insect Plague, Scrying"
-    },
     "tags": [],
     "options": [],
-    "choose": null
+    "choose": null,
+    "klass": "Druid",
+    "flavor": "Druid Circle",
+    "spell_grants": [
+      {
+        "gate": "Druid 3, Circle of the Land: Arctic",
+        "spell": "Hold Person"
+      },
+      {
+        "gate": "Druid 3, Circle of the Land: Arctic",
+        "spell": "Spike Growth"
+      },
+      {
+        "gate": "Druid 5, Circle of the Land: Arctic",
+        "spell": "Sleet Storm"
+      },
+      {
+        "gate": "Druid 5, Circle of the Land: Arctic",
+        "spell": "Slow"
+      },
+      {
+        "gate": "Druid 7, Circle of the Land: Arctic",
+        "spell": "Freedom of Movement"
+      },
+      {
+        "gate": "Druid 7, Circle of the Land: Arctic",
+        "spell": "Ice Storm"
+      },
+      {
+        "gate": "Druid 9, Circle of the Land: Arctic",
+        "spell": "Commune With Nature"
+      },
+      {
+        "gate": "Druid 9, Circle of the Land: Arctic",
+        "spell": "Cone of Cold"
+      },
+      {
+        "gate": "Druid 3, Circle of the Land: Coast",
+        "spell": "Mirror Image"
+      },
+      {
+        "gate": "Druid 3, Circle of the Land: Coast",
+        "spell": "Misty Step"
+      },
+      {
+        "gate": "Druid 5, Circle of the Land: Coast",
+        "spell": "Water Breathing"
+      },
+      {
+        "gate": "Druid 5, Circle of the Land: Coast",
+        "spell": "Water Walk"
+      },
+      {
+        "gate": "Druid 7, Circle of the Land: Coast",
+        "spell": "Control Water"
+      },
+      {
+        "gate": "Druid 7, Circle of the Land: Coast",
+        "spell": "Freedom of Movement"
+      },
+      {
+        "gate": "Druid 9, Circle of the Land: Coast",
+        "spell": "Conjure Elemental"
+      },
+      {
+        "gate": "Druid 9, Circle of the Land: Coast",
+        "spell": "Scrying"
+      },
+      {
+        "gate": "Druid 3, Circle of the Land: Desert",
+        "spell": "Blur"
+      },
+      {
+        "gate": "Druid 3, Circle of the Land: Desert",
+        "spell": "Silence"
+      },
+      {
+        "gate": "Druid 5, Circle of the Land: Desert",
+        "spell": "Create Food and Water"
+      },
+      {
+        "gate": "Druid 5, Circle of the Land: Desert",
+        "spell": "Protection From Energy"
+      },
+      {
+        "gate": "Druid 7, Circle of the Land: Desert",
+        "spell": "Blight"
+      },
+      {
+        "gate": "Druid 7, Circle of the Land: Desert",
+        "spell": "Hallucinatory Terrain"
+      },
+      {
+        "gate": "Druid 9, Circle of the Land: Desert",
+        "spell": "Insect Plague"
+      },
+      {
+        "gate": "Druid 9, Circle of the Land: Desert",
+        "spell": "Wall of Stone"
+      },
+      {
+        "gate": "Druid 3, Circle of the Land: Forest",
+        "spell": "Barkskin"
+      },
+      {
+        "gate": "Druid 3, Circle of the Land: Forest",
+        "spell": "Spider Climb"
+      },
+      {
+        "gate": "Druid 5, Circle of the Land: Forest",
+        "spell": "Call Lightning"
+      },
+      {
+        "gate": "Druid 5, Circle of the Land: Forest",
+        "spell": "Plant Growth"
+      },
+      {
+        "gate": "Druid 7, Circle of the Land: Forest",
+        "spell": "Divination"
+      },
+      {
+        "gate": "Druid 7, Circle of the Land: Forest",
+        "spell": "Freedom of Movement"
+      },
+      {
+        "gate": "Druid 9, Circle of the Land: Forest",
+        "spell": "Commune With Nature"
+      },
+      {
+        "gate": "Druid 9, Circle of the Land: Forest",
+        "spell": "Tree Stride"
+      },
+      {
+        "gate": "Druid 3, Circle of the Land: Grassland",
+        "spell": "Invisibility"
+      },
+      {
+        "gate": "Druid 3, Circle of the Land: Grassland",
+        "spell": "Pass Without Trace"
+      },
+      {
+        "gate": "Druid 5, Circle of the Land: Grassland",
+        "spell": "Daylight"
+      },
+      {
+        "gate": "Druid 5, Circle of the Land: Grassland",
+        "spell": "Haste"
+      },
+      {
+        "gate": "Druid 7, Circle of the Land: Grassland",
+        "spell": "Divination"
+      },
+      {
+        "gate": "Druid 7, Circle of the Land: Grassland",
+        "spell": "Freedom of Movement"
+      },
+      {
+        "gate": "Druid 9, Circle of the Land: Grassland",
+        "spell": "Dream"
+      },
+      {
+        "gate": "Druid 9, Circle of the Land: Grassland",
+        "spell": "Insect Plague"
+      },
+      {
+        "gate": "Druid 3, Circle of the Land: Mountain",
+        "spell": "Spider Climb"
+      },
+      {
+        "gate": "Druid 3, Circle of the Land: Mountain",
+        "spell": "Spike Growth"
+      },
+      {
+        "gate": "Druid 5, Circle of the Land: Mountain",
+        "spell": "Lightning Bolt"
+      },
+      {
+        "gate": "Druid 5, Circle of the Land: Mountain",
+        "spell": "Meld Into Stone"
+      },
+      {
+        "gate": "Druid 7, Circle of the Land: Mountain",
+        "spell": "Stone Shape"
+      },
+      {
+        "gate": "Druid 7, Circle of the Land: Mountain",
+        "spell": "Stoneskin"
+      },
+      {
+        "gate": "Druid 9, Circle of the Land: Mountain",
+        "spell": "Passwall"
+      },
+      {
+        "gate": "Druid 9, Circle of the Land: Mountain",
+        "spell": "Wall of Stone"
+      },
+      {
+        "gate": "Druid 3, Circle of the Land: Swamp",
+        "spell": "Acid Arrow"
+      },
+      {
+        "gate": "Druid 3, Circle of the Land: Swamp",
+        "spell": "Darkness"
+      },
+      {
+        "gate": "Druid 5, Circle of the Land: Swamp",
+        "spell": "Water Walk"
+      },
+      {
+        "gate": "Druid 5, Circle of the Land: Swamp",
+        "spell": "Stinking Cloud"
+      },
+      {
+        "gate": "Druid 7, Circle of the Land: Swamp",
+        "spell": "Freedom of Movement"
+      },
+      {
+        "gate": "Druid 7, Circle of the Land: Swamp",
+        "spell": "Locate Creature"
+      },
+      {
+        "gate": "Druid 9, Circle of the Land: Swamp",
+        "spell": "Insect Plague"
+      },
+      {
+        "gate": "Druid 9, Circle of the Land: Swamp",
+        "spell": "Scrying"
+      }
+    ]
   },
   {
     "index": "champion",
     "name": "Champion",
     "text": "Fighter martial archetype.\n\nThe archetypal Champion focuses on the development of raw physical power honed to deadly perfection. Those who model themselves on this archetype combine rigorous training with physical excellence to deal devastating blows.",
-    "numbers": {},
-    "notes": {},
     "tags": [],
     "options": [],
-    "choose": null
+    "choose": null,
+    "klass": "Fighter",
+    "flavor": "Martial Archetype",
+    "spell_grants": []
   },
   {
     "index": "open-hand",
     "name": "Open Hand",
     "text": "Monk monastic tradition.\n\nMonks of the Way of the Open Hand are the ultimate masters of martial arts combat, whether armed or unarmed. They learn techniques to push and trip their opponents, manipulate ki to heal damage to their bodies, and practice advanced meditation that can protect them from harm.",
-    "numbers": {},
-    "notes": {},
     "tags": [],
     "options": [],
-    "choose": null
+    "choose": null,
+    "klass": "Monk",
+    "flavor": "Monastic Tradition",
+    "spell_grants": []
   },
   {
     "index": "devotion",
     "name": "Devotion",
     "text": "Paladin sacred oath.\n\nThe Oath of Devotion binds a paladin to the loftiest ideals of justice, virtue, and order. Sometimes called cavaliers, white knights, or holy warriors, these paladins meet the ideal of the knight in shining armor, acting with honor in pursuit of justice and the greater good. They hold themselves to the highest standards of conduct, and some, for better or worse, hold the rest of the world to the same standards. Many who swear this oath are devoted to gods of law and good and use their gods' tenets as the measure of their devotion. They hold angels--the perfect servants of good--as their ideals, and incorporate images of angelic wings into their helmets or coats of arms.",
-    "numbers": {},
-    "notes": {
-      "subclass-spells": "Paladin 3: Protection from Evil and Good, Sanctuary; Paladin 5: Lesser Restoration, Zone of Truth; Paladin 9: Beacon of Hope, Dispel Magic; Paladin 13: Freedom of Movement, Guardian of Faith; Paladin 17: Commune, Flame Strike"
-    },
     "tags": [],
     "options": [],
-    "choose": null
+    "choose": null,
+    "klass": "Paladin",
+    "flavor": "Sacred Oath",
+    "spell_grants": [
+      {
+        "gate": "Paladin 3",
+        "spell": "Protection from Evil and Good"
+      },
+      {
+        "gate": "Paladin 3",
+        "spell": "Sanctuary"
+      },
+      {
+        "gate": "Paladin 5",
+        "spell": "Lesser Restoration"
+      },
+      {
+        "gate": "Paladin 5",
+        "spell": "Zone of Truth"
+      },
+      {
+        "gate": "Paladin 9",
+        "spell": "Beacon of Hope"
+      },
+      {
+        "gate": "Paladin 9",
+        "spell": "Dispel Magic"
+      },
+      {
+        "gate": "Paladin 13",
+        "spell": "Freedom of Movement"
+      },
+      {
+        "gate": "Paladin 13",
+        "spell": "Guardian of Faith"
+      },
+      {
+        "gate": "Paladin 17",
+        "spell": "Commune"
+      },
+      {
+        "gate": "Paladin 17",
+        "spell": "Flame Strike"
+      }
+    ]
   },
   {
     "index": "hunter",
     "name": "Hunter",
     "text": "Ranger ranger archetype.\n\nEmulating the Hunter archetype means accepting your place as a bulwark between civilization and the terrors of the wilderness. As you walk the Hunter's path, you learn specialized techniques for fighting the threats you face, from rampaging ogres and hordes of orcs to towering giants and terrifying dragons.",
-    "numbers": {},
-    "notes": {},
     "tags": [],
     "options": [],
-    "choose": null
+    "choose": null,
+    "klass": "Ranger",
+    "flavor": "Ranger Archetype",
+    "spell_grants": []
   },
   {
     "index": "thief",
     "name": "Thief",
     "text": "Rogue roguish archetype.\n\nYou hone your skills in the larcenous arts. Burglars, bandits, cutpurses, and other criminals typically follow this archetype, but so do rogues who prefer to think of themselves as professional treasure seekers, explorers, delvers, and investigators. In addition to improving your agility and stealth, you learn skills useful for delving into ancient ruins, reading unfamiliar languages, and using magic items you normally couldn't employ.",
-    "numbers": {},
-    "notes": {},
     "tags": [],
     "options": [],
-    "choose": null
+    "choose": null,
+    "klass": "Rogue",
+    "flavor": "Roguish Archetype",
+    "spell_grants": []
   },
   {
     "index": "draconic",
     "name": "Draconic",
     "text": "Sorcerer sorcerous origin.\n\nYour innate magic comes from draconic magic that was mingled with your blood or that of your ancestors. Most often, sorcerers with this origin trace their descent back to a mighty sorcerer of ancient times who made a bargain with a dragon or who might even have claimed a dragon parent. Some of these bloodlines are well established in the world, but most are obscure. Any given sorcerer could be the first of a new bloodline, as a result of a pact or some other exceptional circumstance.",
-    "numbers": {},
-    "notes": {},
     "tags": [],
     "options": [],
-    "choose": null
+    "choose": null,
+    "klass": "Sorcerer",
+    "flavor": "Sorcerous Origin",
+    "spell_grants": []
   },
   {
     "index": "fiend",
     "name": "Fiend",
     "text": "Warlock otherworldly patron.\n\nYou have made a pact with a fiend from the lower planes of existence, a being whose aims are evil, even if you strive against those aims. Such beings desire the corruption or destruction of all things, ultimately including you. Fiends powerful enough to forge a pact include demon lords such as Demogorgon, Orcus, Fraz'Urb-luu, and Baphomet; archdevils such as Asmodeus, Dispater, Mephistopheles, and Belial; pit fiends and balors that are especially mighty; and ultroloths and other lords of the yugoloths.",
-    "numbers": {},
-    "notes": {
-      "subclass-spells": "Warlock 1: Burning Hands, Command; Warlock 3: Blindness/Deafness, Scorching Ray; Warlock 5: Fireball, Stinking Cloud; Warlock 7: Fire Shield, Wall of Fire; Warlock 9: Flame Strike, Hallow"
-    },
     "tags": [],
     "options": [],
-    "choose": null
+    "choose": null,
+    "klass": "Warlock",
+    "flavor": "Otherworldly Patron",
+    "spell_grants": [
+      {
+        "gate": "Warlock 1",
+        "spell": "Burning Hands"
+      },
+      {
+        "gate": "Warlock 1",
+        "spell": "Command"
+      },
+      {
+        "gate": "Warlock 3",
+        "spell": "Blindness/Deafness"
+      },
+      {
+        "gate": "Warlock 3",
+        "spell": "Scorching Ray"
+      },
+      {
+        "gate": "Warlock 5",
+        "spell": "Fireball"
+      },
+      {
+        "gate": "Warlock 5",
+        "spell": "Stinking Cloud"
+      },
+      {
+        "gate": "Warlock 7",
+        "spell": "Fire Shield"
+      },
+      {
+        "gate": "Warlock 7",
+        "spell": "Wall of Fire"
+      },
+      {
+        "gate": "Warlock 9",
+        "spell": "Flame Strike"
+      },
+      {
+        "gate": "Warlock 9",
+        "spell": "Hallow"
+      }
+    ]
   },
   {
     "index": "evocation",
     "name": "Evocation",
     "text": "Wizard arcane tradition.\n\nYou focus your study on magic that creates powerful elemental effects such as bitter cold, searing flame, rolling thunder, crackling lightning, and burning acid. Some evokers find employment in military forces, serving as artillery to blast enemy armies from afar. Others use their spectacular power to protect the weak, while some seek their own gain as bandits, adventurers, or aspiring tyrants.",
-    "numbers": {},
-    "notes": {},
     "tags": [],
     "options": [],
-    "choose": null
+    "choose": null,
+    "klass": "Wizard",
+    "flavor": "Arcane Tradition",
+    "spell_grants": []
   }
 ]

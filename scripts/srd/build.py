@@ -4,14 +4,14 @@ from pathlib import Path
 
 from pydantic import TypeAdapter
 
+from aidm.engines.dnd5e.rules import PLUGIN
 from aidm.engines.loader import EngineSpec
 from aidm.state.packs import (
     ENCODING,
     CollectionName,
-    LenientRecord,
     Manifest,
     Pack,
-    lenient_format,
+    Record,
     validate_pack,
 )
 
@@ -19,10 +19,8 @@ from . import project
 from . import upstream as up
 
 EDITION = "2014"
-ENGINE_DIR = Path(__file__).parents[2] / "src" / "aidm" / "engines" / "dnd5e"
-EQUIPMENT_COLLECTIONS: Mapping[
-    CollectionName, tuple[str, Callable[[up.Equipment], LenientRecord]]
-] = {
+ENGINE_DIR = PLUGIN.engine_dir
+EQUIPMENT_COLLECTIONS: Mapping[CollectionName, tuple[str, Callable[[up.Equipment], Record]]] = {
     "weapons": ("weapon", project.weapon),
     "armor": ("armor", project.armor),
     "gear": ("adventuring-gear", project.gear),
@@ -45,7 +43,7 @@ def build(checkout: Path) -> Pack:
     equipment = read("Equipment", up.Equipment)
     features = read("Features", up.Feature)
     choices = {f.index: options for f in features if (options := project.subfeature_options(f))}
-    records: Mapping[CollectionName, Mapping[str, LenientRecord]] = {
+    records: Mapping[CollectionName, Mapping[str, Record]] = {
         "monsters": _keyed(project.monster(r) for r in read("Monsters", up.Monster)),
         **{
             name: _keyed(projected(r) for r in equipment if r.equipment_category.index == category)
@@ -83,17 +81,16 @@ def build(checkout: Path) -> Pack:
             "records": records,
         }
     )
-    validate_pack(pack, lenient_format(_collections()))
+    validate_pack(pack, PLUGIN.pack_format(_spec()))
     return pack
 
 
-def _collections() -> tuple[CollectionName, ...]:
+def _spec() -> EngineSpec:
     """The engine's spec is the single list of what this pack may hold."""
-    spec = EngineSpec.model_validate_json((ENGINE_DIR / "spec.json").read_text(encoding=ENCODING))
-    return spec.collections
+    return EngineSpec.model_validate_json((ENGINE_DIR / "spec.json").read_text(encoding=ENCODING))
 
 
-def _keyed(records: Iterable[LenientRecord]) -> dict[str, LenientRecord]:
+def _keyed(records: Iterable[Record]) -> dict[str, Record]:
     return {record.index: record for record in records}
 
 

@@ -5,9 +5,9 @@ from golden_test_support import FIXTURES, dumped, golden
 from aidm.engines.loader import engine_ids
 from aidm.state.base import SAVE_VERSION, EngineId
 
-# The version the golden state and turn fixtures were cut at. Only the pack regeneration of the
-# collapse refactor's Phase 4 may move it, and it regenerates those fixtures in the same commit.
-FIXTURE_SAVE_VERSION = 28
+# The version the golden state and turn fixtures were cut at. A pack regeneration moves it, and
+# must regenerate those fixtures in the same commit.
+FIXTURE_SAVE_VERSION = 38
 
 
 def test_the_save_version_the_fixtures_were_cut_at_has_not_moved() -> None:

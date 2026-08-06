@@ -1,4 +1,5 @@
 import json
+from collections.abc import Mapping
 from pathlib import Path
 
 import pytest
@@ -9,19 +10,27 @@ from pydantic_ai.usage import RunUsage
 
 from aidm.content.authored import AuthoredEntity, AuthoredWorld
 from aidm.engines.loader import Engine, EnginePlugin, load_engine
-from aidm.state.base import PLAYER_ID, SAVE_VERSION, EngineId, Entity, EntityId
-from aidm.state.packs import (
-    ContentRef,
-    LenientRecord,
-    Manifest,
-    Pack,
-    lenient_format,
-    read_pack,
-    write_pack,
-)
+from aidm.state.base import PLAYER_ID, SAVE_VERSION, EngineId, Entity, EntityId, Slug
+from aidm.state.packs import ContentRef, Manifest, Pack, pack_format, read_pack, write_pack
+from aidm.state.packs import Record as PackRecord
 from aidm.state.plan import TurnPlanBase
 from aidm.state.sheet import Counter, Sheet
 from aidm.state.world import GameState, Record, ScenarioMeta, WorldState
+
+
+class Monster(PackRecord):
+    """A test engine's record class: the loader must read any engine's shape polymorphically."""
+
+    hp: int
+    armor_class: int
+    attacks: str
+
+    def sheet_numbers(self) -> Mapping[Slug, int]:
+        return {"armor-class": self.armor_class, "hp": self.hp}
+
+    def noted(self) -> Mapping[Slug, str]:
+        return {"attacks": self.attacks}
+
 
 PACK = Pack(
     manifest=Manifest(
@@ -33,12 +42,13 @@ PACK = Pack(
     ),
     records={
         "monsters": {
-            "giant-rat": LenientRecord(
+            "giant-rat": Monster(
                 index="giant-rat",
                 name="Giant Rat",
                 text="Keen smell, pack tactics.",
-                numbers={"hp": 7, "armor-class": 12},
-                notes={"attacks": "Bite +4 to hit, 1d4+2 piercing"},
+                hp=7,
+                armor_class=12,
+                attacks="Bite +4 to hit, 1d4+2 piercing",
             )
         }
     },
@@ -76,6 +86,7 @@ def _engine(tmp_path: Path) -> Engine:
         resolve_action=lambda engine, draft, plan, rng: [],
         offered=lambda engine, state: None,
         check_delta=lambda state, delta: None,
+        record_types={"monsters": Monster},
     )
     return load_engine(plugin)
 
@@ -181,9 +192,9 @@ async def test_read_content_renders_the_record_and_refuses_a_bad_ref(tmp_path: P
         _ = await _read_content(toolset, "testpack/monsters/absent")
 
 
-def test_lenient_format_round_trips_a_pack_byte_for_byte(tmp_path: Path) -> None:
+def test_a_pack_round_trips_byte_for_byte(tmp_path: Path) -> None:
     pack_dir = _engine_dir(tmp_path) / "packs" / "testpack"
-    fmt = lenient_format(("monsters",))
+    fmt = pack_format(("monsters",), {"monsters": Monster})
 
     pack = read_pack(pack_dir, fmt)
     other_dir = tmp_path / "roundtrip"

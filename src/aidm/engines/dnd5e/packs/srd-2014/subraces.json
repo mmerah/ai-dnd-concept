@@ -3,48 +3,60 @@
     "index": "hill-dwarf",
     "name": "Hill Dwarf",
     "text": "Subrace of Dwarf.\n\nAs a hill dwarf, you have keen senses, deep intuition, and remarkable resilience.\n\nAbility scores: WIS +1.\n\nTraits: Dwarven Toughness.",
-    "numbers": {},
-    "notes": {
-      "ability-bonuses": "WIS +1"
-    },
     "tags": [],
     "options": [],
-    "choose": null
+    "choose": null,
+    "race": "Dwarf",
+    "ability_bonuses": [
+      {
+        "ability": "WIS",
+        "bonus": 1
+      }
+    ]
   },
   {
     "index": "high-elf",
     "name": "High Elf",
     "text": "Subrace of Elf.\n\nAs a high elf, you have a keen mind and a mastery of at least the basics of magic. In many fantasy gaming worlds, there are two kinds of high elves. One type is haughty and reclusive, believing themselves to be superior to non-elves and even other elves. The other type is more common and more friendly, and often encountered among humans and other races.\n\nAbility scores: INT +1.\n\nTraits: Elf Weapon Training, High Elf Cantrip, Extra Language.",
-    "numbers": {},
-    "notes": {
-      "ability-bonuses": "INT +1"
-    },
     "tags": [],
     "options": [],
-    "choose": null
+    "choose": null,
+    "race": "Elf",
+    "ability_bonuses": [
+      {
+        "ability": "INT",
+        "bonus": 1
+      }
+    ]
   },
   {
     "index": "lightfoot-halfling",
     "name": "Lightfoot Halfling",
     "text": "Subrace of Halfling.\n\nAs a lightfoot halfling, you can easily hide from notice, even using other people as cover. You're inclined to be affable and get along well with others. Lightfoots are more prone to wanderlust than other halflings, and often dwell alongside other races or take up a nomadic life.\n\nAbility scores: CHA +1.\n\nTraits: Naturally Stealthy.",
-    "numbers": {},
-    "notes": {
-      "ability-bonuses": "CHA +1"
-    },
     "tags": [],
     "options": [],
-    "choose": null
+    "choose": null,
+    "race": "Halfling",
+    "ability_bonuses": [
+      {
+        "ability": "CHA",
+        "bonus": 1
+      }
+    ]
   },
   {
     "index": "rock-gnome",
     "name": "Rock Gnome",
     "text": "Subrace of Gnome.\n\nAs a rock gnome, you have a natural inventiveness and hardiness beyond that of other gnomes.\n\nAbility scores: CON +1.\n\nTraits: Artificer's Lore, Tinker.",
-    "numbers": {},
-    "notes": {
-      "ability-bonuses": "CON +1"
-    },
     "tags": [],
     "options": [],
-    "choose": null
+    "choose": null,
+    "race": "Gnome",
+    "ability_bonuses": [
+      {
+        "ability": "CON",
+        "bonus": 1
+      }
+    ]
   }
 ]

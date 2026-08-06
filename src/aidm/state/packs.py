@@ -19,7 +19,7 @@ from pydantic import (
     model_validator,
 )
 
-from .base import Kind, Slug
+from .base import Slug
 
 ENCODING = "utf-8"
 
@@ -73,19 +73,13 @@ class ContentRef(Value):
 
 
 class Record(Value):
+    """`sheet_numbers` land on the sheet of any entity that refs the record, so a record reffed
+    in multiplicity (a spell, a feature) must leave them empty or keys collide. `noted` renders
+    beside the ref and in `read_content`, never touching a sheet, so any record may carry it."""
+
     index: ContentSlug
     name: str
-
-
-class LenientRecord(Record):
-    """Everything mechanical beyond a few numbers lives in `text`, for a role to interpret."""
-
     text: str = ""
-    # Numbers land on the sheet of any entity that refs the record, so a record reffed in
-    # multiplicity (a spell, a feature) must leave them empty or keys collide. Notes and tags
-    # never touch a sheet — they render beside the ref — so any record may carry them.
-    numbers: FrozenMap[Slug, int] = EMPTY_FROZEN_MAP
-    notes: FrozenMap[Slug, str] = EMPTY_FROZEN_MAP
     tags: tuple[Slug, ...] = ()
     # A record that IS a choice names the legal picks; a bare index would be ambiguous.
     options: tuple[ContentRef, ...] = ()
@@ -99,21 +93,18 @@ class LenientRecord(Record):
             raise ValueError(f"cannot choose {self.choose} of {len(self.options)} options")
         return self
 
+    def sheet_numbers(self) -> Mapping[Slug, int]:
+        return {}
 
-@dataclass(frozen=True, slots=True)
-class CollectionSpec:
-    """Keeps classes explicit to avoid depending on Pydantic internals."""
-
-    adapter: TypeAdapter[Record]
-    classes: tuple[type[Record], ...]
-    entity: Kind | None = None
+    def noted(self) -> Mapping[Slug, str]:
+        return {}
 
 
 @dataclass(frozen=True, slots=True)
 class PackFormat:
-    """What one engine's packs contain: collection name -> how to validate its records."""
+    """What one engine's packs contain: collection name -> the record class it holds."""
 
-    specs: Mapping[str, CollectionSpec]
+    held: Mapping[CollectionName, type[Record]]
 
 
 class Manifest(Value):
@@ -219,8 +210,8 @@ def parse_ref(text: str) -> ContentRef:
 
 def read_pack(directory: Path, pack_format: PackFormat) -> Pack:
     records = {
-        name: {record.index: record for record in _read(directory / f"{name}.json", spec.adapter)}
-        for name, spec in pack_format.specs.items()
+        name: {record.index: record for record in _read(directory / f"{name}.json", held)}
+        for name, held in pack_format.held.items()
     }
     pack = Pack(
         manifest=Manifest.model_validate_json(_text(directory / "manifest.json")),
@@ -242,15 +233,14 @@ def write_pack(directory: Path, pack: Pack) -> None:
 def validate_pack(pack: Pack, pack_format: PackFormat) -> None:
     """What a pack cannot check alone: which collections exist, and what each one may hold."""
     named = set(pack.records) | set(pack.manifest.provides)
-    if unknown := sorted(named - set(pack_format.specs)):
+    if unknown := sorted(named - set(pack_format.held)):
         raise ValueError(f"the format specifies no collection {unknown}")
-    if undeclared := sorted(set(pack_format.specs) - set(pack.manifest.provides)):
+    if undeclared := sorted(set(pack_format.held) - set(pack.manifest.provides)):
         raise ValueError(f"manifest declares no count for {undeclared}")
-    for name, spec in pack_format.specs.items():
+    for name, held in pack_format.held.items():
         records = pack.records.get(name, {})
-        if foreign := sorted(i for i, r in records.items() if not isinstance(r, spec.classes)):
-            classes = " or ".join(cls.__name__ for cls in spec.classes)
-            raise ValueError(f"{name} holds records that are no {classes}: {foreign}")
+        if foreign := sorted(i for i, r in records.items() if not isinstance(r, held)):
+            raise ValueError(f"{name} holds records that are no {held.__name__}: {foreign}")
         if miskeyed := sorted(index for index, r in records.items() if index != r.index):
             raise ValueError(f"{name} keyed against the wrong index: {miskeyed}")
         declared = pack.manifest.provides[name]
@@ -258,15 +248,15 @@ def validate_pack(pack: Pack, pack_format: PackFormat) -> None:
             raise ValueError(f"manifest promises {declared} {name}, the pack ships {len(records)}")
 
 
-def lenient_format(collections: Sequence[CollectionName]) -> PackFormat:
-    """Every collection of a lenient pack holds the one record shape."""
-    spec = CollectionSpec(TypeAdapter[Record](LenientRecord), (LenientRecord,))
-    return PackFormat({name: spec for name in collections})
+def pack_format(
+    collections: Sequence[CollectionName], record_types: Mapping[CollectionName, type[Record]]
+) -> PackFormat:
+    return PackFormat({name: record_types.get(name, Record) for name in collections})
 
 
-def _read(path: Path, adapter: TypeAdapter[Record]) -> list[Record]:
+def _read(path: Path, held: type[Record]) -> list[Record]:
     raw = _RAW.validate_json(_text(path)) if path.exists() else []
-    return [adapter.validate_python(record) for record in raw]
+    return [held.model_validate(record) for record in raw]
 
 
 def _text(path: Path) -> str:
