@@ -246,7 +246,11 @@ if the VM fails its gate, the content classes were never churned for nothing.
 
 ## Phase 5 — Ironsworn, an engine with no Python (~3 days, LOC excluded — content)
 
-**Vision success criterion 4.** Held at gate resolution until phase 4 ships.
+**Vision success criterion 4. Deferred 2026-08-07, after phase 4 shipped.** Its job was to prove
+the VM on a second engine; phase 4 proved it on story at full oracle parity and zero schema
+movement, so ironsworn would re-prove what is already proved and pay for it in content nobody
+plays yet. It ships when a second engine is wanted for its own sake, or when phase 7 wants a
+non-5e reader of the same machinery. **Phase 6 is next.**
 
 - New engine directory per the canonical layout: shim `rules.py` (id, badge,
   engine_dir, no-op advancement callables), `spec.json` (momentum via `Counter.minimum < 0` — already supported),
@@ -328,21 +332,24 @@ into one pass rather than paying that cost five times.
   `dnd5e/director.md` teaches when advantage applies, or the case is measuring a rule the engine
   was never given — decide which before tuning. The one finding here with no volatility, so the
   cheapest to attribute and the first to fix.
-- **`rest` is the weakest tag and is still sliding**: 33% at phase 3 (`long-rest-recharge` 0/3,
-  `short-rest-recharge` 2/3), against ~60-70% when it was first recorded in kernel phase 2. The
-  Director plans a rest and does not write the recharge. Pre-existing and prompt-shaped, but it
-  has now fallen far enough that the next pass should start here.
-- **The Director drops the second effect of a two-effect plan.** `movement-follows-exits` 67%
-  (a `reveal-relation` with no `move-actor`) and `hook-fires-on-discovery` 67% (an answer about
-  the vault with no `reveal`, so no fact and no hook) fail the same way: the fiction lands, the
-  state write that had to accompany it is missing. `CORE_DIRECTOR` already spells out the
-  reveal-then-move pairing and it did not close the gap — treat these two as one prompt problem,
-  not two cases.
-- **`condition-lifted` fell 67% → 33%** (the `poisoned` tag survives the turn that should end
-  it). Pre-existing across every phase, never yet worked on.
+- **The Director drops the state write the fiction implies.** The largest finding, and now the
+  only one costing whole cases: `hook-fires-on-discovery` **0/6** at phase 4 (an answer about the
+  vault with no `reveal`, so no fact and no hook), `condition-rider` 100% → 33%/67% (a success
+  branch that narrates the rat going down without the `prone` tag), `condition-lifted` 33-67%
+  (the `poisoned` tag survives the turn that should end it). One failure shape in three cases:
+  the fiction lands, the state write that had to accompany it is missing. `CORE_DIRECTOR`'s
+  reveal-then-move clause **did** close the movement half — `movement-follows-exits` reached
+  100% at phase 4 — so the prompt lever works; it has simply only been pulled for movement.
+  Start the cleanup pass here.
+- **`rest` is volatile, not sliding.** `short-rest-recharge` recovered to 100% at phase 4;
+  `long-rest-recharge` swung 0% → 67% → 0% across three runs at two commits with nothing
+  touching it. The Director plans a rest and sometimes does not write the recharge.
+  Pre-existing, prompt-shaped, and cheaper to judge after the finding above is fixed.
 - **Small-n volatility is the noise floor here.** At n=3 the story/discipline family swung 33% →
-  100% and `monster-attack-on-player` 67% → 100% with no change touching either. Nothing below
-  n=9 should be attributed to a phase; re-run before spending prompt work on any single case.
+  100% and `monster-attack-on-player` 67% → 100% with no change touching either; at phase 4 two
+  runs of the same commit disagreed on four cases. Nothing below n=9 should be attributed to a
+  phase; re-run before spending prompt work on any single case. `advantage-attack` (0% across
+  five runs) and `hook-fires-on-discovery` (0/6) are the only two now clear of that floor.
 - **`why` is now optional on turn-time counter changes** (phase 1, sanctioned). Nothing measures
   whether the Director still writes reasons. Worth a probe if the trace panel starts reading
   poorly.

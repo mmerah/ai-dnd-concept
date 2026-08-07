@@ -175,10 +175,85 @@
   (the only stable one), `rest` down to 33%, `condition-lifted` 33%. At n=3 the noise is large
   enough that no single case moving should be attributed to this phase.
 
+- **Vision phase 4 — Rule VM, proved on story** (2026-08-07). Code complete, live gate not run.
+  - `src/aidm/engines/vm.py` is the whole VM: param specs → a generated action model, and a
+    straight-line program the kernel runs where `ActionSpec.resolve` used to. It imports no
+    engine and no loader (loader imports it), so `Resolved` now lives there and loader
+    re-exports it.
+  - Params are a closed set — `entity-id`, `slug`, `int`, `str`, `dice-expr`, `enum` — each with
+    a description and an `optional` flag rather than an optional-of wrapper. `ActionDef.model()`
+    builds the model with `create_model`, named from the action (`risk` → `Risk`), the `doc` as
+    its docstring and `act: Literal[name]` first.
+  - Program instructions: `let`, `require`, `roll`, `outcome`, `apply`. Expressions: `number`,
+    `table`, `present` (an omitted optional param counts 0, a written one counts `weight` — the
+    help/hinder ±1), and a flat `sum` over those three. No nesting is possible: `sum` takes
+    non-sum terms only, so the "straight-line, one conditional level" rule is structural rather
+    than validated. Predicates: `has-tag(carried)`, `counter-full`, `is-player`.
+  - `$name` is the one reference sigil — params and `let`/`roll` bindings share one namespace, and
+    a bare string is a literal. One `_refs` walk both validates at load and substitutes at run.
+  - `require` refuses with a message formatted from the params plus `<param>_name` per entity
+    param, so a refusal names the actor. A predicate over an omitted optional param never
+    refuses — that is what makes the help/hinder tag checks conditional without a branch op.
+  - There is no declarative `check`: every refusal is the `ValueError` `check_plan`'s trial
+    resolve already turns into a retry, so `check_risk`'s rules now run at resolve time too
+    (the Python resolver never checked TAKEN OUT itself).
+  - Load-time validation in `ActionDef`: every `$ref` is bound before use, names are bound once,
+    `outcome`/`when_outcome` labels are declared, and a ref-free `apply` effect is validated as a
+    `TurnEffect` immediately. `tests/core/test_vm.py` covers exactly this boundary.
+  - `Engine` gains `actions` (`plugin.actions` + whatever `actions.json` declares) and
+    `_plan_model` builds from that, so Python and declarative `ActionSpec`s coexist — dnd5e is
+    untouched.
+  - `engines/story/{actions,resolve}.py` are deleted; `rules.py` is now a 19-line shim with
+    `actions=()` and `APPROACHES` moved to `advance.py`. Story's Risk is
+    `engines/story/actions.json`.
+  - **Oracle: 8640 cases, 0 mismatches.** 10 states (stress 0/3/5 × bold −3/0/4) × 3 actors ×
+    2 approaches × 3 difficulties × 4 helping × 3 hindering tags × 4 seeds, comparing the VM
+    against the deleted `resolve_risk`/`check_risk` on facts, outcome, committed state, and
+    refusal string. Deletion happened only after that ran clean.
+  - **Gate: passed, dead level.** Director-only, like for like: phase 3 scored 76/87 = 87.4%,
+    phase 4 scores 152/174 = 87.4% across two runs of the same commit
+    (`results/2026-08-07-9816682+{4180b45,58a9ba4}.json`). All four story cases — the ones the VM
+    now resolves — are 100% in both runs, so the VM's own gate is clear with room to spare.
+    Nothing in the diff can reach the failures: `hook-fires-on-discovery` 0/6 and `condition-rider`
+    33%/67% are the standing "Director drops the state write" finding, now the largest one in
+    REFACTOR.md; `movement-follows-exits` and `short-rest-recharge` both reached 100%.
+  - **No fixture changed at all** — not the plan schemas, not the instructions, not the prompts.
+    The generated `Risk` emits byte-identical JSON schema, so the model cannot notice the
+    migration and `SAVE_VERSION` stays 42. The live story suite is therefore a formality rather
+    than a risk, but it has not been run.
+  - Bail-out not needed: Risk wanted no loop, no recursion, and no open-ended primitive.
+    Deliberately deferred rather than built unused: a `counter` expression, `roll.mode`, and the
+    `dice-expr` param type — all phase 7. `int` params stay: ironsworn's adds need them next.
+  - Adversarial review found three defects and two latent ones, all fixed and re-verified against
+    the oracle (8640 cases, still 0 mismatches). A refusal `message` placeholder was never checked,
+    so a typo raised `KeyError` out of `check_plan` — which must not raise — the turn a refusal
+    first fired; placeholders are now validated at load against the bound names. `_refs` walked
+    nested values that substitution never reached, so a ref hiding below an effect's own fields
+    would have survived into the applied effect; `_check_effect` now refuses one at load. A
+    `counter-full` predicate over an absent pool raised `KeyError` where the sibling `number`
+    expression raises a readable `ValueError`. Latent: `apply.when` lacked `_require`'s
+    omitted-optional skip (now one shared `_decidable`), and an action declaring `labels` without
+    an `outcome` instruction loaded with silently dead branches. Taken from the same review:
+    `description`/`optional` moved to a shared `ParamBase`.
+
 ## Current
 
-Next: REFACTOR.md phase 4 (rule VM, proved on story).
+Next: REFACTOR.md phase 6 (generic content facts). Phase 5 (ironsworn) is deferred — phase 4
+proved the VM on story at oracle parity, so a second engine would re-prove a proved thing and pay
+in content nobody plays yet.
 
+Worth doing before or alongside phase 6: the one prompt pass on "the Director drops the state
+write", now the largest eval finding at three cases and the only one costing whole runs.
+
+- Phase-4 line delta: `src/aidm` +423 total, of which Python is +315 (budget said +250 VM / −75
+  story). The story deletion paid −126; `vm.py` is 411 lines and `actions.json` 108. The VM is
+  over budget because the param specs and their `create_model` bridge are ~130 of those lines,
+  and that is the part phase 5 reuses for free.
+- Schema simplification, asked and answered: the authoring side is where the free LOC is (the
+  shared `ParamBase` and the dropped `dice-expr` type were the whole harvest, ~20 lines). Making
+  the **model-facing** schema smaller — AFTER-VISION.md's derived fields and its 70-90% smaller
+  TurnPlan — would break this phase's byte-identical-`Risk` constraint, move fixtures, and cost a
+  live eval run. That is phase 6+ work; none of it belongs here.
 - Phase-3 line delta: `src/aidm` +240 (budget said +200).
 - Phase-2 line delta: `src/aidm` +394 (budget said +150). Roughly half is the five op
   classes with their model-facing descriptions and resolvers, which is the price of the

@@ -12,6 +12,7 @@ from pydantic_ai import ModelRetry
 from pydantic_ai.toolsets import AbstractToolset, FunctionToolset
 
 from aidm.content.authored import AuthoredEntity, AuthoredWorld, Rules, compose_world
+from aidm.engines.vm import ActionDef, Resolved, run_program
 from aidm.state.apply import apply_effect
 from aidm.state.base import EngineId, Entity, Frozen, Kind, Slug
 from aidm.state.effects import AddRef, SheetDelta, TurnEffect, turn_effect_ops
@@ -48,7 +49,6 @@ ENGINE_MODULES: tuple[str, ...] = (
 PLUGIN = "PLUGIN"
 
 type EntityRenderer = Callable[[Entity], str]
-type Resolved = tuple[list[Fact], Slug | None]
 
 
 class EngineSpec(Value):
@@ -91,6 +91,7 @@ class EnginePlugin:
 @dataclass(frozen=True, slots=True)
 class Engine:
     plugin: EnginePlugin
+    actions: tuple[ActionSpec[Any], ...]
     spec: EngineSpec
     content: Content
     plan_type: type[TurnPlanBase]
@@ -192,7 +193,7 @@ class Engine:
         return self.plugin.check_delta(state, player_sheet(after))
 
     def _spec(self, action: Frozen) -> ActionSpec[Any]:
-        for spec in self.plugin.actions:
+        for spec in self.actions:
             if type(action) is spec.model:
                 return spec
         raise ValueError(f"{self.id} registers no action {type(action).__name__}")
@@ -235,9 +236,11 @@ def load_engine(plugin: EnginePlugin, pack_paths: Sequence[Path] | None = None) 
     spec = EngineSpec.model_validate_json(_text(engine_dir / "spec.json"))
     directories = _packs(engine_dir) if pack_paths is None else tuple(pack_paths)
     content = load(directories, plugin.pack_format(spec))
-    plan_type = _plan_model(plugin)
+    actions = (*plugin.actions, *_declared_actions(engine_dir))
+    plan_type = _plan_model(actions, plugin.action_doc)
     return Engine(
         plugin=plugin,
+        actions=actions,
         spec=spec,
         content=content,
         plan_type=plan_type,
@@ -249,9 +252,9 @@ def load_engine(plugin: EnginePlugin, pack_paths: Sequence[Path] | None = None) 
     )
 
 
-def _plan_model(plugin: EnginePlugin) -> type[TurnPlanBase]:
+def _plan_model(actions: tuple[ActionSpec[Any], ...], action_doc: str) -> type[TurnPlanBase]:
     """A discriminator on a lone model raises, so a single-action engine gets its model plain."""
-    models: tuple[type[Frozen], ...] = tuple(spec.model for spec in plugin.actions)
+    models: tuple[type[Frozen], ...] = tuple(spec.model for spec in actions)
     if not models:
         return TurnPlanBase
     union: Any = models[0]  # An annotation assembled at runtime carries no static type.
@@ -262,8 +265,26 @@ def _plan_model(plugin: EnginePlugin) -> type[TurnPlanBase]:
     return create_model(
         "TurnPlan",
         __base__=TurnPlanBase,
-        action=(union | None, Field(default=None, description=plugin.action_doc)),
+        action=(union | None, Field(default=None, description=action_doc)),
     )
+
+
+def _declared_actions(engine_dir: Path) -> tuple[ActionSpec[Any], ...]:
+    """An engine's `actions.json` needs no Python: the kernel runs its programs."""
+    path = engine_dir / "actions.json"
+    if not path.is_file():
+        return ()
+    declared = TypeAdapter(tuple[ActionDef, ...]).validate_json(_text(path))
+    return tuple(_declared_spec(action) for action in declared)
+
+
+def _declared_spec(declared: ActionDef) -> ActionSpec[Any]:
+    def resolve(engine: Engine, draft: GameState, action: Any, rng: Random) -> Resolved:
+        return run_program(
+            declared.program, draft, action, rng, engine.default_rules, declared.params
+        )
+
+    return ActionSpec(model=declared.model(), labels=frozenset(declared.labels), resolve=resolve)
 
 
 def _action(plan: TurnPlanBase) -> Frozen | None:

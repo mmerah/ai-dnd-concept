@@ -2,8 +2,7 @@ from aidm.engines.loader import Engine
 from aidm.state.sheet import AdvancementOffer, Sheet
 from aidm.state.world import GameState, player_sheet
 
-from .actions import APPROACHES
-
+APPROACHES: tuple[str, ...] = ("bold", "subtle", "clever", "empathetic")
 GROWTH_REQUIRED = 3
 MAX_APPROACH = 3
 MAX_STRESS = 7

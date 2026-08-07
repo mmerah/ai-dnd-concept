@@ -3,7 +3,6 @@ from random import Random
 from story_test_support import grown, story_game
 
 from aidm.engines.loader import Engine
-from aidm.engines.story.actions import Risk
 from aidm.engines.story.advance import GROWTH_REQUIRED
 from aidm.state.base import PLAYER_ID, EntityId
 from aidm.state.effects import AddTag, AdjustCounter, SetNumber, SheetDelta
@@ -30,9 +29,13 @@ def _plan(engine: Engine, **action: object) -> TurnPlanBase:
             "intent": "Kael forces the vault door.",
             "tone": "strained",
             "branches": (STRONG, SETBACK),
-            "action": Risk.model_validate(
-                {"approach": "bold", "difficulty": "risky", "stakes": "forcing the door"} | action
-            ),
+            "action": {
+                "act": "risk",
+                "approach": "bold",
+                "difficulty": "risky",
+                "stakes": "forcing the door",
+            }
+            | action,
         }
     )
 
