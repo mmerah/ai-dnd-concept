@@ -9,12 +9,12 @@ from pydantic_ai.messages import ModelMessage, ModelResponse, TextPart, ToolCall
 from pydantic_ai.models import Model
 from pydantic_ai.models.function import AgentInfo, FunctionModel
 
-from aidm.app.session import build_engine
+from aidm.app.session import begin_game, build_engine
 from aidm.config import ProviderConfig, Providers, Settings
-from aidm.content.authored import Character, Scenario, authored_world
+from aidm.content.authored import Character, Scenario
 from aidm.content.store import load_character, load_scenario
 from aidm.engines.loader import Engine
-from aidm.state.base import SAVE_VERSION, EngineId, Entity
+from aidm.state.base import EngineId, Entity
 from aidm.state.turn import Turn
 from aidm.state.world import GameState
 from aidm.turn.pipeline import (
@@ -23,6 +23,7 @@ from aidm.turn.pipeline import (
     TurnScript,
     director_stage,
     director_step,
+    hook_step,
     narrator_stage,
     narrator_step,
     resolve_step,
@@ -66,17 +67,7 @@ def game(engine_id: EngineId) -> tuple[Engine, GameState]:
     selected_scenario = load_scenario(SCENARIOS, "whispering-vault", engine_id)
     selected_character = load_character(CHARACTERS, "kael", engine_id)
     engine = build_engine(engine_id, settings())
-    authored = authored_world(selected_scenario, selected_character)
-    state = GameState(
-        save_version=SAVE_VERSION,
-        scenario_id=selected_scenario.id,
-        character_id=selected_character.id,
-        scenario=selected_scenario.meta,
-        engine=engine.id,
-        world=engine.initial_world(authored, selected_character.overlay.character),
-    )
-    engine.validate_state(state)
-    return engine, state
+    return engine, begin_game(engine, selected_scenario, selected_character)
 
 
 def initialized() -> tuple[Engine, GameState]:
@@ -138,6 +129,7 @@ async def played(
     script = (
         (director_role.name, director_step(director_role, engine)),
         ("resolve", resolve_step(engine)),
+        ("hooks", hook_step(engine)),
         (narrator_role.name, narrator_step(narrator_role, engine)),
         (worldkeeper_role.name, worldkeeper_step(worldkeeper_role, engine, options)),
         *extra,

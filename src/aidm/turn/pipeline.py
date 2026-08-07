@@ -9,8 +9,8 @@ from pydantic_ai.messages import ModelMessage
 
 from aidm.config import Settings
 from aidm.engines.loader import Engine
+from aidm.state.apply import apply_effect, fire_hooks
 from aidm.state.base import Entity, EntityId, Frozen, slug
-from aidm.state.effects import apply_effect
 from aidm.state.facts import Fact, narrator_evidence
 from aidm.state.plan import TurnPlanBase
 from aidm.state.turn import Creation, StepTrace, Turn, WorldkeeperReport
@@ -72,6 +72,8 @@ def director_step(role: Stage[PlanContext, TurnPlanBase], engine: Engine) -> Ste
             SceneSnapshot.of(state), engine.renderer(state), state.scenario, ws.prompt
         )
         plan = await role.run(rendered, PlanContext(engine=engine, state=state), ws.history)
+        # Notes are read once: the draft carries none forward, so the next turn shows only new ones.
+        ws.draft.pending_notes = ()
         ws.plan = plan
         ws.steps.append(
             StepTrace(name=role.name, prompt=rendered, output=plan.model_dump(mode="json"))
@@ -91,6 +93,24 @@ def resolve_step(engine: Engine) -> StepFn:
         ws.draft = ws.draft.committed().draft()
         ws.evidence = narrator_evidence(ws.facts)
         ws.steps.append(StepTrace(name="resolve", output=ws.evidence))
+
+    return run
+
+
+def hook_step(engine: Engine) -> StepFn:
+    """Runs before the Narrator, so a hook's consequences are narrated the turn they happen."""
+
+    async def run(ws: TurnWorkspace) -> None:
+        fired = fire_hooks(ws.draft, ws.facts, engine.default_rules)
+        if fired:
+            ws.facts.extend(fired)
+            ws.draft = ws.draft.committed().draft()
+            ws.evidence = narrator_evidence(ws.facts)
+        ws.steps.append(
+            StepTrace(
+                name="hooks", output="\n".join(fact.trace for fact in fired) or "- (no hooks fired)"
+            )
+        )
 
     return run
 
@@ -202,6 +222,7 @@ def default_workflow(engine: Engine, settings: Settings, options: TurnOptions) -
     return (
         (director.name, director_step(director, engine)),
         ("resolve", resolve_step(engine)),
+        ("hooks", hook_step(engine)),
         (narrator.name, narrator_step(narrator, engine)),
         (worldkeeper.name, worldkeeper_step(worldkeeper, engine, options)),
     )

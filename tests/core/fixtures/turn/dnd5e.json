@@ -1,5 +1,5 @@
 {
-  "save_version": 41,
+  "save_version": 42,
   "facts": [
     {
       "source": "core",
@@ -119,6 +119,10 @@
     {
       "name": "resolve",
       "output": "- Kael: listening past the vault door: success\n- Kael is Success\n- learned of the vault map\n- took the vault map"
+    },
+    {
+      "name": "hooks",
+      "output": "- (no hooks fired)"
     },
     {
       "name": "narrator",

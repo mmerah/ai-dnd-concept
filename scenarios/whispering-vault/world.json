@@ -101,5 +101,50 @@
       "known": false,
       "tags": ["locked"]
     }
+  ],
+  "threads": [
+    {
+      "id": "vault-seal",
+      "kind": "quest",
+      "title": "The sealed vault",
+      "status": "active",
+      "stage": "unfound",
+      "note": "Kael came for the vault and does not yet know where its door is."
+    }
+  ],
+  "hooks": [
+    {
+      "id": "vault-sighted",
+      "match": { "kind": "entity_discovered", "data": { "entity_id": "vault" } },
+      "effects": [
+        {
+          "op": "advance-thread",
+          "thread_id": "vault-seal",
+          "stage": "seal-found",
+          "why": "the vault door is found"
+        },
+        {
+          "op": "add-tag",
+          "entity_id": "vault",
+          "tag_id": "warded",
+          "text": "The seal answers a touch, and something behind the door answers with it.",
+          "why": "the seal stirs when it is first seen"
+        }
+      ],
+      "note": "Kael has found the vault door. Press on what opening the seal will cost."
+    },
+    {
+      "id": "archivist-found",
+      "match": { "kind": "entity_discovered", "data": { "entity_id": "elena" } },
+      "effects": [
+        {
+          "op": "advance-thread",
+          "thread_id": "vault-seal",
+          "stage": "rite-known",
+          "why": "Elena alone remembers the sealing rite"
+        }
+      ],
+      "note": "Elena remembers the rite that sealed the vault. Let her name her price for it."
+    }
   ]
 }

@@ -4,8 +4,16 @@ from typing import Self
 from pydantic import Field, JsonValue, model_validator
 
 from aidm.state.base import PLAYER_ID, EngineId, Entity, EntityId, Frozen, Slug
+from aidm.state.effects import AdvanceThread
 from aidm.state.sheet import Sheet
-from aidm.state.world import Relation, ScenarioMeta, WorldState, check_placement
+from aidm.state.world import (
+    Hook,
+    Relation,
+    ScenarioMeta,
+    Thread,
+    WorldState,
+    check_placement,
+)
 
 type Rules = dict[str, JsonValue]
 
@@ -17,6 +25,8 @@ class ScenarioWorld(Frozen):
     starting_location_id: EntityId
     entities: tuple[Entity, ...] = ()
     relations: tuple[Relation, ...] = ()
+    threads: tuple[Thread, ...] = ()
+    hooks: tuple[Hook, ...] = ()
 
     @model_validator(mode="after")
     def _valid_topology(self) -> Self:
@@ -39,6 +49,20 @@ class ScenarioWorld(Frozen):
         relation_ids = [relation.id for relation in self.relations]
         if len(set(relation_ids)) != len(relation_ids):
             raise ValueError(f"scenario has duplicate relations: {sorted(relation_ids)}")
+        _unique("threads", [thread.id for thread in self.threads])
+        _unique("hooks", [hook.id for hook in self.hooks])
+        authored = {thread.id for thread in self.threads}
+        wanted = sorted(
+            {
+                effect.thread_id
+                for hook in self.hooks
+                for effect in hook.effects
+                if isinstance(effect, AdvanceThread)
+            }
+            - authored
+        )
+        if wanted:
+            raise ValueError(f"hooks advance threads the scenario never authors: {wanted}")
         return self
 
 
@@ -112,6 +136,12 @@ class Character(Frozen):
         return self
 
 
+def _unique(what: str, ids: list[Slug]) -> None:
+    repeated = sorted({name for name in ids if ids.count(name) > 1})
+    if repeated:
+        raise ValueError(f"scenario has duplicate {what}: {repeated}")
+
+
 def _require_authored(
     engine: EngineId,
     overlay: Mapping[EntityId, Rules],
@@ -132,6 +162,8 @@ class AuthoredEntity(Frozen):
 class AuthoredWorld(Frozen):
     entities: dict[EntityId, AuthoredEntity] = Field(default_factory=dict)
     relations: tuple[Relation, ...] = ()
+    threads: tuple[Thread, ...] = ()
+    hooks: tuple[Hook, ...] = ()
 
 
 def authored_world(scenario: Scenario, character: Character) -> AuthoredWorld:
@@ -153,8 +185,13 @@ def authored_world(scenario: Scenario, character: Character) -> AuthoredWorld:
             entity=authored.model_copy(deep=True),
             rules=dict(overlay.get(authored.id, {})),
         )
-    relations = tuple(relation.model_copy(deep=True) for relation in scenario.world.relations)
-    return AuthoredWorld(entities=entities, relations=relations)
+    world = scenario.world
+    return AuthoredWorld(
+        entities=entities,
+        relations=tuple(relation.model_copy(deep=True) for relation in world.relations),
+        threads=tuple(thread.model_copy(deep=True) for thread in world.threads),
+        hooks=world.hooks,
+    )
 
 
 def compose_world(

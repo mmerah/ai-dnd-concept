@@ -37,7 +37,7 @@ CREATIONS = [
         },
     }
 ]
-TURN_STEPS = ("director", "resolve", "narrator", "worldkeeper")
+TURN_STEPS = ("director", "resolve", "hooks", "narrator", "worldkeeper")
 
 
 def _branch(outcome: str) -> dict[str, object]:

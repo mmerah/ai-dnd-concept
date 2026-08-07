@@ -27,7 +27,7 @@ from aidm.state.world import player_sheet, sheet_of
 from aidm.turn.pipeline import TurnWorkspace
 from aidm.turn.roles import ChannelSafeModel
 
-STEPS = ("director", "resolve", "narrator", "worldkeeper")
+STEPS = ("director", "resolve", "hooks", "narrator", "worldkeeper")
 
 
 async def test_an_engine_uses_the_shared_pipeline_and_safe_narrator_prompt() -> None:
@@ -272,3 +272,38 @@ async def test_a_script_takes_an_extra_step_without_core_edits() -> None:
     assert tuple(steps) == (*STEPS, "echo")
     echoed = next(step.output for step in result.turn.steps if step.name == "echo")
     assert echoed == "extra step ran"
+
+
+async def test_a_hook_fires_on_its_fact_moves_its_thread_and_steers_the_next_turn() -> None:
+    engine, state = initialized()
+    found = await played(
+        engine,
+        state,
+        "I ask Mara where the vault door is.",
+        director=FunctionModel(
+            scripted(
+                plan(
+                    intent="Mara points Kael at the undercroft.",
+                    tone="wary",
+                    effects=[{"op": "reveal", "entity_id": "vault"}],
+                )
+            )
+        ),
+    )
+
+    thread = found.state.threads["vault-seal"]
+    assert (thread.status, thread.stage) == ("active", "seal-found")
+    assert found.state.fired_hooks == ("vault-sighted",)
+    # The hook's own consequence reaches the Narrator the turn it happens; the thread never does.
+    assert "Warded" in shown(found.turn, "narrator")
+    assert "vault-seal" not in shown(found.turn, "narrator")
+
+    after = await played(
+        engine,
+        found.state,
+        "I wait.",
+        director=FunctionModel(scripted(plan(intent="Kael waits.", tone="flat"))),
+    )
+
+    assert "Press on what opening the seal will cost" in shown(after.turn, "director")
+    assert after.state.pending_notes == ()

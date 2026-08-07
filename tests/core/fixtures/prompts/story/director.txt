@@ -43,5 +43,12 @@ EXISTS BUT THE PLAYER DOES NOT KNOW IT YET:
     tags: Disease-Swollen[id=disease-swollen] — (edge) The rat is unnaturally hard to frighten or drive off.
 - the vault map[id=vault_map] (item) — at the abbot's study — A creased chart of the undercroft, marking a stair the abbey's own plans deny.
 
+ACTIVE THREADS:
+- The sealed vault[id=vault-seal] — active at unfound
+  note: Kael came for the vault and does not yet know where its door is.
+
+SCENARIO NOTES:
+- (none)
+
 PLAYER ACTION:
 I lever up the loose flagstone and listen at the vault door.

@@ -111,10 +111,75 @@
   reveal and the move belong in the same `effects`, in that order — **unverified**, changed
   after the run, so the next suite is what confirms it.
 
+- **Vision phase 3 — Threads + hooks** (2026-08-07). Code complete, live gate not yet run.
+  - `state/effects.py` split: the op vocabulary stays there (leaf: imports `base` + `packs`
+    only), every resolver moved to the new `state/apply.py`. This was forced, not cosmetic —
+    `GameState.hooks` carries `tuple[Effect, ...]`, so `world` must import `effects`, and the
+    old resolvers imported `world`. Import sites of `apply_effect` / `require_actor_here` /
+    `entity_fact` now read `aidm.state.apply`; `_WORLD_OPS` became public `WORLD_OPS`.
+  - `Thread`, `HookMatch`, `Hook` in `state/world.py`. `GameState` gains `threads`,
+    `hooks`, `fired_hooks`, `pending_notes`, validated in `_consistent_world` (thread keys
+    match ids, hook ids unique, `fired_hooks` names an authored hook). `fired_hooks` is a
+    tuple, not a set: a save's bytes are a golden fixture and set ordering is not stable.
+  - New op `advance-thread` (in `Effect`/`TurnEffect`, and in `WORLD_OPS` so advancement
+    refuses it). It moves `status`, `stage`, or both, refuses neither, and its fact never
+    narrates — threads are Director bookkeeping.
+  - `fire_hooks` in `state/apply.py`: one pass per turn over unfired hooks, matched on fact
+    kind plus exact-equality `data` fields. A refusing effect records `hook_failed`, skips
+    that hook's remainder, and still marks it fired, so authored-content bugs never kill the
+    turn. `hook_step` sits between resolve and narrator in `default_workflow`, recomputing
+    `ws.evidence` so hook consequences are narrated the turn they land.
+  - Notes reach the Director only, next turn: `pending_notes` renders as SCENARIO NOTES and
+    `director_step` clears it on the draft after rendering. ACTIVE THREADS renders
+    non-resolved threads. Both live on `SceneSnapshot`, never `BaseScene`, so `VisibleScene`
+    stays leak-free by construction. `CORE_DIRECTOR` gained one paragraph for both.
+  - `ScenarioWorld` authors `threads` and `hooks`; a hook advancing an unauthored thread
+    fails at load. `begin_game(engine, scenario, character)` in `app/session.py` is now the
+    one opening-state builder (the app, `run.py`, and the tests all duplicated it, and each
+    needed the same two new fields).
+  - whispering-vault ships the `vault-seal` thread and two hooks: discovering the vault
+    moves it to `seal-found`, tags the door `warded`, and notes the Director; discovering
+    Elena moves it to `rite-known`.
+  - `SAVE_VERSION` 42. Regenerated: `save/*`, `state/*`, `turn/*`, director `prompts/*`,
+    `instructions/*`, both `turn_plan.json`; `engines/examples.json` gained its
+    `advance-thread` entry (the every-op-once check).
+  - Tests: one in `tests/core/test_pipeline.py` — the hook fires on its fact, the thread
+    moves, the tag reaches the narrator prompt while the thread id does not, the note lands
+    in the *next* turn's director prompt and is then cleared. `STEPS`/`TURN_STEPS` gained
+    `hooks`.
+  - Evals: new probes `hook_fired` and `thread_at`, new case `hook-fires-on-discovery`
+    (tag `hooks`; 32 → 33), and `run.py`'s `_director_turn` now runs the hook pass after
+    `resolve_step` — without it the case could never fire.
+  - Adversarial review found no defect in the lifecycle or the leak paths, and confirmed the
+    effects/apply split was forced rather than cosmetic. Four tightenings taken: `Hook.effects`
+    is typed `TurnEffect`, not `Effect`, so a hook authoring `grant-counter` fails at load
+    instead of degrading to `hook_failed` in play; `AdvanceThread` validates that it moves
+    something, so the same failure moves from fire time to the boundary; `fired_hooks` refuses
+    a duplicate; and the eval case asserts the hook fired, not only that the thread moved.
+    Two findings deliberately left: a save is not cross-checked for hooks naming absent
+    threads (the `hook_failed` path is the spec'd behaviour for authored-content bugs), and a
+    hook's own facts never feed the same pass — chaining is across turns, by design.
+
+**Phase-3 baseline, measured** (`results/2026-08-07-74bfb87+25afe2d.json`, gpt-oss-120b, 33 cases
+× 3 runs): overall 89%, level with the phase-2 baseline of 89%. Completion 100%.
+
+- **Gate: passed.** No failure traces back to threads or hooks, and the grown Director schema
+  (one more op) cost nothing: every turn completed, and the story/discipline family recovered
+  from 33% to 100%. `advance-thread` stays in `TurnEffect`; the bail-out was not needed.
+- `hook-fires-on-discovery` is 67% — its one failure is the Director answering about the vault
+  without writing the `reveal`, so no fact existed for the hook to match. The hook pass itself
+  never misfired. Same shape as `movement-follows-exits` (also 67%, unchanged from phase 2
+  despite the `CORE_DIRECTOR` clause added then): the Director drops the state write that must
+  accompany the fiction. Recorded in REFACTOR.md as one prompt problem, not two cases.
+- Everything else failing is a standing finding, all now in REFACTOR.md: `advantage-attack` 0%
+  (the only stable one), `rest` down to 33%, `condition-lifted` 33%. At n=3 the noise is large
+  enough that no single case moving should be attributed to this phase.
+
 ## Current
 
-Next: REFACTOR.md phase 3 (threads + hooks).
+Next: REFACTOR.md phase 4 (rule VM, proved on story).
 
+- Phase-3 line delta: `src/aidm` +240 (budget said +200).
 - Phase-2 line delta: `src/aidm` +394 (budget said +150). Roughly half is the five op
   classes with their model-facing descriptions and resolvers, which is the price of the
   vocabulary being a prompt; the state model, gating, and prompt work are the rest.

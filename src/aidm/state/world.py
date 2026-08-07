@@ -1,7 +1,7 @@
 from collections.abc import Iterator, Mapping
 from typing import Self
 
-from pydantic import Field, model_validator
+from pydantic import Field, JsonValue, model_validator
 
 from .base import (
     PLAYER_ID,
@@ -13,7 +13,9 @@ from .base import (
     Mutable,
     RelationId,
     Slug,
+    ThreadStatus,
 )
+from .effects import TurnEffect
 from .facts import CORE, Fact
 from .sheet import Sheet
 
@@ -69,6 +71,39 @@ class Relation(Mutable):
 
     def far_end(self, entity_id: EntityId) -> EntityId:
         return self.target if entity_id == self.source else self.source
+
+
+class Thread(Mutable):
+    """A storyline the scenario tracks: a quest, an investigation, or a countdown."""
+
+    id: Slug
+    kind: Slug
+    title: str
+    status: ThreadStatus = "active"
+    stage: Slug | None = None
+    note: str = ""
+
+
+class HookMatch(Frozen):
+    """A fact this hook waits for: its kind, and the data fields that must equal these."""
+
+    kind: str
+    data: dict[str, JsonValue] = Field(default_factory=dict)
+
+    def matches(self, fact: Fact) -> bool:
+        return fact.kind == self.kind and all(
+            fact.data.get(key) == value for key, value in self.data.items()
+        )
+
+
+class Hook(Frozen):
+    """Authored consequence: a committed fact fires it, so a scenario advances without engine
+    code. Its `note` steers the Director on the following turn."""
+
+    id: Slug
+    match: HookMatch
+    effects: tuple[TurnEffect, ...] = ()
+    note: str = ""
 
 
 class Record(Mutable):
@@ -195,6 +230,11 @@ class GameState(Mutable):
     scenario: ScenarioMeta
     engine: EngineId
     world: WorldState
+    threads: dict[Slug, Thread] = Field(default_factory=dict)
+    hooks: tuple[Hook, ...] = ()
+    # A tuple, not a set: a save's bytes are a golden fixture, and set ordering is not stable.
+    fired_hooks: tuple[Slug, ...] = ()
+    pending_notes: tuple[str, ...] = ()
     history: tuple[Exchange, ...] = ()
     turn: int = Field(default=0, ge=0)
 
@@ -274,6 +314,16 @@ class GameState(Mutable):
             # `find`, not `require`: a dangling id is a topology fault, not a lookup failure.
             holder = None if entity.parent_id is None else self.world.find(entity.parent_id)
             check_placement(entity, holder)
+        mismatched = sorted(key for key, thread in self.threads.items() if key != thread.id)
+        if mismatched:
+            raise ValueError(f"thread keys disagree with their ids: {mismatched}")
+        by_id = {hook.id for hook in self.hooks}
+        if len(by_id) != len(self.hooks):
+            raise ValueError("two hooks share an id, so one would never be told it had fired")
+        if unknown := sorted(set(self.fired_hooks) - by_id):
+            raise ValueError(f"fired hooks name no authored hook: {unknown}")
+        if len(set(self.fired_hooks)) != len(self.fired_hooks):
+            raise ValueError(f"a hook fired twice: {sorted(self.fired_hooks)}")
         return self
 
 

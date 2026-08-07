@@ -322,19 +322,27 @@ Not a phase: standing findings the phase-0 baseline exposed, none of them blocki
 measured weakness in a model-facing surface, so each costs a full re-run to close — batch them
 into one pass rather than paying that cost five times.
 
-- **The Director never uses advantage.** `advantage-attack` is 0/6 across two runs: the model
+- **The Director never uses advantage.** `advantage-attack` is 0/15 across three runs: the model
   reads a `prone`, explicitly-helpless target and still rolls `mode: "normal"`. `Attack.mode`
   says "when the fiction grants it" and nothing anywhere states 5e's actual grants. Either
   `dnd5e/director.md` teaches when advantage applies, or the case is measuring a rule the engine
-  was never given — decide which before tuning.
-- **Discipline is the weakest tag at 67%.** `story-check-both-directions` fails the negative
-  direction: a dramatic-sounding but certain action still draws a risk roll. Same family as
-  `single-action-discipline`. This is real signal, not a broken case — keep it.
-- **`condition-lifted` sits at 67%** across both runs (the `poisoned` tag survives the turn that
-  should end it). Pre-existing; it did not move in phase 1.
-- **`monster-attack-on-player` fell 100% → 67%** on n=6, one of those a retry-exhaustion death
-  rather than a wrong answer. Small-n backend lottery is the likely cause — re-run before
-  spending any prompt work on it.
+  was never given — decide which before tuning. The one finding here with no volatility, so the
+  cheapest to attribute and the first to fix.
+- **`rest` is the weakest tag and is still sliding**: 33% at phase 3 (`long-rest-recharge` 0/3,
+  `short-rest-recharge` 2/3), against ~60-70% when it was first recorded in kernel phase 2. The
+  Director plans a rest and does not write the recharge. Pre-existing and prompt-shaped, but it
+  has now fallen far enough that the next pass should start here.
+- **The Director drops the second effect of a two-effect plan.** `movement-follows-exits` 67%
+  (a `reveal-relation` with no `move-actor`) and `hook-fires-on-discovery` 67% (an answer about
+  the vault with no `reveal`, so no fact and no hook) fail the same way: the fiction lands, the
+  state write that had to accompany it is missing. `CORE_DIRECTOR` already spells out the
+  reveal-then-move pairing and it did not close the gap — treat these two as one prompt problem,
+  not two cases.
+- **`condition-lifted` fell 67% → 33%** (the `poisoned` tag survives the turn that should end
+  it). Pre-existing across every phase, never yet worked on.
+- **Small-n volatility is the noise floor here.** At n=3 the story/discipline family swung 33% →
+  100% and `monster-attack-on-player` 67% → 100% with no change touching either. Nothing below
+  n=9 should be attributed to a phase; re-run before spending prompt work on any single case.
 - **`why` is now optional on turn-time counter changes** (phase 1, sanctioned). Nothing measures
   whether the Director still writes reasons. Worth a probe if the trace panel starts reading
   poorly.

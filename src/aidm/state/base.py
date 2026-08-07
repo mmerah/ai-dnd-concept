@@ -21,6 +21,7 @@ class Mutable(BaseModel):
 
 
 Kind = Literal["actor", "location", "item"]
+ThreadStatus = Literal["active", "resolved", "dormant"]
 EngineId = NewType("EngineId", str)
 EntityId = NewType("EntityId", str)
 RelationId = NewType("RelationId", str)
@@ -28,7 +29,7 @@ SLUG_PATTERN = r"[a-z0-9]+(?:-[a-z0-9]+)*"
 Slug = Annotated[str, Field(pattern=rf"^{SLUG_PATTERN}$", max_length=64)]
 
 PLAYER_ID = EntityId("player")
-SAVE_VERSION = 41
+SAVE_VERSION = 42
 
 
 def content_id(value: str) -> Slug:

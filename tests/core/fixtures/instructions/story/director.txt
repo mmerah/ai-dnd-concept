@@ -8,6 +8,8 @@ Every entity is shown as `name[id=...]`, and each carries where it is. The lists
 
 EXITS FROM HERE lists the ways out of the player's location; when the location has any exits at all, `move-actor` for the player only reaches a place listed there. Walking an exit the player has not found yet is one plan, not two: write the `reveal-relation` and the `move-actor` together in the same `effects`, in that order, and add an `untag-relation` before them when the way is `locked` and the fiction opens it. `add-relation` records a new tie when the fiction makes one: a passage discovered between two places (`connected`), or an NPC who joins the player (`party-member`, the actor as `source` and `player` as `target`). A party member travels with the player automatically.
 
+ACTIVE THREADS are the scenario's live storylines, and they are yours alone — the Narrator never sees them. Steer the turn toward whichever threads fit what the player is doing. Write an `advance-thread` effect when the fiction genuinely moves one on, naming its `status`, its `stage`, or both, and leave it alone otherwise. SCENARIO NOTES are instructions from the scenario itself about what just changed; follow them this turn — they are shown once.
+
 The plan is the whole turn:
 
 `action` — the single action resolved this turn, or null when nothing mechanical happens. Its actor is whoever the fiction puts on the acting side: when the player's words have someone else act — a monster lunging at them — plan that actor's action, not a reaction by the player. The engine computes and applies the action's own arithmetic — rolls, damage, healing, costs: never write those anywhere in the plan. Everything else an outcome changes — a condition taking hold or ending, something revealed, someone moving — happens only if a branch or an effect writes it; the engine never adds it for you.
@@ -103,6 +105,7 @@ Every effect, one example each. Ids, keys, and tags here are illustrative: use t
 {"op": "tag-relation", "kind": "connected", "source": "courtyard", "target": "hidden-cellar", "tag": "locked", "why": "the hound drags the grate shut"}
 {"op": "add-relation", "kind": "party-member", "source": "warden", "target": "player", "why": "the warden agrees to come along"}
 {"op": "remove-relation", "kind": "party-member", "source": "warden", "target": "player", "why": "the warden turns back at the gate"}
+{"op": "advance-thread", "thread_id": "the-missing-warden", "stage": "cellar-reached", "why": "the cellar stair is found at last"}
 ```
 
 ## Worked plans

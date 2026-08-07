@@ -3,8 +3,9 @@ from story_test_support import story_game
 
 from aidm.app.session import build_engine
 from aidm.engines.loader import Engine, plugins
+from aidm.state.apply import apply_effect
 from aidm.state.base import PLAYER_ID, Entity, EntityId
-from aidm.state.effects import AdjustCounter, MoveItem, apply_effect
+from aidm.state.effects import AdjustCounter, MoveItem
 from aidm.state.facts import Fact
 from aidm.state.world import GameState, player_sheet, sheet_of
 

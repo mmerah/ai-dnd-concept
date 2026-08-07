@@ -12,8 +12,9 @@ from pydantic_ai import ModelRetry
 from pydantic_ai.toolsets import AbstractToolset, FunctionToolset
 
 from aidm.content.authored import AuthoredEntity, AuthoredWorld, Rules, compose_world
+from aidm.state.apply import apply_effect
 from aidm.state.base import EngineId, Entity, Frozen, Kind, Slug
-from aidm.state.effects import AddRef, SheetDelta, TurnEffect, apply_effect, turn_effect_ops
+from aidm.state.effects import AddRef, SheetDelta, TurnEffect, turn_effect_ops
 from aidm.state.facts import Fact
 from aidm.state.packs import (
     EMPTY_FROZEN_MAP,

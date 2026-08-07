@@ -88,5 +88,11 @@
     "source": "warden",
     "target": "player",
     "why": "the warden turns back at the gate"
+  },
+  {
+    "op": "advance-thread",
+    "thread_id": "the-missing-warden",
+    "stage": "cellar-reached",
+    "why": "the cellar stair is found at last"
   }
 ]

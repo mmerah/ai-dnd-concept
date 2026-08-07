@@ -3,9 +3,10 @@ from random import Random
 from types import MappingProxyType
 
 from aidm.engines.loader import Engine, Resolved
+from aidm.state.apply import apply_effect, require_actor_here
 from aidm.state.base import PLAYER_ID, Entity, Slug
 from aidm.state.dice import roll
-from aidm.state.effects import AdjustCounter, apply_effect, require_actor_here
+from aidm.state.effects import AdjustCounter
 from aidm.state.plan import TurnPlanBase
 from aidm.state.sheet import Sheet
 from aidm.state.world import GameState, sheet_of

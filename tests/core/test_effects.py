@@ -1,6 +1,7 @@
 import pytest
 from core_test_support import initialized
 
+from aidm.state.apply import apply_effect
 from aidm.state.base import PLAYER_ID, EntityId
 from aidm.state.effects import (
     AddRelation,
@@ -20,7 +21,6 @@ from aidm.state.effects import (
     SpendCounter,
     TagRelation,
     UntagRelation,
-    apply_effect,
 )
 from aidm.state.facts import Fact
 from aidm.state.world import CONNECTED, LOCKED_TAG, PARTY_MEMBER, sheet_of

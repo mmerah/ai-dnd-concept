@@ -1,0 +1,12 @@
+{
+  "id": "hook-fires-on-discovery",
+  "engine": "story",
+  "tags": ["hooks"],
+  "scenario": "whispering-vault",
+  "character": "kael",
+  "prompt": "I ask Mara straight out where the sealed vault door is, and she tells me.",
+  "checks": [
+    { "probe": "hook_fired", "hook": "vault-sighted" },
+    { "probe": "thread_at", "thread": "vault-seal", "stage": "seal-found" }
+  ]
+}

@@ -164,6 +164,17 @@ class AtLocation(Frozen):
     location: EntityId
 
 
+class HookFired(Frozen):
+    probe: Literal["hook_fired"] = "hook_fired"
+    hook: str
+
+
+class ThreadAt(Frozen):
+    probe: Literal["thread_at"] = "thread_at"
+    thread: str
+    stage: str
+
+
 class NoStateChange(Frozen):
     probe: Literal["no_state_change"] = "no_state_change"
 
@@ -181,6 +192,8 @@ type CheckStep = Annotated[
     | BranchAddsTag
     | RollTarget
     | AtLocation
+    | HookFired
+    | ThreadAt
     | NoStateChange,
     Field(discriminator="probe"),
 ]
@@ -270,6 +283,18 @@ def check(outcome: Outcome, step: CheckStep) -> str | None:
             if where == step.location:
                 return None
             return f"{step.entity} is at {where!r}, wanted {step.location!r}"
+        case HookFired():
+            if step.hook in outcome.after.fired_hooks:
+                return None
+            return f"hook {step.hook!r} never fired; those that did: {outcome.after.fired_hooks}"
+        case ThreadAt():
+            thread = outcome.after.threads.get(step.thread)
+            if thread is None:
+                held = sorted(outcome.after.threads)
+                return f"no thread {step.thread!r}; the threads are {held}"
+            if thread.stage == step.stage:
+                return None
+            return f"thread {step.thread} is at {thread.stage!r}, wanted {step.stage!r}"
         case NoStateChange():
             if outcome.before.world == outcome.after.world:
                 return None

@@ -4,8 +4,9 @@ from typing import cast
 
 from pydantic import Field, ValidationError, model_validator
 
+from .apply import apply_effect
 from .base import PLAYER_ID, Entity, EntityId, Frozen, Slug
-from .effects import TurnEffect, apply_effect
+from .effects import TurnEffect
 from .facts import Fact
 from .sheet import Sheet
 from .world import GameState

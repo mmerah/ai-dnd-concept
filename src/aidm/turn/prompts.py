@@ -3,7 +3,7 @@ from collections.abc import Callable, Iterable, Mapping, Sequence
 
 from aidm.engines.loader import EntityRenderer
 from aidm.state.base import PLAYER_ID, Entity, EntityId, Frozen, Kind
-from aidm.state.world import LOCKED_TAG, GameState, ScenarioMeta
+from aidm.state.world import LOCKED_TAG, GameState, ScenarioMeta, Thread
 
 type Placement = Callable[[Entity], str]
 type Label = Callable[[Entity], str]
@@ -33,6 +33,8 @@ class SceneSnapshot(BaseScene):
     hidden: tuple[Entity, ...]
     canon: tuple[Entity, ...]
     party: tuple[EntityId, ...]
+    threads: tuple[Thread, ...] = ()
+    notes: tuple[str, ...] = ()
 
     @classmethod
     def of(cls, state: GameState) -> "SceneSnapshot":
@@ -82,6 +84,13 @@ class SceneSnapshot(BaseScene):
             placements=_placements(by_id, canon, frozenset(by_id), party),
             exits=exits,
             party=party,
+            threads=tuple(
+                sorted(
+                    (thread for thread in state.threads.values() if thread.status != "resolved"),
+                    key=lambda thread: thread.title,
+                )
+            ),
+            notes=state.pending_notes,
         )
 
     def catalogue(self) -> tuple[Entity, ...]:
@@ -172,6 +181,8 @@ def render_director(
                 "EXISTS BUT THE PLAYER DOES NOT KNOW IT YET",
                 _entities(scene.hidden, describe, placement=scene.placement_of),
             ),
+            ("ACTIVE THREADS", _threads(scene)),
+            ("SCENARIO NOTES", _notes(scene)),
             ("PLAYER ACTION", prompt),
         )
     )
@@ -290,6 +301,20 @@ def _exit_line(exit: Exit) -> str:
     return f"- {exit.name}[id={prompt_id(exit.location_id)}]{locked}{unfound}"
 
 
+def _threads(scene: SceneSnapshot) -> str:
+    return "\n".join(_thread_line(thread) for thread in scene.threads) or "- (none)"
+
+
+def _thread_line(thread: Thread) -> str:
+    stage = f" at {thread.stage}" if thread.stage is not None else ""
+    line = f"- {thread.title}[id={prompt_id(thread.id)}] — {thread.status}{stage}"
+    return f"{line}\n  note: {thread.note}" if thread.note else line
+
+
+def _notes(scene: SceneSnapshot) -> str:
+    return "\n".join(f"- {note}" for note in scene.notes) or "- (none)"
+
+
 def _catalogue(scene: SceneSnapshot, describe: EntityRenderer) -> str:
     return (
         "\n".join(
@@ -376,6 +401,12 @@ the same `effects`, in that order, and add an `untag-relation` before them when 
 when the fiction makes one: a passage discovered between two places (`connected`), or an NPC who \
 joins the player (`party-member`, the actor as `source` and `player` as `target`). A party member \
 travels with the player automatically.
+
+ACTIVE THREADS are the scenario's live storylines, and they are yours alone — the Narrator never \
+sees them. Steer the turn toward whichever threads fit what the player is doing. Write an \
+`advance-thread` effect when the fiction genuinely moves one on, naming its `status`, its `stage`, \
+or both, and leave it alone otherwise. SCENARIO NOTES are instructions from the scenario itself \
+about what just changed; follow them this turn — they are shown once.
 
 The plan is the whole turn:
 

@@ -21,12 +21,11 @@ from probes import CheckStep, Outcome, Setup, SetupStep, apply_setup, check
 from pydantic import Field, JsonValue, model_validator
 from pydantic_ai.messages import ModelMessage, ModelRequest, RetryPromptPart
 
-from aidm.app.session import build_engine
+from aidm.app.session import begin_game, build_engine
 from aidm.config import Settings, load_settings
-from aidm.content.authored import authored_world
 from aidm.content.store import load_character, load_scenario
 from aidm.engines.loader import Engine
-from aidm.state.base import SAVE_VERSION, EngineId, Frozen, Slug
+from aidm.state.base import EngineId, Frozen, Slug
 from aidm.state.world import GameState
 from aidm.turn.advancement import AdvisorContext, advisor, render_proposal
 from aidm.turn.pipeline import (
@@ -34,6 +33,7 @@ from aidm.turn.pipeline import (
     TurnOptions,
     TurnWorkspace,
     director_stage,
+    hook_step,
     resolve_step,
     worldkeeper_stage,
     worldkeeper_step,
@@ -141,18 +141,7 @@ def load_cases(directory: Path = SCENARIOS) -> tuple[EvalCase, ...]:
 def initial_state(case: EvalCase, engine: Engine, config: Settings) -> GameState:
     scenario = load_scenario(config.scenarios_dir, case.scenario, case.engine)
     character = load_character(_character_dir(case.character, config), case.character, case.engine)
-    state = GameState(
-        save_version=SAVE_VERSION,
-        scenario_id=scenario.id,
-        character_id=character.id,
-        scenario=scenario.meta,
-        engine=engine.id,
-        world=engine.initial_world(
-            authored_world(scenario, character), character.overlay.character
-        ),
-    )
-    engine.validate_state(state)
-    return state
+    return begin_game(engine, scenario, character)
 
 
 async def run_case(case: EvalCase, run: int, config: Settings) -> RunRecord:
@@ -304,6 +293,7 @@ async def _director_turn(
     result = await director.agent.run(rendered, deps=PlanContext(engine=engine, state=before))
     workspace.plan = result.output
     await resolve_step(engine)(workspace)
+    await hook_step(engine)(workspace)
     after = workspace.draft.committed()
     engine.validate_state(after)
     outcome = Outcome(

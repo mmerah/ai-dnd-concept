@@ -24,6 +24,23 @@ def build_engine(engine_id: EngineId, config: Settings) -> Engine:
     return load_engine(plugin_for(engine_id), config.engine(engine_id).pack_paths)
 
 
+def begin_game(engine: Engine, scenario: Scenario, character: Character) -> GameState:
+    """One opening state, so the app, the evals, and the tests all start a game the same way."""
+    authored = authored_world(scenario, character)
+    state = GameState(
+        save_version=SAVE_VERSION,
+        scenario_id=scenario.id,
+        character_id=character.id,
+        scenario=scenario.meta,
+        engine=engine.id,
+        world=engine.initial_world(authored, character.overlay.character),
+        threads={thread.id: thread for thread in authored.threads},
+        hooks=authored.hooks,
+    )
+    engine.validate_state(state)
+    return state
+
+
 @dataclass
 class GameSession:
     target: LaunchTarget
@@ -127,17 +144,7 @@ class GameSession:
         self.entries.append(entry)
 
     def _begun(self) -> GameState:
-        authored = authored_world(self.scenario, self.character)
-        state = GameState(
-            save_version=SAVE_VERSION,
-            scenario_id=self.scenario.id,
-            character_id=self.character.id,
-            scenario=self.scenario.meta,
-            engine=self.engine.id,
-            world=self.engine.initial_world(authored, self.character.overlay.character),
-        )
-        self.engine.validate_state(state)
-        return state
+        return begin_game(self.engine, self.scenario, self.character)
 
     def _resumable(self, state: GameState) -> GameState:
         if (state.scenario_id, state.character_id) != (self.scenario.id, self.character.id):
