@@ -154,8 +154,7 @@
       "act": "rest",
       "actor_id": "player",
       "label": "long-rest"
-    },
-    "milestone_earned": true
+    }
   },
   {
     "intent": "Kael levers the abbot's seal off the vault door with the crowbar.",

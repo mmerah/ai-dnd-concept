@@ -2,16 +2,15 @@ from collections.abc import Mapping
 from random import Random
 from types import MappingProxyType
 
-from aidm.engines.loader import Engine
+from aidm.engines.loader import Engine, Resolved
 from aidm.state.base import PLAYER_ID, Entity, Slug
 from aidm.state.dice import roll
 from aidm.state.effects import AdjustCounter, apply_effect, require_actor_here
-from aidm.state.facts import Fact
-from aidm.state.plan import TurnPlanBase, apply_branch, check_plan_base
+from aidm.state.plan import TurnPlanBase
 from aidm.state.sheet import Sheet
 from aidm.state.world import GameState, sheet_of
 
-from .actions import OUTCOMES, Difficulty, Risk, StoryPlan
+from .actions import Difficulty, Risk
 
 DICE = "2d6"
 PENALTY: Mapping[Difficulty, int] = MappingProxyType({"risky": 0, "demanding": 1, "extreme": 2})
@@ -22,18 +21,7 @@ GROWTH_MARK = AdjustCounter(
 )
 
 
-def check_plan(engine: Engine, state: GameState, plan: TurnPlanBase) -> str | None:
-    story = _story_plan(plan)
-    action = story.action
-    if action is None:
-        return check_plan_base(state, story, frozenset[Slug](), engine.default_rules)
-    return _refused(state, action) or check_plan_base(state, story, OUTCOMES, engine.default_rules)
-
-
-def resolve_action(engine: Engine, draft: GameState, plan: TurnPlanBase, rng: Random) -> list[Fact]:
-    action = _story_plan(plan).action
-    if action is None:
-        return []
+def resolve_risk(engine: Engine, draft: GameState, action: Risk, rng: Random) -> Resolved:
     actor = require_actor_here(draft, action.actor_id)
     sheet = sheet_of(draft, actor.id)
     bonus = (
@@ -47,24 +35,10 @@ def resolve_action(engine: Engine, draft: GameState, plan: TurnPlanBase, rng: Ra
     facts = [*draft.reveal(actor), fact]
     if outcome == "setback" and actor.id == PLAYER_ID:
         facts.extend(apply_effect(draft, GROWTH_MARK, engine.default_rules))
-    facts.extend(apply_branch(draft, plan, outcome, engine.default_rules))
-    return facts
+    return facts, outcome
 
 
-def _story_plan(plan: TurnPlanBase) -> StoryPlan:
-    if not isinstance(plan, StoryPlan):
-        raise ValueError(f"the story engine cannot resolve a {type(plan).__name__}")
-    return plan
-
-
-def _helps(state: GameState, actor: Entity, sheet: Sheet, tag_id: Slug) -> bool:
-    if sheet.tag(tag_id) is not None:
-        return True
-    carried = state.world.children(actor.id, "item")
-    return any(sheet_of(state, item.id).tag(tag_id) is not None for item in carried)
-
-
-def _refused(state: GameState, action: Risk) -> str | None:
+def check_risk(state: GameState, plan: TurnPlanBase, action: Risk) -> str | None:
     try:
         actor = require_actor_here(state, action.actor_id)
     except ValueError as unreadable:
@@ -86,6 +60,13 @@ def _refused(state: GameState, action: Risk) -> str | None:
             "so nothing helps them here"
         )
     return None
+
+
+def _helps(state: GameState, actor: Entity, sheet: Sheet, tag_id: Slug) -> bool:
+    if sheet.tag(tag_id) is not None:
+        return True
+    carried = state.world.children(actor.id, "item")
+    return any(sheet_of(state, item.id).tag(tag_id) is not None for item in carried)
 
 
 def _outcome(total: int) -> Slug:

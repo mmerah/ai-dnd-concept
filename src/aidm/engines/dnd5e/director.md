@@ -74,8 +74,3 @@ condition with nothing contested — the player declares the sickness passes —
 Never write a change to `hp` for what the action itself does, a spell slot or feature use, an
 attack's bonus, a spell's damage or save DC, a rest's refill, `level`, an ability score, or a
 counter's maximum. The engine owns every one of those; write around them, not through them.
-
-`milestone_earned: true` is the one bookkeeping flag on the plan: set it when the story plainly
-earns a level — a mystery solved, a threat ended. The engine adds the level-up tag itself, and
-ignores the flag when the player already carries it. A milestone the scenario marks on a place
-needs no flag from you.

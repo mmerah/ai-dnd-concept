@@ -13,7 +13,6 @@ from aidm.engines.loader import Engine, EnginePlugin, load_engine
 from aidm.state.base import PLAYER_ID, SAVE_VERSION, EngineId, Entity, EntityId, Slug
 from aidm.state.packs import ContentRef, Manifest, Pack, pack_format, read_pack, write_pack
 from aidm.state.packs import Record as PackRecord
-from aidm.state.plan import TurnPlanBase
 from aidm.state.sheet import Counter, Sheet
 from aidm.state.world import GameState, Record, ScenarioMeta, WorldState
 
@@ -81,9 +80,8 @@ def _engine(tmp_path: Path) -> Engine:
         id=EngineId("test"),
         badge=("TEST", "grey-6"),
         engine_dir=_engine_dir(tmp_path),
-        plan_type=TurnPlanBase,
-        check_plan=lambda engine, state, plan: None,
-        resolve_action=lambda engine, draft, plan, rng: [],
+        actions=(),
+        action_doc="",
         offered=lambda engine, state: None,
         check_delta=lambda state, delta: None,
         record_types={"monsters": Monster},

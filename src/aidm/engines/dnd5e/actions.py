@@ -4,7 +4,6 @@ from pydantic import Field
 
 from aidm.state.base import EntityId, Frozen, Slug
 from aidm.state.dice import DiceExpr, RollMode
-from aidm.state.plan import TurnPlanBase
 
 SUCCESS: Slug = "success"
 FAILURE: Slug = "failure"
@@ -119,20 +118,3 @@ class Improvise(Frozen):
     )
     reason: str = Field(min_length=1, description="What is being rolled, in a few words.")
     mode: Mode = "normal"
-
-
-type Dnd5eAction = Annotated[
-    Attack | CastSpell | Check | UseFeature | Rest | Improvise, Field(discriminator="act")
-]
-
-
-class Dnd5ePlan(TurnPlanBase):
-    action: Dnd5eAction | None = Field(
-        default=None,
-        description="The one action this turn resolves, or null when nothing needs resolving.",
-    )
-    milestone_earned: bool = Field(
-        default=False,
-        description="True only when the story itself has plainly earned the player a level: a "
-        "mystery solved, a threat ended. The engine opens the level-up.",
-    )

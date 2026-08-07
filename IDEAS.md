@@ -4,9 +4,6 @@
 
 - [] Eval coverage owed: an advantage scenario, a concentration-replacing-a-spell scenario, and
   story checks that test both directions.
-- [] `milestone_earned` is unmeasured: no eval scenario tags advancement; the free-form
-  `advancement-ready` tag call it replaced measured 0–33%. Scenario-marked milestones remain the
-  reliable path.
 - [] Prove "engines are data" with a third engine. Two engines can share an accident; a third
   one is the test.
 - [] Probe the advisor's `NativeOutput` on gpt-oss: the maintainer's small schema works in native

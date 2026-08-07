@@ -5,14 +5,14 @@ from importlib import import_module
 from pathlib import Path
 from random import Random
 from types import MappingProxyType
-from typing import Annotated
+from typing import Annotated, Any
 
-from pydantic import Field, JsonValue, TypeAdapter, ValidationError
+from pydantic import Field, JsonValue, TypeAdapter, ValidationError, create_model
 from pydantic_ai import ModelRetry
 from pydantic_ai.toolsets import AbstractToolset, FunctionToolset
 
 from aidm.content.authored import AuthoredEntity, AuthoredWorld, Rules, compose_world
-from aidm.state.base import EngineId, Entity, Kind, Slug
+from aidm.state.base import EngineId, Entity, Frozen, Kind, Slug
 from aidm.state.effects import Effect, effect_ops
 from aidm.state.facts import Fact
 from aidm.state.packs import (
@@ -30,7 +30,7 @@ from aidm.state.packs import (
     pack_format,
     parse_ref,
 )
-from aidm.state.plan import TurnPlanBase
+from aidm.state.plan import TurnPlanBase, apply_branch, check_plan_base
 from aidm.state.sheet import (
     AddRef,
     AdvancementOffer,
@@ -50,13 +50,7 @@ ENGINE_MODULES: tuple[str, ...] = (
 PLUGIN = "PLUGIN"
 
 type EntityRenderer = Callable[[Entity], str]
-type PlanCheck = Callable[[Engine, GameState, TurnPlanBase], str | None]
-"""Judges the untouched committed state and returns the refusal. It must not raise: an output
-validator turns an exception into a dead turn instead of a retry."""
-type ActionResolver = Callable[[Engine, GameState, TurnPlanBase, Random], list[Fact]]
-"""Mutates the draft: the action's rolls, its intrinsic consequences, and the branch taken."""
-type Offered = Callable[[Engine, GameState], AdvancementOffer | None]
-type DeltaCheck = Callable[[GameState, SheetDelta], str | None]
+type Resolved = tuple[list[Fact], Slug | None]
 
 
 class EngineSpec(Value):
@@ -70,18 +64,25 @@ class EngineSpec(Value):
 
 
 @dataclass(frozen=True, slots=True)
-class EnginePlugin:
-    """What an engine declares: its identity, its directory of data, and the four hooks that hold
-    everything the loader cannot derive from that data."""
+class ActionSpec[A: Frozen]:
+    """`resolve` mutates the draft and names the outcome; the kernel applies that outcome's
+    branch. `check` judges the whole plan against the untouched committed state."""
 
+    model: type[A]
+    labels: "frozenset[Slug] | Callable[[Engine, A], frozenset[Slug]]"
+    resolve: "Callable[[Engine, GameState, A, Random], Resolved]"
+    check: Callable[[GameState, TurnPlanBase, A], str | None] | None = None
+
+
+@dataclass(frozen=True, slots=True)
+class EnginePlugin:
     id: EngineId
     badge: tuple[str, str]
     engine_dir: Path
-    plan_type: type[TurnPlanBase]
-    check_plan: PlanCheck
-    resolve_action: ActionResolver
-    offered: Offered
-    check_delta: DeltaCheck
+    actions: tuple[ActionSpec[Any], ...]
+    action_doc: str
+    offered: "Callable[[Engine, GameState], AdvancementOffer | None]"
+    check_delta: Callable[[GameState, SheetDelta], str | None]
     record_types: Mapping[CollectionName, type[Record]] = MappingProxyType({})
 
     def pack_format(self, spec: EngineSpec) -> PackFormat:
@@ -93,6 +94,7 @@ class Engine:
     plugin: EnginePlugin
     spec: EngineSpec
     content: Content
+    plan_type: type[TurnPlanBase]
     director_instructions: str
     advancement_instructions: str
     director_toolset: AbstractToolset[object]
@@ -104,10 +106,6 @@ class Engine:
     @property
     def badge(self) -> tuple[str, str]:
         return self.plugin.badge
-
-    @property
-    def plan_type(self) -> type[TurnPlanBase]:
-        return self.plugin.plan_type
 
     def default_rules(self, entity: Entity) -> Sheet:
         return SheetDefinition().runtime(entity.kind, self.spec.template(entity.kind))
@@ -136,10 +134,30 @@ class Engine:
                     raise ValueError(f"{entity.id!r}: {miss.summary}")
 
     def check_plan(self, state: GameState, plan: TurnPlanBase) -> str | None:
-        return self.plugin.check_plan(self, state, plan)
+        """Must not raise: an output validator that raises kills the turn instead of retrying.
+        The trial resolve owes the model every refusal the real resolve raises."""
+        action = _action(plan)
+        if action is None:
+            return check_plan_base(state, plan, frozenset[Slug](), self.default_rules)
+        try:
+            spec = self._spec(action)
+            _ = spec.resolve(self, state.draft(), action, Random(0))
+            held = spec.labels
+            labels: frozenset[Slug] = held(self, action) if callable(held) else held
+        except ValueError as refused:
+            return str(refused)
+        if spec.check is not None and (refusal := spec.check(state, plan, action)):
+            return refusal
+        return check_plan_base(state, plan, labels, self.default_rules)
 
     def resolve_action(self, draft: GameState, plan: TurnPlanBase, rng: Random) -> list[Fact]:
-        return self.plugin.resolve_action(self, draft, plan, rng)
+        action = _action(plan)
+        if action is None:
+            return []
+        facts, outcome = self._spec(action).resolve(self, draft, action, rng)
+        if outcome is not None:
+            facts.extend(apply_branch(draft, plan, outcome, self.default_rules))
+        return facts
 
     def offered(self, state: GameState) -> AdvancementOffer | None:
         return self.plugin.offered(self, state)
@@ -163,6 +181,12 @@ class Engine:
         except ValueError as refused:
             return str(refused)
         return self.plugin.check_delta(state, delta)
+
+    def _spec(self, action: Frozen) -> ActionSpec[Any]:
+        for spec in self.plugin.actions:
+            if type(action) is spec.model:
+                return spec
+        raise ValueError(f"{self.id} registers no action {type(action).__name__}")
 
     def _sheet(self, kind: Kind, rules: Rules) -> Sheet:
         definition = SheetDefinition.model_validate(rules)
@@ -202,16 +226,42 @@ def load_engine(plugin: EnginePlugin, pack_paths: Sequence[Path] | None = None) 
     spec = EngineSpec.model_validate_json(_text(engine_dir / "spec.json"))
     directories = _packs(engine_dir) if pack_paths is None else tuple(pack_paths)
     content = load(directories, plugin.pack_format(spec))
+    plan_type = _plan_model(plugin)
     return Engine(
         plugin=plugin,
         spec=spec,
         content=content,
+        plan_type=plan_type,
         director_instructions=_text(engine_dir / "director.md")
         + _effect_vocabulary()
-        + _examples(engine_dir, plugin.plan_type),
+        + _examples(engine_dir, plan_type),
         advancement_instructions=_text(engine_dir / "advancement.md"),
         director_toolset=_director_toolset(content),
     )
+
+
+def _plan_model(plugin: EnginePlugin) -> type[TurnPlanBase]:
+    """A discriminator on a lone model raises, so a single-action engine gets its model plain."""
+    models: tuple[type[Frozen], ...] = tuple(spec.model for spec in plugin.actions)
+    if not models:
+        return TurnPlanBase
+    union: Any = models[0]  # An annotation assembled at runtime carries no static type.
+    for other in models[1:]:
+        union = union | other
+    if len(models) > 1:
+        union = Annotated[union, Field(discriminator="act")]
+    return create_model(
+        "TurnPlan",
+        __base__=TurnPlanBase,
+        action=(union | None, Field(default=None, description=plugin.action_doc)),
+    )
+
+
+def _action(plan: TurnPlanBase) -> Frozen | None:
+    """The plan model is built per engine, so the base type the kernel holds knows no `action`."""
+    action: object = getattr(plan, "action", None)
+    assert action is None or isinstance(action, Frozen)
+    return action
 
 
 def _plugin(module: str) -> EnginePlugin:

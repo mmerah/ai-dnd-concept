@@ -3,11 +3,11 @@ from random import Random
 from story_test_support import grown, story_game
 
 from aidm.engines.loader import Engine
-from aidm.engines.story.actions import Risk, StoryPlan
+from aidm.engines.story.actions import Risk
 from aidm.engines.story.advance import GROWTH_REQUIRED
 from aidm.state.base import PLAYER_ID, EntityId
 from aidm.state.effects import AddTag, AdjustCounter
-from aidm.state.plan import OutcomeBranch
+from aidm.state.plan import OutcomeBranch, TurnPlanBase
 from aidm.state.sheet import ChangeCounter, SetNumber, SheetDelta
 from aidm.state.world import GameState, player_sheet, sheet_of
 
@@ -25,14 +25,16 @@ SETBACK = OutcomeBranch(
 )
 
 
-def _plan(**action: object) -> StoryPlan:
-    return StoryPlan(
-        intent="Kael forces the vault door.",
-        tone="strained",
-        branches=(STRONG, SETBACK),
-        action=Risk.model_validate(
-            {"approach": "bold", "difficulty": "risky", "stakes": "forcing the door"} | action
-        ),
+def _plan(engine: Engine, **action: object) -> TurnPlanBase:
+    return engine.plan_type.model_validate(
+        {
+            "intent": "Kael forces the vault door.",
+            "tone": "strained",
+            "branches": (STRONG, SETBACK),
+            "action": Risk.model_validate(
+                {"approach": "bold", "difficulty": "risky", "stakes": "forcing the door"} | action
+            ),
+        }
     )
 
 
@@ -47,7 +49,7 @@ def test_a_risk_rolls_once_against_seven_and_applies_only_the_branch_it_landed_o
     engine, state = story_game()
     draft = _certain(state, 8).draft()
 
-    facts = engine.resolve_action(draft, _plan(actor_id=PLAYER_ID), Random(3))
+    facts = engine.resolve_action(draft, _plan(engine, actor_id=PLAYER_ID), Random(3))
 
     (rolled,) = [fact for fact in facts if fact.kind == "dice_rolled"]
     assert (rolled.data["vs"], rolled.data["success"]) == (7, True)
@@ -61,7 +63,7 @@ def test_a_setback_on_the_player_marks_growth_the_model_never_writes() -> None:
     engine, state = story_game()
     draft = _certain(state, -7).draft()
 
-    facts = engine.resolve_action(draft, _plan(actor_id=PLAYER_ID), Random(3))
+    facts = engine.resolve_action(draft, _plan(engine, actor_id=PLAYER_ID), Random(3))
 
     assert [fact.kind for fact in facts] == ["dice_rolled", "counter_changed", "counter_changed"]
     sheet = sheet_of(draft, PLAYER_ID)
@@ -73,29 +75,33 @@ def test_a_setback_on_the_player_marks_growth_the_model_never_writes() -> None:
 def test_check_plan_refuses_what_the_procedure_cannot_resolve() -> None:
     """A tag must be held to count; whether a held tag helps or hinders stays the model's call."""
     engine, state = story_game()
-    gear = _plan(actor_id=PLAYER_ID, helping_tag_id="unsteady-lantern")
+    gear = _plan(engine, actor_id=PLAYER_ID, helping_tag_id="unsteady-lantern")
 
     assert engine.check_plan(state, gear) is None
-    assert "not here with the player" in _refusal(engine, state, _plan(actor_id=RAT))
-    absent = _plan(actor_id=PLAYER_ID, helping_tag_id="lockpicking")
+    assert "not here with the player" in _refusal(engine, state, _plan(engine, actor_id=RAT))
+    absent = _plan(engine, actor_id=PLAYER_ID, helping_tag_id="lockpicking")
     assert "nothing helps them here" in _refusal(engine, state, absent)
-    hinders = _plan(actor_id=PLAYER_ID, hindering_tag_id="unsteady-lantern")
+    hinders = _plan(engine, actor_id=PLAYER_ID, hindering_tag_id="unsteady-lantern")
     assert "nothing hinders them here" in _refusal(engine, state, hinders)
 
-    quiet = StoryPlan(intent="Kael listens.", tone="still", branches=(STRONG,))
+    quiet = engine.plan_type.model_validate(
+        {"intent": "Kael listens.", "tone": "still", "branches": (STRONG,)}
+    )
     assert "settles no outcome" in _refusal(engine, state, quiet)
 
     taken_out = state.draft()
     player_sheet(taken_out).counters["stress"].current = 5
-    assert "TAKEN OUT" in _refusal(engine, taken_out.committed(), _plan(actor_id=PLAYER_ID))
+    assert "TAKEN OUT" in _refusal(engine, taken_out.committed(), _plan(engine, actor_id=PLAYER_ID))
 
 
 def test_check_plan_refuses_a_speaker_the_narrator_may_not_voice() -> None:
     """The speaker guard is what keeps the Narrator from voicing the player or an unmet NPC."""
     engine, state = story_game()
 
-    def addressed(speaker_id: EntityId | None) -> StoryPlan:
-        return StoryPlan(intent="Kael speaks up.", tone="low", speaker_id=speaker_id)
+    def addressed(speaker_id: EntityId | None) -> TurnPlanBase:
+        return engine.plan_type.model_validate(
+            {"intent": "Kael speaks up.", "tone": "low", "speaker_id": speaker_id}
+        )
 
     assert engine.check_plan(state, addressed(EntityId("mara"))) is None
     assert "never the player" in _refusal(engine, state, addressed(PLAYER_ID))
@@ -128,7 +134,7 @@ def test_the_one_action_is_worked_through_in_the_directors_instructions() -> Non
     assert engine.director_instructions.count('"act": "risk"') == 1
 
 
-def _refusal(engine: Engine, state: GameState, plan: StoryPlan) -> str:
+def _refusal(engine: Engine, state: GameState, plan: TurnPlanBase) -> str:
     refused = engine.check_plan(state, plan)
     assert refused is not None
     return refused

@@ -552,6 +552,6 @@
     "intent",
     "tone"
   ],
-  "title": "StoryPlan",
+  "title": "TurnPlan",
   "type": "object"
 }

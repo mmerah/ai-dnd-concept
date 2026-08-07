@@ -3,7 +3,6 @@ from typing import Literal
 from pydantic import Field
 
 from aidm.state.base import EntityId, Frozen, Slug
-from aidm.state.plan import TurnPlanBase
 
 Approach = Literal["bold", "subtle", "clever", "empathetic"]
 Difficulty = Literal["risky", "demanding", "extreme"]
@@ -36,12 +35,4 @@ class Risk(Frozen):
     )
     stakes: str = Field(
         min_length=1, description="What is attempted, in a few words; it names the roll."
-    )
-
-
-class StoryPlan(TurnPlanBase):
-    action: Risk | None = Field(
-        default=None,
-        description="The one risk this turn resolves, or null when nothing is uncertain enough to "
-        "roll for.",
     )

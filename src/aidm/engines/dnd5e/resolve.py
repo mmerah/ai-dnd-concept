@@ -1,13 +1,12 @@
-from collections.abc import Mapping, Sequence
+from collections.abc import Callable, Mapping, Sequence
 from random import Random
 
 from pydantic import JsonValue
 
-from aidm.engines.loader import Engine
-from aidm.state.base import PLAYER_ID, Entity, EntityId, Slug
+from aidm.engines.loader import Engine, Resolved
+from aidm.state.base import Entity, EntityId, Slug
 from aidm.state.dice import DiceExpr, roll
 from aidm.state.effects import (
-    AddTag,
     AdjustCounter,
     SetNote,
     SpendCounter,
@@ -16,9 +15,9 @@ from aidm.state.effects import (
     require_actor_here,
 )
 from aidm.state.facts import Fact
-from aidm.state.plan import TurnPlanBase, apply_branch, check_plan_base
+from aidm.state.plan import TurnPlanBase
 from aidm.state.sheet import Sheet
-from aidm.state.world import GameState, player_sheet, sheet_of
+from aidm.state.world import GameState, sheet_of
 
 from .actions import (
     CONTESTED,
@@ -28,13 +27,11 @@ from .actions import (
     Attack,
     CastSpell,
     Check,
-    Dnd5eAction,
-    Dnd5ePlan,
     Improvise,
     Rest,
     UseFeature,
 )
-from .advance import ADVANCEMENT_READY, LEVEL
+from .advance import LEVEL
 from .records import SpellRecord, spell_of, spellcasting_ability, weapon_of
 
 ARMOR_CLASS = "armor-class"
@@ -45,114 +42,9 @@ SLOT = "slot-"
 D20 = "1d20"
 SAVE_DC_BASE = 8
 DEFAULT_LEVEL = 1
-MILESTONE_TAG = AddTag(
-    entity_id=PLAYER_ID,
-    tag_id=ADVANCEMENT_READY,
-    text="The story has earned a level.",
-)
 
 
-def check_plan(engine: Engine, state: GameState, plan: TurnPlanBase) -> str | None:
-    try:
-        fivee = _dnd5e_plan(plan)
-        action = fivee.action
-        if action is not None:
-            # The resolver raises every refusal the check owes the model, so trial it on a draft
-            # that is thrown away rather than stating each precondition twice.
-            _ = _resolved(state.draft(), engine, action, Random(0))
-        labels = _labels(engine, action)
-    except ValueError as refused:
-        return str(refused)
-    if paid_twice := _double_spend(fivee):
-        return paid_twice
-    return check_plan_base(state, fivee, labels, engine.default_rules)
-
-
-def _double_spend(fivee: Dnd5ePlan) -> str | None:
-    written = (*fivee.effects, *(effect for branch in fivee.branches for effect in branch.effects))
-    for effect in written:
-        if isinstance(effect, (SpendCounter, AdjustCounter)) and _engine_paid(
-            fivee.action, effect.counter
-        ):
-            return (
-                f"the engine already spends {effect.counter!r} for this action: "
-                "drop that effect and let the engine pay the cost"
-            )
-    return None
-
-
-def _engine_paid(action: Dnd5eAction | None, counter: str) -> bool:
-    match action:
-        case CastSpell():
-            return counter.startswith(SLOT)
-        case UseFeature():
-            return counter == action.counter
-        case _:
-            return False
-
-
-def resolve_action(engine: Engine, draft: GameState, plan: TurnPlanBase, rng: Random) -> list[Fact]:
-    fivee = _dnd5e_plan(plan)
-    facts, outcome = _resolved(draft, engine, fivee.action, rng)
-    if outcome is not None:
-        facts.extend(apply_branch(draft, plan, outcome, engine.default_rules))
-    if fivee.milestone_earned and player_sheet(draft).tag(ADVANCEMENT_READY) is None:
-        facts.extend(apply_effect(draft, MILESTONE_TAG, engine.default_rules))
-    return facts
-
-
-def _dnd5e_plan(plan: TurnPlanBase) -> Dnd5ePlan:
-    if not isinstance(plan, Dnd5ePlan):
-        raise ValueError(f"the 5e engine cannot resolve a {type(plan).__name__}")
-    return plan
-
-
-def _labels(engine: Engine, action: Dnd5eAction | None) -> frozenset[Slug]:
-    match action:
-        case CastSpell():
-            spell = spell_of(engine.content, action.spell)
-            return CONTESTED if spell.attack or spell.save_ability is not None else UNCONTESTED
-        case Improvise():
-            return CONTESTED if action.vs is not None else UNCONTESTED
-        case Attack() | Check():
-            return CONTESTED
-        case None | UseFeature() | Rest():
-            return UNCONTESTED
-
-
-def _resolved(
-    draft: GameState, engine: Engine, action: Dnd5eAction | None, rng: Random
-) -> tuple[list[Fact], Slug | None]:
-    match action:
-        case None:
-            return [], None
-        case Attack():
-            return _attack(draft, engine, action, rng)
-        case CastSpell():
-            return _cast(draft, engine, action, rng)
-        case Check():
-            actor = require_actor_here(draft, action.actor_id)
-            rolled, fact = roll(
-                D20,
-                f"{actor.name}: {action.reason}",
-                rng,
-                vs=action.dc,
-                mode=action.mode,
-                bonus=action.bonus,
-            )
-            return [*_seen(draft, actor), fact], _verdict(rolled.total >= action.dc)
-        case UseFeature():
-            return _feature(draft, engine, action, rng)
-        case Rest():
-            return _rest(draft, engine, action)
-        case Improvise():
-            rolled, fact = roll(action.dice, action.reason, rng, vs=action.vs, mode=action.mode)
-            return [fact], None if action.vs is None else _verdict(rolled.total >= action.vs)
-
-
-def _attack(
-    draft: GameState, engine: Engine, action: Attack, rng: Random
-) -> tuple[list[Fact], Slug]:
+def resolve_attack(engine: Engine, draft: GameState, action: Attack, rng: Random) -> Resolved:
     attacker = require_actor_here(draft, action.actor_id)
     target = require_actor_here(draft, action.target_id)
     facts = _seen(draft, attacker, target)
@@ -173,6 +65,104 @@ def _attack(
     facts.append(damage_fact)
     facts.extend(_harm(draft, engine, target.id, -hurt.total, f"{attacker.name}'s attack"))
     return facts, SUCCESS
+
+
+def resolve_cast(engine: Engine, draft: GameState, action: CastSpell, rng: Random) -> Resolved:
+    caster = require_actor_here(draft, action.actor_id)
+    sheet = sheet_of(draft, caster.id)
+    spell = spell_of(engine.content, action.spell)
+    modifier = _spell_modifier(engine, sheet)
+    slot = _slot_spent(action, spell)
+    facts = _seen(draft, caster)
+    if action.target_id is not None:
+        facts.extend(_seen(draft, require_actor_here(draft, action.target_id)))
+    if slot is not None:
+        facts.extend(_spend(draft, engine, caster.id, f"{SLOT}{slot}"))
+    outcome, contest = _contest(draft, engine, action, spell, caster, modifier, rng)
+    facts.extend(contest)
+    # A cantrip spends no slot, so it is the caster's own level that scales it.
+    scale = slot if slot is not None else sheet.numbers.get(LEVEL, DEFAULT_LEVEL)
+    facts.extend(_spell_effect(draft, engine, action, spell, caster, modifier, scale, outcome, rng))
+    if spell.concentration:
+        note = SetNote(entity_id=caster.id, key=CONCENTRATION, text=spell.name)
+        facts.extend(apply_effect(draft, note, engine.default_rules))
+    return facts, outcome
+
+
+def resolve_feature(engine: Engine, draft: GameState, action: UseFeature, rng: Random) -> Resolved:
+    actor = require_actor_here(draft, action.actor_id)
+    facts = _seen(draft, actor)
+    facts.extend(_spend(draft, engine, actor.id, action.counter))
+    if action.heal is not None:
+        rolled, fact = roll(action.heal, f"{actor.name} draws on {action.counter}", rng)
+        facts.append(fact)
+        facts.extend(_harm(draft, engine, actor.id, rolled.total, action.counter))
+    return facts, None
+
+
+def resolve_rest(engine: Engine, draft: GameState, action: Rest, rng: Random) -> Resolved:
+    actor = require_actor_here(draft, action.actor_id)
+    refilled = _refilled_by(engine, action.label)
+    seen = _seen(draft, actor)
+    sheet = sheet_of(draft, actor.id)
+    keys: list[str] = []
+    for key, counter in sorted(sheet.counters.items()):
+        maximum = counter.maximum
+        if maximum is None or counter.recharge not in refilled or counter.current == maximum:
+            continue
+        counter.current = maximum
+        keys.append(key)
+    if not keys:
+        return seen, None
+    trace = f"{actor.name} took {action.label}: refilled {', '.join(keys)}"
+    data: Mapping[str, JsonValue] = {"label": action.label, "counters": list(keys)}
+    return [*seen, entity_fact(actor, "recharged", trace, data)], None
+
+
+def resolve_check(engine: Engine, draft: GameState, action: Check, rng: Random) -> Resolved:
+    actor = require_actor_here(draft, action.actor_id)
+    rolled, fact = roll(
+        D20,
+        f"{actor.name}: {action.reason}",
+        rng,
+        vs=action.dc,
+        mode=action.mode,
+        bonus=action.bonus,
+    )
+    return [*_seen(draft, actor), fact], _verdict(rolled.total >= action.dc)
+
+
+def resolve_improvise(engine: Engine, draft: GameState, action: Improvise, rng: Random) -> Resolved:
+    rolled, fact = roll(action.dice, action.reason, rng, vs=action.vs, mode=action.mode)
+    return [fact], None if action.vs is None else _verdict(rolled.total >= action.vs)
+
+
+def cast_labels(engine: Engine, action: CastSpell) -> frozenset[Slug]:
+    spell = spell_of(engine.content, action.spell)
+    return CONTESTED if spell.attack or spell.save_ability is not None else UNCONTESTED
+
+
+def improvise_labels(engine: Engine, action: Improvise) -> frozenset[Slug]:
+    return CONTESTED if action.vs is not None else UNCONTESTED
+
+
+def check_cast(state: GameState, plan: TurnPlanBase, action: CastSpell) -> str | None:
+    return _double_spend(plan, lambda counter: counter.startswith(SLOT))
+
+
+def check_feature(state: GameState, plan: TurnPlanBase, action: UseFeature) -> str | None:
+    return _double_spend(plan, lambda counter: counter == action.counter)
+
+
+def _double_spend(plan: TurnPlanBase, engine_pays: Callable[[str], bool]) -> str | None:
+    written = (*plan.effects, *(effect for branch in plan.branches for effect in branch.effects))
+    for effect in written:
+        if isinstance(effect, (SpendCounter, AdjustCounter)) and engine_pays(effect.counter):
+            return (
+                f"the engine already spends {effect.counter!r} for this action: "
+                "drop that effect and let the engine pay the cost"
+            )
+    return None
 
 
 def _attack_terms(
@@ -205,30 +195,6 @@ def _attack_terms(
     else:
         ability = dexterity if weapon.ranged else strength
     return ability + sheet.numbers.get(PROFICIENCY, 0), damage, ability
-
-
-def _cast(
-    draft: GameState, engine: Engine, action: CastSpell, rng: Random
-) -> tuple[list[Fact], Slug | None]:
-    caster = require_actor_here(draft, action.actor_id)
-    sheet = sheet_of(draft, caster.id)
-    spell = spell_of(engine.content, action.spell)
-    modifier = _spell_modifier(engine, sheet)
-    slot = _slot_spent(action, spell)
-    facts = _seen(draft, caster)
-    if action.target_id is not None:
-        facts.extend(_seen(draft, require_actor_here(draft, action.target_id)))
-    if slot is not None:
-        facts.extend(_spend(draft, engine, caster.id, f"{SLOT}{slot}"))
-    outcome, contest = _contest(draft, engine, action, spell, caster, modifier, rng)
-    facts.extend(contest)
-    # A cantrip spends no slot, so it is the caster's own level that scales it.
-    scale = slot if slot is not None else sheet.numbers.get(LEVEL, DEFAULT_LEVEL)
-    facts.extend(_spell_effect(draft, engine, action, spell, caster, modifier, scale, outcome, rng))
-    if spell.concentration:
-        note = SetNote(entity_id=caster.id, key=CONCENTRATION, text=spell.name)
-        facts.extend(apply_effect(draft, note, engine.default_rules))
-    return facts, outcome
 
 
 def _contest(
@@ -286,38 +252,6 @@ def _spell_effect(
         facts.append(fact)
         facts.extend(_harm(draft, engine, healed.id, rolled.total, spell.name))
     return facts
-
-
-def _feature(
-    draft: GameState, engine: Engine, action: UseFeature, rng: Random
-) -> tuple[list[Fact], None]:
-    actor = require_actor_here(draft, action.actor_id)
-    facts = _seen(draft, actor)
-    facts.extend(_spend(draft, engine, actor.id, action.counter))
-    if action.heal is not None:
-        rolled, fact = roll(action.heal, f"{actor.name} draws on {action.counter}", rng)
-        facts.append(fact)
-        facts.extend(_harm(draft, engine, actor.id, rolled.total, action.counter))
-    return facts, None
-
-
-def _rest(draft: GameState, engine: Engine, action: Rest) -> tuple[list[Fact], None]:
-    actor = require_actor_here(draft, action.actor_id)
-    refilled = _refilled_by(engine, action.label)
-    seen = _seen(draft, actor)
-    sheet = sheet_of(draft, actor.id)
-    keys: list[str] = []
-    for key, counter in sorted(sheet.counters.items()):
-        maximum = counter.maximum
-        if maximum is None or counter.recharge not in refilled or counter.current == maximum:
-            continue
-        counter.current = maximum
-        keys.append(key)
-    if not keys:
-        return seen, None
-    trace = f"{actor.name} took {action.label}: refilled {', '.join(keys)}"
-    data: Mapping[str, JsonValue] = {"label": action.label, "counters": list(keys)}
-    return [*seen, entity_fact(actor, "recharged", trace, data)], None
 
 
 def _spell_modifier(engine: Engine, sheet: Sheet) -> int:

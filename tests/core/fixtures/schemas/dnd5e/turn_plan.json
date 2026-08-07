@@ -284,39 +284,6 @@
       "title": "Check",
       "type": "object"
     },
-    "Dnd5eAction": {
-      "discriminator": {
-        "mapping": {
-          "attack": "#/$defs/Attack",
-          "cast-spell": "#/$defs/CastSpell",
-          "check": "#/$defs/Check",
-          "improvise": "#/$defs/Improvise",
-          "rest": "#/$defs/Rest",
-          "use-feature": "#/$defs/UseFeature"
-        },
-        "propertyName": "act"
-      },
-      "oneOf": [
-        {
-          "$ref": "#/$defs/Attack"
-        },
-        {
-          "$ref": "#/$defs/CastSpell"
-        },
-        {
-          "$ref": "#/$defs/Check"
-        },
-        {
-          "$ref": "#/$defs/UseFeature"
-        },
-        {
-          "$ref": "#/$defs/Rest"
-        },
-        {
-          "$ref": "#/$defs/Improvise"
-        }
-      ]
-    },
     "Effect": {
       "discriminator": {
         "mapping": {
@@ -836,26 +803,51 @@
     "action": {
       "anyOf": [
         {
-          "$ref": "#/$defs/Dnd5eAction"
+          "discriminator": {
+            "mapping": {
+              "attack": "#/$defs/Attack",
+              "cast-spell": "#/$defs/CastSpell",
+              "check": "#/$defs/Check",
+              "improvise": "#/$defs/Improvise",
+              "rest": "#/$defs/Rest",
+              "use-feature": "#/$defs/UseFeature"
+            },
+            "propertyName": "act"
+          },
+          "oneOf": [
+            {
+              "$ref": "#/$defs/Attack"
+            },
+            {
+              "$ref": "#/$defs/CastSpell"
+            },
+            {
+              "$ref": "#/$defs/Check"
+            },
+            {
+              "$ref": "#/$defs/UseFeature"
+            },
+            {
+              "$ref": "#/$defs/Rest"
+            },
+            {
+              "$ref": "#/$defs/Improvise"
+            }
+          ]
         },
         {
           "type": "null"
         }
       ],
       "default": null,
-      "description": "The one action this turn resolves, or null when nothing needs resolving."
-    },
-    "milestone_earned": {
-      "default": false,
-      "description": "True only when the story itself has plainly earned the player a level: a mystery solved, a threat ended. The engine opens the level-up.",
-      "title": "Milestone Earned",
-      "type": "boolean"
+      "description": "The one action this turn resolves, or null when nothing needs resolving.",
+      "title": "Action"
     }
   },
   "required": [
     "intent",
     "tone"
   ],
-  "title": "Dnd5ePlan",
+  "title": "TurnPlan",
   "type": "object"
 }
