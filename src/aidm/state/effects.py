@@ -101,6 +101,16 @@ class GrantCounter(Frozen):
     why: Why = ""
 
 
+class Refill(Frozen):
+    """Refill every counter whose recharge label the rest covers. Engine programs only: the
+    Director plans a rest, never the refill itself."""
+
+    op: Literal["refill"] = "refill"
+    entity_id: TargetId
+    label: str = Field(description="Which rest was taken; it names the fact.")
+    recharges: tuple[str, ...] = Field(min_length=1, description="The recharge labels it refills.")
+
+
 class AddTag(Frozen):
     """Put a lasting condition, edge, or burden on an entity. The sheet shows the id written
     out: `battle-worn` appears as Battle Worn."""
@@ -241,6 +251,7 @@ type Effect = Annotated[
     | AdjustCounter
     | SpendCounter
     | GrantCounter
+    | Refill
     | AddTag
     | RemoveTag
     | SetNote
@@ -262,6 +273,28 @@ type TurnEffect = Annotated[
     | GainImprovisedItem
     | AdjustCounter
     | SpendCounter
+    | AddTag
+    | RemoveTag
+    | SetNote
+    | SetNumber
+    | AddRelation
+    | RemoveRelation
+    | TagRelation
+    | UntagRelation
+    | RevealRelation
+    | AdvanceThread,
+    Field(discriminator="op"),
+]
+
+# What a VM program may apply: the Director's vocabulary plus the engine-only refill.
+type ProgramEffect = Annotated[
+    Reveal
+    | MoveActor
+    | MoveItem
+    | GainImprovisedItem
+    | AdjustCounter
+    | SpendCounter
+    | Refill
     | AddTag
     | RemoveTag
     | SetNote

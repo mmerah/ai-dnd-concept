@@ -1,0 +1,1295 @@
+[
+  {
+    "name": "attack",
+    "doc": "One attack with a carried weapon, or one attack line off the attacker's own stat block.",
+    "labels": [
+      "success",
+      "failure"
+    ],
+    "params": {
+      "actor_id": {
+        "type": "entity-id",
+        "description": "Exact id of the attacker, here with the player."
+      },
+      "target_id": {
+        "type": "entity-id",
+        "description": "Exact id of what is attacked, here with the player."
+      },
+      "weapon_item_id": {
+        "type": "entity-id",
+        "kind": "item",
+        "optional": true,
+        "description": "Exact id of a weapon item the attacker carries. Null when the attack comes from a stat block instead."
+      },
+      "attack_bonus": {
+        "type": "int",
+        "ge": -10,
+        "le": 30,
+        "optional": true,
+        "description": "To-hit bonus copied off a stat block's attack line, such as 4 for `Bite +4 to hit`. Null whenever a weapon item is named."
+      },
+      "damage": {
+        "type": "dice-expr",
+        "optional": true,
+        "description": "Damage dice copied off that same line, such as `1d4+2`. Null whenever a weapon item is named."
+      },
+      "two_handed": {
+        "type": "bool",
+        "description": "True only for a versatile weapon wielded in both hands."
+      },
+      "mode": {
+        "type": "enum",
+        "values": [
+          "normal",
+          "advantage",
+          "disadvantage"
+        ],
+        "default": "normal",
+        "description": "`advantage` or `disadvantage` when the fiction grants it; one roll either."
+      }
+    },
+    "program": [
+      {
+        "op": "apply",
+        "effect": {
+          "op": "reveal",
+          "entity_id": "$actor_id"
+        }
+      },
+      {
+        "op": "apply",
+        "effect": {
+          "op": "reveal",
+          "entity_id": "$target_id"
+        }
+      },
+      {
+        "op": "require",
+        "when": {
+          "pred": "not",
+          "that": {
+            "pred": "present",
+            "of": "$weapon_item_id"
+          }
+        },
+        "that": {
+          "pred": "present",
+          "of": "$attack_bonus"
+        },
+        "message": "an attack needs either a `weapon_item_id` the attacker carries, or both `attack_bonus` and `damage` copied off their stat block's attack line"
+      },
+      {
+        "op": "require",
+        "when": {
+          "pred": "not",
+          "that": {
+            "pred": "present",
+            "of": "$weapon_item_id"
+          }
+        },
+        "that": {
+          "pred": "present",
+          "of": "$damage"
+        },
+        "message": "an attack needs either a `weapon_item_id` the attacker carries, or both `attack_bonus` and `damage` copied off their stat block's attack line"
+      },
+      {
+        "op": "require",
+        "when": {
+          "pred": "present",
+          "of": "$weapon_item_id"
+        },
+        "that": {
+          "pred": "present",
+          "of": "$attack_bonus"
+        },
+        "expect": false,
+        "message": "a weapon's to-hit and damage come from its record: leave `attack_bonus` and `damage` null when you name a `weapon_item_id`"
+      },
+      {
+        "op": "require",
+        "when": {
+          "pred": "present",
+          "of": "$weapon_item_id"
+        },
+        "that": {
+          "pred": "present",
+          "of": "$damage"
+        },
+        "expect": false,
+        "message": "a weapon's to-hit and damage come from its record: leave `attack_bonus` and `damage` null when you name a `weapon_item_id`"
+      },
+      {
+        "op": "require",
+        "that": {
+          "pred": "carries",
+          "actor": "$actor_id",
+          "item": "$weapon_item_id"
+        },
+        "message": "{actor_id_name} does not carry item '{weapon_item_id}'"
+      },
+      {
+        "op": "lookup",
+        "when": {
+          "pred": "present",
+          "of": "$weapon_item_id"
+        },
+        "into": "weapon",
+        "from_entity": "$weapon_item_id",
+        "collection": "weapons",
+        "require_fact": "damage",
+        "missing": "{weapon_item_id_name} is no weapon. Attack with a weapon the attacker carries, or give `attack_bonus` and `damage` yourself."
+      },
+      {
+        "op": "read",
+        "record": "$weapon",
+        "fact": "finesse",
+        "into": "finesse",
+        "default": false
+      },
+      {
+        "op": "read",
+        "record": "$weapon",
+        "fact": "ranged",
+        "into": "ranged",
+        "default": false
+      },
+      {
+        "op": "read",
+        "record": "$weapon",
+        "fact": "damage",
+        "into": "weapon-dice"
+      },
+      {
+        "op": "read",
+        "record": "$weapon",
+        "fact": "versatile-damage",
+        "into": "versatile-dice"
+      },
+      {
+        "op": "let",
+        "name": "strength-mod",
+        "value": {
+          "expr": "div",
+          "by": 2,
+          "terms": [
+            {
+              "expr": "number",
+              "actor": "$actor_id",
+              "key": "strength"
+            },
+            {
+              "expr": "const",
+              "value": -10
+            }
+          ]
+        }
+      },
+      {
+        "op": "let",
+        "name": "dexterity-mod",
+        "value": {
+          "expr": "div",
+          "by": 2,
+          "terms": [
+            {
+              "expr": "number",
+              "actor": "$actor_id",
+              "key": "dexterity"
+            },
+            {
+              "expr": "const",
+              "value": -10
+            }
+          ]
+        }
+      },
+      {
+        "op": "let",
+        "name": "best-mod",
+        "value": {
+          "expr": "max",
+          "terms": [
+            {
+              "expr": "value",
+              "of": "$strength-mod"
+            },
+            {
+              "expr": "value",
+              "of": "$dexterity-mod"
+            }
+          ]
+        }
+      },
+      {
+        "op": "choose",
+        "into": "reach-mod",
+        "when": {
+          "pred": "equals",
+          "of": "$ranged",
+          "value": true
+        },
+        "then": "$dexterity-mod",
+        "otherwise": "$strength-mod"
+      },
+      {
+        "op": "choose",
+        "into": "weapon-mod",
+        "when": {
+          "pred": "equals",
+          "of": "$finesse",
+          "value": true
+        },
+        "then": "$best-mod",
+        "otherwise": "$reach-mod"
+      },
+      {
+        "op": "let",
+        "name": "proficiency",
+        "value": {
+          "expr": "number",
+          "actor": "$actor_id",
+          "key": "proficiency-bonus",
+          "default": 0
+        }
+      },
+      {
+        "op": "let",
+        "name": "weapon-to-hit",
+        "value": {
+          "expr": "sum",
+          "terms": [
+            {
+              "expr": "value",
+              "of": "$weapon-mod"
+            },
+            {
+              "expr": "value",
+              "of": "$proficiency"
+            }
+          ]
+        }
+      },
+      {
+        "op": "choose",
+        "into": "to-hit",
+        "when": {
+          "pred": "present",
+          "of": "$weapon_item_id"
+        },
+        "then": "$weapon-to-hit",
+        "otherwise": "$attack_bonus"
+      },
+      {
+        "op": "choose",
+        "into": "wielded-dice",
+        "when": {
+          "pred": "and",
+          "all": [
+            {
+              "pred": "equals",
+              "of": "$two_handed",
+              "value": true
+            },
+            {
+              "pred": "present",
+              "of": "$versatile-dice"
+            }
+          ]
+        },
+        "then": "$versatile-dice",
+        "otherwise": "$weapon-dice"
+      },
+      {
+        "op": "choose",
+        "into": "damage-dice",
+        "when": {
+          "pred": "present",
+          "of": "$weapon_item_id"
+        },
+        "then": "$wielded-dice",
+        "otherwise": "$damage"
+      },
+      {
+        "op": "choose",
+        "into": "damage-bonus",
+        "when": {
+          "pred": "present",
+          "of": "$weapon_item_id"
+        },
+        "then": "$weapon-mod",
+        "otherwise": 0
+      },
+      {
+        "op": "let",
+        "name": "armor-class",
+        "value": {
+          "expr": "number",
+          "actor": "$target_id",
+          "key": "armor-class"
+        }
+      },
+      {
+        "op": "roll",
+        "dice": "1d20",
+        "reason": "{actor_id_name} attacks {target_id_name}",
+        "bonus": "$to-hit",
+        "vs": "$armor-class",
+        "mode": "$mode",
+        "into": "total"
+      },
+      {
+        "op": "outcome",
+        "of": "$total",
+        "at": {
+          "success": "$armor-class"
+        },
+        "default": "failure"
+      },
+      {
+        "op": "roll",
+        "when_outcome": "success",
+        "dice": "$damage-dice",
+        "reason": "{actor_id_name}'s damage",
+        "bonus": "$damage-bonus",
+        "into": "hurt"
+      },
+      {
+        "op": "let",
+        "when_outcome": "success",
+        "name": "harm",
+        "value": {
+          "expr": "value",
+          "of": "$hurt",
+          "times": -1
+        }
+      },
+      {
+        "op": "format",
+        "when_outcome": "success",
+        "into": "harm-why",
+        "template": "{actor_id_name}'s attack"
+      },
+      {
+        "op": "apply",
+        "when_outcome": "success",
+        "effect": {
+          "op": "adjust-counter",
+          "entity_id": "$target_id",
+          "counter": "hp",
+          "delta": "$harm",
+          "why": "$harm-why"
+        }
+      }
+    ]
+  },
+  {
+    "name": "cast-spell",
+    "doc": "One spell, resolved from its record: the engine spends the slot before anything follows.",
+    "labels": [
+      "success",
+      "failure"
+    ],
+    "params": {
+      "actor_id": {
+        "type": "entity-id",
+        "description": "Exact id of the caster, here with the player."
+      },
+      "spell": {
+        "type": "str",
+        "min_length": 1,
+        "description": "The spell's content ref, written `pack/collection/index` exactly as rendered."
+      },
+      "slot_level": {
+        "type": "int",
+        "ge": 1,
+        "le": 9,
+        "optional": true,
+        "description": "The spell-slot level it is cast from; a higher one upcasts it. Null for a cantrip, which spends nothing."
+      },
+      "target_id": {
+        "type": "entity-id",
+        "optional": true,
+        "description": "Exact id of the one creature it is aimed at, here with the player. Null only when the spell touches nobody."
+      }
+    },
+    "program": [
+      {
+        "op": "lookup",
+        "into": "spell-record",
+        "ref": "$spell",
+        "collection": "spells",
+        "missing": "'{spell}' names no spell: name a record from the spells collection"
+      },
+      {
+        "op": "lookup",
+        "into": "klass",
+        "from_entity": "$actor_id",
+        "collection": "classes",
+        "require_fact": "spellcasting",
+        "missing": "this actor's class casts no spells, so it has no spellcasting ability: resolve what they do with `improvise` instead"
+      },
+      {
+        "op": "read",
+        "record": "$klass",
+        "fact": "spellcasting",
+        "into": "ability"
+      },
+      {
+        "op": "let",
+        "name": "mod",
+        "value": {
+          "expr": "div",
+          "by": 2,
+          "terms": [
+            {
+              "expr": "number",
+              "actor": "$actor_id",
+              "key": "$ability"
+            },
+            {
+              "expr": "const",
+              "value": -10
+            }
+          ]
+        }
+      },
+      {
+        "op": "read",
+        "record": "$spell-record",
+        "fact": "level",
+        "into": "spell-level"
+      },
+      {
+        "op": "require",
+        "when": {
+          "pred": "not",
+          "that": {
+            "pred": "present",
+            "of": "$spell-level"
+          }
+        },
+        "that": {
+          "pred": "present",
+          "of": "$slot_level"
+        },
+        "expect": false,
+        "message": "{spell-record_name} is a cantrip: it spends no slot, so leave it null"
+      },
+      {
+        "op": "require",
+        "when": {
+          "pred": "present",
+          "of": "$spell-level"
+        },
+        "that": {
+          "pred": "present",
+          "of": "$slot_level"
+        },
+        "message": "{spell-record_name} is a level {spell-level} spell: name the `slot_level` it is cast from"
+      },
+      {
+        "op": "require",
+        "that": {
+          "pred": "at-least",
+          "of": "$slot_level",
+          "least": "$spell-level"
+        },
+        "message": "{spell-record_name} needs a slot of level {spell-level} or higher, not {slot_level}"
+      },
+      {
+        "op": "apply",
+        "effect": {
+          "op": "reveal",
+          "entity_id": "$actor_id"
+        }
+      },
+      {
+        "op": "apply",
+        "when": {
+          "pred": "present",
+          "of": "$target_id"
+        },
+        "effect": {
+          "op": "reveal",
+          "entity_id": "$target_id"
+        }
+      },
+      {
+        "op": "format",
+        "when": {
+          "pred": "present",
+          "of": "$slot_level"
+        },
+        "into": "slot-key",
+        "template": "slot-{slot_level}"
+      },
+      {
+        "op": "apply",
+        "when": {
+          "pred": "present",
+          "of": "$slot_level"
+        },
+        "effect": {
+          "op": "spend-counter",
+          "entity_id": "$actor_id",
+          "counter": "$slot-key",
+          "amount": 1
+        }
+      },
+      {
+        "op": "read",
+        "record": "$spell-record",
+        "fact": "attack-type",
+        "into": "attack-type"
+      },
+      {
+        "op": "read",
+        "record": "$spell-record",
+        "fact": "save-ability",
+        "into": "save-ability"
+      },
+      {
+        "op": "let",
+        "name": "proficiency",
+        "value": {
+          "expr": "number",
+          "actor": "$actor_id",
+          "key": "proficiency-bonus",
+          "default": 0
+        }
+      },
+      {
+        "op": "require",
+        "when": {
+          "pred": "present",
+          "of": "$attack-type"
+        },
+        "that": {
+          "pred": "present",
+          "of": "$target_id"
+        },
+        "message": "{spell-record_name} is aimed at a creature: name its `target_id`"
+      },
+      {
+        "op": "let",
+        "when": {
+          "pred": "present",
+          "of": "$attack-type"
+        },
+        "name": "spell-ac",
+        "value": {
+          "expr": "number",
+          "actor": "$target_id",
+          "key": "armor-class"
+        }
+      },
+      {
+        "op": "let",
+        "name": "attack-bonus-total",
+        "value": {
+          "expr": "sum",
+          "terms": [
+            {
+              "expr": "value",
+              "of": "$mod"
+            },
+            {
+              "expr": "value",
+              "of": "$proficiency"
+            }
+          ]
+        }
+      },
+      {
+        "op": "roll",
+        "when": {
+          "pred": "present",
+          "of": "$attack-type"
+        },
+        "dice": "1d20",
+        "reason": "{actor_id_name} casts {spell-record_name} at {target_id_name}",
+        "bonus": "$attack-bonus-total",
+        "vs": "$spell-ac",
+        "into": "attack-total"
+      },
+      {
+        "op": "outcome",
+        "when": {
+          "pred": "present",
+          "of": "$attack-type"
+        },
+        "of": "$attack-total",
+        "at": {
+          "success": "$spell-ac"
+        },
+        "default": "failure"
+      },
+      {
+        "op": "require",
+        "when": {
+          "pred": "and",
+          "all": [
+            {
+              "pred": "not",
+              "that": {
+                "pred": "present",
+                "of": "$attack-type"
+              }
+            },
+            {
+              "pred": "present",
+              "of": "$save-ability"
+            }
+          ]
+        },
+        "that": {
+          "pred": "present",
+          "of": "$target_id"
+        },
+        "message": "{spell-record_name} is aimed at a creature: name its `target_id`"
+      },
+      {
+        "op": "let",
+        "name": "dc",
+        "value": {
+          "expr": "sum",
+          "terms": [
+            {
+              "expr": "const",
+              "value": 8
+            },
+            {
+              "expr": "value",
+              "of": "$proficiency"
+            },
+            {
+              "expr": "value",
+              "of": "$mod"
+            }
+          ]
+        }
+      },
+      {
+        "op": "let",
+        "when": {
+          "pred": "and",
+          "all": [
+            {
+              "pred": "not",
+              "that": {
+                "pred": "present",
+                "of": "$attack-type"
+              }
+            },
+            {
+              "pred": "present",
+              "of": "$save-ability"
+            }
+          ]
+        },
+        "name": "save-bonus",
+        "value": {
+          "expr": "div",
+          "by": 2,
+          "terms": [
+            {
+              "expr": "number",
+              "actor": "$target_id",
+              "key": "$save-ability"
+            },
+            {
+              "expr": "const",
+              "value": -10
+            }
+          ]
+        }
+      },
+      {
+        "op": "roll",
+        "when": {
+          "pred": "and",
+          "all": [
+            {
+              "pred": "not",
+              "that": {
+                "pred": "present",
+                "of": "$attack-type"
+              }
+            },
+            {
+              "pred": "present",
+              "of": "$save-ability"
+            }
+          ]
+        },
+        "dice": "1d20",
+        "reason": "{target_id_name} resists {spell-record_name}",
+        "bonus": "$save-bonus",
+        "vs": "$dc",
+        "into": "save-total"
+      },
+      {
+        "op": "outcome",
+        "when": {
+          "pred": "and",
+          "all": [
+            {
+              "pred": "not",
+              "that": {
+                "pred": "present",
+                "of": "$attack-type"
+              }
+            },
+            {
+              "pred": "present",
+              "of": "$save-ability"
+            }
+          ]
+        },
+        "of": "$save-total",
+        "at": {
+          "failure": "$dc"
+        },
+        "default": "success"
+      },
+      {
+        "op": "let",
+        "name": "caster-level",
+        "value": {
+          "expr": "number",
+          "actor": "$actor_id",
+          "key": "level",
+          "default": 1
+        }
+      },
+      {
+        "op": "choose",
+        "into": "scale",
+        "when": {
+          "pred": "present",
+          "of": "$slot_level"
+        },
+        "then": "$slot_level",
+        "otherwise": "$caster-level"
+      },
+      {
+        "op": "read",
+        "record": "$spell-record",
+        "fact": "save-success",
+        "into": "save-success"
+      },
+      {
+        "op": "choose",
+        "into": "half-on-save",
+        "when": {
+          "pred": "equals",
+          "of": "$save-success",
+          "value": "half"
+        },
+        "then": true,
+        "otherwise": false
+      },
+      {
+        "op": "choose",
+        "into": "effect-gate",
+        "when_outcome": "failure",
+        "then": "$half-on-save",
+        "otherwise": true
+      },
+      {
+        "op": "ladder",
+        "record": "$spell-record",
+        "fact": "damage-ladder",
+        "at": "$scale",
+        "into": "damage-dice"
+      },
+      {
+        "op": "read",
+        "record": "$spell-record",
+        "fact": "damage-with-modifier",
+        "into": "damage-with-mod",
+        "default": false
+      },
+      {
+        "op": "require",
+        "when": {
+          "pred": "and",
+          "all": [
+            {
+              "pred": "present",
+              "of": "$damage-dice"
+            },
+            {
+              "pred": "equals",
+              "of": "$effect-gate",
+              "value": true
+            }
+          ]
+        },
+        "that": {
+          "pred": "present",
+          "of": "$target_id"
+        },
+        "message": "{spell-record_name} is aimed at a creature: name its `target_id`"
+      },
+      {
+        "op": "choose",
+        "into": "damage-mod-bonus",
+        "when": {
+          "pred": "equals",
+          "of": "$damage-with-mod",
+          "value": true
+        },
+        "then": "$mod",
+        "otherwise": 0
+      },
+      {
+        "op": "roll",
+        "when": {
+          "pred": "and",
+          "all": [
+            {
+              "pred": "present",
+              "of": "$damage-dice"
+            },
+            {
+              "pred": "equals",
+              "of": "$effect-gate",
+              "value": true
+            }
+          ]
+        },
+        "dice": "$damage-dice",
+        "reason": "{spell-record_name} damage",
+        "bonus": "$damage-mod-bonus",
+        "into": "damage-total"
+      },
+      {
+        "op": "choose",
+        "into": "halver",
+        "when_outcome": "failure",
+        "then": 2,
+        "otherwise": 1
+      },
+      {
+        "op": "let",
+        "when": {
+          "pred": "and",
+          "all": [
+            {
+              "pred": "present",
+              "of": "$damage-dice"
+            },
+            {
+              "pred": "equals",
+              "of": "$effect-gate",
+              "value": true
+            }
+          ]
+        },
+        "name": "dealt-forward",
+        "value": {
+          "expr": "div",
+          "by": "$halver",
+          "terms": [
+            {
+              "expr": "value",
+              "of": "$damage-total"
+            }
+          ]
+        }
+      },
+      {
+        "op": "let",
+        "when": {
+          "pred": "and",
+          "all": [
+            {
+              "pred": "present",
+              "of": "$damage-dice"
+            },
+            {
+              "pred": "equals",
+              "of": "$effect-gate",
+              "value": true
+            }
+          ]
+        },
+        "name": "dealt",
+        "value": {
+          "expr": "value",
+          "of": "$dealt-forward",
+          "times": -1
+        }
+      },
+      {
+        "op": "apply",
+        "when": {
+          "pred": "and",
+          "all": [
+            {
+              "pred": "present",
+              "of": "$damage-dice"
+            },
+            {
+              "pred": "equals",
+              "of": "$effect-gate",
+              "value": true
+            }
+          ]
+        },
+        "effect": {
+          "op": "adjust-counter",
+          "entity_id": "$target_id",
+          "counter": "hp",
+          "delta": "$dealt",
+          "why": "$spell-record_name"
+        }
+      },
+      {
+        "op": "ladder",
+        "record": "$spell-record",
+        "fact": "heal-ladder",
+        "at": "$scale",
+        "into": "heal-dice"
+      },
+      {
+        "op": "read",
+        "record": "$spell-record",
+        "fact": "heal-with-modifier",
+        "into": "heal-with-mod",
+        "default": false
+      },
+      {
+        "op": "choose",
+        "into": "heal-target",
+        "when": {
+          "pred": "present",
+          "of": "$target_id"
+        },
+        "then": "$target_id",
+        "otherwise": "$actor_id"
+      },
+      {
+        "op": "choose",
+        "into": "heal-mod-bonus",
+        "when": {
+          "pred": "equals",
+          "of": "$heal-with-mod",
+          "value": true
+        },
+        "then": "$mod",
+        "otherwise": 0
+      },
+      {
+        "op": "roll",
+        "when": {
+          "pred": "and",
+          "all": [
+            {
+              "pred": "present",
+              "of": "$heal-dice"
+            },
+            {
+              "pred": "equals",
+              "of": "$effect-gate",
+              "value": true
+            }
+          ]
+        },
+        "dice": "$heal-dice",
+        "reason": "{spell-record_name} healing",
+        "bonus": "$heal-mod-bonus",
+        "into": "heal-total"
+      },
+      {
+        "op": "apply",
+        "when": {
+          "pred": "and",
+          "all": [
+            {
+              "pred": "present",
+              "of": "$heal-dice"
+            },
+            {
+              "pred": "equals",
+              "of": "$effect-gate",
+              "value": true
+            }
+          ]
+        },
+        "effect": {
+          "op": "adjust-counter",
+          "entity_id": "$heal-target",
+          "counter": "hp",
+          "delta": "$heal-total",
+          "why": "$spell-record_name"
+        }
+      },
+      {
+        "op": "read",
+        "record": "$spell-record",
+        "fact": "concentration",
+        "into": "concentration",
+        "default": false
+      },
+      {
+        "op": "apply",
+        "when": {
+          "pred": "equals",
+          "of": "$concentration",
+          "value": true
+        },
+        "effect": {
+          "op": "set-note",
+          "entity_id": "$actor_id",
+          "key": "concentration",
+          "text": "$spell-record_name"
+        }
+      }
+    ]
+  },
+  {
+    "name": "check",
+    "doc": "An ability check or a saving throw against a difficulty the Director sets. The roll\nsettles only what `branches` write: a check made to gain or shed a condition needs that\ntag change in its `success` branch.",
+    "labels": [
+      "success",
+      "failure"
+    ],
+    "params": {
+      "actor_id": {
+        "type": "entity-id",
+        "description": "Exact id of the actor rolling, here with the player."
+      },
+      "bonus": {
+        "type": "int",
+        "ge": -10,
+        "le": 30,
+        "description": "The actor's own bonus: their ability modifier, plus `proficiency-bonus` only where they are proficient."
+      },
+      "dc": {
+        "type": "int",
+        "ge": 1,
+        "le": 40,
+        "description": "What the roll must reach: 5 easy, 10 moderate, 15 hard, 20 very hard."
+      },
+      "reason": {
+        "type": "str",
+        "min_length": 1,
+        "description": "What is being tested, in a few words."
+      },
+      "mode": {
+        "type": "enum",
+        "values": [
+          "normal",
+          "advantage",
+          "disadvantage"
+        ],
+        "default": "normal",
+        "description": "`advantage` or `disadvantage` when the fiction grants it; one roll either."
+      }
+    },
+    "program": [
+      {
+        "op": "apply",
+        "effect": {
+          "op": "reveal",
+          "entity_id": "$actor_id"
+        }
+      },
+      {
+        "op": "roll",
+        "dice": "1d20",
+        "reason": "{actor_id_name}: {reason}",
+        "bonus": "$bonus",
+        "vs": "$dc",
+        "mode": "$mode",
+        "into": "total"
+      },
+      {
+        "op": "outcome",
+        "of": "$total",
+        "at": {
+          "success": "$dc"
+        },
+        "default": "failure"
+      }
+    ]
+  },
+  {
+    "name": "use-feature",
+    "doc": "Spend one use of a limited-use feature and apply what its own text gives.",
+    "params": {
+      "actor_id": {
+        "type": "entity-id",
+        "description": "Exact id of the actor using it, here with the player"
+      },
+      "counter": {
+        "type": "slug",
+        "description": "Exact key of that feature's counter, as the sheet spells it."
+      },
+      "heal": {
+        "type": "dice-expr",
+        "optional": true,
+        "description": "The healing dice the feature's own text gives, bonuses included, such as `1d10 + 3`. Null when it heals nothing."
+      }
+    },
+    "program": [
+      {
+        "op": "apply",
+        "effect": {
+          "op": "reveal",
+          "entity_id": "$actor_id"
+        }
+      },
+      {
+        "op": "apply",
+        "effect": {
+          "op": "spend-counter",
+          "entity_id": "$actor_id",
+          "counter": "$counter",
+          "amount": 1
+        }
+      },
+      {
+        "op": "roll",
+        "when": {
+          "pred": "present",
+          "of": "$heal"
+        },
+        "dice": "$heal",
+        "reason": "{actor_id_name} draws on {counter}",
+        "into": "healed"
+      },
+      {
+        "op": "apply",
+        "when": {
+          "pred": "present",
+          "of": "$heal"
+        },
+        "effect": {
+          "op": "adjust-counter",
+          "entity_id": "$actor_id",
+          "counter": "hp",
+          "delta": "$healed",
+          "why": "$counter"
+        }
+      }
+    ]
+  },
+  {
+    "name": "rest",
+    "doc": "A rest the fiction has finished, refilling what that rest restores and nothing else.\nA turn that prepares and then sleeps is a rest, not a check on the preparations.",
+    "params": {
+      "actor_id": {
+        "type": "entity-id",
+        "description": "Exact id of the resting actor, here with the player."
+      },
+      "label": {
+        "type": "enum",
+        "values": [
+          "short-rest",
+          "long-rest"
+        ],
+        "description": "Which rest was taken."
+      }
+    },
+    "program": [
+      {
+        "op": "apply",
+        "effect": {
+          "op": "reveal",
+          "entity_id": "$actor_id"
+        }
+      },
+      {
+        "op": "apply",
+        "when": {
+          "pred": "equals",
+          "of": "$label",
+          "value": "short-rest"
+        },
+        "effect": {
+          "op": "refill",
+          "entity_id": "$actor_id",
+          "label": "$label",
+          "recharges": [
+            "short-rest"
+          ]
+        }
+      },
+      {
+        "op": "apply",
+        "when": {
+          "pred": "equals",
+          "of": "$label",
+          "value": "long-rest"
+        },
+        "effect": {
+          "op": "refill",
+          "entity_id": "$actor_id",
+          "label": "$label",
+          "recharges": [
+            "short-rest",
+            "long-rest"
+          ]
+        }
+      }
+    ]
+  },
+  {
+    "name": "improvise",
+    "doc": "The roll for anything the other actions do not model, this engine's rules included.",
+    "labels": [
+      "success",
+      "failure"
+    ],
+    "params": {
+      "dice": {
+        "type": "dice-expr",
+        "description": "The whole expression, bonuses included: `1d20 + 3`."
+      },
+      "vs": {
+        "type": "int",
+        "ge": 1,
+        "le": 40,
+        "optional": true,
+        "description": "The number the total must reach; null when nothing is contested."
+      },
+      "reason": {
+        "type": "str",
+        "min_length": 1,
+        "description": "What is being rolled, in a few words."
+      },
+      "mode": {
+        "type": "enum",
+        "values": [
+          "normal",
+          "advantage",
+          "disadvantage"
+        ],
+        "default": "normal",
+        "description": "`advantage` or `disadvantage` when the fiction grants it; one roll either."
+      }
+    },
+    "program": [
+      {
+        "op": "roll",
+        "dice": "$dice",
+        "reason": "{reason}",
+        "vs": "$vs",
+        "mode": "$mode",
+        "into": "total"
+      },
+      {
+        "op": "outcome",
+        "of": "$total",
+        "at": {
+          "success": "$vs"
+        },
+        "default": "failure"
+      }
+    ]
+  }
+]

@@ -6,11 +6,11 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "cost": {
-      "unit": "gp",
-      "amount": 50
+    "numbers": {
+      "cost-gp": 50
     },
-    "quantity": null
+    "notes": {},
+    "facts": {}
   },
   {
     "index": "brewers-supplies",
@@ -19,11 +19,11 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "cost": {
-      "unit": "gp",
-      "amount": 20
+    "numbers": {
+      "cost-gp": 20
     },
-    "quantity": null
+    "notes": {},
+    "facts": {}
   },
   {
     "index": "calligraphers-supplies",
@@ -32,11 +32,11 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "cost": {
-      "unit": "gp",
-      "amount": 10
+    "numbers": {
+      "cost-gp": 10
     },
-    "quantity": null
+    "notes": {},
+    "facts": {}
   },
   {
     "index": "carpenters-tools",
@@ -45,11 +45,11 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "cost": {
-      "unit": "gp",
-      "amount": 8
+    "numbers": {
+      "cost-gp": 8
     },
-    "quantity": null
+    "notes": {},
+    "facts": {}
   },
   {
     "index": "cartographers-tools",
@@ -58,11 +58,11 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "cost": {
-      "unit": "gp",
-      "amount": 15
+    "numbers": {
+      "cost-gp": 15
     },
-    "quantity": null
+    "notes": {},
+    "facts": {}
   },
   {
     "index": "cobblers-tools",
@@ -71,11 +71,11 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "cost": {
-      "unit": "gp",
-      "amount": 5
+    "numbers": {
+      "cost-gp": 5
     },
-    "quantity": null
+    "notes": {},
+    "facts": {}
   },
   {
     "index": "cooks-utensils",
@@ -84,11 +84,11 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "cost": {
-      "unit": "gp",
-      "amount": 1
+    "numbers": {
+      "cost-gp": 1
     },
-    "quantity": null
+    "notes": {},
+    "facts": {}
   },
   {
     "index": "glassblowers-tools",
@@ -97,11 +97,11 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "cost": {
-      "unit": "gp",
-      "amount": 30
+    "numbers": {
+      "cost-gp": 30
     },
-    "quantity": null
+    "notes": {},
+    "facts": {}
   },
   {
     "index": "jewelers-tools",
@@ -110,11 +110,11 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "cost": {
-      "unit": "gp",
-      "amount": 25
+    "numbers": {
+      "cost-gp": 25
     },
-    "quantity": null
+    "notes": {},
+    "facts": {}
   },
   {
     "index": "leatherworkers-tools",
@@ -123,11 +123,11 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "cost": {
-      "unit": "gp",
-      "amount": 5
+    "numbers": {
+      "cost-gp": 5
     },
-    "quantity": null
+    "notes": {},
+    "facts": {}
   },
   {
     "index": "masons-tools",
@@ -136,11 +136,11 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "cost": {
-      "unit": "gp",
-      "amount": 10
+    "numbers": {
+      "cost-gp": 10
     },
-    "quantity": null
+    "notes": {},
+    "facts": {}
   },
   {
     "index": "painters-supplies",
@@ -149,11 +149,11 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "cost": {
-      "unit": "gp",
-      "amount": 10
+    "numbers": {
+      "cost-gp": 10
     },
-    "quantity": null
+    "notes": {},
+    "facts": {}
   },
   {
     "index": "potters-tools",
@@ -162,11 +162,11 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "cost": {
-      "unit": "gp",
-      "amount": 10
+    "numbers": {
+      "cost-gp": 10
     },
-    "quantity": null
+    "notes": {},
+    "facts": {}
   },
   {
     "index": "smiths-tools",
@@ -175,11 +175,11 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "cost": {
-      "unit": "gp",
-      "amount": 20
+    "numbers": {
+      "cost-gp": 20
     },
-    "quantity": null
+    "notes": {},
+    "facts": {}
   },
   {
     "index": "tinkers-tools",
@@ -188,11 +188,11 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "cost": {
-      "unit": "gp",
-      "amount": 50
+    "numbers": {
+      "cost-gp": 50
     },
-    "quantity": null
+    "notes": {},
+    "facts": {}
   },
   {
     "index": "weavers-tools",
@@ -201,11 +201,11 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "cost": {
-      "unit": "gp",
-      "amount": 1
+    "numbers": {
+      "cost-gp": 1
     },
-    "quantity": null
+    "notes": {},
+    "facts": {}
   },
   {
     "index": "woodcarvers-tools",
@@ -214,11 +214,11 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "cost": {
-      "unit": "gp",
-      "amount": 1
+    "numbers": {
+      "cost-gp": 1
     },
-    "quantity": null
+    "notes": {},
+    "facts": {}
   },
   {
     "index": "dice-set",
@@ -227,11 +227,11 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "cost": {
-      "unit": "sp",
-      "amount": 1
+    "numbers": {
+      "cost-sp": 1
     },
-    "quantity": null
+    "notes": {},
+    "facts": {}
   },
   {
     "index": "playing-card-set",
@@ -240,11 +240,11 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "cost": {
-      "unit": "sp",
-      "amount": 5
+    "numbers": {
+      "cost-sp": 5
     },
-    "quantity": null
+    "notes": {},
+    "facts": {}
   },
   {
     "index": "bagpipes",
@@ -253,11 +253,11 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "cost": {
-      "unit": "gp",
-      "amount": 30
+    "numbers": {
+      "cost-gp": 30
     },
-    "quantity": null
+    "notes": {},
+    "facts": {}
   },
   {
     "index": "drum",
@@ -266,11 +266,11 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "cost": {
-      "unit": "gp",
-      "amount": 6
+    "numbers": {
+      "cost-gp": 6
     },
-    "quantity": null
+    "notes": {},
+    "facts": {}
   },
   {
     "index": "dulcimer",
@@ -279,11 +279,11 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "cost": {
-      "unit": "gp",
-      "amount": 25
+    "numbers": {
+      "cost-gp": 25
     },
-    "quantity": null
+    "notes": {},
+    "facts": {}
   },
   {
     "index": "flute",
@@ -292,11 +292,11 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "cost": {
-      "unit": "gp",
-      "amount": 2
+    "numbers": {
+      "cost-gp": 2
     },
-    "quantity": null
+    "notes": {},
+    "facts": {}
   },
   {
     "index": "lute",
@@ -305,11 +305,11 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "cost": {
-      "unit": "gp",
-      "amount": 35
+    "numbers": {
+      "cost-gp": 35
     },
-    "quantity": null
+    "notes": {},
+    "facts": {}
   },
   {
     "index": "lyre",
@@ -318,11 +318,11 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "cost": {
-      "unit": "gp",
-      "amount": 30
+    "numbers": {
+      "cost-gp": 30
     },
-    "quantity": null
+    "notes": {},
+    "facts": {}
   },
   {
     "index": "horn",
@@ -331,11 +331,11 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "cost": {
-      "unit": "gp",
-      "amount": 3
+    "numbers": {
+      "cost-gp": 3
     },
-    "quantity": null
+    "notes": {},
+    "facts": {}
   },
   {
     "index": "pan-flute",
@@ -344,11 +344,11 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "cost": {
-      "unit": "gp",
-      "amount": 12
+    "numbers": {
+      "cost-gp": 12
     },
-    "quantity": null
+    "notes": {},
+    "facts": {}
   },
   {
     "index": "shawm",
@@ -357,11 +357,11 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "cost": {
-      "unit": "gp",
-      "amount": 2
+    "numbers": {
+      "cost-gp": 2
     },
-    "quantity": null
+    "notes": {},
+    "facts": {}
   },
   {
     "index": "viol",
@@ -370,11 +370,11 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "cost": {
-      "unit": "gp",
-      "amount": 30
+    "numbers": {
+      "cost-gp": 30
     },
-    "quantity": null
+    "notes": {},
+    "facts": {}
   },
   {
     "index": "navigators-tools",
@@ -383,11 +383,11 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "cost": {
-      "unit": "gp",
-      "amount": 25
+    "numbers": {
+      "cost-gp": 25
     },
-    "quantity": null
+    "notes": {},
+    "facts": {}
   },
   {
     "index": "thieves-tools",
@@ -396,10 +396,10 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "cost": {
-      "unit": "gp",
-      "amount": 25
+    "numbers": {
+      "cost-gp": 25
     },
-    "quantity": null
+    "notes": {},
+    "facts": {}
   }
 ]

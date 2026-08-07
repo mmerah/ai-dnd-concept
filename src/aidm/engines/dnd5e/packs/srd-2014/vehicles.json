@@ -6,13 +6,13 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "cost": {
-      "unit": "gp",
-      "amount": 50
+    "numbers": {
+      "cost-gp": 50,
+      "speed": 50,
+      "capacity-lb": 480
     },
-    "speed": 50,
-    "speed_mph": null,
-    "capacity_lb": 480
+    "notes": {},
+    "facts": {}
   },
   {
     "index": "donkey",
@@ -21,13 +21,13 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "cost": {
-      "unit": "gp",
-      "amount": 8
+    "numbers": {
+      "cost-gp": 8,
+      "speed": 40,
+      "capacity-lb": 420
     },
-    "speed": 40,
-    "speed_mph": null,
-    "capacity_lb": 420
+    "notes": {},
+    "facts": {}
   },
   {
     "index": "mule",
@@ -36,13 +36,13 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "cost": {
-      "unit": "gp",
-      "amount": 8
+    "numbers": {
+      "cost-gp": 8,
+      "speed": 40,
+      "capacity-lb": 420
     },
-    "speed": 40,
-    "speed_mph": null,
-    "capacity_lb": 420
+    "notes": {},
+    "facts": {}
   },
   {
     "index": "elephant",
@@ -51,13 +51,13 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "cost": {
-      "unit": "gp",
-      "amount": 200
+    "numbers": {
+      "cost-gp": 200,
+      "speed": 40,
+      "capacity-lb": 1320
     },
-    "speed": 40,
-    "speed_mph": null,
-    "capacity_lb": 1320
+    "notes": {},
+    "facts": {}
   },
   {
     "index": "horse-draft",
@@ -66,13 +66,13 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "cost": {
-      "unit": "gp",
-      "amount": 50
+    "numbers": {
+      "cost-gp": 50,
+      "speed": 40,
+      "capacity-lb": 540
     },
-    "speed": 40,
-    "speed_mph": null,
-    "capacity_lb": 540
+    "notes": {},
+    "facts": {}
   },
   {
     "index": "horse-riding",
@@ -81,13 +81,13 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "cost": {
-      "unit": "gp",
-      "amount": 75
+    "numbers": {
+      "cost-gp": 75,
+      "speed": 60,
+      "capacity-lb": 480
     },
-    "speed": 60,
-    "speed_mph": null,
-    "capacity_lb": 480
+    "notes": {},
+    "facts": {}
   },
   {
     "index": "mastiff",
@@ -96,13 +96,13 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "cost": {
-      "unit": "gp",
-      "amount": 25
+    "numbers": {
+      "cost-gp": 25,
+      "speed": 40,
+      "capacity-lb": 195
     },
-    "speed": 40,
-    "speed_mph": null,
-    "capacity_lb": 195
+    "notes": {},
+    "facts": {}
   },
   {
     "index": "pony",
@@ -111,13 +111,13 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "cost": {
-      "unit": "gp",
-      "amount": 30
+    "numbers": {
+      "cost-gp": 30,
+      "speed": 40,
+      "capacity-lb": 225
     },
-    "speed": 40,
-    "speed_mph": null,
-    "capacity_lb": 225
+    "notes": {},
+    "facts": {}
   },
   {
     "index": "warhorse",
@@ -126,13 +126,13 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "cost": {
-      "unit": "gp",
-      "amount": 400
+    "numbers": {
+      "cost-gp": 400,
+      "speed": 60,
+      "capacity-lb": 540
     },
-    "speed": 60,
-    "speed_mph": null,
-    "capacity_lb": 540
+    "notes": {},
+    "facts": {}
   },
   {
     "index": "barding-padded",
@@ -141,13 +141,11 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "cost": {
-      "unit": "gp",
-      "amount": 20
+    "numbers": {
+      "cost-gp": 20
     },
-    "speed": null,
-    "speed_mph": null,
-    "capacity_lb": null
+    "notes": {},
+    "facts": {}
   },
   {
     "index": "barding-leather",
@@ -156,13 +154,11 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "cost": {
-      "unit": "gp",
-      "amount": 40
+    "numbers": {
+      "cost-gp": 40
     },
-    "speed": null,
-    "speed_mph": null,
-    "capacity_lb": null
+    "notes": {},
+    "facts": {}
   },
   {
     "index": "barding-studded-leather",
@@ -171,13 +167,11 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "cost": {
-      "unit": "gp",
-      "amount": 180
+    "numbers": {
+      "cost-gp": 180
     },
-    "speed": null,
-    "speed_mph": null,
-    "capacity_lb": null
+    "notes": {},
+    "facts": {}
   },
   {
     "index": "barding-hide",
@@ -186,13 +180,11 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "cost": {
-      "unit": "gp",
-      "amount": 40
+    "numbers": {
+      "cost-gp": 40
     },
-    "speed": null,
-    "speed_mph": null,
-    "capacity_lb": null
+    "notes": {},
+    "facts": {}
   },
   {
     "index": "barding-chain-shirt",
@@ -201,13 +193,11 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "cost": {
-      "unit": "gp",
-      "amount": 200
+    "numbers": {
+      "cost-gp": 200
     },
-    "speed": null,
-    "speed_mph": null,
-    "capacity_lb": null
+    "notes": {},
+    "facts": {}
   },
   {
     "index": "barding-scale-mail",
@@ -216,13 +206,11 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "cost": {
-      "unit": "gp",
-      "amount": 200
+    "numbers": {
+      "cost-gp": 200
     },
-    "speed": null,
-    "speed_mph": null,
-    "capacity_lb": null
+    "notes": {},
+    "facts": {}
   },
   {
     "index": "barding-breastplate",
@@ -231,13 +219,11 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "cost": {
-      "unit": "gp",
-      "amount": 1600
+    "numbers": {
+      "cost-gp": 1600
     },
-    "speed": null,
-    "speed_mph": null,
-    "capacity_lb": null
+    "notes": {},
+    "facts": {}
   },
   {
     "index": "barding-half-plate",
@@ -246,13 +232,11 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "cost": {
-      "unit": "gp",
-      "amount": 3000
+    "numbers": {
+      "cost-gp": 3000
     },
-    "speed": null,
-    "speed_mph": null,
-    "capacity_lb": null
+    "notes": {},
+    "facts": {}
   },
   {
     "index": "barding-ring-mail",
@@ -261,13 +245,11 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "cost": {
-      "unit": "gp",
-      "amount": 12
+    "numbers": {
+      "cost-gp": 12
     },
-    "speed": null,
-    "speed_mph": null,
-    "capacity_lb": null
+    "notes": {},
+    "facts": {}
   },
   {
     "index": "barding-chain-mail",
@@ -276,13 +258,11 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "cost": {
-      "unit": "gp",
-      "amount": 300
+    "numbers": {
+      "cost-gp": 300
     },
-    "speed": null,
-    "speed_mph": null,
-    "capacity_lb": null
+    "notes": {},
+    "facts": {}
   },
   {
     "index": "barding-splint",
@@ -291,13 +271,11 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "cost": {
-      "unit": "gp",
-      "amount": 800
+    "numbers": {
+      "cost-gp": 800
     },
-    "speed": null,
-    "speed_mph": null,
-    "capacity_lb": null
+    "notes": {},
+    "facts": {}
   },
   {
     "index": "barding-plate",
@@ -306,13 +284,11 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "cost": {
-      "unit": "gp",
-      "amount": 6000
+    "numbers": {
+      "cost-gp": 6000
     },
-    "speed": null,
-    "speed_mph": null,
-    "capacity_lb": null
+    "notes": {},
+    "facts": {}
   },
   {
     "index": "bit-and-bridle",
@@ -321,13 +297,11 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "cost": {
-      "unit": "gp",
-      "amount": 2
+    "numbers": {
+      "cost-gp": 2
     },
-    "speed": null,
-    "speed_mph": null,
-    "capacity_lb": null
+    "notes": {},
+    "facts": {}
   },
   {
     "index": "carriage",
@@ -336,13 +310,11 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "cost": {
-      "unit": "gp",
-      "amount": 100
+    "numbers": {
+      "cost-gp": 100
     },
-    "speed": null,
-    "speed_mph": null,
-    "capacity_lb": null
+    "notes": {},
+    "facts": {}
   },
   {
     "index": "cart",
@@ -351,13 +323,11 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "cost": {
-      "unit": "gp",
-      "amount": 15
+    "numbers": {
+      "cost-gp": 15
     },
-    "speed": null,
-    "speed_mph": null,
-    "capacity_lb": null
+    "notes": {},
+    "facts": {}
   },
   {
     "index": "chariot",
@@ -366,13 +336,11 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "cost": {
-      "unit": "gp",
-      "amount": 250
+    "numbers": {
+      "cost-gp": 250
     },
-    "speed": null,
-    "speed_mph": null,
-    "capacity_lb": null
+    "notes": {},
+    "facts": {}
   },
   {
     "index": "animal-feed-1-day",
@@ -381,13 +349,11 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "cost": {
-      "unit": "cp",
-      "amount": 5
+    "numbers": {
+      "cost-cp": 5
     },
-    "speed": null,
-    "speed_mph": null,
-    "capacity_lb": null
+    "notes": {},
+    "facts": {}
   },
   {
     "index": "saddle-exotic",
@@ -396,13 +362,11 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "cost": {
-      "unit": "gp",
-      "amount": 60
+    "numbers": {
+      "cost-gp": 60
     },
-    "speed": null,
-    "speed_mph": null,
-    "capacity_lb": null
+    "notes": {},
+    "facts": {}
   },
   {
     "index": "saddle-military",
@@ -411,13 +375,11 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "cost": {
-      "unit": "gp",
-      "amount": 20
+    "numbers": {
+      "cost-gp": 20
     },
-    "speed": null,
-    "speed_mph": null,
-    "capacity_lb": null
+    "notes": {},
+    "facts": {}
   },
   {
     "index": "saddle-pack",
@@ -426,13 +388,11 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "cost": {
-      "unit": "gp",
-      "amount": 5
+    "numbers": {
+      "cost-gp": 5
     },
-    "speed": null,
-    "speed_mph": null,
-    "capacity_lb": null
+    "notes": {},
+    "facts": {}
   },
   {
     "index": "saddle-riding",
@@ -441,13 +401,11 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "cost": {
-      "unit": "gp",
-      "amount": 10
+    "numbers": {
+      "cost-gp": 10
     },
-    "speed": null,
-    "speed_mph": null,
-    "capacity_lb": null
+    "notes": {},
+    "facts": {}
   },
   {
     "index": "saddlebags",
@@ -456,13 +414,11 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "cost": {
-      "unit": "gp",
-      "amount": 4
+    "numbers": {
+      "cost-gp": 4
     },
-    "speed": null,
-    "speed_mph": null,
-    "capacity_lb": null
+    "notes": {},
+    "facts": {}
   },
   {
     "index": "sled",
@@ -471,13 +427,11 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "cost": {
-      "unit": "gp",
-      "amount": 20
+    "numbers": {
+      "cost-gp": 20
     },
-    "speed": null,
-    "speed_mph": null,
-    "capacity_lb": null
+    "notes": {},
+    "facts": {}
   },
   {
     "index": "stabling-1-day",
@@ -486,13 +440,11 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "cost": {
-      "unit": "sp",
-      "amount": 5
+    "numbers": {
+      "cost-sp": 5
     },
-    "speed": null,
-    "speed_mph": null,
-    "capacity_lb": null
+    "notes": {},
+    "facts": {}
   },
   {
     "index": "wagon",
@@ -501,13 +453,11 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "cost": {
-      "unit": "gp",
-      "amount": 35
+    "numbers": {
+      "cost-gp": 35
     },
-    "speed": null,
-    "speed_mph": null,
-    "capacity_lb": null
+    "notes": {},
+    "facts": {}
   },
   {
     "index": "galley",
@@ -516,13 +466,12 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "cost": {
-      "unit": "gp",
-      "amount": 30000
+    "numbers": {
+      "cost-gp": 30000,
+      "speed-mph": 4
     },
-    "speed": null,
-    "speed_mph": 4,
-    "capacity_lb": null
+    "notes": {},
+    "facts": {}
   },
   {
     "index": "keelboat",
@@ -531,13 +480,12 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "cost": {
-      "unit": "gp",
-      "amount": 3000
+    "numbers": {
+      "cost-gp": 3000,
+      "speed-mph": 1
     },
-    "speed": null,
-    "speed_mph": 1,
-    "capacity_lb": null
+    "notes": {},
+    "facts": {}
   },
   {
     "index": "longship",
@@ -546,13 +494,12 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "cost": {
-      "unit": "gp",
-      "amount": 10000
+    "numbers": {
+      "cost-gp": 10000,
+      "speed-mph": 3
     },
-    "speed": null,
-    "speed_mph": 3,
-    "capacity_lb": null
+    "notes": {},
+    "facts": {}
   },
   {
     "index": "rowboat",
@@ -561,13 +508,11 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "cost": {
-      "unit": "gp",
-      "amount": 50
+    "numbers": {
+      "cost-gp": 50
     },
-    "speed": null,
-    "speed_mph": null,
-    "capacity_lb": null
+    "notes": {},
+    "facts": {}
   },
   {
     "index": "sailing-ship",
@@ -576,13 +521,12 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "cost": {
-      "unit": "gp",
-      "amount": 10000
+    "numbers": {
+      "cost-gp": 10000,
+      "speed-mph": 2
     },
-    "speed": null,
-    "speed_mph": 2,
-    "capacity_lb": null
+    "notes": {},
+    "facts": {}
   },
   {
     "index": "warship",
@@ -591,12 +535,10 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "cost": {
-      "unit": "gp",
-      "amount": 25000
+    "numbers": {
+      "cost-gp": 25000
     },
-    "speed": null,
-    "speed_mph": null,
-    "capacity_lb": null
+    "notes": {},
+    "facts": {}
   }
 ]

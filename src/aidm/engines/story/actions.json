@@ -80,7 +80,7 @@
       {
         "op": "roll",
         "dice": "2d6",
-        "reason": "$stakes",
+        "reason": "{stakes}",
         "bonus": "$bonus",
         "vs": 7,
         "into": "total"

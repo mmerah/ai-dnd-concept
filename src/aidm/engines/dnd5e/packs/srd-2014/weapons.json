@@ -11,17 +11,17 @@
     ],
     "options": [],
     "choose": null,
-    "damage": "1d4",
-    "damage_type": "bludgeoning",
-    "versatile_damage": null,
-    "ranged": false,
-    "finesse": false,
-    "cost": {
-      "unit": "sp",
-      "amount": 1
+    "numbers": {
+      "cost-sp": 1,
+      "damage-dice-count": 1,
+      "damage-die": 4
     },
-    "range": null,
-    "thrown": null
+    "notes": {
+      "damage": "1d4 bludgeoning"
+    },
+    "facts": {
+      "damage": "1d4"
+    }
   },
   {
     "index": "dagger",
@@ -37,19 +37,19 @@
     ],
     "options": [],
     "choose": null,
-    "damage": "1d4",
-    "damage_type": "piercing",
-    "versatile_damage": null,
-    "ranged": false,
-    "finesse": true,
-    "cost": {
-      "unit": "gp",
-      "amount": 2
+    "numbers": {
+      "cost-gp": 2,
+      "damage-dice-count": 1,
+      "damage-die": 4,
+      "thrown-normal": 20,
+      "thrown-long": 60
     },
-    "range": null,
-    "thrown": {
-      "normal": 20,
-      "long": 60
+    "notes": {
+      "damage": "1d4 piercing"
+    },
+    "facts": {
+      "damage": "1d4",
+      "finesse": true
     }
   },
   {
@@ -63,17 +63,17 @@
     ],
     "options": [],
     "choose": null,
-    "damage": "1d8",
-    "damage_type": "bludgeoning",
-    "versatile_damage": null,
-    "ranged": false,
-    "finesse": false,
-    "cost": {
-      "unit": "sp",
-      "amount": 2
+    "numbers": {
+      "cost-sp": 2,
+      "damage-dice-count": 1,
+      "damage-die": 8
     },
-    "range": null,
-    "thrown": null
+    "notes": {
+      "damage": "1d8 bludgeoning"
+    },
+    "facts": {
+      "damage": "1d8"
+    }
   },
   {
     "index": "handaxe",
@@ -88,19 +88,18 @@
     ],
     "options": [],
     "choose": null,
-    "damage": "1d6",
-    "damage_type": "slashing",
-    "versatile_damage": null,
-    "ranged": false,
-    "finesse": false,
-    "cost": {
-      "unit": "gp",
-      "amount": 5
+    "numbers": {
+      "cost-gp": 5,
+      "damage-dice-count": 1,
+      "damage-die": 6,
+      "thrown-normal": 20,
+      "thrown-long": 60
     },
-    "range": null,
-    "thrown": {
-      "normal": 20,
-      "long": 60
+    "notes": {
+      "damage": "1d6 slashing"
+    },
+    "facts": {
+      "damage": "1d6"
     }
   },
   {
@@ -115,19 +114,18 @@
     ],
     "options": [],
     "choose": null,
-    "damage": "1d6",
-    "damage_type": "piercing",
-    "versatile_damage": null,
-    "ranged": false,
-    "finesse": false,
-    "cost": {
-      "unit": "sp",
-      "amount": 5
+    "numbers": {
+      "cost-sp": 5,
+      "damage-dice-count": 1,
+      "damage-die": 6,
+      "thrown-normal": 30,
+      "thrown-long": 120
     },
-    "range": null,
-    "thrown": {
-      "normal": 30,
-      "long": 120
+    "notes": {
+      "damage": "1d6 piercing"
+    },
+    "facts": {
+      "damage": "1d6"
     }
   },
   {
@@ -143,19 +141,18 @@
     ],
     "options": [],
     "choose": null,
-    "damage": "1d4",
-    "damage_type": "bludgeoning",
-    "versatile_damage": null,
-    "ranged": false,
-    "finesse": false,
-    "cost": {
-      "unit": "gp",
-      "amount": 2
+    "numbers": {
+      "cost-gp": 2,
+      "damage-dice-count": 1,
+      "damage-die": 4,
+      "thrown-normal": 20,
+      "thrown-long": 60
     },
-    "range": null,
-    "thrown": {
-      "normal": 20,
-      "long": 60
+    "notes": {
+      "damage": "1d4 bludgeoning"
+    },
+    "facts": {
+      "damage": "1d4"
     }
   },
   {
@@ -169,17 +166,17 @@
     ],
     "options": [],
     "choose": null,
-    "damage": "1d6",
-    "damage_type": "bludgeoning",
-    "versatile_damage": null,
-    "ranged": false,
-    "finesse": false,
-    "cost": {
-      "unit": "gp",
-      "amount": 5
+    "numbers": {
+      "cost-gp": 5,
+      "damage-dice-count": 1,
+      "damage-die": 6
     },
-    "range": null,
-    "thrown": null
+    "notes": {
+      "damage": "1d6 bludgeoning"
+    },
+    "facts": {
+      "damage": "1d6"
+    }
   },
   {
     "index": "quarterstaff",
@@ -193,17 +190,20 @@
     ],
     "options": [],
     "choose": null,
-    "damage": "1d6",
-    "damage_type": "bludgeoning",
-    "versatile_damage": "1d8",
-    "ranged": false,
-    "finesse": false,
-    "cost": {
-      "unit": "sp",
-      "amount": 2
+    "numbers": {
+      "cost-sp": 2,
+      "damage-dice-count": 1,
+      "damage-die": 6,
+      "two-handed-damage-dice-count": 1,
+      "two-handed-damage-die": 8
     },
-    "range": null,
-    "thrown": null
+    "notes": {
+      "damage": "1d6 bludgeoning (two-handed 1d8 bludgeoning)"
+    },
+    "facts": {
+      "damage": "1d6",
+      "versatile-damage": "1d8"
+    }
   },
   {
     "index": "sickle",
@@ -217,17 +217,17 @@
     ],
     "options": [],
     "choose": null,
-    "damage": "1d4",
-    "damage_type": "slashing",
-    "versatile_damage": null,
-    "ranged": false,
-    "finesse": false,
-    "cost": {
-      "unit": "gp",
-      "amount": 1
+    "numbers": {
+      "cost-gp": 1,
+      "damage-dice-count": 1,
+      "damage-die": 4
     },
-    "range": null,
-    "thrown": null
+    "notes": {
+      "damage": "1d4 slashing"
+    },
+    "facts": {
+      "damage": "1d4"
+    }
   },
   {
     "index": "spear",
@@ -242,19 +242,21 @@
     ],
     "options": [],
     "choose": null,
-    "damage": "1d6",
-    "damage_type": "piercing",
-    "versatile_damage": "1d8",
-    "ranged": false,
-    "finesse": false,
-    "cost": {
-      "unit": "gp",
-      "amount": 1
+    "numbers": {
+      "cost-gp": 1,
+      "damage-dice-count": 1,
+      "damage-die": 6,
+      "two-handed-damage-dice-count": 1,
+      "two-handed-damage-die": 8,
+      "thrown-normal": 20,
+      "thrown-long": 60
     },
-    "range": null,
-    "thrown": {
-      "normal": 20,
-      "long": 60
+    "notes": {
+      "damage": "1d6 piercing (two-handed 1d8 piercing)"
+    },
+    "facts": {
+      "damage": "1d6",
+      "versatile-damage": "1d8"
     }
   },
   {
@@ -270,20 +272,20 @@
     ],
     "options": [],
     "choose": null,
-    "damage": "1d8",
-    "damage_type": "piercing",
-    "versatile_damage": null,
-    "ranged": true,
-    "finesse": false,
-    "cost": {
-      "unit": "gp",
-      "amount": 25
+    "numbers": {
+      "cost-gp": 25,
+      "damage-dice-count": 1,
+      "damage-die": 8,
+      "range-normal": 80,
+      "range-long": 320
     },
-    "range": {
-      "normal": 80,
-      "long": 320
+    "notes": {
+      "damage": "1d8 piercing"
     },
-    "thrown": null
+    "facts": {
+      "damage": "1d8",
+      "ranged": true
+    }
   },
   {
     "index": "dart",
@@ -297,22 +299,22 @@
     ],
     "options": [],
     "choose": null,
-    "damage": "1d4",
-    "damage_type": "piercing",
-    "versatile_damage": null,
-    "ranged": true,
-    "finesse": true,
-    "cost": {
-      "unit": "cp",
-      "amount": 5
+    "numbers": {
+      "cost-cp": 5,
+      "damage-dice-count": 1,
+      "damage-die": 4,
+      "range-normal": 20,
+      "range-long": 60,
+      "thrown-normal": 20,
+      "thrown-long": 60
     },
-    "range": {
-      "normal": 20,
-      "long": 60
+    "notes": {
+      "damage": "1d4 piercing"
     },
-    "thrown": {
-      "normal": 20,
-      "long": 60
+    "facts": {
+      "damage": "1d4",
+      "finesse": true,
+      "ranged": true
     }
   },
   {
@@ -327,20 +329,20 @@
     ],
     "options": [],
     "choose": null,
-    "damage": "1d6",
-    "damage_type": "piercing",
-    "versatile_damage": null,
-    "ranged": true,
-    "finesse": false,
-    "cost": {
-      "unit": "gp",
-      "amount": 25
+    "numbers": {
+      "cost-gp": 25,
+      "damage-dice-count": 1,
+      "damage-die": 6,
+      "range-normal": 80,
+      "range-long": 320
     },
-    "range": {
-      "normal": 80,
-      "long": 320
+    "notes": {
+      "damage": "1d6 piercing"
     },
-    "thrown": null
+    "facts": {
+      "damage": "1d6",
+      "ranged": true
+    }
   },
   {
     "index": "sling",
@@ -353,20 +355,20 @@
     ],
     "options": [],
     "choose": null,
-    "damage": "1d4",
-    "damage_type": "bludgeoning",
-    "versatile_damage": null,
-    "ranged": true,
-    "finesse": false,
-    "cost": {
-      "unit": "sp",
-      "amount": 1
+    "numbers": {
+      "cost-sp": 1,
+      "damage-dice-count": 1,
+      "damage-die": 4,
+      "range-normal": 30,
+      "range-long": 120
     },
-    "range": {
-      "normal": 30,
-      "long": 120
+    "notes": {
+      "damage": "1d4 bludgeoning"
     },
-    "thrown": null
+    "facts": {
+      "damage": "1d4",
+      "ranged": true
+    }
   },
   {
     "index": "battleaxe",
@@ -379,17 +381,20 @@
     ],
     "options": [],
     "choose": null,
-    "damage": "1d8",
-    "damage_type": "slashing",
-    "versatile_damage": "1d10",
-    "ranged": false,
-    "finesse": false,
-    "cost": {
-      "unit": "gp",
-      "amount": 10
+    "numbers": {
+      "cost-gp": 10,
+      "damage-dice-count": 1,
+      "damage-die": 8,
+      "two-handed-damage-dice-count": 1,
+      "two-handed-damage-die": 10
     },
-    "range": null,
-    "thrown": null
+    "notes": {
+      "damage": "1d8 slashing (two-handed 1d10 slashing)"
+    },
+    "facts": {
+      "damage": "1d8",
+      "versatile-damage": "1d10"
+    }
   },
   {
     "index": "flail",
@@ -401,17 +406,17 @@
     ],
     "options": [],
     "choose": null,
-    "damage": "1d8",
-    "damage_type": "bludgeoning",
-    "versatile_damage": null,
-    "ranged": false,
-    "finesse": false,
-    "cost": {
-      "unit": "gp",
-      "amount": 10
+    "numbers": {
+      "cost-gp": 10,
+      "damage-dice-count": 1,
+      "damage-die": 8
     },
-    "range": null,
-    "thrown": null
+    "notes": {
+      "damage": "1d8 bludgeoning"
+    },
+    "facts": {
+      "damage": "1d8"
+    }
   },
   {
     "index": "glaive",
@@ -426,17 +431,17 @@
     ],
     "options": [],
     "choose": null,
-    "damage": "1d10",
-    "damage_type": "slashing",
-    "versatile_damage": null,
-    "ranged": false,
-    "finesse": false,
-    "cost": {
-      "unit": "gp",
-      "amount": 20
+    "numbers": {
+      "cost-gp": 20,
+      "damage-dice-count": 1,
+      "damage-die": 10
     },
-    "range": null,
-    "thrown": null
+    "notes": {
+      "damage": "1d10 slashing"
+    },
+    "facts": {
+      "damage": "1d10"
+    }
   },
   {
     "index": "greataxe",
@@ -450,17 +455,17 @@
     ],
     "options": [],
     "choose": null,
-    "damage": "1d12",
-    "damage_type": "slashing",
-    "versatile_damage": null,
-    "ranged": false,
-    "finesse": false,
-    "cost": {
-      "unit": "gp",
-      "amount": 30
+    "numbers": {
+      "cost-gp": 30,
+      "damage-dice-count": 1,
+      "damage-die": 12
     },
-    "range": null,
-    "thrown": null
+    "notes": {
+      "damage": "1d12 slashing"
+    },
+    "facts": {
+      "damage": "1d12"
+    }
   },
   {
     "index": "greatsword",
@@ -474,17 +479,17 @@
     ],
     "options": [],
     "choose": null,
-    "damage": "2d6",
-    "damage_type": "slashing",
-    "versatile_damage": null,
-    "ranged": false,
-    "finesse": false,
-    "cost": {
-      "unit": "gp",
-      "amount": 50
+    "numbers": {
+      "cost-gp": 50,
+      "damage-dice-count": 2,
+      "damage-die": 6
     },
-    "range": null,
-    "thrown": null
+    "notes": {
+      "damage": "2d6 slashing"
+    },
+    "facts": {
+      "damage": "2d6"
+    }
   },
   {
     "index": "halberd",
@@ -499,17 +504,17 @@
     ],
     "options": [],
     "choose": null,
-    "damage": "1d10",
-    "damage_type": "slashing",
-    "versatile_damage": null,
-    "ranged": false,
-    "finesse": false,
-    "cost": {
-      "unit": "gp",
-      "amount": 20
+    "numbers": {
+      "cost-gp": 20,
+      "damage-dice-count": 1,
+      "damage-die": 10
     },
-    "range": null,
-    "thrown": null
+    "notes": {
+      "damage": "1d10 slashing"
+    },
+    "facts": {
+      "damage": "1d10"
+    }
   },
   {
     "index": "lance",
@@ -523,17 +528,17 @@
     ],
     "options": [],
     "choose": null,
-    "damage": "1d12",
-    "damage_type": "piercing",
-    "versatile_damage": null,
-    "ranged": false,
-    "finesse": false,
-    "cost": {
-      "unit": "gp",
-      "amount": 10
+    "numbers": {
+      "cost-gp": 10,
+      "damage-dice-count": 1,
+      "damage-die": 12
     },
-    "range": null,
-    "thrown": null
+    "notes": {
+      "damage": "1d12 piercing"
+    },
+    "facts": {
+      "damage": "1d12"
+    }
   },
   {
     "index": "longsword",
@@ -546,17 +551,20 @@
     ],
     "options": [],
     "choose": null,
-    "damage": "1d8",
-    "damage_type": "slashing",
-    "versatile_damage": "1d10",
-    "ranged": false,
-    "finesse": false,
-    "cost": {
-      "unit": "gp",
-      "amount": 15
+    "numbers": {
+      "cost-gp": 15,
+      "damage-dice-count": 1,
+      "damage-die": 8,
+      "two-handed-damage-dice-count": 1,
+      "two-handed-damage-die": 10
     },
-    "range": null,
-    "thrown": null
+    "notes": {
+      "damage": "1d8 slashing (two-handed 1d10 slashing)"
+    },
+    "facts": {
+      "damage": "1d8",
+      "versatile-damage": "1d10"
+    }
   },
   {
     "index": "maul",
@@ -570,17 +578,17 @@
     ],
     "options": [],
     "choose": null,
-    "damage": "2d6",
-    "damage_type": "bludgeoning",
-    "versatile_damage": null,
-    "ranged": false,
-    "finesse": false,
-    "cost": {
-      "unit": "gp",
-      "amount": 10
+    "numbers": {
+      "cost-gp": 10,
+      "damage-dice-count": 2,
+      "damage-die": 6
     },
-    "range": null,
-    "thrown": null
+    "notes": {
+      "damage": "2d6 bludgeoning"
+    },
+    "facts": {
+      "damage": "2d6"
+    }
   },
   {
     "index": "morningstar",
@@ -592,17 +600,17 @@
     ],
     "options": [],
     "choose": null,
-    "damage": "1d8",
-    "damage_type": "piercing",
-    "versatile_damage": null,
-    "ranged": false,
-    "finesse": false,
-    "cost": {
-      "unit": "gp",
-      "amount": 15
+    "numbers": {
+      "cost-gp": 15,
+      "damage-dice-count": 1,
+      "damage-die": 8
     },
-    "range": null,
-    "thrown": null
+    "notes": {
+      "damage": "1d8 piercing"
+    },
+    "facts": {
+      "damage": "1d8"
+    }
   },
   {
     "index": "pike",
@@ -617,17 +625,17 @@
     ],
     "options": [],
     "choose": null,
-    "damage": "1d10",
-    "damage_type": "piercing",
-    "versatile_damage": null,
-    "ranged": false,
-    "finesse": false,
-    "cost": {
-      "unit": "gp",
-      "amount": 5
+    "numbers": {
+      "cost-gp": 5,
+      "damage-dice-count": 1,
+      "damage-die": 10
     },
-    "range": null,
-    "thrown": null
+    "notes": {
+      "damage": "1d10 piercing"
+    },
+    "facts": {
+      "damage": "1d10"
+    }
   },
   {
     "index": "rapier",
@@ -640,17 +648,18 @@
     ],
     "options": [],
     "choose": null,
-    "damage": "1d8",
-    "damage_type": "piercing",
-    "versatile_damage": null,
-    "ranged": false,
-    "finesse": true,
-    "cost": {
-      "unit": "gp",
-      "amount": 25
+    "numbers": {
+      "cost-gp": 25,
+      "damage-dice-count": 1,
+      "damage-die": 8
     },
-    "range": null,
-    "thrown": null
+    "notes": {
+      "damage": "1d8 piercing"
+    },
+    "facts": {
+      "damage": "1d8",
+      "finesse": true
+    }
   },
   {
     "index": "scimitar",
@@ -664,17 +673,18 @@
     ],
     "options": [],
     "choose": null,
-    "damage": "1d6",
-    "damage_type": "slashing",
-    "versatile_damage": null,
-    "ranged": false,
-    "finesse": true,
-    "cost": {
-      "unit": "gp",
-      "amount": 25
+    "numbers": {
+      "cost-gp": 25,
+      "damage-dice-count": 1,
+      "damage-die": 6
     },
-    "range": null,
-    "thrown": null
+    "notes": {
+      "damage": "1d6 slashing"
+    },
+    "facts": {
+      "damage": "1d6",
+      "finesse": true
+    }
   },
   {
     "index": "shortsword",
@@ -689,17 +699,18 @@
     ],
     "options": [],
     "choose": null,
-    "damage": "1d6",
-    "damage_type": "piercing",
-    "versatile_damage": null,
-    "ranged": false,
-    "finesse": true,
-    "cost": {
-      "unit": "gp",
-      "amount": 10
+    "numbers": {
+      "cost-gp": 10,
+      "damage-dice-count": 1,
+      "damage-die": 6
     },
-    "range": null,
-    "thrown": null
+    "notes": {
+      "damage": "1d6 piercing"
+    },
+    "facts": {
+      "damage": "1d6",
+      "finesse": true
+    }
   },
   {
     "index": "trident",
@@ -713,19 +724,21 @@
     ],
     "options": [],
     "choose": null,
-    "damage": "1d6",
-    "damage_type": "piercing",
-    "versatile_damage": "1d8",
-    "ranged": false,
-    "finesse": false,
-    "cost": {
-      "unit": "gp",
-      "amount": 5
+    "numbers": {
+      "cost-gp": 5,
+      "damage-dice-count": 1,
+      "damage-die": 6,
+      "two-handed-damage-dice-count": 1,
+      "two-handed-damage-die": 8,
+      "thrown-normal": 20,
+      "thrown-long": 60
     },
-    "range": null,
-    "thrown": {
-      "normal": 20,
-      "long": 60
+    "notes": {
+      "damage": "1d6 piercing (two-handed 1d8 piercing)"
+    },
+    "facts": {
+      "damage": "1d6",
+      "versatile-damage": "1d8"
     }
   },
   {
@@ -738,17 +751,17 @@
     ],
     "options": [],
     "choose": null,
-    "damage": "1d8",
-    "damage_type": "piercing",
-    "versatile_damage": null,
-    "ranged": false,
-    "finesse": false,
-    "cost": {
-      "unit": "gp",
-      "amount": 5
+    "numbers": {
+      "cost-gp": 5,
+      "damage-dice-count": 1,
+      "damage-die": 8
     },
-    "range": null,
-    "thrown": null
+    "notes": {
+      "damage": "1d8 piercing"
+    },
+    "facts": {
+      "damage": "1d8"
+    }
   },
   {
     "index": "warhammer",
@@ -761,17 +774,20 @@
     ],
     "options": [],
     "choose": null,
-    "damage": "1d8",
-    "damage_type": "bludgeoning",
-    "versatile_damage": "1d10",
-    "ranged": false,
-    "finesse": false,
-    "cost": {
-      "unit": "gp",
-      "amount": 15
+    "numbers": {
+      "cost-gp": 15,
+      "damage-dice-count": 1,
+      "damage-die": 8,
+      "two-handed-damage-dice-count": 1,
+      "two-handed-damage-die": 10
     },
-    "range": null,
-    "thrown": null
+    "notes": {
+      "damage": "1d8 bludgeoning (two-handed 1d10 bludgeoning)"
+    },
+    "facts": {
+      "damage": "1d8",
+      "versatile-damage": "1d10"
+    }
   },
   {
     "index": "whip",
@@ -785,17 +801,18 @@
     ],
     "options": [],
     "choose": null,
-    "damage": "1d4",
-    "damage_type": "slashing",
-    "versatile_damage": null,
-    "ranged": false,
-    "finesse": true,
-    "cost": {
-      "unit": "gp",
-      "amount": 2
+    "numbers": {
+      "cost-gp": 2,
+      "damage-dice-count": 1,
+      "damage-die": 4
     },
-    "range": null,
-    "thrown": null
+    "notes": {
+      "damage": "1d4 slashing"
+    },
+    "facts": {
+      "damage": "1d4",
+      "finesse": true
+    }
   },
   {
     "index": "blowgun",
@@ -809,20 +826,20 @@
     ],
     "options": [],
     "choose": null,
-    "damage": "1d1",
-    "damage_type": "piercing",
-    "versatile_damage": null,
-    "ranged": true,
-    "finesse": false,
-    "cost": {
-      "unit": "gp",
-      "amount": 10
+    "numbers": {
+      "cost-gp": 10,
+      "damage-dice-count": 1,
+      "damage-die": 1,
+      "range-normal": 25,
+      "range-long": 100
     },
-    "range": {
-      "normal": 25,
-      "long": 100
+    "notes": {
+      "damage": "1d1 piercing"
     },
-    "thrown": null
+    "facts": {
+      "damage": "1d1",
+      "ranged": true
+    }
   },
   {
     "index": "crossbow-hand",
@@ -837,20 +854,20 @@
     ],
     "options": [],
     "choose": null,
-    "damage": "1d6",
-    "damage_type": "piercing",
-    "versatile_damage": null,
-    "ranged": true,
-    "finesse": false,
-    "cost": {
-      "unit": "gp",
-      "amount": 75
+    "numbers": {
+      "cost-gp": 75,
+      "damage-dice-count": 1,
+      "damage-die": 6,
+      "range-normal": 30,
+      "range-long": 120
     },
-    "range": {
-      "normal": 30,
-      "long": 120
+    "notes": {
+      "damage": "1d6 piercing"
     },
-    "thrown": null
+    "facts": {
+      "damage": "1d6",
+      "ranged": true
+    }
   },
   {
     "index": "crossbow-heavy",
@@ -866,20 +883,20 @@
     ],
     "options": [],
     "choose": null,
-    "damage": "1d10",
-    "damage_type": "piercing",
-    "versatile_damage": null,
-    "ranged": true,
-    "finesse": false,
-    "cost": {
-      "unit": "gp",
-      "amount": 50
+    "numbers": {
+      "cost-gp": 50,
+      "damage-dice-count": 1,
+      "damage-die": 10,
+      "range-normal": 100,
+      "range-long": 400
     },
-    "range": {
-      "normal": 100,
-      "long": 400
+    "notes": {
+      "damage": "1d10 piercing"
     },
-    "thrown": null
+    "facts": {
+      "damage": "1d10",
+      "ranged": true
+    }
   },
   {
     "index": "longbow",
@@ -894,20 +911,20 @@
     ],
     "options": [],
     "choose": null,
-    "damage": "1d8",
-    "damage_type": "piercing",
-    "versatile_damage": null,
-    "ranged": true,
-    "finesse": false,
-    "cost": {
-      "unit": "gp",
-      "amount": 50
+    "numbers": {
+      "cost-gp": 50,
+      "damage-dice-count": 1,
+      "damage-die": 8,
+      "range-normal": 150,
+      "range-long": 600
     },
-    "range": {
-      "normal": 150,
-      "long": 600
+    "notes": {
+      "damage": "1d8 piercing"
     },
-    "thrown": null
+    "facts": {
+      "damage": "1d8",
+      "ranged": true
+    }
   },
   {
     "index": "net",
@@ -920,22 +937,16 @@
     ],
     "options": [],
     "choose": null,
-    "damage": null,
-    "damage_type": null,
-    "versatile_damage": null,
-    "ranged": true,
-    "finesse": false,
-    "cost": {
-      "unit": "gp",
-      "amount": 1
+    "numbers": {
+      "cost-gp": 1,
+      "range-normal": 5,
+      "range-long": 15,
+      "thrown-normal": 5,
+      "thrown-long": 15
     },
-    "range": {
-      "normal": 5,
-      "long": 15
-    },
-    "thrown": {
-      "normal": 5,
-      "long": 15
+    "notes": {},
+    "facts": {
+      "ranged": true
     }
   }
 ]

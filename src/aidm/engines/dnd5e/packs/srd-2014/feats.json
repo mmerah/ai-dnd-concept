@@ -6,11 +6,15 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "prerequisites": [
-      {
-        "ability": "strength",
-        "minimum": 13
-      }
-    ]
+    "numbers": {},
+    "notes": {},
+    "facts": {
+      "prerequisites": [
+        {
+          "ability": "strength",
+          "minimum": 13
+        }
+      ]
+    }
   }
 ]

@@ -6,8 +6,12 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "category": "Armor",
-    "reference": "Light Armor"
+    "numbers": {},
+    "notes": {},
+    "facts": {
+      "category": "Armor",
+      "reference": "light-armor"
+    }
   },
   {
     "index": "medium-armor",
@@ -16,8 +20,12 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "category": "Armor",
-    "reference": "Medium Armor"
+    "numbers": {},
+    "notes": {},
+    "facts": {
+      "category": "Armor",
+      "reference": "medium-armor"
+    }
   },
   {
     "index": "heavy-armor",
@@ -26,8 +34,12 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "category": "Armor",
-    "reference": "Heavy Armor"
+    "numbers": {},
+    "notes": {},
+    "facts": {
+      "category": "Armor",
+      "reference": "heavy-armor"
+    }
   },
   {
     "index": "all-armor",
@@ -36,8 +48,12 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "category": "Armor",
-    "reference": "Armor"
+    "numbers": {},
+    "notes": {},
+    "facts": {
+      "category": "Armor",
+      "reference": "armor"
+    }
   },
   {
     "index": "padded-armor",
@@ -46,8 +62,12 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "category": "Armor",
-    "reference": "Padded Armor"
+    "numbers": {},
+    "notes": {},
+    "facts": {
+      "category": "Armor",
+      "reference": "padded-armor"
+    }
   },
   {
     "index": "leather-armor",
@@ -56,8 +76,12 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "category": "Armor",
-    "reference": "Leather Armor"
+    "numbers": {},
+    "notes": {},
+    "facts": {
+      "category": "Armor",
+      "reference": "leather-armor"
+    }
   },
   {
     "index": "studded-leather-armor",
@@ -66,8 +90,12 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "category": "Armor",
-    "reference": "Studded Leather Armor"
+    "numbers": {},
+    "notes": {},
+    "facts": {
+      "category": "Armor",
+      "reference": "studded-leather-armor"
+    }
   },
   {
     "index": "hide-armor",
@@ -76,8 +104,12 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "category": "Armor",
-    "reference": "Hide Armor"
+    "numbers": {},
+    "notes": {},
+    "facts": {
+      "category": "Armor",
+      "reference": "hide-armor"
+    }
   },
   {
     "index": "chain-shirt",
@@ -86,8 +118,12 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "category": "Armor",
-    "reference": "Chain Shirt"
+    "numbers": {},
+    "notes": {},
+    "facts": {
+      "category": "Armor",
+      "reference": "chain-shirt"
+    }
   },
   {
     "index": "scale-mail",
@@ -96,8 +132,12 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "category": "Armor",
-    "reference": "Scale Mail"
+    "numbers": {},
+    "notes": {},
+    "facts": {
+      "category": "Armor",
+      "reference": "scale-mail"
+    }
   },
   {
     "index": "breastplate",
@@ -106,8 +146,12 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "category": "Armor",
-    "reference": "Breastplate"
+    "numbers": {},
+    "notes": {},
+    "facts": {
+      "category": "Armor",
+      "reference": "breastplate"
+    }
   },
   {
     "index": "half-plate-armor",
@@ -116,8 +160,12 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "category": "Armor",
-    "reference": "Half Plate Armor"
+    "numbers": {},
+    "notes": {},
+    "facts": {
+      "category": "Armor",
+      "reference": "half-plate-armor"
+    }
   },
   {
     "index": "ring-mail",
@@ -126,8 +174,12 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "category": "Armor",
-    "reference": "Ring Mail"
+    "numbers": {},
+    "notes": {},
+    "facts": {
+      "category": "Armor",
+      "reference": "ring-mail"
+    }
   },
   {
     "index": "chain-mail",
@@ -136,8 +188,12 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "category": "Armor",
-    "reference": "Chain Mail"
+    "numbers": {},
+    "notes": {},
+    "facts": {
+      "category": "Armor",
+      "reference": "chain-mail"
+    }
   },
   {
     "index": "splint-armor",
@@ -146,8 +202,12 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "category": "Armor",
-    "reference": "Splint Armor"
+    "numbers": {},
+    "notes": {},
+    "facts": {
+      "category": "Armor",
+      "reference": "splint-armor"
+    }
   },
   {
     "index": "plate-armor",
@@ -156,8 +216,12 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "category": "Armor",
-    "reference": "Plate Armor"
+    "numbers": {},
+    "notes": {},
+    "facts": {
+      "category": "Armor",
+      "reference": "plate-armor"
+    }
   },
   {
     "index": "shields",
@@ -166,8 +230,12 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "category": "Armor",
-    "reference": "Shield"
+    "numbers": {},
+    "notes": {},
+    "facts": {
+      "category": "Armor",
+      "reference": "shield"
+    }
   },
   {
     "index": "simple-weapons",
@@ -176,8 +244,12 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "category": "Weapons",
-    "reference": "Simple Weapons"
+    "numbers": {},
+    "notes": {},
+    "facts": {
+      "category": "Weapons",
+      "reference": "simple-weapons"
+    }
   },
   {
     "index": "martial-weapons",
@@ -186,8 +258,12 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "category": "Weapons",
-    "reference": "Martial Weapons"
+    "numbers": {},
+    "notes": {},
+    "facts": {
+      "category": "Weapons",
+      "reference": "martial-weapons"
+    }
   },
   {
     "index": "clubs",
@@ -196,8 +272,12 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "category": "Weapons",
-    "reference": "Club"
+    "numbers": {},
+    "notes": {},
+    "facts": {
+      "category": "Weapons",
+      "reference": "club"
+    }
   },
   {
     "index": "daggers",
@@ -206,8 +286,12 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "category": "Weapons",
-    "reference": "Dagger"
+    "numbers": {},
+    "notes": {},
+    "facts": {
+      "category": "Weapons",
+      "reference": "dagger"
+    }
   },
   {
     "index": "greatclubs",
@@ -216,8 +300,12 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "category": "Weapons",
-    "reference": "Greatclub"
+    "numbers": {},
+    "notes": {},
+    "facts": {
+      "category": "Weapons",
+      "reference": "greatclub"
+    }
   },
   {
     "index": "handaxes",
@@ -226,8 +314,12 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "category": "Weapons",
-    "reference": "Handaxe"
+    "numbers": {},
+    "notes": {},
+    "facts": {
+      "category": "Weapons",
+      "reference": "handaxe"
+    }
   },
   {
     "index": "javelins",
@@ -236,8 +328,12 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "category": "Weapons",
-    "reference": "Javelin"
+    "numbers": {},
+    "notes": {},
+    "facts": {
+      "category": "Weapons",
+      "reference": "javelin"
+    }
   },
   {
     "index": "light-hammers",
@@ -246,8 +342,12 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "category": "Weapons",
-    "reference": "Light hammer"
+    "numbers": {},
+    "notes": {},
+    "facts": {
+      "category": "Weapons",
+      "reference": "light-hammer"
+    }
   },
   {
     "index": "maces",
@@ -256,8 +356,12 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "category": "Weapons",
-    "reference": "Mace"
+    "numbers": {},
+    "notes": {},
+    "facts": {
+      "category": "Weapons",
+      "reference": "mace"
+    }
   },
   {
     "index": "quarterstaffs",
@@ -266,8 +370,12 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "category": "Weapons",
-    "reference": "Quarterstaff"
+    "numbers": {},
+    "notes": {},
+    "facts": {
+      "category": "Weapons",
+      "reference": "quarterstaff"
+    }
   },
   {
     "index": "sickles",
@@ -276,8 +384,12 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "category": "Weapons",
-    "reference": "Sickle"
+    "numbers": {},
+    "notes": {},
+    "facts": {
+      "category": "Weapons",
+      "reference": "sickle"
+    }
   },
   {
     "index": "spears",
@@ -286,8 +398,12 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "category": "Weapons",
-    "reference": "Spear"
+    "numbers": {},
+    "notes": {},
+    "facts": {
+      "category": "Weapons",
+      "reference": "spear"
+    }
   },
   {
     "index": "crossbows-light",
@@ -296,8 +412,12 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "category": "Weapons",
-    "reference": "Crossbow, light"
+    "numbers": {},
+    "notes": {},
+    "facts": {
+      "category": "Weapons",
+      "reference": "crossbow-light"
+    }
   },
   {
     "index": "darts",
@@ -306,8 +426,12 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "category": "Weapons",
-    "reference": "Dart"
+    "numbers": {},
+    "notes": {},
+    "facts": {
+      "category": "Weapons",
+      "reference": "dart"
+    }
   },
   {
     "index": "shortbows",
@@ -316,8 +440,12 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "category": "Weapons",
-    "reference": "Shortbow"
+    "numbers": {},
+    "notes": {},
+    "facts": {
+      "category": "Weapons",
+      "reference": "shortbow"
+    }
   },
   {
     "index": "slings",
@@ -326,8 +454,12 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "category": "Weapons",
-    "reference": "Sling"
+    "numbers": {},
+    "notes": {},
+    "facts": {
+      "category": "Weapons",
+      "reference": "sling"
+    }
   },
   {
     "index": "battleaxes",
@@ -336,8 +468,12 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "category": "Weapons",
-    "reference": "Battleaxe"
+    "numbers": {},
+    "notes": {},
+    "facts": {
+      "category": "Weapons",
+      "reference": "battleaxe"
+    }
   },
   {
     "index": "flails",
@@ -346,8 +482,12 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "category": "Weapons",
-    "reference": "Flail"
+    "numbers": {},
+    "notes": {},
+    "facts": {
+      "category": "Weapons",
+      "reference": "flail"
+    }
   },
   {
     "index": "glaives",
@@ -356,8 +496,12 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "category": "Weapons",
-    "reference": "Glaive"
+    "numbers": {},
+    "notes": {},
+    "facts": {
+      "category": "Weapons",
+      "reference": "glaive"
+    }
   },
   {
     "index": "greataxes",
@@ -366,8 +510,12 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "category": "Weapons",
-    "reference": "Greataxe"
+    "numbers": {},
+    "notes": {},
+    "facts": {
+      "category": "Weapons",
+      "reference": "greataxe"
+    }
   },
   {
     "index": "greatswords",
@@ -376,8 +524,12 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "category": "Weapons",
-    "reference": "Greatsword"
+    "numbers": {},
+    "notes": {},
+    "facts": {
+      "category": "Weapons",
+      "reference": "greatsword"
+    }
   },
   {
     "index": "halberds",
@@ -386,8 +538,12 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "category": "Weapons",
-    "reference": "Halberd"
+    "numbers": {},
+    "notes": {},
+    "facts": {
+      "category": "Weapons",
+      "reference": "halberd"
+    }
   },
   {
     "index": "lances",
@@ -396,8 +552,12 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "category": "Weapons",
-    "reference": "Lance"
+    "numbers": {},
+    "notes": {},
+    "facts": {
+      "category": "Weapons",
+      "reference": "lance"
+    }
   },
   {
     "index": "longswords",
@@ -406,8 +566,12 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "category": "Weapons",
-    "reference": "Longsword"
+    "numbers": {},
+    "notes": {},
+    "facts": {
+      "category": "Weapons",
+      "reference": "longsword"
+    }
   },
   {
     "index": "mauls",
@@ -416,8 +580,12 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "category": "Weapons",
-    "reference": "Maul"
+    "numbers": {},
+    "notes": {},
+    "facts": {
+      "category": "Weapons",
+      "reference": "maul"
+    }
   },
   {
     "index": "morningstars",
@@ -426,8 +594,12 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "category": "Weapons",
-    "reference": "Morningstar"
+    "numbers": {},
+    "notes": {},
+    "facts": {
+      "category": "Weapons",
+      "reference": "morningstar"
+    }
   },
   {
     "index": "pikes",
@@ -436,8 +608,12 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "category": "Weapons",
-    "reference": "Pike"
+    "numbers": {},
+    "notes": {},
+    "facts": {
+      "category": "Weapons",
+      "reference": "pike"
+    }
   },
   {
     "index": "rapiers",
@@ -446,8 +622,12 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "category": "Weapons",
-    "reference": "Rapier"
+    "numbers": {},
+    "notes": {},
+    "facts": {
+      "category": "Weapons",
+      "reference": "rapier"
+    }
   },
   {
     "index": "scimitars",
@@ -456,8 +636,12 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "category": "Weapons",
-    "reference": "Scimitar"
+    "numbers": {},
+    "notes": {},
+    "facts": {
+      "category": "Weapons",
+      "reference": "scimitar"
+    }
   },
   {
     "index": "shortswords",
@@ -466,8 +650,12 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "category": "Weapons",
-    "reference": "Shortsword"
+    "numbers": {},
+    "notes": {},
+    "facts": {
+      "category": "Weapons",
+      "reference": "shortsword"
+    }
   },
   {
     "index": "tridents",
@@ -476,8 +664,12 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "category": "Weapons",
-    "reference": "Trident"
+    "numbers": {},
+    "notes": {},
+    "facts": {
+      "category": "Weapons",
+      "reference": "trident"
+    }
   },
   {
     "index": "war-picks",
@@ -486,8 +678,12 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "category": "Weapons",
-    "reference": "War pick"
+    "numbers": {},
+    "notes": {},
+    "facts": {
+      "category": "Weapons",
+      "reference": "war-pick"
+    }
   },
   {
     "index": "warhammers",
@@ -496,8 +692,12 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "category": "Weapons",
-    "reference": "Warhammer"
+    "numbers": {},
+    "notes": {},
+    "facts": {
+      "category": "Weapons",
+      "reference": "warhammer"
+    }
   },
   {
     "index": "whips",
@@ -506,8 +706,12 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "category": "Weapons",
-    "reference": "Whip"
+    "numbers": {},
+    "notes": {},
+    "facts": {
+      "category": "Weapons",
+      "reference": "whip"
+    }
   },
   {
     "index": "blowguns",
@@ -516,8 +720,12 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "category": "Weapons",
-    "reference": "Blowgun"
+    "numbers": {},
+    "notes": {},
+    "facts": {
+      "category": "Weapons",
+      "reference": "blowgun"
+    }
   },
   {
     "index": "hand-crossbows",
@@ -526,8 +734,12 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "category": "Weapons",
-    "reference": "Crossbow, hand"
+    "numbers": {},
+    "notes": {},
+    "facts": {
+      "category": "Weapons",
+      "reference": "crossbow-hand"
+    }
   },
   {
     "index": "crossbows-heavy",
@@ -536,8 +748,12 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "category": "Weapons",
-    "reference": "Crossbow, heavy"
+    "numbers": {},
+    "notes": {},
+    "facts": {
+      "category": "Weapons",
+      "reference": "crossbow-heavy"
+    }
   },
   {
     "index": "longbows",
@@ -546,8 +762,12 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "category": "Weapons",
-    "reference": "Longbow"
+    "numbers": {},
+    "notes": {},
+    "facts": {
+      "category": "Weapons",
+      "reference": "longbow"
+    }
   },
   {
     "index": "nets",
@@ -556,8 +776,12 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "category": "Weapons",
-    "reference": "Net"
+    "numbers": {},
+    "notes": {},
+    "facts": {
+      "category": "Weapons",
+      "reference": "net"
+    }
   },
   {
     "index": "alchemists-supplies",
@@ -566,8 +790,12 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "category": "Artisan's Tools",
-    "reference": "Alchemist's Supplies"
+    "numbers": {},
+    "notes": {},
+    "facts": {
+      "category": "Artisan's Tools",
+      "reference": "alchemists-supplies"
+    }
   },
   {
     "index": "brewers-supplies",
@@ -576,8 +804,12 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "category": "Artisan's Tools",
-    "reference": "Brewer's Supplies"
+    "numbers": {},
+    "notes": {},
+    "facts": {
+      "category": "Artisan's Tools",
+      "reference": "brewers-supplies"
+    }
   },
   {
     "index": "calligraphers-supplies",
@@ -586,8 +818,12 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "category": "Artisan's Tools",
-    "reference": "Calligrapher's Supplies"
+    "numbers": {},
+    "notes": {},
+    "facts": {
+      "category": "Artisan's Tools",
+      "reference": "calligraphers-supplies"
+    }
   },
   {
     "index": "carpenters-tools",
@@ -596,8 +832,12 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "category": "Artisan's Tools",
-    "reference": "Carpenter's Tools"
+    "numbers": {},
+    "notes": {},
+    "facts": {
+      "category": "Artisan's Tools",
+      "reference": "carpenters-tools"
+    }
   },
   {
     "index": "cartographers-tools",
@@ -606,8 +846,12 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "category": "Artisan's Tools",
-    "reference": "Cartographer's Tools"
+    "numbers": {},
+    "notes": {},
+    "facts": {
+      "category": "Artisan's Tools",
+      "reference": "cartographers-tools"
+    }
   },
   {
     "index": "cobblers-tools",
@@ -616,8 +860,12 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "category": "Artisan's Tools",
-    "reference": "Cobbler's Tools"
+    "numbers": {},
+    "notes": {},
+    "facts": {
+      "category": "Artisan's Tools",
+      "reference": "cobblers-tools"
+    }
   },
   {
     "index": "cooks-utensils",
@@ -626,8 +874,12 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "category": "Artisan's Tools",
-    "reference": "Cook's utensils"
+    "numbers": {},
+    "notes": {},
+    "facts": {
+      "category": "Artisan's Tools",
+      "reference": "cooks-utensils"
+    }
   },
   {
     "index": "glassblowers-tools",
@@ -636,8 +888,12 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "category": "Artisan's Tools",
-    "reference": "Glassblower's Tools"
+    "numbers": {},
+    "notes": {},
+    "facts": {
+      "category": "Artisan's Tools",
+      "reference": "glassblowers-tools"
+    }
   },
   {
     "index": "jewelers-tools",
@@ -646,8 +902,12 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "category": "Artisan's Tools",
-    "reference": "Jeweler's Tools"
+    "numbers": {},
+    "notes": {},
+    "facts": {
+      "category": "Artisan's Tools",
+      "reference": "jewelers-tools"
+    }
   },
   {
     "index": "leatherworkers-tools",
@@ -656,8 +916,12 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "category": "Artisan's Tools",
-    "reference": "Leatherworker's Tools"
+    "numbers": {},
+    "notes": {},
+    "facts": {
+      "category": "Artisan's Tools",
+      "reference": "leatherworkers-tools"
+    }
   },
   {
     "index": "masons-tools",
@@ -666,8 +930,12 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "category": "Artisan's Tools",
-    "reference": "Mason's Tools"
+    "numbers": {},
+    "notes": {},
+    "facts": {
+      "category": "Artisan's Tools",
+      "reference": "masons-tools"
+    }
   },
   {
     "index": "painters-supplies",
@@ -676,8 +944,12 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "category": "Artisan's Tools",
-    "reference": "Painter's Supplies"
+    "numbers": {},
+    "notes": {},
+    "facts": {
+      "category": "Artisan's Tools",
+      "reference": "painters-supplies"
+    }
   },
   {
     "index": "potters-tools",
@@ -686,8 +958,12 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "category": "Artisan's Tools",
-    "reference": "Potter's Tools"
+    "numbers": {},
+    "notes": {},
+    "facts": {
+      "category": "Artisan's Tools",
+      "reference": "potters-tools"
+    }
   },
   {
     "index": "smiths-tools",
@@ -696,8 +972,12 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "category": "Artisan's Tools",
-    "reference": "Smith's Tools"
+    "numbers": {},
+    "notes": {},
+    "facts": {
+      "category": "Artisan's Tools",
+      "reference": "smiths-tools"
+    }
   },
   {
     "index": "tinkers-tools",
@@ -706,8 +986,12 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "category": "Artisan's Tools",
-    "reference": "Tinker's Tools"
+    "numbers": {},
+    "notes": {},
+    "facts": {
+      "category": "Artisan's Tools",
+      "reference": "tinkers-tools"
+    }
   },
   {
     "index": "weavers-tools",
@@ -716,8 +1000,12 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "category": "Artisan's Tools",
-    "reference": "Weaver's Tools"
+    "numbers": {},
+    "notes": {},
+    "facts": {
+      "category": "Artisan's Tools",
+      "reference": "weavers-tools"
+    }
   },
   {
     "index": "woodcarvers-tools",
@@ -726,8 +1014,12 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "category": "Artisan's Tools",
-    "reference": "Woodcarver's Tools"
+    "numbers": {},
+    "notes": {},
+    "facts": {
+      "category": "Artisan's Tools",
+      "reference": "woodcarvers-tools"
+    }
   },
   {
     "index": "disguise-kit",
@@ -736,8 +1028,12 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "category": "Artisan's Tools",
-    "reference": "Disguise Kit"
+    "numbers": {},
+    "notes": {},
+    "facts": {
+      "category": "Artisan's Tools",
+      "reference": "disguise-kit"
+    }
   },
   {
     "index": "forgery-kit",
@@ -746,8 +1042,12 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "category": "Artisan's Tools",
-    "reference": "Forgery Kit"
+    "numbers": {},
+    "notes": {},
+    "facts": {
+      "category": "Artisan's Tools",
+      "reference": "forgery-kit"
+    }
   },
   {
     "index": "dice-set",
@@ -756,8 +1056,12 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "category": "Gaming Sets",
-    "reference": "Dice Set"
+    "numbers": {},
+    "notes": {},
+    "facts": {
+      "category": "Gaming Sets",
+      "reference": "dice-set"
+    }
   },
   {
     "index": "playing-card-set",
@@ -766,8 +1070,12 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "category": "Gaming Sets",
-    "reference": "Playing Card Set"
+    "numbers": {},
+    "notes": {},
+    "facts": {
+      "category": "Gaming Sets",
+      "reference": "playing-card-set"
+    }
   },
   {
     "index": "bagpipes",
@@ -776,8 +1084,12 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "category": "Musical Instruments",
-    "reference": "Bagpipes"
+    "numbers": {},
+    "notes": {},
+    "facts": {
+      "category": "Musical Instruments",
+      "reference": "bagpipes"
+    }
   },
   {
     "index": "drum",
@@ -786,8 +1098,12 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "category": "Musical Instruments",
-    "reference": "Drum"
+    "numbers": {},
+    "notes": {},
+    "facts": {
+      "category": "Musical Instruments",
+      "reference": "drum"
+    }
   },
   {
     "index": "dulcimer",
@@ -796,8 +1112,12 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "category": "Musical Instruments",
-    "reference": "Dulcimer"
+    "numbers": {},
+    "notes": {},
+    "facts": {
+      "category": "Musical Instruments",
+      "reference": "dulcimer"
+    }
   },
   {
     "index": "flute",
@@ -806,8 +1126,12 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "category": "Musical Instruments",
-    "reference": "Flute"
+    "numbers": {},
+    "notes": {},
+    "facts": {
+      "category": "Musical Instruments",
+      "reference": "flute"
+    }
   },
   {
     "index": "lute",
@@ -816,8 +1140,12 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "category": "Musical Instruments",
-    "reference": "Lute"
+    "numbers": {},
+    "notes": {},
+    "facts": {
+      "category": "Musical Instruments",
+      "reference": "lute"
+    }
   },
   {
     "index": "lyre",
@@ -826,8 +1154,12 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "category": "Musical Instruments",
-    "reference": "Lyre"
+    "numbers": {},
+    "notes": {},
+    "facts": {
+      "category": "Musical Instruments",
+      "reference": "lyre"
+    }
   },
   {
     "index": "horn",
@@ -836,8 +1168,12 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "category": "Musical Instruments",
-    "reference": "Horn"
+    "numbers": {},
+    "notes": {},
+    "facts": {
+      "category": "Musical Instruments",
+      "reference": "horn"
+    }
   },
   {
     "index": "pan-flute",
@@ -846,8 +1182,12 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "category": "Musical Instruments",
-    "reference": "Pan flute"
+    "numbers": {},
+    "notes": {},
+    "facts": {
+      "category": "Musical Instruments",
+      "reference": "pan-flute"
+    }
   },
   {
     "index": "shawm",
@@ -856,8 +1196,12 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "category": "Musical Instruments",
-    "reference": "Shawm"
+    "numbers": {},
+    "notes": {},
+    "facts": {
+      "category": "Musical Instruments",
+      "reference": "shawm"
+    }
   },
   {
     "index": "viol",
@@ -866,8 +1210,12 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "category": "Musical Instruments",
-    "reference": "Viol"
+    "numbers": {},
+    "notes": {},
+    "facts": {
+      "category": "Musical Instruments",
+      "reference": "viol"
+    }
   },
   {
     "index": "herbalism-kit",
@@ -876,8 +1224,12 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "category": "Other",
-    "reference": "Herbalism Kit"
+    "numbers": {},
+    "notes": {},
+    "facts": {
+      "category": "Other",
+      "reference": "herbalism-kit"
+    }
   },
   {
     "index": "navigators-tools",
@@ -886,8 +1238,12 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "category": "Other",
-    "reference": "Navigator's Tools"
+    "numbers": {},
+    "notes": {},
+    "facts": {
+      "category": "Other",
+      "reference": "navigators-tools"
+    }
   },
   {
     "index": "poisoners-kit",
@@ -896,8 +1252,12 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "category": "Other",
-    "reference": "Poisoner's Kit"
+    "numbers": {},
+    "notes": {},
+    "facts": {
+      "category": "Other",
+      "reference": "poisoners-kit"
+    }
   },
   {
     "index": "thieves-tools",
@@ -906,8 +1266,12 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "category": "Other",
-    "reference": "Thieves' Tools"
+    "numbers": {},
+    "notes": {},
+    "facts": {
+      "category": "Other",
+      "reference": "thieves-tools"
+    }
   },
   {
     "index": "land-vehicles",
@@ -916,8 +1280,12 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "category": "Vehicles",
-    "reference": "Land Vehicles"
+    "numbers": {},
+    "notes": {},
+    "facts": {
+      "category": "Vehicles",
+      "reference": "land-vehicles"
+    }
   },
   {
     "index": "water-vehicles",
@@ -926,8 +1294,12 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "category": "Vehicles",
-    "reference": "Waterborne Vehicles"
+    "numbers": {},
+    "notes": {},
+    "facts": {
+      "category": "Vehicles",
+      "reference": "waterborne-vehicles"
+    }
   },
   {
     "index": "saving-throw-str",
@@ -936,8 +1308,12 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "category": "Saving Throws",
-    "reference": "STR"
+    "numbers": {},
+    "notes": {},
+    "facts": {
+      "category": "Saving Throws",
+      "reference": "str"
+    }
   },
   {
     "index": "saving-throw-dex",
@@ -946,8 +1322,12 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "category": "Saving Throws",
-    "reference": "DEX"
+    "numbers": {},
+    "notes": {},
+    "facts": {
+      "category": "Saving Throws",
+      "reference": "dex"
+    }
   },
   {
     "index": "saving-throw-con",
@@ -956,8 +1336,12 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "category": "Saving Throws",
-    "reference": "CON"
+    "numbers": {},
+    "notes": {},
+    "facts": {
+      "category": "Saving Throws",
+      "reference": "con"
+    }
   },
   {
     "index": "saving-throw-int",
@@ -966,8 +1350,12 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "category": "Saving Throws",
-    "reference": "INT"
+    "numbers": {},
+    "notes": {},
+    "facts": {
+      "category": "Saving Throws",
+      "reference": "int"
+    }
   },
   {
     "index": "saving-throw-wis",
@@ -976,8 +1364,12 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "category": "Saving Throws",
-    "reference": "WIS"
+    "numbers": {},
+    "notes": {},
+    "facts": {
+      "category": "Saving Throws",
+      "reference": "wis"
+    }
   },
   {
     "index": "saving-throw-cha",
@@ -986,8 +1378,12 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "category": "Saving Throws",
-    "reference": "CHA"
+    "numbers": {},
+    "notes": {},
+    "facts": {
+      "category": "Saving Throws",
+      "reference": "cha"
+    }
   },
   {
     "index": "skill-acrobatics",
@@ -996,8 +1392,12 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "category": "Skills",
-    "reference": "Acrobatics"
+    "numbers": {},
+    "notes": {},
+    "facts": {
+      "category": "Skills",
+      "reference": "acrobatics"
+    }
   },
   {
     "index": "skill-animal-handling",
@@ -1006,8 +1406,12 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "category": "Skills",
-    "reference": "Animal Handling"
+    "numbers": {},
+    "notes": {},
+    "facts": {
+      "category": "Skills",
+      "reference": "animal-handling"
+    }
   },
   {
     "index": "skill-arcana",
@@ -1016,8 +1420,12 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "category": "Skills",
-    "reference": "Arcana"
+    "numbers": {},
+    "notes": {},
+    "facts": {
+      "category": "Skills",
+      "reference": "arcana"
+    }
   },
   {
     "index": "skill-athletics",
@@ -1026,8 +1434,12 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "category": "Skills",
-    "reference": "Athletics"
+    "numbers": {},
+    "notes": {},
+    "facts": {
+      "category": "Skills",
+      "reference": "athletics"
+    }
   },
   {
     "index": "skill-deception",
@@ -1036,8 +1448,12 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "category": "Skills",
-    "reference": "Deception"
+    "numbers": {},
+    "notes": {},
+    "facts": {
+      "category": "Skills",
+      "reference": "deception"
+    }
   },
   {
     "index": "skill-history",
@@ -1046,8 +1462,12 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "category": "Skills",
-    "reference": "History"
+    "numbers": {},
+    "notes": {},
+    "facts": {
+      "category": "Skills",
+      "reference": "history"
+    }
   },
   {
     "index": "skill-insight",
@@ -1056,8 +1476,12 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "category": "Skills",
-    "reference": "Insight"
+    "numbers": {},
+    "notes": {},
+    "facts": {
+      "category": "Skills",
+      "reference": "insight"
+    }
   },
   {
     "index": "skill-intimidation",
@@ -1066,8 +1490,12 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "category": "Skills",
-    "reference": "Intimidation"
+    "numbers": {},
+    "notes": {},
+    "facts": {
+      "category": "Skills",
+      "reference": "intimidation"
+    }
   },
   {
     "index": "skill-investigation",
@@ -1076,8 +1504,12 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "category": "Skills",
-    "reference": "Investigation"
+    "numbers": {},
+    "notes": {},
+    "facts": {
+      "category": "Skills",
+      "reference": "investigation"
+    }
   },
   {
     "index": "skill-medicine",
@@ -1086,8 +1518,12 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "category": "Skills",
-    "reference": "Medicine"
+    "numbers": {},
+    "notes": {},
+    "facts": {
+      "category": "Skills",
+      "reference": "medicine"
+    }
   },
   {
     "index": "skill-nature",
@@ -1096,8 +1532,12 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "category": "Skills",
-    "reference": "Nature"
+    "numbers": {},
+    "notes": {},
+    "facts": {
+      "category": "Skills",
+      "reference": "nature"
+    }
   },
   {
     "index": "skill-perception",
@@ -1106,8 +1546,12 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "category": "Skills",
-    "reference": "Perception"
+    "numbers": {},
+    "notes": {},
+    "facts": {
+      "category": "Skills",
+      "reference": "perception"
+    }
   },
   {
     "index": "skill-performance",
@@ -1116,8 +1560,12 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "category": "Skills",
-    "reference": "Performance"
+    "numbers": {},
+    "notes": {},
+    "facts": {
+      "category": "Skills",
+      "reference": "performance"
+    }
   },
   {
     "index": "skill-persuasion",
@@ -1126,8 +1574,12 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "category": "Skills",
-    "reference": "Persuasion"
+    "numbers": {},
+    "notes": {},
+    "facts": {
+      "category": "Skills",
+      "reference": "persuasion"
+    }
   },
   {
     "index": "skill-religion",
@@ -1136,8 +1588,12 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "category": "Skills",
-    "reference": "Religion"
+    "numbers": {},
+    "notes": {},
+    "facts": {
+      "category": "Skills",
+      "reference": "religion"
+    }
   },
   {
     "index": "skill-sleight-of-hand",
@@ -1146,8 +1602,12 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "category": "Skills",
-    "reference": "Sleight of Hand"
+    "numbers": {},
+    "notes": {},
+    "facts": {
+      "category": "Skills",
+      "reference": "sleight-of-hand"
+    }
   },
   {
     "index": "skill-stealth",
@@ -1156,8 +1616,12 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "category": "Skills",
-    "reference": "Stealth"
+    "numbers": {},
+    "notes": {},
+    "facts": {
+      "category": "Skills",
+      "reference": "stealth"
+    }
   },
   {
     "index": "skill-survival",
@@ -1166,7 +1630,11 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "category": "Skills",
-    "reference": "Survival"
+    "numbers": {},
+    "notes": {},
+    "facts": {
+      "category": "Skills",
+      "reference": "survival"
+    }
   }
 ]

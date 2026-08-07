@@ -6,11 +6,11 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "cost": {
-      "unit": "gp",
-      "amount": 2
+    "numbers": {
+      "cost-gp": 2
     },
-    "quantity": null
+    "notes": {},
+    "facts": {}
   },
   {
     "index": "acid-vial",
@@ -19,11 +19,11 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "cost": {
-      "unit": "gp",
-      "amount": 25
+    "numbers": {
+      "cost-gp": 25
     },
-    "quantity": null
+    "notes": {},
+    "facts": {}
   },
   {
     "index": "alchemists-fire-flask",
@@ -32,11 +32,11 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "cost": {
-      "unit": "gp",
-      "amount": 50
+    "numbers": {
+      "cost-gp": 50
     },
-    "quantity": null
+    "notes": {},
+    "facts": {}
   },
   {
     "index": "alms-box",
@@ -45,11 +45,11 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "cost": {
-      "unit": "cp",
-      "amount": 0
+    "numbers": {
+      "cost-cp": 0
     },
-    "quantity": null
+    "notes": {},
+    "facts": {}
   },
   {
     "index": "arrow",
@@ -58,11 +58,12 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "cost": {
-      "unit": "gp",
-      "amount": 1
+    "numbers": {
+      "cost-gp": 1,
+      "quantity": 20
     },
-    "quantity": 20
+    "notes": {},
+    "facts": {}
   },
   {
     "index": "block-of-incense",
@@ -71,11 +72,11 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "cost": {
-      "unit": "cp",
-      "amount": 0
+    "numbers": {
+      "cost-cp": 0
     },
-    "quantity": null
+    "notes": {},
+    "facts": {}
   },
   {
     "index": "blowgun-needle",
@@ -84,11 +85,12 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "cost": {
-      "unit": "gp",
-      "amount": 1
+    "numbers": {
+      "cost-gp": 1,
+      "quantity": 50
     },
-    "quantity": 50
+    "notes": {},
+    "facts": {}
   },
   {
     "index": "censer",
@@ -97,11 +99,11 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "cost": {
-      "unit": "cp",
-      "amount": 0
+    "numbers": {
+      "cost-cp": 0
     },
-    "quantity": null
+    "notes": {},
+    "facts": {}
   },
   {
     "index": "crossbow-bolt",
@@ -110,11 +112,12 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "cost": {
-      "unit": "gp",
-      "amount": 1
+    "numbers": {
+      "cost-gp": 1,
+      "quantity": 20
     },
-    "quantity": 20
+    "notes": {},
+    "facts": {}
   },
   {
     "index": "sling-bullet",
@@ -123,11 +126,12 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "cost": {
-      "unit": "cp",
-      "amount": 4
+    "numbers": {
+      "cost-cp": 4,
+      "quantity": 20
     },
-    "quantity": 20
+    "notes": {},
+    "facts": {}
   },
   {
     "index": "amulet",
@@ -136,11 +140,11 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "cost": {
-      "unit": "gp",
-      "amount": 5
+    "numbers": {
+      "cost-gp": 5
     },
-    "quantity": null
+    "notes": {},
+    "facts": {}
   },
   {
     "index": "antitoxin-vial",
@@ -149,11 +153,11 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "cost": {
-      "unit": "gp",
-      "amount": 50
+    "numbers": {
+      "cost-gp": 50
     },
-    "quantity": null
+    "notes": {},
+    "facts": {}
   },
   {
     "index": "crystal",
@@ -162,11 +166,11 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "cost": {
-      "unit": "gp",
-      "amount": 10
+    "numbers": {
+      "cost-gp": 10
     },
-    "quantity": null
+    "notes": {},
+    "facts": {}
   },
   {
     "index": "orb",
@@ -175,11 +179,11 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "cost": {
-      "unit": "gp",
-      "amount": 20
+    "numbers": {
+      "cost-gp": 20
     },
-    "quantity": null
+    "notes": {},
+    "facts": {}
   },
   {
     "index": "rod",
@@ -188,11 +192,11 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "cost": {
-      "unit": "gp",
-      "amount": 10
+    "numbers": {
+      "cost-gp": 10
     },
-    "quantity": null
+    "notes": {},
+    "facts": {}
   },
   {
     "index": "staff",
@@ -201,11 +205,11 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "cost": {
-      "unit": "gp",
-      "amount": 5
+    "numbers": {
+      "cost-gp": 5
     },
-    "quantity": null
+    "notes": {},
+    "facts": {}
   },
   {
     "index": "wand",
@@ -214,11 +218,11 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "cost": {
-      "unit": "gp",
-      "amount": 10
+    "numbers": {
+      "cost-gp": 10
     },
-    "quantity": null
+    "notes": {},
+    "facts": {}
   },
   {
     "index": "backpack",
@@ -227,11 +231,11 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "cost": {
-      "unit": "gp",
-      "amount": 2
+    "numbers": {
+      "cost-gp": 2
     },
-    "quantity": null
+    "notes": {},
+    "facts": {}
   },
   {
     "index": "ball-bearings-bag-of-1000",
@@ -240,11 +244,11 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "cost": {
-      "unit": "gp",
-      "amount": 1
+    "numbers": {
+      "cost-gp": 1
     },
-    "quantity": null
+    "notes": {},
+    "facts": {}
   },
   {
     "index": "barrel",
@@ -253,11 +257,11 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "cost": {
-      "unit": "gp",
-      "amount": 2
+    "numbers": {
+      "cost-gp": 2
     },
-    "quantity": null
+    "notes": {},
+    "facts": {}
   },
   {
     "index": "basket",
@@ -266,11 +270,11 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "cost": {
-      "unit": "sp",
-      "amount": 4
+    "numbers": {
+      "cost-sp": 4
     },
-    "quantity": null
+    "notes": {},
+    "facts": {}
   },
   {
     "index": "bedroll",
@@ -279,11 +283,11 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "cost": {
-      "unit": "gp",
-      "amount": 1
+    "numbers": {
+      "cost-gp": 1
     },
-    "quantity": null
+    "notes": {},
+    "facts": {}
   },
   {
     "index": "bell",
@@ -292,11 +296,11 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "cost": {
-      "unit": "gp",
-      "amount": 1
+    "numbers": {
+      "cost-gp": 1
     },
-    "quantity": null
+    "notes": {},
+    "facts": {}
   },
   {
     "index": "blanket",
@@ -305,11 +309,11 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "cost": {
-      "unit": "sp",
-      "amount": 5
+    "numbers": {
+      "cost-sp": 5
     },
-    "quantity": null
+    "notes": {},
+    "facts": {}
   },
   {
     "index": "block-and-tackle",
@@ -318,11 +322,11 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "cost": {
-      "unit": "gp",
-      "amount": 1
+    "numbers": {
+      "cost-gp": 1
     },
-    "quantity": null
+    "notes": {},
+    "facts": {}
   },
   {
     "index": "book",
@@ -331,11 +335,11 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "cost": {
-      "unit": "gp",
-      "amount": 25
+    "numbers": {
+      "cost-gp": 25
     },
-    "quantity": null
+    "notes": {},
+    "facts": {}
   },
   {
     "index": "bottle-glass",
@@ -344,11 +348,11 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "cost": {
-      "unit": "gp",
-      "amount": 2
+    "numbers": {
+      "cost-gp": 2
     },
-    "quantity": null
+    "notes": {},
+    "facts": {}
   },
   {
     "index": "bucket",
@@ -357,11 +361,11 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "cost": {
-      "unit": "cp",
-      "amount": 5
+    "numbers": {
+      "cost-cp": 5
     },
-    "quantity": null
+    "notes": {},
+    "facts": {}
   },
   {
     "index": "caltrops",
@@ -370,11 +374,11 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "cost": {
-      "unit": "cp",
-      "amount": 5
+    "numbers": {
+      "cost-cp": 5
     },
-    "quantity": null
+    "notes": {},
+    "facts": {}
   },
   {
     "index": "candle",
@@ -383,11 +387,11 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "cost": {
-      "unit": "cp",
-      "amount": 1
+    "numbers": {
+      "cost-cp": 1
     },
-    "quantity": null
+    "notes": {},
+    "facts": {}
   },
   {
     "index": "case-crossbow-bolt",
@@ -396,11 +400,11 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "cost": {
-      "unit": "gp",
-      "amount": 1
+    "numbers": {
+      "cost-gp": 1
     },
-    "quantity": null
+    "notes": {},
+    "facts": {}
   },
   {
     "index": "case-map-or-scroll",
@@ -409,11 +413,11 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "cost": {
-      "unit": "gp",
-      "amount": 1
+    "numbers": {
+      "cost-gp": 1
     },
-    "quantity": null
+    "notes": {},
+    "facts": {}
   },
   {
     "index": "chain-10-feet",
@@ -422,11 +426,11 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "cost": {
-      "unit": "gp",
-      "amount": 5
+    "numbers": {
+      "cost-gp": 5
     },
-    "quantity": null
+    "notes": {},
+    "facts": {}
   },
   {
     "index": "chalk-1-piece",
@@ -435,11 +439,11 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "cost": {
-      "unit": "cp",
-      "amount": 1
+    "numbers": {
+      "cost-cp": 1
     },
-    "quantity": null
+    "notes": {},
+    "facts": {}
   },
   {
     "index": "chest",
@@ -448,11 +452,11 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "cost": {
-      "unit": "gp",
-      "amount": 5
+    "numbers": {
+      "cost-gp": 5
     },
-    "quantity": null
+    "notes": {},
+    "facts": {}
   },
   {
     "index": "clothes-common",
@@ -461,11 +465,11 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "cost": {
-      "unit": "sp",
-      "amount": 5
+    "numbers": {
+      "cost-sp": 5
     },
-    "quantity": null
+    "notes": {},
+    "facts": {}
   },
   {
     "index": "clothes-costume",
@@ -474,11 +478,11 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "cost": {
-      "unit": "gp",
-      "amount": 5
+    "numbers": {
+      "cost-gp": 5
     },
-    "quantity": null
+    "notes": {},
+    "facts": {}
   },
   {
     "index": "clothes-fine",
@@ -487,11 +491,11 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "cost": {
-      "unit": "gp",
-      "amount": 15
+    "numbers": {
+      "cost-gp": 15
     },
-    "quantity": null
+    "notes": {},
+    "facts": {}
   },
   {
     "index": "clothes-travelers",
@@ -500,11 +504,11 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "cost": {
-      "unit": "gp",
-      "amount": 2
+    "numbers": {
+      "cost-gp": 2
     },
-    "quantity": null
+    "notes": {},
+    "facts": {}
   },
   {
     "index": "component-pouch",
@@ -513,11 +517,11 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "cost": {
-      "unit": "gp",
-      "amount": 25
+    "numbers": {
+      "cost-gp": 25
     },
-    "quantity": null
+    "notes": {},
+    "facts": {}
   },
   {
     "index": "crowbar",
@@ -526,11 +530,11 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "cost": {
-      "unit": "gp",
-      "amount": 2
+    "numbers": {
+      "cost-gp": 2
     },
-    "quantity": null
+    "notes": {},
+    "facts": {}
   },
   {
     "index": "sprig-of-mistletoe",
@@ -539,11 +543,11 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "cost": {
-      "unit": "gp",
-      "amount": 1
+    "numbers": {
+      "cost-gp": 1
     },
-    "quantity": null
+    "notes": {},
+    "facts": {}
   },
   {
     "index": "totem",
@@ -552,11 +556,11 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "cost": {
-      "unit": "gp",
-      "amount": 1
+    "numbers": {
+      "cost-gp": 1
     },
-    "quantity": null
+    "notes": {},
+    "facts": {}
   },
   {
     "index": "wooden-staff",
@@ -565,11 +569,11 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "cost": {
-      "unit": "gp",
-      "amount": 5
+    "numbers": {
+      "cost-gp": 5
     },
-    "quantity": null
+    "notes": {},
+    "facts": {}
   },
   {
     "index": "yew-wand",
@@ -578,11 +582,11 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "cost": {
-      "unit": "gp",
-      "amount": 10
+    "numbers": {
+      "cost-gp": 10
     },
-    "quantity": null
+    "notes": {},
+    "facts": {}
   },
   {
     "index": "emblem",
@@ -591,11 +595,11 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "cost": {
-      "unit": "gp",
-      "amount": 5
+    "numbers": {
+      "cost-gp": 5
     },
-    "quantity": null
+    "notes": {},
+    "facts": {}
   },
   {
     "index": "fishing-tackle",
@@ -604,11 +608,11 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "cost": {
-      "unit": "gp",
-      "amount": 1
+    "numbers": {
+      "cost-gp": 1
     },
-    "quantity": null
+    "notes": {},
+    "facts": {}
   },
   {
     "index": "flask-or-tankard",
@@ -617,11 +621,11 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "cost": {
-      "unit": "cp",
-      "amount": 2
+    "numbers": {
+      "cost-cp": 2
     },
-    "quantity": null
+    "notes": {},
+    "facts": {}
   },
   {
     "index": "grappling-hook",
@@ -630,11 +634,11 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "cost": {
-      "unit": "gp",
-      "amount": 2
+    "numbers": {
+      "cost-gp": 2
     },
-    "quantity": null
+    "notes": {},
+    "facts": {}
   },
   {
     "index": "hammer",
@@ -643,11 +647,11 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "cost": {
-      "unit": "gp",
-      "amount": 1
+    "numbers": {
+      "cost-gp": 1
     },
-    "quantity": null
+    "notes": {},
+    "facts": {}
   },
   {
     "index": "hammer-sledge",
@@ -656,11 +660,11 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "cost": {
-      "unit": "gp",
-      "amount": 2
+    "numbers": {
+      "cost-gp": 2
     },
-    "quantity": null
+    "notes": {},
+    "facts": {}
   },
   {
     "index": "holy-water-flask",
@@ -669,11 +673,11 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "cost": {
-      "unit": "gp",
-      "amount": 25
+    "numbers": {
+      "cost-gp": 25
     },
-    "quantity": null
+    "notes": {},
+    "facts": {}
   },
   {
     "index": "hourglass",
@@ -682,11 +686,11 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "cost": {
-      "unit": "gp",
-      "amount": 25
+    "numbers": {
+      "cost-gp": 25
     },
-    "quantity": null
+    "notes": {},
+    "facts": {}
   },
   {
     "index": "hunting-trap",
@@ -695,11 +699,11 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "cost": {
-      "unit": "gp",
-      "amount": 5
+    "numbers": {
+      "cost-gp": 5
     },
-    "quantity": null
+    "notes": {},
+    "facts": {}
   },
   {
     "index": "ink-1-ounce-bottle",
@@ -708,11 +712,11 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "cost": {
-      "unit": "gp",
-      "amount": 10
+    "numbers": {
+      "cost-gp": 10
     },
-    "quantity": null
+    "notes": {},
+    "facts": {}
   },
   {
     "index": "ink-pen",
@@ -721,11 +725,11 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "cost": {
-      "unit": "cp",
-      "amount": 2
+    "numbers": {
+      "cost-cp": 2
     },
-    "quantity": null
+    "notes": {},
+    "facts": {}
   },
   {
     "index": "jug-or-pitcher",
@@ -734,11 +738,11 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "cost": {
-      "unit": "cp",
-      "amount": 2
+    "numbers": {
+      "cost-cp": 2
     },
-    "quantity": null
+    "notes": {},
+    "facts": {}
   },
   {
     "index": "climbers-kit",
@@ -747,11 +751,11 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "cost": {
-      "unit": "gp",
-      "amount": 25
+    "numbers": {
+      "cost-gp": 25
     },
-    "quantity": null
+    "notes": {},
+    "facts": {}
   },
   {
     "index": "disguise-kit",
@@ -760,11 +764,11 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "cost": {
-      "unit": "gp",
-      "amount": 25
+    "numbers": {
+      "cost-gp": 25
     },
-    "quantity": null
+    "notes": {},
+    "facts": {}
   },
   {
     "index": "forgery-kit",
@@ -773,11 +777,11 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "cost": {
-      "unit": "gp",
-      "amount": 15
+    "numbers": {
+      "cost-gp": 15
     },
-    "quantity": null
+    "notes": {},
+    "facts": {}
   },
   {
     "index": "herbalism-kit",
@@ -786,11 +790,11 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "cost": {
-      "unit": "gp",
-      "amount": 5
+    "numbers": {
+      "cost-gp": 5
     },
-    "quantity": null
+    "notes": {},
+    "facts": {}
   },
   {
     "index": "healers-kit",
@@ -799,11 +803,11 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "cost": {
-      "unit": "gp",
-      "amount": 5
+    "numbers": {
+      "cost-gp": 5
     },
-    "quantity": null
+    "notes": {},
+    "facts": {}
   },
   {
     "index": "mess-kit",
@@ -812,11 +816,11 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "cost": {
-      "unit": "sp",
-      "amount": 2
+    "numbers": {
+      "cost-sp": 2
     },
-    "quantity": null
+    "notes": {},
+    "facts": {}
   },
   {
     "index": "poisoners-kit",
@@ -825,11 +829,11 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "cost": {
-      "unit": "gp",
-      "amount": 50
+    "numbers": {
+      "cost-gp": 50
     },
-    "quantity": null
+    "notes": {},
+    "facts": {}
   },
   {
     "index": "ladder-10-foot",
@@ -838,11 +842,11 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "cost": {
-      "unit": "sp",
-      "amount": 1
+    "numbers": {
+      "cost-sp": 1
     },
-    "quantity": null
+    "notes": {},
+    "facts": {}
   },
   {
     "index": "lamp",
@@ -851,11 +855,11 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "cost": {
-      "unit": "sp",
-      "amount": 5
+    "numbers": {
+      "cost-sp": 5
     },
-    "quantity": null
+    "notes": {},
+    "facts": {}
   },
   {
     "index": "lantern-bullseye",
@@ -864,11 +868,11 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "cost": {
-      "unit": "gp",
-      "amount": 10
+    "numbers": {
+      "cost-gp": 10
     },
-    "quantity": null
+    "notes": {},
+    "facts": {}
   },
   {
     "index": "lantern-hooded",
@@ -877,11 +881,11 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "cost": {
-      "unit": "gp",
-      "amount": 5
+    "numbers": {
+      "cost-gp": 5
     },
-    "quantity": null
+    "notes": {},
+    "facts": {}
   },
   {
     "index": "little-bag-of-sand",
@@ -890,11 +894,11 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "cost": {
-      "unit": "cp",
-      "amount": 0
+    "numbers": {
+      "cost-cp": 0
     },
-    "quantity": null
+    "notes": {},
+    "facts": {}
   },
   {
     "index": "lock",
@@ -903,11 +907,11 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "cost": {
-      "unit": "gp",
-      "amount": 10
+    "numbers": {
+      "cost-gp": 10
     },
-    "quantity": null
+    "notes": {},
+    "facts": {}
   },
   {
     "index": "magnifying-glass",
@@ -916,11 +920,11 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "cost": {
-      "unit": "gp",
-      "amount": 100
+    "numbers": {
+      "cost-gp": 100
     },
-    "quantity": null
+    "notes": {},
+    "facts": {}
   },
   {
     "index": "manacles",
@@ -929,11 +933,11 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "cost": {
-      "unit": "gp",
-      "amount": 2
+    "numbers": {
+      "cost-gp": 2
     },
-    "quantity": null
+    "notes": {},
+    "facts": {}
   },
   {
     "index": "mirror-steel",
@@ -942,11 +946,11 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "cost": {
-      "unit": "gp",
-      "amount": 5
+    "numbers": {
+      "cost-gp": 5
     },
-    "quantity": null
+    "notes": {},
+    "facts": {}
   },
   {
     "index": "oil-flask",
@@ -955,11 +959,11 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "cost": {
-      "unit": "sp",
-      "amount": 1
+    "numbers": {
+      "cost-sp": 1
     },
-    "quantity": null
+    "notes": {},
+    "facts": {}
   },
   {
     "index": "paper-one-sheet",
@@ -968,11 +972,11 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "cost": {
-      "unit": "sp",
-      "amount": 2
+    "numbers": {
+      "cost-sp": 2
     },
-    "quantity": null
+    "notes": {},
+    "facts": {}
   },
   {
     "index": "parchment-one-sheet",
@@ -981,11 +985,11 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "cost": {
-      "unit": "sp",
-      "amount": 1
+    "numbers": {
+      "cost-sp": 1
     },
-    "quantity": null
+    "notes": {},
+    "facts": {}
   },
   {
     "index": "perfume-vial",
@@ -994,11 +998,11 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "cost": {
-      "unit": "gp",
-      "amount": 5
+    "numbers": {
+      "cost-gp": 5
     },
-    "quantity": null
+    "notes": {},
+    "facts": {}
   },
   {
     "index": "pick-miners",
@@ -1007,11 +1011,11 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "cost": {
-      "unit": "gp",
-      "amount": 2
+    "numbers": {
+      "cost-gp": 2
     },
-    "quantity": null
+    "notes": {},
+    "facts": {}
   },
   {
     "index": "piton",
@@ -1020,11 +1024,11 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "cost": {
-      "unit": "cp",
-      "amount": 5
+    "numbers": {
+      "cost-cp": 5
     },
-    "quantity": null
+    "notes": {},
+    "facts": {}
   },
   {
     "index": "poison-basic-vial",
@@ -1033,11 +1037,11 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "cost": {
-      "unit": "gp",
-      "amount": 100
+    "numbers": {
+      "cost-gp": 100
     },
-    "quantity": null
+    "notes": {},
+    "facts": {}
   },
   {
     "index": "pole-10-foot",
@@ -1046,11 +1050,11 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "cost": {
-      "unit": "cp",
-      "amount": 5
+    "numbers": {
+      "cost-cp": 5
     },
-    "quantity": null
+    "notes": {},
+    "facts": {}
   },
   {
     "index": "pot-iron",
@@ -1059,11 +1063,11 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "cost": {
-      "unit": "gp",
-      "amount": 2
+    "numbers": {
+      "cost-gp": 2
     },
-    "quantity": null
+    "notes": {},
+    "facts": {}
   },
   {
     "index": "pouch",
@@ -1072,11 +1076,11 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "cost": {
-      "unit": "sp",
-      "amount": 5
+    "numbers": {
+      "cost-sp": 5
     },
-    "quantity": null
+    "notes": {},
+    "facts": {}
   },
   {
     "index": "quiver",
@@ -1085,11 +1089,11 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "cost": {
-      "unit": "gp",
-      "amount": 1
+    "numbers": {
+      "cost-gp": 1
     },
-    "quantity": null
+    "notes": {},
+    "facts": {}
   },
   {
     "index": "ram-portable",
@@ -1098,11 +1102,11 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "cost": {
-      "unit": "gp",
-      "amount": 4
+    "numbers": {
+      "cost-gp": 4
     },
-    "quantity": null
+    "notes": {},
+    "facts": {}
   },
   {
     "index": "rations-1-day",
@@ -1111,11 +1115,11 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "cost": {
-      "unit": "sp",
-      "amount": 5
+    "numbers": {
+      "cost-sp": 5
     },
-    "quantity": null
+    "notes": {},
+    "facts": {}
   },
   {
     "index": "reliquary",
@@ -1124,11 +1128,11 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "cost": {
-      "unit": "gp",
-      "amount": 5
+    "numbers": {
+      "cost-gp": 5
     },
-    "quantity": null
+    "notes": {},
+    "facts": {}
   },
   {
     "index": "robes",
@@ -1137,11 +1141,11 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "cost": {
-      "unit": "gp",
-      "amount": 1
+    "numbers": {
+      "cost-gp": 1
     },
-    "quantity": null
+    "notes": {},
+    "facts": {}
   },
   {
     "index": "rope-hempen-50-feet",
@@ -1150,11 +1154,11 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "cost": {
-      "unit": "gp",
-      "amount": 1
+    "numbers": {
+      "cost-gp": 1
     },
-    "quantity": null
+    "notes": {},
+    "facts": {}
   },
   {
     "index": "rope-silk-50-feet",
@@ -1163,11 +1167,11 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "cost": {
-      "unit": "gp",
-      "amount": 10
+    "numbers": {
+      "cost-gp": 10
     },
-    "quantity": null
+    "notes": {},
+    "facts": {}
   },
   {
     "index": "sack",
@@ -1176,11 +1180,11 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "cost": {
-      "unit": "cp",
-      "amount": 1
+    "numbers": {
+      "cost-cp": 1
     },
-    "quantity": null
+    "notes": {},
+    "facts": {}
   },
   {
     "index": "scale-merchants",
@@ -1189,11 +1193,11 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "cost": {
-      "unit": "gp",
-      "amount": 5
+    "numbers": {
+      "cost-gp": 5
     },
-    "quantity": null
+    "notes": {},
+    "facts": {}
   },
   {
     "index": "sealing-wax",
@@ -1202,11 +1206,11 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "cost": {
-      "unit": "sp",
-      "amount": 5
+    "numbers": {
+      "cost-sp": 5
     },
-    "quantity": null
+    "notes": {},
+    "facts": {}
   },
   {
     "index": "shovel",
@@ -1215,11 +1219,11 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "cost": {
-      "unit": "gp",
-      "amount": 2
+    "numbers": {
+      "cost-gp": 2
     },
-    "quantity": null
+    "notes": {},
+    "facts": {}
   },
   {
     "index": "signal-whistle",
@@ -1228,11 +1232,11 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "cost": {
-      "unit": "cp",
-      "amount": 5
+    "numbers": {
+      "cost-cp": 5
     },
-    "quantity": null
+    "notes": {},
+    "facts": {}
   },
   {
     "index": "signet-ring",
@@ -1241,11 +1245,11 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "cost": {
-      "unit": "gp",
-      "amount": 5
+    "numbers": {
+      "cost-gp": 5
     },
-    "quantity": null
+    "notes": {},
+    "facts": {}
   },
   {
     "index": "small-knife",
@@ -1254,11 +1258,11 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "cost": {
-      "unit": "cp",
-      "amount": 0
+    "numbers": {
+      "cost-cp": 0
     },
-    "quantity": null
+    "notes": {},
+    "facts": {}
   },
   {
     "index": "soap",
@@ -1267,11 +1271,11 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "cost": {
-      "unit": "cp",
-      "amount": 2
+    "numbers": {
+      "cost-cp": 2
     },
-    "quantity": null
+    "notes": {},
+    "facts": {}
   },
   {
     "index": "spellbook",
@@ -1280,11 +1284,11 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "cost": {
-      "unit": "gp",
-      "amount": 50
+    "numbers": {
+      "cost-gp": 50
     },
-    "quantity": null
+    "notes": {},
+    "facts": {}
   },
   {
     "index": "spike-iron",
@@ -1293,11 +1297,11 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "cost": {
-      "unit": "sp",
-      "amount": 1
+    "numbers": {
+      "cost-sp": 1
     },
-    "quantity": null
+    "notes": {},
+    "facts": {}
   },
   {
     "index": "spyglass",
@@ -1306,11 +1310,11 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "cost": {
-      "unit": "gp",
-      "amount": 1000
+    "numbers": {
+      "cost-gp": 1000
     },
-    "quantity": null
+    "notes": {},
+    "facts": {}
   },
   {
     "index": "string-10-feet",
@@ -1319,11 +1323,11 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "cost": {
-      "unit": "cp",
-      "amount": 0
+    "numbers": {
+      "cost-cp": 0
     },
-    "quantity": null
+    "notes": {},
+    "facts": {}
   },
   {
     "index": "tent-two-person",
@@ -1332,11 +1336,11 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "cost": {
-      "unit": "gp",
-      "amount": 2
+    "numbers": {
+      "cost-gp": 2
     },
-    "quantity": null
+    "notes": {},
+    "facts": {}
   },
   {
     "index": "tinderbox",
@@ -1345,11 +1349,11 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "cost": {
-      "unit": "sp",
-      "amount": 5
+    "numbers": {
+      "cost-sp": 5
     },
-    "quantity": null
+    "notes": {},
+    "facts": {}
   },
   {
     "index": "torch",
@@ -1358,11 +1362,11 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "cost": {
-      "unit": "cp",
-      "amount": 1
+    "numbers": {
+      "cost-cp": 1
     },
-    "quantity": null
+    "notes": {},
+    "facts": {}
   },
   {
     "index": "vestments",
@@ -1371,11 +1375,11 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "cost": {
-      "unit": "cp",
-      "amount": 0
+    "numbers": {
+      "cost-cp": 0
     },
-    "quantity": null
+    "notes": {},
+    "facts": {}
   },
   {
     "index": "vial",
@@ -1384,11 +1388,11 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "cost": {
-      "unit": "gp",
-      "amount": 1
+    "numbers": {
+      "cost-gp": 1
     },
-    "quantity": null
+    "notes": {},
+    "facts": {}
   },
   {
     "index": "waterskin",
@@ -1397,11 +1401,11 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "cost": {
-      "unit": "sp",
-      "amount": 2
+    "numbers": {
+      "cost-sp": 2
     },
-    "quantity": null
+    "notes": {},
+    "facts": {}
   },
   {
     "index": "whetstone",
@@ -1410,11 +1414,11 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "cost": {
-      "unit": "cp",
-      "amount": 1
+    "numbers": {
+      "cost-cp": 1
     },
-    "quantity": null
+    "notes": {},
+    "facts": {}
   },
   {
     "index": "burglars-pack",
@@ -1423,11 +1427,11 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "cost": {
-      "unit": "gp",
-      "amount": 16
+    "numbers": {
+      "cost-gp": 16
     },
-    "quantity": null
+    "notes": {},
+    "facts": {}
   },
   {
     "index": "diplomats-pack",
@@ -1436,11 +1440,11 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "cost": {
-      "unit": "gp",
-      "amount": 39
+    "numbers": {
+      "cost-gp": 39
     },
-    "quantity": null
+    "notes": {},
+    "facts": {}
   },
   {
     "index": "dungeoneers-pack",
@@ -1449,11 +1453,11 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "cost": {
-      "unit": "gp",
-      "amount": 12
+    "numbers": {
+      "cost-gp": 12
     },
-    "quantity": null
+    "notes": {},
+    "facts": {}
   },
   {
     "index": "entertainers-pack",
@@ -1462,11 +1466,11 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "cost": {
-      "unit": "gp",
-      "amount": 40
+    "numbers": {
+      "cost-gp": 40
     },
-    "quantity": null
+    "notes": {},
+    "facts": {}
   },
   {
     "index": "explorers-pack",
@@ -1475,11 +1479,11 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "cost": {
-      "unit": "gp",
-      "amount": 10
+    "numbers": {
+      "cost-gp": 10
     },
-    "quantity": null
+    "notes": {},
+    "facts": {}
   },
   {
     "index": "priests-pack",
@@ -1488,11 +1492,11 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "cost": {
-      "unit": "gp",
-      "amount": 19
+    "numbers": {
+      "cost-gp": 19
     },
-    "quantity": null
+    "notes": {},
+    "facts": {}
   },
   {
     "index": "scholars-pack",
@@ -1501,10 +1505,10 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "cost": {
-      "unit": "gp",
-      "amount": 40
+    "numbers": {
+      "cost-gp": 40
     },
-    "quantity": null
+    "notes": {},
+    "facts": {}
   }
 ]

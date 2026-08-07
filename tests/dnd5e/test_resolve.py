@@ -4,21 +4,21 @@ from random import Random
 from fivee_test_support import RAT, SWORD, armed, dnd5e_game, wizardly
 from pydantic import JsonValue
 
-from aidm.engines.dnd5e.actions import FAILURE, SUCCESS, Attack, CastSpell, Rest, UseFeature
-from aidm.engines.dnd5e.rules import PLUGIN
 from aidm.engines.loader import Engine
-from aidm.state.base import PLAYER_ID, EntityId, Frozen
+from aidm.state.base import PLAYER_ID, EntityId
 from aidm.state.effects import AddTag, SpendCounter
 from aidm.state.plan import OutcomeBranch, TurnPlanBase
 from aidm.state.world import GameState, player_sheet, sheet_of
 
+SUCCESS = "success"
+FAILURE = "failure"
 ACTS = ("attack", "cast-spell", "check", "use-feature", "rest", "improvise")
 WOUNDED = OutcomeBranch(outcome=SUCCESS, effects=(AddTag(entity_id=RAT, tag_id="wounded"),))
 UNSCATHED = OutcomeBranch(outcome=FAILURE, effects=(AddTag(entity_id=RAT, tag_id="unscathed"),))
 
 
 def _plan(
-    engine: Engine, action: Frozen | None, *, branches: tuple[OutcomeBranch, ...] = ()
+    engine: Engine, action: object | None, *, branches: tuple[OutcomeBranch, ...] = ()
 ) -> TurnPlanBase:
     return engine.plan_type.model_validate(
         {"intent": "Kael acts.", "tone": "tense", "action": action, "branches": branches}
@@ -58,7 +58,7 @@ def test_a_weapon_attack_that_hits_rolls_damage_and_applies_the_success_branch()
     hit = _set_number(ready, RAT, "armor-class", 1)
     plan = _plan(
         engine,
-        Attack(actor_id=PLAYER_ID, target_id=RAT, weapon_item_id=SWORD),
+        {"act": "attack", "actor_id": PLAYER_ID, "target_id": RAT, "weapon_item_id": SWORD},
         branches=(WOUNDED, UNSCATHED),
     )
     assert engine.check_plan(hit, plan) is None
@@ -86,7 +86,7 @@ def test_the_same_attack_missing_leaves_the_rat_untouched() -> None:
     miss = _set_number(ready, RAT, "armor-class", 26)
     plan = _plan(
         engine,
-        Attack(actor_id=PLAYER_ID, target_id=RAT, weapon_item_id=SWORD),
+        {"act": "attack", "actor_id": PLAYER_ID, "target_id": RAT, "weapon_item_id": SWORD},
         branches=(WOUNDED, UNSCATHED),
     )
 
@@ -105,18 +105,29 @@ def test_a_stat_block_attack_needs_exactly_one_source_for_its_numbers() -> None:
     engine, state = dnd5e_game()
     ready = armed(state)
 
-    stat_block = Attack(actor_id=RAT, target_id=PLAYER_ID, attack_bonus=4, damage="1d4+2")
+    stat_block = {
+        "act": "attack",
+        "actor_id": RAT,
+        "target_id": PLAYER_ID,
+        "attack_bonus": 4,
+        "damage": "1d4+2",
+    }
     plan = _plan(engine, stat_block)
     assert engine.check_plan(ready, plan) is None
     facts = engine.resolve_action(ready.draft(), plan, Random(1))
     assert _number(facts[0].data["vs"]) == 12  # Kael's own armour class
 
-    both = Attack(
-        actor_id=RAT, target_id=PLAYER_ID, weapon_item_id=SWORD, attack_bonus=4, damage="1d4+2"
-    )
+    both = {
+        "act": "attack",
+        "actor_id": RAT,
+        "target_id": PLAYER_ID,
+        "weapon_item_id": SWORD,
+        "attack_bonus": 4,
+        "damage": "1d4+2",
+    }
     assert "leave `attack_bonus` and `damage` null" in _refusal(engine, ready, _plan(engine, both))
 
-    neither = Attack(actor_id=RAT, target_id=PLAYER_ID)
+    neither = {"act": "attack", "actor_id": RAT, "target_id": PLAYER_ID}
     assert "needs either a `weapon_item_id`" in _refusal(engine, ready, _plan(engine, neither))
 
 
@@ -125,9 +136,13 @@ def test_a_plan_that_also_writes_the_cost_the_engine_pays_is_refused() -> None:
     second spend on top, landing `slot-N` at −2 for one cast."""
     engine, state = dnd5e_game()
     ready = wizardly(armed(state))
-    cast = CastSpell(
-        actor_id=PLAYER_ID, spell="srd-2014/spells/magic-missile", slot_level=1, target_id=RAT
-    )
+    cast = {
+        "act": "cast-spell",
+        "actor_id": PLAYER_ID,
+        "spell": "srd-2014/spells/magic-missile",
+        "slot_level": 1,
+        "target_id": RAT,
+    }
     manual = SpendCounter(entity_id=PLAYER_ID, counter="slot-1", amount=1)
 
     doubled = _plan(engine, cast).model_copy(update={"effects": (manual,)})
@@ -140,7 +155,12 @@ def test_a_plan_that_also_writes_the_cost_the_engine_pays_is_refused() -> None:
     )
     assert "already spends 'slot-1'" in _refusal(engine, ready, branched)
 
-    second_wind = UseFeature(actor_id=PLAYER_ID, counter="second-wind", heal="1d10 + 1")
+    second_wind = {
+        "act": "use-feature",
+        "actor_id": PLAYER_ID,
+        "counter": "second-wind",
+        "heal": "1d10 + 1",
+    }
     drained = _plan(engine, second_wind).model_copy(
         update={"effects": (SpendCounter(entity_id=PLAYER_ID, counter="second-wind", amount=1),)}
     )
@@ -155,9 +175,13 @@ def test_a_cast_spends_its_slot_before_anything_follows() -> None:
     engine, state = dnd5e_game()
     ready = wizardly(armed(state))
 
-    from_one = CastSpell(
-        actor_id=PLAYER_ID, spell="srd-2014/spells/magic-missile", slot_level=1, target_id=RAT
-    )
+    from_one = {
+        "act": "cast-spell",
+        "actor_id": PLAYER_ID,
+        "spell": "srd-2014/spells/magic-missile",
+        "slot_level": 1,
+        "target_id": RAT,
+    }
     plan_one = _plan(engine, from_one)
     assert engine.check_plan(ready, plan_one) is None
     draft_one = ready.draft()
@@ -167,9 +191,13 @@ def test_a_cast_spends_its_slot_before_anything_follows() -> None:
     damage_one = next(fact for fact in facts_one if fact.kind == "dice_rolled")
     assert 6 <= _number(damage_one.data["total"]) <= 15
 
-    from_two = CastSpell(
-        actor_id=PLAYER_ID, spell="srd-2014/spells/magic-missile", slot_level=2, target_id=RAT
-    )
+    from_two = {
+        "act": "cast-spell",
+        "actor_id": PLAYER_ID,
+        "spell": "srd-2014/spells/magic-missile",
+        "slot_level": 2,
+        "target_id": RAT,
+    }
     plan_two = _plan(engine, from_two)
     draft_two = ready.draft()
     facts_two = engine.resolve_action(draft_two, plan_two, Random(2))
@@ -190,9 +218,13 @@ def test_a_save_based_spell_rolls_a_fixed_dc_and_halves_on_a_saved_target() -> N
     ready = _hp_ceiling(wizardly(armed(state)), RAT, 100)
     plan = _plan(
         engine,
-        CastSpell(
-            actor_id=PLAYER_ID, spell="srd-2014/spells/burning-hands", slot_level=1, target_id=RAT
-        ),
+        {
+            "act": "cast-spell",
+            "actor_id": PLAYER_ID,
+            "spell": "srd-2014/spells/burning-hands",
+            "slot_level": 1,
+            "target_id": RAT,
+        },
     )
 
     failing = _set_number(ready, RAT, "dexterity", -100)
@@ -221,7 +253,8 @@ def test_the_bookkeeping_actions_spend_heal_and_recharge() -> None:
     player_sheet(hurt).counters["hp"].current = 0
     hurt = hurt.committed()
     feature_plan = _plan(
-        engine, UseFeature(actor_id=PLAYER_ID, counter="second-wind", heal="1d10 + 1")
+        engine,
+        {"act": "use-feature", "actor_id": PLAYER_ID, "counter": "second-wind", "heal": "1d10 + 1"},
     )
     assert engine.check_plan(hurt, feature_plan) is None
 
@@ -233,7 +266,7 @@ def test_the_bookkeeping_actions_spend_heal_and_recharge() -> None:
     assert 2 <= _number(heal_fact.data["delta"]) <= 11
 
     rested = spent_draft.committed()
-    rest_plan = _plan(engine, Rest(actor_id=PLAYER_ID, label="short-rest"))
+    rest_plan = _plan(engine, {"act": "rest", "actor_id": PLAYER_ID, "label": "short-rest"})
     rest_draft = rested.draft()
     rest_facts = engine.resolve_action(rest_draft, rest_plan, Random(1))
     assert [fact.kind for fact in rest_facts] == ["recharged"]
@@ -241,7 +274,7 @@ def test_the_bookkeeping_actions_spend_heal_and_recharge() -> None:
 
     uncontested = _plan(
         engine,
-        Rest(actor_id=PLAYER_ID, label="short-rest"),
+        {"act": "rest", "actor_id": PLAYER_ID, "label": "short-rest"},
         branches=(OutcomeBranch(outcome=SUCCESS, effects=()),),
     )
     assert "settles no outcome" in _refusal(engine, rested, uncontested)
@@ -276,7 +309,7 @@ def test_a_string_field_that_merely_looks_like_json_is_left_alone() -> None:
 def test_every_action_is_worked_through_in_the_directors_instructions() -> None:
     """An action without an example teaches the model nothing: coverage is asserted, not hoped."""
     engine, _ = dnd5e_game()
-    assert len(PLUGIN.actions) == len(ACTS)
+    assert len(engine.actions) == len(ACTS)
     for act in ACTS:
         assert engine.director_instructions.count(f'"act": "{act}"') >= 1
 
@@ -289,16 +322,19 @@ def test_a_cast_checks_its_target_and_a_roll_never_names_an_unrevealed_actor() -
 
     away = _plan(
         engine,
-        CastSpell(
-            actor_id=PLAYER_ID,
-            spell="srd-2014/spells/cure-wounds",
-            slot_level=1,
-            target_id=EntityId("mara"),
-        ),
+        {
+            "act": "cast-spell",
+            "actor_id": PLAYER_ID,
+            "spell": "srd-2014/spells/cure-wounds",
+            "slot_level": 1,
+            "target_id": EntityId("mara"),
+        },
     )
     assert "not here with the player" in _refusal(engine, ready, away)
 
     draft = ready.draft()
     draft.world.record(RAT).entity.known = False
-    attack = _plan(engine, Attack(actor_id=PLAYER_ID, target_id=RAT, weapon_item_id=SWORD))
+    attack = _plan(
+        engine, {"act": "attack", "actor_id": PLAYER_ID, "target_id": RAT, "weapon_item_id": SWORD}
+    )
     assert engine.resolve_action(draft, attack, Random(4))[0].kind == "entity_discovered"

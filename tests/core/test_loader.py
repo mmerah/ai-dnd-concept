@@ -11,7 +11,15 @@ from pydantic_ai.usage import RunUsage
 from aidm.content.authored import AuthoredEntity, AuthoredWorld
 from aidm.engines.loader import Engine, EnginePlugin, load_engine
 from aidm.state.base import PLAYER_ID, SAVE_VERSION, EngineId, Entity, EntityId, Slug
-from aidm.state.packs import ContentRef, Manifest, Pack, pack_format, read_pack, write_pack
+from aidm.state.packs import (
+    ContentRef,
+    Manifest,
+    Pack,
+    pack_format,
+    read_pack,
+    validate_pack,
+    write_pack,
+)
 from aidm.state.packs import Record as PackRecord
 from aidm.state.sheet import Counter, Sheet
 from aidm.state.world import GameState, Record, ScenarioMeta, WorldState
@@ -53,15 +61,14 @@ PACK = Pack(
     },
 )
 
-SPEC = {
+SPEC: dict[str, object] = {
     "templates": {
         "actor": {
             "numbers": {"armor-class": 10},
             "counters": {"hp": {"current": 1, "maximum": 1, "recharge": "long-rest"}},
         },
     },
-    "recharge": {"long-rest": ["long-rest"]},
-    "collections": ["monsters"],
+    "collections": {"monsters": {}},
 }
 
 
@@ -190,9 +197,16 @@ async def test_read_content_renders_the_record_and_refuses_a_bad_ref(tmp_path: P
         _ = await _read_content(toolset, "testpack/monsters/absent")
 
 
+def test_validate_pack_refuses_a_record_missing_a_required_fact() -> None:
+    fmt = pack_format({"monsters": {"challenge": "int"}}, {"monsters": Monster})
+
+    with pytest.raises(ValueError, match="required int fact 'challenge'"):
+        validate_pack(PACK, fmt)
+
+
 def test_a_pack_round_trips_byte_for_byte(tmp_path: Path) -> None:
     pack_dir = _engine_dir(tmp_path) / "packs" / "testpack"
-    fmt = pack_format(("monsters",), {"monsters": Monster})
+    fmt = pack_format({"monsters": {}}, {"monsters": Monster})
 
     pack = read_pack(pack_dir, fmt)
     other_dir = tmp_path / "roundtrip"

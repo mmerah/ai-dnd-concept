@@ -15,6 +15,7 @@ from .effects import (
     GrantCounter,
     MoveActor,
     MoveItem,
+    Refill,
     RemoveRelation,
     RemoveTag,
     Reveal,
@@ -56,6 +57,8 @@ def apply_effect(
             return _spend(draft, effect)
         case GrantCounter():
             return _grant(draft, effect)
+        case Refill():
+            return _refill(draft, effect)
         case AddTag():
             return _add_tag(draft, effect)
         case RemoveTag():
@@ -83,7 +86,7 @@ def apply_effect(
 def _permitted(effect: Effect, *, advancing: bool) -> None:
     if advancing:
         # A denylist suffices: `SheetDelta` validation is what actually bounds this surface.
-        if isinstance(effect, WORLD_OPS):
+        if isinstance(effect, (*WORLD_OPS, Refill)):
             raise ValueError(f"{effect.op!r} changes the world; advancement writes only the sheet")
         if effect.entity_id != PLAYER_ID:
             raise ValueError(f"advancement writes {PLAYER_ID!r}, not {effect.entity_id!r}")
@@ -276,6 +279,24 @@ def _grant(draft: GameState, effect: GrantCounter) -> list[Fact]:
         *seen,
         _explained_fact(entity, "counter_granted", trace, data, effect.why, narrate=False),
     ]
+
+
+def _refill(draft: GameState, effect: Refill) -> list[Fact]:
+    entity, sheet, seen = _target(draft, effect.entity_id)
+    keys: list[str] = []
+    for key, counter in sorted(sheet.counters.items()):
+        maximum = counter.maximum
+        if maximum is None or counter.recharge not in effect.recharges:
+            continue
+        if counter.current == maximum:
+            continue
+        counter.current = maximum
+        keys.append(key)
+    if not keys:
+        return seen
+    trace = f"{entity.name} took {effect.label}: refilled {', '.join(keys)}"
+    data: Mapping[str, JsonValue] = {"label": effect.label, "counters": list(keys)}
+    return [*seen, entity_fact(entity, "recharged", trace, data)]
 
 
 def _add_tag(draft: GameState, effect: AddTag) -> list[Fact]:

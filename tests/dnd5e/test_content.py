@@ -1,23 +1,16 @@
-import pytest
 from fivee_test_support import PACK_DIR, pack_format
 
-from aidm.engines.dnd5e.records import (
-    SpellAmount,
-    SpellRecord,
-    WeaponRecord,
-    spell_of,
-    spellcasting_ability,
-    weapon_of,
-)
-from aidm.state.packs import Content, ContentRef, load
-from aidm.state.sheet import Sheet
+from aidm.state.packs import Content, ContentRef, Record, load
 
 LONGSWORD = ContentRef(pack="srd-2014", collection="weapons", index="longsword")
+DAGGER = ContentRef(pack="srd-2014", collection="weapons", index="dagger")
+SHORTBOW = ContentRef(pack="srd-2014", collection="weapons", index="shortbow")
 LANTERN = ContentRef(pack="srd-2014", collection="gear", index="lantern-hooded")
 MAGIC_MISSILE = ContentRef(pack="srd-2014", collection="spells", index="magic-missile")
 BURNING_HANDS = ContentRef(pack="srd-2014", collection="spells", index="burning-hands")
 FIRE_BOLT = ContentRef(pack="srd-2014", collection="spells", index="fire-bolt")
 CURE_WOUNDS = ContentRef(pack="srd-2014", collection="spells", index="cure-wounds")
+HOLD_PERSON = ContentRef(pack="srd-2014", collection="spells", index="hold-person")
 WIZARD = ContentRef(pack="srd-2014", collection="classes", index="wizard")
 FIGHTER = ContentRef(pack="srd-2014", collection="classes", index="fighter")
 
@@ -26,61 +19,79 @@ def _content() -> Content:
     return load((PACK_DIR,), pack_format())
 
 
-def test_weapon_dice_picks_the_versatile_expression_only_two_handed() -> None:
+def test_weapon_facts_carry_damage_and_the_versatile_expression() -> None:
     content = _content()
 
-    longsword = content.require(LONGSWORD, WeaponRecord)
-    assert (longsword.damage, longsword.versatile_damage) == ("1d8", "1d10")
-    assert longsword.dice(two_handed=False) == "1d8"
-    assert longsword.dice(two_handed=True) == "1d10"
+    longsword = content.require(LONGSWORD, Record)
+    assert longsword.facts == {"damage": "1d8", "versatile-damage": "1d10"}
+    assert "damage" not in content.require(LANTERN, Record).facts
 
 
-def test_weapon_of_reads_the_first_weapons_ref_on_an_items_sheet() -> None:
-    content = _content()
-    carried = Sheet(kind="item", refs=(LANTERN, LONGSWORD))
-
-    facts = weapon_of(content, carried)
-
-    assert facts is not None
-    assert facts.damage == "1d8"
-    assert weapon_of(content, Sheet(kind="item", refs=(LANTERN,))) is None
-
-
-def test_spell_amounts_scale_by_slot_or_for_a_cantrip_by_caster_level() -> None:
-    """`damage_at`/`heal_at` pick the base row below the first threshold and the scaled row at
-    and above it."""
+def test_weapon_facts_flag_finesse_and_ranged() -> None:
     content = _content()
 
-    magic_missile = content.require(MAGIC_MISSILE, SpellRecord)
-    assert magic_missile.damage_at(1) == SpellAmount(dice="3d4 + 3")
-    assert magic_missile.damage_at(2) == SpellAmount(dice="4d4 + 4")
-
-    burning_hands = content.require(BURNING_HANDS, SpellRecord)
-    assert burning_hands.damage_at(1) == SpellAmount(dice="3d6")
-    assert burning_hands.damage_at(2) == SpellAmount(dice="4d6")
-
-    fire_bolt = content.require(FIRE_BOLT, SpellRecord)
-    assert fire_bolt.level is None
-    assert fire_bolt.damage_at(4) == SpellAmount(dice="1d10")
-    assert fire_bolt.damage_at(5) == SpellAmount(dice="2d10")
-
-    cure_wounds = content.require(CURE_WOUNDS, SpellRecord)
-    heal = cure_wounds.heal
-    assert heal is not None and heal.with_modifier is True
-    assert (heal.dice, heal.bonus(2)) == ("1d8", 2)
-    heal_at_two = cure_wounds.heal_at(2)
-    assert heal_at_two is not None and heal_at_two.dice == "2d8"
+    assert content.require(DAGGER, Record).facts.get("finesse") is True
+    assert content.require(SHORTBOW, Record).facts.get("ranged") is True
 
 
-def test_spell_of_raises_for_a_ref_that_names_no_spell() -> None:
+def test_magic_missile_is_a_leveled_spell_with_no_attack_or_save() -> None:
     content = _content()
 
-    with pytest.raises(ValueError, match="names no spell"):
-        _ = spell_of(content, str(LONGSWORD))
+    magic_missile = content.require(MAGIC_MISSILE, Record)
+    assert magic_missile.facts.get("level") == 1
+    assert "attack-type" not in magic_missile.facts
+    assert "save-ability" not in magic_missile.facts
+    ladder = magic_missile.facts.get("damage-ladder")
+    assert isinstance(ladder, list)
+    assert ladder[0] == [0, "3d4 + 3"]
 
 
-def test_spellcasting_ability_reads_the_class_record_and_none_for_a_class_that_casts_none() -> None:
+def test_burning_hands_is_a_save_for_half_spell() -> None:
     content = _content()
 
-    assert spellcasting_ability(content, Sheet(kind="actor", refs=(WIZARD,))) == "intelligence"
-    assert spellcasting_ability(content, Sheet(kind="actor", refs=(FIGHTER,))) is None
+    burning_hands = content.require(BURNING_HANDS, Record)
+    assert burning_hands.facts.get("save-ability") == "dexterity"
+    assert burning_hands.facts.get("save-success") == "half"
+    ladder = burning_hands.facts.get("damage-ladder")
+    assert isinstance(ladder, list)
+    assert ladder[0] == [0, "3d6"]
+
+
+def test_fire_bolt_is_a_cantrip_ranged_spell_attack() -> None:
+    content = _content()
+
+    fire_bolt = content.require(FIRE_BOLT, Record)
+    assert "level" not in fire_bolt.facts
+    assert fire_bolt.facts.get("attack-type") == "ranged"
+    assert fire_bolt.facts.get("damage-ladder") == [
+        [0, "1d10"],
+        [5, "2d10"],
+        [11, "3d10"],
+        [17, "4d10"],
+    ]
+
+
+def test_cure_wounds_heals_with_a_modifier_and_carries_no_damage_ladder() -> None:
+    content = _content()
+
+    cure_wounds = content.require(CURE_WOUNDS, Record)
+    ladder = cure_wounds.facts.get("heal-ladder")
+    assert isinstance(ladder, list)
+    assert ladder[0] == [0, "1d8"]
+    assert cure_wounds.facts.get("heal-with-modifier") is True
+    assert "damage-ladder" not in cure_wounds.facts
+
+
+def test_hold_person_is_a_concentration_save_or_suffer_spell() -> None:
+    content = _content()
+
+    hold_person = content.require(HOLD_PERSON, Record)
+    assert hold_person.facts.get("concentration") is True
+    assert hold_person.facts.get("save-success") == "none"
+
+
+def test_spellcasting_ability_is_a_class_fact_absent_for_a_class_that_casts_none() -> None:
+    content = _content()
+
+    assert content.require(WIZARD, Record).facts.get("spellcasting") == "intelligence"
+    assert "spellcasting" not in content.require(FIGHTER, Record).facts

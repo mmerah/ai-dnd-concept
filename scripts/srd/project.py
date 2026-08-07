@@ -12,11 +12,15 @@ from typing import Literal
 
 from pydantic import TypeAdapter
 
-from aidm.engines.dnd5e.records import (
+from aidm.state.base import Slug
+from aidm.state.dice import ConstantTerm, DiceExpr, DiceTerm, terms
+from aidm.state.packs import ContentRef, Record
+
+from . import upstream as up
+from .interpret import (
     ABILITY_BY_ABBREVIATION,
     AbilityBonus,
     AbilityMinimum,
-    AlignmentRecord,
     ArmorRecord,
     BackgroundRecord,
     ClassRecord,
@@ -45,11 +49,6 @@ from aidm.engines.dnd5e.records import (
     WeaponRecord,
     weapon_damage_note,
 )
-from aidm.state.base import Slug
-from aidm.state.dice import ConstantTerm, DiceExpr, DiceTerm, terms
-from aidm.state.packs import ContentRef, Record
-
-from . import upstream as up
 
 _SLOT_CREATIONS: TypeAdapter[list[up.SlotCreation]] = TypeAdapter(list[up.SlotCreation])
 
@@ -600,7 +599,7 @@ def subrace(record: up.Subrace) -> SubraceRecord:
             _optional("Ability scores", _bonuses(record.ability_bonuses)),
             _optional("Traits", _names(record.racial_traits)),
         ),
-        race=record.race.name,
+        race=record.race.index,
         ability_bonuses=tuple(
             AbilityBonus(ability=bonus.ability_score.name, bonus=bonus.bonus)
             for bonus in record.ability_bonuses
@@ -731,12 +730,12 @@ def subclass(record: up.Subclass) -> SubclassRecord:
         text=_joined(
             f"{record.class_.name} {record.subclass_flavor.lower()}.", _prose(record.desc)
         ),
-        klass=record.class_.name,
-        flavor=record.subclass_flavor,
+        klass=record.class_.index,
         spell_grants=tuple(
             SpellGrant(
                 gate=", ".join(p.name for p in entry.prerequisites) or "always",
                 spell=entry.spell.name,
+                spell_index=entry.spell.index,
             )
             for entry in record.spells
         ),
@@ -762,17 +761,14 @@ def language(record: up.Language) -> LanguageRecord:
             _optional("Typical speakers", ", ".join(record.typical_speakers)),
         ),
         category=record.type,
-        script=record.script,
-        typical_speakers=tuple(record.typical_speakers),
     )
 
 
-def alignment(record: up.Alignment) -> AlignmentRecord:
-    return AlignmentRecord(
+def alignment(record: up.Alignment) -> Record:
+    return Record(
         index=record.index,
         name=record.name,
         text=_joined(f"Abbreviated {record.abbreviation}.", _prose(record.desc)),
-        abbreviation=record.abbreviation,
     )
 
 
@@ -872,7 +868,7 @@ def proficiency(record: up.Proficiency) -> ProficiencyRecord:
         name=record.name,
         text=f"{record.type} proficiency: {record.reference.name}.",
         category=record.type,
-        reference=record.reference.name,
+        reference=record.reference.index,
     )
 
 

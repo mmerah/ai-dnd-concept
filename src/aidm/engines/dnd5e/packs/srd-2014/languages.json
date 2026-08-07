@@ -6,11 +6,11 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "category": "Standard",
-    "script": "Common",
-    "typical_speakers": [
-      "Humans"
-    ]
+    "numbers": {},
+    "notes": {},
+    "facts": {
+      "category": "Standard"
+    }
   },
   {
     "index": "dwarvish",
@@ -19,11 +19,11 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "category": "Standard",
-    "script": "Dwarvish",
-    "typical_speakers": [
-      "Dwarves"
-    ]
+    "numbers": {},
+    "notes": {},
+    "facts": {
+      "category": "Standard"
+    }
   },
   {
     "index": "elvish",
@@ -32,11 +32,11 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "category": "Standard",
-    "script": "Elvish",
-    "typical_speakers": [
-      "Elves"
-    ]
+    "numbers": {},
+    "notes": {},
+    "facts": {
+      "category": "Standard"
+    }
   },
   {
     "index": "giant",
@@ -45,12 +45,11 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "category": "Standard",
-    "script": "Dwarvish",
-    "typical_speakers": [
-      "Ogres",
-      "Giants"
-    ]
+    "numbers": {},
+    "notes": {},
+    "facts": {
+      "category": "Standard"
+    }
   },
   {
     "index": "gnomish",
@@ -59,11 +58,11 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "category": "Standard",
-    "script": "Dwarvish",
-    "typical_speakers": [
-      "Gnomes"
-    ]
+    "numbers": {},
+    "notes": {},
+    "facts": {
+      "category": "Standard"
+    }
   },
   {
     "index": "goblin",
@@ -72,11 +71,11 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "category": "Standard",
-    "script": "Dwarvish",
-    "typical_speakers": [
-      "Goblinoids"
-    ]
+    "numbers": {},
+    "notes": {},
+    "facts": {
+      "category": "Standard"
+    }
   },
   {
     "index": "halfling",
@@ -85,11 +84,11 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "category": "Standard",
-    "script": "Common",
-    "typical_speakers": [
-      "Halflings"
-    ]
+    "numbers": {},
+    "notes": {},
+    "facts": {
+      "category": "Standard"
+    }
   },
   {
     "index": "orc",
@@ -98,11 +97,11 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "category": "Standard",
-    "script": "Dwarvish",
-    "typical_speakers": [
-      "Orcs"
-    ]
+    "numbers": {},
+    "notes": {},
+    "facts": {
+      "category": "Standard"
+    }
   },
   {
     "index": "abyssal",
@@ -111,11 +110,11 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "category": "Exotic",
-    "script": "Infernal",
-    "typical_speakers": [
-      "Demons"
-    ]
+    "numbers": {},
+    "notes": {},
+    "facts": {
+      "category": "Exotic"
+    }
   },
   {
     "index": "celestial",
@@ -124,11 +123,11 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "category": "Exotic",
-    "script": "Celestial",
-    "typical_speakers": [
-      "Celestials"
-    ]
+    "numbers": {},
+    "notes": {},
+    "facts": {
+      "category": "Exotic"
+    }
   },
   {
     "index": "draconic",
@@ -137,12 +136,11 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "category": "Exotic",
-    "script": "Draconic",
-    "typical_speakers": [
-      "Dragons",
-      "Dragonborn"
-    ]
+    "numbers": {},
+    "notes": {},
+    "facts": {
+      "category": "Exotic"
+    }
   },
   {
     "index": "deep-speech",
@@ -151,12 +149,11 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "category": "Exotic",
-    "script": "",
-    "typical_speakers": [
-      "Aboleths",
-      "Cloakers"
-    ]
+    "numbers": {},
+    "notes": {},
+    "facts": {
+      "category": "Exotic"
+    }
   },
   {
     "index": "infernal",
@@ -165,11 +162,11 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "category": "Exotic",
-    "script": "Infernal",
-    "typical_speakers": [
-      "Devils"
-    ]
+    "numbers": {},
+    "notes": {},
+    "facts": {
+      "category": "Exotic"
+    }
   },
   {
     "index": "primordial",
@@ -178,11 +175,11 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "category": "Exotic",
-    "script": "Dwarvish",
-    "typical_speakers": [
-      "Elementals"
-    ]
+    "numbers": {},
+    "notes": {},
+    "facts": {
+      "category": "Exotic"
+    }
   },
   {
     "index": "sylvan",
@@ -191,11 +188,11 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "category": "Exotic",
-    "script": "Elvish",
-    "typical_speakers": [
-      "Fey creatures"
-    ]
+    "numbers": {},
+    "notes": {},
+    "facts": {
+      "category": "Exotic"
+    }
   },
   {
     "index": "undercommon",
@@ -204,10 +201,10 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "category": "Exotic",
-    "script": "Elvish",
-    "typical_speakers": [
-      "Underdark traders"
-    ]
+    "numbers": {},
+    "notes": {},
+    "facts": {
+      "category": "Exotic"
+    }
   }
 ]

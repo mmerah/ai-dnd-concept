@@ -18,37 +18,41 @@
       }
     }
   },
-  "recharge": {
-    "short-rest": [
-      "short-rest"
-    ],
-    "long-rest": [
-      "short-rest",
-      "long-rest"
-    ]
-  },
-  "collections": [
-    "monsters",
-    "weapons",
-    "armor",
-    "gear",
-    "tools",
-    "vehicles",
-    "magic_items",
-    "spells",
-    "skills",
-    "conditions",
-    "alignments",
-    "languages",
-    "classes",
-    "subclasses",
-    "levels",
-    "features",
-    "races",
-    "subraces",
-    "traits",
-    "backgrounds",
-    "feats",
-    "proficiencies"
-  ]
+  "collections": {
+    "monsters": {},
+    "weapons": {},
+    "armor": {},
+    "gear": {},
+    "tools": {},
+    "vehicles": {},
+    "magic_items": {},
+    "spells": {},
+    "skills": {
+      "ability": "slug"
+    },
+    "conditions": {},
+    "alignments": {},
+    "languages": {
+      "category": "str"
+    },
+    "classes": {},
+    "subclasses": {
+      "class": "slug"
+    },
+    "levels": {},
+    "features": {
+      "level": "int"
+    },
+    "races": {},
+    "subraces": {
+      "race": "slug"
+    },
+    "traits": {},
+    "backgrounds": {},
+    "feats": {},
+    "proficiencies": {
+      "category": "str",
+      "reference": "slug"
+    }
+  }
 }

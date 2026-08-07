@@ -6,6 +6,10 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "starting_gold": 15
+    "numbers": {
+      "starting-gold": 15
+    },
+    "notes": {},
+    "facts": {}
   }
 ]

@@ -12,16 +12,19 @@ from aidm.state.packs import (
     Manifest,
     Pack,
     Record,
+    pack_format,
     validate_pack,
 )
 
 from . import project
 from . import upstream as up
+from .interpret import Interpreted
 
 EDITION = "2014"
 ENGINE_DIR = PLUGIN.engine_dir
-EQUIPMENT_COLLECTIONS: Mapping[CollectionName, tuple[str, Callable[[up.Equipment], Record]]] = {
-    "weapons": ("weapon", project.weapon),
+EQUIPMENT_COLLECTIONS: Mapping[
+    CollectionName, tuple[str, Callable[[up.Equipment], Interpreted]]
+] = {
     "armor": ("armor", project.armor),
     "gear": ("adventuring-gear", project.gear),
     "tools": ("tools", project.gear),
@@ -44,27 +47,32 @@ def build(checkout: Path) -> Pack:
     features = read("Features", up.Feature)
     choices = {f.index: options for f in features if (options := project.subfeature_options(f))}
     records: Mapping[CollectionName, Mapping[str, Record]] = {
-        "monsters": _keyed(project.monster(r) for r in read("Monsters", up.Monster)),
+        "monsters": _generic(project.monster(r) for r in read("Monsters", up.Monster)),
+        "weapons": _generic(
+            project.weapon(r) for r in equipment if r.equipment_category.index == "weapon"
+        ),
         **{
-            name: _keyed(projected(r) for r in equipment if r.equipment_category.index == category)
+            name: _generic(
+                projected(r) for r in equipment if r.equipment_category.index == category
+            )
             for name, (category, projected) in EQUIPMENT_COLLECTIONS.items()
         },
-        "magic_items": _keyed(project.magic_item(r) for r in read("Magic-Items", up.MagicItem)),
-        "spells": _keyed(project.spell(r) for r in read("Spells", up.Spell)),
-        "skills": _keyed(project.skill(r) for r in read("Skills", up.Skill)),
+        "magic_items": _generic(project.magic_item(r) for r in read("Magic-Items", up.MagicItem)),
+        "spells": _generic(project.spell(r) for r in read("Spells", up.Spell)),
+        "skills": _generic(project.skill(r) for r in read("Skills", up.Skill)),
         "conditions": _keyed(project.described(r) for r in read("Conditions", up.Described)),
         "alignments": _keyed(project.alignment(r) for r in read("Alignments", up.Alignment)),
-        "languages": _keyed(project.language(r) for r in read("Languages", up.Language)),
-        "classes": _keyed(project.klass(r) for r in read("Classes", up.Class)),
-        "subclasses": _keyed(project.subclass(r) for r in read("Subclasses", up.Subclass)),
-        "levels": _keyed(project.level(r, choices) for r in read("Levels", up.Level)),
-        "features": _keyed(project.feature(r) for r in features),
-        "races": _keyed(project.race(r) for r in read("Races", up.Race)),
-        "subraces": _keyed(project.subrace(r) for r in read("Subraces", up.Subrace)),
-        "traits": _keyed(project.trait(r) for r in read("Traits", up.Trait)),
-        "backgrounds": _keyed(project.background(r) for r in read("Backgrounds", up.Background)),
-        "feats": _keyed(project.feat(r) for r in read("Feats", up.Feat)),
-        "proficiencies": _keyed(
+        "languages": _generic(project.language(r) for r in read("Languages", up.Language)),
+        "classes": _generic(project.klass(r) for r in read("Classes", up.Class)),
+        "subclasses": _generic(project.subclass(r) for r in read("Subclasses", up.Subclass)),
+        "levels": _generic(project.level(r, choices) for r in read("Levels", up.Level)),
+        "features": _generic(project.feature(r) for r in features),
+        "races": _generic(project.race(r) for r in read("Races", up.Race)),
+        "subraces": _generic(project.subrace(r) for r in read("Subraces", up.Subrace)),
+        "traits": _generic(project.trait(r) for r in read("Traits", up.Trait)),
+        "backgrounds": _generic(project.background(r) for r in read("Backgrounds", up.Background)),
+        "feats": _generic(project.feat(r) for r in read("Feats", up.Feat)),
+        "proficiencies": _generic(
             project.proficiency(r) for r in read("Proficiencies", up.Proficiency)
         ),
     }
@@ -81,7 +89,7 @@ def build(checkout: Path) -> Pack:
             "records": records,
         }
     )
-    validate_pack(pack, PLUGIN.pack_format(_spec()))
+    validate_pack(pack, pack_format(_spec().collections, {}))
     return pack
 
 
@@ -92,6 +100,10 @@ def _spec() -> EngineSpec:
 
 def _keyed(records: Iterable[Record]) -> dict[str, Record]:
     return {record.index: record for record in records}
+
+
+def _generic(records: Iterable[Interpreted]) -> dict[str, Record]:
+    return {record.index: record.generic() for record in records}
 
 
 def _version(checkout: Path) -> str:

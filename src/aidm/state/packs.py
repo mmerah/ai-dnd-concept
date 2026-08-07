@@ -10,6 +10,7 @@ from pydantic import (
     BaseModel,
     ConfigDict,
     Field,
+    JsonValue,
     NonNegativeInt,
     SerializeAsAny,
     SerializerFunctionWrapHandler,
@@ -75,7 +76,10 @@ class ContentRef(Value):
 class Record(Value):
     """`sheet_numbers` land on the sheet of any entity that refs the record, so a record reffed
     in multiplicity (a spell, a feature) must leave them empty or keys collide. `noted` renders
-    beside the ref and in `read_content`, never touching a sheet, so any record may carry it."""
+    beside the ref and in `read_content`, never touching a sheet, so any record may carry it.
+    A plain record stores both as data written at authoring time; a typed subclass computes them
+    instead and leaves the stored maps empty. `facts` carries normalized mechanical values for
+    deterministic readers; the engine spec names the ones every record in a collection must hold."""
 
     index: ContentSlug
     name: str
@@ -84,6 +88,9 @@ class Record(Value):
     # A record that IS a choice names the legal picks; a bare index would be ambiguous.
     options: tuple[ContentRef, ...] = ()
     choose: int | None = None
+    numbers: FrozenMap[Slug, int] = EMPTY_FROZEN_MAP
+    notes: FrozenMap[Slug, str] = EMPTY_FROZEN_MAP
+    facts: FrozenMap[Slug, JsonValue] = EMPTY_FROZEN_MAP
 
     @model_validator(mode="after")
     def _choice_is_whole(self) -> Self:
@@ -94,17 +101,23 @@ class Record(Value):
         return self
 
     def sheet_numbers(self) -> Mapping[Slug, int]:
-        return {}
+        return self.numbers
 
     def noted(self) -> Mapping[Slug, str]:
-        return {}
+        return self.notes
+
+
+type FactType = Literal["int", "slug", "str"]
+type FactSchema = Mapping[Slug, FactType]
 
 
 @dataclass(frozen=True, slots=True)
 class PackFormat:
-    """What one engine's packs contain: collection name -> the record class it holds."""
+    """What one engine's packs contain: collection name -> the record class it holds,
+    plus the facts each collection's records must all carry."""
 
     held: Mapping[CollectionName, type[Record]]
+    required_facts: Mapping[CollectionName, FactSchema]
 
 
 class Manifest(Value):
@@ -246,12 +259,37 @@ def validate_pack(pack: Pack, pack_format: PackFormat) -> None:
         declared = pack.manifest.provides[name]
         if declared != len(records):
             raise ValueError(f"manifest promises {declared} {name}, the pack ships {len(records)}")
+        for key, kind in pack_format.required_facts.get(name, {}).items():
+            wrong = sorted(i for i, r in records.items() if not _fact_is(r.facts.get(key), kind))
+            if wrong:
+                raise ValueError(f"{name} records lack the required {kind} fact {key!r}: {wrong}")
 
 
 def pack_format(
-    collections: Sequence[CollectionName], record_types: Mapping[CollectionName, type[Record]]
+    collections: Mapping[CollectionName, FactSchema],
+    record_types: Mapping[CollectionName, type[Record]],
 ) -> PackFormat:
-    return PackFormat({name: record_types.get(name, Record) for name in collections})
+    return PackFormat(
+        held={name: record_types.get(name, Record) for name in collections},
+        required_facts={name: facts for name, facts in collections.items() if facts},
+    )
+
+
+_SLUG: TypeAdapter[str] = TypeAdapter(Slug)
+
+
+def _fact_is(value: JsonValue | None, kind: FactType) -> bool:
+    match kind:
+        case "int":
+            return isinstance(value, int) and not isinstance(value, bool)
+        case "slug":
+            try:
+                _ = _SLUG.validate_python(value, strict=True)
+            except ValidationError:
+                return False
+            return True
+        case "str":
+            return isinstance(value, str)
 
 
 def _read(path: Path, held: type[Record]) -> list[Record]:

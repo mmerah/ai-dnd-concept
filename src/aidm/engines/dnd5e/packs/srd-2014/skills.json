@@ -6,7 +6,13 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "ability": "DEX"
+    "numbers": {},
+    "notes": {
+      "ability": "DEX"
+    },
+    "facts": {
+      "ability": "dexterity"
+    }
   },
   {
     "index": "animal-handling",
@@ -15,7 +21,13 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "ability": "WIS"
+    "numbers": {},
+    "notes": {
+      "ability": "WIS"
+    },
+    "facts": {
+      "ability": "wisdom"
+    }
   },
   {
     "index": "arcana",
@@ -24,7 +36,13 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "ability": "INT"
+    "numbers": {},
+    "notes": {
+      "ability": "INT"
+    },
+    "facts": {
+      "ability": "intelligence"
+    }
   },
   {
     "index": "athletics",
@@ -33,7 +51,13 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "ability": "STR"
+    "numbers": {},
+    "notes": {
+      "ability": "STR"
+    },
+    "facts": {
+      "ability": "strength"
+    }
   },
   {
     "index": "deception",
@@ -42,7 +66,13 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "ability": "CHA"
+    "numbers": {},
+    "notes": {
+      "ability": "CHA"
+    },
+    "facts": {
+      "ability": "charisma"
+    }
   },
   {
     "index": "history",
@@ -51,7 +81,13 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "ability": "INT"
+    "numbers": {},
+    "notes": {
+      "ability": "INT"
+    },
+    "facts": {
+      "ability": "intelligence"
+    }
   },
   {
     "index": "insight",
@@ -60,7 +96,13 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "ability": "WIS"
+    "numbers": {},
+    "notes": {
+      "ability": "WIS"
+    },
+    "facts": {
+      "ability": "wisdom"
+    }
   },
   {
     "index": "intimidation",
@@ -69,7 +111,13 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "ability": "CHA"
+    "numbers": {},
+    "notes": {
+      "ability": "CHA"
+    },
+    "facts": {
+      "ability": "charisma"
+    }
   },
   {
     "index": "investigation",
@@ -78,7 +126,13 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "ability": "INT"
+    "numbers": {},
+    "notes": {
+      "ability": "INT"
+    },
+    "facts": {
+      "ability": "intelligence"
+    }
   },
   {
     "index": "medicine",
@@ -87,7 +141,13 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "ability": "WIS"
+    "numbers": {},
+    "notes": {
+      "ability": "WIS"
+    },
+    "facts": {
+      "ability": "wisdom"
+    }
   },
   {
     "index": "nature",
@@ -96,7 +156,13 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "ability": "INT"
+    "numbers": {},
+    "notes": {
+      "ability": "INT"
+    },
+    "facts": {
+      "ability": "intelligence"
+    }
   },
   {
     "index": "perception",
@@ -105,7 +171,13 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "ability": "WIS"
+    "numbers": {},
+    "notes": {
+      "ability": "WIS"
+    },
+    "facts": {
+      "ability": "wisdom"
+    }
   },
   {
     "index": "performance",
@@ -114,7 +186,13 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "ability": "CHA"
+    "numbers": {},
+    "notes": {
+      "ability": "CHA"
+    },
+    "facts": {
+      "ability": "charisma"
+    }
   },
   {
     "index": "persuasion",
@@ -123,7 +201,13 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "ability": "CHA"
+    "numbers": {},
+    "notes": {
+      "ability": "CHA"
+    },
+    "facts": {
+      "ability": "charisma"
+    }
   },
   {
     "index": "religion",
@@ -132,7 +216,13 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "ability": "INT"
+    "numbers": {},
+    "notes": {
+      "ability": "INT"
+    },
+    "facts": {
+      "ability": "intelligence"
+    }
   },
   {
     "index": "sleight-of-hand",
@@ -141,7 +231,13 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "ability": "DEX"
+    "numbers": {},
+    "notes": {
+      "ability": "DEX"
+    },
+    "facts": {
+      "ability": "dexterity"
+    }
   },
   {
     "index": "stealth",
@@ -150,7 +246,13 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "ability": "DEX"
+    "numbers": {},
+    "notes": {
+      "ability": "DEX"
+    },
+    "facts": {
+      "ability": "dexterity"
+    }
   },
   {
     "index": "survival",
@@ -159,6 +261,12 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "ability": "WIS"
+    "numbers": {},
+    "notes": {
+      "ability": "WIS"
+    },
+    "facts": {
+      "ability": "wisdom"
+    }
   }
 ]

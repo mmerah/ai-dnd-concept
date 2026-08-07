@@ -6,7 +6,9 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "abbreviation": "LG"
+    "numbers": {},
+    "notes": {},
+    "facts": {}
   },
   {
     "index": "neutral-good",
@@ -15,7 +17,9 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "abbreviation": "NG"
+    "numbers": {},
+    "notes": {},
+    "facts": {}
   },
   {
     "index": "chaotic-good",
@@ -24,7 +28,9 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "abbreviation": "CG"
+    "numbers": {},
+    "notes": {},
+    "facts": {}
   },
   {
     "index": "lawful-neutral",
@@ -33,7 +39,9 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "abbreviation": "LN"
+    "numbers": {},
+    "notes": {},
+    "facts": {}
   },
   {
     "index": "neutral",
@@ -42,7 +50,9 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "abbreviation": "N"
+    "numbers": {},
+    "notes": {},
+    "facts": {}
   },
   {
     "index": "chaotic-neutral",
@@ -51,7 +61,9 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "abbreviation": "CN"
+    "numbers": {},
+    "notes": {},
+    "facts": {}
   },
   {
     "index": "lawful-evil",
@@ -60,7 +72,9 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "abbreviation": "LE"
+    "numbers": {},
+    "notes": {},
+    "facts": {}
   },
   {
     "index": "neutral-evil",
@@ -69,7 +83,9 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "abbreviation": "NE"
+    "numbers": {},
+    "notes": {},
+    "facts": {}
   },
   {
     "index": "chaotic-evil",
@@ -78,6 +94,8 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "abbreviation": "CE"
+    "numbers": {},
+    "notes": {},
+    "facts": {}
   }
 ]

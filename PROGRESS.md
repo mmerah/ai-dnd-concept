@@ -236,13 +236,97 @@
     an `outcome` instruction loaded with silently dead branches. Taken from the same review:
     `description`/`optional` moved to a shared `ParamBase`.
 
+- **Vision phase 6 — Generic content facts** (2026-08-07).
+  - `Record` stores its interpreted view as data: `numbers`, `notes`, and `facts`
+    (`FrozenMap[Slug, JsonValue]`), written at authoring time. `sheet_numbers()`/`noted()`
+    default to the stored maps, so every consumer — sheet backing, `read_content`, ref
+    rendering, eval probes — is unchanged. A typed subclass still computes and leaves the
+    stored maps empty.
+  - `spec.json` collections became a map `name → CollectionSpec`: a collection declares the
+    facts every record must carry (`FactType`: `int | slug | str`) and `validate_pack`
+    refuses a record missing or mistyping one. dnd5e declares skills `ability: slug`,
+    features `level: int`, alignments `abbreviation`, languages `category`, proficiencies
+    `category` + `reference`, subclasses `class` + `flavor`, subraces `race`.
+  - 15 record classes left `src/aidm` for the new `scripts/srd/interpret.py`: authoring-time
+    intermediates whose `generic()` flattens typed fields into one generic `Record`
+    (vision §15 — the interpretation runs once, in the importer). `record_types` is down to
+    5 — spells, weapons, classes, levels, monsters — exactly the collections runtime Python
+    still reads, all deleted by phase 7.
+  - Facts carry what would otherwise be lost to prose: skill ability, feature level, feat
+    prerequisites, race/subrace ability bonuses, subclass spell grants, draconic-ancestry
+    breath damage and scaling tables.
+  - **Oracle: 1209 migrated records, 0 mismatches** — stored `numbers`/`notes` equal the
+    deleted classes' computed maps exactly, checked before the classes were trusted gone.
+  - Pack regenerated from the pinned `5e-database` checkout, after first re-running the
+    importer unchanged and confirming the shipped pack byte-identical (the baseline the
+    memory file demands). The round-trip regression passes against the regenerated pack.
+    `SAVE_VERSION` 43. Fixtures moved: the `save_version` line in `save/state/turn` — no
+    prompt, schema, or instruction byte moved, so the model cannot see this phase and no
+    live gate is owed.
+  - Line delta: `src/aidm` Python −209 (budget said −250); dnd5e `spec.json` +40 for the
+    fact declarations; `scripts/` +362, which is the interpretation the runtime shed.
+  - Adversarial review (fable) upheld the three-map shape against VISION §7's one-map sketch —
+    `numbers` project onto sheets, `notes` render to the model, `facts` feed the VM; each has its
+    own consumer and type contract, and one `JsonValue` map would re-encode the split as key
+    conventions with weaker validation. Four findings taken: **facts are normalized to joinable
+    slugs** (`class: barbarian`, `race: dwarf`, `reference: light-armor`, abilities as full
+    slugs — upstream refs widened `Label → Named` to reach `.index`; display names stay in
+    text/notes), the facts admission rule is now "what a deterministic reader will read" (dropped
+    language script/speakers, alignment abbreviation — `AlignmentRecord` died entirely — and
+    subclass flavor), the one-field `CollectionSpec` wrapper flattened into
+    `collections: name → FactSchema`, and the `slug` fact check now validates through
+    `TypeAdapter(Slug)` instead of a bare pattern. Oracle re-run after all of it: still
+    0 mismatches. Left deliberately: stored `numbers`/`notes` on a typed record are ignored, not
+    refused (the gap dies with the 5 typed classes at phase 7), and phase 7 must keep "content
+    facts" (`Record.facts`) verbally distinct from turn `Fact`s.
+
+- **Vision phase 7 — D&D on the VM** (2026-08-07). `dnd5e/actions.py` (120 lines),
+  `resolve.py` (325), and `records.py` (596, its last 5 classes now `scripts/srd/interpret.py`
+  intermediates) are deleted; `record_types` is empty for every engine. dnd5e is
+  `actions.json` (1295 lines — attack, cast-spell, check, use-feature, rest, improvise) plus a
+  67-line shim and the 49-line `advance.py` the spec exempts (offers are phase-10 workflow).
+  - The `refill` op: `ProgramEffect = TurnEffect | Refill` is what VM `apply` validates, so
+    the Director never sees it and hooks cannot author it; the rest program owns the
+    label→recharges mapping and `EngineSpec.recharge` is deleted as dead config.
+  - VM growth, the closed set at once (`vm.py` 411 → 824): instructions `choose`, `format`,
+    `lookup`, `read`, `ladder`; `when`/`when_outcome` guards on every instruction; `roll`
+    gains `mode` and ref-capable `vs`/`dice`; `outcome` thresholds accept refs and a null ref
+    skips; predicates `equals`, `present`, `carries`, `at-least`, `and`; exprs `const`,
+    `value`, `div`, `max`, `number`-with-default. `run_program` takes `Content`; an
+    unbound-ref read raises `ValueError`, so a guard bug refuses instead of killing the turn.
+  - Fact schemas for the 5 remaining typed collections (weapons, spells, classes, levels,
+    monsters) live in the pack; `tests/dnd5e/fixtures/mechanics_parity.json` pins every
+    shipped spell's and weapon's mechanics facts as a golden, and `test_resolve.py` carries
+    the seeded-roll behavior and exact refusal strings the Python resolver defined.
+  - Named Python exceptions, in the shim as specified: `dynamic_labels` (`cast-spell` /
+    `improvise` contested-ness) and `plan_checks` (the two double-spend checks).
+  - Deviations, named: a combined-fault attack plan (wrong in two ways at once) gets
+    whichever refusal the straight-line `require` sequence reaches first rather than the
+    Python's check order — message choice drifts, legality never; and spellcasting resolves
+    from the sheet's first class ref where the Python refused multiclass outright
+    (advancement still refuses building a second class).
+  - **Schema identity held**: `turn_plan.json`, `instructions/*`, `prompts/*`, and
+    `sheet_delta.json` are byte-identical, so no live gate is owed per the phase spec. The
+    only fixture movement is the `save_version` line in `save/state/turn` (`SAVE_VERSION`
+    44). Full suite 131 passed; ruff, format, basedpyright clean.
+  - Adversarial review (fable) found no blocking defect; the boundary held everywhere it
+    probed (`refill` unreachable from Director and hooks, every unbound-ref path refusing via
+    `ValueError`, reveals preceding every name-carrying fact, 5e parity line-for-line against
+    the deleted resolver). Four findings taken: a `when`/`when_outcome`-guarded binding named
+    by a template outside its guard now load-refuses instead of raising `KeyError` out of
+    `check_plan` the turn the guard first skips; a `present` over a non-`$` literal (an
+    always-true authoring typo) load-refuses; unused `Read.required` deleted; `Equals.value`
+    narrowed to `bool | str`. Reported for later, not taken: `EnginePlugin.record_types` is
+    now empty everywhere and its plumbing is a clean negative diff for phase 8's shore.
+  - Line delta: `src/aidm` Python **−318** (staged together with phase 6: −527 vs HEAD
+    3885853, 6438 → 5911); `vm.py` +427, dnd5e `actions.json` +1295 new, `scripts` +316.
+
 ## Current
 
-Next: REFACTOR.md phase 6 (generic content facts). Phase 5 (ironsworn) is deferred — phase 4
-proved the VM on story at oracle parity, so a second engine would re-prove a proved thing and pay
-in content nobody plays yet.
+Phase 7 shipped 2026-08-07; staged together with phase 6, uncommitted. Phase 5 (ironsworn)
+stays deferred; next is phase 8 (Scene/Rules Director split).
 
-Worth doing before or alongside phase 6: the one prompt pass on "the Director drops the state
+Worth doing before or alongside phase 8: the one prompt pass on "the Director drops the state
 write", now the largest eval finding at three cases and the only one costing whole runs.
 
 - Phase-4 line delta: `src/aidm` +423 total, of which Python is +315 (budget said +250 VM / −75

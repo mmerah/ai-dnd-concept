@@ -6,9 +6,12 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "category": "Armor",
-    "rarity": "Uncommon",
-    "variants": []
+    "numbers": {},
+    "notes": {
+      "category": "Armor",
+      "rarity": "Uncommon"
+    },
+    "facts": {}
   },
   {
     "index": "ammunition",
@@ -17,13 +20,13 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "category": "Ammunition",
-    "rarity": "Varies",
-    "variants": [
-      "Ammunition, +1",
-      "Ammunition, +2",
-      "Ammunition, +3"
-    ]
+    "numbers": {},
+    "notes": {
+      "category": "Ammunition",
+      "rarity": "Varies",
+      "variants": "Ammunition, +1, Ammunition, +2, Ammunition, +3"
+    },
+    "facts": {}
   },
   {
     "index": "ammunition-1",
@@ -34,9 +37,12 @@
     ],
     "options": [],
     "choose": null,
-    "category": "Ammunition",
-    "rarity": "Uncommon",
-    "variants": []
+    "numbers": {},
+    "notes": {
+      "category": "Ammunition",
+      "rarity": "Uncommon"
+    },
+    "facts": {}
   },
   {
     "index": "ammunition-2",
@@ -47,9 +53,12 @@
     ],
     "options": [],
     "choose": null,
-    "category": "Ammunition",
-    "rarity": "Rare",
-    "variants": []
+    "numbers": {},
+    "notes": {
+      "category": "Ammunition",
+      "rarity": "Rare"
+    },
+    "facts": {}
   },
   {
     "index": "ammunition-3",
@@ -60,9 +69,12 @@
     ],
     "options": [],
     "choose": null,
-    "category": "Ammunition",
-    "rarity": "Very Rare",
-    "variants": []
+    "numbers": {},
+    "notes": {
+      "category": "Ammunition",
+      "rarity": "Very Rare"
+    },
+    "facts": {}
   },
   {
     "index": "amulet-of-health",
@@ -71,9 +83,12 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "category": "Wondrous Items",
-    "rarity": "Rare",
-    "variants": []
+    "numbers": {},
+    "notes": {
+      "category": "Wondrous Items",
+      "rarity": "Rare"
+    },
+    "facts": {}
   },
   {
     "index": "amulet-of-proof-against-detection-and-location",
@@ -82,9 +97,12 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "category": "Wondrous Items",
-    "rarity": "Uncommon",
-    "variants": []
+    "numbers": {},
+    "notes": {
+      "category": "Wondrous Items",
+      "rarity": "Uncommon"
+    },
+    "facts": {}
   },
   {
     "index": "amulet-of-the-planes",
@@ -93,9 +111,12 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "category": "Wondrous Items",
-    "rarity": "Very Rare",
-    "variants": []
+    "numbers": {},
+    "notes": {
+      "category": "Wondrous Items",
+      "rarity": "Very Rare"
+    },
+    "facts": {}
   },
   {
     "index": "animated-shield",
@@ -104,9 +125,12 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "category": "Armor",
-    "rarity": "Very Rare",
-    "variants": []
+    "numbers": {},
+    "notes": {
+      "category": "Armor",
+      "rarity": "Very Rare"
+    },
+    "facts": {}
   },
   {
     "index": "apparatus-of-the-crab",
@@ -115,9 +139,12 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "category": "Wondrous Items",
-    "rarity": "Legendary",
-    "variants": []
+    "numbers": {},
+    "notes": {
+      "category": "Wondrous Items",
+      "rarity": "Legendary"
+    },
+    "facts": {}
   },
   {
     "index": "armor",
@@ -126,13 +153,13 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "category": "Armor",
-    "rarity": "Varies",
-    "variants": [
-      "Armor, +1",
-      "Armor, +2",
-      "Armor, +3"
-    ]
+    "numbers": {},
+    "notes": {
+      "category": "Armor",
+      "rarity": "Varies",
+      "variants": "Armor, +1, Armor, +2, Armor, +3"
+    },
+    "facts": {}
   },
   {
     "index": "armor-1",
@@ -143,9 +170,12 @@
     ],
     "options": [],
     "choose": null,
-    "category": "Armor",
-    "rarity": "Rare",
-    "variants": []
+    "numbers": {},
+    "notes": {
+      "category": "Armor",
+      "rarity": "Rare"
+    },
+    "facts": {}
   },
   {
     "index": "armor-2",
@@ -156,9 +186,12 @@
     ],
     "options": [],
     "choose": null,
-    "category": "Armor",
-    "rarity": "Very Rare",
-    "variants": []
+    "numbers": {},
+    "notes": {
+      "category": "Armor",
+      "rarity": "Very Rare"
+    },
+    "facts": {}
   },
   {
     "index": "armor-3",
@@ -169,9 +202,12 @@
     ],
     "options": [],
     "choose": null,
-    "category": "Armor",
-    "rarity": "Legendary",
-    "variants": []
+    "numbers": {},
+    "notes": {
+      "category": "Armor",
+      "rarity": "Legendary"
+    },
+    "facts": {}
   },
   {
     "index": "armor-of-invulnerability",
@@ -180,9 +216,12 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "category": "Armor",
-    "rarity": "Legendary",
-    "variants": []
+    "numbers": {},
+    "notes": {
+      "category": "Armor",
+      "rarity": "Legendary"
+    },
+    "facts": {}
   },
   {
     "index": "armor-of-resistance",
@@ -191,9 +230,12 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "category": "Armor",
-    "rarity": "Rare",
-    "variants": []
+    "numbers": {},
+    "notes": {
+      "category": "Armor",
+      "rarity": "Rare"
+    },
+    "facts": {}
   },
   {
     "index": "armor-of-vulnerability",
@@ -202,9 +244,12 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "category": "Armor",
-    "rarity": "Rare",
-    "variants": []
+    "numbers": {},
+    "notes": {
+      "category": "Armor",
+      "rarity": "Rare"
+    },
+    "facts": {}
   },
   {
     "index": "arrow-catching-shield",
@@ -213,9 +258,12 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "category": "Armor",
-    "rarity": "Rare",
-    "variants": []
+    "numbers": {},
+    "notes": {
+      "category": "Armor",
+      "rarity": "Rare"
+    },
+    "facts": {}
   },
   {
     "index": "arrow-of-slaying",
@@ -224,9 +272,12 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "category": "Ammunition",
-    "rarity": "Very Rare",
-    "variants": []
+    "numbers": {},
+    "notes": {
+      "category": "Ammunition",
+      "rarity": "Very Rare"
+    },
+    "facts": {}
   },
   {
     "index": "bag-of-beans",
@@ -235,9 +286,12 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "category": "Wondrous Items",
-    "rarity": "Rare",
-    "variants": []
+    "numbers": {},
+    "notes": {
+      "category": "Wondrous Items",
+      "rarity": "Rare"
+    },
+    "facts": {}
   },
   {
     "index": "bag-of-devouring",
@@ -246,9 +300,12 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "category": "Wondrous Items",
-    "rarity": "Very Rare",
-    "variants": []
+    "numbers": {},
+    "notes": {
+      "category": "Wondrous Items",
+      "rarity": "Very Rare"
+    },
+    "facts": {}
   },
   {
     "index": "bag-of-holding",
@@ -257,9 +314,12 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "category": "Wondrous Items",
-    "rarity": "Uncommon",
-    "variants": []
+    "numbers": {},
+    "notes": {
+      "category": "Wondrous Items",
+      "rarity": "Uncommon"
+    },
+    "facts": {}
   },
   {
     "index": "bag-of-tricks",
@@ -268,13 +328,13 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "category": "Wondrous Items",
-    "rarity": "Uncommon",
-    "variants": [
-      "Gray Bag of Tricks",
-      "Rust Bag of Tricks",
-      "Tan Bag of Tricks"
-    ]
+    "numbers": {},
+    "notes": {
+      "category": "Wondrous Items",
+      "rarity": "Uncommon",
+      "variants": "Gray Bag of Tricks, Rust Bag of Tricks, Tan Bag of Tricks"
+    },
+    "facts": {}
   },
   {
     "index": "bag-of-tricks-gray",
@@ -285,9 +345,12 @@
     ],
     "options": [],
     "choose": null,
-    "category": "Wondrous Items",
-    "rarity": "Uncommon",
-    "variants": []
+    "numbers": {},
+    "notes": {
+      "category": "Wondrous Items",
+      "rarity": "Uncommon"
+    },
+    "facts": {}
   },
   {
     "index": "bag-of-tricks-rust",
@@ -298,9 +361,12 @@
     ],
     "options": [],
     "choose": null,
-    "category": "Wondrous Items",
-    "rarity": "Uncommon",
-    "variants": []
+    "numbers": {},
+    "notes": {
+      "category": "Wondrous Items",
+      "rarity": "Uncommon"
+    },
+    "facts": {}
   },
   {
     "index": "bag-of-tricks-tan",
@@ -311,9 +377,12 @@
     ],
     "options": [],
     "choose": null,
-    "category": "Wondrous Items",
-    "rarity": "Uncommon",
-    "variants": []
+    "numbers": {},
+    "notes": {
+      "category": "Wondrous Items",
+      "rarity": "Uncommon"
+    },
+    "facts": {}
   },
   {
     "index": "bead-of-force",
@@ -322,9 +391,12 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "category": "Wondrous Items",
-    "rarity": "Rare",
-    "variants": []
+    "numbers": {},
+    "notes": {
+      "category": "Wondrous Items",
+      "rarity": "Rare"
+    },
+    "facts": {}
   },
   {
     "index": "belt-of-dwarvenkind",
@@ -333,9 +405,12 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "category": "Wondrous Items",
-    "rarity": "Rare",
-    "variants": []
+    "numbers": {},
+    "notes": {
+      "category": "Wondrous Items",
+      "rarity": "Rare"
+    },
+    "facts": {}
   },
   {
     "index": "belt-of-giant-strength",
@@ -344,16 +419,13 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "category": "Wondrous Items",
-    "rarity": "Varies",
-    "variants": [
-      "Belt of Hill Giant Strength",
-      "Belt of Stone Giant Strength",
-      "Belt of Frost Giant Strength",
-      "Belt of Fire Giant Strength",
-      "Belt of Cloud Giant Strength",
-      "Belt of Storm Giant Strength"
-    ]
+    "numbers": {},
+    "notes": {
+      "category": "Wondrous Items",
+      "rarity": "Varies",
+      "variants": "Belt of Hill Giant Strength, Belt of Stone Giant Strength, Belt of Frost Giant Strength, Belt of Fire Giant Strength, Belt of Cloud Giant Strength, Belt of Storm Giant Strength"
+    },
+    "facts": {}
   },
   {
     "index": "belt-of-giant-strength-hill",
@@ -364,9 +436,12 @@
     ],
     "options": [],
     "choose": null,
-    "category": "Wondrous Items",
-    "rarity": "Rare",
-    "variants": []
+    "numbers": {},
+    "notes": {
+      "category": "Wondrous Items",
+      "rarity": "Rare"
+    },
+    "facts": {}
   },
   {
     "index": "belt-of-giant-strength-stone",
@@ -377,9 +452,12 @@
     ],
     "options": [],
     "choose": null,
-    "category": "Wondrous Items",
-    "rarity": "Very Rare",
-    "variants": []
+    "numbers": {},
+    "notes": {
+      "category": "Wondrous Items",
+      "rarity": "Very Rare"
+    },
+    "facts": {}
   },
   {
     "index": "belt-of-giant-strength-frost",
@@ -390,9 +468,12 @@
     ],
     "options": [],
     "choose": null,
-    "category": "Wondrous Items",
-    "rarity": "Very Rare",
-    "variants": []
+    "numbers": {},
+    "notes": {
+      "category": "Wondrous Items",
+      "rarity": "Very Rare"
+    },
+    "facts": {}
   },
   {
     "index": "belt-of-giant-strength-fire",
@@ -403,9 +484,12 @@
     ],
     "options": [],
     "choose": null,
-    "category": "Wondrous Items",
-    "rarity": "Very Rare",
-    "variants": []
+    "numbers": {},
+    "notes": {
+      "category": "Wondrous Items",
+      "rarity": "Very Rare"
+    },
+    "facts": {}
   },
   {
     "index": "belt-of-giant-strength-cloud",
@@ -416,9 +500,12 @@
     ],
     "options": [],
     "choose": null,
-    "category": "Wondrous Items",
-    "rarity": "Legendary",
-    "variants": []
+    "numbers": {},
+    "notes": {
+      "category": "Wondrous Items",
+      "rarity": "Legendary"
+    },
+    "facts": {}
   },
   {
     "index": "belt-of-giant-strength-storm",
@@ -429,9 +516,12 @@
     ],
     "options": [],
     "choose": null,
-    "category": "Wondrous Items",
-    "rarity": "Legendary",
-    "variants": []
+    "numbers": {},
+    "notes": {
+      "category": "Wondrous Items",
+      "rarity": "Legendary"
+    },
+    "facts": {}
   },
   {
     "index": "berserker-axe",
@@ -440,9 +530,12 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "category": "Weapon",
-    "rarity": "Rare",
-    "variants": []
+    "numbers": {},
+    "notes": {
+      "category": "Weapon",
+      "rarity": "Rare"
+    },
+    "facts": {}
   },
   {
     "index": "boots-of-elvenkind",
@@ -451,9 +544,12 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "category": "Wondrous Items",
-    "rarity": "Uncommon",
-    "variants": []
+    "numbers": {},
+    "notes": {
+      "category": "Wondrous Items",
+      "rarity": "Uncommon"
+    },
+    "facts": {}
   },
   {
     "index": "boots-of-levitation",
@@ -462,9 +558,12 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "category": "Wondrous Items",
-    "rarity": "Rare",
-    "variants": []
+    "numbers": {},
+    "notes": {
+      "category": "Wondrous Items",
+      "rarity": "Rare"
+    },
+    "facts": {}
   },
   {
     "index": "boots-of-speed",
@@ -473,9 +572,12 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "category": "Wondrous Items",
-    "rarity": "Rare",
-    "variants": []
+    "numbers": {},
+    "notes": {
+      "category": "Wondrous Items",
+      "rarity": "Rare"
+    },
+    "facts": {}
   },
   {
     "index": "boots-of-striding-and-springing",
@@ -484,9 +586,12 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "category": "Wondrous Items",
-    "rarity": "Uncommon",
-    "variants": []
+    "numbers": {},
+    "notes": {
+      "category": "Wondrous Items",
+      "rarity": "Uncommon"
+    },
+    "facts": {}
   },
   {
     "index": "boots-of-the-winterlands",
@@ -495,9 +600,12 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "category": "Wondrous Items",
-    "rarity": "Uncommon",
-    "variants": []
+    "numbers": {},
+    "notes": {
+      "category": "Wondrous Items",
+      "rarity": "Uncommon"
+    },
+    "facts": {}
   },
   {
     "index": "bowl-of-commanding-water-elementals",
@@ -506,9 +614,12 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "category": "Wondrous Items",
-    "rarity": "Rare",
-    "variants": []
+    "numbers": {},
+    "notes": {
+      "category": "Wondrous Items",
+      "rarity": "Rare"
+    },
+    "facts": {}
   },
   {
     "index": "bracers-of-archery",
@@ -517,9 +628,12 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "category": "Wondrous Items",
-    "rarity": "Uncommon",
-    "variants": []
+    "numbers": {},
+    "notes": {
+      "category": "Wondrous Items",
+      "rarity": "Uncommon"
+    },
+    "facts": {}
   },
   {
     "index": "bracers-of-defense",
@@ -528,9 +642,12 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "category": "Wondrous Items",
-    "rarity": "Rare",
-    "variants": []
+    "numbers": {},
+    "notes": {
+      "category": "Wondrous Items",
+      "rarity": "Rare"
+    },
+    "facts": {}
   },
   {
     "index": "brazier-of-commanding-fire-elementals",
@@ -539,9 +656,12 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "category": "Wondrous Items",
-    "rarity": "Rare",
-    "variants": []
+    "numbers": {},
+    "notes": {
+      "category": "Wondrous Items",
+      "rarity": "Rare"
+    },
+    "facts": {}
   },
   {
     "index": "brooch-of-shielding",
@@ -550,9 +670,12 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "category": "Wondrous Items",
-    "rarity": "Uncommon",
-    "variants": []
+    "numbers": {},
+    "notes": {
+      "category": "Wondrous Items",
+      "rarity": "Uncommon"
+    },
+    "facts": {}
   },
   {
     "index": "broom-of-flying",
@@ -561,9 +684,12 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "category": "Wondrous Items",
-    "rarity": "Uncommon",
-    "variants": []
+    "numbers": {},
+    "notes": {
+      "category": "Wondrous Items",
+      "rarity": "Uncommon"
+    },
+    "facts": {}
   },
   {
     "index": "candle-of-invocation",
@@ -572,9 +698,12 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "category": "Wondrous Items",
-    "rarity": "Very Rare",
-    "variants": []
+    "numbers": {},
+    "notes": {
+      "category": "Wondrous Items",
+      "rarity": "Very Rare"
+    },
+    "facts": {}
   },
   {
     "index": "cape-of-the-mountebank",
@@ -583,9 +712,12 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "category": "Wondrous Items",
-    "rarity": "Rare",
-    "variants": []
+    "numbers": {},
+    "notes": {
+      "category": "Wondrous Items",
+      "rarity": "Rare"
+    },
+    "facts": {}
   },
   {
     "index": "carpet-of-flying",
@@ -594,14 +726,13 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "category": "Wondrous Items",
-    "rarity": "Very Rare",
-    "variants": [
-      "Carpet of Flying (3 ft. × 5 ft.)",
-      "Carpet of Flying (4 ft. × 6 ft.)",
-      "Carpet of Flying (5 ft. × 7 ft.)",
-      "Carpet of Flying (6 ft. × 9 ft.)"
-    ]
+    "numbers": {},
+    "notes": {
+      "category": "Wondrous Items",
+      "rarity": "Very Rare",
+      "variants": "Carpet of Flying (3 ft. × 5 ft.), Carpet of Flying (4 ft. × 6 ft.), Carpet of Flying (5 ft. × 7 ft.), Carpet of Flying (6 ft. × 9 ft.)"
+    },
+    "facts": {}
   },
   {
     "index": "carpet-of-flying-3x5",
@@ -612,9 +743,12 @@
     ],
     "options": [],
     "choose": null,
-    "category": "Wondrous Items",
-    "rarity": "Very Rare",
-    "variants": []
+    "numbers": {},
+    "notes": {
+      "category": "Wondrous Items",
+      "rarity": "Very Rare"
+    },
+    "facts": {}
   },
   {
     "index": "carpet-of-flying-4x6",
@@ -625,9 +759,12 @@
     ],
     "options": [],
     "choose": null,
-    "category": "Wondrous Items",
-    "rarity": "Very Rare",
-    "variants": []
+    "numbers": {},
+    "notes": {
+      "category": "Wondrous Items",
+      "rarity": "Very Rare"
+    },
+    "facts": {}
   },
   {
     "index": "carpet-of-flying-5x7",
@@ -638,9 +775,12 @@
     ],
     "options": [],
     "choose": null,
-    "category": "Wondrous Items",
-    "rarity": "Very Rare",
-    "variants": []
+    "numbers": {},
+    "notes": {
+      "category": "Wondrous Items",
+      "rarity": "Very Rare"
+    },
+    "facts": {}
   },
   {
     "index": "carpet-of-flying-6x9",
@@ -651,9 +791,12 @@
     ],
     "options": [],
     "choose": null,
-    "category": "Wondrous Items",
-    "rarity": "Very Rare",
-    "variants": []
+    "numbers": {},
+    "notes": {
+      "category": "Wondrous Items",
+      "rarity": "Very Rare"
+    },
+    "facts": {}
   },
   {
     "index": "censer-of-controlling-air-elementals",
@@ -662,9 +805,12 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "category": "Wondrous Items",
-    "rarity": "Rare",
-    "variants": []
+    "numbers": {},
+    "notes": {
+      "category": "Wondrous Items",
+      "rarity": "Rare"
+    },
+    "facts": {}
   },
   {
     "index": "chime-of-opening",
@@ -673,9 +819,12 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "category": "Wondrous Items",
-    "rarity": "Rare",
-    "variants": []
+    "numbers": {},
+    "notes": {
+      "category": "Wondrous Items",
+      "rarity": "Rare"
+    },
+    "facts": {}
   },
   {
     "index": "circlet-of-blasting",
@@ -684,9 +833,12 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "category": "Wondrous Items",
-    "rarity": "Uncommon",
-    "variants": []
+    "numbers": {},
+    "notes": {
+      "category": "Wondrous Items",
+      "rarity": "Uncommon"
+    },
+    "facts": {}
   },
   {
     "index": "cloak-of-arachnida",
@@ -695,9 +847,12 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "category": "Wondrous Items",
-    "rarity": "Very Rare",
-    "variants": []
+    "numbers": {},
+    "notes": {
+      "category": "Wondrous Items",
+      "rarity": "Very Rare"
+    },
+    "facts": {}
   },
   {
     "index": "cloak-of-displacement",
@@ -706,9 +861,12 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "category": "Wondrous Items",
-    "rarity": "Rare",
-    "variants": []
+    "numbers": {},
+    "notes": {
+      "category": "Wondrous Items",
+      "rarity": "Rare"
+    },
+    "facts": {}
   },
   {
     "index": "cloak-of-elvenkind",
@@ -717,9 +875,12 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "category": "Wondrous Items",
-    "rarity": "Uncommon",
-    "variants": []
+    "numbers": {},
+    "notes": {
+      "category": "Wondrous Items",
+      "rarity": "Uncommon"
+    },
+    "facts": {}
   },
   {
     "index": "cloak-of-protection",
@@ -728,9 +889,12 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "category": "Wondrous Items",
-    "rarity": "Uncommon",
-    "variants": []
+    "numbers": {},
+    "notes": {
+      "category": "Wondrous Items",
+      "rarity": "Uncommon"
+    },
+    "facts": {}
   },
   {
     "index": "cloak-of-the-bat",
@@ -739,9 +903,12 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "category": "Wondrous Items",
-    "rarity": "Rare",
-    "variants": []
+    "numbers": {},
+    "notes": {
+      "category": "Wondrous Items",
+      "rarity": "Rare"
+    },
+    "facts": {}
   },
   {
     "index": "cloak-of-the-manta-ray",
@@ -750,9 +917,12 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "category": "Wondrous Items",
-    "rarity": "Uncommon",
-    "variants": []
+    "numbers": {},
+    "notes": {
+      "category": "Wondrous Items",
+      "rarity": "Uncommon"
+    },
+    "facts": {}
   },
   {
     "index": "crystal-ball",
@@ -761,13 +931,13 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "category": "Wondrous Items",
-    "rarity": "Very Rare",
-    "variants": [
-      "Crystal Ball of Mind Reading",
-      "Crystal Ball of Telepathy",
-      "Crystal Ball of True Seeing"
-    ]
+    "numbers": {},
+    "notes": {
+      "category": "Wondrous Items",
+      "rarity": "Very Rare",
+      "variants": "Crystal Ball of Mind Reading, Crystal Ball of Telepathy, Crystal Ball of True Seeing"
+    },
+    "facts": {}
   },
   {
     "index": "crystal-ball-of-mind-reading",
@@ -778,9 +948,12 @@
     ],
     "options": [],
     "choose": null,
-    "category": "Wondrous Items",
-    "rarity": "Legendary",
-    "variants": []
+    "numbers": {},
+    "notes": {
+      "category": "Wondrous Items",
+      "rarity": "Legendary"
+    },
+    "facts": {}
   },
   {
     "index": "crystal-ball-of-telepathy",
@@ -791,9 +964,12 @@
     ],
     "options": [],
     "choose": null,
-    "category": "Wondrous Items",
-    "rarity": "Legendary",
-    "variants": []
+    "numbers": {},
+    "notes": {
+      "category": "Wondrous Items",
+      "rarity": "Legendary"
+    },
+    "facts": {}
   },
   {
     "index": "crystal-ball-of-true-seeing",
@@ -804,9 +980,12 @@
     ],
     "options": [],
     "choose": null,
-    "category": "Wondrous Items",
-    "rarity": "Legendary",
-    "variants": []
+    "numbers": {},
+    "notes": {
+      "category": "Wondrous Items",
+      "rarity": "Legendary"
+    },
+    "facts": {}
   },
   {
     "index": "cube-of-force",
@@ -815,9 +994,12 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "category": "Wondrous Items",
-    "rarity": "Rare",
-    "variants": []
+    "numbers": {},
+    "notes": {
+      "category": "Wondrous Items",
+      "rarity": "Rare"
+    },
+    "facts": {}
   },
   {
     "index": "cubic-gate",
@@ -826,9 +1008,12 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "category": "Wondrous Items",
-    "rarity": "Legendary",
-    "variants": []
+    "numbers": {},
+    "notes": {
+      "category": "Wondrous Items",
+      "rarity": "Legendary"
+    },
+    "facts": {}
   },
   {
     "index": "dagger-of-venom",
@@ -837,9 +1022,12 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "category": "Weapon",
-    "rarity": "Rare",
-    "variants": []
+    "numbers": {},
+    "notes": {
+      "category": "Weapon",
+      "rarity": "Rare"
+    },
+    "facts": {}
   },
   {
     "index": "dancing-sword",
@@ -848,9 +1036,12 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "category": "Weapon",
-    "rarity": "Very Rare",
-    "variants": []
+    "numbers": {},
+    "notes": {
+      "category": "Weapon",
+      "rarity": "Very Rare"
+    },
+    "facts": {}
   },
   {
     "index": "decanter-of-endless-water",
@@ -859,9 +1050,12 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "category": "Wondrous Items",
-    "rarity": "Uncommon",
-    "variants": []
+    "numbers": {},
+    "notes": {
+      "category": "Wondrous Items",
+      "rarity": "Uncommon"
+    },
+    "facts": {}
   },
   {
     "index": "deck-of-illusions",
@@ -870,9 +1064,12 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "category": "Wondrous Items",
-    "rarity": "Uncommon",
-    "variants": []
+    "numbers": {},
+    "notes": {
+      "category": "Wondrous Items",
+      "rarity": "Uncommon"
+    },
+    "facts": {}
   },
   {
     "index": "deck-of-many-things",
@@ -881,9 +1078,12 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "category": "Wondrous Items",
-    "rarity": "Legendary",
-    "variants": []
+    "numbers": {},
+    "notes": {
+      "category": "Wondrous Items",
+      "rarity": "Legendary"
+    },
+    "facts": {}
   },
   {
     "index": "defender",
@@ -892,9 +1092,12 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "category": "Weapon",
-    "rarity": "Legendary",
-    "variants": []
+    "numbers": {},
+    "notes": {
+      "category": "Weapon",
+      "rarity": "Legendary"
+    },
+    "facts": {}
   },
   {
     "index": "demon-armor",
@@ -903,9 +1106,12 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "category": "Armor",
-    "rarity": "Very Rare",
-    "variants": []
+    "numbers": {},
+    "notes": {
+      "category": "Armor",
+      "rarity": "Very Rare"
+    },
+    "facts": {}
   },
   {
     "index": "dimensional-shackles",
@@ -914,9 +1120,12 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "category": "Wondrous Items",
-    "rarity": "Rare",
-    "variants": []
+    "numbers": {},
+    "notes": {
+      "category": "Wondrous Items",
+      "rarity": "Rare"
+    },
+    "facts": {}
   },
   {
     "index": "dragon-scale-mail",
@@ -925,20 +1134,13 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "category": "Armor",
-    "rarity": "Very Rare",
-    "variants": [
-      "Black Dragon Scale Mail",
-      "Blue Dragon Scale Mail",
-      "Brass Dragon Scale Mail",
-      "Bronze Dragon Scale Mail",
-      "Copper Dragon Scale Mail",
-      "Gold Dragon Scale Mail",
-      "Green Dragon Scale Mail",
-      "Red Dragon Scale Mail",
-      "Silver Dragon Scale Mail",
-      "White Dragon Scale Mail"
-    ]
+    "numbers": {},
+    "notes": {
+      "category": "Armor",
+      "rarity": "Very Rare",
+      "variants": "Black Dragon Scale Mail, Blue Dragon Scale Mail, Brass Dragon Scale Mail, Bronze Dragon Scale Mail, Copper Dragon Scale Mail, Gold Dragon Scale Mail, Green Dragon Scale Mail, Red Dragon Scale Mail, Silver Dragon Scale Mail, White Dragon Scale Mail"
+    },
+    "facts": {}
   },
   {
     "index": "dragon-scale-mail-black",
@@ -949,9 +1151,12 @@
     ],
     "options": [],
     "choose": null,
-    "category": "Armor",
-    "rarity": "Very Rare",
-    "variants": []
+    "numbers": {},
+    "notes": {
+      "category": "Armor",
+      "rarity": "Very Rare"
+    },
+    "facts": {}
   },
   {
     "index": "dragon-scale-mail-blue",
@@ -962,9 +1167,12 @@
     ],
     "options": [],
     "choose": null,
-    "category": "Armor",
-    "rarity": "Very Rare",
-    "variants": []
+    "numbers": {},
+    "notes": {
+      "category": "Armor",
+      "rarity": "Very Rare"
+    },
+    "facts": {}
   },
   {
     "index": "dragon-scale-mail-brass",
@@ -975,9 +1183,12 @@
     ],
     "options": [],
     "choose": null,
-    "category": "Armor",
-    "rarity": "Very Rare",
-    "variants": []
+    "numbers": {},
+    "notes": {
+      "category": "Armor",
+      "rarity": "Very Rare"
+    },
+    "facts": {}
   },
   {
     "index": "dragon-scale-mail-bronze",
@@ -988,9 +1199,12 @@
     ],
     "options": [],
     "choose": null,
-    "category": "Armor",
-    "rarity": "Very Rare",
-    "variants": []
+    "numbers": {},
+    "notes": {
+      "category": "Armor",
+      "rarity": "Very Rare"
+    },
+    "facts": {}
   },
   {
     "index": "dragon-scale-mail-copper",
@@ -1001,9 +1215,12 @@
     ],
     "options": [],
     "choose": null,
-    "category": "Armor",
-    "rarity": "Very Rare",
-    "variants": []
+    "numbers": {},
+    "notes": {
+      "category": "Armor",
+      "rarity": "Very Rare"
+    },
+    "facts": {}
   },
   {
     "index": "dragon-scale-mail-gold",
@@ -1014,9 +1231,12 @@
     ],
     "options": [],
     "choose": null,
-    "category": "Armor",
-    "rarity": "Very Rare",
-    "variants": []
+    "numbers": {},
+    "notes": {
+      "category": "Armor",
+      "rarity": "Very Rare"
+    },
+    "facts": {}
   },
   {
     "index": "dragon-scale-mail-green",
@@ -1027,9 +1247,12 @@
     ],
     "options": [],
     "choose": null,
-    "category": "Armor",
-    "rarity": "Very Rare",
-    "variants": []
+    "numbers": {},
+    "notes": {
+      "category": "Armor",
+      "rarity": "Very Rare"
+    },
+    "facts": {}
   },
   {
     "index": "dragon-scale-mail-red",
@@ -1040,9 +1263,12 @@
     ],
     "options": [],
     "choose": null,
-    "category": "Armor",
-    "rarity": "Very Rare",
-    "variants": []
+    "numbers": {},
+    "notes": {
+      "category": "Armor",
+      "rarity": "Very Rare"
+    },
+    "facts": {}
   },
   {
     "index": "dragon-scale-mail-silver",
@@ -1053,9 +1279,12 @@
     ],
     "options": [],
     "choose": null,
-    "category": "Armor",
-    "rarity": "Very Rare",
-    "variants": []
+    "numbers": {},
+    "notes": {
+      "category": "Armor",
+      "rarity": "Very Rare"
+    },
+    "facts": {}
   },
   {
     "index": "dragon-scale-mail-white",
@@ -1066,9 +1295,12 @@
     ],
     "options": [],
     "choose": null,
-    "category": "Armor",
-    "rarity": "Very Rare",
-    "variants": []
+    "numbers": {},
+    "notes": {
+      "category": "Armor",
+      "rarity": "Very Rare"
+    },
+    "facts": {}
   },
   {
     "index": "dragon-slayer",
@@ -1077,9 +1309,12 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "category": "Weapon",
-    "rarity": "Rare",
-    "variants": []
+    "numbers": {},
+    "notes": {
+      "category": "Weapon",
+      "rarity": "Rare"
+    },
+    "facts": {}
   },
   {
     "index": "dust-of-disappearance",
@@ -1088,9 +1323,12 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "category": "Wondrous Items",
-    "rarity": "Uncommon",
-    "variants": []
+    "numbers": {},
+    "notes": {
+      "category": "Wondrous Items",
+      "rarity": "Uncommon"
+    },
+    "facts": {}
   },
   {
     "index": "dust-of-dryness",
@@ -1099,9 +1337,12 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "category": "Wondrous Items",
-    "rarity": "Uncommon",
-    "variants": []
+    "numbers": {},
+    "notes": {
+      "category": "Wondrous Items",
+      "rarity": "Uncommon"
+    },
+    "facts": {}
   },
   {
     "index": "dust-of-sneezing-and-choking",
@@ -1110,9 +1351,12 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "category": "Wondrous Items",
-    "rarity": "Uncommon",
-    "variants": []
+    "numbers": {},
+    "notes": {
+      "category": "Wondrous Items",
+      "rarity": "Uncommon"
+    },
+    "facts": {}
   },
   {
     "index": "dwarven-plate",
@@ -1121,9 +1365,12 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "category": "Armor",
-    "rarity": "Very Rare",
-    "variants": []
+    "numbers": {},
+    "notes": {
+      "category": "Armor",
+      "rarity": "Very Rare"
+    },
+    "facts": {}
   },
   {
     "index": "dwarven-thrower",
@@ -1132,9 +1379,12 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "category": "Weapon",
-    "rarity": "Very Rare",
-    "variants": []
+    "numbers": {},
+    "notes": {
+      "category": "Weapon",
+      "rarity": "Very Rare"
+    },
+    "facts": {}
   },
   {
     "index": "efficient-quiver",
@@ -1143,9 +1393,12 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "category": "Wondrous Items",
-    "rarity": "Uncommon",
-    "variants": []
+    "numbers": {},
+    "notes": {
+      "category": "Wondrous Items",
+      "rarity": "Uncommon"
+    },
+    "facts": {}
   },
   {
     "index": "efreeti-bottle",
@@ -1154,9 +1407,12 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "category": "Wondrous Items",
-    "rarity": "Very Rare",
-    "variants": []
+    "numbers": {},
+    "notes": {
+      "category": "Wondrous Items",
+      "rarity": "Very Rare"
+    },
+    "facts": {}
   },
   {
     "index": "elemental-gem",
@@ -1165,14 +1421,13 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "category": "Wondrous Items",
-    "rarity": "Uncommon",
-    "variants": [
-      "Air Elemental Gem",
-      "Earth Elemental Gem",
-      "Fire Elemental Gem",
-      "Water Elemental Gem"
-    ]
+    "numbers": {},
+    "notes": {
+      "category": "Wondrous Items",
+      "rarity": "Uncommon",
+      "variants": "Air Elemental Gem, Earth Elemental Gem, Fire Elemental Gem, Water Elemental Gem"
+    },
+    "facts": {}
   },
   {
     "index": "elemental-gem-air",
@@ -1183,9 +1438,12 @@
     ],
     "options": [],
     "choose": null,
-    "category": "Wondrous Items",
-    "rarity": "Uncommon",
-    "variants": []
+    "numbers": {},
+    "notes": {
+      "category": "Wondrous Items",
+      "rarity": "Uncommon"
+    },
+    "facts": {}
   },
   {
     "index": "elemental-gem-earth",
@@ -1196,9 +1454,12 @@
     ],
     "options": [],
     "choose": null,
-    "category": "Wondrous Items",
-    "rarity": "Uncommon",
-    "variants": []
+    "numbers": {},
+    "notes": {
+      "category": "Wondrous Items",
+      "rarity": "Uncommon"
+    },
+    "facts": {}
   },
   {
     "index": "elemental-gem-fire",
@@ -1209,9 +1470,12 @@
     ],
     "options": [],
     "choose": null,
-    "category": "Wondrous Items",
-    "rarity": "Uncommon",
-    "variants": []
+    "numbers": {},
+    "notes": {
+      "category": "Wondrous Items",
+      "rarity": "Uncommon"
+    },
+    "facts": {}
   },
   {
     "index": "elemental-gem-water",
@@ -1222,9 +1486,12 @@
     ],
     "options": [],
     "choose": null,
-    "category": "Wondrous Items",
-    "rarity": "Uncommon",
-    "variants": []
+    "numbers": {},
+    "notes": {
+      "category": "Wondrous Items",
+      "rarity": "Uncommon"
+    },
+    "facts": {}
   },
   {
     "index": "elven-chain",
@@ -1233,9 +1500,12 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "category": "Armor",
-    "rarity": "Rare",
-    "variants": []
+    "numbers": {},
+    "notes": {
+      "category": "Armor",
+      "rarity": "Rare"
+    },
+    "facts": {}
   },
   {
     "index": "eversmoking-bottle",
@@ -1244,9 +1514,12 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "category": "Wondrous Items",
-    "rarity": "Uncommon",
-    "variants": []
+    "numbers": {},
+    "notes": {
+      "category": "Wondrous Items",
+      "rarity": "Uncommon"
+    },
+    "facts": {}
   },
   {
     "index": "eyes-of-charming",
@@ -1255,9 +1528,12 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "category": "Wondrous Items",
-    "rarity": "Uncommon",
-    "variants": []
+    "numbers": {},
+    "notes": {
+      "category": "Wondrous Items",
+      "rarity": "Uncommon"
+    },
+    "facts": {}
   },
   {
     "index": "eyes-of-minute-seeing",
@@ -1266,9 +1542,12 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "category": "Wondrous Items",
-    "rarity": "Uncommon",
-    "variants": []
+    "numbers": {},
+    "notes": {
+      "category": "Wondrous Items",
+      "rarity": "Uncommon"
+    },
+    "facts": {}
   },
   {
     "index": "eyes-of-the-eagle",
@@ -1277,9 +1556,12 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "category": "Wondrous Items",
-    "rarity": "Uncommon",
-    "variants": []
+    "numbers": {},
+    "notes": {
+      "category": "Wondrous Items",
+      "rarity": "Uncommon"
+    },
+    "facts": {}
   },
   {
     "index": "feather-token",
@@ -1288,16 +1570,13 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "category": "Wondrous Items",
-    "rarity": "Rare",
-    "variants": [
-      "Anchor Feather Token",
-      "Bird Feather Token",
-      "Fan Feather Token",
-      "Swan Boat Feather Token",
-      "Tree Feather Token",
-      "Whip Feather Token"
-    ]
+    "numbers": {},
+    "notes": {
+      "category": "Wondrous Items",
+      "rarity": "Rare",
+      "variants": "Anchor Feather Token, Bird Feather Token, Fan Feather Token, Swan Boat Feather Token, Tree Feather Token, Whip Feather Token"
+    },
+    "facts": {}
   },
   {
     "index": "feather-token-anchor",
@@ -1308,9 +1587,12 @@
     ],
     "options": [],
     "choose": null,
-    "category": "Wondrous Items",
-    "rarity": "Rare",
-    "variants": []
+    "numbers": {},
+    "notes": {
+      "category": "Wondrous Items",
+      "rarity": "Rare"
+    },
+    "facts": {}
   },
   {
     "index": "feather-token-bird",
@@ -1321,9 +1603,12 @@
     ],
     "options": [],
     "choose": null,
-    "category": "Wondrous Items",
-    "rarity": "Rare",
-    "variants": []
+    "numbers": {},
+    "notes": {
+      "category": "Wondrous Items",
+      "rarity": "Rare"
+    },
+    "facts": {}
   },
   {
     "index": "feather-token-fan",
@@ -1334,9 +1619,12 @@
     ],
     "options": [],
     "choose": null,
-    "category": "Wondrous Items",
-    "rarity": "Rare",
-    "variants": []
+    "numbers": {},
+    "notes": {
+      "category": "Wondrous Items",
+      "rarity": "Rare"
+    },
+    "facts": {}
   },
   {
     "index": "feather-token-swan-boat",
@@ -1347,9 +1635,12 @@
     ],
     "options": [],
     "choose": null,
-    "category": "Wondrous Items",
-    "rarity": "Rare",
-    "variants": []
+    "numbers": {},
+    "notes": {
+      "category": "Wondrous Items",
+      "rarity": "Rare"
+    },
+    "facts": {}
   },
   {
     "index": "feather-token-tree",
@@ -1360,9 +1651,12 @@
     ],
     "options": [],
     "choose": null,
-    "category": "Wondrous Items",
-    "rarity": "Rare",
-    "variants": []
+    "numbers": {},
+    "notes": {
+      "category": "Wondrous Items",
+      "rarity": "Rare"
+    },
+    "facts": {}
   },
   {
     "index": "feather-token-whip",
@@ -1373,9 +1667,12 @@
     ],
     "options": [],
     "choose": null,
-    "category": "Wondrous Items",
-    "rarity": "Rare",
-    "variants": []
+    "numbers": {},
+    "notes": {
+      "category": "Wondrous Items",
+      "rarity": "Rare"
+    },
+    "facts": {}
   },
   {
     "index": "figurine-of-wondrous-power",
@@ -1384,19 +1681,13 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "category": "Wondrous Items",
-    "rarity": "Varies",
-    "variants": [
-      "Bronze Griffon Figurine of Wondrous Power",
-      "Ebony Fly Figurine of Wondrous Power",
-      "Golden Lions Figurine of Wondrous Power",
-      "Ivory Goats Figurine of Wondrous Power",
-      "Marble Elephant Figurine of Wondrous Power",
-      "Obsidian Steed Figurine of Wondrous Power",
-      "Onyx Dog Figurine of Wondrous Power",
-      "Serpentine Owl Figurine of Wondrous Power",
-      "Silver Raven Figurine of Wondrous Power"
-    ]
+    "numbers": {},
+    "notes": {
+      "category": "Wondrous Items",
+      "rarity": "Varies",
+      "variants": "Bronze Griffon Figurine of Wondrous Power, Ebony Fly Figurine of Wondrous Power, Golden Lions Figurine of Wondrous Power, Ivory Goats Figurine of Wondrous Power, Marble Elephant Figurine of Wondrous Power, Obsidian Steed Figurine of Wondrous Power, Onyx Dog Figurine of Wondrous Power, Serpentine Owl Figurine of Wondrous Power, Silver Raven Figurine of Wondrous Power"
+    },
+    "facts": {}
   },
   {
     "index": "figurine-of-wondrous-power-bronze-griffon",
@@ -1407,9 +1698,12 @@
     ],
     "options": [],
     "choose": null,
-    "category": "Wondrous Items",
-    "rarity": "Rare",
-    "variants": []
+    "numbers": {},
+    "notes": {
+      "category": "Wondrous Items",
+      "rarity": "Rare"
+    },
+    "facts": {}
   },
   {
     "index": "figurine-of-wondrous-power-ebony-fly",
@@ -1420,9 +1714,12 @@
     ],
     "options": [],
     "choose": null,
-    "category": "Wondrous Items",
-    "rarity": "Rare",
-    "variants": []
+    "numbers": {},
+    "notes": {
+      "category": "Wondrous Items",
+      "rarity": "Rare"
+    },
+    "facts": {}
   },
   {
     "index": "figurine-of-wondrous-power-golden-lions",
@@ -1433,9 +1730,12 @@
     ],
     "options": [],
     "choose": null,
-    "category": "Wondrous Items",
-    "rarity": "Rare",
-    "variants": []
+    "numbers": {},
+    "notes": {
+      "category": "Wondrous Items",
+      "rarity": "Rare"
+    },
+    "facts": {}
   },
   {
     "index": "figurine-of-wondrous-power-ivory-goats",
@@ -1446,9 +1746,12 @@
     ],
     "options": [],
     "choose": null,
-    "category": "Wondrous Items",
-    "rarity": "Rare",
-    "variants": []
+    "numbers": {},
+    "notes": {
+      "category": "Wondrous Items",
+      "rarity": "Rare"
+    },
+    "facts": {}
   },
   {
     "index": "figurine-of-wondrous-power-marble-elephant",
@@ -1459,9 +1762,12 @@
     ],
     "options": [],
     "choose": null,
-    "category": "Wondrous Items",
-    "rarity": "Rare",
-    "variants": []
+    "numbers": {},
+    "notes": {
+      "category": "Wondrous Items",
+      "rarity": "Rare"
+    },
+    "facts": {}
   },
   {
     "index": "figurine-of-wondrous-power-obsidian-steed",
@@ -1472,9 +1778,12 @@
     ],
     "options": [],
     "choose": null,
-    "category": "Wondrous Items",
-    "rarity": "Very Rare",
-    "variants": []
+    "numbers": {},
+    "notes": {
+      "category": "Wondrous Items",
+      "rarity": "Very Rare"
+    },
+    "facts": {}
   },
   {
     "index": "figurine-of-wondrous-power-onyx-dog",
@@ -1485,9 +1794,12 @@
     ],
     "options": [],
     "choose": null,
-    "category": "Wondrous Items",
-    "rarity": "Rare",
-    "variants": []
+    "numbers": {},
+    "notes": {
+      "category": "Wondrous Items",
+      "rarity": "Rare"
+    },
+    "facts": {}
   },
   {
     "index": "figurine-of-wondrous-power-serpentine-owl",
@@ -1498,9 +1810,12 @@
     ],
     "options": [],
     "choose": null,
-    "category": "Wondrous Items",
-    "rarity": "Rare",
-    "variants": []
+    "numbers": {},
+    "notes": {
+      "category": "Wondrous Items",
+      "rarity": "Rare"
+    },
+    "facts": {}
   },
   {
     "index": "figurine-of-wondrous-power-silver-raven",
@@ -1511,9 +1826,12 @@
     ],
     "options": [],
     "choose": null,
-    "category": "Wondrous Items",
-    "rarity": "Uncommon",
-    "variants": []
+    "numbers": {},
+    "notes": {
+      "category": "Wondrous Items",
+      "rarity": "Uncommon"
+    },
+    "facts": {}
   },
   {
     "index": "flame-tongue",
@@ -1522,9 +1840,12 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "category": "Weapon",
-    "rarity": "Rare",
-    "variants": []
+    "numbers": {},
+    "notes": {
+      "category": "Weapon",
+      "rarity": "Rare"
+    },
+    "facts": {}
   },
   {
     "index": "folding-boat",
@@ -1533,9 +1854,12 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "category": "Wondrous Items",
-    "rarity": "Rare",
-    "variants": []
+    "numbers": {},
+    "notes": {
+      "category": "Wondrous Items",
+      "rarity": "Rare"
+    },
+    "facts": {}
   },
   {
     "index": "frost-brand",
@@ -1544,9 +1868,12 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "category": "Weapon",
-    "rarity": "Very Rare",
-    "variants": []
+    "numbers": {},
+    "notes": {
+      "category": "Weapon",
+      "rarity": "Very Rare"
+    },
+    "facts": {}
   },
   {
     "index": "gauntlets-of-ogre-power",
@@ -1555,9 +1882,12 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "category": "Wondrous Items",
-    "rarity": "Uncommon",
-    "variants": []
+    "numbers": {},
+    "notes": {
+      "category": "Wondrous Items",
+      "rarity": "Uncommon"
+    },
+    "facts": {}
   },
   {
     "index": "gem-of-brightness",
@@ -1566,9 +1896,12 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "category": "Wondrous Items",
-    "rarity": "Uncommon",
-    "variants": []
+    "numbers": {},
+    "notes": {
+      "category": "Wondrous Items",
+      "rarity": "Uncommon"
+    },
+    "facts": {}
   },
   {
     "index": "gem-of-seeing",
@@ -1577,9 +1910,12 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "category": "Wondrous Items",
-    "rarity": "Rare",
-    "variants": []
+    "numbers": {},
+    "notes": {
+      "category": "Wondrous Items",
+      "rarity": "Rare"
+    },
+    "facts": {}
   },
   {
     "index": "giant-slayer",
@@ -1588,9 +1924,12 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "category": "Weapon",
-    "rarity": "Rare",
-    "variants": []
+    "numbers": {},
+    "notes": {
+      "category": "Weapon",
+      "rarity": "Rare"
+    },
+    "facts": {}
   },
   {
     "index": "glamoured-studded-leather-armor",
@@ -1599,9 +1938,12 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "category": "Armor",
-    "rarity": "Rare",
-    "variants": []
+    "numbers": {},
+    "notes": {
+      "category": "Armor",
+      "rarity": "Rare"
+    },
+    "facts": {}
   },
   {
     "index": "gloves-of-missile-snaring",
@@ -1610,9 +1952,12 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "category": "Wondrous Items",
-    "rarity": "Uncommon",
-    "variants": []
+    "numbers": {},
+    "notes": {
+      "category": "Wondrous Items",
+      "rarity": "Uncommon"
+    },
+    "facts": {}
   },
   {
     "index": "gloves-of-swimming-and-climbing",
@@ -1621,9 +1966,12 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "category": "Wondrous Items",
-    "rarity": "Uncommon",
-    "variants": []
+    "numbers": {},
+    "notes": {
+      "category": "Wondrous Items",
+      "rarity": "Uncommon"
+    },
+    "facts": {}
   },
   {
     "index": "goggles-of-night",
@@ -1632,9 +1980,12 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "category": "Wondrous Items",
-    "rarity": "Uncommon",
-    "variants": []
+    "numbers": {},
+    "notes": {
+      "category": "Wondrous Items",
+      "rarity": "Uncommon"
+    },
+    "facts": {}
   },
   {
     "index": "hammer-of-thunderbolts",
@@ -1643,9 +1994,12 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "category": "Weapon",
-    "rarity": "Legendary",
-    "variants": []
+    "numbers": {},
+    "notes": {
+      "category": "Weapon",
+      "rarity": "Legendary"
+    },
+    "facts": {}
   },
   {
     "index": "handy-haversack",
@@ -1654,9 +2008,12 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "category": "Wondrous Items",
-    "rarity": "Rare",
-    "variants": []
+    "numbers": {},
+    "notes": {
+      "category": "Wondrous Items",
+      "rarity": "Rare"
+    },
+    "facts": {}
   },
   {
     "index": "hat-of-disguise",
@@ -1665,9 +2022,12 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "category": "Wondrous Items",
-    "rarity": "Uncommon",
-    "variants": []
+    "numbers": {},
+    "notes": {
+      "category": "Wondrous Items",
+      "rarity": "Uncommon"
+    },
+    "facts": {}
   },
   {
     "index": "headband-of-intellect",
@@ -1676,9 +2036,12 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "category": "Wondrous Items",
-    "rarity": "Uncommon",
-    "variants": []
+    "numbers": {},
+    "notes": {
+      "category": "Wondrous Items",
+      "rarity": "Uncommon"
+    },
+    "facts": {}
   },
   {
     "index": "helm-of-brilliance",
@@ -1687,9 +2050,12 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "category": "Wondrous Items",
-    "rarity": "Very Rare",
-    "variants": []
+    "numbers": {},
+    "notes": {
+      "category": "Wondrous Items",
+      "rarity": "Very Rare"
+    },
+    "facts": {}
   },
   {
     "index": "helm-of-comprehending-languages",
@@ -1698,9 +2064,12 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "category": "Wondrous Items",
-    "rarity": "Uncommon",
-    "variants": []
+    "numbers": {},
+    "notes": {
+      "category": "Wondrous Items",
+      "rarity": "Uncommon"
+    },
+    "facts": {}
   },
   {
     "index": "helm-of-telepathy",
@@ -1709,9 +2078,12 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "category": "Wondrous Items",
-    "rarity": "Uncommon",
-    "variants": []
+    "numbers": {},
+    "notes": {
+      "category": "Wondrous Items",
+      "rarity": "Uncommon"
+    },
+    "facts": {}
   },
   {
     "index": "helm-of-teleportation",
@@ -1720,9 +2092,12 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "category": "Wondrous Items",
-    "rarity": "Rare",
-    "variants": []
+    "numbers": {},
+    "notes": {
+      "category": "Wondrous Items",
+      "rarity": "Rare"
+    },
+    "facts": {}
   },
   {
     "index": "holy-avenger",
@@ -1731,9 +2106,12 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "category": "Weapon",
-    "rarity": "Legendary",
-    "variants": []
+    "numbers": {},
+    "notes": {
+      "category": "Weapon",
+      "rarity": "Legendary"
+    },
+    "facts": {}
   },
   {
     "index": "horn-of-blasting",
@@ -1742,9 +2120,12 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "category": "Wondrous Items",
-    "rarity": "Rare",
-    "variants": []
+    "numbers": {},
+    "notes": {
+      "category": "Wondrous Items",
+      "rarity": "Rare"
+    },
+    "facts": {}
   },
   {
     "index": "horn-of-valhalla",
@@ -1753,14 +2134,13 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "category": "Wondrous Items",
-    "rarity": "Varies",
-    "variants": [
-      "Silver Horn of Valhalla",
-      "Brass Horn of Valhalla",
-      "Bronze Horn of Valhalla",
-      "Iron Horn of Valhalla"
-    ]
+    "numbers": {},
+    "notes": {
+      "category": "Wondrous Items",
+      "rarity": "Varies",
+      "variants": "Silver Horn of Valhalla, Brass Horn of Valhalla, Bronze Horn of Valhalla, Iron Horn of Valhalla"
+    },
+    "facts": {}
   },
   {
     "index": "horn-of-valhalla-silver",
@@ -1771,9 +2151,12 @@
     ],
     "options": [],
     "choose": null,
-    "category": "Wondrous Items",
-    "rarity": "Rare",
-    "variants": []
+    "numbers": {},
+    "notes": {
+      "category": "Wondrous Items",
+      "rarity": "Rare"
+    },
+    "facts": {}
   },
   {
     "index": "horn-of-valhalla-brass",
@@ -1784,9 +2167,12 @@
     ],
     "options": [],
     "choose": null,
-    "category": "Wondrous Items",
-    "rarity": "Rare",
-    "variants": []
+    "numbers": {},
+    "notes": {
+      "category": "Wondrous Items",
+      "rarity": "Rare"
+    },
+    "facts": {}
   },
   {
     "index": "horn-of-valhalla-bronze",
@@ -1797,9 +2183,12 @@
     ],
     "options": [],
     "choose": null,
-    "category": "Wondrous Items",
-    "rarity": "Very Rare",
-    "variants": []
+    "numbers": {},
+    "notes": {
+      "category": "Wondrous Items",
+      "rarity": "Very Rare"
+    },
+    "facts": {}
   },
   {
     "index": "horn-of-valhalla-iron",
@@ -1810,9 +2199,12 @@
     ],
     "options": [],
     "choose": null,
-    "category": "Wondrous Items",
-    "rarity": "Legendary",
-    "variants": []
+    "numbers": {},
+    "notes": {
+      "category": "Wondrous Items",
+      "rarity": "Legendary"
+    },
+    "facts": {}
   },
   {
     "index": "horseshoes-of-a-zephyr",
@@ -1821,9 +2213,12 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "category": "Wondrous Items",
-    "rarity": "Very Rare",
-    "variants": []
+    "numbers": {},
+    "notes": {
+      "category": "Wondrous Items",
+      "rarity": "Very Rare"
+    },
+    "facts": {}
   },
   {
     "index": "horseshoes-of-speed",
@@ -1832,9 +2227,12 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "category": "Wondrous Items",
-    "rarity": "Rare",
-    "variants": []
+    "numbers": {},
+    "notes": {
+      "category": "Wondrous Items",
+      "rarity": "Rare"
+    },
+    "facts": {}
   },
   {
     "index": "immovable-rod",
@@ -1843,9 +2241,12 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "category": "Rod",
-    "rarity": "Uncommon",
-    "variants": []
+    "numbers": {},
+    "notes": {
+      "category": "Rod",
+      "rarity": "Uncommon"
+    },
+    "facts": {}
   },
   {
     "index": "instant-fortress",
@@ -1854,9 +2255,12 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "category": "Wondrous Items",
-    "rarity": "Rare",
-    "variants": []
+    "numbers": {},
+    "notes": {
+      "category": "Wondrous Items",
+      "rarity": "Rare"
+    },
+    "facts": {}
   },
   {
     "index": "ioun-stone",
@@ -1865,24 +2269,13 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "category": "Wondrous Items",
-    "rarity": "Varies",
-    "variants": [
-      "Ioun Stone of Absorption",
-      "Ioun Stone of Agility",
-      "Ioun Stone of Awareness",
-      "Ioun Stone of Fortitude",
-      "Ioun Stone of Greater Absorption",
-      "Ioun Stone of Insight",
-      "Ioun Stone of Intellect",
-      "Ioun Stone of Leadership",
-      "Ioun Stone of Mastery",
-      "Ioun Stone of Protection",
-      "Ioun Stone of Regeneration",
-      "Ioun Stone of Reserve",
-      "Ioun Stone of Strength",
-      "Ioun Stone of Sustenance"
-    ]
+    "numbers": {},
+    "notes": {
+      "category": "Wondrous Items",
+      "rarity": "Varies",
+      "variants": "Ioun Stone of Absorption, Ioun Stone of Agility, Ioun Stone of Awareness, Ioun Stone of Fortitude, Ioun Stone of Greater Absorption, Ioun Stone of Insight, Ioun Stone of Intellect, Ioun Stone of Leadership, Ioun Stone of Mastery, Ioun Stone of Protection, Ioun Stone of Regeneration, Ioun Stone of Reserve, Ioun Stone of Strength, Ioun Stone of Sustenance"
+    },
+    "facts": {}
   },
   {
     "index": "ioun-stone-of-absorption",
@@ -1893,9 +2286,12 @@
     ],
     "options": [],
     "choose": null,
-    "category": "Wondrous Items",
-    "rarity": "Very Rare",
-    "variants": []
+    "numbers": {},
+    "notes": {
+      "category": "Wondrous Items",
+      "rarity": "Very Rare"
+    },
+    "facts": {}
   },
   {
     "index": "ioun-stone-of-agility",
@@ -1906,9 +2302,12 @@
     ],
     "options": [],
     "choose": null,
-    "category": "Wondrous Items",
-    "rarity": "Very Rare",
-    "variants": []
+    "numbers": {},
+    "notes": {
+      "category": "Wondrous Items",
+      "rarity": "Very Rare"
+    },
+    "facts": {}
   },
   {
     "index": "ioun-stone-of-awareness",
@@ -1919,9 +2318,12 @@
     ],
     "options": [],
     "choose": null,
-    "category": "Wondrous Items",
-    "rarity": "Rare",
-    "variants": []
+    "numbers": {},
+    "notes": {
+      "category": "Wondrous Items",
+      "rarity": "Rare"
+    },
+    "facts": {}
   },
   {
     "index": "ioun-stone-of-fortitude",
@@ -1932,9 +2334,12 @@
     ],
     "options": [],
     "choose": null,
-    "category": "Wondrous Items",
-    "rarity": "Very Rare",
-    "variants": []
+    "numbers": {},
+    "notes": {
+      "category": "Wondrous Items",
+      "rarity": "Very Rare"
+    },
+    "facts": {}
   },
   {
     "index": "ioun-stone-of-greater-absorption",
@@ -1945,9 +2350,12 @@
     ],
     "options": [],
     "choose": null,
-    "category": "Wondrous Items",
-    "rarity": "Legendary",
-    "variants": []
+    "numbers": {},
+    "notes": {
+      "category": "Wondrous Items",
+      "rarity": "Legendary"
+    },
+    "facts": {}
   },
   {
     "index": "ioun-stone-of-insight",
@@ -1958,9 +2366,12 @@
     ],
     "options": [],
     "choose": null,
-    "category": "Wondrous Items",
-    "rarity": "Very Rare",
-    "variants": []
+    "numbers": {},
+    "notes": {
+      "category": "Wondrous Items",
+      "rarity": "Very Rare"
+    },
+    "facts": {}
   },
   {
     "index": "ioun-stone-of-intellect",
@@ -1971,9 +2382,12 @@
     ],
     "options": [],
     "choose": null,
-    "category": "Wondrous Items",
-    "rarity": "Very Rare",
-    "variants": []
+    "numbers": {},
+    "notes": {
+      "category": "Wondrous Items",
+      "rarity": "Very Rare"
+    },
+    "facts": {}
   },
   {
     "index": "ioun-stone-of-leadership",
@@ -1984,9 +2398,12 @@
     ],
     "options": [],
     "choose": null,
-    "category": "Wondrous Items",
-    "rarity": "Very Rare",
-    "variants": []
+    "numbers": {},
+    "notes": {
+      "category": "Wondrous Items",
+      "rarity": "Very Rare"
+    },
+    "facts": {}
   },
   {
     "index": "ioun-stone-of-mastery",
@@ -1997,9 +2414,12 @@
     ],
     "options": [],
     "choose": null,
-    "category": "Wondrous Items",
-    "rarity": "Legendary",
-    "variants": []
+    "numbers": {},
+    "notes": {
+      "category": "Wondrous Items",
+      "rarity": "Legendary"
+    },
+    "facts": {}
   },
   {
     "index": "ioun-stone-of-protection",
@@ -2010,9 +2430,12 @@
     ],
     "options": [],
     "choose": null,
-    "category": "Wondrous Items",
-    "rarity": "Rare",
-    "variants": []
+    "numbers": {},
+    "notes": {
+      "category": "Wondrous Items",
+      "rarity": "Rare"
+    },
+    "facts": {}
   },
   {
     "index": "ioun-stone-of-regeneration",
@@ -2023,9 +2446,12 @@
     ],
     "options": [],
     "choose": null,
-    "category": "Wondrous Items",
-    "rarity": "Legendary",
-    "variants": []
+    "numbers": {},
+    "notes": {
+      "category": "Wondrous Items",
+      "rarity": "Legendary"
+    },
+    "facts": {}
   },
   {
     "index": "ioun-stone-of-reserve",
@@ -2036,9 +2462,12 @@
     ],
     "options": [],
     "choose": null,
-    "category": "Wondrous Items",
-    "rarity": "Rare",
-    "variants": []
+    "numbers": {},
+    "notes": {
+      "category": "Wondrous Items",
+      "rarity": "Rare"
+    },
+    "facts": {}
   },
   {
     "index": "ioun-stone-of-strength",
@@ -2049,9 +2478,12 @@
     ],
     "options": [],
     "choose": null,
-    "category": "Wondrous Items",
-    "rarity": "Very Rare",
-    "variants": []
+    "numbers": {},
+    "notes": {
+      "category": "Wondrous Items",
+      "rarity": "Very Rare"
+    },
+    "facts": {}
   },
   {
     "index": "ioun-stone-of-sustenance",
@@ -2062,9 +2494,12 @@
     ],
     "options": [],
     "choose": null,
-    "category": "Wondrous Items",
-    "rarity": "Rare",
-    "variants": []
+    "numbers": {},
+    "notes": {
+      "category": "Wondrous Items",
+      "rarity": "Rare"
+    },
+    "facts": {}
   },
   {
     "index": "iron-bands-of-binding",
@@ -2073,9 +2508,12 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "category": "Wondrous Items",
-    "rarity": "Rare",
-    "variants": []
+    "numbers": {},
+    "notes": {
+      "category": "Wondrous Items",
+      "rarity": "Rare"
+    },
+    "facts": {}
   },
   {
     "index": "iron-flask",
@@ -2084,9 +2522,12 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "category": "Wondrous Items",
-    "rarity": "Legendary",
-    "variants": []
+    "numbers": {},
+    "notes": {
+      "category": "Wondrous Items",
+      "rarity": "Legendary"
+    },
+    "facts": {}
   },
   {
     "index": "javelin-of-lightning",
@@ -2095,9 +2536,12 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "category": "Weapon",
-    "rarity": "Uncommon",
-    "variants": []
+    "numbers": {},
+    "notes": {
+      "category": "Weapon",
+      "rarity": "Uncommon"
+    },
+    "facts": {}
   },
   {
     "index": "lantern-of-revealing",
@@ -2106,9 +2550,12 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "category": "Wondrous Items",
-    "rarity": "Uncommon",
-    "variants": []
+    "numbers": {},
+    "notes": {
+      "category": "Wondrous Items",
+      "rarity": "Uncommon"
+    },
+    "facts": {}
   },
   {
     "index": "luck-blade",
@@ -2117,9 +2564,12 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "category": "Weapon",
-    "rarity": "Legendary",
-    "variants": []
+    "numbers": {},
+    "notes": {
+      "category": "Weapon",
+      "rarity": "Legendary"
+    },
+    "facts": {}
   },
   {
     "index": "mace-of-disruption",
@@ -2128,9 +2578,12 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "category": "Weapon",
-    "rarity": "Rare",
-    "variants": []
+    "numbers": {},
+    "notes": {
+      "category": "Weapon",
+      "rarity": "Rare"
+    },
+    "facts": {}
   },
   {
     "index": "mace-of-smiting",
@@ -2139,9 +2592,12 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "category": "Weapon",
-    "rarity": "Rare",
-    "variants": []
+    "numbers": {},
+    "notes": {
+      "category": "Weapon",
+      "rarity": "Rare"
+    },
+    "facts": {}
   },
   {
     "index": "mace-of-terror",
@@ -2150,9 +2606,12 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "category": "Weapon",
-    "rarity": "Rare",
-    "variants": []
+    "numbers": {},
+    "notes": {
+      "category": "Weapon",
+      "rarity": "Rare"
+    },
+    "facts": {}
   },
   {
     "index": "mantle-of-spell-resistance",
@@ -2161,9 +2620,12 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "category": "Wondrous Items",
-    "rarity": "Rare",
-    "variants": []
+    "numbers": {},
+    "notes": {
+      "category": "Wondrous Items",
+      "rarity": "Rare"
+    },
+    "facts": {}
   },
   {
     "index": "manual-of-bodily-health",
@@ -2172,9 +2634,12 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "category": "Wondrous Items",
-    "rarity": "Very Rare",
-    "variants": []
+    "numbers": {},
+    "notes": {
+      "category": "Wondrous Items",
+      "rarity": "Very Rare"
+    },
+    "facts": {}
   },
   {
     "index": "manual-of-gainful-exercise",
@@ -2183,9 +2648,12 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "category": "Wondrous Items",
-    "rarity": "Very Rare",
-    "variants": []
+    "numbers": {},
+    "notes": {
+      "category": "Wondrous Items",
+      "rarity": "Very Rare"
+    },
+    "facts": {}
   },
   {
     "index": "manual-of-golems",
@@ -2194,14 +2662,13 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "category": "Wondrous Items",
-    "rarity": "Very Rare",
-    "variants": [
-      "Manual of Clay Golems",
-      "Manual of Flesh Golems",
-      "Manual of Iron Golems",
-      "Manual of Stone Golems"
-    ]
+    "numbers": {},
+    "notes": {
+      "category": "Wondrous Items",
+      "rarity": "Very Rare",
+      "variants": "Manual of Clay Golems, Manual of Flesh Golems, Manual of Iron Golems, Manual of Stone Golems"
+    },
+    "facts": {}
   },
   {
     "index": "manual-of-golems-clay",
@@ -2212,9 +2679,12 @@
     ],
     "options": [],
     "choose": null,
-    "category": "Wondrous Items",
-    "rarity": "Very Rare",
-    "variants": []
+    "numbers": {},
+    "notes": {
+      "category": "Wondrous Items",
+      "rarity": "Very Rare"
+    },
+    "facts": {}
   },
   {
     "index": "manual-of-golems-flesh",
@@ -2225,9 +2695,12 @@
     ],
     "options": [],
     "choose": null,
-    "category": "Wondrous Items",
-    "rarity": "Very Rare",
-    "variants": []
+    "numbers": {},
+    "notes": {
+      "category": "Wondrous Items",
+      "rarity": "Very Rare"
+    },
+    "facts": {}
   },
   {
     "index": "manual-of-golems-iron",
@@ -2238,9 +2711,12 @@
     ],
     "options": [],
     "choose": null,
-    "category": "Wondrous Items",
-    "rarity": "Very Rare",
-    "variants": []
+    "numbers": {},
+    "notes": {
+      "category": "Wondrous Items",
+      "rarity": "Very Rare"
+    },
+    "facts": {}
   },
   {
     "index": "manual-of-golems-stone",
@@ -2251,9 +2727,12 @@
     ],
     "options": [],
     "choose": null,
-    "category": "Wondrous Items",
-    "rarity": "Very Rare",
-    "variants": []
+    "numbers": {},
+    "notes": {
+      "category": "Wondrous Items",
+      "rarity": "Very Rare"
+    },
+    "facts": {}
   },
   {
     "index": "manual-of-quickness-of-action",
@@ -2262,9 +2741,12 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "category": "Wondrous Items",
-    "rarity": "Very Rare",
-    "variants": []
+    "numbers": {},
+    "notes": {
+      "category": "Wondrous Items",
+      "rarity": "Very Rare"
+    },
+    "facts": {}
   },
   {
     "index": "marvelous-pigments",
@@ -2273,9 +2755,12 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "category": "Wondrous Items",
-    "rarity": "Very Rare",
-    "variants": []
+    "numbers": {},
+    "notes": {
+      "category": "Wondrous Items",
+      "rarity": "Very Rare"
+    },
+    "facts": {}
   },
   {
     "index": "medallion-of-thoughts",
@@ -2284,9 +2769,12 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "category": "Wondrous Items",
-    "rarity": "Uncommon",
-    "variants": []
+    "numbers": {},
+    "notes": {
+      "category": "Wondrous Items",
+      "rarity": "Uncommon"
+    },
+    "facts": {}
   },
   {
     "index": "mirror-of-life-trapping",
@@ -2295,9 +2783,12 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "category": "Wondrous Items",
-    "rarity": "Very Rare",
-    "variants": []
+    "numbers": {},
+    "notes": {
+      "category": "Wondrous Items",
+      "rarity": "Very Rare"
+    },
+    "facts": {}
   },
   {
     "index": "mithral-armor",
@@ -2306,9 +2797,12 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "category": "Armor",
-    "rarity": "Uncommon",
-    "variants": []
+    "numbers": {},
+    "notes": {
+      "category": "Armor",
+      "rarity": "Uncommon"
+    },
+    "facts": {}
   },
   {
     "index": "necklace-of-adaptation",
@@ -2317,9 +2811,12 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "category": "Wondrous Items",
-    "rarity": "Uncommon",
-    "variants": []
+    "numbers": {},
+    "notes": {
+      "category": "Wondrous Items",
+      "rarity": "Uncommon"
+    },
+    "facts": {}
   },
   {
     "index": "necklace-of-fireballs",
@@ -2328,9 +2825,12 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "category": "Wondrous Items",
-    "rarity": "Rare",
-    "variants": []
+    "numbers": {},
+    "notes": {
+      "category": "Wondrous Items",
+      "rarity": "Rare"
+    },
+    "facts": {}
   },
   {
     "index": "necklace-of-prayer-beads",
@@ -2339,9 +2839,12 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "category": "Wondrous Items",
-    "rarity": "Rare",
-    "variants": []
+    "numbers": {},
+    "notes": {
+      "category": "Wondrous Items",
+      "rarity": "Rare"
+    },
+    "facts": {}
   },
   {
     "index": "nine-lives-stealer",
@@ -2350,9 +2853,12 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "category": "Weapon",
-    "rarity": "Very Rare",
-    "variants": []
+    "numbers": {},
+    "notes": {
+      "category": "Weapon",
+      "rarity": "Very Rare"
+    },
+    "facts": {}
   },
   {
     "index": "oathbow",
@@ -2361,9 +2867,12 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "category": "Weapon",
-    "rarity": "Very Rare",
-    "variants": []
+    "numbers": {},
+    "notes": {
+      "category": "Weapon",
+      "rarity": "Very Rare"
+    },
+    "facts": {}
   },
   {
     "index": "oil-of-etherealness",
@@ -2372,9 +2881,12 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "category": "Potion",
-    "rarity": "Rare",
-    "variants": []
+    "numbers": {},
+    "notes": {
+      "category": "Potion",
+      "rarity": "Rare"
+    },
+    "facts": {}
   },
   {
     "index": "oil-of-sharpness",
@@ -2383,9 +2895,12 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "category": "Potion",
-    "rarity": "Very Rare",
-    "variants": []
+    "numbers": {},
+    "notes": {
+      "category": "Potion",
+      "rarity": "Very Rare"
+    },
+    "facts": {}
   },
   {
     "index": "oil-of-slipperiness",
@@ -2394,9 +2909,12 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "category": "Potion",
-    "rarity": "Uncommon",
-    "variants": []
+    "numbers": {},
+    "notes": {
+      "category": "Potion",
+      "rarity": "Uncommon"
+    },
+    "facts": {}
   },
   {
     "index": "pearl-of-power",
@@ -2405,9 +2923,12 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "category": "Wondrous Items",
-    "rarity": "Uncommon",
-    "variants": []
+    "numbers": {},
+    "notes": {
+      "category": "Wondrous Items",
+      "rarity": "Uncommon"
+    },
+    "facts": {}
   },
   {
     "index": "periapt-of-health",
@@ -2416,9 +2937,12 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "category": "Wondrous Items",
-    "rarity": "Uncommon",
-    "variants": []
+    "numbers": {},
+    "notes": {
+      "category": "Wondrous Items",
+      "rarity": "Uncommon"
+    },
+    "facts": {}
   },
   {
     "index": "periapt-of-proof-against-poison",
@@ -2427,9 +2951,12 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "category": "Wondrous Items",
-    "rarity": "Rare",
-    "variants": []
+    "numbers": {},
+    "notes": {
+      "category": "Wondrous Items",
+      "rarity": "Rare"
+    },
+    "facts": {}
   },
   {
     "index": "periapt-of-wound-closure",
@@ -2438,9 +2965,12 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "category": "Wondrous Items",
-    "rarity": "Uncommon",
-    "variants": []
+    "numbers": {},
+    "notes": {
+      "category": "Wondrous Items",
+      "rarity": "Uncommon"
+    },
+    "facts": {}
   },
   {
     "index": "philter-of-love",
@@ -2449,9 +2979,12 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "category": "Potion",
-    "rarity": "Uncommon",
-    "variants": []
+    "numbers": {},
+    "notes": {
+      "category": "Potion",
+      "rarity": "Uncommon"
+    },
+    "facts": {}
   },
   {
     "index": "pipes-of-haunting",
@@ -2460,9 +2993,12 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "category": "Wondrous Items",
-    "rarity": "Uncommon",
-    "variants": []
+    "numbers": {},
+    "notes": {
+      "category": "Wondrous Items",
+      "rarity": "Uncommon"
+    },
+    "facts": {}
   },
   {
     "index": "pipes-of-the-sewers",
@@ -2471,9 +3007,12 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "category": "Wondrous Items",
-    "rarity": "Uncommon",
-    "variants": []
+    "numbers": {},
+    "notes": {
+      "category": "Wondrous Items",
+      "rarity": "Uncommon"
+    },
+    "facts": {}
   },
   {
     "index": "plate-armor-of-etherealness",
@@ -2482,9 +3021,12 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "category": "Armor",
-    "rarity": "Legendary",
-    "variants": []
+    "numbers": {},
+    "notes": {
+      "category": "Armor",
+      "rarity": "Legendary"
+    },
+    "facts": {}
   },
   {
     "index": "portable-hole",
@@ -2493,9 +3035,12 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "category": "Wondrous Items",
-    "rarity": "Rare",
-    "variants": []
+    "numbers": {},
+    "notes": {
+      "category": "Wondrous Items",
+      "rarity": "Rare"
+    },
+    "facts": {}
   },
   {
     "index": "potion-of-animal-friendship",
@@ -2504,9 +3049,12 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "category": "Potion",
-    "rarity": "Uncommon",
-    "variants": []
+    "numbers": {},
+    "notes": {
+      "category": "Potion",
+      "rarity": "Uncommon"
+    },
+    "facts": {}
   },
   {
     "index": "potion-of-clairvoyance",
@@ -2515,9 +3063,12 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "category": "Potion",
-    "rarity": "Rare",
-    "variants": []
+    "numbers": {},
+    "notes": {
+      "category": "Potion",
+      "rarity": "Rare"
+    },
+    "facts": {}
   },
   {
     "index": "potion-of-climbing",
@@ -2526,9 +3077,12 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "category": "Potion",
-    "rarity": "Common",
-    "variants": []
+    "numbers": {},
+    "notes": {
+      "category": "Potion",
+      "rarity": "Common"
+    },
+    "facts": {}
   },
   {
     "index": "potion-of-diminution",
@@ -2537,9 +3091,12 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "category": "Potion",
-    "rarity": "Rare",
-    "variants": []
+    "numbers": {},
+    "notes": {
+      "category": "Potion",
+      "rarity": "Rare"
+    },
+    "facts": {}
   },
   {
     "index": "potion-of-flying",
@@ -2548,9 +3105,12 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "category": "Potion",
-    "rarity": "Very Rare",
-    "variants": []
+    "numbers": {},
+    "notes": {
+      "category": "Potion",
+      "rarity": "Very Rare"
+    },
+    "facts": {}
   },
   {
     "index": "potion-of-gaseous-form",
@@ -2559,9 +3119,12 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "category": "Potion",
-    "rarity": "Rare",
-    "variants": []
+    "numbers": {},
+    "notes": {
+      "category": "Potion",
+      "rarity": "Rare"
+    },
+    "facts": {}
   },
   {
     "index": "potion-of-giant-strength",
@@ -2570,16 +3133,13 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "category": "Potion",
-    "rarity": "Varies",
-    "variants": [
-      "Potion of Hill Giant Strength",
-      "Potion of Frost Giant Strength",
-      "Potion of Stone Giant Strength",
-      "Potion of Fire Giant Strength",
-      "Potion of Cloud Giant Strength",
-      "Potion of Storm Giant Strength"
-    ]
+    "numbers": {},
+    "notes": {
+      "category": "Potion",
+      "rarity": "Varies",
+      "variants": "Potion of Hill Giant Strength, Potion of Frost Giant Strength, Potion of Stone Giant Strength, Potion of Fire Giant Strength, Potion of Cloud Giant Strength, Potion of Storm Giant Strength"
+    },
+    "facts": {}
   },
   {
     "index": "potion-of-giant-strength-hill",
@@ -2590,9 +3150,12 @@
     ],
     "options": [],
     "choose": null,
-    "category": "Potion",
-    "rarity": "Uncommon",
-    "variants": []
+    "numbers": {},
+    "notes": {
+      "category": "Potion",
+      "rarity": "Uncommon"
+    },
+    "facts": {}
   },
   {
     "index": "potion-of-giant-strength-frost",
@@ -2603,9 +3166,12 @@
     ],
     "options": [],
     "choose": null,
-    "category": "Potion",
-    "rarity": "Rare",
-    "variants": []
+    "numbers": {},
+    "notes": {
+      "category": "Potion",
+      "rarity": "Rare"
+    },
+    "facts": {}
   },
   {
     "index": "potion-of-giant-strength-stone",
@@ -2616,9 +3182,12 @@
     ],
     "options": [],
     "choose": null,
-    "category": "Potion",
-    "rarity": "Rare",
-    "variants": []
+    "numbers": {},
+    "notes": {
+      "category": "Potion",
+      "rarity": "Rare"
+    },
+    "facts": {}
   },
   {
     "index": "potion-of-giant-strength-fire",
@@ -2629,9 +3198,12 @@
     ],
     "options": [],
     "choose": null,
-    "category": "Potion",
-    "rarity": "Rare",
-    "variants": []
+    "numbers": {},
+    "notes": {
+      "category": "Potion",
+      "rarity": "Rare"
+    },
+    "facts": {}
   },
   {
     "index": "potion-of-giant-strength-cloud",
@@ -2642,9 +3214,12 @@
     ],
     "options": [],
     "choose": null,
-    "category": "Potion",
-    "rarity": "Very Rare",
-    "variants": []
+    "numbers": {},
+    "notes": {
+      "category": "Potion",
+      "rarity": "Very Rare"
+    },
+    "facts": {}
   },
   {
     "index": "potion-of-giant-strength-storm",
@@ -2655,9 +3230,12 @@
     ],
     "options": [],
     "choose": null,
-    "category": "Potion",
-    "rarity": "Legendary",
-    "variants": []
+    "numbers": {},
+    "notes": {
+      "category": "Potion",
+      "rarity": "Legendary"
+    },
+    "facts": {}
   },
   {
     "index": "potion-of-growth",
@@ -2666,9 +3244,12 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "category": "Potion",
-    "rarity": "Uncommon",
-    "variants": []
+    "numbers": {},
+    "notes": {
+      "category": "Potion",
+      "rarity": "Uncommon"
+    },
+    "facts": {}
   },
   {
     "index": "potion-of-healing",
@@ -2677,14 +3258,13 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "category": "Potion",
-    "rarity": "Varies",
-    "variants": [
-      "Potion of Healing",
-      "Potion of Greater Healing",
-      "Potion of Superior Healing",
-      "Potion of Supreme Healing"
-    ]
+    "numbers": {},
+    "notes": {
+      "category": "Potion",
+      "rarity": "Varies",
+      "variants": "Potion of Healing, Potion of Greater Healing, Potion of Superior Healing, Potion of Supreme Healing"
+    },
+    "facts": {}
   },
   {
     "index": "potion-of-healing-common",
@@ -2695,9 +3275,12 @@
     ],
     "options": [],
     "choose": null,
-    "category": "Potion",
-    "rarity": "Common",
-    "variants": []
+    "numbers": {},
+    "notes": {
+      "category": "Potion",
+      "rarity": "Common"
+    },
+    "facts": {}
   },
   {
     "index": "potion-of-healing-greater",
@@ -2708,9 +3291,12 @@
     ],
     "options": [],
     "choose": null,
-    "category": "Potion",
-    "rarity": "Uncommon",
-    "variants": []
+    "numbers": {},
+    "notes": {
+      "category": "Potion",
+      "rarity": "Uncommon"
+    },
+    "facts": {}
   },
   {
     "index": "potion-of-healing-superior",
@@ -2721,9 +3307,12 @@
     ],
     "options": [],
     "choose": null,
-    "category": "Potion",
-    "rarity": "Rare",
-    "variants": []
+    "numbers": {},
+    "notes": {
+      "category": "Potion",
+      "rarity": "Rare"
+    },
+    "facts": {}
   },
   {
     "index": "potion-of-healing-supreme",
@@ -2734,9 +3323,12 @@
     ],
     "options": [],
     "choose": null,
-    "category": "Potion",
-    "rarity": "Very Rare",
-    "variants": []
+    "numbers": {},
+    "notes": {
+      "category": "Potion",
+      "rarity": "Very Rare"
+    },
+    "facts": {}
   },
   {
     "index": "potion-of-heroism",
@@ -2745,9 +3337,12 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "category": "Potion",
-    "rarity": "Rare",
-    "variants": []
+    "numbers": {},
+    "notes": {
+      "category": "Potion",
+      "rarity": "Rare"
+    },
+    "facts": {}
   },
   {
     "index": "potion-of-invisibility",
@@ -2756,9 +3351,12 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "category": "Potion",
-    "rarity": "Very Rare",
-    "variants": []
+    "numbers": {},
+    "notes": {
+      "category": "Potion",
+      "rarity": "Very Rare"
+    },
+    "facts": {}
   },
   {
     "index": "potion-of-mind-reading",
@@ -2767,9 +3365,12 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "category": "Potion",
-    "rarity": "Rare",
-    "variants": []
+    "numbers": {},
+    "notes": {
+      "category": "Potion",
+      "rarity": "Rare"
+    },
+    "facts": {}
   },
   {
     "index": "potion-of-poison",
@@ -2778,9 +3379,12 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "category": "Potion",
-    "rarity": "Uncommon",
-    "variants": []
+    "numbers": {},
+    "notes": {
+      "category": "Potion",
+      "rarity": "Uncommon"
+    },
+    "facts": {}
   },
   {
     "index": "potion-of-resistance",
@@ -2789,20 +3393,13 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "category": "Potion",
-    "rarity": "Uncommon",
-    "variants": [
-      "Potion of Acid Resistance",
-      "Potion of Cold Resistance",
-      "Potion of Fire Resistance",
-      "Potion of Force Resistance",
-      "Potion of Lightning Resistance",
-      "Potion of Necrotic Resistance",
-      "Potion of Poison Resistance",
-      "Potion of Psychic Resistance",
-      "Potion of Radiant Resistance",
-      "Potion of Thunder Resistance"
-    ]
+    "numbers": {},
+    "notes": {
+      "category": "Potion",
+      "rarity": "Uncommon",
+      "variants": "Potion of Acid Resistance, Potion of Cold Resistance, Potion of Fire Resistance, Potion of Force Resistance, Potion of Lightning Resistance, Potion of Necrotic Resistance, Potion of Poison Resistance, Potion of Psychic Resistance, Potion of Radiant Resistance, Potion of Thunder Resistance"
+    },
+    "facts": {}
   },
   {
     "index": "potion-of-resistance-acid",
@@ -2813,9 +3410,12 @@
     ],
     "options": [],
     "choose": null,
-    "category": "Potion",
-    "rarity": "Uncommon",
-    "variants": []
+    "numbers": {},
+    "notes": {
+      "category": "Potion",
+      "rarity": "Uncommon"
+    },
+    "facts": {}
   },
   {
     "index": "potion-of-resistance-cold",
@@ -2826,9 +3426,12 @@
     ],
     "options": [],
     "choose": null,
-    "category": "Potion",
-    "rarity": "Uncommon",
-    "variants": []
+    "numbers": {},
+    "notes": {
+      "category": "Potion",
+      "rarity": "Uncommon"
+    },
+    "facts": {}
   },
   {
     "index": "potion-of-resistance-fire",
@@ -2839,9 +3442,12 @@
     ],
     "options": [],
     "choose": null,
-    "category": "Potion",
-    "rarity": "Uncommon",
-    "variants": []
+    "numbers": {},
+    "notes": {
+      "category": "Potion",
+      "rarity": "Uncommon"
+    },
+    "facts": {}
   },
   {
     "index": "potion-of-resistance-force",
@@ -2852,9 +3458,12 @@
     ],
     "options": [],
     "choose": null,
-    "category": "Potion",
-    "rarity": "Uncommon",
-    "variants": []
+    "numbers": {},
+    "notes": {
+      "category": "Potion",
+      "rarity": "Uncommon"
+    },
+    "facts": {}
   },
   {
     "index": "potion-of-resistance-lightning",
@@ -2865,9 +3474,12 @@
     ],
     "options": [],
     "choose": null,
-    "category": "Potion",
-    "rarity": "Uncommon",
-    "variants": []
+    "numbers": {},
+    "notes": {
+      "category": "Potion",
+      "rarity": "Uncommon"
+    },
+    "facts": {}
   },
   {
     "index": "potion-of-resistance-necrotic",
@@ -2878,9 +3490,12 @@
     ],
     "options": [],
     "choose": null,
-    "category": "Potion",
-    "rarity": "Uncommon",
-    "variants": []
+    "numbers": {},
+    "notes": {
+      "category": "Potion",
+      "rarity": "Uncommon"
+    },
+    "facts": {}
   },
   {
     "index": "potion-of-resistance-poison",
@@ -2891,9 +3506,12 @@
     ],
     "options": [],
     "choose": null,
-    "category": "Potion",
-    "rarity": "Uncommon",
-    "variants": []
+    "numbers": {},
+    "notes": {
+      "category": "Potion",
+      "rarity": "Uncommon"
+    },
+    "facts": {}
   },
   {
     "index": "potion-of-resistance-psychic",
@@ -2904,9 +3522,12 @@
     ],
     "options": [],
     "choose": null,
-    "category": "Potion",
-    "rarity": "Uncommon",
-    "variants": []
+    "numbers": {},
+    "notes": {
+      "category": "Potion",
+      "rarity": "Uncommon"
+    },
+    "facts": {}
   },
   {
     "index": "potion-of-resistance-radiant",
@@ -2917,9 +3538,12 @@
     ],
     "options": [],
     "choose": null,
-    "category": "Potion",
-    "rarity": "Uncommon",
-    "variants": []
+    "numbers": {},
+    "notes": {
+      "category": "Potion",
+      "rarity": "Uncommon"
+    },
+    "facts": {}
   },
   {
     "index": "potion-of-resistance-thunder",
@@ -2930,9 +3554,12 @@
     ],
     "options": [],
     "choose": null,
-    "category": "Potion",
-    "rarity": "Uncommon",
-    "variants": []
+    "numbers": {},
+    "notes": {
+      "category": "Potion",
+      "rarity": "Uncommon"
+    },
+    "facts": {}
   },
   {
     "index": "potion-of-speed",
@@ -2941,9 +3568,12 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "category": "Potion",
-    "rarity": "Very Rare",
-    "variants": []
+    "numbers": {},
+    "notes": {
+      "category": "Potion",
+      "rarity": "Very Rare"
+    },
+    "facts": {}
   },
   {
     "index": "potion-of-water-breathing",
@@ -2952,9 +3582,12 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "category": "Potion",
-    "rarity": "Uncommon",
-    "variants": []
+    "numbers": {},
+    "notes": {
+      "category": "Potion",
+      "rarity": "Uncommon"
+    },
+    "facts": {}
   },
   {
     "index": "restorative-ointment",
@@ -2963,9 +3596,12 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "category": "Wondrous Items",
-    "rarity": "Uncommon",
-    "variants": []
+    "numbers": {},
+    "notes": {
+      "category": "Wondrous Items",
+      "rarity": "Uncommon"
+    },
+    "facts": {}
   },
   {
     "index": "ring-of-animal-influence",
@@ -2974,9 +3610,12 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "category": "Ring",
-    "rarity": "Rare",
-    "variants": []
+    "numbers": {},
+    "notes": {
+      "category": "Ring",
+      "rarity": "Rare"
+    },
+    "facts": {}
   },
   {
     "index": "ring-of-djinni-summoning",
@@ -2985,9 +3624,12 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "category": "Ring",
-    "rarity": "Legendary",
-    "variants": []
+    "numbers": {},
+    "notes": {
+      "category": "Ring",
+      "rarity": "Legendary"
+    },
+    "facts": {}
   },
   {
     "index": "ring-of-elemental-command",
@@ -2996,14 +3638,13 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "category": "Ring",
-    "rarity": "Legendary",
-    "variants": [
-      "Ring of Air Elemental Command",
-      "Ring of Earth Elemental Command",
-      "Ring of Fire Elemental Command",
-      "Ring of Water Elemental Command"
-    ]
+    "numbers": {},
+    "notes": {
+      "category": "Ring",
+      "rarity": "Legendary",
+      "variants": "Ring of Air Elemental Command, Ring of Earth Elemental Command, Ring of Fire Elemental Command, Ring of Water Elemental Command"
+    },
+    "facts": {}
   },
   {
     "index": "ring-of-elemental-command-air",
@@ -3014,9 +3655,12 @@
     ],
     "options": [],
     "choose": null,
-    "category": "Ring",
-    "rarity": "Legendary",
-    "variants": []
+    "numbers": {},
+    "notes": {
+      "category": "Ring",
+      "rarity": "Legendary"
+    },
+    "facts": {}
   },
   {
     "index": "ring-of-elemental-command-earth",
@@ -3027,9 +3671,12 @@
     ],
     "options": [],
     "choose": null,
-    "category": "Ring",
-    "rarity": "Legendary",
-    "variants": []
+    "numbers": {},
+    "notes": {
+      "category": "Ring",
+      "rarity": "Legendary"
+    },
+    "facts": {}
   },
   {
     "index": "ring-of-elemental-command-fire",
@@ -3040,9 +3687,12 @@
     ],
     "options": [],
     "choose": null,
-    "category": "Ring",
-    "rarity": "Legendary",
-    "variants": []
+    "numbers": {},
+    "notes": {
+      "category": "Ring",
+      "rarity": "Legendary"
+    },
+    "facts": {}
   },
   {
     "index": "ring-of-elemental-command-water",
@@ -3053,9 +3703,12 @@
     ],
     "options": [],
     "choose": null,
-    "category": "Ring",
-    "rarity": "Legendary",
-    "variants": []
+    "numbers": {},
+    "notes": {
+      "category": "Ring",
+      "rarity": "Legendary"
+    },
+    "facts": {}
   },
   {
     "index": "ring-of-evasion",
@@ -3064,9 +3717,12 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "category": "Ring",
-    "rarity": "Rare",
-    "variants": []
+    "numbers": {},
+    "notes": {
+      "category": "Ring",
+      "rarity": "Rare"
+    },
+    "facts": {}
   },
   {
     "index": "ring-of-feather-falling",
@@ -3075,9 +3731,12 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "category": "Ring",
-    "rarity": "Rare",
-    "variants": []
+    "numbers": {},
+    "notes": {
+      "category": "Ring",
+      "rarity": "Rare"
+    },
+    "facts": {}
   },
   {
     "index": "ring-of-free-action",
@@ -3086,9 +3745,12 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "category": "Ring",
-    "rarity": "Rare",
-    "variants": []
+    "numbers": {},
+    "notes": {
+      "category": "Ring",
+      "rarity": "Rare"
+    },
+    "facts": {}
   },
   {
     "index": "ring-of-invisibility",
@@ -3097,9 +3759,12 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "category": "Ring",
-    "rarity": "Legendary",
-    "variants": []
+    "numbers": {},
+    "notes": {
+      "category": "Ring",
+      "rarity": "Legendary"
+    },
+    "facts": {}
   },
   {
     "index": "ring-of-jumping",
@@ -3108,9 +3773,12 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "category": "Ring",
-    "rarity": "Uncommon",
-    "variants": []
+    "numbers": {},
+    "notes": {
+      "category": "Ring",
+      "rarity": "Uncommon"
+    },
+    "facts": {}
   },
   {
     "index": "ring-of-mind-shielding",
@@ -3119,9 +3787,12 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "category": "Ring",
-    "rarity": "Uncommon",
-    "variants": []
+    "numbers": {},
+    "notes": {
+      "category": "Ring",
+      "rarity": "Uncommon"
+    },
+    "facts": {}
   },
   {
     "index": "ring-of-protection",
@@ -3130,9 +3801,12 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "category": "Ring",
-    "rarity": "Rare",
-    "variants": []
+    "numbers": {},
+    "notes": {
+      "category": "Ring",
+      "rarity": "Rare"
+    },
+    "facts": {}
   },
   {
     "index": "ring-of-regeneration",
@@ -3141,9 +3815,12 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "category": "Ring",
-    "rarity": "Very Rare",
-    "variants": []
+    "numbers": {},
+    "notes": {
+      "category": "Ring",
+      "rarity": "Very Rare"
+    },
+    "facts": {}
   },
   {
     "index": "ring-of-resistance",
@@ -3152,20 +3829,13 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "category": "Ring",
-    "rarity": "Rare",
-    "variants": [
-      "Ring of Acid Resistance",
-      "Ring of Cold Resistance",
-      "Ring of Fire Resistance",
-      "Ring of Force Resistance",
-      "Ring of Lightning Resistance",
-      "Ring of Necrotic Resistance",
-      "Ring of Poison Resistance",
-      "Ring of Psychic Resistance",
-      "Ring of Radiant Resistance",
-      "Ring of Thunder Resistance"
-    ]
+    "numbers": {},
+    "notes": {
+      "category": "Ring",
+      "rarity": "Rare",
+      "variants": "Ring of Acid Resistance, Ring of Cold Resistance, Ring of Fire Resistance, Ring of Force Resistance, Ring of Lightning Resistance, Ring of Necrotic Resistance, Ring of Poison Resistance, Ring of Psychic Resistance, Ring of Radiant Resistance, Ring of Thunder Resistance"
+    },
+    "facts": {}
   },
   {
     "index": "ring-of-resistance-acid",
@@ -3176,9 +3846,12 @@
     ],
     "options": [],
     "choose": null,
-    "category": "Ring",
-    "rarity": "Rare",
-    "variants": []
+    "numbers": {},
+    "notes": {
+      "category": "Ring",
+      "rarity": "Rare"
+    },
+    "facts": {}
   },
   {
     "index": "ring-of-resistance-cold",
@@ -3189,9 +3862,12 @@
     ],
     "options": [],
     "choose": null,
-    "category": "Ring",
-    "rarity": "Rare",
-    "variants": []
+    "numbers": {},
+    "notes": {
+      "category": "Ring",
+      "rarity": "Rare"
+    },
+    "facts": {}
   },
   {
     "index": "ring-of-resistance-fire",
@@ -3202,9 +3878,12 @@
     ],
     "options": [],
     "choose": null,
-    "category": "Ring",
-    "rarity": "Rare",
-    "variants": []
+    "numbers": {},
+    "notes": {
+      "category": "Ring",
+      "rarity": "Rare"
+    },
+    "facts": {}
   },
   {
     "index": "ring-of-resistance-force",
@@ -3215,9 +3894,12 @@
     ],
     "options": [],
     "choose": null,
-    "category": "Ring",
-    "rarity": "Rare",
-    "variants": []
+    "numbers": {},
+    "notes": {
+      "category": "Ring",
+      "rarity": "Rare"
+    },
+    "facts": {}
   },
   {
     "index": "ring-of-resistance-lightning",
@@ -3228,9 +3910,12 @@
     ],
     "options": [],
     "choose": null,
-    "category": "Ring",
-    "rarity": "Rare",
-    "variants": []
+    "numbers": {},
+    "notes": {
+      "category": "Ring",
+      "rarity": "Rare"
+    },
+    "facts": {}
   },
   {
     "index": "ring-of-resistance-necrotic",
@@ -3241,9 +3926,12 @@
     ],
     "options": [],
     "choose": null,
-    "category": "Ring",
-    "rarity": "Rare",
-    "variants": []
+    "numbers": {},
+    "notes": {
+      "category": "Ring",
+      "rarity": "Rare"
+    },
+    "facts": {}
   },
   {
     "index": "ring-of-resistance-poison",
@@ -3254,9 +3942,12 @@
     ],
     "options": [],
     "choose": null,
-    "category": "Ring",
-    "rarity": "Rare",
-    "variants": []
+    "numbers": {},
+    "notes": {
+      "category": "Ring",
+      "rarity": "Rare"
+    },
+    "facts": {}
   },
   {
     "index": "ring-of-resistance-psychic",
@@ -3267,9 +3958,12 @@
     ],
     "options": [],
     "choose": null,
-    "category": "Ring",
-    "rarity": "Rare",
-    "variants": []
+    "numbers": {},
+    "notes": {
+      "category": "Ring",
+      "rarity": "Rare"
+    },
+    "facts": {}
   },
   {
     "index": "ring-of-resistance-radiant",
@@ -3280,9 +3974,12 @@
     ],
     "options": [],
     "choose": null,
-    "category": "Ring",
-    "rarity": "Rare",
-    "variants": []
+    "numbers": {},
+    "notes": {
+      "category": "Ring",
+      "rarity": "Rare"
+    },
+    "facts": {}
   },
   {
     "index": "ring-of-resistance-thunder",
@@ -3293,9 +3990,12 @@
     ],
     "options": [],
     "choose": null,
-    "category": "Ring",
-    "rarity": "Rare",
-    "variants": []
+    "numbers": {},
+    "notes": {
+      "category": "Ring",
+      "rarity": "Rare"
+    },
+    "facts": {}
   },
   {
     "index": "ring-of-shooting-stars",
@@ -3304,9 +4004,12 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "category": "Ring",
-    "rarity": "Very Rare",
-    "variants": []
+    "numbers": {},
+    "notes": {
+      "category": "Ring",
+      "rarity": "Very Rare"
+    },
+    "facts": {}
   },
   {
     "index": "ring-of-spell-storing",
@@ -3315,9 +4018,12 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "category": "Ring",
-    "rarity": "Rare",
-    "variants": []
+    "numbers": {},
+    "notes": {
+      "category": "Ring",
+      "rarity": "Rare"
+    },
+    "facts": {}
   },
   {
     "index": "ring-of-spell-turning",
@@ -3326,9 +4032,12 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "category": "Ring",
-    "rarity": "Legendary",
-    "variants": []
+    "numbers": {},
+    "notes": {
+      "category": "Ring",
+      "rarity": "Legendary"
+    },
+    "facts": {}
   },
   {
     "index": "ring-of-swimming",
@@ -3337,9 +4046,12 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "category": "Ring",
-    "rarity": "Uncommon",
-    "variants": []
+    "numbers": {},
+    "notes": {
+      "category": "Ring",
+      "rarity": "Uncommon"
+    },
+    "facts": {}
   },
   {
     "index": "ring-of-telekinesis",
@@ -3348,9 +4060,12 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "category": "Ring",
-    "rarity": "Very Rare",
-    "variants": []
+    "numbers": {},
+    "notes": {
+      "category": "Ring",
+      "rarity": "Very Rare"
+    },
+    "facts": {}
   },
   {
     "index": "ring-of-the-ram",
@@ -3359,9 +4074,12 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "category": "Ring",
-    "rarity": "Rare",
-    "variants": []
+    "numbers": {},
+    "notes": {
+      "category": "Ring",
+      "rarity": "Rare"
+    },
+    "facts": {}
   },
   {
     "index": "ring-of-three-wishes",
@@ -3370,9 +4088,12 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "category": "Ring",
-    "rarity": "Legendary",
-    "variants": []
+    "numbers": {},
+    "notes": {
+      "category": "Ring",
+      "rarity": "Legendary"
+    },
+    "facts": {}
   },
   {
     "index": "ring-of-warmth",
@@ -3381,9 +4102,12 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "category": "Ring",
-    "rarity": "Uncommon",
-    "variants": []
+    "numbers": {},
+    "notes": {
+      "category": "Ring",
+      "rarity": "Uncommon"
+    },
+    "facts": {}
   },
   {
     "index": "ring-of-water-walking",
@@ -3392,9 +4116,12 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "category": "Ring",
-    "rarity": "Uncommon",
-    "variants": []
+    "numbers": {},
+    "notes": {
+      "category": "Ring",
+      "rarity": "Uncommon"
+    },
+    "facts": {}
   },
   {
     "index": "ring-of-x-ray-vision",
@@ -3403,9 +4130,12 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "category": "Ring",
-    "rarity": "Rare",
-    "variants": []
+    "numbers": {},
+    "notes": {
+      "category": "Ring",
+      "rarity": "Rare"
+    },
+    "facts": {}
   },
   {
     "index": "robe-of-eyes",
@@ -3414,9 +4144,12 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "category": "Wondrous Items",
-    "rarity": "Rare",
-    "variants": []
+    "numbers": {},
+    "notes": {
+      "category": "Wondrous Items",
+      "rarity": "Rare"
+    },
+    "facts": {}
   },
   {
     "index": "robe-of-scintillating-colors",
@@ -3425,9 +4158,12 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "category": "Wondrous Items",
-    "rarity": "Very Rare",
-    "variants": []
+    "numbers": {},
+    "notes": {
+      "category": "Wondrous Items",
+      "rarity": "Very Rare"
+    },
+    "facts": {}
   },
   {
     "index": "robe-of-stars",
@@ -3436,9 +4172,12 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "category": "Wondrous Items",
-    "rarity": "Very Rare",
-    "variants": []
+    "numbers": {},
+    "notes": {
+      "category": "Wondrous Items",
+      "rarity": "Very Rare"
+    },
+    "facts": {}
   },
   {
     "index": "robe-of-the-archmagi",
@@ -3447,9 +4186,12 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "category": "Wondrous Items",
-    "rarity": "Legendary",
-    "variants": []
+    "numbers": {},
+    "notes": {
+      "category": "Wondrous Items",
+      "rarity": "Legendary"
+    },
+    "facts": {}
   },
   {
     "index": "robe-of-useful-items",
@@ -3458,9 +4200,12 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "category": "Wondrous Items",
-    "rarity": "Uncommon",
-    "variants": []
+    "numbers": {},
+    "notes": {
+      "category": "Wondrous Items",
+      "rarity": "Uncommon"
+    },
+    "facts": {}
   },
   {
     "index": "rod-of-absorption",
@@ -3469,9 +4214,12 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "category": "Rod",
-    "rarity": "Very Rare",
-    "variants": []
+    "numbers": {},
+    "notes": {
+      "category": "Rod",
+      "rarity": "Very Rare"
+    },
+    "facts": {}
   },
   {
     "index": "rod-of-alertness",
@@ -3480,9 +4228,12 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "category": "Rod",
-    "rarity": "Very Rare",
-    "variants": []
+    "numbers": {},
+    "notes": {
+      "category": "Rod",
+      "rarity": "Very Rare"
+    },
+    "facts": {}
   },
   {
     "index": "rod-of-lordly-might",
@@ -3491,9 +4242,12 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "category": "Rod",
-    "rarity": "Legendary",
-    "variants": []
+    "numbers": {},
+    "notes": {
+      "category": "Rod",
+      "rarity": "Legendary"
+    },
+    "facts": {}
   },
   {
     "index": "rod-of-rulership",
@@ -3502,9 +4256,12 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "category": "Rod",
-    "rarity": "Rare",
-    "variants": []
+    "numbers": {},
+    "notes": {
+      "category": "Rod",
+      "rarity": "Rare"
+    },
+    "facts": {}
   },
   {
     "index": "rod-of-security",
@@ -3513,9 +4270,12 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "category": "Rod",
-    "rarity": "Very Rare",
-    "variants": []
+    "numbers": {},
+    "notes": {
+      "category": "Rod",
+      "rarity": "Very Rare"
+    },
+    "facts": {}
   },
   {
     "index": "rope-of-climbing",
@@ -3524,9 +4284,12 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "category": "Wondrous Items",
-    "rarity": "Uncommon",
-    "variants": []
+    "numbers": {},
+    "notes": {
+      "category": "Wondrous Items",
+      "rarity": "Uncommon"
+    },
+    "facts": {}
   },
   {
     "index": "rope-of-entanglement",
@@ -3535,9 +4298,12 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "category": "Wondrous Items",
-    "rarity": "Rare",
-    "variants": []
+    "numbers": {},
+    "notes": {
+      "category": "Wondrous Items",
+      "rarity": "Rare"
+    },
+    "facts": {}
   },
   {
     "index": "scarab-of-protection",
@@ -3546,9 +4312,12 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "category": "Wondrous Items",
-    "rarity": "Legendary",
-    "variants": []
+    "numbers": {},
+    "notes": {
+      "category": "Wondrous Items",
+      "rarity": "Legendary"
+    },
+    "facts": {}
   },
   {
     "index": "scimitar-of-speed",
@@ -3557,9 +4326,12 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "category": "Weapon",
-    "rarity": "Very Rare",
-    "variants": []
+    "numbers": {},
+    "notes": {
+      "category": "Weapon",
+      "rarity": "Very Rare"
+    },
+    "facts": {}
   },
   {
     "index": "shield-of-missile-attraction",
@@ -3568,9 +4340,12 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "category": "Armor",
-    "rarity": "Rare",
-    "variants": []
+    "numbers": {},
+    "notes": {
+      "category": "Armor",
+      "rarity": "Rare"
+    },
+    "facts": {}
   },
   {
     "index": "slippers-of-spider-climbing",
@@ -3579,9 +4354,12 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "category": "Wondrous Items",
-    "rarity": "Uncommon",
-    "variants": []
+    "numbers": {},
+    "notes": {
+      "category": "Wondrous Items",
+      "rarity": "Uncommon"
+    },
+    "facts": {}
   },
   {
     "index": "sovereign-glue",
@@ -3590,9 +4368,12 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "category": "Wondrous Items",
-    "rarity": "Legendary",
-    "variants": []
+    "numbers": {},
+    "notes": {
+      "category": "Wondrous Items",
+      "rarity": "Legendary"
+    },
+    "facts": {}
   },
   {
     "index": "spell-scroll",
@@ -3601,20 +4382,13 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "category": "Scroll",
-    "rarity": "Varies",
-    "variants": [
-      "Spell Scroll (Cantrip)",
-      "Spell Scroll (1st)",
-      "Spell Scroll (2nd)",
-      "Spell Scroll (3rd)",
-      "Spell Scroll (4th)",
-      "Spell Scroll (5th)",
-      "Spell Scroll (6th)",
-      "Spell Scroll (7th)",
-      "Spell Scroll (8th)",
-      "Spell Scroll (9th)"
-    ]
+    "numbers": {},
+    "notes": {
+      "category": "Scroll",
+      "rarity": "Varies",
+      "variants": "Spell Scroll (Cantrip), Spell Scroll (1st), Spell Scroll (2nd), Spell Scroll (3rd), Spell Scroll (4th), Spell Scroll (5th), Spell Scroll (6th), Spell Scroll (7th), Spell Scroll (8th), Spell Scroll (9th)"
+    },
+    "facts": {}
   },
   {
     "index": "spell-scroll-cantrip",
@@ -3625,9 +4399,12 @@
     ],
     "options": [],
     "choose": null,
-    "category": "Scroll",
-    "rarity": "Common",
-    "variants": []
+    "numbers": {},
+    "notes": {
+      "category": "Scroll",
+      "rarity": "Common"
+    },
+    "facts": {}
   },
   {
     "index": "spell-scroll-1st",
@@ -3638,9 +4415,12 @@
     ],
     "options": [],
     "choose": null,
-    "category": "Scroll",
-    "rarity": "Common",
-    "variants": []
+    "numbers": {},
+    "notes": {
+      "category": "Scroll",
+      "rarity": "Common"
+    },
+    "facts": {}
   },
   {
     "index": "spell-scroll-2nd",
@@ -3651,9 +4431,12 @@
     ],
     "options": [],
     "choose": null,
-    "category": "Scroll",
-    "rarity": "Uncommon",
-    "variants": []
+    "numbers": {},
+    "notes": {
+      "category": "Scroll",
+      "rarity": "Uncommon"
+    },
+    "facts": {}
   },
   {
     "index": "spell-scroll-3rd",
@@ -3664,9 +4447,12 @@
     ],
     "options": [],
     "choose": null,
-    "category": "Scroll",
-    "rarity": "Uncommon",
-    "variants": []
+    "numbers": {},
+    "notes": {
+      "category": "Scroll",
+      "rarity": "Uncommon"
+    },
+    "facts": {}
   },
   {
     "index": "spell-scroll-4th",
@@ -3677,9 +4463,12 @@
     ],
     "options": [],
     "choose": null,
-    "category": "Scroll",
-    "rarity": "Rare",
-    "variants": []
+    "numbers": {},
+    "notes": {
+      "category": "Scroll",
+      "rarity": "Rare"
+    },
+    "facts": {}
   },
   {
     "index": "spell-scroll-5th",
@@ -3690,9 +4479,12 @@
     ],
     "options": [],
     "choose": null,
-    "category": "Scroll",
-    "rarity": "Rare",
-    "variants": []
+    "numbers": {},
+    "notes": {
+      "category": "Scroll",
+      "rarity": "Rare"
+    },
+    "facts": {}
   },
   {
     "index": "spell-scroll-6th",
@@ -3703,9 +4495,12 @@
     ],
     "options": [],
     "choose": null,
-    "category": "Scroll",
-    "rarity": "Very Rare",
-    "variants": []
+    "numbers": {},
+    "notes": {
+      "category": "Scroll",
+      "rarity": "Very Rare"
+    },
+    "facts": {}
   },
   {
     "index": "spell-scroll-7th",
@@ -3716,9 +4511,12 @@
     ],
     "options": [],
     "choose": null,
-    "category": "Scroll",
-    "rarity": "Very Rare",
-    "variants": []
+    "numbers": {},
+    "notes": {
+      "category": "Scroll",
+      "rarity": "Very Rare"
+    },
+    "facts": {}
   },
   {
     "index": "spell-scroll-8th",
@@ -3729,9 +4527,12 @@
     ],
     "options": [],
     "choose": null,
-    "category": "Scroll",
-    "rarity": "Very Rare",
-    "variants": []
+    "numbers": {},
+    "notes": {
+      "category": "Scroll",
+      "rarity": "Very Rare"
+    },
+    "facts": {}
   },
   {
     "index": "spell-scroll-9th",
@@ -3742,9 +4543,12 @@
     ],
     "options": [],
     "choose": null,
-    "category": "Scroll",
-    "rarity": "Legendary",
-    "variants": []
+    "numbers": {},
+    "notes": {
+      "category": "Scroll",
+      "rarity": "Legendary"
+    },
+    "facts": {}
   },
   {
     "index": "spellguard-shield",
@@ -3753,9 +4557,12 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "category": "Armor",
-    "rarity": "Very Rare",
-    "variants": []
+    "numbers": {},
+    "notes": {
+      "category": "Armor",
+      "rarity": "Very Rare"
+    },
+    "facts": {}
   },
   {
     "index": "sphere-of-annihilation",
@@ -3764,9 +4571,12 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "category": "Wondrous Items",
-    "rarity": "Legendary",
-    "variants": []
+    "numbers": {},
+    "notes": {
+      "category": "Wondrous Items",
+      "rarity": "Legendary"
+    },
+    "facts": {}
   },
   {
     "index": "staff-of-charming",
@@ -3775,9 +4585,12 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "category": "Staff",
-    "rarity": "Rare",
-    "variants": []
+    "numbers": {},
+    "notes": {
+      "category": "Staff",
+      "rarity": "Rare"
+    },
+    "facts": {}
   },
   {
     "index": "staff-of-fire",
@@ -3786,9 +4599,12 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "category": "Staff",
-    "rarity": "Very Rare",
-    "variants": []
+    "numbers": {},
+    "notes": {
+      "category": "Staff",
+      "rarity": "Very Rare"
+    },
+    "facts": {}
   },
   {
     "index": "staff-of-frost",
@@ -3797,9 +4613,12 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "category": "Staff",
-    "rarity": "Very Rare",
-    "variants": []
+    "numbers": {},
+    "notes": {
+      "category": "Staff",
+      "rarity": "Very Rare"
+    },
+    "facts": {}
   },
   {
     "index": "staff-of-healing",
@@ -3808,9 +4627,12 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "category": "Staff",
-    "rarity": "Rare",
-    "variants": []
+    "numbers": {},
+    "notes": {
+      "category": "Staff",
+      "rarity": "Rare"
+    },
+    "facts": {}
   },
   {
     "index": "staff-of-power",
@@ -3819,9 +4641,12 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "category": "Staff",
-    "rarity": "Very Rare",
-    "variants": []
+    "numbers": {},
+    "notes": {
+      "category": "Staff",
+      "rarity": "Very Rare"
+    },
+    "facts": {}
   },
   {
     "index": "staff-of-striking",
@@ -3830,9 +4655,12 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "category": "Staff",
-    "rarity": "Very Rare",
-    "variants": []
+    "numbers": {},
+    "notes": {
+      "category": "Staff",
+      "rarity": "Very Rare"
+    },
+    "facts": {}
   },
   {
     "index": "staff-of-swarming-insects",
@@ -3841,9 +4669,12 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "category": "Staff",
-    "rarity": "Very Rare",
-    "variants": []
+    "numbers": {},
+    "notes": {
+      "category": "Staff",
+      "rarity": "Very Rare"
+    },
+    "facts": {}
   },
   {
     "index": "staff-of-the-magi",
@@ -3852,9 +4683,12 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "category": "Staff",
-    "rarity": "Legendary",
-    "variants": []
+    "numbers": {},
+    "notes": {
+      "category": "Staff",
+      "rarity": "Legendary"
+    },
+    "facts": {}
   },
   {
     "index": "staff-of-the-python",
@@ -3863,9 +4697,12 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "category": "Staff",
-    "rarity": "Very Rare",
-    "variants": []
+    "numbers": {},
+    "notes": {
+      "category": "Staff",
+      "rarity": "Very Rare"
+    },
+    "facts": {}
   },
   {
     "index": "staff-of-the-woodlands",
@@ -3874,9 +4711,12 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "category": "Staff",
-    "rarity": "Rare",
-    "variants": []
+    "numbers": {},
+    "notes": {
+      "category": "Staff",
+      "rarity": "Rare"
+    },
+    "facts": {}
   },
   {
     "index": "staff-of-thunder-and-lightning",
@@ -3885,9 +4725,12 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "category": "Staff",
-    "rarity": "Very Rare",
-    "variants": []
+    "numbers": {},
+    "notes": {
+      "category": "Staff",
+      "rarity": "Very Rare"
+    },
+    "facts": {}
   },
   {
     "index": "staff-of-withering",
@@ -3896,9 +4739,12 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "category": "Staff",
-    "rarity": "Rare",
-    "variants": []
+    "numbers": {},
+    "notes": {
+      "category": "Staff",
+      "rarity": "Rare"
+    },
+    "facts": {}
   },
   {
     "index": "stone-of-controlling-earth-elementals",
@@ -3907,9 +4753,12 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "category": "Wondrous Items",
-    "rarity": "Rare",
-    "variants": []
+    "numbers": {},
+    "notes": {
+      "category": "Wondrous Items",
+      "rarity": "Rare"
+    },
+    "facts": {}
   },
   {
     "index": "stone-of-good-luck-luckstone",
@@ -3918,9 +4767,12 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "category": "Wondrous Items",
-    "rarity": "Uncommon",
-    "variants": []
+    "numbers": {},
+    "notes": {
+      "category": "Wondrous Items",
+      "rarity": "Uncommon"
+    },
+    "facts": {}
   },
   {
     "index": "sun-blade",
@@ -3929,9 +4781,12 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "category": "Weapon",
-    "rarity": "Rare",
-    "variants": []
+    "numbers": {},
+    "notes": {
+      "category": "Weapon",
+      "rarity": "Rare"
+    },
+    "facts": {}
   },
   {
     "index": "sword-of-life-stealing",
@@ -3940,9 +4795,12 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "category": "Weapon",
-    "rarity": "Rare",
-    "variants": []
+    "numbers": {},
+    "notes": {
+      "category": "Weapon",
+      "rarity": "Rare"
+    },
+    "facts": {}
   },
   {
     "index": "sword-of-sharpness",
@@ -3951,9 +4809,12 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "category": "Weapon",
-    "rarity": "Very Rare",
-    "variants": []
+    "numbers": {},
+    "notes": {
+      "category": "Weapon",
+      "rarity": "Very Rare"
+    },
+    "facts": {}
   },
   {
     "index": "sword-of-wounding",
@@ -3962,9 +4823,12 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "category": "Weapon",
-    "rarity": "Rare",
-    "variants": []
+    "numbers": {},
+    "notes": {
+      "category": "Weapon",
+      "rarity": "Rare"
+    },
+    "facts": {}
   },
   {
     "index": "talisman-of-pure-good",
@@ -3973,9 +4837,12 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "category": "Wondrous Items",
-    "rarity": "Legendary",
-    "variants": []
+    "numbers": {},
+    "notes": {
+      "category": "Wondrous Items",
+      "rarity": "Legendary"
+    },
+    "facts": {}
   },
   {
     "index": "talisman-of-the-sphere",
@@ -3984,9 +4851,12 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "category": "Wondrous Items",
-    "rarity": "Legendary",
-    "variants": []
+    "numbers": {},
+    "notes": {
+      "category": "Wondrous Items",
+      "rarity": "Legendary"
+    },
+    "facts": {}
   },
   {
     "index": "talisman-of-ultimate-evil",
@@ -3995,9 +4865,12 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "category": "Wondrous Items",
-    "rarity": "Legendary",
-    "variants": []
+    "numbers": {},
+    "notes": {
+      "category": "Wondrous Items",
+      "rarity": "Legendary"
+    },
+    "facts": {}
   },
   {
     "index": "tome-of-clear-thought",
@@ -4006,9 +4879,12 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "category": "Wondrous Items",
-    "rarity": "Very Rare",
-    "variants": []
+    "numbers": {},
+    "notes": {
+      "category": "Wondrous Items",
+      "rarity": "Very Rare"
+    },
+    "facts": {}
   },
   {
     "index": "tome-of-leadership-and-influence",
@@ -4017,9 +4893,12 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "category": "Wondrous Items",
-    "rarity": "Very Rare",
-    "variants": []
+    "numbers": {},
+    "notes": {
+      "category": "Wondrous Items",
+      "rarity": "Very Rare"
+    },
+    "facts": {}
   },
   {
     "index": "tome-of-understanding",
@@ -4028,9 +4907,12 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "category": "Wondrous Items",
-    "rarity": "Very Rare",
-    "variants": []
+    "numbers": {},
+    "notes": {
+      "category": "Wondrous Items",
+      "rarity": "Very Rare"
+    },
+    "facts": {}
   },
   {
     "index": "trident-of-fish-command",
@@ -4039,9 +4921,12 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "category": "Weapon",
-    "rarity": "Uncommon",
-    "variants": []
+    "numbers": {},
+    "notes": {
+      "category": "Weapon",
+      "rarity": "Uncommon"
+    },
+    "facts": {}
   },
   {
     "index": "universal-solvent",
@@ -4050,9 +4935,12 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "category": "Wondrous Items",
-    "rarity": "Legendary",
-    "variants": []
+    "numbers": {},
+    "notes": {
+      "category": "Wondrous Items",
+      "rarity": "Legendary"
+    },
+    "facts": {}
   },
   {
     "index": "vicious-weapon",
@@ -4061,9 +4949,12 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "category": "Weapon",
-    "rarity": "Rare",
-    "variants": []
+    "numbers": {},
+    "notes": {
+      "category": "Weapon",
+      "rarity": "Rare"
+    },
+    "facts": {}
   },
   {
     "index": "vorpal-sword",
@@ -4072,9 +4963,12 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "category": "Weapon",
-    "rarity": "Legendary",
-    "variants": []
+    "numbers": {},
+    "notes": {
+      "category": "Weapon",
+      "rarity": "Legendary"
+    },
+    "facts": {}
   },
   {
     "index": "wand-of-binding",
@@ -4083,9 +4977,12 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "category": "Wand",
-    "rarity": "Rare",
-    "variants": []
+    "numbers": {},
+    "notes": {
+      "category": "Wand",
+      "rarity": "Rare"
+    },
+    "facts": {}
   },
   {
     "index": "wand-of-enemy-detection",
@@ -4094,9 +4991,12 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "category": "Wand",
-    "rarity": "Rare",
-    "variants": []
+    "numbers": {},
+    "notes": {
+      "category": "Wand",
+      "rarity": "Rare"
+    },
+    "facts": {}
   },
   {
     "index": "wand-of-fear",
@@ -4105,9 +5005,12 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "category": "Wand",
-    "rarity": "Rare",
-    "variants": []
+    "numbers": {},
+    "notes": {
+      "category": "Wand",
+      "rarity": "Rare"
+    },
+    "facts": {}
   },
   {
     "index": "wand-of-fireballs",
@@ -4116,9 +5019,12 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "category": "Wand",
-    "rarity": "Rare",
-    "variants": []
+    "numbers": {},
+    "notes": {
+      "category": "Wand",
+      "rarity": "Rare"
+    },
+    "facts": {}
   },
   {
     "index": "wand-of-lightning-bolts",
@@ -4127,9 +5033,12 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "category": "Wand",
-    "rarity": "Rare",
-    "variants": []
+    "numbers": {},
+    "notes": {
+      "category": "Wand",
+      "rarity": "Rare"
+    },
+    "facts": {}
   },
   {
     "index": "wand-of-magic-detection",
@@ -4138,9 +5047,12 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "category": "Wand",
-    "rarity": "Uncommon",
-    "variants": []
+    "numbers": {},
+    "notes": {
+      "category": "Wand",
+      "rarity": "Uncommon"
+    },
+    "facts": {}
   },
   {
     "index": "wand-of-magic-missiles",
@@ -4149,9 +5061,12 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "category": "Wand",
-    "rarity": "Uncommon",
-    "variants": []
+    "numbers": {},
+    "notes": {
+      "category": "Wand",
+      "rarity": "Uncommon"
+    },
+    "facts": {}
   },
   {
     "index": "wand-of-paralysis",
@@ -4160,9 +5075,12 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "category": "Wand",
-    "rarity": "Rare",
-    "variants": []
+    "numbers": {},
+    "notes": {
+      "category": "Wand",
+      "rarity": "Rare"
+    },
+    "facts": {}
   },
   {
     "index": "wand-of-polymorph",
@@ -4171,9 +5089,12 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "category": "Wand",
-    "rarity": "Very Rare",
-    "variants": []
+    "numbers": {},
+    "notes": {
+      "category": "Wand",
+      "rarity": "Very Rare"
+    },
+    "facts": {}
   },
   {
     "index": "wand-of-secrets",
@@ -4182,9 +5103,12 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "category": "Wand",
-    "rarity": "Uncommon",
-    "variants": []
+    "numbers": {},
+    "notes": {
+      "category": "Wand",
+      "rarity": "Uncommon"
+    },
+    "facts": {}
   },
   {
     "index": "wand-of-the-war-mage",
@@ -4193,13 +5117,13 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "category": "Wand",
-    "rarity": "Varies",
-    "variants": [
-      "Wand of the War Mage, +1",
-      "Wand of the War Mage, +2",
-      "Wand of the War Mage, +3"
-    ]
+    "numbers": {},
+    "notes": {
+      "category": "Wand",
+      "rarity": "Varies",
+      "variants": "Wand of the War Mage, +1, Wand of the War Mage, +2, Wand of the War Mage, +3"
+    },
+    "facts": {}
   },
   {
     "index": "wand-of-the-war-mage-1",
@@ -4210,9 +5134,12 @@
     ],
     "options": [],
     "choose": null,
-    "category": "Wand",
-    "rarity": "Uncommon",
-    "variants": []
+    "numbers": {},
+    "notes": {
+      "category": "Wand",
+      "rarity": "Uncommon"
+    },
+    "facts": {}
   },
   {
     "index": "wand-of-the-war-mage-2",
@@ -4223,9 +5150,12 @@
     ],
     "options": [],
     "choose": null,
-    "category": "Wand",
-    "rarity": "Rare",
-    "variants": []
+    "numbers": {},
+    "notes": {
+      "category": "Wand",
+      "rarity": "Rare"
+    },
+    "facts": {}
   },
   {
     "index": "wand-of-the-war-mage-3",
@@ -4236,9 +5166,12 @@
     ],
     "options": [],
     "choose": null,
-    "category": "Wand",
-    "rarity": "Very Rare",
-    "variants": []
+    "numbers": {},
+    "notes": {
+      "category": "Wand",
+      "rarity": "Very Rare"
+    },
+    "facts": {}
   },
   {
     "index": "wand-of-web",
@@ -4247,9 +5180,12 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "category": "Wand",
-    "rarity": "Uncommon",
-    "variants": []
+    "numbers": {},
+    "notes": {
+      "category": "Wand",
+      "rarity": "Uncommon"
+    },
+    "facts": {}
   },
   {
     "index": "wand-of-wonder",
@@ -4258,9 +5194,12 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "category": "Wand",
-    "rarity": "Rare",
-    "variants": []
+    "numbers": {},
+    "notes": {
+      "category": "Wand",
+      "rarity": "Rare"
+    },
+    "facts": {}
   },
   {
     "index": "weapon",
@@ -4269,13 +5208,13 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "category": "Weapon",
-    "rarity": "Varies",
-    "variants": [
-      "Weapon, +1",
-      "Weapon, +2",
-      "Weapon, +3"
-    ]
+    "numbers": {},
+    "notes": {
+      "category": "Weapon",
+      "rarity": "Varies",
+      "variants": "Weapon, +1, Weapon, +2, Weapon, +3"
+    },
+    "facts": {}
   },
   {
     "index": "weapon-1",
@@ -4286,9 +5225,12 @@
     ],
     "options": [],
     "choose": null,
-    "category": "Weapon",
-    "rarity": "Uncommon",
-    "variants": []
+    "numbers": {},
+    "notes": {
+      "category": "Weapon",
+      "rarity": "Uncommon"
+    },
+    "facts": {}
   },
   {
     "index": "weapon-2",
@@ -4299,9 +5241,12 @@
     ],
     "options": [],
     "choose": null,
-    "category": "Weapon",
-    "rarity": "Rare",
-    "variants": []
+    "numbers": {},
+    "notes": {
+      "category": "Weapon",
+      "rarity": "Rare"
+    },
+    "facts": {}
   },
   {
     "index": "weapon-3",
@@ -4312,9 +5257,12 @@
     ],
     "options": [],
     "choose": null,
-    "category": "Weapon",
-    "rarity": "Very Rare",
-    "variants": []
+    "numbers": {},
+    "notes": {
+      "category": "Weapon",
+      "rarity": "Very Rare"
+    },
+    "facts": {}
   },
   {
     "index": "well-of-many-worlds",
@@ -4323,9 +5271,12 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "category": "Wondrous Items",
-    "rarity": "Legendary",
-    "variants": []
+    "numbers": {},
+    "notes": {
+      "category": "Wondrous Items",
+      "rarity": "Legendary"
+    },
+    "facts": {}
   },
   {
     "index": "wind-fan",
@@ -4334,9 +5285,12 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "category": "Wondrous Items",
-    "rarity": "Uncommon",
-    "variants": []
+    "numbers": {},
+    "notes": {
+      "category": "Wondrous Items",
+      "rarity": "Uncommon"
+    },
+    "facts": {}
   },
   {
     "index": "winged-boots",
@@ -4345,9 +5299,12 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "category": "Wondrous Items",
-    "rarity": "Uncommon",
-    "variants": []
+    "numbers": {},
+    "notes": {
+      "category": "Wondrous Items",
+      "rarity": "Uncommon"
+    },
+    "facts": {}
   },
   {
     "index": "wings-of-flying",
@@ -4356,9 +5313,12 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "category": "Wondrous Items",
-    "rarity": "Rare",
-    "variants": []
+    "numbers": {},
+    "notes": {
+      "category": "Wondrous Items",
+      "rarity": "Rare"
+    },
+    "facts": {}
   },
   {
     "index": "orb-of-dragonkind",
@@ -4367,8 +5327,11 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "category": "Wondrous Items",
-    "rarity": "Artifact",
-    "variants": []
+    "numbers": {},
+    "notes": {
+      "category": "Wondrous Items",
+      "rarity": "Artifact"
+    },
+    "facts": {}
   }
 ]

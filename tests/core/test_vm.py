@@ -42,4 +42,22 @@ def test_a_broken_program_is_refused_at_load_not_on_the_turn_that_runs_it() -> N
             "message": "{actor_id_nme} may not",
         }
     ]
-    assert "refusal names undefined ['actor_id_nme']" in _refused(program=refusal)
+    assert "a message names undefined ['actor_id_nme']" in _refused(program=refusal)
+
+    skipped = [
+        *RISK["program"],
+        {
+            "op": "let",
+            "when_outcome": "strong",
+            "name": "edge",
+            "value": {"expr": "const", "value": 1},
+        },
+        {"op": "roll", "dice": "1d4", "reason": "{edge} extra", "into": "extra"},
+    ]
+    assert "['edge'], whose binding a guard may skip" in _refused(program=skipped)
+
+    literal = [
+        {"op": "require", "that": {"pred": "present", "of": "actor_id"}, "message": "unused"},
+        *RISK["program"],
+    ]
+    assert "present judges a param or binding: write $actor_id" in _refused(program=literal)

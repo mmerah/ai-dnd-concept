@@ -276,16 +276,87 @@ round-trip regression is re-established against the regenerated pack.
 
 ## Phase 7 — D&D on the VM (~2 weeks, eval-gated per mechanic, large −)
 
-**Vision phase 5.** Held at gate resolution. The order is the vision's: checks, rests,
-attacks, limited-use features, healing, spell attacks, spell saves, scaling,
+**Vision phase 5.** Build-ready as of 2026-08-07. The order is the vision's: checks,
+rests, attacks, limited-use features, healing, spell attacks, spell saves, scaling,
 concentration, advancement last. Per mechanic: oracle cases (state, action, seed → facts
-+ state) against the Python resolver, delete only at parity, full suite at each merge.
-Known hard spots, named now: `rest` wants a bounded refill builtin (an engine-neutral
-`refill` op in the `Effect` union — not `recharge`, which already names the `Counter`
-label field — spec-driven, outside the Director's turn subset); `_attack_terms`' weapon/stat-block
-branching and finesse `max(str, dex)` will test the predicate set. A mechanic the VM
-cannot express cleanly stays Python as a named exception in the shim — §11's explicit
-escape, used sparingly and listed.
++ state + refusal strings) against the Python resolver, delete only at parity, full suite
+at each merge. The finish line here: `dnd5e/actions.py`, `resolve.py`, and `records.py`
+are deleted; `record_types` is empty; the shim holds only the plugin plus the named
+exceptions below.
+
+**The `refill` op.** A bounded refill builtin in the `Effect` union (not `recharge`,
+which already names the `Counter` label field): `entity_id`, `label`, and the explicit
+`recharges` tuple it refills — the rest program authors the label→recharges mapping that
+`spec.recharge` held, so `EngineSpec.recharge` is deleted as dead config. `refill` sits
+outside `TurnEffect` and `SheetEffect`; a new `ProgramEffect = TurnEffect | Refill` is
+what VM `apply` validates, so the Director never sees the op and hooks cannot author it.
+
+**VM growth, the whole closed set at once** (each primitive maps to code `resolve.py`
+runs today):
+
+- Params: `bool` (with default), `dice-expr`, `enum` gains a `default`, `entity-id`
+  gains `kind` (`actor` | `item`) — an item param resolves through the world with a
+  carried check left to the `carries` predicate, and binds `<name>_name` like an actor.
+- Exprs: `const`, `value` (a bound name, with `times` for negation), `div` (sum of terms,
+  floor-divided — the ability modifier and half-on-save), `max` (finesse), and
+  `number` gains a `default` (the `.get(key, 0)` reads).
+- Predicates: `equals`, `present` (always decidable — the one predicate an omitted
+  optional does not skip), `carries`, `at-least` (slot vs spell level), `and` (one
+  nesting level, non-`and` members only).
+- Every instruction carries optional `when` / `when_outcome` guards (skip when they
+  fail); `choose` is the exception where the guards are the condition and it always
+  binds `then` or `else`. New instructions: `choose`, `format` (string building:
+  `slot-{slot_level}`, composed `why` texts), `lookup` (bind a content record: from an
+  entity's sheet refs by collection with an optional required fact — `weapon_of` — or
+  from a ref-string param — `spell_of`; binds `<into>_name` too), `read` (a fact off a
+  bound record, with default), `ladder` (last row at-or-below a key in a
+  `[[threshold, value], ...]` fact — spell scaling).
+- `roll` gains `mode` and ref-capable `vs`/`dice`; `reason` becomes a format template
+  (story's `"$stakes"` becomes `"{stakes}"` — program-only, no schema movement).
+  `outcome` thresholds accept refs; a threshold ref holding null skips the instruction
+  (an uncontested `improvise` settles nothing).
+- `run_program` takes the engine's `Content`; unbound-ref reads raise `ValueError`, so
+  a guard bug refuses instead of killing the turn with `KeyError`.
+
+**Named Python exceptions, in the shim** (§11's escape, used sparingly and listed):
+`EnginePlugin` gains `dynamic_labels` and `plan_checks`, keyed by action name — a JSON
+DSL for two callables each would be speculative framework. (1) `improvise` labels:
+contested only when `vs` is written. (2) `cast-spell` labels: contested only when the
+spell's facts carry an attack or a save. (3) The double-spend plan checks for
+`cast-spell` (`slot-` prefix) and `use-feature` (the named counter). `advance.py` also
+stays: offers and level-ups are phase 10's workflow machinery, not turn mechanics — but
+`LevelRecord` dies now (its reader uses only base `Record` fields).
+
+**Fact schemas for the 5 remaining typed collections.** Weapons: `damage`,
+`versatile-damage`, `finesse`, `ranged`. Spells: `level` (absent = cantrip),
+`attack-type`, `save-ability`, `save-success`, `concentration`, `with-modifier` flags,
+and `damage-ladder`/`heal-ladder` as `[[threshold, dice], ...]` with the base amount at
+threshold 0 — the importer asserts `with_modifier` is constant across a spell's ladder,
+which holds in the SRD. Classes: `spellcasting`. Levels and monsters need no facts:
+their typed classes only computed `numbers`/`notes`, which become stored maps like
+phase 6's. All five classes move to `scripts/srd/interpret.py` as `Interpreted`
+subclasses; the phase-6 oracle (stored maps equal computed maps) reruns over the
+regenerated pack, after the baseline byte-identical run the memory file demands.
+
+**Deviations from the Python, named now:** a two-class sheet resolves spellcasting from
+its first class ref where the Python refused (multiclass is already refused by
+advancement, and no shipped character has two); `improvise` branches on an uncontested
+roll pass plan validation and silently never fire where static labels once refused them
+— recovered by the shim's dynamic labels, so only the error message wording may drift.
+
+**Schema identity is the gate-shrinker:** every generated action model must emit the
+same JSON schema as today's hand-written class (field order, descriptions, defaults,
+bounds), as phase 4 proved for `Risk`. If `turn_plan.json` moves at all the live suite
+is owed; if it is byte-identical the phase owes only the standing per-mechanic oracle
+runs and the fixture families that snapshot pack bytes (`save/*`, `state/*`, `turn/*`
+via `SAVE_VERSION`).
+
+Content-facts debt from phase 6, decided here per field on the heavy collections; the
+creation fields wait for phase 10. Feature `requires`/`pick`/`invocations`/`parent`,
+trait `grants-proficiency`/`races`/`subraces`/`parent`, magic-item
+`category`/`rarity`/`variants` stay prose — no deterministic reader arrived. Nothing is
+lost: the pack regenerates from the pinned checkout, and promoting any of these is an
+importer change plus a regen. Never re-type them in Python.
 
 ## Phase 8 — Scene Director / Rules Director split (~3 days, eval-gated)
 
@@ -294,6 +365,25 @@ stakes) inserted before a narrowed Rules Director — the step machinery already
 inserted `(name, StepFn)` pair. Strictly A/B against the single director on plan
 correctness, tokens, latency, retries; configuration keeps whichever wins, per scenario
 if the data says so.
+
+## Phase 8.5 — Model-facing schema shrink (eval-gated, held at gate resolution)
+
+**AFTER-VISION.md's principle, adopted: a role outputs only what its inputs cannot
+deterministically derive.** Sequenced directly after phase 8 because the headline cut —
+`effects`/`branches` leave the TurnPlan and the Rules Director sends an action invocation
+only — presumes the Scene Director exists; the VM already owns resolution (phase 7). Not
+behavior-preserving by definition: it moves `turn_plan.json` and `instructions/*`, so it owes
+a full live suite against a same-hour HEAD run, probed on gpt-oss before fixtures are cut
+(the phase-2 ordering, this time followed).
+
+- The design question that gates it: the Director's non-mechanical writes (reveal, relation
+  ops, `advance-thread`) need a home before `effects` leaves the plan — a small residual
+  write list, or hooks and keepers absorb them. Decide on eval evidence, not taste.
+- Batched into the same pass because each also moves prompt or schema bytes and one live run
+  should pay for all of them: dropping pack `notes` that duplicate a `facts` value, any
+  actions.json shrink the smaller plan model enables, and deleting the now-empty
+  `EnginePlugin.record_types` plumbing (PROGRESS.md phase-7 review finding).
+- Bail-out: keep the current plan shape — the pass is pure upside only if the suite holds.
 
 ## Phase 9 — Memories + keepers (~4 days)
 

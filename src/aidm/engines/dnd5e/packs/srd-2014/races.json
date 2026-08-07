@@ -6,15 +6,21 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "speed": 25,
-    "size": "Medium",
-    "ability_bonuses": [
-      {
-        "ability": "CON",
-        "bonus": 2
-      }
-    ],
-    "floating_bonus_choose": null
+    "numbers": {
+      "speed": 25
+    },
+    "notes": {
+      "ability-bonuses": "CON +2",
+      "size": "Medium"
+    },
+    "facts": {
+      "ability-bonuses": [
+        {
+          "ability": "constitution",
+          "bonus": 2
+        }
+      ]
+    }
   },
   {
     "index": "elf",
@@ -23,15 +29,21 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "speed": 30,
-    "size": "Medium",
-    "ability_bonuses": [
-      {
-        "ability": "DEX",
-        "bonus": 2
-      }
-    ],
-    "floating_bonus_choose": null
+    "numbers": {
+      "speed": 30
+    },
+    "notes": {
+      "ability-bonuses": "DEX +2",
+      "size": "Medium"
+    },
+    "facts": {
+      "ability-bonuses": [
+        {
+          "ability": "dexterity",
+          "bonus": 2
+        }
+      ]
+    }
   },
   {
     "index": "halfling",
@@ -40,15 +52,21 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "speed": 25,
-    "size": "Small",
-    "ability_bonuses": [
-      {
-        "ability": "DEX",
-        "bonus": 2
-      }
-    ],
-    "floating_bonus_choose": null
+    "numbers": {
+      "speed": 25
+    },
+    "notes": {
+      "ability-bonuses": "DEX +2",
+      "size": "Small"
+    },
+    "facts": {
+      "ability-bonuses": [
+        {
+          "ability": "dexterity",
+          "bonus": 2
+        }
+      ]
+    }
   },
   {
     "index": "human",
@@ -133,35 +151,41 @@
       }
     ],
     "choose": 1,
-    "speed": 30,
-    "size": "Medium",
-    "ability_bonuses": [
-      {
-        "ability": "STR",
-        "bonus": 1
-      },
-      {
-        "ability": "DEX",
-        "bonus": 1
-      },
-      {
-        "ability": "CON",
-        "bonus": 1
-      },
-      {
-        "ability": "INT",
-        "bonus": 1
-      },
-      {
-        "ability": "WIS",
-        "bonus": 1
-      },
-      {
-        "ability": "CHA",
-        "bonus": 1
-      }
-    ],
-    "floating_bonus_choose": null
+    "numbers": {
+      "speed": 30
+    },
+    "notes": {
+      "ability-bonuses": "STR +1, DEX +1, CON +1, INT +1, WIS +1, CHA +1",
+      "size": "Medium"
+    },
+    "facts": {
+      "ability-bonuses": [
+        {
+          "ability": "strength",
+          "bonus": 1
+        },
+        {
+          "ability": "dexterity",
+          "bonus": 1
+        },
+        {
+          "ability": "constitution",
+          "bonus": 1
+        },
+        {
+          "ability": "intelligence",
+          "bonus": 1
+        },
+        {
+          "ability": "wisdom",
+          "bonus": 1
+        },
+        {
+          "ability": "charisma",
+          "bonus": 1
+        }
+      ]
+    }
   },
   {
     "index": "dragonborn",
@@ -170,19 +194,25 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "speed": 30,
-    "size": "Medium",
-    "ability_bonuses": [
-      {
-        "ability": "STR",
-        "bonus": 2
-      },
-      {
-        "ability": "CHA",
-        "bonus": 1
-      }
-    ],
-    "floating_bonus_choose": null
+    "numbers": {
+      "speed": 30
+    },
+    "notes": {
+      "ability-bonuses": "STR +2, CHA +1",
+      "size": "Medium"
+    },
+    "facts": {
+      "ability-bonuses": [
+        {
+          "ability": "strength",
+          "bonus": 2
+        },
+        {
+          "ability": "charisma",
+          "bonus": 1
+        }
+      ]
+    }
   },
   {
     "index": "gnome",
@@ -191,15 +221,21 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "speed": 25,
-    "size": "Small",
-    "ability_bonuses": [
-      {
-        "ability": "INT",
-        "bonus": 2
-      }
-    ],
-    "floating_bonus_choose": null
+    "numbers": {
+      "speed": 25
+    },
+    "notes": {
+      "ability-bonuses": "INT +2",
+      "size": "Small"
+    },
+    "facts": {
+      "ability-bonuses": [
+        {
+          "ability": "intelligence",
+          "bonus": 2
+        }
+      ]
+    }
   },
   {
     "index": "half-elf",
@@ -279,15 +315,22 @@
       }
     ],
     "choose": 1,
-    "speed": 30,
-    "size": "Medium",
-    "ability_bonuses": [
-      {
-        "ability": "CHA",
-        "bonus": 2
-      }
-    ],
-    "floating_bonus_choose": 2
+    "numbers": {
+      "speed": 30
+    },
+    "notes": {
+      "ability-bonuses": "CHA +2, choose 2 others +1",
+      "size": "Medium"
+    },
+    "facts": {
+      "ability-bonuses": [
+        {
+          "ability": "charisma",
+          "bonus": 2
+        }
+      ],
+      "floating-bonus-choose": 2
+    }
   },
   {
     "index": "half-orc",
@@ -296,19 +339,25 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "speed": 30,
-    "size": "Medium",
-    "ability_bonuses": [
-      {
-        "ability": "STR",
-        "bonus": 2
-      },
-      {
-        "ability": "CON",
-        "bonus": 1
-      }
-    ],
-    "floating_bonus_choose": null
+    "numbers": {
+      "speed": 30
+    },
+    "notes": {
+      "ability-bonuses": "STR +2, CON +1",
+      "size": "Medium"
+    },
+    "facts": {
+      "ability-bonuses": [
+        {
+          "ability": "strength",
+          "bonus": 2
+        },
+        {
+          "ability": "constitution",
+          "bonus": 1
+        }
+      ]
+    }
   },
   {
     "index": "tiefling",
@@ -317,18 +366,24 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "speed": 30,
-    "size": "Medium",
-    "ability_bonuses": [
-      {
-        "ability": "INT",
-        "bonus": 1
-      },
-      {
-        "ability": "CHA",
-        "bonus": 2
-      }
-    ],
-    "floating_bonus_choose": null
+    "numbers": {
+      "speed": 30
+    },
+    "notes": {
+      "ability-bonuses": "INT +1, CHA +2",
+      "size": "Medium"
+    },
+    "facts": {
+      "ability-bonuses": [
+        {
+          "ability": "intelligence",
+          "bonus": 1
+        },
+        {
+          "ability": "charisma",
+          "bonus": 2
+        }
+      ]
+    }
   }
 ]

@@ -24,6 +24,7 @@ from aidm.state.packs import (
     Content,
     ContentMiss,
     ContentRef,
+    FactSchema,
     FrozenMap,
     PackFormat,
     Record,
@@ -53,9 +54,8 @@ type EntityRenderer = Callable[[Entity], str]
 
 class EngineSpec(Value):
     templates: FrozenMap[Kind, SheetTemplate] = EMPTY_FROZEN_MAP
-    # Label -> the labels it refills, so a long rest also restores what a short rest would.
-    recharge: FrozenMap[str, tuple[str, ...]] = EMPTY_FROZEN_MAP
-    collections: tuple[CollectionName, ...] = ()
+    # Collection name -> the facts every record in it must carry (empty: no requirement).
+    collections: FrozenMap[CollectionName, FactSchema] = EMPTY_FROZEN_MAP
 
     def template(self, kind: Kind) -> SheetTemplate:
         return self.templates.get(kind, SheetTemplate())
@@ -83,6 +83,12 @@ class EnginePlugin:
     # Judges the sheet the proposal would leave, which the kernel has already applied and validated.
     check_delta: Callable[[GameState, Sheet], str | None]
     record_types: Mapping[CollectionName, type[Record]] = MappingProxyType({})
+    # Named exceptions for declared actions the VM cannot judge alone, keyed by action name:
+    # labels that depend on the action's values or content, and whole-plan checks.
+    dynamic_labels: "Mapping[Slug, Callable[[Engine, Any], frozenset[Slug]]]" = MappingProxyType({})
+    plan_checks: Mapping[Slug, Callable[[GameState, TurnPlanBase, Any], str | None]] = (
+        MappingProxyType({})
+    )
 
     def pack_format(self, spec: EngineSpec) -> PackFormat:
         return pack_format(spec.collections, self.record_types)
@@ -236,7 +242,7 @@ def load_engine(plugin: EnginePlugin, pack_paths: Sequence[Path] | None = None) 
     spec = EngineSpec.model_validate_json(_text(engine_dir / "spec.json"))
     directories = _packs(engine_dir) if pack_paths is None else tuple(pack_paths)
     content = load(directories, plugin.pack_format(spec))
-    actions = (*plugin.actions, *_declared_actions(engine_dir))
+    actions = (*plugin.actions, *_declared_actions(plugin))
     plan_type = _plan_model(actions, plugin.action_doc)
     return Engine(
         plugin=plugin,
@@ -269,22 +275,33 @@ def _plan_model(actions: tuple[ActionSpec[Any], ...], action_doc: str) -> type[T
     )
 
 
-def _declared_actions(engine_dir: Path) -> tuple[ActionSpec[Any], ...]:
+def _declared_actions(plugin: EnginePlugin) -> tuple[ActionSpec[Any], ...]:
     """An engine's `actions.json` needs no Python: the kernel runs its programs."""
-    path = engine_dir / "actions.json"
+    path = plugin.engine_dir / "actions.json"
     if not path.is_file():
         return ()
     declared = TypeAdapter(tuple[ActionDef, ...]).validate_json(_text(path))
-    return tuple(_declared_spec(action) for action in declared)
+    return tuple(_declared_spec(action, plugin) for action in declared)
 
 
-def _declared_spec(declared: ActionDef) -> ActionSpec[Any]:
+def _declared_spec(declared: ActionDef, plugin: EnginePlugin) -> ActionSpec[Any]:
     def resolve(engine: Engine, draft: GameState, action: Any, rng: Random) -> Resolved:
         return run_program(
-            declared.program, draft, action, rng, engine.default_rules, declared.params
+            declared.program,
+            draft,
+            action,
+            rng,
+            engine.default_rules,
+            declared.params,
+            engine.content,
         )
 
-    return ActionSpec(model=declared.model(), labels=frozenset(declared.labels), resolve=resolve)
+    return ActionSpec(
+        model=declared.model(),
+        labels=plugin.dynamic_labels.get(declared.name, frozenset(declared.labels)),
+        resolve=resolve,
+        check=plugin.plan_checks.get(declared.name),
+    )
 
 
 def _action(plan: TurnPlanBase) -> Frozen | None:

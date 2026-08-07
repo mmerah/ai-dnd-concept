@@ -6,12 +6,13 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "hit_die": 12,
-    "saving_throws": [
-      "strength",
-      "constitution"
-    ],
-    "spellcasting": null
+    "numbers": {
+      "hit-die": 12
+    },
+    "notes": {
+      "saving-throws": "STR, CON"
+    },
+    "facts": {}
   },
   {
     "index": "bard",
@@ -20,12 +21,16 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "hit_die": 8,
-    "saving_throws": [
-      "dexterity",
-      "charisma"
-    ],
-    "spellcasting": "charisma"
+    "numbers": {
+      "hit-die": 8
+    },
+    "notes": {
+      "saving-throws": "DEX, CHA",
+      "spellcasting": "CHA"
+    },
+    "facts": {
+      "spellcasting": "charisma"
+    }
   },
   {
     "index": "cleric",
@@ -34,12 +39,16 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "hit_die": 8,
-    "saving_throws": [
-      "wisdom",
-      "charisma"
-    ],
-    "spellcasting": "wisdom"
+    "numbers": {
+      "hit-die": 8
+    },
+    "notes": {
+      "saving-throws": "WIS, CHA",
+      "spellcasting": "WIS"
+    },
+    "facts": {
+      "spellcasting": "wisdom"
+    }
   },
   {
     "index": "druid",
@@ -48,12 +57,16 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "hit_die": 8,
-    "saving_throws": [
-      "intelligence",
-      "wisdom"
-    ],
-    "spellcasting": "wisdom"
+    "numbers": {
+      "hit-die": 8
+    },
+    "notes": {
+      "saving-throws": "INT, WIS",
+      "spellcasting": "WIS"
+    },
+    "facts": {
+      "spellcasting": "wisdom"
+    }
   },
   {
     "index": "fighter",
@@ -62,12 +75,13 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "hit_die": 10,
-    "saving_throws": [
-      "strength",
-      "constitution"
-    ],
-    "spellcasting": null
+    "numbers": {
+      "hit-die": 10
+    },
+    "notes": {
+      "saving-throws": "STR, CON"
+    },
+    "facts": {}
   },
   {
     "index": "monk",
@@ -76,12 +90,13 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "hit_die": 8,
-    "saving_throws": [
-      "strength",
-      "dexterity"
-    ],
-    "spellcasting": null
+    "numbers": {
+      "hit-die": 8
+    },
+    "notes": {
+      "saving-throws": "STR, DEX"
+    },
+    "facts": {}
   },
   {
     "index": "paladin",
@@ -90,12 +105,16 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "hit_die": 10,
-    "saving_throws": [
-      "wisdom",
-      "charisma"
-    ],
-    "spellcasting": "charisma"
+    "numbers": {
+      "hit-die": 10
+    },
+    "notes": {
+      "saving-throws": "WIS, CHA",
+      "spellcasting": "CHA"
+    },
+    "facts": {
+      "spellcasting": "charisma"
+    }
   },
   {
     "index": "ranger",
@@ -104,12 +123,16 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "hit_die": 10,
-    "saving_throws": [
-      "strength",
-      "dexterity"
-    ],
-    "spellcasting": "wisdom"
+    "numbers": {
+      "hit-die": 10
+    },
+    "notes": {
+      "saving-throws": "STR, DEX",
+      "spellcasting": "WIS"
+    },
+    "facts": {
+      "spellcasting": "wisdom"
+    }
   },
   {
     "index": "rogue",
@@ -118,12 +141,13 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "hit_die": 8,
-    "saving_throws": [
-      "dexterity",
-      "intelligence"
-    ],
-    "spellcasting": null
+    "numbers": {
+      "hit-die": 8
+    },
+    "notes": {
+      "saving-throws": "DEX, INT"
+    },
+    "facts": {}
   },
   {
     "index": "sorcerer",
@@ -132,12 +156,16 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "hit_die": 6,
-    "saving_throws": [
-      "constitution",
-      "charisma"
-    ],
-    "spellcasting": "charisma"
+    "numbers": {
+      "hit-die": 6
+    },
+    "notes": {
+      "saving-throws": "CON, CHA",
+      "spellcasting": "CHA"
+    },
+    "facts": {
+      "spellcasting": "charisma"
+    }
   },
   {
     "index": "warlock",
@@ -146,12 +174,16 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "hit_die": 8,
-    "saving_throws": [
-      "wisdom",
-      "charisma"
-    ],
-    "spellcasting": "charisma"
+    "numbers": {
+      "hit-die": 8
+    },
+    "notes": {
+      "saving-throws": "WIS, CHA",
+      "spellcasting": "CHA"
+    },
+    "facts": {
+      "spellcasting": "charisma"
+    }
   },
   {
     "index": "wizard",
@@ -160,11 +192,15 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "hit_die": 6,
-    "saving_throws": [
-      "intelligence",
-      "wisdom"
-    ],
-    "spellcasting": "intelligence"
+    "numbers": {
+      "hit-die": 6
+    },
+    "notes": {
+      "saving-throws": "INT, WIS",
+      "spellcasting": "INT"
+    },
+    "facts": {
+      "spellcasting": "intelligence"
+    }
   }
 ]

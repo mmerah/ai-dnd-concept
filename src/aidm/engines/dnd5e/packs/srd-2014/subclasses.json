@@ -6,9 +6,11 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "klass": "Barbarian",
-    "flavor": "Primal Path",
-    "spell_grants": []
+    "numbers": {},
+    "notes": {},
+    "facts": {
+      "class": "barbarian"
+    }
   },
   {
     "index": "lore",
@@ -17,9 +19,11 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "klass": "Bard",
-    "flavor": "Bard College",
-    "spell_grants": []
+    "numbers": {},
+    "notes": {},
+    "facts": {
+      "class": "bard"
+    }
   },
   {
     "index": "life",
@@ -28,46 +32,51 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "klass": "Cleric",
-    "flavor": "Divine Domain",
-    "spell_grants": [
-      {
-        "gate": "Cleric 1",
-        "spell": "Bless"
-      },
-      {
-        "gate": "Cleric 1",
-        "spell": "Cure Wounds"
-      },
-      {
-        "gate": "Cleric 3",
-        "spell": "Lesser Restoration"
-      },
-      {
-        "gate": "Cleric 3",
-        "spell": "Spiritual Weapon"
-      },
-      {
-        "gate": "Cleric 5",
-        "spell": "Beacon of Hope"
-      },
-      {
-        "gate": "Cleric 5",
-        "spell": "Revivify"
-      },
-      {
-        "gate": "Cleric 7",
-        "spell": "Death Ward"
-      },
-      {
-        "gate": "Cleric 9",
-        "spell": "Mass Cure Wounds"
-      },
-      {
-        "gate": "Cleric 9",
-        "spell": "Raise Dead"
-      }
-    ]
+    "numbers": {},
+    "notes": {
+      "subclass-spells": "Cleric 1: Bless, Cure Wounds; Cleric 3: Lesser Restoration, Spiritual Weapon; Cleric 5: Beacon of Hope, Revivify; Cleric 7: Death Ward; Cleric 9: Mass Cure Wounds, Raise Dead"
+    },
+    "facts": {
+      "class": "cleric",
+      "spell-grants": [
+        {
+          "gate": "Cleric 1",
+          "spell": "bless"
+        },
+        {
+          "gate": "Cleric 1",
+          "spell": "cure-wounds"
+        },
+        {
+          "gate": "Cleric 3",
+          "spell": "lesser-restoration"
+        },
+        {
+          "gate": "Cleric 3",
+          "spell": "spiritual-weapon"
+        },
+        {
+          "gate": "Cleric 5",
+          "spell": "beacon-of-hope"
+        },
+        {
+          "gate": "Cleric 5",
+          "spell": "revivify"
+        },
+        {
+          "gate": "Cleric 7",
+          "spell": "death-ward"
+        },
+        {
+          "gate": "Cleric 9",
+          "spell": "mass-cure-wounds"
+        },
+        {
+          "gate": "Cleric 9",
+          "spell": "raise-dead"
+        }
+      ]
+    }
   },
   {
     "index": "land",
@@ -76,234 +85,239 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "klass": "Druid",
-    "flavor": "Druid Circle",
-    "spell_grants": [
-      {
-        "gate": "Druid 3, Circle of the Land: Arctic",
-        "spell": "Hold Person"
-      },
-      {
-        "gate": "Druid 3, Circle of the Land: Arctic",
-        "spell": "Spike Growth"
-      },
-      {
-        "gate": "Druid 5, Circle of the Land: Arctic",
-        "spell": "Sleet Storm"
-      },
-      {
-        "gate": "Druid 5, Circle of the Land: Arctic",
-        "spell": "Slow"
-      },
-      {
-        "gate": "Druid 7, Circle of the Land: Arctic",
-        "spell": "Freedom of Movement"
-      },
-      {
-        "gate": "Druid 7, Circle of the Land: Arctic",
-        "spell": "Ice Storm"
-      },
-      {
-        "gate": "Druid 9, Circle of the Land: Arctic",
-        "spell": "Commune With Nature"
-      },
-      {
-        "gate": "Druid 9, Circle of the Land: Arctic",
-        "spell": "Cone of Cold"
-      },
-      {
-        "gate": "Druid 3, Circle of the Land: Coast",
-        "spell": "Mirror Image"
-      },
-      {
-        "gate": "Druid 3, Circle of the Land: Coast",
-        "spell": "Misty Step"
-      },
-      {
-        "gate": "Druid 5, Circle of the Land: Coast",
-        "spell": "Water Breathing"
-      },
-      {
-        "gate": "Druid 5, Circle of the Land: Coast",
-        "spell": "Water Walk"
-      },
-      {
-        "gate": "Druid 7, Circle of the Land: Coast",
-        "spell": "Control Water"
-      },
-      {
-        "gate": "Druid 7, Circle of the Land: Coast",
-        "spell": "Freedom of Movement"
-      },
-      {
-        "gate": "Druid 9, Circle of the Land: Coast",
-        "spell": "Conjure Elemental"
-      },
-      {
-        "gate": "Druid 9, Circle of the Land: Coast",
-        "spell": "Scrying"
-      },
-      {
-        "gate": "Druid 3, Circle of the Land: Desert",
-        "spell": "Blur"
-      },
-      {
-        "gate": "Druid 3, Circle of the Land: Desert",
-        "spell": "Silence"
-      },
-      {
-        "gate": "Druid 5, Circle of the Land: Desert",
-        "spell": "Create Food and Water"
-      },
-      {
-        "gate": "Druid 5, Circle of the Land: Desert",
-        "spell": "Protection From Energy"
-      },
-      {
-        "gate": "Druid 7, Circle of the Land: Desert",
-        "spell": "Blight"
-      },
-      {
-        "gate": "Druid 7, Circle of the Land: Desert",
-        "spell": "Hallucinatory Terrain"
-      },
-      {
-        "gate": "Druid 9, Circle of the Land: Desert",
-        "spell": "Insect Plague"
-      },
-      {
-        "gate": "Druid 9, Circle of the Land: Desert",
-        "spell": "Wall of Stone"
-      },
-      {
-        "gate": "Druid 3, Circle of the Land: Forest",
-        "spell": "Barkskin"
-      },
-      {
-        "gate": "Druid 3, Circle of the Land: Forest",
-        "spell": "Spider Climb"
-      },
-      {
-        "gate": "Druid 5, Circle of the Land: Forest",
-        "spell": "Call Lightning"
-      },
-      {
-        "gate": "Druid 5, Circle of the Land: Forest",
-        "spell": "Plant Growth"
-      },
-      {
-        "gate": "Druid 7, Circle of the Land: Forest",
-        "spell": "Divination"
-      },
-      {
-        "gate": "Druid 7, Circle of the Land: Forest",
-        "spell": "Freedom of Movement"
-      },
-      {
-        "gate": "Druid 9, Circle of the Land: Forest",
-        "spell": "Commune With Nature"
-      },
-      {
-        "gate": "Druid 9, Circle of the Land: Forest",
-        "spell": "Tree Stride"
-      },
-      {
-        "gate": "Druid 3, Circle of the Land: Grassland",
-        "spell": "Invisibility"
-      },
-      {
-        "gate": "Druid 3, Circle of the Land: Grassland",
-        "spell": "Pass Without Trace"
-      },
-      {
-        "gate": "Druid 5, Circle of the Land: Grassland",
-        "spell": "Daylight"
-      },
-      {
-        "gate": "Druid 5, Circle of the Land: Grassland",
-        "spell": "Haste"
-      },
-      {
-        "gate": "Druid 7, Circle of the Land: Grassland",
-        "spell": "Divination"
-      },
-      {
-        "gate": "Druid 7, Circle of the Land: Grassland",
-        "spell": "Freedom of Movement"
-      },
-      {
-        "gate": "Druid 9, Circle of the Land: Grassland",
-        "spell": "Dream"
-      },
-      {
-        "gate": "Druid 9, Circle of the Land: Grassland",
-        "spell": "Insect Plague"
-      },
-      {
-        "gate": "Druid 3, Circle of the Land: Mountain",
-        "spell": "Spider Climb"
-      },
-      {
-        "gate": "Druid 3, Circle of the Land: Mountain",
-        "spell": "Spike Growth"
-      },
-      {
-        "gate": "Druid 5, Circle of the Land: Mountain",
-        "spell": "Lightning Bolt"
-      },
-      {
-        "gate": "Druid 5, Circle of the Land: Mountain",
-        "spell": "Meld Into Stone"
-      },
-      {
-        "gate": "Druid 7, Circle of the Land: Mountain",
-        "spell": "Stone Shape"
-      },
-      {
-        "gate": "Druid 7, Circle of the Land: Mountain",
-        "spell": "Stoneskin"
-      },
-      {
-        "gate": "Druid 9, Circle of the Land: Mountain",
-        "spell": "Passwall"
-      },
-      {
-        "gate": "Druid 9, Circle of the Land: Mountain",
-        "spell": "Wall of Stone"
-      },
-      {
-        "gate": "Druid 3, Circle of the Land: Swamp",
-        "spell": "Acid Arrow"
-      },
-      {
-        "gate": "Druid 3, Circle of the Land: Swamp",
-        "spell": "Darkness"
-      },
-      {
-        "gate": "Druid 5, Circle of the Land: Swamp",
-        "spell": "Water Walk"
-      },
-      {
-        "gate": "Druid 5, Circle of the Land: Swamp",
-        "spell": "Stinking Cloud"
-      },
-      {
-        "gate": "Druid 7, Circle of the Land: Swamp",
-        "spell": "Freedom of Movement"
-      },
-      {
-        "gate": "Druid 7, Circle of the Land: Swamp",
-        "spell": "Locate Creature"
-      },
-      {
-        "gate": "Druid 9, Circle of the Land: Swamp",
-        "spell": "Insect Plague"
-      },
-      {
-        "gate": "Druid 9, Circle of the Land: Swamp",
-        "spell": "Scrying"
-      }
-    ]
+    "numbers": {},
+    "notes": {
+      "subclass-spells": "Druid 3, Circle of the Land: Arctic: Hold Person, Spike Growth; Druid 5, Circle of the Land: Arctic: Sleet Storm, Slow; Druid 7, Circle of the Land: Arctic: Freedom of Movement, Ice Storm; Druid 9, Circle of the Land: Arctic: Commune With Nature, Cone of Cold; Druid 3, Circle of the Land: Coast: Mirror Image, Misty Step; Druid 5, Circle of the Land: Coast: Water Breathing, Water Walk; Druid 7, Circle of the Land: Coast: Control Water, Freedom of Movement; Druid 9, Circle of the Land: Coast: Conjure Elemental, Scrying; Druid 3, Circle of the Land: Desert: Blur, Silence; Druid 5, Circle of the Land: Desert: Create Food and Water, Protection From Energy; Druid 7, Circle of the Land: Desert: Blight, Hallucinatory Terrain; Druid 9, Circle of the Land: Desert: Insect Plague, Wall of Stone; Druid 3, Circle of the Land: Forest: Barkskin, Spider Climb; Druid 5, Circle of the Land: Forest: Call Lightning, Plant Growth; Druid 7, Circle of the Land: Forest: Divination, Freedom of Movement; Druid 9, Circle of the Land: Forest: Commune With Nature, Tree Stride; Druid 3, Circle of the Land: Grassland: Invisibility, Pass Without Trace; Druid 5, Circle of the Land: Grassland: Daylight, Haste; Druid 7, Circle of the Land: Grassland: Divination, Freedom of Movement; Druid 9, Circle of the Land: Grassland: Dream, Insect Plague; Druid 3, Circle of the Land: Mountain: Spider Climb, Spike Growth; Druid 5, Circle of the Land: Mountain: Lightning Bolt, Meld Into Stone; Druid 7, Circle of the Land: Mountain: Stone Shape, Stoneskin; Druid 9, Circle of the Land: Mountain: Passwall, Wall of Stone; Druid 3, Circle of the Land: Swamp: Acid Arrow, Darkness; Druid 5, Circle of the Land: Swamp: Water Walk, Stinking Cloud; Druid 7, Circle of the Land: Swamp: Freedom of Movement, Locate Creature; Druid 9, Circle of the Land: Swamp: Insect Plague, Scrying"
+    },
+    "facts": {
+      "class": "druid",
+      "spell-grants": [
+        {
+          "gate": "Druid 3, Circle of the Land: Arctic",
+          "spell": "hold-person"
+        },
+        {
+          "gate": "Druid 3, Circle of the Land: Arctic",
+          "spell": "spike-growth"
+        },
+        {
+          "gate": "Druid 5, Circle of the Land: Arctic",
+          "spell": "sleet-storm"
+        },
+        {
+          "gate": "Druid 5, Circle of the Land: Arctic",
+          "spell": "slow"
+        },
+        {
+          "gate": "Druid 7, Circle of the Land: Arctic",
+          "spell": "freedom-of-movement"
+        },
+        {
+          "gate": "Druid 7, Circle of the Land: Arctic",
+          "spell": "ice-storm"
+        },
+        {
+          "gate": "Druid 9, Circle of the Land: Arctic",
+          "spell": "commune-with-nature"
+        },
+        {
+          "gate": "Druid 9, Circle of the Land: Arctic",
+          "spell": "cone-of-cold"
+        },
+        {
+          "gate": "Druid 3, Circle of the Land: Coast",
+          "spell": "mirror-image"
+        },
+        {
+          "gate": "Druid 3, Circle of the Land: Coast",
+          "spell": "misty-step"
+        },
+        {
+          "gate": "Druid 5, Circle of the Land: Coast",
+          "spell": "water-breathing"
+        },
+        {
+          "gate": "Druid 5, Circle of the Land: Coast",
+          "spell": "water-walk"
+        },
+        {
+          "gate": "Druid 7, Circle of the Land: Coast",
+          "spell": "control-water"
+        },
+        {
+          "gate": "Druid 7, Circle of the Land: Coast",
+          "spell": "freedom-of-movement"
+        },
+        {
+          "gate": "Druid 9, Circle of the Land: Coast",
+          "spell": "conjure-elemental"
+        },
+        {
+          "gate": "Druid 9, Circle of the Land: Coast",
+          "spell": "scrying"
+        },
+        {
+          "gate": "Druid 3, Circle of the Land: Desert",
+          "spell": "blur"
+        },
+        {
+          "gate": "Druid 3, Circle of the Land: Desert",
+          "spell": "silence"
+        },
+        {
+          "gate": "Druid 5, Circle of the Land: Desert",
+          "spell": "create-food-and-water"
+        },
+        {
+          "gate": "Druid 5, Circle of the Land: Desert",
+          "spell": "protection-from-energy"
+        },
+        {
+          "gate": "Druid 7, Circle of the Land: Desert",
+          "spell": "blight"
+        },
+        {
+          "gate": "Druid 7, Circle of the Land: Desert",
+          "spell": "hallucinatory-terrain"
+        },
+        {
+          "gate": "Druid 9, Circle of the Land: Desert",
+          "spell": "insect-plague"
+        },
+        {
+          "gate": "Druid 9, Circle of the Land: Desert",
+          "spell": "wall-of-stone"
+        },
+        {
+          "gate": "Druid 3, Circle of the Land: Forest",
+          "spell": "barkskin"
+        },
+        {
+          "gate": "Druid 3, Circle of the Land: Forest",
+          "spell": "spider-climb"
+        },
+        {
+          "gate": "Druid 5, Circle of the Land: Forest",
+          "spell": "call-lightning"
+        },
+        {
+          "gate": "Druid 5, Circle of the Land: Forest",
+          "spell": "plant-growth"
+        },
+        {
+          "gate": "Druid 7, Circle of the Land: Forest",
+          "spell": "divination"
+        },
+        {
+          "gate": "Druid 7, Circle of the Land: Forest",
+          "spell": "freedom-of-movement"
+        },
+        {
+          "gate": "Druid 9, Circle of the Land: Forest",
+          "spell": "commune-with-nature"
+        },
+        {
+          "gate": "Druid 9, Circle of the Land: Forest",
+          "spell": "tree-stride"
+        },
+        {
+          "gate": "Druid 3, Circle of the Land: Grassland",
+          "spell": "invisibility"
+        },
+        {
+          "gate": "Druid 3, Circle of the Land: Grassland",
+          "spell": "pass-without-trace"
+        },
+        {
+          "gate": "Druid 5, Circle of the Land: Grassland",
+          "spell": "daylight"
+        },
+        {
+          "gate": "Druid 5, Circle of the Land: Grassland",
+          "spell": "haste"
+        },
+        {
+          "gate": "Druid 7, Circle of the Land: Grassland",
+          "spell": "divination"
+        },
+        {
+          "gate": "Druid 7, Circle of the Land: Grassland",
+          "spell": "freedom-of-movement"
+        },
+        {
+          "gate": "Druid 9, Circle of the Land: Grassland",
+          "spell": "dream"
+        },
+        {
+          "gate": "Druid 9, Circle of the Land: Grassland",
+          "spell": "insect-plague"
+        },
+        {
+          "gate": "Druid 3, Circle of the Land: Mountain",
+          "spell": "spider-climb"
+        },
+        {
+          "gate": "Druid 3, Circle of the Land: Mountain",
+          "spell": "spike-growth"
+        },
+        {
+          "gate": "Druid 5, Circle of the Land: Mountain",
+          "spell": "lightning-bolt"
+        },
+        {
+          "gate": "Druid 5, Circle of the Land: Mountain",
+          "spell": "meld-into-stone"
+        },
+        {
+          "gate": "Druid 7, Circle of the Land: Mountain",
+          "spell": "stone-shape"
+        },
+        {
+          "gate": "Druid 7, Circle of the Land: Mountain",
+          "spell": "stoneskin"
+        },
+        {
+          "gate": "Druid 9, Circle of the Land: Mountain",
+          "spell": "passwall"
+        },
+        {
+          "gate": "Druid 9, Circle of the Land: Mountain",
+          "spell": "wall-of-stone"
+        },
+        {
+          "gate": "Druid 3, Circle of the Land: Swamp",
+          "spell": "acid-arrow"
+        },
+        {
+          "gate": "Druid 3, Circle of the Land: Swamp",
+          "spell": "darkness"
+        },
+        {
+          "gate": "Druid 5, Circle of the Land: Swamp",
+          "spell": "water-walk"
+        },
+        {
+          "gate": "Druid 5, Circle of the Land: Swamp",
+          "spell": "stinking-cloud"
+        },
+        {
+          "gate": "Druid 7, Circle of the Land: Swamp",
+          "spell": "freedom-of-movement"
+        },
+        {
+          "gate": "Druid 7, Circle of the Land: Swamp",
+          "spell": "locate-creature"
+        },
+        {
+          "gate": "Druid 9, Circle of the Land: Swamp",
+          "spell": "insect-plague"
+        },
+        {
+          "gate": "Druid 9, Circle of the Land: Swamp",
+          "spell": "scrying"
+        }
+      ]
+    }
   },
   {
     "index": "champion",
@@ -312,9 +326,11 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "klass": "Fighter",
-    "flavor": "Martial Archetype",
-    "spell_grants": []
+    "numbers": {},
+    "notes": {},
+    "facts": {
+      "class": "fighter"
+    }
   },
   {
     "index": "open-hand",
@@ -323,9 +339,11 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "klass": "Monk",
-    "flavor": "Monastic Tradition",
-    "spell_grants": []
+    "numbers": {},
+    "notes": {},
+    "facts": {
+      "class": "monk"
+    }
   },
   {
     "index": "devotion",
@@ -334,50 +352,55 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "klass": "Paladin",
-    "flavor": "Sacred Oath",
-    "spell_grants": [
-      {
-        "gate": "Paladin 3",
-        "spell": "Protection from Evil and Good"
-      },
-      {
-        "gate": "Paladin 3",
-        "spell": "Sanctuary"
-      },
-      {
-        "gate": "Paladin 5",
-        "spell": "Lesser Restoration"
-      },
-      {
-        "gate": "Paladin 5",
-        "spell": "Zone of Truth"
-      },
-      {
-        "gate": "Paladin 9",
-        "spell": "Beacon of Hope"
-      },
-      {
-        "gate": "Paladin 9",
-        "spell": "Dispel Magic"
-      },
-      {
-        "gate": "Paladin 13",
-        "spell": "Freedom of Movement"
-      },
-      {
-        "gate": "Paladin 13",
-        "spell": "Guardian of Faith"
-      },
-      {
-        "gate": "Paladin 17",
-        "spell": "Commune"
-      },
-      {
-        "gate": "Paladin 17",
-        "spell": "Flame Strike"
-      }
-    ]
+    "numbers": {},
+    "notes": {
+      "subclass-spells": "Paladin 3: Protection from Evil and Good, Sanctuary; Paladin 5: Lesser Restoration, Zone of Truth; Paladin 9: Beacon of Hope, Dispel Magic; Paladin 13: Freedom of Movement, Guardian of Faith; Paladin 17: Commune, Flame Strike"
+    },
+    "facts": {
+      "class": "paladin",
+      "spell-grants": [
+        {
+          "gate": "Paladin 3",
+          "spell": "protection-from-evil-and-good"
+        },
+        {
+          "gate": "Paladin 3",
+          "spell": "sanctuary"
+        },
+        {
+          "gate": "Paladin 5",
+          "spell": "lesser-restoration"
+        },
+        {
+          "gate": "Paladin 5",
+          "spell": "zone-of-truth"
+        },
+        {
+          "gate": "Paladin 9",
+          "spell": "beacon-of-hope"
+        },
+        {
+          "gate": "Paladin 9",
+          "spell": "dispel-magic"
+        },
+        {
+          "gate": "Paladin 13",
+          "spell": "freedom-of-movement"
+        },
+        {
+          "gate": "Paladin 13",
+          "spell": "guardian-of-faith"
+        },
+        {
+          "gate": "Paladin 17",
+          "spell": "commune"
+        },
+        {
+          "gate": "Paladin 17",
+          "spell": "flame-strike"
+        }
+      ]
+    }
   },
   {
     "index": "hunter",
@@ -386,9 +409,11 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "klass": "Ranger",
-    "flavor": "Ranger Archetype",
-    "spell_grants": []
+    "numbers": {},
+    "notes": {},
+    "facts": {
+      "class": "ranger"
+    }
   },
   {
     "index": "thief",
@@ -397,9 +422,11 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "klass": "Rogue",
-    "flavor": "Roguish Archetype",
-    "spell_grants": []
+    "numbers": {},
+    "notes": {},
+    "facts": {
+      "class": "rogue"
+    }
   },
   {
     "index": "draconic",
@@ -408,9 +435,11 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "klass": "Sorcerer",
-    "flavor": "Sorcerous Origin",
-    "spell_grants": []
+    "numbers": {},
+    "notes": {},
+    "facts": {
+      "class": "sorcerer"
+    }
   },
   {
     "index": "fiend",
@@ -419,50 +448,55 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "klass": "Warlock",
-    "flavor": "Otherworldly Patron",
-    "spell_grants": [
-      {
-        "gate": "Warlock 1",
-        "spell": "Burning Hands"
-      },
-      {
-        "gate": "Warlock 1",
-        "spell": "Command"
-      },
-      {
-        "gate": "Warlock 3",
-        "spell": "Blindness/Deafness"
-      },
-      {
-        "gate": "Warlock 3",
-        "spell": "Scorching Ray"
-      },
-      {
-        "gate": "Warlock 5",
-        "spell": "Fireball"
-      },
-      {
-        "gate": "Warlock 5",
-        "spell": "Stinking Cloud"
-      },
-      {
-        "gate": "Warlock 7",
-        "spell": "Fire Shield"
-      },
-      {
-        "gate": "Warlock 7",
-        "spell": "Wall of Fire"
-      },
-      {
-        "gate": "Warlock 9",
-        "spell": "Flame Strike"
-      },
-      {
-        "gate": "Warlock 9",
-        "spell": "Hallow"
-      }
-    ]
+    "numbers": {},
+    "notes": {
+      "subclass-spells": "Warlock 1: Burning Hands, Command; Warlock 3: Blindness/Deafness, Scorching Ray; Warlock 5: Fireball, Stinking Cloud; Warlock 7: Fire Shield, Wall of Fire; Warlock 9: Flame Strike, Hallow"
+    },
+    "facts": {
+      "class": "warlock",
+      "spell-grants": [
+        {
+          "gate": "Warlock 1",
+          "spell": "burning-hands"
+        },
+        {
+          "gate": "Warlock 1",
+          "spell": "command"
+        },
+        {
+          "gate": "Warlock 3",
+          "spell": "blindness-deafness"
+        },
+        {
+          "gate": "Warlock 3",
+          "spell": "scorching-ray"
+        },
+        {
+          "gate": "Warlock 5",
+          "spell": "fireball"
+        },
+        {
+          "gate": "Warlock 5",
+          "spell": "stinking-cloud"
+        },
+        {
+          "gate": "Warlock 7",
+          "spell": "fire-shield"
+        },
+        {
+          "gate": "Warlock 7",
+          "spell": "wall-of-fire"
+        },
+        {
+          "gate": "Warlock 9",
+          "spell": "flame-strike"
+        },
+        {
+          "gate": "Warlock 9",
+          "spell": "hallow"
+        }
+      ]
+    }
   },
   {
     "index": "evocation",
@@ -471,8 +505,10 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "klass": "Wizard",
-    "flavor": "Arcane Tradition",
-    "spell_grants": []
+    "numbers": {},
+    "notes": {},
+    "facts": {
+      "class": "wizard"
+    }
   }
 ]

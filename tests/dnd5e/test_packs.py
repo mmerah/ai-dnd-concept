@@ -2,17 +2,8 @@ from pathlib import Path
 
 from fivee_test_support import PACK_DIR, dnd5e_game, pack_format
 
-from aidm.engines.dnd5e.records import (
-    ArmorRecord,
-    BackgroundRecord,
-    LevelRecord,
-    MonsterRecord,
-    SpellRecord,
-    TraitRecord,
-    WeaponRecord,
-)
 from aidm.state.base import EntityId
-from aidm.state.packs import ENCODING, ContentRef, read_pack, write_pack
+from aidm.state.packs import ENCODING, ContentRef, Record, read_pack, write_pack
 from aidm.state.world import player_sheet
 
 GIANT_RAT = ContentRef(pack="srd-2014", collection="monsters", index="giant-rat")
@@ -52,7 +43,7 @@ def test_a_monster_ref_becomes_the_monsters_sheet() -> None:
     declares a counter, which the record fills; its notes render beside the ref instead."""
     engine, state = dnd5e_game()
     record = read_pack(PACK_DIR, pack_format()).addressed()[GIANT_RAT]
-    assert isinstance(record, MonsterRecord)
+    assert type(record) is Record
 
     world_record = state.world.record(RAT)
     sheet = world_record.rules
@@ -64,18 +55,18 @@ def test_a_monster_ref_becomes_the_monsters_sheet() -> None:
     assert "attacks=Bite +4 to hit" in engine.entity_state(world_record.entity, sheet)
 
 
-def test_the_pack_renders_spell_and_weapon_mechanics_from_typed_fields() -> None:
+def test_the_pack_renders_spell_and_weapon_mechanics_from_stored_maps() -> None:
     """The regression for the model's view: regenerating the pack must keep the structured facts
-    the director acts on without a `read_content` round-trip, now computed off the typed fields."""
+    the director acts on without a `read_content` round-trip, now stored at authoring time."""
     records = read_pack(PACK_DIR, pack_format()).addressed()
     burning_hands = records[ContentRef(pack="srd-2014", collection="spells", index="burning-hands")]
     fire_bolt = records[ContentRef(pack="srd-2014", collection="spells", index="fire-bolt")]
     hold_person = records[ContentRef(pack="srd-2014", collection="spells", index="hold-person")]
     longsword = records[ContentRef(pack="srd-2014", collection="weapons", index="longsword")]
-    assert isinstance(burning_hands, SpellRecord)
-    assert isinstance(fire_bolt, SpellRecord)
-    assert isinstance(hold_person, SpellRecord)
-    assert isinstance(longsword, WeaponRecord)
+    assert type(burning_hands) is Record
+    assert type(fire_bolt) is Record
+    assert type(hold_person) is Record
+    assert type(longsword) is Record
 
     assert burning_hands.noted()["level"] == "1"
     assert burning_hands.noted()["save"] == "DEX (half on success)"
@@ -97,14 +88,15 @@ def test_the_pack_renders_spell_and_weapon_mechanics_from_typed_fields() -> None
 
 
 def test_the_pack_projects_armor_and_monster_facts_into_numbers_and_tags() -> None:
-    """Upstream ints become numbers, upstream booleans become tags, on single-backing records."""
+    """Upstream ints become numbers, upstream booleans become tags, on single-backing records.
+    Armor ships generic: its numbers are stored at authoring time, not computed."""
     records = read_pack(PACK_DIR, pack_format()).addressed()
     chain_mail = records[ContentRef(pack="srd-2014", collection="armor", index="chain-mail")]
     leather = records[ContentRef(pack="srd-2014", collection="armor", index="leather-armor")]
     dragon = records[ContentRef(pack="srd-2014", collection="monsters", index="adult-black-dragon")]
-    assert isinstance(chain_mail, ArmorRecord)
-    assert isinstance(leather, ArmorRecord)
-    assert isinstance(dragon, MonsterRecord)
+    assert type(chain_mail) is Record
+    assert type(leather) is Record
+    assert type(dragon) is Record
 
     assert chain_mail.sheet_numbers()["armor-base"] == 16
     assert chain_mail.sheet_numbers()["strength-minimum"] == 13
@@ -123,10 +115,10 @@ def test_the_pack_projects_monster_action_variants_and_spell_lists() -> None:
     captain = records[ContentRef(pack="srd-2014", collection="monsters", index="bandit-captain")]
     assassin = records[ContentRef(pack="srd-2014", collection="monsters", index="assassin")]
     acolyte = records[ContentRef(pack="srd-2014", collection="monsters", index="acolyte")]
-    assert isinstance(wight, MonsterRecord)
-    assert isinstance(captain, MonsterRecord)
-    assert isinstance(assassin, MonsterRecord)
-    assert isinstance(acolyte, MonsterRecord)
+    assert type(wight) is Record
+    assert type(captain) is Record
+    assert type(assassin) is Record
+    assert type(acolyte) is Record
 
     assert "1d8+2 slashing (one handed) or 1d10+2 slashing (two handed)" in wight.noted()["attacks"]
     assert captain.noted()["multiattack"] == "2x Scimitar + 1x Dagger or 2x Dagger"
@@ -144,11 +136,11 @@ def test_the_pack_projects_creation_choices_and_class_ladders() -> None:
     acolyte = records[ContentRef(pack="srd-2014", collection="backgrounds", index="acolyte")]
     sorcerer = records[ContentRef(pack="srd-2014", collection="levels", index="sorcerer-3")]
     barbarian = records[ContentRef(pack="srd-2014", collection="levels", index="barbarian-20")]
-    assert isinstance(cantrip, TraitRecord)
-    assert isinstance(tools, TraitRecord)
-    assert isinstance(acolyte, BackgroundRecord)
-    assert isinstance(sorcerer, LevelRecord)
-    assert isinstance(barbarian, LevelRecord)
+    assert type(cantrip) is Record
+    assert type(tools) is Record
+    assert type(acolyte) is Record
+    assert type(sorcerer) is Record
+    assert type(barbarian) is Record
 
     assert cantrip.choose == 1
     assert {option.collection for option in cantrip.options} == {"spells"}

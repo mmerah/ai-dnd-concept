@@ -9,14 +9,12 @@
     ],
     "options": [],
     "choose": null,
-    "cost": {
-      "unit": "gp",
-      "amount": 5
+    "numbers": {
+      "cost-gp": 5,
+      "armor-base": 11
     },
-    "base": 11,
-    "shield": false,
-    "dex_limit": null,
-    "strength_minimum": null
+    "notes": {},
+    "facts": {}
   },
   {
     "index": "leather-armor",
@@ -27,14 +25,12 @@
     ],
     "options": [],
     "choose": null,
-    "cost": {
-      "unit": "gp",
-      "amount": 10
+    "numbers": {
+      "cost-gp": 10,
+      "armor-base": 11
     },
-    "base": 11,
-    "shield": false,
-    "dex_limit": null,
-    "strength_minimum": null
+    "notes": {},
+    "facts": {}
   },
   {
     "index": "studded-leather-armor",
@@ -45,14 +41,12 @@
     ],
     "options": [],
     "choose": null,
-    "cost": {
-      "unit": "gp",
-      "amount": 45
+    "numbers": {
+      "cost-gp": 45,
+      "armor-base": 12
     },
-    "base": 12,
-    "shield": false,
-    "dex_limit": null,
-    "strength_minimum": null
+    "notes": {},
+    "facts": {}
   },
   {
     "index": "hide-armor",
@@ -63,14 +57,13 @@
     ],
     "options": [],
     "choose": null,
-    "cost": {
-      "unit": "gp",
-      "amount": 10
+    "numbers": {
+      "cost-gp": 10,
+      "armor-base": 12,
+      "dex-limit": 2
     },
-    "base": 12,
-    "shield": false,
-    "dex_limit": 2,
-    "strength_minimum": null
+    "notes": {},
+    "facts": {}
   },
   {
     "index": "chain-shirt",
@@ -81,14 +74,13 @@
     ],
     "options": [],
     "choose": null,
-    "cost": {
-      "unit": "gp",
-      "amount": 50
+    "numbers": {
+      "cost-gp": 50,
+      "armor-base": 13,
+      "dex-limit": 2
     },
-    "base": 13,
-    "shield": false,
-    "dex_limit": 2,
-    "strength_minimum": null
+    "notes": {},
+    "facts": {}
   },
   {
     "index": "scale-mail",
@@ -100,14 +92,13 @@
     ],
     "options": [],
     "choose": null,
-    "cost": {
-      "unit": "gp",
-      "amount": 50
+    "numbers": {
+      "cost-gp": 50,
+      "armor-base": 14,
+      "dex-limit": 2
     },
-    "base": 14,
-    "shield": false,
-    "dex_limit": 2,
-    "strength_minimum": null
+    "notes": {},
+    "facts": {}
   },
   {
     "index": "breastplate",
@@ -118,14 +109,13 @@
     ],
     "options": [],
     "choose": null,
-    "cost": {
-      "unit": "gp",
-      "amount": 400
+    "numbers": {
+      "cost-gp": 400,
+      "armor-base": 14,
+      "dex-limit": 2
     },
-    "base": 14,
-    "shield": false,
-    "dex_limit": 2,
-    "strength_minimum": null
+    "notes": {},
+    "facts": {}
   },
   {
     "index": "half-plate-armor",
@@ -137,14 +127,13 @@
     ],
     "options": [],
     "choose": null,
-    "cost": {
-      "unit": "gp",
-      "amount": 750
+    "numbers": {
+      "cost-gp": 750,
+      "armor-base": 15,
+      "dex-limit": 2
     },
-    "base": 15,
-    "shield": false,
-    "dex_limit": 2,
-    "strength_minimum": null
+    "notes": {},
+    "facts": {}
   },
   {
     "index": "ring-mail",
@@ -155,14 +144,12 @@
     ],
     "options": [],
     "choose": null,
-    "cost": {
-      "unit": "gp",
-      "amount": 30
+    "numbers": {
+      "cost-gp": 30,
+      "armor-base": 14
     },
-    "base": 14,
-    "shield": false,
-    "dex_limit": null,
-    "strength_minimum": null
+    "notes": {},
+    "facts": {}
   },
   {
     "index": "chain-mail",
@@ -173,14 +160,13 @@
     ],
     "options": [],
     "choose": null,
-    "cost": {
-      "unit": "gp",
-      "amount": 75
+    "numbers": {
+      "cost-gp": 75,
+      "armor-base": 16,
+      "strength-minimum": 13
     },
-    "base": 16,
-    "shield": false,
-    "dex_limit": null,
-    "strength_minimum": 13
+    "notes": {},
+    "facts": {}
   },
   {
     "index": "splint-armor",
@@ -191,14 +177,13 @@
     ],
     "options": [],
     "choose": null,
-    "cost": {
-      "unit": "gp",
-      "amount": 200
+    "numbers": {
+      "cost-gp": 200,
+      "armor-base": 17,
+      "strength-minimum": 15
     },
-    "base": 17,
-    "shield": false,
-    "dex_limit": null,
-    "strength_minimum": 15
+    "notes": {},
+    "facts": {}
   },
   {
     "index": "plate-armor",
@@ -209,14 +194,13 @@
     ],
     "options": [],
     "choose": null,
-    "cost": {
-      "unit": "gp",
-      "amount": 1500
+    "numbers": {
+      "cost-gp": 1500,
+      "armor-base": 18,
+      "strength-minimum": 15
     },
-    "base": 18,
-    "shield": false,
-    "dex_limit": null,
-    "strength_minimum": 15
+    "notes": {},
+    "facts": {}
   },
   {
     "index": "shield",
@@ -225,13 +209,11 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "cost": {
-      "unit": "gp",
-      "amount": 10
+    "numbers": {
+      "cost-gp": 10,
+      "armor-bonus": 2
     },
-    "base": 2,
-    "shield": true,
-    "dex_limit": null,
-    "strength_minimum": null
+    "notes": {},
+    "facts": {}
   }
 ]

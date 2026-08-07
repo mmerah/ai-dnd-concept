@@ -308,7 +308,7 @@ class AbilityBonus(Upstream):
 
 
 class Subrace(Described):
-    race: Label
+    race: Named
     ability_bonuses: list[AbilityBonus] = []
     racial_traits: list[Label] = []
 
@@ -364,11 +364,11 @@ class Spellcasting(Upstream):
 
 class SubclassSpell(Upstream):
     prerequisites: list[Named] = []
-    spell: Label
+    spell: Named
 
 
 class Subclass(Described):
-    class_: Label = Field(alias="class")
+    class_: Named = Field(alias="class")
     subclass_flavor: str = ""
     spells: list[SubclassSpell] = []
 
@@ -471,7 +471,7 @@ class Language(Described):
 
 class Proficiency(Named):
     type: str
-    reference: Label
+    reference: Named
 
 
 class Alignment(Described):

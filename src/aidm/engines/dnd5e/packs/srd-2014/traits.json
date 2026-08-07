@@ -6,24 +6,11 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "damage_type": null,
-    "save_ability": null,
-    "save_success": null,
-    "damage": null,
-    "scaling": [],
-    "area": null,
-    "uses": null,
-    "grants_proficiency": [],
-    "races": [
-      "Dwarf",
-      "Elf",
-      "Gnome",
-      "Half-Elf",
-      "Half-Orc",
-      "Tiefling"
-    ],
-    "subraces": [],
-    "parent": null
+    "numbers": {},
+    "notes": {
+      "races": "Dwarf, Elf, Gnome, Half-Elf, Half-Orc, Tiefling"
+    },
+    "facts": {}
   },
   {
     "index": "dwarven-resilience",
@@ -32,19 +19,11 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "damage_type": null,
-    "save_ability": null,
-    "save_success": null,
-    "damage": null,
-    "scaling": [],
-    "area": null,
-    "uses": null,
-    "grants_proficiency": [],
-    "races": [
-      "Dwarf"
-    ],
-    "subraces": [],
-    "parent": null
+    "numbers": {},
+    "notes": {
+      "races": "Dwarf"
+    },
+    "facts": {}
   },
   {
     "index": "dwarven-combat-training",
@@ -53,24 +32,12 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "damage_type": null,
-    "save_ability": null,
-    "save_success": null,
-    "damage": null,
-    "scaling": [],
-    "area": null,
-    "uses": null,
-    "grants_proficiency": [
-      "Battleaxes",
-      "Handaxes",
-      "Light hammers",
-      "Warhammers"
-    ],
-    "races": [
-      "Dwarf"
-    ],
-    "subraces": [],
-    "parent": null
+    "numbers": {},
+    "notes": {
+      "grants-proficiency": "Battleaxes, Handaxes, Light hammers, Warhammers",
+      "races": "Dwarf"
+    },
+    "facts": {}
   },
   {
     "index": "tool-proficiency",
@@ -95,19 +62,11 @@
       }
     ],
     "choose": 1,
-    "damage_type": null,
-    "save_ability": null,
-    "save_success": null,
-    "damage": null,
-    "scaling": [],
-    "area": null,
-    "uses": null,
-    "grants_proficiency": [],
-    "races": [
-      "Dwarf"
-    ],
-    "subraces": [],
-    "parent": null
+    "numbers": {},
+    "notes": {
+      "races": "Dwarf"
+    },
+    "facts": {}
   },
   {
     "index": "stonecunning",
@@ -116,19 +75,11 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "damage_type": null,
-    "save_ability": null,
-    "save_success": null,
-    "damage": null,
-    "scaling": [],
-    "area": null,
-    "uses": null,
-    "grants_proficiency": [],
-    "races": [
-      "Dwarf"
-    ],
-    "subraces": [],
-    "parent": null
+    "numbers": {},
+    "notes": {
+      "races": "Dwarf"
+    },
+    "facts": {}
   },
   {
     "index": "dwarven-toughness",
@@ -137,19 +88,11 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "damage_type": null,
-    "save_ability": null,
-    "save_success": null,
-    "damage": null,
-    "scaling": [],
-    "area": null,
-    "uses": null,
-    "grants_proficiency": [],
-    "races": [],
-    "subraces": [
-      "Hill Dwarf"
-    ],
-    "parent": null
+    "numbers": {},
+    "notes": {
+      "subraces": "Hill Dwarf"
+    },
+    "facts": {}
   },
   {
     "index": "keen-senses",
@@ -158,21 +101,12 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "damage_type": null,
-    "save_ability": null,
-    "save_success": null,
-    "damage": null,
-    "scaling": [],
-    "area": null,
-    "uses": null,
-    "grants_proficiency": [
-      "Skill: Perception"
-    ],
-    "races": [
-      "Elf"
-    ],
-    "subraces": [],
-    "parent": null
+    "numbers": {},
+    "notes": {
+      "grants-proficiency": "Skill: Perception",
+      "races": "Elf"
+    },
+    "facts": {}
   },
   {
     "index": "fey-ancestry",
@@ -181,20 +115,11 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "damage_type": null,
-    "save_ability": null,
-    "save_success": null,
-    "damage": null,
-    "scaling": [],
-    "area": null,
-    "uses": null,
-    "grants_proficiency": [],
-    "races": [
-      "Elf",
-      "Half-Elf"
-    ],
-    "subraces": [],
-    "parent": null
+    "numbers": {},
+    "notes": {
+      "races": "Elf, Half-Elf"
+    },
+    "facts": {}
   },
   {
     "index": "trance",
@@ -203,19 +128,11 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "damage_type": null,
-    "save_ability": null,
-    "save_success": null,
-    "damage": null,
-    "scaling": [],
-    "area": null,
-    "uses": null,
-    "grants_proficiency": [],
-    "races": [
-      "Elf"
-    ],
-    "subraces": [],
-    "parent": null
+    "numbers": {},
+    "notes": {
+      "races": "Elf"
+    },
+    "facts": {}
   },
   {
     "index": "elf-weapon-training",
@@ -224,24 +141,12 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "damage_type": null,
-    "save_ability": null,
-    "save_success": null,
-    "damage": null,
-    "scaling": [],
-    "area": null,
-    "uses": null,
-    "grants_proficiency": [
-      "Longswords",
-      "Shortswords",
-      "Shortbows",
-      "Longbows"
-    ],
-    "races": [],
-    "subraces": [
-      "High Elf"
-    ],
-    "parent": null
+    "numbers": {},
+    "notes": {
+      "grants-proficiency": "Longswords, Shortswords, Shortbows, Longbows",
+      "subraces": "High Elf"
+    },
+    "facts": {}
   },
   {
     "index": "high-elf-cantrip",
@@ -321,19 +226,11 @@
       }
     ],
     "choose": 1,
-    "damage_type": null,
-    "save_ability": null,
-    "save_success": null,
-    "damage": null,
-    "scaling": [],
-    "area": null,
-    "uses": null,
-    "grants_proficiency": [],
-    "races": [],
-    "subraces": [
-      "High Elf"
-    ],
-    "parent": null
+    "numbers": {},
+    "notes": {
+      "subraces": "High Elf"
+    },
+    "facts": {}
   },
   {
     "index": "extra-language",
@@ -413,19 +310,11 @@
       }
     ],
     "choose": 1,
-    "damage_type": null,
-    "save_ability": null,
-    "save_success": null,
-    "damage": null,
-    "scaling": [],
-    "area": null,
-    "uses": null,
-    "grants_proficiency": [],
-    "races": [],
-    "subraces": [
-      "High Elf"
-    ],
-    "parent": null
+    "numbers": {},
+    "notes": {
+      "subraces": "High Elf"
+    },
+    "facts": {}
   },
   {
     "index": "lucky",
@@ -434,19 +323,11 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "damage_type": null,
-    "save_ability": null,
-    "save_success": null,
-    "damage": null,
-    "scaling": [],
-    "area": null,
-    "uses": null,
-    "grants_proficiency": [],
-    "races": [
-      "Halfling"
-    ],
-    "subraces": [],
-    "parent": null
+    "numbers": {},
+    "notes": {
+      "races": "Halfling"
+    },
+    "facts": {}
   },
   {
     "index": "brave",
@@ -455,19 +336,11 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "damage_type": null,
-    "save_ability": null,
-    "save_success": null,
-    "damage": null,
-    "scaling": [],
-    "area": null,
-    "uses": null,
-    "grants_proficiency": [],
-    "races": [
-      "Halfling"
-    ],
-    "subraces": [],
-    "parent": null
+    "numbers": {},
+    "notes": {
+      "races": "Halfling"
+    },
+    "facts": {}
   },
   {
     "index": "halfling-nimbleness",
@@ -476,19 +349,11 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "damage_type": null,
-    "save_ability": null,
-    "save_success": null,
-    "damage": null,
-    "scaling": [],
-    "area": null,
-    "uses": null,
-    "grants_proficiency": [],
-    "races": [
-      "Halfling"
-    ],
-    "subraces": [],
-    "parent": null
+    "numbers": {},
+    "notes": {
+      "races": "Halfling"
+    },
+    "facts": {}
   },
   {
     "index": "naturally-stealthy",
@@ -497,19 +362,11 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "damage_type": null,
-    "save_ability": null,
-    "save_success": null,
-    "damage": null,
-    "scaling": [],
-    "area": null,
-    "uses": null,
-    "grants_proficiency": [],
-    "races": [],
-    "subraces": [
-      "Lightfoot Halfling"
-    ],
-    "parent": null
+    "numbers": {},
+    "notes": {
+      "subraces": "Lightfoot Halfling"
+    },
+    "facts": {}
   },
   {
     "index": "draconic-ancestry",
@@ -569,19 +426,11 @@
       }
     ],
     "choose": 1,
-    "damage_type": null,
-    "save_ability": null,
-    "save_success": null,
-    "damage": null,
-    "scaling": [],
-    "area": null,
-    "uses": null,
-    "grants_proficiency": [],
-    "races": [
-      "Dragonborn"
-    ],
-    "subraces": [],
-    "parent": null
+    "numbers": {},
+    "notes": {
+      "races": "Dragonborn"
+    },
+    "facts": {}
   },
   {
     "index": "draconic-ancestry-black",
@@ -590,47 +439,54 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "damage_type": "acid",
-    "save_ability": "dexterity",
-    "save_success": "half",
-    "damage": {
-      "dice": "2d6",
-      "with_modifier": false
+    "numbers": {},
+    "notes": {
+      "damage-type": "acid",
+      "save": "DEX (half on success)",
+      "damage": "2d6 acid",
+      "scaling": "level 6: 3d6, level 11: 4d6, level 16: 5d6",
+      "area": "30-foot line",
+      "uses": "1/rest",
+      "races": "Dragonborn",
+      "parent": "Draconic Ancestry"
     },
-    "scaling": [
-      [
-        6,
-        {
-          "dice": "3d6",
-          "with_modifier": false
-        }
+    "facts": {
+      "damage-type": "acid",
+      "save-ability": "dexterity",
+      "save-success": "half",
+      "damage": {
+        "dice": "2d6",
+        "with_modifier": false
+      },
+      "scaling": [
+        [
+          6,
+          {
+            "dice": "3d6",
+            "with_modifier": false
+          }
+        ],
+        [
+          11,
+          {
+            "dice": "4d6",
+            "with_modifier": false
+          }
+        ],
+        [
+          16,
+          {
+            "dice": "5d6",
+            "with_modifier": false
+          }
+        ]
       ],
-      [
-        11,
-        {
-          "dice": "4d6",
-          "with_modifier": false
-        }
-      ],
-      [
-        16,
-        {
-          "dice": "5d6",
-          "with_modifier": false
-        }
-      ]
-    ],
-    "area": {
-      "shape": "line",
-      "size": 30
-    },
-    "uses": "1/rest",
-    "grants_proficiency": [],
-    "races": [
-      "Dragonborn"
-    ],
-    "subraces": [],
-    "parent": "Draconic Ancestry"
+      "area": {
+        "shape": "line",
+        "size": 30
+      },
+      "uses": "1/rest"
+    }
   },
   {
     "index": "draconic-ancestry-blue",
@@ -639,47 +495,54 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "damage_type": "lightning",
-    "save_ability": "dexterity",
-    "save_success": "half",
-    "damage": {
-      "dice": "2d6",
-      "with_modifier": false
+    "numbers": {},
+    "notes": {
+      "damage-type": "lightning",
+      "save": "DEX (half on success)",
+      "damage": "2d6 lightning",
+      "scaling": "level 6: 3d6, level 11: 4d6, level 16: 5d6",
+      "area": "30-foot line",
+      "uses": "1/rest",
+      "races": "Dragonborn",
+      "parent": "Draconic Ancestry"
     },
-    "scaling": [
-      [
-        6,
-        {
-          "dice": "3d6",
-          "with_modifier": false
-        }
+    "facts": {
+      "damage-type": "lightning",
+      "save-ability": "dexterity",
+      "save-success": "half",
+      "damage": {
+        "dice": "2d6",
+        "with_modifier": false
+      },
+      "scaling": [
+        [
+          6,
+          {
+            "dice": "3d6",
+            "with_modifier": false
+          }
+        ],
+        [
+          11,
+          {
+            "dice": "4d6",
+            "with_modifier": false
+          }
+        ],
+        [
+          16,
+          {
+            "dice": "5d6",
+            "with_modifier": false
+          }
+        ]
       ],
-      [
-        11,
-        {
-          "dice": "4d6",
-          "with_modifier": false
-        }
-      ],
-      [
-        16,
-        {
-          "dice": "5d6",
-          "with_modifier": false
-        }
-      ]
-    ],
-    "area": {
-      "shape": "line",
-      "size": 30
-    },
-    "uses": "1/rest",
-    "grants_proficiency": [],
-    "races": [
-      "Dragonborn"
-    ],
-    "subraces": [],
-    "parent": "Draconic Ancestry"
+      "area": {
+        "shape": "line",
+        "size": 30
+      },
+      "uses": "1/rest"
+    }
   },
   {
     "index": "draconic-ancestry-brass",
@@ -688,47 +551,54 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "damage_type": "fire",
-    "save_ability": "dexterity",
-    "save_success": "half",
-    "damage": {
-      "dice": "2d6",
-      "with_modifier": false
+    "numbers": {},
+    "notes": {
+      "damage-type": "fire",
+      "save": "DEX (half on success)",
+      "damage": "2d6 fire",
+      "scaling": "level 6: 3d6, level 11: 4d6, level 16: 5d6",
+      "area": "30-foot line",
+      "uses": "1/rest",
+      "races": "Dragonborn",
+      "parent": "Draconic Ancestry"
     },
-    "scaling": [
-      [
-        6,
-        {
-          "dice": "3d6",
-          "with_modifier": false
-        }
+    "facts": {
+      "damage-type": "fire",
+      "save-ability": "dexterity",
+      "save-success": "half",
+      "damage": {
+        "dice": "2d6",
+        "with_modifier": false
+      },
+      "scaling": [
+        [
+          6,
+          {
+            "dice": "3d6",
+            "with_modifier": false
+          }
+        ],
+        [
+          11,
+          {
+            "dice": "4d6",
+            "with_modifier": false
+          }
+        ],
+        [
+          16,
+          {
+            "dice": "5d6",
+            "with_modifier": false
+          }
+        ]
       ],
-      [
-        11,
-        {
-          "dice": "4d6",
-          "with_modifier": false
-        }
-      ],
-      [
-        16,
-        {
-          "dice": "5d6",
-          "with_modifier": false
-        }
-      ]
-    ],
-    "area": {
-      "shape": "line",
-      "size": 30
-    },
-    "uses": "1/rest",
-    "grants_proficiency": [],
-    "races": [
-      "Dragonborn"
-    ],
-    "subraces": [],
-    "parent": "Draconic Ancestry"
+      "area": {
+        "shape": "line",
+        "size": 30
+      },
+      "uses": "1/rest"
+    }
   },
   {
     "index": "draconic-ancestry-bronze",
@@ -737,47 +607,54 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "damage_type": "lightning",
-    "save_ability": "dexterity",
-    "save_success": "half",
-    "damage": {
-      "dice": "2d6",
-      "with_modifier": false
+    "numbers": {},
+    "notes": {
+      "damage-type": "lightning",
+      "save": "DEX (half on success)",
+      "damage": "2d6 lightning",
+      "scaling": "level 6: 3d6, level 11: 4d6, level 16: 5d6",
+      "area": "30-foot line",
+      "uses": "1/rest",
+      "races": "Dragonborn",
+      "parent": "Draconic Ancestry"
     },
-    "scaling": [
-      [
-        6,
-        {
-          "dice": "3d6",
-          "with_modifier": false
-        }
+    "facts": {
+      "damage-type": "lightning",
+      "save-ability": "dexterity",
+      "save-success": "half",
+      "damage": {
+        "dice": "2d6",
+        "with_modifier": false
+      },
+      "scaling": [
+        [
+          6,
+          {
+            "dice": "3d6",
+            "with_modifier": false
+          }
+        ],
+        [
+          11,
+          {
+            "dice": "4d6",
+            "with_modifier": false
+          }
+        ],
+        [
+          16,
+          {
+            "dice": "5d6",
+            "with_modifier": false
+          }
+        ]
       ],
-      [
-        11,
-        {
-          "dice": "4d6",
-          "with_modifier": false
-        }
-      ],
-      [
-        16,
-        {
-          "dice": "5d6",
-          "with_modifier": false
-        }
-      ]
-    ],
-    "area": {
-      "shape": "line",
-      "size": 30
-    },
-    "uses": "1/rest",
-    "grants_proficiency": [],
-    "races": [
-      "Dragonborn"
-    ],
-    "subraces": [],
-    "parent": "Draconic Ancestry"
+      "area": {
+        "shape": "line",
+        "size": 30
+      },
+      "uses": "1/rest"
+    }
   },
   {
     "index": "draconic-ancestry-copper",
@@ -786,47 +663,54 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "damage_type": "acid",
-    "save_ability": "dexterity",
-    "save_success": "half",
-    "damage": {
-      "dice": "2d6",
-      "with_modifier": false
+    "numbers": {},
+    "notes": {
+      "damage-type": "acid",
+      "save": "DEX (half on success)",
+      "damage": "2d6 acid",
+      "scaling": "level 6: 3d6, level 11: 4d6, level 16: 5d6",
+      "area": "30-foot line",
+      "uses": "1/rest",
+      "races": "Dragonborn",
+      "parent": "Draconic Ancestry"
     },
-    "scaling": [
-      [
-        6,
-        {
-          "dice": "3d6",
-          "with_modifier": false
-        }
+    "facts": {
+      "damage-type": "acid",
+      "save-ability": "dexterity",
+      "save-success": "half",
+      "damage": {
+        "dice": "2d6",
+        "with_modifier": false
+      },
+      "scaling": [
+        [
+          6,
+          {
+            "dice": "3d6",
+            "with_modifier": false
+          }
+        ],
+        [
+          11,
+          {
+            "dice": "4d6",
+            "with_modifier": false
+          }
+        ],
+        [
+          16,
+          {
+            "dice": "5d6",
+            "with_modifier": false
+          }
+        ]
       ],
-      [
-        11,
-        {
-          "dice": "4d6",
-          "with_modifier": false
-        }
-      ],
-      [
-        16,
-        {
-          "dice": "5d6",
-          "with_modifier": false
-        }
-      ]
-    ],
-    "area": {
-      "shape": "line",
-      "size": 30
-    },
-    "uses": "1/rest",
-    "grants_proficiency": [],
-    "races": [
-      "Dragonborn"
-    ],
-    "subraces": [],
-    "parent": "Draconic Ancestry"
+      "area": {
+        "shape": "line",
+        "size": 30
+      },
+      "uses": "1/rest"
+    }
   },
   {
     "index": "draconic-ancestry-gold",
@@ -835,47 +719,54 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "damage_type": "fire",
-    "save_ability": "dexterity",
-    "save_success": "half",
-    "damage": {
-      "dice": "2d6",
-      "with_modifier": false
+    "numbers": {},
+    "notes": {
+      "damage-type": "fire",
+      "save": "DEX (half on success)",
+      "damage": "2d6 fire",
+      "scaling": "level 6: 3d6, level 11: 4d6, level 16: 5d6",
+      "area": "15-foot cone",
+      "uses": "1/rest",
+      "races": "Dragonborn",
+      "parent": "Draconic Ancestry"
     },
-    "scaling": [
-      [
-        6,
-        {
-          "dice": "3d6",
-          "with_modifier": false
-        }
+    "facts": {
+      "damage-type": "fire",
+      "save-ability": "dexterity",
+      "save-success": "half",
+      "damage": {
+        "dice": "2d6",
+        "with_modifier": false
+      },
+      "scaling": [
+        [
+          6,
+          {
+            "dice": "3d6",
+            "with_modifier": false
+          }
+        ],
+        [
+          11,
+          {
+            "dice": "4d6",
+            "with_modifier": false
+          }
+        ],
+        [
+          16,
+          {
+            "dice": "5d6",
+            "with_modifier": false
+          }
+        ]
       ],
-      [
-        11,
-        {
-          "dice": "4d6",
-          "with_modifier": false
-        }
-      ],
-      [
-        16,
-        {
-          "dice": "5d6",
-          "with_modifier": false
-        }
-      ]
-    ],
-    "area": {
-      "shape": "cone",
-      "size": 15
-    },
-    "uses": "1/rest",
-    "grants_proficiency": [],
-    "races": [
-      "Dragonborn"
-    ],
-    "subraces": [],
-    "parent": "Draconic Ancestry"
+      "area": {
+        "shape": "cone",
+        "size": 15
+      },
+      "uses": "1/rest"
+    }
   },
   {
     "index": "draconic-ancestry-green",
@@ -884,47 +775,54 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "damage_type": "poison",
-    "save_ability": "constitution",
-    "save_success": "half",
-    "damage": {
-      "dice": "2d6",
-      "with_modifier": false
+    "numbers": {},
+    "notes": {
+      "damage-type": "poison",
+      "save": "CON (half on success)",
+      "damage": "2d6 poison",
+      "scaling": "level 6: 3d6, level 11: 4d6, level 16: 5d6",
+      "area": "15-foot cone",
+      "uses": "1/rest",
+      "races": "Dragonborn",
+      "parent": "Draconic Ancestry"
     },
-    "scaling": [
-      [
-        6,
-        {
-          "dice": "3d6",
-          "with_modifier": false
-        }
+    "facts": {
+      "damage-type": "poison",
+      "save-ability": "constitution",
+      "save-success": "half",
+      "damage": {
+        "dice": "2d6",
+        "with_modifier": false
+      },
+      "scaling": [
+        [
+          6,
+          {
+            "dice": "3d6",
+            "with_modifier": false
+          }
+        ],
+        [
+          11,
+          {
+            "dice": "4d6",
+            "with_modifier": false
+          }
+        ],
+        [
+          16,
+          {
+            "dice": "5d6",
+            "with_modifier": false
+          }
+        ]
       ],
-      [
-        11,
-        {
-          "dice": "4d6",
-          "with_modifier": false
-        }
-      ],
-      [
-        16,
-        {
-          "dice": "5d6",
-          "with_modifier": false
-        }
-      ]
-    ],
-    "area": {
-      "shape": "cone",
-      "size": 15
-    },
-    "uses": "1/rest",
-    "grants_proficiency": [],
-    "races": [
-      "Dragonborn"
-    ],
-    "subraces": [],
-    "parent": "Draconic Ancestry"
+      "area": {
+        "shape": "cone",
+        "size": 15
+      },
+      "uses": "1/rest"
+    }
   },
   {
     "index": "draconic-ancestry-red",
@@ -933,47 +831,54 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "damage_type": "fire",
-    "save_ability": "dexterity",
-    "save_success": "half",
-    "damage": {
-      "dice": "2d6",
-      "with_modifier": false
+    "numbers": {},
+    "notes": {
+      "damage-type": "fire",
+      "save": "DEX (half on success)",
+      "damage": "2d6 fire",
+      "scaling": "level 6: 3d6, level 11: 4d6, level 16: 5d6",
+      "area": "15-foot cone",
+      "uses": "1/rest",
+      "races": "Dragonborn",
+      "parent": "Draconic Ancestry"
     },
-    "scaling": [
-      [
-        6,
-        {
-          "dice": "3d6",
-          "with_modifier": false
-        }
+    "facts": {
+      "damage-type": "fire",
+      "save-ability": "dexterity",
+      "save-success": "half",
+      "damage": {
+        "dice": "2d6",
+        "with_modifier": false
+      },
+      "scaling": [
+        [
+          6,
+          {
+            "dice": "3d6",
+            "with_modifier": false
+          }
+        ],
+        [
+          11,
+          {
+            "dice": "4d6",
+            "with_modifier": false
+          }
+        ],
+        [
+          16,
+          {
+            "dice": "5d6",
+            "with_modifier": false
+          }
+        ]
       ],
-      [
-        11,
-        {
-          "dice": "4d6",
-          "with_modifier": false
-        }
-      ],
-      [
-        16,
-        {
-          "dice": "5d6",
-          "with_modifier": false
-        }
-      ]
-    ],
-    "area": {
-      "shape": "cone",
-      "size": 15
-    },
-    "uses": "1/rest",
-    "grants_proficiency": [],
-    "races": [
-      "Dragonborn"
-    ],
-    "subraces": [],
-    "parent": "Draconic Ancestry"
+      "area": {
+        "shape": "cone",
+        "size": 15
+      },
+      "uses": "1/rest"
+    }
   },
   {
     "index": "draconic-ancestry-silver",
@@ -982,47 +887,54 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "damage_type": "cold",
-    "save_ability": "constitution",
-    "save_success": "half",
-    "damage": {
-      "dice": "2d6",
-      "with_modifier": false
+    "numbers": {},
+    "notes": {
+      "damage-type": "cold",
+      "save": "CON (half on success)",
+      "damage": "2d6 cold",
+      "scaling": "level 6: 3d6, level 11: 4d6, level 16: 5d6",
+      "area": "15-foot cone",
+      "uses": "1/rest",
+      "races": "Dragonborn",
+      "parent": "Draconic Ancestry"
     },
-    "scaling": [
-      [
-        6,
-        {
-          "dice": "3d6",
-          "with_modifier": false
-        }
+    "facts": {
+      "damage-type": "cold",
+      "save-ability": "constitution",
+      "save-success": "half",
+      "damage": {
+        "dice": "2d6",
+        "with_modifier": false
+      },
+      "scaling": [
+        [
+          6,
+          {
+            "dice": "3d6",
+            "with_modifier": false
+          }
+        ],
+        [
+          11,
+          {
+            "dice": "4d6",
+            "with_modifier": false
+          }
+        ],
+        [
+          16,
+          {
+            "dice": "5d6",
+            "with_modifier": false
+          }
+        ]
       ],
-      [
-        11,
-        {
-          "dice": "4d6",
-          "with_modifier": false
-        }
-      ],
-      [
-        16,
-        {
-          "dice": "5d6",
-          "with_modifier": false
-        }
-      ]
-    ],
-    "area": {
-      "shape": "cone",
-      "size": 15
-    },
-    "uses": "1/rest",
-    "grants_proficiency": [],
-    "races": [
-      "Dragonborn"
-    ],
-    "subraces": [],
-    "parent": "Draconic Ancestry"
+      "area": {
+        "shape": "cone",
+        "size": 15
+      },
+      "uses": "1/rest"
+    }
   },
   {
     "index": "draconic-ancestry-white",
@@ -1031,47 +943,54 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "damage_type": "cold",
-    "save_ability": "constitution",
-    "save_success": "half",
-    "damage": {
-      "dice": "2d6",
-      "with_modifier": false
+    "numbers": {},
+    "notes": {
+      "damage-type": "cold",
+      "save": "CON (half on success)",
+      "damage": "2d6 cold",
+      "scaling": "level 6: 3d6, level 11: 4d6, level 16: 5d6",
+      "area": "15-foot cone",
+      "uses": "1/rest",
+      "races": "Dragonborn",
+      "parent": "Draconic Ancestry"
     },
-    "scaling": [
-      [
-        6,
-        {
-          "dice": "3d6",
-          "with_modifier": false
-        }
+    "facts": {
+      "damage-type": "cold",
+      "save-ability": "constitution",
+      "save-success": "half",
+      "damage": {
+        "dice": "2d6",
+        "with_modifier": false
+      },
+      "scaling": [
+        [
+          6,
+          {
+            "dice": "3d6",
+            "with_modifier": false
+          }
+        ],
+        [
+          11,
+          {
+            "dice": "4d6",
+            "with_modifier": false
+          }
+        ],
+        [
+          16,
+          {
+            "dice": "5d6",
+            "with_modifier": false
+          }
+        ]
       ],
-      [
-        11,
-        {
-          "dice": "4d6",
-          "with_modifier": false
-        }
-      ],
-      [
-        16,
-        {
-          "dice": "5d6",
-          "with_modifier": false
-        }
-      ]
-    ],
-    "area": {
-      "shape": "cone",
-      "size": 15
-    },
-    "uses": "1/rest",
-    "grants_proficiency": [],
-    "races": [
-      "Dragonborn"
-    ],
-    "subraces": [],
-    "parent": "Draconic Ancestry"
+      "area": {
+        "shape": "cone",
+        "size": 15
+      },
+      "uses": "1/rest"
+    }
   },
   {
     "index": "breath-weapon",
@@ -1080,19 +999,11 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "damage_type": null,
-    "save_ability": null,
-    "save_success": null,
-    "damage": null,
-    "scaling": [],
-    "area": null,
-    "uses": null,
-    "grants_proficiency": [],
-    "races": [
-      "Dragonborn"
-    ],
-    "subraces": [],
-    "parent": null
+    "numbers": {},
+    "notes": {
+      "races": "Dragonborn"
+    },
+    "facts": {}
   },
   {
     "index": "damage-resistance",
@@ -1101,19 +1012,11 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "damage_type": null,
-    "save_ability": null,
-    "save_success": null,
-    "damage": null,
-    "scaling": [],
-    "area": null,
-    "uses": null,
-    "grants_proficiency": [],
-    "races": [
-      "Dragonborn"
-    ],
-    "subraces": [],
-    "parent": null
+    "numbers": {},
+    "notes": {
+      "races": "Dragonborn"
+    },
+    "facts": {}
   },
   {
     "index": "gnome-cunning",
@@ -1122,19 +1025,11 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "damage_type": null,
-    "save_ability": null,
-    "save_success": null,
-    "damage": null,
-    "scaling": [],
-    "area": null,
-    "uses": null,
-    "grants_proficiency": [],
-    "races": [
-      "Gnome"
-    ],
-    "subraces": [],
-    "parent": null
+    "numbers": {},
+    "notes": {
+      "races": "Gnome"
+    },
+    "facts": {}
   },
   {
     "index": "artificers-lore",
@@ -1143,19 +1038,11 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "damage_type": null,
-    "save_ability": null,
-    "save_success": null,
-    "damage": null,
-    "scaling": [],
-    "area": null,
-    "uses": null,
-    "grants_proficiency": [],
-    "races": [],
-    "subraces": [
-      "Rock Gnome"
-    ],
-    "parent": null
+    "numbers": {},
+    "notes": {
+      "subraces": "Rock Gnome"
+    },
+    "facts": {}
   },
   {
     "index": "tinker",
@@ -1164,21 +1051,12 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "damage_type": null,
-    "save_ability": null,
-    "save_success": null,
-    "damage": null,
-    "scaling": [],
-    "area": null,
-    "uses": null,
-    "grants_proficiency": [
-      "Tinker's Tools"
-    ],
-    "races": [],
-    "subraces": [
-      "Rock Gnome"
-    ],
-    "parent": null
+    "numbers": {},
+    "notes": {
+      "grants-proficiency": "Tinker's Tools",
+      "subraces": "Rock Gnome"
+    },
+    "facts": {}
   },
   {
     "index": "skill-versatility",
@@ -1278,19 +1156,11 @@
       }
     ],
     "choose": 2,
-    "damage_type": null,
-    "save_ability": null,
-    "save_success": null,
-    "damage": null,
-    "scaling": [],
-    "area": null,
-    "uses": null,
-    "grants_proficiency": [],
-    "races": [
-      "Half-Elf"
-    ],
-    "subraces": [],
-    "parent": null
+    "numbers": {},
+    "notes": {
+      "races": "Half-Elf"
+    },
+    "facts": {}
   },
   {
     "index": "menacing",
@@ -1299,21 +1169,12 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "damage_type": null,
-    "save_ability": null,
-    "save_success": null,
-    "damage": null,
-    "scaling": [],
-    "area": null,
-    "uses": null,
-    "grants_proficiency": [
-      "Skill: Intimidation"
-    ],
-    "races": [
-      "Half-Orc"
-    ],
-    "subraces": [],
-    "parent": null
+    "numbers": {},
+    "notes": {
+      "grants-proficiency": "Skill: Intimidation",
+      "races": "Half-Orc"
+    },
+    "facts": {}
   },
   {
     "index": "relentless-endurance",
@@ -1322,19 +1183,11 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "damage_type": null,
-    "save_ability": null,
-    "save_success": null,
-    "damage": null,
-    "scaling": [],
-    "area": null,
-    "uses": null,
-    "grants_proficiency": [],
-    "races": [
-      "Half-Orc"
-    ],
-    "subraces": [],
-    "parent": null
+    "numbers": {},
+    "notes": {
+      "races": "Half-Orc"
+    },
+    "facts": {}
   },
   {
     "index": "savage-attacks",
@@ -1343,19 +1196,11 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "damage_type": null,
-    "save_ability": null,
-    "save_success": null,
-    "damage": null,
-    "scaling": [],
-    "area": null,
-    "uses": null,
-    "grants_proficiency": [],
-    "races": [
-      "Half-Orc"
-    ],
-    "subraces": [],
-    "parent": null
+    "numbers": {},
+    "notes": {
+      "races": "Half-Orc"
+    },
+    "facts": {}
   },
   {
     "index": "hellish-resistance",
@@ -1364,19 +1209,11 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "damage_type": null,
-    "save_ability": null,
-    "save_success": null,
-    "damage": null,
-    "scaling": [],
-    "area": null,
-    "uses": null,
-    "grants_proficiency": [],
-    "races": [
-      "Tiefling"
-    ],
-    "subraces": [],
-    "parent": null
+    "numbers": {},
+    "notes": {
+      "races": "Tiefling"
+    },
+    "facts": {}
   },
   {
     "index": "infernal-legacy",
@@ -1385,18 +1222,10 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "damage_type": null,
-    "save_ability": null,
-    "save_success": null,
-    "damage": null,
-    "scaling": [],
-    "area": null,
-    "uses": null,
-    "grants_proficiency": [],
-    "races": [
-      "Tiefling"
-    ],
-    "subraces": [],
-    "parent": null
+    "numbers": {},
+    "notes": {
+      "races": "Tiefling"
+    },
+    "facts": {}
   }
 ]

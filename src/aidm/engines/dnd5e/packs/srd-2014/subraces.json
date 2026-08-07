@@ -6,13 +6,19 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "race": "Dwarf",
-    "ability_bonuses": [
-      {
-        "ability": "WIS",
-        "bonus": 1
-      }
-    ]
+    "numbers": {},
+    "notes": {
+      "ability-bonuses": "WIS +1"
+    },
+    "facts": {
+      "race": "dwarf",
+      "ability-bonuses": [
+        {
+          "ability": "wisdom",
+          "bonus": 1
+        }
+      ]
+    }
   },
   {
     "index": "high-elf",
@@ -21,13 +27,19 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "race": "Elf",
-    "ability_bonuses": [
-      {
-        "ability": "INT",
-        "bonus": 1
-      }
-    ]
+    "numbers": {},
+    "notes": {
+      "ability-bonuses": "INT +1"
+    },
+    "facts": {
+      "race": "elf",
+      "ability-bonuses": [
+        {
+          "ability": "intelligence",
+          "bonus": 1
+        }
+      ]
+    }
   },
   {
     "index": "lightfoot-halfling",
@@ -36,13 +48,19 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "race": "Halfling",
-    "ability_bonuses": [
-      {
-        "ability": "CHA",
-        "bonus": 1
-      }
-    ]
+    "numbers": {},
+    "notes": {
+      "ability-bonuses": "CHA +1"
+    },
+    "facts": {
+      "race": "halfling",
+      "ability-bonuses": [
+        {
+          "ability": "charisma",
+          "bonus": 1
+        }
+      ]
+    }
   },
   {
     "index": "rock-gnome",
@@ -51,12 +69,18 @@
     "tags": [],
     "options": [],
     "choose": null,
-    "race": "Gnome",
-    "ability_bonuses": [
-      {
-        "ability": "CON",
-        "bonus": 1
-      }
-    ]
+    "numbers": {},
+    "notes": {
+      "ability-bonuses": "CON +1"
+    },
+    "facts": {
+      "race": "gnome",
+      "ability-bonuses": [
+        {
+          "ability": "constitution",
+          "bonus": 1
+        }
+      ]
+    }
   }
 ]
