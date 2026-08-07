@@ -4,7 +4,8 @@ from pydantic_ai import ModelRetry, NativeOutput, RunContext
 
 from aidm.config import Settings
 from aidm.engines.loader import Engine
-from aidm.state.sheet import AdvancementOffer, SheetDelta
+from aidm.state.effects import SheetDelta
+from aidm.state.sheet import AdvancementOffer
 from aidm.state.world import GameState
 
 from .roles import Stage, stage

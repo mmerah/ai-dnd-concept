@@ -1,0 +1,35 @@
+{
+  "id": "concentration-replaced",
+  "engine": "dnd5e",
+  "tags": [
+    "spells",
+    "conditions"
+  ],
+  "scenario": "whispering-vault",
+  "character": "elowen",
+  "setup": [
+    {
+      "probe": "place",
+      "entity": "player",
+      "location": "cloister"
+    },
+    {
+      "probe": "reveal",
+      "entity": "cloister_rat"
+    },
+    {
+      "probe": "set_note",
+      "key": "concentration",
+      "text": "Faerie Fire"
+    }
+  ],
+  "prompt": "I lock eyes with the rat and cast hideous laughter on it, nothing else.",
+  "checks": [
+    {
+      "probe": "note_value",
+      "key": "concentration",
+      "contains": "Hideous Laughter"
+    }
+  ],
+  "runs": 3
+}

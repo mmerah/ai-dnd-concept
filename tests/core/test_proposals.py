@@ -7,14 +7,22 @@ from pydantic_ai.models.function import AgentInfo, FunctionModel
 from story_test_support import grown, story_game, story_session
 
 from aidm.content.store import FileSaves, FileTraces
+from aidm.state.base import PLAYER_ID
+from aidm.state.effects import AddRef, AdjustCounter, SetNumber, SheetDelta
 from aidm.state.packs import ContentRef
-from aidm.state.sheet import AddRef, AdvancementOffer, ChangeCounter, SetNumber, SheetDelta
+from aidm.state.sheet import AdvancementOffer
 from aidm.state.turn import Advance
 from aidm.state.world import player_sheet
 
-SPEND = ChangeCounter(why="the three marks are spent", key="growth", delta=-3)
-LEGAL = SheetDelta(changes=(SetNumber(why="hard-won patience", key="clever", value=2), SPEND))
-OVER_CAP = SheetDelta(changes=(SetNumber(why="greed", key="bold", value=4), SPEND))
+SPEND = AdjustCounter(
+    entity_id=PLAYER_ID, counter="growth", delta=-3, why="the three marks are spent"
+)
+LEGAL = SheetDelta(
+    changes=(SetNumber(entity_id=PLAYER_ID, key="clever", value=2, why="hard-won patience"), SPEND)
+)
+OVER_CAP = SheetDelta(
+    changes=(SetNumber(entity_id=PLAYER_ID, key="bold", value=4, why="greed"), SPEND)
+)
 
 
 def _answers(*deltas: SheetDelta) -> FunctionModel:
@@ -48,8 +56,8 @@ def test_confirming_commits_exactly_the_proposed_delta(tmp_path: Path) -> None:
     player = player_sheet(game.state)
     assert (player.numbers["clever"], player.counters["growth"].current) == (2, 0)
     assert [fact.trace for fact in facts] == [
-        "clever 1 -> 2 (hard-won patience)",
-        "growth -> 0/3 (the three marks are spent)",
+        "Kael clever: 1 -> 2 (hard-won patience)",
+        "Kael growth -3 -> 0/3 (the three marks are spent)",
     ]
     assert game.entries == [Advance(facts=facts)]
     assert FileTraces(tmp_path).load("poc") == (Advance(facts=facts),)
@@ -66,7 +74,7 @@ def test_picks_are_checked_against_the_offer_and_the_trial_sheet_must_validate()
     judge = engine.violation
 
     def pick(ref: ContentRef) -> AddRef:
-        return AddRef(why="the chosen path", ref=ref)
+        return AddRef(entity_id=PLAYER_ID, ref=ref, why="the chosen path")
 
     outside = judge(state, offer, SheetDelta(changes=(pick(feast),)))
     assert outside is not None and "not on offer" in outside
@@ -75,7 +83,9 @@ def test_picks_are_checked_against_the_offer_and_the_trial_sheet_must_validate()
     assert unpicked == "this offer takes exactly 1 picks, the proposal makes 0"
 
     # `stress` is a counter: writing it as a number is the misname crossover the sheet refuses.
-    crossover = SheetDelta(changes=(pick(blade), SetNumber(why="err", key="stress", value=3)))
+    crossover = SheetDelta(
+        changes=(pick(blade), SetNumber(entity_id=PLAYER_ID, key="stress", value=3, why="err"))
+    )
     corrupt = judge(state, offer, crossover)
     assert corrupt is not None and "both a number and a counter" in corrupt
 

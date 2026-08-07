@@ -26,6 +26,7 @@
       { "pack": "srd-2014", "collection": "spells", "index": "prestidigitation" },
       { "pack": "srd-2014", "collection": "spells", "index": "magic-missile" },
       { "pack": "srd-2014", "collection": "spells", "index": "burning-hands" },
+      { "pack": "srd-2014", "collection": "spells", "index": "hideous-laughter" },
       { "pack": "srd-2014", "collection": "proficiencies", "index": "skill-arcana" },
       { "pack": "srd-2014", "collection": "proficiencies", "index": "skill-investigation" }
     ]

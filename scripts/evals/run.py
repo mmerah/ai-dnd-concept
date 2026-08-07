@@ -1,10 +1,9 @@
-"""Live-model eval harness for the Director. Never run from pytest: it needs the network.
+"""Live-model eval harness. Never run from pytest: it needs the network.
 
-    uv run python scripts/evals/run.py [--only <engine|tag|id>] [--runs N] [--concurrency N]
+    uv run python scripts/evals/run.py [--only <engine|role|tag|id>] [--runs N] [--concurrency N]
 
-Each scenario builds a real game from shipped content, applies its setup, runs the director stage
-and the engine resolver, then checks the committed state and the recorded facts. Rates land in
-`results/`.
+Each scenario builds a real game from shipped content, applies its setup, runs one role against it,
+then checks the committed state and the recorded facts. Rates land in `results/`.
 """
 
 import asyncio
@@ -16,9 +15,10 @@ from datetime import date
 from hashlib import sha1
 from pathlib import Path
 from random import Random
+from typing import Literal, Self
 
 from probes import CheckStep, Outcome, Setup, SetupStep, apply_setup, check
-from pydantic import Field, JsonValue
+from pydantic import Field, JsonValue, model_validator
 from pydantic_ai.messages import ModelMessage, ModelRequest, RetryPromptPart
 
 from aidm.app.session import build_engine
@@ -28,7 +28,16 @@ from aidm.content.store import load_character, load_scenario
 from aidm.engines.loader import Engine
 from aidm.state.base import SAVE_VERSION, EngineId, Frozen, Slug
 from aidm.state.world import GameState
-from aidm.turn.pipeline import PlanContext, TurnWorkspace, director_stage, resolve_step
+from aidm.turn.advancement import AdvisorContext, advisor, render_proposal
+from aidm.turn.pipeline import (
+    PlanContext,
+    TurnOptions,
+    TurnWorkspace,
+    director_stage,
+    resolve_step,
+    worldkeeper_stage,
+    worldkeeper_step,
+)
 from aidm.turn.prompts import SceneSnapshot, render_director
 
 EVALS = Path(__file__).parent
@@ -38,7 +47,7 @@ RESULTS = EVALS / "results"
 EVAL_CHARACTERS = EVALS / "characters"
 SEED = 1000
 FLAGS = ("--only", "--runs", "--concurrency")
-USAGE = "usage: run.py [--only <engine|tag|id>] [--runs N] [--concurrency N]"
+USAGE = "usage: run.py [--only <engine|role|tag|id>] [--runs N] [--concurrency N]"
 
 _ENGINES: dict[EngineId, Engine] = {}
 
@@ -49,16 +58,27 @@ class Options(Frozen):
     concurrency: int = Field(default=4, ge=1)
 
 
+type Role = Literal["director", "advisor", "worldkeeper"]
+
+
 class EvalCase(Frozen):
     id: Slug
     engine: EngineId
+    role: Role = "director"
     tags: tuple[str, ...] = ()
     scenario: Slug
     character: Slug
     setup: tuple[SetupStep, ...] = ()
     prompt: str
+    narration: str = ""
     checks: tuple[CheckStep, ...] = Field(min_length=1)
     runs: int = Field(default=3, ge=1)
+
+    @model_validator(mode="after")
+    def _narration_belongs_to_the_worldkeeper(self) -> Self:
+        if bool(self.narration) != (self.role == "worldkeeper"):
+            raise ValueError(f"{self.id}: only a worldkeeper case carries a narration")
+        return self
 
 
 class RunRecord(Frozen):
@@ -185,12 +205,12 @@ async def run_suite(cases: Sequence[EvalCase], config: Settings, concurrency: in
     )
     every = [record for case in results for record in case.runs]
     finished = [record for record in every if record.completed]
-    role = config.role("director")
+    roles = [config.role(name) for name in sorted({case.role for case in cases})]
     return SuiteRecord(
         date=date.today().isoformat(),
         commit=_commit(),
-        model=role.model,
-        retries=role.retries,
+        model=", ".join(sorted({role.model for role in roles})),
+        retries=max(role.retries for role in roles),
         overall=_rate(every),
         completion=_completion(every),
         interpretation=_rate(finished),
@@ -260,6 +280,18 @@ async def _turn(
     before = apply_setup(
         Setup(engine=engine, state=initial_state(case, engine, config), rng=rng), case.setup
     )
+    match case.role:
+        case "director":
+            return await _director_turn(case, config, engine, before, rng)
+        case "advisor":
+            return await _advisor_turn(case, config, engine, before)
+        case "worldkeeper":
+            return await _worldkeeper_turn(case, config, engine, before, rng)
+
+
+async def _director_turn(
+    case: EvalCase, config: Settings, engine: Engine, before: GameState, rng: Random
+) -> tuple[Outcome, JsonValue, tuple[str, ...]]:
     workspace = TurnWorkspace(
         prompt=case.prompt, history=[], state=before, draft=before.draft(), rng=rng
     )
@@ -281,6 +313,44 @@ async def _turn(
         plan=result.output.model_dump(mode="json"),
     )
     return outcome, outcome.plan, _retry_reasons(result.all_messages())
+
+
+async def _advisor_turn(
+    case: EvalCase, config: Settings, engine: Engine, before: GameState
+) -> tuple[Outcome, JsonValue, tuple[str, ...]]:
+    """The stage's own output validator is `Engine.violation`, so a proposal that reaches here is
+    already legal; the checks measure whether it is the right legal proposal."""
+    offer = engine.offered(before)
+    if offer is None:
+        raise ValueError(f"{case.id}: the setup leaves no advancement on offer")
+    deps = AdvisorContext(engine=engine, state=before, offer=offer)
+    rendered = render_proposal(engine, before, offer, case.prompt)
+    result = await advisor(engine, config).agent.run(rendered, deps=deps)
+    draft = before.draft()
+    facts = engine.advance(draft, result.output)
+    after = draft.committed()
+    engine.validate_state(after)
+    outcome = Outcome(
+        before=before, after=after, facts=facts, plan=result.output.model_dump(mode="json")
+    )
+    return outcome, outcome.plan, _retry_reasons(result.all_messages())
+
+
+async def _worldkeeper_turn(
+    case: EvalCase, config: Settings, engine: Engine, before: GameState, rng: Random
+) -> tuple[Outcome, JsonValue, tuple[str, ...]]:
+    """Runs the pipeline step itself, so the admission code the turn uses is what is measured."""
+    workspace = TurnWorkspace(
+        prompt=case.prompt, history=[], state=before, draft=before.draft(), rng=rng
+    )
+    workspace.narration = case.narration
+    options = TurnOptions(history_window=0, max_growth=config.max_growth)
+    await worldkeeper_step(worldkeeper_stage(config), engine, options)(workspace)
+    after = workspace.draft.committed()
+    engine.validate_state(after)
+    report = workspace.steps[-1].output
+    outcome = Outcome(before=before, after=after, facts=tuple(workspace.facts), plan=report)
+    return outcome, report, ()
 
 
 def _retry_reasons(messages: Sequence[ModelMessage]) -> tuple[str, ...]:
@@ -357,8 +427,8 @@ def _git(*arguments: str) -> str:
 
 
 def _names(case: EvalCase) -> frozenset[str]:
-    """An engine id selects a whole suite, which is what a gate comparison needs."""
-    return frozenset({case.id, case.engine, *case.tags})
+    """An engine id or a role selects a whole suite, which is what a gate comparison needs."""
+    return frozenset({case.id, case.engine, case.role, *case.tags})
 
 
 def main(argv: Sequence[str]) -> None:

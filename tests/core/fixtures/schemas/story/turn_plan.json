@@ -27,6 +27,12 @@
           "description": "The constraint or benefit it puts on the entity, in prose.",
           "title": "Text",
           "type": "string"
+        },
+        "why": {
+          "default": "",
+          "description": "One short sentence saying what causes this change, for the player.",
+          "title": "Why",
+          "type": "string"
         }
       },
       "required": [
@@ -63,70 +69,33 @@
           "title": "Delta",
           "type": "integer"
         },
-        "reason": {
-          "description": "What changed the pool, in a few words.",
-          "minLength": 1,
-          "title": "Reason",
+        "maximum": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "A new upper bound for the pool. Advancement only.",
+          "title": "Maximum"
+        },
+        "why": {
+          "default": "",
+          "description": "One short sentence saying what causes this change, for the player.",
+          "title": "Why",
           "type": "string"
         }
       },
       "required": [
         "entity_id",
         "counter",
-        "delta",
-        "reason"
+        "delta"
       ],
       "title": "AdjustCounter",
       "type": "object"
-    },
-    "Effect": {
-      "discriminator": {
-        "mapping": {
-          "add-tag": "#/$defs/AddTag",
-          "adjust-counter": "#/$defs/AdjustCounter",
-          "gain-improvised-item": "#/$defs/GainImprovisedItem",
-          "move-actor": "#/$defs/MoveActor",
-          "move-item": "#/$defs/MoveItem",
-          "remove-tag": "#/$defs/RemoveTag",
-          "reveal": "#/$defs/Reveal",
-          "set-note": "#/$defs/SetNote",
-          "set-number": "#/$defs/SetNumber",
-          "spend-counter": "#/$defs/SpendCounter"
-        },
-        "propertyName": "op"
-      },
-      "oneOf": [
-        {
-          "$ref": "#/$defs/Reveal"
-        },
-        {
-          "$ref": "#/$defs/MoveActor"
-        },
-        {
-          "$ref": "#/$defs/MoveItem"
-        },
-        {
-          "$ref": "#/$defs/GainImprovisedItem"
-        },
-        {
-          "$ref": "#/$defs/AdjustCounter"
-        },
-        {
-          "$ref": "#/$defs/SpendCounter"
-        },
-        {
-          "$ref": "#/$defs/AddTag"
-        },
-        {
-          "$ref": "#/$defs/RemoveTag"
-        },
-        {
-          "$ref": "#/$defs/SetNote"
-        },
-        {
-          "$ref": "#/$defs/SetNumber"
-        }
-      ]
     },
     "GainImprovisedItem": {
       "additionalProperties": false,
@@ -236,7 +205,7 @@
           "default": [],
           "description": "What that outcome causes in the world.",
           "items": {
-            "$ref": "#/$defs/Effect"
+            "$ref": "#/$defs/TurnEffect"
           },
           "title": "Effects",
           "type": "array"
@@ -268,6 +237,12 @@
           "maxLength": 64,
           "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$",
           "title": "Tag Id",
+          "type": "string"
+        },
+        "why": {
+          "default": "",
+          "description": "One short sentence saying what causes this change, for the player.",
+          "title": "Why",
           "type": "string"
         }
       },
@@ -408,6 +383,12 @@
           "description": "The note; empty clears whatever the key held.",
           "title": "Text",
           "type": "string"
+        },
+        "why": {
+          "default": "",
+          "description": "One short sentence saying what causes this change, for the player.",
+          "title": "Why",
+          "type": "string"
         }
       },
       "required": [
@@ -444,6 +425,12 @@
           "description": "What the number becomes.",
           "title": "Value",
           "type": "integer"
+        },
+        "why": {
+          "default": "",
+          "description": "One short sentence saying what causes this change, for the player.",
+          "title": "Why",
+          "type": "string"
         }
       },
       "required": [
@@ -481,6 +468,12 @@
           "minimum": 1,
           "title": "Amount",
           "type": "integer"
+        },
+        "why": {
+          "default": "",
+          "description": "One short sentence saying what causes this change, for the player.",
+          "title": "Why",
+          "type": "string"
         }
       },
       "required": [
@@ -490,6 +483,55 @@
       ],
       "title": "SpendCounter",
       "type": "object"
+    },
+    "TurnEffect": {
+      "discriminator": {
+        "mapping": {
+          "add-tag": "#/$defs/AddTag",
+          "adjust-counter": "#/$defs/AdjustCounter",
+          "gain-improvised-item": "#/$defs/GainImprovisedItem",
+          "move-actor": "#/$defs/MoveActor",
+          "move-item": "#/$defs/MoveItem",
+          "remove-tag": "#/$defs/RemoveTag",
+          "reveal": "#/$defs/Reveal",
+          "set-note": "#/$defs/SetNote",
+          "set-number": "#/$defs/SetNumber",
+          "spend-counter": "#/$defs/SpendCounter"
+        },
+        "propertyName": "op"
+      },
+      "oneOf": [
+        {
+          "$ref": "#/$defs/Reveal"
+        },
+        {
+          "$ref": "#/$defs/MoveActor"
+        },
+        {
+          "$ref": "#/$defs/MoveItem"
+        },
+        {
+          "$ref": "#/$defs/GainImprovisedItem"
+        },
+        {
+          "$ref": "#/$defs/AdjustCounter"
+        },
+        {
+          "$ref": "#/$defs/SpendCounter"
+        },
+        {
+          "$ref": "#/$defs/AddTag"
+        },
+        {
+          "$ref": "#/$defs/RemoveTag"
+        },
+        {
+          "$ref": "#/$defs/SetNote"
+        },
+        {
+          "$ref": "#/$defs/SetNumber"
+        }
+      ]
     }
   },
   "additionalProperties": false,
@@ -521,7 +563,7 @@
       "default": [],
       "description": "Consequences that happen whatever the action settles.",
       "items": {
-        "$ref": "#/$defs/Effect"
+        "$ref": "#/$defs/TurnEffect"
       },
       "title": "Effects",
       "type": "array"

@@ -317,7 +317,7 @@ def _spend(draft: GameState, engine: Engine, entity_id: EntityId, counter: Slug)
 def _harm(
     draft: GameState, engine: Engine, entity_id: EntityId, delta: int, reason: str
 ) -> list[Fact]:
-    change = AdjustCounter(entity_id=entity_id, counter=HP, delta=delta, reason=reason)
+    change = AdjustCounter(entity_id=entity_id, counter=HP, delta=delta, why=reason)
     return apply_effect(draft, change, engine.default_rules)
 
 

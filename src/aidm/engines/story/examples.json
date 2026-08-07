@@ -20,7 +20,7 @@
             "entity_id": "player",
             "counter": "stress",
             "delta": 1,
-            "reason": "the door gives, and something inside answers"
+            "why": "the door gives, and something inside answers"
           }
         ]
       },
@@ -32,7 +32,7 @@
             "entity_id": "player",
             "counter": "stress",
             "delta": 2,
-            "reason": "the seal holds and the whispering finds him"
+            "why": "the seal holds and the whispering finds him"
           },
           {
             "op": "add-tag",

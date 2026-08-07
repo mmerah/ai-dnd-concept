@@ -2,12 +2,11 @@
 
 ## Ideas
 
-- [] Eval coverage owed: an advantage scenario, a concentration-replacing-a-spell scenario, and
+- [x] Eval coverage owed: an advantage scenario, a concentration-replacing-a-spell scenario, and
   story checks that test both directions.
 - [] Prove "engines are data" with a third engine. Two engines can share an accident; a third
   one is the test.
-- [] Probe the advisor's `NativeOutput` on gpt-oss: the maintainer's small schema works in native
-  mode (probed 3/3); the advisor's `SheetDelta` is likewise small but has never been probed live.
+- [x] Probe the advisor's `NativeOutput` on gpt-oss: probed 6/6 by the phase-0 advisor evals.
 - [] Codex: Comment simplification round
 - [] Improved naming of variables, fields, methods, classes, ... Sometimes it is too unclear what they do
 - [] Cleaner codebase: the global CONFIG_VARIABLES look very unclean everytime I see them. Wonder how we could do that a bit better.

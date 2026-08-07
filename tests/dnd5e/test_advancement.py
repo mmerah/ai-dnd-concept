@@ -7,22 +7,30 @@ from pydantic_ai.models.function import AgentInfo, FunctionModel
 
 from aidm.engines.dnd5e.advance import ADVANCEMENT_READY
 from aidm.state.base import PLAYER_ID, EntityId
+from aidm.state.effects import AddRef, AdjustCounter, RemoveTag, SetNumber, SheetDelta
 from aidm.state.packs import ContentRef
-from aidm.state.sheet import AddRef, ChangeCounter, RemoveTag, SetNumber, SheetDelta
 from aidm.state.world import player_sheet
 
 ACTION_SURGE = ContentRef(pack="srd-2014", collection="features", index="action-surge-1-use")
 SECOND_WIND = ContentRef(pack="srd-2014", collection="features", index="second-wind")
-SPENT = RemoveTag(why="the level is taken", tag_id=ADVANCEMENT_READY)
+SPENT = RemoveTag(entity_id=PLAYER_ID, tag_id=ADVANCEMENT_READY, why="the level is taken")
 LEGAL = SheetDelta(
     changes=(
-        AddRef(why="the level's feature", ref=ACTION_SURGE),
-        SetNumber(why="second level", key="level", value=2),
-        ChangeCounter(why="a fighter's hit die and constitution", key="hp", delta=7, maximum=18),
+        AddRef(entity_id=PLAYER_ID, ref=ACTION_SURGE, why="the level's feature"),
+        SetNumber(entity_id=PLAYER_ID, key="level", value=2, why="second level"),
+        AdjustCounter(
+            entity_id=PLAYER_ID,
+            counter="hp",
+            delta=7,
+            maximum=18,
+            why="a fighter's hit die and constitution",
+        ),
         SPENT,
     )
 )
-WRONG_LEVEL = SheetDelta(changes=(AddRef(why="the level's feature", ref=ACTION_SURGE), SPENT))
+WRONG_LEVEL = SheetDelta(
+    changes=(AddRef(entity_id=PLAYER_ID, ref=ACTION_SURGE, why="the level's feature"), SPENT)
+)
 
 
 def _answers(*deltas: SheetDelta) -> FunctionModel:
@@ -65,7 +73,9 @@ def test_a_pick_outside_the_offer_and_a_level_that_does_not_move_are_both_refuse
     advancing = ready(state)
     offer = engine.offered(advancing)
     assert offer is not None
-    outside = SheetDelta(changes=(AddRef(why="a feature already held", ref=SECOND_WIND), SPENT))
+    outside = SheetDelta(
+        changes=(AddRef(entity_id=PLAYER_ID, ref=SECOND_WIND, why="a feature already held"), SPENT)
+    )
 
     assert engine.violation(advancing, offer, LEGAL) is None
     assert "not on offer" in str(engine.violation(advancing, offer, outside))

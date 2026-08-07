@@ -7,10 +7,11 @@ from aidm.content.authored import Character, Scenario, authored_world
 from aidm.content.store import FileSaves, FileTraces, load_character, load_scenario
 from aidm.engines.loader import Engine, load_engine, plugin_for
 from aidm.state.base import SAVE_VERSION, EngineId
+from aidm.state.effects import SheetDelta
 from aidm.state.facts import Fact
-from aidm.state.sheet import AdvancementOffer, SheetDelta, apply_delta
+from aidm.state.sheet import AdvancementOffer
 from aidm.state.turn import Advance, TraceEntry, Turn
-from aidm.state.world import GameState, player_sheet
+from aidm.state.world import GameState
 from aidm.turn.advancement import AdvisorContext, advisor, render_proposal
 from aidm.turn.pipeline import TurnOptions, TurnScript, default_workflow, run_turn
 from aidm.turn.roles import Stage
@@ -90,8 +91,8 @@ class GameSession:
         return await self.advisor.run(render_proposal(self.engine, self.state, offer, intent), deps)
 
     def preview(self, delta: SheetDelta) -> tuple[Fact, ...]:
-        """What the change would write, read off a throwaway copy, not the committed sheet."""
-        return apply_delta(player_sheet(self.state).model_copy(deep=True), delta)
+        """What the change would write, read off a throwaway draft, not the committed state."""
+        return self.engine.advance(self.state.draft(), delta)
 
     def apply_proposal(self, delta: SheetDelta) -> tuple[Fact, ...]:
         offer = self._offered()
@@ -99,7 +100,7 @@ class GameSession:
         if refused is not None:
             raise ValueError(refused)
         draft = self.state.draft()
-        facts = apply_delta(player_sheet(draft), delta)
+        facts = self.engine.advance(draft, delta)
         state = draft.committed()
         self.engine.validate_state(state)
         self._commit(state, Advance(facts=facts))

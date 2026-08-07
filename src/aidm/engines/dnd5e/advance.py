@@ -1,6 +1,6 @@
 from aidm.engines.loader import Engine
 from aidm.state.packs import ContentMiss, ContentRef
-from aidm.state.sheet import AdvancementOffer, Sheet, SheetDelta, apply_delta
+from aidm.state.sheet import AdvancementOffer, Sheet
 from aidm.state.world import GameState, player_sheet, sheet_of
 
 from .records import LevelRecord
@@ -33,10 +33,8 @@ def _milestone_reached(state: GameState, sheet: Sheet) -> bool:
     return earned is not None and sheet.numbers[LEVEL] < earned
 
 
-def check_delta(state: GameState, delta: SheetDelta) -> str | None:
+def check_delta(state: GameState, after: Sheet) -> str | None:
     before = player_sheet(state)
-    after = before.model_copy(deep=True)
-    _ = apply_delta(after, delta)
     reached = before.numbers[LEVEL] + 1
     if after.numbers[LEVEL] != reached:
         return f"this level-up reaches level {reached}: set `{LEVEL}` to exactly that"

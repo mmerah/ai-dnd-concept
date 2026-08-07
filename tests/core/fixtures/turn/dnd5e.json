@@ -1,5 +1,5 @@
 {
-  "save_version": 39,
+  "save_version": 40,
   "facts": [
     {
       "source": "core",
@@ -88,7 +88,8 @@
                 "op": "add-tag",
                 "entity_id": "player",
                 "tag_id": "success",
-                "text": ""
+                "text": "",
+                "why": ""
               }
             ]
           },
@@ -99,7 +100,8 @@
                 "op": "add-tag",
                 "entity_id": "player",
                 "tag_id": "failure",
-                "text": ""
+                "text": "",
+                "why": ""
               }
             ]
           }

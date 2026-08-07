@@ -1,5 +1,5 @@
 {
-  "save_version": 39,
+  "save_version": 40,
   "facts": [
     {
       "source": "core",
@@ -89,7 +89,8 @@
                 "op": "add-tag",
                 "entity_id": "player",
                 "tag_id": "strong",
-                "text": ""
+                "text": "",
+                "why": ""
               }
             ]
           },
@@ -100,7 +101,8 @@
                 "op": "add-tag",
                 "entity_id": "player",
                 "tag_id": "mixed",
-                "text": ""
+                "text": "",
+                "why": ""
               }
             ]
           },
@@ -111,7 +113,8 @@
                 "op": "add-tag",
                 "entity_id": "player",
                 "tag_id": "setback",
-                "text": ""
+                "text": "",
+                "why": ""
               }
             ]
           }

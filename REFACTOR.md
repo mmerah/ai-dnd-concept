@@ -316,6 +316,29 @@ package of phase 5), typed `MediaRequest`s executed at the boundary. Agentic wor
 are allowed here — authoring is not the turn loop — and their output passes the exact
 load path, validation, and evals hand-authored content does.
 
+## Eval findings owed a cleanup pass
+
+Not a phase: standing findings the phase-0 baseline exposed, none of them blocking. Each is a
+measured weakness in a model-facing surface, so each costs a full re-run to close — batch them
+into one pass rather than paying that cost five times.
+
+- **The Director never uses advantage.** `advantage-attack` is 0/6 across two runs: the model
+  reads a `prone`, explicitly-helpless target and still rolls `mode: "normal"`. `Attack.mode`
+  says "when the fiction grants it" and nothing anywhere states 5e's actual grants. Either
+  `dnd5e/director.md` teaches when advantage applies, or the case is measuring a rule the engine
+  was never given — decide which before tuning.
+- **Discipline is the weakest tag at 67%.** `story-check-both-directions` fails the negative
+  direction: a dramatic-sounding but certain action still draws a risk roll. Same family as
+  `single-action-discipline`. This is real signal, not a broken case — keep it.
+- **`condition-lifted` sits at 67%** across both runs (the `poisoned` tag survives the turn that
+  should end it). Pre-existing; it did not move in phase 1.
+- **`monster-attack-on-player` fell 100% → 67%** on n=6, one of those a retry-exhaustion death
+  rather than a wrong answer. Small-n backend lottery is the likely cause — re-run before
+  spending any prompt work on it.
+- **`why` is now optional on turn-time counter changes** (phase 1, sanctioned). Nothing measures
+  whether the Director still writes reasons. Worth a probe if the trace panel starts reading
+  poorly.
+
 ## Canonical engine layout (target)
 
 During migration dnd5e keeps `actions.py`, `resolve.py`, `records.py` until phases 6–7

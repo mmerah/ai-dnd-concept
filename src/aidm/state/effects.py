@@ -5,6 +5,7 @@ from pydantic import Field, JsonValue
 
 from .base import PLAYER_ID, Entity, EntityId, Frozen, Kind, Slug, slug
 from .facts import CORE, Fact
+from .packs import ContentRef
 from .sheet import Counter, Sheet, SheetTag, pool
 from .world import GameState, sheet_of
 
@@ -14,6 +15,9 @@ TargetId = Annotated[
 ]
 CounterKey = Annotated[
     Slug, Field(description="Exact key of one of that entity's counters, as its sheet spells it.")
+]
+Why = Annotated[
+    str, Field(description="One short sentence saying what causes this change, for the player.")
 ]
 
 
@@ -68,7 +72,10 @@ class AdjustCounter(Frozen):
     entity_id: TargetId
     counter: CounterKey
     delta: int = Field(description="How much the pool moves: negative to reduce.")
-    reason: str = Field(min_length=1, description="What changed the pool, in a few words.")
+    maximum: int | None = Field(
+        default=None, description="A new upper bound for the pool. Advancement only."
+    )
+    why: Why = ""
 
 
 class SpendCounter(Frozen):
@@ -78,6 +85,21 @@ class SpendCounter(Frozen):
     entity_id: TargetId
     counter: CounterKey
     amount: int = Field(ge=1, description="How much of the pool is spent.")
+    why: Why = ""
+
+
+class GrantCounter(Frozen):
+    """Give a sheet a pool it does not have yet. Advancement only: a turn changes pools, never
+    invents them."""
+
+    op: Literal["grant-counter"] = "grant-counter"
+    entity_id: TargetId
+    counter: CounterKey
+    current: int
+    maximum: int | None = Field(default=None, description="Omit for an unbounded pool.")
+    minimum: int = 0
+    recharge: str | None = Field(default=None, description="A recharge label of this engine.")
+    why: Why = ""
 
 
 class AddTag(Frozen):
@@ -90,6 +112,7 @@ class AddTag(Frozen):
     text: str = Field(
         default="", description="The constraint or benefit it puts on the entity, in prose."
     )
+    why: Why = ""
 
 
 class RemoveTag(Frozen):
@@ -98,6 +121,7 @@ class RemoveTag(Frozen):
     op: Literal["remove-tag"] = "remove-tag"
     entity_id: TargetId
     tag_id: Slug = Field(description="Exact id of a tag the entity carries.")
+    why: Why = ""
 
 
 class SetNote(Frozen):
@@ -108,6 +132,7 @@ class SetNote(Frozen):
     entity_id: TargetId
     key: Slug = Field(description="What the note is about, such as `concentration`.")
     text: str = Field(description="The note; empty clears whatever the key held.")
+    why: Why = ""
 
 
 class SetNumber(Frozen):
@@ -118,9 +143,35 @@ class SetNumber(Frozen):
     entity_id: TargetId
     key: Slug = Field(description="Exact key of a number already on that sheet.")
     value: int = Field(description="What the number becomes.")
+    why: Why = ""
+
+
+class AddRef(Frozen):
+    """Put a content record on a sheet. Advancement only: a turn never grants content."""
+
+    op: Literal["add-ref"] = "add-ref"
+    entity_id: TargetId
+    ref: ContentRef = Field(description="One of the picks the offer allows.")
+    why: Why = ""
 
 
 type Effect = Annotated[
+    Reveal
+    | MoveActor
+    | MoveItem
+    | GainImprovisedItem
+    | AdjustCounter
+    | SpendCounter
+    | GrantCounter
+    | AddTag
+    | RemoveTag
+    | SetNote
+    | SetNumber
+    | AddRef,
+    Field(discriminator="op"),
+]
+
+type TurnEffect = Annotated[
     Reveal
     | MoveActor
     | MoveItem
@@ -134,17 +185,37 @@ type Effect = Annotated[
     Field(discriminator="op"),
 ]
 
+type SheetEffect = Annotated[
+    AdjustCounter | SpendCounter | GrantCounter | AddTag | RemoveTag | SetNote | SetNumber | AddRef,
+    Field(discriminator="op"),
+]
 
-def effect_ops() -> frozenset[str]:
-    union, _ = get_args(Effect.__value__)
+
+_WORLD_OPS = (Reveal, MoveActor, MoveItem, GainImprovisedItem)
+
+
+class SheetDelta(Frozen):
+    """What advancement writes onto the player's sheet, each change carrying its reason."""
+
+    changes: tuple[SheetEffect, ...] = ()
+
+
+def turn_effect_ops() -> frozenset[str]:
+    union, _ = get_args(TurnEffect.__value__)
     return frozenset(member.model_fields["op"].default for member in get_args(union))
 
 
 def apply_effect(
-    draft: GameState, effect: Effect, default_rules: Callable[[Entity], Sheet]
+    draft: GameState,
+    effect: Effect,
+    default_rules: Callable[[Entity], Sheet],
+    *,
+    advancing: bool = False,
 ) -> list[Fact]:
     """Mutates the draft, raising `ValueError` with a model-readable reason on a refused
-    precondition. There is no separate check: a plan is validated by trial-applying it."""
+    precondition. There is no separate check: a plan is validated by trial-applying it.
+    `advancing` grows the player's sheet where a turn only changes what is already on it."""
+    _permitted(effect, advancing=advancing)
     match effect:
         case Reveal(entity_id=entity_id):
             return draft.reveal(_require(draft, entity_id))
@@ -158,6 +229,8 @@ def apply_effect(
             return _adjust(draft, effect)
         case SpendCounter():
             return _spend(draft, effect)
+        case GrantCounter():
+            return _grant(draft, effect)
         case AddTag():
             return _add_tag(draft, effect)
         case RemoveTag():
@@ -165,7 +238,23 @@ def apply_effect(
         case SetNote():
             return _set_note(draft, effect)
         case SetNumber():
-            return _set_number(draft, effect)
+            return _set_number(draft, effect, advancing=advancing)
+        case AddRef():
+            return _add_ref(draft, effect)
+
+
+def _permitted(effect: Effect, *, advancing: bool) -> None:
+    if advancing:
+        # A denylist suffices: `SheetDelta` validation is what actually bounds this surface.
+        if isinstance(effect, _WORLD_OPS):
+            raise ValueError(f"{effect.op!r} changes the world; advancement writes only the sheet")
+        if effect.entity_id != PLAYER_ID:
+            raise ValueError(f"advancement writes {PLAYER_ID!r}, not {effect.entity_id!r}")
+        return
+    if isinstance(effect, (GrantCounter, AddRef)):
+        raise ValueError(f"{effect.op!r} belongs to advancement, not to a turn")
+    if isinstance(effect, AdjustCounter) and effect.maximum is not None:
+        raise ValueError("a turn moves a pool inside its bounds; only advancement raises a maximum")
 
 
 def require_actor_here(state: GameState, actor_id: EntityId | None) -> Entity:
@@ -282,12 +371,14 @@ def _improvise(
 def _adjust(draft: GameState, effect: AdjustCounter) -> list[Fact]:
     entity, sheet, seen = _target(draft, effect.entity_id)
     held = _counter_of(sheet, entity, effect.counter)
+    if effect.maximum is not None:
+        held.maximum = effect.maximum
     before = held.current
     held.current = held.clamped(before + effect.delta)
     landed = held.current - before
-    if landed == 0:
+    if landed == 0 and effect.maximum is None:
         return seen
-    return [*seen, _changed(entity, effect.counter, held, landed, effect.reason)]
+    return [*seen, _changed(entity, effect.counter, held, landed, effect.why)]
 
 
 def _spend(draft: GameState, effect: SpendCounter) -> list[Fact]:
@@ -299,8 +390,24 @@ def _spend(draft: GameState, effect: SpendCounter) -> list[Fact]:
             f"{held.minimum}, so {effect.amount} cannot be spent."
         )
     held.current -= effect.amount
-    spent = f"spent {effect.counter}"
-    return [*seen, _changed(entity, effect.counter, held, -effect.amount, spent)]
+    why = effect.why or f"spent {effect.counter}"
+    return [*seen, _changed(entity, effect.counter, held, -effect.amount, why)]
+
+
+def _grant(draft: GameState, effect: GrantCounter) -> list[Fact]:
+    entity, sheet, seen = _target(draft, effect.entity_id)
+    if effect.counter in sheet.counters:
+        raise ValueError(f"{entity.name} already has {effect.counter!r}; adjust it instead")
+    granted = Counter(
+        current=effect.current,
+        maximum=effect.maximum,
+        minimum=effect.minimum,
+        recharge=effect.recharge,
+    )
+    sheet.counters[effect.counter] = granted
+    trace = f"{entity.name} gains {effect.counter} at {pool(granted)}"
+    data = {"counter": effect.counter, "current": granted.current, "maximum": granted.maximum}
+    return [*seen, _sheet_fact(entity, "counter_granted", trace, data, effect.why, narrate=False)]
 
 
 def _add_tag(draft: GameState, effect: AddTag) -> list[Fact]:
@@ -310,7 +417,7 @@ def _add_tag(draft: GameState, effect: AddTag) -> list[Fact]:
     name = effect.tag_id.replace("-", " ").title()
     sheet.tags.append(SheetTag(id=effect.tag_id, name=name, text=effect.text))
     trace = f"{entity.name} is {name}"
-    return [*seen, entity_fact(entity, "tag_added", trace, {"tag_id": effect.tag_id})]
+    return [*seen, _sheet_fact(entity, "tag_added", trace, {"tag_id": effect.tag_id}, effect.why)]
 
 
 def _remove_tag(draft: GameState, effect: RemoveTag) -> list[Fact]:
@@ -321,7 +428,8 @@ def _remove_tag(draft: GameState, effect: RemoveTag) -> list[Fact]:
         raise ValueError(f"{entity.name} carries no tag {effect.tag_id!r}. Their tags are: {held}")
     sheet.tags.remove(tag)
     trace = f"{entity.name} is no longer {tag.name}"
-    return [*seen, entity_fact(entity, "tag_removed", trace, {"tag_id": effect.tag_id})]
+    data = {"tag_id": effect.tag_id}
+    return [*seen, _sheet_fact(entity, "tag_removed", trace, data, effect.why)]
 
 
 def _set_note(draft: GameState, effect: SetNote) -> list[Fact]:
@@ -334,22 +442,45 @@ def _set_note(draft: GameState, effect: SetNote) -> list[Fact]:
         sheet.notes[effect.key] = effect.text
         trace = f"{entity.name} note {effect.key}: {effect.text}"
     data = {"key": effect.key}
-    return [*seen, entity_fact(entity, "note_set", trace, data, narrate=False)]
+    return [*seen, _sheet_fact(entity, "note_set", trace, data, effect.why, narrate=False)]
 
 
-def _set_number(draft: GameState, effect: SetNumber) -> list[Fact]:
+def _set_number(draft: GameState, effect: SetNumber, *, advancing: bool) -> list[Fact]:
     entity, sheet, seen = _target(draft, effect.entity_id)
-    if effect.key not in sheet.numbers:
+    if not advancing and effect.key not in sheet.numbers:
         held = ", ".join(sorted(sheet.numbers)) or "(none)"
         raise ValueError(f"{entity.name} has no number {effect.key!r}. Their numbers are: {held}")
-    before = sheet.numbers[effect.key]
+    before = sheet.numbers.get(effect.key)
     sheet.numbers[effect.key] = effect.value
     trace = f"{entity.name} {effect.key}: {before} -> {effect.value}"
     data = {"key": effect.key, "before": before, "after": effect.value}
-    return [*seen, entity_fact(entity, "number_set", trace, data, narrate=False)]
+    return [*seen, _sheet_fact(entity, "number_set", trace, data, effect.why, narrate=False)]
 
 
-def _changed(entity: Entity, key: str, counter: Counter, delta: int, reason: str) -> Fact:
+def _add_ref(draft: GameState, effect: AddRef) -> list[Fact]:
+    entity, sheet, seen = _target(draft, effect.entity_id)
+    if effect.ref in sheet.refs:
+        raise ValueError(f"{entity.name} already holds content {effect.ref}")
+    sheet.refs = (*sheet.refs, effect.ref)
+    trace = f"{entity.name} gains content {effect.ref}"
+    data = {"ref": str(effect.ref)}
+    return [*seen, _sheet_fact(entity, "ref_added", trace, data, effect.why, narrate=False)]
+
+
+def _changed(entity: Entity, key: str, counter: Counter, delta: int, why: str) -> Fact:
     data = {"counter": key, "delta": delta, "current": counter.current, "maximum": counter.maximum}
-    trace = f"{reason}: {entity.name} {key} {delta:+d} -> {pool(counter)}"
-    return entity_fact(entity, "counter_changed", trace, data)
+    trace = f"{entity.name} {key} {delta:+d} -> {pool(counter)}"
+    return _sheet_fact(entity, "counter_changed", trace, data, why)
+
+
+def _sheet_fact(
+    entity: Entity,
+    kind: str,
+    trace: str,
+    data: Mapping[str, JsonValue],
+    why: str,
+    *,
+    narrate: bool = True,
+) -> Fact:
+    """The `why` is what the advancement panel shows the player before they confirm."""
+    return entity_fact(entity, kind, f"{trace} ({why})" if why else trace, data, narrate=narrate)

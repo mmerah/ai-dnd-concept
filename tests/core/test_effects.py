@@ -7,6 +7,7 @@ from aidm.state.effects import (
     AdjustCounter,
     Effect,
     GainImprovisedItem,
+    GrantCounter,
     MoveActor,
     MoveItem,
     RemoveTag,
@@ -91,7 +92,7 @@ def test_inventory_effects_gate_on_position_and_carrying() -> None:
 
 def test_counter_effects_clamp_what_lands_and_spending_refuses_an_empty_pool() -> None:
     turn = Applied()
-    stress = AdjustCounter(entity_id=PLAYER_ID, counter="stress", delta=99, reason="the strain")
+    stress = AdjustCounter(entity_id=PLAYER_ID, counter="stress", delta=99, why="the strain")
 
     (changed,) = turn(stress)
     assert changed.data["delta"] == 5
@@ -104,7 +105,7 @@ def test_counter_effects_clamp_what_lands_and_spending_refuses_an_empty_pool() -
     with pytest.raises(ValueError, match="cannot go below"):
         _ = turn(SpendCounter(entity_id=PLAYER_ID, counter="growth", amount=1))
     with pytest.raises(ValueError, match="has no counter"):
-        _ = turn(AdjustCounter(entity_id=PLAYER_ID, counter="mana", delta=1, reason="x"))
+        _ = turn(AdjustCounter(entity_id=PLAYER_ID, counter="mana", delta=1, why="x"))
 
 
 def test_sheet_effects_round_trip_and_refuse_what_the_sheet_does_not_hold() -> None:
@@ -138,6 +139,29 @@ def test_acting_on_an_unrevealed_actor_reveals_it_before_its_sheet_changes() -> 
     turn = Applied()
     _ = turn(MoveActor(location_id=CLOISTER))
 
-    hurt = turn.kinds(AdjustCounter(entity_id=RAT, counter="stress", delta=1, reason="the lantern"))
+    hurt = turn.kinds(AdjustCounter(entity_id=RAT, counter="stress", delta=1, why="the lantern"))
 
     assert hurt == ["entity_discovered", "counter_changed"]
+
+
+def test_one_union_two_surfaces_each_refusing_what_the_other_owns() -> None:
+    turn = Applied()
+    grant = GrantCounter(entity_id=PLAYER_ID, counter="favour", current=1, maximum=1, why="a boon")
+
+    with pytest.raises(ValueError, match="belongs to advancement"):
+        _ = turn(grant)
+    with pytest.raises(ValueError, match="only advancement raises a maximum"):
+        _ = turn(AdjustCounter(entity_id=PLAYER_ID, counter="stress", delta=1, maximum=9))
+
+    def advancing(effect: Effect) -> list[Fact]:
+        return apply_effect(turn.draft, effect, turn.engine.default_rules, advancing=True)
+
+    with pytest.raises(ValueError, match="advancement writes only the sheet"):
+        _ = advancing(MoveActor(location_id=CLOISTER))
+    with pytest.raises(ValueError, match="advancement writes 'player'"):
+        _ = advancing(AddTag(entity_id=MARA, tag_id="sworn", why="a promise"))
+
+    _ = advancing(grant)
+    _ = advancing(SetNumber(entity_id=PLAYER_ID, key="mana", value=1, why="a new number"))
+    sheet = sheet_of(turn.draft, PLAYER_ID)
+    assert (sheet.counters["favour"].current, sheet.numbers["mana"]) == (1, 1)

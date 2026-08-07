@@ -13,7 +13,7 @@ from pydantic_ai.toolsets import AbstractToolset, FunctionToolset
 
 from aidm.content.authored import AuthoredEntity, AuthoredWorld, Rules, compose_world
 from aidm.state.base import EngineId, Entity, Frozen, Kind, Slug
-from aidm.state.effects import Effect, effect_ops
+from aidm.state.effects import AddRef, SheetDelta, TurnEffect, apply_effect, turn_effect_ops
 from aidm.state.facts import Fact
 from aidm.state.packs import (
     EMPTY_FROZEN_MAP,
@@ -32,13 +32,10 @@ from aidm.state.packs import (
 )
 from aidm.state.plan import TurnPlanBase, apply_branch, check_plan_base
 from aidm.state.sheet import (
-    AddRef,
     AdvancementOffer,
     Sheet,
     SheetDefinition,
-    SheetDelta,
     SheetTemplate,
-    apply_delta,
     render_sheet,
 )
 from aidm.state.world import GameState, WorldState, player_sheet
@@ -82,7 +79,8 @@ class EnginePlugin:
     actions: tuple[ActionSpec[Any], ...]
     action_doc: str
     offered: "Callable[[Engine, GameState], AdvancementOffer | None]"
-    check_delta: Callable[[GameState, SheetDelta], str | None]
+    # Judges the sheet the proposal would leave, which the kernel has already applied and validated.
+    check_delta: Callable[[GameState, Sheet], str | None]
     record_types: Mapping[CollectionName, type[Record]] = MappingProxyType({})
 
     def pack_format(self, spec: EngineSpec) -> PackFormat:
@@ -162,6 +160,14 @@ class Engine:
     def offered(self, state: GameState) -> AdvancementOffer | None:
         return self.plugin.offered(self, state)
 
+    def advance(self, draft: GameState, delta: SheetDelta) -> tuple[Fact, ...]:
+        """Mutates the draft's player sheet; the caller's commit revalidates the whole copy."""
+        return tuple(
+            fact
+            for change in delta.changes
+            for fact in apply_effect(draft, change, self.default_rules, advancing=True)
+        )
+
     def violation(self, state: GameState, offer: AdvancementOffer, delta: SheetDelta) -> str | None:
         """One legality rule for the advisor's retry and for the commit, so neither can drift."""
         picked = [change.ref for change in delta.changes if isinstance(change, AddRef)]
@@ -172,15 +178,17 @@ class Engine:
             return (
                 f"this offer takes exactly {offer.choose} picks, the proposal makes {len(picked)}"
             )
-        trial = player_sheet(state).model_copy(deep=True)
+        if unexplained := sorted({change.op for change in delta.changes if not change.why}):
+            return f"every change needs a `why` the player can read, and {unexplained} has none"
+        draft = state.draft()
         try:
-            _ = apply_delta(trial, delta)
-            _ = Sheet.model_validate(trial.model_dump())
+            _ = self.advance(draft, delta)
+            after = draft.committed()
         except ValidationError as invalid:
             return f"the sheet this leaves is invalid: {invalid.errors()[0]['msg']}"
         except ValueError as refused:
             return str(refused)
-        return self.plugin.check_delta(state, delta)
+        return self.plugin.check_delta(state, player_sheet(after))
 
     def _spec(self, action: Frozen) -> ActionSpec[Any]:
         for spec in self.plugin.actions:
@@ -287,12 +295,10 @@ def _effect_vocabulary() -> str:
     entries = TypeAdapter(list[JsonValue]).validate_json(
         _text(Path(__file__).parent / "examples.json")
     )
-    checked = TypeAdapter(list[Effect]).validate_python(entries)
-    if (
-        len(checked) != len(effect_ops())
-        or frozenset(entry.op for entry in checked) != effect_ops()
-    ):
-        raise ValueError("the shared examples.json must show every effect op exactly once")
+    checked = TypeAdapter(list[TurnEffect]).validate_python(entries)
+    ops = turn_effect_ops()
+    if len(checked) != len(ops) or frozenset(entry.op for entry in checked) != ops:
+        raise ValueError("the shared examples.json must show every turn effect op exactly once")
     lines = "\n".join(json.dumps(entry) for entry in entries)
     header = (
         "## Effects\n\nEvery effect, one example each. Ids, keys, and tags here are "

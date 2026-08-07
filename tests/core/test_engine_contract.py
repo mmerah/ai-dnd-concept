@@ -16,7 +16,7 @@ def _turn(engine: Engine, state: GameState) -> tuple[GameState, tuple[Fact, ...]
         *apply_effect(
             draft,
             AdjustCounter(
-                entity_id=PLAYER_ID, counter="stress", delta=1, reason="the strain of prying"
+                entity_id=PLAYER_ID, counter="stress", delta=1, why="the strain of prying"
             ),
             engine.default_rules,
         ),

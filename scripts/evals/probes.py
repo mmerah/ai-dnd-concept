@@ -61,8 +61,15 @@ class AddTag(Frozen):
     text: str = ""
 
 
+class SetNote(Frozen):
+    probe: Literal["set_note"] = "set_note"
+    entity: EntityId = PLAYER_ID
+    key: str
+    text: str = Field(min_length=1)
+
+
 type SetupStep = Annotated[
-    Place | Reveal | SetPool | SetNumber | SetLevel | AddTag, Field(discriminator="probe")
+    Place | Reveal | SetPool | SetNumber | SetLevel | AddTag | SetNote, Field(discriminator="probe")
 ]
 
 
@@ -114,6 +121,43 @@ class RollTarget(Frozen):
     max: int
 
 
+class NumberValue(Frozen):
+    probe: Literal["number_value"] = "number_value"
+    entity: EntityId = PLAYER_ID
+    key: str
+    min: int
+    max: int
+
+
+class HasRef(Frozen):
+    probe: Literal["has_ref"] = "has_ref"
+    entity: EntityId = PLAYER_ID
+    ref: str
+    present: bool = True
+
+
+class NoteValue(Frozen):
+    probe: Literal["note_value"] = "note_value"
+    entity: EntityId = PLAYER_ID
+    key: str
+    contains: str = Field(min_length=1)
+
+
+class RolledWithMode(Frozen):
+    """Reads the plan through the die it produced: an advantage attack rolls twice and keeps one."""
+
+    probe: Literal["rolled_with_mode"] = "rolled_with_mode"
+    mode: Literal["normal", "advantage", "disadvantage"]
+
+
+class Created(Frozen):
+    """How many entities the turn added, which is the worldkeeper's whole output."""
+
+    probe: Literal["created"] = "created"
+    min: int = Field(default=0, ge=0)
+    max: int = Field(ge=0)
+
+
 class NoStateChange(Frozen):
     probe: Literal["no_state_change"] = "no_state_change"
 
@@ -122,6 +166,11 @@ type CheckStep = Annotated[
     PoolDelta
     | PoolValue
     | HasTag
+    | NumberValue
+    | HasRef
+    | NoteValue
+    | RolledWithMode
+    | Created
     | AttackRollHappened
     | BranchAddsTag
     | RollTarget
@@ -169,6 +218,31 @@ def check(outcome: Outcome, step: CheckStep) -> str | None:
             if held == step.present:
                 return None
             return f"{step.entity} tag {step.tag!r} is {'absent' if step.present else 'present'}"
+        case NumberValue():
+            held = _sheet(outcome.after, step.entity).numbers
+            if step.key not in held:
+                return f"{step.entity} has no number {step.key!r}; it has {sorted(held)}"
+            return _within(held[step.key], step.min, step.max, f"{step.entity} {step.key}")
+        case HasRef():
+            refs = {str(ref) for ref in _sheet(outcome.after, step.entity).refs}
+            if (step.ref in refs) == step.present:
+                return None
+            return f"{step.entity} ref {step.ref!r} is {'absent' if step.present else 'present'}"
+        case NoteValue():
+            held = _sheet(outcome.after, step.entity).notes.get(step.key, "")
+            if step.contains.casefold() in held.casefold():
+                return None
+            return f"{step.entity} note {step.key!r} is {held!r}, wanted {step.contains!r} in it"
+        case RolledWithMode():
+            modes = [
+                str(fact.data.get("mode")) for fact in outcome.facts if fact.kind == CONTESTED_KIND
+            ]
+            if step.mode in modes:
+                return None
+            return f"nothing was rolled with {step.mode}; the modes rolled were {sorted(modes)}"
+        case Created():
+            added = len(outcome.after.world.all_ids() - outcome.before.world.all_ids())
+            return _within(added, step.min, step.max, "entities created")
         case BranchAddsTag():
             if _branch_adds_tag(outcome.plan, step):
                 return None
@@ -208,6 +282,8 @@ def _apply(setup: Setup, step: SetupStep) -> None:
             # Mirrors the runtime `add-tag` effect, so the rendered scene matches real play.
             name = step.tag.replace("-", " ").title()
             _sheet(state, step.entity).tags.append(SheetTag(id=step.tag, name=name, text=step.text))
+        case SetNote():
+            _sheet(state, step.entity).notes[step.key] = step.text
 
 
 def _sheet(state: GameState, entity_id: EntityId) -> Sheet:

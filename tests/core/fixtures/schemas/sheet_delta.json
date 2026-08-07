@@ -2,25 +2,32 @@
   "$defs": {
     "AddRef": {
       "additionalProperties": false,
+      "description": "Put a content record on a sheet. Advancement only: a turn never grants content.",
       "properties": {
-        "why": {
-          "description": "One short sentence saying what earns this change.",
-          "title": "Why",
-          "type": "string"
-        },
         "op": {
           "const": "add-ref",
           "default": "add-ref",
           "title": "Op",
           "type": "string"
         },
+        "entity_id": {
+          "description": "Exact id of the entity affected; an actor must be here with the player.",
+          "title": "Entity Id",
+          "type": "string"
+        },
         "ref": {
           "$ref": "#/$defs/ContentRef",
           "description": "One of the picks the offer allows."
+        },
+        "why": {
+          "default": "",
+          "description": "One short sentence saying what causes this change, for the player.",
+          "title": "Why",
+          "type": "string"
         }
       },
       "required": [
-        "why",
+        "entity_id",
         "ref"
       ],
       "title": "AddRef",
@@ -28,53 +35,70 @@
     },
     "AddTag": {
       "additionalProperties": false,
+      "description": "Put a lasting condition, edge, or burden on an entity. The sheet shows the id written\nout: `battle-worn` appears as Battle Worn.",
       "properties": {
-        "why": {
-          "description": "One short sentence saying what earns this change.",
-          "title": "Why",
-          "type": "string"
-        },
         "op": {
           "const": "add-tag",
           "default": "add-tag",
           "title": "Op",
           "type": "string"
         },
-        "tag": {
-          "$ref": "#/$defs/SheetTag"
+        "entity_id": {
+          "description": "Exact id of the entity affected; an actor must be here with the player.",
+          "title": "Entity Id",
+          "type": "string"
+        },
+        "tag_id": {
+          "description": "Stable slug for the tag, such as `poisoned`.",
+          "maxLength": 64,
+          "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$",
+          "title": "Tag Id",
+          "type": "string"
+        },
+        "text": {
+          "default": "",
+          "description": "The constraint or benefit it puts on the entity, in prose.",
+          "title": "Text",
+          "type": "string"
+        },
+        "why": {
+          "default": "",
+          "description": "One short sentence saying what causes this change, for the player.",
+          "title": "Why",
+          "type": "string"
         }
       },
       "required": [
-        "why",
-        "tag"
+        "entity_id",
+        "tag_id"
       ],
       "title": "AddTag",
       "type": "object"
     },
-    "ChangeCounter": {
+    "AdjustCounter": {
       "additionalProperties": false,
+      "description": "Move a counter up or down. The change is clamped to the counter's own bounds.",
       "properties": {
-        "why": {
-          "description": "One short sentence saying what earns this change.",
-          "title": "Why",
-          "type": "string"
-        },
         "op": {
-          "const": "change-counter",
-          "default": "change-counter",
+          "const": "adjust-counter",
+          "default": "adjust-counter",
           "title": "Op",
           "type": "string"
         },
-        "key": {
-          "description": "Key of a pool the sheet already has.",
+        "entity_id": {
+          "description": "Exact id of the entity affected; an actor must be here with the player.",
+          "title": "Entity Id",
+          "type": "string"
+        },
+        "counter": {
+          "description": "Exact key of one of that entity's counters, as its sheet spells it.",
           "maxLength": 64,
           "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$",
-          "title": "Key",
+          "title": "Counter",
           "type": "string"
         },
         "delta": {
-          "default": 0,
-          "description": "How much the current value moves.",
+          "description": "How much the pool moves: negative to reduce.",
           "title": "Delta",
           "type": "integer"
         },
@@ -88,15 +112,22 @@
             }
           ],
           "default": null,
-          "description": "A new maximum; omit to keep it.",
+          "description": "A new upper bound for the pool. Advancement only.",
           "title": "Maximum"
+        },
+        "why": {
+          "default": "",
+          "description": "One short sentence saying what causes this change, for the player.",
+          "title": "Why",
+          "type": "string"
         }
       },
       "required": [
-        "why",
-        "key"
+        "entity_id",
+        "counter",
+        "delta"
       ],
-      "title": "ChangeCounter",
+      "title": "AdjustCounter",
       "type": "object"
     },
     "ContentRef": {
@@ -130,62 +161,26 @@
       "title": "ContentRef",
       "type": "object"
     },
-    "DeltaChange": {
-      "discriminator": {
-        "mapping": {
-          "add-ref": "#/$defs/AddRef",
-          "add-tag": "#/$defs/AddTag",
-          "change-counter": "#/$defs/ChangeCounter",
-          "grant-counter": "#/$defs/GrantCounter",
-          "remove-tag": "#/$defs/RemoveTag",
-          "set-note": "#/$defs/SetNote",
-          "set-number": "#/$defs/SetNumber"
-        },
-        "propertyName": "op"
-      },
-      "oneOf": [
-        {
-          "$ref": "#/$defs/SetNumber"
-        },
-        {
-          "$ref": "#/$defs/GrantCounter"
-        },
-        {
-          "$ref": "#/$defs/ChangeCounter"
-        },
-        {
-          "$ref": "#/$defs/AddTag"
-        },
-        {
-          "$ref": "#/$defs/RemoveTag"
-        },
-        {
-          "$ref": "#/$defs/AddRef"
-        },
-        {
-          "$ref": "#/$defs/SetNote"
-        }
-      ]
-    },
     "GrantCounter": {
       "additionalProperties": false,
+      "description": "Give a sheet a pool it does not have yet. Advancement only: a turn changes pools, never\ninvents them.",
       "properties": {
-        "why": {
-          "description": "One short sentence saying what earns this change.",
-          "title": "Why",
-          "type": "string"
-        },
         "op": {
           "const": "grant-counter",
           "default": "grant-counter",
           "title": "Op",
           "type": "string"
         },
-        "key": {
-          "description": "Key for a pool the sheet does not have yet.",
+        "entity_id": {
+          "description": "Exact id of the entity affected; an actor must be here with the player.",
+          "title": "Entity Id",
+          "type": "string"
+        },
+        "counter": {
+          "description": "Exact key of one of that entity's counters, as its sheet spells it.",
           "maxLength": 64,
           "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$",
-          "title": "Key",
+          "title": "Counter",
           "type": "string"
         },
         "current": {
@@ -222,11 +217,17 @@
           "default": null,
           "description": "A recharge label of this engine.",
           "title": "Recharge"
+        },
+        "why": {
+          "default": "",
+          "description": "One short sentence saying what causes this change, for the player.",
+          "title": "Why",
+          "type": "string"
         }
       },
       "required": [
-        "why",
-        "key",
+        "entity_id",
+        "counter",
         "current"
       ],
       "title": "GrantCounter",
@@ -234,28 +235,35 @@
     },
     "RemoveTag": {
       "additionalProperties": false,
+      "description": "Lift a tag an entity carries, when the fiction ends it.",
       "properties": {
-        "why": {
-          "description": "One short sentence saying what earns this change.",
-          "title": "Why",
-          "type": "string"
-        },
         "op": {
           "const": "remove-tag",
           "default": "remove-tag",
           "title": "Op",
           "type": "string"
         },
+        "entity_id": {
+          "description": "Exact id of the entity affected; an actor must be here with the player.",
+          "title": "Entity Id",
+          "type": "string"
+        },
         "tag_id": {
-          "description": "Exact id of a tag the sheet carries.",
+          "description": "Exact id of a tag the entity carries.",
           "maxLength": 64,
           "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$",
           "title": "Tag Id",
           "type": "string"
+        },
+        "why": {
+          "default": "",
+          "description": "One short sentence saying what causes this change, for the player.",
+          "title": "Why",
+          "type": "string"
         }
       },
       "required": [
-        "why",
+        "entity_id",
         "tag_id"
       ],
       "title": "RemoveTag",
@@ -263,32 +271,40 @@
     },
     "SetNote": {
       "additionalProperties": false,
+      "description": "Write freeform bookkeeping the fiction needs remembered and no counter or tag holds, such as\nwhat a caster concentrates on. Writing a key again replaces what it held.",
       "properties": {
-        "why": {
-          "description": "One short sentence saying what earns this change.",
-          "title": "Why",
-          "type": "string"
-        },
         "op": {
           "const": "set-note",
           "default": "set-note",
           "title": "Op",
           "type": "string"
         },
+        "entity_id": {
+          "description": "Exact id of the entity affected; an actor must be here with the player.",
+          "title": "Entity Id",
+          "type": "string"
+        },
         "key": {
+          "description": "What the note is about, such as `concentration`.",
           "maxLength": 64,
           "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$",
           "title": "Key",
           "type": "string"
         },
         "text": {
-          "description": "The note; empty clears the key.",
+          "description": "The note; empty clears whatever the key held.",
           "title": "Text",
+          "type": "string"
+        },
+        "why": {
+          "default": "",
+          "description": "One short sentence saying what causes this change, for the player.",
+          "title": "Why",
           "type": "string"
         }
       },
       "required": [
-        "why",
+        "entity_id",
         "key",
         "text"
       ],
@@ -297,20 +313,21 @@
     },
     "SetNumber": {
       "additionalProperties": false,
+      "description": "Set a number the fiction has lastingly changed — armour worn, a permanent blessing. Never\nfor this turn's outcome: pools that go up and down are counters.",
       "properties": {
-        "why": {
-          "description": "One short sentence saying what earns this change.",
-          "title": "Why",
-          "type": "string"
-        },
         "op": {
           "const": "set-number",
           "default": "set-number",
           "title": "Op",
           "type": "string"
         },
+        "entity_id": {
+          "description": "Exact id of the entity affected; an actor must be here with the player.",
+          "title": "Entity Id",
+          "type": "string"
+        },
         "key": {
-          "description": "The number's key, as the sheet spells it.",
+          "description": "Exact key of a number already on that sheet.",
           "maxLength": 64,
           "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$",
           "title": "Key",
@@ -320,40 +337,104 @@
           "description": "What the number becomes.",
           "title": "Value",
           "type": "integer"
+        },
+        "why": {
+          "default": "",
+          "description": "One short sentence saying what causes this change, for the player.",
+          "title": "Why",
+          "type": "string"
         }
       },
       "required": [
-        "why",
+        "entity_id",
         "key",
         "value"
       ],
       "title": "SetNumber",
       "type": "object"
     },
-    "SheetTag": {
+    "SheetEffect": {
+      "discriminator": {
+        "mapping": {
+          "add-ref": "#/$defs/AddRef",
+          "add-tag": "#/$defs/AddTag",
+          "adjust-counter": "#/$defs/AdjustCounter",
+          "grant-counter": "#/$defs/GrantCounter",
+          "remove-tag": "#/$defs/RemoveTag",
+          "set-note": "#/$defs/SetNote",
+          "set-number": "#/$defs/SetNumber",
+          "spend-counter": "#/$defs/SpendCounter"
+        },
+        "propertyName": "op"
+      },
+      "oneOf": [
+        {
+          "$ref": "#/$defs/AdjustCounter"
+        },
+        {
+          "$ref": "#/$defs/SpendCounter"
+        },
+        {
+          "$ref": "#/$defs/GrantCounter"
+        },
+        {
+          "$ref": "#/$defs/AddTag"
+        },
+        {
+          "$ref": "#/$defs/RemoveTag"
+        },
+        {
+          "$ref": "#/$defs/SetNote"
+        },
+        {
+          "$ref": "#/$defs/SetNumber"
+        },
+        {
+          "$ref": "#/$defs/AddRef"
+        }
+      ]
+    },
+    "SpendCounter": {
       "additionalProperties": false,
+      "description": "Pay from a counter, which refuses outright when the pool cannot cover it.",
       "properties": {
-        "id": {
+        "op": {
+          "const": "spend-counter",
+          "default": "spend-counter",
+          "title": "Op",
+          "type": "string"
+        },
+        "entity_id": {
+          "description": "Exact id of the entity affected; an actor must be here with the player.",
+          "title": "Entity Id",
+          "type": "string"
+        },
+        "counter": {
+          "description": "Exact key of one of that entity's counters, as its sheet spells it.",
           "maxLength": 64,
           "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$",
-          "title": "Id",
+          "title": "Counter",
           "type": "string"
         },
-        "name": {
-          "title": "Name",
-          "type": "string"
+        "amount": {
+          "description": "How much of the pool is spent.",
+          "minimum": 1,
+          "title": "Amount",
+          "type": "integer"
         },
-        "text": {
+        "why": {
           "default": "",
-          "title": "Text",
+          "description": "One short sentence saying what causes this change, for the player.",
+          "title": "Why",
           "type": "string"
         }
       },
       "required": [
-        "id",
-        "name"
+        "entity_id",
+        "counter",
+        "amount"
       ],
-      "title": "SheetTag",
+      "title": "SpendCounter",
       "type": "object"
     }
   },
@@ -363,7 +444,7 @@
     "changes": {
       "default": [],
       "items": {
-        "$ref": "#/$defs/DeltaChange"
+        "$ref": "#/$defs/SheetEffect"
       },
       "title": "Changes",
       "type": "array"

@@ -5,7 +5,7 @@ from typing import cast
 from pydantic import Field, ValidationError, model_validator
 
 from .base import PLAYER_ID, Entity, EntityId, Frozen, Slug
-from .effects import Effect, apply_effect
+from .effects import TurnEffect, apply_effect
 from .facts import Fact
 from .sheet import Sheet
 from .world import GameState
@@ -32,7 +32,7 @@ class OutcomeBranch(Frozen):
     """What follows in the fiction if the action lands on this outcome, and only then."""
 
     outcome: Slug = Field(description="One outcome label the chosen action allows.")
-    effects: tuple[Effect, ...] = Field(
+    effects: tuple[TurnEffect, ...] = Field(
         default=(), description="What that outcome causes in the world."
     )
 
@@ -71,7 +71,7 @@ class TurnPlanBase(Frozen):
         description="Exact id of the NPC the player addresses — one they have met and who is here "
         "with them — or null if nobody is addressed.",
     )
-    effects: tuple[Effect, ...] = Field(
+    effects: tuple[TurnEffect, ...] = Field(
         default=(), description="Consequences that happen whatever the action settles."
     )
     branches: tuple[OutcomeBranch, ...] = Field(
@@ -129,7 +129,7 @@ def check_plan_base(
 
 
 def _trial(
-    state: GameState, effects: Sequence[Effect], default_rules: Callable[[Entity], Sheet]
+    state: GameState, effects: Sequence[TurnEffect], default_rules: Callable[[Entity], Sheet]
 ) -> str | None:
     draft = state.draft()
     try:

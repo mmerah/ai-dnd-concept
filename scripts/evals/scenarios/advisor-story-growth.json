@@ -1,0 +1,33 @@
+{
+  "id": "advisor-story-growth",
+  "engine": "story",
+  "role": "advisor",
+  "tags": [
+    "advancement"
+  ],
+  "scenario": "whispering-vault",
+  "character": "kael",
+  "setup": [
+    {
+      "probe": "set_pool",
+      "pool": "growth",
+      "remaining": 3
+    }
+  ],
+  "prompt": "Spend the growth: I want to become sharper and more clever, so raise my clever approach by one and change nothing else.",
+  "checks": [
+    {
+      "probe": "number_value",
+      "key": "clever",
+      "min": 2,
+      "max": 2
+    },
+    {
+      "probe": "pool_value",
+      "pool": "growth",
+      "min": 0,
+      "max": 0
+    }
+  ],
+  "runs": 3
+}

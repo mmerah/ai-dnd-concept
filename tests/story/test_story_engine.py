@@ -6,12 +6,13 @@ from aidm.engines.loader import Engine
 from aidm.engines.story.actions import Risk
 from aidm.engines.story.advance import GROWTH_REQUIRED
 from aidm.state.base import PLAYER_ID, EntityId
-from aidm.state.effects import AddTag, AdjustCounter
+from aidm.state.effects import AddTag, AdjustCounter, SetNumber, SheetDelta
 from aidm.state.plan import OutcomeBranch, TurnPlanBase
-from aidm.state.sheet import ChangeCounter, SetNumber, SheetDelta
 from aidm.state.world import GameState, player_sheet, sheet_of
 
-SPEND = ChangeCounter(why="the marks are spent", key="growth", delta=-GROWTH_REQUIRED)
+SPEND = AdjustCounter(
+    entity_id=PLAYER_ID, counter="growth", delta=-GROWTH_REQUIRED, why="the marks are spent"
+)
 RAT = EntityId("cloister_rat")
 STRONG = OutcomeBranch(
     outcome="strong",
@@ -19,9 +20,7 @@ STRONG = OutcomeBranch(
 )
 SETBACK = OutcomeBranch(
     outcome="setback",
-    effects=(
-        AdjustCounter(entity_id=PLAYER_ID, counter="stress", delta=2, reason="the door holds"),
-    ),
+    effects=(AdjustCounter(entity_id=PLAYER_ID, counter="stress", delta=2, why="the door holds"),),
 )
 
 
@@ -118,9 +117,18 @@ def test_growth_opens_an_offer_and_storys_own_caps_refuse_what_breaks_them() -> 
     offer = engine.offered(ready)
     assert offer is not None
 
-    legal = SheetDelta(changes=(SetNumber(why="patience earned", key="clever", value=2), SPEND))
-    over_cap = SheetDelta(changes=(SetNumber(why="greed", key="bold", value=4), SPEND))
-    unspent = SheetDelta(changes=(SetNumber(why="free lunch", key="clever", value=2),))
+    legal = SheetDelta(
+        changes=(
+            SetNumber(entity_id=PLAYER_ID, key="clever", value=2, why="patience earned"),
+            SPEND,
+        )
+    )
+    over_cap = SheetDelta(
+        changes=(SetNumber(entity_id=PLAYER_ID, key="bold", value=4, why="greed"), SPEND)
+    )
+    unspent = SheetDelta(
+        changes=(SetNumber(entity_id=PLAYER_ID, key="clever", value=2, why="free lunch"),)
+    )
 
     assert engine.violation(ready, offer, legal) is None
     assert engine.violation(ready, offer, over_cap) == "an approach cannot pass +3: ['bold']"

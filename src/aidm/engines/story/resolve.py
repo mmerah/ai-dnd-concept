@@ -17,7 +17,7 @@ PENALTY: Mapping[Difficulty, int] = MappingProxyType({"risky": 0, "demanding": 1
 TARGET = 7
 STRONG_FROM = 10
 GROWTH_MARK = AdjustCounter(
-    entity_id=PLAYER_ID, counter="growth", delta=1, reason="a setback earns growth"
+    entity_id=PLAYER_ID, counter="growth", delta=1, why="a setback earns growth"
 )
 
 

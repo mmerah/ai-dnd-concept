@@ -90,7 +90,7 @@ Every effect, one example each. Ids, keys, and tags here are illustrative: use t
 {"op": "move-actor", "entity_id": "pale-hound", "location_id": "courtyard"}
 {"op": "move-item", "item_id": "iron-key", "to_id": "warden"}
 {"op": "gain-improvised-item", "item_name": "a handful of gravel"}
-{"op": "adjust-counter", "entity_id": "warden", "counter": "hp", "delta": -3, "reason": "clawed"}
+{"op": "adjust-counter", "entity_id": "warden", "counter": "hp", "delta": -3, "why": "clawed by the hound"}
 {"op": "spend-counter", "entity_id": "player", "counter": "rations", "amount": 1}
 {"op": "add-tag", "entity_id": "warden", "tag_id": "shaken", "text": "(condition) Rattled and wary until they regroup."}
 {"op": "remove-tag", "entity_id": "player", "tag_id": "poisoned"}
@@ -126,7 +126,7 @@ Example 1:
           "entity_id": "player",
           "counter": "stress",
           "delta": 1,
-          "reason": "the door gives, and something inside answers"
+          "why": "the door gives, and something inside answers"
         }
       ]
     },
@@ -138,7 +138,7 @@ Example 1:
           "entity_id": "player",
           "counter": "stress",
           "delta": 2,
-          "reason": "the seal holds and the whispering finds him"
+          "why": "the seal holds and the whispering finds him"
         },
         {
           "op": "add-tag",

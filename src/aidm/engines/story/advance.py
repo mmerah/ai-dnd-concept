@@ -1,5 +1,5 @@
 from aidm.engines.loader import Engine
-from aidm.state.sheet import AdvancementOffer, SheetDelta, apply_delta
+from aidm.state.sheet import AdvancementOffer, Sheet
 from aidm.state.world import GameState, player_sheet
 
 from .actions import APPROACHES
@@ -22,10 +22,8 @@ def offered(engine: Engine, state: GameState) -> AdvancementOffer | None:
     return OFFER if growth.current >= GROWTH_REQUIRED else None
 
 
-def check_delta(state: GameState, delta: SheetDelta) -> str | None:
-    """Story's own caps, read off the sheet the delta would leave behind."""
-    after = player_sheet(state).model_copy(deep=True)
-    _ = apply_delta(after, delta)
+def check_delta(_state: GameState, after: Sheet) -> str | None:
+    """Story's caps are absolute, so nothing before the change matters."""
     if raised := sorted(name for name in APPROACHES if after.numbers[name] > MAX_APPROACH):
         return f"an approach cannot pass +{MAX_APPROACH}: {raised}"
     stress = after.counters["stress"].maximum

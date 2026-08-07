@@ -22,7 +22,7 @@
     "entity_id": "warden",
     "counter": "hp",
     "delta": -3,
-    "reason": "clawed"
+    "why": "clawed by the hound"
   },
   {
     "op": "spend-counter",
