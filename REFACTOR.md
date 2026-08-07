@@ -1,310 +1,333 @@
-# Kernel refactor — phased plan
+# Vision refactor — phased plan
 
-Decided 2026-08-06, revised same day after adversarial review. The current architecture
-has extension points, but each is a closed list: engines must ship a plan type plus four
-hooks; the workspace, persisted `Turn`, and trace panel hardcode the four roles; every new
-world mutation extends the central `Effect` union; per-entity state has exactly one shape
-(`Sheet`). Party membership, memories, quests, new roles, and new engines would all keep
-editing the same central files.
+Decided 2026-08-07. Supersedes the 2026-08-06 kernel plan: its phases 1–2 shipped
+(PROGRESS.md), its remaining phases are folded in here, reordered and extended to
+implement VISION.md in full. VISION.md holds the destination and the argument; this file
+holds the route, the code-level decisions, and the evidence rules. Where this plan
+deviates from the vision's own phase order, the deviation is stated at the phase that
+makes it.
 
-The refactor collapses this to one rule: **the kernel knows how to store, validate,
-change, run, and trace; engines know rules; workflows know roles; content knows the
-world.** D&D mechanics stay ordinary Python — attack, spell, rest, and advancement rules
-are genuine domain complexity, never to be DSL'd away.
+The finish line, from the vision's success list in this codebase's terms:
 
-Acceptance criteria for the whole effort:
-
-- No engine ships a `TurnPlanBase` subclass; no resolver contains an `isinstance`
-  downcast. Adding an action to an engine touches only that engine's `actions.py` and
-  `resolve.py`.
-- Adding a role changes no runtime, trace, save, or UI code: the new step brings its own
-  module (render function + step function) and is inserted into the workflow assembly.
-- Both engines keep the identical file skeleton (layout at the end of this document);
-  dnd5e additionally carries `records.py` and `packs/` because it ships content. The
-  refactor changes file contents, never the file set.
-- Framework LOC drops. Each phase states its budget below; every phase PR reports the
-  `src/aidm` line delta, and a phase exceeding its additions budget sheds scope.
+- story and ironsworn ship no runtime Python beyond a ~10-line plugin shim;
+  `dnd5e/actions.py` and `dnd5e/resolve.py` are deleted, their mechanics VM programs
+  over content facts. A mechanic the VM cannot express cleanly stays Python as a named
+  exception in the shim, never scattered.
+- A new content pack introduces no Python record classes; `EnginePlugin.record_types`
+  shrinks toward empty.
+- Locations connect, and NPCs join the party, through first-class relations.
+- A quest advances because committed Facts fired hooks and moved threads — no engine or
+  scenario Python.
+- Memories outlive the history window. Every role stays one bounded call; the host owns
+  the workflow (`default_workflow` already does; keep it true).
+- Live evals never end a phase below where it started. Through phase 7 `src/aidm`
+  shrinks (~5.5k → ~4.9k lines) while gaining relations, threads, hooks, and the VM;
+  phases 8–10 are features that add code and pay in capability, not LOC — each names
+  what it deletes when promoted to build-ready.
 
 Cross-phase rules:
 
-- Golden fixtures are the behavior contract. A phase that changes a persisted or rendered
-  shape regenerates exactly the fixture families it names below, and the diff is
-  reviewed; any other fixture moving is a bug.
-- `SAVE_VERSION` bumps in every phase that changes persisted bytes (1, 3, 5, 6). Stale
-  saves are refused, never converted (`content/store.py` already enforces this).
-- `scripts/evals/run.py` imports pipeline internals (`default_cast`, `TurnWorkspace`,
-  `render_director`, `PlanContext`) and `scripts/evals/probes.py` matches op strings and
-  fact kinds on dumped plans. Phases 1, 2, and 5 must update the eval scripts and re-run
-  the suite against `baseline.md`.
+- **Golden fixtures are the behavior contract.** A phase regenerates exactly the fixture
+  families it names; any other fixture moving is a bug. `SAVE_VERSION` bumps in every
+  phase that changes persisted bytes; stale saves are refused, never converted
+  (`content/store.py` enforces this). The `Effect` union is model-facing: any phase
+  changing it also regenerates `engines/examples.json` (the loader's every-op-once
+  vocabulary check), the `instructions/*` family, and both plan schemas.
+- **The current implementation is the oracle.** Before deleting a resolver, the
+  replacement runs against it on identical state and seeded `Random`; facts and
+  committed state must match. Delete only at parity.
+- **Eval gates compare like for like.** Any phase touching a model-facing schema or
+  prompt re-runs the live suite against a same-hour HEAD run from a worktree — never a
+  stale baseline file (phase-2 lesson). A regression that prompt tuning cannot recover
+  takes the phase's named bail-out. `scripts/evals/run.py` imports `director_stage`,
+  `TurnWorkspace`, `PlanContext`, `resolve_step`, `render_director`; `probes.py` matches
+  effect-op strings, fact kinds, and sheet keys — phases moving any of those update the
+  scripts in the same branch.
+- **Output-mode caution is standing policy.** gpt-oss has failed `NativeOutput` on large
+  schemas before (director history): every new or grown role schema gets a live probe
+  before its output mode is trusted.
+- **Every phase PR reports the `src/aidm` line delta.** Budgets below are estimates, not
+  contracts (phase-1 lesson: the work can be right and the budget wrong) — but a phase
+  far over budget sheds scope rather than growing the framework.
+- **Phase resolution.** Only the next unshipped phase carries build-ready detail. Later
+  phases are held at gate resolution deliberately — their specs depend on earlier
+  outcomes — and are rewritten to build-ready detail in this file when they become next.
 
-## Phase 1 — Worldkeeper + generic steps and trace (~2 days, budget −200)
+## Phase 0 — Close the eval debt (~1 day, LOC ≈ 0 in `src/aidm`)
 
-Two changes that both rewrite `Turn` and `trace.py`, shipped as one branch so the save
-shape, trace panel, and turn fixtures churn once.
+The vision makes evals the architectural test; today only the Director is measured.
+Every model surface later phases rewrite gets a baseline first. All but the worldkeeper
+evals are already-recorded debt (IDEAS.md).
 
-**1a. Merge Maintainer + Creator into one Worldkeeper role step.** Today the Maintainer
-proposes growth requests, code screens them, and the Creator runs once per accepted
-entity — three concepts and 1 + N model calls for one job.
+- Advisor evals: cases that run `advisor` + `render_proposal` against a real offer
+  (story growth spend; 5e level-up via `advancement-ready`), checking
+  `Engine.violation(...) is None` plus per-case sheet probes. Extend `run.py` with a
+  role dimension rather than a second harness.
+- Live-probe the advisor's `NativeOutput(SheetDelta)` on gpt-oss (never done; the
+  worldkeeper probe pattern applies).
+- Worldkeeper evals: narration → expected creations/no-creations, reusing the
+  turn-pipeline path.
+- The owed director cases: an advantage scenario, concentration replacing a spell,
+  story checks in both directions.
 
-- New output model in `state/turn.py`: `Creation` (kind, name, brief,
-  `detail: EntityDetail`, `location: str | None`) and
-  `WorldkeeperReport(creations: tuple[Creation, ...])`. `EntityDetail` is reused as-is.
-- One `worldkeeper_step` in `turn/pipeline.py` replaces `maintainer_step` +
-  `creator_step`; `render_maintainer` and `render_creator` merge into one
-  `render_worldkeeper` in `turn/prompts.py`.
-- Screening becomes code applied to the report, preserving today's exact behavior
-  (`screen_growth` + the creator loop):
-  1. Dedupe names casefolded against existing world entities AND earlier entries in the
-     same report; drop duplicates.
-  2. Cap at `max_growth`; drop the excess. Dropped entries are not persisted — no
-     rejection bookkeeping.
-  3. Apply locations first (today's `kind != "location"` sort), so an NPC placed "at" a
-     location created this same report resolves. Resolve `location` by casefolded name
-     against world locations plus locations created earlier in this batch; fall back to
-     the player's location.
-- Delete: `Growth`, `GrowthRequest`, `GrowthRejectionReason`, `RejectedGrowth`,
-  `ScreenedGrowth`, `screen_growth` (`state/turn.py`), `maintainer_step`, `creator_step`,
-  `_created_entity`'s request plumbing (`turn/pipeline.py`), `render_maintainer`,
-  `render_creator`, the `MAINTAINER`/`CREATOR` instruction constants (merged into one
-  `WORLDKEEPER`), and the maintainer/creator sections of `ui/panels/trace.py`.
-- Config: role settings key is `worldkeeper`; `ROLES__MAINTAINER__*` /
-  `ROLES__CREATOR__*` env entries silently stop applying (`Settings.roles` is an open
-  dict — by design). Note it in the commit message.
-- Risk note: the merged schema is Growth plus `EntityDetail` per entry — bigger than the
-  maintainer schema the 3/3 gpt-oss NativeOutput probe covered. Live-probe it once before
-  trusting `NativeOutput`; fall back to `ToolOutput` if it writes empty output (same
-  failure mode as the director finding).
+Done when: director, advisor, and worldkeeper all have measured baselines the later
+gates can compare against.
 
-**1b. Generic step traces.** The script loop already exists (`TurnScript` is a
-`(name, StepFn)` tuple `run_turn` iterates); what's closed is the persisted `Turn` and the
-trace panel, which name each role.
+## Phase 1 — One change language (~3 days, budget −100)
 
-- New in `state/turn.py`: `StepTrace(name: str, kind: Literal["role", "code"],
-  prompt: str | None, output: dict[str, JsonValue] | str | None)`.
-- `Turn` becomes: `prompt`, `narration`, `facts`, `steps: tuple[StepTrace, ...]`. The
-  director's plan persists as the director step's `output` (dumped `mode="json"`, as
-  `Turn.plan` is today); `narrator_evidence` persists as the resolve step's `output`.
-- `TurnWorkspace` keeps `plan`, `evidence`, and `narration` as first-class fields —
-  `resolve_step` and `narrator_step` genuinely depend on them, and `run_turn`'s two
-  closing checks (plan settled, narration non-empty) stay. The
-  `growth`/`accepted`/`rejected`/`created` fields are deleted (1a). Steps append their
-  own `StepTrace` to `ws.steps`; the `ws.prompts` dict dies with it.
-- `trace_panel` loops over `entry.steps` — one generic section per step, prompt behind
-  the existing expansion. It is never edited for a new role again.
-- Dissolve `Cast`: `default_workflow(engine, settings, options) -> TurnScript` in
-  `turn/pipeline.py`, called from `app/session.py`. A challenger, second director, or
-  image step is an inserted `(name, StepFn)` pair whose module owns its render function;
-  `turn/prompts.py` remains the home of the shared scene machinery (`SceneSnapshot`,
-  `VisibleScene`, section helpers) new roles import.
+**Vision: the VM instruction set (§10) and the single vocabulary hooks, threads, and
+advancement speak.** This is the old plan's phase 5, promoted first because every later
+phase writes changes in it; its prerequisites (advisor evals, output-mode probe) are
+phase 0.
 
-Fixtures regenerated: `fixtures/turn/*`, `fixtures/prompts/*` (maintainer+creator →
-worldkeeper), `fixtures/schemas/growth.json` → worldkeeper schema. Tests touched:
-`test_growth.py`, `test_golden_turn.py` (`TURN_PROMPTS`), `test_context_boundary.py`.
-`scripts/evals/run.py` rebuilt around `default_workflow`. One `SAVE_VERSION` bump.
+- Unify `Effect` (`state/effects.py`, 10 ops) and `DeltaChange` (`state/sheet.py`,
+  7 ops) into one union named `Effect` in `state/effects.py`; `DeltaChange` and its ops
+  are deleted. Net new ops after merging the duplicates (set-number, set-note,
+  add/remove-tag): `grant-counter`, `change-counter`-with-maximum (fold into
+  `adjust-counter` as an optional `maximum` field), `add-ref`.
+- Every sheet-writing op carries `entity_id` (the advisor writes `player`) and
+  `why: str = ""` — optional so the Director's schema is not forced; the advisor's
+  output validator requires it non-empty, preserving the `CORE_ADVISOR` promise and the
+  confirmation panel's per-change reasons. Shape decisions where the duplicates
+  disagree, named now: `adjust-counter.reason` becomes this `why`; `add-tag` keeps the
+  effect shape (`tag_id` + `text`, name derived — the delta's free-form `SheetTag`
+  goes); `set-note` clearing an absent key stays a quiet no-op; `adjust-counter`'s new
+  `maximum` is advancing-only.
+- Context is a flag, not a vocabulary: `apply_effect(..., advancing: bool = False)`. At
+  turn time `set-number` refuses unknown keys and `grant-counter`/`add-ref` are refused
+  outright; advancing refuses any op that is not a sheet write on the player (one union
+  must not hand the advisor `move-actor`) and grows the sheet (today's `apply_delta`
+  semantics, ported exactly). `apply_delta`/`SheetDelta` become a thin wrapper or die;
+  `violation` and the advancement panel keep their behavior, now trialling on a
+  `GameState` draft rather than a bare sheet copy.
+- One op set, per-surface schemas: the plan model's `effects`/`branches` publish a
+  turn-time subset alias of the same op classes (no `grant-counter`/`add-ref`), the
+  advisor publishes the sheet-op subset, and `_effect_vocabulary` renders exactly the
+  Director's subset — a model is never shown an op its surface always refuses.
+- Creation stays out of the union: `GameState.add` and `GainImprovisedItem` already are
+  the creation bookkeeping.
+- Fixtures: `schemas/{story,dnd5e}/turn_plan.json`, `schemas/sheet_delta.json`,
+  `instructions/*` (the vocabulary block), `fixtures/turn/*` fact traces.
+  `SAVE_VERSION` bump. `probes.py` op strings updated.
+- Gate: full director suite + phase-0 advisor suite at parity. Bail-out (explicitly
+  allowed): keep two vocabularies and extract the shared mutation helpers. It is
+  cheap — the true duplication is ~60 lines, and hooks can speak the existing turn-time
+  `Effect` unmerged — so take it without ceremony if the advisor-surface rework drags;
+  the merge is preferred, not sacred.
 
-Acceptance: pipeline runs director → resolve → narrator → worldkeeper; no growth types
-remain; `trace.py` contains no role names.
+## Phase 2 — Relations (~3 days, budget +150 — a feature)
 
-## Phase 2 — Action registry, one TurnPlan (~2 days, budget −50)
+**Vision §2: relations are first-class state.** Proved by the vision's own two features:
+stateful location connections and party membership.
 
-Engines register actions; the loader builds the Director's action union; the four-hook
-plugin dies. The resolver signatures below are wider than a naive registry because the 5e
-resolvers genuinely need the engine (content, recharge spec) and the plan (branch
-inspection) — do not narrow them.
+- `Relation(Mutable)` in `state/world.py`: `id: Slug`, `kind: Slug`,
+  `source: EntityId`, `target: EntityId`, `directed: bool = True`,
+  `known: bool = False`, `tags: list[Slug] = []`. `WorldState.relations:
+  dict[Slug, Relation]`; `_consistent_world` checks endpoints exist. Notes and
+  per-relation sheets wait for a feature that needs them.
+- `parent_id` stays for containment — the holder topology is load-bearing in
+  `check_placement`, scene building, and item effects, and the vision calls the split
+  an implementation detail. Relations carry the non-containment truths.
+- New ops in the unified union: `add-relation`, `remove-relation`, `tag-relation`,
+  `untag-relation` (kind is a free `Slug`; endpoint existence validated; the id derived
+  from (kind, source, target); a duplicate refused, endpoints compared unordered when
+  undirected). A separate `reveal-relation` op — overloading `reveal` would mix the
+  entity and relation id namespaces and weaken its unknown-id refusal.
+- Core interprets exactly two kinds and one tag, as named constants with load-time
+  checks (`CONNECTED`, `PARTY_MEMBER`, `LOCKED_TAG` in `state/world.py`): a `connected`
+  relation must join two locations, a `party-member` an actor to the player — a typo'd
+  slug fails at load instead of silently disabling movement gating.
+- Connections: `world.json` gains `relations: tuple[Relation, ...]` (`ScenarioWorld`,
+  `content/authored.py`; kind `connected` between locations, undirected). **Movement
+  rule:** if the player's current location has any `connected` relation, `_move_actor`
+  for the player requires a known, un-`locked`-tagged connection from here to the
+  destination; a world with no connections keeps free movement — compat for unmigrated
+  worlds only, since whispering-vault is the shipped scenario for both engines and all
+  23 eval cases, so the gate is live everywhere once it authors connections. The
+  refusal string teaches the model the legal exits.
+- Party: kind `party-member` (NPC → player). A party member moves with the player in
+  `_move_actor` and is therefore always "here". Joining/leaving is the Director writing
+  `add-relation`/`remove-relation` when the fiction says so.
+- Prompts: scenes gain an EXITS section (known connections from here, locked state
+  shown) and party members are marked in HERE WITH THE PLAYER. `VisibleScene` carries
+  only `known` relations — a hidden connection is a secret passage, and the Narrator's
+  input type stays leak-free by construction.
+- whispering-vault authors its connections (study–cloister–bell_tower–vault) and at
+  least one locked/hidden one (the vault seal is exactly this).
+- Fixtures: `save/*`, `state/*`, `prompts/*`, both plan schemas. `SAVE_VERSION` bump.
+  Gate: the grown Director schema is live-probed on gpt-oss **before** fixtures are
+  built (schema size is the known reliability lever); then full suite plus one
+  movement-legality case and one party case. Bail-out, priced like phase 4's: if the
+  relation ops sink the suite, the Director's turn subset keeps only `reveal-relation`
+  and relation maintenance moves to hooks (phase 3) and the worldkeeper — the state
+  model and movement gating ship regardless.
 
-- In `engines/loader.py`, next to `EnginePlugin`:
+## Phase 3 — Threads + hooks (~3 days, budget +200 — a feature)
 
-  ```python
-  @dataclass(frozen=True, slots=True)
-  class ActionSpec[A]:
-      model: type[A]                # Frozen model with an `act` Literal discriminator
-      labels: Callable[[Engine, A], frozenset[Slug]]   # outcome labels; constant via lambda
-      resolve: Callable[[Engine, GameState, TurnPlanBase, A, Random], tuple[list[Fact], Slug | None]]
-      check: Callable[[Engine, GameState, TurnPlanBase, A], str | None] | None = None
-  ```
+**Vision §§3–5: Facts drive world systems.** The old plan's phase 6 plus Threads, so a
+quest advances from committed Facts without engine code.
 
-  `resolve` mutates the draft and returns the outcome; the **kernel** applies the matching
-  branch (`apply_branch`) and then the plan's unconditional effects — resolvers never
-  call `apply_branch` themselves. `check` receives the whole plan so 5e's `_double_spend`
-  (which inspects `plan.effects` and every branch) moves into the `CastSpell`/`UseFeature`
-  checks unchanged.
-- `EnginePlugin` drops `plan_type`, `check_plan`, `resolve_action`, `offered`,
-  `check_delta`; gains `actions: tuple[ActionSpec[...], ...]`,
-  `action_doc: str` (the engine-specific `action` field description — LLM-consumed,
-  runtime behavior, kept per engine), and `advancement: Advancement | None`.
-- `Advancement` (not "Progression" — the codebase already says advancement everywhere) is
-  a dataclass in `engines/loader.py`: `offered` + `check_delta`, implemented in each
-  engine's `advance.py` as today.
-- The loader builds the plan model once per engine with
-  `create_model("TurnPlan", __base__=TurnPlanBase, action=(...))` where the annotation is
-  `Annotated[Union[*models], Field(discriminator="act")] | None` — **trap**: a
-  single-action engine (story) collapses `Union[Risk]` to `Risk`, and a discriminator on
-  a non-union raises `PydanticUserError`; special-case one spec to plain `Risk | None`.
-  Pin the generated model's title/config so the emitted JSON schema is stable, then
-  regenerate `fixtures/schemas/{story,dnd5e}` and review the diff.
-- The kernel plan check (was `check_plan` per engine): speaker guard + branch-label check
-  (`check_plan_base`) + the spec's `check` + a trial resolve on a throwaway draft with
-  `Random(0)`, wrapped in `try/except ValueError` → refusal string. The wrap is mandatory:
-  an output validator that raises kills the turn instead of retrying (`loader.py` says
-  so today).
-- Delete: `StoryPlan`, `Dnd5ePlan`, `_story_plan`, `_dnd5e_plan`, the
-  `PlanCheck`/`ActionResolver`/`Offered`/`DeltaCheck` type aliases, and both engines'
-  `check_plan`/`resolve_action` wrappers. Each 5e `_resolved` match arm becomes that
-  action's `resolve` function; the `_labels` match becomes per-spec `labels`.
-- Delete `Dnd5ePlan.milestone_earned` and the `MILESTONE_TAG` path in
-  `dnd5e/resolve.py` outright: IDEAS.md records it as unmeasured, and scenario-marked
-  milestones (`milestone-level` on a location, already implemented in
-  `dnd5e/advance.py`) are the reliable path. This is the phase's main LOC win beyond the
-  downcasts.
-- Re-run evals live against `baseline.md` — the director schema shape changes, and
-  gpt-oss quality is sensitive to exactly this (eval-conditions history).
+- `Thread(Mutable)` in `state/world.py`: `id: Slug`, `kind: Slug`, `title: str`,
+  `status: Literal["active", "resolved", "dormant"]`, `stage: Slug | None`,
+  `note: str = ""`. `GameState.threads: dict[Slug, Thread]`; scenario `world.json`
+  authors the initial set. Deliberately small — a quest, an investigation, and a
+  countdown must all fit or the schema is wrong.
+- New op `advance-thread` (status and/or stage, `why` required when the advisor rule
+  does not apply — hooks supply their hook id). Written by hooks now and the
+  Threadkeeper later; the Director may write it too (it is validated like any effect;
+  hooks remain the reliable path).
+- Hooks, exactly as previously specified: data in `world.json`
+  (`hooks: tuple[Hook, ...]`) — id, match (`kind` + exact-equality `data` fields),
+  `effects: tuple[Effect, ...]`, optional `note`. Shape-validated at load, no trial
+  application; composed onto `GameState` at world build like the threads, so the hook
+  step, `run.py`'s `_turn`, and saves all see them. `Hook` lives beside `Thread` in
+  `state/world.py`; the step in `turn/pipeline.py`. A code step **between resolve and
+  narrator** runs one single pass per turn over unfired hooks against the facts so far:
+  apply effects, emit `hook_fired`, add to `GameState.fired_hooks: set[str]`, and
+  recompute `ws.evidence` — the Narrator narrates hook consequences the turn they
+  happen. Worldkeeper facts never feed hooks and lose nothing real: its creations carry
+  runtime-generated ids no authored match could name. Chaining across turns only; no
+  fixpoint. A refusing effect on authored-content bugs records `hook_failed` with the
+  reason, skips that hook's remaining effects (earlier ones stand), and marks the hook
+  fired — never kills the player's turn.
+- Notes go to the **Director only, next turn**: `GameState.pending_notes:
+  tuple[str, ...]`, rendered as a SCENARIO NOTES section, cleared on the draft after
+  rendering. The Narrator needs no note channel — hook facts reach it through the
+  recomputed evidence, leak-filtered per fact by `Fact.narrator` like every other
+  fact — and a scenario-authored free-text note shown to the Narrator would be a
+  canon-leak channel by construction.
+- The Director's prompt gains an ACTIVE THREADS section (title, stage, note). The
+  Narrator does not see threads.
+- whispering-vault ships one thread (the vault seal) advanced by authored hooks
+  (e.g. `entity_discovered: vault` → stage moves, note steers the Director).
+- Fixtures: `save/*`, `turn/*`, director `prompts/*`, plan schemas (`advance-thread`).
+  `SAVE_VERSION` bump. Gate: full suite; one eval case asserting a hook fired, its
+  thread moved, and its facts landed in the narrator evidence — `run.py`'s `_turn` runs
+  director + resolve only today and must append the hook pass in the same branch, or
+  the case can never fire. `advance-thread` shares phase 2's bail-out: if it hurts the
+  Director suite it becomes hooks-only and leaves the turn subset.
 
-Acceptance: no engine ships a plan subclass or an isinstance downcast; both engines'
-`rules.py` declare `PLUGIN` with `actions=`, `action_doc=`, `advancement=`; `story/` and
-`dnd5e/` have the identical file set.
+## Phase 4 — Rule VM, story proof (~4 days, eval-gated, budget +250 VM / −75 story)
 
-## Phase 3 — Components (~2 days, budget +80, accepted)
+**Vision §§9–11 and its phase 4: the architectural proof point.** Deviation from the
+vision's order, stated: the vision generalizes content (its phase 3) before the VM. We
+prove the VM on story first because story ships no content — the proof is cheaper, and
+if the VM fails its gate, the content classes were never churned for nothing.
 
-`Record.rules: Sheet` becomes `Record.components`, with `Sheet` surviving as the `sheet`
-component. Speculative until `memory`/`location-state` land — accepted deliberately; the
-budget is honest about it being LOC-positive.
+- Engines gain `actions.json`: per action — name, doc, params (a **closed** field-type
+  set: entity-id, int with bounds, str with bounds (`Risk.stakes`), slug, dice-expr,
+  enum, optional-of; each param carries a description; the loader builds the action
+  model with `create_model` exactly as `_plan_model` builds the plan), outcome labels,
+  and a `program`.
+- A program is a bounded, straight-line instruction list — no loops, no recursion, no
+  nesting beyond one conditional level; validated at load. Primitives (closed set,
+  mapped to code that exists): `let` (param / sheet number / counter / arithmetic /
+  table over an enum param / presence of an optional param as 0 or 1 — the last two are
+  `Risk`'s difficulty penalty and help/hinder ±1), `require` (predicate → refusal
+  string; becomes the `ValueError` the kernel's trial resolve already turns into a
+  retry), `roll` (`state/dice.py`), `outcome` (threshold table over a total → label),
+  `apply` (one op from the unified `Effect` union with computed arguments, optionally
+  predicated on the outcome label and/or a predicate). Predicates (closed):
+  `has-tag(actor, tag, include-carried)` — story's `_helps` walks carried items, and
+  that pressure point is designed in, not discovered — `counter-full(actor, key)`
+  (TAKEN OUT), and `is-player(actor)` (the growth mark on a player setback).
+- The kernel executes programs where `ActionSpec.resolve` runs today; declarative and
+  Python `ActionSpec`s coexist during migration (dnd5e stays Python this phase).
+- Story's `Risk` reimplemented declaratively: approach bonus, help/hinder ±1, difficulty
+  penalty table, 2d6 vs 7/10 → strong/mixed/setback, growth mark on player setback,
+  TAKEN OUT and tag checks as `require`. Oracle: `resolve_risk`/`check_risk` kept until
+  the VM produces identical facts and state on identical seeds, then deleted.
+- The generated action model must emit the same JSON schema as today's `Risk` (fixture
+  diff empty or trivially reviewed) — the model must not notice the migration.
+- Gate: story suite ≥ phase-0/1 baseline. Bail-out: if Risk needs a loop, deeper
+  nesting, or an open-ended primitive, the vision's §11 test failed at the first
+  hurdle — stop, keep `ActionSpec` Python as the permanent engine seam, and strike VM
+  phases from this file. That outcome is a finding, not a failure.
 
-The validation mechanism (this is the part that must not be improvised — the transaction
-model validates with no engine in scope today):
+## Phase 5 — Ironsworn, an engine with no Python (~3 days, LOC excluded — content)
 
-- `Record.components: dict[Slug, SerializeAsAny[BaseModel]]` holds **live typed models**,
-  so resolvers keep mutating in place (`sheet_of` returns the same object all turn) and
-  `model_dump(round_trip=True)` keeps working per entry.
-- A registry `ComponentRegistry = Mapping[Slug, type[BaseModel]]`; core registers
-  `{"sheet": Sheet}` in `state/world.py`; `EngineSpec`-level additions come later, with
-  real features.
-- Validation reaches the registry through Pydantic validation context: a wrap validator
-  on `Record.components` reads `info.context["components"]` and validates each entry
-  against its registered type (unknown component name → fail fast). Consequently
-  `GameState.committed()` gains the registry:
-  `committed(registry: ComponentRegistry)`. Every call site already has the engine in
-  scope: `resolve_step`, `run_turn`'s final commit, `_trial` in `state/plan.py`,
-  `GameSession.apply_proposal`/`_begun`. `Engine` exposes `engine.components`.
-- Typed access: `component(state, entity_id, Sheet)` in `state/world.py` — looks up by
-  the registered name for that type, asserts the instance type, returns it. `sheet_of`
-  and `player_sheet` keep their exact signatures, implemented on top of it.
-- `content/authored.py` is untouched in meaning: an overlay's `Rules` dict is still the
-  sheet definition; `compose_world` builds `components={"sheet": ...}`.
-- `engine.validate_state` keeps its current job (canonical keys, ref resolution) — it is
-  not the component validator; the transaction boundary is.
+**Vision success criterion 4.** Held at gate resolution until phase 4 ships.
 
-Fixtures regenerated: `fixtures/save/*`, `fixtures/state/*`. One `SAVE_VERSION` bump.
+- New engine directory per the canonical layout: shim `rules.py` (id, badge,
+  engine_dir, no-op advancement callables), `spec.json` (momentum via `Counter.minimum < 0` — already supported),
+  `actions.json` (face-danger and 1–2 more moves), `director.md`, `advancement.md`,
+  `examples.json`. No packs until it ships content.
+- Playable content: `scenarios/whispering-vault/ironsworn.json` overlay and an
+  ironsworn character overlay (`load_scenario`/`load_character` are engine-keyed).
+- One permanent eval scenario. Acceptance: zero core changes beyond one `ENGINE_MODULES`
+  line; zero engine Python beyond the shim. Any seam that forces more is fixed before
+  merging.
 
-Acceptance: a new component type is one model + one registry entry; `sheet` behavior is
-byte-identical in saves apart from the `rules` → `components.sheet` key move.
+## Phase 6 — Generic content facts (~4 days, budget −250)
 
-## Phase 4 — Ironsworn proof (~2 days, LOC excluded — new engine content)
+**Vision §7 and its phase 3.** Held at gate resolution; specified fully when next. The
+shape: `Record` gains stored generic data (`numbers`, `notes` become data instead of
+per-class computed methods; a `facts` map carries what the VM reads — level, save
+ability, damage and scaling tables). `spec.json` collections declare required facts per
+collection (data schemas, not classes). Simple collections first (languages,
+alignments, conditions are already bare `Record`); the heavy ones (spells, weapons,
+monsters, levels) migrate together with the phase-7 mechanics that read them. The SRD
+importer moves the interpretation to authoring time (vision §15) and the byte-identical
+round-trip regression is re-established against the regenerated pack.
 
-Two engines can share an accident; a third is the test. Copies the canonical layout
-file-for-file: actions (face-danger-style moves), resolvers, `spec.json` (momentum via
-`Counter.minimum < 0`, already supported), `director.md`, `advancement.md`,
-`examples.json`. No `records.py`/`packs/` until it ships content.
+## Phase 7 — D&D on the VM (~2 weeks, eval-gated per mechanic, large −)
 
-- A playable proof also needs content the plan for once must not forget:
-  `scenarios/whispering-vault/ironsworn.json` overlay and an ironsworn character overlay
-  (`load_scenario`/`load_character` are engine-keyed).
-- Ironsworn ships permanently and gets one eval scenario, or phase 5's vocabulary change
-  has an engine no eval covers.
+**Vision phase 5.** Held at gate resolution. The order is the vision's: checks, rests,
+attacks, limited-use features, healing, spell attacks, spell saves, scaling,
+concentration, advancement last. Per mechanic: oracle cases (state, action, seed → facts
++ state) against the Python resolver, delete only at parity, full suite at each merge.
+Known hard spots, named now: `rest` wants a bounded refill builtin (an engine-neutral
+`refill` op in the `Effect` union — not `recharge`, which already names the `Counter`
+label field — spec-driven, outside the Director's turn subset); `_attack_terms`' weapon/stat-block
+branching and finesse `max(str, dex)` will test the predicate set. A mechanic the VM
+cannot express cleanly stays Python as a named exception in the shim — §11's explicit
+escape, used sparingly and listed.
 
-Acceptance: zero core-file changes except one line in `ENGINE_MODULES`. If any
-phase-1/2/3 seam forces more, fix the seam before merging.
+## Phase 8 — Scene Director / Rules Director split (~3 days, eval-gated)
 
-## Phase 5 — One change language (~3 days, eval-gated, budget −100)
+**Vision its phase 6.** A `SceneDirective` role step (focus, pressure, relevant threads,
+stakes) inserted before a narrowed Rules Director — the step machinery already takes an
+inserted `(name, StepFn)` pair. Strictly A/B against the single director on plan
+correctness, tokens, latency, retries; configuration keeps whichever wins, per scenario
+if the data says so.
 
-Unify `Effect` and `DeltaChange` into one union applied by one function. Highest
-model-quality risk in the plan — the Director's effect vocabulary is rewritten and the
-advisor's schema grows. Prerequisites before any code:
+## Phase 9 — Memories + keepers (~4 days)
 
-1. Write advisor evals (none exist — today's suite gates only the Director half).
-2. Live-probe the advisor's `NativeOutput` on gpt-oss (IDEAS.md item, never done).
+**Vision §6 and its phase 7.** `Memory` records (id, owner entity-or-world, text, tags,
+source turn) on `GameState`; authored memories and deterministic retrieval (owner
+present in scene → rendered section) first; then a Memorykeeper step proposing few-or-no
+memories per turn under admission code, and a Threadkeeper for fuzzy thread transitions
+restricted to legal moves. Both output-mode probed before trust.
 
-The design decisions, so nobody re-derives them mid-flight:
+## Phase 10 — Character creation workflows (~2 weeks)
 
-- The unified union keeps the name `Effect`, lives in `state/effects.py`; `DeltaChange`
-  and its ops in `state/sheet.py` are deleted. Saves and prompts already speak "effects".
-- Every op carries `entity_id` (the advisor writes `player`) and `why: str = ""` —
-  optional so the Director's schema doesn't force it; the advisor's output validator
-  requires it non-empty, keeping the `CORE_ADVISOR` promise and the confirmation panel's
-  per-change reasons.
-- Context split is a flag, not a vocabulary: `apply_effect(..., advancing: bool = False)`.
-  At turn time `set-number` refuses unknown keys and `grant-counter`/`add-ref` are
-  refused outright; advancing, they grow the sheet (today's semantics, ported exactly).
-- Creation stays out of the union: `GameState.add` called from the worldkeeper step and
-  `GainImprovisedItem` are already the creation bookkeeping; nothing new.
-- `scripts/evals/probes.py` matches op strings on dumped plans — update alongside, then
-  run the full suite against `baseline.md` before merging.
-- Bail-out, explicitly allowed: if evals regress and prompt tuning doesn't recover them,
-  keep two vocabularies and extract only the shared mutation helpers (counter lookup and
-  clamp, tag add/remove, note set) — that captures most of the ~150-line duplication at
-  zero model risk.
+**Vision §14 and its phase 8.** Declarative choice workflows (steps, legal options from
+content, min/max, derived values), generic UI rendering, story first then 5e;
+advancement migrates onto the same machinery where practical; the advisor becomes the
+optional natural-language front end it already almost is. This is the plan's one
+candidate speculative framework: it is not built before ironsworn advancement gives the
+workflow engine its second user, and its build-ready spec must name what it deletes.
 
-Fixtures regenerated: schemas, `fixtures/turn/*` fact traces. `SAVE_VERSION` bump.
+## Phases 11–12 — Authoring and media
 
-## Phase 6 — Scenario hooks, a proto-quest system (~2 days, budget +100 — a feature)
+**Vision §§16–18, its phases 9–10.** Scenario creator (premise → the same `world.json` +
+overlays the loaders already validate), engine creator (rules source → the declarative
+package of phase 5), typed `MediaRequest`s executed at the boundary. Agentic workflows
+are allowed here — authoring is not the turn loop — and their output passes the exact
+load path, validation, and evals hand-authored content does.
 
-Scenario-authored triggers over the `Fact` stream: the simplest system that lets a story
-progress from player actions. After phase 5 so hook consequences are written in the same
-`Effect` language, not invented twice.
+## Canonical engine layout (target)
 
-- A hook is data in `world.json` (`hooks: tuple[Hook, ...]` on `ScenarioWorld`): an id, a
-  match (`kind` plus exact-equality `data` fields, e.g.
-  `{"kind": "entity_discovered", "entity_id": "vault"}`), `effects: tuple[Effect, ...]`,
-  and an optional `note: str`. Shape-validated at load; no trial application (a hook may
-  reference state that only exists mid-game).
-- A code step runs **after the worldkeeper** (so it sees every fact the turn produced,
-  including creations), one single pass per turn: for each unfired hook whose match hits
-  any fact, apply its effects, emit a `hook_fired` Fact, and add its id to
-  `GameState.fired_hooks: set[str]`. Chaining happens across turns, never within one
-  pass — no fixpoint loop.
-- A refusing effect (`ValueError`) must not kill the player's turn on an authored-content
-  bug: catch it, record a `hook_failed` Fact with the reason, and mark the hook fired
-  anyway (no retry loops).
-- The note transports to the **Director only, next turn** — the Director already ran when
-  hooks evaluate, and a scenario-authored free-text note shown to the Narrator is a
-  canon-leak channel by construction (the Narrator's input type must have no field a leak
-  can travel through). Mechanism: notes append to `GameState.pending_notes:
-  tuple[str, ...]`; `render_director` gains a `SCENARIO NOTES` section; the director step
-  clears them on the draft after rendering. The Narrator needs nothing: a hook's effects
-  produce Facts, and Facts already reach it through `narrator_evidence` with the leak
-  filter built in.
-- This is the seed of quests/events: a quest stage is a hook whose effects set state and
-  whose note steers the Director. Grow it only when a real scenario outruns it.
-
-Fixtures: `fixtures/save/*` (fired set, pending notes), director prompt fixtures.
-`SAVE_VERSION` bump.
-
-Acceptance: whispering-vault ships at least one authored hook; firing it requires no core
-edits beyond the hook runner itself.
-
-## Feature-time (not this refactor)
-
-- Relations (`at`, `connected`, `party-member`, `holds`) replace `parent_id` when
-  connected locations or party membership is built.
-- Additional components (`memory`, `location-state`, `quest`) land with their features,
-  on the phase-3 registry.
-- Entry-point engine discovery: rejected — `ENGINE_MODULES` stays a two-line tuple.
-
-## Canonical engine layout
-
-Both engines keep this identical skeleton; a new engine copies it file-for-file. dnd5e
-alone adds the two content-bearing entries. The refactor changes file contents, never the
-file set.
+During migration dnd5e keeps `actions.py`, `resolve.py`, `records.py` until phases 6–7
+delete them; the file set below is the end state a new engine copies.
 
 ```
 src/aidm/engines/<engine>/
-  rules.py         # the PLUGIN: id, badge, engine_dir, actions, action_doc, advancement, (record_types)
-  actions.py       # action models + outcome-label constants
-  resolve.py       # per-action resolve + check functions (ordinary Python)
-  advance.py       # offered / check_delta — the Advancement bundle's implementation
-  director.md      # role instructions
+  rules.py         # ~10-line shim: id, badge, engine_dir
+  spec.json        # templates, recharge, collections + required content facts
+  actions.json     # declarative actions: params, labels, program, doc
+  director.md      # Rules Director instructions
   advancement.md
   examples.json    # worked plans, validated at load against the built TurnPlan
-  spec.json        # templates, recharge, collections
-  records.py       # dnd5e only — typed pack records
-  packs/           # dnd5e only — shipped content
+  packs/           # content only if the engine ships it: records + facts, no classes
 ```
