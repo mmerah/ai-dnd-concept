@@ -20,6 +20,9 @@ HERE WITH THE PLAYER:
     numbers: bold 0, clever 0, empathetic 0, subtle 0
     counters: growth 0/3, stress 0/5
 
+EXITS FROM HERE:
+- the cloister[id=cloister]
+
 KNOWN TO THE PLAYER, BUT ELSEWHERE:
 - the cloister[id=cloister] (location) — A frost-rimed colonnade around a dead garden; Brother Tomas sweeps it to no purpose.
 - Brother Tomas[id=tomas] (npc) — at the cloister — A deaf old porter who sweeps the cloister and knows almost nothing about the vault.

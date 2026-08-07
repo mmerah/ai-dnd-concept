@@ -1,5 +1,47 @@
 {
   "$defs": {
+    "AddRelation": {
+      "additionalProperties": false,
+      "description": "Record a lasting tie between two entities that is not containment: carrying an item or\nstanding somewhere are moves, not relations.",
+      "properties": {
+        "op": {
+          "const": "add-relation",
+          "default": "add-relation",
+          "title": "Op",
+          "type": "string"
+        },
+        "kind": {
+          "description": "What the tie is: `connected` joins two locations the player can walk between, `party-member` puts an actor here into the player's party (source is the actor, target is `player`).",
+          "maxLength": 64,
+          "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$",
+          "title": "Kind",
+          "type": "string"
+        },
+        "source": {
+          "description": "Exact id of the tie's source entity.",
+          "title": "Source",
+          "type": "string"
+        },
+        "target": {
+          "description": "Exact id of the tie's target entity.",
+          "title": "Target",
+          "type": "string"
+        },
+        "why": {
+          "default": "",
+          "description": "One short sentence saying what causes this change, for the player.",
+          "title": "Why",
+          "type": "string"
+        }
+      },
+      "required": [
+        "kind",
+        "source",
+        "target"
+      ],
+      "title": "AddRelation",
+      "type": "object"
+    },
     "AddTag": {
       "additionalProperties": false,
       "description": "Put a lasting condition, edge, or burden on an entity. The sheet shows the id written\nout: `battle-worn` appears as Battle Worn.",
@@ -483,6 +525,48 @@
       "title": "OutcomeBranch",
       "type": "object"
     },
+    "RemoveRelation": {
+      "additionalProperties": false,
+      "description": "Break a lasting tie that `add-relation` recorded.",
+      "properties": {
+        "op": {
+          "const": "remove-relation",
+          "default": "remove-relation",
+          "title": "Op",
+          "type": "string"
+        },
+        "kind": {
+          "description": "Exact kind of the tie, such as `connected`.",
+          "maxLength": 64,
+          "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$",
+          "title": "Kind",
+          "type": "string"
+        },
+        "source": {
+          "description": "Exact id of the tie's source entity.",
+          "title": "Source",
+          "type": "string"
+        },
+        "target": {
+          "description": "Exact id of the tie's target entity.",
+          "title": "Target",
+          "type": "string"
+        },
+        "why": {
+          "default": "",
+          "description": "One short sentence saying what causes this change, for the player.",
+          "title": "Why",
+          "type": "string"
+        }
+      },
+      "required": [
+        "kind",
+        "source",
+        "target"
+      ],
+      "title": "RemoveRelation",
+      "type": "object"
+    },
     "RemoveTag": {
       "additionalProperties": false,
       "description": "Lift a tag an entity carries, when the fiction ends it.",
@@ -571,6 +655,42 @@
         "entity_id"
       ],
       "title": "Reveal",
+      "type": "object"
+    },
+    "RevealRelation": {
+      "additionalProperties": false,
+      "description": "Show the player a way through they did not know about: the connection equivalent of\n`reveal`. Write this before moving the player through a passage they have not found yet.",
+      "properties": {
+        "op": {
+          "const": "reveal-relation",
+          "default": "reveal-relation",
+          "title": "Op",
+          "type": "string"
+        },
+        "kind": {
+          "description": "Exact kind of the tie, such as `connected`.",
+          "maxLength": 64,
+          "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$",
+          "title": "Kind",
+          "type": "string"
+        },
+        "source": {
+          "description": "Exact id of the tie's source entity.",
+          "title": "Source",
+          "type": "string"
+        },
+        "target": {
+          "description": "Exact id of the tie's target entity.",
+          "title": "Target",
+          "type": "string"
+        }
+      },
+      "required": [
+        "kind",
+        "source",
+        "target"
+      ],
+      "title": "RevealRelation",
       "type": "object"
     },
     "SetNote": {
@@ -700,19 +820,74 @@
       "title": "SpendCounter",
       "type": "object"
     },
+    "TagRelation": {
+      "additionalProperties": false,
+      "description": "Mark a tie — most often a connection — as blocked, such as `locked`, until\n`untag-relation` lifts it again.",
+      "properties": {
+        "op": {
+          "const": "tag-relation",
+          "default": "tag-relation",
+          "title": "Op",
+          "type": "string"
+        },
+        "kind": {
+          "description": "Exact kind of the tie, such as `connected`.",
+          "maxLength": 64,
+          "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$",
+          "title": "Kind",
+          "type": "string"
+        },
+        "source": {
+          "description": "Exact id of the tie's source entity.",
+          "title": "Source",
+          "type": "string"
+        },
+        "target": {
+          "description": "Exact id of the tie's target entity.",
+          "title": "Target",
+          "type": "string"
+        },
+        "tag": {
+          "description": "Stable slug for the tag, such as `locked`.",
+          "maxLength": 64,
+          "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$",
+          "title": "Tag",
+          "type": "string"
+        },
+        "why": {
+          "default": "",
+          "description": "One short sentence saying what causes this change, for the player.",
+          "title": "Why",
+          "type": "string"
+        }
+      },
+      "required": [
+        "kind",
+        "source",
+        "target",
+        "tag"
+      ],
+      "title": "TagRelation",
+      "type": "object"
+    },
     "TurnEffect": {
       "discriminator": {
         "mapping": {
+          "add-relation": "#/$defs/AddRelation",
           "add-tag": "#/$defs/AddTag",
           "adjust-counter": "#/$defs/AdjustCounter",
           "gain-improvised-item": "#/$defs/GainImprovisedItem",
           "move-actor": "#/$defs/MoveActor",
           "move-item": "#/$defs/MoveItem",
+          "remove-relation": "#/$defs/RemoveRelation",
           "remove-tag": "#/$defs/RemoveTag",
           "reveal": "#/$defs/Reveal",
+          "reveal-relation": "#/$defs/RevealRelation",
           "set-note": "#/$defs/SetNote",
           "set-number": "#/$defs/SetNumber",
-          "spend-counter": "#/$defs/SpendCounter"
+          "spend-counter": "#/$defs/SpendCounter",
+          "tag-relation": "#/$defs/TagRelation",
+          "untag-relation": "#/$defs/UntagRelation"
         },
         "propertyName": "op"
       },
@@ -746,8 +921,73 @@
         },
         {
           "$ref": "#/$defs/SetNumber"
+        },
+        {
+          "$ref": "#/$defs/AddRelation"
+        },
+        {
+          "$ref": "#/$defs/RemoveRelation"
+        },
+        {
+          "$ref": "#/$defs/TagRelation"
+        },
+        {
+          "$ref": "#/$defs/UntagRelation"
+        },
+        {
+          "$ref": "#/$defs/RevealRelation"
         }
       ]
+    },
+    "UntagRelation": {
+      "additionalProperties": false,
+      "description": "Lift a tag a tie carries, when the fiction ends it.",
+      "properties": {
+        "op": {
+          "const": "untag-relation",
+          "default": "untag-relation",
+          "title": "Op",
+          "type": "string"
+        },
+        "kind": {
+          "description": "Exact kind of the tie, such as `connected`.",
+          "maxLength": 64,
+          "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$",
+          "title": "Kind",
+          "type": "string"
+        },
+        "source": {
+          "description": "Exact id of the tie's source entity.",
+          "title": "Source",
+          "type": "string"
+        },
+        "target": {
+          "description": "Exact id of the tie's target entity.",
+          "title": "Target",
+          "type": "string"
+        },
+        "tag": {
+          "description": "Exact id of a tag the tie carries.",
+          "maxLength": 64,
+          "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$",
+          "title": "Tag",
+          "type": "string"
+        },
+        "why": {
+          "default": "",
+          "description": "One short sentence saying what causes this change, for the player.",
+          "title": "Why",
+          "type": "string"
+        }
+      },
+      "required": [
+        "kind",
+        "source",
+        "target",
+        "tag"
+      ],
+      "title": "UntagRelation",
+      "type": "object"
     },
     "UseFeature": {
       "additionalProperties": false,

@@ -91,6 +91,7 @@ def test_the_narrators_view_has_no_field_that_could_hold_unrevealed_canon() -> N
         "here",
         "known_elsewhere",
         "placements",
+        "exits",
     }
     dumped = str(visible.model_dump())
     assert "The Secret" not in dumped

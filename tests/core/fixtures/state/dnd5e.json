@@ -1,5 +1,5 @@
 {
-  "save_version": 40,
+  "save_version": 41,
   "scenario_id": "whispering-vault",
   "character_id": "kael",
   "scenario": {
@@ -370,6 +370,34 @@
             }
           ]
         }
+      }
+    },
+    "relations": {
+      "connected/cloister/study": {
+        "kind": "connected",
+        "source": "study",
+        "target": "cloister",
+        "directed": false,
+        "known": true,
+        "tags": []
+      },
+      "connected/bell_tower/cloister": {
+        "kind": "connected",
+        "source": "cloister",
+        "target": "bell_tower",
+        "directed": false,
+        "known": false,
+        "tags": []
+      },
+      "connected/cloister/vault": {
+        "kind": "connected",
+        "source": "cloister",
+        "target": "vault",
+        "directed": false,
+        "known": false,
+        "tags": [
+          "locked"
+        ]
       }
     }
   },

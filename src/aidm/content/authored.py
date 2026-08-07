@@ -5,7 +5,7 @@ from pydantic import Field, JsonValue, model_validator
 
 from aidm.state.base import PLAYER_ID, EngineId, Entity, EntityId, Frozen, Slug
 from aidm.state.sheet import Sheet
-from aidm.state.world import ScenarioMeta, WorldState, check_placement
+from aidm.state.world import Relation, ScenarioMeta, WorldState, check_placement
 
 type Rules = dict[str, JsonValue]
 
@@ -16,6 +16,7 @@ class ScenarioWorld(Frozen):
     meta: ScenarioMeta
     starting_location_id: EntityId
     entities: tuple[Entity, ...] = ()
+    relations: tuple[Relation, ...] = ()
 
     @model_validator(mode="after")
     def _valid_topology(self) -> Self:
@@ -34,6 +35,10 @@ class ScenarioWorld(Frozen):
         for entity in self.entities:
             holder = None if entity.parent_id is None else by_id.get(entity.parent_id)
             check_placement(entity, holder)
+        # A duplicate would silently collapse when the relations are keyed by their derived ids.
+        relation_ids = [relation.id for relation in self.relations]
+        if len(set(relation_ids)) != len(relation_ids):
+            raise ValueError(f"scenario has duplicate relations: {sorted(relation_ids)}")
         return self
 
 
@@ -126,6 +131,7 @@ class AuthoredEntity(Frozen):
 
 class AuthoredWorld(Frozen):
     entities: dict[EntityId, AuthoredEntity] = Field(default_factory=dict)
+    relations: tuple[Relation, ...] = ()
 
 
 def authored_world(scenario: Scenario, character: Character) -> AuthoredWorld:
@@ -147,7 +153,8 @@ def authored_world(scenario: Scenario, character: Character) -> AuthoredWorld:
             entity=authored.model_copy(deep=True),
             rules=dict(overlay.get(authored.id, {})),
         )
-    return AuthoredWorld(entities=entities)
+    relations = tuple(relation.model_copy(deep=True) for relation in scenario.world.relations)
+    return AuthoredWorld(entities=entities, relations=relations)
 
 
 def compose_world(
@@ -162,4 +169,5 @@ def compose_world(
         }
         for entity_id, record in authored.entities.items()
     }
-    return WorldState.model_validate({"records": records})
+    relations = {relation.id: relation for relation in authored.relations}
+    return WorldState.model_validate({"records": records, "relations": relations})

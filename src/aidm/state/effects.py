@@ -7,7 +7,7 @@ from .base import PLAYER_ID, Entity, EntityId, Frozen, Kind, Slug, slug
 from .facts import CORE, Fact
 from .packs import ContentRef
 from .sheet import Counter, Sheet, SheetTag, pool
-from .world import GameState, sheet_of
+from .world import CONNECTED, LOCKED_TAG, PARTY_MEMBER, GameState, Relation, sheet_of
 
 TargetId = Annotated[
     EntityId,
@@ -19,6 +19,9 @@ CounterKey = Annotated[
 Why = Annotated[
     str, Field(description="One short sentence saying what causes this change, for the player.")
 ]
+TieKind = Annotated[Slug, Field(description="Exact kind of the tie, such as `connected`.")]
+TieSource = Annotated[EntityId, Field(description="Exact id of the tie's source entity.")]
+TieTarget = Annotated[EntityId, Field(description="Exact id of the tie's target entity.")]
 
 
 class Reveal(Frozen):
@@ -155,6 +158,64 @@ class AddRef(Frozen):
     why: Why = ""
 
 
+class AddRelation(Frozen):
+    """Record a lasting tie between two entities that is not containment: carrying an item or
+    standing somewhere are moves, not relations."""
+
+    op: Literal["add-relation"] = "add-relation"
+    kind: Slug = Field(
+        description="What the tie is: `connected` joins two locations the player can walk "
+        "between, `party-member` puts an actor here into the player's party (source is the "
+        "actor, target is `player`)."
+    )
+    source: TieSource
+    target: TieTarget
+    why: Why = ""
+
+
+class RemoveRelation(Frozen):
+    """Break a lasting tie that `add-relation` recorded."""
+
+    op: Literal["remove-relation"] = "remove-relation"
+    kind: TieKind
+    source: TieSource
+    target: TieTarget
+    why: Why = ""
+
+
+class TagRelation(Frozen):
+    """Mark a tie — most often a connection — as blocked, such as `locked`, until
+    `untag-relation` lifts it again."""
+
+    op: Literal["tag-relation"] = "tag-relation"
+    kind: TieKind
+    source: TieSource
+    target: TieTarget
+    tag: Slug = Field(description="Stable slug for the tag, such as `locked`.")
+    why: Why = ""
+
+
+class UntagRelation(Frozen):
+    """Lift a tag a tie carries, when the fiction ends it."""
+
+    op: Literal["untag-relation"] = "untag-relation"
+    kind: TieKind
+    source: TieSource
+    target: TieTarget
+    tag: Slug = Field(description="Exact id of a tag the tie carries.")
+    why: Why = ""
+
+
+class RevealRelation(Frozen):
+    """Show the player a way through they did not know about: the connection equivalent of
+    `reveal`. Write this before moving the player through a passage they have not found yet."""
+
+    op: Literal["reveal-relation"] = "reveal-relation"
+    kind: TieKind
+    source: TieSource
+    target: TieTarget
+
+
 type Effect = Annotated[
     Reveal
     | MoveActor
@@ -167,7 +228,12 @@ type Effect = Annotated[
     | RemoveTag
     | SetNote
     | SetNumber
-    | AddRef,
+    | AddRef
+    | AddRelation
+    | RemoveRelation
+    | TagRelation
+    | UntagRelation
+    | RevealRelation,
     Field(discriminator="op"),
 ]
 
@@ -181,7 +247,12 @@ type TurnEffect = Annotated[
     | AddTag
     | RemoveTag
     | SetNote
-    | SetNumber,
+    | SetNumber
+    | AddRelation
+    | RemoveRelation
+    | TagRelation
+    | UntagRelation
+    | RevealRelation,
     Field(discriminator="op"),
 ]
 
@@ -191,7 +262,17 @@ type SheetEffect = Annotated[
 ]
 
 
-_WORLD_OPS = (Reveal, MoveActor, MoveItem, GainImprovisedItem)
+_WORLD_OPS = (
+    Reveal,
+    MoveActor,
+    MoveItem,
+    GainImprovisedItem,
+    AddRelation,
+    RemoveRelation,
+    TagRelation,
+    UntagRelation,
+    RevealRelation,
+)
 
 
 class SheetDelta(Frozen):
@@ -241,6 +322,16 @@ def apply_effect(
             return _set_number(draft, effect, advancing=advancing)
         case AddRef():
             return _add_ref(draft, effect)
+        case AddRelation():
+            return _add_relation(draft, effect)
+        case RemoveRelation():
+            return _remove_relation(draft, effect)
+        case TagRelation():
+            return _tag_relation(draft, effect)
+        case UntagRelation():
+            return _untag_relation(draft, effect)
+        case RevealRelation():
+            return _reveal_relation(draft, effect)
 
 
 def _permitted(effect: Effect, *, advancing: bool) -> None:
@@ -321,12 +412,40 @@ def _target(draft: GameState, entity_id: EntityId) -> tuple[Entity, Sheet, list[
     return entity, sheet_of(draft, entity_id), seen
 
 
+def _require_exit(draft: GameState, here: EntityId, destination: Entity) -> None:
+    """A world that authors no connections keeps free movement; one that authors any gates on
+    them, so the refusal can teach the model the legal exits."""
+    exits = draft.world.connections(here)
+    if not exits:
+        return
+    found = draft.world.relation(CONNECTED, here, destination.id)
+    if found is None or not found.known:
+        open_exits = [
+            draft.world.require(way.far_end(here)).name
+            for way in exits
+            if way.known and LOCKED_TAG not in way.tags
+        ]
+        reachable = ", ".join(open_exits) or "(none)"
+        raise ValueError(
+            f"no way leads from here to {destination.name}. From here the player can reach: "
+            f"{reachable}"
+        )
+    if LOCKED_TAG in found.tags:
+        raise ValueError(f"the way to {destination.name} is locked and must be dealt with first")
+
+
 def _move_actor(draft: GameState, effect: MoveActor) -> list[Fact]:
     destination = _require_kind(draft, effect.location_id, "location")
     here = draft.player_location
     actor_id = effect.entity_id
     if actor_id is None or actor_id == PLAYER_ID:
-        return [*draft.reveal(destination), draft.move(draft.player, destination)]
+        _require_exit(draft, here, destination)
+        facts = [*draft.reveal(destination), draft.move(draft.player, destination)]
+        for member_id in draft.world.party():
+            member = draft.world.require_kind(member_id, "actor")
+            if member.parent_id != destination.id:
+                facts.append(draft.move(member, destination))
+        return facts
     actor = _require_kind(draft, actor_id, "actor")
     if actor.parent_id != here and destination.id != here:
         raise ValueError(f"movement of actor {actor_id!r} would not be witnessed")
@@ -407,7 +526,10 @@ def _grant(draft: GameState, effect: GrantCounter) -> list[Fact]:
     sheet.counters[effect.counter] = granted
     trace = f"{entity.name} gains {effect.counter} at {pool(granted)}"
     data = {"counter": effect.counter, "current": granted.current, "maximum": granted.maximum}
-    return [*seen, _sheet_fact(entity, "counter_granted", trace, data, effect.why, narrate=False)]
+    return [
+        *seen,
+        _explained_fact(entity, "counter_granted", trace, data, effect.why, narrate=False),
+    ]
 
 
 def _add_tag(draft: GameState, effect: AddTag) -> list[Fact]:
@@ -417,7 +539,10 @@ def _add_tag(draft: GameState, effect: AddTag) -> list[Fact]:
     name = effect.tag_id.replace("-", " ").title()
     sheet.tags.append(SheetTag(id=effect.tag_id, name=name, text=effect.text))
     trace = f"{entity.name} is {name}"
-    return [*seen, _sheet_fact(entity, "tag_added", trace, {"tag_id": effect.tag_id}, effect.why)]
+    return [
+        *seen,
+        _explained_fact(entity, "tag_added", trace, {"tag_id": effect.tag_id}, effect.why),
+    ]
 
 
 def _remove_tag(draft: GameState, effect: RemoveTag) -> list[Fact]:
@@ -429,7 +554,7 @@ def _remove_tag(draft: GameState, effect: RemoveTag) -> list[Fact]:
     sheet.tags.remove(tag)
     trace = f"{entity.name} is no longer {tag.name}"
     data = {"tag_id": effect.tag_id}
-    return [*seen, _sheet_fact(entity, "tag_removed", trace, data, effect.why)]
+    return [*seen, _explained_fact(entity, "tag_removed", trace, data, effect.why)]
 
 
 def _set_note(draft: GameState, effect: SetNote) -> list[Fact]:
@@ -442,7 +567,7 @@ def _set_note(draft: GameState, effect: SetNote) -> list[Fact]:
         sheet.notes[effect.key] = effect.text
         trace = f"{entity.name} note {effect.key}: {effect.text}"
     data = {"key": effect.key}
-    return [*seen, _sheet_fact(entity, "note_set", trace, data, effect.why, narrate=False)]
+    return [*seen, _explained_fact(entity, "note_set", trace, data, effect.why, narrate=False)]
 
 
 def _set_number(draft: GameState, effect: SetNumber, *, advancing: bool) -> list[Fact]:
@@ -454,7 +579,7 @@ def _set_number(draft: GameState, effect: SetNumber, *, advancing: bool) -> list
     sheet.numbers[effect.key] = effect.value
     trace = f"{entity.name} {effect.key}: {before} -> {effect.value}"
     data = {"key": effect.key, "before": before, "after": effect.value}
-    return [*seen, _sheet_fact(entity, "number_set", trace, data, effect.why, narrate=False)]
+    return [*seen, _explained_fact(entity, "number_set", trace, data, effect.why, narrate=False)]
 
 
 def _add_ref(draft: GameState, effect: AddRef) -> list[Fact]:
@@ -464,16 +589,101 @@ def _add_ref(draft: GameState, effect: AddRef) -> list[Fact]:
     sheet.refs = (*sheet.refs, effect.ref)
     trace = f"{entity.name} gains content {effect.ref}"
     data = {"ref": str(effect.ref)}
-    return [*seen, _sheet_fact(entity, "ref_added", trace, data, effect.why, narrate=False)]
+    return [*seen, _explained_fact(entity, "ref_added", trace, data, effect.why, narrate=False)]
+
+
+def _relation_of(
+    draft: GameState, kind: Slug, source: EntityId, target: EntityId
+) -> tuple[Relation, Entity, Entity]:
+    relation = draft.world.relation(kind, source, target)
+    if relation is None:
+        raise ValueError(f"no {kind!r} relation joins {source!r} and {target!r}")
+    return relation, draft.world.require(relation.source), draft.world.require(relation.target)
+
+
+def _add_relation(draft: GameState, effect: AddRelation) -> list[Fact]:
+    if draft.world.relation(effect.kind, effect.source, effect.target) is not None:
+        raise ValueError(
+            f"a {effect.kind!r} relation already joins {effect.source!r} and {effect.target!r}"
+        )
+    source = (
+        require_actor_here(draft, effect.source)
+        if effect.kind == PARTY_MEMBER
+        else _require(draft, effect.source)
+    )
+    target = _require(draft, effect.target)
+    relation = Relation(
+        kind=effect.kind,
+        source=effect.source,
+        target=effect.target,
+        # a connection is walkable both ways, so `connected` is the one undirected kind
+        directed=effect.kind != CONNECTED,
+        known=True,
+    )
+    seen = [*draft.reveal(source), *draft.reveal(target)]
+    draft.world.relations[relation.id] = relation
+    trace = f"{source.name} — {relation.kind} — {target.name}"
+    data = {"kind": relation.kind, "target": relation.target}
+    return [*seen, _explained_fact(source, "relation_added", trace, data, effect.why)]
+
+
+def _remove_relation(draft: GameState, effect: RemoveRelation) -> list[Fact]:
+    relation, source, target = _relation_of(draft, effect.kind, effect.source, effect.target)
+    del draft.world.relations[relation.id]
+    trace = f"{source.name} — {relation.kind} — {target.name} broken"
+    data = {"kind": relation.kind, "target": relation.target}
+    return [
+        _explained_fact(source, "relation_removed", trace, data, effect.why, narrate=relation.known)
+    ]
+
+
+def _tag_relation(draft: GameState, effect: TagRelation) -> list[Fact]:
+    relation, source, target = _relation_of(draft, effect.kind, effect.source, effect.target)
+    if effect.tag in relation.tags:
+        raise ValueError(f"the {relation.kind!r} relation already carries the tag {effect.tag!r}")
+    relation.tags.append(effect.tag)
+    trace = f"{source.name} — {relation.kind} — {target.name} tagged {effect.tag}"
+    data = {"kind": relation.kind, "target": relation.target, "tag": effect.tag}
+    return [
+        _explained_fact(source, "relation_tagged", trace, data, effect.why, narrate=relation.known)
+    ]
+
+
+def _untag_relation(draft: GameState, effect: UntagRelation) -> list[Fact]:
+    relation, source, target = _relation_of(draft, effect.kind, effect.source, effect.target)
+    if effect.tag not in relation.tags:
+        held = ", ".join(sorted(relation.tags)) or "(none)"
+        raise ValueError(
+            f"the {relation.kind!r} relation carries no tag {effect.tag!r}. Its tags are: {held}"
+        )
+    relation.tags.remove(effect.tag)
+    trace = f"{source.name} — {relation.kind} — {target.name} untagged {effect.tag}"
+    data = {"kind": relation.kind, "target": relation.target, "tag": effect.tag}
+    return [
+        _explained_fact(
+            source, "relation_untagged", trace, data, effect.why, narrate=relation.known
+        )
+    ]
+
+
+def _reveal_relation(draft: GameState, effect: RevealRelation) -> list[Fact]:
+    relation, source, target = _relation_of(draft, effect.kind, effect.source, effect.target)
+    if relation.known:
+        return []
+    seen = [*draft.reveal(source), *draft.reveal(target)]
+    relation.known = True
+    trace = f"{source.name} — {relation.kind} — {target.name} revealed"
+    data = {"kind": relation.kind, "target": relation.target}
+    return [*seen, entity_fact(source, "relation_revealed", trace, data)]
 
 
 def _changed(entity: Entity, key: str, counter: Counter, delta: int, why: str) -> Fact:
     data = {"counter": key, "delta": delta, "current": counter.current, "maximum": counter.maximum}
     trace = f"{entity.name} {key} {delta:+d} -> {pool(counter)}"
-    return _sheet_fact(entity, "counter_changed", trace, data, why)
+    return _explained_fact(entity, "counter_changed", trace, data, why)
 
 
-def _sheet_fact(
+def _explained_fact(
     entity: Entity,
     kind: str,
     trace: str,

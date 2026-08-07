@@ -3,6 +3,7 @@ from core_test_support import initialized
 
 from aidm.state.base import PLAYER_ID, EntityId
 from aidm.state.effects import (
+    AddRelation,
     AddTag,
     AdjustCounter,
     Effect,
@@ -10,16 +11,21 @@ from aidm.state.effects import (
     GrantCounter,
     MoveActor,
     MoveItem,
+    RemoveRelation,
     RemoveTag,
     Reveal,
+    RevealRelation,
     SetNote,
     SetNumber,
     SpendCounter,
+    TagRelation,
+    UntagRelation,
     apply_effect,
 )
 from aidm.state.facts import Fact
-from aidm.state.world import sheet_of
+from aidm.state.world import CONNECTED, LOCKED_TAG, PARTY_MEMBER, sheet_of
 
+BELL_TOWER = EntityId("bell_tower")
 CLOISTER = EntityId("cloister")
 STUDY = EntityId("study")
 ELENA = EntityId("elena")
@@ -54,14 +60,48 @@ def test_world_effects_move_and_reveal_only_what_the_player_witnesses() -> None:
     arrived = MoveActor(location_id=STUDY, entity_id=ELENA)
     assert turn.kinds(arrived) == ["entity_discovered", "entity_moved"]
     assert turn.kinds(MoveActor(location_id=VAULT, entity_id=MARA)) == ["entity_moved"]
-    assert turn.kinds(MoveActor(location_id=VAULT)) == ["entity_discovered", "entity_moved"]
+    assert turn.kinds(MoveActor(location_id=CLOISTER)) == ["entity_moved"]
 
     with pytest.raises(ValueError, match="would not be witnessed"):
-        _ = turn(MoveActor(location_id=CLOISTER, entity_id=TOMAS))
+        _ = turn(MoveActor(location_id=VAULT, entity_id=ELENA))
     with pytest.raises(ValueError, match="is a actor, not a location"):
         _ = turn(MoveActor(location_id=MARA))
     with pytest.raises(ValueError, match="unknown entity id"):
         _ = turn(Reveal(entity_id=EntityId("ghost")))
+
+
+def test_movement_follows_the_connections_the_world_authors() -> None:
+    turn = Applied()
+
+    assert turn.kinds(MoveActor(location_id=CLOISTER)) == ["entity_moved"]
+    with pytest.raises(ValueError, match="the player can reach: the abbot's study"):
+        _ = turn(MoveActor(location_id=BELL_TOWER))
+    revealed = RevealRelation(kind=CONNECTED, source=CLOISTER, target=BELL_TOWER)
+    assert turn.kinds(revealed) == ["entity_discovered", "relation_revealed"]
+    assert turn.kinds(MoveActor(location_id=BELL_TOWER)) == ["entity_moved"]
+
+    _ = turn(MoveActor(location_id=CLOISTER))
+    barred = TagRelation(kind=CONNECTED, source=CLOISTER, target=VAULT, tag="barred", why="rubble")
+    assert turn(barred)[0].narrator is None, "a hidden tie's trace names an unmet place"
+    _ = turn(RevealRelation(kind=CONNECTED, source=CLOISTER, target=VAULT))
+    with pytest.raises(ValueError, match="is locked"):
+        _ = turn(MoveActor(location_id=VAULT))
+    _ = turn(UntagRelation(kind=CONNECTED, source=CLOISTER, target=VAULT, tag=LOCKED_TAG))
+    assert turn.kinds(MoveActor(location_id=VAULT)) == ["entity_moved"]
+
+
+def test_a_party_member_travels_with_the_player() -> None:
+    turn = Applied()
+
+    joined = AddRelation(kind=PARTY_MEMBER, source=MARA, target=PLAYER_ID, why="Mara comes along")
+    assert turn.kinds(joined) == ["relation_added"]
+    moved = turn(MoveActor(location_id=CLOISTER))
+    assert [fact.data["entity_id"] for fact in moved] == [PLAYER_ID, MARA]
+
+    assert turn.kinds(RemoveRelation(kind=PARTY_MEMBER, source=MARA, target=PLAYER_ID)) == [
+        "relation_removed"
+    ]
+    assert turn.kinds(MoveActor(location_id=STUDY)) == ["entity_moved"]
 
 
 def test_inventory_effects_gate_on_position_and_carrying() -> None:

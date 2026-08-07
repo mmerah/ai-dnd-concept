@@ -3,10 +3,17 @@ from collections.abc import Callable, Iterable, Mapping, Sequence
 
 from aidm.engines.loader import EntityRenderer
 from aidm.state.base import PLAYER_ID, Entity, EntityId, Frozen, Kind
-from aidm.state.world import GameState, ScenarioMeta
+from aidm.state.world import LOCKED_TAG, GameState, ScenarioMeta
 
 type Placement = Callable[[Entity], str]
 type Label = Callable[[Entity], str]
+
+
+class Exit(Frozen):
+    location_id: EntityId
+    name: str
+    known: bool
+    locked: bool
 
 
 class BaseScene(Frozen):
@@ -16,6 +23,7 @@ class BaseScene(Frozen):
     here: tuple[Entity, ...]
     known_elsewhere: tuple[Entity, ...]
     placements: dict[EntityId, str]
+    exits: tuple[Exit, ...] = ()
 
     def placement_of(self, entity: Entity) -> str:
         return self.placements[entity.id]
@@ -24,6 +32,7 @@ class BaseScene(Frozen):
 class SceneSnapshot(BaseScene):
     hidden: tuple[Entity, ...]
     canon: tuple[Entity, ...]
+    party: tuple[EntityId, ...]
 
     @classmethod
     def of(cls, state: GameState) -> "SceneSnapshot":
@@ -39,6 +48,21 @@ class SceneSnapshot(BaseScene):
             entity for entity in shown if entity.id not in carried_ids and entity.id != location.id
         ]
         locations = {entity.id: world.location_of(entity) for entity in placed}
+        party = world.party()
+        exits = tuple(
+            sorted(
+                (
+                    Exit(
+                        location_id=relation.far_end(location.id),
+                        name=world.require(relation.far_end(location.id)).name,
+                        known=relation.known,
+                        locked=LOCKED_TAG in relation.tags,
+                    )
+                    for relation in world.connections(location.id)
+                ),
+                key=lambda exit: exit.name,
+            )
+        )
         return cls(
             player=player,
             location=location,
@@ -55,7 +79,9 @@ class SceneSnapshot(BaseScene):
             ),
             hidden=tuple(entity for entity in shown if not entity.known),
             canon=canon,
-            placements=_placements(by_id, canon, frozenset(by_id)),
+            placements=_placements(by_id, canon, frozenset(by_id), party),
+            exits=exits,
+            party=party,
         )
 
     def catalogue(self) -> tuple[Entity, ...]:
@@ -82,7 +108,8 @@ class VisibleScene(BaseScene):
             inventory=tuple(_undetailed(item) for item in snapshot.inventory),
             here=tuple(_undetailed(entity) for entity in snapshot.here),
             known_elsewhere=tuple(_undetailed(entity) for entity in snapshot.known_elsewhere),
-            placements=_placements(by_id, shown, met),
+            placements=_placements(by_id, shown, met, snapshot.party),
+            exits=tuple(exit for exit in snapshot.exits if exit.known),
         )
 
 
@@ -90,14 +117,20 @@ def _placements(
     by_id: Mapping[EntityId, Entity],
     entities: Iterable[Entity],
     nameable: frozenset[EntityId],
+    party: tuple[EntityId, ...],
 ) -> dict[EntityId, str]:
-    return {entity.id: _placement(entity, by_id, nameable) for entity in entities}
+    return {entity.id: _placement(entity, by_id, nameable, party) for entity in entities}
 
 
 def _placement(
-    entity: Entity, by_id: Mapping[EntityId, Entity], nameable: frozenset[EntityId]
+    entity: Entity,
+    by_id: Mapping[EntityId, Entity],
+    nameable: frozenset[EntityId],
+    party: tuple[EntityId, ...],
 ) -> str:
     """A placement names its holder only where the reader may be told that holder exists."""
+    if entity.id in party:
+        return "travelling with the player"
     holder = None if entity.parent_id is None else by_id[entity.parent_id]
     if holder is None or holder.id not in nameable:
         return ""
@@ -130,6 +163,7 @@ def render_director(
                 "HERE WITH THE PLAYER",
                 _entities(scene.here, describe, placement=scene.placement_of),
             ),
+            ("EXITS FROM HERE", _exits(scene)),
             (
                 "KNOWN TO THE PLAYER, BUT ELSEWHERE",
                 _entities(scene.known_elsewhere, describe, placement=scene.placement_of),
@@ -165,6 +199,7 @@ def render_narrator(
                 "HERE WITH THE PLAYER",
                 _entities(scene.here, describe, placement=scene.placement_of),
             ),
+            ("EXITS FROM HERE", _exits(scene)),
             (
                 "KNOWN TO THE PLAYER, BUT ELSEWHERE",
                 _entities(scene.known_elsewhere, describe, placement=scene.placement_of),
@@ -245,6 +280,16 @@ def _entities(
     )
 
 
+def _exits(scene: BaseScene) -> str:
+    return "\n".join(_exit_line(exit) for exit in scene.exits) or "- (none)"
+
+
+def _exit_line(exit: Exit) -> str:
+    locked = " — locked" if exit.locked else ""
+    unfound = " — the player has not found this way yet" if not exit.known else ""
+    return f"- {exit.name}[id={prompt_id(exit.location_id)}]{locked}{unfound}"
+
+
 def _catalogue(scene: SceneSnapshot, describe: EntityRenderer) -> str:
     return (
         "\n".join(
@@ -322,6 +367,15 @@ HERE WITH THE PLAYER from what is known but ELSEWHERE. The player can only see, 
 from, or hand things to who and what is here; to involve someone elsewhere, move them here with a \
 `move-actor` effect first. Wherever a field asks for an id, use the exact id from the brackets — \
 for known and unrevealed entities alike, never the name.
+
+EXITS FROM HERE lists the ways out of the player's location; when the location has any exits at \
+all, `move-actor` for the player only reaches a place listed there. Walking an exit the player has \
+not found yet is one plan, not two: write the `reveal-relation` and the `move-actor` together in \
+the same `effects`, in that order, and add an `untag-relation` before them when the way is \
+`locked` and the fiction opens it. `add-relation` records a new tie \
+when the fiction makes one: a passage discovered between two places (`connected`), or an NPC who \
+joins the player (`party-member`, the actor as `source` and `player` as `target`). A party member \
+travels with the player automatically.
 
 The plan is the whole turn:
 

@@ -6,6 +6,8 @@ Drive the game forward. When the player's attempt carries real uncertainty or a 
 
 Every entity is shown as `name[id=...]`, and each carries where it is. The lists separate what is HERE WITH THE PLAYER from what is known but ELSEWHERE. The player can only see, address, take from, or hand things to who and what is here; to involve someone elsewhere, move them here with a `move-actor` effect first. Wherever a field asks for an id, use the exact id from the brackets — for known and unrevealed entities alike, never the name.
 
+EXITS FROM HERE lists the ways out of the player's location; when the location has any exits at all, `move-actor` for the player only reaches a place listed there. Walking an exit the player has not found yet is one plan, not two: write the `reveal-relation` and the `move-actor` together in the same `effects`, in that order, and add an `untag-relation` before them when the way is `locked` and the fiction opens it. `add-relation` records a new tie when the fiction makes one: a passage discovered between two places (`connected`), or an NPC who joins the player (`party-member`, the actor as `source` and `player` as `target`). A party member travels with the player automatically.
+
 The plan is the whole turn:
 
 `action` — the single action resolved this turn, or null when nothing mechanical happens. Its actor is whoever the fiction puts on the acting side: when the player's words have someone else act — a monster lunging at them — plan that actor's action, not a reaction by the player. The engine computes and applies the action's own arithmetic — rolls, damage, healing, costs: never write those anywhere in the plan. Everything else an outcome changes — a condition taking hold or ending, something revealed, someone moving — happens only if a branch or an effect writes it; the engine never adds it for you.
@@ -96,6 +98,11 @@ Every effect, one example each. Ids, keys, and tags here are illustrative: use t
 {"op": "remove-tag", "entity_id": "player", "tag_id": "poisoned"}
 {"op": "set-note", "entity_id": "player", "key": "concentration", "text": "concentrating on the ward"}
 {"op": "set-number", "entity_id": "player", "key": "armor-class", "value": 16}
+{"op": "reveal-relation", "kind": "connected", "source": "courtyard", "target": "hidden-cellar"}
+{"op": "untag-relation", "kind": "connected", "source": "courtyard", "target": "hidden-cellar", "tag": "locked", "why": "the iron key turns at last"}
+{"op": "tag-relation", "kind": "connected", "source": "courtyard", "target": "hidden-cellar", "tag": "locked", "why": "the hound drags the grate shut"}
+{"op": "add-relation", "kind": "party-member", "source": "warden", "target": "player", "why": "the warden agrees to come along"}
+{"op": "remove-relation", "kind": "party-member", "source": "warden", "target": "player", "why": "the warden turns back at the gate"}
 ```
 
 ## Worked plans

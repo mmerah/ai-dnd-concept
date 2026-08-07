@@ -3,7 +3,17 @@ from typing import Self
 
 from pydantic import Field, model_validator
 
-from .base import PLAYER_ID, EngineId, Entity, EntityId, Frozen, Kind, Mutable, Slug
+from .base import (
+    PLAYER_ID,
+    EngineId,
+    Entity,
+    EntityId,
+    Frozen,
+    Kind,
+    Mutable,
+    RelationId,
+    Slug,
+)
 from .facts import CORE, Fact
 from .sheet import Sheet
 
@@ -27,6 +37,40 @@ def check_placement(entity: Entity, holder: Entity | None) -> None:
         raise ValueError(f"{entity.kind} {entity.id!r} is in a {holder.kind}, which cannot hold it")
 
 
+CONNECTED: Slug = "connected"
+PARTY_MEMBER: Slug = "party-member"
+LOCKED_TAG: Slug = "locked"
+
+
+class Relation(Mutable):
+    """A lasting tie that is not containment: `parent_id` still owns the holder topology."""
+
+    kind: Slug
+    source: EntityId
+    target: EntityId
+    directed: bool = True
+    known: bool = False
+    tags: list[Slug] = Field(default_factory=list)
+
+    @property
+    def id(self) -> RelationId:
+        """An undirected tie sorts its endpoints, so `a-b` and `b-a` are one relation, not two."""
+        ends = (self.source, self.target)
+        first, second = ends if self.directed else tuple(sorted(ends))
+        return RelationId(f"{self.kind}/{first}/{second}")
+
+    def joins(self, source: EntityId, target: EntityId) -> bool:
+        if (self.source, self.target) == (source, target):
+            return True
+        return not self.directed and (self.source, self.target) == (target, source)
+
+    def touches(self, entity_id: EntityId) -> bool:
+        return entity_id in (self.source, self.target)
+
+    def far_end(self, entity_id: EntityId) -> EntityId:
+        return self.target if entity_id == self.source else self.source
+
+
 class Record(Mutable):
     entity: Entity
     rules: Sheet
@@ -42,13 +86,58 @@ class Record(Mutable):
 
 class WorldState(Mutable):
     records: dict[EntityId, Record] = Field(default_factory=dict)
+    relations: dict[RelationId, Relation] = Field(default_factory=dict)
 
     @model_validator(mode="after")
     def _keys_match_ids(self) -> Self:
         mismatched = sorted(key for key, record in self.records.items() if key != record.entity.id)
         if mismatched:
             raise ValueError(f"entity keys disagree with their ids: {mismatched}")
+        stale = sorted(key for key, relation in self.relations.items() if key != relation.id)
+        if stale:
+            raise ValueError(f"relation keys disagree with their ids: {stale}")
+        for relation in self.relations.values():
+            self._check_relation(relation)
         return self
+
+    def _check_relation(self, relation: Relation) -> None:
+        """The two kinds core interprets are checked here, so a typo'd slug fails at load rather
+        than silently disabling movement gating or party travel."""
+        ends = [self.require(relation.source), self.require(relation.target)]
+        if relation.known and not all(end.known for end in ends):
+            raise ValueError(
+                f"known relation {relation.id!r} names an entity the player has not met"
+            )
+        if relation.kind == CONNECTED and any(end.kind != "location" for end in ends):
+            raise ValueError(f"{CONNECTED!r} joins two locations, and {relation.id!r} does not")
+        if relation.kind == PARTY_MEMBER and (
+            ends[0].kind != "actor" or relation.target != PLAYER_ID
+        ):
+            raise ValueError(
+                f"{PARTY_MEMBER!r} puts an actor in the player's party, unlike {relation.id!r}"
+            )
+
+    def connections(self, location_id: EntityId) -> tuple[Relation, ...]:
+        return tuple(
+            relation
+            for relation in self.relations.values()
+            if relation.kind == CONNECTED and relation.touches(location_id)
+        )
+
+    def party(self) -> tuple[EntityId, ...]:
+        return tuple(
+            relation.source for relation in self.relations.values() if relation.kind == PARTY_MEMBER
+        )
+
+    def relation(self, kind: Slug, source: EntityId, target: EntityId) -> Relation | None:
+        return next(
+            (
+                relation
+                for relation in self.relations.values()
+                if relation.kind == kind and relation.joins(source, target)
+            ),
+            None,
+        )
 
     def entities(self, kind: Kind | None = None) -> Iterator[Entity]:
         return (

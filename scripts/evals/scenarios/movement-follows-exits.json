@@ -1,0 +1,25 @@
+{
+  "id": "movement-follows-exits",
+  "engine": "story",
+  "tags": [
+    "relations"
+  ],
+  "scenario": "whispering-vault",
+  "character": "kael",
+  "setup": [
+    {
+      "probe": "place",
+      "entity": "player",
+      "location": "cloister"
+    }
+  ],
+  "prompt": "I find the ladders behind the colonnade and climb up into the bell tower.",
+  "checks": [
+    {
+      "probe": "at_location",
+      "entity": "player",
+      "location": "bell_tower"
+    }
+  ],
+  "runs": 3
+}

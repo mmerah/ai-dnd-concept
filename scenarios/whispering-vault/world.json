@@ -77,5 +77,29 @@
       "known": false,
       "parent_id": "study"
     }
+  ],
+  "relations": [
+    {
+      "kind": "connected",
+      "source": "study",
+      "target": "cloister",
+      "directed": false,
+      "known": true
+    },
+    {
+      "kind": "connected",
+      "source": "cloister",
+      "target": "bell_tower",
+      "directed": false,
+      "known": false
+    },
+    {
+      "kind": "connected",
+      "source": "cloister",
+      "target": "vault",
+      "directed": false,
+      "known": false,
+      "tags": ["locked"]
+    }
   ]
 }

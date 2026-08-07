@@ -30,6 +30,9 @@ HERE WITH THE PLAYER:
     numbers: armor-class 10, charisma 10, constitution 10, dexterity 10, intelligence 10, strength 10, wisdom 10
     counters: hp 1/1
 
+EXITS FROM HERE:
+- the cloister[id=cloister]
+
 KNOWN TO THE PLAYER, BUT ELSEWHERE:
 - the cloister[id=cloister] (location) — A frost-rimed colonnade around a dead garden; Brother Tomas sweeps it to no purpose.
 - Brother Tomas[id=tomas] (npc) — at the cloister — A deaf old porter who sweeps the cloister and knows almost nothing about the vault.

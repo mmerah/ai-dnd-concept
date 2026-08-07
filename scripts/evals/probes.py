@@ -158,6 +158,12 @@ class Created(Frozen):
     max: int = Field(ge=0)
 
 
+class AtLocation(Frozen):
+    probe: Literal["at_location"] = "at_location"
+    entity: EntityId = PLAYER_ID
+    location: EntityId
+
+
 class NoStateChange(Frozen):
     probe: Literal["no_state_change"] = "no_state_change"
 
@@ -174,6 +180,7 @@ type CheckStep = Annotated[
     | AttackRollHappened
     | BranchAddsTag
     | RollTarget
+    | AtLocation
     | NoStateChange,
     Field(discriminator="probe"),
 ]
@@ -258,6 +265,11 @@ def check(outcome: Outcome, step: CheckStep) -> str | None:
             return _within(rolled, step.min, step.max, "rolls against a target number")
         case RollTarget():
             return _targets_within(outcome.facts, step)
+        case AtLocation():
+            where = outcome.after.world.location_of(outcome.after.world.require(step.entity))
+            if where == step.location:
+                return None
+            return f"{step.entity} is at {where!r}, wanted {step.location!r}"
         case NoStateChange():
             if outcome.before.world == outcome.after.world:
                 return None
