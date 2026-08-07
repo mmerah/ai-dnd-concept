@@ -1,4 +1,4 @@
-from collections.abc import Awaitable, Callable
+from collections.abc import Awaitable, Callable, Sequence
 from dataclasses import dataclass, field
 from random import Random
 from types import NoneType
@@ -9,11 +9,11 @@ from pydantic_ai.messages import ModelMessage
 
 from aidm.config import Settings
 from aidm.engines.loader import Engine
-from aidm.state.base import Entity, EntityDetail, EntityId, Frozen, slug
+from aidm.state.base import Entity, EntityId, Frozen, slug
 from aidm.state.effects import apply_effect
 from aidm.state.facts import Fact, narrator_evidence
 from aidm.state.plan import TurnPlanBase
-from aidm.state.turn import Growth, GrowthRequest, RejectedGrowth, Turn, screen_growth
+from aidm.state.turn import Creation, StepTrace, Turn, WorldkeeperReport
 from aidm.state.world import Exchange, GameState
 
 from . import prompts
@@ -49,16 +49,11 @@ class TurnWorkspace:
     state: GameState
     draft: GameState
     rng: Random
-    recent: tuple[Exchange, ...]
     facts: list[Fact] = field(default_factory=list)
-    prompts: dict[str, str] = field(default_factory=dict)
+    steps: list[StepTrace] = field(default_factory=list)
     plan: TurnPlanBase | None = None
     evidence: str = ""
     narration: str = ""
-    growth: Growth | None = None
-    accepted: tuple[GrowthRequest, ...] = ()
-    rejected: tuple[RejectedGrowth, ...] = ()
-    created: tuple[Entity, ...] = ()
 
     def settled(self) -> TurnPlanBase:
         if self.plan is None:
@@ -73,11 +68,13 @@ type TurnScript = tuple[tuple[str, StepFn], ...]
 def director_step(role: Stage[PlanContext, TurnPlanBase], engine: Engine) -> StepFn:
     async def run(ws: TurnWorkspace) -> None:
         state = ws.state
-        ws.prompts[role.name] = prompts.render_director(
+        rendered = prompts.render_director(
             SceneSnapshot.of(state), engine.renderer(state), state.scenario, ws.prompt
         )
-        ws.plan = await role.run(
-            ws.prompts[role.name], PlanContext(engine=engine, state=state), ws.history
+        plan = await role.run(rendered, PlanContext(engine=engine, state=state), ws.history)
+        ws.plan = plan
+        ws.steps.append(
+            StepTrace(name=role.name, prompt=rendered, output=plan.model_dump(mode="json"))
         )
 
     return run
@@ -93,6 +90,7 @@ def resolve_step(engine: Engine) -> StepFn:
             ws.facts.extend(apply_effect(ws.draft, effect, engine.default_rules))
         ws.draft = ws.draft.committed().draft()
         ws.evidence = narrator_evidence(ws.facts)
+        ws.steps.append(StepTrace(name="resolve", output=ws.evidence))
 
     return run
 
@@ -101,7 +99,7 @@ def narrator_step(role: Stage[None, str], engine: Engine) -> StepFn:
     async def run(ws: TurnWorkspace) -> None:
         plan = ws.settled()
         draft = ws.draft
-        ws.prompts[role.name] = prompts.render_narrator(
+        rendered = prompts.render_narrator(
             VisibleScene.of(SceneSnapshot.of(draft)),
             engine.renderer(draft),
             draft.scenario,
@@ -111,15 +109,18 @@ def narrator_step(role: Stage[None, str], engine: Engine) -> StepFn:
             evidence=ws.evidence,
             prompt=ws.prompt,
         )
-        ws.narration = await role.run(ws.prompts[role.name], None, ws.history)
+        ws.narration = await role.run(rendered, None, ws.history)
+        ws.steps.append(StepTrace(name=role.name, prompt=rendered, output=ws.narration))
 
     return run
 
 
-def maintainer_step(role: Stage[None, Growth], engine: Engine, options: TurnOptions) -> StepFn:
+def worldkeeper_step(
+    role: Stage[None, WorldkeeperReport], engine: Engine, options: TurnOptions
+) -> StepFn:
     async def run(ws: TurnWorkspace) -> None:
         draft = ws.draft
-        ws.prompts[role.name] = prompts.render_maintainer(
+        rendered = prompts.render_worldkeeper(
             SceneSnapshot.of(draft),
             engine.renderer(draft),
             draft.scenario,
@@ -127,51 +128,15 @@ def maintainer_step(role: Stage[None, Growth], engine: Engine, options: TurnOpti
             evidence=ws.evidence,
             narration=ws.narration,
         )
-        growth = await role.run(ws.prompts[role.name], None, ws.history)
-        screened = screen_growth(
-            growth.requests, {entity.name for entity in draft.world.entities()}, options.max_growth
-        )
-        ws.growth = growth
-        ws.accepted, ws.rejected = screened.accepted, screened.rejected
-
-    return run
-
-
-def creator_step(role: Stage[None, EntityDetail], engine: Engine) -> StepFn:
-    async def run(ws: TurnWorkspace) -> None:
-        draft = ws.draft
-        for request in sorted(ws.accepted, key=lambda item: item.kind != "location"):
-            ws.prompts[role.name] = prompts.render_creator(
-                SceneSnapshot.of(draft),
-                engine.renderer(draft),
-                draft.scenario,
-                narration=ws.narration,
-                recent=ws.recent,
-                request=request,
-            )
-            detail = await role.run(ws.prompts[role.name], None)
-            entity = _created_entity(request, detail, draft)
+        report = await role.run(rendered, None, ws.history)
+        for creation in admitted(report.creations, draft, options.max_growth):
+            entity = _created_entity(creation, draft)
             ws.facts.append(draft.add(entity, engine.default_rules(entity)))
-            ws.created = (*ws.created, entity)
+        ws.steps.append(
+            StepTrace(name=role.name, prompt=rendered, output=report.model_dump(mode="json"))
+        )
 
     return run
-
-
-@dataclass(frozen=True, slots=True)
-class Cast:
-    director: Stage[PlanContext, TurnPlanBase]
-    narrator: Stage[None, str]
-    maintainer: Stage[None, Growth]
-    creator: Stage[None, EntityDetail]
-
-    def script(self, engine: Engine, options: TurnOptions) -> TurnScript:
-        return (
-            (self.director.name, director_step(self.director, engine)),
-            ("resolve", resolve_step(engine)),
-            (self.narrator.name, narrator_step(self.narrator, engine)),
-            (self.maintainer.name, maintainer_step(self.maintainer, engine, options)),
-            (self.creator.name, creator_step(self.creator, engine)),
-        )
 
 
 def plan_from_text(plan_type: type[TurnPlanBase]) -> Callable[[str], TurnPlanBase]:
@@ -213,26 +178,32 @@ def director_stage(engine: Engine, settings: Settings) -> Stage[PlanContext, Tur
     return built
 
 
-def default_cast(engine: Engine, settings: Settings) -> Cast:
-    return Cast(
-        director=director_stage(engine, settings),
-        narrator=stage(
-            "narrator", settings, instructions=prompts.NARRATOR, output_type=str, deps_type=NoneType
-        ),
-        maintainer=stage(
-            "maintainer",
-            settings,
-            instructions=prompts.MAINTAINER,
-            output_type=NativeOutput(Growth),
-            deps_type=NoneType,
-        ),
-        creator=stage(
-            "creator",
-            settings,
-            instructions=prompts.CREATOR,
-            output_type=NativeOutput(EntityDetail),
-            deps_type=NoneType,
-        ),
+def narrator_stage(settings: Settings) -> Stage[None, str]:
+    return stage(
+        "narrator", settings, instructions=prompts.NARRATOR, output_type=str, deps_type=NoneType
+    )
+
+
+def worldkeeper_stage(settings: Settings) -> Stage[None, WorldkeeperReport]:
+    return stage(
+        "worldkeeper",
+        settings,
+        instructions=prompts.WORLDKEEPER,
+        output_type=NativeOutput(WorldkeeperReport),
+        deps_type=NoneType,
+    )
+
+
+def default_workflow(engine: Engine, settings: Settings, options: TurnOptions) -> TurnScript:
+    """A new role is an inserted `(name, StepFn)` pair; nothing else changes."""
+    director = director_stage(engine, settings)
+    narrator = narrator_stage(settings)
+    worldkeeper = worldkeeper_stage(settings)
+    return (
+        (director.name, director_step(director, engine)),
+        ("resolve", resolve_step(engine)),
+        (narrator.name, narrator_step(narrator, engine)),
+        (worldkeeper.name, worldkeeper_step(worldkeeper, engine, options)),
     )
 
 
@@ -246,28 +217,21 @@ async def run_turn(
     rng: Random,
     on_step: Callable[[str], None] | None = None,
 ) -> TurnResult:
-    recent = state.history[-options.history_window :]
     ws = TurnWorkspace(
         prompt=prompt,
-        history=exchanges_to_messages(recent),
+        history=exchanges_to_messages(state.history[-options.history_window :]),
         state=state,
         draft=state.draft(),
         rng=rng,
-        recent=recent,
     )
     for name, step in script:
         if on_step is not None:
             on_step(name)
         await step(ws)
-    plan = ws.plan
-    if plan is None:
+    if ws.plan is None:
         raise ValueError("script finished without a turn plan")
     if not ws.narration:
         raise ValueError("script finished without a narration")
-    if ws.growth is None:
-        raise ValueError("script finished without growth")
-    if len(ws.created) < len(ws.accepted):
-        raise ValueError("script finished with accepted growth requests uncreated")
     draft = ws.draft
     draft.history = (*draft.history, Exchange(prompt=prompt, narration=ws.narration))
     draft.turn += 1
@@ -277,33 +241,41 @@ async def run_turn(
         state=final,
         turn=Turn(
             prompt=prompt,
-            plan=plan.model_dump(mode="json"),
             facts=tuple(ws.facts),
-            narrator_evidence=ws.evidence,
             narration=ws.narration,
-            growth=ws.growth,
-            created=ws.created,
-            rejected=ws.rejected,
-            prompts=ws.prompts,
+            steps=tuple(ws.steps),
         ),
     )
 
 
-def _created_entity(request: GrowthRequest, detail: EntityDetail, state: GameState) -> Entity:
+def admitted(creations: Sequence[Creation], state: GameState, maximum: int) -> tuple[Creation, ...]:
+    """Locations sort first so an entity placed at one created this same report resolves."""
+    seen = {entity.name.casefold() for entity in state.world.entities()}
+    kept: list[Creation] = []
+    for creation in creations:
+        normalized = creation.name.casefold()
+        if normalized in seen or len(kept) >= maximum:
+            continue
+        kept.append(creation)
+        seen.add(normalized)
+    return tuple(sorted(kept, key=lambda creation: creation.kind != "location"))
+
+
+def _created_entity(creation: Creation, state: GameState) -> Entity:
     return Entity(
-        id=slug(request.name, state.world.all_ids()),
-        kind=request.kind,
-        name=request.name,
-        brief=request.brief,
-        detail=detail,
+        id=slug(creation.name, state.world.all_ids()),
+        kind=creation.kind,
+        name=creation.name,
+        brief=creation.brief,
+        detail=creation.detail,
         known=True,
-        parent_id=None if request.kind == "location" else _requested_location(request, state),
+        parent_id=None if creation.kind == "location" else _placed(creation, state),
     )
 
 
-def _requested_location(request: GrowthRequest, state: GameState) -> EntityId:
-    if request.location is not None:
-        wanted = request.location.casefold()
+def _placed(creation: Creation, state: GameState) -> EntityId:
+    if creation.location is not None:
+        wanted = creation.location.casefold()
         for entity in state.world.entities("location"):
             if entity.name.casefold() == wanted:
                 return entity.id

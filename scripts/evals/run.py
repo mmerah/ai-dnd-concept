@@ -28,7 +28,7 @@ from aidm.content.store import load_character, load_scenario
 from aidm.engines.loader import Engine
 from aidm.state.base import SAVE_VERSION, EngineId, Frozen, Slug
 from aidm.state.world import GameState
-from aidm.turn.pipeline import PlanContext, TurnWorkspace, default_cast, resolve_step
+from aidm.turn.pipeline import PlanContext, TurnWorkspace, director_stage, resolve_step
 from aidm.turn.prompts import SceneSnapshot, render_director
 
 EVALS = Path(__file__).parent
@@ -261,15 +261,15 @@ async def _turn(
         Setup(engine=engine, state=initial_state(case, engine, config), rng=rng), case.setup
     )
     workspace = TurnWorkspace(
-        prompt=case.prompt, history=[], state=before, draft=before.draft(), rng=rng, recent=()
+        prompt=case.prompt, history=[], state=before, draft=before.draft(), rng=rng
     )
-    cast = default_cast(engine, config)
+    director = director_stage(engine, config)
     # The agent is run directly rather than through `director_step`: only the run result carries
     # the retry exchanges a diagnosis needs, and the step returns none of it.
     rendered = render_director(
         SceneSnapshot.of(before), engine.renderer(before), before.scenario, case.prompt
     )
-    result = await cast.director.agent.run(rendered, deps=PlanContext(engine=engine, state=before))
+    result = await director.agent.run(rendered, deps=PlanContext(engine=engine, state=before))
     workspace.plan = result.output
     await resolve_step(engine)(workspace)
     after = workspace.draft.committed()

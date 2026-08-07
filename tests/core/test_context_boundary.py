@@ -5,16 +5,14 @@ from aidm.content.authored import ScenarioMeta
 from aidm.engines.loader import EntityRenderer
 from aidm.state.base import PLAYER_ID, SAVE_VERSION, Entity, EntityId, Kind
 from aidm.state.sheet import Counter, Sheet
-from aidm.state.turn import GrowthRequest
 from aidm.state.world import GameState, WorldState
 from aidm.turn.prompts import (
     SceneSnapshot,
     VisibleScene,
     prompt_id,
-    render_creator,
     render_director,
-    render_maintainer,
     render_narrator,
+    render_worldkeeper,
 )
 
 ACTOR_RULES = Sheet(
@@ -118,27 +116,19 @@ def test_prompt_ids_escape_control_characters_and_bracket_delimiters() -> None:
 
 
 def test_the_roles_shown_everything_get_ids_placement_detail_and_unrevealed_canon() -> None:
-    """The Director, Maintainer and Creator may all be told everything; the Narrator may not."""
+    """The Director and Worldkeeper may both be told everything; the Narrator may not."""
     held = _with_detail(state(), EntityId("mara"))
     scene = SceneSnapshot.of(held)
     describe = _renderer(held)
     director = render_director(scene, describe, held.scenario, "I look around.")
     catalogued = (
-        render_maintainer(
+        render_worldkeeper(
             scene,
             describe,
             held.scenario,
             prompt="Who is she?",
             evidence="- nothing changed",
             narration="Mara closes her folio.",
-        ),
-        render_creator(
-            scene,
-            describe,
-            held.scenario,
-            narration="A courier enters.",
-            recent=(),
-            request=GrowthRequest(kind="actor", name="Iven", brief="A rain-soaked courier."),
         ),
     )
 

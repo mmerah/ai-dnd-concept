@@ -5,12 +5,7 @@ from nicegui import ui
 
 from aidm.app.session import GameSession
 from aidm.state.facts import Fact
-from aidm.state.turn import Advance, RejectedGrowth, TraceEntry, Turn
-
-REJECTION_TEXT = {
-    "duplicate_name": "name already exists",
-    "over_cap": "over the growth cap",
-}
+from aidm.state.turn import Advance, StepTrace, TraceEntry, Turn
 
 
 def _section(title: str, body: str) -> None:
@@ -45,31 +40,26 @@ def _entry_trace(entry: TraceEntry) -> None:
 
 
 def _turn_trace(turn: Turn) -> None:
-    _section("DIRECTOR plan", json.dumps(turn.plan, indent=2))
+    for step in turn.steps:
+        _section(step.name.upper(), _output(step))
     _section("FACTS (private)", _facts(turn.facts))
-    _section("NARRATOR-SAFE EVIDENCE", turn.narrator_evidence)
-    _section("NARRATOR", turn.narration)
-    requests = "\n".join(
-        f"- {request.kind} {request.name}: {request.brief}" for request in turn.growth.requests
-    )
-    _section("MAINTAINER", requests or "- (nothing new)")
-    if turn.rejected:
-        _section("MAINTAINER rejected", _rejected(turn.rejected))
-    for entity in turn.created:
-        detail = entity.detail.description if entity.detail else ""
-        _section(f"CREATOR [{entity.kind}]", f"{entity.name} — {detail}")
-    with ui.expansion("what each role was shown").classes("w-full mt-3"):
-        for role, prompt in turn.prompts.items():
-            _section(role.upper(), prompt)
+    shown = [step for step in turn.steps if step.prompt is not None]
+    if shown:
+        with ui.expansion("what each role was shown").classes("w-full mt-3"):
+            for step in shown:
+                _section(step.name.upper(), step.prompt or "")
+
+
+def _output(step: StepTrace) -> str:
+    match step.output:
+        case None:
+            return "- (nothing)"
+        case str() as text:
+            return text
+        case body:
+            return json.dumps(body, indent=2)
 
 
 def _facts(facts: Sequence[Fact]) -> str:
     lines = [f"- {fact.trace}" for fact in facts]
     return "\n".join(lines) or "- (none)"
-
-
-def _rejected(rejected: Sequence[RejectedGrowth]) -> str:
-    return "\n".join(
-        f"- {item.request.kind} {item.request.name}: {REJECTION_TEXT[item.reason]}"
-        for item in rejected
-    )

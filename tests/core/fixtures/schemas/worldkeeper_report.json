@@ -1,6 +1,6 @@
 {
   "$defs": {
-    "GrowthRequest": {
+    "Creation": {
       "additionalProperties": false,
       "properties": {
         "kind": {
@@ -22,6 +22,9 @@
           "title": "Brief",
           "type": "string"
         },
+        "detail": {
+          "$ref": "#/$defs/EntityDetail"
+        },
         "location": {
           "anyOf": [
             {
@@ -32,30 +35,50 @@
             }
           ],
           "default": null,
-          "description": "For a person or item, the place they are: a location already in the catalogue, or one requested this same turn. Null places them where the player is, and is also correct for a location entry itself.",
+          "description": "For a person or item, the place they are: a location already in the catalogue, or one created this same turn. Null places them where the player is, and is also correct for a location entry itself.",
           "title": "Location"
         }
       },
       "required": [
         "kind",
         "name",
-        "brief"
+        "brief",
+        "detail"
       ],
-      "title": "GrowthRequest",
+      "title": "Creation",
+      "type": "object"
+    },
+    "EntityDetail": {
+      "additionalProperties": false,
+      "properties": {
+        "description": {
+          "title": "Description",
+          "type": "string"
+        },
+        "hook": {
+          "title": "Hook",
+          "type": "string"
+        }
+      },
+      "required": [
+        "description",
+        "hook"
+      ],
+      "title": "EntityDetail",
       "type": "object"
     }
   },
   "additionalProperties": false,
   "properties": {
-    "requests": {
+    "creations": {
       "default": [],
       "items": {
-        "$ref": "#/$defs/GrowthRequest"
+        "$ref": "#/$defs/Creation"
       },
-      "title": "Requests",
+      "title": "Creations",
       "type": "array"
     }
   },
-  "title": "Growth",
+  "title": "WorldkeeperReport",
   "type": "object"
 }

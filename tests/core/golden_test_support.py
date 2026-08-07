@@ -5,6 +5,7 @@ from itertools import islice
 from pathlib import Path
 
 from pydantic import BaseModel
+from pydantic.main import IncEx
 
 ENCODING = "utf-8"
 FIXTURES = Path(__file__).parent / "fixtures"
@@ -33,7 +34,7 @@ def golden_json(path: Path, actual: object) -> None:
     golden(path, json.dumps(actual, indent=2, ensure_ascii=False) + "\n")
 
 
-def dumped(model: BaseModel, exclude: set[str] | None = None) -> str:
+def dumped(model: BaseModel, exclude: IncEx | None = None) -> str:
     """Pydantic's own serialization, plus the trailing newline every fixture file carries."""
     return model.model_dump_json(indent=2, exclude=exclude) + "\n"
 

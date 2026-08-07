@@ -1,5 +1,5 @@
 {
-  "save_version": 38,
+  "save_version": 39,
   "facts": [
     {
       "source": "core",
@@ -65,76 +65,80 @@
   ],
   "entry": "turn",
   "prompt": "I lever up the loose flagstone and listen at the vault door.",
-  "plan": {
-    "intent": "Kael prises the flagstone loose and listens for what waits beyond the door.",
-    "tone": "hushed and close",
-    "speaker_id": null,
-    "effects": [
-      {
-        "op": "move-item",
-        "item_id": "vault_map",
-        "to_id": null
-      }
-    ],
-    "branches": [
-      {
-        "outcome": "success",
-        "effects": [
-          {
-            "op": "add-tag",
-            "entity_id": "player",
-            "tag_id": "success",
-            "text": ""
-          }
-        ]
-      },
-      {
-        "outcome": "failure",
-        "effects": [
-          {
-            "op": "add-tag",
-            "entity_id": "player",
-            "tag_id": "failure",
-            "text": ""
-          }
-        ]
-      }
-    ],
-    "action": {
-      "act": "check",
-      "actor_id": "player",
-      "bonus": 2,
-      "dc": 12,
-      "reason": "listening past the vault door",
-      "mode": "normal"
-    },
-    "milestone_earned": false
-  },
-  "narrator_evidence": "- Kael: listening past the vault door: success\n- Kael is Success\n- learned of the vault map\n- took the vault map",
   "narration": "The flagstone lifts. Beyond the door, something shifts its weight and waits.",
-  "growth": {
-    "requests": [
-      {
-        "kind": "actor",
-        "name": "Sister Auber",
-        "brief": "A lay sister who keeps the vault keys.",
-        "location": null
-      }
-    ]
-  },
-  "created": [
+  "steps": [
     {
-      "id": "sister_auber",
-      "kind": "actor",
-      "name": "Sister Auber",
-      "brief": "A lay sister who keeps the vault keys.",
-      "detail": {
-        "description": "She has kept the abbey's keys for thirty years.",
-        "hook": "She knows which doors were sealed and by whom."
-      },
-      "known": true,
-      "parent_id": "study"
+      "name": "director",
+      "output": {
+        "intent": "Kael prises the flagstone loose and listens for what waits beyond the door.",
+        "tone": "hushed and close",
+        "speaker_id": null,
+        "effects": [
+          {
+            "op": "move-item",
+            "item_id": "vault_map",
+            "to_id": null
+          }
+        ],
+        "branches": [
+          {
+            "outcome": "success",
+            "effects": [
+              {
+                "op": "add-tag",
+                "entity_id": "player",
+                "tag_id": "success",
+                "text": ""
+              }
+            ]
+          },
+          {
+            "outcome": "failure",
+            "effects": [
+              {
+                "op": "add-tag",
+                "entity_id": "player",
+                "tag_id": "failure",
+                "text": ""
+              }
+            ]
+          }
+        ],
+        "action": {
+          "act": "check",
+          "actor_id": "player",
+          "bonus": 2,
+          "dc": 12,
+          "reason": "listening past the vault door",
+          "mode": "normal"
+        },
+        "milestone_earned": false
+      }
+    },
+    {
+      "name": "resolve",
+      "output": "- Kael: listening past the vault door: success\n- Kael is Success\n- learned of the vault map\n- took the vault map"
+    },
+    {
+      "name": "narrator",
+      "output": "The flagstone lifts. Beyond the door, something shifts its weight and waits."
+    },
+    {
+      "name": "worldkeeper",
+      "output": {
+        "creations": [
+          {
+            "kind": "actor",
+            "name": "Sister Auber",
+            "brief": "A lay sister who keeps the vault keys.",
+            "detail": {
+              "description": "She has kept the abbey's keys for thirty years.",
+              "hook": "She knows which doors were sealed and by whom."
+            },
+            "location": null
+          }
+        ]
+      }
     }
-  ],
-  "rejected": []
+  ]
 }

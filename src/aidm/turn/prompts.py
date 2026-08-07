@@ -3,8 +3,7 @@ from collections.abc import Callable, Iterable, Mapping, Sequence
 
 from aidm.engines.loader import EntityRenderer
 from aidm.state.base import PLAYER_ID, Entity, EntityId, Frozen, Kind
-from aidm.state.turn import GrowthRequest
-from aidm.state.world import Exchange, GameState, ScenarioMeta
+from aidm.state.world import GameState, ScenarioMeta
 
 type Placement = Callable[[Entity], str]
 type Label = Callable[[Entity], str]
@@ -179,7 +178,7 @@ def render_narrator(
     )
 
 
-def render_maintainer(
+def render_worldkeeper(
     scene: SceneSnapshot,
     describe: EntityRenderer,
     scenario: ScenarioMeta,
@@ -195,29 +194,6 @@ def render_maintainer(
             ("PLAYER", prompt),
             ("WHAT HAPPENED", evidence),
             ("NARRATION", narration),
-        )
-    )
-
-
-def render_creator(
-    scene: SceneSnapshot,
-    describe: EntityRenderer,
-    scenario: ScenarioMeta,
-    *,
-    narration: str,
-    recent: Sequence[Exchange],
-    request: GrowthRequest,
-) -> str:
-    where = f"\nlocation: {request.location}" if request.location else ""
-    kind = "an npc" if request.kind == "actor" else f"a {request.kind}"
-    wanted = f"{kind} named {request.name}\nbrief: {request.brief}{where}"
-    return _sections(
-        (
-            _premise(scenario),
-            ("EVERYTHING THAT EXISTS", _catalogue(scene, describe)),
-            ("RECENT PLAY", _history(recent)),
-            ("NARRATION", narration),
-            ("CREATE", wanted),
         )
     )
 
@@ -324,13 +300,6 @@ def _with_state(line: str, state: str, indent: str = "") -> str:
     return f"{line}\n{indent}state:\n{block}"
 
 
-def _history(recent: Sequence[Exchange]) -> str:
-    return (
-        "\n\n".join(f"Player: {exchange.prompt}\nDM: {exchange.narration}" for exchange in recent)
-        or "(nothing yet)"
-    )
-
-
 CORE_DIRECTOR = """You are the DIRECTOR of a tabletop roleplaying game. Decide what should happen \
 this turn and answer with one plan; never write player-facing prose. The engine resolves your \
 plan: it makes every roll, pays every cost, and picks the outcome. You never state a roll's \
@@ -393,22 +362,19 @@ into natural fiction instead of reciting hit points, armour class, modifiers, di
 raw mechanics. Never invent an outcome unsupported by WHAT HAPPENED. If a speaker is given, write \
 their reply as dialogue. Output prose only."""
 
-MAINTAINER = """You are the MAINTAINER of a tabletop roleplaying world. Request an entry for every \
-named person, place, or item introduced by the narration but absent from the catalogue. Give the \
-exact name used and a one-sentence brief consistent with the narration.
+WORLDKEEPER = """You are the WORLDKEEPER of a tabletop roleplaying world. Create an entry for \
+every named person, place, or item introduced by the narration but absent from the catalogue, \
+giving the exact name used and a one-sentence brief consistent with the narration.
 
+- `detail.description` gives two concise sentences of usable detail; `detail.hook` gives one \
+sentence about how it may matter later. Neither may contradict the scenario, catalogue, or \
+narration, and neither may introduce a further named entity. The catalogue shows existing entries' \
+fuller detail, hooks, and exact rules state; use comparable entries to keep yours concrete.
 - `location`: for a person or item, name the place they are — a location already in the catalogue, \
-or one you request this same turn (if they are somewhere new, request that location too). Leave it \
+or one you create this same turn (if they are somewhere new, create that location too). Leave it \
 null to place them where the player is, and for a location entry itself.
 - Match loosely: a name already in the catalogue in any spelling is not new, and neither is \
-something the catalogue already describes under a different name. You are shown each entry's brief \
-plus any fuller detail, hook, and exact rules state so you can recognise it under a new description.
+something the catalogue already describes under a different name.
 - WHAT HAPPENED lists what the engine already recorded this turn; anything covered there is not new.
 - Ignore unnamed background detail, scenery, crowds, and objects nobody could interact with.
-- Returning no requests is normal and is the right answer most turns."""
-
-CREATOR = """You flesh out one requested world entity without contradicting the scenario, \
-catalogue, or narration. The catalogue includes existing entities' fuller detail, hooks, and exact \
-rules state; use comparable entries to keep your detail concrete and consistent. `description` \
-gives two concise sentences of usable detail. `hook` gives one sentence about how it may matter \
-later. Invent no additional named entities."""
+- Creating nothing is normal and is the right answer most turns."""

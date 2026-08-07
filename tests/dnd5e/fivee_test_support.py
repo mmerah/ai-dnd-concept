@@ -14,7 +14,7 @@ from aidm.state.packs import ENCODING, ContentRef, PackFormat
 from aidm.state.sheet import Counter, SheetDefinition, SheetTag, SheetTemplate
 from aidm.state.world import GameState, Record, player_sheet
 from aidm.turn.advancement import advisor
-from aidm.turn.pipeline import TurnOptions, default_cast
+from aidm.turn.pipeline import TurnOptions, default_workflow
 
 ENGINE_DIR = PLUGIN.engine_dir
 PACK_DIR = ENGINE_DIR / "packs" / "srd-2014"
@@ -51,7 +51,7 @@ def dnd5e_session(directory: Path) -> GameSession:
         scenario=scenario(),
         character=character(),
         engine=engine,
-        script=default_cast(engine, config).script(engine, OPTIONS),
+        script=default_workflow(engine, config, OPTIONS),
         advisor=advisor(engine, config),
         saves=FileSaves(directory),
         traces=FileTraces(directory),

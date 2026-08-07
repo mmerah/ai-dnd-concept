@@ -12,7 +12,7 @@ from aidm.state.sheet import AdvancementOffer, SheetDelta, apply_delta
 from aidm.state.turn import Advance, TraceEntry, Turn
 from aidm.state.world import GameState, player_sheet
 from aidm.turn.advancement import AdvisorContext, advisor, render_proposal
-from aidm.turn.pipeline import TurnOptions, TurnScript, default_cast, run_turn
+from aidm.turn.pipeline import TurnOptions, TurnScript, default_workflow, run_turn
 from aidm.turn.roles import Stage
 
 from .launcher import LaunchTarget
@@ -192,7 +192,7 @@ class Runtime:
             scenario=load_scenario(config.scenarios_dir, target.scenario_id, target.engine),
             character=load_character(config.characters_dir, target.character_id, target.engine),
             engine=engine,
-            script=default_cast(engine, config).script(engine, options),
+            script=default_workflow(engine, config, options),
             advisor=advisor(engine, config),
             saves=FileSaves(config.saves_dir),
             traces=FileTraces(config.saves_dir),

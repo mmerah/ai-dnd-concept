@@ -7,7 +7,7 @@ from pydantic import ValidationError
 
 from aidm.content.store import ENCODING, FileSaves, FileTraces, load_character, load_scenario
 from aidm.state.facts import CORE, Fact, narrator_evidence
-from aidm.state.turn import Advance, Growth, Turn
+from aidm.state.turn import Advance, StepTrace, Turn
 
 
 def test_save_and_trace_round_trip(tmp_path: Path) -> None:
@@ -23,11 +23,14 @@ def test_save_and_trace_round_trip(tmp_path: Path) -> None:
 
     turn = Turn(
         prompt="I listen.",
-        plan={"intent": "Listen.", "tone": "quiet"},
         narration="The abbey settles around you.",
-        narrator_evidence="- learned of the vault",
-        growth=Growth(),
-        prompts={"director": "exact director prompt"},
+        steps=(
+            StepTrace(
+                name="director",
+                prompt="exact director prompt",
+                output={"intent": "Listen.", "tone": "quiet"},
+            ),
+        ),
     )
     traces.append("current", turn)
     traces.append("current", updated(turn, prompt="I knock."))
@@ -67,11 +70,15 @@ def test_a_trace_round_trips_its_turn_and_advance_entries(tmp_path: Path) -> Non
     )
     turn = Turn(
         prompt="I brace.",
-        plan={"intent": "Kael endures a falling stone.", "tone": "dangerous"},
         facts=facts,
         narration="Dust falls.",
-        narrator_evidence=narrator_evidence(facts),
-        growth=Growth(),
+        steps=(
+            StepTrace(
+                name="director",
+                output={"intent": "Kael endures a falling stone.", "tone": "dangerous"},
+            ),
+            StepTrace(name="resolve", output=narrator_evidence(facts)),
+        ),
     )
     advance = Advance(facts=facts)
 
@@ -80,9 +87,10 @@ def test_a_trace_round_trips_its_turn_and_advance_entries(tmp_path: Path) -> Non
     reloaded = traces.load("5e")
 
     assert reloaded == (turn, advance)
+    director_output = reloaded[0].steps[0].output if isinstance(reloaded[0], Turn) else None
     assert (
-        isinstance(reloaded[0], Turn)
-        and reloaded[0].plan["intent"] == "Kael endures a falling stone."
+        isinstance(director_output, dict)
+        and director_output["intent"] == "Kael endures a falling stone."
     )
     assert isinstance(reloaded[1], Advance)
 
@@ -111,10 +119,7 @@ def test_a_save_or_trace_from_another_build_is_refused(tmp_path: Path) -> None:
         "stale",
         Turn(
             prompt="I listen.",
-            plan={"intent": "Listen.", "tone": "quiet"},
             narration="The abbey settles around you.",
-            narrator_evidence="- nothing changed",
-            growth=Growth(),
             save_version=stale.save_version,
         ),
     )

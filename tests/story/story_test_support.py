@@ -9,7 +9,7 @@ from aidm.engines.loader import Engine
 from aidm.engines.story.advance import GROWTH_REQUIRED
 from aidm.state.world import GameState, player_sheet
 from aidm.turn.advancement import advisor
-from aidm.turn.pipeline import TurnOptions, default_cast
+from aidm.turn.pipeline import TurnOptions, default_workflow
 
 TARGET = LaunchTarget(
     slug="poc",
@@ -32,7 +32,7 @@ def story_session(directory: Path, rng: Random | None = None) -> GameSession:
         scenario=scenario(),
         character=character(),
         engine=engine,
-        script=default_cast(engine, config).script(engine, OPTIONS),
+        script=default_workflow(engine, config, OPTIONS),
         advisor=advisor(engine, config),
         saves=FileSaves(directory),
         traces=FileTraces(directory),

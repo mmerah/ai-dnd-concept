@@ -10,7 +10,7 @@ from aidm.engines.loader import engine_ids
 from aidm.state.base import EngineId
 from aidm.state.world import GameState
 from aidm.turn.advancement import advisor, render_proposal
-from aidm.turn.pipeline import default_cast
+from aidm.turn.pipeline import director_stage, narrator_stage, worldkeeper_stage
 
 WANTED = "I want to strike harder."
 
@@ -24,12 +24,10 @@ READY_FOR_ADVANCEMENT: Mapping[EngineId, OfferReady] = {STORY: grown, DND5E: rea
 def test_every_role_assembles_the_same_instructions(engine_id: EngineId) -> None:
     engine, _ = game(engine_id)
     config = settings()
-    cast = default_cast(engine, config)
     roles = {
-        "director": cast.director.instructions,
-        "narrator": cast.narrator.instructions,
-        "maintainer": cast.maintainer.instructions,
-        "creator": cast.creator.instructions,
+        "director": director_stage(engine, config).instructions,
+        "narrator": narrator_stage(config).instructions,
+        "worldkeeper": worldkeeper_stage(config).instructions,
         "advisor": advisor(engine, config).instructions,
     }
     for name, instructions in roles.items():
