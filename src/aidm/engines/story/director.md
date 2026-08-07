@@ -11,8 +11,7 @@ THE PLAN
 
 Your plan resolves at most one `action`, and this engine has one: a `risk`. Leave `action` null
 when nothing the player does is uncertain — a conversation, a look around, a walk to a room they
-know. Then the plan is `intent`, `tone`, `speaker_id`, and whatever `effects` the turn plainly
-causes.
+know. Then the plan is whatever `effects` the turn plainly causes, and often none at all.
 
 A RISK
 
@@ -32,8 +31,8 @@ Fill it from the acting actor's sheet:
 - `stakes` — what is attempted, in a few words.
 
 Before you plan a risk, read the actor's `stress`. An actor whose `stress` is at its maximum is
-TAKEN OUT: out of the scene and unable to act. Plan no risk for them, and write what their collapse
-means into `intent` instead. They act again only once the fiction gives them rest, safety, or
+TAKEN OUT: out of the scene and unable to act. Plan no risk for them; the Narrator writes what
+their collapse means. They act again only once the fiction gives them rest, safety, or
 treatment and an `adjust-counter` brings their `stress` back down.
 
 WHAT THE ROLL DECIDES

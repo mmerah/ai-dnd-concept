@@ -1,5 +1,4 @@
 import json
-from collections.abc import Mapping
 from pathlib import Path
 
 import pytest
@@ -10,12 +9,11 @@ from pydantic_ai.usage import RunUsage
 
 from aidm.content.authored import AuthoredEntity, AuthoredWorld
 from aidm.engines.loader import Engine, EnginePlugin, load_engine
-from aidm.state.base import PLAYER_ID, SAVE_VERSION, EngineId, Entity, EntityId, Slug
+from aidm.state.base import PLAYER_ID, SAVE_VERSION, EngineId, Entity, EntityId
 from aidm.state.packs import (
     ContentRef,
     Manifest,
     Pack,
-    pack_format,
     read_pack,
     validate_pack,
     write_pack,
@@ -23,21 +21,6 @@ from aidm.state.packs import (
 from aidm.state.packs import Record as PackRecord
 from aidm.state.sheet import Counter, Sheet
 from aidm.state.world import GameState, Record, ScenarioMeta, WorldState
-
-
-class Monster(PackRecord):
-    """A test engine's record class: the loader must read any engine's shape polymorphically."""
-
-    hp: int
-    armor_class: int
-    attacks: str
-
-    def sheet_numbers(self) -> Mapping[Slug, int]:
-        return {"armor-class": self.armor_class, "hp": self.hp}
-
-    def noted(self) -> Mapping[Slug, str]:
-        return {"attacks": self.attacks}
-
 
 PACK = Pack(
     manifest=Manifest(
@@ -49,13 +32,12 @@ PACK = Pack(
     ),
     records={
         "monsters": {
-            "giant-rat": Monster(
+            "giant-rat": PackRecord(
                 index="giant-rat",
                 name="Giant Rat",
                 text="Keen smell, pack tactics.",
-                hp=7,
-                armor_class=12,
-                attacks="Bite +4 to hit, 1d4+2 piercing",
+                numbers={"armor-class": 12, "hp": 7},
+                notes={"attacks": "Bite +4 to hit, 1d4+2 piercing"},
             )
         }
     },
@@ -87,11 +69,9 @@ def _engine(tmp_path: Path) -> Engine:
         id=EngineId("test"),
         badge=("TEST", "grey-6"),
         engine_dir=_engine_dir(tmp_path),
-        actions=(),
         action_doc="",
         offered=lambda engine, state: None,
         check_delta=lambda state, delta: None,
-        record_types={"monsters": Monster},
     )
     return load_engine(plugin)
 
@@ -198,17 +178,14 @@ async def test_read_content_renders_the_record_and_refuses_a_bad_ref(tmp_path: P
 
 
 def test_validate_pack_refuses_a_record_missing_a_required_fact() -> None:
-    fmt = pack_format({"monsters": {"challenge": "int"}}, {"monsters": Monster})
-
     with pytest.raises(ValueError, match="required int fact 'challenge'"):
-        validate_pack(PACK, fmt)
+        validate_pack(PACK, {"monsters": {"challenge": "int"}})
 
 
 def test_a_pack_round_trips_byte_for_byte(tmp_path: Path) -> None:
     pack_dir = _engine_dir(tmp_path) / "packs" / "testpack"
-    fmt = pack_format({"monsters": {}}, {"monsters": Monster})
 
-    pack = read_pack(pack_dir, fmt)
+    pack = read_pack(pack_dir, {"monsters": {}})
     other_dir = tmp_path / "roundtrip"
     write_pack(other_dir, pack)
 

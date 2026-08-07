@@ -376,7 +376,18 @@ Both configurations ship behind `Settings.scene_director` (default off), and
 `SCENE_DIRECTOR=1`. The harness now records tokens per run and per suite. Per-scenario
 configuration is not built: it stays speculative until the data asks for it.
 
-## Phase 8.5 — Model-facing schema shrink (eval-gated, next)
+## Phase 8.5 — Model-facing schema shrink (shipped 2026-08-07, live gate owed)
+
+**Outcome, against the plan below.** The headline cut was **not taken and cannot be**: `branches`
+key consequences to an outcome only the Rules Director knows, and phase 8's A/B showed the write
+list has no other home that picks the right entity. The vocabulary shrank instead — `set-note`,
+`set-number`, `tag-relation` left `TurnEffect` — and the *prose* left the plan (`intent`, `tone`,
+`speaker_id`), which the plan below did not anticipate and which is where the duplication actually
+was. AFTER-VISION's "70–90% smaller" estimate assumed the world-writes were derivable; they are
+not, and the honest figure is −15% to −19% of plan-schema bytes plus −11% to −14% of director
+instructions. PROGRESS.md carries the full record.
+
+
 
 **AFTER-VISION.md's principle, adopted: a role outputs only what its inputs cannot
 deterministically derive.** Sequenced directly after phase 8 because the headline cut —

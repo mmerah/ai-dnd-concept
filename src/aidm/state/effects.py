@@ -266,6 +266,8 @@ type Effect = Annotated[
     Field(discriminator="op"),
 ]
 
+# What the Director writes: only the changes the fiction alone decides. A note, a lasting number,
+# and locking a way through are an engine program's, advancement's, or the scenario author's.
 type TurnEffect = Annotated[
     Reveal
     | MoveActor
@@ -275,11 +277,8 @@ type TurnEffect = Annotated[
     | SpendCounter
     | AddTag
     | RemoveTag
-    | SetNote
-    | SetNumber
     | AddRelation
     | RemoveRelation
-    | TagRelation
     | UntagRelation
     | RevealRelation
     | AdvanceThread,

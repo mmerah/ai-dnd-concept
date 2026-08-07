@@ -27,21 +27,13 @@ from aidm.state.world import player_sheet, sheet_of
 from aidm.turn.pipeline import TurnWorkspace
 from aidm.turn.roles import ChannelSafeModel
 
-STEPS = ("director", "resolve", "hooks", "narrator", "worldkeeper")
+STEPS = ("scene", "director", "resolve", "hooks", "narrator", "worldkeeper")
 
 
 async def test_an_engine_uses_the_shared_pipeline_and_safe_narrator_prompt() -> None:
     engine, state = initialized()
     steps: list[str] = []
-    director = FunctionModel(
-        scripted(
-            plan(
-                intent="Kael finds the map beneath the flagstone.",
-                tone="hushed",
-                effects=[{"op": "move-item", "item_id": "vault_map"}],
-            )
-        )
-    )
+    director = FunctionModel(scripted(plan(effects=[{"op": "move-item", "item_id": "vault_map"}])))
     narrator = FunctionModel(scripted(text("A creased chart slides into your hand.")))
     result = await played(
         engine,
@@ -85,8 +77,6 @@ async def test_the_resolver_applies_only_the_branch_of_the_outcome_rolled() -> N
     director = FunctionModel(
         scripted(
             plan(
-                intent="Kael pleads with the door.",
-                tone="tense",
                 action={
                     "act": "risk",
                     "actor_id": "player",
@@ -121,11 +111,11 @@ async def test_a_plan_answered_as_plain_text_json_settles_the_turn() -> None:
     """Small models often emit the plan JSON as text before obeying the tool call; the text
     fallback accepts it so the turn costs no retry round trip."""
     engine, state = initialized()
-    spoken = 'Here is the plan:\n{"intent": "Kael waits by the rail.", "tone": "flat"}'
+    spoken = 'Here is the plan:\n{"branches": []}'
     director = FunctionModel(scripted(text(spoken)))
     result = await played(engine, state, "I wait.", director=director)
 
-    assert answered(result.turn, "director")["intent"] == "Kael waits by the rail."
+    assert answered(result.turn, "director")["branches"] == []
     assert result.turn.facts == ()
 
 
@@ -135,25 +125,21 @@ async def test_a_tool_call_with_a_channel_marker_in_its_name_still_lands() -> No
         parts=[
             ToolCallPart(
                 tool_name="turn_plan<|channel|>json",
-                args=json.dumps({"intent": "Kael waits by the rail.", "tone": "flat"}),
+                args=json.dumps({"branches": []}),
             )
         ]
     )
     director = ChannelSafeModel(FunctionModel(scripted(marked)))
     result = await played(engine, state, "I wait.", director=director)
 
-    assert answered(result.turn, "director")["intent"] == "Kael waits by the rail."
+    assert answered(result.turn, "director")["branches"] == []
 
 
 async def test_an_illegal_plan_is_retried_with_the_reason() -> None:
     engine, state = initialized()
     responses = scripted(
-        plan(
-            intent="Kael waits.",
-            tone="flat",
-            branches=[{"outcome": "strong", "effects": ()}],
-        ),
-        plan(intent="Kael waits.", tone="flat"),
+        plan(branches=[{"outcome": "strong", "effects": ()}]),
+        plan(),
     )
     calls: list[list[ModelMessage]] = []
 
@@ -163,7 +149,6 @@ async def test_an_illegal_plan_is_retried_with_the_reason() -> None:
 
     result = await played(engine, state, "I wait.", director=FunctionModel(recording))
 
-    assert answered(result.turn, "director")["intent"] == "Kael waits."
     assert answered(result.turn, "director")["branches"] == []
     assert result.turn.facts == ()
     retry = calls[-1][-1]
@@ -178,7 +163,7 @@ async def test_worldkeeper_creations_receive_valid_engine_rules_before_commit() 
         "description": "Newly arrived from the road.",
         "hook": "Carries news from beyond the abbey.",
     }
-    director = FunctionModel(scripted(plan(intent="Someone approaches.", tone="curious")))
+    director = FunctionModel(scripted(plan()))
     narrator = FunctionModel(scripted(text("A courier enters.")))
     worldkeeper = FunctionModel(
         scripted(
@@ -243,15 +228,7 @@ async def test_a_failed_role_never_mutates_the_input_state() -> None:
         del messages, info
         raise RuntimeError("narrator exploded")
 
-    director = FunctionModel(
-        scripted(
-            plan(
-                intent="Kael takes the hidden map.",
-                tone="grim",
-                effects=[{"op": "move-item", "item_id": "vault_map"}],
-            )
-        )
-    )
+    director = FunctionModel(scripted(plan(effects=[{"op": "move-item", "item_id": "vault_map"}])))
     before = state.model_dump_json()
     with pytest.raises(RuntimeError, match="narrator exploded"):
         await played(
@@ -272,7 +249,7 @@ async def test_a_script_takes_an_extra_step_without_core_edits() -> None:
         engine,
         state,
         "I wait.",
-        director=FunctionModel(scripted(plan(intent="Kael waits.", tone="flat"))),
+        director=FunctionModel(scripted(plan())),
         on_step=steps.append,
         extra=(("echo", echo),),
     )
@@ -288,15 +265,7 @@ async def test_a_hook_fires_on_its_fact_moves_its_thread_and_steers_the_next_tur
         engine,
         state,
         "I ask Mara where the vault door is.",
-        director=FunctionModel(
-            scripted(
-                plan(
-                    intent="Mara points Kael at the undercroft.",
-                    tone="wary",
-                    effects=[{"op": "reveal", "entity_id": "vault"}],
-                )
-            )
-        ),
+        director=FunctionModel(scripted(plan(effects=[{"op": "reveal", "entity_id": "vault"}]))),
     )
 
     thread = found.state.threads["vault-seal"]
@@ -310,10 +279,11 @@ async def test_a_hook_fires_on_its_fact_moves_its_thread_and_steers_the_next_tur
         engine,
         found.state,
         "I wait.",
-        director=FunctionModel(scripted(plan(intent="Kael waits.", tone="flat"))),
+        director=FunctionModel(scripted(plan())),
     )
 
-    assert "Press on what opening the seal will cost" in shown(after.turn, "director")
+    # The note steers the Scene Director, which is the only role shown the scenario's own voice.
+    assert "Press on what opening the seal will cost" in shown(after.turn, "scene")
     assert after.state.pending_notes == ()
 
 
@@ -331,7 +301,7 @@ async def test_a_scene_directive_replaces_the_directors_own_canon_view() -> None
             )
         )
     )
-    director = FunctionModel(scripted(plan(intent="Kael presses on.", tone="tense")))
+    director = FunctionModel(scripted(plan()))
     result = await played(
         engine,
         state,

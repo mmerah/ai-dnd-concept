@@ -7,7 +7,7 @@ from aidm.state.base import SAVE_VERSION, EngineId
 
 # The version the golden state and turn fixtures were cut at. A pack regeneration moves it, and
 # must regenerate those fixtures in the same commit.
-FIXTURE_SAVE_VERSION = 44
+FIXTURE_SAVE_VERSION = 45
 
 
 def test_the_save_version_the_fixtures_were_cut_at_has_not_moved() -> None:

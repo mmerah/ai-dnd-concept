@@ -6,7 +6,7 @@ from aidm.engines.loader import Engine
 from aidm.engines.story.advance import GROWTH_REQUIRED
 from aidm.state.base import PLAYER_ID, EntityId
 from aidm.state.effects import AddTag, AdjustCounter, SetNumber, SheetDelta
-from aidm.state.plan import OutcomeBranch, TurnPlanBase
+from aidm.state.plan import OutcomeBranch, TurnPlanBase, check_speaker
 from aidm.state.world import GameState, player_sheet, sheet_of
 
 SPEND = AdjustCounter(
@@ -26,8 +26,6 @@ SETBACK = OutcomeBranch(
 def _plan(engine: Engine, **action: object) -> TurnPlanBase:
     return engine.plan_type.model_validate(
         {
-            "intent": "Kael forces the vault door.",
-            "tone": "strained",
             "branches": (STRONG, SETBACK),
             "action": {
                 "act": "risk",
@@ -86,9 +84,7 @@ def test_check_plan_refuses_what_the_procedure_cannot_resolve() -> None:
     hinders = _plan(engine, actor_id=PLAYER_ID, hindering_tag_id="unsteady-lantern")
     assert "nothing hinders them here" in _refusal(engine, state, hinders)
 
-    quiet = engine.plan_type.model_validate(
-        {"intent": "Kael listens.", "tone": "still", "branches": (STRONG,)}
-    )
+    quiet = engine.plan_type.model_validate({"branches": (STRONG,)})
     assert "settles no outcome" in _refusal(engine, state, quiet)
 
     taken_out = state.draft()
@@ -96,20 +92,19 @@ def test_check_plan_refuses_what_the_procedure_cannot_resolve() -> None:
     assert "TAKEN OUT" in _refusal(engine, taken_out.committed(), _plan(engine, actor_id=PLAYER_ID))
 
 
-def test_check_plan_refuses_a_speaker_the_narrator_may_not_voice() -> None:
-    """The speaker guard is what keeps the Narrator from voicing the player or an unmet NPC."""
-    engine, state = story_game()
+def test_check_speaker_refuses_who_the_narrator_may_not_voice() -> None:
+    """The speaker guard is what keeps the Narrator from voicing the player or an unmet NPC.
 
-    def addressed(speaker_id: EntityId | None) -> TurnPlanBase:
-        return engine.plan_type.model_validate(
-            {"intent": "Kael speaks up.", "tone": "low", "speaker_id": speaker_id}
-        )
+    It now runs on the Scene Director's directive rather than the plan, so it is exercised
+    directly rather than through `engine.check_plan`."""
+    _, state = story_game()
 
-    assert engine.check_plan(state, addressed(EntityId("mara"))) is None
-    assert "never the player" in _refusal(engine, state, addressed(PLAYER_ID))
-    assert "unknown speaker" in _refusal(engine, state, addressed(EntityId("nobody")))
+    assert check_speaker(state, EntityId("mara")) is None
+    assert check_speaker(state, None) is None
+    assert "never the player" in str(check_speaker(state, PLAYER_ID))
+    assert "unknown speaker" in str(check_speaker(state, EntityId("nobody")))
     for absent in (EntityId("tomas"), EntityId("elena")):
-        assert "met and who is here" in _refusal(engine, state, addressed(absent))
+        assert "met and who is here" in str(check_speaker(state, absent))
 
 
 def test_growth_opens_an_offer_and_storys_own_caps_refuse_what_breaks_them() -> None:

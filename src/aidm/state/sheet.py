@@ -4,7 +4,7 @@ from typing import Self
 
 from pydantic import Field, model_validator
 
-from .base import Entity, Frozen, Kind, Mutable, Slug
+from .base import Frozen, Kind, Mutable, Slug
 from .packs import EMPTY_FROZEN_MAP, ContentRef, FrozenMap, Record, Value
 
 type ResolveRef = Callable[[ContentRef], Record | None]
@@ -135,7 +135,7 @@ class AdvancementOffer(Frozen):
         return self
 
 
-def render_sheet(_entity: Entity, sheet: Sheet, resolve: ResolveRef | None = None) -> str:
+def render_sheet(sheet: Sheet, resolve: ResolveRef) -> str:
     """With a resolver, each ref renders as one line of its record's notes and tags — the key
     facts, not the text, which still enters a turn only through `read_content`."""
     counters = ", ".join(_counter(key, sheet.counters[key]) for key in sorted(sheet.counters))
@@ -153,9 +153,7 @@ def render_sheet(_entity: Entity, sheet: Sheet, resolve: ResolveRef | None = Non
     )
 
 
-def _refs(refs: tuple[ContentRef, ...], resolve: ResolveRef | None) -> str:
-    if resolve is None:
-        return ", ".join(str(ref) for ref in refs)
+def _refs(refs: tuple[ContentRef, ...], resolve: ResolveRef) -> str:
     return "".join(f"\n- {_ref_line(ref, resolve(ref))}" for ref in refs)
 
 

@@ -12,7 +12,7 @@ from aidm.engines.loader import Engine
 from aidm.state.apply import apply_effect, fire_hooks
 from aidm.state.base import Entity, EntityId, Frozen, slug
 from aidm.state.facts import Fact, narrator_evidence
-from aidm.state.plan import TurnPlanBase
+from aidm.state.plan import TurnPlanBase, check_speaker
 from aidm.state.turn import Creation, SceneDirective, StepTrace, Turn, WorldkeeperReport
 from aidm.state.world import Exchange, GameState
 
@@ -60,6 +60,11 @@ class TurnWorkspace:
         if self.plan is None:
             raise ValueError("this step ran before a director step settled the plan")
         return self.plan
+
+    def briefed(self) -> SceneDirective:
+        if self.directive is None:
+            raise ValueError("this step ran before a scene step settled the directive")
+        return self.directive
 
 
 type StepFn = Callable[[TurnWorkspace], Awaitable[None]]
@@ -135,15 +140,14 @@ def hook_step(engine: Engine) -> StepFn:
 
 def narrator_step(role: Stage[None, str], engine: Engine) -> StepFn:
     async def run(ws: TurnWorkspace) -> None:
-        plan = ws.settled()
+        directive = ws.briefed()
         draft = ws.draft
         rendered = prompts.render_narrator(
             VisibleScene.of(SceneSnapshot.of(draft)),
             engine.renderer(draft),
             draft.scenario,
-            intent=plan.intent,
-            tone=plan.tone,
-            speaker_id=plan.speaker_id,
+            focus=directive.focus,
+            speaker_id=directive.speaker_id,
             evidence=ws.evidence,
             prompt=ws.prompt,
         )
@@ -211,6 +215,8 @@ def scene_stage(settings: Settings) -> Stage[GameState, SceneDirective]:
         wrong = sorted(set(directive.reveal) - unmet)
         if wrong:
             raise ModelRetry(f"not something the player has yet to find: {', '.join(wrong)}")
+        if fault := check_speaker(state, directive.speaker_id):
+            raise ModelRetry(fault)
         return directive
 
     _ = built.agent.output_validator(known)
@@ -218,11 +224,10 @@ def scene_stage(settings: Settings) -> Stage[GameState, SceneDirective]:
 
 
 def director_stage(engine: Engine, settings: Settings) -> Stage[PlanContext, TurnPlanBase]:
-    core = prompts.RULES_DIRECTOR if settings.scene_director else prompts.CORE_DIRECTOR
     built = stage(
         "director",
         settings,
-        instructions=f"{core}\n\n{engine.director_instructions}",
+        instructions=f"{prompts.RULES_DIRECTOR}\n\n{engine.director_instructions}",
         output_type=[
             ToolOutput(engine.plan_type, name="turn_plan"),
             TextOutput(plan_from_text(engine.plan_type)),
@@ -263,10 +268,9 @@ def default_workflow(engine: Engine, settings: Settings, options: TurnOptions) -
     director = director_stage(engine, settings)
     narrator = narrator_stage(settings)
     worldkeeper = worldkeeper_stage(settings)
-    scene = scene_stage(settings) if settings.scene_director else None
-    opening: TurnScript = () if scene is None else ((scene.name, scene_step(scene, engine)),)
+    scene = scene_stage(settings)
     return (
-        *opening,
+        (scene.name, scene_step(scene, engine)),
         (director.name, director_step(director, engine)),
         ("resolve", resolve_step(engine)),
         ("hooks", hook_step(engine)),

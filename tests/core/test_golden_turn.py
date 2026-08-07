@@ -37,7 +37,7 @@ CREATIONS = [
         },
     }
 ]
-TURN_STEPS = ("director", "resolve", "hooks", "narrator", "worldkeeper")
+TURN_STEPS = ("scene", "director", "resolve", "hooks", "narrator", "worldkeeper")
 
 
 def _branch(outcome: str) -> dict[str, object]:
@@ -49,8 +49,6 @@ def _branch(outcome: str) -> dict[str, object]:
 
 def _plan(action: dict[str, object], outcomes: tuple[str, ...]) -> ModelResponse:
     return plan(
-        intent="Kael prises the flagstone loose and listens for what waits beyond the door.",
-        tone="hushed and close",
         effects=[TAKE_THE_MAP],
         action=action,
         branches=[_branch(outcome) for outcome in outcomes],

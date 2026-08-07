@@ -540,90 +540,6 @@
       "title": "Risk",
       "type": "object"
     },
-    "SetNote": {
-      "additionalProperties": false,
-      "description": "Write freeform bookkeeping the fiction needs remembered and no counter or tag holds, such as\nwhat a caster concentrates on. Writing a key again replaces what it held.",
-      "properties": {
-        "op": {
-          "const": "set-note",
-          "default": "set-note",
-          "title": "Op",
-          "type": "string"
-        },
-        "entity_id": {
-          "description": "Exact id of the entity affected; an actor must be here with the player.",
-          "title": "Entity Id",
-          "type": "string"
-        },
-        "key": {
-          "description": "What the note is about, such as `concentration`.",
-          "maxLength": 64,
-          "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$",
-          "title": "Key",
-          "type": "string"
-        },
-        "text": {
-          "description": "The note; empty clears whatever the key held.",
-          "title": "Text",
-          "type": "string"
-        },
-        "why": {
-          "default": "",
-          "description": "One short sentence saying what causes this change, for the player.",
-          "title": "Why",
-          "type": "string"
-        }
-      },
-      "required": [
-        "entity_id",
-        "key",
-        "text"
-      ],
-      "title": "SetNote",
-      "type": "object"
-    },
-    "SetNumber": {
-      "additionalProperties": false,
-      "description": "Set a number the fiction has lastingly changed — armour worn, a permanent blessing. Never\nfor this turn's outcome: pools that go up and down are counters.",
-      "properties": {
-        "op": {
-          "const": "set-number",
-          "default": "set-number",
-          "title": "Op",
-          "type": "string"
-        },
-        "entity_id": {
-          "description": "Exact id of the entity affected; an actor must be here with the player.",
-          "title": "Entity Id",
-          "type": "string"
-        },
-        "key": {
-          "description": "Exact key of a number already on that sheet.",
-          "maxLength": 64,
-          "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$",
-          "title": "Key",
-          "type": "string"
-        },
-        "value": {
-          "description": "What the number becomes.",
-          "title": "Value",
-          "type": "integer"
-        },
-        "why": {
-          "default": "",
-          "description": "One short sentence saying what causes this change, for the player.",
-          "title": "Why",
-          "type": "string"
-        }
-      },
-      "required": [
-        "entity_id",
-        "key",
-        "value"
-      ],
-      "title": "SetNumber",
-      "type": "object"
-    },
     "SpendCounter": {
       "additionalProperties": false,
       "description": "Pay from a counter, which refuses outright when the pool cannot cover it.",
@@ -667,56 +583,6 @@
       "title": "SpendCounter",
       "type": "object"
     },
-    "TagRelation": {
-      "additionalProperties": false,
-      "description": "Mark a tie — most often a connection — as blocked, such as `locked`, until\n`untag-relation` lifts it again.",
-      "properties": {
-        "op": {
-          "const": "tag-relation",
-          "default": "tag-relation",
-          "title": "Op",
-          "type": "string"
-        },
-        "kind": {
-          "description": "Exact kind of the tie, such as `connected`.",
-          "maxLength": 64,
-          "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$",
-          "title": "Kind",
-          "type": "string"
-        },
-        "source": {
-          "description": "Exact id of the tie's source entity.",
-          "title": "Source",
-          "type": "string"
-        },
-        "target": {
-          "description": "Exact id of the tie's target entity.",
-          "title": "Target",
-          "type": "string"
-        },
-        "tag": {
-          "description": "Stable slug for the tag, such as `locked`.",
-          "maxLength": 64,
-          "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$",
-          "title": "Tag",
-          "type": "string"
-        },
-        "why": {
-          "default": "",
-          "description": "One short sentence saying what causes this change, for the player.",
-          "title": "Why",
-          "type": "string"
-        }
-      },
-      "required": [
-        "kind",
-        "source",
-        "target",
-        "tag"
-      ],
-      "title": "TagRelation",
-      "type": "object"
-    },
     "TurnEffect": {
       "discriminator": {
         "mapping": {
@@ -731,10 +597,7 @@
           "remove-tag": "#/$defs/RemoveTag",
           "reveal": "#/$defs/Reveal",
           "reveal-relation": "#/$defs/RevealRelation",
-          "set-note": "#/$defs/SetNote",
-          "set-number": "#/$defs/SetNumber",
           "spend-counter": "#/$defs/SpendCounter",
-          "tag-relation": "#/$defs/TagRelation",
           "untag-relation": "#/$defs/UntagRelation"
         },
         "propertyName": "op"
@@ -765,19 +628,10 @@
           "$ref": "#/$defs/RemoveTag"
         },
         {
-          "$ref": "#/$defs/SetNote"
-        },
-        {
-          "$ref": "#/$defs/SetNumber"
-        },
-        {
           "$ref": "#/$defs/AddRelation"
         },
         {
           "$ref": "#/$defs/RemoveRelation"
-        },
-        {
-          "$ref": "#/$defs/TagRelation"
         },
         {
           "$ref": "#/$defs/UntagRelation"
@@ -843,29 +697,6 @@
   },
   "additionalProperties": false,
   "properties": {
-    "intent": {
-      "description": "1-3 sentences for the Narrator: what the player attempted and what is at stake. Never an outcome, a number, or a die.",
-      "title": "Intent",
-      "type": "string"
-    },
-    "tone": {
-      "description": "A few words of mood. Atmosphere only: 'tense and hushed', not 'they find it'.",
-      "title": "Tone",
-      "type": "string"
-    },
-    "speaker_id": {
-      "anyOf": [
-        {
-          "type": "string"
-        },
-        {
-          "type": "null"
-        }
-      ],
-      "default": null,
-      "description": "Exact id of the NPC the player addresses — one they have met and who is here with them — or null if nobody is addressed.",
-      "title": "Speaker Id"
-    },
     "effects": {
       "default": [],
       "description": "Consequences that happen whatever the action settles.",
@@ -897,10 +728,6 @@
       "description": "The one risk this turn resolves, or null when nothing is uncertain enough to roll for."
     }
   },
-  "required": [
-    "intent",
-    "tone"
-  ],
   "title": "TurnPlan",
   "type": "object"
 }

@@ -12,7 +12,6 @@ from aidm.state.packs import (
     Manifest,
     Pack,
     Record,
-    pack_format,
     validate_pack,
 )
 
@@ -89,7 +88,7 @@ def build(checkout: Path) -> Pack:
             "records": records,
         }
     )
-    validate_pack(pack, pack_format(_spec().collections, {}))
+    validate_pack(pack, _spec().collections)
     return pack
 
 

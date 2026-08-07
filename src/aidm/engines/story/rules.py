@@ -11,7 +11,6 @@ PLUGIN = EnginePlugin(
     id=ENGINE_ID,
     badge=("STORY", "deep-purple-6"),
     engine_dir=Path(__file__).parent,
-    actions=(),
     action_doc="The one risk this turn resolves, or null when nothing is uncertain enough to "
     "roll for.",
     offered=offered,

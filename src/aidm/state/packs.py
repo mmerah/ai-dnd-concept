@@ -111,15 +111,6 @@ type FactType = Literal["int", "slug", "str"]
 type FactSchema = Mapping[Slug, FactType]
 
 
-@dataclass(frozen=True, slots=True)
-class PackFormat:
-    """What one engine's packs contain: collection name -> the record class it holds,
-    plus the facts each collection's records must all carry."""
-
-    held: Mapping[CollectionName, type[Record]]
-    required_facts: Mapping[CollectionName, FactSchema]
-
-
 class Manifest(Value):
     id: ContentSlug
     name: str
@@ -133,7 +124,7 @@ class Manifest(Value):
 
 class Pack(Value):
     """`SerializeAsAny` preserves concrete record fields when dumping; which collections a pack may
-    hold is its `PackFormat`'s business, checked by `validate_pack`."""
+    hold is checked by `validate_pack`."""
 
     manifest: Manifest
     records: FrozenMap[CollectionName, FrozenMap[ContentSlug, SerializeAsAny[Record]]] = (
@@ -206,8 +197,8 @@ def loaded(packs: Sequence[Pack]) -> Content:
     )
 
 
-def load(directories: Sequence[Path], pack_format: PackFormat) -> Content:
-    return loaded([read_pack(d, pack_format) for d in directories])
+def load(directories: Sequence[Path], collections: Mapping[CollectionName, FactSchema]) -> Content:
+    return loaded([read_pack(d, collections) for d in directories])
 
 
 def parse_ref(text: str) -> ContentRef:
@@ -221,16 +212,16 @@ def parse_ref(text: str) -> ContentRef:
         raise ValueError(f"malformed ref {text!r}: {invalid.errors()[0]['msg']}") from invalid
 
 
-def read_pack(directory: Path, pack_format: PackFormat) -> Pack:
+def read_pack(directory: Path, collections: Mapping[CollectionName, FactSchema]) -> Pack:
     records = {
-        name: {record.index: record for record in _read(directory / f"{name}.json", held)}
-        for name, held in pack_format.held.items()
+        name: {record.index: record for record in _read(directory / f"{name}.json")}
+        for name in collections
     }
     pack = Pack(
         manifest=Manifest.model_validate_json(_text(directory / "manifest.json")),
         records=records,
     )
-    validate_pack(pack, pack_format)
+    validate_pack(pack, collections)
     return pack
 
 
@@ -243,36 +234,24 @@ def write_pack(directory: Path, pack: Pack) -> None:
         _write(directory / f"{name}.json", json.dumps(dumped, indent=2, ensure_ascii=False))
 
 
-def validate_pack(pack: Pack, pack_format: PackFormat) -> None:
+def validate_pack(pack: Pack, collections: Mapping[CollectionName, FactSchema]) -> None:
     """What a pack cannot check alone: which collections exist, and what each one may hold."""
     named = set(pack.records) | set(pack.manifest.provides)
-    if unknown := sorted(named - set(pack_format.held)):
+    if unknown := sorted(named - set(collections)):
         raise ValueError(f"the format specifies no collection {unknown}")
-    if undeclared := sorted(set(pack_format.held) - set(pack.manifest.provides)):
+    if undeclared := sorted(set(collections) - set(pack.manifest.provides)):
         raise ValueError(f"manifest declares no count for {undeclared}")
-    for name, held in pack_format.held.items():
+    for name, facts in collections.items():
         records = pack.records.get(name, {})
-        if foreign := sorted(i for i, r in records.items() if not isinstance(r, held)):
-            raise ValueError(f"{name} holds records that are no {held.__name__}: {foreign}")
         if miskeyed := sorted(index for index, r in records.items() if index != r.index):
             raise ValueError(f"{name} keyed against the wrong index: {miskeyed}")
         declared = pack.manifest.provides[name]
         if declared != len(records):
             raise ValueError(f"manifest promises {declared} {name}, the pack ships {len(records)}")
-        for key, kind in pack_format.required_facts.get(name, {}).items():
+        for key, kind in facts.items():
             wrong = sorted(i for i, r in records.items() if not _fact_is(r.facts.get(key), kind))
             if wrong:
                 raise ValueError(f"{name} records lack the required {kind} fact {key!r}: {wrong}")
-
-
-def pack_format(
-    collections: Mapping[CollectionName, FactSchema],
-    record_types: Mapping[CollectionName, type[Record]],
-) -> PackFormat:
-    return PackFormat(
-        held={name: record_types.get(name, Record) for name in collections},
-        required_facts={name: facts for name, facts in collections.items() if facts},
-    )
 
 
 _SLUG: TypeAdapter[str] = TypeAdapter(Slug)
@@ -292,9 +271,9 @@ def _fact_is(value: JsonValue | None, kind: FactType) -> bool:
             return isinstance(value, str)
 
 
-def _read(path: Path, held: type[Record]) -> list[Record]:
+def _read(path: Path) -> list[Record]:
     raw = _RAW.validate_json(_text(path)) if path.exists() else []
-    return [held.model_validate(record) for record in raw]
+    return [Record.model_validate(record) for record in raw]
 
 
 def _text(path: Path) -> str:

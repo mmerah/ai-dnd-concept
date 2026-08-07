@@ -67,7 +67,6 @@ class Attempt:
     plan: JsonValue
     retries: tuple[str, ...]
     tokens: int
-    # None whenever the single-director configuration ran, which is what makes the A/B readable.
     directive: JsonValue = None
 
 
@@ -301,10 +300,7 @@ async def _turn(case: EvalCase, run: int, config: Settings) -> Attempt:
 
 async def _directive(
     case: EvalCase, config: Settings, engine: Engine, before: GameState
-) -> tuple[SceneDirective | None, tuple[str, ...], int]:
-    """Off by default: only `Settings.scene_director` turns this step on, matching the pipeline."""
-    if not config.scene_director:
-        return None, (), 0
+) -> tuple[SceneDirective, tuple[str, ...], int]:
     scene = scene_stage(config)
     rendered = render_director(
         SceneSnapshot.of(before), engine.renderer(before), before.scenario, case.prompt
@@ -346,7 +342,7 @@ async def _director_turn(
         plan=outcome.plan,
         retries=retries,
         tokens=tokens,
-        directive=None if directive is None else directive.model_dump(mode="json"),
+        directive=directive.model_dump(mode="json"),
     )
 
 

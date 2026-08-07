@@ -60,18 +60,6 @@ class TurnPlanBase(Frozen):
                 decoded[key] = loaded
         return decoded
 
-    intent: str = Field(
-        description="1-3 sentences for the Narrator: what the player attempted and what is at "
-        "stake. Never an outcome, a number, or a die."
-    )
-    tone: str = Field(
-        description="A few words of mood. Atmosphere only: 'tense and hushed', not 'they find it'."
-    )
-    speaker_id: EntityId | None = Field(
-        default=None,
-        description="Exact id of the NPC the player addresses — one they have met and who is here "
-        "with them — or null if nobody is addressed.",
-    )
     effects: tuple[TurnEffect, ...] = Field(
         default=(), description="Consequences that happen whatever the action settles."
     )
@@ -106,10 +94,8 @@ def check_plan_base(
     labels: frozenset[Slug],
     default_rules: Callable[[Entity], Sheet],
 ) -> str | None:
-    """What every engine's plan check shares: the speaker guard, the outcome labels this action
-    allows, and a trial application of the effects against the state as it stands."""
-    if fault := check_speaker(state, plan.speaker_id):
-        return fault
+    """What every engine's plan check shares: the outcome labels this action allows, and a trial
+    application of the effects against the state as it stands."""
     named = [branch.outcome for branch in plan.branches]
     if repeated := sorted({name for name in named if named.count(name) > 1}):
         return f"one branch per outcome, and {repeated} is branched twice"

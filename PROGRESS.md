@@ -422,18 +422,63 @@ A/B asked for went in and the split closed the whole gap:
   doing exactly what REFACTOR.md says it does. Only same-hour pairs are comparable; neither 84% nor
   91% is a trend.
 
+- **Vision phase 8.5 — Model-facing schema shrink** (2026-08-07). Code complete, live gate not yet
+  run. The principle applied throughout: *a role outputs only what its inputs cannot
+  deterministically derive, and no two roles are asked for the same thing.*
+  - **The design question is answered: a residual write list, not a directive channel.** The
+    headline cut REFACTOR.md sketched — `effects`/`branches` leave the plan entirely — is **not
+    taken**, and the evidence says it cannot be. `branches` carry consequences keyed to an outcome
+    only the Rules Director knows the labels of (`condition-rider` is exactly this), and the
+    phase-8 A/B showed a Director that cannot see canon writes no `reveal` while an upstream role
+    picks the wrong entity 7 runs out of 7. Moving the ops to the Scene Director would only move
+    the same bytes onto a `NativeOutput` schema the output-mode caution says to keep small. So the
+    plan keeps `effects`/`branches` and the *vocabulary* shrinks instead.
+  - **`TurnEffect` is now the residual: what the fiction alone decides.** Three ops left the
+    Director's surface — `set-note` (the VM writes concentration since phase 7), `set-number`
+    (advancement's, and `SheetEffect` keeps it), and `tag-relation` (nothing locks a way through at
+    turn time; the phase-2 review already recommended this cut). The classes stay in `Effect` and
+    `ProgramEffect`, so `apply_effect` and VM programs are unchanged; only the model-facing union
+    shrank. Hooks share `TurnEffect` and lose the same three, which no shipped hook writes.
+  - **The Rules Director writes no prose at all.** `intent`, `tone`, and `speaker_id` are deleted
+    from `TurnPlanBase`. `intent` duplicated the directive's `focus` outright, so the Narrator now
+    reads `focus`; `speaker_id` moved to `SceneDirective` (and `check_speaker` with it, out of
+    `check_plan_base` into the scene stage's validator); `tone` is deleted with nothing replacing
+    it — AFTER-VISION names it among the fields to resist, `pressure` and `stakes` already carry
+    mood, and no eval measures prose. A plan is now `action` + `effects` + `branches`.
+  - **The single-director path is deleted.** `Settings.scene_director` is gone and the scene step
+    is unconditional, so `CORE_DIRECTOR` and its `_UNSEEN_CANON` / `_DRIVE` / `_THREADS_AND_NOTES`
+    paragraphs die with it. `render_director`'s `directive` argument now means *which of the two
+    views* rather than *is the flag on*. `instructions/*/rules_director.txt` is deleted — it was
+    byte-identical to `director.txt` once the flag went.
+  - **`EnginePlugin` sheds two dead seams**, both found by an adversarial audit: `record_types`
+    (empty for every engine since phase 7, and with it `PackFormat.held`, `pack_format()`, and the
+    `isinstance` check over pack records) and `actions` (every plugin passed `()` once dnd5e went
+    declarative). `render_sheet` lost an unread `_entity` parameter and an unreachable
+    `resolve is None` branch.
+  - `SAVE_VERSION` 45. Regenerated: `instructions/*`, `prompts/*` (new per-engine `scene.txt`),
+    both `turn_plan.json`, `scene_directive.json`, `save/*`, `state/*`, `turn/*`, and all three
+    `examples.json`. Both engines' `director.md` lost their `intent`/`tone`/`speaker_id` sentences.
+  - **Measured shrink**: dnd5e `turn_plan.json` 35434 → 30188 bytes (−15%), story 26994 → 21748
+    (−19%); dnd5e director instructions 15723 → 13452 (−14%), story 10886 → 9642 (−11%).
+    `scene_directive.json` grew 1480 → 1826 for `speaker_id`. Line delta: `src/aidm` Python
+    **−72**.
+  - **Not taken, with reasons.** Dropping pack `notes` that duplicate a `facts` value: only
+    `spells.level` genuinely duplicates (295 of ~4500 note entries), and closing it needs an
+    importer change plus a pack regen against the pinned `5e-database` checkout, which is not
+    present on this machine — the byte-identical round trip is the regression check and cannot be
+    run without it. An `actions.json` shrink enabled by the smaller plan model: none found — the
+    plan shrank on the effects side and the action params were already minimal.
+  - **Owed**: the live gate. `turn_plan.json` and `instructions/*` both moved, so this phase owes a
+    full suite against a same-hour HEAD run from a worktree, with the grown `SceneDirective` probed
+    on gpt-oss before it is trusted. Nothing here is measured yet.
+
 ## Current
 
-Phase 8 shipped 2026-08-07 with the Scene/Rules split on. Phase 5 (ironsworn) stays deferred.
+Phase 8.5 is code complete and unmeasured. Phase 5 (ironsworn) stays deferred.
 
-Next is phase 8.5 (model-facing schema shrink). The two A/Bs narrow it: a Director that cannot see
-unrevealed canon writes no `reveal`, so the non-mechanical writes need a named home before
-`effects` can leave the plan — either a residual write list, or a directive channel like
-`SceneDirective.reveal`, which works mechanically and now fails only on which entity the Scene
-Director picks.
-
-Worth doing before or alongside phase 8: the one prompt pass on "the Director drops the state
-write", now the largest eval finding at three cases and the only one costing whole runs.
+Next, in order: (1) run the phase-8.5 live gate — same-hour HEAD comparison, `SceneDirective`
+output-mode probe first; (2) the prompt pass on "the Director drops the state write", still the
+largest eval finding at three cases; (3) phase 9 (memories + keepers).
 
 - Phase-4 line delta: `src/aidm` +423 total, of which Python is +315 (budget said +250 VM / −75
   story). The story deletion paid −126; `vm.py` is 411 lines and `actions.json` 108. The VM is

@@ -20,9 +20,7 @@ UNSCATHED = OutcomeBranch(outcome=FAILURE, effects=(AddTag(entity_id=RAT, tag_id
 def _plan(
     engine: Engine, action: object | None, *, branches: tuple[OutcomeBranch, ...] = ()
 ) -> TurnPlanBase:
-    return engine.plan_type.model_validate(
-        {"intent": "Kael acts.", "tone": "tense", "action": action, "branches": branches}
-    )
+    return engine.plan_type.model_validate({"action": action, "branches": branches})
 
 
 def _refusal(engine: Engine, state: GameState, plan: TurnPlanBase) -> str:
@@ -287,8 +285,6 @@ def test_a_plan_with_json_stringified_nested_fields_validates_as_if_nested() -> 
     action = {"act": "attack", "actor_id": "player", "target_id": RAT, "weapon_item_id": SWORD}
     hit = {"op": "add-tag", "entity_id": RAT, "tag_id": "wounded"}
     nested = {
-        "intent": "Bram swings his longsword at the bloated rat.",
-        "tone": "quick and sharp",
         "action": action,
         "branches": [{"outcome": SUCCESS, "effects": [hit]}],
     }
@@ -298,12 +294,6 @@ def test_a_plan_with_json_stringified_nested_fields_validates_as_if_nested() -> 
         "branches": json.dumps(nested["branches"]),
     }
     assert engine.plan_type.model_validate(stringified) == engine.plan_type.model_validate(nested)
-
-
-def test_a_string_field_that_merely_looks_like_json_is_left_alone() -> None:
-    engine, _ = dnd5e_game()
-    plan = engine.plan_type.model_validate({"intent": "[Bram] {waves}", "tone": "flat"})
-    assert plan.intent == "[Bram] {waves}"
 
 
 def test_every_action_is_worked_through_in_the_directors_instructions() -> None:

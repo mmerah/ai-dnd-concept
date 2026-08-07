@@ -58,7 +58,6 @@ PLUGIN = EnginePlugin(
     id=ENGINE_ID,
     badge=("D&D 5E", "red-9"),
     engine_dir=Path(__file__).parent,
-    actions=(),
     action_doc="The one action this turn resolves, or null when nothing needs resolving.",
     offered=offered,
     check_delta=check_delta,

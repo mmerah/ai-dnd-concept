@@ -1,7 +1,5 @@
 [
   {
-    "intent": "Kael cuts down at the rat worrying his boot.",
-    "tone": "quick and ugly",
     "branches": [
       {
         "outcome": "success",
@@ -34,8 +32,6 @@
     }
   },
   {
-    "intent": "Kael speaks the words off the scroll and fire fans out at the rat.",
-    "tone": "sudden, bright",
     "branches": [
       {
         "outcome": "success",
@@ -45,17 +41,6 @@
             "entity_id": "cloister_rat",
             "tag_id": "scorched",
             "text": "Its fur is burnt away in patches."
-          }
-        ]
-      },
-      {
-        "outcome": "failure",
-        "effects": [
-          {
-            "op": "set-note",
-            "entity_id": "study",
-            "key": "scorch-marks",
-            "text": "The floorboards are blackened where the fire washed past."
           }
         ]
       }
@@ -69,8 +54,6 @@
     }
   },
   {
-    "intent": "Kael fights the tremor in his hands, willing the venom out of his blood.",
-    "tone": "strained, hopeful",
     "branches": [
       {
         "outcome": "success",
@@ -103,8 +86,6 @@
     }
   },
   {
-    "intent": "The last of the venom passes and Kael's hands are steady again.",
-    "tone": "quiet relief",
     "effects": [
       {
         "op": "remove-tag",
@@ -114,8 +95,6 @@
     ]
   },
   {
-    "intent": "Kael hooks a boot under the rat and heaves it over onto its back.",
-    "tone": "scrambling, rough",
     "branches": [
       {
         "outcome": "success",
@@ -138,8 +117,6 @@
     }
   },
   {
-    "intent": "Kael leans on the wall, drags one breath in, and forces himself upright.",
-    "tone": "ragged",
     "action": {
       "act": "use-feature",
       "actor_id": "player",
@@ -148,8 +125,6 @@
     }
   },
   {
-    "intent": "Kael sleeps the night through, the vault open and the whispering done.",
-    "tone": "worn quiet",
     "action": {
       "act": "rest",
       "actor_id": "player",
@@ -157,8 +132,6 @@
     }
   },
   {
-    "intent": "Kael levers the abbot's seal off the vault door with the crowbar.",
-    "tone": "grinding, final",
     "branches": [
       {
         "outcome": "success",

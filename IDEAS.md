@@ -1,5 +1,7 @@
 ## Loose ends
 
+- [] Eval coverage is now weak: Schema simplification, and investigation as to why each scenario are failing is needed
+
 ## Ideas
 
 - [x] Eval coverage owed: an advantage scenario, a concentration-replacing-a-spell scenario, and

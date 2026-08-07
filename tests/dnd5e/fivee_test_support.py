@@ -1,3 +1,4 @@
+from collections.abc import Mapping
 from pathlib import Path
 from random import Random
 
@@ -10,7 +11,7 @@ from aidm.engines.dnd5e.advance import ADVANCEMENT_READY
 from aidm.engines.dnd5e.rules import PLUGIN
 from aidm.engines.loader import Engine, EngineSpec
 from aidm.state.base import PLAYER_ID, Entity, EntityId
-from aidm.state.packs import ENCODING, ContentRef, PackFormat
+from aidm.state.packs import ENCODING, CollectionName, ContentRef, FactSchema
 from aidm.state.sheet import Counter, SheetDefinition, SheetTag, SheetTemplate
 from aidm.state.world import GameState, Record, player_sheet
 from aidm.turn.advancement import advisor
@@ -34,9 +35,9 @@ def character() -> Character:
     return load_character(CHARACTERS, "kael", DND5E)
 
 
-def pack_format() -> PackFormat:
+def pack_format() -> Mapping[CollectionName, FactSchema]:
     spec = EngineSpec.model_validate_json((ENGINE_DIR / "spec.json").read_text(encoding=ENCODING))
-    return PLUGIN.pack_format(spec)
+    return spec.collections
 
 
 def dnd5e_game() -> tuple[Engine, GameState]:

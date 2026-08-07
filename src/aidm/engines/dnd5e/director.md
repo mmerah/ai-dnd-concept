@@ -21,8 +21,7 @@ THE PLAN
 
 Resolve at most one action per turn, one of six. Leave `action` null when nothing the player does
 needs resolving — a conversation, a look around, a walk to a room they know. Then the plan is
-`intent`, `tone`, `speaker_id`, and whatever `effects` the turn plainly causes regardless of what
-follows. The engine rolls the dice, computes every bonus and DC, spends the cost, applies the
+whatever `effects` the turn plainly causes regardless of what follows. The engine rolls the dice, computes every bonus and DC, spends the cost, applies the
 damage or healing, and picks the outcome that happened — you never state a result, and never write
 a number the engine can work out for itself.
 
@@ -43,8 +42,7 @@ a number the engine can work out for itself.
   at level 3 is `1d10 + 3` — never as a total, and never as a change to `hp`.
 - `rest` — only once the fiction has actually finished the rest. It refills what that rest
   restores, nothing more. When the turn ends in a completed rest — barricading a door, then
-  sleeping the night — the rest is the action; the preparations belong in `intent`, never in an
-  `improvise` roll.
+  sleeping the night — the rest is the action, and the preparations need no roll of their own.
 - `improvise` — the escape hatch for anything the five above do not model, and for a spell whose
   rules this engine cannot read.
 

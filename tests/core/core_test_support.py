@@ -126,21 +126,16 @@ async def played(
     extra: TurnScript = (),
 ) -> TurnResult:
     """The default workflow with every role stubbed, assembled the way a new role would be."""
-    config = settings(scene_director=True) if scene is not None else settings()
-    scene_role = scene_stage(config) if scene is not None else None
-    director_role, narrator_role, worldkeeper_role = (
+    config = settings()
+    scene_role, director_role, narrator_role, worldkeeper_role = (
+        scene_stage(config),
         director_stage(engine, config),
         narrator_stage(config),
         worldkeeper_stage(config),
     )
-    stages = (
-        *(() if scene_role is None else (scene_role,)),
-        director_role,
-        narrator_role,
-        worldkeeper_role,
-    )
+    stages = (scene_role, director_role, narrator_role, worldkeeper_role)
     script = (
-        *(() if scene_role is None else ((scene_role.name, scene_step(scene_role, engine)),)),
+        (scene_role.name, scene_step(scene_role, engine)),
         (director_role.name, director_step(director_role, engine)),
         ("resolve", resolve_step(engine)),
         ("hooks", hook_step(engine)),
@@ -149,7 +144,7 @@ async def played(
         *extra,
     )
     models = (
-        *(() if scene is None else (scene,)),
+        scene or FunctionModel(scripted(structured(focus="Kael acts."))),
         director,
         narrator or FunctionModel(scripted(text("You wait."))),
         worldkeeper or FunctionModel(scripted(structured(creations=[]))),
@@ -168,7 +163,7 @@ async def played(
         )
 
 
-def settings(*, scene_director: bool = False) -> Settings:
+def settings() -> Settings:
     return Settings(
         providers=Providers(
             openrouter=ProviderConfig(
@@ -181,5 +176,4 @@ def settings(*, scene_director: bool = False) -> Settings:
         saves_dir=Path("saves"),
         scenarios_dir=SCENARIOS,
         characters_dir=CHARACTERS,
-        scene_director=scene_director,
     )

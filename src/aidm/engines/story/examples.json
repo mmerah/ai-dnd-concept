@@ -1,7 +1,5 @@
 [
   {
-    "intent": "Kael sets his shoulder to the sealed door while the whispering rises behind him.",
-    "tone": "strained, urgent",
     "branches": [
       {
         "outcome": "strong",

@@ -42,18 +42,6 @@
     "tag_id": "poisoned"
   },
   {
-    "op": "set-note",
-    "entity_id": "player",
-    "key": "concentration",
-    "text": "concentrating on the ward"
-  },
-  {
-    "op": "set-number",
-    "entity_id": "player",
-    "key": "armor-class",
-    "value": 16
-  },
-  {
     "op": "reveal-relation",
     "kind": "connected",
     "source": "courtyard",
@@ -66,14 +54,6 @@
     "target": "hidden-cellar",
     "tag": "locked",
     "why": "the iron key turns at last"
-  },
-  {
-    "op": "tag-relation",
-    "kind": "connected",
-    "source": "courtyard",
-    "target": "hidden-cellar",
-    "tag": "locked",
-    "why": "the hound drags the grate shut"
   },
   {
     "op": "add-relation",

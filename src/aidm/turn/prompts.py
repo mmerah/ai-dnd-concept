@@ -161,8 +161,8 @@ def render_director(
     prompt: str,
     directive: SceneDirective | None = None,
 ) -> str:
-    # Without a directive this is the whole Director's view; with one, the Scene Director owns the
-    # canon side and the Rules Director sees only the threads the directive named.
+    # Two views of one scene: the Scene Director reads the canon side itself, the Rules Director
+    # gets only what the directive passed on — including just the threads it named.
     canon = (
         (
             (
@@ -204,8 +204,7 @@ def render_narrator(
     describe: EntityRenderer,
     scenario: ScenarioMeta,
     *,
-    intent: str,
-    tone: str,
+    focus: str,
     speaker_id: EntityId | None,
     evidence: str,
     prompt: str,
@@ -226,8 +225,7 @@ def render_narrator(
                 "KNOWN TO THE PLAYER, BUT ELSEWHERE",
                 _entities(scene.known_elsewhere, describe, placement=scene.placement_of),
             ),
-            ("THE DIRECTOR'S PLAN — what was meant, not what happened", intent),
-            ("THE DIRECTOR ASKS FOR THIS TONE", tone),
+            ("THE DIRECTOR'S PLAN — what was meant, not what happened", focus),
             ("SPEAKER", _speaker(scene, speaker_id)),
             ("WHAT HAPPENED", evidence),
             ("PLAYER ACTION", prompt),
@@ -407,18 +405,6 @@ happen this turn and answer with one plan; never write player-facing prose. The 
 your plan: it makes every roll, pays every cost, and picks the outcome. You never state a roll's \
 result — branches for outcomes that do not occur simply never apply."""
 
-_UNSEEN_CANON = """You alone are shown what exists but the player does not know yet. Use it: when \
-something already in the world answers what the player is after, steer them to it. Always prefer \
-existing canon to anything new, and never invent a named person, place, or item yourself (a \
-`gain-improvised-item` effect for an incidental object is the one exception); new named entities \
-grow from the narration afterwards, never from your plan."""
-
-_DRIVE = """Drive the game forward. When the player's attempt carries real uncertainty or a cost \
-worth feeling, resolve it with an action rather than waving it through — rolls are where the game \
-lives. When a turn would otherwise be flat, use `intent` and `effects` to add pressure: a \
-complication, a discovery, a threat drawing closer. A turn with no action and nothing at stake \
-should be the exception, not your habit."""
-
 _IDS = """Every entity is shown as `name[id=...]`, and each carries where it is. The lists \
 separate what is HERE WITH THE PLAYER from what is known but ELSEWHERE. The player can only see, \
 address, take from, or hand things to who and what is here; to involve someone elsewhere, move \
@@ -433,12 +419,6 @@ way is `locked` and the fiction opens it. `add-relation` records a new tie when 
 one: a passage discovered between two places (`connected`), or an NPC who joins the player \
 (`party-member`, the actor as `source` and `player` as `target`). A party member travels with the \
 player automatically."""
-
-_THREADS_AND_NOTES = """ACTIVE THREADS are the scenario's live storylines, and they are yours \
-alone — the Narrator never sees them. Steer the turn toward whichever threads fit what the player \
-is doing. Write an `advance-thread` effect when the fiction genuinely moves one on, naming its \
-`status`, its `stage`, or both, and leave it alone otherwise. SCENARIO NOTES are instructions from \
-the scenario itself about what just changed; follow them this turn — they are shown once."""
 
 _PLAN_FIELDS = """The plan is the whole turn:
 
@@ -456,31 +436,12 @@ outcome that occurs. At most one branch per label, and only labels the action al
 `effects` — consequences that happen whatever the action settles: discoveries, movement, \
 possessions changing hands.
 
-`intent` — 1-3 sentences for the Narrator: what the player attempted and what is at stake. Never \
-state outcomes, numbers, or dice; the Narrator learns the result elsewhere.
-
-`tone` — a few words of mood. Atmosphere only, never outcomes: "tense and hushed", not "they find \
-the map".
-
-`speaker_id` — the id of the NPC the player is addressing, or null if none. It must be an NPC the \
-player already knows AND who is here with them; never one they have not met or who is elsewhere."""
+You write no prose at all: the directive already said what the turn is about, and the Narrator \
+writes what the player reads."""
 
 _RETRY = """A rejected plan comes back with the reason; fix exactly that and answer again. Call \
 `read_content` first when you plan from a spell, feature, or stat block whose wording you cannot \
 quote."""
-
-CORE_DIRECTOR = "\n\n".join(
-    (
-        _DIRECTOR_OPENING,
-        _UNSEEN_CANON,
-        _DRIVE,
-        _IDS,
-        _EXITS,
-        _THREADS_AND_NOTES,
-        _PLAN_FIELDS,
-        _RETRY,
-    )
-)
 
 _DIRECTIVE_BRIEF = """The SCENE DIRECTIVE decides what this turn is about; realize it mechanically \
 without contradicting it, and add nothing it did not ask for. It already weighed whether the turn \
@@ -528,7 +489,10 @@ brackets, and none when none apply.
 `reveal` — the ids of the things the player DOES NOT KNOW YET that this turn puts in front of \
 them: what they are searching for and would find, what steps into view, what a question they just \
 asked is answered by. The Rules Director cannot see these and reveals nothing you do not name, so \
-a discovery you leave out never happens. Name none when the fiction finds nothing."""
+a discovery you leave out never happens. Name none when the fiction finds nothing.
+
+`speaker_id` — the id of the NPC the player is addressing, or null if none. It must be an NPC the \
+player already knows AND who is here with them; never one they have not met or who is elsewhere."""
 
 NARRATOR = """You are the NARRATOR of a tabletop roleplaying game. Write what the player \
 experiences in second person, present tense, in 2-4 vivid sentences. The Director's intent is a \

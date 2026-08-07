@@ -30,7 +30,6 @@ def test_every_role_assembles_the_same_instructions(engine_id: EngineId) -> None
         "worldkeeper": worldkeeper_stage(config).instructions,
         "advisor": advisor(engine, config).instructions,
         "scene": scene_stage(config).instructions,
-        "rules_director": director_stage(engine, settings(scene_director=True)).instructions,
     }
     for name, instructions in roles.items():
         golden(FIXTURES / "instructions" / engine_id / f"{name}.txt", instructions)

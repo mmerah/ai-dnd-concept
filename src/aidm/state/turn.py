@@ -54,6 +54,13 @@ class SceneDirective(Frozen):
             "play; none unless the fiction genuinely puts one in front of them."
         ),
     )
+    speaker_id: EntityId | None = Field(
+        default=None,
+        description=(
+            "Exact id of the NPC the player addresses — one they have met and who is here with "
+            "them — or null if nobody is addressed."
+        ),
+    )
 
 
 class StepTrace(Frozen):

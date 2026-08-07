@@ -26,11 +26,9 @@ from aidm.state.packs import (
     ContentRef,
     FactSchema,
     FrozenMap,
-    PackFormat,
     Record,
     Value,
     load,
-    pack_format,
     parse_ref,
 )
 from aidm.state.plan import TurnPlanBase, apply_branch, check_plan_base
@@ -77,21 +75,16 @@ class EnginePlugin:
     id: EngineId
     badge: tuple[str, str]
     engine_dir: Path
-    actions: tuple[ActionSpec[Any], ...]
     action_doc: str
     offered: "Callable[[Engine, GameState], AdvancementOffer | None]"
     # Judges the sheet the proposal would leave, which the kernel has already applied and validated.
     check_delta: Callable[[GameState, Sheet], str | None]
-    record_types: Mapping[CollectionName, type[Record]] = MappingProxyType({})
     # Named exceptions for declared actions the VM cannot judge alone, keyed by action name:
     # labels that depend on the action's values or content, and whole-plan checks.
     dynamic_labels: "Mapping[Slug, Callable[[Engine, Any], frozenset[Slug]]]" = MappingProxyType({})
     plan_checks: Mapping[Slug, Callable[[GameState, TurnPlanBase, Any], str | None]] = (
         MappingProxyType({})
     )
-
-    def pack_format(self, spec: EngineSpec) -> PackFormat:
-        return pack_format(spec.collections, self.record_types)
 
 
 @dataclass(frozen=True, slots=True)
@@ -120,7 +113,7 @@ class Engine:
         return compose_world(authored, self._sheet("actor", character), self._entity_rules)
 
     def entity_state(self, entity: Entity, sheet: Sheet) -> str:
-        return render_sheet(entity, sheet, self._record)
+        return render_sheet(sheet, self._record)
 
     def renderer(self, state: GameState) -> EntityRenderer:
         return lambda entity: self.entity_state(entity, state.world.record(entity.id).rules)
@@ -241,8 +234,8 @@ def load_engine(plugin: EnginePlugin, pack_paths: Sequence[Path] | None = None) 
     engine_dir = plugin.engine_dir
     spec = EngineSpec.model_validate_json(_text(engine_dir / "spec.json"))
     directories = _packs(engine_dir) if pack_paths is None else tuple(pack_paths)
-    content = load(directories, plugin.pack_format(spec))
-    actions = (*plugin.actions, *_declared_actions(plugin))
+    content = load(directories, spec.collections)
+    actions = _declared_actions(plugin)
     plan_type = _plan_model(actions, plugin.action_doc)
     return Engine(
         plugin=plugin,

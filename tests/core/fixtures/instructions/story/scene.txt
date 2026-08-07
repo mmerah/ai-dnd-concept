@@ -13,3 +13,5 @@ Drive the game forward: when a turn would otherwise be flat, put something at st
 `threads` — the ids of the ACTIVE THREADS this turn serves, exactly as they appear in the brackets, and none when none apply.
 
 `reveal` — the ids of the things the player DOES NOT KNOW YET that this turn puts in front of them: what they are searching for and would find, what steps into view, what a question they just asked is answered by. The Rules Director cannot see these and reveals nothing you do not name, so a discovery you leave out never happens. Name none when the fiction finds nothing.
+
+`speaker_id` — the id of the NPC the player is addressing, or null if none. It must be an NPC the player already knows AND who is here with them; never one they have not met or who is elsewhere.

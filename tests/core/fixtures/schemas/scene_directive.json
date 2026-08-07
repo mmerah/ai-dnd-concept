@@ -38,6 +38,19 @@
       },
       "title": "Reveal",
       "type": "array"
+    },
+    "speaker_id": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "Exact id of the NPC the player addresses — one they have met and who is here with them — or null if nobody is addressed.",
+      "title": "Speaker Id"
     }
   },
   "required": [
