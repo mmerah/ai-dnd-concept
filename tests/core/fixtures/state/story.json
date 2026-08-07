@@ -399,6 +399,29 @@
       "note": "Kael has found the vault door. Press on what opening the seal will cost."
     },
     {
+      "id": "vault-charted",
+      "match": {
+        "kind": "entity_discovered",
+        "data": {
+          "entity_id": "vault_map"
+        }
+      },
+      "effects": [
+        {
+          "op": "advance-thread",
+          "thread_id": "vault-seal",
+          "status": null,
+          "stage": "seal-found",
+          "why": "the chart marks the stair down to the door"
+        },
+        {
+          "op": "reveal",
+          "entity_id": "vault"
+        }
+      ],
+      "note": "The chart marks the stair to the vault door. Press on what opening the seal will cost."
+    },
+    {
       "id": "archivist-found",
       "match": {
         "kind": "entity_discovered",

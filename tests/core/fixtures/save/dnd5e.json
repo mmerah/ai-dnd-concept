@@ -73,7 +73,7 @@
           "name": "the sealed vault",
           "brief": "The undercroft chamber Kael came for, its door bearing a seal nobody living can read.",
           "detail": null,
-          "known": false,
+          "known": true,
           "parent_id": null
         },
         "rules": {
@@ -450,7 +450,7 @@
       "kind": "quest",
       "title": "The sealed vault",
       "status": "active",
-      "stage": "unfound",
+      "stage": "seal-found",
       "note": "Kael came for the vault and does not yet know where its door is."
     }
   },
@@ -482,6 +482,29 @@
       "note": "Kael has found the vault door. Press on what opening the seal will cost."
     },
     {
+      "id": "vault-charted",
+      "match": {
+        "kind": "entity_discovered",
+        "data": {
+          "entity_id": "vault_map"
+        }
+      },
+      "effects": [
+        {
+          "op": "advance-thread",
+          "thread_id": "vault-seal",
+          "status": null,
+          "stage": "seal-found",
+          "why": "the chart marks the stair down to the door"
+        },
+        {
+          "op": "reveal",
+          "entity_id": "vault"
+        }
+      ],
+      "note": "The chart marks the stair to the vault door. Press on what opening the seal will cost."
+    },
+    {
       "id": "archivist-found",
       "match": {
         "kind": "entity_discovered",
@@ -501,8 +524,12 @@
       "note": "Elena remembers the rite that sealed the vault. Let her name her price for it."
     }
   ],
-  "fired_hooks": [],
-  "pending_notes": [],
+  "fired_hooks": [
+    "vault-charted"
+  ],
+  "pending_notes": [
+    "The chart marks the stair to the vault door. Press on what opening the seal will cost."
+  ],
   "history": [
     {
       "prompt": "I try the vault door.",

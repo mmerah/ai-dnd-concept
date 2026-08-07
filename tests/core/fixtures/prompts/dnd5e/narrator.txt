@@ -37,6 +37,9 @@ EXITS FROM HERE:
 
 KNOWN TO THE PLAYER, BUT ELSEWHERE:
 - the cloister[id=cloister] (location) — A frost-rimed colonnade around a dead garden; Brother Tomas sweeps it to no purpose.
+- the sealed vault[id=vault] (location) — The undercroft chamber Kael came for, its door bearing a seal nobody living can read.
+  state:
+    numbers: milestone-level 2
 - Brother Tomas[id=tomas] (npc) — at the cloister — A deaf old porter who sweeps the cloister and knows almost nothing about the vault.
   state:
     numbers: armor-class 10, charisma 10, constitution 10, dexterity 10, intelligence 10, strength 10, wisdom 10
@@ -56,6 +59,7 @@ WHAT HAPPENED:
 - Kael is Success
 - learned of the vault map
 - took the vault map
+- learned of the sealed vault
 
 PLAYER ACTION:
 I lever up the loose flagstone and listen at the vault door.

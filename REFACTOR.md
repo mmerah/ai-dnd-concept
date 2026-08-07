@@ -439,11 +439,14 @@ into one pass rather than paying that cost five times.
   `dnd5e/director.md` teaches when advantage applies, or the case is measuring a rule the engine
   was never given — decide which before tuning. The one finding here with no volatility, so the
   cheapest to attribute and the first to fix.
-- **The Director drops the state write the fiction implies.** The largest finding, and now the
-  only one costing whole cases: `hook-fires-on-discovery` **0/6** at phase 4 (an answer about the
-  vault with no `reveal`, so no fact and no hook), `condition-rider` 100% → 33%/67% (a success
-  branch that narrates the rat going down without the `prone` tag), `condition-lifted` 33-67%
-  (the `poisoned` tag survives the turn that should end it). One failure shape in three cases:
+- **The Director drops the state write the fiction implies.** The largest finding:
+  `hook-fires-on-discovery` **0/6** at phase 4 (an answer about the vault with no `reveal`, so no
+  fact and no hook) — that case is now 6/6 in both configurations, but by re-authoring rather than
+  by fixing the Director: the scenario grew a second hook so finding the chart advances the same
+  thread, because the shipped Scene Director kept revealing the chart instead of the vault and no
+  prompt wording moved it. The finding itself stands, measured now by `condition-rider`
+  100% → 33%/67% (a success branch that narrates the rat going down without the `prone` tag) and
+  `condition-lifted` 33-67% (the `poisoned` tag survives the turn that should end it). One shape:
   the fiction lands, the state write that had to accompany it is missing. `CORE_DIRECTOR`'s
   reveal-then-move clause **did** close the movement half — `movement-follows-exits` reached
   100% at phase 4 — so the prompt lever works; it has simply only been pulled for movement.
@@ -456,7 +459,8 @@ into one pass rather than paying that cost five times.
   100% and `monster-attack-on-player` 67% → 100% with no change touching either; at phase 4 two
   runs of the same commit disagreed on four cases. Nothing below n=9 should be attributed to a
   phase; re-run before spending prompt work on any single case. `advantage-attack` (0% across
-  five runs) and `hook-fires-on-discovery` (0/6) are the only two now clear of that floor.
+  five runs) was the one case clear of that floor; `hook-fires-on-discovery` was the other until
+  phase 8 re-authored it to 6/6.
 - **`why` is now optional on turn-time counter changes** (phase 1, sanctioned). Nothing measures
   whether the Director still writes reasons. Worth a probe if the trace panel starts reading
   poorly.

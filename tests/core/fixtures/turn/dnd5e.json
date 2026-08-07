@@ -53,6 +53,36 @@
     },
     {
       "source": "core",
+      "kind": "hook_fired",
+      "trace": "hook vault-charted fired",
+      "narrator": null,
+      "data": {
+        "hook_id": "vault-charted"
+      }
+    },
+    {
+      "source": "core",
+      "kind": "thread_advanced",
+      "trace": "The sealed vault is active at seal-found (the chart marks the stair down to the door)",
+      "narrator": null,
+      "data": {
+        "thread_id": "vault-seal",
+        "status": "active",
+        "stage": "seal-found"
+      }
+    },
+    {
+      "source": "core",
+      "kind": "entity_discovered",
+      "trace": "learned of the sealed vault",
+      "narrator": "learned of the sealed vault",
+      "data": {
+        "entity_id": "vault",
+        "name": "the sealed vault"
+      }
+    },
+    {
+      "source": "core",
       "kind": "entity_created",
       "trace": "new actor: Sister Auber",
       "narrator": "new actor: Sister Auber",
@@ -122,7 +152,7 @@
     },
     {
       "name": "hooks",
-      "output": "- (no hooks fired)"
+      "output": "hook vault-charted fired\nThe sealed vault is active at seal-found (the chart marks the stair down to the door)\nlearned of the sealed vault"
     },
     {
       "name": "narrator",

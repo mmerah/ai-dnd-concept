@@ -165,8 +165,10 @@ class AtLocation(Frozen):
 
 
 class HookFired(Frozen):
+    """Passes when any named hook fired: one fiction can reach a thread by more than one hook."""
+
     probe: Literal["hook_fired"] = "hook_fired"
-    hook: str
+    hooks: tuple[str, ...] = Field(min_length=1)
 
 
 class ThreadAt(Frozen):
@@ -284,9 +286,9 @@ def check(outcome: Outcome, step: CheckStep) -> str | None:
                 return None
             return f"{step.entity} is at {where!r}, wanted {step.location!r}"
         case HookFired():
-            if step.hook in outcome.after.fired_hooks:
+            if set(step.hooks) & set(outcome.after.fired_hooks):
                 return None
-            return f"hook {step.hook!r} never fired; those that did: {outcome.after.fired_hooks}"
+            return f"none of {step.hooks} fired; those that did: {outcome.after.fired_hooks}"
         case ThreadAt():
             thread = outcome.after.threads.get(step.thread)
             if thread is None:

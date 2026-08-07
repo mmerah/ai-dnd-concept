@@ -53,7 +53,15 @@ async def test_an_engine_uses_the_shared_pipeline_and_safe_narrator_prompt() -> 
     )
 
     assert tuple(steps) == STEPS
-    assert [fact.kind for fact in result.turn.facts] == ["entity_discovered", "entity_moved"]
+    # Finding the map is one of the two discoveries the vault-seal thread answers to, so the
+    # hook pass follows the two turn facts with its own.
+    assert [fact.kind for fact in result.turn.facts] == [
+        "entity_discovered",
+        "entity_moved",
+        "hook_fired",
+        "thread_advanced",
+        "entity_discovered",
+    ]
     assert {item.id for item in result.state.world.children(PLAYER_ID, "item")} == {
         "lantern",
         "vault_map",

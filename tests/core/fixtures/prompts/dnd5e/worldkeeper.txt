@@ -42,6 +42,7 @@ WHAT HAPPENED:
 - Kael is Success
 - learned of the vault map
 - took the vault map
+- learned of the sealed vault
 
 NARRATION:
 The flagstone lifts. Beyond the door, something shifts its weight and waits.

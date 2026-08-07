@@ -400,9 +400,16 @@ A/B asked for went in and the split closed the whole gap:
   sealed vault"), 7 runs out of 7 across two prompt wordings. Its answer is defensible fiction
   (Mara hands over the chart) that the authored hook does not recognise. The eval harness now
   records the directive on every run, which is how that was attributable at all; a third prompt
-  wording was tried, moved nothing, and was reverted rather than shipped unmeasured. It is owed a
-  fix now that the split is the shipped path; the likely ones are the scenario authoring a hook
-  the map also satisfies, or the case accepting either discovery.
+  wording was tried, moved nothing, and was reverted rather than shipped unmeasured.
+- **Closed scenario-side, after the split shipped: the case is 6/6 in both configurations.**
+  Renaming the map to distance it from the vault was tried first and did nothing (0/6) — the bias
+  is not lexical: the chart is the hidden thing physically in the player's room, and "put in front
+  of them" reads as present. So whispering-vault authors a second hook instead, `vault-charted`:
+  discovering the map advances `vault-seal` to `seal-found` and reveals the vault, because Mara
+  handing over the chart that marks the stair *is* finding the way down. The `hook_fired` probe
+  takes `hooks` (any of them fired) rather than one id — one fiction can reach a thread by more
+  than one hook. Note what this did and did not fix: the case no longer measures the Director
+  dropping a state write, and REFACTOR.md's standing finding now rests on the two condition cases.
 - **Decision: the split ships on** (`scene_director` defaults true; setting it false collapses
   both roles into one call, and every fixture and test still covers that path). The evals do not
   choose between them — correctness and latency are level and the split costs ~10% more tokens —
