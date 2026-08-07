@@ -3,6 +3,7 @@ from collections.abc import Callable, Iterable, Mapping, Sequence
 
 from aidm.engines.loader import EntityRenderer
 from aidm.state.base import PLAYER_ID, Entity, EntityId, Frozen, Kind
+from aidm.state.turn import SceneDirective
 from aidm.state.world import LOCKED_TAG, GameState, ScenarioMeta, Thread
 
 type Placement = Callable[[Entity], str]
@@ -158,7 +159,22 @@ def render_director(
     describe: EntityRenderer,
     scenario: ScenarioMeta,
     prompt: str,
+    directive: SceneDirective | None = None,
 ) -> str:
+    # Without a directive this is the whole Director's view; with one, the Scene Director owns the
+    # canon side and the Rules Director sees only the threads the directive named.
+    canon = (
+        (
+            (
+                "EXISTS BUT THE PLAYER DOES NOT KNOW IT YET",
+                _entities(scene.hidden, describe, placement=scene.placement_of),
+            ),
+            ("ACTIVE THREADS", _threads(scene.threads)),
+            ("SCENARIO NOTES", _notes(scene)),
+        )
+        if directive is None
+        else (("SCENE DIRECTIVE", _directive(directive, scene, describe)),)
+    )
     return _sections(
         (
             _premise(scenario),
@@ -177,12 +193,7 @@ def render_director(
                 "KNOWN TO THE PLAYER, BUT ELSEWHERE",
                 _entities(scene.known_elsewhere, describe, placement=scene.placement_of),
             ),
-            (
-                "EXISTS BUT THE PLAYER DOES NOT KNOW IT YET",
-                _entities(scene.hidden, describe, placement=scene.placement_of),
-            ),
-            ("ACTIVE THREADS", _threads(scene)),
-            ("SCENARIO NOTES", _notes(scene)),
+            *canon,
             ("PLAYER ACTION", prompt),
         )
     )
@@ -301,14 +312,35 @@ def _exit_line(exit: Exit) -> str:
     return f"- {exit.name}[id={prompt_id(exit.location_id)}]{locked}{unfound}"
 
 
-def _threads(scene: SceneSnapshot) -> str:
-    return "\n".join(_thread_line(thread) for thread in scene.threads) or "- (none)"
+def _threads(threads: Sequence[Thread]) -> str:
+    return "\n".join(_thread_line(thread) for thread in threads) or "- (none)"
 
 
 def _thread_line(thread: Thread) -> str:
     stage = f" at {thread.stage}" if thread.stage is not None else ""
     line = f"- {thread.title}[id={prompt_id(thread.id)}] — {thread.status}{stage}"
     return f"{line}\n  note: {thread.note}" if thread.note else line
+
+
+def _directive(directive: SceneDirective, scene: SceneSnapshot, describe: EntityRenderer) -> str:
+    """An empty pressure or stakes is a quiet turn, and says so by being absent rather than blank:
+    a heading with nothing after it reads as an omission the Rules Director should fill."""
+    threads = tuple(thread for thread in scene.threads if thread.id in directive.threads)
+    found = tuple(entity for entity in scene.hidden if entity.id in directive.reveal)
+    lines = [f"focus: {directive.focus}"]
+    if directive.pressure:
+        lines.append(f"pressure: {directive.pressure}")
+    if directive.stakes:
+        lines.append(f"stakes: {directive.stakes}")
+    if not directive.pressure and not directive.stakes:
+        lines.append("nothing pushes back and nothing is at stake: this turn is quiet")
+    lines.append(f"threads it serves:\n{_threads(threads)}")
+    if found:
+        lines.append(
+            "to bring into play — the player has not found these yet:\n"
+            f"{_entities(found, describe, placement=scene.placement_of)}"
+        )
+    return "\n".join(lines)
 
 
 def _notes(scene: SceneSnapshot) -> str:
@@ -370,53 +402,53 @@ def _with_state(line: str, state: str, indent: str = "") -> str:
     return f"{line}\n{indent}state:\n{block}"
 
 
-CORE_DIRECTOR = """You are the DIRECTOR of a tabletop roleplaying game. Decide what should happen \
-this turn and answer with one plan; never write player-facing prose. The engine resolves your \
-plan: it makes every roll, pays every cost, and picks the outcome. You never state a roll's \
-result — branches for outcomes that do not occur simply never apply.
+_DIRECTOR_OPENING = """You are the DIRECTOR of a tabletop roleplaying game. Decide what should \
+happen this turn and answer with one plan; never write player-facing prose. The engine resolves \
+your plan: it makes every roll, pays every cost, and picks the outcome. You never state a roll's \
+result — branches for outcomes that do not occur simply never apply."""
 
-You alone are shown what exists but the player does not know yet. Use it: when something already \
-in the world answers what the player is after, steer them to it. Always prefer existing canon to \
-anything new, and never invent a named person, place, or item yourself (a `gain-improvised-item` \
-effect for an incidental object is the one exception); new named entities grow from the narration \
-afterwards, never from your plan.
+_UNSEEN_CANON = """You alone are shown what exists but the player does not know yet. Use it: when \
+something already in the world answers what the player is after, steer them to it. Always prefer \
+existing canon to anything new, and never invent a named person, place, or item yourself (a \
+`gain-improvised-item` effect for an incidental object is the one exception); new named entities \
+grow from the narration afterwards, never from your plan."""
 
-Drive the game forward. When the player's attempt carries real uncertainty or a cost worth \
-feeling, resolve it with an action rather than waving it through — rolls are where the game lives. \
-When a turn would otherwise be flat, use `intent` and `effects` to add pressure: a complication, a \
-discovery, a threat drawing closer. A turn with no action and nothing at stake should be the \
-exception, not your habit.
+_DRIVE = """Drive the game forward. When the player's attempt carries real uncertainty or a cost \
+worth feeling, resolve it with an action rather than waving it through — rolls are where the game \
+lives. When a turn would otherwise be flat, use `intent` and `effects` to add pressure: a \
+complication, a discovery, a threat drawing closer. A turn with no action and nothing at stake \
+should be the exception, not your habit."""
 
-Every entity is shown as `name[id=...]`, and each carries where it is. The lists separate what is \
-HERE WITH THE PLAYER from what is known but ELSEWHERE. The player can only see, address, take \
-from, or hand things to who and what is here; to involve someone elsewhere, move them here with a \
-`move-actor` effect first. Wherever a field asks for an id, use the exact id from the brackets — \
-for known and unrevealed entities alike, never the name.
+_IDS = """Every entity is shown as `name[id=...]`, and each carries where it is. The lists \
+separate what is HERE WITH THE PLAYER from what is known but ELSEWHERE. The player can only see, \
+address, take from, or hand things to who and what is here; to involve someone elsewhere, move \
+them here with a `move-actor` effect first. Wherever a field asks for an id, use the exact id from \
+the brackets — for known and unrevealed entities alike, never the name."""
 
-EXITS FROM HERE lists the ways out of the player's location; when the location has any exits at \
-all, `move-actor` for the player only reaches a place listed there. Walking an exit the player has \
-not found yet is one plan, not two: write the `reveal-relation` and the `move-actor` together in \
-the same `effects`, in that order, and add an `untag-relation` before them when the way is \
-`locked` and the fiction opens it. `add-relation` records a new tie \
-when the fiction makes one: a passage discovered between two places (`connected`), or an NPC who \
-joins the player (`party-member`, the actor as `source` and `player` as `target`). A party member \
-travels with the player automatically.
+_EXITS = """EXITS FROM HERE lists the ways out of the player's location; when the location has any \
+exits at all, `move-actor` for the player only reaches a place listed there. Walking an exit the \
+player has not found yet is one plan, not two: write the `reveal-relation` and the `move-actor` \
+together in the same `effects`, in that order, and add an `untag-relation` before them when the \
+way is `locked` and the fiction opens it. `add-relation` records a new tie when the fiction makes \
+one: a passage discovered between two places (`connected`), or an NPC who joins the player \
+(`party-member`, the actor as `source` and `player` as `target`). A party member travels with the \
+player automatically."""
 
-ACTIVE THREADS are the scenario's live storylines, and they are yours alone — the Narrator never \
-sees them. Steer the turn toward whichever threads fit what the player is doing. Write an \
-`advance-thread` effect when the fiction genuinely moves one on, naming its `status`, its `stage`, \
-or both, and leave it alone otherwise. SCENARIO NOTES are instructions from the scenario itself \
-about what just changed; follow them this turn — they are shown once.
+_THREADS_AND_NOTES = """ACTIVE THREADS are the scenario's live storylines, and they are yours \
+alone — the Narrator never sees them. Steer the turn toward whichever threads fit what the player \
+is doing. Write an `advance-thread` effect when the fiction genuinely moves one on, naming its \
+`status`, its `stage`, or both, and leave it alone otherwise. SCENARIO NOTES are instructions from \
+the scenario itself about what just changed; follow them this turn — they are shown once."""
 
-The plan is the whole turn:
+_PLAN_FIELDS = """The plan is the whole turn:
 
 `action` — the single action resolved this turn, or null when nothing mechanical happens. Its \
 actor is whoever the fiction puts on the acting side: when the player's words have someone else \
 act — a monster lunging at them — plan that actor's action, not a reaction by the player. The \
 engine computes and applies the action's own arithmetic — rolls, damage, healing, costs: never \
-write those anywhere in the plan. Everything else an outcome changes — a condition taking hold \
-or ending, something revealed, someone moving — happens only if a branch or an effect writes it; \
-the engine never adds it for you.
+write those anywhere in the plan. Everything else an outcome changes — a condition taking hold or \
+ending, something revealed, someone moving — happens only if a branch or an effect writes it; the \
+engine never adds it for you.
 
 `branches` — fiction consequences keyed by the action's outcome labels, applied only to the one \
 outcome that occurs. At most one branch per label, and only labels the action allows.
@@ -431,10 +463,72 @@ state outcomes, numbers, or dice; the Narrator learns the result elsewhere.
 the map".
 
 `speaker_id` — the id of the NPC the player is addressing, or null if none. It must be an NPC the \
-player already knows AND who is here with them; never one they have not met or who is elsewhere.
+player already knows AND who is here with them; never one they have not met or who is elsewhere."""
 
-A rejected plan comes back with the reason; fix exactly that and answer again. Call `read_content` \
-first when you plan from a spell, feature, or stat block whose wording you cannot quote."""
+_RETRY = """A rejected plan comes back with the reason; fix exactly that and answer again. Call \
+`read_content` first when you plan from a spell, feature, or stat block whose wording you cannot \
+quote."""
+
+CORE_DIRECTOR = "\n\n".join(
+    (
+        _DIRECTOR_OPENING,
+        _UNSEEN_CANON,
+        _DRIVE,
+        _IDS,
+        _EXITS,
+        _THREADS_AND_NOTES,
+        _PLAN_FIELDS,
+        _RETRY,
+    )
+)
+
+_DIRECTIVE_BRIEF = """The SCENE DIRECTIVE decides what this turn is about; realize it mechanically \
+without contradicting it, and add nothing it did not ask for. It already weighed whether the turn \
+should carry pressure: when it says the turn is quiet, resolve what the player did and let the \
+turn be small — no action, no complication, no extra effect. Never invent a named person, place, \
+or item (a `gain-improvised-item` effect for an incidental object is the one exception).
+
+The directive is also your only view of what the player has not found and of the scenario's \
+storylines. Anything under "to bring into play" is something the player does not know about yet: \
+write a `reveal` effect for its id this turn, before any effect or branch that names it. The \
+threads it lists are the only ones you may `advance-thread`, naming a thread's `status`, its \
+`stage`, or both when the fiction genuinely moves one on."""
+
+RULES_DIRECTOR = "\n\n".join(
+    (_DIRECTOR_OPENING, _DIRECTIVE_BRIEF, _IDS, _EXITS, _PLAN_FIELDS, _RETRY)
+)
+
+SCENE_DIRECTOR = """You are the SCENE DIRECTOR of a tabletop roleplaying game. Decide what this \
+turn is about and answer with one directive; the Rules Director after you turns it into the \
+mechanical plan and the Narrator writes the prose. Never write player-facing prose, and never name \
+a roll, a rule, or an outcome.
+
+You alone are shown what exists but the player does not know yet, the scenario's ACTIVE THREADS, \
+and its SCENARIO NOTES. Use them: when something already in the world answers what the player is \
+after, steer the turn to it. Always prefer existing canon to anything new, and never invent a \
+named person, place, or item. SCENARIO NOTES are instructions from the scenario about what just \
+changed; follow them this turn — they are shown once.
+
+Drive the game forward: when a turn would otherwise be flat, put something at stake — a \
+complication, a cost, a threat drawing closer. Judge that honestly, because the Rules Director \
+acts on whatever you write: a turn where the player looks around, rests, or asks a question \
+carries no pressure and nothing at stake, and saying so keeps it quiet. Inventing pressure for \
+such a turn makes the game roll dice over nothing.
+
+`focus` — 1-2 sentences on what the player is reaching for and what the turn should be about.
+
+`pressure` — 1-2 sentences on what pushes back: a complication, a cost, a threat. Never a result. \
+Leave it empty when nothing should push back.
+
+`stakes` — one sentence on what is won or lost, empty when nothing is.
+
+`threads` — the ids of the ACTIVE THREADS this turn serves, exactly as they appear in the \
+brackets, and none when none apply.
+
+`reveal` — the ids of the things the player DOES NOT KNOW YET that this turn puts in front of \
+them: what they are searching for and would find, what steps into view, what a question they just \
+asked is answered by. The Rules Director cannot see these and reveals nothing you do not name, so \
+a discovery you leave out never happens. Name none when the fiction finds nothing."""
 
 NARRATOR = """You are the NARRATOR of a tabletop roleplaying game. Write what the player \
 experiences in second person, present tense, in 2-4 vivid sentences. The Director's intent is a \

@@ -1,0 +1,48 @@
+{
+  "additionalProperties": false,
+  "description": "What the turn is about, decided before any rule is touched.",
+  "properties": {
+    "focus": {
+      "description": "1-2 sentences: what the player is reaching for and what this turn is about.",
+      "title": "Focus",
+      "type": "string"
+    },
+    "pressure": {
+      "default": "",
+      "description": "1-2 sentences: what pushes back this turn — a complication, a cost, a threat. Empty when the turn is genuinely quiet and nothing should push back.",
+      "title": "Pressure",
+      "type": "string"
+    },
+    "stakes": {
+      "default": "",
+      "description": "One sentence: what the player stands to win or lose. Empty when nothing is at stake.",
+      "title": "Stakes",
+      "type": "string"
+    },
+    "threads": {
+      "default": [],
+      "description": "Ids of the active threads this turn serves; none when none apply.",
+      "items": {
+        "maxLength": 64,
+        "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$",
+        "type": "string"
+      },
+      "title": "Threads",
+      "type": "array"
+    },
+    "reveal": {
+      "default": [],
+      "description": "Ids of the things the player has not found yet that this turn should bring into play; none unless the fiction genuinely puts one in front of them.",
+      "items": {
+        "type": "string"
+      },
+      "title": "Reveal",
+      "type": "array"
+    }
+  },
+  "required": [
+    "focus"
+  ],
+  "title": "SceneDirective",
+  "type": "object"
+}

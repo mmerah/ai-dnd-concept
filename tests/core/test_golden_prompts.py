@@ -10,7 +10,7 @@ from aidm.engines.loader import engine_ids
 from aidm.state.base import EngineId
 from aidm.state.world import GameState
 from aidm.turn.advancement import advisor, render_proposal
-from aidm.turn.pipeline import director_stage, narrator_stage, worldkeeper_stage
+from aidm.turn.pipeline import director_stage, narrator_stage, scene_stage, worldkeeper_stage
 
 WANTED = "I want to strike harder."
 
@@ -29,6 +29,8 @@ def test_every_role_assembles_the_same_instructions(engine_id: EngineId) -> None
         "narrator": narrator_stage(config).instructions,
         "worldkeeper": worldkeeper_stage(config).instructions,
         "advisor": advisor(engine, config).instructions,
+        "scene": scene_stage(config).instructions,
+        "rules_director": director_stage(engine, settings(scene_director=True)).instructions,
     }
     for name, instructions in roles.items():
         golden(FIXTURES / "instructions" / engine_id / f"{name}.txt", instructions)

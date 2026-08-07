@@ -321,10 +321,109 @@
   - Line delta: `src/aidm` Python **−318** (staged together with phase 6: −527 vs HEAD
     3885853, 6438 → 5911); `vm.py` +427, dnd5e `actions.json` +1295 new, `scripts` +316.
 
+- **Vision phase 8 — Scene Director / Rules Director split** (2026-08-07). Code complete, the A/B
+  not yet run. The split is one config flag, `Settings.scene_director` (default off), so both
+  configurations are live in one build and the A/B compares them like for like.
+  - `SceneDirective` (focus, pressure, stakes, threads) in `state/turn.py`, `NativeOutput` on a
+    4-field schema — the size the output-mode caution treats as safe. `scene_stage` /
+    `scene_step` in `turn/pipeline.py`; deps are the `GameState`, and its output validator
+    `ModelRetry`s a thread id the state does not hold, so a hallucinated storyline never reaches
+    the plan.
+  - **One renderer, two views.** `render_director` gained an optional `directive`: with none it
+    renders exactly today's bytes; with one it drops the unrevealed-canon, ACTIVE THREADS and
+    SCENARIO NOTES sections and renders a SCENE DIRECTIVE section carrying focus/pressure/stakes
+    plus only the threads the directive named. That filtered list is what keeps `advance-thread`
+    usable from a Rules Director that no longer sees the thread table.
+  - `CORE_DIRECTOR` is now composed from eight paragraph constants and `RULES_DIRECTOR` reuses
+    six of them plus one new directive paragraph — the narrowing drops the unseen-canon and the
+    threads/notes paragraphs. `CORE_DIRECTOR` is byte-identical, so every existing instruction,
+    prompt, schema, save and turn fixture is untouched and `SAVE_VERSION` stays 44.
+  - Evals: `run.py` records tokens (`RunRecord.tokens`, mean per case and per suite, printed by
+    `summarise`) — the A/B's second axis alongside the latency and retries it already had — and
+    `_director_turn` runs the scene stage first when the flag is on, summing both stages' tokens
+    and retries. The turn functions return one `Attempt` instead of a widening tuple.
+  - Tests: one in `tests/core/test_pipeline.py` — the step order gains `scene`, the directive's
+    focus and its named thread's title reach the Rules Director, and the unrevealed entity and
+    the notes heading do not (they stay in the scene prompt). New goldens: `instructions/*/
+    {scene,rules_director}.txt` and `schemas/scene_directive.json`.
+  - Line delta: `src/aidm` +128, of which ~30 is the paragraph split of `CORE_DIRECTOR`.
+
+**Phase-8 A/B, measured** (2026-08-07, gpt-oss-120b, 29 director cases × 3 runs, one tree
+`46fb255+752ed83`, the two suites run back to back: single =
+`results/2026-08-07-46fb255+752ed83.json`, split = the same name with `-2`).
+
+| | single director | Scene + Rules split |
+| --- | --- | --- |
+| overall | **91%** | 72% |
+| turns completed | 95% | 98% |
+| mean duration/turn | **4.1s** | 6.4s |
+| mean tokens/turn | **11082** | 11427 |
+
+- **Gate: the single director wins; `scene_director` stays off.** The split costs 19 points and
+  56% more latency and saves no tokens — a second model call spends whatever the narrower prompt
+  saves.
+- **The narrowing deletes the Director's reveal.** `hook-fires-on-discovery` 0/3 against 100% for
+  the single director: unrevealed canon is exactly what the Rules Director no longer sees, so it
+  cannot `reveal` the vault, no fact exists, and no hook fires. Phase 8.5's open design question —
+  where the Director's non-mechanical writes live — is now answered with evidence rather than
+  taste: they cannot simply be taken off the plan surface.
+- **A mandatory directive manufactures mechanics.** `pressure` and `stakes` are required prose, so
+  a quiet turn stops being quiet: `no-mechanics-turn` 100% → 0%, `story-no-risk-needed` 100% →
+  67%, `story-check-both-directions` rolling where the single director rolled nothing. The
+  discipline family goes 67% → 0%.
+- It also drops mechanical writes the single director makes: `long-rest-recharge` 100% → 0%,
+  `self-heal-scaling` 100% → 0%, `short-rest-recharge` 100% → 67% — the standing "Director drops
+  the state write" shape, amplified by a prompt that no longer states the fiction it must serve.
+**Phase-8 A/B, second attempt** (same day, tree `46fb255+b43780a`, same 29 × 3 shape; single =
+`results/2026-08-07-46fb255+b43780a.json`, split = the same name with `-2`). Both fixes the first
+A/B asked for went in and the split closed the whole gap:
+
+| | single director | Scene + Rules split |
+| --- | --- | --- |
+| overall | 84% | 84% |
+| turns completed | 93% | 95% |
+| mean duration/turn | 6.3s | 6.1s |
+| mean tokens/turn | **9974** | 10934 |
+
+- The fixes: `SceneDirective.reveal` names unmet entities and renders them under the directive as
+  full `name[id=...]` lines, so the Rules Director can write a `reveal` for what it cannot see
+  (its validator refuses an id that is not an unmet entity); `pressure` and `stakes` default to
+  empty and render as an explicit "this turn is quiet" line instead of blank headings; and `_DRIVE`
+  ("a turn with nothing at stake should be the exception") left `RULES_DIRECTOR`, because the
+  directive has already decided that question and saying it twice is what manufactured mechanics.
+- **Quiet turns are fixed.** `no-mechanics-turn` 0% → 100%, `story-no-risk-needed` 67% → 100%,
+  `self-heal-scaling` 0% → 67%, `long-rest-recharge` 0% → 67%. Discipline 0% → 67%, level with the
+  single director.
+- **`hook-fires-on-discovery` is the one regression left, and it is a selection problem, not a
+  channel problem.** The reveal channel works — every run wrote the `reveal` the directive named —
+  but the Scene Director names `vault_map` ("the vault map") where the case needs `vault` ("the
+  sealed vault"), 7 runs out of 7 across two prompt wordings. Its answer is defensible fiction
+  (Mara hands over the chart) that the authored hook does not recognise. The eval harness now
+  records the directive on every run, which is how that was attributable at all; a third prompt
+  wording was tried, moved nothing, and was reverted rather than shipped unmeasured. It is owed a
+  fix now that the split is the shipped path; the likely ones are the scenario authoring a hook
+  the map also satisfies, or the case accepting either discovery.
+- **Decision: the split ships on** (`scene_director` defaults true; setting it false collapses
+  both roles into one call, and every fixture and test still covers that path). The evals do not
+  choose between them — correctness and latency are level and the split costs ~10% more tokens —
+  so the maintainer's call settles it on structure: deciding what a turn is about and resolving it
+  by the rules are separate jobs, and the eval scenarios are small enough that the separation's
+  value is not what they measure. What the numbers did buy is the two fixes and the confidence
+  that the split is not paying for itself in lost correctness.
+- This hour's single-director run scored 84% against the previous hour's 91% on an unchanged code
+  path (`ability-check-dc` died 0/3 on provider errors), which is the recorded small-n noise floor
+  doing exactly what REFACTOR.md says it does. Only same-hour pairs are comparable; neither 84% nor
+  91% is a trend.
+
 ## Current
 
-Phase 7 shipped 2026-08-07; staged together with phase 6, uncommitted. Phase 5 (ironsworn)
-stays deferred; next is phase 8 (Scene/Rules Director split).
+Phase 8 shipped 2026-08-07 with the Scene/Rules split on. Phase 5 (ironsworn) stays deferred.
+
+Next is phase 8.5 (model-facing schema shrink). The two A/Bs narrow it: a Director that cannot see
+unrevealed canon writes no `reveal`, so the non-mechanical writes need a named home before
+`effects` can leave the plan — either a residual write list, or a directive channel like
+`SceneDirective.reveal`, which works mechanically and now fails only on which entity the Scene
+Director picks.
 
 Worth doing before or alongside phase 8: the one prompt pass on "the Director drops the state
 write", now the largest eval finding at three cases and the only one costing whole runs.

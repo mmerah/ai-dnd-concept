@@ -307,3 +307,40 @@ async def test_a_hook_fires_on_its_fact_moves_its_thread_and_steers_the_next_tur
 
     assert "Press on what opening the seal will cost" in shown(after.turn, "director")
     assert after.state.pending_notes == ()
+
+
+async def test_a_scene_directive_replaces_the_directors_own_canon_view() -> None:
+    engine, state = initialized()
+    steps: list[str] = []
+    scene = FunctionModel(
+        scripted(
+            structured(
+                focus="Kael presses toward the vault door.",
+                pressure="The undercroft air grows colder.",
+                stakes="Finding it now or losing the trail.",
+                threads=["vault-seal"],
+                reveal=["vault"],
+            )
+        )
+    )
+    director = FunctionModel(scripted(plan(intent="Kael presses on.", tone="tense")))
+    result = await played(
+        engine,
+        state,
+        "I press on.",
+        director=director,
+        scene=scene,
+        on_step=steps.append,
+    )
+
+    assert tuple(steps) == ("scene", "director", "resolve", "hooks", "narrator", "worldkeeper")
+    director_prompt = shown(result.turn, "director")
+    assert "Kael presses toward the vault door." in director_prompt
+    assert "The sealed vault" in director_prompt
+    # Named for revealing, so the Rules Director can write it; the unnamed one stays out of sight.
+    assert "the sealed vault[id=vault]" in director_prompt
+    assert "Elena" not in director_prompt
+    assert "SCENARIO NOTES" not in director_prompt
+    scene_prompt = shown(result.turn, "scene")
+    assert "Elena" in scene_prompt
+    assert "ACTIVE THREADS" in scene_prompt

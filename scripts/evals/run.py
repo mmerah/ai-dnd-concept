@@ -11,6 +11,7 @@ import subprocess
 import sys
 import time
 from collections.abc import Sequence
+from dataclasses import dataclass
 from datetime import date
 from hashlib import sha1
 from pathlib import Path
@@ -26,6 +27,7 @@ from aidm.config import Settings, load_settings
 from aidm.content.store import load_character, load_scenario
 from aidm.engines.loader import Engine
 from aidm.state.base import EngineId, Frozen, Slug
+from aidm.state.turn import SceneDirective
 from aidm.state.world import GameState
 from aidm.turn.advancement import AdvisorContext, advisor, render_proposal
 from aidm.turn.pipeline import (
@@ -35,6 +37,7 @@ from aidm.turn.pipeline import (
     director_stage,
     hook_step,
     resolve_step,
+    scene_stage,
     worldkeeper_stage,
     worldkeeper_step,
 )
@@ -56,6 +59,16 @@ class Options(Frozen):
     only: str | None = None
     runs: int | None = Field(default=None, ge=1)
     concurrency: int = Field(default=4, ge=1)
+
+
+@dataclass(frozen=True, slots=True)
+class Attempt:
+    outcome: Outcome
+    plan: JsonValue
+    retries: tuple[str, ...]
+    tokens: int
+    # None whenever the single-director configuration ran, which is what makes the A/B readable.
+    directive: JsonValue = None
 
 
 type Role = Literal["director", "advisor", "worldkeeper"]
@@ -92,8 +105,10 @@ class RunRecord(Frozen):
     # Diagnosis: the plan the Director settled on, the validator refusals it burned on the way,
     # and each recorded fact's trace line.
     plan: JsonValue = None
+    directive: JsonValue = None
     retries: tuple[str, ...] = ()
     facts: tuple[str, ...] = ()
+    tokens: int = Field(default=0, ge=0)
 
     @property
     def completed(self) -> bool:
@@ -106,6 +121,7 @@ class CaseRecord(Frozen):
     rate: float
     completion: float
     mean_duration_s: float
+    mean_tokens: float
     runs: tuple[RunRecord, ...] = Field(min_length=1)
 
 
@@ -120,6 +136,7 @@ class SuiteRecord(Frozen):
     # Pass rate among completed turns: the rules-interpretation signal, with crashes taken out.
     interpretation: float
     mean_duration_s: float
+    mean_tokens: float
     by_tag: dict[str, float]
     cases: tuple[CaseRecord, ...]
 
@@ -148,22 +165,25 @@ async def run_case(case: EvalCase, run: int, config: Settings) -> RunRecord:
     """A failed turn is this run's failure: a live model must never abort the suite."""
     started = time.perf_counter()
     try:
-        outcome, plan, retries = await _turn(case, run, config)
+        attempt = await _turn(case, run, config)
     except Exception as error:
         elapsed = time.perf_counter() - started
         return RunRecord(
             run=run, passed=False, duration_s=elapsed, error=f"{type(error).__name__}: {error}"
         )
     elapsed = time.perf_counter() - started
+    outcome = attempt.outcome
     failures = tuple(reason for step in case.checks if (reason := check(outcome, step)) is not None)
     return RunRecord(
         run=run,
         passed=not failures,
         duration_s=elapsed,
         failures=failures,
-        plan=plan,
-        retries=retries,
+        plan=attempt.plan,
+        directive=attempt.directive,
+        retries=attempt.retries,
         facts=tuple(fact.trace for fact in outcome.facts),
+        tokens=attempt.tokens,
     )
 
 
@@ -188,6 +208,7 @@ async def run_suite(cases: Sequence[EvalCase], config: Settings, concurrency: in
             rate=_rate(by_case[case.id]),
             completion=_completion(by_case[case.id]),
             mean_duration_s=_mean_duration(by_case[case.id]),
+            mean_tokens=_mean_tokens(by_case[case.id]),
             runs=tuple(by_case[case.id]),
         )
         for case in cases
@@ -204,6 +225,7 @@ async def run_suite(cases: Sequence[EvalCase], config: Settings, concurrency: in
         completion=_completion(every),
         interpretation=_rate(finished),
         mean_duration_s=_mean_duration(every),
+        mean_tokens=_mean_tokens(every),
         by_tag={tag: _tag_rate(results, tag) for tag in sorted(_tags(results))},
         cases=results,
     )
@@ -229,6 +251,7 @@ def summarise(suite: SuiteRecord) -> str:
         f" (retries {suite.retries}; the rest died on plan-validation retries)",
         f"  checks passed when completed: {_percent(suite.interpretation)}",
         f"  mean duration/turn: {suite.mean_duration_s:.1f}s",
+        f"  mean tokens/turn: {suite.mean_tokens:.0f}",
         "",
     ]
     lines.extend(f"  {tag}: {_percent(rate)}" for tag, rate in sorted(suite.by_tag.items()))
@@ -261,9 +284,7 @@ def selected(cases: Sequence[EvalCase], options: Options) -> tuple[EvalCase, ...
     )
 
 
-async def _turn(
-    case: EvalCase, run: int, config: Settings
-) -> tuple[Outcome, JsonValue, tuple[str, ...]]:
+async def _turn(case: EvalCase, run: int, config: Settings) -> Attempt:
     engine = _engine(case.engine, config)
     rng = Random(SEED + run)
     before = apply_setup(
@@ -278,17 +299,33 @@ async def _turn(
             return await _worldkeeper_turn(case, config, engine, before, rng)
 
 
+async def _directive(
+    case: EvalCase, config: Settings, engine: Engine, before: GameState
+) -> tuple[SceneDirective | None, tuple[str, ...], int]:
+    """Off by default: only `Settings.scene_director` turns this step on, matching the pipeline."""
+    if not config.scene_director:
+        return None, (), 0
+    scene = scene_stage(config)
+    rendered = render_director(
+        SceneSnapshot.of(before), engine.renderer(before), before.scenario, case.prompt
+    )
+    result = await scene.agent.run(rendered, deps=before)
+    return result.output, _retry_reasons(result.all_messages()), result.usage.total_tokens
+
+
 async def _director_turn(
     case: EvalCase, config: Settings, engine: Engine, before: GameState, rng: Random
-) -> tuple[Outcome, JsonValue, tuple[str, ...]]:
+) -> Attempt:
     workspace = TurnWorkspace(
         prompt=case.prompt, history=[], state=before, draft=before.draft(), rng=rng
     )
+    directive, scene_retries, scene_tokens = await _directive(case, config, engine, before)
+    workspace.directive = directive
     director = director_stage(engine, config)
     # The agent is run directly rather than through `director_step`: only the run result carries
     # the retry exchanges a diagnosis needs, and the step returns none of it.
     rendered = render_director(
-        SceneSnapshot.of(before), engine.renderer(before), before.scenario, case.prompt
+        SceneSnapshot.of(before), engine.renderer(before), before.scenario, case.prompt, directive
     )
     result = await director.agent.run(rendered, deps=PlanContext(engine=engine, state=before))
     workspace.plan = result.output
@@ -302,12 +339,20 @@ async def _director_turn(
         facts=tuple(workspace.facts),
         plan=result.output.model_dump(mode="json"),
     )
-    return outcome, outcome.plan, _retry_reasons(result.all_messages())
+    retries = scene_retries + _retry_reasons(result.all_messages())
+    tokens = scene_tokens + result.usage.total_tokens
+    return Attempt(
+        outcome=outcome,
+        plan=outcome.plan,
+        retries=retries,
+        tokens=tokens,
+        directive=None if directive is None else directive.model_dump(mode="json"),
+    )
 
 
 async def _advisor_turn(
     case: EvalCase, config: Settings, engine: Engine, before: GameState
-) -> tuple[Outcome, JsonValue, tuple[str, ...]]:
+) -> Attempt:
     """The stage's own output validator is `Engine.violation`, so a proposal that reaches here is
     already legal; the checks measure whether it is the right legal proposal."""
     offer = engine.offered(before)
@@ -323,13 +368,19 @@ async def _advisor_turn(
     outcome = Outcome(
         before=before, after=after, facts=facts, plan=result.output.model_dump(mode="json")
     )
-    return outcome, outcome.plan, _retry_reasons(result.all_messages())
+    return Attempt(
+        outcome=outcome,
+        plan=outcome.plan,
+        retries=_retry_reasons(result.all_messages()),
+        tokens=result.usage.total_tokens,
+    )
 
 
 async def _worldkeeper_turn(
     case: EvalCase, config: Settings, engine: Engine, before: GameState, rng: Random
-) -> tuple[Outcome, JsonValue, tuple[str, ...]]:
-    """Runs the pipeline step itself, so the admission code the turn uses is what is measured."""
+) -> Attempt:
+    """Runs the pipeline step itself, so the admission code the turn uses is what is measured.
+    That step exposes no run result, so tokens are unavailable here and reported as 0."""
     workspace = TurnWorkspace(
         prompt=case.prompt, history=[], state=before, draft=before.draft(), rng=rng
     )
@@ -340,7 +391,7 @@ async def _worldkeeper_turn(
     engine.validate_state(after)
     report = workspace.steps[-1].output
     outcome = Outcome(before=before, after=after, facts=tuple(workspace.facts), plan=report)
-    return outcome, report, ()
+    return Attempt(outcome=outcome, plan=report, retries=(), tokens=0)
 
 
 def _retry_reasons(messages: Sequence[ModelMessage]) -> tuple[str, ...]:
@@ -389,6 +440,10 @@ def _completion(runs: Sequence[RunRecord]) -> float:
 
 def _mean_duration(runs: Sequence[RunRecord]) -> float:
     return sum(record.duration_s for record in runs) / len(runs) if runs else 0.0
+
+
+def _mean_tokens(runs: Sequence[RunRecord]) -> float:
+    return sum(record.tokens for record in runs) / len(runs) if runs else 0.0
 
 
 def _tag_rate(cases: Sequence[CaseRecord], tag: str) -> float:

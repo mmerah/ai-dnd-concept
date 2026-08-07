@@ -66,6 +66,9 @@ class Settings(BaseSettings):
     engines: dict[EngineId, EngineConfig] = Field(default_factory=dict)
     max_growth: int = Field(default=3, ge=0)
     history_window: int = Field(default=6, ge=0)
+    # A Scene Director step decides the turn's focus before the Rules Director resolves it. Off
+    # collapses both roles back into one call, which the phase-8 A/B measured level on correctness.
+    scene_director: bool = True
     saves_dir: Path = Path("saves")
     scenarios_dir: Path = Path("scenarios")
     characters_dir: Path = Path("characters")

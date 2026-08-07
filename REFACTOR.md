@@ -360,13 +360,23 @@ importer change plus a regen. Never re-type them in Python.
 
 ## Phase 8 — Scene Director / Rules Director split (~3 days, eval-gated)
 
-**Vision its phase 6.** A `SceneDirective` role step (focus, pressure, relevant threads,
-stakes) inserted before a narrowed Rules Director — the step machinery already takes an
-inserted `(name, StepFn)` pair. Strictly A/B against the single director on plan
-correctness, tokens, latency, retries; configuration keeps whichever wins, per scenario
-if the data says so.
+**Vision its phase 6. Shipped and measured twice, 2026-08-07.** The first A/B went to the single
+director 91% to 72%; the two prompt fixes it asked for brought the split level (84% / 84%, 6.1s
+against 6.3s), leaving it ~10% more tokens for the second call and one owed case. On that tie the
+split ships on (`scene_director` defaults true) — a maintainer decision on separation of concerns,
+which the eval scenarios are too small to measure; PROGRESS.md carries both runs. A
+`SceneDirective` role step (focus, pressure, relevant threads, stakes) inserted before a
+narrowed Rules Director — the step machinery already takes an inserted `(name, StepFn)`
+pair. Strictly A/B against the single director on plan correctness, tokens, latency,
+retries; configuration keeps whichever wins, per scenario if the data says so.
 
-## Phase 8.5 — Model-facing schema shrink (eval-gated, held at gate resolution)
+Both configurations ship behind `Settings.scene_director` (default off), and
+`CORE_DIRECTOR` is byte-identical, so the A/B is two same-hour runs of one commit:
+`uv run python scripts/evals/run.py --only director` against the same with
+`SCENE_DIRECTOR=1`. The harness now records tokens per run and per suite. Per-scenario
+configuration is not built: it stays speculative until the data asks for it.
+
+## Phase 8.5 — Model-facing schema shrink (eval-gated, next)
 
 **AFTER-VISION.md's principle, adopted: a role outputs only what its inputs cannot
 deterministically derive.** Sequenced directly after phase 8 because the headline cut —
@@ -379,6 +389,13 @@ a full live suite against a same-hour HEAD run, probed on gpt-oss before fixture
 - The design question that gates it: the Director's non-mechanical writes (reveal, relation
   ops, `advance-thread`) need a home before `effects` leaves the plan — a small residual
   write list, or hooks and keepers absorb them. Decide on eval evidence, not taste.
+  **Phase 8's A/Bs are the first evidence: a Director that cannot see unrevealed canon writes no
+  `reveal`. A directive channel (`SceneDirective.reveal`) carries the write correctly — the Rules
+  Director wrote every reveal it was handed — and fails only on which entity the upstream role
+  picks, so the choice is between that channel and a residual write list, not between a write
+  list and nothing.**
+- The headline cut presumed the Scene Director, which now ships: build the cut on it, and
+  measure it against the split rather than against the single director it replaced.
 - Batched into the same pass because each also moves prompt or schema bytes and one live run
   should pay for all of them: dropping pack `notes` that duplicate a `facts` value, any
   actions.json shrink the smaller plan model enables, and deleting the now-empty

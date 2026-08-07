@@ -13,7 +13,7 @@ from aidm.state.apply import apply_effect, fire_hooks
 from aidm.state.base import Entity, EntityId, Frozen, slug
 from aidm.state.facts import Fact, narrator_evidence
 from aidm.state.plan import TurnPlanBase
-from aidm.state.turn import Creation, StepTrace, Turn, WorldkeeperReport
+from aidm.state.turn import Creation, SceneDirective, StepTrace, Turn, WorldkeeperReport
 from aidm.state.world import Exchange, GameState
 
 from . import prompts
@@ -52,6 +52,7 @@ class TurnWorkspace:
     facts: list[Fact] = field(default_factory=list)
     steps: list[StepTrace] = field(default_factory=list)
     plan: TurnPlanBase | None = None
+    directive: SceneDirective | None = None
     evidence: str = ""
     narration: str = ""
 
@@ -65,11 +66,28 @@ type StepFn = Callable[[TurnWorkspace], Awaitable[None]]
 type TurnScript = tuple[tuple[str, StepFn], ...]
 
 
-def director_step(role: Stage[PlanContext, TurnPlanBase], engine: Engine) -> StepFn:
+def scene_step(role: Stage[GameState, SceneDirective], engine: Engine) -> StepFn:
+    """The Scene Director reads the full view and hands the Rules Director a directive."""
+
     async def run(ws: TurnWorkspace) -> None:
         state = ws.state
         rendered = prompts.render_director(
             SceneSnapshot.of(state), engine.renderer(state), state.scenario, ws.prompt
+        )
+        directive = await role.run(rendered, state, ws.history)
+        ws.directive = directive
+        ws.steps.append(
+            StepTrace(name=role.name, prompt=rendered, output=directive.model_dump(mode="json"))
+        )
+
+    return run
+
+
+def director_step(role: Stage[PlanContext, TurnPlanBase], engine: Engine) -> StepFn:
+    async def run(ws: TurnWorkspace) -> None:
+        state = ws.state
+        rendered = prompts.render_director(
+            SceneSnapshot.of(state), engine.renderer(state), state.scenario, ws.prompt, ws.directive
         )
         plan = await role.run(rendered, PlanContext(engine=engine, state=state), ws.history)
         # Notes are read once: the draft carries none forward, so the next turn shows only new ones.
@@ -174,11 +192,37 @@ def plan_from_text(plan_type: type[TurnPlanBase]) -> Callable[[str], TurnPlanBas
     return parse
 
 
+def scene_stage(settings: Settings) -> Stage[GameState, SceneDirective]:
+    built = stage(
+        "scene",
+        settings,
+        instructions=prompts.SCENE_DIRECTOR,
+        output_type=NativeOutput(SceneDirective),
+        deps_type=GameState,
+    )
+
+    def known(ctx: RunContext[GameState], directive: SceneDirective) -> SceneDirective:
+        state = ctx.deps
+        missing = sorted(set(directive.threads) - set(state.threads))
+        if missing:
+            raise ModelRetry(f"no such thread: {', '.join(missing)}")
+        # A `reveal` naming anything but an unmet entity renders nothing
+        unmet = {entity.id for entity in state.world.entities() if not entity.known}
+        wrong = sorted(set(directive.reveal) - unmet)
+        if wrong:
+            raise ModelRetry(f"not something the player has yet to find: {', '.join(wrong)}")
+        return directive
+
+    _ = built.agent.output_validator(known)
+    return built
+
+
 def director_stage(engine: Engine, settings: Settings) -> Stage[PlanContext, TurnPlanBase]:
+    core = prompts.RULES_DIRECTOR if settings.scene_director else prompts.CORE_DIRECTOR
     built = stage(
         "director",
         settings,
-        instructions=f"{prompts.CORE_DIRECTOR}\n\n{engine.director_instructions}",
+        instructions=f"{core}\n\n{engine.director_instructions}",
         output_type=[
             ToolOutput(engine.plan_type, name="turn_plan"),
             TextOutput(plan_from_text(engine.plan_type)),
@@ -219,7 +263,10 @@ def default_workflow(engine: Engine, settings: Settings, options: TurnOptions) -
     director = director_stage(engine, settings)
     narrator = narrator_stage(settings)
     worldkeeper = worldkeeper_stage(settings)
+    scene = scene_stage(settings) if settings.scene_director else None
+    opening: TurnScript = () if scene is None else ((scene.name, scene_step(scene, engine)),)
     return (
+        *opening,
         (director.name, director_step(director, engine)),
         ("resolve", resolve_step(engine)),
         ("hooks", hook_step(engine)),

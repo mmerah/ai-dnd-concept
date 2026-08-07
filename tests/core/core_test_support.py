@@ -28,6 +28,8 @@ from aidm.turn.pipeline import (
     narrator_step,
     resolve_step,
     run_turn,
+    scene_stage,
+    scene_step,
     worldkeeper_stage,
     worldkeeper_step,
 )
@@ -117,16 +119,28 @@ async def played(
     director: Model,
     narrator: Model | None = None,
     worldkeeper: Model | None = None,
+    scene: Model | None = None,
     options: TurnOptions = OPTIONS,
     rng: Random | None = None,
     on_step: Callable[[str], None] | None = None,
     extra: TurnScript = (),
 ) -> TurnResult:
     """The default workflow with every role stubbed, assembled the way a new role would be."""
-    config = settings()
-    stages = (director_stage(engine, config), narrator_stage(config), worldkeeper_stage(config))
-    director_role, narrator_role, worldkeeper_role = stages
+    config = settings(scene_director=True) if scene is not None else settings()
+    scene_role = scene_stage(config) if scene is not None else None
+    director_role, narrator_role, worldkeeper_role = (
+        director_stage(engine, config),
+        narrator_stage(config),
+        worldkeeper_stage(config),
+    )
+    stages = (
+        *(() if scene_role is None else (scene_role,)),
+        director_role,
+        narrator_role,
+        worldkeeper_role,
+    )
     script = (
+        *(() if scene_role is None else ((scene_role.name, scene_step(scene_role, engine)),)),
         (director_role.name, director_step(director_role, engine)),
         ("resolve", resolve_step(engine)),
         ("hooks", hook_step(engine)),
@@ -135,6 +149,7 @@ async def played(
         *extra,
     )
     models = (
+        *(() if scene is None else (scene,)),
         director,
         narrator or FunctionModel(scripted(text("You wait."))),
         worldkeeper or FunctionModel(scripted(structured(creations=[]))),
@@ -153,7 +168,7 @@ async def played(
         )
 
 
-def settings() -> Settings:
+def settings(*, scene_director: bool = False) -> Settings:
     return Settings(
         providers=Providers(
             openrouter=ProviderConfig(
@@ -166,4 +181,5 @@ def settings() -> Settings:
         saves_dir=Path("saves"),
         scenarios_dir=SCENARIOS,
         characters_dir=CHARACTERS,
+        scene_director=scene_director,
     )

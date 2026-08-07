@@ -2,7 +2,7 @@ from typing import Annotated, Literal
 
 from pydantic import Field, JsonValue
 
-from .base import SAVE_VERSION, EntityDetail, Frozen, Kind
+from .base import SAVE_VERSION, EntityDetail, EntityId, Frozen, Kind, Slug
 from .facts import Fact
 
 
@@ -23,6 +23,37 @@ class Creation(Frozen):
 
 class WorldkeeperReport(Frozen):
     creations: tuple[Creation, ...] = ()
+
+
+class SceneDirective(Frozen):
+    """What the turn is about, decided before any rule is touched."""
+
+    focus: str = Field(
+        description="1-2 sentences: what the player is reaching for and what this turn is about."
+    )
+    pressure: str = Field(
+        default="",
+        description=(
+            "1-2 sentences: what pushes back this turn — a complication, a cost, a threat. Empty "
+            "when the turn is genuinely quiet and nothing should push back."
+        ),
+    )
+    stakes: str = Field(
+        default="",
+        description=(
+            "One sentence: what the player stands to win or lose. Empty when nothing is at stake."
+        ),
+    )
+    threads: tuple[Slug, ...] = Field(
+        default=(), description="Ids of the active threads this turn serves; none when none apply."
+    )
+    reveal: tuple[EntityId, ...] = Field(
+        default=(),
+        description=(
+            "Ids of the things the player has not found yet that this turn should bring into "
+            "play; none unless the fiction genuinely puts one in front of them."
+        ),
+    )
 
 
 class StepTrace(Frozen):
