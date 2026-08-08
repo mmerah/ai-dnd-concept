@@ -3,7 +3,7 @@ from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 from pathlib import Path
 from types import MappingProxyType
-from typing import Annotated, Literal, Self
+from typing import Annotated, Literal, Self, TypeGuard
 
 from pydantic import (
     AfterValidator,
@@ -74,12 +74,12 @@ class ContentRef(Value):
 
 
 class Record(Value):
-    """`sheet_numbers` land on the sheet of any entity that refs the record, so a record reffed
-    in multiplicity (a spell, a feature) must leave them empty or keys collide. `noted` renders
-    beside the ref and in `read_content`, never touching a sheet, so any record may carry it.
-    A plain record stores both as data written at authoring time; a typed subclass computes them
-    instead and leaves the stored maps empty. `facts` carries normalized mechanical values for
-    deterministic readers; the engine spec names the ones every record in a collection must hold."""
+    """`facts` carries every normalized mechanical value a record holds, keyed by slug. An
+    int-valued fact in a collection the engine spec flags as projecting lands on the sheet of any
+    entity that refs the record — a record reffed in multiplicity (a spell, a feature) must leave
+    those keys out of its facts or they would collide. Every other fact renders beside the ref and
+    in `read_content`, never touching a sheet. The engine spec names the facts every record in a
+    collection must hold."""
 
     index: ContentSlug
     name: str
@@ -88,8 +88,6 @@ class Record(Value):
     # A record that IS a choice names the legal picks; a bare index would be ambiguous.
     options: tuple[ContentRef, ...] = ()
     choose: int | None = None
-    numbers: FrozenMap[Slug, int] = EMPTY_FROZEN_MAP
-    notes: FrozenMap[Slug, str] = EMPTY_FROZEN_MAP
     facts: FrozenMap[Slug, JsonValue] = EMPTY_FROZEN_MAP
 
     @model_validator(mode="after")
@@ -99,12 +97,6 @@ class Record(Value):
         if self.choose is not None and not 1 <= self.choose <= len(self.options):
             raise ValueError(f"cannot choose {self.choose} of {len(self.options)} options")
         return self
-
-    def sheet_numbers(self) -> Mapping[Slug, int]:
-        return self.numbers
-
-    def noted(self) -> Mapping[Slug, str]:
-        return self.notes
 
 
 type FactType = Literal["int", "slug", "str"]
@@ -230,7 +222,9 @@ def write_pack(directory: Path, pack: Pack) -> None:
     directory.mkdir(parents=True, exist_ok=True)
     _write(directory / "manifest.json", pack.manifest.model_dump_json(indent=2))
     for name, records in pack.records.items():
-        dumped = [record.model_dump(mode="json") for record in records.values()]
+        dumped = [
+            record.model_dump(mode="json", exclude_defaults=True) for record in records.values()
+        ]
         _write(directory / f"{name}.json", json.dumps(dumped, indent=2, ensure_ascii=False))
 
 
@@ -257,10 +251,14 @@ def validate_pack(pack: Pack, collections: Mapping[CollectionName, FactSchema]) 
 _SLUG: TypeAdapter[str] = TypeAdapter(Slug)
 
 
+def is_int_fact(value: JsonValue | None) -> TypeGuard[int]:
+    return isinstance(value, int) and not isinstance(value, bool)
+
+
 def _fact_is(value: JsonValue | None, kind: FactType) -> bool:
     match kind:
         case "int":
-            return isinstance(value, int) and not isinstance(value, bool)
+            return is_int_fact(value)
         case "slug":
             try:
                 _ = _SLUG.validate_python(value, strict=True)

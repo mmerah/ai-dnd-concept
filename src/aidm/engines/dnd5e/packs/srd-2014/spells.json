@@ -8,21 +8,10 @@
       "somatic",
       "material"
     ],
-    "options": [],
-    "choose": null,
-    "numbers": {},
-    "notes": {
-      "level": "2",
-      "attack": "ranged spell attack",
-      "damage": "4d4 acid",
-      "scaling": "slot 3: 5d4, slot 4: 6d4, slot 5: 7d4, slot 6: 8d4, slot 7: 9d4, slot 8: 10d4, slot 9: 11d4",
-      "range": "90 feet",
-      "classes": "Wizard",
-      "subclasses": "Lore, Land"
-    },
     "facts": {
       "level": 2,
       "attack-type": "ranged",
+      "damage-type": "acid",
       "damage-ladder": [
         [
           0,
@@ -56,7 +45,10 @@
           9,
           "11d4"
         ]
-      ]
+      ],
+      "range": "90 feet",
+      "classes": "Wizard",
+      "subclasses": "Lore, Land"
     }
   },
   {
@@ -67,21 +59,10 @@
       "verbal",
       "somatic"
     ],
-    "options": [],
-    "choose": null,
-    "numbers": {},
-    "notes": {
-      "level": "cantrip",
-      "save": "DEX (no effect on success)",
-      "damage": "1d6 acid",
-      "scaling": "level 5: 2d6, level 11: 3d6, level 17: 4d6",
-      "range": "60 feet",
-      "classes": "Sorcerer, Wizard",
-      "subclasses": "Lore"
-    },
     "facts": {
       "save-ability": "dexterity",
       "save-success": "none",
+      "damage-type": "acid",
       "damage-ladder": [
         [
           0,
@@ -99,7 +80,10 @@
           17,
           "4d6"
         ]
-      ]
+      ],
+      "range": "60 feet",
+      "classes": "Sorcerer, Wizard",
+      "subclasses": "Lore"
     }
   },
   {
@@ -111,18 +95,6 @@
       "somatic",
       "material"
     ],
-    "options": [],
-    "choose": null,
-    "numbers": {},
-    "notes": {
-      "level": "2",
-      "heal": "5",
-      "scaling": "slot 3: 10, slot 4: 15, slot 5: 20, slot 6: 25, slot 7: 30, slot 8: 35, slot 9: 40",
-      "range": "30 feet",
-      "duration": "8 hours",
-      "classes": "Cleric, Paladin",
-      "subclasses": "Lore"
-    },
     "facts": {
       "level": 2,
       "heal-ladder": [
@@ -158,7 +130,11 @@
           9,
           "40"
         ]
-      ]
+      ],
+      "range": "30 feet",
+      "duration": "8 hours",
+      "classes": "Cleric, Paladin",
+      "subclasses": "Lore"
     }
   },
   {
@@ -171,20 +147,14 @@
       "somatic",
       "material"
     ],
-    "options": [],
-    "choose": null,
-    "numbers": {},
-    "notes": {
-      "level": "1",
+    "facts": {
+      "level": 1,
       "area": "20-foot cube",
       "range": "30 feet",
       "casting-time": "1 minute",
       "duration": "8 hours",
       "classes": "Ranger, Wizard",
       "subclasses": "Lore"
-    },
-    "facts": {
-      "level": 1
     }
   },
   {
@@ -196,19 +166,13 @@
       "verbal",
       "somatic"
     ],
-    "options": [],
-    "choose": null,
-    "numbers": {},
-    "notes": {
-      "level": "2",
+    "facts": {
+      "level": 2,
+      "concentration": true,
       "range": "Self",
       "duration": "Up to 1 hour",
       "classes": "Sorcerer, Wizard",
       "subclasses": "Lore"
-    },
-    "facts": {
-      "level": 2,
-      "concentration": true
     }
   },
   {
@@ -220,20 +184,13 @@
       "somatic",
       "material"
     ],
-    "options": [],
-    "choose": null,
-    "numbers": {},
-    "notes": {
-      "level": "1",
-      "save": "WIS (no effect on success)",
-      "range": "30 feet",
-      "duration": "24 hours",
-      "classes": "Bard, Druid, Ranger"
-    },
     "facts": {
       "level": 1,
       "save-ability": "wisdom",
-      "save-success": "none"
+      "save-success": "none",
+      "range": "30 feet",
+      "duration": "24 hours",
+      "classes": "Bard, Druid, Ranger"
     }
   },
   {
@@ -246,18 +203,12 @@
       "somatic",
       "material"
     ],
-    "options": [],
-    "choose": null,
-    "numbers": {},
-    "notes": {
-      "level": "2",
+    "facts": {
+      "level": 2,
       "range": "30 feet",
       "duration": "24 hours",
       "classes": "Bard, Druid, Ranger",
       "subclasses": "Lore"
-    },
-    "facts": {
-      "level": 2
     }
   },
   {
@@ -269,18 +220,12 @@
       "verbal",
       "somatic"
     ],
-    "options": [],
-    "choose": null,
-    "numbers": {},
-    "notes": {
-      "level": "8",
+    "facts": {
+      "level": 8,
+      "concentration": true,
       "range": "30 feet",
       "duration": "Up to 24 hours",
       "classes": "Druid"
-    },
-    "facts": {
-      "level": 8,
-      "concentration": true
     }
   },
   {
@@ -292,18 +237,12 @@
       "somatic",
       "material"
     ],
-    "options": [],
-    "choose": null,
-    "numbers": {},
-    "notes": {
-      "level": "3",
+    "facts": {
+      "level": 3,
       "range": "10 feet",
       "casting-time": "1 minute",
       "classes": "Cleric, Wizard",
       "subclasses": "Lore"
-    },
-    "facts": {
-      "level": 3
     }
   },
   {
@@ -315,18 +254,12 @@
       "verbal",
       "somatic"
     ],
-    "options": [],
-    "choose": null,
-    "numbers": {},
-    "notes": {
-      "level": "5",
+    "facts": {
+      "level": 5,
+      "concentration": true,
       "range": "120 feet",
       "duration": "Up to 1 minute",
       "classes": "Bard, Sorcerer, Wizard"
-    },
-    "facts": {
-      "level": 5,
-      "concentration": true
     }
   },
   {
@@ -338,19 +271,13 @@
       "verbal",
       "somatic"
     ],
-    "options": [],
-    "choose": null,
-    "numbers": {},
-    "notes": {
-      "level": "5",
+    "facts": {
+      "level": 5,
+      "concentration": true,
       "area": "10-foot sphere",
       "range": "Self",
       "duration": "Up to 1 hour",
       "classes": "Druid"
-    },
-    "facts": {
-      "level": 5,
-      "concentration": true
     }
   },
   {
@@ -363,19 +290,13 @@
       "somatic",
       "material"
     ],
-    "options": [],
-    "choose": null,
-    "numbers": {},
-    "notes": {
-      "level": "8",
+    "facts": {
+      "level": 8,
+      "concentration": true,
       "area": "10-foot sphere",
       "range": "Self",
       "duration": "Up to 1 hour",
       "classes": "Cleric, Wizard"
-    },
-    "facts": {
-      "level": 8,
-      "concentration": true
     }
   },
   {
@@ -387,19 +308,13 @@
       "somatic",
       "material"
     ],
-    "options": [],
-    "choose": null,
-    "numbers": {},
-    "notes": {
-      "level": "8",
+    "facts": {
+      "level": 8,
       "area": "200-foot cube",
       "range": "60 feet",
       "casting-time": "1 hour",
       "duration": "10 days",
       "classes": "Druid, Wizard"
-    },
-    "facts": {
-      "level": 8
     }
   },
   {
@@ -412,19 +327,13 @@
       "somatic",
       "material"
     ],
-    "options": [],
-    "choose": null,
-    "numbers": {},
-    "notes": {
-      "level": "4",
+    "facts": {
+      "level": 4,
+      "concentration": true,
       "area": "30-foot sphere",
       "range": "30 feet",
       "duration": "Up to 1 hour",
       "classes": "Cleric, Wizard"
-    },
-    "facts": {
-      "level": 4,
-      "concentration": true
     }
   },
   {
@@ -437,18 +346,12 @@
       "somatic",
       "material"
     ],
-    "options": [],
-    "choose": null,
-    "numbers": {},
-    "notes": {
-      "level": "5",
+    "facts": {
+      "level": 5,
+      "concentration": true,
       "range": "120 feet",
       "duration": "Up to 1 minute",
       "classes": "Wizard"
-    },
-    "facts": {
-      "level": 5,
-      "concentration": true
     }
   },
   {
@@ -460,18 +363,12 @@
       "somatic",
       "material"
     ],
-    "options": [],
-    "choose": null,
-    "numbers": {},
-    "notes": {
-      "level": "2",
+    "facts": {
+      "level": 2,
       "range": "Touch",
       "duration": "Until dispelled",
       "classes": "Wizard",
       "subclasses": "Lore"
-    },
-    "facts": {
-      "level": 2
     }
   },
   {
@@ -484,27 +381,20 @@
       "somatic",
       "material"
     ],
-    "options": [],
-    "choose": null,
-    "numbers": {},
-    "notes": {
-      "level": "7",
-      "attack": "melee spell attack",
-      "damage": "3d10 force",
-      "range": "60 feet",
-      "duration": "Up to 1 minute",
-      "classes": "Bard, Wizard"
-    },
     "facts": {
       "level": 7,
       "attack-type": "melee",
+      "damage-type": "force",
       "concentration": true,
       "damage-ladder": [
         [
           0,
           "3d10"
         ]
-      ]
+      ],
+      "range": "60 feet",
+      "duration": "Up to 1 minute",
+      "classes": "Bard, Wizard"
     }
   },
   {
@@ -516,18 +406,12 @@
       "somatic",
       "material"
     ],
-    "options": [],
-    "choose": null,
-    "numbers": {},
-    "notes": {
-      "level": "2",
+    "facts": {
+      "level": 2,
       "range": "Touch",
       "duration": "24 hours",
       "classes": "Wizard",
       "subclasses": "Lore"
-    },
-    "facts": {
-      "level": 2
     }
   },
   {
@@ -539,18 +423,12 @@
       "somatic",
       "material"
     ],
-    "options": [],
-    "choose": null,
-    "numbers": {},
-    "notes": {
-      "level": "9",
+    "facts": {
+      "level": 9,
       "range": "10 feet",
       "casting-time": "1 hour",
       "duration": "Special",
       "classes": "Cleric, Warlock, Wizard"
-    },
-    "facts": {
-      "level": 9
     }
   },
   {
@@ -563,18 +441,12 @@
       "somatic",
       "material"
     ],
-    "options": [],
-    "choose": null,
-    "numbers": {},
-    "notes": {
-      "level": "2",
+    "facts": {
+      "level": 2,
       "range": "Self",
       "casting-time": "1 minute",
       "classes": "Cleric",
       "subclasses": "Lore"
-    },
-    "facts": {
-      "level": 2
     }
   },
   {
@@ -586,17 +458,11 @@
       "somatic",
       "material"
     ],
-    "options": [],
-    "choose": null,
-    "numbers": {},
-    "notes": {
-      "level": "5",
+    "facts": {
+      "level": 5,
       "range": "Touch",
       "casting-time": "8 hours",
       "classes": "Bard, Druid"
-    },
-    "facts": {
-      "level": 5
     }
   },
   {
@@ -609,22 +475,15 @@
       "somatic",
       "material"
     ],
-    "options": [],
-    "choose": null,
-    "numbers": {},
-    "notes": {
-      "level": "1",
-      "save": "CHA (no effect on success)",
-      "range": "30 feet",
-      "duration": "Up to 1 minute",
-      "classes": "Bard, Cleric",
-      "subclasses": "Lore"
-    },
     "facts": {
       "level": 1,
       "save-ability": "charisma",
       "save-success": "none",
-      "concentration": true
+      "concentration": true,
+      "range": "30 feet",
+      "duration": "Up to 1 minute",
+      "classes": "Bard, Cleric",
+      "subclasses": "Lore"
     }
   },
   {
@@ -637,21 +496,14 @@
       "somatic",
       "material"
     ],
-    "options": [],
-    "choose": null,
-    "numbers": {},
-    "notes": {
-      "level": "4",
-      "save": "CHA (no effect on success)",
-      "range": "60 feet",
-      "duration": "Up to 1 minute",
-      "classes": "Cleric, Paladin, Sorcerer, Warlock, Wizard"
-    },
     "facts": {
       "level": 4,
       "save-ability": "charisma",
       "save-success": "none",
-      "concentration": true
+      "concentration": true,
+      "range": "60 feet",
+      "duration": "Up to 1 minute",
+      "classes": "Cleric, Paladin, Sorcerer, Warlock, Wizard"
     }
   },
   {
@@ -664,19 +516,13 @@
       "somatic",
       "material"
     ],
-    "options": [],
-    "choose": null,
-    "numbers": {},
-    "notes": {
-      "level": "2",
+    "facts": {
+      "level": 2,
+      "concentration": true,
       "range": "Touch",
       "duration": "Up to 1 hour",
       "classes": "Druid, Ranger",
       "subclasses": "Lore, Land"
-    },
-    "facts": {
-      "level": 2,
-      "concentration": true
     }
   },
   {
@@ -688,19 +534,13 @@
       "verbal",
       "somatic"
     ],
-    "options": [],
-    "choose": null,
-    "numbers": {},
-    "notes": {
-      "level": "3",
+    "facts": {
+      "level": 3,
+      "concentration": true,
       "range": "30 feet",
       "duration": "Up to 1 minute",
       "classes": "Cleric",
       "subclasses": "Lore, Life, Devotion"
-    },
-    "facts": {
-      "level": 3,
-      "concentration": true
     }
   },
   {
@@ -712,22 +552,15 @@
       "verbal",
       "somatic"
     ],
-    "options": [],
-    "choose": null,
-    "numbers": {},
-    "notes": {
-      "level": "3",
-      "save": "WIS (no effect on success)",
-      "range": "Touch",
-      "duration": "Up to 1 minute",
-      "classes": "Bard, Cleric, Wizard",
-      "subclasses": "Lore"
-    },
     "facts": {
       "level": 3,
       "save-ability": "wisdom",
       "save-success": "none",
-      "concentration": true
+      "concentration": true,
+      "range": "Touch",
+      "duration": "Up to 1 minute",
+      "classes": "Bard, Cleric, Wizard",
+      "subclasses": "Lore"
     }
   },
   {
@@ -740,29 +573,22 @@
       "somatic",
       "material"
     ],
-    "options": [],
-    "choose": null,
-    "numbers": {},
-    "notes": {
-      "level": "4",
-      "save": "DEX (no effect on success)",
-      "damage": "3d6 bludgeoning",
-      "area": "20-foot cube",
-      "range": "90 feet",
-      "duration": "Up to 1 minute",
-      "classes": "Wizard"
-    },
     "facts": {
       "level": 4,
       "save-ability": "dexterity",
       "save-success": "none",
+      "damage-type": "bludgeoning",
       "concentration": true,
       "damage-ladder": [
         [
           0,
           "3d6"
         ]
-      ]
+      ],
+      "area": "20-foot cube",
+      "range": "90 feet",
+      "duration": "Up to 1 minute",
+      "classes": "Wizard"
     }
   },
   {
@@ -774,29 +600,22 @@
       "verbal",
       "somatic"
     ],
-    "options": [],
-    "choose": null,
-    "numbers": {},
-    "notes": {
-      "level": "6",
-      "save": "DEX (half on success)",
-      "damage": "6d10 slashing",
-      "area": "100-foot line",
-      "range": "90 feet",
-      "duration": "Up to 10 minutes",
-      "classes": "Cleric"
-    },
     "facts": {
       "level": 6,
       "save-ability": "dexterity",
       "save-success": "half",
+      "damage-type": "slashing",
       "concentration": true,
       "damage-ladder": [
         [
           0,
           "6d10"
         ]
-      ]
+      ],
+      "area": "100-foot line",
+      "range": "90 feet",
+      "duration": "Up to 10 minutes",
+      "classes": "Cleric"
     }
   },
   {
@@ -809,19 +628,13 @@
       "somatic",
       "material"
     ],
-    "options": [],
-    "choose": null,
-    "numbers": {},
-    "notes": {
-      "level": "1",
+    "facts": {
+      "level": 1,
+      "concentration": true,
       "range": "30 feet",
       "duration": "Up to 1 minute",
       "classes": "Cleric, Paladin",
       "subclasses": "Lore, Life"
-    },
-    "facts": {
-      "level": 1,
-      "concentration": true
     }
   },
   {
@@ -832,22 +645,11 @@
       "verbal",
       "somatic"
     ],
-    "options": [],
-    "choose": null,
-    "numbers": {},
-    "notes": {
-      "level": "4",
-      "save": "CON (half on success)",
-      "damage": "8d8 necrotic",
-      "scaling": "slot 5: 9d8, slot 6: 10d8, slot 7: 11d8, slot 8: 12d8, slot 9: 13d8",
-      "range": "30 feet",
-      "classes": "Druid, Sorcerer, Warlock, Wizard",
-      "subclasses": "Land"
-    },
     "facts": {
       "level": 4,
       "save-ability": "constitution",
       "save-success": "half",
+      "damage-type": "necrotic",
       "damage-ladder": [
         [
           0,
@@ -873,7 +675,10 @@
           9,
           "13d8"
         ]
-      ]
+      ],
+      "range": "30 feet",
+      "classes": "Druid, Sorcerer, Warlock, Wizard",
+      "subclasses": "Land"
     }
   },
   {
@@ -883,21 +688,14 @@
     "tags": [
       "verbal"
     ],
-    "options": [],
-    "choose": null,
-    "numbers": {},
-    "notes": {
-      "level": "2",
-      "save": "CON (no effect on success)",
+    "facts": {
+      "level": 2,
+      "save-ability": "constitution",
+      "save-success": "none",
       "range": "30 feet",
       "duration": "1 minute",
       "classes": "Bard, Cleric, Sorcerer, Wizard",
       "subclasses": "Lore, Fiend"
-    },
-    "facts": {
-      "level": 2,
-      "save-ability": "constitution",
-      "save-success": "none"
     }
   },
   {
@@ -908,18 +706,12 @@
       "verbal",
       "somatic"
     ],
-    "options": [],
-    "choose": null,
-    "numbers": {},
-    "notes": {
-      "level": "3",
+    "facts": {
+      "level": 3,
       "range": "Self",
       "duration": "1 minute",
       "classes": "Sorcerer, Wizard",
       "subclasses": "Lore"
-    },
-    "facts": {
-      "level": 3
     }
   },
   {
@@ -930,19 +722,13 @@
       "concentration",
       "verbal"
     ],
-    "options": [],
-    "choose": null,
-    "numbers": {},
-    "notes": {
-      "level": "2",
+    "facts": {
+      "level": 2,
+      "concentration": true,
       "range": "Self",
       "duration": "Up to 1 minute",
       "classes": "Sorcerer, Wizard",
       "subclasses": "Lore, Land"
-    },
-    "facts": {
-      "level": 2,
-      "concentration": true
     }
   },
   {
@@ -953,20 +739,9 @@
       "concentration",
       "verbal"
     ],
-    "options": [],
-    "choose": null,
-    "numbers": {},
-    "notes": {
-      "level": "2",
-      "damage": "2d6 radiant",
-      "scaling": "slot 3: 3d6, slot 4: 4d6, slot 5: 5d6, slot 6: 6d6, slot 7: 7d6, slot 8: 8d6, slot 9: 9d6",
-      "range": "Self",
-      "casting-time": "1 bonus action",
-      "duration": "Up to 1 minute",
-      "classes": "Paladin"
-    },
     "facts": {
       "level": 2,
+      "damage-type": "radiant",
       "concentration": true,
       "damage-ladder": [
         [
@@ -1001,7 +776,11 @@
           9,
           "9d6"
         ]
-      ]
+      ],
+      "range": "Self",
+      "casting-time": "1 bonus action",
+      "duration": "Up to 1 minute",
+      "classes": "Paladin"
     }
   },
   {
@@ -1012,23 +791,11 @@
       "verbal",
       "somatic"
     ],
-    "options": [],
-    "choose": null,
-    "numbers": {},
-    "notes": {
-      "level": "1",
-      "save": "DEX (half on success)",
-      "damage": "3d6 fire",
-      "scaling": "slot 2: 4d6, slot 3: 5d6, slot 4: 6d6, slot 5: 7d6, slot 6: 8d6, slot 7: 9d6, slot 8: 10d6, slot 9: 11d6",
-      "area": "15-foot cone",
-      "range": "Self",
-      "classes": "Sorcerer, Wizard",
-      "subclasses": "Lore, Fiend"
-    },
     "facts": {
       "level": 1,
       "save-ability": "dexterity",
       "save-success": "half",
+      "damage-type": "fire",
       "damage-ladder": [
         [
           0,
@@ -1066,7 +833,11 @@
           9,
           "11d6"
         ]
-      ]
+      ],
+      "area": "15-foot cone",
+      "range": "Self",
+      "classes": "Sorcerer, Wizard",
+      "subclasses": "Lore, Fiend"
     }
   },
   {
@@ -1078,21 +849,9 @@
       "verbal",
       "somatic"
     ],
-    "options": [],
-    "choose": null,
-    "numbers": {},
-    "notes": {
-      "level": "3",
-      "damage": "3d10 lightning",
-      "scaling": "slot 4: 4d10, slot 5: 5d10, slot 6: 6d10, slot 7: 7d10, slot 8: 8d10, slot 9: 9d10",
-      "area": "5-foot sphere",
-      "range": "120 feet",
-      "duration": "Up to 10 minutes",
-      "classes": "Druid",
-      "subclasses": "Lore, Land"
-    },
     "facts": {
       "level": 3,
+      "damage-type": "lightning",
       "concentration": true,
       "damage-ladder": [
         [
@@ -1123,7 +882,12 @@
           9,
           "9d10"
         ]
-      ]
+      ],
+      "area": "5-foot sphere",
+      "range": "120 feet",
+      "duration": "Up to 10 minutes",
+      "classes": "Druid",
+      "subclasses": "Lore, Land"
     }
   },
   {
@@ -1135,23 +899,16 @@
       "verbal",
       "somatic"
     ],
-    "options": [],
-    "choose": null,
-    "numbers": {},
-    "notes": {
-      "level": "2",
-      "save": "CHA (no effect on success)",
+    "facts": {
+      "level": 2,
+      "save-ability": "charisma",
+      "save-success": "none",
+      "concentration": true,
       "area": "20-foot sphere",
       "range": "60 feet",
       "duration": "Up to 1 minute",
       "classes": "Bard, Cleric",
       "subclasses": "Lore"
-    },
-    "facts": {
-      "level": 2,
-      "save-ability": "charisma",
-      "save-success": "none",
-      "concentration": true
     }
   },
   {
@@ -1163,26 +920,19 @@
       "somatic",
       "material"
     ],
-    "options": [],
-    "choose": null,
-    "numbers": {},
-    "notes": {
-      "level": "6",
-      "save": "DEX (half on success)",
-      "damage": "10d8 lightning",
-      "range": "150 feet",
-      "classes": "Sorcerer, Wizard"
-    },
     "facts": {
       "level": 6,
       "save-ability": "dexterity",
       "save-success": "half",
+      "damage-type": "lightning",
       "damage-ladder": [
         [
           0,
           "10d8"
         ]
-      ]
+      ],
+      "range": "150 feet",
+      "classes": "Sorcerer, Wizard"
     }
   },
   {
@@ -1193,21 +943,14 @@
       "verbal",
       "somatic"
     ],
-    "options": [],
-    "choose": null,
-    "numbers": {},
-    "notes": {
-      "level": "1",
-      "save": "WIS (no effect on success)",
+    "facts": {
+      "level": 1,
+      "save-ability": "wisdom",
+      "save-success": "none",
       "range": "30 feet",
       "duration": "1 hour",
       "classes": "Bard, Druid, Sorcerer, Warlock, Wizard",
       "subclasses": "Lore"
-    },
-    "facts": {
-      "level": 1,
-      "save-ability": "wisdom",
-      "save-success": "none"
     }
   },
   {
@@ -1218,21 +961,9 @@
       "verbal",
       "somatic"
     ],
-    "options": [],
-    "choose": null,
-    "numbers": {},
-    "notes": {
-      "level": "cantrip",
-      "attack": "ranged spell attack",
-      "damage": "1d8 necrotic",
-      "scaling": "level 5: 2d8, level 11: 3d8, level 17: 4d8",
-      "range": "120 feet",
-      "duration": "1 round",
-      "classes": "Sorcerer, Warlock, Wizard",
-      "subclasses": "Lore"
-    },
     "facts": {
       "attack-type": "ranged",
+      "damage-type": "necrotic",
       "damage-ladder": [
         [
           0,
@@ -1250,7 +981,11 @@
           17,
           "4d8"
         ]
-      ]
+      ],
+      "range": "120 feet",
+      "duration": "1 round",
+      "classes": "Sorcerer, Warlock, Wizard",
+      "subclasses": "Lore"
     }
   },
   {
@@ -1262,22 +997,11 @@
       "somatic",
       "material"
     ],
-    "options": [],
-    "choose": null,
-    "numbers": {},
-    "notes": {
-      "level": "6",
-      "save": "CON (half on success)",
-      "damage": "8d6 necrotic",
-      "scaling": "slot 7: 10d6, slot 8: 12d6, slot 9: 14d6",
-      "area": "60-foot sphere",
-      "range": "150 feet",
-      "classes": "Sorcerer, Warlock, Wizard"
-    },
     "facts": {
       "level": 6,
       "save-ability": "constitution",
       "save-success": "half",
+      "damage-type": "necrotic",
       "damage-ladder": [
         [
           0,
@@ -1295,7 +1019,10 @@
           9,
           "14d6"
         ]
-      ]
+      ],
+      "area": "60-foot sphere",
+      "range": "150 feet",
+      "classes": "Sorcerer, Warlock, Wizard"
     }
   },
   {
@@ -1308,20 +1035,14 @@
       "somatic",
       "material"
     ],
-    "options": [],
-    "choose": null,
-    "numbers": {},
-    "notes": {
-      "level": "3",
+    "facts": {
+      "level": 3,
+      "concentration": true,
       "range": "1 mile",
       "casting-time": "10 minutes",
       "duration": "Up to 10 minutes",
       "classes": "Bard, Cleric, Sorcerer, Wizard",
       "subclasses": "Lore"
-    },
-    "facts": {
-      "level": 3,
-      "concentration": true
     }
   },
   {
@@ -1333,17 +1054,11 @@
       "somatic",
       "material"
     ],
-    "options": [],
-    "choose": null,
-    "numbers": {},
-    "notes": {
-      "level": "8",
+    "facts": {
+      "level": 8,
       "range": "Touch",
       "casting-time": "1 hour",
       "classes": "Wizard"
-    },
-    "facts": {
-      "level": 8
     }
   },
   {
@@ -1355,24 +1070,11 @@
       "verbal",
       "somatic"
     ],
-    "options": [],
-    "choose": null,
-    "numbers": {},
-    "notes": {
-      "level": "5",
-      "save": "CON (half on success)",
-      "damage": "5d8 poison",
-      "scaling": "slot 6: 6d8, slot 7: 7d8, slot 8: 8d8, slot 9: 9d8",
-      "area": "20-foot sphere",
-      "range": "120 feet",
-      "duration": "Up to 10 minutes",
-      "classes": "Sorcerer, Wizard",
-      "subclasses": "Land"
-    },
     "facts": {
       "level": 5,
       "save-ability": "constitution",
       "save-success": "half",
+      "damage-type": "poison",
       "concentration": true,
       "damage-ladder": [
         [
@@ -1395,7 +1097,12 @@
           9,
           "9d8"
         ]
-      ]
+      ],
+      "area": "20-foot sphere",
+      "range": "120 feet",
+      "duration": "Up to 10 minutes",
+      "classes": "Sorcerer, Wizard",
+      "subclasses": "Land"
     }
   },
   {
@@ -1407,19 +1114,13 @@
       "somatic",
       "material"
     ],
-    "options": [],
-    "choose": null,
-    "numbers": {},
-    "notes": {
-      "level": "1",
+    "facts": {
+      "level": 1,
       "area": "15-foot cone",
       "range": "Self",
       "duration": "1 round",
       "classes": "Sorcerer, Wizard",
       "subclasses": "Lore"
-    },
-    "facts": {
-      "level": 1
     }
   },
   {
@@ -1429,21 +1130,14 @@
     "tags": [
       "verbal"
     ],
-    "options": [],
-    "choose": null,
-    "numbers": {},
-    "notes": {
-      "level": "1",
-      "save": "WIS (no effect on success)",
+    "facts": {
+      "level": 1,
+      "save-ability": "wisdom",
+      "save-success": "none",
       "range": "60 feet",
       "duration": "1 round",
       "classes": "Cleric, Paladin",
       "subclasses": "Lore, Fiend"
-    },
-    "facts": {
-      "level": 1,
-      "save-ability": "wisdom",
-      "save-success": "none"
     }
   },
   {
@@ -1456,19 +1150,13 @@
       "somatic",
       "material"
     ],
-    "options": [],
-    "choose": null,
-    "numbers": {},
-    "notes": {
-      "level": "5",
+    "facts": {
+      "level": 5,
       "range": "Self",
       "casting-time": "1 minute",
       "duration": "1 minute",
       "classes": "Cleric",
       "subclasses": "Devotion"
-    },
-    "facts": {
-      "level": 5
     }
   },
   {
@@ -1480,18 +1168,12 @@
       "verbal",
       "somatic"
     ],
-    "options": [],
-    "choose": null,
-    "numbers": {},
-    "notes": {
-      "level": "5",
+    "facts": {
+      "level": 5,
       "range": "Self",
       "casting-time": "1 minute",
       "classes": "Druid, Ranger",
       "subclasses": "Land"
-    },
-    "facts": {
-      "level": 5
     }
   },
   {
@@ -1504,18 +1186,12 @@
       "somatic",
       "material"
     ],
-    "options": [],
-    "choose": null,
-    "numbers": {},
-    "notes": {
-      "level": "1",
+    "facts": {
+      "level": 1,
       "range": "Self",
       "duration": "1 hour",
       "classes": "Bard, Sorcerer, Warlock, Wizard",
       "subclasses": "Lore"
-    },
-    "facts": {
-      "level": 1
     }
   },
   {
@@ -1527,21 +1203,14 @@
       "verbal",
       "somatic"
     ],
-    "options": [],
-    "choose": null,
-    "numbers": {},
-    "notes": {
-      "level": "4",
-      "save": "WIS (no effect on success)",
-      "range": "30 feet",
-      "duration": "Up to 1 minute",
-      "classes": "Bard"
-    },
     "facts": {
       "level": 4,
       "save-ability": "wisdom",
       "save-success": "none",
-      "concentration": true
+      "concentration": true,
+      "range": "30 feet",
+      "duration": "Up to 1 minute",
+      "classes": "Bard"
     }
   },
   {
@@ -1553,23 +1222,11 @@
       "somatic",
       "material"
     ],
-    "options": [],
-    "choose": null,
-    "numbers": {},
-    "notes": {
-      "level": "5",
-      "save": "CON (half on success)",
-      "damage": "8d8 cold",
-      "scaling": "slot 6: 9d8, slot 7: 10d8, slot 8: 11d8, slot 9: 12d8",
-      "area": "60-foot cone",
-      "range": "Self",
-      "classes": "Sorcerer, Wizard",
-      "subclasses": "Land"
-    },
     "facts": {
       "level": 5,
       "save-ability": "constitution",
       "save-success": "half",
+      "damage-type": "cold",
       "damage-ladder": [
         [
           0,
@@ -1591,7 +1248,11 @@
           9,
           "12d8"
         ]
-      ]
+      ],
+      "area": "60-foot cone",
+      "range": "Self",
+      "classes": "Sorcerer, Wizard",
+      "subclasses": "Land"
     }
   },
   {
@@ -1604,22 +1265,15 @@
       "somatic",
       "material"
     ],
-    "options": [],
-    "choose": null,
-    "numbers": {},
-    "notes": {
-      "level": "4",
-      "save": "WIS (no effect on success)",
-      "area": "10-foot sphere",
-      "range": "90 feet",
-      "duration": "Up to 1 minute",
-      "classes": "Bard, Druid, Sorcerer, Wizard"
-    },
     "facts": {
       "level": 4,
       "save-ability": "wisdom",
       "save-success": "none",
-      "concentration": true
+      "concentration": true,
+      "area": "10-foot sphere",
+      "range": "90 feet",
+      "duration": "Up to 1 minute",
+      "classes": "Bard, Druid, Sorcerer, Wizard"
     }
   },
   {
@@ -1631,19 +1285,13 @@
       "verbal",
       "somatic"
     ],
-    "options": [],
-    "choose": null,
-    "numbers": {},
-    "notes": {
-      "level": "3",
+    "facts": {
+      "level": 3,
+      "concentration": true,
       "range": "60 feet",
       "duration": "Up to 1 hour",
       "classes": "Druid, Ranger",
       "subclasses": "Lore"
-    },
-    "facts": {
-      "level": 3,
-      "concentration": true
     }
   },
   {
@@ -1655,19 +1303,13 @@
       "verbal",
       "somatic"
     ],
-    "options": [],
-    "choose": null,
-    "numbers": {},
-    "notes": {
-      "level": "7",
+    "facts": {
+      "level": 7,
+      "concentration": true,
       "range": "90 feet",
       "casting-time": "1 minute",
       "duration": "Up to 1 hour",
       "classes": "Cleric"
-    },
-    "facts": {
-      "level": 7,
-      "concentration": true
     }
   },
   {
@@ -1680,21 +1322,15 @@
       "somatic",
       "material"
     ],
-    "options": [],
-    "choose": null,
-    "numbers": {},
-    "notes": {
-      "level": "5",
+    "facts": {
+      "level": 5,
+      "concentration": true,
       "area": "10-foot cube",
       "range": "90 feet",
       "casting-time": "1 minute",
       "duration": "Up to 1 hour",
       "classes": "Druid, Wizard",
       "subclasses": "Land"
-    },
-    "facts": {
-      "level": 5,
-      "concentration": true
     }
   },
   {
@@ -1706,19 +1342,13 @@
       "verbal",
       "somatic"
     ],
-    "options": [],
-    "choose": null,
-    "numbers": {},
-    "notes": {
-      "level": "6",
+    "facts": {
+      "level": 6,
+      "concentration": true,
       "range": "90 feet",
       "casting-time": "1 minute",
       "duration": "Up to 1 hour",
       "classes": "Druid, Warlock"
-    },
-    "facts": {
-      "level": 6,
-      "concentration": true
     }
   },
   {
@@ -1730,19 +1360,13 @@
       "verbal",
       "somatic"
     ],
-    "options": [],
-    "choose": null,
-    "numbers": {},
-    "notes": {
-      "level": "4",
+    "facts": {
+      "level": 4,
+      "concentration": true,
       "range": "90 feet",
       "casting-time": "1 minute",
       "duration": "Up to 1 hour",
       "classes": "Druid, Wizard"
-    },
-    "facts": {
-      "level": 4,
-      "concentration": true
     }
   },
   {
@@ -1755,18 +1379,12 @@
       "somatic",
       "material"
     ],
-    "options": [],
-    "choose": null,
-    "numbers": {},
-    "notes": {
-      "level": "4",
+    "facts": {
+      "level": 4,
+      "concentration": true,
       "range": "60 feet",
       "duration": "Up to 1 hour",
       "classes": "Druid, Ranger"
-    },
-    "facts": {
-      "level": 4,
-      "concentration": true
     }
   },
   {
@@ -1777,21 +1395,14 @@
       "ritual",
       "verbal"
     ],
-    "options": [],
-    "choose": null,
-    "numbers": {},
-    "notes": {
-      "level": "5",
-      "save": "INT (see text)",
+    "facts": {
+      "level": 5,
+      "save-ability": "intelligence",
+      "save-success": "other",
       "range": "Self",
       "casting-time": "1 minute",
       "duration": "1 minute",
       "classes": "Warlock, Wizard"
-    },
-    "facts": {
-      "level": 5,
-      "save-ability": "intelligence",
-      "save-success": "other"
     }
   },
   {
@@ -1802,22 +1413,14 @@
       "verbal",
       "somatic"
     ],
-    "options": [],
-    "choose": null,
-    "numbers": {},
-    "notes": {
-      "level": "5",
-      "attack": "melee spell attack",
-      "save": "CON (see text)",
-      "range": "Touch",
-      "duration": "7 days",
-      "classes": "Cleric, Druid"
-    },
     "facts": {
       "level": 5,
       "attack-type": "melee",
       "save-ability": "constitution",
-      "save-success": "other"
+      "save-success": "other",
+      "range": "Touch",
+      "duration": "7 days",
+      "classes": "Cleric, Druid"
     }
   },
   {
@@ -1829,18 +1432,12 @@
       "somatic",
       "material"
     ],
-    "options": [],
-    "choose": null,
-    "numbers": {},
-    "notes": {
-      "level": "6",
+    "facts": {
+      "level": 6,
       "range": "Self",
       "casting-time": "10 minutes",
       "duration": "10 days",
       "classes": "Wizard"
-    },
-    "facts": {
-      "level": 6
     }
   },
   {
@@ -1852,18 +1449,12 @@
       "somatic",
       "material"
     ],
-    "options": [],
-    "choose": null,
-    "numbers": {},
-    "notes": {
-      "level": "2",
+    "facts": {
+      "level": 2,
       "range": "Touch",
       "duration": "Until dispelled",
       "classes": "Cleric, Wizard",
       "subclasses": "Lore"
-    },
-    "facts": {
-      "level": 2
     }
   },
   {
@@ -1876,29 +1467,22 @@
       "somatic",
       "material"
     ],
-    "options": [],
-    "choose": null,
-    "numbers": {},
-    "notes": {
-      "level": "4",
-      "save": "STR (half on success)",
-      "damage": "2d8 bludgeoning",
-      "area": "100-foot cube",
-      "range": "300 feet",
-      "duration": "Up to 10 minutes",
-      "classes": "Cleric, Druid, Wizard"
-    },
     "facts": {
       "level": 4,
       "save-ability": "strength",
       "save-success": "half",
+      "damage-type": "bludgeoning",
       "concentration": true,
       "damage-ladder": [
         [
           0,
           "2d8"
         ]
-      ]
+      ],
+      "area": "100-foot cube",
+      "range": "300 feet",
+      "duration": "Up to 10 minutes",
+      "classes": "Cleric, Druid, Wizard"
     }
   },
   {
@@ -1911,20 +1495,14 @@
       "somatic",
       "material"
     ],
-    "options": [],
-    "choose": null,
-    "numbers": {},
-    "notes": {
-      "level": "8",
+    "facts": {
+      "level": 8,
+      "concentration": true,
       "range": "Self",
       "casting-time": "10 minutes",
       "duration": "Up to 8 hours",
       "classes": "Cleric, Druid, Wizard",
       "subclasses": "Land"
-    },
-    "facts": {
-      "level": 8,
-      "concentration": true
     }
   },
   {
@@ -1934,17 +1512,11 @@
     "tags": [
       "somatic"
     ],
-    "options": [],
-    "choose": null,
-    "numbers": {},
-    "notes": {
-      "level": "3",
+    "facts": {
+      "level": 3,
       "range": "60 feet",
       "casting-time": "1 reaction",
       "classes": "Sorcerer, Warlock, Wizard"
-    },
-    "facts": {
-      "level": 3
     }
   },
   {
@@ -1955,17 +1527,11 @@
       "verbal",
       "somatic"
     ],
-    "options": [],
-    "choose": null,
-    "numbers": {},
-    "notes": {
-      "level": "3",
+    "facts": {
+      "level": 3,
       "range": "30 feet",
       "classes": "Cleric, Druid, Paladin",
       "subclasses": "Lore, Land"
-    },
-    "facts": {
-      "level": 3
     }
   },
   {
@@ -1977,17 +1543,11 @@
       "somatic",
       "material"
     ],
-    "options": [],
-    "choose": null,
-    "numbers": {},
-    "notes": {
-      "level": "6",
+    "facts": {
+      "level": 6,
       "range": "10 feet",
       "casting-time": "1 minute",
       "classes": "Cleric, Warlock, Wizard"
-    },
-    "facts": {
-      "level": 6
     }
   },
   {
@@ -1999,18 +1559,12 @@
       "somatic",
       "material"
     ],
-    "options": [],
-    "choose": null,
-    "numbers": {},
-    "notes": {
-      "level": "1",
+    "facts": {
+      "level": 1,
       "area": "30-foot cube",
       "range": "30 feet",
       "classes": "Cleric, Druid",
       "subclasses": "Lore"
-    },
-    "facts": {
-      "level": 1
     }
   },
   {
@@ -2022,19 +1576,13 @@
       "somatic",
       "material"
     ],
-    "options": [],
-    "choose": null,
-    "numbers": {},
-    "notes": {
-      "level": "5",
+    "facts": {
+      "level": 5,
       "area": "5-foot cube",
       "range": "30 feet",
       "casting-time": "1 minute",
       "duration": "Special",
       "classes": "Sorcerer, Wizard"
-    },
-    "facts": {
-      "level": 5
     }
   },
   {
@@ -2045,17 +1593,6 @@
       "verbal",
       "somatic"
     ],
-    "options": [],
-    "choose": null,
-    "numbers": {},
-    "notes": {
-      "level": "1",
-      "heal": "1d8 + spellcasting modifier",
-      "scaling": "slot 2: 2d8 + spellcasting modifier, slot 3: 3d8 + spellcasting modifier, slot 4: 4d8 + spellcasting modifier, slot 5: 5d8 + spellcasting modifier, slot 6: 6d8 + spellcasting modifier, slot 7: 7d8 + spellcasting modifier, slot 8: 8d8 + spellcasting modifier, slot 9: 9d8 + spellcasting modifier",
-      "range": "Touch",
-      "classes": "Bard, Cleric, Druid, Paladin, Ranger",
-      "subclasses": "Lore, Life"
-    },
     "facts": {
       "level": 1,
       "heal-with-modifier": true,
@@ -2096,7 +1633,10 @@
           9,
           "9d8"
         ]
-      ]
+      ],
+      "range": "Touch",
+      "classes": "Bard, Cleric, Druid, Paladin, Ranger",
+      "subclasses": "Lore, Life"
     }
   },
   {
@@ -2109,18 +1649,12 @@
       "somatic",
       "material"
     ],
-    "options": [],
-    "choose": null,
-    "numbers": {},
-    "notes": {
-      "level": "cantrip",
+    "facts": {
+      "concentration": true,
       "range": "120 feet",
       "duration": "Up to 1 minute",
       "classes": "Bard, Sorcerer, Wizard",
       "subclasses": "Lore"
-    },
-    "facts": {
-      "concentration": true
     }
   },
   {
@@ -2132,20 +1666,14 @@
       "verbal",
       "material"
     ],
-    "options": [],
-    "choose": null,
-    "numbers": {},
-    "notes": {
-      "level": "2",
+    "facts": {
+      "level": 2,
+      "concentration": true,
       "area": "15-foot sphere",
       "range": "60 feet",
       "duration": "Up to 10 minutes",
       "classes": "Sorcerer, Warlock, Wizard",
       "subclasses": "Lore, Land"
-    },
-    "facts": {
-      "level": 2,
-      "concentration": true
     }
   },
   {
@@ -2157,18 +1685,12 @@
       "somatic",
       "material"
     ],
-    "options": [],
-    "choose": null,
-    "numbers": {},
-    "notes": {
-      "level": "2",
+    "facts": {
+      "level": 2,
       "range": "Touch",
       "duration": "8 hours",
       "classes": "Druid, Ranger, Sorcerer, Wizard",
       "subclasses": "Lore"
-    },
-    "facts": {
-      "level": 2
     }
   },
   {
@@ -2179,19 +1701,13 @@
       "verbal",
       "somatic"
     ],
-    "options": [],
-    "choose": null,
-    "numbers": {},
-    "notes": {
-      "level": "3",
+    "facts": {
+      "level": 3,
       "area": "60-foot sphere",
       "range": "60 feet",
       "duration": "1 hour",
       "classes": "Cleric, Druid, Paladin, Ranger, Sorcerer",
       "subclasses": "Lore, Land"
-    },
-    "facts": {
-      "level": 3
     }
   },
   {
@@ -2202,18 +1718,12 @@
       "verbal",
       "somatic"
     ],
-    "options": [],
-    "choose": null,
-    "numbers": {},
-    "notes": {
-      "level": "4",
+    "facts": {
+      "level": 4,
       "range": "Touch",
       "duration": "8 hours",
       "classes": "Cleric, Paladin",
       "subclasses": "Life"
-    },
-    "facts": {
-      "level": 4
     }
   },
   {
@@ -2226,23 +1736,11 @@
       "somatic",
       "material"
     ],
-    "options": [],
-    "choose": null,
-    "numbers": {},
-    "notes": {
-      "level": "7",
-      "save": "DEX (half on success)",
-      "damage": "12d6 fire",
-      "scaling": "slot 8: 13d6, slot 9: 14d6",
-      "area": "20-foot sphere",
-      "range": "150 feet",
-      "duration": "Up to 1 minute",
-      "classes": "Sorcerer, Wizard"
-    },
     "facts": {
       "level": 7,
       "save-ability": "dexterity",
       "save-success": "half",
+      "damage-type": "fire",
       "concentration": true,
       "damage-ladder": [
         [
@@ -2257,7 +1755,11 @@
           9,
           "14d6"
         ]
-      ]
+      ],
+      "area": "20-foot sphere",
+      "range": "150 feet",
+      "duration": "Up to 1 minute",
+      "classes": "Sorcerer, Wizard"
     }
   },
   {
@@ -2267,17 +1769,11 @@
     "tags": [
       "somatic"
     ],
-    "options": [],
-    "choose": null,
-    "numbers": {},
-    "notes": {
-      "level": "8",
+    "facts": {
+      "level": 8,
       "range": "60 feet",
       "duration": "1 hour",
       "classes": "Warlock, Wizard"
-    },
-    "facts": {
-      "level": 8
     }
   },
   {
@@ -2289,20 +1785,14 @@
       "verbal",
       "somatic"
     ],
-    "options": [],
-    "choose": null,
-    "numbers": {},
-    "notes": {
-      "level": "1",
+    "facts": {
+      "level": 1,
+      "concentration": true,
       "area": "30-foot sphere",
       "range": "Self",
       "duration": "Up to 10 minutes",
       "classes": "Cleric, Paladin",
       "subclasses": "Lore"
-    },
-    "facts": {
-      "level": 1,
-      "concentration": true
     }
   },
   {
@@ -2315,20 +1805,14 @@
       "verbal",
       "somatic"
     ],
-    "options": [],
-    "choose": null,
-    "numbers": {},
-    "notes": {
-      "level": "1",
+    "facts": {
+      "level": 1,
+      "concentration": true,
       "area": "30-foot sphere",
       "range": "Self",
       "duration": "Up to 10 minutes",
       "classes": "Bard, Cleric, Druid, Paladin, Ranger, Sorcerer, Wizard",
       "subclasses": "Lore"
-    },
-    "facts": {
-      "level": 1,
-      "concentration": true
     }
   },
   {
@@ -2342,20 +1826,14 @@
       "somatic",
       "material"
     ],
-    "options": [],
-    "choose": null,
-    "numbers": {},
-    "notes": {
-      "level": "1",
+    "facts": {
+      "level": 1,
+      "concentration": true,
       "area": "30-foot sphere",
       "range": "Self",
       "duration": "Up to 10 minutes",
       "classes": "Cleric, Druid, Paladin, Ranger",
       "subclasses": "Lore"
-    },
-    "facts": {
-      "level": 1,
-      "concentration": true
     }
   },
   {
@@ -2368,19 +1846,13 @@
       "somatic",
       "material"
     ],
-    "options": [],
-    "choose": null,
-    "numbers": {},
-    "notes": {
-      "level": "2",
+    "facts": {
+      "level": 2,
+      "concentration": true,
       "range": "Self",
       "duration": "Up to 1 minute",
       "classes": "Bard, Sorcerer, Wizard",
       "subclasses": "Lore"
-    },
-    "facts": {
-      "level": 2,
-      "concentration": true
     }
   },
   {
@@ -2390,23 +1862,17 @@
     "tags": [
       "verbal"
     ],
-    "options": [],
-    "choose": null,
-    "numbers": {},
-    "notes": {
-      "level": "4",
-      "damage": "4d6 force",
-      "range": "500 feet",
-      "classes": "Bard, Sorcerer, Warlock, Wizard"
-    },
     "facts": {
       "level": 4,
+      "damage-type": "force",
       "damage-ladder": [
         [
           0,
           "4d6"
         ]
-      ]
+      ],
+      "range": "500 feet",
+      "classes": "Bard, Sorcerer, Warlock, Wizard"
     }
   },
   {
@@ -2417,18 +1883,12 @@
       "verbal",
       "somatic"
     ],
-    "options": [],
-    "choose": null,
-    "numbers": {},
-    "notes": {
-      "level": "1",
+    "facts": {
+      "level": 1,
       "range": "Self",
       "duration": "1 hour",
       "classes": "Bard, Sorcerer, Wizard",
       "subclasses": "Lore"
-    },
-    "facts": {
-      "level": 1
     }
   },
   {
@@ -2440,27 +1900,20 @@
       "somatic",
       "material"
     ],
-    "options": [],
-    "choose": null,
-    "numbers": {},
-    "notes": {
-      "level": "6",
-      "save": "DEX (no effect on success)",
-      "damage": "10d6 + 40 force",
-      "area": "10-foot cube",
-      "range": "60 feet",
-      "classes": "Sorcerer, Wizard"
-    },
     "facts": {
       "level": 6,
       "save-ability": "dexterity",
       "save-success": "none",
+      "damage-type": "force",
       "damage-ladder": [
         [
           0,
           "10d6 + 40"
         ]
-      ]
+      ],
+      "area": "10-foot cube",
+      "range": "60 feet",
+      "classes": "Sorcerer, Wizard"
     }
   },
   {
@@ -2473,21 +1926,14 @@
       "somatic",
       "material"
     ],
-    "options": [],
-    "choose": null,
-    "numbers": {},
-    "notes": {
-      "level": "5",
-      "save": "CHA (see text)",
-      "range": "Self",
-      "duration": "Up to 1 minute",
-      "classes": "Cleric, Paladin"
-    },
     "facts": {
       "level": 5,
       "save-ability": "charisma",
       "save-success": "other",
-      "concentration": true
+      "concentration": true,
+      "range": "Self",
+      "duration": "Up to 1 minute",
+      "classes": "Cleric, Paladin"
     }
   },
   {
@@ -2498,17 +1944,11 @@
       "verbal",
       "somatic"
     ],
-    "options": [],
-    "choose": null,
-    "numbers": {},
-    "notes": {
-      "level": "3",
+    "facts": {
+      "level": 3,
       "range": "120 feet",
       "classes": "Bard, Cleric, Druid, Paladin, Sorcerer, Warlock, Wizard",
       "subclasses": "Lore, Devotion"
-    },
-    "facts": {
-      "level": 3
     }
   },
   {
@@ -2521,17 +1961,11 @@
       "somatic",
       "material"
     ],
-    "options": [],
-    "choose": null,
-    "numbers": {},
-    "notes": {
-      "level": "4",
+    "facts": {
+      "level": 4,
       "range": "Self",
       "classes": "Druid",
       "subclasses": "Land"
-    },
-    "facts": {
-      "level": 4
     }
   },
   {
@@ -2543,27 +1977,21 @@
       "verbal",
       "somatic"
     ],
-    "options": [],
-    "choose": null,
-    "numbers": {},
-    "notes": {
-      "level": "1",
-      "damage": "1d4 radiant",
-      "range": "Self",
-      "casting-time": "1 bonus action",
-      "duration": "Up to 1 minute",
-      "classes": "Paladin",
-      "subclasses": "Lore"
-    },
     "facts": {
       "level": 1,
+      "damage-type": "radiant",
       "concentration": true,
       "damage-ladder": [
         [
           0,
           "1d4"
         ]
-      ]
+      ],
+      "range": "Self",
+      "casting-time": "1 bonus action",
+      "duration": "Up to 1 minute",
+      "classes": "Paladin",
+      "subclasses": "Lore"
     }
   },
   {
@@ -2573,20 +2001,13 @@
     "tags": [
       "verbal"
     ],
-    "options": [],
-    "choose": null,
-    "numbers": {},
-    "notes": {
-      "level": "7",
-      "save": "CHA (no effect on success)",
-      "range": "30 feet",
-      "casting-time": "1 bonus action",
-      "classes": "Cleric"
-    },
     "facts": {
       "level": 7,
       "save-ability": "charisma",
-      "save-success": "none"
+      "save-success": "none",
+      "range": "30 feet",
+      "casting-time": "1 bonus action",
+      "classes": "Cleric"
     }
   },
   {
@@ -2598,21 +2019,14 @@
       "verbal",
       "somatic"
     ],
-    "options": [],
-    "choose": null,
-    "numbers": {},
-    "notes": {
-      "level": "4",
-      "save": "WIS (no effect on success)",
-      "range": "60 feet",
-      "duration": "Up to 1 minute",
-      "classes": "Druid, Sorcerer"
-    },
     "facts": {
       "level": 4,
       "save-ability": "wisdom",
       "save-success": "none",
-      "concentration": true
+      "concentration": true,
+      "range": "60 feet",
+      "duration": "Up to 1 minute",
+      "classes": "Druid, Sorcerer"
     }
   },
   {
@@ -2624,21 +2038,14 @@
       "verbal",
       "somatic"
     ],
-    "options": [],
-    "choose": null,
-    "numbers": {},
-    "notes": {
-      "level": "8",
-      "save": "WIS (no effect on success)",
-      "range": "60 feet",
-      "duration": "Up to 1 hour",
-      "classes": "Bard, Sorcerer, Warlock, Wizard"
-    },
     "facts": {
       "level": 8,
       "save-ability": "wisdom",
       "save-success": "none",
-      "concentration": true
+      "concentration": true,
+      "range": "60 feet",
+      "duration": "Up to 1 hour",
+      "classes": "Bard, Sorcerer, Warlock, Wizard"
     }
   },
   {
@@ -2650,21 +2057,14 @@
       "verbal",
       "somatic"
     ],
-    "options": [],
-    "choose": null,
-    "numbers": {},
-    "notes": {
-      "level": "5",
-      "save": "WIS (see text)",
-      "range": "60 feet",
-      "duration": "Up to 1 minute",
-      "classes": "Bard, Sorcerer, Wizard"
-    },
     "facts": {
       "level": 5,
       "save-ability": "wisdom",
       "save-success": "other",
-      "concentration": true
+      "concentration": true,
+      "range": "60 feet",
+      "duration": "Up to 1 minute",
+      "classes": "Bard, Sorcerer, Wizard"
     }
   },
   {
@@ -2676,29 +2076,22 @@
       "somatic",
       "material"
     ],
-    "options": [],
-    "choose": null,
-    "numbers": {},
-    "notes": {
-      "level": "5",
-      "save": "WIS (no effect on success)",
-      "damage": "3d6 psychic",
-      "range": "Special",
-      "casting-time": "1 minute",
-      "duration": "8 hours",
-      "classes": "Bard, Warlock, Wizard",
-      "subclasses": "Land"
-    },
     "facts": {
       "level": 5,
       "save-ability": "wisdom",
       "save-success": "none",
+      "damage-type": "psychic",
       "damage-ladder": [
         [
           0,
           "3d6"
         ]
-      ]
+      ],
+      "range": "Special",
+      "casting-time": "1 minute",
+      "duration": "8 hours",
+      "classes": "Bard, Warlock, Wizard",
+      "subclasses": "Land"
     }
   },
   {
@@ -2709,15 +2102,10 @@
       "verbal",
       "somatic"
     ],
-    "options": [],
-    "choose": null,
-    "numbers": {},
-    "notes": {
-      "level": "cantrip",
+    "facts": {
       "range": "30 feet",
       "classes": "Druid"
-    },
-    "facts": {}
+    }
   },
   {
     "index": "earthquake",
@@ -2729,19 +2117,13 @@
       "somatic",
       "material"
     ],
-    "options": [],
-    "choose": null,
-    "numbers": {},
-    "notes": {
-      "level": "8",
+    "facts": {
+      "level": 8,
+      "concentration": true,
       "area": "100-foot sphere",
       "range": "500 feet",
       "duration": "Up to 1 minute",
       "classes": "Cleric, Druid, Sorcerer"
-    },
-    "facts": {
-      "level": 8,
-      "concentration": true
     }
   },
   {
@@ -2752,20 +2134,9 @@
       "verbal",
       "somatic"
     ],
-    "options": [],
-    "choose": null,
-    "numbers": {},
-    "notes": {
-      "level": "cantrip",
-      "attack": "ranged spell attack",
-      "damage": "1d10 force",
-      "scaling": "level 5: 1d10, level 11: 1d10, level 17: 1d10",
-      "range": "120 feet",
-      "classes": "Warlock",
-      "subclasses": "Lore"
-    },
     "facts": {
       "attack-type": "ranged",
+      "damage-type": "force",
       "damage-ladder": [
         [
           0,
@@ -2783,7 +2154,10 @@
           17,
           "1d10"
         ]
-      ]
+      ],
+      "range": "120 feet",
+      "classes": "Warlock",
+      "subclasses": "Lore"
     }
   },
   {
@@ -2796,19 +2170,13 @@
       "somatic",
       "material"
     ],
-    "options": [],
-    "choose": null,
-    "numbers": {},
-    "notes": {
-      "level": "2",
+    "facts": {
+      "level": 2,
+      "concentration": true,
       "range": "Touch",
       "duration": "Up to 1 hour",
       "classes": "Bard, Cleric, Druid, Sorcerer",
       "subclasses": "Lore"
-    },
-    "facts": {
-      "level": 2,
-      "concentration": true
     }
   },
   {
@@ -2821,22 +2189,15 @@
       "somatic",
       "material"
     ],
-    "options": [],
-    "choose": null,
-    "numbers": {},
-    "notes": {
-      "level": "2",
-      "save": "CON (no effect on success)",
-      "range": "30 feet",
-      "duration": "Up to 1 minute",
-      "classes": "Sorcerer, Wizard",
-      "subclasses": "Lore"
-    },
     "facts": {
       "level": 2,
       "save-ability": "constitution",
       "save-success": "none",
-      "concentration": true
+      "concentration": true,
+      "range": "30 feet",
+      "duration": "Up to 1 minute",
+      "classes": "Sorcerer, Wizard",
+      "subclasses": "Lore"
     }
   },
   {
@@ -2848,23 +2209,16 @@
       "verbal",
       "somatic"
     ],
-    "options": [],
-    "choose": null,
-    "numbers": {},
-    "notes": {
-      "level": "1",
-      "save": "STR (no effect on success)",
+    "facts": {
+      "level": 1,
+      "save-ability": "strength",
+      "save-success": "none",
+      "concentration": true,
       "area": "20-foot cube",
       "range": "90 feet",
       "duration": "Up to 1 minute",
       "classes": "Druid",
       "subclasses": "Lore"
-    },
-    "facts": {
-      "level": 1,
-      "save-ability": "strength",
-      "save-success": "none",
-      "concentration": true
     }
   },
   {
@@ -2875,21 +2229,14 @@
       "verbal",
       "somatic"
     ],
-    "options": [],
-    "choose": null,
-    "numbers": {},
-    "notes": {
-      "level": "2",
-      "save": "WIS (no effect on success)",
+    "facts": {
+      "level": 2,
+      "save-ability": "wisdom",
+      "save-success": "none",
       "range": "60 feet",
       "duration": "1 minute",
       "classes": "Bard, Warlock",
       "subclasses": "Lore"
-    },
-    "facts": {
-      "level": 2,
-      "save-ability": "wisdom",
-      "save-success": "none"
     }
   },
   {
@@ -2900,17 +2247,11 @@
       "verbal",
       "somatic"
     ],
-    "options": [],
-    "choose": null,
-    "numbers": {},
-    "notes": {
-      "level": "7",
+    "facts": {
+      "level": 7,
       "range": "Self",
       "duration": "8 hours",
       "classes": "Bard, Cleric, Sorcerer, Warlock, Wizard"
-    },
-    "facts": {
-      "level": 7
     }
   },
   {
@@ -2922,20 +2263,14 @@
       "verbal",
       "somatic"
     ],
-    "options": [],
-    "choose": null,
-    "numbers": {},
-    "notes": {
-      "level": "1",
+    "facts": {
+      "level": 1,
+      "concentration": true,
       "range": "Self",
       "casting-time": "1 bonus action",
       "duration": "Up to 10 minutes",
       "classes": "Sorcerer, Warlock, Wizard",
       "subclasses": "Lore"
-    },
-    "facts": {
-      "level": 1,
-      "concentration": true
     }
   },
   {
@@ -2947,21 +2282,14 @@
       "verbal",
       "somatic"
     ],
-    "options": [],
-    "choose": null,
-    "numbers": {},
-    "notes": {
-      "level": "6",
-      "save": "WIS (no effect on success)",
-      "range": "Self",
-      "duration": "Up to 1 minute",
-      "classes": "Bard, Sorcerer, Warlock, Wizard"
-    },
     "facts": {
       "level": 6,
       "save-ability": "wisdom",
       "save-success": "none",
-      "concentration": true
+      "concentration": true,
+      "range": "Self",
+      "duration": "Up to 1 minute",
+      "classes": "Bard, Sorcerer, Warlock, Wizard"
     }
   },
   {
@@ -2972,17 +2300,11 @@
       "verbal",
       "somatic"
     ],
-    "options": [],
-    "choose": null,
-    "numbers": {},
-    "notes": {
-      "level": "4",
+    "facts": {
+      "level": 4,
       "range": "120 feet",
       "casting-time": "10 minutes",
       "classes": "Wizard"
-    },
-    "facts": {
-      "level": 4
     }
   },
   {
@@ -2993,23 +2315,16 @@
       "concentration",
       "verbal"
     ],
-    "options": [],
-    "choose": null,
-    "numbers": {},
-    "notes": {
-      "level": "1",
-      "save": "DEX (no effect on success)",
+    "facts": {
+      "level": 1,
+      "save-ability": "dexterity",
+      "save-success": "none",
+      "concentration": true,
       "area": "20-foot cube",
       "range": "60 feet",
       "duration": "Up to 1 minute",
       "classes": "Druid",
       "subclasses": "Lore"
-    },
-    "facts": {
-      "level": 1,
-      "save-ability": "dexterity",
-      "save-success": "none",
-      "concentration": true
     }
   },
   {
@@ -3021,26 +2336,19 @@
       "somatic",
       "material"
     ],
-    "options": [],
-    "choose": null,
-    "numbers": {},
-    "notes": {
-      "level": "4",
-      "attack": "melee spell attack",
-      "damage": "4d8 piercing",
-      "range": "30 feet",
-      "duration": "8 hours",
-      "classes": "Wizard"
-    },
     "facts": {
       "level": 4,
       "attack-type": "melee",
+      "damage-type": "piercing",
       "damage-ladder": [
         [
           0,
           "4d8"
         ]
-      ]
+      ],
+      "range": "30 feet",
+      "duration": "8 hours",
+      "classes": "Wizard"
     }
   },
   {
@@ -3052,18 +2360,6 @@
       "somatic",
       "material"
     ],
-    "options": [],
-    "choose": null,
-    "numbers": {},
-    "notes": {
-      "level": "1",
-      "heal": "1d4 + 4",
-      "scaling": "slot 2: 1d4 + 9, slot 3: 1d4 + 14, slot 4: 1d4 + 19, slot 5: 1d4 + 24, slot 6: 1d4 + 29, slot 7: 1d4 + 34, slot 8: 1d4 + 39, slot 9: 1d4 + 44",
-      "range": "Self",
-      "duration": "1 hour",
-      "classes": "Sorcerer, Wizard",
-      "subclasses": "Lore"
-    },
     "facts": {
       "level": 1,
       "heal-ladder": [
@@ -3103,7 +2399,11 @@
           9,
           "1d4 + 44"
         ]
-      ]
+      ],
+      "range": "Self",
+      "duration": "1 hour",
+      "classes": "Sorcerer, Wizard",
+      "subclasses": "Lore"
     }
   },
   {
@@ -3116,23 +2416,16 @@
       "somatic",
       "material"
     ],
-    "options": [],
-    "choose": null,
-    "numbers": {},
-    "notes": {
-      "level": "3",
-      "save": "WIS (no effect on success)",
+    "facts": {
+      "level": 3,
+      "save-ability": "wisdom",
+      "save-success": "none",
+      "concentration": true,
       "area": "30-foot cone",
       "range": "Self",
       "duration": "Up to 1 minute",
       "classes": "Bard, Sorcerer, Warlock, Wizard",
       "subclasses": "Lore"
-    },
-    "facts": {
-      "level": 3,
-      "save-ability": "wisdom",
-      "save-success": "none",
-      "concentration": true
     }
   },
   {
@@ -3143,19 +2436,13 @@
       "verbal",
       "material"
     ],
-    "options": [],
-    "choose": null,
-    "numbers": {},
-    "notes": {
-      "level": "1",
+    "facts": {
+      "level": 1,
       "range": "60 feet",
       "casting-time": "1 reaction",
       "duration": "1 minute",
       "classes": "Bard, Sorcerer, Wizard",
       "subclasses": "Lore"
-    },
-    "facts": {
-      "level": 1
     }
   },
   {
@@ -3167,26 +2454,19 @@
       "somatic",
       "material"
     ],
-    "options": [],
-    "choose": null,
-    "numbers": {},
-    "notes": {
-      "level": "8",
-      "save": "INT (see text)",
-      "damage": "4d6 psychic",
-      "range": "150 feet",
-      "classes": "Bard, Druid, Warlock, Wizard"
-    },
     "facts": {
       "level": 8,
       "save-ability": "intelligence",
       "save-success": "other",
+      "damage-type": "psychic",
       "damage-ladder": [
         [
           0,
           "4d6"
         ]
-      ]
+      ],
+      "range": "150 feet",
+      "classes": "Bard, Druid, Warlock, Wizard"
     }
   },
   {
@@ -3199,17 +2479,11 @@
       "somatic",
       "material"
     ],
-    "options": [],
-    "choose": null,
-    "numbers": {},
-    "notes": {
-      "level": "1",
+    "facts": {
+      "level": 1,
       "range": "10 feet",
       "casting-time": "1 hour",
       "classes": "Wizard"
-    },
-    "facts": {
-      "level": 1
     }
   },
   {
@@ -3220,18 +2494,12 @@
       "verbal",
       "somatic"
     ],
-    "options": [],
-    "choose": null,
-    "numbers": {},
-    "notes": {
-      "level": "2",
+    "facts": {
+      "level": 2,
       "range": "30 feet",
       "casting-time": "10 minutes",
       "classes": "Paladin",
       "subclasses": "Lore"
-    },
-    "facts": {
-      "level": 2
     }
   },
   {
@@ -3242,17 +2510,11 @@
       "verbal",
       "somatic"
     ],
-    "options": [],
-    "choose": null,
-    "numbers": {},
-    "notes": {
-      "level": "2",
+    "facts": {
+      "level": 2,
       "range": "120 feet",
       "classes": "Cleric, Druid, Ranger",
       "subclasses": "Lore"
-    },
-    "facts": {
-      "level": 2
     }
   },
   {
@@ -3265,19 +2527,13 @@
       "somatic",
       "material"
     ],
-    "options": [],
-    "choose": null,
-    "numbers": {},
-    "notes": {
-      "level": "6",
+    "facts": {
+      "level": 6,
+      "concentration": true,
       "range": "Self",
       "casting-time": "1 minute",
       "duration": "Up to 24 hours",
       "classes": "Bard, Cleric, Druid"
-    },
-    "facts": {
-      "level": 6,
-      "concentration": true
     }
   },
   {
@@ -3288,26 +2544,19 @@
       "verbal",
       "somatic"
     ],
-    "options": [],
-    "choose": null,
-    "numbers": {},
-    "notes": {
-      "level": "7",
-      "save": "CON (half on success)",
-      "damage": "7d8 + 30 necrotic",
-      "range": "60 feet",
-      "classes": "Sorcerer, Warlock, Wizard"
-    },
     "facts": {
       "level": 7,
       "save-ability": "constitution",
       "save-success": "half",
+      "damage-type": "necrotic",
       "damage-ladder": [
         [
           0,
           "7d8 + 30"
         ]
-      ]
+      ],
+      "range": "60 feet",
+      "classes": "Sorcerer, Warlock, Wizard"
     }
   },
   {
@@ -3318,19 +2567,9 @@
       "verbal",
       "somatic"
     ],
-    "options": [],
-    "choose": null,
-    "numbers": {},
-    "notes": {
-      "level": "cantrip",
-      "attack": "ranged spell attack",
-      "damage": "1d10 fire",
-      "scaling": "level 5: 2d10, level 11: 3d10, level 17: 4d10",
-      "range": "120 feet",
-      "classes": "Sorcerer, Wizard"
-    },
     "facts": {
       "attack-type": "ranged",
+      "damage-type": "fire",
       "damage-ladder": [
         [
           0,
@@ -3348,7 +2587,9 @@
           17,
           "4d10"
         ]
-      ]
+      ],
+      "range": "120 feet",
+      "classes": "Sorcerer, Wizard"
     }
   },
   {
@@ -3360,26 +2601,20 @@
       "somatic",
       "material"
     ],
-    "options": [],
-    "choose": null,
-    "numbers": {},
-    "notes": {
-      "level": "4",
-      "damage": "2d8 fire",
-      "area": "5-foot sphere",
-      "range": "Self",
-      "duration": "10 minutes",
-      "classes": "Wizard",
-      "subclasses": "Fiend"
-    },
     "facts": {
       "level": 4,
+      "damage-type": "fire",
       "damage-ladder": [
         [
           0,
           "2d8"
         ]
-      ]
+      ],
+      "area": "5-foot sphere",
+      "range": "Self",
+      "duration": "10 minutes",
+      "classes": "Wizard",
+      "subclasses": "Fiend"
     }
   },
   {
@@ -3390,27 +2625,20 @@
       "verbal",
       "somatic"
     ],
-    "options": [],
-    "choose": null,
-    "numbers": {},
-    "notes": {
-      "level": "7",
-      "save": "DEX (half on success)",
-      "damage": "7d10 fire",
-      "area": "100-foot cube",
-      "range": "150 feet",
-      "classes": "Cleric, Druid, Sorcerer"
-    },
     "facts": {
       "level": 7,
       "save-ability": "dexterity",
       "save-success": "half",
+      "damage-type": "fire",
       "damage-ladder": [
         [
           0,
           "7d10"
         ]
-      ]
+      ],
+      "area": "100-foot cube",
+      "range": "150 feet",
+      "classes": "Cleric, Druid, Sorcerer"
     }
   },
   {
@@ -3422,23 +2650,11 @@
       "somatic",
       "material"
     ],
-    "options": [],
-    "choose": null,
-    "numbers": {},
-    "notes": {
-      "level": "3",
-      "save": "DEX (half on success)",
-      "damage": "8d6 fire",
-      "scaling": "slot 4: 9d6, slot 5: 10d6, slot 6: 11d6, slot 7: 12d6, slot 8: 13d6, slot 9: 14d6",
-      "area": "20-foot sphere",
-      "range": "150 feet",
-      "classes": "Sorcerer, Wizard",
-      "subclasses": "Lore, Fiend"
-    },
     "facts": {
       "level": 3,
       "save-ability": "dexterity",
       "save-success": "half",
+      "damage-type": "fire",
       "damage-ladder": [
         [
           0,
@@ -3468,7 +2684,11 @@
           9,
           "14d6"
         ]
-      ]
+      ],
+      "area": "20-foot sphere",
+      "range": "150 feet",
+      "classes": "Sorcerer, Wizard",
+      "subclasses": "Lore, Fiend"
     }
   },
   {
@@ -3481,21 +2701,9 @@
       "somatic",
       "material"
     ],
-    "options": [],
-    "choose": null,
-    "numbers": {},
-    "notes": {
-      "level": "2",
-      "damage": "3d6 fire",
-      "scaling": "slot 4: 4d6, slot 6: 5d6, slot 8: 6d6",
-      "range": "Self",
-      "casting-time": "1 bonus action",
-      "duration": "Up to 10 minutes",
-      "classes": "Druid",
-      "subclasses": "Lore"
-    },
     "facts": {
       "level": 2,
+      "damage-type": "fire",
       "concentration": true,
       "damage-ladder": [
         [
@@ -3514,7 +2722,12 @@
           8,
           "6d6"
         ]
-      ]
+      ],
+      "range": "Self",
+      "casting-time": "1 bonus action",
+      "duration": "Up to 10 minutes",
+      "classes": "Druid",
+      "subclasses": "Lore"
     }
   },
   {
@@ -3526,23 +2739,11 @@
       "somatic",
       "material"
     ],
-    "options": [],
-    "choose": null,
-    "numbers": {},
-    "notes": {
-      "level": "5",
-      "save": "DEX (half on success)",
-      "damage": "4d6 + 4d6 fire",
-      "scaling": "slot 6: 4d6 + 5d6, slot 7: 4d6 + 6d6, slot 8: 4d6 + 7d6, slot 9: 4d6 + 8d6",
-      "area": "40-foot cylinder",
-      "range": "60 feet",
-      "classes": "Cleric",
-      "subclasses": "Devotion, Fiend"
-    },
     "facts": {
       "level": 5,
       "save-ability": "dexterity",
       "save-success": "half",
+      "damage-type": "fire",
       "damage-ladder": [
         [
           0,
@@ -3564,7 +2765,11 @@
           9,
           "4d6 + 8d6"
         ]
-      ]
+      ],
+      "area": "40-foot cylinder",
+      "range": "60 feet",
+      "classes": "Cleric",
+      "subclasses": "Devotion, Fiend"
     }
   },
   {
@@ -3577,20 +2782,9 @@
       "somatic",
       "material"
     ],
-    "options": [],
-    "choose": null,
-    "numbers": {},
-    "notes": {
-      "level": "2",
-      "damage": "2d6 fire",
-      "scaling": "slot 3: 3d6, slot 4: 4d6, slot 5: 5d6, slot 6: 6d6, slot 7: 7d6, slot 8: 8d6, slot 9: 9d6",
-      "range": "60 feet",
-      "duration": "Up to 1 minute",
-      "classes": "Druid, Wizard",
-      "subclasses": "Lore"
-    },
     "facts": {
       "level": 2,
+      "damage-type": "fire",
       "concentration": true,
       "damage-ladder": [
         [
@@ -3625,7 +2819,11 @@
           9,
           "9d6"
         ]
-      ]
+      ],
+      "range": "60 feet",
+      "duration": "Up to 1 minute",
+      "classes": "Druid, Wizard",
+      "subclasses": "Lore"
     }
   },
   {
@@ -3638,21 +2836,14 @@
       "somatic",
       "material"
     ],
-    "options": [],
-    "choose": null,
-    "numbers": {},
-    "notes": {
-      "level": "6",
-      "save": "CON (no effect on success)",
-      "range": "60 feet",
-      "duration": "Up to 1 minute",
-      "classes": "Warlock, Wizard"
-    },
     "facts": {
       "level": 6,
       "save-ability": "constitution",
       "save-success": "none",
-      "concentration": true
+      "concentration": true,
+      "range": "60 feet",
+      "duration": "Up to 1 minute",
+      "classes": "Warlock, Wizard"
     }
   },
   {
@@ -3665,18 +2856,12 @@
       "somatic",
       "material"
     ],
-    "options": [],
-    "choose": null,
-    "numbers": {},
-    "notes": {
-      "level": "1",
+    "facts": {
+      "level": 1,
       "range": "30 feet",
       "duration": "1 hour",
       "classes": "Wizard",
       "subclasses": "Lore"
-    },
-    "facts": {
-      "level": 1
     }
   },
   {
@@ -3689,19 +2874,13 @@
       "somatic",
       "material"
     ],
-    "options": [],
-    "choose": null,
-    "numbers": {},
-    "notes": {
-      "level": "3",
+    "facts": {
+      "level": 3,
+      "concentration": true,
       "range": "Touch",
       "duration": "Up to 10 minutes",
       "classes": "Sorcerer, Warlock, Wizard",
       "subclasses": "Lore"
-    },
-    "facts": {
-      "level": 3,
-      "concentration": true
     }
   },
   {
@@ -3713,20 +2892,14 @@
       "verbal",
       "somatic"
     ],
-    "options": [],
-    "choose": null,
-    "numbers": {},
-    "notes": {
-      "level": "1",
+    "facts": {
+      "level": 1,
+      "concentration": true,
       "area": "20-foot sphere",
       "range": "120 feet",
       "duration": "Up to 1 hour",
       "classes": "Druid, Ranger, Sorcerer, Wizard",
       "subclasses": "Lore"
-    },
-    "facts": {
-      "level": 1,
-      "concentration": true
     }
   },
   {
@@ -3739,19 +2912,13 @@
       "somatic",
       "material"
     ],
-    "options": [],
-    "choose": null,
-    "numbers": {},
-    "notes": {
-      "level": "6",
+    "facts": {
+      "level": 6,
       "area": "40000-foot cube",
       "range": "Touch",
       "casting-time": "10 minutes",
       "duration": "24 hours",
       "classes": "Cleric"
-    },
-    "facts": {
-      "level": 6
     }
   },
   {
@@ -3763,18 +2930,12 @@
       "somatic",
       "material"
     ],
-    "options": [],
-    "choose": null,
-    "numbers": {},
-    "notes": {
-      "level": "7",
+    "facts": {
+      "level": 7,
       "area": "20-foot cube",
       "range": "100 feet",
       "duration": "1 hour",
       "classes": "Bard, Warlock, Wizard"
-    },
-    "facts": {
-      "level": 7
     }
   },
   {
@@ -3786,18 +2947,12 @@
       "somatic",
       "material"
     ],
-    "options": [],
-    "choose": null,
-    "numbers": {},
-    "notes": {
-      "level": "9",
+    "facts": {
+      "level": 9,
       "range": "Touch",
       "casting-time": "1 minute",
       "duration": "8 hours",
       "classes": "Bard, Druid, Warlock, Wizard"
-    },
-    "facts": {
-      "level": 9
     }
   },
   {
@@ -3809,18 +2964,12 @@
       "somatic",
       "material"
     ],
-    "options": [],
-    "choose": null,
-    "numbers": {},
-    "notes": {
-      "level": "4",
+    "facts": {
+      "level": 4,
       "range": "Touch",
       "duration": "1 hour",
       "classes": "Bard, Cleric, Druid, Ranger",
       "subclasses": "Land, Devotion"
-    },
-    "facts": {
-      "level": 4
     }
   },
   {
@@ -3832,27 +2981,20 @@
       "somatic",
       "material"
     ],
-    "options": [],
-    "choose": null,
-    "numbers": {},
-    "notes": {
-      "level": "6",
-      "save": "CON (half on success)",
-      "damage": "10d6 cold",
-      "area": "60-foot sphere",
-      "range": "300 feet",
-      "classes": "Wizard"
-    },
     "facts": {
       "level": 6,
       "save-ability": "constitution",
       "save-success": "half",
+      "damage-type": "cold",
       "damage-ladder": [
         [
           0,
           "10d6"
         ]
-      ]
+      ],
+      "area": "60-foot sphere",
+      "range": "300 feet",
+      "classes": "Wizard"
     }
   },
   {
@@ -3865,19 +3007,13 @@
       "somatic",
       "material"
     ],
-    "options": [],
-    "choose": null,
-    "numbers": {},
-    "notes": {
-      "level": "3",
+    "facts": {
+      "level": 3,
+      "concentration": true,
       "range": "Touch",
       "duration": "Up to 1 hour",
       "classes": "Sorcerer, Warlock, Wizard",
       "subclasses": "Lore, Land"
-    },
-    "facts": {
-      "level": 3,
-      "concentration": true
     }
   },
   {
@@ -3890,18 +3026,12 @@
       "somatic",
       "material"
     ],
-    "options": [],
-    "choose": null,
-    "numbers": {},
-    "notes": {
-      "level": "9",
+    "facts": {
+      "level": 9,
+      "concentration": true,
       "range": "60 feet",
       "duration": "Up to 1 minute",
       "classes": "Cleric, Sorcerer, Wizard"
-    },
-    "facts": {
-      "level": 9,
-      "concentration": true
     }
   },
   {
@@ -3911,21 +3041,14 @@
     "tags": [
       "verbal"
     ],
-    "options": [],
-    "choose": null,
-    "numbers": {},
-    "notes": {
-      "level": "5",
-      "save": "WIS (no effect on success)",
+    "facts": {
+      "level": 5,
+      "save-ability": "wisdom",
+      "save-success": "none",
       "range": "60 feet",
       "casting-time": "1 minute",
       "duration": "30 days",
       "classes": "Bard, Cleric, Druid, Paladin, Wizard"
-    },
-    "facts": {
-      "level": 5,
-      "save-ability": "wisdom",
-      "save-success": "none"
     }
   },
   {
@@ -3938,18 +3061,12 @@
       "somatic",
       "material"
     ],
-    "options": [],
-    "choose": null,
-    "numbers": {},
-    "notes": {
-      "level": "2",
+    "facts": {
+      "level": 2,
       "range": "Touch",
       "duration": "10 days",
       "classes": "Cleric, Wizard",
       "subclasses": "Lore"
-    },
-    "facts": {
-      "level": 2
     }
   },
   {
@@ -3961,18 +3078,12 @@
       "verbal",
       "somatic"
     ],
-    "options": [],
-    "choose": null,
-    "numbers": {},
-    "notes": {
-      "level": "4",
+    "facts": {
+      "level": 4,
+      "concentration": true,
       "range": "30 feet",
       "duration": "Up to 10 minutes",
       "classes": "Druid"
-    },
-    "facts": {
-      "level": 4,
-      "concentration": true
     }
   },
   {
@@ -3982,17 +3093,11 @@
     "tags": [
       "verbal"
     ],
-    "options": [],
-    "choose": null,
-    "numbers": {},
-    "notes": {
-      "level": "8",
+    "facts": {
+      "level": 8,
       "range": "Self",
       "duration": "1 hour",
       "classes": "Bard, Warlock"
-    },
-    "facts": {
-      "level": 8
     }
   },
   {
@@ -4005,19 +3110,13 @@
       "somatic",
       "material"
     ],
-    "options": [],
-    "choose": null,
-    "numbers": {},
-    "notes": {
-      "level": "6",
+    "facts": {
+      "level": 6,
+      "concentration": true,
       "area": "10-foot sphere",
       "range": "Self",
       "duration": "Up to 1 minute",
       "classes": "Sorcerer, Wizard"
-    },
-    "facts": {
-      "level": 6,
-      "concentration": true
     }
   },
   {
@@ -4029,19 +3128,13 @@
       "somatic",
       "material"
     ],
-    "options": [],
-    "choose": null,
-    "numbers": {},
-    "notes": {
-      "level": "3",
+    "facts": {
+      "level": 3,
       "range": "Touch",
       "casting-time": "1 hour",
       "duration": "Until dispelled",
       "classes": "Bard, Cleric, Wizard",
       "subclasses": "Lore"
-    },
-    "facts": {
-      "level": 3
     }
   },
   {
@@ -4053,16 +3146,10 @@
       "somatic",
       "material"
     ],
-    "options": [],
-    "choose": null,
-    "numbers": {},
-    "notes": {
-      "level": "1",
+    "facts": {
+      "level": 1,
       "range": "Touch",
       "classes": "Druid, Ranger"
-    },
-    "facts": {
-      "level": 1
     }
   },
   {
@@ -4074,22 +3161,15 @@
       "somatic",
       "material"
     ],
-    "options": [],
-    "choose": null,
-    "numbers": {},
-    "notes": {
-      "level": "1",
-      "save": "DEX (no effect on success)",
+    "facts": {
+      "level": 1,
+      "save-ability": "dexterity",
+      "save-success": "none",
       "area": "10-foot cube",
       "range": "60 feet",
       "duration": "1 minute",
       "classes": "Wizard",
       "subclasses": "Lore"
-    },
-    "facts": {
-      "level": 1,
-      "save-ability": "dexterity",
-      "save-success": "none"
     }
   },
   {
@@ -4101,19 +3181,13 @@
       "verbal",
       "somatic"
     ],
-    "options": [],
-    "choose": null,
-    "numbers": {},
-    "notes": {
-      "level": "4",
+    "facts": {
+      "level": 4,
+      "concentration": true,
       "range": "Touch",
       "duration": "Up to 1 minute",
       "classes": "Bard, Sorcerer, Wizard",
       "subclasses": "Land"
-    },
-    "facts": {
-      "level": 4,
-      "concentration": true
     }
   },
   {
@@ -4125,16 +3199,10 @@
       "somatic",
       "material"
     ],
-    "options": [],
-    "choose": null,
-    "numbers": {},
-    "notes": {
-      "level": "5",
+    "facts": {
+      "level": 5,
       "range": "Touch",
       "classes": "Bard, Cleric, Druid"
-    },
-    "facts": {
-      "level": 5
     }
   },
   {
@@ -4144,28 +3212,21 @@
     "tags": [
       "verbal"
     ],
-    "options": [],
-    "choose": null,
-    "numbers": {},
-    "notes": {
-      "level": "4",
-      "save": "DEX (half on success)",
-      "damage": "20 radiant",
-      "area": "10-foot cylinder",
-      "range": "30 feet",
-      "duration": "8 hours",
-      "classes": "Cleric"
-    },
     "facts": {
       "level": 4,
       "save-ability": "dexterity",
       "save-success": "half",
+      "damage-type": "radiant",
       "damage-ladder": [
         [
           0,
           "20"
         ]
-      ]
+      ],
+      "area": "10-foot cylinder",
+      "range": "30 feet",
+      "duration": "8 hours",
+      "classes": "Cleric"
     }
   },
   {
@@ -4177,19 +3238,13 @@
       "somatic",
       "material"
     ],
-    "options": [],
-    "choose": null,
-    "numbers": {},
-    "notes": {
-      "level": "6",
+    "facts": {
+      "level": 6,
       "area": "2500-foot cube",
       "range": "Touch",
       "casting-time": "10 minutes",
       "duration": "24 hours",
       "classes": "Bard, Wizard"
-    },
-    "facts": {
-      "level": 6
     }
   },
   {
@@ -4201,18 +3256,12 @@
       "verbal",
       "somatic"
     ],
-    "options": [],
-    "choose": null,
-    "numbers": {},
-    "notes": {
-      "level": "cantrip",
+    "facts": {
+      "concentration": true,
       "range": "Touch",
       "duration": "Up to 1 minute",
       "classes": "Cleric, Druid",
       "subclasses": "Lore"
-    },
-    "facts": {
-      "concentration": true
     }
   },
   {
@@ -4223,22 +3272,10 @@
       "verbal",
       "somatic"
     ],
-    "options": [],
-    "choose": null,
-    "numbers": {},
-    "notes": {
-      "level": "1",
-      "attack": "ranged spell attack",
-      "damage": "4d6 radiant",
-      "scaling": "slot 2: 5d6, slot 3: 6d6, slot 4: 7d6, slot 5: 8d6, slot 6: 9d6, slot 7: 10d6, slot 8: 11d6, slot 9: 12d6",
-      "range": "120 feet",
-      "duration": "1 round",
-      "classes": "Cleric",
-      "subclasses": "Lore"
-    },
     "facts": {
       "level": 1,
       "attack-type": "ranged",
+      "damage-type": "radiant",
       "damage-ladder": [
         [
           0,
@@ -4276,7 +3313,11 @@
           9,
           "12d6"
         ]
-      ]
+      ],
+      "range": "120 feet",
+      "duration": "1 round",
+      "classes": "Cleric",
+      "subclasses": "Lore"
     }
   },
   {
@@ -4289,23 +3330,16 @@
       "somatic",
       "material"
     ],
-    "options": [],
-    "choose": null,
-    "numbers": {},
-    "notes": {
-      "level": "2",
-      "save": "STR (no effect on success)",
+    "facts": {
+      "level": 2,
+      "save-ability": "strength",
+      "save-success": "none",
+      "concentration": true,
       "area": "60-foot line",
       "range": "Self",
       "duration": "Up to 1 minute",
       "classes": "Druid, Sorcerer, Wizard",
       "subclasses": "Lore"
-    },
-    "facts": {
-      "level": 2,
-      "save-ability": "strength",
-      "save-success": "none",
-      "concentration": true
     }
   },
   {
@@ -4317,23 +3351,16 @@
       "somatic",
       "material"
     ],
-    "options": [],
-    "choose": null,
-    "numbers": {},
-    "notes": {
-      "level": "5",
-      "save": "CHA (no effect on success)",
+    "facts": {
+      "level": 5,
+      "save-ability": "charisma",
+      "save-success": "none",
       "area": "60-foot sphere",
       "range": "Touch",
       "casting-time": "24 hours",
       "duration": "Until dispelled",
       "classes": "Cleric",
       "subclasses": "Fiend"
-    },
-    "facts": {
-      "level": 5,
-      "save-ability": "charisma",
-      "save-success": "none"
     }
   },
   {
@@ -4345,20 +3372,14 @@
       "somatic",
       "material"
     ],
-    "options": [],
-    "choose": null,
-    "numbers": {},
-    "notes": {
-      "level": "4",
+    "facts": {
+      "level": 4,
       "area": "150-foot cube",
       "range": "300 feet",
       "casting-time": "10 minutes",
       "duration": "24 hours",
       "classes": "Bard, Druid, Warlock, Wizard",
       "subclasses": "Land"
-    },
-    "facts": {
-      "level": 4
     }
   },
   {
@@ -4369,26 +3390,19 @@
       "verbal",
       "somatic"
     ],
-    "options": [],
-    "choose": null,
-    "numbers": {},
-    "notes": {
-      "level": "6",
-      "save": "CON (half on success)",
-      "damage": "14d6 necrotic",
-      "range": "60 feet",
-      "classes": "Cleric"
-    },
     "facts": {
       "level": 6,
       "save-ability": "constitution",
       "save-success": "half",
+      "damage-type": "necrotic",
       "damage-ladder": [
         [
           0,
           "14d6"
         ]
-      ]
+      ],
+      "range": "60 feet",
+      "classes": "Cleric"
     }
   },
   {
@@ -4401,19 +3415,13 @@
       "somatic",
       "material"
     ],
-    "options": [],
-    "choose": null,
-    "numbers": {},
-    "notes": {
-      "level": "3",
+    "facts": {
+      "level": 3,
+      "concentration": true,
       "range": "30 feet",
       "duration": "Up to 1 minute",
       "classes": "Sorcerer, Wizard",
       "subclasses": "Lore, Land"
-    },
-    "facts": {
-      "level": 3,
-      "concentration": true
     }
   },
   {
@@ -4424,16 +3432,6 @@
       "verbal",
       "somatic"
     ],
-    "options": [],
-    "choose": null,
-    "numbers": {},
-    "notes": {
-      "level": "6",
-      "heal": "70",
-      "scaling": "slot 7: 80, slot 8: 90, slot 9: 100",
-      "range": "60 feet",
-      "classes": "Cleric, Druid"
-    },
     "facts": {
       "level": 6,
       "heal-ladder": [
@@ -4453,7 +3451,9 @@
           9,
           "100"
         ]
-      ]
+      ],
+      "range": "60 feet",
+      "classes": "Cleric, Druid"
     }
   },
   {
@@ -4463,18 +3463,6 @@
     "tags": [
       "verbal"
     ],
-    "options": [],
-    "choose": null,
-    "numbers": {},
-    "notes": {
-      "level": "1",
-      "heal": "1d4 + spellcasting modifier",
-      "scaling": "slot 2: 2d4 + spellcasting modifier, slot 3: 3d4 + spellcasting modifier, slot 4: 4d4 + spellcasting modifier, slot 5: 5d4 + spellcasting modifier, slot 6: 6d4 + spellcasting modifier, slot 7: 7d4 + spellcasting modifier, slot 8: 8d4 + spellcasting modifier, slot 9: 9d4 + spellcasting modifier",
-      "range": "60 feet",
-      "casting-time": "1 bonus action",
-      "classes": "Bard, Cleric, Druid",
-      "subclasses": "Lore"
-    },
     "facts": {
       "level": 1,
       "heal-with-modifier": true,
@@ -4515,7 +3503,11 @@
           9,
           "9d4"
         ]
-      ]
+      ],
+      "range": "60 feet",
+      "casting-time": "1 bonus action",
+      "classes": "Bard, Cleric, Druid",
+      "subclasses": "Lore"
     }
   },
   {
@@ -4528,23 +3520,11 @@
       "somatic",
       "material"
     ],
-    "options": [],
-    "choose": null,
-    "numbers": {},
-    "notes": {
-      "level": "2",
-      "save": "CON (see text)",
-      "damage": "2d8 fire",
-      "scaling": "slot 3: 3d8, slot 4: 4d8, slot 5: 5d8, slot 6: 6d8, slot 7: 7d8, slot 8: 8d8, slot 9: 9d8",
-      "range": "60 feet",
-      "duration": "Up to 1 minute",
-      "classes": "Bard, Druid",
-      "subclasses": "Lore"
-    },
     "facts": {
       "level": 2,
       "save-ability": "constitution",
       "save-success": "other",
+      "damage-type": "fire",
       "concentration": true,
       "damage-ladder": [
         [
@@ -4579,7 +3559,11 @@
           9,
           "9d8"
         ]
-      ]
+      ],
+      "range": "60 feet",
+      "duration": "Up to 1 minute",
+      "classes": "Bard, Druid",
+      "subclasses": "Lore"
     }
   },
   {
@@ -4590,22 +3574,11 @@
       "verbal",
       "somatic"
     ],
-    "options": [],
-    "choose": null,
-    "numbers": {},
-    "notes": {
-      "level": "1",
-      "save": "DEX (half on success)",
-      "damage": "2d10 fire",
-      "scaling": "slot 2: 3d10, slot 3: 4d10, slot 4: 5d10, slot 5: 6d10, slot 6: 7d10, slot 7: 8d10, slot 8: 9d10, slot 9: 10d10",
-      "range": "60 feet",
-      "casting-time": "1 reaction",
-      "classes": "Warlock"
-    },
     "facts": {
       "level": 1,
       "save-ability": "dexterity",
       "save-success": "half",
+      "damage-type": "fire",
       "damage-ladder": [
         [
           0,
@@ -4643,7 +3616,10 @@
           9,
           "10d10"
         ]
-      ]
+      ],
+      "range": "60 feet",
+      "casting-time": "1 reaction",
+      "classes": "Warlock"
     }
   },
   {
@@ -4655,17 +3631,11 @@
       "somatic",
       "material"
     ],
-    "options": [],
-    "choose": null,
-    "numbers": {},
-    "notes": {
-      "level": "6",
+    "facts": {
+      "level": 6,
       "range": "30 feet",
       "casting-time": "10 minutes",
       "classes": "Cleric, Druid"
-    },
-    "facts": {
-      "level": 6
     }
   },
   {
@@ -4677,19 +3647,13 @@
       "verbal",
       "somatic"
     ],
-    "options": [],
-    "choose": null,
-    "numbers": {},
-    "notes": {
-      "level": "1",
+    "facts": {
+      "level": 1,
+      "concentration": true,
       "range": "Touch",
       "duration": "Up to 1 minute",
       "classes": "Bard, Paladin",
       "subclasses": "Lore"
-    },
-    "facts": {
-      "level": 1,
-      "concentration": true
     }
   },
   {
@@ -4702,22 +3666,15 @@
       "somatic",
       "material"
     ],
-    "options": [],
-    "choose": null,
-    "numbers": {},
-    "notes": {
-      "level": "1",
-      "save": "WIS (no effect on success)",
-      "range": "30 feet",
-      "duration": "Up to 1 minute",
-      "classes": "Bard, Wizard",
-      "subclasses": "Lore"
-    },
     "facts": {
       "level": 1,
       "save-ability": "wisdom",
       "save-success": "none",
-      "concentration": true
+      "concentration": true,
+      "range": "30 feet",
+      "duration": "Up to 1 minute",
+      "classes": "Bard, Wizard",
+      "subclasses": "Lore"
     }
   },
   {
@@ -4730,21 +3687,14 @@
       "somatic",
       "material"
     ],
-    "options": [],
-    "choose": null,
-    "numbers": {},
-    "notes": {
-      "level": "5",
-      "save": "WIS (no effect on success)",
-      "range": "90 feet",
-      "duration": "Up to 1 minute",
-      "classes": "Bard, Sorcerer, Warlock, Wizard"
-    },
     "facts": {
       "level": 5,
       "save-ability": "wisdom",
       "save-success": "none",
-      "concentration": true
+      "concentration": true,
+      "range": "90 feet",
+      "duration": "Up to 1 minute",
+      "classes": "Bard, Sorcerer, Warlock, Wizard"
     }
   },
   {
@@ -4757,22 +3707,15 @@
       "somatic",
       "material"
     ],
-    "options": [],
-    "choose": null,
-    "numbers": {},
-    "notes": {
-      "level": "2",
-      "save": "WIS (no effect on success)",
-      "range": "60 feet",
-      "duration": "Up to 1 minute",
-      "classes": "Bard, Cleric, Druid, Sorcerer, Warlock, Wizard",
-      "subclasses": "Lore, Land"
-    },
     "facts": {
       "level": 2,
       "save-ability": "wisdom",
       "save-success": "none",
-      "concentration": true
+      "concentration": true,
+      "range": "60 feet",
+      "duration": "Up to 1 minute",
+      "classes": "Bard, Cleric, Druid, Sorcerer, Warlock, Wizard",
+      "subclasses": "Lore, Land"
     }
   },
   {
@@ -4785,19 +3728,13 @@
       "somatic",
       "material"
     ],
-    "options": [],
-    "choose": null,
-    "numbers": {},
-    "notes": {
-      "level": "8",
+    "facts": {
+      "level": 8,
+      "concentration": true,
       "area": "30-foot sphere",
       "range": "Self",
       "duration": "Up to 1 minute",
       "classes": "Cleric"
-    },
-    "facts": {
-      "level": 8,
-      "concentration": true
     }
   },
   {
@@ -4808,19 +3745,13 @@
       "concentration",
       "verbal"
     ],
-    "options": [],
-    "choose": null,
-    "numbers": {},
-    "notes": {
-      "level": "1",
+    "facts": {
+      "level": 1,
+      "concentration": true,
       "range": "90 feet",
       "casting-time": "1 bonus action",
       "duration": "Up to 1 hour",
       "classes": "Ranger"
-    },
-    "facts": {
-      "level": 1,
-      "concentration": true
     }
   },
   {
@@ -4832,22 +3763,15 @@
       "somatic",
       "material"
     ],
-    "options": [],
-    "choose": null,
-    "numbers": {},
-    "notes": {
-      "level": "3",
-      "save": "WIS (no effect on success)",
-      "range": "120 feet",
-      "duration": "Up to 1 minute",
-      "classes": "Bard, Sorcerer, Warlock, Wizard",
-      "subclasses": "Lore"
-    },
     "facts": {
       "level": 3,
       "save-ability": "wisdom",
       "save-success": "none",
-      "concentration": true
+      "concentration": true,
+      "range": "120 feet",
+      "duration": "Up to 1 minute",
+      "classes": "Bard, Sorcerer, Warlock, Wizard",
+      "subclasses": "Lore"
     }
   },
   {
@@ -4859,23 +3783,11 @@
       "somatic",
       "material"
     ],
-    "options": [],
-    "choose": null,
-    "numbers": {},
-    "notes": {
-      "level": "4",
-      "save": "DEX (half on success)",
-      "damage": "2d8 + 4d6 bludgeoning",
-      "scaling": "slot 5: 3d8 + 4d6, slot 6: 4d8 + 4d6, slot 7: 5d8 + 4d6, slot 8: 6d8 + 4d6, slot 9: 7d8 + 4d6",
-      "area": "20-foot cylinder",
-      "range": "300 feet",
-      "classes": "Druid, Sorcerer, Wizard",
-      "subclasses": "Land"
-    },
     "facts": {
       "level": 4,
       "save-ability": "dexterity",
       "save-success": "half",
+      "damage-type": "bludgeoning",
       "damage-ladder": [
         [
           0,
@@ -4901,7 +3813,11 @@
           9,
           "7d8 + 4d6"
         ]
-      ]
+      ],
+      "area": "20-foot cylinder",
+      "range": "300 feet",
+      "classes": "Druid, Sorcerer, Wizard",
+      "subclasses": "Land"
     }
   },
   {
@@ -4914,18 +3830,12 @@
       "somatic",
       "material"
     ],
-    "options": [],
-    "choose": null,
-    "numbers": {},
-    "notes": {
-      "level": "1",
+    "facts": {
+      "level": 1,
       "range": "Touch",
       "casting-time": "1 minute",
       "classes": "Bard, Wizard",
       "subclasses": "Lore"
-    },
-    "facts": {
-      "level": 1
     }
   },
   {
@@ -4937,19 +3847,13 @@
       "somatic",
       "material"
     ],
-    "options": [],
-    "choose": null,
-    "numbers": {},
-    "notes": {
-      "level": "1",
+    "facts": {
+      "level": 1,
       "range": "Touch",
       "casting-time": "1 minute",
       "duration": "10 days",
       "classes": "Bard, Warlock, Wizard",
       "subclasses": "Lore"
-    },
-    "facts": {
-      "level": 1
     }
   },
   {
@@ -4961,21 +3865,14 @@
       "somatic",
       "material"
     ],
-    "options": [],
-    "choose": null,
-    "numbers": {},
-    "notes": {
-      "level": "9",
-      "save": "WIS (no effect on success)",
+    "facts": {
+      "level": 9,
+      "save-ability": "wisdom",
+      "save-success": "none",
       "range": "30 feet",
       "casting-time": "1 minute",
       "duration": "Until dispelled",
       "classes": "Warlock, Wizard"
-    },
-    "facts": {
-      "level": 9,
-      "save-ability": "wisdom",
-      "save-success": "none"
     }
   },
   {
@@ -4987,29 +3884,22 @@
       "verbal",
       "somatic"
     ],
-    "options": [],
-    "choose": null,
-    "numbers": {},
-    "notes": {
-      "level": "8",
-      "save": "DEX (half on success)",
-      "damage": "10d8 fire",
-      "area": "20-foot sphere",
-      "range": "150 feet",
-      "duration": "Up to 1 minute",
-      "classes": "Sorcerer, Wizard"
-    },
     "facts": {
       "level": 8,
       "save-ability": "dexterity",
       "save-success": "half",
+      "damage-type": "fire",
       "concentration": true,
       "damage-ladder": [
         [
           0,
           "10d8"
         ]
-      ]
+      ],
+      "area": "20-foot sphere",
+      "range": "150 feet",
+      "duration": "Up to 1 minute",
+      "classes": "Sorcerer, Wizard"
     }
   },
   {
@@ -5020,21 +3910,10 @@
       "verbal",
       "somatic"
     ],
-    "options": [],
-    "choose": null,
-    "numbers": {},
-    "notes": {
-      "level": "1",
-      "attack": "melee spell attack",
-      "damage": "3d10 necrotic",
-      "scaling": "slot 2: 4d10, slot 3: 5d10, slot 4: 6d10, slot 5: 7d10, slot 6: 8d10, slot 7: 9d10, slot 8: 10d10, slot 9: 11d10",
-      "range": "Touch",
-      "classes": "Cleric",
-      "subclasses": "Lore"
-    },
     "facts": {
       "level": 1,
       "attack-type": "melee",
+      "damage-type": "necrotic",
       "damage-ladder": [
         [
           0,
@@ -5072,7 +3951,10 @@
           9,
           "11d10"
         ]
-      ]
+      ],
+      "range": "Touch",
+      "classes": "Cleric",
+      "subclasses": "Lore"
     }
   },
   {
@@ -5085,24 +3967,11 @@
       "somatic",
       "material"
     ],
-    "options": [],
-    "choose": null,
-    "numbers": {},
-    "notes": {
-      "level": "5",
-      "save": "CON (half on success)",
-      "damage": "4d10 piercing",
-      "scaling": "slot 6: 5d10, slot 7: 6d10, slot 8: 7d10, slot 9: 8d10",
-      "area": "20-foot sphere",
-      "range": "300 feet",
-      "duration": "Up to 10 minutes",
-      "classes": "Cleric, Druid, Sorcerer",
-      "subclasses": "Land"
-    },
     "facts": {
       "level": 5,
       "save-ability": "constitution",
       "save-success": "half",
+      "damage-type": "piercing",
       "concentration": true,
       "damage-ladder": [
         [
@@ -5125,7 +3994,12 @@
           9,
           "8d10"
         ]
-      ]
+      ],
+      "area": "20-foot sphere",
+      "range": "300 feet",
+      "duration": "Up to 10 minutes",
+      "classes": "Cleric, Druid, Sorcerer",
+      "subclasses": "Land"
     }
   },
   {
@@ -5138,18 +4012,12 @@
       "somatic",
       "material"
     ],
-    "options": [],
-    "choose": null,
-    "numbers": {},
-    "notes": {
-      "level": "6",
+    "facts": {
+      "level": 6,
       "range": "Touch",
       "casting-time": "1 minute",
       "duration": "Until dispelled",
       "classes": "Wizard"
-    },
-    "facts": {
-      "level": 6
     }
   },
   {
@@ -5162,19 +4030,13 @@
       "somatic",
       "material"
     ],
-    "options": [],
-    "choose": null,
-    "numbers": {},
-    "notes": {
-      "level": "2",
+    "facts": {
+      "level": 2,
+      "concentration": true,
       "range": "Touch",
       "duration": "Up to 1 hour",
       "classes": "Bard, Sorcerer, Warlock, Wizard",
       "subclasses": "Lore, Land"
-    },
-    "facts": {
-      "level": 2,
-      "concentration": true
     }
   },
   {
@@ -5185,18 +4047,12 @@
       "concentration",
       "verbal"
     ],
-    "options": [],
-    "choose": null,
-    "numbers": {},
-    "notes": {
-      "level": "6",
+    "facts": {
+      "level": 6,
+      "concentration": true,
       "range": "30 feet",
       "duration": "Up to 1 minute",
       "classes": "Bard, Wizard"
-    },
-    "facts": {
-      "level": 6,
-      "concentration": true
     }
   },
   {
@@ -5208,18 +4064,12 @@
       "somatic",
       "material"
     ],
-    "options": [],
-    "choose": null,
-    "numbers": {},
-    "notes": {
-      "level": "1",
+    "facts": {
+      "level": 1,
       "range": "Touch",
       "duration": "1 minute",
       "classes": "Druid, Ranger, Sorcerer, Wizard",
       "subclasses": "Lore"
-    },
-    "facts": {
-      "level": 1
     }
   },
   {
@@ -5229,17 +4079,11 @@
     "tags": [
       "verbal"
     ],
-    "options": [],
-    "choose": null,
-    "numbers": {},
-    "notes": {
-      "level": "2",
+    "facts": {
+      "level": 2,
       "range": "60 feet",
       "classes": "Bard, Sorcerer, Wizard",
       "subclasses": "Lore"
-    },
-    "facts": {
-      "level": 2
     }
   },
   {
@@ -5251,17 +4095,11 @@
       "somatic",
       "material"
     ],
-    "options": [],
-    "choose": null,
-    "numbers": {},
-    "notes": {
-      "level": "5",
+    "facts": {
+      "level": 5,
       "range": "Self",
       "casting-time": "10 minutes",
       "classes": "Bard, Cleric, Wizard"
-    },
-    "facts": {
-      "level": 5
     }
   },
   {
@@ -5272,17 +4110,11 @@
       "verbal",
       "somatic"
     ],
-    "options": [],
-    "choose": null,
-    "numbers": {},
-    "notes": {
-      "level": "2",
+    "facts": {
+      "level": 2,
       "range": "Touch",
       "classes": "Bard, Cleric, Druid, Paladin, Ranger",
       "subclasses": "Lore, Life, Devotion"
-    },
-    "facts": {
-      "level": 2
     }
   },
   {
@@ -5295,19 +4127,13 @@
       "somatic",
       "material"
     ],
-    "options": [],
-    "choose": null,
-    "numbers": {},
-    "notes": {
-      "level": "2",
+    "facts": {
+      "level": 2,
+      "concentration": true,
       "range": "60 feet",
       "duration": "Up to 10 minutes",
       "classes": "Sorcerer, Wizard",
       "subclasses": "Lore"
-    },
-    "facts": {
-      "level": 2,
-      "concentration": true
     }
   },
   {
@@ -5318,20 +4144,13 @@
       "verbal",
       "material"
     ],
-    "options": [],
-    "choose": null,
-    "numbers": {},
-    "notes": {
-      "level": "cantrip",
-      "save": "DEX (no effect on success)",
+    "facts": {
+      "save-ability": "dexterity",
+      "save-success": "none",
       "range": "Touch",
       "duration": "1 hour",
       "classes": "Bard, Cleric, Sorcerer, Wizard",
       "subclasses": "Lore"
-    },
-    "facts": {
-      "save-ability": "dexterity",
-      "save-success": "none"
     }
   },
   {
@@ -5343,23 +4162,11 @@
       "somatic",
       "material"
     ],
-    "options": [],
-    "choose": null,
-    "numbers": {},
-    "notes": {
-      "level": "3",
-      "save": "DEX (half on success)",
-      "damage": "8d6 lightning",
-      "scaling": "slot 4: 9d6, slot 5: 10d6, slot 6: 11d6, slot 7: 12d6, slot 8: 13d6, slot 9: 14d6",
-      "area": "100-foot line",
-      "range": "Self",
-      "classes": "Sorcerer, Wizard",
-      "subclasses": "Lore, Land"
-    },
     "facts": {
       "level": 3,
       "save-ability": "dexterity",
       "save-success": "half",
+      "damage-type": "lightning",
       "damage-ladder": [
         [
           0,
@@ -5389,7 +4196,11 @@
           9,
           "14d6"
         ]
-      ]
+      ],
+      "area": "100-foot line",
+      "range": "Self",
+      "classes": "Sorcerer, Wizard",
+      "subclasses": "Lore, Land"
     }
   },
   {
@@ -5402,17 +4213,11 @@
       "somatic",
       "material"
     ],
-    "options": [],
-    "choose": null,
-    "numbers": {},
-    "notes": {
-      "level": "2",
+    "facts": {
+      "level": 2,
       "range": "Self",
       "classes": "Bard, Druid, Ranger",
       "subclasses": "Lore"
-    },
-    "facts": {
-      "level": 2
     }
   },
   {
@@ -5425,19 +4230,13 @@
       "somatic",
       "material"
     ],
-    "options": [],
-    "choose": null,
-    "numbers": {},
-    "notes": {
-      "level": "4",
+    "facts": {
+      "level": 4,
+      "concentration": true,
       "range": "Self",
       "duration": "Up to 1 hour",
       "classes": "Bard, Cleric, Druid, Paladin, Ranger, Wizard",
       "subclasses": "Land"
-    },
-    "facts": {
-      "level": 4,
-      "concentration": true
     }
   },
   {
@@ -5450,19 +4249,13 @@
       "somatic",
       "material"
     ],
-    "options": [],
-    "choose": null,
-    "numbers": {},
-    "notes": {
-      "level": "2",
+    "facts": {
+      "level": 2,
+      "concentration": true,
       "range": "Self",
       "duration": "Up to 10 minutes",
       "classes": "Bard, Cleric, Druid, Paladin, Ranger, Wizard",
       "subclasses": "Lore"
-    },
-    "facts": {
-      "level": 2,
-      "concentration": true
     }
   },
   {
@@ -5474,18 +4267,12 @@
       "somatic",
       "material"
     ],
-    "options": [],
-    "choose": null,
-    "numbers": {},
-    "notes": {
-      "level": "1",
+    "facts": {
+      "level": 1,
       "range": "Touch",
       "duration": "1 hour",
       "classes": "Bard, Druid, Ranger, Wizard",
       "subclasses": "Lore"
-    },
-    "facts": {
-      "level": 1
     }
   },
   {
@@ -5497,18 +4284,12 @@
       "somatic",
       "material"
     ],
-    "options": [],
-    "choose": null,
-    "numbers": {},
-    "notes": {
-      "level": "1",
+    "facts": {
+      "level": 1,
       "range": "Touch",
       "duration": "8 hours",
       "classes": "Sorcerer, Wizard",
       "subclasses": "Lore"
-    },
-    "facts": {
-      "level": 1
     }
   },
   {
@@ -5519,17 +4300,12 @@
       "verbal",
       "somatic"
     ],
-    "options": [],
-    "choose": null,
-    "numbers": {},
-    "notes": {
-      "level": "cantrip",
+    "facts": {
       "range": "30 feet",
       "duration": "1 minute",
       "classes": "Bard, Sorcerer, Warlock, Wizard",
       "subclasses": "Lore"
-    },
-    "facts": {}
+    }
   },
   {
     "index": "magic-circle",
@@ -5540,23 +4316,16 @@
       "somatic",
       "material"
     ],
-    "options": [],
-    "choose": null,
-    "numbers": {},
-    "notes": {
-      "level": "3",
-      "save": "CHA (see text)",
+    "facts": {
+      "level": 3,
+      "save-ability": "charisma",
+      "save-success": "other",
       "area": "10-foot cylinder",
       "range": "10 feet",
       "casting-time": "1 minute",
       "duration": "1 hour",
       "classes": "Cleric, Paladin, Warlock, Wizard",
       "subclasses": "Lore"
-    },
-    "facts": {
-      "level": 3,
-      "save-ability": "charisma",
-      "save-success": "other"
     }
   },
   {
@@ -5568,21 +4337,14 @@
       "somatic",
       "material"
     ],
-    "options": [],
-    "choose": null,
-    "numbers": {},
-    "notes": {
-      "level": "6",
-      "save": "CHA (see text)",
+    "facts": {
+      "level": 6,
+      "save-ability": "charisma",
+      "save-success": "other",
       "range": "Self",
       "casting-time": "1 minute",
       "duration": "Until dispelled",
       "classes": "Wizard"
-    },
-    "facts": {
-      "level": 6,
-      "save-ability": "charisma",
-      "save-success": "other"
     }
   },
   {
@@ -5593,19 +4355,9 @@
       "verbal",
       "somatic"
     ],
-    "options": [],
-    "choose": null,
-    "numbers": {},
-    "notes": {
-      "level": "1",
-      "damage": "3d4 + 3 force",
-      "scaling": "slot 2: 4d4 + 4, slot 3: 5d4 + 5, slot 4: 6d4 + 6, slot 5: 7d4 + 7, slot 6: 8d4 + 8, slot 7: 9d4 + 9, slot 8: 10d4 + 10, slot 9: 11d4 + 11",
-      "range": "120 feet",
-      "classes": "Sorcerer, Wizard",
-      "subclasses": "Lore"
-    },
     "facts": {
       "level": 1,
+      "damage-type": "force",
       "damage-ladder": [
         [
           0,
@@ -5643,7 +4395,10 @@
           9,
           "11d4 + 11"
         ]
-      ]
+      ],
+      "range": "120 feet",
+      "classes": "Sorcerer, Wizard",
+      "subclasses": "Lore"
     }
   },
   {
@@ -5656,19 +4411,13 @@
       "somatic",
       "material"
     ],
-    "options": [],
-    "choose": null,
-    "numbers": {},
-    "notes": {
-      "level": "2",
+    "facts": {
+      "level": 2,
       "range": "30 feet",
       "casting-time": "1 minute",
       "duration": "Until dispelled",
       "classes": "Bard, Wizard",
       "subclasses": "Lore"
-    },
-    "facts": {
-      "level": 2
     }
   },
   {
@@ -5680,20 +4429,14 @@
       "verbal",
       "somatic"
     ],
-    "options": [],
-    "choose": null,
-    "numbers": {},
-    "notes": {
-      "level": "2",
+    "facts": {
+      "level": 2,
+      "concentration": true,
       "range": "Touch",
       "casting-time": "1 bonus action",
       "duration": "Up to 1 hour",
       "classes": "Paladin, Wizard",
       "subclasses": "Lore"
-    },
-    "facts": {
-      "level": 2,
-      "concentration": true
     }
   },
   {
@@ -5705,19 +4448,13 @@
       "somatic",
       "material"
     ],
-    "options": [],
-    "choose": null,
-    "numbers": {},
-    "notes": {
-      "level": "7",
+    "facts": {
+      "level": 7,
       "area": "5-foot cube",
       "range": "300 feet",
       "casting-time": "1 minute",
       "duration": "24 hours",
       "classes": "Bard, Wizard"
-    },
-    "facts": {
-      "level": 7
     }
   },
   {
@@ -5730,19 +4467,13 @@
       "somatic",
       "material"
     ],
-    "options": [],
-    "choose": null,
-    "numbers": {},
-    "notes": {
-      "level": "3",
+    "facts": {
+      "level": 3,
+      "concentration": true,
       "range": "120 feet",
       "duration": "Up to 10 minutes",
       "classes": "Bard, Sorcerer, Warlock, Wizard",
       "subclasses": "Lore"
-    },
-    "facts": {
-      "level": 3,
-      "concentration": true
     }
   },
   {
@@ -5753,18 +4484,6 @@
       "verbal",
       "somatic"
     ],
-    "options": [],
-    "choose": null,
-    "numbers": {},
-    "notes": {
-      "level": "5",
-      "heal": "3d8 + spellcasting modifier",
-      "scaling": "slot 6: 4d8 + spellcasting modifier, slot 7: 5d8 + spellcasting modifier, slot 8: 6d8 + spellcasting modifier, slot 9: 7d8 + spellcasting modifier",
-      "area": "30-foot sphere",
-      "range": "60 feet",
-      "classes": "Bard, Cleric, Druid",
-      "subclasses": "Life"
-    },
     "facts": {
       "level": 5,
       "heal-with-modifier": true,
@@ -5789,7 +4508,11 @@
           9,
           "7d8"
         ]
-      ]
+      ],
+      "area": "30-foot sphere",
+      "range": "60 feet",
+      "classes": "Bard, Cleric, Druid",
+      "subclasses": "Life"
     }
   },
   {
@@ -5800,15 +4523,6 @@
       "verbal",
       "somatic"
     ],
-    "options": [],
-    "choose": null,
-    "numbers": {},
-    "notes": {
-      "level": "9",
-      "heal": "700",
-      "range": "60 feet",
-      "classes": "Cleric"
-    },
     "facts": {
       "level": 9,
       "heal-ladder": [
@@ -5816,7 +4530,9 @@
           0,
           "700"
         ]
-      ]
+      ],
+      "range": "60 feet",
+      "classes": "Cleric"
     }
   },
   {
@@ -5826,18 +4542,6 @@
     "tags": [
       "verbal"
     ],
-    "options": [],
-    "choose": null,
-    "numbers": {},
-    "notes": {
-      "level": "3",
-      "heal": "1d4 + spellcasting modifier",
-      "scaling": "slot 4: 2d4 + spellcasting modifier, slot 5: 3d4 + spellcasting modifier, slot 6: 4d4 + spellcasting modifier, slot 7: 5d4 + spellcasting modifier, slot 8: 6d4 + spellcasting modifier, slot 9: 7d4 + spellcasting modifier",
-      "range": "60 feet",
-      "casting-time": "1 bonus action",
-      "classes": "Cleric",
-      "subclasses": "Lore"
-    },
     "facts": {
       "level": 3,
       "heal-with-modifier": true,
@@ -5870,7 +4574,11 @@
           9,
           "7d4"
         ]
-      ]
+      ],
+      "range": "60 feet",
+      "casting-time": "1 bonus action",
+      "classes": "Cleric",
+      "subclasses": "Lore"
     }
   },
   {
@@ -5881,20 +4589,13 @@
       "verbal",
       "material"
     ],
-    "options": [],
-    "choose": null,
-    "numbers": {},
-    "notes": {
-      "level": "6",
-      "save": "WIS (no effect on success)",
-      "range": "60 feet",
-      "duration": "24 hours",
-      "classes": "Bard, Sorcerer, Warlock, Wizard"
-    },
     "facts": {
       "level": 6,
       "save-ability": "wisdom",
-      "save-success": "none"
+      "save-success": "none",
+      "range": "60 feet",
+      "duration": "24 hours",
+      "classes": "Bard, Sorcerer, Warlock, Wizard"
     }
   },
   {
@@ -5906,18 +4607,12 @@
       "verbal",
       "somatic"
     ],
-    "options": [],
-    "choose": null,
-    "numbers": {},
-    "notes": {
-      "level": "8",
+    "facts": {
+      "level": 8,
+      "concentration": true,
       "range": "60 feet",
       "duration": "Up to 10 minutes",
       "classes": "Wizard"
-    },
-    "facts": {
-      "level": 8,
-      "concentration": true
     }
   },
   {
@@ -5929,18 +4624,12 @@
       "verbal",
       "somatic"
     ],
-    "options": [],
-    "choose": null,
-    "numbers": {},
-    "notes": {
-      "level": "3",
+    "facts": {
+      "level": 3,
       "range": "Touch",
       "duration": "8 hours",
       "classes": "Cleric",
       "subclasses": "Lore, Land"
-    },
-    "facts": {
-      "level": 3
     }
   },
   {
@@ -5952,17 +4641,12 @@
       "somatic",
       "material"
     ],
-    "options": [],
-    "choose": null,
-    "numbers": {},
-    "notes": {
-      "level": "cantrip",
+    "facts": {
       "range": "Touch",
       "casting-time": "1 minute",
       "classes": "Cleric, Bard, Druid, Sorcerer, Wizard",
       "subclasses": "Lore"
-    },
-    "facts": {}
+    }
   },
   {
     "index": "message",
@@ -5973,17 +4657,12 @@
       "somatic",
       "material"
     ],
-    "options": [],
-    "choose": null,
-    "numbers": {},
-    "notes": {
-      "level": "cantrip",
+    "facts": {
       "range": "120 feet",
       "duration": "1 round",
       "classes": "Bard, Sorcerer, Wizard",
       "subclasses": "Lore"
-    },
-    "facts": {}
+    }
   },
   {
     "index": "meteor-swarm",
@@ -5993,27 +4672,20 @@
       "verbal",
       "somatic"
     ],
-    "options": [],
-    "choose": null,
-    "numbers": {},
-    "notes": {
-      "level": "9",
-      "save": "DEX (half on success)",
-      "damage": "20d6 + 20d6 fire",
-      "area": "40-foot sphere",
-      "range": "1 mile",
-      "classes": "Sorcerer, Wizard"
-    },
     "facts": {
       "level": 9,
       "save-ability": "dexterity",
       "save-success": "half",
+      "damage-type": "fire",
       "damage-ladder": [
         [
           0,
           "20d6 + 20d6"
         ]
-      ]
+      ],
+      "area": "40-foot sphere",
+      "range": "1 mile",
+      "classes": "Sorcerer, Wizard"
     }
   },
   {
@@ -6024,17 +4696,11 @@
       "verbal",
       "somatic"
     ],
-    "options": [],
-    "choose": null,
-    "numbers": {},
-    "notes": {
-      "level": "8",
+    "facts": {
+      "level": 8,
       "range": "Touch",
       "duration": "24 hours",
       "classes": "Bard, Wizard"
-    },
-    "facts": {
-      "level": 8
     }
   },
   {
@@ -6045,17 +4711,12 @@
       "somatic",
       "material"
     ],
-    "options": [],
-    "choose": null,
-    "numbers": {},
-    "notes": {
-      "level": "cantrip",
+    "facts": {
       "range": "30 feet",
       "duration": "1 minute",
       "classes": "Bard, Sorcerer, Warlock, Wizard",
       "subclasses": "Lore"
-    },
-    "facts": {}
+    }
   },
   {
     "index": "mirage-arcane",
@@ -6065,19 +4726,13 @@
       "verbal",
       "somatic"
     ],
-    "options": [],
-    "choose": null,
-    "numbers": {},
-    "notes": {
-      "level": "7",
+    "facts": {
+      "level": 7,
       "area": "5280-foot cube",
       "range": "Sight",
       "casting-time": "10 minutes",
       "duration": "10 days",
       "classes": "Bard, Druid, Wizard"
-    },
-    "facts": {
-      "level": 7
     }
   },
   {
@@ -6088,18 +4743,12 @@
       "verbal",
       "somatic"
     ],
-    "options": [],
-    "choose": null,
-    "numbers": {},
-    "notes": {
-      "level": "2",
+    "facts": {
+      "level": 2,
       "range": "Self",
       "duration": "1 minute",
       "classes": "Sorcerer, Warlock, Wizard",
       "subclasses": "Lore, Land"
-    },
-    "facts": {
-      "level": 2
     }
   },
   {
@@ -6110,18 +4759,12 @@
       "concentration",
       "somatic"
     ],
-    "options": [],
-    "choose": null,
-    "numbers": {},
-    "notes": {
-      "level": "5",
+    "facts": {
+      "level": 5,
+      "concentration": true,
       "range": "Self",
       "duration": "Up to 1 hour",
       "classes": "Bard, Wizard"
-    },
-    "facts": {
-      "level": 5,
-      "concentration": true
     }
   },
   {
@@ -6131,18 +4774,12 @@
     "tags": [
       "verbal"
     ],
-    "options": [],
-    "choose": null,
-    "numbers": {},
-    "notes": {
-      "level": "2",
+    "facts": {
+      "level": 2,
       "range": "Self",
       "casting-time": "1 bonus action",
       "classes": "Sorcerer, Warlock, Wizard",
       "subclasses": "Lore, Land"
-    },
-    "facts": {
-      "level": 2
     }
   },
   {
@@ -6154,21 +4791,14 @@
       "verbal",
       "somatic"
     ],
-    "options": [],
-    "choose": null,
-    "numbers": {},
-    "notes": {
-      "level": "5",
-      "save": "WIS (no effect on success)",
-      "range": "30 feet",
-      "duration": "Up to 1 minute",
-      "classes": "Bard, Wizard"
-    },
     "facts": {
       "level": 5,
       "save-ability": "wisdom",
       "save-success": "none",
-      "concentration": true
+      "concentration": true,
+      "range": "30 feet",
+      "duration": "Up to 1 minute",
+      "classes": "Bard, Wizard"
     }
   },
   {
@@ -6181,24 +4811,11 @@
       "somatic",
       "material"
     ],
-    "options": [],
-    "choose": null,
-    "numbers": {},
-    "notes": {
-      "level": "2",
-      "save": "CON (half on success)",
-      "damage": "2d10 radiant",
-      "scaling": "slot 3: 3d10, slot 4: 4d10, slot 5: 5d10, slot 6: 6d10, slot 7: 7d10, slot 8: 8d10, slot 9: 9d10",
-      "area": "5-foot cylinder",
-      "range": "120 feet",
-      "duration": "Up to 1 minute",
-      "classes": "Druid",
-      "subclasses": "Lore"
-    },
     "facts": {
       "level": 2,
       "save-ability": "constitution",
       "save-success": "half",
+      "damage-type": "radiant",
       "concentration": true,
       "damage-ladder": [
         [
@@ -6233,7 +4850,12 @@
           9,
           "9d10"
         ]
-      ]
+      ],
+      "area": "5-foot cylinder",
+      "range": "120 feet",
+      "duration": "Up to 1 minute",
+      "classes": "Druid",
+      "subclasses": "Lore"
     }
   },
   {
@@ -6246,19 +4868,13 @@
       "somatic",
       "material"
     ],
-    "options": [],
-    "choose": null,
-    "numbers": {},
-    "notes": {
-      "level": "6",
+    "facts": {
+      "level": 6,
+      "concentration": true,
       "area": "40-foot cone",
       "range": "120 feet",
       "duration": "Up to 2 hours",
       "classes": "Druid, Sorcerer, Wizard"
-    },
-    "facts": {
-      "level": 6,
-      "concentration": true
     }
   },
   {
@@ -6270,18 +4886,12 @@
       "somatic",
       "material"
     ],
-    "options": [],
-    "choose": null,
-    "numbers": {},
-    "notes": {
-      "level": "3",
+    "facts": {
+      "level": 3,
       "range": "Touch",
       "duration": "8 hours",
       "classes": "Bard, Ranger, Wizard",
       "subclasses": "Lore"
-    },
-    "facts": {
-      "level": 3
     }
   },
   {
@@ -6294,19 +4904,13 @@
       "somatic",
       "material"
     ],
-    "options": [],
-    "choose": null,
-    "numbers": {},
-    "notes": {
-      "level": "2",
+    "facts": {
+      "level": 2,
+      "concentration": true,
       "range": "Self",
       "duration": "Up to 1 hour",
       "classes": "Druid, Ranger",
       "subclasses": "Lore, Land"
-    },
-    "facts": {
-      "level": 2,
-      "concentration": true
     }
   },
   {
@@ -6318,18 +4922,12 @@
       "somatic",
       "material"
     ],
-    "options": [],
-    "choose": null,
-    "numbers": {},
-    "notes": {
-      "level": "5",
+    "facts": {
+      "level": 5,
       "range": "30 feet",
       "duration": "1 hour",
       "classes": "Wizard",
       "subclasses": "Land"
-    },
-    "facts": {
-      "level": 5
     }
   },
   {
@@ -6341,28 +4939,21 @@
       "verbal",
       "somatic"
     ],
-    "options": [],
-    "choose": null,
-    "numbers": {},
-    "notes": {
-      "level": "4",
-      "save": "WIS (no effect on success)",
-      "damage": "4d10 psychic",
-      "range": "120 feet",
-      "duration": "Up to 1 minute",
-      "classes": "Wizard"
-    },
     "facts": {
       "level": 4,
       "save-ability": "wisdom",
       "save-success": "none",
+      "damage-type": "psychic",
       "concentration": true,
       "damage-ladder": [
         [
           0,
           "4d10"
         ]
-      ]
+      ],
+      "range": "120 feet",
+      "duration": "Up to 1 minute",
+      "classes": "Wizard"
     }
   },
   {
@@ -6374,19 +4965,13 @@
       "verbal",
       "somatic"
     ],
-    "options": [],
-    "choose": null,
-    "numbers": {},
-    "notes": {
-      "level": "3",
+    "facts": {
+      "level": 3,
       "range": "30 feet",
       "casting-time": "1 minute",
       "duration": "1 hour",
       "classes": "Wizard",
       "subclasses": "Lore"
-    },
-    "facts": {
-      "level": 3
     }
   },
   {
@@ -6397,17 +4982,11 @@
       "verbal",
       "somatic"
     ],
-    "options": [],
-    "choose": null,
-    "numbers": {},
-    "notes": {
-      "level": "6",
+    "facts": {
+      "level": 6,
       "range": "60 feet",
       "casting-time": "10 minutes",
       "classes": "Cleric"
-    },
-    "facts": {
-      "level": 6
     }
   },
   {
@@ -6419,21 +4998,14 @@
       "somatic",
       "material"
     ],
-    "options": [],
-    "choose": null,
-    "numbers": {},
-    "notes": {
-      "level": "5",
-      "save": "CHA (no effect on success)",
+    "facts": {
+      "level": 5,
+      "save-ability": "charisma",
+      "save-success": "none",
       "range": "60 feet",
       "casting-time": "1 hour",
       "duration": "24 hours",
       "classes": "Bard, Cleric, Druid, Wizard"
-    },
-    "facts": {
-      "level": 5,
-      "save-ability": "charisma",
-      "save-success": "none"
     }
   },
   {
@@ -6445,21 +5017,13 @@
       "somatic",
       "material"
     ],
-    "options": [],
-    "choose": null,
-    "numbers": {},
-    "notes": {
-      "level": "7",
-      "attack": "melee spell attack",
-      "save": "CHA (no effect on success)",
-      "range": "Touch",
-      "classes": "Cleric, Druid, Sorcerer, Warlock, Wizard"
-    },
     "facts": {
       "level": 7,
       "attack-type": "melee",
       "save-ability": "charisma",
-      "save-success": "none"
+      "save-success": "none",
+      "range": "Touch",
+      "classes": "Cleric, Druid, Sorcerer, Warlock, Wizard"
     }
   },
   {
@@ -6470,17 +5034,11 @@
       "verbal",
       "somatic"
     ],
-    "options": [],
-    "choose": null,
-    "numbers": {},
-    "notes": {
-      "level": "3",
+    "facts": {
+      "level": 3,
       "range": "150 feet",
       "classes": "Bard, Druid, Ranger",
       "subclasses": "Lore, Land"
-    },
-    "facts": {
-      "level": 3
     }
   },
   {
@@ -6491,20 +5049,10 @@
       "verbal",
       "somatic"
     ],
-    "options": [],
-    "choose": null,
-    "numbers": {},
-    "notes": {
-      "level": "cantrip",
-      "save": "CON (no effect on success)",
-      "damage": "1d12 poison",
-      "scaling": "level 5: 2d12, level 11: 3d12, level 17: 4d12",
-      "range": "10 feet",
-      "classes": "Sorcerer, Warlock, Wizard, Druid"
-    },
     "facts": {
       "save-ability": "constitution",
       "save-success": "none",
+      "damage-type": "poison",
       "damage-ladder": [
         [
           0,
@@ -6522,7 +5070,9 @@
           17,
           "4d12"
         ]
-      ]
+      ],
+      "range": "10 feet",
+      "classes": "Sorcerer, Warlock, Wizard, Druid"
     }
   },
   {
@@ -6535,21 +5085,14 @@
       "somatic",
       "material"
     ],
-    "options": [],
-    "choose": null,
-    "numbers": {},
-    "notes": {
-      "level": "4",
-      "save": "WIS (no effect on success)",
-      "range": "60 feet",
-      "duration": "Up to 1 hour",
-      "classes": "Bard, Druid, Sorcerer, Wizard"
-    },
     "facts": {
       "level": 4,
       "save-ability": "wisdom",
       "save-success": "none",
-      "concentration": true
+      "concentration": true,
+      "range": "60 feet",
+      "duration": "Up to 1 hour",
+      "classes": "Bard, Druid, Sorcerer, Wizard"
     }
   },
   {
@@ -6559,16 +5102,10 @@
     "tags": [
       "verbal"
     ],
-    "options": [],
-    "choose": null,
-    "numbers": {},
-    "notes": {
-      "level": "9",
+    "facts": {
+      "level": 9,
       "range": "60 feet",
       "classes": "Bard, Sorcerer, Warlock, Wizard"
-    },
-    "facts": {
-      "level": 9
     }
   },
   {
@@ -6578,16 +5115,10 @@
     "tags": [
       "verbal"
     ],
-    "options": [],
-    "choose": null,
-    "numbers": {},
-    "notes": {
-      "level": "8",
+    "facts": {
+      "level": 8,
       "range": "60 feet",
       "classes": "Bard, Sorcerer, Warlock, Wizard"
-    },
-    "facts": {
-      "level": 8
     }
   },
   {
@@ -6597,18 +5128,6 @@
     "tags": [
       "verbal"
     ],
-    "options": [],
-    "choose": null,
-    "numbers": {},
-    "notes": {
-      "level": "2",
-      "heal": "2d8 + spellcasting modifier",
-      "scaling": "slot 3: 3d8 + spellcasting modifier, slot 4: 4d8 + spellcasting modifier, slot 5: 5d8 + spellcasting modifier, slot 6: 6d8 + spellcasting modifier, slot 7: 7d8 + spellcasting modifier, slot 8: 8d8 + spellcasting modifier, slot 9: 9d8 + spellcasting modifier",
-      "range": "30 feet",
-      "casting-time": "10 minutes",
-      "classes": "Cleric",
-      "subclasses": "Lore"
-    },
     "facts": {
       "level": 2,
       "heal-with-modifier": true,
@@ -6645,7 +5164,11 @@
           9,
           "9d8"
         ]
-      ]
+      ],
+      "range": "30 feet",
+      "casting-time": "10 minutes",
+      "classes": "Cleric",
+      "subclasses": "Lore"
     }
   },
   {
@@ -6656,17 +5179,12 @@
       "verbal",
       "somatic"
     ],
-    "options": [],
-    "choose": null,
-    "numbers": {},
-    "notes": {
-      "level": "cantrip",
+    "facts": {
       "range": "10 feet",
       "duration": "1 hour",
       "classes": "Bard, Sorcerer, Warlock, Wizard",
       "subclasses": "Lore"
-    },
-    "facts": {}
+    }
   },
   {
     "index": "prismatic-spray",
@@ -6676,17 +5194,6 @@
       "verbal",
       "somatic"
     ],
-    "options": [],
-    "choose": null,
-    "numbers": {},
-    "notes": {
-      "level": "7",
-      "save": "DEX (see text)",
-      "damage": "10d6",
-      "area": "60-foot cone",
-      "range": "Self",
-      "classes": "Sorcerer, Wizard"
-    },
     "facts": {
       "level": 7,
       "save-ability": "dexterity",
@@ -6696,7 +5203,10 @@
           0,
           "10d6"
         ]
-      ]
+      ],
+      "area": "60-foot cone",
+      "range": "Self",
+      "classes": "Sorcerer, Wizard"
     }
   },
   {
@@ -6707,18 +5217,12 @@
       "verbal",
       "somatic"
     ],
-    "options": [],
-    "choose": null,
-    "numbers": {},
-    "notes": {
-      "level": "9",
+    "facts": {
+      "level": 9,
       "area": "90-foot line",
       "range": "60 feet",
       "duration": "10 minutes",
       "classes": "Wizard"
-    },
-    "facts": {
-      "level": 9
     }
   },
   {
@@ -6730,19 +5234,13 @@
       "somatic",
       "material"
     ],
-    "options": [],
-    "choose": null,
-    "numbers": {},
-    "notes": {
-      "level": "4",
+    "facts": {
+      "level": 4,
       "area": "100-foot cube",
       "range": "120 feet",
       "casting-time": "10 minutes",
       "duration": "24 hours",
       "classes": "Wizard"
-    },
-    "facts": {
-      "level": 4
     }
   },
   {
@@ -6753,21 +5251,9 @@
       "verbal",
       "somatic"
     ],
-    "options": [],
-    "choose": null,
-    "numbers": {},
-    "notes": {
-      "level": "cantrip",
-      "attack": "ranged spell attack",
-      "damage": "1d8 fire",
-      "scaling": "level 5: 2d8, level 11: 3d8, level 17: 4d8",
-      "range": "Self",
-      "duration": "10 minutes",
-      "classes": "Druid",
-      "subclasses": "Lore"
-    },
     "facts": {
       "attack-type": "ranged",
+      "damage-type": "fire",
       "damage-ladder": [
         [
           0,
@@ -6785,7 +5271,11 @@
           17,
           "4d8"
         ]
-      ]
+      ],
+      "range": "Self",
+      "duration": "10 minutes",
+      "classes": "Druid",
+      "subclasses": "Lore"
     }
   },
   {
@@ -6797,18 +5287,12 @@
       "somatic",
       "material"
     ],
-    "options": [],
-    "choose": null,
-    "numbers": {},
-    "notes": {
-      "level": "6",
+    "facts": {
+      "level": 6,
       "area": "30-foot cube",
       "range": "120 feet",
       "duration": "Until dispelled",
       "classes": "Bard, Wizard"
-    },
-    "facts": {
-      "level": 6
     }
   },
   {
@@ -6821,18 +5305,12 @@
       "somatic",
       "material"
     ],
-    "options": [],
-    "choose": null,
-    "numbers": {},
-    "notes": {
-      "level": "7",
+    "facts": {
+      "level": 7,
+      "concentration": true,
       "range": "500 miles",
       "duration": "Up to 24 hours",
       "classes": "Bard, Wizard"
-    },
-    "facts": {
-      "level": 7,
-      "concentration": true
     }
   },
   {
@@ -6844,19 +5322,13 @@
       "verbal",
       "somatic"
     ],
-    "options": [],
-    "choose": null,
-    "numbers": {},
-    "notes": {
-      "level": "3",
+    "facts": {
+      "level": 3,
+      "concentration": true,
       "range": "Touch",
       "duration": "Up to 1 hour",
       "classes": "Cleric, Druid, Ranger, Sorcerer, Wizard",
       "subclasses": "Lore, Land"
-    },
-    "facts": {
-      "level": 3,
-      "concentration": true
     }
   },
   {
@@ -6869,19 +5341,13 @@
       "somatic",
       "material"
     ],
-    "options": [],
-    "choose": null,
-    "numbers": {},
-    "notes": {
-      "level": "1",
+    "facts": {
+      "level": 1,
+      "concentration": true,
       "range": "Touch",
       "duration": "Up to 10 minutes",
       "classes": "Cleric, Paladin, Warlock, Wizard",
       "subclasses": "Lore, Devotion"
-    },
-    "facts": {
-      "level": 1,
-      "concentration": true
     }
   },
   {
@@ -6892,18 +5358,12 @@
       "verbal",
       "somatic"
     ],
-    "options": [],
-    "choose": null,
-    "numbers": {},
-    "notes": {
-      "level": "2",
+    "facts": {
+      "level": 2,
       "range": "Touch",
       "duration": "1 hour",
       "classes": "Cleric, Druid, Paladin, Ranger",
       "subclasses": "Lore"
-    },
-    "facts": {
-      "level": 2
     }
   },
   {
@@ -6915,17 +5375,11 @@
       "verbal",
       "somatic"
     ],
-    "options": [],
-    "choose": null,
-    "numbers": {},
-    "notes": {
-      "level": "1",
+    "facts": {
+      "level": 1,
       "range": "10 feet",
       "classes": "Cleric, Druid, Paladin",
       "subclasses": "Lore"
-    },
-    "facts": {
-      "level": 1
     }
   },
   {
@@ -6937,18 +5391,12 @@
       "somatic",
       "material"
     ],
-    "options": [],
-    "choose": null,
-    "numbers": {},
-    "notes": {
-      "level": "5",
+    "facts": {
+      "level": 5,
       "range": "Touch",
       "casting-time": "1 hour",
       "classes": "Bard, Cleric, Paladin",
       "subclasses": "Life"
-    },
-    "facts": {
-      "level": 5
     }
   },
   {
@@ -6960,24 +5408,16 @@
       "verbal",
       "somatic"
     ],
-    "options": [],
-    "choose": null,
-    "numbers": {},
-    "notes": {
-      "level": "2",
-      "attack": "ranged spell attack",
-      "save": "CON (no effect on success)",
-      "range": "60 feet",
-      "duration": "Up to 1 minute",
-      "classes": "Warlock, Wizard",
-      "subclasses": "Lore"
-    },
     "facts": {
       "level": 2,
       "attack-type": "ranged",
       "save-ability": "constitution",
       "save-success": "none",
-      "concentration": true
+      "concentration": true,
+      "range": "60 feet",
+      "duration": "Up to 1 minute",
+      "classes": "Warlock, Wizard",
+      "subclasses": "Lore"
     }
   },
   {
@@ -6988,20 +5428,9 @@
       "verbal",
       "somatic"
     ],
-    "options": [],
-    "choose": null,
-    "numbers": {},
-    "notes": {
-      "level": "cantrip",
-      "attack": "ranged spell attack",
-      "damage": "1d8 cold",
-      "scaling": "level 5: 2d8, level 11: 3d8, level 17: 4d8",
-      "range": "60 feet",
-      "classes": "Sorcerer, Wizard",
-      "subclasses": "Lore"
-    },
     "facts": {
       "attack-type": "ranged",
+      "damage-type": "cold",
       "damage-ladder": [
         [
           0,
@@ -7019,7 +5448,10 @@
           17,
           "4d8"
         ]
-      ]
+      ],
+      "range": "60 feet",
+      "classes": "Sorcerer, Wizard",
+      "subclasses": "Lore"
     }
   },
   {
@@ -7031,17 +5463,6 @@
       "somatic",
       "material"
     ],
-    "options": [],
-    "choose": null,
-    "numbers": {},
-    "notes": {
-      "level": "7",
-      "heal": "4d8 + 15",
-      "range": "Touch",
-      "casting-time": "1 minute",
-      "duration": "1 hour",
-      "classes": "Bard, Cleric, Druid"
-    },
     "facts": {
       "level": 7,
       "heal-ladder": [
@@ -7049,7 +5470,11 @@
           0,
           "4d8 + 15"
         ]
-      ]
+      ],
+      "range": "Touch",
+      "casting-time": "1 minute",
+      "duration": "1 hour",
+      "classes": "Bard, Cleric, Druid"
     }
   },
   {
@@ -7061,17 +5486,11 @@
       "somatic",
       "material"
     ],
-    "options": [],
-    "choose": null,
-    "numbers": {},
-    "notes": {
-      "level": "5",
+    "facts": {
+      "level": 5,
       "range": "Touch",
       "casting-time": "1 hour",
       "classes": "Druid"
-    },
-    "facts": {
-      "level": 5
     }
   },
   {
@@ -7082,17 +5501,11 @@
       "verbal",
       "somatic"
     ],
-    "options": [],
-    "choose": null,
-    "numbers": {},
-    "notes": {
-      "level": "3",
+    "facts": {
+      "level": 3,
       "range": "Touch",
       "classes": "Cleric, Paladin, Warlock, Wizard",
       "subclasses": "Lore"
-    },
-    "facts": {
-      "level": 3
     }
   },
   {
@@ -7105,21 +5518,14 @@
       "somatic",
       "material"
     ],
-    "options": [],
-    "choose": null,
-    "numbers": {},
-    "notes": {
-      "level": "4",
-      "save": "DEX (no effect on success)",
-      "range": "30 feet",
-      "duration": "Up to 1 minute",
-      "classes": "Wizard"
-    },
     "facts": {
       "level": 4,
       "save-ability": "dexterity",
       "save-success": "none",
-      "concentration": true
+      "concentration": true,
+      "range": "30 feet",
+      "duration": "Up to 1 minute",
+      "classes": "Wizard"
     }
   },
   {
@@ -7132,18 +5538,12 @@
       "somatic",
       "material"
     ],
-    "options": [],
-    "choose": null,
-    "numbers": {},
-    "notes": {
-      "level": "cantrip",
+    "facts": {
+      "concentration": true,
       "range": "Touch",
       "duration": "Up to 1 minute",
       "classes": "Cleric, Druid",
       "subclasses": "Lore"
-    },
-    "facts": {
-      "concentration": true
     }
   },
   {
@@ -7155,17 +5555,11 @@
       "somatic",
       "material"
     ],
-    "options": [],
-    "choose": null,
-    "numbers": {},
-    "notes": {
-      "level": "7",
+    "facts": {
+      "level": 7,
       "range": "Touch",
       "casting-time": "1 hour",
       "classes": "Bard, Cleric"
-    },
-    "facts": {
-      "level": 7
     }
   },
   {
@@ -7178,22 +5572,15 @@
       "somatic",
       "material"
     ],
-    "options": [],
-    "choose": null,
-    "numbers": {},
-    "notes": {
-      "level": "7",
-      "save": "DEX (see text)",
-      "area": "50-foot cylinder",
-      "range": "100 feet",
-      "duration": "Up to 1 minute",
-      "classes": "Druid, Sorcerer, Wizard"
-    },
     "facts": {
       "level": 7,
       "save-ability": "dexterity",
       "save-success": "other",
-      "concentration": true
+      "concentration": true,
+      "area": "50-foot cylinder",
+      "range": "100 feet",
+      "duration": "Up to 1 minute",
+      "classes": "Druid, Sorcerer, Wizard"
     }
   },
   {
@@ -7205,17 +5592,11 @@
       "somatic",
       "material"
     ],
-    "options": [],
-    "choose": null,
-    "numbers": {},
-    "notes": {
-      "level": "3",
+    "facts": {
+      "level": 3,
       "range": "Touch",
       "classes": "Cleric, Paladin",
       "subclasses": "Lore, Life"
-    },
-    "facts": {
-      "level": 3
     }
   },
   {
@@ -7227,18 +5608,12 @@
       "somatic",
       "material"
     ],
-    "options": [],
-    "choose": null,
-    "numbers": {},
-    "notes": {
-      "level": "2",
+    "facts": {
+      "level": 2,
       "range": "Touch",
       "duration": "1 hour",
       "classes": "Wizard",
       "subclasses": "Lore"
-    },
-    "facts": {
-      "level": 2
     }
   },
   {
@@ -7249,21 +5624,10 @@
       "verbal",
       "somatic"
     ],
-    "options": [],
-    "choose": null,
-    "numbers": {},
-    "notes": {
-      "level": "cantrip",
-      "save": "DEX (no effect on success)",
-      "damage": "1d8 radiant",
-      "scaling": "level 5: 2d8, level 11: 3d8, level 17: 4d8",
-      "range": "60 feet",
-      "classes": "Cleric",
-      "subclasses": "Lore"
-    },
     "facts": {
       "save-ability": "dexterity",
       "save-success": "none",
+      "damage-type": "radiant",
       "damage-ladder": [
         [
           0,
@@ -7281,7 +5645,10 @@
           17,
           "4d8"
         ]
-      ]
+      ],
+      "range": "60 feet",
+      "classes": "Cleric",
+      "subclasses": "Lore"
     }
   },
   {
@@ -7293,19 +5660,13 @@
       "somatic",
       "material"
     ],
-    "options": [],
-    "choose": null,
-    "numbers": {},
-    "notes": {
-      "level": "1",
+    "facts": {
+      "level": 1,
       "range": "30 feet",
       "casting-time": "1 bonus action",
       "duration": "1 minute",
       "classes": "Cleric",
       "subclasses": "Lore, Devotion"
-    },
-    "facts": {
-      "level": 1
     }
   },
   {
@@ -7316,24 +5677,18 @@
       "verbal",
       "somatic"
     ],
-    "options": [],
-    "choose": null,
-    "numbers": {},
-    "notes": {
-      "level": "2",
-      "damage": "2d6 fire",
-      "range": "120 feet",
-      "classes": "Sorcerer, Wizard",
-      "subclasses": "Lore, Fiend"
-    },
     "facts": {
       "level": 2,
+      "damage-type": "fire",
       "damage-ladder": [
         [
           0,
           "2d6"
         ]
-      ]
+      ],
+      "range": "120 feet",
+      "classes": "Sorcerer, Wizard",
+      "subclasses": "Lore, Fiend"
     }
   },
   {
@@ -7346,23 +5701,16 @@
       "somatic",
       "material"
     ],
-    "options": [],
-    "choose": null,
-    "numbers": {},
-    "notes": {
-      "level": "5",
-      "save": "WIS (no effect on success)",
+    "facts": {
+      "level": 5,
+      "save-ability": "wisdom",
+      "save-success": "none",
+      "concentration": true,
       "range": "Self",
       "casting-time": "10 minutes",
       "duration": "Up to 10 minutes",
       "classes": "Bard, Cleric, Druid, Warlock, Wizard",
       "subclasses": "Land"
-    },
-    "facts": {
-      "level": 5,
-      "save-ability": "wisdom",
-      "save-success": "none",
-      "concentration": true
     }
   },
   {
@@ -7374,16 +5722,10 @@
       "somatic",
       "material"
     ],
-    "options": [],
-    "choose": null,
-    "numbers": {},
-    "notes": {
-      "level": "4",
+    "facts": {
+      "level": 4,
       "range": "Touch",
       "classes": "Wizard"
-    },
-    "facts": {
-      "level": 4
     }
   },
   {
@@ -7395,18 +5737,12 @@
       "somatic",
       "material"
     ],
-    "options": [],
-    "choose": null,
-    "numbers": {},
-    "notes": {
-      "level": "2",
+    "facts": {
+      "level": 2,
       "range": "Self",
       "duration": "1 hour",
       "classes": "Bard, Sorcerer, Wizard",
       "subclasses": "Lore"
-    },
-    "facts": {
-      "level": 2
     }
   },
   {
@@ -7417,17 +5753,11 @@
       "verbal",
       "somatic"
     ],
-    "options": [],
-    "choose": null,
-    "numbers": {},
-    "notes": {
-      "level": "5",
+    "facts": {
+      "level": 5,
       "range": "30 feet",
       "duration": "8 hours",
       "classes": "Bard, Sorcerer, Wizard"
-    },
-    "facts": {
-      "level": 5
     }
   },
   {
@@ -7439,18 +5769,12 @@
       "somatic",
       "material"
     ],
-    "options": [],
-    "choose": null,
-    "numbers": {},
-    "notes": {
-      "level": "3",
+    "facts": {
+      "level": 3,
       "range": "Unlimited",
       "duration": "1 round",
       "classes": "Bard, Cleric, Wizard",
       "subclasses": "Lore"
-    },
-    "facts": {
-      "level": 3
     }
   },
   {
@@ -7462,17 +5786,11 @@
       "somatic",
       "material"
     ],
-    "options": [],
-    "choose": null,
-    "numbers": {},
-    "notes": {
-      "level": "7",
+    "facts": {
+      "level": 7,
       "range": "Touch",
       "duration": "Until dispelled",
       "classes": "Wizard"
-    },
-    "facts": {
-      "level": 7
     }
   },
   {
@@ -7485,18 +5803,12 @@
       "somatic",
       "material"
     ],
-    "options": [],
-    "choose": null,
-    "numbers": {},
-    "notes": {
-      "level": "9",
+    "facts": {
+      "level": 9,
+      "concentration": true,
       "range": "Self",
       "duration": "Up to 1 hour",
       "classes": "Druid, Wizard"
-    },
-    "facts": {
-      "level": 9,
-      "concentration": true
     }
   },
   {
@@ -7508,23 +5820,11 @@
       "somatic",
       "material"
     ],
-    "options": [],
-    "choose": null,
-    "numbers": {},
-    "notes": {
-      "level": "2",
-      "save": "CON (half on success)",
-      "damage": "3d8 thunder",
-      "scaling": "slot 3: 4d8, slot 4: 5d8, slot 5: 6d8, slot 6: 7d8, slot 7: 8d8, slot 8: 9d8, slot 9: 10d8",
-      "area": "10-foot sphere",
-      "range": "60 feet",
-      "classes": "Bard, Sorcerer, Warlock, Wizard",
-      "subclasses": "Lore"
-    },
     "facts": {
       "level": 2,
       "save-ability": "constitution",
       "save-success": "half",
+      "damage-type": "thunder",
       "damage-ladder": [
         [
           0,
@@ -7558,7 +5858,11 @@
           9,
           "10d8"
         ]
-      ]
+      ],
+      "area": "10-foot sphere",
+      "range": "60 feet",
+      "classes": "Bard, Sorcerer, Warlock, Wizard",
+      "subclasses": "Lore"
     }
   },
   {
@@ -7569,19 +5873,13 @@
       "verbal",
       "somatic"
     ],
-    "options": [],
-    "choose": null,
-    "numbers": {},
-    "notes": {
-      "level": "1",
+    "facts": {
+      "level": 1,
       "range": "Self",
       "casting-time": "1 reaction",
       "duration": "1 round",
       "classes": "Sorcerer, Wizard",
       "subclasses": "Lore"
-    },
-    "facts": {
-      "level": 1
     }
   },
   {
@@ -7594,20 +5892,14 @@
       "somatic",
       "material"
     ],
-    "options": [],
-    "choose": null,
-    "numbers": {},
-    "notes": {
-      "level": "1",
+    "facts": {
+      "level": 1,
+      "concentration": true,
       "range": "60 feet",
       "casting-time": "1 bonus action",
       "duration": "Up to 10 minutes",
       "classes": "Cleric, Paladin",
       "subclasses": "Lore"
-    },
-    "facts": {
-      "level": 1,
-      "concentration": true
     }
   },
   {
@@ -7619,18 +5911,13 @@
       "somatic",
       "material"
     ],
-    "options": [],
-    "choose": null,
-    "numbers": {},
-    "notes": {
-      "level": "cantrip",
+    "facts": {
       "range": "Touch",
       "casting-time": "1 bonus action",
       "duration": "1 minute",
       "classes": "Druid",
       "subclasses": "Lore"
-    },
-    "facts": {}
+    }
   },
   {
     "index": "shocking-grasp",
@@ -7640,20 +5927,9 @@
       "verbal",
       "somatic"
     ],
-    "options": [],
-    "choose": null,
-    "numbers": {},
-    "notes": {
-      "level": "cantrip",
-      "attack": "melee spell attack",
-      "damage": "1d8 lightning",
-      "scaling": "level 5: 2d8, level 11: 3d8, level 17: 4d8",
-      "range": "Touch",
-      "classes": "Sorcerer, Wizard",
-      "subclasses": "Lore"
-    },
     "facts": {
       "attack-type": "melee",
+      "damage-type": "lightning",
       "damage-ladder": [
         [
           0,
@@ -7671,7 +5947,10 @@
           17,
           "4d8"
         ]
-      ]
+      ],
+      "range": "Touch",
+      "classes": "Sorcerer, Wizard",
+      "subclasses": "Lore"
     }
   },
   {
@@ -7684,20 +5963,14 @@
       "verbal",
       "somatic"
     ],
-    "options": [],
-    "choose": null,
-    "numbers": {},
-    "notes": {
-      "level": "2",
+    "facts": {
+      "level": 2,
+      "concentration": true,
       "area": "20-foot sphere",
       "range": "120 feet",
       "duration": "Up to 10 minutes",
       "classes": "Bard, Cleric, Ranger",
       "subclasses": "Lore, Land"
-    },
-    "facts": {
-      "level": 2,
-      "concentration": true
     }
   },
   {
@@ -7710,20 +5983,14 @@
       "somatic",
       "material"
     ],
-    "options": [],
-    "choose": null,
-    "numbers": {},
-    "notes": {
-      "level": "1",
+    "facts": {
+      "level": 1,
+      "concentration": true,
       "area": "15-foot cube",
       "range": "60 feet",
       "duration": "Up to 10 minutes",
       "classes": "Bard, Sorcerer, Wizard",
       "subclasses": "Lore"
-    },
-    "facts": {
-      "level": 1,
-      "concentration": true
     }
   },
   {
@@ -7735,18 +6002,12 @@
       "somatic",
       "material"
     ],
-    "options": [],
-    "choose": null,
-    "numbers": {},
-    "notes": {
-      "level": "7",
+    "facts": {
+      "level": 7,
       "range": "Touch",
       "casting-time": "12 hours",
       "duration": "Until dispelled",
       "classes": "Wizard"
-    },
-    "facts": {
-      "level": 7
     }
   },
   {
@@ -7758,18 +6019,6 @@
       "somatic",
       "material"
     ],
-    "options": [],
-    "choose": null,
-    "numbers": {},
-    "notes": {
-      "level": "1",
-      "damage": "5d8",
-      "area": "20-foot sphere",
-      "range": "90 feet",
-      "duration": "1 minute",
-      "classes": "Bard, Sorcerer, Wizard",
-      "subclasses": "Lore"
-    },
     "facts": {
       "level": 1,
       "damage-ladder": [
@@ -7777,7 +6026,12 @@
           0,
           "5d8"
         ]
-      ]
+      ],
+      "area": "20-foot sphere",
+      "range": "90 feet",
+      "duration": "1 minute",
+      "classes": "Bard, Sorcerer, Wizard",
+      "subclasses": "Lore"
     }
   },
   {
@@ -7790,20 +6044,14 @@
       "somatic",
       "material"
     ],
-    "options": [],
-    "choose": null,
-    "numbers": {},
-    "notes": {
-      "level": "3",
+    "facts": {
+      "level": 3,
+      "concentration": true,
       "area": "40-foot cylinder",
       "range": "150 feet",
       "duration": "Up to 1 minute",
       "classes": "Druid, Sorcerer, Wizard",
       "subclasses": "Lore, Land"
-    },
-    "facts": {
-      "level": 3,
-      "concentration": true
     }
   },
   {
@@ -7816,23 +6064,16 @@
       "somatic",
       "material"
     ],
-    "options": [],
-    "choose": null,
-    "numbers": {},
-    "notes": {
-      "level": "3",
-      "save": "WIS (no effect on success)",
+    "facts": {
+      "level": 3,
+      "save-ability": "wisdom",
+      "save-success": "none",
+      "concentration": true,
       "area": "40-foot cube",
       "range": "120 feet",
       "duration": "Up to 1 minute",
       "classes": "Sorcerer, Wizard",
       "subclasses": "Lore, Land"
-    },
-    "facts": {
-      "level": 3,
-      "save-ability": "wisdom",
-      "save-success": "none",
-      "concentration": true
     }
   },
   {
@@ -7843,15 +6084,10 @@
       "verbal",
       "somatic"
     ],
-    "options": [],
-    "choose": null,
-    "numbers": {},
-    "notes": {
-      "level": "cantrip",
+    "facts": {
       "range": "Touch",
       "classes": "Cleric"
-    },
-    "facts": {}
+    }
   },
   {
     "index": "speak-with-animals",
@@ -7862,18 +6098,12 @@
       "verbal",
       "somatic"
     ],
-    "options": [],
-    "choose": null,
-    "numbers": {},
-    "notes": {
-      "level": "1",
+    "facts": {
+      "level": 1,
       "range": "Self",
       "duration": "10 minutes",
       "classes": "Bard, Druid, Ranger",
       "subclasses": "Lore"
-    },
-    "facts": {
-      "level": 1
     }
   },
   {
@@ -7885,18 +6115,12 @@
       "somatic",
       "material"
     ],
-    "options": [],
-    "choose": null,
-    "numbers": {},
-    "notes": {
-      "level": "3",
+    "facts": {
+      "level": 3,
       "range": "10 feet",
       "duration": "10 minutes",
       "classes": "Bard, Cleric",
       "subclasses": "Lore"
-    },
-    "facts": {
-      "level": 3
     }
   },
   {
@@ -7907,19 +6131,13 @@
       "verbal",
       "somatic"
     ],
-    "options": [],
-    "choose": null,
-    "numbers": {},
-    "notes": {
-      "level": "3",
+    "facts": {
+      "level": 3,
       "area": "30-foot sphere",
       "range": "Self",
       "duration": "10 minutes",
       "classes": "Bard, Druid, Ranger",
       "subclasses": "Lore"
-    },
-    "facts": {
-      "level": 3
     }
   },
   {
@@ -7932,19 +6150,13 @@
       "somatic",
       "material"
     ],
-    "options": [],
-    "choose": null,
-    "numbers": {},
-    "notes": {
-      "level": "2",
+    "facts": {
+      "level": 2,
+      "concentration": true,
       "range": "Touch",
       "duration": "Up to 1 hour",
       "classes": "Sorcerer, Warlock, Wizard",
       "subclasses": "Lore, Land"
-    },
-    "facts": {
-      "level": 2,
-      "concentration": true
     }
   },
   {
@@ -7957,20 +6169,14 @@
       "somatic",
       "material"
     ],
-    "options": [],
-    "choose": null,
-    "numbers": {},
-    "notes": {
-      "level": "2",
+    "facts": {
+      "level": 2,
+      "concentration": true,
       "area": "20-foot cylinder",
       "range": "150 feet",
       "duration": "Up to 10 minutes",
       "classes": "Druid, Ranger",
       "subclasses": "Lore, Land"
-    },
-    "facts": {
-      "level": 2,
-      "concentration": true
     }
   },
   {
@@ -7983,19 +6189,13 @@
       "somatic",
       "material"
     ],
-    "options": [],
-    "choose": null,
-    "numbers": {},
-    "notes": {
-      "level": "3",
+    "facts": {
+      "level": 3,
+      "concentration": true,
       "range": "Self",
       "duration": "Up to 10 minutes",
       "classes": "Cleric",
       "subclasses": "Lore"
-    },
-    "facts": {
-      "level": 3,
-      "concentration": true
     }
   },
   {
@@ -8006,23 +6206,10 @@
       "verbal",
       "somatic"
     ],
-    "options": [],
-    "choose": null,
-    "numbers": {},
-    "notes": {
-      "level": "2",
-      "attack": "melee spell attack",
-      "damage": "1d8 + spellcasting modifier force",
-      "scaling": "slot 3: 1d8 + spellcasting modifier, slot 4: 2d8 + spellcasting modifier, slot 5: 2d8 + spellcasting modifier, slot 6: 3d8 + spellcasting modifier, slot 7: 3d8 + spellcasting modifier, slot 8: 4d8 + spellcasting modifier, slot 9: 4d8 + spellcasting modifier",
-      "range": "60 feet",
-      "casting-time": "1 bonus action",
-      "duration": "1 minute",
-      "classes": "Cleric",
-      "subclasses": "Lore, Life"
-    },
     "facts": {
       "level": 2,
       "attack-type": "melee",
+      "damage-type": "force",
       "damage-with-modifier": true,
       "damage-ladder": [
         [
@@ -8057,7 +6244,12 @@
           9,
           "4d8"
         ]
-      ]
+      ],
+      "range": "60 feet",
+      "casting-time": "1 bonus action",
+      "duration": "1 minute",
+      "classes": "Cleric",
+      "subclasses": "Lore, Life"
     }
   },
   {
@@ -8070,23 +6262,16 @@
       "somatic",
       "material"
     ],
-    "options": [],
-    "choose": null,
-    "numbers": {},
-    "notes": {
-      "level": "3",
-      "save": "CON (no effect on success)",
+    "facts": {
+      "level": 3,
+      "save-ability": "constitution",
+      "save-success": "none",
+      "concentration": true,
       "area": "20-foot sphere",
       "range": "90 feet",
       "duration": "Up to 1 minute",
       "classes": "Bard, Sorcerer, Wizard",
       "subclasses": "Lore, Land, Fiend"
-    },
-    "facts": {
-      "level": 3,
-      "save-ability": "constitution",
-      "save-success": "none",
-      "concentration": true
     }
   },
   {
@@ -8098,17 +6283,11 @@
       "somatic",
       "material"
     ],
-    "options": [],
-    "choose": null,
-    "numbers": {},
-    "notes": {
-      "level": "4",
+    "facts": {
+      "level": 4,
       "range": "Touch",
       "classes": "Cleric, Druid, Wizard",
       "subclasses": "Land"
-    },
-    "facts": {
-      "level": 4
     }
   },
   {
@@ -8121,19 +6300,13 @@
       "somatic",
       "material"
     ],
-    "options": [],
-    "choose": null,
-    "numbers": {},
-    "notes": {
-      "level": "4",
+    "facts": {
+      "level": 4,
+      "concentration": true,
       "range": "Touch",
       "duration": "Up to 1 hour",
       "classes": "Druid, Ranger, Sorcerer, Wizard",
       "subclasses": "Land"
-    },
-    "facts": {
-      "level": 4,
-      "concentration": true
     }
   },
   {
@@ -8145,29 +6318,22 @@
       "verbal",
       "somatic"
     ],
-    "options": [],
-    "choose": null,
-    "numbers": {},
-    "notes": {
-      "level": "9",
-      "save": "CON (no effect on success)",
-      "damage": "2d6 thunder",
-      "area": "360-foot sphere",
-      "range": "Sight",
-      "duration": "Up to 1 minute",
-      "classes": "Druid"
-    },
     "facts": {
       "level": 9,
       "save-ability": "constitution",
       "save-success": "none",
+      "damage-type": "thunder",
       "concentration": true,
       "damage-ladder": [
         [
           0,
           "2d6"
         ]
-      ]
+      ],
+      "area": "360-foot sphere",
+      "range": "Sight",
+      "duration": "Up to 1 minute",
+      "classes": "Druid"
     }
   },
   {
@@ -8179,22 +6345,15 @@
       "verbal",
       "material"
     ],
-    "options": [],
-    "choose": null,
-    "numbers": {},
-    "notes": {
-      "level": "2",
-      "save": "WIS (no effect on success)",
-      "range": "30 feet",
-      "duration": "Up to 8 hours",
-      "classes": "Bard, Sorcerer, Warlock, Wizard",
-      "subclasses": "Lore"
-    },
     "facts": {
       "level": 2,
       "save-ability": "wisdom",
       "save-success": "none",
-      "concentration": true
+      "concentration": true,
+      "range": "30 feet",
+      "duration": "Up to 8 hours",
+      "classes": "Bard, Sorcerer, Warlock, Wizard",
+      "subclasses": "Lore"
     }
   },
   {
@@ -8207,29 +6366,22 @@
       "somatic",
       "material"
     ],
-    "options": [],
-    "choose": null,
-    "numbers": {},
-    "notes": {
-      "level": "6",
-      "save": "CON (half on success)",
-      "damage": "6d8 radiant",
-      "area": "60-foot line",
-      "range": "Self",
-      "duration": "Up to 1 minute",
-      "classes": "Druid, Sorcerer, Wizard"
-    },
     "facts": {
       "level": 6,
       "save-ability": "constitution",
       "save-success": "half",
+      "damage-type": "radiant",
       "concentration": true,
       "damage-ladder": [
         [
           0,
           "6d8"
         ]
-      ]
+      ],
+      "area": "60-foot line",
+      "range": "Self",
+      "duration": "Up to 1 minute",
+      "classes": "Druid, Sorcerer, Wizard"
     }
   },
   {
@@ -8241,27 +6393,20 @@
       "somatic",
       "material"
     ],
-    "options": [],
-    "choose": null,
-    "numbers": {},
-    "notes": {
-      "level": "8",
-      "save": "CON (half on success)",
-      "damage": "12d6 radiant",
-      "area": "60-foot cylinder",
-      "range": "150 feet",
-      "classes": "Druid, Sorcerer, Wizard"
-    },
     "facts": {
       "level": 8,
       "save-ability": "constitution",
       "save-success": "half",
+      "damage-type": "radiant",
       "damage-ladder": [
         [
           0,
           "12d6"
         ]
-      ]
+      ],
+      "area": "60-foot cylinder",
+      "range": "150 feet",
+      "classes": "Druid, Sorcerer, Wizard"
     }
   },
   {
@@ -8273,19 +6418,13 @@
       "somatic",
       "material"
     ],
-    "options": [],
-    "choose": null,
-    "numbers": {},
-    "notes": {
-      "level": "7",
+    "facts": {
+      "level": 7,
       "area": "10-foot cube",
       "range": "Touch",
       "casting-time": "1 minute",
       "duration": "Until dispelled",
       "classes": "Bard, Cleric, Wizard"
-    },
-    "facts": {
-      "level": 7
     }
   },
   {
@@ -8297,19 +6436,13 @@
       "verbal",
       "somatic"
     ],
-    "options": [],
-    "choose": null,
-    "numbers": {},
-    "notes": {
-      "level": "5",
+    "facts": {
+      "level": 5,
+      "concentration": true,
       "area": "30-foot sphere",
       "range": "60 feet",
       "duration": "Up to 10 minutes",
       "classes": "Sorcerer, Wizard"
-    },
-    "facts": {
-      "level": 5,
-      "concentration": true
     }
   },
   {
@@ -8322,17 +6455,11 @@
       "somatic",
       "material"
     ],
-    "options": [],
-    "choose": null,
-    "numbers": {},
-    "notes": {
-      "level": "5",
+    "facts": {
+      "level": 5,
       "range": "30 feet",
       "duration": "1 hour",
       "classes": "Wizard"
-    },
-    "facts": {
-      "level": 5
     }
   },
   {
@@ -8342,17 +6469,11 @@
     "tags": [
       "verbal"
     ],
-    "options": [],
-    "choose": null,
-    "numbers": {},
-    "notes": {
-      "level": "7",
+    "facts": {
+      "level": 7,
       "area": "10-foot cube",
       "range": "10 feet",
       "classes": "Bard, Sorcerer, Wizard"
-    },
-    "facts": {
-      "level": 7
     }
   },
   {
@@ -8363,19 +6484,13 @@
       "verbal",
       "material"
     ],
-    "options": [],
-    "choose": null,
-    "numbers": {},
-    "notes": {
-      "level": "5",
+    "facts": {
+      "level": 5,
       "area": "10-foot sphere",
       "range": "10 feet",
       "casting-time": "1 minute",
       "duration": "1 round",
       "classes": "Bard, Sorcerer, Wizard"
-    },
-    "facts": {
-      "level": 5
     }
   },
   {
@@ -8385,17 +6500,12 @@
     "tags": [
       "verbal"
     ],
-    "options": [],
-    "choose": null,
-    "numbers": {},
-    "notes": {
-      "level": "cantrip",
+    "facts": {
       "range": "30 feet",
       "duration": "1 minute",
       "classes": "Cleric",
       "subclasses": "Lore"
-    },
-    "facts": {}
+    }
   },
   {
     "index": "thunderwave",
@@ -8405,23 +6515,11 @@
       "verbal",
       "somatic"
     ],
-    "options": [],
-    "choose": null,
-    "numbers": {},
-    "notes": {
-      "level": "1",
-      "save": "CON (half on success)",
-      "damage": "2d8 thunder",
-      "scaling": "slot 2: 3d8, slot 3: 4d8, slot 4: 5d8, slot 5: 6d8, slot 6: 7d8, slot 7: 8d8, slot 8: 9d8, slot 9: 10d8",
-      "area": "15-foot cube",
-      "range": "Self",
-      "classes": "Bard, Druid, Sorcerer, Wizard",
-      "subclasses": "Lore"
-    },
     "facts": {
       "level": 1,
       "save-ability": "constitution",
       "save-success": "half",
+      "damage-type": "thunder",
       "damage-ladder": [
         [
           0,
@@ -8459,7 +6557,11 @@
           9,
           "10d8"
         ]
-      ]
+      ],
+      "area": "15-foot cube",
+      "range": "Self",
+      "classes": "Bard, Druid, Sorcerer, Wizard",
+      "subclasses": "Lore"
     }
   },
   {
@@ -8469,16 +6571,10 @@
     "tags": [
       "verbal"
     ],
-    "options": [],
-    "choose": null,
-    "numbers": {},
-    "notes": {
-      "level": "9",
+    "facts": {
+      "level": 9,
       "range": "Self",
       "classes": "Sorcerer, Wizard"
-    },
-    "facts": {
-      "level": 9
     }
   },
   {
@@ -8491,20 +6587,14 @@
       "somatic",
       "material"
     ],
-    "options": [],
-    "choose": null,
-    "numbers": {},
-    "notes": {
-      "level": "3",
+    "facts": {
+      "level": 3,
       "area": "10-foot sphere",
       "range": "Self",
       "casting-time": "1 minute",
       "duration": "8 hours",
       "classes": "Bard, Wizard",
       "subclasses": "Lore"
-    },
-    "facts": {
-      "level": 3
     }
   },
   {
@@ -8515,18 +6605,12 @@
       "verbal",
       "material"
     ],
-    "options": [],
-    "choose": null,
-    "numbers": {},
-    "notes": {
-      "level": "3",
+    "facts": {
+      "level": 3,
       "range": "Touch",
       "duration": "1 hour",
       "classes": "Bard, Cleric, Sorcerer, Warlock, Wizard",
       "subclasses": "Lore"
-    },
-    "facts": {
-      "level": 3
     }
   },
   {
@@ -8537,17 +6621,11 @@
       "verbal",
       "somatic"
     ],
-    "options": [],
-    "choose": null,
-    "numbers": {},
-    "notes": {
-      "level": "6",
+    "facts": {
+      "level": 6,
       "range": "10 feet",
       "duration": "1 round",
       "classes": "Druid"
-    },
-    "facts": {
-      "level": 6
     }
   },
   {
@@ -8559,19 +6637,13 @@
       "verbal",
       "somatic"
     ],
-    "options": [],
-    "choose": null,
-    "numbers": {},
-    "notes": {
-      "level": "5",
+    "facts": {
+      "level": 5,
+      "concentration": true,
       "range": "Self",
       "duration": "Up to 1 minute",
       "classes": "Druid, Ranger",
       "subclasses": "Land"
-    },
-    "facts": {
-      "level": 5,
-      "concentration": true
     }
   },
   {
@@ -8584,18 +6656,12 @@
       "somatic",
       "material"
     ],
-    "options": [],
-    "choose": null,
-    "numbers": {},
-    "notes": {
-      "level": "9",
+    "facts": {
+      "level": 9,
+      "concentration": true,
       "range": "30 feet",
       "duration": "Up to 1 hour",
       "classes": "Bard, Warlock, Wizard"
-    },
-    "facts": {
-      "level": 9,
-      "concentration": true
     }
   },
   {
@@ -8607,17 +6673,11 @@
       "somatic",
       "material"
     ],
-    "options": [],
-    "choose": null,
-    "numbers": {},
-    "notes": {
-      "level": "9",
+    "facts": {
+      "level": 9,
       "range": "Touch",
       "casting-time": "1 hour",
       "classes": "Cleric, Druid"
-    },
-    "facts": {
-      "level": 9
     }
   },
   {
@@ -8629,17 +6689,11 @@
       "somatic",
       "material"
     ],
-    "options": [],
-    "choose": null,
-    "numbers": {},
-    "notes": {
-      "level": "6",
+    "facts": {
+      "level": 6,
       "range": "Touch",
       "duration": "1 hour",
       "classes": "Bard, Cleric, Sorcerer, Warlock, Wizard"
-    },
-    "facts": {
-      "level": 6
     }
   },
   {
@@ -8650,18 +6704,12 @@
       "concentration",
       "somatic"
     ],
-    "options": [],
-    "choose": null,
-    "numbers": {},
-    "notes": {
-      "level": "cantrip",
+    "facts": {
+      "concentration": true,
       "range": "30 feet",
       "duration": "Up to 1 round",
       "classes": "Bard, Sorcerer, Warlock, Wizard",
       "subclasses": "Lore"
-    },
-    "facts": {
-      "concentration": true
     }
   },
   {
@@ -8674,18 +6722,12 @@
       "somatic",
       "material"
     ],
-    "options": [],
-    "choose": null,
-    "numbers": {},
-    "notes": {
-      "level": "1",
+    "facts": {
+      "level": 1,
       "range": "60 feet",
       "duration": "1 hour",
       "classes": "Bard, Warlock, Wizard",
       "subclasses": "Lore"
-    },
-    "facts": {
-      "level": 1
     }
   },
   {
@@ -8697,22 +6739,10 @@
       "verbal",
       "somatic"
     ],
-    "options": [],
-    "choose": null,
-    "numbers": {},
-    "notes": {
-      "level": "3",
-      "attack": "melee spell attack",
-      "damage": "3d6 necrotic",
-      "scaling": "slot 4: 4d6, slot 5: 5d6, slot 6: 6d6, slot 7: 7d6, slot 8: 8d6, slot 9: 9d6",
-      "range": "Self",
-      "duration": "Up to 1 minute",
-      "classes": "Warlock, Wizard",
-      "subclasses": "Lore"
-    },
     "facts": {
       "level": 3,
       "attack-type": "melee",
+      "damage-type": "necrotic",
       "concentration": true,
       "damage-ladder": [
         [
@@ -8743,7 +6773,11 @@
           9,
           "9d6"
         ]
-      ]
+      ],
+      "range": "Self",
+      "duration": "Up to 1 minute",
+      "classes": "Warlock, Wizard",
+      "subclasses": "Lore"
     }
   },
   {
@@ -8753,20 +6787,10 @@
     "tags": [
       "verbal"
     ],
-    "options": [],
-    "choose": null,
-    "numbers": {},
-    "notes": {
-      "level": "cantrip",
-      "save": "WIS (no effect on success)",
-      "damage": "1d4 psychic",
-      "scaling": "level 5: 2d4, level 11: 3d4, level 17: 4d4",
-      "range": "60 feet",
-      "classes": "Bard"
-    },
     "facts": {
       "save-ability": "wisdom",
       "save-success": "none",
+      "damage-type": "psychic",
       "damage-ladder": [
         [
           0,
@@ -8784,7 +6808,9 @@
           17,
           "4d4"
         ]
-      ]
+      ],
+      "range": "60 feet",
+      "classes": "Bard"
     }
   },
   {
@@ -8797,30 +6823,23 @@
       "somatic",
       "material"
     ],
-    "options": [],
-    "choose": null,
-    "numbers": {},
-    "notes": {
-      "level": "4",
-      "save": "DEX (half on success)",
-      "damage": "5d8 fire",
-      "area": "60-foot line",
-      "range": "120 feet",
-      "duration": "Up to 1 minute",
-      "classes": "Druid, Sorcerer, Wizard",
-      "subclasses": "Fiend"
-    },
     "facts": {
       "level": 4,
       "save-ability": "dexterity",
       "save-success": "half",
+      "damage-type": "fire",
       "concentration": true,
       "damage-ladder": [
         [
           0,
           "5d8"
         ]
-      ]
+      ],
+      "area": "60-foot line",
+      "range": "120 feet",
+      "duration": "Up to 1 minute",
+      "classes": "Druid, Sorcerer, Wizard",
+      "subclasses": "Fiend"
     }
   },
   {
@@ -8833,18 +6852,12 @@
       "somatic",
       "material"
     ],
-    "options": [],
-    "choose": null,
-    "numbers": {},
-    "notes": {
-      "level": "5",
+    "facts": {
+      "level": 5,
+      "concentration": true,
       "range": "120 feet",
       "duration": "Up to 10 minutes",
       "classes": "Wizard"
-    },
-    "facts": {
-      "level": 5,
-      "concentration": true
     }
   },
   {
@@ -8857,23 +6870,11 @@
       "somatic",
       "material"
     ],
-    "options": [],
-    "choose": null,
-    "numbers": {},
-    "notes": {
-      "level": "6",
-      "save": "DEX (half on success)",
-      "damage": "10d6 cold",
-      "scaling": "slot 7: 12d6, slot 8: 14d6, slot 9: 16d6",
-      "area": "10-foot sphere",
-      "range": "120 feet",
-      "duration": "Up to 10 minutes",
-      "classes": "Wizard"
-    },
     "facts": {
       "level": 6,
       "save-ability": "dexterity",
       "save-success": "half",
+      "damage-type": "cold",
       "concentration": true,
       "damage-ladder": [
         [
@@ -8892,7 +6893,11 @@
           9,
           "16d6"
         ]
-      ]
+      ],
+      "area": "10-foot sphere",
+      "range": "120 feet",
+      "duration": "Up to 10 minutes",
+      "classes": "Wizard"
     }
   },
   {
@@ -8905,19 +6910,13 @@
       "somatic",
       "material"
     ],
-    "options": [],
-    "choose": null,
-    "numbers": {},
-    "notes": {
-      "level": "5",
+    "facts": {
+      "level": 5,
+      "concentration": true,
       "range": "120 feet",
       "duration": "Up to 10 minutes",
       "classes": "Druid, Sorcerer, Wizard",
       "subclasses": "Land"
-    },
-    "facts": {
-      "level": 5,
-      "concentration": true
     }
   },
   {
@@ -8930,23 +6929,11 @@
       "somatic",
       "material"
     ],
-    "options": [],
-    "choose": null,
-    "numbers": {},
-    "notes": {
-      "level": "6",
-      "save": "DEX (half on success)",
-      "damage": "7d8 piercing",
-      "scaling": "slot 7: 8d8, slot 8: 9d8, slot 9: 10d8",
-      "area": "60-foot line",
-      "range": "120 feet",
-      "duration": "Up to 10 minutes",
-      "classes": "Druid"
-    },
     "facts": {
       "level": 6,
       "save-ability": "dexterity",
       "save-success": "half",
+      "damage-type": "piercing",
       "concentration": true,
       "damage-ladder": [
         [
@@ -8965,7 +6952,11 @@
           9,
           "10d8"
         ]
-      ]
+      ],
+      "area": "60-foot line",
+      "range": "120 feet",
+      "duration": "Up to 10 minutes",
+      "classes": "Druid"
     }
   },
   {
@@ -8977,18 +6968,12 @@
       "somatic",
       "material"
     ],
-    "options": [],
-    "choose": null,
-    "numbers": {},
-    "notes": {
-      "level": "2",
+    "facts": {
+      "level": 2,
       "range": "Touch",
       "duration": "1 hour",
       "classes": "Cleric",
       "subclasses": "Lore"
-    },
-    "facts": {
-      "level": 2
     }
   },
   {
@@ -9001,18 +6986,12 @@
       "somatic",
       "material"
     ],
-    "options": [],
-    "choose": null,
-    "numbers": {},
-    "notes": {
-      "level": "3",
+    "facts": {
+      "level": 3,
       "range": "30 feet",
       "duration": "24 hours",
       "classes": "Druid, Ranger, Sorcerer, Wizard",
       "subclasses": "Lore, Land"
-    },
-    "facts": {
-      "level": 3
     }
   },
   {
@@ -9025,18 +7004,12 @@
       "somatic",
       "material"
     ],
-    "options": [],
-    "choose": null,
-    "numbers": {},
-    "notes": {
-      "level": "3",
+    "facts": {
+      "level": 3,
       "range": "30 feet",
       "duration": "1 hour",
       "classes": "Cleric, Druid, Ranger, Sorcerer",
       "subclasses": "Lore, Land"
-    },
-    "facts": {
-      "level": 3
     }
   },
   {
@@ -9049,20 +7022,14 @@
       "somatic",
       "material"
     ],
-    "options": [],
-    "choose": null,
-    "numbers": {},
-    "notes": {
-      "level": "2",
+    "facts": {
+      "level": 2,
+      "concentration": true,
       "area": "20-foot cube",
       "range": "60 feet",
       "duration": "Up to 1 hour",
       "classes": "Sorcerer, Wizard",
       "subclasses": "Lore, Land"
-    },
-    "facts": {
-      "level": 2,
-      "concentration": true
     }
   },
   {
@@ -9074,22 +7041,15 @@
       "verbal",
       "somatic"
     ],
-    "options": [],
-    "choose": null,
-    "numbers": {},
-    "notes": {
-      "level": "9",
-      "save": "WIS (no effect on success)",
-      "area": "30-foot sphere",
-      "range": "120 feet",
-      "duration": "Up to 1 minute",
-      "classes": "Wizard"
-    },
     "facts": {
       "level": 9,
       "save-ability": "wisdom",
       "save-success": "none",
-      "concentration": true
+      "concentration": true,
+      "area": "30-foot sphere",
+      "range": "120 feet",
+      "duration": "Up to 1 minute",
+      "classes": "Wizard"
     }
   },
   {
@@ -9101,18 +7061,12 @@
       "somatic",
       "material"
     ],
-    "options": [],
-    "choose": null,
-    "numbers": {},
-    "notes": {
-      "level": "6",
+    "facts": {
+      "level": 6,
       "range": "30 feet",
       "casting-time": "1 minute",
       "duration": "8 hours",
       "classes": "Druid"
-    },
-    "facts": {
-      "level": 6
     }
   },
   {
@@ -9125,30 +7079,23 @@
       "somatic",
       "material"
     ],
-    "options": [],
-    "choose": null,
-    "numbers": {},
-    "notes": {
-      "level": "3",
-      "save": "STR (half on success)",
-      "damage": "3d8 bludgeoning",
-      "area": "50-foot line",
-      "range": "120 feet",
-      "duration": "Up to 1 minute",
-      "classes": "Druid, Ranger",
-      "subclasses": "Lore"
-    },
     "facts": {
       "level": 3,
       "save-ability": "strength",
       "save-success": "half",
+      "damage-type": "bludgeoning",
       "concentration": true,
       "damage-ladder": [
         [
           0,
           "3d8"
         ]
-      ]
+      ],
+      "area": "50-foot line",
+      "range": "120 feet",
+      "duration": "Up to 1 minute",
+      "classes": "Druid, Ranger",
+      "subclasses": "Lore"
     }
   },
   {
@@ -9158,16 +7105,10 @@
     "tags": [
       "verbal"
     ],
-    "options": [],
-    "choose": null,
-    "numbers": {},
-    "notes": {
-      "level": "9",
+    "facts": {
+      "level": 9,
       "range": "Self",
       "classes": "Sorcerer, Wizard"
-    },
-    "facts": {
-      "level": 9
     }
   },
   {
@@ -9177,17 +7118,11 @@
     "tags": [
       "verbal"
     ],
-    "options": [],
-    "choose": null,
-    "numbers": {},
-    "notes": {
-      "level": "6",
+    "facts": {
+      "level": 6,
       "area": "5-foot sphere",
       "range": "5 feet",
       "classes": "Cleric"
-    },
-    "facts": {
-      "level": 6
     }
   },
   {
@@ -9198,19 +7133,13 @@
       "verbal",
       "somatic"
     ],
-    "options": [],
-    "choose": null,
-    "numbers": {},
-    "notes": {
-      "level": "2",
+    "facts": {
+      "level": 2,
       "area": "15-foot sphere",
       "range": "60 feet",
       "duration": "10 minutes",
       "classes": "Bard, Cleric, Paladin",
       "subclasses": "Lore, Devotion"
-    },
-    "facts": {
-      "level": 2
     }
   }
 ]

@@ -30,9 +30,8 @@ EVERYTHING THAT EXISTS:
 - the vault map[id=vault_map] (item) — carried — A creased chart of the undercroft, marking a stair the abbey's own plans deny.
 - a guttering lantern[id=lantern] (item) — carried — A dented tin lantern whose flame will not hold still.
   state:
-    numbers: cost-gp 5
     content:
-    - Lantern, hooded [srd-2014/gear/lantern-hooded]
+    - Lantern, hooded [srd-2014/gear/lantern-hooded] — cost-gp=5
 
 PLAYER:
 I lever up the loose flagstone and listen at the vault door.

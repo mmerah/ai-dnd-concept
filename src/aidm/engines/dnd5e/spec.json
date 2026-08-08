@@ -18,6 +18,11 @@
       }
     }
   },
+  "projecting": [
+    "classes",
+    "races",
+    "monsters"
+  ],
   "collections": {
     "monsters": {},
     "weapons": {},
@@ -33,7 +38,7 @@
     "conditions": {},
     "alignments": {},
     "languages": {
-      "category": "str"
+      "category": "slug"
     },
     "classes": {},
     "subclasses": {
@@ -51,7 +56,7 @@
     "backgrounds": {},
     "feats": {},
     "proficiencies": {
-      "category": "str",
+      "category": "slug",
       "reference": "slug"
     }
   }

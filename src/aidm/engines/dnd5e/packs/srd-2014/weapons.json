@@ -9,18 +9,10 @@
       "light",
       "monk"
     ],
-    "options": [],
-    "choose": null,
-    "numbers": {
-      "cost-sp": 1,
-      "damage-dice-count": 1,
-      "damage-die": 4
-    },
-    "notes": {
-      "damage": "1d4 bludgeoning"
-    },
     "facts": {
-      "damage": "1d4"
+      "cost-sp": 1,
+      "damage": "1d4",
+      "damage-type": "bludgeoning"
     }
   },
   {
@@ -35,20 +27,12 @@
       "thrown",
       "monk"
     ],
-    "options": [],
-    "choose": null,
-    "numbers": {
-      "cost-gp": 2,
-      "damage-dice-count": 1,
-      "damage-die": 4,
-      "thrown-normal": 20,
-      "thrown-long": 60
-    },
-    "notes": {
-      "damage": "1d4 piercing"
-    },
     "facts": {
+      "cost-gp": 2,
+      "thrown-normal": 20,
+      "thrown-long": 60,
       "damage": "1d4",
+      "damage-type": "piercing",
       "finesse": true
     }
   },
@@ -61,18 +45,10 @@
       "bludgeoning",
       "two-handed"
     ],
-    "options": [],
-    "choose": null,
-    "numbers": {
-      "cost-sp": 2,
-      "damage-dice-count": 1,
-      "damage-die": 8
-    },
-    "notes": {
-      "damage": "1d8 bludgeoning"
-    },
     "facts": {
-      "damage": "1d8"
+      "cost-sp": 2,
+      "damage": "1d8",
+      "damage-type": "bludgeoning"
     }
   },
   {
@@ -86,20 +62,12 @@
       "thrown",
       "monk"
     ],
-    "options": [],
-    "choose": null,
-    "numbers": {
-      "cost-gp": 5,
-      "damage-dice-count": 1,
-      "damage-die": 6,
-      "thrown-normal": 20,
-      "thrown-long": 60
-    },
-    "notes": {
-      "damage": "1d6 slashing"
-    },
     "facts": {
-      "damage": "1d6"
+      "cost-gp": 5,
+      "thrown-normal": 20,
+      "thrown-long": 60,
+      "damage": "1d6",
+      "damage-type": "slashing"
     }
   },
   {
@@ -112,20 +80,12 @@
       "thrown",
       "monk"
     ],
-    "options": [],
-    "choose": null,
-    "numbers": {
-      "cost-sp": 5,
-      "damage-dice-count": 1,
-      "damage-die": 6,
-      "thrown-normal": 30,
-      "thrown-long": 120
-    },
-    "notes": {
-      "damage": "1d6 piercing"
-    },
     "facts": {
-      "damage": "1d6"
+      "cost-sp": 5,
+      "thrown-normal": 30,
+      "thrown-long": 120,
+      "damage": "1d6",
+      "damage-type": "piercing"
     }
   },
   {
@@ -139,20 +99,12 @@
       "thrown",
       "monk"
     ],
-    "options": [],
-    "choose": null,
-    "numbers": {
-      "cost-gp": 2,
-      "damage-dice-count": 1,
-      "damage-die": 4,
-      "thrown-normal": 20,
-      "thrown-long": 60
-    },
-    "notes": {
-      "damage": "1d4 bludgeoning"
-    },
     "facts": {
-      "damage": "1d4"
+      "cost-gp": 2,
+      "thrown-normal": 20,
+      "thrown-long": 60,
+      "damage": "1d4",
+      "damage-type": "bludgeoning"
     }
   },
   {
@@ -164,18 +116,10 @@
       "bludgeoning",
       "monk"
     ],
-    "options": [],
-    "choose": null,
-    "numbers": {
-      "cost-gp": 5,
-      "damage-dice-count": 1,
-      "damage-die": 6
-    },
-    "notes": {
-      "damage": "1d6 bludgeoning"
-    },
     "facts": {
-      "damage": "1d6"
+      "cost-gp": 5,
+      "damage": "1d6",
+      "damage-type": "bludgeoning"
     }
   },
   {
@@ -188,21 +132,11 @@
       "versatile",
       "monk"
     ],
-    "options": [],
-    "choose": null,
-    "numbers": {
-      "cost-sp": 2,
-      "damage-dice-count": 1,
-      "damage-die": 6,
-      "two-handed-damage-dice-count": 1,
-      "two-handed-damage-die": 8
-    },
-    "notes": {
-      "damage": "1d6 bludgeoning (two-handed 1d8 bludgeoning)"
-    },
     "facts": {
+      "cost-sp": 2,
       "damage": "1d6",
-      "versatile-damage": "1d8"
+      "versatile-damage": "1d8",
+      "damage-type": "bludgeoning"
     }
   },
   {
@@ -215,18 +149,10 @@
       "light",
       "monk"
     ],
-    "options": [],
-    "choose": null,
-    "numbers": {
-      "cost-gp": 1,
-      "damage-dice-count": 1,
-      "damage-die": 4
-    },
-    "notes": {
-      "damage": "1d4 slashing"
-    },
     "facts": {
-      "damage": "1d4"
+      "cost-gp": 1,
+      "damage": "1d4",
+      "damage-type": "slashing"
     }
   },
   {
@@ -240,23 +166,13 @@
       "versatile",
       "monk"
     ],
-    "options": [],
-    "choose": null,
-    "numbers": {
-      "cost-gp": 1,
-      "damage-dice-count": 1,
-      "damage-die": 6,
-      "two-handed-damage-dice-count": 1,
-      "two-handed-damage-die": 8,
-      "thrown-normal": 20,
-      "thrown-long": 60
-    },
-    "notes": {
-      "damage": "1d6 piercing (two-handed 1d8 piercing)"
-    },
     "facts": {
+      "cost-gp": 1,
+      "thrown-normal": 20,
+      "thrown-long": 60,
       "damage": "1d6",
-      "versatile-damage": "1d8"
+      "versatile-damage": "1d8",
+      "damage-type": "piercing"
     }
   },
   {
@@ -270,20 +186,12 @@
       "loading",
       "two-handed"
     ],
-    "options": [],
-    "choose": null,
-    "numbers": {
-      "cost-gp": 25,
-      "damage-dice-count": 1,
-      "damage-die": 8,
-      "range-normal": 80,
-      "range-long": 320
-    },
-    "notes": {
-      "damage": "1d8 piercing"
-    },
     "facts": {
+      "cost-gp": 25,
+      "range-normal": 80,
+      "range-long": 320,
       "damage": "1d8",
+      "damage-type": "piercing",
       "ranged": true
     }
   },
@@ -297,22 +205,14 @@
       "finesse",
       "thrown"
     ],
-    "options": [],
-    "choose": null,
-    "numbers": {
+    "facts": {
       "cost-cp": 5,
-      "damage-dice-count": 1,
-      "damage-die": 4,
       "range-normal": 20,
       "range-long": 60,
       "thrown-normal": 20,
-      "thrown-long": 60
-    },
-    "notes": {
-      "damage": "1d4 piercing"
-    },
-    "facts": {
+      "thrown-long": 60,
       "damage": "1d4",
+      "damage-type": "piercing",
       "finesse": true,
       "ranged": true
     }
@@ -327,20 +227,12 @@
       "ammunition",
       "two-handed"
     ],
-    "options": [],
-    "choose": null,
-    "numbers": {
-      "cost-gp": 25,
-      "damage-dice-count": 1,
-      "damage-die": 6,
-      "range-normal": 80,
-      "range-long": 320
-    },
-    "notes": {
-      "damage": "1d6 piercing"
-    },
     "facts": {
+      "cost-gp": 25,
+      "range-normal": 80,
+      "range-long": 320,
       "damage": "1d6",
+      "damage-type": "piercing",
       "ranged": true
     }
   },
@@ -353,20 +245,12 @@
       "bludgeoning",
       "ammunition"
     ],
-    "options": [],
-    "choose": null,
-    "numbers": {
-      "cost-sp": 1,
-      "damage-dice-count": 1,
-      "damage-die": 4,
-      "range-normal": 30,
-      "range-long": 120
-    },
-    "notes": {
-      "damage": "1d4 bludgeoning"
-    },
     "facts": {
+      "cost-sp": 1,
+      "range-normal": 30,
+      "range-long": 120,
       "damage": "1d4",
+      "damage-type": "bludgeoning",
       "ranged": true
     }
   },
@@ -379,21 +263,11 @@
       "slashing",
       "versatile"
     ],
-    "options": [],
-    "choose": null,
-    "numbers": {
-      "cost-gp": 10,
-      "damage-dice-count": 1,
-      "damage-die": 8,
-      "two-handed-damage-dice-count": 1,
-      "two-handed-damage-die": 10
-    },
-    "notes": {
-      "damage": "1d8 slashing (two-handed 1d10 slashing)"
-    },
     "facts": {
+      "cost-gp": 10,
       "damage": "1d8",
-      "versatile-damage": "1d10"
+      "versatile-damage": "1d10",
+      "damage-type": "slashing"
     }
   },
   {
@@ -404,18 +278,10 @@
       "melee",
       "bludgeoning"
     ],
-    "options": [],
-    "choose": null,
-    "numbers": {
-      "cost-gp": 10,
-      "damage-dice-count": 1,
-      "damage-die": 8
-    },
-    "notes": {
-      "damage": "1d8 bludgeoning"
-    },
     "facts": {
-      "damage": "1d8"
+      "cost-gp": 10,
+      "damage": "1d8",
+      "damage-type": "bludgeoning"
     }
   },
   {
@@ -429,18 +295,10 @@
       "reach",
       "two-handed"
     ],
-    "options": [],
-    "choose": null,
-    "numbers": {
-      "cost-gp": 20,
-      "damage-dice-count": 1,
-      "damage-die": 10
-    },
-    "notes": {
-      "damage": "1d10 slashing"
-    },
     "facts": {
-      "damage": "1d10"
+      "cost-gp": 20,
+      "damage": "1d10",
+      "damage-type": "slashing"
     }
   },
   {
@@ -453,18 +311,10 @@
       "heavy",
       "two-handed"
     ],
-    "options": [],
-    "choose": null,
-    "numbers": {
-      "cost-gp": 30,
-      "damage-dice-count": 1,
-      "damage-die": 12
-    },
-    "notes": {
-      "damage": "1d12 slashing"
-    },
     "facts": {
-      "damage": "1d12"
+      "cost-gp": 30,
+      "damage": "1d12",
+      "damage-type": "slashing"
     }
   },
   {
@@ -477,18 +327,10 @@
       "heavy",
       "two-handed"
     ],
-    "options": [],
-    "choose": null,
-    "numbers": {
-      "cost-gp": 50,
-      "damage-dice-count": 2,
-      "damage-die": 6
-    },
-    "notes": {
-      "damage": "2d6 slashing"
-    },
     "facts": {
-      "damage": "2d6"
+      "cost-gp": 50,
+      "damage": "2d6",
+      "damage-type": "slashing"
     }
   },
   {
@@ -502,18 +344,10 @@
       "reach",
       "two-handed"
     ],
-    "options": [],
-    "choose": null,
-    "numbers": {
-      "cost-gp": 20,
-      "damage-dice-count": 1,
-      "damage-die": 10
-    },
-    "notes": {
-      "damage": "1d10 slashing"
-    },
     "facts": {
-      "damage": "1d10"
+      "cost-gp": 20,
+      "damage": "1d10",
+      "damage-type": "slashing"
     }
   },
   {
@@ -526,18 +360,10 @@
       "reach",
       "special"
     ],
-    "options": [],
-    "choose": null,
-    "numbers": {
-      "cost-gp": 10,
-      "damage-dice-count": 1,
-      "damage-die": 12
-    },
-    "notes": {
-      "damage": "1d12 piercing"
-    },
     "facts": {
-      "damage": "1d12"
+      "cost-gp": 10,
+      "damage": "1d12",
+      "damage-type": "piercing"
     }
   },
   {
@@ -549,21 +375,11 @@
       "slashing",
       "versatile"
     ],
-    "options": [],
-    "choose": null,
-    "numbers": {
-      "cost-gp": 15,
-      "damage-dice-count": 1,
-      "damage-die": 8,
-      "two-handed-damage-dice-count": 1,
-      "two-handed-damage-die": 10
-    },
-    "notes": {
-      "damage": "1d8 slashing (two-handed 1d10 slashing)"
-    },
     "facts": {
+      "cost-gp": 15,
       "damage": "1d8",
-      "versatile-damage": "1d10"
+      "versatile-damage": "1d10",
+      "damage-type": "slashing"
     }
   },
   {
@@ -576,18 +392,10 @@
       "heavy",
       "two-handed"
     ],
-    "options": [],
-    "choose": null,
-    "numbers": {
-      "cost-gp": 10,
-      "damage-dice-count": 2,
-      "damage-die": 6
-    },
-    "notes": {
-      "damage": "2d6 bludgeoning"
-    },
     "facts": {
-      "damage": "2d6"
+      "cost-gp": 10,
+      "damage": "2d6",
+      "damage-type": "bludgeoning"
     }
   },
   {
@@ -598,18 +406,10 @@
       "melee",
       "piercing"
     ],
-    "options": [],
-    "choose": null,
-    "numbers": {
-      "cost-gp": 15,
-      "damage-dice-count": 1,
-      "damage-die": 8
-    },
-    "notes": {
-      "damage": "1d8 piercing"
-    },
     "facts": {
-      "damage": "1d8"
+      "cost-gp": 15,
+      "damage": "1d8",
+      "damage-type": "piercing"
     }
   },
   {
@@ -623,18 +423,10 @@
       "reach",
       "two-handed"
     ],
-    "options": [],
-    "choose": null,
-    "numbers": {
-      "cost-gp": 5,
-      "damage-dice-count": 1,
-      "damage-die": 10
-    },
-    "notes": {
-      "damage": "1d10 piercing"
-    },
     "facts": {
-      "damage": "1d10"
+      "cost-gp": 5,
+      "damage": "1d10",
+      "damage-type": "piercing"
     }
   },
   {
@@ -646,18 +438,10 @@
       "piercing",
       "finesse"
     ],
-    "options": [],
-    "choose": null,
-    "numbers": {
-      "cost-gp": 25,
-      "damage-dice-count": 1,
-      "damage-die": 8
-    },
-    "notes": {
-      "damage": "1d8 piercing"
-    },
     "facts": {
+      "cost-gp": 25,
       "damage": "1d8",
+      "damage-type": "piercing",
       "finesse": true
     }
   },
@@ -671,18 +455,10 @@
       "finesse",
       "light"
     ],
-    "options": [],
-    "choose": null,
-    "numbers": {
-      "cost-gp": 25,
-      "damage-dice-count": 1,
-      "damage-die": 6
-    },
-    "notes": {
-      "damage": "1d6 slashing"
-    },
     "facts": {
+      "cost-gp": 25,
       "damage": "1d6",
+      "damage-type": "slashing",
       "finesse": true
     }
   },
@@ -697,18 +473,10 @@
       "light",
       "monk"
     ],
-    "options": [],
-    "choose": null,
-    "numbers": {
-      "cost-gp": 10,
-      "damage-dice-count": 1,
-      "damage-die": 6
-    },
-    "notes": {
-      "damage": "1d6 piercing"
-    },
     "facts": {
+      "cost-gp": 10,
       "damage": "1d6",
+      "damage-type": "piercing",
       "finesse": true
     }
   },
@@ -722,23 +490,13 @@
       "thrown",
       "versatile"
     ],
-    "options": [],
-    "choose": null,
-    "numbers": {
-      "cost-gp": 5,
-      "damage-dice-count": 1,
-      "damage-die": 6,
-      "two-handed-damage-dice-count": 1,
-      "two-handed-damage-die": 8,
-      "thrown-normal": 20,
-      "thrown-long": 60
-    },
-    "notes": {
-      "damage": "1d6 piercing (two-handed 1d8 piercing)"
-    },
     "facts": {
+      "cost-gp": 5,
+      "thrown-normal": 20,
+      "thrown-long": 60,
       "damage": "1d6",
-      "versatile-damage": "1d8"
+      "versatile-damage": "1d8",
+      "damage-type": "piercing"
     }
   },
   {
@@ -749,18 +507,10 @@
       "melee",
       "piercing"
     ],
-    "options": [],
-    "choose": null,
-    "numbers": {
-      "cost-gp": 5,
-      "damage-dice-count": 1,
-      "damage-die": 8
-    },
-    "notes": {
-      "damage": "1d8 piercing"
-    },
     "facts": {
-      "damage": "1d8"
+      "cost-gp": 5,
+      "damage": "1d8",
+      "damage-type": "piercing"
     }
   },
   {
@@ -772,21 +522,11 @@
       "bludgeoning",
       "versatile"
     ],
-    "options": [],
-    "choose": null,
-    "numbers": {
-      "cost-gp": 15,
-      "damage-dice-count": 1,
-      "damage-die": 8,
-      "two-handed-damage-dice-count": 1,
-      "two-handed-damage-die": 10
-    },
-    "notes": {
-      "damage": "1d8 bludgeoning (two-handed 1d10 bludgeoning)"
-    },
     "facts": {
+      "cost-gp": 15,
       "damage": "1d8",
-      "versatile-damage": "1d10"
+      "versatile-damage": "1d10",
+      "damage-type": "bludgeoning"
     }
   },
   {
@@ -799,18 +539,10 @@
       "finesse",
       "reach"
     ],
-    "options": [],
-    "choose": null,
-    "numbers": {
-      "cost-gp": 2,
-      "damage-dice-count": 1,
-      "damage-die": 4
-    },
-    "notes": {
-      "damage": "1d4 slashing"
-    },
     "facts": {
+      "cost-gp": 2,
       "damage": "1d4",
+      "damage-type": "slashing",
       "finesse": true
     }
   },
@@ -824,20 +556,12 @@
       "ammunition",
       "loading"
     ],
-    "options": [],
-    "choose": null,
-    "numbers": {
-      "cost-gp": 10,
-      "damage-dice-count": 1,
-      "damage-die": 1,
-      "range-normal": 25,
-      "range-long": 100
-    },
-    "notes": {
-      "damage": "1d1 piercing"
-    },
     "facts": {
+      "cost-gp": 10,
+      "range-normal": 25,
+      "range-long": 100,
       "damage": "1d1",
+      "damage-type": "piercing",
       "ranged": true
     }
   },
@@ -852,20 +576,12 @@
       "light",
       "loading"
     ],
-    "options": [],
-    "choose": null,
-    "numbers": {
-      "cost-gp": 75,
-      "damage-dice-count": 1,
-      "damage-die": 6,
-      "range-normal": 30,
-      "range-long": 120
-    },
-    "notes": {
-      "damage": "1d6 piercing"
-    },
     "facts": {
+      "cost-gp": 75,
+      "range-normal": 30,
+      "range-long": 120,
       "damage": "1d6",
+      "damage-type": "piercing",
       "ranged": true
     }
   },
@@ -881,20 +597,12 @@
       "loading",
       "two-handed"
     ],
-    "options": [],
-    "choose": null,
-    "numbers": {
-      "cost-gp": 50,
-      "damage-dice-count": 1,
-      "damage-die": 10,
-      "range-normal": 100,
-      "range-long": 400
-    },
-    "notes": {
-      "damage": "1d10 piercing"
-    },
     "facts": {
+      "cost-gp": 50,
+      "range-normal": 100,
+      "range-long": 400,
       "damage": "1d10",
+      "damage-type": "piercing",
       "ranged": true
     }
   },
@@ -909,20 +617,12 @@
       "heavy",
       "two-handed"
     ],
-    "options": [],
-    "choose": null,
-    "numbers": {
-      "cost-gp": 50,
-      "damage-dice-count": 1,
-      "damage-die": 8,
-      "range-normal": 150,
-      "range-long": 600
-    },
-    "notes": {
-      "damage": "1d8 piercing"
-    },
     "facts": {
+      "cost-gp": 50,
+      "range-normal": 150,
+      "range-long": 600,
       "damage": "1d8",
+      "damage-type": "piercing",
       "ranged": true
     }
   },
@@ -935,17 +635,12 @@
       "thrown",
       "special"
     ],
-    "options": [],
-    "choose": null,
-    "numbers": {
+    "facts": {
       "cost-gp": 1,
       "range-normal": 5,
       "range-long": 15,
       "thrown-normal": 5,
-      "thrown-long": 15
-    },
-    "notes": {},
-    "facts": {
+      "thrown-long": 15,
       "ranged": true
     }
   }

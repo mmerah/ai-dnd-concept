@@ -29,7 +29,7 @@ SLUG_PATTERN = r"[a-z0-9]+(?:-[a-z0-9]+)*"
 Slug = Annotated[str, Field(pattern=rf"^{SLUG_PATTERN}$", max_length=64)]
 
 PLAYER_ID = EntityId("player")
-SAVE_VERSION = 45
+SAVE_VERSION = 46
 
 
 def content_id(value: str) -> Slug:

@@ -35,6 +35,7 @@ def _spell(name: str, facts: Mapping[str, JsonValue]) -> object:
         "attack-type": facts.get("attack-type"),
         "save-ability": facts.get("save-ability"),
         "save-success": facts.get("save-success"),
+        "damage-type": facts.get("damage-type"),
         "concentration": facts.get("concentration", False),
         "damage-with-modifier": facts.get("damage-with-modifier", False),
         "heal-with-modifier": facts.get("heal-with-modifier", False),
@@ -48,6 +49,7 @@ def _weapon(name: str, facts: Mapping[str, JsonValue]) -> object:
         "name": name,
         "damage": facts.get("damage"),
         "versatile-damage": facts.get("versatile-damage"),
+        "damage-type": facts.get("damage-type"),
         "finesse": facts.get("finesse", False),
         "ranged": facts.get("ranged", False),
     }

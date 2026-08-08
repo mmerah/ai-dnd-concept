@@ -4,6 +4,7 @@ from fivee_test_support import PACK_DIR, dnd5e_game, pack_format
 
 from aidm.state.base import EntityId
 from aidm.state.packs import ENCODING, ContentRef, Record, read_pack, write_pack
+from aidm.state.sheet import is_ladder_fact
 from aidm.state.world import player_sheet
 
 GIANT_RAT = ContentRef(pack="srd-2014", collection="monsters", index="giant-rat")
@@ -39,8 +40,8 @@ def test_the_shipped_character_carries_the_canonical_keys() -> None:
 
 
 def test_a_monster_ref_becomes_the_monsters_sheet() -> None:
-    """The loader's one mapping: a record's numbers land as numbers, except where the template
-    declares a counter, which the record fills; its notes render beside the ref instead."""
+    """The loader's one mapping: a record's int facts land as numbers, except where the template
+    declares a counter, which the record fills; its other facts render beside the ref instead."""
     engine, state = dnd5e_game()
     record = read_pack(PACK_DIR, pack_format()).addressed()[GIANT_RAT]
     assert type(record) is Record
@@ -48,9 +49,9 @@ def test_a_monster_ref_becomes_the_monsters_sheet() -> None:
     world_record = state.world.record(RAT)
     sheet = world_record.rules
 
-    assert sheet.counters["hp"].current == record.sheet_numbers()["hp"]
-    assert sheet.counters["hp"].maximum == record.sheet_numbers()["hp"]
-    assert sheet.numbers["armor-class"] == record.sheet_numbers()["armor-class"]
+    assert sheet.counters["hp"].current == record.facts["hp"]
+    assert sheet.counters["hp"].maximum == record.facts["hp"]
+    assert sheet.numbers["armor-class"] == record.facts["armor-class"]
     assert sheet.refs == (GIANT_RAT,)
     assert "attacks=Bite +4 to hit" in engine.entity_state(world_record.entity, sheet)
 
@@ -68,23 +69,32 @@ def test_the_pack_renders_spell_and_weapon_mechanics_from_stored_maps() -> None:
     assert type(hold_person) is Record
     assert type(longsword) is Record
 
-    assert burning_hands.noted()["level"] == "1"
-    assert burning_hands.noted()["save"] == "DEX (half on success)"
-    assert burning_hands.noted()["damage"] == "3d6 fire"
-    assert burning_hands.noted()["scaling"].startswith("slot 2: 4d6")
-    assert fire_bolt.noted()["level"] == "cantrip"
-    assert fire_bolt.noted()["attack"] == "ranged spell attack"
-    assert fire_bolt.noted()["scaling"] == "level 5: 2d10, level 11: 3d10, level 17: 4d10"
-    assert fire_bolt.noted()["classes"] == "Sorcerer, Wizard"
+    assert burning_hands.facts["level"] == 1
+    assert burning_hands.facts["save-ability"] == "dexterity"
+    assert burning_hands.facts["save-success"] == "half"
+    assert burning_hands.facts["damage-type"] == "fire"
+    damage_ladder = burning_hands.facts["damage-ladder"]
+    assert is_ladder_fact(damage_ladder) and damage_ladder[0] == [0, "3d6"]
+    assert burning_hands.facts["area"] == "15-foot cone"
+    # A cantrip has no `level` fact at all: `actions.json` reads its absence as the cantrip test.
+    assert "level" not in fire_bolt.facts
+    assert fire_bolt.facts["attack-type"] == "ranged"
+    assert fire_bolt.facts["damage-ladder"] == [
+        [0, "1d10"],
+        [5, "2d10"],
+        [11, "3d10"],
+        [17, "4d10"],
+    ]
+    assert fire_bolt.facts["classes"] == "Sorcerer, Wizard"
     assert hold_person.tags == ("concentration", "verbal", "somatic", "material")
     assert "versatile" in longsword.tags
     assert "slashing" in longsword.tags
-    assert longsword.sheet_numbers()["damage-dice-count"] == 1
-    assert longsword.sheet_numbers()["damage-die"] == 8
-    assert longsword.sheet_numbers()["two-handed-damage-die"] == 10
+    assert longsword.facts["damage"] == "1d8"
+    assert longsword.facts["versatile-damage"] == "1d10"
+    assert longsword.facts["damage-type"] == "slashing"
     # A melee weapon's upstream `range.normal: 5` is baseline reach, not a ranged distance.
-    assert "range-normal" not in longsword.sheet_numbers()
-    assert longsword.sheet_numbers()["cost-gp"] == 15
+    assert "range-normal" not in longsword.facts
+    assert longsword.facts["cost-gp"] == 15
 
 
 def test_the_pack_projects_armor_and_monster_facts_into_numbers_and_tags() -> None:
@@ -98,13 +108,13 @@ def test_the_pack_projects_armor_and_monster_facts_into_numbers_and_tags() -> No
     assert type(leather) is Record
     assert type(dragon) is Record
 
-    assert chain_mail.sheet_numbers()["armor-base"] == 16
-    assert chain_mail.sheet_numbers()["strength-minimum"] == 13
+    assert chain_mail.facts["armor-base"] == 16
+    assert chain_mail.facts["strength-minimum"] == 13
     assert chain_mail.tags == ("stealth-disadvantage",)
-    assert leather.sheet_numbers() == {"cost-gp": 10, "armor-base": 11}
+    assert leather.facts == {"cost-gp": 10, "armor-base": 11}
     assert leather.tags == ("add-dex-modifier",)
-    assert dragon.sheet_numbers()["saving-throw-dex"] == 7
-    assert dragon.sheet_numbers()["passive-perception"] == 21
+    assert dragon.facts["saving-throw-dex"] == 7
+    assert dragon.facts["passive-perception"] == 21
 
 
 def test_the_pack_projects_monster_action_variants_and_spell_lists() -> None:
@@ -120,16 +130,22 @@ def test_the_pack_projects_monster_action_variants_and_spell_lists() -> None:
     assert type(assassin) is Record
     assert type(acolyte) is Record
 
-    assert "1d8+2 slashing (one handed) or 1d10+2 slashing (two handed)" in wight.noted()["attacks"]
-    assert captain.noted()["multiattack"] == "2x Scimitar + 1x Dagger or 2x Dagger"
-    assert "7d6 poison (DC 15 CON, half on save)" in assassin.noted()["attacks"]
-    assert acolyte.noted()["spells"].startswith("cantrips: Light, Sacred Flame, Thaumaturgy")
-    assert acolyte.noted()["slots"] == "level 1 x3"
+    wight_attacks = wight.facts["attacks"]
+    assert isinstance(wight_attacks, str)
+    assert "1d8+2 slashing (one handed) or 1d10+2 slashing (two handed)" in wight_attacks
+    assert captain.facts["multiattack"] == "2x Scimitar + 1x Dagger or 2x Dagger"
+    assassin_attacks = assassin.facts["attacks"]
+    assert isinstance(assassin_attacks, str)
+    assert "7d6 poison (DC 15 CON, half on save)" in assassin_attacks
+    acolyte_spells = acolyte.facts["spells"]
+    assert isinstance(acolyte_spells, str)
+    assert acolyte_spells.startswith("cantrips: Light, Sacred Flame, Thaumaturgy")
+    assert acolyte.facts["slots"] == [[1, 3]]
 
 
 def test_the_pack_projects_creation_choices_and_class_ladders() -> None:
     """A trait that grants a pick names it in `options`/`choose`; the odd class ladders land as
-    notes on the level row."""
+    facts on the level row."""
     records = read_pack(PACK_DIR, pack_format()).addressed()
     cantrip = records[ContentRef(pack="srd-2014", collection="traits", index="high-elf-cantrip")]
     tools = records[ContentRef(pack="srd-2014", collection="traits", index="tool-proficiency")]
@@ -146,7 +162,8 @@ def test_the_pack_projects_creation_choices_and_class_ladders() -> None:
     assert {option.collection for option in cantrip.options} == {"spells"}
     assert tools.choose == 1
     assert {option.collection for option in tools.options} == {"proficiencies"}
-    assert acolyte.sheet_numbers() == {"starting-gold": 15}
-    assert sorcerer.noted()["creating-spell-slots"].startswith("slot 1 for 2 sorcery points")
-    assert barbarian.noted()["rage-count"] == "unlimited"
-    assert "rage-count" not in barbarian.sheet_numbers()
+    # backgrounds stop projecting: `starting-gold` is a creation input, not a live sheet number.
+    assert acolyte.facts["starting-gold"] == 15
+    slot_creation = sorcerer.facts["creating-spell-slots"]
+    assert is_ladder_fact(slot_creation) and slot_creation[0] == [1, 2]
+    assert barbarian.facts["rage-count"] == "unlimited"

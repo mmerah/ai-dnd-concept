@@ -167,7 +167,7 @@ class Action(Upstream):
 
 class Monster(Named):
     desc: list[str] | str = ""
-    forms: list[Label] = []
+    forms: list[Named] = []
     size: str
     type: str
     subtype: str | None = None
@@ -284,7 +284,7 @@ class MagicItem(Described):
     equipment_category: Label
     rarity: Label
     variant: bool = False
-    variants: list[Label] = []
+    variants: list[Named] = []
 
 
 class Race(Described):

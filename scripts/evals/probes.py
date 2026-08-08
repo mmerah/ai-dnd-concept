@@ -12,7 +12,7 @@ from aidm.engines.dnd5e.advance import level_ref
 from aidm.engines.loader import Engine
 from aidm.state.base import PLAYER_ID, EntityId, Frozen
 from aidm.state.facts import Fact
-from aidm.state.packs import Content, Record
+from aidm.state.packs import Content, Record, is_int_fact
 from aidm.state.sheet import Counter, Sheet, SheetTag
 from aidm.state.world import GameState
 
@@ -373,7 +373,9 @@ def _level_up_to(content: Content, state: GameState, level: int) -> None:
 
 
 def _apply_level(sheet: Sheet, record: Record) -> None:
-    for key, value in record.sheet_numbers().items():
+    for key, value in record.facts.items():
+        if not is_int_fact(value):
+            continue
         if key.startswith(SLOT_PREFIX):
             slot = sheet.counters.setdefault(key, Counter(current=0, maximum=0, recharge=LONG_REST))
             slot.maximum, slot.current = value, value

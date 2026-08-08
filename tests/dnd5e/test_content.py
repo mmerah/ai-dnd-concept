@@ -23,7 +23,12 @@ def test_weapon_facts_carry_damage_and_the_versatile_expression() -> None:
     content = _content()
 
     longsword = content.require(LONGSWORD, Record)
-    assert longsword.facts == {"damage": "1d8", "versatile-damage": "1d10"}
+    assert longsword.facts == {
+        "cost-gp": 15,
+        "damage": "1d8",
+        "versatile-damage": "1d10",
+        "damage-type": "slashing",
+    }
     assert "damage" not in content.require(LANTERN, Record).facts
 
 

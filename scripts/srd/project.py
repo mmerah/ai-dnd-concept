@@ -1,7 +1,7 @@
 """One upstream record becomes one typed pack record: mechanics land in typed fields, and each
-record class renders the model's view and its sheet numbers from them, so this importer writes no
-prose bags. A record reffed in multiplicity — a spell, a feature — must leave its `sheet_numbers`
-empty, or the keys collide on every sheet that refs it.
+record class renders the model's view and its facts from them, so this importer writes no prose
+bags. A record reffed in multiplicity — a spell, a feature — must leave its projecting facts (an
+int, in a projecting collection) out, or the keys collide on every sheet that refs it.
 
 Over CLAUDE.md's 1000-line cap by decision: a one-shot, offline importer, run by hand, output
 vendored. It is one projection per upstream type, not runtime code, and splitting it would only
@@ -47,6 +47,7 @@ from .interpret import (
     TraitRecord,
     VehicleRecord,
     WeaponRecord,
+    to_slug,
     weapon_damage_note,
 )
 
@@ -99,8 +100,8 @@ def monster(record: up.Monster) -> MonsterRecord:
             _prose(record.desc),
         ),
         tags=(
-            _slug(record.type),
-            *((_slug(record.subtype),) if record.subtype else ()),
+            to_slug(record.type),
+            *((to_slug(record.subtype),) if record.subtype else ()),
             *(("hover",) if record.speed.get("hover") is True else ()),
             *(("legendary",) if record.legendary_actions else ()),
             *(
@@ -127,8 +128,7 @@ def monster(record: up.Monster) -> MonsterRecord:
         damage_resistances=tuple(record.damage_resistances),
         damage_immunities=tuple(record.damage_immunities),
         condition_immunities=tuple(entry.name for entry in record.condition_immunities),
-        # Form names carry commas of their own ('Vampire, Bat Form'); noted() joins on semicolons.
-        forms=tuple(entry.name for entry in record.forms),
+        forms=tuple(entry.index for entry in record.forms),
         spells=spells,
         slots=slots,
         size=record.size,
@@ -227,10 +227,6 @@ def _usage(usage: up.Usage) -> str:
             return usage.type
 
 
-def _slug(name: str) -> str:
-    return "-".join(part for part in name.lower().replace(",", " ").split() if part)
-
-
 def spell(record: up.Spell) -> SpellRecord:
     kind = "cantrip" if record.level == 0 else f"level {record.level} spell"
     material = f" ({record.material})" if record.material else ""
@@ -260,7 +256,7 @@ def spell(record: up.Spell) -> SpellRecord:
         ),
         tags=(*marks, *(COMPONENTS[part] for part in record.components if part in COMPONENTS)),
         level=None if record.level == 0 else record.level,
-        school=_slug(record.school.name),
+        school=to_slug(record.school.name),
         attack_type=_attack_type(record.attack_type),
         save_ability=None if record.dc is None else _ability(record.dc.dc_type.name),
         save_success=None if record.dc is None else _save_success(record.dc.dc_success),
@@ -541,7 +537,7 @@ def magic_item(record: up.MagicItem) -> MagicItemRecord:
         tags=("variant",) if record.variant else (),
         category=record.equipment_category.name,
         rarity=record.rarity.name,
-        variants=tuple(entry.name for entry in record.variants),
+        variants=tuple(entry.index for entry in record.variants),
     )
 
 
@@ -969,7 +965,7 @@ def level(record: up.Level, options: Options) -> LevelRecord:
         dice_ladders=_level_dice_ladders(specific),
         cr_caps=_level_cr_caps(specific),
         slot_creation=_level_slot_creation(specific),
-        unlimited=tuple(_key(name) for name, value in specific.items() if value == UNLIMITED),
+        rage_count=_rage_count(specific),
     )
 
 
@@ -1008,16 +1004,29 @@ def subfeature_options(record: up.Feature) -> tuple[ContentRef, ...]:
 
 # Upstream writes 9999 where a pool stops being counted (the barbarian's level-20 rages).
 UNLIMITED = 9999
+# These three collide with a same-named `str` fact built elsewhere in this module (`_level_cr_caps`,
+# `_rage_count`): the int side would only ever cover a subset of the rows the string side covers.
+_STR_ONLY = ("destroy_undead_cr", "wild_shape_max_cr", "rage_count")
 
 
 def _whole_numbers(values: Mapping[str, object]) -> Mapping[str, int]:
-    """Only the whole numbers: dice ladders, fractions and the unlimited sentinel go through
-    `_level_dice_ladders`, `_level_cr_caps` and `unlimited` instead."""
+    """Only the whole numbers: dice ladders, fractions and the `_STR_ONLY` fields go through
+    `_level_dice_ladders`, `_level_cr_caps` and `_rage_count` instead."""
     return {
         name: value
         for name, value in values.items()
-        if isinstance(value, int) and not isinstance(value, bool) and 0 < value != UNLIMITED
+        if name not in _STR_ONLY
+        and isinstance(value, int)
+        and not isinstance(value, bool)
+        and 0 < value != UNLIMITED
     }
+
+
+def _rage_count(specific: Mapping[str, object]) -> str | None:
+    value = specific.get("rage_count")
+    if not isinstance(value, int) or isinstance(value, bool):
+        return None
+    return "unlimited" if value == UNLIMITED else str(value)
 
 
 def _slot_maxima(spellcasting: Mapping[str, int]) -> Iterable[tuple[int, int]]:

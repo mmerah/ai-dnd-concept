@@ -1,3 +1,4 @@
+import re
 from collections.abc import Mapping
 from types import MappingProxyType
 from typing import Annotated, Literal, Self
@@ -5,7 +6,7 @@ from typing import Annotated, Literal, Self
 from pydantic import Field, JsonValue, model_validator
 
 from aidm.state.base import Slug
-from aidm.state.dice import DiceExpr, DiceTerm, terms
+from aidm.state.dice import DiceExpr
 from aidm.state.packs import EMPTY_FROZEN_MAP, FrozenMap, Record, Value
 
 ABILITY_BY_ABBREVIATION: Mapping[str, Slug] = MappingProxyType(
@@ -22,20 +23,19 @@ ABBREVIATION_BY_ABILITY: Mapping[Slug, str] = MappingProxyType(
     {ability: abbreviation for abbreviation, ability in ABILITY_BY_ABBREVIATION.items()}
 )
 type SaveSuccess = Literal["half", "none", "other"]
-SAVE_OUTCOMES: Mapping[SaveSuccess, str] = MappingProxyType(
-    {"half": "half on success", "none": "no effect on success", "other": "see text"}
-)
+
+_SLUG_DROP = re.compile(r"['’]")
+_SLUG_CLEAN = re.compile(r"[^a-z0-9]+")
+
+
+def to_slug(name: str) -> Slug:
+    # An apostrophe joins a word rather than separating it: "Artisan's" is one term, not two.
+    return _SLUG_CLEAN.sub("-", _SLUG_DROP.sub("", name.lower())).strip("-")
 
 
 class SpellAmount(Value):
     dice: DiceExpr
     with_modifier: bool = False
-
-    def bonus(self, caster_modifier: int) -> int:
-        return caster_modifier if self.with_modifier else 0
-
-    def prose(self) -> str:
-        return self.dice + (" + spellcasting modifier" if self.with_modifier else "")
 
 
 class SpellArea(Value):
@@ -66,47 +66,12 @@ def _cost_numbers(cost: Cost | None) -> Mapping[Slug, int]:
     return {} if cost is None else {f"cost-{cost.unit}": cost.amount}
 
 
-def _save_note(ability: Slug | None, success: SaveSuccess | None) -> str:
-    if ability is None or success is None:
-        return ""
-    return f"{ABBREVIATION_BY_ABILITY[ability]} ({SAVE_OUTCOMES[success]})"
-
-
-def _damage_note(amount: SpellAmount | None, damage_type: Slug | None) -> str:
-    if amount is None:
-        return ""
-    return amount.prose() + (f" {damage_type}" if damage_type else "")
-
-
-def _area_note(area: SpellArea | None) -> str:
-    return "" if area is None else f"{area.size}-foot {area.shape}"
-
-
-def _scaling_prose(step: str, ladder: tuple[tuple[int, SpellAmount], ...]) -> str:
-    return ", ".join(f"{step} {at}: {amount.prose()}" for at, amount in ladder)
-
-
-def _exceptional(value: str, default: str) -> str:
-    """The default is every caster's assumption; only a departure earns a note."""
-    return "" if value == default else value
-
-
 def _noted(key: Slug, body: str) -> Mapping[Slug, str]:
     return {key: body} if body else {}
 
 
 def _numbered(key: Slug, value: int | None) -> Mapping[Slug, int]:
     return {} if value is None else {key: value}
-
-
-def _dice_numbers(prefix: str, expr: DiceExpr | None) -> Mapping[Slug, int]:
-    if expr is None:
-        return {}
-    match terms(expr):
-        case (DiceTerm(count=count, faces=faces),):
-            return {f"{prefix}damage-dice-count": count, f"{prefix}damage-die": faces}
-        case parsed:
-            raise ValueError(f"weapon damage {expr!r} is not a single dice term: {parsed}")
 
 
 def _reach_numbers(prefix: str, reach: Reach | None) -> Mapping[Slug, int]:
@@ -116,13 +81,22 @@ def _reach_numbers(prefix: str, reach: Reach | None) -> Mapping[Slug, int]:
     return {f"{prefix}-normal": reach.normal, **limit}
 
 
-def _scaled(
-    base: SpellAmount | None, scaling: tuple[tuple[int, SpellAmount], ...], key: int
-) -> SpellAmount | None:
+def _amount_ladder(
+    index: str, key: str, base: SpellAmount | None, scaling: tuple[tuple[int, SpellAmount], ...]
+) -> Mapping[Slug, JsonValue]:
+    """Rung 0 is the amount as cast, later rungs the scaling ladder. Steps are slot levels for
+    spells and character levels for traits — derivable from the collection, so no key says which."""
     if base is None:
-        return None
-    later = [amount for threshold, amount in scaling if threshold <= key]
-    return later[-1] if later else base
+        return {}
+    if any(amount.with_modifier != base.with_modifier for _, amount in scaling):
+        raise ValueError(f"{index}: with_modifier differs across the scaling ladder")
+    facts: dict[Slug, JsonValue] = {}
+    if base.with_modifier:
+        facts[f"{key}-with-modifier"] = True
+    ladder: list[JsonValue] = [[0, base.dice]]
+    ladder.extend([at, amount.dice] for at, amount in scaling)
+    facts[f"{key}-ladder"] = ladder
+    return facts
 
 
 class Interpreted(Record):
@@ -139,8 +113,6 @@ class Interpreted(Record):
             tags=self.tags,
             options=self.options,
             choose=self.choose,
-            numbers=self.sheet_numbers(),
-            notes=self.noted(),
             facts=self.mechanical_facts(),
         )
 
@@ -154,7 +126,7 @@ class LanguageRecord(Interpreted):
     category: str
 
     def mechanical_facts(self) -> Mapping[Slug, JsonValue]:
-        return {"category": self.category}
+        return {"category": to_slug(self.category)}
 
 
 class ProficiencyRecord(Interpreted):
@@ -162,7 +134,7 @@ class ProficiencyRecord(Interpreted):
     reference: str
 
     def mechanical_facts(self) -> Mapping[Slug, JsonValue]:
-        return {"category": self.category, "reference": self.reference}
+        return {"category": to_slug(self.category), "reference": self.reference}
 
 
 class FeatRecord(Interpreted):
@@ -186,9 +158,6 @@ class SubraceRecord(Interpreted):
     race: Slug
     ability_bonuses: tuple[AbilityBonus, ...] = ()
 
-    def noted(self) -> Mapping[Slug, str]:
-        return _noted("ability-bonuses", _bonus_note(self.ability_bonuses))
-
     def mechanical_facts(self) -> Mapping[Slug, JsonValue]:
         return {"race": self.race, **_bonus_facts(self.ability_bonuses)}
 
@@ -204,18 +173,19 @@ class SubclassRecord(Interpreted):
     klass: Slug
     spell_grants: tuple[SpellGrant, ...] = ()
 
-    def noted(self) -> Mapping[Slug, str]:
+    def mechanical_facts(self) -> Mapping[Slug, JsonValue]:
         grouped: dict[str, list[str]] = {}
         for grant in self.spell_grants:
             grouped.setdefault(grant.gate, []).append(grant.spell)
         line = "; ".join(f"{gate}: {', '.join(spells)}" for gate, spells in grouped.items())
-        return _noted("subclass-spells", line)
-
-    def mechanical_facts(self) -> Mapping[Slug, JsonValue]:
         grants: list[JsonValue] = [
             {"gate": g.gate, "spell": g.spell_index} for g in self.spell_grants
         ]
-        return {"class": self.klass, **({"spell-grants": grants} if grants else {})}
+        return {
+            "class": self.klass,
+            **({"spell-grants": grants} if grants else {}),
+            **_noted("subclass-spells", line),
+        }
 
 
 class ArmorRecord(Interpreted):
@@ -225,7 +195,7 @@ class ArmorRecord(Interpreted):
     dex_limit: int | None = None
     strength_minimum: int | None = None
 
-    def sheet_numbers(self) -> Mapping[Slug, int]:
+    def mechanical_facts(self) -> Mapping[Slug, JsonValue]:
         return {
             **_cost_numbers(self.cost),
             **({"armor-bonus": self.base} if self.shield else {"armor-base": self.base}),
@@ -238,7 +208,7 @@ class GearRecord(Interpreted):
     cost: Cost | None = None
     quantity: int | None = None
 
-    def sheet_numbers(self) -> Mapping[Slug, int]:
+    def mechanical_facts(self) -> Mapping[Slug, JsonValue]:
         return {**_cost_numbers(self.cost), **_numbered("quantity", self.quantity)}
 
 
@@ -248,10 +218,12 @@ class VehicleRecord(Interpreted):
     speed_mph: int | None = None
     capacity_lb: int | None = None
 
-    def sheet_numbers(self) -> Mapping[Slug, int]:
+    def mechanical_facts(self) -> Mapping[Slug, JsonValue]:
         return {
             **_cost_numbers(self.cost),
-            **_numbered("speed", self.speed),
+            # 'speed' means a creature's walking speed everywhere else; a mount's ft/round pace
+            # gets its own key so a vehicle ref cannot overwrite it on an actor's sheet.
+            **_numbered("speed-ft-round", self.speed),
             **_numbered("speed-mph", self.speed_mph),
             **_numbered("capacity-lb", self.capacity_lb),
         }
@@ -264,30 +236,18 @@ class RaceRecord(Interpreted):
     # Half-elf's floating +1s are structured as a choice, not fixed bonuses; both must show.
     floating_bonus_choose: int | None = None
 
-    def sheet_numbers(self) -> Mapping[Slug, int]:
-        return {"speed": self.speed}
-
-    def noted(self) -> Mapping[Slug, str]:
-        extra = (
-            ""
-            if self.floating_bonus_choose is None
-            else f"choose {self.floating_bonus_choose} others +1"
-        )
-        bonuses = ", ".join(part for part in (_bonus_note(self.ability_bonuses), extra) if part)
-        return {**_noted("ability-bonuses", bonuses), "size": self.size}
-
     def mechanical_facts(self) -> Mapping[Slug, JsonValue]:
-        floating = self.floating_bonus_choose
         return {
-            **_bonus_facts(self.ability_bonuses),
-            **({} if floating is None else {"floating-bonus-choose": floating}),
+            "speed": self.speed,
+            "size": self.size,
+            **_bonus_facts(self.ability_bonuses, self.floating_bonus_choose),
         }
 
 
 class BackgroundRecord(Interpreted):
     starting_gold: int | None = None
 
-    def sheet_numbers(self) -> Mapping[Slug, int]:
+    def mechanical_facts(self) -> Mapping[Slug, JsonValue]:
         return _numbered("starting-gold", self.starting_gold)
 
 
@@ -310,16 +270,14 @@ class FeatureRecord(Interpreted):
     invocations: tuple[str, ...] = ()
     parent: str | None = None
 
-    def noted(self) -> Mapping[Slug, str]:
+    def mechanical_facts(self) -> Mapping[Slug, JsonValue]:
         return {
+            "level": self.level,
             **_noted("requires", ", ".join(self.requires)),
             **_noted("choose", "" if self.pick is None else self.pick.prose()),
             **_noted("invocations", ", ".join(self.invocations)),
             **_noted("parent", self.parent or ""),
         }
-
-    def mechanical_facts(self) -> Mapping[Slug, JsonValue]:
-        return {"level": self.level}
 
 
 class TraitRecord(Interpreted):
@@ -342,41 +300,23 @@ class TraitRecord(Interpreted):
             raise ValueError("save_ability and save_success are set together, or neither is")
         return self
 
-    def noted(self) -> Mapping[Slug, str]:
+    def mechanical_facts(self) -> Mapping[Slug, JsonValue]:
         return {
-            **_noted("damage-type", self.damage_type or ""),
-            **_noted("save", _save_note(self.save_ability, self.save_success)),
-            **_noted("damage", _damage_note(self.damage, self.damage_type)),
-            **_noted("scaling", _scaling_prose("level", self.scaling)),
-            **_noted("area", _area_note(self.area)),
-            **_noted("uses", self.uses or ""),
+            **({"damage-type": self.damage_type} if self.damage_type else {}),
+            **({"save-ability": self.save_ability} if self.save_ability else {}),
+            **({"save-success": self.save_success} if self.save_success else {}),
+            **_amount_ladder(self.index, "damage", self.damage, self.scaling),
+            **({"area": f"{self.area.size}-foot {self.area.shape}"} if self.area else {}),
+            **({"uses": self.uses} if self.uses else {}),
             **_noted("grants-proficiency", ", ".join(self.grants_proficiency)),
             **_noted("races", ", ".join(self.races)),
             **_noted("subraces", ", ".join(self.subraces)),
             **_noted("parent", self.parent or ""),
         }
 
-    def mechanical_facts(self) -> Mapping[Slug, JsonValue]:
-        return {
-            **({"damage-type": self.damage_type} if self.damage_type else {}),
-            **({"save-ability": self.save_ability} if self.save_ability else {}),
-            **({"save-success": self.save_success} if self.save_success else {}),
-            **({"damage": self.damage.model_dump(mode="json")} if self.damage else {}),
-            **(
-                {"scaling": [[at, amount.model_dump(mode="json")] for at, amount in self.scaling]}
-                if self.scaling
-                else {}
-            ),
-            **({"area": self.area.model_dump(mode="json")} if self.area else {}),
-            **({"uses": self.uses} if self.uses else {}),
-        }
-
 
 class SkillRecord(Interpreted):
     ability: str
-
-    def noted(self) -> Mapping[Slug, str]:
-        return {"ability": self.ability}
 
     def mechanical_facts(self) -> Mapping[Slug, JsonValue]:
         return {"ability": ABILITY_BY_ABBREVIATION[self.ability]}
@@ -385,13 +325,13 @@ class SkillRecord(Interpreted):
 class MagicItemRecord(Interpreted):
     category: str
     rarity: str
-    variants: tuple[str, ...] = ()
+    variants: tuple[Slug, ...] = ()
 
-    def noted(self) -> Mapping[Slug, str]:
+    def mechanical_facts(self) -> Mapping[Slug, JsonValue]:
         return {
-            "category": self.category,
-            "rarity": self.rarity,
-            **_noted("variants", ", ".join(self.variants)),
+            "category": to_slug(self.category),
+            "rarity": to_slug(self.rarity),
+            **({"variants": list(self.variants)} if self.variants else {}),
         }
 
 
@@ -419,39 +359,6 @@ class SpellRecord(Interpreted):
             raise ValueError("save_ability and save_success are set together, or neither is")
         return self
 
-    @property
-    def attack(self) -> bool:
-        return self.attack_type is not None
-
-    @property
-    def half_on_save(self) -> bool:
-        return self.save_success == "half"
-
-    def damage_at(self, key: int) -> SpellAmount | None:
-        return _scaled(self.damage, self.scaling, key)
-
-    def heal_at(self, key: int) -> SpellAmount | None:
-        return _scaled(self.heal, self.scaling, key)
-
-    def noted(self) -> Mapping[Slug, str]:
-        # Leveled spells scale by the slot spent, cantrips by caster level; the importer
-        # refuses upstream rows that break this, so the step can derive from `level`.
-        step = "level" if self.level is None else "slot"
-        return {
-            "level": "cantrip" if self.level is None else str(self.level),
-            **_noted("attack", f"{self.attack_type} spell attack" if self.attack_type else ""),
-            **_noted("save", _save_note(self.save_ability, self.save_success)),
-            **_noted("damage", _damage_note(self.damage, self.damage_type)),
-            **_noted("heal", "" if self.heal is None else self.heal.prose()),
-            **_noted("scaling", _scaling_prose(step, self.scaling)),
-            **_noted("area", _area_note(self.area)),
-            "range": self.range,
-            **_noted("casting-time", _exceptional(self.casting_time, "1 action")),
-            **_noted("duration", _exceptional(self.duration, "Instantaneous")),
-            **_noted("classes", ", ".join(self.classes)),
-            **_noted("subclasses", ", ".join(self.subclasses)),
-        }
-
     def mechanical_facts(self) -> Mapping[Slug, JsonValue]:
         thresholds = [at for at, _ in self.scaling]
         if thresholds != sorted(set(thresholds)):
@@ -465,18 +372,24 @@ class SpellRecord(Interpreted):
             facts["save-ability"] = self.save_ability
         if self.save_success is not None:
             facts["save-success"] = self.save_success
+        if self.damage_type is not None:
+            facts["damage-type"] = self.damage_type
         if self.concentration:
             facts["concentration"] = True
-        for key, base in (("damage", self.damage), ("heal", self.heal)):
-            if base is None:
-                continue
-            if any(amount.with_modifier != base.with_modifier for _, amount in self.scaling):
-                raise ValueError(f"{self.index}: with_modifier differs across the scaling ladder")
-            if base.with_modifier:
-                facts[f"{key}-with-modifier"] = True
-            ladder: list[JsonValue] = [[0, base.dice]]
-            ladder.extend([at, amount.dice] for at, amount in self.scaling)
-            facts[f"{key}-ladder"] = ladder
+        facts.update(_amount_ladder(self.index, "damage", self.damage, self.scaling))
+        facts.update(_amount_ladder(self.index, "heal", self.heal, self.scaling))
+        if self.area is not None:
+            facts["area"] = f"{self.area.size}-foot {self.area.shape}"
+        facts["range"] = self.range
+        # The default every caster assumes; only a departure earns a fact.
+        if self.casting_time != "1 action":
+            facts["casting-time"] = self.casting_time
+        if self.duration != "Instantaneous":
+            facts["duration"] = self.duration
+        if self.classes:
+            facts["classes"] = ", ".join(self.classes)
+        if self.subclasses:
+            facts["subclasses"] = ", ".join(self.subclasses)
         return facts
 
 
@@ -495,27 +408,18 @@ class WeaponRecord(Interpreted):
             return self.versatile_damage
         return self.damage
 
-    def sheet_numbers(self) -> Mapping[Slug, int]:
-        return {
+    def mechanical_facts(self) -> Mapping[Slug, JsonValue]:
+        facts: dict[Slug, JsonValue] = {
             **_cost_numbers(self.cost),
-            **_dice_numbers("", self.damage),
-            **_dice_numbers("two-handed-", self.versatile_damage),
             **_reach_numbers("range", self.range),
             **_reach_numbers("thrown", self.thrown),
         }
-
-    def noted(self) -> Mapping[Slug, str]:
-        # `roll` takes an expression, so the Director copies this line rather than
-        # concatenating a count and a die on the turn it swings.
-        line = weapon_damage_note(self.damage, self.damage_type, self.versatile_damage)
-        return _noted("damage", line)
-
-    def mechanical_facts(self) -> Mapping[Slug, JsonValue]:
-        facts: dict[Slug, JsonValue] = {}
         if self.damage is not None:
             facts["damage"] = self.damage
         if self.versatile_damage is not None:
             facts["versatile-damage"] = self.versatile_damage
+        if self.damage_type is not None:
+            facts["damage-type"] = self.damage_type
         if self.finesse:
             facts["finesse"] = True
         if self.ranged:
@@ -528,23 +432,15 @@ class ClassRecord(Interpreted):
     saving_throws: tuple[Slug, ...] = ()
     spellcasting: Slug | None = None
 
-    def sheet_numbers(self) -> Mapping[Slug, int]:
-        return {"hit-die": self.hit_die}
-
-    def noted(self) -> Mapping[Slug, str]:
+    def mechanical_facts(self) -> Mapping[Slug, JsonValue]:
         return {
+            "hit-die": self.hit_die,
             **_noted(
                 "saving-throws",
                 ", ".join(ABBREVIATION_BY_ABILITY[ability] for ability in self.saving_throws),
             ),
-            **_noted(
-                "spellcasting",
-                "" if self.spellcasting is None else ABBREVIATION_BY_ABILITY[self.spellcasting],
-            ),
+            **({"spellcasting": self.spellcasting} if self.spellcasting is not None else {}),
         }
-
-    def mechanical_facts(self) -> Mapping[Slug, JsonValue]:
-        return {} if self.spellcasting is None else {"spellcasting": self.spellcasting}
 
 
 class LevelRecord(Interpreted):
@@ -554,14 +450,16 @@ class LevelRecord(Interpreted):
     spells_known: int | None = None
     ability_score_bonuses: int | None = None
     slots: tuple[tuple[int, int], ...] = ()
-    # Whole-number class ladders (rage-count, ki-points, ...): keys are open-ended per class.
+    # Whole-number class ladders (ki-points, sorcery-points, ...): keys are open-ended per class.
     class_numbers: FrozenMap[Slug, int] = EMPTY_FROZEN_MAP
     dice_ladders: FrozenMap[Slug, DiceExpr] = EMPTY_FROZEN_MAP
     cr_caps: FrozenMap[Slug, str] = EMPTY_FROZEN_MAP
     slot_creation: tuple[tuple[int, int], ...] = ()
-    unlimited: tuple[Slug, ...] = ()
+    # Barbarian rage count: a small int through level 19, then the level-20 sentinel. One string
+    # fact carries both halves so they don't split across two keys.
+    rage_count: str | None = None
 
-    def sheet_numbers(self) -> Mapping[Slug, int]:
+    def mechanical_facts(self) -> Mapping[Slug, JsonValue]:
         return {
             "level": self.level,
             **_numbered("proficiency-bonus", self.proficiency_bonus),
@@ -570,17 +468,14 @@ class LevelRecord(Interpreted):
             **_numbered("ability-score-bonuses", self.ability_score_bonuses),
             **{f"slot-{number}": count for number, count in self.slots},
             **self.class_numbers,
-        }
-
-    def noted(self) -> Mapping[Slug, str]:
-        created = ", ".join(
-            f"slot {number} for {cost} sorcery points" for number, cost in self.slot_creation
-        )
-        return {
             **self.dice_ladders,
             **self.cr_caps,
-            **_noted("creating-spell-slots", created),
-            **{key: "unlimited" for key in self.unlimited},
+            **_noted("rage-count", self.rage_count or ""),
+            **(
+                {"creating-spell-slots": [[at, cost] for at, cost in self.slot_creation]}
+                if self.slot_creation
+                else {}
+            ),
         }
 
 
@@ -608,13 +503,18 @@ class MonsterRecord(Interpreted):
     damage_resistances: tuple[str, ...] = ()
     damage_immunities: tuple[str, ...] = ()
     condition_immunities: tuple[str, ...] = ()
-    forms: tuple[str, ...] = ()
+    # Sibling monster indexes (a vampire's bat/mist forms), not names: a monster ref, not prose.
+    forms: tuple[Slug, ...] = ()
     spells: tuple[tuple[int, tuple[str, ...]], ...] = ()
     slots: tuple[tuple[int, int], ...] = ()
     size: str
     challenge_rating: str
 
-    def sheet_numbers(self) -> Mapping[Slug, int]:
+    def mechanical_facts(self) -> Mapping[Slug, JsonValue]:
+        spells = "; ".join(
+            f"{'cantrips' if level == 0 else f'level {level}'}: {', '.join(names)}"
+            for level, names in self.spells
+        )
         return {
             "armor-class": self.armor_class,
             "hp": self.hp,
@@ -632,15 +532,6 @@ class MonsterRecord(Interpreted):
             **_numbered("passive-perception", self.passive_perception),
             **_numbered("spell-save-dc", self.spell_save_dc),
             **_numbered("spell-attack-bonus", self.spell_attack_bonus),
-        }
-
-    def noted(self) -> Mapping[Slug, str]:
-        spells = "; ".join(
-            f"{'cantrips' if level == 0 else f'level {level}'}: {', '.join(names)}"
-            for level, names in self.spells
-        )
-        slots = ", ".join(f"level {number} x{count}" for number, count in self.slots)
-        return {
             **_noted("attacks", "; ".join(self.attacks)),
             **_noted("multiattack", self.multiattack or ""),
             **_noted("limited-use", "; ".join(self.limited_use)),
@@ -648,23 +539,20 @@ class MonsterRecord(Interpreted):
             **_noted("damage-resistances", ", ".join(self.damage_resistances)),
             **_noted("damage-immunities", ", ".join(self.damage_immunities)),
             **_noted("condition-immunities", ", ".join(self.condition_immunities)),
-            # Form names carry commas of their own ('Vampire, Bat Form'), so join on semicolons.
-            **_noted("forms", "; ".join(self.forms)),
+            **({"forms": list(self.forms)} if self.forms else {}),
             **_noted("spells", spells),
-            **_noted("slots", slots),
+            **({"slots": [[number, count] for number, count in self.slots]} if self.slots else {}),
             "size": self.size,
             "challenge-rating": self.challenge_rating,
         }
 
 
-def _bonus_note(bonuses: tuple[AbilityBonus, ...]) -> str:
-    return ", ".join(f"{entry.ability} +{entry.bonus}" for entry in bonuses)
-
-
-def _bonus_facts(bonuses: tuple[AbilityBonus, ...]) -> Mapping[Slug, JsonValue]:
-    if not bonuses:
-        return {}
+def _bonus_facts(
+    bonuses: tuple[AbilityBonus, ...], floating_choose: int | None = None
+) -> Mapping[Slug, JsonValue]:
     entries: list[JsonValue] = [
         {"ability": ABILITY_BY_ABBREVIATION[b.ability], "bonus": b.bonus} for b in bonuses
     ]
-    return {"ability-bonuses": entries}
+    if floating_choose is not None:
+        entries.append({"ability": "choice", "bonus": 1, "choose": floating_choose})
+    return {"ability-bonuses": entries} if entries else {}

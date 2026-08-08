@@ -2,8 +2,7 @@
   {
     "index": "barbarian-1",
     "name": "Barbarian 1",
-    "text": "Barbarian, level 1. Proficiency bonus: +2.\n\nFeatures gained: Rage, Unarmored Defense.\n\nThis level's numbers: rage count 2, rage damage bonus 2.",
-    "tags": [],
+    "text": "Barbarian, level 1. Proficiency bonus: +2.\n\nFeatures gained: Rage, Unarmored Defense.\n\nThis level's numbers: rage damage bonus 2.",
     "options": [
       {
         "pack": "srd-2014",
@@ -17,20 +16,17 @@
       }
     ],
     "choose": 2,
-    "numbers": {
+    "facts": {
       "level": 1,
       "proficiency-bonus": 2,
-      "rage-count": 2,
-      "rage-damage-bonus": 2
-    },
-    "notes": {},
-    "facts": {}
+      "rage-damage-bonus": 2,
+      "rage-count": "2"
+    }
   },
   {
     "index": "barbarian-2",
     "name": "Barbarian 2",
-    "text": "Barbarian, level 2. Proficiency bonus: +2.\n\nFeatures gained: Reckless Attack, Danger Sense.\n\nThis level's numbers: rage count 2, rage damage bonus 2.",
-    "tags": [],
+    "text": "Barbarian, level 2. Proficiency bonus: +2.\n\nFeatures gained: Reckless Attack, Danger Sense.\n\nThis level's numbers: rage damage bonus 2.",
     "options": [
       {
         "pack": "srd-2014",
@@ -44,20 +40,17 @@
       }
     ],
     "choose": 2,
-    "numbers": {
+    "facts": {
       "level": 2,
       "proficiency-bonus": 2,
-      "rage-count": 2,
-      "rage-damage-bonus": 2
-    },
-    "notes": {},
-    "facts": {}
+      "rage-damage-bonus": 2,
+      "rage-count": "2"
+    }
   },
   {
     "index": "barbarian-3",
     "name": "Barbarian 3",
-    "text": "Barbarian, level 3. Proficiency bonus: +2.\n\nFeatures gained: Primal Path.\n\nThis level's numbers: rage count 3, rage damage bonus 2.",
-    "tags": [],
+    "text": "Barbarian, level 3. Proficiency bonus: +2.\n\nFeatures gained: Primal Path.\n\nThis level's numbers: rage damage bonus 2.",
     "options": [
       {
         "pack": "srd-2014",
@@ -66,20 +59,17 @@
       }
     ],
     "choose": 1,
-    "numbers": {
+    "facts": {
       "level": 3,
       "proficiency-bonus": 2,
-      "rage-count": 3,
-      "rage-damage-bonus": 2
-    },
-    "notes": {},
-    "facts": {}
+      "rage-damage-bonus": 2,
+      "rage-count": "3"
+    }
   },
   {
     "index": "barbarian-4",
     "name": "Barbarian 4",
-    "text": "Barbarian, level 4. Proficiency bonus: +2.\n\nFeatures gained: Ability Score Improvement.\n\nThis level's numbers: rage count 3, rage damage bonus 2.",
-    "tags": [],
+    "text": "Barbarian, level 4. Proficiency bonus: +2.\n\nFeatures gained: Ability Score Improvement.\n\nThis level's numbers: rage damage bonus 2.",
     "options": [
       {
         "pack": "srd-2014",
@@ -88,21 +78,18 @@
       }
     ],
     "choose": 1,
-    "numbers": {
+    "facts": {
       "level": 4,
       "proficiency-bonus": 2,
       "ability-score-bonuses": 1,
-      "rage-count": 3,
-      "rage-damage-bonus": 2
-    },
-    "notes": {},
-    "facts": {}
+      "rage-damage-bonus": 2,
+      "rage-count": "3"
+    }
   },
   {
     "index": "barbarian-5",
     "name": "Barbarian 5",
-    "text": "Barbarian, level 5. Proficiency bonus: +3.\n\nFeatures gained: Extra Attack, Fast Movement.\n\nThis level's numbers: rage count 3, rage damage bonus 2.",
-    "tags": [],
+    "text": "Barbarian, level 5. Proficiency bonus: +3.\n\nFeatures gained: Extra Attack, Fast Movement.\n\nThis level's numbers: rage damage bonus 2.",
     "options": [
       {
         "pack": "srd-2014",
@@ -116,21 +103,18 @@
       }
     ],
     "choose": 2,
-    "numbers": {
+    "facts": {
       "level": 5,
       "proficiency-bonus": 3,
       "ability-score-bonuses": 1,
-      "rage-count": 3,
-      "rage-damage-bonus": 2
-    },
-    "notes": {},
-    "facts": {}
+      "rage-damage-bonus": 2,
+      "rage-count": "3"
+    }
   },
   {
     "index": "barbarian-6",
     "name": "Barbarian 6",
-    "text": "Barbarian, level 6. Proficiency bonus: +3.\n\nFeatures gained: Path feature.\n\nThis level's numbers: rage count 4, rage damage bonus 2.",
-    "tags": [],
+    "text": "Barbarian, level 6. Proficiency bonus: +3.\n\nFeatures gained: Path feature.\n\nThis level's numbers: rage damage bonus 2.",
     "options": [
       {
         "pack": "srd-2014",
@@ -139,21 +123,18 @@
       }
     ],
     "choose": 1,
-    "numbers": {
+    "facts": {
       "level": 6,
       "proficiency-bonus": 3,
       "ability-score-bonuses": 1,
-      "rage-count": 4,
-      "rage-damage-bonus": 2
-    },
-    "notes": {},
-    "facts": {}
+      "rage-damage-bonus": 2,
+      "rage-count": "4"
+    }
   },
   {
     "index": "barbarian-7",
     "name": "Barbarian 7",
-    "text": "Barbarian, level 7. Proficiency bonus: +3.\n\nFeatures gained: Feral Instinct.\n\nThis level's numbers: rage count 4, rage damage bonus 2.",
-    "tags": [],
+    "text": "Barbarian, level 7. Proficiency bonus: +3.\n\nFeatures gained: Feral Instinct.\n\nThis level's numbers: rage damage bonus 2.",
     "options": [
       {
         "pack": "srd-2014",
@@ -162,21 +143,18 @@
       }
     ],
     "choose": 1,
-    "numbers": {
+    "facts": {
       "level": 7,
       "proficiency-bonus": 3,
       "ability-score-bonuses": 1,
-      "rage-count": 4,
-      "rage-damage-bonus": 2
-    },
-    "notes": {},
-    "facts": {}
+      "rage-damage-bonus": 2,
+      "rage-count": "4"
+    }
   },
   {
     "index": "barbarian-8",
     "name": "Barbarian 8",
-    "text": "Barbarian, level 8. Proficiency bonus: +3.\n\nFeatures gained: Ability Score Improvement.\n\nThis level's numbers: rage count 4, rage damage bonus 2.",
-    "tags": [],
+    "text": "Barbarian, level 8. Proficiency bonus: +3.\n\nFeatures gained: Ability Score Improvement.\n\nThis level's numbers: rage damage bonus 2.",
     "options": [
       {
         "pack": "srd-2014",
@@ -185,21 +163,18 @@
       }
     ],
     "choose": 1,
-    "numbers": {
+    "facts": {
       "level": 8,
       "proficiency-bonus": 3,
       "ability-score-bonuses": 2,
-      "rage-count": 4,
-      "rage-damage-bonus": 2
-    },
-    "notes": {},
-    "facts": {}
+      "rage-damage-bonus": 2,
+      "rage-count": "4"
+    }
   },
   {
     "index": "barbarian-9",
     "name": "Barbarian 9",
-    "text": "Barbarian, level 9. Proficiency bonus: +4.\n\nFeatures gained: Brutal Critical (1 die).\n\nThis level's numbers: rage count 4, rage damage bonus 3, brutal critical dice 1.",
-    "tags": [],
+    "text": "Barbarian, level 9. Proficiency bonus: +4.\n\nFeatures gained: Brutal Critical (1 die).\n\nThis level's numbers: rage damage bonus 3, brutal critical dice 1.",
     "options": [
       {
         "pack": "srd-2014",
@@ -208,22 +183,19 @@
       }
     ],
     "choose": 1,
-    "numbers": {
+    "facts": {
       "level": 9,
       "proficiency-bonus": 4,
       "ability-score-bonuses": 2,
-      "rage-count": 4,
       "rage-damage-bonus": 3,
-      "brutal-critical-dice": 1
-    },
-    "notes": {},
-    "facts": {}
+      "brutal-critical-dice": 1,
+      "rage-count": "4"
+    }
   },
   {
     "index": "barbarian-10",
     "name": "Barbarian 10",
-    "text": "Barbarian, level 10. Proficiency bonus: +4.\n\nFeatures gained: Path feature.\n\nThis level's numbers: rage count 4, rage damage bonus 3, brutal critical dice 1.",
-    "tags": [],
+    "text": "Barbarian, level 10. Proficiency bonus: +4.\n\nFeatures gained: Path feature.\n\nThis level's numbers: rage damage bonus 3, brutal critical dice 1.",
     "options": [
       {
         "pack": "srd-2014",
@@ -232,22 +204,19 @@
       }
     ],
     "choose": 1,
-    "numbers": {
+    "facts": {
       "level": 10,
       "proficiency-bonus": 4,
       "ability-score-bonuses": 2,
-      "rage-count": 4,
       "rage-damage-bonus": 3,
-      "brutal-critical-dice": 1
-    },
-    "notes": {},
-    "facts": {}
+      "brutal-critical-dice": 1,
+      "rage-count": "4"
+    }
   },
   {
     "index": "barbarian-11",
     "name": "Barbarian 11",
-    "text": "Barbarian, level 11. Proficiency bonus: +4.\n\nFeatures gained: Relentless Rage.\n\nThis level's numbers: rage count 4, rage damage bonus 3, brutal critical dice 1.",
-    "tags": [],
+    "text": "Barbarian, level 11. Proficiency bonus: +4.\n\nFeatures gained: Relentless Rage.\n\nThis level's numbers: rage damage bonus 3, brutal critical dice 1.",
     "options": [
       {
         "pack": "srd-2014",
@@ -256,22 +225,19 @@
       }
     ],
     "choose": 1,
-    "numbers": {
+    "facts": {
       "level": 11,
       "proficiency-bonus": 4,
       "ability-score-bonuses": 2,
-      "rage-count": 4,
       "rage-damage-bonus": 3,
-      "brutal-critical-dice": 1
-    },
-    "notes": {},
-    "facts": {}
+      "brutal-critical-dice": 1,
+      "rage-count": "4"
+    }
   },
   {
     "index": "barbarian-12",
     "name": "Barbarian 12",
-    "text": "Barbarian, level 12. Proficiency bonus: +4.\n\nFeatures gained: Ability Score Improvement.\n\nThis level's numbers: rage count 5, rage damage bonus 3, brutal critical dice 1.",
-    "tags": [],
+    "text": "Barbarian, level 12. Proficiency bonus: +4.\n\nFeatures gained: Ability Score Improvement.\n\nThis level's numbers: rage damage bonus 3, brutal critical dice 1.",
     "options": [
       {
         "pack": "srd-2014",
@@ -280,22 +246,19 @@
       }
     ],
     "choose": 1,
-    "numbers": {
+    "facts": {
       "level": 12,
       "proficiency-bonus": 4,
       "ability-score-bonuses": 3,
-      "rage-count": 5,
       "rage-damage-bonus": 3,
-      "brutal-critical-dice": 1
-    },
-    "notes": {},
-    "facts": {}
+      "brutal-critical-dice": 1,
+      "rage-count": "5"
+    }
   },
   {
     "index": "barbarian-13",
     "name": "Barbarian 13",
-    "text": "Barbarian, level 13. Proficiency bonus: +5.\n\nFeatures gained: Brutal Critical (2 dice).\n\nThis level's numbers: rage count 5, rage damage bonus 3, brutal critical dice 2.",
-    "tags": [],
+    "text": "Barbarian, level 13. Proficiency bonus: +5.\n\nFeatures gained: Brutal Critical (2 dice).\n\nThis level's numbers: rage damage bonus 3, brutal critical dice 2.",
     "options": [
       {
         "pack": "srd-2014",
@@ -304,22 +267,19 @@
       }
     ],
     "choose": 1,
-    "numbers": {
+    "facts": {
       "level": 13,
       "proficiency-bonus": 5,
       "ability-score-bonuses": 3,
-      "rage-count": 5,
       "rage-damage-bonus": 3,
-      "brutal-critical-dice": 2
-    },
-    "notes": {},
-    "facts": {}
+      "brutal-critical-dice": 2,
+      "rage-count": "5"
+    }
   },
   {
     "index": "barbarian-14",
     "name": "Barbarian 14",
-    "text": "Barbarian, level 14. Proficiency bonus: +5.\n\nFeatures gained: Path feature.\n\nThis level's numbers: rage count 5, rage damage bonus 3, brutal critical dice 2.",
-    "tags": [],
+    "text": "Barbarian, level 14. Proficiency bonus: +5.\n\nFeatures gained: Path feature.\n\nThis level's numbers: rage damage bonus 3, brutal critical dice 2.",
     "options": [
       {
         "pack": "srd-2014",
@@ -328,22 +288,19 @@
       }
     ],
     "choose": 1,
-    "numbers": {
+    "facts": {
       "level": 14,
       "proficiency-bonus": 5,
       "ability-score-bonuses": 3,
-      "rage-count": 5,
       "rage-damage-bonus": 3,
-      "brutal-critical-dice": 2
-    },
-    "notes": {},
-    "facts": {}
+      "brutal-critical-dice": 2,
+      "rage-count": "5"
+    }
   },
   {
     "index": "barbarian-15",
     "name": "Barbarian 15",
-    "text": "Barbarian, level 15. Proficiency bonus: +5.\n\nFeatures gained: Persistent Rage.\n\nThis level's numbers: rage count 5, rage damage bonus 3, brutal critical dice 2.",
-    "tags": [],
+    "text": "Barbarian, level 15. Proficiency bonus: +5.\n\nFeatures gained: Persistent Rage.\n\nThis level's numbers: rage damage bonus 3, brutal critical dice 2.",
     "options": [
       {
         "pack": "srd-2014",
@@ -352,22 +309,19 @@
       }
     ],
     "choose": 1,
-    "numbers": {
+    "facts": {
       "level": 15,
       "proficiency-bonus": 5,
       "ability-score-bonuses": 3,
-      "rage-count": 5,
       "rage-damage-bonus": 3,
-      "brutal-critical-dice": 2
-    },
-    "notes": {},
-    "facts": {}
+      "brutal-critical-dice": 2,
+      "rage-count": "5"
+    }
   },
   {
     "index": "barbarian-16",
     "name": "Barbarian 16",
-    "text": "Barbarian, level 16. Proficiency bonus: +5.\n\nFeatures gained: Ability Score Improvement.\n\nThis level's numbers: rage count 5, rage damage bonus 4, brutal critical dice 2.",
-    "tags": [],
+    "text": "Barbarian, level 16. Proficiency bonus: +5.\n\nFeatures gained: Ability Score Improvement.\n\nThis level's numbers: rage damage bonus 4, brutal critical dice 2.",
     "options": [
       {
         "pack": "srd-2014",
@@ -376,22 +330,19 @@
       }
     ],
     "choose": 1,
-    "numbers": {
+    "facts": {
       "level": 16,
       "proficiency-bonus": 5,
       "ability-score-bonuses": 4,
-      "rage-count": 5,
       "rage-damage-bonus": 4,
-      "brutal-critical-dice": 2
-    },
-    "notes": {},
-    "facts": {}
+      "brutal-critical-dice": 2,
+      "rage-count": "5"
+    }
   },
   {
     "index": "barbarian-17",
     "name": "Barbarian 17",
-    "text": "Barbarian, level 17. Proficiency bonus: +6.\n\nFeatures gained: Brutal Critical (3 dice).\n\nThis level's numbers: rage count 6, rage damage bonus 4, brutal critical dice 3.",
-    "tags": [],
+    "text": "Barbarian, level 17. Proficiency bonus: +6.\n\nFeatures gained: Brutal Critical (3 dice).\n\nThis level's numbers: rage damage bonus 4, brutal critical dice 3.",
     "options": [
       {
         "pack": "srd-2014",
@@ -400,22 +351,19 @@
       }
     ],
     "choose": 1,
-    "numbers": {
+    "facts": {
       "level": 17,
       "proficiency-bonus": 6,
       "ability-score-bonuses": 4,
-      "rage-count": 6,
       "rage-damage-bonus": 4,
-      "brutal-critical-dice": 3
-    },
-    "notes": {},
-    "facts": {}
+      "brutal-critical-dice": 3,
+      "rage-count": "6"
+    }
   },
   {
     "index": "barbarian-18",
     "name": "Barbarian 18",
-    "text": "Barbarian, level 18. Proficiency bonus: +6.\n\nFeatures gained: Indomitable Might.\n\nThis level's numbers: rage count 6, rage damage bonus 4, brutal critical dice 3.",
-    "tags": [],
+    "text": "Barbarian, level 18. Proficiency bonus: +6.\n\nFeatures gained: Indomitable Might.\n\nThis level's numbers: rage damage bonus 4, brutal critical dice 3.",
     "options": [
       {
         "pack": "srd-2014",
@@ -424,22 +372,19 @@
       }
     ],
     "choose": 1,
-    "numbers": {
+    "facts": {
       "level": 18,
       "proficiency-bonus": 6,
       "ability-score-bonuses": 4,
-      "rage-count": 6,
       "rage-damage-bonus": 4,
-      "brutal-critical-dice": 3
-    },
-    "notes": {},
-    "facts": {}
+      "brutal-critical-dice": 3,
+      "rage-count": "6"
+    }
   },
   {
     "index": "barbarian-19",
     "name": "Barbarian 19",
-    "text": "Barbarian, level 19. Proficiency bonus: +6.\n\nFeatures gained: Ability Score Improvement.\n\nThis level's numbers: rage count 6, rage damage bonus 4, brutal critical dice 3.",
-    "tags": [],
+    "text": "Barbarian, level 19. Proficiency bonus: +6.\n\nFeatures gained: Ability Score Improvement.\n\nThis level's numbers: rage damage bonus 4, brutal critical dice 3.",
     "options": [
       {
         "pack": "srd-2014",
@@ -448,22 +393,19 @@
       }
     ],
     "choose": 1,
-    "numbers": {
+    "facts": {
       "level": 19,
       "proficiency-bonus": 6,
       "ability-score-bonuses": 5,
-      "rage-count": 6,
       "rage-damage-bonus": 4,
-      "brutal-critical-dice": 3
-    },
-    "notes": {},
-    "facts": {}
+      "brutal-critical-dice": 3,
+      "rage-count": "6"
+    }
   },
   {
     "index": "barbarian-20",
     "name": "Barbarian 20",
     "text": "Barbarian, level 20. Proficiency bonus: +6.\n\nFeatures gained: Primal Champion.\n\nThis level's numbers: rage damage bonus 4, brutal critical dice 3.",
-    "tags": [],
     "options": [
       {
         "pack": "srd-2014",
@@ -472,23 +414,19 @@
       }
     ],
     "choose": 1,
-    "numbers": {
+    "facts": {
       "level": 20,
       "proficiency-bonus": 6,
       "ability-score-bonuses": 5,
       "rage-damage-bonus": 4,
-      "brutal-critical-dice": 3
-    },
-    "notes": {
+      "brutal-critical-dice": 3,
       "rage-count": "unlimited"
-    },
-    "facts": {}
+    }
   },
   {
     "index": "bard-1",
     "name": "Bard 1",
     "text": "Bard, level 1. Proficiency bonus: +2.\n\nFeatures gained: Spellcasting: Bard, Bardic Inspiration (d6).\n\nSpell slots: level 1 x2.\n\nThis level's numbers: bardic inspiration die 6.",
-    "tags": [],
     "options": [
       {
         "pack": "srd-2014",
@@ -502,22 +440,19 @@
       }
     ],
     "choose": 2,
-    "numbers": {
+    "facts": {
       "level": 1,
       "proficiency-bonus": 2,
       "cantrips-known": 2,
       "spells-known": 4,
       "slot-1": 2,
       "bardic-inspiration-die": 6
-    },
-    "notes": {},
-    "facts": {}
+    }
   },
   {
     "index": "bard-2",
     "name": "Bard 2",
     "text": "Bard, level 2. Proficiency bonus: +2.\n\nFeatures gained: Jack of All Trades, Song of Rest (d6).\n\nSpell slots: level 1 x3.\n\nThis level's numbers: bardic inspiration die 6, song of rest die 6.",
-    "tags": [],
     "options": [
       {
         "pack": "srd-2014",
@@ -531,7 +466,7 @@
       }
     ],
     "choose": 2,
-    "numbers": {
+    "facts": {
       "level": 2,
       "proficiency-bonus": 2,
       "cantrips-known": 2,
@@ -539,15 +474,12 @@
       "slot-1": 3,
       "bardic-inspiration-die": 6,
       "song-of-rest-die": 6
-    },
-    "notes": {},
-    "facts": {}
+    }
   },
   {
     "index": "bard-3",
     "name": "Bard 3",
     "text": "Bard, level 3. Proficiency bonus: +2.\n\nFeatures gained: Expertise, Bard College.\n\nSpell slots: level 1 x4, level 2 x2.\n\nThis level's numbers: bardic inspiration die 6, song of rest die 6.",
-    "tags": [],
     "options": [
       {
         "pack": "srd-2014",
@@ -561,7 +493,7 @@
       }
     ],
     "choose": 2,
-    "numbers": {
+    "facts": {
       "level": 3,
       "proficiency-bonus": 2,
       "cantrips-known": 2,
@@ -570,15 +502,12 @@
       "slot-2": 2,
       "bardic-inspiration-die": 6,
       "song-of-rest-die": 6
-    },
-    "notes": {},
-    "facts": {}
+    }
   },
   {
     "index": "bard-4",
     "name": "Bard 4",
     "text": "Bard, level 4. Proficiency bonus: +2.\n\nFeatures gained: Ability Score Improvement.\n\nSpell slots: level 1 x4, level 2 x3.\n\nThis level's numbers: bardic inspiration die 6, song of rest die 6.",
-    "tags": [],
     "options": [
       {
         "pack": "srd-2014",
@@ -587,7 +516,7 @@
       }
     ],
     "choose": 1,
-    "numbers": {
+    "facts": {
       "level": 4,
       "proficiency-bonus": 2,
       "cantrips-known": 3,
@@ -597,15 +526,12 @@
       "slot-2": 3,
       "bardic-inspiration-die": 6,
       "song-of-rest-die": 6
-    },
-    "notes": {},
-    "facts": {}
+    }
   },
   {
     "index": "bard-5",
     "name": "Bard 5",
     "text": "Bard, level 5. Proficiency bonus: +3.\n\nFeatures gained: Bardic Inspiration (d8), Font of Inspiration.\n\nSpell slots: level 1 x4, level 2 x3, level 3 x2.\n\nThis level's numbers: bardic inspiration die 8, song of rest die 6.",
-    "tags": [],
     "options": [
       {
         "pack": "srd-2014",
@@ -619,7 +545,7 @@
       }
     ],
     "choose": 2,
-    "numbers": {
+    "facts": {
       "level": 5,
       "proficiency-bonus": 3,
       "cantrips-known": 3,
@@ -630,15 +556,12 @@
       "slot-3": 2,
       "bardic-inspiration-die": 8,
       "song-of-rest-die": 6
-    },
-    "notes": {},
-    "facts": {}
+    }
   },
   {
     "index": "bard-6",
     "name": "Bard 6",
     "text": "Bard, level 6. Proficiency bonus: +3.\n\nFeatures gained: Countercharm, Bard College feature.\n\nSpell slots: level 1 x4, level 2 x3, level 3 x3.\n\nThis level's numbers: bardic inspiration die 8, song of rest die 6.",
-    "tags": [],
     "options": [
       {
         "pack": "srd-2014",
@@ -652,7 +575,7 @@
       }
     ],
     "choose": 2,
-    "numbers": {
+    "facts": {
       "level": 6,
       "proficiency-bonus": 3,
       "cantrips-known": 3,
@@ -663,18 +586,13 @@
       "slot-3": 3,
       "bardic-inspiration-die": 8,
       "song-of-rest-die": 6
-    },
-    "notes": {},
-    "facts": {}
+    }
   },
   {
     "index": "bard-7",
     "name": "Bard 7",
     "text": "Bard, level 7. Proficiency bonus: +3.\n\nSpell slots: level 1 x4, level 2 x3, level 3 x3, level 4 x1.\n\nThis level's numbers: bardic inspiration die 8, song of rest die 6.",
-    "tags": [],
-    "options": [],
-    "choose": null,
-    "numbers": {
+    "facts": {
       "level": 7,
       "proficiency-bonus": 3,
       "cantrips-known": 3,
@@ -686,15 +604,12 @@
       "slot-4": 1,
       "bardic-inspiration-die": 8,
       "song-of-rest-die": 6
-    },
-    "notes": {},
-    "facts": {}
+    }
   },
   {
     "index": "bard-8",
     "name": "Bard 8",
     "text": "Bard, level 8. Proficiency bonus: +3.\n\nFeatures gained: Ability Score Improvement.\n\nSpell slots: level 1 x4, level 2 x3, level 3 x3, level 4 x2.\n\nThis level's numbers: bardic inspiration die 8, song of rest die 6.",
-    "tags": [],
     "options": [
       {
         "pack": "srd-2014",
@@ -703,7 +618,7 @@
       }
     ],
     "choose": 1,
-    "numbers": {
+    "facts": {
       "level": 8,
       "proficiency-bonus": 3,
       "cantrips-known": 3,
@@ -715,15 +630,12 @@
       "slot-4": 2,
       "bardic-inspiration-die": 8,
       "song-of-rest-die": 6
-    },
-    "notes": {},
-    "facts": {}
+    }
   },
   {
     "index": "bard-9",
     "name": "Bard 9",
     "text": "Bard, level 9. Proficiency bonus: +4.\n\nFeatures gained: Song of Rest (d8).\n\nSpell slots: level 1 x4, level 2 x3, level 3 x3, level 4 x3, level 5 x1.\n\nThis level's numbers: bardic inspiration die 8, song of rest die 8.",
-    "tags": [],
     "options": [
       {
         "pack": "srd-2014",
@@ -732,7 +644,7 @@
       }
     ],
     "choose": 1,
-    "numbers": {
+    "facts": {
       "level": 9,
       "proficiency-bonus": 4,
       "cantrips-known": 3,
@@ -745,15 +657,12 @@
       "slot-5": 1,
       "bardic-inspiration-die": 8,
       "song-of-rest-die": 8
-    },
-    "notes": {},
-    "facts": {}
+    }
   },
   {
     "index": "bard-10",
     "name": "Bard 10",
     "text": "Bard, level 10. Proficiency bonus: +4.\n\nFeatures gained: Expertise, Bardic Inspiration (d10), Magical Secrets.\n\nSpell slots: level 1 x4, level 2 x3, level 3 x3, level 4 x3, level 5 x2.\n\nThis level's numbers: bardic inspiration die 10, song of rest die 8, magical secrets max 5 2.",
-    "tags": [],
     "options": [
       {
         "pack": "srd-2014",
@@ -772,7 +681,7 @@
       }
     ],
     "choose": 3,
-    "numbers": {
+    "facts": {
       "level": 10,
       "proficiency-bonus": 4,
       "cantrips-known": 4,
@@ -786,18 +695,13 @@
       "bardic-inspiration-die": 10,
       "song-of-rest-die": 8,
       "magical-secrets-max-5": 2
-    },
-    "notes": {},
-    "facts": {}
+    }
   },
   {
     "index": "bard-11",
     "name": "Bard 11",
     "text": "Bard, level 11. Proficiency bonus: +4.\n\nSpell slots: level 1 x4, level 2 x3, level 3 x3, level 4 x3, level 5 x2, level 6 x1.\n\nThis level's numbers: bardic inspiration die 10, song of rest die 8, magical secrets max 5 2.",
-    "tags": [],
-    "options": [],
-    "choose": null,
-    "numbers": {
+    "facts": {
       "level": 11,
       "proficiency-bonus": 4,
       "cantrips-known": 4,
@@ -812,15 +716,12 @@
       "bardic-inspiration-die": 10,
       "song-of-rest-die": 8,
       "magical-secrets-max-5": 2
-    },
-    "notes": {},
-    "facts": {}
+    }
   },
   {
     "index": "bard-12",
     "name": "Bard 12",
     "text": "Bard, level 12. Proficiency bonus: +4.\n\nFeatures gained: Ability Score Improvement.\n\nSpell slots: level 1 x4, level 2 x3, level 3 x3, level 4 x3, level 5 x2, level 6 x1.\n\nThis level's numbers: bardic inspiration die 10, song of rest die 8, magical secrets max 5 2.",
-    "tags": [],
     "options": [
       {
         "pack": "srd-2014",
@@ -829,7 +730,7 @@
       }
     ],
     "choose": 1,
-    "numbers": {
+    "facts": {
       "level": 12,
       "proficiency-bonus": 4,
       "cantrips-known": 4,
@@ -844,15 +745,12 @@
       "bardic-inspiration-die": 10,
       "song-of-rest-die": 8,
       "magical-secrets-max-5": 2
-    },
-    "notes": {},
-    "facts": {}
+    }
   },
   {
     "index": "bard-13",
     "name": "Bard 13",
     "text": "Bard, level 13. Proficiency bonus: +5.\n\nFeatures gained: Song of Rest (d10).\n\nSpell slots: level 1 x4, level 2 x3, level 3 x3, level 4 x3, level 5 x2, level 6 x1, level 7 x1.\n\nThis level's numbers: bardic inspiration die 10, song of rest die 10, magical secrets max 5 2.",
-    "tags": [],
     "options": [
       {
         "pack": "srd-2014",
@@ -861,7 +759,7 @@
       }
     ],
     "choose": 1,
-    "numbers": {
+    "facts": {
       "level": 13,
       "proficiency-bonus": 5,
       "cantrips-known": 4,
@@ -877,15 +775,12 @@
       "bardic-inspiration-die": 10,
       "song-of-rest-die": 10,
       "magical-secrets-max-5": 2
-    },
-    "notes": {},
-    "facts": {}
+    }
   },
   {
     "index": "bard-14",
     "name": "Bard 14",
     "text": "Bard, level 14. Proficiency bonus: +5.\n\nFeatures gained: Magical Secrets, Bard College feature.\n\nSpell slots: level 1 x4, level 2 x3, level 3 x3, level 4 x3, level 5 x2, level 6 x1, level 7 x1.\n\nThis level's numbers: bardic inspiration die 10, song of rest die 10, magical secrets max 5 2, magical secrets max 7 2.",
-    "tags": [],
     "options": [
       {
         "pack": "srd-2014",
@@ -899,7 +794,7 @@
       }
     ],
     "choose": 2,
-    "numbers": {
+    "facts": {
       "level": 14,
       "proficiency-bonus": 5,
       "cantrips-known": 4,
@@ -916,15 +811,12 @@
       "song-of-rest-die": 10,
       "magical-secrets-max-5": 2,
       "magical-secrets-max-7": 2
-    },
-    "notes": {},
-    "facts": {}
+    }
   },
   {
     "index": "bard-15",
     "name": "Bard 15",
     "text": "Bard, level 15. Proficiency bonus: +5.\n\nFeatures gained: Bardic Inspiration (d12).\n\nSpell slots: level 1 x4, level 2 x3, level 3 x3, level 4 x3, level 5 x2, level 6 x1, level 7 x1, level 8 x1.\n\nThis level's numbers: bardic inspiration die 12, song of rest die 10, magical secrets max 5 2, magical secrets max 7 2.",
-    "tags": [],
     "options": [
       {
         "pack": "srd-2014",
@@ -933,7 +825,7 @@
       }
     ],
     "choose": 1,
-    "numbers": {
+    "facts": {
       "level": 15,
       "proficiency-bonus": 5,
       "cantrips-known": 4,
@@ -951,15 +843,12 @@
       "song-of-rest-die": 10,
       "magical-secrets-max-5": 2,
       "magical-secrets-max-7": 2
-    },
-    "notes": {},
-    "facts": {}
+    }
   },
   {
     "index": "bard-16",
     "name": "Bard 16",
     "text": "Bard, level 16. Proficiency bonus: +5.\n\nFeatures gained: Ability Score Improvement.\n\nSpell slots: level 1 x4, level 2 x3, level 3 x3, level 4 x3, level 5 x2, level 6 x1, level 7 x1, level 8 x1.\n\nThis level's numbers: bardic inspiration die 12, song of rest die 10, magical secrets max 5 2, magical secrets max 7 2.",
-    "tags": [],
     "options": [
       {
         "pack": "srd-2014",
@@ -968,7 +857,7 @@
       }
     ],
     "choose": 1,
-    "numbers": {
+    "facts": {
       "level": 16,
       "proficiency-bonus": 5,
       "cantrips-known": 4,
@@ -986,15 +875,12 @@
       "song-of-rest-die": 10,
       "magical-secrets-max-5": 2,
       "magical-secrets-max-7": 2
-    },
-    "notes": {},
-    "facts": {}
+    }
   },
   {
     "index": "bard-17",
     "name": "Bard 17",
     "text": "Bard, level 17. Proficiency bonus: +6.\n\nFeatures gained: Song of Rest (d12).\n\nSpell slots: level 1 x4, level 2 x3, level 3 x3, level 4 x3, level 5 x2, level 6 x1, level 7 x1, level 8 x1, level 9 x1.\n\nThis level's numbers: bardic inspiration die 12, song of rest die 12, magical secrets max 5 2, magical secrets max 7 2.",
-    "tags": [],
     "options": [
       {
         "pack": "srd-2014",
@@ -1003,7 +889,7 @@
       }
     ],
     "choose": 1,
-    "numbers": {
+    "facts": {
       "level": 17,
       "proficiency-bonus": 6,
       "cantrips-known": 4,
@@ -1022,15 +908,12 @@
       "song-of-rest-die": 12,
       "magical-secrets-max-5": 2,
       "magical-secrets-max-7": 2
-    },
-    "notes": {},
-    "facts": {}
+    }
   },
   {
     "index": "bard-18",
     "name": "Bard 18",
     "text": "Bard, level 18. Proficiency bonus: +6.\n\nFeatures gained: Magical Secrets.\n\nSpell slots: level 1 x4, level 2 x3, level 3 x3, level 4 x3, level 5 x3, level 6 x1, level 7 x1, level 8 x1, level 9 x1.\n\nThis level's numbers: bardic inspiration die 12, song of rest die 12, magical secrets max 5 2, magical secrets max 7 2, magical secrets max 9 2.",
-    "tags": [],
     "options": [
       {
         "pack": "srd-2014",
@@ -1039,7 +922,7 @@
       }
     ],
     "choose": 1,
-    "numbers": {
+    "facts": {
       "level": 18,
       "proficiency-bonus": 6,
       "cantrips-known": 4,
@@ -1059,15 +942,12 @@
       "magical-secrets-max-5": 2,
       "magical-secrets-max-7": 2,
       "magical-secrets-max-9": 2
-    },
-    "notes": {},
-    "facts": {}
+    }
   },
   {
     "index": "bard-19",
     "name": "Bard 19",
     "text": "Bard, level 19. Proficiency bonus: +6.\n\nFeatures gained: Ability Score Improvement.\n\nSpell slots: level 1 x4, level 2 x3, level 3 x3, level 4 x3, level 5 x3, level 6 x2, level 7 x1, level 8 x1, level 9 x1.\n\nThis level's numbers: bardic inspiration die 12, song of rest die 12, magical secrets max 5 2, magical secrets max 7 2, magical secrets max 9 2.",
-    "tags": [],
     "options": [
       {
         "pack": "srd-2014",
@@ -1076,7 +956,7 @@
       }
     ],
     "choose": 1,
-    "numbers": {
+    "facts": {
       "level": 19,
       "proficiency-bonus": 6,
       "cantrips-known": 4,
@@ -1096,15 +976,12 @@
       "magical-secrets-max-5": 2,
       "magical-secrets-max-7": 2,
       "magical-secrets-max-9": 2
-    },
-    "notes": {},
-    "facts": {}
+    }
   },
   {
     "index": "bard-20",
     "name": "Bard 20",
     "text": "Bard, level 20. Proficiency bonus: +6.\n\nFeatures gained: Superior Inspiration.\n\nSpell slots: level 1 x4, level 2 x3, level 3 x3, level 4 x3, level 5 x3, level 6 x2, level 7 x2, level 8 x1, level 9 x1.\n\nThis level's numbers: bardic inspiration die 12, song of rest die 12, magical secrets max 5 2, magical secrets max 7 2, magical secrets max 9 2.",
-    "tags": [],
     "options": [
       {
         "pack": "srd-2014",
@@ -1113,7 +990,7 @@
       }
     ],
     "choose": 1,
-    "numbers": {
+    "facts": {
       "level": 20,
       "proficiency-bonus": 6,
       "cantrips-known": 4,
@@ -1133,15 +1010,12 @@
       "magical-secrets-max-5": 2,
       "magical-secrets-max-7": 2,
       "magical-secrets-max-9": 2
-    },
-    "notes": {},
-    "facts": {}
+    }
   },
   {
     "index": "cleric-1",
     "name": "Cleric 1",
     "text": "Cleric, level 1. Proficiency bonus: +2.\n\nFeatures gained: Spellcasting: Cleric, Divine Domain, Domain Spells.\n\nSpell slots: level 1 x2.",
-    "tags": [],
     "options": [
       {
         "pack": "srd-2014",
@@ -1160,20 +1034,17 @@
       }
     ],
     "choose": 3,
-    "numbers": {
+    "facts": {
       "level": 1,
       "proficiency-bonus": 2,
       "cantrips-known": 3,
       "slot-1": 2
-    },
-    "notes": {},
-    "facts": {}
+    }
   },
   {
     "index": "cleric-2",
     "name": "Cleric 2",
     "text": "Cleric, level 2. Proficiency bonus: +2.\n\nFeatures gained: Channel Divinity (1/rest), Channel Divinity: Turn Undead, Divine Domain feature.\n\nSpell slots: level 1 x3.\n\nThis level's numbers: channel divinity charges 1.",
-    "tags": [],
     "options": [
       {
         "pack": "srd-2014",
@@ -1192,21 +1063,18 @@
       }
     ],
     "choose": 3,
-    "numbers": {
+    "facts": {
       "level": 2,
       "proficiency-bonus": 2,
       "cantrips-known": 3,
       "slot-1": 3,
       "channel-divinity-charges": 1
-    },
-    "notes": {},
-    "facts": {}
+    }
   },
   {
     "index": "cleric-3",
     "name": "Cleric 3",
     "text": "Cleric, level 3. Proficiency bonus: +2.\n\nFeatures gained: Domain Spells.\n\nSpell slots: level 1 x4, level 2 x2.\n\nThis level's numbers: channel divinity charges 1.",
-    "tags": [],
     "options": [
       {
         "pack": "srd-2014",
@@ -1215,22 +1083,19 @@
       }
     ],
     "choose": 1,
-    "numbers": {
+    "facts": {
       "level": 3,
       "proficiency-bonus": 2,
       "cantrips-known": 3,
       "slot-1": 4,
       "slot-2": 2,
       "channel-divinity-charges": 1
-    },
-    "notes": {},
-    "facts": {}
+    }
   },
   {
     "index": "cleric-4",
     "name": "Cleric 4",
     "text": "Cleric, level 4. Proficiency bonus: +2.\n\nFeatures gained: Ability Score Improvement.\n\nSpell slots: level 1 x4, level 2 x3.\n\nThis level's numbers: channel divinity charges 1.",
-    "tags": [],
     "options": [
       {
         "pack": "srd-2014",
@@ -1239,7 +1104,7 @@
       }
     ],
     "choose": 1,
-    "numbers": {
+    "facts": {
       "level": 4,
       "proficiency-bonus": 2,
       "cantrips-known": 4,
@@ -1247,15 +1112,12 @@
       "slot-1": 4,
       "slot-2": 3,
       "channel-divinity-charges": 1
-    },
-    "notes": {},
-    "facts": {}
+    }
   },
   {
     "index": "cleric-5",
     "name": "Cleric 5",
     "text": "Cleric, level 5. Proficiency bonus: +3.\n\nFeatures gained: Domain Spells, Destroy Undead (CR 1/2 or below).\n\nSpell slots: level 1 x4, level 2 x3, level 3 x2.\n\nThis level's numbers: channel divinity charges 1.",
-    "tags": [],
     "options": [
       {
         "pack": "srd-2014",
@@ -1269,7 +1131,7 @@
       }
     ],
     "choose": 2,
-    "numbers": {
+    "facts": {
       "level": 5,
       "proficiency-bonus": 3,
       "cantrips-known": 4,
@@ -1277,18 +1139,14 @@
       "slot-1": 4,
       "slot-2": 3,
       "slot-3": 2,
-      "channel-divinity-charges": 1
-    },
-    "notes": {
+      "channel-divinity-charges": 1,
       "destroy-undead-cr": "1/2"
-    },
-    "facts": {}
+    }
   },
   {
     "index": "cleric-6",
     "name": "Cleric 6",
     "text": "Cleric, level 6. Proficiency bonus: +3.\n\nFeatures gained: Channel Divinity (2/rest), Divine Domain feature.\n\nSpell slots: level 1 x4, level 2 x3, level 3 x3.\n\nThis level's numbers: channel divinity charges 2.",
-    "tags": [],
     "options": [
       {
         "pack": "srd-2014",
@@ -1302,7 +1160,7 @@
       }
     ],
     "choose": 2,
-    "numbers": {
+    "facts": {
       "level": 6,
       "proficiency-bonus": 3,
       "cantrips-known": 4,
@@ -1310,18 +1168,14 @@
       "slot-1": 4,
       "slot-2": 3,
       "slot-3": 3,
-      "channel-divinity-charges": 2
-    },
-    "notes": {
+      "channel-divinity-charges": 2,
       "destroy-undead-cr": "1/2"
-    },
-    "facts": {}
+    }
   },
   {
     "index": "cleric-7",
     "name": "Cleric 7",
     "text": "Cleric, level 7. Proficiency bonus: +3.\n\nFeatures gained: Domain Spells.\n\nSpell slots: level 1 x4, level 2 x3, level 3 x3, level 4 x1.\n\nThis level's numbers: channel divinity charges 2.",
-    "tags": [],
     "options": [
       {
         "pack": "srd-2014",
@@ -1330,7 +1184,7 @@
       }
     ],
     "choose": 1,
-    "numbers": {
+    "facts": {
       "level": 7,
       "proficiency-bonus": 3,
       "cantrips-known": 4,
@@ -1339,18 +1193,14 @@
       "slot-2": 3,
       "slot-3": 3,
       "slot-4": 1,
-      "channel-divinity-charges": 2
-    },
-    "notes": {
+      "channel-divinity-charges": 2,
       "destroy-undead-cr": "1/2"
-    },
-    "facts": {}
+    }
   },
   {
     "index": "cleric-8",
     "name": "Cleric 8",
-    "text": "Cleric, level 8. Proficiency bonus: +3.\n\nFeatures gained: Ability Score Improvement, Destroy Undead (CR 1 or below), Divine Domain feature.\n\nSpell slots: level 1 x4, level 2 x3, level 3 x3, level 4 x2.\n\nThis level's numbers: channel divinity charges 2, destroy undead cr 1.",
-    "tags": [],
+    "text": "Cleric, level 8. Proficiency bonus: +3.\n\nFeatures gained: Ability Score Improvement, Destroy Undead (CR 1 or below), Divine Domain feature.\n\nSpell slots: level 1 x4, level 2 x3, level 3 x3, level 4 x2.\n\nThis level's numbers: channel divinity charges 2.",
     "options": [
       {
         "pack": "srd-2014",
@@ -1369,7 +1219,7 @@
       }
     ],
     "choose": 3,
-    "numbers": {
+    "facts": {
       "level": 8,
       "proficiency-bonus": 3,
       "cantrips-known": 4,
@@ -1379,18 +1229,13 @@
       "slot-3": 3,
       "slot-4": 2,
       "channel-divinity-charges": 2,
-      "destroy-undead-cr": 1
-    },
-    "notes": {
       "destroy-undead-cr": "1"
-    },
-    "facts": {}
+    }
   },
   {
     "index": "cleric-9",
     "name": "Cleric 9",
-    "text": "Cleric, level 9. Proficiency bonus: +4.\n\nFeatures gained: Domain Spells.\n\nSpell slots: level 1 x4, level 2 x3, level 3 x3, level 4 x3, level 5 x1.\n\nThis level's numbers: channel divinity charges 2, destroy undead cr 1.",
-    "tags": [],
+    "text": "Cleric, level 9. Proficiency bonus: +4.\n\nFeatures gained: Domain Spells.\n\nSpell slots: level 1 x4, level 2 x3, level 3 x3, level 4 x3, level 5 x1.\n\nThis level's numbers: channel divinity charges 2.",
     "options": [
       {
         "pack": "srd-2014",
@@ -1399,7 +1244,7 @@
       }
     ],
     "choose": 1,
-    "numbers": {
+    "facts": {
       "level": 9,
       "proficiency-bonus": 4,
       "cantrips-known": 4,
@@ -1410,18 +1255,13 @@
       "slot-4": 3,
       "slot-5": 1,
       "channel-divinity-charges": 2,
-      "destroy-undead-cr": 1
-    },
-    "notes": {
       "destroy-undead-cr": "1"
-    },
-    "facts": {}
+    }
   },
   {
     "index": "cleric-10",
     "name": "Cleric 10",
-    "text": "Cleric, level 10. Proficiency bonus: +4.\n\nFeatures gained: Divine Intervention.\n\nSpell slots: level 1 x4, level 2 x3, level 3 x3, level 4 x3, level 5 x2.\n\nThis level's numbers: channel divinity charges 2, destroy undead cr 1.",
-    "tags": [],
+    "text": "Cleric, level 10. Proficiency bonus: +4.\n\nFeatures gained: Divine Intervention.\n\nSpell slots: level 1 x4, level 2 x3, level 3 x3, level 4 x3, level 5 x2.\n\nThis level's numbers: channel divinity charges 2.",
     "options": [
       {
         "pack": "srd-2014",
@@ -1430,7 +1270,7 @@
       }
     ],
     "choose": 1,
-    "numbers": {
+    "facts": {
       "level": 10,
       "proficiency-bonus": 4,
       "cantrips-known": 5,
@@ -1441,18 +1281,13 @@
       "slot-4": 3,
       "slot-5": 2,
       "channel-divinity-charges": 2,
-      "destroy-undead-cr": 1
-    },
-    "notes": {
       "destroy-undead-cr": "1"
-    },
-    "facts": {}
+    }
   },
   {
     "index": "cleric-11",
     "name": "Cleric 11",
-    "text": "Cleric, level 11. Proficiency bonus: +4.\n\nFeatures gained: Destroy Undead (CR 2 or below).\n\nSpell slots: level 1 x4, level 2 x3, level 3 x3, level 4 x3, level 5 x2, level 6 x1.\n\nThis level's numbers: channel divinity charges 2, destroy undead cr 2.",
-    "tags": [],
+    "text": "Cleric, level 11. Proficiency bonus: +4.\n\nFeatures gained: Destroy Undead (CR 2 or below).\n\nSpell slots: level 1 x4, level 2 x3, level 3 x3, level 4 x3, level 5 x2, level 6 x1.\n\nThis level's numbers: channel divinity charges 2.",
     "options": [
       {
         "pack": "srd-2014",
@@ -1461,7 +1296,7 @@
       }
     ],
     "choose": 1,
-    "numbers": {
+    "facts": {
       "level": 11,
       "proficiency-bonus": 4,
       "cantrips-known": 5,
@@ -1473,18 +1308,13 @@
       "slot-5": 2,
       "slot-6": 1,
       "channel-divinity-charges": 2,
-      "destroy-undead-cr": 2
-    },
-    "notes": {
       "destroy-undead-cr": "2"
-    },
-    "facts": {}
+    }
   },
   {
     "index": "cleric-12",
     "name": "Cleric 12",
-    "text": "Cleric, level 12. Proficiency bonus: +4.\n\nFeatures gained: Ability Score Improvement.\n\nSpell slots: level 1 x4, level 2 x3, level 3 x3, level 4 x3, level 5 x2, level 6 x1.\n\nThis level's numbers: channel divinity charges 2, destroy undead cr 2.",
-    "tags": [],
+    "text": "Cleric, level 12. Proficiency bonus: +4.\n\nFeatures gained: Ability Score Improvement.\n\nSpell slots: level 1 x4, level 2 x3, level 3 x3, level 4 x3, level 5 x2, level 6 x1.\n\nThis level's numbers: channel divinity charges 2.",
     "options": [
       {
         "pack": "srd-2014",
@@ -1493,7 +1323,7 @@
       }
     ],
     "choose": 1,
-    "numbers": {
+    "facts": {
       "level": 12,
       "proficiency-bonus": 4,
       "cantrips-known": 5,
@@ -1505,21 +1335,14 @@
       "slot-5": 2,
       "slot-6": 1,
       "channel-divinity-charges": 2,
-      "destroy-undead-cr": 2
-    },
-    "notes": {
       "destroy-undead-cr": "2"
-    },
-    "facts": {}
+    }
   },
   {
     "index": "cleric-13",
     "name": "Cleric 13",
-    "text": "Cleric, level 13. Proficiency bonus: +5.\n\nSpell slots: level 1 x4, level 2 x3, level 3 x3, level 4 x3, level 5 x2, level 6 x1, level 7 x1.\n\nThis level's numbers: channel divinity charges 2, destroy undead cr 2.",
-    "tags": [],
-    "options": [],
-    "choose": null,
-    "numbers": {
+    "text": "Cleric, level 13. Proficiency bonus: +5.\n\nSpell slots: level 1 x4, level 2 x3, level 3 x3, level 4 x3, level 5 x2, level 6 x1, level 7 x1.\n\nThis level's numbers: channel divinity charges 2.",
+    "facts": {
       "level": 13,
       "proficiency-bonus": 5,
       "cantrips-known": 5,
@@ -1532,18 +1355,13 @@
       "slot-6": 1,
       "slot-7": 1,
       "channel-divinity-charges": 2,
-      "destroy-undead-cr": 2
-    },
-    "notes": {
       "destroy-undead-cr": "2"
-    },
-    "facts": {}
+    }
   },
   {
     "index": "cleric-14",
     "name": "Cleric 14",
-    "text": "Cleric, level 14. Proficiency bonus: +5.\n\nFeatures gained: Destroy Undead (CR 3 or below).\n\nSpell slots: level 1 x4, level 2 x3, level 3 x3, level 4 x3, level 5 x2, level 6 x1, level 7 x1.\n\nThis level's numbers: channel divinity charges 2, destroy undead cr 3.",
-    "tags": [],
+    "text": "Cleric, level 14. Proficiency bonus: +5.\n\nFeatures gained: Destroy Undead (CR 3 or below).\n\nSpell slots: level 1 x4, level 2 x3, level 3 x3, level 4 x3, level 5 x2, level 6 x1, level 7 x1.\n\nThis level's numbers: channel divinity charges 2.",
     "options": [
       {
         "pack": "srd-2014",
@@ -1552,7 +1370,7 @@
       }
     ],
     "choose": 1,
-    "numbers": {
+    "facts": {
       "level": 14,
       "proficiency-bonus": 5,
       "cantrips-known": 5,
@@ -1565,21 +1383,14 @@
       "slot-6": 1,
       "slot-7": 1,
       "channel-divinity-charges": 2,
-      "destroy-undead-cr": 3
-    },
-    "notes": {
       "destroy-undead-cr": "3"
-    },
-    "facts": {}
+    }
   },
   {
     "index": "cleric-15",
     "name": "Cleric 15",
-    "text": "Cleric, level 15. Proficiency bonus: +5.\n\nSpell slots: level 1 x4, level 2 x3, level 3 x3, level 4 x3, level 5 x2, level 6 x1, level 7 x1, level 8 x1.\n\nThis level's numbers: channel divinity charges 2, destroy undead cr 3.",
-    "tags": [],
-    "options": [],
-    "choose": null,
-    "numbers": {
+    "text": "Cleric, level 15. Proficiency bonus: +5.\n\nSpell slots: level 1 x4, level 2 x3, level 3 x3, level 4 x3, level 5 x2, level 6 x1, level 7 x1, level 8 x1.\n\nThis level's numbers: channel divinity charges 2.",
+    "facts": {
       "level": 15,
       "proficiency-bonus": 5,
       "cantrips-known": 5,
@@ -1593,18 +1404,13 @@
       "slot-7": 1,
       "slot-8": 1,
       "channel-divinity-charges": 2,
-      "destroy-undead-cr": 3
-    },
-    "notes": {
       "destroy-undead-cr": "3"
-    },
-    "facts": {}
+    }
   },
   {
     "index": "cleric-16",
     "name": "Cleric 16",
-    "text": "Cleric, level 16. Proficiency bonus: +5.\n\nFeatures gained: Ability Score Improvement.\n\nSpell slots: level 1 x4, level 2 x3, level 3 x3, level 4 x3, level 5 x2, level 6 x1, level 7 x1, level 8 x1.\n\nThis level's numbers: channel divinity charges 2, destroy undead cr 3.",
-    "tags": [],
+    "text": "Cleric, level 16. Proficiency bonus: +5.\n\nFeatures gained: Ability Score Improvement.\n\nSpell slots: level 1 x4, level 2 x3, level 3 x3, level 4 x3, level 5 x2, level 6 x1, level 7 x1, level 8 x1.\n\nThis level's numbers: channel divinity charges 2.",
     "options": [
       {
         "pack": "srd-2014",
@@ -1613,7 +1419,7 @@
       }
     ],
     "choose": 1,
-    "numbers": {
+    "facts": {
       "level": 16,
       "proficiency-bonus": 5,
       "cantrips-known": 5,
@@ -1627,18 +1433,13 @@
       "slot-7": 1,
       "slot-8": 1,
       "channel-divinity-charges": 2,
-      "destroy-undead-cr": 3
-    },
-    "notes": {
       "destroy-undead-cr": "3"
-    },
-    "facts": {}
+    }
   },
   {
     "index": "cleric-17",
     "name": "Cleric 17",
-    "text": "Cleric, level 17. Proficiency bonus: +6.\n\nFeatures gained: Destroy Undead (CR 4 or below), Divine Domain feature.\n\nSpell slots: level 1 x4, level 2 x3, level 3 x3, level 4 x3, level 5 x2, level 6 x1, level 7 x1, level 8 x1, level 9 x1.\n\nThis level's numbers: channel divinity charges 2, destroy undead cr 4.",
-    "tags": [],
+    "text": "Cleric, level 17. Proficiency bonus: +6.\n\nFeatures gained: Destroy Undead (CR 4 or below), Divine Domain feature.\n\nSpell slots: level 1 x4, level 2 x3, level 3 x3, level 4 x3, level 5 x2, level 6 x1, level 7 x1, level 8 x1, level 9 x1.\n\nThis level's numbers: channel divinity charges 2.",
     "options": [
       {
         "pack": "srd-2014",
@@ -1652,7 +1453,7 @@
       }
     ],
     "choose": 2,
-    "numbers": {
+    "facts": {
       "level": 17,
       "proficiency-bonus": 6,
       "cantrips-known": 5,
@@ -1667,18 +1468,13 @@
       "slot-8": 1,
       "slot-9": 1,
       "channel-divinity-charges": 2,
-      "destroy-undead-cr": 4
-    },
-    "notes": {
       "destroy-undead-cr": "4"
-    },
-    "facts": {}
+    }
   },
   {
     "index": "cleric-18",
     "name": "Cleric 18",
-    "text": "Cleric, level 18. Proficiency bonus: +6.\n\nFeatures gained: Channel Divinity (3/rest).\n\nSpell slots: level 1 x4, level 2 x3, level 3 x3, level 4 x3, level 5 x3, level 6 x1, level 7 x1, level 8 x1, level 9 x1.\n\nThis level's numbers: channel divinity charges 3, destroy undead cr 4.",
-    "tags": [],
+    "text": "Cleric, level 18. Proficiency bonus: +6.\n\nFeatures gained: Channel Divinity (3/rest).\n\nSpell slots: level 1 x4, level 2 x3, level 3 x3, level 4 x3, level 5 x3, level 6 x1, level 7 x1, level 8 x1, level 9 x1.\n\nThis level's numbers: channel divinity charges 3.",
     "options": [
       {
         "pack": "srd-2014",
@@ -1687,7 +1483,7 @@
       }
     ],
     "choose": 1,
-    "numbers": {
+    "facts": {
       "level": 18,
       "proficiency-bonus": 6,
       "cantrips-known": 5,
@@ -1702,18 +1498,13 @@
       "slot-8": 1,
       "slot-9": 1,
       "channel-divinity-charges": 3,
-      "destroy-undead-cr": 4
-    },
-    "notes": {
       "destroy-undead-cr": "4"
-    },
-    "facts": {}
+    }
   },
   {
     "index": "cleric-19",
     "name": "Cleric 19",
-    "text": "Cleric, level 19. Proficiency bonus: +6.\n\nFeatures gained: Ability Score Improvement.\n\nSpell slots: level 1 x4, level 2 x3, level 3 x3, level 4 x3, level 5 x3, level 6 x2, level 7 x1, level 8 x1, level 9 x1.\n\nThis level's numbers: channel divinity charges 3, destroy undead cr 4.",
-    "tags": [],
+    "text": "Cleric, level 19. Proficiency bonus: +6.\n\nFeatures gained: Ability Score Improvement.\n\nSpell slots: level 1 x4, level 2 x3, level 3 x3, level 4 x3, level 5 x3, level 6 x2, level 7 x1, level 8 x1, level 9 x1.\n\nThis level's numbers: channel divinity charges 3.",
     "options": [
       {
         "pack": "srd-2014",
@@ -1722,7 +1513,7 @@
       }
     ],
     "choose": 1,
-    "numbers": {
+    "facts": {
       "level": 19,
       "proficiency-bonus": 6,
       "cantrips-known": 5,
@@ -1737,18 +1528,13 @@
       "slot-8": 1,
       "slot-9": 1,
       "channel-divinity-charges": 3,
-      "destroy-undead-cr": 4
-    },
-    "notes": {
       "destroy-undead-cr": "4"
-    },
-    "facts": {}
+    }
   },
   {
     "index": "cleric-20",
     "name": "Cleric 20",
-    "text": "Cleric, level 20. Proficiency bonus: +6.\n\nFeatures gained: Divine Intervention Improvement.\n\nSpell slots: level 1 x4, level 2 x3, level 3 x3, level 4 x3, level 5 x3, level 6 x2, level 7 x2, level 8 x1, level 9 x1.\n\nThis level's numbers: channel divinity charges 3, destroy undead cr 4.",
-    "tags": [],
+    "text": "Cleric, level 20. Proficiency bonus: +6.\n\nFeatures gained: Divine Intervention Improvement.\n\nSpell slots: level 1 x4, level 2 x3, level 3 x3, level 4 x3, level 5 x3, level 6 x2, level 7 x2, level 8 x1, level 9 x1.\n\nThis level's numbers: channel divinity charges 3.",
     "options": [
       {
         "pack": "srd-2014",
@@ -1757,7 +1543,7 @@
       }
     ],
     "choose": 1,
-    "numbers": {
+    "facts": {
       "level": 20,
       "proficiency-bonus": 6,
       "cantrips-known": 5,
@@ -1772,18 +1558,13 @@
       "slot-8": 1,
       "slot-9": 1,
       "channel-divinity-charges": 3,
-      "destroy-undead-cr": 4
-    },
-    "notes": {
       "destroy-undead-cr": "4"
-    },
-    "facts": {}
+    }
   },
   {
     "index": "druid-1",
     "name": "Druid 1",
     "text": "Druid, level 1. Proficiency bonus: +2.\n\nFeatures gained: Spellcasting: Druid, Druidic.\n\nSpell slots: level 1 x2.",
-    "tags": [],
     "options": [
       {
         "pack": "srd-2014",
@@ -1797,20 +1578,17 @@
       }
     ],
     "choose": 2,
-    "numbers": {
+    "facts": {
       "level": 1,
       "proficiency-bonus": 2,
       "cantrips-known": 2,
       "slot-1": 2
-    },
-    "notes": {},
-    "facts": {}
+    }
   },
   {
     "index": "druid-2",
     "name": "Druid 2",
     "text": "Druid, level 2. Proficiency bonus: +2.\n\nFeatures gained: Wild Shape (CR 1/4 or below, no flying or swim speed), Druid Circle.\n\nSpell slots: level 1 x3.",
-    "tags": [],
     "options": [
       {
         "pack": "srd-2014",
@@ -1824,35 +1602,26 @@
       }
     ],
     "choose": 2,
-    "numbers": {
+    "facts": {
       "level": 2,
       "proficiency-bonus": 2,
       "cantrips-known": 2,
-      "slot-1": 3
-    },
-    "notes": {
+      "slot-1": 3,
       "wild-shape-max-cr": "1/4"
-    },
-    "facts": {}
+    }
   },
   {
     "index": "druid-3",
     "name": "Druid 3",
     "text": "Druid, level 3. Proficiency bonus: +2.\n\nSpell slots: level 1 x4, level 2 x2.",
-    "tags": [],
-    "options": [],
-    "choose": null,
-    "numbers": {
+    "facts": {
       "level": 3,
       "proficiency-bonus": 2,
       "cantrips-known": 2,
       "slot-1": 4,
-      "slot-2": 2
-    },
-    "notes": {
+      "slot-2": 2,
       "wild-shape-max-cr": "1/4"
-    },
-    "facts": {}
+    }
   },
   {
     "index": "druid-4",
@@ -1874,18 +1643,15 @@
       }
     ],
     "choose": 2,
-    "numbers": {
+    "facts": {
       "level": 4,
       "proficiency-bonus": 2,
       "cantrips-known": 3,
       "ability-score-bonuses": 1,
       "slot-1": 4,
-      "slot-2": 3
-    },
-    "notes": {
+      "slot-2": 3,
       "wild-shape-max-cr": "1/2"
-    },
-    "facts": {}
+    }
   },
   {
     "index": "druid-5",
@@ -1894,21 +1660,16 @@
     "tags": [
       "wild-shape-swim"
     ],
-    "options": [],
-    "choose": null,
-    "numbers": {
+    "facts": {
       "level": 5,
       "proficiency-bonus": 3,
       "cantrips-known": 3,
       "ability-score-bonuses": 1,
       "slot-1": 4,
       "slot-2": 3,
-      "slot-3": 2
-    },
-    "notes": {
+      "slot-3": 2,
       "wild-shape-max-cr": "1/2"
-    },
-    "facts": {}
+    }
   },
   {
     "index": "druid-6",
@@ -1925,30 +1686,25 @@
       }
     ],
     "choose": 1,
-    "numbers": {
+    "facts": {
       "level": 6,
       "proficiency-bonus": 3,
       "cantrips-known": 3,
       "ability-score-bonuses": 1,
       "slot-1": 4,
       "slot-2": 3,
-      "slot-3": 3
-    },
-    "notes": {
+      "slot-3": 3,
       "wild-shape-max-cr": "1/2"
-    },
-    "facts": {}
+    }
   },
   {
     "index": "druid-7",
     "name": "Druid 7",
-    "text": "Druid, level 7. Proficiency bonus: +3.\n\nSpell slots: level 1 x4, level 2 x3, level 3 x3, level 4 x1.\n\nThis level's numbers: wild shape max cr 1.",
+    "text": "Druid, level 7. Proficiency bonus: +3.\n\nSpell slots: level 1 x4, level 2 x3, level 3 x3, level 4 x1.",
     "tags": [
       "wild-shape-swim"
     ],
-    "options": [],
-    "choose": null,
-    "numbers": {
+    "facts": {
       "level": 7,
       "proficiency-bonus": 3,
       "cantrips-known": 3,
@@ -1957,17 +1713,13 @@
       "slot-2": 3,
       "slot-3": 3,
       "slot-4": 1,
-      "wild-shape-max-cr": 1
-    },
-    "notes": {
       "wild-shape-max-cr": "1"
-    },
-    "facts": {}
+    }
   },
   {
     "index": "druid-8",
     "name": "Druid 8",
-    "text": "Druid, level 8. Proficiency bonus: +3.\n\nFeatures gained: Wild Shape (CR 1 or below), Ability Score Improvement.\n\nSpell slots: level 1 x4, level 2 x3, level 3 x3, level 4 x2.\n\nThis level's numbers: wild shape max cr 1.",
+    "text": "Druid, level 8. Proficiency bonus: +3.\n\nFeatures gained: Wild Shape (CR 1 or below), Ability Score Improvement.\n\nSpell slots: level 1 x4, level 2 x3, level 3 x3, level 4 x2.",
     "tags": [
       "wild-shape-fly",
       "wild-shape-swim"
@@ -1985,7 +1737,7 @@
       }
     ],
     "choose": 2,
-    "numbers": {
+    "facts": {
       "level": 8,
       "proficiency-bonus": 3,
       "cantrips-known": 3,
@@ -1994,24 +1746,18 @@
       "slot-2": 3,
       "slot-3": 3,
       "slot-4": 2,
-      "wild-shape-max-cr": 1
-    },
-    "notes": {
       "wild-shape-max-cr": "1"
-    },
-    "facts": {}
+    }
   },
   {
     "index": "druid-9",
     "name": "Druid 9",
-    "text": "Druid, level 9. Proficiency bonus: +4.\n\nSpell slots: level 1 x4, level 2 x3, level 3 x3, level 4 x3, level 5 x1.\n\nThis level's numbers: wild shape max cr 1.",
+    "text": "Druid, level 9. Proficiency bonus: +4.\n\nSpell slots: level 1 x4, level 2 x3, level 3 x3, level 4 x3, level 5 x1.",
     "tags": [
       "wild-shape-fly",
       "wild-shape-swim"
     ],
-    "options": [],
-    "choose": null,
-    "numbers": {
+    "facts": {
       "level": 9,
       "proficiency-bonus": 4,
       "cantrips-known": 3,
@@ -2021,17 +1767,13 @@
       "slot-3": 3,
       "slot-4": 3,
       "slot-5": 1,
-      "wild-shape-max-cr": 1
-    },
-    "notes": {
       "wild-shape-max-cr": "1"
-    },
-    "facts": {}
+    }
   },
   {
     "index": "druid-10",
     "name": "Druid 10",
-    "text": "Druid, level 10. Proficiency bonus: +4.\n\nFeatures gained: Druid Circle feature.\n\nSpell slots: level 1 x4, level 2 x3, level 3 x3, level 4 x3, level 5 x2.\n\nThis level's numbers: wild shape max cr 1.",
+    "text": "Druid, level 10. Proficiency bonus: +4.\n\nFeatures gained: Druid Circle feature.\n\nSpell slots: level 1 x4, level 2 x3, level 3 x3, level 4 x3, level 5 x2.",
     "tags": [
       "wild-shape-fly",
       "wild-shape-swim"
@@ -2044,7 +1786,7 @@
       }
     ],
     "choose": 1,
-    "numbers": {
+    "facts": {
       "level": 10,
       "proficiency-bonus": 4,
       "cantrips-known": 4,
@@ -2054,24 +1796,18 @@
       "slot-3": 3,
       "slot-4": 3,
       "slot-5": 2,
-      "wild-shape-max-cr": 1
-    },
-    "notes": {
       "wild-shape-max-cr": "1"
-    },
-    "facts": {}
+    }
   },
   {
     "index": "druid-11",
     "name": "Druid 11",
-    "text": "Druid, level 11. Proficiency bonus: +4.\n\nSpell slots: level 1 x4, level 2 x3, level 3 x3, level 4 x3, level 5 x2, level 6 x1.\n\nThis level's numbers: wild shape max cr 1.",
+    "text": "Druid, level 11. Proficiency bonus: +4.\n\nSpell slots: level 1 x4, level 2 x3, level 3 x3, level 4 x3, level 5 x2, level 6 x1.",
     "tags": [
       "wild-shape-fly",
       "wild-shape-swim"
     ],
-    "options": [],
-    "choose": null,
-    "numbers": {
+    "facts": {
       "level": 11,
       "proficiency-bonus": 4,
       "cantrips-known": 4,
@@ -2082,17 +1818,13 @@
       "slot-4": 3,
       "slot-5": 2,
       "slot-6": 1,
-      "wild-shape-max-cr": 1
-    },
-    "notes": {
       "wild-shape-max-cr": "1"
-    },
-    "facts": {}
+    }
   },
   {
     "index": "druid-12",
     "name": "Druid 12",
-    "text": "Druid, level 12. Proficiency bonus: +4.\n\nFeatures gained: Ability Score Improvement.\n\nSpell slots: level 1 x4, level 2 x3, level 3 x3, level 4 x3, level 5 x2, level 6 x1.\n\nThis level's numbers: wild shape max cr 1.",
+    "text": "Druid, level 12. Proficiency bonus: +4.\n\nFeatures gained: Ability Score Improvement.\n\nSpell slots: level 1 x4, level 2 x3, level 3 x3, level 4 x3, level 5 x2, level 6 x1.",
     "tags": [
       "wild-shape-fly",
       "wild-shape-swim"
@@ -2105,7 +1837,7 @@
       }
     ],
     "choose": 1,
-    "numbers": {
+    "facts": {
       "level": 12,
       "proficiency-bonus": 4,
       "cantrips-known": 4,
@@ -2116,24 +1848,18 @@
       "slot-4": 3,
       "slot-5": 2,
       "slot-6": 1,
-      "wild-shape-max-cr": 1
-    },
-    "notes": {
       "wild-shape-max-cr": "1"
-    },
-    "facts": {}
+    }
   },
   {
     "index": "druid-13",
     "name": "Druid 13",
-    "text": "Druid, level 13. Proficiency bonus: +5.\n\nSpell slots: level 1 x4, level 2 x3, level 3 x3, level 4 x3, level 5 x2, level 6 x1, level 7 x1.\n\nThis level's numbers: wild shape max cr 1.",
+    "text": "Druid, level 13. Proficiency bonus: +5.\n\nSpell slots: level 1 x4, level 2 x3, level 3 x3, level 4 x3, level 5 x2, level 6 x1, level 7 x1.",
     "tags": [
       "wild-shape-fly",
       "wild-shape-swim"
     ],
-    "options": [],
-    "choose": null,
-    "numbers": {
+    "facts": {
       "level": 13,
       "proficiency-bonus": 5,
       "cantrips-known": 4,
@@ -2145,17 +1871,13 @@
       "slot-5": 2,
       "slot-6": 1,
       "slot-7": 1,
-      "wild-shape-max-cr": 1
-    },
-    "notes": {
       "wild-shape-max-cr": "1"
-    },
-    "facts": {}
+    }
   },
   {
     "index": "druid-14",
     "name": "Druid 14",
-    "text": "Druid, level 14. Proficiency bonus: +5.\n\nFeatures gained: Druid Circle feature.\n\nSpell slots: level 1 x4, level 2 x3, level 3 x3, level 4 x3, level 5 x2, level 6 x1, level 7 x1.\n\nThis level's numbers: wild shape max cr 1.",
+    "text": "Druid, level 14. Proficiency bonus: +5.\n\nFeatures gained: Druid Circle feature.\n\nSpell slots: level 1 x4, level 2 x3, level 3 x3, level 4 x3, level 5 x2, level 6 x1, level 7 x1.",
     "tags": [
       "wild-shape-fly",
       "wild-shape-swim"
@@ -2168,7 +1890,7 @@
       }
     ],
     "choose": 1,
-    "numbers": {
+    "facts": {
       "level": 14,
       "proficiency-bonus": 5,
       "cantrips-known": 4,
@@ -2180,24 +1902,18 @@
       "slot-5": 2,
       "slot-6": 1,
       "slot-7": 1,
-      "wild-shape-max-cr": 1
-    },
-    "notes": {
       "wild-shape-max-cr": "1"
-    },
-    "facts": {}
+    }
   },
   {
     "index": "druid-15",
     "name": "Druid 15",
-    "text": "Druid, level 15. Proficiency bonus: +5.\n\nSpell slots: level 1 x4, level 2 x3, level 3 x3, level 4 x3, level 5 x2, level 6 x1, level 7 x1, level 8 x1.\n\nThis level's numbers: wild shape max cr 1.",
+    "text": "Druid, level 15. Proficiency bonus: +5.\n\nSpell slots: level 1 x4, level 2 x3, level 3 x3, level 4 x3, level 5 x2, level 6 x1, level 7 x1, level 8 x1.",
     "tags": [
       "wild-shape-fly",
       "wild-shape-swim"
     ],
-    "options": [],
-    "choose": null,
-    "numbers": {
+    "facts": {
       "level": 15,
       "proficiency-bonus": 5,
       "cantrips-known": 4,
@@ -2210,17 +1926,13 @@
       "slot-6": 1,
       "slot-7": 1,
       "slot-8": 1,
-      "wild-shape-max-cr": 1
-    },
-    "notes": {
       "wild-shape-max-cr": "1"
-    },
-    "facts": {}
+    }
   },
   {
     "index": "druid-16",
     "name": "Druid 16",
-    "text": "Druid, level 16. Proficiency bonus: +5.\n\nFeatures gained: Ability Score Improvement.\n\nSpell slots: level 1 x4, level 2 x3, level 3 x3, level 4 x3, level 5 x2, level 6 x1, level 7 x1, level 8 x1.\n\nThis level's numbers: wild shape max cr 1.",
+    "text": "Druid, level 16. Proficiency bonus: +5.\n\nFeatures gained: Ability Score Improvement.\n\nSpell slots: level 1 x4, level 2 x3, level 3 x3, level 4 x3, level 5 x2, level 6 x1, level 7 x1, level 8 x1.",
     "tags": [
       "wild-shape-fly",
       "wild-shape-swim"
@@ -2233,7 +1945,7 @@
       }
     ],
     "choose": 1,
-    "numbers": {
+    "facts": {
       "level": 16,
       "proficiency-bonus": 5,
       "cantrips-known": 4,
@@ -2246,24 +1958,18 @@
       "slot-6": 1,
       "slot-7": 1,
       "slot-8": 1,
-      "wild-shape-max-cr": 1
-    },
-    "notes": {
       "wild-shape-max-cr": "1"
-    },
-    "facts": {}
+    }
   },
   {
     "index": "druid-17",
     "name": "Druid 17",
-    "text": "Druid, level 17. Proficiency bonus: +6.\n\nSpell slots: level 1 x4, level 2 x3, level 3 x3, level 4 x3, level 5 x2, level 6 x1, level 7 x1, level 8 x1, level 9 x1.\n\nThis level's numbers: wild shape max cr 1.",
+    "text": "Druid, level 17. Proficiency bonus: +6.\n\nSpell slots: level 1 x4, level 2 x3, level 3 x3, level 4 x3, level 5 x2, level 6 x1, level 7 x1, level 8 x1, level 9 x1.",
     "tags": [
       "wild-shape-fly",
       "wild-shape-swim"
     ],
-    "options": [],
-    "choose": null,
-    "numbers": {
+    "facts": {
       "level": 17,
       "proficiency-bonus": 6,
       "cantrips-known": 4,
@@ -2277,17 +1983,13 @@
       "slot-7": 1,
       "slot-8": 1,
       "slot-9": 1,
-      "wild-shape-max-cr": 1
-    },
-    "notes": {
       "wild-shape-max-cr": "1"
-    },
-    "facts": {}
+    }
   },
   {
     "index": "druid-18",
     "name": "Druid 18",
-    "text": "Druid, level 18. Proficiency bonus: +6.\n\nFeatures gained: Timeless Body, Beast Spells.\n\nSpell slots: level 1 x4, level 2 x3, level 3 x3, level 4 x3, level 5 x3, level 6 x1, level 7 x1, level 8 x1, level 9 x1.\n\nThis level's numbers: wild shape max cr 1.",
+    "text": "Druid, level 18. Proficiency bonus: +6.\n\nFeatures gained: Timeless Body, Beast Spells.\n\nSpell slots: level 1 x4, level 2 x3, level 3 x3, level 4 x3, level 5 x3, level 6 x1, level 7 x1, level 8 x1, level 9 x1.",
     "tags": [
       "wild-shape-fly",
       "wild-shape-swim"
@@ -2305,7 +2007,7 @@
       }
     ],
     "choose": 2,
-    "numbers": {
+    "facts": {
       "level": 18,
       "proficiency-bonus": 6,
       "cantrips-known": 4,
@@ -2319,17 +2021,13 @@
       "slot-7": 1,
       "slot-8": 1,
       "slot-9": 1,
-      "wild-shape-max-cr": 1
-    },
-    "notes": {
       "wild-shape-max-cr": "1"
-    },
-    "facts": {}
+    }
   },
   {
     "index": "druid-19",
     "name": "Druid 19",
-    "text": "Druid, level 19. Proficiency bonus: +6.\n\nFeatures gained: Ability Score Improvement.\n\nSpell slots: level 1 x4, level 2 x3, level 3 x3, level 4 x3, level 5 x3, level 6 x2, level 7 x1, level 8 x1, level 9 x1.\n\nThis level's numbers: wild shape max cr 1.",
+    "text": "Druid, level 19. Proficiency bonus: +6.\n\nFeatures gained: Ability Score Improvement.\n\nSpell slots: level 1 x4, level 2 x3, level 3 x3, level 4 x3, level 5 x3, level 6 x2, level 7 x1, level 8 x1, level 9 x1.",
     "tags": [
       "wild-shape-fly",
       "wild-shape-swim"
@@ -2342,7 +2040,7 @@
       }
     ],
     "choose": 1,
-    "numbers": {
+    "facts": {
       "level": 19,
       "proficiency-bonus": 6,
       "cantrips-known": 4,
@@ -2356,17 +2054,13 @@
       "slot-7": 1,
       "slot-8": 1,
       "slot-9": 1,
-      "wild-shape-max-cr": 1
-    },
-    "notes": {
       "wild-shape-max-cr": "1"
-    },
-    "facts": {}
+    }
   },
   {
     "index": "druid-20",
     "name": "Druid 20",
-    "text": "Druid, level 20. Proficiency bonus: +6.\n\nFeatures gained: Archdruid.\n\nSpell slots: level 1 x4, level 2 x3, level 3 x3, level 4 x3, level 5 x3, level 6 x2, level 7 x2, level 8 x1, level 9 x1.\n\nThis level's numbers: wild shape max cr 1.",
+    "text": "Druid, level 20. Proficiency bonus: +6.\n\nFeatures gained: Archdruid.\n\nSpell slots: level 1 x4, level 2 x3, level 3 x3, level 4 x3, level 5 x3, level 6 x2, level 7 x2, level 8 x1, level 9 x1.",
     "tags": [
       "wild-shape-fly",
       "wild-shape-swim"
@@ -2379,7 +2073,7 @@
       }
     ],
     "choose": 1,
-    "numbers": {
+    "facts": {
       "level": 20,
       "proficiency-bonus": 6,
       "cantrips-known": 4,
@@ -2393,18 +2087,13 @@
       "slot-7": 2,
       "slot-8": 1,
       "slot-9": 1,
-      "wild-shape-max-cr": 1
-    },
-    "notes": {
       "wild-shape-max-cr": "1"
-    },
-    "facts": {}
+    }
   },
   {
     "index": "fighter-1",
     "name": "Fighter 1",
     "text": "Fighter, level 1. Proficiency bonus: +2.\n\nFeatures gained: Fighting Style, Second Wind.",
-    "tags": [],
     "options": [
       {
         "pack": "srd-2014",
@@ -2443,18 +2132,15 @@
       }
     ],
     "choose": 2,
-    "numbers": {
+    "facts": {
       "level": 1,
       "proficiency-bonus": 2
-    },
-    "notes": {},
-    "facts": {}
+    }
   },
   {
     "index": "fighter-2",
     "name": "Fighter 2",
     "text": "Fighter, level 2. Proficiency bonus: +2.\n\nFeatures gained: Action Surge (1 use).\n\nThis level's numbers: action surges 1.",
-    "tags": [],
     "options": [
       {
         "pack": "srd-2014",
@@ -2463,19 +2149,16 @@
       }
     ],
     "choose": 1,
-    "numbers": {
+    "facts": {
       "level": 2,
       "proficiency-bonus": 2,
       "action-surges": 1
-    },
-    "notes": {},
-    "facts": {}
+    }
   },
   {
     "index": "fighter-3",
     "name": "Fighter 3",
     "text": "Fighter, level 3. Proficiency bonus: +2.\n\nFeatures gained: Martial Archetype.\n\nThis level's numbers: action surges 1.",
-    "tags": [],
     "options": [
       {
         "pack": "srd-2014",
@@ -2484,19 +2167,16 @@
       }
     ],
     "choose": 1,
-    "numbers": {
+    "facts": {
       "level": 3,
       "proficiency-bonus": 2,
       "action-surges": 1
-    },
-    "notes": {},
-    "facts": {}
+    }
   },
   {
     "index": "fighter-4",
     "name": "Fighter 4",
     "text": "Fighter, level 4. Proficiency bonus: +2.\n\nFeatures gained: Ability Score Improvement.\n\nThis level's numbers: action surges 1.",
-    "tags": [],
     "options": [
       {
         "pack": "srd-2014",
@@ -2505,20 +2185,17 @@
       }
     ],
     "choose": 1,
-    "numbers": {
+    "facts": {
       "level": 4,
       "proficiency-bonus": 2,
       "ability-score-bonuses": 1,
       "action-surges": 1
-    },
-    "notes": {},
-    "facts": {}
+    }
   },
   {
     "index": "fighter-5",
     "name": "Fighter 5",
     "text": "Fighter, level 5. Proficiency bonus: +3.\n\nFeatures gained: Extra Attack.\n\nThis level's numbers: action surges 1, extra attacks 1.",
-    "tags": [],
     "options": [
       {
         "pack": "srd-2014",
@@ -2527,21 +2204,18 @@
       }
     ],
     "choose": 1,
-    "numbers": {
+    "facts": {
       "level": 5,
       "proficiency-bonus": 3,
       "ability-score-bonuses": 1,
       "action-surges": 1,
       "extra-attacks": 1
-    },
-    "notes": {},
-    "facts": {}
+    }
   },
   {
     "index": "fighter-6",
     "name": "Fighter 6",
     "text": "Fighter, level 6. Proficiency bonus: +3.\n\nFeatures gained: Ability Score Improvement.\n\nThis level's numbers: action surges 1, extra attacks 1.",
-    "tags": [],
     "options": [
       {
         "pack": "srd-2014",
@@ -2550,21 +2224,18 @@
       }
     ],
     "choose": 1,
-    "numbers": {
+    "facts": {
       "level": 6,
       "proficiency-bonus": 3,
       "ability-score-bonuses": 2,
       "action-surges": 1,
       "extra-attacks": 1
-    },
-    "notes": {},
-    "facts": {}
+    }
   },
   {
     "index": "fighter-7",
     "name": "Fighter 7",
     "text": "Fighter, level 7. Proficiency bonus: +3.\n\nFeatures gained: Martial Archetype feature.\n\nThis level's numbers: action surges 1, extra attacks 1.",
-    "tags": [],
     "options": [
       {
         "pack": "srd-2014",
@@ -2573,21 +2244,18 @@
       }
     ],
     "choose": 1,
-    "numbers": {
+    "facts": {
       "level": 7,
       "proficiency-bonus": 3,
       "ability-score-bonuses": 2,
       "action-surges": 1,
       "extra-attacks": 1
-    },
-    "notes": {},
-    "facts": {}
+    }
   },
   {
     "index": "fighter-8",
     "name": "Fighter 8",
     "text": "Fighter, level 8. Proficiency bonus: +3.\n\nFeatures gained: Ability Score Improvement.\n\nThis level's numbers: action surges 1, extra attacks 1.",
-    "tags": [],
     "options": [
       {
         "pack": "srd-2014",
@@ -2596,21 +2264,18 @@
       }
     ],
     "choose": 1,
-    "numbers": {
+    "facts": {
       "level": 8,
       "proficiency-bonus": 3,
       "ability-score-bonuses": 3,
       "action-surges": 1,
       "extra-attacks": 1
-    },
-    "notes": {},
-    "facts": {}
+    }
   },
   {
     "index": "fighter-9",
     "name": "Fighter 9",
     "text": "Fighter, level 9. Proficiency bonus: +4.\n\nFeatures gained: Indomitable (1 use).\n\nThis level's numbers: action surges 1, indomitable uses 1, extra attacks 1.",
-    "tags": [],
     "options": [
       {
         "pack": "srd-2014",
@@ -2619,22 +2284,19 @@
       }
     ],
     "choose": 1,
-    "numbers": {
+    "facts": {
       "level": 9,
       "proficiency-bonus": 4,
       "ability-score-bonuses": 3,
       "action-surges": 1,
       "indomitable-uses": 1,
       "extra-attacks": 1
-    },
-    "notes": {},
-    "facts": {}
+    }
   },
   {
     "index": "fighter-10",
     "name": "Fighter 10",
     "text": "Fighter, level 10. Proficiency bonus: +4.\n\nFeatures gained: Martial Archetype feature.\n\nThis level's numbers: action surges 1, indomitable uses 1, extra attacks 1.",
-    "tags": [],
     "options": [
       {
         "pack": "srd-2014",
@@ -2643,22 +2305,19 @@
       }
     ],
     "choose": 1,
-    "numbers": {
+    "facts": {
       "level": 10,
       "proficiency-bonus": 4,
       "ability-score-bonuses": 3,
       "action-surges": 1,
       "indomitable-uses": 1,
       "extra-attacks": 1
-    },
-    "notes": {},
-    "facts": {}
+    }
   },
   {
     "index": "fighter-11",
     "name": "Fighter 11",
     "text": "Fighter, level 11. Proficiency bonus: +4.\n\nFeatures gained: Extra Attack (2).\n\nThis level's numbers: action surges 1, indomitable uses 1, extra attacks 2.",
-    "tags": [],
     "options": [
       {
         "pack": "srd-2014",
@@ -2667,22 +2326,19 @@
       }
     ],
     "choose": 1,
-    "numbers": {
+    "facts": {
       "level": 11,
       "proficiency-bonus": 4,
       "ability-score-bonuses": 3,
       "action-surges": 1,
       "indomitable-uses": 1,
       "extra-attacks": 2
-    },
-    "notes": {},
-    "facts": {}
+    }
   },
   {
     "index": "fighter-12",
     "name": "Fighter 12",
     "text": "Fighter, level 12. Proficiency bonus: +4.\n\nFeatures gained: Ability Score Improvement.\n\nThis level's numbers: action surges 1, indomitable uses 1, extra attacks 2.",
-    "tags": [],
     "options": [
       {
         "pack": "srd-2014",
@@ -2691,22 +2347,19 @@
       }
     ],
     "choose": 1,
-    "numbers": {
+    "facts": {
       "level": 12,
       "proficiency-bonus": 4,
       "ability-score-bonuses": 4,
       "action-surges": 1,
       "indomitable-uses": 1,
       "extra-attacks": 2
-    },
-    "notes": {},
-    "facts": {}
+    }
   },
   {
     "index": "fighter-13",
     "name": "Fighter 13",
     "text": "Fighter, level 13. Proficiency bonus: +5.\n\nFeatures gained: Indomitable (2 uses).\n\nThis level's numbers: action surges 1, indomitable uses 2, extra attacks 2.",
-    "tags": [],
     "options": [
       {
         "pack": "srd-2014",
@@ -2715,22 +2368,19 @@
       }
     ],
     "choose": 1,
-    "numbers": {
+    "facts": {
       "level": 13,
       "proficiency-bonus": 5,
       "ability-score-bonuses": 4,
       "action-surges": 1,
       "indomitable-uses": 2,
       "extra-attacks": 2
-    },
-    "notes": {},
-    "facts": {}
+    }
   },
   {
     "index": "fighter-14",
     "name": "Fighter 14",
     "text": "Fighter, level 14. Proficiency bonus: +5.\n\nFeatures gained: Ability Score Improvement.\n\nThis level's numbers: action surges 1, indomitable uses 2, extra attacks 2.",
-    "tags": [],
     "options": [
       {
         "pack": "srd-2014",
@@ -2739,22 +2389,19 @@
       }
     ],
     "choose": 1,
-    "numbers": {
+    "facts": {
       "level": 14,
       "proficiency-bonus": 5,
       "ability-score-bonuses": 5,
       "action-surges": 1,
       "indomitable-uses": 2,
       "extra-attacks": 2
-    },
-    "notes": {},
-    "facts": {}
+    }
   },
   {
     "index": "fighter-15",
     "name": "Fighter 15",
     "text": "Fighter, level 15. Proficiency bonus: +5.\n\nFeatures gained: Martial Archetype feature.\n\nThis level's numbers: action surges 1, indomitable uses 2, extra attacks 2.",
-    "tags": [],
     "options": [
       {
         "pack": "srd-2014",
@@ -2763,22 +2410,19 @@
       }
     ],
     "choose": 1,
-    "numbers": {
+    "facts": {
       "level": 15,
       "proficiency-bonus": 5,
       "ability-score-bonuses": 5,
       "action-surges": 1,
       "indomitable-uses": 2,
       "extra-attacks": 2
-    },
-    "notes": {},
-    "facts": {}
+    }
   },
   {
     "index": "fighter-16",
     "name": "Fighter 16",
     "text": "Fighter, level 16. Proficiency bonus: +5.\n\nFeatures gained: Ability Score Improvement.\n\nThis level's numbers: action surges 1, indomitable uses 2, extra attacks 2.",
-    "tags": [],
     "options": [
       {
         "pack": "srd-2014",
@@ -2787,22 +2431,19 @@
       }
     ],
     "choose": 1,
-    "numbers": {
+    "facts": {
       "level": 16,
       "proficiency-bonus": 5,
       "ability-score-bonuses": 6,
       "action-surges": 1,
       "indomitable-uses": 2,
       "extra-attacks": 2
-    },
-    "notes": {},
-    "facts": {}
+    }
   },
   {
     "index": "fighter-17",
     "name": "Fighter 17",
     "text": "Fighter, level 17. Proficiency bonus: +6.\n\nFeatures gained: Action Surge (2 uses), Indomitable (3 uses).\n\nThis level's numbers: action surges 2, indomitable uses 3, extra attacks 2.",
-    "tags": [],
     "options": [
       {
         "pack": "srd-2014",
@@ -2816,22 +2457,19 @@
       }
     ],
     "choose": 2,
-    "numbers": {
+    "facts": {
       "level": 17,
       "proficiency-bonus": 6,
       "ability-score-bonuses": 6,
       "action-surges": 2,
       "indomitable-uses": 3,
       "extra-attacks": 2
-    },
-    "notes": {},
-    "facts": {}
+    }
   },
   {
     "index": "fighter-18",
     "name": "Fighter 18",
     "text": "Fighter, level 18. Proficiency bonus: +6.\n\nFeatures gained: Martial Archetype feature.\n\nThis level's numbers: action surges 2, indomitable uses 3, extra attacks 2.",
-    "tags": [],
     "options": [
       {
         "pack": "srd-2014",
@@ -2840,22 +2478,19 @@
       }
     ],
     "choose": 1,
-    "numbers": {
+    "facts": {
       "level": 18,
       "proficiency-bonus": 6,
       "ability-score-bonuses": 6,
       "action-surges": 2,
       "indomitable-uses": 3,
       "extra-attacks": 2
-    },
-    "notes": {},
-    "facts": {}
+    }
   },
   {
     "index": "fighter-19",
     "name": "Fighter 19",
     "text": "Fighter, level 19. Proficiency bonus: +6.\n\nFeatures gained: Ability Score Improvement.\n\nThis level's numbers: action surges 2, indomitable uses 3, extra attacks 2.",
-    "tags": [],
     "options": [
       {
         "pack": "srd-2014",
@@ -2864,22 +2499,19 @@
       }
     ],
     "choose": 1,
-    "numbers": {
+    "facts": {
       "level": 19,
       "proficiency-bonus": 6,
       "ability-score-bonuses": 7,
       "action-surges": 2,
       "indomitable-uses": 3,
       "extra-attacks": 2
-    },
-    "notes": {},
-    "facts": {}
+    }
   },
   {
     "index": "fighter-20",
     "name": "Fighter 20",
     "text": "Fighter, level 20. Proficiency bonus: +6.\n\nFeatures gained: Extra Attack (3).\n\nThis level's numbers: action surges 2, indomitable uses 3, extra attacks 3.",
-    "tags": [],
     "options": [
       {
         "pack": "srd-2014",
@@ -2888,22 +2520,19 @@
       }
     ],
     "choose": 1,
-    "numbers": {
+    "facts": {
       "level": 20,
       "proficiency-bonus": 6,
       "ability-score-bonuses": 7,
       "action-surges": 2,
       "indomitable-uses": 3,
       "extra-attacks": 3
-    },
-    "notes": {},
-    "facts": {}
+    }
   },
   {
     "index": "monk-1",
     "name": "Monk 1",
     "text": "Monk, level 1. Proficiency bonus: +2.\n\nFeatures gained: Unarmored Defense, Martial Arts.",
-    "tags": [],
     "options": [
       {
         "pack": "srd-2014",
@@ -2917,20 +2546,16 @@
       }
     ],
     "choose": 2,
-    "numbers": {
+    "facts": {
       "level": 1,
-      "proficiency-bonus": 2
-    },
-    "notes": {
+      "proficiency-bonus": 2,
       "martial-arts": "1d4"
-    },
-    "facts": {}
+    }
   },
   {
     "index": "monk-2",
     "name": "Monk 2",
     "text": "Monk, level 2. Proficiency bonus: +2.\n\nFeatures gained: Ki, Flurry of Blows, Patient Defense, Step of the Wind, Unarmored Movement.\n\nThis level's numbers: ki points 2, unarmored movement 10.",
-    "tags": [],
     "options": [
       {
         "pack": "srd-2014",
@@ -2959,22 +2584,18 @@
       }
     ],
     "choose": 5,
-    "numbers": {
+    "facts": {
       "level": 2,
       "proficiency-bonus": 2,
       "ki-points": 2,
-      "unarmored-movement": 10
-    },
-    "notes": {
+      "unarmored-movement": 10,
       "martial-arts": "1d4"
-    },
-    "facts": {}
+    }
   },
   {
     "index": "monk-3",
     "name": "Monk 3",
     "text": "Monk, level 3. Proficiency bonus: +2.\n\nFeatures gained: Monastic Tradition, Deflect Missiles.\n\nThis level's numbers: ki points 3, unarmored movement 10.",
-    "tags": [],
     "options": [
       {
         "pack": "srd-2014",
@@ -2988,22 +2609,18 @@
       }
     ],
     "choose": 2,
-    "numbers": {
+    "facts": {
       "level": 3,
       "proficiency-bonus": 2,
       "ki-points": 3,
-      "unarmored-movement": 10
-    },
-    "notes": {
+      "unarmored-movement": 10,
       "martial-arts": "1d4"
-    },
-    "facts": {}
+    }
   },
   {
     "index": "monk-4",
     "name": "Monk 4",
     "text": "Monk, level 4. Proficiency bonus: +2.\n\nFeatures gained: Ability Score Improvement, Slow Fall.\n\nThis level's numbers: ki points 4, unarmored movement 10.",
-    "tags": [],
     "options": [
       {
         "pack": "srd-2014",
@@ -3017,23 +2634,19 @@
       }
     ],
     "choose": 2,
-    "numbers": {
+    "facts": {
       "level": 4,
       "proficiency-bonus": 2,
       "ability-score-bonuses": 1,
       "ki-points": 4,
-      "unarmored-movement": 10
-    },
-    "notes": {
+      "unarmored-movement": 10,
       "martial-arts": "1d4"
-    },
-    "facts": {}
+    }
   },
   {
     "index": "monk-5",
     "name": "Monk 5",
     "text": "Monk, level 5. Proficiency bonus: +3.\n\nFeatures gained: Extra Attack, Stunning Strike.\n\nThis level's numbers: ki points 5, unarmored movement 10.",
-    "tags": [],
     "options": [
       {
         "pack": "srd-2014",
@@ -3047,23 +2660,19 @@
       }
     ],
     "choose": 2,
-    "numbers": {
+    "facts": {
       "level": 5,
       "proficiency-bonus": 3,
       "ability-score-bonuses": 1,
       "ki-points": 5,
-      "unarmored-movement": 10
-    },
-    "notes": {
+      "unarmored-movement": 10,
       "martial-arts": "1d6"
-    },
-    "facts": {}
+    }
   },
   {
     "index": "monk-6",
     "name": "Monk 6",
     "text": "Monk, level 6. Proficiency bonus: +3.\n\nFeatures gained: Ki Empowered Strikes, Monastic Tradition feature.\n\nThis level's numbers: ki points 6, unarmored movement 15.",
-    "tags": [],
     "options": [
       {
         "pack": "srd-2014",
@@ -3077,23 +2686,19 @@
       }
     ],
     "choose": 2,
-    "numbers": {
+    "facts": {
       "level": 6,
       "proficiency-bonus": 3,
       "ability-score-bonuses": 1,
       "ki-points": 6,
-      "unarmored-movement": 15
-    },
-    "notes": {
+      "unarmored-movement": 15,
       "martial-arts": "1d6"
-    },
-    "facts": {}
+    }
   },
   {
     "index": "monk-7",
     "name": "Monk 7",
     "text": "Monk, level 7. Proficiency bonus: +3.\n\nFeatures gained: Evasion, Stillness of Mind.\n\nThis level's numbers: ki points 7, unarmored movement 15.",
-    "tags": [],
     "options": [
       {
         "pack": "srd-2014",
@@ -3107,23 +2712,19 @@
       }
     ],
     "choose": 2,
-    "numbers": {
+    "facts": {
       "level": 7,
       "proficiency-bonus": 3,
       "ability-score-bonuses": 1,
       "ki-points": 7,
-      "unarmored-movement": 15
-    },
-    "notes": {
+      "unarmored-movement": 15,
       "martial-arts": "1d6"
-    },
-    "facts": {}
+    }
   },
   {
     "index": "monk-8",
     "name": "Monk 8",
     "text": "Monk, level 8. Proficiency bonus: +3.\n\nFeatures gained: Ability Score Improvement.\n\nThis level's numbers: ki points 8, unarmored movement 15.",
-    "tags": [],
     "options": [
       {
         "pack": "srd-2014",
@@ -3132,23 +2733,19 @@
       }
     ],
     "choose": 1,
-    "numbers": {
+    "facts": {
       "level": 8,
       "proficiency-bonus": 3,
       "ability-score-bonuses": 2,
       "ki-points": 8,
-      "unarmored-movement": 15
-    },
-    "notes": {
+      "unarmored-movement": 15,
       "martial-arts": "1d6"
-    },
-    "facts": {}
+    }
   },
   {
     "index": "monk-9",
     "name": "Monk 9",
     "text": "Monk, level 9. Proficiency bonus: +4.\n\nFeatures gained: Unarmored Movement.\n\nThis level's numbers: ki points 9, unarmored movement 15.",
-    "tags": [],
     "options": [
       {
         "pack": "srd-2014",
@@ -3157,23 +2754,19 @@
       }
     ],
     "choose": 1,
-    "numbers": {
+    "facts": {
       "level": 9,
       "proficiency-bonus": 4,
       "ability-score-bonuses": 2,
       "ki-points": 9,
-      "unarmored-movement": 15
-    },
-    "notes": {
+      "unarmored-movement": 15,
       "martial-arts": "1d6"
-    },
-    "facts": {}
+    }
   },
   {
     "index": "monk-10",
     "name": "Monk 10",
     "text": "Monk, level 10. Proficiency bonus: +4.\n\nFeatures gained: Purity of Body.\n\nThis level's numbers: ki points 10, unarmored movement 20.",
-    "tags": [],
     "options": [
       {
         "pack": "srd-2014",
@@ -3182,23 +2775,19 @@
       }
     ],
     "choose": 1,
-    "numbers": {
+    "facts": {
       "level": 10,
       "proficiency-bonus": 4,
       "ability-score-bonuses": 2,
       "ki-points": 10,
-      "unarmored-movement": 20
-    },
-    "notes": {
+      "unarmored-movement": 20,
       "martial-arts": "1d6"
-    },
-    "facts": {}
+    }
   },
   {
     "index": "monk-11",
     "name": "Monk 11",
     "text": "Monk, level 11. Proficiency bonus: +4.\n\nFeatures gained: Monastic Tradition feature.\n\nThis level's numbers: ki points 11, unarmored movement 20.",
-    "tags": [],
     "options": [
       {
         "pack": "srd-2014",
@@ -3207,23 +2796,19 @@
       }
     ],
     "choose": 1,
-    "numbers": {
+    "facts": {
       "level": 11,
       "proficiency-bonus": 4,
       "ability-score-bonuses": 2,
       "ki-points": 11,
-      "unarmored-movement": 20
-    },
-    "notes": {
+      "unarmored-movement": 20,
       "martial-arts": "1d8"
-    },
-    "facts": {}
+    }
   },
   {
     "index": "monk-12",
     "name": "Monk 12",
     "text": "Monk, level 12. Proficiency bonus: +4.\n\nFeatures gained: Ability Score Improvement.\n\nThis level's numbers: ki points 12, unarmored movement 20.",
-    "tags": [],
     "options": [
       {
         "pack": "srd-2014",
@@ -3232,23 +2817,19 @@
       }
     ],
     "choose": 1,
-    "numbers": {
+    "facts": {
       "level": 12,
       "proficiency-bonus": 4,
       "ability-score-bonuses": 3,
       "ki-points": 12,
-      "unarmored-movement": 20
-    },
-    "notes": {
+      "unarmored-movement": 20,
       "martial-arts": "1d8"
-    },
-    "facts": {}
+    }
   },
   {
     "index": "monk-13",
     "name": "Monk 13",
     "text": "Monk, level 13. Proficiency bonus: +5.\n\nFeatures gained: Tongue of the Sun and Moon.\n\nThis level's numbers: ki points 13, unarmored movement 20.",
-    "tags": [],
     "options": [
       {
         "pack": "srd-2014",
@@ -3257,23 +2838,19 @@
       }
     ],
     "choose": 1,
-    "numbers": {
+    "facts": {
       "level": 13,
       "proficiency-bonus": 5,
       "ability-score-bonuses": 3,
       "ki-points": 13,
-      "unarmored-movement": 20
-    },
-    "notes": {
+      "unarmored-movement": 20,
       "martial-arts": "1d8"
-    },
-    "facts": {}
+    }
   },
   {
     "index": "monk-14",
     "name": "Monk 14",
     "text": "Monk, level 14. Proficiency bonus: +5.\n\nFeatures gained: Diamond Soul.\n\nThis level's numbers: ki points 14, unarmored movement 25.",
-    "tags": [],
     "options": [
       {
         "pack": "srd-2014",
@@ -3282,23 +2859,19 @@
       }
     ],
     "choose": 1,
-    "numbers": {
+    "facts": {
       "level": 14,
       "proficiency-bonus": 5,
       "ability-score-bonuses": 3,
       "ki-points": 14,
-      "unarmored-movement": 25
-    },
-    "notes": {
+      "unarmored-movement": 25,
       "martial-arts": "1d8"
-    },
-    "facts": {}
+    }
   },
   {
     "index": "monk-15",
     "name": "Monk 15",
     "text": "Monk, level 15. Proficiency bonus: +5.\n\nFeatures gained: Timeless Body.\n\nThis level's numbers: ki points 15, unarmored movement 25.",
-    "tags": [],
     "options": [
       {
         "pack": "srd-2014",
@@ -3307,23 +2880,19 @@
       }
     ],
     "choose": 1,
-    "numbers": {
+    "facts": {
       "level": 15,
       "proficiency-bonus": 5,
       "ability-score-bonuses": 3,
       "ki-points": 15,
-      "unarmored-movement": 25
-    },
-    "notes": {
+      "unarmored-movement": 25,
       "martial-arts": "1d8"
-    },
-    "facts": {}
+    }
   },
   {
     "index": "monk-16",
     "name": "Monk 16",
     "text": "Monk, level 16. Proficiency bonus: +5.\n\nFeatures gained: Ability Score Improvement.\n\nThis level's numbers: ki points 16, unarmored movement 25.",
-    "tags": [],
     "options": [
       {
         "pack": "srd-2014",
@@ -3332,23 +2901,19 @@
       }
     ],
     "choose": 1,
-    "numbers": {
+    "facts": {
       "level": 16,
       "proficiency-bonus": 5,
       "ability-score-bonuses": 4,
       "ki-points": 16,
-      "unarmored-movement": 25
-    },
-    "notes": {
+      "unarmored-movement": 25,
       "martial-arts": "1d8"
-    },
-    "facts": {}
+    }
   },
   {
     "index": "monk-17",
     "name": "Monk 17",
     "text": "Monk, level 17. Proficiency bonus: +6.\n\nFeatures gained: Monastic Tradition feature.\n\nThis level's numbers: ki points 17, unarmored movement 25.",
-    "tags": [],
     "options": [
       {
         "pack": "srd-2014",
@@ -3357,23 +2922,19 @@
       }
     ],
     "choose": 1,
-    "numbers": {
+    "facts": {
       "level": 17,
       "proficiency-bonus": 6,
       "ability-score-bonuses": 4,
       "ki-points": 17,
-      "unarmored-movement": 25
-    },
-    "notes": {
+      "unarmored-movement": 25,
       "martial-arts": "1d10"
-    },
-    "facts": {}
+    }
   },
   {
     "index": "monk-18",
     "name": "Monk 18",
     "text": "Monk, level 18. Proficiency bonus: +6.\n\nFeatures gained: Empty Body.\n\nThis level's numbers: ki points 18, unarmored movement 30.",
-    "tags": [],
     "options": [
       {
         "pack": "srd-2014",
@@ -3382,23 +2943,19 @@
       }
     ],
     "choose": 1,
-    "numbers": {
+    "facts": {
       "level": 18,
       "proficiency-bonus": 6,
       "ability-score-bonuses": 4,
       "ki-points": 18,
-      "unarmored-movement": 30
-    },
-    "notes": {
+      "unarmored-movement": 30,
       "martial-arts": "1d10"
-    },
-    "facts": {}
+    }
   },
   {
     "index": "monk-19",
     "name": "Monk 19",
     "text": "Monk, level 19. Proficiency bonus: +6.\n\nFeatures gained: Ability Score Improvement.\n\nThis level's numbers: ki points 19, unarmored movement 30.",
-    "tags": [],
     "options": [
       {
         "pack": "srd-2014",
@@ -3407,23 +2964,19 @@
       }
     ],
     "choose": 1,
-    "numbers": {
+    "facts": {
       "level": 19,
       "proficiency-bonus": 6,
       "ability-score-bonuses": 5,
       "ki-points": 19,
-      "unarmored-movement": 30
-    },
-    "notes": {
+      "unarmored-movement": 30,
       "martial-arts": "1d10"
-    },
-    "facts": {}
+    }
   },
   {
     "index": "monk-20",
     "name": "Monk 20",
     "text": "Monk, level 20. Proficiency bonus: +6.\n\nFeatures gained: Perfect Self.\n\nThis level's numbers: ki points 20, unarmored movement 30.",
-    "tags": [],
     "options": [
       {
         "pack": "srd-2014",
@@ -3432,23 +2985,19 @@
       }
     ],
     "choose": 1,
-    "numbers": {
+    "facts": {
       "level": 20,
       "proficiency-bonus": 6,
       "ability-score-bonuses": 5,
       "ki-points": 20,
-      "unarmored-movement": 30
-    },
-    "notes": {
+      "unarmored-movement": 30,
       "martial-arts": "1d10"
-    },
-    "facts": {}
+    }
   },
   {
     "index": "paladin-1",
     "name": "Paladin 1",
     "text": "Paladin, level 1. Proficiency bonus: +2.\n\nFeatures gained: Divine Sense, Lay on Hands.",
-    "tags": [],
     "options": [
       {
         "pack": "srd-2014",
@@ -3462,18 +3011,15 @@
       }
     ],
     "choose": 2,
-    "numbers": {
+    "facts": {
       "level": 1,
       "proficiency-bonus": 2
-    },
-    "notes": {},
-    "facts": {}
+    }
   },
   {
     "index": "paladin-2",
     "name": "Paladin 2",
     "text": "Paladin, level 2. Proficiency bonus: +2.\n\nFeatures gained: Fighting Style, Spellcasting: Paladin, Divine Smite.\n\nSpell slots: level 1 x2.",
-    "tags": [],
     "options": [
       {
         "pack": "srd-2014",
@@ -3507,19 +3053,16 @@
       }
     ],
     "choose": 3,
-    "numbers": {
+    "facts": {
       "level": 2,
       "proficiency-bonus": 2,
       "slot-1": 2
-    },
-    "notes": {},
-    "facts": {}
+    }
   },
   {
     "index": "paladin-3",
     "name": "Paladin 3",
     "text": "Paladin, level 3. Proficiency bonus: +2.\n\nFeatures gained: Divine Health, Sacred Oath, Oath Spells, Channel Divinity.\n\nSpell slots: level 1 x3.",
-    "tags": [],
     "options": [
       {
         "pack": "srd-2014",
@@ -3543,19 +3086,16 @@
       }
     ],
     "choose": 4,
-    "numbers": {
+    "facts": {
       "level": 3,
       "proficiency-bonus": 2,
       "slot-1": 3
-    },
-    "notes": {},
-    "facts": {}
+    }
   },
   {
     "index": "paladin-4",
     "name": "Paladin 4",
     "text": "Paladin, level 4. Proficiency bonus: +2.\n\nFeatures gained: Ability Score Improvement.\n\nSpell slots: level 1 x3.",
-    "tags": [],
     "options": [
       {
         "pack": "srd-2014",
@@ -3564,20 +3104,17 @@
       }
     ],
     "choose": 1,
-    "numbers": {
+    "facts": {
       "level": 4,
       "proficiency-bonus": 2,
       "ability-score-bonuses": 1,
       "slot-1": 3
-    },
-    "notes": {},
-    "facts": {}
+    }
   },
   {
     "index": "paladin-5",
     "name": "Paladin 5",
     "text": "Paladin, level 5. Proficiency bonus: +3.\n\nFeatures gained: Extra Attack.\n\nSpell slots: level 1 x4, level 2 x2.",
-    "tags": [],
     "options": [
       {
         "pack": "srd-2014",
@@ -3586,21 +3123,18 @@
       }
     ],
     "choose": 1,
-    "numbers": {
+    "facts": {
       "level": 5,
       "proficiency-bonus": 3,
       "ability-score-bonuses": 1,
       "slot-1": 4,
       "slot-2": 2
-    },
-    "notes": {},
-    "facts": {}
+    }
   },
   {
     "index": "paladin-6",
     "name": "Paladin 6",
     "text": "Paladin, level 6. Proficiency bonus: +3.\n\nFeatures gained: Aura of Protection.\n\nSpell slots: level 1 x4, level 2 x2.\n\nThis level's numbers: aura range 10.",
-    "tags": [],
     "options": [
       {
         "pack": "srd-2014",
@@ -3609,22 +3143,19 @@
       }
     ],
     "choose": 1,
-    "numbers": {
+    "facts": {
       "level": 6,
       "proficiency-bonus": 3,
       "ability-score-bonuses": 1,
       "slot-1": 4,
       "slot-2": 2,
       "aura-range": 10
-    },
-    "notes": {},
-    "facts": {}
+    }
   },
   {
     "index": "paladin-7",
     "name": "Paladin 7",
     "text": "Paladin, level 7. Proficiency bonus: +3.\n\nFeatures gained: Sacred Oath feature.\n\nSpell slots: level 1 x4, level 2 x3.\n\nThis level's numbers: aura range 10.",
-    "tags": [],
     "options": [
       {
         "pack": "srd-2014",
@@ -3633,22 +3164,19 @@
       }
     ],
     "choose": 1,
-    "numbers": {
+    "facts": {
       "level": 7,
       "proficiency-bonus": 3,
       "ability-score-bonuses": 1,
       "slot-1": 4,
       "slot-2": 3,
       "aura-range": 10
-    },
-    "notes": {},
-    "facts": {}
+    }
   },
   {
     "index": "paladin-8",
     "name": "Paladin 8",
     "text": "Paladin, level 8. Proficiency bonus: +3.\n\nFeatures gained: Ability Score Improvement.\n\nSpell slots: level 1 x4, level 2 x3.\n\nThis level's numbers: aura range 10.",
-    "tags": [],
     "options": [
       {
         "pack": "srd-2014",
@@ -3657,25 +3185,20 @@
       }
     ],
     "choose": 1,
-    "numbers": {
+    "facts": {
       "level": 8,
       "proficiency-bonus": 3,
       "ability-score-bonuses": 2,
       "slot-1": 4,
       "slot-2": 3,
       "aura-range": 10
-    },
-    "notes": {},
-    "facts": {}
+    }
   },
   {
     "index": "paladin-9",
     "name": "Paladin 9",
     "text": "Paladin, level 9. Proficiency bonus: +4.\n\nSpell slots: level 1 x4, level 2 x3, level 3 x2.\n\nThis level's numbers: aura range 10.",
-    "tags": [],
-    "options": [],
-    "choose": null,
-    "numbers": {
+    "facts": {
       "level": 9,
       "proficiency-bonus": 4,
       "ability-score-bonuses": 2,
@@ -3683,15 +3206,12 @@
       "slot-2": 3,
       "slot-3": 2,
       "aura-range": 10
-    },
-    "notes": {},
-    "facts": {}
+    }
   },
   {
     "index": "paladin-10",
     "name": "Paladin 10",
     "text": "Paladin, level 10. Proficiency bonus: +4.\n\nFeatures gained: Aura of Courage.\n\nSpell slots: level 1 x4, level 2 x3, level 3 x2.\n\nThis level's numbers: aura range 10.",
-    "tags": [],
     "options": [
       {
         "pack": "srd-2014",
@@ -3700,7 +3220,7 @@
       }
     ],
     "choose": 1,
-    "numbers": {
+    "facts": {
       "level": 10,
       "proficiency-bonus": 4,
       "ability-score-bonuses": 2,
@@ -3708,15 +3228,12 @@
       "slot-2": 3,
       "slot-3": 2,
       "aura-range": 10
-    },
-    "notes": {},
-    "facts": {}
+    }
   },
   {
     "index": "paladin-11",
     "name": "Paladin 11",
     "text": "Paladin, level 11. Proficiency bonus: +4.\n\nFeatures gained: Improved Divine Smite.\n\nSpell slots: level 1 x4, level 2 x3, level 3 x3.\n\nThis level's numbers: aura range 10.",
-    "tags": [],
     "options": [
       {
         "pack": "srd-2014",
@@ -3725,7 +3242,7 @@
       }
     ],
     "choose": 1,
-    "numbers": {
+    "facts": {
       "level": 11,
       "proficiency-bonus": 4,
       "ability-score-bonuses": 2,
@@ -3733,15 +3250,12 @@
       "slot-2": 3,
       "slot-3": 3,
       "aura-range": 10
-    },
-    "notes": {},
-    "facts": {}
+    }
   },
   {
     "index": "paladin-12",
     "name": "Paladin 12",
     "text": "Paladin, level 12. Proficiency bonus: +4.\n\nFeatures gained: Ability Score Improvement.\n\nSpell slots: level 1 x4, level 2 x3, level 3 x3.\n\nThis level's numbers: aura range 10.",
-    "tags": [],
     "options": [
       {
         "pack": "srd-2014",
@@ -3750,7 +3264,7 @@
       }
     ],
     "choose": 1,
-    "numbers": {
+    "facts": {
       "level": 12,
       "proficiency-bonus": 4,
       "ability-score-bonuses": 3,
@@ -3758,18 +3272,13 @@
       "slot-2": 3,
       "slot-3": 3,
       "aura-range": 10
-    },
-    "notes": {},
-    "facts": {}
+    }
   },
   {
     "index": "paladin-13",
     "name": "Paladin 13",
     "text": "Paladin, level 13. Proficiency bonus: +5.\n\nSpell slots: level 1 x4, level 2 x3, level 3 x3, level 4 x1.\n\nThis level's numbers: aura range 10.",
-    "tags": [],
-    "options": [],
-    "choose": null,
-    "numbers": {
+    "facts": {
       "level": 13,
       "proficiency-bonus": 5,
       "ability-score-bonuses": 3,
@@ -3778,15 +3287,12 @@
       "slot-3": 3,
       "slot-4": 1,
       "aura-range": 10
-    },
-    "notes": {},
-    "facts": {}
+    }
   },
   {
     "index": "paladin-14",
     "name": "Paladin 14",
     "text": "Paladin, level 14. Proficiency bonus: +5.\n\nFeatures gained: Cleansing Touch.\n\nSpell slots: level 1 x4, level 2 x3, level 3 x3, level 4 x1.\n\nThis level's numbers: aura range 10.",
-    "tags": [],
     "options": [
       {
         "pack": "srd-2014",
@@ -3795,7 +3301,7 @@
       }
     ],
     "choose": 1,
-    "numbers": {
+    "facts": {
       "level": 14,
       "proficiency-bonus": 5,
       "ability-score-bonuses": 3,
@@ -3804,15 +3310,12 @@
       "slot-3": 3,
       "slot-4": 1,
       "aura-range": 10
-    },
-    "notes": {},
-    "facts": {}
+    }
   },
   {
     "index": "paladin-15",
     "name": "Paladin 15",
     "text": "Paladin, level 15. Proficiency bonus: +5.\n\nFeatures gained: Sacred Oath feature.\n\nSpell slots: level 1 x4, level 2 x3, level 3 x3, level 4 x2.\n\nThis level's numbers: aura range 10.",
-    "tags": [],
     "options": [
       {
         "pack": "srd-2014",
@@ -3821,7 +3324,7 @@
       }
     ],
     "choose": 1,
-    "numbers": {
+    "facts": {
       "level": 15,
       "proficiency-bonus": 5,
       "ability-score-bonuses": 3,
@@ -3830,15 +3333,12 @@
       "slot-3": 3,
       "slot-4": 2,
       "aura-range": 10
-    },
-    "notes": {},
-    "facts": {}
+    }
   },
   {
     "index": "paladin-16",
     "name": "Paladin 16",
     "text": "Paladin, level 16. Proficiency bonus: +5.\n\nFeatures gained: Ability Score Improvement.\n\nSpell slots: level 1 x4, level 2 x3, level 3 x3, level 4 x2.\n\nThis level's numbers: aura range 10.",
-    "tags": [],
     "options": [
       {
         "pack": "srd-2014",
@@ -3847,7 +3347,7 @@
       }
     ],
     "choose": 1,
-    "numbers": {
+    "facts": {
       "level": 16,
       "proficiency-bonus": 5,
       "ability-score-bonuses": 4,
@@ -3856,18 +3356,13 @@
       "slot-3": 3,
       "slot-4": 2,
       "aura-range": 10
-    },
-    "notes": {},
-    "facts": {}
+    }
   },
   {
     "index": "paladin-17",
     "name": "Paladin 17",
     "text": "Paladin, level 17. Proficiency bonus: +6.\n\nSpell slots: level 1 x4, level 2 x3, level 3 x3, level 4 x3, level 5 x1.\n\nThis level's numbers: aura range 10.",
-    "tags": [],
-    "options": [],
-    "choose": null,
-    "numbers": {
+    "facts": {
       "level": 17,
       "proficiency-bonus": 6,
       "ability-score-bonuses": 4,
@@ -3877,15 +3372,12 @@
       "slot-4": 3,
       "slot-5": 1,
       "aura-range": 10
-    },
-    "notes": {},
-    "facts": {}
+    }
   },
   {
     "index": "paladin-18",
     "name": "Paladin 18",
     "text": "Paladin, level 18. Proficiency bonus: +6.\n\nFeatures gained: Aura improvements.\n\nSpell slots: level 1 x4, level 2 x3, level 3 x3, level 4 x3, level 5 x1.\n\nThis level's numbers: aura range 30.",
-    "tags": [],
     "options": [
       {
         "pack": "srd-2014",
@@ -3894,7 +3386,7 @@
       }
     ],
     "choose": 1,
-    "numbers": {
+    "facts": {
       "level": 18,
       "proficiency-bonus": 6,
       "ability-score-bonuses": 4,
@@ -3904,15 +3396,12 @@
       "slot-4": 3,
       "slot-5": 1,
       "aura-range": 30
-    },
-    "notes": {},
-    "facts": {}
+    }
   },
   {
     "index": "paladin-19",
     "name": "Paladin 19",
     "text": "Paladin, level 19. Proficiency bonus: +6.\n\nFeatures gained: Ability Score Improvement.\n\nSpell slots: level 1 x4, level 2 x3, level 3 x3, level 4 x3, level 5 x2.\n\nThis level's numbers: aura range 30.",
-    "tags": [],
     "options": [
       {
         "pack": "srd-2014",
@@ -3921,7 +3410,7 @@
       }
     ],
     "choose": 1,
-    "numbers": {
+    "facts": {
       "level": 19,
       "proficiency-bonus": 6,
       "ability-score-bonuses": 5,
@@ -3931,15 +3420,12 @@
       "slot-4": 3,
       "slot-5": 2,
       "aura-range": 30
-    },
-    "notes": {},
-    "facts": {}
+    }
   },
   {
     "index": "paladin-20",
     "name": "Paladin 20",
     "text": "Paladin, level 20. Proficiency bonus: +6.\n\nFeatures gained: Sacred Oath feature.\n\nSpell slots: level 1 x4, level 2 x3, level 3 x3, level 4 x3, level 5 x2.\n\nThis level's numbers: aura range 30.",
-    "tags": [],
     "options": [
       {
         "pack": "srd-2014",
@@ -3948,7 +3434,7 @@
       }
     ],
     "choose": 1,
-    "numbers": {
+    "facts": {
       "level": 20,
       "proficiency-bonus": 6,
       "ability-score-bonuses": 5,
@@ -3958,15 +3444,12 @@
       "slot-4": 3,
       "slot-5": 2,
       "aura-range": 30
-    },
-    "notes": {},
-    "facts": {}
+    }
   },
   {
     "index": "ranger-1",
     "name": "Ranger 1",
     "text": "Ranger, level 1. Proficiency bonus: +2.\n\nFeatures gained: Favored Enemy (1 type), Natural Explorer (1 terrain type).\n\nThis level's numbers: favored enemies 1, favored terrain 1.",
-    "tags": [],
     "options": [
       {
         "pack": "srd-2014",
@@ -3980,20 +3463,17 @@
       }
     ],
     "choose": 2,
-    "numbers": {
+    "facts": {
       "level": 1,
       "proficiency-bonus": 2,
       "favored-enemies": 1,
       "favored-terrain": 1
-    },
-    "notes": {},
-    "facts": {}
+    }
   },
   {
     "index": "ranger-2",
     "name": "Ranger 2",
     "text": "Ranger, level 2. Proficiency bonus: +2.\n\nFeatures gained: Fighting Style, Spellcasting: Ranger.\n\nSpell slots: level 1 x2.\n\nThis level's numbers: favored enemies 1, favored terrain 1.",
-    "tags": [],
     "options": [
       {
         "pack": "srd-2014",
@@ -4022,22 +3502,19 @@
       }
     ],
     "choose": 2,
-    "numbers": {
+    "facts": {
       "level": 2,
       "proficiency-bonus": 2,
       "spells-known": 2,
       "slot-1": 2,
       "favored-enemies": 1,
       "favored-terrain": 1
-    },
-    "notes": {},
-    "facts": {}
+    }
   },
   {
     "index": "ranger-3",
     "name": "Ranger 3",
     "text": "Ranger, level 3. Proficiency bonus: +2.\n\nFeatures gained: Ranger Archetype, Primeval Awareness.\n\nSpell slots: level 1 x3.\n\nThis level's numbers: favored enemies 1, favored terrain 1.",
-    "tags": [],
     "options": [
       {
         "pack": "srd-2014",
@@ -4051,22 +3528,19 @@
       }
     ],
     "choose": 2,
-    "numbers": {
+    "facts": {
       "level": 3,
       "proficiency-bonus": 2,
       "spells-known": 3,
       "slot-1": 3,
       "favored-enemies": 1,
       "favored-terrain": 1
-    },
-    "notes": {},
-    "facts": {}
+    }
   },
   {
     "index": "ranger-4",
     "name": "Ranger 4",
     "text": "Ranger, level 4. Proficiency bonus: +2.\n\nFeatures gained: Ability Score Improvement.\n\nSpell slots: level 1 x3.\n\nThis level's numbers: favored enemies 1, favored terrain 1.",
-    "tags": [],
     "options": [
       {
         "pack": "srd-2014",
@@ -4075,7 +3549,7 @@
       }
     ],
     "choose": 1,
-    "numbers": {
+    "facts": {
       "level": 4,
       "proficiency-bonus": 2,
       "spells-known": 3,
@@ -4083,15 +3557,12 @@
       "slot-1": 3,
       "favored-enemies": 1,
       "favored-terrain": 1
-    },
-    "notes": {},
-    "facts": {}
+    }
   },
   {
     "index": "ranger-5",
     "name": "Ranger 5",
     "text": "Ranger, level 5. Proficiency bonus: +3.\n\nFeatures gained: Extra Attack.\n\nSpell slots: level 1 x4, level 2 x2.\n\nThis level's numbers: favored enemies 1, favored terrain 1.",
-    "tags": [],
     "options": [
       {
         "pack": "srd-2014",
@@ -4100,7 +3571,7 @@
       }
     ],
     "choose": 1,
-    "numbers": {
+    "facts": {
       "level": 5,
       "proficiency-bonus": 3,
       "spells-known": 4,
@@ -4109,15 +3580,12 @@
       "slot-2": 2,
       "favored-enemies": 1,
       "favored-terrain": 1
-    },
-    "notes": {},
-    "facts": {}
+    }
   },
   {
     "index": "ranger-6",
     "name": "Ranger 6",
     "text": "Ranger, level 6. Proficiency bonus: +3.\n\nFeatures gained: Favored Enemy (2 types), Natural Explorer (2 terrain types).\n\nSpell slots: level 1 x4, level 2 x2.\n\nThis level's numbers: favored enemies 2, favored terrain 2.",
-    "tags": [],
     "options": [
       {
         "pack": "srd-2014",
@@ -4131,7 +3599,7 @@
       }
     ],
     "choose": 2,
-    "numbers": {
+    "facts": {
       "level": 6,
       "proficiency-bonus": 3,
       "spells-known": 4,
@@ -4140,15 +3608,12 @@
       "slot-2": 2,
       "favored-enemies": 2,
       "favored-terrain": 2
-    },
-    "notes": {},
-    "facts": {}
+    }
   },
   {
     "index": "ranger-7",
     "name": "Ranger 7",
     "text": "Ranger, level 7. Proficiency bonus: +3.\n\nFeatures gained: Ranger Archetype feature.\n\nSpell slots: level 1 x4, level 2 x3.\n\nThis level's numbers: favored enemies 2, favored terrain 2.",
-    "tags": [],
     "options": [
       {
         "pack": "srd-2014",
@@ -4157,7 +3622,7 @@
       }
     ],
     "choose": 1,
-    "numbers": {
+    "facts": {
       "level": 7,
       "proficiency-bonus": 3,
       "spells-known": 5,
@@ -4166,15 +3631,12 @@
       "slot-2": 3,
       "favored-enemies": 2,
       "favored-terrain": 2
-    },
-    "notes": {},
-    "facts": {}
+    }
   },
   {
     "index": "ranger-8",
     "name": "Ranger 8",
     "text": "Ranger, level 8. Proficiency bonus: +3.\n\nFeatures gained: Ability Score Improvement, Land's Stride.\n\nSpell slots: level 1 x4, level 2 x3.\n\nThis level's numbers: favored enemies 2, favored terrain 2.",
-    "tags": [],
     "options": [
       {
         "pack": "srd-2014",
@@ -4188,7 +3650,7 @@
       }
     ],
     "choose": 2,
-    "numbers": {
+    "facts": {
       "level": 8,
       "proficiency-bonus": 3,
       "spells-known": 5,
@@ -4197,18 +3659,13 @@
       "slot-2": 3,
       "favored-enemies": 2,
       "favored-terrain": 2
-    },
-    "notes": {},
-    "facts": {}
+    }
   },
   {
     "index": "ranger-9",
     "name": "Ranger 9",
     "text": "Ranger, level 9. Proficiency bonus: +4.\n\nSpell slots: level 1 x4, level 2 x3, level 3 x2.\n\nThis level's numbers: favored enemies 2, favored terrain 2.",
-    "tags": [],
-    "options": [],
-    "choose": null,
-    "numbers": {
+    "facts": {
       "level": 9,
       "proficiency-bonus": 4,
       "spells-known": 6,
@@ -4218,15 +3675,12 @@
       "slot-3": 2,
       "favored-enemies": 2,
       "favored-terrain": 2
-    },
-    "notes": {},
-    "facts": {}
+    }
   },
   {
     "index": "ranger-10",
     "name": "Ranger 10",
     "text": "Ranger, level 10. Proficiency bonus: +4.\n\nFeatures gained: Natural Explorer (3 terrain types), Hide in Plain Sight.\n\nSpell slots: level 1 x4, level 2 x3, level 3 x2.\n\nThis level's numbers: favored enemies 2, favored terrain 3.",
-    "tags": [],
     "options": [
       {
         "pack": "srd-2014",
@@ -4240,7 +3694,7 @@
       }
     ],
     "choose": 2,
-    "numbers": {
+    "facts": {
       "level": 10,
       "proficiency-bonus": 4,
       "spells-known": 6,
@@ -4250,15 +3704,12 @@
       "slot-3": 2,
       "favored-enemies": 2,
       "favored-terrain": 3
-    },
-    "notes": {},
-    "facts": {}
+    }
   },
   {
     "index": "ranger-11",
     "name": "Ranger 11",
     "text": "Ranger, level 11. Proficiency bonus: +4.\n\nFeatures gained: Ranger Archetype feature.\n\nSpell slots: level 1 x4, level 2 x3, level 3 x3.\n\nThis level's numbers: favored enemies 2, favored terrain 3.",
-    "tags": [],
     "options": [
       {
         "pack": "srd-2014",
@@ -4267,7 +3718,7 @@
       }
     ],
     "choose": 1,
-    "numbers": {
+    "facts": {
       "level": 11,
       "proficiency-bonus": 4,
       "spells-known": 7,
@@ -4277,15 +3728,12 @@
       "slot-3": 3,
       "favored-enemies": 2,
       "favored-terrain": 3
-    },
-    "notes": {},
-    "facts": {}
+    }
   },
   {
     "index": "ranger-12",
     "name": "Ranger 12",
     "text": "Ranger, level 12. Proficiency bonus: +4.\n\nFeatures gained: Ability Score Improvement.\n\nSpell slots: level 1 x4, level 2 x3, level 3 x3.\n\nThis level's numbers: favored enemies 2, favored terrain 3.",
-    "tags": [],
     "options": [
       {
         "pack": "srd-2014",
@@ -4294,7 +3742,7 @@
       }
     ],
     "choose": 1,
-    "numbers": {
+    "facts": {
       "level": 12,
       "proficiency-bonus": 4,
       "spells-known": 7,
@@ -4304,18 +3752,13 @@
       "slot-3": 3,
       "favored-enemies": 2,
       "favored-terrain": 3
-    },
-    "notes": {},
-    "facts": {}
+    }
   },
   {
     "index": "ranger-13",
     "name": "Ranger 13",
     "text": "Ranger, level 13. Proficiency bonus: +5.\n\nSpell slots: level 1 x4, level 2 x3, level 3 x3, level 4 x1.\n\nThis level's numbers: favored enemies 2, favored terrain 3.",
-    "tags": [],
-    "options": [],
-    "choose": null,
-    "numbers": {
+    "facts": {
       "level": 13,
       "proficiency-bonus": 5,
       "spells-known": 8,
@@ -4326,15 +3769,12 @@
       "slot-4": 1,
       "favored-enemies": 2,
       "favored-terrain": 3
-    },
-    "notes": {},
-    "facts": {}
+    }
   },
   {
     "index": "ranger-14",
     "name": "Ranger 14",
     "text": "Ranger, level 14. Proficiency bonus: +5.\n\nFeatures gained: Favored Enemy (3 enemies), Vanish.\n\nSpell slots: level 1 x4, level 2 x3, level 3 x3, level 4 x1.\n\nThis level's numbers: favored enemies 3, favored terrain 3.",
-    "tags": [],
     "options": [
       {
         "pack": "srd-2014",
@@ -4348,7 +3788,7 @@
       }
     ],
     "choose": 2,
-    "numbers": {
+    "facts": {
       "level": 14,
       "proficiency-bonus": 5,
       "spells-known": 8,
@@ -4359,15 +3799,12 @@
       "slot-4": 1,
       "favored-enemies": 3,
       "favored-terrain": 3
-    },
-    "notes": {},
-    "facts": {}
+    }
   },
   {
     "index": "ranger-15",
     "name": "Ranger 15",
     "text": "Ranger, level 15. Proficiency bonus: +5.\n\nFeatures gained: Ranger Archetype feature.\n\nSpell slots: level 1 x4, level 2 x3, level 3 x3, level 4 x2.\n\nThis level's numbers: favored enemies 3, favored terrain 3.",
-    "tags": [],
     "options": [
       {
         "pack": "srd-2014",
@@ -4376,7 +3813,7 @@
       }
     ],
     "choose": 1,
-    "numbers": {
+    "facts": {
       "level": 15,
       "proficiency-bonus": 5,
       "spells-known": 9,
@@ -4387,15 +3824,12 @@
       "slot-4": 2,
       "favored-enemies": 3,
       "favored-terrain": 3
-    },
-    "notes": {},
-    "facts": {}
+    }
   },
   {
     "index": "ranger-16",
     "name": "Ranger 16",
     "text": "Ranger, level 16. Proficiency bonus: +5.\n\nFeatures gained: Ability Score Improvement.\n\nSpell slots: level 1 x4, level 2 x3, level 3 x3, level 4 x2.\n\nThis level's numbers: favored enemies 3, favored terrain 3.",
-    "tags": [],
     "options": [
       {
         "pack": "srd-2014",
@@ -4404,7 +3838,7 @@
       }
     ],
     "choose": 1,
-    "numbers": {
+    "facts": {
       "level": 16,
       "proficiency-bonus": 5,
       "spells-known": 9,
@@ -4415,18 +3849,13 @@
       "slot-4": 2,
       "favored-enemies": 3,
       "favored-terrain": 3
-    },
-    "notes": {},
-    "facts": {}
+    }
   },
   {
     "index": "ranger-17",
     "name": "Ranger 17",
     "text": "Ranger, level 17. Proficiency bonus: +6.\n\nSpell slots: level 1 x4, level 2 x3, level 3 x3, level 4 x3, level 5 x1.\n\nThis level's numbers: favored enemies 3, favored terrain 3.",
-    "tags": [],
-    "options": [],
-    "choose": null,
-    "numbers": {
+    "facts": {
       "level": 17,
       "proficiency-bonus": 6,
       "spells-known": 10,
@@ -4438,15 +3867,12 @@
       "slot-5": 1,
       "favored-enemies": 3,
       "favored-terrain": 3
-    },
-    "notes": {},
-    "facts": {}
+    }
   },
   {
     "index": "ranger-18",
     "name": "Ranger 18",
     "text": "Ranger, level 18. Proficiency bonus: +6.\n\nFeatures gained: Feral Senses.\n\nSpell slots: level 1 x4, level 2 x3, level 3 x3, level 4 x3, level 5 x1.\n\nThis level's numbers: favored enemies 3, favored terrain 3.",
-    "tags": [],
     "options": [
       {
         "pack": "srd-2014",
@@ -4455,7 +3881,7 @@
       }
     ],
     "choose": 1,
-    "numbers": {
+    "facts": {
       "level": 18,
       "proficiency-bonus": 6,
       "spells-known": 10,
@@ -4467,15 +3893,12 @@
       "slot-5": 1,
       "favored-enemies": 3,
       "favored-terrain": 3
-    },
-    "notes": {},
-    "facts": {}
+    }
   },
   {
     "index": "ranger-19",
     "name": "Ranger 19",
     "text": "Ranger, level 19. Proficiency bonus: +6.\n\nFeatures gained: Ability Score Improvement.\n\nSpell slots: level 1 x4, level 2 x3, level 3 x3, level 4 x3, level 5 x2.\n\nThis level's numbers: favored enemies 3, favored terrain 3.",
-    "tags": [],
     "options": [
       {
         "pack": "srd-2014",
@@ -4484,7 +3907,7 @@
       }
     ],
     "choose": 1,
-    "numbers": {
+    "facts": {
       "level": 19,
       "proficiency-bonus": 6,
       "spells-known": 11,
@@ -4496,15 +3919,12 @@
       "slot-5": 2,
       "favored-enemies": 3,
       "favored-terrain": 3
-    },
-    "notes": {},
-    "facts": {}
+    }
   },
   {
     "index": "ranger-20",
     "name": "Ranger 20",
     "text": "Ranger, level 20. Proficiency bonus: +6.\n\nFeatures gained: Foe Slayer.\n\nSpell slots: level 1 x4, level 2 x3, level 3 x3, level 4 x3, level 5 x2.\n\nThis level's numbers: favored enemies 3, favored terrain 3.",
-    "tags": [],
     "options": [
       {
         "pack": "srd-2014",
@@ -4513,7 +3933,7 @@
       }
     ],
     "choose": 1,
-    "numbers": {
+    "facts": {
       "level": 20,
       "proficiency-bonus": 6,
       "spells-known": 11,
@@ -4525,15 +3945,12 @@
       "slot-5": 2,
       "favored-enemies": 3,
       "favored-terrain": 3
-    },
-    "notes": {},
-    "facts": {}
+    }
   },
   {
     "index": "rogue-1",
     "name": "Rogue 1",
     "text": "Rogue, level 1. Proficiency bonus: +2.\n\nFeatures gained: Expertise, Sneak Attack, Thieves' Cant.",
-    "tags": [],
     "options": [
       {
         "pack": "srd-2014",
@@ -4552,20 +3969,16 @@
       }
     ],
     "choose": 3,
-    "numbers": {
+    "facts": {
       "level": 1,
-      "proficiency-bonus": 2
-    },
-    "notes": {
+      "proficiency-bonus": 2,
       "sneak-attack": "1d6"
-    },
-    "facts": {}
+    }
   },
   {
     "index": "rogue-2",
     "name": "Rogue 2",
     "text": "Rogue, level 2. Proficiency bonus: +2.\n\nFeatures gained: Cunning Action.",
-    "tags": [],
     "options": [
       {
         "pack": "srd-2014",
@@ -4574,20 +3987,16 @@
       }
     ],
     "choose": 1,
-    "numbers": {
+    "facts": {
       "level": 2,
-      "proficiency-bonus": 2
-    },
-    "notes": {
+      "proficiency-bonus": 2,
       "sneak-attack": "1d6"
-    },
-    "facts": {}
+    }
   },
   {
     "index": "rogue-3",
     "name": "Rogue 3",
     "text": "Rogue, level 3. Proficiency bonus: +2.\n\nFeatures gained: Roguish Archetype.",
-    "tags": [],
     "options": [
       {
         "pack": "srd-2014",
@@ -4596,20 +4005,16 @@
       }
     ],
     "choose": 1,
-    "numbers": {
+    "facts": {
       "level": 3,
-      "proficiency-bonus": 2
-    },
-    "notes": {
+      "proficiency-bonus": 2,
       "sneak-attack": "2d6"
-    },
-    "facts": {}
+    }
   },
   {
     "index": "rogue-4",
     "name": "Rogue 4",
     "text": "Rogue, level 4. Proficiency bonus: +2.\n\nFeatures gained: Ability Score Improvement.",
-    "tags": [],
     "options": [
       {
         "pack": "srd-2014",
@@ -4618,21 +4023,17 @@
       }
     ],
     "choose": 1,
-    "numbers": {
+    "facts": {
       "level": 4,
       "proficiency-bonus": 2,
-      "ability-score-bonuses": 1
-    },
-    "notes": {
+      "ability-score-bonuses": 1,
       "sneak-attack": "2d6"
-    },
-    "facts": {}
+    }
   },
   {
     "index": "rogue-5",
     "name": "Rogue 5",
     "text": "Rogue, level 5. Proficiency bonus: +3.\n\nFeatures gained: Uncanny Dodge.",
-    "tags": [],
     "options": [
       {
         "pack": "srd-2014",
@@ -4641,21 +4042,17 @@
       }
     ],
     "choose": 1,
-    "numbers": {
+    "facts": {
       "level": 5,
       "proficiency-bonus": 3,
-      "ability-score-bonuses": 1
-    },
-    "notes": {
+      "ability-score-bonuses": 1,
       "sneak-attack": "3d6"
-    },
-    "facts": {}
+    }
   },
   {
     "index": "rogue-6",
     "name": "Rogue 6",
     "text": "Rogue, level 6. Proficiency bonus: +3.\n\nFeatures gained: Expertise.",
-    "tags": [],
     "options": [
       {
         "pack": "srd-2014",
@@ -4664,21 +4061,17 @@
       }
     ],
     "choose": 1,
-    "numbers": {
+    "facts": {
       "level": 6,
       "proficiency-bonus": 3,
-      "ability-score-bonuses": 1
-    },
-    "notes": {
+      "ability-score-bonuses": 1,
       "sneak-attack": "3d6"
-    },
-    "facts": {}
+    }
   },
   {
     "index": "rogue-7",
     "name": "Rogue 7",
     "text": "Rogue, level 7. Proficiency bonus: +3.\n\nFeatures gained: Evasion.",
-    "tags": [],
     "options": [
       {
         "pack": "srd-2014",
@@ -4687,21 +4080,17 @@
       }
     ],
     "choose": 1,
-    "numbers": {
+    "facts": {
       "level": 7,
       "proficiency-bonus": 3,
-      "ability-score-bonuses": 1
-    },
-    "notes": {
+      "ability-score-bonuses": 1,
       "sneak-attack": "4d6"
-    },
-    "facts": {}
+    }
   },
   {
     "index": "rogue-8",
     "name": "Rogue 8",
     "text": "Rogue, level 8. Proficiency bonus: +3.\n\nFeatures gained: Ability Score Improvement.",
-    "tags": [],
     "options": [
       {
         "pack": "srd-2014",
@@ -4710,21 +4099,17 @@
       }
     ],
     "choose": 1,
-    "numbers": {
+    "facts": {
       "level": 8,
       "proficiency-bonus": 3,
-      "ability-score-bonuses": 2
-    },
-    "notes": {
+      "ability-score-bonuses": 2,
       "sneak-attack": "4d6"
-    },
-    "facts": {}
+    }
   },
   {
     "index": "rogue-9",
     "name": "Rogue 9",
     "text": "Rogue, level 9. Proficiency bonus: +4.\n\nFeatures gained: Roguish Archetype feature.",
-    "tags": [],
     "options": [
       {
         "pack": "srd-2014",
@@ -4733,21 +4118,17 @@
       }
     ],
     "choose": 1,
-    "numbers": {
+    "facts": {
       "level": 9,
       "proficiency-bonus": 4,
-      "ability-score-bonuses": 2
-    },
-    "notes": {
+      "ability-score-bonuses": 2,
       "sneak-attack": "5d6"
-    },
-    "facts": {}
+    }
   },
   {
     "index": "rogue-10",
     "name": "Rogue 10",
     "text": "Rogue, level 10. Proficiency bonus: +4.\n\nFeatures gained: Ability Score Improvement.",
-    "tags": [],
     "options": [
       {
         "pack": "srd-2014",
@@ -4756,21 +4137,17 @@
       }
     ],
     "choose": 1,
-    "numbers": {
+    "facts": {
       "level": 10,
       "proficiency-bonus": 4,
-      "ability-score-bonuses": 3
-    },
-    "notes": {
+      "ability-score-bonuses": 3,
       "sneak-attack": "5d6"
-    },
-    "facts": {}
+    }
   },
   {
     "index": "rogue-11",
     "name": "Rogue 11",
     "text": "Rogue, level 11. Proficiency bonus: +4.\n\nFeatures gained: Reliable Talent.",
-    "tags": [],
     "options": [
       {
         "pack": "srd-2014",
@@ -4779,21 +4156,17 @@
       }
     ],
     "choose": 1,
-    "numbers": {
+    "facts": {
       "level": 11,
       "proficiency-bonus": 4,
-      "ability-score-bonuses": 2
-    },
-    "notes": {
+      "ability-score-bonuses": 2,
       "sneak-attack": "6d6"
-    },
-    "facts": {}
+    }
   },
   {
     "index": "rogue-12",
     "name": "Rogue 12",
     "text": "Rogue, level 12. Proficiency bonus: +4.\n\nFeatures gained: Ability Score Improvement.",
-    "tags": [],
     "options": [
       {
         "pack": "srd-2014",
@@ -4802,21 +4175,17 @@
       }
     ],
     "choose": 1,
-    "numbers": {
+    "facts": {
       "level": 12,
       "proficiency-bonus": 4,
-      "ability-score-bonuses": 4
-    },
-    "notes": {
+      "ability-score-bonuses": 4,
       "sneak-attack": "6d6"
-    },
-    "facts": {}
+    }
   },
   {
     "index": "rogue-13",
     "name": "Rogue 13",
     "text": "Rogue, level 13. Proficiency bonus: +5.\n\nFeatures gained: Roguish Archetype feature.",
-    "tags": [],
     "options": [
       {
         "pack": "srd-2014",
@@ -4825,21 +4194,17 @@
       }
     ],
     "choose": 1,
-    "numbers": {
+    "facts": {
       "level": 13,
       "proficiency-bonus": 5,
-      "ability-score-bonuses": 3
-    },
-    "notes": {
+      "ability-score-bonuses": 3,
       "sneak-attack": "7d6"
-    },
-    "facts": {}
+    }
   },
   {
     "index": "rogue-14",
     "name": "Rogue 14",
     "text": "Rogue, level 14. Proficiency bonus: +5.\n\nFeatures gained: Blindsense.",
-    "tags": [],
     "options": [
       {
         "pack": "srd-2014",
@@ -4848,21 +4213,17 @@
       }
     ],
     "choose": 1,
-    "numbers": {
+    "facts": {
       "level": 14,
       "proficiency-bonus": 5,
-      "ability-score-bonuses": 3
-    },
-    "notes": {
+      "ability-score-bonuses": 3,
       "sneak-attack": "7d6"
-    },
-    "facts": {}
+    }
   },
   {
     "index": "rogue-15",
     "name": "Rogue 15",
     "text": "Rogue, level 15. Proficiency bonus: +5.\n\nFeatures gained: Slippery Mind.",
-    "tags": [],
     "options": [
       {
         "pack": "srd-2014",
@@ -4871,21 +4232,17 @@
       }
     ],
     "choose": 1,
-    "numbers": {
+    "facts": {
       "level": 15,
       "proficiency-bonus": 5,
-      "ability-score-bonuses": 3
-    },
-    "notes": {
+      "ability-score-bonuses": 3,
       "sneak-attack": "8d6"
-    },
-    "facts": {}
+    }
   },
   {
     "index": "rogue-16",
     "name": "Rogue 16",
     "text": "Rogue, level 16. Proficiency bonus: +5.\n\nFeatures gained: Ability Score Improvement.",
-    "tags": [],
     "options": [
       {
         "pack": "srd-2014",
@@ -4894,21 +4251,17 @@
       }
     ],
     "choose": 1,
-    "numbers": {
+    "facts": {
       "level": 16,
       "proficiency-bonus": 5,
-      "ability-score-bonuses": 5
-    },
-    "notes": {
+      "ability-score-bonuses": 5,
       "sneak-attack": "8d6"
-    },
-    "facts": {}
+    }
   },
   {
     "index": "rogue-17",
     "name": "Rogue 17",
     "text": "Rogue, level 17. Proficiency bonus: +6.\n\nFeatures gained: Roguish Archetype feature.",
-    "tags": [],
     "options": [
       {
         "pack": "srd-2014",
@@ -4917,21 +4270,17 @@
       }
     ],
     "choose": 1,
-    "numbers": {
+    "facts": {
       "level": 17,
       "proficiency-bonus": 6,
-      "ability-score-bonuses": 4
-    },
-    "notes": {
+      "ability-score-bonuses": 4,
       "sneak-attack": "9d6"
-    },
-    "facts": {}
+    }
   },
   {
     "index": "rogue-18",
     "name": "Rogue 18",
     "text": "Rogue, level 18. Proficiency bonus: +6.\n\nFeatures gained: Elusive.",
-    "tags": [],
     "options": [
       {
         "pack": "srd-2014",
@@ -4940,21 +4289,17 @@
       }
     ],
     "choose": 1,
-    "numbers": {
+    "facts": {
       "level": 18,
       "proficiency-bonus": 6,
-      "ability-score-bonuses": 4
-    },
-    "notes": {
+      "ability-score-bonuses": 4,
       "sneak-attack": "9d6"
-    },
-    "facts": {}
+    }
   },
   {
     "index": "rogue-19",
     "name": "Rogue 19",
     "text": "Rogue, level 19. Proficiency bonus: +6.\n\nFeatures gained: Ability Score Improvement.",
-    "tags": [],
     "options": [
       {
         "pack": "srd-2014",
@@ -4963,21 +4308,17 @@
       }
     ],
     "choose": 1,
-    "numbers": {
+    "facts": {
       "level": 19,
       "proficiency-bonus": 6,
-      "ability-score-bonuses": 6
-    },
-    "notes": {
+      "ability-score-bonuses": 6,
       "sneak-attack": "10d6"
-    },
-    "facts": {}
+    }
   },
   {
     "index": "rogue-20",
     "name": "Rogue 20",
     "text": "Rogue, level 20. Proficiency bonus: +6.\n\nFeatures gained: Stroke of Luck.",
-    "tags": [],
     "options": [
       {
         "pack": "srd-2014",
@@ -4986,21 +4327,17 @@
       }
     ],
     "choose": 1,
-    "numbers": {
+    "facts": {
       "level": 20,
       "proficiency-bonus": 6,
-      "ability-score-bonuses": 5
-    },
-    "notes": {
+      "ability-score-bonuses": 5,
       "sneak-attack": "10d6"
-    },
-    "facts": {}
+    }
   },
   {
     "index": "sorcerer-1",
     "name": "Sorcerer 1",
     "text": "Sorcerer, level 1. Proficiency bonus: +2.\n\nFeatures gained: Spellcasting: Sorcerer, Sorcerous Origin.\n\nSpell slots: level 1 x2.",
-    "tags": [],
     "options": [
       {
         "pack": "srd-2014",
@@ -5014,21 +4351,18 @@
       }
     ],
     "choose": 2,
-    "numbers": {
+    "facts": {
       "level": 1,
       "proficiency-bonus": 2,
       "cantrips-known": 4,
       "spells-known": 2,
       "slot-1": 2
-    },
-    "notes": {},
-    "facts": {}
+    }
   },
   {
     "index": "sorcerer-2",
     "name": "Sorcerer 2",
     "text": "Sorcerer, level 2. Proficiency bonus: +2.\n\nFeatures gained: Font of Magic, Flexible Casting: Creating Spell Slots, Flexible Casting: Converting Spell Slot.\n\nSpell slots: level 1 x3.\n\nThis level's numbers: sorcery points 2.",
-    "tags": [],
     "options": [
       {
         "pack": "srd-2014",
@@ -5047,24 +4381,41 @@
       }
     ],
     "choose": 3,
-    "numbers": {
+    "facts": {
       "level": 2,
       "proficiency-bonus": 2,
       "cantrips-known": 4,
       "spells-known": 3,
       "slot-1": 3,
-      "sorcery-points": 2
-    },
-    "notes": {
-      "creating-spell-slots": "slot 1 for 2 sorcery points, slot 2 for 3 sorcery points, slot 3 for 5 sorcery points, slot 4 for 6 sorcery points, slot 5 for 7 sorcery points"
-    },
-    "facts": {}
+      "sorcery-points": 2,
+      "creating-spell-slots": [
+        [
+          1,
+          2
+        ],
+        [
+          2,
+          3
+        ],
+        [
+          3,
+          5
+        ],
+        [
+          4,
+          6
+        ],
+        [
+          5,
+          7
+        ]
+      ]
+    }
   },
   {
     "index": "sorcerer-3",
     "name": "Sorcerer 3",
     "text": "Sorcerer, level 3. Proficiency bonus: +2.\n\nFeatures gained: Metamagic.\n\nSpell slots: level 1 x4, level 2 x2.\n\nThis level's numbers: sorcery points 3, metamagic known 2.",
-    "tags": [],
     "options": [
       {
         "pack": "srd-2014",
@@ -5108,7 +4459,7 @@
       }
     ],
     "choose": 1,
-    "numbers": {
+    "facts": {
       "level": 3,
       "proficiency-bonus": 2,
       "cantrips-known": 4,
@@ -5116,18 +4467,35 @@
       "slot-1": 4,
       "slot-2": 2,
       "sorcery-points": 3,
-      "metamagic-known": 2
-    },
-    "notes": {
-      "creating-spell-slots": "slot 1 for 2 sorcery points, slot 2 for 3 sorcery points, slot 3 for 5 sorcery points, slot 4 for 6 sorcery points, slot 5 for 7 sorcery points"
-    },
-    "facts": {}
+      "metamagic-known": 2,
+      "creating-spell-slots": [
+        [
+          1,
+          2
+        ],
+        [
+          2,
+          3
+        ],
+        [
+          3,
+          5
+        ],
+        [
+          4,
+          6
+        ],
+        [
+          5,
+          7
+        ]
+      ]
+    }
   },
   {
     "index": "sorcerer-4",
     "name": "Sorcerer 4",
     "text": "Sorcerer, level 4. Proficiency bonus: +2.\n\nFeatures gained: Ability Score Improvement.\n\nSpell slots: level 1 x4, level 2 x3.\n\nThis level's numbers: sorcery points 4, metamagic known 2.",
-    "tags": [],
     "options": [
       {
         "pack": "srd-2014",
@@ -5136,7 +4504,7 @@
       }
     ],
     "choose": 1,
-    "numbers": {
+    "facts": {
       "level": 4,
       "proficiency-bonus": 2,
       "cantrips-known": 5,
@@ -5145,21 +4513,36 @@
       "slot-1": 4,
       "slot-2": 3,
       "sorcery-points": 4,
-      "metamagic-known": 2
-    },
-    "notes": {
-      "creating-spell-slots": "slot 1 for 2 sorcery points, slot 2 for 3 sorcery points, slot 3 for 5 sorcery points, slot 4 for 6 sorcery points, slot 5 for 7 sorcery points"
-    },
-    "facts": {}
+      "metamagic-known": 2,
+      "creating-spell-slots": [
+        [
+          1,
+          2
+        ],
+        [
+          2,
+          3
+        ],
+        [
+          3,
+          5
+        ],
+        [
+          4,
+          6
+        ],
+        [
+          5,
+          7
+        ]
+      ]
+    }
   },
   {
     "index": "sorcerer-5",
     "name": "Sorcerer 5",
     "text": "Sorcerer, level 5. Proficiency bonus: +3.\n\nSpell slots: level 1 x4, level 2 x3, level 3 x2.\n\nThis level's numbers: sorcery points 5, metamagic known 2.",
-    "tags": [],
-    "options": [],
-    "choose": null,
-    "numbers": {
+    "facts": {
       "level": 5,
       "proficiency-bonus": 3,
       "cantrips-known": 5,
@@ -5169,18 +4552,35 @@
       "slot-2": 3,
       "slot-3": 2,
       "sorcery-points": 5,
-      "metamagic-known": 2
-    },
-    "notes": {
-      "creating-spell-slots": "slot 1 for 2 sorcery points, slot 2 for 3 sorcery points, slot 3 for 5 sorcery points, slot 4 for 6 sorcery points, slot 5 for 7 sorcery points"
-    },
-    "facts": {}
+      "metamagic-known": 2,
+      "creating-spell-slots": [
+        [
+          1,
+          2
+        ],
+        [
+          2,
+          3
+        ],
+        [
+          3,
+          5
+        ],
+        [
+          4,
+          6
+        ],
+        [
+          5,
+          7
+        ]
+      ]
+    }
   },
   {
     "index": "sorcerer-6",
     "name": "Sorcerer 6",
     "text": "Sorcerer, level 6. Proficiency bonus: +3.\n\nFeatures gained: Sorcerous Origin feature.\n\nSpell slots: level 1 x4, level 2 x3, level 3 x3.\n\nThis level's numbers: sorcery points 6, metamagic known 2.",
-    "tags": [],
     "options": [
       {
         "pack": "srd-2014",
@@ -5189,7 +4589,7 @@
       }
     ],
     "choose": 1,
-    "numbers": {
+    "facts": {
       "level": 6,
       "proficiency-bonus": 3,
       "cantrips-known": 5,
@@ -5199,21 +4599,36 @@
       "slot-2": 3,
       "slot-3": 3,
       "sorcery-points": 6,
-      "metamagic-known": 2
-    },
-    "notes": {
-      "creating-spell-slots": "slot 1 for 2 sorcery points, slot 2 for 3 sorcery points, slot 3 for 5 sorcery points, slot 4 for 6 sorcery points, slot 5 for 7 sorcery points"
-    },
-    "facts": {}
+      "metamagic-known": 2,
+      "creating-spell-slots": [
+        [
+          1,
+          2
+        ],
+        [
+          2,
+          3
+        ],
+        [
+          3,
+          5
+        ],
+        [
+          4,
+          6
+        ],
+        [
+          5,
+          7
+        ]
+      ]
+    }
   },
   {
     "index": "sorcerer-7",
     "name": "Sorcerer 7",
     "text": "Sorcerer, level 7. Proficiency bonus: +3.\n\nSpell slots: level 1 x4, level 2 x3, level 3 x3, level 4 x1.\n\nThis level's numbers: sorcery points 7, metamagic known 2.",
-    "tags": [],
-    "options": [],
-    "choose": null,
-    "numbers": {
+    "facts": {
       "level": 7,
       "proficiency-bonus": 3,
       "cantrips-known": 5,
@@ -5224,18 +4639,35 @@
       "slot-3": 3,
       "slot-4": 1,
       "sorcery-points": 7,
-      "metamagic-known": 2
-    },
-    "notes": {
-      "creating-spell-slots": "slot 1 for 2 sorcery points, slot 2 for 3 sorcery points, slot 3 for 5 sorcery points, slot 4 for 6 sorcery points, slot 5 for 7 sorcery points"
-    },
-    "facts": {}
+      "metamagic-known": 2,
+      "creating-spell-slots": [
+        [
+          1,
+          2
+        ],
+        [
+          2,
+          3
+        ],
+        [
+          3,
+          5
+        ],
+        [
+          4,
+          6
+        ],
+        [
+          5,
+          7
+        ]
+      ]
+    }
   },
   {
     "index": "sorcerer-8",
     "name": "Sorcerer 8",
     "text": "Sorcerer, level 8. Proficiency bonus: +3.\n\nFeatures gained: Ability Score Improvement.\n\nSpell slots: level 1 x4, level 2 x3, level 3 x3, level 4 x2.\n\nThis level's numbers: sorcery points 8, metamagic known 2.",
-    "tags": [],
     "options": [
       {
         "pack": "srd-2014",
@@ -5244,7 +4676,7 @@
       }
     ],
     "choose": 1,
-    "numbers": {
+    "facts": {
       "level": 8,
       "proficiency-bonus": 3,
       "cantrips-known": 5,
@@ -5255,21 +4687,36 @@
       "slot-3": 3,
       "slot-4": 2,
       "sorcery-points": 8,
-      "metamagic-known": 2
-    },
-    "notes": {
-      "creating-spell-slots": "slot 1 for 2 sorcery points, slot 2 for 3 sorcery points, slot 3 for 5 sorcery points, slot 4 for 6 sorcery points, slot 5 for 7 sorcery points"
-    },
-    "facts": {}
+      "metamagic-known": 2,
+      "creating-spell-slots": [
+        [
+          1,
+          2
+        ],
+        [
+          2,
+          3
+        ],
+        [
+          3,
+          5
+        ],
+        [
+          4,
+          6
+        ],
+        [
+          5,
+          7
+        ]
+      ]
+    }
   },
   {
     "index": "sorcerer-9",
     "name": "Sorcerer 9",
     "text": "Sorcerer, level 9. Proficiency bonus: +4.\n\nSpell slots: level 1 x4, level 2 x3, level 3 x3, level 4 x3, level 5 x1.\n\nThis level's numbers: sorcery points 9, metamagic known 2.",
-    "tags": [],
-    "options": [],
-    "choose": null,
-    "numbers": {
+    "facts": {
       "level": 9,
       "proficiency-bonus": 4,
       "cantrips-known": 5,
@@ -5281,18 +4728,35 @@
       "slot-4": 3,
       "slot-5": 1,
       "sorcery-points": 9,
-      "metamagic-known": 2
-    },
-    "notes": {
-      "creating-spell-slots": "slot 1 for 2 sorcery points, slot 2 for 3 sorcery points, slot 3 for 5 sorcery points, slot 4 for 6 sorcery points, slot 5 for 7 sorcery points"
-    },
-    "facts": {}
+      "metamagic-known": 2,
+      "creating-spell-slots": [
+        [
+          1,
+          2
+        ],
+        [
+          2,
+          3
+        ],
+        [
+          3,
+          5
+        ],
+        [
+          4,
+          6
+        ],
+        [
+          5,
+          7
+        ]
+      ]
+    }
   },
   {
     "index": "sorcerer-10",
     "name": "Sorcerer 10",
     "text": "Sorcerer, level 10. Proficiency bonus: +4.\n\nFeatures gained: Metamagic.\n\nSpell slots: level 1 x4, level 2 x3, level 3 x3, level 4 x3, level 5 x2.\n\nThis level's numbers: sorcery points 10, metamagic known 3.",
-    "tags": [],
     "options": [
       {
         "pack": "srd-2014",
@@ -5336,7 +4800,7 @@
       }
     ],
     "choose": 1,
-    "numbers": {
+    "facts": {
       "level": 10,
       "proficiency-bonus": 4,
       "cantrips-known": 6,
@@ -5348,21 +4812,36 @@
       "slot-4": 3,
       "slot-5": 2,
       "sorcery-points": 10,
-      "metamagic-known": 3
-    },
-    "notes": {
-      "creating-spell-slots": "slot 1 for 2 sorcery points, slot 2 for 3 sorcery points, slot 3 for 5 sorcery points, slot 4 for 6 sorcery points, slot 5 for 7 sorcery points"
-    },
-    "facts": {}
+      "metamagic-known": 3,
+      "creating-spell-slots": [
+        [
+          1,
+          2
+        ],
+        [
+          2,
+          3
+        ],
+        [
+          3,
+          5
+        ],
+        [
+          4,
+          6
+        ],
+        [
+          5,
+          7
+        ]
+      ]
+    }
   },
   {
     "index": "sorcerer-11",
     "name": "Sorcerer 11",
     "text": "Sorcerer, level 11. Proficiency bonus: +4.\n\nSpell slots: level 1 x4, level 2 x3, level 3 x3, level 4 x3, level 5 x2, level 6 x1.\n\nThis level's numbers: sorcery points 11, metamagic known 3.",
-    "tags": [],
-    "options": [],
-    "choose": null,
-    "numbers": {
+    "facts": {
       "level": 11,
       "proficiency-bonus": 4,
       "cantrips-known": 6,
@@ -5375,18 +4854,35 @@
       "slot-5": 2,
       "slot-6": 1,
       "sorcery-points": 11,
-      "metamagic-known": 3
-    },
-    "notes": {
-      "creating-spell-slots": "slot 1 for 2 sorcery points, slot 2 for 3 sorcery points, slot 3 for 5 sorcery points, slot 4 for 6 sorcery points, slot 5 for 7 sorcery points"
-    },
-    "facts": {}
+      "metamagic-known": 3,
+      "creating-spell-slots": [
+        [
+          1,
+          2
+        ],
+        [
+          2,
+          3
+        ],
+        [
+          3,
+          5
+        ],
+        [
+          4,
+          6
+        ],
+        [
+          5,
+          7
+        ]
+      ]
+    }
   },
   {
     "index": "sorcerer-12",
     "name": "Sorcerer 12",
     "text": "Sorcerer, level 12. Proficiency bonus: +4.\n\nFeatures gained: Ability Score Improvement.\n\nSpell slots: level 1 x4, level 2 x3, level 3 x3, level 4 x3, level 5 x2, level 6 x1.\n\nThis level's numbers: sorcery points 12, metamagic known 3.",
-    "tags": [],
     "options": [
       {
         "pack": "srd-2014",
@@ -5395,7 +4891,7 @@
       }
     ],
     "choose": 1,
-    "numbers": {
+    "facts": {
       "level": 12,
       "proficiency-bonus": 4,
       "cantrips-known": 6,
@@ -5408,21 +4904,36 @@
       "slot-5": 2,
       "slot-6": 1,
       "sorcery-points": 12,
-      "metamagic-known": 3
-    },
-    "notes": {
-      "creating-spell-slots": "slot 1 for 2 sorcery points, slot 2 for 3 sorcery points, slot 3 for 5 sorcery points, slot 4 for 6 sorcery points, slot 5 for 7 sorcery points"
-    },
-    "facts": {}
+      "metamagic-known": 3,
+      "creating-spell-slots": [
+        [
+          1,
+          2
+        ],
+        [
+          2,
+          3
+        ],
+        [
+          3,
+          5
+        ],
+        [
+          4,
+          6
+        ],
+        [
+          5,
+          7
+        ]
+      ]
+    }
   },
   {
     "index": "sorcerer-13",
     "name": "Sorcerer 13",
     "text": "Sorcerer, level 13. Proficiency bonus: +5.\n\nSpell slots: level 1 x4, level 2 x3, level 3 x3, level 4 x3, level 5 x2, level 6 x1, level 7 x1.\n\nThis level's numbers: sorcery points 13, metamagic known 3.",
-    "tags": [],
-    "options": [],
-    "choose": null,
-    "numbers": {
+    "facts": {
       "level": 13,
       "proficiency-bonus": 5,
       "cantrips-known": 6,
@@ -5436,18 +4947,35 @@
       "slot-6": 1,
       "slot-7": 1,
       "sorcery-points": 13,
-      "metamagic-known": 3
-    },
-    "notes": {
-      "creating-spell-slots": "slot 1 for 2 sorcery points, slot 2 for 3 sorcery points, slot 3 for 5 sorcery points, slot 4 for 6 sorcery points, slot 5 for 7 sorcery points"
-    },
-    "facts": {}
+      "metamagic-known": 3,
+      "creating-spell-slots": [
+        [
+          1,
+          2
+        ],
+        [
+          2,
+          3
+        ],
+        [
+          3,
+          5
+        ],
+        [
+          4,
+          6
+        ],
+        [
+          5,
+          7
+        ]
+      ]
+    }
   },
   {
     "index": "sorcerer-14",
     "name": "Sorcerer 14",
     "text": "Sorcerer, level 14. Proficiency bonus: +5.\n\nFeatures gained: Sorcerous Origin feature.\n\nSpell slots: level 1 x4, level 2 x3, level 3 x3, level 4 x3, level 5 x2, level 6 x1, level 7 x1.\n\nThis level's numbers: sorcery points 14, metamagic known 3.",
-    "tags": [],
     "options": [
       {
         "pack": "srd-2014",
@@ -5456,7 +4984,7 @@
       }
     ],
     "choose": 1,
-    "numbers": {
+    "facts": {
       "level": 14,
       "proficiency-bonus": 5,
       "cantrips-known": 6,
@@ -5470,21 +4998,36 @@
       "slot-6": 1,
       "slot-7": 1,
       "sorcery-points": 14,
-      "metamagic-known": 3
-    },
-    "notes": {
-      "creating-spell-slots": "slot 1 for 2 sorcery points, slot 2 for 3 sorcery points, slot 3 for 5 sorcery points, slot 4 for 6 sorcery points, slot 5 for 7 sorcery points"
-    },
-    "facts": {}
+      "metamagic-known": 3,
+      "creating-spell-slots": [
+        [
+          1,
+          2
+        ],
+        [
+          2,
+          3
+        ],
+        [
+          3,
+          5
+        ],
+        [
+          4,
+          6
+        ],
+        [
+          5,
+          7
+        ]
+      ]
+    }
   },
   {
     "index": "sorcerer-15",
     "name": "Sorcerer 15",
     "text": "Sorcerer, level 15. Proficiency bonus: +5.\n\nSpell slots: level 1 x4, level 2 x3, level 3 x3, level 4 x3, level 5 x2, level 6 x1, level 7 x1, level 8 x1.\n\nThis level's numbers: sorcery points 15, metamagic known 3.",
-    "tags": [],
-    "options": [],
-    "choose": null,
-    "numbers": {
+    "facts": {
       "level": 15,
       "proficiency-bonus": 5,
       "cantrips-known": 6,
@@ -5499,18 +5042,35 @@
       "slot-7": 1,
       "slot-8": 1,
       "sorcery-points": 15,
-      "metamagic-known": 3
-    },
-    "notes": {
-      "creating-spell-slots": "slot 1 for 2 sorcery points, slot 2 for 3 sorcery points, slot 3 for 5 sorcery points, slot 4 for 6 sorcery points, slot 5 for 7 sorcery points"
-    },
-    "facts": {}
+      "metamagic-known": 3,
+      "creating-spell-slots": [
+        [
+          1,
+          2
+        ],
+        [
+          2,
+          3
+        ],
+        [
+          3,
+          5
+        ],
+        [
+          4,
+          6
+        ],
+        [
+          5,
+          7
+        ]
+      ]
+    }
   },
   {
     "index": "sorcerer-16",
     "name": "Sorcerer 16",
     "text": "Sorcerer, level 16. Proficiency bonus: +5.\n\nFeatures gained: Ability Score Improvement.\n\nSpell slots: level 1 x4, level 2 x3, level 3 x3, level 4 x3, level 5 x2, level 6 x1, level 7 x1, level 8 x1.\n\nThis level's numbers: sorcery points 16, metamagic known 4.",
-    "tags": [],
     "options": [
       {
         "pack": "srd-2014",
@@ -5519,7 +5079,7 @@
       }
     ],
     "choose": 1,
-    "numbers": {
+    "facts": {
       "level": 16,
       "proficiency-bonus": 5,
       "cantrips-known": 6,
@@ -5534,18 +5094,35 @@
       "slot-7": 1,
       "slot-8": 1,
       "sorcery-points": 16,
-      "metamagic-known": 4
-    },
-    "notes": {
-      "creating-spell-slots": "slot 1 for 2 sorcery points, slot 2 for 3 sorcery points, slot 3 for 5 sorcery points, slot 4 for 6 sorcery points, slot 5 for 7 sorcery points"
-    },
-    "facts": {}
+      "metamagic-known": 4,
+      "creating-spell-slots": [
+        [
+          1,
+          2
+        ],
+        [
+          2,
+          3
+        ],
+        [
+          3,
+          5
+        ],
+        [
+          4,
+          6
+        ],
+        [
+          5,
+          7
+        ]
+      ]
+    }
   },
   {
     "index": "sorcerer-17",
     "name": "Sorcerer 17",
     "text": "Sorcerer, level 17. Proficiency bonus: +6.\n\nFeatures gained: Metamagic.\n\nSpell slots: level 1 x4, level 2 x3, level 3 x3, level 4 x3, level 5 x2, level 6 x1, level 7 x1, level 8 x1, level 9 x1.\n\nThis level's numbers: sorcery points 17, metamagic known 4.",
-    "tags": [],
     "options": [
       {
         "pack": "srd-2014",
@@ -5589,7 +5166,7 @@
       }
     ],
     "choose": 1,
-    "numbers": {
+    "facts": {
       "level": 17,
       "proficiency-bonus": 6,
       "cantrips-known": 6,
@@ -5605,18 +5182,35 @@
       "slot-8": 1,
       "slot-9": 1,
       "sorcery-points": 17,
-      "metamagic-known": 4
-    },
-    "notes": {
-      "creating-spell-slots": "slot 1 for 2 sorcery points, slot 2 for 3 sorcery points, slot 3 for 5 sorcery points, slot 4 for 6 sorcery points, slot 5 for 7 sorcery points"
-    },
-    "facts": {}
+      "metamagic-known": 4,
+      "creating-spell-slots": [
+        [
+          1,
+          2
+        ],
+        [
+          2,
+          3
+        ],
+        [
+          3,
+          5
+        ],
+        [
+          4,
+          6
+        ],
+        [
+          5,
+          7
+        ]
+      ]
+    }
   },
   {
     "index": "sorcerer-18",
     "name": "Sorcerer 18",
     "text": "Sorcerer, level 18. Proficiency bonus: +6.\n\nFeatures gained: Sorcerous Origin feature.\n\nSpell slots: level 1 x4, level 2 x3, level 3 x3, level 4 x3, level 5 x3, level 6 x1, level 7 x1, level 8 x1, level 9 x1.\n\nThis level's numbers: sorcery points 18, metamagic known 4.",
-    "tags": [],
     "options": [
       {
         "pack": "srd-2014",
@@ -5625,7 +5219,7 @@
       }
     ],
     "choose": 1,
-    "numbers": {
+    "facts": {
       "level": 18,
       "proficiency-bonus": 6,
       "cantrips-known": 6,
@@ -5641,18 +5235,35 @@
       "slot-8": 1,
       "slot-9": 1,
       "sorcery-points": 18,
-      "metamagic-known": 4
-    },
-    "notes": {
-      "creating-spell-slots": "slot 1 for 2 sorcery points, slot 2 for 3 sorcery points, slot 3 for 5 sorcery points, slot 4 for 6 sorcery points, slot 5 for 7 sorcery points"
-    },
-    "facts": {}
+      "metamagic-known": 4,
+      "creating-spell-slots": [
+        [
+          1,
+          2
+        ],
+        [
+          2,
+          3
+        ],
+        [
+          3,
+          5
+        ],
+        [
+          4,
+          6
+        ],
+        [
+          5,
+          7
+        ]
+      ]
+    }
   },
   {
     "index": "sorcerer-19",
     "name": "Sorcerer 19",
     "text": "Sorcerer, level 19. Proficiency bonus: +6.\n\nFeatures gained: Ability Score Improvement.\n\nSpell slots: level 1 x4, level 2 x3, level 3 x3, level 4 x3, level 5 x3, level 6 x2, level 7 x1, level 8 x1, level 9 x1.\n\nThis level's numbers: sorcery points 19, metamagic known 4.",
-    "tags": [],
     "options": [
       {
         "pack": "srd-2014",
@@ -5661,7 +5272,7 @@
       }
     ],
     "choose": 1,
-    "numbers": {
+    "facts": {
       "level": 19,
       "proficiency-bonus": 6,
       "cantrips-known": 6,
@@ -5677,18 +5288,35 @@
       "slot-8": 1,
       "slot-9": 1,
       "sorcery-points": 19,
-      "metamagic-known": 4
-    },
-    "notes": {
-      "creating-spell-slots": "slot 1 for 2 sorcery points, slot 2 for 3 sorcery points, slot 3 for 5 sorcery points, slot 4 for 6 sorcery points, slot 5 for 7 sorcery points"
-    },
-    "facts": {}
+      "metamagic-known": 4,
+      "creating-spell-slots": [
+        [
+          1,
+          2
+        ],
+        [
+          2,
+          3
+        ],
+        [
+          3,
+          5
+        ],
+        [
+          4,
+          6
+        ],
+        [
+          5,
+          7
+        ]
+      ]
+    }
   },
   {
     "index": "sorcerer-20",
     "name": "Sorcerer 20",
     "text": "Sorcerer, level 20. Proficiency bonus: +6.\n\nFeatures gained: Sorcerous Restoration.\n\nSpell slots: level 1 x4, level 2 x3, level 3 x3, level 4 x3, level 5 x3, level 6 x2, level 7 x2, level 8 x1, level 9 x1.\n\nThis level's numbers: sorcery points 20, metamagic known 4.",
-    "tags": [],
     "options": [
       {
         "pack": "srd-2014",
@@ -5697,7 +5325,7 @@
       }
     ],
     "choose": 1,
-    "numbers": {
+    "facts": {
       "level": 20,
       "proficiency-bonus": 6,
       "cantrips-known": 6,
@@ -5713,18 +5341,35 @@
       "slot-8": 1,
       "slot-9": 1,
       "sorcery-points": 20,
-      "metamagic-known": 4
-    },
-    "notes": {
-      "creating-spell-slots": "slot 1 for 2 sorcery points, slot 2 for 3 sorcery points, slot 3 for 5 sorcery points, slot 4 for 6 sorcery points, slot 5 for 7 sorcery points"
-    },
-    "facts": {}
+      "metamagic-known": 4,
+      "creating-spell-slots": [
+        [
+          1,
+          2
+        ],
+        [
+          2,
+          3
+        ],
+        [
+          3,
+          5
+        ],
+        [
+          4,
+          6
+        ],
+        [
+          5,
+          7
+        ]
+      ]
+    }
   },
   {
     "index": "warlock-1",
     "name": "Warlock 1",
     "text": "Warlock, level 1. Proficiency bonus: +2.\n\nFeatures gained: Otherworldly Patron, Pact Magic.\n\nSpell slots: level 1 x1.",
-    "tags": [],
     "options": [
       {
         "pack": "srd-2014",
@@ -5738,21 +5383,18 @@
       }
     ],
     "choose": 2,
-    "numbers": {
+    "facts": {
       "level": 1,
       "proficiency-bonus": 2,
       "cantrips-known": 2,
       "spells-known": 2,
       "slot-1": 1
-    },
-    "notes": {},
-    "facts": {}
+    }
   },
   {
     "index": "warlock-2",
     "name": "Warlock 2",
     "text": "Warlock, level 2. Proficiency bonus: +2.\n\nFeatures gained: Eldritch Invocations.\n\nSpell slots: level 1 x2.\n\nThis level's numbers: invocations known 2.",
-    "tags": [],
     "options": [
       {
         "pack": "srd-2014",
@@ -5761,22 +5403,19 @@
       }
     ],
     "choose": 1,
-    "numbers": {
+    "facts": {
       "level": 2,
       "proficiency-bonus": 2,
       "cantrips-known": 2,
       "spells-known": 3,
       "slot-1": 2,
       "invocations-known": 2
-    },
-    "notes": {},
-    "facts": {}
+    }
   },
   {
     "index": "warlock-3",
     "name": "Warlock 3",
     "text": "Warlock, level 3. Proficiency bonus: +2.\n\nFeatures gained: Pact Boon.\n\nSpell slots: level 2 x2.\n\nThis level's numbers: invocations known 2.",
-    "tags": [],
     "options": [
       {
         "pack": "srd-2014",
@@ -5795,22 +5434,19 @@
       }
     ],
     "choose": 1,
-    "numbers": {
+    "facts": {
       "level": 3,
       "proficiency-bonus": 2,
       "cantrips-known": 2,
       "spells-known": 4,
       "slot-2": 2,
       "invocations-known": 2
-    },
-    "notes": {},
-    "facts": {}
+    }
   },
   {
     "index": "warlock-4",
     "name": "Warlock 4",
     "text": "Warlock, level 4. Proficiency bonus: +2.\n\nFeatures gained: Ability Score Improvement.\n\nSpell slots: level 2 x2.\n\nThis level's numbers: invocations known 3.",
-    "tags": [],
     "options": [
       {
         "pack": "srd-2014",
@@ -5819,7 +5455,7 @@
       }
     ],
     "choose": 1,
-    "numbers": {
+    "facts": {
       "level": 4,
       "proficiency-bonus": 2,
       "cantrips-known": 3,
@@ -5827,18 +5463,13 @@
       "ability-score-bonuses": 1,
       "slot-2": 2,
       "invocations-known": 3
-    },
-    "notes": {},
-    "facts": {}
+    }
   },
   {
     "index": "warlock-5",
     "name": "Warlock 5",
     "text": "Warlock, level 5. Proficiency bonus: +3.\n\nSpell slots: level 3 x2.\n\nThis level's numbers: invocations known 3.",
-    "tags": [],
-    "options": [],
-    "choose": null,
-    "numbers": {
+    "facts": {
       "level": 5,
       "proficiency-bonus": 3,
       "cantrips-known": 3,
@@ -5846,15 +5477,12 @@
       "ability-score-bonuses": 1,
       "slot-3": 2,
       "invocations-known": 3
-    },
-    "notes": {},
-    "facts": {}
+    }
   },
   {
     "index": "warlock-6",
     "name": "Warlock 6",
     "text": "Warlock, level 6. Proficiency bonus: +3.\n\nFeatures gained: Otherworldly Patron feature.\n\nSpell slots: level 3 x2.\n\nThis level's numbers: invocations known 4.",
-    "tags": [],
     "options": [
       {
         "pack": "srd-2014",
@@ -5863,7 +5491,7 @@
       }
     ],
     "choose": 1,
-    "numbers": {
+    "facts": {
       "level": 6,
       "proficiency-bonus": 3,
       "cantrips-known": 3,
@@ -5871,18 +5499,13 @@
       "ability-score-bonuses": 1,
       "slot-3": 2,
       "invocations-known": 4
-    },
-    "notes": {},
-    "facts": {}
+    }
   },
   {
     "index": "warlock-7",
     "name": "Warlock 7",
     "text": "Warlock, level 7. Proficiency bonus: +3.\n\nSpell slots: level 4 x2.\n\nThis level's numbers: invocations known 4.",
-    "tags": [],
-    "options": [],
-    "choose": null,
-    "numbers": {
+    "facts": {
       "level": 7,
       "proficiency-bonus": 3,
       "cantrips-known": 3,
@@ -5890,15 +5513,12 @@
       "ability-score-bonuses": 1,
       "slot-4": 2,
       "invocations-known": 4
-    },
-    "notes": {},
-    "facts": {}
+    }
   },
   {
     "index": "warlock-8",
     "name": "Warlock 8",
     "text": "Warlock, level 8. Proficiency bonus: +3.\n\nFeatures gained: Ability Score Improvement.\n\nSpell slots: level 4 x2.\n\nThis level's numbers: invocations known 4.",
-    "tags": [],
     "options": [
       {
         "pack": "srd-2014",
@@ -5907,7 +5527,7 @@
       }
     ],
     "choose": 1,
-    "numbers": {
+    "facts": {
       "level": 8,
       "proficiency-bonus": 3,
       "cantrips-known": 3,
@@ -5915,18 +5535,13 @@
       "ability-score-bonuses": 2,
       "slot-4": 2,
       "invocations-known": 4
-    },
-    "notes": {},
-    "facts": {}
+    }
   },
   {
     "index": "warlock-9",
     "name": "Warlock 9",
     "text": "Warlock, level 9. Proficiency bonus: +4.\n\nSpell slots: level 5 x2.\n\nThis level's numbers: invocations known 5.",
-    "tags": [],
-    "options": [],
-    "choose": null,
-    "numbers": {
+    "facts": {
       "level": 9,
       "proficiency-bonus": 4,
       "cantrips-known": 3,
@@ -5934,15 +5549,12 @@
       "ability-score-bonuses": 2,
       "slot-5": 2,
       "invocations-known": 5
-    },
-    "notes": {},
-    "facts": {}
+    }
   },
   {
     "index": "warlock-10",
     "name": "Warlock 10",
     "text": "Warlock, level 10. Proficiency bonus: +4.\n\nFeatures gained: Otherworldly Patron feature.\n\nSpell slots: level 5 x2.\n\nThis level's numbers: invocations known 5.",
-    "tags": [],
     "options": [
       {
         "pack": "srd-2014",
@@ -5951,7 +5563,7 @@
       }
     ],
     "choose": 1,
-    "numbers": {
+    "facts": {
       "level": 10,
       "proficiency-bonus": 4,
       "cantrips-known": 4,
@@ -5959,15 +5571,12 @@
       "ability-score-bonuses": 2,
       "slot-5": 2,
       "invocations-known": 5
-    },
-    "notes": {},
-    "facts": {}
+    }
   },
   {
     "index": "warlock-11",
     "name": "Warlock 11",
     "text": "Warlock, level 11. Proficiency bonus: +4.\n\nFeatures gained: Mystic Arcanum (6th level).\n\nSpell slots: level 5 x3.\n\nThis level's numbers: invocations known 5, mystic arcanum level 6 1.",
-    "tags": [],
     "options": [
       {
         "pack": "srd-2014",
@@ -5976,7 +5585,7 @@
       }
     ],
     "choose": 1,
-    "numbers": {
+    "facts": {
       "level": 11,
       "proficiency-bonus": 4,
       "cantrips-known": 4,
@@ -5985,15 +5594,12 @@
       "slot-5": 3,
       "invocations-known": 5,
       "mystic-arcanum-level-6": 1
-    },
-    "notes": {},
-    "facts": {}
+    }
   },
   {
     "index": "warlock-12",
     "name": "Warlock 12",
     "text": "Warlock, level 12. Proficiency bonus: +4.\n\nFeatures gained: Ability Score Improvement.\n\nSpell slots: level 5 x3.\n\nThis level's numbers: invocations known 6, mystic arcanum level 6 1.",
-    "tags": [],
     "options": [
       {
         "pack": "srd-2014",
@@ -6002,7 +5608,7 @@
       }
     ],
     "choose": 1,
-    "numbers": {
+    "facts": {
       "level": 12,
       "proficiency-bonus": 4,
       "cantrips-known": 4,
@@ -6011,15 +5617,12 @@
       "slot-5": 3,
       "invocations-known": 6,
       "mystic-arcanum-level-6": 1
-    },
-    "notes": {},
-    "facts": {}
+    }
   },
   {
     "index": "warlock-13",
     "name": "Warlock 13",
     "text": "Warlock, level 13. Proficiency bonus: +5.\n\nFeatures gained: Mystic Arcanum (7th level).\n\nSpell slots: level 5 x3.\n\nThis level's numbers: invocations known 6, mystic arcanum level 6 1, mystic arcanum level 7 1.",
-    "tags": [],
     "options": [
       {
         "pack": "srd-2014",
@@ -6028,7 +5631,7 @@
       }
     ],
     "choose": 1,
-    "numbers": {
+    "facts": {
       "level": 13,
       "proficiency-bonus": 5,
       "cantrips-known": 4,
@@ -6038,15 +5641,12 @@
       "invocations-known": 6,
       "mystic-arcanum-level-6": 1,
       "mystic-arcanum-level-7": 1
-    },
-    "notes": {},
-    "facts": {}
+    }
   },
   {
     "index": "warlock-14",
     "name": "Warlock 14",
     "text": "Warlock, level 14. Proficiency bonus: +5.\n\nFeatures gained: Otherworldly Patron feature.\n\nSpell slots: level 5 x3.\n\nThis level's numbers: invocations known 6, mystic arcanum level 6 1, mystic arcanum level 7 1.",
-    "tags": [],
     "options": [
       {
         "pack": "srd-2014",
@@ -6055,7 +5655,7 @@
       }
     ],
     "choose": 1,
-    "numbers": {
+    "facts": {
       "level": 14,
       "proficiency-bonus": 5,
       "cantrips-known": 4,
@@ -6065,15 +5665,12 @@
       "invocations-known": 6,
       "mystic-arcanum-level-6": 1,
       "mystic-arcanum-level-7": 1
-    },
-    "notes": {},
-    "facts": {}
+    }
   },
   {
     "index": "warlock-15",
     "name": "Warlock 15",
     "text": "Warlock, level 15. Proficiency bonus: +5.\n\nFeatures gained: Mystic Arcanum (8th level).\n\nSpell slots: level 5 x3.\n\nThis level's numbers: invocations known 7, mystic arcanum level 6 1, mystic arcanum level 7 1, mystic arcanum level 8 1.",
-    "tags": [],
     "options": [
       {
         "pack": "srd-2014",
@@ -6082,7 +5679,7 @@
       }
     ],
     "choose": 1,
-    "numbers": {
+    "facts": {
       "level": 15,
       "proficiency-bonus": 5,
       "cantrips-known": 4,
@@ -6093,15 +5690,12 @@
       "mystic-arcanum-level-6": 1,
       "mystic-arcanum-level-7": 1,
       "mystic-arcanum-level-8": 1
-    },
-    "notes": {},
-    "facts": {}
+    }
   },
   {
     "index": "warlock-16",
     "name": "Warlock 16",
     "text": "Warlock, level 16. Proficiency bonus: +5.\n\nFeatures gained: Ability Score Improvement.\n\nSpell slots: level 5 x3.\n\nThis level's numbers: invocations known 7, mystic arcanum level 6 1, mystic arcanum level 7 1, mystic arcanum level 8 1.",
-    "tags": [],
     "options": [
       {
         "pack": "srd-2014",
@@ -6110,7 +5704,7 @@
       }
     ],
     "choose": 1,
-    "numbers": {
+    "facts": {
       "level": 16,
       "proficiency-bonus": 5,
       "cantrips-known": 4,
@@ -6121,15 +5715,12 @@
       "mystic-arcanum-level-6": 1,
       "mystic-arcanum-level-7": 1,
       "mystic-arcanum-level-8": 1
-    },
-    "notes": {},
-    "facts": {}
+    }
   },
   {
     "index": "warlock-17",
     "name": "Warlock 17",
     "text": "Warlock, level 17. Proficiency bonus: +6.\n\nFeatures gained: Mystic Arcanum (9th level).\n\nSpell slots: level 5 x4.\n\nThis level's numbers: invocations known 7, mystic arcanum level 6 1, mystic arcanum level 7 1, mystic arcanum level 8 1, mystic arcanum level 9 1.",
-    "tags": [],
     "options": [
       {
         "pack": "srd-2014",
@@ -6138,7 +5729,7 @@
       }
     ],
     "choose": 1,
-    "numbers": {
+    "facts": {
       "level": 17,
       "proficiency-bonus": 6,
       "cantrips-known": 4,
@@ -6150,18 +5741,13 @@
       "mystic-arcanum-level-7": 1,
       "mystic-arcanum-level-8": 1,
       "mystic-arcanum-level-9": 1
-    },
-    "notes": {},
-    "facts": {}
+    }
   },
   {
     "index": "warlock-18",
     "name": "Warlock 18",
     "text": "Warlock, level 18. Proficiency bonus: +6.\n\nSpell slots: level 5 x4.\n\nThis level's numbers: invocations known 8, mystic arcanum level 6 1, mystic arcanum level 7 1, mystic arcanum level 8 1, mystic arcanum level 9 1.",
-    "tags": [],
-    "options": [],
-    "choose": null,
-    "numbers": {
+    "facts": {
       "level": 18,
       "proficiency-bonus": 6,
       "cantrips-known": 4,
@@ -6173,15 +5759,12 @@
       "mystic-arcanum-level-7": 1,
       "mystic-arcanum-level-8": 1,
       "mystic-arcanum-level-9": 1
-    },
-    "notes": {},
-    "facts": {}
+    }
   },
   {
     "index": "warlock-19",
     "name": "Warlock 19",
     "text": "Warlock, level 19. Proficiency bonus: +6.\n\nFeatures gained: Ability Score Improvement.\n\nSpell slots: level 5 x4.\n\nThis level's numbers: invocations known 8, mystic arcanum level 6 1, mystic arcanum level 7 1, mystic arcanum level 8 1, mystic arcanum level 9 1.",
-    "tags": [],
     "options": [
       {
         "pack": "srd-2014",
@@ -6190,7 +5773,7 @@
       }
     ],
     "choose": 1,
-    "numbers": {
+    "facts": {
       "level": 19,
       "proficiency-bonus": 6,
       "cantrips-known": 4,
@@ -6202,15 +5785,12 @@
       "mystic-arcanum-level-7": 1,
       "mystic-arcanum-level-8": 1,
       "mystic-arcanum-level-9": 1
-    },
-    "notes": {},
-    "facts": {}
+    }
   },
   {
     "index": "warlock-20",
     "name": "Warlock 20",
     "text": "Warlock, level 20. Proficiency bonus: +6.\n\nFeatures gained: Eldritch Master.\n\nSpell slots: level 5 x4.\n\nThis level's numbers: invocations known 8, mystic arcanum level 6 1, mystic arcanum level 7 1, mystic arcanum level 8 1, mystic arcanum level 9 1.",
-    "tags": [],
     "options": [
       {
         "pack": "srd-2014",
@@ -6219,7 +5799,7 @@
       }
     ],
     "choose": 1,
-    "numbers": {
+    "facts": {
       "level": 20,
       "proficiency-bonus": 6,
       "cantrips-known": 4,
@@ -6231,15 +5811,12 @@
       "mystic-arcanum-level-7": 1,
       "mystic-arcanum-level-8": 1,
       "mystic-arcanum-level-9": 1
-    },
-    "notes": {},
-    "facts": {}
+    }
   },
   {
     "index": "wizard-1",
     "name": "Wizard 1",
     "text": "Wizard, level 1. Proficiency bonus: +2.\n\nFeatures gained: Spellcasting: Wizard, Arcane Recovery.\n\nSpell slots: level 1 x2.\n\nThis level's numbers: arcane recovery levels 1.",
-    "tags": [],
     "options": [
       {
         "pack": "srd-2014",
@@ -6253,21 +5830,18 @@
       }
     ],
     "choose": 2,
-    "numbers": {
+    "facts": {
       "level": 1,
       "proficiency-bonus": 2,
       "cantrips-known": 3,
       "slot-1": 2,
       "arcane-recovery-levels": 1
-    },
-    "notes": {},
-    "facts": {}
+    }
   },
   {
     "index": "wizard-2",
     "name": "Wizard 2",
     "text": "Wizard, level 2. Proficiency bonus: +2.\n\nFeatures gained: Arcane Tradition.\n\nSpell slots: level 1 x3.\n\nThis level's numbers: arcane recovery levels 1.",
-    "tags": [],
     "options": [
       {
         "pack": "srd-2014",
@@ -6276,39 +5850,31 @@
       }
     ],
     "choose": 1,
-    "numbers": {
+    "facts": {
       "level": 2,
       "proficiency-bonus": 2,
       "cantrips-known": 3,
       "slot-1": 3,
       "arcane-recovery-levels": 1
-    },
-    "notes": {},
-    "facts": {}
+    }
   },
   {
     "index": "wizard-3",
     "name": "Wizard 3",
     "text": "Wizard, level 3. Proficiency bonus: +2.\n\nSpell slots: level 1 x4, level 2 x2.\n\nThis level's numbers: arcane recovery levels 2.",
-    "tags": [],
-    "options": [],
-    "choose": null,
-    "numbers": {
+    "facts": {
       "level": 3,
       "proficiency-bonus": 2,
       "cantrips-known": 3,
       "slot-1": 4,
       "slot-2": 2,
       "arcane-recovery-levels": 2
-    },
-    "notes": {},
-    "facts": {}
+    }
   },
   {
     "index": "wizard-4",
     "name": "Wizard 4",
     "text": "Wizard, level 4. Proficiency bonus: +2.\n\nFeatures gained: Ability Score Improvement.\n\nSpell slots: level 1 x4, level 2 x3.\n\nThis level's numbers: arcane recovery levels 2.",
-    "tags": [],
     "options": [
       {
         "pack": "srd-2014",
@@ -6317,7 +5883,7 @@
       }
     ],
     "choose": 1,
-    "numbers": {
+    "facts": {
       "level": 4,
       "proficiency-bonus": 2,
       "cantrips-known": 4,
@@ -6325,18 +5891,13 @@
       "slot-1": 4,
       "slot-2": 3,
       "arcane-recovery-levels": 2
-    },
-    "notes": {},
-    "facts": {}
+    }
   },
   {
     "index": "wizard-5",
     "name": "Wizard 5",
     "text": "Wizard, level 5. Proficiency bonus: +3.\n\nSpell slots: level 1 x4, level 2 x3, level 3 x2.\n\nThis level's numbers: arcane recovery levels 3.",
-    "tags": [],
-    "options": [],
-    "choose": null,
-    "numbers": {
+    "facts": {
       "level": 5,
       "proficiency-bonus": 3,
       "cantrips-known": 4,
@@ -6345,15 +5906,12 @@
       "slot-2": 3,
       "slot-3": 2,
       "arcane-recovery-levels": 3
-    },
-    "notes": {},
-    "facts": {}
+    }
   },
   {
     "index": "wizard-6",
     "name": "Wizard 6",
     "text": "Wizard, level 6. Proficiency bonus: +3.\n\nFeatures gained: Arcane Tradition feature.\n\nSpell slots: level 1 x4, level 2 x3, level 3 x3.\n\nThis level's numbers: arcane recovery levels 3.",
-    "tags": [],
     "options": [
       {
         "pack": "srd-2014",
@@ -6362,7 +5920,7 @@
       }
     ],
     "choose": 1,
-    "numbers": {
+    "facts": {
       "level": 6,
       "proficiency-bonus": 3,
       "cantrips-known": 4,
@@ -6371,18 +5929,13 @@
       "slot-2": 3,
       "slot-3": 3,
       "arcane-recovery-levels": 3
-    },
-    "notes": {},
-    "facts": {}
+    }
   },
   {
     "index": "wizard-7",
     "name": "Wizard 7",
     "text": "Wizard, level 7. Proficiency bonus: +3.\n\nSpell slots: level 1 x4, level 2 x3, level 3 x3, level 4 x1.\n\nThis level's numbers: arcane recovery levels 4.",
-    "tags": [],
-    "options": [],
-    "choose": null,
-    "numbers": {
+    "facts": {
       "level": 7,
       "proficiency-bonus": 3,
       "cantrips-known": 4,
@@ -6392,15 +5945,12 @@
       "slot-3": 3,
       "slot-4": 1,
       "arcane-recovery-levels": 4
-    },
-    "notes": {},
-    "facts": {}
+    }
   },
   {
     "index": "wizard-8",
     "name": "Wizard 8",
     "text": "Wizard, level 8. Proficiency bonus: +3.\n\nFeatures gained: Ability Score Improvement.\n\nSpell slots: level 1 x4, level 2 x3, level 3 x3, level 4 x2.\n\nThis level's numbers: arcane recovery levels 4.",
-    "tags": [],
     "options": [
       {
         "pack": "srd-2014",
@@ -6409,7 +5959,7 @@
       }
     ],
     "choose": 1,
-    "numbers": {
+    "facts": {
       "level": 8,
       "proficiency-bonus": 3,
       "cantrips-known": 4,
@@ -6419,18 +5969,13 @@
       "slot-3": 3,
       "slot-4": 2,
       "arcane-recovery-levels": 4
-    },
-    "notes": {},
-    "facts": {}
+    }
   },
   {
     "index": "wizard-9",
     "name": "Wizard 9",
     "text": "Wizard, level 9. Proficiency bonus: +4.\n\nSpell slots: level 1 x4, level 2 x3, level 3 x3, level 4 x3, level 5 x1.\n\nThis level's numbers: arcane recovery levels 5.",
-    "tags": [],
-    "options": [],
-    "choose": null,
-    "numbers": {
+    "facts": {
       "level": 9,
       "proficiency-bonus": 4,
       "cantrips-known": 4,
@@ -6441,15 +5986,12 @@
       "slot-4": 3,
       "slot-5": 1,
       "arcane-recovery-levels": 5
-    },
-    "notes": {},
-    "facts": {}
+    }
   },
   {
     "index": "wizard-10",
     "name": "Wizard 10",
     "text": "Wizard, level 10. Proficiency bonus: +4.\n\nFeatures gained: Arcane Tradition feature.\n\nSpell slots: level 1 x4, level 2 x3, level 3 x3, level 4 x3, level 5 x2.\n\nThis level's numbers: arcane recovery levels 5.",
-    "tags": [],
     "options": [
       {
         "pack": "srd-2014",
@@ -6458,7 +6000,7 @@
       }
     ],
     "choose": 1,
-    "numbers": {
+    "facts": {
       "level": 10,
       "proficiency-bonus": 4,
       "cantrips-known": 5,
@@ -6469,18 +6011,13 @@
       "slot-4": 3,
       "slot-5": 2,
       "arcane-recovery-levels": 5
-    },
-    "notes": {},
-    "facts": {}
+    }
   },
   {
     "index": "wizard-11",
     "name": "Wizard 11",
     "text": "Wizard, level 11. Proficiency bonus: +4.\n\nSpell slots: level 1 x4, level 2 x3, level 3 x3, level 4 x3, level 5 x2, level 6 x1.\n\nThis level's numbers: arcane recovery levels 6.",
-    "tags": [],
-    "options": [],
-    "choose": null,
-    "numbers": {
+    "facts": {
       "level": 11,
       "proficiency-bonus": 4,
       "cantrips-known": 5,
@@ -6492,15 +6029,12 @@
       "slot-5": 2,
       "slot-6": 1,
       "arcane-recovery-levels": 6
-    },
-    "notes": {},
-    "facts": {}
+    }
   },
   {
     "index": "wizard-12",
     "name": "Wizard 12",
     "text": "Wizard, level 12. Proficiency bonus: +4.\n\nFeatures gained: Ability Score Improvement.\n\nSpell slots: level 1 x4, level 2 x3, level 3 x3, level 4 x3, level 5 x2, level 6 x1.\n\nThis level's numbers: arcane recovery levels 6.",
-    "tags": [],
     "options": [
       {
         "pack": "srd-2014",
@@ -6509,7 +6043,7 @@
       }
     ],
     "choose": 1,
-    "numbers": {
+    "facts": {
       "level": 12,
       "proficiency-bonus": 4,
       "cantrips-known": 5,
@@ -6521,18 +6055,13 @@
       "slot-5": 2,
       "slot-6": 1,
       "arcane-recovery-levels": 6
-    },
-    "notes": {},
-    "facts": {}
+    }
   },
   {
     "index": "wizard-13",
     "name": "Wizard 13",
     "text": "Wizard, level 13. Proficiency bonus: +5.\n\nSpell slots: level 1 x4, level 2 x3, level 3 x3, level 4 x3, level 5 x2, level 6 x1, level 7 x1.\n\nThis level's numbers: arcane recovery levels 7.",
-    "tags": [],
-    "options": [],
-    "choose": null,
-    "numbers": {
+    "facts": {
       "level": 13,
       "proficiency-bonus": 5,
       "cantrips-known": 5,
@@ -6545,15 +6074,12 @@
       "slot-6": 1,
       "slot-7": 1,
       "arcane-recovery-levels": 7
-    },
-    "notes": {},
-    "facts": {}
+    }
   },
   {
     "index": "wizard-14",
     "name": "Wizard 14",
     "text": "Wizard, level 14. Proficiency bonus: +5.\n\nFeatures gained: Arcane Tradition feature.\n\nSpell slots: level 1 x4, level 2 x3, level 3 x3, level 4 x3, level 5 x2, level 6 x1, level 7 x1.\n\nThis level's numbers: arcane recovery levels 7.",
-    "tags": [],
     "options": [
       {
         "pack": "srd-2014",
@@ -6562,7 +6088,7 @@
       }
     ],
     "choose": 1,
-    "numbers": {
+    "facts": {
       "level": 14,
       "proficiency-bonus": 5,
       "cantrips-known": 5,
@@ -6575,18 +6101,13 @@
       "slot-6": 1,
       "slot-7": 1,
       "arcane-recovery-levels": 7
-    },
-    "notes": {},
-    "facts": {}
+    }
   },
   {
     "index": "wizard-15",
     "name": "Wizard 15",
     "text": "Wizard, level 15. Proficiency bonus: +5.\n\nSpell slots: level 1 x4, level 2 x3, level 3 x3, level 4 x3, level 5 x2, level 6 x1, level 7 x1, level 8 x1.\n\nThis level's numbers: arcane recovery levels 8.",
-    "tags": [],
-    "options": [],
-    "choose": null,
-    "numbers": {
+    "facts": {
       "level": 15,
       "proficiency-bonus": 5,
       "cantrips-known": 5,
@@ -6600,15 +6121,12 @@
       "slot-7": 1,
       "slot-8": 1,
       "arcane-recovery-levels": 8
-    },
-    "notes": {},
-    "facts": {}
+    }
   },
   {
     "index": "wizard-16",
     "name": "Wizard 16",
     "text": "Wizard, level 16. Proficiency bonus: +5.\n\nFeatures gained: Ability Score Improvement.\n\nSpell slots: level 1 x4, level 2 x3, level 3 x3, level 4 x3, level 5 x2, level 6 x1, level 7 x1, level 8 x1.\n\nThis level's numbers: arcane recovery levels 8.",
-    "tags": [],
     "options": [
       {
         "pack": "srd-2014",
@@ -6617,7 +6135,7 @@
       }
     ],
     "choose": 1,
-    "numbers": {
+    "facts": {
       "level": 16,
       "proficiency-bonus": 5,
       "cantrips-known": 5,
@@ -6631,18 +6149,13 @@
       "slot-7": 1,
       "slot-8": 1,
       "arcane-recovery-levels": 8
-    },
-    "notes": {},
-    "facts": {}
+    }
   },
   {
     "index": "wizard-17",
     "name": "Wizard 17",
     "text": "Wizard, level 17. Proficiency bonus: +6.\n\nSpell slots: level 1 x4, level 2 x3, level 3 x3, level 4 x3, level 5 x2, level 6 x1, level 7 x1, level 8 x1, level 9 x1.\n\nThis level's numbers: arcane recovery levels 9.",
-    "tags": [],
-    "options": [],
-    "choose": null,
-    "numbers": {
+    "facts": {
       "level": 17,
       "proficiency-bonus": 6,
       "cantrips-known": 5,
@@ -6657,15 +6170,12 @@
       "slot-8": 1,
       "slot-9": 1,
       "arcane-recovery-levels": 9
-    },
-    "notes": {},
-    "facts": {}
+    }
   },
   {
     "index": "wizard-18",
     "name": "Wizard 18",
     "text": "Wizard, level 18. Proficiency bonus: +6.\n\nFeatures gained: Spell Mastery.\n\nSpell slots: level 1 x4, level 2 x3, level 3 x3, level 4 x3, level 5 x3, level 6 x1, level 7 x1, level 8 x1, level 9 x1.\n\nThis level's numbers: arcane recovery levels 9.",
-    "tags": [],
     "options": [
       {
         "pack": "srd-2014",
@@ -6674,7 +6184,7 @@
       }
     ],
     "choose": 1,
-    "numbers": {
+    "facts": {
       "level": 18,
       "proficiency-bonus": 6,
       "cantrips-known": 5,
@@ -6689,15 +6199,12 @@
       "slot-8": 1,
       "slot-9": 1,
       "arcane-recovery-levels": 9
-    },
-    "notes": {},
-    "facts": {}
+    }
   },
   {
     "index": "wizard-19",
     "name": "Wizard 19",
     "text": "Wizard, level 19. Proficiency bonus: +6.\n\nFeatures gained: Ability Score Improvement.\n\nSpell slots: level 1 x4, level 2 x3, level 3 x3, level 4 x3, level 5 x3, level 6 x2, level 7 x1, level 8 x1, level 9 x1.\n\nThis level's numbers: arcane recovery levels 10.",
-    "tags": [],
     "options": [
       {
         "pack": "srd-2014",
@@ -6706,7 +6213,7 @@
       }
     ],
     "choose": 1,
-    "numbers": {
+    "facts": {
       "level": 19,
       "proficiency-bonus": 6,
       "cantrips-known": 5,
@@ -6721,15 +6228,12 @@
       "slot-8": 1,
       "slot-9": 1,
       "arcane-recovery-levels": 10
-    },
-    "notes": {},
-    "facts": {}
+    }
   },
   {
     "index": "wizard-20",
     "name": "Wizard 20",
     "text": "Wizard, level 20. Proficiency bonus: +6.\n\nFeatures gained: Signature Spell.\n\nSpell slots: level 1 x4, level 2 x3, level 3 x3, level 4 x3, level 5 x3, level 6 x2, level 7 x2, level 8 x1, level 9 x1.\n\nThis level's numbers: arcane recovery levels 10.",
-    "tags": [],
     "options": [
       {
         "pack": "srd-2014",
@@ -6738,7 +6242,7 @@
       }
     ],
     "choose": 1,
-    "numbers": {
+    "facts": {
       "level": 20,
       "proficiency-bonus": 6,
       "cantrips-known": 5,
@@ -6753,15 +6257,12 @@
       "slot-8": 1,
       "slot-9": 1,
       "arcane-recovery-levels": 10
-    },
-    "notes": {},
-    "facts": {}
+    }
   },
   {
     "index": "berserker-3",
     "name": "Berserker 3",
     "text": "Berserker, level 3.\n\nFeatures gained: Frenzy.",
-    "tags": [],
     "options": [
       {
         "pack": "srd-2014",
@@ -6770,17 +6271,14 @@
       }
     ],
     "choose": 1,
-    "numbers": {
+    "facts": {
       "level": 3
-    },
-    "notes": {},
-    "facts": {}
+    }
   },
   {
     "index": "berserker-6",
     "name": "Berserker 6",
     "text": "Berserker, level 6.\n\nFeatures gained: Mindless Rage.",
-    "tags": [],
     "options": [
       {
         "pack": "srd-2014",
@@ -6789,17 +6287,14 @@
       }
     ],
     "choose": 1,
-    "numbers": {
+    "facts": {
       "level": 6
-    },
-    "notes": {},
-    "facts": {}
+    }
   },
   {
     "index": "berserker-10",
     "name": "Berserker 10",
     "text": "Berserker, level 10.\n\nFeatures gained: Intimidating Presence.",
-    "tags": [],
     "options": [
       {
         "pack": "srd-2014",
@@ -6808,17 +6303,14 @@
       }
     ],
     "choose": 1,
-    "numbers": {
+    "facts": {
       "level": 10
-    },
-    "notes": {},
-    "facts": {}
+    }
   },
   {
     "index": "berserker-14",
     "name": "Berserker 14",
     "text": "Berserker, level 14.\n\nFeatures gained: Retaliation.",
-    "tags": [],
     "options": [
       {
         "pack": "srd-2014",
@@ -6827,17 +6319,14 @@
       }
     ],
     "choose": 1,
-    "numbers": {
+    "facts": {
       "level": 14
-    },
-    "notes": {},
-    "facts": {}
+    }
   },
   {
     "index": "lore-3",
     "name": "Lore 3",
     "text": "Lore, level 3.\n\nFeatures gained: Bonus Proficiencies, Cutting Words.",
-    "tags": [],
     "options": [
       {
         "pack": "srd-2014",
@@ -6851,17 +6340,14 @@
       }
     ],
     "choose": 2,
-    "numbers": {
+    "facts": {
       "level": 3
-    },
-    "notes": {},
-    "facts": {}
+    }
   },
   {
     "index": "lore-6",
     "name": "Lore 6",
     "text": "Lore, level 6.\n\nFeatures gained: Additional Magical Secrets.\n\nThis level's numbers: additional magical secrets max lvl 3.",
-    "tags": [],
     "options": [
       {
         "pack": "srd-2014",
@@ -6870,18 +6356,15 @@
       }
     ],
     "choose": 1,
-    "numbers": {
+    "facts": {
       "level": 6,
       "additional-magical-secrets-max-lvl": 3
-    },
-    "notes": {},
-    "facts": {}
+    }
   },
   {
     "index": "lore-14",
     "name": "Lore 14",
     "text": "Lore, level 14.\n\nFeatures gained: Peerless Skill.\n\nThis level's numbers: additional magical secrets max lvl 3.",
-    "tags": [],
     "options": [
       {
         "pack": "srd-2014",
@@ -6890,18 +6373,15 @@
       }
     ],
     "choose": 1,
-    "numbers": {
+    "facts": {
       "level": 14,
       "additional-magical-secrets-max-lvl": 3
-    },
-    "notes": {},
-    "facts": {}
+    }
   },
   {
     "index": "life-1",
     "name": "Life 1",
     "text": "Life, level 1.\n\nFeatures gained: Bonus Proficiency, Disciple of Life.",
-    "tags": [],
     "options": [
       {
         "pack": "srd-2014",
@@ -6915,17 +6395,14 @@
       }
     ],
     "choose": 2,
-    "numbers": {
+    "facts": {
       "level": 1
-    },
-    "notes": {},
-    "facts": {}
+    }
   },
   {
     "index": "life-2",
     "name": "Life 2",
     "text": "Life, level 2.\n\nFeatures gained: Channel Divinity: Preserve Life.",
-    "tags": [],
     "options": [
       {
         "pack": "srd-2014",
@@ -6934,17 +6411,14 @@
       }
     ],
     "choose": 1,
-    "numbers": {
+    "facts": {
       "level": 2
-    },
-    "notes": {},
-    "facts": {}
+    }
   },
   {
     "index": "life-6",
     "name": "Life 6",
     "text": "Life, level 6.\n\nFeatures gained: Blessed Healer.",
-    "tags": [],
     "options": [
       {
         "pack": "srd-2014",
@@ -6953,17 +6427,14 @@
       }
     ],
     "choose": 1,
-    "numbers": {
+    "facts": {
       "level": 6
-    },
-    "notes": {},
-    "facts": {}
+    }
   },
   {
     "index": "life-8",
     "name": "Life 8",
     "text": "Life, level 8.\n\nFeatures gained: Divine Strike.",
-    "tags": [],
     "options": [
       {
         "pack": "srd-2014",
@@ -6972,17 +6443,14 @@
       }
     ],
     "choose": 1,
-    "numbers": {
+    "facts": {
       "level": 8
-    },
-    "notes": {},
-    "facts": {}
+    }
   },
   {
     "index": "life-17",
     "name": "Life 17",
     "text": "Life, level 17.\n\nFeatures gained: Supreme Healing.",
-    "tags": [],
     "options": [
       {
         "pack": "srd-2014",
@@ -6991,17 +6459,14 @@
       }
     ],
     "choose": 1,
-    "numbers": {
+    "facts": {
       "level": 17
-    },
-    "notes": {},
-    "facts": {}
+    }
   },
   {
     "index": "land-2",
     "name": "Land 2",
     "text": "Land, level 2.\n\nFeatures gained: Bonus Cantrip, Natural Recovery.",
-    "tags": [],
     "options": [
       {
         "pack": "srd-2014",
@@ -7015,17 +6480,14 @@
       }
     ],
     "choose": 2,
-    "numbers": {
+    "facts": {
       "level": 2
-    },
-    "notes": {},
-    "facts": {}
+    }
   },
   {
     "index": "land-6",
     "name": "Land 6",
     "text": "Land, level 6.\n\nFeatures gained: Land's Stride.",
-    "tags": [],
     "options": [
       {
         "pack": "srd-2014",
@@ -7034,17 +6496,14 @@
       }
     ],
     "choose": 1,
-    "numbers": {
+    "facts": {
       "level": 6
-    },
-    "notes": {},
-    "facts": {}
+    }
   },
   {
     "index": "land-10",
     "name": "Land 10",
     "text": "Land, level 10.\n\nFeatures gained: Nature's Ward.",
-    "tags": [],
     "options": [
       {
         "pack": "srd-2014",
@@ -7053,17 +6512,14 @@
       }
     ],
     "choose": 1,
-    "numbers": {
+    "facts": {
       "level": 10
-    },
-    "notes": {},
-    "facts": {}
+    }
   },
   {
     "index": "land-14",
     "name": "Land 14",
     "text": "Land, level 14.\n\nFeatures gained: Nature's Sanctuary.",
-    "tags": [],
     "options": [
       {
         "pack": "srd-2014",
@@ -7072,17 +6528,14 @@
       }
     ],
     "choose": 1,
-    "numbers": {
+    "facts": {
       "level": 14
-    },
-    "notes": {},
-    "facts": {}
+    }
   },
   {
     "index": "champion-3",
     "name": "Champion 3",
     "text": "Champion, level 3.\n\nFeatures gained: Improved Critical.",
-    "tags": [],
     "options": [
       {
         "pack": "srd-2014",
@@ -7091,17 +6544,14 @@
       }
     ],
     "choose": 1,
-    "numbers": {
+    "facts": {
       "level": 3
-    },
-    "notes": {},
-    "facts": {}
+    }
   },
   {
     "index": "champion-7",
     "name": "Champion 7",
     "text": "Champion, level 7.\n\nFeatures gained: Remarkable Athlete.",
-    "tags": [],
     "options": [
       {
         "pack": "srd-2014",
@@ -7110,17 +6560,14 @@
       }
     ],
     "choose": 1,
-    "numbers": {
+    "facts": {
       "level": 7
-    },
-    "notes": {},
-    "facts": {}
+    }
   },
   {
     "index": "champion-10",
     "name": "Champion 10",
     "text": "Champion, level 10.\n\nFeatures gained: Additional Fighting Style.",
-    "tags": [],
     "options": [
       {
         "pack": "srd-2014",
@@ -7154,17 +6601,14 @@
       }
     ],
     "choose": 1,
-    "numbers": {
+    "facts": {
       "level": 10
-    },
-    "notes": {},
-    "facts": {}
+    }
   },
   {
     "index": "champion-15",
     "name": "Champion 15",
     "text": "Champion, level 15.\n\nFeatures gained: Superior Critical.",
-    "tags": [],
     "options": [
       {
         "pack": "srd-2014",
@@ -7173,17 +6617,14 @@
       }
     ],
     "choose": 1,
-    "numbers": {
+    "facts": {
       "level": 15
-    },
-    "notes": {},
-    "facts": {}
+    }
   },
   {
     "index": "champion-18",
     "name": "Champion 18",
     "text": "Champion, level 18.\n\nFeatures gained: Survivor.",
-    "tags": [],
     "options": [
       {
         "pack": "srd-2014",
@@ -7192,17 +6633,14 @@
       }
     ],
     "choose": 1,
-    "numbers": {
+    "facts": {
       "level": 18
-    },
-    "notes": {},
-    "facts": {}
+    }
   },
   {
     "index": "open-hand-3",
     "name": "Open Hand 3",
     "text": "Open Hand, level 3.\n\nFeatures gained: Open Hand Technique.",
-    "tags": [],
     "options": [
       {
         "pack": "srd-2014",
@@ -7211,17 +6649,14 @@
       }
     ],
     "choose": 1,
-    "numbers": {
+    "facts": {
       "level": 3
-    },
-    "notes": {},
-    "facts": {}
+    }
   },
   {
     "index": "open-hand-6",
     "name": "Open Hand 6",
     "text": "Open Hand, level 6.\n\nFeatures gained: Wholeness of Body.",
-    "tags": [],
     "options": [
       {
         "pack": "srd-2014",
@@ -7230,17 +6665,14 @@
       }
     ],
     "choose": 1,
-    "numbers": {
+    "facts": {
       "level": 6
-    },
-    "notes": {},
-    "facts": {}
+    }
   },
   {
     "index": "open-hand-11",
     "name": "Open Hand 11",
     "text": "Open Hand, level 11.\n\nFeatures gained: Tranquility.",
-    "tags": [],
     "options": [
       {
         "pack": "srd-2014",
@@ -7249,17 +6681,14 @@
       }
     ],
     "choose": 1,
-    "numbers": {
+    "facts": {
       "level": 11
-    },
-    "notes": {},
-    "facts": {}
+    }
   },
   {
     "index": "open-hand-17",
     "name": "Open Hand 17",
     "text": "Open Hand, level 17.\n\nFeatures gained: Quivering Palm.",
-    "tags": [],
     "options": [
       {
         "pack": "srd-2014",
@@ -7268,17 +6697,14 @@
       }
     ],
     "choose": 1,
-    "numbers": {
+    "facts": {
       "level": 17
-    },
-    "notes": {},
-    "facts": {}
+    }
   },
   {
     "index": "devotion-3",
     "name": "Devotion 3",
     "text": "Devotion, level 3.\n\nFeatures gained: Channel Divinity: Sacred Weapon, Channel Divinity: Turn the Unholy.",
-    "tags": [],
     "options": [
       {
         "pack": "srd-2014",
@@ -7292,17 +6718,14 @@
       }
     ],
     "choose": 2,
-    "numbers": {
+    "facts": {
       "level": 3
-    },
-    "notes": {},
-    "facts": {}
+    }
   },
   {
     "index": "devotion-7",
     "name": "Devotion 7",
     "text": "Devotion, level 7.\n\nFeatures gained: Aura of Devotion.\n\nThis level's numbers: aura range 10.",
-    "tags": [],
     "options": [
       {
         "pack": "srd-2014",
@@ -7311,18 +6734,15 @@
       }
     ],
     "choose": 1,
-    "numbers": {
+    "facts": {
       "level": 7,
       "aura-range": 10
-    },
-    "notes": {},
-    "facts": {}
+    }
   },
   {
     "index": "devotion-15",
     "name": "Devotion 15",
     "text": "Devotion, level 15.\n\nFeatures gained: Purity of Spirit.\n\nThis level's numbers: aura range 10.",
-    "tags": [],
     "options": [
       {
         "pack": "srd-2014",
@@ -7331,32 +6751,24 @@
       }
     ],
     "choose": 1,
-    "numbers": {
+    "facts": {
       "level": 15,
       "aura-range": 10
-    },
-    "notes": {},
-    "facts": {}
+    }
   },
   {
     "index": "devotion-18",
     "name": "Devotion 18",
     "text": "Devotion, level 18.\n\nThis level's numbers: aura range 30.",
-    "tags": [],
-    "options": [],
-    "choose": null,
-    "numbers": {
+    "facts": {
       "level": 18,
       "aura-range": 30
-    },
-    "notes": {},
-    "facts": {}
+    }
   },
   {
     "index": "devotion-20",
     "name": "Devotion 20",
     "text": "Devotion, level 20.\n\nFeatures gained: Holy Nimbus.\n\nThis level's numbers: aura range 30.",
-    "tags": [],
     "options": [
       {
         "pack": "srd-2014",
@@ -7365,18 +6777,15 @@
       }
     ],
     "choose": 1,
-    "numbers": {
+    "facts": {
       "level": 20,
       "aura-range": 30
-    },
-    "notes": {},
-    "facts": {}
+    }
   },
   {
     "index": "hunter-3",
     "name": "Hunter 3",
     "text": "Hunter, level 3.\n\nFeatures gained: Hunter's Prey.",
-    "tags": [],
     "options": [
       {
         "pack": "srd-2014",
@@ -7395,17 +6804,14 @@
       }
     ],
     "choose": 1,
-    "numbers": {
+    "facts": {
       "level": 3
-    },
-    "notes": {},
-    "facts": {}
+    }
   },
   {
     "index": "hunter-7",
     "name": "Hunter 7",
     "text": "Hunter, level 7.\n\nFeatures gained: Defensive Tactics.",
-    "tags": [],
     "options": [
       {
         "pack": "srd-2014",
@@ -7424,17 +6830,14 @@
       }
     ],
     "choose": 1,
-    "numbers": {
+    "facts": {
       "level": 7
-    },
-    "notes": {},
-    "facts": {}
+    }
   },
   {
     "index": "hunter-11",
     "name": "Hunter 11",
     "text": "Hunter, level 11.\n\nFeatures gained: Multiattack.",
-    "tags": [],
     "options": [
       {
         "pack": "srd-2014",
@@ -7448,17 +6851,14 @@
       }
     ],
     "choose": 1,
-    "numbers": {
+    "facts": {
       "level": 11
-    },
-    "notes": {},
-    "facts": {}
+    }
   },
   {
     "index": "hunter-15",
     "name": "Hunter 15",
     "text": "Hunter, level 15.\n\nFeatures gained: Superior Hunter's Defense.",
-    "tags": [],
     "options": [
       {
         "pack": "srd-2014",
@@ -7477,17 +6877,14 @@
       }
     ],
     "choose": 1,
-    "numbers": {
+    "facts": {
       "level": 15
-    },
-    "notes": {},
-    "facts": {}
+    }
   },
   {
     "index": "thief-3",
     "name": "Thief 3",
     "text": "Thief, level 3.\n\nFeatures gained: Fast Hands, Second-Story Work.",
-    "tags": [],
     "options": [
       {
         "pack": "srd-2014",
@@ -7501,17 +6898,14 @@
       }
     ],
     "choose": 2,
-    "numbers": {
+    "facts": {
       "level": 3
-    },
-    "notes": {},
-    "facts": {}
+    }
   },
   {
     "index": "thief-9",
     "name": "Thief 9",
     "text": "Thief, level 9.\n\nFeatures gained: Supreme Sneak.",
-    "tags": [],
     "options": [
       {
         "pack": "srd-2014",
@@ -7520,17 +6914,14 @@
       }
     ],
     "choose": 1,
-    "numbers": {
+    "facts": {
       "level": 9
-    },
-    "notes": {},
-    "facts": {}
+    }
   },
   {
     "index": "thief-13",
     "name": "Thief 13",
     "text": "Thief, level 13.\n\nFeatures gained: Use Magic Device.",
-    "tags": [],
     "options": [
       {
         "pack": "srd-2014",
@@ -7539,17 +6930,14 @@
       }
     ],
     "choose": 1,
-    "numbers": {
+    "facts": {
       "level": 13
-    },
-    "notes": {},
-    "facts": {}
+    }
   },
   {
     "index": "thief-17",
     "name": "Thief 17",
     "text": "Thief, level 17.\n\nFeatures gained: Thief's Reflexes.",
-    "tags": [],
     "options": [
       {
         "pack": "srd-2014",
@@ -7558,17 +6946,14 @@
       }
     ],
     "choose": 1,
-    "numbers": {
+    "facts": {
       "level": 17
-    },
-    "notes": {},
-    "facts": {}
+    }
   },
   {
     "index": "draconic-1",
     "name": "Draconic 1",
     "text": "Draconic, level 1.\n\nFeatures gained: Dragon Ancestor, Draconic Resilience.",
-    "tags": [],
     "options": [
       {
         "pack": "srd-2014",
@@ -7627,17 +7012,14 @@
       }
     ],
     "choose": 2,
-    "numbers": {
+    "facts": {
       "level": 1
-    },
-    "notes": {},
-    "facts": {}
+    }
   },
   {
     "index": "draconic-6",
     "name": "Draconic 6",
     "text": "Draconic, level 6.\n\nFeatures gained: Elemental Affinity.",
-    "tags": [],
     "options": [
       {
         "pack": "srd-2014",
@@ -7646,17 +7028,14 @@
       }
     ],
     "choose": 1,
-    "numbers": {
+    "facts": {
       "level": 6
-    },
-    "notes": {},
-    "facts": {}
+    }
   },
   {
     "index": "draconic-14",
     "name": "Draconic 14",
     "text": "Draconic, level 14.\n\nFeatures gained: Dragon Wings.",
-    "tags": [],
     "options": [
       {
         "pack": "srd-2014",
@@ -7665,17 +7044,14 @@
       }
     ],
     "choose": 1,
-    "numbers": {
+    "facts": {
       "level": 14
-    },
-    "notes": {},
-    "facts": {}
+    }
   },
   {
     "index": "draconic-18",
     "name": "Draconic 18",
     "text": "Draconic, level 18.\n\nFeatures gained: Draconic Presence.",
-    "tags": [],
     "options": [
       {
         "pack": "srd-2014",
@@ -7684,17 +7060,14 @@
       }
     ],
     "choose": 1,
-    "numbers": {
+    "facts": {
       "level": 18
-    },
-    "notes": {},
-    "facts": {}
+    }
   },
   {
     "index": "fiend-1",
     "name": "Fiend 1",
     "text": "Fiend, level 1.\n\nFeatures gained: Dark One's Blessing.",
-    "tags": [],
     "options": [
       {
         "pack": "srd-2014",
@@ -7703,17 +7076,14 @@
       }
     ],
     "choose": 1,
-    "numbers": {
+    "facts": {
       "level": 1
-    },
-    "notes": {},
-    "facts": {}
+    }
   },
   {
     "index": "fiend-6",
     "name": "Fiend 6",
     "text": "Fiend, level 6.\n\nFeatures gained: Dark One's Own Luck.",
-    "tags": [],
     "options": [
       {
         "pack": "srd-2014",
@@ -7722,17 +7092,14 @@
       }
     ],
     "choose": 1,
-    "numbers": {
+    "facts": {
       "level": 6
-    },
-    "notes": {},
-    "facts": {}
+    }
   },
   {
     "index": "fiend-10",
     "name": "Fiend 10",
     "text": "Fiend, level 10.\n\nFeatures gained: Fiendish Resilience.",
-    "tags": [],
     "options": [
       {
         "pack": "srd-2014",
@@ -7741,17 +7108,14 @@
       }
     ],
     "choose": 1,
-    "numbers": {
+    "facts": {
       "level": 10
-    },
-    "notes": {},
-    "facts": {}
+    }
   },
   {
     "index": "fiend-14",
     "name": "Fiend 14",
     "text": "Fiend, level 14.\n\nFeatures gained: Hurl Through Hell.",
-    "tags": [],
     "options": [
       {
         "pack": "srd-2014",
@@ -7760,17 +7124,14 @@
       }
     ],
     "choose": 1,
-    "numbers": {
+    "facts": {
       "level": 14
-    },
-    "notes": {},
-    "facts": {}
+    }
   },
   {
     "index": "evocation-2",
     "name": "Evocation 2",
     "text": "Evocation, level 2.\n\nFeatures gained: Evocation Savant, Sculpt Spells.",
-    "tags": [],
     "options": [
       {
         "pack": "srd-2014",
@@ -7784,17 +7145,14 @@
       }
     ],
     "choose": 2,
-    "numbers": {
+    "facts": {
       "level": 2
-    },
-    "notes": {},
-    "facts": {}
+    }
   },
   {
     "index": "evocation-6",
     "name": "Evocation 6",
     "text": "Evocation, level 6.\n\nFeatures gained: Potent Cantrip.",
-    "tags": [],
     "options": [
       {
         "pack": "srd-2014",
@@ -7803,17 +7161,14 @@
       }
     ],
     "choose": 1,
-    "numbers": {
+    "facts": {
       "level": 6
-    },
-    "notes": {},
-    "facts": {}
+    }
   },
   {
     "index": "evocation-10",
     "name": "Evocation 10",
     "text": "Evocation, level 10.\n\nFeatures gained: Empowered Evocation.",
-    "tags": [],
     "options": [
       {
         "pack": "srd-2014",
@@ -7822,17 +7177,14 @@
       }
     ],
     "choose": 1,
-    "numbers": {
+    "facts": {
       "level": 10
-    },
-    "notes": {},
-    "facts": {}
+    }
   },
   {
     "index": "evocation-14",
     "name": "Evocation 14",
     "text": "Evocation, level 14.\n\nFeatures gained: Overchannel.",
-    "tags": [],
     "options": [
       {
         "pack": "srd-2014",
@@ -7841,10 +7193,8 @@
       }
     ],
     "choose": 1,
-    "numbers": {
+    "facts": {
       "level": 14
-    },
-    "notes": {},
-    "facts": {}
+    }
   }
 ]

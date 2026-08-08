@@ -1,5 +1,5 @@
 import pytest
-from pydantic import ValidationError
+from pydantic import JsonValue, ValidationError
 
 from aidm.state.sheet import (
     Counter,
@@ -8,6 +8,7 @@ from aidm.state.sheet import (
     SheetDefinition,
     SheetTag,
     SheetTemplate,
+    fact_line,
 )
 
 
@@ -43,3 +44,14 @@ def test_runtime_merges_template_record_and_author_by_specificity() -> None:
 
     assert sheet.counters["hp"] == Counter(current=7, maximum=7, recharge="long-rest")
     assert sheet.numbers["armor-class"] == 15
+
+
+def test_only_a_ladder_starting_at_zero_renders_compactly_as_its_base() -> None:
+    """A ladder from 0 states its own base, so the sheet line may drop to that rung. One starting
+    elsewhere — a monster's `slots` — means nothing without every rung."""
+    damage: JsonValue = [[0, "4d4"], [3, "5d4"]]
+    slots: JsonValue = [[1, 3], [2, 2]]
+
+    assert fact_line("damage-ladder", damage, ladder_full=False) == "damage-ladder=4d4"
+    assert fact_line("damage-ladder", damage, ladder_full=True) == "damage-ladder=0:4d4, 3:5d4"
+    assert fact_line("slots", slots, ladder_full=False) == "slots=1:3, 2:2"

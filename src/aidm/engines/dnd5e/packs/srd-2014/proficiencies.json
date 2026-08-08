@@ -3,13 +3,8 @@
     "index": "light-armor",
     "name": "Light Armor",
     "text": "Armor proficiency: Light Armor.",
-    "tags": [],
-    "options": [],
-    "choose": null,
-    "numbers": {},
-    "notes": {},
     "facts": {
-      "category": "Armor",
+      "category": "armor",
       "reference": "light-armor"
     }
   },
@@ -17,13 +12,8 @@
     "index": "medium-armor",
     "name": "Medium Armor",
     "text": "Armor proficiency: Medium Armor.",
-    "tags": [],
-    "options": [],
-    "choose": null,
-    "numbers": {},
-    "notes": {},
     "facts": {
-      "category": "Armor",
+      "category": "armor",
       "reference": "medium-armor"
     }
   },
@@ -31,13 +21,8 @@
     "index": "heavy-armor",
     "name": "Heavy Armor",
     "text": "Armor proficiency: Heavy Armor.",
-    "tags": [],
-    "options": [],
-    "choose": null,
-    "numbers": {},
-    "notes": {},
     "facts": {
-      "category": "Armor",
+      "category": "armor",
       "reference": "heavy-armor"
     }
   },
@@ -45,13 +30,8 @@
     "index": "all-armor",
     "name": "All armor",
     "text": "Armor proficiency: Armor.",
-    "tags": [],
-    "options": [],
-    "choose": null,
-    "numbers": {},
-    "notes": {},
     "facts": {
-      "category": "Armor",
+      "category": "armor",
       "reference": "armor"
     }
   },
@@ -59,13 +39,8 @@
     "index": "padded-armor",
     "name": "Padded Armor",
     "text": "Armor proficiency: Padded Armor.",
-    "tags": [],
-    "options": [],
-    "choose": null,
-    "numbers": {},
-    "notes": {},
     "facts": {
-      "category": "Armor",
+      "category": "armor",
       "reference": "padded-armor"
     }
   },
@@ -73,13 +48,8 @@
     "index": "leather-armor",
     "name": "Leather Armor",
     "text": "Armor proficiency: Leather Armor.",
-    "tags": [],
-    "options": [],
-    "choose": null,
-    "numbers": {},
-    "notes": {},
     "facts": {
-      "category": "Armor",
+      "category": "armor",
       "reference": "leather-armor"
     }
   },
@@ -87,13 +57,8 @@
     "index": "studded-leather-armor",
     "name": "Studded Leather Armor",
     "text": "Armor proficiency: Studded Leather Armor.",
-    "tags": [],
-    "options": [],
-    "choose": null,
-    "numbers": {},
-    "notes": {},
     "facts": {
-      "category": "Armor",
+      "category": "armor",
       "reference": "studded-leather-armor"
     }
   },
@@ -101,13 +66,8 @@
     "index": "hide-armor",
     "name": "Hide Armor",
     "text": "Armor proficiency: Hide Armor.",
-    "tags": [],
-    "options": [],
-    "choose": null,
-    "numbers": {},
-    "notes": {},
     "facts": {
-      "category": "Armor",
+      "category": "armor",
       "reference": "hide-armor"
     }
   },
@@ -115,13 +75,8 @@
     "index": "chain-shirt",
     "name": "Chain Shirt",
     "text": "Armor proficiency: Chain Shirt.",
-    "tags": [],
-    "options": [],
-    "choose": null,
-    "numbers": {},
-    "notes": {},
     "facts": {
-      "category": "Armor",
+      "category": "armor",
       "reference": "chain-shirt"
     }
   },
@@ -129,13 +84,8 @@
     "index": "scale-mail",
     "name": "Scale Mail",
     "text": "Armor proficiency: Scale Mail.",
-    "tags": [],
-    "options": [],
-    "choose": null,
-    "numbers": {},
-    "notes": {},
     "facts": {
-      "category": "Armor",
+      "category": "armor",
       "reference": "scale-mail"
     }
   },
@@ -143,13 +93,8 @@
     "index": "breastplate",
     "name": "Breastplate",
     "text": "Armor proficiency: Breastplate.",
-    "tags": [],
-    "options": [],
-    "choose": null,
-    "numbers": {},
-    "notes": {},
     "facts": {
-      "category": "Armor",
+      "category": "armor",
       "reference": "breastplate"
     }
   },
@@ -157,13 +102,8 @@
     "index": "half-plate-armor",
     "name": "Half Plate Armor",
     "text": "Armor proficiency: Half Plate Armor.",
-    "tags": [],
-    "options": [],
-    "choose": null,
-    "numbers": {},
-    "notes": {},
     "facts": {
-      "category": "Armor",
+      "category": "armor",
       "reference": "half-plate-armor"
     }
   },
@@ -171,13 +111,8 @@
     "index": "ring-mail",
     "name": "Ring Mail",
     "text": "Armor proficiency: Ring Mail.",
-    "tags": [],
-    "options": [],
-    "choose": null,
-    "numbers": {},
-    "notes": {},
     "facts": {
-      "category": "Armor",
+      "category": "armor",
       "reference": "ring-mail"
     }
   },
@@ -185,13 +120,8 @@
     "index": "chain-mail",
     "name": "Chain Mail",
     "text": "Armor proficiency: Chain Mail.",
-    "tags": [],
-    "options": [],
-    "choose": null,
-    "numbers": {},
-    "notes": {},
     "facts": {
-      "category": "Armor",
+      "category": "armor",
       "reference": "chain-mail"
     }
   },
@@ -199,13 +129,8 @@
     "index": "splint-armor",
     "name": "Splint Armor",
     "text": "Armor proficiency: Splint Armor.",
-    "tags": [],
-    "options": [],
-    "choose": null,
-    "numbers": {},
-    "notes": {},
     "facts": {
-      "category": "Armor",
+      "category": "armor",
       "reference": "splint-armor"
     }
   },
@@ -213,13 +138,8 @@
     "index": "plate-armor",
     "name": "Plate Armor",
     "text": "Armor proficiency: Plate Armor.",
-    "tags": [],
-    "options": [],
-    "choose": null,
-    "numbers": {},
-    "notes": {},
     "facts": {
-      "category": "Armor",
+      "category": "armor",
       "reference": "plate-armor"
     }
   },
@@ -227,13 +147,8 @@
     "index": "shields",
     "name": "Shields",
     "text": "Armor proficiency: Shield.",
-    "tags": [],
-    "options": [],
-    "choose": null,
-    "numbers": {},
-    "notes": {},
     "facts": {
-      "category": "Armor",
+      "category": "armor",
       "reference": "shield"
     }
   },
@@ -241,13 +156,8 @@
     "index": "simple-weapons",
     "name": "Simple Weapons",
     "text": "Weapons proficiency: Simple Weapons.",
-    "tags": [],
-    "options": [],
-    "choose": null,
-    "numbers": {},
-    "notes": {},
     "facts": {
-      "category": "Weapons",
+      "category": "weapons",
       "reference": "simple-weapons"
     }
   },
@@ -255,13 +165,8 @@
     "index": "martial-weapons",
     "name": "Martial Weapons",
     "text": "Weapons proficiency: Martial Weapons.",
-    "tags": [],
-    "options": [],
-    "choose": null,
-    "numbers": {},
-    "notes": {},
     "facts": {
-      "category": "Weapons",
+      "category": "weapons",
       "reference": "martial-weapons"
     }
   },
@@ -269,13 +174,8 @@
     "index": "clubs",
     "name": "Clubs",
     "text": "Weapons proficiency: Club.",
-    "tags": [],
-    "options": [],
-    "choose": null,
-    "numbers": {},
-    "notes": {},
     "facts": {
-      "category": "Weapons",
+      "category": "weapons",
       "reference": "club"
     }
   },
@@ -283,13 +183,8 @@
     "index": "daggers",
     "name": "Daggers",
     "text": "Weapons proficiency: Dagger.",
-    "tags": [],
-    "options": [],
-    "choose": null,
-    "numbers": {},
-    "notes": {},
     "facts": {
-      "category": "Weapons",
+      "category": "weapons",
       "reference": "dagger"
     }
   },
@@ -297,13 +192,8 @@
     "index": "greatclubs",
     "name": "Greatclubs",
     "text": "Weapons proficiency: Greatclub.",
-    "tags": [],
-    "options": [],
-    "choose": null,
-    "numbers": {},
-    "notes": {},
     "facts": {
-      "category": "Weapons",
+      "category": "weapons",
       "reference": "greatclub"
     }
   },
@@ -311,13 +201,8 @@
     "index": "handaxes",
     "name": "Handaxes",
     "text": "Weapons proficiency: Handaxe.",
-    "tags": [],
-    "options": [],
-    "choose": null,
-    "numbers": {},
-    "notes": {},
     "facts": {
-      "category": "Weapons",
+      "category": "weapons",
       "reference": "handaxe"
     }
   },
@@ -325,13 +210,8 @@
     "index": "javelins",
     "name": "Javelins",
     "text": "Weapons proficiency: Javelin.",
-    "tags": [],
-    "options": [],
-    "choose": null,
-    "numbers": {},
-    "notes": {},
     "facts": {
-      "category": "Weapons",
+      "category": "weapons",
       "reference": "javelin"
     }
   },
@@ -339,13 +219,8 @@
     "index": "light-hammers",
     "name": "Light hammers",
     "text": "Weapons proficiency: Light hammer.",
-    "tags": [],
-    "options": [],
-    "choose": null,
-    "numbers": {},
-    "notes": {},
     "facts": {
-      "category": "Weapons",
+      "category": "weapons",
       "reference": "light-hammer"
     }
   },
@@ -353,13 +228,8 @@
     "index": "maces",
     "name": "Maces",
     "text": "Weapons proficiency: Mace.",
-    "tags": [],
-    "options": [],
-    "choose": null,
-    "numbers": {},
-    "notes": {},
     "facts": {
-      "category": "Weapons",
+      "category": "weapons",
       "reference": "mace"
     }
   },
@@ -367,13 +237,8 @@
     "index": "quarterstaffs",
     "name": "Quarterstaffs",
     "text": "Weapons proficiency: Quarterstaff.",
-    "tags": [],
-    "options": [],
-    "choose": null,
-    "numbers": {},
-    "notes": {},
     "facts": {
-      "category": "Weapons",
+      "category": "weapons",
       "reference": "quarterstaff"
     }
   },
@@ -381,13 +246,8 @@
     "index": "sickles",
     "name": "Sickles",
     "text": "Weapons proficiency: Sickle.",
-    "tags": [],
-    "options": [],
-    "choose": null,
-    "numbers": {},
-    "notes": {},
     "facts": {
-      "category": "Weapons",
+      "category": "weapons",
       "reference": "sickle"
     }
   },
@@ -395,13 +255,8 @@
     "index": "spears",
     "name": "Spears",
     "text": "Weapons proficiency: Spear.",
-    "tags": [],
-    "options": [],
-    "choose": null,
-    "numbers": {},
-    "notes": {},
     "facts": {
-      "category": "Weapons",
+      "category": "weapons",
       "reference": "spear"
     }
   },
@@ -409,13 +264,8 @@
     "index": "crossbows-light",
     "name": "Crossbows, light",
     "text": "Weapons proficiency: Crossbow, light.",
-    "tags": [],
-    "options": [],
-    "choose": null,
-    "numbers": {},
-    "notes": {},
     "facts": {
-      "category": "Weapons",
+      "category": "weapons",
       "reference": "crossbow-light"
     }
   },
@@ -423,13 +273,8 @@
     "index": "darts",
     "name": "Darts",
     "text": "Weapons proficiency: Dart.",
-    "tags": [],
-    "options": [],
-    "choose": null,
-    "numbers": {},
-    "notes": {},
     "facts": {
-      "category": "Weapons",
+      "category": "weapons",
       "reference": "dart"
     }
   },
@@ -437,13 +282,8 @@
     "index": "shortbows",
     "name": "Shortbows",
     "text": "Weapons proficiency: Shortbow.",
-    "tags": [],
-    "options": [],
-    "choose": null,
-    "numbers": {},
-    "notes": {},
     "facts": {
-      "category": "Weapons",
+      "category": "weapons",
       "reference": "shortbow"
     }
   },
@@ -451,13 +291,8 @@
     "index": "slings",
     "name": "Slings",
     "text": "Weapons proficiency: Sling.",
-    "tags": [],
-    "options": [],
-    "choose": null,
-    "numbers": {},
-    "notes": {},
     "facts": {
-      "category": "Weapons",
+      "category": "weapons",
       "reference": "sling"
     }
   },
@@ -465,13 +300,8 @@
     "index": "battleaxes",
     "name": "Battleaxes",
     "text": "Weapons proficiency: Battleaxe.",
-    "tags": [],
-    "options": [],
-    "choose": null,
-    "numbers": {},
-    "notes": {},
     "facts": {
-      "category": "Weapons",
+      "category": "weapons",
       "reference": "battleaxe"
     }
   },
@@ -479,13 +309,8 @@
     "index": "flails",
     "name": "Flails",
     "text": "Weapons proficiency: Flail.",
-    "tags": [],
-    "options": [],
-    "choose": null,
-    "numbers": {},
-    "notes": {},
     "facts": {
-      "category": "Weapons",
+      "category": "weapons",
       "reference": "flail"
     }
   },
@@ -493,13 +318,8 @@
     "index": "glaives",
     "name": "Glaives",
     "text": "Weapons proficiency: Glaive.",
-    "tags": [],
-    "options": [],
-    "choose": null,
-    "numbers": {},
-    "notes": {},
     "facts": {
-      "category": "Weapons",
+      "category": "weapons",
       "reference": "glaive"
     }
   },
@@ -507,13 +327,8 @@
     "index": "greataxes",
     "name": "Greataxes",
     "text": "Weapons proficiency: Greataxe.",
-    "tags": [],
-    "options": [],
-    "choose": null,
-    "numbers": {},
-    "notes": {},
     "facts": {
-      "category": "Weapons",
+      "category": "weapons",
       "reference": "greataxe"
     }
   },
@@ -521,13 +336,8 @@
     "index": "greatswords",
     "name": "Greatswords",
     "text": "Weapons proficiency: Greatsword.",
-    "tags": [],
-    "options": [],
-    "choose": null,
-    "numbers": {},
-    "notes": {},
     "facts": {
-      "category": "Weapons",
+      "category": "weapons",
       "reference": "greatsword"
     }
   },
@@ -535,13 +345,8 @@
     "index": "halberds",
     "name": "Halberds",
     "text": "Weapons proficiency: Halberd.",
-    "tags": [],
-    "options": [],
-    "choose": null,
-    "numbers": {},
-    "notes": {},
     "facts": {
-      "category": "Weapons",
+      "category": "weapons",
       "reference": "halberd"
     }
   },
@@ -549,13 +354,8 @@
     "index": "lances",
     "name": "Lances",
     "text": "Weapons proficiency: Lance.",
-    "tags": [],
-    "options": [],
-    "choose": null,
-    "numbers": {},
-    "notes": {},
     "facts": {
-      "category": "Weapons",
+      "category": "weapons",
       "reference": "lance"
     }
   },
@@ -563,13 +363,8 @@
     "index": "longswords",
     "name": "Longswords",
     "text": "Weapons proficiency: Longsword.",
-    "tags": [],
-    "options": [],
-    "choose": null,
-    "numbers": {},
-    "notes": {},
     "facts": {
-      "category": "Weapons",
+      "category": "weapons",
       "reference": "longsword"
     }
   },
@@ -577,13 +372,8 @@
     "index": "mauls",
     "name": "Mauls",
     "text": "Weapons proficiency: Maul.",
-    "tags": [],
-    "options": [],
-    "choose": null,
-    "numbers": {},
-    "notes": {},
     "facts": {
-      "category": "Weapons",
+      "category": "weapons",
       "reference": "maul"
     }
   },
@@ -591,13 +381,8 @@
     "index": "morningstars",
     "name": "Morningstars",
     "text": "Weapons proficiency: Morningstar.",
-    "tags": [],
-    "options": [],
-    "choose": null,
-    "numbers": {},
-    "notes": {},
     "facts": {
-      "category": "Weapons",
+      "category": "weapons",
       "reference": "morningstar"
     }
   },
@@ -605,13 +390,8 @@
     "index": "pikes",
     "name": "Pikes",
     "text": "Weapons proficiency: Pike.",
-    "tags": [],
-    "options": [],
-    "choose": null,
-    "numbers": {},
-    "notes": {},
     "facts": {
-      "category": "Weapons",
+      "category": "weapons",
       "reference": "pike"
     }
   },
@@ -619,13 +399,8 @@
     "index": "rapiers",
     "name": "Rapiers",
     "text": "Weapons proficiency: Rapier.",
-    "tags": [],
-    "options": [],
-    "choose": null,
-    "numbers": {},
-    "notes": {},
     "facts": {
-      "category": "Weapons",
+      "category": "weapons",
       "reference": "rapier"
     }
   },
@@ -633,13 +408,8 @@
     "index": "scimitars",
     "name": "Scimitars",
     "text": "Weapons proficiency: Scimitar.",
-    "tags": [],
-    "options": [],
-    "choose": null,
-    "numbers": {},
-    "notes": {},
     "facts": {
-      "category": "Weapons",
+      "category": "weapons",
       "reference": "scimitar"
     }
   },
@@ -647,13 +417,8 @@
     "index": "shortswords",
     "name": "Shortswords",
     "text": "Weapons proficiency: Shortsword.",
-    "tags": [],
-    "options": [],
-    "choose": null,
-    "numbers": {},
-    "notes": {},
     "facts": {
-      "category": "Weapons",
+      "category": "weapons",
       "reference": "shortsword"
     }
   },
@@ -661,13 +426,8 @@
     "index": "tridents",
     "name": "Tridents",
     "text": "Weapons proficiency: Trident.",
-    "tags": [],
-    "options": [],
-    "choose": null,
-    "numbers": {},
-    "notes": {},
     "facts": {
-      "category": "Weapons",
+      "category": "weapons",
       "reference": "trident"
     }
   },
@@ -675,13 +435,8 @@
     "index": "war-picks",
     "name": "War picks",
     "text": "Weapons proficiency: War pick.",
-    "tags": [],
-    "options": [],
-    "choose": null,
-    "numbers": {},
-    "notes": {},
     "facts": {
-      "category": "Weapons",
+      "category": "weapons",
       "reference": "war-pick"
     }
   },
@@ -689,13 +444,8 @@
     "index": "warhammers",
     "name": "Warhammers",
     "text": "Weapons proficiency: Warhammer.",
-    "tags": [],
-    "options": [],
-    "choose": null,
-    "numbers": {},
-    "notes": {},
     "facts": {
-      "category": "Weapons",
+      "category": "weapons",
       "reference": "warhammer"
     }
   },
@@ -703,13 +453,8 @@
     "index": "whips",
     "name": "Whips",
     "text": "Weapons proficiency: Whip.",
-    "tags": [],
-    "options": [],
-    "choose": null,
-    "numbers": {},
-    "notes": {},
     "facts": {
-      "category": "Weapons",
+      "category": "weapons",
       "reference": "whip"
     }
   },
@@ -717,13 +462,8 @@
     "index": "blowguns",
     "name": "Blowguns",
     "text": "Weapons proficiency: Blowgun.",
-    "tags": [],
-    "options": [],
-    "choose": null,
-    "numbers": {},
-    "notes": {},
     "facts": {
-      "category": "Weapons",
+      "category": "weapons",
       "reference": "blowgun"
     }
   },
@@ -731,13 +471,8 @@
     "index": "hand-crossbows",
     "name": "Hand crossbows",
     "text": "Weapons proficiency: Crossbow, hand.",
-    "tags": [],
-    "options": [],
-    "choose": null,
-    "numbers": {},
-    "notes": {},
     "facts": {
-      "category": "Weapons",
+      "category": "weapons",
       "reference": "crossbow-hand"
     }
   },
@@ -745,13 +480,8 @@
     "index": "crossbows-heavy",
     "name": "Crossbows, heavy",
     "text": "Weapons proficiency: Crossbow, heavy.",
-    "tags": [],
-    "options": [],
-    "choose": null,
-    "numbers": {},
-    "notes": {},
     "facts": {
-      "category": "Weapons",
+      "category": "weapons",
       "reference": "crossbow-heavy"
     }
   },
@@ -759,13 +489,8 @@
     "index": "longbows",
     "name": "Longbows",
     "text": "Weapons proficiency: Longbow.",
-    "tags": [],
-    "options": [],
-    "choose": null,
-    "numbers": {},
-    "notes": {},
     "facts": {
-      "category": "Weapons",
+      "category": "weapons",
       "reference": "longbow"
     }
   },
@@ -773,13 +498,8 @@
     "index": "nets",
     "name": "Nets",
     "text": "Weapons proficiency: Net.",
-    "tags": [],
-    "options": [],
-    "choose": null,
-    "numbers": {},
-    "notes": {},
     "facts": {
-      "category": "Weapons",
+      "category": "weapons",
       "reference": "net"
     }
   },
@@ -787,13 +507,8 @@
     "index": "alchemists-supplies",
     "name": "Alchemist's Supplies",
     "text": "Artisan's Tools proficiency: Alchemist's Supplies.",
-    "tags": [],
-    "options": [],
-    "choose": null,
-    "numbers": {},
-    "notes": {},
     "facts": {
-      "category": "Artisan's Tools",
+      "category": "artisans-tools",
       "reference": "alchemists-supplies"
     }
   },
@@ -801,13 +516,8 @@
     "index": "brewers-supplies",
     "name": "Brewer's Supplies",
     "text": "Artisan's Tools proficiency: Brewer's Supplies.",
-    "tags": [],
-    "options": [],
-    "choose": null,
-    "numbers": {},
-    "notes": {},
     "facts": {
-      "category": "Artisan's Tools",
+      "category": "artisans-tools",
       "reference": "brewers-supplies"
     }
   },
@@ -815,13 +525,8 @@
     "index": "calligraphers-supplies",
     "name": "Calligrapher's Supplies",
     "text": "Artisan's Tools proficiency: Calligrapher's Supplies.",
-    "tags": [],
-    "options": [],
-    "choose": null,
-    "numbers": {},
-    "notes": {},
     "facts": {
-      "category": "Artisan's Tools",
+      "category": "artisans-tools",
       "reference": "calligraphers-supplies"
     }
   },
@@ -829,13 +534,8 @@
     "index": "carpenters-tools",
     "name": "Carpenter's Tools",
     "text": "Artisan's Tools proficiency: Carpenter's Tools.",
-    "tags": [],
-    "options": [],
-    "choose": null,
-    "numbers": {},
-    "notes": {},
     "facts": {
-      "category": "Artisan's Tools",
+      "category": "artisans-tools",
       "reference": "carpenters-tools"
     }
   },
@@ -843,13 +543,8 @@
     "index": "cartographers-tools",
     "name": "Cartographer's Tools",
     "text": "Artisan's Tools proficiency: Cartographer's Tools.",
-    "tags": [],
-    "options": [],
-    "choose": null,
-    "numbers": {},
-    "notes": {},
     "facts": {
-      "category": "Artisan's Tools",
+      "category": "artisans-tools",
       "reference": "cartographers-tools"
     }
   },
@@ -857,13 +552,8 @@
     "index": "cobblers-tools",
     "name": "Cobbler's Tools",
     "text": "Artisan's Tools proficiency: Cobbler's Tools.",
-    "tags": [],
-    "options": [],
-    "choose": null,
-    "numbers": {},
-    "notes": {},
     "facts": {
-      "category": "Artisan's Tools",
+      "category": "artisans-tools",
       "reference": "cobblers-tools"
     }
   },
@@ -871,13 +561,8 @@
     "index": "cooks-utensils",
     "name": "Cook's utensils",
     "text": "Artisan's Tools proficiency: Cook's utensils.",
-    "tags": [],
-    "options": [],
-    "choose": null,
-    "numbers": {},
-    "notes": {},
     "facts": {
-      "category": "Artisan's Tools",
+      "category": "artisans-tools",
       "reference": "cooks-utensils"
     }
   },
@@ -885,13 +570,8 @@
     "index": "glassblowers-tools",
     "name": "Glassblower's Tools",
     "text": "Artisan's Tools proficiency: Glassblower's Tools.",
-    "tags": [],
-    "options": [],
-    "choose": null,
-    "numbers": {},
-    "notes": {},
     "facts": {
-      "category": "Artisan's Tools",
+      "category": "artisans-tools",
       "reference": "glassblowers-tools"
     }
   },
@@ -899,13 +579,8 @@
     "index": "jewelers-tools",
     "name": "Jeweler's Tools",
     "text": "Artisan's Tools proficiency: Jeweler's Tools.",
-    "tags": [],
-    "options": [],
-    "choose": null,
-    "numbers": {},
-    "notes": {},
     "facts": {
-      "category": "Artisan's Tools",
+      "category": "artisans-tools",
       "reference": "jewelers-tools"
     }
   },
@@ -913,13 +588,8 @@
     "index": "leatherworkers-tools",
     "name": "Leatherworker's Tools",
     "text": "Artisan's Tools proficiency: Leatherworker's Tools.",
-    "tags": [],
-    "options": [],
-    "choose": null,
-    "numbers": {},
-    "notes": {},
     "facts": {
-      "category": "Artisan's Tools",
+      "category": "artisans-tools",
       "reference": "leatherworkers-tools"
     }
   },
@@ -927,13 +597,8 @@
     "index": "masons-tools",
     "name": "Mason's Tools",
     "text": "Artisan's Tools proficiency: Mason's Tools.",
-    "tags": [],
-    "options": [],
-    "choose": null,
-    "numbers": {},
-    "notes": {},
     "facts": {
-      "category": "Artisan's Tools",
+      "category": "artisans-tools",
       "reference": "masons-tools"
     }
   },
@@ -941,13 +606,8 @@
     "index": "painters-supplies",
     "name": "Painter's Supplies",
     "text": "Artisan's Tools proficiency: Painter's Supplies.",
-    "tags": [],
-    "options": [],
-    "choose": null,
-    "numbers": {},
-    "notes": {},
     "facts": {
-      "category": "Artisan's Tools",
+      "category": "artisans-tools",
       "reference": "painters-supplies"
     }
   },
@@ -955,13 +615,8 @@
     "index": "potters-tools",
     "name": "Potter's Tools",
     "text": "Artisan's Tools proficiency: Potter's Tools.",
-    "tags": [],
-    "options": [],
-    "choose": null,
-    "numbers": {},
-    "notes": {},
     "facts": {
-      "category": "Artisan's Tools",
+      "category": "artisans-tools",
       "reference": "potters-tools"
     }
   },
@@ -969,13 +624,8 @@
     "index": "smiths-tools",
     "name": "Smith's Tools",
     "text": "Artisan's Tools proficiency: Smith's Tools.",
-    "tags": [],
-    "options": [],
-    "choose": null,
-    "numbers": {},
-    "notes": {},
     "facts": {
-      "category": "Artisan's Tools",
+      "category": "artisans-tools",
       "reference": "smiths-tools"
     }
   },
@@ -983,13 +633,8 @@
     "index": "tinkers-tools",
     "name": "Tinker's Tools",
     "text": "Artisan's Tools proficiency: Tinker's Tools.",
-    "tags": [],
-    "options": [],
-    "choose": null,
-    "numbers": {},
-    "notes": {},
     "facts": {
-      "category": "Artisan's Tools",
+      "category": "artisans-tools",
       "reference": "tinkers-tools"
     }
   },
@@ -997,13 +642,8 @@
     "index": "weavers-tools",
     "name": "Weaver's Tools",
     "text": "Artisan's Tools proficiency: Weaver's Tools.",
-    "tags": [],
-    "options": [],
-    "choose": null,
-    "numbers": {},
-    "notes": {},
     "facts": {
-      "category": "Artisan's Tools",
+      "category": "artisans-tools",
       "reference": "weavers-tools"
     }
   },
@@ -1011,13 +651,8 @@
     "index": "woodcarvers-tools",
     "name": "Woodcarver's Tools",
     "text": "Artisan's Tools proficiency: Woodcarver's Tools.",
-    "tags": [],
-    "options": [],
-    "choose": null,
-    "numbers": {},
-    "notes": {},
     "facts": {
-      "category": "Artisan's Tools",
+      "category": "artisans-tools",
       "reference": "woodcarvers-tools"
     }
   },
@@ -1025,13 +660,8 @@
     "index": "disguise-kit",
     "name": "Disguise Kit",
     "text": "Artisan's Tools proficiency: Disguise Kit.",
-    "tags": [],
-    "options": [],
-    "choose": null,
-    "numbers": {},
-    "notes": {},
     "facts": {
-      "category": "Artisan's Tools",
+      "category": "artisans-tools",
       "reference": "disguise-kit"
     }
   },
@@ -1039,13 +669,8 @@
     "index": "forgery-kit",
     "name": "Forgery Kit",
     "text": "Artisan's Tools proficiency: Forgery Kit.",
-    "tags": [],
-    "options": [],
-    "choose": null,
-    "numbers": {},
-    "notes": {},
     "facts": {
-      "category": "Artisan's Tools",
+      "category": "artisans-tools",
       "reference": "forgery-kit"
     }
   },
@@ -1053,13 +678,8 @@
     "index": "dice-set",
     "name": "Dice Set",
     "text": "Gaming Sets proficiency: Dice Set.",
-    "tags": [],
-    "options": [],
-    "choose": null,
-    "numbers": {},
-    "notes": {},
     "facts": {
-      "category": "Gaming Sets",
+      "category": "gaming-sets",
       "reference": "dice-set"
     }
   },
@@ -1067,13 +687,8 @@
     "index": "playing-card-set",
     "name": "Playing Card Set",
     "text": "Gaming Sets proficiency: Playing Card Set.",
-    "tags": [],
-    "options": [],
-    "choose": null,
-    "numbers": {},
-    "notes": {},
     "facts": {
-      "category": "Gaming Sets",
+      "category": "gaming-sets",
       "reference": "playing-card-set"
     }
   },
@@ -1081,13 +696,8 @@
     "index": "bagpipes",
     "name": "Bagpipes",
     "text": "Musical Instruments proficiency: Bagpipes.",
-    "tags": [],
-    "options": [],
-    "choose": null,
-    "numbers": {},
-    "notes": {},
     "facts": {
-      "category": "Musical Instruments",
+      "category": "musical-instruments",
       "reference": "bagpipes"
     }
   },
@@ -1095,13 +705,8 @@
     "index": "drum",
     "name": "Drum",
     "text": "Musical Instruments proficiency: Drum.",
-    "tags": [],
-    "options": [],
-    "choose": null,
-    "numbers": {},
-    "notes": {},
     "facts": {
-      "category": "Musical Instruments",
+      "category": "musical-instruments",
       "reference": "drum"
     }
   },
@@ -1109,13 +714,8 @@
     "index": "dulcimer",
     "name": "Dulcimer",
     "text": "Musical Instruments proficiency: Dulcimer.",
-    "tags": [],
-    "options": [],
-    "choose": null,
-    "numbers": {},
-    "notes": {},
     "facts": {
-      "category": "Musical Instruments",
+      "category": "musical-instruments",
       "reference": "dulcimer"
     }
   },
@@ -1123,13 +723,8 @@
     "index": "flute",
     "name": "Flute",
     "text": "Musical Instruments proficiency: Flute.",
-    "tags": [],
-    "options": [],
-    "choose": null,
-    "numbers": {},
-    "notes": {},
     "facts": {
-      "category": "Musical Instruments",
+      "category": "musical-instruments",
       "reference": "flute"
     }
   },
@@ -1137,13 +732,8 @@
     "index": "lute",
     "name": "Lute",
     "text": "Musical Instruments proficiency: Lute.",
-    "tags": [],
-    "options": [],
-    "choose": null,
-    "numbers": {},
-    "notes": {},
     "facts": {
-      "category": "Musical Instruments",
+      "category": "musical-instruments",
       "reference": "lute"
     }
   },
@@ -1151,13 +741,8 @@
     "index": "lyre",
     "name": "Lyre",
     "text": "Musical Instruments proficiency: Lyre.",
-    "tags": [],
-    "options": [],
-    "choose": null,
-    "numbers": {},
-    "notes": {},
     "facts": {
-      "category": "Musical Instruments",
+      "category": "musical-instruments",
       "reference": "lyre"
     }
   },
@@ -1165,13 +750,8 @@
     "index": "horn",
     "name": "Horn",
     "text": "Musical Instruments proficiency: Horn.",
-    "tags": [],
-    "options": [],
-    "choose": null,
-    "numbers": {},
-    "notes": {},
     "facts": {
-      "category": "Musical Instruments",
+      "category": "musical-instruments",
       "reference": "horn"
     }
   },
@@ -1179,13 +759,8 @@
     "index": "pan-flute",
     "name": "Pan flute",
     "text": "Musical Instruments proficiency: Pan flute.",
-    "tags": [],
-    "options": [],
-    "choose": null,
-    "numbers": {},
-    "notes": {},
     "facts": {
-      "category": "Musical Instruments",
+      "category": "musical-instruments",
       "reference": "pan-flute"
     }
   },
@@ -1193,13 +768,8 @@
     "index": "shawm",
     "name": "Shawm",
     "text": "Musical Instruments proficiency: Shawm.",
-    "tags": [],
-    "options": [],
-    "choose": null,
-    "numbers": {},
-    "notes": {},
     "facts": {
-      "category": "Musical Instruments",
+      "category": "musical-instruments",
       "reference": "shawm"
     }
   },
@@ -1207,13 +777,8 @@
     "index": "viol",
     "name": "Viol",
     "text": "Musical Instruments proficiency: Viol.",
-    "tags": [],
-    "options": [],
-    "choose": null,
-    "numbers": {},
-    "notes": {},
     "facts": {
-      "category": "Musical Instruments",
+      "category": "musical-instruments",
       "reference": "viol"
     }
   },
@@ -1221,13 +786,8 @@
     "index": "herbalism-kit",
     "name": "Herbalism Kit",
     "text": "Other proficiency: Herbalism Kit.",
-    "tags": [],
-    "options": [],
-    "choose": null,
-    "numbers": {},
-    "notes": {},
     "facts": {
-      "category": "Other",
+      "category": "other",
       "reference": "herbalism-kit"
     }
   },
@@ -1235,13 +795,8 @@
     "index": "navigators-tools",
     "name": "Navigator's Tools",
     "text": "Other proficiency: Navigator's Tools.",
-    "tags": [],
-    "options": [],
-    "choose": null,
-    "numbers": {},
-    "notes": {},
     "facts": {
-      "category": "Other",
+      "category": "other",
       "reference": "navigators-tools"
     }
   },
@@ -1249,13 +804,8 @@
     "index": "poisoners-kit",
     "name": "Poisoner's Kit",
     "text": "Other proficiency: Poisoner's Kit.",
-    "tags": [],
-    "options": [],
-    "choose": null,
-    "numbers": {},
-    "notes": {},
     "facts": {
-      "category": "Other",
+      "category": "other",
       "reference": "poisoners-kit"
     }
   },
@@ -1263,13 +813,8 @@
     "index": "thieves-tools",
     "name": "Thieves' Tools",
     "text": "Other proficiency: Thieves' Tools.",
-    "tags": [],
-    "options": [],
-    "choose": null,
-    "numbers": {},
-    "notes": {},
     "facts": {
-      "category": "Other",
+      "category": "other",
       "reference": "thieves-tools"
     }
   },
@@ -1277,13 +822,8 @@
     "index": "land-vehicles",
     "name": "Land Vehicles",
     "text": "Vehicles proficiency: Land Vehicles.",
-    "tags": [],
-    "options": [],
-    "choose": null,
-    "numbers": {},
-    "notes": {},
     "facts": {
-      "category": "Vehicles",
+      "category": "vehicles",
       "reference": "land-vehicles"
     }
   },
@@ -1291,13 +831,8 @@
     "index": "water-vehicles",
     "name": "Water Vehicles",
     "text": "Vehicles proficiency: Waterborne Vehicles.",
-    "tags": [],
-    "options": [],
-    "choose": null,
-    "numbers": {},
-    "notes": {},
     "facts": {
-      "category": "Vehicles",
+      "category": "vehicles",
       "reference": "waterborne-vehicles"
     }
   },
@@ -1305,13 +840,8 @@
     "index": "saving-throw-str",
     "name": "Saving Throw: STR",
     "text": "Saving Throws proficiency: STR.",
-    "tags": [],
-    "options": [],
-    "choose": null,
-    "numbers": {},
-    "notes": {},
     "facts": {
-      "category": "Saving Throws",
+      "category": "saving-throws",
       "reference": "str"
     }
   },
@@ -1319,13 +849,8 @@
     "index": "saving-throw-dex",
     "name": "Saving Throw: DEX",
     "text": "Saving Throws proficiency: DEX.",
-    "tags": [],
-    "options": [],
-    "choose": null,
-    "numbers": {},
-    "notes": {},
     "facts": {
-      "category": "Saving Throws",
+      "category": "saving-throws",
       "reference": "dex"
     }
   },
@@ -1333,13 +858,8 @@
     "index": "saving-throw-con",
     "name": "Saving Throw: CON",
     "text": "Saving Throws proficiency: CON.",
-    "tags": [],
-    "options": [],
-    "choose": null,
-    "numbers": {},
-    "notes": {},
     "facts": {
-      "category": "Saving Throws",
+      "category": "saving-throws",
       "reference": "con"
     }
   },
@@ -1347,13 +867,8 @@
     "index": "saving-throw-int",
     "name": "Saving Throw: INT",
     "text": "Saving Throws proficiency: INT.",
-    "tags": [],
-    "options": [],
-    "choose": null,
-    "numbers": {},
-    "notes": {},
     "facts": {
-      "category": "Saving Throws",
+      "category": "saving-throws",
       "reference": "int"
     }
   },
@@ -1361,13 +876,8 @@
     "index": "saving-throw-wis",
     "name": "Saving Throw: WIS",
     "text": "Saving Throws proficiency: WIS.",
-    "tags": [],
-    "options": [],
-    "choose": null,
-    "numbers": {},
-    "notes": {},
     "facts": {
-      "category": "Saving Throws",
+      "category": "saving-throws",
       "reference": "wis"
     }
   },
@@ -1375,13 +885,8 @@
     "index": "saving-throw-cha",
     "name": "Saving Throw: CHA",
     "text": "Saving Throws proficiency: CHA.",
-    "tags": [],
-    "options": [],
-    "choose": null,
-    "numbers": {},
-    "notes": {},
     "facts": {
-      "category": "Saving Throws",
+      "category": "saving-throws",
       "reference": "cha"
     }
   },
@@ -1389,13 +894,8 @@
     "index": "skill-acrobatics",
     "name": "Skill: Acrobatics",
     "text": "Skills proficiency: Acrobatics.",
-    "tags": [],
-    "options": [],
-    "choose": null,
-    "numbers": {},
-    "notes": {},
     "facts": {
-      "category": "Skills",
+      "category": "skills",
       "reference": "acrobatics"
     }
   },
@@ -1403,13 +903,8 @@
     "index": "skill-animal-handling",
     "name": "Skill: Animal Handling",
     "text": "Skills proficiency: Animal Handling.",
-    "tags": [],
-    "options": [],
-    "choose": null,
-    "numbers": {},
-    "notes": {},
     "facts": {
-      "category": "Skills",
+      "category": "skills",
       "reference": "animal-handling"
     }
   },
@@ -1417,13 +912,8 @@
     "index": "skill-arcana",
     "name": "Skill: Arcana",
     "text": "Skills proficiency: Arcana.",
-    "tags": [],
-    "options": [],
-    "choose": null,
-    "numbers": {},
-    "notes": {},
     "facts": {
-      "category": "Skills",
+      "category": "skills",
       "reference": "arcana"
     }
   },
@@ -1431,13 +921,8 @@
     "index": "skill-athletics",
     "name": "Skill: Athletics",
     "text": "Skills proficiency: Athletics.",
-    "tags": [],
-    "options": [],
-    "choose": null,
-    "numbers": {},
-    "notes": {},
     "facts": {
-      "category": "Skills",
+      "category": "skills",
       "reference": "athletics"
     }
   },
@@ -1445,13 +930,8 @@
     "index": "skill-deception",
     "name": "Skill: Deception",
     "text": "Skills proficiency: Deception.",
-    "tags": [],
-    "options": [],
-    "choose": null,
-    "numbers": {},
-    "notes": {},
     "facts": {
-      "category": "Skills",
+      "category": "skills",
       "reference": "deception"
     }
   },
@@ -1459,13 +939,8 @@
     "index": "skill-history",
     "name": "Skill: History",
     "text": "Skills proficiency: History.",
-    "tags": [],
-    "options": [],
-    "choose": null,
-    "numbers": {},
-    "notes": {},
     "facts": {
-      "category": "Skills",
+      "category": "skills",
       "reference": "history"
     }
   },
@@ -1473,13 +948,8 @@
     "index": "skill-insight",
     "name": "Skill: Insight",
     "text": "Skills proficiency: Insight.",
-    "tags": [],
-    "options": [],
-    "choose": null,
-    "numbers": {},
-    "notes": {},
     "facts": {
-      "category": "Skills",
+      "category": "skills",
       "reference": "insight"
     }
   },
@@ -1487,13 +957,8 @@
     "index": "skill-intimidation",
     "name": "Skill: Intimidation",
     "text": "Skills proficiency: Intimidation.",
-    "tags": [],
-    "options": [],
-    "choose": null,
-    "numbers": {},
-    "notes": {},
     "facts": {
-      "category": "Skills",
+      "category": "skills",
       "reference": "intimidation"
     }
   },
@@ -1501,13 +966,8 @@
     "index": "skill-investigation",
     "name": "Skill: Investigation",
     "text": "Skills proficiency: Investigation.",
-    "tags": [],
-    "options": [],
-    "choose": null,
-    "numbers": {},
-    "notes": {},
     "facts": {
-      "category": "Skills",
+      "category": "skills",
       "reference": "investigation"
     }
   },
@@ -1515,13 +975,8 @@
     "index": "skill-medicine",
     "name": "Skill: Medicine",
     "text": "Skills proficiency: Medicine.",
-    "tags": [],
-    "options": [],
-    "choose": null,
-    "numbers": {},
-    "notes": {},
     "facts": {
-      "category": "Skills",
+      "category": "skills",
       "reference": "medicine"
     }
   },
@@ -1529,13 +984,8 @@
     "index": "skill-nature",
     "name": "Skill: Nature",
     "text": "Skills proficiency: Nature.",
-    "tags": [],
-    "options": [],
-    "choose": null,
-    "numbers": {},
-    "notes": {},
     "facts": {
-      "category": "Skills",
+      "category": "skills",
       "reference": "nature"
     }
   },
@@ -1543,13 +993,8 @@
     "index": "skill-perception",
     "name": "Skill: Perception",
     "text": "Skills proficiency: Perception.",
-    "tags": [],
-    "options": [],
-    "choose": null,
-    "numbers": {},
-    "notes": {},
     "facts": {
-      "category": "Skills",
+      "category": "skills",
       "reference": "perception"
     }
   },
@@ -1557,13 +1002,8 @@
     "index": "skill-performance",
     "name": "Skill: Performance",
     "text": "Skills proficiency: Performance.",
-    "tags": [],
-    "options": [],
-    "choose": null,
-    "numbers": {},
-    "notes": {},
     "facts": {
-      "category": "Skills",
+      "category": "skills",
       "reference": "performance"
     }
   },
@@ -1571,13 +1011,8 @@
     "index": "skill-persuasion",
     "name": "Skill: Persuasion",
     "text": "Skills proficiency: Persuasion.",
-    "tags": [],
-    "options": [],
-    "choose": null,
-    "numbers": {},
-    "notes": {},
     "facts": {
-      "category": "Skills",
+      "category": "skills",
       "reference": "persuasion"
     }
   },
@@ -1585,13 +1020,8 @@
     "index": "skill-religion",
     "name": "Skill: Religion",
     "text": "Skills proficiency: Religion.",
-    "tags": [],
-    "options": [],
-    "choose": null,
-    "numbers": {},
-    "notes": {},
     "facts": {
-      "category": "Skills",
+      "category": "skills",
       "reference": "religion"
     }
   },
@@ -1599,13 +1029,8 @@
     "index": "skill-sleight-of-hand",
     "name": "Skill: Sleight of Hand",
     "text": "Skills proficiency: Sleight of Hand.",
-    "tags": [],
-    "options": [],
-    "choose": null,
-    "numbers": {},
-    "notes": {},
     "facts": {
-      "category": "Skills",
+      "category": "skills",
       "reference": "sleight-of-hand"
     }
   },
@@ -1613,13 +1038,8 @@
     "index": "skill-stealth",
     "name": "Skill: Stealth",
     "text": "Skills proficiency: Stealth.",
-    "tags": [],
-    "options": [],
-    "choose": null,
-    "numbers": {},
-    "notes": {},
     "facts": {
-      "category": "Skills",
+      "category": "skills",
       "reference": "stealth"
     }
   },
@@ -1627,13 +1047,8 @@
     "index": "skill-survival",
     "name": "Skill: Survival",
     "text": "Skills proficiency: Survival.",
-    "tags": [],
-    "options": [],
-    "choose": null,
-    "numbers": {},
-    "notes": {},
     "facts": {
-      "category": "Skills",
+      "category": "skills",
       "reference": "survival"
     }
   }

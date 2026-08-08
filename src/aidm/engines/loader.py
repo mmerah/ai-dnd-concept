@@ -5,9 +5,16 @@ from importlib import import_module
 from pathlib import Path
 from random import Random
 from types import MappingProxyType
-from typing import Annotated, Any
+from typing import Annotated, Any, Self
 
-from pydantic import Field, JsonValue, TypeAdapter, ValidationError, create_model
+from pydantic import (
+    Field,
+    JsonValue,
+    TypeAdapter,
+    ValidationError,
+    create_model,
+    model_validator,
+)
 from pydantic_ai import ModelRetry
 from pydantic_ai.toolsets import AbstractToolset, FunctionToolset
 
@@ -28,6 +35,7 @@ from aidm.state.packs import (
     FrozenMap,
     Record,
     Value,
+    is_int_fact,
     load,
     parse_ref,
 )
@@ -37,6 +45,7 @@ from aidm.state.sheet import (
     Sheet,
     SheetDefinition,
     SheetTemplate,
+    fact_line,
     render_sheet,
 )
 from aidm.state.world import GameState, WorldState, player_sheet
@@ -54,6 +63,14 @@ class EngineSpec(Value):
     templates: FrozenMap[Kind, SheetTemplate] = EMPTY_FROZEN_MAP
     # Collection name -> the facts every record in it must carry (empty: no requirement).
     collections: FrozenMap[CollectionName, FactSchema] = EMPTY_FROZEN_MAP
+    # Collections whose int facts project onto the sheet of any entity that refs a record in them.
+    projecting: tuple[CollectionName, ...] = ()
+
+    @model_validator(mode="after")
+    def _projects_known_collections(self) -> Self:
+        if unknown := sorted(set(self.projecting) - set(self.collections)):
+            raise ValueError(f"projecting names no such collection: {unknown}")
+        return self
 
     def template(self, kind: Kind) -> SheetTemplate:
         return self.templates.get(kind, SheetTemplate())
@@ -113,7 +130,7 @@ class Engine:
         return compose_world(authored, self._sheet("actor", character), self._entity_rules)
 
     def entity_state(self, entity: Entity, sheet: Sheet) -> str:
-        return render_sheet(sheet, self._record)
+        return render_sheet(sheet, self._record, self.spec.projecting)
 
     def renderer(self, state: GameState) -> EntityRenderer:
         return lambda entity: self.entity_state(entity, state.world.record(entity.id).rules)
@@ -199,9 +216,8 @@ class Engine:
 
     def _sheet(self, kind: Kind, rules: Rules) -> Sheet:
         definition = SheetDefinition.model_validate(rules)
-        return definition.runtime(
-            kind, self.spec.template(kind), _backing(definition.refs, self.content)
-        )
+        backing = _backing(definition.refs, self.content, self.spec.projecting)
+        return definition.runtime(kind, self.spec.template(kind), backing)
 
     def _entity_rules(self, authored: AuthoredEntity) -> Sheet:
         return self._sheet(authored.entity.kind, authored.rules)
@@ -367,13 +383,13 @@ def _director_toolset(content: Content) -> FunctionToolset[object]:
 
 
 def _record_text(record: Record, ref: str) -> str:
-    numbers = ", ".join(f"{key} {value}" for key, value in sorted(record.sheet_numbers().items()))
-    notes = "; ".join(f"{key}={value}" for key, value in sorted(record.noted().items()))
+    rendered = (fact_line(k, v, ladder_full=True) for k, v in sorted(record.facts.items()))
+    # Values carry commas of their own ("1d4+2 piercing"), so only a semicolon separates facts.
+    facts = "; ".join(line for line in rendered if line is not None)
     options = ", ".join(str(option) for option in record.options)
     lines = [
         f"{record.name} [{ref}]",
-        *([f"numbers: {numbers}"] if numbers else []),
-        *([f"notes: {notes}"] if notes else []),
+        *([f"facts: {facts}"] if facts else []),
         *([f"tags: {', '.join(record.tags)}"] if record.tags else []),
         *([f"choose {record.choose} of: {options}"] if options else []),
         *([record.text] if record.text else []),
@@ -381,9 +397,25 @@ def _record_text(record: Record, ref: str) -> str:
     return "\n".join(lines)
 
 
-def _backing(refs: Sequence[ContentRef], content: Content) -> Mapping[Slug, int]:
-    records = [content.require(ref, Record) for ref in refs]
-    return {k: v for record in records for k, v in record.sheet_numbers().items()}
+def _backing(
+    refs: Sequence[ContentRef], content: Content, projecting: Sequence[CollectionName]
+) -> Mapping[Slug, int]:
+    backing: dict[Slug, int] = {}
+    claimed_by: dict[Slug, ContentRef] = {}
+    for ref in refs:
+        if ref.collection not in projecting:
+            continue
+        record = content.require(ref, Record)
+        for key, value in record.facts.items():
+            if not is_int_fact(value):
+                continue
+            held = claimed_by.get(key)
+            # Two refs agreeing on a value lose nothing; only a disagreement drops one of them.
+            if held is not None and backing[key] != value:
+                raise ValueError(f"content fact {key!r} differs between {held} and {ref}")
+            backing[key] = value
+            claimed_by[key] = ref
+    return backing
 
 
 def _packs(engine_dir: Path) -> tuple[Path, ...]:

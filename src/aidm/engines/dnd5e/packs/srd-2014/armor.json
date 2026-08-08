@@ -7,14 +7,10 @@
       "add-dex-modifier",
       "stealth-disadvantage"
     ],
-    "options": [],
-    "choose": null,
-    "numbers": {
+    "facts": {
       "cost-gp": 5,
       "armor-base": 11
-    },
-    "notes": {},
-    "facts": {}
+    }
   },
   {
     "index": "leather-armor",
@@ -23,14 +19,10 @@
     "tags": [
       "add-dex-modifier"
     ],
-    "options": [],
-    "choose": null,
-    "numbers": {
+    "facts": {
       "cost-gp": 10,
       "armor-base": 11
-    },
-    "notes": {},
-    "facts": {}
+    }
   },
   {
     "index": "studded-leather-armor",
@@ -39,14 +31,10 @@
     "tags": [
       "add-dex-modifier"
     ],
-    "options": [],
-    "choose": null,
-    "numbers": {
+    "facts": {
       "cost-gp": 45,
       "armor-base": 12
-    },
-    "notes": {},
-    "facts": {}
+    }
   },
   {
     "index": "hide-armor",
@@ -55,15 +43,11 @@
     "tags": [
       "add-dex-modifier"
     ],
-    "options": [],
-    "choose": null,
-    "numbers": {
+    "facts": {
       "cost-gp": 10,
       "armor-base": 12,
       "dex-limit": 2
-    },
-    "notes": {},
-    "facts": {}
+    }
   },
   {
     "index": "chain-shirt",
@@ -72,15 +56,11 @@
     "tags": [
       "add-dex-modifier"
     ],
-    "options": [],
-    "choose": null,
-    "numbers": {
+    "facts": {
       "cost-gp": 50,
       "armor-base": 13,
       "dex-limit": 2
-    },
-    "notes": {},
-    "facts": {}
+    }
   },
   {
     "index": "scale-mail",
@@ -90,15 +70,11 @@
       "add-dex-modifier",
       "stealth-disadvantage"
     ],
-    "options": [],
-    "choose": null,
-    "numbers": {
+    "facts": {
       "cost-gp": 50,
       "armor-base": 14,
       "dex-limit": 2
-    },
-    "notes": {},
-    "facts": {}
+    }
   },
   {
     "index": "breastplate",
@@ -107,15 +83,11 @@
     "tags": [
       "add-dex-modifier"
     ],
-    "options": [],
-    "choose": null,
-    "numbers": {
+    "facts": {
       "cost-gp": 400,
       "armor-base": 14,
       "dex-limit": 2
-    },
-    "notes": {},
-    "facts": {}
+    }
   },
   {
     "index": "half-plate-armor",
@@ -125,15 +97,11 @@
       "add-dex-modifier",
       "stealth-disadvantage"
     ],
-    "options": [],
-    "choose": null,
-    "numbers": {
+    "facts": {
       "cost-gp": 750,
       "armor-base": 15,
       "dex-limit": 2
-    },
-    "notes": {},
-    "facts": {}
+    }
   },
   {
     "index": "ring-mail",
@@ -142,14 +110,10 @@
     "tags": [
       "stealth-disadvantage"
     ],
-    "options": [],
-    "choose": null,
-    "numbers": {
+    "facts": {
       "cost-gp": 30,
       "armor-base": 14
-    },
-    "notes": {},
-    "facts": {}
+    }
   },
   {
     "index": "chain-mail",
@@ -158,15 +122,11 @@
     "tags": [
       "stealth-disadvantage"
     ],
-    "options": [],
-    "choose": null,
-    "numbers": {
+    "facts": {
       "cost-gp": 75,
       "armor-base": 16,
       "strength-minimum": 13
-    },
-    "notes": {},
-    "facts": {}
+    }
   },
   {
     "index": "splint-armor",
@@ -175,15 +135,11 @@
     "tags": [
       "stealth-disadvantage"
     ],
-    "options": [],
-    "choose": null,
-    "numbers": {
+    "facts": {
       "cost-gp": 200,
       "armor-base": 17,
       "strength-minimum": 15
-    },
-    "notes": {},
-    "facts": {}
+    }
   },
   {
     "index": "plate-armor",
@@ -192,28 +148,19 @@
     "tags": [
       "stealth-disadvantage"
     ],
-    "options": [],
-    "choose": null,
-    "numbers": {
+    "facts": {
       "cost-gp": 1500,
       "armor-base": 18,
       "strength-minimum": 15
-    },
-    "notes": {},
-    "facts": {}
+    }
   },
   {
     "index": "shield",
     "name": "Shield",
     "text": "Shield armour. AC +2. Cost 10 gp. Weight 6 lb.",
-    "tags": [],
-    "options": [],
-    "choose": null,
-    "numbers": {
+    "facts": {
       "cost-gp": 10,
       "armor-bonus": 2
-    },
-    "notes": {},
-    "facts": {}
+    }
   }
 ]

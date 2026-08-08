@@ -462,19 +462,98 @@ A/B asked for went in and the split closed the whole gap:
     (−19%); dnd5e director instructions 15723 → 13452 (−14%), story 10886 → 9642 (−11%).
     `scene_directive.json` grew 1480 → 1826 for `speaker_id`. Line delta: `src/aidm` Python
     **−72**.
-  - **Not taken, with reasons.** Dropping pack `notes` that duplicate a `facts` value: only
-    `spells.level` genuinely duplicates (295 of ~4500 note entries), and closing it needs an
-    importer change plus a pack regen against the pinned `5e-database` checkout, which is not
-    present on this machine — the byte-identical round trip is the regression check and cannot be
-    run without it. An `actions.json` shrink enabled by the smaller plan model: none found — the
-    plan shrank on the effects side and the action params were already minimal.
+  - **Not taken, with reasons.** An `actions.json` shrink enabled by the smaller plan model: none
+    found — the plan shrank on the effects side and the action params were already minimal.
+    Dropping pack `notes` that duplicate a `facts` value was deferred here for want of the pinned
+    checkout, and is the separate entry below.
   - **Owed**: the live gate. `turn_plan.json` and `instructions/*` both moved, so this phase owes a
     full suite against a same-hour HEAD run from a worktree, with the grown `SceneDirective` probed
     on gpt-oss before it is trusted. Nothing here is measured yet.
 
+- **Vision phase 8.5b — One content-fact map** (2026-08-07). Code complete, live gate not yet run.
+  VISION.md §7's record sketch, taken literally: a `Record` is `{index, name, text, tags, options,
+  choose, facts}` and nothing else. `numbers`, `notes`, `sheet_numbers()` and `noted()` are
+  deleted. The rule applied throughout: **every datum survives at least once** — a key was dropped
+  only when it was a same-key collision or a second encoding of a neighbouring key in the same map.
+  - **Why the phase-6 review's three-map defence no longer holds.** It upheld `numbers`/`notes`/
+    `facts` on "each has its own consumer and type contract". Phase 7 deleted the typed subclasses,
+    so all three became plain stored data with one lifecycle, and the int contract survives as a
+    per-collection projection flag. The split had become a naming convention.
+  - **Projection is now declared, not implied.** `EngineSpec.projecting` names the eight
+    collections whose int facts land on a sheet (classes, races, monsters, weapons, armor, gear,
+    tools, vehicles). Previously "has non-empty `numbers`" was the implicit rule and the collision
+    hazard lived in a docstring: `features` carries `level: int` on all 407 records and is reffed in
+    multiplicity, so projecting it would have overwritten the character's own `level`. `_backing`
+    also **raises** on a duplicate key now instead of silently last-ref-wins — `cost-gp` is shared
+    by all five equipment collections, so an entity reffing armor + shield lost one price.
+  - `backgrounds` stops projecting: `starting-gold` stays a fact for a future character creator but
+    leaves the live player sheet, where it was a creation input nothing read and stale the moment
+    gold was spent.
+  - **Rendering: one `fact_line`, two budgets.** The sheet ref line renders a ladder's rung 0
+    (`damage-ladder=1d8`); `read_content` renders every rung. A ladder is detected by shape, not by
+    a key-name suffix. **A fact whose value already stands in the sheet's own `numbers:` is
+    skipped** — without that, the merge doubled every projecting ref line: the giant rat repeated
+    15 of its 17 facts verbatim two lines below the `numbers:` that already held them. Caught in
+    the golden diff review, fixed before the gate, and `test_loader.py` now asserts the absence.
+  - **Data fixes the merge forced.** Three `levels` keys held an int and a string of *different
+    row counts*, and the string was the superset every time: `destroy-undead-cr` (cleric-6/7's
+    `1/2` cap existed nowhere else), `wild-shape-max-cr` (druid-3/5/6), `rage-count` (barbarian-20's
+    `"unlimited"`). All three merge to one `str` fact. `magic_items.variants` was lossy — variant
+    names contain commas, so `", ".join()` could not say whether `"Ammunition, +1, Ammunition, +2"`
+    was two variants or four; it is now a list of indexes. `monsters.forms` and `.slots` likewise
+    became lists, deleting a comma-escaping workaround in `project.py`.
+  - **Key hygiene across collections.** `damage` now means a dice expression everywhere (traits'
+    `{dice, with_modifier}` dict and `scaling` list folded into the spells-shaped `damage-ladder`;
+    traits' `area` dict became the string spells already used). `speed` now means a creature's
+    walking speed everywhere (`vehicles.speed` → `speed-ft-round`). `category` is a slug in all
+    three of its unrelated taxonomies (magic_items, languages, proficiencies).
+  - **New fact, per VISION's own fireball example**: `damage-type` on spells (64 of 66 damage
+    spells — `prismatic-spray` and `sleep` correctly carry none) and weapons (36 of 37 — `net` has
+    no damage). `project._spell_damage_type` already computed it; it had only ever reached prose.
+  - **Evidence.** The importer was run unchanged against the pinned checkout `3f5593e` first and
+    reproduced the shipped pack **byte-identically** — the baseline the memory file demands. Then a
+    2201-record sweep confirmed every old `numbers`/`notes`/`facts` key either survives in the new
+    `facts` or is on the explicit drop list: **0 unaccounted keys**. Round trip stays byte-identical.
+  - `write_pack` dumps with `exclude_defaults=True`. Pack fields **19809 → 10170, of which 8658
+    were empty and are now 0**. Bytes 2.3 MB → 2.1 MB — small, because `text` dominates a pack and
+    none of it moved. `alignments` and `conditions` records are now literally `{index, name, text}`.
+  - `SAVE_VERSION` 46. Regenerated: the whole dnd5e pack, `mechanics_parity.json`, `prompts/*`,
+    `save/*`, `state/*`, `turn/*`. Line delta: `src/aidm` Python **+42** (the shared renderer and
+    the duplicate-key refusal are new code), `scripts/` **−95**, of which `interpret.py` is −108.
+    The honest summary: this pass bought consistency and a fixed data-loss bug, not lines.
+  - **Adversarial review (fable) found five real defects, all fixed; one reported finding was
+    wrong.** The claim that `_backing` lost compose-time ref validation does not hold —
+    `validate_state` resolves every ref on every sheet and runs at `begin_game` and on every
+    committed turn, so a dangling ref still fails at world build. The five that stood:
+    - **The duplicate-key raise crashed legitimate sheets.** It compared *refs*, not values, and
+      all five equipment collections projected `cost-*`, so any authored entity holding two priced
+      items raised at composition — even when the values agreed. Two fixes: it now raises only on
+      a genuine disagreement, and **only classes, races and monsters project**. An item's price is
+      not a creature stat; equipment facts render beside the ref instead, which is their right
+      home, and the shipped lantern now reads `cost-gp=5` there rather than on its sheet.
+    - **The ref-line dedup keyed on value, not on what was actually projected.** Two bugs in one:
+      a monster's `hp` filled a *counter*, so `hp=7` still rendered beside `hp 7/7` (and beside
+      `hp 3/7` after damage — an outright lie), and a level-1 character's features all hid
+      `level=1` by coincidence, reappearing at level 2. Now the rule is "an int fact of a
+      projecting collection", which is exactly what `_backing` consumed.
+    - **`slots=3`.** Shape-only ladder detection swept in `slots`/`creating-spell-slots`, whose
+      first threshold is 1, and the compact render dropped to rung 0's *value* — "three level-1
+      slots" shown as a bare `3` on 12 caster monsters. Rung-0 shorthand now requires the ladder to
+      start at 0; `test_sheet.py` pins both directions.
+    - `read_content` joined facts with `", "` while values carry commas of their own, so
+      `attacks=Bite +4 to hit, 1d4+2 piercing` parsed as two facts. Semicolons now.
+    - `EngineSpec.projecting` was unvalidated: a typo silently projected nothing. It now fails at
+      load against the declared collections.
+    Taken from the same review: dead `SpellAmount.bonus()` deleted, two docstrings that restated a
+    neighbouring comment trimmed. Left deliberately: `is_ladder_fact` stays public (the shipped
+    content tests assert ladder shape through it), and `fact_line`/`is_ladder_fact` stay in
+    `sheet.py` rather than moving to `packs.py` — a real argument, not worth the churn this pass.
+  - **Owed**: the live gate. Sheet ref lines and `read_content` output both moved, so it joins
+    phase 8.5's owed full suite against a same-hour HEAD worktree run rather than needing its own.
+
 ## Current
 
-Phase 8.5 is code complete and unmeasured. Phase 5 (ironsworn) stays deferred.
+Phase 8.5 (both halves) is code complete and unmeasured. Phase 5 (ironsworn) stays deferred.
 
 Next, in order: (1) run the phase-8.5 live gate — same-hour HEAD comparison, `SceneDirective`
 output-mode probe first; (2) the prompt pass on "the Director drops the state write", still the

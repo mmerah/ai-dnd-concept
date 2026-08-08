@@ -36,8 +36,11 @@ PACK = Pack(
                 index="giant-rat",
                 name="Giant Rat",
                 text="Keen smell, pack tactics.",
-                numbers={"armor-class": 12, "hp": 7},
-                notes={"attacks": "Bite +4 to hit, 1d4+2 piercing"},
+                facts={
+                    "armor-class": 12,
+                    "hp": 7,
+                    "attacks": "Bite +4 to hit, 1d4+2 piercing",
+                },
             )
         }
     },
@@ -51,6 +54,7 @@ SPEC: dict[str, object] = {
         },
     },
     "collections": {"monsters": {}},
+    "projecting": ["monsters"],
 }
 
 
@@ -107,8 +111,8 @@ def test_default_rules_gives_a_grown_actor_the_templates_canonical_keys(tmp_path
     assert sheet.numbers["armor-class"] == 10
 
 
-def test_an_authored_ref_backs_the_sheet_with_numbers_and_renders_its_notes(tmp_path: Path) -> None:
-    """Record numbers land on the sheet; notes and tags stay on the record and render by the ref."""
+def test_an_authored_ref_backs_the_sheet_and_renders_its_other_facts(tmp_path: Path) -> None:
+    """A projecting int fact lands on the sheet; the rest of the record renders beside the ref."""
     engine = _engine(tmp_path)
     goblin = Entity(id=EntityId("goblin"), kind="actor", name="Goblin", brief="", known=True)
     authored = AuthoredWorld(
@@ -130,6 +134,9 @@ def test_an_authored_ref_backs_the_sheet_with_numbers_and_renders_its_notes(tmp_
     assert sheet.notes == {}
     rendered = engine.entity_state(goblin, sheet)
     assert "- Giant Rat [testpack/monsters/giant-rat] — attacks=Bite +4 to hit" in rendered
+    # The projected fact is the sheet's own number; the ref line must not say it a second time.
+    assert "numbers: armor-class 12" in rendered
+    assert "armor-class=12" not in rendered
 
 
 def test_validate_state_rejects_a_sheet_missing_a_canonical_key(tmp_path: Path) -> None:
@@ -169,7 +176,8 @@ async def test_read_content_renders_the_record_and_refuses_a_bad_ref(tmp_path: P
 
     rendered = await _read_content(toolset, "testpack/monsters/giant-rat")
     assert rendered.startswith("Giant Rat [testpack/monsters/giant-rat]")
-    assert "numbers: armor-class 12, hp 7" in rendered
+    # Semicolons, because a value carries commas of its own.
+    assert "facts: armor-class=12; attacks=Bite +4 to hit, 1d4+2 piercing; hp=7" in rendered
     assert "Keen smell, pack tactics." in rendered
     with pytest.raises(ModelRetry, match="pack/collection/index"):
         _ = await _read_content(toolset, "malformed")

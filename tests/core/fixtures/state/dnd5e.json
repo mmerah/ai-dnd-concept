@@ -1,5 +1,5 @@
 {
-  "save_version": 45,
+  "save_version": 46,
   "scenario_id": "whispering-vault",
   "character_id": "kael",
   "scenario": {
@@ -265,9 +265,7 @@
         },
         "rules": {
           "kind": "item",
-          "numbers": {
-            "cost-gp": 5
-          },
+          "numbers": {},
           "counters": {},
           "tags": [],
           "notes": {},
@@ -302,7 +300,6 @@
             "armor-class": 12,
             "hit-die": 10,
             "speed": 30,
-            "starting-gold": 15,
             "level": 1,
             "proficiency-bonus": 2
           },

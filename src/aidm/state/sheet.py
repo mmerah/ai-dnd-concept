@@ -1,11 +1,11 @@
-from collections.abc import Callable, Mapping
+from collections.abc import Callable, Mapping, Sequence
 from types import MappingProxyType
-from typing import Self
+from typing import Self, TypeGuard
 
-from pydantic import Field, model_validator
+from pydantic import Field, JsonValue, model_validator
 
 from .base import Frozen, Kind, Mutable, Slug
-from .packs import EMPTY_FROZEN_MAP, ContentRef, FrozenMap, Record, Value
+from .packs import EMPTY_FROZEN_MAP, ContentRef, FrozenMap, Record, Value, is_int_fact
 
 type ResolveRef = Callable[[ContentRef], Record | None]
 
@@ -135,8 +135,8 @@ class AdvancementOffer(Frozen):
         return self
 
 
-def render_sheet(sheet: Sheet, resolve: ResolveRef) -> str:
-    """With a resolver, each ref renders as one line of its record's notes and tags — the key
+def render_sheet(sheet: Sheet, resolve: ResolveRef, projecting: Sequence[str] = ()) -> str:
+    """With a resolver, each ref renders as one line of its record's facts and tags — the key
     facts, not the text, which still enters a turn only through `read_content`."""
     counters = ", ".join(_counter(key, sheet.counters[key]) for key in sorted(sheet.counters))
     sections = (
@@ -144,7 +144,7 @@ def render_sheet(sheet: Sheet, resolve: ResolveRef) -> str:
         ("counters", counters),
         ("tags", ", ".join(_tag(tag) for tag in sheet.tags)),
         ("notes", "; ".join(f"{key}={value}" for key, value in sorted(sheet.notes.items()))),
-        ("content", _refs(sheet.refs, resolve)),
+        ("content", _refs(sheet.refs, resolve, projecting)),
     )
     return "\n".join(
         f"{name}:{body}" if body.startswith("\n") else f"{name}: {body}"
@@ -153,17 +153,51 @@ def render_sheet(sheet: Sheet, resolve: ResolveRef) -> str:
     )
 
 
-def _refs(refs: tuple[ContentRef, ...], resolve: ResolveRef) -> str:
-    return "".join(f"\n- {_ref_line(ref, resolve(ref))}" for ref in refs)
+def _refs(refs: tuple[ContentRef, ...], resolve: ResolveRef, projecting: Sequence[str]) -> str:
+    return "".join(f"\n- {_ref_line(ref, resolve(ref), projecting)}" for ref in refs)
 
 
-def _ref_line(ref: ContentRef, record: Record | None) -> str:
+def _ref_line(ref: ContentRef, record: Record | None, projecting: Sequence[str]) -> str:
     if record is None:
         return str(ref)
-    facts = "; ".join(
-        (*(f"{key}={value}" for key, value in sorted(record.noted().items())), *record.tags)
+    # An int fact of a projecting collection already stands in the sheet's own numbers or
+    # counters; repeating it beside the ref says every stat twice.
+    projected = ref.collection in projecting
+    facts_left = (
+        (key, value)
+        for key, value in sorted(record.facts.items())
+        if not (projected and is_int_fact(value))
     )
+    rendered = (fact_line(key, value, ladder_full=False) for key, value in facts_left)
+    facts = "; ".join((*(line for line in rendered if line is not None), *record.tags))
     return f"{record.name} [{ref}]" + (f" — {facts}" if facts else "")
+
+
+def is_ladder_fact(value: JsonValue) -> TypeGuard[list[list[JsonValue]]]:
+    """A non-empty list of `[threshold, value]` rungs, judged by shape rather than a key-name
+    convention. A ladder starting at 0 states its own base, so the compact render can drop to that
+    rung; one starting elsewhere (a monster's `slots`) means nothing without every rung."""
+    return (
+        isinstance(value, list)
+        and bool(value)
+        and all(isinstance(rung, list) and len(rung) == 2 for rung in value)
+    )
+
+
+def fact_line(key: str, value: JsonValue, *, ladder_full: bool) -> str | None:
+    """One rendering of a fact: a scalar `key=value`, a ladder's rung 0 or every rung, or a flat
+    list joined. `None` for anything else (a dict, or a list holding one) — nothing reads those."""
+    if is_ladder_fact(value):
+        if ladder_full or value[0][0] != 0:
+            return f"{key}=" + ", ".join(f"{threshold}:{rung}" for threshold, rung in value)
+        return f"{key}={value[0][1]}"
+    if isinstance(value, list):
+        if not value or any(isinstance(item, list | dict) for item in value):
+            return None
+        return f"{key}=" + ", ".join(str(item) for item in value)
+    if isinstance(value, dict):
+        return None
+    return f"{key}={value}"
 
 
 def pool(counter: Counter) -> str:
