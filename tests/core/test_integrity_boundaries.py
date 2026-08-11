@@ -1,14 +1,19 @@
 import pytest
-from core_test_support import STORY, character, initialized, scenario, updated, with_entity
+from core_test_support import (
+    STORY,
+    begin_game,
+    character,
+    initialized,
+    scenario,
+    updated,
+    with_entity,
+)
 from pydantic import ValidationError
 
 from aidm.content.authored import (
-    AuthoredEntity,
-    AuthoredWorld,
     Character,
     CharacterOverlay,
     CharacterProfile,
-    authored_world,
 )
 from aidm.state.base import PLAYER_ID, Entity, EntityId
 from aidm.state.sheet import SheetDefinition, SheetTag
@@ -71,20 +76,12 @@ def test_an_engine_refuses_an_authored_payload_it_cannot_read() -> None:
     """Every kind takes a sheet now, so forbid-extra on the authored overlay is what is left of the
     guard — and it has to fire at launch, not on the turn that first reads the entity."""
     engine, _ = initialized()
-    selected = character()
-    authored = authored_world(scenario(), selected)
-    location = next(
-        record for record in authored.entities.values() if record.entity.kind == "location"
-    )
-    poisoned = AuthoredWorld(
-        entities={
-            **authored.entities,
-            location.entity.id: AuthoredEntity(entity=location.entity, rules={"gear": None}),
-        }
-    )
+    authored = scenario()
+    location = next(entity for entity in authored.world.entities if entity.kind == "location")
+    poisoned = updated(authored, overlay={"entities": {location.id: {"gear": None}}})
 
     with pytest.raises(ValueError, match="gear"):
-        engine.initial_world(poisoned, selected.overlay.character)
+        begin_game(engine, poisoned, character())
 
 
 def test_scenario_topology_is_validated() -> None:

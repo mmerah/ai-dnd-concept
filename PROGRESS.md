@@ -89,9 +89,30 @@ Tracking PLAN.md. One bullet per landed step; `uv run pytest && ruff check && ru
   zero-effect failure mode. The `--only director` eval pair is skipped: evals are suspended until
   Part I lands (working rule 3), and phase 5 re-baselines the settled tree anyway.
 
+## Phase 4 — Collapse the authored-world intermediate — DONE
+
+- `begin_game` (`app/session.py`) composes `WorldState` directly from `Scenario` + `Character`:
+  build the player entity, merge the two overlays, one loop building each `Record` through
+  `engine.sheet`, then `WorldState` + threads + hooks. 15 → 38 lines there, −60 in `authored.py`.
+- Deleted: `AuthoredWorld`, `AuthoredEntity`, `authored_world`, `compose_world` (authored.py 210 →
+  150 lines) and `Engine.initial_world` + `Engine._entity_rules`. `Engine._sheet` is public
+  `sheet(kind, rules)` — the one thing composition needs from the engine.
+- The deep copies stay where they were, per entity/relation/thread: loaded content is `Mutable`
+  and `restart()` re-runs `begin_game` against the same `Scenario` object, so game state must
+  never alias it. Only `hooks` passes through by reference, as before — `Hook` is frozen.
+- The duplicate-id check moved into the same loop, message unchanged.
+- Tests: `test_an_engine_refuses_an_authored_payload_it_cannot_read` now poisons the scenario
+  overlay and calls `begin_game`, so it exercises the real launch path rather than a hand-built
+  intermediate; `test_an_authored_ref_backs_the_sheet_and_renders_its_other_facts` calls
+  `engine.sheet` directly. No test added — the composition has no new branch.
+- Verified: `AIDM_GOLDEN_REGEN=1 uv run pytest` rewrote every fixture and `git status` on
+  `tests/core/fixtures` stayed empty — byte-identical, no `SAVE_VERSION` bump. 130 tests pass,
+  ruff and basedpyright clean.
+
 ## Next
 
-Phase 4 — collapse the authored-world intermediate (~½ day): `begin_game` composes `WorldState`
-straight from `Scenario` + `Character`, deleting `AuthoredWorld`/`AuthoredEntity`/`authored_world`/
-`compose_world`. Expect byte-identical `save/*` and `state/*` fixtures and no `SAVE_VERSION` bump;
-a moved fixture there is a bug, not churn.
+Part I is done. Phase 5 — the prompt pass (~1 day): re-baseline `--only director` on the settled
+tree (two same-hour suites), teach advantage in `dnd5e/director.md`, add the condition-lifting
+worked example to `dnd5e/examples.json`, re-run the touched cases at `--runs 9`, and replace
+PLAN.md's 2026-08-07 evidence list with what the post-refactor numbers show. Evals come back off
+suspension here (working rule 3).

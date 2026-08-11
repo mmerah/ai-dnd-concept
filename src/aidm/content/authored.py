@@ -1,17 +1,15 @@
-from collections.abc import Callable, Mapping
+from collections.abc import Mapping
 from typing import Self
 
 from pydantic import Field, JsonValue, model_validator
 
 from aidm.state.base import PLAYER_ID, EngineId, Entity, EntityId, Frozen, Slug
 from aidm.state.effects import AdvanceThread
-from aidm.state.sheet import Sheet
 from aidm.state.world import (
     Hook,
     Relation,
     ScenarioMeta,
     Thread,
-    WorldState,
     check_placement,
 )
 
@@ -152,59 +150,3 @@ def _require_authored(
     unknown = sorted(entity_id for entity_id in overlay if entity_id not in ids)
     if unknown:
         raise ValueError(f"the {engine!r} overlay names unauthored ids: {unknown}")
-
-
-class AuthoredEntity(Frozen):
-    entity: Entity
-    rules: Rules = Field(default_factory=dict)
-
-
-class AuthoredWorld(Frozen):
-    entities: dict[EntityId, AuthoredEntity] = Field(default_factory=dict)
-    relations: tuple[Relation, ...] = ()
-    threads: tuple[Thread, ...] = ()
-    hooks: tuple[Hook, ...] = ()
-
-
-def authored_world(scenario: Scenario, character: Character) -> AuthoredWorld:
-    player = Entity(
-        id=PLAYER_ID,
-        kind="actor",
-        name=character.name,
-        brief=character.brief,
-        known=True,
-        parent_id=scenario.world.starting_location_id,
-    )
-    overlay = {**scenario.overlay.entities, **character.overlay.entities}
-    entities: dict[EntityId, AuthoredEntity] = {}
-    for authored in (*scenario.world.entities, *character.profile.items, player):
-        if authored.id in entities:
-            raise ValueError(f"authored entity id {authored.id!r} appears twice")
-        # Loaded content outlives the mutable game state.
-        entities[authored.id] = AuthoredEntity(
-            entity=authored.model_copy(deep=True),
-            rules=dict(overlay.get(authored.id, {})),
-        )
-    world = scenario.world
-    return AuthoredWorld(
-        entities=entities,
-        relations=tuple(relation.model_copy(deep=True) for relation in world.relations),
-        threads=tuple(thread.model_copy(deep=True) for thread in world.threads),
-        hooks=world.hooks,
-    )
-
-
-def compose_world(
-    authored: AuthoredWorld,
-    player: Sheet,
-    rules: Callable[[AuthoredEntity], Sheet],
-) -> WorldState:
-    records = {
-        entity_id: {
-            "entity": record.entity,
-            "rules": player if entity_id == PLAYER_ID else rules(record),
-        }
-        for entity_id, record in authored.entities.items()
-    }
-    relations = {relation.id: relation for relation in authored.relations}
-    return WorldState.model_validate({"records": records, "relations": relations})

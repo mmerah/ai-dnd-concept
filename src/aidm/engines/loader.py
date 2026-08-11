@@ -16,7 +16,7 @@ from pydantic import (
 from pydantic_ai import ModelRetry
 from pydantic_ai.toolsets import AbstractToolset, FunctionToolset
 
-from aidm.content.authored import AuthoredEntity, AuthoredWorld, Rules, compose_world
+from aidm.content.authored import Rules
 from aidm.state.apply import apply_effect
 from aidm.state.base import EngineId, Entity, Kind, Slug
 from aidm.state.effects import AddRef, SheetDelta, TurnEffect, effect_key, turn_effect_keys
@@ -45,7 +45,7 @@ from aidm.state.sheet import (
     fact_line,
     render_sheet,
 )
-from aidm.state.world import GameState, WorldState, player_sheet
+from aidm.state.world import GameState, player_sheet
 
 ENGINE_MODULES: tuple[str, ...] = (
     "aidm.engines.story.rules",
@@ -111,9 +111,6 @@ class Engine:
     def default_rules(self, entity: Entity) -> Sheet:
         return SheetDefinition().runtime(entity.kind, self.spec.template(entity.kind))
 
-    def initial_world(self, authored: AuthoredWorld, character: Rules) -> WorldState:
-        return compose_world(authored, self._sheet("actor", character), self._entity_rules)
-
     def entity_state(self, entity: Entity, sheet: Sheet) -> str:
         return render_sheet(sheet, self._record, self.spec.projecting)
 
@@ -174,13 +171,10 @@ class Engine:
             return str(refused)
         return self.plugin.check_delta(state, player_sheet(after))
 
-    def _sheet(self, kind: Kind, rules: Rules) -> Sheet:
+    def sheet(self, kind: Kind, rules: Rules) -> Sheet:
         definition = SheetDefinition.model_validate(rules)
         backing = _backing(definition.refs, self.content, self.spec.projecting)
         return definition.runtime(kind, self.spec.template(kind), backing)
-
-    def _entity_rules(self, authored: AuthoredEntity) -> Sheet:
-        return self._sheet(authored.entity.kind, authored.rules)
 
     def _record(self, ref: ContentRef) -> Record | None:
         found = self.content.get(ref, Record)

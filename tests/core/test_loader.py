@@ -7,7 +7,6 @@ from pydantic_ai.models.test import TestModel
 from pydantic_ai.toolsets import AbstractToolset
 from pydantic_ai.usage import RunUsage
 
-from aidm.content.authored import AuthoredEntity, AuthoredWorld
 from aidm.engines.loader import Engine, EnginePlugin, load_engine
 from aidm.state.base import PLAYER_ID, SAVE_VERSION, EngineId, Entity, EntityId
 from aidm.state.packs import (
@@ -118,20 +117,10 @@ def test_an_authored_ref_backs_the_sheet_and_renders_its_other_facts(tmp_path: P
     """A projecting int fact lands on the sheet; the rest of the record renders beside the ref."""
     engine = _engine(tmp_path)
     goblin = Entity(id=EntityId("goblin"), kind="actor", name="Goblin", brief="", known=True)
-    authored = AuthoredWorld(
-        entities={
-            goblin.id: AuthoredEntity(
-                entity=goblin,
-                rules={
-                    "refs": [{"pack": "testpack", "collection": "monsters", "index": "giant-rat"}]
-                },
-            )
-        }
+
+    sheet = engine.sheet(
+        "actor", {"refs": [{"pack": "testpack", "collection": "monsters", "index": "giant-rat"}]}
     )
-
-    world = engine.initial_world(authored, {})
-
-    sheet = world.record(goblin.id).rules
     assert sheet.counters["hp"] == Counter(current=7, maximum=7, recharge="long-rest")
     assert sheet.numbers["armor-class"] == 12
     assert sheet.notes == {}

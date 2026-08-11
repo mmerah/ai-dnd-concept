@@ -3,15 +3,15 @@ from dataclasses import dataclass, field
 from random import Random
 
 from aidm.config import Settings
-from aidm.content.authored import Character, Scenario, authored_world
+from aidm.content.authored import Character, Scenario
 from aidm.content.store import FileSaves, FileTraces, load_character, load_scenario
 from aidm.engines.loader import Engine, load_engine, plugin_for
-from aidm.state.base import SAVE_VERSION, EngineId
+from aidm.state.base import PLAYER_ID, SAVE_VERSION, EngineId, Entity, EntityId
 from aidm.state.effects import SheetDelta
 from aidm.state.facts import Fact
 from aidm.state.sheet import AdvancementOffer
 from aidm.state.turn import Advance, TraceEntry, Turn
-from aidm.state.world import GameState
+from aidm.state.world import GameState, Record, WorldState
 from aidm.turn.advancement import AdvisorContext, advisor, render_proposal
 from aidm.turn.pipeline import TURN_STEPS, Stages, TurnOptions, build_stages, run_turn
 from aidm.turn.roles import Stage
@@ -26,16 +26,39 @@ def build_engine(engine_id: EngineId, config: Settings) -> Engine:
 
 def begin_game(engine: Engine, scenario: Scenario, character: Character) -> GameState:
     """One opening state, so the app, the evals, and the tests all start a game the same way."""
-    authored = authored_world(scenario, character)
+    world = scenario.world
+    player = Entity(
+        id=PLAYER_ID,
+        kind="actor",
+        name=character.name,
+        brief=character.brief,
+        known=True,
+        parent_id=world.starting_location_id,
+    )
+    overlay = {**scenario.overlay.entities, **character.overlay.entities}
+    records: dict[EntityId, Record] = {}
+    for entity in (*world.entities, *character.profile.items, player):
+        if entity.id in records:
+            raise ValueError(f"authored entity id {entity.id!r} appears twice")
+        rules = (
+            character.overlay.character if entity.id == PLAYER_ID else overlay.get(entity.id, {})
+        )
+        # Loaded content outlives the mutable game state, which restart() rebuilds from it.
+        records[entity.id] = Record(
+            entity=entity.model_copy(deep=True), rules=engine.sheet(entity.kind, rules)
+        )
     state = GameState(
         save_version=SAVE_VERSION,
         scenario_id=scenario.id,
         character_id=character.id,
         scenario=scenario.meta,
         engine=engine.id,
-        world=engine.initial_world(authored, character.overlay.character),
-        threads={thread.id: thread for thread in authored.threads},
-        hooks=authored.hooks,
+        world=WorldState(
+            records=records,
+            relations={relation.id: relation.model_copy(deep=True) for relation in world.relations},
+        ),
+        threads={thread.id: thread.model_copy(deep=True) for thread in world.threads},
+        hooks=world.hooks,
     )
     engine.validate_state(state)
     return state
