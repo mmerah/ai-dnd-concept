@@ -308,8 +308,8 @@ by accident. It is Ironsworn-shaped, not an Ironsworn implementation.
    the spike.
 
 Done when: the test-only engine demonstrates the target boundary without a production registration
-or universal mechanic, and phase 8 has an explicit method-by-method contract rather than the
-illustrative API in `GPT-SIMPLIFICATION.md`.
+or universal mechanic, and phase 8 has an explicit method-by-method contract written down in an
+ADR rather than an illustrative sketch.
 
 ## Phase 8 — Separate fictional world from engine mechanics (~3–5 days)
 

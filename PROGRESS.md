@@ -156,7 +156,57 @@ Tracking PLAN.md. One bullet per landed step; `uv run pytest && ruff check && ru
 - Goldens: `instructions/*` (all 10), `prompts/{dnd5e,story}/director`,
   `schemas/dnd5e/turn_plan.json`. No `SAVE_VERSION` bump — no persisted bytes change.
 
+## Phase 6 — Small proven deletions — DONE
+
+- **One content lookup surface.** `Content` exposes `record`/`require`/`provides` only. Deleted:
+  the generic type parameter, the `kind` argument, the `wrong_type` miss reason, `get()`,
+  `resolves()`, and `SerializeAsAny` on `Pack.records`. Every caller already passed `Record`
+  (loader ×4, `dnd5e/advance.py`, `evals/probes.py`, `tests/dnd5e/test_content.py`), and the SRD
+  importer already flattens `Interpreted` through `.generic()` before a pack is written — so no
+  `Record` subclass ever entered a runtime `Pack`. `validate_state` now probes the same
+  `record()` it uses everywhere else. packs.py 285 → 256 lines; pack round-trip bytes unchanged.
+- **One frozen value base.** `state.packs.Value` and the `Frozen.__hash__` override are gone;
+  `ContentRef`, `Record`, `Manifest`, `Pack`, `ContentMiss`, `EngineSpec`, the sheet templates,
+  and the SRD importer's authoring values all subclass `state.base.Frozen`. `Value` existed only
+  to keep Pydantic's generated hash that `Frozen` threw away, so `ContentRef` could key
+  `Content.records`; deleting the override made the second base pointless. `FrozenMap` stays —
+  `frozen=True` does not freeze a contained dict.
+- **One UI panel module.** `chat`, `role_badges`, `trace_panel`, `advancement_panel`,
+  `state_panel`, and `show_engine_badge` moved verbatim into `src/aidm/ui/panels.py` (170 lines);
+  the `panels/` and `components/` packages are deleted. Import consolidation only — no callback
+  ownership or rendered output changed, and `test_package_boundary` still walks the package.
+- `read_trace` inlined into its sole caller `FileTraces.load`. `FileSaves`/`FileTraces` stay
+  split, per PLAN.
+- Net Python delta: **−43 lines** (166 added, 209 deleted). 130 tests pass, ruff and basedpyright
+  clean, no fixture regenerated, no `SAVE_VERSION` bump.
+
+## Phase 7 — Test-only Ironsworn-shaped boundary probe — DONE
+
+- `tests/probe/probe_engine.py` (137 lines): a `Fighter` with bounded momentum under a per-fighter
+  `ceiling` (10 minus its debilities) and `Track`s that refuse to be `resolved` below 40 ticks —
+  two cross-field invariants no shared `Sheet` can express. One typed action (`Strike`) resolved
+  by an action die against two challenge dice into strong/weak/miss, mutating mechanics directly
+  and emitting `Fact`s. Five functions are the whole contract: `create`, `commit`, `initialize`,
+  `render`, `resolve`. Not in `ENGINE_MODULES`, not in the launcher.
+- Its entire import list is `aidm.state.base`, `aidm.state.dice`, `aidm.state.facts` — no `Sheet`,
+  no sheet effect, no `EngineSpec`, no packs, no advancement, no shipped engine.
+- `tests/probe/test_probe_boundary.py` (5 tests): authored JSON → mechanics → byte round trip;
+  three corruptions only the engine can judge are refused (momentum over its ceiling, ticks past
+  40, a resolved-but-unfilled track); the strike is deterministic per seed and reaches all three
+  outcomes across 20 seeds; an actor created during play gains mechanics before the commit while
+  an item gains none, and both render; and an **AST assertion** that the fixture imports nothing
+  core must not own, plus that it exposes no advancement or content capability. The last one is
+  the durable pressure — pushing engine concepts back into core now fails a test, not a review.
+- `docs/adr/0001-world-mechanics-boundary.md` records what the fixture proves and gives phase 8
+  the method-by-method contract: core owns fiction (entities, placement, discovery, relations,
+  threads, hooks, facts, uninterpreted traits), an engine owns every number and its whole plan
+  lifecycle, persisted mechanics is opaque JSON to core and a strict model inside the engine, one
+  engine-owned commit validates both halves, and core hooks write world operations only.
+- `tests/probe` added to pytest `pythonpath` and basedpyright `extraPaths`. 137 tests pass (+7),
+  ruff and basedpyright clean, no fixture moved, no production file touched.
+
 ## Next
 
-PLAN.md now inserts small deletions plus the world/mechanics, engine, and role simplifications as
-Part II; the former feature phases move to Part III. Next: Phase 6 — Small proven deletions.
+Phase 8 — separate fictional world from engine mechanics, against the contract in ADR-0001.
+Story first, then 5e, reading state/turn fixture diffs at each step; bump `SAVE_VERSION`; finish
+by running the probe engine through the real paths.
