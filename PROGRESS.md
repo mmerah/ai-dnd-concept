@@ -436,9 +436,18 @@ alone rather than churned twice.
   destroyed work as "bad edits". A subagent must never be left to resolve a conflict with
   `git stash`/`reset`/`checkout`; the recovery instruction is to stop and report.
 
+## Pre-Part III architecture review — DONE
+
+- Read all 5,855 lines of production Python against the planned Part III features. The accepted
+  simplification keeps the engine API and explicit pipeline, moves engine-specific construction
+  out of the universal loader, and makes `WorldState` the complete fictional aggregate. Expected
+  current production reduction: 20–55 lines; most of the engine code moves to its owner.
+- `PLAN.md` now adds Phase 10A for that work. Phase 11 extends the existing Worldkeeper report with
+  memories and thread moves instead of adding Memorykeeper and Threadkeeper roles, keeping a turn
+  at four model calls and avoiding an estimated 70–120 lines of future growth. Later phases needed
+  only the creation-capability ownership wording updated.
+
 ## Next
 
-Part II is finished. Phase 11 — memories + keepers — is next, and re-resolves against the landed
-shape: `Memory` state first (authored, rendered to the Scene Director only), then the Memorykeeper
-and Threadkeeper as one `stage()` call each in `turn/roles.py` plus one explicit `run_turn` line,
-per phase 10's path. Probe each new role's output mode live before cutting fixtures.
+Part II implementation through phase 10 is finished. Phase 10A — consolidate engine ownership and
+world state — is next; Phase 11 follows on that smaller boundary.

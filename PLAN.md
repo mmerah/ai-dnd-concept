@@ -380,20 +380,149 @@ Done when: role construction has one obvious path, prompt safety remains structu
 keeper role needs no copied infrastructure. No generic workflow graph, configurable turn order,
 or role middleware is introduced.
 
+## Phase 10A — Consolidate engine ownership and world state (~3–5 days)
+
+Finish the simplification the landed engine boundary exposed before adding more state and
+capabilities. Preserve the public engine operations and the explicit turn pipeline; remove the
+universal construction and duplicated world shapes around them.
+
+- `engines/loader.py` owns only the engine contract, the explicit module registry, and construction
+  dispatch. Each engine owns the resources it actually uses: instructions, examples, content,
+  tools, configuration, and optional capabilities. D&D keeps its packs and `read_content` tool;
+  Story carries no empty spec, empty content index, or irrelevant lookup tool. Adding an engine
+  remains its package plus one registry entry — no entry-point discovery or plugin framework.
+- The shared half of the Director brief keeps one owner above both engines: the world-effect
+  vocabulary read from `engines/examples.json` and asserted complete against the `WorldEffect`
+  union (`loader.py:171–188`). Pushing it down would grow the same append in every engine, which
+  is the duplication this phase removes, not an ownership win.
+- Dropping Story's `read_content` is model-facing, not internal: the tool list is advertised to the
+  model and `tests/core/fixtures/schemas/story/director_tools.json` moves with it. Story's
+  `director.md` never teaches the tool and Story ships no content for it to find, so it can only
+  miss — but per working rule 2, probe Story's Director live before cutting that fixture.
+- Preserve the engine surface callers already use (`id`, `badge`, `plan_type`, `begin`, `commit`,
+  `renderer`, `check_plan`, `resolve_action`, and optional capabilities). This is an ownership
+  refactor, not a new adapter layer or a rewrite of either engine's mechanics and resolvers.
+- `WorldState` becomes the complete persistent fictional aggregate: entities, relations, threads,
+  hooks, fired-hook ids, and pending notes. `GameState` keeps identity, scenario metadata, engine,
+  opaque mechanics, history, and turn number. Memory joins `WorldState` in phase 11.
+- `ScenarioWorld` contains that same validated `WorldState` beside its metadata and starting
+  location. `world.json` keeps its authored arrays: one `mode="before"` validator raises on a
+  duplicate entity or relation id and then keys them, because an id-keyed JSON object collapses a
+  duplicate silently and would lose the check `authored.py:32–35,47–49` makes today. Scenario-only
+  validation still rejects the reserved player id, checks the starting location and hook
+  references, and requires runtime-only fired-hook ids and pending notes to be empty.
+- A scenario's world holds no player, and `WorldState._check_relation` requires both ends to exist
+  and pins `party-member` at `PLAYER_ID` (`world.py:127–139`). An authored relation naming the
+  player is therefore refused. Keep the relation check whole and give the scenario the same shape
+  it already uses for the player's own start: `starting_party: tuple[EntityId, ...]` beside
+  `starting_location_id`, validated as authored actors, which `begin_game` turns into
+  `party-member` relations in the same step that composes the player. No shipped scenario starts
+  a companion, but phase 13 generates `ScenarioWorld` and would otherwise have no way to.
+- `begin_game` deep-copies that world and then adds what only runtime holds — the player entity
+  built from the character, and the character's own items. It stops rebuilding parallel tuple
+  collections into runtime dictionaries; it does not stop composing the player.
+- Bump `SAVE_VERSION`; update authored scenarios and the affected state/save fixtures to the new
+  nesting. Refuse stale saves as usual — no converter. Model-facing text stays byte-identical apart
+  from Story's tool list.
+
+Done when: Story initializes without pack/spec/tool ceremony; D&D owns and validates its content
+unchanged; all persistent fiction is reached through `state.world`; authored and runtime topology
+have one validated representation; engine behavior, turn order, narration safety, and advancement
+are unchanged. Expected current production reduction: roughly 20–55 lines — most engine code moves
+to its owner rather than disappearing, so fewer engine prerequisites and one world shape are the
+acceptance criteria, not a larger LOC gate.
+
+## Phase 10B — One owner for the scene rule, the counter effect, and growth (~2–3 days)
+
+Three consolidations 10A does not reach, in the order of what they cost today. One commit per step.
+Behavior-preserving except step 1, which fixes a turn that currently dies. Runs after 10A, because
+10A moves `threads`/`hooks`/`pending_notes` under `WorldState` and reshapes `Engine`'s construction,
+and all three steps read those.
+
+### 1. One scene answers who may be voiced (~½ day)
+
+The rule for who the Narrator may speak as is implemented twice. `check_speaker`
+(`state/plan.py:13`) judges the Scene Director's `speaker_id` against `GameState` before the turn
+resolves and returns a refusal the role retries on. `_speaker` (`turn/prompts.py:373`) judges it
+again against `VisibleScene` after resolve and hooks, and raises. Between the two, the plan may
+move the player or the speaker, so a directive that was legal when written is fatal by the time it
+is rendered:
+
+```
+scene picks speaker_id="mara" (an actor in the study, with the player)
+player prompt: "I leave for the cloister."
+director plans {"op": "move", "entity_id": null, "to_id": "cloister"}
+→ ValueError: speaker 'mara' is not a visible actor here   (turn/prompts.py:378)
+```
+
+`run_turn` raises before `engine.commit`, so the whole turn is discarded — three model calls
+spent, nothing written — and `ui/busy.py:22` shows the player a notification with no state behind
+it.
+
+- Presence becomes one question the scene answers: `voice(speaker_id) -> Entity | None` on the
+  shared scene base, returning the actor only when that scene holds them as a voiceable actor.
+- `check_speaker` keeps its four refusal strings unchanged — they are model-facing and tested
+  (`test_story_engine.py:114`) — and derives presence from the pre-turn scene instead of
+  `is_here`/`known` directly.
+- `_speaker` asks the post-turn scene and falls back to the existing
+  `"(none — narrate the scene)"` when the speaker has left. A speaker who walks out of the scene
+  is fiction, not a fault.
+- Test: the repro above, asserting the turn commits and the narration renders. No golden moves; no
+  shipped golden has an absent speaker.
+
+### 2. The counter effect has one owner (~½ day)
+
+`apply()` is char-for-char identical in both engines but for the union alias and the helper name
+(`dnd5e/mechanics.py:175-182`, `story/mechanics.py:106-113`): not a `CounterChange`, fall through to
+the world; else read mechanics, reveal the target, move the counter, write back. The probe engine
+would copy it a third time.
+
+- `engines/counters.py` owns the protocol; an engine supplies the counter lookup and its own
+  read/write. It already owns `CounterChange`, `adjust`, `spend`, and `write_mechanics`, so nothing
+  new crosses into core and ADR-0001 is untouched — this is engine-layer sharing, not core.
+- Accept this step only if the shared signature stays narrower than the 16 lines it replaces. Three
+  injected callables would not be a win; stop and leave the duplication if that is where it lands.
+- `move_counter` and `_move_pool` stay per-engine: their counter lookup and refusal wording are
+  genuinely different.
+
+### 3. Growth has one consumer-side owner (~1 day)
+
+10A leaves the capability owned by its engine and asks nothing of its consumers, where the cost is:
+`GameSession` re-derives "is there an advancement" three times — `offer()` (`session.py:129`),
+`_capability()` (`:158`), `_open()` (`:232`) — plus a fourth on `advisor is None` (`:136`), whose
+own comment says it is the same fact stated twice.
+
+- One module owns offer → propose → preview → confirm, holding the capability and its advisor
+  together so the pair cannot be half-present. `GameSession` keeps one nullable accessor.
+- `state/advancement.py` folds into it: 25 lines, two declarations, no function, no core caller.
+  `AdvancementOffer._choice_is_whole` is a weaker copy of `packs.Record._choice_is_whole` — keep
+  the stricter rule.
+- Leave `assert isinstance(proposal, LevelUp)` alone. Erasing to `ProposalBase` is the price of
+  removing the engine type parameter (`1c58662`), and phase 1 records the contravariance reasoning.
+- The `render_proposal` call and the panel keep their current shapes; this is a consolidation of
+  where the capability is asked about, not a change to what it offers.
+
+Done when: one module answers who may be voiced and a departed speaker narrates instead of raising;
+one module applies a counter effect; one module answers whether growth is available. No new adapter,
+no capability registry, no generic role plumbing. Target production reduction: roughly 60–100
+lines, almost all of it in step 3.
+
+Note: the review's fourth candidate — the prompt compiler and content toolset in
+`engines/loader.py` — is 10A's first bullet already, and is not repeated here.
+
 # Part III — Features on the settled boundary
 
 The original feature specifications are preserved below. Per the plan rule at the top, each phase
 is re-resolved against the landed Part II types when it becomes next; only references to concepts
-Part II explicitly removes (`Sheet`, `EnginePlugin`, fixed `Stage` plumbing, mandatory `spec.json`)
-are adjusted here.
+Part II explicitly removes (`Sheet`, `EnginePlugin`, fixed `Stage` plumbing, mandatory `spec.json`,
+and fictional collections outside `WorldState`) are adjusted here.
 
-## Phase 11 — Memories + keepers (~4 days)
+## Phase 11 — Memories + Worldkeeper judgments (~4 days)
 
-Durable memory that outlives the 6-exchange history window, then two proposal roles: a
-Memorykeeper that keeps durable facts, and a Threadkeeper that judges fuzzy story transitions.
-Memory is a core narrative concern on shared world state, never an engine-mechanics concern.
-Three steps, each a commit; the state model ships first and works alone. Wiring uses phase 10's
-single role-construction path plus one explicit call per role in `run_turn`.
+Durable memory that outlives the 6-exchange history window, then extend the existing Worldkeeper
+to keep durable facts and judge fuzzy story transitions. Memory is a core narrative concern on
+shared world state, never an engine-mechanics concern. The state model ships first and works alone;
+the model-facing work remains the one existing post-narration Worldkeeper call.
 
 ### 1. Memory state, authored + rendered (deterministic, no model)
 
@@ -401,14 +530,12 @@ single role-construction path plus one explicit call per role in `run_turn`.
   `id: Slug`, `owner: EntityId | None` (None = the shared world), `text: str`
   (`min_length=1, max_length=300`), `tags: tuple[Slug, ...] = ()`, `turn: int = 0` (the turn it
   was recorded; authored ones are 0).
-- `GameState.memories: dict[Slug, Memory] = Field(default_factory=dict)`. In
-  `_consistent_world`: keys match ids (copy the threads check), and `owner` is None or an
-  existing entity id.
-- Authoring: `ScenarioWorld.memories: tuple[Memory, ...] = ()` (`src/aidm/content/authored.py`),
-  uniqueness checked in `_valid_topology` like threads; carried through `begin_game`
-  (`src/aidm/app/session.py`) exactly as `threads` is. whispering-vault authors two: a world
-  memory about the abbey's abandonment, and one owned by `mara` about Elena — canon the Scene
-  Director should surface when the fiction reaches for it.
+- `WorldState.memories: dict[Slug, Memory] = Field(default_factory=dict)`. Its whole-world
+  validation checks that keys match ids and every `owner` is None or an existing entity id.
+- Authoring: memories live in the `WorldState` already carried by `ScenarioWorld`; `begin_game`
+  needs no memory-specific copy path. whispering-vault authors two: a world memory about the
+  abbey's abandonment, and one owned by `mara` about Elena — canon the Scene Director should
+  surface when the fiction reaches for it.
 - Rendering: phase 10's typed Director input gains `memories: tuple[Memory, ...]` — those whose
   owner is None, the player, or an entity at the player's location. Rendered as a `MEMORIES`
   section for the Scene Director only, beside ACTIVE THREADS. The Scene Director weaves what
@@ -419,61 +546,53 @@ single role-construction path plus one explicit call per role in `run_turn`.
   in `tests/core/test_pipeline.py`: an authored memory of a present NPC reaches the scene prompt;
   a memory owned by an absent NPC does not; neither reaches the narrator prompt.
 
-### 2. Memorykeeper
+### 2. Extend the Worldkeeper report
 
 - Output types in `src/aidm/state/turn.py`, beside `WorldkeeperReport`:
   `MemoryProposal(Frozen)` — `owner_id: EntityId | None` (description: exact id of who this
   belongs to, or null for the world), `text: str` (`max_length=300`, description: one concrete
-  sentence, past tense) — and `MemorykeeperReport(Frozen)` with
-  `memories: tuple[MemoryProposal, ...] = ()`. Deliberately no importance score: code reads none.
-- `MEMORYKEEPER` instructions + its typed prompt renderer: sections SCENARIO, WHAT HAPPENED
-  (evidence), NARRATION, ALREADY REMEMBERED (existing memories of present owners, so duplicates
-  are visible), PLAYER ACTION. Instructions mirror the Worldkeeper's admission tone: durable
-  facts about people and places, not play-by-play; **most turns should produce no memories** and
-  an empty report is the normal answer.
-- Wiring: one role construction beside the others, one explicit call in `run_turn` after the
-  worldkeeper (its creations can then own memories the same turn). Admission is code, mirroring
-  `admitted()`: drop a proposal whose owner id does not exist, drop a casefolded-duplicate text
-  against all existing memories, cap at `TurnOptions.max_memories: int = 2` (new field, wired
-  from a new `Settings.max_memories`). Each admitted proposal gets an id from a new slugifier
-  beside `base.slug()` — the existing helper sanitizes with underscores (which fail the `Slug`
-  hyphen pattern) and never truncates, while `Slug` caps at 64 chars and memory texts run to 300.
-  Hyphenate, truncate, de-collide against existing memory keys. Store with `turn=draft.turn`, and
-  emit a `Fact(kind="memory_kept", narrator=None)` for the trace.
-- Role config key `memorykeeper` (any name works — `Settings.roles` is an open dict). **Probe the
-  output mode live** (working rule 2) before cutting fixtures.
-- Tests: extend `tests/core/core_test_support.py`'s `played()` with the new role (stubbed to an
-  empty report by default); one pipeline test where a stubbed proposal is admitted, a duplicate
-  and an unknown owner are dropped, and the cap holds. New goldens: `instructions/memorykeeper`
-  family and `schemas/memorykeeper_report.json`.
-- Eval: extend `scripts/evals/run.py`'s `Role` literal and `_turn` dispatch with `memorykeeper`
-  (the worldkeeper turn function is the template — it also runs the standalone phase against an
-  authored narration); one case asserting a quiet turn keeps nothing and one that a revelation is
-  kept. New probe `memory_kept` in `probes.py`.
+  sentence, past tense). Extend `WorldkeeperReport` with
+  `memories: tuple[MemoryProposal, ...] = ()` and
+  `thread_moves: tuple[AdvanceThread, ...] = ()`. Deliberately add no importance score or second
+  transition vocabulary: code reads neither.
+- Extend the existing `WORLDKEEPER` instructions and renderer with ALREADY REMEMBERED (memories of
+  present owners, so duplicates are visible) and ACTIVE THREADS. Durable memories record concrete
+  facts about people and places, not play-by-play; **most turns should produce no memories or
+  thread moves**, and empty tuples are the normal answer. A thread moves only when the committed
+  turn plainly justifies it; never invent a stage the scenario has not used.
+- The existing Worldkeeper stage receives the current draft as validation context. Every memory
+  owner must name an entity that existed before this report, and every `thread_id` must name a
+  thread in `state.world.threads`; request a `ModelRetry` otherwise. A creation and a memory about
+  it need not land in the same turn — avoiding model-authored ids and name-resolution machinery is
+  the deliberate simpler rule.
+- Keep the one existing Worldkeeper call in `run_turn`. Apply admitted creations, memories, and
+  thread moves deterministically after its report; all remain inside the turn's single final
+  commit. Thread moves reuse `AdvanceThread` through the core world-operation path and never reach
+  the Narrator.
+- Memory admission mirrors `admitted()`: drop casefolded-duplicate text against all existing
+  memories and cap accepted proposals at `Settings.max_memories: int = 2`. Each admitted proposal
+  gets an id from a new slugifier beside `base.slug()` — the existing helper sanitizes with
+  underscores (which fail the `Slug` hyphen pattern) and never truncates, while `Slug` caps at 64
+  chars and memory texts run to 300. Hyphenate, truncate, de-collide against existing memory keys.
+  Store with `turn=draft.turn`, and emit a non-narrating `Fact(kind="memory_kept")` for the trace.
 
-### 3. Threadkeeper
+### 3. Verification
 
-- The fuzzy-transition role: hooks fire on exact fact matches, the Director advances what the
-  directive names; the Threadkeeper judges what neither can — "has this quietly moved on?" —
-  from the committed turn.
-- Output `ThreadkeeperReport(Frozen)` in `state/turn.py`:
-  `moves: tuple[AdvanceThread, ...] = ()` — reuse the core world operation, its `why` included;
-  no new vocabulary. Output validation (like the scene role's known-id check): every `thread_id`
-  names a thread in `state.threads`, `ModelRetry` otherwise.
-- Wiring: explicit call in `run_turn` after the memorykeeper. The call **skips the model
-  entirely** when no thread is `active` (a trace entry with "(no active threads)" keeps the trace
-  honest). Apply each move through phase 8's core world-operation path — thread facts never
-  narrate, so running after the Narrator loses nothing.
-- Prompt: SCENARIO, ACTIVE THREADS, WHAT HAPPENED, NARRATION, PLAYER ACTION. Instructions: move
-  a thread only when this turn's committed events plainly justify it; moving nothing is the
-  normal answer; never invent a stage for a thread whose stages the scenario has not used.
-- Same test/eval/golden shape as the Memorykeeper. Probe the output mode first.
+- One pipeline test admits a memory, drops a duplicate, retries an unknown owner or thread, applies
+  a justified thread move, and respects the cap. Existing Worldkeeper stubs default both new fields
+  to empty, so unrelated turn tests need no new role plumbing.
+- Update the existing Worldkeeper instruction and schema goldens; add no Memorykeeper or
+  Threadkeeper fixture families or role config keys.
+- Extend the existing Worldkeeper eval with a quiet case that keeps and moves nothing, a revelation
+  worth remembering, and a fact-free narration beat that resolves a thread. Probe the changed
+  output schema live before accepting it.
 
 Done when: a fact-free narration beat (Mara opening up over several turns) can resolve a thread
 without a hook or a Director write, memories persist across a save/load, and a full turn still
-completes with both keepers stubbed off in tests. Cost note: the turn is now 6 model calls worst
-case; if latency hurts, the keepers are the two steps that can later run fire-and-forget — do not
-build that now.
+completes with the Worldkeeper's new fields empty in tests. A turn remains four model calls in the
+worst case; no keeper pipeline or concurrency mechanism is introduced. Compared with the original
+two-role design, this avoids roughly 70–120 lines of future production growth rather than removing
+those lines from the current codebase.
 
 ## Phase 12 — Character creation workflow (~1–2 weeks)
 
@@ -490,7 +609,7 @@ validator. Story first (small), 5e second (the real test), advisor front-end las
   `1 <= choose <= len(options)`). Picks are `Mapping[Slug, tuple[Slug, ...]]` (step id → chosen
   option ids). Nothing more until a real step needs it — no dependencies, no min/max ranges, no
   derived-value language.
-- Phase 9's engine object gains an optional creation capability:
+- Phase 10A's engine-owned construction exposes an optional creation capability:
   `steps(picks) -> tuple[CreationStep, ...]` (takes the picks so far — Story ignores them, 5e
   derives follow-up steps from them) and `create(name, brief, picks) -> CreatedCharacter`, where
   `CreatedCharacter(Frozen)` holds `profile: CharacterProfile` plus the engine overlay written to
