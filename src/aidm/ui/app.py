@@ -8,9 +8,15 @@ from aidm.config import load_settings
 from aidm.state.base import content_id
 
 from .busy import refuse_if_busy, working
-from .components.engine import show_engine_badge
 from .home import home_page
-from .panels import advancement, chat, roles, state, trace
+from .panels import (
+    advancement_panel,
+    chat,
+    role_badges,
+    show_engine_badge,
+    state_panel,
+    trace_panel,
+)
 
 LOGGER = logging.getLogger(__name__)
 
@@ -21,23 +27,23 @@ class GameView:
 
     @ui.refreshable_method
     def chat(self) -> None:
-        chat.chat(self.session)
+        chat(self.session)
 
     @ui.refreshable_method
     def roles(self) -> None:
-        roles.role_badges(self.session)
+        role_badges(self.session)
 
     @ui.refreshable_method
     def trace(self) -> None:
-        trace.trace_panel(self.session)
+        trace_panel(self.session)
 
     @ui.refreshable_method
     def advancement(self) -> None:
-        advancement.advancement_panel(self.session, self.refresh_all)
+        advancement_panel(self.session, self.refresh_all)
 
     @ui.refreshable_method
     def state(self) -> None:
-        state.state_panel(self.session)
+        state_panel(self.session)
 
     def refresh_all(self) -> None:
         for panel in (self.chat, self.roles, self.trace, self.advancement, self.state):

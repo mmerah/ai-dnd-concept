@@ -7,12 +7,9 @@ from typing import Annotated, Literal, Self, TypeGuard
 
 from pydantic import (
     AfterValidator,
-    BaseModel,
-    ConfigDict,
     Field,
     JsonValue,
     NonNegativeInt,
-    SerializeAsAny,
     SerializerFunctionWrapHandler,
     TypeAdapter,
     ValidationError,
@@ -20,20 +17,13 @@ from pydantic import (
     model_validator,
 )
 
-from .base import Slug
+from .base import Frozen, Slug
 
 ENCODING = "utf-8"
 
-# A wrong subtype is a miss because callers probe discriminated-union arms.
-MissReason = Literal["unknown_pack", "unknown_index", "wrong_type"]
+MissReason = Literal["unknown_pack", "unknown_index"]
 
 _RAW: TypeAdapter[list[dict[str, object]]] = TypeAdapter(list[dict[str, object]])
-
-
-class Value(BaseModel):
-    """Keeps Pydantic's field hash, unlike `aidm.state.base.Frozen`: refs key the ruleset maps."""
-
-    model_config = ConfigDict(extra="forbid", frozen=True)
 
 
 def _immutable[K, V](mapping: Mapping[K, V]) -> Mapping[K, V]:
@@ -59,7 +49,7 @@ ContentSlug = Annotated[str, Field(pattern=r"^[a-z0-9-]+$", max_length=CONTENT_S
 CollectionName = Annotated[str, Field(pattern=r"^[a-z][a-z0-9_]*$", max_length=64)]
 
 
-class ContentRef(Value):
+class ContentRef(Frozen):
     """Uses a triple because indexes collide across collections and packs."""
 
     pack: ContentSlug
@@ -73,7 +63,7 @@ class ContentRef(Value):
         return ContentRef(pack=self.pack, collection=collection, index=index)
 
 
-class Record(Value):
+class Record(Frozen):
     """`facts` carries every normalized mechanical value a record holds, keyed by slug. An
     int-valued fact in a collection the engine spec flags as projecting lands on the sheet of any
     entity that refs the record — a record reffed in multiplicity (a spell, a feature) must leave
@@ -103,7 +93,7 @@ type FactType = Literal["int", "slug", "str"]
 type FactSchema = Mapping[Slug, FactType]
 
 
-class Manifest(Value):
+class Manifest(Frozen):
     id: ContentSlug
     name: str
     version: str
@@ -114,14 +104,11 @@ class Manifest(Value):
     source_commit: str | None = None
 
 
-class Pack(Value):
-    """`SerializeAsAny` preserves concrete record fields when dumping; which collections a pack may
-    hold is checked by `validate_pack`."""
+class Pack(Frozen):
+    """Which collections a pack may hold is checked by `validate_pack`."""
 
     manifest: Manifest
-    records: FrozenMap[CollectionName, FrozenMap[ContentSlug, SerializeAsAny[Record]]] = (
-        EMPTY_FROZEN_MAP
-    )
+    records: FrozenMap[CollectionName, FrozenMap[ContentSlug, Record]] = EMPTY_FROZEN_MAP
 
     def addressed(self) -> Mapping[ContentRef, Record]:
         return {
@@ -131,7 +118,7 @@ class Pack(Value):
         }
 
 
-class ContentMiss(Value):
+class ContentMiss(Frozen):
     ref: ContentRef
     reason: MissReason
 
@@ -145,32 +132,17 @@ class Content:
     packs: tuple[ContentSlug, ...]
     records: Mapping[ContentRef, Record]
 
-    def get[R: Record](self, ref: ContentRef, kind: type[R]) -> R | ContentMiss:
+    def record(self, ref: ContentRef) -> Record | ContentMiss:
         if not self.provides(ref.pack):
             return ContentMiss(ref=ref, reason="unknown_pack")
-        record = self.records.get(ref)
-        if record is None:
-            return ContentMiss(ref=ref, reason="unknown_index")
-        if not isinstance(record, kind):
-            return ContentMiss(ref=ref, reason="wrong_type")
-        return record
+        found = self.records.get(ref)
+        return ContentMiss(ref=ref, reason="unknown_index") if found is None else found
 
-    def require[R: Record](self, ref: ContentRef, kind: type[R]) -> R:
-        found = self.get(ref, kind)
+    def require(self, ref: ContentRef) -> Record:
+        found = self.record(ref)
         if isinstance(found, ContentMiss):
             raise ValueError(found.summary)
         return found
-
-    def resolves(self, ref: ContentRef) -> ContentMiss | None:
-        if not self.provides(ref.pack):
-            return ContentMiss(ref=ref, reason="unknown_pack")
-        if ref not in self.records:
-            return ContentMiss(ref=ref, reason="unknown_index")
-        return None
-
-    def record(self, ref: ContentRef) -> Record | ContentMiss:
-        missing = self.resolves(ref)
-        return missing if missing is not None else self.records[ref]
 
     def provides(self, pack: ContentSlug) -> bool:
         return pack in self.packs

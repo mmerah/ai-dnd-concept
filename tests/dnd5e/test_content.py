@@ -1,6 +1,6 @@
 from fivee_test_support import PACK_DIR, pack_format
 
-from aidm.state.packs import Content, ContentRef, Record, load
+from aidm.state.packs import Content, ContentRef, load
 
 LONGSWORD = ContentRef(pack="srd-2014", collection="weapons", index="longsword")
 DAGGER = ContentRef(pack="srd-2014", collection="weapons", index="dagger")
@@ -22,27 +22,27 @@ def _content() -> Content:
 def test_weapon_facts_carry_damage_and_the_versatile_expression() -> None:
     content = _content()
 
-    longsword = content.require(LONGSWORD, Record)
+    longsword = content.require(LONGSWORD)
     assert longsword.facts == {
         "cost-gp": 15,
         "damage": "1d8",
         "versatile-damage": "1d10",
         "damage-type": "slashing",
     }
-    assert "damage" not in content.require(LANTERN, Record).facts
+    assert "damage" not in content.require(LANTERN).facts
 
 
 def test_weapon_facts_flag_finesse_and_ranged() -> None:
     content = _content()
 
-    assert content.require(DAGGER, Record).facts.get("finesse") is True
-    assert content.require(SHORTBOW, Record).facts.get("ranged") is True
+    assert content.require(DAGGER).facts.get("finesse") is True
+    assert content.require(SHORTBOW).facts.get("ranged") is True
 
 
 def test_magic_missile_is_a_leveled_spell_with_no_attack_or_save() -> None:
     content = _content()
 
-    magic_missile = content.require(MAGIC_MISSILE, Record)
+    magic_missile = content.require(MAGIC_MISSILE)
     assert magic_missile.facts.get("level") == 1
     assert "attack-type" not in magic_missile.facts
     assert "save-ability" not in magic_missile.facts
@@ -54,7 +54,7 @@ def test_magic_missile_is_a_leveled_spell_with_no_attack_or_save() -> None:
 def test_burning_hands_is_a_save_for_half_spell() -> None:
     content = _content()
 
-    burning_hands = content.require(BURNING_HANDS, Record)
+    burning_hands = content.require(BURNING_HANDS)
     assert burning_hands.facts.get("save-ability") == "dexterity"
     assert burning_hands.facts.get("save-success") == "half"
     ladder = burning_hands.facts.get("damage-ladder")
@@ -65,7 +65,7 @@ def test_burning_hands_is_a_save_for_half_spell() -> None:
 def test_fire_bolt_is_a_cantrip_ranged_spell_attack() -> None:
     content = _content()
 
-    fire_bolt = content.require(FIRE_BOLT, Record)
+    fire_bolt = content.require(FIRE_BOLT)
     assert "level" not in fire_bolt.facts
     assert fire_bolt.facts.get("attack-type") == "ranged"
     assert fire_bolt.facts.get("damage-ladder") == [
@@ -79,7 +79,7 @@ def test_fire_bolt_is_a_cantrip_ranged_spell_attack() -> None:
 def test_cure_wounds_heals_with_a_modifier_and_carries_no_damage_ladder() -> None:
     content = _content()
 
-    cure_wounds = content.require(CURE_WOUNDS, Record)
+    cure_wounds = content.require(CURE_WOUNDS)
     ladder = cure_wounds.facts.get("heal-ladder")
     assert isinstance(ladder, list)
     assert ladder[0] == [0, "1d8"]
@@ -90,7 +90,7 @@ def test_cure_wounds_heals_with_a_modifier_and_carries_no_damage_ladder() -> Non
 def test_hold_person_is_a_concentration_save_or_suffer_spell() -> None:
     content = _content()
 
-    hold_person = content.require(HOLD_PERSON, Record)
+    hold_person = content.require(HOLD_PERSON)
     assert hold_person.facts.get("concentration") is True
     assert hold_person.facts.get("save-success") == "none"
 
@@ -98,5 +98,5 @@ def test_hold_person_is_a_concentration_save_or_suffer_spell() -> None:
 def test_spellcasting_ability_is_a_class_fact_absent_for_a_class_that_casts_none() -> None:
     content = _content()
 
-    assert content.require(WIZARD, Record).facts.get("spellcasting") == "intelligence"
-    assert "spellcasting" not in content.require(FIGHTER, Record).facts
+    assert content.require(WIZARD).facts.get("spellcasting") == "intelligence"
+    assert "spellcasting" not in content.require(FIGHTER).facts

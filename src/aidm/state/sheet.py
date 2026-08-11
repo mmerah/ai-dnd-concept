@@ -5,7 +5,7 @@ from typing import Self, TypeGuard
 from pydantic import Field, JsonValue, model_validator
 
 from .base import Frozen, Kind, Mutable, Slug
-from .packs import EMPTY_FROZEN_MAP, ContentRef, FrozenMap, Record, Value, is_int_fact
+from .packs import EMPTY_FROZEN_MAP, ContentRef, FrozenMap, Record, is_int_fact
 
 type ResolveRef = Callable[[ContentRef], Record | None]
 
@@ -35,7 +35,7 @@ class Counter(Mutable):
         return bounded if self.maximum is None else min(bounded, self.maximum)
 
 
-class CounterTemplate(Value):
+class CounterTemplate(Frozen):
     current: int = 0
     maximum: int | None = None
     minimum: int = 0
@@ -57,7 +57,7 @@ class SheetTag(Frozen):
     text: str = ""
 
 
-class SheetTemplate(Value):
+class SheetTemplate(Frozen):
     """The canonical keys of one kind: every sheet the engine builds starts with these."""
 
     numbers: FrozenMap[Slug, int] = EMPTY_FROZEN_MAP
@@ -85,7 +85,7 @@ class Sheet(Mutable):
         return next((tag for tag in self.tags if tag.id == tag_id), None)
 
 
-class SheetDefinition(Value):
+class SheetDefinition(Frozen):
     numbers: FrozenMap[Slug, int] = EMPTY_FROZEN_MAP
     counters: FrozenMap[Slug, CounterTemplate] = EMPTY_FROZEN_MAP
     tags: tuple[SheetTag, ...] = ()

@@ -102,18 +102,6 @@ class SaveShell(BaseModel):
 TRACE_ADAPTER: TypeAdapter[TraceEntry] = TypeAdapter(TraceEntry)
 
 
-def read_trace(path: Path) -> tuple[TraceEntry, ...]:
-    if not path.exists():
-        return ()
-    entries: list[TraceEntry] = []
-    for line in path.read_text(encoding=ENCODING).splitlines():
-        if not line:
-            continue
-        _require_save_version(_StoredVersion.model_validate_json(line).save_version, "trace")
-        entries.append(TRACE_ADAPTER.validate_json(line))
-    return tuple(entries)
-
-
 @dataclass(frozen=True, slots=True)
 class FileSaves:
     directory: Path
@@ -162,7 +150,16 @@ class FileTraces:
             file.write(TRACE_ADAPTER.dump_json(entry).decode(ENCODING) + "\n")
 
     def load(self, slug: str) -> tuple[TraceEntry, ...]:
-        return read_trace(self._path(slug))
+        path = self._path(slug)
+        if not path.exists():
+            return ()
+        entries: list[TraceEntry] = []
+        for line in path.read_text(encoding=ENCODING).splitlines():
+            if not line:
+                continue
+            _require_save_version(_StoredVersion.model_validate_json(line).save_version, "trace")
+            entries.append(TRACE_ADAPTER.validate_json(line))
+        return tuple(entries)
 
     def discard(self, slug: str) -> None:
         self._path(slug).unlink(missing_ok=True)

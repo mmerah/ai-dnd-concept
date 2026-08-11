@@ -18,7 +18,7 @@ from pydantic_ai.toolsets import AbstractToolset, FunctionToolset
 
 from aidm.content.authored import Rules
 from aidm.state.apply import apply_effect
-from aidm.state.base import EngineId, Entity, Kind, Slug
+from aidm.state.base import EngineId, Entity, Frozen, Kind, Slug
 from aidm.state.effects import AddRef, SheetDelta, TurnEffect, effect_key, turn_effect_keys
 from aidm.state.facts import Fact
 from aidm.state.packs import (
@@ -31,7 +31,6 @@ from aidm.state.packs import (
     FactSchema,
     FrozenMap,
     Record,
-    Value,
     is_int_fact,
     load,
     parse_ref,
@@ -56,7 +55,7 @@ PLUGIN = "PLUGIN"
 type EntityRenderer = Callable[[Entity], str]
 
 
-class EngineSpec(Value):
+class EngineSpec(Frozen):
     templates: FrozenMap[Kind, SheetTemplate] = EMPTY_FROZEN_MAP
     # Collection name -> the facts every record in it must carry (empty: no requirement).
     collections: FrozenMap[CollectionName, FactSchema] = EMPTY_FROZEN_MAP
@@ -128,7 +127,7 @@ class Engine:
             if missing:
                 raise ValueError(f"{entity.id!r} is missing the canonical keys {missing}")
             for ref in sheet.refs:
-                if (miss := self.content.resolves(ref)) is not None:
+                if isinstance(miss := self.content.record(ref), ContentMiss):
                     raise ValueError(f"{entity.id!r}: {miss.summary}")
 
     def check_plan(self, state: GameState, plan: TurnPlanBase) -> str | None:
@@ -177,7 +176,7 @@ class Engine:
         return definition.runtime(kind, self.spec.template(kind), backing)
 
     def _record(self, ref: ContentRef) -> Record | None:
-        found = self.content.get(ref, Record)
+        found = self.content.record(ref)
         return None if isinstance(found, ContentMiss) else found
 
 
@@ -271,7 +270,7 @@ def _director_toolset(content: Content) -> FunctionToolset[object]:
             reference = parse_ref(ref)
         except ValueError as malformed:
             raise ModelRetry(str(malformed)) from malformed
-        found = content.get(reference, Record)
+        found = content.record(reference)
         if isinstance(found, ContentMiss):
             raise ModelRetry(found.summary)
         return _record_text(found, ref)
@@ -302,7 +301,7 @@ def _backing(
     for ref in refs:
         if ref.collection not in projecting:
             continue
-        record = content.require(ref, Record)
+        record = content.require(ref)
         for key, value in record.facts.items():
             if not is_int_fact(value):
                 continue

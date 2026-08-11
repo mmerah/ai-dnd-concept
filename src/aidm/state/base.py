@@ -10,9 +10,6 @@ class Frozen(BaseModel):
 
     model_config = ConfigDict(extra="forbid", frozen=True)
 
-    def __hash__(self) -> int:
-        raise TypeError(f"unhashable type: {type(self).__name__!r}")
-
 
 class Mutable(BaseModel):
     """State a resolution mutates in place; commit revalidates the whole draft once."""

@@ -12,7 +12,7 @@ from aidm.app.launcher import (
 )
 from aidm.config import Settings
 
-from .components.engine import show_engine_badge
+from .panels import show_engine_badge
 
 LOGGER = logging.getLogger(__name__)
 

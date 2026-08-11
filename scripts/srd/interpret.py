@@ -5,9 +5,9 @@ from typing import Annotated, Literal, Self
 
 from pydantic import Field, JsonValue, model_validator
 
-from aidm.state.base import Slug
+from aidm.state.base import Frozen, Slug
 from aidm.state.dice import DiceExpr
-from aidm.state.packs import EMPTY_FROZEN_MAP, FrozenMap, Record, Value
+from aidm.state.packs import EMPTY_FROZEN_MAP, FrozenMap, Record
 
 ABILITY_BY_ABBREVIATION: Mapping[str, Slug] = MappingProxyType(
     {
@@ -33,22 +33,22 @@ def to_slug(name: str) -> Slug:
     return _SLUG_CLEAN.sub("-", _SLUG_DROP.sub("", name.lower())).strip("-")
 
 
-class SpellAmount(Value):
+class SpellAmount(Frozen):
     dice: DiceExpr
     with_modifier: bool = False
 
 
-class SpellArea(Value):
+class SpellArea(Frozen):
     shape: Slug
     size: int
 
 
-class Cost(Value):
+class Cost(Frozen):
     unit: Slug
     amount: int
 
 
-class Reach(Value):
+class Reach(Frozen):
     normal: int
     long: int | None = None
 
@@ -117,7 +117,7 @@ class Interpreted(Record):
         )
 
 
-class AbilityMinimum(Value):
+class AbilityMinimum(Frozen):
     ability: Slug
     minimum: int
 
@@ -149,7 +149,7 @@ class FeatRecord(Interpreted):
         return {"prerequisites": minima}
 
 
-class AbilityBonus(Value):
+class AbilityBonus(Frozen):
     ability: str
     bonus: int
 
@@ -162,7 +162,7 @@ class SubraceRecord(Interpreted):
         return {"race": self.race, **_bonus_facts(self.ability_bonuses)}
 
 
-class SpellGrant(Value):
+class SpellGrant(Frozen):
     gate: str
     # The name feeds the model-facing note, the index the joinable fact.
     spell: str
@@ -251,7 +251,7 @@ class BackgroundRecord(Interpreted):
         return _numbered("starting-gold", self.starting_gold)
 
 
-class FeatureChoice(Value):
+class FeatureChoice(Frozen):
     count: int
     what: str
     among: tuple[str, ...] = ()

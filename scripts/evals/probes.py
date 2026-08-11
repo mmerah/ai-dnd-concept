@@ -369,7 +369,7 @@ def _level_up_to(content: Content, state: GameState, level: int) -> None:
     class's own level rows: what they raise is exactly what the advisor would raise."""
     sheet = _sheet(state, PLAYER_ID)
     for step in range(sheet.numbers[LEVEL] + 1, level + 1):
-        _apply_level(sheet, content.require(level_ref(sheet, step), Record))
+        _apply_level(sheet, content.require(level_ref(sheet, step)))
 
 
 def _apply_level(sheet: Sheet, record: Record) -> None:
