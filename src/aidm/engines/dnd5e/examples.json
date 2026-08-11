@@ -5,11 +5,11 @@
         "outcome": "success",
         "effects": [
           {
-            "op": "tag-change",
+            "op": "trait-change",
             "mode": "add",
             "entity_id": "cloister_rat",
-            "tag_id": "limping",
-            "text": "A hind leg drags behind it."
+            "text": "A hind leg drags behind it.",
+            "trait_id": "limping"
           }
         ]
       },
@@ -17,11 +17,11 @@
         "outcome": "failure",
         "effects": [
           {
-            "op": "tag-change",
+            "op": "trait-change",
             "mode": "add",
             "entity_id": "player",
-            "tag_id": "crowded",
-            "text": "The wasted swing let the rat inside his reach."
+            "text": "The wasted swing let the rat inside his reach.",
+            "trait_id": "crowded"
           }
         ]
       }
@@ -39,11 +39,11 @@
         "outcome": "success",
         "effects": [
           {
-            "op": "tag-change",
+            "op": "trait-change",
             "mode": "add",
             "entity_id": "cloister_rat",
-            "tag_id": "scorched",
-            "text": "Its fur is burnt away in patches."
+            "text": "Its fur is burnt away in patches.",
+            "trait_id": "scorched"
           }
         ]
       }
@@ -62,10 +62,10 @@
         "outcome": "success",
         "effects": [
           {
-            "op": "tag-change",
+            "op": "trait-change",
             "mode": "remove",
             "entity_id": "player",
-            "tag_id": "poisoned"
+            "trait_id": "poisoned"
           }
         ]
       },
@@ -73,11 +73,11 @@
         "outcome": "failure",
         "effects": [
           {
-            "op": "tag-change",
+            "op": "trait-change",
             "mode": "add",
             "entity_id": "player",
-            "tag_id": "shaking",
-            "text": "The venom still has hold of his hands."
+            "text": "The venom still has hold of his hands.",
+            "trait_id": "shaking"
           }
         ]
       }
@@ -93,10 +93,10 @@
   {
     "effects": [
       {
-        "op": "tag-change",
+        "op": "trait-change",
         "mode": "remove",
         "entity_id": "player",
-        "tag_id": "poisoned"
+        "trait_id": "poisoned"
       }
     ]
   },
@@ -106,11 +106,11 @@
         "outcome": "success",
         "effects": [
           {
-            "op": "tag-change",
+            "op": "trait-change",
             "mode": "add",
             "entity_id": "cloister_rat",
-            "tag_id": "prone",
-            "text": "On its back, legs pedaling, unable to right itself."
+            "text": "On its back, legs pedaling, unable to right itself.",
+            "trait_id": "prone"
           }
         ]
       }
@@ -153,11 +153,11 @@
         "outcome": "failure",
         "effects": [
           {
-            "op": "tag-change",
+            "op": "trait-change",
             "mode": "add",
             "entity_id": "vault",
-            "tag_id": "jammed-seal",
-            "text": "The bent seal now binds the door shut."
+            "text": "The bent seal now binds the door shut.",
+            "trait_id": "jammed-seal"
           }
         ]
       }

@@ -227,6 +227,33 @@ def is_int_fact(value: JsonValue | None) -> TypeGuard[int]:
     return isinstance(value, int) and not isinstance(value, bool)
 
 
+def is_ladder_fact(value: JsonValue) -> TypeGuard[list[list[JsonValue]]]:
+    """A non-empty list of `[threshold, value]` rungs, judged by shape rather than a key-name
+    convention. A ladder starting at 0 states its own base, so the compact render can drop to that
+    rung; one starting elsewhere (a monster's `slots`) means nothing without every rung."""
+    return (
+        isinstance(value, list)
+        and bool(value)
+        and all(isinstance(rung, list) and len(rung) == 2 for rung in value)
+    )
+
+
+def fact_line(key: str, value: JsonValue, *, ladder_full: bool) -> str | None:
+    """One rendering of a fact: a scalar `key=value`, a ladder's rung 0 or every rung, or a flat
+    list joined. `None` for anything else (a dict, or a list holding one) — nothing reads those."""
+    if is_ladder_fact(value):
+        if ladder_full or value[0][0] != 0:
+            return f"{key}=" + ", ".join(f"{threshold}:{rung}" for threshold, rung in value)
+        return f"{key}={value[0][1]}"
+    if isinstance(value, list):
+        if not value or any(isinstance(item, list | dict) for item in value):
+            return None
+        return f"{key}=" + ", ".join(str(item) for item in value)
+    if isinstance(value, dict):
+        return None
+    return f"{key}={value}"
+
+
 def _fact_is(value: JsonValue | None, kind: FactType) -> bool:
     match kind:
         case "int":

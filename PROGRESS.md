@@ -205,8 +205,106 @@ Tracking PLAN.md. One bullet per landed step; `uv run pytest && ruff check && ru
 - `tests/probe` added to pytest `pythonpath` and basedpyright `extraPaths`. 137 tests pass (+7),
   ruff and basedpyright clean, no fixture moved, no production file touched.
 
+## Phase 8 — Separate fictional world from engine mechanics — DONE
+
+- **Core owns fiction only.** `WorldState.records: dict[EntityId, Record]` (entity + `Sheet`)
+  became `WorldState.entities: dict[EntityId, Entity]`; `Record`, `sheet_of`, `player_sheet`, and
+  the whole of `state/sheet.py` are deleted. The dict owns the name `entities`, so iterating is
+  `world.entities.values()` or `world.of_kind(kind)`.
+- **`Trait` on the entity.** `Trait(id, name, text)` and `Entity.traits` carry the lasting fiction
+  the sheet's tags used to: conditions, edges, burdens, gear benefits, and the `warded` a shared
+  hook authors. `TagChange` became `TraitChange` (`trait_id`, facts `trait_added`/`trait_removed`).
+  Core renders them: `prompts.entity_state` appends one `traits:` line under whatever the engine's
+  own renderer wrote, so an engine never sees or re-renders core's fiction.
+- **`GameState.mechanics: JsonValue`.** One opaque payload in the envelope. Each engine validates
+  it into its own strict mutable model on every read and validates the dump back on every write —
+  dumping runs no validator, so the round trip *is* the commit gate. `Engine.validate_state` became
+  `Engine.commit(state)`: the one path that gives a new entity its mechanics and revalidates the
+  half core cannot read. It runs at load, at the end of every turn, after an advancement, and after
+  a new game is composed.
+- **Effects split by owner.** `state/effects.py` keeps six world ops (`Reveal`, `Move`,
+  `GainImprovisedItem`, `TraitChange`, `RelationChange`, `AdvanceThread`) as `WorldOp`/`WorldEffect`;
+  `apply_effect(draft, effect)` lost its `default_rules` parameter and its `advancing` flag.
+  `CounterChange` moved to `engines/counters.py` as an *engine* effect (and lost `maximum`, which
+  only advancement ever set). `GrantCounter`, `Refill`, `SetNote`, `SetNumber`, `AddRef`,
+  `SheetEffect`, `SheetDelta`, and `Effect` are gone from core entirely.
+- **Plans are generic over their engine's vocabulary.** `TurnPlanBase` is now only the marker plus
+  the stringified-JSON transport repair; `Branched[E]` carries `effects`/`branches` over the
+  engine's own union, and `apply_branch`/`apply_all`/`check_effects`/`check_action` take that
+  engine's applier as a parameter. Core no longer fixes a mechanical effect union into the plan,
+  and the pipeline no longer applies `plan.effects` — `engine.resolve_action` owns the whole plan.
+- **Story's mechanics are typed, not a map.** `Adventurer` spells out four approach ints and two
+  `Counter` pools; a typo in an authored file now fails at load rather than sitting unread. The
+  authored story overlay flattened to match (`{"bold": 2, ..., "stress": {...}}`), and its tags
+  moved into the core-authored files.
+- **5e keeps an open map, and says so in its own package.** `dnd5e/mechanics.py` owns `Sheet`
+  (numbers/counters/notes/refs), the actor template that used to live in `spec.json`, content-ref
+  projection, and rendering. `spec.json` is down to `collections` + `projecting`, which are content
+  concerns; story's is `{"collections": {}}`.
+- **Advancement speaks each engine's own language.** `ProposalBase` in `state/advancement.py`
+  replaces `SheetDelta` the way `TurnPlanBase` replaces a shared plan: story proposes `Growth`
+  (one change of four, the engine spending the three marks itself), 5e proposes `LevelUp` (picks,
+  hit points, proficiency, slots, granted pools, ability improvements — the engine setting `level`
+  and lifting `advancement-ready` itself). Both moved bookkeeping the model used to write into
+  code, which is the same rule the turn already follows.
+- `SAVE_VERSION` 47 → 48. Saves and traces from 47 are refused, never converted. Goldens
+  regenerated in one pass; the diff is only the predicted movement — `records` → `entities` (a
+  location no longer carries an empty sheet at all), `traits` on the entity, the engine half split
+  out into `mechanics`, `sheet_delta.json` replaced by a per-engine `proposal.json`.
+- Tests: `test_sheet.py` went with its subject, its counter-bounds half surviving as
+  `test_counters.py`; `test_proposals.py` now exercises story's `Growth` and the 5e pick legality
+  moved to the engine suite that owns it. Two eval probes got *stricter*, not looser —
+  `NoStateChange` compares `state.mechanics` as well as the world (mechanics left `world`, so the
+  old check had a hole a silent HP change would slip through), and `BranchAddsTag` follows the
+  `trait-change` rename or `condition-rider` would never match a real plan again. The probe engine
+  now round-trips its payload through a real `GameState.mechanics` and refuses a corrupted one,
+  which is phase 7's fixture driving the paths phase 8 actually shipped. 133 tests pass, ruff and
+  basedpyright clean.
+
+### What the review changed
+
+An adversarial review ran over the staged diff. Three findings were worth acting on:
+
+- **The advisor had stopped seeing the character's traits.** `render_proposal` rendered only
+  `engine.renderer(...)`, which is now mechanics alone — while story's `Growth.lose_trait_id` asks
+  the model for "the exact id of a burden the character carries". Every shed-a-burden intent would
+  have burned a guaranteed retry. `prompts.entity_state` (the engine's render plus the core
+  `traits:` line) is now what both the turn and the advisor render, so there is one answer to
+  "what does a role see about an entity".
+- **A corrupt payload was being repaired instead of refused.** `commit` fills in mechanics for an
+  entity created mid-turn, which cannot be told apart from an entry corruption dropped — so a save
+  whose mechanics had lost the player was silently rebuilt, and 5e then died on a raw `KeyError`
+  reading `level`. Both engines' `commit` now refuse a payload that names no player, before any
+  gap is filled. ADR-0001's "fails at load and at commit, never silently" holds again.
+- **`_double_spend` refused by counter name alone**, so a branch spending *another* entity's
+  `slot-1` was rejected with a message that then lied about why. It compares the payer now.
+
+Cuts taken with it: the six `del engine` adapter functions in both `rules.py` (each engine's
+`mechanics` module now exposes `begin`/`commit`/`render` under the plugin's own names, passed
+straight through), dnd5e's single-caller `resolve()` inlined into `resolve_plan` so both engines
+read the same way, `apply_hooks`'s dead `engine` parameter, and `Adventurer.counter()`.
+Renames the review earned: `check_plan_base`/`check_plan_with_trial` → `check_effects`/
+`check_action` (the second adds a trial *resolve*, which the old names hid), `target` →
+`reveal_target`, `counters.changed` → `counter_fact`, and `world.of_kind()` now requires its kind
+— seven of ten callers wanted every entity and can say `world.entities.values()`.
+
+### Honest line count
+
+`src` is **net +183** (+1305/−1122): `state/` −451, `engines/` +631. That is the shape the phase
+asks for and not a simplification by line count — concepts that existed once generically now exist
+twice by design (two mechanics models replacing one `sheet.py` plus its spec templates, two typed
+proposals replacing one `SheetDelta`). What core bought is that it no longer names a mechanical
+field anywhere, which the probe engine proves by importing only ids, dice, and facts. Tests and
+scripts came down 114 lines. The remaining recoverable ceremony — the `Engine` wrapper's fifteen
+delegations, story's mandatory empty `spec.json`, and the ~25 lines of `read`/`write`/`apply`
+plumbing duplicated between the two mechanics modules — is phase 9's deletion list, so it was left
+alone rather than churned twice.
+
 ## Next
 
-Phase 8 — separate fictional world from engine mechanics, against the contract in ADR-0001.
-Story first, then 5e, reading state/turn fixture diffs at each step; bump `SAVE_VERSION`; finish
-by running the probe engine through the real paths.
+Phase 9 — one engine object with optional capabilities. Its deletion list is already known: the
+`EnginePlugin`/`Engine` wrapper split and its fifteen delegations, the mandatory per-engine files
+story does not need, advancement as an optional capability rather than four plugin fields every
+engine must fill, and the `read`/`write`/`apply` plumbing duplicated across the two mechanics
+modules. Lifting that plumbing into `engines/counters.py` shares parse-and-dump over engine-owned
+models, not a shared aggregate, so it does not re-create `Sheet`.

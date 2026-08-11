@@ -21,8 +21,8 @@ from pydantic_ai.messages import (
 )
 from pydantic_ai.models.function import AgentInfo, FunctionModel
 
+from aidm.engines.story.mechanics import read
 from aidm.state.base import PLAYER_ID
-from aidm.state.world import player_sheet, sheet_of
 from aidm.turn.pipeline import TURN_STEPS
 from aidm.turn.roles import ChannelSafeModel
 
@@ -71,7 +71,7 @@ async def test_the_resolver_applies_only_the_branch_of_the_outcome_rolled() -> N
         return {
             "outcome": outcome,
             "effects": [
-                {"op": "tag-change", "mode": "add", "entity_id": "player", "tag_id": outcome}
+                {"op": "trait-change", "mode": "add", "entity_id": "player", "trait_id": outcome}
             ],
         }
 
@@ -103,9 +103,9 @@ async def test_the_resolver_applies_only_the_branch_of_the_outcome_rolled() -> N
     total = rolled.data["total"]
     assert isinstance(total, int)
     expected = "strong" if total >= 10 else "mixed" if total >= 7 else "setback"
-    held = {tag.id for tag in player_sheet(result.state).tags}
+    held = {trait.id for trait in result.state.player.traits}
     assert held & {"strong", "mixed", "setback"} == {expected}
-    engine.validate_state(result.state)
+    engine.commit(result.state)
 
 
 async def test_a_plan_answered_as_plain_text_json_settles_the_turn() -> None:
@@ -205,21 +205,22 @@ async def test_worldkeeper_creations_receive_valid_engine_rules_before_commit() 
 
     names = {"The Rain Gallery", "Iven", "a sealed letter"}
     created = {
-        entity.kind: entity for entity in result.state.world.entities() if entity.name in names
+        entity.kind: entity
+        for entity in result.state.world.entities.values()
+        if entity.name in names
     }
     assert set(created) == {"location", "actor", "item"}
     location, actor, item = created["location"], created["actor"], created["item"]
     assert actor.parent_id == location.id
     assert item.parent_id == location.id
     assert location.parent_id is None
-    actor_sheet = sheet_of(result.state, actor.id)
-    item_sheet = sheet_of(result.state, item.id)
-    assert {"stress", "growth"} <= set(actor_sheet.counters)
-    assert item_sheet.numbers == {} and item_sheet.counters == {}
+    mechanics = read(result.state)
+    assert {"stress", "growth"} <= set(mechanics.actors[actor.id].counters())
+    assert item.id not in mechanics.actors
     resolved = next(step.output for step in result.turn.steps if step.name == "resolve")
     assert resolved == "- (nothing mechanical happened)"
     assert "new actor" not in shown(result.turn, "narrator")
-    engine.validate_state(result.state)
+    engine.commit(result.state)
 
 
 async def test_a_failed_role_never_mutates_the_input_state() -> None:

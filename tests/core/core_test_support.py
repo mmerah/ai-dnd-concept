@@ -35,9 +35,8 @@ def updated[T: BaseModel](model: T, **changes: object) -> T:
 
 
 def with_entity(state: GameState, entity: Entity) -> GameState:
-    """Replace one entity, keeping whatever payload its record already holds."""
     draft = state.draft()
-    draft.world.record(entity.id).entity = entity
+    draft.world.entities[entity.id] = entity
     return draft.committed()
 
 

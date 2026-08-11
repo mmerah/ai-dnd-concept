@@ -130,7 +130,7 @@ class LauncherController:
     def choose_character(self, character_id: Slug) -> None:
         if character_id not in {option.id for option in self.compatible_characters()}:
             raise ValueError(
-                f"character {character_id!r} has no {self.selected_engine!r} sheet written for it"
+                f"character {character_id!r} has no {self.selected_engine!r} rules written for it"
             )
         self.selected_character = character_id
 

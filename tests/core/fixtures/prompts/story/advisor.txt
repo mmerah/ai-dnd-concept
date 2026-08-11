@@ -6,9 +6,9 @@ Say how the character has changed. One change only: raise an approach, gain an e
 
 THE CHARACTER
 Kael
-numbers: bold 2, clever 1, empathetic 0, subtle 1
-counters: growth 3/3, stress 0/5
-tags: Relic Hunter[id=relic-hunter] — (edge) Kael knows how old sanctums conceal what matters., Marked by the Past[id=marked-by-the-past] — (burden) Old scars make certain memories hard to face.
+approaches: bold 2, subtle 1, clever 1, empathetic 0
+pools: growth 3/3, stress 0/5
+traits: Relic Hunter[id=relic-hunter] — (edge) Kael knows how old sanctums conceal what matters., Marked by the Past[id=marked-by-the-past] — (burden) Old scars make certain memories hard to face.
 
 WHAT THE PLAYER WANTS
 I want to strike harder.

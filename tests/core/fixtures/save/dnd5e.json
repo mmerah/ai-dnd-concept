@@ -1,5 +1,5 @@
 {
-  "save_version": 47,
+  "save_version": 48,
   "scenario_id": "whispering-vault",
   "character_id": "kael",
   "scenario": {
@@ -8,408 +8,157 @@
   },
   "engine": "dnd5e",
   "world": {
-    "records": {
+    "entities": {
       "study": {
-        "entity": {
-          "id": "study",
-          "kind": "location",
-          "name": "the abbot's study",
-          "brief": "A cramped room of ledgers and cold candle stubs; a loose flagstone hides something under the desk.",
-          "detail": null,
-          "known": true,
-          "parent_id": null
-        },
-        "rules": {
-          "kind": "location",
-          "numbers": {},
-          "counters": {},
-          "tags": [],
-          "notes": {},
-          "refs": []
-        }
+        "id": "study",
+        "kind": "location",
+        "name": "the abbot's study",
+        "brief": "A cramped room of ledgers and cold candle stubs; a loose flagstone hides something under the desk.",
+        "detail": null,
+        "known": true,
+        "parent_id": null,
+        "traits": []
       },
       "cloister": {
-        "entity": {
-          "id": "cloister",
-          "kind": "location",
-          "name": "the cloister",
-          "brief": "A frost-rimed colonnade around a dead garden; Brother Tomas sweeps it to no purpose.",
-          "detail": null,
-          "known": true,
-          "parent_id": null
-        },
-        "rules": {
-          "kind": "location",
-          "numbers": {},
-          "counters": {},
-          "tags": [],
-          "notes": {},
-          "refs": []
-        }
+        "id": "cloister",
+        "kind": "location",
+        "name": "the cloister",
+        "brief": "A frost-rimed colonnade around a dead garden; Brother Tomas sweeps it to no purpose.",
+        "detail": null,
+        "known": true,
+        "parent_id": null,
+        "traits": []
       },
       "bell_tower": {
-        "entity": {
-          "id": "bell_tower",
-          "kind": "location",
-          "name": "the bell tower",
-          "brief": "A cramped climb of rotten ladders above the nave, its bell long since stilled.",
-          "detail": null,
-          "known": false,
-          "parent_id": null
-        },
-        "rules": {
-          "kind": "location",
-          "numbers": {},
-          "counters": {},
-          "tags": [],
-          "notes": {},
-          "refs": []
-        }
+        "id": "bell_tower",
+        "kind": "location",
+        "name": "the bell tower",
+        "brief": "A cramped climb of rotten ladders above the nave, its bell long since stilled.",
+        "detail": null,
+        "known": false,
+        "parent_id": null,
+        "traits": []
       },
       "vault": {
-        "entity": {
-          "id": "vault",
-          "kind": "location",
-          "name": "the sealed vault",
-          "brief": "The undercroft chamber Kael came for, its door bearing a seal nobody living can read.",
-          "detail": null,
-          "known": true,
-          "parent_id": null
-        },
-        "rules": {
-          "kind": "location",
-          "numbers": {
-            "milestone-level": 2
-          },
-          "counters": {},
-          "tags": [],
-          "notes": {},
-          "refs": []
-        }
+        "id": "vault",
+        "kind": "location",
+        "name": "the sealed vault",
+        "brief": "The undercroft chamber Kael came for, its door bearing a seal nobody living can read.",
+        "detail": null,
+        "known": true,
+        "parent_id": null,
+        "traits": []
       },
       "mara": {
-        "entity": {
-          "id": "mara",
-          "kind": "actor",
-          "name": "Mara",
-          "brief": "The abbey's last scribe, cautious and tired, still cataloguing books nobody will read.",
-          "detail": null,
-          "known": true,
-          "parent_id": "study"
-        },
-        "rules": {
-          "kind": "actor",
-          "numbers": {
-            "strength": 10,
-            "dexterity": 10,
-            "constitution": 10,
-            "intelligence": 10,
-            "wisdom": 10,
-            "charisma": 10,
-            "armor-class": 10
-          },
-          "counters": {
-            "hp": {
-              "current": 1,
-              "maximum": 1,
-              "minimum": 0,
-              "recharge": null
-            }
-          },
-          "tags": [],
-          "notes": {},
-          "refs": []
-        }
+        "id": "mara",
+        "kind": "actor",
+        "name": "Mara",
+        "brief": "The abbey's last scribe, cautious and tired, still cataloguing books nobody will read.",
+        "detail": null,
+        "known": true,
+        "parent_id": "study",
+        "traits": []
       },
       "tomas": {
-        "entity": {
-          "id": "tomas",
-          "kind": "actor",
-          "name": "Brother Tomas",
-          "brief": "A deaf old porter who sweeps the cloister and knows almost nothing about the vault.",
-          "detail": null,
-          "known": true,
-          "parent_id": "cloister"
-        },
-        "rules": {
-          "kind": "actor",
-          "numbers": {
-            "strength": 10,
-            "dexterity": 10,
-            "constitution": 10,
-            "intelligence": 10,
-            "wisdom": 10,
-            "charisma": 10,
-            "armor-class": 10
-          },
-          "counters": {
-            "hp": {
-              "current": 1,
-              "maximum": 1,
-              "minimum": 0,
-              "recharge": null
-            }
-          },
-          "tags": [],
-          "notes": {},
-          "refs": []
-        }
+        "id": "tomas",
+        "kind": "actor",
+        "name": "Brother Tomas",
+        "brief": "A deaf old porter who sweeps the cloister and knows almost nothing about the vault.",
+        "detail": null,
+        "known": true,
+        "parent_id": "cloister",
+        "traits": []
       },
       "elena": {
-        "entity": {
-          "id": "elena",
-          "kind": "actor",
-          "name": "Elena",
-          "brief": "The vault's former archivist, hiding in the bell tower; she alone remembers the sealing rite.",
-          "detail": null,
-          "known": false,
-          "parent_id": "bell_tower"
-        },
-        "rules": {
-          "kind": "actor",
-          "numbers": {
-            "strength": 10,
-            "dexterity": 10,
-            "constitution": 10,
-            "intelligence": 10,
-            "wisdom": 10,
-            "charisma": 10,
-            "armor-class": 10
-          },
-          "counters": {
-            "hp": {
-              "current": 1,
-              "maximum": 1,
-              "minimum": 0,
-              "recharge": null
-            }
-          },
-          "tags": [],
-          "notes": {},
-          "refs": []
-        }
+        "id": "elena",
+        "kind": "actor",
+        "name": "Elena",
+        "brief": "The vault's former archivist, hiding in the bell tower; she alone remembers the sealing rite.",
+        "detail": null,
+        "known": false,
+        "parent_id": "bell_tower",
+        "traits": []
       },
       "cloister_rat": {
-        "entity": {
-          "id": "cloister_rat",
-          "kind": "actor",
-          "name": "a bloated rat",
-          "brief": "It has grown fat on the dead garden and does not run from a lantern.",
-          "detail": null,
-          "known": false,
-          "parent_id": "cloister"
-        },
-        "rules": {
-          "kind": "actor",
-          "numbers": {
-            "strength": 7,
-            "dexterity": 15,
-            "constitution": 11,
-            "intelligence": 2,
-            "wisdom": 10,
-            "charisma": 4,
-            "armor-class": 12,
-            "xp": 25,
-            "proficiency-bonus": 2,
-            "speed-walk": 30,
-            "darkvision": 60,
-            "passive-perception": 10
-          },
-          "counters": {
-            "hp": {
-              "current": 7,
-              "maximum": 7,
-              "minimum": 0,
-              "recharge": null
-            }
-          },
-          "tags": [],
-          "notes": {},
-          "refs": [
-            {
-              "pack": "srd-2014",
-              "collection": "monsters",
-              "index": "giant-rat"
-            }
-          ]
-        }
+        "id": "cloister_rat",
+        "kind": "actor",
+        "name": "a bloated rat",
+        "brief": "It has grown fat on the dead garden and does not run from a lantern.",
+        "detail": null,
+        "known": false,
+        "parent_id": "cloister",
+        "traits": [
+          {
+            "id": "disease-swollen",
+            "name": "Disease-Swollen",
+            "text": "(edge) The rat is unnaturally hard to frighten or drive off."
+          }
+        ]
       },
       "vault_map": {
-        "entity": {
-          "id": "vault_map",
-          "kind": "item",
-          "name": "the vault map",
-          "brief": "A creased chart of the undercroft, marking a stair the abbey's own plans deny.",
-          "detail": null,
-          "known": true,
-          "parent_id": "player"
-        },
-        "rules": {
-          "kind": "item",
-          "numbers": {},
-          "counters": {},
-          "tags": [],
-          "notes": {},
-          "refs": []
-        }
+        "id": "vault_map",
+        "kind": "item",
+        "name": "the vault map",
+        "brief": "A creased chart of the undercroft, marking a stair the abbey's own plans deny.",
+        "detail": null,
+        "known": true,
+        "parent_id": "player",
+        "traits": []
       },
       "lantern": {
-        "entity": {
-          "id": "lantern",
-          "kind": "item",
-          "name": "a guttering lantern",
-          "brief": "A dented tin lantern whose flame will not hold still.",
-          "detail": null,
-          "known": true,
-          "parent_id": "player"
-        },
-        "rules": {
-          "kind": "item",
-          "numbers": {},
-          "counters": {},
-          "tags": [],
-          "notes": {},
-          "refs": [
-            {
-              "pack": "srd-2014",
-              "collection": "gear",
-              "index": "lantern-hooded"
-            }
-          ]
-        }
+        "id": "lantern",
+        "kind": "item",
+        "name": "a guttering lantern",
+        "brief": "A dented tin lantern whose flame will not hold still.",
+        "detail": null,
+        "known": true,
+        "parent_id": "player",
+        "traits": [
+          {
+            "id": "unsteady-lantern",
+            "name": "Unsteady Lantern",
+            "text": "(gear) Its shifting light exposes seams and movement in deep shadow."
+          }
+        ]
       },
       "player": {
-        "entity": {
-          "id": "player",
-          "kind": "actor",
-          "name": "Kael",
-          "brief": "A scarred relic-hunter who came to the abbey for what is sealed beneath it.",
-          "detail": null,
-          "known": true,
-          "parent_id": "study"
-        },
-        "rules": {
-          "kind": "actor",
-          "numbers": {
-            "strength": 11,
-            "dexterity": 14,
-            "constitution": 13,
-            "intelligence": 12,
-            "wisdom": 14,
-            "charisma": 12,
-            "armor-class": 12,
-            "hit-die": 10,
-            "speed": 30,
-            "level": 1,
-            "proficiency-bonus": 2
+        "id": "player",
+        "kind": "actor",
+        "name": "Kael",
+        "brief": "A scarred relic-hunter who came to the abbey for what is sealed beneath it.",
+        "detail": null,
+        "known": true,
+        "parent_id": "study",
+        "traits": [
+          {
+            "id": "relic-hunter",
+            "name": "Relic Hunter",
+            "text": "(edge) Kael knows how old sanctums conceal what matters."
           },
-          "counters": {
-            "hp": {
-              "current": 11,
-              "maximum": 11,
-              "minimum": 0,
-              "recharge": null
-            },
-            "second-wind": {
-              "current": 1,
-              "maximum": 1,
-              "minimum": 0,
-              "recharge": "short-rest"
-            }
+          {
+            "id": "marked-by-the-past",
+            "name": "Marked by the Past",
+            "text": "(burden) Old scars make certain memories hard to face."
           },
-          "tags": [
-            {
-              "id": "success",
-              "name": "Success",
-              "text": ""
-            }
-          ],
-          "notes": {},
-          "refs": [
-            {
-              "pack": "srd-2014",
-              "collection": "classes",
-              "index": "fighter"
-            },
-            {
-              "pack": "srd-2014",
-              "collection": "races",
-              "index": "half-elf"
-            },
-            {
-              "pack": "srd-2014",
-              "collection": "backgrounds",
-              "index": "acolyte"
-            },
-            {
-              "pack": "srd-2014",
-              "collection": "features",
-              "index": "second-wind"
-            },
-            {
-              "pack": "srd-2014",
-              "collection": "features",
-              "index": "fighter-fighting-style-defense"
-            },
-            {
-              "pack": "srd-2014",
-              "collection": "proficiencies",
-              "index": "skill-athletics"
-            },
-            {
-              "pack": "srd-2014",
-              "collection": "proficiencies",
-              "index": "skill-perception"
-            },
-            {
-              "pack": "srd-2014",
-              "collection": "proficiencies",
-              "index": "skill-investigation"
-            },
-            {
-              "pack": "srd-2014",
-              "collection": "proficiencies",
-              "index": "skill-stealth"
-            }
-          ]
-        }
+          {
+            "id": "success",
+            "name": "Success",
+            "text": ""
+          }
+        ]
       },
       "sister_auber": {
-        "entity": {
-          "id": "sister_auber",
-          "kind": "actor",
-          "name": "Sister Auber",
-          "brief": "A lay sister who keeps the vault keys.",
-          "detail": {
-            "description": "She has kept the abbey's keys for thirty years.",
-            "hook": "She knows which doors were sealed and by whom."
-          },
-          "known": true,
-          "parent_id": "study"
+        "id": "sister_auber",
+        "kind": "actor",
+        "name": "Sister Auber",
+        "brief": "A lay sister who keeps the vault keys.",
+        "detail": {
+          "description": "She has kept the abbey's keys for thirty years.",
+          "hook": "She knows which doors were sealed and by whom."
         },
-        "rules": {
-          "kind": "actor",
-          "numbers": {
-            "strength": 10,
-            "dexterity": 10,
-            "constitution": 10,
-            "intelligence": 10,
-            "wisdom": 10,
-            "charisma": 10,
-            "armor-class": 10
-          },
-          "counters": {
-            "hp": {
-              "current": 1,
-              "maximum": 1,
-              "minimum": 0,
-              "recharge": null
-            }
-          },
-          "tags": [],
-          "notes": {},
-          "refs": []
-        }
+        "known": true,
+        "parent_id": "study",
+        "traits": []
       }
     },
     "relations": {
@@ -441,6 +190,247 @@
       }
     }
   },
+  "mechanics": {
+    "sheets": {
+      "study": {
+        "numbers": {},
+        "counters": {},
+        "notes": {},
+        "refs": []
+      },
+      "cloister": {
+        "numbers": {},
+        "counters": {},
+        "notes": {},
+        "refs": []
+      },
+      "bell_tower": {
+        "numbers": {},
+        "counters": {},
+        "notes": {},
+        "refs": []
+      },
+      "vault": {
+        "numbers": {
+          "milestone-level": 2
+        },
+        "counters": {},
+        "notes": {},
+        "refs": []
+      },
+      "mara": {
+        "numbers": {
+          "strength": 10,
+          "dexterity": 10,
+          "constitution": 10,
+          "intelligence": 10,
+          "wisdom": 10,
+          "charisma": 10,
+          "armor-class": 10
+        },
+        "counters": {
+          "hp": {
+            "current": 1,
+            "maximum": 1,
+            "minimum": 0,
+            "recharge": null
+          }
+        },
+        "notes": {},
+        "refs": []
+      },
+      "tomas": {
+        "numbers": {
+          "strength": 10,
+          "dexterity": 10,
+          "constitution": 10,
+          "intelligence": 10,
+          "wisdom": 10,
+          "charisma": 10,
+          "armor-class": 10
+        },
+        "counters": {
+          "hp": {
+            "current": 1,
+            "maximum": 1,
+            "minimum": 0,
+            "recharge": null
+          }
+        },
+        "notes": {},
+        "refs": []
+      },
+      "elena": {
+        "numbers": {
+          "strength": 10,
+          "dexterity": 10,
+          "constitution": 10,
+          "intelligence": 10,
+          "wisdom": 10,
+          "charisma": 10,
+          "armor-class": 10
+        },
+        "counters": {
+          "hp": {
+            "current": 1,
+            "maximum": 1,
+            "minimum": 0,
+            "recharge": null
+          }
+        },
+        "notes": {},
+        "refs": []
+      },
+      "cloister_rat": {
+        "numbers": {
+          "strength": 7,
+          "dexterity": 15,
+          "constitution": 11,
+          "intelligence": 2,
+          "wisdom": 10,
+          "charisma": 4,
+          "armor-class": 12,
+          "xp": 25,
+          "proficiency-bonus": 2,
+          "speed-walk": 30,
+          "darkvision": 60,
+          "passive-perception": 10
+        },
+        "counters": {
+          "hp": {
+            "current": 7,
+            "maximum": 7,
+            "minimum": 0,
+            "recharge": null
+          }
+        },
+        "notes": {},
+        "refs": [
+          {
+            "pack": "srd-2014",
+            "collection": "monsters",
+            "index": "giant-rat"
+          }
+        ]
+      },
+      "vault_map": {
+        "numbers": {},
+        "counters": {},
+        "notes": {},
+        "refs": []
+      },
+      "lantern": {
+        "numbers": {},
+        "counters": {},
+        "notes": {},
+        "refs": [
+          {
+            "pack": "srd-2014",
+            "collection": "gear",
+            "index": "lantern-hooded"
+          }
+        ]
+      },
+      "player": {
+        "numbers": {
+          "strength": 11,
+          "dexterity": 14,
+          "constitution": 13,
+          "intelligence": 12,
+          "wisdom": 14,
+          "charisma": 12,
+          "armor-class": 12,
+          "hit-die": 10,
+          "speed": 30,
+          "level": 1,
+          "proficiency-bonus": 2
+        },
+        "counters": {
+          "hp": {
+            "current": 11,
+            "maximum": 11,
+            "minimum": 0,
+            "recharge": null
+          },
+          "second-wind": {
+            "current": 1,
+            "maximum": 1,
+            "minimum": 0,
+            "recharge": "short-rest"
+          }
+        },
+        "notes": {},
+        "refs": [
+          {
+            "pack": "srd-2014",
+            "collection": "classes",
+            "index": "fighter"
+          },
+          {
+            "pack": "srd-2014",
+            "collection": "races",
+            "index": "half-elf"
+          },
+          {
+            "pack": "srd-2014",
+            "collection": "backgrounds",
+            "index": "acolyte"
+          },
+          {
+            "pack": "srd-2014",
+            "collection": "features",
+            "index": "second-wind"
+          },
+          {
+            "pack": "srd-2014",
+            "collection": "features",
+            "index": "fighter-fighting-style-defense"
+          },
+          {
+            "pack": "srd-2014",
+            "collection": "proficiencies",
+            "index": "skill-athletics"
+          },
+          {
+            "pack": "srd-2014",
+            "collection": "proficiencies",
+            "index": "skill-perception"
+          },
+          {
+            "pack": "srd-2014",
+            "collection": "proficiencies",
+            "index": "skill-investigation"
+          },
+          {
+            "pack": "srd-2014",
+            "collection": "proficiencies",
+            "index": "skill-stealth"
+          }
+        ]
+      },
+      "sister_auber": {
+        "numbers": {
+          "strength": 10,
+          "dexterity": 10,
+          "constitution": 10,
+          "intelligence": 10,
+          "wisdom": 10,
+          "charisma": 10,
+          "armor-class": 10
+        },
+        "counters": {
+          "hp": {
+            "current": 1,
+            "maximum": 1,
+            "minimum": 0,
+            "recharge": null
+          }
+        },
+        "notes": {},
+        "refs": []
+      }
+    }
+  },
   "threads": {
     "vault-seal": {
       "id": "vault-seal",
@@ -469,10 +459,10 @@
           "why": "the vault door is found"
         },
         {
-          "op": "tag-change",
+          "op": "trait-change",
           "mode": "add",
           "entity_id": "vault",
-          "tag_id": "warded",
+          "trait_id": "warded",
           "text": "The seal answers a touch, and something behind the door answers with it.",
           "why": "the seal stirs when it is first seen"
         }

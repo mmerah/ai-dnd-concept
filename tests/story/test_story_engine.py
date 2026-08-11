@@ -2,24 +2,19 @@ from random import Random
 
 from story_test_support import grown, story_game
 
+from aidm.engines.counters import CounterChange
 from aidm.engines.loader import Engine
-from aidm.engines.story.advance import GROWTH_REQUIRED
+from aidm.engines.story.advance import MAX_APPROACH, MAX_STRESS, Growth
+from aidm.engines.story.mechanics import read, write
 from aidm.state.base import PLAYER_ID, EntityId
-from aidm.state.effects import CounterChange, SetNumber, SheetDelta, TagChange
+from aidm.state.effects import TraitChange
 from aidm.state.plan import OutcomeBranch, TurnPlanBase, check_speaker
-from aidm.state.world import GameState, player_sheet, sheet_of
+from aidm.state.world import GameState
 
-SPEND = CounterChange(
-    mode="adjust",
-    entity_id=PLAYER_ID,
-    counter="growth",
-    amount=-GROWTH_REQUIRED,
-    why="the marks are spent",
-)
 RAT = EntityId("cloister_rat")
 STRONG = OutcomeBranch(
     outcome="strong",
-    effects=(TagChange(mode="add", entity_id=PLAYER_ID, tag_id="sure-footed"),),
+    effects=(TraitChange(mode="add", entity_id=PLAYER_ID, trait_id="sure-footed"),),
 )
 SETBACK = OutcomeBranch(
     outcome="setback",
@@ -49,7 +44,20 @@ def _plan(engine: Engine, **action: object) -> TurnPlanBase:
 def _certain(state: GameState, bonus: int) -> GameState:
     """2d6 spans 2..12, so an approach this far out of range fixes the outcome under any seed."""
     draft = state.draft()
-    player_sheet(draft).numbers["bold"] = bonus
+    mechanics = read(draft)
+    mechanics.actors[PLAYER_ID].bold = bonus
+    write(draft, mechanics)
+    return draft.committed()
+
+
+def _capped(state: GameState) -> GameState:
+    """The player already at both story caps, so one more mark would break each of them."""
+    draft = state.draft()
+    mechanics = read(draft)
+    actor = mechanics.actors[PLAYER_ID]
+    actor.bold = MAX_APPROACH
+    actor.stress.maximum = MAX_STRESS
+    write(draft, mechanics)
     return draft.committed()
 
 
@@ -61,10 +69,9 @@ def test_a_risk_rolls_once_against_seven_and_applies_only_the_branch_it_landed_o
 
     (rolled,) = [fact for fact in facts if fact.kind == "dice_rolled"]
     assert (rolled.data["vs"], rolled.data["success"]) == (7, True)
-    assert [fact.kind for fact in facts] == ["dice_rolled", "tag_added"]
-    sheet = sheet_of(draft, PLAYER_ID)
-    assert sheet.tag("sure-footed") is not None
-    assert sheet.counters["growth"].current == 0
+    assert [fact.kind for fact in facts] == ["dice_rolled", "trait_added"]
+    assert draft.world.require(PLAYER_ID).trait("sure-footed") is not None
+    assert read(draft).actors[PLAYER_ID].growth.current == 0
 
 
 def test_a_setback_on_the_player_marks_growth_the_model_never_writes() -> None:
@@ -74,37 +81,37 @@ def test_a_setback_on_the_player_marks_growth_the_model_never_writes() -> None:
     facts = engine.resolve_action(draft, _plan(engine, actor_id=PLAYER_ID), Random(3))
 
     assert [fact.kind for fact in facts] == ["dice_rolled", "counter_changed", "counter_changed"]
-    sheet = sheet_of(draft, PLAYER_ID)
-    assert sheet.counters["growth"].current == 1
-    assert sheet.counters["stress"].current == 2
-    assert sheet.tag("sure-footed") is None
+    actor = read(draft).actors[PLAYER_ID]
+    assert actor.growth.current == 1
+    assert actor.stress.current == 2
+    assert draft.world.require(PLAYER_ID).trait("sure-footed") is None
 
 
 def test_check_plan_refuses_what_the_procedure_cannot_resolve() -> None:
-    """A tag must be held to count; whether a held tag helps or hinders stays the model's call."""
+    """A trait must be held to count; whether a held trait helps or hinders stays the model's
+    call."""
     engine, state = story_game()
-    gear = _plan(engine, actor_id=PLAYER_ID, helping_tag_id="unsteady-lantern")
+    gear = _plan(engine, actor_id=PLAYER_ID, helping_trait_id="unsteady-lantern")
 
     assert engine.check_plan(state, gear) is None
     assert "not here with the player" in _refusal(engine, state, _plan(engine, actor_id=RAT))
-    absent = _plan(engine, actor_id=PLAYER_ID, helping_tag_id="lockpicking")
+    absent = _plan(engine, actor_id=PLAYER_ID, helping_trait_id="lockpicking")
     assert "nothing helps them here" in _refusal(engine, state, absent)
-    hinders = _plan(engine, actor_id=PLAYER_ID, hindering_tag_id="unsteady-lantern")
+    hinders = _plan(engine, actor_id=PLAYER_ID, hindering_trait_id="unsteady-lantern")
     assert "nothing hinders them here" in _refusal(engine, state, hinders)
 
     quiet = engine.plan_type.model_validate({"branches": (STRONG,)})
     assert "settles no outcome" in _refusal(engine, state, quiet)
 
     taken_out = state.draft()
-    player_sheet(taken_out).counters["stress"].current = 5
+    mechanics = read(taken_out)
+    mechanics.actors[PLAYER_ID].stress.current = 5
+    write(taken_out, mechanics)
     assert "TAKEN OUT" in _refusal(engine, taken_out.committed(), _plan(engine, actor_id=PLAYER_ID))
 
 
 def test_check_speaker_refuses_who_the_narrator_may_not_voice() -> None:
-    """The speaker guard is what keeps the Narrator from voicing the player or an unmet NPC.
-
-    It now runs on the Scene Director's directive rather than the plan, so it is exercised
-    directly rather than through `engine.check_plan`."""
+    """The speaker guard is what keeps the Narrator from voicing the player or an unmet NPC."""
     _, state = story_game()
 
     assert check_speaker(state, EntityId("mara")) is None
@@ -122,23 +129,19 @@ def test_growth_opens_an_offer_and_storys_own_caps_refuse_what_breaks_them() -> 
     ready = grown(state)
     offer = engine.offered(ready)
     assert offer is not None
+    maxed = _capped(ready)
 
-    legal = SheetDelta(
-        changes=(
-            SetNumber(entity_id=PLAYER_ID, key="clever", value=2, why="patience earned"),
-            SPEND,
-        )
-    )
-    over_cap = SheetDelta(
-        changes=(SetNumber(entity_id=PLAYER_ID, key="bold", value=4, why="greed"), SPEND)
-    )
-    unspent = SheetDelta(
-        changes=(SetNumber(entity_id=PLAYER_ID, key="clever", value=2, why="free lunch"),)
-    )
+    legal = Growth(approach="clever", why="patience earned")
+    over_approach = Growth(approach="bold", why="greed")
+    over_stress = Growth(resilience=True, why="steady now")
 
     assert engine.violation(ready, offer, legal) is None
-    assert engine.violation(ready, offer, over_cap) == "an approach cannot pass +3: ['bold']"
-    assert "must be spent" in str(engine.violation(ready, offer, unspent))
+    assert engine.violation(maxed, offer, over_approach) == (
+        f"an approach cannot pass +{MAX_APPROACH}: ['bold']"
+    )
+    assert engine.violation(maxed, offer, over_stress) == (
+        f"the stress maximum cannot pass {MAX_STRESS}, and this proposal reaches {MAX_STRESS + 1}"
+    )
 
 
 def test_the_one_action_is_worked_through_in_the_directors_instructions() -> None:

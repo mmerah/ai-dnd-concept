@@ -1,5 +1,5 @@
 {
-  "save_version": 47,
+  "save_version": 48,
   "facts": [
     {
       "source": "core",
@@ -20,12 +20,12 @@
     },
     {
       "source": "core",
-      "kind": "tag_added",
+      "kind": "trait_added",
       "trace": "Kael is Success",
       "narrator": "Kael is Success",
       "data": {
         "entity_id": "player",
-        "tag_id": "success"
+        "trait_id": "success"
       }
     },
     {
@@ -123,10 +123,10 @@
             "outcome": "success",
             "effects": [
               {
-                "op": "tag-change",
+                "op": "trait-change",
                 "mode": "add",
                 "entity_id": "player",
-                "tag_id": "success",
+                "trait_id": "success",
                 "text": "",
                 "why": ""
               }
@@ -136,10 +136,10 @@
             "outcome": "failure",
             "effects": [
               {
-                "op": "tag-change",
+                "op": "trait-change",
                 "mode": "add",
                 "entity_id": "player",
-                "tag_id": "failure",
+                "trait_id": "failure",
                 "text": "",
                 "why": ""
               }

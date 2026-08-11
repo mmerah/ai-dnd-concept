@@ -319,10 +319,10 @@ async def _director_turn(
     )
     result = await director.agent.run(rendered, deps=PlanContext(engine=engine, state=before))
     draft, facts = resolve_plan(engine, before.draft(), result.output, rng)
-    draft, fired = apply_hooks(engine, draft, facts)
+    draft, fired = apply_hooks(draft, facts)
     facts.extend(fired)
+    engine.commit(draft)
     after = draft.committed()
-    engine.validate_state(after)
     outcome = Outcome(
         before=before,
         after=after,
@@ -353,8 +353,8 @@ async def _advisor_turn(
     result = await advisor(engine, config).agent.run(rendered, deps=deps)
     draft = before.draft()
     facts = engine.advance(draft, result.output)
+    engine.commit(draft)
     after = draft.committed()
-    engine.validate_state(after)
     outcome = Outcome(
         before=before, after=after, facts=facts, plan=result.output.model_dump(mode="json")
     )
@@ -382,9 +382,9 @@ async def _worldkeeper_turn(
         narration=case.narration,
     )
     result = await keeper.agent.run(rendered, deps=None)
-    facts = apply_creations(engine, draft, result.output, config.max_growth)
+    facts = apply_creations(draft, result.output, config.max_growth)
+    engine.commit(draft)
     after = draft.committed()
-    engine.validate_state(after)
     report = result.output.model_dump(mode="json")
     outcome = Outcome(before=before, after=after, facts=tuple(facts), plan=report)
     return Attempt(

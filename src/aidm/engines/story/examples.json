@@ -35,11 +35,11 @@
             "why": "the seal holds and the whispering finds him"
           },
           {
-            "op": "tag-change",
+            "op": "trait-change",
             "mode": "add",
             "entity_id": "player",
-            "tag_id": "ears-ringing",
-            "text": "(condition) The whispering drowns out anything said softly."
+            "text": "(condition) The whispering drowns out anything said softly.",
+            "trait_id": "ears-ringing"
           }
         ]
       }
@@ -49,9 +49,9 @@
       "actor_id": "player",
       "approach": "bold",
       "difficulty": "demanding",
-      "helping_tag_id": "relic-hunter",
-      "hindering_tag_id": "marked-by-the-past",
-      "stakes": "forcing the sealed vault door"
+      "stakes": "forcing the sealed vault door",
+      "helping_trait_id": "relic-hunter",
+      "hindering_trait_id": "marked-by-the-past"
     }
   }
 ]

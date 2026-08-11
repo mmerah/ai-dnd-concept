@@ -7,7 +7,9 @@ from aidm.app.session import GameSession, LaunchTarget, build_engine
 from aidm.content.store import FileSaves, FileTraces
 from aidm.engines.loader import Engine
 from aidm.engines.story.advance import GROWTH_REQUIRED
-from aidm.state.world import GameState, player_sheet
+from aidm.engines.story.mechanics import read, write
+from aidm.state.base import PLAYER_ID
+from aidm.state.world import GameState
 from aidm.turn.advancement import advisor
 from aidm.turn.pipeline import TurnOptions, build_stages
 
@@ -44,5 +46,7 @@ def story_session(directory: Path, rng: Random | None = None) -> GameSession:
 def grown(state: GameState) -> GameState:
     """The state a run of player setbacks leaves behind: growth full, advancement on offer."""
     draft = state.draft()
-    player_sheet(draft).counters["growth"].current = GROWTH_REQUIRED
+    mechanics = read(draft)
+    mechanics.actors[PLAYER_ID].growth.current = GROWTH_REQUIRED
+    write(draft, mechanics)
     return draft.committed()

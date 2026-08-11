@@ -17,11 +17,13 @@ state:
   - Skill: Perception [srd-2014/proficiencies/skill-perception] — category=skills; reference=perception
   - Skill: Investigation [srd-2014/proficiencies/skill-investigation] — category=skills; reference=investigation
   - Skill: Stealth [srd-2014/proficiencies/skill-stealth] — category=skills; reference=stealth
+  traits: Relic Hunter[id=relic-hunter] — (edge) Kael knows how old sanctums conceal what matters., Marked by the Past[id=marked-by-the-past] — (burden) Old scars make certain memories hard to face.
 inventory:
 - a guttering lantern[id=lantern] — A dented tin lantern whose flame will not hold still.
   state:
     content:
     - Lantern, hooded [srd-2014/gear/lantern-hooded] — cost-gp=5
+    traits: Unsteady Lantern[id=unsteady-lantern] — (gear) Its shifting light exposes seams and movement in deep shadow.
 
 HERE WITH THE PLAYER:
 - Mara[id=mara] (npc) — at the abbot's study — The abbey's last scribe, cautious and tired, still cataloguing books nobody will read.
@@ -54,6 +56,7 @@ EXISTS BUT THE PLAYER DOES NOT KNOW IT YET:
     counters: hp 7/7
     content:
     - Giant Rat [srd-2014/monsters/giant-rat] — attacks=Bite +4 to hit, 1d4+2 piercing; challenge-rating=1/8; size=Small; beast
+    traits: Disease-Swollen[id=disease-swollen] — (edge) The rat is unnaturally hard to frighten or drive off.
 - the vault map[id=vault_map] (item) — at the abbot's study — A creased chart of the undercroft, marking a stair the abbey's own plans deny.
 
 ACTIVE THREADS:

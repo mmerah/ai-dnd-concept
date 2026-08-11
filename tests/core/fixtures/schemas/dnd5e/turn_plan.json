@@ -293,7 +293,7 @@
           "type": "string"
         },
         "counter": {
-          "description": "Exact key of one of that entity's counters, as its sheet spells it.",
+          "description": "Exact key of one of that entity's counters, as its state spells it.",
           "maxLength": 64,
           "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$",
           "title": "Counter",
@@ -303,19 +303,6 @@
           "description": "For `adjust`, how much the pool moves: negative to reduce. For `spend`, how much of the pool is paid, always positive.",
           "title": "Amount",
           "type": "integer"
-        },
-        "maximum": {
-          "anyOf": [
-            {
-              "type": "integer"
-            },
-            {
-              "type": "null"
-            }
-          ],
-          "default": null,
-          "description": "A new upper bound for the pool. Adjust, and advancement only.",
-          "title": "Maximum"
         },
         "why": {
           "default": "",
@@ -332,6 +319,28 @@
       ],
       "title": "CounterChange",
       "type": "object"
+    },
+    "Dnd5eEffect": {
+      "discriminator": {
+        "mapping": {
+          "advance-thread": "#/$defs/WorldOp",
+          "counter-change": "#/$defs/CounterChange",
+          "gain-improvised-item": "#/$defs/WorldOp",
+          "move": "#/$defs/WorldOp",
+          "relation-change": "#/$defs/WorldOp",
+          "reveal": "#/$defs/WorldOp",
+          "trait-change": "#/$defs/WorldOp"
+        },
+        "propertyName": "op"
+      },
+      "oneOf": [
+        {
+          "$ref": "#/$defs/WorldOp"
+        },
+        {
+          "$ref": "#/$defs/CounterChange"
+        }
+      ]
     },
     "GainImprovisedItem": {
       "additionalProperties": false,
@@ -457,9 +466,8 @@
       "title": "Move",
       "type": "object"
     },
-    "OutcomeBranch": {
+    "OutcomeBranch_Dnd5eEffect_": {
       "additionalProperties": false,
-      "description": "What follows in the fiction if the action lands on this outcome, and only then.",
       "properties": {
         "outcome": {
           "description": "One outcome label the chosen action allows.",
@@ -472,7 +480,7 @@
           "default": [],
           "description": "What that outcome causes in the world.",
           "items": {
-            "$ref": "#/$defs/TurnEffect"
+            "$ref": "#/$defs/Dnd5eEffect"
           },
           "title": "Effects",
           "type": "array"
@@ -481,7 +489,7 @@
       "required": [
         "outcome"
       ],
-      "title": "OutcomeBranch",
+      "title": "OutcomeBranch[Dnd5eEffect]",
       "type": "object"
     },
     "RelationChange": {
@@ -607,18 +615,18 @@
       "title": "Reveal",
       "type": "object"
     },
-    "TagChange": {
+    "TraitChange": {
       "additionalProperties": false,
-      "description": "Put a lasting condition, edge, or burden on an entity, or lift one the fiction ends. The\nsheet shows the id written out: `battle-worn` appears as Battle Worn.",
+      "description": "Put a lasting condition, edge, or burden on an entity, or lift one the fiction ends. The\ntrait shows the id written out: `battle-worn` appears as Battle Worn.",
       "properties": {
         "op": {
-          "const": "tag-change",
-          "default": "tag-change",
+          "const": "trait-change",
+          "default": "trait-change",
           "title": "Op",
           "type": "string"
         },
         "mode": {
-          "description": "`add` puts the tag on, `remove` lifts one the entity carries.",
+          "description": "`add` puts the trait on, `remove` lifts one the entity carries.",
           "enum": [
             "add",
             "remove"
@@ -631,11 +639,11 @@
           "title": "Entity Id",
           "type": "string"
         },
-        "tag_id": {
-          "description": "Stable slug for the tag, such as `poisoned`; to remove, the exact id of a tag the entity carries.",
+        "trait_id": {
+          "description": "Stable slug for the trait, such as `poisoned`; to remove, the exact id of a trait the entity carries.",
           "maxLength": 64,
           "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$",
-          "title": "Tag Id",
+          "title": "Trait Id",
           "type": "string"
         },
         "text": {
@@ -654,47 +662,10 @@
       "required": [
         "mode",
         "entity_id",
-        "tag_id"
+        "trait_id"
       ],
-      "title": "TagChange",
+      "title": "TraitChange",
       "type": "object"
-    },
-    "TurnEffect": {
-      "discriminator": {
-        "mapping": {
-          "advance-thread": "#/$defs/AdvanceThread",
-          "counter-change": "#/$defs/CounterChange",
-          "gain-improvised-item": "#/$defs/GainImprovisedItem",
-          "move": "#/$defs/Move",
-          "relation-change": "#/$defs/RelationChange",
-          "reveal": "#/$defs/Reveal",
-          "tag-change": "#/$defs/TagChange"
-        },
-        "propertyName": "op"
-      },
-      "oneOf": [
-        {
-          "$ref": "#/$defs/Reveal"
-        },
-        {
-          "$ref": "#/$defs/Move"
-        },
-        {
-          "$ref": "#/$defs/GainImprovisedItem"
-        },
-        {
-          "$ref": "#/$defs/CounterChange"
-        },
-        {
-          "$ref": "#/$defs/TagChange"
-        },
-        {
-          "$ref": "#/$defs/RelationChange"
-        },
-        {
-          "$ref": "#/$defs/AdvanceThread"
-        }
-      ]
     },
     "UseFeature": {
       "additionalProperties": false,
@@ -744,6 +715,28 @@
       ],
       "title": "UseFeature",
       "type": "object"
+    },
+    "WorldOp": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/Reveal"
+        },
+        {
+          "$ref": "#/$defs/Move"
+        },
+        {
+          "$ref": "#/$defs/GainImprovisedItem"
+        },
+        {
+          "$ref": "#/$defs/TraitChange"
+        },
+        {
+          "$ref": "#/$defs/RelationChange"
+        },
+        {
+          "$ref": "#/$defs/AdvanceThread"
+        }
+      ]
     }
   },
   "additionalProperties": false,
@@ -752,7 +745,7 @@
       "default": [],
       "description": "Consequences that happen whatever the action settles.",
       "items": {
-        "$ref": "#/$defs/TurnEffect"
+        "$ref": "#/$defs/Dnd5eEffect"
       },
       "title": "Effects",
       "type": "array"
@@ -761,7 +754,7 @@
       "default": [],
       "description": "Consequences keyed by outcome: at most one branch per label, and only labels this action allows. Outcomes that do not occur simply never apply. An action rolled to cause a lasting change — a condition taking hold or lifted, something revealed — must carry that change in the matching outcome's branch: with no branch, even success changes nothing.",
       "items": {
-        "$ref": "#/$defs/OutcomeBranch"
+        "$ref": "#/$defs/OutcomeBranch_Dnd5eEffect_"
       },
       "title": "Branches",
       "type": "array"

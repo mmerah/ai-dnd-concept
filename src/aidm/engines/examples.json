@@ -18,32 +18,17 @@
     "item_name": "a handful of gravel"
   },
   {
-    "op": "counter-change",
-    "mode": "adjust",
-    "entity_id": "warden",
-    "counter": "hp",
-    "amount": -3,
-    "why": "clawed by the hound"
-  },
-  {
-    "op": "counter-change",
-    "mode": "spend",
-    "entity_id": "player",
-    "counter": "rations",
-    "amount": 1
-  },
-  {
-    "op": "tag-change",
+    "op": "trait-change",
     "mode": "add",
     "entity_id": "warden",
-    "tag_id": "shaken",
+    "trait_id": "shaken",
     "text": "(condition) Rattled and wary until they regroup."
   },
   {
-    "op": "tag-change",
+    "op": "trait-change",
     "mode": "remove",
     "entity_id": "player",
-    "tag_id": "poisoned"
+    "trait_id": "poisoned"
   },
   {
     "op": "relation-change",

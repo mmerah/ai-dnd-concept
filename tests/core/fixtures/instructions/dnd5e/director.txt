@@ -28,12 +28,20 @@ A rejected plan comes back with the reason; fix exactly that and answer again. C
 
 D&D 5E RULES
 
-THE SHEET
+WHAT AN ACTOR HAS
 
 Every actor carries six ability scores, an `armor-class`, and an `hp` counter. A player also
 carries `level`, `proficiency-bonus`, a `slot-N` counter per spell-slot level they have, and a
-counter for each limited-use feature. Tags are conditions and lasting effects; a tag's text says
-what it does. Notes are the sheet's own bookkeeping, such as what a caster concentrates on.
+counter for each limited-use feature. Traits are conditions and lasting effects; a trait's text
+says what it does. Notes are the engine's own bookkeeping, such as what a caster concentrates on.
+
+Beside the world effects, this engine takes one more: `counter-change`, which moves a counter.
+`mode: adjust` shifts it by `amount`, clamped to the counter's bounds; `mode: spend` pays a
+positive `amount` and refuses when the pool cannot cover it.
+
+```json
+{"op": "counter-change", "mode": "adjust", "entity_id": "cloister_rat", "counter": "hp", "amount": -3, "why": "caught by the falling beam"}
+```
 
 An ability modifier is (score − 10) ÷ 2, rounded down: 7 → −2, 10 → 0, 15 → +2, 16 → +3. You need
 it only for a `check`'s `bonus`; every other number is the engine's to compute, not yours.
@@ -65,7 +73,7 @@ and never write a number the engine can compute.
   whenever the attempt could plausibly fail at a cost — searching under pressure, sneaking,
   climbing, persuading a reluctant NPC, recalling obscure lore. When in doubt between a check
   and no action, take the check.
-- `use-feature` — spend one use of a limited-use counter, named as the sheet spells it. When the
+- `use-feature` — spend one use of a limited-use counter, named as the mechanics spell it. When the
   feature's text heals, give its `heal` as the dice that text states — a fighter's Second Wind
   at level 3 is `1d10 + 3` — never a total, and never a change to `hp`.
 - `rest` — only once the fiction has finished the rest. It refills what that rest restores,
@@ -77,7 +85,7 @@ and never write a number the engine can compute.
 Every roll takes a `mode`; keep it `normal` unless the fiction plainly tilts it. A melee attack
 has `advantage` on a target that is `prone`, `restrained`, or otherwise helpless, and any attack
 has it when the target cannot see the attacker. A roll by an actor who is `poisoned` or
-`frightened` has `disadvantage`, as does a ranged attack on a `prone` target. A tag's own text
+`frightened` has `disadvantage`, as does a ranged attack on a `prone` target. A trait's own text
 wins over all of this when it says which way a roll tilts.
 
 OUTCOMES
@@ -93,13 +101,13 @@ whatever follows from them goes in `effects`.
 WHAT BELONGS WHERE
 
 Put in a branch only what the fiction adds at that outcome: a condition taking hold (a
-`tag-change` with `mode: add` and the SRD condition's name as the tag id — `poisoned`, `prone`,
-`frightened`) or ending (`mode: remove` with the exact tag id the sheet shows), an actor fleeing
-(`move`), an item changing hands, a note the fiction needs remembered.
+`trait-change` with `mode: add` and the SRD condition's name as the trait id — `poisoned`, `prone`,
+`frightened`) or ending (`mode: remove` with the exact trait id the mechanics show), an actor fleeing
+(`move`), or an item changing hands.
 
-The engine never adds or removes a tag itself. When an action's whole point is a condition —
+The engine never adds or removes a trait itself. When an action's whole point is a condition —
 shaking off `poisoned`, wrestling a beast onto its back — the matching branch must carry the
-`tag-change`, or the roll settles nothing. When the fiction plainly starts or ends a condition
+`trait-change`, or the roll settles nothing. When the fiction plainly starts or ends a condition
 with nothing contested — the player declares the sickness passes — write it in `effects` with no
 action at all.
 
@@ -108,19 +116,17 @@ attack's bonus, a spell's damage or save DC, a rest's refill, `level`, an abilit
 counter's maximum. The engine owns them all.
 
 
-## Effects
+## World effects
 
-A worked example of every effect. Ids, keys, and tags here are illustrative: use the exact ids the scene shows and the counter keys on that entity's own sheet. Most turns need few or no effects: an empty `effects` with no branches is a normal plan. But a turn whose fiction starts or ends a lasting state — a condition taking hold or passing — must write that tag change, with or without an action: nothing records it otherwise.
+A worked example of every effect that changes the world. Ids, keys, and traits here are illustrative: use the exact ids the scene shows. Most turns need few or no effects: an empty `effects` with no branches is a normal plan. But a turn whose fiction starts or ends a lasting state — a condition taking hold or passing — must write that trait change, with or without an action: nothing records it otherwise.
 
 ```json
 {"op": "reveal", "entity_id": "hidden-cellar"}
 {"op": "move", "entity_id": "pale-hound", "to_id": "courtyard"}
 {"op": "move", "entity_id": "iron-key", "to_id": "warden"}
 {"op": "gain-improvised-item", "item_name": "a handful of gravel"}
-{"op": "counter-change", "mode": "adjust", "entity_id": "warden", "counter": "hp", "amount": -3, "why": "clawed by the hound"}
-{"op": "counter-change", "mode": "spend", "entity_id": "player", "counter": "rations", "amount": 1}
-{"op": "tag-change", "mode": "add", "entity_id": "warden", "tag_id": "shaken", "text": "(condition) Rattled and wary until they regroup."}
-{"op": "tag-change", "mode": "remove", "entity_id": "player", "tag_id": "poisoned"}
+{"op": "trait-change", "mode": "add", "entity_id": "warden", "trait_id": "shaken", "text": "(condition) Rattled and wary until they regroup."}
+{"op": "trait-change", "mode": "remove", "entity_id": "player", "trait_id": "poisoned"}
 {"op": "relation-change", "mode": "reveal", "kind": "connected", "source": "courtyard", "target": "hidden-cellar"}
 {"op": "relation-change", "mode": "untag", "kind": "connected", "source": "courtyard", "target": "hidden-cellar", "tag": "locked", "why": "the iron key turns at last"}
 {"op": "relation-change", "mode": "add", "kind": "party-member", "source": "warden", "target": "player", "why": "the warden agrees to come along"}
@@ -141,11 +147,11 @@ Example 1:
       "outcome": "success",
       "effects": [
         {
-          "op": "tag-change",
+          "op": "trait-change",
           "mode": "add",
           "entity_id": "cloister_rat",
-          "tag_id": "limping",
-          "text": "A hind leg drags behind it."
+          "text": "A hind leg drags behind it.",
+          "trait_id": "limping"
         }
       ]
     },
@@ -153,11 +159,11 @@ Example 1:
       "outcome": "failure",
       "effects": [
         {
-          "op": "tag-change",
+          "op": "trait-change",
           "mode": "add",
           "entity_id": "player",
-          "tag_id": "crowded",
-          "text": "The wasted swing let the rat inside his reach."
+          "text": "The wasted swing let the rat inside his reach.",
+          "trait_id": "crowded"
         }
       ]
     }
@@ -180,11 +186,11 @@ Example 2:
       "outcome": "success",
       "effects": [
         {
-          "op": "tag-change",
+          "op": "trait-change",
           "mode": "add",
           "entity_id": "cloister_rat",
-          "tag_id": "scorched",
-          "text": "Its fur is burnt away in patches."
+          "text": "Its fur is burnt away in patches.",
+          "trait_id": "scorched"
         }
       ]
     }
@@ -208,10 +214,10 @@ Example 3:
       "outcome": "success",
       "effects": [
         {
-          "op": "tag-change",
+          "op": "trait-change",
           "mode": "remove",
           "entity_id": "player",
-          "tag_id": "poisoned"
+          "trait_id": "poisoned"
         }
       ]
     },
@@ -219,11 +225,11 @@ Example 3:
       "outcome": "failure",
       "effects": [
         {
-          "op": "tag-change",
+          "op": "trait-change",
           "mode": "add",
           "entity_id": "player",
-          "tag_id": "shaking",
-          "text": "The venom still has hold of his hands."
+          "text": "The venom still has hold of his hands.",
+          "trait_id": "shaking"
         }
       ]
     }
@@ -244,10 +250,10 @@ Example 4:
 {
   "effects": [
     {
-      "op": "tag-change",
+      "op": "trait-change",
       "mode": "remove",
       "entity_id": "player",
-      "tag_id": "poisoned"
+      "trait_id": "poisoned"
     }
   ]
 }
@@ -262,11 +268,11 @@ Example 5:
       "outcome": "success",
       "effects": [
         {
-          "op": "tag-change",
+          "op": "trait-change",
           "mode": "add",
           "entity_id": "cloister_rat",
-          "tag_id": "prone",
-          "text": "On its back, legs pedaling, unable to right itself."
+          "text": "On its back, legs pedaling, unable to right itself.",
+          "trait_id": "prone"
         }
       ]
     }
@@ -324,11 +330,11 @@ Example 8:
       "outcome": "failure",
       "effects": [
         {
-          "op": "tag-change",
+          "op": "trait-change",
           "mode": "add",
           "entity_id": "vault",
-          "tag_id": "jammed-seal",
-          "text": "The bent seal now binds the door shut."
+          "text": "The bent seal now binds the door shut.",
+          "trait_id": "jammed-seal"
         }
       ]
     }

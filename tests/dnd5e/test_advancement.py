@@ -1,49 +1,16 @@
-import json
 from pathlib import Path
 
 from fivee_test_support import dnd5e_game, dnd5e_session, ready
-from pydantic_ai.messages import ModelMessage, ModelResponse, TextPart
-from pydantic_ai.models.function import AgentInfo, FunctionModel
 
-from aidm.engines.dnd5e.advance import ADVANCEMENT_READY
+from aidm.engines.dnd5e.advance import ADVANCEMENT_READY, MAX_ABILITY, LevelUp
+from aidm.engines.dnd5e.mechanics import read, sheet_of, write
 from aidm.state.base import PLAYER_ID, EntityId
-from aidm.state.effects import AddRef, CounterChange, SetNumber, SheetDelta, TagChange
 from aidm.state.packs import ContentRef
-from aidm.state.world import player_sheet
 
 ACTION_SURGE = ContentRef(pack="srd-2014", collection="features", index="action-surge-1-use")
 SECOND_WIND = ContentRef(pack="srd-2014", collection="features", index="second-wind")
-SPENT = TagChange(
-    mode="remove", entity_id=PLAYER_ID, tag_id=ADVANCEMENT_READY, why="the level is taken"
-)
-LEGAL = SheetDelta(
-    changes=(
-        AddRef(entity_id=PLAYER_ID, ref=ACTION_SURGE, why="the level's feature"),
-        SetNumber(entity_id=PLAYER_ID, key="level", value=2, why="second level"),
-        CounterChange(
-            mode="adjust",
-            entity_id=PLAYER_ID,
-            counter="hp",
-            amount=7,
-            maximum=18,
-            why="a fighter's hit die and constitution",
-        ),
-        SPENT,
-    )
-)
-WRONG_LEVEL = SheetDelta(
-    changes=(AddRef(entity_id=PLAYER_ID, ref=ACTION_SURGE, why="the level's feature"), SPENT)
-)
-
-
-def _answers(*deltas: SheetDelta) -> FunctionModel:
-    remaining = iter(deltas)
-
-    def stub(messages: list[ModelMessage], info: AgentInfo) -> ModelResponse:
-        del messages, info
-        return ModelResponse(parts=[TextPart(json.dumps(next(remaining).model_dump(mode="json")))])
-
-    return FunctionModel(stub)
+LEGAL = LevelUp(picks=(ACTION_SURGE,), hit_points=7, why="second level")
+OUTSIDE = LevelUp(picks=(SECOND_WIND,), hit_points=7, why="a feature already held")
 
 
 def test_the_ready_tag_opens_the_next_level_row() -> None:
@@ -67,36 +34,39 @@ def test_standing_at_a_scenario_milestone_opens_the_offer_without_the_tag() -> N
     assert engine.offered(at_vault) is not None
 
     leveled = at_vault.draft()
-    player_sheet(leveled).numbers["level"] = 2
+    mechanics = read(leveled)
+    sheet_of(mechanics, leveled.player).numbers["level"] = 2
+    write(leveled, mechanics)
     assert engine.offered(leveled) is None
 
 
-def test_a_pick_outside_the_offer_and_a_level_that_does_not_move_are_both_refused() -> None:
+def test_a_pick_outside_the_offer_a_wrong_pick_count_and_an_ability_over_cap_are_refused() -> None:
     engine, state = dnd5e_game()
     advancing = ready(state)
     offer = engine.offered(advancing)
     assert offer is not None
-    outside = SheetDelta(
-        changes=(AddRef(entity_id=PLAYER_ID, ref=SECOND_WIND, why="a feature already held"), SPENT)
+
+    no_picks = LevelUp(picks=(), hit_points=7, why="forgot the feature")
+    over_cap = LevelUp(
+        picks=(ACTION_SURGE,), hit_points=7, abilities={"strength": MAX_ABILITY + 1}, why="too much"
     )
 
     assert engine.violation(advancing, offer, LEGAL) is None
-    assert "not on offer" in str(engine.violation(advancing, offer, outside))
-    assert "level 2" in str(engine.violation(advancing, offer, WRONG_LEVEL))
+    assert "not on offer" in str(engine.violation(advancing, offer, OUTSIDE))
+    assert "exactly 1 picks" in str(engine.violation(advancing, offer, no_picks))
+    assert f"cannot pass {MAX_ABILITY}" in str(engine.violation(advancing, offer, over_cap))
 
 
-async def test_a_refused_proposal_is_retried_and_the_confirmed_one_commits(tmp_path: Path) -> None:
+def test_the_confirmed_level_up_commits_the_whole_level(tmp_path: Path) -> None:
+    """The advisor's retry loop is engine-independent and covered by the story suite; this
+    exercises what is 5e's own: `advance` writing the level onto the committed state."""
     game = dnd5e_session(tmp_path)
     game.state = ready(game.state)
 
-    with game.advisor.agent.override(model=_answers(WRONG_LEVEL, LEGAL)):
-        drafted = await game.propose("I take my second level of fighter.")
-    assert drafted == LEGAL
-
     _ = game.apply_proposal(LEGAL)
 
-    player = player_sheet(game.state)
+    player = sheet_of(read(game.state), game.state.player)
     assert (player.numbers["level"], player.counters["hp"].maximum) == (2, 18)
     assert ACTION_SURGE in player.refs
-    assert player.tag(ADVANCEMENT_READY) is None
+    assert game.state.player.trait(ADVANCEMENT_READY) is None
     assert game.offer() is None

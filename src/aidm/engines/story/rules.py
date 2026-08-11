@@ -4,16 +4,12 @@ from random import Random
 from aidm.engines.loader import Engine, EnginePlugin
 from aidm.state.base import EngineId, Slug
 from aidm.state.facts import Fact
-from aidm.state.plan import (
-    TurnPlanBase,
-    apply_branch,
-    check_plan_base,
-    check_plan_with_trial,
-)
+from aidm.state.plan import TurnPlanBase, apply_all, apply_branch, check_action, check_effects
 from aidm.state.world import GameState
 
 from .actions import TurnPlan
-from .advance import check_delta, offered
+from .advance import Growth, advance, check_proposal, offered
+from .mechanics import apply, begin, commit, render
 from .resolve import resolve_risk
 
 ENGINE_ID: EngineId = EngineId("story")
@@ -22,25 +18,24 @@ NO_LABELS = frozenset[Slug]()
 
 
 def check(engine: Engine, state: GameState, plan: TurnPlanBase) -> str | None:
+    del engine
     assert isinstance(plan, TurnPlan)
     action = plan.action
     if action is None:
-        return check_plan_base(state, plan, NO_LABELS, engine.default_rules)
-    return check_plan_with_trial(
-        state,
-        plan,
-        LABELS,
-        engine.default_rules,
-        lambda draft, rng: resolve_risk(engine, draft, action, rng),
+        return check_effects(state, plan, NO_LABELS, apply)
+    return check_action(
+        state, plan, LABELS, apply, lambda draft, rng: resolve_risk(draft, action, rng)
     )
 
 
 def resolve(engine: Engine, draft: GameState, plan: TurnPlanBase, rng: Random) -> list[Fact]:
+    del engine
     assert isinstance(plan, TurnPlan)
-    if plan.action is None:
-        return []
-    facts, outcome = resolve_risk(engine, draft, plan.action, rng)
-    return facts + apply_branch(draft, plan, outcome, engine.default_rules)
+    facts: list[Fact] = []
+    if plan.action is not None:
+        settled, outcome = resolve_risk(draft, plan.action, rng)
+        facts = settled + apply_branch(draft, plan, outcome, apply)
+    return facts + apply_all(draft, plan.effects, apply)
 
 
 PLUGIN = EnginePlugin(
@@ -48,8 +43,13 @@ PLUGIN = EnginePlugin(
     badge=("STORY", "deep-purple-6"),
     engine_dir=Path(__file__).parent,
     plan_type=TurnPlan,
+    proposal_type=Growth,
+    begin=begin,
+    commit=commit,
+    render=render,
     check=check,
     resolve=resolve,
     offered=offered,
-    check_delta=check_delta,
+    advance=advance,
+    check_proposal=check_proposal,
 )

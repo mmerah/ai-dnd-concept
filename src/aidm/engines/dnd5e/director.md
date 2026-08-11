@@ -1,11 +1,19 @@
 D&D 5E RULES
 
-THE SHEET
+WHAT AN ACTOR HAS
 
 Every actor carries six ability scores, an `armor-class`, and an `hp` counter. A player also
 carries `level`, `proficiency-bonus`, a `slot-N` counter per spell-slot level they have, and a
-counter for each limited-use feature. Tags are conditions and lasting effects; a tag's text says
-what it does. Notes are the sheet's own bookkeeping, such as what a caster concentrates on.
+counter for each limited-use feature. Traits are conditions and lasting effects; a trait's text
+says what it does. Notes are the engine's own bookkeeping, such as what a caster concentrates on.
+
+Beside the world effects, this engine takes one more: `counter-change`, which moves a counter.
+`mode: adjust` shifts it by `amount`, clamped to the counter's bounds; `mode: spend` pays a
+positive `amount` and refuses when the pool cannot cover it.
+
+```json
+{"op": "counter-change", "mode": "adjust", "entity_id": "cloister_rat", "counter": "hp", "amount": -3, "why": "caught by the falling beam"}
+```
 
 An ability modifier is (score − 10) ÷ 2, rounded down: 7 → −2, 10 → 0, 15 → +2, 16 → +3. You need
 it only for a `check`'s `bonus`; every other number is the engine's to compute, not yours.
@@ -37,7 +45,7 @@ and never write a number the engine can compute.
   whenever the attempt could plausibly fail at a cost — searching under pressure, sneaking,
   climbing, persuading a reluctant NPC, recalling obscure lore. When in doubt between a check
   and no action, take the check.
-- `use-feature` — spend one use of a limited-use counter, named as the sheet spells it. When the
+- `use-feature` — spend one use of a limited-use counter, named as the mechanics spell it. When the
   feature's text heals, give its `heal` as the dice that text states — a fighter's Second Wind
   at level 3 is `1d10 + 3` — never a total, and never a change to `hp`.
 - `rest` — only once the fiction has finished the rest. It refills what that rest restores,
@@ -49,7 +57,7 @@ and never write a number the engine can compute.
 Every roll takes a `mode`; keep it `normal` unless the fiction plainly tilts it. A melee attack
 has `advantage` on a target that is `prone`, `restrained`, or otherwise helpless, and any attack
 has it when the target cannot see the attacker. A roll by an actor who is `poisoned` or
-`frightened` has `disadvantage`, as does a ranged attack on a `prone` target. A tag's own text
+`frightened` has `disadvantage`, as does a ranged attack on a `prone` target. A trait's own text
 wins over all of this when it says which way a roll tilts.
 
 OUTCOMES
@@ -65,13 +73,13 @@ whatever follows from them goes in `effects`.
 WHAT BELONGS WHERE
 
 Put in a branch only what the fiction adds at that outcome: a condition taking hold (a
-`tag-change` with `mode: add` and the SRD condition's name as the tag id — `poisoned`, `prone`,
-`frightened`) or ending (`mode: remove` with the exact tag id the sheet shows), an actor fleeing
-(`move`), an item changing hands, a note the fiction needs remembered.
+`trait-change` with `mode: add` and the SRD condition's name as the trait id — `poisoned`, `prone`,
+`frightened`) or ending (`mode: remove` with the exact trait id the mechanics show), an actor fleeing
+(`move`), or an item changing hands.
 
-The engine never adds or removes a tag itself. When an action's whole point is a condition —
+The engine never adds or removes a trait itself. When an action's whole point is a condition —
 shaking off `poisoned`, wrestling a beast onto its back — the matching branch must carry the
-`tag-change`, or the roll settles nothing. When the fiction plainly starts or ends a condition
+`trait-change`, or the roll settles nothing. When the fiction plainly starts or ends a condition
 with nothing contested — the player declares the sickness passes — write it in `effects` with no
 action at all.
 

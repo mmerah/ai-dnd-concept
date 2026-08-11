@@ -15,8 +15,10 @@ turn plan — the single action resolved this turn, its fiction consequences key
 unconditional effects. Engine code validates the plan against committed state, resolves it
 deterministically on a draft (rolls, costs, intrinsic outcomes), committed Facts fire the
 scenario's authored hooks, and core commits a fully revalidated state. An engine is ordinary typed
-Python plus content: a sheet template, action models with their resolvers, and content records
-whose `facts` map carries every mechanical value the resolver reads. The Narrator receives no
+Python plus content: its own strict mechanics model, action models with their resolvers, and
+content records whose `facts` map carries every mechanical value the resolver reads. Core owns the
+fiction — entities, placement, relations, threads, traits — and persists the engine's mechanics as
+one opaque payload it never reads. The Narrator receives no
 unrevealed canon; for visible entities it receives the same state as the other roles, with
 instructions to translate mechanics into fiction rather than recite stat blocks.
 
@@ -52,7 +54,7 @@ case, single-case movement is noise; re-run before attributing anything below n=
 ## Layout
 
 ```text
-src/aidm/state/           the deterministic machine: world, sheet, effects, plans, dice, trace
+src/aidm/state/           the deterministic machine: world, effects, plans, dice, trace
 src/aidm/content/         authored scenarios and characters, saves and traces
 src/aidm/engines/         the loader, plus one directory per engine
 src/aidm/turn/            the turn loop, its agents, prompts, advancement

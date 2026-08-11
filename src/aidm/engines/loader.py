@@ -10,16 +10,15 @@ from pydantic import (
     Field,
     JsonValue,
     TypeAdapter,
-    ValidationError,
     model_validator,
 )
 from pydantic_ai import ModelRetry
 from pydantic_ai.toolsets import AbstractToolset, FunctionToolset
 
 from aidm.content.authored import Rules
-from aidm.state.apply import apply_effect
-from aidm.state.base import EngineId, Entity, Frozen, Kind, Slug
-from aidm.state.effects import AddRef, SheetDelta, TurnEffect, effect_key, turn_effect_keys
+from aidm.state.advancement import AdvancementOffer, ProposalBase
+from aidm.state.base import EngineId, Entity, EntityId, Frozen
+from aidm.state.effects import WorldEffect, effect_key, effect_keys
 from aidm.state.facts import Fact
 from aidm.state.packs import (
     EMPTY_FROZEN_MAP,
@@ -31,20 +30,12 @@ from aidm.state.packs import (
     FactSchema,
     FrozenMap,
     Record,
-    is_int_fact,
+    fact_line,
     load,
     parse_ref,
 )
 from aidm.state.plan import TurnPlanBase
-from aidm.state.sheet import (
-    AdvancementOffer,
-    Sheet,
-    SheetDefinition,
-    SheetTemplate,
-    fact_line,
-    render_sheet,
-)
-from aidm.state.world import GameState, player_sheet
+from aidm.state.world import GameState
 
 ENGINE_MODULES: tuple[str, ...] = (
     "aidm.engines.story.rules",
@@ -56,10 +47,9 @@ type EntityRenderer = Callable[[Entity], str]
 
 
 class EngineSpec(Frozen):
-    templates: FrozenMap[Kind, SheetTemplate] = EMPTY_FROZEN_MAP
     # Collection name -> the facts every record in it must carry (empty: no requirement).
     collections: FrozenMap[CollectionName, FactSchema] = EMPTY_FROZEN_MAP
-    # Collections whose int facts project onto the sheet of any entity that refs a record in them.
+    # Collections whose int facts land on the mechanics of any entity that refs a record in them.
     projecting: tuple[CollectionName, ...] = ()
 
     @model_validator(mode="after")
@@ -68,22 +58,27 @@ class EngineSpec(Frozen):
             raise ValueError(f"projecting names no such collection: {unknown}")
         return self
 
-    def template(self, kind: Kind) -> SheetTemplate:
-        return self.templates.get(kind, SheetTemplate())
-
 
 @dataclass(frozen=True, slots=True)
 class EnginePlugin:
+    """Every callable takes the loaded `Engine` first, because content and the spec belong to the
+    load and the plan lifecycle belongs to the engine module that declares this."""
+
     id: EngineId
     badge: tuple[str, str]
     engine_dir: Path
     plan_type: type[TurnPlanBase]
+    proposal_type: type[ProposalBase]
+    # Writes `state.mechanics` for a new game from the authored rules, keyed by entity id.
+    begin: "Callable[[Engine, GameState, Mapping[EntityId, Rules]], None]"
+    # The one path that validates the mechanics half: it also gives any new entity its own.
+    commit: "Callable[[Engine, GameState], None]"
+    render: "Callable[[Engine, GameState], EntityRenderer]"
     check: "Callable[[Engine, GameState, TurnPlanBase], str | None]"
-    # The pipeline applies `plan.effects` itself: an engine returns only what its action causes.
     resolve: "Callable[[Engine, GameState, TurnPlanBase, Random], list[Fact]]"
     offered: "Callable[[Engine, GameState], AdvancementOffer | None]"
-    # Judges the sheet the proposal would leave, which the kernel has already applied and validated.
-    check_delta: Callable[[GameState, Sheet], str | None]
+    advance: "Callable[[Engine, GameState, ProposalBase], tuple[Fact, ...]]"
+    check_proposal: "Callable[[Engine, GameState, AdvancementOffer, ProposalBase], str | None]"
 
 
 @dataclass(frozen=True, slots=True)
@@ -107,28 +102,20 @@ class Engine:
     def plan_type(self) -> type[TurnPlanBase]:
         return self.plugin.plan_type
 
-    def default_rules(self, entity: Entity) -> Sheet:
-        return SheetDefinition().runtime(entity.kind, self.spec.template(entity.kind))
+    @property
+    def proposal_type(self) -> type[ProposalBase]:
+        return self.plugin.proposal_type
 
-    def entity_state(self, entity: Entity, sheet: Sheet) -> str:
-        return render_sheet(sheet, self._record, self.spec.projecting)
+    def begin(self, state: GameState, rules: Mapping[EntityId, Rules]) -> None:
+        self.plugin.begin(self, state, rules)
+        self.commit(state)
+
+    def commit(self, state: GameState) -> None:
+        """Called at load, at the end of every transaction, and after a new game is composed."""
+        self.plugin.commit(self, state)
 
     def renderer(self, state: GameState) -> EntityRenderer:
-        return lambda entity: self.entity_state(entity, state.world.record(entity.id).rules)
-
-    def validate_state(self, state: GameState) -> None:
-        for record in state.world.records.values():
-            entity, sheet = record.entity, record.rules
-            template = self.spec.template(entity.kind)
-            missing = [
-                *sorted(set(template.numbers) - set(sheet.numbers)),
-                *sorted(set(template.counters) - set(sheet.counters)),
-            ]
-            if missing:
-                raise ValueError(f"{entity.id!r} is missing the canonical keys {missing}")
-            for ref in sheet.refs:
-                if isinstance(miss := self.content.record(ref), ContentMiss):
-                    raise ValueError(f"{entity.id!r}: {miss.summary}")
+        return self.plugin.render(self, state)
 
     def check_plan(self, state: GameState, plan: TurnPlanBase) -> str | None:
         """Must not raise: an output validator that raises kills the turn instead of retrying."""
@@ -140,42 +127,17 @@ class Engine:
     def offered(self, state: GameState) -> AdvancementOffer | None:
         return self.plugin.offered(self, state)
 
-    def advance(self, draft: GameState, delta: SheetDelta) -> tuple[Fact, ...]:
-        """Mutates the draft's player sheet; the caller's commit revalidates the whole copy."""
-        return tuple(
-            fact
-            for change in delta.changes
-            for fact in apply_effect(draft, change, self.default_rules, advancing=True)
-        )
+    def advance(self, draft: GameState, proposal: ProposalBase) -> tuple[Fact, ...]:
+        """Mutates the draft; the caller's commit revalidates both halves of the copy."""
+        return self.plugin.advance(self, draft, proposal)
 
-    def violation(self, state: GameState, offer: AdvancementOffer, delta: SheetDelta) -> str | None:
+    def violation(
+        self, state: GameState, offer: AdvancementOffer, proposal: ProposalBase
+    ) -> str | None:
         """One legality rule for the advisor's retry and for the commit, so neither can drift."""
-        picked = [change.ref for change in delta.changes if isinstance(change, AddRef)]
-        if outside := sorted(str(ref) for ref in picked if ref not in offer.options):
-            allowed = ", ".join(str(ref) for ref in offer.options) or "(none)"
-            return f"{', '.join(outside)} is not on offer here. The legal picks are: {allowed}"
-        if len(picked) != offer.choose:
-            return (
-                f"this offer takes exactly {offer.choose} picks, the proposal makes {len(picked)}"
-            )
-        if unexplained := sorted({change.op for change in delta.changes if not change.why}):
-            return f"every change needs a `why` the player can read, and {unexplained} has none"
-        draft = state.draft()
-        try:
-            _ = self.advance(draft, delta)
-            after = draft.committed()
-        except ValidationError as invalid:
-            return f"the sheet this leaves is invalid: {invalid.errors()[0]['msg']}"
-        except ValueError as refused:
-            return str(refused)
-        return self.plugin.check_delta(state, player_sheet(after))
+        return self.plugin.check_proposal(self, state, offer, proposal)
 
-    def sheet(self, kind: Kind, rules: Rules) -> Sheet:
-        definition = SheetDefinition.model_validate(rules)
-        backing = _backing(definition.refs, self.content, self.spec.projecting)
-        return definition.runtime(kind, self.spec.template(kind), backing)
-
-    def _record(self, ref: ContentRef) -> Record | None:
+    def record(self, ref: ContentRef) -> Record | None:
         found = self.content.record(ref)
         return None if isinstance(found, ContentMiss) else found
 
@@ -236,21 +198,21 @@ def _examples(engine_dir: Path, plan_type: type[TurnPlanBase]) -> str:
 
 
 def _effect_vocabulary() -> str:
+    """Only the world half is shared: what an engine's own effects mean is its own to teach."""
     entries = TypeAdapter(list[JsonValue]).validate_json(
         _text(Path(__file__).parent / "examples.json")
     )
-    checked = TypeAdapter(list[TurnEffect]).validate_python(entries)
-    missing = turn_effect_keys() - {effect_key(entry) for entry in checked}
+    checked = TypeAdapter(list[WorldEffect]).validate_python(entries)
+    missing = effect_keys(WorldEffect.__value__) - {effect_key(entry) for entry in checked}
     if missing:
         raise ValueError(f"the shared examples.json teaches no {sorted(missing)}")
     lines = "\n".join(json.dumps(entry) for entry in entries)
     header = (
-        "## Effects\n\nA worked example of every effect. Ids, keys, and tags here are "
-        "illustrative: use the exact ids the scene shows and the counter keys on that "
-        "entity's own sheet. Most turns need few or no effects: an empty `effects` with "
-        "no branches is a normal plan. But a turn whose fiction starts or ends a lasting "
-        "state — a condition taking hold or passing — must write that tag change, with "
-        "or without an action: nothing records it otherwise."
+        "## World effects\n\nA worked example of every effect that changes the world. Ids, keys, "
+        "and traits here are illustrative: use the exact ids the scene shows. Most turns need few "
+        "or no effects: an empty `effects` with no branches is a normal plan. But a turn whose "
+        "fiction starts or ends a lasting state — a condition taking hold or passing — must write "
+        "that trait change, with or without an action: nothing records it otherwise."
     )
     return f"\n\n{header}\n\n```json\n{lines}\n```"
 
@@ -291,27 +253,6 @@ def _record_text(record: Record, ref: str) -> str:
         *([record.text] if record.text else []),
     ]
     return "\n".join(lines)
-
-
-def _backing(
-    refs: Sequence[ContentRef], content: Content, projecting: Sequence[CollectionName]
-) -> Mapping[Slug, int]:
-    backing: dict[Slug, int] = {}
-    claimed_by: dict[Slug, ContentRef] = {}
-    for ref in refs:
-        if ref.collection not in projecting:
-            continue
-        record = content.require(ref)
-        for key, value in record.facts.items():
-            if not is_int_fact(value):
-                continue
-            held = claimed_by.get(key)
-            # Two refs agreeing on a value lose nothing; only a disagreement drops one of them.
-            if held is not None and backing[key] != value:
-                raise ValueError(f"content fact {key!r} differs between {held} and {ref}")
-            backing[key] = value
-            claimed_by[key] = ref
-    return backing
 
 
 def _packs(engine_dir: Path) -> tuple[Path, ...]:

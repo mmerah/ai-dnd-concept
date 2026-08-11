@@ -8,7 +8,7 @@ from pydantic_ai import ModelRetry, NativeOutput, RunContext, TextOutput, ToolOu
 
 from aidm.config import Settings
 from aidm.engines.loader import Engine
-from aidm.state.apply import apply_effect, fire_hooks
+from aidm.state.apply import fire_hooks
 from aidm.state.base import Entity, EntityId, Frozen, slug
 from aidm.state.facts import Fact, narrator_evidence
 from aidm.state.plan import TurnPlanBase, check_speaker
@@ -59,27 +59,20 @@ def resolve_plan(
 ) -> tuple[GameState, list[Fact]]:
     """Returns the revalidated draft the rest of the turn builds on."""
     facts = engine.resolve_action(draft, plan, rng)
-    for effect in plan.effects:
-        facts.extend(apply_effect(draft, effect, engine.default_rules))
     return draft.committed().draft(), facts
 
 
-def apply_hooks(
-    engine: Engine, draft: GameState, facts: Sequence[Fact]
-) -> tuple[GameState, list[Fact]]:
+def apply_hooks(draft: GameState, facts: Sequence[Fact]) -> tuple[GameState, list[Fact]]:
     """Runs before the Narrator, so a hook's consequences are narrated the turn they happen."""
-    fired = fire_hooks(draft, facts, engine.default_rules)
+    fired = fire_hooks(draft, facts)
     return (draft.committed().draft() if fired else draft), fired
 
 
-def apply_creations(
-    engine: Engine, draft: GameState, report: WorldkeeperReport, maximum: int
-) -> list[Fact]:
-    facts: list[Fact] = []
-    for creation in admitted(report.creations, draft, maximum):
-        entity = _created_entity(creation, draft)
-        facts.append(draft.add(entity, engine.default_rules(entity)))
-    return facts
+def apply_creations(draft: GameState, report: WorldkeeperReport, maximum: int) -> list[Fact]:
+    return [
+        draft.add(_created_entity(creation, draft))
+        for creation in admitted(report.creations, draft, maximum)
+    ]
 
 
 def plan_from_text(plan_type: type[TurnPlanBase]) -> Callable[[str], TurnPlanBase]:
@@ -112,7 +105,7 @@ def scene_stage(settings: Settings) -> Stage[GameState, SceneDirective]:
         if missing:
             raise ModelRetry(f"no such thread: {', '.join(missing)}")
         # A `reveal` naming anything but an unmet entity renders nothing
-        unmet = {entity.id for entity in state.world.entities() if not entity.known}
+        unmet = {entity.id for entity in state.world.entities.values() if not entity.known}
         wrong = sorted(set(directive.reveal) - unmet)
         if wrong:
             raise ModelRetry(f"not something the player has yet to find: {', '.join(wrong)}")
@@ -215,7 +208,7 @@ async def run_turn(
     steps.append(StepTrace(name="resolve", output=evidence))
 
     announce("hooks")
-    draft, fired = apply_hooks(engine, draft, facts)
+    draft, fired = apply_hooks(draft, facts)
     if fired:
         facts.extend(fired)
         evidence = narrator_evidence(facts)
@@ -247,13 +240,13 @@ async def run_turn(
         narration=narration,
     )
     report = await stages.worldkeeper.run(keeper_prompt, None, history)
-    facts.extend(apply_creations(engine, draft, report, options.max_growth))
+    facts.extend(apply_creations(draft, report, options.max_growth))
     steps.append(_traced("worldkeeper", keeper_prompt, report))
 
     draft.history = (*draft.history, Exchange(prompt=prompt, narration=narration))
     draft.turn += 1
+    engine.commit(draft)
     final = draft.committed()
-    engine.validate_state(final)
     return TurnResult(
         state=final,
         turn=Turn(prompt=prompt, facts=tuple(facts), narration=narration, steps=tuple(steps)),
@@ -266,7 +259,7 @@ def _traced(name: str, rendered: str, output: BaseModel) -> StepTrace:
 
 def admitted(creations: Sequence[Creation], state: GameState, maximum: int) -> tuple[Creation, ...]:
     """Locations sort first so an entity placed at one created this same report resolves."""
-    seen = {entity.name.casefold() for entity in state.world.entities()}
+    seen = {entity.name.casefold() for entity in state.world.entities.values()}
     kept: list[Creation] = []
     for creation in creations:
         normalized = creation.name.casefold()
@@ -292,7 +285,7 @@ def _created_entity(creation: Creation, state: GameState) -> Entity:
 def _placed(creation: Creation, state: GameState) -> EntityId:
     if creation.location is not None:
         wanted = creation.location.casefold()
-        for entity in state.world.entities("location"):
+        for entity in state.world.of_kind("location"):
             if entity.name.casefold() == wanted:
                 return entity.id
     return state.player_location

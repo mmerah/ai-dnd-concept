@@ -1,0 +1,147 @@
+{
+  "$defs": {
+    "ContentRef": {
+      "additionalProperties": false,
+      "description": "Uses a triple because indexes collide across collections and packs.",
+      "properties": {
+        "pack": {
+          "maxLength": 64,
+          "pattern": "^[a-z0-9-]+$",
+          "title": "Pack",
+          "type": "string"
+        },
+        "collection": {
+          "maxLength": 64,
+          "pattern": "^[a-z][a-z0-9_]*$",
+          "title": "Collection",
+          "type": "string"
+        },
+        "index": {
+          "maxLength": 64,
+          "pattern": "^[a-z0-9-]+$",
+          "title": "Index",
+          "type": "string"
+        }
+      },
+      "required": [
+        "pack",
+        "collection",
+        "index"
+      ],
+      "title": "ContentRef",
+      "type": "object"
+    },
+    "PoolGrant": {
+      "additionalProperties": false,
+      "properties": {
+        "counter": {
+          "description": "Stable key for the pool, as the feature names it.",
+          "maxLength": 64,
+          "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$",
+          "title": "Counter",
+          "type": "string"
+        },
+        "maximum": {
+          "description": "How many uses it holds, full when granted.",
+          "minimum": 1,
+          "title": "Maximum",
+          "type": "integer"
+        },
+        "recharge": {
+          "description": "What refills it.",
+          "enum": [
+            "short-rest",
+            "long-rest"
+          ],
+          "title": "Recharge",
+          "type": "string"
+        }
+      },
+      "required": [
+        "counter",
+        "maximum",
+        "recharge"
+      ],
+      "title": "PoolGrant",
+      "type": "object"
+    }
+  },
+  "additionalProperties": false,
+  "description": "One class level. The engine sets `level` and spends the level-up itself.",
+  "properties": {
+    "picks": {
+      "default": [],
+      "description": "Exactly the picks the offer asks for, from its options.",
+      "items": {
+        "$ref": "#/$defs/ContentRef"
+      },
+      "title": "Picks",
+      "type": "array"
+    },
+    "hit_points": {
+      "description": "The average of the class hit die (d6 4, d8 5, d10 6, d12 7) plus the Constitution modifier, at least 1. It raises the hp maximum and fills it.",
+      "minimum": 1,
+      "title": "Hit Points",
+      "type": "integer"
+    },
+    "proficiency_bonus": {
+      "anyOf": [
+        {
+          "type": "integer"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "The new proficiency bonus when this level raises it, else null.",
+      "title": "Proficiency Bonus"
+    },
+    "slots": {
+      "description": "New maximum per `slot-N` this level raises; the added slots arrive filled.",
+      "patternProperties": {
+        "^[a-z0-9]+(?:-[a-z0-9]+)*$": {
+          "type": "integer"
+        }
+      },
+      "propertyNames": {
+        "maxLength": 64
+      },
+      "title": "Slots",
+      "type": "object"
+    },
+    "granted": {
+      "default": [],
+      "description": "A pool a newly picked feature brings.",
+      "items": {
+        "$ref": "#/$defs/PoolGrant"
+      },
+      "title": "Granted",
+      "type": "array"
+    },
+    "abilities": {
+      "description": "An ability score improvement: the new value of each ability raised, never above 20.",
+      "patternProperties": {
+        "^[a-z0-9]+(?:-[a-z0-9]+)*$": {
+          "type": "integer"
+        }
+      },
+      "propertyNames": {
+        "maxLength": 64
+      },
+      "title": "Abilities",
+      "type": "object"
+    },
+    "why": {
+      "description": "One short sentence the player reads before confirming.",
+      "title": "Why",
+      "type": "string"
+    }
+  },
+  "required": [
+    "hit_points",
+    "why"
+  ],
+  "title": "LevelUp",
+  "type": "object"
+}

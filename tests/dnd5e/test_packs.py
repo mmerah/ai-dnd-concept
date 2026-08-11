@@ -2,10 +2,9 @@ from pathlib import Path
 
 from fivee_test_support import PACK_DIR, dnd5e_game, pack_format
 
+from aidm.engines.dnd5e.mechanics import read, sheet_of
 from aidm.state.base import EntityId
-from aidm.state.packs import ENCODING, ContentRef, Record, read_pack, write_pack
-from aidm.state.sheet import is_ladder_fact
-from aidm.state.world import player_sheet
+from aidm.state.packs import ENCODING, ContentRef, Record, is_ladder_fact, read_pack, write_pack
 
 GIANT_RAT = ContentRef(pack="srd-2014", collection="monsters", index="giant-rat")
 RAT = EntityId("cloister_rat")
@@ -32,7 +31,7 @@ def test_the_shipped_character_carries_the_canonical_keys() -> None:
     """`armor-class` is authored content now, not the 10 the typed engine hard-coded."""
     _, state = dnd5e_game()
 
-    player = player_sheet(state)
+    player = sheet_of(read(state), state.player)
 
     assert (player.numbers["armor-class"], player.numbers["level"]) == (12, 1)
     assert player.counters["hp"].maximum == 11
@@ -46,14 +45,14 @@ def test_a_monster_ref_becomes_the_monsters_sheet() -> None:
     record = read_pack(PACK_DIR, pack_format()).addressed()[GIANT_RAT]
     assert type(record) is Record
 
-    world_record = state.world.record(RAT)
-    sheet = world_record.rules
+    entity = state.world.require(RAT)
+    sheet = sheet_of(read(state), entity)
 
     assert sheet.counters["hp"].current == record.facts["hp"]
     assert sheet.counters["hp"].maximum == record.facts["hp"]
     assert sheet.numbers["armor-class"] == record.facts["armor-class"]
     assert sheet.refs == (GIANT_RAT,)
-    assert "attacks=Bite +4 to hit" in engine.entity_state(world_record.entity, sheet)
+    assert "attacks=Bite +4 to hit" in engine.renderer(state)(entity)
 
 
 def test_the_pack_renders_spell_and_weapon_mechanics_from_stored_maps() -> None:

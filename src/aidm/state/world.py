@@ -15,9 +15,8 @@ from .base import (
     Slug,
     ThreadStatus,
 )
-from .effects import TurnEffect
+from .effects import WorldEffect
 from .facts import CORE, Fact
-from .sheet import Sheet
 
 _HOLDERS: Mapping[Kind, tuple[Kind, ...]] = {
     "actor": ("location",),
@@ -102,30 +101,17 @@ class Hook(Frozen):
 
     id: Slug
     match: HookMatch
-    effects: tuple[TurnEffect, ...] = ()
+    effects: tuple[WorldEffect, ...] = ()
     note: str = ""
 
 
-class Record(Mutable):
-    entity: Entity
-    rules: Sheet
-
-    @model_validator(mode="after")
-    def _kind_agrees(self) -> Self:
-        if self.rules.kind != self.entity.kind:
-            raise ValueError(
-                f"{self.entity.id!r} is a {self.entity.kind} with {self.rules.kind} rules"
-            )
-        return self
-
-
 class WorldState(Mutable):
-    records: dict[EntityId, Record] = Field(default_factory=dict)
+    entities: dict[EntityId, Entity] = Field(default_factory=dict)
     relations: dict[RelationId, Relation] = Field(default_factory=dict)
 
     @model_validator(mode="after")
     def _keys_match_ids(self) -> Self:
-        mismatched = sorted(key for key, record in self.records.items() if key != record.entity.id)
+        mismatched = sorted(key for key, entity in self.entities.items() if key != entity.id)
         if mismatched:
             raise ValueError(f"entity keys disagree with their ids: {mismatched}")
         stale = sorted(key for key, relation in self.relations.items() if key != relation.id)
@@ -174,36 +160,30 @@ class WorldState(Mutable):
             None,
         )
 
-    def entities(self, kind: Kind | None = None) -> Iterator[Entity]:
-        return (
-            record.entity
-            for record in self.records.values()
-            if kind is None or record.entity.kind == kind
-        )
+    def of_kind(self, kind: Kind) -> Iterator[Entity]:
+        return (entity for entity in self.entities.values() if entity.kind == kind)
 
     def all_ids(self) -> set[EntityId]:
-        return set(self.records)
+        return set(self.entities)
 
     def find(self, entity_id: EntityId) -> Entity | None:
-        record = self.records.get(entity_id)
-        return None if record is None else record.entity
-
-    def record(self, entity_id: EntityId, kind: Kind | None = None) -> Record:
-        record = self.records.get(entity_id)
-        if record is None:
-            raise ValueError(f"unknown entity id {entity_id!r}")
-        if kind is not None and record.entity.kind != kind:
-            raise ValueError(f"used {entity_id!r} as {kind}, but it is a {record.entity.kind}")
-        return record
+        return self.entities.get(entity_id)
 
     def require(self, entity_id: EntityId) -> Entity:
-        return self.record(entity_id).entity
+        entity = self.entities.get(entity_id)
+        if entity is None:
+            raise ValueError(f"unknown entity id {entity_id!r}")
+        return entity
 
     def require_kind(self, entity_id: EntityId, kind: Kind) -> Entity:
-        return self.record(entity_id, kind).entity
+        entity = self.require(entity_id)
+        if entity.kind != kind:
+            raise ValueError(f"used {entity_id!r} as {kind}, but it is a {entity.kind}")
+        return entity
 
     def children(self, entity_id: EntityId, kind: Kind | None = None) -> tuple[Entity, ...]:
-        return tuple(entity for entity in self.entities(kind) if entity.parent_id == entity_id)
+        held = self.entities.values() if kind is None else self.of_kind(kind)
+        return tuple(entity for entity in held if entity.parent_id == entity_id)
 
     def location_of(self, entity: Entity) -> EntityId | None:
         """Walk holders up to the enclosing place; a location is inside none, so it has none."""
@@ -230,6 +210,8 @@ class GameState(Mutable):
     scenario: ScenarioMeta
     engine: EngineId
     world: WorldState
+    # Opaque to core: the engine that wrote it is the only reader and the only validator.
+    mechanics: JsonValue = None
     threads: dict[Slug, Thread] = Field(default_factory=dict)
     hooks: tuple[Hook, ...] = ()
     # A tuple, not a set: a save's bytes are a golden fixture, and set ordering is not stable.
@@ -260,11 +242,11 @@ class GameState(Mutable):
         """One validation per transaction, over the whole copy rather than per field change."""
         return type(self).model_validate(self.model_dump(round_trip=True))
 
-    def add(self, entity: Entity, rules: Sheet) -> Fact:
-        """Copy into the fact, so a later move in the same turn cannot rewrite the record."""
+    def add(self, entity: Entity) -> Fact:
+        """Copy into the fact, so a later move in the same turn cannot rewrite the entry."""
         if self.world.find(entity.id) is not None:
             raise ValueError(f"entity id {entity.id!r} already exists")
-        self.world.records[entity.id] = Record(entity=entity, rules=rules)
+        self.world.entities[entity.id] = entity
         summary = f"new {entity.kind}: {entity.name}"
         return Fact(
             source=CORE,
@@ -310,7 +292,7 @@ class GameState(Mutable):
     def _consistent_world(self) -> Self:
         if not self.player.known:
             raise ValueError("the player entity must be known")
-        for entity in self.world.entities():
+        for entity in self.world.entities.values():
             # `find`, not `require`: a dangling id is a topology fault, not a lookup failure.
             holder = None if entity.parent_id is None else self.world.find(entity.parent_id)
             check_placement(entity, holder)
@@ -325,14 +307,6 @@ class GameState(Mutable):
         if len(set(self.fired_hooks)) != len(self.fired_hooks):
             raise ValueError(f"a hook fired twice: {sorted(self.fired_hooks)}")
         return self
-
-
-def sheet_of(state: GameState, entity_id: EntityId) -> Sheet:
-    return state.world.record(entity_id).rules
-
-
-def player_sheet(state: GameState) -> Sheet:
-    return sheet_of(state, PLAYER_ID)
 
 
 def _move_summary(entity: Entity, destination: Entity) -> str:

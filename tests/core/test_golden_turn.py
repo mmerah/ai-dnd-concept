@@ -43,7 +43,9 @@ TURN_STEPS = ("scene", "director", "resolve", "hooks", "narrator", "worldkeeper"
 def _branch(outcome: str) -> dict[str, object]:
     return {
         "outcome": outcome,
-        "effects": [{"op": "tag-change", "mode": "add", "entity_id": "player", "tag_id": outcome}],
+        "effects": [
+            {"op": "trait-change", "mode": "add", "entity_id": "player", "trait_id": outcome}
+        ],
     }
 
 

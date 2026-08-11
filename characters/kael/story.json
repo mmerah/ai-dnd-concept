@@ -1,39 +1,12 @@
 {
   "character": {
-    "numbers": {
-      "bold": 2,
-      "subtle": 1,
-      "clever": 1,
-      "empathetic": 0
-    },
-    "counters": {
-      "stress": {
-        "current": 0,
-        "maximum": 5
-      }
-    },
-    "tags": [
-      {
-        "id": "relic-hunter",
-        "name": "Relic Hunter",
-        "text": "(edge) Kael knows how old sanctums conceal what matters."
-      },
-      {
-        "id": "marked-by-the-past",
-        "name": "Marked by the Past",
-        "text": "(burden) Old scars make certain memories hard to face."
-      }
-    ]
-  },
-  "entities": {
-    "lantern": {
-      "tags": [
-        {
-          "id": "unsteady-lantern",
-          "name": "Unsteady Lantern",
-          "text": "(gear) Its shifting light exposes seams and movement in deep shadow."
-        }
-      ]
+    "bold": 2,
+    "subtle": 1,
+    "clever": 1,
+    "empathetic": 0,
+    "stress": {
+      "current": 0,
+      "maximum": 5
     }
   }
 }

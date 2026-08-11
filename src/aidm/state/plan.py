@@ -5,11 +5,8 @@ from typing import cast
 
 from pydantic import Field, ValidationError, model_validator
 
-from .apply import apply_effect
-from .base import PLAYER_ID, Entity, EntityId, Frozen, Slug
-from .effects import TurnEffect
+from .base import PLAYER_ID, EntityId, Frozen, Slug
 from .facts import Fact
-from .sheet import Sheet
 from .world import GameState
 
 
@@ -30,17 +27,9 @@ def check_speaker(state: GameState, speaker_id: EntityId | None) -> str | None:
     return None
 
 
-class OutcomeBranch(Frozen):
-    """What follows in the fiction if the action lands on this outcome, and only then."""
-
-    outcome: Slug = Field(description="One outcome label the chosen action allows.")
-    effects: tuple[TurnEffect, ...] = Field(
-        default=(), description="What that outcome causes in the world."
-    )
-
-
 class TurnPlanBase(Frozen):
-    """One turn, answered in one plan: the engine rolls, picks the outcome, and applies it."""
+    """One turn, answered in one plan. Core knows a plan only by this base: every field, every
+    effect, and the whole resolution belong to the engine whose plan it is."""
 
     @model_validator(mode="before")
     @classmethod
@@ -61,10 +50,22 @@ class TurnPlanBase(Frozen):
                 decoded[key] = loaded
         return decoded
 
-    effects: tuple[TurnEffect, ...] = Field(
+
+class OutcomeBranch[E](Frozen):
+    """What follows in the fiction if the action lands on this outcome, and only then."""
+
+    outcome: Slug = Field(description="One outcome label the chosen action allows.")
+    effects: tuple[E, ...] = Field(default=(), description="What that outcome causes in the world.")
+
+
+class Branched[E](TurnPlanBase):
+    """The plan shape both shipped engines use: unconditional effects plus effects per outcome,
+    over that engine's own effect vocabulary."""
+
+    effects: tuple[E, ...] = Field(
         default=(), description="Consequences that happen whatever the action settles."
     )
-    branches: tuple[OutcomeBranch, ...] = Field(
+    branches: tuple[OutcomeBranch[E], ...] = Field(
         default=(),
         description="Consequences keyed by outcome: at most one branch per label, and only labels "
         "this action allows. Outcomes that do not occur simply never apply. An action rolled to "
@@ -74,26 +75,23 @@ class TurnPlanBase(Frozen):
     )
 
 
-def apply_branch(
-    draft: GameState,
-    plan: TurnPlanBase,
-    outcome: Slug,
-    default_rules: Callable[[Entity], Sheet],
+type Apply[E] = Callable[[GameState, E], list[Fact]]
+
+
+def apply_all[E](draft: GameState, effects: Sequence[E], apply: Apply[E]) -> list[Fact]:
+    return [fact for effect in effects for fact in apply(draft, effect)]
+
+
+def apply_branch[E](
+    draft: GameState, plan: Branched[E], outcome: Slug, apply: Apply[E]
 ) -> list[Fact]:
     """An outcome the model wrote no branch for is fine: not every outcome needs consequences."""
     branch = next((held for held in plan.branches if held.outcome == outcome), None)
-    if branch is None:
-        return []
-    return [
-        fact for effect in branch.effects for fact in apply_effect(draft, effect, default_rules)
-    ]
+    return [] if branch is None else apply_all(draft, branch.effects, apply)
 
 
-def check_plan_base(
-    state: GameState,
-    plan: TurnPlanBase,
-    labels: frozenset[Slug],
-    default_rules: Callable[[Entity], Sheet],
+def check_effects[E](
+    state: GameState, plan: Branched[E], labels: frozenset[Slug], apply: Apply[E]
 ) -> str | None:
     """What every engine's plan check shares: the outcome labels this action allows, and a trial
     application of the effects against the state as it stands."""
@@ -111,16 +109,16 @@ def check_plan_base(
     # Branches are alternatives: each is trialled with the unconditional effects, never a sibling.
     alternatives = [(*branch.effects, *plan.effects) for branch in plan.branches] or [plan.effects]
     for group in alternatives:
-        if fault := _trial(state, group, default_rules):
+        if fault := _trial(state, group, apply):
             return fault
     return None
 
 
-def check_plan_with_trial(
+def check_action[E](
     state: GameState,
-    plan: TurnPlanBase,
+    plan: Branched[E],
     labels: frozenset[Slug],
-    default_rules: Callable[[Entity], Sheet],
+    apply: Apply[E],
     resolve: Callable[[GameState, Random], object],
 ) -> str | None:
     """The trial resolve owes the model every refusal the real resolve raises, so an action that
@@ -129,16 +127,14 @@ def check_plan_with_trial(
         _ = resolve(state.draft(), Random(0))
     except ValueError as refused:
         return str(refused)
-    return check_plan_base(state, plan, labels, default_rules)
+    return check_effects(state, plan, labels, apply)
 
 
-def _trial(
-    state: GameState, effects: Sequence[TurnEffect], default_rules: Callable[[Entity], Sheet]
-) -> str | None:
+def _trial[E](state: GameState, effects: Sequence[E], apply: Apply[E]) -> str | None:
     draft = state.draft()
     try:
         for effect in effects:
-            _ = apply_effect(draft, effect, default_rules)
+            _ = apply(draft, effect)
         _ = draft.committed()
     except ValidationError as invalid:
         return f"the state this leaves is invalid: {invalid.errors()[0]['msg']}"

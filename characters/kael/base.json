@@ -8,7 +8,26 @@
       "name": "a guttering lantern",
       "brief": "A dented tin lantern whose flame will not hold still.",
       "known": true,
-      "parent_id": "player"
+      "parent_id": "player",
+      "traits": [
+        {
+          "id": "unsteady-lantern",
+          "name": "Unsteady Lantern",
+          "text": "(gear) Its shifting light exposes seams and movement in deep shadow."
+        }
+      ]
+    }
+  ],
+  "traits": [
+    {
+      "id": "relic-hunter",
+      "name": "Relic Hunter",
+      "text": "(edge) Kael knows how old sanctums conceal what matters."
+    },
+    {
+      "id": "marked-by-the-past",
+      "name": "Marked by the Past",
+      "text": "(burden) Old scars make certain memories hard to face."
     }
   ]
 }

@@ -1,8 +1,8 @@
 import re
 from collections.abc import Iterable
-from typing import Annotated, Literal, NewType
+from typing import Annotated, Literal, NewType, Self
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 
 class Frozen(BaseModel):
@@ -26,7 +26,7 @@ SLUG_PATTERN = r"[a-z0-9]+(?:-[a-z0-9]+)*"
 Slug = Annotated[str, Field(pattern=rf"^{SLUG_PATTERN}$", max_length=64)]
 
 PLAYER_ID = EntityId("player")
-SAVE_VERSION = 47
+SAVE_VERSION = 48
 
 
 def content_id(value: str) -> Slug:
@@ -50,6 +50,15 @@ class EntityDetail(Frozen):
     hook: str
 
 
+class Trait(Frozen):
+    """A lasting fictional quality: an edge, a burden, a condition, a ward. Core never interprets
+    one; both engines read them and shared hooks author them."""
+
+    id: Slug
+    name: str
+    text: str = ""
+
+
 class Entity(Mutable):
     id: EntityId
     kind: Kind
@@ -59,3 +68,14 @@ class Entity(Mutable):
     known: bool = False
     # Which kinds may hold which is one rule, in `world.check_placement`.
     parent_id: EntityId | None = None
+    traits: list[Trait] = Field(default_factory=list)
+
+    def trait(self, trait_id: str) -> Trait | None:
+        return next((held for held in self.traits if held.id == trait_id), None)
+
+    @model_validator(mode="after")
+    def _traits_are_unambiguous(self) -> Self:
+        ids = [held.id for held in self.traits]
+        if repeated := sorted({name for name in ids if ids.count(name) > 1}):
+            raise ValueError(f"duplicate trait ids on {self.id!r}: {repeated}")
+        return self

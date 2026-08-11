@@ -5,26 +5,28 @@ from typing import get_args
 from fivee_test_support import RAT, SWORD, armed, dnd5e_game, wizardly
 from pydantic import JsonValue
 
+from aidm.engines.counters import CounterChange
 from aidm.engines.dnd5e.actions import Action
+from aidm.engines.dnd5e.mechanics import Dnd5eEffect, Sheet, read, sheet_of, write
 from aidm.engines.loader import Engine
 from aidm.state.base import PLAYER_ID, EntityId
-from aidm.state.effects import CounterChange, TagChange
+from aidm.state.effects import TraitChange
 from aidm.state.plan import OutcomeBranch, TurnPlanBase
-from aidm.state.world import GameState, player_sheet, sheet_of
+from aidm.state.world import GameState
 
 SUCCESS = "success"
 FAILURE = "failure"
 ACTS = tuple(action.model_fields["act"].default for action in get_args(Action.__value__))
-WOUNDED = OutcomeBranch(
-    outcome=SUCCESS, effects=(TagChange(mode="add", entity_id=RAT, tag_id="wounded"),)
+WOUNDED: OutcomeBranch[Dnd5eEffect] = OutcomeBranch(
+    outcome=SUCCESS, effects=(TraitChange(mode="add", entity_id=RAT, trait_id="wounded"),)
 )
-UNSCATHED = OutcomeBranch(
-    outcome=FAILURE, effects=(TagChange(mode="add", entity_id=RAT, tag_id="unscathed"),)
+UNSCATHED: OutcomeBranch[Dnd5eEffect] = OutcomeBranch(
+    outcome=FAILURE, effects=(TraitChange(mode="add", entity_id=RAT, trait_id="unscathed"),)
 )
 
 
 def _plan(
-    engine: Engine, action: object | None, *, branches: tuple[OutcomeBranch, ...] = ()
+    engine: Engine, action: object | None, *, branches: tuple[OutcomeBranch[Dnd5eEffect], ...] = ()
 ) -> TurnPlanBase:
     return engine.plan_type.model_validate({"action": action, "branches": branches})
 
@@ -35,18 +37,26 @@ def _refusal(engine: Engine, state: GameState, plan: TurnPlanBase) -> str:
     return refused
 
 
+def _sheet(state: GameState, entity_id: EntityId) -> Sheet:
+    return sheet_of(read(state), state.world.require(entity_id))
+
+
 def _set_number(state: GameState, entity_id: EntityId, key: str, value: int) -> GameState:
     draft = state.draft()
-    sheet_of(draft, entity_id).numbers[key] = value
+    mechanics = read(draft)
+    sheet_of(mechanics, draft.world.require(entity_id)).numbers[key] = value
+    write(draft, mechanics)
     return draft.committed()
 
 
 def _hp_ceiling(state: GameState, entity_id: EntityId, maximum: int) -> GameState:
     """Raises a target's hp ceiling so a damage window is never clipped by its own max."""
     draft = state.draft()
-    counter = sheet_of(draft, entity_id).counters["hp"]
+    mechanics = read(draft)
+    counter = sheet_of(mechanics, draft.world.require(entity_id)).counters["hp"]
     counter.maximum = maximum
     counter.current = maximum
+    write(draft, mechanics)
     return draft.committed()
 
 
@@ -74,14 +84,14 @@ def test_a_weapon_attack_that_hits_rolls_damage_and_applies_the_success_branch()
         "dice_rolled",
         "dice_rolled",
         "counter_changed",
-        "tag_added",
+        "trait_added",
     ]
     attack_roll, hp_change = facts[0], facts[2]
     assert _number(attack_roll.data["vs"]) == 1
     assert -11 <= _number(hp_change.data["delta"]) <= -4
-    rat = sheet_of(draft, RAT)
-    assert rat.tag("wounded") is not None
-    assert rat.tag("unscathed") is None
+    rat = draft.world.require(RAT)
+    assert rat.trait("wounded") is not None
+    assert rat.trait("unscathed") is None
 
 
 def test_the_same_attack_missing_leaves_the_rat_untouched() -> None:
@@ -97,12 +107,12 @@ def test_the_same_attack_missing_leaves_the_rat_untouched() -> None:
     draft = miss.draft()
     facts = engine.resolve_action(draft, plan, Random(1))
 
-    assert [fact.kind for fact in facts] == ["dice_rolled", "tag_added"]
+    assert [fact.kind for fact in facts] == ["dice_rolled", "trait_added"]
     assert _number(facts[0].data["vs"]) == 26
-    rat = sheet_of(draft, RAT)
-    assert rat.counters["hp"].current == 7
-    assert rat.tag("unscathed") is not None
-    assert rat.tag("wounded") is None
+    assert _sheet(draft, RAT).counters["hp"].current == 7
+    rat = draft.world.require(RAT)
+    assert rat.trait("unscathed") is not None
+    assert rat.trait("wounded") is None
 
 
 def test_a_stat_block_attack_needs_exactly_one_source_for_its_numbers() -> None:
@@ -189,7 +199,7 @@ def test_a_cast_spends_its_slot_before_anything_follows() -> None:
     assert engine.check_plan(ready, plan_one) is None
     draft_one = ready.draft()
     facts_one = engine.resolve_action(draft_one, plan_one, Random(1))
-    sheet_one = sheet_of(draft_one, PLAYER_ID)
+    sheet_one = _sheet(draft_one, PLAYER_ID)
     assert sheet_one.counters["slot-1"].current == 1
     damage_one = next(fact for fact in facts_one if fact.kind == "dice_rolled")
     assert 6 <= _number(damage_one.data["total"]) <= 15
@@ -204,13 +214,15 @@ def test_a_cast_spends_its_slot_before_anything_follows() -> None:
     plan_two = _plan(engine, from_two)
     draft_two = ready.draft()
     facts_two = engine.resolve_action(draft_two, plan_two, Random(2))
-    sheet_two = sheet_of(draft_two, PLAYER_ID)
+    sheet_two = _sheet(draft_two, PLAYER_ID)
     assert (sheet_two.counters["slot-2"].current, sheet_two.counters["slot-1"].current) == (1, 2)
     damage_two = next(fact for fact in facts_two if fact.kind == "dice_rolled")
     assert 8 <= _number(damage_two.data["total"]) <= 20
 
     drained = ready.draft()
-    sheet_of(drained, PLAYER_ID).counters["slot-1"].current = 0
+    mechanics = read(drained)
+    sheet_of(mechanics, drained.player).counters["slot-1"].current = 0
+    write(drained, mechanics)
     empty = drained.committed()
     assert "cannot go below" in _refusal(engine, empty, plan_one)
 
@@ -253,7 +265,9 @@ def test_the_bookkeeping_actions_spend_heal_and_recharge() -> None:
     engine, state = dnd5e_game()
 
     hurt = state.draft()
-    player_sheet(hurt).counters["hp"].current = 0
+    mechanics = read(hurt)
+    sheet_of(mechanics, hurt.player).counters["hp"].current = 0
+    write(hurt, mechanics)
     hurt = hurt.committed()
     feature_plan = _plan(
         engine,
@@ -263,7 +277,7 @@ def test_the_bookkeeping_actions_spend_heal_and_recharge() -> None:
 
     spent_draft = hurt.draft()
     feature_facts = engine.resolve_action(spent_draft, feature_plan, Random(1))
-    spent_sheet = sheet_of(spent_draft, PLAYER_ID)
+    spent_sheet = _sheet(spent_draft, PLAYER_ID)
     assert spent_sheet.counters["second-wind"].current == 0
     heal_fact = next(fact for fact in feature_facts if fact.data.get("counter") == "hp")
     assert 2 <= _number(heal_fact.data["delta"]) <= 11
@@ -273,7 +287,7 @@ def test_the_bookkeeping_actions_spend_heal_and_recharge() -> None:
     rest_draft = rested.draft()
     rest_facts = engine.resolve_action(rest_draft, rest_plan, Random(1))
     assert [fact.kind for fact in rest_facts] == ["recharged"]
-    assert sheet_of(rest_draft, PLAYER_ID).counters["second-wind"].current == 1
+    assert _sheet(rest_draft, PLAYER_ID).counters["second-wind"].current == 1
 
     uncontested = _plan(
         engine,
@@ -288,7 +302,7 @@ def test_a_plan_with_json_stringified_nested_fields_validates_as_if_nested() -> 
     a retry cannot repair that transport quirk, so the plan boundary decodes it."""
     engine, _ = dnd5e_game()
     action = {"act": "attack", "actor_id": "player", "target_id": RAT, "weapon_item_id": SWORD}
-    hit = {"op": "tag-change", "mode": "add", "entity_id": RAT, "tag_id": "wounded"}
+    hit = {"op": "trait-change", "mode": "add", "entity_id": RAT, "trait_id": "wounded"}
     nested = {
         "action": action,
         "branches": [{"outcome": SUCCESS, "effects": [hit]}],
@@ -327,7 +341,7 @@ def test_a_cast_checks_its_target_and_a_roll_never_names_an_unrevealed_actor() -
     assert "not here with the player" in _refusal(engine, ready, away)
 
     draft = ready.draft()
-    draft.world.record(RAT).entity.known = False
+    draft.world.require(RAT).known = False
     attack = _plan(
         engine, {"act": "attack", "actor_id": PLAYER_ID, "target_id": RAT, "weapon_item_id": SWORD}
     )

@@ -1,0 +1,81 @@
+{
+  "$defs": {
+    "Approach": {
+      "enum": [
+        "bold",
+        "subtle",
+        "clever",
+        "empathetic"
+      ],
+      "type": "string"
+    }
+  },
+  "additionalProperties": false,
+  "description": "The one change three growth marks buy. The engine spends the marks itself.",
+  "properties": {
+    "approach": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/Approach"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "The approach raised by one, or null."
+    },
+    "lose_trait_id": {
+      "anyOf": [
+        {
+          "maxLength": 64,
+          "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "Exact id of a burden the character leaves behind, or null. With a gain, this rewrites that burden.",
+      "title": "Lose Trait Id"
+    },
+    "gain_trait_id": {
+      "anyOf": [
+        {
+          "maxLength": 64,
+          "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "Stable hyphenated id of an edge, bond, or rewritten burden gained, or null.",
+      "title": "Gain Trait Id"
+    },
+    "gain_text": {
+      "default": "",
+      "description": "What the gained trait lets the character do, starting `(edge)`, `(bond)`, or `(burden)`. Required with a gain.",
+      "title": "Gain Text",
+      "type": "string"
+    },
+    "resilience": {
+      "default": false,
+      "description": "True to raise the stress maximum by one instead.",
+      "title": "Resilience",
+      "type": "boolean"
+    },
+    "why": {
+      "description": "One short sentence the player reads before confirming.",
+      "title": "Why",
+      "type": "string"
+    }
+  },
+  "required": [
+    "why"
+  ],
+  "title": "Growth",
+  "type": "object"
+}

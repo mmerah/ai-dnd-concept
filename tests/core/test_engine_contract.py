@@ -2,19 +2,22 @@ from core_test_support import initialized, settings
 from story_test_support import story_game
 
 from aidm.app.session import build_engine
+from aidm.engines.counters import CounterChange
 from aidm.engines.loader import Engine, plugins
-from aidm.state.apply import apply_effect
+from aidm.engines.story.mechanics import Adventurer, read
+from aidm.engines.story.mechanics import apply as story_apply
 from aidm.state.base import PLAYER_ID, Entity, EntityId
-from aidm.state.effects import CounterChange, Move
+from aidm.state.effects import Move
 from aidm.state.facts import Fact
-from aidm.state.world import GameState, player_sheet, sheet_of
+from aidm.state.world import GameState
 
 
 def _turn(engine: Engine, state: GameState) -> tuple[GameState, tuple[Fact, ...]]:
+    del engine
     draft = state.draft()
     facts = [
-        *apply_effect(draft, Move(entity_id=EntityId("vault_map")), engine.default_rules),
-        *apply_effect(
+        *story_apply(draft, Move(entity_id=EntityId("vault_map"))),
+        *story_apply(
             draft,
             CounterChange(
                 mode="adjust",
@@ -23,7 +26,6 @@ def _turn(engine: Engine, state: GameState) -> tuple[GameState, tuple[Fact, ...]
                 amount=1,
                 why="the strain of prying",
             ),
-            engine.default_rules,
         ),
     ]
     return draft.committed(), tuple(facts)
@@ -33,8 +35,8 @@ def test_engine_initialization_and_state_contract() -> None:
     engine, state = story_game()
 
     assert state.engine == engine.id
-    assert player_sheet(state).numbers["bold"] == 2
-    engine.validate_state(state)
+    assert read(state).actors[PLAYER_ID].bold == 2
+    engine.commit(state)
 
     restored = GameState.model_validate_json(state.model_dump_json())
     assert restored == state
@@ -57,7 +59,7 @@ def test_effect_resolution_is_pure_and_renders_every_fact() -> None:
         "counter_changed",
     }
     assert first_state.model_dump_json() != before
-    engine.validate_state(first_state)
+    engine.commit(first_state)
     for fact in first_facts:
         assert fact.trace
         assert fact.narrator is None or str(fact.data) not in fact.narrator
@@ -84,16 +86,13 @@ def test_a_created_entity_gains_engine_state_in_the_same_commit() -> None:
 
     working = state.draft()
     for entity in (actor, item):
-        _ = working.add(entity, engine.default_rules(entity))
+        _ = working.add(entity)
     grown = working.committed()
+    engine.commit(grown)
 
-    engine.validate_state(grown)
-    actor_sheet = sheet_of(grown, actor.id)
-    item_sheet = sheet_of(grown, item.id)
-    assert "stress" in actor_sheet.counters
-    assert set(actor_sheet.numbers) == {"bold", "subtle", "clever", "empathetic"}
-    assert not item_sheet.numbers
-    assert not item_sheet.counters
+    mechanics = read(grown)
+    assert mechanics.actors[actor.id] == Adventurer()
+    assert item.id not in mechanics.actors
 
 
 def test_every_registered_engine_builds_itself() -> None:

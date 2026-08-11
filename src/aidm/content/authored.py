@@ -3,7 +3,7 @@ from typing import Self
 
 from pydantic import Field, JsonValue, model_validator
 
-from aidm.state.base import PLAYER_ID, EngineId, Entity, EntityId, Frozen, Slug
+from aidm.state.base import PLAYER_ID, EngineId, Entity, EntityId, Frozen, Slug, Trait
 from aidm.state.effects import AdvanceThread
 from aidm.state.world import (
     Hook,
@@ -71,10 +71,11 @@ class ScenarioOverlay(Frozen):
 
 
 class CharacterProfile(Frozen):
-    """`base.json`: who the character is, and the gear they start holding."""
+    """`base.json`: who the character is, the traits they carry, and the gear they start holding."""
 
     name: str
     brief: str
+    traits: tuple[Trait, ...] = ()
     items: tuple[Entity, ...] = ()
 
     @model_validator(mode="after")

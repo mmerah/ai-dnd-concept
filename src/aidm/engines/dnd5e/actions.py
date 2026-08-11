@@ -4,7 +4,9 @@ from pydantic import Field
 
 from aidm.state.base import EntityId, Frozen, Slug
 from aidm.state.dice import DiceExpr
-from aidm.state.plan import TurnPlanBase
+from aidm.state.plan import Branched
+
+from .mechanics import Dnd5eEffect
 
 
 class Attack(Frozen):
@@ -153,7 +155,7 @@ class Improvise(Frozen):
 type Action = Attack | CastSpell | Check | UseFeature | Rest | Improvise
 
 
-class TurnPlan(TurnPlanBase):
+class TurnPlan(Branched[Dnd5eEffect]):
     action: Annotated[Action, Field(discriminator="act")] | None = Field(
         default=None,
         description="The one action this turn resolves, or null when nothing needs resolving.",

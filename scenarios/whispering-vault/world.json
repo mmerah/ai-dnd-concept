@@ -67,7 +67,14 @@
       "name": "a bloated rat",
       "brief": "It has grown fat on the dead garden and does not run from a lantern.",
       "known": false,
-      "parent_id": "cloister"
+      "parent_id": "cloister",
+      "traits": [
+        {
+          "id": "disease-swollen",
+          "name": "Disease-Swollen",
+          "text": "(edge) The rat is unnaturally hard to frighten or drive off."
+        }
+      ]
     },
     {
       "id": "vault_map",
@@ -99,7 +106,9 @@
       "target": "vault",
       "directed": false,
       "known": false,
-      "tags": ["locked"]
+      "tags": [
+        "locked"
+      ]
     }
   ],
   "threads": [
@@ -115,7 +124,12 @@
   "hooks": [
     {
       "id": "vault-sighted",
-      "match": { "kind": "entity_discovered", "data": { "entity_id": "vault" } },
+      "match": {
+        "kind": "entity_discovered",
+        "data": {
+          "entity_id": "vault"
+        }
+      },
       "effects": [
         {
           "op": "advance-thread",
@@ -124,19 +138,24 @@
           "why": "the vault door is found"
         },
         {
-          "op": "tag-change",
+          "op": "trait-change",
           "mode": "add",
           "entity_id": "vault",
-          "tag_id": "warded",
           "text": "The seal answers a touch, and something behind the door answers with it.",
-          "why": "the seal stirs when it is first seen"
+          "why": "the seal stirs when it is first seen",
+          "trait_id": "warded"
         }
       ],
       "note": "Kael has found the vault door. Press on what opening the seal will cost."
     },
     {
       "id": "vault-charted",
-      "match": { "kind": "entity_discovered", "data": { "entity_id": "vault_map" } },
+      "match": {
+        "kind": "entity_discovered",
+        "data": {
+          "entity_id": "vault_map"
+        }
+      },
       "effects": [
         {
           "op": "advance-thread",
@@ -144,13 +163,21 @@
           "stage": "seal-found",
           "why": "the chart marks the stair down to the door"
         },
-        { "op": "reveal", "entity_id": "vault" }
+        {
+          "op": "reveal",
+          "entity_id": "vault"
+        }
       ],
       "note": "The chart marks the stair to the vault door. Press on what opening the seal will cost."
     },
     {
       "id": "archivist-found",
-      "match": { "kind": "entity_discovered", "data": { "entity_id": "elena" } },
+      "match": {
+        "kind": "entity_discovered",
+        "data": {
+          "entity_id": "elena"
+        }
+      },
       "effects": [
         {
           "op": "advance-thread",

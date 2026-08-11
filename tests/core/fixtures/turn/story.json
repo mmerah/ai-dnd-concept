@@ -1,5 +1,5 @@
 {
-  "save_version": 47,
+  "save_version": 48,
   "facts": [
     {
       "source": "core",
@@ -21,12 +21,12 @@
     },
     {
       "source": "core",
-      "kind": "tag_added",
+      "kind": "trait_added",
       "trace": "Kael is Mixed",
       "narrator": "Kael is Mixed",
       "data": {
         "entity_id": "player",
-        "tag_id": "mixed"
+        "trait_id": "mixed"
       }
     },
     {
@@ -124,10 +124,10 @@
             "outcome": "strong",
             "effects": [
               {
-                "op": "tag-change",
+                "op": "trait-change",
                 "mode": "add",
                 "entity_id": "player",
-                "tag_id": "strong",
+                "trait_id": "strong",
                 "text": "",
                 "why": ""
               }
@@ -137,10 +137,10 @@
             "outcome": "mixed",
             "effects": [
               {
-                "op": "tag-change",
+                "op": "trait-change",
                 "mode": "add",
                 "entity_id": "player",
-                "tag_id": "mixed",
+                "trait_id": "mixed",
                 "text": "",
                 "why": ""
               }
@@ -150,10 +150,10 @@
             "outcome": "setback",
             "effects": [
               {
-                "op": "tag-change",
+                "op": "trait-change",
                 "mode": "add",
                 "entity_id": "player",
-                "tag_id": "setback",
+                "trait_id": "setback",
                 "text": "",
                 "why": ""
               }
@@ -165,8 +165,8 @@
           "actor_id": "player",
           "approach": "subtle",
           "difficulty": "demanding",
-          "helping_tag_id": null,
-          "hindering_tag_id": null,
+          "helping_trait_id": null,
+          "hindering_trait_id": null,
           "stakes": "listening past the vault door unheard"
         }
       }

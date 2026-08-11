@@ -2,7 +2,7 @@ import json
 from collections.abc import Callable, Iterable, Mapping, Sequence
 
 from aidm.engines.loader import EntityRenderer
-from aidm.state.base import PLAYER_ID, Entity, EntityId, Frozen, Kind
+from aidm.state.base import PLAYER_ID, Entity, EntityId, Frozen, Kind, Trait
 from aidm.state.turn import SceneDirective
 from aidm.state.world import LOCKED_TAG, GameState, ScenarioMeta, Thread
 
@@ -42,7 +42,7 @@ class SceneSnapshot(BaseScene):
         world = state.world
         player = state.player
         location = world.require_kind(state.player_location, "location")
-        canon = tuple(world.entities())
+        canon = tuple(world.entities.values())
         by_id = {entity.id: entity for entity in canon}
         shown = [entity for entity in canon if entity.id != PLAYER_ID]
         inventory = world.children(PLAYER_ID, "item")
@@ -264,12 +264,12 @@ def _character(
     label: Label,
 ) -> str:
     held = "\n".join(
-        _with_state(f"- {label(item)} — {item.brief}", describe(item), "  ")
+        _with_state(f"- {label(item)} — {item.brief}", entity_state(item, describe), "  ")
         for item in sorted(inventory, key=lambda item: item.name)
     )
     line = _with_state(
         f"{label(player)} — {player.brief} — at {label(location)}",
-        describe(player),
+        entity_state(player, describe),
     )
     return f"{line}\ninventory:\n{held or '- (none)'}"
 
@@ -282,7 +282,7 @@ def _entities(
 ) -> str:
     return (
         "\n".join(
-            _with_state(_headline(entity, placement(entity)), describe(entity), "  ")
+            _with_state(_headline(entity, placement(entity)), entity_state(entity, describe), "  ")
             for entity in entities
         )
         or "- (none)"
@@ -339,7 +339,7 @@ def _catalogue(scene: SceneSnapshot, describe: EntityRenderer) -> str:
         "\n".join(
             _with_state(
                 _headline(entity, scene.placement_of(entity)) + _detail(entity),
-                describe(entity),
+                entity_state(entity, describe),
                 "  ",
             )
             for entity in scene.catalogue()
@@ -380,6 +380,18 @@ def _named(entity: Entity) -> str:
 
 def _kind_label(kind: Kind) -> str:
     return "npc" if kind == "actor" else kind
+
+
+def entity_state(entity: Entity, describe: EntityRenderer) -> str:
+    """Traits are core fiction and the engine never sees them; both reach the prompt here."""
+    parts = [describe(entity)]
+    if entity.traits:
+        parts.append("traits: " + ", ".join(_trait(held) for held in entity.traits))
+    return "\n".join(part for part in parts if part)
+
+
+def _trait(trait: Trait) -> str:
+    return f"{trait.name}[id={trait.id}]" + (f" — {trait.text}" if trait.text else "")
 
 
 def _with_state(line: str, state: str, indent: str = "") -> str:

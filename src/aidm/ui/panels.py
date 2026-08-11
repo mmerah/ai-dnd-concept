@@ -4,9 +4,8 @@ from collections.abc import Callable, Sequence
 from nicegui import ui
 
 from aidm.app.session import GameSession
-from aidm.state.effects import SheetDelta
+from aidm.state.advancement import AdvancementOffer, ProposalBase
 from aidm.state.facts import Fact
-from aidm.state.sheet import AdvancementOffer
 from aidm.state.turn import Advance, StepTrace, TraceEntry, Turn
 
 from .busy import refuse_if_busy, working
@@ -133,12 +132,12 @@ def _intent_form(session: GameSession, refresh: Callable[[], None]) -> None:
     ui.button("Propose", on_click=propose).props("color=primary")
 
 
-def _review(session: GameSession, drafted: SheetDelta, refresh: Callable[[], None]) -> None:
+def _review(session: GameSession, drafted: ProposalBase, refresh: Callable[[], None]) -> None:
     ui.label("Proposed changes").classes("text-sm font-bold mt-3")
     try:
         lines = [f"- {fact.trace}" for fact in session.preview(drafted)]
     except ValueError as stale:
-        # A turn since the proposal may have changed the sheet from under the draft.
+        # A turn since the proposal may have changed the character from under the draft.
         lines = [f"This proposal no longer applies: {stale}. Discard it and propose again."]
     for line in lines:
         ui.label(line).classes("text-sm whitespace-pre-wrap")

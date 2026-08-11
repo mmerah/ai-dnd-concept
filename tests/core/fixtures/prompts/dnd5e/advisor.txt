@@ -15,7 +15,6 @@ THE CHARACTER
 Kael
 numbers: armor-class 12, charisma 12, constitution 13, dexterity 14, hit-die 10, intelligence 12, level 1, proficiency-bonus 2, speed 30, strength 11, wisdom 14
 counters: hp 11/11, second-wind 1/1 (short-rest)
-tags: Ready to advance[id=advancement-ready]
 content:
 - Fighter [srd-2014/classes/fighter] — saving-throws=STR, CON
 - Half-Elf [srd-2014/races/half-elf] — size=Medium
@@ -26,6 +25,7 @@ content:
 - Skill: Perception [srd-2014/proficiencies/skill-perception] — category=skills; reference=perception
 - Skill: Investigation [srd-2014/proficiencies/skill-investigation] — category=skills; reference=investigation
 - Skill: Stealth [srd-2014/proficiencies/skill-stealth] — category=skills; reference=stealth
+traits: Relic Hunter[id=relic-hunter] — (edge) Kael knows how old sanctums conceal what matters., Marked by the Past[id=marked-by-the-past] — (burden) Old scars make certain memories hard to face., Ready to advance[id=advancement-ready]
 
 WHAT THE PLAYER WANTS
 I want to strike harder.

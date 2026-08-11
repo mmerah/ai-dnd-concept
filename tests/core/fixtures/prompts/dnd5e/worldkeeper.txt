@@ -27,11 +27,13 @@ EVERYTHING THAT EXISTS:
     counters: hp 7/7
     content:
     - Giant Rat [srd-2014/monsters/giant-rat] — attacks=Bite +4 to hit, 1d4+2 piercing; challenge-rating=1/8; size=Small; beast
+    traits: Disease-Swollen[id=disease-swollen] — (edge) The rat is unnaturally hard to frighten or drive off.
 - the vault map[id=vault_map] (item) — carried — A creased chart of the undercroft, marking a stair the abbey's own plans deny.
 - a guttering lantern[id=lantern] (item) — carried — A dented tin lantern whose flame will not hold still.
   state:
     content:
     - Lantern, hooded [srd-2014/gear/lantern-hooded] — cost-gp=5
+    traits: Unsteady Lantern[id=unsteady-lantern] — (gear) Its shifting light exposes seams and movement in deep shadow.
 
 PLAYER:
 I lever up the loose flagstone and listen at the vault door.

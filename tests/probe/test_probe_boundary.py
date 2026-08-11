@@ -8,7 +8,8 @@ import pytest
 from probe_engine import Mechanics, Strike
 from pydantic import JsonValue, ValidationError
 
-from aidm.state.base import Entity, EntityId
+from aidm.state.base import PLAYER_ID, SAVE_VERSION, EngineId, Entity, EntityId
+from aidm.state.world import GameState, ScenarioMeta, WorldState
 
 SOURCE = Path(__file__).parent / "probe_engine.py"
 AUTHORED = """
@@ -91,6 +92,45 @@ def test_an_entity_created_during_play_gains_mechanics_before_the_commit() -> No
     assert EntityId("lantern") not in committed.fighters
     assert probe_engine.render(committed, actor).startswith("Mara: edge 1")
     assert probe_engine.render(committed, item) == item.brief
+
+
+def _probe_state() -> GameState:
+    """A probe never ships a `spec.json` or joins `ENGINE_MODULES`; this state exists only so the
+    test can drive `state.mechanics` the way a real engine's caller would."""
+    cell = Entity(id=EntityId("cell"), kind="location", name="Cell", brief="A cell.", known=True)
+    player = Entity(
+        id=PLAYER_ID, kind="actor", name="Prisoner", brief="", known=True, parent_id=cell.id
+    )
+    return GameState(
+        save_version=SAVE_VERSION,
+        scenario_id="probe",
+        character_id="probe",
+        scenario=ScenarioMeta(title="Probe", premise="A test engine, not a shipped one."),
+        engine=EngineId("probe"),
+        world=WorldState(entities={cell.id: cell, player.id: player}),
+        mechanics=_loaded().model_dump(mode="json"),
+    )
+
+
+def test_the_probes_mechanics_round_trip_through_gamestate_mechanics() -> None:
+    """Core treats `state.mechanics` as opaque JSON: the probe is the only reader and the only
+    validator of what it holds, all the way through a real draft/resolve/commit transaction."""
+    state = _probe_state()
+
+    draft = state.draft()
+    mechanics = probe_engine.create(draft.mechanics)
+    facts = probe_engine.resolve(mechanics, STRIKE, Random(0))
+    draft.mechanics = probe_engine.commit(mechanics).model_dump(mode="json")
+    committed = draft.committed()
+
+    assert facts
+    assert committed.mechanics == mechanics.model_dump(mode="json")
+    assert probe_engine.create(committed.mechanics) == mechanics
+
+    fighter: JsonValue = {"edge": 2, "heart": 1, "iron": 3, "momentum": 99}
+    corrupted: JsonValue = {"fighters": {"player": fighter}}
+    with pytest.raises(ValidationError):
+        _ = probe_engine.create(corrupted)
 
 
 def test_the_engine_reaches_for_nothing_core_must_own() -> None:

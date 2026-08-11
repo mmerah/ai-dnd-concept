@@ -3,8 +3,8 @@ from core_test_support import STORY, game, updated, with_entity
 
 from aidm.content.authored import ScenarioMeta
 from aidm.engines.loader import EntityRenderer
+from aidm.engines.story.mechanics import Adventurer, Mechanics, write
 from aidm.state.base import PLAYER_ID, SAVE_VERSION, Entity, EntityId, Kind
-from aidm.state.sheet import Counter, Sheet
 from aidm.state.world import GameState, WorldState
 from aidm.turn.prompts import (
     SceneSnapshot,
@@ -15,12 +15,6 @@ from aidm.turn.prompts import (
     render_worldkeeper,
 )
 
-ACTOR_RULES = Sheet(
-    kind="actor",
-    numbers={"bold": 0, "subtle": 0, "clever": 0, "empathetic": 0},
-    counters={"stress": Counter(current=0, maximum=5), "growth": Counter(current=0, maximum=3)},
-)
-ITEM_RULES = Sheet(kind="item")
 DESCRIPTION = "She writes in a compact cipher."
 HOOK = "Her missing folio points toward the vault."
 
@@ -37,16 +31,6 @@ def _entity(entity_id: str, kind: Kind, name: str, brief: str, **fields: object)
     )
 
 
-def _rules(kind: Kind) -> Sheet:
-    match kind:
-        case "location":
-            return Sheet(kind="location")
-        case "actor":
-            return ACTOR_RULES
-        case "item":
-            return ITEM_RULES
-
-
 def state() -> GameState:
     entities = (
         _entity("study", "location", "Study", "A small room.", known=True),
@@ -56,21 +40,21 @@ def state() -> GameState:
         _entity("lantern", "item", "a lantern", "A dented light.", known=True, parent_id=PLAYER_ID),
         _entity("ledger", "item", "a ledger", "Mara's notes.", known=True, parent_id="mara"),
     )
-    return GameState(
+    held = GameState(
         save_version=SAVE_VERSION,
         scenario_id="whispering-vault",
         character_id="kael",
         scenario=ScenarioMeta(title="Test", premise="Test"),
         engine=STORY,
-        world=WorldState.model_validate(
-            {
-                "records": {
-                    entity.id: {"entity": entity, "rules": _rules(entity.kind)}
-                    for entity in entities
-                }
-            }
+        world=WorldState(entities={entity.id: entity for entity in entities}),
+    )
+    write(
+        held,
+        Mechanics(
+            actors={entity.id: Adventurer() for entity in entities if entity.kind == "actor"}
         ),
     )
+    return held
 
 
 def _renderer(held: GameState) -> EntityRenderer:
@@ -138,7 +122,7 @@ def test_the_roles_shown_everything_get_ids_placement_detail_and_unrevealed_cano
     assert "a ledger[id=ledger] (item) — held by Mara" in director
     assert "The Secret[id=hidden-actor]" in director
     for prompt in (director, *catalogued):
-        assert "counters: growth 0/3, stress 0/5" in prompt
+        assert "pools: growth 0/3, stress 0/5" in prompt
     for prompt in catalogued:
         assert f"detail: {DESCRIPTION}" in prompt
         assert f"hook: {HOOK}" in prompt
@@ -162,7 +146,7 @@ def test_narrator_prompt_orders_plan_before_outcome_and_checks_the_speaker() -> 
 
     prompt = render(EntityId("mara"))
 
-    assert "counters: growth 0/3, stress 0/5" in prompt
+    assert "pools: growth 0/3, stress 0/5" in prompt
     assert prompt.index("THE DIRECTOR'S PLAN") < prompt.index("WHAT HAPPENED")
     assert "The Secret" not in prompt
 

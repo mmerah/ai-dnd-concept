@@ -6,12 +6,11 @@ from aidm.config import Settings
 from aidm.content.authored import Character, Scenario
 from aidm.content.store import FileSaves, FileTraces, load_character, load_scenario
 from aidm.engines.loader import Engine, load_engine, plugin_for
+from aidm.state.advancement import AdvancementOffer, ProposalBase
 from aidm.state.base import PLAYER_ID, SAVE_VERSION, EngineId, Entity, EntityId
-from aidm.state.effects import SheetDelta
 from aidm.state.facts import Fact
-from aidm.state.sheet import AdvancementOffer
 from aidm.state.turn import Advance, TraceEntry, Turn
-from aidm.state.world import GameState, Record, WorldState
+from aidm.state.world import GameState, WorldState
 from aidm.turn.advancement import AdvisorContext, advisor, render_proposal
 from aidm.turn.pipeline import TURN_STEPS, Stages, TurnOptions, build_stages, run_turn
 from aidm.turn.roles import Stage
@@ -34,19 +33,19 @@ def begin_game(engine: Engine, scenario: Scenario, character: Character) -> Game
         brief=character.brief,
         known=True,
         parent_id=world.starting_location_id,
+        traits=list(character.profile.traits),
     )
-    overlay = {**scenario.overlay.entities, **character.overlay.entities}
-    records: dict[EntityId, Record] = {}
+    entities: dict[EntityId, Entity] = {}
     for entity in (*world.entities, *character.profile.items, player):
-        if entity.id in records:
+        if entity.id in entities:
             raise ValueError(f"authored entity id {entity.id!r} appears twice")
-        rules = (
-            character.overlay.character if entity.id == PLAYER_ID else overlay.get(entity.id, {})
-        )
         # Loaded content outlives the mutable game state, which restart() rebuilds from it.
-        records[entity.id] = Record(
-            entity=entity.model_copy(deep=True), rules=engine.sheet(entity.kind, rules)
-        )
+        entities[entity.id] = entity.model_copy(deep=True)
+    rules = {
+        **scenario.overlay.entities,
+        **character.overlay.entities,
+        PLAYER_ID: character.overlay.character,
+    }
     state = GameState(
         save_version=SAVE_VERSION,
         scenario_id=scenario.id,
@@ -54,13 +53,13 @@ def begin_game(engine: Engine, scenario: Scenario, character: Character) -> Game
         scenario=scenario.meta,
         engine=engine.id,
         world=WorldState(
-            records=records,
+            entities=entities,
             relations={relation.id: relation.model_copy(deep=True) for relation in world.relations},
         ),
         threads={thread.id: thread.model_copy(deep=True) for thread in world.threads},
         hooks=world.hooks,
     )
-    engine.validate_state(state)
+    engine.begin(state, rules)
     return state
 
 
@@ -71,7 +70,7 @@ class GameSession:
     character: Character
     engine: Engine
     stages: Stages
-    advisor: Stage[AdvisorContext, SheetDelta]
+    advisor: Stage[AdvisorContext, ProposalBase]
     saves: FileSaves
     traces: FileTraces
     options: TurnOptions
@@ -79,7 +78,7 @@ class GameSession:
     entries: list[TraceEntry] = field(default_factory=list)
     busy: bool = False
     step: str | None = None
-    drafted: SheetDelta | None = None
+    drafted: ProposalBase | None = None
     state: GameState = field(init=False)
 
     def __post_init__(self) -> None:
@@ -124,26 +123,25 @@ class GameSession:
     def offer(self) -> AdvancementOffer | None:
         return self.engine.offered(self.state)
 
-    async def propose(self, intent: str) -> SheetDelta:
+    async def propose(self, intent: str) -> ProposalBase:
         """The advisor drafts the change; nothing is committed until the player confirms it."""
         offer = self._offered()
         deps = AdvisorContext(engine=self.engine, state=self.state, offer=offer)
         return await self.advisor.run(render_proposal(self.engine, self.state, offer, intent), deps)
 
-    def preview(self, delta: SheetDelta) -> tuple[Fact, ...]:
+    def preview(self, proposal: ProposalBase) -> tuple[Fact, ...]:
         """What the change would write, read off a throwaway draft, not the committed state."""
-        return self.engine.advance(self.state.draft(), delta)
+        return self.engine.advance(self.state.draft(), proposal)
 
-    def apply_proposal(self, delta: SheetDelta) -> tuple[Fact, ...]:
+    def apply_proposal(self, proposal: ProposalBase) -> tuple[Fact, ...]:
         offer = self._offered()
-        refused = self.engine.violation(self.state, offer, delta)
+        refused = self.engine.violation(self.state, offer, proposal)
         if refused is not None:
             raise ValueError(refused)
         draft = self.state.draft()
-        facts = self.engine.advance(draft, delta)
-        state = draft.committed()
-        self.engine.validate_state(state)
-        self._commit(state, Advance(facts=facts))
+        facts = self.engine.advance(draft, proposal)
+        self.engine.commit(draft)
+        self._commit(draft.committed(), Advance(facts=facts))
         return facts
 
     def _offered(self) -> AdvancementOffer:
@@ -180,7 +178,7 @@ class GameSession:
                 f"save scenario is {state.scenario.title!r}, "
                 f"selected scenario is {self.scenario.meta.title!r}"
             )
-        self.engine.validate_state(state)
+        self.engine.commit(state)
         return state
 
 

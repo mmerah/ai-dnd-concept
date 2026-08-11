@@ -8,19 +8,11 @@ from pydantic_ai.toolsets import AbstractToolset
 from pydantic_ai.usage import RunUsage
 
 from aidm.engines.loader import Engine, EnginePlugin, load_engine
-from aidm.state.base import PLAYER_ID, SAVE_VERSION, EngineId, Entity, EntityId
-from aidm.state.packs import (
-    ContentRef,
-    Manifest,
-    Pack,
-    read_pack,
-    validate_pack,
-    write_pack,
-)
+from aidm.state.advancement import ProposalBase
+from aidm.state.base import EngineId
+from aidm.state.packs import Manifest, Pack, read_pack, validate_pack, write_pack
 from aidm.state.packs import Record as PackRecord
 from aidm.state.plan import TurnPlanBase
-from aidm.state.sheet import Counter, Sheet
-from aidm.state.world import GameState, Record, ScenarioMeta, WorldState
 
 PACK = Pack(
     manifest=Manifest(
@@ -46,16 +38,7 @@ PACK = Pack(
     },
 )
 
-SPEC: dict[str, object] = {
-    "templates": {
-        "actor": {
-            "numbers": {"armor-class": 10},
-            "counters": {"hp": {"current": 1, "maximum": 1, "recharge": "long-rest"}},
-        },
-    },
-    "collections": {"monsters": {}},
-    "projecting": ["monsters"],
-}
+SPEC: dict[str, object] = {"collections": {"monsters": {}}}
 
 
 def _engine_dir(tmp_path: Path) -> Path:
@@ -74,84 +57,17 @@ def _engine(tmp_path: Path) -> Engine:
         badge=("TEST", "grey-6"),
         engine_dir=_engine_dir(tmp_path),
         plan_type=TurnPlanBase,
+        proposal_type=ProposalBase,
+        begin=lambda engine, state, rules: None,
+        commit=lambda engine, state: None,
+        render=lambda engine, state: lambda entity: "",
         check=lambda engine, state, plan: None,
         resolve=lambda engine, draft, plan, rng: [],
         offered=lambda engine, state: None,
-        check_delta=lambda state, delta: None,
+        advance=lambda engine, draft, proposal: (),
+        check_proposal=lambda engine, state, offer, proposal: None,
     )
     return load_engine(plugin)
-
-
-def _minimal_state(engine: Engine, player_sheet: Sheet) -> GameState:
-    vault = Entity(id=EntityId("vault"), kind="location", name="Vault", brief="", known=True)
-    player = Entity(
-        id=PLAYER_ID, kind="actor", name="Kael", brief="", known=True, parent_id=vault.id
-    )
-    world = WorldState(
-        records={
-            vault.id: Record(entity=vault, rules=Sheet(kind="location")),
-            PLAYER_ID: Record(entity=player, rules=player_sheet),
-        }
-    )
-    return GameState(
-        save_version=SAVE_VERSION,
-        scenario_id="vault",
-        character_id="kael",
-        scenario=ScenarioMeta(title="T", premise="P"),
-        engine=engine.id,
-        world=world,
-    )
-
-
-def test_default_rules_gives_a_grown_actor_the_templates_canonical_keys(tmp_path: Path) -> None:
-    engine = _engine(tmp_path)
-    actor = Entity(id=EntityId("goblin"), kind="actor", name="Goblin", brief="", known=True)
-
-    sheet = engine.default_rules(actor)
-
-    assert sheet.counters["hp"] == Counter(current=1, maximum=1, recharge="long-rest")
-    assert sheet.numbers["armor-class"] == 10
-
-
-def test_an_authored_ref_backs_the_sheet_and_renders_its_other_facts(tmp_path: Path) -> None:
-    """A projecting int fact lands on the sheet; the rest of the record renders beside the ref."""
-    engine = _engine(tmp_path)
-    goblin = Entity(id=EntityId("goblin"), kind="actor", name="Goblin", brief="", known=True)
-
-    sheet = engine.sheet(
-        "actor", {"refs": [{"pack": "testpack", "collection": "monsters", "index": "giant-rat"}]}
-    )
-    assert sheet.counters["hp"] == Counter(current=7, maximum=7, recharge="long-rest")
-    assert sheet.numbers["armor-class"] == 12
-    assert sheet.notes == {}
-    rendered = engine.entity_state(goblin, sheet)
-    assert "- Giant Rat [testpack/monsters/giant-rat] — attacks=Bite +4 to hit" in rendered
-    # The projected fact is the sheet's own number; the ref line must not say it a second time.
-    assert "numbers: armor-class 12" in rendered
-    assert "armor-class=12" not in rendered
-
-
-def test_validate_state_rejects_a_sheet_missing_a_canonical_key(tmp_path: Path) -> None:
-    engine = _engine(tmp_path)
-    state = _minimal_state(engine, Sheet(kind="actor"))
-
-    with pytest.raises(ValueError, match="canonical keys"):
-        engine.validate_state(state)
-
-
-def test_validate_state_rejects_a_sheet_naming_an_unresolved_ref(tmp_path: Path) -> None:
-    engine = _engine(tmp_path)
-    broken = ContentRef(pack="testpack", collection="monsters", index="missing-monster")
-    sheet = Sheet(
-        kind="actor",
-        numbers={"armor-class": 10},
-        counters={"hp": Counter(current=1, maximum=1, recharge="long-rest")},
-        refs=(broken,),
-    )
-    state = _minimal_state(engine, sheet)
-
-    with pytest.raises(ValueError, match="missing content"):
-        engine.validate_state(state)
 
 
 async def _read_content(toolset: AbstractToolset[object], ref: str) -> str:

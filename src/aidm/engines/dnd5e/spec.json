@@ -1,23 +1,4 @@
 {
-  "templates": {
-    "actor": {
-      "numbers": {
-        "strength": 10,
-        "dexterity": 10,
-        "constitution": 10,
-        "intelligence": 10,
-        "wisdom": 10,
-        "charisma": 10,
-        "armor-class": 10
-      },
-      "counters": {
-        "hp": {
-          "current": 1,
-          "maximum": 1
-        }
-      }
-    }
-  },
   "projecting": [
     "classes",
     "races",

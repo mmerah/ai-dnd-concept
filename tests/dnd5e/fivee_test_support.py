@@ -7,13 +7,14 @@ from core_test_support import CHARACTERS, DND5E, SCENARIOS, game, settings
 from aidm.app.session import GameSession, LaunchTarget, build_engine
 from aidm.content.authored import Character, Scenario
 from aidm.content.store import FileSaves, FileTraces, load_character, load_scenario
+from aidm.engines.counters import Counter
 from aidm.engines.dnd5e.advance import ADVANCEMENT_READY
+from aidm.engines.dnd5e.mechanics import Sheet, read, write
 from aidm.engines.dnd5e.rules import PLUGIN
 from aidm.engines.loader import Engine, EngineSpec
-from aidm.state.base import PLAYER_ID, Entity, EntityId
+from aidm.state.base import PLAYER_ID, Entity, EntityId, Trait
 from aidm.state.packs import ENCODING, CollectionName, ContentRef, FactSchema
-from aidm.state.sheet import Counter, SheetDefinition, SheetTag, SheetTemplate
-from aidm.state.world import GameState, Record, player_sheet
+from aidm.state.world import GameState
 from aidm.turn.advancement import advisor
 from aidm.turn.pipeline import TurnOptions, build_stages
 
@@ -64,7 +65,7 @@ def dnd5e_session(directory: Path) -> GameSession:
 def ready(state: GameState) -> GameState:
     """The state the Director leaves when the story earns a level."""
     draft = state.draft()
-    player_sheet(draft).tags.append(SheetTag(id=ADVANCEMENT_READY, name="Ready to advance"))
+    draft.player.traits.append(Trait(id=ADVANCEMENT_READY, name="Ready to advance"))
     return draft.committed()
 
 
@@ -74,28 +75,32 @@ def armed(state: GameState) -> GameState:
     draft = state.draft()
     _ = draft.move(draft.player, draft.world.require(CLOISTER))
     _ = draft.reveal(draft.world.require(RAT))
+    mechanics = read(draft)
     for item_id, index in ((SWORD, "longsword"), (BOW, "shortbow")):
         entity = Entity(
             id=item_id, kind="item", name=index, brief="", known=True, parent_id=PLAYER_ID
         )
-        rules = SheetDefinition(
+        _ = draft.add(entity)
+        mechanics.sheets[item_id] = Sheet(
             refs=(ContentRef(pack="srd-2014", collection="weapons", index=index),)
-        ).runtime("item", SheetTemplate())
-        draft.world.records[item_id] = Record(entity=entity, rules=rules)
-    sheet = player_sheet(draft)
-    sheet.numbers["strength"] = 17
-    sheet.numbers["dexterity"] = 15
+        )
+    player = mechanics.sheets[PLAYER_ID]
+    player.numbers["strength"] = 17
+    player.numbers["dexterity"] = 15
+    write(draft, mechanics)
     return draft.committed()
 
 
 def wizardly(state: GameState) -> GameState:
     """The same character as a wizard: the 5e spellcasting ability is read off the class record."""
     draft = state.draft()
-    sheet = player_sheet(draft)
+    mechanics = read(draft)
+    sheet = mechanics.sheets[PLAYER_ID]
     sheet.refs = tuple(ref for ref in sheet.refs if ref.collection != "classes") + (
         ContentRef(pack="srd-2014", collection="classes", index="wizard"),
     )
     sheet.numbers["intelligence"] = 15
     sheet.counters["slot-1"] = Counter(current=2, maximum=2, recharge="long-rest")
     sheet.counters["slot-2"] = Counter(current=2, maximum=2, recharge="long-rest")
+    write(draft, mechanics)
     return draft.committed()

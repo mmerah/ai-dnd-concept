@@ -50,7 +50,7 @@ def test_shell_reads_a_save_whose_world_is_garbage(tmp_path: Path) -> None:
     _, state = initialized()
     saves = FileSaves(tmp_path)
     body = json.loads(state.model_dump_json())
-    body["world"] = {"records": {"player": "garbage"}}
+    body["world"] = {"entities": {"player": "garbage"}}
     (tmp_path / "broken.json").write_text(json.dumps(body), encoding=ENCODING)
 
     shell = saves.shell("broken")

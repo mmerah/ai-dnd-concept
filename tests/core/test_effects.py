@@ -4,19 +4,15 @@ from core_test_support import initialized
 from aidm.state.apply import apply_effect
 from aidm.state.base import PLAYER_ID, EntityId
 from aidm.state.effects import (
-    CounterChange,
-    Effect,
     GainImprovisedItem,
-    GrantCounter,
     Move,
     RelationChange,
     Reveal,
-    SetNote,
-    SetNumber,
-    TagChange,
+    TraitChange,
+    WorldOp,
 )
 from aidm.state.facts import Fact
-from aidm.state.world import CONNECTED, LOCKED_TAG, PARTY_MEMBER, sheet_of
+from aidm.state.world import CONNECTED, LOCKED_TAG, PARTY_MEMBER
 
 BELL_TOWER = EntityId("bell_tower")
 CLOISTER = EntityId("cloister")
@@ -34,14 +30,13 @@ class Applied:
     """One turn's draft and the effects landing on it, as a resolver would apply them."""
 
     def __init__(self) -> None:
-        engine, state = initialized()
-        self.engine = engine
+        _, state = initialized()
         self.draft = state.draft()
 
-    def __call__(self, effect: Effect) -> list[Fact]:
-        return apply_effect(self.draft, effect, self.engine.default_rules)
+    def __call__(self, effect: WorldOp) -> list[Fact]:
+        return apply_effect(self.draft, effect)
 
-    def kinds(self, effect: Effect) -> list[str]:
+    def kinds(self, effect: WorldOp) -> list[str]:
         return [fact.kind for fact in self(effect)]
 
 
@@ -131,90 +126,29 @@ def test_inventory_effects_gate_on_position_and_carrying() -> None:
         _ = turn(Move(entity_id=LANTERN, to_id=TOMAS))
 
 
-def test_counter_effects_clamp_what_lands_and_spending_refuses_an_empty_pool() -> None:
+def test_trait_changes_round_trip_and_refuse_what_the_entity_does_not_carry() -> None:
     turn = Applied()
-    stress = CounterChange(
-        mode="adjust", entity_id=PLAYER_ID, counter="stress", amount=99, why="the strain"
-    )
 
-    (changed,) = turn(stress)
-    assert changed.data["delta"] == 5
-    assert sheet_of(turn.draft, PLAYER_ID).counters["stress"].current == 5
-    assert turn(stress) == []
+    (added,) = turn(TraitChange(mode="add", entity_id=PLAYER_ID, trait_id="hunted", text="watched"))
+    assert added.data["trait_id"] == "hunted"
+    assert turn.draft.player.trait("hunted") is not None
 
-    spend = CounterChange(mode="spend", entity_id=PLAYER_ID, counter="stress", amount=2)
-    (spent,) = turn(spend)
-    assert spent.data["current"] == 3
+    removed = TraitChange(mode="remove", entity_id=PLAYER_ID, trait_id="hunted")
+    assert turn.kinds(removed) == ["trait_removed"]
 
-    with pytest.raises(ValueError, match="cannot go below"):
-        _ = turn(CounterChange(mode="spend", entity_id=PLAYER_ID, counter="growth", amount=1))
-    with pytest.raises(ValueError, match="has no counter"):
-        _ = turn(CounterChange(mode="adjust", entity_id=PLAYER_ID, counter="mana", amount=1))
-    with pytest.raises(ValueError, match="positive amount"):
-        _ = CounterChange(mode="spend", entity_id=PLAYER_ID, counter="stress", amount=-1)
+    with pytest.raises(ValueError, match="carries no trait"):
+        _ = turn(TraitChange(mode="remove", entity_id=PLAYER_ID, trait_id="hunted"))
+    # Kael's character sheet already carries `relic-hunter` as an authored edge.
+    with pytest.raises(ValueError, match="already carries the trait"):
+        _ = turn(TraitChange(mode="add", entity_id=PLAYER_ID, trait_id="relic-hunter"))
 
 
-def test_sheet_effects_round_trip_and_refuse_what_the_sheet_does_not_hold() -> None:
-    turn = Applied()
-    sheet = sheet_of(turn.draft, PLAYER_ID)
-
-    (tagged,) = turn(TagChange(mode="add", entity_id=PLAYER_ID, tag_id="hunted", text="watched"))
-    assert tagged.data["tag_id"] == "hunted"
-    assert sheet.tag("hunted") is not None
-    removed = TagChange(mode="remove", entity_id=PLAYER_ID, tag_id="hunted")
-    assert turn.kinds(removed) == ["tag_removed"]
-
-    (noted,) = turn(SetNote(entity_id=PLAYER_ID, key="watching", text="the vault door"))
-    assert noted.narrator is None
-    assert sheet.notes["watching"] == "the vault door"
-    assert turn.kinds(SetNote(entity_id=PLAYER_ID, key="watching", text="")) == ["note_set"]
-    assert turn(SetNote(entity_id=PLAYER_ID, key="watching", text="")) == []
-
-    (numbered,) = turn(SetNumber(entity_id=PLAYER_ID, key="bold", value=3))
-    assert (numbered.data["before"], numbered.data["after"]) == (2, 3)
-
-    with pytest.raises(ValueError, match="carries no tag"):
-        _ = turn(TagChange(mode="remove", entity_id=PLAYER_ID, tag_id="hunted"))
-    with pytest.raises(ValueError, match="has no number"):
-        _ = turn(SetNumber(entity_id=PLAYER_ID, key="mana", value=1))
-    with pytest.raises(ValueError, match="already carries the tag"):
-        _ = turn(TagChange(mode="add", entity_id=PLAYER_ID, tag_id="relic-hunter"))
-
-
-def test_acting_on_an_unrevealed_actor_reveals_it_before_its_sheet_changes() -> None:
+def test_acting_on_an_unrevealed_actor_reveals_it_before_its_traits_change() -> None:
     """The leak rule: an actor is revealed by being acted on, an item or a place is not."""
     turn = Applied()
     _ = turn(Move(to_id=CLOISTER))
 
-    adjust = CounterChange(
-        mode="adjust", entity_id=RAT, counter="stress", amount=1, why="the lantern"
-    )
-    hurt = turn.kinds(adjust)
+    change = TraitChange(mode="add", entity_id=RAT, trait_id="hurt", why="the lantern")
+    kinds = turn.kinds(change)
 
-    assert hurt == ["entity_discovered", "counter_changed"]
-
-
-def test_one_union_two_surfaces_each_refusing_what_the_other_owns() -> None:
-    turn = Applied()
-    grant = GrantCounter(entity_id=PLAYER_ID, counter="favour", current=1, maximum=1, why="a boon")
-
-    with pytest.raises(ValueError, match="belongs to advancement"):
-        _ = turn(grant)
-    raised = CounterChange(
-        mode="adjust", entity_id=PLAYER_ID, counter="stress", amount=1, maximum=9
-    )
-    with pytest.raises(ValueError, match="only advancement raises a maximum"):
-        _ = turn(raised)
-
-    def advancing(effect: Effect) -> list[Fact]:
-        return apply_effect(turn.draft, effect, turn.engine.default_rules, advancing=True)
-
-    with pytest.raises(ValueError, match="advancement writes only the sheet"):
-        _ = advancing(Move(to_id=CLOISTER))
-    with pytest.raises(ValueError, match="advancement writes 'player'"):
-        _ = advancing(TagChange(mode="add", entity_id=MARA, tag_id="sworn", why="a promise"))
-
-    _ = advancing(grant)
-    _ = advancing(SetNumber(entity_id=PLAYER_ID, key="mana", value=1, why="a new number"))
-    sheet = sheet_of(turn.draft, PLAYER_ID)
-    assert (sheet.counters["favour"].current, sheet.numbers["mana"]) == (1, 1)
+    assert kinds == ["entity_discovered", "trait_added"]

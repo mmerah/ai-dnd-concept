@@ -16,7 +16,6 @@ from aidm.content.authored import (
     CharacterProfile,
 )
 from aidm.state.base import PLAYER_ID, Entity, EntityId
-from aidm.state.sheet import SheetDefinition, SheetTag
 
 HELD = EntityId("frayed_rope")
 UNHELD = EntityId("silk_rope")
@@ -31,14 +30,7 @@ def _character(*, holds: Entity, gear_for: EntityId) -> Character:
             brief="A character built only for this test.",
             items=(holds,),
         ),
-        overlay=CharacterOverlay(
-            character=SheetDefinition().model_dump(mode="json"),
-            entities={
-                gear_for: SheetDefinition(
-                    tags=(SheetTag(id="silk-rope", name="Silk Rope", text="(gear) Braided silk."),)
-                ).model_dump(mode="json")
-            },
-        ),
+        overlay=CharacterOverlay(character={}, entities={gear_for: {}}),
     )
 
 
@@ -55,10 +47,10 @@ def _rope(item_id: EntityId, *, known: bool = True) -> Entity:
 
 def test_world_and_game_state_reject_inconsistent_topology() -> None:
     _, state = initialized()
-    player_record = state.world.record(PLAYER_ID)
+    player = state.world.require(PLAYER_ID)
     with pytest.raises(ValidationError, match="keys disagree"):
         type(state.world).model_validate(
-            {"records": {"wrong-key": player_record.model_dump(round_trip=True)}}
+            {"entities": {"wrong-key": player.model_dump(round_trip=True)}}
         )
 
     with pytest.raises(ValidationError, match="player entity must be known"):
@@ -68,17 +60,17 @@ def test_world_and_game_state_reject_inconsistent_topology() -> None:
         with_entity(state, updated(state.player, parent_id=EntityId("missing")))
 
     carried = state.world.children(PLAYER_ID, "item")[0]
-    with pytest.raises(ValidationError, match="is a location with item rules"):
+    with pytest.raises(ValidationError, match="cannot be inside anything"):
         with_entity(state, updated(carried, kind="location"))
 
 
 def test_an_engine_refuses_an_authored_payload_it_cannot_read() -> None:
-    """Every kind takes a sheet now, so forbid-extra on the authored overlay is what is left of the
-    guard — and it has to fire at launch, not on the turn that first reads the entity."""
+    """Only actors carry engine mechanics now, so the overlay's forbid-extra guard fires on one of
+    them — and it has to fire at launch, not on the turn that first reads the entity."""
     engine, _ = initialized()
     authored = scenario()
-    location = next(entity for entity in authored.world.entities if entity.kind == "location")
-    poisoned = updated(authored, overlay={"entities": {location.id: {"gear": None}}})
+    actor = next(entity for entity in authored.world.entities if entity.kind == "actor")
+    poisoned = updated(authored, overlay={"entities": {actor.id: {"gear": None}}})
 
     with pytest.raises(ValueError, match="gear"):
         begin_game(engine, poisoned, character())
