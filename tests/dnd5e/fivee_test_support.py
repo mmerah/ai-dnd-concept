@@ -15,8 +15,7 @@ from aidm.engines.loader import Engine, engine_spec
 from aidm.state.base import PLAYER_ID, Entity, EntityId, Trait
 from aidm.state.packs import CollectionName, ContentRef, FactSchema
 from aidm.state.world import GameState
-from aidm.turn.advancement import advisor
-from aidm.turn.pipeline import TurnOptions, build_stages
+from aidm.turn.roles import advisor, build_stages
 
 PACK_DIR = ENGINE_DIR / "packs" / "srd-2014"
 RAT = EntityId("cloister_rat")
@@ -24,7 +23,6 @@ CLOISTER = EntityId("cloister")
 SWORD = EntityId("longsword")
 BOW = EntityId("shortbow")
 TARGET = LaunchTarget(slug="poc", scenario_id="whispering-vault", character_id="kael", engine=DND5E)
-OPTIONS = TurnOptions(history_window=6, max_growth=3)
 
 
 def scenario() -> Scenario:
@@ -55,7 +53,8 @@ def dnd5e_session(directory: Path) -> GameSession:
         advisor=advisor(capability(engine), config),
         saves=FileSaves(directory),
         traces=FileTraces(directory),
-        options=OPTIONS,
+        history_window=6,
+        max_growth=3,
         rng=Random(1),
     )
 

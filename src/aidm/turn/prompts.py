@@ -1,13 +1,11 @@
 import json
 from collections.abc import Callable, Iterable, Mapping, Sequence
 
-from aidm.engines.loader import EntityRenderer
-from aidm.state.base import PLAYER_ID, Entity, EntityId, Frozen, Kind, Trait
+from aidm.engines.loader import Engine, EntityRenderer
+from aidm.state.advancement import AdvancementOffer
+from aidm.state.base import PLAYER_ID, Entity, EntityId, Frozen, Trait
 from aidm.state.turn import SceneDirective
 from aidm.state.world import LOCKED_TAG, GameState, ScenarioMeta, Thread
-
-type Placement = Callable[[Entity], str]
-type Label = Callable[[Entity], str]
 
 
 class Exit(Frozen):
@@ -168,14 +166,14 @@ def render_director(
             _entities(scene.hidden, describe, placement=scene.placement_of),
         ),
         ("ACTIVE THREADS", _threads(scene.threads)),
-        ("SCENARIO NOTES", _notes(scene)),
+        ("SCENARIO NOTES", "\n".join(f"- {note}" for note in scene.notes) or "- (none)"),
     )
     steer = (
         () if directive is None else (("SCENE DIRECTIVE", _directive(directive, scene, describe)),)
     )
     return _sections(
         (
-            *_scene_sections(scene, describe, scenario, label=_labelled),
+            *_scene_sections(scene, describe, scenario, ids=True),
             *canon,
             *steer,
             ("PLAYER ACTION", prompt),
@@ -195,7 +193,7 @@ def render_narrator(
 ) -> str:
     return _sections(
         (
-            *_scene_sections(scene, describe, scenario, label=_named),
+            *_scene_sections(scene, describe, scenario, ids=False),
             ("THE DIRECTOR'S PLAN — what was meant, not what happened", focus),
             ("SPEAKER", _speaker(scene, speaker_id)),
             ("WHAT HAPPENED", evidence),
@@ -216,12 +214,27 @@ def render_worldkeeper(
     return _sections(
         (
             _premise(scenario),
-            ("EVERYTHING THAT EXISTS", _catalogue(scene, describe)),
+            (
+                "EVERYTHING THAT EXISTS",
+                _entities(scene.catalogue(), describe, placement=scene.placement_of, detail=True),
+            ),
             ("PLAYER", prompt),
             ("WHAT HAPPENED", evidence),
             ("NARRATION", narration),
         )
     )
+
+
+def render_proposal(engine: Engine, state: GameState, offer: AdvancementOffer, intent: str) -> str:
+    player = state.player
+    sections = (
+        ("ON OFFER", offer.prompt),
+        ("RULES TEXT", offer.text),
+        (f"PICK EXACTLY {offer.choose}", "\n".join(f"- {ref}" for ref in offer.options)),
+        ("THE CHARACTER", f"{player.name}\n{entity_state(player, engine.renderer(state))}"),
+        ("WHAT THE PLAYER WANTS", intent),
+    )
+    return "\n\n".join(f"{title}\n{body}" for title, body in sections if body)
 
 
 def prompt_id(entity_id: str) -> str:
@@ -238,19 +251,25 @@ def _premise(scenario: ScenarioMeta) -> tuple[str, str]:
 
 
 def _scene_sections(
-    scene: BaseScene, describe: EntityRenderer, scenario: ScenarioMeta, *, label: Label
+    scene: BaseScene, describe: EntityRenderer, scenario: ScenarioMeta, *, ids: bool
 ) -> tuple[tuple[str, str], ...]:
     return (
         _premise(scenario),
         (
             "PLAYER CHARACTER",
-            _character(scene.player, scene.location, scene.inventory, describe, label=label),
+            _character(scene.player, scene.location, scene.inventory, describe, ids=ids),
         ),
-        ("HERE WITH THE PLAYER", _entities(scene.here, describe, placement=scene.placement_of)),
-        ("EXITS FROM HERE", _exits(scene)),
+        (
+            "HERE WITH THE PLAYER",
+            _entities(scene.here, describe, placement=scene.placement_of, ids=ids),
+        ),
+        (
+            "EXITS FROM HERE",
+            "\n".join(_exit_line(exit, ids=ids) for exit in scene.exits) or "- (none)",
+        ),
         (
             "KNOWN TO THE PLAYER, BUT ELSEWHERE",
-            _entities(scene.known_elsewhere, describe, placement=scene.placement_of),
+            _entities(scene.known_elsewhere, describe, placement=scene.placement_of, ids=ids),
         ),
     )
 
@@ -261,15 +280,19 @@ def _character(
     inventory: Sequence[Entity],
     describe: EntityRenderer,
     *,
-    label: Label,
+    ids: bool,
 ) -> str:
     held = "\n".join(
-        _with_state(f"- {label(item)} — {item.brief}", entity_state(item, describe), "  ")
+        _with_state(
+            f"- {_label(item, ids=ids)} — {item.brief}",
+            entity_state(item, describe, ids=ids),
+            "  ",
+        )
         for item in sorted(inventory, key=lambda item: item.name)
     )
     line = _with_state(
-        f"{label(player)} — {player.brief} — at {label(location)}",
-        entity_state(player, describe),
+        f"{_label(player, ids=ids)} — {player.brief} — at {_label(location, ids=ids)}",
+        entity_state(player, describe, ids=ids),
     )
     return f"{line}\ninventory:\n{held or '- (none)'}"
 
@@ -278,25 +301,28 @@ def _entities(
     entities: Sequence[Entity],
     describe: EntityRenderer,
     *,
-    placement: Placement,
+    placement: Callable[[Entity], str],
+    ids: bool = True,
+    detail: bool = False,
 ) -> str:
     return (
         "\n".join(
-            _with_state(_headline(entity, placement(entity)), entity_state(entity, describe), "  ")
+            _with_state(
+                _headline(entity, placement(entity), ids=ids) + (_detail(entity) if detail else ""),
+                entity_state(entity, describe, ids=ids),
+                "  ",
+            )
             for entity in entities
         )
         or "- (none)"
     )
 
 
-def _exits(scene: BaseScene) -> str:
-    return "\n".join(_exit_line(exit) for exit in scene.exits) or "- (none)"
-
-
-def _exit_line(exit: Exit) -> str:
+def _exit_line(exit: Exit, *, ids: bool = True) -> str:
+    labelled = f"[id={prompt_id(exit.location_id)}]" if ids else ""
     locked = " — locked" if exit.locked else ""
     unfound = " — the player has not found this way yet" if not exit.known else ""
-    return f"- {exit.name}[id={prompt_id(exit.location_id)}]{locked}{unfound}"
+    return f"- {exit.name}{labelled}{locked}{unfound}"
 
 
 def _threads(threads: Sequence[Thread]) -> str:
@@ -330,27 +356,10 @@ def _directive(directive: SceneDirective, scene: SceneSnapshot, describe: Entity
     return "\n".join(lines)
 
 
-def _notes(scene: SceneSnapshot) -> str:
-    return "\n".join(f"- {note}" for note in scene.notes) or "- (none)"
-
-
-def _catalogue(scene: SceneSnapshot, describe: EntityRenderer) -> str:
-    return (
-        "\n".join(
-            _with_state(
-                _headline(entity, scene.placement_of(entity)) + _detail(entity),
-                entity_state(entity, describe),
-                "  ",
-            )
-            for entity in scene.catalogue()
-        )
-        or "- (none)"
-    )
-
-
-def _headline(entity: Entity, placement: str) -> str:
+def _headline(entity: Entity, placement: str, *, ids: bool = True) -> str:
+    kind = "npc" if entity.kind == "actor" else entity.kind
     placed = f" — {placement}" if placement else ""
-    return f"- {_labelled(entity)} ({_kind_label(entity.kind)}){placed} — {entity.brief}"
+    return f"- {_label(entity, ids=ids)} ({kind}){placed} — {entity.brief}"
 
 
 def _detail(entity: Entity) -> str:
@@ -367,31 +376,24 @@ def _speaker(scene: VisibleScene, speaker_id: EntityId | None) -> str:
     speaker = next((entity for entity in scene.here if entity.id == speaker_id), None)
     if speaker is None or speaker.kind != "actor":
         raise ValueError(f"speaker {speaker_id!r} is not a visible actor here")
-    return f"{_labelled(speaker)} — {speaker.brief}"
+    return f"{speaker.name} — {speaker.brief}"
 
 
-def _labelled(entity: Entity) -> str:
-    return f"{entity.name}[id={prompt_id(entity.id)}]"
+def _label(entity: Entity, *, ids: bool) -> str:
+    return f"{entity.name}[id={prompt_id(entity.id)}]" if ids else entity.name
 
 
-def _named(entity: Entity) -> str:
-    return entity.name
-
-
-def _kind_label(kind: Kind) -> str:
-    return "npc" if kind == "actor" else kind
-
-
-def entity_state(entity: Entity, describe: EntityRenderer) -> str:
+def entity_state(entity: Entity, describe: EntityRenderer, *, ids: bool = True) -> str:
     """Traits are core fiction and the engine never sees them; both reach the prompt here."""
     parts = [describe(entity)]
     if entity.traits:
-        parts.append("traits: " + ", ".join(_trait(held) for held in entity.traits))
+        parts.append("traits: " + ", ".join(_trait(held, ids=ids) for held in entity.traits))
     return "\n".join(part for part in parts if part)
 
 
-def _trait(trait: Trait) -> str:
-    return f"{trait.name}[id={trait.id}]" + (f" — {trait.text}" if trait.text else "")
+def _trait(trait: Trait, *, ids: bool) -> str:
+    name = f"{trait.name}[id={trait.id}]" if ids else trait.name
+    return name + (f" — {trait.text}" if trait.text else "")
 
 
 def _with_state(line: str, state: str, indent: str = "") -> str:
@@ -425,8 +427,7 @@ _PLAN_FIELDS = """The plan is the whole turn:
 
 `action` — the single action resolved this turn, or null when nothing mechanical happens. Its \
 actor is whoever the fiction puts on the acting side: when the player's words have someone else \
-act — a monster lunging at them — plan that actor's action, not a player reaction. The engine \
-computes and applies the action's arithmetic (rolls, damage, healing, costs); never write those. \
+act — a monster lunging at them — plan that actor's action, not a player reaction. \
 Anything else an outcome changes — a condition starting or ending, a reveal, a move — happens \
 only if a branch or an effect writes it; the engine never adds it.
 
@@ -436,8 +437,7 @@ outcome that occurs. At most one branch per label, and only labels the action al
 `effects` — consequences that happen whatever the action settles: discoveries, movement, \
 possessions changing hands.
 
-Write no prose: the directive said what the turn is about, and the Narrator writes what the \
-player reads."""
+Write no prose: the Narrator writes what the player reads."""
 
 _RETRY = """A rejected plan comes back with the reason; fix exactly that and answer again. Call \
 `read_content` first when planning from a spell, feature, or stat block whose wording you cannot \
@@ -494,6 +494,18 @@ happens. Name none when the fiction finds nothing.
 
 `speaker_id` — the id of the NPC the player is addressing, or null if none. It must be an NPC \
 the player already knows AND who is here with them; never one unmet or elsewhere."""
+
+CORE_ADVISOR = """You are the ADVISOR of a tabletop roleplaying game. The player has earned an \
+advancement and says how they want to grow. Turn that into the exact changes their character sheet \
+needs, and nothing else.
+
+You write only the player's own character, each change carrying a short `why` the player will \
+read before confirming. Stay inside what is ON OFFER: propose exactly the picks it asks for, and \
+never a pick it does not list. Keep every change small, concrete, and grounded in \
+the rules text you are given — invent no capability the text does not grant.
+
+A change that breaks the rules comes back to you with the reason; fix that change and answer \
+again."""
 
 NARRATOR = """You are the NARRATOR of a tabletop roleplaying game. Write what the player \
 experiences in second person, present tense, in 2-4 vivid sentences. The Director's intent is a \

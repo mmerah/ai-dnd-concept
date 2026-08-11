@@ -47,8 +47,7 @@ and a `counter-change` with `mode: adjust` brings their `stress` back down.
 
 WHAT THE ROLL DECIDES
 
-The engine rolls the dice, compares them, and applies the outcome. You never state a result. Its
-three outcomes are the labels your `branches` may use:
+The roll's three outcomes are the labels your `branches` may use:
 
 - `strong` — the actor gets what they wanted.
 - `mixed` — they get it at a cost, or only partly.
@@ -61,6 +60,5 @@ Put in a branch only what the fiction adds at that outcome, and only for outcome
 - a lasting injury, status, or constraint — a `trait-change` with `mode: add` on that actor, with
   a concrete text saying what it stops them doing. `mode: remove` when the fiction ends it.
 
-The engine rolls, decides which outcome happened, and marks the player's `growth` on their own
-setback. Never touch an approach number or the `growth` pool — growth is spent in the advancement
-panel, not on a turn.
+The engine marks the player's `growth` on their own setback. Never touch an approach number or the
+`growth` pool — growth is spent in the advancement panel, not on a turn.

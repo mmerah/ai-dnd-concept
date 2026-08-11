@@ -8,6 +8,8 @@ The maintainer has ADHD. Load the `i-have-adhd` skill at the start of every sess
 
 Run from the repository root:
 
+Never set `UV_CACHE_DIR` when running the verification suite; it causes the suite to break.
+
 ```bash
 uv run pytest
 uv run ruff check

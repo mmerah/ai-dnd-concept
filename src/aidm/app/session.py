@@ -11,9 +11,9 @@ from aidm.state.base import PLAYER_ID, SAVE_VERSION, EngineId, Entity, EntityId
 from aidm.state.facts import Fact
 from aidm.state.turn import Advance, TraceEntry, Turn
 from aidm.state.world import GameState, WorldState
-from aidm.turn.advancement import AdvisorContext, advisor, render_proposal
-from aidm.turn.pipeline import TURN_STEPS, Stages, TurnOptions, build_stages, run_turn
-from aidm.turn.roles import Stage
+from aidm.turn.pipeline import TURN_STEPS, run_turn
+from aidm.turn.prompts import render_proposal
+from aidm.turn.roles import AdvisorContext, Stage, Stages, advisor, build_stages
 
 from .launcher import LaunchTarget
 
@@ -77,7 +77,8 @@ class GameSession:
     advisor: Stage[AdvisorContext, ProposalBase] | None
     saves: FileSaves
     traces: FileTraces
-    options: TurnOptions
+    history_window: int
+    max_growth: int
     rng: Random = field(default_factory=Random)
     entries: list[TraceEntry] = field(default_factory=list)
     busy: bool = False
@@ -117,7 +118,8 @@ class GameSession:
             prompt,
             engine=self.engine,
             stages=self.stages,
-            options=self.options,
+            history_window=self.history_window,
+            max_growth=self.max_growth,
             rng=self.rng,
             on_step=on_step,
         )
@@ -227,10 +229,6 @@ class Runtime:
     def _open(self, target: LaunchTarget) -> GameSession:
         config = self.config
         engine = self.engine(target.engine)
-        options = TurnOptions(
-            history_window=config.history_window,
-            max_growth=config.max_growth,
-        )
         capability = engine.advancement
         built_advisor = None if capability is None else advisor(capability, config)
         return GameSession(
@@ -242,5 +240,6 @@ class Runtime:
             advisor=built_advisor,
             saves=FileSaves(config.saves_dir),
             traces=FileTraces(config.saves_dir),
-            options=options,
+            history_window=config.history_window,
+            max_growth=config.max_growth,
         )

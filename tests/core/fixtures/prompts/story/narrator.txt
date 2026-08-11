@@ -7,26 +7,26 @@ Kael — A scarred relic-hunter who came to the abbey for what is sealed beneath
 state:
   approaches: bold 2, subtle 1, clever 1, empathetic 0
   pools: growth 0/3, stress 0/5
-  traits: Relic Hunter[id=relic-hunter] — (edge) Kael knows how old sanctums conceal what matters., Marked by the Past[id=marked-by-the-past] — (burden) Old scars make certain memories hard to face., Mixed[id=mixed]
+  traits: Relic Hunter — (edge) Kael knows how old sanctums conceal what matters., Marked by the Past — (burden) Old scars make certain memories hard to face., Mixed
 inventory:
 - a guttering lantern — A dented tin lantern whose flame will not hold still.
   state:
-    traits: Unsteady Lantern[id=unsteady-lantern] — (gear) Its shifting light exposes seams and movement in deep shadow.
+    traits: Unsteady Lantern — (gear) Its shifting light exposes seams and movement in deep shadow.
 - the vault map — A creased chart of the undercroft, marking a stair the abbey's own plans deny.
 
 HERE WITH THE PLAYER:
-- Mara[id=mara] (npc) — at the abbot's study — The abbey's last scribe, cautious and tired, still cataloguing books nobody will read.
+- Mara (npc) — at the abbot's study — The abbey's last scribe, cautious and tired, still cataloguing books nobody will read.
   state:
     approaches: bold 0, subtle 0, clever 0, empathetic 0
     pools: growth 0/3, stress 0/5
 
 EXITS FROM HERE:
-- the cloister[id=cloister]
+- the cloister
 
 KNOWN TO THE PLAYER, BUT ELSEWHERE:
-- the cloister[id=cloister] (location) — A frost-rimed colonnade around a dead garden; Brother Tomas sweeps it to no purpose.
-- the sealed vault[id=vault] (location) — The undercroft chamber Kael came for, its door bearing a seal nobody living can read.
-- Brother Tomas[id=tomas] (npc) — at the cloister — A deaf old porter who sweeps the cloister and knows almost nothing about the vault.
+- the cloister (location) — A frost-rimed colonnade around a dead garden; Brother Tomas sweeps it to no purpose.
+- the sealed vault (location) — The undercroft chamber Kael came for, its door bearing a seal nobody living can read.
+- Brother Tomas (npc) — at the cloister — A deaf old porter who sweeps the cloister and knows almost nothing about the vault.
   state:
     approaches: bold 0, subtle 0, clever 0, empathetic 0
     pools: growth 0/3, stress 0/5

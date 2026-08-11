@@ -9,8 +9,8 @@ from story_test_support import grown
 from aidm.engines.loader import engine_ids
 from aidm.state.base import EngineId
 from aidm.state.world import GameState
-from aidm.turn.advancement import advisor, render_proposal
-from aidm.turn.pipeline import director_stage, narrator_stage, scene_stage, worldkeeper_stage
+from aidm.turn.prompts import render_proposal
+from aidm.turn.roles import advisor, director_stage, narrator_stage, scene_stage, worldkeeper_stage
 
 WANTED = "I want to strike harder."
 

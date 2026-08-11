@@ -354,10 +354,91 @@ alone rather than churned twice.
   mechanics writing into `rules.py`; the split between "how this engine assembles and plans" and
   "this engine's numbers" is worth more than the lines.
 
+## Phase 10 — Simplify role construction and prompt rendering — DONE
+
+- **One module builds every role.** `turn/roles.py` now holds `Stage`/`stage`, the five role
+  constructions (`scene_stage`, `director_stage`, `narrator_stage`, `worldkeeper_stage`,
+  `advisor`), their deps types (`PlanContext`, `AdvisorContext`), `Stages`/`build_stages`, and the
+  two transport repairs. `turn/advancement.py` is deleted: its instructions constant and
+  `render_proposal` went to `prompts.py` beside every other role's instructions and renderer, and
+  the advisor construction to `roles.py` beside every other role's. `turn/` is three modules with
+  one job each — `prompts.py` renders and instructs, `roles.py` builds, `pipeline.py` runs the
+  turn (291 → 174 lines).
+- **`stage(validator=...)` ends the three-step dance.** Scene, Director, and Advisor each did
+  `built = stage(...)` / `_ = built.agent.output_validator(f)` / `return built`; the validator is
+  now an argument, typed `Callable[[RunContext[Deps], Out], Out]`, and every role is one `stage()`
+  call. Nothing is hidden by it: each validator stays a named local function in its own builder,
+  and the Director's `ToolOutput` + `TextOutput` pair, its toolset, and `ChannelSafeModel` are
+  passed exactly as before. Adding a keeper role in phase 11 is one `stage()` call, one `Stages`
+  field, one `run_turn` line.
+- **Both transport repairs kept, both already tested**: `test_a_plan_answered_as_plain_text_json_settles_the_turn`
+  covers `plan_from_text`, `test_a_tool_call_with_a_channel_marker_in_its_name_still_lands` covers
+  `ChannelSafeModel`. Neither is YAGNI and neither was touched; `plan_from_text` gained the
+  one-line why it was missing.
+- **The compact-renderer prototype found one real divergence, and only that was adopted.** The
+  Director's and Narrator's repeated sections were *already* one renderer (`_scene_sections`), so
+  there was no second implementation to collapse. What the prototype turned up instead: the
+  Narrator's view was rendered with ids everywhere except the player line. `label=_named` proved
+  the intent existed; it only ever reached `_character`, so entity lines, exits, the speaker, and
+  every trait still handed the Narrator `[id=...]` — while the NARRATOR instructions say never to
+  recite one. The `label: Label` callable is replaced by one `ids: bool` threaded from the two
+  render entry points (`_labelled`/`_named` collapse into `_label(entity, *, ids)`), and
+  `render_narrator` passes `ids=False`.
+- Adoption gates, all met: the golden diff is exactly the 9 ids leaving each narrator prompt and
+  nothing else; the prompt **shrinks** 2109 → 1983 chars (story) and 3217 → 3089 (dnd5e), roughly
+  −45 tokens a turn at identical word count; and no eval can regress because no eval case runs the
+  narrator (`director`/`advisor`/`worldkeeper` only) and nothing downstream parses its output for
+  ids. Every other role's prompt is byte-identical — the Director, Worldkeeper, and Advisor still
+  get ids, which `test_the_roles_shown_everything_get_ids_...` still asserts.
+- **Prompt reduction: dedup only, never compression.** Measured first — 72% of the Director's
+  13.9k chars is the engine's own `director.md` plus the worked examples, not the core constants
+  phase 5 already trimmed. Reading both `director.md` files turned up five places where a sentence
+  restates another section *of the same assembled prompt*, and only those were cut: the "engine
+  owns the arithmetic" rule was stated four times (`_DIRECTOR_OPENING`, `_PLAN_FIELDS`, and twice
+  more per engine), and the "plan whoever the fiction has act, not a player reaction" rule twice,
+  core and 5e, with the same monster example. Each cut keeps every engine-specific noun and every
+  surviving sentence whole. One rewording the cuts forced: story's "Its three outcomes" lost its
+  antecedent, so it reads "The roll's three outcomes".
+- Compression itself was refused. Phase 5 measured what re-encoding a model-facing surface costs
+  (`_EXITS` as a fragment: 67% → 33%), and the only gate that could catch that regression — live
+  evals — is the one the working rules call noisy at n=9. `director.md` is dense, not fat: every
+  paragraph teaches a rule the model must act on. Cutting proven duplication is free; cutting
+  prose that teaches is a bet with no way to settle it.
+- **Renderer collapse.** `_catalogue` was `_entities` plus a detail suffix, spelled out a second
+  time; it is deleted and `_entities` takes `detail: bool = False`, which the Worldkeeper's
+  "EVERYTHING THAT EXISTS" passes. The worldkeeper goldens not moving is the proof it is faithful.
+  Left standing: `render_proposal` still spells its own section join, because `_sections` writes
+  `TITLE:` and the advisor prompt writes `TITLE` — reusing it would move an advisor golden for a
+  role that *does* have eval cases, which is a model-facing change to save two lines.
+- The review pass took the deletions the consolidation had left: `TurnOptions` (two ints that
+  duplicated `Settings` fields and their `ge=0` validation — `run_turn` and `GameSession` take
+  `history_window`/`max_growth` directly), the `Validator` and `Placement` aliases, and the
+  single-caller wrappers `_exits`, `_notes`, `_kind_label` (inlined; rendered output
+  byte-identical, no golden moved). One prompt cut: `_PLAN_FIELDS`'s closing clause "the
+  directive said what the turn is about" restated `_DIRECTIVE_BRIEF`'s first sentence verbatim
+  in meaning and is gone — "Write no prose: the Narrator writes what the player reads." survives
+  whole. Goldens: `instructions/{story,dnd5e}/director.txt` −47 chars each, exactly that clause.
+  Kept deliberately: `TurnResult` (a dozen call sites read `.state`/`.turn`; a tuple reads worse
+  at that fan-out), `Stages`/`build_stages` (the bundle is one field per role at every seam),
+  `exchanges_to_messages` (keeps the pydantic-ai message types out of `pipeline.py`).
+- Tests: one assertion added (`"[id=" not in prompt` in the narrator boundary test). No test
+  deleted. Goldens: `prompts/{story,dnd5e}/narrator.txt` and the director instruction pair; the
+  `turn/*` fixtures carry step outputs, not prompts, so they did not move. No `SAVE_VERSION` bump.
+- 133 tests pass, ruff and basedpyright clean. Net Python: **src −24** (244/−268), tests and
+  scripts −1. Model-facing text: **−912 chars** across the four goldens that moved (director
+  instructions −374 dnd5e / −284 story, narrator prompts −128 / −126). One module fewer, one
+  answer to "where does a role get built".
+- Process note, worth more than the numbers: a subagent given a code-collapse spec read a stale
+  copy of `prompts.py`, edited against it, and recovered by stashing the working tree and running
+  `git stash drop` — deleting the whole phase from the tree. It was recovered from the dangling
+  stash commit in the object database (`git fsck --unreachable`, then `git stash store`) and the
+  final state was verified against markers, not against the agent's report, which described the
+  destroyed work as "bad edits". A subagent must never be left to resolve a conflict with
+  `git stash`/`reset`/`checkout`; the recovery instruction is to stop and report.
+
 ## Next
 
-Phase 10 — simplify role construction and prompt rendering. `run_turn` stays explicit; the work is
-one obvious path for building agents (the advisor now builds from a capability, the four turn
-stages from `build_stages`) without hiding role-specific validators, tools, or fallback modes, and
-a prototype compact renderer for the Director's and Narrator's repeated prompt sections — adopted
-only if the golden diffs are intentional and prompt tokens do not grow.
+Part II is finished. Phase 11 — memories + keepers — is next, and re-resolves against the landed
+shape: `Memory` state first (authored, rendered to the Scene Director only), then the Memorykeeper
+and Threadkeeper as one `stage()` call each in `turn/roles.py` plus one explicit `run_turn` line,
+per phase 10's path. Probe each new role's output mode live before cutting fixtures.

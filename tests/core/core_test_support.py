@@ -17,7 +17,8 @@ from aidm.engines.loader import Advancement, Engine
 from aidm.state.base import EngineId, Entity
 from aidm.state.turn import Turn
 from aidm.state.world import GameState
-from aidm.turn.pipeline import TurnOptions, TurnResult, build_stages, run_turn
+from aidm.turn.pipeline import TurnResult, run_turn
+from aidm.turn.roles import build_stages
 
 type Stub = Callable[[list[ModelMessage], AgentInfo], ModelResponse]
 
@@ -26,7 +27,6 @@ SCENARIOS = REPOSITORY_ROOT / "scenarios"
 CHARACTERS = REPOSITORY_ROOT / "characters"
 STORY = EngineId("story")
 DND5E = EngineId("dnd5e")
-OPTIONS = TurnOptions(history_window=6, max_growth=3)
 
 
 def updated[T: BaseModel](model: T, **changes: object) -> T:
@@ -111,7 +111,6 @@ async def played(
     narrator: Model | None = None,
     worldkeeper: Model | None = None,
     scene: Model | None = None,
-    options: TurnOptions = OPTIONS,
     rng: Random | None = None,
     on_step: Callable[[str], None] | None = None,
 ) -> TurnResult:
@@ -132,7 +131,8 @@ async def played(
             prompt,
             engine=engine,
             stages=stages,
-            options=options,
+            history_window=6,
+            max_growth=3,
             rng=Random(0) if rng is None else rng,
             on_step=on_step,
         )

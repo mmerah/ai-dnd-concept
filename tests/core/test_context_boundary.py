@@ -149,6 +149,8 @@ def test_narrator_prompt_orders_plan_before_outcome_and_checks_the_speaker() -> 
     assert "pools: growth 0/3, stress 0/5" in prompt
     assert prompt.index("THE DIRECTOR'S PLAN") < prompt.index("WHAT HAPPENED")
     assert "The Secret" not in prompt
+    # The Narrator writes prose and never names an id; its own instructions forbid reciting one.
+    assert "[id=" not in prompt
 
     with pytest.raises(ValueError, match="visible actor here"):
         render(EntityId("hidden-actor"))

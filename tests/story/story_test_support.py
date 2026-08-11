@@ -10,8 +10,7 @@ from aidm.engines.story.advance import GROWTH_REQUIRED
 from aidm.engines.story.mechanics import read, write
 from aidm.state.base import PLAYER_ID
 from aidm.state.world import GameState
-from aidm.turn.advancement import advisor
-from aidm.turn.pipeline import TurnOptions, build_stages
+from aidm.turn.roles import advisor, build_stages
 
 TARGET = LaunchTarget(
     slug="poc",
@@ -19,7 +18,6 @@ TARGET = LaunchTarget(
     character_id="kael",
     engine=STORY,
 )
-OPTIONS = TurnOptions(history_window=6, max_growth=3)
 
 
 def story_game() -> tuple[Engine, GameState]:
@@ -38,7 +36,8 @@ def story_session(directory: Path, rng: Random | None = None) -> GameSession:
         advisor=advisor(capability(engine), config),
         saves=FileSaves(directory),
         traces=FileTraces(directory),
-        options=OPTIONS,
+        history_window=6,
+        max_growth=3,
         rng=Random(1) if rng is None else rng,
     )
 

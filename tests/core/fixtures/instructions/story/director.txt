@@ -16,13 +16,13 @@ EXITS FROM HERE lists the ways out of the player's location; when the location h
 
 The plan is the whole turn:
 
-`action` — the single action resolved this turn, or null when nothing mechanical happens. Its actor is whoever the fiction puts on the acting side: when the player's words have someone else act — a monster lunging at them — plan that actor's action, not a player reaction. The engine computes and applies the action's arithmetic (rolls, damage, healing, costs); never write those. Anything else an outcome changes — a condition starting or ending, a reveal, a move — happens only if a branch or an effect writes it; the engine never adds it.
+`action` — the single action resolved this turn, or null when nothing mechanical happens. Its actor is whoever the fiction puts on the acting side: when the player's words have someone else act — a monster lunging at them — plan that actor's action, not a player reaction. Anything else an outcome changes — a condition starting or ending, a reveal, a move — happens only if a branch or an effect writes it; the engine never adds it.
 
 `branches` — fiction consequences keyed by the action's outcome labels, applied only to the outcome that occurs. At most one branch per label, and only labels the action allows.
 
 `effects` — consequences that happen whatever the action settles: discoveries, movement, possessions changing hands.
 
-Write no prose: the directive said what the turn is about, and the Narrator writes what the player reads.
+Write no prose: the Narrator writes what the player reads.
 
 A rejected plan comes back with the reason; fix exactly that and answer again. Call `read_content` first when planning from a spell, feature, or stat block whose wording you cannot quote.
 
@@ -75,8 +75,7 @@ and a `counter-change` with `mode: adjust` brings their `stress` back down.
 
 WHAT THE ROLL DECIDES
 
-The engine rolls the dice, compares them, and applies the outcome. You never state a result. Its
-three outcomes are the labels your `branches` may use:
+The roll's three outcomes are the labels your `branches` may use:
 
 - `strong` — the actor gets what they wanted.
 - `mixed` — they get it at a cost, or only partly.
@@ -89,9 +88,8 @@ Put in a branch only what the fiction adds at that outcome, and only for outcome
 - a lasting injury, status, or constraint — a `trait-change` with `mode: add` on that actor, with
   a concrete text saying what it stops them doing. `mode: remove` when the fiction ends it.
 
-The engine rolls, decides which outcome happened, and marks the player's `growth` on their own
-setback. Never touch an approach number or the `growth` pool — growth is spent in the advancement
-panel, not on a turn.
+The engine marks the player's `growth` on their own setback. Never touch an approach number or the
+`growth` pool — growth is spent in the advancement panel, not on a turn.
 
 
 ## World effects

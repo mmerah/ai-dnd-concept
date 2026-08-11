@@ -29,17 +29,16 @@ from aidm.engines.loader import Engine
 from aidm.state.base import EngineId, Frozen, Slug
 from aidm.state.turn import SceneDirective
 from aidm.state.world import GameState
-from aidm.turn.advancement import AdvisorContext, advisor, render_proposal
-from aidm.turn.pipeline import (
+from aidm.turn.pipeline import apply_creations, apply_hooks, resolve_plan
+from aidm.turn.prompts import SceneSnapshot, render_director, render_proposal, render_worldkeeper
+from aidm.turn.roles import (
+    AdvisorContext,
     PlanContext,
-    apply_creations,
-    apply_hooks,
+    advisor,
     director_stage,
-    resolve_plan,
     scene_stage,
     worldkeeper_stage,
 )
-from aidm.turn.prompts import SceneSnapshot, render_director, render_worldkeeper
 
 EVALS = Path(__file__).parent
 SCENARIOS = EVALS / "scenarios"

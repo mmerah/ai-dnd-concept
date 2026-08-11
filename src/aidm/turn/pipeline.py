@@ -1,28 +1,20 @@
 from collections.abc import Callable, Sequence
 from dataclasses import dataclass
 from random import Random
-from types import NoneType
 
-from pydantic import BaseModel, Field, ValidationError
-from pydantic_ai import ModelRetry, NativeOutput, RunContext, TextOutput, ToolOutput
+from pydantic import BaseModel
 
-from aidm.config import Settings
 from aidm.engines.loader import Engine
 from aidm.state.apply import fire_hooks
-from aidm.state.base import Entity, EntityId, Frozen, slug
+from aidm.state.base import Entity, EntityId, slug
 from aidm.state.facts import Fact, narrator_evidence
-from aidm.state.plan import TurnPlanBase, check_speaker
-from aidm.state.turn import Creation, SceneDirective, StepTrace, Turn, WorldkeeperReport
+from aidm.state.plan import TurnPlanBase
+from aidm.state.turn import Creation, StepTrace, Turn, WorldkeeperReport
 from aidm.state.world import Exchange, GameState
 
 from . import prompts
 from .prompts import SceneSnapshot, VisibleScene
-from .roles import Stage, exchanges_to_messages, stage
-
-
-class TurnOptions(Frozen):
-    history_window: int = Field(ge=0)
-    max_growth: int = Field(ge=0)
+from .roles import PlanContext, Stages, exchanges_to_messages
 
 
 @dataclass(frozen=True, slots=True)
@@ -31,24 +23,6 @@ class TurnResult:
 
     state: GameState
     turn: Turn
-
-
-@dataclass(frozen=True, slots=True)
-class PlanContext:
-    """What the Director's output validator judges a plan against: the untouched committed state."""
-
-    engine: Engine
-    state: GameState
-
-
-@dataclass(frozen=True, slots=True)
-class Stages:
-    """The turn's model-facing roles, built once per session."""
-
-    scene: Stage[GameState, SceneDirective]
-    director: Stage[PlanContext, TurnPlanBase]
-    narrator: Stage[None, str]
-    worldkeeper: Stage[None, WorldkeeperReport]
 
 
 TURN_STEPS: tuple[str, ...] = ("scene", "director", "resolve", "hooks", "narrator", "worldkeeper")
@@ -75,120 +49,29 @@ def apply_creations(draft: GameState, report: WorldkeeperReport, maximum: int) -
     ]
 
 
-def plan_from_text(plan_type: type[TurnPlanBase]) -> Callable[[str], TurnPlanBase]:
-    def parse(text: str) -> TurnPlanBase:
-        start, end = text.find("{"), text.rfind("}")
-        if start < 0 or end <= start:
-            raise ModelRetry("Answer with one `turn_plan` tool call.")
-        try:
-            return plan_type.model_validate_json(text[start : end + 1])
-        except ValidationError as invalid:
-            first = invalid.errors()[0]
-            where = ".".join(str(loc) for loc in first["loc"])
-            raise ModelRetry(f"the plan did not validate — {where}: {first['msg']}") from invalid
-
-    return parse
-
-
-def scene_stage(settings: Settings) -> Stage[GameState, SceneDirective]:
-    built = stage(
-        "scene",
-        settings,
-        instructions=prompts.SCENE_DIRECTOR,
-        output_type=NativeOutput(SceneDirective),
-        deps_type=GameState,
-    )
-
-    def known(ctx: RunContext[GameState], directive: SceneDirective) -> SceneDirective:
-        state = ctx.deps
-        missing = sorted(set(directive.threads) - set(state.threads))
-        if missing:
-            raise ModelRetry(f"no such thread: {', '.join(missing)}")
-        # A `reveal` naming anything but an unmet entity renders nothing
-        unmet = {entity.id for entity in state.world.entities.values() if not entity.known}
-        wrong = sorted(set(directive.reveal) - unmet)
-        if wrong:
-            raise ModelRetry(f"not something the player has yet to find: {', '.join(wrong)}")
-        if fault := check_speaker(state, directive.speaker_id):
-            raise ModelRetry(fault)
-        return directive
-
-    _ = built.agent.output_validator(known)
-    return built
-
-
-def director_stage(engine: Engine, settings: Settings) -> Stage[PlanContext, TurnPlanBase]:
-    built = stage(
-        "director",
-        settings,
-        instructions=f"{prompts.RULES_DIRECTOR}\n\n{engine.director_instructions}",
-        output_type=[
-            ToolOutput(engine.plan_type, name="turn_plan"),
-            TextOutput(plan_from_text(engine.plan_type)),
-        ],
-        deps_type=PlanContext,
-        toolsets=(engine.director_toolset,),
-    )
-
-    def legal(ctx: RunContext[PlanContext], plan: TurnPlanBase) -> TurnPlanBase:
-        deps = ctx.deps
-        refused = deps.engine.check_plan(deps.state, plan)
-        if refused is not None:
-            raise ModelRetry(refused)
-        return plan
-
-    _ = built.agent.output_validator(legal)
-    return built
-
-
-def narrator_stage(settings: Settings) -> Stage[None, str]:
-    return stage(
-        "narrator", settings, instructions=prompts.NARRATOR, output_type=str, deps_type=NoneType
-    )
-
-
-def worldkeeper_stage(settings: Settings) -> Stage[None, WorldkeeperReport]:
-    return stage(
-        "worldkeeper",
-        settings,
-        instructions=prompts.WORLDKEEPER,
-        output_type=NativeOutput(WorldkeeperReport),
-        deps_type=NoneType,
-    )
-
-
-def build_stages(engine: Engine, settings: Settings) -> Stages:
-    return Stages(
-        scene=scene_stage(settings),
-        director=director_stage(engine, settings),
-        narrator=narrator_stage(settings),
-        worldkeeper=worldkeeper_stage(settings),
-    )
-
-
 async def run_turn(
     state: GameState,
     prompt: str,
     *,
     engine: Engine,
     stages: Stages,
-    options: TurnOptions,
+    history_window: int,
+    max_growth: int,
     rng: Random,
     on_step: Callable[[str], None] | None = None,
 ) -> TurnResult:
-    """One turn, in the order it happens. A new role is one more call in this sequence."""
+    """A new role is one more explicit call in this sequence."""
 
     def announce(step: str) -> None:
         if on_step is not None:
             on_step(step)
 
-    history = exchanges_to_messages(state.history[-options.history_window :])
+    history = exchanges_to_messages(state.history[-history_window:])
     steps: list[StepTrace] = []
     draft = state.draft()
     snapshot = SceneSnapshot.of(state)
 
     announce("scene")
-    # The Scene Director reads the full view and hands the Rules Director a directive.
     scene_prompt = prompts.render_director(snapshot, engine.renderer(state), state.scenario, prompt)
     directive = await stages.scene.run(scene_prompt, state, history)
     steps.append(_traced("scene", scene_prompt, directive))
@@ -240,7 +123,7 @@ async def run_turn(
         narration=narration,
     )
     report = await stages.worldkeeper.run(keeper_prompt, None, history)
-    facts.extend(apply_creations(draft, report, options.max_growth))
+    facts.extend(apply_creations(draft, report, max_growth))
     steps.append(_traced("worldkeeper", keeper_prompt, report))
 
     draft.history = (*draft.history, Exchange(prompt=prompt, narration=narration))

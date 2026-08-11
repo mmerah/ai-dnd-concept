@@ -30,14 +30,12 @@ THE PLAN
 Resolve at most one action per turn, one of six. Leave `action` null when nothing the player does
 needs resolving — a conversation, a look around, a walk to a room they know; then the plan is
 whatever `effects` the turn plainly causes. The engine rolls the dice, computes every bonus and
-DC, spends the cost, applies the damage or healing, and picks the outcome. Never state a result,
-and never write a number the engine can compute.
+DC, spends the cost, and applies the damage or healing. Never write a number the engine can
+compute.
 
-- `attack` — a weapon swing or a stat-block attack. The attacker is whoever strikes this turn:
-  when the player's prompt has a monster attack them, plan the monster's attack on the player,
-  not an undeclared counter-attack. Use the weapon path when the attacker carries the weapon;
-  use the monster path only by copying numbers off its own rendered attack line, such as
-  `Bite +4 to hit, 1d4+2 piercing`. Never both paths on the same swing.
+- `attack` — a weapon swing or a stat-block attack. Use the weapon path when the attacker carries
+  the weapon; use the monster path only by copying numbers off its own rendered attack line, such
+  as `Bite +4 to hit, 1d4+2 piercing`. Never both paths on the same swing.
 - `cast-spell` — name the spell exactly as its content ref was rendered. The engine spends the
   slot first: with no slot left, nothing about the spell happens, so plan no branch that assumes
   it landed.
