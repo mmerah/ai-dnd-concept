@@ -17,22 +17,7 @@ from aidm.engines.loader import Engine
 from aidm.state.base import EngineId, Entity
 from aidm.state.turn import Turn
 from aidm.state.world import GameState
-from aidm.turn.pipeline import (
-    TurnOptions,
-    TurnResult,
-    TurnScript,
-    director_stage,
-    director_step,
-    hook_step,
-    narrator_stage,
-    narrator_step,
-    resolve_step,
-    run_turn,
-    scene_stage,
-    scene_step,
-    worldkeeper_stage,
-    worldkeeper_step,
-)
+from aidm.turn.pipeline import TurnOptions, TurnResult, build_stages, run_turn
 
 type Stub = Callable[[list[ModelMessage], AgentInfo], ModelResponse]
 
@@ -123,26 +108,10 @@ async def played(
     options: TurnOptions = OPTIONS,
     rng: Random | None = None,
     on_step: Callable[[str], None] | None = None,
-    extra: TurnScript = (),
 ) -> TurnResult:
-    """The default workflow with every role stubbed, assembled the way a new role would be."""
-    config = settings()
-    scene_role, director_role, narrator_role, worldkeeper_role = (
-        scene_stage(config),
-        director_stage(engine, config),
-        narrator_stage(config),
-        worldkeeper_stage(config),
-    )
-    stages = (scene_role, director_role, narrator_role, worldkeeper_role)
-    script = (
-        (scene_role.name, scene_step(scene_role, engine)),
-        (director_role.name, director_step(director_role, engine)),
-        ("resolve", resolve_step(engine)),
-        ("hooks", hook_step(engine)),
-        (narrator_role.name, narrator_step(narrator_role, engine)),
-        (worldkeeper_role.name, worldkeeper_step(worldkeeper_role, engine, options)),
-        *extra,
-    )
+    """The turn with every role stubbed, built the way the session builds it."""
+    stages = build_stages(engine, settings())
+    roles = (stages.scene, stages.director, stages.narrator, stages.worldkeeper)
     models = (
         scene or FunctionModel(scripted(structured(focus="Kael acts."))),
         director,
@@ -150,13 +119,13 @@ async def played(
         worldkeeper or FunctionModel(scripted(structured(creations=[]))),
     )
     with ExitStack() as stack:
-        for role, model in zip(stages, models, strict=True):
+        for role, model in zip(roles, models, strict=True):
             stack.enter_context(role.agent.override(model=model))
         return await run_turn(
             state,
             prompt,
             engine=engine,
-            script=script,
+            stages=stages,
             options=options,
             rng=Random(0) if rng is None else rng,
             on_step=on_step,

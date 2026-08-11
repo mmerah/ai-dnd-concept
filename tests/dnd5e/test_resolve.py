@@ -1,9 +1,11 @@
 import json
 from random import Random
+from typing import get_args
 
 from fivee_test_support import RAT, SWORD, armed, dnd5e_game, wizardly
 from pydantic import JsonValue
 
+from aidm.engines.dnd5e.actions import Action
 from aidm.engines.loader import Engine
 from aidm.state.base import PLAYER_ID, EntityId
 from aidm.state.effects import AddTag, SpendCounter
@@ -12,7 +14,7 @@ from aidm.state.world import GameState, player_sheet, sheet_of
 
 SUCCESS = "success"
 FAILURE = "failure"
-ACTS = ("attack", "cast-spell", "check", "use-feature", "rest", "improvise")
+ACTS = tuple(action.model_fields["act"].default for action in get_args(Action.__value__))
 WOUNDED = OutcomeBranch(outcome=SUCCESS, effects=(AddTag(entity_id=RAT, tag_id="wounded"),))
 UNSCATHED = OutcomeBranch(outcome=FAILURE, effects=(AddTag(entity_id=RAT, tag_id="unscathed"),))
 
@@ -299,7 +301,6 @@ def test_a_plan_with_json_stringified_nested_fields_validates_as_if_nested() -> 
 def test_every_action_is_worked_through_in_the_directors_instructions() -> None:
     """An action without an example teaches the model nothing: coverage is asserted, not hoped."""
     engine, _ = dnd5e_game()
-    assert len(engine.actions) == len(ACTS)
     for act in ACTS:
         assert engine.director_instructions.count(f'"act": "{act}"') >= 1
 

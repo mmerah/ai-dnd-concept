@@ -22,9 +22,8 @@ from pydantic_ai.messages import (
 from pydantic_ai.models.function import AgentInfo, FunctionModel
 
 from aidm.state.base import PLAYER_ID
-from aidm.state.turn import StepTrace
 from aidm.state.world import player_sheet, sheet_of
-from aidm.turn.pipeline import TurnWorkspace
+from aidm.turn.pipeline import TURN_STEPS
 from aidm.turn.roles import ChannelSafeModel
 
 STEPS = ("scene", "director", "resolve", "hooks", "narrator", "worldkeeper")
@@ -44,7 +43,7 @@ async def test_an_engine_uses_the_shared_pipeline_and_safe_narrator_prompt() -> 
         on_step=steps.append,
     )
 
-    assert tuple(steps) == STEPS
+    assert tuple(steps) == STEPS == TURN_STEPS
     # Finding the map is one of the two discoveries the vault-seal thread answers to, so the
     # hook pass follows the two turn facts with its own.
     assert [fact.kind for fact in result.turn.facts] == [
@@ -236,27 +235,6 @@ async def test_a_failed_role_never_mutates_the_input_state() -> None:
         )
 
     assert state.model_dump_json() == before
-
-
-async def test_a_script_takes_an_extra_step_without_core_edits() -> None:
-    engine, state = initialized()
-
-    async def echo(ws: TurnWorkspace) -> None:
-        ws.steps.append(StepTrace(name="echo", output="extra step ran"))
-
-    steps: list[str] = []
-    result = await played(
-        engine,
-        state,
-        "I wait.",
-        director=FunctionModel(scripted(plan())),
-        on_step=steps.append,
-        extra=(("echo", echo),),
-    )
-
-    assert tuple(steps) == (*STEPS, "echo")
-    echoed = next(step.output for step in result.turn.steps if step.name == "echo")
-    assert echoed == "extra step ran"
 
 
 async def test_a_hook_fires_on_its_fact_moves_its_thread_and_steers_the_next_turn() -> None:

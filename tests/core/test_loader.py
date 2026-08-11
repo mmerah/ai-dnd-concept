@@ -75,7 +75,8 @@ def _engine(tmp_path: Path) -> Engine:
         badge=("TEST", "grey-6"),
         engine_dir=_engine_dir(tmp_path),
         plan_type=TurnPlanBase,
-        actions=(),
+        check=lambda engine, state, plan: None,
+        resolve=lambda engine, draft, plan, rng: [],
         offered=lambda engine, state: None,
         check_delta=lambda state, delta: None,
     )

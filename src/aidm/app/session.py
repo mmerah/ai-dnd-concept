@@ -13,7 +13,7 @@ from aidm.state.sheet import AdvancementOffer
 from aidm.state.turn import Advance, TraceEntry, Turn
 from aidm.state.world import GameState
 from aidm.turn.advancement import AdvisorContext, advisor, render_proposal
-from aidm.turn.pipeline import TurnOptions, TurnScript, default_workflow, run_turn
+from aidm.turn.pipeline import TURN_STEPS, Stages, TurnOptions, build_stages, run_turn
 from aidm.turn.roles import Stage
 
 from .launcher import LaunchTarget
@@ -47,7 +47,7 @@ class GameSession:
     scenario: Scenario
     character: Character
     engine: Engine
-    script: TurnScript
+    stages: Stages
     advisor: Stage[AdvisorContext, SheetDelta]
     saves: FileSaves
     traces: FileTraces
@@ -78,7 +78,7 @@ class GameSession:
 
     @property
     def role_names(self) -> tuple[str, ...]:
-        return tuple(name for name, _ in self.script)
+        return TURN_STEPS
 
     async def submit(
         self,
@@ -90,7 +90,7 @@ class GameSession:
             self.state,
             prompt,
             engine=self.engine,
-            script=self.script,
+            stages=self.stages,
             options=self.options,
             rng=self.rng,
             on_step=on_step,
@@ -200,7 +200,7 @@ class Runtime:
             scenario=load_scenario(config.scenarios_dir, target.scenario_id, target.engine),
             character=load_character(config.characters_dir, target.character_id, target.engine),
             engine=engine,
-            script=default_workflow(engine, config, options),
+            stages=build_stages(engine, config),
             advisor=advisor(engine, config),
             saves=FileSaves(config.saves_dir),
             traces=FileTraces(config.saves_dir),

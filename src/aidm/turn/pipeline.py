@@ -1,11 +1,10 @@
-from collections.abc import Awaitable, Callable, Sequence
-from dataclasses import dataclass, field
+from collections.abc import Callable, Sequence
+from dataclasses import dataclass
 from random import Random
 from types import NoneType
 
-from pydantic import Field, ValidationError
+from pydantic import BaseModel, Field, ValidationError
 from pydantic_ai import ModelRetry, NativeOutput, RunContext, TextOutput, ToolOutput
-from pydantic_ai.messages import ModelMessage
 
 from aidm.config import Settings
 from aidm.engines.loader import Engine
@@ -42,143 +41,45 @@ class PlanContext:
     state: GameState
 
 
-@dataclass
-class TurnWorkspace:
-    prompt: str
-    history: list[ModelMessage]
-    state: GameState
-    draft: GameState
-    rng: Random
-    facts: list[Fact] = field(default_factory=list)
-    steps: list[StepTrace] = field(default_factory=list)
-    plan: TurnPlanBase | None = None
-    directive: SceneDirective | None = None
-    evidence: str = ""
-    narration: str = ""
+@dataclass(frozen=True, slots=True)
+class Stages:
+    """The turn's model-facing roles, built once per session."""
 
-    def settled(self) -> TurnPlanBase:
-        if self.plan is None:
-            raise ValueError("this step ran before a director step settled the plan")
-        return self.plan
-
-    def briefed(self) -> SceneDirective:
-        if self.directive is None:
-            raise ValueError("this step ran before a scene step settled the directive")
-        return self.directive
+    scene: Stage[GameState, SceneDirective]
+    director: Stage[PlanContext, TurnPlanBase]
+    narrator: Stage[None, str]
+    worldkeeper: Stage[None, WorldkeeperReport]
 
 
-type StepFn = Callable[[TurnWorkspace], Awaitable[None]]
-type TurnScript = tuple[tuple[str, StepFn], ...]
+TURN_STEPS: tuple[str, ...] = ("scene", "director", "resolve", "hooks", "narrator", "worldkeeper")
 
 
-def scene_step(role: Stage[GameState, SceneDirective], engine: Engine) -> StepFn:
-    """The Scene Director reads the full view and hands the Rules Director a directive."""
-
-    async def run(ws: TurnWorkspace) -> None:
-        state = ws.state
-        rendered = prompts.render_director(
-            SceneSnapshot.of(state), engine.renderer(state), state.scenario, ws.prompt
-        )
-        directive = await role.run(rendered, state, ws.history)
-        ws.directive = directive
-        ws.steps.append(
-            StepTrace(name=role.name, prompt=rendered, output=directive.model_dump(mode="json"))
-        )
-
-    return run
+def resolve_plan(
+    engine: Engine, draft: GameState, plan: TurnPlanBase, rng: Random
+) -> tuple[GameState, list[Fact]]:
+    """Returns the revalidated draft the rest of the turn builds on."""
+    facts = engine.resolve_action(draft, plan, rng)
+    for effect in plan.effects:
+        facts.extend(apply_effect(draft, effect, engine.default_rules))
+    return draft.committed().draft(), facts
 
 
-def director_step(role: Stage[PlanContext, TurnPlanBase], engine: Engine) -> StepFn:
-    async def run(ws: TurnWorkspace) -> None:
-        state = ws.state
-        rendered = prompts.render_director(
-            SceneSnapshot.of(state), engine.renderer(state), state.scenario, ws.prompt, ws.directive
-        )
-        plan = await role.run(rendered, PlanContext(engine=engine, state=state), ws.history)
-        # Notes are read once: the draft carries none forward, so the next turn shows only new ones.
-        ws.draft.pending_notes = ()
-        ws.plan = plan
-        ws.steps.append(
-            StepTrace(name=role.name, prompt=rendered, output=plan.model_dump(mode="json"))
-        )
-
-    return run
-
-
-def resolve_step(engine: Engine) -> StepFn:
-    """Pure code: the action's procedure on the draft, then the plan's unconditional effects."""
-
-    async def run(ws: TurnWorkspace) -> None:
-        plan = ws.settled()
-        ws.facts.extend(engine.resolve_action(ws.draft, plan, ws.rng))
-        for effect in plan.effects:
-            ws.facts.extend(apply_effect(ws.draft, effect, engine.default_rules))
-        ws.draft = ws.draft.committed().draft()
-        ws.evidence = narrator_evidence(ws.facts)
-        ws.steps.append(StepTrace(name="resolve", output=ws.evidence))
-
-    return run
-
-
-def hook_step(engine: Engine) -> StepFn:
+def apply_hooks(
+    engine: Engine, draft: GameState, facts: Sequence[Fact]
+) -> tuple[GameState, list[Fact]]:
     """Runs before the Narrator, so a hook's consequences are narrated the turn they happen."""
-
-    async def run(ws: TurnWorkspace) -> None:
-        fired = fire_hooks(ws.draft, ws.facts, engine.default_rules)
-        if fired:
-            ws.facts.extend(fired)
-            ws.draft = ws.draft.committed().draft()
-            ws.evidence = narrator_evidence(ws.facts)
-        ws.steps.append(
-            StepTrace(
-                name="hooks", output="\n".join(fact.trace for fact in fired) or "- (no hooks fired)"
-            )
-        )
-
-    return run
+    fired = fire_hooks(draft, facts, engine.default_rules)
+    return (draft.committed().draft() if fired else draft), fired
 
 
-def narrator_step(role: Stage[None, str], engine: Engine) -> StepFn:
-    async def run(ws: TurnWorkspace) -> None:
-        directive = ws.briefed()
-        draft = ws.draft
-        rendered = prompts.render_narrator(
-            VisibleScene.of(SceneSnapshot.of(draft)),
-            engine.renderer(draft),
-            draft.scenario,
-            focus=directive.focus,
-            speaker_id=directive.speaker_id,
-            evidence=ws.evidence,
-            prompt=ws.prompt,
-        )
-        ws.narration = await role.run(rendered, None, ws.history)
-        ws.steps.append(StepTrace(name=role.name, prompt=rendered, output=ws.narration))
-
-    return run
-
-
-def worldkeeper_step(
-    role: Stage[None, WorldkeeperReport], engine: Engine, options: TurnOptions
-) -> StepFn:
-    async def run(ws: TurnWorkspace) -> None:
-        draft = ws.draft
-        rendered = prompts.render_worldkeeper(
-            SceneSnapshot.of(draft),
-            engine.renderer(draft),
-            draft.scenario,
-            prompt=ws.prompt,
-            evidence=ws.evidence,
-            narration=ws.narration,
-        )
-        report = await role.run(rendered, None, ws.history)
-        for creation in admitted(report.creations, draft, options.max_growth):
-            entity = _created_entity(creation, draft)
-            ws.facts.append(draft.add(entity, engine.default_rules(entity)))
-        ws.steps.append(
-            StepTrace(name=role.name, prompt=rendered, output=report.model_dump(mode="json"))
-        )
-
-    return run
+def apply_creations(
+    engine: Engine, draft: GameState, report: WorldkeeperReport, maximum: int
+) -> list[Fact]:
+    facts: list[Fact] = []
+    for creation in admitted(report.creations, draft, maximum):
+        entity = _created_entity(creation, draft)
+        facts.append(draft.add(entity, engine.default_rules(entity)))
+    return facts
 
 
 def plan_from_text(plan_type: type[TurnPlanBase]) -> Callable[[str], TurnPlanBase]:
@@ -263,19 +164,12 @@ def worldkeeper_stage(settings: Settings) -> Stage[None, WorldkeeperReport]:
     )
 
 
-def default_workflow(engine: Engine, settings: Settings, options: TurnOptions) -> TurnScript:
-    """A new role is an inserted `(name, StepFn)` pair; nothing else changes."""
-    director = director_stage(engine, settings)
-    narrator = narrator_stage(settings)
-    worldkeeper = worldkeeper_stage(settings)
-    scene = scene_stage(settings)
-    return (
-        (scene.name, scene_step(scene, engine)),
-        (director.name, director_step(director, engine)),
-        ("resolve", resolve_step(engine)),
-        ("hooks", hook_step(engine)),
-        (narrator.name, narrator_step(narrator, engine)),
-        (worldkeeper.name, worldkeeper_step(worldkeeper, engine, options)),
+def build_stages(engine: Engine, settings: Settings) -> Stages:
+    return Stages(
+        scene=scene_stage(settings),
+        director=director_stage(engine, settings),
+        narrator=narrator_stage(settings),
+        worldkeeper=worldkeeper_stage(settings),
     )
 
 
@@ -284,40 +178,90 @@ async def run_turn(
     prompt: str,
     *,
     engine: Engine,
-    script: TurnScript,
+    stages: Stages,
     options: TurnOptions,
     rng: Random,
     on_step: Callable[[str], None] | None = None,
 ) -> TurnResult:
-    ws = TurnWorkspace(
-        prompt=prompt,
-        history=exchanges_to_messages(state.history[-options.history_window :]),
-        state=state,
-        draft=state.draft(),
-        rng=rng,
-    )
-    for name, step in script:
+    """One turn, in the order it happens. A new role is one more call in this sequence."""
+
+    def announce(step: str) -> None:
         if on_step is not None:
-            on_step(name)
-        await step(ws)
-    if ws.plan is None:
-        raise ValueError("script finished without a turn plan")
-    if not ws.narration:
-        raise ValueError("script finished without a narration")
-    draft = ws.draft
-    draft.history = (*draft.history, Exchange(prompt=prompt, narration=ws.narration))
+            on_step(step)
+
+    history = exchanges_to_messages(state.history[-options.history_window :])
+    steps: list[StepTrace] = []
+    draft = state.draft()
+    snapshot = SceneSnapshot.of(state)
+
+    announce("scene")
+    # The Scene Director reads the full view and hands the Rules Director a directive.
+    scene_prompt = prompts.render_director(snapshot, engine.renderer(state), state.scenario, prompt)
+    directive = await stages.scene.run(scene_prompt, state, history)
+    steps.append(_traced("scene", scene_prompt, directive))
+
+    announce("director")
+    plan_prompt = prompts.render_director(
+        snapshot, engine.renderer(state), state.scenario, prompt, directive
+    )
+    plan = await stages.director.run(plan_prompt, PlanContext(engine=engine, state=state), history)
+    # Notes are read once: the draft carries none forward, so the next turn shows only new ones.
+    draft.pending_notes = ()
+    steps.append(_traced("director", plan_prompt, plan))
+
+    announce("resolve")
+    draft, facts = resolve_plan(engine, draft, plan, rng)
+    evidence = narrator_evidence(facts)
+    steps.append(StepTrace(name="resolve", output=evidence))
+
+    announce("hooks")
+    draft, fired = apply_hooks(engine, draft, facts)
+    if fired:
+        facts.extend(fired)
+        evidence = narrator_evidence(facts)
+    fired_trace = "\n".join(fact.trace for fact in fired) or "- (no hooks fired)"
+    steps.append(StepTrace(name="hooks", output=fired_trace))
+
+    announce("narrator")
+    narrator_prompt = prompts.render_narrator(
+        VisibleScene.of(SceneSnapshot.of(draft)),
+        engine.renderer(draft),
+        draft.scenario,
+        focus=directive.focus,
+        speaker_id=directive.speaker_id,
+        evidence=evidence,
+        prompt=prompt,
+    )
+    narration = await stages.narrator.run(narrator_prompt, None, history)
+    if not narration:
+        raise ValueError("the narrator answered with nothing")
+    steps.append(StepTrace(name="narrator", prompt=narrator_prompt, output=narration))
+
+    announce("worldkeeper")
+    keeper_prompt = prompts.render_worldkeeper(
+        SceneSnapshot.of(draft),
+        engine.renderer(draft),
+        draft.scenario,
+        prompt=prompt,
+        evidence=evidence,
+        narration=narration,
+    )
+    report = await stages.worldkeeper.run(keeper_prompt, None, history)
+    facts.extend(apply_creations(engine, draft, report, options.max_growth))
+    steps.append(_traced("worldkeeper", keeper_prompt, report))
+
+    draft.history = (*draft.history, Exchange(prompt=prompt, narration=narration))
     draft.turn += 1
     final = draft.committed()
     engine.validate_state(final)
     return TurnResult(
         state=final,
-        turn=Turn(
-            prompt=prompt,
-            facts=tuple(ws.facts),
-            narration=ws.narration,
-            steps=tuple(ws.steps),
-        ),
+        turn=Turn(prompt=prompt, facts=tuple(facts), narration=narration, steps=tuple(steps)),
     )
+
+
+def _traced(name: str, rendered: str, output: BaseModel) -> StepTrace:
+    return StepTrace(name=name, prompt=rendered, output=output.model_dump(mode="json"))
 
 
 def admitted(creations: Sequence[Creation], state: GameState, maximum: int) -> tuple[Creation, ...]:

@@ -137,14 +137,11 @@ class Improvise(Frozen):
     )
 
 
+type Action = Attack | CastSpell | Check | UseFeature | Rest | Improvise
+
+
 class TurnPlan(TurnPlanBase):
-    action: (
-        Annotated[
-            Attack | CastSpell | Check | UseFeature | Rest | Improvise,
-            Field(discriminator="act"),
-        ]
-        | None
-    ) = Field(
+    action: Annotated[Action, Field(discriminator="act")] | None = Field(
         default=None,
         description="The one action this turn resolves, or null when nothing needs resolving.",
     )

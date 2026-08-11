@@ -1,5 +1,6 @@
 import json
 from collections.abc import Callable, Sequence
+from random import Random
 from typing import cast
 
 from pydantic import Field, ValidationError, model_validator
@@ -113,6 +114,22 @@ def check_plan_base(
         if fault := _trial(state, group, default_rules):
             return fault
     return None
+
+
+def check_plan_with_trial(
+    state: GameState,
+    plan: TurnPlanBase,
+    labels: frozenset[Slug],
+    default_rules: Callable[[Entity], Sheet],
+    resolve: Callable[[GameState, Random], object],
+) -> str | None:
+    """The trial resolve owes the model every refusal the real resolve raises, so an action that
+    cannot resolve is refused before the plan's effects are judged."""
+    try:
+        _ = resolve(state.draft(), Random(0))
+    except ValueError as refused:
+        return str(refused)
+    return check_plan_base(state, plan, labels, default_rules)
 
 
 def _trial(

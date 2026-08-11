@@ -4,7 +4,7 @@ from dataclasses import dataclass
 from importlib import import_module
 from pathlib import Path
 from random import Random
-from typing import Annotated, Any, Self
+from typing import Annotated, Self
 
 from pydantic import (
     Field,
@@ -18,7 +18,7 @@ from pydantic_ai.toolsets import AbstractToolset, FunctionToolset
 
 from aidm.content.authored import AuthoredEntity, AuthoredWorld, Rules, compose_world
 from aidm.state.apply import apply_effect
-from aidm.state.base import EngineId, Entity, Frozen, Kind, Slug
+from aidm.state.base import EngineId, Entity, Kind, Slug
 from aidm.state.effects import AddRef, SheetDelta, TurnEffect, turn_effect_ops
 from aidm.state.facts import Fact
 from aidm.state.packs import (
@@ -36,7 +36,7 @@ from aidm.state.packs import (
     load,
     parse_ref,
 )
-from aidm.state.plan import TurnPlanBase, apply_branch, check_plan_base
+from aidm.state.plan import TurnPlanBase
 from aidm.state.sheet import (
     AdvancementOffer,
     Sheet,
@@ -54,7 +54,6 @@ ENGINE_MODULES: tuple[str, ...] = (
 PLUGIN = "PLUGIN"
 
 type EntityRenderer = Callable[[Entity], str]
-type Resolved = tuple[list[Fact], Slug | None]
 
 
 class EngineSpec(Value):
@@ -75,23 +74,14 @@ class EngineSpec(Value):
 
 
 @dataclass(frozen=True, slots=True)
-class ActionSpec[A: Frozen]:
-    """`resolve` mutates the draft and names the outcome; the kernel applies that outcome's
-    branch. `check` judges the whole plan against the untouched committed state."""
-
-    model: type[A]
-    labels: "frozenset[Slug] | Callable[[Engine, A], frozenset[Slug]]"
-    resolve: "Callable[[Engine, GameState, A, Random], Resolved]"
-    check: Callable[[GameState, TurnPlanBase, A], str | None] | None = None
-
-
-@dataclass(frozen=True, slots=True)
 class EnginePlugin:
     id: EngineId
     badge: tuple[str, str]
     engine_dir: Path
     plan_type: type[TurnPlanBase]
-    actions: "tuple[ActionSpec[Any], ...]"
+    check: "Callable[[Engine, GameState, TurnPlanBase], str | None]"
+    # The pipeline applies `plan.effects` itself: an engine returns only what its action causes.
+    resolve: "Callable[[Engine, GameState, TurnPlanBase, Random], list[Fact]]"
     offered: "Callable[[Engine, GameState], AdvancementOffer | None]"
     # Judges the sheet the proposal would leave, which the kernel has already applied and validated.
     check_delta: Callable[[GameState, Sheet], str | None]
@@ -113,10 +103,6 @@ class Engine:
     @property
     def badge(self) -> tuple[str, str]:
         return self.plugin.badge
-
-    @property
-    def actions(self) -> tuple[ActionSpec[Any], ...]:
-        return self.plugin.actions
 
     @property
     def plan_type(self) -> type[TurnPlanBase]:
@@ -149,30 +135,11 @@ class Engine:
                     raise ValueError(f"{entity.id!r}: {miss.summary}")
 
     def check_plan(self, state: GameState, plan: TurnPlanBase) -> str | None:
-        """Must not raise: an output validator that raises kills the turn instead of retrying.
-        The trial resolve owes the model every refusal the real resolve raises."""
-        action = _action(plan)
-        if action is None:
-            return check_plan_base(state, plan, frozenset[Slug](), self.default_rules)
-        try:
-            spec = self._spec(action)
-            _ = spec.resolve(self, state.draft(), action, Random(0))
-            held = spec.labels
-            labels: frozenset[Slug] = held(self, action) if callable(held) else held
-        except ValueError as refused:
-            return str(refused)
-        if spec.check is not None and (refusal := spec.check(state, plan, action)):
-            return refusal
-        return check_plan_base(state, plan, labels, self.default_rules)
+        """Must not raise: an output validator that raises kills the turn instead of retrying."""
+        return self.plugin.check(self, state, plan)
 
     def resolve_action(self, draft: GameState, plan: TurnPlanBase, rng: Random) -> list[Fact]:
-        action = _action(plan)
-        if action is None:
-            return []
-        facts, outcome = self._spec(action).resolve(self, draft, action, rng)
-        if outcome is not None:
-            facts.extend(apply_branch(draft, plan, outcome, self.default_rules))
-        return facts
+        return self.plugin.resolve(self, draft, plan, rng)
 
     def offered(self, state: GameState) -> AdvancementOffer | None:
         return self.plugin.offered(self, state)
@@ -206,12 +173,6 @@ class Engine:
         except ValueError as refused:
             return str(refused)
         return self.plugin.check_delta(state, player_sheet(after))
-
-    def _spec(self, action: Frozen) -> ActionSpec[Any]:
-        for spec in self.actions:
-            if type(action) is spec.model:
-                return spec
-        raise ValueError(f"{self.id} registers no action {type(action).__name__}")
 
     def _sheet(self, kind: Kind, rules: Rules) -> Sheet:
         definition = SheetDefinition.model_validate(rules)
@@ -260,13 +221,6 @@ def load_engine(plugin: EnginePlugin, pack_paths: Sequence[Path] | None = None) 
         advancement_instructions=_text(engine_dir / "advancement.md"),
         director_toolset=_director_toolset(content),
     )
-
-
-def _action(plan: TurnPlanBase) -> Frozen | None:
-    """The plan model is built per engine, so the base type the kernel holds knows no `action`."""
-    action: object = getattr(plan, "action", None)
-    assert action is None or isinstance(action, Frozen)
-    return action
 
 
 def _plugin(module: str) -> EnginePlugin:

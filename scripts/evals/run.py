@@ -32,16 +32,14 @@ from aidm.state.world import GameState
 from aidm.turn.advancement import AdvisorContext, advisor, render_proposal
 from aidm.turn.pipeline import (
     PlanContext,
-    TurnOptions,
-    TurnWorkspace,
+    apply_creations,
+    apply_hooks,
     director_stage,
-    hook_step,
-    resolve_step,
+    resolve_plan,
     scene_stage,
     worldkeeper_stage,
-    worldkeeper_step,
 )
-from aidm.turn.prompts import SceneSnapshot, render_director
+from aidm.turn.prompts import SceneSnapshot, render_director, render_worldkeeper
 
 EVALS = Path(__file__).parent
 SCENARIOS = EVALS / "scenarios"
@@ -295,7 +293,7 @@ async def _turn(case: EvalCase, run: int, config: Settings) -> Attempt:
         case "advisor":
             return await _advisor_turn(case, config, engine, before)
         case "worldkeeper":
-            return await _worldkeeper_turn(case, config, engine, before, rng)
+            return await _worldkeeper_turn(case, config, engine, before)
 
 
 async def _directive(
@@ -312,27 +310,23 @@ async def _directive(
 async def _director_turn(
     case: EvalCase, config: Settings, engine: Engine, before: GameState, rng: Random
 ) -> Attempt:
-    workspace = TurnWorkspace(
-        prompt=case.prompt, history=[], state=before, draft=before.draft(), rng=rng
-    )
     directive, scene_retries, scene_tokens = await _directive(case, config, engine, before)
-    workspace.directive = directive
     director = director_stage(engine, config)
-    # The agent is run directly rather than through `director_step`: only the run result carries
-    # the retry exchanges a diagnosis needs, and the step returns none of it.
+    # The agent is run directly rather than through `Stage.run`: only the run result carries
+    # the retry exchanges a diagnosis needs.
     rendered = render_director(
         SceneSnapshot.of(before), engine.renderer(before), before.scenario, case.prompt, directive
     )
     result = await director.agent.run(rendered, deps=PlanContext(engine=engine, state=before))
-    workspace.plan = result.output
-    await resolve_step(engine)(workspace)
-    await hook_step(engine)(workspace)
-    after = workspace.draft.committed()
+    draft, facts = resolve_plan(engine, before.draft(), result.output, rng)
+    draft, fired = apply_hooks(engine, draft, facts)
+    facts.extend(fired)
+    after = draft.committed()
     engine.validate_state(after)
     outcome = Outcome(
         before=before,
         after=after,
-        facts=tuple(workspace.facts),
+        facts=tuple(facts),
         plan=result.output.model_dump(mode="json"),
     )
     retries = scene_retries + _retry_reasons(result.all_messages())
@@ -373,21 +367,32 @@ async def _advisor_turn(
 
 
 async def _worldkeeper_turn(
-    case: EvalCase, config: Settings, engine: Engine, before: GameState, rng: Random
+    case: EvalCase, config: Settings, engine: Engine, before: GameState
 ) -> Attempt:
-    """Runs the pipeline step itself, so the admission code the turn uses is what is measured.
-    That step exposes no run result, so tokens are unavailable here and reported as 0."""
-    workspace = TurnWorkspace(
-        prompt=case.prompt, history=[], state=before, draft=before.draft(), rng=rng
+    """Applies creations through `apply_creations`, so the admission code the turn uses is what
+    is measured. The narration is authored by the case, so no earlier phase runs."""
+    draft = before.draft()
+    keeper = worldkeeper_stage(config)
+    rendered = render_worldkeeper(
+        SceneSnapshot.of(draft),
+        engine.renderer(draft),
+        draft.scenario,
+        prompt=case.prompt,
+        evidence="",
+        narration=case.narration,
     )
-    workspace.narration = case.narration
-    options = TurnOptions(history_window=0, max_growth=config.max_growth)
-    await worldkeeper_step(worldkeeper_stage(config), engine, options)(workspace)
-    after = workspace.draft.committed()
+    result = await keeper.agent.run(rendered, deps=None)
+    facts = apply_creations(engine, draft, result.output, config.max_growth)
+    after = draft.committed()
     engine.validate_state(after)
-    report = workspace.steps[-1].output
-    outcome = Outcome(before=before, after=after, facts=tuple(workspace.facts), plan=report)
-    return Attempt(outcome=outcome, plan=report, retries=(), tokens=0)
+    report = result.output.model_dump(mode="json")
+    outcome = Outcome(before=before, after=after, facts=tuple(facts), plan=report)
+    return Attempt(
+        outcome=outcome,
+        plan=report,
+        retries=_retry_reasons(result.all_messages()),
+        tokens=result.usage.total_tokens,
+    )
 
 
 def _retry_reasons(messages: Sequence[ModelMessage]) -> tuple[str, ...]:

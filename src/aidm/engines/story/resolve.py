@@ -1,10 +1,11 @@
 from random import Random
 
-from aidm.engines.loader import Engine, Resolved
+from aidm.engines.loader import Engine
 from aidm.state.apply import apply_effect, require_actor_here
 from aidm.state.base import PLAYER_ID, Entity, Slug
 from aidm.state.dice import roll
 from aidm.state.effects import AdjustCounter, Reveal
+from aidm.state.facts import Fact
 from aidm.state.world import GameState, sheet_of
 
 from .actions import Risk
@@ -14,7 +15,9 @@ STRONG = 10
 MIXED = 7
 
 
-def resolve_risk(engine: Engine, draft: GameState, action: Risk, rng: Random) -> Resolved:
+def resolve_risk(
+    engine: Engine, draft: GameState, action: Risk, rng: Random
+) -> tuple[list[Fact], Slug]:
     actor = require_actor_here(draft, action.actor_id)
     facts = apply_effect(draft, Reveal(entity_id=action.actor_id), engine.default_rules)
     sheet = sheet_of(draft, actor.id)

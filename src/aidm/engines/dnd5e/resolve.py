@@ -3,20 +3,53 @@ from random import Random
 
 from pydantic import JsonValue
 
-from aidm.engines.loader import Engine, Resolved
+from aidm.engines.loader import Engine
 from aidm.state.apply import apply_effect, require_actor_here
 from aidm.state.base import Entity, Slug
 from aidm.state.dice import roll
 from aidm.state.effects import AdjustCounter, Refill, Reveal, SetNote, SpendCounter
+from aidm.state.facts import Fact
 from aidm.state.packs import CollectionName, Content, ContentMiss, Record, parse_ref
+from aidm.state.plan import TurnPlanBase, apply_branch
 from aidm.state.sheet import Sheet
 from aidm.state.world import GameState, sheet_of
 
-from .actions import Attack, CastSpell, Check, Improvise, Rest, UseFeature
+from .actions import Action, Attack, CastSpell, Check, Improvise, Rest, TurnPlan, UseFeature
 
 SUCCESS: Slug = "success"
 FAILURE: Slug = "failure"
 AIMED = "{spell} is aimed at a creature: name its `target_id`"
+
+type Resolved = tuple[list[Fact], Slug | None]
+
+
+def resolve(engine: Engine, draft: GameState, plan: TurnPlanBase, rng: Random) -> list[Fact]:
+    assert isinstance(plan, TurnPlan)
+    facts, outcome = resolve_action(engine, draft, plan.action, rng)
+    if outcome is not None:
+        facts.extend(apply_branch(draft, plan, outcome, engine.default_rules))
+    return facts
+
+
+def resolve_action(
+    engine: Engine, draft: GameState, action: Action | None, rng: Random
+) -> Resolved:
+    """The plan union is the action registry: one arm per member, exhaustively."""
+    match action:
+        case None:
+            return [], None
+        case Attack():
+            return resolve_attack(engine, draft, action, rng)
+        case CastSpell():
+            return resolve_cast_spell(engine, draft, action, rng)
+        case Check():
+            return resolve_check(engine, draft, action, rng)
+        case UseFeature():
+            return resolve_use_feature(engine, draft, action, rng)
+        case Rest():
+            return resolve_rest(engine, draft, action, rng)
+        case Improvise():
+            return resolve_improvise(engine, draft, action, rng)
 
 
 def resolve_check(engine: Engine, draft: GameState, action: Check, rng: Random) -> Resolved:
