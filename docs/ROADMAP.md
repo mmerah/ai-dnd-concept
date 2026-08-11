@@ -10,8 +10,8 @@ the build as it stands.
   replaces state.
 - Every turn commits whole or not at all; a role failure leaves committed state untouched.
 - The Narrator writes the only player-facing prose, and its input type `VisibleScene` has no field
-  unrevealed canon could travel through. Hidden canon reaches the Scene Director alone; the Rules
-  Director sees only what the directive passed on.
+  unrevealed canon could travel through. Both non-narrating directors read the whole canon side;
+  the Scene Director's directive steers the Rules Director without replacing that context.
 - Context comes from `SceneSnapshot` and `VisibleScene` in `src/aidm/turn/prompts.py`, not
   scattered f-strings.
 - One structured plan from the Rules Director, resolved by engine code. The single role tool is
@@ -25,22 +25,17 @@ the build as it stands.
 
 ### Reliability
 
-- The Director drops the state write the fiction implies: the narration lands, the tag or counter
-  change that had to accompany it does not. The measured shape, across the 2026-08-07 suites:
-  `advantage-attack` never once fired (0/15 — nothing anywhere teaches when 5e grants advantage, so
-  decide whether `dnd5e/director.md` teaches it or the case measures an untaught rule);
-  `condition-rider` and `condition-lifted` regress and recover without anything touching them (a
-  success branch that narrates the rat going down without the `prone` tag; `poisoned` surviving the
-  turn that should end it); `long-rest-recharge` swings between 0% and 67%. The one prompt lever
-  proven to work: `CORE_DIRECTOR`'s reveal-then-move clause took `movement-follows-exits` to 100%,
-  and it has only ever been pulled for movement. The prompt pass over these is a PLAN.md phase,
-  scheduled right after its simplification phases land.
+- Phase 5's settled baseline found no general prompt-wording fix for dropped state writes.
+  Conditions and rests mostly recovered; movement improved after both directors received canon
+  and the movement refusal named its remedy. Advantage remains a gpt-oss-120b limit after being
+  taught in both instructions and schema. The open upstream fault is Scene Director goal
+  substitution on deliberate acts; PLAN.md records the failed wording experiment so it is not
+  repeated blind.
 - Nothing checks narration against facts. The Worldkeeper only adds canon, so a turn that narrates
   a consequence the state never recorded commits looking healthy.
-- Those measurements predate the last three phases. Live eval gates are suspended by maintainer
-  decision (2026-08-11) until the codebase settles; golden fixtures and offline oracle parity are
-  the whole safety net meanwhile. At 3 runs per case the noise floor is large: nothing below n=9
-  should be attributed to a change.
+- Live evals are manual evidence, not a gate. Golden fixtures and offline oracle parity protect
+  refactors; same-hour live runs measure model-facing changes. At 3 runs per case the noise floor
+  is large: nothing below n=9 should be attributed to a change.
 - Provider lottery, not architecture: Groq answers `finish_reason: "error"` under forced tool
   choice, which cost 12% of one suite's turns; excluding it through OpenRouter routing preferences
   recovered them, and it has still leaked through since. The Rules Director is on `ToolOutput` with
@@ -73,9 +68,10 @@ the build as it stands.
 
 ## Direction
 
-Near work is PLAN.md's, in its order: the simplification phases (engine-owned plan lifecycle,
-one explicit `run_turn`, the merged effect vocabulary, collapsed initialization), then the prompt
-pass on the dropped state write and the keepers. What no phase owns:
+Near work is PLAN.md's, in order: small proven deletions, a permanent test-only
+Ironsworn-shaped boundary probe, separation of fictional world from engine mechanics, one engine
+object with optional capabilities, and simpler role/prompt plumbing. Memories and keepers begin
+Part III only after that boundary settles. What no phase owns:
 
 - pre-commit configuration (format, check, type safety, tests).
 - A narration-against-facts check, retrying the Narrator once on a contradiction. Turns silent

@@ -4,9 +4,10 @@ The phased plan for what is built next, in order. Written 2026-08-11. Each phase
 detail to implement without prior context; only the next unshipped phase needs full resolution,
 and a later phase is rewritten to this resolution when it becomes next.
 
-Part I (phases 1–4) simplifies the architecture; Part II (phases 5–9) builds features on the
-simplified core. Simplification comes first so every feature phase is specced once, against the
-shape that will carry it.
+Part I (phases 1–4) removed the first layer of generic infrastructure. Part II (phases 5–10)
+finishes the simplification: the shipped prompt pass, small proven deletions, then the
+world/mechanics boundary, engine runtime, and role plumbing. Part III (phases 11–14) builds the
+features that were previously phases 6–9 against that settled shape.
 
 ## Working rules
 
@@ -28,6 +29,9 @@ shape that will carry it.
    change.
 4. **Part I is behavior-preserving except where a phase says otherwise.** A simplification phase
    whose fixture diff shows anything but the movement it predicted has a bug.
+5. **Net lines are evidence, not the target.** Record source lines before and after each
+   simplification, but accept a phase on fewer concepts, one clear owner per behavior, and the
+   same tested capability. Moving generic code into two engines is not a deletion.
 
 Per phase: `uv run pytest && uv run ruff check && uv run ruff format --check && uv run
 basedpyright` green after every numbered step, one commit per step.
@@ -47,7 +51,7 @@ decision 2026-08-11: the criteria are adopted, Ironsworn itself is not scheduled
   phase; the only core-owned content vocabulary left is `FactType`, touched only for a fourth
   fact type.
 - Memory/quest/location features operate on shared world state and the `Fact` stream, never
-  per-engine — the standing design for Part II (the review's "double down on Fact" point; also
+  per-engine — the standing design for Part III (the review's "double down on Fact" point; also
   already the shape at HEAD, no phase needed).
 
 ## Phase 1 — The engine owns its plan lifecycle (~1 day)
@@ -196,7 +200,7 @@ unchanged and `begin_game` reads them straight back out (`app/session.py:37`).
 Done when: two model layers between the JSON files and `GameState` (the file models and the
 runtime state), and beginning a game produces the same bytes it did before.
 
-# Part II — Features
+# Part II — Finish the simplification
 
 ## Phase 5 — The prompt pass: the Director drops the state write — DONE
 
@@ -252,15 +256,144 @@ Standing lesson: a prompt-wording phase found no prompt-wording bugs. Both real 
 code lying to the model — one by withholding context, one by misdescribing a refusal. Measure the
 model's *input* before rewriting its instructions.
 
-## Phase 6 — Memories + keepers (~4 days)
+## Phase 6 — Small proven deletions (~½ day)
+
+Remove local YAGNI before changing the engine boundary, but only where every current caller proves
+the smaller shape. This phase is behavior-preserving, makes no persisted or model-facing change,
+and records the net source-line movement without treating it as an acceptance target.
+
+1. **One content lookup surface.** No `Record` subclass enters a runtime `Pack`; the SRD importer
+   flattens its authoring-time `Interpreted` values first, and every `Content.get`/`require` caller
+   asks for `Record`. Delete the generic type parameter, `kind` argument, `wrong_type` miss,
+   `SerializeAsAny`, `get()`, and `resolves()`. Keep
+   `record(ref) -> Record | ContentMiss` and `require(ref) -> Record`, with the existing
+   `unknown_pack`/`unknown_index` distinction. Update all engine, script, and test callers; pack
+   round-trip bytes must remain identical.
+2. **One frozen value base.** Remove `state.packs.Value` and the `Frozen.__hash__` override; use
+   `state.base.Frozen` for refs, records, manifests, and specs. `ContentRef` must remain hashable
+   because it keys `Content.records`. Keep `FrozenMap`: `frozen=True` blocks field assignment but
+   does not freeze a contained dict, and authored values must remain immutable.
+3. **One UI panel module.** Fold the small chat, roles, state, trace, advancement, and engine-badge
+   modules into `src/aidm/ui/panels.py`; delete the now-empty `panels/` and `components/` packages.
+   This is file/import consolidation only: screenshot-visible behavior and callback ownership stay
+   unchanged.
+4. Inline `read_trace` into its sole caller, `FileTraces.load`. Keep `FileSaves` and `FileTraces`
+   separate: their codecs and operations differ, and the mechanics boundary will change save
+   loading in phase 8.
+
+Done when: all 130 tests and checks pass without regenerated fixtures; `Content` exposes only
+`record`/`require`/`provides`; there is one frozen value base and one UI panel module. Record the
+actual net Python delta in `PROGRESS.md`.
+
+## Phase 7 — Test-only Ironsworn-shaped boundary probe (~1 day)
+
+Build no third shipped engine. Keep a tiny engine permanently behind tests: temporary as product
+code, durable as the executable counterexample that prevents Story and 5e from defining the core
+by accident. It is Ironsworn-shaped, not an Ironsworn implementation.
+
+1. Add a test fixture with strict engine-owned mechanics: characters with momentum-like bounded
+   state and progress tracks with their own validation. Add one typed action with three outcomes
+   that mutates those mechanics deterministically from a seeded RNG and emits `Fact`s. The fixture
+   imports world entities, ids, dice/facts where useful, but never `Sheet`, sheet effects,
+   `EngineSpec`, packs, advancement, or a shipped engine.
+2. Exercise the boundary the production contract must support: create mechanics from authored
+   JSON, validate a round trip and reject corrupt JSON, render an entity, resolve the action,
+   initialize mechanics for an actor created during play, and explicitly expose no advancement or
+   content capability. Do not register it in the launcher or `ENGINE_MODULES`.
+3. Capture the decisions the fixture proves in an ADR before production moves: core owns entities,
+   placement, discovery, relations, threads, hooks, and uninterpreted fictional traits; an engine
+   owns all numeric/mechanical state and its whole plan lifecycle; persisted mechanics is JSON to
+   core and a strict Pydantic model inside the engine; one engine-owned commit path validates both
+   halves; core hooks write world operations only. Keep the fixture and its contract tests after
+   the spike.
+
+Done when: the test-only engine demonstrates the target boundary without a production registration
+or universal mechanic, and phase 8 has an explicit method-by-method contract rather than the
+illustrative API in `GPT-SIMPLIFICATION.md`.
+
+## Phase 8 — Separate fictional world from engine mechanics (~3–5 days)
+
+Replace `WorldState.Record(entity, rules: Sheet)` with fictional entities only and add one opaque
+mechanics payload to the persisted game envelope. Story and 5e each validate that payload into
+their own strict mutable Pydantic model whenever they create, load, resolve, render, or commit it.
+Core never branches on a mechanical field.
+
+- Migrate sheet tags that describe lasting fiction into a core `Trait`/`TraitChange` world
+  facility, so shared hooks can still author `warded` and both engines can read conditions without
+  core interpreting them. Counters, numbers, notes, content refs, recharge, and advancement
+  mutations move into engine mechanics. Keep small primitives such as `Counter`, dice, ids, and
+  facts where two implementations genuinely reuse them; remove the universal `Sheet` aggregate.
+- Engine plans own their complete validated output and resolution. Core exposes typed world
+  operations, but it no longer fixes a mechanical effect union into `TurnPlanBase`. Direct engine
+  mutations replace `apply_effect` calls for damage, healing, costs, refills, and bookkeeping.
+- Route every transaction through the engine-owned commit operation established by phase 7. The
+  core `GameState` validation checks the envelope and world; engine validation checks mechanics.
+  Beginning a game and adding a Worldkeeper-created entity both ask the engine to initialize that
+  entity's mechanics.
+- Migrate Story first, then 5e, reading state/turn fixture diffs at each step. Bump `SAVE_VERSION`;
+  stale saves are refused as usual. Finish by running the retained test-only engine through the
+  real initialization, resolution, rendering, creation, and commit paths.
+
+Done when: core has no `Sheet`, counter/number/note/ref effect, or mechanical-field lookup; all
+three contract suites pass; a corrupt mechanics payload fails at load/commit; shared world hooks
+and the Narrator leak boundary still behave exactly as specified.
+
+## Phase 9 — One engine object with optional capabilities (~2–3 days)
+
+Collapse `EnginePlugin` plus the loaded wrapper into one concrete engine object built by a module
+factory. Registration remains one module-name entry; core still never imports or dispatches a
+concrete action.
+
+- The object owns metadata, plan type and resolution, mechanics creation/validation/rendering,
+  instructions/tools, and whatever content interpretation it needs. Delete delegation rather than
+  first making callers reach through `engine.plugin`; the six current re-exports disappear with
+  the split itself.
+- Advancement becomes an optional engine-owned capability with its own proposal type, offer,
+  validation, preview, and application. Remove generic `SheetDelta` after both shipped engines use
+  their typed capability. The app and UI depend only on the optional capability.
+- Pack manifests, refs, generic records, and byte-stable loading remain reusable dumb storage.
+  `spec.json`, projection, examples, packs, and advancement instructions are no longer mandatory
+  engine ceremony: D&D may keep files its real content needs; Story should not carry empty ones.
+- Preserve the acceptance test that adding an engine changes only its package plus one registry
+  entry. The test-only probe remains unregistered and capability-free.
+
+Done when: `EnginePlugin`, the wrapper split, universal sheet advancement, and mandatory empty
+engine files are gone; Story and 5e still build once at the composition root and expose the same
+catalog, plans, tools, turns, and advancement behavior.
+
+## Phase 10 — Simplify role construction and prompt rendering (~2–3 days)
+
+Keep `run_turn()` explicit. Share only model invocation plumbing and safe context serialization.
+
+- Consolidate agent construction/caching without hiding role-specific output validators, tools,
+  fallback modes, or dependencies. Adding a role remains one config entry, one construction, and
+  one explicit `run_turn` call.
+- Keep distinct typed Director and Narrator input models; the Narrator type must have no hidden
+  canon field. Prototype one compact, deterministic renderer for their repeated sections. Adopt
+  it only if golden diffs are intentional, prompt tokens do not grow, and same-hour evals do not
+  regress. Direct `model_dump_json()` is not assumed safe or compact.
+- Retain the Director's `ToolOutput` plus plain-text JSON fallback and the other documented
+  gpt-oss transport repairs. Each has a production rationale or a test; removing them is not
+  YAGNI. Preserve phase 5's measured reveal/movement wording.
+
+Done when: role construction has one obvious path, prompt safety remains structural, and a new
+keeper role needs no copied infrastructure. No generic workflow graph, configurable turn order,
+or role middleware is introduced.
+
+# Part III — Features on the settled boundary
+
+The original feature specifications are preserved below. Per the plan rule at the top, each phase
+is re-resolved against the landed Part II types when it becomes next; only references to concepts
+Part II explicitly removes (`Sheet`, `EnginePlugin`, fixed `Stage` plumbing, mandatory `spec.json`)
+are adjusted here.
+
+## Phase 11 — Memories + keepers (~4 days)
 
 Durable memory that outlives the 6-exchange history window, then two proposal roles: a
 Memorykeeper that keeps durable facts, and a Threadkeeper that judges fuzzy story transitions.
-Memory is a core narrative concern on shared world state, never an engine sheet concern (Part I
-acceptance criteria). Three steps, each a commit; the state model ships first and works alone.
-Wiring language below assumes the post-phase-2 shape: a role is one config entry, one agent
-construction beside the others, one explicit call in `run_turn` — this phase is re-resolved
-against the landed code when it becomes next.
+Memory is a core narrative concern on shared world state, never an engine-mechanics concern.
+Three steps, each a commit; the state model ships first and works alone. Wiring uses phase 10's
+single role-construction path plus one explicit call per role in `run_turn`.
 
 ### 1. Memory state, authored + rendered (deterministic, no model)
 
@@ -276,13 +409,12 @@ against the landed code when it becomes next.
   (`src/aidm/app/session.py`) exactly as `threads` is. whispering-vault authors two: a world
   memory about the abbey's abandonment, and one owned by `mara` about Elena — canon the Scene
   Director should surface when the fiction reaches for it.
-- Rendering: `SceneSnapshot` (`src/aidm/turn/prompts.py`) gains
-  `memories: tuple[Memory, ...]` — those whose owner is None, the player, or an entity at the
-  player's location. Rendered as a `MEMORIES` section in `render_director`'s no-directive branch
-  only, beside ACTIVE THREADS. The Scene Director weaves what matters into `focus`; the Narrator
-  and Rules Director see nothing new, so a memory can safely hold unrevealed canon —
-  `VisibleScene` has no field it could travel through, which is the leak rule this repo already
-  enforces by construction.
+- Rendering: phase 10's typed Director input gains `memories: tuple[Memory, ...]` — those whose
+  owner is None, the player, or an entity at the player's location. Rendered as a `MEMORIES`
+  section for the Scene Director only, beside ACTIVE THREADS. The Scene Director weaves what
+  matters into `focus`; the Narrator and Rules Director see nothing new, so a memory can safely
+  hold unrevealed canon. The Narrator input has no field it could travel through, preserving the
+  existing leak rule by construction.
 - Bump `SAVE_VERSION`. Regenerate `save/*`, `state/*`, `turn/*`, `prompts/*` fixtures. One test
   in `tests/core/test_pipeline.py`: an authored memory of a present NPC reaches the scene prompt;
   a memory owned by an absent NPC does not; neither reaches the narrator prompt.
@@ -294,21 +426,20 @@ against the landed code when it becomes next.
   belongs to, or null for the world), `text: str` (`max_length=300`, description: one concrete
   sentence, past tense) — and `MemorykeeperReport(Frozen)` with
   `memories: tuple[MemoryProposal, ...] = ()`. Deliberately no importance score: code reads none.
-- `MEMORYKEEPER` instructions + `render_memorykeeper` in `src/aidm/turn/prompts.py`: sections
-  SCENARIO, WHAT HAPPENED (evidence), NARRATION, ALREADY REMEMBERED (existing memories of present
-  owners, so duplicates are visible), PLAYER ACTION. Instructions mirror the Worldkeeper's
-  admission tone: durable facts about people and places, not play-by-play; **most turns should
-  produce no memories** and an empty report is the normal answer.
-- Wiring: one agent construction beside the other stage builders, one explicit call in `run_turn`
-  after the worldkeeper (its creations can then own memories the same turn). Admission is code,
-  mirroring `admitted()`: drop a proposal whose owner id does not exist, drop a
-  casefolded-duplicate text against all existing memories, cap at
-  `TurnOptions.max_memories: int = 2` (new field, wired from a new `Settings.max_memories`). Each
-  admitted proposal: an id from a new slugifier beside `base.slug()` — the existing helper is
-  not usable here: it sanitizes with underscores (which fail the `Slug` hyphen pattern) and never
-  truncates, while `Slug` caps at 64 chars and memory texts run to 300. Hyphenate, truncate,
-  de-collide against existing memory keys. Stored with `turn=draft.turn`, and a
-  `Fact(kind="memory_kept", narrator=None)` for the trace.
+- `MEMORYKEEPER` instructions + its typed prompt renderer: sections SCENARIO, WHAT HAPPENED
+  (evidence), NARRATION, ALREADY REMEMBERED (existing memories of present owners, so duplicates
+  are visible), PLAYER ACTION. Instructions mirror the Worldkeeper's admission tone: durable
+  facts about people and places, not play-by-play; **most turns should produce no memories** and
+  an empty report is the normal answer.
+- Wiring: one role construction beside the others, one explicit call in `run_turn` after the
+  worldkeeper (its creations can then own memories the same turn). Admission is code, mirroring
+  `admitted()`: drop a proposal whose owner id does not exist, drop a casefolded-duplicate text
+  against all existing memories, cap at `TurnOptions.max_memories: int = 2` (new field, wired
+  from a new `Settings.max_memories`). Each admitted proposal gets an id from a new slugifier
+  beside `base.slug()` — the existing helper sanitizes with underscores (which fail the `Slug`
+  hyphen pattern) and never truncates, while `Slug` caps at 64 chars and memory texts run to 300.
+  Hyphenate, truncate, de-collide against existing memory keys. Store with `turn=draft.turn`, and
+  emit a `Fact(kind="memory_kept", narrator=None)` for the trace.
 - Role config key `memorykeeper` (any name works — `Settings.roles` is an open dict). **Probe the
   output mode live** (working rule 2) before cutting fixtures.
 - Tests: extend `tests/core/core_test_support.py`'s `played()` with the new role (stubbed to an
@@ -326,17 +457,16 @@ against the landed code when it becomes next.
   directive names; the Threadkeeper judges what neither can — "has this quietly moved on?" —
   from the committed turn.
 - Output `ThreadkeeperReport(Frozen)` in `state/turn.py`:
-  `moves: tuple[AdvanceThread, ...] = ()` — reuse the existing effect class, its `why` included;
-  no new vocabulary. Output validator (like the scene stage's `known`): every `thread_id` names a
-  thread in `state.threads`, `ModelRetry` otherwise.
+  `moves: tuple[AdvanceThread, ...] = ()` — reuse the core world operation, its `why` included;
+  no new vocabulary. Output validation (like the scene role's known-id check): every `thread_id`
+  names a thread in `state.threads`, `ModelRetry` otherwise.
 - Wiring: explicit call in `run_turn` after the memorykeeper. The call **skips the model
   entirely** when no thread is `active` (a trace entry with "(no active threads)" keeps the trace
-  honest). Applies each move with `apply_effect` on the draft — thread facts never narrate, so
-  running after the Narrator loses nothing.
-- Prompt `render_threadkeeper`: SCENARIO, ACTIVE THREADS (the `_threads` renderer), WHAT
-  HAPPENED, NARRATION, PLAYER ACTION. Instructions: move a thread only when this turn's committed
-  events plainly justify it; moving nothing is the normal answer; never invent a stage for a
-  thread whose stages the scenario has not used.
+  honest). Apply each move through phase 8's core world-operation path — thread facts never
+  narrate, so running after the Narrator loses nothing.
+- Prompt: SCENARIO, ACTIVE THREADS, WHAT HAPPENED, NARRATION, PLAYER ACTION. Instructions: move
+  a thread only when this turn's committed events plainly justify it; moving nothing is the
+  normal answer; never invent a stage for a thread whose stages the scenario has not used.
 - Same test/eval/golden shape as the Memorykeeper. Probe the output mode first.
 
 Done when: a fact-free narration beat (Mara opening up over several turns) can resolve a thread
@@ -345,12 +475,12 @@ completes with both keepers stubbed off in tests. Cost note: the turn is now 6 m
 case; if latency hurts, the keepers are the two steps that can later run fire-and-forget — do not
 build that now.
 
-## Phase 7 — Character creation workflow (~1–2 weeks)
+## Phase 12 — Character creation workflow (~1–2 weeks)
 
 In-app character creation producing exactly the files hand-authoring produces
 (`characters/<slug>/base.json` + `<engine>.json`), validated by the existing load path — no new
-runtime format, no bypass of `Character`'s own validators. Story first (small), 5e second (the
-real test), advisor front-end last (optional).
+runtime format, no bypass of `Character`'s own validators or the engine's authored-mechanics
+validator. Story first (small), 5e second (the real test), advisor front-end last (optional).
 
 ### 1. The workflow shape + story creation
 
@@ -360,18 +490,17 @@ real test), advisor front-end last (optional).
   `1 <= choose <= len(options)`). Picks are `Mapping[Slug, tuple[Slug, ...]]` (step id → chosen
   option ids). Nothing more until a real step needs it — no dependencies, no min/max ranges, no
   derived-value language.
-- `EnginePlugin` (`src/aidm/engines/loader.py`) gains two required fields:
-  `creation_steps: Callable[[Engine, Picks], tuple[CreationStep, ...]]` (takes the picks so far —
-  story ignores them, 5e derives follow-up steps from them) and
-  `create: Callable[[Engine, str, str, Picks], CreatedCharacter]` (name, brief, picks), where
-  `CreatedCharacter(Frozen)` in `creation.py` holds `profile: CharacterProfile` and
-  `overlay: CharacterOverlay`. `create` raises `ValueError` with a readable reason on an illegal
-  pick set (unknown step, wrong count, unknown option) — the UI shows it verbatim. Required
-  fields mean both engines land in the same commit that adds them.
+- Phase 9's engine object gains an optional creation capability:
+  `steps(picks) -> tuple[CreationStep, ...]` (takes the picks so far — Story ignores them, 5e
+  derives follow-up steps from them) and `create(name, brief, picks) -> CreatedCharacter`, where
+  `CreatedCharacter(Frozen)` holds `profile: CharacterProfile` plus the engine overlay written to
+  `<engine>.json`. `create` raises `ValueError` with a readable reason on an illegal pick set
+  (unknown step, wrong count, unknown option) — the UI shows it verbatim. Engines without the
+  capability expose no creation page.
 - `engines/story/create.py`: three static steps — an archetype (3–4 authored spreads of the four
-  approach numbers, e.g. "Daring" = bold 2 / subtle 1 / clever 1 / empathetic 0), one edge tag,
-  one burden tag (options authored in this file with concrete tag texts). Distributing free
-  points would need a numeric-allocation step type; authored spreads keep the framework at
+  approach numbers, e.g. "Daring" = bold 2 / subtle 1 / clever 1 / empathetic 0), one edge trait,
+  one burden trait (options authored in this file with concrete texts). Distributing free points
+  would need a numeric-allocation step type; authored spreads keep the framework at
   pick-from-options, which is the deliberate ceiling of this phase.
 - Validation test per engine: a full legal pick set → `CreatedCharacter` → write to a tmp dir →
   `load_character` → `begin_game` with whispering-vault succeeds. That chain exercises every
@@ -381,54 +510,54 @@ real test), advisor front-end last (optional).
 
 - `/create/<engine>` page in `src/aidm/ui/` (new `create.py` panel, registered in `app.py` like
   the game page; a "New character" button on the home page per engine). Renders: name input,
-  brief input, then one `ui.select` (multiple when `choose > 1`) per step from
-  `plugin.creation_steps(engine, picks)`, re-rendered on every pick (NiceGUI refreshable) so
-  follow-up steps appear. Create button: slugify the name against existing character dirs, call
-  `plugin.create`, write both JSON files with `model_dump_json(indent=2)`, navigate home (the
-  catalog re-reads the directory). `ValueError` → `ui.notify`, stay on the page.
+  brief input, then one `ui.select` (multiple when `choose > 1`) per step from the engine's
+  creation capability, re-rendered on every pick (NiceGUI refreshable) so follow-up steps appear.
+  Create button: slugify the name against existing character dirs, call `create`, write both JSON
+  files with `model_dump_json(indent=2)`, navigate home (the catalog re-reads the directory).
+  `ValueError` → `ui.notify`, stay on the page.
 - No preview pane, no back/forward wizard, no draft persistence — a page of selects is enough at
   3–7 steps. Revisit only if a step count forces it.
 
 ### 3. 5e creation
 
 - `engines/dnd5e/create.py`. Static steps from content: race (the `races` collection), class
-  (`classes`), background (`backgrounds`) — options built by iterating `engine.content.records`
-  for the collection (label = record name, id = record index). One more static step:
+  (`classes`), background (`backgrounds`) — options built by iterating the engine's content
+  records for the collection (label = record name, id = record index). One more static step:
   ability-priority, 2–3 authored assignments of the standard array (15/14/13/12/10/8) by casting
   or martial emphasis.
 - Dynamic steps, data-driven: any chosen record whose `Record.options` and `choose` are set
   becomes one more `CreationStep` — this is exactly the shape advancement offers already read, so
-  a class record's skill choices arrive for free through `creation_steps(engine, picks)`.
-- `create` builds the overlay: refs for race/class/background (+ chosen options), `numbers` from
-  the ability assignment. Level-1 numbers the projecting collections already provide (hp, class
-  facts) land at compose time — do not duplicate them in the overlay. Starting gear and spell
-  choice are deliberately skipped this phase: characters start with `items: ()` and pick things
-  up in play, and a caster's castable list arrives with the class ref in the current model. Both
-  are future work, noted below, not half-built now.
-- Same round-trip test as story, with a caster and a martial pick set.
+  a class record's skill choices arrive for free through `steps(picks)`.
+- `create` builds the engine overlay: refs for race/class/background (+ chosen options), numbers
+  from the ability assignment, and no duplicate of level-1 defaults the engine derives from its
+  content. Starting gear and spell choice are deliberately skipped this phase: characters start
+  with `items: ()` and pick things up in play, and a caster's castable list arrives with the class
+  ref in the current content model. Both are future work, noted below, not half-built now.
+- Same round-trip test as Story, with a caster and a martial pick set.
 
 ### 4. Optional: advisor front-end
 
-- One text box above the selects ("describe your character"), a `creation-advisor` stage reusing
-  the advancement advisor pattern: `NativeOutput` of a picks-shaped model built from the steps,
-  output validator = the same legality `create` enforces (run `create` in a try, `ModelRetry` the
-  message). The picks land in the form for the player to review and edit — the advisor fills
-  selects, it never writes files. Build only if hand-picking feels slow in practice.
+- One text box above the selects ("describe your character"), a `creation-advisor` role reusing
+  the advancement-advisor pattern through phase 10's role path: `NativeOutput` of a picks-shaped
+  model built from the steps, output validator = the same legality `create` enforces (run
+  `create` in a try, `ModelRetry` the message). The picks land in the form for the player to
+  review and edit — the advisor fills selects, it never writes files. Build only if hand-picking
+  feels slow in practice.
 
-Done when: a new story and a new 5e character can be created in the app, both playable in
+Done when: a new Story and a new 5e character can be created in the app, both playable in
 whispering-vault immediately, and `characters/kael` is untouched — hand-authoring stays a
 first-class path. Deferred, on purpose: starting gear, spell choice, and migrating advancement
 onto this machinery (wait until the workflow has proven itself in play).
 
-## Phase 8 — Scenario creator (~3–4 days)
+## Phase 13 — Scenario creator (~3–4 days)
 
 Premise → a complete scenario in the exact on-disk format, authored by a strong model at authoring
 time. This is a script, not the app: agentic workflows are fine outside the turn loop, where
 speed and small-model reliability do not constrain the design.
 
 1. `scripts/create_scenario.py <slug> "<premise>"`. A pydantic-ai agent whose output type **is**
-   `ScenarioWorld` (`NativeOutput`) — the strictest spec of the format already exists and is the
-   validator. Role config key `creator` (set a strong model in `.env`:
+   `ScenarioWorld` (`NativeOutput`) — the strictest spec of the shared format already exists and
+   is the validator. Role config key `creator` (set a strong model in `.env`:
    `ROLES__CREATOR__MODEL=...`; `Settings.role()` resolves any name). Give it one read-only tool
    returning whispering-vault's `world.json` as the worked example, and put the authoring bar in
    the instructions: 4+ locations connected by relations with at least one hidden and one
@@ -436,14 +565,15 @@ speed and small-model reliability do not constrain the design.
    hooks that advance it on `entity_discovered` facts, hook `note`s that steer the Director, and
    `detail.hook` on every entity worth one.
 2. Validation loop, in the script: `ScenarioWorld` validates structurally on output (the agent
-   retries on `ValidationError` for free). Then the script validates the world alone — a
-   `Scenario` per engine with an empty overlay (default template sheets satisfy
-   `validate_state`), `begin_game` with the shipped `kael`; any `ValueError` goes back to the
-   agent as a retry message, max 3 rounds, then fail loudly with the reason.
-3. Overlays: a second agent call per engine, output `ScenarioOverlay`, prompted with the
-   generated world, the engine's `spec.json` templates, and (for 5e) a compact list of legal
-   monster refs from the pack. Re-run step 2's loop with each generated overlay in place — the
-   overlay is what `begin_game` exercises beyond structure.
+   retries on `ValidationError` for free). Then validate the world alone — a `Scenario` per
+   engine with an empty/default overlay, `begin_game` with the shipped `kael`, and the engine's
+   normal mechanics validation. Any `ValueError` goes back to the agent as a retry message, max
+   3 rounds, then fail loudly with the reason.
+3. Overlays: a second agent call per engine, output that engine's strict authored-overlay model,
+   prompted with the generated world, engine-provided authoring guidance/defaults, and (for 5e)
+   a compact list of legal monster refs from its pack. Re-run step 2's loop with each generated
+   overlay in place — the overlay is what `begin_game` exercises beyond shared structure. The
+   creator never assumes a `Sheet`, projection rules, or mandatory `spec.json`.
 4. Files land in `scenarios/<slug>/` only after every engine validates. The script prints a
    summary (entities, relations, threads, hooks per engine) and the author reviews the diff
    before committing — generated content merges by the same review as hand-written content.
@@ -453,7 +583,7 @@ that appears on the home page and plays a first turn under both engines. Quality
 is judged by playing it, not asserted by the script. PDF/notes ingestion is a later input mode for
 the same script, not a separate system.
 
-## Phase 9 — Media: scene illustrations (~2–3 days)
+## Phase 14 — Media: scene illustrations (~2–3 days)
 
 Presentation only, outside mechanical truth: the game must be indistinguishable with media
 disabled, and a failed generation must cost nothing but a log line.
@@ -479,20 +609,24 @@ disabled, and a failed generation must cost nothing but a log line.
 Done when: with media enabled a turn grows an illustration within seconds after the narration,
 and with it disabled (the default) nothing in state, saves, prompts, or tests differs.
 
-# Considered and decided without a phase (2026-08-11)
+# Considered and decided without a phase (updated 2026-08-11)
 
-- **File reorg to a flat layout** (`state.py`, `turn.py`, `events.py`, ... at package root):
-  rejected. Packages stay; files shrink in place, and code moves only when a deletion leaves a
-  file trivially small.
-- **Generic path/value effect patches** as the endpoint of phase 3: rejected. They save lines by
-  discarding the domain boundary, validation quality, and model guidance the typed vocabulary
-  provides.
-- **The full 19 → 8 effect merge** (grant/refill and the sheet ops folded in as modes): rejected
-  after review. Cross-audience modes either advertise forbidden writes in the Director's schema
-  or need per-audience variant classes — both cost more than the four classes they save.
-- **Content simplification**: shipped before this plan (`Record` as one fact map, data-only
-  collections); the residual `EngineSpec`/projection interpreter in core is ~30 generic lines and
-  earns its place.
-- **Fact as the domain event stream**: already the architecture; Part II builds memories, thread
-  judgment, and hooks on it rather than adding parallel systems.
-- **Ironsworn**: not scheduled; its acceptance criteria are Part I's done-conditions.
+- **File reorg to a flat package layout**: rejected. Phase 6 consolidates only the tiny UI files;
+  domain packages stay and files move only when a deletion makes the old boundary empty.
+- **Generic path/value mechanical patches**: rejected. Core keeps typed world operations; each
+  engine owns strict mechanical state and procedures.
+- **`FrozenMap` removal**: rejected. Frozen Pydantic models do not deep-freeze contained dicts;
+  the wrapper enforces the repository's frozen-value invariant.
+- **One generic save/trace storage class**: deferred to phase 8 and expected to remain split unless
+  opaque mechanics makes their codecs converge. A shared suffix does not make their APIs equal.
+- **Shared path I/O helpers**: rejected. Pack, engine-resource, save, and trace reads/writes have
+  different missing-file, parent-directory, newline, and append semantics; `utf-8` duplication is
+  cheaper than erasing those contracts.
+- **Provider config as `dict[str, ProviderConfig]`**: rejected. The present literal and model make
+  provider names exhaustive and env configuration strictly validated.
+- **Plain-text Director fallback removal**: rejected. It is a tested provider workaround, not an
+  unused second design; phase 5 documents why the Director cannot rely on one native path.
+- **Fact as the domain event stream**: already the architecture; Part III builds memories and
+  thread judgment on it without adding an event bus or renaming it.
+- **Ironsworn**: no shipped engine is scheduled. Phase 7 keeps only an Ironsworn-shaped test engine
+  as permanent architectural pressure.

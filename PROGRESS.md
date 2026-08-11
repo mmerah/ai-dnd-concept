@@ -158,5 +158,5 @@ Tracking PLAN.md. One bullet per landed step; `uv run pytest && ruff check && ru
 
 ## Next
 
-Phase 6 — Memories + keepers (~4 days). Re-resolve its wiring language against the landed
-post-phase-2 shape before starting.
+PLAN.md now inserts small deletions plus the world/mechanics, engine, and role simplifications as
+Part II; the former feature phases move to Part III. Next: Phase 6 — Small proven deletions.
