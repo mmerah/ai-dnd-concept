@@ -1,7 +1,7 @@
 from pathlib import Path
 from random import Random
 
-from core_test_support import STORY, character, game, scenario, settings
+from core_test_support import STORY, capability, character, game, scenario, settings
 
 from aidm.app.session import GameSession, LaunchTarget, build_engine
 from aidm.content.store import FileSaves, FileTraces
@@ -35,7 +35,7 @@ def story_session(directory: Path, rng: Random | None = None) -> GameSession:
         character=character(),
         engine=engine,
         stages=build_stages(engine, config),
-        advisor=advisor(engine, config),
+        advisor=advisor(capability(engine), config),
         saves=FileSaves(directory),
         traces=FileTraces(directory),
         options=OPTIONS,

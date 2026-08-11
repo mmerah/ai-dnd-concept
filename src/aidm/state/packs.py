@@ -65,11 +65,11 @@ class ContentRef(Frozen):
 
 class Record(Frozen):
     """`facts` carries every normalized mechanical value a record holds, keyed by slug. An
-    int-valued fact in a collection the engine spec flags as projecting lands on the sheet of any
-    entity that refs the record — a record reffed in multiplicity (a spell, a feature) must leave
-    those keys out of its facts or they would collide. Every other fact renders beside the ref and
-    in `read_content`, never touching a sheet. The engine spec names the facts every record in a
-    collection must hold."""
+    int-valued fact in a collection an engine projects lands on the mechanics of any entity that
+    refs the record — a record reffed in multiplicity (a spell, a feature) must leave those keys
+    out of its facts or they would collide. Every other fact renders beside the ref and in
+    `read_content`, never touching mechanics. A collection's schema names the facts every record
+    in it must hold."""
 
     index: ContentSlug
     name: str

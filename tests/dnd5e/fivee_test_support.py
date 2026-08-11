@@ -2,23 +2,22 @@ from collections.abc import Mapping
 from pathlib import Path
 from random import Random
 
-from core_test_support import CHARACTERS, DND5E, SCENARIOS, game, settings
+from core_test_support import CHARACTERS, DND5E, SCENARIOS, capability, game, settings
 
 from aidm.app.session import GameSession, LaunchTarget, build_engine
 from aidm.content.authored import Character, Scenario
 from aidm.content.store import FileSaves, FileTraces, load_character, load_scenario
 from aidm.engines.counters import Counter
 from aidm.engines.dnd5e.advance import ADVANCEMENT_READY
+from aidm.engines.dnd5e.content import ENGINE_DIR
 from aidm.engines.dnd5e.mechanics import Sheet, read, write
-from aidm.engines.dnd5e.rules import PLUGIN
-from aidm.engines.loader import Engine, EngineSpec
+from aidm.engines.loader import Engine, engine_spec
 from aidm.state.base import PLAYER_ID, Entity, EntityId, Trait
-from aidm.state.packs import ENCODING, CollectionName, ContentRef, FactSchema
+from aidm.state.packs import CollectionName, ContentRef, FactSchema
 from aidm.state.world import GameState
 from aidm.turn.advancement import advisor
 from aidm.turn.pipeline import TurnOptions, build_stages
 
-ENGINE_DIR = PLUGIN.engine_dir
 PACK_DIR = ENGINE_DIR / "packs" / "srd-2014"
 RAT = EntityId("cloister_rat")
 CLOISTER = EntityId("cloister")
@@ -37,8 +36,7 @@ def character() -> Character:
 
 
 def pack_format() -> Mapping[CollectionName, FactSchema]:
-    spec = EngineSpec.model_validate_json((ENGINE_DIR / "spec.json").read_text(encoding=ENCODING))
-    return spec.collections
+    return engine_spec(ENGINE_DIR).collections
 
 
 def dnd5e_game() -> tuple[Engine, GameState]:
@@ -54,7 +52,7 @@ def dnd5e_session(directory: Path) -> GameSession:
         character=character(),
         engine=engine,
         stages=build_stages(engine, config),
-        advisor=advisor(engine, config),
+        advisor=advisor(capability(engine), config),
         saves=FileSaves(directory),
         traces=FileTraces(directory),
         options=OPTIONS,

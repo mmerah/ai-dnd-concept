@@ -1,7 +1,7 @@
 from collections.abc import Callable, Mapping
 
 import pytest
-from core_test_support import DND5E, STORY, game, settings
+from core_test_support import DND5E, STORY, capability, game, settings
 from fivee_test_support import ready
 from golden_test_support import FIXTURES, golden
 from story_test_support import grown
@@ -28,7 +28,7 @@ def test_every_role_assembles_the_same_instructions(engine_id: EngineId) -> None
         "director": director_stage(engine, config).instructions,
         "narrator": narrator_stage(config).instructions,
         "worldkeeper": worldkeeper_stage(config).instructions,
-        "advisor": advisor(engine, config).instructions,
+        "advisor": advisor(capability(engine), config).instructions,
         "scene": scene_stage(config).instructions,
     }
     for name, instructions in roles.items():
@@ -39,7 +39,7 @@ def test_every_role_assembles_the_same_instructions(engine_id: EngineId) -> None
 def test_the_advisor_prompt_renders_unchanged(engine_id: EngineId) -> None:
     engine, state = game(engine_id)
     earned = READY_FOR_ADVANCEMENT[engine_id](state)
-    offer = engine.offered(earned)
+    offer = capability(engine).offered(earned)
     assert offer is not None
     golden(
         FIXTURES / "prompts" / engine_id / "advisor.txt",

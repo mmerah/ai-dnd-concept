@@ -1,5 +1,6 @@
 from random import Random
 
+from core_test_support import capability
 from story_test_support import grown, story_game
 
 from aidm.engines.counters import CounterChange
@@ -124,10 +125,11 @@ def test_check_speaker_refuses_who_the_narrator_may_not_voice() -> None:
 
 def test_growth_opens_an_offer_and_storys_own_caps_refuse_what_breaks_them() -> None:
     engine, state = story_game()
-    assert engine.offered(state) is None
+    growth = capability(engine)
+    assert growth.offered(state) is None
 
     ready = grown(state)
-    offer = engine.offered(ready)
+    offer = growth.offered(ready)
     assert offer is not None
     maxed = _capped(ready)
 
@@ -135,11 +137,11 @@ def test_growth_opens_an_offer_and_storys_own_caps_refuse_what_breaks_them() -> 
     over_approach = Growth(approach="bold", why="greed")
     over_stress = Growth(resilience=True, why="steady now")
 
-    assert engine.violation(ready, offer, legal) is None
-    assert engine.violation(maxed, offer, over_approach) == (
+    assert growth.violation(ready, offer, legal) is None
+    assert growth.violation(maxed, offer, over_approach) == (
         f"an approach cannot pass +{MAX_APPROACH}: ['bold']"
     )
-    assert engine.violation(maxed, offer, over_stress) == (
+    assert growth.violation(maxed, offer, over_stress) == (
         f"the stress maximum cannot pass {MAX_STRESS}, and this proposal reaches {MAX_STRESS + 1}"
     )
 

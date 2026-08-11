@@ -5,6 +5,14 @@ from pydantic import Field, model_validator
 from aidm.state.apply import explained_fact
 from aidm.state.base import Entity, EntityId, Frozen, Mutable, Slug
 from aidm.state.facts import Fact
+from aidm.state.world import GameState
+
+
+def write_mechanics(state: GameState, mechanics: Mutable) -> None:
+    # Dumping runs no validator, so the dump is validated back: that is the commit gate.
+    payload = mechanics.model_dump(mode="json")
+    _ = type(mechanics).model_validate(payload)
+    state.mechanics = payload
 
 
 class Counter(Mutable):

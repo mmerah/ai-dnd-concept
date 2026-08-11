@@ -32,7 +32,7 @@ AIMED = "{spell} is aimed at a creature: name its `target_id`"
 type Resolved = tuple[list[Fact], Slug | None]
 
 
-def resolve_action(
+def dispatch_action(
     engine: Engine, draft: GameState, action: Action | None, rng: Random
 ) -> Resolved:
     """The plan union is the action registry: one arm per member, exhaustively."""

@@ -343,16 +343,19 @@ async def _director_turn(
 async def _advisor_turn(
     case: EvalCase, config: Settings, engine: Engine, before: GameState
 ) -> Attempt:
-    """The stage's own output validator is `Engine.violation`, so a proposal that reaches here is
-    already legal; the checks measure whether it is the right legal proposal."""
-    offer = engine.offered(before)
+    """The stage's own output validator is `Advancement.violation`, so a proposal that reaches
+    here is already legal; the checks measure whether it is the right legal proposal."""
+    growth = engine.advancement
+    if growth is None:
+        raise ValueError(f"{case.id}: the {engine.id} engine has no advancement")
+    offer = growth.offered(before)
     if offer is None:
         raise ValueError(f"{case.id}: the setup leaves no advancement on offer")
-    deps = AdvisorContext(engine=engine, state=before, offer=offer)
+    deps = AdvisorContext(advancement=growth, state=before, offer=offer)
     rendered = render_proposal(engine, before, offer, case.prompt)
-    result = await advisor(engine, config).agent.run(rendered, deps=deps)
+    result = await advisor(growth, config).agent.run(rendered, deps=deps)
     draft = before.draft()
-    facts = engine.advance(draft, result.output)
+    facts = growth.advance(draft, result.output)
     engine.commit(draft)
     after = draft.committed()
     outcome = Outcome(

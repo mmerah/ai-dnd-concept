@@ -4,8 +4,8 @@ from pathlib import Path
 
 from pydantic import TypeAdapter
 
-from aidm.engines.dnd5e.rules import PLUGIN
-from aidm.engines.loader import EngineSpec
+from aidm.engines.dnd5e.content import ENGINE_DIR
+from aidm.engines.loader import engine_spec
 from aidm.state.packs import (
     ENCODING,
     CollectionName,
@@ -20,7 +20,6 @@ from . import upstream as up
 from .interpret import Interpreted
 
 EDITION = "2014"
-ENGINE_DIR = PLUGIN.engine_dir
 EQUIPMENT_COLLECTIONS: Mapping[
     CollectionName, tuple[str, Callable[[up.Equipment], Interpreted]]
 ] = {
@@ -88,13 +87,9 @@ def build(checkout: Path) -> Pack:
             "records": records,
         }
     )
-    validate_pack(pack, _spec().collections)
+    # The engine's spec is the single list of what this pack may hold.
+    validate_pack(pack, engine_spec(ENGINE_DIR).collections)
     return pack
-
-
-def _spec() -> EngineSpec:
-    """The engine's spec is the single list of what this pack may hold."""
-    return EngineSpec.model_validate_json((ENGINE_DIR / "spec.json").read_text(encoding=ENCODING))
 
 
 def _keyed(records: Iterable[Record]) -> dict[str, Record]:

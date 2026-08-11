@@ -50,7 +50,7 @@ Single-context: `CONTEXT.md` + `docs/adr/` at the repo root. See `docs/agents/do
 - Keep necessary docstrings to one concise sentence. Use multiple lines only when losing the detail would hide an important rationale or contract.
 - Treat docstrings consumed by reflection, Pydantic schemas, or LLM prompts as runtime behavior: preserve their meaning and verify changes.
 - Keep package `__init__.py` files empty. Import from explicit module paths.
-- Keep imports at module scope, and the import graph acyclic with no deferred or `TYPE_CHECKING` imports. Plugin discovery is the one exception: core imports an engine module by name to read the plugin it declares. Resolve a cycle by extracting the leaf shape both sides need.
+- Keep imports at module scope, and the import graph acyclic with no deferred or `TYPE_CHECKING` imports. Engine discovery is the one exception: core imports an engine module by name to read the engine class it declares. Resolve a cycle by extracting the leaf shape both sides need.
 
 ## Design rules
 

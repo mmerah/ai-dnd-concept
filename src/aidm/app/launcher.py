@@ -6,13 +6,13 @@ from pydantic import BaseModel, ConfigDict, ValidationError
 
 from aidm.config import Settings
 from aidm.content.store import FileSaves, SaveShell, read_characters, read_scenarios
-from aidm.engines.loader import plugin_for, plugins
+from aidm.engines.loader import engine_class, engines
 from aidm.state.base import EngineId, Slug
 
 
 def as_engine_id(value: str) -> EngineId:
     """Narrow a routed string, so an unknown engine cannot reach a filename downstream."""
-    return plugin_for(EngineId(value)).id
+    return engine_class(EngineId(value)).id
 
 
 class LauncherModel(BaseModel):
@@ -183,7 +183,7 @@ class LauncherController:
 
 
 def load_catalog(config: Settings) -> LauncherCatalog:
-    engine_options = tuple(EngineOption(id=plugin.id, badge=plugin.badge) for plugin in plugins())
+    engine_options = tuple(EngineOption(id=engine.id, badge=engine.badge) for engine in engines())
     engine_ids = tuple(option.id for option in engine_options)
     scenarios = tuple(
         ScenarioOption(id=name, title=world.meta.title, premise=world.meta.premise, engines=engines)

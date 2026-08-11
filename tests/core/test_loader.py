@@ -1,5 +1,7 @@
 import json
+from collections.abc import Mapping
 from pathlib import Path
+from random import Random
 
 import pytest
 from pydantic_ai import ModelRetry, RunContext
@@ -7,12 +9,14 @@ from pydantic_ai.models.test import TestModel
 from pydantic_ai.toolsets import AbstractToolset
 from pydantic_ai.usage import RunUsage
 
-from aidm.engines.loader import Engine, EnginePlugin, load_engine
-from aidm.state.advancement import ProposalBase
-from aidm.state.base import EngineId
+from aidm.content.authored import Rules
+from aidm.engines.loader import Engine, EntityRenderer
+from aidm.state.base import EngineId, EntityId
+from aidm.state.facts import Fact
 from aidm.state.packs import Manifest, Pack, read_pack, validate_pack, write_pack
 from aidm.state.packs import Record as PackRecord
 from aidm.state.plan import TurnPlanBase
+from aidm.state.world import GameState
 
 PACK = Pack(
     manifest=Manifest(
@@ -37,37 +41,41 @@ PACK = Pack(
         }
     },
 )
-
 SPEC: dict[str, object] = {"collections": {"monsters": {}}}
 
 
 def _engine_dir(tmp_path: Path) -> Path:
+    """Only the spec and the procedure: no examples and no advancement file, because an engine
+    that offers neither must still load."""
     (tmp_path / "spec.json").write_text(json.dumps(SPEC), encoding="utf-8")
     (tmp_path / "director.md").write_text("Test procedure.\n", encoding="utf-8")
-    (tmp_path / "advancement.md").write_text("Test growth.\n", encoding="utf-8")
-    (tmp_path / "examples.json").write_text("[]\n", encoding="utf-8")
     write_pack(tmp_path / "packs" / "testpack", PACK)
     return tmp_path
 
 
 def _engine(tmp_path: Path) -> Engine:
     """A pack loader test needs no procedure, so this engine resolves nothing."""
-    plugin = EnginePlugin(
-        id=EngineId("test"),
-        badge=("TEST", "grey-6"),
-        engine_dir=_engine_dir(tmp_path),
-        plan_type=TurnPlanBase,
-        proposal_type=ProposalBase,
-        begin=lambda engine, state, rules: None,
-        commit=lambda engine, state: None,
-        render=lambda engine, state: lambda entity: "",
-        check=lambda engine, state, plan: None,
-        resolve=lambda engine, draft, plan, rng: [],
-        offered=lambda engine, state: None,
-        advance=lambda engine, draft, proposal: (),
-        check_proposal=lambda engine, state, offer, proposal: None,
-    )
-    return load_engine(plugin)
+
+    class PackEngine(Engine):
+        id = EngineId("test")
+        badge = ("TEST", "grey-6")
+        plan_type = TurnPlanBase
+        engine_dir = _engine_dir(tmp_path)
+
+        def begin(self, state: GameState, rules: Mapping[EntityId, Rules]) -> None: ...
+
+        def commit(self, state: GameState) -> None: ...
+
+        def renderer(self, state: GameState) -> EntityRenderer:
+            return lambda entity: ""
+
+        def check_plan(self, state: GameState, plan: TurnPlanBase) -> str | None:
+            return None
+
+        def resolve_action(self, draft: GameState, plan: TurnPlanBase, rng: Random) -> list[Fact]:
+            return []
+
+    return PackEngine()
 
 
 async def _read_content(toolset: AbstractToolset[object], ref: str) -> str:

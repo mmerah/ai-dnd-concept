@@ -1,5 +1,5 @@
 import pytest
-from core_test_support import game
+from core_test_support import capability, game
 from golden_test_support import FIXTURES, golden_json
 from pydantic import BaseModel
 from pydantic_ai.toolsets import AbstractToolset, FunctionToolset
@@ -30,7 +30,7 @@ def test_the_proposal_schema_the_advisor_answers_with_is_unchanged(engine_id: En
     engine, _ = game(engine_id)
     golden_json(
         FIXTURES / "schemas" / engine_id / "proposal.json",
-        engine.proposal_type.model_json_schema(),
+        capability(engine).proposal_type.model_json_schema(),
     )
 
 

@@ -300,11 +300,64 @@ delegations, story's mandatory empty `spec.json`, and the ~25 lines of `read`/`w
 plumbing duplicated between the two mechanics modules — is phase 9's deletion list, so it was left
 alone rather than churned twice.
 
+## Phase 9 — One engine object with optional capabilities — DONE
+
+- **One object, no split.** `EnginePlugin` (12 callable fields, each taking the loaded `Engine`
+  first), the `Engine` dataclass wrapper with its fifteen delegations, and `load_engine` are gone.
+  `Engine` is an ABC: ClassVars `id`/`badge`/`plan_type`/`engine_dir`, an `__init__` that loads
+  content, director instructions and toolset, and five abstract methods —
+  `begin`/`commit`/`renderer`/`check_plan`/`resolve_action`. `StoryEngine` and `Dnd5eEngine`
+  subclass it in their own `rules.py`; the plan checks and resolution that used to be free
+  functions taking `engine` are the methods themselves, so the `del engine` lines went with them.
+  loader.py 268 → 233 lines.
+- **Registration is the class, not an instance.** A module declares `ENGINE = <its class>` and
+  `ENGINE_MODULES` keeps its one line per engine. `plugins()`/`plugin_for()` became
+  `engines()`/`engine_class()`, which hand back the class: the launcher reads `id` and `badge`
+  off it without building the 5e content pack, and `build_engine` is now
+  `engine_class(engine_id)(pack_paths)` — construction *is* the load.
+- **Advancement is an optional capability.** `Advancement` (ABC: `proposal_type`, `instructions`
+  read from the engine's own `advancement.md`, `offered`/`advance`/`violation`) replaces the four
+  plugin fields every engine had to fill. `Engine.advancement` is `Advancement | None`, set by the
+  engine that has one. The advisor stage is built from the capability, not the engine
+  (`AdvisorContext.advancement`), `GameSession.advisor` is optional, and `session.offer()` returns
+  None for an engine without the capability — which is already the "No advancement is on offer"
+  the UI panel renders, so the UI needed no change.
+- **Projection is 5e's, the spec stays shared.** `EngineSpec` lost `projecting` — the only reader
+  was dnd5e's sheet building and ref rendering, so it is now `PROJECTING` in the new
+  `engines/dnd5e/content.py`, checked against the spec's collections in `Dnd5eEngine.__init__` —
+  the same guarantee the deleted `EngineSpec` validator gave.
+  Deviation from the plan, by maintainer decision mid-phase: every engine keeps a `spec.json` even
+  when it is `{"collections": {}}`, because parallel organization between engine packages is worth
+  more than deleting one empty file; core reads it in `Engine.__init__` and exposes
+  `engine_spec()` for the SRD builder and the 5e tests. `examples.json` and `advancement.md` did
+  become optional — `tests/core/test_loader.py`'s stub engine ships neither and still loads.
+- **Shared mechanics plumbing, half of it.** `write_mechanics` in `engines/counters.py` writes the
+  "the dump is validated back: that is the commit gate" rule once. A matching `read_mechanics` was
+  tried and reverted: `read_mechanics(Mechanics, state)` is the same length as the
+  `Mechanics.model_validate(state.mechanics)` it hid, so it shared a rename, not an invariant.
+  `apply` stayed per-engine too: the two differ in how they find a counter, and sharing that needs
+  a callback worth more than the eight lines it saves.
+- `begin_game` now calls `engine.begin(state, rules)` then `engine.commit(state)`: the old wrapper
+  hid the commit inside `begin`, and the phase's rule is that a caller sees the commit that
+  validates the half core cannot read.
+- No fixture moved, no `SAVE_VERSION` bump, no persisted or model-facing byte changed: 133 tests
+  pass, ruff and basedpyright clean. Net Python: **src +10** (383/−373), tests and scripts +18.
+  The line count is flat because the class form spells out signatures the plugin's shared callable
+  types used to imply; what went is the double indirection (`engine.plugin.check(engine, ...)`),
+  four mandatory advancement fields, and core's knowledge that content can project.
+- An adversarial review found no behaviour change and three cuts, all taken: `read_mechanics`
+  above, `Dnd5eAdvancement(engine)` (its two arguments could only ever agree), and dnd5e's
+  action dispatcher renamed `resolve_action` → `dispatch_action`, since a method and a free
+  function of the same name in one file resolve correctly and read as a recursion that isn't.
+  Left standing after weighing it: each engine's three one-line `begin`/`commit`/`renderer`
+  methods delegating to its `mechanics` module. Inlining them saves ~9 lines per engine and moves
+  mechanics writing into `rules.py`; the split between "how this engine assembles and plans" and
+  "this engine's numbers" is worth more than the lines.
+
 ## Next
 
-Phase 9 — one engine object with optional capabilities. Its deletion list is already known: the
-`EnginePlugin`/`Engine` wrapper split and its fifteen delegations, the mandatory per-engine files
-story does not need, advancement as an optional capability rather than four plugin fields every
-engine must fill, and the `read`/`write`/`apply` plumbing duplicated across the two mechanics
-modules. Lifting that plumbing into `engines/counters.py` shares parse-and-dump over engine-owned
-models, not a shared aggregate, so it does not re-create `Sheet`.
+Phase 10 — simplify role construction and prompt rendering. `run_turn` stays explicit; the work is
+one obvious path for building agents (the advisor now builds from a capability, the four turn
+stages from `build_stages`) without hiding role-specific validators, tools, or fallback modes, and
+a prototype compact renderer for the Director's and Narrator's repeated prompt sections — adopted
+only if the golden diffs are intentional and prompt tokens do not grow.

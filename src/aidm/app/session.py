@@ -5,7 +5,7 @@ from random import Random
 from aidm.config import Settings
 from aidm.content.authored import Character, Scenario
 from aidm.content.store import FileSaves, FileTraces, load_character, load_scenario
-from aidm.engines.loader import Engine, load_engine, plugin_for
+from aidm.engines.loader import Advancement, Engine, engine_class
 from aidm.state.advancement import AdvancementOffer, ProposalBase
 from aidm.state.base import PLAYER_ID, SAVE_VERSION, EngineId, Entity, EntityId
 from aidm.state.facts import Fact
@@ -17,10 +17,12 @@ from aidm.turn.roles import Stage
 
 from .launcher import LaunchTarget
 
+NO_ADVANCEMENT = "this engine has no advancement"
+
 
 def build_engine(engine_id: EngineId, config: Settings) -> Engine:
     """The composition root reads the engine's section; the loader only takes paths."""
-    return load_engine(plugin_for(engine_id), config.engine(engine_id).pack_paths)
+    return engine_class(engine_id)(config.engine(engine_id).pack_paths)
 
 
 def begin_game(engine: Engine, scenario: Scenario, character: Character) -> GameState:
@@ -60,6 +62,8 @@ def begin_game(engine: Engine, scenario: Scenario, character: Character) -> Game
         hooks=world.hooks,
     )
     engine.begin(state, rules)
+    # begin() only writes the mechanics; commit is what validates them.
+    engine.commit(state)
     return state
 
 
@@ -70,7 +74,7 @@ class GameSession:
     character: Character
     engine: Engine
     stages: Stages
-    advisor: Stage[AdvisorContext, ProposalBase]
+    advisor: Stage[AdvisorContext, ProposalBase] | None
     saves: FileSaves
     traces: FileTraces
     options: TurnOptions
@@ -121,28 +125,39 @@ class GameSession:
         return result.turn
 
     def offer(self) -> AdvancementOffer | None:
-        return self.engine.offered(self.state)
+        advancement = self.engine.advancement
+        return None if advancement is None else advancement.offered(self.state)
 
     async def propose(self, intent: str) -> ProposalBase:
         """The advisor drafts the change; nothing is committed until the player confirms it."""
+        capability = self._capability()
+        if self.advisor is None:  # built beside the capability, so this is the same refusal
+            raise ValueError(NO_ADVANCEMENT)
         offer = self._offered()
-        deps = AdvisorContext(engine=self.engine, state=self.state, offer=offer)
+        deps = AdvisorContext(advancement=capability, state=self.state, offer=offer)
         return await self.advisor.run(render_proposal(self.engine, self.state, offer, intent), deps)
 
     def preview(self, proposal: ProposalBase) -> tuple[Fact, ...]:
         """What the change would write, read off a throwaway draft, not the committed state."""
-        return self.engine.advance(self.state.draft(), proposal)
+        return self._capability().advance(self.state.draft(), proposal)
 
     def apply_proposal(self, proposal: ProposalBase) -> tuple[Fact, ...]:
+        capability = self._capability()
         offer = self._offered()
-        refused = self.engine.violation(self.state, offer, proposal)
+        refused = capability.violation(self.state, offer, proposal)
         if refused is not None:
             raise ValueError(refused)
         draft = self.state.draft()
-        facts = self.engine.advance(draft, proposal)
+        facts = capability.advance(draft, proposal)
         self.engine.commit(draft)
         self._commit(draft.committed(), Advance(facts=facts))
         return facts
+
+    def _capability(self) -> Advancement:
+        advancement = self.engine.advancement
+        if advancement is None:
+            raise ValueError(NO_ADVANCEMENT)
+        return advancement
 
     def _offered(self) -> AdvancementOffer:
         offer = self.offer()
@@ -216,13 +231,15 @@ class Runtime:
             history_window=config.history_window,
             max_growth=config.max_growth,
         )
+        capability = engine.advancement
+        built_advisor = None if capability is None else advisor(capability, config)
         return GameSession(
             target=target,
             scenario=load_scenario(config.scenarios_dir, target.scenario_id, target.engine),
             character=load_character(config.characters_dir, target.character_id, target.engine),
             engine=engine,
             stages=build_stages(engine, config),
-            advisor=advisor(engine, config),
+            advisor=built_advisor,
             saves=FileSaves(config.saves_dir),
             traces=FileTraces(config.saves_dir),
             options=options,

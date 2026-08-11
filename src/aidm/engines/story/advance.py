@@ -3,6 +3,7 @@ from typing import Self
 from pydantic import Field, ValidationError, model_validator
 
 from aidm.engines.counters import spend
+from aidm.engines.loader import Advancement
 from aidm.state.advancement import AdvancementOffer, ProposalBase
 from aidm.state.apply import apply_effect, explained_fact
 from aidm.state.base import PLAYER_ID, Slug
@@ -59,49 +60,64 @@ class Growth(ProposalBase):
         return self
 
 
-def offered(engine: object, state: GameState) -> AdvancementOffer | None:
-    del engine
-    growth = read(state).actors[PLAYER_ID].growth
-    return OFFER if growth.current >= GROWTH_REQUIRED else None
+class StoryAdvancement(Advancement):
+    proposal_type = Growth
 
+    def offered(self, state: GameState) -> AdvancementOffer | None:
+        growth = read(state).actors[PLAYER_ID].growth
+        return OFFER if growth.current >= GROWTH_REQUIRED else None
 
-def advance(engine: object, draft: GameState, proposal: ProposalBase) -> tuple[Fact, ...]:
-    del engine
-    assert isinstance(proposal, Growth)
-    mechanics = read(draft)
-    sheet = mechanics.actors[PLAYER_ID]
-    player = draft.player
-    facts: list[Fact] = []
-    if proposal.approach is not None:
-        raised = sheet.raise_approach(proposal.approach)
-        facts.append(
-            explained_fact(
-                player,
-                "approach_raised",
-                f"{player.name} {proposal.approach} -> {raised}",
-                {"approach": proposal.approach, "value": raised},
-                proposal.why,
-                narrate=False,
+    def advance(self, draft: GameState, proposal: ProposalBase) -> tuple[Fact, ...]:
+        assert isinstance(proposal, Growth)
+        mechanics = read(draft)
+        sheet = mechanics.actors[PLAYER_ID]
+        player = draft.player
+        facts: list[Fact] = []
+        if proposal.approach is not None:
+            raised = sheet.raise_approach(proposal.approach)
+            facts.append(
+                explained_fact(
+                    player,
+                    "approach_raised",
+                    f"{player.name} {proposal.approach} -> {raised}",
+                    {"approach": proposal.approach, "value": raised},
+                    proposal.why,
+                    narrate=False,
+                )
             )
-        )
-    if proposal.resilience:
-        stress = sheet.stress
-        stress.maximum = (stress.maximum or 0) + 1
-        facts.append(
-            explained_fact(
-                player,
-                "resilience_gained",
-                f"{player.name} stress maximum -> {stress.maximum}",
-                {"maximum": stress.maximum},
-                proposal.why,
-                narrate=False,
+        if proposal.resilience:
+            stress = sheet.stress
+            stress.maximum = (stress.maximum or 0) + 1
+            facts.append(
+                explained_fact(
+                    player,
+                    "resilience_gained",
+                    f"{player.name} stress maximum -> {stress.maximum}",
+                    {"maximum": stress.maximum},
+                    proposal.why,
+                    narrate=False,
+                )
             )
-        )
-    facts.extend(spend(player, "growth", sheet.growth, GROWTH_REQUIRED, "growth spent"))
-    write(draft, mechanics)
-    for change in _trait_changes(proposal):
-        facts.extend(apply_effect(draft, change))
-    return tuple(facts)
+        facts.extend(spend(player, "growth", sheet.growth, GROWTH_REQUIRED, "growth spent"))
+        write(draft, mechanics)
+        for change in _trait_changes(proposal):
+            facts.extend(apply_effect(draft, change))
+        return tuple(facts)
+
+    def violation(
+        self, state: GameState, offer: AdvancementOffer, proposal: ProposalBase
+    ) -> str | None:
+        del offer
+        assert isinstance(proposal, Growth)
+        draft = state.draft()
+        try:
+            _ = self.advance(draft, proposal)
+            after = draft.committed()
+        except ValidationError as invalid:
+            return f"the sheet this leaves is invalid: {invalid.errors()[0]['msg']}"
+        except ValueError as refused:
+            return str(refused)
+        return _within_caps(after)
 
 
 def _trait_changes(proposal: Growth) -> list[TraitChange]:
@@ -126,22 +142,6 @@ def _trait_changes(proposal: Growth) -> list[TraitChange]:
             )
         )
     return changes
-
-
-def check_proposal(
-    engine: object, state: GameState, offer: AdvancementOffer, proposal: ProposalBase
-) -> str | None:
-    del offer
-    assert isinstance(proposal, Growth)
-    draft = state.draft()
-    try:
-        _ = advance(engine, draft, proposal)
-        after = draft.committed()
-    except ValidationError as invalid:
-        return f"the sheet this leaves is invalid: {invalid.errors()[0]['msg']}"
-    except ValueError as refused:
-        return str(refused)
-    return _within_caps(after)
 
 
 def _within_caps(after: GameState) -> str | None:

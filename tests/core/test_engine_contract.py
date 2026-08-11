@@ -3,7 +3,7 @@ from story_test_support import story_game
 
 from aidm.app.session import build_engine
 from aidm.engines.counters import CounterChange
-from aidm.engines.loader import Engine, plugins
+from aidm.engines.loader import Engine, engines
 from aidm.engines.story.mechanics import Adventurer, read
 from aidm.engines.story.mechanics import apply as story_apply
 from aidm.state.base import PLAYER_ID, Entity, EntityId
@@ -98,5 +98,5 @@ def test_a_created_entity_gains_engine_state_in_the_same_commit() -> None:
 def test_every_registered_engine_builds_itself() -> None:
     """Registration is data: a new engine is one line in `ENGINE_MODULES` and its own package."""
     config = settings()
-    for plugin in plugins():
-        _ = build_engine(plugin.id, config)
+    for engine in engines():
+        _ = build_engine(engine.id, config)

@@ -4,8 +4,15 @@ from typing import Annotated, Literal
 from pydantic import Field
 
 from aidm.content.authored import Rules
-from aidm.engines.counters import Counter, CounterChange, adjust, render_counters, spend
-from aidm.engines.loader import Engine, EntityRenderer
+from aidm.engines.counters import (
+    Counter,
+    CounterChange,
+    adjust,
+    render_counters,
+    spend,
+    write_mechanics,
+)
+from aidm.engines.loader import EntityRenderer
 from aidm.state.apply import apply_effect, reveal_target
 from aidm.state.base import PLAYER_ID, Entity, EntityId, Mutable, Slug
 from aidm.state.effects import WorldOp
@@ -55,14 +62,10 @@ def read(state: GameState) -> Mechanics:
 
 
 def write(state: GameState, mechanics: Mechanics) -> None:
-    # Dumping runs no validator, so the dump is validated back: that is the commit gate.
-    payload = mechanics.model_dump(mode="json")
-    _ = Mechanics.model_validate(payload)
-    state.mechanics = payload
+    write_mechanics(state, mechanics)
 
 
-def begin(engine: Engine, state: GameState, rules: Mapping[EntityId, Rules]) -> None:
-    del engine
+def begin(state: GameState, rules: Mapping[EntityId, Rules]) -> None:
     actors: dict[EntityId, Adventurer] = {}
     for entity in state.world.entities.values():
         authored = rules.get(entity.id)
@@ -74,10 +77,9 @@ def begin(engine: Engine, state: GameState, rules: Mapping[EntityId, Rules]) -> 
     write(state, Mechanics(actors=actors))
 
 
-def commit(engine: Engine, state: GameState) -> None:
+def commit(state: GameState) -> None:
     """An actor who joined the world mid-turn is given their numbers by the commit that admits
     them; a payload missing the player is corruption, not a gap to fill."""
-    del engine
     mechanics = read(state)
     if PLAYER_ID not in mechanics.actors:
         raise ValueError("the story mechanics name no player")
@@ -88,8 +90,7 @@ def commit(engine: Engine, state: GameState) -> None:
     write(state, mechanics)
 
 
-def render(engine: Engine, state: GameState) -> EntityRenderer:
-    del engine
+def render(state: GameState) -> EntityRenderer:
     mechanics = read(state)
     return lambda entity: describe(mechanics, entity)
 

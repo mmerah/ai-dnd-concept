@@ -11,6 +11,7 @@ from aidm.engines.counters import (
     pool,
     render_counters,
     spend,
+    write_mechanics,
 )
 from aidm.engines.loader import Engine, EntityRenderer
 from aidm.state.apply import apply_effect, entity_fact, explained_fact, reveal_target
@@ -19,6 +20,8 @@ from aidm.state.effects import WorldOp
 from aidm.state.facts import Fact
 from aidm.state.packs import CollectionName, ContentRef, Record, fact_line, is_int_fact
 from aidm.state.world import GameState
+
+from .content import PROJECTING
 
 type Dnd5eEffect = Annotated[WorldOp | CounterChange, Field(discriminator="op")]
 
@@ -50,9 +53,7 @@ def read(state: GameState) -> Mechanics:
 
 
 def write(state: GameState, mechanics: Mechanics) -> None:
-    payload = mechanics.model_dump(mode="json")
-    _ = Mechanics.model_validate(payload)
-    state.mechanics = payload
+    write_mechanics(state, mechanics)
 
 
 def sheet_of(mechanics: Mechanics, entity: Entity) -> Sheet:
@@ -114,7 +115,7 @@ def _backing(refs: Sequence[ContentRef], engine: Engine) -> Mapping[Slug, int]:
     backing: dict[Slug, int] = {}
     claimed_by: dict[Slug, ContentRef] = {}
     for ref in refs:
-        if ref.collection not in engine.spec.projecting:
+        if ref.collection not in PROJECTING:
             continue
         record = engine.content.require(ref)
         for key, value in record.facts.items():
@@ -160,7 +161,7 @@ def _ref_line(ref: ContentRef, engine: Engine) -> str:
     if record is None:
         return str(ref)
     # An int fact of a projecting collection already stands in the sheet's own numbers or counters.
-    projected = ref.collection in engine.spec.projecting
+    projected = ref.collection in PROJECTING
     facts_left = (
         (key, value)
         for key, value in sorted(record.facts.items())

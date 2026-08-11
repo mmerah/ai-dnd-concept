@@ -13,7 +13,7 @@ from aidm.app.session import begin_game, build_engine
 from aidm.config import ProviderConfig, Providers, Settings
 from aidm.content.authored import Character, Scenario
 from aidm.content.store import load_character, load_scenario
-from aidm.engines.loader import Engine
+from aidm.engines.loader import Advancement, Engine
 from aidm.state.base import EngineId, Entity
 from aidm.state.turn import Turn
 from aidm.state.world import GameState
@@ -58,6 +58,13 @@ def game(engine_id: EngineId) -> tuple[Engine, GameState]:
 
 def initialized() -> tuple[Engine, GameState]:
     return game(STORY)
+
+
+def capability(engine: Engine) -> Advancement:
+    """Both shipped engines grow their characters; a test that asks for the capability wants it."""
+    found = engine.advancement
+    assert found is not None
+    return found
 
 
 def structured(**output: object) -> ModelResponse:

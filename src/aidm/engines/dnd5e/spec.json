@@ -1,9 +1,4 @@
 {
-  "projecting": [
-    "classes",
-    "races",
-    "monsters"
-  ],
   "collections": {
     "monsters": {},
     "weapons": {},

@@ -3,7 +3,7 @@ from dataclasses import dataclass
 from pydantic_ai import ModelRetry, NativeOutput, RunContext
 
 from aidm.config import Settings
-from aidm.engines.loader import Engine
+from aidm.engines.loader import Advancement, Engine
 from aidm.state.advancement import AdvancementOffer, ProposalBase
 from aidm.state.world import GameState
 
@@ -25,23 +25,23 @@ again."""
 
 @dataclass(frozen=True, slots=True)
 class AdvisorContext:
-    engine: Engine
+    advancement: Advancement
     state: GameState
     offer: AdvancementOffer
 
 
-def advisor(engine: Engine, settings: Settings) -> Stage[AdvisorContext, ProposalBase]:
+def advisor(advancement: Advancement, settings: Settings) -> Stage[AdvisorContext, ProposalBase]:
     built = stage(
         "advisor",
         settings,
-        instructions=f"{CORE_ADVISOR}\n\n{engine.advancement_instructions}",
-        output_type=NativeOutput(engine.proposal_type),
+        instructions=f"{CORE_ADVISOR}\n\n{advancement.instructions}",
+        output_type=NativeOutput(advancement.proposal_type),
         deps_type=AdvisorContext,
     )
 
     def legal(ctx: RunContext[AdvisorContext], proposal: ProposalBase) -> ProposalBase:
         deps = ctx.deps
-        refused = deps.engine.violation(deps.state, deps.offer, proposal)
+        refused = deps.advancement.violation(deps.state, deps.offer, proposal)
         if refused is not None:
             raise ModelRetry(refused)
         return proposal
