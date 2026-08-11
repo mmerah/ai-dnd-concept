@@ -138,7 +138,7 @@
         },
         "mode": {
           "default": "normal",
-          "description": "`advantage` or `disadvantage` when the fiction grants it; one roll either.",
+          "description": "`advantage` in melee on a target tagged `prone` or `restrained`, or otherwise helpless, and on any target that cannot see the attacker; `disadvantage` when the attacker is tagged `poisoned` or `frightened`, or shoots at a `prone` target; `normal` otherwise. One roll either way.",
           "enum": [
             "normal",
             "advantage",
@@ -249,7 +249,7 @@
         },
         "mode": {
           "default": "normal",
-          "description": "`advantage` or `disadvantage` when the fiction grants it; one roll either.",
+          "description": "`advantage` when the fiction plainly favours the actor — a helpless subject, surprise, the right tool to hand; `disadvantage` when a tag such as `poisoned` or `frightened` works against them; `normal` otherwise. One roll either way.",
           "enum": [
             "normal",
             "advantage",
@@ -270,7 +270,7 @@
     },
     "CounterChange": {
       "additionalProperties": false,
-      "description": "Move a counter: `adjust` shifts it by a delta and clamps to the counter's own bounds,\n`spend` pays a cost from it and refuses outright when the pool cannot cover it.",
+      "description": "Move a counter: `adjust` shifts it by a delta, clamped to the counter's own bounds;\n`spend` pays a cost from it and refuses when the pool cannot cover it.",
       "properties": {
         "op": {
           "const": "counter-change",
@@ -400,7 +400,7 @@
         },
         "mode": {
           "default": "normal",
-          "description": "`advantage` or `disadvantage` when the fiction grants it; one roll either.",
+          "description": "`advantage` when the fiction plainly favours the actor — a helpless subject, surprise, the right tool to hand; `disadvantage` when a tag such as `poisoned` or `frightened` works against them; `normal` otherwise. One roll either way.",
           "enum": [
             "normal",
             "advantage",
@@ -486,7 +486,7 @@
     },
     "RelationChange": {
       "additionalProperties": false,
-      "description": "Record, break, unblock, or reveal a lasting tie between two entities. Containment is not a\ntie: carrying an item or standing somewhere are moves. `reveal` shows the player a way through\nthey did not know about — write it before moving them through a passage they have not found\nyet — and `untag` lifts a block such as `locked` when the fiction opens it.",
+      "description": "Record, break, unblock, or reveal a lasting tie between two entities. Containment is not a\ntie: carrying an item or standing somewhere are moves. `reveal` shows the player a way through\nthey did not know about; write it before moving them through a passage they have not found.\n`untag` lifts a block such as `locked` when the fiction opens it.",
       "properties": {
         "op": {
           "const": "relation-change",

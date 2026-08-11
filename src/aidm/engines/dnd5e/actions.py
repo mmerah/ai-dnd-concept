@@ -39,7 +39,12 @@ class Attack(Frozen):
     )
     mode: Literal["normal", "advantage", "disadvantage"] = Field(
         default="normal",
-        description="`advantage` or `disadvantage` when the fiction grants it; one roll either.",
+        description=(
+            "`advantage` in melee on a target tagged `prone` or `restrained`, or otherwise "
+            "helpless, and on any target that cannot see the attacker; `disadvantage` when the "
+            "attacker is tagged `poisoned` or `frightened`, or shoots at a `prone` target; "
+            "`normal` otherwise. One roll either way."
+        ),
     )
 
 
@@ -91,7 +96,11 @@ class Check(Frozen):
     reason: str = Field(min_length=1, description="What is being tested, in a few words.")
     mode: Literal["normal", "advantage", "disadvantage"] = Field(
         default="normal",
-        description="`advantage` or `disadvantage` when the fiction grants it; one roll either.",
+        description=(
+            "`advantage` when the fiction plainly favours the actor — a helpless subject, "
+            "surprise, the right tool to hand; `disadvantage` when a tag such as `poisoned` "
+            "or `frightened` works against them; `normal` otherwise. One roll either way."
+        ),
     )
 
 
@@ -133,7 +142,11 @@ class Improvise(Frozen):
     reason: str = Field(min_length=1, description="What is being rolled, in a few words.")
     mode: Literal["normal", "advantage", "disadvantage"] = Field(
         default="normal",
-        description="`advantage` or `disadvantage` when the fiction grants it; one roll either.",
+        description=(
+            "`advantage` when the fiction plainly favours the actor — a helpless subject, "
+            "surprise, the right tool to hand; `disadvantage` when a tag such as `poisoned` "
+            "or `frightened` works against them; `normal` otherwise. One roll either way."
+        ),
     )
 
 

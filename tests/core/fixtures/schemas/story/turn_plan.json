@@ -65,7 +65,7 @@
     },
     "CounterChange": {
       "additionalProperties": false,
-      "description": "Move a counter: `adjust` shifts it by a delta and clamps to the counter's own bounds,\n`spend` pays a cost from it and refuses outright when the pool cannot cover it.",
+      "description": "Move a counter: `adjust` shifts it by a delta, clamped to the counter's own bounds;\n`spend` pays a cost from it and refuses when the pool cannot cover it.",
       "properties": {
         "op": {
           "const": "counter-change",
@@ -220,7 +220,7 @@
     },
     "RelationChange": {
       "additionalProperties": false,
-      "description": "Record, break, unblock, or reveal a lasting tie between two entities. Containment is not a\ntie: carrying an item or standing somewhere are moves. `reveal` shows the player a way through\nthey did not know about — write it before moving them through a passage they have not found\nyet — and `untag` lifts a block such as `locked` when the fiction opens it.",
+      "description": "Record, break, unblock, or reveal a lasting tie between two entities. Containment is not a\ntie: carrying an item or standing somewhere are moves. `reveal` shows the player a way through\nthey did not know about; write it before moving them through a passage they have not found.\n`untag` lifts a block such as `locked` when the fiction opens it.",
       "properties": {
         "op": {
           "const": "relation-change",

@@ -71,7 +71,7 @@ def test_movement_follows_the_connections_the_world_authors() -> None:
     turn = Applied()
 
     assert turn.kinds(Move(to_id=CLOISTER)) == ["entity_moved"]
-    with pytest.raises(ValueError, match="the player can reach: the abbot's study"):
+    with pytest.raises(ValueError, match="has not found the way to the bell tower"):
         _ = turn(Move(to_id=BELL_TOWER))
     revealed = RelationChange(mode="reveal", kind=CONNECTED, source=CLOISTER, target=BELL_TOWER)
     assert turn.kinds(revealed) == ["entity_discovered", "relation_revealed"]

@@ -147,7 +147,7 @@ def _require_exit(draft: GameState, here: EntityId, destination: Entity) -> None
     if not exits:
         return
     found = draft.world.relation(CONNECTED, here, destination.id)
-    if found is None or not found.known:
+    if found is None:
         open_exits = [
             draft.world.require(way.far_end(here)).name
             for way in exits
@@ -157,6 +157,12 @@ def _require_exit(draft: GameState, here: EntityId, destination: Entity) -> None
         raise ValueError(
             f"no way leads from here to {destination.name}. From here the player can reach: "
             f"{reachable}"
+        )
+    if not found.known:
+        raise ValueError(
+            f"the player has not found the way to {destination.name} yet, so walking it is one "
+            "plan, not two: put a `relation-change` with `mode: reveal` for that way immediately "
+            "before this move, in the same list"
         )
     if LOCKED_TAG in found.tags:
         raise ValueError(f"the way to {destination.name} is locked and must be dealt with first")

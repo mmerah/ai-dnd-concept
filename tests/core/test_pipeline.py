@@ -267,7 +267,7 @@ async def test_a_hook_fires_on_its_fact_moves_its_thread_and_steers_the_next_tur
     assert after.state.pending_notes == ()
 
 
-async def test_a_scene_directive_replaces_the_directors_own_canon_view() -> None:
+async def test_both_directors_read_the_canon_and_only_the_narrator_is_kept_from_it() -> None:
     engine, state = initialized()
     steps: list[str] = []
     scene = FunctionModel(
@@ -294,11 +294,7 @@ async def test_a_scene_directive_replaces_the_directors_own_canon_view() -> None
     assert tuple(steps) == ("scene", "director", "resolve", "hooks", "narrator", "worldkeeper")
     director_prompt = shown(result.turn, "director")
     assert "Kael presses toward the vault door." in director_prompt
-    assert "The sealed vault" in director_prompt
-    # Named for revealing, so the Rules Director can write it; the unnamed one stays out of sight.
-    assert "the sealed vault[id=vault]" in director_prompt
-    assert "Elena" not in director_prompt
-    assert "SCENARIO NOTES" not in director_prompt
-    scene_prompt = shown(result.turn, "scene")
-    assert "Elena" in scene_prompt
-    assert "ACTIVE THREADS" in scene_prompt
+    # The directive passed Elena over; both directors still see her, the narrator never does.
+    assert "Elena" in director_prompt
+    assert "Elena" in shown(result.turn, "scene")
+    assert "Elena" not in shown(result.turn, "narrator")

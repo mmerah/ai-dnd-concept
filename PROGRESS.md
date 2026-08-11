@@ -109,10 +109,54 @@ Tracking PLAN.md. One bullet per landed step; `uv run pytest && ruff check && ru
   `tests/core/fixtures` stayed empty — byte-identical, no `SAVE_VERSION` bump. 130 tests pass,
   ruff and basedpyright clean.
 
+## Phase 5 — The prompt pass — DONE
+
+- Re-baseline: one `--only director` suite on HEAD (maintainer chose one over the planned two),
+  `results/2026-08-11-7e848d4.json` — overall 78%, completion 98%. Per-case comparison against
+  PLAN.md's 2026-08-07 list retired two of its four entries outright and re-attributed a third.
+- Step 3 was already landed: `dnd5e/examples.json` carries the `poisoned`-lifting worked example
+  (a `check` success branch, an effects-only removal, and a `prone`-adding branch) from phase 3's
+  rewrite, and `director.md`'s WHAT BELONGS WHERE already mirrors it. No change made.
+- Advantage taught in two places — 3 sentences in `dnd5e/director.md` and the trigger list in the
+  three `mode` field descriptions (`dnd5e/actions.py`) — and `advantage-attack` stayed 0/9 through
+  both. Identical plan every run, zero retries; the schema golden proves the description ships.
+  Closed as a gpt-oss-120b limit, not a prompt gap. The teaching stays: it is correct, and a
+  stronger model will read it.
+- **Both directors now read the whole canon side.** `render_director` substituted the
+  `SCENE DIRECTIVE` for `EXISTS BUT THE PLAYER DOES NOT KNOW IT YET` / `ACTIVE THREADS` /
+  `SCENARIO NOTES`; it now appends. Neither director writes prose, so the leak rule (which binds
+  the narrator) is untouched. Three instruction claims that had gone false were rewritten:
+  `SCENE_DIRECTOR`'s "You alone are shown…" and "The Rules Director cannot see these", and
+  `_DIRECTIVE_BRIEF`'s "The directive is also your only view…".
+- **`_require_exit` distinguishes an absent way from an unfound one** (`state/apply.py`). One
+  refusal covered both and read as a flat illegal destination, so the model dropped the move
+  instead of revealing the way: 8/9 runs shipped `effects: []`. The unfound case now names the
+  reveal-then-move fix in the refusal text. Core, so both engines get it.
+- `movement-follows-exits` 0% → 11% (canon fix; retry deaths 6/9 → 1/9) → 67% (refusal fix), all
+  at n=9. Re-attributed numbers: `long-rest-recharge` 78% (the 0/67/0 swing was noise),
+  `condition-rider` 100%, `condition-lifted` 67–100%, `self-heal-scaling` 56% (a Scene Director
+  misread, not an engine fault — left alone).
+- Tests: `test_a_scene_directive_replaces_the_directors_own_canon_view` asserted the old
+  substitution and became `test_both_directors_read_the_canon_and_only_the_narrator_is_kept_from_it`,
+  trimmed to the three assertions that carry it. `test_movement_follows_the_connections_the_world_authors`
+  matches the new unfound-way refusal. Net 0 tests, 130 passing.
+- Scene-role goal substitution is the standing open problem behind `self-heal-scaling` (56%) and
+  `story-check-both-directions`: the Scene Director replaces what the player declared with a goal
+  of its own. One clause was tried on the quiet-turn list and reverted — 0→22% against 56→22%,
+  both inside the noise floor at n=9. Recorded in PLAN.md so it is not re-tried blind.
+- Prompt clarity-and-size pass over every model-facing surface (`prompts.py` instruction
+  constants, both `director.md` and `advancement.md`, `effects.py` field descriptions): same
+  information, plainer language, `_DIRECTIVE_BRIEF`/`_EXITS`/`WORLDKEEPER` restructured from
+  chained prose into bullet lists where each rule stands alone. **Mean tokens/turn 9631 → 8522
+  (−11%)** at an unchanged overall rate (80.2% → 80.5%).
+- One clause was restored to its pre-pass wording: `_EXITS`'s reveal-then-move rule. Compressed to
+  a noun-phrase fragment it read 33% at n=9; back as "Walking an exit the player has not found yet
+  is one plan, not two: …" it reads 67% twice. The lesson is worth keeping — a rule the model must
+  *act* on survives compression worse than one it must merely know.
+- Goldens: `instructions/*` (all 10), `prompts/{dnd5e,story}/director`,
+  `schemas/dnd5e/turn_plan.json`. No `SAVE_VERSION` bump — no persisted bytes change.
+
 ## Next
 
-Part I is done. Phase 5 — the prompt pass (~1 day): re-baseline `--only director` on the settled
-tree (two same-hour suites), teach advantage in `dnd5e/director.md`, add the condition-lifting
-worked example to `dnd5e/examples.json`, re-run the touched cases at `--runs 9`, and replace
-PLAN.md's 2026-08-07 evidence list with what the post-refactor numbers show. Evals come back off
-suspension here (working rule 3).
+Phase 6 — Memories + keepers (~4 days). Re-resolve its wiring language against the landed
+post-phase-2 shape before starting.

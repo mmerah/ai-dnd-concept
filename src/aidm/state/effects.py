@@ -55,8 +55,8 @@ class GainImprovisedItem(Frozen):
 
 
 class CounterChange(Frozen):
-    """Move a counter: `adjust` shifts it by a delta and clamps to the counter's own bounds,
-    `spend` pays a cost from it and refuses outright when the pool cannot cover it."""
+    """Move a counter: `adjust` shifts it by a delta, clamped to the counter's own bounds;
+    `spend` pays a cost from it and refuses when the pool cannot cover it."""
 
     op: Literal["counter-change"] = "counter-change"
     mode: Literal["adjust", "spend"] = Field(
@@ -162,8 +162,8 @@ class AddRef(Frozen):
 class RelationChange(Frozen):
     """Record, break, unblock, or reveal a lasting tie between two entities. Containment is not a
     tie: carrying an item or standing somewhere are moves. `reveal` shows the player a way through
-    they did not know about — write it before moving them through a passage they have not found
-    yet — and `untag` lifts a block such as `locked` when the fiction opens it."""
+    they did not know about; write it before moving them through a passage they have not found.
+    `untag` lifts a block such as `locked` when the fiction opens it."""
 
     op: Literal["relation-change"] = "relation-change"
     mode: Literal["add", "remove", "untag", "reveal"] = Field(

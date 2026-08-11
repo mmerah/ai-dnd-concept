@@ -198,49 +198,59 @@ runtime state), and beginning a game produces the same bytes it did before.
 
 # Part II — Features
 
-## Phase 5 — The prompt pass: the Director drops the state write (~1 day)
+## Phase 5 — The prompt pass: the Director drops the state write — DONE
 
-Runs first after Part I lands: it re-opens the suspended eval measurement on the settled tree,
-so the re-baseline here measures the simplified core once instead of twice.
+Shipped 2026-08-11. Evals came back off suspension here (working rule 3). The 2026-08-07 evidence
+list this phase set out to act on did not survive contact with the settled tree: two of its four
+cases had already fixed themselves, one of its numbers was noise, and the phase's own re-baseline
+turned up two failures it had never named. What the measurements now say (gpt-oss-120b, n=9 per
+case unless stated):
 
-The largest measured finding: the narration lands, but the tag or counter change that must
-accompany it is missing from the plan. The evidence, from the 2026-08-07 suites (gpt-oss-120b,
-3 runs per case):
+- `condition-rider` 100%, `condition-lifted` 67–100%. Both recovered on their own: phase 3's
+  examples rewrite already carries the `poisoned`-lifting worked example this phase planned to
+  add, so its step 3 was a no-op. `condition-lifted`'s residual failures are two shapes worth
+  knowing apart — a correct plan whose roll simply misses (the case asserts an unconditional
+  outcome, so a dice-gated plan can never pass it), and a `check` written with no branches at
+  all, which settles nothing. The first is a case-design flaw, not a model fault.
+- `long-rest-recharge` 78%. The 0% → 67% → 0% swing was small-n noise; nothing was ever wrong.
+- `advantage-attack` 0/9, and closed as a model limit rather than a prompt gap. The rule is now
+  taught twice — prose in `dnd5e/director.md` and the trigger list in the `mode` field
+  descriptions (`dnd5e/actions.py`), which the schema golden confirms ships in the tool schema.
+  Every run still writes `mode: "normal"` with an identical plan and zero retries. Two
+  independent surfaces moved nothing, so further tuning would be guessing.
+- `movement-follows-exits` 0% → 67%, having regressed from the 100% this list once credited to
+  the `_EXITS` clause. Two independent faults, both fixed, neither a prompt-wording problem —
+  see below.
+- `self-heal-scaling` 56% and `story-check-both-directions` 0–22%, neither named by this list.
+  One fault, upstream of the Rules Director: the Scene Director silently replaces what the player
+  declared with a goal of its own — "dig into my last reserve of stamina" becomes *searching the
+  cloister*, and a deliberate, unopposed act becomes a risk roll for hidden clues. The Rules
+  Director then faithfully realizes the directive it was given. Pre-existing, not caused by the
+  fixes below: `story-check-both-directions` failed 2/3 on the baseline with the identical plan,
+  and its 33% there was the noise, not the 0% after.
 
-- `advantage-attack` 0/15 across five runs — the one failure clear of the noise floor. The model
-  reads a `prone`, explicitly-helpless target and still rolls `mode: "normal"`. Nothing anywhere
-  states when 5e grants advantage, so the case measures a rule the engine was never given.
-- `condition-rider` and `condition-lifted` swing between 33% and 100% with nothing touching them:
-  a success branch narrates the rat going down without writing the `prone` tag; the `poisoned`
-  tag survives the turn that should end it.
-- `long-rest-recharge` swung 0% → 67% → 0% across three runs at two commits.
-- The one prompt lever proven to work: the reveal-then-move clause in `_EXITS`
-  (`src/aidm/turn/prompts.py`) took `movement-follows-exits` to 100%. It has only ever been
-  pulled for movement.
+  One clause was tried on the Scene Director's quiet-turn list (deliberate unopposed acts, plus a
+  line against replacing the player's goal) and **reverted**: `story-check-both-directions` 0→22%
+  against `self-heal-scaling` 56→22%, both inside the noise floor at n=9. Scene-role goal
+  substitution is the standing open problem here and wants its own measured phase, not a clause.
 
-These measurements predate the Scene/Rules split, the plan-schema shrink, and all of Part I —
-measure first, fix second:
+The two fixes the re-baseline actually earned, both in core rather than in wording:
 
-1. **Re-baseline**: two same-hour director suites (`--only director`) on HEAD — the first
-   measurement of the simplified core and merged effect vocabulary. Compare per case against the
-   numbers above; anything that recovered on its own leaves the list.
-2. **Teach advantage**: `src/aidm/engines/dnd5e/director.md` gets 2–3 sentences on when 5e grants
-   advantage or disadvantage (attacking a `prone` target in melee, an unseen attacker, a
-   restrained target), next to the existing `mode` guidance. If the maintainer would rather not
-   teach house-summarized rules, re-author or drop the eval case instead — either way the case
-   stops measuring an untaught rule.
-3. **Pull the proven lever for conditions.** Add a worked example to
-   `src/aidm/engines/dnd5e/examples.json`: a `check` whose `success` branch carries the tag
-   change lifting `poisoned`, mirrored by one sentence in `director.md`'s WHAT BELONGS WHERE
-   section. Story examples already cover stress; leave them.
-4. **Re-run** the touched cases at `--runs 9` same-hour against step 1's baseline. Record what
-   moved (and what was re-attributed) in this file, replacing the evidence list above.
-   Prompt/instruction goldens (`tests/core/fixtures/instructions/*`) regenerate in the same
-   commit as each prompt change.
+1. **Both directors read the whole canon side.** `render_director` gave the Rules Director only
+   the `SCENE DIRECTIVE`, substituting it for `EXISTS BUT THE PLAYER DOES NOT KNOW IT YET`,
+   `ACTIVE THREADS`, and `SCENARIO NOTES`. The directive is now appended to that view instead of
+   replacing it. The leak rule binds the *narrating* role, and neither director writes prose, so
+   the canon reaches both safely. This alone cut `movement-follows-exits`'s retry deaths from 6/9
+   to 1/9.
+2. **`_require_exit` tells the truth about an unfound way** (`state/apply.py`). It collapsed *no
+   such connection* and *the connection exists but the player has not found it* into one refusal
+   reading as a flat illegal-destination. The model believed it and dropped the move: 8/9 runs
+   shipped `effects: []` rather than the reveal-then-move pair `_EXITS` prescribes. The second
+   case now names the fix in the refusal itself. One message in core, so both engines get it.
 
-Done when: the evidence list above reflects post-refactor reality and the condition and advantage
-cases have either moved or been re-authored — a case measuring an untaught rule is fixed at the
-source, not tuned around.
+Standing lesson: a prompt-wording phase found no prompt-wording bugs. Both real faults were core
+code lying to the model — one by withholding context, one by misdescribing a refusal. Measure the
+model's *input* before rewriting its instructions.
 
 ## Phase 6 — Memories + keepers (~4 days)
 
