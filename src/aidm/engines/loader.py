@@ -4,7 +4,6 @@ from dataclasses import dataclass
 from importlib import import_module
 from pathlib import Path
 from random import Random
-from types import MappingProxyType
 from typing import Annotated, Any, Self
 
 from pydantic import (
@@ -12,14 +11,12 @@ from pydantic import (
     JsonValue,
     TypeAdapter,
     ValidationError,
-    create_model,
     model_validator,
 )
 from pydantic_ai import ModelRetry
 from pydantic_ai.toolsets import AbstractToolset, FunctionToolset
 
 from aidm.content.authored import AuthoredEntity, AuthoredWorld, Rules, compose_world
-from aidm.engines.vm import ActionDef, Resolved, run_program
 from aidm.state.apply import apply_effect
 from aidm.state.base import EngineId, Entity, Frozen, Kind, Slug
 from aidm.state.effects import AddRef, SheetDelta, TurnEffect, turn_effect_ops
@@ -57,6 +54,7 @@ ENGINE_MODULES: tuple[str, ...] = (
 PLUGIN = "PLUGIN"
 
 type EntityRenderer = Callable[[Entity], str]
+type Resolved = tuple[list[Fact], Slug | None]
 
 
 class EngineSpec(Value):
@@ -92,25 +90,18 @@ class EnginePlugin:
     id: EngineId
     badge: tuple[str, str]
     engine_dir: Path
-    action_doc: str
+    plan_type: type[TurnPlanBase]
+    actions: "tuple[ActionSpec[Any], ...]"
     offered: "Callable[[Engine, GameState], AdvancementOffer | None]"
     # Judges the sheet the proposal would leave, which the kernel has already applied and validated.
     check_delta: Callable[[GameState, Sheet], str | None]
-    # Named exceptions for declared actions the VM cannot judge alone, keyed by action name:
-    # labels that depend on the action's values or content, and whole-plan checks.
-    dynamic_labels: "Mapping[Slug, Callable[[Engine, Any], frozenset[Slug]]]" = MappingProxyType({})
-    plan_checks: Mapping[Slug, Callable[[GameState, TurnPlanBase, Any], str | None]] = (
-        MappingProxyType({})
-    )
 
 
 @dataclass(frozen=True, slots=True)
 class Engine:
     plugin: EnginePlugin
-    actions: tuple[ActionSpec[Any], ...]
     spec: EngineSpec
     content: Content
-    plan_type: type[TurnPlanBase]
     director_instructions: str
     advancement_instructions: str
     director_toolset: AbstractToolset[object]
@@ -122,6 +113,14 @@ class Engine:
     @property
     def badge(self) -> tuple[str, str]:
         return self.plugin.badge
+
+    @property
+    def actions(self) -> tuple[ActionSpec[Any], ...]:
+        return self.plugin.actions
+
+    @property
+    def plan_type(self) -> type[TurnPlanBase]:
+        return self.plugin.plan_type
 
     def default_rules(self, entity: Entity) -> Sheet:
         return SheetDefinition().runtime(entity.kind, self.spec.template(entity.kind))
@@ -251,65 +250,15 @@ def load_engine(plugin: EnginePlugin, pack_paths: Sequence[Path] | None = None) 
     spec = EngineSpec.model_validate_json(_text(engine_dir / "spec.json"))
     directories = _packs(engine_dir) if pack_paths is None else tuple(pack_paths)
     content = load(directories, spec.collections)
-    actions = _declared_actions(plugin)
-    plan_type = _plan_model(actions, plugin.action_doc)
     return Engine(
         plugin=plugin,
-        actions=actions,
         spec=spec,
         content=content,
-        plan_type=plan_type,
         director_instructions=_text(engine_dir / "director.md")
         + _effect_vocabulary()
-        + _examples(engine_dir, plan_type),
+        + _examples(engine_dir, plugin.plan_type),
         advancement_instructions=_text(engine_dir / "advancement.md"),
         director_toolset=_director_toolset(content),
-    )
-
-
-def _plan_model(actions: tuple[ActionSpec[Any], ...], action_doc: str) -> type[TurnPlanBase]:
-    """A discriminator on a lone model raises, so a single-action engine gets its model plain."""
-    models: tuple[type[Frozen], ...] = tuple(spec.model for spec in actions)
-    if not models:
-        return TurnPlanBase
-    union: Any = models[0]  # An annotation assembled at runtime carries no static type.
-    for other in models[1:]:
-        union = union | other
-    if len(models) > 1:
-        union = Annotated[union, Field(discriminator="act")]
-    return create_model(
-        "TurnPlan",
-        __base__=TurnPlanBase,
-        action=(union | None, Field(default=None, description=action_doc)),
-    )
-
-
-def _declared_actions(plugin: EnginePlugin) -> tuple[ActionSpec[Any], ...]:
-    """An engine's `actions.json` needs no Python: the kernel runs its programs."""
-    path = plugin.engine_dir / "actions.json"
-    if not path.is_file():
-        return ()
-    declared = TypeAdapter(tuple[ActionDef, ...]).validate_json(_text(path))
-    return tuple(_declared_spec(action, plugin) for action in declared)
-
-
-def _declared_spec(declared: ActionDef, plugin: EnginePlugin) -> ActionSpec[Any]:
-    def resolve(engine: Engine, draft: GameState, action: Any, rng: Random) -> Resolved:
-        return run_program(
-            declared.program,
-            draft,
-            action,
-            rng,
-            engine.default_rules,
-            declared.params,
-            engine.content,
-        )
-
-    return ActionSpec(
-        model=declared.model(),
-        labels=plugin.dynamic_labels.get(declared.name, frozenset(declared.labels)),
-        resolve=resolve,
-        check=plugin.plan_checks.get(declared.name),
     )
 
 

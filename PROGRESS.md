@@ -551,13 +551,61 @@ A/B asked for went in and the split closed the whole gap:
   - **Owed**: the live gate. Sheet ref lines and `read_content` output both moved, so it joins
     phase 8.5's owed full suite against a same-hour HEAD worktree run rather than needing its own.
 
+- **Vision phase 8.6 — Delete the VM: actions are typed Python again** (2026-08-11). The
+  declarative engine is gone: `engines/vm.py` (838 lines) and both `actions.json` (1403 lines)
+  are deleted, and the seven actions are hand-written Pydantic models plus ordinary resolvers.
+  - **Every model-facing byte held.** `tests/core/fixtures/schemas/{story,dnd5e}/turn_plan.json`,
+    `instructions/*`, `prompts/*` and every save/state/turn fixture pass **unregenerated**;
+    `AIDM_GOLDEN_REGEN` was never set and `SAVE_VERSION` stays 46. The hand-written models
+    reproduce `create_model`'s schema exactly — field order, descriptions, bounds, the
+    discriminated union's `mapping`, and the `Annotated[T, Field(...)] | None` shape optional
+    constrained params take.
+  - **The VM was the oracle, offline.** A throwaway `vm_parity_support` ran `run_program` and the
+    new resolver on two drafts of the same committed state at seeds 0–3, asserting equal facts,
+    equal outcome, equal refusal string, and equal committed state. Story: 288 payloads × 4 states
+    × 4 seeds. dnd5e: 148 attack payloads, 180 cast-spell payloads over 15 spell refs (attack,
+    save-half, save-none, heal, cantrip, concentration, upcast ladders, a wrong-collection ref, a
+    missing ref and a malformed one) and 4 states each, plus the four bookkeeping actions. The
+    harness was mutation-checked — a `dc` off by one, a halved damage off by one, and a dropped
+    ranged branch each failed it — before it was trusted, then deleted with `vm.py`.
+  - **Both engines now have the identical file set** (maintainer's call, mid-phase): `rules.py`
+    (PLUGIN only), `actions.py` (models + `TurnPlan`), `resolve.py`, `advance.py`, plus the same
+    JSON/markdown; only `packs/` is dnd5e-only. Story's one action is 42 + 74 lines rather than
+    being folded into `rules.py`, because one shape read twice beats two shapes.
+  - **The loader lost its dynamic half**: `_plan_model`, `_declared_actions`, `_declared_spec` and
+    the `create_model` union assembly are gone; `EnginePlugin` declares `plan_type` and `actions`
+    directly and sheds `action_doc`, `dynamic_labels` and `plan_checks` — `cast_labels`,
+    `improvise_labels`, `check_cast` and `check_feature` are ordinary fields on their own
+    `ActionSpec` rows, signed with the real action classes instead of `Any`. `Engine` keeps only
+    `plugin`/`spec`/`content`/instructions and reads `actions`/`plan_type` back off the plugin.
+    `type Resolved` moved from `vm.py` into `loader.py`; `ProgramEffect` is deleted (`Refill`
+    stays, still outside `TurnEffect`, so the Director cannot see it).
+  - **Deviation from the build-ready spec, named:** the two `actions.json` files stayed in the
+    tree until the final step instead of shrinking action by action. Deleting an action's program
+    the moment it was ported would have deleted its oracle with it, and would have moved the
+    remaining actions in the plan-model union, breaking the byte-identical schema the phase is
+    gated on. Both files and both parity tests died together instead.
+  - **One stale string preserved deliberately**: story's TAKEN OUT refusal still says "Write what
+    their collapse means into `intent` instead", and `intent` left the plan at phase 8.5. It is
+    copied verbatim because parity demanded it; it is now ordinary Python and free to fix.
+  - Line delta: `src/aidm` Python **−249** (6075 → 5826) against **−1403** lines of JSON, so
+    **−1652** all in — inside GPT-SIMPLIFICATION's 1,500–1,800 estimate. `resolve.py` is 378
+    (dnd5e) + 74 (story) and `actions.py` 150 + 42; `loader.py` 431 → 380.
+  - Tests: `tests/core/test_vm.py` deleted with the boundary it covered; `test_loader.py`'s
+    fixture plugin declares `plan_type`/`actions`. Everything else passes **unchanged** —
+    `test_resolve.py`'s seeded rolls and exact refusal strings, `test_story_engine.py`,
+    `test_content_parity.py`, and every golden family. 131 passed; ruff, format and basedpyright
+    clean.
+
 ## Current
 
-Phase 8.5 (both halves) is code complete and unmeasured. Phase 5 (ironsworn) stays deferred.
+Phase 8.5 (both halves) is code complete; its owed live gate is **waived by maintainer decision
+(2026-08-11)** — eval gates are suspended until the codebase settles, and golden fixtures plus
+offline parity tests are the safety mechanism meanwhile. Phase 8.6 shipped the same day and owes
+no gate: no model-facing byte moved. Phase 5 (ironsworn) stays deferred.
 
-Next, in order: (1) run the phase-8.5 live gate — same-hour HEAD comparison, `SceneDirective`
-output-mode probe first; (2) the prompt pass on "the Director drops the state write", still the
-largest eval finding at three cases; (3) phase 9 (memories + keepers).
+Next, in order: (1) the prompt pass on "the Director drops the state write", still the largest
+eval finding; (2) phase 9 (memories + keepers).
 
 - Phase-4 line delta: `src/aidm` +423 total, of which Python is +315 (budget said +250 VM / −75
   story). The story deletion paid −126; `vm.py` is 411 lines and `actions.json` 108. The VM is

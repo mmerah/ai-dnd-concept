@@ -19,6 +19,7 @@ from aidm.state.packs import (
     write_pack,
 )
 from aidm.state.packs import Record as PackRecord
+from aidm.state.plan import TurnPlanBase
 from aidm.state.sheet import Counter, Sheet
 from aidm.state.world import GameState, Record, ScenarioMeta, WorldState
 
@@ -73,7 +74,8 @@ def _engine(tmp_path: Path) -> Engine:
         id=EngineId("test"),
         badge=("TEST", "grey-6"),
         engine_dir=_engine_dir(tmp_path),
-        action_doc="",
+        plan_type=TurnPlanBase,
+        actions=(),
         offered=lambda engine, state: None,
         check_delta=lambda state, delta: None,
     )

@@ -102,7 +102,7 @@ class GrantCounter(Frozen):
 
 
 class Refill(Frozen):
-    """Refill every counter whose recharge label the rest covers. Engine programs only: the
+    """Refill every counter whose recharge label the rest covers. Engine resolvers only: the
     Director plans a rest, never the refill itself."""
 
     op: Literal["refill"] = "refill"
@@ -279,28 +279,6 @@ type TurnEffect = Annotated[
     | RemoveTag
     | AddRelation
     | RemoveRelation
-    | UntagRelation
-    | RevealRelation
-    | AdvanceThread,
-    Field(discriminator="op"),
-]
-
-# What a VM program may apply: the Director's vocabulary plus the engine-only refill.
-type ProgramEffect = Annotated[
-    Reveal
-    | MoveActor
-    | MoveItem
-    | GainImprovisedItem
-    | AdjustCounter
-    | SpendCounter
-    | Refill
-    | AddTag
-    | RemoveTag
-    | SetNote
-    | SetNumber
-    | AddRelation
-    | RemoveRelation
-    | TagRelation
     | UntagRelation
     | RevealRelation
     | AdvanceThread,
