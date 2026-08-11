@@ -597,6 +597,27 @@ A/B asked for went in and the split closed the whole gap:
     `test_content_parity.py`, and every golden family. 131 passed; ruff, format and basedpyright
     clean.
 
+- **Post-8.6 sweep — the loose ends the phase logged** (2026-08-11). Three IDEAS.md entries, closed
+  in one pass; no fixture regenerated, `SAVE_VERSION` still 46, 131 passed.
+  - Story's TAKEN OUT refusal stopped naming `intent`, deleted at phase 8.5: it now says to leave
+    `action` null and put the collapse in `effects`.
+  - GPT-SIMPLIFICATION §§7-9. §7: one `_scene_sections(scene: BaseScene, ...)` helper feeds the
+    premise/character/here/exits/elsewhere block to both `render_director` and `render_narrator` —
+    typed on the shared base, so `SceneSnapshot` and `VisibleScene` stay separate and neither view
+    can read what the other's boundary strips; the golden prompt bytes did not move. §8: nothing to
+    do beyond folding a single-use `_safe_stem` away — deduplicating four two-line `_path`/`discard`
+    methods costs more than it saves, and the spec forbids a repository abstraction. §9: new
+    `ui/busy.py` holds `refuse_if_busy` (was 4 copies) and an `async with working(session)` that
+    owns the busy/notify/clear lifecycle (was 2 hand-written `try/finally` blocks); `refresh_all` is
+    a loop. Net `src/aidm` **−6** — the win is one definition of the busy lifecycle, not lines.
+  - `docs/ROADMAP.md` rewritten rather than deleted: nothing else carries the non-eval structural
+    weaknesses (no undo, the 6-exchange history, the unbounded trace, unmodelled prepared casting)
+    or the "deliberately not doing" list. Four stale claims were load-bearing: Maintainer/Creator
+    instead of one Worldkeeper and four role calls, typed pack record classes that no longer exist,
+    locations "not a traversable graph" (shipped at phase 2), and reliability numbers quoted as
+    current when live gates are suspended. `README.md` carried the same first two and is fixed with
+    it.
+
 ## Current
 
 Phase 8.5 (both halves) is code complete; its owed live gate is **waived by maintainer decision

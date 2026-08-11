@@ -25,7 +25,7 @@ def resolve_risk(engine: Engine, draft: GameState, action: Risk, rng: Random) ->
     if stress.current == stress.maximum:
         raise ValueError(
             f"{actor.name} is TAKEN OUT: their stress is at its maximum, so they can risk "
-            "nothing. Write what their collapse means into `intent` instead."
+            "nothing. Leave `action` null; what their collapse changes belongs in `effects`."
         )
     if action.hindering_tag_id is not None and sheet.tag(action.hindering_tag_id) is None:
         raise ValueError(

@@ -177,10 +177,6 @@ def _write(path: Path, body: str) -> None:
 
 
 def _safe_path(directory: Path, stem: str, suffix: str) -> Path:
-    return directory / f"{_safe_stem(stem)}{suffix}"
-
-
-def _safe_stem(stem: str) -> str:
     if fullmatch(_SAVE_SLUG_PATTERN, stem) is None:
         raise ValueError(f"invalid storage slug {stem!r}")
-    return stem
+    return directory / f"{stem}{suffix}"

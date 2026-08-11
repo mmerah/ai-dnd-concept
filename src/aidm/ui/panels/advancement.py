@@ -5,6 +5,7 @@ from nicegui import ui
 from aidm.app.session import GameSession
 from aidm.state.effects import SheetDelta
 from aidm.state.sheet import AdvancementOffer
+from aidm.ui.busy import refuse_if_busy, working
 
 
 def advancement_panel(session: GameSession, refresh: Callable[[], None]) -> None:
@@ -40,17 +41,11 @@ def _intent_form(session: GameSession, refresh: Callable[[], None]) -> None:
             ui.notify("Say how you want to grow first.", type="warning")
             return
         # Checked at click time: a turn may have started after the panel rendered.
-        if session.busy:
-            ui.notify("Finish the current turn first.", type="warning")
+        if refuse_if_busy(session):
             return
-        session.busy = True
-        try:
+        async with working(session):
             session.drafted = await session.propose(intent)
-        except Exception as error:
-            ui.notify(f"{type(error).__name__}: {error}", type="negative", multi_line=True)
-        finally:
-            session.busy = False
-            refresh()
+        refresh()
 
     ui.button("Propose", on_click=propose).props("color=primary")
 
@@ -70,8 +65,7 @@ def _review(session: GameSession, drafted: SheetDelta, refresh: Callable[[], Non
         refresh()
 
     def confirm() -> None:
-        if session.busy:
-            ui.notify("Finish the current turn first.", type="warning")
+        if refuse_if_busy(session):
             return
         try:
             _ = session.apply_proposal(drafted)

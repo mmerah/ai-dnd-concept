@@ -7,6 +7,7 @@ from aidm.app.session import GameSession, Runtime
 from aidm.config import load_settings
 from aidm.state.base import content_id
 
+from .busy import refuse_if_busy, working
 from .components.engine import show_engine_badge
 from .home import home_page
 from .panels import advancement, chat, roles, state, trace
@@ -39,11 +40,8 @@ class GameView:
         state.state_panel(self.session)
 
     def refresh_all(self) -> None:
-        self.chat.refresh()
-        self.roles.refresh()
-        self.trace.refresh()
-        self.advancement.refresh()
-        self.state.refresh()
+        for panel in (self.chat, self.roles, self.trace, self.advancement, self.state):
+            panel.refresh()
 
 
 def on_step(view: GameView, step: str) -> None:
@@ -55,30 +53,21 @@ async def submit(view: GameView, box: ui.input) -> None:
     session = view.session
     prompt = (box.value or "").strip()
     LOGGER.info("player submitted prompt: non_empty=%s busy=%s", bool(prompt), session.busy)
-    if not prompt:
+    if not prompt or refuse_if_busy(session):
         return
-    if session.busy:
-        ui.notify("Finish the current turn first.", type="warning")
-        return
-    session.busy = True
     box.value = ""
-    try:
+    async with working(session):
         was_offered = session.offer() is not None
         await session.submit(prompt, on_step=lambda step: on_step(view, step))
         if not was_offered and session.offer() is not None:
             ui.notify("Advancement unlocked. Open the Advancement tab to choose it.")
-    except Exception as error:
-        ui.notify(f"{type(error).__name__}: {error}", type="negative", multi_line=True)
-    finally:
-        session.busy = False
-        session.step = None
-        view.refresh_all()
+    session.step = None
+    view.refresh_all()
 
 
 def restart(view: GameView) -> None:
     session = view.session
-    if session.busy:
-        ui.notify("Finish the current turn first.", type="warning")
+    if refuse_if_busy(session):
         return
     session.restart()
     view.refresh_all()

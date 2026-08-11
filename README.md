@@ -6,17 +6,19 @@ A role-separated narrative game platform with two first-party rules engines:
 - **AIDM 5e** — the D&D 5e implementation, isolated in its own engine package.
 
 ```text
-prompt → DIRECTOR → resolve → NARRATOR → MAINTAINER → CREATOR → growth + commit
-          one plan   engine code  prose      Growth      Entity
+prompt → SCENE → RULES → resolve → hooks → NARRATOR → WORLDKEEPER → commit
+      directive  one plan  engine code  facts fire   prose      new canon
 ```
 
-The Director answers with one structured turn plan — the single action resolved this turn, its
-fiction consequences keyed by outcome, and unconditional effects. Engine code validates the plan
-against committed state, resolves it deterministically on a draft (rolls, costs, intrinsic
-outcomes), and core commits a fully revalidated state. An engine is data plus typed actions and
-their resolvers: a sheet template, typed content records, and the rules procedure in code. The
-Narrator receives no unrevealed canon; for visible entities it receives the same state as the
-other roles, with instructions to translate mechanics into fiction rather than recite stat blocks.
+The Scene Director decides what the turn is about; the Rules Director answers with one structured
+turn plan — the single action resolved this turn, its fiction consequences keyed by outcome, and
+unconditional effects. Engine code validates the plan against committed state, resolves it
+deterministically on a draft (rolls, costs, intrinsic outcomes), committed Facts fire the
+scenario's authored hooks, and core commits a fully revalidated state. An engine is ordinary typed
+Python plus content: a sheet template, action models with their resolvers, and content records
+whose `facts` map carries every mechanical value the resolver reads. The Narrator receives no
+unrevealed canon; for visible entities it receives the same state as the other roles, with
+instructions to translate mechanics into fiction rather than recite stat blocks.
 
 ## Run
 

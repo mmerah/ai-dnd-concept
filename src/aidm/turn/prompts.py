@@ -177,22 +177,7 @@ def render_director(
     )
     return _sections(
         (
-            _premise(scenario),
-            (
-                "PLAYER CHARACTER",
-                _character(
-                    scene.player, scene.location, scene.inventory, describe, label=_labelled
-                ),
-            ),
-            (
-                "HERE WITH THE PLAYER",
-                _entities(scene.here, describe, placement=scene.placement_of),
-            ),
-            ("EXITS FROM HERE", _exits(scene)),
-            (
-                "KNOWN TO THE PLAYER, BUT ELSEWHERE",
-                _entities(scene.known_elsewhere, describe, placement=scene.placement_of),
-            ),
+            *_scene_sections(scene, describe, scenario, label=_labelled),
             *canon,
             ("PLAYER ACTION", prompt),
         )
@@ -211,20 +196,7 @@ def render_narrator(
 ) -> str:
     return _sections(
         (
-            _premise(scenario),
-            (
-                "PLAYER CHARACTER",
-                _character(scene.player, scene.location, scene.inventory, describe, label=_named),
-            ),
-            (
-                "HERE WITH THE PLAYER",
-                _entities(scene.here, describe, placement=scene.placement_of),
-            ),
-            ("EXITS FROM HERE", _exits(scene)),
-            (
-                "KNOWN TO THE PLAYER, BUT ELSEWHERE",
-                _entities(scene.known_elsewhere, describe, placement=scene.placement_of),
-            ),
+            *_scene_sections(scene, describe, scenario, label=_named),
             ("THE DIRECTOR'S PLAN — what was meant, not what happened", focus),
             ("SPEAKER", _speaker(scene, speaker_id)),
             ("WHAT HAPPENED", evidence),
@@ -264,6 +236,24 @@ def _sections(parts: Iterable[tuple[str, str]]) -> str:
 
 def _premise(scenario: ScenarioMeta) -> tuple[str, str]:
     return "SCENARIO", f"{scenario.title}\n{scenario.premise}"
+
+
+def _scene_sections(
+    scene: BaseScene, describe: EntityRenderer, scenario: ScenarioMeta, *, label: Label
+) -> tuple[tuple[str, str], ...]:
+    return (
+        _premise(scenario),
+        (
+            "PLAYER CHARACTER",
+            _character(scene.player, scene.location, scene.inventory, describe, label=label),
+        ),
+        ("HERE WITH THE PLAYER", _entities(scene.here, describe, placement=scene.placement_of)),
+        ("EXITS FROM HERE", _exits(scene)),
+        (
+            "KNOWN TO THE PLAYER, BUT ELSEWHERE",
+            _entities(scene.known_elsewhere, describe, placement=scene.placement_of),
+        ),
+    )
 
 
 def _character(
