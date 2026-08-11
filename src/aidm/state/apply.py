@@ -6,25 +6,18 @@ from .base import PLAYER_ID, Entity, EntityId, Kind, Slug, slug
 from .effects import (
     WORLD_OPS,
     AddRef,
-    AddRelation,
-    AddTag,
-    AdjustCounter,
     AdvanceThread,
+    CounterChange,
     Effect,
     GainImprovisedItem,
     GrantCounter,
-    MoveActor,
-    MoveItem,
+    Move,
     Refill,
-    RemoveRelation,
-    RemoveTag,
+    RelationChange,
     Reveal,
-    RevealRelation,
     SetNote,
     SetNumber,
-    SpendCounter,
-    TagRelation,
-    UntagRelation,
+    TagChange,
 )
 from .facts import CORE, Fact
 from .sheet import Counter, Sheet, SheetTag, pool
@@ -38,30 +31,25 @@ def apply_effect(
     *,
     advancing: bool = False,
 ) -> list[Fact]:
-    """Mutates the draft, raising `ValueError` with a model-readable reason on a refused
-    precondition. There is no separate check: a plan is validated by trial-applying it.
-    `advancing` grows the player's sheet where a turn only changes what is already on it."""
     _permitted(effect, advancing=advancing)
     match effect:
         case Reveal(entity_id=entity_id):
             return draft.reveal(_require(draft, entity_id))
-        case MoveActor():
-            return _move_actor(draft, effect)
-        case MoveItem():
-            return _move_item(draft, effect)
+        case Move():
+            return _move(draft, effect)
         case GainImprovisedItem(item_name=item_name):
             return _improvise(draft, item_name, default_rules)
-        case AdjustCounter():
+        case CounterChange(mode="adjust"):
             return _adjust(draft, effect)
-        case SpendCounter():
+        case CounterChange():
             return _spend(draft, effect)
         case GrantCounter():
             return _grant(draft, effect)
         case Refill():
             return _refill(draft, effect)
-        case AddTag():
+        case TagChange(mode="add"):
             return _add_tag(draft, effect)
-        case RemoveTag():
+        case TagChange():
             return _remove_tag(draft, effect)
         case SetNote():
             return _set_note(draft, effect)
@@ -69,15 +57,13 @@ def apply_effect(
             return _set_number(draft, effect, advancing=advancing)
         case AddRef():
             return _add_ref(draft, effect)
-        case AddRelation():
+        case RelationChange(mode="add"):
             return _add_relation(draft, effect)
-        case RemoveRelation():
+        case RelationChange(mode="remove"):
             return _remove_relation(draft, effect)
-        case TagRelation():
-            return _tag_relation(draft, effect)
-        case UntagRelation():
+        case RelationChange(mode="untag"):
             return _untag_relation(draft, effect)
-        case RevealRelation():
+        case RelationChange():
             return _reveal_relation(draft, effect)
         case AdvanceThread():
             return _advance_thread(draft, effect)
@@ -93,7 +79,7 @@ def _permitted(effect: Effect, *, advancing: bool) -> None:
         return
     if isinstance(effect, (GrantCounter, AddRef)):
         raise ValueError(f"{effect.op!r} belongs to advancement, not to a turn")
-    if isinstance(effect, AdjustCounter) and effect.maximum is not None:
+    if isinstance(effect, CounterChange) and effect.maximum is not None:
         raise ValueError("a turn moves a pool inside its bounds; only advancement raises a maximum")
 
 
@@ -124,13 +110,6 @@ def _require_kind(state: GameState, entity_id: EntityId, kind: Kind) -> Entity:
             "Use an id of the kind this field asks for."
         )
     return entity
-
-
-def _require_carried(state: GameState, item_id: EntityId) -> Entity:
-    item = _require_kind(state, item_id, "item")
-    if item.parent_id != PLAYER_ID:
-        raise ValueError(f"the player does not carry item {item_id!r}")
-    return item
 
 
 def _counter_of(sheet: Sheet, entity: Entity, key: str) -> Counter:
@@ -183,8 +162,18 @@ def _require_exit(draft: GameState, here: EntityId, destination: Entity) -> None
         raise ValueError(f"the way to {destination.name} is locked and must be dealt with first")
 
 
-def _move_actor(draft: GameState, effect: MoveActor) -> list[Fact]:
-    destination = _require_kind(draft, effect.location_id, "location")
+def _move(draft: GameState, effect: Move) -> list[Fact]:
+    if effect.entity_id is not None and effect.entity_id != PLAYER_ID:
+        moving = _require(draft, effect.entity_id)
+        if moving.kind == "item":
+            return _move_item(draft, moving, effect.to_id)
+    return _move_actor(draft, effect)
+
+
+def _move_actor(draft: GameState, effect: Move) -> list[Fact]:
+    if effect.to_id is None:
+        raise ValueError("an actor moves to a location; name it in `to_id`")
+    destination = _require_kind(draft, effect.to_id, "location")
     here = draft.player_location
     actor_id = effect.entity_id
     if actor_id is None or actor_id == PLAYER_ID:
@@ -202,14 +191,12 @@ def _move_actor(draft: GameState, effect: MoveActor) -> list[Fact]:
     return [*revealed, draft.move(actor, destination)]
 
 
-def _move_item(draft: GameState, effect: MoveItem) -> list[Fact]:
-    to_id = effect.to_id
+def _move_item(draft: GameState, item: Entity, to_id: EntityId | None) -> list[Fact]:
     if to_id is None or to_id == PLAYER_ID:
-        item = _require_kind(draft, effect.item_id, "item")
         if item.parent_id == PLAYER_ID:
-            raise ValueError(f"the player already carries item {effect.item_id!r}")
+            raise ValueError(f"the player already carries item {item.id!r}")
         if item.parent_id != draft.player_location:
-            raise ValueError(f"item {effect.item_id!r} is not loose at the player's location")
+            raise ValueError(f"item {item.id!r} is not loose at the player's location")
         return [*draft.reveal(item), draft.move(item, draft.player)]
     receiver = _require(draft, to_id)
     if receiver.kind == "location":
@@ -217,7 +204,8 @@ def _move_item(draft: GameState, effect: MoveItem) -> list[Fact]:
             raise ValueError("an item is set down at the player's own location, nowhere else")
     else:
         receiver = require_actor_here(draft, to_id)
-    item = _require_carried(draft, effect.item_id)
+    if item.parent_id != PLAYER_ID:
+        raise ValueError(f"the player does not carry item {item.id!r}")
     return [*draft.reveal(item), draft.move(item, receiver)]
 
 
@@ -236,20 +224,20 @@ def _improvise(
     return [created, draft.move(item, draft.player)]
 
 
-def _adjust(draft: GameState, effect: AdjustCounter) -> list[Fact]:
+def _adjust(draft: GameState, effect: CounterChange) -> list[Fact]:
     entity, sheet, seen = _target(draft, effect.entity_id)
     held = _counter_of(sheet, entity, effect.counter)
     if effect.maximum is not None:
         held.maximum = effect.maximum
     before = held.current
-    held.current = held.clamped(before + effect.delta)
+    held.current = held.clamped(before + effect.amount)
     landed = held.current - before
     if landed == 0 and effect.maximum is None:
         return seen
     return [*seen, _changed(entity, effect.counter, held, landed, effect.why)]
 
 
-def _spend(draft: GameState, effect: SpendCounter) -> list[Fact]:
+def _spend(draft: GameState, effect: CounterChange) -> list[Fact]:
     entity, sheet, seen = _target(draft, effect.entity_id)
     held = _counter_of(sheet, entity, effect.counter)
     if held.current - effect.amount < held.minimum:
@@ -299,7 +287,7 @@ def _refill(draft: GameState, effect: Refill) -> list[Fact]:
     return [*seen, entity_fact(entity, "recharged", trace, data)]
 
 
-def _add_tag(draft: GameState, effect: AddTag) -> list[Fact]:
+def _add_tag(draft: GameState, effect: TagChange) -> list[Fact]:
     entity, sheet, seen = _target(draft, effect.entity_id)
     if sheet.tag(effect.tag_id) is not None:
         raise ValueError(f"{entity.name} already carries the tag {effect.tag_id!r}")
@@ -312,7 +300,7 @@ def _add_tag(draft: GameState, effect: AddTag) -> list[Fact]:
     ]
 
 
-def _remove_tag(draft: GameState, effect: RemoveTag) -> list[Fact]:
+def _remove_tag(draft: GameState, effect: TagChange) -> list[Fact]:
     entity, sheet, seen = _target(draft, effect.entity_id)
     tag = sheet.tag(effect.tag_id)
     if tag is None:
@@ -368,7 +356,7 @@ def _relation_of(
     return relation, draft.world.require(relation.source), draft.world.require(relation.target)
 
 
-def _add_relation(draft: GameState, effect: AddRelation) -> list[Fact]:
+def _add_relation(draft: GameState, effect: RelationChange) -> list[Fact]:
     if draft.world.relation(effect.kind, effect.source, effect.target) is not None:
         raise ValueError(
             f"a {effect.kind!r} relation already joins {effect.source!r} and {effect.target!r}"
@@ -394,7 +382,7 @@ def _add_relation(draft: GameState, effect: AddRelation) -> list[Fact]:
     return [*seen, _explained_fact(source, "relation_added", trace, data, effect.why)]
 
 
-def _remove_relation(draft: GameState, effect: RemoveRelation) -> list[Fact]:
+def _remove_relation(draft: GameState, effect: RelationChange) -> list[Fact]:
     relation, source, target = _relation_of(draft, effect.kind, effect.source, effect.target)
     del draft.world.relations[relation.id]
     trace = f"{source.name} — {relation.kind} — {target.name} broken"
@@ -404,19 +392,7 @@ def _remove_relation(draft: GameState, effect: RemoveRelation) -> list[Fact]:
     ]
 
 
-def _tag_relation(draft: GameState, effect: TagRelation) -> list[Fact]:
-    relation, source, target = _relation_of(draft, effect.kind, effect.source, effect.target)
-    if effect.tag in relation.tags:
-        raise ValueError(f"the {relation.kind!r} relation already carries the tag {effect.tag!r}")
-    relation.tags.append(effect.tag)
-    trace = f"{source.name} — {relation.kind} — {target.name} tagged {effect.tag}"
-    data = {"kind": relation.kind, "target": relation.target, "tag": effect.tag}
-    return [
-        _explained_fact(source, "relation_tagged", trace, data, effect.why, narrate=relation.known)
-    ]
-
-
-def _untag_relation(draft: GameState, effect: UntagRelation) -> list[Fact]:
+def _untag_relation(draft: GameState, effect: RelationChange) -> list[Fact]:
     relation, source, target = _relation_of(draft, effect.kind, effect.source, effect.target)
     if effect.tag not in relation.tags:
         held = ", ".join(sorted(relation.tags)) or "(none)"
@@ -433,7 +409,7 @@ def _untag_relation(draft: GameState, effect: UntagRelation) -> list[Fact]:
     ]
 
 
-def _reveal_relation(draft: GameState, effect: RevealRelation) -> list[Fact]:
+def _reveal_relation(draft: GameState, effect: RelationChange) -> list[Fact]:
     relation, source, target = _relation_of(draft, effect.kind, effect.source, effect.target)
     if relation.known:
         return []
@@ -441,7 +417,7 @@ def _reveal_relation(draft: GameState, effect: RevealRelation) -> list[Fact]:
     relation.known = True
     trace = f"{source.name} — {relation.kind} — {target.name} revealed"
     data = {"kind": relation.kind, "target": relation.target}
-    return [*seen, entity_fact(source, "relation_revealed", trace, data)]
+    return [*seen, _explained_fact(source, "relation_revealed", trace, data, effect.why)]
 
 
 def _advance_thread(draft: GameState, effect: AdvanceThread) -> list[Fact]:
@@ -466,9 +442,7 @@ def _advance_thread(draft: GameState, effect: AdvanceThread) -> list[Fact]:
 def fire_hooks(
     draft: GameState, facts: Sequence[Fact], default_rules: Callable[[Entity], Sheet]
 ) -> list[Fact]:
-    """One pass over unfired hooks per turn; chaining happens across turns, never as a fixpoint.
-    An authored effect that refuses records the reason and skips that hook's remainder rather than
-    killing the player's turn."""
+    """One pass over unfired hooks per turn; chaining happens across turns, never as a fixpoint."""
     fired: list[Fact] = []
     for hook in draft.hooks:
         if hook.id in draft.fired_hooks or not any(hook.match.matches(fact) for fact in facts):

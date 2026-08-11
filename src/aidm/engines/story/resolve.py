@@ -4,7 +4,7 @@ from aidm.engines.loader import Engine
 from aidm.state.apply import apply_effect, require_actor_here
 from aidm.state.base import PLAYER_ID, Entity, Slug
 from aidm.state.dice import roll
-from aidm.state.effects import AdjustCounter, Reveal
+from aidm.state.effects import CounterChange, Reveal
 from aidm.state.facts import Fact
 from aidm.state.world import GameState, sheet_of
 
@@ -57,10 +57,11 @@ def resolve_risk(
         facts.extend(
             apply_effect(
                 draft,
-                AdjustCounter(
+                CounterChange(
+                    mode="adjust",
                     entity_id=action.actor_id,
                     counter="growth",
-                    delta=1,
+                    amount=1,
                     why="a setback earns growth",
                 ),
                 engine.default_rules,

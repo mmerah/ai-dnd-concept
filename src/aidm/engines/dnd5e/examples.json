@@ -5,7 +5,8 @@
         "outcome": "success",
         "effects": [
           {
-            "op": "add-tag",
+            "op": "tag-change",
+            "mode": "add",
             "entity_id": "cloister_rat",
             "tag_id": "limping",
             "text": "A hind leg drags behind it."
@@ -16,7 +17,8 @@
         "outcome": "failure",
         "effects": [
           {
-            "op": "add-tag",
+            "op": "tag-change",
+            "mode": "add",
             "entity_id": "player",
             "tag_id": "crowded",
             "text": "The wasted swing let the rat inside his reach."
@@ -37,7 +39,8 @@
         "outcome": "success",
         "effects": [
           {
-            "op": "add-tag",
+            "op": "tag-change",
+            "mode": "add",
             "entity_id": "cloister_rat",
             "tag_id": "scorched",
             "text": "Its fur is burnt away in patches."
@@ -59,7 +62,8 @@
         "outcome": "success",
         "effects": [
           {
-            "op": "remove-tag",
+            "op": "tag-change",
+            "mode": "remove",
             "entity_id": "player",
             "tag_id": "poisoned"
           }
@@ -69,7 +73,8 @@
         "outcome": "failure",
         "effects": [
           {
-            "op": "add-tag",
+            "op": "tag-change",
+            "mode": "add",
             "entity_id": "player",
             "tag_id": "shaking",
             "text": "The venom still has hold of his hands."
@@ -88,7 +93,8 @@
   {
     "effects": [
       {
-        "op": "remove-tag",
+        "op": "tag-change",
+        "mode": "remove",
         "entity_id": "player",
         "tag_id": "poisoned"
       }
@@ -100,7 +106,8 @@
         "outcome": "success",
         "effects": [
           {
-            "op": "add-tag",
+            "op": "tag-change",
+            "mode": "add",
             "entity_id": "cloister_rat",
             "tag_id": "prone",
             "text": "On its back, legs pedaling, unable to right itself."
@@ -146,7 +153,8 @@
         "outcome": "failure",
         "effects": [
           {
-            "op": "add-tag",
+            "op": "tag-change",
+            "mode": "add",
             "entity_id": "vault",
             "tag_id": "jammed-seal",
             "text": "The bent seal now binds the door shut."

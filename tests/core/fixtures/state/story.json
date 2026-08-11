@@ -1,5 +1,5 @@
 {
-  "save_version": 46,
+  "save_version": 47,
   "scenario_id": "whispering-vault",
   "character_id": "kael",
   "scenario": {
@@ -389,7 +389,8 @@
           "why": "the vault door is found"
         },
         {
-          "op": "add-tag",
+          "op": "tag-change",
+          "mode": "add",
           "entity_id": "vault",
           "tag_id": "warded",
           "text": "The seal answers a touch, and something behind the door answers with it.",

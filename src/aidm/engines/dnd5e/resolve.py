@@ -7,7 +7,7 @@ from aidm.engines.loader import Engine
 from aidm.state.apply import apply_effect, require_actor_here
 from aidm.state.base import Entity, Slug
 from aidm.state.dice import roll
-from aidm.state.effects import AdjustCounter, Refill, Reveal, SetNote, SpendCounter
+from aidm.state.effects import CounterChange, Refill, Reveal, SetNote
 from aidm.state.facts import Fact
 from aidm.state.packs import CollectionName, Content, ContentMiss, Record, parse_ref
 from aidm.state.plan import TurnPlanBase, apply_branch
@@ -90,7 +90,9 @@ def resolve_use_feature(
     facts.extend(
         apply_effect(
             draft,
-            SpendCounter(entity_id=action.actor_id, counter=action.counter, amount=1),
+            CounterChange(
+                mode="spend", entity_id=action.actor_id, counter=action.counter, amount=1
+            ),
             engine.default_rules,
         )
     )
@@ -100,10 +102,11 @@ def resolve_use_feature(
         facts.extend(
             apply_effect(
                 draft,
-                AdjustCounter(
+                CounterChange(
+                    mode="adjust",
                     entity_id=action.actor_id,
                     counter="hp",
-                    delta=rolled.total,
+                    amount=rolled.total,
                     why=action.counter,
                 ),
                 engine.default_rules,
@@ -188,10 +191,11 @@ def resolve_attack(engine: Engine, draft: GameState, action: Attack, rng: Random
     facts.extend(
         apply_effect(
             draft,
-            AdjustCounter(
+            CounterChange(
+                mode="adjust",
                 entity_id=action.target_id,
                 counter="hp",
-                delta=-hurt.total,
+                amount=-hurt.total,
                 why=f"{actor.name}'s attack",
             ),
             engine.default_rules,
@@ -236,8 +240,11 @@ def resolve_cast_spell(
         facts.extend(
             apply_effect(
                 draft,
-                SpendCounter(
-                    entity_id=action.actor_id, counter=f"slot-{action.slot_level}", amount=1
+                CounterChange(
+                    mode="spend",
+                    entity_id=action.actor_id,
+                    counter=f"slot-{action.slot_level}",
+                    amount=1,
                 ),
                 engine.default_rules,
             )
@@ -296,10 +303,11 @@ def resolve_cast_spell(
         facts.extend(
             apply_effect(
                 draft,
-                AdjustCounter(
+                CounterChange(
+                    mode="adjust",
                     entity_id=action.target_id,
                     counter="hp",
-                    delta=-(dealt.total // halver),
+                    amount=-(dealt.total // halver),
                     why=spell.name,
                 ),
                 engine.default_rules,
@@ -318,10 +326,11 @@ def resolve_cast_spell(
         facts.extend(
             apply_effect(
                 draft,
-                AdjustCounter(
+                CounterChange(
+                    mode="adjust",
                     entity_id=action.target_id or action.actor_id,
                     counter="hp",
-                    delta=healed.total,
+                    amount=healed.total,
                     why=spell.name,
                 ),
                 engine.default_rules,

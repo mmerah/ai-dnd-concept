@@ -32,7 +32,7 @@ STEPS = ("scene", "director", "resolve", "hooks", "narrator", "worldkeeper")
 async def test_an_engine_uses_the_shared_pipeline_and_safe_narrator_prompt() -> None:
     engine, state = initialized()
     steps: list[str] = []
-    director = FunctionModel(scripted(plan(effects=[{"op": "move-item", "item_id": "vault_map"}])))
+    director = FunctionModel(scripted(plan(effects=[{"op": "move", "entity_id": "vault_map"}])))
     narrator = FunctionModel(scripted(text("A creased chart slides into your hand.")))
     result = await played(
         engine,
@@ -70,7 +70,9 @@ async def test_the_resolver_applies_only_the_branch_of_the_outcome_rolled() -> N
     def branch(outcome: str) -> dict[str, object]:
         return {
             "outcome": outcome,
-            "effects": [{"op": "add-tag", "entity_id": "player", "tag_id": outcome}],
+            "effects": [
+                {"op": "tag-change", "mode": "add", "entity_id": "player", "tag_id": outcome}
+            ],
         }
 
     director = FunctionModel(
@@ -227,7 +229,7 @@ async def test_a_failed_role_never_mutates_the_input_state() -> None:
         del messages, info
         raise RuntimeError("narrator exploded")
 
-    director = FunctionModel(scripted(plan(effects=[{"op": "move-item", "item_id": "vault_map"}])))
+    director = FunctionModel(scripted(plan(effects=[{"op": "move", "entity_id": "vault_map"}])))
     before = state.model_dump_json()
     with pytest.raises(RuntimeError, match="narrator exploded"):
         await played(

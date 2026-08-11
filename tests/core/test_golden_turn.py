@@ -25,7 +25,7 @@ HISTORY = (
 NARRATION = "The flagstone lifts. Beyond the door, something shifts its weight and waits."
 SEED = 11
 # One unconditional effect every engine shares, so the two traces differ only by their action.
-TAKE_THE_MAP = {"op": "move-item", "item_id": "vault_map"}
+TAKE_THE_MAP = {"op": "move", "entity_id": "vault_map"}
 CREATIONS = [
     {
         "kind": "actor",
@@ -43,7 +43,7 @@ TURN_STEPS = ("scene", "director", "resolve", "hooks", "narrator", "worldkeeper"
 def _branch(outcome: str) -> dict[str, object]:
     return {
         "outcome": outcome,
-        "effects": [{"op": "add-tag", "entity_id": "player", "tag_id": outcome}],
+        "effects": [{"op": "tag-change", "mode": "add", "entity_id": "player", "tag_id": outcome}],
     }
 
 

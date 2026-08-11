@@ -4,13 +4,13 @@
     "entity_id": "hidden-cellar"
   },
   {
-    "op": "move-actor",
+    "op": "move",
     "entity_id": "pale-hound",
-    "location_id": "courtyard"
+    "to_id": "courtyard"
   },
   {
-    "op": "move-item",
-    "item_id": "iron-key",
+    "op": "move",
+    "entity_id": "iron-key",
     "to_id": "warden"
   },
   {
@@ -18,37 +18,43 @@
     "item_name": "a handful of gravel"
   },
   {
-    "op": "adjust-counter",
+    "op": "counter-change",
+    "mode": "adjust",
     "entity_id": "warden",
     "counter": "hp",
-    "delta": -3,
+    "amount": -3,
     "why": "clawed by the hound"
   },
   {
-    "op": "spend-counter",
+    "op": "counter-change",
+    "mode": "spend",
     "entity_id": "player",
     "counter": "rations",
     "amount": 1
   },
   {
-    "op": "add-tag",
+    "op": "tag-change",
+    "mode": "add",
     "entity_id": "warden",
     "tag_id": "shaken",
     "text": "(condition) Rattled and wary until they regroup."
   },
   {
-    "op": "remove-tag",
+    "op": "tag-change",
+    "mode": "remove",
     "entity_id": "player",
     "tag_id": "poisoned"
   },
   {
-    "op": "reveal-relation",
+    "op": "relation-change",
+    "mode": "reveal",
     "kind": "connected",
     "source": "courtyard",
     "target": "hidden-cellar"
   },
   {
-    "op": "untag-relation",
+    "op": "relation-change",
+    "mode": "untag",
     "kind": "connected",
     "source": "courtyard",
     "target": "hidden-cellar",
@@ -56,14 +62,16 @@
     "why": "the iron key turns at last"
   },
   {
-    "op": "add-relation",
+    "op": "relation-change",
+    "mode": "add",
     "kind": "party-member",
     "source": "warden",
     "target": "player",
     "why": "the warden agrees to come along"
   },
   {
-    "op": "remove-relation",
+    "op": "relation-change",
+    "mode": "remove",
     "kind": "party-member",
     "source": "warden",
     "target": "player",

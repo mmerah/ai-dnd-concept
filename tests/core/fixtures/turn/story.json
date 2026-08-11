@@ -1,5 +1,5 @@
 {
-  "save_version": 46,
+  "save_version": 47,
   "facts": [
     {
       "source": "core",
@@ -114,8 +114,8 @@
       "output": {
         "effects": [
           {
-            "op": "move-item",
-            "item_id": "vault_map",
+            "op": "move",
+            "entity_id": "vault_map",
             "to_id": null
           }
         ],
@@ -124,7 +124,8 @@
             "outcome": "strong",
             "effects": [
               {
-                "op": "add-tag",
+                "op": "tag-change",
+                "mode": "add",
                 "entity_id": "player",
                 "tag_id": "strong",
                 "text": "",
@@ -136,7 +137,8 @@
             "outcome": "mixed",
             "effects": [
               {
-                "op": "add-tag",
+                "op": "tag-change",
+                "mode": "add",
                 "entity_id": "player",
                 "tag_id": "mixed",
                 "text": "",
@@ -148,7 +150,8 @@
             "outcome": "setback",
             "effects": [
               {
-                "op": "add-tag",
+                "op": "tag-change",
+                "mode": "add",
                 "entity_id": "player",
                 "tag_id": "setback",
                 "text": "",

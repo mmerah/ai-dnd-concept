@@ -318,7 +318,7 @@ def _apply(setup: Setup, step: SetupStep) -> None:
         case SetLevel():
             _level_up_to(setup.engine.content, state, step.value)
         case AddTag():
-            # Mirrors the runtime `add-tag` effect, so the rendered scene matches real play.
+            # Mirrors the runtime `tag-change` effect, so the rendered scene matches real play.
             name = step.tag.replace("-", " ").title()
             _sheet(state, step.entity).tags.append(SheetTag(id=step.tag, name=name, text=step.text))
         case SetNote():
@@ -395,7 +395,8 @@ def _branch_adds_tag(plan: JsonValue, step: BranchAddsTag) -> bool:
         and isinstance(effects := branch.get("effects"), list)
         and any(
             isinstance(effect, dict)
-            and effect.get("op") == "add-tag"
+            and effect.get("op") == "tag-change"
+            and effect.get("mode") == "add"
             and effect.get("entity_id") == step.entity
             and effect.get("tag_id") == step.tag
             for effect in effects

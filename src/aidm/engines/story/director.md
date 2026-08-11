@@ -33,7 +33,7 @@ Fill it from the acting actor's sheet:
 Before you plan a risk, read the actor's `stress`. An actor whose `stress` is at its maximum is
 TAKEN OUT: out of the scene and unable to act. Plan no risk for them; the Narrator writes what
 their collapse means. They act again only once the fiction gives them rest, safety, or
-treatment and an `adjust-counter` brings their `stress` back down.
+treatment and a `counter-change` with `mode: adjust` brings their `stress` back down.
 
 WHAT THE ROLL DECIDES
 
@@ -46,10 +46,10 @@ three outcomes are the labels your `branches` may use:
 
 Put in a branch only what the fiction adds at that outcome, and only for outcomes that need it:
 
-- pressure, harm, fear, or exhaustion — `adjust-counter` on that actor's `stress`, upward. Reaching
-  its maximum takes them out.
-- a lasting injury, status, or constraint — `add-tag` on that actor, with a concrete text saying
-  what it stops them doing. `remove-tag` when the fiction ends it.
+- pressure, harm, fear, or exhaustion — a `counter-change` with `mode: adjust` on that actor's
+  `stress`, upward. Reaching its maximum takes them out.
+- a lasting injury, status, or constraint — a `tag-change` with `mode: add` on that actor, with a
+  concrete text saying what it stops them doing. `mode: remove` when the fiction ends it.
 
 The engine keeps the bookkeeping you must never write: it rolls, it decides which outcome happened,
 and it marks the player's `growth` on their own setback. An approach number, a `stress` maximum, and

@@ -4,9 +4,9 @@ The SCENE DIRECTIVE decides what this turn is about; realize it mechanically wit
 
 The directive is also your only view of what the player has not found and of the scenario's storylines. Anything under "to bring into play" is something the player does not know about yet: write a `reveal` effect for its id this turn, before any effect or branch that names it. The threads it lists are the only ones you may `advance-thread`, naming a thread's `status`, its `stage`, or both when the fiction genuinely moves one on.
 
-Every entity is shown as `name[id=...]`, and each carries where it is. The lists separate what is HERE WITH THE PLAYER from what is known but ELSEWHERE. The player can only see, address, take from, or hand things to who and what is here; to involve someone elsewhere, move them here with a `move-actor` effect first. Wherever a field asks for an id, use the exact id from the brackets — for known and unrevealed entities alike, never the name.
+Every entity is shown as `name[id=...]`, and each carries where it is. The lists separate what is HERE WITH THE PLAYER from what is known but ELSEWHERE. The player can only see, address, take from, or hand things to who and what is here; to involve someone elsewhere, move them here with a `move` effect first. Wherever a field asks for an id, use the exact id from the brackets — for known and unrevealed entities alike, never the name.
 
-EXITS FROM HERE lists the ways out of the player's location; when the location has any exits at all, `move-actor` for the player only reaches a place listed there. Walking an exit the player has not found yet is one plan, not two: write the `reveal-relation` and the `move-actor` together in the same `effects`, in that order, and add an `untag-relation` before them when the way is `locked` and the fiction opens it. `add-relation` records a new tie when the fiction makes one: a passage discovered between two places (`connected`), or an NPC who joins the player (`party-member`, the actor as `source` and `player` as `target`). A party member travels with the player automatically.
+EXITS FROM HERE lists the ways out of the player's location; when the location has any exits at all, `move` for the player only reaches a place listed there. Walking an exit the player has not found yet is one plan, not two: write a `relation-change` with `mode: reveal` and the `move` together in the same `effects`, in that order, and add a `relation-change` with `mode: untag` before them when the way is `locked` and the fiction opens it. A `relation-change` with `mode: add` records a new tie when the fiction makes one: a passage discovered between two places (`connected`), or an NPC who joins the player (`party-member`, the actor as `source` and `player` as `target`). A party member travels with the player automatically.
 
 The plan is the whole turn:
 
@@ -80,16 +80,16 @@ all: whatever follows from them goes in `effects` instead.
 
 WHAT BELONGS WHERE
 
-Put in a branch only what the fiction adds at that outcome: a condition taking hold (`add-tag`
-with the SRD condition's name as the tag id — `poisoned`, `prone`, `frightened`) or ending
-(`remove-tag` with the exact tag id the sheet shows), an actor fleeing (`move-actor`), an item
+Put in a branch only what the fiction adds at that outcome: a condition taking hold (a `tag-change`
+with `mode: add` and the SRD condition's name as the tag id — `poisoned`, `prone`, `frightened`) or
+ending (`mode: remove` with the exact tag id the sheet shows), an actor fleeing (`move`), an item
 changing hands, a note the fiction needs remembered.
 
 The engine never adds or removes a tag itself. When an action's whole point is a condition —
 shaking off `poisoned`, wrestling a beast onto its back — the matching branch must carry the
-`add-tag` or `remove-tag`, or the roll settles nothing. When the fiction plainly starts or ends a
-condition with nothing contested — the player declares the sickness passes — write it in
-`effects` with no action at all.
+`tag-change`, or the roll settles nothing. When the fiction plainly starts or ends a condition
+with nothing contested — the player declares the sickness passes — write it in `effects` with no
+action at all.
 
 Never write a change to `hp` for what the action itself does, a spell slot or feature use, an
 attack's bonus, a spell's damage or save DC, a rest's refill, `level`, an ability score, or a
@@ -98,21 +98,21 @@ counter's maximum. The engine owns every one of those; write around them, not th
 
 ## Effects
 
-Every effect, one example each. Ids, keys, and tags here are illustrative: use the exact ids the scene shows and the counter keys on that entity's own sheet. Most turns need few or no effects: an empty `effects` with no branches is a normal plan. But a turn whose fiction starts or ends a lasting state — a condition taking hold or passing — must write that tag change, with or without an action: nothing records it otherwise.
+A worked example of every effect. Ids, keys, and tags here are illustrative: use the exact ids the scene shows and the counter keys on that entity's own sheet. Most turns need few or no effects: an empty `effects` with no branches is a normal plan. But a turn whose fiction starts or ends a lasting state — a condition taking hold or passing — must write that tag change, with or without an action: nothing records it otherwise.
 
 ```json
 {"op": "reveal", "entity_id": "hidden-cellar"}
-{"op": "move-actor", "entity_id": "pale-hound", "location_id": "courtyard"}
-{"op": "move-item", "item_id": "iron-key", "to_id": "warden"}
+{"op": "move", "entity_id": "pale-hound", "to_id": "courtyard"}
+{"op": "move", "entity_id": "iron-key", "to_id": "warden"}
 {"op": "gain-improvised-item", "item_name": "a handful of gravel"}
-{"op": "adjust-counter", "entity_id": "warden", "counter": "hp", "delta": -3, "why": "clawed by the hound"}
-{"op": "spend-counter", "entity_id": "player", "counter": "rations", "amount": 1}
-{"op": "add-tag", "entity_id": "warden", "tag_id": "shaken", "text": "(condition) Rattled and wary until they regroup."}
-{"op": "remove-tag", "entity_id": "player", "tag_id": "poisoned"}
-{"op": "reveal-relation", "kind": "connected", "source": "courtyard", "target": "hidden-cellar"}
-{"op": "untag-relation", "kind": "connected", "source": "courtyard", "target": "hidden-cellar", "tag": "locked", "why": "the iron key turns at last"}
-{"op": "add-relation", "kind": "party-member", "source": "warden", "target": "player", "why": "the warden agrees to come along"}
-{"op": "remove-relation", "kind": "party-member", "source": "warden", "target": "player", "why": "the warden turns back at the gate"}
+{"op": "counter-change", "mode": "adjust", "entity_id": "warden", "counter": "hp", "amount": -3, "why": "clawed by the hound"}
+{"op": "counter-change", "mode": "spend", "entity_id": "player", "counter": "rations", "amount": 1}
+{"op": "tag-change", "mode": "add", "entity_id": "warden", "tag_id": "shaken", "text": "(condition) Rattled and wary until they regroup."}
+{"op": "tag-change", "mode": "remove", "entity_id": "player", "tag_id": "poisoned"}
+{"op": "relation-change", "mode": "reveal", "kind": "connected", "source": "courtyard", "target": "hidden-cellar"}
+{"op": "relation-change", "mode": "untag", "kind": "connected", "source": "courtyard", "target": "hidden-cellar", "tag": "locked", "why": "the iron key turns at last"}
+{"op": "relation-change", "mode": "add", "kind": "party-member", "source": "warden", "target": "player", "why": "the warden agrees to come along"}
+{"op": "relation-change", "mode": "remove", "kind": "party-member", "source": "warden", "target": "player", "why": "the warden turns back at the gate"}
 {"op": "advance-thread", "thread_id": "the-missing-warden", "stage": "cellar-reached", "why": "the cellar stair is found at last"}
 ```
 
@@ -129,7 +129,8 @@ Example 1:
       "outcome": "success",
       "effects": [
         {
-          "op": "add-tag",
+          "op": "tag-change",
+          "mode": "add",
           "entity_id": "cloister_rat",
           "tag_id": "limping",
           "text": "A hind leg drags behind it."
@@ -140,7 +141,8 @@ Example 1:
       "outcome": "failure",
       "effects": [
         {
-          "op": "add-tag",
+          "op": "tag-change",
+          "mode": "add",
           "entity_id": "player",
           "tag_id": "crowded",
           "text": "The wasted swing let the rat inside his reach."
@@ -166,7 +168,8 @@ Example 2:
       "outcome": "success",
       "effects": [
         {
-          "op": "add-tag",
+          "op": "tag-change",
+          "mode": "add",
           "entity_id": "cloister_rat",
           "tag_id": "scorched",
           "text": "Its fur is burnt away in patches."
@@ -193,7 +196,8 @@ Example 3:
       "outcome": "success",
       "effects": [
         {
-          "op": "remove-tag",
+          "op": "tag-change",
+          "mode": "remove",
           "entity_id": "player",
           "tag_id": "poisoned"
         }
@@ -203,7 +207,8 @@ Example 3:
       "outcome": "failure",
       "effects": [
         {
-          "op": "add-tag",
+          "op": "tag-change",
+          "mode": "add",
           "entity_id": "player",
           "tag_id": "shaking",
           "text": "The venom still has hold of his hands."
@@ -227,7 +232,8 @@ Example 4:
 {
   "effects": [
     {
-      "op": "remove-tag",
+      "op": "tag-change",
+      "mode": "remove",
       "entity_id": "player",
       "tag_id": "poisoned"
     }
@@ -244,7 +250,8 @@ Example 5:
       "outcome": "success",
       "effects": [
         {
-          "op": "add-tag",
+          "op": "tag-change",
+          "mode": "add",
           "entity_id": "cloister_rat",
           "tag_id": "prone",
           "text": "On its back, legs pedaling, unable to right itself."
@@ -305,7 +312,8 @@ Example 8:
       "outcome": "failure",
       "effects": [
         {
-          "op": "add-tag",
+          "op": "tag-change",
+          "mode": "add",
           "entity_id": "vault",
           "tag_id": "jammed-seal",
           "text": "The bent seal now binds the door shut."

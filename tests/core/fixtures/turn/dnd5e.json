@@ -1,5 +1,5 @@
 {
-  "save_version": 46,
+  "save_version": 47,
   "facts": [
     {
       "source": "core",
@@ -113,8 +113,8 @@
       "output": {
         "effects": [
           {
-            "op": "move-item",
-            "item_id": "vault_map",
+            "op": "move",
+            "entity_id": "vault_map",
             "to_id": null
           }
         ],
@@ -123,7 +123,8 @@
             "outcome": "success",
             "effects": [
               {
-                "op": "add-tag",
+                "op": "tag-change",
+                "mode": "add",
                 "entity_id": "player",
                 "tag_id": "success",
                 "text": "",
@@ -135,7 +136,8 @@
             "outcome": "failure",
             "effects": [
               {
-                "op": "add-tag",
+                "op": "tag-change",
+                "mode": "add",
                 "entity_id": "player",
                 "tag_id": "failure",
                 "text": "",

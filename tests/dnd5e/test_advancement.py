@@ -7,21 +7,24 @@ from pydantic_ai.models.function import AgentInfo, FunctionModel
 
 from aidm.engines.dnd5e.advance import ADVANCEMENT_READY
 from aidm.state.base import PLAYER_ID, EntityId
-from aidm.state.effects import AddRef, AdjustCounter, RemoveTag, SetNumber, SheetDelta
+from aidm.state.effects import AddRef, CounterChange, SetNumber, SheetDelta, TagChange
 from aidm.state.packs import ContentRef
 from aidm.state.world import player_sheet
 
 ACTION_SURGE = ContentRef(pack="srd-2014", collection="features", index="action-surge-1-use")
 SECOND_WIND = ContentRef(pack="srd-2014", collection="features", index="second-wind")
-SPENT = RemoveTag(entity_id=PLAYER_ID, tag_id=ADVANCEMENT_READY, why="the level is taken")
+SPENT = TagChange(
+    mode="remove", entity_id=PLAYER_ID, tag_id=ADVANCEMENT_READY, why="the level is taken"
+)
 LEGAL = SheetDelta(
     changes=(
         AddRef(entity_id=PLAYER_ID, ref=ACTION_SURGE, why="the level's feature"),
         SetNumber(entity_id=PLAYER_ID, key="level", value=2, why="second level"),
-        AdjustCounter(
+        CounterChange(
+            mode="adjust",
             entity_id=PLAYER_ID,
             counter="hp",
-            delta=7,
+            amount=7,
             maximum=18,
             why="a fighter's hit die and constitution",
         ),

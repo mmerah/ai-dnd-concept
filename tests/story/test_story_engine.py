@@ -5,21 +5,29 @@ from story_test_support import grown, story_game
 from aidm.engines.loader import Engine
 from aidm.engines.story.advance import GROWTH_REQUIRED
 from aidm.state.base import PLAYER_ID, EntityId
-from aidm.state.effects import AddTag, AdjustCounter, SetNumber, SheetDelta
+from aidm.state.effects import CounterChange, SetNumber, SheetDelta, TagChange
 from aidm.state.plan import OutcomeBranch, TurnPlanBase, check_speaker
 from aidm.state.world import GameState, player_sheet, sheet_of
 
-SPEND = AdjustCounter(
-    entity_id=PLAYER_ID, counter="growth", delta=-GROWTH_REQUIRED, why="the marks are spent"
+SPEND = CounterChange(
+    mode="adjust",
+    entity_id=PLAYER_ID,
+    counter="growth",
+    amount=-GROWTH_REQUIRED,
+    why="the marks are spent",
 )
 RAT = EntityId("cloister_rat")
 STRONG = OutcomeBranch(
     outcome="strong",
-    effects=(AddTag(entity_id=PLAYER_ID, tag_id="sure-footed"),),
+    effects=(TagChange(mode="add", entity_id=PLAYER_ID, tag_id="sure-footed"),),
 )
 SETBACK = OutcomeBranch(
     outcome="setback",
-    effects=(AdjustCounter(entity_id=PLAYER_ID, counter="stress", delta=2, why="the door holds"),),
+    effects=(
+        CounterChange(
+            mode="adjust", entity_id=PLAYER_ID, counter="stress", amount=2, why="the door holds"
+        ),
+    ),
 )
 
 

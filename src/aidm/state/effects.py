@@ -15,9 +15,6 @@ CounterKey = Annotated[
 Why = Annotated[
     str, Field(description="One short sentence saying what causes this change, for the player.")
 ]
-TieKind = Annotated[Slug, Field(description="Exact kind of the tie, such as `connected`.")]
-TieSource = Annotated[EntityId, Field(description="Exact id of the tie's source entity.")]
-TieTarget = Annotated[EntityId, Field(description="Exact id of the tie's target entity.")]
 
 
 class Reveal(Frozen):
@@ -28,29 +25,22 @@ class Reveal(Frozen):
     entity_id: EntityId = Field(description="Exact id of the unrevealed canon entity.")
 
 
-class MoveActor(Frozen):
-    """Move an actor who actually changes location. Moving the player to an unrevealed location
+class Move(Frozen):
+    """Move an actor who actually changes location, or one item within the player's reach: picked
+    up, set down here, or handed to an actor here. Moving the player to an unrevealed location
     reveals it."""
 
-    op: Literal["move-actor"] = "move-actor"
+    op: Literal["move"] = "move"
     entity_id: EntityId | None = Field(
-        default=None, description="Exact id of the actor to move; null moves the player."
-    )
-    location_id: EntityId = Field(description="Exact id of the location the actor enters.")
-
-
-class MoveItem(Frozen):
-    """Move one item within the player's reach: pick it up, set it down here, or hand it to an
-    actor here."""
-
-    op: Literal["move-item"] = "move-item"
-    item_id: EntityId = Field(
-        description="Exact id of the item: one the player carries, or one loose at their location."
+        default=None,
+        description="Exact id of the actor or item that moves; null moves the player. An item "
+        "must be one the player carries, or one loose at their location.",
     )
     to_id: EntityId | None = Field(
         default=None,
-        description="Exact id of the receiver: an actor here with the player, or the player's own "
-        "location to set the item down. Null hands the item to the player.",
+        description="Exact id of where it goes: for an actor the location they enter; for an item "
+        "an actor here with the player, or the player's own location to set it down. An actor "
+        "always names one; null hands the item to the player.",
     )
 
 
@@ -64,27 +54,34 @@ class GainImprovisedItem(Frozen):
     )
 
 
-class AdjustCounter(Frozen):
-    """Move a counter up or down. The change is clamped to the counter's own bounds."""
+class CounterChange(Frozen):
+    """Move a counter: `adjust` shifts it by a delta and clamps to the counter's own bounds,
+    `spend` pays a cost from it and refuses outright when the pool cannot cover it."""
 
-    op: Literal["adjust-counter"] = "adjust-counter"
+    op: Literal["counter-change"] = "counter-change"
+    mode: Literal["adjust", "spend"] = Field(
+        description="`adjust` moves the pool, `spend` pays from it and can refuse."
+    )
     entity_id: TargetId
     counter: CounterKey
-    delta: int = Field(description="How much the pool moves: negative to reduce.")
+    amount: int = Field(
+        description="For `adjust`, how much the pool moves: negative to reduce. For `spend`, how "
+        "much of the pool is paid, always positive."
+    )
     maximum: int | None = Field(
-        default=None, description="A new upper bound for the pool. Advancement only."
+        default=None, description="A new upper bound for the pool. Adjust, and advancement only."
     )
     why: Why = ""
 
-
-class SpendCounter(Frozen):
-    """Pay from a counter, which refuses outright when the pool cannot cover it."""
-
-    op: Literal["spend-counter"] = "spend-counter"
-    entity_id: TargetId
-    counter: CounterKey
-    amount: int = Field(ge=1, description="How much of the pool is spent.")
-    why: Why = ""
+    @model_validator(mode="after")
+    def _spend_pays(self) -> Self:
+        """A negative spend would refill the pool it claims to pay from."""
+        if self.mode == "spend":
+            if self.amount < 1:
+                raise ValueError("spend pays a positive amount; use adjust to raise a pool")
+            if self.maximum is not None:
+                raise ValueError("only adjust changes a maximum")
+        return self
 
 
 class GrantCounter(Frozen):
@@ -111,25 +108,23 @@ class Refill(Frozen):
     recharges: tuple[str, ...] = Field(min_length=1, description="The recharge labels it refills.")
 
 
-class AddTag(Frozen):
-    """Put a lasting condition, edge, or burden on an entity. The sheet shows the id written
-    out: `battle-worn` appears as Battle Worn."""
+class TagChange(Frozen):
+    """Put a lasting condition, edge, or burden on an entity, or lift one the fiction ends. The
+    sheet shows the id written out: `battle-worn` appears as Battle Worn."""
 
-    op: Literal["add-tag"] = "add-tag"
-    entity_id: TargetId
-    tag_id: Slug = Field(description="Stable slug for the tag, such as `poisoned`.")
-    text: str = Field(
-        default="", description="The constraint or benefit it puts on the entity, in prose."
+    op: Literal["tag-change"] = "tag-change"
+    mode: Literal["add", "remove"] = Field(
+        description="`add` puts the tag on, `remove` lifts one the entity carries."
     )
-    why: Why = ""
-
-
-class RemoveTag(Frozen):
-    """Lift a tag an entity carries, when the fiction ends it."""
-
-    op: Literal["remove-tag"] = "remove-tag"
     entity_id: TargetId
-    tag_id: Slug = Field(description="Exact id of a tag the entity carries.")
+    tag_id: Slug = Field(
+        description="Stable slug for the tag, such as `poisoned`; to remove, the exact id of a "
+        "tag the entity carries."
+    )
+    text: str = Field(
+        default="",
+        description="The constraint or benefit it puts on the entity, in prose. Adding only.",
+    )
     why: Why = ""
 
 
@@ -164,62 +159,35 @@ class AddRef(Frozen):
     why: Why = ""
 
 
-class AddRelation(Frozen):
-    """Record a lasting tie between two entities that is not containment: carrying an item or
-    standing somewhere are moves, not relations."""
+class RelationChange(Frozen):
+    """Record, break, unblock, or reveal a lasting tie between two entities. Containment is not a
+    tie: carrying an item or standing somewhere are moves. `reveal` shows the player a way through
+    they did not know about — write it before moving them through a passage they have not found
+    yet — and `untag` lifts a block such as `locked` when the fiction opens it."""
 
-    op: Literal["add-relation"] = "add-relation"
+    op: Literal["relation-change"] = "relation-change"
+    mode: Literal["add", "remove", "untag", "reveal"] = Field(
+        description="What happens to the tie: `add` records it, `remove` breaks it, `untag` lifts "
+        "a tag it carries, `reveal` shows it to the player."
+    )
     kind: Slug = Field(
         description="What the tie is: `connected` joins two locations the player can walk "
         "between, `party-member` puts an actor here into the player's party (source is the "
         "actor, target is `player`)."
     )
-    source: TieSource
-    target: TieTarget
+    source: EntityId = Field(description="Exact id of the tie's source entity.")
+    target: EntityId = Field(description="Exact id of the tie's target entity.")
+    tag: Slug | None = Field(
+        default=None,
+        description="For `untag` only: the exact id of a tag the tie carries, such as `locked`.",
+    )
     why: Why = ""
 
-
-class RemoveRelation(Frozen):
-    """Break a lasting tie that `add-relation` recorded."""
-
-    op: Literal["remove-relation"] = "remove-relation"
-    kind: TieKind
-    source: TieSource
-    target: TieTarget
-    why: Why = ""
-
-
-class TagRelation(Frozen):
-    """Mark a tie — most often a connection — as blocked, such as `locked`, until
-    `untag-relation` lifts it again."""
-
-    op: Literal["tag-relation"] = "tag-relation"
-    kind: TieKind
-    source: TieSource
-    target: TieTarget
-    tag: Slug = Field(description="Stable slug for the tag, such as `locked`.")
-    why: Why = ""
-
-
-class UntagRelation(Frozen):
-    """Lift a tag a tie carries, when the fiction ends it."""
-
-    op: Literal["untag-relation"] = "untag-relation"
-    kind: TieKind
-    source: TieSource
-    target: TieTarget
-    tag: Slug = Field(description="Exact id of a tag the tie carries.")
-    why: Why = ""
-
-
-class RevealRelation(Frozen):
-    """Show the player a way through they did not know about: the connection equivalent of
-    `reveal`. Write this before moving the player through a passage they have not found yet."""
-
-    op: Literal["reveal-relation"] = "reveal-relation"
-    kind: TieKind
-    source: TieSource
-    target: TieTarget
+    @model_validator(mode="after")
+    def _tag_belongs_to_untag(self) -> Self:
+        if (self.tag is None) != (self.mode != "untag"):
+            raise ValueError("`tag` names the tag `untag` lifts, and belongs to no other mode")
+        return self
 
 
 class AdvanceThread(Frozen):
@@ -245,64 +213,34 @@ class AdvanceThread(Frozen):
 
 type Effect = Annotated[
     Reveal
-    | MoveActor
-    | MoveItem
+    | Move
     | GainImprovisedItem
-    | AdjustCounter
-    | SpendCounter
+    | CounterChange
     | GrantCounter
     | Refill
-    | AddTag
-    | RemoveTag
+    | TagChange
     | SetNote
     | SetNumber
     | AddRef
-    | AddRelation
-    | RemoveRelation
-    | TagRelation
-    | UntagRelation
-    | RevealRelation
+    | RelationChange
     | AdvanceThread,
     Field(discriminator="op"),
 ]
 
 # What the Director writes: only the changes the fiction alone decides. A note, a lasting number,
-# and locking a way through are an engine program's, advancement's, or the scenario author's.
+# and granting a pool are an engine program's, advancement's, or the scenario author's.
 type TurnEffect = Annotated[
-    Reveal
-    | MoveActor
-    | MoveItem
-    | GainImprovisedItem
-    | AdjustCounter
-    | SpendCounter
-    | AddTag
-    | RemoveTag
-    | AddRelation
-    | RemoveRelation
-    | UntagRelation
-    | RevealRelation
-    | AdvanceThread,
+    Reveal | Move | GainImprovisedItem | CounterChange | TagChange | RelationChange | AdvanceThread,
     Field(discriminator="op"),
 ]
 
 type SheetEffect = Annotated[
-    AdjustCounter | SpendCounter | GrantCounter | AddTag | RemoveTag | SetNote | SetNumber | AddRef,
+    CounterChange | GrantCounter | TagChange | SetNote | SetNumber | AddRef,
     Field(discriminator="op"),
 ]
 
 
-WORLD_OPS = (
-    Reveal,
-    MoveActor,
-    MoveItem,
-    GainImprovisedItem,
-    AddRelation,
-    RemoveRelation,
-    TagRelation,
-    UntagRelation,
-    RevealRelation,
-    AdvanceThread,
-)
+WORLD_OPS = (Reveal, Move, GainImprovisedItem, RelationChange, AdvanceThread)
 
 
 class SheetDelta(Frozen):
@@ -311,6 +249,20 @@ class SheetDelta(Frozen):
     changes: tuple[SheetEffect, ...] = ()
 
 
-def turn_effect_ops() -> frozenset[str]:
+def effect_key(effect: Effect) -> str:
+    """An op, or an op and the mode it is in: what one worked example teaches."""
+    mode = effect.model_dump().get("mode")
+    return f"{effect.op}/{mode}" if mode else effect.op
+
+
+def turn_effect_keys() -> frozenset[str]:
     union, _ = get_args(TurnEffect.__value__)
-    return frozenset(member.model_fields["op"].default for member in get_args(union))
+    keys: set[str] = set()
+    for member in get_args(union):
+        op = member.model_fields["op"].default
+        mode = member.model_fields.get("mode")
+        if mode is None:
+            keys.add(op)
+        else:
+            keys.update(f"{op}/{value}" for value in get_args(mode.annotation))
+    return frozenset(keys)

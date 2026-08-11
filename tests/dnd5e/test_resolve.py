@@ -8,15 +8,19 @@ from pydantic import JsonValue
 from aidm.engines.dnd5e.actions import Action
 from aidm.engines.loader import Engine
 from aidm.state.base import PLAYER_ID, EntityId
-from aidm.state.effects import AddTag, SpendCounter
+from aidm.state.effects import CounterChange, TagChange
 from aidm.state.plan import OutcomeBranch, TurnPlanBase
 from aidm.state.world import GameState, player_sheet, sheet_of
 
 SUCCESS = "success"
 FAILURE = "failure"
 ACTS = tuple(action.model_fields["act"].default for action in get_args(Action.__value__))
-WOUNDED = OutcomeBranch(outcome=SUCCESS, effects=(AddTag(entity_id=RAT, tag_id="wounded"),))
-UNSCATHED = OutcomeBranch(outcome=FAILURE, effects=(AddTag(entity_id=RAT, tag_id="unscathed"),))
+WOUNDED = OutcomeBranch(
+    outcome=SUCCESS, effects=(TagChange(mode="add", entity_id=RAT, tag_id="wounded"),)
+)
+UNSCATHED = OutcomeBranch(
+    outcome=FAILURE, effects=(TagChange(mode="add", entity_id=RAT, tag_id="unscathed"),)
+)
 
 
 def _plan(
@@ -143,7 +147,7 @@ def test_a_plan_that_also_writes_the_cost_the_engine_pays_is_refused() -> None:
         "slot_level": 1,
         "target_id": RAT,
     }
-    manual = SpendCounter(entity_id=PLAYER_ID, counter="slot-1", amount=1)
+    manual = CounterChange(mode="spend", entity_id=PLAYER_ID, counter="slot-1", amount=1)
 
     doubled = _plan(engine, cast).model_copy(update={"effects": (manual,)})
     assert "already spends 'slot-1'" in _refusal(engine, ready, doubled)
@@ -161,9 +165,8 @@ def test_a_plan_that_also_writes_the_cost_the_engine_pays_is_refused() -> None:
         "counter": "second-wind",
         "heal": "1d10 + 1",
     }
-    drained = _plan(engine, second_wind).model_copy(
-        update={"effects": (SpendCounter(entity_id=PLAYER_ID, counter="second-wind", amount=1),)}
-    )
+    spend = CounterChange(mode="spend", entity_id=PLAYER_ID, counter="second-wind", amount=1)
+    drained = _plan(engine, second_wind).model_copy(update={"effects": (spend,)})
     assert "already spends 'second-wind'" in _refusal(engine, ready, drained)
 
     assert engine.check_plan(ready, _plan(engine, cast)) is None
@@ -285,7 +288,7 @@ def test_a_plan_with_json_stringified_nested_fields_validates_as_if_nested() -> 
     a retry cannot repair that transport quirk, so the plan boundary decodes it."""
     engine, _ = dnd5e_game()
     action = {"act": "attack", "actor_id": "player", "target_id": RAT, "weapon_item_id": SWORD}
-    hit = {"op": "add-tag", "entity_id": RAT, "tag_id": "wounded"}
+    hit = {"op": "tag-change", "mode": "add", "entity_id": RAT, "tag_id": "wounded"}
     nested = {
         "action": action,
         "branches": [{"outcome": SUCCESS, "effects": [hit]}],

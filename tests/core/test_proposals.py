@@ -8,14 +8,18 @@ from story_test_support import grown, story_game, story_session
 
 from aidm.content.store import FileSaves, FileTraces
 from aidm.state.base import PLAYER_ID
-from aidm.state.effects import AddRef, AdjustCounter, SetNumber, SheetDelta
+from aidm.state.effects import AddRef, CounterChange, SetNumber, SheetDelta
 from aidm.state.packs import ContentRef
 from aidm.state.sheet import AdvancementOffer
 from aidm.state.turn import Advance
 from aidm.state.world import player_sheet
 
-SPEND = AdjustCounter(
-    entity_id=PLAYER_ID, counter="growth", delta=-3, why="the three marks are spent"
+SPEND = CounterChange(
+    mode="adjust",
+    entity_id=PLAYER_ID,
+    counter="growth",
+    amount=-3,
+    why="the three marks are spent",
 )
 LEGAL = SheetDelta(
     changes=(SetNumber(entity_id=PLAYER_ID, key="clever", value=2, why="hard-won patience"), SPEND)

@@ -5,7 +5,7 @@ from aidm.app.session import build_engine
 from aidm.engines.loader import Engine, plugins
 from aidm.state.apply import apply_effect
 from aidm.state.base import PLAYER_ID, Entity, EntityId
-from aidm.state.effects import AdjustCounter, MoveItem
+from aidm.state.effects import CounterChange, Move
 from aidm.state.facts import Fact
 from aidm.state.world import GameState, player_sheet, sheet_of
 
@@ -13,11 +13,15 @@ from aidm.state.world import GameState, player_sheet, sheet_of
 def _turn(engine: Engine, state: GameState) -> tuple[GameState, tuple[Fact, ...]]:
     draft = state.draft()
     facts = [
-        *apply_effect(draft, MoveItem(item_id=EntityId("vault_map")), engine.default_rules),
+        *apply_effect(draft, Move(entity_id=EntityId("vault_map")), engine.default_rules),
         *apply_effect(
             draft,
-            AdjustCounter(
-                entity_id=PLAYER_ID, counter="stress", delta=1, why="the strain of prying"
+            CounterChange(
+                mode="adjust",
+                entity_id=PLAYER_ID,
+                counter="stress",
+                amount=1,
+                why="the strain of prying",
             ),
             engine.default_rules,
         ),

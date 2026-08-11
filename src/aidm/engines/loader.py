@@ -19,7 +19,7 @@ from pydantic_ai.toolsets import AbstractToolset, FunctionToolset
 from aidm.content.authored import AuthoredEntity, AuthoredWorld, Rules, compose_world
 from aidm.state.apply import apply_effect
 from aidm.state.base import EngineId, Entity, Kind, Slug
-from aidm.state.effects import AddRef, SheetDelta, TurnEffect, turn_effect_ops
+from aidm.state.effects import AddRef, SheetDelta, TurnEffect, effect_key, turn_effect_keys
 from aidm.state.facts import Fact
 from aidm.state.packs import (
     EMPTY_FROZEN_MAP,
@@ -247,12 +247,12 @@ def _effect_vocabulary() -> str:
         _text(Path(__file__).parent / "examples.json")
     )
     checked = TypeAdapter(list[TurnEffect]).validate_python(entries)
-    ops = turn_effect_ops()
-    if len(checked) != len(ops) or frozenset(entry.op for entry in checked) != ops:
-        raise ValueError("the shared examples.json must show every turn effect op exactly once")
+    missing = turn_effect_keys() - {effect_key(entry) for entry in checked}
+    if missing:
+        raise ValueError(f"the shared examples.json teaches no {sorted(missing)}")
     lines = "\n".join(json.dumps(entry) for entry in entries)
     header = (
-        "## Effects\n\nEvery effect, one example each. Ids, keys, and tags here are "
+        "## Effects\n\nA worked example of every effect. Ids, keys, and tags here are "
         "illustrative: use the exact ids the scene shows and the counter keys on that "
         "entity's own sheet. Most turns need few or no effects: an empty `effects` with "
         "no branches is a normal plan. But a turn whose fiction starts or ends a lasting "

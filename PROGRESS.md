@@ -48,7 +48,50 @@ Tracking PLAN.md. One bullet per landed step; `uv run pytest && ruff check && ru
   lost its `extra` parameter. `test_pipeline.py` ties the observed step order to `TURN_STEPS`,
   which the UI progress panel reads. Net −1 test, 130 passing.
 
+## Phase 3 — Effect vocabulary: 19 ops → 12 — DONE
+
+- Twelve ops. `Move` (actor + item), `CounterChange(mode: adjust|spend)`,
+  `TagChange(mode: add|remove)`, `RelationChange(mode: add|remove|untag|reveal)`; `TagRelation`
+  deleted with no replacement (authored blocked ways are `Relation.tags` in world.json, and
+  `mode: untag` is the only writer that lifts them). `Reveal`, `GainImprovisedItem`,
+  `GrantCounter`, `Refill`, `SetNote`, `SetNumber`, `AddRef`, `AdvanceThread` unchanged.
+- The three audience unions keep their membership exactly: `TurnEffect` is 7 members,
+  `SheetEffect` 6, and no mode is policed at runtime — the unions still carry the whole permission
+  story. The Director's plan schema lost ~480 lines.
+- Naming deviation from the plan, deliberate: the mode field is `mode` on all three merged ops,
+  never `op` — `op` is the union discriminator and cannot double as the mode.
+- Two new validators, both stopping a real bug rather than a cosmetic one: a `spend` with a
+  negative `amount` would refill the pool it claims to pay from, and `tag` is required exactly
+  when `mode: untag`. `TagChange` gets none: `text` on a remove is inert.
+- `apply_effect`'s match dispatches on `(op, mode)` patterns; every `Fact` kind and every
+  `fact.data` field is preserved, so hook matching and eval probes do not move.
+  `_require_carried` folded into `_move_item`, `_tag_relation` deleted.
+- Three observable deltas beyond the vocabulary movement, all found by review and all kept:
+  `relation_revealed` now carries the effect's `why` in its trace (`RevealRelation` had no `why`;
+  `RelationChange` does, and a silently dropped field is worse than a longer trace); a `move`
+  that omits `entity_id` now reads as a player move rather than failing a required-field check,
+  so a malformed item move gets a movement refusal instead of a validation error; and spend's
+  `ge=1` moved from the JSON schema into a validator, since the constraint is per-mode — the
+  model now learns it from the field description and the retry message.
+- `_effect_vocabulary` (loader.py) now checks per *mode*, not per op: `turn_effect_keys()` expands
+  each merged op into one key per mode, `effect_key()` reads one back off an example. The check
+  relaxed from "exactly once" to "nothing missing", because `move` legitimately wants two worked
+  examples (an actor and an item) and has no mode to tell them apart.
+- Rewritten authored surfaces: `engines/examples.json` (13 examples, all 12 keys),
+  `engines/{story,dnd5e}/examples.json`, whispering-vault's `warded` hook, both `director.md`,
+  both `advancement.md`, and `_IDS`/`_EXITS` in `turn/prompts.py`.
+- `SAVE_VERSION` 46 → 47 (hooks in saved state carry effects); `schemas/*`, `instructions/*`,
+  `save/*`, `state/*`, `turn/*` regenerated. Diff read: only the vocabulary movement plus the
+  version bump. 130 tests pass, ruff and basedpyright clean.
+
+- Live probe (working rule 2) passed: whispering-vault plays under both engines on the merged
+  schema, and the Director still writes effects — the shrink did not land on gpt-oss-120b's
+  zero-effect failure mode. The `--only director` eval pair is skipped: evals are suspended until
+  Part I lands (working rule 3), and phase 5 re-baselines the settled tree anyway.
+
 ## Next
 
-Phase 3 — effect vocabulary 19 ops → 12. Starts with the `Move` merge; note working rule 2 (probe
-the Director live before cutting fixtures) and the `SAVE_VERSION` bump it requires.
+Phase 4 — collapse the authored-world intermediate (~½ day): `begin_game` composes `WorldState`
+straight from `Scenario` + `Character`, deleting `AuthoredWorld`/`AuthoredEntity`/`authored_world`/
+`compose_world`. Expect byte-identical `save/*` and `state/*` fixtures and no `SAVE_VERSION` bump;
+a moved fixture there is a bug, not churn.

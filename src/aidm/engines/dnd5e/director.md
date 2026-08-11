@@ -58,16 +58,16 @@ all: whatever follows from them goes in `effects` instead.
 
 WHAT BELONGS WHERE
 
-Put in a branch only what the fiction adds at that outcome: a condition taking hold (`add-tag`
-with the SRD condition's name as the tag id — `poisoned`, `prone`, `frightened`) or ending
-(`remove-tag` with the exact tag id the sheet shows), an actor fleeing (`move-actor`), an item
+Put in a branch only what the fiction adds at that outcome: a condition taking hold (a `tag-change`
+with `mode: add` and the SRD condition's name as the tag id — `poisoned`, `prone`, `frightened`) or
+ending (`mode: remove` with the exact tag id the sheet shows), an actor fleeing (`move`), an item
 changing hands, a note the fiction needs remembered.
 
 The engine never adds or removes a tag itself. When an action's whole point is a condition —
 shaking off `poisoned`, wrestling a beast onto its back — the matching branch must carry the
-`add-tag` or `remove-tag`, or the roll settles nothing. When the fiction plainly starts or ends a
-condition with nothing contested — the player declares the sickness passes — write it in
-`effects` with no action at all.
+`tag-change`, or the roll settles nothing. When the fiction plainly starts or ends a condition
+with nothing contested — the player declares the sickness passes — write it in `effects` with no
+action at all.
 
 Never write a change to `hp` for what the action itself does, a spell slot or feature use, an
 attack's bonus, a spell's damage or save DC, a rest's refill, `level`, an ability score, or a

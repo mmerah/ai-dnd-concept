@@ -1,6 +1,7 @@
 ## Loose ends
 
 - [] Eval coverage is now weak: Schema simplification, and investigation as to why each scenario are failing is needed
+- [] Scene/Core director should both know everything (core does not right now, makes no sense)
 
 ## Ideas
 

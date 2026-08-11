@@ -5,8 +5,8 @@
         "outcome": "strong",
         "effects": [
           {
-            "op": "move-actor",
-            "location_id": "vault"
+            "op": "move",
+            "to_id": "vault"
           }
         ]
       },
@@ -14,10 +14,11 @@
         "outcome": "mixed",
         "effects": [
           {
-            "op": "adjust-counter",
+            "op": "counter-change",
+            "mode": "adjust",
             "entity_id": "player",
             "counter": "stress",
-            "delta": 1,
+            "amount": 1,
             "why": "the door gives, and something inside answers"
           }
         ]
@@ -26,14 +27,16 @@
         "outcome": "setback",
         "effects": [
           {
-            "op": "adjust-counter",
+            "op": "counter-change",
+            "mode": "adjust",
             "entity_id": "player",
             "counter": "stress",
-            "delta": 2,
+            "amount": 2,
             "why": "the seal holds and the whispering finds him"
           },
           {
-            "op": "add-tag",
+            "op": "tag-change",
+            "mode": "add",
             "entity_id": "player",
             "tag_id": "ears-ringing",
             "text": "(condition) The whispering drowns out anything said softly."

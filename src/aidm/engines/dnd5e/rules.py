@@ -3,7 +3,7 @@ from pathlib import Path
 
 from aidm.engines.loader import Engine, EnginePlugin
 from aidm.state.base import EngineId, Slug
-from aidm.state.effects import AdjustCounter, SpendCounter
+from aidm.state.effects import CounterChange
 from aidm.state.plan import TurnPlanBase, check_plan_base, check_plan_with_trial
 from aidm.state.world import GameState
 
@@ -59,7 +59,7 @@ def _double_spend(plan: TurnPlanBase, action: Action) -> str | None:
         return None
     written = (*plan.effects, *(effect for branch in plan.branches for effect in branch.effects))
     for effect in written:
-        if isinstance(effect, (SpendCounter, AdjustCounter)) and engine_pays(effect.counter):
+        if isinstance(effect, CounterChange) and engine_pays(effect.counter):
             return (
                 f"the engine already spends {effect.counter!r} for this action: "
                 "drop that effect and let the engine pay the cost"

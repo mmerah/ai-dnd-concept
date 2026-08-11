@@ -398,17 +398,18 @@ result — branches for outcomes that do not occur simply never apply."""
 _IDS = """Every entity is shown as `name[id=...]`, and each carries where it is. The lists \
 separate what is HERE WITH THE PLAYER from what is known but ELSEWHERE. The player can only see, \
 address, take from, or hand things to who and what is here; to involve someone elsewhere, move \
-them here with a `move-actor` effect first. Wherever a field asks for an id, use the exact id from \
+them here with a `move` effect first. Wherever a field asks for an id, use the exact id from \
 the brackets — for known and unrevealed entities alike, never the name."""
 
 _EXITS = """EXITS FROM HERE lists the ways out of the player's location; when the location has any \
-exits at all, `move-actor` for the player only reaches a place listed there. Walking an exit the \
-player has not found yet is one plan, not two: write the `reveal-relation` and the `move-actor` \
-together in the same `effects`, in that order, and add an `untag-relation` before them when the \
-way is `locked` and the fiction opens it. `add-relation` records a new tie when the fiction makes \
-one: a passage discovered between two places (`connected`), or an NPC who joins the player \
-(`party-member`, the actor as `source` and `player` as `target`). A party member travels with the \
-player automatically."""
+exits at all, `move` for the player only reaches a place listed there. Walking an exit the \
+player has not found yet is one plan, not two: write a `relation-change` with `mode: reveal` \
+and the `move` together in the same `effects`, in that order, and add a `relation-change` \
+with `mode: untag` before them when the way is `locked` and the fiction opens it. A \
+`relation-change` with `mode: add` records a new tie when the fiction makes one: a passage \
+discovered between two places (`connected`), or an NPC who joins the player \
+(`party-member`, the actor as `source` and `player` as `target`). A party member travels \
+with the player automatically."""
 
 _PLAN_FIELDS = """The plan is the whole turn:
 

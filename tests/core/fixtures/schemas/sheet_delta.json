@@ -33,103 +33,6 @@
       "title": "AddRef",
       "type": "object"
     },
-    "AddTag": {
-      "additionalProperties": false,
-      "description": "Put a lasting condition, edge, or burden on an entity. The sheet shows the id written\nout: `battle-worn` appears as Battle Worn.",
-      "properties": {
-        "op": {
-          "const": "add-tag",
-          "default": "add-tag",
-          "title": "Op",
-          "type": "string"
-        },
-        "entity_id": {
-          "description": "Exact id of the entity affected; an actor must be here with the player.",
-          "title": "Entity Id",
-          "type": "string"
-        },
-        "tag_id": {
-          "description": "Stable slug for the tag, such as `poisoned`.",
-          "maxLength": 64,
-          "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$",
-          "title": "Tag Id",
-          "type": "string"
-        },
-        "text": {
-          "default": "",
-          "description": "The constraint or benefit it puts on the entity, in prose.",
-          "title": "Text",
-          "type": "string"
-        },
-        "why": {
-          "default": "",
-          "description": "One short sentence saying what causes this change, for the player.",
-          "title": "Why",
-          "type": "string"
-        }
-      },
-      "required": [
-        "entity_id",
-        "tag_id"
-      ],
-      "title": "AddTag",
-      "type": "object"
-    },
-    "AdjustCounter": {
-      "additionalProperties": false,
-      "description": "Move a counter up or down. The change is clamped to the counter's own bounds.",
-      "properties": {
-        "op": {
-          "const": "adjust-counter",
-          "default": "adjust-counter",
-          "title": "Op",
-          "type": "string"
-        },
-        "entity_id": {
-          "description": "Exact id of the entity affected; an actor must be here with the player.",
-          "title": "Entity Id",
-          "type": "string"
-        },
-        "counter": {
-          "description": "Exact key of one of that entity's counters, as its sheet spells it.",
-          "maxLength": 64,
-          "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$",
-          "title": "Counter",
-          "type": "string"
-        },
-        "delta": {
-          "description": "How much the pool moves: negative to reduce.",
-          "title": "Delta",
-          "type": "integer"
-        },
-        "maximum": {
-          "anyOf": [
-            {
-              "type": "integer"
-            },
-            {
-              "type": "null"
-            }
-          ],
-          "default": null,
-          "description": "A new upper bound for the pool. Advancement only.",
-          "title": "Maximum"
-        },
-        "why": {
-          "default": "",
-          "description": "One short sentence saying what causes this change, for the player.",
-          "title": "Why",
-          "type": "string"
-        }
-      },
-      "required": [
-        "entity_id",
-        "counter",
-        "delta"
-      ],
-      "title": "AdjustCounter",
-      "type": "object"
-    },
     "ContentRef": {
       "additionalProperties": false,
       "description": "Uses a triple because indexes collide across collections and packs.",
@@ -159,6 +62,71 @@
         "index"
       ],
       "title": "ContentRef",
+      "type": "object"
+    },
+    "CounterChange": {
+      "additionalProperties": false,
+      "description": "Move a counter: `adjust` shifts it by a delta and clamps to the counter's own bounds,\n`spend` pays a cost from it and refuses outright when the pool cannot cover it.",
+      "properties": {
+        "op": {
+          "const": "counter-change",
+          "default": "counter-change",
+          "title": "Op",
+          "type": "string"
+        },
+        "mode": {
+          "description": "`adjust` moves the pool, `spend` pays from it and can refuse.",
+          "enum": [
+            "adjust",
+            "spend"
+          ],
+          "title": "Mode",
+          "type": "string"
+        },
+        "entity_id": {
+          "description": "Exact id of the entity affected; an actor must be here with the player.",
+          "title": "Entity Id",
+          "type": "string"
+        },
+        "counter": {
+          "description": "Exact key of one of that entity's counters, as its sheet spells it.",
+          "maxLength": 64,
+          "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$",
+          "title": "Counter",
+          "type": "string"
+        },
+        "amount": {
+          "description": "For `adjust`, how much the pool moves: negative to reduce. For `spend`, how much of the pool is paid, always positive.",
+          "title": "Amount",
+          "type": "integer"
+        },
+        "maximum": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "A new upper bound for the pool. Adjust, and advancement only.",
+          "title": "Maximum"
+        },
+        "why": {
+          "default": "",
+          "description": "One short sentence saying what causes this change, for the player.",
+          "title": "Why",
+          "type": "string"
+        }
+      },
+      "required": [
+        "mode",
+        "entity_id",
+        "counter",
+        "amount"
+      ],
+      "title": "CounterChange",
       "type": "object"
     },
     "GrantCounter": {
@@ -231,42 +199,6 @@
         "current"
       ],
       "title": "GrantCounter",
-      "type": "object"
-    },
-    "RemoveTag": {
-      "additionalProperties": false,
-      "description": "Lift a tag an entity carries, when the fiction ends it.",
-      "properties": {
-        "op": {
-          "const": "remove-tag",
-          "default": "remove-tag",
-          "title": "Op",
-          "type": "string"
-        },
-        "entity_id": {
-          "description": "Exact id of the entity affected; an actor must be here with the player.",
-          "title": "Entity Id",
-          "type": "string"
-        },
-        "tag_id": {
-          "description": "Exact id of a tag the entity carries.",
-          "maxLength": 64,
-          "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$",
-          "title": "Tag Id",
-          "type": "string"
-        },
-        "why": {
-          "default": "",
-          "description": "One short sentence saying what causes this change, for the player.",
-          "title": "Why",
-          "type": "string"
-        }
-      },
-      "required": [
-        "entity_id",
-        "tag_id"
-      ],
-      "title": "RemoveTag",
       "type": "object"
     },
     "SetNote": {
@@ -357,31 +289,23 @@
       "discriminator": {
         "mapping": {
           "add-ref": "#/$defs/AddRef",
-          "add-tag": "#/$defs/AddTag",
-          "adjust-counter": "#/$defs/AdjustCounter",
+          "counter-change": "#/$defs/CounterChange",
           "grant-counter": "#/$defs/GrantCounter",
-          "remove-tag": "#/$defs/RemoveTag",
           "set-note": "#/$defs/SetNote",
           "set-number": "#/$defs/SetNumber",
-          "spend-counter": "#/$defs/SpendCounter"
+          "tag-change": "#/$defs/TagChange"
         },
         "propertyName": "op"
       },
       "oneOf": [
         {
-          "$ref": "#/$defs/AdjustCounter"
-        },
-        {
-          "$ref": "#/$defs/SpendCounter"
+          "$ref": "#/$defs/CounterChange"
         },
         {
           "$ref": "#/$defs/GrantCounter"
         },
         {
-          "$ref": "#/$defs/AddTag"
-        },
-        {
-          "$ref": "#/$defs/RemoveTag"
+          "$ref": "#/$defs/TagChange"
         },
         {
           "$ref": "#/$defs/SetNote"
@@ -394,14 +318,23 @@
         }
       ]
     },
-    "SpendCounter": {
+    "TagChange": {
       "additionalProperties": false,
-      "description": "Pay from a counter, which refuses outright when the pool cannot cover it.",
+      "description": "Put a lasting condition, edge, or burden on an entity, or lift one the fiction ends. The\nsheet shows the id written out: `battle-worn` appears as Battle Worn.",
       "properties": {
         "op": {
-          "const": "spend-counter",
-          "default": "spend-counter",
+          "const": "tag-change",
+          "default": "tag-change",
           "title": "Op",
+          "type": "string"
+        },
+        "mode": {
+          "description": "`add` puts the tag on, `remove` lifts one the entity carries.",
+          "enum": [
+            "add",
+            "remove"
+          ],
+          "title": "Mode",
           "type": "string"
         },
         "entity_id": {
@@ -409,18 +342,18 @@
           "title": "Entity Id",
           "type": "string"
         },
-        "counter": {
-          "description": "Exact key of one of that entity's counters, as its sheet spells it.",
+        "tag_id": {
+          "description": "Stable slug for the tag, such as `poisoned`; to remove, the exact id of a tag the entity carries.",
           "maxLength": 64,
           "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$",
-          "title": "Counter",
+          "title": "Tag Id",
           "type": "string"
         },
-        "amount": {
-          "description": "How much of the pool is spent.",
-          "minimum": 1,
-          "title": "Amount",
-          "type": "integer"
+        "text": {
+          "default": "",
+          "description": "The constraint or benefit it puts on the entity, in prose. Adding only.",
+          "title": "Text",
+          "type": "string"
         },
         "why": {
           "default": "",
@@ -430,11 +363,11 @@
         }
       },
       "required": [
+        "mode",
         "entity_id",
-        "counter",
-        "amount"
+        "tag_id"
       ],
-      "title": "SpendCounter",
+      "title": "TagChange",
       "type": "object"
     }
   },

@@ -1,144 +1,5 @@
 {
   "$defs": {
-    "AddRelation": {
-      "additionalProperties": false,
-      "description": "Record a lasting tie between two entities that is not containment: carrying an item or\nstanding somewhere are moves, not relations.",
-      "properties": {
-        "op": {
-          "const": "add-relation",
-          "default": "add-relation",
-          "title": "Op",
-          "type": "string"
-        },
-        "kind": {
-          "description": "What the tie is: `connected` joins two locations the player can walk between, `party-member` puts an actor here into the player's party (source is the actor, target is `player`).",
-          "maxLength": 64,
-          "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$",
-          "title": "Kind",
-          "type": "string"
-        },
-        "source": {
-          "description": "Exact id of the tie's source entity.",
-          "title": "Source",
-          "type": "string"
-        },
-        "target": {
-          "description": "Exact id of the tie's target entity.",
-          "title": "Target",
-          "type": "string"
-        },
-        "why": {
-          "default": "",
-          "description": "One short sentence saying what causes this change, for the player.",
-          "title": "Why",
-          "type": "string"
-        }
-      },
-      "required": [
-        "kind",
-        "source",
-        "target"
-      ],
-      "title": "AddRelation",
-      "type": "object"
-    },
-    "AddTag": {
-      "additionalProperties": false,
-      "description": "Put a lasting condition, edge, or burden on an entity. The sheet shows the id written\nout: `battle-worn` appears as Battle Worn.",
-      "properties": {
-        "op": {
-          "const": "add-tag",
-          "default": "add-tag",
-          "title": "Op",
-          "type": "string"
-        },
-        "entity_id": {
-          "description": "Exact id of the entity affected; an actor must be here with the player.",
-          "title": "Entity Id",
-          "type": "string"
-        },
-        "tag_id": {
-          "description": "Stable slug for the tag, such as `poisoned`.",
-          "maxLength": 64,
-          "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$",
-          "title": "Tag Id",
-          "type": "string"
-        },
-        "text": {
-          "default": "",
-          "description": "The constraint or benefit it puts on the entity, in prose.",
-          "title": "Text",
-          "type": "string"
-        },
-        "why": {
-          "default": "",
-          "description": "One short sentence saying what causes this change, for the player.",
-          "title": "Why",
-          "type": "string"
-        }
-      },
-      "required": [
-        "entity_id",
-        "tag_id"
-      ],
-      "title": "AddTag",
-      "type": "object"
-    },
-    "AdjustCounter": {
-      "additionalProperties": false,
-      "description": "Move a counter up or down. The change is clamped to the counter's own bounds.",
-      "properties": {
-        "op": {
-          "const": "adjust-counter",
-          "default": "adjust-counter",
-          "title": "Op",
-          "type": "string"
-        },
-        "entity_id": {
-          "description": "Exact id of the entity affected; an actor must be here with the player.",
-          "title": "Entity Id",
-          "type": "string"
-        },
-        "counter": {
-          "description": "Exact key of one of that entity's counters, as its sheet spells it.",
-          "maxLength": 64,
-          "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$",
-          "title": "Counter",
-          "type": "string"
-        },
-        "delta": {
-          "description": "How much the pool moves: negative to reduce.",
-          "title": "Delta",
-          "type": "integer"
-        },
-        "maximum": {
-          "anyOf": [
-            {
-              "type": "integer"
-            },
-            {
-              "type": "null"
-            }
-          ],
-          "default": null,
-          "description": "A new upper bound for the pool. Advancement only.",
-          "title": "Maximum"
-        },
-        "why": {
-          "default": "",
-          "description": "One short sentence saying what causes this change, for the player.",
-          "title": "Why",
-          "type": "string"
-        }
-      },
-      "required": [
-        "entity_id",
-        "counter",
-        "delta"
-      ],
-      "title": "AdjustCounter",
-      "type": "object"
-    },
     "AdvanceThread": {
       "additionalProperties": false,
       "description": "Move a storyline the scenario is tracking: where it stands now, or that it is over.",
@@ -202,6 +63,71 @@
       "title": "AdvanceThread",
       "type": "object"
     },
+    "CounterChange": {
+      "additionalProperties": false,
+      "description": "Move a counter: `adjust` shifts it by a delta and clamps to the counter's own bounds,\n`spend` pays a cost from it and refuses outright when the pool cannot cover it.",
+      "properties": {
+        "op": {
+          "const": "counter-change",
+          "default": "counter-change",
+          "title": "Op",
+          "type": "string"
+        },
+        "mode": {
+          "description": "`adjust` moves the pool, `spend` pays from it and can refuse.",
+          "enum": [
+            "adjust",
+            "spend"
+          ],
+          "title": "Mode",
+          "type": "string"
+        },
+        "entity_id": {
+          "description": "Exact id of the entity affected; an actor must be here with the player.",
+          "title": "Entity Id",
+          "type": "string"
+        },
+        "counter": {
+          "description": "Exact key of one of that entity's counters, as its sheet spells it.",
+          "maxLength": 64,
+          "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$",
+          "title": "Counter",
+          "type": "string"
+        },
+        "amount": {
+          "description": "For `adjust`, how much the pool moves: negative to reduce. For `spend`, how much of the pool is paid, always positive.",
+          "title": "Amount",
+          "type": "integer"
+        },
+        "maximum": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "A new upper bound for the pool. Adjust, and advancement only.",
+          "title": "Maximum"
+        },
+        "why": {
+          "default": "",
+          "description": "One short sentence saying what causes this change, for the player.",
+          "title": "Why",
+          "type": "string"
+        }
+      },
+      "required": [
+        "mode",
+        "entity_id",
+        "counter",
+        "amount"
+      ],
+      "title": "CounterChange",
+      "type": "object"
+    },
     "GainImprovisedItem": {
       "additionalProperties": false,
       "description": "Give the player an ordinary incidental object that is not in canon and is not worth a canon\nentry of its own. Never a substitute for an item that already exists.",
@@ -225,13 +151,13 @@
       "title": "GainImprovisedItem",
       "type": "object"
     },
-    "MoveActor": {
+    "Move": {
       "additionalProperties": false,
-      "description": "Move an actor who actually changes location. Moving the player to an unrevealed location\nreveals it.",
+      "description": "Move an actor who actually changes location, or one item within the player's reach: picked\nup, set down here, or handed to an actor here. Moving the player to an unrevealed location\nreveals it.",
       "properties": {
         "op": {
-          "const": "move-actor",
-          "default": "move-actor",
+          "const": "move",
+          "default": "move",
           "title": "Op",
           "type": "string"
         },
@@ -245,35 +171,8 @@
             }
           ],
           "default": null,
-          "description": "Exact id of the actor to move; null moves the player.",
+          "description": "Exact id of the actor or item that moves; null moves the player. An item must be one the player carries, or one loose at their location.",
           "title": "Entity Id"
-        },
-        "location_id": {
-          "description": "Exact id of the location the actor enters.",
-          "title": "Location Id",
-          "type": "string"
-        }
-      },
-      "required": [
-        "location_id"
-      ],
-      "title": "MoveActor",
-      "type": "object"
-    },
-    "MoveItem": {
-      "additionalProperties": false,
-      "description": "Move one item within the player's reach: pick it up, set it down here, or hand it to an\nactor here.",
-      "properties": {
-        "op": {
-          "const": "move-item",
-          "default": "move-item",
-          "title": "Op",
-          "type": "string"
-        },
-        "item_id": {
-          "description": "Exact id of the item: one the player carries, or one loose at their location.",
-          "title": "Item Id",
-          "type": "string"
         },
         "to_id": {
           "anyOf": [
@@ -285,14 +184,11 @@
             }
           ],
           "default": null,
-          "description": "Exact id of the receiver: an actor here with the player, or the player's own location to set the item down. Null hands the item to the player.",
+          "description": "Exact id of where it goes: for an actor the location they enter; for an item an actor here with the player, or the player's own location to set it down. An actor always names one; null hands the item to the player.",
           "title": "To Id"
         }
       },
-      "required": [
-        "item_id"
-      ],
-      "title": "MoveItem",
+      "title": "Move",
       "type": "object"
     },
     "OutcomeBranch": {
@@ -322,18 +218,29 @@
       "title": "OutcomeBranch",
       "type": "object"
     },
-    "RemoveRelation": {
+    "RelationChange": {
       "additionalProperties": false,
-      "description": "Break a lasting tie that `add-relation` recorded.",
+      "description": "Record, break, unblock, or reveal a lasting tie between two entities. Containment is not a\ntie: carrying an item or standing somewhere are moves. `reveal` shows the player a way through\nthey did not know about — write it before moving them through a passage they have not found\nyet — and `untag` lifts a block such as `locked` when the fiction opens it.",
       "properties": {
         "op": {
-          "const": "remove-relation",
-          "default": "remove-relation",
+          "const": "relation-change",
+          "default": "relation-change",
           "title": "Op",
           "type": "string"
         },
+        "mode": {
+          "description": "What happens to the tie: `add` records it, `remove` breaks it, `untag` lifts a tag it carries, `reveal` shows it to the player.",
+          "enum": [
+            "add",
+            "remove",
+            "untag",
+            "reveal"
+          ],
+          "title": "Mode",
+          "type": "string"
+        },
         "kind": {
-          "description": "Exact kind of the tie, such as `connected`.",
+          "description": "What the tie is: `connected` joins two locations the player can walk between, `party-member` puts an actor here into the player's party (source is the actor, target is `player`).",
           "maxLength": 64,
           "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$",
           "title": "Kind",
@@ -349,6 +256,21 @@
           "title": "Target",
           "type": "string"
         },
+        "tag": {
+          "anyOf": [
+            {
+              "maxLength": 64,
+              "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "For `untag` only: the exact id of a tag the tie carries, such as `locked`.",
+          "title": "Tag"
+        },
         "why": {
           "default": "",
           "description": "One short sentence saying what causes this change, for the player.",
@@ -357,47 +279,12 @@
         }
       },
       "required": [
+        "mode",
         "kind",
         "source",
         "target"
       ],
-      "title": "RemoveRelation",
-      "type": "object"
-    },
-    "RemoveTag": {
-      "additionalProperties": false,
-      "description": "Lift a tag an entity carries, when the fiction ends it.",
-      "properties": {
-        "op": {
-          "const": "remove-tag",
-          "default": "remove-tag",
-          "title": "Op",
-          "type": "string"
-        },
-        "entity_id": {
-          "description": "Exact id of the entity affected; an actor must be here with the player.",
-          "title": "Entity Id",
-          "type": "string"
-        },
-        "tag_id": {
-          "description": "Exact id of a tag the entity carries.",
-          "maxLength": 64,
-          "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$",
-          "title": "Tag Id",
-          "type": "string"
-        },
-        "why": {
-          "default": "",
-          "description": "One short sentence saying what causes this change, for the player.",
-          "title": "Why",
-          "type": "string"
-        }
-      },
-      "required": [
-        "entity_id",
-        "tag_id"
-      ],
-      "title": "RemoveTag",
+      "title": "RelationChange",
       "type": "object"
     },
     "Reveal": {
@@ -420,42 +307,6 @@
         "entity_id"
       ],
       "title": "Reveal",
-      "type": "object"
-    },
-    "RevealRelation": {
-      "additionalProperties": false,
-      "description": "Show the player a way through they did not know about: the connection equivalent of\n`reveal`. Write this before moving the player through a passage they have not found yet.",
-      "properties": {
-        "op": {
-          "const": "reveal-relation",
-          "default": "reveal-relation",
-          "title": "Op",
-          "type": "string"
-        },
-        "kind": {
-          "description": "Exact kind of the tie, such as `connected`.",
-          "maxLength": 64,
-          "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$",
-          "title": "Kind",
-          "type": "string"
-        },
-        "source": {
-          "description": "Exact id of the tie's source entity.",
-          "title": "Source",
-          "type": "string"
-        },
-        "target": {
-          "description": "Exact id of the tie's target entity.",
-          "title": "Target",
-          "type": "string"
-        }
-      },
-      "required": [
-        "kind",
-        "source",
-        "target"
-      ],
-      "title": "RevealRelation",
       "type": "object"
     },
     "Risk": {
@@ -540,14 +391,23 @@
       "title": "Risk",
       "type": "object"
     },
-    "SpendCounter": {
+    "TagChange": {
       "additionalProperties": false,
-      "description": "Pay from a counter, which refuses outright when the pool cannot cover it.",
+      "description": "Put a lasting condition, edge, or burden on an entity, or lift one the fiction ends. The\nsheet shows the id written out: `battle-worn` appears as Battle Worn.",
       "properties": {
         "op": {
-          "const": "spend-counter",
-          "default": "spend-counter",
+          "const": "tag-change",
+          "default": "tag-change",
           "title": "Op",
+          "type": "string"
+        },
+        "mode": {
+          "description": "`add` puts the tag on, `remove` lifts one the entity carries.",
+          "enum": [
+            "add",
+            "remove"
+          ],
+          "title": "Mode",
           "type": "string"
         },
         "entity_id": {
@@ -555,18 +415,18 @@
           "title": "Entity Id",
           "type": "string"
         },
-        "counter": {
-          "description": "Exact key of one of that entity's counters, as its sheet spells it.",
+        "tag_id": {
+          "description": "Stable slug for the tag, such as `poisoned`; to remove, the exact id of a tag the entity carries.",
           "maxLength": 64,
           "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$",
-          "title": "Counter",
+          "title": "Tag Id",
           "type": "string"
         },
-        "amount": {
-          "description": "How much of the pool is spent.",
-          "minimum": 1,
-          "title": "Amount",
-          "type": "integer"
+        "text": {
+          "default": "",
+          "description": "The constraint or benefit it puts on the entity, in prose. Adding only.",
+          "title": "Text",
+          "type": "string"
         },
         "why": {
           "default": "",
@@ -576,29 +436,23 @@
         }
       },
       "required": [
+        "mode",
         "entity_id",
-        "counter",
-        "amount"
+        "tag_id"
       ],
-      "title": "SpendCounter",
+      "title": "TagChange",
       "type": "object"
     },
     "TurnEffect": {
       "discriminator": {
         "mapping": {
-          "add-relation": "#/$defs/AddRelation",
-          "add-tag": "#/$defs/AddTag",
-          "adjust-counter": "#/$defs/AdjustCounter",
           "advance-thread": "#/$defs/AdvanceThread",
+          "counter-change": "#/$defs/CounterChange",
           "gain-improvised-item": "#/$defs/GainImprovisedItem",
-          "move-actor": "#/$defs/MoveActor",
-          "move-item": "#/$defs/MoveItem",
-          "remove-relation": "#/$defs/RemoveRelation",
-          "remove-tag": "#/$defs/RemoveTag",
+          "move": "#/$defs/Move",
+          "relation-change": "#/$defs/RelationChange",
           "reveal": "#/$defs/Reveal",
-          "reveal-relation": "#/$defs/RevealRelation",
-          "spend-counter": "#/$defs/SpendCounter",
-          "untag-relation": "#/$defs/UntagRelation"
+          "tag-change": "#/$defs/TagChange"
         },
         "propertyName": "op"
       },
@@ -607,92 +461,24 @@
           "$ref": "#/$defs/Reveal"
         },
         {
-          "$ref": "#/$defs/MoveActor"
-        },
-        {
-          "$ref": "#/$defs/MoveItem"
+          "$ref": "#/$defs/Move"
         },
         {
           "$ref": "#/$defs/GainImprovisedItem"
         },
         {
-          "$ref": "#/$defs/AdjustCounter"
+          "$ref": "#/$defs/CounterChange"
         },
         {
-          "$ref": "#/$defs/SpendCounter"
+          "$ref": "#/$defs/TagChange"
         },
         {
-          "$ref": "#/$defs/AddTag"
-        },
-        {
-          "$ref": "#/$defs/RemoveTag"
-        },
-        {
-          "$ref": "#/$defs/AddRelation"
-        },
-        {
-          "$ref": "#/$defs/RemoveRelation"
-        },
-        {
-          "$ref": "#/$defs/UntagRelation"
-        },
-        {
-          "$ref": "#/$defs/RevealRelation"
+          "$ref": "#/$defs/RelationChange"
         },
         {
           "$ref": "#/$defs/AdvanceThread"
         }
       ]
-    },
-    "UntagRelation": {
-      "additionalProperties": false,
-      "description": "Lift a tag a tie carries, when the fiction ends it.",
-      "properties": {
-        "op": {
-          "const": "untag-relation",
-          "default": "untag-relation",
-          "title": "Op",
-          "type": "string"
-        },
-        "kind": {
-          "description": "Exact kind of the tie, such as `connected`.",
-          "maxLength": 64,
-          "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$",
-          "title": "Kind",
-          "type": "string"
-        },
-        "source": {
-          "description": "Exact id of the tie's source entity.",
-          "title": "Source",
-          "type": "string"
-        },
-        "target": {
-          "description": "Exact id of the tie's target entity.",
-          "title": "Target",
-          "type": "string"
-        },
-        "tag": {
-          "description": "Exact id of a tag the tie carries.",
-          "maxLength": 64,
-          "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$",
-          "title": "Tag",
-          "type": "string"
-        },
-        "why": {
-          "default": "",
-          "description": "One short sentence saying what causes this change, for the player.",
-          "title": "Why",
-          "type": "string"
-        }
-      },
-      "required": [
-        "kind",
-        "source",
-        "target",
-        "tag"
-      ],
-      "title": "UntagRelation",
-      "type": "object"
     }
   },
   "additionalProperties": false,
