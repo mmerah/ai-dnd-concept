@@ -42,6 +42,13 @@ uv run basedpyright
 uv run pytest
 ```
 
+A live-model eval harness lives in `scripts/evals/` (`uv run python scripts/evals/run.py`,
+`--only director|advisor|worldkeeper` to pick a suite). Each case replays an authored turn
+against the real provider and probes the committed state, so what it measures is model
+reliability on this codebase's actual schemas and prompts. It runs manually when a
+model-facing surface changes — never from pytest, and it is not a merge gate. At 3 runs per
+case, single-case movement is noise; re-run before attributing anything below n=9.
+
 ## Layout
 
 ```text
@@ -72,5 +79,6 @@ through an advisor role; the player reviews each change and its reason, then con
 ## Docs
 
 - `AGENTS.md`: durable engineering and architecture rules.
-- `docs/ROADMAP.md`: known weaknesses and possible next work.
+- `PLAN.md`: the phased plan for what is built next.
+- `docs/ROADMAP.md`: known weaknesses and direction.
 - `IDEAS.md`: loose ends and the idea backlog.

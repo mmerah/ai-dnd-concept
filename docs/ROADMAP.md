@@ -1,8 +1,8 @@
 # Weaknesses and direction
 
-Status of the proof of concept, and where it should go. Kept short on purpose. VISION.md holds the
-destination, REFACTOR.md the route and the measured eval findings, IDEAS.md the loose ends. This
-file is the standing list of what is weak about the build as it stands.
+Status of the proof of concept, and where it should go. Kept short on purpose. PLAN.md holds the
+phased next work, IDEAS.md the loose ends. This file is the standing list of what is weak about
+the build as it stands.
 
 ## Invariants worth preserving
 
@@ -26,15 +26,21 @@ file is the standing list of what is weak about the build as it stands.
 ### Reliability
 
 - The Director drops the state write the fiction implies: the narration lands, the tag or counter
-  change that had to accompany it does not. `advantage-attack` has never once fired,
-  `condition-rider` and `condition-lifted` regress and recover without anything touching them,
-  `long-rest-recharge` swings between 0% and 67%. REFACTOR.md's "Eval findings owed a cleanup pass"
-  is the live list; the prompt pass over it is the next work.
+  change that had to accompany it does not. The measured shape, across the 2026-08-07 suites:
+  `advantage-attack` never once fired (0/15 — nothing anywhere teaches when 5e grants advantage, so
+  decide whether `dnd5e/director.md` teaches it or the case measures an untaught rule);
+  `condition-rider` and `condition-lifted` regress and recover without anything touching them (a
+  success branch that narrates the rat going down without the `prone` tag; `poisoned` surviving the
+  turn that should end it); `long-rest-recharge` swings between 0% and 67%. The one prompt lever
+  proven to work: `CORE_DIRECTOR`'s reveal-then-move clause took `movement-follows-exits` to 100%,
+  and it has only ever been pulled for movement. The prompt pass over these is a PLAN.md phase,
+  scheduled right after its simplification phases land.
 - Nothing checks narration against facts. The Worldkeeper only adds canon, so a turn that narrates
   a consequence the state never recorded commits looking healthy.
 - Those measurements predate the last three phases. Live eval gates are suspended by maintainer
-  decision until the codebase settles (PROGRESS.md, 2026-08-11); golden fixtures and offline oracle
-  parity are the whole safety net meanwhile.
+  decision (2026-08-11) until the codebase settles; golden fixtures and offline oracle parity are
+  the whole safety net meanwhile. At 3 runs per case the noise floor is large: nothing below n=9
+  should be attributed to a change.
 - Provider lottery, not architecture: Groq answers `finish_reason: "error"` under forced tool
   choice, which cost 12% of one suite's turns; excluding it through OpenRouter routing preferences
   recovered them, and it has still leaked through since. The Rules Director is on `ToolOutput` with
@@ -67,8 +73,9 @@ file is the standing list of what is weak about the build as it stands.
 
 ## Direction
 
-Near work is REFACTOR.md's, in its order: the prompt pass on the dropped state write, then phase 9
-(memories and keepers). What no phase owns:
+Near work is PLAN.md's, in its order: the simplification phases (engine-owned plan lifecycle,
+one explicit `run_turn`, the merged effect vocabulary, collapsed initialization), then the prompt
+pass on the dropped state write and the keepers. What no phase owns:
 
 - pre-commit configuration (format, check, type safety, tests).
 - A narration-against-facts check, retrying the Narrator once on a contradiction. Turns silent
