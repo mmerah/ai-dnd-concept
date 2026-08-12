@@ -105,6 +105,13 @@ class CharacterOverlay(Frozen):
     entities: dict[EntityId, Rules] = Field(default_factory=dict)
 
 
+class CreatedCharacter(Frozen):
+    """What in-app creation produces: exactly the two files hand-authoring writes."""
+
+    profile: CharacterProfile
+    overlay: CharacterOverlay
+
+
 class Scenario(Frozen):
     id: Slug
     engine: EngineId

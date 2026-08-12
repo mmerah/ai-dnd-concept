@@ -31,6 +31,7 @@ def home_page(config: Settings) -> None:
                 "text-body1 opacity-70"
             )
             _new_game(controller)
+            _new_characters(controller)
             _saved_games(controller)
 
 
@@ -74,6 +75,21 @@ def _new_game(controller: LauncherController) -> None:
             _action(controller)
 
     form()
+
+
+def _new_characters(controller: LauncherController) -> None:
+    with ui.row().classes("items-center").style("gap: 0.5rem"):
+        ui.label("New character:").classes("text-sm opacity-70")
+        for option in controller.catalog.engines:
+            ui.button(
+                option.id,
+                icon="person_add",
+                on_click=_create_handler(option.id),
+            ).props("outline dense")
+
+
+def _create_handler(engine: str) -> Callable[[], None]:
+    return lambda: ui.navigate.to(f"/create/{engine}")
 
 
 def _chosen(

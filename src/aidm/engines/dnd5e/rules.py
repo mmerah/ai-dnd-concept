@@ -14,6 +14,7 @@ from aidm.state.world import GameState
 from .actions import Action, Attack, CastSpell, Check, Improvise, Rest, TurnPlan, UseFeature
 from .advance import Dnd5eAdvancement
 from .content import ENGINE_DIR, director_toolset, load_content
+from .create import Dnd5eCreation
 from .mechanics import apply, begin, commit, render
 from .resolve import dispatch_action, spell_of
 
@@ -34,6 +35,7 @@ class Dnd5eEngine(Engine):
         self.content = load_content(pack_paths)
         self.director_toolsets = (director_toolset(self.content),)
         self.advancement = Dnd5eAdvancement(self.content)
+        self.creation = Dnd5eCreation(self.content)
 
     def begin(self, state: GameState, rules: Mapping[EntityId, Rules]) -> None:
         begin(self.content, state, rules)

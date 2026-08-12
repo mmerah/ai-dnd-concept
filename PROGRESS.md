@@ -749,15 +749,165 @@ third engine wants them the step is 15 minutes' work with its measurement alread
   Memorykeeper/Threadkeeper pair would have added: no new role config key, no new fixture family,
   and the turn is still four model calls in the worst case.
 
-### Owed
+### Owed — settled 2026-08-12
 
-- **The live probe (working rule 2) has not been run.** `WorldkeeperReport` is a reshaped
-  model-facing schema under `NativeOutput`, so per the rule it needs a few real turns on
-  whispering-vault before the fixtures are trusted: `uv run aidm` for a couple of turns, or
-  `uv run python scripts/evals/run.py --only worldkeeper`. Watch for the failure mode phase 3 hit —
-  a report that comes back with every list empty, or one that fills `memories` on every turn.
+- The live probe ran: the maintainer ran `scripts/evals/run.py --only worldkeeper` multiple
+  times and judged performance OK. The reshaped `WorldkeeperReport` schema did not hit phase 3's
+  zero-output failure mode, so the fixtures stand. (Per working rule 3, the numbers are
+  informational — same-hour n=9 pairs only ever compare a specific change.)
+
+## Phase 12 — Character creation workflow — DONE (advisor front-end not built)
+
+### 1. The workflow shape
+
+- `state/creation.py` (43 lines): `CreationOption` (`id`/`label`/`detail`), `CreationStep`
+  (`id`/`prompt`/`options` min 1/`choose` validated `1 <= choose <= len(options)`),
+  `Picks = Mapping[Slug, tuple[Slug, ...]]`, and `check_picks` — one legality rule (unknown step,
+  repeated pick, wrong count, unknown option) shared by the page and by every engine's `create`,
+  so neither can drift. Nothing more: no dependencies, no ranges, no derived-value language.
+- `Creation` ABC in `engines/loader.py` beside `Advancement`, same optional-capability shape:
+  `steps(picks)` (tolerates partial/stale picks so follow-up steps appear as parents are picked)
+  and `create(name, brief, picks) -> CreatedCharacter`, raising `ValueError` with the reason the
+  page shows verbatim. `Engine.creation: Creation | None`, default None; the loader-stub engine
+  gets no creation page for free.
+- Placement deviation from the plan, forced by the import graph: `CreatedCharacter` is
+  `profile: CharacterProfile` + `overlay: CharacterOverlay` and lives in `content/authored.py`,
+  not beside the ABC — `content.store` writes the files and cannot import `engines`. For the same
+  reason it holds a `CharacterOverlay`, not a loose engine payload: the type *is* the file format.
+- `store.write_character(directory, name, engine, created)` writes `base.json` + `<engine>.json`
+  with `model_dump_json(indent=2)` and refuses an existing directory. The output is read back by
+  the untouched `load_character` — no new runtime format, no validator bypass.
+
+### 2. Story creation
+
+- `engines/story/create.py`: three static steps — four authored archetype spreads (4 points over
+  the approaches: daring/sly/keen/warm), four edges, four burdens, the traits carrying the same
+  `(edge)`/`(burden)` text convention kael uses. `create` writes the spread as the character
+  overlay and the two traits into the profile. Free point allocation stays out, per the plan's
+  own ceiling: authored spreads keep the framework at pick-from-options.
+
+### 3. 5e creation
+
+- `engines/dnd5e/create.py`: static steps for race/class/background built by iterating the
+  engine's content per collection (label = record name, id = index), plus the authored
+  ability-priority step — `might`/`grace`/`focus` orderings of the standard array, `focus`
+  resolving its lead from the class record's `spellcasting` fact (wisdom fallback). CON sits
+  second in every spread, so level-1 hp never goes negative.
+- **Plan re-resolution, verified against the pack**: the plan expected skill choices on class
+  records; in the actual SRD pack a class record carries no options — the *level-1* `levels`
+  record does (fighter-1: choose 2 of 7 features). A picked class therefore also answers with its
+  `<class>-1` sibling (the same `sibling("levels", ...)` shape advancement's `level_ref` uses),
+  and the generic rule — any chosen record whose `options`/`choose` are set becomes one more
+  step — then delivers the race's language choice and the class's level-1 features for free.
+  Skill proficiencies are not encoded as options anywhere in the pack, so created characters
+  carry none; that joins gear and spells in the deferred list rather than being half-modelled.
+- `create` derives what content answers: refs for race/class/background + picked options; the
+  six abilities from the priority, then racial bonuses (below); `armor-class` 10 + DEX mod;
+  hp = `hit-die` fact + CON mod; every int fact of the level-1 record (`level`,
+  `proficiency-bonus`, `cantrips-known`, ...) as numbers except `slot-N`, which become full
+  counters — long-rest, except the warlock's pact slots, which the SRD returns on a short rest.
+  The overlay is built through the engine's own `Sheet` and dumped, so it validates before it is
+  ever written.
+- Where the pack keeps a rule as prose, `create.py` transcribes it into an authored table rather
+  than leaving a state gap (maintainer decision mid-phase, reversing the first cut's deferrals —
+  see the review): `_CLASS_SKILLS` (choose-N per class, bard = all 18) spawns a `<class>-skills`
+  step whose picks land as `proficiencies` refs exactly like kael's, with `_BACKGROUND_SKILLS`
+  granting acolyte's fixed Insight+Religion and removing them from the class list; and
+  `_feature_pool` grants the counter behind each pool-bearing level-1 feature (second-wind 1/short,
+  rage, bardic-inspiration-d6, divine-sense, lay-on-hands, arcane-recovery — audited against all
+  twelve `-1` rows; ki is level 2, so the table is complete at level 1). `__init__` verifies every
+  table row against the pack, so a transcription typo refuses at engine build, not at play.
+- Racial ability bonuses land on the array before AC and hp are derived: flat entries from each
+  race's `ability-bonuses` fact (validated by a strict `_AbilityBonus` model, refused at engine
+  build if unreadable), and half-elf's "choose 2 others +1" as one more dynamic step
+  (`<race>-bonus`, offering the six abilities minus the flat-bonus ones).
+
+### 4. The UI page
+
+- `ui/create.py`: `/create/{engine}` — name, brief, one `ui.select` per step (`multiple` when
+  `choose > 1`), the whole form refreshable so follow-up steps appear on every pick, stale picks
+  pruned against the current step ids. Create: refuse an empty name, `create()` with the
+  `ValueError` shown verbatim, `text_slug(name)` de-collided against existing character dirs,
+  `write_character`, navigate home (the catalog re-reads the directory). Home page gains one
+  "New character" button row per engine. No preview pane, no wizard, no draft persistence.
+- The package boundary holds without new plumbing: the page reaches the capability as
+  `runtime.engine(id).creation` — attribute access typed through `Runtime`, no `aidm.engines`
+  import — and its own imports are `state.creation`, `content.store`, `app.session`.
+
+### 5. What the adversarial review changed
+
+A review pass ran over the staged diff with the mandate to close the state gaps the first cut had
+deferred. It found the framework half clean (`Creation` mirrors `Advancement` honestly,
+`check_picks` is not a copy of `violation`, the tests are minimal and end-to-end, no comment or
+test deletions warranted) and rewrote the 5e half:
+
+- **The deferrals were real gaps, and three of four are now closed.** Feature pools: `UseFeature`
+  on a created fighter's second-wind died at `counter_of` ("has no counter") — the pool table
+  above is the fix. Skill proficiencies: the Director reads rendered `proficiencies` refs when
+  setting `Check.bonus`, so a character without them plays measurably below kael — the skill
+  steps are the fix. Racial ability bonuses (a gap the review found, not one the phase had
+  named): a created elf wizard had DEX 13 where the SRD gives 15.
+- **Left deferred with traced evidence, not assumption**: starting gear (items are world entities
+  needing `profile.items` authoring; `Attack` works through `attack_bonus`/`damage` and play
+  grants items) and spell choice (`resolve_cast_spell` checks only the class ref's `spellcasting`
+  fact and slots — no known-spell list exists for a character to miss).
+- One real bug fixed beyond the gaps: every `slot-N` counter recharged on long rest, including
+  the warlock's pact slots, which the SRD returns on a short rest.
+- The maintainer's play-test (2026-08-12) drove one more pass, all same-day: a subrace step
+  (`<race>-subrace`, grouped off each subrace record's `race` fact, flat bonuses applied with the
+  race's before AC/hp — a subrace with a `choice` bonus entry is refused at engine build until a
+  pack ships one), follow-up prompts that name what is chosen ("Half-Elf: choose 1 (languages)"),
+  and a live preview pane beside the form — every pick re-runs the pure `create()` and the pane
+  renders either the character (traits, numbers, `current/maximum` counters, refs) or the refusal
+  text, which doubles as "what's still missing" feedback. Not built, ticketed instead: spell and
+  cantrip choice (02, a casting-model decision) and the three real ability-generation methods
+  (04, roll / 27-point buy / free assignment — each breaks the pick-from-options ceiling).
+- Second play-test round, same day: every race now grants its automatic languages as refs
+  (`_RACE_LANGUAGES`, nine transcribed rows verified at engine build — Common and the race's own
+  tongue are visible sheet state, not prose), and the background language step stops offering
+  Common or anything the race already speaks. Deliberate ceiling kept: double-picking one
+  language across the two *choice* steps still dedupes to a single ref. The preview became
+  progressive — name/brief and a "choices so far" row per step (picked labels, dim "—" when
+  unpicked) render always; the full sheet appears under a divider once the pick set is legal;
+  the refusal is demoted to one dim "Not ready yet" line instead of being the whole pane.
+- Two review findings closed in a follow-up pass: acolyte's "choose 2 languages" became a
+  `_BACKGROUND_LANGUAGES` table + `<background>-languages` step over the whole `languages`
+  collection, with `Sheet.refs` now deduped order-preservingly (a half-elf acolyte can legally
+  pick the same language twice and writes one ref — tested); and the UI's slug + `write_character`
+  moved inside the try, so "already exists" notifies like every other refusal.
+- Still deferred, now specced instead of loose: `.scratch/creation-remaining-state/` holds the
+  spec and three triaged tickets — starting gear (an owned item is a world `Entity` plus an
+  overlay ref, and armor breaks the `armor-class = 10 + DEX mod` derivation), spell choice (a
+  casting-model decision: `resolve_cast_spell` reads no known-spell list, so the state must not
+  be seeded before something reads it), and the pack's `fighter-1` "choose 2 of 7" flattening
+  (an SRD-importer/pack-shape fix that `Advancement.offered` consumes too).
+
+### 6. Verification and numbers
+
+- Four tests, all through the real files: a story character (spread + both traits) and a 5e
+  fighter and wizard each go `create` → `write_character` → `load_character` → `begin_game` on
+  whispering-vault — every validator the hand-authored path has, exercised end to end; plus the
+  shared refusal test (unknown step / wrong count / unknown option / duplicate directory). The
+  fighter asserts skills, the second-wind pool, and the half-elf bonus flipping AC 11 → 12 (the
+  ordering tripwire: bonuses must land before AC/hp derivation); the wizard asserts slots and
+  elf DEX 15 → AC 12. 138 → 142 tests.
+- Step 4 (advisor front-end) not built, per the plan's own gate: "build only if hand-picking
+  feels slow in practice", which only play can answer.
+- No golden moved, no `SAVE_VERSION` bump (no persisted or model-facing byte changed — creation
+  writes new files, it does not reshape existing ones), `characters/kael` untouched.
+- Net Python: src **+706** (43 creation state, 102 story, 386 dnd5e, 102 ui page, 73 across
+  loader/store/authored/rules/app/home), tests **+157**. A feature phase; the framework floor is
+  the 43-line state module plus the two-method ABC. The 5e file more than doubled in review, and
+  nearly all of it is transcribed SRD prose (skill lists, pool table) that the pack keeps as
+  text — data the engine now owns and verifies at build rather than lacking at play.
 
 ## Next
 
-Phase 12 — character creation — reads phase 10A's engine-owned construction for its optional
-creation capability.
+- Phase 11's live probe: settled (see phase 11). Phase 12's manual pass: done 2026-08-12 —
+  the play-test's easy findings (subrace step, follow-up prompts naming the collection,
+  background languages, a live preview pane) shipped the same day; the advisor front-end still
+  waits on the page feeling slow.
+- `.scratch/creation-remaining-state/` tickets await triage — gear, spell/cantrip choice,
+  level-row modeling, ability-generation methods (roll / point-buy / free assignment). None
+  blocks phase 13.
+- Phase 13 — scenario creator — next unshipped phase.

@@ -8,6 +8,7 @@ from aidm.config import load_settings
 from aidm.state.base import content_id
 
 from .busy import refuse_if_busy, working
+from .create import creation_page
 from .home import home_page
 from .panels import (
     advancement_panel,
@@ -110,6 +111,10 @@ def _register_pages(runtime: Runtime) -> None:
                 )
             )
         )
+
+    @ui.page("/create/{engine}")
+    def _create(engine: str) -> None:  # pyright: ignore[reportUnusedFunction]
+        creation_page(runtime, as_engine_id(engine))
 
 
 def _game_page(session: GameSession) -> None:

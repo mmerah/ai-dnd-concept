@@ -13,6 +13,7 @@ from .authored import (
     Character,
     CharacterOverlay,
     CharacterProfile,
+    CreatedCharacter,
     Scenario,
     ScenarioOverlay,
     ScenarioWorld,
@@ -52,6 +53,16 @@ def load_character(directory: Path, name: Slug, engine: EngineId) -> Character:
         profile=_read(folder / PROFILE_FILE, CharacterProfile),
         overlay=_read(folder / f"{engine}.json", CharacterOverlay),
     )
+
+
+def write_character(
+    directory: Path, name: Slug, engine: EngineId, created: CreatedCharacter
+) -> None:
+    folder = directory / content_id(name)
+    if folder.exists():
+        raise ValueError(f"character {name!r} already exists")
+    _write(folder / PROFILE_FILE, created.profile.model_dump_json(indent=2))
+    _write(folder / f"{engine}.json", created.overlay.model_dump_json(indent=2))
 
 
 def _playable[T: BaseModel](

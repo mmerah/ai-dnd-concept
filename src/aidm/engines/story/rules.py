@@ -11,6 +11,7 @@ from aidm.state.world import GameState
 
 from .actions import TurnPlan
 from .advance import StoryAdvancement
+from .create import StoryCreation
 from .mechanics import apply, begin, commit, render
 from .resolve import resolve_risk
 
@@ -28,6 +29,7 @@ class StoryEngine(Engine):
     def __init__(self, pack_paths: Sequence[Path] | None = None) -> None:
         super().__init__(pack_paths)
         self.advancement = StoryAdvancement(self.engine_dir)
+        self.creation = StoryCreation()
 
     def begin(self, state: GameState, rules: Mapping[EntityId, Rules]) -> None:
         begin(state, rules)

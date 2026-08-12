@@ -9,8 +9,9 @@ from typing import ClassVar, Self
 from pydantic import Field, JsonValue, TypeAdapter, model_validator
 from pydantic_ai.toolsets import AbstractToolset
 
-from aidm.content.authored import Rules
+from aidm.content.authored import CreatedCharacter, Rules
 from aidm.state.base import EngineId, Entity, EntityId, Frozen
+from aidm.state.creation import CreationStep, Picks
 from aidm.state.effects import WorldEffect, effect_key, effect_keys
 from aidm.state.facts import Fact
 from aidm.state.packs import ENCODING, ContentRef
@@ -69,6 +70,18 @@ class Advancement(ABC):
         """One legality rule for the advisor's retry and for the commit, so neither can drift."""
 
 
+class Creation(ABC):
+    """The optional creation capability: an engine without one offers no new-character page."""
+
+    @abstractmethod
+    def steps(self, picks: Picks) -> tuple[CreationStep, ...]:
+        """Tolerates partial or stale picks, so follow-up steps appear as parents are picked."""
+
+    @abstractmethod
+    def create(self, name: str, brief: str, picks: Picks) -> CreatedCharacter:
+        """Raises ValueError with the reason the page shows when the pick set is illegal."""
+
+
 class Engine(ABC):
     """One object per engine: its metadata, its plan lifecycle, and the mechanics half of the
     state core keeps but cannot read. What content it needs is its own to load."""
@@ -89,6 +102,8 @@ class Engine(ABC):
         self.director_toolsets: tuple[AbstractToolset[object], ...] = ()
         # An engine that grows its characters replaces this; the app offers only what it finds.
         self.advancement: Advancement | None = None
+        # An engine that creates characters replaces this; the app offers only what it finds.
+        self.creation: Creation | None = None
 
     @abstractmethod
     def begin(self, state: GameState, rules: Mapping[EntityId, Rules]) -> None:
