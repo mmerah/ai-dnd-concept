@@ -51,7 +51,7 @@ def game(engine_id: EngineId) -> tuple[Engine, GameState]:
     """The shipped scenario and character, composed under one engine."""
     selected_scenario = load_scenario(SCENARIOS, "whispering-vault", engine_id)
     selected_character = load_character(CHARACTERS, "kael", engine_id)
-    engine = build_engine(engine_id, settings())
+    engine = build_engine(engine_id)
     return engine, begin_game(engine, selected_scenario, selected_character)
 
 
@@ -60,7 +60,7 @@ def initialized() -> tuple[Engine, GameState]:
 
 
 def capability(engine: Engine) -> Advancement:
-    """Both shipped engines grow their characters; a test that asks for the capability wants it."""
+    """The shipped engine grows its characters; a test that asks for the capability wants it."""
     found = engine.advancement
     assert found is not None
     return found

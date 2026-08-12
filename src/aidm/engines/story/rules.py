@@ -1,4 +1,4 @@
-from collections.abc import Mapping, Sequence
+from collections.abc import Mapping
 from pathlib import Path
 from random import Random
 
@@ -26,8 +26,8 @@ class StoryEngine(Engine):
     plan_type = TurnPlan
     engine_dir = Path(__file__).parent
 
-    def __init__(self, pack_paths: Sequence[Path] | None = None) -> None:
-        super().__init__(pack_paths)
+    def __init__(self) -> None:
+        super().__init__()
         self.advancement = StoryAdvancement(self.engine_dir)
         self.creation = StoryCreation()
 

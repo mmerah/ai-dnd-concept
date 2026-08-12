@@ -5,7 +5,6 @@ from pathlib import Path
 
 from nicegui import ui
 from nicegui.events import ValueChangeEventArguments
-from pydantic import JsonValue
 
 from aidm.app.session import Runtime
 from aidm.content.authored import CreatedCharacter
@@ -128,16 +127,10 @@ def _preview_lines(created: CreatedCharacter) -> list[tuple[str, str]]:
             else:
                 lines.extend((key, f"{inner}: {value[inner]}") for inner in value)
         elif isinstance(value, list):
-            lines.extend((key, _element(element)) for element in value)
+            lines.extend((key, str(element)) for element in value)
         else:
             lines.append((key, str(value)))
     return lines
-
-
-def _element(element: JsonValue) -> str:
-    if isinstance(element, dict) and {"pack", "collection", "index"} <= element.keys():
-        return f"{element['pack']}/{element['collection']}/{element['index']}"
-    return str(element)
 
 
 def _shape(steps: Sequence[Step]) -> tuple[str, ...]:

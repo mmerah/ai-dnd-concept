@@ -72,8 +72,8 @@ class HasTag(Frozen):
     present: bool = True
 
 
-class AttackRollHappened(Frozen):
-    probe: Literal["attack_roll_happened"] = "attack_roll_happened"
+class ContestedRollHappened(Frozen):
+    probe: Literal["contested_roll_happened"] = "contested_roll_happened"
     min: int = Field(default=1, ge=0)
     # An upper bound turns "something was rolled" into "exactly this much was rolled".
     max: int | None = Field(default=None, ge=0)
@@ -164,7 +164,7 @@ type CheckStep = Annotated[
     | RolledWithMode
     | Created
     | Remembered
-    | AttackRollHappened
+    | ContestedRollHappened
     | BranchAddsTag
     | RollTarget
     | AtLocation
@@ -237,7 +237,7 @@ def check(outcome: Outcome, step: CheckStep) -> str | None:
             return (
                 f"the plan's {step.outcome!r} branch does not add tag {step.tag!r} to {step.entity}"
             )
-        case AttackRollHappened():
+        case ContestedRollHappened():
             rolled = len(_contested(outcome.facts))
             if step.max is None:
                 if rolled >= step.min:

@@ -16,10 +16,8 @@ the build as it stands.
   scattered f-strings.
 - One structured plan from the Rules Director, resolved by engine code. The single role tool is
   `read_content`, a read-only lookup.
-- Content is data; procedures are Python. A pack ships `Record`s whose `facts` map carries every
-  normalized mechanical value, and the engine spec declares which facts a collection must hold;
-  nothing parses rules prose at run time. What the model reads is rendered from the same facts the
-  resolver reads, so the two cannot drift.
+- Content is data; procedures are Python. Nothing parses rules prose at run time, and what the
+  model reads is rendered from the same values the resolver reads, so the two cannot drift.
 
 ## Known weaknesses
 
@@ -55,9 +53,6 @@ the build as it stands.
 
 ### Structure and scale
 
-- Spell preparation is unmodelled: a caster's whole known list stays castable — an over-permission
-  at the class boundary rather than an invented limit. Concentration is a sheet note the resolver
-  writes; temporary HP has no state, so a spell's duration is description-guided.
 - History is the last 6 exchanges, verbatim. No summarisation, no retrieval, no memory beyond the
   window; a long game silently forgets its own middle.
 - No undo. A save is a single current state, not a history of commits.
@@ -68,19 +63,12 @@ the build as it stands.
 
 ## Direction
 
-Near work is PLAN.md's, in order: small proven deletions, a permanent test-only
-Ironsworn-shaped boundary probe, separation of fictional world from engine mechanics, one engine
-object with optional capabilities, and simpler role/prompt plumbing. Memories and keepers begin
-Part III only after that boundary settles. What no phase owns:
+Near work is PLAN.md's, in order: the dnd5e deletion, the Oracle engine, the scenario creator,
+and media (see CONCEPT.md and DECISION.md for the reorientation). What no phase owns:
 
 - pre-commit configuration (format, check, type safety, tests).
 - A narration-against-facts check, retrying the Narrator once on a contradiction. Turns silent
   desync into a visible, correctable failure.
-- Token-efficient rendering. An entity render resolves every ref it holds inline, so a 5e caster
-  costs more tokens than a Story character — legitimately, since the arithmetic lives in that
-  detail. Two ways to spend it better: render compactly where the shape allows it, and make the
-  render prompt-aware, expanding a spell or a feature in full only when the turn's prompt reaches
-  for it. Measure it against the eval suite, not by eye.
 - UI growth: character sheet, journal, known-world panel.
 
 ### Deliberately not doing

@@ -29,7 +29,7 @@ def _package_of(path: Path) -> tuple[str, ...]:
 
 
 def _absolute(package: tuple[str, ...], node: ast.ImportFrom) -> str:
-    """Resolve relative imports: the engines are siblings, so `from ..dnd5e` must be seen."""
+    """Resolve relative imports: engines are siblings, so a `from ..sibling` must be seen."""
     if node.level == 0:
         return node.module or ""
     parent = package[: len(package) - node.level + 1]

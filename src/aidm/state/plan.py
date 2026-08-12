@@ -42,8 +42,8 @@ class OutcomeBranch[E](Frozen):
 
 
 class Branched[E](TurnPlanBase):
-    """The plan shape both shipped engines use: unconditional effects plus effects per outcome,
-    over that engine's own effect vocabulary."""
+    """The common plan shape: unconditional effects plus effects per outcome, over the
+    engine's own effect vocabulary."""
 
     effects: tuple[E, ...] = Field(
         default=(), description="Consequences that happen whatever the action settles."

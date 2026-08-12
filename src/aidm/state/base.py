@@ -27,7 +27,7 @@ SLUG_MAX = 64
 Slug = Annotated[str, Field(pattern=rf"^{SLUG_PATTERN}$", max_length=SLUG_MAX)]
 
 PLAYER_ID = EntityId("player")
-SAVE_VERSION = 53
+SAVE_VERSION = 54
 
 
 def content_id(value: str) -> Slug:

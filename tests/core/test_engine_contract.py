@@ -1,4 +1,4 @@
-from core_test_support import initialized, settings
+from core_test_support import initialized
 from story_test_support import story_game
 
 from aidm.app.session import build_engine
@@ -97,6 +97,5 @@ def test_a_created_entity_gains_engine_state_in_the_same_commit() -> None:
 
 def test_every_registered_engine_builds_itself() -> None:
     """Registration is data: a new engine is one line in `ENGINE_MODULES` and its own package."""
-    config = settings()
     for engine in engines():
-        _ = build_engine(engine.id, config)
+        _ = build_engine(engine.id)

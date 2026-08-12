@@ -39,8 +39,8 @@ registry. The dnd5e work is committed and tagged; git history is the archive.
    whichever the story engine's advancement actually needs — and move `ENCODING` to
    `state/base.py`.
 3. Delete dnd5e content: `characters/*/dnd5e.json`, `scenarios/*/dnd5e.json`, any dnd5e eval
-   cases under `scripts/evals/`. Sweep docs (`CONTEXT.md`, `docs/adr/`) for dnd5e references —
-   record the reorientation as an ADR rather than rewriting history.
+   cases under `scripts/evals/`. Sweep docs for dnd5e references; CONCEPT.md and DECISION.md
+   already record the reorientation.
 4. Bump `SAVE_VERSION`, regenerate golden fixtures, and read the diff: only dnd5e-family
    fixtures should disappear and only `save_version` bytes should move elsewhere. The story
    engine and the probe engine (`tests/probe/`) still pass untouched — that is the proof the

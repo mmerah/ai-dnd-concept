@@ -26,7 +26,7 @@ def story_game() -> tuple[Engine, GameState]:
 
 def story_session(directory: Path, rng: Random | None = None) -> GameSession:
     config = settings()
-    engine = build_engine(STORY, config)
+    engine = build_engine(STORY)
     return GameSession(
         target=TARGET,
         scenario=scenario(),

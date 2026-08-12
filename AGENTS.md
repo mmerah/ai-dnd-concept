@@ -20,20 +20,6 @@ uv run aidm
 
 Tests must be deterministic and require no network.
 
-## Agent skills
-
-### Issue tracker
-
-Issues and specs live as markdown files under `.scratch/<feature>/` — this repo has no git remote. See `docs/agents/issue-tracker.md`.
-
-### Triage labels
-
-The five canonical roles, label strings unchanged. See `docs/agents/triage-labels.md`.
-
-### Domain docs
-
-Single-context: `CONTEXT.md` + `docs/adr/` at the repo root. See `docs/agents/domain.md`.
-
 ## Engineering
 
 - Prefer pure transformations, explicit inputs, and side effects isolated at boundaries. State models are mutable; values are frozen.

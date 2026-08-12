@@ -1,9 +1,11 @@
 # AI Dungeon Master
 
-A role-separated narrative game platform with two first-party rules engines:
+A role-separated narrative game platform with one shipped rules engine:
 
-- **AIDM Story** — the default narrative-first, rules-light engine.
-- **AIDM 5e** — the D&D 5e implementation, isolated in its own engine package.
+- **AIDM Story** — the narrative-first, rules-light engine.
+
+A first-party tag-based Oracle engine is next (see CONCEPT.md and DECISION.md for the
+reorientation, PLAN.md for the phases).
 
 ```text
 prompt → SCENE → RULES → resolve → hooks → NARRATOR → WORLDKEEPER → commit
@@ -15,8 +17,7 @@ turn plan — the single action resolved this turn, its fiction consequences key
 unconditional effects. Engine code validates the plan against committed state, resolves it
 deterministically on a draft (rolls, costs, intrinsic outcomes), committed Facts fire the
 scenario's authored hooks, and core commits a fully revalidated state. An engine is ordinary typed
-Python plus content: its own strict mechanics model, action models with their resolvers, and
-content records whose `facts` map carries every mechanical value the resolver reads. Core owns the
+Python: its own strict mechanics model, and action models with their resolvers. Core owns the
 fiction — entities, placement, relations, threads, traits — and persists the engine's mechanics as
 one opaque payload it never reads. The Narrator receives no
 unrevealed canon; for visible entities it receives the same state as the other roles, with
@@ -33,8 +34,8 @@ uv run aidm
 
 The app opens at <http://localhost:8080>. Configure
 `PROVIDERS__OPENROUTER__API_KEY` in `.env`. The home page lists saves and lets you choose a
-scenario, rules engine, and compatible character. Story and 5e are both included. The game header
-always identifies the active engine.
+scenario, rules engine, and compatible character. The game header always identifies the active
+engine.
 
 Run repository checks with:
 
@@ -59,7 +60,7 @@ src/aidm/content/         authored scenarios and characters, saves and traces
 src/aidm/engines/         the loader, plus one directory per engine
 src/aidm/turn/            the turn loop, its agents, prompts, advancement
 src/aidm/app/             composition root: launcher catalog, sessions, runtime
-src/aidm/engines/story/   Story engine: spec, director procedure, rules
+src/aidm/engines/story/   Story engine: mechanics, actions, director procedure
 src/aidm/ui/              NiceGUI shell: renders state, submits decisions
 scripts/evals/    live-model eval harness, run manually and never from pytest
 characters/       shared character canon plus one overlay per supported engine

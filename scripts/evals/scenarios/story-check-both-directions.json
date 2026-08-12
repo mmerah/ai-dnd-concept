@@ -17,7 +17,7 @@
   "prompt": "Nobody is here to stop me. I deliberately take the lit candle from the desk and read the ledger aloud to nobody, just to hear the words.",
   "checks": [
     {
-      "probe": "attack_roll_happened",
+      "probe": "contested_roll_happened",
       "min": 0,
       "max": 0
     }

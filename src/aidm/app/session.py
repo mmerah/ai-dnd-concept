@@ -31,9 +31,8 @@ class Advancer:
         return None if capability is None else cls(capability, advisor(capability, settings))
 
 
-def build_engine(engine_id: EngineId, config: Settings) -> Engine:
-    """The composition root reads the engine's section; the loader only takes paths."""
-    return engine_class(engine_id)(config.engine(engine_id).pack_paths)
+def build_engine(engine_id: EngineId) -> Engine:
+    return engine_class(engine_id)()
 
 
 def begin_game(engine: Engine, scenario: Scenario, character: Character) -> GameState:
@@ -216,10 +215,10 @@ class Runtime:
     _sessions: dict[str, GameSession] = field(default_factory=dict, repr=False)
 
     def engine(self, engine_id: EngineId) -> Engine:
-        """Memoised: building the 5e engine compiles the whole content pack."""
+        """Memoised: every open session shares the one built engine."""
         held = self._engines.get(engine_id)
         if held is None:
-            held = build_engine(engine_id, self.config)
+            held = build_engine(engine_id)
             self._engines[engine_id] = held
         return held
 

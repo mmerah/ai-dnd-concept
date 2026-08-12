@@ -43,8 +43,6 @@ from aidm.turn.roles import (
 EVALS = Path(__file__).parent
 SCENARIOS = EVALS / "scenarios"
 RESULTS = EVALS / "results"
-# Eval-only content first: the spell scenarios need a caster the shipped game does not offer.
-EVAL_CHARACTERS = EVALS / "characters"
 SEED = 1000
 FLAGS = ("--only", "--runs", "--concurrency")
 USAGE = "usage: run.py [--only <engine|role|tag|id>] [--runs N] [--concurrency N]"
@@ -153,7 +151,7 @@ def load_cases(directory: Path = SCENARIOS) -> tuple[EvalCase, ...]:
 
 def initial_state(case: EvalCase, engine: Engine, config: Settings) -> GameState:
     scenario = load_scenario(config.scenarios_dir, case.scenario, case.engine)
-    character = load_character(_character_dir(case.character, config), case.character, case.engine)
+    character = load_character(config.characters_dir, case.character, case.engine)
     return begin_game(engine, scenario, character)
 
 
@@ -410,21 +408,12 @@ def _retry_reasons(messages: Sequence[ModelMessage]) -> tuple[str, ...]:
 
 
 def _engine(engine_id: EngineId, config: Settings) -> Engine:
-    """Memoised: building 5e compiles the whole content pack."""
+    """Memoised: every case under one engine shares the one built instance."""
     held = _ENGINES.get(engine_id)
     if held is None:
-        held = build_engine(engine_id, config)
+        held = build_engine(engine_id)
         _ENGINES[engine_id] = held
     return held
-
-
-def _character_dir(character: Slug, config: Settings) -> Path:
-    searched = (EVAL_CHARACTERS, config.characters_dir)
-    for directory in searched:
-        if (directory / character).is_dir():
-            return directory
-    named = ", ".join(str(directory) for directory in searched)
-    raise ValueError(f"character {character!r} is in none of: {named}")
 
 
 def _line(case: EvalCase, record: RunRecord) -> str:

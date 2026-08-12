@@ -1,14 +1,15 @@
 from collections.abc import Mapping, Sequence
-from typing import Self
+from typing import Annotated, Self
 
 from pydantic import Field, model_validator
 
 from aidm.state.base import Frozen, Slug
-from aidm.state.packs import ContentSlug
+
+# An option id is named by the engine and may run hyphens together ('red---fire'), so it is
+# laxer than `Slug`.
+ContentSlug = Annotated[str, Field(pattern=r"^[a-z0-9-]+$", max_length=64)]
 
 type Amounts = Mapping[Slug, int]
-# A step is named by the engine, an option usually by a content index — and those run hyphens
-# together upstream ('dragon-ancestor-red---fire-damage'), so a pick is as lax as `ContentSlug`.
 type Picks = Mapping[Slug, tuple[ContentSlug, ...] | Amounts]
 
 

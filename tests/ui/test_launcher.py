@@ -86,12 +86,12 @@ def test_a_save_whose_rules_were_withdrawn_is_reported_not_offered(tmp_path: Pat
     """The save still names its origin; that origin no longer ships the overlay it needs."""
     config = ui_settings(tmp_path)
     state = _opening_state(config, STORY)
-    FileSaves(tmp_path).save("withdrawn", updated(state, engine="dnd5e"))
+    FileSaves(tmp_path).save("withdrawn", updated(state, engine="retired"))
 
     saved = load_catalog(config).save("withdrawn")
 
     assert not saved.resumable
-    assert saved.problem == "scenario 'whispering-vault' no longer offers the 'dnd5e' engine"
+    assert saved.problem == "scenario 'whispering-vault' no longer offers the 'retired' engine"
 
 
 def test_a_save_from_another_build_is_reported_not_offered(tmp_path: Path) -> None:

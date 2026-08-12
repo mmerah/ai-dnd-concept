@@ -20,7 +20,7 @@
   "prompt": "I drive the rat away from the cloister door with my lantern, and do nothing else this turn.",
   "checks": [
     {
-      "probe": "attack_roll_happened",
+      "probe": "contested_roll_happened",
       "min": 1,
       "max": 1
     },

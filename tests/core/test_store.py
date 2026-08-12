@@ -82,9 +82,9 @@ def test_a_trace_round_trips_its_turn_and_advance_entries(tmp_path: Path) -> Non
     )
     advance = Advance(facts=facts)
 
-    traces.append("5e", turn)
-    traces.append("5e", advance)
-    reloaded = traces.load("5e")
+    traces.append("story", turn)
+    traces.append("story", advance)
+    reloaded = traces.load("story")
 
     assert reloaded == (turn, advance)
     director_output = reloaded[0].steps[0].output if isinstance(reloaded[0], Turn) else None

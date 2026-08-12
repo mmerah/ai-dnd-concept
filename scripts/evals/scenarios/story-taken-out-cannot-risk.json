@@ -17,7 +17,7 @@
   "prompt": "I force the vault door open with everything I have left.",
   "checks": [
     {
-      "probe": "attack_roll_happened",
+      "probe": "contested_roll_happened",
       "min": 0,
       "max": 0
     },

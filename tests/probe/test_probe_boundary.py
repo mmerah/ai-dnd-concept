@@ -29,10 +29,8 @@ AUTHORED = """
 STRIKE = Strike(actor_id=EntityId("player"), stat="iron", track_id="vault-seal")
 # What core must not own: an engine reaching for one of these has taken world state as mechanics.
 FORBIDDEN = (
-    "aidm.state.sheet",
     "aidm.state.effects",
     "aidm.state.apply",
-    "aidm.state.packs",
     "aidm.state.plan",
     "aidm.state.world",
     "aidm.engines",

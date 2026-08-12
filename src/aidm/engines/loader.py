@@ -1,6 +1,6 @@
 import json
 from abc import ABC, abstractmethod
-from collections.abc import Callable, Mapping, Sequence
+from collections.abc import Callable, Mapping
 from importlib import import_module
 from pathlib import Path
 from random import Random
@@ -10,11 +10,11 @@ from pydantic import Field, JsonValue, TypeAdapter, model_validator
 from pydantic_ai.toolsets import AbstractToolset
 
 from aidm.content.authored import CreatedCharacter, Rules
+from aidm.content.store import ENCODING
 from aidm.state.base import EngineId, Entity, EntityId, Frozen
 from aidm.state.creation import Picks, Step
 from aidm.state.effects import WorldEffect, effect_key, effect_keys
 from aidm.state.facts import Fact
-from aidm.state.packs import ENCODING, ContentRef
 from aidm.state.plan import TurnPlanBase
 from aidm.state.world import GameState
 
@@ -30,9 +30,9 @@ class AdvancementOffer(Frozen):
     prompt: str
     text: str = ""
     # What the advancement hands over unasked. The advisor never picks these; the prompt carries
-    # them so it can see what the level already gives before it answers what is left.
-    granted: tuple[ContentRef, ...] = ()
-    options: tuple[ContentRef, ...] = ()
+    # them so it can see what the growth already gives before it answers what is left.
+    granted: tuple[str, ...] = ()
+    options: tuple[str, ...] = ()
     choose: int = Field(default=0, ge=0)
 
     @model_validator(mode="after")
@@ -91,8 +91,7 @@ class Engine(ABC):
     plan_type: ClassVar[type[TurnPlanBase]]
     engine_dir: ClassVar[Path]
 
-    def __init__(self, pack_paths: Sequence[Path] | None = None) -> None:
-        del pack_paths  # only an engine with content reads them, and it overrides this
+    def __init__(self) -> None:
         self.director_instructions: str = (
             engine_text(self.engine_dir / "director.md")
             + _effect_vocabulary()
