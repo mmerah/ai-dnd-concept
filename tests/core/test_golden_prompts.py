@@ -1,8 +1,7 @@
 from collections.abc import Callable, Mapping
 
 import pytest
-from core_test_support import DND5E, STORY, capability, game, settings
-from fivee_test_support import ready
+from core_test_support import STORY, capability, game, settings
 from golden_test_support import FIXTURES, golden
 from story_test_support import grown
 
@@ -17,7 +16,7 @@ WANTED = "I want to strike harder."
 type OfferReady = Callable[[GameState], GameState]
 
 # What each engine needs of a state before it offers an advancement to render the prompt from.
-READY_FOR_ADVANCEMENT: Mapping[EngineId, OfferReady] = {STORY: grown, DND5E: ready}
+READY_FOR_ADVANCEMENT: Mapping[EngineId, OfferReady] = {STORY: grown}
 
 
 @pytest.mark.parametrize("engine_id", engine_ids())

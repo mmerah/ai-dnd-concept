@@ -2,7 +2,7 @@ from collections.abc import Mapping
 from random import Random
 
 import pytest
-from core_test_support import DND5E, STORY, game, plan, played, scripted, structured, text
+from core_test_support import STORY, game, plan, played, scripted, structured, text
 from golden_test_support import FIXTURES, dumped, golden
 from pydantic_ai.messages import ModelResponse
 from pydantic_ai.models.function import FunctionModel
@@ -68,16 +68,6 @@ SCRIPTS: Mapping[EngineId, ModelResponse] = {
             "stakes": "listening past the vault door unheard",
         },
         ("strong", "mixed", "setback"),
-    ),
-    DND5E: _plan(
-        {
-            "act": "check",
-            "actor_id": "player",
-            "bonus": 2,
-            "dc": 12,
-            "reason": "listening past the vault door",
-        },
-        ("success", "failure"),
     ),
 }
 

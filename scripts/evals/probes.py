@@ -1,6 +1,5 @@
-"""Probes name state the way a sheet spells it — `pool: "slot-1"`, `tag: "advancement-ready"`,
-`key: "armor-class"` — and resolve it against the entity's own engine mechanics: dnd5e's `Sheet`
-or story's `Adventurer`."""
+"""Probes name state the way a sheet spells it — `pool: "hp"`, `tag: "advancement-ready"` — and
+resolve it against the entity's own engine mechanics."""
 
 from collections.abc import Sequence
 from dataclasses import dataclass
@@ -10,27 +9,16 @@ from typing import Annotated, Literal, Self
 from pydantic import Field, JsonValue, model_validator
 
 from aidm.engines.counters import Counter
-from aidm.engines.dnd5e import mechanics as dnd5e
-from aidm.engines.dnd5e.advance import level_ref
-from aidm.engines.dnd5e.rules import Dnd5eEngine
 from aidm.engines.loader import Engine
 from aidm.engines.story import mechanics as story
 from aidm.state.base import PLAYER_ID, EngineId, EntityId, Frozen, ThreadStatus, Trait
 from aidm.state.facts import Fact
-from aidm.state.packs import Record, is_int_fact
 from aidm.state.world import GameState
 
-DND5E = EngineId("dnd5e")
 STORY = EngineId("story")
 
 HP = "hp"
-MAX_HP = "max-hp"
-LEVEL = "level"
-SLOT_PREFIX = "slot-"
-LONG_REST = "long-rest"
 CONTESTED_KIND = "dice_rolled"
-
-type EngineMechanics = dnd5e.Mechanics | story.Mechanics
 
 
 class Place(Frozen):
@@ -51,18 +39,6 @@ class SetPool(Frozen):
     remaining: int = Field(ge=0)
 
 
-class SetNumber(Frozen):
-    probe: Literal["set_number"] = "set_number"
-    entity: EntityId = PLAYER_ID
-    key: str
-    value: int
-
-
-class SetLevel(Frozen):
-    probe: Literal["set_level"] = "set_level"
-    value: int = Field(ge=1)
-
-
 class AddTag(Frozen):
     probe: Literal["add_tag"] = "add_tag"
     entity: EntityId = PLAYER_ID
@@ -70,16 +46,7 @@ class AddTag(Frozen):
     text: str = ""
 
 
-class SetNote(Frozen):
-    probe: Literal["set_note"] = "set_note"
-    entity: EntityId = PLAYER_ID
-    key: str
-    text: str = Field(min_length=1)
-
-
-type SetupStep = Annotated[
-    Place | Reveal | SetPool | SetNumber | SetLevel | AddTag | SetNote, Field(discriminator="probe")
-]
+type SetupStep = Annotated[Place | Reveal | SetPool | AddTag, Field(discriminator="probe")]
 
 
 class PoolDelta(Frozen):
@@ -113,7 +80,7 @@ class AttackRollHappened(Frozen):
 
 
 class BranchAddsTag(Frozen):
-    """Asserts the plan itself, not the die: the seeds make some runs' d20 a guaranteed miss, so a
+    """Asserts the plan itself, not the die: the seeds make some runs' roll a guaranteed miss, so a
     state check gated on the success branch firing would measure the roll, never the Director."""
 
     probe: Literal["branch_adds_tag"] = "branch_adds_tag"
@@ -123,7 +90,7 @@ class BranchAddsTag(Frozen):
 
 
 class RollTarget(Frozen):
-    """Bounds every target number rolled against: a chosen DC, or a target's armour class."""
+    """Bounds every target number rolled against."""
 
     probe: Literal["roll_target"] = "roll_target"
     min: int
@@ -138,22 +105,8 @@ class NumberValue(Frozen):
     max: int
 
 
-class HasRef(Frozen):
-    probe: Literal["has_ref"] = "has_ref"
-    entity: EntityId = PLAYER_ID
-    ref: str
-    present: bool = True
-
-
-class NoteValue(Frozen):
-    probe: Literal["note_value"] = "note_value"
-    entity: EntityId = PLAYER_ID
-    key: str
-    contains: str = Field(min_length=1)
-
-
 class RolledWithMode(Frozen):
-    """Reads the plan through the die it produced: an advantage attack rolls twice and keeps one."""
+    """Reads the plan through the die it produced: an advantage roll rolls twice and keeps one."""
 
     probe: Literal["rolled_with_mode"] = "rolled_with_mode"
     mode: Literal["normal", "advantage", "disadvantage"]
@@ -208,8 +161,6 @@ type CheckStep = Annotated[
     | PoolValue
     | HasTag
     | NumberValue
-    | HasRef
-    | NoteValue
     | RolledWithMode
     | Created
     | Remembered
@@ -267,16 +218,6 @@ def check(outcome: Outcome, step: CheckStep) -> str | None:
             if step.key not in held:
                 return f"{step.entity} has no number {step.key!r}; it has {sorted(held)}"
             return _within(held[step.key], step.min, step.max, f"{step.entity} {step.key}")
-        case HasRef():
-            refs = {str(ref) for ref in _dnd5e_sheet(outcome.after, step.entity).refs}
-            if (step.ref in refs) == step.present:
-                return None
-            return f"{step.entity} ref {step.ref!r} is {'absent' if step.present else 'present'}"
-        case NoteValue():
-            held = _dnd5e_sheet(outcome.after, step.entity).notes.get(step.key, "")
-            if step.contains.casefold() in held.casefold():
-                return None
-            return f"{step.entity} note {step.key!r} is {held!r}, wanted {step.contains!r} in it"
         case RolledWithMode():
             modes = [
                 str(fact.data.get("mode")) for fact in outcome.facts if fact.kind == CONTESTED_KIND
@@ -325,7 +266,7 @@ def check(outcome: Outcome, step: CheckStep) -> str | None:
                 return f"thread {step.thread} is {thread.status!r}, wanted {step.status!r}"
             return None
         case NoStateChange():
-            # Mechanics sit outside `world` now, so both halves of the state have to hold still.
+            # Mechanics sit outside `world`, so both halves of the state have to hold still.
             unchanged = (
                 outcome.before.world == outcome.after.world
                 and outcome.before.mechanics == outcome.after.mechanics
@@ -345,41 +286,24 @@ def _apply(setup: Setup, step: SetupStep) -> None:
             state.reveal(state.world.require(step.entity))
         case SetPool():
             _write_pool(state, step.entity, step.pool, step.remaining)
-        case SetNumber():
-            _write_number(state, step.entity, step.key, step.value)
-        case SetLevel():
-            _level_up_to(setup.engine, state, step.value)
         case AddTag():
             # Mirrors the runtime `trait-change` effect, so the rendered scene matches real play.
             entity = state.world.require(step.entity)
             name = step.tag.replace("-", " ").title()
             entity.traits.append(Trait(id=step.tag, name=name, text=step.text))
-        case SetNote():
-            _write_note(state, step.entity, step.key, step.text)
 
 
 def _counter_for(
     state: GameState, entity_id: EntityId, pool: str
-) -> tuple[EngineMechanics, Counter]:
-    entity = state.world.require(entity_id)
-    if state.engine == DND5E:
-        mechanics = dnd5e.read(state)
-        return mechanics, dnd5e.counter_of(dnd5e.sheet_of(mechanics, entity), entity, pool)
-    if state.engine == STORY:
-        mechanics = story.read(state)
-        counter = mechanics.actors[entity_id].counters().get(pool)
-        if counter is None:
-            known = ", ".join(sorted(mechanics.actors[entity_id].counters())) or "(none)"
-            raise ValueError(f"{entity_id!r} holds no {pool!r} counter; it has {known}")
-        return mechanics, counter
-    raise ValueError(f"probes support dnd5e and story, not {state.engine!r}")
-
-
-def _write_back(state: GameState, mechanics: EngineMechanics) -> None:
-    if isinstance(mechanics, dnd5e.Mechanics):
-        dnd5e.write(state, mechanics)
-    else:
-        story.write(state, mechanics)
+) -> tuple[story.Mechanics, Counter]:
+    if state.engine != STORY:
+        raise ValueError(f"probes support story, not {state.engine!r}")
+    mechanics = story.read(state)
+    counter = mechanics.actors[entity_id].counters().get(pool)
+    if counter is None:
+        known = ", ".join(sorted(mechanics.actors[entity_id].counters())) or "(none)"
+        raise ValueError(f"{entity_id!r} holds no {pool!r} counter; it has {known}")
+    return mechanics, counter
 
 
 def _pool(state: GameState, entity_id: EntityId, pool: str) -> int:
@@ -391,80 +315,18 @@ def _write_pool(state: GameState, entity_id: EntityId, pool: str, remaining: int
     if counter.maximum is not None and remaining > counter.maximum:
         raise ValueError(f"{entity_id!r} {pool} holds at most {counter.maximum}, not {remaining}")
     counter.current = remaining
-    _write_back(state, mechanics)
+    story.write(state, mechanics)
 
 
 def _numbers(state: GameState, entity_id: EntityId) -> dict[str, int]:
-    entity = state.world.require(entity_id)
-    if state.engine == DND5E:
-        return dict(dnd5e.sheet_of(dnd5e.read(state), entity).numbers)
-    if state.engine == STORY:
-        approaches = story.read(state).actors[entity_id].approaches()
-        return {str(name): value for name, value in approaches.items()}
-    raise ValueError(f"probes support dnd5e and story, not {state.engine!r}")
-
-
-def _require_dnd5e(state: GameState, entity_id: EntityId, what: str) -> None:
-    if state.engine != DND5E:
-        raise ValueError(
-            f"{entity_id!r} probe reads a 5e {what}, but this state plays {state.engine!r}"
-        )
-
-
-def _dnd5e_sheet(state: GameState, entity_id: EntityId) -> dnd5e.Sheet:
-    _require_dnd5e(state, entity_id, "sheet")
-    return dnd5e.sheet_of(dnd5e.read(state), state.world.require(entity_id))
-
-
-def _write_number(state: GameState, entity_id: EntityId, key: str, value: int) -> None:
-    """`max-hp` is a counter's bound rather than a number, and the only key spelled that way."""
-    _require_dnd5e(state, entity_id, "number")
-    entity = state.world.require(entity_id)
-    mechanics = dnd5e.read(state)
-    sheet = dnd5e.sheet_of(mechanics, entity)
-    if key == MAX_HP:
-        counter = dnd5e.counter_of(sheet, entity, HP)
-        counter.maximum = value
-        counter.current = min(counter.current, value)
-    elif key not in sheet.numbers:
-        raise ValueError(f"{entity_id!r} has no number {key!r}; it has {sorted(sheet.numbers)}")
-    else:
-        sheet.numbers[key] = value
-    dnd5e.write(state, mechanics)
-
-
-def _write_note(state: GameState, entity_id: EntityId, key: str, text: str) -> None:
-    _require_dnd5e(state, entity_id, "note")
-    entity = state.world.require(entity_id)
-    mechanics = dnd5e.read(state)
-    dnd5e.sheet_of(mechanics, entity).notes[key] = text
-    dnd5e.write(state, mechanics)
+    if state.engine != STORY:
+        raise ValueError(f"probes support story, not {state.engine!r}")
+    approaches = story.read(state).actors[entity_id].approaches()
+    return {str(name): value for name, value in approaches.items()}
 
 
 def _traits(state: GameState, entity_id: EntityId) -> frozenset[str]:
     return frozenset(trait.id for trait in state.world.require(entity_id).traits)
-
-
-def _level_up_to(engine: Engine, state: GameState, level: int) -> None:
-    """Characters are authored at level 1, so a scenario that wants a higher one applies the
-    class's own level rows: what they raise is exactly what the advisor would raise."""
-    assert isinstance(engine, Dnd5eEngine)  # the levels the rows come from are 5e's own content
-    mechanics = dnd5e.read(state)
-    sheet = dnd5e.sheet_of(mechanics, state.player)
-    for step in range(sheet.numbers[LEVEL] + 1, level + 1):
-        _apply_level(sheet, engine.content.require(level_ref(sheet, step)))
-    dnd5e.write(state, mechanics)
-
-
-def _apply_level(sheet: dnd5e.Sheet, record: Record) -> None:
-    for key, value in record.facts.items():
-        if not is_int_fact(value):
-            continue
-        if key.startswith(SLOT_PREFIX):
-            slot = sheet.counters.setdefault(key, Counter(current=0, maximum=0, recharge=LONG_REST))
-            slot.maximum, slot.current = value, value
-        elif key in sheet.numbers:
-            sheet.numbers[key] = value
 
 
 def _branch_adds_tag(plan: JsonValue, step: BranchAddsTag) -> bool:

@@ -1,7 +1,7 @@
 import shutil
 from pathlib import Path
 
-from core_test_support import DND5E, STORY, updated
+from core_test_support import STORY, updated
 from ui_test_support import SCENARIOS, ui_settings
 
 from aidm.app.launcher import LauncherController, LaunchTarget, load_catalog
@@ -23,11 +23,9 @@ def _opening_state(config: Settings, engine: EngineId) -> GameState:
     return Runtime(config).session(target).state
 
 
-def _story_only(tmp_path: Path) -> Path:
-    """A scenario ships one overlay per ruleset it supports, so removing one withdraws it."""
+def _scenarios_copy(tmp_path: Path) -> Path:
     scenarios = tmp_path / "scenarios"
     shutil.copytree(SCENARIOS, scenarios)
-    (scenarios / "whispering-vault" / "dnd5e.json").unlink()
     return scenarios
 
 
@@ -35,16 +33,16 @@ def test_an_overlay_decides_which_rules_a_scenario_offers(tmp_path: Path) -> Non
     catalog = load_catalog(ui_settings(tmp_path))
     controller = LauncherController(catalog)
 
-    assert catalog.scenario("whispering-vault").engines == ("story", "dnd5e")
+    assert catalog.scenario("whispering-vault").engines == ("story",)
     assert [option.id for option in catalog.characters] == ["kael"]
-    controller.choose_engine(DND5E)
+    controller.choose_engine(STORY)
 
     assert [option.id for option in controller.compatible_characters()] == ["kael"]
     assert controller.new_game().model_dump() == {
-        "slug": "whispering-vault--kael--dnd5e",
+        "slug": "whispering-vault--kael--story",
         "scenario_id": "whispering-vault",
         "character_id": "kael",
-        "engine": "dnd5e",
+        "engine": "story",
     }
 
 
@@ -52,7 +50,7 @@ def test_content_is_offered_only_for_the_rulesets_it_ships(tmp_path: Path) -> No
     """An overlay's presence is the whole compatibility check, so this item is the first that lets a
     directory sit under `scenarios/` offering nothing. The home screen is the only way into the app,
     so an unplayable directory has to be skipped rather than break it."""
-    scenarios = _story_only(tmp_path)
+    scenarios = _scenarios_copy(tmp_path)
     (scenarios / "notes").mkdir()
     shutil.copytree(scenarios / "whispering-vault", scenarios / "aaa-draft")
     (scenarios / "aaa-draft" / "story.json").unlink()
@@ -87,10 +85,10 @@ def test_launcher_lists_and_resolves_an_existing_save(tmp_path: Path) -> None:
 def test_a_save_whose_rules_were_withdrawn_is_reported_not_offered(tmp_path: Path) -> None:
     """The save still names its origin; that origin no longer ships the overlay it needs."""
     config = ui_settings(tmp_path)
-    FileSaves(tmp_path).save("withdrawn", _opening_state(config, DND5E))
-    withdrawn = ui_settings(tmp_path, _story_only(tmp_path))
+    state = _opening_state(config, STORY)
+    FileSaves(tmp_path).save("withdrawn", updated(state, engine="dnd5e"))
 
-    saved = load_catalog(withdrawn).save("withdrawn")
+    saved = load_catalog(config).save("withdrawn")
 
     assert not saved.resumable
     assert saved.problem == "scenario 'whispering-vault' no longer offers the 'dnd5e' engine"

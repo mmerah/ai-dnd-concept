@@ -4,7 +4,7 @@ from pathlib import Path
 import pytest
 
 SOURCE = Path(__file__).parents[2] / "src" / "aidm"
-ENGINES = ("aidm.engines.story", "aidm.engines.dnd5e")
+ENGINES = ("aidm.engines.story",)
 # One direction: state <- content <- engines <- turn <- app <- ui, with `aidm.config` a leaf
 # every layer may read. An engine ships its own panels, so it may import nicegui; `aidm.ui` and
 # the other engine stay closed to it.
@@ -15,8 +15,6 @@ FORBIDDEN = {
     "turn": {"aidm.app", "aidm.ui", "nicegui"},
     "app": {"aidm.ui", "nicegui"},
     "ui": {"aidm.engines"},
-    "engines/story": {"aidm.engines.dnd5e"},
-    "engines/dnd5e": {"aidm.engines.story"},
 }
 
 
@@ -72,7 +70,7 @@ def test_only_the_loader_names_a_concrete_engine() -> None:
     naming = {
         str(path.relative_to(SOURCE))
         for path in SOURCE.rglob("*.py")
-        if path.parts[-2] not in ("story", "dnd5e")
+        if path.parts[-2] != "story"
         if any(name.startswith(ENGINES) for name in _file_imports(path))
     }
     assert naming == set()

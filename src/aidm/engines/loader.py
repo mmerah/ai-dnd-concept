@@ -18,10 +18,7 @@ from aidm.state.packs import ENCODING, ContentRef
 from aidm.state.plan import TurnPlanBase
 from aidm.state.world import GameState
 
-ENGINE_MODULES: tuple[str, ...] = (
-    "aidm.engines.story.rules",
-    "aidm.engines.dnd5e.rules",
-)
+ENGINE_MODULES: tuple[str, ...] = ("aidm.engines.story.rules",)
 ENGINE = "ENGINE"
 
 type EntityRenderer = Callable[[Entity], str]

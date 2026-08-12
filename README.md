@@ -60,19 +60,17 @@ src/aidm/engines/         the loader, plus one directory per engine
 src/aidm/turn/            the turn loop, its agents, prompts, advancement
 src/aidm/app/             composition root: launcher catalog, sessions, runtime
 src/aidm/engines/story/   Story engine: spec, director procedure, rules
-src/aidm/engines/dnd5e/   5e engine: spec, director procedure, SRD pack, rules
 src/aidm/ui/              NiceGUI shell: renders state, submits decisions
-scripts/srd/      one-shot importer projecting an upstream 5e-database checkout into the pack
 scripts/evals/    live-model eval harness, run manually and never from pytest
 characters/       shared character canon plus one overlay per supported engine
 scenarios/        shared world canon plus one overlay per supported engine
-tests/            per-package suites: core, story, dnd5e, ui
+tests/            per-package suites: core, story, ui
 ```
 
 One distribution. The import direction — `state <- content <- engines <- turn <- app <- ui`, with
 `aidm/config.py` a leaf every layer may read — is enforced by
 `tests/core/test_package_boundary.py`: the engines do not import each other or `aidm.ui`, and
-nothing below `app` imports the UI or NiceGUI. The shipped SRD pack is package data under `src/aidm/engines/dnd5e/packs/`.
+nothing below `app` imports the UI or NiceGUI.
 
 The **Trace** tab shows the Director's plan, resolved facts, and the exact prompt received
 by each role. The **State** tab shows the committed game state. **Advancement** drafts a proposal
