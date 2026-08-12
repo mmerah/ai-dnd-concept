@@ -22,6 +22,7 @@ from aidm.state.packs import (
 ENGINE_DIR = Path(__file__).parent
 # Collections whose int facts land on the sheet of any entity that refs a record in them.
 PROJECTING: tuple[CollectionName, ...] = ("classes", "races", "monsters")
+SUBCLASSES: CollectionName = "subclasses"
 
 
 # `spec.json`: collection name -> the facts every record in it must carry (empty: no requirement).
@@ -78,6 +79,7 @@ def _record_text(record: Record, ref: str) -> str:
         f"{record.name} [{ref}]",
         *([f"facts: {facts}"] if facts else []),
         *([f"tags: {', '.join(record.tags)}"] if record.tags else []),
+        *([f"grants: {', '.join(str(ref) for ref in record.granted)}"] if record.granted else []),
         *([f"choose {record.choose} of: {options}"] if options else []),
         *([record.text] if record.text else []),
     ]

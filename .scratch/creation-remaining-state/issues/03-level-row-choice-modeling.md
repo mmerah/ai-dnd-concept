@@ -1,6 +1,9 @@
 # 03 — Level rows conflate grants with choices
 
-Status: needs-triage
+Status: done (2026-08-12) — `Record.granted` beside the kept `options`/`choose` pair; the audit
+found no record anywhere needing two choice groups, so 05's `choices` list was not built. Pack
+re-imported from the checkout at the pinned commit; round trip byte-identical but for `levels.json`
+and one line of `features.json`. See PROGRESS.md phase 12 §7.
 
 `fighter-1` is `choose 2 of [6 fighting styles, second-wind]`: two styles and no Second Wind is
 legal at creation and at advancement. Same flattening on `wizard-1` (`choose 2` of exactly its 2

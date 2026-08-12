@@ -111,6 +111,7 @@ class Interpreted(Record):
             name=self.name,
             text=self.text,
             tags=self.tags,
+            granted=self.granted,
             options=self.options,
             choose=self.choose,
             facts=self.mechanical_facts(),

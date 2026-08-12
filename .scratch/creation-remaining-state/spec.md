@@ -30,3 +30,13 @@ would reshape. This spec records what was traced so the tickets don't re-derive 
 Gear is the only one a player feels every session (weaponless Attack works but reads oddly for
 a fighter). The pack-modeling fix unblocks nothing else and can ride any future importer pass.
 Spell choice should wait for a casting-mechanics decision.
+
+## After 01–04: the importer takes the tables back (05)
+
+Everything above was closed by transcribing SRD prose into `create.py` and `equipment.py` —
+~390 of their 1,069 lines. The upstream models already parse the structured fields those tables
+restate (`proficiency_choices`, `starting_equipment_options`, `Race.languages`,
+`Subrace.racial_traits`); the projector renders them into record `text` and drops them.
+Ticket 05 projects them instead and deletes the tables. It shares 03's decision: `Record` holds
+one `options`/`choose` pair, and a class needs several independent choice groups at once, so 03
+should settle the general shape (a list of named choices) rather than fix `fighter-1` alone.

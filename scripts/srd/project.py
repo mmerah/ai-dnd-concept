@@ -10,7 +10,7 @@ scatter that correspondence."""
 from collections.abc import Iterable, Mapping, Sequence
 from typing import Literal
 
-from pydantic import TypeAdapter
+from pydantic import JsonValue, TypeAdapter
 
 from aidm.state.base import Slug
 from aidm.state.dice import ConstantTerm, DiceExpr, DiceTerm, terms
@@ -57,8 +57,15 @@ PACK_ID = "srd-2014"
 ABILITIES = ("strength", "dexterity", "constitution", "intelligence", "wisdom", "charisma")
 MAX_SPELL_LEVEL = 9
 _MODIFIER_TERM = " + MOD"
+_SKILL_PREFIX = "skill-"
+# One letter per position inside an equipment group, as the SRD's own prose numbers them.
+_SUFFIXES = "abcdefgh"
 
-type Options = Mapping[str, tuple[ContentRef, ...]]
+# What a feature that is a choice offers, and how many picks it takes.
+type Subfeatures = tuple[tuple[ContentRef, ...], int]
+type Options = Mapping[str, Subfeatures]
+# Where a class chooses its subclass: the level its subclass table starts at, and the subclasses.
+type SubclassChoice = tuple[int, tuple[ContentRef, ...]]
 
 
 def ref(collection: str, index: str) -> ContentRef:
@@ -555,7 +562,7 @@ def race(record: up.Race) -> RaceRecord:
             record.size_description,
             record.age,
             _line(
-                _optional("Languages", _names(record.languages) + f". {record.language_desc}"),
+                _optional("Languages", record.language_desc),
                 ""
                 if languages is None
                 else f"Choose {_plural(languages.choose, 'extra language')}.",
@@ -564,6 +571,7 @@ def race(record: up.Race) -> RaceRecord:
             _optional("Subraces", _names(record.subraces)),
             _optional("Alignment", record.alignment),
         ),
+        granted=tuple(ref("languages", entry.index) for entry in record.languages),
         options=picks,
         choose=languages.choose if picks and languages is not None else None,
         speed=record.speed,
@@ -593,8 +601,8 @@ def subrace(record: up.Subrace) -> SubraceRecord:
             f"Subrace of {record.race.name}.",
             _prose(record.desc),
             _optional("Ability scores", _bonuses(record.ability_bonuses)),
-            _optional("Traits", _names(record.racial_traits)),
         ),
+        granted=tuple(ref("traits", entry.index) for entry in record.racial_traits),
         race=record.race.index,
         ability_bonuses=tuple(
             AbilityBonus(ability=bonus.ability_score.name, bonus=bonus.bonus)
@@ -603,19 +611,16 @@ def subrace(record: up.Subrace) -> SubraceRecord:
     )
 
 
-def background(record: up.Background) -> BackgroundRecord:
+def background(record: up.Background, languages: Sequence[up.Language]) -> BackgroundRecord:
+    """`language_options` names its pool as a `resource_list` URL rather than listing it, so the
+    languages file is what turns 'two languages of your choice' into refs."""
     feature = record.feature
     gold = record.starting_gold
-    languages = (
-        ""
-        if record.language_options is None
-        else f"Choose {_plural(record.language_options.choose, 'language')}."
-    )
+    spoken = record.language_options
     return BackgroundRecord(
         index=record.index,
         name=record.name,
         text=_joined(
-            _line(_optional("Proficiencies", _names(record.starting_proficiencies)), languages),
             _line(
                 _optional("Equipment", _carried(record.starting_equipment)),
                 *(_category_choice(choice) for choice in record.starting_equipment_options),
@@ -627,6 +632,9 @@ def background(record: up.Background) -> BackgroundRecord:
             _roleplay_table("Bonds", record.bonds),
             _roleplay_table("Flaws", record.flaws),
         ),
+        granted=tuple(ref("proficiencies", entry.index) for entry in record.starting_proficiencies),
+        options=() if spoken is None else tuple(ref("languages", e.index) for e in languages),
+        choose=None if spoken is None else spoken.choose,
         starting_gold=None if gold is None else _whole(gold, "starting gold"),
     )
 
@@ -656,6 +664,7 @@ def _roleplay_option(option: up.Option | str) -> str:
 
 def klass(record: up.Class) -> ClassRecord:
     casting = record.spellcasting
+    skills = _skill_choice(record)
     return ClassRecord(
         index=record.index,
         name=record.name,
@@ -666,9 +675,7 @@ def klass(record: up.Class) -> ClassRecord:
                 _optional("Spellcasting ability", _casting_ability(casting)),
             ),
             _optional("Proficiencies", _names(record.proficiencies)),
-            _joined(*(choice.desc for choice in record.proficiency_choices)),
-            _optional("Starting equipment", _carried(record.starting_equipment)),
-            _joined(*(choice.desc for choice in record.starting_equipment_options)),
+            _joined(*(c.desc for c in record.proficiency_choices if c is not skills)),
             _multiclassing(record.multi_classing),
             _optional("Subclasses", _names(record.subclasses)),
             *(
@@ -676,10 +683,156 @@ def klass(record: up.Class) -> ClassRecord:
                 for entry in (casting.info if casting else [])
             ),
         ),
+        options=_choice_refs("proficiencies", skills),
+        choose=None if skills is None else skills.choose,
         hit_die=record.hit_die,
         saving_throws=tuple(_ability(entry.name) for entry in record.saving_throws),
         spellcasting=None if casting is None else _ability(casting.spellcasting_ability.name),
     )
+
+
+def _skill_choice(record: up.Class) -> up.Choice | None:
+    """The one proficiency choice made of skills. A class's other choices — the bard's three
+    instruments, the monk's tools — name no record collection a sheet holds, so they stay prose."""
+    found = [
+        choice
+        for choice in record.proficiency_choices
+        if choice.options.options
+        and all(
+            not isinstance(option, str)
+            and option.item is not None
+            and option.item.index.startswith(_SKILL_PREFIX)
+            for option in choice.options.options
+        )
+    ]
+    if len(found) > 1:
+        raise ValueError(
+            f"class {record.index!r} carries {len(found)} skill choices; the pair fits one"
+        )
+    return found[0] if found else None
+
+
+def equipment_groups(
+    record: up.Class, collections: Mapping[str, str], categories: Mapping[str, Sequence[str]]
+) -> list[Record]:
+    """Every starting-equipment decision a class makes, as records the creation page can walk: one
+    group per upstream choice, and an option record wherever an option hands over several things at
+    once or leaves a whole category open. Only a group carries the `class` fact, which is what tells
+    the two apart. Counts are dropped — one ref is one carried item, as the sheet models it."""
+    found: list[Record] = []
+    grants = tuple(_item_ref(collections, e.equipment.index) for e in record.starting_equipment)
+    if grants:
+        found.append(
+            Record(
+                index=f"{record.index}-equipment-0",
+                name=f"{record.name} equipment",
+                text=f"Carried by every {record.name.lower()}.",
+                granted=grants,
+                facts={"class": record.index},
+            )
+        )
+    for number, choice in enumerate(record.starting_equipment_options, start=1):
+        found.extend(_equipment_group(record, number, choice, collections, categories))
+    return found
+
+
+def _equipment_group(
+    record: up.Class,
+    number: int,
+    choice: up.Choice,
+    collections: Mapping[str, str],
+    categories: Mapping[str, Sequence[str]],
+) -> list[Record]:
+    index = f"{record.index}-equipment-{number}"
+    facts: Mapping[Slug, JsonValue] = {"class": record.index}
+    # The SRD's own prose for the group is its name: it is what the creation page asks.
+    name = _capitalized(choice.desc) or f"{record.name} equipment {number}"
+    category = choice.options.equipment_category
+    if category is not None:
+        picks, choose = _open_category(index, choice, collections, categories)
+        return [Record(index=index, name=name, options=picks, choose=choose, facts=facts)]
+    offered: list[ContentRef] = []
+    nested: list[Record] = []
+    for position, option in enumerate(choice.options.options):
+        if isinstance(option, str):
+            raise ValueError(f"{index}: a bare string is no equipment option")
+        if option.option_type == "counted_reference" and option.of is not None:
+            offered.append(_item_ref(collections, option.of.index))
+            continue
+        made = _equipment_option(f"{index}-{_SUFFIXES[position]}", option, collections, categories)
+        nested.append(made)
+        offered.append(ref("equipment_options", made.index))
+    group = Record(
+        index=index, name=name, options=tuple(offered), choose=choice.choose, facts=facts
+    )
+    return [group, *nested]
+
+
+def _equipment_option(
+    index: str,
+    option: up.Option,
+    collections: Mapping[str, str],
+    categories: Mapping[str, Sequence[str]],
+) -> Record:
+    if option.option_type == "choice" and option.choice is not None:
+        picks, choose = _open_category(index, option.choice, collections, categories)
+        name = option.choice.desc or "one of a category"
+        return Record(index=index, name=_capitalized(name), options=picks, choose=choose)
+    if option.option_type != "multiple":
+        raise ValueError(f"{index}: equipment option type {option.option_type!r} is unknown")
+    granted: list[ContentRef] = []
+    labels: list[str] = []
+    inner: up.Choice | None = None
+    for item in option.items:
+        if item.option_type == "counted_reference" and item.of is not None:
+            granted.append(_item_ref(collections, item.of.index))
+            labels.append(item.of.name)
+        elif item.option_type == "choice" and item.choice is not None:
+            if inner is not None:
+                raise ValueError(f"{index}: two open categories in one option; the pair fits one")
+            inner = item.choice
+            labels.append(item.choice.desc)
+        else:
+            raise ValueError(f"{index}: bundled option type {item.option_type!r} is unknown")
+    picks, choose = (
+        ((), None) if inner is None else _open_category(index, inner, collections, categories)
+    )
+    return Record(
+        index=index,
+        # ' + ', not a comma: an item name carries commas of its own ("Crossbow, light").
+        name=_capitalized(" + ".join(labels)),
+        granted=tuple(granted),
+        options=picks,
+        choose=choose,
+    )
+
+
+def _open_category(
+    index: str,
+    choice: up.Choice,
+    collections: Mapping[str, str],
+    categories: Mapping[str, Sequence[str]],
+) -> tuple[tuple[ContentRef, ...], int]:
+    category = choice.options.equipment_category
+    if category is None:
+        raise ValueError(f"{index}: an equipment choice with no category names nothing to pick")
+    return _category_refs(category.index, collections, categories), choice.choose
+
+
+def _category_refs(
+    index: str, collections: Mapping[str, str], categories: Mapping[str, Sequence[str]]
+) -> tuple[ContentRef, ...]:
+    members = categories.get(index)
+    if not members:
+        raise ValueError(f"equipment category {index!r} lists nothing to pick from")
+    return tuple(_item_ref(collections, member) for member in members)
+
+
+def _item_ref(collections: Mapping[str, str], index: str) -> ContentRef:
+    collection = collections.get(index)
+    if collection is None:
+        raise ValueError(f"equipment {index!r} lands in no collection this pack ships")
+    return ref(collection, index)
 
 
 def _casting_ability(casting: up.Spellcasting | None) -> str:
@@ -870,7 +1023,7 @@ def proficiency(record: up.Proficiency) -> ProficiencyRecord:
 
 def feature(record: up.Feature) -> FeatureRecord:
     owner = record.subclass or record.class_
-    choice = subfeature_options(record)
+    choice, choose = subfeature_options(record)
     specific = record.feature_specific
     return FeatureRecord(
         index=record.index,
@@ -880,7 +1033,7 @@ def feature(record: up.Feature) -> FeatureRecord:
             _prose(record.desc),
         ),
         options=choice,
-        choose=1 if choice else None,
+        choose=choose or None,
         level=record.level,
         requires=_feature_requires(record.prerequisites),
         pick=_feature_choice(specific),
@@ -922,13 +1075,41 @@ def _option_name(option: up.Option | str) -> str:
     return option.string or (option.item.name if option.item else "")
 
 
-def level(record: up.Level, options: Options) -> LevelRecord:
+def subclass_choices(
+    subclasses: Sequence[up.Subclass], levels: Sequence[up.Level]
+) -> Mapping[str, SubclassChoice]:
+    """Where each class chooses its subclass. Upstream states both halves — a subclass names its
+    class, and the level rows name the subclass whose table they belong to — so the level a class
+    decides at is the level its subclass table starts."""
+    starts: dict[str, int] = {}
+    for row in levels:
+        if row.subclass is not None:
+            starts[row.class_.index] = min(starts.get(row.class_.index, row.level), row.level)
+    offered: dict[str, list[ContentRef]] = {}
+    for record in subclasses:
+        offered.setdefault(record.class_.index, []).append(ref("subclasses", record.index))
+    if tableless := sorted(set(offered) - set(starts)):
+        raise ValueError(f"subclasses of {tableless} carry no level rows to be chosen at")
+    return {index: (starts[index], tuple(refs)) for index, refs in offered.items()}
+
+
+def level(
+    record: up.Level, options: Options, subclasses: Mapping[str, SubclassChoice]
+) -> LevelRecord:
     owner = record.subclass or record.class_
-    picks = tuple(
-        pick
-        for entry in record.features
-        for pick in options.get(entry.index, (ref("features", entry.index),))
-    )
+    # A feature entry either IS a choice (Fighting Style) or is handed over (Second Wind); one
+    # `options` pair holds one group, and no SRD level row carries two.
+    offered = [options[entry.index] for entry in record.features if entry.index in options]
+    if len(offered) > 1:
+        raise ValueError(f"level {record.index!r} carries {len(offered)} choices; options fit one")
+    picks, choose = offered[0] if offered else ((), 0)
+    # The row hands over the feature that says "choose an archetype"; this is where that choice
+    # lands, so a picked subclass answers with its own table exactly as a class does.
+    chosen = subclasses.get(record.class_.index)
+    if record.subclass is None and chosen is not None and record.level == chosen[0]:
+        if picks:
+            raise ValueError(f"level {record.index!r} chooses a subclass and a feature at once")
+        picks, choose = chosen[1], 1
     specific = {**record.class_specific, **record.subclass_specific}
     whole = _whole_numbers(specific)
     cantrips_known = count if (count := record.spellcasting.get("cantrips_known", 0)) > 0 else None
@@ -953,8 +1134,11 @@ def level(record: up.Level, options: Options) -> LevelRecord:
             for name in ("wild_shape_fly", "wild_shape_swim")
             if specific.get(name) is True
         ),
+        granted=tuple(
+            ref("features", entry.index) for entry in record.features if entry.index not in options
+        ),
         options=picks,
-        choose=len(record.features) or None,
+        choose=choose or None,
         level=record.level,
         proficiency_bonus=record.prof_bonus,
         cantrips_known=cantrips_known,
@@ -996,10 +1180,12 @@ def _level_slot_creation(specific: Mapping[str, object]) -> tuple[tuple[int, int
     return tuple((row.spell_slot_level, row.sorcery_point_cost) for row in rows)
 
 
-def subfeature_options(record: up.Feature) -> tuple[ContentRef, ...]:
-    """The picks a feature that *is* a choice offers, as the level row's options flatten them."""
+def subfeature_options(record: up.Feature) -> Subfeatures:
+    """The picks a feature that *is* a choice offers, and how many of them it takes."""
     specific = record.feature_specific
-    return _choice_refs("features", None if specific is None else specific.subfeature_options)
+    choice = None if specific is None else specific.subfeature_options
+    picks = _choice_refs("features", choice)
+    return picks, choice.choose if picks and choice is not None else 0
 
 
 # Upstream writes 9999 where a pool stops being counted (the barbarian's level-20 rages).
@@ -1097,6 +1283,10 @@ def _choice_refs(collection: str, choice: up.Choice | None) -> tuple[ContentRef,
         for option in choice.options.options
         if not isinstance(option, str) and option.item is not None
     )
+
+
+def _capitalized(body: str) -> str:
+    return body[:1].upper() + body[1:]
 
 
 def _plural(count: int, noun: str) -> str:

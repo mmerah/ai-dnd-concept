@@ -227,6 +227,22 @@ def test_a_cast_spends_its_slot_before_anything_follows() -> None:
     assert "cannot go below" in _refusal(engine, empty, plan_one)
 
 
+def test_a_spell_the_caster_does_not_hold_is_refused() -> None:
+    engine, state = dnd5e_game()
+    ready = wizardly(armed(state))
+    unlearned = _plan(
+        engine,
+        {
+            "act": "cast-spell",
+            "actor_id": PLAYER_ID,
+            "spell": "srd-2014/spells/sleep",
+            "slot_level": 1,
+            "target_id": RAT,
+        },
+    )
+    assert "does not know Sleep" in _refusal(engine, ready, unlearned)
+
+
 def test_a_save_based_spell_rolls_a_fixed_dc_and_halves_on_a_saved_target() -> None:
     """Success and failure read from the caster's side: `success` means the target failed."""
     engine, state = dnd5e_game()

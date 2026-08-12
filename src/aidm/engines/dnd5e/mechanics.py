@@ -25,16 +25,20 @@ from .content import PROJECTING, lookup
 
 type Dnd5eEffect = Annotated[WorldOp | CounterChange, Field(discriminator="op")]
 
-ACTOR_NUMBERS: Mapping[Slug, int] = {
-    "strength": 10,
-    "dexterity": 10,
-    "constitution": 10,
-    "intelligence": 10,
-    "wisdom": 10,
-    "charisma": 10,
-    "armor-class": 10,
-}
+ABILITIES: tuple[Slug, ...] = (
+    "strength",
+    "dexterity",
+    "constitution",
+    "intelligence",
+    "wisdom",
+    "charisma",
+)
+ACTOR_NUMBERS: Mapping[Slug, int] = {**dict.fromkeys(ABILITIES, 10), "armor-class": 10}
 ACTOR_COUNTERS: Mapping[Slug, Counter] = {"hp": Counter(current=1, maximum=1)}
+
+
+def modifier(score: int) -> int:
+    return (score - 10) // 2
 
 
 class Sheet(Mutable):
@@ -237,6 +241,15 @@ def grant_counter(entity: Entity, sheet: Sheet, key: Slug, counter: Counter, why
     trace = f"{entity.name} gains {key} at {pool(counter)}"
     data = {"counter": key, "current": counter.current, "maximum": counter.maximum}
     return explained_fact(entity, "counter_granted", trace, data, why, narrate=False)
+
+
+def drop_counter(entity: Entity, sheet: Sheet, key: Slug, why: str) -> Fact:
+    counter = sheet.counters.pop(key, None)
+    if counter is None:
+        raise ValueError(f"{entity.name} has no counter {key!r} to drop")
+    trace = f"{entity.name} loses {key}"
+    data = {"counter": key, "current": counter.current, "maximum": counter.maximum}
+    return explained_fact(entity, "counter_dropped", trace, data, why, narrate=False)
 
 
 def add_ref(entity: Entity, sheet: Sheet, ref: ContentRef, why: str) -> Fact:

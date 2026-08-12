@@ -8,7 +8,7 @@ from aidm.content.store import load_character, write_character
 from aidm.engines.story.mechanics import read
 from aidm.engines.story.rules import StoryEngine
 from aidm.state.base import PLAYER_ID
-from aidm.state.creation import Picks
+from aidm.state.creation import CreationStep, Picks
 
 
 def _creation(engine: StoryEngine):
@@ -39,7 +39,9 @@ def test_a_created_character_plays_through_the_authored_load_path(tmp_path: Path
 def test_an_illegal_pick_set_is_refused_with_the_reason(tmp_path: Path) -> None:
     creation = _creation(StoryEngine())
     steps = creation.steps({})
-    legal: Picks = {step.id: (step.options[0].id,) for step in steps}
+    legal: Picks = {
+        step.id: (step.options[0].id,) for step in steps if isinstance(step, CreationStep)
+    }
     with pytest.raises(ValueError, match="no creation step"):
         creation.create("Fen", "", {**legal, "class": ("fighter",)})
     with pytest.raises(ValueError, match="exactly 1"):

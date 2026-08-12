@@ -33,6 +33,10 @@ class PackageJson(up.Upstream):
     version: str
 
 
+class EquipmentCategory(up.Named):
+    equipment: list[up.Named] = []
+
+
 def build(checkout: Path) -> Pack:
     source = checkout / "src" / EDITION / "en"
 
@@ -42,7 +46,17 @@ def build(checkout: Path) -> Pack:
 
     equipment = read("Equipment", up.Equipment)
     features = read("Features", up.Feature)
-    choices = {f.index: options for f in features if (options := project.subfeature_options(f))}
+    languages = read("Languages", up.Language)
+    classes = read("Classes", up.Class)
+    subclasses = read("Subclasses", up.Subclass)
+    levels = read("Levels", up.Level)
+    choices = {f.index: found for f in features if (found := project.subfeature_options(f))[0]}
+    archetypes = project.subclass_choices(subclasses, levels)
+    collections = _item_collections(equipment)
+    categories = {
+        entry.index: [item.index for item in entry.equipment]
+        for entry in read("Equipment-Categories", EquipmentCategory)
+    }
     records: Mapping[CollectionName, Mapping[str, Record]] = {
         "monsters": _generic(project.monster(r) for r in read("Monsters", up.Monster)),
         "weapons": _generic(
@@ -59,15 +73,22 @@ def build(checkout: Path) -> Pack:
         "skills": _generic(project.skill(r) for r in read("Skills", up.Skill)),
         "conditions": _keyed(project.described(r) for r in read("Conditions", up.Described)),
         "alignments": _keyed(project.alignment(r) for r in read("Alignments", up.Alignment)),
-        "languages": _generic(project.language(r) for r in read("Languages", up.Language)),
-        "classes": _generic(project.klass(r) for r in read("Classes", up.Class)),
-        "subclasses": _generic(project.subclass(r) for r in read("Subclasses", up.Subclass)),
-        "levels": _generic(project.level(r, choices) for r in read("Levels", up.Level)),
+        "languages": _generic(project.language(r) for r in languages),
+        "classes": _generic(project.klass(r) for r in classes),
+        "equipment_options": _keyed(
+            record
+            for entry in classes
+            for record in project.equipment_groups(entry, collections, categories)
+        ),
+        "subclasses": _generic(project.subclass(r) for r in subclasses),
+        "levels": _generic(project.level(r, choices, archetypes) for r in levels),
         "features": _generic(project.feature(r) for r in features),
         "races": _generic(project.race(r) for r in read("Races", up.Race)),
         "subraces": _generic(project.subrace(r) for r in read("Subraces", up.Subrace)),
         "traits": _generic(project.trait(r) for r in read("Traits", up.Trait)),
-        "backgrounds": _generic(project.background(r) for r in read("Backgrounds", up.Background)),
+        "backgrounds": _generic(
+            project.background(r, languages) for r in read("Backgrounds", up.Background)
+        ),
         "feats": _generic(project.feat(r) for r in read("Feats", up.Feat)),
         "proficiencies": _generic(
             project.proficiency(r) for r in read("Proficiencies", up.Proficiency)
@@ -93,6 +114,20 @@ def build(checkout: Path) -> Pack:
 
 def _keyed(records: Iterable[Record]) -> dict[str, Record]:
     return {record.index: record for record in records}
+
+
+def _item_collections(equipment: Iterable[up.Equipment]) -> dict[str, CollectionName]:
+    """Which pack collection each equipment index landed in, so a starting-equipment ref can name
+    it. Magic items are their own upstream file and reach no starting-equipment list."""
+    by_category = {
+        "weapon": "weapons",
+        **{category: name for name, (category, _) in EQUIPMENT_COLLECTIONS.items()},
+    }
+    return {
+        record.index: collection
+        for record in equipment
+        if (collection := by_category.get(record.equipment_category.index)) is not None
+    }
 
 
 def _generic(records: Iterable[Interpreted]) -> dict[str, Record]:

@@ -3,7 +3,7 @@ from collections.abc import Mapping
 from aidm.content.authored import CharacterOverlay, CharacterProfile, CreatedCharacter
 from aidm.engines.loader import Creation
 from aidm.state.base import Slug, Trait
-from aidm.state.creation import CreationOption, CreationStep, Picks, check_picks
+from aidm.state.creation import CreationOption, CreationStep, Picks, check_picks, picked
 
 # Authored spreads keep creation at pick-from-options; free point allocation would need a
 # numeric step type, which is the deliberate ceiling of this workflow.
@@ -96,7 +96,7 @@ class StoryCreation(Creation):
             profile=CharacterProfile(
                 name=name,
                 brief=brief,
-                traits=(_EDGES[picks["edge"][0]], _BURDENS[picks["burden"][0]]),
+                traits=(_EDGES[picked(picks, "edge")[0]], _BURDENS[picked(picks, "burden")[0]]),
             ),
-            overlay=CharacterOverlay(character=dict(_SPREADS[picks["archetype"][0]])),
+            overlay=CharacterOverlay(character=dict(_SPREADS[picked(picks, "archetype")[0]])),
         )

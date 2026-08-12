@@ -26,6 +26,7 @@ class Quantity(Upstream):
 
 
 class Option(Upstream):
+    option_type: str = ""
     item: Named | None = None
     string: str = ""
     # Background ideals are the one option shape carrying prose and alignments of their own.
@@ -34,19 +35,25 @@ class Option(Upstream):
     # A multiclass prerequisite choice offers ability-score minima instead of items.
     ability_score: Label | None = None
     minimum_score: int | None = None
+    # Starting equipment: one item, several at once, or a category left open. Upstream's `count`
+    # stays unread — one ref is one carried item, which is all a sheet holds.
+    of: Named | None = None
+    items: list["Option"] = []
+    choice: "Choice | None" = None
 
 
 class OptionSet(Upstream):
     # Enemy- and terrain-type choices list bare strings where every other choice lists objects.
     options: list[Option | str] = []
-    # A background's equipment pick names a whole category instead of listing options.
-    equipment_category: Label | None = None
+    # A background's or class's equipment pick names a whole category instead of listing options.
+    equipment_category: Named | None = None
 
 
 class Choice(Upstream):
     desc: str = ""
     choose: int
-    options: OptionSet = Field(default=OptionSet(), alias="from")
+    # A factory, not an instance: `Option` names `Choice`, so no `OptionSet` exists to build yet.
+    options: OptionSet = Field(default_factory=OptionSet, alias="from")
 
 
 class ArmorClass(Upstream):
@@ -296,7 +303,7 @@ class Race(Described):
     size: str = ""
     size_description: str = ""
     language_desc: str = ""
-    languages: list[Label] = []
+    languages: list[Named] = []
     language_options: Choice | None = None
     traits: list[Label] = []
     subraces: list[Label] = []
@@ -310,11 +317,11 @@ class AbilityBonus(Upstream):
 class Subrace(Described):
     race: Named
     ability_bonuses: list[AbilityBonus] = []
-    racial_traits: list[Label] = []
+    racial_traits: list[Named] = []
 
 
 class Background(Named):
-    starting_proficiencies: list[Label] = []
+    starting_proficiencies: list[Named] = []
     language_options: Choice | None = None
     starting_equipment: list["Carried"] = []
     starting_equipment_options: list[Choice] = []
@@ -327,7 +334,7 @@ class Background(Named):
 
 
 class Carried(Upstream):
-    equipment: Label
+    equipment: Named
     quantity: int
 
 

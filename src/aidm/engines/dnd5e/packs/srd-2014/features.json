@@ -2847,7 +2847,7 @@
         "index": "metamagic-twinned-spell"
       }
     ],
-    "choose": 1,
+    "choose": 2,
     "facts": {
       "level": 3
     }

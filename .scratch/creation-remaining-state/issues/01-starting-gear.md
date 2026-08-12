@@ -1,6 +1,6 @@
 # 01 — Starting gear at creation
 
-Status: needs-triage
+Status: done 2026-08-12 (see PROGRESS.md phase 12 §7)
 
 A created character starts with `items: ()`. Kael shows the target shape: an `Entity` in
 `profile.items` (id, name, brief, `known: true`, `parent_id: "player"`, optional traits) plus an

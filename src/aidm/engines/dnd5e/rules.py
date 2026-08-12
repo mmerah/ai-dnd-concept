@@ -79,7 +79,7 @@ def _labels(content: Content, action: Action) -> frozenset[Slug]:
             return CONTESTED if action.vs is not None else UNCONTESTED
         case CastSpell():
             try:
-                record = spell_of(content, action.spell)
+                _, record = spell_of(content, action.spell)
             except ValueError:
                 return UNCONTESTED
             contested = "attack-type" in record.facts or "save-ability" in record.facts

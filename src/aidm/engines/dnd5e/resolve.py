@@ -9,7 +9,7 @@ from aidm.state.base import Entity, Slug
 from aidm.state.dice import roll
 from aidm.state.effects import Reveal
 from aidm.state.facts import Fact
-from aidm.state.packs import Content, ContentMiss, Record, parse_ref
+from aidm.state.packs import Content, ContentMiss, ContentRef, Record, parse_ref
 from aidm.state.world import GameState
 
 from .actions import Action, Attack, CastSpell, Check, Improvise, Rest, UseFeature
@@ -18,6 +18,7 @@ from .mechanics import (
     Mechanics,
     counter_of,
     first_ref_record,
+    modifier,
     read,
     refill,
     set_note,
@@ -197,16 +198,23 @@ def resolve_cast_spell(
     actor = require_actor_here(draft, action.actor_id)
     target = None if action.target_id is None else require_actor_here(draft, action.target_id)
 
-    spell = spell_of(content, action.spell)
+    ref, spell = spell_of(content, action.spell)
     klass = first_ref_record(
         sheet_of(mechanics, actor), content, "classes", require_fact="spellcasting"
     )
-    if klass is None:
+    if ref not in sheet_of(mechanics, actor).refs:
+        if klass is None:
+            raise ValueError(
+                "this actor's class casts no spells, so it has no spellcasting ability: resolve "
+                "what they do with `improvise` instead"
+            )
         raise ValueError(
-            "this actor's class casts no spells, so it has no spellcasting ability: resolve "
-            "what they do with `improvise` instead"
+            f"{actor.name} does not know {spell.name}: cast a spell their own `content` lists, "
+            "or resolve what they do with `improvise` instead"
         )
-    mod = ability_modifier(mechanics, actor, _ability(klass.facts.get("spellcasting")))
+    # A racial cantrip comes without a casting class — the high elf's is cast off Intelligence.
+    casting = "intelligence" if klass is None else _ability(klass.facts.get("spellcasting"))
+    mod = ability_modifier(mechanics, actor, casting)
 
     level = spell.facts.get("level")
     if level is None and action.slot_level is not None:
@@ -313,7 +321,7 @@ def resolve_cast_spell(
     return facts, outcome
 
 
-def spell_of(content: Content, ref: str) -> Record:
+def spell_of(content: Content, ref: str) -> tuple[ContentRef, Record]:
     reference = parse_ref(ref)
     if reference.collection != "spells":
         raise ValueError(f"'{ref}' names no spell: name a record from the spells collection")
@@ -322,7 +330,7 @@ def spell_of(content: Content, ref: str) -> Record:
         miss = content.record(reference)
         assert isinstance(miss, ContentMiss)  # engine.record returned None for the same lookup
         raise ValueError(f"{miss.summary}; use a ref exactly as it was shown")
-    return found
+    return reference, found
 
 
 def ladder_pick(rows: JsonValue, at: int, fact: str) -> JsonValue:
@@ -344,7 +352,7 @@ def ladder_pick(rows: JsonValue, at: int, fact: str) -> JsonValue:
 
 
 def ability_modifier(mechanics: Mechanics, entity: Entity, ability: str) -> int:
-    return (_number(mechanics, entity, ability) - 10) // 2
+    return modifier(_number(mechanics, entity, ability))
 
 
 def _number(mechanics: Mechanics, entity: Entity, key: str) -> int:

@@ -1,8 +1,9 @@
 # 02 — Spell and cantrip choice (casting model change)
 
-Status: needs-triage
+Status: done 2026-08-12 (see PROGRESS.md phase 12 §7)
 
-Blocked by: a deliberate decision to change the casting model, not by code.
+Decision taken 2026-08-12: the known list ships end to end; prepared casters are one
+seeded list, which trades away long-rest re-preparation.
 
 Play-test observation (maintainer, 2026-08-12): "Choosing spells/cantrips is missing
 completely." Confirmed as the intended gap this ticket owns — cantrips included: a created

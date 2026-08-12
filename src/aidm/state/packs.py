@@ -75,6 +75,9 @@ class Record(Frozen):
     name: str
     text: str = ""
     tags: tuple[Slug, ...] = ()
+    # What the record hands over unasked, beside what it asks the player to pick: a fighter's
+    # level-1 row grants Second Wind and offers one fighting style.
+    granted: tuple[ContentRef, ...] = ()
     # A record that IS a choice names the legal picks; a bare index would be ambiguous.
     options: tuple[ContentRef, ...] = ()
     choose: int | None = None
@@ -86,6 +89,8 @@ class Record(Frozen):
             raise ValueError("options and choose are set together, or neither is")
         if self.choose is not None and not 1 <= self.choose <= len(self.options):
             raise ValueError(f"cannot choose {self.choose} of {len(self.options)} options")
+        if both := sorted(str(ref) for ref in set(self.granted) & set(self.options)):
+            raise ValueError(f"{both} is both granted and offered")
         return self
 
 
@@ -155,10 +160,20 @@ def loaded(packs: Sequence[Pack]) -> Content:
     for pack in packs:
         if missing := sorted(set(pack.manifest.requires) - set(ids)):
             raise ValueError(f"pack {pack.manifest.id!r} requires {missing}, not loaded")
-    return Content(
+    content = Content(
         packs=tuple(pack.manifest.id for pack in packs),
         records={ref: record for pack in packs for ref, record in pack.addressed().items()},
     )
+    # A ref may name a record in another pack, so this cannot live in `validate_pack`.
+    dangling = sorted(
+        f"{ref} -> {named}"
+        for ref, record in content.records.items()
+        for named in (*record.granted, *record.options)
+        if named not in content.records
+    )
+    if dangling:
+        raise ValueError(f"refs name no record: {dangling}")
+    return content
 
 
 def load(directories: Sequence[Path], collections: Mapping[CollectionName, FactSchema]) -> Content:

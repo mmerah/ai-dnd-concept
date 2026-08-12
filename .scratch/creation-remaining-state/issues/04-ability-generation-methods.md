@@ -1,6 +1,8 @@
 # 04 — Ability scores: the three real generation methods
 
-Status: needs-triage
+Status: done (2026-08-12) — roll (seed carried as the answer to an allocation step), 27-point buy,
+and standard-array assignment; the three authored spreads deleted. `state/creation.py` grew
+`AllocationStep`/`Amounts` and `ui/create.py` a number widget. See PROGRESS.md phase 12 §7.
 
 Play-test observation (maintainer, 2026-08-12): the ability step should be the three actual
 rules — roll (4d6 drop lowest), point buy (27 points), or standard-array assignment — not the

@@ -48,10 +48,10 @@ it only for a `check`'s `bonus`; every other number is the engine's to compute, 
 
 `content` lists the records backing the actor — class, race, spells and features, or a monster's
 stat block — and each line carries that record's mechanics: a spell's level, save, damage and
-scaling; a weapon's properties and damage; a monster's attack lines. Use them as written. Your
-only tool, `read_content`, reads a record's full text when a line does not answer what you need —
-a feature's exact effect, a spell's rider, a condition's wording. Never guess a number the
-content states.
+scaling; a weapon's properties and damage; a monster's attack lines. Use them as written. An actor
+casts only the spells listed for it. Your only tool, `read_content`, reads a record's full text
+when a line does not answer what you need — a feature's exact effect, a spell's rider, a
+condition's wording. Never guess a number the content states.
 
 THE PLAN
 

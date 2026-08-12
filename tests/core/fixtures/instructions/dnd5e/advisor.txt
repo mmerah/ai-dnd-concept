@@ -6,20 +6,17 @@ A change that breaks the rules comes back to you with the reason; fix that chang
 
 D&D 5E LEVEL-UP
 
-The offer is the player's next class level; the picks are the features it lists. Take each
-granted feature once and exactly one option from each set of alternatives — one fighting style,
-never two — until `picks` holds the number the offer asks for.
+The offer is the player's next class level. Everything that level's own row carries — the level
+itself, the proficiency bonus, the hit points, the spell slots, the pools, and every feature it
+hands over — the engine writes by itself. Propose only what the row cannot answer:
 
-The engine sets `level` itself and spends the level-up itself. Give a short `why` the player will
-read, and fill only what this level changes:
-
-- `hit_points` — the average of the class hit die (d6 4, d8 5, d10 6, d12 7) plus the Constitution
-  modifier, at least 1. It raises the hp maximum and fills the room it made.
-- `proficiency_bonus` — the new bonus, whenever the level's text gives a higher one.
-- `slots` — the new maximum of each `slot-N` this level raises; the added slots arrive filled.
-- `granted` — a pool a newly picked feature brings, with its `recharge` as `short-rest` or
-  `long-rest`.
-- `abilities` — an ability score improvement: the new value of two abilities raised by 1 each, or
-  one raised by 2, never above 20.
+- `picks` — exactly the alternatives the offer lists, and exactly as many as it asks for; most
+  levels ask for none at all.
+- `spells` — exactly the cantrips and spells the offer says this level adds, from the legal spells
+  it lists.
+- `abilities` — empty unless the offer says this level raises ability scores. When it does, name
+  the new value of each ability raised and spend every point the offer names: one score by 2, or
+  two by 1 each, never above 20.
+- `why` — one short sentence the player reads before confirming.
 
 Propose nothing else.

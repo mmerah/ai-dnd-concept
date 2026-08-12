@@ -11,7 +11,7 @@ from pydantic_ai.toolsets import AbstractToolset
 
 from aidm.content.authored import CreatedCharacter, Rules
 from aidm.state.base import EngineId, Entity, EntityId, Frozen
-from aidm.state.creation import CreationStep, Picks
+from aidm.state.creation import Picks, Step
 from aidm.state.effects import WorldEffect, effect_key, effect_keys
 from aidm.state.facts import Fact
 from aidm.state.packs import ENCODING, ContentRef
@@ -32,6 +32,9 @@ class AdvancementOffer(Frozen):
 
     prompt: str
     text: str = ""
+    # What the advancement hands over unasked. The advisor never picks these; the prompt carries
+    # them so it can see what the level already gives before it answers what is left.
+    granted: tuple[ContentRef, ...] = ()
     options: tuple[ContentRef, ...] = ()
     choose: int = Field(default=0, ge=0)
 
@@ -74,7 +77,7 @@ class Creation(ABC):
     """The optional creation capability: an engine without one offers no new-character page."""
 
     @abstractmethod
-    def steps(self, picks: Picks) -> tuple[CreationStep, ...]:
+    def steps(self, picks: Picks) -> tuple[Step, ...]:
         """Tolerates partial or stale picks, so follow-up steps appear as parents are picked."""
 
     @abstractmethod

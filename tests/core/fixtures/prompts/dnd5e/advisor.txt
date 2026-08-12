@@ -8,7 +8,7 @@ Features gained: Action Surge (1 use).
 
 This level's numbers: action surges 1.
 
-PICK EXACTLY 1
+HANDED OVER
 - srd-2014/features/action-surge-1-use
 
 THE CHARACTER

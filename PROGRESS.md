@@ -901,13 +901,486 @@ test deletions warranted) and rewrote the 5e half:
   nearly all of it is transcribed SRD prose (skill lists, pool table) that the pack keeps as
   text — data the engine now owns and verifies at build rather than lacking at play.
 
+### 7. The deferred tickets, triaged 2026-08-12
+
+The maintainer triaged `.scratch/creation-remaining-state/` and approved all four, in this order:
+gear (01), known spells and cantrips end to end (02, the casting-model change), the level-row
+grant/choice split (03), the three real ability-generation methods (04).
+
+**01 — starting gear: DONE.** Decisions taken at triage: the options source is a *curated* bundle
+list per class derived from the SRD equipment prose (the pack ships no structured starting
+equipment — upstream 5e-database has it, but re-importing needs the missing external checkout and
+a `SAVE_VERSION` bump), and `create()` computes final AC from the picked armour rather than moving
+AC derivation into the rules layer.
+
+- `engines/dnd5e/equipment.py` (new): 12 classes × 3 bundles over concrete records; 46 authored
+  one-line item briefs (a record's own text is mechanical prose, an owned item's brief is fiction
+  the Narrator reads); `armor_class`; and `verify`, run from `Dnd5eCreation.__init__`, refusing a
+  missing bundle, an unknown record, a missing brief, a repeated bundle id or item, and two
+  armours in one bundle — a typo fails at engine build, not at play. The module exists because
+  440 lines of authored data would push `create.py` past the 1000-line cap.
+- `create.py`: a `<class>-equipment` step, gear written as `profile.items` entities plus a
+  per-item overlay `Sheet(refs=…)` — kael's lantern shape, so a carried weapon reaches `Attack`
+  through `first_ref_record` with no new plumbing — and `armor-class` now read off the armour:
+  `armor-base` plus DEX capped by `dex-limit` where the record adds DEX at all, `armor-bonus`
+  (the shield) on top of armoured or unarmoured. `strength-minimum` is deliberately unread: its
+  SRD cost is speed, which nothing models.
+- The adversarial review found one real gap, fixed in the same pass: `monk-1` and `barbarian-1`
+  grant Unarmored Defense to every created monk and barbarian, so an unarmoured sheet showing
+  10 + DEX contradicted the feature record rendered beside it (a monk with DEX 15/WIS 13 was AC 12
+  where its own content lines promise 13, and `resolve_attack` reads that number). `armor_class`
+  now takes the picked features: `_UNARMORED_DEFENSE` adds WIS for the monk and CON for the
+  barbarian while no armour is worn, and only the barbarian keeps it behind a shield.
+- Left as known ceilings, not fixed: an item entity id is the bare record index, so a future
+  scenario authoring an entity called `dagger` makes an already-saved character refuse at
+  `begin_game` ("authored entity id appears twice") — loud, at launch, and no shipped scenario
+  collides; and quantities are not modelled, so "javelins" is one javelin entity with a plural
+  brief.
+- Verification: 142 → 143 tests. The fighter round trip now asserts AC 18 (chain mail 16, no DEX,
+  plus a shield) and that the longsword's own item sheet carries its weapons ref; the wizard
+  asserts the unarmoured 10 + DEX and its three carried items surviving write → load; one unit
+  test pins the AC rule where a round trip would be wasteful — scale mail capping DEX +3 to +2,
+  the shield stacking, the monk's 10 + DEX + WIS, and armour switching Unarmored Defense off.
+  The UI preview gained one line so carried gear shows beside the traits. No golden moved, no
+  `SAVE_VERSION` bump: creation writes new files.
+
+**02 — known spells and cantrips: DONE.** The maintainer chose the known list end to end over
+recording "any class spell is castable" as permanent. Decisive facts, traced before any code: spell
+refs on a sheet already work (the eval caster `elowen` has held six since phase 9), `spells` is not
+in `PROJECTING`, so a spell ref projects no int fact onto the character and no state format moved;
+and all 319 spell records carry `classes` as `", "`-joined display names, which are the class
+records' own `name`s.
+
+- `engines/dnd5e/spells.py` (new): `castable` (a class's spells at one level; a cantrip is a record
+  with no `level` fact, and `subclasses` — domain bonus lists a base class never gets — stays
+  unread), `known_at_level_one`, `growth`, `KEYS` owning the cantrips-then-spells ordering, and
+  `verify` refusing at engine build a caster whose pack list cannot fill its own count.
+- **Prepared casters, recorded as a deliberate deviation**: the pack counts what a class *knows*,
+  so bard, sorcerer and warlock come straight off `cantrips-known`/`spells-known`. Cleric, druid
+  and the wizard's spellbook are prose only, so `_PREPARED_AT_LEVEL_ONE` authors them (wizard 6,
+  cleric and druid 3 = casting modifier + level at the standard array) and `_PREPARED_GROWTH` grows
+  them. One list is seeded and play reads only that: a prepared caster cannot re-prepare on a long
+  rest, which is the SRD rule this trades away for a single piece of state.
+- Creation: `<class>-cantrips` and `<class>-spells` steps; the high elf's cantrip arrives through
+  the pack's own `traits/high-elf-cantrip` record (`choose 1` of 14) linked by `_SUBRACE_TRAITS`,
+  so the generic choice machinery builds the step and lands the ref. Picking one spell in two steps
+  now refuses — the language dedupe would have swallowed it and cost the player a pick.
+- Play: `resolve_cast_spell` refuses a spell that is not a ref on the caster's own sheet, and
+  `director.md` now states the list is exhaustive. `spell_of` returns its parsed ref so nothing
+  parses twice; the check sits in the resolver, not in `spell_of`, because `rules._labels` calls
+  that before any legality check and would mislabel contested branches.
+- Level-up: `LevelUp.spells` beside `picks` (which `violation` still gates one-for-one against the
+  offer's options), the offer text carrying the legal pool minus what is already held, `violation`
+  checking cantrips and spells against their own allowance, and `advance` adding the refs and
+  keeping `cantrips-known`/`spells-known` in step with the new row — engine-side, never from model
+  output.
+- The adversarial review found four real defects, all fixed: a high-elf **non-caster** was seeded a
+  racial cantrip the resolver then refused (a fighter with High Elf Cantrip casts it off
+  Intelligence, so the resolver now falls back to INT when a known spell comes without a casting
+  class); the duplicate pick above; a level-up pool that still offered spells already held (the
+  refusal came from `add_ref` deep in the dry run instead of the offer); and a wizard's invented
+  `spells-known` number, which would have read as a smaller list than the refs beside it.
+- Verification: 143 → 149 tests. The new end-to-end one is the load-bearing one: a created wizard
+  goes through `write_character` → `load_character` → `begin_game`, then `check_plan` accepts a
+  cast of a cantrip it picked and refuses one it did not — pinning that creation's
+  `sibling("spells", …)` refs are ref-equal to what the resolver parses out of model output.
+  Goldens moved: `instructions/dnd5e/director.txt` (director.md), `instructions/dnd5e/advisor.txt`
+  (advancement.md), `schemas/dnd5e/proposal.json` (the new field). No `SAVE_VERSION` bump: the
+  state shape did not change.
+- Known ceiling, measured not guessed: a created caster's ten spell refs add 1,824 characters to
+  the player sheet, which renders in four role prompts per turn (~7.3KB), and about 30 characters
+  per line are the `classes=`/`subclasses=` facts that tell the Director nothing. Filtering them in
+  `mechanics._ref_line` is the follow-up if prompt cost bites.
+
+**03 — level rows: grants split from choices: DONE.** Two decisions taken before any code, because
+both changed the shape of the work. **The pack shape**: `Record` grows `granted: tuple[ContentRef,
+...]` and *keeps* its single `options`/`choose` pair — not ticket 05's `choices: tuple[Choice, ...]`.
+The audit the ticket demanded settled it: of 290 level rows, 253 carried options, 240 of them with
+`choose == len(options)` (a grant dressed as a choice); 13 are real choices and only four mix the two
+(`fighter-1`, `paladin-2`, `ranger-2`, `draconic-1`); across every other collection with options
+(features 14, races 2, traits 5) not one record anywhere needs two independent choice groups. So the
+multi-group shape would have been built for data that does not exist, and `AdvancementOffer` — which
+also holds one pair — would have had to grow with it. 05 can add `choices` when it has class records
+that need it; it re-projects and bumps anyway. **The checkout**: `../5e-database` was cloned at the
+`source_commit` the manifest pins (`3f5593ea`), and the importer was run *before* any change to prove
+the round trip — byte-identical across all 22 collections. That is what makes the regression check
+real: after the change exactly two files moved.
+
+- `scripts/srd/project.py`: the flattening was one line — `choose = len(record.features)` over picks
+  gathered per feature entry. The entry boundary *is* the grant/choice line, so `level()` now splits
+  on it: an entry the feature-choice map answers becomes `options`/`choose`, every other entry becomes
+  a `granted` ref. A row carrying two choice entries raises at import rather than flattening
+  silently — honest about the one-pair limit, and unreachable in the shipped SRD.
+- `packs.Record`: `granted` beside the pair, and one validator refusing a ref that is both granted and
+  offered — the state that would otherwise blow up deep inside `add_ref` as "already held".
+- **One latent bug the audit exposed**: `subfeature_options` dropped upstream's own `choose`, so every
+  choice became "choose 1". `metamagic-1` is choose **2** of 8 in the SRD, and `sorcerer-3` said 1 —
+  contradicting its own `metamagic-known: 2` fact. The projector now carries the count through; that
+  is the whole of `features.json`'s one-line diff.
+- Play: `Dnd5eAdvancement.advance` adds `row.granted` itself — engine-side, never from model output —
+  and `offered` carries the refs on the offer, which the advisor prompt renders as `HANDED OVER` where
+  it used to print `PICK EXACTLY 1`. The review caught that dropping them entirely was a real loss:
+  `LevelUp.granted` is the only route a level's pool reaches the sheet, its `counter` is a slug, and
+  with the refs gone the model would have invented that key off a display name while creation keys the
+  identical pool by record index. `advancement.md` now names the feature's own index as the key.
+- Creation: `_features` merges what a picked record hands over with what was picked from it, so a
+  fighter is *given* Second Wind and chooses one style. Everything downstream — the feature pools,
+  Unarmored Defense reaching `equipment.armor_class` — already read that one tuple.
+- Verification: 149 → 150 tests. The new one is `paladin-2`, the only reachable row that both grants
+  and offers: two features handed over, one fighting style of four, and the pick-count rule pinned
+  both under and over (the fighter test can no longer carry it — Fighter 2 asks for nothing). The
+  fighter creation round trip picks one style and still asserts the Second Wind counter; the wizard
+  asserts `wizard-1` spawns *no* step. Goldens moved: `advisor.txt` (both), `proposal.json`, and
+  `save_version` 50 → 51 across six state/save/turn fixtures — a regenerated pack invalidates saves.
+  Every moved byte was read: no golden drifted for a reason other than these.
+
+**04 — the three real ability-generation methods: DONE.** `_MIGHT`/`_GRACE`/`_FOCUS_REST` are gone;
+roll, point buy and standard array replace them. Two decisions taken first, both about how a number
+reaches a pure `create(name, brief, picks)`:
+
+- **A rolled spread travels as its seed.** The UI cannot hand `create` six numbers it rolled and call
+  them picks — the ticket's own "re-check against some legal 4d6 outcome" is unenforceable. So the
+  seed is the answer, `create` re-derives the six scores with `Random(seed)`, and the same picks
+  always rebuild the same character. Typing another number is the reroll. Verified byte-identical
+  across three processes under different `PYTHONHASHSEED`s; nothing touches the global RNG.
+- **The framework grew a numeric-allocation step** rather than faking allocation as five shrinking
+  pick steps: `AllocationStep` (entries, one `minimum`/`maximum` pair), `Amounts`,
+  `type Step = CreationStep | AllocationStep`, `picked()`/`allocated()` narrowing one `Picks` bag
+  that now holds either shape, and a second `check_picks` rule. `ui/create.py` renders a row of
+  number inputs. Both engines and the page still pass one picks object end to end.
+- What each method must add up to stays in the engine, not the framework: point buy walks the SRD
+  ladder (8:0 … 14:7, 15:9) against 27 and refuses "point buy spends 31 of 27"; roll and array both
+  compare the multiset and refuse "the scores to assign are 17, 15, 13, 13, 12, 10, not …". Bounds
+  are the step's, so 8–15 is checked before racial bonuses, as the SRD has it. Each method keys its
+  own step (`abilities-roll`, `abilities-point-buy`, `abilities-standard-array`), so switching method
+  prunes the scores the old one held instead of leaving a 17 in a field that stops at 15.
+- **The adversarial review found two real defects, both fixed.** A non-int amount reached the engine
+  as a crash rather than a refusal — `KeyError: 14.5` off the cost ladder, `TypeError` off the bounds
+  comparison, and a float seed silently rolled a *different* spread — because `Amounts` is a bare
+  alias with no validator behind it; `check_picks` now refuses anything that is not a whole number,
+  and `_rolled` treats an unusable seed as no seed, since `steps()` runs before `check_picks` has
+  vouched for anything. And the page's new "rebuild only when the step list moved" rule compared id
+  and prompt alone, so switching half-orc to dragonborn left the language select still offering
+  Draconic and the stale pick unpruned — the signature now covers every option id and bound the
+  widget renders.
+- Known ceiling, measured: the cursor rule protects the six ability fields (their shape never moves
+  while a score is typed) but not the seed field itself — a new seed changes the next step's prompt
+  for 58 of 59 consecutive seeds, so the form rebuilds and the seed input is recreated. The value
+  survives; only focus is lost, 400ms after typing stops. Per-step refreshables are the fix if it
+  bites.
+- Verification: 150 → 152 tests. The two existing round trips are unchanged in outcome — the fighter
+  still lands STR 16 and AC 18, the elf wizard DEX 15 → AC 12 — because the standard array is exactly
+  27 points, so the same six numbers are legal under either method, which is what makes them a real
+  regression check rather than a rewrite. The new roll round trip goes seed 12 → 17, 15, 13, 13, 12,
+  10 through `write` → `load` → `begin_game` with a human's flat +1 landing on every rolled score and
+  hp following the *post-bonus* CON — the ordering invariant the phase has pinned since creation
+  shipped. One refusal test covers a tampered roll, an overspent point buy, a score out of bounds and
+  a fraction. No golden moved, no `SAVE_VERSION` bump: creation writes new files.
+
+### 8. Advancement, made correct 2026-08-12
+
+The completeness audit that closed §7 asked the other half of the question — can a created character
+be *played* to twenty — and the answer was no: two thirds of the classes stopped at level 2 or 3, and
+where advancement worked it took its numbers from the model instead of from the level row.
+`.scratch/advancement-correctness/` holds the spec and five tickets; 01–04 are done, 05 (subclasses)
+stays untouched because it reopens creation and is sequenced behind the importer ticket.
+
+The through-line is this repo's own rule, which creation already honoured and advancement broke: the
+model proposes, engine code resolves and records. Every fix below is the same move — read the level
+row, write what it says — and the shape 02 settled is what let 03 delete four fields rather than
+check them.
+
+**01 — a level-up can create a counter: DONE.** `_set_pool` grants a pool the sheet does not hold
+yet, full, and raises one it does; `_raise_pool` alone refused the only correct proposal, so every
+caster was frozen at `slot-1` (paladin and ranger from level 2, six more classes from level 3). Pact
+magic rides on it: warlock rows *migrate* the slot key rather than accumulate (`warlock-3` names
+`slot-2` and nothing else), so `_drop_stale_slots` drops any `slot-N` counter the reached row does
+not name. Safe for the other eleven: no non-warlock table ever stops naming a slot level it once
+named, checked across all 290 rows. Recharge follows `spells.slot_recharge`, now the one place that
+knows pact slots return on a short rest — `create._slot_counters` reads it too.
+
+**02 — the row writes its own numbers and pools: DONE.** `_apply_row` walks every int fact the
+reached row carries and writes it the way the sheet holds it: `slot-N` and the nine keys of
+`POOL_FACTS` as counters, everything else — the level itself, the proficiency bonus, the spell
+counts, each class's own dials — as numbers. Before this a barbarian at 20 still held
+`rage-damage-bonus: 2` where `barbarian-20` says 4 and had never gained `brutal-critical-dice`, a
+level-20 wizard still held `arcane-recovery-levels: 1`, and a monk at 5 held one counter, `hp`, so
+every `UseFeature` on ki died at `counter_of` — the exact failure §7's review fixed for creation.
+
+- `POOL_FACTS` is the one judgement call: which int facts are pools rather than dials. Nine keys —
+  action surges, channel divinity, indomitable, ki, the four mystic arcana, sorcery points — each
+  with the rest that refills it. Everything else the rows carry (a die size, an aura range, a count
+  of things known) is a number, because nothing spends it.
+- `_count_known` is gone, subsumed: writing the row's `cantrips-known`/`spells-known` lands exactly
+  what adding `spells.growth` landed, and a count the row does not carry still stays off the sheet,
+  so a prepared caster's list size remains prose.
+- A pool the pack spells as anything but an int fact — rage, lay on hands, bardic inspiration, wild
+  shape — is out of `_apply_row`'s reach entirely; `pools.py` carries those, see the review below.
+
+**03 — no number a level-up writes can disagree with the row: DONE.** The ticket offered a choice —
+check each field against the row, or derive it and drop the field — and deriving is much the smaller
+surface. `LevelUp` lost `hit_points`, `proficiency_bonus`, `slots` and `granted` (and `PoolGrant` with
+them); what is left is `picks`, `spells`, `abilities`, `why`. `hit_points=99` and
+`proficiency_bonus=17` no longer have anywhere to be written. hp is now 5e's fixed rule — the hit
+die's average plus the CON modifier, at least 1 — read off `hit-die`, which the class ref already
+projects onto the sheet, and applied *after* the improvement, so a Constitution raised this level is
+felt in the same level's hit points.
+
+- The ability score improvement is the one number the row cannot answer, so it stays proposed and is
+  now demanded: `_improvement` hands over two points per improvement the row grants, and `_improve`
+  refuses a proposal that spends more, less, or none. A level that offered an improvement and got an
+  empty `abilities` used to commit and silently skip it.
+- **The improvement is counted from the granted feature, not from the row's own tally.** The rows
+  carry `ability-score-bonuses`, a running count, and it looked like the obvious source — but the
+  pack's rogue counts *down* as often as up (level 10 says 3, level 11 says 2, 12 says 4, 20 says 5
+  where the SRD gives six improvements). Diffing that tally paid a rogue 18 points instead of 12; the
+  granted features are right for all twelve classes, at exactly 4/8/12/16/19 plus the fighter's 6/14
+  and the rogue's 10. The tally still lands on the sheet as the pack's own number; nothing reads it.
+- The row's prose names the feature and never the points, so the offer now carries a line saying how
+  many points this level spends — the advisor cannot spend what it cannot count. A sheet already at
+  20 everywhere spends what room is left, so a maxed-out character cannot deadlock its own level.
+
+**04 — an offer lists only what is still takeable: DONE.** One line beside the `_spell_pools` filter
+it mirrors: a feature already on the sheet leaves `options`. A sorcerer at 10 was offered all eight
+metamagics including the two taken at 3, and picking one met `"Hero already holds content
+srd-2014/features/metamagic-careful-spell"` from deep inside `add_ref` instead of the offer's own
+readable refusal. No reachable row can be emptied by the filter — the sorcerer takes 4 of 8 across
+levels 3/10/17, every other choice row is offered once.
+
+**The adversarial review found three real defects inside the tickets, all fixed, and two outside
+them, both recorded.** Its sharpest finding was against the load-bearing test, not the code: the
+sweep read `POOL_FACTS` to decide what had to be a counter, so it agreed with whatever the engine
+believed — emptying the table entirely was green. The test now names, per class, every pool a
+level-20 sheet holds, and asserts the counter and number keys are disjoint. Four mutations were run
+against it afterwards and all four fail it: moving a key out of `POOL_FACTS`, shifting hp by 3,
+dropping the retroactive Constitution, and writing the tally. The other two:
+
+- **Hit points ignored 5e's retroactive Constitution rule.** With improvements now compulsory a
+  Constitution modifier actually moves, and the SRD pays that raise on *every* level already taken;
+  a fighter reaching 20 was 33 hp light, 16%. `_hit_points` now derives the whole maximum the level
+  is worth rather than the level's own share, and `_raise_pool` moves the sheet to it — the
+  retroactive raise falls out of deriving instead of accumulating, and a maximum that has drifted
+  for any other reason heals itself.
+- **A ref named twice in one proposal still met `add_ref`'s opaque refusal** — `spells=(shield,
+  shield)` counted as two against a two-spell level — which is the exact message shape 04 set out to
+  end. `violation` refuses a repeat by name now, as `create` already did.
+The review's other two findings were outside the tickets, and both were fixed straight after it
+because 03 is what made them bite — an improvement is compulsory now, so the scores they hang off
+actually move.
+
+- **`armor-class` was derived once, at creation, and nothing recomputed it.** A driven monk held 13
+  where its own numbers said 16, the rogue 13, the barbarian 14 where they said 17 — and `resolve`
+  rolls every attack against that number. `advance` re-derives it from the armour the character
+  carries, the way creation does; `equipment.armor_class` now takes refs rather than creation's
+  `Gear` bundle, so both callers reach one rule. Ceiling: a level-up is the only moment that
+  re-asks, so armour picked up mid-adventure is not felt until the next one.
+- **A pool the pack spells as anything but an int fact never grew.** `pools.py` (new, 48 lines)
+  transcribes the class prose the way `create._CLASS_SKILLS` transcribes the skill lists, and both
+  creation and advancement read it: a level-20 barbarian rages 6 times rather than 2, a paladin
+  lays on 100 hit points rather than 5, a bard's inspiration returns on a short rest from level 5,
+  a druid holds a `wild-shape` counter at all. `bardic-inspiration-d6` is now `bardic-inspiration`,
+  since the die is already on the sheet and reaches 12 while the key claimed six. A pool that works
+  out below one use is not granted, so a paladin with a Charisma penalty no longer carries a 0/0
+  `divine-sense` — and gains it if the score ever rises. Ceiling: the SRD's level-20 rage is
+  unlimited and a counter with a recharge needs a maximum, so the ladder stops at 6.
+
+- Verification: 152 → 166 tests. The load-bearing one drives a *created* character of each of the
+  twelve classes from 1 to 20 — 228 level-ups — picking only from what the offer's own text says,
+  parsed the way the advisor reads it, and then asserts the level-20 sheet against the level-20 row:
+  every int fact present at its own value, slot counters exactly the keys the row names at the row's
+  maxima and the class's recharge, and the ability points spent equal to twice the improvements
+  actually received. It fails if any of the four regressions returns. Two focused tests pin the
+  refusals a sweep cannot: the level-10 metamagic offer shrunk to six with the stale pick refused by
+  the offer, and a fighter 4 that skips its improvement, overspends it, or takes it. `advancement.md`
+  and the `LevelUp` schema moved `instructions/dnd5e/advisor.txt` and `schemas/dnd5e/proposal.json`,
+  regenerated with `AIDM_GOLDEN_REGEN=1` in the same change. No `SAVE_VERSION` bump: no persisted
+  shape changed, and a save written before this is still read the same way — it simply advances
+  correctly from here.
+- Measured, not fixed: the offer's spell list is the whole legal pool as prose, which for a wizard
+  runs 1.1 kB at level 2 and 7.1 kB at 17 — around 1.8k tokens on one advisor prompt, growing with
+  any pack that adds spells. A level-banded list is the fix if it bites.
+- Net: `advance.py` 266 → 407 lines, `pools.py` 50 new, `mechanics.py` 261 → 273
+  (`ABILITIES`, `modifier` and `drop_counter` — the first two pulled out of `create.py` and
+  `resolve.py` so one rule has one home).
+
+### 9. The importer takes back the authored tables, 2026-08-12
+
+`.scratch/creation-remaining-state/` 05, at **maximal** scope: delete every line of authored SRD
+data from `src/` that the upstream data can answer, equipment included. The maintainer's rule was
+that no table stays because moving it is awkward, only because nothing upstream answers it. Two
+things were settled before a line was deleted, and both changed the shape of the work.
+
+**The sibling-collection idea holds, and the framework does not move at all.** The triage concluded
+that 39 equipment groups across 12 classes — 21 of them picking from an open category, 2 nesting a
+category inside a bundle — needed a recursive step model in `state/creation.py`, `check_picks` and
+`ui/create.py`, and recommended not moving them. That conclusion was wrong, and testing it first is
+what made the rest of the ticket cheap. Each group is one record with `options`/`choose`; an option
+that hands over several things *and* leaves a category open is one more record, carrying `granted`
+for what it gives and its own `options`/`choose` for what it still asks. `create.py` already spawns
+a step from any picked record that carries a choice — that is how a class reaches its level-1 row —
+so yielding a picked option record the same way is the whole of the nesting. `CreationStep`,
+`AllocationStep`, `Picks`, `check_picks` and the page are **untouched**; the one new thing in
+`create.py` is `_record_step`, six lines, shared by both families of record.
+
+**The dangling-ref check landed first.** Deleting a table deletes its `__init__` verification, and
+nothing anywhere checked that a `granted` or `options` ref resolved — `validate_pack` checks facts
+only, and refs cross packs, so `packs.loaded()` is the only place that can. It went in before the
+first deletion, against a pack with 0 dangling refs, and it is what makes the deletions safe.
+
+- **`scripts/srd/project.py` (+153), `build.py` (+32), `upstream.py` (+7).** `Class.proficiency_choices`
+  is byte-for-byte the deleted `_CLASS_SKILLS` for all 12 classes, so the skill choice becomes the
+  class record's own `options`/`choose` — the pair 03 kept free, and no `Record.choices` was needed
+  after all. `Race.languages` becomes race `granted`, `Subrace.racial_traits` subrace `granted`,
+  `Background.starting_proficiencies` background `granted`. A background's `language_options` names
+  its pool as a `resource_list` **URL**, so `background()` takes the languages file and expands it.
+  Equipment is a new `equipment_options` collection, 75 records: 11 unconditional-grant records, 39
+  groups, 25 option records; `build.py` now reads `5e-SRD-Equipment-Categories.json`, which it never
+  had to before. Every option type the importer does not understand raises at import rather than
+  being dropped — `extra="ignore"` had been silently eating `of`, `items` and `choice`.
+- **`create.py` 663 → 455, `equipment.py` 478 → 264.** Gone: `_SKILLS`, `_CLASS_SKILLS`,
+  `_RACE_LANGUAGES`, `_BACKGROUND_SKILLS`, `_BACKGROUND_LANGUAGES`, `_SUBRACE_TRAITS`,
+  `_CLASS_EQUIPMENT`, `_skill_ref`, `_skill_steps`, `_language_steps`, `equipment_step`, `_Bundle`.
+  Skills, languages, traits and gear all arrive through the one generic rule now. The one rule the
+  tables carried that the pack cannot state — *a skill the background grants leaves the class's
+  list, a language the race speaks leaves the background's* — is one line in `_follow_ups`: what any
+  chosen record hands over is never also offered.
+- **What stays, each with its one-line note saying why upstream cannot answer it**: `_ITEM_BRIEFS`
+  (fiction the Narrator reads; upstream `Equipment.desc` is null for almost every startable item),
+  `_UNARMORED_DEFENSE` (`feature_specific` is None for both records), `pools.feature_pool` (None for
+  all six; every size is `desc` prose), the ability-generation constants (5e-database ships no
+  standard array and no point-buy ladder), and `_PREPARED_*` (the recorded deviation). Everything
+  else authored in the 5e package is gone. `_ITEM_BRIEFS` grew 46 → **75**, which is exactly the
+  reachable set: full category expansion makes 75 items startable, and `verify` refuses at engine
+  build if the two ever disagree in either direction.
+- **Behaviour that changed, all of it upstream being more complete than the curated tables were.**
+  A subrace now hands over *all* its traits, 7 across 4 subraces where `_SUBRACE_TRAITS` linked 1:
+  a high elf gets Elf Weapon Training and an extra-language step beside its cantrip, a rock gnome
+  Artificer's Lore and Tinker. The druid gains its wooden shield (AC 13 → 15) and the barbarian
+  loses hide armor entirely, because the SRD gives it none — its Unarmored Defense is the point.
+  A record picked in two steps is now **refused** rather than deduped, for languages as it already
+  was for spells; the dedupe cost the player a pick.
+- **The adversarial review found three things.** Two are fixed: `upstream.Option.count` was dead on
+  arrival (counts are deliberately unread — one ref is one carried item), and `equipment.verify`
+  proved only "at most one *group* can reach armour" where `armor_class`'s last-wins loop needs "no
+  single answer holds two"; `_most_armour` now computes the exact maximum through the option records
+  and the `choose` counts. The third is **recorded, not fixed**: the SRD cleric's "(if proficient)"
+  branches — a warhammer and chain mail — are options again, where the deleted table curated them
+  away, so a created cleric can reach AC 18. Both honest fixes are worse than the ceiling: a general
+  proficiency filter would contradict upstream for the druid and monk, whose own "any simple weapon"
+  offers weapons they are not proficient with, and a prose-keyed one re-introduces the interpretation
+  this ticket exists to delete. Nothing in this engine models weapon or armour proficiency, and the
+  only cleric subclass the SRD ships grants heavy armour.
+- Left as a known ceiling, measured: the `_follow_ups` filter could in principle shrink a record's
+  options below its `choose`, or to nothing, and `steps()` is called by the page outside any
+  try/except — a `CreationStep` validation error would reach the browser rather than a refusal. It
+  is unreachable on the shipped pack (the tightest case is the cleric, 5 skills − 2 acolyte grants
+  = 3, choose 2), and 4,000 randomized traversals plus ~30,000 exhaustive equipment enumerations
+  raised nothing that is not a clean `ValueError`.
+- Verification: 166 tests, unchanged in count — this phase deletes data, it does not add behaviour
+  the suite was not already asserting. The two round trips still land the same sheet they landed
+  before (fighter AC 18 from chain mail and a shield, elf wizard DEX 15 → AC 12), which is what
+  makes them a regression check; the fighter now reaches its longsword through the nested step
+  ("a martial weapon and a shield" hands over the shield and asks for the weapon) and asserts that
+  Common, Elvish and the acolyte's Insight are absent from the lists that would otherwise offer them.
+  `filled_picks` in the test support fills a round at a time rather than one pass, because answering
+  one step is now what offers the next. **The round trip is the scoping check**: after the change
+  exactly five pack files moved — `classes`, `races`, `subraces`, `backgrounds`, `manifest` — plus
+  the new `equipment_options`, and the other 19 collections are byte-identical from the pinned
+  `source_commit`. `SAVE_VERSION` 51 → 52 across the six state/save/turn fixtures; `save_version` is
+  the *only* byte that moved in any of them, and no prompt or schema golden moved at all.
+- `scripts/` stayed under basedpyright strict — the type-free-zone escape the maintainer offered was
+  not needed.
+
+### 10. Subclasses exist, 2026-08-12
+
+`.scratch/advancement-correctness/` 05, the last of the five and the one sequenced behind §9. 50 of
+the pack's 290 level rows and all 12 subclass records were unreachable: a created cleric held
+`divine-domain` and no domain, a fighter reached 20 with no archetype, and `champion-3`, `life-1`,
+`draconic-1` and `hunter-3` were dead weight the loader carried and nothing read.
+
+**The choice lands on the class's own level row, and that is the whole design.** The ticket asked
+for a second level ref and a merge of two rows; what settled it is the same audit that settled §7's
+one `options` pair, read one table further down. A subclass is a record carrying a `class` fact,
+exactly as a subrace carries `race`; a class level row is a `Record` like any other; and §9's rule
+— a picked record that carries a choice spawns one more step — is already what turns a picked class
+into its level-1 row. So the row that hands over "choose an archetype" carries the archetypes as its
+own pair, and a picked subclass answers with its own level rows. `AdvancementOffer`, `Record`,
+`CreationStep` and `check_picks` are untouched, and `Record.choices` stayed unbuilt for the second
+phase running.
+
+- **The importer decides where that pair belongs, from what upstream states.** A subclass names its
+  class and the level rows name the subclass whose table they belong to, so the level a class
+  decides at is the level its subclass table starts (`project.subclass_choices`; `project.py` 1330 →
+  1359, `build.py` 147 → 150). Checked before writing it: of the 12 rows this touches not one
+  already carried a feature choice, and the importer raises rather than flattening if an edition
+  ever makes one do both. **The round trip is the scoping check**: exactly one pack file moved,
+  `levels.json`, 96 added lines and none removed — 12 rows × 8 — and the other 21 collections plus
+  the manifest are byte-identical from the pinned `source_commit`. Every moved line was read; the
+  derived levels are the SRD's own (cleric, sorcerer, warlock 1; druid, wizard 2; the other seven 3).
+- **Creation** (`create.py` 455 → 469): `_level_rows` yields a class's level-1 row and then the
+  level-1 row of any subclass picked from it, so cleric, sorcerer and warlock choose at creation and
+  land what the domain, origin or patron hands over — Bonus Proficiency and Disciple of Life for a
+  Life cleric — and `draconic-1`'s dragon ancestor becomes one more step after the origin is picked,
+  through the same nesting equipment uses. `_option_ref` is gone for a `_picked_options` that
+  filters rather than indexes: `steps()` runs before `check_picks` has vouched anything, and the old
+  `next(...)` would have met a stale pick with `StopIteration` inside a generator.
+- **Advancement** (`advance.py` 407 → 452): `_subclass_rows` reads the second table at a level,
+  `offered` merges both rows' text, grants and the one open pair, and `advance` applies the subclass
+  row *after* the picks land — a fighter picks Champion at 3 and Improved Critical is handed over in
+  the same level-up, because the row granting it is unreachable until the ref is on the sheet.
+- **The one shape a single pair cannot hold, and what it cost.** The ranger is the only class whose
+  subclass row asks something at the very level the subclass is chosen: `hunter-3` offers Hunter's
+  Prey, and nothing can offer it before Hunter is held. `_deferred` carries an unanswered
+  subclass-row choice to the next offer, so the ranger meets it at 3 and takes it at 4. A ranger who
+  stops adventuring at 3 never takes it; that is the price of one offer holding one pair, and it is
+  the whole price. Measured, not assumed: `champion-10` is the only subclass row whose options
+  overlap a class row's — the six fighting styles, one already held from level 1 — and §8's
+  already-held filter shrinks it to five with no new code.
+- **One framework field moved, and it was overdue.** `CreationOption.id` was a strict `Slug` while a
+  content index is the laxer `ContentSlug`, so `dragon-ancestor-red---fire-damage` could not be
+  rendered as an option at all. That record has been in the pack since the first import and was
+  simply unreachable; the widening is what this change would otherwise have crashed on.
+- **The adversarial review found no defect in the shipped behaviour and three holes in the tests,
+  all closed.** Three mutations survived the suite it was handed: an `offered` that ignores subclass
+  rows entirely (every subclass choice merely arrives one level late, through `_deferred`), and a
+  `granted` or `text` built from the class row alone. The last two are exactly what the advisor
+  reads as `HANDED OVER` and `RULES TEXT`, and the fighter is where it shows — `fighter-7` and
+  `fighter-10` say only "Martial Archetype feature", so with the merge dropped the model would pick
+  a second fighting style from three bare refs and no prose. The new fighter test pins all three at
+  their own levels, and all four mutations (including the pair the reviewer combined) now fail it.
+  It also caught the sweep's own weak spot: the fighter's level-1 style satisfied "this row's
+  choice was answered" for `champion-10`, so the test now asserts a level-20 fighter holds two.
+  Two comments claimed more than the pack does and were corrected rather than defended: `_deferred`
+  is answered by any of a row's options being held, and two rows *do* carry choices at one level —
+  `ranger-3` and `sorcerer-1` — when the second one is the subclass question itself.
+- **The ticket's own example was wrong**, which the review caught in a test comment repeating it:
+  `domain-spells-1` is granted by `cleric-1`, the class row, and has been landing on every created
+  cleric since §7. What never landed is which domain those spells are, and that is what the pick
+  now says.
+- Verification: 166 → 169 tests. `SAVE_VERSION` 52 → 53 across the six state/save/turn fixtures,
+  where `save_version` is again the only byte that moved; no prompt or schema golden moved at all,
+  because `advancement.md` did not have to change — "exactly the alternatives the offer lists" was
+  already the rule, and a subclass ref is an alternative like any other.
+- Known ceiling, measured: a subclass's domain spells reach the sheet as its record's own prose
+  (`subclass-spells`, 204 characters on a Life cleric's ref line, 12 on a Champion's) and not as
+  spell refs, so `resolve_cast_spell` still refuses a domain spell the cleric did not pick from its
+  own list. The pack states the grants structurally, gated by a `"Cleric 1"` string; landing them
+  is a spells-side change, not this one.
+
 ## Next
 
+- All five deferred tickets in `.scratch/creation-remaining-state/` are closed (see §7 and §9).
+- The `5e-database` checkout now exists at `../5e-database`, pinned to the manifest's `source_commit`.
+  It is not vendored, so a fresh clone of this repo has to make it again before any importer run.
 - Phase 11's live probe: settled (see phase 11). Phase 12's manual pass: done 2026-08-12 —
   the play-test's easy findings (subrace step, follow-up prompts naming the collection,
   background languages, a live preview pane) shipped the same day; the advisor front-end still
   waits on the page feeling slow.
-- `.scratch/creation-remaining-state/` tickets await triage — gear, spell/cantrip choice,
-  level-row modeling, ability-generation methods (roll / point-buy / free assignment). None
-  blocks phase 13.
+- All five tickets in `.scratch/advancement-correctness/` are closed (see §8 and §10). Every level
+  row and every subclass record in the pack is now reachable from play.
+- The same audit found five things that are not advancement's; §9 closed one of them — racial traits
+  now reach the sheet, through the subrace's own `granted`. Left: a created 5e character has no
+  traits at all, saving-throw proficiency is modelled nowhere, background equipment and money are
+  not granted, and a long rest never restores hit points (`hp` is written with no `recharge`, so
+  `refill` skips it — one line, plus kael's json). None is ticketed yet.
 - Phase 13 — scenario creator — next unshipped phase.
