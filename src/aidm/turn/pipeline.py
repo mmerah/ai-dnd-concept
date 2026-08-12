@@ -5,12 +5,12 @@ from random import Random
 from pydantic import BaseModel
 
 from aidm.engines.loader import Engine
-from aidm.state.apply import fire_hooks
-from aidm.state.base import Entity, EntityId, slug
-from aidm.state.facts import Fact, narrator_evidence
+from aidm.state.apply import apply_effect, fire_hooks
+from aidm.state.base import Entity, EntityId, slug, text_slug
+from aidm.state.facts import CORE, Fact, narrator_evidence
 from aidm.state.plan import TurnPlanBase
-from aidm.state.turn import Creation, StepTrace, Turn, WorldkeeperReport
-from aidm.state.world import Exchange, GameState
+from aidm.state.turn import Creation, MemoryProposal, StepTrace, Turn, WorldkeeperReport
+from aidm.state.world import Exchange, GameState, Memory
 
 from . import prompts
 from .prompts import SceneSnapshot, VisibleScene
@@ -42,11 +42,43 @@ def apply_hooks(draft: GameState, facts: Sequence[Fact]) -> tuple[GameState, lis
     return (draft.committed().draft() if fired else draft), fired
 
 
-def apply_creations(draft: GameState, report: WorldkeeperReport, maximum: int) -> list[Fact]:
-    return [
+def apply_report(
+    draft: GameState, report: WorldkeeperReport, *, max_growth: int, max_memories: int
+) -> list[Fact]:
+    facts = [
         draft.add(_created_entity(creation, draft))
-        for creation in admitted(report.creations, draft, maximum)
+        for creation in admitted(report.creations, draft, max_growth)
     ]
+    facts.extend(_remembered(report.memories, draft, max_memories))
+    for move in report.thread_moves:
+        facts.extend(apply_effect(draft, move))
+    return facts
+
+
+def _remembered(proposals: Sequence[MemoryProposal], draft: GameState, maximum: int) -> list[Fact]:
+    seen = {memory.text.casefold() for memory in draft.world.memories.values()}
+    kept: list[Fact] = []
+    for proposal in proposals:
+        normalized = proposal.text.casefold()
+        if normalized in seen or len(kept) >= maximum:
+            continue
+        seen.add(normalized)
+        memory = Memory(
+            id=text_slug(proposal.text, draft.world.memories),
+            owner=proposal.owner_id,
+            text=proposal.text,
+            turn=draft.turn,
+        )
+        draft.world.memories[memory.id] = memory
+        kept.append(
+            Fact(
+                source=CORE,
+                kind="memory_kept",
+                trace=f"remembered: {memory.text}",
+                data={"memory_id": memory.id, "owner": memory.owner},
+            )
+        )
+    return kept
 
 
 async def run_turn(
@@ -57,6 +89,7 @@ async def run_turn(
     stages: Stages,
     history_window: int,
     max_growth: int,
+    max_memories: int,
     rng: Random,
     on_step: Callable[[str], None] | None = None,
 ) -> TurnResult:
@@ -122,8 +155,8 @@ async def run_turn(
         evidence=evidence,
         narration=narration,
     )
-    report = await stages.worldkeeper.run(keeper_prompt, None, history)
-    facts.extend(apply_creations(draft, report, max_growth))
+    report = await stages.worldkeeper.run(keeper_prompt, draft, history)
+    facts.extend(apply_report(draft, report, max_growth=max_growth, max_memories=max_memories))
     steps.append(_traced("worldkeeper", keeper_prompt, report))
 
     draft.history = (*draft.history, Exchange(prompt=prompt, narration=narration))

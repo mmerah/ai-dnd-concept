@@ -88,6 +88,7 @@ class GameSession:
     traces: FileTraces
     history_window: int
     max_growth: int
+    max_memories: int
     rng: Random = field(default_factory=Random)
     entries: list[TraceEntry] = field(default_factory=list)
     busy: bool = False
@@ -129,6 +130,7 @@ class GameSession:
             stages=self.stages,
             history_window=self.history_window,
             max_growth=self.max_growth,
+            max_memories=self.max_memories,
             rng=self.rng,
             on_step=on_step,
         )
@@ -246,4 +248,5 @@ class Runtime:
             traces=FileTraces(config.saves_dir),
             history_window=config.history_window,
             max_growth=config.max_growth,
+            max_memories=config.max_memories,
         )

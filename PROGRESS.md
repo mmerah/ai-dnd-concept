@@ -668,8 +668,96 @@ third engine wants them the step is 15 minutes' work with its measurement alread
 - No `SAVE_VERSION` bump: no persisted bytes and no model-facing string changed, and no golden
   fixture moved.
 
+## Phase 11 — Memories + Worldkeeper judgments — CODE DONE, LIVE PROBE OWED
+
+### 1. Memory state, authored + rendered
+
+- `Memory(Mutable)` in `state/world.py` beside `Thread` (`id`, `owner: EntityId | None`, `text`
+  1–300, `tags`, `turn`), and `WorldState.memories: dict[Slug, Memory]`. Whole-world validation
+  keys memories by id in the same `keyed` tuple entities/relations/threads use, and refuses an
+  owner who is not an entity.
+- `ScenarioWorld` carries `memories` like its other authored arrays, with the same duplicate-id
+  check; `begin_game` needs no memory-specific path — the deep copy it already makes carries them.
+- whispering-vault authors two: the abbey emptying in one night (the world's own), and Mara's
+  memory of cataloguing beside Elena. The second is canon about an entity the player has not met,
+  which is exactly the case the leak rule has to survive.
+- `SceneSnapshot.memories` filters to owner None, the player, or an entity at the player's
+  location, computed from the `locations` map the snapshot already builds. `render_director`
+  renders `MEMORIES` **only when it is rendering the Scene Director** (`directive is None`) —
+  the same switch that already distinguishes the two director calls. The Rules Director and the
+  Narrator gain no field a memory could travel through, and the golden diff proves it: the two
+  `scene.txt` fixtures moved, the `director.txt` and `narrator.txt` ones did not.
+- `SAVE_VERSION` 49 → 50, `FIXTURE_SAVE_VERSION` with it.
+
+### 2. The extended Worldkeeper report
+
+- `MemoryProposal(Frozen)` (`owner_id`, `text` ≤300) in `state/turn.py`; `WorldkeeperReport` gains
+  `memories` and `thread_moves: tuple[AdvanceThread, ...]`. No importance score, no second
+  transition vocabulary — code would read neither.
+- The Worldkeeper stage becomes `Stage[GameState, WorldkeeperReport]` and validates against the
+  draft: a memory owner that names no entity, or a thread move that names no thread, comes back as
+  a `ModelRetry`. The thread rule is one helper (`_unknown_threads`) shared with the Scene
+  Director's validator, which stated it identically.
+- `apply_creations` becomes `apply_report`: creations, then memories, then thread moves through
+  `apply_effect` — one function, one entry point, still inside the turn's single final commit.
+  `_remembered` mirrors `admitted`: casefolded-duplicate drop against every existing memory, cap
+  at `Settings.max_memories = 2`, id from a new `base.text_slug` (hyphenated, capped at `SLUG_MAX`,
+  de-collided — `slug()` underscores and never truncates, and both would fail `Slug`).
+- Memories are recorded with `turn=draft.turn` and a non-narrating `Fact(kind="memory_kept")`, so
+  the trace shows them and the player's prose never does.
+- `render_worldkeeper` gains `ALREADY REMEMBERED` (the same present-owner filter) and
+  `ACTIVE THREADS`; the `WORLDKEEPER` instructions are restructured into CREATIONS / MEMORIES /
+  THREAD MOVES with "most turns record nothing at all" lifted into the opening.
+
+### 3. Verification
+
+- Two tests, both through the real pipeline: memory reaches the Scene Director and neither the
+  Rules Director nor the Narrator (and a memory owned by an actor in another room reaches nobody);
+  a report that keeps two, drops a repeat of an authored memory, hits the cap of two, moves a
+  thread, and retries an owner naming nobody. 136 → 138 tests.
+- Golden movement, exactly as predicted and nothing else: `instructions/*/worldkeeper.txt`,
+  `prompts/*/{scene,worldkeeper}.txt`, `schemas/worldkeeper_report.json`, and the
+  `save/state/turn` families for the version bump and the two authored memories.
+- Evals: `remembered` probe added, `thread_at` extended to read a `status` as well as a `stage`
+  (a resolving beat moves the status, and no shipped stage vocabulary exists to name), the quiet
+  `worldkeeper-creates-nothing` case now also asserts nothing was kept or moved, and two new cases
+  cover a revelation worth remembering and a fact-free beat that resolves a thread.
+
+### Review
+
+- **A location could hold a memory nothing would ever render.** `present` was built from
+  `location_of`, which returns None for a location, and from `placed`, which excludes the scene's
+  own location — so `owner_id: "study"` passed validation, was stored, and appeared in no prompt,
+  where the exact-text duplicate rule would let the model re-propose it in other words forever.
+  The place is now present in its own scene. No golden moved: no shipped scenario authors one.
+- The MEMORIES block listed three reasons to keep one and no reason not to, with the restraint
+  sentence only in the opening, where gpt-oss-120b at low effort weights it least. One bullet
+  closes the block, and it is the **only** model-facing change beyond the phase itself, so the
+  owed probe measures one surface rather than two (phase 5's lesson).
+- The retry test folded into the admission test: the plan asked for one test over
+  admit/dedupe/cap/move/retry, and a bad first answer makes the retry the only path to the second.
+- Left open on purpose, both out of this phase's scope: memories have no eviction, so the two
+  rendered sections grow for the life of a campaign at up to 2 a turn; and the duplicate rule reads
+  every memory while ALREADY REMEMBERED shows only present owners, so an absent owner's memory can
+  be restated in other words. Decide both after the probe says how often the Worldkeeper actually
+  keeps one — pruning a stream nobody has measured is guessing.
+
+### Numbers
+
+- Net Python: src **+151** (181/−30), test code **+88**. This is a feature phase; growth is the
+  point. Against the plan's own accounting, the single-role design avoids the 70–120 lines a
+  Memorykeeper/Threadkeeper pair would have added: no new role config key, no new fixture family,
+  and the turn is still four model calls in the worst case.
+
+### Owed
+
+- **The live probe (working rule 2) has not been run.** `WorldkeeperReport` is a reshaped
+  model-facing schema under `NativeOutput`, so per the rule it needs a few real turns on
+  whispering-vault before the fixtures are trusted: `uv run aidm` for a couple of turns, or
+  `uv run python scripts/evals/run.py --only worldkeeper`. Watch for the failure mode phase 3 hit —
+  a report that comes back with every list empty, or one that fills `memories` on every turn.
+
 ## Next
 
-Part II is finished through phase 10B. Part III — phase 11, memories and the extended Worldkeeper
-report — is next, and reads the `WorldState` shape 10A settled. No live probe was owed here:
-working rule 2 asks for one when a model-facing surface moves, and none did.
+Phase 12 — character creation — reads phase 10A's engine-owned construction for its optional
+creation capability.

@@ -121,6 +121,20 @@
       "note": "Kael came for the vault and does not yet know where its door is."
     }
   ],
+  "memories": [
+    {
+      "id": "the-abbey-emptied-in-one-night",
+      "text": "The abbey emptied in a single night: meals were left half-eaten, doors left open, and no brother has been seen on the road since."
+    },
+    {
+      "id": "mara-catalogued-with-elena",
+      "owner": "mara",
+      "text": "Mara catalogued the vault ledgers beside Elena for two winters, until the night Elena went below alone and never came back up.",
+      "tags": [
+        "elena"
+      ]
+    }
+  ],
   "hooks": [
     {
       "id": "vault-sighted",

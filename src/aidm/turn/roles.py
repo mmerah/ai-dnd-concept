@@ -1,4 +1,4 @@
-from collections.abc import Callable, Sequence
+from collections.abc import Callable, Iterable, Sequence
 from dataclasses import dataclass
 from functools import cached_property
 from types import NoneType
@@ -23,6 +23,7 @@ from pydantic_ai.toolsets import AbstractToolset
 
 from aidm.config import ProviderConfig, RoleConfig, Settings
 from aidm.engines.loader import Advancement, AdvancementOffer, Engine, ProposalBase
+from aidm.state.base import Slug
 from aidm.state.plan import TurnPlanBase
 from aidm.state.turn import SceneDirective, WorldkeeperReport
 from aidm.state.world import Exchange, GameState
@@ -133,15 +134,19 @@ class Stages:
     scene: Stage[GameState, SceneDirective]
     director: Stage[PlanContext, TurnPlanBase]
     narrator: Stage[None, str]
-    worldkeeper: Stage[None, WorldkeeperReport]
+    worldkeeper: Stage[GameState, WorldkeeperReport]
+
+
+def _unknown_threads(state: GameState, wanted: Iterable[Slug]) -> str | None:
+    missing = sorted(set(wanted) - set(state.world.threads))
+    return f"no such thread: {', '.join(missing)}" if missing else None
 
 
 def scene_stage(settings: Settings) -> Stage[GameState, SceneDirective]:
     def known(ctx: RunContext[GameState], directive: SceneDirective) -> SceneDirective:
         state = ctx.deps
-        missing = sorted(set(directive.threads) - set(state.world.threads))
-        if missing:
-            raise ModelRetry(f"no such thread: {', '.join(missing)}")
+        if fault := _unknown_threads(state, directive.threads):
+            raise ModelRetry(fault)
         # A `reveal` naming anything but an unmet entity renders nothing
         unmet = {entity.id for entity in state.world.entities.values() if not entity.known}
         wrong = sorted(set(directive.reveal) - unmet)
@@ -189,13 +194,32 @@ def narrator_stage(settings: Settings) -> Stage[None, str]:
     )
 
 
-def worldkeeper_stage(settings: Settings) -> Stage[None, WorldkeeperReport]:
+def worldkeeper_stage(settings: Settings) -> Stage[GameState, WorldkeeperReport]:
+    def known(ctx: RunContext[GameState], report: WorldkeeperReport) -> WorldkeeperReport:
+        state = ctx.deps
+        strangers = sorted(
+            {
+                memory.owner_id
+                for memory in report.memories
+                if memory.owner_id is not None and memory.owner_id not in state.world.entities
+            }
+        )
+        if strangers:
+            raise ModelRetry(
+                f"nobody holds a memory who does not exist: {', '.join(strangers)}. Use an exact "
+                "id from the catalogue, or null for the world."
+            )
+        if fault := _unknown_threads(state, (move.thread_id for move in report.thread_moves)):
+            raise ModelRetry(fault)
+        return report
+
     return stage(
         "worldkeeper",
         settings,
         instructions=prompts.WORLDKEEPER,
         output_type=NativeOutput(WorldkeeperReport),
-        deps_type=NoneType,
+        deps_type=GameState,
+        validator=known,
     )
 
 

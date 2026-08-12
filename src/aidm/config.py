@@ -65,6 +65,7 @@ class Settings(BaseSettings):
     roles: dict[str, RoleConfig] = Field(default_factory=dict)
     engines: dict[EngineId, EngineConfig] = Field(default_factory=dict)
     max_growth: int = Field(default=3, ge=0)
+    max_memories: int = Field(default=2, ge=0)
     history_window: int = Field(default=6, ge=0)
     saves_dir: Path = Path("saves")
     scenarios_dir: Path = Path("scenarios")

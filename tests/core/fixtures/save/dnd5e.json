@@ -1,5 +1,5 @@
 {
-  "save_version": 49,
+  "save_version": 50,
   "scenario_id": "whispering-vault",
   "character_id": "kael",
   "scenario": {
@@ -197,6 +197,24 @@
         "status": "active",
         "stage": "seal-found",
         "note": "Kael came for the vault and does not yet know where its door is."
+      }
+    },
+    "memories": {
+      "the-abbey-emptied-in-one-night": {
+        "id": "the-abbey-emptied-in-one-night",
+        "owner": null,
+        "text": "The abbey emptied in a single night: meals were left half-eaten, doors left open, and no brother has been seen on the road since.",
+        "tags": [],
+        "turn": 0
+      },
+      "mara-catalogued-with-elena": {
+        "id": "mara-catalogued-with-elena",
+        "owner": "mara",
+        "text": "Mara catalogued the vault ledgers beside Elena for two winters, until the night Elena went below alone and never came back up.",
+        "tags": [
+          "elena"
+        ],
+        "turn": 0
       }
     },
     "hooks": [

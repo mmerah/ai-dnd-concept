@@ -29,6 +29,14 @@ EVERYTHING THAT EXISTS:
   state:
     traits: Unsteady Lantern[id=unsteady-lantern] — (gear) Its shifting light exposes seams and movement in deep shadow.
 
+ALREADY REMEMBERED:
+- the world remembers: The abbey emptied in a single night: meals were left half-eaten, doors left open, and no brother has been seen on the road since.
+- Mara[id=mara] remembers: Mara catalogued the vault ledgers beside Elena for two winters, until the night Elena went below alone and never came back up.
+
+ACTIVE THREADS:
+- The sealed vault[id=vault-seal] — active at seal-found
+  note: Kael came for the vault and does not yet know where its door is.
+
 PLAYER:
 I lever up the loose flagstone and listen at the vault door.
 

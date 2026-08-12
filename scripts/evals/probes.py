@@ -5,9 +5,9 @@ or story's `Adventurer`."""
 from collections.abc import Sequence
 from dataclasses import dataclass
 from random import Random
-from typing import Annotated, Literal
+from typing import Annotated, Literal, Self
 
-from pydantic import Field, JsonValue
+from pydantic import Field, JsonValue, model_validator
 
 from aidm.engines.counters import Counter
 from aidm.engines.dnd5e import mechanics as dnd5e
@@ -15,7 +15,7 @@ from aidm.engines.dnd5e.advance import level_ref
 from aidm.engines.dnd5e.rules import Dnd5eEngine
 from aidm.engines.loader import Engine
 from aidm.engines.story import mechanics as story
-from aidm.state.base import PLAYER_ID, EngineId, EntityId, Frozen, Trait
+from aidm.state.base import PLAYER_ID, EngineId, EntityId, Frozen, ThreadStatus, Trait
 from aidm.state.facts import Fact
 from aidm.state.packs import Record, is_int_fact
 from aidm.state.world import GameState
@@ -167,6 +167,12 @@ class Created(Frozen):
     max: int = Field(ge=0)
 
 
+class Remembered(Frozen):
+    probe: Literal["remembered"] = "remembered"
+    min: int = Field(default=0, ge=0)
+    max: int = Field(ge=0)
+
+
 class AtLocation(Frozen):
     probe: Literal["at_location"] = "at_location"
     entity: EntityId = PLAYER_ID
@@ -183,7 +189,14 @@ class HookFired(Frozen):
 class ThreadAt(Frozen):
     probe: Literal["thread_at"] = "thread_at"
     thread: str
-    stage: str
+    stage: str | None = None
+    status: ThreadStatus | None = None
+
+    @model_validator(mode="after")
+    def _reads_something(self) -> Self:
+        if self.stage is None and self.status is None:
+            raise ValueError("thread_at reads a thread's stage, its status, or both")
+        return self
 
 
 class NoStateChange(Frozen):
@@ -199,6 +212,7 @@ type CheckStep = Annotated[
     | NoteValue
     | RolledWithMode
     | Created
+    | Remembered
     | AttackRollHappened
     | BranchAddsTag
     | RollTarget
@@ -273,6 +287,9 @@ def check(outcome: Outcome, step: CheckStep) -> str | None:
         case Created():
             added = len(outcome.after.world.all_ids() - outcome.before.world.all_ids())
             return _within(added, step.min, step.max, "entities created")
+        case Remembered():
+            kept = len(set(outcome.after.world.memories) - set(outcome.before.world.memories))
+            return _within(kept, step.min, step.max, "memories kept")
         case BranchAddsTag():
             if _branch_adds_tag(outcome.plan, step):
                 return None
@@ -302,9 +319,11 @@ def check(outcome: Outcome, step: CheckStep) -> str | None:
             if thread is None:
                 held = sorted(outcome.after.world.threads)
                 return f"no thread {step.thread!r}; the threads are {held}"
-            if thread.stage == step.stage:
-                return None
-            return f"thread {step.thread} is at {thread.stage!r}, wanted {step.stage!r}"
+            if step.stage is not None and thread.stage != step.stage:
+                return f"thread {step.thread} is at {thread.stage!r}, wanted {step.stage!r}"
+            if step.status is not None and thread.status != step.status:
+                return f"thread {step.thread} is {thread.status!r}, wanted {step.status!r}"
+            return None
         case NoStateChange():
             # Mechanics sit outside `world` now, so both halves of the state have to hold still.
             unchanged = (

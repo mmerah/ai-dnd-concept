@@ -1,5 +1,5 @@
 {
-  "save_version": 49,
+  "save_version": 50,
   "facts": [
     {
       "source": "core",
@@ -197,7 +197,9 @@
             },
             "location": null
           }
-        ]
+        ],
+        "memories": [],
+        "thread_moves": []
       }
     }
   ]

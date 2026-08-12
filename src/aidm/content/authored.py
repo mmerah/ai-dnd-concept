@@ -6,7 +6,7 @@ from pydantic import Field, JsonValue, model_validator
 
 from aidm.state.base import PLAYER_ID, EngineId, Entity, EntityId, Frozen, Slug, Trait
 from aidm.state.effects import AdvanceThread
-from aidm.state.world import Hook, Relation, ScenarioMeta, Thread, WorldState
+from aidm.state.world import Hook, Memory, Relation, ScenarioMeta, Thread, WorldState
 
 type Rules = dict[str, JsonValue]
 
@@ -20,6 +20,7 @@ class ScenarioWorld(Frozen):
     entities: tuple[Entity, ...] = ()
     relations: tuple[Relation, ...] = ()
     threads: tuple[Thread, ...] = ()
+    memories: tuple[Memory, ...] = ()
     hooks: tuple[Hook, ...] = ()
 
     @cached_property
@@ -29,10 +30,12 @@ class ScenarioWorld(Frozen):
         _unique("entity ids", [entity.id for entity in self.entities])
         _unique("relations", [relation.id for relation in self.relations])
         _unique("threads", [thread.id for thread in self.threads])
+        _unique("memories", [memory.id for memory in self.memories])
         return WorldState(
             entities={entity.id: entity for entity in self.entities},
             relations={relation.id: relation for relation in self.relations},
             threads={thread.id: thread for thread in self.threads},
+            memories={memory.id: memory for memory in self.memories},
             hooks=self.hooks,
         )
 

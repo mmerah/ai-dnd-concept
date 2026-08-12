@@ -133,6 +133,7 @@ async def played(
             stages=stages,
             history_window=6,
             max_growth=3,
+            max_memories=2,
             rng=Random(0) if rng is None else rng,
             on_step=on_step,
         )
@@ -147,6 +148,7 @@ def settings() -> Settings:
             )
         ),
         max_growth=3,
+        max_memories=2,
         history_window=6,
         saves_dir=Path("saves"),
         scenarios_dir=SCENARIOS,

@@ -4,7 +4,7 @@ from collections.abc import Callable, Iterable, Mapping, Sequence
 from aidm.engines.loader import AdvancementOffer, Engine, EntityRenderer
 from aidm.state.base import PLAYER_ID, Entity, EntityId, Frozen, Trait
 from aidm.state.turn import SceneDirective
-from aidm.state.world import LOCKED_TAG, GameState, ScenarioMeta, Thread
+from aidm.state.world import LOCKED_TAG, GameState, Memory, ScenarioMeta, Thread
 
 
 class Exit(Frozen):
@@ -38,6 +38,7 @@ class SceneSnapshot(BaseScene):
     canon: tuple[Entity, ...]
     party: tuple[EntityId, ...]
     threads: tuple[Thread, ...] = ()
+    memories: tuple[Memory, ...] = ()
     notes: tuple[str, ...] = ()
 
     @classmethod
@@ -55,6 +56,11 @@ class SceneSnapshot(BaseScene):
         ]
         locations = {entity.id: world.location_of(entity) for entity in placed}
         party = world.party()
+        present = {
+            PLAYER_ID,
+            location.id,
+            *(held for held, place in locations.items() if place == location.id),
+        }
         exits = tuple(
             sorted(
                 (
@@ -93,6 +99,11 @@ class SceneSnapshot(BaseScene):
                     (thread for thread in world.threads.values() if thread.status != "resolved"),
                     key=lambda thread: thread.title,
                 )
+            ),
+            memories=tuple(
+                memory
+                for memory in world.memories.values()
+                if memory.owner is None or memory.owner in present
             ),
             notes=world.pending_notes,
         )
@@ -180,6 +191,7 @@ def render_director(
     prompt: str,
     directive: SceneDirective | None = None,
 ) -> str:
+    remembered = () if directive is not None else (("MEMORIES", _memories(scene)),)
     # Neither director writes prose, so the canon side leaks nothing by reaching both of them.
     canon = (
         (
@@ -187,6 +199,7 @@ def render_director(
             _entities(scene.hidden, describe, placement=scene.placement_of),
         ),
         ("ACTIVE THREADS", _threads(scene.threads)),
+        *remembered,
         ("SCENARIO NOTES", "\n".join(f"- {note}" for note in scene.notes) or "- (none)"),
     )
     steer = (
@@ -239,6 +252,8 @@ def render_worldkeeper(
                 "EVERYTHING THAT EXISTS",
                 _entities(scene.catalogue(), describe, placement=scene.placement_of, detail=True),
             ),
+            ("ALREADY REMEMBERED", _memories(scene)),
+            ("ACTIVE THREADS", _threads(scene.threads)),
             ("PLAYER", prompt),
             ("WHAT HAPPENED", evidence),
             ("NARRATION", narration),
@@ -354,6 +369,16 @@ def _thread_line(thread: Thread) -> str:
     stage = f" at {thread.stage}" if thread.stage is not None else ""
     line = f"- {thread.title}[id={prompt_id(thread.id)}] — {thread.status}{stage}"
     return f"{line}\n  note: {thread.note}" if thread.note else line
+
+
+def _memories(scene: SceneSnapshot) -> str:
+    by_id = {entity.id: entity for entity in scene.canon}
+    return "\n".join(_memory_line(memory, by_id) for memory in scene.memories) or "- (none)"
+
+
+def _memory_line(memory: Memory, by_id: Mapping[EntityId, Entity]) -> str:
+    whose = "the world" if memory.owner is None else _label(by_id[memory.owner], ids=True)
+    return f"- {whose} remembers: {memory.text}"
 
 
 def _directive(directive: SceneDirective, scene: SceneSnapshot, describe: EntityRenderer) -> str:
@@ -536,20 +561,36 @@ points, armour class, modifiers, dice, ids, or other raw mechanics. Never invent
 unsupported by WHAT HAPPENED. If a speaker is given, write their reply as dialogue. Output prose \
 only."""
 
-WORLDKEEPER = """You are the WORLDKEEPER of a tabletop roleplaying world. Create an entry for \
-every named person, place, or item the narration introduces that is absent from the catalogue, \
-with the exact name used and a one-sentence brief consistent with the narration.
+WORLDKEEPER = """You are the WORLDKEEPER of a tabletop roleplaying world. Keep its records after \
+the turn: enter what the narration introduced, remember what will still matter, and move the \
+threads the turn advanced. Most turns record nothing at all, and empty lists are the right answer.
 
+CREATIONS — an entry for every named person, place, or item the narration introduces that is \
+absent from the catalogue, with the exact name used and a one-sentence brief consistent with the \
+narration.
 - `detail.description`: two concise sentences of usable detail. `detail.hook`: one sentence on \
 how it may matter later. Neither may contradict the scenario, catalogue, or narration, and \
 neither may introduce a further named entity. The catalogue shows existing entries' detail, \
 hooks, and rules state; use comparable entries to keep yours concrete.
 - `location`: for a person or item, the place they are — a location already in the catalogue, or \
-one you create this same turn (create that location too if it is new). Null places them where \
-the player is; null also for a location entry itself.
+one you create this same turn (create that location too if it is new). Null places them where the \
+player is; null also for a location entry itself.
 - Match loosely: a name already in the catalogue in any spelling is not new, and neither is \
 something the catalogue already describes under a different name.
-- WHAT HAPPENED lists what the engine already recorded this turn; anything covered there is not \
-new.
 - Ignore unnamed background detail, scenery, crowds, and objects nobody could interact with.
-- Creating nothing is normal and is the right answer most turns."""
+
+MEMORIES — durable facts about people and places that will still matter many turns from now: what \
+someone revealed, what a place turned out to be, a promise made or broken. Never a play-by-play of \
+the turn.
+- `owner_id`: the exact id of whoever carries the memory, or null when the world itself does.
+- `text`: one concrete sentence, past tense.
+- ALREADY REMEMBERED is what is kept for whoever is here; never write one of those again in other \
+words.
+- Keep none on most turns: a turn is worth a memory only when it changed what someone knows.
+
+THREAD MOVES — an `advance-thread` for a thread in ACTIVE THREADS the turn plainly moved, naming \
+its `status`, its `stage`, or both. Move nothing the narration merely hinted at, and never invent \
+a stage the scenario has not used.
+
+WHAT HAPPENED lists what the engine already recorded this turn; anything covered there is already \
+kept and is not yours to record again."""

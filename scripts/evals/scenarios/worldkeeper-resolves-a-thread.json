@@ -1,0 +1,36 @@
+{
+  "id": "worldkeeper-resolves-a-thread",
+  "engine": "story",
+  "role": "worldkeeper",
+  "tags": [
+    "worldkeeper"
+  ],
+  "scenario": "whispering-vault",
+  "character": "kael",
+  "setup": [
+    {
+      "probe": "reveal",
+      "entity": "vault"
+    },
+    {
+      "probe": "place",
+      "entity": "player",
+      "location": "vault"
+    }
+  ],
+  "prompt": "I step through the broken seal and look at what the abbey buried.",
+  "narration": "The seal lies in pieces at your boots and the vault door stands open on its hinges. Inside there is nothing left to find: bare shelves, cold air, and the search that brought you to Saint Corvin is finished.",
+  "checks": [
+    {
+      "probe": "thread_at",
+      "thread": "vault-seal",
+      "status": "resolved"
+    },
+    {
+      "probe": "created",
+      "min": 0,
+      "max": 0
+    }
+  ],
+  "runs": 3
+}

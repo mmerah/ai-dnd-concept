@@ -82,6 +82,16 @@ class Thread(Mutable):
     note: str = ""
 
 
+class Memory(Mutable):
+    """A durable fact the world or one of its people holds, outliving the history window."""
+
+    id: Slug
+    owner: EntityId | None = None
+    text: str = Field(min_length=1, max_length=300)
+    tags: tuple[Slug, ...] = ()
+    turn: int = Field(default=0, ge=0)
+
+
 class HookMatch(Frozen):
     """A fact this hook waits for: its kind, and the data fields that must equal these."""
 
@@ -110,6 +120,7 @@ class WorldState(Mutable):
     entities: dict[EntityId, Entity] = Field(default_factory=dict)
     relations: dict[RelationId, Relation] = Field(default_factory=dict)
     threads: dict[Slug, Thread] = Field(default_factory=dict)
+    memories: dict[Slug, Memory] = Field(default_factory=dict)
     hooks: tuple[Hook, ...] = ()
     # A tuple, not a set: a save's bytes are a golden fixture, and set ordering is not stable.
     fired_hooks: tuple[Slug, ...] = ()
@@ -117,7 +128,12 @@ class WorldState(Mutable):
 
     @model_validator(mode="after")
     def _consistent_fiction(self) -> Self:
-        keyed = (("entity", self.entities), ("relation", self.relations), ("thread", self.threads))
+        keyed = (
+            ("entity", self.entities),
+            ("relation", self.relations),
+            ("thread", self.threads),
+            ("memory", self.memories),
+        )
         mismatched = sorted(
             f"{what} {key!r}"
             for what, entries in keyed
@@ -132,6 +148,9 @@ class WorldState(Mutable):
             check_placement(entity, holder)
         for relation in self.relations.values():
             self._check_relation(relation)
+        for memory in self.memories.values():
+            if memory.owner is not None and memory.owner not in self.entities:
+                raise ValueError(f"memory {memory.id!r} is held by unknown entity {memory.owner!r}")
         authored = {hook.id for hook in self.hooks}
         if len(authored) != len(self.hooks):
             raise ValueError("two hooks share an id, so one would never be told it had fired")

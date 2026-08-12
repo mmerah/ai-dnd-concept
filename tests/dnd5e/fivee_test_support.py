@@ -50,6 +50,7 @@ def dnd5e_session(directory: Path) -> GameSession:
         traces=FileTraces(directory),
         history_window=6,
         max_growth=3,
+        max_memories=2,
         rng=Random(1),
     )
 

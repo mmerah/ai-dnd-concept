@@ -19,6 +19,7 @@ def ui_settings(saves_dir: Path, scenarios_dir: Path = SCENARIOS) -> Settings:
             )
         ),
         max_growth=3,
+        max_memories=2,
         history_window=6,
         scenarios_dir=scenarios_dir,
         characters_dir=REPOSITORY_ROOT / "characters",

@@ -1,0 +1,26 @@
+{
+  "id": "worldkeeper-remembers-a-revelation",
+  "engine": "story",
+  "role": "worldkeeper",
+  "tags": [
+    "worldkeeper"
+  ],
+  "scenario": "whispering-vault",
+  "character": "kael",
+  "setup": [],
+  "prompt": "I ask Mara why she stayed when everyone else walked out.",
+  "narration": "Mara closes the ledger over her thumb. \"I sealed the undercroft stair myself,\" she says, \"the night the abbot went down it. Whatever answered him is still behind that door, and I am the one who shut it in.\"",
+  "checks": [
+    {
+      "probe": "remembered",
+      "min": 1,
+      "max": 2
+    },
+    {
+      "probe": "created",
+      "min": 0,
+      "max": 0
+    }
+  ],
+  "runs": 3
+}

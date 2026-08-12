@@ -15,6 +15,16 @@
       "probe": "created",
       "min": 0,
       "max": 0
+    },
+    {
+      "probe": "remembered",
+      "min": 0,
+      "max": 0
+    },
+    {
+      "probe": "thread_at",
+      "thread": "vault-seal",
+      "stage": "unfound"
     }
   ],
   "runs": 3

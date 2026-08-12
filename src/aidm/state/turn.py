@@ -3,6 +3,7 @@ from typing import Annotated, Literal
 from pydantic import Field, JsonValue
 
 from .base import SAVE_VERSION, EntityDetail, EntityId, Frozen, Kind, Slug
+from .effects import AdvanceThread
 from .facts import Fact
 
 
@@ -21,8 +22,19 @@ class Creation(Frozen):
     )
 
 
+class MemoryProposal(Frozen):
+    owner_id: EntityId | None = Field(
+        description="Exact id of who this belongs to, or null for the world."
+    )
+    text: str = Field(
+        min_length=1, max_length=300, description="One concrete sentence, past tense."
+    )
+
+
 class WorldkeeperReport(Frozen):
     creations: tuple[Creation, ...] = ()
+    memories: tuple[MemoryProposal, ...] = ()
+    thread_moves: tuple[AdvanceThread, ...] = ()
 
 
 class SceneDirective(Frozen):

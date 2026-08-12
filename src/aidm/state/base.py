@@ -23,10 +23,11 @@ EngineId = NewType("EngineId", str)
 EntityId = NewType("EntityId", str)
 RelationId = NewType("RelationId", str)
 SLUG_PATTERN = r"[a-z0-9]+(?:-[a-z0-9]+)*"
-Slug = Annotated[str, Field(pattern=rf"^{SLUG_PATTERN}$", max_length=64)]
+SLUG_MAX = 64
+Slug = Annotated[str, Field(pattern=rf"^{SLUG_PATTERN}$", max_length=SLUG_MAX)]
 
 PLAYER_ID = EntityId("player")
-SAVE_VERSION = 49
+SAVE_VERSION = 50
 
 
 def content_id(value: str) -> Slug:
@@ -43,6 +44,20 @@ def slug(name: str, taken: Iterable[EntityId]) -> EntityId:
     while candidate in used:
         candidate, number = EntityId(f"{base}_{number}"), number + 1
     return candidate
+
+
+def text_slug(text: str, taken: Iterable[str]) -> Slug:
+    words = re.sub(r"[^a-z0-9]+", "-", text.lower()).strip("-")
+    used = set(taken)
+    candidate, number = _capped(words, SLUG_MAX), 2
+    while candidate in used:
+        suffix = f"-{number}"
+        candidate, number = f"{_capped(words, SLUG_MAX - len(suffix))}{suffix}", number + 1
+    return candidate
+
+
+def _capped(words: str, limit: int) -> str:
+    return words[:limit].rstrip("-") or "entry"
 
 
 class EntityDetail(Frozen):

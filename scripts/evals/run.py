@@ -29,7 +29,7 @@ from aidm.engines.loader import Engine
 from aidm.state.base import EngineId, Frozen, Slug
 from aidm.state.turn import SceneDirective
 from aidm.state.world import GameState
-from aidm.turn.pipeline import apply_creations, apply_hooks, resolve_plan
+from aidm.turn.pipeline import apply_hooks, apply_report, resolve_plan
 from aidm.turn.prompts import SceneSnapshot, render_director, render_proposal, render_worldkeeper
 from aidm.turn.roles import (
     AdvisorContext,
@@ -383,8 +383,10 @@ async def _worldkeeper_turn(
         evidence="",
         narration=case.narration,
     )
-    result = await keeper.agent.run(rendered, deps=None)
-    facts = apply_creations(draft, result.output, config.max_growth)
+    result = await keeper.agent.run(rendered, deps=draft)
+    facts = apply_report(
+        draft, result.output, max_growth=config.max_growth, max_memories=config.max_memories
+    )
     engine.commit(draft)
     after = draft.committed()
     report = result.output.model_dump(mode="json")

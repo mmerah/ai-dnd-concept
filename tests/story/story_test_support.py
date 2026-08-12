@@ -38,6 +38,7 @@ def story_session(directory: Path, rng: Random | None = None) -> GameSession:
         traces=FileTraces(directory),
         history_window=6,
         max_growth=3,
+        max_memories=2,
         rng=Random(1) if rng is None else rng,
     )
 

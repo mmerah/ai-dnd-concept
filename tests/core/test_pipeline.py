@@ -22,7 +22,8 @@ from pydantic_ai.messages import (
 from pydantic_ai.models.function import AgentInfo, FunctionModel
 
 from aidm.engines.story.mechanics import read
-from aidm.state.base import PLAYER_ID
+from aidm.state.base import PLAYER_ID, EntityId
+from aidm.state.world import Memory
 from aidm.turn.pipeline import TURN_STEPS
 from aidm.turn.roles import ChannelSafeModel
 
@@ -283,6 +284,38 @@ async def test_a_hook_fires_on_its_fact_moves_its_thread_and_steers_the_next_tur
     # The note steers the Scene Director, which is the only role shown the scenario's own voice.
     assert "Press on what opening the seal will cost" in shown(after.turn, "scene")
     assert after.state.world.pending_notes == ()
+
+
+async def test_memory_reaches_the_scene_director_alone_and_only_for_who_is_here() -> None:
+    """A memory may hold canon the player has not earned, so the narrating role is shown none."""
+    engine, state = initialized()
+    draft = state.draft()
+    elsewhere = Memory(
+        id="tomas-kept-the-keys",
+        owner=EntityId("tomas"),
+        text="Brother Tomas kept the undercroft keys.",
+    )
+    here = Memory(
+        id="the-study-was-searched", owner=EntityId("study"), text="The study was searched once."
+    )
+    for memory in (elsewhere, here):
+        draft.world.memories[memory.id] = memory
+    result = await played(
+        engine,
+        draft.committed(),
+        "I look around.",
+        director=FunctionModel(scripted(plan())),
+    )
+
+    remembered = "Mara catalogued the vault ledgers"
+    scene = shown(result.turn, "scene")
+    assert remembered in scene
+    assert "The abbey emptied in a single night" in scene
+    assert "The study was searched once." in scene
+    # Tomas sweeps the cloister, so what he remembers is not this scene's to weave in.
+    assert "undercroft keys" not in scene
+    assert remembered not in shown(result.turn, "director")
+    assert remembered not in shown(result.turn, "narrator")
 
 
 async def test_both_directors_read_the_canon_and_only_the_narrator_is_kept_from_it() -> None:
