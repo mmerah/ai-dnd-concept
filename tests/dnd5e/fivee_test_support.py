@@ -1,9 +1,9 @@
 from pathlib import Path
 from random import Random
 
-from core_test_support import CHARACTERS, DND5E, SCENARIOS, capability, game, settings
+from core_test_support import CHARACTERS, DND5E, SCENARIOS, game, settings
 
-from aidm.app.session import GameSession, LaunchTarget, build_engine
+from aidm.app.session import Advancer, GameSession, LaunchTarget, build_engine
 from aidm.content.authored import Character, Scenario
 from aidm.content.store import FileSaves, FileTraces, load_character, load_scenario
 from aidm.engines.counters import Counter
@@ -14,7 +14,7 @@ from aidm.engines.loader import Engine
 from aidm.state.base import PLAYER_ID, Entity, EntityId, Trait
 from aidm.state.packs import ContentRef
 from aidm.state.world import GameState
-from aidm.turn.roles import advisor, build_stages
+from aidm.turn.roles import build_stages
 
 PACK_DIR = ENGINE_DIR / "packs" / "srd-2014"
 RAT = EntityId("cloister_rat")
@@ -45,7 +45,7 @@ def dnd5e_session(directory: Path) -> GameSession:
         character=character(),
         engine=engine,
         stages=build_stages(engine, config),
-        advisor=advisor(capability(engine), config),
+        advancer=Advancer.of(engine, config),
         saves=FileSaves(directory),
         traces=FileTraces(directory),
         history_window=6,

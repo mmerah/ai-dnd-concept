@@ -590,8 +590,86 @@ load-time only and no model-facing retry string moved. What it took apart was th
   same run. Model-facing docstrings need naming as such in a subagent's brief, the way CLAUDE.md
   names them: they are runtime behaviour, not prose.
 
+## Phase 10B — One owner for the scene rule, the counter effect, and growth — DONE
+
+### 1. One scene answers who may be voiced
+
+- `BaseScene.voice(speaker_id) -> Entity | None` is the single answer: an actor the scene holds as
+  here. Both judges now ask it, so a rule that was written twice cannot disagree twice.
+- `check_speaker` moved from `state/plan.py` to `turn/prompts.py` and takes the pre-turn
+  `SceneSnapshot` instead of `GameState`. Its four refusal strings are byte-identical — they are
+  model-facing and tested. The unknown-id case reads `scene.canon`, which holds every entity, so the
+  *unknown id* and *not voiceable* refusals stay distinct.
+- `_speaker` no longer raises. A speaker the turn walked away from falls back to the existing
+  `"(none — narrate the scene)"`. **This is the phase's one behaviour change**, and it fixes a turn
+  that died: scene picks `mara` in the study → player walks to the cloister → `ValueError` at
+  `prompts.py:378`, before `engine.commit`, discarding three model calls and the whole turn.
+- Deviation from the plan, deliberate: the plan has `check_speaker` "derive presence from the
+  pre-turn scene". It could not stay in `state/plan.py` to do that — `plan.py` → `turn/prompts.py` →
+  `engines/loader.py` → `plan.py` is a cycle — so the function moved to the module that owns the
+  scene. `roles.py` builds the snapshot at the call site (`prompts.SceneSnapshot.of(state)`);
+  rebuilding it per validation is pure dict work and keeps the scene stage's deps as `GameState`,
+  which the thread and reveal checks beside it still need.
+- Tests: the repro plays a full turn and asserts it commits with the fallback in the narrator
+  prompt (`test_pipeline.py`); `test_context_boundary.py`'s speaker case swapped `pytest.raises` for
+  the fallback assertion — the old test asserted exactly the fatal behaviour this step removes.
+  No golden moved: no shipped golden has an absent speaker.
+
+### 2. The counter effect has one owner — NOT TAKEN, per the plan's own gate
+
+The step was built, measured, and reverted. `engines/counters.py` gained an `apply_counter` taking
+each engine's mechanics and its own move function — reveal the target, move the counter, write the
+mechanics back — leaving `move_counter` and `_move_pool` per-engine, one injected callable rather
+than three. It landed at **+9 lines**: the shared function (13) is narrower than the 16 it replaces,
+but two 4-line call sites and two import lines more than eat the difference.
+
+PLAN.md gates this step exactly there — "accept only if the shared signature stays narrower than the
+16 lines it replaces … stop and leave the duplication if that is where it lands" — so it was
+reverted rather than argued for. The invariant it protected is real (dropping `write_mechanics` is a
+silent no-op-on-commit) but speculative at HEAD: there is no third engine, and CLAUDE.md forbids
+paying for one. The duplication that stays is eight readable lines in each engine, and the day a
+third engine wants them the step is 15 minutes' work with its measurement already recorded here.
+
+### 3. Growth has one consumer-side owner
+
+- `Advancer` is a frozen pair in `app/session.py` — the `Advancement` capability and the advisor
+  built against it — so the pair cannot be half-present: the fourth re-derivation in `GameSession`
+  was a comment admitting `advisor is None` and `advancement is None` were the same fact stated
+  twice. `GameSession` keeps `advancer: Advancer | None` and one accessor (`_advancer`), and owns
+  offer → propose → preview → apply itself, ending in its own `_commit`. No growth module sits
+  between the panel and the session: the review collapsed an earlier draft whose `app/growth.py`
+  held the four operations behind four one-line `GameSession` delegates — a layer that existed
+  only to be a layer. It is `Advancer`, not `Growth`, because story's proposal type is already
+  `Growth` and `test_proposals.py` would have imported both names.
+- Deviation from the plan, forced: `state/advancement.py` folds into **`engines/loader.py`**, not
+  into the consumer. `loader.py` declares the `Advancement` contract these two types spell, and
+  folding them into `app` would make `engines` import `app`. `AdvancementOffer` took the stricter
+  `packs.Record` rule — options and a count are set together, or neither is — which both shipped
+  offers already satisfy.
+- `ui/panels.py` reads the two types from `aidm.app.session`: the package boundary test forbids
+  `ui` importing `aidm.engines`.
+
+### Numbers
+
+- Net Python: **src 0** (88/−88), tests +20. Tests 135 → 136. Per step: step 1 **+2** (the fatal
+  bug, `voice`, and `check_speaker` changing module), step 2 **0** (reverted), step 3 **−2**.
+- Against the plan's predicted 60–100 line reduction, "almost all of it in step 3". That estimate
+  was wrong in kind, and zero is this phase's floor, not a shortfall to keep shaving at. The four
+  re-derivations it counted are ~15 lines; the one file it deletes (`state/advancement.py`, 25
+  lines) re-declares the same two types in `engines/loader.py`, because a type both an engine and
+  the app need cannot be deleted by moving it. Consolidating *where a question is asked* does not
+  remove the answer.
+- What the phase bought instead: a turn that used to die now commits, and three behaviours that
+  had two owners have one. Two rounds of review drove +37 → +9 → 0, and the two things that closed
+  the gap were both **deletions of the phase's own work** — a `growth` module that was four
+  one-line delegates in front of four methods, and a shared counter helper that cost more than the
+  duplication it removed. Working rule 5 applies to the residue: net lines are evidence, not the
+  target.
+- No `SAVE_VERSION` bump: no persisted bytes and no model-facing string changed, and no golden
+  fixture moved.
+
 ## Next
 
-Part II implementation through phase 10A is finished and probed live.
-Phase 10B — one owner for the scene rule, the counter effect, and growth — is next, and reads the
-`WorldState` and `Engine` shapes this phase settled.
+Part II is finished through phase 10B. Part III — phase 11, memories and the extended Worldkeeper
+report — is next, and reads the `WorldState` shape 10A settled. No live probe was owed here:
+working rule 2 asks for one when a model-facing surface moves, and none did.

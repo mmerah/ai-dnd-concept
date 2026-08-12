@@ -4,17 +4,16 @@ from collections.abc import Callable, Mapping, Sequence
 from importlib import import_module
 from pathlib import Path
 from random import Random
-from typing import ClassVar
+from typing import ClassVar, Self
 
-from pydantic import JsonValue, TypeAdapter
+from pydantic import Field, JsonValue, TypeAdapter, model_validator
 from pydantic_ai.toolsets import AbstractToolset
 
 from aidm.content.authored import Rules
-from aidm.state.advancement import AdvancementOffer, ProposalBase
-from aidm.state.base import EngineId, Entity, EntityId
+from aidm.state.base import EngineId, Entity, EntityId, Frozen
 from aidm.state.effects import WorldEffect, effect_key, effect_keys
 from aidm.state.facts import Fact
-from aidm.state.packs import ENCODING
+from aidm.state.packs import ENCODING, ContentRef
 from aidm.state.plan import TurnPlanBase
 from aidm.state.world import GameState
 
@@ -25,6 +24,27 @@ ENGINE_MODULES: tuple[str, ...] = (
 ENGINE = "ENGINE"
 
 type EntityRenderer = Callable[[Entity], str]
+
+
+class AdvancementOffer(Frozen):
+    """One pending advancement, already resolved out of content."""
+
+    prompt: str
+    text: str = ""
+    options: tuple[ContentRef, ...] = ()
+    choose: int = Field(default=0, ge=0)
+
+    @model_validator(mode="after")
+    def _choice_is_whole(self) -> Self:
+        if bool(self.choose) != bool(self.options):
+            raise ValueError("options and choose are set together, or neither is")
+        if self.choose > len(self.options):
+            raise ValueError(f"cannot choose {self.choose} of {len(self.options)} options")
+        return self
+
+
+class ProposalBase(Frozen):
+    """What an advancement writes, in the engine's own vocabulary."""
 
 
 class Advancement(ABC):

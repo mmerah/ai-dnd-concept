@@ -5,8 +5,7 @@ from random import Random
 from aidm.config import Settings
 from aidm.content.authored import Character, Scenario
 from aidm.content.store import FileSaves, FileTraces, load_character, load_scenario
-from aidm.engines.loader import Advancement, Engine, engine_class
-from aidm.state.advancement import AdvancementOffer, ProposalBase
+from aidm.engines.loader import Advancement, AdvancementOffer, Engine, ProposalBase, engine_class
 from aidm.state.base import PLAYER_ID, SAVE_VERSION, EngineId, Entity
 from aidm.state.facts import Fact
 from aidm.state.turn import Advance, TraceEntry, Turn
@@ -17,7 +16,19 @@ from aidm.turn.roles import AdvisorContext, Stage, Stages, advisor, build_stages
 
 from .launcher import LaunchTarget
 
-NO_ADVANCEMENT = "this engine has no advancement"
+
+@dataclass(frozen=True, slots=True)
+class Advancer:
+    """The advancement capability paired with the advisor that drafts against it, built
+    together so the pair cannot be half-present."""
+
+    advancement: Advancement
+    advisor: Stage[AdvisorContext, ProposalBase]
+
+    @classmethod
+    def of(cls, engine: Engine, settings: Settings) -> "Advancer | None":
+        capability = engine.advancement
+        return None if capability is None else cls(capability, advisor(capability, settings))
 
 
 def build_engine(engine_id: EngineId, config: Settings) -> Engine:
@@ -72,7 +83,7 @@ class GameSession:
     character: Character
     engine: Engine
     stages: Stages
-    advisor: Stage[AdvisorContext, ProposalBase] | None
+    advancer: Advancer | None
     saves: FileSaves
     traces: FileTraces
     history_window: int
@@ -125,39 +136,36 @@ class GameSession:
         return result.turn
 
     def offer(self) -> AdvancementOffer | None:
-        advancement = self.engine.advancement
-        return None if advancement is None else advancement.offered(self.state)
+        return None if self.advancer is None else self.advancer.advancement.offered(self.state)
 
     async def propose(self, intent: str) -> ProposalBase:
         """The advisor drafts the change; nothing is committed until the player confirms it."""
-        capability = self._capability()
-        if self.advisor is None:  # built beside the capability, so this is the same refusal
-            raise ValueError(NO_ADVANCEMENT)
+        advancer = self._advancer()
         offer = self._offered()
-        deps = AdvisorContext(advancement=capability, state=self.state, offer=offer)
-        return await self.advisor.run(render_proposal(self.engine, self.state, offer, intent), deps)
+        deps = AdvisorContext(advancement=advancer.advancement, state=self.state, offer=offer)
+        prompt = render_proposal(self.engine, self.state, offer, intent)
+        return await advancer.advisor.run(prompt, deps)
 
     def preview(self, proposal: ProposalBase) -> tuple[Fact, ...]:
         """What the change would write, read off a throwaway draft, not the committed state."""
-        return self._capability().advance(self.state.draft(), proposal)
+        return self._advancer().advancement.advance(self.state.draft(), proposal)
 
     def apply_proposal(self, proposal: ProposalBase) -> tuple[Fact, ...]:
-        capability = self._capability()
-        offer = self._offered()
-        refused = capability.violation(self.state, offer, proposal)
+        """The legality rule runs again here: a turn since the draft may have made it illegal."""
+        advancement = self._advancer().advancement
+        refused = advancement.violation(self.state, self._offered(), proposal)
         if refused is not None:
             raise ValueError(refused)
         draft = self.state.draft()
-        facts = capability.advance(draft, proposal)
+        facts = advancement.advance(draft, proposal)
         self.engine.commit(draft)
         self._commit(draft.committed(), Advance(facts=facts))
         return facts
 
-    def _capability(self) -> Advancement:
-        advancement = self.engine.advancement
-        if advancement is None:
-            raise ValueError(NO_ADVANCEMENT)
-        return advancement
+    def _advancer(self) -> Advancer:
+        if self.advancer is None:
+            raise ValueError("this engine has no advancement")
+        return self.advancer
 
     def _offered(self) -> AdvancementOffer:
         offer = self.offer()
@@ -227,15 +235,13 @@ class Runtime:
     def _open(self, target: LaunchTarget) -> GameSession:
         config = self.config
         engine = self.engine(target.engine)
-        capability = engine.advancement
-        built_advisor = None if capability is None else advisor(capability, config)
         return GameSession(
             target=target,
             scenario=load_scenario(config.scenarios_dir, target.scenario_id, target.engine),
             character=load_character(config.characters_dir, target.character_id, target.engine),
             engine=engine,
             stages=build_stages(engine, config),
-            advisor=built_advisor,
+            advancer=Advancer.of(engine, config),
             saves=FileSaves(config.saves_dir),
             traces=FileTraces(config.saves_dir),
             history_window=config.history_window,

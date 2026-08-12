@@ -1,16 +1,16 @@
 from pathlib import Path
 from random import Random
 
-from core_test_support import STORY, capability, character, game, scenario, settings
+from core_test_support import STORY, character, game, scenario, settings
 
-from aidm.app.session import GameSession, LaunchTarget, build_engine
+from aidm.app.session import Advancer, GameSession, LaunchTarget, build_engine
 from aidm.content.store import FileSaves, FileTraces
 from aidm.engines.loader import Engine
 from aidm.engines.story.advance import GROWTH_REQUIRED
 from aidm.engines.story.mechanics import read, write
 from aidm.state.base import PLAYER_ID
 from aidm.state.world import GameState
-from aidm.turn.roles import advisor, build_stages
+from aidm.turn.roles import build_stages
 
 TARGET = LaunchTarget(
     slug="poc",
@@ -33,7 +33,7 @@ def story_session(directory: Path, rng: Random | None = None) -> GameSession:
         character=character(),
         engine=engine,
         stages=build_stages(engine, config),
-        advisor=advisor(capability(engine), config),
+        advancer=Advancer.of(engine, config),
         saves=FileSaves(directory),
         traces=FileTraces(directory),
         history_window=6,

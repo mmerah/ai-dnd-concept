@@ -3,8 +3,7 @@ from collections.abc import Callable, Sequence
 
 from nicegui import ui
 
-from aidm.app.session import GameSession
-from aidm.state.advancement import AdvancementOffer, ProposalBase
+from aidm.app.session import AdvancementOffer, GameSession, ProposalBase
 from aidm.state.facts import Fact
 from aidm.state.turn import Advance, StepTrace, TraceEntry, Turn
 

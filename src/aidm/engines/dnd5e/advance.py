@@ -3,8 +3,7 @@ from typing import Literal
 from pydantic import Field, ValidationError
 
 from aidm.engines.counters import Counter, adjust
-from aidm.engines.loader import Advancement
-from aidm.state.advancement import AdvancementOffer, ProposalBase
+from aidm.engines.loader import Advancement, AdvancementOffer, ProposalBase
 from aidm.state.apply import apply_effect
 from aidm.state.base import PLAYER_ID, Entity, Slug
 from aidm.state.effects import TraitChange

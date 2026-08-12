@@ -41,8 +41,8 @@ async def test_an_illegal_proposal_is_retried_with_the_engines_reason(tmp_path: 
     game = story_session(tmp_path)
     game.state = _capped(grown(game.state))
 
-    assert game.advisor is not None
-    with game.advisor.agent.override(model=_answers(OVER_CAP, LEGAL)):
+    assert game.advancer is not None
+    with game.advancer.advisor.agent.override(model=_answers(OVER_CAP, LEGAL)):
         drafted = await game.propose("Kael has learned patience.")
 
     assert drafted == LEGAL
