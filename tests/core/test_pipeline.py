@@ -249,9 +249,9 @@ async def test_a_hook_fires_on_its_fact_moves_its_thread_and_steers_the_next_tur
         director=FunctionModel(scripted(plan(effects=[{"op": "reveal", "entity_id": "vault"}]))),
     )
 
-    thread = found.state.threads["vault-seal"]
+    thread = found.state.world.threads["vault-seal"]
     assert (thread.status, thread.stage) == ("active", "seal-found")
-    assert found.state.fired_hooks == ("vault-sighted",)
+    assert found.state.world.fired_hooks == ("vault-sighted",)
     # The hook's own consequence reaches the Narrator the turn it happens; the thread never does.
     assert "Warded" in shown(found.turn, "narrator")
     assert "vault-seal" not in shown(found.turn, "narrator")
@@ -265,7 +265,7 @@ async def test_a_hook_fires_on_its_fact_moves_its_thread_and_steers_the_next_tur
 
     # The note steers the Scene Director, which is the only role shown the scenario's own voice.
     assert "Press on what opening the seal will cost" in shown(after.turn, "scene")
-    assert after.state.pending_notes == ()
+    assert after.state.world.pending_notes == ()
 
 
 async def test_both_directors_read_the_canon_and_only_the_narrator_is_kept_from_it() -> None:

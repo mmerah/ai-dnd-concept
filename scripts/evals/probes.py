@@ -12,6 +12,7 @@ from pydantic import Field, JsonValue
 from aidm.engines.counters import Counter
 from aidm.engines.dnd5e import mechanics as dnd5e
 from aidm.engines.dnd5e.advance import level_ref
+from aidm.engines.dnd5e.rules import Dnd5eEngine
 from aidm.engines.loader import Engine
 from aidm.engines.story import mechanics as story
 from aidm.state.base import PLAYER_ID, EngineId, EntityId, Frozen, Trait
@@ -293,13 +294,13 @@ def check(outcome: Outcome, step: CheckStep) -> str | None:
                 return None
             return f"{step.entity} is at {where!r}, wanted {step.location!r}"
         case HookFired():
-            if set(step.hooks) & set(outcome.after.fired_hooks):
+            if set(step.hooks) & set(outcome.after.world.fired_hooks):
                 return None
-            return f"none of {step.hooks} fired; those that did: {outcome.after.fired_hooks}"
+            return f"none of {step.hooks} fired; those that did: {outcome.after.world.fired_hooks}"
         case ThreadAt():
-            thread = outcome.after.threads.get(step.thread)
+            thread = outcome.after.world.threads.get(step.thread)
             if thread is None:
-                held = sorted(outcome.after.threads)
+                held = sorted(outcome.after.world.threads)
                 return f"no thread {step.thread!r}; the threads are {held}"
             if thread.stage == step.stage:
                 return None
@@ -428,6 +429,7 @@ def _traits(state: GameState, entity_id: EntityId) -> frozenset[str]:
 def _level_up_to(engine: Engine, state: GameState, level: int) -> None:
     """Characters are authored at level 1, so a scenario that wants a higher one applies the
     class's own level rows: what they raise is exactly what the advisor would raise."""
+    assert isinstance(engine, Dnd5eEngine)  # the levels the rows come from are 5e's own content
     mechanics = dnd5e.read(state)
     sheet = dnd5e.sheet_of(mechanics, state.player)
     for step in range(sheet.numbers[LEVEL] + 1, level + 1):

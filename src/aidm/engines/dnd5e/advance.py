@@ -3,15 +3,16 @@ from typing import Literal
 from pydantic import Field, ValidationError
 
 from aidm.engines.counters import Counter, adjust
-from aidm.engines.loader import Advancement, Engine
+from aidm.engines.loader import Advancement
 from aidm.state.advancement import AdvancementOffer, ProposalBase
 from aidm.state.apply import apply_effect
 from aidm.state.base import PLAYER_ID, Entity, Slug
 from aidm.state.effects import TraitChange
 from aidm.state.facts import Fact
-from aidm.state.packs import ContentRef
+from aidm.state.packs import Content, ContentRef
 from aidm.state.world import GameState
 
+from .content import ENGINE_DIR, lookup
 from .mechanics import (
     Sheet,
     add_ref,
@@ -67,16 +68,16 @@ class LevelUp(ProposalBase):
 class Dnd5eAdvancement(Advancement):
     proposal_type = LevelUp
 
-    def __init__(self, engine: Engine) -> None:
-        super().__init__(engine.engine_dir)
-        self.engine = engine
+    def __init__(self, content: Content) -> None:
+        super().__init__(ENGINE_DIR)
+        self.content = content
 
     def offered(self, state: GameState) -> AdvancementOffer | None:
         player = state.player
         sheet = sheet_of(read(state), player)
         if player.trait(ADVANCEMENT_READY) is None and not _milestone_reached(state, sheet):
             return None
-        record = self.engine.record(level_ref(sheet, sheet.numbers[LEVEL] + 1))
+        record = lookup(self.content, level_ref(sheet, sheet.numbers[LEVEL] + 1))
         if record is None:
             # The class runs out of level rows at 20, which is the end of advancement, not a fault.
             return None

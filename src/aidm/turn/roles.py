@@ -140,7 +140,7 @@ class Stages:
 def scene_stage(settings: Settings) -> Stage[GameState, SceneDirective]:
     def known(ctx: RunContext[GameState], directive: SceneDirective) -> SceneDirective:
         state = ctx.deps
-        missing = sorted(set(directive.threads) - set(state.threads))
+        missing = sorted(set(directive.threads) - set(state.world.threads))
         if missing:
             raise ModelRetry(f"no such thread: {', '.join(missing)}")
         # A `reveal` naming anything but an unmet entity renders nothing
@@ -179,7 +179,7 @@ def director_stage(engine: Engine, settings: Settings) -> Stage[PlanContext, Tur
             TextOutput(plan_from_text(engine.plan_type)),
         ],
         deps_type=PlanContext,
-        toolsets=(engine.director_toolset,),
+        toolsets=engine.director_toolsets,
         validator=legal,
     )
 

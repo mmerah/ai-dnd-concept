@@ -26,7 +26,6 @@ _HOLDERS: Mapping[Kind, tuple[Kind, ...]] = {
 
 
 def check_placement(entity: Entity, holder: Entity | None) -> None:
-    """One topology rule, read by the committed world and by authored content alike."""
     allowed = _HOLDERS[entity.kind]
     if not allowed:
         if entity.parent_id is not None:
@@ -106,19 +105,40 @@ class Hook(Frozen):
 
 
 class WorldState(Mutable):
+    """The whole persistent fiction; `GameState` holds the played game around it."""
+
     entities: dict[EntityId, Entity] = Field(default_factory=dict)
     relations: dict[RelationId, Relation] = Field(default_factory=dict)
+    threads: dict[Slug, Thread] = Field(default_factory=dict)
+    hooks: tuple[Hook, ...] = ()
+    # A tuple, not a set: a save's bytes are a golden fixture, and set ordering is not stable.
+    fired_hooks: tuple[Slug, ...] = ()
+    pending_notes: tuple[str, ...] = ()
 
     @model_validator(mode="after")
-    def _keys_match_ids(self) -> Self:
-        mismatched = sorted(key for key, entity in self.entities.items() if key != entity.id)
+    def _consistent_fiction(self) -> Self:
+        keyed = (("entity", self.entities), ("relation", self.relations), ("thread", self.threads))
+        mismatched = sorted(
+            f"{what} {key!r}"
+            for what, entries in keyed
+            for key, entry in entries.items()
+            if key != entry.id
+        )
         if mismatched:
-            raise ValueError(f"entity keys disagree with their ids: {mismatched}")
-        stale = sorted(key for key, relation in self.relations.items() if key != relation.id)
-        if stale:
-            raise ValueError(f"relation keys disagree with their ids: {stale}")
+            raise ValueError(f"keys disagree with their ids: {mismatched}")
+        for entity in self.entities.values():
+            # `find`, not `require`: a dangling id is a topology fault, not a lookup failure.
+            holder = None if entity.parent_id is None else self.find(entity.parent_id)
+            check_placement(entity, holder)
         for relation in self.relations.values():
             self._check_relation(relation)
+        authored = {hook.id for hook in self.hooks}
+        if len(authored) != len(self.hooks):
+            raise ValueError("two hooks share an id, so one would never be told it had fired")
+        if unknown := sorted(set(self.fired_hooks) - authored):
+            raise ValueError(f"fired hooks name no authored hook: {unknown}")
+        if len(set(self.fired_hooks)) != len(self.fired_hooks):
+            raise ValueError(f"a hook fired twice: {sorted(self.fired_hooks)}")
         return self
 
     def _check_relation(self, relation: Relation) -> None:
@@ -212,11 +232,6 @@ class GameState(Mutable):
     world: WorldState
     # Opaque to core: the engine that wrote it is the only reader and the only validator.
     mechanics: JsonValue = None
-    threads: dict[Slug, Thread] = Field(default_factory=dict)
-    hooks: tuple[Hook, ...] = ()
-    # A tuple, not a set: a save's bytes are a golden fixture, and set ordering is not stable.
-    fired_hooks: tuple[Slug, ...] = ()
-    pending_notes: tuple[str, ...] = ()
     history: tuple[Exchange, ...] = ()
     turn: int = Field(default=0, ge=0)
 
@@ -289,23 +304,9 @@ class GameState(Mutable):
         )
 
     @model_validator(mode="after")
-    def _consistent_world(self) -> Self:
+    def _the_player_is_playable(self) -> Self:
         if not self.player.known:
             raise ValueError("the player entity must be known")
-        for entity in self.world.entities.values():
-            # `find`, not `require`: a dangling id is a topology fault, not a lookup failure.
-            holder = None if entity.parent_id is None else self.world.find(entity.parent_id)
-            check_placement(entity, holder)
-        mismatched = sorted(key for key, thread in self.threads.items() if key != thread.id)
-        if mismatched:
-            raise ValueError(f"thread keys disagree with their ids: {mismatched}")
-        by_id = {hook.id for hook in self.hooks}
-        if len(by_id) != len(self.hooks):
-            raise ValueError("two hooks share an id, so one would never be told it had fired")
-        if unknown := sorted(set(self.fired_hooks) - by_id):
-            raise ValueError(f"fired hooks name no authored hook: {unknown}")
-        if len(set(self.fired_hooks)) != len(self.fired_hooks):
-            raise ValueError(f"a hook fired twice: {sorted(self.fired_hooks)}")
         return self
 
 

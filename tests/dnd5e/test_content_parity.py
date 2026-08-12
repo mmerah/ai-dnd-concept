@@ -1,10 +1,11 @@
 from collections.abc import Mapping
 from pathlib import Path
 
-from fivee_test_support import PACK_DIR, pack_format
+from fivee_test_support import PACK_DIR
 from golden_test_support import golden_json
 from pydantic import JsonValue
 
+from aidm.engines.dnd5e.content import pack_format
 from aidm.state.packs import read_pack
 
 FIXTURE = Path(__file__).parent / "fixtures" / "mechanics_parity.json"

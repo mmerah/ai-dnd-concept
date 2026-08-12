@@ -39,7 +39,7 @@ def test_the_director_is_offered_the_same_tools(engine_id: EngineId) -> None:
     engine, _ = game(engine_id)
     golden_json(
         FIXTURES / "schemas" / engine_id / "director_tools.json",
-        _definitions(engine.director_toolset),
+        [tool for toolset in engine.director_toolsets for tool in _definitions(toolset)],
     )
 
 

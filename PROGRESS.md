@@ -447,7 +447,151 @@ alone rather than churned twice.
   at four model calls and avoiding an estimated 70–120 lines of future growth. Later phases needed
   only the creation-capability ownership wording updated.
 
+## Phase 10A — Consolidate engine ownership and world state — DONE
+
+### 1. Each engine owns the resources it uses
+
+- `engines/loader.py` 233 → 160 lines: the `Engine`/`Advancement` contract, the module registry,
+  `engine_text`, and the two shared halves of the Director brief (`_effect_vocabulary` asserted
+  complete against `WorldEffect`, `_examples` validated against the engine's own `plan_type`).
+  Gone from core: `EngineSpec`, `engine_spec`, pack directory discovery, the `read_content` toolset
+  with its `_record_text` renderer, and `Engine.record`/`.content`/`.collections`.
+- `Engine.__init__` now assembles only the director brief. `pack_paths` stays in its signature —
+  the composition root passes it to whatever it builds — and the base ignores it in one documented
+  line, so an engine without content needs no override to drop it.
+- `engines/dnd5e/content.py` 7 → 95 lines owns all of it: `Spec` + `collections()` reading its own
+  `spec.json`, `load_content()` (which makes the `PROJECTING`-vs-collections check its own),
+  `lookup()`, `director_toolset()`, `_record_text`, `_packs()`. `Dnd5eEngine.__init__` is four
+  lines: super, content, toolset, advancement.
+- Every `engine: Engine` parameter inside the dnd5e package became `content: Content`: all thirteen
+  of them only ever looked a record up, and `Dnd5eAdvancement(content)` now reads `ENGINE_DIR`
+  straight from the module that owns the directory. Nothing in the package types on the core
+  contract any more.
+- `director_toolset` → `director_toolsets: tuple[AbstractToolset[object], ...] = ()`. Story
+  overrides nothing: no `spec.json` (deleted), no `Content`, no tool. `tests/core/test_loader.py`'s
+  stub engine ships only a `director.md` and asserts exactly that — the phase's acceptance criterion
+  as a test, not a review note.
+- Callers outside `src` follow the ownership: `scripts/srd/build.py` and the three 5e content tests
+  read `dnd5e.content.pack_format()`, and `probes._level_up_to` asserts
+  `isinstance(engine, Dnd5eEngine)` before reading the levels pack — it was already 5e-only code.
+- The `read_content` test moved to `tests/dnd5e/test_content.py` and now runs against the shipped
+  SRD pack (`srd-2014/monsters/giant-rat`) instead of a synthetic tmp pack, so the tool is exercised
+  on the content it actually ships with. `test_loader.py` keeps the generic pack round-trip and
+  `validate_pack` tests, which never needed an engine.
+
+### 2. One model-facing change beyond the planned tool list
+
+- `schemas/story/director_tools.json` is `[]`, as the plan predicted.
+- Unplanned, and a real leak: core's shared `_RETRY` told **both** directors to "Call
+  `read_content` first when planning from a spell, feature, or stat block whose wording you cannot
+  quote." Story has no such tool, and 5e teaches the same rule in its own `director.md` ("Your only
+  tool, `read_content`, reads a record's full text when a line does not answer what you need"). The
+  clause is deleted, not moved: `instructions/{story,dnd5e}/director.txt` each lost exactly that
+  sentence and nothing else. Same fault class as phase 5's two findings — core text, not engine
+  text, was lying to the model.
+- **Probed live and passed**: the maintainer played Story with the empty tool list and its Director
+  still plans, so the cut fixture stands. The ordering was still a deviation worth naming — working
+  rule 2 asks for the probe *before* the fixture is cut, and here it came after, so for a while the
+  tree carried a model-facing change nothing offline could judge.
+
+### 3. `WorldState` is the whole persistent fiction
+
+- `threads`, `hooks`, `fired_hooks`, and `pending_notes` moved from `GameState` to `WorldState`;
+  `GameState` keeps identity, scenario meta, engine, opaque `mechanics`, history, and turn.
+- One validator owns the fiction's integrity (`_consistent_fiction`): key/id agreement for all
+  three keyed collections in one message, placement for every entity, the two relation kinds core
+  interprets, and the hook rules (unique ids, fired ids authored, no hook fired twice).
+  `GameState` is left with `_the_player_is_playable` — the player is the one thing only a played
+  game holds.
+- `check_placement` now has a single caller, so the authored world gets it by holding a
+  `WorldState` rather than by re-running the same loop.
+
+### 4. One validated representation of topology, authored and played
+
+- `ScenarioWorld` keeps `world.json`'s flat arrays as its fields and derives the one validated shape:
+  `@cached_property world -> WorldState`, keyed by id there because the file cannot key them itself
+  without collapsing a duplicate silently. `_unique` refuses a repeated entity, relation, or thread
+  id before the keying; `WorldState` refuses everything else. `world.json` bytes are unchanged.
+  **Deviation from the plan, deliberate**: PLAN.md specifies `world: WorldState` as a field fed by a
+  `mode="before"` validator. That shape was built first and cost 32 lines of reshaping machinery
+  (`_AuthoredFiction`, a raw-dict `TypeAdapter`, an "already keyed" passthrough branch for dumped
+  scenarios); the derived property reaches every acceptance criterion in 13 and makes `updated()`
+  round-trips simpler, since a dump stays flat. Frozen models take `cached_property` (pydantic
+  stores it outside the fields, so `model_dump` and the frozen hash both ignore it — checked, not
+  assumed).
+- Scenario-only validation is what only a scenario answers: the reserved player id, the starting
+  location, the starting party, and the hooks' thread references. The planned "runtime-only fields
+  are empty" check is gone with the nesting: a derived world never carries `fired_hooks` or
+  `pending_notes`, so the check could not fail.
+- `starting_party: tuple[EntityId, ...]` exists because `WorldState` refuses a `party-member`
+  relation whose target is not `PLAYER_ID`, and a scenario holds no player. `begin_game` turns each
+  id into that relation in the step that composes the player. A companion must be `known` and must
+  start at `starting_location_id`: the relation is written `known=True` (which `WorldState` refuses
+  against an unmet entity), and a companion authored in another room would render as "travelling
+  with the player" while standing elsewhere. Kept by maintainer decision after the review called it
+  speculative: no shipped scenario starts one, phase 13 needs it, and the cost is 8 lines.
+- `begin_game` deep-copies the authored world once, adds the player and the character's items to it,
+  ties the party, and returns `state.committed()`. That last call is load-bearing: a `WorldState`
+  handed to `GameState` as an instance is not revalidated (`revalidate_instances` is pydantic's
+  default), so the composition has to ask for the validation it used to get from building the
+  collections field by field.
+
+### 5. Fixtures and numbers
+
+- `SAVE_VERSION` 48 → 49. `state/*` and `save/*` carry the nesting, `turn/*` the version,
+  `schemas/story/director_tools.json` the empty tool list, `instructions/*/director.txt` the deleted
+  clause. No `prompts/*` golden moved — the two `instructions/*` ones did, for the clause above.
+- The state/save diff was checked structurally, not by eye: lifting the four fields back out of
+  `world` and restoring the version reproduces the previous file exactly, for both engines and both
+  families. The one movement the first regeneration showed beyond that — the player entity landing
+  before the character's items — was not asked for, so `begin_game` keeps the old order.
+- Tests 133 → 135: the bare engine that loads with no content ceremony, and the scenario that starts
+  the party it authors (with the duplicate-id refusal `_unique` exists for).
+- Net Python: **src 0** (286/−286), tests and scripts +13. The first pass of this phase was **+41**,
+  against the review's estimate of a 20–55 line reduction; what closed the 41-line gap was not the
+  moved code but four pieces of ceremony that had no business existing (see the review below). The
+  review's own floor was −4, and the 4 lines between that and zero are the second `starting_party`
+  guard, which the maintainer chose over deleting the field. The irreducible cost of the move itself
+  is the ~70 lines of toolset and loader code that changed owner plus the ~20-line import block a
+  module needs to own what it was handed.
+
+### What the adversarial review changed
+
+A review pass over the staged diff found **no correctness defect**: it walked the fourteen checks the
+two old validators made and confirmed every one survives (scenario relation endpoints are now checked
+*earlier*, at load rather than at `begin_game`), confirmed every state path still ends in validation,
+and reproduced the structural fixture claim above with its own script. The three message changes are
+load-time only and no model-facing retry string moved. What it took apart was the size:
+
+- **The before-validator machinery, −23 lines.** Replaced by the derived `world` property described
+  above. This was the whole miss: the plan's mechanism was implemented faithfully and the faithful
+  version was the expensive one.
+- **`Spec` and `spec.json`'s wrapper key, −4.** A one-field frozen model existed to unwrap
+  `{"collections": {...}}`. `spec.json` is now the bare collection mapping, read by one `TypeAdapter`,
+  and `collections()` became `pack_format()` — a name that says what it returns and does not shadow a
+  stdlib module. `fivee_test_support`'s wrapper of it went too; the three 5e tests import from the
+  module that owns it.
+- **`_packs()` inlined, −5, and its `is_dir` guard on the packs directory dropped.** A missing packs
+  directory used to load *empty* content and die later with "refs missing content"; it now raises
+  where the mistake is. This engine vendors its packs.
+- **A dead check and four docstrings.** The scenario emptiness check above, plus docstrings that
+  restated a name or a one-line body (`lookup`, Story's `__init__`, `_the_player_is_playable`,
+  `check_placement`). `read_content`'s docstring is untouched: it is the tool description the model
+  reads, locked by a golden.
+- Two nits it found and this phase closed: a duplicate id in `starting_party` silently collapsed two
+  relations into one, and a companion could be authored in a different room from the player.
+- Recommendations **not** taken, with reasons: moving the `PROJECTING ⊆ collections` check out of
+  startup into a test (it is an invariant, and CLAUDE.md says fail fast on a broken one — 3 lines is
+  a fair price), and inlining `check_placement` into its now-single caller (three distinct refusals
+  under one name, pointed at by `base.py`'s comment on `parent_id`; `_consistent_fiction` would grow
+  to four jobs to save 5 lines).
+- Process note: a subagent's edit silently dropped `read_content`'s docstring (the tool description
+  the model reads) and one invariant comment. The tool-schema golden caught the docstring within the
+  same run. Model-facing docstrings need naming as such in a subagent's brief, the way CLAUDE.md
+  names them: they are runtime behaviour, not prose.
+
 ## Next
 
-Part II implementation through phase 10 is finished. Phase 10A — consolidate engine ownership and
-world state — is next; Phase 11 follows on that smaller boundary.
+Part II implementation through phase 10A is finished and probed live.
+Phase 10B — one owner for the scene rule, the counter effect, and growth — is next, and reads the
+`WorldState` and `Engine` shapes this phase settled.

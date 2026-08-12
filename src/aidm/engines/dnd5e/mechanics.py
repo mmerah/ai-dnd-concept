@@ -13,15 +13,15 @@ from aidm.engines.counters import (
     spend,
     write_mechanics,
 )
-from aidm.engines.loader import Engine, EntityRenderer
+from aidm.engines.loader import EntityRenderer
 from aidm.state.apply import apply_effect, entity_fact, explained_fact, reveal_target
 from aidm.state.base import PLAYER_ID, Entity, EntityId, Kind, Mutable, Slug
 from aidm.state.effects import WorldOp
 from aidm.state.facts import Fact
-from aidm.state.packs import CollectionName, ContentRef, Record, fact_line, is_int_fact
+from aidm.state.packs import CollectionName, Content, ContentRef, Record, fact_line, is_int_fact
 from aidm.state.world import GameState
 
-from .content import PROJECTING
+from .content import PROJECTING, lookup
 
 type Dnd5eEffect = Annotated[WorldOp | CounterChange, Field(discriminator="op")]
 
@@ -63,15 +63,15 @@ def sheet_of(mechanics: Mechanics, entity: Entity) -> Sheet:
     return held
 
 
-def begin(engine: Engine, state: GameState, rules: Mapping[EntityId, Rules]) -> None:
+def begin(content: Content, state: GameState, rules: Mapping[EntityId, Rules]) -> None:
     sheets = {
-        entity.id: build(engine, entity.kind, rules.get(entity.id, {}))
+        entity.id: build(content, entity.kind, rules.get(entity.id, {}))
         for entity in state.world.entities.values()
     }
     write(state, Mechanics(sheets=sheets))
 
 
-def commit(engine: Engine, state: GameState) -> None:
+def commit(content: Content, state: GameState) -> None:
     """An entity that joined the world mid-turn is given a sheet by the commit that admits it;
     a payload missing the player is corruption, not a gap to fill."""
     mechanics = read(state)
@@ -79,17 +79,17 @@ def commit(engine: Engine, state: GameState) -> None:
         raise ValueError("the 5e mechanics name no player")
     for entity in state.world.entities.values():
         if entity.id not in mechanics.sheets:
-            mechanics.sheets[entity.id] = build(engine, entity.kind, {})
+            mechanics.sheets[entity.id] = build(content, entity.kind, {})
     if gone := sorted(set(mechanics.sheets) - state.world.all_ids()):
         raise ValueError(f"mechanics name entities the world does not hold: {gone}")
     for entity_id, sheet in mechanics.sheets.items():
         for ref in sheet.refs:
-            if engine.record(ref) is None:
+            if lookup(content, ref) is None:
                 raise ValueError(f"{entity_id!r} refs missing content {ref}")
     write(state, mechanics)
 
 
-def build(engine: Engine, kind: Kind, rules: Rules) -> Sheet:
+def build(content: Content, kind: Kind, rules: Rules) -> Sheet:
     authored = Sheet.model_validate(rules)
     numbers = dict(ACTOR_NUMBERS) if kind == "actor" else {}
     counters = (
@@ -97,7 +97,7 @@ def build(engine: Engine, kind: Kind, rules: Rules) -> Sheet:
         if kind == "actor"
         else {}
     )
-    for key, value in _backing(authored.refs, engine).items():
+    for key, value in _backing(authored.refs, content).items():
         if key in authored.numbers or key in authored.counters:
             continue
         declared = counters.get(key)
@@ -111,13 +111,13 @@ def build(engine: Engine, kind: Kind, rules: Rules) -> Sheet:
     return authored
 
 
-def _backing(refs: Sequence[ContentRef], engine: Engine) -> Mapping[Slug, int]:
+def _backing(refs: Sequence[ContentRef], content: Content) -> Mapping[Slug, int]:
     backing: dict[Slug, int] = {}
     claimed_by: dict[Slug, ContentRef] = {}
     for ref in refs:
         if ref.collection not in PROJECTING:
             continue
-        record = engine.content.require(ref)
+        record = content.require(ref)
         for key, value in record.facts.items():
             if not is_int_fact(value):
                 continue
@@ -130,12 +130,12 @@ def _backing(refs: Sequence[ContentRef], engine: Engine) -> Mapping[Slug, int]:
     return backing
 
 
-def render(engine: Engine, state: GameState) -> EntityRenderer:
+def render(content: Content, state: GameState) -> EntityRenderer:
     mechanics = read(state)
-    return lambda entity: describe(engine, mechanics, entity)
+    return lambda entity: describe(content, mechanics, entity)
 
 
-def describe(engine: Engine, mechanics: Mechanics, entity: Entity) -> str:
+def describe(content: Content, mechanics: Mechanics, entity: Entity) -> str:
     sheet = mechanics.sheets.get(entity.id)
     if sheet is None:
         return ""
@@ -143,7 +143,7 @@ def describe(engine: Engine, mechanics: Mechanics, entity: Entity) -> str:
         ("numbers", ", ".join(f"{key} {value}" for key, value in sorted(sheet.numbers.items()))),
         ("counters", render_counters(sheet.counters)),
         ("notes", "; ".join(f"{key}={value}" for key, value in sorted(sheet.notes.items()))),
-        ("content", _refs(sheet.refs, engine)),
+        ("content", _refs(sheet.refs, content)),
     )
     return "\n".join(
         f"{name}:{body}" if body.startswith("\n") else f"{name}: {body}"
@@ -152,12 +152,12 @@ def describe(engine: Engine, mechanics: Mechanics, entity: Entity) -> str:
     )
 
 
-def _refs(refs: tuple[ContentRef, ...], engine: Engine) -> str:
-    return "".join(f"\n- {_ref_line(ref, engine)}" for ref in refs)
+def _refs(refs: tuple[ContentRef, ...], content: Content) -> str:
+    return "".join(f"\n- {_ref_line(ref, content)}" for ref in refs)
 
 
-def _ref_line(ref: ContentRef, engine: Engine) -> str:
-    record = engine.record(ref)
+def _ref_line(ref: ContentRef, content: Content) -> str:
+    record = lookup(content, ref)
     if record is None:
         return str(ref)
     # An int fact of a projecting collection already stands in the sheet's own numbers or counters.
@@ -248,12 +248,12 @@ def add_ref(entity: Entity, sheet: Sheet, ref: ContentRef, why: str) -> Fact:
 
 
 def first_ref_record(
-    sheet: Sheet, engine: Engine, collection: CollectionName, require_fact: Slug | None = None
+    sheet: Sheet, content: Content, collection: CollectionName, require_fact: Slug | None = None
 ) -> Record | None:
     for ref in sheet.refs:
         if ref.collection != collection:
             continue
-        held = engine.record(ref)
+        held = lookup(content, ref)
         if held is None or (require_fact is not None and require_fact not in held.facts):
             continue
         return held

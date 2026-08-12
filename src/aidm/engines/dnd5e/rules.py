@@ -7,12 +7,13 @@ from aidm.engines.counters import CounterChange
 from aidm.engines.loader import Engine, EntityRenderer
 from aidm.state.base import EngineId, EntityId, Slug
 from aidm.state.facts import Fact
+from aidm.state.packs import Content
 from aidm.state.plan import TurnPlanBase, apply_all, apply_branch, check_action, check_effects
 from aidm.state.world import GameState
 
 from .actions import Action, Attack, CastSpell, Check, Improvise, Rest, TurnPlan, UseFeature
 from .advance import Dnd5eAdvancement
-from .content import ENGINE_DIR, PROJECTING
+from .content import ENGINE_DIR, director_toolset, load_content
 from .mechanics import apply, begin, commit, render
 from .resolve import dispatch_action, spell_of
 
@@ -30,18 +31,18 @@ class Dnd5eEngine(Engine):
 
     def __init__(self, pack_paths: Sequence[Path] | None = None) -> None:
         super().__init__(pack_paths)
-        if unknown := sorted(set(PROJECTING) - set(self.collections)):
-            raise ValueError(f"projecting names no such collection: {unknown}")
-        self.advancement = Dnd5eAdvancement(self)
+        self.content = load_content(pack_paths)
+        self.director_toolsets = (director_toolset(self.content),)
+        self.advancement = Dnd5eAdvancement(self.content)
 
     def begin(self, state: GameState, rules: Mapping[EntityId, Rules]) -> None:
-        begin(self, state, rules)
+        begin(self.content, state, rules)
 
     def commit(self, state: GameState) -> None:
-        commit(self, state)
+        commit(self.content, state)
 
     def renderer(self, state: GameState) -> EntityRenderer:
-        return render(self, state)
+        return render(self.content, state)
 
     def check_plan(self, state: GameState, plan: TurnPlanBase) -> str | None:
         assert isinstance(plan, TurnPlan)
@@ -53,20 +54,20 @@ class Dnd5eEngine(Engine):
         return check_action(
             state,
             plan,
-            _labels(self, action),
+            _labels(self.content, action),
             apply,
-            lambda draft, rng: dispatch_action(self, draft, action, rng),
+            lambda draft, rng: dispatch_action(self.content, draft, action, rng),
         )
 
     def resolve_action(self, draft: GameState, plan: TurnPlanBase, rng: Random) -> list[Fact]:
         assert isinstance(plan, TurnPlan)
-        facts, outcome = dispatch_action(self, draft, plan.action, rng)
+        facts, outcome = dispatch_action(self.content, draft, plan.action, rng)
         if outcome is not None:
             facts.extend(apply_branch(draft, plan, outcome, apply))
         return facts + apply_all(draft, plan.effects, apply)
 
 
-def _labels(engine: Engine, action: Action) -> frozenset[Slug]:
+def _labels(content: Content, action: Action) -> frozenset[Slug]:
     """Contested only when the roll can fail: for a spell, when its facts carry an attack or a
     save. A bad ref falls back here; the trial resolve refuses it before the labels are read."""
     match action:
@@ -76,7 +77,7 @@ def _labels(engine: Engine, action: Action) -> frozenset[Slug]:
             return CONTESTED if action.vs is not None else UNCONTESTED
         case CastSpell():
             try:
-                record = spell_of(engine, action.spell)
+                record = spell_of(content, action.spell)
             except ValueError:
                 return UNCONTESTED
             contested = "attack-type" in record.facts or "save-ability" in record.facts

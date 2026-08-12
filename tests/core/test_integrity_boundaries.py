@@ -1,3 +1,5 @@
+import json
+
 import pytest
 from core_test_support import (
     STORY,
@@ -14,11 +16,22 @@ from aidm.content.authored import (
     Character,
     CharacterOverlay,
     CharacterProfile,
+    ScenarioWorld,
 )
 from aidm.state.base import PLAYER_ID, Entity, EntityId
 
 HELD = EntityId("frayed_rope")
 UNHELD = EntityId("silk_rope")
+MARA = EntityId("mara")
+ELENA = EntityId("elena")
+_HALL = {"id": "hall", "kind": "location", "name": "the hall", "brief": "A hall.", "known": True}
+_DOUBLED = json.dumps(
+    {
+        "meta": {"title": "Twice Over", "premise": "One id, authored twice."},
+        "starting_location_id": "hall",
+        "entities": [_HALL, {**_HALL, "name": "the hall again"}],
+    }
+)
 
 
 def _character(*, holds: Entity, gear_for: EntityId) -> Character:
@@ -69,7 +82,8 @@ def test_an_engine_refuses_an_authored_payload_it_cannot_read() -> None:
     them — and it has to fire at launch, not on the turn that first reads the entity."""
     engine, _ = initialized()
     authored = scenario()
-    actor = next(entity for entity in authored.world.entities if entity.kind == "actor")
+    entities = authored.world.world.entities.values()
+    actor = next(entity for entity in entities if entity.kind == "actor")
     poisoned = updated(authored, overlay={"entities": {actor.id: {"gear": None}}})
 
     with pytest.raises(ValueError, match="gear"):
@@ -79,6 +93,20 @@ def test_an_engine_refuses_an_authored_payload_it_cannot_read() -> None:
 def test_scenario_topology_is_validated() -> None:
     with pytest.raises(ValidationError, match="starting_location_id"):
         updated(scenario().world, starting_location_id=EntityId("missing"))
+    with pytest.raises(ValidationError, match="duplicate entity ids"):
+        # Keyed by id from a flat array, so the duplicate has to be caught before it collapses.
+        ScenarioWorld.model_validate_json(_DOUBLED)
+
+
+def test_a_scenario_starts_the_party_it_authors() -> None:
+    """A scenario holds no player, so the tie to one is named as an id and made at composition."""
+    engine, _ = initialized()
+    authored = scenario()
+    started = updated(authored, world=updated(authored.world, starting_party=(MARA,)))
+
+    assert begin_game(engine, started, character()).world.party() == (MARA,)
+    with pytest.raises(ValidationError, match="who they set out with"):
+        updated(authored.world, starting_party=(ELENA,))
 
 
 def test_an_overlay_may_not_name_an_entity_the_author_never_wrote() -> None:

@@ -4,31 +4,17 @@ from collections.abc import Callable, Mapping, Sequence
 from importlib import import_module
 from pathlib import Path
 from random import Random
-from typing import Annotated, ClassVar
+from typing import ClassVar
 
-from pydantic import Field, JsonValue, TypeAdapter
-from pydantic_ai import ModelRetry
-from pydantic_ai.toolsets import AbstractToolset, FunctionToolset
+from pydantic import JsonValue, TypeAdapter
+from pydantic_ai.toolsets import AbstractToolset
 
 from aidm.content.authored import Rules
 from aidm.state.advancement import AdvancementOffer, ProposalBase
-from aidm.state.base import EngineId, Entity, EntityId, Frozen
+from aidm.state.base import EngineId, Entity, EntityId
 from aidm.state.effects import WorldEffect, effect_key, effect_keys
 from aidm.state.facts import Fact
-from aidm.state.packs import (
-    EMPTY_FROZEN_MAP,
-    ENCODING,
-    CollectionName,
-    Content,
-    ContentMiss,
-    ContentRef,
-    FactSchema,
-    FrozenMap,
-    Record,
-    fact_line,
-    load,
-    parse_ref,
-)
+from aidm.state.packs import ENCODING
 from aidm.state.plan import TurnPlanBase
 from aidm.state.world import GameState
 
@@ -39,11 +25,6 @@ ENGINE_MODULES: tuple[str, ...] = (
 ENGINE = "ENGINE"
 
 type EntityRenderer = Callable[[Entity], str]
-
-
-class EngineSpec(Frozen):
-    # Collection name -> the facts every record in it must carry (empty: no requirement).
-    collections: FrozenMap[CollectionName, FactSchema] = EMPTY_FROZEN_MAP
 
 
 class Advancement(ABC):
@@ -69,8 +50,8 @@ class Advancement(ABC):
 
 
 class Engine(ABC):
-    """One object per engine: its metadata, its content, its plan lifecycle, and the mechanics
-    half of the state core keeps but cannot read."""
+    """One object per engine: its metadata, its plan lifecycle, and the mechanics half of the
+    state core keeps but cannot read. What content it needs is its own to load."""
 
     id: ClassVar[EngineId]
     badge: ClassVar[tuple[str, str]]
@@ -78,15 +59,14 @@ class Engine(ABC):
     engine_dir: ClassVar[Path]
 
     def __init__(self, pack_paths: Sequence[Path] | None = None) -> None:
-        directories = _packs(self.engine_dir) if pack_paths is None else tuple(pack_paths)
-        self.collections = engine_spec(self.engine_dir).collections
-        self.content: Content = load(directories, self.collections)
+        del pack_paths  # only an engine with content reads them, and it overrides this
         self.director_instructions: str = (
             engine_text(self.engine_dir / "director.md")
             + _effect_vocabulary()
             + _examples(self.engine_dir, self.plan_type)
         )
-        self.director_toolset: AbstractToolset[object] = _director_toolset(self.content)
+        # An engine with content advertises its own lookups; one without teaches the model no tool.
+        self.director_toolsets: tuple[AbstractToolset[object], ...] = ()
         # An engine that grows its characters replaces this; the app offers only what it finds.
         self.advancement: Advancement | None = None
 
@@ -110,10 +90,6 @@ class Engine(ABC):
     @abstractmethod
     def resolve_action(self, draft: GameState, plan: TurnPlanBase, rng: Random) -> list[Fact]: ...
 
-    def record(self, ref: ContentRef) -> Record | None:
-        found = self.content.record(ref)
-        return None if isinstance(found, ContentMiss) else found
-
 
 def engines() -> tuple[type[Engine], ...]:
     """Imported by name, because a static import would put core back inside the engine packages."""
@@ -132,12 +108,6 @@ def engine_class(engine_id: EngineId) -> type[Engine]:
     if found is None:
         raise ValueError(f"unknown engine {engine_id!r}")
     return found
-
-
-def engine_spec(engine_dir: Path) -> EngineSpec:
-    """Every engine carries one, so the pack format of an engine without content reads as empty
-    rather than as absent."""
-    return EngineSpec.model_validate_json(engine_text(engine_dir / "spec.json"))
 
 
 def engine_text(path: Path) -> str:
@@ -186,48 +156,3 @@ def _effect_vocabulary() -> str:
         "that trait change, with or without an action: nothing records it otherwise."
     )
     return f"\n\n{header}\n\n```json\n{lines}\n```"
-
-
-def _director_toolset(content: Content) -> FunctionToolset[object]:
-    def read_content(
-        ref: Annotated[
-            str, Field(description="A content ref written `pack/collection/index`, as shown.")
-        ],
-    ) -> str:
-        """Read the rules text of one content record.
-
-        Use before planning from a spell, feature, or monster action whose wording you cannot
-        quote. It reads canon and changes nothing.
-        """
-        try:
-            reference = parse_ref(ref)
-        except ValueError as malformed:
-            raise ModelRetry(str(malformed)) from malformed
-        found = content.record(reference)
-        if isinstance(found, ContentMiss):
-            raise ModelRetry(found.summary)
-        return _record_text(found, ref)
-
-    return FunctionToolset[object]([read_content])
-
-
-def _record_text(record: Record, ref: str) -> str:
-    rendered = (fact_line(k, v, ladder_full=True) for k, v in sorted(record.facts.items()))
-    # Values carry commas of their own ("1d4+2 piercing"), so only a semicolon separates facts.
-    facts = "; ".join(line for line in rendered if line is not None)
-    options = ", ".join(str(option) for option in record.options)
-    lines = [
-        f"{record.name} [{ref}]",
-        *([f"facts: {facts}"] if facts else []),
-        *([f"tags: {', '.join(record.tags)}"] if record.tags else []),
-        *([f"choose {record.choose} of: {options}"] if options else []),
-        *([record.text] if record.text else []),
-    ]
-    return "\n".join(lines)
-
-
-def _packs(engine_dir: Path) -> tuple[Path, ...]:
-    directory = engine_dir / "packs"
-    if not directory.is_dir():
-        return ()
-    return tuple(sorted(path for path in directory.iterdir() if path.is_dir()))

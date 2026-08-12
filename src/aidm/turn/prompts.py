@@ -85,11 +85,11 @@ class SceneSnapshot(BaseScene):
             party=party,
             threads=tuple(
                 sorted(
-                    (thread for thread in state.threads.values() if thread.status != "resolved"),
+                    (thread for thread in world.threads.values() if thread.status != "resolved"),
                     key=lambda thread: thread.title,
                 )
             ),
-            notes=state.pending_notes,
+            notes=world.pending_notes,
         )
 
     def catalogue(self) -> tuple[Entity, ...]:
@@ -439,9 +439,7 @@ possessions changing hands.
 
 Write no prose: the Narrator writes what the player reads."""
 
-_RETRY = """A rejected plan comes back with the reason; fix exactly that and answer again. Call \
-`read_content` first when planning from a spell, feature, or stat block whose wording you cannot \
-quote."""
+_RETRY = """A rejected plan comes back with the reason; fix exactly that and answer again."""
 
 _DIRECTIVE_BRIEF = """The SCENE DIRECTIVE decides what this turn is about. Realize it \
 mechanically, do not contradict it, and add nothing it did not ask for.

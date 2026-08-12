@@ -82,7 +82,7 @@ async def run_turn(
     )
     plan = await stages.director.run(plan_prompt, PlanContext(engine=engine, state=state), history)
     # Notes are read once: the draft carries none forward, so the next turn shows only new ones.
-    draft.pending_notes = ()
+    draft.world.pending_notes = ()
     steps.append(_traced("director", plan_prompt, plan))
 
     announce("resolve")

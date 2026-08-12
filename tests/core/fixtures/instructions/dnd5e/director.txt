@@ -24,7 +24,7 @@ The plan is the whole turn:
 
 Write no prose: the Narrator writes what the player reads.
 
-A rejected plan comes back with the reason; fix exactly that and answer again. Call `read_content` first when planning from a spell, feature, or stat block whose wording you cannot quote.
+A rejected plan comes back with the reason; fix exactly that and answer again.
 
 D&D 5E RULES
 

@@ -4,8 +4,7 @@ from pathlib import Path
 
 from pydantic import TypeAdapter
 
-from aidm.engines.dnd5e.content import ENGINE_DIR
-from aidm.engines.loader import engine_spec
+from aidm.engines.dnd5e.content import pack_format
 from aidm.state.packs import (
     ENCODING,
     CollectionName,
@@ -88,7 +87,7 @@ def build(checkout: Path) -> Pack:
         }
     )
     # The engine's spec is the single list of what this pack may hold.
-    validate_pack(pack, engine_spec(ENGINE_DIR).collections)
+    validate_pack(pack, pack_format())
     return pack
 
 

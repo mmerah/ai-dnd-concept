@@ -7,10 +7,10 @@ from aidm.content.authored import Character, Scenario
 from aidm.content.store import FileSaves, FileTraces, load_character, load_scenario
 from aidm.engines.loader import Advancement, Engine, engine_class
 from aidm.state.advancement import AdvancementOffer, ProposalBase
-from aidm.state.base import PLAYER_ID, SAVE_VERSION, EngineId, Entity, EntityId
+from aidm.state.base import PLAYER_ID, SAVE_VERSION, EngineId, Entity
 from aidm.state.facts import Fact
 from aidm.state.turn import Advance, TraceEntry, Turn
-from aidm.state.world import GameState, WorldState
+from aidm.state.world import PARTY_MEMBER, GameState, Relation
 from aidm.turn.pipeline import TURN_STEPS, run_turn
 from aidm.turn.prompts import render_proposal
 from aidm.turn.roles import AdvisorContext, Stage, Stages, advisor, build_stages
@@ -27,22 +27,25 @@ def build_engine(engine_id: EngineId, config: Settings) -> Engine:
 
 def begin_game(engine: Engine, scenario: Scenario, character: Character) -> GameState:
     """One opening state, so the app, the evals, and the tests all start a game the same way."""
-    world = scenario.world
+    authored = scenario.world
+    # Loaded content outlives the mutable game state, which restart() rebuilds from it.
+    world = authored.world.model_copy(deep=True)
     player = Entity(
         id=PLAYER_ID,
         kind="actor",
         name=character.name,
         brief=character.brief,
         known=True,
-        parent_id=world.starting_location_id,
+        parent_id=authored.starting_location_id,
         traits=list(character.profile.traits),
     )
-    entities: dict[EntityId, Entity] = {}
-    for entity in (*world.entities, *character.profile.items, player):
-        if entity.id in entities:
+    for entity in (*(item.model_copy(deep=True) for item in character.profile.items), player):
+        if entity.id in world.entities:
             raise ValueError(f"authored entity id {entity.id!r} appears twice")
-        # Loaded content outlives the mutable game state, which restart() rebuilds from it.
-        entities[entity.id] = entity.model_copy(deep=True)
+        world.entities[entity.id] = entity
+    for companion in authored.starting_party:
+        travelling = Relation(kind=PARTY_MEMBER, source=companion, target=PLAYER_ID, known=True)
+        world.relations[travelling.id] = travelling
     rules = {
         **scenario.overlay.entities,
         **character.overlay.entities,
@@ -54,17 +57,12 @@ def begin_game(engine: Engine, scenario: Scenario, character: Character) -> Game
         character_id=character.id,
         scenario=scenario.meta,
         engine=engine.id,
-        world=WorldState(
-            entities=entities,
-            relations={relation.id: relation.model_copy(deep=True) for relation in world.relations},
-        ),
-        threads={thread.id: thread.model_copy(deep=True) for thread in world.threads},
-        hooks=world.hooks,
+        world=world,
     )
     engine.begin(state, rules)
-    # begin() only writes the mechanics; commit is what validates them.
-    engine.commit(state)
-    return state
+    engine.commit(state)  # begin() only writes the mechanics; the commit validates them
+    # An instance handed to a model field is not revalidated, so the composed world asks explicitly.
+    return state.committed()
 
 
 @dataclass

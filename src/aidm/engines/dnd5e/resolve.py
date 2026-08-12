@@ -4,16 +4,16 @@ from random import Random
 from pydantic import JsonValue
 
 from aidm.engines.counters import adjust, spend
-from aidm.engines.loader import Engine
 from aidm.state.apply import apply_effect, require_actor_here
 from aidm.state.base import Entity, Slug
 from aidm.state.dice import roll
 from aidm.state.effects import Reveal
 from aidm.state.facts import Fact
-from aidm.state.packs import ContentMiss, Record, parse_ref
+from aidm.state.packs import Content, ContentMiss, Record, parse_ref
 from aidm.state.world import GameState
 
 from .actions import Action, Attack, CastSpell, Check, Improvise, Rest, UseFeature
+from .content import lookup
 from .mechanics import (
     Mechanics,
     counter_of,
@@ -33,7 +33,7 @@ type Resolved = tuple[list[Fact], Slug | None]
 
 
 def dispatch_action(
-    engine: Engine, draft: GameState, action: Action | None, rng: Random
+    content: Content, draft: GameState, action: Action | None, rng: Random
 ) -> Resolved:
     """The plan union is the action registry: one arm per member, exhaustively."""
     if action is None:
@@ -41,25 +41,25 @@ def dispatch_action(
     mechanics = read(draft)
     match action:
         case Attack():
-            result = resolve_attack(engine, draft, action, rng, mechanics)
+            result = resolve_attack(content, draft, action, rng, mechanics)
         case CastSpell():
-            result = resolve_cast_spell(engine, draft, action, rng, mechanics)
+            result = resolve_cast_spell(content, draft, action, rng, mechanics)
         case Check():
-            result = resolve_check(engine, draft, action, rng, mechanics)
+            result = resolve_check(content, draft, action, rng, mechanics)
         case UseFeature():
-            result = resolve_use_feature(engine, draft, action, rng, mechanics)
+            result = resolve_use_feature(content, draft, action, rng, mechanics)
         case Rest():
-            result = resolve_rest(engine, draft, action, rng, mechanics)
+            result = resolve_rest(content, draft, action, rng, mechanics)
         case Improvise():
-            result = resolve_improvise(engine, draft, action, rng, mechanics)
+            result = resolve_improvise(content, draft, action, rng, mechanics)
     write(draft, mechanics)
     return result
 
 
 def resolve_check(
-    engine: Engine, draft: GameState, action: Check, rng: Random, mechanics: Mechanics
+    content: Content, draft: GameState, action: Check, rng: Random, mechanics: Mechanics
 ) -> Resolved:
-    del engine, mechanics
+    del content, mechanics
     actor = require_actor_here(draft, action.actor_id)
     facts = apply_effect(draft, Reveal(entity_id=action.actor_id))
     rolled, fact = roll(
@@ -75,9 +75,9 @@ def resolve_check(
 
 
 def resolve_rest(
-    engine: Engine, draft: GameState, action: Rest, rng: Random, mechanics: Mechanics
+    content: Content, draft: GameState, action: Rest, rng: Random, mechanics: Mechanics
 ) -> Resolved:
-    del engine, rng
+    del content, rng
     actor = require_actor_here(draft, action.actor_id)
     facts = apply_effect(draft, Reveal(entity_id=action.actor_id))
     recharges = ("short-rest",) if action.label == "short-rest" else ("short-rest", "long-rest")
@@ -86,9 +86,9 @@ def resolve_rest(
 
 
 def resolve_use_feature(
-    engine: Engine, draft: GameState, action: UseFeature, rng: Random, mechanics: Mechanics
+    content: Content, draft: GameState, action: UseFeature, rng: Random, mechanics: Mechanics
 ) -> Resolved:
-    del engine
+    del content
     actor = require_actor_here(draft, action.actor_id)
     facts = apply_effect(draft, Reveal(entity_id=action.actor_id))
     sheet = sheet_of(mechanics, actor)
@@ -103,9 +103,9 @@ def resolve_use_feature(
 
 
 def resolve_improvise(
-    engine: Engine, draft: GameState, action: Improvise, rng: Random, mechanics: Mechanics
+    content: Content, draft: GameState, action: Improvise, rng: Random, mechanics: Mechanics
 ) -> Resolved:
-    del engine, draft, mechanics
+    del content, draft, mechanics
     rolled, fact = roll(action.dice, action.reason, rng, vs=action.vs, mode=action.mode)
     if action.vs is None:
         return [fact], None
@@ -113,7 +113,7 @@ def resolve_improvise(
 
 
 def resolve_attack(
-    engine: Engine, draft: GameState, action: Attack, rng: Random, mechanics: Mechanics
+    content: Content, draft: GameState, action: Attack, rng: Random, mechanics: Mechanics
 ) -> Resolved:
     actor = require_actor_here(draft, action.actor_id)
     target = require_actor_here(draft, action.target_id)
@@ -142,7 +142,7 @@ def resolve_attack(
 
     weapon_facts: Mapping[Slug, JsonValue] = {}
     if weapon is not None:
-        record = first_ref_record(sheet_of(mechanics, weapon), engine, "weapons", "damage")
+        record = first_ref_record(sheet_of(mechanics, weapon), content, "weapons", "damage")
         if record is None:
             raise ValueError(
                 f"{weapon.name} is no weapon. Attack with a weapon the attacker carries, or "
@@ -192,14 +192,14 @@ def resolve_attack(
 
 
 def resolve_cast_spell(
-    engine: Engine, draft: GameState, action: CastSpell, rng: Random, mechanics: Mechanics
+    content: Content, draft: GameState, action: CastSpell, rng: Random, mechanics: Mechanics
 ) -> Resolved:
     actor = require_actor_here(draft, action.actor_id)
     target = None if action.target_id is None else require_actor_here(draft, action.target_id)
 
-    spell = spell_of(engine, action.spell)
+    spell = spell_of(content, action.spell)
     klass = first_ref_record(
-        sheet_of(mechanics, actor), engine, "classes", require_fact="spellcasting"
+        sheet_of(mechanics, actor), content, "classes", require_fact="spellcasting"
     )
     if klass is None:
         raise ValueError(
@@ -313,13 +313,13 @@ def resolve_cast_spell(
     return facts, outcome
 
 
-def spell_of(engine: Engine, ref: str) -> Record:
+def spell_of(content: Content, ref: str) -> Record:
     reference = parse_ref(ref)
     if reference.collection != "spells":
         raise ValueError(f"'{ref}' names no spell: name a record from the spells collection")
-    found = engine.record(reference)
+    found = lookup(content, reference)
     if found is None:
-        miss = engine.content.record(reference)
+        miss = content.record(reference)
         assert isinstance(miss, ContentMiss)  # engine.record returned None for the same lookup
         raise ValueError(f"{miss.summary}; use a ref exactly as it was shown")
     return found

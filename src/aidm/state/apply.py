@@ -290,9 +290,9 @@ def _reveal_relation(draft: GameState, effect: RelationChange) -> list[Fact]:
 
 def _advance_thread(draft: GameState, effect: AdvanceThread) -> list[Fact]:
     """Threads are the Director's bookkeeping, so nothing here reaches the Narrator."""
-    thread = draft.threads.get(effect.thread_id)
+    thread = draft.world.threads.get(effect.thread_id)
     if thread is None:
-        known = ", ".join(sorted(draft.threads)) or "(none)"
+        known = ", ".join(sorted(draft.world.threads)) or "(none)"
         raise ValueError(f"unknown thread {effect.thread_id!r}. The threads are: {known}")
     thread.status = effect.status or thread.status
     thread.stage = effect.stage or thread.stage
@@ -310,10 +310,11 @@ def _advance_thread(draft: GameState, effect: AdvanceThread) -> list[Fact]:
 def fire_hooks(draft: GameState, facts: Sequence[Fact]) -> list[Fact]:
     """One pass over unfired hooks per turn; chaining happens across turns, never as a fixpoint."""
     fired: list[Fact] = []
-    for hook in draft.hooks:
-        if hook.id in draft.fired_hooks or not any(hook.match.matches(fact) for fact in facts):
+    world = draft.world
+    for hook in world.hooks:
+        if hook.id in world.fired_hooks or not any(hook.match.matches(fact) for fact in facts):
             continue
-        draft.fired_hooks = (*draft.fired_hooks, hook.id)
+        world.fired_hooks = (*world.fired_hooks, hook.id)
         fired.append(_hook_fact(hook, "hook_fired", f"hook {hook.id} fired"))
         for effect in hook.effects:
             try:
@@ -322,7 +323,7 @@ def fire_hooks(draft: GameState, facts: Sequence[Fact]) -> list[Fact]:
                 fired.append(_hook_fact(hook, "hook_failed", f"hook {hook.id} stopped: {refused}"))
                 break
         if hook.note:
-            draft.pending_notes = (*draft.pending_notes, hook.note)
+            world.pending_notes = (*world.pending_notes, hook.note)
     return fired
 
 

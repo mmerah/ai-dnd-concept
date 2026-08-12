@@ -1,17 +1,12 @@
-from collections.abc import Mapping
+from collections.abc import Collection, Mapping, Sequence
+from functools import cached_property
 from typing import Self
 
 from pydantic import Field, JsonValue, model_validator
 
 from aidm.state.base import PLAYER_ID, EngineId, Entity, EntityId, Frozen, Slug, Trait
 from aidm.state.effects import AdvanceThread
-from aidm.state.world import (
-    Hook,
-    Relation,
-    ScenarioMeta,
-    Thread,
-    check_placement,
-)
+from aidm.state.world import Hook, Relation, ScenarioMeta, Thread, WorldState
 
 type Rules = dict[str, JsonValue]
 
@@ -21,43 +16,51 @@ class ScenarioWorld(Frozen):
 
     meta: ScenarioMeta
     starting_location_id: EntityId
+    starting_party: tuple[EntityId, ...] = ()
     entities: tuple[Entity, ...] = ()
     relations: tuple[Relation, ...] = ()
     threads: tuple[Thread, ...] = ()
     hooks: tuple[Hook, ...] = ()
 
+    @cached_property
+    def world(self) -> WorldState:
+        """The authored canon as the one shape that validates it. The file keys nothing by id
+        because an id-keyed JSON object collapses a duplicate silently."""
+        _unique("entity ids", [entity.id for entity in self.entities])
+        _unique("relations", [relation.id for relation in self.relations])
+        _unique("threads", [thread.id for thread in self.threads])
+        return WorldState(
+            entities={entity.id: entity for entity in self.entities},
+            relations={relation.id: relation for relation in self.relations},
+            threads={thread.id: thread for thread in self.threads},
+            hooks=self.hooks,
+        )
+
     @model_validator(mode="after")
-    def _valid_topology(self) -> Self:
-        by_id = {entity.id: entity for entity in self.entities}
-        if len(by_id) != len(self.entities):
-            ids = [entity.id for entity in self.entities]
-            duplicates = sorted({entity_id for entity_id in ids if ids.count(entity_id) > 1})
-            raise ValueError(f"scenario has duplicate entity ids: {duplicates}")
-        if PLAYER_ID in by_id:
+    def _playable_canon(self) -> Self:
+        if PLAYER_ID in self.world.entities:
             raise ValueError(f"an entity claims the reserved player id {PLAYER_ID!r}")
-        starting_location = by_id.get(self.starting_location_id)
+        starting_location = self.world.entities.get(self.starting_location_id)
         if starting_location is None or starting_location.kind != "location":
             raise ValueError(
                 f"starting_location_id {self.starting_location_id!r} is not a location here"
             )
-        for entity in self.entities:
-            holder = None if entity.parent_id is None else by_id.get(entity.parent_id)
-            check_placement(entity, holder)
-        # A duplicate would silently collapse when the relations are keyed by their derived ids.
-        relation_ids = [relation.id for relation in self.relations]
-        if len(set(relation_ids)) != len(relation_ids):
-            raise ValueError(f"scenario has duplicate relations: {sorted(relation_ids)}")
-        _unique("threads", [thread.id for thread in self.threads])
-        _unique("hooks", [hook.id for hook in self.hooks])
-        authored = {thread.id for thread in self.threads}
+        _unique("starting party", self.starting_party)
+        for companion in self.starting_party:
+            actor = self.world.require_kind(companion, "actor")
+            if not (actor.known and actor.parent_id == self.starting_location_id):
+                raise ValueError(
+                    f"the player has met and stands beside who they set out with, "
+                    f"unlike {companion!r}"
+                )
         wanted = sorted(
             {
                 effect.thread_id
-                for hook in self.hooks
+                for hook in self.world.hooks
                 for effect in hook.effects
                 if isinstance(effect, AdvanceThread)
             }
-            - authored
+            - set(self.world.threads)
         )
         if wanted:
             raise ValueError(f"hooks advance threads the scenario never authors: {wanted}")
@@ -111,7 +114,7 @@ class Scenario(Frozen):
 
     @model_validator(mode="after")
     def _overlay_fits_the_world(self) -> Self:
-        _require_authored(self.engine, self.overlay.entities, self.world.entities)
+        _require_authored(self.engine, self.overlay.entities, self.world.world.entities)
         return self
 
 
@@ -131,23 +134,23 @@ class Character(Frozen):
 
     @model_validator(mode="after")
     def _overlay_fits_the_character(self) -> Self:
-        _require_authored(self.engine, self.overlay.entities, self.profile.items)
+        _require_authored(
+            self.engine, self.overlay.entities, {item.id for item in self.profile.items}
+        )
         return self
 
 
-def _unique(what: str, ids: list[Slug]) -> None:
-    repeated = sorted({name for name in ids if ids.count(name) > 1})
-    if repeated:
+def _unique(what: str, ids: Sequence[str]) -> None:
+    if repeated := sorted({name for name in ids if ids.count(name) > 1}):
         raise ValueError(f"scenario has duplicate {what}: {repeated}")
 
 
 def _require_authored(
     engine: EngineId,
     overlay: Mapping[EntityId, Rules],
-    authored: tuple[Entity, ...],
+    authored: Collection[EntityId],
 ) -> None:
     """An overlay keys off the authored ids, so a typo must fail at load, not go unread."""
-    ids = {entity.id for entity in authored}
-    unknown = sorted(entity_id for entity_id in overlay if entity_id not in ids)
+    unknown = sorted(entity_id for entity_id in overlay if entity_id not in authored)
     if unknown:
         raise ValueError(f"the {engine!r} overlay names unauthored ids: {unknown}")

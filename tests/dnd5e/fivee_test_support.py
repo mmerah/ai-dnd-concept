@@ -1,4 +1,3 @@
-from collections.abc import Mapping
 from pathlib import Path
 from random import Random
 
@@ -11,9 +10,9 @@ from aidm.engines.counters import Counter
 from aidm.engines.dnd5e.advance import ADVANCEMENT_READY
 from aidm.engines.dnd5e.content import ENGINE_DIR
 from aidm.engines.dnd5e.mechanics import Sheet, read, write
-from aidm.engines.loader import Engine, engine_spec
+from aidm.engines.loader import Engine
 from aidm.state.base import PLAYER_ID, Entity, EntityId, Trait
-from aidm.state.packs import CollectionName, ContentRef, FactSchema
+from aidm.state.packs import ContentRef
 from aidm.state.world import GameState
 from aidm.turn.roles import advisor, build_stages
 
@@ -31,10 +30,6 @@ def scenario() -> Scenario:
 
 def character() -> Character:
     return load_character(CHARACTERS, "kael", DND5E)
-
-
-def pack_format() -> Mapping[CollectionName, FactSchema]:
-    return engine_spec(ENGINE_DIR).collections
 
 
 def dnd5e_game() -> tuple[Engine, GameState]:

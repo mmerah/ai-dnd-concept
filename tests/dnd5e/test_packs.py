@@ -1,7 +1,8 @@
 from pathlib import Path
 
-from fivee_test_support import PACK_DIR, dnd5e_game, pack_format
+from fivee_test_support import PACK_DIR, dnd5e_game
 
+from aidm.engines.dnd5e.content import pack_format
 from aidm.engines.dnd5e.mechanics import read, sheet_of
 from aidm.state.base import EntityId
 from aidm.state.packs import ENCODING, ContentRef, Record, is_ladder_fact, read_pack, write_pack

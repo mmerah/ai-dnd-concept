@@ -1,5 +1,11 @@
-from fivee_test_support import PACK_DIR, pack_format
+import pytest
+from fivee_test_support import PACK_DIR
+from pydantic_ai import ModelRetry, RunContext
+from pydantic_ai.models.test import TestModel
+from pydantic_ai.toolsets import AbstractToolset
+from pydantic_ai.usage import RunUsage
 
+from aidm.engines.dnd5e.content import director_toolset, pack_format
 from aidm.state.packs import Content, ContentRef, load
 
 LONGSWORD = ContentRef(pack="srd-2014", collection="weapons", index="longsword")
@@ -100,3 +106,27 @@ def test_spellcasting_ability_is_a_class_fact_absent_for_a_class_that_casts_none
 
     assert content.require(WIZARD).facts.get("spellcasting") == "intelligence"
     assert "spellcasting" not in content.require(FIGHTER).facts
+
+
+async def _read_content(toolset: AbstractToolset[object], ref: str) -> str:
+    """Tools take a `RunContext`; a test builds one instead of running an agent."""
+    ctx = RunContext[object](deps=object(), model=TestModel(), usage=RunUsage())
+    tools = await toolset.get_tools(ctx)
+    rendered = await toolset.call_tool("read_content", {"ref": ref}, ctx, tools["read_content"])
+    assert isinstance(rendered, str)
+    return rendered
+
+
+async def test_read_content_renders_the_record_and_refuses_a_bad_ref() -> None:
+    toolset = director_toolset(_content())
+
+    rendered = await _read_content(toolset, "srd-2014/monsters/giant-rat")
+    assert rendered.startswith("Giant Rat [srd-2014/monsters/giant-rat]")
+    # Semicolons, because a value carries commas of its own.
+    assert "; attacks=Bite +4 to hit, 1d4+2 piercing;" in rendered
+    assert "tags: beast" in rendered
+    assert "Keen Smell" in rendered
+    with pytest.raises(ModelRetry, match="pack/collection/index"):
+        _ = await _read_content(toolset, "malformed")
+    with pytest.raises(ModelRetry, match="missing content"):
+        _ = await _read_content(toolset, "srd-2014/monsters/absent")

@@ -1,39 +1,37 @@
 {
-  "collections": {
-    "monsters": {},
-    "weapons": {},
-    "armor": {},
-    "gear": {},
-    "tools": {},
-    "vehicles": {},
-    "magic_items": {},
-    "spells": {},
-    "skills": {
-      "ability": "slug"
-    },
-    "conditions": {},
-    "alignments": {},
-    "languages": {
-      "category": "slug"
-    },
-    "classes": {},
-    "subclasses": {
-      "class": "slug"
-    },
-    "levels": {},
-    "features": {
-      "level": "int"
-    },
-    "races": {},
-    "subraces": {
-      "race": "slug"
-    },
-    "traits": {},
-    "backgrounds": {},
-    "feats": {},
-    "proficiencies": {
-      "category": "slug",
-      "reference": "slug"
-    }
+  "monsters": {},
+  "weapons": {},
+  "armor": {},
+  "gear": {},
+  "tools": {},
+  "vehicles": {},
+  "magic_items": {},
+  "spells": {},
+  "skills": {
+    "ability": "slug"
+  },
+  "conditions": {},
+  "alignments": {},
+  "languages": {
+    "category": "slug"
+  },
+  "classes": {},
+  "subclasses": {
+    "class": "slug"
+  },
+  "levels": {},
+  "features": {
+    "level": "int"
+  },
+  "races": {},
+  "subraces": {
+    "race": "slug"
+  },
+  "traits": {},
+  "backgrounds": {},
+  "feats": {},
+  "proficiencies": {
+    "category": "slug",
+    "reference": "slug"
   }
 }
