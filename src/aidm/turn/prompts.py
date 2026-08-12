@@ -1,8 +1,7 @@
 import json
 from collections.abc import Callable, Iterable, Mapping, Sequence
 
-from aidm.engines.loader import Engine, EntityRenderer
-from aidm.state.advancement import AdvancementOffer
+from aidm.engines.loader import AdvancementOffer, Engine, EntityRenderer
 from aidm.state.base import PLAYER_ID, Entity, EntityId, Frozen, Trait
 from aidm.state.turn import SceneDirective
 from aidm.state.world import LOCKED_TAG, GameState, ScenarioMeta, Thread
@@ -26,6 +25,12 @@ class BaseScene(Frozen):
 
     def placement_of(self, entity: Entity) -> str:
         return self.placements[entity.id]
+
+    def voice(self, speaker_id: EntityId | None) -> Entity | None:
+        """The one answer to who the Narrator may speak as: an actor this scene holds as here."""
+        return next(
+            (held for held in self.here if held.id == speaker_id and held.kind == "actor"), None
+        )
 
 
 class SceneSnapshot(BaseScene):
@@ -94,6 +99,22 @@ class SceneSnapshot(BaseScene):
 
     def catalogue(self) -> tuple[Entity, ...]:
         return tuple(entity for entity in self.canon if entity.id != PLAYER_ID)
+
+
+def check_speaker(scene: SceneSnapshot, speaker_id: EntityId | None) -> str | None:
+    """The player is addressed, never the speaker: losing this lets the Director voice them."""
+    if speaker_id is None:
+        return None
+    if speaker_id == PLAYER_ID:
+        return "speaker_id names another actor the player addresses, never the player."
+    if not any(entity.id == speaker_id for entity in scene.canon):
+        return f"unknown speaker id {speaker_id!r}. Use only ids you were shown, or null."
+    if scene.voice(speaker_id) is None:
+        return (
+            f"speaker {speaker_id!r} must be an NPC the player has met and who is here with them. "
+            "Use null if nobody is being addressed."
+        )
+    return None
 
 
 class VisibleScene(BaseScene):
@@ -371,11 +392,10 @@ def _detail(entity: Entity) -> str:
 
 
 def _speaker(scene: VisibleScene, speaker_id: EntityId | None) -> str:
-    if speaker_id is None:
+    """A speaker the turn moved out of the scene is fiction, not a fault: narration goes on."""
+    speaker = scene.voice(speaker_id)
+    if speaker is None:
         return "(none — narrate the scene)"
-    speaker = next((entity for entity in scene.here if entity.id == speaker_id), None)
-    if speaker is None or speaker.kind != "actor":
-        raise ValueError(f"speaker {speaker_id!r} is not a visible actor here")
     return f"{speaker.name} — {speaker.brief}"
 
 

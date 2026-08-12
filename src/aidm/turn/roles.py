@@ -22,9 +22,8 @@ from pydantic_ai.settings import ModelSettings
 from pydantic_ai.toolsets import AbstractToolset
 
 from aidm.config import ProviderConfig, RoleConfig, Settings
-from aidm.engines.loader import Advancement, Engine
-from aidm.state.advancement import AdvancementOffer, ProposalBase
-from aidm.state.plan import TurnPlanBase, check_speaker
+from aidm.engines.loader import Advancement, AdvancementOffer, Engine, ProposalBase
+from aidm.state.plan import TurnPlanBase
 from aidm.state.turn import SceneDirective, WorldkeeperReport
 from aidm.state.world import Exchange, GameState
 
@@ -148,7 +147,7 @@ def scene_stage(settings: Settings) -> Stage[GameState, SceneDirective]:
         wrong = sorted(set(directive.reveal) - unmet)
         if wrong:
             raise ModelRetry(f"not something the player has yet to find: {', '.join(wrong)}")
-        if fault := check_speaker(state, directive.speaker_id):
+        if fault := prompts.check_speaker(prompts.SceneSnapshot.of(state), directive.speaker_id):
             raise ModelRetry(fault)
         return directive
 

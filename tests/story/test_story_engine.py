@@ -9,8 +9,9 @@ from aidm.engines.story.advance import MAX_APPROACH, MAX_STRESS, Growth
 from aidm.engines.story.mechanics import read, write
 from aidm.state.base import PLAYER_ID, EntityId
 from aidm.state.effects import TraitChange
-from aidm.state.plan import OutcomeBranch, TurnPlanBase, check_speaker
+from aidm.state.plan import OutcomeBranch, TurnPlanBase
 from aidm.state.world import GameState
+from aidm.turn.prompts import SceneSnapshot, check_speaker
 
 RAT = EntityId("cloister_rat")
 STRONG = OutcomeBranch(
@@ -114,13 +115,14 @@ def test_check_plan_refuses_what_the_procedure_cannot_resolve() -> None:
 def test_check_speaker_refuses_who_the_narrator_may_not_voice() -> None:
     """The speaker guard is what keeps the Narrator from voicing the player or an unmet NPC."""
     _, state = story_game()
+    scene = SceneSnapshot.of(state)
 
-    assert check_speaker(state, EntityId("mara")) is None
-    assert check_speaker(state, None) is None
-    assert "never the player" in str(check_speaker(state, PLAYER_ID))
-    assert "unknown speaker" in str(check_speaker(state, EntityId("nobody")))
+    assert check_speaker(scene, EntityId("mara")) is None
+    assert check_speaker(scene, None) is None
+    assert "never the player" in str(check_speaker(scene, PLAYER_ID))
+    assert "unknown speaker" in str(check_speaker(scene, EntityId("nobody")))
     for absent in (EntityId("tomas"), EntityId("elena")):
-        assert "met and who is here" in str(check_speaker(state, absent))
+        assert "met and who is here" in str(check_speaker(scene, absent))
 
 
 def test_growth_opens_an_offer_and_storys_own_caps_refuse_what_breaks_them() -> None:

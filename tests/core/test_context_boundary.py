@@ -1,4 +1,3 @@
-import pytest
 from core_test_support import STORY, game, updated, with_entity
 
 from aidm.content.authored import ScenarioMeta
@@ -152,5 +151,5 @@ def test_narrator_prompt_orders_plan_before_outcome_and_checks_the_speaker() -> 
     # The Narrator writes prose and never names an id; its own instructions forbid reciting one.
     assert "[id=" not in prompt
 
-    with pytest.raises(ValueError, match="visible actor here"):
-        render(EntityId("hidden-actor"))
+    # An actor the scene does not hold is one the Narrator may not voice, not a fault to raise on.
+    assert "(none — narrate the scene)" in render(EntityId("hidden-actor"))

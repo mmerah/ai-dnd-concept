@@ -63,6 +63,23 @@ async def test_an_engine_uses_the_shared_pipeline_and_safe_narrator_prompt() -> 
     assert result.state.history[-1].prompt == "I search beneath the desk."
 
 
+async def test_a_speaker_the_turn_walks_away_from_narrates_the_scene_instead_of_dying() -> None:
+    """The scene picks a speaker who is here; the plan then moves the player elsewhere. The
+    speaker leaving is fiction, so the turn still commits."""
+    engine, state = initialized()
+    result = await played(
+        engine,
+        state,
+        "I leave for the cloister.",
+        director=FunctionModel(scripted(plan(effects=[{"op": "move", "to_id": "cloister"}]))),
+        scene=FunctionModel(scripted(structured(focus="Kael leaves.", speaker_id="mara"))),
+    )
+
+    assert result.state.player.parent_id == "cloister"
+    assert result.state.turn == 1
+    assert "(none — narrate the scene)" in shown(result.turn, "narrator")
+
+
 async def test_the_resolver_applies_only_the_branch_of_the_outcome_rolled() -> None:
     """The point of the redesign: the engine rolls, picks the outcome, and applies its branch."""
     engine, state = initialized()

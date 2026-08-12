@@ -5,26 +5,9 @@ from typing import cast
 
 from pydantic import Field, ValidationError, model_validator
 
-from .base import PLAYER_ID, EntityId, Frozen, Slug
+from .base import Frozen, Slug
 from .facts import Fact
 from .world import GameState
-
-
-def check_speaker(state: GameState, speaker_id: EntityId | None) -> str | None:
-    """The player is addressed, never the speaker: losing this lets the Director voice them."""
-    if speaker_id is None:
-        return None
-    if speaker_id == PLAYER_ID:
-        return "speaker_id names another actor the player addresses, never the player."
-    speaker = state.world.find(speaker_id)
-    if speaker is None:
-        return f"unknown speaker id {speaker_id!r}. Use only ids you were shown, or null."
-    if speaker.kind != "actor" or not speaker.known or not state.is_here(speaker):
-        return (
-            f"speaker {speaker_id!r} must be an NPC the player has met and who is here with them. "
-            "Use null if nobody is being addressed."
-        )
-    return None
 
 
 class TurnPlanBase(Frozen):
