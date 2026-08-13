@@ -2,7 +2,7 @@ import json
 from pathlib import Path
 
 import pytest
-from core_test_support import STORY, initialized, updated
+from core_test_support import ORACLE, initialized, updated
 from pydantic import ValidationError
 
 from aidm.content.store import ENCODING, FileSaves, FileTraces, load_character, load_scenario
@@ -56,7 +56,7 @@ def test_shell_reads_a_save_whose_world_is_garbage(tmp_path: Path) -> None:
     shell = saves.shell("broken")
 
     assert shell is not None
-    assert (shell.engine, shell.scenario_id, shell.turn) == (STORY, "whispering-vault", 0)
+    assert (shell.engine, shell.scenario_id, shell.turn) == (ORACLE, "whispering-vault", 0)
     with pytest.raises(ValidationError):
         saves.load("broken")
 
@@ -66,7 +66,7 @@ def test_a_trace_round_trips_its_turn_and_advance_entries(tmp_path: Path) -> Non
     traces = FileTraces(tmp_path)
     facts = (
         Fact(source=CORE, kind="dice_rolled", trace="a falling stone: 1d6 [4] -> 4"),
-        Fact(source=CORE, kind="counter_changed", trace="Kael stress +1 -> 1/5", narrator="hurt"),
+        Fact(source=CORE, kind="counter_changed", trace="Kael luck -1 -> 5/6", narrator="hurt"),
     )
     turn = Turn(
         prompt="I brace.",
@@ -82,9 +82,9 @@ def test_a_trace_round_trips_its_turn_and_advance_entries(tmp_path: Path) -> Non
     )
     advance = Advance(facts=facts)
 
-    traces.append("story", turn)
-    traces.append("story", advance)
-    reloaded = traces.load("story")
+    traces.append("poc", turn)
+    traces.append("poc", advance)
+    reloaded = traces.load("poc")
 
     assert reloaded == (turn, advance)
     director_output = reloaded[0].steps[0].output if isinstance(reloaded[0], Turn) else None
@@ -141,6 +141,6 @@ def test_storage_rejects_unsafe_slugs(tmp_path: Path, slug: str) -> None:
 def test_content_paths_reject_an_unsafe_id(tmp_path: Path) -> None:
     """A game route supplies these ids, and each one names a directory."""
     with pytest.raises(ValueError, match="invalid content id"):
-        load_scenario(tmp_path, "../escape", STORY)
+        load_scenario(tmp_path, "../escape", ORACLE)
     with pytest.raises(ValueError, match="invalid content id"):
-        load_character(tmp_path, "kael/../..", STORY)
+        load_character(tmp_path, "kael/../..", ORACLE)

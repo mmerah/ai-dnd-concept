@@ -2,8 +2,8 @@ from pathlib import Path
 
 import pytest
 from core_test_support import settings, updated
-from story_test_support import TARGET
-from story_test_support import story_session as session
+from oracle_test_support import TARGET
+from oracle_test_support import oracle_session as session
 
 from aidm.app.session import Runtime
 from aidm.content.authored import ScenarioMeta

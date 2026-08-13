@@ -1,11 +1,9 @@
 from core_test_support import initialized
-from story_test_support import story_game
 
 from aidm.app.session import build_engine
 from aidm.engines.counters import CounterChange
 from aidm.engines.loader import Engine, engines
-from aidm.engines.story.mechanics import Adventurer, read
-from aidm.engines.story.mechanics import apply as story_apply
+from aidm.engines.oracle.mechanics import LUCK_MAX, Sheet, apply, read
 from aidm.state.base import PLAYER_ID, Entity, EntityId
 from aidm.state.effects import Move
 from aidm.state.facts import Fact
@@ -16,14 +14,14 @@ def _turn(engine: Engine, state: GameState) -> tuple[GameState, tuple[Fact, ...]
     del engine
     draft = state.draft()
     facts = [
-        *story_apply(draft, Move(entity_id=EntityId("vault_map"))),
-        *story_apply(
+        *apply(draft, Move(entity_id=EntityId("vault_map"))),
+        *apply(
             draft,
             CounterChange(
                 mode="adjust",
                 entity_id=PLAYER_ID,
-                counter="stress",
-                amount=1,
+                counter="luck",
+                amount=-1,
                 why="the strain of prying",
             ),
         ),
@@ -32,10 +30,10 @@ def _turn(engine: Engine, state: GameState) -> tuple[GameState, tuple[Fact, ...]
 
 
 def test_engine_initialization_and_state_contract() -> None:
-    engine, state = story_game()
+    engine, state = initialized()
 
     assert state.engine == engine.id
-    assert read(state).actors[PLAYER_ID].bold == 2
+    assert read(state).sheets[PLAYER_ID].luck.current == LUCK_MAX
     engine.commit(state)
 
     restored = GameState.model_validate_json(state.model_dump_json())
@@ -46,7 +44,7 @@ def test_effect_resolution_is_pure_and_renders_every_fact() -> None:
     """Load-bearing: a draft that shallow-copies would corrupt the committed state silently, so the
     turn has to touch both a core action and engine state to be worth asserting.
     """
-    engine, state = story_game()
+    engine, state = initialized()
     before = state.model_dump_json()
 
     first_state, first_facts = _turn(engine, state)
@@ -91,8 +89,8 @@ def test_a_created_entity_gains_engine_state_in_the_same_commit() -> None:
     engine.commit(grown)
 
     mechanics = read(grown)
-    assert mechanics.actors[actor.id] == Adventurer()
-    assert item.id not in mechanics.actors
+    assert mechanics.sheets[actor.id] == Sheet()
+    assert item.id not in mechanics.sheets
 
 
 def test_every_registered_engine_builds_itself() -> None:

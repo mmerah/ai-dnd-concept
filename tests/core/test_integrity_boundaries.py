@@ -2,7 +2,7 @@ import json
 
 import pytest
 from core_test_support import (
-    STORY,
+    ORACLE,
     begin_game,
     character,
     initialized,
@@ -37,7 +37,7 @@ _DOUBLED = json.dumps(
 def _character(*, holds: Entity, gear_for: EntityId) -> Character:
     return Character(
         id="test-character",
-        engine=STORY,
+        engine=ORACLE,
         profile=CharacterProfile(
             name="Test Character",
             brief="A character built only for this test.",

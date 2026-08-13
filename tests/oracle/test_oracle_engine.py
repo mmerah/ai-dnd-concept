@@ -1,7 +1,7 @@
 from random import Random
 
-from core_test_support import capability
-from oracle_test_support import at_milestone, oracle_game
+from core_test_support import capability, initialized
+from oracle_test_support import at_milestone
 
 from aidm.engines.counters import CounterChange
 from aidm.engines.loader import Engine
@@ -89,7 +89,7 @@ def test_the_outcome_ladder_covers_every_pair_of_dice() -> None:
 
 
 def test_a_question_rolls_two_dice_and_applies_only_the_branch_it_landed_on() -> None:
-    engine, state = oracle_game()
+    engine, state = initialized()
     draft = state.draft()
 
     facts = engine.resolve_action(draft, _plan(engine, actor_id=PLAYER_ID), Random(17))
@@ -105,7 +105,7 @@ def test_a_question_rolls_two_dice_and_applies_only_the_branch_it_landed_on() ->
 
 
 def test_check_plan_owes_the_model_every_refusal_the_resolve_raises() -> None:
-    engine, state = oracle_game()
+    engine, state = initialized()
     sheet_tag = _plan(engine, actor_id=PLAYER_ID, leverage=["Reads Old Stonework"])
     scene_tag = _plan(engine, actor_id=PLAYER_ID, leverage=["Unsteady Lantern"])
     assert engine.check_plan(state, sheet_tag) is None
@@ -124,7 +124,7 @@ def test_check_plan_owes_the_model_every_refusal_the_resolve_raises() -> None:
 
 
 def test_a_tag_named_twice_buys_no_more_than_naming_it_once() -> None:
-    _, state = oracle_game()
+    _, state = initialized()
     trouble = ("Never Walks Away", "Marked by the Past")
 
     once = Question(
@@ -143,7 +143,7 @@ def test_a_tag_named_twice_buys_no_more_than_naming_it_once() -> None:
 
 
 def test_a_tie_ticks_the_twist_and_the_third_tie_calls_one() -> None:
-    _, state = oracle_game()
+    _, state = initialized()
     draft = state.draft()
     mechanics = read(draft)
     mechanics.twist.current = TIES_PER_TWIST - 1
@@ -166,7 +166,7 @@ def test_a_tie_ticks_the_twist_and_the_third_tie_calls_one() -> None:
 
 
 def test_a_conflict_exchange_moves_luck_off_whichever_side_lost_it() -> None:
-    _, state = oracle_game()
+    _, state = initialized()
     assert set(HARM) == LABELS
 
     for seed in range(200):
@@ -182,7 +182,7 @@ def test_a_conflict_exchange_moves_luck_off_whichever_side_lost_it() -> None:
 
 
 def test_luck_running_out_ends_the_conflict_and_refuses_another_exchange() -> None:
-    engine, state = oracle_game()
+    engine, state = initialized()
     draft = state.draft()
     mechanics = read(draft)
     mechanics.sheets[FOE].luck.current = 1
@@ -207,7 +207,7 @@ def test_luck_running_out_ends_the_conflict_and_refuses_another_exchange() -> No
 
 
 def test_a_milestone_opens_an_offer_and_the_caps_refuse_what_breaks_them() -> None:
-    engine, state = oracle_game()
+    engine, state = initialized()
     advancement = capability(engine)
     assert advancement.offered(state) is None
 
@@ -227,7 +227,7 @@ def test_a_milestone_opens_an_offer_and_the_caps_refuse_what_breaks_them() -> No
 
 def test_the_one_action_is_worked_through_in_the_directors_instructions() -> None:
     """An action without an example teaches the model nothing: coverage is asserted, not hoped."""
-    engine, _ = oracle_game()
+    engine, _ = initialized()
 
     assert engine.director_instructions.count('"act": "question"') == 1
 

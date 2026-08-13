@@ -2,9 +2,8 @@ from collections.abc import Mapping
 from random import Random
 
 import pytest
-from core_test_support import STORY, game, plan, played, scripted, structured, text
+from core_test_support import ORACLE, game, plan, played, scripted, structured, text
 from golden_test_support import FIXTURES, dumped, golden
-from oracle_test_support import ORACLE
 from pydantic_ai.messages import ModelResponse
 from pydantic_ai.models.function import FunctionModel
 
@@ -58,18 +57,8 @@ def _plan(action: dict[str, object], outcomes: tuple[str, ...]) -> ModelResponse
     )
 
 
-# The same fiction under both engines, resolved by each one's own action and outcome labels.
+# The fiction resolved by the engine's own action and outcome labels.
 SCRIPTS: Mapping[EngineId, ModelResponse] = {
-    STORY: _plan(
-        {
-            "act": "risk",
-            "actor_id": "player",
-            "approach": "subtle",
-            "difficulty": "demanding",
-            "stakes": "listening past the vault door unheard",
-        },
-        ("strong", "mixed", "setback"),
-    ),
     ORACLE: _plan(
         {
             "act": "question",

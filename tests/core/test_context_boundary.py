@@ -1,8 +1,8 @@
-from core_test_support import STORY, game, updated, with_entity
+from core_test_support import ORACLE, game, updated, with_entity
 
 from aidm.content.authored import ScenarioMeta
 from aidm.engines.loader import EntityRenderer
-from aidm.engines.story.mechanics import Adventurer, Mechanics, write
+from aidm.engines.oracle.mechanics import Mechanics, Sheet, write
 from aidm.state.base import PLAYER_ID, SAVE_VERSION, Entity, EntityId, Kind
 from aidm.state.world import GameState, WorldState
 from aidm.turn.prompts import (
@@ -44,20 +44,18 @@ def state() -> GameState:
         scenario_id="whispering-vault",
         character_id="kael",
         scenario=ScenarioMeta(title="Test", premise="Test"),
-        engine=STORY,
+        engine=ORACLE,
         world=WorldState(entities={entity.id: entity for entity in entities}),
     )
     write(
         held,
-        Mechanics(
-            actors={entity.id: Adventurer() for entity in entities if entity.kind == "actor"}
-        ),
+        Mechanics(sheets={entity.id: Sheet() for entity in entities if entity.kind == "actor"}),
     )
     return held
 
 
 def _renderer(held: GameState) -> EntityRenderer:
-    engine, _ = game(STORY)
+    engine, _ = game(ORACLE)
     return engine.renderer(held)
 
 
@@ -121,7 +119,7 @@ def test_the_roles_shown_everything_get_ids_placement_detail_and_unrevealed_cano
     assert "a ledger[id=ledger] (item) — held by Mara" in director
     assert "The Secret[id=hidden-actor]" in director
     for prompt in (director, *catalogued):
-        assert "pools: growth 0/3, stress 0/5" in prompt
+        assert "pools: luck 6/6" in prompt
     for prompt in catalogued:
         assert f"detail: {DESCRIPTION}" in prompt
         assert f"hook: {HOOK}" in prompt
@@ -145,7 +143,7 @@ def test_narrator_prompt_orders_plan_before_outcome_and_checks_the_speaker() -> 
 
     prompt = render(EntityId("mara"))
 
-    assert "pools: growth 0/3, stress 0/5" in prompt
+    assert "pools: luck 6/6" in prompt
     assert prompt.index("THE DIRECTOR'S PLAN") < prompt.index("WHAT HAPPENED")
     assert "The Secret" not in prompt
     # The Narrator writes prose and never names an id; its own instructions forbid reciting one.

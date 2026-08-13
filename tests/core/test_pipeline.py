@@ -21,7 +21,9 @@ from pydantic_ai.messages import (
 )
 from pydantic_ai.models.function import AgentInfo, FunctionModel
 
-from aidm.engines.story.mechanics import read
+from aidm.engines.oracle.mechanics import read
+from aidm.engines.oracle.resolve import outcome_for
+from aidm.engines.oracle.rules import LABELS
 from aidm.state.base import PLAYER_ID, EntityId
 from aidm.state.world import Memory
 from aidm.turn.pipeline import TURN_STEPS
@@ -97,13 +99,11 @@ async def test_the_resolver_applies_only_the_branch_of_the_outcome_rolled() -> N
         scripted(
             plan(
                 action={
-                    "act": "risk",
+                    "act": "question",
                     "actor_id": "player",
-                    "approach": "empathetic",
-                    "difficulty": "risky",
-                    "stakes": "pleading with the door",
+                    "question": "Does the door give before the whispering finds him?",
                 },
-                branches=[branch("strong"), branch("mixed"), branch("setback")],
+                branches=[branch(outcome) for outcome in sorted(LABELS)],
             )
         )
     )
@@ -117,12 +117,10 @@ async def test_the_resolver_applies_only_the_branch_of_the_outcome_rolled() -> N
         rng=Random(2),
     )
 
-    rolled = next(fact for fact in result.turn.facts if fact.kind == "dice_rolled")
-    total = rolled.data["total"]
-    assert isinstance(total, int)
-    expected = "strong" if total >= 10 else "mixed" if total >= 7 else "setback"
+    chance, risk = (fact.data["total"] for fact in result.turn.facts if fact.kind == "dice_rolled")
+    assert isinstance(chance, int) and isinstance(risk, int)
     held = {trait.id for trait in result.state.player.traits}
-    assert held & {"strong", "mixed", "setback"} == {expected}
+    assert held & LABELS == {outcome_for(chance, risk)}
     engine.commit(result.state)
 
 
@@ -233,8 +231,8 @@ async def test_worldkeeper_creations_receive_valid_engine_rules_before_commit() 
     assert item.parent_id == location.id
     assert location.parent_id is None
     mechanics = read(result.state)
-    assert {"stress", "growth"} <= set(mechanics.actors[actor.id].counters())
-    assert item.id not in mechanics.actors
+    assert set(mechanics.sheets[actor.id].counters()) == {"luck"}
+    assert item.id not in mechanics.sheets
     resolved = next(step.output for step in result.turn.steps if step.name == "resolve")
     assert resolved == "- (nothing mechanical happened)"
     assert "new actor" not in shown(result.turn, "narrator")

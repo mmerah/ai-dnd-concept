@@ -1,7 +1,7 @@
 import shutil
 from pathlib import Path
 
-from core_test_support import STORY, updated
+from core_test_support import ORACLE, updated
 from ui_test_support import SCENARIOS, ui_settings
 
 from aidm.app.launcher import LauncherController, LaunchTarget, load_catalog
@@ -33,16 +33,16 @@ def test_an_overlay_decides_which_rules_a_scenario_offers(tmp_path: Path) -> Non
     catalog = load_catalog(ui_settings(tmp_path))
     controller = LauncherController(catalog)
 
-    assert catalog.scenario("whispering-vault").engines == ("story", "oracle")
+    assert catalog.scenario("whispering-vault").engines == ("oracle",)
     assert [option.id for option in catalog.characters] == ["kael"]
-    controller.choose_engine(STORY)
+    controller.choose_engine(ORACLE)
 
     assert [option.id for option in controller.compatible_characters()] == ["kael"]
     assert controller.new_game().model_dump() == {
-        "slug": "whispering-vault--kael--story",
+        "slug": "whispering-vault--kael--oracle",
         "scenario_id": "whispering-vault",
         "character_id": "kael",
-        "engine": "story",
+        "engine": "oracle",
     }
 
 
@@ -60,16 +60,16 @@ def test_content_is_offered_only_for_the_rulesets_it_ships(tmp_path: Path) -> No
     controller = LauncherController(load_catalog(ui_settings(tmp_path, scenarios)))
 
     assert [option.id for option in controller.catalog.scenarios] == ["whispering-vault"]
-    assert controller.available_engines() == ("story", "oracle")
-    assert controller.selected_engine == "story"
+    assert controller.available_engines() == ("oracle",)
+    assert controller.selected_engine == "oracle"
 
 
 def test_launcher_lists_and_resolves_an_existing_save(tmp_path: Path) -> None:
     config = ui_settings(tmp_path)
-    FileSaves(tmp_path).save("old-story-game", _opening_state(config, STORY))
+    FileSaves(tmp_path).save("old-game", _opening_state(config, ORACLE))
 
     controller = LauncherController(load_catalog(config))
-    saved = controller.catalog.save("old-story-game")
+    saved = controller.catalog.save("old-game")
 
     assert (saved.scenario_title, saved.character_title, saved.turn) == (
         "The Whispering Vault",
@@ -77,17 +77,17 @@ def test_launcher_lists_and_resolves_an_existing_save(tmp_path: Path) -> None:
         0,
     )
     assert controller.resume(saved.slug).model_dump() == {
-        "slug": "old-story-game",
+        "slug": "old-game",
         "scenario_id": "whispering-vault",
         "character_id": "kael",
-        "engine": "story",
+        "engine": "oracle",
     }
 
 
 def test_a_save_whose_rules_were_withdrawn_is_reported_not_offered(tmp_path: Path) -> None:
     """The save still names its origin; that origin no longer ships the overlay it needs."""
     config = ui_settings(tmp_path)
-    state = _opening_state(config, STORY)
+    state = _opening_state(config, ORACLE)
     FileSaves(tmp_path).save("withdrawn", updated(state, engine="retired"))
 
     saved = load_catalog(config).save("withdrawn")
@@ -99,8 +99,8 @@ def test_a_save_whose_rules_were_withdrawn_is_reported_not_offered(tmp_path: Pat
 def test_a_save_from_another_build_is_reported_not_offered(tmp_path: Path) -> None:
     """Unreadable, not absent: offering it as a new game would crash on navigation."""
     config = ui_settings(tmp_path)
-    slug = "whispering-vault--kael--story"
-    state = _opening_state(config, STORY)
+    slug = "whispering-vault--kael--oracle"
+    state = _opening_state(config, ORACLE)
     FileSaves(tmp_path).save(slug, updated(state, save_version=state.save_version - 1))
 
     controller = LauncherController(load_catalog(config))
@@ -113,7 +113,7 @@ def test_a_save_from_another_build_is_reported_not_offered(tmp_path: Path) -> No
 
 def test_one_corrupt_save_does_not_hide_the_others_and_stays_readable(tmp_path: Path) -> None:
     config = ui_settings(tmp_path)
-    FileSaves(tmp_path).save("good", _opening_state(config, STORY))
+    FileSaves(tmp_path).save("good", _opening_state(config, ORACLE))
     (tmp_path / "broken.json").write_text("{not json", encoding=ENCODING)
 
     catalog = load_catalog(config)

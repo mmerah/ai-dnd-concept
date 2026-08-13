@@ -31,7 +31,7 @@ dev = [
 [tool.pytest.ini_options]
 addopts = ["--import-mode=importlib"]
 asyncio_mode = "auto"
-pythonpath = ["tests/core", "tests/story", "tests/oracle", "tests/ui", "tests/probe"]
+pythonpath = ["tests/core", "tests/oracle", "tests/ui", "tests/probe"]
 testpaths = ["tests"]
 
 [tool.basedpyright]
@@ -39,7 +39,6 @@ include = ["src", "tests"]
 extraPaths = [
   "src",
   "tests/core",
-  "tests/story",
   "tests/oracle",
   "tests/ui",
   "tests/probe",
