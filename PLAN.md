@@ -24,13 +24,6 @@ unshipped phase needs full resolution. Shipped phases move to PROGRESS.md.
 Per phase: `uv run pytest && uv run ruff check && uv run ruff format --check && uv run
 basedpyright` green after every numbered step, one commit per step.
 
-## Phase 2 — The engine shelf: README note (~15 min)
-
-The SRD extractions already exist (`docs/24XX.md`, `docs/CAIRN-2E.md`, `docs/LONER-3E.md`).
-What remains: README.md names the shelf and the rule — official, freely licensed, low
-mechanical overhead — an engine the Directors can drive without a rules lawyer. One short
-section pointing at the three docs. Done when the README carries it.
-
 ## Phase 3 — Shrink and comply (~2.5–3 days)
 
 Two audits (2026-08-13, full-tree) found ~500 LOC of pure waste, ~250 lines of prose living in

@@ -29,7 +29,10 @@ Tracking PLAN.md. One bullet per landed step; `uv run pytest && ruff check && ru
   creator and media renumbered to phases 4 and 5; content-pack rejection reversed (Loner
   adventure packs are real upcoming content).
 
+- 2026-08-13: Phase 2 done — README names the engine shelf (24XX, Cairn 2e) and the rule;
+  shelf docs were already in. Phase 3 step 6 upgraded to two selectable packs (SRD + AP01
+  fantasy, selection as creation step 0; AP01 license ambiguity flagged in step 10).
+
 ## Next
 
-1. Phase 2: engine shelf README note (~15 min).
-2. Phase 3: shrink and comply — start at step 1 (dead dice generality).
+- Phase 3: shrink and comply — start at step 1 (dead dice generality).

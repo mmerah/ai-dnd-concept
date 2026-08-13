@@ -7,6 +7,21 @@ A role-separated narrative game platform. One rules engine ships:
   Roberto Bisceglie, Zotiquest Games — <https://lonersrd.zotiquestgames.com>. docs/LONER-3E.md is
   the SRD extraction, and names every deviation this implementation takes.
 
+## The engine shelf
+
+Candidate engines are docs, not code: an exact SRD extraction per system under `docs/`, each
+ending with a sketch of what its engine package would look like here. The rule for the shelf —
+official, freely licensed, low mechanical overhead: a system the Directors can drive without a
+rules lawyer. On it now:
+
+- `docs/24XX.md` — 24XX SRD v1.4 (CC BY 4.0, Jason Tocci). Skill-die pools, roll-highest,
+  disaster/setback/success. The natural second engine.
+- `docs/CAIRN-2E.md` — Cairn 2e (CC BY-SA 4.0, Yochai Gal). HP, three stats, armour, damage
+  dice; ~2× the code of loner3e, implemented only if that texture is wanted.
+
+`docs/LONER-3E.md` is the same extraction for the shipped engine. An engine package appears
+only when it is next to be played; a skeleton package is dead code.
+
 See PLAN.md for the phases.
 
 ```text
