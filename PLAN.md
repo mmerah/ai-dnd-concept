@@ -1,10 +1,12 @@
 # Plan
 
-The phased plan for what is built next, in order. Rewritten 2026-08-12 after the reorientation
-decision (see CONCEPT.md and DECISION.md): the D&D 5e engine is deleted, a small tag-based
-Oracle engine replaces it as the mechanical engine, and the feature phases (scenario creator,
-media) proceed against the settled engine boundary. Each phase carries enough detail to
-implement without prior context; only the next unshipped phase needs full resolution.
+The phased plan for what is built next, in order. Rewritten 2026-08-13 after the recentering
+decision: the project ships official, freely licensed, LLM-as-GM-friendly tabletop engines
+only. The first-party story engine is deleted; the oracle engine is renamed loner3e and made
+compliant with the Loner 3e SRD (CC BY-SA 4.0), with every deviation named in
+docs/LONER-3E.md; 24XX and Cairn 2e sit on a docs-only shelf until one is wanted. Each phase
+carries enough detail to implement without prior context; only the next unshipped phase needs
+full resolution. Shipped phases move to PROGRESS.md.
 
 ## Working rules
 
@@ -24,64 +26,59 @@ implement without prior context; only the next unshipped phase needs full resolu
 Per phase: `uv run pytest && uv run ruff check && uv run ruff format --check && uv run
 basedpyright` green after every numbered step, one commit per step.
 
-## Phase 1 — Delete the D&D 5e engine (~½–1 day)
+## Phase 1 — loner3e: rename and close the compliance gap (~1–2 days)
 
-The engine boundary makes this cheap: `tests/core/test_package_boundary.py` proves nothing in
-`state/`, `turn/`, `app/`, or `ui/` names dnd5e, and `loader.ENGINE_MODULES` is the only
-registry. The dnd5e work is committed and tagged; git history is the archive.
+The oracle engine already matches the Loner 3e SRD's core loop: Chance d6 vs Risk d6, the six
+outcomes with the both-low/both-high and/but rules, tie → twist tick with a twist due at 3,
+harm 3/2/1 against a Luck pool of 6, advantage/disadvantage as one extra die on one side. What
+remains is vocabulary, the random tables, and the edges of the rules. Final step resolution
+waits on docs/LONER-3E.md (the exact SRD text, CC BY-SA 4.0, attributed); the shape is:
 
-1. Delete `src/aidm/engines/dnd5e/` (2,348 lines Python + 41.5k lines pack JSON), `scripts/srd/`
-   (2,604-line importer), `tests/dnd5e/`, and the dnd5e line in `ENGINE_MODULES`
-   (`src/aidm/engines/loader.py`).
-2. Delete `state/packs.py` (298 lines) — its only consumer was dnd5e. `loader.py` imports
-   `ContentRef` (for `AdvancementOffer.granted/options`) and `ENCODING` from it: replace
-   `ContentRef` with a plain frozen `(collection, id, label)`-style ref or plain strings —
-   whichever the story engine's advancement actually needs — and move `ENCODING` to
-   `state/base.py`.
-3. Delete dnd5e content: `characters/*/dnd5e.json`, `scenarios/*/dnd5e.json`, any dnd5e eval
-   cases under `scripts/evals/`. Sweep docs for dnd5e references; CONCEPT.md and DECISION.md
-   already record the reorientation.
-4. Bump `SAVE_VERSION`, regenerate golden fixtures, and read the diff: only dnd5e-family
-   fixtures should disappear and only `save_version` bytes should move elsewhere. The story
-   engine and the probe engine (`tests/probe/`) still pass untouched — that is the proof the
-   deletion stayed inside the boundary.
+1. **Rename**: package `engines/oracle/` → `engines/loner3e/`, engine id `loner3e`, badge, and
+   SRD vocabulary throughout sheet, prompts, and fixtures — `edges` → `skills`, `burdens` →
+   `frailties`; `concept`, `gear`, `luck`, `twist` already match. Content follows:
+   `characters/kael/oracle.json` → `loner3e.json`, same for the scenario overlay. Bump
+   `SAVE_VERSION`, regenerate fixtures, read the diff. CC BY-SA 4.0 attribution to Roberto
+   Bisceglie / Zotiquest Games in README.md and the engine's director.md.
+2. **Roll the SRD's tables resolver-side, Director interprets**: when a twist comes due, roll
+   the 2d6 twist table (subject × action) in `resolve.py` and put the rolled pairing in the
+   note that `pending_notes` already carries to the next turn's directors — the LLM writes the
+   fiction, never picks the row. Tables are frozen Python constants in the engine package, not
+   content packs (see below).
+3. **Close rule gaps against docs/LONER-3E.md**, each either implemented or added to that
+   doc's Deviations section with a reason. Already SRD-exact, verified against the extraction:
+   the outcome grid with both-≤3/both-≥4 modifiers, advantage as one extra die of that color
+   keep-highest capped at two, net tag cancellation, harm 3/2/1, and conflict exchanges never
+   ticking the Twist Counter ("The Twist Counter does NOT apply to Harm & Luck"). The real
+   gaps: Luck "resets after conflicts" with no spend rule (the SRD has none — decide whether
+   the reset is resolver-side at conflict end or stays a Director `counter-change`);
+   advancement options (SRD growth also adds a frailty or modifies a trait; today's milestone
+   buys only edge/gear/clear-burden); Goal/Motive/Nemesis (map to threads and entities rather
+   than sheet fields); non-living characters (SRD gives objects concept/skills/frailties/Luck;
+   sheets are actors-only today); the optional next-scene mood roll (Scene Director judgment
+   replaces it). Twists landing one turn late — the note channel — is a standing deviation:
+   the Narrator only writes from committed facts.
+4. **Deviations doc**: docs/LONER-3E.md ends with the named list of every remaining
+   divergence — the standing contract for what "compliant" means here.
 
-Done when: the suite is green with no dnd5e artifact in the tree, and `rg -i dnd5e src tests`
-finds nothing outside git history.
+Done when: kael plays a full turn under `loner3e`, the suite is green on regenerated
+fixtures, and every divergence from the SRD is either closed or named in docs/LONER-3E.md.
 
-## Phase 2 — Oracle engine (~3–5 days, 600–900 lines)
+## Phase 2 — The engine shelf: docs-only stubs (~½ day)
 
-A first-party tag-based engine in the spirit of Loner 3e / 24XX (see ORIGINAL-GPT-RESEARCH.md
-and CONCEPT.md §12) with original terminology — no SRD text is copied. It is an ordinary engine
-package: `src/aidm/engines/oracle/` plus one `ENGINE_MODULES` line, structured like
-`engines/story/` (554 lines) and sized like it. The story engine stays; Oracle is the engine
-with mechanical teeth.
+Candidate engines are docs, not code: an exact SRD extraction per engine under `docs/`, each
+ending with a short "what its engine package would look like" note (~10 lines: sheet shape,
+plan/action types, resolver, which of its tables the Directors replace or roll). No skeleton
+packages — an engine package appears only when it is next to be played.
 
-1. **Mechanics blob** (`mechanics.py`): `concept: str`, `edges: tuple[str, ...]` (2–3 capability
-   tags), `burdens: tuple[str, ...]` (1+ weakness tags), `gear: tuple[str, ...]` (signature
-   items), `fortune` as a `Counter` (`engines/counters.py`, max 6), `twist` counter, and
-   `conditions: tuple[str, ...]` for temporary tags. NPCs and significant objects use the same
-   shape — "everything is a character".
-2. **Resolution** (`resolve.py`): one action type, a closed dramatic question with
-   `advantage | neutral | disadvantage` position. The plan names which existing tags justify the
-   position (`check_plan` refuses tags not on the sheet or in the scene — the model cannot
-   invent a bonus); positive and negative cancel; never more than two dice a side. Chance d6 vs
-   Risk d6 → six semantic outcomes (`yes-and / yes / yes-but / no-but / no / no-and`), tie →
-   `yes-but` + twist tick; every third twist tick emits a twist fact for the Director. Fortune
-   spend = one reroll, resolver-side. All rolls in `resolve_action` against the draft, model
-   never rolls.
-3. **Creation** (`create.py`): via the existing `state/creation.py` steps — concept, 2 edges,
-   1 burden, 2 gear, all free-text with AI-suggested options; no pack data needed.
-4. **Advancement** (`advance.py`): milestone-driven, small — a new edge, a new gear tag, or
-   clearing a burden; `offered`/`advance`/`violation` against explicit caps (max edges/gear).
-5. **Prompts + fixtures**: `director.md`, `advancement.md`, `examples.json`; one live probe of
-   the plan schema (working rule 2) before cutting golden fixtures; tests mirror
-   `tests/story/` plus resolver-table tests (the 6-outcome mapping is pure and fully
-   enumerable).
+1. `docs/24XX.md` — 24XX SRD (CC BY 4.0, Jason Tocci). The natural second engine: skill-die
+   pools, one roll-highest resolution, disaster/setback/success.
+2. `docs/CAIRN-2E.md` — Cairn 2e SRD (Yochai Gal). More mechanical (HP, three stats, armour,
+   damage dice); implement only if its shape is wanted.
+3. README.md names the shelf and the rule: official, freely licensed, low mechanical
+   overhead — an engine the Directors can drive without a rules lawyer.
 
-Done when: kael has an `oracle.json` binding, whispering-vault plays a full turn under Oracle
-with a contested action resolving through the dice table, and the engine passes the same shape
-of golden/fixture suite the story engine does.
+Done when: both docs exist with license attribution and the README names the shelf.
 
 ## Phase 3 — Scenario creator (~3–4 days)
 
@@ -100,19 +97,20 @@ loop, where speed and small-model reliability do not constrain the design.
    entity worth one.
 2. Validation loop, in the script: `ScenarioWorld` validates structurally on output (the agent
    retries on `ValidationError` for free). Then validate the world alone — a `Scenario` per
-   engine with an empty/default overlay, `begin_game` with the shipped `kael`, and the engine's
-   normal mechanics validation. Any `ValueError` goes back to the agent as a retry message, max
-   3 rounds, then fail loudly with the reason.
-3. Overlays: a second agent call per engine, output that engine's strict authored-overlay model,
-   prompted with the generated world and engine-provided authoring guidance/defaults. Re-run
-   step 2's loop with each generated overlay in place — the overlay is what `begin_game`
-   exercises beyond shared structure.
-4. Files land in `scenarios/<slug>/` only after every engine validates. The script prints a
-   summary (entities, relations, threads, hooks per engine) and the author reviews the diff
-   before committing — generated content merges by the same review as hand-written content.
+   shipped engine with an empty/default overlay, `begin_game` with the shipped `kael`, and the
+   engine's normal mechanics validation. Any `ValueError` goes back to the agent as a retry
+   message, max 3 rounds, then fail loudly with the reason.
+3. Overlays: a second agent call per shipped engine, output that engine's strict
+   authored-overlay model, prompted with the generated world and engine-provided authoring
+   guidance/defaults. Re-run step 2's loop with each generated overlay in place — the overlay
+   is what `begin_game` exercises beyond shared structure.
+4. Files land in `scenarios/<slug>/` only after every shipped engine validates. The script
+   prints a summary (entities, relations, threads, hooks per engine) and the author reviews the
+   diff before committing — generated content merges by the same review as hand-written
+   content.
 
 Done when: `uv run python scripts/create_scenario.py rats-of-thornhill "..."` yields a scenario
-that appears on the home page and plays a first turn under both engines. Quality beyond
+that appears on the home page and plays a first turn under every shipped engine. Quality beyond
 validity is judged by playing it, not asserted by the script. PDF/notes ingestion is a later
 input mode for the same script, not a separate system.
 
@@ -142,15 +140,25 @@ disabled, and a failed generation must cost nothing but a log line.
 Done when: with media enabled a turn grows an illustration within seconds after the narration,
 and with it disabled (the default) nothing in state, saves, prompts, or tests differs.
 
-# Considered and decided without a phase (updated 2026-08-12)
+# Considered and decided without a phase (updated 2026-08-13)
 
-- **Rebuilding World Core per CONCEPT.md phases 0–1**: rejected. The boundary test proves engine
-  concepts never leaked into core; `state/world.py` already is the neutral world layer. CONCEPT's
-  ECS components, event-sourced projections, and `EngineAdapter` interface are not adopted — the
+- **Keeping the story engine**: rejected. The recentering rule is official, freely licensed
+  systems only; a first-party ruleset competes with them for maintenance and eval attention
+  while nobody would choose it. Its only structural value — proving the engine boundary with a
+  second implementation — is already carried by the probe engine (`tests/probe/`).
+- **Loner's tables as a content pack**: rejected. The twist table is a 6×6 of short strings;
+  a frozen constant next to `resolve.py` is typed and needs no loader. Packs return only when
+  a scenario needs to override an engine's tables, which nothing asks for.
+- **Runnable stubs for 24XX / Cairn 2e**: rejected in favour of docs-only SRD extractions
+  (Phase 3). A skeleton package is dead code with a maintenance cost; the `Engine` ABC stays
+  honest through loner3e plus the probe engine.
+
+- **Rebuilding World Core as its own ECS layer**: rejected. The boundary test proves engine
+  concepts never leaked into core; `state/world.py` already is the neutral world layer. ECS
+  components, event-sourced projections, and an `EngineAdapter` interface are not adopted — the
   existing `Engine` ABC is smaller and proven by three implementations.
 - **Keeping dnd5e as a dormant engine**: rejected. 46k lines of artifact with a broken
-  advancement backlog is not worth the tree weight; git history keeps it, and CONCEPT.md §27
-  documents the containment strategy if it ever returns as a late-stage boundary stress test.
+  advancement backlog is not worth the tree weight; git history keeps it.
 - **A content-pack system for Oracle**: rejected. Oracle's tags are free text; `state/packs.py`
   leaves with its only consumer. Reintroduce packs only when a second engine needs shared
   structured content.
