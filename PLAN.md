@@ -142,6 +142,12 @@ and with it disabled (the default) nothing in state, saves, prompts, or tests di
 
 # Considered and decided without a phase (updated 2026-08-13)
 
+- **Engine-configurable turn pipeline**: deferred until the 24XX implementation demands a stage
+  the fixed pipeline cannot express — that second engine is what earns the port. Engines
+  already configure the turn through their plan type, instructions, toolsets, `check_plan`
+  refusals, and the `pending_notes` channel (how loner3e's twist reaches the Directors without
+  core changes); a Loner mood roll would be one more resolver-side note, not a pipeline hook.
+
 - **Keeping the story engine**: rejected. The recentering rule is official, freely licensed
   systems only; a first-party ruleset competes with them for maintenance and eval attention
   while nobody would choose it. Its only structural value — proving the engine boundary with a
