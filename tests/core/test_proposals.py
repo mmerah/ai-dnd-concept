@@ -2,28 +2,23 @@ import json
 from pathlib import Path
 
 import pytest
-from oracle_test_support import at_milestone, oracle_session
+from loner3e_test_support import at_milestone, loner3e_session
 from pydantic_ai.messages import ModelMessage, ModelResponse, TextPart
 from pydantic_ai.models.function import AgentInfo, FunctionModel
 
 from aidm.content.store import FileSaves, FileTraces
-from aidm.engines.oracle.advance import MAX_EDGES, Milestone
-from aidm.engines.oracle.mechanics import read, write
+from aidm.engines.loner3e.advance import Milestone
+from aidm.engines.loner3e.mechanics import read
 from aidm.state.base import PLAYER_ID
 from aidm.state.turn import Advance
-from aidm.state.world import GameState
 
-LEGAL = Milestone(gain_gear="Waxed Rope", why="he never climbs without it now")
-OVER_CAP = Milestone(gain_edge="One Edge Too Many", why="pushed past what he can hold")
-
-
-def _capped(state: GameState) -> GameState:
-    """Kael's edges already sit at the cap, so gaining one more trips the cap check."""
-    draft = state.draft()
-    mechanics = read(draft)
-    mechanics.sheets[PLAYER_ID].edges = tuple(f"Edge {n}" for n in range(MAX_EDGES))
-    write(draft, mechanics)
-    return draft.committed()
+LEGAL = Milestone(change="gear", tag="Waxed Rope", why="he never climbs without it now")
+ILLEGAL = Milestone(
+    change="rewrite",
+    tag="Never Held a Blade",
+    into="Holds It Well",
+    why="a tag the sheet does not carry",
+)
 
 
 def _answers(*proposals: Milestone) -> FunctionModel:
@@ -38,11 +33,11 @@ def _answers(*proposals: Milestone) -> FunctionModel:
 
 
 async def test_an_illegal_proposal_is_retried_with_the_engines_reason(tmp_path: Path) -> None:
-    game = oracle_session(tmp_path)
-    game.state = _capped(at_milestone(game.state))
+    game = loner3e_session(tmp_path)
+    game.state = at_milestone(game.state)
 
     assert game.advancer is not None
-    with game.advancer.advisor.agent.override(model=_answers(OVER_CAP, LEGAL)):
+    with game.advancer.advisor.agent.override(model=_answers(ILLEGAL, LEGAL)):
         drafted = await game.propose("Kael has learned to trust his rope.")
 
     assert drafted == LEGAL
@@ -50,7 +45,7 @@ async def test_an_illegal_proposal_is_retried_with_the_engines_reason(tmp_path: 
 
 
 def test_confirming_commits_exactly_the_proposed_delta(tmp_path: Path) -> None:
-    game = oracle_session(tmp_path)
+    game = loner3e_session(tmp_path)
     game.state = at_milestone(game.state)
 
     facts = game.apply_proposal(LEGAL)
@@ -68,12 +63,12 @@ def test_confirming_commits_exactly_the_proposed_delta(tmp_path: Path) -> None:
 
 
 def test_a_refused_proposal_leaves_the_committed_state_untouched(tmp_path: Path) -> None:
-    game = oracle_session(tmp_path)
-    game.state = _capped(at_milestone(game.state))
+    game = loner3e_session(tmp_path)
+    game.state = at_milestone(game.state)
     before = game.state.model_dump_json()
 
-    with pytest.raises(ValueError, match="holds at most"):
-        _ = game.apply_proposal(OVER_CAP)
+    with pytest.raises(ValueError, match="carries no tag"):
+        _ = game.apply_proposal(ILLEGAL)
 
     assert game.state.model_dump_json() == before
     assert game.entries == []

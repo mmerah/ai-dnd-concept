@@ -14,9 +14,13 @@ from aidm.state.world import GameState
 from .actions import Question
 from .mechanics import TIES_PER_TWIST, Mechanics, Sheet, read, write
 
-TWIST_NOTE = (
-    "The dice have tied three times: a twist is due. Bring something in that turns the "
-    "situation — an intrusion, a cost coming home, a fact the player had wrong."
+TWIST_TABLE: tuple[tuple[str, str], ...] = (
+    ("A third party", "Appears"),
+    ("The hero", "Alters the location"),
+    ("An encounter", "Helps the hero"),
+    ("A physical event", "Hinders the hero"),
+    ("An emotional event", "Changes the goal"),
+    ("An object", "Ends the scene"),
 )
 HARM: dict[Slug, int] = {
     "yes-and": 3,
@@ -28,6 +32,19 @@ HARM: dict[Slug, int] = {
 }
 
 type Position = Literal["advantage", "neutral", "disadvantage"]
+
+
+def twist_pairing(subject: int, action: int) -> tuple[str, str]:
+    """Subject from one d6, action from the other, as the SRD's twist table is read."""
+    return TWIST_TABLE[subject - 1][0], TWIST_TABLE[action - 1][1]
+
+
+def twist_note(subject: str, action: str) -> str:
+    return (
+        f"A twist has just interrupted the scene: {subject.upper()} / {action.upper()} — the "
+        "narration showed it arriving. Develop it this turn: what it set in motion, what it "
+        "costs, what it changes."
+    )
 
 
 def defeat_note(name: str) -> str:
@@ -104,16 +121,32 @@ def resolve_question(draft: GameState, action: Question, rng: Random) -> tuple[l
         mechanics.twist.current += 1
         if mechanics.twist.current >= TIES_PER_TWIST:
             mechanics.twist.current = 0
-            draft.world.pending_notes = (*draft.world.pending_notes, TWIST_NOTE)
-            facts.append(entity_fact(actor, "twist_due", "a twist comes due", {}, narrate=False))
+            facts.extend(_twist(draft, actor, rng))
     write(draft, mechanics)
     return facts, outcome
+
+
+def _twist(draft: GameState, actor: Entity, rng: Random) -> list[Fact]:
+    """The SRD's table is rolled here so the dice trace; the Director only reads the pairing."""
+    subject_die, subject_fact = roll("1d6", "twist — subject", rng)
+    action_die, action_fact = roll("1d6", "twist — action", rng)
+    subject, action = twist_pairing(subject_die.total, action_die.total)
+    draft.world.pending_notes = (*draft.world.pending_notes, twist_note(subject, action))
+    # Narrated the turn it lands, as the SRD interrupts the scene: an unnamed intrusion needs
+    # no canon, and the note steers the next turn's development.
+    due = entity_fact(
+        actor,
+        "twist_due",
+        f"a twist interrupts the scene: {subject} / {action}",
+        {"subject": subject, "action": action},
+    )
+    return [subject_fact, action_fact, due]
 
 
 def _sheet(mechanics: Mechanics, actor: Entity) -> Sheet:
     sheet = mechanics.sheets.get(actor.id)
     if sheet is None:
-        raise ValueError(f"{actor.name} has no oracle sheet")
+        raise ValueError(f"{actor.name} has no character sheet")
     return sheet
 
 

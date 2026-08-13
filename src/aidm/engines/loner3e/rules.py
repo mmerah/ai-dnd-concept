@@ -10,26 +10,26 @@ from aidm.state.plan import TurnPlanBase, apply_all, apply_branch, check_action,
 from aidm.state.world import GameState
 
 from .actions import TurnPlan
-from .advance import OracleAdvancement
-from .create import OracleCreation
+from .advance import Loner3eAdvancement
+from .create import Loner3eCreation
 from .mechanics import apply, begin, commit, render
 from .resolve import resolve_question
 
-ENGINE_ID: EngineId = EngineId("oracle")
+ENGINE_ID: EngineId = EngineId("loner3e")
 LABELS = frozenset[Slug]({"yes-and", "yes", "yes-but", "no-but", "no", "no-and"})
 NO_LABELS = frozenset[Slug]()
 
 
-class OracleEngine(Engine):
+class Loner3eEngine(Engine):
     id = ENGINE_ID
-    badge = ("ORACLE", "teal-7")
+    badge = ("LONER 3E", "teal-7")
     plan_type = TurnPlan
     engine_dir = Path(__file__).parent
 
     def __init__(self) -> None:
         super().__init__()
-        self.advancement = OracleAdvancement(self.engine_dir)
-        self.creation = OracleCreation()
+        self.advancement = Loner3eAdvancement(self.engine_dir)
+        self.creation = Loner3eCreation()
 
     def begin(self, state: GameState, rules: Mapping[EntityId, Rules]) -> None:
         begin(state, rules)
@@ -58,4 +58,4 @@ class OracleEngine(Engine):
         return facts + apply_all(draft, plan.effects, apply)
 
 
-ENGINE = OracleEngine
+ENGINE = Loner3eEngine

@@ -21,9 +21,9 @@ from pydantic_ai.messages import (
 )
 from pydantic_ai.models.function import AgentInfo, FunctionModel
 
-from aidm.engines.oracle.mechanics import read
-from aidm.engines.oracle.resolve import outcome_for
-from aidm.engines.oracle.rules import LABELS
+from aidm.engines.loner3e.mechanics import read
+from aidm.engines.loner3e.resolve import outcome_for
+from aidm.engines.loner3e.rules import LABELS
 from aidm.state.base import PLAYER_ID, EntityId
 from aidm.state.world import Memory
 from aidm.turn.pipeline import TURN_STEPS

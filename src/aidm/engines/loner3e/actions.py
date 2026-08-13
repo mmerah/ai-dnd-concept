@@ -5,7 +5,7 @@ from pydantic import Field
 from aidm.state.base import EntityId, Frozen
 from aidm.state.plan import Branched
 
-from .mechanics import OracleEffect
+from .mechanics import Loner3eEffect
 
 
 class Question(Frozen):
@@ -38,7 +38,7 @@ class Question(Frozen):
     )
 
 
-class TurnPlan(Branched[OracleEffect]):
+class TurnPlan(Branched[Loner3eEffect]):
     action: Question | None = Field(
         default=None,
         description="The one question this turn resolves, or null when nothing is uncertain "

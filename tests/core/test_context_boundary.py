@@ -1,8 +1,8 @@
-from core_test_support import ORACLE, game, updated, with_entity
+from core_test_support import LONER3E, game, updated, with_entity
 
 from aidm.content.authored import ScenarioMeta
 from aidm.engines.loader import EntityRenderer
-from aidm.engines.oracle.mechanics import Mechanics, Sheet, write
+from aidm.engines.loner3e.mechanics import Mechanics, Sheet, write
 from aidm.state.base import PLAYER_ID, SAVE_VERSION, Entity, EntityId, Kind
 from aidm.state.world import GameState, WorldState
 from aidm.turn.prompts import (
@@ -44,7 +44,7 @@ def state() -> GameState:
         scenario_id="whispering-vault",
         character_id="kael",
         scenario=ScenarioMeta(title="Test", premise="Test"),
-        engine=ORACLE,
+        engine=LONER3E,
         world=WorldState(entities={entity.id: entity for entity in entities}),
     )
     write(
@@ -55,7 +55,7 @@ def state() -> GameState:
 
 
 def _renderer(held: GameState) -> EntityRenderer:
-    engine, _ = game(ORACLE)
+    engine, _ = game(LONER3E)
     return engine.renderer(held)
 
 

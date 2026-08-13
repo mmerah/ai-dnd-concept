@@ -1,0 +1,41 @@
+{
+  "additionalProperties": false,
+  "description": "The one change a milestone buys. The engine records the milestone itself.",
+  "properties": {
+    "change": {
+      "description": "Which of the four growths this milestone spends.",
+      "enum": [
+        "skill",
+        "gear",
+        "frailty",
+        "rewrite"
+      ],
+      "title": "Change",
+      "type": "string"
+    },
+    "tag": {
+      "description": "The new tag in title case — or, for a rewrite, the tag already written on the sheet, copied exactly.",
+      "minLength": 1,
+      "title": "Tag",
+      "type": "string"
+    },
+    "into": {
+      "default": "",
+      "description": "A rewrite only: what that tag becomes, in title case. Empty otherwise.",
+      "title": "Into",
+      "type": "string"
+    },
+    "why": {
+      "description": "One short sentence the player reads before confirming.",
+      "title": "Why",
+      "type": "string"
+    }
+  },
+  "required": [
+    "change",
+    "tag",
+    "why"
+  ],
+  "title": "Milestone",
+  "type": "object"
+}

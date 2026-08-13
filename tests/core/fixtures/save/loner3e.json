@@ -1,12 +1,12 @@
 {
-  "save_version": 55,
+  "save_version": 56,
   "scenario_id": "whispering-vault",
   "character_id": "kael",
   "scenario": {
     "title": "The Whispering Vault",
     "premise": "The abbey of Saint Corvin was abandoned in a single night. Kael has come for the sealed vault beneath it, and the abbot's study is the only room still lit."
   },
-  "engine": "oracle",
+  "engine": "loner3e",
   "world": {
     "entities": {
       "study": {
@@ -299,8 +299,8 @@
     "sheets": {
       "mara": {
         "concept": "",
-        "edges": [],
-        "burdens": [],
+        "skills": [],
+        "frailties": [],
         "gear": [],
         "luck": {
           "current": 6,
@@ -317,8 +317,8 @@
       },
       "tomas": {
         "concept": "",
-        "edges": [],
-        "burdens": [],
+        "skills": [],
+        "frailties": [],
         "gear": [],
         "luck": {
           "current": 6,
@@ -335,8 +335,8 @@
       },
       "elena": {
         "concept": "",
-        "edges": [],
-        "burdens": [],
+        "skills": [],
+        "frailties": [],
         "gear": [],
         "luck": {
           "current": 6,
@@ -353,10 +353,10 @@
       },
       "cloister_rat": {
         "concept": "A bloated rat that will not be driven off",
-        "edges": [
+        "skills": [
           "Hard to Frighten"
         ],
-        "burdens": [
+        "frailties": [
           "Slow and Heavy"
         ],
         "gear": [],
@@ -375,11 +375,11 @@
       },
       "player": {
         "concept": "A Wary Relic-Hunter",
-        "edges": [
+        "skills": [
           "Reads Old Stonework",
           "Quiet Hands"
         ],
-        "burdens": [
+        "frailties": [
           "Never Walks Away"
         ],
         "gear": [
@@ -401,8 +401,8 @@
       },
       "sister_auber": {
         "concept": "",
-        "edges": [],
-        "burdens": [],
+        "skills": [],
+        "frailties": [],
         "gear": [],
         "luck": {
           "current": 6,

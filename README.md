@@ -2,9 +2,10 @@
 
 A role-separated narrative game platform. One rules engine ships:
 
-- **AIDM Oracle** — the tag-based engine: one dramatic question, Chance d6 against Risk d6, six
-  semantic outcomes. Its resolution is inspired by Loner 3e (Zotiquest Games, CC BY-SA 4.0);
-  the terminology, the outcome ladder, and the code are original.
+- **Loner 3e** — the tag-based engine: one closed question to the Oracle, Chance d6 against Risk
+  d6, six outcomes, a Twist Counter, and Harm against a pool of Luck. Loner 3e rules CC BY-SA
+  Roberto Bisceglie, Zotiquest Games — <https://lonersrd.zotiquestgames.com>. docs/LONER-3E.md is
+  the SRD extraction, and names every deviation this implementation takes.
 
 See PLAN.md for the phases.
 
@@ -54,11 +55,11 @@ src/aidm/content/         authored scenarios and characters, saves and traces
 src/aidm/engines/         the loader, plus one directory per engine
 src/aidm/turn/            the turn loop, its agents, prompts, advancement
 src/aidm/app/             composition root: launcher catalog, sessions, runtime
-src/aidm/engines/oracle/  Oracle engine: tag sheets, the dramatic question, the outcome ladder
+src/aidm/engines/loner3e/ Loner 3e engine: tag sheets, the closed question, the outcome ladder
 src/aidm/ui/              NiceGUI shell: renders state, submits decisions
 characters/               shared character canon plus one overlay per supported engine
 scenarios/                shared world canon plus one overlay per supported engine
-tests/                    per-package suites: core, oracle, probe, ui
+tests/                    per-package suites: core, loner3e, probe, ui
 ```
 
 One distribution. The import direction — `state <- content <- engines <- turn <- app <- ui`, with

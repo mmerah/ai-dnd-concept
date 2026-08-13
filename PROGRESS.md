@@ -20,6 +20,12 @@ Tracking PLAN.md. One bullet per landed step; `uv run pytest && ruff check && ru
   no SAVE_VERSION bump; only fixture movement is the always-null `vs`/`success` keys leaving
   the turn trace. Reviewed: sweeps clean, probe/oracle engines untouched.
 
+- 2026-08-13: loner3e phase staged (not committed) — full rename with SAVE_VERSION 56, twist
+  table resolver-side, SRD growth verbs, deviations cut to 10: twists now narrate the turn they
+  land (twist fact narratable, note develops it next turn) and the max-4 caps are gone.
+
 ## Next
 
-- Phase 2: rename oracle→loner3e, roll the twist table resolver-side, settle the named gaps.
+- Maintainer: review staged diff, live-probe the reshaped advisor proposal schema (working
+  rule 2), then commit.
+- Phase 2: engine shelf README note.

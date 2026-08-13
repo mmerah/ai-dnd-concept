@@ -2,7 +2,7 @@ from collections.abc import Mapping
 from random import Random
 
 import pytest
-from core_test_support import ORACLE, game, plan, played, scripted, structured, text
+from core_test_support import LONER3E, game, plan, played, scripted, structured, text
 from golden_test_support import FIXTURES, dumped, golden
 from pydantic_ai.messages import ModelResponse
 from pydantic_ai.models.function import FunctionModel
@@ -59,7 +59,7 @@ def _plan(action: dict[str, object], outcomes: tuple[str, ...]) -> ModelResponse
 
 # The fiction resolved by the engine's own action and outcome labels.
 SCRIPTS: Mapping[EngineId, ModelResponse] = {
-    ORACLE: _plan(
+    LONER3E: _plan(
         {
             "act": "question",
             "actor_id": "player",

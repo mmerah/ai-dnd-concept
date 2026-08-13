@@ -25,7 +25,7 @@ type Stub = Callable[[list[ModelMessage], AgentInfo], ModelResponse]
 REPOSITORY_ROOT = Path(__file__).parents[2]
 SCENARIOS = REPOSITORY_ROOT / "scenarios"
 CHARACTERS = REPOSITORY_ROOT / "characters"
-ORACLE = EngineId("oracle")
+LONER3E = EngineId("loner3e")
 
 
 def updated[T: BaseModel](model: T, **changes: object) -> T:
@@ -40,11 +40,11 @@ def with_entity(state: GameState, entity: Entity) -> GameState:
 
 
 def scenario() -> Scenario:
-    return load_scenario(SCENARIOS, "whispering-vault", ORACLE)
+    return load_scenario(SCENARIOS, "whispering-vault", LONER3E)
 
 
 def character() -> Character:
-    return load_character(CHARACTERS, "kael", ORACLE)
+    return load_character(CHARACTERS, "kael", LONER3E)
 
 
 def game(engine_id: EngineId) -> tuple[Engine, GameState]:
@@ -56,7 +56,7 @@ def game(engine_id: EngineId) -> tuple[Engine, GameState]:
 
 
 def initialized() -> tuple[Engine, GameState]:
-    return game(ORACLE)
+    return game(LONER3E)
 
 
 def capability(engine: Engine) -> Advancement:

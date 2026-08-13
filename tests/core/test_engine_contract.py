@@ -3,7 +3,7 @@ from core_test_support import initialized
 from aidm.app.session import build_engine
 from aidm.engines.counters import CounterChange
 from aidm.engines.loader import Engine, engines
-from aidm.engines.oracle.mechanics import LUCK_MAX, Sheet, apply, read
+from aidm.engines.loner3e.mechanics import LUCK_MAX, Sheet, apply, read
 from aidm.state.base import PLAYER_ID, Entity, EntityId
 from aidm.state.effects import Move
 from aidm.state.facts import Fact

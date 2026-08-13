@@ -1,11 +1,11 @@
 {
   "character": {
     "concept": "A Wary Relic-Hunter",
-    "edges": [
+    "skills": [
       "Reads Old Stonework",
       "Quiet Hands"
     ],
-    "burdens": [
+    "frailties": [
       "Never Walks Away"
     ],
     "gear": [

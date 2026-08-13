@@ -138,6 +138,28 @@
       "title": "GainImprovisedItem",
       "type": "object"
     },
+    "Loner3eEffect": {
+      "discriminator": {
+        "mapping": {
+          "advance-thread": "#/$defs/WorldOp",
+          "counter-change": "#/$defs/CounterChange",
+          "gain-improvised-item": "#/$defs/WorldOp",
+          "move": "#/$defs/WorldOp",
+          "relation-change": "#/$defs/WorldOp",
+          "reveal": "#/$defs/WorldOp",
+          "trait-change": "#/$defs/WorldOp"
+        },
+        "propertyName": "op"
+      },
+      "oneOf": [
+        {
+          "$ref": "#/$defs/WorldOp"
+        },
+        {
+          "$ref": "#/$defs/CounterChange"
+        }
+      ]
+    },
     "Move": {
       "additionalProperties": false,
       "description": "Move an actor who actually changes location, or one item within the player's reach: picked\nup, set down here, or handed to an actor here. Moving the player to an unrevealed location\nreveals it.",
@@ -178,29 +200,7 @@
       "title": "Move",
       "type": "object"
     },
-    "OracleEffect": {
-      "discriminator": {
-        "mapping": {
-          "advance-thread": "#/$defs/WorldOp",
-          "counter-change": "#/$defs/CounterChange",
-          "gain-improvised-item": "#/$defs/WorldOp",
-          "move": "#/$defs/WorldOp",
-          "relation-change": "#/$defs/WorldOp",
-          "reveal": "#/$defs/WorldOp",
-          "trait-change": "#/$defs/WorldOp"
-        },
-        "propertyName": "op"
-      },
-      "oneOf": [
-        {
-          "$ref": "#/$defs/WorldOp"
-        },
-        {
-          "$ref": "#/$defs/CounterChange"
-        }
-      ]
-    },
-    "OutcomeBranch_OracleEffect_": {
+    "OutcomeBranch_Loner3eEffect_": {
       "additionalProperties": false,
       "properties": {
         "outcome": {
@@ -214,7 +214,7 @@
           "default": [],
           "description": "What that outcome causes in the world.",
           "items": {
-            "$ref": "#/$defs/OracleEffect"
+            "$ref": "#/$defs/Loner3eEffect"
           },
           "title": "Effects",
           "type": "array"
@@ -223,7 +223,7 @@
       "required": [
         "outcome"
       ],
-      "title": "OutcomeBranch[OracleEffect]",
+      "title": "OutcomeBranch[Loner3eEffect]",
       "type": "object"
     },
     "Question": {
@@ -460,7 +460,7 @@
       "default": [],
       "description": "Consequences that happen whatever the action settles.",
       "items": {
-        "$ref": "#/$defs/OracleEffect"
+        "$ref": "#/$defs/Loner3eEffect"
       },
       "title": "Effects",
       "type": "array"
@@ -469,7 +469,7 @@
       "default": [],
       "description": "Consequences keyed by outcome: at most one branch per label, and only labels this action allows. Outcomes that do not occur simply never apply. An action rolled to cause a lasting change — a condition taking hold or lifted, something revealed — must carry that change in the matching outcome's branch: with no branch, even success changes nothing.",
       "items": {
-        "$ref": "#/$defs/OutcomeBranch_OracleEffect_"
+        "$ref": "#/$defs/OutcomeBranch_Loner3eEffect_"
       },
       "title": "Branches",
       "type": "array"

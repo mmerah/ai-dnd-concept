@@ -19,8 +19,8 @@ EVERYTHING THAT EXISTS:
 - a bloated rat[id=cloister_rat] (npc) — at the cloister — It has grown fat on the dead garden and does not run from a lantern.
   state:
     concept: A bloated rat that will not be driven off
-    edges: Hard to Frighten
-    burdens: Slow and Heavy
+    skills: Hard to Frighten
+    frailties: Slow and Heavy
     pools: luck 6/6
     traits: Disease-Swollen[id=disease-swollen] — (edge) The rat is unnaturally hard to frighten or drive off.
 - the vault map[id=vault_map] (item) — carried — A creased chart of the undercroft, marking a stair the abbey's own plans deny.

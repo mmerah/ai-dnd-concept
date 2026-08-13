@@ -1,21 +1,23 @@
 from random import Random
 
 from core_test_support import capability, initialized
-from oracle_test_support import at_milestone
+from loner3e_test_support import at_milestone
 
 from aidm.engines.counters import CounterChange
 from aidm.engines.loader import Engine
-from aidm.engines.oracle.actions import Question
-from aidm.engines.oracle.advance import MAX_EDGES, Milestone
-from aidm.engines.oracle.mechanics import LUCK_MAX, TIES_PER_TWIST, read, write
-from aidm.engines.oracle.resolve import (
+from aidm.engines.loner3e.actions import Question
+from aidm.engines.loner3e.advance import Milestone
+from aidm.engines.loner3e.mechanics import LUCK_MAX, TIES_PER_TWIST, read, write
+from aidm.engines.loner3e.resolve import (
     HARM,
-    TWIST_NOTE,
+    TWIST_TABLE,
     defeat_note,
     outcome_for,
     resolve_question,
+    twist_note,
+    twist_pairing,
 )
-from aidm.engines.oracle.rules import LABELS
+from aidm.engines.loner3e.rules import LABELS
 from aidm.state.base import PLAYER_ID, EntityId
 from aidm.state.effects import TraitChange
 from aidm.state.plan import OutcomeBranch, TurnPlanBase
@@ -62,15 +64,6 @@ def _duel() -> Question:
     )
 
 
-def _capped(state: GameState) -> GameState:
-    """The player already at the edge cap, so one more edge would break it."""
-    draft = state.draft()
-    mechanics = read(draft)
-    mechanics.sheets[PLAYER_ID].edges = tuple(f"Edge {n}" for n in range(MAX_EDGES))
-    write(draft, mechanics)
-    return draft.committed()
-
-
 def test_the_outcome_ladder_covers_every_pair_of_dice() -> None:
     tally: dict[str, int] = {}
     for chance in range(1, 7):
@@ -86,6 +79,13 @@ def test_the_outcome_ladder_covers_every_pair_of_dice() -> None:
         "no-and": 3,
     }
     assert set(tally) == LABELS
+
+
+def test_the_twist_table_reads_a_subject_off_one_die_and_an_action_off_the_other() -> None:
+    """The SRD's own worked example: a twist roll of (4, 2)."""
+    assert len(TWIST_TABLE) == 6
+    assert twist_pairing(4, 2) == ("A physical event", "Alters the location")
+    assert "A PHYSICAL EVENT / ALTERS THE LOCATION" in twist_note(*twist_pairing(4, 2))
 
 
 def test_a_question_rolls_two_dice_and_applies_only_the_branch_it_landed_on() -> None:
@@ -160,9 +160,10 @@ def test_a_tie_ticks_the_twist_and_the_third_tie_calls_one() -> None:
     else:
         raise AssertionError("no seed under 200 tied the dice")
 
+    (due,) = [fact for fact in facts if fact.kind == "twist_due"]
+    rolled = twist_note(str(due.data["subject"]), str(due.data["action"]))
     assert read(draft).twist.current == 0
-    assert any(fact.kind == "twist_due" for fact in facts)
-    assert TWIST_NOTE in draft.world.pending_notes
+    assert rolled in draft.world.pending_notes
 
 
 def test_a_conflict_exchange_moves_luck_off_whichever_side_lost_it() -> None:
@@ -214,14 +215,22 @@ def test_a_milestone_opens_an_offer_and_the_caps_refuse_what_breaks_them() -> No
     ready = at_milestone(state)
     offer = advancement.offered(ready)
     assert offer is not None
-    maxed = _capped(ready)
 
-    legal = Milestone(gain_edge="Reads a Second Tongue", why="the old texts finally make sense")
-    over_edges = Milestone(gain_edge="One Edge Too Many", why="pushed past what he can hold")
+    legal = Milestone(
+        change="skill", tag="Reads a Second Tongue", why="the old texts finally make sense"
+    )
+    rewrite = Milestone(
+        change="rewrite",
+        tag="Never Walks Away",
+        into="Knows When to Walk Away",
+        why="the vault taught him the cost",
+    )
+    unwritten = rewrite.model_copy(update={"tag": "Never Held a Blade"})
 
     assert advancement.violation(ready, offer, legal) is None
-    assert advancement.violation(maxed, offer, over_edges) == (
-        f"a character holds at most {MAX_EDGES} edges, and this proposal reaches {MAX_EDGES + 1}"
+    assert advancement.violation(ready, offer, rewrite) is None
+    assert advancement.violation(ready, offer, unwritten) == (
+        "Kael carries no tag 'Never Held a Blade' to rewrite"
     )
 
 

@@ -28,7 +28,7 @@ _CONCEPTS: Mapping[Slug, tuple[str, str]] = {
     ),
 }
 
-_EDGES: Mapping[Slug, tuple[str, str]] = {
+_SKILLS: Mapping[Slug, tuple[str, str]] = {
     "reads-old-stonework": (
         "Reads Old Stonework",
         "Makes sense of inscriptions and stonework that everyone else reads as rubble.",
@@ -55,7 +55,7 @@ _EDGES: Mapping[Slug, tuple[str, str]] = {
     ),
 }
 
-_BURDENS: Mapping[Slug, tuple[str, str]] = {
+_FRAILTIES: Mapping[Slug, tuple[str, str]] = {
     "never-walks-away": (
         "Never Walks Away",
         "Cannot leave a fight, or a wrong, unfinished.",
@@ -115,15 +115,15 @@ def _options(entries: Mapping[Slug, tuple[str, str]]) -> tuple[CreationOption, .
 
 _STEPS = (
     CreationStep(id="concept", prompt="Choose a concept", options=_options(_CONCEPTS)),
-    CreationStep(id="edges", prompt="Choose two edges", options=_options(_EDGES), choose=2),
-    CreationStep(id="burden", prompt="Choose a burden", options=_options(_BURDENS)),
+    CreationStep(id="skills", prompt="Choose two skills", options=_options(_SKILLS), choose=2),
+    CreationStep(id="frailty", prompt="Choose a frailty", options=_options(_FRAILTIES)),
     CreationStep(id="gear", prompt="Choose two pieces of gear", options=_options(_GEAR), choose=2),
 )
 
 
-class OracleCreation(Creation):
+class Loner3eCreation(Creation):
     def steps(self, picks: Picks) -> tuple[CreationStep, ...]:
-        del picks  # every oracle step is static
+        del picks  # every loner3e step is static
         return _STEPS
 
     def create(self, name: str, brief: str, picks: Picks) -> CreatedCharacter:
@@ -133,8 +133,8 @@ class OracleCreation(Creation):
             overlay=CharacterOverlay(
                 character={
                     "concept": _CONCEPTS[picked(picks, "concept")[0]][0],
-                    "edges": [_EDGES[edge][0] for edge in picked(picks, "edges")],
-                    "burdens": [_BURDENS[picked(picks, "burden")[0]][0]],
+                    "skills": [_SKILLS[skill][0] for skill in picked(picks, "skills")],
+                    "frailties": [_FRAILTIES[picked(picks, "frailty")[0]][0]],
                     "gear": [_GEAR[gear][0] for gear in picked(picks, "gear")],
                 }
             ),

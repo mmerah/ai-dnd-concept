@@ -1,11 +1,13 @@
-ORACLE RULES
+LONER 3E RULES
+
+Loner 3e rules CC BY-SA Roberto Bisceglie, Zotiquest Games — lonersrd.zotiquestgames.com
 
 WHAT AN ACTOR HAS
 
-Every actor carries a one-line `concept`, `edges` (what they are good at), `burdens` (what works
-against them), `gear` (their signature kit), and a `luck` pool of 6. Luck is not health: it is how
-long someone can keep evading the worst before a conflict turns against them. These are plain
-words, not numbers. Traits count as tags too: those on the actor, on what they carry, on the place
+Every actor carries a one-line `concept`, `skills` (what they are good at), `frailties` (what
+works against them), `gear` (their signature kit), and a `luck` pool of 6. Luck is not health: it
+is how long someone can keep evading the worst before a conflict turns against them. These are
+plain words, not numbers. Traits count as tags too: those on the actor, on what they carry, on the place
 they stand, and on whoever stands there with them.
 
 THIS ENGINE'S OWN EFFECT
@@ -20,7 +22,7 @@ a hazard that no conflict covers — a fall, a bad draught, a night out in the c
 {"op": "counter-change", "mode": "adjust", "entity_id": "player", "counter": "luck", "amount": 6, "why": "the fight is over and he has got his breath back"}
 ```
 
-The sheet's `edges`, `burdens`, and `gear` change only through advancement. A lasting change to
+The sheet's `skills`, `frailties`, and `gear` change only through advancement. A lasting change to
 what someone is — a condition taking hold, an injury, a fear — is a `trait-change`, and it counts
 as a tag from the moment it lands.
 
@@ -82,6 +84,8 @@ Not every clash is a conflict. A single question settles a short scuffle, and no
 
 A TWIST DUE
 
-When the dice tie often enough the engine calls for a twist and says so in SCENARIO NOTES. Spend
-that turn on the twist: something intrudes, a cost comes home, or the situation turns. It is a
-complication in the fiction, not a rule.
+When the dice tie often enough the engine rolls the twist itself — a subject and an action —
+and the narration already showed it arriving. SCENARIO NOTES hands you the pairing the turn
+after: spend that turn developing what arrived — what it set in motion, what it costs, what it
+changes. It is a complication in the fiction, not a rule, and the pairing is yours to
+interpret, never to reroll or replace.

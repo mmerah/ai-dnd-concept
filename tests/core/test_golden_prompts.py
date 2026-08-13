@@ -1,9 +1,9 @@
 from collections.abc import Callable, Mapping
 
 import pytest
-from core_test_support import ORACLE, capability, game, settings
+from core_test_support import LONER3E, capability, game, settings
 from golden_test_support import FIXTURES, golden
-from oracle_test_support import at_milestone
+from loner3e_test_support import at_milestone
 
 from aidm.engines.loader import engine_ids
 from aidm.state.base import EngineId
@@ -16,7 +16,7 @@ WANTED = "I want to strike harder."
 type OfferReady = Callable[[GameState], GameState]
 
 # What each engine needs of a state before it offers an advancement to render the prompt from.
-READY_FOR_ADVANCEMENT: Mapping[EngineId, OfferReady] = {ORACLE: at_milestone}
+READY_FOR_ADVANCEMENT: Mapping[EngineId, OfferReady] = {LONER3E: at_milestone}
 
 
 @pytest.mark.parametrize("engine_id", engine_ids())

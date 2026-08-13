@@ -2,7 +2,7 @@ import json
 from pathlib import Path
 
 import pytest
-from core_test_support import ORACLE, initialized, updated
+from core_test_support import LONER3E, initialized, updated
 from pydantic import ValidationError
 
 from aidm.content.store import ENCODING, FileSaves, FileTraces, load_character, load_scenario
@@ -56,7 +56,7 @@ def test_shell_reads_a_save_whose_world_is_garbage(tmp_path: Path) -> None:
     shell = saves.shell("broken")
 
     assert shell is not None
-    assert (shell.engine, shell.scenario_id, shell.turn) == (ORACLE, "whispering-vault", 0)
+    assert (shell.engine, shell.scenario_id, shell.turn) == (LONER3E, "whispering-vault", 0)
     with pytest.raises(ValidationError):
         saves.load("broken")
 
@@ -141,6 +141,6 @@ def test_storage_rejects_unsafe_slugs(tmp_path: Path, slug: str) -> None:
 def test_content_paths_reject_an_unsafe_id(tmp_path: Path) -> None:
     """A game route supplies these ids, and each one names a directory."""
     with pytest.raises(ValueError, match="invalid content id"):
-        load_scenario(tmp_path, "../escape", ORACLE)
+        load_scenario(tmp_path, "../escape", LONER3E)
     with pytest.raises(ValueError, match="invalid content id"):
-        load_character(tmp_path, "kael/../..", ORACLE)
+        load_character(tmp_path, "kael/../..", LONER3E)

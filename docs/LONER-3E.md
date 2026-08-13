@@ -881,11 +881,42 @@ Rows are the Risk Die, columns the Chance Die.
 
 ## Deviations in this repo
 
-Filled by the loner3e compliance phase; every divergence between the engine and this SRD is named here with its reason.
+Every divergence between `src/aidm/engines/loner3e/` and the rules above, with the reason it
+stands. Nothing diverges silently: a rule not listed here is implemented as printed.
+
+1. **Luck reset is Director-judged, not automatic.** The SRD resets Luck "after conflicts"; the
+   engine does not track where a conflict ends — that is a boundary in the fiction, not in state.
+   The defeat note tells the Director the conflict is over, and they write the reset as a
+   `counter-change` once the story has given the loser a breath.
+2. **Milestones trigger per resolved thread, not post-adventure.** SRD growth happens when an
+   adventure ends. Threads are this app's adventures, and a resolved thread is the one growth
+   trigger the engine can see without asking a model to judge that the story is over.
+3. **Goal, Motive and Nemesis are not sheet fields.** They map to the shared world: threads carry
+   what the character is working toward, entities and relations carry who stands in the way. The
+   SRD asks for them to emerge from play, and in this app play writes them to the world.
+4. **Sheets are actors-only.** The SRD gives non-living characters — objects, vehicles, curses —
+   a Concept, Skills, Frailties and Luck. Here they are entities with traits, which the resolver
+   already reads as tags; a non-living character gets a sheet the first time an engine needs one.
+5. **The Scene Director replaces the player's own judgment calls.** The optional next-scene mood
+   roll (1d6 Dramatic / Quiet / Meanwhile) and the "when to ask the Oracle" decision are made by
+   the Scene and Rules Directors from the state of the fiction rather than rolled or intuited.
+6. **One Oracle question per turn.** The SRD's scene is a run of questions; a turn here resolves
+   at most one, because one plan resolves one action. A conflict is several turns of exchanges.
+7. **One game-wide Twist Counter.** The SRD's counter belongs to the solo player, who is the only
+   one rolling. Here any actor can be the subject of a question, so a single tally covers every
+   roll — a tie anywhere moves the same counter.
+8. **Luck can be charged outside a conflict.** The SRD moves Luck only through Harm & Luck. The
+    Director may also write a `counter-change` for a hazard no conflict covers — a fall, a bad
+    draught, a night in the cold — because those are the moments Luck exists to absorb.
+9. **The Adventure Maker and the open-ended inspiration tables are not rolled.** Setting, tone,
+    premise and the Verb/Noun/Adjective prompts are authoring inputs; scenarios are authored
+    ahead of play, and the Directors take their inspiration from the authored world instead.
+10. **Appendix A (Loner Diceless) is not implemented.** The dice are the point of the resolver;
+    a diceless matrix would be a second engine, not a mode of this one.
 
 ## Engine package sketch
 
-How this SRD maps onto `src/aidm/engines/loner3e/` (today's oracle engine, renamed):
+How this SRD maps onto `src/aidm/engines/loner3e/`:
 
 - **Sheet** (`mechanics.py`): `concept`, `skills` (2 at creation), `frailties` (1), `gear` (2),
   `luck` Counter 6/6 — the SRD's protagonist shape, applied to every actor ("everything is a

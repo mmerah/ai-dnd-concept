@@ -2,10 +2,10 @@
   "entities": {
     "cloister_rat": {
       "concept": "A bloated rat that will not be driven off",
-      "edges": [
+      "skills": [
         "Hard to Frighten"
       ],
-      "burdens": [
+      "frailties": [
         "Slow and Heavy"
       ]
     }

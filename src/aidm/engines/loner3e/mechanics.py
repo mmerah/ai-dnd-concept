@@ -22,21 +22,21 @@ from aidm.state.world import GameState
 LUCK_MAX = 6
 TIES_PER_TWIST = 3
 
-type OracleEffect = Annotated[WorldOp | CounterChange, Field(discriminator="op")]
+type Loner3eEffect = Annotated[WorldOp | CounterChange, Field(discriminator="op")]
 
 
 class Sheet(Mutable):
     """The one sheet shape, whether it belongs to the player or to an NPC."""
 
     concept: str = ""
-    edges: tuple[str, ...] = ()
-    burdens: tuple[str, ...] = ()
+    skills: tuple[str, ...] = ()
+    frailties: tuple[str, ...] = ()
     gear: tuple[str, ...] = ()
     luck: Counter = Counter(current=LUCK_MAX, maximum=LUCK_MAX)
     milestones: Counter = Counter(current=0)
 
     def tags(self) -> tuple[str, ...]:
-        return (*self.edges, *self.burdens, *self.gear)
+        return (*self.skills, *self.frailties, *self.gear)
 
     def counters(self) -> dict[Slug, Counter]:
         return {"luck": self.luck}
@@ -62,7 +62,7 @@ def begin(state: GameState, rules: Mapping[EntityId, Rules]) -> None:
         authored = rules.get(entity.id)
         if entity.kind != "actor":
             if authored:
-                raise ValueError(f"oracle writes mechanics for actors only, not {entity.id!r}")
+                raise ValueError(f"loner3e writes mechanics for actors only, not {entity.id!r}")
             continue
         sheets[entity.id] = Sheet.model_validate(authored or {})
     write(state, Mechanics(sheets=sheets))
@@ -73,7 +73,7 @@ def commit(state: GameState) -> None:
     them; a payload missing the player is corruption, not a gap to fill."""
     mechanics = read(state)
     if PLAYER_ID not in mechanics.sheets:
-        raise ValueError("the oracle mechanics name no player")
+        raise ValueError("the loner3e mechanics name no player")
     for entity in state.world.of_kind("actor"):
         _ = mechanics.sheets.setdefault(entity.id, Sheet())
     if gone := sorted(set(mechanics.sheets) - state.world.all_ids()):
@@ -92,15 +92,15 @@ def describe(mechanics: Mechanics, entity: Entity) -> str:
         return ""
     lines = (
         f"concept: {sheet.concept}" if sheet.concept else "",
-        f"edges: {', '.join(sheet.edges)}" if sheet.edges else "",
-        f"burdens: {', '.join(sheet.burdens)}" if sheet.burdens else "",
+        f"skills: {', '.join(sheet.skills)}" if sheet.skills else "",
+        f"frailties: {', '.join(sheet.frailties)}" if sheet.frailties else "",
         f"gear: {', '.join(sheet.gear)}" if sheet.gear else "",
         f"pools: {render_counters(sheet.counters())}",
     )
     return "\n".join(line for line in lines if line)
 
 
-def apply(draft: GameState, effect: OracleEffect) -> list[Fact]:
+def apply(draft: GameState, effect: Loner3eEffect) -> list[Fact]:
     if not isinstance(effect, CounterChange):
         return apply_effect(draft, effect)
     mechanics = read(draft)
