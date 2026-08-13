@@ -3,25 +3,17 @@ from collections.abc import Mapping
 from random import Random
 from typing import Literal
 
-from aidm.engines.counters import adjust
-from aidm.state.apply import apply_effect, entity_fact, require_actor_here
+from aidm.engines.counters import adjust, read_mechanics, write_mechanics
+from aidm.state.apply import apply_effect, require_actor_here
 from aidm.state.base import Entity, Slug
 from aidm.state.dice import RollMode, roll
 from aidm.state.effects import Reveal
-from aidm.state.facts import Fact
+from aidm.state.facts import Fact, entity_fact
 from aidm.state.world import GameState
 
 from .actions import Question
-from .mechanics import TIES_PER_TWIST, Mechanics, Sheet, read, write
+from .mechanics import LUCK_MAX, TIES_PER_TWIST, Mechanics, Sheet
 
-TWIST_TABLE: tuple[tuple[str, str], ...] = (
-    ("A third party", "Appears"),
-    ("The hero", "Alters the location"),
-    ("An encounter", "Helps the hero"),
-    ("A physical event", "Hinders the hero"),
-    ("An emotional event", "Changes the goal"),
-    ("An object", "Ends the scene"),
-)
 HARM: dict[Slug, int] = {
     "yes-and": 3,
     "yes": 2,
@@ -34,9 +26,11 @@ HARM: dict[Slug, int] = {
 type Position = Literal["advantage", "neutral", "disadvantage"]
 
 
-def twist_pairing(subject: int, action: int) -> tuple[str, str]:
+def twist_pairing(
+    subject: int, action: int, twists: tuple[tuple[str, str], ...]
+) -> tuple[str, str]:
     """Subject from one d6, action from the other, as the SRD's twist table is read."""
-    return TWIST_TABLE[subject - 1][0], TWIST_TABLE[action - 1][1]
+    return twists[subject - 1][0], twists[action - 1][1]
 
 
 def twist_note(subject: str, action: str) -> str:
@@ -69,30 +63,35 @@ def _key(tag: str) -> str:
     return re.sub(r"[^a-z0-9]+", "-", tag.lower()).strip("-")
 
 
-def available_tags(draft: GameState, actor: Entity, sheet: Sheet) -> dict[str, str]:
-    known: dict[str, str] = {_key(tag): tag for tag in sheet.tags()}
+def available_tags(draft: GameState, actor: Entity, mechanics: Mechanics) -> dict[str, str]:
+    known: dict[str, str] = {}
     carriers = [actor, *draft.world.children(actor.id, "item")]
     place = draft.world.location_of(actor)
     if place is not None:
         carriers.append(draft.world.require(place))
         carriers.extend(draft.world.children(place))
     for carrier in carriers:
+        sheet = mechanics.sheets.get(carrier.id)
+        for tag in sheet.tags() if sheet is not None else ():
+            known[_key(tag)] = tag
         for trait in carrier.traits:
             known[_key(trait.id)] = trait.name
             known[_key(trait.name)] = trait.name
     return known
 
 
-def resolve_question(draft: GameState, action: Question, rng: Random) -> tuple[list[Fact], Slug]:
+def resolve_question(
+    draft: GameState, action: Question, rng: Random, twists: tuple[tuple[str, str], ...]
+) -> tuple[list[Fact], Slug]:
     actor = require_actor_here(draft, action.actor_id)
     facts = apply_effect(draft, Reveal(entity_id=action.actor_id))
-    mechanics = read(draft)
-    sheet = _sheet(mechanics, actor)
+    mechanics = read_mechanics(draft, Mechanics)
+    _ = _sheet(mechanics, actor)
     opponent: Entity | None = None
     if action.opponent_id is not None:
         opponent = require_actor_here(draft, action.opponent_id)
         facts.extend(apply_effect(draft, Reveal(entity_id=action.opponent_id)))
-    known = available_tags(draft, actor, sheet)
+    known = available_tags(draft, actor, mechanics)
     _refuse_unless_ready(known, actor, action, mechanics, opponent)
 
     leverage = {known[_key(tag)] for tag in action.leverage}
@@ -121,16 +120,18 @@ def resolve_question(draft: GameState, action: Question, rng: Random) -> tuple[l
         mechanics.twist.current += 1
         if mechanics.twist.current >= TIES_PER_TWIST:
             mechanics.twist.current = 0
-            facts.extend(_twist(draft, actor, rng))
-    write(draft, mechanics)
+            facts.extend(_twist(draft, actor, rng, twists))
+    write_mechanics(draft, mechanics)
     return facts, outcome
 
 
-def _twist(draft: GameState, actor: Entity, rng: Random) -> list[Fact]:
+def _twist(
+    draft: GameState, actor: Entity, rng: Random, twists: tuple[tuple[str, str], ...]
+) -> list[Fact]:
     """The SRD's table is rolled here so the dice trace; the Director only reads the pairing."""
     subject_die, subject_fact = roll("1d6", "twist — subject", rng)
     action_die, action_fact = roll("1d6", "twist — action", rng)
-    subject, action = twist_pairing(subject_die.total, action_die.total)
+    subject, action = twist_pairing(subject_die.total, action_die.total, twists)
     draft.world.pending_notes = (*draft.world.pending_notes, twist_note(subject, action))
     # Narrated the turn it lands, as the SRD interrupts the scene: an unnamed intrusion needs
     # no canon, and the note steers the next turn's development.
@@ -160,6 +161,11 @@ def _strike(
     if luck.current == 0:
         draft.world.pending_notes = (*draft.world.pending_notes, defeat_note(hit.name))
         facts.append(entity_fact(hit, "conflict_lost", f"{hit.name} is out of luck", {}))
+        # SRD: luck resets after conflicts, and a side at 0 is the only end the engine can see.
+        for side in (hit, striker):
+            pool = _sheet(mechanics, side).luck
+            refill = (pool.maximum or LUCK_MAX) - pool.current
+            facts.extend(adjust(side, "luck", pool, refill, "the conflict is over"))
     return facts
 
 

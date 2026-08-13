@@ -138,7 +138,7 @@ def test_trait_changes_round_trip_and_refuse_what_the_entity_does_not_carry() ->
 
     with pytest.raises(ValueError, match="carries no trait"):
         _ = turn(TraitChange(mode="remove", entity_id=PLAYER_ID, trait_id="hunted"))
-    # Kael's character sheet already carries `relic-hunter` as an authored edge.
+    # Kael's character sheet already carries `relic-hunter` as an authored skill.
     with pytest.raises(ValueError, match="already carries the trait"):
         _ = turn(TraitChange(mode="add", entity_id=PLAYER_ID, trait_id="relic-hunter"))
 

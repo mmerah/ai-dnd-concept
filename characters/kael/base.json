@@ -22,12 +22,12 @@
     {
       "id": "relic-hunter",
       "name": "Relic Hunter",
-      "text": "(edge) Kael knows how old sanctums conceal what matters."
+      "text": "(skill) Kael knows how old sanctums conceal what matters."
     },
     {
       "id": "marked-by-the-past",
       "name": "Marked by the Past",
-      "text": "(burden) Old scars make certain memories hard to face."
+      "text": "(frailty) Old scars make certain memories hard to face."
     }
   ]
 }

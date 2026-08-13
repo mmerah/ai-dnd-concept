@@ -22,7 +22,6 @@ EVERYTHING THAT EXISTS:
     skills: Hard to Frighten
     frailties: Slow and Heavy
     pools: luck 6/6
-    traits: Disease-Swollen[id=disease-swollen] — (edge) The rat is unnaturally hard to frighten or drive off.
 - the vault map[id=vault_map] (item) — carried — A creased chart of the undercroft, marking a stair the abbey's own plans deny.
 - a guttering lantern[id=lantern] (item) — carried — A dented tin lantern whose flame will not hold still.
   state:

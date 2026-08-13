@@ -10,7 +10,7 @@ state:
   frailties: Never Walks Away
   gear: Pry Bar, Chalk and Wire
   pools: luck 6/6
-  traits: Relic Hunter — (edge) Kael knows how old sanctums conceal what matters., Marked by the Past — (burden) Old scars make certain memories hard to face., Yes And
+  traits: Relic Hunter — (skill) Kael knows how old sanctums conceal what matters., Marked by the Past — (frailty) Old scars make certain memories hard to face., Yes And
 inventory:
 - a guttering lantern — A dented tin lantern whose flame will not hold still.
   state:

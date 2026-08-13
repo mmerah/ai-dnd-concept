@@ -2,14 +2,13 @@ from typing import Literal, Self
 
 from pydantic import Field, ValidationError, model_validator
 
-from aidm.engines.counters import counter_fact
+from aidm.engines.counters import counter_fact, read_mechanics, write_mechanics
 from aidm.engines.loader import Advancement, AdvancementOffer, ProposalBase
-from aidm.state.apply import explained_fact
 from aidm.state.base import PLAYER_ID, Entity
-from aidm.state.facts import Fact
+from aidm.state.facts import Fact, explained_fact
 from aidm.state.world import GameState
 
-from .mechanics import Sheet, read, write
+from .mechanics import Mechanics, Sheet
 
 OFFER = AdvancementOffer(
     prompt="A milestone is reached.",
@@ -51,12 +50,12 @@ class Loner3eAdvancement(Advancement):
         # Milestone-driven and deterministic, never inferred by a model: one milestone is earned
         # per resolved thread, so the offer tracks the count directly instead of guessing intent.
         earned = sum(1 for thread in state.world.threads.values() if thread.status == "resolved")
-        sheet = read(state).sheets[PLAYER_ID]
+        sheet = read_mechanics(state, Mechanics).sheets[PLAYER_ID]
         return OFFER if earned > sheet.milestones.current else None
 
     def advance(self, draft: GameState, proposal: ProposalBase) -> tuple[Fact, ...]:
         assert isinstance(proposal, Milestone)
-        mechanics = read(draft)
+        mechanics = read_mechanics(draft, Mechanics)
         sheet = mechanics.sheets[PLAYER_ID]
         player = draft.player
         grown = (
@@ -66,7 +65,7 @@ class Loner3eAdvancement(Advancement):
         )
         sheet.milestones.current += 1
         spent = counter_fact(player, "milestones", sheet.milestones, 1, "a milestone spent")
-        write(draft, mechanics)
+        write_mechanics(draft, mechanics)
         return (grown, spent)
 
     def violation(

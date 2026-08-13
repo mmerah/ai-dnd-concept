@@ -11,17 +11,15 @@ from aidm.content.store import write_character
 from aidm.state.base import EngineId, Slug, text_slug
 from aidm.state.creation import CreationStep, picked
 
-from .panels import show_engine_badge
+from .panels import page_header
 
 LOGGER = logging.getLogger(__name__)
 
 
 def creation_page(runtime: Runtime, engine_id: EngineId) -> None:
     engine = runtime.engine(engine_id)
-    with ui.header().classes("items-center").style("gap: 1rem"):
-        ui.button(icon="home", on_click=lambda: ui.navigate.to("/")).props("flat color=white round")
-        ui.label("New character").classes("text-lg font-bold")
-        show_engine_badge(engine.badge)
+    with page_header("New character", engine.badge):
+        pass
     creation = engine.creation
     with ui.column().classes("w-full q-pa-lg items-center"):
         if creation is None:
@@ -53,9 +51,17 @@ def creation_page(runtime: Runtime, engine_id: EngineId) -> None:
                     nonlocal rendered
                     steps = creation.steps(picks)
                     rendered = _shape(steps)
-                    offered = {step.id for step in steps}
-                    for stale in [step_id for step_id in picks if step_id not in offered]:
-                        del picks[stale]
+                    # A pack switch keeps step ids but swaps their options, so picks are pruned
+                    # by surviving option, not only by surviving step.
+                    offered = {step.id: {option.id for option in step.options} for step in steps}
+                    for step_id in list(picks):
+                        kept = tuple(
+                            pick for pick in picks[step_id] if pick in offered.get(step_id, set())
+                        )
+                        if kept:
+                            picks[step_id] = kept
+                        else:
+                            del picks[step_id]
                     for step in steps:
                         _step_widget(step, picks, refresh_form_and_preview)
                     ui.button("Create", icon="person_add", on_click=create).props(
@@ -103,11 +109,12 @@ def creation_page(runtime: Runtime, engine_id: EngineId) -> None:
                                 ui.label(text).classes("text-sm")
 
                 def refresh_form_and_preview() -> None:
-                    preview.refresh()
                     # Rebuilding drops what the player is part-way through answering, so the form
-                    # is rebuilt only when an answer changed what a step asks or offers.
+                    # is rebuilt only when an answer changed what a step asks or offers — and it
+                    # goes first, so the preview reads the pruned picks.
                     if _shape(creation.steps(picks)) != rendered:
                         form.refresh()
+                    preview.refresh()
 
                 form()
             with ui.card().classes("q-pa-lg").style("flex: 1; min-width: 0"):

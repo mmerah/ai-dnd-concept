@@ -1,0 +1,733 @@
+{
+  "name": "AP01 Fantasy",
+  "source": "https://lonersrd.zotiquestgames.com/adventure_packs/AP01_fantasy.html",
+  "license": "Adventure Pack 01: Fantasy, Loner SRD site (CC BY-SA 4.0), (c) Roberto Bisceglie / Zotiquest Games",
+  "concepts": [
+    {
+      "id": "silent-assassin",
+      "label": "Silent assassin",
+      "detail": ""
+    },
+    {
+      "id": "battle-scarred-warrior",
+      "label": "Battle-scarred warrior",
+      "detail": ""
+    },
+    {
+      "id": "wandering-spellbinder",
+      "label": "Wandering spellbinder",
+      "detail": ""
+    },
+    {
+      "id": "nimble-cutpurse",
+      "label": "Nimble cutpurse",
+      "detail": ""
+    },
+    {
+      "id": "valiant-swordmaiden",
+      "label": "Valiant swordmaiden",
+      "detail": ""
+    },
+    {
+      "id": "brooding-hexblade",
+      "label": "Brooding hexblade",
+      "detail": ""
+    },
+    {
+      "id": "weathered-veteran",
+      "label": "Weathered veteran",
+      "detail": ""
+    },
+    {
+      "id": "oath-bound-paladin",
+      "label": "Oath-bound paladin",
+      "detail": ""
+    },
+    {
+      "id": "graceful-duelist",
+      "label": "Graceful duelist",
+      "detail": ""
+    },
+    {
+      "id": "frenzied-berserker",
+      "label": "Frenzied berserker",
+      "detail": ""
+    },
+    {
+      "id": "reclusive-wildspeaker",
+      "label": "Reclusive wildspeaker",
+      "detail": ""
+    },
+    {
+      "id": "zealous-miracle-worker",
+      "label": "Zealous miracle-worker",
+      "detail": ""
+    },
+    {
+      "id": "forbidden-arcanist",
+      "label": "Forbidden arcanist",
+      "detail": ""
+    },
+    {
+      "id": "scheming-courtier",
+      "label": "Scheming courtier",
+      "detail": ""
+    },
+    {
+      "id": "bold-frontline-captain",
+      "label": "Bold frontline captain",
+      "detail": ""
+    },
+    {
+      "id": "fanatical-inquisitor",
+      "label": "Fanatical inquisitor",
+      "detail": ""
+    },
+    {
+      "id": "haunted-seer",
+      "label": "Haunted seer",
+      "detail": ""
+    },
+    {
+      "id": "silver-tongued-envoy",
+      "label": "Silver-tongued envoy",
+      "detail": ""
+    },
+    {
+      "id": "inspiring-skald",
+      "label": "Inspiring skald",
+      "detail": ""
+    },
+    {
+      "id": "quick-handed-burglar",
+      "label": "Quick-handed burglar",
+      "detail": ""
+    },
+    {
+      "id": "cold-blooded-sellblade",
+      "label": "Cold-blooded sellblade",
+      "detail": ""
+    },
+    {
+      "id": "inquisitive-loremaster",
+      "label": "Inquisitive loremaster",
+      "detail": ""
+    },
+    {
+      "id": "towering-gladiator",
+      "label": "Towering gladiator",
+      "detail": ""
+    },
+    {
+      "id": "loyal-zealot",
+      "label": "Loyal zealot",
+      "detail": ""
+    },
+    {
+      "id": "spirit-touched-wanderer",
+      "label": "Spirit-touched wanderer",
+      "detail": ""
+    },
+    {
+      "id": "disciplined-ascetic",
+      "label": "Disciplined ascetic",
+      "detail": ""
+    },
+    {
+      "id": "beast-wrangling-scout",
+      "label": "Beast-wrangling scout",
+      "detail": ""
+    },
+    {
+      "id": "masked-infiltrator",
+      "label": "Masked infiltrator",
+      "detail": ""
+    },
+    {
+      "id": "elven-blade-dancer",
+      "label": "Elven blade-dancer",
+      "detail": ""
+    },
+    {
+      "id": "brilliant-tinkerer",
+      "label": "Brilliant tinkerer",
+      "detail": ""
+    },
+    {
+      "id": "sea-worn-corsair",
+      "label": "Sea-worn corsair",
+      "detail": ""
+    },
+    {
+      "id": "regal-matriarch",
+      "label": "Regal matriarch",
+      "detail": ""
+    },
+    {
+      "id": "masked-fool-with-secrets",
+      "label": "Masked fool with secrets",
+      "detail": ""
+    },
+    {
+      "id": "master-tactician",
+      "label": "Master tactician",
+      "detail": ""
+    },
+    {
+      "id": "hard-bitten-navigator",
+      "label": "Hard-bitten navigator",
+      "detail": ""
+    },
+    {
+      "id": "renowned-artisan",
+      "label": "Renowned artisan",
+      "detail": ""
+    }
+  ],
+  "skills": [
+    {
+      "id": "swordsmanship",
+      "label": "Swordsmanship",
+      "detail": ""
+    },
+    {
+      "id": "herbalism",
+      "label": "Herbalism",
+      "detail": ""
+    },
+    {
+      "id": "beast-mastery",
+      "label": "Beast mastery",
+      "detail": ""
+    },
+    {
+      "id": "menace",
+      "label": "Menace",
+      "detail": ""
+    },
+    {
+      "id": "leathercraft",
+      "label": "Leathercraft",
+      "detail": ""
+    },
+    {
+      "id": "star-reading",
+      "label": "Star-reading",
+      "detail": ""
+    },
+    {
+      "id": "bowmanship",
+      "label": "Bowmanship",
+      "detail": ""
+    },
+    {
+      "id": "foraging",
+      "label": "Foraging",
+      "detail": ""
+    },
+    {
+      "id": "mount-handling",
+      "label": "Mount handling",
+      "detail": ""
+    },
+    {
+      "id": "command",
+      "label": "Command",
+      "detail": ""
+    },
+    {
+      "id": "needlework",
+      "label": "Needlework",
+      "detail": ""
+    },
+    {
+      "id": "field-medicine",
+      "label": "Field medicine",
+      "detail": ""
+    },
+    {
+      "id": "brawling",
+      "label": "Brawling",
+      "detail": ""
+    },
+    {
+      "id": "trailcraft",
+      "label": "Trailcraft",
+      "detail": ""
+    },
+    {
+      "id": "mapmaking",
+      "label": "Mapmaking",
+      "detail": ""
+    },
+    {
+      "id": "battlefield-sense",
+      "label": "Battlefield sense",
+      "detail": ""
+    },
+    {
+      "id": "gemcutting",
+      "label": "Gemcutting",
+      "detail": ""
+    },
+    {
+      "id": "element-shaping",
+      "label": "Element-shaping",
+      "detail": ""
+    },
+    {
+      "id": "lockpicking",
+      "label": "Lockpicking",
+      "detail": ""
+    },
+    {
+      "id": "trap-setting",
+      "label": "Trap-setting",
+      "detail": ""
+    },
+    {
+      "id": "wayfinding",
+      "label": "Wayfinding",
+      "detail": ""
+    },
+    {
+      "id": "construction",
+      "label": "Construction",
+      "detail": ""
+    },
+    {
+      "id": "rune-carving",
+      "label": "Rune-carving",
+      "detail": ""
+    },
+    {
+      "id": "shapechanging",
+      "label": "Shapechanging",
+      "detail": ""
+    },
+    {
+      "id": "spellweaving",
+      "label": "Spellweaving",
+      "detail": ""
+    },
+    {
+      "id": "net-casting",
+      "label": "Net-casting",
+      "detail": ""
+    },
+    {
+      "id": "terrain-lore",
+      "label": "Terrain lore",
+      "detail": ""
+    },
+    {
+      "id": "metalworking",
+      "label": "Metalworking",
+      "detail": ""
+    },
+    {
+      "id": "illusions",
+      "label": "Illusions",
+      "detail": ""
+    },
+    {
+      "id": "spirit-binding",
+      "label": "Spirit-binding",
+      "detail": ""
+    },
+    {
+      "id": "potion-making",
+      "label": "Potion-making",
+      "detail": ""
+    },
+    {
+      "id": "camp-cooking",
+      "label": "Camp cooking",
+      "detail": ""
+    },
+    {
+      "id": "persuasion",
+      "label": "Persuasion",
+      "detail": ""
+    },
+    {
+      "id": "woodcraft",
+      "label": "Woodcraft",
+      "detail": ""
+    },
+    {
+      "id": "necromancy",
+      "label": "Necromancy",
+      "detail": ""
+    },
+    {
+      "id": "anatomical-lore",
+      "label": "Anatomical lore",
+      "detail": ""
+    }
+  ],
+  "frailties": [
+    {
+      "id": "proud",
+      "label": "Proud",
+      "detail": ""
+    },
+    {
+      "id": "unreliable",
+      "label": "Unreliable",
+      "detail": ""
+    },
+    {
+      "id": "indecisive",
+      "label": "Indecisive",
+      "detail": ""
+    },
+    {
+      "id": "perfectionist",
+      "label": "Perfectionist",
+      "detail": ""
+    },
+    {
+      "id": "notorious",
+      "label": "Notorious",
+      "detail": ""
+    },
+    {
+      "id": "hot-headed",
+      "label": "Hot-headed",
+      "detail": ""
+    },
+    {
+      "id": "faint-hearted",
+      "label": "Faint-hearted",
+      "detail": ""
+    },
+    {
+      "id": "slothful",
+      "label": "Slothful",
+      "detail": ""
+    },
+    {
+      "id": "gullible",
+      "label": "Gullible",
+      "detail": ""
+    },
+    {
+      "id": "distrustful",
+      "label": "Distrustful",
+      "detail": ""
+    },
+    {
+      "id": "vengeful",
+      "label": "Vengeful",
+      "detail": ""
+    },
+    {
+      "id": "secretive",
+      "label": "Secretive",
+      "detail": ""
+    },
+    {
+      "id": "covetous",
+      "label": "Covetous",
+      "detail": ""
+    },
+    {
+      "id": "self-serving",
+      "label": "Self-serving",
+      "detail": ""
+    },
+    {
+      "id": "apathetic",
+      "label": "Apathetic",
+      "detail": ""
+    },
+    {
+      "id": "spiteful",
+      "label": "Spiteful",
+      "detail": ""
+    },
+    {
+      "id": "overindulgent",
+      "label": "Overindulgent",
+      "detail": ""
+    },
+    {
+      "id": "nervous",
+      "label": "Nervous",
+      "detail": ""
+    },
+    {
+      "id": "envious",
+      "label": "Envious",
+      "detail": ""
+    },
+    {
+      "id": "obstinate",
+      "label": "Obstinate",
+      "detail": ""
+    },
+    {
+      "id": "blunt",
+      "label": "Blunt",
+      "detail": ""
+    },
+    {
+      "id": "overbearing",
+      "label": "Overbearing",
+      "detail": ""
+    },
+    {
+      "id": "lustful",
+      "label": "Lustful",
+      "detail": ""
+    },
+    {
+      "id": "reckless",
+      "label": "Reckless",
+      "detail": ""
+    },
+    {
+      "id": "possessive",
+      "label": "Possessive",
+      "detail": ""
+    },
+    {
+      "id": "rash",
+      "label": "Rash",
+      "detail": ""
+    },
+    {
+      "id": "boastful",
+      "label": "Boastful",
+      "detail": ""
+    },
+    {
+      "id": "rigid-minded",
+      "label": "Rigid-minded",
+      "detail": ""
+    },
+    {
+      "id": "lazy",
+      "label": "Lazy",
+      "detail": ""
+    },
+    {
+      "id": "narrow-minded",
+      "label": "Narrow-minded",
+      "detail": ""
+    },
+    {
+      "id": "deceptive",
+      "label": "Deceptive",
+      "detail": ""
+    },
+    {
+      "id": "naive",
+      "label": "Naïve",
+      "detail": ""
+    },
+    {
+      "id": "cynical",
+      "label": "Cynical",
+      "detail": ""
+    },
+    {
+      "id": "insecure",
+      "label": "Insecure",
+      "detail": ""
+    },
+    {
+      "id": "arrogant",
+      "label": "Arrogant",
+      "detail": ""
+    },
+    {
+      "id": "bigoted",
+      "label": "Bigoted",
+      "detail": ""
+    }
+  ],
+  "gear": [
+    {
+      "id": "longsword",
+      "label": "Longsword",
+      "detail": ""
+    },
+    {
+      "id": "hunting-bow",
+      "label": "Hunting bow",
+      "detail": ""
+    },
+    {
+      "id": "compact-crossbow",
+      "label": "Compact crossbow",
+      "detail": ""
+    },
+    {
+      "id": "curved-dagger",
+      "label": "Curved dagger",
+      "detail": ""
+    },
+    {
+      "id": "boar-spear",
+      "label": "Boar spear",
+      "detail": ""
+    },
+    {
+      "id": "bearded-axe",
+      "label": "Bearded axe",
+      "detail": ""
+    },
+    {
+      "id": "morning-star",
+      "label": "Morning star",
+      "detail": ""
+    },
+    {
+      "id": "spiked-flail",
+      "label": "Spiked flail",
+      "detail": ""
+    },
+    {
+      "id": "round-shield",
+      "label": "Round shield",
+      "detail": ""
+    },
+    {
+      "id": "iron-helm",
+      "label": "Iron helm",
+      "detail": ""
+    },
+    {
+      "id": "chainmail",
+      "label": "Chainmail",
+      "detail": ""
+    },
+    {
+      "id": "reinforced-bracers",
+      "label": "Reinforced bracers",
+      "detail": ""
+    },
+    {
+      "id": "legplates",
+      "label": "Legplates",
+      "detail": ""
+    },
+    {
+      "id": "silent-boots",
+      "label": "Silent boots",
+      "detail": ""
+    },
+    {
+      "id": "hooded-cloak",
+      "label": "Hooded cloak",
+      "detail": ""
+    },
+    {
+      "id": "travel-pack",
+      "label": "Travel pack",
+      "detail": ""
+    },
+    {
+      "id": "arrow-case",
+      "label": "Arrow case",
+      "detail": ""
+    },
+    {
+      "id": "broadhead-arrows",
+      "label": "Broadhead arrows",
+      "detail": ""
+    },
+    {
+      "id": "quarrels",
+      "label": "Quarrels",
+      "detail": ""
+    },
+    {
+      "id": "climbing-rope",
+      "label": "Climbing rope",
+      "detail": ""
+    },
+    {
+      "id": "hooked-launcher",
+      "label": "Hooked launcher",
+      "detail": ""
+    },
+    {
+      "id": "oil-lantern",
+      "label": "Oil lantern",
+      "detail": ""
+    },
+    {
+      "id": "wax-torch",
+      "label": "Wax torch",
+      "detail": ""
+    },
+    {
+      "id": "flint-and-tinder",
+      "label": "Flint and tinder",
+      "detail": ""
+    },
+    {
+      "id": "water-flask",
+      "label": "Water flask",
+      "detail": ""
+    },
+    {
+      "id": "dried-meats",
+      "label": "Dried meats",
+      "detail": ""
+    },
+    {
+      "id": "woolen-bedroll",
+      "label": "Woolen bedroll",
+      "detail": ""
+    },
+    {
+      "id": "canvas-tent",
+      "label": "Canvas tent",
+      "detail": ""
+    },
+    {
+      "id": "rune-compass",
+      "label": "Rune compass",
+      "detail": ""
+    },
+    {
+      "id": "hand-sketched-map",
+      "label": "Hand-sketched map",
+      "detail": ""
+    },
+    {
+      "id": "seer-s-lens",
+      "label": "Seer's lens",
+      "detail": ""
+    },
+    {
+      "id": "star-scope",
+      "label": "Star scope",
+      "detail": ""
+    },
+    {
+      "id": "elixir-pouch",
+      "label": "Elixir pouch",
+      "detail": ""
+    },
+    {
+      "id": "medic-s-satchel",
+      "label": "Medic's satchel",
+      "detail": ""
+    },
+    {
+      "id": "thieves-tools",
+      "label": "Thieves' tools",
+      "detail": ""
+    },
+    {
+      "id": "ornate-lute",
+      "label": "Ornate lute",
+      "detail": ""
+    }
+  ]
+}

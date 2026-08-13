@@ -1,4 +1,4 @@
-from collections.abc import Mapping, Sequence
+from collections.abc import Sequence
 
 from pydantic import JsonValue
 
@@ -12,7 +12,7 @@ from .effects import (
     TraitChange,
     WorldEffect,
 )
-from .facts import CORE, Fact
+from .facts import CORE, Fact, explained, explained_fact
 from .world import CONNECTED, LOCKED_TAG, PARTY_MEMBER, GameState, Hook, Relation
 
 
@@ -28,14 +28,8 @@ def apply_effect(draft: GameState, effect: WorldEffect) -> list[Fact]:
             return _add_trait(draft, effect)
         case TraitChange():
             return _remove_trait(draft, effect)
-        case RelationChange(mode="add"):
-            return _add_relation(draft, effect)
-        case RelationChange(mode="remove"):
-            return _remove_relation(draft, effect)
-        case RelationChange(mode="untag"):
-            return _untag_relation(draft, effect)
         case RelationChange():
-            return _reveal_relation(draft, effect)
+            return _relation_change(draft, effect)
         case AdvanceThread():
             return _advance_thread(draft, effect)
 
@@ -67,32 +61,6 @@ def _require_kind(state: GameState, entity_id: EntityId, kind: Kind) -> Entity:
             "Use an id of the kind this field asks for."
         )
     return entity
-
-
-def entity_fact(
-    entity: Entity, kind: str, trace: str, data: Mapping[str, JsonValue], *, narrate: bool = True
-) -> Fact:
-    """An entity the player has not learned of narrates nothing, so no unknown name leaks."""
-    return Fact(
-        source=CORE,
-        kind=kind,
-        trace=trace,
-        narrator=trace if narrate and entity.known else None,
-        data={"entity_id": entity.id, **data},
-    )
-
-
-def explained_fact(
-    entity: Entity,
-    kind: str,
-    trace: str,
-    data: Mapping[str, JsonValue],
-    why: str,
-    *,
-    narrate: bool = True,
-) -> Fact:
-    """The `why` is what the advancement panel shows the player before they confirm."""
-    return entity_fact(entity, kind, f"{trace} ({why})" if why else trace, data, narrate=narrate)
 
 
 def reveal_target(draft: GameState, entity_id: EntityId) -> tuple[Entity, list[Fact]]:
@@ -226,66 +194,75 @@ def _relation_of(
     return relation, draft.world.require(relation.source), draft.world.require(relation.target)
 
 
-def _add_relation(draft: GameState, effect: RelationChange) -> list[Fact]:
-    if draft.world.relation(effect.kind, effect.source, effect.target) is not None:
-        raise ValueError(
-            f"a {effect.kind!r} relation already joins {effect.source!r} and {effect.target!r}"
+def _relation_change(draft: GameState, effect: RelationChange) -> list[Fact]:
+    seen: list[Fact] = []
+    if effect.mode == "add":
+        if draft.world.relation(effect.kind, effect.source, effect.target) is not None:
+            raise ValueError(
+                f"a {effect.kind!r} relation already joins {effect.source!r} and {effect.target!r}"
+            )
+        source = (
+            require_actor_here(draft, effect.source)
+            if effect.kind == PARTY_MEMBER
+            else _require(draft, effect.source)
         )
-    source = (
-        require_actor_here(draft, effect.source)
-        if effect.kind == PARTY_MEMBER
-        else _require(draft, effect.source)
-    )
-    receiver = _require(draft, effect.target)
-    relation = Relation(
-        kind=effect.kind,
-        source=effect.source,
-        target=effect.target,
-        # a connection is walkable both ways, so `connected` is the one undirected kind
-        directed=effect.kind != CONNECTED,
-        known=True,
-    )
-    seen = [*draft.reveal(source), *draft.reveal(receiver)]
-    draft.world.relations[relation.id] = relation
-    trace = f"{source.name} — {relation.kind} — {receiver.name}"
-    data = {"kind": relation.kind, "target": relation.target}
-    return [*seen, explained_fact(source, "relation_added", trace, data, effect.why)]
-
-
-def _remove_relation(draft: GameState, effect: RelationChange) -> list[Fact]:
-    relation, source, receiver = _relation_of(draft, effect.kind, effect.source, effect.target)
-    del draft.world.relations[relation.id]
-    trace = f"{source.name} — {relation.kind} — {receiver.name} broken"
-    data = {"kind": relation.kind, "target": relation.target}
-    return [
-        explained_fact(source, "relation_removed", trace, data, effect.why, narrate=relation.known)
-    ]
-
-
-def _untag_relation(draft: GameState, effect: RelationChange) -> list[Fact]:
-    relation, source, receiver = _relation_of(draft, effect.kind, effect.source, effect.target)
-    if effect.tag not in relation.tags:
-        held = ", ".join(sorted(relation.tags)) or "(none)"
-        raise ValueError(
-            f"the {relation.kind!r} relation carries no tag {effect.tag!r}. Its tags are: {held}"
+        receiver = _require(draft, effect.target)
+        relation = Relation(
+            kind=effect.kind,
+            source=effect.source,
+            target=effect.target,
+            # a connection is walkable both ways, so `connected` is the one undirected kind
+            directed=effect.kind != CONNECTED,
+            known=True,
         )
-    relation.tags.remove(effect.tag)
-    trace = f"{source.name} — {relation.kind} — {receiver.name} untagged {effect.tag}"
-    data = {"kind": relation.kind, "target": relation.target, "tag": effect.tag}
-    return [
-        explained_fact(source, "relation_untagged", trace, data, effect.why, narrate=relation.known)
-    ]
-
-
-def _reveal_relation(draft: GameState, effect: RelationChange) -> list[Fact]:
-    relation, source, receiver = _relation_of(draft, effect.kind, effect.source, effect.target)
-    if relation.known:
-        return []
-    seen = [*draft.reveal(source), *draft.reveal(receiver)]
-    relation.known = True
-    trace = f"{source.name} — {relation.kind} — {receiver.name} revealed"
-    data = {"kind": relation.kind, "target": relation.target}
-    return [*seen, explained_fact(source, "relation_revealed", trace, data, effect.why)]
+        seen = [*draft.reveal(source), *draft.reveal(receiver)]
+        draft.world.relations[relation.id] = relation
+    else:
+        relation, source, receiver = _relation_of(draft, effect.kind, effect.source, effect.target)
+    joined = f"{source.name} — {relation.kind} — {receiver.name}"
+    data: dict[str, JsonValue] = {"kind": relation.kind, "target": relation.target}
+    match effect.mode:
+        case "add":
+            return [*seen, explained_fact(source, "relation_added", joined, data, effect.why)]
+        case "remove":
+            del draft.world.relations[relation.id]
+            return [
+                explained_fact(
+                    source,
+                    "relation_removed",
+                    f"{joined} broken",
+                    data,
+                    effect.why,
+                    narrate=relation.known,
+                )
+            ]
+        case "untag":
+            if effect.tag not in relation.tags:
+                held = ", ".join(sorted(relation.tags)) or "(none)"
+                raise ValueError(
+                    f"the {relation.kind!r} relation carries no tag {effect.tag!r}. "
+                    f"Its tags are: {held}"
+                )
+            relation.tags.remove(effect.tag)
+            return [
+                explained_fact(
+                    source,
+                    "relation_untagged",
+                    f"{joined} untagged {effect.tag}",
+                    {**data, "tag": effect.tag},
+                    effect.why,
+                    narrate=relation.known,
+                )
+            ]
+        case "reveal":
+            if relation.known:
+                return []
+            seen = [*draft.reveal(source), *draft.reveal(receiver)]
+            relation.known = True
+            return [
+                *seen,
+                explained_fact(source, "relation_revealed", f"{joined} revealed", data, effect.why),
+            ]
 
 
 def _advance_thread(draft: GameState, effect: AdvanceThread) -> list[Fact]:
@@ -301,7 +278,7 @@ def _advance_thread(draft: GameState, effect: AdvanceThread) -> list[Fact]:
         Fact(
             source=CORE,
             kind="thread_advanced",
-            trace=f"{moved} ({effect.why})" if effect.why else moved,
+            trace=explained(moved, effect.why),
             data={"thread_id": thread.id, "status": thread.status, "stage": thread.stage},
         )
     ]

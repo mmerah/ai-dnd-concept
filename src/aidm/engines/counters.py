@@ -2,9 +2,8 @@ from typing import Annotated, Literal, Self
 
 from pydantic import Field, model_validator
 
-from aidm.state.apply import explained_fact
 from aidm.state.base import Entity, EntityId, Frozen, Mutable, Slug
-from aidm.state.facts import Fact
+from aidm.state.facts import Fact, explained_fact
 from aidm.state.world import GameState
 
 
@@ -15,26 +14,24 @@ def write_mechanics(state: GameState, mechanics: Mutable) -> None:
     state.mechanics = payload
 
 
+def read_mechanics[M: Mutable](state: GameState, model: type[M]) -> M:
+    return model.model_validate(state.mechanics)
+
+
 class Counter(Mutable):
     current: int
     maximum: int | None = None  # None is unbounded: wealth, experience
-    minimum: int = 0  # below zero for a pool like Ironsworn's momentum
-    recharge: str | None = None  # a label the engine maps to what refills it
 
     @model_validator(mode="after")
     def _within_bounds(self) -> Self:
-        if self.maximum is not None and self.maximum < self.minimum:
-            raise ValueError(f"maximum {self.maximum} is below minimum {self.minimum}")
-        if self.current < self.minimum:
-            raise ValueError(f"{self.current} is below minimum {self.minimum}")
+        if self.current < 0:
+            raise ValueError(f"{self.current} is below zero")
         if self.maximum is not None and self.current > self.maximum:
             raise ValueError(f"{self.current} is above maximum {self.maximum}")
-        if self.maximum is None and self.recharge is not None:
-            raise ValueError("an unbounded counter has no maximum to recharge to")
         return self
 
     def clamped(self, value: int) -> int:
-        bounded = max(value, self.minimum)
+        bounded = max(value, 0)
         return bounded if self.maximum is None else min(bounded, self.maximum)
 
 
@@ -89,10 +86,9 @@ def adjust(entity: Entity, key: str, counter: Counter, amount: int, why: str) ->
 
 
 def spend(entity: Entity, key: str, counter: Counter, amount: int, why: str) -> list[Fact]:
-    if counter.current - amount < counter.minimum:
+    if counter.current < amount:
         raise ValueError(
-            f"{entity.name} holds {counter.current} {key} and cannot go below "
-            f"{counter.minimum}, so {amount} cannot be spent."
+            f"{entity.name} holds {counter.current} {key}, so {amount} cannot be spent."
         )
     counter.current -= amount
     return [counter_fact(entity, key, counter, -amount, why or f"spent {key}")]
@@ -105,9 +101,4 @@ def counter_fact(entity: Entity, key: str, counter: Counter, delta: int, why: st
 
 
 def render_counters(counters: dict[Slug, Counter]) -> str:
-    return ", ".join(_counter(key, counters[key]) for key in sorted(counters))
-
-
-def _counter(key: str, counter: Counter) -> str:
-    recharge = f" ({counter.recharge})" if counter.recharge is not None else ""
-    return f"{key} {pool(counter)}{recharge}"
+    return ", ".join(f"{key} {pool(counters[key])}" for key in sorted(counters))

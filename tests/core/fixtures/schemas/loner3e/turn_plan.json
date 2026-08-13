@@ -381,7 +381,7 @@
     },
     "TraitChange": {
       "additionalProperties": false,
-      "description": "Put a lasting condition, edge, or burden on an entity, or lift one the fiction ends. The\ntrait shows the id written out: `battle-worn` appears as Battle Worn.",
+      "description": "Put a lasting condition, skill, or frailty on an entity, or lift one the fiction ends. The\ntrait shows the id written out: `battle-worn` appears as Battle Worn.",
       "properties": {
         "op": {
           "const": "trait-change",

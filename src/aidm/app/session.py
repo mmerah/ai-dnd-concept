@@ -4,7 +4,7 @@ from random import Random
 
 from aidm.config import Settings
 from aidm.content.authored import Character, Scenario
-from aidm.content.store import FileSaves, FileTraces, load_character, load_scenario
+from aidm.content.store import FileStore, load_character, load_scenario
 from aidm.engines.loader import Advancement, AdvancementOffer, Engine, ProposalBase, engine_class
 from aidm.state.base import PLAYER_ID, SAVE_VERSION, EngineId, Entity
 from aidm.state.facts import Fact
@@ -83,11 +83,8 @@ class GameSession:
     engine: Engine
     stages: Stages
     advancer: Advancer | None
-    saves: FileSaves
-    traces: FileTraces
-    history_window: int
-    max_growth: int
-    max_memories: int
+    store: FileStore
+    settings: Settings
     rng: Random = field(default_factory=Random)
     entries: list[TraceEntry] = field(default_factory=list)
     busy: bool = False
@@ -98,15 +95,15 @@ class GameSession:
     def __post_init__(self) -> None:
         if self.engine.id != self.target.engine:
             raise ValueError(f"{self.target} was opened with the {self.engine.id!r} engine")
-        shell = self.saves.shell(self.slug)
+        shell = self.store.shell(self.slug)
         if shell is not None and shell.engine != self.engine.id:
             raise ValueError(f"save {self.slug!r} plays {shell.engine!r}, not {self.engine.id!r}")
-        saved = None if shell is None else self.saves.load(self.slug)
+        saved = None if shell is None else self.store.load(self.slug)
         if saved is None:
             self.state = self._begun()
             return
         self.state = self._resumable(saved)
-        self.entries = list(self.traces.load(self.slug))
+        self.entries = list(self.store.load_trace(self.slug))
 
     @property
     def slug(self) -> str:
@@ -127,9 +124,7 @@ class GameSession:
             prompt,
             engine=self.engine,
             stages=self.stages,
-            history_window=self.history_window,
-            max_growth=self.max_growth,
-            max_memories=self.max_memories,
+            settings=self.settings,
             rng=self.rng,
             on_step=on_step,
         )
@@ -176,15 +171,14 @@ class GameSession:
 
     def restart(self) -> None:
         opening = self._begun()
-        self.saves.discard(self.slug)
-        self.traces.discard(self.slug)
+        self.store.discard(self.slug)
         self.state = opening
         self.entries = []
         self.drafted = None
 
     def _commit(self, state: GameState, entry: TraceEntry) -> None:
-        self.saves.save(self.slug, state)
-        self.traces.append(self.slug, entry)
+        self.store.save(self.slug, state)
+        self.store.append_trace(self.slug, entry)
         self.state = state
         self.entries.append(entry)
 
@@ -243,9 +237,6 @@ class Runtime:
             engine=engine,
             stages=build_stages(engine, config),
             advancer=Advancer.of(engine, config),
-            saves=FileSaves(config.saves_dir),
-            traces=FileTraces(config.saves_dir),
-            history_window=config.history_window,
-            max_growth=config.max_growth,
-            max_memories=config.max_memories,
+            store=FileStore(config.saves_dir),
+            settings=config,
         )

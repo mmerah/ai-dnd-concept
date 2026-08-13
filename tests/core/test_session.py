@@ -7,23 +7,23 @@ from loner3e_test_support import loner3e_session as session
 
 from aidm.app.session import Runtime
 from aidm.content.authored import ScenarioMeta
-from aidm.content.store import FileSaves, FileTraces
+from aidm.content.store import FileStore
 
 
 def test_opening_does_not_save_and_restart_discards_durable_state(tmp_path: Path) -> None:
-    saves, traces = FileSaves(tmp_path), FileTraces(tmp_path)
+    store = FileStore(tmp_path)
     game = session(tmp_path)
-    assert saves.slugs() == ()
+    assert store.slugs() == ()
 
-    saves.save("poc", updated(game.state, turn=7))
+    store.save("poc", updated(game.state, turn=7))
     assert session(tmp_path).state.turn == 7
 
     game = session(tmp_path)
     game.restart()
     assert game.state.turn == 0
     assert game.entries == []
-    assert saves.load("poc") is None
-    assert traces.load("poc") == ()
+    assert store.load("poc") is None
+    assert store.load_trace("poc") == ()
 
 
 @pytest.mark.parametrize(
@@ -39,7 +39,7 @@ def test_resume_refuses_a_save_that_is_not_this_game(
 ) -> None:
     """A save names its own origin by id; the meta comparison catches an edit under a kept id."""
     game = session(tmp_path)
-    FileSaves(tmp_path).save("poc", updated(game.state, **change))
+    FileStore(tmp_path).save("poc", updated(game.state, **change))
 
     with pytest.raises(ValueError, match=message):
         session(tmp_path)

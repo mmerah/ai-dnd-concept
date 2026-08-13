@@ -114,7 +114,8 @@ async def played(
     on_step: Callable[[str], None] | None = None,
 ) -> TurnResult:
     """The turn with every role stubbed, built the way the session builds it."""
-    stages = build_stages(engine, settings())
+    config = settings()
+    stages = build_stages(engine, config)
     roles = (stages.scene, stages.director, stages.narrator, stages.worldkeeper)
     models = (
         scene or FunctionModel(scripted(structured(focus="Kael acts."))),
@@ -130,9 +131,7 @@ async def played(
             prompt,
             engine=engine,
             stages=stages,
-            history_window=6,
-            max_growth=3,
-            max_memories=2,
+            settings=config,
             rng=Random(0) if rng is None else rng,
             on_step=on_step,
         )

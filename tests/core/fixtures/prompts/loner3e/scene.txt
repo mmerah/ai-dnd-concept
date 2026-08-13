@@ -10,7 +10,7 @@ state:
   frailties: Never Walks Away
   gear: Pry Bar, Chalk and Wire
   pools: luck 6/6
-  traits: Relic Hunter[id=relic-hunter] — (edge) Kael knows how old sanctums conceal what matters., Marked by the Past[id=marked-by-the-past] — (burden) Old scars make certain memories hard to face.
+  traits: Relic Hunter[id=relic-hunter] — (skill) Kael knows how old sanctums conceal what matters., Marked by the Past[id=marked-by-the-past] — (frailty) Old scars make certain memories hard to face.
 inventory:
 - a guttering lantern[id=lantern] — A dented tin lantern whose flame will not hold still.
   state:
@@ -42,7 +42,6 @@ EXISTS BUT THE PLAYER DOES NOT KNOW IT YET:
     skills: Hard to Frighten
     frailties: Slow and Heavy
     pools: luck 6/6
-    traits: Disease-Swollen[id=disease-swollen] — (edge) The rat is unnaturally hard to frighten or drive off.
 - the vault map[id=vault_map] (item) — at the abbot's study — A creased chart of the undercroft, marking a stair the abbey's own plans deny.
 
 ACTIVE THREADS:

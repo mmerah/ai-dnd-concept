@@ -7,7 +7,7 @@ from ui_test_support import SCENARIOS, ui_settings
 from aidm.app.launcher import LauncherController, LaunchTarget, load_catalog
 from aidm.app.session import Runtime
 from aidm.config import Settings
-from aidm.content.store import ENCODING, FileSaves
+from aidm.content.store import ENCODING, FileStore
 from aidm.state.base import EngineId
 from aidm.state.world import GameState
 
@@ -66,7 +66,7 @@ def test_content_is_offered_only_for_the_rulesets_it_ships(tmp_path: Path) -> No
 
 def test_launcher_lists_and_resolves_an_existing_save(tmp_path: Path) -> None:
     config = ui_settings(tmp_path)
-    FileSaves(tmp_path).save("old-game", _opening_state(config, LONER3E))
+    FileStore(tmp_path).save("old-game", _opening_state(config, LONER3E))
 
     controller = LauncherController(load_catalog(config))
     saved = controller.catalog.save("old-game")
@@ -88,7 +88,7 @@ def test_a_save_whose_rules_were_withdrawn_is_reported_not_offered(tmp_path: Pat
     """The save still names its origin; that origin no longer ships the overlay it needs."""
     config = ui_settings(tmp_path)
     state = _opening_state(config, LONER3E)
-    FileSaves(tmp_path).save("withdrawn", updated(state, engine="retired"))
+    FileStore(tmp_path).save("withdrawn", updated(state, engine="retired"))
 
     saved = load_catalog(config).save("withdrawn")
 
@@ -101,7 +101,7 @@ def test_a_save_from_another_build_is_reported_not_offered(tmp_path: Path) -> No
     config = ui_settings(tmp_path)
     slug = "whispering-vault--kael--loner3e"
     state = _opening_state(config, LONER3E)
-    FileSaves(tmp_path).save(slug, updated(state, save_version=state.save_version - 1))
+    FileStore(tmp_path).save(slug, updated(state, save_version=state.save_version - 1))
 
     controller = LauncherController(load_catalog(config))
 
@@ -113,7 +113,7 @@ def test_a_save_from_another_build_is_reported_not_offered(tmp_path: Path) -> No
 
 def test_one_corrupt_save_does_not_hide_the_others_and_stays_readable(tmp_path: Path) -> None:
     config = ui_settings(tmp_path)
-    FileSaves(tmp_path).save("good", _opening_state(config, LONER3E))
+    FileStore(tmp_path).save("good", _opening_state(config, LONER3E))
     (tmp_path / "broken.json").write_text("{not json", encoding=ENCODING)
 
     catalog = load_catalog(config)

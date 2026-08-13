@@ -92,3 +92,17 @@ through an advisor role; the player reviews each change and its reason, then con
 - `PLAN.md`: the phased plan for what is built next.
 - `docs/ROADMAP.md`: known weaknesses and direction.
 - `IDEAS.md`: loose ends and the idea backlog.
+
+## Licensing
+
+- `docs/LONER-3E.md`, the loner3e engine's prose and instruction files, and its content packs
+  (`src/aidm/engines/loner3e/packs/`) derive from the Loner 3e SRD and are CC BY-SA 4.0 —
+  attribution: Roberto Bisceglie / Zotiquest Games, <https://lonersrd.zotiquestgames.com>.
+- `packs/ap01-fantasy.json` derives from the SRD site's AP01 Fantasy page, whose own footer
+  states only "© Roberto Bisceglie" while the site declares CC BY-SA 4.0. It is treated as
+  covered by the site's license; a one-line email to the publisher would settle it if certainty
+  is ever wanted.
+- The shelf extractions carry their systems' licenses: `docs/24XX.md` CC BY 4.0 (Jason Tocci),
+  `docs/CAIRN-2E.md` CC BY-SA 4.0 (Yochai Gal).
+- The license of the rest of the code is an open decision the maintainer has not made yet; this
+  section records that rather than inventing one.

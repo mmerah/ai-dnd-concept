@@ -1,18 +1,18 @@
 from core_test_support import LONER3E, game, updated, with_entity
 
 from aidm.content.authored import ScenarioMeta
+from aidm.engines.counters import write_mechanics
 from aidm.engines.loader import EntityRenderer
-from aidm.engines.loner3e.mechanics import Mechanics, Sheet, write
+from aidm.engines.loner3e.mechanics import Mechanics, Sheet
 from aidm.state.base import PLAYER_ID, SAVE_VERSION, Entity, EntityId, Kind
 from aidm.state.world import GameState, WorldState
 from aidm.turn.prompts import (
-    SceneSnapshot,
-    VisibleScene,
     prompt_id,
     render_director,
     render_narrator,
     render_worldkeeper,
 )
+from aidm.turn.scene import SceneSnapshot, VisibleScene
 
 DESCRIPTION = "She writes in a compact cipher."
 HOOK = "Her missing folio points toward the vault."
@@ -47,7 +47,7 @@ def state() -> GameState:
         engine=LONER3E,
         world=WorldState(entities={entity.id: entity for entity in entities}),
     )
-    write(
+    write_mechanics(
         held,
         Mechanics(sheets={entity.id: Sheet() for entity in entities if entity.kind == "actor"}),
     )

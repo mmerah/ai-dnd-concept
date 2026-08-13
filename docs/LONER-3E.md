@@ -884,34 +884,39 @@ Rows are the Risk Die, columns the Chance Die.
 Every divergence between `src/aidm/engines/loner3e/` and the rules above, with the reason it
 stands. Nothing diverges silently: a rule not listed here is implemented as printed.
 
-1. **Luck reset is Director-judged, not automatic.** The SRD resets Luck "after conflicts"; the
-   engine does not track where a conflict ends — that is a boundary in the fiction, not in state.
-   The defeat note tells the Director the conflict is over, and they write the reset as a
-   `counter-change` once the story has given the loser a breath.
-2. **Milestones trigger per resolved thread, not post-adventure.** SRD growth happens when an
+1. **Milestones trigger per resolved thread, not post-adventure.** SRD growth happens when an
    adventure ends. Threads are this app's adventures, and a resolved thread is the one growth
    trigger the engine can see without asking a model to judge that the story is over.
+2. **One change per milestone.** The SRD's post-adventure growth allows several changes at once;
+   a milestone here buys exactly one, sized to its per-thread trigger.
 3. **Goal, Motive and Nemesis are not sheet fields.** They map to the shared world: threads carry
    what the character is working toward, entities and relations carry who stands in the way. The
    SRD asks for them to emerge from play, and in this app play writes them to the world.
 4. **Sheets are actors-only.** The SRD gives non-living characters — objects, vehicles, curses —
    a Concept, Skills, Frailties and Luck. Here they are entities with traits, which the resolver
    already reads as tags; a non-living character gets a sheet the first time an engine needs one.
-5. **The Scene Director replaces the player's own judgment calls.** The optional next-scene mood
-   roll (1d6 Dramatic / Quiet / Meanwhile) and the "when to ask the Oracle" decision are made by
-   the Scene and Rules Directors from the state of the fiction rather than rolled or intuited.
+5. **The Scene Director makes the player's own judgment calls.** The next-scene mood is not
+   rolled: the Scene Director's instructions carry the SRD's Dramatic / Quiet / Meanwhile
+   vocabulary and it judges the mood from the fiction. The Rules Director's instructions carry
+   the Sibylline Responses guidance, and it decides when to ask the Oracle.
 6. **One Oracle question per turn.** The SRD's scene is a run of questions; a turn here resolves
    at most one, because one plan resolves one action. A conflict is several turns of exchanges.
 7. **One game-wide Twist Counter.** The SRD's counter belongs to the solo player, who is the only
    one rolling. Here any actor can be the subject of a question, so a single tally covers every
    roll — a tie anywhere moves the same counter.
-8. **Luck can be charged outside a conflict.** The SRD moves Luck only through Harm & Luck. The
+8. **The Twist Counter is hidden from the player.** The SRD's solo player keeps the tally
+   themselves; here it lives in mechanics, paces the Directors, and is never recited — rising
+   tension shows only in the fiction.
+9. **Concept is a closed menu.** Creation offers the chosen pack's concept table, where the SRD
+   asks for a free one-line phrase.
+10. **Luck can be charged outside a conflict.** The SRD moves Luck only through Harm & Luck. The
     Director may also write a `counter-change` for a hazard no conflict covers — a fall, a bad
     draught, a night in the cold — because those are the moments Luck exists to absorb.
-9. **The Adventure Maker and the open-ended inspiration tables are not rolled.** Setting, tone,
-    premise and the Verb/Noun/Adjective prompts are authoring inputs; scenarios are authored
-    ahead of play, and the Directors take their inspiration from the authored world instead.
-10. **Appendix A (Loner Diceless) is not implemented.** The dice are the point of the resolver;
+11. **The Adventure Maker, the 5W+H framing table, and the open-ended inspiration tables are not
+    rolled.** Setting, tone, premise and the Verb/Noun/Adjective prompts are authoring inputs;
+    scenarios are authored ahead of play, and the Directors take their inspiration from the
+    authored world instead.
+12. **Appendix A (Loner Diceless) is not implemented.** The dice are the point of the resolver;
     a diceless matrix would be a second engine, not a mode of this one.
 
 ## Engine package sketch
@@ -930,9 +935,10 @@ How this SRD maps onto `src/aidm/engines/loner3e/`:
   3/2/1 table when `opponent_id` is set; those exchanges never tick the Twist Counter, per
   the SRD. Ties elsewhere tick it; at 3 the resolver rolls the 2d6 subject × action twist
   table and hands the rolled pairing to the next turn's Directors via `pending_notes`.
-- **Directors replace** the solo player's own judgment calls: when to ask the Oracle, the
-  optional next-scene mood roll, sibylline reframing, and the Adventure Maker (scenario
-  authoring). The Oracle's dice stay in the resolver.
+- **Directors carry** the solo player's own judgment calls: the Rules Director's instructions
+  hold the Sibylline Responses guidance and decide when to ask the Oracle; the Scene Director's
+  hold the Dramatic / Quiet / Meanwhile mood vocabulary in place of the next-scene roll; the
+  Adventure Maker stays authoring-time. The Oracle's dice stay in the resolver.
 - **Creation/advancement** (`create.py`, `advance.py`): the 8-step protagonist recipe as
   creation steps; post-game growth as milestone-driven advancement.
 

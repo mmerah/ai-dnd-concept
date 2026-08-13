@@ -28,7 +28,7 @@ from aidm.state.plan import TurnPlanBase
 from aidm.state.turn import SceneDirective, WorldkeeperReport
 from aidm.state.world import Exchange, GameState
 
-from . import prompts
+from . import prompts, scene
 
 
 class ChannelSafeModel(WrapperModel):
@@ -86,30 +86,31 @@ class Stage[Deps, Out]:
         result = await self.agent.run(prompt, deps=deps, message_history=list(recent))
         return result.output
 
-
-def stage[Deps, Out](
-    name: str,
-    settings: Settings,
-    *,
-    instructions: str,
-    output_type: OutputSpec[Out],
-    deps_type: type[Deps],
-    toolsets: Sequence[AbstractToolset[Deps]] = (),
-    validator: Callable[[RunContext[Deps], Out], Out] | None = None,
-) -> Stage[Deps, Out]:
-    role = settings.role(name)
-    built = Stage(
-        name=name,
-        instructions=instructions,
-        output_type=output_type,
-        deps_type=deps_type,
-        role=role,
-        provider=settings.providers.for_name(role.provider),
-        toolsets=toolsets,
-    )
-    if validator is not None:
-        _ = built.agent.output_validator(validator)
-    return built
+    @classmethod
+    def of[D, O](
+        cls,
+        name: str,
+        settings: Settings,
+        *,
+        instructions: str,
+        output_type: OutputSpec[O],
+        deps_type: type[D],
+        toolsets: Sequence[AbstractToolset[D]] = (),
+        validator: Callable[[RunContext[D], O], O] | None = None,
+    ) -> "Stage[D, O]":
+        role = settings.role(name)
+        built = Stage(
+            name=name,
+            instructions=instructions,
+            output_type=output_type,
+            deps_type=deps_type,
+            role=role,
+            provider=settings.providers.for_name(role.provider),
+            toolsets=toolsets,
+        )
+        if validator is not None:
+            _ = built.agent.output_validator(validator)
+        return built
 
 
 @dataclass(frozen=True, slots=True)
@@ -152,11 +153,11 @@ def scene_stage(settings: Settings) -> Stage[GameState, SceneDirective]:
         wrong = sorted(set(directive.reveal) - unmet)
         if wrong:
             raise ModelRetry(f"not something the player has yet to find: {', '.join(wrong)}")
-        if fault := prompts.check_speaker(prompts.SceneSnapshot.of(state), directive.speaker_id):
+        if fault := scene.check_speaker(scene.SceneSnapshot.of(state), directive.speaker_id):
             raise ModelRetry(fault)
         return directive
 
-    return stage(
+    return Stage.of(
         "scene",
         settings,
         instructions=prompts.SCENE_DIRECTOR,
@@ -174,7 +175,7 @@ def director_stage(engine: Engine, settings: Settings) -> Stage[PlanContext, Tur
             raise ModelRetry(refused)
         return plan
 
-    return stage(
+    return Stage.of(
         "director",
         settings,
         instructions=f"{prompts.RULES_DIRECTOR}\n\n{engine.director_instructions}",
@@ -189,7 +190,7 @@ def director_stage(engine: Engine, settings: Settings) -> Stage[PlanContext, Tur
 
 
 def narrator_stage(settings: Settings) -> Stage[None, str]:
-    return stage(
+    return Stage.of(
         "narrator", settings, instructions=prompts.NARRATOR, output_type=str, deps_type=NoneType
     )
 
@@ -213,7 +214,7 @@ def worldkeeper_stage(settings: Settings) -> Stage[GameState, WorldkeeperReport]
             raise ModelRetry(fault)
         return report
 
-    return stage(
+    return Stage.of(
         "worldkeeper",
         settings,
         instructions=prompts.WORLDKEEPER,
@@ -231,7 +232,7 @@ def advisor(advancement: Advancement, settings: Settings) -> Stage[AdvisorContex
             raise ModelRetry(refused)
         return proposal
 
-    return stage(
+    return Stage.of(
         "advisor",
         settings,
         instructions=f"{prompts.CORE_ADVISOR}\n\n{advancement.instructions}",

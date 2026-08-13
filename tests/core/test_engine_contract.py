@@ -1,9 +1,9 @@
 from core_test_support import initialized
 
 from aidm.app.session import build_engine
-from aidm.engines.counters import CounterChange
+from aidm.engines.counters import CounterChange, read_mechanics
 from aidm.engines.loader import Engine, engines
-from aidm.engines.loner3e.mechanics import LUCK_MAX, Sheet, apply, read
+from aidm.engines.loner3e.mechanics import LUCK_MAX, Mechanics, Sheet, apply
 from aidm.state.base import PLAYER_ID, Entity, EntityId
 from aidm.state.effects import Move
 from aidm.state.facts import Fact
@@ -33,7 +33,7 @@ def test_engine_initialization_and_state_contract() -> None:
     engine, state = initialized()
 
     assert state.engine == engine.id
-    assert read(state).sheets[PLAYER_ID].luck.current == LUCK_MAX
+    assert read_mechanics(state, Mechanics).sheets[PLAYER_ID].luck.current == LUCK_MAX
     engine.commit(state)
 
     restored = GameState.model_validate_json(state.model_dump_json())
@@ -88,7 +88,7 @@ def test_a_created_entity_gains_engine_state_in_the_same_commit() -> None:
     grown = working.committed()
     engine.commit(grown)
 
-    mechanics = read(grown)
+    mechanics = read_mechanics(grown, Mechanics)
     assert mechanics.sheets[actor.id] == Sheet()
     assert item.id not in mechanics.sheets
 

@@ -3,26 +3,27 @@ from random import Random
 from core_test_support import capability, initialized
 from loner3e_test_support import at_milestone
 
-from aidm.engines.counters import CounterChange
+from aidm.engines.counters import Counter, CounterChange, read_mechanics, write_mechanics
 from aidm.engines.loader import Engine
 from aidm.engines.loner3e.actions import Question
 from aidm.engines.loner3e.advance import Milestone
-from aidm.engines.loner3e.mechanics import LUCK_MAX, TIES_PER_TWIST, read, write
+from aidm.engines.loner3e.mechanics import LUCK_MAX, TIES_PER_TWIST, Mechanics
 from aidm.engines.loner3e.resolve import (
     HARM,
-    TWIST_TABLE,
+    available_tags,
     defeat_note,
     outcome_for,
     resolve_question,
     twist_note,
     twist_pairing,
 )
-from aidm.engines.loner3e.rules import LABELS
+from aidm.engines.loner3e.rules import LABELS, Loner3eEngine
 from aidm.state.base import PLAYER_ID, EntityId
 from aidm.state.effects import TraitChange
 from aidm.state.plan import OutcomeBranch, TurnPlanBase
 from aidm.state.world import GameState
 
+TWISTS = Loner3eEngine().twists
 YES_AND = OutcomeBranch(
     outcome="yes-and",
     effects=(TraitChange(mode="add", entity_id=PLAYER_ID, trait_id="sure-footed"),),
@@ -83,9 +84,9 @@ def test_the_outcome_ladder_covers_every_pair_of_dice() -> None:
 
 def test_the_twist_table_reads_a_subject_off_one_die_and_an_action_off_the_other() -> None:
     """The SRD's own worked example: a twist roll of (4, 2)."""
-    assert len(TWIST_TABLE) == 6
-    assert twist_pairing(4, 2) == ("A physical event", "Alters the location")
-    assert "A PHYSICAL EVENT / ALTERS THE LOCATION" in twist_note(*twist_pairing(4, 2))
+    assert len(TWISTS) == 6
+    assert twist_pairing(4, 2, TWISTS) == ("A physical event", "Alters the location")
+    assert "A PHYSICAL EVENT / ALTERS THE LOCATION" in twist_note(*twist_pairing(4, 2, TWISTS))
 
 
 def test_a_question_rolls_two_dice_and_applies_only_the_branch_it_landed_on() -> None:
@@ -101,7 +102,7 @@ def test_a_question_rolls_two_dice_and_applies_only_the_branch_it_landed_on() ->
         "trait_added",
     ]
     assert draft.world.require(PLAYER_ID).trait("sure-footed") is not None
-    assert read(draft).sheets[PLAYER_ID].luck.current == LUCK_MAX
+    assert read_mechanics(draft, Mechanics).sheets[PLAYER_ID].luck.current == LUCK_MAX
 
 
 def test_check_plan_owes_the_model_every_refusal_the_resolve_raises() -> None:
@@ -137,7 +138,7 @@ def test_a_tag_named_twice_buys_no_more_than_naming_it_once() -> None:
 
     for action in (once, twice):
         draft = state.draft()
-        facts, _ = resolve_question(draft, action, Random(1))
+        facts, _ = resolve_question(draft, action, Random(1), TWISTS)
         (answered,) = [fact for fact in facts if fact.kind == "question_answered"]
         assert answered.data["position"] == "disadvantage"
 
@@ -145,15 +146,15 @@ def test_a_tag_named_twice_buys_no_more_than_naming_it_once() -> None:
 def test_a_tie_ticks_the_twist_and_the_third_tie_calls_one() -> None:
     _, state = initialized()
     draft = state.draft()
-    mechanics = read(draft)
+    mechanics = read_mechanics(draft, Mechanics)
     mechanics.twist.current = TIES_PER_TWIST - 1
-    write(draft, mechanics)
+    write_mechanics(draft, mechanics)
     primed = draft.committed()
 
     action = Question(actor_id=PLAYER_ID, question="Does he slip past unheard?")
     for seed in range(200):
         draft = primed.draft()
-        facts, _ = resolve_question(draft, action, Random(seed))
+        facts, _ = resolve_question(draft, action, Random(seed), TWISTS)
         (answered,) = [fact for fact in facts if fact.kind == "question_answered"]
         if answered.data["chance"] == answered.data["risk"]:
             break
@@ -162,7 +163,7 @@ def test_a_tie_ticks_the_twist_and_the_third_tie_calls_one() -> None:
 
     (due,) = [fact for fact in facts if fact.kind == "twist_due"]
     rolled = twist_note(str(due.data["subject"]), str(due.data["action"]))
-    assert read(draft).twist.current == 0
+    assert read_mechanics(draft, Mechanics).twist.current == 0
     assert rolled in draft.world.pending_notes
 
 
@@ -172,39 +173,61 @@ def test_a_conflict_exchange_moves_luck_off_whichever_side_lost_it() -> None:
 
     for seed in range(200):
         draft = state.draft()
-        facts, outcome = resolve_question(draft, _duel(), Random(seed))
-        sheets = read(draft).sheets
+        facts, outcome = resolve_question(draft, _duel(), Random(seed), TWISTS)
+        sheets = read_mechanics(draft, Mechanics).sheets
         harm = HARM[outcome]
         loser = FOE if harm > 0 else PLAYER_ID
         assert sheets[loser].luck.current == LUCK_MAX - abs(harm)
         assert sheets[FOE if loser == PLAYER_ID else PLAYER_ID].luck.current == LUCK_MAX
         assert not any(fact.kind == "twist_due" for fact in facts)
-        assert read(draft).twist.current == 0
+        assert read_mechanics(draft, Mechanics).twist.current == 0
 
 
-def test_luck_running_out_ends_the_conflict_and_refuses_another_exchange() -> None:
-    engine, state = initialized()
+def test_luck_running_out_ends_the_conflict_and_resets_both_pools() -> None:
+    _, state = initialized()
     draft = state.draft()
-    mechanics = read(draft)
-    mechanics.sheets[FOE].luck.current = 1
-    write(draft, mechanics)
+    mechanics = read_mechanics(draft, Mechanics)
+    # A 10-max pool proves the reset lands on the sheet's own maximum, not on a +LUCK_MAX delta.
+    mechanics.sheets[FOE].luck = Counter(current=1, maximum=10)
+    write_mechanics(draft, mechanics)
     hurt = draft.committed()
 
     for seed in range(200):
         draft = hurt.draft()
-        facts, outcome = resolve_question(draft, _duel(), Random(seed))
+        facts, outcome = resolve_question(draft, _duel(), Random(seed), TWISTS)
         if HARM[outcome] > 0:
             break
     else:
         raise AssertionError("no seed under 200 answered yes")
 
-    assert read(draft).sheets[FOE].luck.current == 0
+    sheets = read_mechanics(draft, Mechanics).sheets
+    assert sheets[FOE].luck.current == 10
+    assert sheets[PLAYER_ID].luck.current == LUCK_MAX
     assert any(fact.kind == "conflict_lost" for fact in facts)
     assert defeat_note(draft.world.require(FOE).name) in draft.world.pending_notes
 
+
+def test_an_actor_already_at_zero_luck_refuses_another_exchange() -> None:
+    engine, state = initialized()
+    draft = state.draft()
+    mechanics = read_mechanics(draft, Mechanics)
+    mechanics.sheets[FOE].luck.current = 0
+    write_mechanics(draft, mechanics)
     spent = draft.committed()
+
     again = _plan(engine, actor_id=PLAYER_ID, opponent_id=FOE)
     assert "already out of luck" in _refusal(engine, spent, again)
+
+
+def test_an_opponents_sheet_tags_reach_the_resolver_as_tags_in_play() -> None:
+    _, state = initialized()
+    draft = state.draft()
+    player = draft.world.require(PLAYER_ID)
+    player.parent_id = EntityId("cloister")
+
+    tags = available_tags(draft, player, read_mechanics(draft, Mechanics))
+
+    assert "Hard to Frighten" in tags.values()
 
 
 def test_a_milestone_opens_an_offer_and_the_caps_refuse_what_breaks_them() -> None:

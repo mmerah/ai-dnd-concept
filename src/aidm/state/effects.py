@@ -51,7 +51,7 @@ class GainImprovisedItem(Frozen):
 
 
 class TraitChange(Frozen):
-    """Put a lasting condition, edge, or burden on an entity, or lift one the fiction ends. The
+    """Put a lasting condition, skill, or frailty on an entity, or lift one the fiction ends. The
     trait shows the id written out: `battle-worn` appears as Battle Worn."""
 
     op: Literal["trait-change"] = "trait-change"

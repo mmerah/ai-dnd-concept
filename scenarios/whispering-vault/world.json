@@ -67,14 +67,7 @@
       "name": "a bloated rat",
       "brief": "It has grown fat on the dead garden and does not run from a lantern.",
       "known": false,
-      "parent_id": "cloister",
-      "traits": [
-        {
-          "id": "disease-swollen",
-          "name": "Disease-Swollen",
-          "text": "(edge) The rat is unnaturally hard to frighten or drive off."
-        }
-      ]
+      "parent_id": "cloister"
     },
     {
       "id": "vault_map",
@@ -114,7 +107,6 @@
   "threads": [
     {
       "id": "vault-seal",
-      "kind": "quest",
       "title": "The sealed vault",
       "status": "active",
       "stage": "unfound",
@@ -129,10 +121,7 @@
     {
       "id": "mara-catalogued-with-elena",
       "owner": "mara",
-      "text": "Mara catalogued the vault ledgers beside Elena for two winters, until the night Elena went below alone and never came back up.",
-      "tags": [
-        "elena"
-      ]
+      "text": "Mara catalogued the vault ledgers beside Elena for two winters, until the night Elena went below alone and never came back up."
     }
   ],
   "hooks": [

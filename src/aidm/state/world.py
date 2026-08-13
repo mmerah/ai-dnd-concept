@@ -16,7 +16,7 @@ from .base import (
     ThreadStatus,
 )
 from .effects import WorldEffect
-from .facts import CORE, Fact
+from .facts import Fact, entity_fact
 
 _HOLDERS: Mapping[Kind, tuple[Kind, ...]] = {
     "actor": ("location",),
@@ -75,7 +75,6 @@ class Thread(Mutable):
     """A storyline the scenario tracks: a quest, an investigation, or a countdown."""
 
     id: Slug
-    kind: Slug
     title: str
     status: ThreadStatus = "active"
     stage: Slug | None = None
@@ -88,8 +87,6 @@ class Memory(Mutable):
     id: Slug
     owner: EntityId | None = None
     text: str = Field(min_length=1, max_length=300)
-    tags: tuple[Slug, ...] = ()
-    turn: int = Field(default=0, ge=0)
 
 
 class HookMatch(Frozen):
@@ -282,12 +279,8 @@ class GameState(Mutable):
             raise ValueError(f"entity id {entity.id!r} already exists")
         self.world.entities[entity.id] = entity
         summary = f"new {entity.kind}: {entity.name}"
-        return Fact(
-            source=CORE,
-            kind="entity_created",
-            trace=summary,
-            narrator=summary,
-            data={"entity_id": entity.id, "kind": entity.kind, "name": entity.name},
+        return entity_fact(
+            entity, "entity_created", summary, {"kind": entity.kind, "name": entity.name}
         )
 
     def reveal(self, entity: Entity) -> list[Fact]:
@@ -295,26 +288,15 @@ class GameState(Mutable):
             return []
         entity.known = True
         summary = f"learned of {entity.name}"
-        return [
-            Fact(
-                source=CORE,
-                kind="entity_discovered",
-                trace=summary,
-                narrator=summary,
-                data={"entity_id": entity.id, "name": entity.name},
-            )
-        ]
+        return [entity_fact(entity, "entity_discovered", summary, {"name": entity.name})]
 
     def move(self, entity: Entity, destination: Entity) -> Fact:
         entity.parent_id = destination.id
-        summary = _move_summary(entity, destination)
-        return Fact(
-            source=CORE,
-            kind="entity_moved",
-            trace=summary,
-            narrator=summary,
-            data={
-                "entity_id": entity.id,
+        return entity_fact(
+            entity,
+            "entity_moved",
+            _move_summary(entity, destination),
+            {
                 "entity_name": entity.name,
                 "to_id": destination.id,
                 "to_name": destination.name,

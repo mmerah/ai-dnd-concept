@@ -8,12 +8,12 @@ KAEL = Entity(id=EntityId("kael"), kind="actor", name="Kael", brief="", known=Tr
 
 
 def test_counter_rejects_current_outside_its_bounds_and_clamps_in_both_directions() -> None:
-    with pytest.raises(ValidationError, match="below minimum"):
-        Counter(current=-1, minimum=0, maximum=10)
+    with pytest.raises(ValidationError, match="below zero"):
+        Counter(current=-1, maximum=10)
     with pytest.raises(ValidationError, match="above maximum"):
-        Counter(current=11, minimum=0, maximum=10)
+        Counter(current=11, maximum=10)
 
-    held = Counter(current=5, minimum=0, maximum=10)
+    held = Counter(current=5, maximum=10)
     assert held.clamped(-5) == 0
     assert held.clamped(50) == 10
 
@@ -32,7 +32,7 @@ def test_spend_pays_the_pool_and_refuses_what_it_cannot_cover() -> None:
     (spent,) = spend(KAEL, "stress", counter, 2, "")
     assert (spent.data["current"], counter.current) == (3, 3)
 
-    with pytest.raises(ValueError, match="cannot go below"):
+    with pytest.raises(ValueError, match="cannot be spent"):
         _ = spend(KAEL, "stress", counter, 4, "")
 
 

@@ -1,5 +1,6 @@
 import json
-from collections.abc import Callable, Sequence
+from collections.abc import Callable, Generator, Sequence
+from contextlib import contextmanager
 
 from nicegui import ui
 
@@ -15,6 +16,20 @@ def show_engine_badge(badge: tuple[str, str]) -> None:
     ui.badge(label).props(f"color={colour} text-color=white").classes(
         "text-sm font-bold q-px-md q-py-sm"
     )
+
+
+@contextmanager
+def page_header(title: str, badge: tuple[str, str] | None = None) -> Generator[None]:
+    """The pages that show an engine badge are the ones a home link leaves from."""
+    with ui.header().classes("items-center").style("gap: 1rem"):
+        if badge is not None:
+            ui.button(icon="home", on_click=lambda: ui.navigate.to("/")).props(
+                "flat color=white round"
+            )
+        ui.label(title).classes("text-lg font-bold")
+        if badge is not None:
+            show_engine_badge(badge)
+        yield
 
 
 def chat(session: GameSession) -> None:

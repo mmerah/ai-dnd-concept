@@ -1,9 +1,10 @@
+import json
 from collections.abc import Iterator, Sequence
 from dataclasses import dataclass
 from pathlib import Path
 from re import fullmatch
 
-from pydantic import BaseModel, ConfigDict, TypeAdapter
+from pydantic import BaseModel, ConfigDict, JsonValue, TypeAdapter
 
 from aidm.state.base import SAVE_VERSION, EngineId, Slug, content_id
 from aidm.state.turn import TraceEntry
@@ -87,13 +88,6 @@ def _read[T: BaseModel](path: Path, model: type[T]) -> T:
     return model.model_validate_json(path.read_text(encoding=ENCODING))
 
 
-class _StoredVersion(BaseModel):
-    """Probes the stored version before the rest is validated, so drift fails readably: a file
-    written before `save_version` existed reports as 0, not as an error naming this model."""
-
-    save_version: int = 0
-
-
 def _require_save_version(stored: int, what: str) -> None:
     if stored != SAVE_VERSION:
         raise ValueError(f"{what} is version {stored}, this build needs {SAVE_VERSION}")
@@ -114,7 +108,7 @@ TRACE_ADAPTER: TypeAdapter[TraceEntry] = TypeAdapter(TraceEntry)
 
 
 @dataclass(frozen=True, slots=True)
-class FileSaves:
+class FileStore:
     directory: Path
 
     def slugs(self) -> tuple[str, ...]:
@@ -125,7 +119,7 @@ class FileSaves:
         )
 
     def shell(self, slug: str) -> SaveShell | None:
-        path = self._path(slug)
+        path = self._save_path(slug)
         if not path.exists():
             return None
         shell = SaveShell.model_validate_json(path.read_text(encoding=ENCODING))
@@ -133,50 +127,49 @@ class FileSaves:
         return shell
 
     def load(self, slug: str) -> GameState | None:
-        path = self._path(slug)
-        if not path.exists():
+        """The shell probes the stored version first, so drift fails readably."""
+        if self.shell(slug) is None:
             return None
-        body = path.read_text(encoding=ENCODING)
-        _require_save_version(_StoredVersion.model_validate_json(body).save_version, "save")
+        body = self._save_path(slug).read_text(encoding=ENCODING)
         return GameState.model_validate_json(body)
 
     def save(self, slug: str, state: GameState) -> None:
-        _write(self._path(slug), state.model_dump_json(indent=2))
+        _write(self._save_path(slug), state.model_dump_json(indent=2))
 
-    def discard(self, slug: str) -> None:
-        self._path(slug).unlink(missing_ok=True)
-
-    def _path(self, slug: str) -> Path:
-        return _safe_path(self.directory, slug, ".json")
-
-
-@dataclass(frozen=True, slots=True)
-class FileTraces:
-    directory: Path
-
-    def append(self, slug: str, entry: TraceEntry) -> None:
-        path = self._path(slug)
+    def append_trace(self, slug: str, entry: TraceEntry) -> None:
+        path = self._trace_path(slug)
         path.parent.mkdir(parents=True, exist_ok=True)
         with path.open("a", encoding=ENCODING) as file:
             file.write(TRACE_ADAPTER.dump_json(entry).decode(ENCODING) + "\n")
 
-    def load(self, slug: str) -> tuple[TraceEntry, ...]:
-        path = self._path(slug)
+    def load_trace(self, slug: str) -> tuple[TraceEntry, ...]:
+        path = self._trace_path(slug)
         if not path.exists():
             return ()
         entries: list[TraceEntry] = []
         for line in path.read_text(encoding=ENCODING).splitlines():
             if not line:
                 continue
-            _require_save_version(_StoredVersion.model_validate_json(line).save_version, "trace")
+            _require_save_version(_line_version(line), "trace")
             entries.append(TRACE_ADAPTER.validate_json(line))
         return tuple(entries)
 
     def discard(self, slug: str) -> None:
-        self._path(slug).unlink(missing_ok=True)
+        self._save_path(slug).unlink(missing_ok=True)
+        self._trace_path(slug).unlink(missing_ok=True)
 
-    def _path(self, slug: str) -> Path:
+    def _save_path(self, slug: str) -> Path:
+        return _safe_path(self.directory, slug, ".json")
+
+    def _trace_path(self, slug: str) -> Path:
         return _safe_path(self.directory, slug, ".trace.jsonl")
+
+
+def _line_version(line: str) -> int:
+    """A line written before `save_version` existed reports as 0, not as a validation error."""
+    parsed: JsonValue = json.loads(line)
+    version = parsed.get("save_version", 0) if isinstance(parsed, dict) else 0
+    return version if isinstance(version, int) else 0
 
 
 def _write(path: Path, body: str) -> None:

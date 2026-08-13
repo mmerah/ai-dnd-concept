@@ -13,8 +13,8 @@ from .home import home_page
 from .panels import (
     advancement_panel,
     chat,
+    page_header,
     role_badges,
-    show_engine_badge,
     state_panel,
     trace_panel,
 )
@@ -119,10 +119,7 @@ def _register_pages(runtime: Runtime) -> None:
 
 def _game_page(session: GameSession) -> None:
     view = GameView(session)
-    with ui.header().classes("items-center").style("gap: 1rem"):
-        ui.button(icon="home", on_click=lambda: ui.navigate.to("/")).props("flat color=white round")
-        ui.label(session.state.scenario.title).classes("text-lg font-bold")
-        show_engine_badge(session.engine.badge)
+    with page_header(session.state.scenario.title, session.engine.badge):
         view.roles()
         ui.space()
         ui.button("restart", on_click=lambda: restart(view)).props("flat color=white dense")

@@ -6,7 +6,8 @@ from loner3e_test_support import LONER3E
 
 from aidm.app.session import begin_game
 from aidm.content.store import load_character, load_scenario, write_character
-from aidm.engines.loner3e.mechanics import LUCK_MAX, read
+from aidm.engines.counters import read_mechanics
+from aidm.engines.loner3e.mechanics import LUCK_MAX, Mechanics
 from aidm.engines.loner3e.rules import Loner3eEngine
 from aidm.state.base import PLAYER_ID
 from aidm.state.creation import Picks
@@ -22,6 +23,7 @@ def test_a_created_character_plays_through_the_authored_load_path(tmp_path: Path
     engine = Loner3eEngine()
     creation = _creation(engine)
     picks: Picks = {
+        "pack": ("srd",),
         "concept": ("wary-relic-hunter",),
         "skills": ("quiet-hands", "reads-old-stonework"),
         "frailty": ("never-walks-away",),
@@ -32,7 +34,7 @@ def test_a_created_character_plays_through_the_authored_load_path(tmp_path: Path
     character = load_character(tmp_path, "fen", LONER3E)
     scenario = load_scenario(SCENARIOS, "whispering-vault", LONER3E)
     state = begin_game(engine, scenario, character)
-    sheet = read(state).sheets[PLAYER_ID]
+    sheet = read_mechanics(state, Mechanics).sheets[PLAYER_ID]
     assert sheet.skills == ("Quiet Hands", "Reads Old Stonework")
     assert sheet.frailties == ("Never Walks Away",)
     assert sheet.gear == ("Pry Bar", "Chalk and Wire")
@@ -41,9 +43,10 @@ def test_a_created_character_plays_through_the_authored_load_path(tmp_path: Path
 
 def test_an_illegal_pick_set_is_refused_with_the_reason(tmp_path: Path) -> None:
     creation = _creation(Loner3eEngine())
-    steps = creation.steps({})
+    chosen: Picks = {"pack": ("srd",)}
     legal: Picks = {
-        step.id: tuple(option.id for option in step.options[: step.choose]) for step in steps
+        step.id: chosen.get(step.id, tuple(option.id for option in step.options[: step.choose]))
+        for step in creation.steps(chosen)
     }
     with pytest.raises(ValueError, match="no creation step"):
         creation.create("Fen", "", {**legal, "class": ("fighter",)})

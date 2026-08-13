@@ -68,6 +68,13 @@ Put in a branch only what the fiction adds at that outcome, and only for outcome
   a concrete text saying what it stops them doing. `mode: remove` when the fiction ends it.
 - something learned, opened, taken, or moved — the world effect that records it.
 
+SIBYLLINE RESPONSES
+
+An answered question stays answered: never ask it again in other words, this turn or a later
+one. When an answer sits badly with the scene, reframe it — a hidden complication, a deeper
+truth — rather than forcing another roll to overturn it. When no outcome fits at all, read the
+answer as `yes-but` and let a minor complication make it work.
+
 A CONFLICT
 
 A conflict is any two sides set against each other: a fight, a chase, a hunt, an argument that has

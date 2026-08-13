@@ -99,10 +99,11 @@ def resolve(mechanics: Mechanics, action: Strike, rng: Random) -> list[Fact]:
     fighter = mechanics.fighters[action.actor_id]
     track = fighter.tracks[action.track_id]
     stat = {"edge": fighter.edge, "heart": fighter.heart, "iron": fighter.iron}[action.stat]
-    scored, action_fact = roll("1d6", f"{action.stat} strike", rng, bonus=stat)
+    rolled, action_fact = roll("1d6", f"{action.stat} strike", rng)
+    scored = rolled.total + stat
     first, first_fact = roll("1d10", "challenge", rng)
     second, second_fact = roll("1d10", "challenge", rng)
-    outcome = _outcome(scored.total, first.total, second.total)
+    outcome = _outcome(scored, first.total, second.total)
     marked = _mark(track, outcome)
     fighter.momentum = _momentum(fighter, outcome)
     return [

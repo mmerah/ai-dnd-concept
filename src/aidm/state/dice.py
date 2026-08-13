@@ -1,64 +1,14 @@
 import re
 from dataclasses import dataclass
 from random import Random
-from typing import Annotated, Literal
-
-from pydantic import AfterValidator, Field
+from typing import Literal
 
 from .facts import CORE, Fact
 
 # Bounds prevent model-written expressions from stalling a turn.
 _DICE = re.compile(r"^([1-9]\d{0,2})d([1-9]\d{0,3})$")
-_CONSTANT = re.compile(r"^\d{1,4}$")
-_OPERATORS = re.compile(r"([+-])")
-MAX_LENGTH = 64
 
-Sign = Literal[1, -1]
-RollMode = Literal["normal", "advantage", "disadvantage"]
-
-
-@dataclass(frozen=True, slots=True)
-class DiceTerm:
-    sign: Sign
-    count: int
-    faces: int
-
-
-@dataclass(frozen=True, slots=True)
-class ConstantTerm:
-    sign: Sign
-    value: int
-
-
-Term = DiceTerm | ConstantTerm
-
-
-def terms(expression: str) -> tuple[Term, ...]:
-    pieces = _OPERATORS.split(expression.replace(" ", ""))
-    parsed = [_term(pieces[0], 1)]
-    for operator, word in zip(pieces[1::2], pieces[2::2], strict=True):
-        parsed.append(_term(word, -1 if operator == "-" else 1))
-    return tuple(parsed)
-
-
-def _term(word: str, sign: Sign) -> Term:
-    if rolled := _DICE.match(word):
-        return DiceTerm(sign=sign, count=int(rolled[1]), faces=int(rolled[2]))
-    if _CONSTANT.match(word):
-        return ConstantTerm(sign=sign, value=int(word))
-    raise ValueError(f"malformed dice term {word!r}")
-
-
-def _parseable(expression: str) -> str:
-    _ = terms(expression)
-    return expression
-
-
-DiceExpr = Annotated[
-    str,
-    AfterValidator(_parseable),
-    Field(max_length=MAX_LENGTH, examples=["1d8", "2d6 + 3", "1d4 - 1"]),
-]
+RollMode = Literal["normal", "advantage"]
 
 
 @dataclass(frozen=True, slots=True)
@@ -68,17 +18,11 @@ class Rolled:
 
 
 def _evaluate(expression: str, rng: Random) -> Rolled:
-    total = 0
-    dice: list[int] = []
-    for term in terms(expression):
-        match term:
-            case DiceTerm(sign=sign, count=count, faces=faces):
-                drawn = [rng.randint(1, faces) for _ in range(count)]
-                dice.extend(drawn)
-                total += sign * sum(drawn)
-            case ConstantTerm(sign=sign, value=value):
-                total += sign * value
-    return Rolled(total=total, dice=tuple(dice))
+    matched = _DICE.match(expression.replace(" ", ""))
+    if matched is None:
+        raise ValueError(f"malformed dice expression {expression!r}")
+    drawn = tuple(rng.randint(1, int(matched[2])) for _ in range(int(matched[1])))
+    return Rolled(total=sum(drawn), dice=drawn)
 
 
 def roll(
@@ -87,14 +31,11 @@ def roll(
     rng: Random,
     *,
     mode: RollMode = "normal",
-    bonus: int = 0,
 ) -> tuple[Rolled, Fact]:
-    if bonus:
-        expression = f"{expression} {'+' if bonus > 0 else '-'} {abs(bonus)}"
     kept, dropped = _evaluate(expression, rng), None
-    if mode != "normal":
+    if mode == "advantage":
         pair = sorted((kept, _evaluate(expression, rng)), key=lambda outcome: outcome.total)
-        kept, dropped = (pair[-1], pair[0]) if mode == "advantage" else (pair[0], pair[-1])
+        kept, dropped = pair[-1], pair[0]
     against = "" if dropped is None else f" ({mode}, dropped {dropped.total})"
     faces = ", ".join(str(die) for die in kept.dice)
     return kept, Fact(

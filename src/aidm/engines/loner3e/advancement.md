@@ -14,3 +14,6 @@ will read:
   frailty turned into what they made of it.
 
 Leave `into` empty for anything but a rewrite.
+
+An enemy who lingers past a milestone is story, not growth: they are recorded as a thread and
+its entity, never as a change to the sheet.

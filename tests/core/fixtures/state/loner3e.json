@@ -1,5 +1,5 @@
 {
-  "save_version": 56,
+  "save_version": 57,
   "scenario_id": "whispering-vault",
   "character_id": "kael",
   "scenario": {
@@ -87,13 +87,7 @@
         "detail": null,
         "known": false,
         "parent_id": "cloister",
-        "traits": [
-          {
-            "id": "disease-swollen",
-            "name": "Disease-Swollen",
-            "text": "(edge) The rat is unnaturally hard to frighten or drive off."
-          }
-        ]
+        "traits": []
       },
       "vault_map": {
         "id": "vault_map",
@@ -133,12 +127,12 @@
           {
             "id": "relic-hunter",
             "name": "Relic Hunter",
-            "text": "(edge) Kael knows how old sanctums conceal what matters."
+            "text": "(skill) Kael knows how old sanctums conceal what matters."
           },
           {
             "id": "marked-by-the-past",
             "name": "Marked by the Past",
-            "text": "(burden) Old scars make certain memories hard to face."
+            "text": "(frailty) Old scars make certain memories hard to face."
           }
         ]
       }
@@ -174,7 +168,6 @@
     "threads": {
       "vault-seal": {
         "id": "vault-seal",
-        "kind": "quest",
         "title": "The sealed vault",
         "status": "active",
         "stage": "unfound",
@@ -185,18 +178,12 @@
       "the-abbey-emptied-in-one-night": {
         "id": "the-abbey-emptied-in-one-night",
         "owner": null,
-        "text": "The abbey emptied in a single night: meals were left half-eaten, doors left open, and no brother has been seen on the road since.",
-        "tags": [],
-        "turn": 0
+        "text": "The abbey emptied in a single night: meals were left half-eaten, doors left open, and no brother has been seen on the road since."
       },
       "mara-catalogued-with-elena": {
         "id": "mara-catalogued-with-elena",
         "owner": "mara",
-        "text": "Mara catalogued the vault ledgers beside Elena for two winters, until the night Elena went below alone and never came back up.",
-        "tags": [
-          "elena"
-        ],
-        "turn": 0
+        "text": "Mara catalogued the vault ledgers beside Elena for two winters, until the night Elena went below alone and never came back up."
       }
     },
     "hooks": [
@@ -282,15 +269,11 @@
         "gear": [],
         "luck": {
           "current": 6,
-          "maximum": 6,
-          "minimum": 0,
-          "recharge": null
+          "maximum": 6
         },
         "milestones": {
           "current": 0,
-          "maximum": null,
-          "minimum": 0,
-          "recharge": null
+          "maximum": null
         }
       },
       "tomas": {
@@ -300,15 +283,11 @@
         "gear": [],
         "luck": {
           "current": 6,
-          "maximum": 6,
-          "minimum": 0,
-          "recharge": null
+          "maximum": 6
         },
         "milestones": {
           "current": 0,
-          "maximum": null,
-          "minimum": 0,
-          "recharge": null
+          "maximum": null
         }
       },
       "elena": {
@@ -318,15 +297,11 @@
         "gear": [],
         "luck": {
           "current": 6,
-          "maximum": 6,
-          "minimum": 0,
-          "recharge": null
+          "maximum": 6
         },
         "milestones": {
           "current": 0,
-          "maximum": null,
-          "minimum": 0,
-          "recharge": null
+          "maximum": null
         }
       },
       "cloister_rat": {
@@ -340,15 +315,11 @@
         "gear": [],
         "luck": {
           "current": 6,
-          "maximum": 6,
-          "minimum": 0,
-          "recharge": null
+          "maximum": 6
         },
         "milestones": {
           "current": 0,
-          "maximum": null,
-          "minimum": 0,
-          "recharge": null
+          "maximum": null
         }
       },
       "player": {
@@ -366,23 +337,17 @@
         ],
         "luck": {
           "current": 6,
-          "maximum": 6,
-          "minimum": 0,
-          "recharge": null
+          "maximum": 6
         },
         "milestones": {
           "current": 0,
-          "maximum": null,
-          "minimum": 0,
-          "recharge": null
+          "maximum": null
         }
       }
     },
     "twist": {
       "current": 0,
-      "maximum": 3,
-      "minimum": 0,
-      "recharge": null
+      "maximum": 3
     }
   },
   "history": [],

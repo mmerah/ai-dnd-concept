@@ -21,7 +21,8 @@ from pydantic_ai.messages import (
 )
 from pydantic_ai.models.function import AgentInfo, FunctionModel
 
-from aidm.engines.loner3e.mechanics import read
+from aidm.engines.counters import read_mechanics
+from aidm.engines.loner3e.mechanics import Mechanics
 from aidm.engines.loner3e.resolve import outcome_for
 from aidm.engines.loner3e.rules import LABELS
 from aidm.state.base import PLAYER_ID, EntityId
@@ -230,7 +231,7 @@ async def test_worldkeeper_creations_receive_valid_engine_rules_before_commit() 
     assert actor.parent_id == location.id
     assert item.parent_id == location.id
     assert location.parent_id is None
-    mechanics = read(result.state)
+    mechanics = read_mechanics(result.state, Mechanics)
     assert set(mechanics.sheets[actor.id].counters()) == {"luck"}
     assert item.id not in mechanics.sheets
     resolved = next(step.output for step in result.turn.steps if step.name == "resolve")

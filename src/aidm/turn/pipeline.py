@@ -4,6 +4,7 @@ from random import Random
 
 from pydantic import BaseModel
 
+from aidm.config import Settings
 from aidm.engines.loader import Engine
 from aidm.state.apply import apply_effect, fire_hooks
 from aidm.state.base import Entity, EntityId, slug, text_slug
@@ -13,8 +14,8 @@ from aidm.state.turn import Creation, MemoryProposal, StepTrace, Turn, Worldkeep
 from aidm.state.world import Exchange, GameState, Memory
 
 from . import prompts
-from .prompts import SceneSnapshot, VisibleScene
 from .roles import PlanContext, Stages, exchanges_to_messages
+from .scene import SceneSnapshot, VisibleScene
 
 
 @dataclass(frozen=True, slots=True)
@@ -67,7 +68,6 @@ def _remembered(proposals: Sequence[MemoryProposal], draft: GameState, maximum: 
             id=text_slug(proposal.text, draft.world.memories),
             owner=proposal.owner_id,
             text=proposal.text,
-            turn=draft.turn,
         )
         draft.world.memories[memory.id] = memory
         kept.append(
@@ -87,9 +87,7 @@ async def run_turn(
     *,
     engine: Engine,
     stages: Stages,
-    history_window: int,
-    max_growth: int,
-    max_memories: int,
+    settings: Settings,
     rng: Random,
     on_step: Callable[[str], None] | None = None,
 ) -> TurnResult:
@@ -99,7 +97,7 @@ async def run_turn(
         if on_step is not None:
             on_step(step)
 
-    history = exchanges_to_messages(state.history[-history_window:])
+    history = exchanges_to_messages(state.history[-settings.history_window :])
     steps: list[StepTrace] = []
     draft = state.draft()
     snapshot = SceneSnapshot.of(state)
@@ -156,7 +154,11 @@ async def run_turn(
         narration=narration,
     )
     report = await stages.worldkeeper.run(keeper_prompt, draft, history)
-    facts.extend(apply_report(draft, report, max_growth=max_growth, max_memories=max_memories))
+    facts.extend(
+        apply_report(
+            draft, report, max_growth=settings.max_growth, max_memories=settings.max_memories
+        )
+    )
     steps.append(_traced("worldkeeper", keeper_prompt, report))
 
     draft.history = (*draft.history, Exchange(prompt=prompt, narration=narration))

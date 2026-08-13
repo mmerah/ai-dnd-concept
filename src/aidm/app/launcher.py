@@ -1,13 +1,14 @@
-from collections.abc import Sequence
+from collections.abc import Iterable, Sequence
 from dataclasses import dataclass
 from textwrap import shorten
+from typing import Protocol
 
-from pydantic import BaseModel, ConfigDict, ValidationError
+from pydantic import ValidationError
 
 from aidm.config import Settings
-from aidm.content.store import FileSaves, SaveShell, read_characters, read_scenarios
+from aidm.content.store import FileStore, SaveShell, read_characters, read_scenarios
 from aidm.engines.loader import engine_class, engines
-from aidm.state.base import EngineId, Slug
+from aidm.state.base import EngineId, Frozen, Slug
 
 
 def as_engine_id(value: str) -> EngineId:
@@ -15,30 +16,28 @@ def as_engine_id(value: str) -> EngineId:
     return engine_class(EngineId(value)).id
 
 
-class LauncherModel(BaseModel):
-    model_config = ConfigDict(frozen=True)
+class _Identified(Protocol):
+    @property
+    def id(self) -> str: ...
 
 
-class EngineOption(LauncherModel):
+def _one[T: _Identified](options: Iterable[T], wanted: str) -> T | None:
+    return next((option for option in options if option.id == wanted), None)
+
+
+class EngineOption(Frozen):
     id: EngineId
     badge: tuple[str, str]
 
 
-class ContentOption(LauncherModel):
+class ContentOption(Frozen):
     id: Slug
     title: str
+    subtitle: str
     engines: tuple[EngineId, ...]
 
 
-class ScenarioOption(ContentOption):
-    premise: str
-
-
-class CharacterOption(ContentOption):
-    brief: str
-
-
-class SaveOption(LauncherModel):
+class SaveOption(Frozen):
     slug: str
     scenario_id: Slug
     character_id: Slug
@@ -53,31 +52,31 @@ class SaveOption(LauncherModel):
         return self.problem is None
 
 
-class UnreadableSave(LauncherModel):
+class UnreadableSave(Frozen):
     slug: str
     problem: str
 
 
-class LauncherCatalog(LauncherModel):
+class LauncherCatalog(Frozen):
     engines: tuple[EngineOption, ...]
-    scenarios: tuple[ScenarioOption, ...]
-    characters: tuple[CharacterOption, ...]
+    scenarios: tuple[ContentOption, ...]
+    characters: tuple[ContentOption, ...]
     saves: tuple[SaveOption, ...]
     unreadable: tuple[UnreadableSave, ...] = ()
 
     def badge(self, engine: EngineId) -> tuple[str, str]:
-        found = next((option for option in self.engines if option.id == engine), None)
+        found = _one(self.engines, engine)
         if found is None:
             raise ValueError(f"unknown engine {engine!r}")
         return found.badge
 
-    def scenario(self, scenario_id: Slug) -> ScenarioOption:
-        found = next((option for option in self.scenarios if option.id == scenario_id), None)
+    def scenario(self, scenario_id: Slug) -> ContentOption:
+        found = _one(self.scenarios, scenario_id)
         if found is None:
             raise ValueError(f"unknown scenario {scenario_id!r}")
         return found
 
-    def characters_for(self, engine: EngineId) -> tuple[CharacterOption, ...]:
+    def characters_for(self, engine: EngineId) -> tuple[ContentOption, ...]:
         """A character is playable under any engine it ships an overlay for."""
         return tuple(option for option in self.characters if engine in option.engines)
 
@@ -88,7 +87,7 @@ class LauncherCatalog(LauncherModel):
         return found
 
 
-class LaunchTarget(LauncherModel):
+class LaunchTarget(Frozen):
     slug: str
     scenario_id: Slug
     character_id: Slug
@@ -139,7 +138,7 @@ class LauncherController:
             return ()
         return self.catalog.scenario(self.selected_scenario).engines
 
-    def compatible_characters(self) -> tuple[CharacterOption, ...]:
+    def compatible_characters(self) -> tuple[ContentOption, ...]:
         if self.selected_engine is None:
             return ()
         return self.catalog.characters_for(self.selected_engine)
@@ -186,14 +185,14 @@ def load_catalog(config: Settings) -> LauncherCatalog:
     engine_options = tuple(EngineOption(id=engine.id, badge=engine.badge) for engine in engines())
     engine_ids = tuple(option.id for option in engine_options)
     scenarios = tuple(
-        ScenarioOption(id=name, title=world.meta.title, premise=world.meta.premise, engines=engines)
+        ContentOption(id=name, title=world.meta.title, subtitle=world.meta.premise, engines=engines)
         for name, world, engines in read_scenarios(config.scenarios_dir, engine_ids)
     )
     characters = tuple(
-        CharacterOption(id=name, title=profile.name, brief=profile.brief, engines=engines)
+        ContentOption(id=name, title=profile.name, subtitle=profile.brief, engines=engines)
         for name, profile, engines in read_characters(config.characters_dir, engine_ids)
     )
-    files = FileSaves(config.saves_dir)
+    files = FileStore(config.saves_dir)
     saves: list[SaveOption] = []
     unreadable: list[UnreadableSave] = []
     for slug in files.slugs():
@@ -220,7 +219,7 @@ def _save_option(
     scenarios: Sequence[ContentOption],
     characters: Sequence[ContentOption],
 ) -> SaveOption:
-    character = next((option for option in characters if option.id == shell.character_id), None)
+    character = _one(characters, shell.character_id)
     return SaveOption(
         slug=slug,
         scenario_id=shell.scenario_id,
@@ -243,7 +242,7 @@ def _unplayable_reason(
         ("scenario", shell.scenario_id, scenarios),
         ("character", shell.character_id, characters),
     ):
-        found = next((option for option in offered if option.id == wanted), None)
+        found = _one(offered, wanted)
         if found is None:
             return f"{purpose} {wanted!r} is gone"
         if shell.engine not in found.engines:

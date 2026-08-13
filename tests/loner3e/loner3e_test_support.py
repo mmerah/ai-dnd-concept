@@ -4,7 +4,7 @@ from random import Random
 from core_test_support import LONER3E, character, scenario, settings
 
 from aidm.app.session import Advancer, GameSession, LaunchTarget, build_engine
-from aidm.content.store import FileSaves, FileTraces
+from aidm.content.store import FileStore
 from aidm.state.world import GameState
 from aidm.turn.roles import build_stages
 
@@ -23,11 +23,8 @@ def loner3e_session(directory: Path) -> GameSession:
         engine=engine,
         stages=build_stages(engine, config),
         advancer=Advancer.of(engine, config),
-        saves=FileSaves(directory),
-        traces=FileTraces(directory),
-        history_window=6,
-        max_growth=3,
-        max_memories=2,
+        store=FileStore(directory),
+        settings=config,
         rng=Random(1),
     )
 
