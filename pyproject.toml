@@ -35,7 +35,7 @@ pythonpath = ["tests/core", "tests/story", "tests/oracle", "tests/ui", "tests/pr
 testpaths = ["tests"]
 
 [tool.basedpyright]
-include = ["src", "tests", "scripts"]
+include = ["src", "tests"]
 extraPaths = [
   "src",
   "tests/core",
@@ -43,8 +43,6 @@ extraPaths = [
   "tests/oracle",
   "tests/ui",
   "tests/probe",
-  "scripts",
-  "scripts/evals",
 ]
 typeCheckingMode = "strict"
 venvPath = "."
