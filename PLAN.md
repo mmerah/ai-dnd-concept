@@ -66,7 +66,7 @@ with mechanical teeth.
    `advantage | neutral | disadvantage` position. The plan names which existing tags justify the
    position (`check_plan` refuses tags not on the sheet or in the scene — the model cannot
    invent a bonus); positive and negative cancel; never more than two dice a side. Chance d6 vs
-   Risk d6 → six semantic outcomes (`strong-yes / yes / yes-but / no-but / no / no-and`), tie →
+   Risk d6 → six semantic outcomes (`yes-and / yes / yes-but / no-but / no / no-and`), tie →
    `yes-but` + twist tick; every third twist tick emits a twist fact for the Director. Fortune
    spend = one reroll, resolver-side. All rolls in `resolve_action` against the draft, model
    never rolls.

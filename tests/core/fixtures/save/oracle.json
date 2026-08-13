@@ -6,7 +6,7 @@
     "title": "The Whispering Vault",
     "premise": "The abbey of Saint Corvin was abandoned in a single night. Kael has come for the sealed vault beneath it, and the abbot's study is the only room still lit."
   },
-  "engine": "story",
+  "engine": "oracle",
   "world": {
     "entities": {
       "study": {
@@ -141,8 +141,8 @@
             "text": "(burden) Old scars make certain memories hard to face."
           },
           {
-            "id": "mixed",
-            "name": "Mixed",
+            "id": "yes-and",
+            "name": "Yes And",
             "text": ""
           }
         ]
@@ -296,115 +296,133 @@
     ]
   },
   "mechanics": {
-    "actors": {
+    "sheets": {
       "mara": {
-        "bold": 0,
-        "subtle": 0,
-        "clever": 0,
-        "empathetic": 0,
-        "stress": {
-          "current": 0,
-          "maximum": 5,
+        "concept": "",
+        "edges": [],
+        "burdens": [],
+        "gear": [],
+        "luck": {
+          "current": 6,
+          "maximum": 6,
           "minimum": 0,
           "recharge": null
         },
-        "growth": {
+        "milestones": {
           "current": 0,
-          "maximum": 3,
+          "maximum": null,
           "minimum": 0,
           "recharge": null
         }
       },
       "tomas": {
-        "bold": 0,
-        "subtle": 0,
-        "clever": 0,
-        "empathetic": 0,
-        "stress": {
-          "current": 0,
-          "maximum": 5,
+        "concept": "",
+        "edges": [],
+        "burdens": [],
+        "gear": [],
+        "luck": {
+          "current": 6,
+          "maximum": 6,
           "minimum": 0,
           "recharge": null
         },
-        "growth": {
+        "milestones": {
           "current": 0,
-          "maximum": 3,
+          "maximum": null,
           "minimum": 0,
           "recharge": null
         }
       },
       "elena": {
-        "bold": 0,
-        "subtle": 0,
-        "clever": 0,
-        "empathetic": 0,
-        "stress": {
-          "current": 0,
-          "maximum": 5,
+        "concept": "",
+        "edges": [],
+        "burdens": [],
+        "gear": [],
+        "luck": {
+          "current": 6,
+          "maximum": 6,
           "minimum": 0,
           "recharge": null
         },
-        "growth": {
+        "milestones": {
           "current": 0,
-          "maximum": 3,
+          "maximum": null,
           "minimum": 0,
           "recharge": null
         }
       },
       "cloister_rat": {
-        "bold": 1,
-        "subtle": 2,
-        "clever": -1,
-        "empathetic": -1,
-        "stress": {
-          "current": 0,
-          "maximum": 3,
+        "concept": "A bloated rat that will not be driven off",
+        "edges": [
+          "Hard to Frighten"
+        ],
+        "burdens": [
+          "Slow and Heavy"
+        ],
+        "gear": [],
+        "luck": {
+          "current": 6,
+          "maximum": 6,
           "minimum": 0,
           "recharge": null
         },
-        "growth": {
+        "milestones": {
           "current": 0,
-          "maximum": 3,
+          "maximum": null,
           "minimum": 0,
           "recharge": null
         }
       },
       "player": {
-        "bold": 2,
-        "subtle": 1,
-        "clever": 1,
-        "empathetic": 0,
-        "stress": {
-          "current": 0,
-          "maximum": 5,
+        "concept": "A Wary Relic-Hunter",
+        "edges": [
+          "Reads Old Stonework",
+          "Quiet Hands"
+        ],
+        "burdens": [
+          "Never Walks Away"
+        ],
+        "gear": [
+          "Pry Bar",
+          "Chalk and Wire"
+        ],
+        "luck": {
+          "current": 6,
+          "maximum": 6,
           "minimum": 0,
           "recharge": null
         },
-        "growth": {
+        "milestones": {
           "current": 0,
-          "maximum": 3,
+          "maximum": null,
           "minimum": 0,
           "recharge": null
         }
       },
       "sister_auber": {
-        "bold": 0,
-        "subtle": 0,
-        "clever": 0,
-        "empathetic": 0,
-        "stress": {
-          "current": 0,
-          "maximum": 5,
+        "concept": "",
+        "edges": [],
+        "burdens": [],
+        "gear": [],
+        "luck": {
+          "current": 6,
+          "maximum": 6,
           "minimum": 0,
           "recharge": null
         },
-        "growth": {
+        "milestones": {
           "current": 0,
-          "maximum": 3,
+          "maximum": null,
           "minimum": 0,
           "recharge": null
         }
       }
+    },
+    "twist": {
+      "current": 0,
+      "maximum": 3,
+      "minimum": 0,
+      "recharge": null
     }
   },
   "history": [

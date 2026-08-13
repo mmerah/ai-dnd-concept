@@ -33,7 +33,7 @@ def test_an_overlay_decides_which_rules_a_scenario_offers(tmp_path: Path) -> Non
     catalog = load_catalog(ui_settings(tmp_path))
     controller = LauncherController(catalog)
 
-    assert catalog.scenario("whispering-vault").engines == ("story",)
+    assert catalog.scenario("whispering-vault").engines == ("story", "oracle")
     assert [option.id for option in catalog.characters] == ["kael"]
     controller.choose_engine(STORY)
 
@@ -53,12 +53,14 @@ def test_content_is_offered_only_for_the_rulesets_it_ships(tmp_path: Path) -> No
     scenarios = _scenarios_copy(tmp_path)
     (scenarios / "notes").mkdir()
     shutil.copytree(scenarios / "whispering-vault", scenarios / "aaa-draft")
-    (scenarios / "aaa-draft" / "story.json").unlink()
+    for overlay in (scenarios / "aaa-draft").glob("*.json"):
+        if overlay.name != "world.json":
+            overlay.unlink()
 
     controller = LauncherController(load_catalog(ui_settings(tmp_path, scenarios)))
 
     assert [option.id for option in controller.catalog.scenarios] == ["whispering-vault"]
-    assert controller.available_engines() == ("story",)
+    assert controller.available_engines() == ("story", "oracle")
     assert controller.selected_engine == "story"
 
 

@@ -1,0 +1,16 @@
+{
+  "character": {
+    "concept": "A Wary Relic-Hunter",
+    "edges": [
+      "Reads Old Stonework",
+      "Quiet Hands"
+    ],
+    "burdens": [
+      "Never Walks Away"
+    ],
+    "gear": [
+      "Pry Bar",
+      "Chalk and Wire"
+    ]
+  }
+}

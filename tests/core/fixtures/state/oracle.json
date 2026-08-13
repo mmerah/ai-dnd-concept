@@ -6,7 +6,7 @@
     "title": "The Whispering Vault",
     "premise": "The abbey of Saint Corvin was abandoned in a single night. Kael has come for the sealed vault beneath it, and the abbot's study is the only room still lit."
   },
-  "engine": "story",
+  "engine": "oracle",
   "world": {
     "entities": {
       "study": {
@@ -45,7 +45,7 @@
         "name": "the sealed vault",
         "brief": "The undercroft chamber Kael came for, its door bearing a seal nobody living can read.",
         "detail": null,
-        "known": true,
+        "known": false,
         "parent_id": null,
         "traits": []
       },
@@ -101,8 +101,8 @@
         "name": "the vault map",
         "brief": "A creased chart of the undercroft, marking a stair the abbey's own plans deny.",
         "detail": null,
-        "known": true,
-        "parent_id": "player",
+        "known": false,
+        "parent_id": "study",
         "traits": []
       },
       "lantern": {
@@ -139,26 +139,8 @@
             "id": "marked-by-the-past",
             "name": "Marked by the Past",
             "text": "(burden) Old scars make certain memories hard to face."
-          },
-          {
-            "id": "mixed",
-            "name": "Mixed",
-            "text": ""
           }
         ]
-      },
-      "sister_auber": {
-        "id": "sister_auber",
-        "kind": "actor",
-        "name": "Sister Auber",
-        "brief": "A lay sister who keeps the vault keys.",
-        "detail": {
-          "description": "She has kept the abbey's keys for thirty years.",
-          "hook": "She knows which doors were sealed and by whom."
-        },
-        "known": true,
-        "parent_id": "study",
-        "traits": []
       }
     },
     "relations": {
@@ -195,7 +177,7 @@
         "kind": "quest",
         "title": "The sealed vault",
         "status": "active",
-        "stage": "seal-found",
+        "stage": "unfound",
         "note": "Kael came for the vault and does not yet know where its door is."
       }
     },
@@ -288,138 +270,121 @@
         "note": "Elena remembers the rite that sealed the vault. Let her name her price for it."
       }
     ],
-    "fired_hooks": [
-      "vault-charted"
-    ],
-    "pending_notes": [
-      "The chart marks the stair to the vault door. Press on what opening the seal will cost."
-    ]
+    "fired_hooks": [],
+    "pending_notes": []
   },
   "mechanics": {
-    "actors": {
+    "sheets": {
       "mara": {
-        "bold": 0,
-        "subtle": 0,
-        "clever": 0,
-        "empathetic": 0,
-        "stress": {
-          "current": 0,
-          "maximum": 5,
+        "concept": "",
+        "edges": [],
+        "burdens": [],
+        "gear": [],
+        "luck": {
+          "current": 6,
+          "maximum": 6,
           "minimum": 0,
           "recharge": null
         },
-        "growth": {
+        "milestones": {
           "current": 0,
-          "maximum": 3,
+          "maximum": null,
           "minimum": 0,
           "recharge": null
         }
       },
       "tomas": {
-        "bold": 0,
-        "subtle": 0,
-        "clever": 0,
-        "empathetic": 0,
-        "stress": {
-          "current": 0,
-          "maximum": 5,
+        "concept": "",
+        "edges": [],
+        "burdens": [],
+        "gear": [],
+        "luck": {
+          "current": 6,
+          "maximum": 6,
           "minimum": 0,
           "recharge": null
         },
-        "growth": {
+        "milestones": {
           "current": 0,
-          "maximum": 3,
+          "maximum": null,
           "minimum": 0,
           "recharge": null
         }
       },
       "elena": {
-        "bold": 0,
-        "subtle": 0,
-        "clever": 0,
-        "empathetic": 0,
-        "stress": {
-          "current": 0,
-          "maximum": 5,
+        "concept": "",
+        "edges": [],
+        "burdens": [],
+        "gear": [],
+        "luck": {
+          "current": 6,
+          "maximum": 6,
           "minimum": 0,
           "recharge": null
         },
-        "growth": {
+        "milestones": {
           "current": 0,
-          "maximum": 3,
+          "maximum": null,
           "minimum": 0,
           "recharge": null
         }
       },
       "cloister_rat": {
-        "bold": 1,
-        "subtle": 2,
-        "clever": -1,
-        "empathetic": -1,
-        "stress": {
-          "current": 0,
-          "maximum": 3,
+        "concept": "A bloated rat that will not be driven off",
+        "edges": [
+          "Hard to Frighten"
+        ],
+        "burdens": [
+          "Slow and Heavy"
+        ],
+        "gear": [],
+        "luck": {
+          "current": 6,
+          "maximum": 6,
           "minimum": 0,
           "recharge": null
         },
-        "growth": {
+        "milestones": {
           "current": 0,
-          "maximum": 3,
+          "maximum": null,
           "minimum": 0,
           "recharge": null
         }
       },
       "player": {
-        "bold": 2,
-        "subtle": 1,
-        "clever": 1,
-        "empathetic": 0,
-        "stress": {
-          "current": 0,
-          "maximum": 5,
+        "concept": "A Wary Relic-Hunter",
+        "edges": [
+          "Reads Old Stonework",
+          "Quiet Hands"
+        ],
+        "burdens": [
+          "Never Walks Away"
+        ],
+        "gear": [
+          "Pry Bar",
+          "Chalk and Wire"
+        ],
+        "luck": {
+          "current": 6,
+          "maximum": 6,
           "minimum": 0,
           "recharge": null
         },
-        "growth": {
+        "milestones": {
           "current": 0,
-          "maximum": 3,
-          "minimum": 0,
-          "recharge": null
-        }
-      },
-      "sister_auber": {
-        "bold": 0,
-        "subtle": 0,
-        "clever": 0,
-        "empathetic": 0,
-        "stress": {
-          "current": 0,
-          "maximum": 5,
-          "minimum": 0,
-          "recharge": null
-        },
-        "growth": {
-          "current": 0,
-          "maximum": 3,
+          "maximum": null,
           "minimum": 0,
           "recharge": null
         }
       }
+    },
+    "twist": {
+      "current": 0,
+      "maximum": 3,
+      "minimum": 0,
+      "recharge": null
     }
   },
-  "history": [
-    {
-      "prompt": "I try the vault door.",
-      "narration": "The iron handle does not turn."
-    },
-    {
-      "prompt": "I look for another way in.",
-      "narration": "A flagstone by the wall sits proud of its neighbours."
-    },
-    {
-      "prompt": "I lever up the loose flagstone and listen at the vault door.",
-      "narration": "The flagstone lifts. Beyond the door, something shifts its weight and waits."
-    }
-  ],
-  "turn": 1
+  "history": [],
+  "turn": 0
 }

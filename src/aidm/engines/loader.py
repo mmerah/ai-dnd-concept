@@ -18,7 +18,7 @@ from aidm.state.facts import Fact
 from aidm.state.plan import TurnPlanBase
 from aidm.state.world import GameState
 
-ENGINE_MODULES: tuple[str, ...] = ("aidm.engines.story.rules",)
+ENGINE_MODULES: tuple[str, ...] = ("aidm.engines.story.rules", "aidm.engines.oracle.rules")
 ENGINE = "ENGINE"
 
 type EntityRenderer = Callable[[Entity], str]

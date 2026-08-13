@@ -1,11 +1,13 @@
 # AI Dungeon Master
 
-A role-separated narrative game platform with one shipped rules engine:
+A role-separated narrative game platform with two shipped rules engines:
 
 - **AIDM Story** — the narrative-first, rules-light engine.
+- **AIDM Oracle** — the first-party tag-based engine: one dramatic question, Chance d6 against
+  Risk d6, six semantic outcomes. Its resolution is inspired by Loner 3e (Zotiquest Games,
+  CC BY-SA 4.0); the terminology, the outcome ladder, and the code are original.
 
-A first-party tag-based Oracle engine is next (see CONCEPT.md and DECISION.md for the
-reorientation, PLAN.md for the phases).
+See CONCEPT.md and DECISION.md for the reorientation, PLAN.md for the phases.
 
 ```text
 prompt → SCENE → RULES → resolve → hooks → NARRATOR → WORLDKEEPER → commit
@@ -61,11 +63,12 @@ src/aidm/engines/         the loader, plus one directory per engine
 src/aidm/turn/            the turn loop, its agents, prompts, advancement
 src/aidm/app/             composition root: launcher catalog, sessions, runtime
 src/aidm/engines/story/   Story engine: mechanics, actions, director procedure
+src/aidm/engines/oracle/  Oracle engine: tag sheets, the dramatic question, the outcome ladder
 src/aidm/ui/              NiceGUI shell: renders state, submits decisions
 scripts/evals/    live-model eval harness, run manually and never from pytest
 characters/       shared character canon plus one overlay per supported engine
 scenarios/        shared world canon plus one overlay per supported engine
-tests/            per-package suites: core, story, ui
+tests/            per-package suites: core, story, oracle, ui
 ```
 
 One distribution. The import direction — `state <- content <- engines <- turn <- app <- ui`, with

@@ -4,6 +4,7 @@ from random import Random
 import pytest
 from core_test_support import STORY, game, plan, played, scripted, structured, text
 from golden_test_support import FIXTURES, dumped, golden
+from oracle_test_support import ORACLE
 from pydantic_ai.messages import ModelResponse
 from pydantic_ai.models.function import FunctionModel
 
@@ -68,6 +69,17 @@ SCRIPTS: Mapping[EngineId, ModelResponse] = {
             "stakes": "listening past the vault door unheard",
         },
         ("strong", "mixed", "setback"),
+    ),
+    ORACLE: _plan(
+        {
+            "act": "question",
+            "actor_id": "player",
+            "question": "Does he hear what waits past the vault door without being heard?",
+            "leverage": ["Quiet Hands"],
+            "trouble": [],
+            "opponent_id": None,
+        },
+        ("yes-and", "yes-but", "no"),
     ),
 }
 

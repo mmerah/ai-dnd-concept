@@ -1,0 +1,17 @@
+ON OFFER
+A milestone is reached.
+
+RULES TEXT
+Say how the character has changed. One change only: a new edge, a new piece of signature gear, or a burden left behind.
+
+THE CHARACTER
+Kael
+concept: A Wary Relic-Hunter
+edges: Reads Old Stonework, Quiet Hands
+burdens: Never Walks Away
+gear: Pry Bar, Chalk and Wire
+pools: luck 6/6
+traits: Relic Hunter[id=relic-hunter] — (edge) Kael knows how old sanctums conceal what matters., Marked by the Past[id=marked-by-the-past] — (burden) Old scars make certain memories hard to face.
+
+WHAT THE PLAYER WANTS
+I want to strike harder.

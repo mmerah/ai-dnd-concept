@@ -1,0 +1,13 @@
+{
+  "entities": {
+    "cloister_rat": {
+      "concept": "A bloated rat that will not be driven off",
+      "edges": [
+        "Hard to Frighten"
+      ],
+      "burdens": [
+        "Slow and Heavy"
+      ]
+    }
+  }
+}

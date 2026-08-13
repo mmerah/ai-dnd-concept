@@ -4,29 +4,58 @@
     {
       "source": "core",
       "kind": "dice_rolled",
-      "trace": "listening past the vault door unheard: 2d6 [4, 5] -> 9 vs 7: SUCCESS",
-      "narrator": "listening past the vault door unheard: success",
+      "trace": "Does he hear what waits past the vault door without being heard? — chance: 1d6 [5] -> 5 (advantage, dropped 4)",
+      "narrator": null,
       "data": {
-        "dice": "2d6",
-        "mode": "normal",
+        "dice": "1d6",
+        "mode": "advantage",
         "rolled": [
-          4,
           5
         ],
-        "total": 9,
-        "vs": 7,
-        "success": true,
-        "reason": "listening past the vault door unheard"
+        "total": 5,
+        "vs": null,
+        "success": null,
+        "reason": "Does he hear what waits past the vault door without being heard? — chance"
+      }
+    },
+    {
+      "source": "core",
+      "kind": "dice_rolled",
+      "trace": "Does he hear what waits past the vault door without being heard? — risk: 1d6 [4] -> 4",
+      "narrator": null,
+      "data": {
+        "dice": "1d6",
+        "mode": "normal",
+        "rolled": [
+          4
+        ],
+        "total": 4,
+        "vs": null,
+        "success": null,
+        "reason": "Does he hear what waits past the vault door without being heard? — risk"
+      }
+    },
+    {
+      "source": "core",
+      "kind": "question_answered",
+      "trace": "Does he hear what waits past the vault door without being heard? -> yes-and",
+      "narrator": "Does he hear what waits past the vault door without being heard? -> yes-and",
+      "data": {
+        "entity_id": "player",
+        "outcome": "yes-and",
+        "chance": 5,
+        "risk": 4,
+        "position": "advantage"
       }
     },
     {
       "source": "core",
       "kind": "trait_added",
-      "trace": "Kael is Mixed",
-      "narrator": "Kael is Mixed",
+      "trace": "Kael is Yes And",
+      "narrator": "Kael is Yes And",
       "data": {
         "entity_id": "player",
-        "trait_id": "mixed"
+        "trait_id": "yes-and"
       }
     },
     {
@@ -121,39 +150,39 @@
         ],
         "branches": [
           {
-            "outcome": "strong",
+            "outcome": "yes-and",
             "effects": [
               {
                 "op": "trait-change",
                 "mode": "add",
                 "entity_id": "player",
-                "trait_id": "strong",
+                "trait_id": "yes-and",
                 "text": "",
                 "why": ""
               }
             ]
           },
           {
-            "outcome": "mixed",
+            "outcome": "yes-but",
             "effects": [
               {
                 "op": "trait-change",
                 "mode": "add",
                 "entity_id": "player",
-                "trait_id": "mixed",
+                "trait_id": "yes-but",
                 "text": "",
                 "why": ""
               }
             ]
           },
           {
-            "outcome": "setback",
+            "outcome": "no",
             "effects": [
               {
                 "op": "trait-change",
                 "mode": "add",
                 "entity_id": "player",
-                "trait_id": "setback",
+                "trait_id": "no",
                 "text": "",
                 "why": ""
               }
@@ -161,19 +190,20 @@
           }
         ],
         "action": {
-          "act": "risk",
+          "act": "question",
           "actor_id": "player",
-          "approach": "subtle",
-          "difficulty": "demanding",
-          "helping_trait_id": null,
-          "hindering_trait_id": null,
-          "stakes": "listening past the vault door unheard"
+          "question": "Does he hear what waits past the vault door without being heard?",
+          "leverage": [
+            "Quiet Hands"
+          ],
+          "trouble": [],
+          "opponent_id": null
         }
       }
     },
     {
       "name": "resolve",
-      "output": "- listening past the vault door unheard: success\n- Kael is Mixed\n- learned of the vault map\n- took the vault map"
+      "output": "- Does he hear what waits past the vault door without being heard? -> yes-and\n- Kael is Yes And\n- learned of the vault map\n- took the vault map"
     },
     {
       "name": "hooks",

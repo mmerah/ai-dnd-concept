@@ -1,0 +1,53 @@
+[
+  {
+    "branches": [
+      {
+        "outcome": "yes-and",
+        "effects": [
+          {
+            "op": "move",
+            "to_id": "vault"
+          }
+        ]
+      },
+      {
+        "outcome": "yes-but",
+        "effects": [
+          {
+            "op": "trait-change",
+            "mode": "add",
+            "entity_id": "player",
+            "text": "(condition) The whispering drowns out anything said softly.",
+            "trait_id": "ears-ringing"
+          }
+        ]
+      },
+      {
+        "outcome": "no-and",
+        "effects": [
+          {
+            "op": "counter-change",
+            "mode": "adjust",
+            "entity_id": "player",
+            "counter": "luck",
+            "amount": -1,
+            "why": "the seal takes something out of him"
+          }
+        ]
+      }
+    ],
+    "action": {
+      "act": "question",
+      "actor_id": "player",
+      "question": "Does he get the sealed door open before the whispering finds him?",
+      "leverage": [
+        "Reads Old Stonework",
+        "Pry Bar"
+      ],
+      "trouble": [
+        "Never Walks Away"
+      ],
+      "opponent_id": null
+    }
+  }
+]

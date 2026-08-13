@@ -1,0 +1,49 @@
+SCENARIO:
+The Whispering Vault
+The abbey of Saint Corvin was abandoned in a single night. Kael has come for the sealed vault beneath it, and the abbot's study is the only room still lit.
+
+PLAYER CHARACTER:
+Kael — A scarred relic-hunter who came to the abbey for what is sealed beneath it. — at the abbot's study
+state:
+  concept: A Wary Relic-Hunter
+  edges: Reads Old Stonework, Quiet Hands
+  burdens: Never Walks Away
+  gear: Pry Bar, Chalk and Wire
+  pools: luck 6/6
+  traits: Relic Hunter — (edge) Kael knows how old sanctums conceal what matters., Marked by the Past — (burden) Old scars make certain memories hard to face., Yes And
+inventory:
+- a guttering lantern — A dented tin lantern whose flame will not hold still.
+  state:
+    traits: Unsteady Lantern — (gear) Its shifting light exposes seams and movement in deep shadow.
+- the vault map — A creased chart of the undercroft, marking a stair the abbey's own plans deny.
+
+HERE WITH THE PLAYER:
+- Mara (npc) — at the abbot's study — The abbey's last scribe, cautious and tired, still cataloguing books nobody will read.
+  state:
+    pools: luck 6/6
+
+EXITS FROM HERE:
+- the cloister
+
+KNOWN TO THE PLAYER, BUT ELSEWHERE:
+- the cloister (location) — A frost-rimed colonnade around a dead garden; Brother Tomas sweeps it to no purpose.
+- the sealed vault (location) — The undercroft chamber Kael came for, its door bearing a seal nobody living can read.
+- Brother Tomas (npc) — at the cloister — A deaf old porter who sweeps the cloister and knows almost nothing about the vault.
+  state:
+    pools: luck 6/6
+
+THE DIRECTOR'S PLAN — what was meant, not what happened:
+Kael acts.
+
+SPEAKER:
+(none — narrate the scene)
+
+WHAT HAPPENED:
+- Does he hear what waits past the vault door without being heard? -> yes-and
+- Kael is Yes And
+- learned of the vault map
+- took the vault map
+- learned of the sealed vault
+
+PLAYER ACTION:
+I lever up the loose flagstone and listen at the vault door.

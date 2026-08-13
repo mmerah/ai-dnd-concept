@@ -591,6 +591,11 @@ It should be **a plugin, not the core**.
 - progress/threat structures that propel solo play;
 - easy PDF-to-scenario compilation.
 
+These are Oracle's goals, not the platform's. A heavier engine owns whatever combat subsystem it
+needs — initiative, harm tracks, positioning — and the engine boundary exists so that it can;
+Oracle starting with one conflict model is a preference about Oracle, revisable when play asks
+for teeth, not a rule the other engines inherit.
+
 ### 12.2 Research basis
 
 Loner 3e is especially relevant because it is explicitly solo, minimalist, tag-based, and built around one Oracle mechanic; it defines characters and situations descriptively instead of through heavy numerical simulation.[R1] Loner also demonstrates genre/adventure packs and special rules layered over the same compact base.
