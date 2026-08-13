@@ -2,11 +2,9 @@
 
 The phased plan for what is built next, in order. Rewritten 2026-08-13 after the recentering
 decision: the project ships official, freely licensed, LLM-as-GM-friendly tabletop engines
-only. The first-party story engine is deleted; the oracle engine is renamed loner3e and made
-compliant with the Loner 3e SRD (CC BY-SA 4.0), with every deviation named in
-docs/LONER-3E.md; 24XX and Cairn 2e sit on a docs-only shelf until one is wanted. Each phase
-carries enough detail to implement without prior context; only the next unshipped phase needs
-full resolution. Shipped phases move to PROGRESS.md.
+only. Loner 3e is the shipped engine; 24XX and Cairn 2e sit on a docs-only shelf until one is
+wanted. Each phase carries enough detail to implement without prior context; only the next
+unshipped phase needs full resolution. Shipped phases move to PROGRESS.md.
 
 ## Working rules
 
@@ -26,61 +24,168 @@ full resolution. Shipped phases move to PROGRESS.md.
 Per phase: `uv run pytest && uv run ruff check && uv run ruff format --check && uv run
 basedpyright` green after every numbered step, one commit per step.
 
-## Phase 1 — loner3e: rename and close the compliance gap (~1–2 days)
+## Phase 2 — The engine shelf: README note (~15 min)
 
-The oracle engine already matches the Loner 3e SRD's core loop: Chance d6 vs Risk d6, the six
-outcomes with the both-low/both-high and/but rules, tie → twist tick with a twist due at 3,
-harm 3/2/1 against a Luck pool of 6, advantage/disadvantage as one extra die on one side. What
-remains is vocabulary, the random tables, and the edges of the rules. Final step resolution
-waits on docs/LONER-3E.md (the exact SRD text, CC BY-SA 4.0, attributed); the shape is:
+The SRD extractions already exist (`docs/24XX.md`, `docs/CAIRN-2E.md`, `docs/LONER-3E.md`).
+What remains: README.md names the shelf and the rule — official, freely licensed, low
+mechanical overhead — an engine the Directors can drive without a rules lawyer. One short
+section pointing at the three docs. Done when the README carries it.
 
-1. **Rename**: package `engines/oracle/` → `engines/loner3e/`, engine id `loner3e`, badge, and
-   SRD vocabulary throughout sheet, prompts, and fixtures — `edges` → `skills`, `burdens` →
-   `frailties`; `concept`, `gear`, `luck`, `twist` already match. Content follows:
-   `characters/kael/oracle.json` → `loner3e.json`, same for the scenario overlay. Bump
-   `SAVE_VERSION`, regenerate fixtures, read the diff. CC BY-SA 4.0 attribution to Roberto
-   Bisceglie / Zotiquest Games in README.md and the engine's director.md.
-2. **Roll the SRD's tables resolver-side, Director interprets**: when a twist comes due, roll
-   the 2d6 twist table (subject × action) in `resolve.py` and put the rolled pairing in the
-   note that `pending_notes` already carries to the next turn's directors — the LLM writes the
-   fiction, never picks the row. Tables are frozen Python constants in the engine package, not
-   content packs (see below).
-3. **Close rule gaps against docs/LONER-3E.md**, each either implemented or added to that
-   doc's Deviations section with a reason. Already SRD-exact, verified against the extraction:
-   the outcome grid with both-≤3/both-≥4 modifiers, advantage as one extra die of that color
-   keep-highest capped at two, net tag cancellation, harm 3/2/1, and conflict exchanges never
-   ticking the Twist Counter ("The Twist Counter does NOT apply to Harm & Luck"). The real
-   gaps: Luck "resets after conflicts" with no spend rule (the SRD has none — decide whether
-   the reset is resolver-side at conflict end or stays a Director `counter-change`);
-   advancement options (SRD growth also adds a frailty or modifies a trait; today's milestone
-   buys only edge/gear/clear-burden); Goal/Motive/Nemesis (map to threads and entities rather
-   than sheet fields); non-living characters (SRD gives objects concept/skills/frailties/Luck;
-   sheets are actors-only today); the optional next-scene mood roll (Scene Director judgment
-   replaces it). Twists landing one turn late — the note channel — is a standing deviation:
-   the Narrator only writes from committed facts.
-4. **Deviations doc**: docs/LONER-3E.md ends with the named list of every remaining
-   divergence — the standing contract for what "compliant" means here.
+## Phase 3 — Shrink and comply (~2.5–3 days)
 
-Done when: kael plays a full turn under `loner3e`, the suite is green on regenerated
-fixtures, and every divergence from the SRD is either closed or named in docs/LONER-3E.md.
+Two audits (2026-08-13, full-tree) found ~500 LOC of pure waste, ~250 lines of prose living in
+Python, per-engine boilerplate that the shelf engines would paste twice more, and one genuine
+loner3e rules bug plus prompt prose the SRD doc *claims* exists but no prompt contains. This
+phase is both audits' accepted findings, sequenced so every persisted-byte change lands in one
+commit with one `SAVE_VERSION` bump and one golden regeneration. Behavior is otherwise
+unchanged: no feature is removed, and outside steps 7–9 no fixture may move.
 
-## Phase 2 — The engine shelf: docs-only stubs (~½ day)
+Verified groundwork the steps rely on:
 
-Candidate engines are docs, not code: an exact SRD extraction per engine under `docs/`, each
-ending with a short "what its engine package would look like" note (~10 lines: sheet shape,
-plan/action types, resolver, which of its tables the Directors replace or roll). No skeleton
-packages — an engine package appears only when it is next to be played.
+- `DiceExpr`, `MAX_LENGTH`, `_parseable` in `state/dice.py` have zero references anywhere.
+  `roll(bonus=…)` and multi-term parsing (`ConstantTerm`) have exactly one caller:
+  `tests/probe/probe_engine.py:102`.
+- `Counter.recharge` / `Counter.minimum` are never set by any engine or content file; they
+  appear only as serialized defaults in save/state fixtures. `Thread.kind`, `Memory.tags`,
+  `Memory.turn` are written (scenario / `pipeline.py:70`) but read by nothing.
+- `available_tags` (`engines/loner3e/resolve.py:72`) reads sheet tags for the acting actor
+  only; an opponent's Skills/Frailties/Gear can never be cited as leverage or trouble.
+  `scenarios/whispering-vault/world.json:75` works around this by duplicating the rat's skill
+  as a core trait.
+- The `TraitChange` docstring (`state/effects.py:54`) says "edge, or burden" and is injected
+  into the Director's JSON schema every turn (`fixtures/schemas/loner3e/turn_plan.json`).
+  `state/base.py:69` and the `(edge)`/`(burden)` prefixes in `characters/kael/base.json` and
+  the whispering-vault world carry the same dead vocabulary.
+- The golden turn fixture has no conflict exchange (`opponent_id` is always null), so the Luck
+  reset (step 9) moves no golden fixture; its coverage is unit tests in `tests/loner3e/`.
+- No prompt anywhere contains the SRD's scene moods (Dramatic/Quiet/Meanwhile) or Sibylline
+  Responses guidance, although docs/LONER-3E.md:900 and :933 claim the Scene Director carries
+  both.
 
-1. `docs/24XX.md` — 24XX SRD (CC BY 4.0, Jason Tocci). The natural second engine: skill-die
-   pools, one roll-highest resolution, disaster/setback/success.
-2. `docs/CAIRN-2E.md` — Cairn 2e SRD (Yochai Gal). More mechanical (HP, three stats, armour,
-   damage dice); implement only if its shape is wanted.
-3. README.md names the shelf and the rule: official, freely licensed, low mechanical
-   overhead — an engine the Directors can drive without a rules lawyer.
+Steps, one commit each:
 
-Done when: both docs exist with license attribution and the README names the shelf.
+1. **Delete dead dice generality** (−45). Remove `DiceExpr`, `MAX_LENGTH`, `_parseable`,
+   `ConstantTerm`, multi-term parsing, the `bonus=` parameter, and the `"disadvantage"`
+   `RollMode` literal (loner3e flips *which side* gets advantage instead — `resolve.py:191`;
+   nothing ever passes disadvantage). Port the probe engine off `bonus=`: roll `"1d6"` and add
+   the stat in code, adjusting its tests' expected traces. Golden dice traces are unaffected
+   (production only ever rolls `"1d6"`).
+2. **State-layer dedup** (−45). Collapse `_add/_remove/_untag/_reveal_relation`
+   (`state/apply.py:229-289`) into one mode-table function — trace strings must be preserved
+   byte-exact; `tests/core/test_effects.py` is the guard, and no golden fixture contains a
+   relation change. Move `entity_fact`/`explained_fact` (`apply.py:72-95`) into
+   `state/facts.py` and rewrite the hand-rolled `Fact(...)` blocks in `world.py:285-323` and
+   `apply.py:292-331` onto them; the two fact dialects exist only because `apply` imports
+   `world`.
+3. **App/UI dedup** (−80). In `app/launcher.py`: one `_one(options, id)` lookup helper
+   replacing the four `next((o for o in xs if o.id == y), None)` copies; collapse
+   `ScenarioOption`/`CharacterOption` into `ContentOption` with a `subtitle: str`; delete
+   `LauncherModel` (it redeclares `state/base.py` `Frozen` in a layer allowed to import it).
+   Merge `FileSaves`/`FileTraces` (`content/store.py:116-179`) into one class with two
+   suffixes, and drop `_StoredVersion` (use `SaveShell` for saves, inline the trace probe).
+   Pass `Settings` into `GameSession` and `run_turn` instead of six scalars (update
+   `loner3e_test_support.py`, the second construction site). In `ui/`: one
+   `page_header(title, badge=None)` in `panels.py` used by `app.py`, `home.py`, `create.py`;
+   `functools.partial` for the two hand-written handler-closure factories in `home.py`; fold
+   `stage()` into the `Stage` dataclass (`turn/roles.py:51-112`). Covered by
+   `tests/ui/test_launcher.py` and the UI suite; no fixtures move.
+4. **Split `turn/prompts.py`** (±0). Move lines 10–185 — `Exit`, `BaseScene`,
+   `SceneSnapshot`, `VisibleScene`, `check_speaker`, `_placements` — verbatim into
+   `turn/scene.py`; imports only. `test_context_boundary.py` asserts on
+   `VisibleScene.model_fields` (a leak boundary): repoint its import, change nothing else.
+5. **Core prompt prose → files** (−145). The constants at `prompts.py:450-595`
+   (`RULES_DIRECTOR`, `SCENE_DIRECTOR`, `CORE_ADVISOR`, `NARRATOR`, `WORLDKEEPER` and the
+   `_DIRECTOR_*` pieces) become `src/aidm/turn/prompts/*.md` read via the same
+   `loader.engine_text` path as `director.md`. One file per shipped constant; a piece shared
+   by two constants stays its own file joined in code. Trap: the Python constants use
+   `\`-continuation, which joins lines *without* a newline — the files must reproduce the
+   assembled strings byte-identically, and `fixtures/instructions/loner3e/*.txt` is exactly
+   the guard that fails on a mis-transcription. No fixture may move in this step.
+6. **loner3e content packs: SRD + AP01, selectable** (revised decision — see below). New
+   `engines/loner3e/pack.py`: a strict frozen Pydantic model — `name`, `source` (URL),
+   `license` (attribution line), `concepts`/`skills`/`frailties`/`gear` as non-empty tuples of
+   `{id, label, detail}` (`detail` may be empty — AP01 entries are bare phrases), and optional
+   `twist_subjects`/`twist_actions` (exactly six strings each when present). Two files:
+   - `packs/srd.json` — today's values verbatim: the four curated tables from
+     `create.py:8-106` and the twist table from `resolve.py:17-24` split into subject and
+     action columns. Same ids, labels, strings → existing creation fixtures unchanged.
+   - `packs/ap01-fantasy.json` — the four d66 creation tables (36 entries each) transcribed
+     verbatim from
+     <https://lonersrd.zotiquestgames.com/adventure_packs/AP01_fantasy.html>, slugified ids,
+     empty details. AP01 has **no twist table**, so the file omits the twist fields; its
+     names/spells/factions/seeds tables are authoring-time content the engine does not
+     consume — not vendored. Verified 2026-08-13: the AP01 page states only
+     "© Roberto Bisceglie"; the SRD site's own license statement is CC BY-SA 4.0. Treated as
+     covered because it ships inside the SRD site; step 10's licensing note names the
+     ambiguity.
+   The engine loads and validates every `packs/*.json` once in `__init__` (fail fast;
+   exactly one pack — srd — must carry the twist columns, and the resolver reads them from
+   it, still rolled resolver-side). *Selection* is creation step 0: `Loner3eCreation.steps`
+   already takes `picks`, so a first `CreationStep` ("Choose a table set": one option per
+   pack, label from `name`) makes the later steps come from the chosen pack, and `create()`
+   resolves labels against it. No overlay change, no persisted bytes, no SAVE_VERSION —
+   the chosen options land in the character overlay as plain strings exactly as today.
+   Update `tests/ui` creation flow tests and `tests/loner3e/test_create.py` for the new
+   first step. While in the engine: kill the delegation shim (`rules.py:34-41`'s three
+   methods that only forward to `mechanics.py`) and replace the per-engine `read`/`write`
+   wrappers (`mechanics.py:112-117`) with a `read_mechanics(state, Model)` helper in
+   `engines/counters.py` beside the existing `write_mechanics` (−25 now, −25 per future
+   engine).
+7. **Compliance prose** (moves instruction/prompt fixtures, no persisted bytes). In
+   `engines/loner3e/director.md`: Sibylline Responses (never re-ask an answered question;
+   reframe rather than force a roll; when no outcome fits, read it as *yes, but…*). In the
+   scene-director file from step 5: the SRD's three scene moods — Dramatic, Quiet, Meanwhile —
+   as the vocabulary for its pacing judgment. In `advancement.md`: one sentence that a
+   lingering enemy from a milestone is recorded as a thread and its entity, not a sheet
+   change. In the narrator file: replace "never recite hit points, armour class, modifiers"
+   (5e residue) with system-neutral wording. Regenerate `instructions`/`prompts` fixtures,
+   read the diff.
+8. **The save-shape commit** — every persisted-byte change, one `SAVE_VERSION` bump (56→57):
+   - *Opponent tags visible*: `available_tags` merges `mechanics.sheets[...].tags()` for every
+     actor among `carriers` (present actors are already in `place`'s children; the opponent is
+     already revealed by `resolve_question`). Delete the duplicated rat trait at
+     `scenarios/whispering-vault/world.json:75` — the sheet skill now reaches the resolver.
+   - *Vocabulary*: `state/effects.py:54` and `state/base.py:69` docstrings lose
+     "edge"/"burden" for SRD terms (these docstrings are the Director's schema text — rule 2's
+     probe is not needed, the schema *shrinks* in vocabulary only). `(edge)`/`(burden)`
+     prefixes in `characters/kael/base.json` and the whispering-vault world become
+     `(skill)`/`(frailty)`; the `test_effects.py:141` comment follows.
+   - *Vestigial fields*: delete `Thread.kind`, `Memory.tags`, `Memory.turn` (drop the write at
+     `pipeline.py:70`), `Counter.recharge` and `Counter.minimum` (field, validator, render
+     line); edit the scenario world's `"kind": "quest"` thread and any authored memory tags.
+   - Bump `SAVE_VERSION`, `AIDM_GOLDEN_REGEN=1`, update `FIXTURE_SAVE_VERSION` in
+     `test_golden_state.py`, and read the diff: expect removed keys, changed trait/docstring
+     text in schemas, the rat trait gone — dice traces and outcome labels must not move.
+9. **Luck resets when a conflict ends** (SRD: Luck "resets after conflicts"). `_strike`
+   (`resolve.py:153-163`) already knows the one conflict end the engine can see — a side
+   hitting 0. Reset both participants' luck to maximum there, keeping `defeat_note`; the
+   Director's `counter-change` stays the documented fallback for conflicts that fizzle without
+   a knockout. Unit tests in `tests/loner3e/`; no golden movement (no conflict in the turn
+   fixture).
+10. **Docs and licensing.** docs/LONER-3E.md: the delegation claims at :900 and :933 become
+    true statements pointing at the prose landed in step 7; rewrite the Deviations list —
+    drop what steps 7–9 closed, add the previously unnamed ones: the Twist Counter is hidden
+    from the player, concept is a closed five-option menu (SRD wants a free phrase), one
+    change per milestone (SRD allows several), and the 5W+H framing table is not rolled.
+    README gains a Licensing section naming the CC BY-SA 4.0 files (docs/LONER-3E.md, the
+    loner3e engine's prose and packs, the SRD-derived content) with attribution to Roberto
+    Bisceglie / Zotiquest Games, and noting that `packs/ap01-fantasy.json` derives from the
+    AP01 page, whose own footer states only a plain copyright while the SRD site declares
+    CC BY-SA 4.0 — treated as covered, flagged for a one-line confirmation email if the
+    maintainer wants certainty. The license of the rest of the code is the maintainer's open
+    decision; the section says so rather than inventing one.
+11. **Comment trim pass** (repo-wide, no behavior change). Apply CLAUDE.md's comment rules to
+    every production and test file: delete comments that narrate control flow, restate a name
+    or type, or give historical counts; keep constraints, tradeoffs, invariants. Docstrings
+    consumed by schemas or prompts are runtime behavior — step 8 already handled the two that
+    change; this step must not touch any docstring that reaches a fixture.
 
-## Phase 3 — Scenario creator (~3–4 days)
+Done when: the suite is green on every step's commit, production LOC is down ~500 (≈4,550
+from 5,059), `packs/srd.json` drives creation and twists, and docs/LONER-3E.md's deviations
+list matches the code again — only architecture-forced deviations (per-thread milestones, one
+question per turn, Diceless appendix) and named design calls remain.
+
+## Phase 4 — Scenario creator (~3–4 days)
 
 Premise → a complete scenario in the exact on-disk format, authored by a strong model at
 authoring time. This is a script, not the app: agentic workflows are fine outside the turn
@@ -114,7 +219,7 @@ that appears on the home page and plays a first turn under every shipped engine.
 validity is judged by playing it, not asserted by the script. PDF/notes ingestion is a later
 input mode for the same script, not a separate system.
 
-## Phase 4 — Media: scene illustrations (~2–3 days)
+## Phase 5 — Media: scene illustrations (~2–3 days)
 
 Presentation only, outside mechanical truth: the game must be indistinguishable with media
 disabled, and a failed generation must cost nothing but a log line.
@@ -147,30 +252,40 @@ and with it disabled (the default) nothing in state, saves, prompts, or tests di
   already configure the turn through their plan type, instructions, toolsets, `check_plan`
   refusals, and the `pending_notes` channel (how loner3e's twist reaches the Directors without
   core changes); a Loner mood roll would be one more resolver-side note, not a pipeline hook.
-
+- **Loner's tables as a content pack**: reversed 2026-08-13 (previously rejected). Loner 3e
+  publishes adventure packs (e.g. AP01, lonersrd.zotiquestgames.com/adventure_packs/) that
+  swap exactly the data a pack holds — creation tables — so packs are real published content,
+  not speculation. Phase 3 step 6 ships two packs (SRD + AP01 fantasy) with selection as
+  creation step 0. Scope stays engine-local: no core loader; a scenario-pins-a-pack overlay
+  field only if a scenario ever wants to restrict the choice.
+- **Speculative engine-prep refactors**: rejected. The 2026-08-13 audit checked both shelf
+  sketches against the current `Engine` ABC — 24XX and Cairn fit it essentially unchanged
+  (multiple action shapes are just the engine's own `plan_type`; item overlays already reach
+  `begin`; stats and HP are `Counter`s). Not built until the engine that needs it lands:
+  `roll_pool` for heterogeneous dice (~12 LOC when 24XX arrives), per-action `check_action`
+  labels (one signature change when Cairn arrives), an `AllocationStep` creation type, and
+  `Engine.describe_created` for the UI preview.
 - **Keeping the story engine**: rejected. The recentering rule is official, freely licensed
   systems only; a first-party ruleset competes with them for maintenance and eval attention
   while nobody would choose it. Its only structural value — proving the engine boundary with a
   second implementation — is already carried by the probe engine (`tests/probe/`).
-- **Loner's tables as a content pack**: rejected. The twist table is a 6×6 of short strings;
-  a frozen constant next to `resolve.py` is typed and needs no loader. Packs return only when
-  a scenario needs to override an engine's tables, which nothing asks for.
-- **Runnable stubs for 24XX / Cairn 2e**: rejected in favour of docs-only SRD extractions
-  (Phase 3). A skeleton package is dead code with a maintenance cost; the `Engine` ABC stays
-  honest through loner3e plus the probe engine.
-
+- **Runnable stubs for 24XX / Cairn 2e**: rejected in favour of docs-only SRD extractions.
+  A skeleton package is dead code with a maintenance cost; the `Engine` ABC stays honest
+  through loner3e plus the probe engine.
 - **Rebuilding World Core as its own ECS layer**: rejected. The boundary test proves engine
   concepts never leaked into core; `state/world.py` already is the neutral world layer. ECS
   components, event-sourced projections, and an `EngineAdapter` interface are not adopted — the
   existing `Engine` ABC is smaller and proven by three implementations.
 - **Keeping dnd5e as a dormant engine**: rejected. 46k lines of artifact with a broken
   advancement backlog is not worth the tree weight; git history keeps it.
-- **A content-pack system for Oracle**: rejected. Oracle's tags are free text; `state/packs.py`
-  leaves with its only consumer. Reintroduce packs only when a second engine needs shared
-  structured content.
 - **Fact as the domain event stream**: already the architecture; memories and thread judgment
   build on it without an event bus.
 - **FrozenMap removal**: rejected. Frozen Pydantic models do not deep-freeze contained dicts;
   the wrapper enforces the repository's frozen-value invariant.
 - **Plain-text Director fallback removal**: rejected. It is a tested provider workaround, not an
   unused second design.
+- **Deeper Loner compliance** (non-living sheets, Goal/Motive/Nemesis as sheet fields,
+  free-text concept, Adventure Maker tables): rejected for now — named as deviations in
+  docs/LONER-3E.md instead (Phase 3 step 10). The SRD itself says Goal/Motive/Nemesis emerge
+  from play (threads already carry them); the Adventure Maker is an authoring-time tool that
+  belongs to the Phase 4 script if anywhere.

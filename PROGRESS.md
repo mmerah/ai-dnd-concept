@@ -20,12 +20,16 @@ Tracking PLAN.md. One bullet per landed step; `uv run pytest && ruff check && ru
   no SAVE_VERSION bump; only fixture movement is the always-null `vs`/`success` keys leaving
   the turn trace. Reviewed: sweeps clean, probe/oracle engines untouched.
 
-- 2026-08-13: loner3e phase staged (not committed) — full rename with SAVE_VERSION 56, twist
+- 2026-08-13: loner3e phase shipped (`dbec49c`) — full rename with SAVE_VERSION 56, twist
   table resolver-side, SRD growth verbs, deviations cut to 10: twists now narrate the turn they
   land (twist fact narratable, note develops it next turn) and the max-4 caps are gone.
 
+- 2026-08-13: two full-tree audits (refactor + loner3e compliance) accepted and sequenced as
+  PLAN.md Phase 3 (shrink and comply, 11 steps, one SAVE_VERSION bump in step 8); scenario
+  creator and media renumbered to phases 4 and 5; content-pack rejection reversed (Loner
+  adventure packs are real upcoming content).
+
 ## Next
 
-- Maintainer: review staged diff, live-probe the reshaped advisor proposal schema (working
-  rule 2), then commit.
-- Phase 2: engine shelf README note.
+1. Phase 2: engine shelf README note (~15 min).
+2. Phase 3: shrink and comply — start at step 1 (dead dice generality).
