@@ -30,7 +30,7 @@ from aidm.state.world import Memory
 from aidm.turn.pipeline import TURN_STEPS
 from aidm.turn.roles import ChannelSafeModel
 
-STEPS = ("scene", "director", "resolve", "hooks", "narrator", "worldkeeper")
+STEPS = ("director", "resolve", "hooks", "narrator", "worldkeeper")
 
 
 async def test_an_engine_uses_the_shared_pipeline_and_safe_narrator_prompt() -> None:
@@ -68,15 +68,22 @@ async def test_an_engine_uses_the_shared_pipeline_and_safe_narrator_prompt() -> 
 
 
 async def test_a_speaker_the_turn_walks_away_from_narrates_the_scene_instead_of_dying() -> None:
-    """The scene picks a speaker who is here; the plan then moves the player elsewhere. The
+    """The director picks a speaker who is here; the plan then moves the player elsewhere. The
     speaker leaving is fiction, so the turn still commits."""
     engine, state = initialized()
     result = await played(
         engine,
         state,
         "I leave for the cloister.",
-        director=FunctionModel(scripted(plan(effects=[{"op": "move", "to_id": "cloister"}]))),
-        scene=FunctionModel(scripted(structured(focus="Kael leaves.", speaker_id="mara"))),
+        director=FunctionModel(
+            scripted(
+                plan(
+                    effects=[{"op": "move", "to_id": "cloister"}],
+                    focus="Kael leaves.",
+                    speaker_id="mara",
+                )
+            )
+        ),
     )
 
     assert result.state.player.parent_id == "cloister"
@@ -129,7 +136,7 @@ async def test_a_plan_answered_as_plain_text_json_settles_the_turn() -> None:
     """Small models often emit the plan JSON as text before obeying the tool call; the text
     fallback accepts it so the turn costs no retry round trip."""
     engine, state = initialized()
-    spoken = 'Here is the plan:\n{"branches": []}'
+    spoken = 'Here is the plan:\n{"focus": "Kael waits.", "branches": []}'
     director = FunctionModel(scripted(text(spoken)))
     result = await played(engine, state, "I wait.", director=director)
 
@@ -143,7 +150,7 @@ async def test_a_tool_call_with_a_channel_marker_in_its_name_still_lands() -> No
         parts=[
             ToolCallPart(
                 tool_name="turn_plan<|channel|>json",
-                args=json.dumps({"branches": []}),
+                args=json.dumps({"focus": "Kael waits.", "branches": []}),
             )
         ]
     )
@@ -280,12 +287,12 @@ async def test_a_hook_fires_on_its_fact_moves_its_thread_and_steers_the_next_tur
         director=FunctionModel(scripted(plan())),
     )
 
-    # The note steers the Scene Director, which is the only role shown the scenario's own voice.
-    assert "Press on what opening the seal will cost" in shown(after.turn, "scene")
+    # The note steers the Director, which is the only role shown the scenario's own voice.
+    assert "Press on what opening the seal will cost" in shown(after.turn, "director")
     assert after.state.world.pending_notes == ()
 
 
-async def test_memory_reaches_the_scene_director_alone_and_only_for_who_is_here() -> None:
+async def test_memory_reaches_the_director_alone_and_only_for_who_is_here() -> None:
     """A memory may hold canon the player has not earned, so the narrating role is shown none."""
     engine, state = initialized()
     draft = state.draft()
@@ -307,44 +314,37 @@ async def test_memory_reaches_the_scene_director_alone_and_only_for_who_is_here(
     )
 
     remembered = "Mara catalogued the vault ledgers"
-    scene = shown(result.turn, "scene")
-    assert remembered in scene
-    assert "The abbey emptied in a single night" in scene
-    assert "The study was searched once." in scene
+    director_prompt = shown(result.turn, "director")
+    assert remembered in director_prompt
+    assert "The abbey emptied in a single night" in director_prompt
+    assert "The study was searched once." in director_prompt
     # Tomas sweeps the cloister, so what he remembers is not this scene's to weave in.
-    assert "undercroft keys" not in scene
-    assert remembered not in shown(result.turn, "director")
+    assert "undercroft keys" not in director_prompt
     assert remembered not in shown(result.turn, "narrator")
 
 
-async def test_both_directors_read_the_canon_and_only_the_narrator_is_kept_from_it() -> None:
+async def test_the_director_reads_the_canon_and_only_the_narrator_is_kept_from_it() -> None:
     engine, state = initialized()
     steps: list[str] = []
-    scene = FunctionModel(
+    director = FunctionModel(
         scripted(
-            structured(
+            plan(
                 focus="Kael presses toward the vault door.",
                 pressure="The undercroft air grows colder.",
                 stakes="Finding it now or losing the trail.",
-                threads=["vault-seal"],
-                reveal=["vault"],
             )
         )
     )
-    director = FunctionModel(scripted(plan()))
     result = await played(
         engine,
         state,
         "I press on.",
         director=director,
-        scene=scene,
         on_step=steps.append,
     )
 
-    assert tuple(steps) == ("scene", "director", "resolve", "hooks", "narrator", "worldkeeper")
+    assert tuple(steps) == ("director", "resolve", "hooks", "narrator", "worldkeeper")
     director_prompt = shown(result.turn, "director")
-    assert "Kael presses toward the vault door." in director_prompt
-    # The directive passed Elena over; both directors still see her, the narrator never does.
+    # Elena reaches the one Director's prompt; the narrator never does.
     assert "Elena" in director_prompt
-    assert "Elena" in shown(result.turn, "scene")
     assert "Elena" not in shown(result.turn, "narrator")

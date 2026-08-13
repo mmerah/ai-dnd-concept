@@ -37,44 +37,6 @@ class WorldkeeperReport(Frozen):
     thread_moves: tuple[AdvanceThread, ...] = ()
 
 
-class SceneDirective(Frozen):
-    """What the turn is about, decided before any rule is touched."""
-
-    focus: str = Field(
-        description="1-2 sentences: what the player is reaching for and what this turn is about."
-    )
-    pressure: str = Field(
-        default="",
-        description=(
-            "1-2 sentences: what pushes back this turn — a complication, a cost, a threat. Empty "
-            "when the turn is genuinely quiet and nothing should push back."
-        ),
-    )
-    stakes: str = Field(
-        default="",
-        description=(
-            "One sentence: what the player stands to win or lose. Empty when nothing is at stake."
-        ),
-    )
-    threads: tuple[Slug, ...] = Field(
-        default=(), description="Ids of the active threads this turn serves; none when none apply."
-    )
-    reveal: tuple[EntityId, ...] = Field(
-        default=(),
-        description=(
-            "Ids of the things the player has not found yet that this turn should bring into "
-            "play; none unless the fiction genuinely puts one in front of them."
-        ),
-    )
-    speaker_id: EntityId | None = Field(
-        default=None,
-        description=(
-            "Exact id of the NPC the player addresses — one they have met and who is here with "
-            "them — or null if nobody is addressed."
-        ),
-    )
-
-
 class StepTrace(Frozen):
     name: str
     prompt: str | None = None
@@ -95,10 +57,12 @@ class Turn(TraceEntryBase):
     steps: tuple[StepTrace, ...] = ()
 
 
-class Advance(TraceEntryBase):
-    """A level-up: the same transaction as a turn, without a prompt or a narration."""
+class Applied(TraceEntryBase):
+    """One subsystem change: the same transaction as a turn, without a prompt or a narration."""
 
-    entry: Literal["advance"] = "advance"
+    entry: Literal["subsystem"] = "subsystem"
+    capability: Slug
+    subject_id: EntityId
 
 
-type TraceEntry = Annotated[Turn | Advance, Field(discriminator="entry")]
+type TraceEntry = Annotated[Turn | Applied, Field(discriminator="entry")]

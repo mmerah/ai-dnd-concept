@@ -5,30 +5,30 @@ from random import Random
 from aidm.config import Settings
 from aidm.content.authored import Character, Scenario
 from aidm.content.store import FileStore, load_character, load_scenario
-from aidm.engines.loader import Advancement, AdvancementOffer, Engine, ProposalBase, engine_class
-from aidm.state.base import PLAYER_ID, SAVE_VERSION, EngineId, Entity
+from aidm.engines.loader import Engine, Offer, ProposalBase, Subsystem, engine_class
+from aidm.state.base import PLAYER_ID, SAVE_VERSION, EngineId, Entity, Slug
 from aidm.state.facts import Fact
-from aidm.state.turn import Advance, TraceEntry, Turn
+from aidm.state.turn import Applied, TraceEntry, Turn
 from aidm.state.world import PARTY_MEMBER, GameState, Relation
 from aidm.turn.pipeline import TURN_STEPS, run_turn
 from aidm.turn.prompts import render_proposal
-from aidm.turn.roles import AdvisorContext, Stage, Stages, advisor, build_stages
+from aidm.turn.roles import Stage, Stages, SubsystemContext, build_stages, subsystem_stage
 
 from .launcher import LaunchTarget
 
 
 @dataclass(frozen=True, slots=True)
-class Advancer:
-    """The advancement capability paired with the advisor that drafts against it, built
-    together so the pair cannot be half-present."""
+class Drafted:
+    """One tab's pending change: what was offered, and what the advisor wrote against it."""
 
-    advancement: Advancement
-    advisor: Stage[AdvisorContext, ProposalBase]
+    offer: Offer
+    proposal: ProposalBase
 
-    @classmethod
-    def of(cls, engine: Engine, settings: Settings) -> "Advancer | None":
-        capability = engine.advancement
-        return None if capability is None else cls(capability, advisor(capability, settings))
+
+def build_subsystem_advisors(
+    engine: Engine, settings: Settings
+) -> dict[Slug, Stage[SubsystemContext, ProposalBase]]:
+    return {system.id: subsystem_stage(system, settings) for system in engine.subsystems}
 
 
 def build_engine(engine_id: EngineId) -> Engine:
@@ -82,14 +82,14 @@ class GameSession:
     character: Character
     engine: Engine
     stages: Stages
-    advancer: Advancer | None
+    subsystem_advisors: dict[Slug, Stage[SubsystemContext, ProposalBase]]
     store: FileStore
     settings: Settings
     rng: Random = field(default_factory=Random)
     entries: list[TraceEntry] = field(default_factory=list)
     busy: bool = False
     step: str | None = None
-    drafted: ProposalBase | None = None
+    drafted: dict[Slug, Drafted] = field(default_factory=dict)
     state: GameState = field(init=False)
 
     def __post_init__(self) -> None:
@@ -131,50 +131,53 @@ class GameSession:
         self._commit(result.state, result.turn)
         return result.turn
 
-    def offer(self) -> AdvancementOffer | None:
-        return None if self.advancer is None else self.advancer.advancement.offered(self.state)
+    def offers(self, capability: Slug) -> tuple[Offer, ...]:
+        return self._subsystem(capability).offers(self.state)
 
-    async def propose(self, intent: str) -> ProposalBase:
+    def pending(self) -> bool:
+        """Whether anything is on offer at all, for the notification a finished turn raises."""
+        return any(self.offers(system.id) for system in self.engine.subsystems)
+
+    async def propose(self, capability: Slug, offer: Offer, intent: str) -> ProposalBase:
         """The advisor drafts the change; nothing is committed until the player confirms it."""
-        advancer = self._advancer()
-        offer = self._offered()
-        deps = AdvisorContext(advancement=advancer.advancement, state=self.state, offer=offer)
-        prompt = render_proposal(self.engine, self.state, offer, intent)
-        return await advancer.advisor.run(prompt, deps)
+        system = self._subsystem(capability)
+        deps = SubsystemContext(subsystem=system, state=self.state, offer=offer)
+        return await self.subsystem_advisors[capability].run(
+            render_proposal(self.engine, self.state, offer, intent), deps
+        )
 
-    def preview(self, proposal: ProposalBase) -> tuple[Fact, ...]:
+    def preview(self, capability: Slug, drafted: Drafted) -> tuple[Fact, ...]:
         """What the change would write, read off a throwaway draft, not the committed state."""
-        return self._advancer().advancement.advance(self.state.draft(), proposal)
+        system = self._subsystem(capability)
+        return system.resolve(self.state.draft(), drafted.offer, drafted.proposal, Random(0))
 
-    def apply_proposal(self, proposal: ProposalBase) -> tuple[Fact, ...]:
+    def apply_proposal(self, capability: Slug, drafted: Drafted) -> tuple[Fact, ...]:
         """The legality rule runs again here: a turn since the draft may have made it illegal."""
-        advancement = self._advancer().advancement
-        refused = advancement.violation(self.state, self._offered(), proposal)
-        if refused is not None:
+        system = self._subsystem(capability)
+        offer, proposal = drafted.offer, drafted.proposal
+        if offer not in system.offers(self.state):
+            raise ValueError("that change is no longer on offer")
+        if refused := system.violation(self.state, offer, proposal):
             raise ValueError(refused)
         draft = self.state.draft()
-        facts = advancement.advance(draft, proposal)
+        facts = system.resolve(draft, offer, proposal, self.rng)
         self.engine.commit(draft)
-        self._commit(draft.committed(), Advance(facts=facts))
+        entry = Applied(capability=capability, subject_id=offer.subject_id, facts=facts)
+        self._commit(draft.committed(), entry)
         return facts
 
-    def _advancer(self) -> Advancer:
-        if self.advancer is None:
-            raise ValueError("this engine has no advancement")
-        return self.advancer
-
-    def _offered(self) -> AdvancementOffer:
-        offer = self.offer()
-        if offer is None:
-            raise ValueError("no advancement is on offer")
-        return offer
+    def _subsystem(self, capability: Slug) -> Subsystem:
+        found = next((one for one in self.engine.subsystems if one.id == capability), None)
+        if found is None:
+            raise ValueError(f"this engine has no {capability!r} subsystem")
+        return found
 
     def restart(self) -> None:
         opening = self._begun()
         self.store.discard(self.slug)
         self.state = opening
         self.entries = []
-        self.drafted = None
+        self.drafted = {}
 
     def _commit(self, state: GameState, entry: TraceEntry) -> None:
         self.store.save(self.slug, state)
@@ -236,7 +239,7 @@ class Runtime:
             character=load_character(config.characters_dir, target.character_id, target.engine),
             engine=engine,
             stages=build_stages(engine, config),
-            advancer=Advancer.of(engine, config),
+            subsystem_advisors=build_subsystem_advisors(engine, config),
             store=FileStore(config.saves_dir),
             settings=config,
         )

@@ -41,7 +41,7 @@ def test_an_engine_without_content_loads_and_advertises_no_tool(tmp_path: Path) 
     engine = _engine(tmp_path)
 
     assert engine.director_toolsets == ()
-    assert engine.advancement is None
+    assert engine.subsystems == ()
     # The world half of the brief is core's, so every engine teaches it whatever else it owns.
     assert "Test procedure." in engine.director_instructions
     assert "## World effects" in engine.director_instructions

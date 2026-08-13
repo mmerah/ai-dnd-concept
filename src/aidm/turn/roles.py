@@ -21,11 +21,11 @@ from pydantic_ai.providers.openai import OpenAIProvider
 from pydantic_ai.settings import ModelSettings
 from pydantic_ai.toolsets import AbstractToolset
 
-from aidm.config import ProviderConfig, RoleConfig, Settings
-from aidm.engines.loader import Advancement, AdvancementOffer, Engine, ProposalBase
+from aidm.config import ProviderConfig, Role, RoleConfig, Settings
+from aidm.engines.loader import Engine, Offer, ProposalBase, Subsystem
 from aidm.state.base import Slug
 from aidm.state.plan import TurnPlanBase
-from aidm.state.turn import SceneDirective, WorldkeeperReport
+from aidm.state.turn import WorldkeeperReport
 from aidm.state.world import Exchange, GameState
 
 from . import prompts, scene
@@ -89,7 +89,7 @@ class Stage[Deps, Out]:
     @classmethod
     def of[D, O](
         cls,
-        name: str,
+        name: Role,
         settings: Settings,
         *,
         instructions: str,
@@ -122,17 +122,16 @@ class PlanContext:
 
 
 @dataclass(frozen=True, slots=True)
-class AdvisorContext:
-    advancement: Advancement
+class SubsystemContext:
+    subsystem: Subsystem
     state: GameState
-    offer: AdvancementOffer
+    offer: Offer
 
 
 @dataclass(frozen=True, slots=True)
 class Stages:
     """The turn's model-facing roles, built once per session."""
 
-    scene: Stage[GameState, SceneDirective]
     director: Stage[PlanContext, TurnPlanBase]
     narrator: Stage[None, str]
     worldkeeper: Stage[GameState, WorldkeeperReport]
@@ -143,42 +142,19 @@ def _unknown_threads(state: GameState, wanted: Iterable[Slug]) -> str | None:
     return f"no such thread: {', '.join(missing)}" if missing else None
 
 
-def scene_stage(settings: Settings) -> Stage[GameState, SceneDirective]:
-    def known(ctx: RunContext[GameState], directive: SceneDirective) -> SceneDirective:
-        state = ctx.deps
-        if fault := _unknown_threads(state, directive.threads):
-            raise ModelRetry(fault)
-        # A `reveal` naming anything but an unmet entity renders nothing
-        unmet = {entity.id for entity in state.world.entities.values() if not entity.known}
-        wrong = sorted(set(directive.reveal) - unmet)
-        if wrong:
-            raise ModelRetry(f"not something the player has yet to find: {', '.join(wrong)}")
-        if fault := scene.check_speaker(scene.SceneSnapshot.of(state), directive.speaker_id):
-            raise ModelRetry(fault)
-        return directive
-
-    return Stage.of(
-        "scene",
-        settings,
-        instructions=prompts.SCENE_DIRECTOR,
-        output_type=NativeOutput(SceneDirective),
-        deps_type=GameState,
-        validator=known,
-    )
-
-
 def director_stage(engine: Engine, settings: Settings) -> Stage[PlanContext, TurnPlanBase]:
     def legal(ctx: RunContext[PlanContext], plan: TurnPlanBase) -> TurnPlanBase:
         deps = ctx.deps
-        refused = deps.engine.check_plan(deps.state, plan)
-        if refused is not None:
+        if fault := scene.check_speaker(scene.SceneSnapshot.of(deps.state), plan.speaker_id):
+            raise ModelRetry(fault)
+        if refused := deps.engine.check_plan(deps.state, plan):
             raise ModelRetry(refused)
         return plan
 
     return Stage.of(
         "director",
         settings,
-        instructions=f"{prompts.RULES_DIRECTOR}\n\n{engine.director_instructions}",
+        instructions=f"{prompts.DIRECTOR}\n\n{engine.director_instructions}",
         output_type=[
             ToolOutput(engine.plan_type, name="turn_plan"),
             TextOutput(plan_from_text(engine.plan_type)),
@@ -224,10 +200,12 @@ def worldkeeper_stage(settings: Settings) -> Stage[GameState, WorldkeeperReport]
     )
 
 
-def advisor(advancement: Advancement, settings: Settings) -> Stage[AdvisorContext, ProposalBase]:
-    def legal(ctx: RunContext[AdvisorContext], proposal: ProposalBase) -> ProposalBase:
+def subsystem_stage(
+    subsystem: Subsystem, settings: Settings
+) -> Stage[SubsystemContext, ProposalBase]:
+    def legal(ctx: RunContext[SubsystemContext], proposal: ProposalBase) -> ProposalBase:
         deps = ctx.deps
-        refused = deps.advancement.violation(deps.state, deps.offer, proposal)
+        refused = deps.subsystem.violation(deps.state, deps.offer, proposal)
         if refused is not None:
             raise ModelRetry(refused)
         return proposal
@@ -235,16 +213,15 @@ def advisor(advancement: Advancement, settings: Settings) -> Stage[AdvisorContex
     return Stage.of(
         "advisor",
         settings,
-        instructions=f"{prompts.CORE_ADVISOR}\n\n{advancement.instructions}",
-        output_type=NativeOutput(advancement.proposal_type),
-        deps_type=AdvisorContext,
+        instructions=f"{prompts.CORE_ADVISOR}\n\n{subsystem.instructions}",
+        output_type=NativeOutput(subsystem.proposal_type),
+        deps_type=SubsystemContext,
         validator=legal,
     )
 
 
 def build_stages(engine: Engine, settings: Settings) -> Stages:
     return Stages(
-        scene=scene_stage(settings),
         director=director_stage(engine, settings),
         narrator=narrator_stage(settings),
         worldkeeper=worldkeeper_stage(settings),

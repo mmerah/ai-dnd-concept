@@ -11,7 +11,7 @@ from pydantic_ai.toolsets import AbstractToolset
 
 from aidm.content.authored import CreatedCharacter, Rules
 from aidm.content.store import ENCODING
-from aidm.state.base import EngineId, Entity, EntityId, Frozen
+from aidm.state.base import EngineId, Entity, EntityId, Frozen, Slug
 from aidm.state.creation import CreationStep, Picks
 from aidm.state.effects import WorldEffect, effect_key, effect_keys
 from aidm.state.facts import Fact
@@ -24,36 +24,38 @@ ENGINE = "ENGINE"
 type EntityRenderer = Callable[[Entity], str]
 
 
-class AdvancementOffer(Frozen):
-    """One pending advancement, already resolved out of content."""
+class Offer(Frozen):
+    """One change a subsystem holds open for one subject, already resolved out of content."""
 
+    subject_id: EntityId
     prompt: str
     text: str = ""
 
 
 class ProposalBase(Frozen):
-    """What an advancement writes, in the engine's own vocabulary."""
+    """What a subsystem writes, in the engine's own vocabulary."""
 
 
-class Advancement(ABC):
-    """The optional growth capability: an engine without one never offers the player a change."""
+class Subsystem(ABC):
+    """Optional capability an engine plugs in."""
 
+    id: ClassVar[Slug]
     proposal_type: ClassVar[type[ProposalBase]]
 
     def __init__(self, engine_dir: Path) -> None:
-        self.instructions = engine_text(engine_dir / "advancement.md")
+        self.instructions = engine_text(engine_dir / f"{self.id}.md")
 
     @abstractmethod
-    def offered(self, state: GameState) -> AdvancementOffer | None: ...
+    def offers(self, state: GameState) -> tuple[Offer, ...]: ...
 
     @abstractmethod
-    def advance(self, draft: GameState, proposal: ProposalBase) -> tuple[Fact, ...]:
+    def resolve(
+        self, draft: GameState, offer: Offer, proposal: ProposalBase, rng: Random
+    ) -> tuple[Fact, ...]:
         """Mutates the draft; the caller's commit revalidates both halves of the copy."""
 
     @abstractmethod
-    def violation(
-        self, state: GameState, offer: AdvancementOffer, proposal: ProposalBase
-    ) -> str | None:
+    def violation(self, state: GameState, offer: Offer, proposal: ProposalBase) -> str | None:
         """One legality rule for the advisor's retry and for the commit, so neither can drift."""
 
 
@@ -86,8 +88,7 @@ class Engine(ABC):
         )
         # An engine with content advertises its own lookups; one without teaches the model no tool.
         self.director_toolsets: tuple[AbstractToolset[object], ...] = ()
-        # An engine that grows its characters replaces this; the app offers only what it finds.
-        self.advancement: Advancement | None = None
+        self.subsystems: tuple[Subsystem, ...] = ()
         # An engine that creates characters replaces this; the app offers only what it finds.
         self.creation: Creation | None = None
 

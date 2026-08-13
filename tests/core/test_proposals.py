@@ -6,12 +6,13 @@ from loner3e_test_support import at_milestone, loner3e_session
 from pydantic_ai.messages import ModelMessage, ModelResponse, TextPart
 from pydantic_ai.models.function import AgentInfo, FunctionModel
 
+from aidm.app.session import Drafted
 from aidm.content.store import FileStore
 from aidm.engines.counters import read_mechanics
 from aidm.engines.loner3e.advance import Milestone
 from aidm.engines.loner3e.mechanics import Mechanics
 from aidm.state.base import PLAYER_ID
-from aidm.state.turn import Advance
+from aidm.state.turn import Applied
 
 LEGAL = Milestone(change="gear", tag="Waxed Rope", why="he never climbs without it now")
 ILLEGAL = Milestone(
@@ -37,11 +38,11 @@ async def test_an_illegal_proposal_is_retried_with_the_engines_reason(tmp_path: 
     game = loner3e_session(tmp_path)
     game.state = at_milestone(game.state)
 
-    assert game.advancer is not None
-    with game.advancer.advisor.agent.override(model=_answers(ILLEGAL, LEGAL)):
-        drafted = await game.propose("Kael has learned to trust his rope.")
+    offer = game.offers("advancement")[0]
+    with game.subsystem_advisors["advancement"].agent.override(model=_answers(ILLEGAL, LEGAL)):
+        proposal = await game.propose("advancement", offer, "Kael has learned to trust his rope.")
 
-    assert drafted == LEGAL
+    assert proposal == LEGAL
     gear = read_mechanics(game.state, Mechanics).sheets[PLAYER_ID].gear
     assert "Waxed Rope" not in gear  # proposing commits nothing
 
@@ -49,8 +50,10 @@ async def test_an_illegal_proposal_is_retried_with_the_engines_reason(tmp_path: 
 def test_confirming_commits_exactly_the_proposed_delta(tmp_path: Path) -> None:
     game = loner3e_session(tmp_path)
     game.state = at_milestone(game.state)
+    offer = game.offers("advancement")[0]
+    drafted = Drafted(offer=offer, proposal=LEGAL)
 
-    facts = game.apply_proposal(LEGAL)
+    facts = game.apply_proposal("advancement", drafted)
 
     sheet = read_mechanics(game.state, Mechanics).sheets[PLAYER_ID]
     assert (sheet.gear[-1], sheet.milestones.current) == ("Waxed Rope", 1)
@@ -58,19 +61,24 @@ def test_confirming_commits_exactly_the_proposed_delta(tmp_path: Path) -> None:
         "Kael gained gear Waxed Rope (he never climbs without it now)",
         "Kael milestones +1 -> 1 (a milestone spent)",
     ]
-    assert game.entries == [Advance(facts=facts)]
-    assert FileStore(tmp_path).load_trace("poc") == (Advance(facts=facts),)
+    entry = Applied(entry="subsystem", capability="advancement", subject_id=PLAYER_ID, facts=facts)
+    assert game.entries == [entry]
+    assert FileStore(tmp_path).load_trace("poc") == (entry,)
     assert FileStore(tmp_path).load("poc") == game.state
-    assert game.offer() is None
+    assert game.offers("advancement") == ()
+    with pytest.raises(ValueError, match="no longer on offer"):
+        _ = game.apply_proposal("advancement", drafted)
 
 
 def test_a_refused_proposal_leaves_the_committed_state_untouched(tmp_path: Path) -> None:
     game = loner3e_session(tmp_path)
     game.state = at_milestone(game.state)
     before = game.state.model_dump_json()
+    offer = game.offers("advancement")[0]
+    drafted = Drafted(offer=offer, proposal=ILLEGAL)
 
     with pytest.raises(ValueError, match="carries no tag"):
-        _ = game.apply_proposal(ILLEGAL)
+        _ = game.apply_proposal("advancement", drafted)
 
     assert game.state.model_dump_json() == before
     assert game.entries == []

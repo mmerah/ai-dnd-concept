@@ -1,21 +1,20 @@
+from random import Random
 from typing import Literal, Self
 
-from pydantic import Field, ValidationError, model_validator
+from pydantic import Field, model_validator
 
 from aidm.engines.counters import counter_fact, read_mechanics, write_mechanics
-from aidm.engines.loader import Advancement, AdvancementOffer, ProposalBase
-from aidm.state.base import PLAYER_ID, Entity
+from aidm.engines.loader import Offer, ProposalBase, Subsystem
+from aidm.state.base import PLAYER_ID, Entity, EntityId
 from aidm.state.facts import Fact, explained_fact
+from aidm.state.plan import check_draft
 from aidm.state.world import GameState
 
 from .mechanics import Mechanics, Sheet
 
-OFFER = AdvancementOffer(
-    prompt="A milestone is reached.",
-    text=(
-        "Say how the character has changed. One change only: a new skill, a new piece of "
-        "signature gear, a new frailty, or one tag they already carry rewritten."
-    ),
+GROWTH = (
+    "Say how the character has changed. One change only: a new skill, a new piece of "
+    "signature gear, a new frailty, or one tag they already carry rewritten."
 )
 
 
@@ -43,48 +42,56 @@ class Milestone(ProposalBase):
         return self
 
 
-class Loner3eAdvancement(Advancement):
+class Loner3eAdvancement(Subsystem):
+    id = "advancement"
     proposal_type = Milestone
 
-    def offered(self, state: GameState) -> AdvancementOffer | None:
+    def offers(self, state: GameState) -> tuple[Offer, ...]:
         # Milestone-driven and deterministic, never inferred by a model: one milestone is earned
         # per resolved thread, so the offer tracks the count directly instead of guessing intent.
         earned = sum(1 for thread in state.world.threads.values() if thread.status == "resolved")
-        sheet = read_mechanics(state, Mechanics).sheets[PLAYER_ID]
-        return OFFER if earned > sheet.milestones.current else None
+        sheets = read_mechanics(state, Mechanics).sheets
+        return tuple(
+            _offer(state, subject_id)
+            for subject_id in (PLAYER_ID, *state.world.party())
+            if earned > sheets[subject_id].milestones.current
+        )
 
-    def advance(self, draft: GameState, proposal: ProposalBase) -> tuple[Fact, ...]:
+    def resolve(
+        self, draft: GameState, offer: Offer, proposal: ProposalBase, rng: Random
+    ) -> tuple[Fact, ...]:
+        del rng  # a milestone spends nothing random
         assert isinstance(proposal, Milestone)
         mechanics = read_mechanics(draft, Mechanics)
-        sheet = mechanics.sheets[PLAYER_ID]
-        player = draft.player
+        sheet = mechanics.sheets[offer.subject_id]
+        subject = draft.world.require(offer.subject_id)
         grown = (
-            _rewrite(sheet, player, proposal)
+            _rewrite(sheet, subject, proposal)
             if proposal.change == "rewrite"
-            else _gain(sheet, player, proposal)
+            else _gain(sheet, subject, proposal)
         )
         sheet.milestones.current += 1
-        spent = counter_fact(player, "milestones", sheet.milestones, 1, "a milestone spent")
+        spent = counter_fact(subject, "milestones", sheet.milestones, 1, "a milestone spent")
         write_mechanics(draft, mechanics)
         return (grown, spent)
 
-    def violation(
-        self, state: GameState, offer: AdvancementOffer, proposal: ProposalBase
-    ) -> str | None:
-        del offer
-        assert isinstance(proposal, Milestone)
-        draft = state.draft()
-        try:
-            _ = self.advance(draft, proposal)
-            _ = draft.committed()
-        except ValidationError as invalid:
-            return f"the sheet this leaves is invalid: {invalid.errors()[0]['msg']}"
-        except ValueError as refused:
-            return str(refused)
-        return None
+    def violation(self, state: GameState, offer: Offer, proposal: ProposalBase) -> str | None:
+        return check_draft(
+            state,
+            lambda draft: self.resolve(draft, offer, proposal, Random(0)),
+            "the sheet this leaves",
+        )
 
 
-def _gain(sheet: Sheet, player: Entity, proposal: Milestone) -> Fact:
+def _offer(state: GameState, subject_id: EntityId) -> Offer:
+    return Offer(
+        subject_id=subject_id,
+        prompt=f"{state.world.require(subject_id).name} reaches a milestone.",
+        text=GROWTH,
+    )
+
+
+def _gain(sheet: Sheet, subject: Entity, proposal: Milestone) -> Fact:
     if proposal.change == "skill":
         sheet.skills = (*sheet.skills, proposal.tag)
     elif proposal.change == "gear":
@@ -92,16 +99,16 @@ def _gain(sheet: Sheet, player: Entity, proposal: Milestone) -> Fact:
     else:
         sheet.frailties = (*sheet.frailties, proposal.tag)
     return explained_fact(
-        player,
+        subject,
         f"{proposal.change}_gained",
-        f"{player.name} gained {proposal.change} {proposal.tag}",
+        f"{subject.name} gained {proposal.change} {proposal.tag}",
         {"tag": proposal.tag},
         proposal.why,
         narrate=False,
     )
 
 
-def _rewrite(sheet: Sheet, player: Entity, proposal: Milestone) -> Fact:
+def _rewrite(sheet: Sheet, subject: Entity, proposal: Milestone) -> Fact:
     old, new = proposal.tag, proposal.into
     if old in sheet.skills:
         sheet.skills = _swapped(sheet.skills, old, new)
@@ -110,11 +117,11 @@ def _rewrite(sheet: Sheet, player: Entity, proposal: Milestone) -> Fact:
     elif old in sheet.gear:
         sheet.gear = _swapped(sheet.gear, old, new)
     else:
-        raise ValueError(f"{player.name} carries no tag {old!r} to rewrite")
+        raise ValueError(f"{subject.name} carries no tag {old!r} to rewrite")
     return explained_fact(
-        player,
+        subject,
         "tag_rewritten",
-        f"{player.name} rewrote {old} as {new}",
+        f"{subject.name} rewrote {old} as {new}",
         {"was": old, "tag": new},
         proposal.why,
         narrate=False,

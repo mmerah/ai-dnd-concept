@@ -26,7 +26,7 @@ class TurnResult:
     turn: Turn
 
 
-TURN_STEPS: tuple[str, ...] = ("scene", "director", "resolve", "hooks", "narrator", "worldkeeper")
+TURN_STEPS: tuple[str, ...] = ("director", "resolve", "hooks", "narrator", "worldkeeper")
 
 
 def resolve_plan(
@@ -102,15 +102,8 @@ async def run_turn(
     draft = state.draft()
     snapshot = SceneSnapshot.of(state)
 
-    announce("scene")
-    scene_prompt = prompts.render_director(snapshot, engine.renderer(state), state.scenario, prompt)
-    directive = await stages.scene.run(scene_prompt, state, history)
-    steps.append(_traced("scene", scene_prompt, directive))
-
     announce("director")
-    plan_prompt = prompts.render_director(
-        snapshot, engine.renderer(state), state.scenario, prompt, directive
-    )
+    plan_prompt = prompts.render_director(snapshot, engine.renderer(state), state.scenario, prompt)
     plan = await stages.director.run(plan_prompt, PlanContext(engine=engine, state=state), history)
     # Notes are read once: the draft carries none forward, so the next turn shows only new ones.
     draft.world.pending_notes = ()
@@ -134,8 +127,8 @@ async def run_turn(
         VisibleScene.of(SceneSnapshot.of(draft)),
         engine.renderer(draft),
         draft.scenario,
-        focus=directive.focus,
-        speaker_id=directive.speaker_id,
+        focus=plan.focus,
+        speaker_id=plan.speaker_id,
         evidence=evidence,
         prompt=prompt,
     )

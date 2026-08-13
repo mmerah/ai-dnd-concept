@@ -1,5 +1,5 @@
 import pytest
-from pydantic import SecretStr
+from pydantic import SecretStr, ValidationError
 
 from aidm.config import ProviderConfig, Providers, RoleConfig, Settings
 
@@ -27,3 +27,8 @@ def test_a_role_on_a_keyless_provider_is_refused() -> None:
     )
     with pytest.raises(ValueError, match="no api_key"):
         config.role("director")
+
+
+def test_a_role_no_stage_is_built_for_is_refused() -> None:
+    with pytest.raises(ValidationError, match="Input should be"):
+        Settings(roles={"bard": RoleConfig()}, providers=keyed_providers())  # pyright: ignore[reportArgumentType]

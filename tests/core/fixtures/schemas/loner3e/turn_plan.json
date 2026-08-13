@@ -456,6 +456,36 @@
   },
   "additionalProperties": false,
   "properties": {
+    "focus": {
+      "description": "1-2 sentences: what the player is reaching for and what this turn is about.",
+      "title": "Focus",
+      "type": "string"
+    },
+    "pressure": {
+      "default": "",
+      "description": "1-2 sentences: what pushes back this turn — a complication, a cost, a threat. Empty when the turn is genuinely quiet and nothing should push back.",
+      "title": "Pressure",
+      "type": "string"
+    },
+    "stakes": {
+      "default": "",
+      "description": "One sentence: what the player stands to win or lose. Empty when nothing is at stake.",
+      "title": "Stakes",
+      "type": "string"
+    },
+    "speaker_id": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "Exact id of the NPC the player addresses — one they have met and who is here with them — or null if nobody is addressed.",
+      "title": "Speaker Id"
+    },
     "effects": {
       "default": [],
       "description": "Consequences that happen whatever the action settles.",
@@ -487,6 +517,9 @@
       "description": "The one question this turn resolves, or null when nothing is uncertain enough to ask."
     }
   },
+  "required": [
+    "focus"
+  ],
   "title": "TurnPlan",
   "type": "object"
 }

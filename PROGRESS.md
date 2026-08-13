@@ -92,8 +92,60 @@ Tracking PLAN.md. One bullet per landed step; `uv run pytest && ruff check && ru
     against the plan's ≈4,550 estimate — the remaining gap is the audits' pre-rewrite guess,
     not un-taken findings.
 
+- Phase 4 (redesign refactor, REFACTOR.md) in flight (2026-08-13), suite green after each step:
+  - step 1 core folds + config: `check_draft(state, act, what)` in `state/plan.py` folds `_trial`,
+    `check_action`'s try, and loner3e `violation` (it commits the draft, as the real resolve
+    path does, so nothing the model is told is legal fails later); `duplicates`/`require_unique`
+    in `state/base.py` replace five dup-detection loops; `_unused` folds `slug`/`text_slug`
+    numbering; `apply.py` `_require`/`_require_kind` deleted, their model-facing messages now on
+    `WorldState.require`/`require_kind`; `config.Role` is a `Literal` and `roles` is keyed by it,
+    so a role no stage is built for cannot be configured — pydantic refuses the key and pyright
+    refuses the `Stage.of` name, with no second list to drift.
+    Net +4 LOC, no fixture moved, SAVE_VERSION unchanged.
+    Deviation: `Providers` stays a model — pydantic-settings does not merge a partial env
+    override into a dict field's default, so `providers: dict[str, ProviderConfig]` would break
+    the repo's own `.env` (which sets only `PROVIDERS__OPENROUTER__API_KEY`).
+
+  - step 2 roster merge (SAVE_VERSION 57→58): Scene Director gone — `SceneDirective`,
+    `scene_stage`, `Stages.scene` and the scene step deleted; `TurnPlanBase` carries
+    `focus`/`pressure`/`stakes`/`speaker_id` before the engine's action; `check_speaker` is a
+    Director output validator; `scene_director.md` merged into `director.md` (renamed from
+    `rules_director.md`) and its Dramatic/Quiet/Meanwhile taxonomy moved to
+    `engines/loner3e/director.md` as MOODS — the provenance leak; `render_director` has one
+    signature and always shows MEMORIES; TURN_STEPS is 5. Fixture diff: version lines, the
+    turn_plan schema's four new fields, the merged instructions, MEMORIES in the director
+    prompt, the scene step gone — dice traces and facts unmoved.
+    **Not done: the live probe gate.** REFACTOR.md wants one gpt-oss-120b run against the
+    merged Director schema before trusting it; that needs network, so it is still owed. The
+    documented fallback (two director calls sharing one render) is unaffected by anything
+    landed here.
+  - step 3 Subsystem unification (SAVE_VERSION 58→59): `Advancement`/`AdvancementOffer` →
+    `Subsystem`/`Offer` with `subject_id`, `resolve(draft, offer, proposal, rng)` and a
+    `ClassVar` id naming its own instructions file; `Engine.subsystems` is a tuple; trace
+    entry `Advance` → `Applied(entry="subsystem", capability, subject_id)`; session keys
+    advisors and drafts by capability slug (`Drafted` pairs offer + proposal, preview trials
+    with `Random(0)` and confirm rolls the session rng); `subsystem_panel` renders one tab per
+    subsystem. loner3e offers one milestone per subject in `{player} ∪ party()`, so NPC
+    advancement fell out — new test grows a party member's own sheet. Only fixture movement:
+    the advisor prompt's ON OFFER line, now subject-named.
+    An NPC who joins after N resolved threads is offered those N milestones: accepted as
+    loner3e behaviour (they earned them off-screen), not a bug for step 6's `seed` to fix.
+
+  - adversarial review (fable subagent, staged diff): no state-corrupting defect. Fixed —
+    `drafted.pop(capability, None)` in the panel (a queued second click could `KeyError`),
+    `GameSession.subsystem_advisors` no longer collides with `Engine.subsystems`, the
+    stale-offer gate is now covered in `test_proposals.py`. Verified clean: the merged
+    Director's validator order, `check_draft`'s added commit (can only over-refuse),
+    `Offer` equality as the still-on-offer gate, per-tab NiceGUI refresh, `_unused` at the
+    64-char boundary. Standing hazard for step 6: `offers()` indexes `sheets[subject_id]`,
+    which only `Loner3eEngine.commit`'s backfill keeps total — the split into pure `validate`
+    must keep a path that gives every actor a sheet.
+
 ## Next
 
-- Phase 4: scenario creator script (`scripts/create_scenario.py` — pydantic-ai agent with
-  `ScenarioWorld` as `NativeOutput`, `creator` role config, validation loop, per-engine
-  overlays). PLAN.md carries the full spec.
+- Phase 4 step 4 (dice pools) and step 5 (threads/clocks/hooks), then 6–9. Two notes for
+  whoever picks step 5 up: it needs `Engine.effect_adapter`, which REFACTOR.md only introduces
+  in step 6, so step 5 must land the engine-bound effect parsing itself (an engine method that
+  parses one authored `JsonValue` effect keeps `content/` below `engines/` without casts); and
+  the "hooks advance only authored threads" check moves out of `ScenarioWorld` into that
+  engine-bound pass.

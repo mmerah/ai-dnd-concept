@@ -178,7 +178,29 @@ from 5,059), `packs/srd.json` drives creation and twists, and docs/LONER-3E.md's
 list matches the code again — only architecture-forced deviations (per-thread milestones, one
 question per turn, Diceless appendix) and named design calls remain.
 
-## Phase 4 — Scenario creator (~3–4 days)
+## Phase 4 — Redesign refactor (~1–2 weeks)
+
+The full plan lives in REFACTOR.md; this entry sequences it. A ground-up refactor of the
+engine contract, agent roster, capability shape, hooks/clocks, typed overlays, and content
+packs — approved 2026-08-13, explicitly superseding this file's "speculative engine-prep
+refactors: rejected" and "engine-configurable turn pipeline: deferred" entries below (the
+maintainer chose the full redesign, with 24XX implemented at the end as the proof).
+
+Summary: roster merges the two Directors into one (3 in-turn roles, Worldkeeper survives, live
+probe gates the merged schema); `Advancement` generalizes to a subject-aware `Subsystem` with
+one generic trace entry (NPC advancement falls out; combat plugs in the same way later);
+threads gain optional clocks and hooks become repeating and engine-effect-capable; engines
+declare a typed overlay model (`rules_type`) and split `commit` into pure `validate` + `seed`;
+packs load from a user-facing `Settings.packs_dir` with pack identity in saves; `roll_pool`
+replaces `RollMode`. Nine phases, each separately committable; refactor phases net ~flat LOC
+(adversarial recompute — any decrease is a win); phase 9 ships the 24XX engine as the
+architectural proof that a new engine touches nothing outside its package but one
+registration line.
+
+Done when: REFACTOR.md's acceptance bar holds and 24XX plays a turn. Phase 5's creator script
+then binds to `ScenarioWorld` + `Engine.rules_type` + `write_scenario`, all landed here.
+
+## Phase 5 — Scenario creator (~3–4 days)
 
 Premise → a complete scenario in the exact on-disk format, authored by a strong model at
 authoring time. This is a script, not the app: agentic workflows are fine outside the turn
@@ -212,7 +234,7 @@ that appears on the home page and plays a first turn under every shipped engine.
 validity is judged by playing it, not asserted by the script. PDF/notes ingestion is a later
 input mode for the same script, not a separate system.
 
-## Phase 5 — Media: scene illustrations (~2–3 days)
+## Phase 6 — Media: scene illustrations (~2–3 days)
 
 Presentation only, outside mechanical truth: the game must be indistinguishable with media
 disabled, and a failed generation must cost nothing but a log line.
@@ -281,4 +303,4 @@ and with it disabled (the default) nothing in state, saves, prompts, or tests di
   free-text concept, Adventure Maker tables): rejected for now — named as deviations in
   docs/LONER-3E.md instead (Phase 3 step 10). The SRD itself says Goal/Motive/Nemesis emerge
   from play (threads already carry them); the Adventure Maker is an authoring-time tool that
-  belongs to the Phase 4 script if anywhere.
+  belongs to the Phase 5 script if anywhere.

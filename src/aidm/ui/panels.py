@@ -4,9 +4,10 @@ from contextlib import contextmanager
 
 from nicegui import ui
 
-from aidm.app.session import AdvancementOffer, GameSession, ProposalBase
+from aidm.app.session import Drafted, GameSession, Offer
+from aidm.state.base import Slug
 from aidm.state.facts import Fact
-from aidm.state.turn import Advance, StepTrace, TraceEntry, Turn
+from aidm.state.turn import Applied, StepTrace, TraceEntry, Turn
 
 from .busy import refuse_if_busy, working
 
@@ -58,8 +59,8 @@ def trace_panel(session: GameSession) -> None:
             case Turn(prompt=prompt):
                 turns += 1
                 titles.append(f"turn {turns}: {prompt}")
-            case Advance():
-                titles.append(f"after turn {turns}: advancement")
+            case Applied(capability=capability):
+                titles.append(f"after turn {turns}: {capability}")
     for index, entry in reversed(list(enumerate(entries))):
         with ui.expansion(titles[index], value=index == len(entries) - 1):
             _entry_trace(entry)
@@ -72,8 +73,8 @@ def _section(title: str, body: str) -> None:
 
 def _entry_trace(entry: TraceEntry) -> None:
     match entry:
-        case Advance(facts=facts):
-            _section("ADVANCEMENT", _facts(facts))
+        case Applied(capability=capability, facts=facts):
+            _section(capability.upper(), _facts(facts))
         case Turn():
             _turn_trace(entry)
 
@@ -104,27 +105,30 @@ def _facts(facts: Sequence[Fact]) -> str:
     return "\n".join(lines) or "- (none)"
 
 
-def advancement_panel(session: GameSession, refresh: Callable[[], None]) -> None:
-    """One panel for every engine; nothing is committed until the player confirms the draft."""
-    offer = session.offer()
-    if offer is None:
-        ui.label("No advancement is on offer.").classes("opacity-70")
+def subsystem_panel(session: GameSession, capability: Slug, refresh: Callable[[], None]) -> None:
+    """One panel for every subsystem of every engine."""
+    drafted = session.drafted.get(capability)
+    if drafted is not None:
+        _review(session, capability, drafted, refresh)
         return
-    _summary(session, offer)
-    if session.drafted is None:
-        _intent_form(session, refresh)
-    else:
-        _review(session, session.drafted, refresh)
+    offers = session.offers(capability)
+    if not offers:
+        ui.label("Nothing is on offer.").classes("opacity-70")
+        return
+    for offer in offers:
+        _summary(offer)
+        _intent_form(session, capability, offer, refresh)
 
 
-def _summary(session: GameSession, offer: AdvancementOffer) -> None:
-    ui.label(f"{session.state.player.name} — advancement ready").classes("text-sm font-bold")
-    ui.label(offer.prompt).classes("text-sm")
+def _summary(offer: Offer) -> None:
+    ui.label(offer.prompt).classes("text-sm font-bold")
     if offer.text:
         ui.label(offer.text).classes("text-sm opacity-70 whitespace-pre-wrap")
 
 
-def _intent_form(session: GameSession, refresh: Callable[[], None]) -> None:
+def _intent_form(
+    session: GameSession, capability: Slug, offer: Offer, refresh: Callable[[], None]
+) -> None:
     box = ui.textarea("How do you want to grow?").classes("w-full mt-3").props("outlined")
 
     async def propose() -> None:
@@ -136,16 +140,20 @@ def _intent_form(session: GameSession, refresh: Callable[[], None]) -> None:
         if refuse_if_busy(session):
             return
         async with working(session):
-            session.drafted = await session.propose(intent)
+            session.drafted[capability] = Drafted(
+                offer=offer, proposal=await session.propose(capability, offer, intent)
+            )
         refresh()
 
     ui.button("Propose", on_click=propose).props("color=primary")
 
 
-def _review(session: GameSession, drafted: ProposalBase, refresh: Callable[[], None]) -> None:
+def _review(
+    session: GameSession, capability: Slug, drafted: Drafted, refresh: Callable[[], None]
+) -> None:
     ui.label("Proposed changes").classes("text-sm font-bold mt-3")
     try:
-        lines = [f"- {fact.trace}" for fact in session.preview(drafted)]
+        lines = [f"- {fact.trace}" for fact in session.preview(capability, drafted)]
     except ValueError as stale:
         # A turn since the proposal may have changed the character from under the draft.
         lines = [f"This proposal no longer applies: {stale}. Discard it and propose again."]
@@ -153,23 +161,23 @@ def _review(session: GameSession, drafted: ProposalBase, refresh: Callable[[], N
         ui.label(line).classes("text-sm whitespace-pre-wrap")
 
     def discard() -> None:
-        session.drafted = None
+        _ = session.drafted.pop(capability, None)
         refresh()
 
     def confirm() -> None:
         if refuse_if_busy(session):
             return
         try:
-            _ = session.apply_proposal(drafted)
+            _ = session.apply_proposal(capability, drafted)
         except ValueError as error:
             ui.notify(str(error), type="negative", multi_line=True)
             return
-        session.drafted = None
+        _ = session.drafted.pop(capability, None)
         refresh()
 
     with ui.row().classes("w-full mt-3").style("gap: 0.75rem"):
         ui.button("Discard", on_click=discard).props("flat")
-        ui.button("Confirm advancement", on_click=confirm).props("color=primary")
+        ui.button("Confirm", on_click=confirm).props("color=primary")
 
 
 def state_panel(session: GameSession) -> None:

@@ -1,5 +1,5 @@
 {
-  "save_version": 57,
+  "save_version": 59,
   "facts": [
     {
       "source": "core",
@@ -124,19 +124,12 @@
   "narration": "The flagstone lifts. Beyond the door, something shifts its weight and waits.",
   "steps": [
     {
-      "name": "scene",
+      "name": "director",
       "output": {
         "focus": "Kael acts.",
         "pressure": "",
         "stakes": "",
-        "threads": [],
-        "reveal": [],
-        "speaker_id": null
-      }
-    },
-    {
-      "name": "director",
-      "output": {
+        "speaker_id": null,
         "effects": [
           {
             "op": "move",

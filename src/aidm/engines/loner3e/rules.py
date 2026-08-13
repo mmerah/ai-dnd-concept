@@ -32,7 +32,7 @@ class Loner3eEngine(Engine):
         super().__init__()
         packs = load_packs(self.engine_dir / "packs")
         self.twists = twist_table(packs)
-        self.advancement = Loner3eAdvancement(self.engine_dir)
+        self.subsystems = (Loner3eAdvancement(self.engine_dir),)
         self.creation = Loner3eCreation(packs)
 
     def begin(self, state: GameState, rules: Mapping[EntityId, Rules]) -> None:

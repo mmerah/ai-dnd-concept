@@ -14,6 +14,7 @@ from .base import (
     RelationId,
     Slug,
     ThreadStatus,
+    require_unique,
 )
 from .effects import WorldEffect
 from .facts import Fact, entity_fact
@@ -148,13 +149,11 @@ class WorldState(Mutable):
         for memory in self.memories.values():
             if memory.owner is not None and memory.owner not in self.entities:
                 raise ValueError(f"memory {memory.id!r} is held by unknown entity {memory.owner!r}")
+        require_unique("hook ids", (hook.id for hook in self.hooks))
         authored = {hook.id for hook in self.hooks}
-        if len(authored) != len(self.hooks):
-            raise ValueError("two hooks share an id, so one would never be told it had fired")
         if unknown := sorted(set(self.fired_hooks) - authored):
             raise ValueError(f"fired hooks name no authored hook: {unknown}")
-        if len(set(self.fired_hooks)) != len(self.fired_hooks):
-            raise ValueError(f"a hook fired twice: {sorted(self.fired_hooks)}")
+        require_unique("fired hooks", self.fired_hooks)
         return self
 
     def _check_relation(self, relation: Relation) -> None:
@@ -208,13 +207,16 @@ class WorldState(Mutable):
     def require(self, entity_id: EntityId) -> Entity:
         entity = self.entities.get(entity_id)
         if entity is None:
-            raise ValueError(f"unknown entity id {entity_id!r}")
+            raise ValueError(f"unknown entity id {entity_id!r}. Use only ids you were shown.")
         return entity
 
     def require_kind(self, entity_id: EntityId, kind: Kind) -> Entity:
         entity = self.require(entity_id)
         if entity.kind != kind:
-            raise ValueError(f"used {entity_id!r} as {kind}, but it is a {entity.kind}")
+            raise ValueError(
+                f"{entity_id!r} is a {entity.kind}, not a {kind}. "
+                "Use an id of the kind this field asks for."
+            )
         return entity
 
     def children(self, entity_id: EntityId, kind: Kind | None = None) -> tuple[Entity, ...]:

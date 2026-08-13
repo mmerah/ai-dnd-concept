@@ -96,3 +96,10 @@ and the narration already showed it arriving. SCENARIO NOTES hands you the pairi
 after: spend that turn developing what arrived — what it set in motion, what it costs, what it
 changes. It is a complication in the fiction, not a rule, and the pairing is yours to
 interpret, never to reroll or replace.
+
+MOODS
+
+Weigh each turn as one of three moods: Dramatic — stakes rise and obstacles or dangers press
+in; Quiet — a pause to recover, reflect, or plan, where pressure stays empty; Meanwhile — the
+wider world moves where the player is not looking, and the turn shows what reaches them. Choose
+the mood the fiction has earned, and let it decide how hard you push.

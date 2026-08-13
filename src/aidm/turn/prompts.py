@@ -2,9 +2,8 @@ import json
 from collections.abc import Callable, Iterable, Mapping, Sequence
 from pathlib import Path
 
-from aidm.engines.loader import AdvancementOffer, Engine, EntityRenderer, engine_text
+from aidm.engines.loader import Engine, EntityRenderer, Offer, engine_text
 from aidm.state.base import Entity, EntityId, Trait
-from aidm.state.turn import SceneDirective
 from aidm.state.world import GameState, Memory, ScenarioMeta, Thread
 
 from .scene import BaseScene, Exit, SceneSnapshot, VisibleScene
@@ -15,27 +14,21 @@ def render_director(
     describe: EntityRenderer,
     scenario: ScenarioMeta,
     prompt: str,
-    directive: SceneDirective | None = None,
 ) -> str:
-    remembered = () if directive is not None else (("MEMORIES", _memories(scene)),)
-    # Neither director writes prose, so the canon side leaks nothing by reaching both of them.
+    # The Director writes no prose, so the canon side leaks nothing by reaching it.
     canon = (
         (
             "EXISTS BUT THE PLAYER DOES NOT KNOW IT YET",
             _entities(scene.hidden, describe, placement=scene.placement_of),
         ),
         ("ACTIVE THREADS", _threads(scene.threads)),
-        *remembered,
+        ("MEMORIES", _memories(scene)),
         ("SCENARIO NOTES", "\n".join(f"- {note}" for note in scene.notes) or "- (none)"),
-    )
-    steer = (
-        () if directive is None else (("SCENE DIRECTIVE", _directive(directive, scene, describe)),)
     )
     return _sections(
         (
             *_scene_sections(scene, describe, scenario, ids=True),
             *canon,
-            *steer,
             ("PLAYER ACTION", prompt),
         )
     )
@@ -87,12 +80,12 @@ def render_worldkeeper(
     )
 
 
-def render_proposal(engine: Engine, state: GameState, offer: AdvancementOffer, intent: str) -> str:
-    player = state.player
+def render_proposal(engine: Engine, state: GameState, offer: Offer, intent: str) -> str:
+    subject = state.world.require(offer.subject_id)
     sections = (
         ("ON OFFER", offer.prompt),
         ("RULES TEXT", offer.text),
-        ("THE CHARACTER", f"{player.name}\n{entity_state(player, engine.renderer(state))}"),
+        ("THE CHARACTER", f"{subject.name}\n{entity_state(subject, engine.renderer(state))}"),
         ("WHAT THE PLAYER WANTS", intent),
     )
     return "\n\n".join(f"{title}\n{body}" for title, body in sections if body)
@@ -206,27 +199,6 @@ def _memory_line(memory: Memory, by_id: Mapping[EntityId, Entity]) -> str:
     return f"- {whose} remembers: {memory.text}"
 
 
-def _directive(directive: SceneDirective, scene: SceneSnapshot, describe: EntityRenderer) -> str:
-    """An empty pressure or stakes is a quiet turn, and says so by being absent rather than blank:
-    a heading with nothing after it reads as an omission the Rules Director should fill."""
-    threads = tuple(thread for thread in scene.threads if thread.id in directive.threads)
-    found = tuple(entity for entity in scene.hidden if entity.id in directive.reveal)
-    lines = [f"focus: {directive.focus}"]
-    if directive.pressure:
-        lines.append(f"pressure: {directive.pressure}")
-    if directive.stakes:
-        lines.append(f"stakes: {directive.stakes}")
-    if not directive.pressure and not directive.stakes:
-        lines.append("nothing pushes back and nothing is at stake: this turn is quiet")
-    lines.append(f"threads it serves:\n{_threads(threads)}")
-    if found:
-        lines.append(
-            "to bring into play — the player has not found these yet:\n"
-            f"{_entities(found, describe, placement=scene.placement_of)}"
-        )
-    return "\n".join(lines)
-
-
 def _headline(entity: Entity, placement: str, *, ids: bool = True) -> str:
     kind = "npc" if entity.kind == "actor" else entity.kind
     placed = f" — {placement}" if placement else ""
@@ -275,8 +247,7 @@ def _with_state(line: str, state: str, indent: str = "") -> str:
 
 _PROMPTS_DIR = Path(__file__).parent / "prompts"
 
-RULES_DIRECTOR = engine_text(_PROMPTS_DIR / "rules_director.md")
-SCENE_DIRECTOR = engine_text(_PROMPTS_DIR / "scene_director.md")
+DIRECTOR = engine_text(_PROMPTS_DIR / "director.md")
 CORE_ADVISOR = engine_text(_PROMPTS_DIR / "core_advisor.md")
 NARRATOR = engine_text(_PROMPTS_DIR / "narrator.md")
 WORLDKEEPER = engine_text(_PROMPTS_DIR / "worldkeeper.md")

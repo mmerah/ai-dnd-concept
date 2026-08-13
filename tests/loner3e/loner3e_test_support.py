@@ -3,7 +3,7 @@ from random import Random
 
 from core_test_support import LONER3E, character, scenario, settings
 
-from aidm.app.session import Advancer, GameSession, LaunchTarget, build_engine
+from aidm.app.session import GameSession, LaunchTarget, build_engine, build_subsystem_advisors
 from aidm.content.store import FileStore
 from aidm.state.world import GameState
 from aidm.turn.roles import build_stages
@@ -22,7 +22,7 @@ def loner3e_session(directory: Path) -> GameSession:
         character=character(),
         engine=engine,
         stages=build_stages(engine, config),
-        advancer=Advancer.of(engine, config),
+        subsystem_advisors=build_subsystem_advisors(engine, config),
         store=FileStore(directory),
         settings=config,
         rng=Random(1),

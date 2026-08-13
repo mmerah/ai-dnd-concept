@@ -21,7 +21,7 @@ from aidm.engines.loner3e.rules import LABELS, Loner3eEngine
 from aidm.state.base import PLAYER_ID, EntityId
 from aidm.state.effects import TraitChange
 from aidm.state.plan import OutcomeBranch, TurnPlanBase
-from aidm.state.world import GameState
+from aidm.state.world import PARTY_MEMBER, GameState, Relation
 
 TWISTS = Loner3eEngine().twists
 YES_AND = OutcomeBranch(
@@ -46,6 +46,7 @@ NO_AND = OutcomeBranch(
 def _plan(engine: Engine, **action: object) -> TurnPlanBase:
     return engine.plan_type.model_validate(
         {
+            "focus": "Kael works the sealed door.",
             "branches": (YES_AND, NO_AND),
             "action": {
                 "act": "question",
@@ -115,7 +116,7 @@ def test_check_plan_owes_the_model_every_refusal_the_resolve_raises() -> None:
     invented = _plan(engine, actor_id=PLAYER_ID, leverage=["Silver Tongue"])
     assert "has no tag" in _refusal(engine, state, invented)
 
-    quiet = engine.plan_type.model_validate({"branches": (YES_AND,)})
+    quiet = engine.plan_type.model_validate({"focus": "Kael waits.", "branches": (YES_AND,)})
     assert "settles no outcome" in _refusal(engine, state, quiet)
 
     elsewhere = _plan(engine, actor_id=PLAYER_ID, opponent_id="cloister_rat")
@@ -233,11 +234,10 @@ def test_an_opponents_sheet_tags_reach_the_resolver_as_tags_in_play() -> None:
 def test_a_milestone_opens_an_offer_and_the_caps_refuse_what_breaks_them() -> None:
     engine, state = initialized()
     advancement = capability(engine)
-    assert advancement.offered(state) is None
+    assert advancement.offers(state) == ()
 
     ready = at_milestone(state)
-    offer = advancement.offered(ready)
-    assert offer is not None
+    (offer,) = advancement.offers(ready)
 
     legal = Milestone(
         change="skill", tag="Reads a Second Tongue", why="the old texts finally make sense"
@@ -255,6 +255,31 @@ def test_a_milestone_opens_an_offer_and_the_caps_refuse_what_breaks_them() -> No
     assert advancement.violation(ready, offer, unwritten) == (
         "Kael carries no tag 'Never Held a Blade' to rewrite"
     )
+
+
+def test_an_npc_party_members_milestone_writes_their_own_sheet_not_the_players() -> None:
+    engine, state = initialized()
+    draft = state.draft()
+    joined = Relation(kind=PARTY_MEMBER, source=FOE, target=PLAYER_ID, known=True)
+    draft.world.relations[joined.id] = joined
+    with_companion = draft.committed()
+
+    advancement = capability(engine)
+    ready = at_milestone(with_companion)
+    offers = {offer.subject_id: offer for offer in advancement.offers(ready)}
+    assert set(offers) == {PLAYER_ID, FOE}
+
+    grow_mara = Milestone(
+        change="skill", tag="Reads Old Stonework", why="she has read enough of it now"
+    )
+    draft = ready.draft()
+    facts = advancement.resolve(draft, offers[FOE], grow_mara, Random(0))
+    grown = draft.committed()
+
+    sheets = read_mechanics(grown, Mechanics).sheets
+    assert sheets[FOE].skills[-1] == "Reads Old Stonework"
+    assert sheets[PLAYER_ID].skills == read_mechanics(ready, Mechanics).sheets[PLAYER_ID].skills
+    assert [fact.kind for fact in facts] == ["skill_gained", "counter_changed"]
 
 
 def test_the_one_action_is_worked_through_in_the_directors_instructions() -> None:

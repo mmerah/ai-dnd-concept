@@ -6,6 +6,8 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 
 ProviderName = Literal["openrouter", "local"]
 ReasoningEffort = Literal["none", "minimal", "low", "medium", "high", "xhigh", "max"]
+# The roles a build has. A stage is built by name, so an unbuildable name cannot be configured.
+Role = Literal["director", "narrator", "worldkeeper", "advisor"]
 
 
 class ProviderConfig(BaseModel):
@@ -53,7 +55,7 @@ class Settings(BaseSettings):
     )
 
     providers: Providers = Providers()
-    roles: dict[str, RoleConfig] = Field(default_factory=dict)
+    roles: dict[Role, RoleConfig] = Field(default_factory=dict)
     max_growth: int = Field(default=3, ge=0)
     max_memories: int = Field(default=2, ge=0)
     history_window: int = Field(default=6, ge=0)
@@ -61,7 +63,7 @@ class Settings(BaseSettings):
     scenarios_dir: Path = Path("scenarios")
     characters_dir: Path = Path("characters")
 
-    def role(self, name: str) -> RoleConfig:
+    def role(self, name: Role) -> RoleConfig:
         found = self.roles.get(name, RoleConfig())
         if not self.providers.for_name(found.provider).api_key.get_secret_value():
             raise ValueError(

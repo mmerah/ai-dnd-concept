@@ -5,17 +5,17 @@ from nicegui import ui
 from aidm.app.launcher import LaunchTarget, as_engine_id
 from aidm.app.session import GameSession, Runtime
 from aidm.config import load_settings
-from aidm.state.base import content_id
+from aidm.state.base import Slug, content_id
 
 from .busy import refuse_if_busy, working
 from .create import creation_page
 from .home import home_page
 from .panels import (
-    advancement_panel,
     chat,
     page_header,
     role_badges,
     state_panel,
+    subsystem_panel,
     trace_panel,
 )
 
@@ -39,15 +39,15 @@ class GameView:
         trace_panel(self.session)
 
     @ui.refreshable_method
-    def advancement(self) -> None:
-        advancement_panel(self.session, self.refresh_all)
+    def subsystem(self, capability: Slug) -> None:
+        subsystem_panel(self.session, capability, self.refresh_all)
 
     @ui.refreshable_method
     def state(self) -> None:
         state_panel(self.session)
 
     def refresh_all(self) -> None:
-        for panel in (self.chat, self.roles, self.trace, self.advancement, self.state):
+        for panel in (self.chat, self.roles, self.trace, self.subsystem, self.state):
             panel.refresh()
 
 
@@ -64,10 +64,10 @@ async def submit(view: GameView, box: ui.input) -> None:
         return
     box.value = ""
     async with working(session):
-        was_offered = session.offer() is not None
+        was_offered = session.pending()
         await session.submit(prompt, on_step=lambda step: on_step(view, step))
-        if not was_offered and session.offer() is not None:
-            ui.notify("Advancement unlocked. Open the Advancement tab to choose it.")
+        if not was_offered and session.pending():
+            ui.notify("Something is on offer. Check the subsystem tabs.")
     session.step = None
     view.refresh_all()
 
@@ -133,14 +133,16 @@ def _game_page(session: GameSession) -> None:
                 box.on("keydown.enter", lambda: submit(view, box))
                 ui.button(icon="send", on_click=lambda: submit(view, box)).props("round")
         with splitter.after, ui.column().classes("w-full h-full").style("gap: 0"):
+            subsystems = session.engine.subsystems
             with ui.tabs().classes("w-full") as tabs:
                 trace_tab = ui.tab("trace")
-                advancement_tab = ui.tab("advancement")
+                subsystem_tabs = [ui.tab(system.id) for system in subsystems]
                 state_tab = ui.tab("state")
             with ui.tab_panels(tabs, value=trace_tab).classes("w-full flex-grow"):
                 with ui.tab_panel(trace_tab), ui.scroll_area().classes("w-full h-full"):
                     view.trace()
-                with ui.tab_panel(advancement_tab), ui.scroll_area().classes("w-full h-full"):
-                    view.advancement()
+                for system, tab in zip(subsystems, subsystem_tabs, strict=True):
+                    with ui.tab_panel(tab), ui.scroll_area().classes("w-full h-full"):
+                        view.subsystem(system.id)
                 with ui.tab_panel(state_tab), ui.scroll_area().classes("w-full h-full"):
                     view.state()

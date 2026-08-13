@@ -6,8 +6,9 @@ from core_test_support import LONER3E, initialized, updated
 from pydantic import ValidationError
 
 from aidm.content.store import ENCODING, FileStore, load_character, load_scenario
+from aidm.state.base import PLAYER_ID
 from aidm.state.facts import CORE, Fact, narrator_evidence
-from aidm.state.turn import Advance, StepTrace, Turn
+from aidm.state.turn import Applied, StepTrace, Turn
 
 
 def test_save_and_trace_round_trip(tmp_path: Path) -> None:
@@ -59,8 +60,8 @@ def test_shell_reads_a_save_whose_world_is_garbage(tmp_path: Path) -> None:
         store.load("broken")
 
 
-def test_a_trace_round_trips_its_turn_and_advance_entries(tmp_path: Path) -> None:
-    """A Turn and an Advance, each carrying real facts, survive an append and a reload unchanged."""
+def test_a_trace_round_trips_its_turn_and_applied_entries(tmp_path: Path) -> None:
+    """A Turn and an Applied, each carrying real facts, survive an append and a reload unchanged."""
     store = FileStore(tmp_path)
     facts = (
         Fact(source=CORE, kind="dice_rolled", trace="a falling stone: 1d6 [4] -> 4"),
@@ -78,19 +79,19 @@ def test_a_trace_round_trips_its_turn_and_advance_entries(tmp_path: Path) -> Non
             StepTrace(name="resolve", output=narrator_evidence(facts)),
         ),
     )
-    advance = Advance(facts=facts)
+    applied = Applied(capability="advancement", subject_id=PLAYER_ID, facts=facts)
 
     store.append_trace("poc", turn)
-    store.append_trace("poc", advance)
+    store.append_trace("poc", applied)
     reloaded = store.load_trace("poc")
 
-    assert reloaded == (turn, advance)
+    assert reloaded == (turn, applied)
     director_output = reloaded[0].steps[0].output if isinstance(reloaded[0], Turn) else None
     assert (
         isinstance(director_output, dict)
         and director_output["intent"] == "Kael endures a falling stone."
     )
-    assert isinstance(reloaded[1], Advance)
+    assert isinstance(reloaded[1], Applied)
 
 
 def test_a_save_or_trace_from_another_build_is_refused(tmp_path: Path) -> None:

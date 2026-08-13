@@ -1,4 +1,5 @@
 import re
+from collections import Counter
 from collections.abc import Iterable
 from typing import Annotated, Literal, NewType, Self
 
@@ -27,7 +28,7 @@ SLUG_MAX = 64
 Slug = Annotated[str, Field(pattern=rf"^{SLUG_PATTERN}$", max_length=SLUG_MAX)]
 
 PLAYER_ID = EntityId("player")
-SAVE_VERSION = 57
+SAVE_VERSION = 59
 
 
 def content_id(value: str) -> Slug:
@@ -39,25 +40,34 @@ def content_id(value: str) -> Slug:
 
 def slug(name: str, taken: Iterable[EntityId]) -> EntityId:
     base = re.sub(r"[^a-z0-9]+", "_", name.lower()).strip("_") or "entity"
-    used = set(taken)
-    candidate, number = EntityId(base), 2
-    while candidate in used:
-        candidate, number = EntityId(f"{base}_{number}"), number + 1
-    return candidate
+    return EntityId(_unused(base, taken, "_"))
 
 
 def text_slug(text: str, taken: Iterable[str]) -> Slug:
     words = re.sub(r"[^a-z0-9]+", "-", text.lower()).strip("-")
-    used = set(taken)
-    candidate, number = _capped(words, SLUG_MAX), 2
+    return _unused(_capped(words, SLUG_MAX), taken, "-", SLUG_MAX)
+
+
+def _unused(base: str, taken: Iterable[str], join: str, limit: int | None = None) -> str:
+    used, candidate, number = set(taken), base, 2
     while candidate in used:
-        suffix = f"-{number}"
-        candidate, number = f"{_capped(words, SLUG_MAX - len(suffix))}{suffix}", number + 1
+        suffix = f"{join}{number}"
+        room = base if limit is None else _capped(base, limit - len(suffix))
+        candidate, number = f"{room}{suffix}", number + 1
     return candidate
 
 
 def _capped(words: str, limit: int) -> str:
     return words[:limit].rstrip("-") or "entry"
+
+
+def duplicates(ids: Iterable[str]) -> list[str]:
+    return sorted(name for name, count in Counter(ids).items() if count > 1)
+
+
+def require_unique(what: str, ids: Iterable[str]) -> None:
+    if found := duplicates(ids):
+        raise ValueError(f"duplicate {what}: {found}")
 
 
 class EntityDetail(Frozen):
@@ -90,7 +100,5 @@ class Entity(Mutable):
 
     @model_validator(mode="after")
     def _traits_are_unambiguous(self) -> Self:
-        ids = [held.id for held in self.traits]
-        if repeated := sorted({name for name in ids if ids.count(name) > 1}):
-            raise ValueError(f"duplicate trait ids on {self.id!r}: {repeated}")
+        require_unique(f"trait ids on {self.id!r}", (held.id for held in self.traits))
         return self

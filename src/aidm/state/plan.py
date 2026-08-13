@@ -5,14 +5,37 @@ from typing import cast
 
 from pydantic import Field, ValidationError, model_validator
 
-from .base import Frozen, Slug
+from .base import EntityId, Frozen, Slug, duplicates
 from .facts import Fact
 from .world import GameState
 
 
 class TurnPlanBase(Frozen):
-    """One turn, answered in one plan. Core knows a plan only by this base: every field, every
-    effect, and the whole resolution belong to the engine whose plan it is."""
+    """One turn, answered in one plan."""
+
+    focus: str = Field(
+        description="1-2 sentences: what the player is reaching for and what this turn is about."
+    )
+    pressure: str = Field(
+        default="",
+        description=(
+            "1-2 sentences: what pushes back this turn — a complication, a cost, a threat. Empty "
+            "when the turn is genuinely quiet and nothing should push back."
+        ),
+    )
+    stakes: str = Field(
+        default="",
+        description=(
+            "One sentence: what the player stands to win or lose. Empty when nothing is at stake."
+        ),
+    )
+    speaker_id: EntityId | None = Field(
+        default=None,
+        description=(
+            "Exact id of the NPC the player addresses — one they have met and who is here with "
+            "them — or null if nobody is addressed."
+        ),
+    )
 
     @model_validator(mode="before")
     @classmethod
@@ -76,10 +99,8 @@ def apply_branch[E](
 def check_effects[E](
     state: GameState, plan: Branched[E], labels: frozenset[Slug], apply: Apply[E]
 ) -> str | None:
-    """What every engine's plan check shares: the outcome labels this action allows, and a trial
-    application of the effects against the state as it stands."""
     named = [branch.outcome for branch in plan.branches]
-    if repeated := sorted({name for name in named if named.count(name) > 1}):
+    if repeated := duplicates(named):
         return f"one branch per outcome, and {repeated} is branched twice"
     if outside := sorted(set(named) - labels):
         allowed = ", ".join(sorted(labels))
@@ -92,7 +113,7 @@ def check_effects[E](
     # Branches are alternatives: each is trialled with the unconditional effects, never a sibling.
     alternatives = [(*branch.effects, *plan.effects) for branch in plan.branches] or [plan.effects]
     for group in alternatives:
-        if fault := _trial(state, group, apply):
+        if fault := check_draft(state, _applied(group, apply)):
             return fault
     return None
 
@@ -104,23 +125,25 @@ def check_action[E](
     apply: Apply[E],
     resolve: Callable[[GameState, Random], object],
 ) -> str | None:
-    """The trial resolve owes the model every refusal the real resolve raises, so an action that
-    cannot resolve is refused before the plan's effects are judged."""
-    try:
-        _ = resolve(state.draft(), Random(0))
-    except ValueError as refused:
-        return str(refused)
+    """An action that cannot resolve is refused before the plan's effects are judged."""
+    if refused := check_draft(state, lambda draft: resolve(draft, Random(0))):
+        return refused
     return check_effects(state, plan, labels, apply)
 
 
-def _trial[E](state: GameState, effects: Sequence[E], apply: Apply[E]) -> str | None:
+def _applied[E](effects: Sequence[E], apply: Apply[E]) -> Callable[[GameState], object]:
+    return lambda draft: apply_all(draft, effects, apply)
+
+
+def check_draft(
+    state: GameState, act: Callable[[GameState], object], what: str = "the state this leaves"
+) -> str | None:
     draft = state.draft()
     try:
-        for effect in effects:
-            _ = apply(draft, effect)
+        _ = act(draft)
         _ = draft.committed()
-    except ValidationError as invalid:
-        return f"the state this leaves is invalid: {invalid.errors()[0]['msg']}"
+    except ValidationError as broken:
+        return f"{what} is invalid: {broken.errors()[0]['msg']}"
     except ValueError as refused:
         return str(refused)
     return None

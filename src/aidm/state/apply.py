@@ -2,7 +2,7 @@ from collections.abc import Sequence
 
 from pydantic import JsonValue
 
-from .base import PLAYER_ID, Entity, EntityId, Kind, Slug, Trait, slug
+from .base import PLAYER_ID, Entity, EntityId, Slug, Trait, slug
 from .effects import (
     AdvanceThread,
     GainImprovisedItem,
@@ -19,7 +19,7 @@ from .world import CONNECTED, LOCKED_TAG, PARTY_MEMBER, GameState, Hook, Relatio
 def apply_effect(draft: GameState, effect: WorldEffect) -> list[Fact]:
     match effect:
         case Reveal(entity_id=entity_id):
-            return draft.reveal(_require(draft, entity_id))
+            return draft.reveal(draft.world.require(entity_id))
         case Move():
             return _move(draft, effect)
         case GainImprovisedItem(item_name=item_name):
@@ -37,7 +37,7 @@ def apply_effect(draft: GameState, effect: WorldEffect) -> list[Fact]:
 def require_actor_here(state: GameState, actor_id: EntityId | None) -> Entity:
     if actor_id is None or actor_id == PLAYER_ID:
         return state.player
-    actor = _require_kind(state, actor_id, "actor")
+    actor = state.world.require_kind(actor_id, "actor")
     if not state.is_here(actor):
         raise ValueError(
             f"{actor_id!r} is not here with the player. "
@@ -46,33 +46,14 @@ def require_actor_here(state: GameState, actor_id: EntityId | None) -> Entity:
     return actor
 
 
-def _require(state: GameState, entity_id: EntityId) -> Entity:
-    entity = state.world.find(entity_id)
-    if entity is None:
-        raise ValueError(f"unknown entity id {entity_id!r}. Use only ids you were shown.")
-    return entity
-
-
-def _require_kind(state: GameState, entity_id: EntityId, kind: Kind) -> Entity:
-    entity = _require(state, entity_id)
-    if entity.kind != kind:
-        raise ValueError(
-            f"{entity_id!r} is a {entity.kind}, not a {kind}. "
-            "Use an id of the kind this field asks for."
-        )
-    return entity
-
-
 def reveal_target(draft: GameState, entity_id: EntityId) -> tuple[Entity, list[Fact]]:
     """A place or a thing is not revealed by being acted on, so no unlearned name leaks."""
-    entity = _require(draft, entity_id)
+    entity = draft.world.require(entity_id)
     seen = draft.reveal(require_actor_here(draft, entity_id)) if entity.kind == "actor" else []
     return entity, seen
 
 
-def _require_exit(draft: GameState, here: EntityId, destination: Entity) -> None:
-    """A world that authors no connections keeps free movement; one that authors any gates on
-    them, so the refusal can teach the model the legal exits."""
+def _require_open_way(draft: GameState, here: EntityId, destination: Entity) -> None:
     exits = draft.world.connections(here)
     if not exits:
         return
@@ -100,7 +81,7 @@ def _require_exit(draft: GameState, here: EntityId, destination: Entity) -> None
 
 def _move(draft: GameState, effect: Move) -> list[Fact]:
     if effect.entity_id is not None and effect.entity_id != PLAYER_ID:
-        moving = _require(draft, effect.entity_id)
+        moving = draft.world.require(effect.entity_id)
         if moving.kind == "item":
             return _move_item(draft, moving, effect.to_id)
     return _move_actor(draft, effect)
@@ -109,18 +90,18 @@ def _move(draft: GameState, effect: Move) -> list[Fact]:
 def _move_actor(draft: GameState, effect: Move) -> list[Fact]:
     if effect.to_id is None:
         raise ValueError("an actor moves to a location; name it in `to_id`")
-    destination = _require_kind(draft, effect.to_id, "location")
+    destination = draft.world.require_kind(effect.to_id, "location")
     here = draft.player_location
     actor_id = effect.entity_id
     if actor_id is None or actor_id == PLAYER_ID:
-        _require_exit(draft, here, destination)
+        _require_open_way(draft, here, destination)
         facts = [*draft.reveal(destination), draft.move(draft.player, destination)]
         for member_id in draft.world.party():
             member = draft.world.require_kind(member_id, "actor")
             if member.parent_id != destination.id:
                 facts.append(draft.move(member, destination))
         return facts
-    actor = _require_kind(draft, actor_id, "actor")
+    actor = draft.world.require_kind(actor_id, "actor")
     if actor.parent_id != here and destination.id != here:
         raise ValueError(f"movement of actor {actor_id!r} would not be witnessed")
     revealed = draft.reveal(actor) if destination.id == here else []
@@ -134,7 +115,7 @@ def _move_item(draft: GameState, item: Entity, to_id: EntityId | None) -> list[F
         if item.parent_id != draft.player_location:
             raise ValueError(f"item {item.id!r} is not loose at the player's location")
         return [*draft.reveal(item), draft.move(item, draft.player)]
-    receiver = _require(draft, to_id)
+    receiver = draft.world.require(to_id)
     if receiver.kind == "location":
         if receiver.id != draft.player_location:
             raise ValueError("an item is set down at the player's own location, nowhere else")
@@ -204,9 +185,9 @@ def _relation_change(draft: GameState, effect: RelationChange) -> list[Fact]:
         source = (
             require_actor_here(draft, effect.source)
             if effect.kind == PARTY_MEMBER
-            else _require(draft, effect.source)
+            else draft.world.require(effect.source)
         )
-        receiver = _require(draft, effect.target)
+        receiver = draft.world.require(effect.target)
         relation = Relation(
             kind=effect.kind,
             source=effect.source,

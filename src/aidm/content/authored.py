@@ -1,10 +1,19 @@
-from collections.abc import Collection, Mapping, Sequence
+from collections.abc import Collection, Mapping
 from functools import cached_property
 from typing import Self
 
 from pydantic import Field, JsonValue, model_validator
 
-from aidm.state.base import PLAYER_ID, EngineId, Entity, EntityId, Frozen, Slug, Trait
+from aidm.state.base import (
+    PLAYER_ID,
+    EngineId,
+    Entity,
+    EntityId,
+    Frozen,
+    Slug,
+    Trait,
+    require_unique,
+)
 from aidm.state.effects import AdvanceThread
 from aidm.state.world import Hook, Memory, Relation, ScenarioMeta, Thread, WorldState
 
@@ -27,10 +36,10 @@ class ScenarioWorld(Frozen):
     def world(self) -> WorldState:
         """The authored canon as the one shape that validates it. The file keys nothing by id
         because an id-keyed JSON object collapses a duplicate silently."""
-        _unique("entity ids", [entity.id for entity in self.entities])
-        _unique("relations", [relation.id for relation in self.relations])
-        _unique("threads", [thread.id for thread in self.threads])
-        _unique("memories", [memory.id for memory in self.memories])
+        require_unique("entity ids", [entity.id for entity in self.entities])
+        require_unique("relations", [relation.id for relation in self.relations])
+        require_unique("threads", [thread.id for thread in self.threads])
+        require_unique("memories", [memory.id for memory in self.memories])
         return WorldState(
             entities={entity.id: entity for entity in self.entities},
             relations={relation.id: relation for relation in self.relations},
@@ -48,7 +57,7 @@ class ScenarioWorld(Frozen):
             raise ValueError(
                 f"starting_location_id {self.starting_location_id!r} is not a location here"
             )
-        _unique("starting party", self.starting_party)
+        require_unique("starting party", self.starting_party)
         for companion in self.starting_party:
             actor = self.world.require_kind(companion, "actor")
             if not (actor.known and actor.parent_id == self.starting_location_id):
@@ -148,11 +157,6 @@ class Character(Frozen):
             self.engine, self.overlay.entities, {item.id for item in self.profile.items}
         )
         return self
-
-
-def _unique(what: str, ids: Sequence[str]) -> None:
-    if repeated := sorted({name for name in ids if ids.count(name) > 1}):
-        raise ValueError(f"scenario has duplicate {what}: {repeated}")
 
 
 def _require_authored(

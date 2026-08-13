@@ -6,14 +6,13 @@ from pydantic_ai.toolsets import AbstractToolset, FunctionToolset
 
 from aidm.engines.loader import engine_ids
 from aidm.state.base import EngineId, EntityDetail
-from aidm.state.turn import SceneDirective, WorldkeeperReport
+from aidm.state.turn import WorldkeeperReport
 
 # A role's output schema is sent to the model, so its field descriptions steer it exactly as the
 # instructions do. These are engine-independent; the plan and proposal types are the engine's own.
 SHARED_OUTPUTS: dict[str, type[BaseModel]] = {
     "worldkeeper_report": WorldkeeperReport,
     "entity_detail": EntityDetail,
-    "scene_directive": SceneDirective,
 }
 
 

@@ -13,7 +13,7 @@ from aidm.app.session import begin_game, build_engine
 from aidm.config import ProviderConfig, Providers, Settings
 from aidm.content.authored import Character, Scenario
 from aidm.content.store import load_character, load_scenario
-from aidm.engines.loader import Advancement, Engine
+from aidm.engines.loader import Engine, Subsystem
 from aidm.state.base import EngineId, Entity
 from aidm.state.turn import Turn
 from aidm.state.world import GameState
@@ -59,11 +59,9 @@ def initialized() -> tuple[Engine, GameState]:
     return game(LONER3E)
 
 
-def capability(engine: Engine) -> Advancement:
+def capability(engine: Engine) -> Subsystem:
     """The shipped engine grows its characters; a test that asks for the capability wants it."""
-    found = engine.advancement
-    assert found is not None
-    return found
+    return engine.subsystems[0]
 
 
 def structured(**output: object) -> ModelResponse:
@@ -72,7 +70,8 @@ def structured(**output: object) -> ModelResponse:
 
 def plan(**output: object) -> ModelResponse:
     """The director answers by calling the plan tool, as ToolOutput presents it."""
-    return ModelResponse(parts=[ToolCallPart(tool_name="turn_plan", args=json.dumps(output))])
+    args = json.dumps({"focus": "Kael acts.", **output})
+    return ModelResponse(parts=[ToolCallPart(tool_name="turn_plan", args=args)])
 
 
 def text(body: str) -> ModelResponse:
@@ -109,16 +108,14 @@ async def played(
     director: Model,
     narrator: Model | None = None,
     worldkeeper: Model | None = None,
-    scene: Model | None = None,
     rng: Random | None = None,
     on_step: Callable[[str], None] | None = None,
 ) -> TurnResult:
     """The turn with every role stubbed, built the way the session builds it."""
     config = settings()
     stages = build_stages(engine, config)
-    roles = (stages.scene, stages.director, stages.narrator, stages.worldkeeper)
+    roles = (stages.director, stages.narrator, stages.worldkeeper)
     models = (
-        scene or FunctionModel(scripted(structured(focus="Kael acts."))),
         director,
         narrator or FunctionModel(scripted(text("You wait."))),
         worldkeeper or FunctionModel(scripted(structured(creations=[]))),
