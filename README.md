@@ -1,13 +1,12 @@
 # AI Dungeon Master
 
-A role-separated narrative game platform with two shipped rules engines:
+A role-separated narrative game platform. One rules engine ships:
 
-- **AIDM Story** — the narrative-first, rules-light engine.
-- **AIDM Oracle** — the first-party tag-based engine: one dramatic question, Chance d6 against
-  Risk d6, six semantic outcomes. Its resolution is inspired by Loner 3e (Zotiquest Games,
-  CC BY-SA 4.0); the terminology, the outcome ladder, and the code are original.
+- **AIDM Oracle** — the tag-based engine: one dramatic question, Chance d6 against Risk d6, six
+  semantic outcomes. Its resolution is inspired by Loner 3e (Zotiquest Games, CC BY-SA 4.0);
+  the terminology, the outcome ladder, and the code are original.
 
-See CONCEPT.md and DECISION.md for the reorientation, PLAN.md for the phases.
+See PLAN.md for the phases.
 
 ```text
 prompt → SCENE → RULES → resolve → hooks → NARRATOR → WORLDKEEPER → commit
@@ -47,13 +46,6 @@ uv run basedpyright
 uv run pytest
 ```
 
-A live-model eval harness lives in `scripts/evals/` (`uv run python scripts/evals/run.py`,
-`--only director|advisor|worldkeeper` to pick a suite). Each case replays an authored turn
-against the real provider and probes the committed state, so what it measures is model
-reliability on this codebase's actual schemas and prompts. It runs manually when a
-model-facing surface changes — never from pytest, and it is not a merge gate. At 3 runs per
-case, single-case movement is noise; re-run before attributing anything below n=9.
-
 ## Layout
 
 ```text
@@ -62,18 +54,16 @@ src/aidm/content/         authored scenarios and characters, saves and traces
 src/aidm/engines/         the loader, plus one directory per engine
 src/aidm/turn/            the turn loop, its agents, prompts, advancement
 src/aidm/app/             composition root: launcher catalog, sessions, runtime
-src/aidm/engines/story/   Story engine: mechanics, actions, director procedure
 src/aidm/engines/oracle/  Oracle engine: tag sheets, the dramatic question, the outcome ladder
 src/aidm/ui/              NiceGUI shell: renders state, submits decisions
-scripts/evals/    live-model eval harness, run manually and never from pytest
-characters/       shared character canon plus one overlay per supported engine
-scenarios/        shared world canon plus one overlay per supported engine
-tests/            per-package suites: core, story, oracle, ui
+characters/               shared character canon plus one overlay per supported engine
+scenarios/                shared world canon plus one overlay per supported engine
+tests/                    per-package suites: core, oracle, probe, ui
 ```
 
 One distribution. The import direction — `state <- content <- engines <- turn <- app <- ui`, with
 `aidm/config.py` a leaf every layer may read — is enforced by
-`tests/core/test_package_boundary.py`: the engines do not import each other or `aidm.ui`, and
+`tests/core/test_package_boundary.py`: an engine does not import another or `aidm.ui`, and
 nothing below `app` imports the UI or NiceGUI.
 
 The **Trace** tab shows the Director's plan, resolved facts, and the exact prompt received

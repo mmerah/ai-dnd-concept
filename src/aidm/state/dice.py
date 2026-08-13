@@ -86,7 +86,6 @@ def roll(
     reason: str,
     rng: Random,
     *,
-    vs: int | None = None,
     mode: RollMode = "normal",
     bonus: int = 0,
 ) -> tuple[Rolled, Fact]:
@@ -96,22 +95,17 @@ def roll(
     if mode != "normal":
         pair = sorted((kept, _evaluate(expression, rng)), key=lambda outcome: outcome.total)
         kept, dropped = (pair[-1], pair[0]) if mode == "advantage" else (pair[0], pair[-1])
-    success = None if vs is None else kept.total >= vs
-    verdict = "" if success is None else f" vs {vs}: {'SUCCESS' if success else 'FAILURE'}"
     against = "" if dropped is None else f" ({mode}, dropped {dropped.total})"
     faces = ", ".join(str(die) for die in kept.dice)
     return kept, Fact(
         source=CORE,
         kind="dice_rolled",
-        trace=f"{reason}: {expression} [{faces}] -> {kept.total}{against}{verdict}",
-        narrator=None if success is None else f"{reason}: {'success' if success else 'failure'}",
+        trace=f"{reason}: {expression} [{faces}] -> {kept.total}{against}",
         data={
             "dice": expression,
             "mode": mode,
             "rolled": list(kept.dice),
             "total": kept.total,
-            "vs": vs,
-            "success": success,
             "reason": reason,
         },
     )

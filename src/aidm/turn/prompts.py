@@ -266,8 +266,6 @@ def render_proposal(engine: Engine, state: GameState, offer: AdvancementOffer, i
     sections = (
         ("ON OFFER", offer.prompt),
         ("RULES TEXT", offer.text),
-        ("HANDED OVER", "\n".join(f"- {ref}" for ref in offer.granted)),
-        (f"PICK EXACTLY {offer.choose}", "\n".join(f"- {ref}" for ref in offer.options)),
         ("THE CHARACTER", f"{player.name}\n{entity_state(player, engine.renderer(state))}"),
         ("WHAT THE PLAYER WANTS", intent),
     )

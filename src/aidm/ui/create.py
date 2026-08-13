@@ -1,6 +1,5 @@
 import logging
 from collections.abc import Callable, Sequence
-from math import isfinite
 from pathlib import Path
 
 from nicegui import ui
@@ -10,7 +9,7 @@ from aidm.app.session import Runtime
 from aidm.content.authored import CreatedCharacter
 from aidm.content.store import write_character
 from aidm.state.base import EngineId, Slug, text_slug
-from aidm.state.creation import AllocationStep, Amounts, Step, allocated, picked
+from aidm.state.creation import CreationStep, picked
 
 from .panels import show_engine_badge
 
@@ -29,7 +28,7 @@ def creation_page(runtime: Runtime, engine_id: EngineId) -> None:
             with ui.card().style("width: min(48rem, 100%)").classes("q-pa-lg"):
                 ui.label("These rules offer no character creation.").classes("text-negative")
             return
-        picks: dict[Slug, tuple[Slug, ...] | Amounts] = {}
+        picks: dict[Slug, tuple[Slug, ...]] = {}
         with ui.row().classes("no-wrap items-start").style("width: min(80rem, 100%); gap: 1rem"):
             with ui.card().classes("q-pa-lg").style("flex: 1; min-width: 0"):
                 name = (
@@ -105,9 +104,8 @@ def creation_page(runtime: Runtime, engine_id: EngineId) -> None:
 
                 def refresh_form_and_preview() -> None:
                     preview.refresh()
-                    # Rebuilding steals the cursor from a number typed digit by digit, so the form
-                    # is rebuilt only when an answer changed what a step asks or offers. A roll
-                    # seed does change the next step's prompt, and does rebuild.
+                    # Rebuilding drops what the player is part-way through answering, so the form
+                    # is rebuilt only when an answer changed what a step asks or offers.
                     if _shape(creation.steps(picks)) != rendered:
                         form.refresh()
 
@@ -133,39 +131,26 @@ def _preview_lines(created: CreatedCharacter) -> list[tuple[str, str]]:
     return lines
 
 
-def _shape(steps: Sequence[Step]) -> tuple[str, ...]:
+def _shape(steps: Sequence[CreationStep]) -> tuple[str, ...]:
     """Everything a rendered step puts on screen. What is *picked* is deliberately out: a step
-    whose options and bounds are unmoved renders the same widget, and rebuilding it under a
-    half-typed number would take the cursor with it."""
+    whose options are unmoved renders the same widget, and rebuilding it would take the cursor
+    with it."""
     return tuple(
-        f"{step.id}: {step.prompt}: "
-        + (
-            f"{step.minimum}-{step.maximum}: {[entry.id for entry in step.entries]}"
-            if isinstance(step, AllocationStep)
-            else f"{step.choose}: {[option.id for option in step.options]}"
-        )
+        f"{step.id}: {step.prompt}: {step.choose}: {[option.id for option in step.options]}"
         for step in steps
     )
 
 
-def _answer(step: Step, picks: dict[Slug, tuple[Slug, ...] | Amounts]) -> str:
-    if isinstance(step, AllocationStep):
-        held = allocated(picks, step.id)
-        return ", ".join(
-            f"{entry.label} {held[entry.id]}" for entry in step.entries if entry.id in held
-        )
+def _answer(step: CreationStep, picks: dict[Slug, tuple[Slug, ...]]) -> str:
     labels = {option.id: option.label for option in step.options}
     return ", ".join(labels.get(pick, pick) for pick in picked(picks, step.id))
 
 
 def _step_widget(
-    step: Step,
-    picks: dict[Slug, tuple[Slug, ...] | Amounts],
+    step: CreationStep,
+    picks: dict[Slug, tuple[Slug, ...]],
     refresh: Callable[[], object],
 ) -> None:
-    if isinstance(step, AllocationStep):
-        _step_numbers(step, picks, refresh)
-        return
     options = {
         option.id: f"{option.label} — {option.detail}" if option.detail else option.label
         for option in step.options
@@ -190,40 +175,6 @@ def _step_widget(
         multiple=step.choose > 1,
         on_change=changed,  # pyright: ignore[reportUnknownArgumentType]
     ).classes("w-full")
-
-
-def _step_numbers(
-    step: AllocationStep,
-    picks: dict[Slug, tuple[Slug, ...] | Amounts],
-    refresh: Callable[[], object],
-) -> None:
-    held = allocated(picks, step.id)
-    ui.label(step.prompt).classes("text-sm font-bold q-mt-sm")
-
-    def write(entry_id: Slug, value: float | None) -> None:
-        amounts = dict(allocated(picks, step.id))
-        # The browser hands over a raw float; the widget's own clamp only runs when it loses focus.
-        if value is not None and isfinite(value):
-            amounts[entry_id] = round(value)
-        else:
-            amounts.pop(entry_id, None)
-        picks[step.id] = amounts
-        refresh()
-
-    with ui.row().classes("w-full items-baseline").style("gap: 0.5rem"):
-        for entry in step.entries:
-            _ = (
-                ui.number(
-                    label=entry.label,
-                    value=held.get(entry.id),
-                    min=step.minimum,
-                    max=step.maximum,
-                    precision=0,
-                    on_change=lambda event, entry_id=entry.id: write(entry_id, event.value),
-                )
-                .props("outlined debounce=400")
-                .style("flex: 1; min-width: 5rem")
-            )
 
 
 def _taken(directory: Path) -> tuple[str, ...]:

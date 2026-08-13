@@ -4,15 +4,15 @@ from collections.abc import Callable, Mapping
 from importlib import import_module
 from pathlib import Path
 from random import Random
-from typing import ClassVar, Self
+from typing import ClassVar
 
-from pydantic import Field, JsonValue, TypeAdapter, model_validator
+from pydantic import JsonValue, TypeAdapter
 from pydantic_ai.toolsets import AbstractToolset
 
 from aidm.content.authored import CreatedCharacter, Rules
 from aidm.content.store import ENCODING
 from aidm.state.base import EngineId, Entity, EntityId, Frozen
-from aidm.state.creation import Picks, Step
+from aidm.state.creation import CreationStep, Picks
 from aidm.state.effects import WorldEffect, effect_key, effect_keys
 from aidm.state.facts import Fact
 from aidm.state.plan import TurnPlanBase
@@ -29,19 +29,6 @@ class AdvancementOffer(Frozen):
 
     prompt: str
     text: str = ""
-    # What the advancement hands over unasked. The advisor never picks these; the prompt carries
-    # them so it can see what the growth already gives before it answers what is left.
-    granted: tuple[str, ...] = ()
-    options: tuple[str, ...] = ()
-    choose: int = Field(default=0, ge=0)
-
-    @model_validator(mode="after")
-    def _choice_is_whole(self) -> Self:
-        if bool(self.choose) != bool(self.options):
-            raise ValueError("options and choose are set together, or neither is")
-        if self.choose > len(self.options):
-            raise ValueError(f"cannot choose {self.choose} of {len(self.options)} options")
-        return self
 
 
 class ProposalBase(Frozen):
@@ -74,7 +61,7 @@ class Creation(ABC):
     """The optional creation capability: an engine without one offers no new-character page."""
 
     @abstractmethod
-    def steps(self, picks: Picks) -> tuple[Step, ...]:
+    def steps(self, picks: Picks) -> tuple[CreationStep, ...]:
         """Tolerates partial or stale picks, so follow-up steps appear as parents are picked."""
 
     @abstractmethod

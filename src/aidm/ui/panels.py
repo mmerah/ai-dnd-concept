@@ -107,15 +107,6 @@ def _summary(session: GameSession, offer: AdvancementOffer) -> None:
     ui.label(offer.prompt).classes("text-sm")
     if offer.text:
         ui.label(offer.text).classes("text-sm opacity-70 whitespace-pre-wrap")
-    for title, refs in (
-        ("Handed over:", offer.granted),
-        (f"Pick exactly {offer.choose} of:", offer.options),
-    ):
-        if not refs:
-            continue
-        ui.label(title).classes("text-sm opacity-70 mt-2")
-        for ref in refs:
-            ui.label(f"- {ref}").classes("text-sm opacity-70")
 
 
 def _intent_form(session: GameSession, refresh: Callable[[], None]) -> None:

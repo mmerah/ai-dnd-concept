@@ -9,7 +9,7 @@ from aidm.content.store import load_character, load_scenario, write_character
 from aidm.engines.oracle.mechanics import LUCK_MAX, read
 from aidm.engines.oracle.rules import OracleEngine
 from aidm.state.base import PLAYER_ID
-from aidm.state.creation import CreationStep, Picks
+from aidm.state.creation import Picks
 
 
 def _creation(engine: OracleEngine):
@@ -43,9 +43,7 @@ def test_an_illegal_pick_set_is_refused_with_the_reason(tmp_path: Path) -> None:
     creation = _creation(OracleEngine())
     steps = creation.steps({})
     legal: Picks = {
-        step.id: tuple(option.id for option in step.options[: step.choose])
-        for step in steps
-        if isinstance(step, CreationStep)
+        step.id: tuple(option.id for option in step.options[: step.choose]) for step in steps
     }
     with pytest.raises(ValueError, match="no creation step"):
         creation.create("Fen", "", {**legal, "class": ("fighter",)})
