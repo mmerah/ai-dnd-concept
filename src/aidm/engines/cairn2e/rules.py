@@ -4,41 +4,41 @@ from random import Random
 
 from pydantic import JsonValue
 
-from aidm.engines.loader import Engine, EntityRenderer
 from aidm.engines.packs import load_packs, pack_paths
-from aidm.engines.sheets import check_sheets
-from aidm.state.base import EngineId, Entity, EntityId, Frozen, Slug
+from aidm.engines.sheet_engine import SheetEngine
+from aidm.state.base import EngineId, Entity, EntityId
 from aidm.state.facts import Fact
-from aidm.state.plan import Resolver, TurnPlanBase, check_branched, resolve_branched
 from aidm.state.world import GameState
 
-from .actions import ATTACK_LABELS, SAVE_LABELS, Attack, Save, TurnPlan
+from .actions import Cairn2eAction, TurnPlan
 from .advance import Cairn2eAdvancement
 from .create import Cairn2eCreation
 from .mechanics import (
     EFFECTS,
     RULES,
+    Cairn2eEffect,
     Mechanics,
     Sheet,
-    apply,
     build_mechanics,
     check_items,
     check_load_limits,
-    describe,
+    describe_entity,
     rolled_sheet,
 )
+from .mechanics import apply as apply_mechanics
 from .pack import Pack
-from .resolve import resolve_attack, resolve_save
 
 ENGINE_ID: EngineId = EngineId("cairn2e")
 
 
-class Cairn2eEngine(Engine):
+class Cairn2eEngine(SheetEngine[Sheet, Cairn2eAction]):
     id = ENGINE_ID
     badge = ("CAIRN 2E", "green-8")
-    plan_type = TurnPlan
-    rules_type = Sheet
     engine_dir = Path(__file__).parent
+    plan_type = TurnPlan
+    sheet_type = Sheet
+    mechanics_type = Mechanics
+    effects = EFFECTS
 
     def __init__(self, extra_packs: Path | None = None) -> None:
         super().__init__(extra_packs)
@@ -48,60 +48,28 @@ class Cairn2eEngine(Engine):
 
     def check_overlay(self, payloads: Iterable[dict[str, JsonValue]]) -> None:
         """Cairn authors rules for items as well as actors, so the base check's actor-only
-        `rules_type` cannot validate every payload; each one is tried against either shape."""
+        sheet type cannot validate every payload; each one is tried against either shape."""
         for rules in payloads:
             _ = RULES.validate_python(rules)
 
     def begin(self, state: GameState, rules: Mapping[EntityId, dict[str, JsonValue]]) -> None:
         state.set_mechanics(build_mechanics(state, rules))
 
-    def validate(self, state: GameState) -> None:
+    def check_mechanics(self, state: GameState) -> None:
         mechanics = state.mechanics_as(Mechanics)
-        check_sheets(state, mechanics.sheets, ENGINE_ID)
         check_items(state, mechanics)
         check_load_limits(state, mechanics)
 
-    def seed(self, draft: GameState, entity: Entity, rng: Random) -> None:
-        mechanics = draft.mechanics_as(Mechanics)
-        if entity.kind != "actor" or entity.id in mechanics.sheets:
-            return
-        mechanics.sheets[entity.id] = rolled_sheet(rng)
+    def apply(self, draft: GameState, effect: Cairn2eEffect) -> list[Fact]:
+        """Cairn's own: deprivation refusals, item pools, and the load check the base has not."""
+        return apply_mechanics(draft, effect)
 
-    def parse_effect(self, effect: JsonValue) -> Frozen:
-        return EFFECTS.validate_python(effect)
+    def new_sheet(self, draft: GameState, rng: Random) -> Sheet:
+        del draft
+        return rolled_sheet(rng)
 
-    def apply_effect(self, draft: GameState, effect: JsonValue) -> list[Fact]:
-        return apply(draft, EFFECTS.validate_python(effect))
-
-    def renderer(self, state: GameState) -> EntityRenderer:
-        mechanics = state.mechanics_as(Mechanics)
-        return lambda entity: describe(state, mechanics, entity)
-
-    def _resolver(self, plan: TurnPlan) -> Resolver | None:
-        match plan.action:
-            case None:
-                return None
-            case Save() as save:
-                return lambda draft, rng: resolve_save(draft, save, rng)
-            case Attack() as attack:
-                return lambda draft, rng: resolve_attack(draft, attack, rng)
-
-    def _labels(self, plan: TurnPlan) -> frozenset[Slug]:
-        match plan.action:
-            case None:
-                return frozenset()
-            case Save():
-                return SAVE_LABELS
-            case Attack():
-                return ATTACK_LABELS
-
-    def check_plan(self, state: GameState, plan: TurnPlanBase) -> str | None:
-        assert isinstance(plan, TurnPlan)
-        return check_branched(state, plan, self._labels(plan), apply, self._resolver(plan))
-
-    def resolve_action(self, draft: GameState, plan: TurnPlanBase, rng: Random) -> list[Fact]:
-        assert isinstance(plan, TurnPlan)
-        return resolve_branched(draft, plan, apply, self._resolver(plan), rng)
+    def describe(self, state: GameState, entity: Entity) -> str:
+        return describe_entity(state, state.mechanics_as(Mechanics), entity)
 
 
 ENGINE = Cairn2eEngine

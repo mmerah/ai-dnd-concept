@@ -4,15 +4,12 @@ from pydantic import Field, TypeAdapter
 
 from aidm.engines.counters import (
     CounterChange,
-    move_pool,
     render_counters,
 )
-from aidm.state.apply import apply_effect, reveal_target
-from aidm.state.base import Counter, Entity, EntityId, Mutable, Slug
+from aidm.engines.sheets import SheetBase, SheetMechanics
+from aidm.state.base import Counter, Entity, Slug
 from aidm.state.creation import ContentSlug
 from aidm.state.effects import WorldOp
-from aidm.state.facts import Fact
-from aidm.state.world import GameState
 
 from .pack import SRD_PACK
 
@@ -23,7 +20,7 @@ type Loner3eEffect = Annotated[WorldOp | CounterChange, Field(discriminator="op"
 EFFECTS: TypeAdapter[Loner3eEffect] = TypeAdapter(Loner3eEffect)
 
 
-class Sheet(Mutable):
+class Sheet(SheetBase):
     """The one sheet shape, whether it belongs to the player or to an NPC."""
 
     # The table set this character was built from; the twist table is read from it.
@@ -42,13 +39,12 @@ class Sheet(Mutable):
         return {"luck": self.luck}
 
 
-class Mechanics(Mutable):
-    sheets: dict[EntityId, Sheet] = Field(default_factory=dict)
+class Mechanics(SheetMechanics[Sheet]):
     # One tally for the whole game, as the note it fires says: a tie anywhere moves the same one.
     twist: Counter = Counter(current=0, maximum=TIES_PER_TWIST)
 
 
-def describe(mechanics: Mechanics, entity: Entity) -> str:
+def describe_entity(mechanics: Mechanics, entity: Entity) -> str:
     sheet = mechanics.sheets.get(entity.id)
     if sheet is None:
         return ""
@@ -60,12 +56,3 @@ def describe(mechanics: Mechanics, entity: Entity) -> str:
         f"pools: {render_counters(sheet.counters())}",
     )
     return "\n".join(line for line in lines if line)
-
-
-def apply(draft: GameState, effect: Loner3eEffect) -> list[Fact]:
-    if not isinstance(effect, CounterChange):
-        return apply_effect(draft, effect)
-    mechanics = draft.mechanics_as(Mechanics)
-    entity, seen = reveal_target(draft, effect.entity_id)
-    facts = [*seen, *move_pool(mechanics.sheets.get(entity.id), entity, effect)]
-    return facts

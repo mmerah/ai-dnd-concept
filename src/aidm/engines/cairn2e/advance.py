@@ -2,12 +2,10 @@ from random import Random
 
 from pydantic import Field
 
-from aidm.engines.counters import counter_fact
-from aidm.engines.loader import Offer, ProposalBase, Subsystem
-from aidm.engines.sheets import resolved_threads
-from aidm.state.base import PLAYER_ID, EntityId, Trait, text_slug
+from aidm.engines.advancement import ThreadAdvancement
+from aidm.engines.loader import ProposalBase
+from aidm.state.base import Counter, EntityId, Trait, text_slug
 from aidm.state.facts import Fact, explained_fact
-from aidm.state.plan import check_draft
 from aidm.state.world import GameState
 
 from .mechanics import Mechanics
@@ -30,29 +28,22 @@ class Growth(ProposalBase):
     why: str = Field(description="One short sentence the player reads before confirming.")
 
 
-class Cairn2eAdvancement(Subsystem):
-    id = "advancement"
+class Cairn2eAdvancement(ThreadAdvancement):
     proposal_type = Growth
+    ledger_key = "growths"
+    occasion = "reaches a growth"
+    offer_text = GROWTH
+    spent_why = "a growth taken"
 
-    def offers(self, state: GameState) -> tuple[Offer, ...]:
-        # Growth-driven and deterministic, never inferred by a model: one growth is earned per
-        # resolved thread, so the offer tracks the count directly instead of guessing intent.
-        earned = resolved_threads(state.world)
-        sheets = state.mechanics_as(Mechanics).sheets
-        return tuple(
-            _offer(state, subject_id)
-            for subject_id in (PLAYER_ID, *state.world.party())
-            if earned > sheets[subject_id].growths.current
-        )
+    def ledger(self, state: GameState, subject_id: EntityId) -> Counter:
+        return state.mechanics_as(Mechanics).sheets[subject_id].growths
 
-    def resolve(
-        self, draft: GameState, offer: Offer, proposal: ProposalBase, rng: Random
+    def grant(
+        self, draft: GameState, subject_id: EntityId, proposal: ProposalBase, rng: Random
     ) -> tuple[Fact, ...]:
         del rng  # a growth spends nothing random
         assert isinstance(proposal, Growth)
-        mechanics = draft.mechanics_as(Mechanics)
-        sheet = mechanics.sheets[offer.subject_id]
-        subject = draft.world.require(offer.subject_id)
+        subject = draft.world.require(subject_id)
         if any(held.name.lower() == proposal.ability.lower() for held in subject.traits):
             raise ValueError(f"{subject.name} already carries {proposal.ability!r}")
         subject.traits.append(
@@ -70,21 +61,4 @@ class Cairn2eAdvancement(Subsystem):
             proposal.why,
             narrate=False,
         )
-        sheet.growths.current += 1
-        spent = counter_fact(subject, "growths", sheet.growths, 1, "a growth taken")
-        return (grown, spent)
-
-    def violation(self, state: GameState, offer: Offer, proposal: ProposalBase) -> str | None:
-        return check_draft(
-            state,
-            lambda draft: self.resolve(draft, offer, proposal, Random(0)),
-            "the sheet this leaves",
-        )
-
-
-def _offer(state: GameState, subject_id: EntityId) -> Offer:
-    return Offer(
-        subject_id=subject_id,
-        prompt=f"{state.world.require(subject_id).name} reaches a growth.",
-        text=GROWTH,
-    )
+        return (grown,)

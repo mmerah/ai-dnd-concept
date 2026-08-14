@@ -5,12 +5,9 @@ from loner3e_test_support import at_milestone
 
 from aidm.engines.counters import CounterChange
 from aidm.engines.loader import Engine
-from aidm.engines.loner3e.actions import Question
-from aidm.engines.loner3e.advance import Milestone
-from aidm.engines.loner3e.mechanics import LUCK_MAX, TIES_PER_TWIST, Mechanics
-from aidm.engines.loner3e.pack import SRD_PACK, twist_table
-from aidm.engines.loner3e.resolve import (
+from aidm.engines.loner3e.actions import (
     HARM,
+    Question,
     available_tags,
     defeat_note,
     outcome_for,
@@ -18,7 +15,10 @@ from aidm.engines.loner3e.resolve import (
     twist_note,
     twist_pairing,
 )
-from aidm.engines.loner3e.rules import LABELS, Loner3eEngine
+from aidm.engines.loner3e.advance import Milestone
+from aidm.engines.loner3e.mechanics import LUCK_MAX, TIES_PER_TWIST, Mechanics
+from aidm.engines.loner3e.pack import SRD_PACK, twist_table
+from aidm.engines.loner3e.rules import Loner3eEngine
 from aidm.state.apply import fire_hooks
 from aidm.state.base import PLAYER_ID, Counter, Entity, EntityId
 from aidm.state.effects import TraitChange
@@ -83,7 +83,7 @@ def test_the_outcome_ladder_covers_every_pair_of_dice() -> None:
         "no": 9,
         "no-and": 3,
     }
-    assert set(tally) == LABELS
+    assert set(tally) == Question.outcomes
 
 
 def test_the_twist_table_reads_a_subject_off_one_die_and_an_action_off_the_other() -> None:
@@ -97,7 +97,7 @@ def test_a_question_rolls_two_dice_and_applies_only_the_branch_it_landed_on() ->
     engine, state = initialized()
     draft = state.draft()
 
-    facts = engine.resolve_action(draft, _plan(engine, actor_id=PLAYER_ID), Random(17))
+    facts = engine.resolve_action(draft, _plan(engine, actor_id=PLAYER_ID), Random(17)).facts
 
     assert [fact.kind for fact in facts] == [
         "dice_rolled",
@@ -142,7 +142,7 @@ def test_a_tag_named_twice_buys_no_more_than_naming_it_once() -> None:
 
     for action in (once, twice):
         draft = state.draft()
-        facts, _ = resolve_question(draft, action, Random(1), TWISTS)
+        facts = resolve_question(draft, action, Random(1), TWISTS).facts
         (answered,) = [fact for fact in facts if fact.kind == "question_answered"]
         assert answered.data["position"] == "disadvantage"
 
@@ -157,7 +157,7 @@ def test_a_tie_ticks_the_twist_and_the_third_tie_calls_one() -> None:
     action = Question(actor_id=PLAYER_ID, question="Does he slip past unheard?")
     for seed in range(200):
         draft = primed.draft()
-        facts, _ = resolve_question(draft, action, Random(seed), TWISTS)
+        facts = resolve_question(draft, action, Random(seed), TWISTS).facts
         (answered,) = [fact for fact in facts if fact.kind == "question_answered"]
         if answered.data["chance"] == answered.data["risk"]:
             break
@@ -172,11 +172,13 @@ def test_a_tie_ticks_the_twist_and_the_third_tie_calls_one() -> None:
 
 def test_a_conflict_exchange_moves_luck_off_whichever_side_lost_it() -> None:
     _, state = initialized()
-    assert set(HARM) == LABELS
+    assert set(HARM) == Question.outcomes
 
     for seed in range(200):
         draft = state.draft()
-        facts, outcome = resolve_question(draft, _duel(), Random(seed), TWISTS)
+        resolution = resolve_question(draft, _duel(), Random(seed), TWISTS)
+        facts, outcome = resolution.facts, resolution.outcome
+        assert outcome is not None
         sheets = draft.mechanics_as(Mechanics).sheets
         harm = HARM[outcome]
         loser = FOE if harm > 0 else PLAYER_ID
@@ -196,7 +198,9 @@ def test_luck_running_out_ends_the_conflict_and_resets_both_pools() -> None:
 
     for seed in range(200):
         draft = hurt.draft()
-        facts, outcome = resolve_question(draft, _duel(), Random(seed), TWISTS)
+        resolution = resolve_question(draft, _duel(), Random(seed), TWISTS)
+        facts, outcome = resolution.facts, resolution.outcome
+        assert outcome is not None
         if HARM[outcome] > 0:
             break
     else:

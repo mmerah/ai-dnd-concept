@@ -2,16 +2,10 @@ from typing import Annotated, Literal
 
 from pydantic import Field, TypeAdapter
 
-from aidm.engines.counters import (
-    CounterChange,
-    move_pool,
-    render_counters,
-)
-from aidm.state.apply import apply_effect, reveal_target
-from aidm.state.base import Counter, Entity, EntityId, Mutable, Slug
+from aidm.engines.counters import CounterChange, render_counters
+from aidm.engines.sheets import SheetBase, SheetMechanics
+from aidm.state.base import Counter, Entity, Slug
 from aidm.state.effects import WorldOp
-from aidm.state.facts import Fact
-from aidm.state.world import GameState
 
 STARTING_CREDITS = 2
 DEFAULT_FACE = 6  # an unlisted skill rolls the bare d6
@@ -24,7 +18,7 @@ type TwentyfourxxEffect = Annotated[WorldOp | CounterChange, Field(discriminator
 EFFECTS: TypeAdapter[TwentyfourxxEffect] = TypeAdapter(TwentyfourxxEffect)
 
 
-class Sheet(Mutable):
+class Sheet(SheetBase):
     """The one sheet shape, whether it belongs to the player or to an NPC."""
 
     specialty: str = ""
@@ -41,8 +35,7 @@ class Sheet(Mutable):
         return self.skills.get(skill, DEFAULT_FACE)
 
 
-class Mechanics(Mutable):
-    sheets: dict[EntityId, Sheet] = Field(default_factory=dict)
+class Mechanics(SheetMechanics[Sheet]): ...
 
 
 def raised(current: SkillDie | None) -> SkillDie:
@@ -55,7 +48,7 @@ def raised(current: SkillDie | None) -> SkillDie:
     return LADDER[index + 1]
 
 
-def describe(mechanics: Mechanics, entity: Entity) -> str:
+def describe_entity(mechanics: Mechanics, entity: Entity) -> str:
     sheet = mechanics.sheets.get(entity.id)
     if sheet is None:
         return ""
@@ -67,12 +60,3 @@ def describe(mechanics: Mechanics, entity: Entity) -> str:
         f"pools: {render_counters(sheet.counters())}",
     )
     return "\n".join(line for line in lines if line)
-
-
-def apply(draft: GameState, effect: TwentyfourxxEffect) -> list[Fact]:
-    if not isinstance(effect, CounterChange):
-        return apply_effect(draft, effect)
-    mechanics = draft.mechanics_as(Mechanics)
-    entity, seen = reveal_target(draft, effect.entity_id)
-    facts = [*seen, *move_pool(mechanics.sheets.get(entity.id), entity, effect)]
-    return facts

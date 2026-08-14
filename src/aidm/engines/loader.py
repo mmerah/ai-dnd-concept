@@ -6,7 +6,7 @@ from pathlib import Path
 from random import Random
 from typing import ClassVar
 
-from pydantic import BaseModel, JsonValue, TypeAdapter
+from pydantic import JsonValue, TypeAdapter
 from pydantic_ai.toolsets import AbstractToolset
 
 from aidm.content.authored import Binding, CreatedCharacter
@@ -14,7 +14,7 @@ from aidm.content.store import ENCODING
 from aidm.state.base import EngineId, Entity, EntityId, Frozen, Slug
 from aidm.state.creation import CreationStep, Picks
 from aidm.state.facts import Fact
-from aidm.state.plan import TurnPlanBase
+from aidm.state.plan import Resolution, TurnPlanBase
 from aidm.state.world import GameState
 
 ENGINE_MODULES: tuple[str, ...] = (
@@ -81,9 +81,7 @@ class Engine(ABC):
 
     id: ClassVar[EngineId]
     badge: ClassVar[tuple[str, str]]
-    plan_type: ClassVar[type[TurnPlanBase]]
-    # The authored overlay payload this engine reads, validated at load.
-    rules_type: ClassVar[type[BaseModel]]
+    plan_type: type[TurnPlanBase]
     engine_dir: ClassVar[Path]
 
     def __init__(self, extra_packs: Path | None = None) -> None:
@@ -98,9 +96,9 @@ class Engine(ABC):
         # An engine that creates characters replaces this; the app offers only what it finds.
         self.creation: Creation | None = None
 
+    @abstractmethod
     def check_overlay(self, payloads: Iterable[dict[str, JsonValue]]) -> None:
-        for rules in payloads:
-            _ = self.rules_type.model_validate(rules)
+        """Refuses an authored overlay this engine cannot read."""
 
     def binding(self) -> Binding:
         return Binding(
@@ -135,7 +133,7 @@ class Engine(ABC):
         """Must not raise: an output validator that raises kills the turn instead of retrying."""
 
     @abstractmethod
-    def resolve_action(self, draft: GameState, plan: TurnPlanBase, rng: Random) -> list[Fact]: ...
+    def resolve_action(self, draft: GameState, plan: TurnPlanBase, rng: Random) -> Resolution: ...
 
 
 def engines() -> tuple[type[Engine], ...]:

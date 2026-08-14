@@ -2,13 +2,12 @@ from random import Random
 
 from pydantic import Field
 
-from aidm.engines.counters import adjust, counter_fact
-from aidm.engines.loader import Offer, ProposalBase, Subsystem
-from aidm.engines.sheets import resolved_threads
-from aidm.state.base import PLAYER_ID, EntityId
+from aidm.engines.advancement import ThreadAdvancement
+from aidm.engines.counters import adjust
+from aidm.engines.loader import ProposalBase
+from aidm.state.base import Counter, EntityId
 from aidm.state.dice import roll_pool
 from aidm.state.facts import Fact, explained_fact
-from aidm.state.plan import check_draft
 from aidm.state.world import GameState
 
 from .mechanics import Mechanics, Sheet, raised
@@ -31,27 +30,22 @@ class Advance(ProposalBase):
     why: str = Field(description="One short sentence the player reads before confirming.")
 
 
-class TwentyfourxxAdvancement(Subsystem):
-    id = "advancement"
+class TwentyfourxxAdvancement(ThreadAdvancement):
     proposal_type = Advance
+    ledger_key = "jobs"
+    occasion = "finishes a job"
+    offer_text = GROWTH
+    spent_why = "a job's advance taken"
 
-    def offers(self, state: GameState) -> tuple[Offer, ...]:
-        # One job's advance per resolved thread, tracked directly rather than inferred.
-        earned = resolved_threads(state.world)
-        sheets = state.mechanics_as(Mechanics).sheets
-        return tuple(
-            _offer(state, subject_id)
-            for subject_id in (PLAYER_ID, *state.world.party())
-            if earned > sheets[subject_id].jobs.current
-        )
+    def ledger(self, state: GameState, subject_id: EntityId) -> Counter:
+        return state.mechanics_as(Mechanics).sheets[subject_id].jobs
 
-    def resolve(
-        self, draft: GameState, offer: Offer, proposal: ProposalBase, rng: Random
+    def grant(
+        self, draft: GameState, subject_id: EntityId, proposal: ProposalBase, rng: Random
     ) -> tuple[Fact, ...]:
         assert isinstance(proposal, Advance)
-        mechanics = draft.mechanics_as(Mechanics)
-        sheet = mechanics.sheets[offer.subject_id]
-        subject = draft.world.require(offer.subject_id)
+        sheet = draft.mechanics_as(Mechanics).sheets[subject_id]
+        subject = draft.world.require(subject_id)
 
         skill = _on_sheet(sheet, proposal.skill)
         die = raised(sheet.skills.get(skill))
@@ -67,28 +61,9 @@ class TwentyfourxxAdvancement(Subsystem):
 
         earned, dice_fact = roll_pool((6,), "credits earned", rng)
         credit_facts = adjust(subject, "credits", sheet.credits, earned, "paid for the job")
-
-        sheet.jobs.current += 1
-        jobs_fact = counter_fact(subject, "jobs", sheet.jobs, 1, "a job's advance taken")
-
-        return (grown, dice_fact, *credit_facts, jobs_fact)
-
-    def violation(self, state: GameState, offer: Offer, proposal: ProposalBase) -> str | None:
-        return check_draft(
-            state,
-            lambda draft: self.resolve(draft, offer, proposal, Random(0)),
-            "the sheet this leaves",
-        )
+        return (grown, dice_fact, *credit_facts)
 
 
 def _on_sheet(sheet: Sheet, named: str) -> str:
     """A proposal that miscases a skill must raise the one already written, not take a twin."""
     return next((skill for skill in sheet.skills if skill.lower() == named.lower()), named)
-
-
-def _offer(state: GameState, subject_id: EntityId) -> Offer:
-    return Offer(
-        subject_id=subject_id,
-        prompt=f"{state.world.require(subject_id).name} finishes a job.",
-        text=GROWTH,
-    )

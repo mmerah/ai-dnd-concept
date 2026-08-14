@@ -10,6 +10,7 @@ from aidm.engines.transact import transact
 from aidm.state.apply import apply_effect
 from aidm.state.base import Entity, EntityId, slug, text_slug
 from aidm.state.facts import CORE, Fact, narrator_evidence
+from aidm.state.plan import Resolution
 from aidm.state.turn import Creation, MemoryProposal, StepTrace, Turn, WorldkeeperReport
 from aidm.state.world import Exchange, GameState, Memory
 
@@ -134,8 +135,12 @@ async def run_turn(
     reported = transact(
         engine,
         draft,
-        lambda d: apply_report(
-            d, report, max_growth=settings.max_growth, max_memories=settings.max_memories
+        lambda d: Resolution(
+            facts=tuple(
+                apply_report(
+                    d, report, max_growth=settings.max_growth, max_memories=settings.max_memories
+                )
+            )
         ),
         rng,
     )

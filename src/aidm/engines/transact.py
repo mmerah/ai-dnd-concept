@@ -5,6 +5,7 @@ from random import Random
 from aidm.state.apply import fire_hooks
 from aidm.state.base import EntityId
 from aidm.state.facts import Fact
+from aidm.state.plan import Flow, Resolution
 from aidm.state.world import GameState
 
 from .loader import Engine
@@ -17,6 +18,7 @@ class Transacted:
     state: GameState
     resolved: tuple[Fact, ...]
     fired: tuple[Fact, ...]
+    flow: Flow = "continue"
 
     @property
     def facts(self) -> tuple[Fact, ...]:
@@ -26,15 +28,20 @@ class Transacted:
 def transact(
     engine: Engine,
     draft: GameState,
-    resolve: Callable[[GameState], Sequence[Fact]],
+    resolve: Callable[[GameState], Resolution],
     rng: Random,
 ) -> Transacted:
     """Every mutation runs this sequence, so hooks and seeding cannot be forgotten by a caller."""
-    resolved = list(resolve(draft))
-    fired = fire_hooks(draft, resolved, engine.apply_effect)
-    _seed_created(engine, draft, [*resolved, *fired], rng)
+    resolution = resolve(draft)
+    fired = fire_hooks(draft, resolution.facts, engine.apply_effect)
+    _seed_created(engine, draft, [*resolution.facts, *fired], rng)
     engine.validate(draft)
-    return Transacted(state=draft.committed(), resolved=tuple(resolved), fired=tuple(fired))
+    return Transacted(
+        state=draft.committed(),
+        resolved=resolution.facts,
+        fired=tuple(fired),
+        flow=resolution.flow,
+    )
 
 
 def _seed_created(engine: Engine, draft: GameState, facts: Sequence[Fact], rng: Random) -> None:

@@ -3,12 +3,10 @@ from typing import Literal, Self
 
 from pydantic import Field, model_validator
 
-from aidm.engines.counters import counter_fact
-from aidm.engines.loader import Offer, ProposalBase, Subsystem
-from aidm.engines.sheets import resolved_threads
-from aidm.state.base import PLAYER_ID, Entity, EntityId
+from aidm.engines.advancement import ThreadAdvancement
+from aidm.engines.loader import ProposalBase
+from aidm.state.base import Counter, Entity, EntityId
 from aidm.state.facts import Fact, explained_fact
-from aidm.state.plan import check_draft
 from aidm.state.world import GameState
 
 from .mechanics import Mechanics, Sheet
@@ -43,52 +41,29 @@ class Milestone(ProposalBase):
         return self
 
 
-class Loner3eAdvancement(Subsystem):
-    id = "advancement"
+class Loner3eAdvancement(ThreadAdvancement):
     proposal_type = Milestone
+    ledger_key = "milestones"
+    occasion = "reaches a milestone"
+    offer_text = GROWTH
+    spent_why = "a milestone spent"
 
-    def offers(self, state: GameState) -> tuple[Offer, ...]:
-        # Milestone-driven and deterministic, never inferred by a model: one milestone is earned
-        # per resolved thread, so the offer tracks the count directly instead of guessing intent.
-        earned = resolved_threads(state.world)
-        sheets = state.mechanics_as(Mechanics).sheets
-        return tuple(
-            _offer(state, subject_id)
-            for subject_id in (PLAYER_ID, *state.world.party())
-            if earned > sheets[subject_id].milestones.current
-        )
+    def ledger(self, state: GameState, subject_id: EntityId) -> Counter:
+        return state.mechanics_as(Mechanics).sheets[subject_id].milestones
 
-    def resolve(
-        self, draft: GameState, offer: Offer, proposal: ProposalBase, rng: Random
+    def grant(
+        self, draft: GameState, subject_id: EntityId, proposal: ProposalBase, rng: Random
     ) -> tuple[Fact, ...]:
         del rng  # a milestone spends nothing random
         assert isinstance(proposal, Milestone)
-        mechanics = draft.mechanics_as(Mechanics)
-        sheet = mechanics.sheets[offer.subject_id]
-        subject = draft.world.require(offer.subject_id)
+        sheet = draft.mechanics_as(Mechanics).sheets[subject_id]
+        subject = draft.world.require(subject_id)
         grown = (
             _rewrite(sheet, subject, proposal)
             if proposal.change == "rewrite"
             else _gain(sheet, subject, proposal)
         )
-        sheet.milestones.current += 1
-        spent = counter_fact(subject, "milestones", sheet.milestones, 1, "a milestone spent")
-        return (grown, spent)
-
-    def violation(self, state: GameState, offer: Offer, proposal: ProposalBase) -> str | None:
-        return check_draft(
-            state,
-            lambda draft: self.resolve(draft, offer, proposal, Random(0)),
-            "the sheet this leaves",
-        )
-
-
-def _offer(state: GameState, subject_id: EntityId) -> Offer:
-    return Offer(
-        subject_id=subject_id,
-        prompt=f"{state.world.require(subject_id).name} reaches a milestone.",
-        text=GROWTH,
-    )
+        return (grown,)
 
 
 def _gain(sheet: Sheet, subject: Entity, proposal: Milestone) -> Fact:

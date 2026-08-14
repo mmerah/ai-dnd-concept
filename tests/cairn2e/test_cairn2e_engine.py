@@ -3,9 +3,8 @@ from random import Random
 import pytest
 from core_test_support import CAIRN2E, game
 
-from aidm.engines.cairn2e.actions import Attack
+from aidm.engines.cairn2e.actions import Attack, resolve_attack
 from aidm.engines.cairn2e.mechanics import DEPRIVED, ItemRules, Mechanics, Sheet, apply, saved
-from aidm.engines.cairn2e.resolve import resolve_attack
 from aidm.engines.counters import CounterChange
 from aidm.state.base import PLAYER_ID, Counter, EntityId, Trait
 from aidm.state.creation import Picks
@@ -79,11 +78,11 @@ def test_an_attack_takes_armor_off_the_damage_then_hp() -> None:
 
     draft = ready.draft()
     attack = Attack(attacker_id=PLAYER_ID, target_id=MARA, weapon_id=None)
-    facts, outcome = resolve_attack(draft, attack, Random(1))
+    resolution = resolve_attack(draft, attack, Random(1))
 
     # A d4 less one armor can never reach ten HP.
-    assert outcome == "hit"
-    (dice_fact,) = [fact for fact in facts if fact.kind == "dice_rolled"]
+    assert resolution.outcome == "hit"
+    (dice_fact,) = [fact for fact in resolution.facts if fact.kind == "dice_rolled"]
     kept = dice_fact.data["kept"]
     assert isinstance(kept, int)
     assert draft.mechanics_as(Mechanics).sheets[MARA].hp.current == 10 - max(kept - 1, 0)
@@ -100,11 +99,12 @@ def test_damage_past_the_hp_becomes_critical_damage() -> None:
     draft = ready.draft()
     attack = Attack(attacker_id=PLAYER_ID, target_id=MARA, weapon_id=None)
     # Any unarmed die empties Mara's 1 strength, and strength at 0 is death outright.
-    _, outcome = resolve_attack(draft, attack, Random(0))
+    resolution = resolve_attack(draft, attack, Random(0))
 
     assert draft.mechanics_as(Mechanics).sheets[MARA].strength.current == 0
     assert draft.world.require(MARA).trait("dead") is not None
-    assert outcome == "down"
+    assert resolution.outcome == "down"
+    assert resolution.flow == "continue"  # an NPC going down is a consequence, not an interruption
 
 
 def test_a_blow_that_lands_on_exactly_0_hp_takes_a_scar() -> None:
@@ -113,12 +113,13 @@ def test_a_blow_that_lands_on_exactly_0_hp_takes_a_scar() -> None:
     draft = state.draft()
     attack = Attack(attacker_id=MARA, target_id=PLAYER_ID, weapon_id=None)
     # Seed 0's attack die rolls a natural 4, landing Kael's 4 HP on exactly 0 with no overflow.
-    facts, outcome = resolve_attack(draft, attack, Random(0))
+    resolution = resolve_attack(draft, attack, Random(0))
 
-    assert outcome == "hit"
-    (scar_fact,) = [fact for fact in facts if fact.kind == "scar_taken"]
+    assert resolution.outcome == "hit"
+    (scar_fact,) = [fact for fact in resolution.facts if fact.kind == "scar_taken"]
     assert draft.world.require(PLAYER_ID).trait(str(scar_fact.data["scar"])) is not None
     assert len(draft.world.pending_notes) > before
+    assert resolution.flow == "yield-to-player"
 
 
 def test_creation_builds_a_character_the_engine_can_read() -> None:

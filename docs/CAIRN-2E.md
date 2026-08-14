@@ -748,7 +748,7 @@ How this SRD maps onto `src/aidm/engines/cairn2e/`:
   target, an optional carried `weapon_id` (null is an unarmed d4), a `modifier` (`impaired` d4 /
   `enhanced` d12), and `joined_by` for other attackers on the same target. `SAVE_LABELS` is
   `pass`/`fail`; `ATTACK_LABELS` is `blocked`/`hit`/`wounded`/`down`.
-- **Resolver** (`resolve.py`): `resolve_save` rolls d20 against the attribute through `saved()`
+- **Resolver** (`actions.py`): `resolve_save` rolls d20 against the attribute through `saved()`
   (1 always passes, 20 always fails). `resolve_attack` builds the dice pool from the weapon (or
   modifier) faces of the attacker and everyone in `joined_by`, keeps the highest, and subtracts
   the target's armor. Zero damage is `blocked`; damage within HP is `hit`; damage that overflows

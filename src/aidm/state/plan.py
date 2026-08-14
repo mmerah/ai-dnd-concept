@@ -1,7 +1,7 @@
 import json
 from collections.abc import Callable, Sequence
 from random import Random
-from typing import cast
+from typing import Literal, cast
 
 from pydantic import Field, ValidationError, model_validator
 
@@ -64,7 +64,7 @@ class OutcomeBranch[E](Frozen):
     effects: tuple[E, ...] = Field(default=(), description="What that outcome causes in the world.")
 
 
-class Branched[E](TurnPlanBase):
+class Branched[E, A](TurnPlanBase):
     """The common plan shape: unconditional effects plus effects per outcome, over the
     engine's own effect vocabulary."""
 
@@ -79,6 +79,18 @@ class Branched[E](TurnPlanBase):
         "carry that change in the matching outcome's branch: with no branch, even success "
         "changes nothing.",
     )
+    action: A | None = None
+
+
+type Flow = Literal["continue", "yield-to-player"]
+
+
+class Resolution(Frozen):
+    """What one resolution settled, and whether the turn may go on without asking the player."""
+
+    facts: tuple[Fact, ...] = ()
+    outcome: Slug | None = None
+    flow: Flow = "continue"
 
 
 type Apply[E] = Callable[[GameState, E], list[Fact]]
@@ -88,16 +100,16 @@ def apply_all[E](draft: GameState, effects: Sequence[E], apply: Apply[E]) -> lis
     return [fact for effect in effects for fact in apply(draft, effect)]
 
 
-def apply_branch[E](
-    draft: GameState, plan: Branched[E], outcome: Slug, apply: Apply[E]
+def apply_branch[E, A](
+    draft: GameState, plan: Branched[E, A], outcome: Slug | None, apply: Apply[E]
 ) -> list[Fact]:
     """An outcome the model wrote no branch for is fine: not every outcome needs consequences."""
     branch = next((held for held in plan.branches if held.outcome == outcome), None)
     return [] if branch is None else apply_all(draft, branch.effects, apply)
 
 
-def check_effects[E](
-    state: GameState, plan: Branched[E], labels: frozenset[Slug], apply: Apply[E]
+def check_effects[E, A](
+    state: GameState, plan: Branched[E, A], labels: frozenset[Slug], apply: Apply[E]
 ) -> str | None:
     named = [branch.outcome for branch in plan.branches]
     if repeated := duplicates(named):
@@ -118,9 +130,9 @@ def check_effects[E](
     return None
 
 
-def check_action[E](
+def check_action[E, A](
     state: GameState,
-    plan: Branched[E],
+    plan: Branched[E, A],
     labels: frozenset[Slug],
     apply: Apply[E],
     resolve: Callable[[GameState, Random], object],
@@ -149,12 +161,12 @@ def check_draft(
     return None
 
 
-type Resolver = Callable[[GameState, Random], tuple[list[Fact], Slug]]
+type Resolver = Callable[[GameState, Random], Resolution]
 
 
-def check_branched[E](
+def check_branched[E, A](
     state: GameState,
-    plan: Branched[E],
+    plan: Branched[E, A],
     labels: frozenset[Slug],
     apply: Apply[E],
     resolve: Resolver | None,
@@ -164,16 +176,19 @@ def check_branched[E](
     return check_action(state, plan, labels, apply, resolve)
 
 
-def resolve_branched[E](
+def resolve_branched[E, A](
     draft: GameState,
-    plan: Branched[E],
+    plan: Branched[E, A],
     apply: Apply[E],
     resolve: Resolver | None,
     rng: Random,
-) -> list[Fact]:
+) -> Resolution:
     if resolve is None:
-        return apply_all(draft, plan.effects, apply)
-    settled, outcome = resolve(draft, rng)
-    return (
-        settled + apply_branch(draft, plan, outcome, apply) + apply_all(draft, plan.effects, apply)
+        return Resolution(facts=tuple(apply_all(draft, plan.effects, apply)))
+    settled = resolve(draft, rng)
+    facts = (
+        *settled.facts,
+        *apply_branch(draft, plan, settled.outcome, apply),
+        *apply_all(draft, plan.effects, apply),
     )
+    return Resolution(facts=facts, outcome=settled.outcome, flow=settled.flow)

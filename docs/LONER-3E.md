@@ -930,7 +930,7 @@ How this SRD maps onto `src/aidm/engines/loner3e/`:
 - **Plan** (`actions.py`): one action, the closed `Question`; `leverage`/`trouble` name the
   tags justifying advantage/disadvantage, refused unless written on a sheet or trait in the
   scene ("tags are not numbers" — and the model cannot invent one).
-- **Resolver** (`resolve.py`): Chance d6 vs Risk d6; advantage adds the extra die of that
+- **Resolver** (`actions.py`): Chance d6 vs Risk d6; advantage adds the extra die of that
   color, keep highest, hard cap two; net tags decide the side. The six outcomes and the
   both-≤3/both-≥4 modifiers are `outcome_for`, fully enumerable. Harm & Luck applies the
   3/2/1 table when `opponent_id` is set; those exchanges never tick the Twist Counter, per

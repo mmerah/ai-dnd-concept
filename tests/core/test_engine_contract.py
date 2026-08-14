@@ -6,28 +6,32 @@ from core_test_support import initialized
 from aidm.app.session import build_engine
 from aidm.engines.counters import CounterChange
 from aidm.engines.loader import Engine, engines
-from aidm.engines.loner3e.mechanics import LUCK_MAX, Mechanics, Sheet, apply
-from aidm.state.base import PLAYER_ID, Entity, EntityId
+from aidm.engines.loner3e.actions import Question, TurnPlan
+from aidm.engines.loner3e.mechanics import LUCK_MAX, Mechanics, Sheet
+from aidm.engines.loner3e.rules import Loner3eEngine
+from aidm.engines.sheet_engine import SheetEngine
+from aidm.state.base import PLAYER_ID, EngineId, Entity, EntityId, Frozen
 from aidm.state.effects import Move
 from aidm.state.facts import Fact
 from aidm.state.world import GameState
 
 
 def _turn(engine: Engine, state: GameState) -> tuple[GameState, tuple[Fact, ...]]:
-    del engine
     draft = state.draft()
-    facts = [
-        *apply(draft, Move(entity_id=EntityId("vault_map"))),
-        *apply(
-            draft,
-            CounterChange(
-                mode="adjust",
-                entity_id=PLAYER_ID,
-                counter="luck",
-                amount=-1,
-                why="the strain of prying",
-            ),
+    effects: tuple[Frozen, ...] = (
+        Move(entity_id=EntityId("vault_map")),
+        CounterChange(
+            mode="adjust",
+            entity_id=PLAYER_ID,
+            counter="luck",
+            amount=-1,
+            why="the strain of prying",
         ),
+    )
+    facts = [
+        fact
+        for effect in effects
+        for fact in engine.apply_effect(draft, effect.model_dump(mode="json"))
     ]
     return draft.committed(), tuple(facts)
 
@@ -99,6 +103,23 @@ def test_a_created_actor_is_refused_until_the_engine_seeds_it() -> None:
     mechanics = grown.mechanics_as(Mechanics)
     assert mechanics.sheets[actor.id] == Sheet()
     assert item.id not in mechanics.sheets
+
+
+def test_a_sheet_engine_that_declares_nothing_is_refused_before_it_plays() -> None:
+    class Undeclared(SheetEngine[Sheet, Question]):
+        id = EngineId("undeclared")
+        badge = ("UNDECLARED", "grey-6")
+        engine_dir = Loner3eEngine.engine_dir
+        plan_type = TurnPlan
+
+        def new_sheet(self, draft: GameState, rng: Random) -> Sheet:
+            return Sheet()
+
+        def describe(self, state: GameState, entity: Entity) -> str:
+            return ""
+
+    with pytest.raises(AttributeError, match="sheet_type"):
+        _ = Undeclared()
 
 
 def test_every_registered_engine_builds_itself() -> None:

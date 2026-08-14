@@ -1,4 +1,4 @@
-from collections.abc import Mapping
+from collections.abc import Iterable, Mapping
 from pathlib import Path
 from random import Random
 from typing import get_args
@@ -9,7 +9,7 @@ from aidm.engines.loader import WORLD_EXAMPLES, Engine, EntityRenderer, engine_t
 from aidm.state.base import EngineId, Entity, EntityId, Frozen
 from aidm.state.effects import WorldEffect
 from aidm.state.facts import Fact
-from aidm.state.plan import TurnPlanBase
+from aidm.state.plan import Resolution, TurnPlanBase
 from aidm.state.world import GameState
 
 
@@ -47,8 +47,11 @@ def _engine(tmp_path: Path) -> Engine:
         id = EngineId("test")
         badge = ("TEST", "grey-6")
         plan_type = TurnPlanBase
-        rules_type = NoRules
         engine_dir = tmp_path
+
+        def check_overlay(self, payloads: Iterable[dict[str, JsonValue]]) -> None:
+            for rules in payloads:
+                _ = NoRules.model_validate(rules)
 
         def begin(
             self, state: GameState, rules: Mapping[EntityId, dict[str, JsonValue]]
@@ -70,8 +73,8 @@ def _engine(tmp_path: Path) -> Engine:
         def check_plan(self, state: GameState, plan: TurnPlanBase) -> str | None:
             return None
 
-        def resolve_action(self, draft: GameState, plan: TurnPlanBase, rng: Random) -> list[Fact]:
-            return []
+        def resolve_action(self, draft: GameState, plan: TurnPlanBase, rng: Random) -> Resolution:
+            return Resolution()
 
     return BareEngine()
 

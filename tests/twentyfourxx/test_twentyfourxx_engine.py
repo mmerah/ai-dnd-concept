@@ -4,10 +4,9 @@ import pytest
 from core_test_support import TWENTYFOURXX, capability, game
 from loner3e_test_support import at_milestone
 
-from aidm.engines.twentyfourxx.actions import Attempt
+from aidm.engines.twentyfourxx.actions import Attempt, outcome_for, pool_faces, resolve_attempt
 from aidm.engines.twentyfourxx.advance import Advance
 from aidm.engines.twentyfourxx.mechanics import Mechanics, Sheet
-from aidm.engines.twentyfourxx.resolve import outcome_for, pool_faces, resolve_attempt
 from aidm.engines.twentyfourxx.rules import TwentyfourxxEngine
 from aidm.state.base import PLAYER_ID
 from aidm.state.creation import Picks
@@ -113,7 +112,7 @@ def test_a_tested_bad_luck_risk_that_lands_leaves_a_note_for_the_next_turn() -> 
     )
 
     draft = state.draft()
-    facts, _ = resolve_attempt(draft, action, Random(2))
+    facts = resolve_attempt(draft, action, Random(2)).facts
     (bad_luck_roll,) = [
         fact
         for fact in facts
@@ -126,9 +125,21 @@ def test_a_tested_bad_luck_risk_that_lands_leaves_a_note_for_the_next_turn() -> 
     assert any(fact.kind == "luck_tested" for fact in facts)
 
     draft = state.draft()
-    facts, _ = resolve_attempt(draft, action, Random(1))
+    facts = resolve_attempt(draft, action, Random(1)).facts
     assert draft.world.pending_notes == state.world.pending_notes == ()
     assert not any(fact.kind == "luck_tested" for fact in facts)
+
+
+def test_bad_luck_that_bites_hands_the_turn_back_even_when_the_attempt_succeeded() -> None:
+    _, state = game(TWENTYFOURXX)
+    action = Attempt(
+        actor_id=PLAYER_ID, goal="Kael tries something risky.", luck_test="running out of oil"
+    )
+    # Seed 6 succeeds and still lands trouble, so the yield can only come from the luck test.
+    resolution = resolve_attempt(state.draft(), action, Random(6))
+
+    assert resolution.outcome == "success"
+    assert resolution.flow == "yield-to-player"
 
 
 def test_creation_vendors_the_kit_as_traits_and_lands_the_training_die() -> None:

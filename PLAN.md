@@ -145,7 +145,7 @@ the action, a labels lookup, and two `assert isinstance(plan, TurnPlan)` narrowi
    subsystem resolution leaves it at the default. The flow is typed rather than smuggled as a
    fact kind: the loop in step 8b reads a field, not a string match.
    **What each engine does with it.** The resolvers already know the grave moments and today can
-   only say so in prose the loop cannot read — `cairn2e/resolve.py` writes `pending_notes` in
+   only say so in prose the loop cannot read — `cairn2e/actions.py` writes `pending_notes` in
    `_fell`, `_take_scar` and the attribute-emptied branch. Cairn yields when the **player** takes
    a scar, takes critical damage, or goes down; an NPC going down continues, which is why the flag
    belongs on the resolution and not on a static per-action outcome set. 24XX yields on a player

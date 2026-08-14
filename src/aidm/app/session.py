@@ -10,6 +10,7 @@ from aidm.engines.loader import Engine, Offer, ProposalBase, Subsystem, engine_c
 from aidm.engines.transact import transact
 from aidm.state.base import PLAYER_ID, SAVE_VERSION, EngineId, Entity, Slug
 from aidm.state.facts import Fact
+from aidm.state.plan import Resolution
 from aidm.state.turn import Applied, TraceEntry, Turn
 from aidm.state.world import PARTY_MEMBER, GameState, Relation
 from aidm.turn.pipeline import TURN_STEPS, run_turn
@@ -154,7 +155,9 @@ class GameSession:
         trial = transact(
             self.engine,
             self.state.draft(),
-            lambda draft: system.resolve(draft, drafted.offer, drafted.proposal, Random(0)),
+            lambda draft: Resolution(
+                facts=system.resolve(draft, drafted.offer, drafted.proposal, Random(0))
+            ),
             Random(0),
         )
         return trial.facts
@@ -170,7 +173,7 @@ class GameSession:
         applied = transact(
             self.engine,
             self.state.draft(),
-            lambda draft: system.resolve(draft, offer, proposal, self.rng),
+            lambda draft: Resolution(facts=system.resolve(draft, offer, proposal, self.rng)),
             self.rng,
         )
         entry = Applied(capability=capability, subject_id=offer.subject_id, facts=applied.facts)

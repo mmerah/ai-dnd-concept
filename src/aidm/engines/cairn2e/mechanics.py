@@ -12,6 +12,7 @@ from aidm.engines.counters import (
     pool,
     render_counters,
 )
+from aidm.engines.sheets import SheetBase, SheetMechanics
 from aidm.state.apply import apply_effect, reveal_target
 from aidm.state.base import Counter, Entity, EntityId, Mutable, Slug, Trait
 from aidm.state.dice import roll_sum
@@ -31,7 +32,7 @@ type Cairn2eEffect = Annotated[WorldOp | CounterChange, Field(discriminator="op"
 EFFECTS: TypeAdapter[Cairn2eEffect] = TypeAdapter(Cairn2eEffect)
 
 
-class Sheet(Mutable):
+class Sheet(SheetBase):
     """The one sheet shape, whether it belongs to the player or to a monster."""
 
     background: str = ""
@@ -120,8 +121,7 @@ class ItemRules(Mutable):
         return {} if self.uses is None else {"uses": self.uses}
 
 
-class Mechanics(Mutable):
-    sheets: dict[EntityId, Sheet] = Field(default_factory=dict)
+class Mechanics(SheetMechanics[Sheet]):
     # Only authored items; anything else is one ordinary slot.
     items: dict[EntityId, ItemRules] = Field(default_factory=dict)
 
@@ -254,7 +254,7 @@ def _describe_item(rules: ItemRules) -> str:
     return ", ".join(part for part in parts if part)
 
 
-def describe(state: GameState, mechanics: Mechanics, entity: Entity) -> str:
+def describe_entity(state: GameState, mechanics: Mechanics, entity: Entity) -> str:
     sheet = mechanics.sheets.get(entity.id)
     if sheet is not None:
         lines = (

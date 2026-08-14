@@ -21,9 +21,8 @@ from pydantic_ai.messages import (
 )
 from pydantic_ai.models.function import AgentInfo, FunctionModel
 
+from aidm.engines.loner3e.actions import Question, outcome_for
 from aidm.engines.loner3e.mechanics import Mechanics
-from aidm.engines.loner3e.resolve import outcome_for
-from aidm.engines.loner3e.rules import LABELS
 from aidm.state.base import PLAYER_ID, Counter, EntityId
 from aidm.state.world import Hook, HookMatch, Memory, Thread
 from aidm.turn.pipeline import TURN_STEPS
@@ -113,7 +112,7 @@ async def test_the_resolver_applies_only_the_branch_of_the_outcome_rolled() -> N
                     "actor_id": "player",
                     "question": "Does the door give before the whispering finds him?",
                 },
-                branches=[branch(outcome) for outcome in sorted(LABELS)],
+                branches=[branch(outcome) for outcome in sorted(Question.outcomes)],
             )
         )
     )
@@ -130,7 +129,7 @@ async def test_the_resolver_applies_only_the_branch_of_the_outcome_rolled() -> N
     chance, risk = (fact.data["kept"] for fact in result.turn.facts if fact.kind == "dice_rolled")
     assert isinstance(chance, int) and isinstance(risk, int)
     held = {trait.id for trait in result.state.player.traits}
-    assert held & LABELS == {outcome_for(chance, risk)}
+    assert held & Question.outcomes == {outcome_for(chance, risk)}
     engine.validate(result.state)
 
 
