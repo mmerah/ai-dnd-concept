@@ -147,3 +147,33 @@ def check_draft(
     except ValueError as refused:
         return str(refused)
     return None
+
+
+type Resolver = Callable[[GameState, Random], tuple[list[Fact], Slug]]
+
+
+def check_branched[E](
+    state: GameState,
+    plan: Branched[E],
+    labels: frozenset[Slug],
+    apply: Apply[E],
+    resolve: Resolver | None,
+) -> str | None:
+    if resolve is None:
+        return check_effects(state, plan, frozenset(), apply)
+    return check_action(state, plan, labels, apply, resolve)
+
+
+def resolve_branched[E](
+    draft: GameState,
+    plan: Branched[E],
+    apply: Apply[E],
+    resolve: Resolver | None,
+    rng: Random,
+) -> list[Fact]:
+    if resolve is None:
+        return apply_all(draft, plan.effects, apply)
+    settled, outcome = resolve(draft, rng)
+    return (
+        settled + apply_branch(draft, plan, outcome, apply) + apply_all(draft, plan.effects, apply)
+    )

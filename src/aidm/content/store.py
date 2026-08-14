@@ -20,7 +20,6 @@ from .authored import (
     ScenarioOverlay,
     ScenarioWorld,
     check_hooks,
-    check_overlay,
 )
 
 ENCODING = "utf-8"
@@ -48,7 +47,7 @@ def load_scenario(directory: Path, name: Slug, binding: Binding) -> Scenario:
         overlay=_read(folder / f"{binding.engine}.json", ScenarioOverlay),
     )
     check_hooks(scenario.world, binding)
-    check_overlay(binding, scenario.overlay.entities.values())
+    binding.check_overlay(scenario.overlay.entities.values())
     return scenario
 
 
@@ -60,7 +59,7 @@ def load_character(directory: Path, name: Slug, binding: Binding) -> Character:
         profile=_read(folder / PROFILE_FILE, CharacterProfile),
         overlay=_read(folder / f"{binding.engine}.json", CharacterOverlay),
     )
-    check_overlay(binding, (character.overlay.character, *character.overlay.entities.values()))
+    binding.check_overlay((character.overlay.character, *character.overlay.entities.values()))
     return character
 
 

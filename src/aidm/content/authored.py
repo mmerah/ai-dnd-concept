@@ -3,7 +3,7 @@ from dataclasses import dataclass
 from functools import cached_property
 from typing import Self
 
-from pydantic import BaseModel, Field, JsonValue, model_validator
+from pydantic import Field, JsonValue, model_validator
 
 from aidm.state.base import (
     PLAYER_ID,
@@ -27,7 +27,7 @@ class Binding:
 
     engine: EngineId
     parse_effect: EffectParse
-    rules_type: type[BaseModel]
+    check_overlay: Callable[[Iterable[dict[str, JsonValue]]], None]
 
 
 class ScenarioWorld(Frozen):
@@ -178,9 +178,3 @@ def check_hooks(world: ScenarioWorld, binding: Binding) -> None:
                 raise ValueError(
                     f"hook {hook.id!r} advances the unauthored thread {parsed.thread_id!r}"
                 )
-
-
-def check_overlay(binding: Binding, authored: Iterable[dict[str, JsonValue]]) -> None:
-    """The engine's own payload model, so a mistyped overlay field fails at load, not mid-turn."""
-    for rules in authored:
-        _ = binding.rules_type.model_validate(rules)

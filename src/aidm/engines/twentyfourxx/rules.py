@@ -10,7 +10,7 @@ from aidm.engines.packs import load_packs, pack_paths
 from aidm.engines.sheets import actor_sheets, check_sheets, resolved_threads
 from aidm.state.base import Counter, EngineId, Entity, EntityId, Frozen, Slug
 from aidm.state.facts import Fact
-from aidm.state.plan import TurnPlanBase, apply_all, apply_branch, check_action, check_effects
+from aidm.state.plan import Resolver, TurnPlanBase, check_branched, resolve_branched
 from aidm.state.world import GameState
 
 from .actions import TurnPlan
@@ -22,7 +22,6 @@ from .resolve import resolve_attempt
 
 ENGINE_ID: EngineId = EngineId("twentyfourxx")
 LABELS = frozenset[Slug]({"disaster", "setback", "success"})
-NO_LABELS = frozenset[Slug]()
 
 
 class TwentyfourxxEngine(Engine):
@@ -66,22 +65,19 @@ class TwentyfourxxEngine(Engine):
         mechanics = read_mechanics(state, Mechanics)
         return lambda entity: describe(mechanics, entity)
 
-    def check_plan(self, state: GameState, plan: TurnPlanBase) -> str | None:
-        assert isinstance(plan, TurnPlan)
+    def _resolver(self, plan: TurnPlan) -> Resolver | None:
         action = plan.action
         if action is None:
-            return check_effects(state, plan, NO_LABELS, apply)
-        return check_action(
-            state, plan, LABELS, apply, lambda draft, rng: resolve_attempt(draft, action, rng)
-        )
+            return None
+        return lambda draft, rng: resolve_attempt(draft, action, rng)
+
+    def check_plan(self, state: GameState, plan: TurnPlanBase) -> str | None:
+        assert isinstance(plan, TurnPlan)
+        return check_branched(state, plan, LABELS, apply, self._resolver(plan))
 
     def resolve_action(self, draft: GameState, plan: TurnPlanBase, rng: Random) -> list[Fact]:
         assert isinstance(plan, TurnPlan)
-        facts: list[Fact] = []
-        if plan.action is not None:
-            settled, outcome = resolve_attempt(draft, plan.action, rng)
-            facts = settled + apply_branch(draft, plan, outcome, apply)
-        return facts + apply_all(draft, plan.effects, apply)
+        return resolve_branched(draft, plan, apply, self._resolver(plan), rng)
 
 
 ENGINE = TwentyfourxxEngine

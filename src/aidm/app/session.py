@@ -7,6 +7,7 @@ from aidm.config import Settings
 from aidm.content.authored import Character, Scenario
 from aidm.content.store import FileStore, load_character, load_scenario
 from aidm.engines.loader import Engine, Offer, ProposalBase, Subsystem, engine_class
+from aidm.engines.transact import transact
 from aidm.state.base import PLAYER_ID, SAVE_VERSION, EngineId, Entity, Slug
 from aidm.state.facts import Fact
 from aidm.state.turn import Applied, TraceEntry, Turn
@@ -150,7 +151,13 @@ class GameSession:
     def preview(self, capability: Slug, drafted: Drafted) -> tuple[Fact, ...]:
         """What the change would write, read off a throwaway draft, not the committed state."""
         system = self._subsystem(capability)
-        return system.resolve(self.state.draft(), drafted.offer, drafted.proposal, Random(0))
+        trial = transact(
+            self.engine,
+            self.state.draft(),
+            lambda draft: system.resolve(draft, drafted.offer, drafted.proposal, Random(0)),
+            Random(0),
+        )
+        return trial.facts
 
     def apply_proposal(self, capability: Slug, drafted: Drafted) -> tuple[Fact, ...]:
         """The legality rule runs again here: a turn since the draft may have made it illegal."""
@@ -160,12 +167,15 @@ class GameSession:
             raise ValueError("that change is no longer on offer")
         if refused := system.violation(self.state, offer, proposal):
             raise ValueError(refused)
-        draft = self.state.draft()
-        facts = system.resolve(draft, offer, proposal, self.rng)
-        self.engine.validate(draft)
-        entry = Applied(capability=capability, subject_id=offer.subject_id, facts=facts)
-        self._commit(draft.committed(), entry)
-        return facts
+        applied = transact(
+            self.engine,
+            self.state.draft(),
+            lambda draft: system.resolve(draft, offer, proposal, self.rng),
+            self.rng,
+        )
+        entry = Applied(capability=capability, subject_id=offer.subject_id, facts=applied.facts)
+        self._commit(applied.state, entry)
+        return applied.facts
 
     def _subsystem(self, capability: Slug) -> Subsystem:
         found = next((one for one in self.engine.subsystems if one.id == capability), None)

@@ -1,10 +1,10 @@
 # Plan
 
-The phased plan for what is built next, in order. Rewritten 2026-08-13 after the recentering
-decision: the project ships official, freely licensed, LLM-as-GM-friendly tabletop engines
-only. Loner 3e and 24XX ship; Cairn 2e sits on a docs-only shelf until it is wanted. Each phase
-carries enough detail to implement without prior context; only the next unshipped phase needs full
-resolution. Shipped phases move to PROGRESS.md.
+The phased plan for what is built next, in order. Phase 1 (the transaction kernel and the
+engine-contract enablers) shipped 2026-08-14 and now lives in PROGRESS.md; Cairn 2e is Phase 2,
+the scenario creator Phase 3, media Phase 4. Each phase carries enough detail to implement
+without prior context; only the next unshipped phase needs full resolution. Shipped phases move
+to PROGRESS.md.
 
 ## Working rules
 
@@ -24,7 +24,26 @@ resolution. Shipped phases move to PROGRESS.md.
 Per phase: `uv run pytest && uv run ruff check && uv run ruff format --check && uv run
 basedpyright` green after every numbered step, one commit per step.
 
-## Phase 1 — Scenario creator (~3–4 days)
+## Phase 2 — Cairn 2e (~1–2 weeks; still needs its full-resolution write-up)
+
+Build the engine directly on the Phase 1 contracts; docs/CAIRN-2E.md holds the rules extraction
+and package sketch. It is the acceptance test for the architecture: it must land almost entirely
+in `src/aidm/engines/cairn2e/**`, with no `if engine == "cairn2e"` outside that package.
+
+Deliberately **not** pre-built for it — each is added only when Cairn's implementation proves the
+need, per the second-implementation rule: a typed pending-player-choice a resolution can return
+(combat declarations, "drop which item?"), a split Scene/Rules Director behind a planner seam
+(probe Cairn's plan schema live first — working rule 2), a core `PartyState` replacing the
+`party-member` relation, multi-pack composition with manifests, and `fire_count` on hooks.
+Cairn items and their slot/bulky/damage data ride the engine-owned overlay from Phase 1 step 3
+(override `check_overlay`, or a `RootModel` union over actor and item payloads). Combat state is
+a state machine inside the engine's own opaque `mechanics` — core needs no new concept for it.
+
+After Cairn ships, close the Loner 3e and 24XX fidelity deviations one by one (their docs'
+"Deviations in this repo" sections are the checklist), reusing whatever Cairn forced into
+existence.
+
+## Phase 3 — Scenario creator (~3–4 days)
 
 Premise → a complete scenario in the exact on-disk format, authored by a strong model at
 authoring time. This is a script, not the app: agentic workflows are fine outside the turn
@@ -58,7 +77,7 @@ that appears on the home page and plays a first turn under every shipped engine.
 validity is judged by playing it, not asserted by the script. PDF/notes ingestion is a later
 input mode for the same script, not a separate system.
 
-## Phase 2 — Media: scene illustrations (~2–3 days)
+## Phase 4 — Media: scene illustrations (~2–3 days)
 
 Presentation only, outside mechanical truth: the game must be indistinguishable with media
 disabled, and a failed generation must cost nothing but a log line.
@@ -83,4 +102,3 @@ disabled, and a failed generation must cost nothing but a log line.
 
 Done when: with media enabled a turn grows an illustration within seconds after the narration,
 and with it disabled (the default) nothing in state, saves, prompts, or tests differs.
-

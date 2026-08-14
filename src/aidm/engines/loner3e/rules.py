@@ -10,7 +10,7 @@ from aidm.engines.packs import load_packs, pack_paths
 from aidm.engines.sheets import actor_sheets, check_sheets, resolved_threads
 from aidm.state.base import PLAYER_ID, Counter, EngineId, Entity, EntityId, Frozen, Slug
 from aidm.state.facts import Fact
-from aidm.state.plan import TurnPlanBase, apply_all, apply_branch, check_action, check_effects
+from aidm.state.plan import Resolver, TurnPlanBase, check_branched, resolve_branched
 from aidm.state.world import GameState
 
 from .actions import TurnPlan
@@ -22,7 +22,6 @@ from .resolve import resolve_question
 
 ENGINE_ID: EngineId = EngineId("loner3e")
 LABELS = frozenset[Slug]({"yes-and", "yes", "yes-but", "no-but", "no", "no-and"})
-NO_LABELS = frozenset[Slug]()
 
 
 class Loner3eEngine(Engine):
@@ -68,26 +67,20 @@ class Loner3eEngine(Engine):
         mechanics = read_mechanics(state, Mechanics)
         return lambda entity: describe(mechanics, entity)
 
-    def check_plan(self, state: GameState, plan: TurnPlanBase) -> str | None:
-        assert isinstance(plan, TurnPlan)
+    def _resolver(self, state: GameState, plan: TurnPlan) -> Resolver | None:
         action = plan.action
         if action is None:
-            return check_effects(state, plan, NO_LABELS, apply)
-        return check_action(
-            state,
-            plan,
-            LABELS,
-            apply,
-            lambda draft, rng: resolve_question(draft, action, rng, self._twists(state)),
-        )
+            return None
+        twists = self._twists(state)
+        return lambda draft, rng: resolve_question(draft, action, rng, twists)
+
+    def check_plan(self, state: GameState, plan: TurnPlanBase) -> str | None:
+        assert isinstance(plan, TurnPlan)
+        return check_branched(state, plan, LABELS, apply, self._resolver(state, plan))
 
     def resolve_action(self, draft: GameState, plan: TurnPlanBase, rng: Random) -> list[Fact]:
         assert isinstance(plan, TurnPlan)
-        facts: list[Fact] = []
-        if plan.action is not None:
-            settled, outcome = resolve_question(draft, plan.action, rng, self._twists(draft))
-            facts = settled + apply_branch(draft, plan, outcome, apply)
-        return facts + apply_all(draft, plan.effects, apply)
+        return resolve_branched(draft, plan, apply, self._resolver(draft, plan), rng)
 
     def _twists(self, state: GameState) -> tuple[tuple[str, str], ...]:
         """The player's own table set: an NPC sheet is seeded with the default and never selects."""

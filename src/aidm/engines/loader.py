@@ -1,6 +1,6 @@
 import json
 from abc import ABC, abstractmethod
-from collections.abc import Callable, Mapping
+from collections.abc import Callable, Iterable, Mapping
 from importlib import import_module
 from pathlib import Path
 from random import Random
@@ -97,8 +97,14 @@ class Engine(ABC):
         # An engine that creates characters replaces this; the app offers only what it finds.
         self.creation: Creation | None = None
 
+    def check_overlay(self, payloads: Iterable[dict[str, JsonValue]]) -> None:
+        for rules in payloads:
+            _ = self.rules_type.model_validate(rules)
+
     def binding(self) -> Binding:
-        return Binding(engine=self.id, parse_effect=self.parse_effect, rules_type=self.rules_type)
+        return Binding(
+            engine=self.id, parse_effect=self.parse_effect, check_overlay=self.check_overlay
+        )
 
     @abstractmethod
     def begin(self, state: GameState, rules: Mapping[EntityId, dict[str, JsonValue]]) -> None:
