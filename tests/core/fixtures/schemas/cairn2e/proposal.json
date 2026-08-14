@@ -1,0 +1,30 @@
+{
+  "additionalProperties": false,
+  "description": "The one ability a growth leaves behind. The engine records the growth itself.",
+  "properties": {
+    "ability": {
+      "description": "The new ability in title case.",
+      "minLength": 1,
+      "title": "Ability",
+      "type": "string"
+    },
+    "text": {
+      "description": "One line: what it lets them do, and the cost or limit it carries.",
+      "minLength": 1,
+      "title": "Text",
+      "type": "string"
+    },
+    "why": {
+      "description": "One short sentence the player reads before confirming.",
+      "title": "Why",
+      "type": "string"
+    }
+  },
+  "required": [
+    "ability",
+    "text",
+    "why"
+  ],
+  "title": "Growth",
+  "type": "object"
+}

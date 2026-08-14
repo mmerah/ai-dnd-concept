@@ -1,0 +1,522 @@
+{
+  "save_version": 61,
+  "scenario_id": "whispering-vault",
+  "character_id": "kael",
+  "scenario": {
+    "title": "The Whispering Vault",
+    "premise": "The abbey of Saint Corvin was abandoned in a single night. Kael has come for the sealed vault beneath it, and the abbot's study is the only room still lit."
+  },
+  "engine": "cairn2e",
+  "world": {
+    "entities": {
+      "study": {
+        "id": "study",
+        "kind": "location",
+        "name": "the abbot's study",
+        "brief": "A cramped room of ledgers and cold candle stubs; a loose flagstone hides something under the desk.",
+        "detail": null,
+        "known": true,
+        "parent_id": null,
+        "traits": []
+      },
+      "cloister": {
+        "id": "cloister",
+        "kind": "location",
+        "name": "the cloister",
+        "brief": "A frost-rimed colonnade around a dead garden; Brother Tomas sweeps it to no purpose.",
+        "detail": null,
+        "known": true,
+        "parent_id": null,
+        "traits": []
+      },
+      "bell_tower": {
+        "id": "bell_tower",
+        "kind": "location",
+        "name": "the bell tower",
+        "brief": "A cramped climb of rotten ladders above the nave, its bell long since stilled.",
+        "detail": null,
+        "known": false,
+        "parent_id": null,
+        "traits": []
+      },
+      "vault": {
+        "id": "vault",
+        "kind": "location",
+        "name": "the sealed vault",
+        "brief": "The undercroft chamber Kael came for, its door bearing a seal nobody living can read.",
+        "detail": null,
+        "known": true,
+        "parent_id": null,
+        "traits": [
+          {
+            "id": "warded",
+            "name": "Warded",
+            "text": "The seal answers a touch, and something behind the door answers with it."
+          }
+        ]
+      },
+      "mara": {
+        "id": "mara",
+        "kind": "actor",
+        "name": "Mara",
+        "brief": "The abbey's last scribe, cautious and tired, still cataloguing books nobody will read.",
+        "detail": null,
+        "known": true,
+        "parent_id": "study",
+        "traits": []
+      },
+      "tomas": {
+        "id": "tomas",
+        "kind": "actor",
+        "name": "Brother Tomas",
+        "brief": "A deaf old porter who sweeps the cloister and knows almost nothing about the vault.",
+        "detail": null,
+        "known": true,
+        "parent_id": "cloister",
+        "traits": []
+      },
+      "elena": {
+        "id": "elena",
+        "kind": "actor",
+        "name": "Elena",
+        "brief": "The vault's former archivist, hiding in the bell tower; she alone remembers the sealing rite.",
+        "detail": null,
+        "known": false,
+        "parent_id": "bell_tower",
+        "traits": []
+      },
+      "cloister_rat": {
+        "id": "cloister_rat",
+        "kind": "actor",
+        "name": "a bloated rat",
+        "brief": "It has grown fat on the dead garden and does not run from a lantern.",
+        "detail": null,
+        "known": false,
+        "parent_id": "cloister",
+        "traits": []
+      },
+      "vault_map": {
+        "id": "vault_map",
+        "kind": "item",
+        "name": "the vault map",
+        "brief": "A creased chart of the undercroft, marking a stair the abbey's own plans deny.",
+        "detail": null,
+        "known": true,
+        "parent_id": "player",
+        "traits": []
+      },
+      "lantern": {
+        "id": "lantern",
+        "kind": "item",
+        "name": "a guttering lantern",
+        "brief": "A dented tin lantern whose flame will not hold still.",
+        "detail": null,
+        "known": true,
+        "parent_id": "player",
+        "traits": [
+          {
+            "id": "unsteady-lantern",
+            "name": "Unsteady Lantern",
+            "text": "(gear) Its shifting light exposes seams and movement in deep shadow."
+          }
+        ]
+      },
+      "player": {
+        "id": "player",
+        "kind": "actor",
+        "name": "Kael",
+        "brief": "A scarred relic-hunter who came to the abbey for what is sealed beneath it.",
+        "detail": null,
+        "known": true,
+        "parent_id": "study",
+        "traits": [
+          {
+            "id": "relic-hunter",
+            "name": "Relic Hunter",
+            "text": "(skill) Kael knows how old sanctums conceal what matters."
+          },
+          {
+            "id": "marked-by-the-past",
+            "name": "Marked by the Past",
+            "text": "(frailty) Old scars make certain memories hard to face."
+          },
+          {
+            "id": "fail",
+            "name": "Fail",
+            "text": ""
+          }
+        ]
+      },
+      "sister_auber": {
+        "id": "sister_auber",
+        "kind": "actor",
+        "name": "Sister Auber",
+        "brief": "A lay sister who keeps the vault keys.",
+        "detail": {
+          "description": "She has kept the abbey's keys for thirty years.",
+          "hook": "She knows which doors were sealed and by whom."
+        },
+        "known": true,
+        "parent_id": "study",
+        "traits": []
+      }
+    },
+    "relations": {
+      "connected/cloister/study": {
+        "kind": "connected",
+        "source": "study",
+        "target": "cloister",
+        "directed": false,
+        "known": true,
+        "tags": []
+      },
+      "connected/bell_tower/cloister": {
+        "kind": "connected",
+        "source": "cloister",
+        "target": "bell_tower",
+        "directed": false,
+        "known": false,
+        "tags": []
+      },
+      "connected/cloister/vault": {
+        "kind": "connected",
+        "source": "cloister",
+        "target": "vault",
+        "directed": false,
+        "known": false,
+        "tags": [
+          "locked"
+        ]
+      }
+    },
+    "threads": {
+      "vault-seal": {
+        "id": "vault-seal",
+        "title": "The sealed vault",
+        "status": "active",
+        "stage": "seal-found",
+        "note": "Kael came for the vault and does not yet know where its door is.",
+        "clock": null
+      }
+    },
+    "memories": {
+      "the-abbey-emptied-in-one-night": {
+        "id": "the-abbey-emptied-in-one-night",
+        "owner": null,
+        "text": "The abbey emptied in a single night: meals were left half-eaten, doors left open, and no brother has been seen on the road since."
+      },
+      "mara-catalogued-with-elena": {
+        "id": "mara-catalogued-with-elena",
+        "owner": "mara",
+        "text": "Mara catalogued the vault ledgers beside Elena for two winters, until the night Elena went below alone and never came back up."
+      }
+    },
+    "hooks": [
+      {
+        "id": "vault-sighted",
+        "match": {
+          "kind": "entity_discovered",
+          "data": {
+            "entity_id": "vault"
+          }
+        },
+        "effects": [
+          {
+            "op": "advance-thread",
+            "thread_id": "vault-seal",
+            "stage": "seal-found",
+            "why": "the vault door is found"
+          },
+          {
+            "op": "trait-change",
+            "mode": "add",
+            "entity_id": "vault",
+            "text": "The seal answers a touch, and something behind the door answers with it.",
+            "why": "the seal stirs when it is first seen",
+            "trait_id": "warded"
+          }
+        ],
+        "note": "Kael has found the vault door. Press on what opening the seal will cost.",
+        "once": true
+      },
+      {
+        "id": "vault-charted",
+        "match": {
+          "kind": "entity_discovered",
+          "data": {
+            "entity_id": "vault_map"
+          }
+        },
+        "effects": [
+          {
+            "op": "advance-thread",
+            "thread_id": "vault-seal",
+            "stage": "seal-found",
+            "why": "the chart marks the stair down to the door"
+          },
+          {
+            "op": "reveal",
+            "entity_id": "vault"
+          }
+        ],
+        "note": "The chart marks the stair to the vault door. Press on what opening the seal will cost.",
+        "once": true
+      },
+      {
+        "id": "archivist-found",
+        "match": {
+          "kind": "entity_discovered",
+          "data": {
+            "entity_id": "elena"
+          }
+        },
+        "effects": [
+          {
+            "op": "advance-thread",
+            "thread_id": "vault-seal",
+            "stage": "rite-known",
+            "why": "Elena alone remembers the sealing rite"
+          }
+        ],
+        "note": "Elena remembers the rite that sealed the vault. Let her name her price for it.",
+        "once": true
+      }
+    ],
+    "fired_hooks": [
+      "vault-charted",
+      "vault-sighted"
+    ],
+    "pending_notes": [
+      "The chart marks the stair to the vault door. Press on what opening the seal will cost.",
+      "Kael has found the vault door. Press on what opening the seal will cost."
+    ]
+  },
+  "mechanics": {
+    "sheets": {
+      "mara": {
+        "background": "",
+        "strength": {
+          "current": 10,
+          "maximum": 10
+        },
+        "dexterity": {
+          "current": 10,
+          "maximum": 10
+        },
+        "willpower": {
+          "current": 10,
+          "maximum": 10
+        },
+        "hp": {
+          "current": 4,
+          "maximum": 4
+        },
+        "gold": {
+          "current": 0,
+          "maximum": null
+        },
+        "fatigue": {
+          "current": 0,
+          "maximum": null
+        },
+        "armor": 0,
+        "growths": {
+          "current": 0,
+          "maximum": null
+        }
+      },
+      "tomas": {
+        "background": "",
+        "strength": {
+          "current": 10,
+          "maximum": 10
+        },
+        "dexterity": {
+          "current": 10,
+          "maximum": 10
+        },
+        "willpower": {
+          "current": 10,
+          "maximum": 10
+        },
+        "hp": {
+          "current": 4,
+          "maximum": 4
+        },
+        "gold": {
+          "current": 0,
+          "maximum": null
+        },
+        "fatigue": {
+          "current": 0,
+          "maximum": null
+        },
+        "armor": 0,
+        "growths": {
+          "current": 0,
+          "maximum": null
+        }
+      },
+      "elena": {
+        "background": "",
+        "strength": {
+          "current": 10,
+          "maximum": 10
+        },
+        "dexterity": {
+          "current": 10,
+          "maximum": 10
+        },
+        "willpower": {
+          "current": 10,
+          "maximum": 10
+        },
+        "hp": {
+          "current": 4,
+          "maximum": 4
+        },
+        "gold": {
+          "current": 0,
+          "maximum": null
+        },
+        "fatigue": {
+          "current": 0,
+          "maximum": null
+        },
+        "armor": 0,
+        "growths": {
+          "current": 0,
+          "maximum": null
+        }
+      },
+      "cloister_rat": {
+        "background": "",
+        "strength": {
+          "current": 8,
+          "maximum": 8
+        },
+        "dexterity": {
+          "current": 14,
+          "maximum": 14
+        },
+        "willpower": {
+          "current": 4,
+          "maximum": 4
+        },
+        "hp": {
+          "current": 3,
+          "maximum": 3
+        },
+        "gold": {
+          "current": 0,
+          "maximum": null
+        },
+        "fatigue": {
+          "current": 0,
+          "maximum": null
+        },
+        "armor": 0,
+        "growths": {
+          "current": 0,
+          "maximum": null
+        }
+      },
+      "player": {
+        "background": "Relic-Hunter",
+        "strength": {
+          "current": 11,
+          "maximum": 11
+        },
+        "dexterity": {
+          "current": 13,
+          "maximum": 13
+        },
+        "willpower": {
+          "current": 9,
+          "maximum": 9
+        },
+        "hp": {
+          "current": 4,
+          "maximum": 4
+        },
+        "gold": {
+          "current": 12,
+          "maximum": null
+        },
+        "fatigue": {
+          "current": 0,
+          "maximum": null
+        },
+        "armor": 0,
+        "growths": {
+          "current": 0,
+          "maximum": null
+        }
+      },
+      "sister_auber": {
+        "background": "",
+        "strength": {
+          "current": 13,
+          "maximum": 13
+        },
+        "dexterity": {
+          "current": 12,
+          "maximum": 12
+        },
+        "willpower": {
+          "current": 11,
+          "maximum": 11
+        },
+        "hp": {
+          "current": 6,
+          "maximum": 6
+        },
+        "gold": {
+          "current": 0,
+          "maximum": null
+        },
+        "fatigue": {
+          "current": 0,
+          "maximum": null
+        },
+        "armor": 0,
+        "growths": {
+          "current": 0,
+          "maximum": null
+        }
+      }
+    },
+    "items": {
+      "vault_map": {
+        "slots": 0,
+        "damage": 0,
+        "armor": 0,
+        "uses": null
+      },
+      "lantern": {
+        "slots": 1,
+        "damage": 0,
+        "armor": 0,
+        "uses": {
+          "current": 6,
+          "maximum": 6
+        }
+      }
+    }
+  },
+  "history": [
+    {
+      "prompt": "I try the vault door.",
+      "narration": "The iron handle does not turn."
+    },
+    {
+      "prompt": "I look for another way in.",
+      "narration": "A flagstone by the wall sits proud of its neighbours."
+    },
+    {
+      "prompt": "I lever up the loose flagstone and listen at the vault door.",
+      "narration": "The flagstone lifts. Beyond the door, something shifts its weight and waits."
+    }
+  ],
+  "turn": 1
+}

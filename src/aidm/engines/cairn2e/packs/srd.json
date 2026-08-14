@@ -1,0 +1,159 @@
+{
+  "name": "Cairn Second Edition",
+  "source": "cairnrpg.com/second-edition — Yochai Gal",
+  "license": "CC BY-SA 4.0",
+  "spreads": [
+    {
+      "id": "hardy",
+      "label": "Hardy — STR 13, DEX 10, WIL 8, HP 5",
+      "detail": "Strong and slow to tire, but easily shaken.",
+      "strength": 13,
+      "dexterity": 10,
+      "willpower": 8,
+      "hp": 5
+    },
+    {
+      "id": "nimble",
+      "label": "Nimble — STR 9, DEX 13, WIL 10, HP 4",
+      "detail": "Quick on their feet, not built for a long fight.",
+      "strength": 9,
+      "dexterity": 13,
+      "willpower": 10,
+      "hp": 4
+    },
+    {
+      "id": "willful",
+      "label": "Willful — STR 10, DEX 9, WIL 13, HP 3",
+      "detail": "Hard to break in spirit, easy to break in body.",
+      "strength": 10,
+      "dexterity": 9,
+      "willpower": 13,
+      "hp": 3
+    },
+    {
+      "id": "even",
+      "label": "Even — STR 11, DEX 11, WIL 11, HP 4",
+      "detail": "No weak point and no standout strength.",
+      "strength": 11,
+      "dexterity": 11,
+      "willpower": 11,
+      "hp": 4
+    }
+  ],
+  "backgrounds": [
+    {
+      "id": "aurifex",
+      "label": "Aurifex",
+      "detail": "An alchemist, more at home over a retort than a fire.",
+      "gold": 10,
+      "gear": [
+        { "id": "rations", "name": "Rations", "brief": "Dried food and water for a few days on the road.", "slots": 1, "uses": 3 },
+        { "id": "lantern", "name": "Lantern", "brief": "Burns oil for a steady, shielded light.", "slots": 1 },
+        { "id": "oil-can", "name": "Oil Can", "brief": "Fuel for a lantern, doled out a measure at a time.", "slots": 1, "uses": 6 },
+        { "id": "needle-knife", "name": "Needle-knife", "brief": "A thin blade suited to close, careful work.", "slots": 1, "damage": 6 },
+        { "id": "gloves", "name": "Protective Gloves", "brief": "Keeps reagents and acid off the skin.", "slots": 0 }
+      ],
+      "chooses": 1,
+      "traits": [
+        { "id": "curious-mind", "label": "Curious Mind", "detail": "Can't resist picking apart an unknown mechanism or reagent." },
+        { "id": "steady-hands", "label": "Steady Hands", "detail": "Never spills a measure or fumbles a delicate task." },
+        { "id": "talks-in-formulae", "label": "Talks in Formulae", "detail": "Explains everything as a ratio of ingredients, whether asked or not." }
+      ]
+    },
+    {
+      "id": "barber-surgeon",
+      "label": "Barber-Surgeon",
+      "detail": "Pulls teeth, sets bones, and takes what work pays.",
+      "gold": 8,
+      "gear": [
+        { "id": "rations", "name": "Rations", "brief": "Dried food and water for a few days on the road.", "slots": 1, "uses": 3 },
+        { "id": "bandages", "name": "Bandages", "brief": "Wound dressings that stabilise critical damage.", "slots": 1, "uses": 3 },
+        { "id": "bonesaw", "name": "Bonesaw", "brief": "A short saw for surgery and little else.", "slots": 1, "damage": 6 },
+        { "id": "surgeons-tools", "name": "Surgeon's Tools", "brief": "Needles, clamps, and a probe, rolled in leather.", "slots": 1 },
+        { "id": "wilderness-clothes", "name": "Wilderness Clothes", "brief": "Sturdy clothing worn to the shape of the road.", "slots": 0 }
+      ],
+      "chooses": 1,
+      "traits": [
+        { "id": "unflinching", "label": "Unflinching", "detail": "Has seen enough gore that none of it turns their stomach." },
+        { "id": "blunt-bedside-manner", "label": "Blunt Bedside Manner", "detail": "Delivers a diagnosis straight, however bad the news." },
+        { "id": "haunted-by-a-patient", "label": "Haunted by a Patient", "detail": "Still hears the one they couldn't save." }
+      ]
+    },
+    {
+      "id": "cutpurse",
+      "label": "Cutpurse",
+      "detail": "Lives off what other people stop noticing they're carrying.",
+      "gold": 12,
+      "gear": [
+        { "id": "rations", "name": "Rations", "brief": "Dried food and water for a few days on the road.", "slots": 1, "uses": 3 },
+        { "id": "dagger", "name": "Dagger", "brief": "Short, quiet, and easy to hide.", "slots": 1, "damage": 6 },
+        { "id": "thieving-tools", "name": "Thieving Tools", "brief": "Picks and shims for a lock that shouldn't open.", "slots": 1 },
+        { "id": "rope", "name": "Rope (25ft)", "brief": "Twenty-five feet, strong enough to hold a person.", "slots": 1 },
+        { "id": "chalk", "name": "Chalk", "brief": "Marks a route, a door, or a warning.", "slots": 0 }
+      ],
+      "chooses": 1,
+      "traits": [
+        { "id": "light-fingered", "label": "Light-fingered", "detail": "Nothing stays in a pocket they've decided to empty." },
+        { "id": "knows-the-underworld", "label": "Knows the Underworld", "detail": "Has a contact for anything, for a price." },
+        { "id": "trusts-no-one", "label": "Trusts No One", "detail": "Assumes every kindness has a hook in it." }
+      ]
+    },
+    {
+      "id": "fieldwarden",
+      "label": "Fieldwarden",
+      "detail": "Keeps watch over crops and boundary stones alike.",
+      "gold": 9,
+      "gear": [
+        { "id": "rations", "name": "Rations", "brief": "Dried food and water for a few days on the road.", "slots": 1, "uses": 3 },
+        { "id": "sickle", "name": "Sickle", "brief": "A curved field blade, quick to hand.", "slots": 1, "damage": 6 },
+        { "id": "gambeson", "name": "Gambeson", "brief": "Quilted padding worn under a work coat.", "slots": 1, "armor": 1 },
+        { "id": "trap", "name": "Trap", "brief": "A hidden snare that deals d6 STR damage when it springs.", "slots": 1, "uses": 1 },
+        { "id": "whistle", "name": "Whistle", "brief": "Carries a signal further than a shout does.", "slots": 0 }
+      ],
+      "chooses": 1,
+      "traits": [
+        { "id": "reads-the-weather", "label": "Reads the Weather", "detail": "Knows a storm is coming before the sky says so." },
+        { "id": "protective-of-the-land", "label": "Protective of the Land", "detail": "Takes a threat to the fields personally." },
+        { "id": "suspicious-of-strangers", "label": "Suspicious of Strangers", "detail": "Assumes an outsider means trouble until proven otherwise." }
+      ]
+    },
+    {
+      "id": "hexenbane",
+      "label": "Hexenbane",
+      "detail": "A witch-hunter, sworn to burn out what shouldn't be.",
+      "gold": 10,
+      "gear": [
+        { "id": "rations", "name": "Rations", "brief": "Dried food and water for a few days on the road.", "slots": 1, "uses": 3 },
+        { "id": "spear", "name": "Spear", "brief": "Keeps a hunted thing at a safer distance.", "slots": 1, "damage": 8 },
+        { "id": "shield", "name": "Shield", "brief": "A round shield, scarred from turning blows.", "slots": 1, "armor": 1 },
+        { "id": "torch", "name": "Torch", "brief": "Fire enough to see by, or to drive something back.", "slots": 1, "uses": 3 },
+        { "id": "wilderness-clothes", "name": "Wilderness Clothes", "brief": "Sturdy clothing worn to the shape of the road.", "slots": 0 }
+      ],
+      "chooses": 1,
+      "traits": [
+        { "id": "sees-through-lies", "label": "Sees Through Lies", "detail": "Has hunted enough liars to spot the tell." },
+        { "id": "zealous", "label": "Zealous", "detail": "Pursues a hunt past the point good sense would call it off." },
+        { "id": "marked-by-what-they-hunt", "label": "Marked by What They Hunt", "detail": "Carries a scar or a habit picked up from the things they've hunted." }
+      ]
+    },
+    {
+      "id": "marchguard",
+      "label": "Marchguard",
+      "detail": "A border ranger, walking a line few others bother to watch.",
+      "gold": 11,
+      "gear": [
+        { "id": "rations", "name": "Rations", "brief": "Dried food and water for a few days on the road.", "slots": 1, "uses": 3 },
+        { "id": "sword", "name": "Sword", "brief": "A well-balanced blade, honest in a fight.", "slots": 1, "damage": 8 },
+        { "id": "bow", "name": "Bow", "brief": "Bulky to carry, but reaches where a blade can't.", "slots": 2, "damage": 6 },
+        { "id": "gambeson", "name": "Gambeson", "brief": "Quilted padding worn under a work coat.", "slots": 1, "armor": 1 },
+        { "id": "rope", "name": "Rope (25ft)", "brief": "Twenty-five feet, strong enough to hold a person.", "slots": 1 }
+      ],
+      "chooses": 1,
+      "traits": [
+        { "id": "knows-the-old-roads", "label": "Knows the Old Roads", "detail": "Finds a path through country that swallows other travelers." },
+        { "id": "wary-of-crowds", "label": "Wary of Crowds", "detail": "More at ease under open sky than packed inside walls." },
+        { "id": "keeps-a-promise", "label": "Keeps a Promise", "detail": "Sees a given word through, whatever it costs." }
+      ]
+    }
+  ]
+}

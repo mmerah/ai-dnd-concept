@@ -33,7 +33,7 @@ def test_an_overlay_decides_which_rules_a_scenario_offers(tmp_path: Path) -> Non
     catalog = load_catalog(ui_settings(tmp_path))
     controller = LauncherController(catalog)
 
-    assert catalog.scenario("whispering-vault").engines == ("loner3e", "twentyfourxx")
+    assert catalog.scenario("whispering-vault").engines == ("loner3e", "twentyfourxx", "cairn2e")
     assert [option.id for option in catalog.characters] == ["kael"]
     controller.choose_engine(LONER3E)
 
@@ -60,7 +60,7 @@ def test_content_is_offered_only_for_the_rulesets_it_ships(tmp_path: Path) -> No
     controller = LauncherController(load_catalog(ui_settings(tmp_path, scenarios)))
 
     assert [option.id for option in controller.catalog.scenarios] == ["whispering-vault"]
-    assert controller.available_engines() == ("loner3e", "twentyfourxx")
+    assert controller.available_engines() == ("loner3e", "twentyfourxx", "cairn2e")
     assert controller.selected_engine == "loner3e"
 
 

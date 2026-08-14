@@ -1,0 +1,15 @@
+ON OFFER
+Kael reaches a growth.
+
+RULES TEXT
+Say how the character has changed. One ability only: name it in title case, and say in one line what it lets them do and what it costs or limits. The engine records the growth itself, so propose nothing for it.
+
+THE CHARACTER
+Kael
+background: Relic-Hunter
+dexterity 13/13, fatigue 0, gold 12, hp 4/4, strength 11/11, willpower 9/9
+armor 0, slots 1/10
+traits: Relic Hunter[id=relic-hunter] — (skill) Kael knows how old sanctums conceal what matters., Marked by the Past[id=marked-by-the-past] — (frailty) Old scars make certain memories hard to face.
+
+WHAT THE PLAYER WANTS
+I want to strike harder.

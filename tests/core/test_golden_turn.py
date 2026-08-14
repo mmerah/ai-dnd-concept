@@ -2,7 +2,17 @@ from collections.abc import Mapping
 from random import Random
 
 import pytest
-from core_test_support import LONER3E, TWENTYFOURXX, game, plan, played, scripted, structured, text
+from core_test_support import (
+    CAIRN2E,
+    LONER3E,
+    TWENTYFOURXX,
+    game,
+    plan,
+    played,
+    scripted,
+    structured,
+    text,
+)
 from golden_test_support import FIXTURES, dumped, golden
 from pydantic_ai.messages import ModelResponse
 from pydantic_ai.models.function import FunctionModel
@@ -81,6 +91,15 @@ SCRIPTS: Mapping[EngineId, ModelResponse] = {
             "luck_test": "something behind the door is already listening back",
         },
         ("success", "setback", "disaster"),
+    ),
+    CAIRN2E: _plan(
+        {
+            "act": "save",
+            "actor_id": "player",
+            "attribute": "dexterity",
+            "risk": "the flagstone grinds and whatever waits past the door hears it",
+        },
+        ("pass", "fail"),
     ),
 }
 

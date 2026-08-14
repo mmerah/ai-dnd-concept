@@ -20,6 +20,7 @@ from aidm.state.world import GameState
 ENGINE_MODULES: tuple[str, ...] = (
     "aidm.engines.loner3e.rules",
     "aidm.engines.twentyfourxx.rules",
+    "aidm.engines.cairn2e.rules",
 )
 ENGINE = "ENGINE"
 WORLD_EXAMPLES: Path = Path(__file__).parent / "examples.json"
