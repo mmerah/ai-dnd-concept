@@ -1,7 +1,6 @@
 from core_test_support import LONER3E, game, updated, with_entity
 
 from aidm.content.authored import ScenarioMeta
-from aidm.engines.counters import write_mechanics
 from aidm.engines.loader import EntityRenderer
 from aidm.engines.loner3e.mechanics import Mechanics, Sheet
 from aidm.state.base import PLAYER_ID, SAVE_VERSION, Entity, EntityId, Kind
@@ -47,11 +46,10 @@ def state() -> GameState:
         engine=LONER3E,
         world=WorldState(entities={entity.id: entity for entity in entities}),
     )
-    write_mechanics(
-        held,
-        Mechanics(sheets={entity.id: Sheet() for entity in entities if entity.kind == "actor"}),
+    held.set_mechanics(
+        Mechanics(sheets={entity.id: Sheet() for entity in entities if entity.kind == "actor"})
     )
-    return held
+    return held.committed()
 
 
 def _renderer(held: GameState) -> EntityRenderer:

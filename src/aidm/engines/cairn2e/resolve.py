@@ -3,7 +3,7 @@ from typing import Literal, Self
 
 from pydantic import Field, model_validator
 
-from aidm.engines.counters import adjust, read_mechanics, write_mechanics
+from aidm.engines.counters import adjust
 from aidm.engines.sheets import require_sheet
 from aidm.state.apply import apply_effect, require_actor_here
 from aidm.state.base import PLAYER_ID, Entity, EntityId, Frozen, Slug, Trait
@@ -157,7 +157,7 @@ _ANY_ATTRIBUTES: tuple[Attribute, ...] = (
 def resolve_save(draft: GameState, action: Save, rng: Random) -> tuple[list[Fact], Slug]:
     actor = require_actor_here(draft, action.actor_id)
     facts = apply_effect(draft, Reveal(entity_id=action.actor_id))
-    mechanics = read_mechanics(draft, Mechanics)
+    mechanics = draft.mechanics_as(Mechanics)
     sheet = require_sheet(mechanics.sheets, actor)
     score = attribute_of(sheet, action.attribute).current
     rolled, rolled_fact = roll_pool((20,), f"{action.risk} — {action.attribute} save", rng)
@@ -185,7 +185,7 @@ def resolve_attack(draft: GameState, action: Attack, rng: Random) -> tuple[list[
         )
     facts = apply_effect(draft, Reveal(entity_id=action.attacker_id))
     facts.extend(apply_effect(draft, Reveal(entity_id=action.target_id)))
-    mechanics = read_mechanics(draft, Mechanics)
+    mechanics = draft.mechanics_as(Mechanics)
     _ = require_sheet(mechanics.sheets, attacker)
     sheet = require_sheet(mechanics.sheets, target)
     faces = attack_faces(draft, mechanics, attacker, action)
@@ -194,7 +194,6 @@ def resolve_attack(draft: GameState, action: Attack, rng: Random) -> tuple[list[
     damage = max(kept - armor_of(draft, mechanics, target), 0)
     damage_facts, outcome = _damage(draft, mechanics, target, sheet, damage, rng)
     facts.extend(damage_facts)
-    write_mechanics(draft, mechanics)
     return facts, outcome
 
 

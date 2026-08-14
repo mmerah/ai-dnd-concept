@@ -8,7 +8,6 @@ from pydantic_ai.models.function import AgentInfo, FunctionModel
 
 from aidm.app.session import Drafted
 from aidm.content.store import FileStore
-from aidm.engines.counters import read_mechanics
 from aidm.engines.loner3e.advance import Milestone
 from aidm.engines.loner3e.mechanics import Mechanics
 from aidm.state.base import PLAYER_ID
@@ -44,7 +43,7 @@ async def test_an_illegal_proposal_is_retried_with_the_engines_reason(tmp_path: 
         proposal = await game.propose("advancement", offer, "Kael has learned to trust his rope.")
 
     assert proposal == LEGAL
-    gear = read_mechanics(game.state, Mechanics).sheets[PLAYER_ID].gear
+    gear = game.state.mechanics_as(Mechanics).sheets[PLAYER_ID].gear
     assert "Waxed Rope" not in gear  # proposing commits nothing
 
 
@@ -56,7 +55,7 @@ def test_confirming_commits_exactly_the_proposed_delta(tmp_path: Path) -> None:
 
     facts = game.apply_proposal("advancement", drafted)
 
-    sheet = read_mechanics(game.state, Mechanics).sheets[PLAYER_ID]
+    sheet = Mechanics.model_validate(game.state.mechanics).sheets[PLAYER_ID]
     assert (sheet.gear[-1], sheet.milestones.current) == ("Waxed Rope", 1)
     assert [fact.trace for fact in facts] == [
         "Kael gained gear Waxed Rope (he never climbs without it now)",

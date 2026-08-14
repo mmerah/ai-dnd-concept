@@ -5,9 +5,7 @@ from pydantic import Field, TypeAdapter
 from aidm.engines.counters import (
     CounterChange,
     move_pool,
-    read_mechanics,
     render_counters,
-    write_mechanics,
 )
 from aidm.state.apply import apply_effect, reveal_target
 from aidm.state.base import Counter, Entity, EntityId, Mutable, Slug
@@ -74,8 +72,7 @@ def describe(mechanics: Mechanics, entity: Entity) -> str:
 def apply(draft: GameState, effect: TwentyfourxxEffect) -> list[Fact]:
     if not isinstance(effect, CounterChange):
         return apply_effect(draft, effect)
-    mechanics = read_mechanics(draft, Mechanics)
+    mechanics = draft.mechanics_as(Mechanics)
     entity, seen = reveal_target(draft, effect.entity_id)
     facts = [*seen, *move_pool(mechanics.sheets.get(entity.id), entity, effect)]
-    write_mechanics(draft, mechanics)
     return facts

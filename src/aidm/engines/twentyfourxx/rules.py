@@ -4,7 +4,6 @@ from random import Random
 
 from pydantic import JsonValue
 
-from aidm.engines.counters import read_mechanics, write_mechanics
 from aidm.engines.loader import Engine, EntityRenderer
 from aidm.engines.packs import load_packs, pack_paths
 from aidm.engines.sheets import actor_sheets, check_sheets, resolved_threads
@@ -39,21 +38,20 @@ class TwentyfourxxEngine(Engine):
 
     def begin(self, state: GameState, rules: Mapping[EntityId, dict[str, JsonValue]]) -> None:
         sheets = actor_sheets(state, rules, Sheet, ENGINE_ID)
-        write_mechanics(state, Mechanics(sheets=sheets))
+        state.set_mechanics(Mechanics(sheets=sheets))
 
     def validate(self, state: GameState) -> None:
-        mechanics = read_mechanics(state, Mechanics)
+        mechanics = state.mechanics_as(Mechanics)
         check_sheets(state, mechanics.sheets, ENGINE_ID)
 
     def seed(self, draft: GameState, entity: Entity, rng: Random) -> None:
         del rng  # nothing on a fresh 24xx sheet is rolled
-        mechanics = read_mechanics(draft, Mechanics)
+        mechanics = draft.mechanics_as(Mechanics)
         if entity.kind != "actor" or entity.id in mechanics.sheets:
             return
         # A newcomer starts level with the party: jobs done before they joined are not owed.
         earned = resolved_threads(draft.world)
         mechanics.sheets[entity.id] = Sheet(jobs=Counter(current=earned))
-        write_mechanics(draft, mechanics)
 
     def parse_effect(self, effect: JsonValue) -> Frozen:
         return EFFECTS.validate_python(effect)
@@ -62,7 +60,7 @@ class TwentyfourxxEngine(Engine):
         return apply(draft, EFFECTS.validate_python(effect))
 
     def renderer(self, state: GameState) -> EntityRenderer:
-        mechanics = read_mechanics(state, Mechanics)
+        mechanics = state.mechanics_as(Mechanics)
         return lambda entity: describe(mechanics, entity)
 
     def _resolver(self, plan: TurnPlan) -> Resolver | None:

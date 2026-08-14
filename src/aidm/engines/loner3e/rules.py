@@ -4,7 +4,6 @@ from random import Random
 
 from pydantic import JsonValue
 
-from aidm.engines.counters import read_mechanics, write_mechanics
 from aidm.engines.loader import Engine, EntityRenderer
 from aidm.engines.packs import load_packs, pack_paths
 from aidm.engines.sheets import actor_sheets, check_sheets, resolved_threads
@@ -39,23 +38,22 @@ class Loner3eEngine(Engine):
 
     def begin(self, state: GameState, rules: Mapping[EntityId, dict[str, JsonValue]]) -> None:
         sheets = actor_sheets(state, rules, Sheet, ENGINE_ID)
-        write_mechanics(state, Mechanics(sheets=sheets))
+        state.set_mechanics(Mechanics(sheets=sheets))
 
     def validate(self, state: GameState) -> None:
-        mechanics = read_mechanics(state, Mechanics)
+        mechanics = state.mechanics_as(Mechanics)
         check_sheets(state, mechanics.sheets, ENGINE_ID)
         if (chosen := mechanics.sheets[PLAYER_ID].pack) not in self.packs:
             raise ValueError(f"this game plays the {chosen!r} table set, which is not installed")
 
     def seed(self, draft: GameState, entity: Entity, rng: Random) -> None:
         del rng  # nothing on a loner3e sheet is rolled
-        mechanics = read_mechanics(draft, Mechanics)
+        mechanics = draft.mechanics_as(Mechanics)
         if entity.kind != "actor" or entity.id in mechanics.sheets:
             return
         # A newcomer starts level with the party: milestones earned before they joined are not owed.
         earned = resolved_threads(draft.world)
         mechanics.sheets[entity.id] = Sheet(milestones=Counter(current=earned))
-        write_mechanics(draft, mechanics)
 
     def parse_effect(self, effect: JsonValue) -> Frozen:
         return EFFECTS.validate_python(effect)
@@ -64,7 +62,7 @@ class Loner3eEngine(Engine):
         return apply(draft, EFFECTS.validate_python(effect))
 
     def renderer(self, state: GameState) -> EntityRenderer:
-        mechanics = read_mechanics(state, Mechanics)
+        mechanics = state.mechanics_as(Mechanics)
         return lambda entity: describe(mechanics, entity)
 
     def _resolver(self, state: GameState, plan: TurnPlan) -> Resolver | None:
@@ -84,7 +82,7 @@ class Loner3eEngine(Engine):
 
     def _twists(self, state: GameState) -> tuple[tuple[str, str], ...]:
         """The player's own table set: an NPC sheet is seeded with the default and never selects."""
-        return twist_table(self.packs, read_mechanics(state, Mechanics).sheets[PLAYER_ID].pack)
+        return twist_table(self.packs, state.mechanics_as(Mechanics).sheets[PLAYER_ID].pack)
 
 
 ENGINE = Loner3eEngine

@@ -6,7 +6,7 @@ from core_test_support import CAIRN2E, game
 from aidm.engines.cairn2e.actions import Attack
 from aidm.engines.cairn2e.mechanics import DEPRIVED, ItemRules, Mechanics, Sheet, apply, saved
 from aidm.engines.cairn2e.resolve import resolve_attack
-from aidm.engines.counters import CounterChange, read_mechanics, write_mechanics
+from aidm.engines.counters import CounterChange
 from aidm.state.base import PLAYER_ID, Counter, EntityId, Trait
 from aidm.state.creation import Picks
 
@@ -40,7 +40,7 @@ def test_ten_filled_slots_empty_the_hp_and_an_eleventh_is_refused() -> None:
     )
     draft = state.draft()
     apply(draft, fill)
-    assert read_mechanics(draft, Mechanics).sheets[PLAYER_ID].hp.current == 0
+    assert draft.mechanics_as(Mechanics).sheets[PLAYER_ID].hp.current == 0
 
     overloaded = fill.model_copy(update={"amount": 10})
     with pytest.raises(ValueError, match="limit of 10"):
@@ -50,9 +50,8 @@ def test_ten_filled_slots_empty_the_hp_and_an_eleventh_is_refused() -> None:
 def test_deprivation_refuses_recovery_until_the_trait_lifts() -> None:
     _, state = game(CAIRN2E)
     draft = state.draft()
-    mechanics = read_mechanics(draft, Mechanics)
+    mechanics = draft.mechanics_as(Mechanics)
     mechanics.sheets[PLAYER_ID].hp.current = 2
-    write_mechanics(draft, mechanics)
     hurt = draft.committed()
 
     draft = hurt.draft()
@@ -67,16 +66,15 @@ def test_deprivation_refuses_recovery_until_the_trait_lifts() -> None:
 
     draft = hurt.draft()
     apply(draft, heal)
-    assert read_mechanics(draft, Mechanics).sheets[PLAYER_ID].hp.current == 3
+    assert draft.mechanics_as(Mechanics).sheets[PLAYER_ID].hp.current == 3
 
 
 def test_an_attack_takes_armor_off_the_damage_then_hp() -> None:
     _, state = game(CAIRN2E)
     draft = state.draft()
-    mechanics = read_mechanics(draft, Mechanics)
+    mechanics = draft.mechanics_as(Mechanics)
     mechanics.sheets[MARA].hp = Counter(current=10, maximum=10)
     mechanics.sheets[MARA].armor = 1
-    write_mechanics(draft, mechanics)
     ready = draft.committed()
 
     draft = ready.draft()
@@ -88,16 +86,15 @@ def test_an_attack_takes_armor_off_the_damage_then_hp() -> None:
     (dice_fact,) = [fact for fact in facts if fact.kind == "dice_rolled"]
     kept = dice_fact.data["kept"]
     assert isinstance(kept, int)
-    assert read_mechanics(draft, Mechanics).sheets[MARA].hp.current == 10 - max(kept - 1, 0)
+    assert draft.mechanics_as(Mechanics).sheets[MARA].hp.current == 10 - max(kept - 1, 0)
 
 
 def test_damage_past_the_hp_becomes_critical_damage() -> None:
     _, state = game(CAIRN2E)
     draft = state.draft()
-    mechanics = read_mechanics(draft, Mechanics)
+    mechanics = draft.mechanics_as(Mechanics)
     mechanics.sheets[MARA].hp = Counter(current=0, maximum=4)
     mechanics.sheets[MARA].strength = Counter(current=1, maximum=10)
-    write_mechanics(draft, mechanics)
     ready = draft.committed()
 
     draft = ready.draft()
@@ -105,7 +102,7 @@ def test_damage_past_the_hp_becomes_critical_damage() -> None:
     # Any unarmed die empties Mara's 1 strength, and strength at 0 is death outright.
     _, outcome = resolve_attack(draft, attack, Random(0))
 
-    assert read_mechanics(draft, Mechanics).sheets[MARA].strength.current == 0
+    assert draft.mechanics_as(Mechanics).sheets[MARA].strength.current == 0
     assert draft.world.require(MARA).trait("dead") is not None
     assert outcome == "down"
 

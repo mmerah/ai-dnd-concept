@@ -4,7 +4,6 @@ import pytest
 from core_test_support import TWENTYFOURXX, capability, game
 from loner3e_test_support import at_milestone
 
-from aidm.engines.counters import read_mechanics, write_mechanics
 from aidm.engines.twentyfourxx.actions import Attempt
 from aidm.engines.twentyfourxx.advance import Advance
 from aidm.engines.twentyfourxx.mechanics import Mechanics, Sheet
@@ -70,14 +69,14 @@ def test_a_job_raises_one_skill_a_step_and_pays_rolled_credits() -> None:
     advancement = capability(engine)
     ready = at_milestone(state)
     (offer,) = advancement.offers(ready)
-    before = read_mechanics(ready, Mechanics).sheets[PLAYER_ID]
+    before = ready.mechanics_as(Mechanics).sheets[PLAYER_ID]
 
     raise_existing = Advance(skill="Tracking", why="the climb taught them the route")
     draft = ready.draft()
     facts = advancement.resolve(draft, offer, raise_existing, Random(3))
     grown = draft.committed()
 
-    sheet = read_mechanics(grown, Mechanics).sheets[PLAYER_ID]
+    sheet = grown.mechanics_as(Mechanics).sheets[PLAYER_ID]
     assert sheet.skills["Tracking"] == 10
     assert sheet.jobs.current == before.jobs.current + 1
     (dice_fact,) = [fact for fact in facts if fact.kind == "dice_rolled"]
@@ -86,7 +85,7 @@ def test_a_job_raises_one_skill_a_step_and_pays_rolled_credits() -> None:
     take_new = Advance(skill="Lockpicking", why="the job called for it")
     draft = ready.draft()
     advancement.resolve(draft, offer, take_new, Random(4))
-    assert read_mechanics(draft.committed(), Mechanics).sheets[PLAYER_ID].skills["Lockpicking"] == 8
+    assert draft.committed().mechanics_as(Mechanics).sheets[PLAYER_ID].skills["Lockpicking"] == 8
 
 
 def test_a_skill_already_at_d12_is_refused_and_the_refusal_reaches_the_advisor() -> None:
@@ -95,9 +94,8 @@ def test_a_skill_already_at_d12_is_refused_and_the_refusal_reaches_the_advisor()
     ready = at_milestone(state)
 
     draft = ready.draft()
-    mechanics = read_mechanics(draft, Mechanics)
+    mechanics = draft.mechanics_as(Mechanics)
     mechanics.sheets[PLAYER_ID].skills["Climbing"] = 12
-    write_mechanics(draft, mechanics)
     maxed = draft.committed()
 
     (offer,) = advancement.offers(maxed)

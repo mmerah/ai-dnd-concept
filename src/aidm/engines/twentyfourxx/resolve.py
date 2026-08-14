@@ -1,7 +1,6 @@
 from collections.abc import Mapping
 from random import Random
 
-from aidm.engines.counters import read_mechanics
 from aidm.engines.sheets import require_sheet
 from aidm.engines.tags import carriers, tag_key
 from aidm.state.apply import apply_effect, require_actor_here
@@ -35,7 +34,7 @@ def pool_faces(sheet: Sheet, action: Attempt) -> tuple[int, ...]:
 def resolve_attempt(draft: GameState, action: Attempt, rng: Random) -> tuple[list[Fact], Slug]:
     actor = require_actor_here(draft, action.actor_id)
     facts = apply_effect(draft, Reveal(entity_id=action.actor_id))
-    sheet = require_sheet(read_mechanics(draft, Mechanics).sheets, actor)
+    sheet = require_sheet(draft.mechanics_as(Mechanics).sheets, actor)
     known = _known_tags(draft, actor)
     _refuse_unless_ready(actor, action, sheet, known)
 

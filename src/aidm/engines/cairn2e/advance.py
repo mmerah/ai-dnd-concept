@@ -2,7 +2,7 @@ from random import Random
 
 from pydantic import Field
 
-from aidm.engines.counters import counter_fact, read_mechanics, write_mechanics
+from aidm.engines.counters import counter_fact
 from aidm.engines.loader import Offer, ProposalBase, Subsystem
 from aidm.engines.sheets import resolved_threads
 from aidm.state.base import PLAYER_ID, EntityId, Trait, text_slug
@@ -38,7 +38,7 @@ class Cairn2eAdvancement(Subsystem):
         # Growth-driven and deterministic, never inferred by a model: one growth is earned per
         # resolved thread, so the offer tracks the count directly instead of guessing intent.
         earned = resolved_threads(state.world)
-        sheets = read_mechanics(state, Mechanics).sheets
+        sheets = state.mechanics_as(Mechanics).sheets
         return tuple(
             _offer(state, subject_id)
             for subject_id in (PLAYER_ID, *state.world.party())
@@ -50,7 +50,7 @@ class Cairn2eAdvancement(Subsystem):
     ) -> tuple[Fact, ...]:
         del rng  # a growth spends nothing random
         assert isinstance(proposal, Growth)
-        mechanics = read_mechanics(draft, Mechanics)
+        mechanics = draft.mechanics_as(Mechanics)
         sheet = mechanics.sheets[offer.subject_id]
         subject = draft.world.require(offer.subject_id)
         if any(held.name.lower() == proposal.ability.lower() for held in subject.traits):
@@ -72,7 +72,6 @@ class Cairn2eAdvancement(Subsystem):
         )
         sheet.growths.current += 1
         spent = counter_fact(subject, "growths", sheet.growths, 1, "a growth taken")
-        write_mechanics(draft, mechanics)
         return (grown, spent)
 
     def violation(self, state: GameState, offer: Offer, proposal: ProposalBase) -> str | None:

@@ -2,7 +2,7 @@ from random import Random
 
 from pydantic import Field
 
-from aidm.engines.counters import adjust, counter_fact, read_mechanics, write_mechanics
+from aidm.engines.counters import adjust, counter_fact
 from aidm.engines.loader import Offer, ProposalBase, Subsystem
 from aidm.engines.sheets import resolved_threads
 from aidm.state.base import PLAYER_ID, EntityId
@@ -38,7 +38,7 @@ class TwentyfourxxAdvancement(Subsystem):
     def offers(self, state: GameState) -> tuple[Offer, ...]:
         # One job's advance per resolved thread, tracked directly rather than inferred.
         earned = resolved_threads(state.world)
-        sheets = read_mechanics(state, Mechanics).sheets
+        sheets = state.mechanics_as(Mechanics).sheets
         return tuple(
             _offer(state, subject_id)
             for subject_id in (PLAYER_ID, *state.world.party())
@@ -49,7 +49,7 @@ class TwentyfourxxAdvancement(Subsystem):
         self, draft: GameState, offer: Offer, proposal: ProposalBase, rng: Random
     ) -> tuple[Fact, ...]:
         assert isinstance(proposal, Advance)
-        mechanics = read_mechanics(draft, Mechanics)
+        mechanics = draft.mechanics_as(Mechanics)
         sheet = mechanics.sheets[offer.subject_id]
         subject = draft.world.require(offer.subject_id)
 
@@ -71,7 +71,6 @@ class TwentyfourxxAdvancement(Subsystem):
         sheet.jobs.current += 1
         jobs_fact = counter_fact(subject, "jobs", sheet.jobs, 1, "a job's advance taken")
 
-        write_mechanics(draft, mechanics)
         return (grown, dice_fact, *credit_facts, jobs_fact)
 
     def violation(self, state: GameState, offer: Offer, proposal: ProposalBase) -> str | None:

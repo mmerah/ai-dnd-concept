@@ -10,9 +10,7 @@ from aidm.engines.counters import (
     adjust,
     move_pool,
     pool,
-    read_mechanics,
     render_counters,
-    write_mechanics,
 )
 from aidm.state.apply import apply_effect, reveal_target
 from aidm.state.base import Counter, Entity, EntityId, Mutable, Slug, Trait
@@ -303,12 +301,11 @@ def _apply_counter_change(
 
 
 def apply(draft: GameState, effect: Cairn2eEffect) -> list[Fact]:
-    mechanics = read_mechanics(draft, Mechanics)
+    mechanics = draft.mechanics_as(Mechanics)
     if isinstance(effect, CounterChange):
         facts = _apply_counter_change(draft, mechanics, effect)
     else:
         facts = apply_effect(draft, effect)
     # An item picked up or handed over is what fills the slots, and core knows nothing about them.
     facts.extend(check_load(draft, mechanics))
-    write_mechanics(draft, mechanics)
     return facts

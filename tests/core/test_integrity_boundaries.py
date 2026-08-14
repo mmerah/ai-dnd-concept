@@ -18,7 +18,9 @@ from aidm.content.authored import (
     CharacterProfile,
     ScenarioWorld,
 )
+from aidm.engines.loner3e.mechanics import LUCK_MAX, Mechanics
 from aidm.state.base import PLAYER_ID, Entity, EntityId
+from aidm.state.world import GameState
 
 HELD = EntityId("frayed_rope")
 UNHELD = EntityId("silk_rope")
@@ -119,3 +121,35 @@ def test_a_character_knows_the_gear_they_start_with() -> None:
     """Unknown carried gear would be hidden canon inside the inventory the Narrator is shown."""
     with pytest.raises(ValidationError, match="knows the gear they start with"):
         _character(holds=_rope(HELD, known=False), gear_for=HELD)
+
+
+def _luck(state: GameState) -> int:
+    return state.mechanics_as(Mechanics).sheets[PLAYER_ID].luck.current
+
+
+def test_two_reads_in_one_draft_share_one_live_mechanics() -> None:
+    _, state = initialized()
+    draft = state.draft()
+
+    assert draft.mechanics_as(Mechanics) is draft.mechanics_as(Mechanics)
+
+
+def test_a_mutation_with_no_write_back_survives_the_commit() -> None:
+    _, state = initialized()
+    draft = state.draft()
+    draft.mechanics_as(Mechanics).sheets[PLAYER_ID].luck.current = 1
+
+    committed = draft.committed()
+
+    assert _luck(committed) == 1
+    assert Mechanics.model_validate(committed.mechanics).sheets[PLAYER_ID].luck.current == 1
+
+
+def test_a_mutation_against_a_committed_state_reaches_no_save_or_draft() -> None:
+    _, state = initialized()
+    state.mechanics_as(Mechanics).sheets[PLAYER_ID].luck.current = 1
+
+    saved = Mechanics.model_validate(state.model_dump()["mechanics"])
+
+    assert saved.sheets[PLAYER_ID].luck.current == LUCK_MAX
+    assert _luck(state.draft()) == LUCK_MAX

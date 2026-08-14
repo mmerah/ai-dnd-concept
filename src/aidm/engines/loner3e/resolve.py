@@ -2,7 +2,7 @@ from collections.abc import Mapping
 from random import Random
 from typing import Literal
 
-from aidm.engines.counters import adjust, read_mechanics, write_mechanics
+from aidm.engines.counters import adjust
 from aidm.engines.sheets import require_sheet
 from aidm.engines.tags import carriers, tag_key
 from aidm.state.apply import apply_effect, require_actor_here
@@ -77,7 +77,7 @@ def resolve_question(
 ) -> tuple[list[Fact], Slug]:
     actor = require_actor_here(draft, action.actor_id)
     facts = apply_effect(draft, Reveal(entity_id=action.actor_id))
-    mechanics = read_mechanics(draft, Mechanics)
+    mechanics = draft.mechanics_as(Mechanics)
     _ = require_sheet(mechanics.sheets, actor)
     opponent: Entity | None = None
     if action.opponent_id is not None:
@@ -113,7 +113,6 @@ def resolve_question(
         if mechanics.twist.current >= TIES_PER_TWIST:
             mechanics.twist.current = 0
             facts.extend(_twist(draft, actor, rng, twists))
-    write_mechanics(draft, mechanics)
     return facts, outcome
 
 

@@ -4,7 +4,7 @@ import pytest
 from core_test_support import initialized
 
 from aidm.app.session import build_engine
-from aidm.engines.counters import CounterChange, read_mechanics
+from aidm.engines.counters import CounterChange
 from aidm.engines.loader import Engine, engines
 from aidm.engines.loner3e.mechanics import LUCK_MAX, Mechanics, Sheet, apply
 from aidm.state.base import PLAYER_ID, Entity, EntityId
@@ -36,11 +36,11 @@ def test_engine_initialization_and_state_contract() -> None:
     engine, state = initialized()
 
     assert state.engine == engine.id
-    assert read_mechanics(state, Mechanics).sheets[PLAYER_ID].luck.current == LUCK_MAX
+    assert state.mechanics_as(Mechanics).sheets[PLAYER_ID].luck.current == LUCK_MAX
     engine.validate(state)
 
     restored = GameState.model_validate_json(state.model_dump_json())
-    assert restored == state
+    assert restored.model_dump() == state.model_dump()
 
 
 def test_effect_resolution_is_pure_and_renders_every_fact() -> None:
@@ -96,7 +96,7 @@ def test_a_created_actor_is_refused_until_the_engine_seeds_it() -> None:
         engine.seed(grown, entity, Random(0))
     engine.validate(grown)
 
-    mechanics = read_mechanics(grown, Mechanics)
+    mechanics = grown.mechanics_as(Mechanics)
     assert mechanics.sheets[actor.id] == Sheet()
     assert item.id not in mechanics.sheets
 

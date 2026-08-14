@@ -2,24 +2,12 @@ from typing import Annotated, Literal, Protocol, Self
 
 from pydantic import Field, model_validator
 
-from aidm.state.base import Counter, Entity, EntityId, Frozen, Mutable, Slug
+from aidm.state.base import Counter, Entity, EntityId, Frozen, Slug
 from aidm.state.facts import Fact, explained_fact
-from aidm.state.world import GameState
 
 
 class Pools(Protocol):
     def counters(self) -> dict[Slug, Counter]: ...
-
-
-def write_mechanics(state: GameState, mechanics: Mutable) -> None:
-    # Dumping runs no validator, so the dump is validated back: that is the commit gate.
-    payload = mechanics.model_dump(mode="json")
-    _ = type(mechanics).model_validate(payload)
-    state.mechanics = payload
-
-
-def read_mechanics[M: Mutable](state: GameState, model: type[M]) -> M:
-    return model.model_validate(state.mechanics)
 
 
 class CounterChange(Frozen):

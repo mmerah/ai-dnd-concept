@@ -4,7 +4,6 @@ from random import Random
 
 from pydantic import JsonValue
 
-from aidm.engines.counters import read_mechanics, write_mechanics
 from aidm.engines.loader import Engine, EntityRenderer
 from aidm.engines.packs import load_packs, pack_paths
 from aidm.engines.sheets import check_sheets
@@ -54,20 +53,19 @@ class Cairn2eEngine(Engine):
             _ = RULES.validate_python(rules)
 
     def begin(self, state: GameState, rules: Mapping[EntityId, dict[str, JsonValue]]) -> None:
-        write_mechanics(state, build_mechanics(state, rules))
+        state.set_mechanics(build_mechanics(state, rules))
 
     def validate(self, state: GameState) -> None:
-        mechanics = read_mechanics(state, Mechanics)
+        mechanics = state.mechanics_as(Mechanics)
         check_sheets(state, mechanics.sheets, ENGINE_ID)
         check_items(state, mechanics)
         check_load_limits(state, mechanics)
 
     def seed(self, draft: GameState, entity: Entity, rng: Random) -> None:
-        mechanics = read_mechanics(draft, Mechanics)
+        mechanics = draft.mechanics_as(Mechanics)
         if entity.kind != "actor" or entity.id in mechanics.sheets:
             return
         mechanics.sheets[entity.id] = rolled_sheet(rng)
-        write_mechanics(draft, mechanics)
 
     def parse_effect(self, effect: JsonValue) -> Frozen:
         return EFFECTS.validate_python(effect)
@@ -76,7 +74,7 @@ class Cairn2eEngine(Engine):
         return apply(draft, EFFECTS.validate_python(effect))
 
     def renderer(self, state: GameState) -> EntityRenderer:
-        mechanics = read_mechanics(state, Mechanics)
+        mechanics = state.mechanics_as(Mechanics)
         return lambda entity: describe(state, mechanics, entity)
 
     def _resolver(self, plan: TurnPlan) -> Resolver | None:

@@ -6,7 +6,6 @@ from loner3e_test_support import LONER3E
 
 from aidm.app.session import begin_game
 from aidm.content.store import load_character, load_scenario, write_character
-from aidm.engines.counters import read_mechanics
 from aidm.engines.loner3e.mechanics import LUCK_MAX, Mechanics
 from aidm.engines.loner3e.rules import Loner3eEngine
 from aidm.state.base import PLAYER_ID
@@ -35,7 +34,7 @@ def test_a_created_character_plays_through_the_authored_load_path(tmp_path: Path
     character = load_character(tmp_path, "fen", binding)
     scenario = load_scenario(SCENARIOS, "whispering-vault", binding)
     state = begin_game(engine, scenario, character)
-    sheet = read_mechanics(state, Mechanics).sheets[PLAYER_ID]
+    sheet = state.mechanics_as(Mechanics).sheets[PLAYER_ID]
     assert sheet.pack == "srd"
     assert sheet.skills == ("Quiet Hands", "Reads Old Stonework")
     assert sheet.frailties == ("Never Walks Away",)
