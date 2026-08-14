@@ -1,4 +1,3 @@
-import json
 from abc import ABC, abstractmethod
 from collections.abc import Callable, Iterable, Mapping
 from importlib import import_module
@@ -14,8 +13,10 @@ from aidm.content.store import ENCODING
 from aidm.state.base import EngineId, Entity, EntityId, Frozen, Slug
 from aidm.state.creation import CreationStep, Picks
 from aidm.state.facts import Fact
-from aidm.state.plan import Resolution, TurnPlanBase
+from aidm.state.plan import DirectorBeat, DirectorPlan, Resolution
 from aidm.state.world import GameState
+
+from .vocabulary import EFFECT_CALLS, EFFECTS_CARD, ROLLS_CARD, card, translate
 
 ENGINE_MODULES: tuple[str, ...] = (
     "aidm.engines.loner3e.rules",
@@ -23,7 +24,12 @@ ENGINE_MODULES: tuple[str, ...] = (
     "aidm.engines.cairn2e.rules",
 )
 ENGINE = "ENGINE"
-WORLD_EXAMPLES: Path = Path(__file__).parent / "examples.json"
+WORKED_PLANS = (
+    "One plan per turn, each opening its own beat; a later beat of the same turn is the same shape "
+    "without `focus` or `speaker_id`. Most beats need few or no effects, and an empty `effects` is "
+    "a normal answer. But a beat whose fiction starts or ends a lasting state — a condition taking "
+    "hold or passing — must write that trait change: nothing records it otherwise."
+)
 
 type EntityRenderer = Callable[[Entity], str]
 
@@ -81,17 +87,18 @@ class Engine(ABC):
 
     id: ClassVar[EngineId]
     badge: ClassVar[tuple[str, str]]
-    plan_type: type[TurnPlanBase]
-    # What a continuation answers with: the plan's own beat, without the turn's framing.
-    beat_type: type[Frozen]
     engine_dir: ClassVar[Path]
+    # What a beat's `roll` may name: this engine's own vocabulary, by the name a call gives it.
+    actions: ClassVar[Mapping[Slug, type[Frozen]]]
 
     def __init__(self, extra_packs: Path | None = None) -> None:
-        self.director_instructions: str = (
-            engine_text(self.engine_dir / "director.md")
-            + _effect_vocabulary()
-            + _examples(self.engine_dir, self.plan_type)
+        parts = (
+            engine_text(self.engine_dir / "director.md"),
+            card("Rolls", ROLLS_CARD, self.actions),
+            card("Effects", EFFECTS_CARD, EFFECT_CALLS),
+            self._worked_plans(),
         )
+        self.director_instructions: str = "\n\n".join(part for part in parts if part)
         # An engine with content advertises its own lookups; one without teaches the model no tool.
         self.director_toolsets: tuple[AbstractToolset[object], ...] = ()
         self.subsystems: tuple[Subsystem, ...] = ()
@@ -131,12 +138,23 @@ class Engine(ABC):
     def renderer(self, state: GameState) -> EntityRenderer: ...
 
     @abstractmethod
-    def check_beat(self, state: GameState, beat: Frozen) -> str | None:
+    def check_beat(self, state: GameState, beat: DirectorBeat) -> str | None:
         """Must not raise: an output validator that raises kills the turn instead of retrying.
         A plan is a beat with framing on it, so the first beat of a turn comes through here too."""
 
     @abstractmethod
-    def resolve_beat(self, draft: GameState, beat: Frozen, rng: Random) -> Resolution: ...
+    def resolve_beat(self, draft: GameState, beat: DirectorBeat, rng: Random) -> Resolution: ...
+
+    def _worked_plans(self) -> str:
+        path = self.engine_dir / "examples.json"
+        if not path.is_file():
+            return ""
+        plans = TypeAdapter(list[DirectorPlan]).validate_json(engine_text(path))
+        blocks: list[str] = []
+        for number, plan in enumerate(plans, start=1):
+            _ = translate(plan, self.actions)
+            blocks.append(f"Example {number}:\n\n```json\n{plan.model_dump_json(indent=2)}\n```")
+        return "\n\n".join(["## Worked plans", WORKED_PLANS, *blocks]) if blocks else ""
 
 
 def engines() -> tuple[type[Engine], ...]:
@@ -169,36 +187,3 @@ def _engine_class(module: str) -> type[Engine]:
     if not (isinstance(declared, type) and issubclass(declared, Engine)):
         raise ValueError(f"engine module {module!r} declares no {ENGINE}")
     return declared
-
-
-def _examples(engine_dir: Path, plan_type: type[TurnPlanBase]) -> str:
-    path = engine_dir / "examples.json"
-    if not path.is_file():
-        return ""
-    entries = TypeAdapter(list[JsonValue]).validate_json(engine_text(path))
-    blocks: list[str] = []
-    for number, entry in enumerate(entries, start=1):
-        _ = plan_type.model_validate(entry)
-        blocks.append(f"Example {number}:\n\n```json\n{json.dumps(entry, indent=2)}\n```")
-    if not blocks:
-        return ""
-    header = (
-        "## Worked plans\n\nOne plan per turn, each opening its own beat; a later beat of the "
-        "same turn is the same shape without `focus` or `speaker_id`. A field left out sits at "
-        "its default."
-    )
-    return "\n\n" + "\n\n".join([header, *blocks])
-
-
-def _effect_vocabulary() -> str:
-    """Only the world half is shared: what an engine's own effects mean is its own to teach."""
-    entries = TypeAdapter(list[JsonValue]).validate_json(engine_text(WORLD_EXAMPLES))
-    lines = "\n".join(json.dumps(entry) for entry in entries)
-    header = (
-        "## World effects\n\nA worked example of every effect that changes the world. Ids, keys, "
-        "and traits here are illustrative: use the exact ids the scene shows. Most beats need few "
-        "or no effects: an empty `effects` is a normal answer. But a beat whose fiction starts or "
-        "ends a lasting state — a condition taking hold or passing — must write that trait "
-        "change, with or without an action: nothing records it otherwise."
-    )
-    return f"\n\n{header}\n\n```json\n{lines}\n```"

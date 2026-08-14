@@ -1,5 +1,5 @@
 {
-  "save_version": 62,
+  "save_version": 63,
   "facts": [
     {
       "source": "core",
@@ -142,37 +142,41 @@
     {
       "name": "director",
       "output": {
-        "focus": "Kael acts.",
-        "speaker_id": null,
+        "roll": {
+          "name": "save",
+          "args": {
+            "actor_id": "player",
+            "attribute": "dexterity",
+            "risk": "the flagstone grinds and whatever waits past the door hears it"
+          }
+        },
         "effects": [
           {
-            "op": "move",
-            "entity_id": "vault_map",
-            "to_id": null
+            "name": "move",
+            "args": {
+              "entity_id": "vault_map"
+            }
           }
         ],
-        "action": {
-          "act": "save",
-          "actor_id": "player",
-          "attribute": "dexterity",
-          "risk": "the flagstone grinds and whatever waits past the door hears it"
-        }
+        "focus": "Kael acts.",
+        "speaker_id": null
       }
     },
     {
       "name": "beat-1",
       "output": {
+        "roll": null,
         "effects": [
           {
-            "op": "trait-change",
-            "mode": "add",
-            "entity_id": "player",
-            "trait_id": "listening",
-            "text": "(condition) Listening for the next shift of weight behind the door.",
-            "why": ""
+            "name": "trait-change",
+            "args": {
+              "mode": "add",
+              "entity_id": "player",
+              "trait_id": "listening",
+              "text": "(condition) Listening for the next shift of weight behind the door."
+            }
           }
-        ],
-        "action": null
+        ]
       }
     },
     {

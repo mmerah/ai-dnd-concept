@@ -5,7 +5,7 @@ from random import Random
 from aidm.state.apply import fire_hooks
 from aidm.state.base import EntityId, Slug
 from aidm.state.facts import Fact
-from aidm.state.plan import Flow, Resolution
+from aidm.state.plan import Followup, Resolution
 from aidm.state.world import GameState
 
 from .loader import Engine
@@ -18,9 +18,8 @@ class Transacted:
     state: GameState
     resolved: tuple[Fact, ...]
     fired: tuple[Fact, ...]
-    # None when nothing was rolled: the turn's loop stops there, having nothing to react to.
     outcome: Slug | None = None
-    flow: Flow = "continue"
+    followup: Followup = "continue"
 
     @property
     def facts(self) -> tuple[Fact, ...]:
@@ -43,7 +42,7 @@ def transact(
         resolved=resolution.facts,
         fired=tuple(fired),
         outcome=resolution.outcome,
-        flow=resolution.flow,
+        followup=resolution.followup,
     )
 
 

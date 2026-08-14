@@ -1,26 +1,23 @@
 from collections.abc import Sequence
 from random import Random
-from typing import Annotated, Literal, Self
+from typing import Literal, Self
 
 from pydantic import Field, model_validator
 
-from aidm.engines.actions import Action
 from aidm.engines.counters import adjust
-from aidm.engines.loader import Engine
 from aidm.engines.sheets import require_sheet
 from aidm.state.apply import apply_effect, require_actor_here
 from aidm.state.base import PLAYER_ID, Entity, EntityId, Frozen, Slug, Trait
 from aidm.state.dice import roll_pool, roll_sum
 from aidm.state.effects import Reveal
 from aidm.state.facts import Fact, entity_fact
-from aidm.state.plan import Beat, Flow, Resolution, TurnPlanBase
+from aidm.state.plan import Followup, Resolution
 from aidm.state.world import GameState
 
 from .mechanics import (
     DEPRIVED,
     UNARMED_DIE,
     Attribute,
-    Cairn2eEffect,
     Mechanics,
     Sheet,
     armor_of,
@@ -35,11 +32,10 @@ DOOMED: Slug = "doomed"
 GRAVE: frozenset[str] = frozenset({"scar_taken", "critical_damage", "slain", "attribute_emptied"})
 
 
-class Save(Action):
+class Save(Frozen):
     """A roll to avoid a bad outcome: d20 under the attribute, where 1 always passes and 20 always
     fails."""
 
-    act: Literal["save"] = "save"
     actor_id: EntityId = Field(
         description="Exact id of the actor at risk: the player, or an actor here with them; when "
         "two sides oppose each other, whoever is most at risk saves."
@@ -51,15 +47,10 @@ class Save(Action):
     )
     risk: str = Field(min_length=1, description="What the actor avoids by passing, in one line.")
 
-    def resolve(self, engine: Engine, draft: GameState, rng: Random) -> Resolution:
-        del engine
-        return resolve_save(draft, self, rng)
 
-
-class Attack(Action):
+class Attack(Frozen):
     """One attack, which always hits: the weapon die less the target's armor comes off their HP."""
 
-    act: Literal["attack"] = "attack"
     attacker_id: EntityId = Field(
         description="Exact id of the actor striking: the player, or an actor here with them."
     )
@@ -82,26 +73,6 @@ class Attack(Action):
         description="Other actors here striking the same target in the same round; every damage "
         "die is rolled and only the single highest counts.",
     )
-
-    def resolve(self, engine: Engine, draft: GameState, rng: Random) -> Resolution:
-        del engine
-        return resolve_attack(draft, self, rng)
-
-
-type Cairn2eAction = Annotated[Save | Attack, Field(discriminator="act")]
-
-
-class TurnBeat(Beat[Cairn2eEffect, Cairn2eAction]):
-    action: Cairn2eAction | None = Field(
-        default=None,
-        description="The one action this beat resolves: a `save` when the fiction puts an actor "
-        "at risk of a bad outcome, an `attack` when a blow actually lands, or null when nothing "
-        "is risky enough to roll.",
-    )
-
-
-class TurnPlan(TurnBeat, TurnPlanBase):
-    """The turn's framing and its first beat."""
 
 
 class Scar(Frozen):
@@ -268,14 +239,14 @@ def resolve_attack(draft: GameState, action: Attack, rng: Random) -> Resolution:
     damage = max(kept - armor_of(draft, mechanics, target), 0)
     damage_facts, outcome = _damage(draft, mechanics, target, sheet, damage, rng)
     facts.extend(damage_facts)
-    return Resolution(facts=tuple(facts), outcome=outcome, flow=_flow(target, facts))
+    return Resolution(facts=tuple(facts), outcome=outcome, followup=_followup(target, facts))
 
 
-def _flow(target: Entity, facts: Sequence[Fact]) -> Flow:
-    """Only the player's own grave moment stops the turn; an NPC going down is a consequence."""
+def _followup(target: Entity, facts: Sequence[Fact]) -> Followup:
+    """Only the player's own grave moment settles the turn; an NPC going down is a consequence."""
     if target.id != PLAYER_ID:
         return "continue"
-    return "yield-to-player" if any(fact.kind in GRAVE for fact in facts) else "continue"
+    return "settle" if any(fact.kind in GRAVE for fact in facts) else "continue"
 
 
 def attack_faces(

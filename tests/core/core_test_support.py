@@ -71,6 +71,11 @@ def structured(**output: object) -> ModelResponse:
     return ModelResponse(parts=[TextPart(json.dumps(output))])
 
 
+def call(name: str, **args: object) -> dict[str, object]:
+    """One wire call: the vocabulary name, and what it is named with."""
+    return {"name": name, "args": args}
+
+
 def plan(**output: object) -> ModelResponse:
     """The director answers by calling the plan tool, as ToolOutput presents it."""
     args = json.dumps({"focus": "Kael acts.", "effects": [], **output})
@@ -127,6 +132,7 @@ async def played(
     *,
     director: Model,
     beats: Model | None = None,
+    settle: Model | None = None,
     narrator: Model | None = None,
     worldkeeper: Model | None = None,
     rng: Random | None = None,
@@ -135,10 +141,11 @@ async def played(
     """The turn with every role stubbed, built the way the session builds it."""
     config = settings()
     stages = build_stages(engine, config)
-    roles = (stages.director, stages.beat, stages.narrator, stages.worldkeeper)
+    roles = (stages.director, stages.beat, stages.settle, stages.narrator, stages.worldkeeper)
     models = (
         director,
         beats or FunctionModel(ends_the_turn()),
+        settle or FunctionModel(ends_the_turn()),
         narrator or FunctionModel(scripted(text("You wait."))),
         worldkeeper or FunctionModel(scripted(structured(creations=[]))),
     )

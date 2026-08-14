@@ -4,27 +4,26 @@ from random import Random
 from aidm.engines.packs import load_packs, pack_paths
 from aidm.engines.sheet_engine import SheetEngine
 from aidm.engines.sheets import resolved_threads
-from aidm.state.base import PLAYER_ID, Counter, EngineId, Entity
+from aidm.state.base import PLAYER_ID, Counter, EngineId, Entity, Frozen
+from aidm.state.plan import Resolution
 from aidm.state.world import GameState
 
-from .actions import Question, TurnBeat, TurnPlan
+from .actions import Question, resolve_question
 from .advance import Loner3eAdvancement
 from .create import Loner3eCreation
-from .mechanics import EFFECTS, Mechanics, Sheet, describe_entity
+from .mechanics import Mechanics, Sheet, describe_entity
 from .pack import Pack, twist_table
 
 ENGINE_ID: EngineId = EngineId("loner3e")
 
 
-class Loner3eEngine(SheetEngine[Sheet, Question]):
+class Loner3eEngine(SheetEngine[Sheet]):
     id = ENGINE_ID
     badge = ("LONER 3E", "teal-7")
     engine_dir = Path(__file__).parent
-    plan_type = TurnPlan
-    beat_type = TurnBeat
     sheet_type = Sheet
     mechanics_type = Mechanics
-    effects = EFFECTS
+    actions = {"question": Question}
 
     def __init__(self, extra_packs: Path | None = None) -> None:
         super().__init__(extra_packs)
@@ -43,6 +42,11 @@ class Loner3eEngine(SheetEngine[Sheet, Question]):
 
     def describe(self, state: GameState, entity: Entity) -> str:
         return describe_entity(state.mechanics_as(Mechanics), entity)
+
+    def resolve_roll(self, draft: GameState, roll: Frozen, rng: Random) -> Resolution:
+        if not isinstance(roll, Question):
+            raise TypeError(f"{type(roll).__name__} is no loner3e roll")
+        return resolve_question(draft, roll, rng, self.twists(draft))
 
     def twists(self, state: GameState) -> tuple[tuple[str, str], ...]:
         """The player's own table set: an NPC sheet is seeded with the default and never selects."""

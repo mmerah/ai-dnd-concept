@@ -1,11 +1,10 @@
-from typing import Annotated, Literal
+from typing import Literal
 
-from pydantic import Field, TypeAdapter
+from pydantic import Field
 
-from aidm.engines.counters import CounterChange, render_counters
+from aidm.engines.counters import render_counters
 from aidm.engines.sheets import SheetBase, SheetMechanics
 from aidm.state.base import Counter, Entity, Slug
-from aidm.state.effects import WorldOp
 
 STARTING_CREDITS = 2
 DEFAULT_FACE = 6  # an unlisted skill rolls the bare d6
@@ -13,9 +12,6 @@ HINDERED_FACE = 4
 
 type SkillDie = Literal[8, 10, 12]
 LADDER: tuple[SkillDie, ...] = (8, 10, 12)
-
-type TwentyfourxxEffect = Annotated[WorldOp | CounterChange, Field(discriminator="op")]
-EFFECTS: TypeAdapter[TwentyfourxxEffect] = TypeAdapter(TwentyfourxxEffect)
 
 
 class Sheet(SheetBase):

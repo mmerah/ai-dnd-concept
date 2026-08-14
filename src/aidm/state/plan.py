@@ -1,9 +1,8 @@
 import json
-from collections.abc import Callable, Sequence
-from random import Random
+from collections.abc import Callable
 from typing import Literal, cast
 
-from pydantic import Field, ValidationError, model_validator
+from pydantic import Field, JsonValue, ValidationError, model_validator
 
 from .base import EntityId, Frozen, Slug
 from .facts import Fact
@@ -11,13 +10,12 @@ from .world import GameState
 
 
 class Authored(Frozen):
-    """Anything the Director writes: one turn's framing, or one of its beats."""
+    """Anything the Director writes: one turn's framing, one of its beats, or a call inside one."""
 
     @model_validator(mode="before")
     @classmethod
     def _decode_stringified_fields(cls, data: object) -> object:
-        """Some OpenAI-compatible backends serialize a tool call's nested arguments as JSON
-        strings; the payload inside is valid, so decode it instead of dying on the transport."""
+        """Some backends serialize a tool call's nested arguments as JSON; the payload is valid."""
         if not isinstance(data, dict):
             return data
         decoded = cast("dict[object, object]", data).copy()
@@ -33,8 +31,35 @@ class Authored(Frozen):
         return decoded
 
 
-class TurnPlanBase(Authored):
-    """How the turn is framed. What it does is its beats."""
+class RuleCall(Authored):
+    """One call into the engine's vocabulary: what is called, and what it is called with."""
+
+    name: Slug = Field(description="Exact name of the call, as the vocabulary below spells it.")
+    args: dict[str, JsonValue] = Field(
+        default_factory=dict,
+        description="Its arguments: exactly the keys the vocabulary lists under that name, and no "
+        "others. Empty when every argument sits at its default.",
+    )
+
+
+class DirectorBeat(Authored):
+    """One thing put to the dice and what it causes. A turn is one beat, or several when what the
+    dice settled asks for another."""
+
+    roll: RuleCall | None = Field(
+        default=None,
+        description="The one thing this beat puts to the dice, or null when nothing that happens "
+        "is uncertain enough to roll.",
+    )
+    effects: tuple[RuleCall, ...] = Field(
+        default=(),
+        description="What this beat causes in the world, applied once the roll has settled. Empty "
+        "when nothing changes.",
+    )
+
+
+class DirectorPlan(DirectorBeat):
+    """How the turn is framed, and its first beat."""
 
     focus: str = Field(
         description="1-2 sentences: what the player is reaching for and what this turn is about."
@@ -48,57 +73,13 @@ class TurnPlanBase(Authored):
     )
 
 
-class Beat[E, A](Authored):
-    """One action and what it causes, over the engine's own vocabulary. A turn is one beat, or
-    several when what the dice settled asks for another."""
-
-    effects: tuple[E, ...] = Field(
-        description="What this beat causes in the world, applied once the action has settled. "
-        "Empty when nothing changes."
-    )
-    action: A | None = None
-
-
-type Flow = Literal["continue", "yield-to-player"]
+type Followup = Literal["none", "settle", "continue"]
 
 
 class Resolution(Frozen):
-    """What one resolution settled, and whether the turn may go on without asking the player."""
-
     facts: tuple[Fact, ...] = ()
     outcome: Slug | None = None
-    flow: Flow = "continue"
-
-
-type Apply[E] = Callable[[GameState, E], list[Fact]]
-type Resolver = Callable[[GameState, Random], Resolution]
-
-
-def apply_all[E](draft: GameState, effects: Sequence[E], apply: Apply[E]) -> list[Fact]:
-    return [fact for effect in effects for fact in apply(draft, effect)]
-
-
-def check_beat[E, A](
-    state: GameState, beat: Beat[E, A], apply: Apply[E], resolve: Resolver | None
-) -> str | None:
-    """One trial in the order the beat runs: a trial roll first, then what it causes."""
-
-    def played(draft: GameState) -> None:
-        if resolve is not None:
-            _ = resolve(draft, Random(0))
-        _ = apply_all(draft, beat.effects, apply)
-
-    return check_draft(state, played)
-
-
-def resolve_beat[E, A](
-    draft: GameState, beat: Beat[E, A], apply: Apply[E], resolve: Resolver | None, rng: Random
-) -> Resolution:
-    if resolve is None:
-        return Resolution(facts=tuple(apply_all(draft, beat.effects, apply)))
-    settled = resolve(draft, rng)
-    facts = (*settled.facts, *apply_all(draft, beat.effects, apply))
-    return Resolution(facts=facts, outcome=settled.outcome, flow=settled.flow)
+    followup: Followup = "continue"
 
 
 def check_draft(

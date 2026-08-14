@@ -104,7 +104,8 @@ def test_damage_past_the_hp_becomes_critical_damage() -> None:
     assert draft.mechanics_as(Mechanics).sheets[MARA].strength.current == 0
     assert draft.world.require(MARA).trait("dead") is not None
     assert resolution.outcome == "down"
-    assert resolution.flow == "continue"  # an NPC going down is a consequence, not an interruption
+    # An NPC going down is a consequence, not an interruption.
+    assert resolution.followup == "continue"
 
 
 def test_a_blow_that_lands_on_exactly_0_hp_takes_a_scar() -> None:
@@ -119,7 +120,7 @@ def test_a_blow_that_lands_on_exactly_0_hp_takes_a_scar() -> None:
     (scar_fact,) = [fact for fact in resolution.facts if fact.kind == "scar_taken"]
     assert draft.world.require(PLAYER_ID).trait(str(scar_fact.data["scar"])) is not None
     assert len(draft.world.pending_notes) > before
-    assert resolution.flow == "yield-to-player"
+    assert resolution.followup == "settle"
 
 
 def test_creation_builds_a_character_the_engine_can_read() -> None:

@@ -8,9 +8,9 @@ from aidm.config import Settings
 from aidm.engines.loader import Engine
 from aidm.engines.transact import transact
 from aidm.state.apply import apply_effect
-from aidm.state.base import Entity, EntityId, Frozen, slug, text_slug
+from aidm.state.base import Entity, EntityId, slug, text_slug
 from aidm.state.facts import CORE, Fact, narrator_evidence
-from aidm.state.plan import Resolution
+from aidm.state.plan import DirectorBeat, Resolution
 from aidm.state.turn import Creation, MemoryProposal, StepTrace, Turn, WorldkeeperReport
 from aidm.state.world import Exchange, GameState, Memory
 
@@ -100,12 +100,10 @@ async def run_turn(
     announce("resolve")
     beats = [transact(engine, draft, _resolver(engine, plan, rng), rng)]
     draft = beats[-1].state.draft()
-    # An outcome of None means nothing was rolled, so there is no consequence to ask about.
-    while (
-        beats[-1].outcome is not None
-        and beats[-1].flow == "continue"
-        and len(beats) < settings.max_beats
-    ):
+    # A roll earns another beat; the cap and a roll that asks to settle both earn one last one.
+    while beats[-1].followup != "none":
+        last = beats[-1].followup == "settle" or len(beats) >= settings.max_beats
+        stage = stages.settle if last else stages.beat
         announce("beat")
         beat_prompt = prompts.render_director(
             SceneSnapshot.of(draft),
@@ -114,12 +112,14 @@ async def run_turn(
             prompt,
             happened=narrator_evidence(beats[-1].facts),
         )
-        beat = await stages.beat.run(beat_prompt, PlanContext(engine=engine, state=draft), history)
+        beat = await stage.run(beat_prompt, PlanContext(engine=engine, state=draft), history)
         draft.world.pending_notes = ()
         steps.append(_traced(f"beat-{len(beats)}", beat_prompt, beat))
         announce("resolve")
         beats.append(transact(engine, draft, _resolver(engine, beat, rng), rng))
         draft = beats[-1].state.draft()
+        if last:
+            break
 
     facts = [fact for beat in beats for fact in beat.facts]
     steps.append(
@@ -184,7 +184,7 @@ async def run_turn(
     )
 
 
-def _resolver(engine: Engine, beat: Frozen, rng: Random) -> Callable[[GameState], Resolution]:
+def _resolver(engine: Engine, beat: DirectorBeat, rng: Random) -> Callable[[GameState], Resolution]:
     return lambda draft: engine.resolve_beat(draft, beat, rng)
 
 

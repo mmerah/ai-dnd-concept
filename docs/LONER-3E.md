@@ -901,8 +901,9 @@ stands. Nothing diverges silently: a rule not listed here is implemented as prin
    decides when to ask the Oracle.
 6. **A twist interrupts the same turn, a beat late.** The SRD has a twist interrupt the scene the
    moment it fires; here it fires inside a beat and reaches the Director as a scenario note on the
-   next Director call, so it interrupts the same turn — except when it fires in the last beat a
-   turn resolves, where no further call renders the note and it lands the turn after.
+   next Director call, so it always interrupts the same turn: every rolled beat is followed by
+   another Director call, and the last one — whether the roll asked to settle or the beat cap cut
+   the loop short — is a settle beat that may write what the twist caused but may not roll again.
 7. **One game-wide Twist Counter.** The SRD's counter belongs to the solo player, who is the only
    one rolling. Here any actor can be the subject of a question, so a single tally covers every
    roll — a tie anywhere moves the same counter.

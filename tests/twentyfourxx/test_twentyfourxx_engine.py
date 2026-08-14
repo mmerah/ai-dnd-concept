@@ -146,7 +146,7 @@ def test_bad_luck_that_bites_hands_the_turn_back_even_when_the_attempt_succeeded
     resolution = resolve_attempt(state.draft(), action, Random(6))
 
     assert resolution.outcome == "success"
-    assert resolution.flow == "yield-to-player"
+    assert resolution.followup == "settle"
 
 
 def test_a_standalone_luck_test_needs_no_attempt_and_only_trouble_hands_the_turn_back() -> None:
@@ -156,17 +156,17 @@ def test_a_standalone_luck_test_needs_no_attempt_and_only_trouble_hands_the_turn
     draft = state.draft()
     trouble = resolve_luck_test(draft, action, Random(2))
     assert trouble.outcome == "trouble"
-    assert trouble.flow == "yield-to-player"
+    assert trouble.followup == "settle"
     assert len(draft.world.pending_notes) == 1
 
     signs = resolve_luck_test(state.draft(), action, Random(0))
     assert signs.outcome == "signs"
-    assert signs.flow == "continue"
+    assert signs.followup == "continue"
 
     draft = state.draft()
     clear = resolve_luck_test(draft, action, Random(5))
     assert clear.outcome == "clear"
-    assert clear.flow == "continue"
+    assert clear.followup == "continue"
     assert draft.world.pending_notes == ()
 
 

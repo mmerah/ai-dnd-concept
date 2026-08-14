@@ -1,5 +1,5 @@
 {
-  "save_version": 62,
+  "save_version": 63,
   "facts": [
     {
       "source": "core",
@@ -174,40 +174,44 @@
     {
       "name": "director",
       "output": {
-        "focus": "Kael acts.",
-        "speaker_id": null,
+        "roll": {
+          "name": "attempt",
+          "args": {
+            "actor_id": "player",
+            "goal": "Listen at the vault door without being heard",
+            "skill": "Stealth",
+            "helped": "Relic Hunter",
+            "hindered": "",
+            "luck_test": "something behind the door is already listening back"
+          }
+        },
         "effects": [
           {
-            "op": "move",
-            "entity_id": "vault_map",
-            "to_id": null
+            "name": "move",
+            "args": {
+              "entity_id": "vault_map"
+            }
           }
         ],
-        "action": {
-          "act": "attempt",
-          "actor_id": "player",
-          "goal": "Listen at the vault door without being heard",
-          "skill": "Stealth",
-          "helped": "Relic Hunter",
-          "hindered": "",
-          "luck_test": "something behind the door is already listening back"
-        }
+        "focus": "Kael acts.",
+        "speaker_id": null
       }
     },
     {
       "name": "beat-1",
       "output": {
+        "roll": null,
         "effects": [
           {
-            "op": "trait-change",
-            "mode": "add",
-            "entity_id": "player",
-            "trait_id": "listening",
-            "text": "(condition) Listening for the next shift of weight behind the door.",
-            "why": ""
+            "name": "trait-change",
+            "args": {
+              "mode": "add",
+              "entity_id": "player",
+              "trait_id": "listening",
+              "text": "(condition) Listening for the next shift of weight behind the door."
+            }
           }
-        ],
-        "action": null
+        ]
       }
     },
     {

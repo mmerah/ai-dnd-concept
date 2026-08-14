@@ -4,27 +4,26 @@ from random import Random
 from aidm.engines.packs import load_packs, pack_paths
 from aidm.engines.sheet_engine import SheetEngine
 from aidm.engines.sheets import resolved_threads
-from aidm.state.base import Counter, EngineId, Entity
+from aidm.state.base import Counter, EngineId, Entity, Frozen
+from aidm.state.plan import Resolution
 from aidm.state.world import GameState
 
-from .actions import TurnBeat, TurnPlan, TwentyfourxxAction
+from .actions import Attempt, LuckTest, resolve_attempt, resolve_luck_test
 from .advance import TwentyfourxxAdvancement
 from .create import TwentyfourxxCreation
-from .mechanics import EFFECTS, Mechanics, Sheet, describe_entity
+from .mechanics import Mechanics, Sheet, describe_entity
 from .pack import Pack
 
 ENGINE_ID: EngineId = EngineId("twentyfourxx")
 
 
-class TwentyfourxxEngine(SheetEngine[Sheet, TwentyfourxxAction]):
+class TwentyfourxxEngine(SheetEngine[Sheet]):
     id = ENGINE_ID
     badge = ("24XX", "indigo-7")
     engine_dir = Path(__file__).parent
-    plan_type = TurnPlan
-    beat_type = TurnBeat
     sheet_type = Sheet
     mechanics_type = Mechanics
-    effects = EFFECTS
+    actions = {"attempt": Attempt, "luck-test": LuckTest}
 
     def __init__(self, extra_packs: Path | None = None) -> None:
         super().__init__(extra_packs)
@@ -39,6 +38,15 @@ class TwentyfourxxEngine(SheetEngine[Sheet, TwentyfourxxAction]):
 
     def describe(self, state: GameState, entity: Entity) -> str:
         return describe_entity(state.mechanics_as(Mechanics), entity)
+
+    def resolve_roll(self, draft: GameState, roll: Frozen, rng: Random) -> Resolution:
+        match roll:
+            case Attempt():
+                return resolve_attempt(draft, roll, rng)
+            case LuckTest():
+                return resolve_luck_test(draft, roll, rng)
+            case _:
+                raise TypeError(f"{type(roll).__name__} is no 24xx roll")
 
 
 ENGINE = TwentyfourxxEngine

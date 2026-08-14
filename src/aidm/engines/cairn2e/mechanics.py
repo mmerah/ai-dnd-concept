@@ -1,6 +1,6 @@
 from collections.abc import Mapping
 from random import Random
-from typing import Annotated, Literal, Self
+from typing import Literal, Self
 
 from pydantic import Field, JsonValue, TypeAdapter, model_validator
 
@@ -13,10 +13,10 @@ from aidm.engines.counters import (
     render_counters,
 )
 from aidm.engines.sheets import SheetBase, SheetMechanics
+from aidm.engines.vocabulary import EngineEffect
 from aidm.state.apply import apply_effect, reveal_target
 from aidm.state.base import Counter, Entity, EntityId, Mutable, Slug, Trait
 from aidm.state.dice import roll_sum
-from aidm.state.effects import WorldOp
 from aidm.state.facts import Fact, entity_fact
 from aidm.state.world import GameState
 
@@ -27,9 +27,6 @@ DEPRIVED: Slug = "deprived"
 
 type DamageDie = Literal[0, 4, 6, 8, 10, 12]
 type Attribute = Literal["strength", "dexterity", "willpower"]
-
-type Cairn2eEffect = Annotated[WorldOp | CounterChange, Field(discriminator="op")]
-EFFECTS: TypeAdapter[Cairn2eEffect] = TypeAdapter(Cairn2eEffect)
 
 
 class Sheet(SheetBase):
@@ -300,7 +297,7 @@ def _apply_counter_change(
     return [*seen, *moved, *collapse_facts]
 
 
-def apply(draft: GameState, effect: Cairn2eEffect) -> list[Fact]:
+def apply(draft: GameState, effect: EngineEffect) -> list[Fact]:
     mechanics = draft.mechanics_as(Mechanics)
     if isinstance(effect, CounterChange):
         facts = _apply_counter_change(draft, mechanics, effect)

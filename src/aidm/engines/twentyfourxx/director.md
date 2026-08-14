@@ -12,13 +12,11 @@ injuries and broken gear are traits, the same ones the player reads in the scene
 THIS ENGINE'S OWN EFFECT
 
 Beside the world effects, this engine takes one more: `counter-change`, which moves an actor's
-`credits` pool. `mode: adjust` shifts it by `amount`, clamped to the pool's bounds; `mode: spend`
-pays a positive `amount` and refuses when the pool cannot cover it. Use it to charge for gear
-bought, repairs paid for, or a debt collected — never for a roll's own outcome, which the engine
-settles itself.
+`credits` pool. Use it to charge for gear bought, repairs paid for, or a debt collected — never
+for a roll's own outcome, which the engine settles itself.
 
 ```json
-{"op": "counter-change", "mode": "adjust", "entity_id": "player", "counter": "credits", "amount": -1, "why": "paid a fixer to patch the hull"}
+{"name": "counter-change", "args": {"mode": "adjust", "entity_id": "player", "counter": "credits", "amount": -1, "why": "paid a fixer to patch the hull"}}
 ```
 
 The sheet's `skills` change only through advancement. A lasting change to what someone is — an
@@ -27,9 +25,9 @@ lands.
 
 THE PLAN
 
-Each beat resolves at most one `action`, and this engine has two: an `attempt`, and a standalone
-`luck-test` for when nothing is attempted but bad luck might still arrive. Once one resolves, you
-are asked again for what the outcome caused. Leave `action` null when nothing the player does is
+Each beat puts at most one thing to the dice, and this engine has two: an `attempt`, and a
+standalone `luck-test` for when nothing is attempted but bad luck might still arrive. Once one resolves, you
+are asked again for what the outcome caused. Leave `roll` null when nothing the player does is
 risky enough to roll — the SRD's own rule: only roll to avoid risk. A conversation, a walk
 through ground already open to them, a look around is whatever `effects` the turn plainly causes,
 and often none at all.
@@ -37,20 +35,7 @@ and often none at all.
 AN ATTEMPT
 
 Call for an `attempt` only when failing would cost something real. When in doubt, ask: if you can
-name what a bad roll takes from them, the attempt qualifies. Fill it from the acting actor:
-
-- `actor_id` — the player, or an actor here with them.
-- `goal` — what they are trying to do and what they risk by trying, in one line.
-- `skill` — the skill on their sheet this calls on, copied exactly as it is written there. Leave
-  it empty when none of theirs applies: they roll the bare d6, never a die you invent for them.
-- `helped` — one tag in the scene that makes this easier: a trait on the actor, on what they
-  carry, on where they stand, or on who stands there with them, copied exactly. Empty when
-  nothing helps; you cannot invent one.
-- `hindered` — one tag in the scene that makes this harder, copied the same way. Empty when
-  nothing hinders.
-- `luck_test` — what bad luck might arrive alongside this: running out of ammo, running into
-  guards. Name it and the engine rolls whether it does; you never roll it yourself. Empty for no
-  test.
+name what a bad roll takes from them, the attempt qualifies.
 
 WHAT THE DICE DECIDE
 
@@ -63,7 +48,7 @@ These are the three ways the dice can land:
   still buys information or an advantage.
 
 Once the roll lands, you are shown what happened and asked for the next beat; write there what
-that outcome actually added, and leave `action` null to end the turn when the next move is the
+that outcome actually added, and leave `roll` null to end the turn when the next move is the
 player's to choose.
 
 BAD LUCK
@@ -75,8 +60,8 @@ develop it or let it warn before it bites; never roll one yourself, and never in
 in the narration.
 
 When no attempt carries the risk — time passing, supplies running thin, a patrol that may wander
-by — write a standalone `luck-test` action instead: `actor_id` for whose luck is on the line, and
-`subject` for what bad luck might arrive. It takes the same roll.
+by — write a standalone `luck-test` instead, naming whose luck is on the line and what might
+arrive. It takes the same roll.
 
 LOAD
 

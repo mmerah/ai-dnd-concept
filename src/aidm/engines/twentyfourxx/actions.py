@@ -1,31 +1,27 @@
 from collections.abc import Mapping
 from random import Random
-from typing import Annotated, Literal
 
 from pydantic import Field
 
-from aidm.engines.actions import Action
-from aidm.engines.loader import Engine
 from aidm.engines.sheets import require_sheet
 from aidm.engines.tags import carriers, tag_key
 from aidm.state.apply import apply_effect, require_actor_here
-from aidm.state.base import PLAYER_ID, Entity, EntityId, Slug
+from aidm.state.base import PLAYER_ID, Entity, EntityId, Frozen, Slug
 from aidm.state.dice import roll_pool
 from aidm.state.effects import Reveal
 from aidm.state.facts import Fact, entity_fact
-from aidm.state.plan import Beat, Flow, Resolution, TurnPlanBase
+from aidm.state.plan import Followup, Resolution
 from aidm.state.world import GameState
 
-from .mechanics import DEFAULT_FACE, HINDERED_FACE, Mechanics, Sheet, TwentyfourxxEffect
+from .mechanics import DEFAULT_FACE, HINDERED_FACE, Mechanics, Sheet
 
 TROUBLE = 2  # 1-2 on the bad-luck die
 SIGNS = 4  # 3-4 on the bad-luck die
 
 
-class Attempt(Action):
+class Attempt(Frozen):
     """One risky attempt, answered by the highest die of a pool."""
 
-    act: Literal["attempt"] = "attempt"
     actor_id: EntityId = Field(
         description="Exact id of the actor attempting this: the player, or an actor here."
     )
@@ -55,15 +51,10 @@ class Attempt(Action):
         "into guards. The engine rolls whether it does. Empty for no test.",
     )
 
-    def resolve(self, engine: Engine, draft: GameState, rng: Random) -> Resolution:
-        del engine
-        return resolve_attempt(draft, self, rng)
 
-
-class LuckTest(Action):
+class LuckTest(Frozen):
     """The SRD's standalone bad-luck test, for a beat where nothing is attempted."""
 
-    act: Literal["luck-test"] = "luck-test"
     actor_id: EntityId = Field(
         description="Exact id of the actor whose luck is tested: the player, or an actor here."
     )
@@ -72,26 +63,6 @@ class LuckTest(Action):
         description="What bad luck might arrive — running out of ammo, running into guards. The "
         "engine rolls whether it does.",
     )
-
-    def resolve(self, engine: Engine, draft: GameState, rng: Random) -> Resolution:
-        del engine
-        return resolve_luck_test(draft, self, rng)
-
-
-type TwentyfourxxAction = Annotated[Attempt | LuckTest, Field(discriminator="act")]
-
-
-class TurnBeat(Beat[TwentyfourxxEffect, TwentyfourxxAction]):
-    action: TwentyfourxxAction | None = Field(
-        default=None,
-        description="The one action this beat resolves: an `attempt` when what an actor does is "
-        "risky, a `luck-test` when only bad luck is in question, or null when nothing calls for "
-        "the dice.",
-    )
-
-
-class TurnPlan(TurnBeat, TurnPlanBase):
-    """The turn's framing and its first beat."""
 
 
 def outcome_for(kept: int) -> Slug:
@@ -129,15 +100,13 @@ def resolve_attempt(draft: GameState, action: Attempt, rng: Random) -> Resolutio
         )
     )
 
-    flow: Flow = (
-        "yield-to-player" if outcome == "disaster" and actor.id == PLAYER_ID else "continue"
-    )
+    followup: Followup = "settle" if outcome == "disaster" and actor.id == PLAYER_ID else "continue"
     if action.luck_test:
         tested, luck = _bad_luck(draft, actor, action.luck_test, rng)
         facts.extend(tested)
         if luck == "trouble":
-            flow = "yield-to-player"
-    return Resolution(facts=tuple(facts), outcome=outcome, flow=flow)
+            followup = "settle"
+    return Resolution(facts=tuple(facts), outcome=outcome, followup=followup)
 
 
 def resolve_luck_test(draft: GameState, action: LuckTest, rng: Random) -> Resolution:
@@ -145,8 +114,8 @@ def resolve_luck_test(draft: GameState, action: LuckTest, rng: Random) -> Resolu
     facts = apply_effect(draft, Reveal(entity_id=action.actor_id))
     tested, outcome = _bad_luck(draft, actor, action.subject, rng)
     facts.extend(tested)
-    flow: Flow = "yield-to-player" if outcome == "trouble" else "continue"
-    return Resolution(facts=tuple(facts), outcome=outcome, flow=flow)
+    followup: Followup = "settle" if outcome == "trouble" else "continue"
+    return Resolution(facts=tuple(facts), outcome=outcome, followup=followup)
 
 
 def _known_tags(draft: GameState, actor: Entity) -> dict[str, str]:

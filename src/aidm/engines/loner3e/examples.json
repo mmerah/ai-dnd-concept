@@ -2,32 +2,38 @@
   {
     "focus": "Kael works the sealed door before whatever is behind it notices him.",
     "effects": [],
-    "action": {
-      "act": "question",
-      "actor_id": "player",
-      "question": "Does he get the sealed door open before the whispering finds him?",
-      "leverage": [
-        "Reads Old Stonework",
-        "Pry Bar"
-      ],
-      "trouble": [
-        "Never Walks Away"
-      ],
-      "opponent_id": null
+    "roll": {
+      "name": "question",
+      "args": {
+        "actor_id": "player",
+        "question": "Does he get the sealed door open before the whispering finds him?",
+        "leverage": [
+          "Reads Old Stonework",
+          "Pry Bar"
+        ],
+        "trouble": [
+          "Never Walks Away"
+        ],
+        "opponent_id": null
+      }
     }
   },
   {
     "focus": "Kael turns out the abbot's desk for whatever the abbey wanted hidden there.",
     "effects": [
       {
-        "op": "reveal",
-        "entity_id": "vault_map"
+        "name": "reveal",
+        "args": {
+          "entity_id": "vault_map"
+        }
       },
       {
-        "op": "move",
-        "entity_id": "vault_map"
+        "name": "move",
+        "args": {
+          "entity_id": "vault_map"
+        }
       }
     ],
-    "action": null
+    "roll": null
   }
 ]

@@ -1,23 +1,21 @@
 from collections.abc import Mapping
 from random import Random
-from typing import Literal, Protocol, runtime_checkable
+from typing import Literal
 
 from pydantic import Field
 
-from aidm.engines.actions import Action
 from aidm.engines.counters import adjust
-from aidm.engines.loader import Engine
 from aidm.engines.sheets import require_sheet
 from aidm.engines.tags import carriers, tag_key
 from aidm.state.apply import apply_effect, require_actor_here
-from aidm.state.base import Entity, EntityId, Slug
+from aidm.state.base import Entity, EntityId, Frozen, Slug
 from aidm.state.dice import roll_pool
 from aidm.state.effects import Reveal
 from aidm.state.facts import Fact, entity_fact
-from aidm.state.plan import Beat, Resolution, TurnPlanBase
+from aidm.state.plan import Resolution
 from aidm.state.world import GameState
 
-from .mechanics import LUCK_MAX, TIES_PER_TWIST, Loner3eEffect, Mechanics
+from .mechanics import LUCK_MAX, TIES_PER_TWIST, Mechanics
 
 HARM: dict[Slug, int] = {
     "yes-and": 3,
@@ -31,10 +29,9 @@ HARM: dict[Slug, int] = {
 type Position = Literal["advantage", "neutral", "disadvantage"]
 
 
-class Question(Action):
+class Question(Frozen):
     """A closed dramatic question, answered by Chance d6 against Risk d6."""
 
-    act: Literal["question"] = "question"
     actor_id: EntityId = Field(
         description="Exact id of the actor the question is about: the player, or an actor here."
     )
@@ -59,33 +56,6 @@ class Question(Action):
         description="Exact id of the actor opposing this, set only when the question is one "
         "exchange of a conflict; the engine then takes luck off whichever side loses it.",
     )
-
-    def resolve(self, engine: Engine, draft: GameState, rng: Random) -> Resolution:
-        return resolve_question(draft, self, rng, twist_table_of(engine, draft))
-
-
-class TurnBeat(Beat[Loner3eEffect, Question]):
-    action: Question | None = Field(
-        default=None,
-        description="The one question this beat resolves, or null when nothing is uncertain "
-        "enough to ask.",
-    )
-
-
-class TurnPlan(TurnBeat, TurnPlanBase):
-    """The turn's framing and its first beat."""
-
-
-@runtime_checkable
-class TwistTables(Protocol):
-    def twists(self, state: GameState) -> tuple[tuple[str, str], ...]: ...
-
-
-def twist_table_of(engine: Engine, state: GameState) -> tuple[tuple[str, str], ...]:
-    """The twist table is the engine's content, not the state's, so the action reads it here."""
-    if not isinstance(engine, TwistTables):
-        raise ValueError("the loner3e question needs the loner3e engine")
-    return engine.twists(state)
 
 
 def twist_pairing(

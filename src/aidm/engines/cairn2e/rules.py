@@ -6,17 +6,17 @@ from pydantic import JsonValue
 
 from aidm.engines.packs import load_packs, pack_paths
 from aidm.engines.sheet_engine import SheetEngine
-from aidm.state.base import EngineId, Entity, EntityId
+from aidm.engines.vocabulary import EngineEffect
+from aidm.state.base import EngineId, Entity, EntityId, Frozen
 from aidm.state.facts import Fact
+from aidm.state.plan import Resolution
 from aidm.state.world import GameState
 
-from .actions import Cairn2eAction, TurnBeat, TurnPlan
+from .actions import Attack, Save, resolve_attack, resolve_save
 from .advance import Cairn2eAdvancement
 from .create import Cairn2eCreation
 from .mechanics import (
-    EFFECTS,
     RULES,
-    Cairn2eEffect,
     Mechanics,
     Sheet,
     build_mechanics,
@@ -31,15 +31,13 @@ from .pack import Pack
 ENGINE_ID: EngineId = EngineId("cairn2e")
 
 
-class Cairn2eEngine(SheetEngine[Sheet, Cairn2eAction]):
+class Cairn2eEngine(SheetEngine[Sheet]):
     id = ENGINE_ID
     badge = ("CAIRN 2E", "green-8")
     engine_dir = Path(__file__).parent
-    plan_type = TurnPlan
-    beat_type = TurnBeat
     sheet_type = Sheet
     mechanics_type = Mechanics
-    effects = EFFECTS
+    actions = {"save": Save, "attack": Attack}
 
     def __init__(self, extra_packs: Path | None = None) -> None:
         super().__init__(extra_packs)
@@ -61,7 +59,7 @@ class Cairn2eEngine(SheetEngine[Sheet, Cairn2eAction]):
         check_items(state, mechanics)
         check_load_limits(state, mechanics)
 
-    def apply(self, draft: GameState, effect: Cairn2eEffect) -> list[Fact]:
+    def apply(self, draft: GameState, effect: EngineEffect) -> list[Fact]:
         """Cairn's own: deprivation refusals, item pools, and the load check the base has not."""
         return apply_mechanics(draft, effect)
 
@@ -71,6 +69,15 @@ class Cairn2eEngine(SheetEngine[Sheet, Cairn2eAction]):
 
     def describe(self, state: GameState, entity: Entity) -> str:
         return describe_entity(state, state.mechanics_as(Mechanics), entity)
+
+    def resolve_roll(self, draft: GameState, roll: Frozen, rng: Random) -> Resolution:
+        match roll:
+            case Save():
+                return resolve_save(draft, roll, rng)
+            case Attack():
+                return resolve_attack(draft, roll, rng)
+            case _:
+                raise TypeError(f"{type(roll).__name__} is no cairn2e roll")
 
 
 ENGINE = Cairn2eEngine

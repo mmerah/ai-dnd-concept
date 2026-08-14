@@ -6,30 +6,18 @@ from pydantic_ai.toolsets import AbstractToolset, FunctionToolset
 
 from aidm.engines.loader import engine_ids
 from aidm.state.base import EngineId, EntityDetail
+from aidm.state.plan import DirectorBeat, DirectorPlan
 from aidm.state.turn import WorldkeeperReport
 
 # A role's output schema is sent to the model, so its field descriptions steer it exactly as the
-# instructions do. These are engine-independent; the plan and proposal types are the engine's own.
+# instructions do. Every one of these is engine-independent: the Director's wire contract is one
+# shape for every engine, and what each engine's calls mean is taught by its instructions.
 SHARED_OUTPUTS: dict[str, type[BaseModel]] = {
     "worldkeeper_report": WorldkeeperReport,
     "entity_detail": EntityDetail,
+    "turn_plan": DirectorPlan,
+    "turn_beat": DirectorBeat,
 }
-
-
-@pytest.mark.parametrize("engine_id", engine_ids())
-def test_the_plan_schema_the_director_answers_with_is_unchanged(engine_id: EngineId) -> None:
-    engine, _ = game(engine_id)
-    golden_json(
-        FIXTURES / "schemas" / engine_id / "turn_plan.json", engine.plan_type.model_json_schema()
-    )
-
-
-@pytest.mark.parametrize("engine_id", engine_ids())
-def test_the_beat_schema_a_continuation_answers_with_is_unchanged(engine_id: EngineId) -> None:
-    engine, _ = game(engine_id)
-    golden_json(
-        FIXTURES / "schemas" / engine_id / "turn_beat.json", engine.beat_type.model_json_schema()
-    )
 
 
 @pytest.mark.parametrize("engine_id", engine_ids())

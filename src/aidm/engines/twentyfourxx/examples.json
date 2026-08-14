@@ -2,27 +2,33 @@
   {
     "focus": "Kael forces the vault's seal before whatever is behind it notices him.",
     "effects": [],
-    "action": {
-      "act": "attempt",
-      "actor_id": "player",
-      "goal": "Force the vault's seal before the whispering finds him",
-      "skill": "Hacking",
-      "helped": "Repair Tools",
-      "luck_test": "the seal's failsafe alerts something in the dark"
+    "roll": {
+      "name": "attempt",
+      "args": {
+        "actor_id": "player",
+        "goal": "Force the vault's seal before the whispering finds him",
+        "skill": "Hacking",
+        "helped": "Repair Tools",
+        "luck_test": "the seal's failsafe alerts something in the dark"
+      }
     }
   },
   {
     "focus": "Kael turns out the abbot's desk for whatever the abbey wanted hidden there.",
     "effects": [
       {
-        "op": "reveal",
-        "entity_id": "vault_map"
+        "name": "reveal",
+        "args": {
+          "entity_id": "vault_map"
+        }
       },
       {
-        "op": "move",
-        "entity_id": "vault_map"
+        "name": "move",
+        "args": {
+          "entity_id": "vault_map"
+        }
       }
     ],
-    "action": null
+    "roll": null
   }
 ]

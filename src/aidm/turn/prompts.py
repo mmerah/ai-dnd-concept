@@ -255,8 +255,10 @@ def _with_state(line: str, state: str, indent: str = "") -> str:
 _PROMPTS_DIR = Path(__file__).parent / "prompts"
 
 DIRECTOR = engine_text(_PROMPTS_DIR / "director.md")
-# Not a role of its own: the Director's mid-turn preface, prepended to DIRECTOR for the beat stage.
+# Not roles of their own: the Director's mid-turn prefaces, prepended to DIRECTOR for the two
+# continuation stages.
 BEAT = engine_text(_PROMPTS_DIR / "beat.md")
+SETTLE = engine_text(_PROMPTS_DIR / "settle.md")
 CORE_ADVISOR = engine_text(_PROMPTS_DIR / "core_advisor.md")
 NARRATOR = engine_text(_PROMPTS_DIR / "narrator.md")
 WORLDKEEPER = engine_text(_PROMPTS_DIR / "worldkeeper.md")

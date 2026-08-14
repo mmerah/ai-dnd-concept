@@ -22,9 +22,8 @@ from pydantic_ai.toolsets import AbstractToolset
 
 from aidm.config import ProviderConfig, Role, RoleConfig, Settings
 from aidm.engines.loader import Engine, Offer, ProposalBase, Subsystem
-from aidm.state.base import Frozen
 from aidm.state.effects import AdvanceThread
-from aidm.state.plan import TurnPlanBase
+from aidm.state.plan import DirectorBeat, DirectorPlan
 from aidm.state.turn import WorldkeeperReport
 from aidm.state.world import Exchange, GameState
 
@@ -133,8 +132,9 @@ class SubsystemContext:
 class Stages:
     """The turn's model-facing roles, built once per session."""
 
-    director: Stage[PlanContext, TurnPlanBase]
-    beat: Stage[PlanContext, Frozen]
+    director: Stage[PlanContext, DirectorPlan]
+    beat: Stage[PlanContext, DirectorBeat]
+    settle: Stage[PlanContext, DirectorBeat]
     narrator: Stage[None, str]
     worldkeeper: Stage[GameState, WorldkeeperReport]
 
@@ -152,8 +152,8 @@ def _thread_moves(state: GameState, moves: Sequence[AdvanceThread]) -> str | Non
     return f"no clock to tick on: {', '.join(clockless)}" if clockless else None
 
 
-def director_stage(engine: Engine, settings: Settings) -> Stage[PlanContext, TurnPlanBase]:
-    def legal(ctx: RunContext[PlanContext], plan: TurnPlanBase) -> TurnPlanBase:
+def director_stage(engine: Engine, settings: Settings) -> Stage[PlanContext, DirectorPlan]:
+    def legal(ctx: RunContext[PlanContext], plan: DirectorPlan) -> DirectorPlan:
         deps = ctx.deps
         if fault := scene.check_speaker(scene.SceneSnapshot.of(deps.state), plan.speaker_id):
             raise ModelRetry(fault)
@@ -166,17 +166,32 @@ def director_stage(engine: Engine, settings: Settings) -> Stage[PlanContext, Tur
         settings,
         instructions=f"{prompts.DIRECTOR}\n\n{engine.director_instructions}",
         # Keeps `tool_choice: required`; under `auto` gpt-oss truncates its own tool call arguments
-        output_type=ToolOutput(engine.plan_type, name="turn_plan"),
+        output_type=ToolOutput(DirectorPlan, name="turn_plan"),
         deps_type=PlanContext,
         toolsets=engine.director_toolsets,
         validator=legal,
     )
 
 
-def beat_stage(engine: Engine, settings: Settings) -> Stage[PlanContext, Frozen]:
+def beat_stage(engine: Engine, settings: Settings) -> Stage[PlanContext, DirectorBeat]:
     """The Director asked again once the dice have spoken: same role, same rules, no framing."""
+    return _continuation(engine, settings, prompts.BEAT)
 
-    def legal(ctx: RunContext[PlanContext], beat: Frozen) -> Frozen:
+
+def settle_stage(engine: Engine, settings: Settings) -> Stage[PlanContext, DirectorBeat]:
+    """The turn's last beat: it may write what the dice caused, but nothing further to roll."""
+    return _continuation(engine, settings, prompts.SETTLE, rolls=False)
+
+
+def _continuation(
+    engine: Engine, settings: Settings, preface: str, *, rolls: bool = True
+) -> Stage[PlanContext, DirectorBeat]:
+    def legal(ctx: RunContext[PlanContext], beat: DirectorBeat) -> DirectorBeat:
+        if not rolls and beat.roll is not None:
+            raise ModelRetry(
+                "this is the turn's last beat: leave `roll` null and write only what the dice "
+                "already settled."
+            )
         if refused := ctx.deps.engine.check_beat(ctx.deps.state, beat):
             raise ModelRetry(refused)
         return beat
@@ -184,8 +199,8 @@ def beat_stage(engine: Engine, settings: Settings) -> Stage[PlanContext, Frozen]
     return Stage.of(
         "director",
         settings,
-        instructions=f"{prompts.BEAT}\n\n{prompts.DIRECTOR}\n\n{engine.director_instructions}",
-        output_type=ToolOutput(engine.beat_type, name="turn_beat"),
+        instructions=f"{preface}\n\n{prompts.DIRECTOR}\n\n{engine.director_instructions}",
+        output_type=ToolOutput(DirectorBeat, name="turn_beat"),
         deps_type=PlanContext,
         toolsets=engine.director_toolsets,
         validator=legal,
@@ -251,6 +266,7 @@ def build_stages(engine: Engine, settings: Settings) -> Stages:
     return Stages(
         director=director_stage(engine, settings),
         beat=beat_stage(engine, settings),
+        settle=settle_stage(engine, settings),
         narrator=narrator_stage(settings),
         worldkeeper=worldkeeper_stage(settings),
     )

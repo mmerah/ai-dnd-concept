@@ -2,39 +2,31 @@ from abc import abstractmethod
 from collections.abc import Iterable, Mapping
 from pathlib import Path
 from random import Random
-from typing import cast
 
-from pydantic import JsonValue, TypeAdapter
+from pydantic import JsonValue, ValidationError
 
-from aidm.state import plan
 from aidm.state.apply import apply_effect, reveal_target
 from aidm.state.base import Entity, EntityId, Frozen
-from aidm.state.effects import WorldOp
 from aidm.state.facts import Fact
-from aidm.state.plan import Beat, Resolution, Resolver
+from aidm.state.plan import DirectorBeat, Resolution, check_draft
 from aidm.state.world import GameState
 
-from .actions import Action
 from .counters import CounterChange, move_pool
 from .loader import Engine, EntityRenderer
 from .sheets import SheetBase, SheetMechanics, actor_sheets, check_sheets
+from .vocabulary import EFFECTS, EngineEffect, TypedBeat, translate
 
-type EngineEffect = WorldOp | CounterChange
 
-
-class SheetEngine[S: SheetBase, A: Action](Engine):
-    """An engine whose mechanics are one sheet per actor, whose plan's action resolves itself."""
+class SheetEngine[S: SheetBase](Engine):
+    """An engine whose mechanics are one sheet per actor, and whose rolls it resolves itself."""
 
     sheet_type: type[S]
     mechanics_type: type[SheetMechanics[S]]
-    effects: TypeAdapter[EngineEffect]
-    # Narrowed so a beat carrying the wrong action is a type error; never reassigned.
-    beat_type: type[Beat[EngineEffect, A]]  # pyright: ignore[reportIncompatibleVariableOverride]
 
     def __init__(self, extra_packs: Path | None = None) -> None:
-        super().__init__(extra_packs)
         # Read once here so a missing declaration fails the build, not the turn that first needs it.
-        _ = self.sheet_type, self.mechanics_type, self.effects, self.beat_type
+        _ = self.sheet_type, self.mechanics_type, self.actions
+        super().__init__(extra_packs)
 
     def check_overlay(self, payloads: Iterable[dict[str, JsonValue]]) -> None:
         for rules in payloads:
@@ -61,10 +53,10 @@ class SheetEngine[S: SheetBase, A: Action](Engine):
     def new_sheet(self, draft: GameState, rng: Random) -> S: ...
 
     def parse_effect(self, effect: JsonValue) -> Frozen:
-        return self.effects.validate_python(effect)
+        return EFFECTS.validate_python(effect)
 
     def apply_effect(self, draft: GameState, effect: JsonValue) -> list[Fact]:
-        return self.apply(draft, self.effects.validate_python(effect))
+        return self.apply(draft, EFFECTS.validate_python(effect))
 
     def apply(self, draft: GameState, effect: EngineEffect) -> list[Fact]:
         if not isinstance(effect, CounterChange):
@@ -79,25 +71,37 @@ class SheetEngine[S: SheetBase, A: Action](Engine):
     @abstractmethod
     def describe(self, state: GameState, entity: Entity) -> str: ...
 
-    def check_beat(self, state: GameState, beat: Frozen) -> str | None:
-        typed = self._typed(beat)
-        if typed is None:
-            return f"this engine answers with a {self.beat_type.__name__}"
-        return plan.check_beat(state, typed, self.apply, self._resolver(typed.action))
+    @abstractmethod
+    def resolve_roll(self, draft: GameState, roll: Frozen, rng: Random) -> Resolution:
+        """Rolls one translated call and mutates the draft."""
 
-    def resolve_beat(self, draft: GameState, beat: Frozen, rng: Random) -> Resolution:
-        typed = self._typed(beat)
-        if typed is None:
-            raise ValueError(f"a {type(beat).__name__} is no {self.beat_type.__name__}")
-        return plan.resolve_beat(draft, typed, self.apply, self._resolver(typed.action), rng)
+    def check_beat(self, state: GameState, beat: DirectorBeat) -> str | None:
+        try:
+            typed = translate(beat, self.actions)
+        except ValidationError as broken:
+            return _named(broken)
+        except ValueError as refused:
+            return str(refused)
+        return check_draft(state, lambda draft: self._play(draft, typed, Random(0)))
 
-    def _resolver(self, action: A | None) -> Resolver | None:
-        if action is None:
-            return None
-        return lambda draft, rng: action.resolve(self, draft, rng)
+    def resolve_beat(self, draft: GameState, beat: DirectorBeat, rng: Random) -> Resolution:
+        return self._play(draft, translate(beat, self.actions), rng)
 
-    def _typed(self, beat: Frozen) -> Beat[EngineEffect, A] | None:
-        # `isinstance` narrows to the bare class, dropping the arguments the declaration pins.
-        if not isinstance(beat, self.beat_type):
-            return None
-        return cast("Beat[EngineEffect, A]", beat)
+    def _play(self, draft: GameState, beat: TypedBeat, rng: Random) -> Resolution:
+        """The order the beat runs: the roll first, then what it causes."""
+        settled = None if beat.roll is None else self.resolve_roll(draft, beat.roll, rng)
+        caused = [fact for effect in beat.effects for fact in self.apply(draft, effect)]
+        if settled is None:
+            return Resolution(facts=tuple(caused), followup="none")
+        return Resolution(
+            facts=(*settled.facts, *caused),
+            outcome=settled.outcome,
+            followup=settled.followup,
+        )
+
+
+def _named(broken: ValidationError) -> str:
+    """`check_draft` renders the message alone; a translation fault needs the field it names."""
+    first = broken.errors()[0]
+    where = ".".join(str(part) for part in first["loc"])
+    return f"{where}: {first['msg']}" if where else first["msg"]

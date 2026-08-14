@@ -1,23 +1,12 @@
-from typing import Annotated
-
-from pydantic import Field, TypeAdapter
-
-from aidm.engines.counters import (
-    CounterChange,
-    render_counters,
-)
+from aidm.engines.counters import render_counters
 from aidm.engines.sheets import SheetBase, SheetMechanics
 from aidm.state.base import Counter, Entity, Slug
 from aidm.state.creation import ContentSlug
-from aidm.state.effects import WorldOp
 
 from .pack import SRD_PACK
 
 LUCK_MAX = 6
 TIES_PER_TWIST = 3
-
-type Loner3eEffect = Annotated[WorldOp | CounterChange, Field(discriminator="op")]
-EFFECTS: TypeAdapter[Loner3eEffect] = TypeAdapter(Loner3eEffect)
 
 
 class Sheet(SheetBase):

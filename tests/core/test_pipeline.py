@@ -3,8 +3,11 @@ from random import Random
 
 import pytest
 from core_test_support import (
+    TWENTYFOURXX,
     answered,
     beat,
+    call,
+    game,
     initialized,
     plan,
     played,
@@ -26,22 +29,23 @@ from pydantic_ai.models.function import AgentInfo, FunctionModel
 from aidm.engines.loner3e.actions import outcome_for
 from aidm.engines.loner3e.mechanics import Mechanics
 from aidm.state.base import PLAYER_ID, Counter, EntityId
+from aidm.state.plan import DirectorBeat
 from aidm.state.world import Hook, HookMatch, Memory, Thread
 from aidm.turn.pipeline import TURN_STEPS
 from aidm.turn.roles import ChannelSafeModel
 
 QUIET_STEPS = ("director", "resolve", "hooks", "narrator", "worldkeeper")
-ASKED = {
-    "act": "question",
-    "actor_id": "player",
-    "question": "Does the door give before the whispering finds him?",
-}
+ASKED = call(
+    "question",
+    actor_id="player",
+    question="Does the door give before the whispering finds him?",
+)
 
 
 async def test_an_engine_uses_the_shared_pipeline_and_safe_narrator_prompt() -> None:
     engine, state = initialized()
     steps: list[str] = []
-    director = FunctionModel(scripted(plan(effects=[{"op": "move", "entity_id": "vault_map"}])))
+    director = FunctionModel(scripted(plan(effects=[call("move", entity_id="vault_map")])))
     narrator = FunctionModel(scripted(text("A creased chart slides into your hand.")))
     result = await played(
         engine,
@@ -88,7 +92,7 @@ async def test_a_speaker_the_turn_walks_away_from_narrates_the_scene_instead_of_
         director=FunctionModel(
             scripted(
                 plan(
-                    effects=[{"op": "move", "to_id": "cloister"}],
+                    effects=[call("move", to_id="cloister")],
                     focus="Kael leaves.",
                     speaker_id="mara",
                 )
@@ -108,7 +112,7 @@ async def test_the_engine_rolls_the_outcome_the_facts_then_record() -> None:
         engine,
         state,
         "I plead with the door.",
-        director=FunctionModel(scripted(plan(action=ASKED))),
+        director=FunctionModel(scripted(plan(roll=ASKED))),
         narrator=FunctionModel(scripted(text("You falter."))),
         rng=Random(2),
     )
@@ -124,7 +128,7 @@ async def test_a_later_beat_walks_the_way_the_first_one_opened() -> None:
     """The semantic heart of the loop: a consequence written after the roll, against the state
     that roll left behind — legal only because the beat before it revealed the way."""
     engine, state = initialized()
-    onward = {"op": "move", "to_id": "bell_tower"}
+    onward = call("move", to_id="bell_tower")
     result = await played(
         engine,
         state,
@@ -132,16 +136,16 @@ async def test_a_later_beat_walks_the_way_the_first_one_opened() -> None:
         director=FunctionModel(
             scripted(
                 plan(
-                    action=ASKED,
+                    roll=ASKED,
                     effects=[
-                        {"op": "move", "to_id": "cloister"},
-                        {
-                            "op": "relation-change",
-                            "mode": "reveal",
-                            "kind": "connected",
-                            "source": "cloister",
-                            "target": "bell_tower",
-                        },
+                        call("move", to_id="cloister"),
+                        call(
+                            "relation-change",
+                            mode="reveal",
+                            kind="connected",
+                            source="cloister",
+                            target="bell_tower",
+                        ),
                     ],
                 )
             )
@@ -158,20 +162,23 @@ async def test_a_later_beat_walks_the_way_the_first_one_opened() -> None:
         "narrator",
         "worldkeeper",
     ]
-    too_early = engine.beat_type.model_validate({"effects": [onward]})
+    too_early = DirectorBeat.model_validate({"effects": [onward]})
     assert engine.check_beat(state, too_early) is not None
 
 
-async def test_the_loop_stops_at_max_beats_however_many_actions_the_director_writes() -> None:
+async def test_the_loop_stops_at_max_beats_and_still_gets_its_settle_pass() -> None:
+    """The cap cuts the rolling short; the last roll still reaches the Director as a settle beat,
+    which may write what it caused but may not roll again."""
     engine, state = initialized()
-    asked = beat(action=ASKED)
-    # Two continuations only: a third call would run the script dry and fail the turn.
+    asked = beat(roll=ASKED)
+    # Two rolling continuations only: a third call would run the script dry and fail the turn.
     result = await played(
         engine,
         state,
         "I keep working at the seal.",
-        director=FunctionModel(scripted(plan(action=ASKED))),
+        director=FunctionModel(scripted(plan(roll=ASKED))),
         beats=FunctionModel(scripted(asked, asked)),
+        settle=FunctionModel(scripted(beat(effects=[call("reveal", entity_id="vault")]))),
     )
 
     assert settings().max_beats == 3
@@ -179,11 +186,58 @@ async def test_the_loop_stops_at_max_beats_however_many_actions_the_director_wri
         "director",
         "beat-1",
         "beat-2",
+        "beat-3",
         "resolve",
         "hooks",
         "narrator",
         "worldkeeper",
     ]
+    assert [fact.kind for fact in result.turn.facts].count("question_answered") == 3
+    assert result.state.world.require(EntityId("vault")).known
+
+
+async def test_a_roll_that_settles_the_turn_still_gets_its_last_beat() -> None:
+    """Trouble landing is where the turn stops asking for more dice — but not before the Director
+    is shown what it caused and asked what it leaves behind."""
+    engine, state = game(TWENTYFOURXX)
+    result = await played(
+        engine,
+        state,
+        "I listen at the door.",
+        director=FunctionModel(
+            scripted(
+                plan(roll=call("luck-test", actor_id="player", subject="a patrol wandering by"))
+            )
+        ),
+        beats=FunctionModel(scripted(beat(roll=ASKED))),
+        settle=FunctionModel(scripted(beat(effects=[call("reveal", entity_id="vault")]))),
+        rng=Random(2),
+    )
+
+    assert [fact.kind for fact in result.turn.facts].count("luck_tested") == 1
+    assert [step.name for step in result.turn.steps] == [
+        "director",
+        "beat-1",
+        "resolve",
+        "hooks",
+        "narrator",
+        "worldkeeper",
+    ]
+    assert result.state.world.require(EntityId("vault")).known
+
+
+async def test_a_settle_beat_that_rolls_again_is_refused() -> None:
+    engine, state = initialized()
+    result = await played(
+        engine,
+        state,
+        "I keep working at the seal.",
+        director=FunctionModel(scripted(plan(roll=ASKED))),
+        beats=FunctionModel(scripted(beat(roll=ASKED), beat(roll=ASKED))),
+        settle=FunctionModel(scripted(beat(roll=ASKED), beat())),
+    )
+
+    assert [step.name for step in result.turn.steps].count("beat-3") == 1
     assert [fact.kind for fact in result.turn.facts].count("question_answered") == 3
 
 
@@ -201,7 +255,7 @@ async def test_a_beat_that_fails_discards_what_the_beats_before_it_did() -> None
             state,
             "I take the map and read it.",
             director=FunctionModel(
-                scripted(plan(action=ASKED, effects=[{"op": "move", "entity_id": "vault_map"}]))
+                scripted(plan(roll=ASKED, effects=[call("move", entity_id="vault_map")]))
             ),
             beats=FunctionModel(boom),
         )
@@ -240,7 +294,7 @@ async def test_a_tool_call_with_a_channel_marker_in_its_name_still_lands() -> No
 async def test_an_illegal_plan_is_retried_with_the_reason() -> None:
     engine, state = initialized()
     responses = scripted(
-        plan(effects=[{"op": "reveal", "entity_id": "nowhere"}]),
+        plan(effects=[call("reveal", entity_id="nowhere")]),
         plan(),
     )
     calls: list[list[ModelMessage]] = []
@@ -331,7 +385,7 @@ async def test_a_failed_role_never_mutates_the_input_state() -> None:
         del messages, info
         raise RuntimeError("narrator exploded")
 
-    director = FunctionModel(scripted(plan(effects=[{"op": "move", "entity_id": "vault_map"}])))
+    director = FunctionModel(scripted(plan(effects=[call("move", entity_id="vault_map")])))
     before = state.model_dump_json()
     with pytest.raises(RuntimeError, match="narrator exploded"):
         await played(
@@ -347,7 +401,7 @@ async def test_a_hook_fires_on_its_fact_moves_its_thread_and_steers_the_next_tur
         engine,
         state,
         "I ask Mara where the vault door is.",
-        director=FunctionModel(scripted(plan(effects=[{"op": "reveal", "entity_id": "vault"}]))),
+        director=FunctionModel(scripted(plan(effects=[call("reveal", entity_id="vault")]))),
     )
 
     thread = found.state.world.threads["vault-seal"]

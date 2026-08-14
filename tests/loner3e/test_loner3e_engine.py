@@ -22,7 +22,7 @@ from aidm.state.apply import fire_hooks
 from aidm.state.base import PLAYER_ID, Counter, Entity, EntityId
 from aidm.state.effects import TraitChange
 from aidm.state.facts import CORE, Fact
-from aidm.state.plan import TurnPlanBase
+from aidm.state.plan import DirectorPlan
 from aidm.state.world import PARTY_MEMBER, GameState, Hook, HookMatch, Relation
 
 TWISTS = twist_table(Loner3eEngine().packs, SRD_PACK)
@@ -30,19 +30,21 @@ SURE_FOOTED = TraitChange(mode="add", entity_id=PLAYER_ID, trait_id="sure-footed
 FOE = EntityId("mara")
 
 
-def _plan(engine: Engine, **action: object) -> TurnPlanBase:
-    return engine.plan_type.model_validate(
+def _plan(**args: object) -> DirectorPlan:
+    return DirectorPlan.model_validate(
         {
             "focus": "Kael works the sealed door.",
-            "effects": (SURE_FOOTED,),
-            "action": {
-                "act": "question",
-                "question": "Does he get the seal open before the whispering finds him?",
-                "leverage": [],
-                "trouble": [],
-                "opponent_id": None,
-            }
-            | action,
+            "effects": ({"name": "trait-change", "args": SURE_FOOTED.model_dump()},),
+            "roll": {
+                "name": "question",
+                "args": {
+                    "question": "Does he get the seal open before the whispering finds him?",
+                    "leverage": [],
+                    "trouble": [],
+                    "opponent_id": None,
+                }
+                | args,
+            },
         }
     )
 
@@ -80,7 +82,7 @@ def test_a_question_rolls_two_dice_before_the_beats_own_effects_land() -> None:
     engine, state = initialized()
     draft = state.draft()
 
-    facts = engine.resolve_beat(draft, _plan(engine, actor_id=PLAYER_ID), Random(17)).facts
+    facts = engine.resolve_beat(draft, _plan(actor_id=PLAYER_ID), Random(17)).facts
 
     assert [fact.kind for fact in facts] == [
         "dice_rolled",
@@ -94,17 +96,17 @@ def test_a_question_rolls_two_dice_before_the_beats_own_effects_land() -> None:
 
 def test_check_beat_owes_the_model_every_refusal_the_resolve_raises() -> None:
     engine, state = initialized()
-    sheet_tag = _plan(engine, actor_id=PLAYER_ID, leverage=["Reads Old Stonework"])
-    scene_tag = _plan(engine, actor_id=PLAYER_ID, leverage=["Unsteady Lantern"])
+    sheet_tag = _plan(actor_id=PLAYER_ID, leverage=["Reads Old Stonework"])
+    scene_tag = _plan(actor_id=PLAYER_ID, leverage=["Unsteady Lantern"])
     assert engine.check_beat(state, sheet_tag) is None
     assert engine.check_beat(state, scene_tag) is None
 
-    invented = _plan(engine, actor_id=PLAYER_ID, leverage=["Silver Tongue"])
+    invented = _plan(actor_id=PLAYER_ID, leverage=["Silver Tongue"])
     assert "has no tag" in _refusal(engine, state, invented)
 
-    elsewhere = _plan(engine, actor_id=PLAYER_ID, opponent_id="cloister_rat")
+    elsewhere = _plan(actor_id=PLAYER_ID, opponent_id="cloister_rat")
     assert "is not here with the player" in _refusal(engine, state, elsewhere)
-    alone = _plan(engine, actor_id=PLAYER_ID, opponent_id=PLAYER_ID)
+    alone = _plan(actor_id=PLAYER_ID, opponent_id=PLAYER_ID)
     assert "their own opposition" in _refusal(engine, state, alone)
 
 
@@ -201,7 +203,7 @@ def test_an_actor_already_at_zero_luck_refuses_another_exchange() -> None:
     mechanics.sheets[FOE].luck.current = 0
     spent = draft.committed()
 
-    again = _plan(engine, actor_id=PLAYER_ID, opponent_id=FOE)
+    again = _plan(actor_id=PLAYER_ID, opponent_id=FOE)
     assert "already out of luck" in _refusal(engine, spent, again)
 
 
@@ -290,11 +292,14 @@ def test_an_actor_seeded_after_a_milestone_is_not_owed_the_ones_they_missed() ->
     assert offered == {PLAYER_ID}
 
 
-def test_the_one_action_is_worked_through_in_the_directors_instructions() -> None:
-    """An action without an example teaches the model nothing: coverage is asserted, not hoped."""
+def test_the_one_roll_is_worked_through_in_the_directors_instructions() -> None:
+    """A roll without an example teaches the model nothing: coverage is asserted, not hoped."""
     engine, _ = initialized()
 
-    assert engine.director_instructions.count('"act": "question"') == 1
+    assert engine.director_instructions.count('"name": "question"') == 1
+    # Rendered from the model, so what the prompt promises is what a retry would enforce.
+    assert "`question` — A closed dramatic question" in engine.director_instructions
+    assert "`leverage` (list of at most 3; default [])" in engine.director_instructions
 
 
 def test_a_hook_reaches_the_engine_s_own_effects() -> None:
@@ -327,7 +332,7 @@ def test_a_hook_reaches_the_engine_s_own_effects() -> None:
     assert draft.mechanics_as(Mechanics).sheets[PLAYER_ID].luck.current == LUCK_MAX - 1
 
 
-def _refusal(engine: Engine, state: GameState, plan: TurnPlanBase) -> str:
+def _refusal(engine: Engine, state: GameState, plan: DirectorPlan) -> str:
     refused = engine.check_beat(state, plan)
     assert refused is not None
     return refused

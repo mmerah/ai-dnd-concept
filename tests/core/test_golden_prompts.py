@@ -13,6 +13,7 @@ from aidm.turn.roles import (
     beat_stage,
     director_stage,
     narrator_stage,
+    settle_stage,
     subsystem_stage,
     worldkeeper_stage,
 )
@@ -37,6 +38,7 @@ def test_every_role_assembles_the_same_instructions(engine_id: EngineId) -> None
     roles = {
         "director": director_stage(engine, config).instructions,
         "beat": beat_stage(engine, config).instructions,
+        "settle": settle_stage(engine, config).instructions,
         "narrator": narrator_stage(config).instructions,
         "worldkeeper": worldkeeper_stage(config).instructions,
         "advisor": subsystem_stage(capability(engine), config).instructions,

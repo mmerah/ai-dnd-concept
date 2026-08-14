@@ -7,6 +7,7 @@ from core_test_support import (
     LONER3E,
     TWENTYFOURXX,
     beat,
+    call,
     game,
     plan,
     played,
@@ -35,8 +36,8 @@ HISTORY = (
 )
 NARRATION = "The flagstone lifts. Beyond the door, something shifts its weight and waits."
 SEED = 11
-# One unconditional effect every engine shares, so the two traces differ only by their action.
-TAKE_THE_MAP = {"op": "move", "entity_id": "vault_map"}
+# One unconditional effect every engine shares, so the two traces differ only by their roll.
+TAKE_THE_MAP = call("move", entity_id="vault_map")
 CREATIONS = [
     {
         "kind": "actor",
@@ -52,51 +53,51 @@ TURN_STEPS = ("director", "beat-1", "resolve", "hooks", "narrator", "worldkeeper
 # What the second beat writes once the roll has landed: the same shape under every engine.
 SECOND_BEAT = beat(
     effects=[
-        {
-            "op": "trait-change",
-            "mode": "add",
-            "entity_id": "player",
-            "trait_id": "listening",
-            "text": "(condition) Listening for the next shift of weight behind the door.",
-        }
+        call(
+            "trait-change",
+            mode="add",
+            entity_id="player",
+            trait_id="listening",
+            text="(condition) Listening for the next shift of weight behind the door.",
+        )
     ]
 )
 
 
-def _plan(action: dict[str, object]) -> ModelResponse:
-    return plan(effects=[TAKE_THE_MAP], action=action)
+def _plan(roll: dict[str, object]) -> ModelResponse:
+    return plan(effects=[TAKE_THE_MAP], roll=roll)
 
 
-# The fiction resolved by the engine's own action.
+# The fiction resolved by the engine's own roll.
 SCRIPTS: Mapping[EngineId, ModelResponse] = {
     LONER3E: _plan(
-        {
-            "act": "question",
-            "actor_id": "player",
-            "question": "Does he hear what waits past the vault door without being heard?",
-            "leverage": ["Quiet Hands"],
-            "trouble": [],
-            "opponent_id": None,
-        }
+        call(
+            "question",
+            actor_id="player",
+            question="Does he hear what waits past the vault door without being heard?",
+            leverage=["Quiet Hands"],
+            trouble=[],
+            opponent_id=None,
+        )
     ),
     TWENTYFOURXX: _plan(
-        {
-            "act": "attempt",
-            "actor_id": "player",
-            "goal": "Listen at the vault door without being heard",
-            "skill": "Stealth",
-            "helped": "Relic Hunter",
-            "hindered": "",
-            "luck_test": "something behind the door is already listening back",
-        }
+        call(
+            "attempt",
+            actor_id="player",
+            goal="Listen at the vault door without being heard",
+            skill="Stealth",
+            helped="Relic Hunter",
+            hindered="",
+            luck_test="something behind the door is already listening back",
+        )
     ),
     CAIRN2E: _plan(
-        {
-            "act": "save",
-            "actor_id": "player",
-            "attribute": "dexterity",
-            "risk": "the flagstone grinds and whatever waits past the door hears it",
-        }
+        call(
+            "save",
+            actor_id="player",
+            attribute="dexterity",
+            risk="the flagstone grinds and whatever waits past the door hears it",
+        )
     ),
 }
 
@@ -115,6 +116,7 @@ async def _played(engine_id: EngineId) -> TurnResult:
         PROMPT,
         director=FunctionModel(scripted(SCRIPTS[engine_id])),
         beats=FunctionModel(scripted(SECOND_BEAT)),
+        settle=FunctionModel(scripted(SECOND_BEAT)),
         narrator=FunctionModel(scripted(text(NARRATION))),
         worldkeeper=FunctionModel(scripted(structured(creations=CREATIONS))),
         rng=Random(SEED),
