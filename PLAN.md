@@ -23,7 +23,7 @@ the next unshipped phase needs full resolution. Shipped phases move to PROGRESS.
 Per phase: `uv run pytest && uv run ruff check && uv run ruff format --check && uv run
 basedpyright` green after every numbered step, one commit per step.
 
-## Phase 2 — Scenario creator (~3–4 days)
+## Phase 1 — Scenario creator (~3–4 days)
 
 Premise → a complete scenario in the exact on-disk format, authored by a strong model at
 authoring time. This is a script, not the app: agentic workflows are fine outside the turn
@@ -57,7 +57,7 @@ that appears on the home page and plays a first turn under every shipped engine.
 validity is judged by playing it, not asserted by the script. PDF/notes ingestion is a later
 input mode for the same script, not a separate system.
 
-## Phase 3 — Media: scene illustrations (~2–3 days)
+## Phase 2 — Media: scene illustrations (~2–3 days)
 
 Presentation only, outside mechanical truth: the game must be indistinguishable with media
 disabled, and a failed generation must cost nothing but a log line.
