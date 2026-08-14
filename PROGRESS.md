@@ -35,7 +35,8 @@ to rediscover. Step-by-step detail lives in git history, not here. Every entry w
   (`sheet_type` is the overlay shape) and `check_overlay` is abstract on `Engine`.
 - Mechanics shapes are shared: `SheetBase` (abstract `counters`) and `SheetMechanics[S]` in
   `engines/sheets.py`; each engine's `Mechanics` subclasses it and adds only what it also tracks.
-- `Action` (`engines/actions.py`) carries `outcomes` and `resolve(engine, draft, rng)`; the plan is
+- `Action` (`engines/actions.py`) carries `resolve(engine, draft, rng)` — it also declared an
+  `outcomes` label set, which Part C deleted along with the branches that read it; the plan is
   `Branched[E, A]` and `plan.action.resolve` replaced every `_resolver`/`_labels` match and six of
   the seven `assert isinstance` narrowings. The seventh is loner3e's `twist_table_of`, which
   refuses an engine that cannot hand it a twist table.
@@ -85,9 +86,52 @@ Both causes are in how the plan is asked for, not in the prose that asks:
   refused: it buys nothing and reveals on talk turns 6/12.
   `turn_plan.json` and the director instructions moved; no persisted byte did.
 
+### Phase 1 Part C — the Director's beat loop (2026-08-14)
+
+- `Branched`, `OutcomeBranch`, `apply_branch`, `check_branched`, `resolve_branched` and the branch
+  half of `check_effects` are gone. `state/plan.py` is now `TurnPlanBase` (framing: `focus`,
+  `speaker_id` — `pressure` and `stakes` deleted, written by the model and read by nothing),
+  `Beat[E, A]` (`effects` required, `action` optional), `check_beat` and `resolve_beat`.
+- An engine declares `class TurnBeat(Beat[...])` and `class TurnPlan(TurnBeat, TurnPlanBase)`, so
+  **a plan is a beat with framing on it** — one `check_beat`/`resolve_beat` pair on `Engine` serves
+  both, and `check_plan`/`resolve_action` are gone. `SheetEngine` narrows `beat_type`, not
+  `plan_type`, which is why `Engine.plan_type` needs no ignore any more.
+- `check_beat` is one trial in the order the beat runs: trial roll, then effects. **Ordering
+  change:** a beat's effects now apply *after* its action resolves, so fact order moved.
+- `run_turn`: plan → transact → while the last beat rolled an outcome, `Transacted.flow` is
+  `"continue"` and fewer than `settings.max_beats` (new, default 3) have resolved: render the
+  continuation, run `stages.beat`, transact. One `transact` per beat, so hooks fire between them
+  and the next beat plans against a validated state. `Transacted` carries `outcome` for that test.
+- Notes are cleared after *each* Director call rather than once per turn, so a scar or twist a beat
+  writes steers the next beat — visible in the golden `beat-1.txt` prompts.
+- `beat_stage` reuses the `"director"` role config and `ToolOutput`, prefixed with
+  `turn/prompts/beat.md` — named for the stage, like every other file in that directory, and kept
+  to what `director.md` cannot say: that this call is mid-turn. `render_director` grew one optional
+  "WHAT JUST HAPPENED" section, so there is still one Director renderer. Traces: `director`, `beat-1`…, then one
+  aggregate `resolve` and `hooks`; `TURN_STEPS` gained `"beat"` and per-beat names stay trace-only.
+- `SAVE_VERSION` 61 → 62; `save`/`state`/`turn`/`prompts`/`schemas`/`instructions` regenerated and
+  read. New fixture families: `schemas/*/turn_beat.json`, `instructions/*/beat.txt`,
+  `prompts/*/beat-1.txt`.
+- Tests: the loop's semantic case (beat 2 walks the way beat 1 revealed, and the same beat against
+  the pre-turn state is refused), the stop at `max_beats`, a beat with no action ending the turn,
+  and a failing beat discarding what the earlier one did. 167 green on all four commands.
+- 24XX deviation 4 (bad luck only rode an attempt) closed in the same tree: a standalone
+  `luck-test` action joins the attempt in a discriminated union, resolved by the same
+  `_bad_luck` roll; `docs/24XX.md` renumbered.
+- `Action.outcomes` went with the branches: the label sets existed only to validate a branch key
+  against the action that allowed it, and nothing else ever read them. The two tests that did now
+  name their own literals.
+- Production lines 6,856 → 6,855. The branch machinery deleted ~85 lines and the loop, the beat
+  stage, `beat.md`, the four new test cases and the 24XX `luck-test` put them back: Part C buys
+  fidelity, not size. Phase 1 as a whole landed at 6,855 against the ~6,570–6,610 the plan guessed.
+- **Live probe (step 7), gpt-oss-120b, 4 runs × 3 engines on "I lever up the loose flagstone and
+  listen at the vault door":** 12/12 plans came back with an action, 12/12 continuations came back
+  as a valid beat under `ToolOutput` — no truncation, no retry, no failure. The trimmed plan
+  (no `pressure`/`stakes`) cost nothing. **12/12 beats left `action` null**, so a busy turn costs
+  2 Director calls rather than 3 and the loop does not run away with the turn; the multi-action
+  path is therefore exercised offline only. Probe deleted.
+
 ## Next
 
-- PLAN.md Phase 1 Part C (steps 7–9): the Director's beat loop. `Transacted.flow` is already
-  carried; the loop is what reads it.
-- Then PLAN.md Phase 2: the scenario creator.
+- PLAN.md Phase 2: the scenario creator.
 - Close the Cairn 2e, Loner 3e, 24XX fidelity deviations, per their docs' "Deviations in this repo" sections — Phase 1 Part C unblocks the ones that blame the one-action turn.

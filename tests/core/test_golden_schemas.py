@@ -25,6 +25,14 @@ def test_the_plan_schema_the_director_answers_with_is_unchanged(engine_id: Engin
 
 
 @pytest.mark.parametrize("engine_id", engine_ids())
+def test_the_beat_schema_a_continuation_answers_with_is_unchanged(engine_id: EngineId) -> None:
+    engine, _ = game(engine_id)
+    golden_json(
+        FIXTURES / "schemas" / engine_id / "turn_beat.json", engine.beat_type.model_json_schema()
+    )
+
+
+@pytest.mark.parametrize("engine_id", engine_ids())
 def test_the_proposal_schema_the_advisor_answers_with_is_unchanged(engine_id: EngineId) -> None:
     engine, _ = game(engine_id)
     golden_json(

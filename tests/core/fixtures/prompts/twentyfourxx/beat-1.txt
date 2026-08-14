@@ -1,0 +1,68 @@
+SCENARIO:
+The Whispering Vault
+The abbey of Saint Corvin was abandoned in a single night. Kael has come for the sealed vault beneath it, and the abbot's study is the only room still lit.
+
+PLAYER CHARACTER:
+Kael[id=player] — A scarred relic-hunter who came to the abbey for what is sealed beneath it. — at the abbot's study[id=study]
+state:
+  specialty: Sneak
+  origin: Human
+  skills: Climbing d10, Stealth d10, Tracking d8
+  pools: credits 2
+  traits: Relic Hunter[id=relic-hunter] — (skill) Kael knows how old sanctums conceal what matters., Marked by the Past[id=marked-by-the-past] — (frailty) Old scars make certain memories hard to face.
+inventory:
+- a guttering lantern[id=lantern] — A dented tin lantern whose flame will not hold still.
+  state:
+    traits: Unsteady Lantern[id=unsteady-lantern] — (gear) Its shifting light exposes seams and movement in deep shadow.
+- the vault map[id=vault_map] — A creased chart of the undercroft, marking a stair the abbey's own plans deny.
+
+HERE WITH THE PLAYER:
+- Mara[id=mara] (npc) — at the abbot's study — The abbey's last scribe, cautious and tired, still cataloguing books nobody will read.
+  state:
+    pools: credits 2
+
+EXITS FROM HERE:
+- the cloister[id=cloister]
+
+KNOWN TO THE PLAYER, BUT ELSEWHERE:
+- the cloister[id=cloister] (location) — A frost-rimed colonnade around a dead garden; Brother Tomas sweeps it to no purpose.
+- the sealed vault[id=vault] (location) — The undercroft chamber Kael came for, its door bearing a seal nobody living can read.
+  state:
+    traits: Warded[id=warded] — The seal answers a touch, and something behind the door answers with it.
+- Brother Tomas[id=tomas] (npc) — at the cloister — A deaf old porter who sweeps the cloister and knows almost nothing about the vault.
+  state:
+    pools: credits 2
+
+EXISTS BUT THE PLAYER DOES NOT KNOW IT YET:
+- the bell tower[id=bell_tower] (location) — A cramped climb of rotten ladders above the nave, its bell long since stilled.
+- Elena[id=elena] (npc) — at the bell tower — The vault's former archivist, hiding in the bell tower; she alone remembers the sealing rite.
+  state:
+    pools: credits 2
+- a bloated rat[id=cloister_rat] (npc) — at the cloister — It has grown fat on the dead garden and does not run from a lantern.
+  state:
+    skills: Intimidation d8
+    pools: credits 2
+
+ACTIVE THREADS:
+- The sealed vault[id=vault-seal] — active at seal-found
+  note: Kael came for the vault and does not yet know where its door is.
+
+MEMORIES:
+- the world remembers: The abbey emptied in a single night: meals were left half-eaten, doors left open, and no brother has been seen on the road since.
+- Mara[id=mara] remembers: Mara catalogued the vault ledgers beside Elena for two winters, until the night Elena went below alone and never came back up.
+
+SCENARIO NOTES:
+- Bad luck is circling: signs of something behind the door is already listening back showed this turn. Let the scene warn of it before it bites.
+- The chart marks the stair to the vault door. Press on what opening the seal will cost.
+- Kael has found the vault door. Press on what opening the seal will cost.
+
+PLAYER ACTION:
+I lever up the loose flagstone and listen at the vault door.
+
+WHAT JUST HAPPENED:
+- Listen at the vault door without being heard -> success
+- bad luck — something behind the door is already listening back: signs of it
+- learned of the vault map
+- took the vault map
+- learned of the sealed vault
+- the sealed vault is Warded (the seal stirs when it is first seen)

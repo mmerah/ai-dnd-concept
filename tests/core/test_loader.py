@@ -47,6 +47,7 @@ def _engine(tmp_path: Path) -> Engine:
         id = EngineId("test")
         badge = ("TEST", "grey-6")
         plan_type = TurnPlanBase
+        beat_type = TurnPlanBase
         engine_dir = tmp_path
 
         def check_overlay(self, payloads: Iterable[dict[str, JsonValue]]) -> None:
@@ -70,10 +71,10 @@ def _engine(tmp_path: Path) -> Engine:
         def renderer(self, state: GameState) -> EntityRenderer:
             return lambda entity: ""
 
-        def check_plan(self, state: GameState, plan: TurnPlanBase) -> str | None:
+        def check_beat(self, state: GameState, beat: Frozen) -> str | None:
             return None
 
-        def resolve_action(self, draft: GameState, plan: TurnPlanBase, rng: Random) -> Resolution:
+        def resolve_beat(self, draft: GameState, beat: Frozen, rng: Random) -> Resolution:
             return Resolution()
 
     return BareEngine()

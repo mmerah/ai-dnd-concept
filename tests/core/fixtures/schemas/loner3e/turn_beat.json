@@ -69,114 +69,6 @@
       "title": "AdvanceThread",
       "type": "object"
     },
-    "Attack": {
-      "additionalProperties": false,
-      "description": "One attack, which always hits: the weapon die less the target's armor comes off their HP.",
-      "properties": {
-        "act": {
-          "const": "attack",
-          "default": "attack",
-          "title": "Act",
-          "type": "string"
-        },
-        "attacker_id": {
-          "description": "Exact id of the actor striking: the player, or an actor here with them.",
-          "title": "Attacker Id",
-          "type": "string"
-        },
-        "target_id": {
-          "description": "Exact id of the actor being struck, who must be here too.",
-          "title": "Target Id",
-          "type": "string"
-        },
-        "weapon_id": {
-          "anyOf": [
-            {
-              "type": "string"
-            },
-            {
-              "type": "null"
-            }
-          ],
-          "default": null,
-          "description": "Exact id of a weapon the attacker carries; null is an unarmed blow, always d4.",
-          "title": "Weapon Id"
-        },
-        "modifier": {
-          "default": "normal",
-          "description": "`impaired` (a position of weakness: cover, bound hands, a distant shot) rolls d4 whatever the weapon; `enhanced` (a position of advantage: a helpless foe, a daring manoeuvre) rolls d12.",
-          "enum": [
-            "normal",
-            "impaired",
-            "enhanced"
-          ],
-          "title": "Modifier",
-          "type": "string"
-        },
-        "joined_by": {
-          "default": [],
-          "description": "Other actors here striking the same target in the same round; every damage die is rolled and only the single highest counts.",
-          "items": {
-            "type": "string"
-          },
-          "title": "Joined By",
-          "type": "array"
-        }
-      },
-      "required": [
-        "attacker_id",
-        "target_id"
-      ],
-      "title": "Attack",
-      "type": "object"
-    },
-    "Attribute": {
-      "enum": [
-        "strength",
-        "dexterity",
-        "willpower"
-      ],
-      "type": "string"
-    },
-    "Cairn2eAction": {
-      "discriminator": {
-        "mapping": {
-          "attack": "#/$defs/Attack",
-          "save": "#/$defs/Save"
-        },
-        "propertyName": "act"
-      },
-      "oneOf": [
-        {
-          "$ref": "#/$defs/Save"
-        },
-        {
-          "$ref": "#/$defs/Attack"
-        }
-      ]
-    },
-    "Cairn2eEffect": {
-      "discriminator": {
-        "mapping": {
-          "advance-thread": "#/$defs/WorldOp",
-          "counter-change": "#/$defs/CounterChange",
-          "gain-improvised-item": "#/$defs/WorldOp",
-          "move": "#/$defs/WorldOp",
-          "relation-change": "#/$defs/WorldOp",
-          "reveal": "#/$defs/WorldOp",
-          "trait-change": "#/$defs/WorldOp"
-        },
-        "propertyName": "op"
-      },
-      "oneOf": [
-        {
-          "$ref": "#/$defs/WorldOp"
-        },
-        {
-          "$ref": "#/$defs/CounterChange"
-        }
-      ]
-    },
     "CounterChange": {
       "additionalProperties": false,
       "description": "Move a counter: `adjust` shifts it by a delta, clamped to the counter's own bounds;\n`spend` pays a cost from it and refuses when the pool cannot cover it.",
@@ -252,6 +144,28 @@
       "title": "GainImprovisedItem",
       "type": "object"
     },
+    "Loner3eEffect": {
+      "discriminator": {
+        "mapping": {
+          "advance-thread": "#/$defs/WorldOp",
+          "counter-change": "#/$defs/CounterChange",
+          "gain-improvised-item": "#/$defs/WorldOp",
+          "move": "#/$defs/WorldOp",
+          "relation-change": "#/$defs/WorldOp",
+          "reveal": "#/$defs/WorldOp",
+          "trait-change": "#/$defs/WorldOp"
+        },
+        "propertyName": "op"
+      },
+      "oneOf": [
+        {
+          "$ref": "#/$defs/WorldOp"
+        },
+        {
+          "$ref": "#/$defs/CounterChange"
+        }
+      ]
+    },
     "Move": {
       "additionalProperties": false,
       "description": "Move an actor who actually changes location, or one item within the player's reach: picked\nup, set down here, or handed to an actor here. Moving the player to an unrevealed location\nreveals it.",
@@ -290,6 +204,68 @@
         }
       },
       "title": "Move",
+      "type": "object"
+    },
+    "Question": {
+      "additionalProperties": false,
+      "description": "A closed dramatic question, answered by Chance d6 against Risk d6.",
+      "properties": {
+        "act": {
+          "const": "question",
+          "default": "question",
+          "title": "Act",
+          "type": "string"
+        },
+        "actor_id": {
+          "description": "Exact id of the actor the question is about: the player, or an actor here.",
+          "title": "Actor Id",
+          "type": "string"
+        },
+        "question": {
+          "description": "The closed dramatic question the dice answer, phrased so that yes is what the actor wants.",
+          "minLength": 1,
+          "title": "Question",
+          "type": "string"
+        },
+        "leverage": {
+          "default": [],
+          "description": "Tags that make this easier, each copied exactly as it is written on the actor's sheet or on a trait in the scene. Empty when none applies; you cannot invent one.",
+          "items": {
+            "type": "string"
+          },
+          "maxItems": 3,
+          "title": "Leverage",
+          "type": "array"
+        },
+        "trouble": {
+          "default": [],
+          "description": "Tags that make this harder, copied the same way. Empty when none applies.",
+          "items": {
+            "type": "string"
+          },
+          "maxItems": 3,
+          "title": "Trouble",
+          "type": "array"
+        },
+        "opponent_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Exact id of the actor opposing this, set only when the question is one exchange of a conflict; the engine then takes luck off whichever side loses it.",
+          "title": "Opponent Id"
+        }
+      },
+      "required": [
+        "actor_id",
+        "question"
+      ],
+      "title": "Question",
       "type": "object"
     },
     "RelationChange": {
@@ -383,40 +359,6 @@
       "title": "Reveal",
       "type": "object"
     },
-    "Save": {
-      "additionalProperties": false,
-      "description": "A roll to avoid a bad outcome: d20 under the attribute, where 1 always passes and 20 always\nfails.",
-      "properties": {
-        "act": {
-          "const": "save",
-          "default": "save",
-          "title": "Act",
-          "type": "string"
-        },
-        "actor_id": {
-          "description": "Exact id of the actor at risk: the player, or an actor here with them; when two sides oppose each other, whoever is most at risk saves.",
-          "title": "Actor Id",
-          "type": "string"
-        },
-        "attribute": {
-          "$ref": "#/$defs/Attribute",
-          "description": "Which attribute answers: strength for force and endurance, dexterity for speed, reflexes and stealth, willpower for nerve, persuasion, morale, panic and reading a spell."
-        },
-        "risk": {
-          "description": "What the actor avoids by passing, in one line.",
-          "minLength": 1,
-          "title": "Risk",
-          "type": "string"
-        }
-      },
-      "required": [
-        "actor_id",
-        "attribute",
-        "risk"
-      ],
-      "title": "Save",
-      "type": "object"
-    },
     "TraitChange": {
       "additionalProperties": false,
       "description": "Put a lasting condition, skill, or frailty on an entity, or lift one the fiction ends. The\ntrait shows the id written out: `battle-worn` appears as Battle Worn.",
@@ -493,30 +435,11 @@
     }
   },
   "additionalProperties": false,
-  "description": "The turn's framing and its first beat.",
   "properties": {
-    "focus": {
-      "description": "1-2 sentences: what the player is reaching for and what this turn is about.",
-      "title": "Focus",
-      "type": "string"
-    },
-    "speaker_id": {
-      "anyOf": [
-        {
-          "type": "string"
-        },
-        {
-          "type": "null"
-        }
-      ],
-      "default": null,
-      "description": "Exact id of the NPC the player addresses — one they have met and who is here with them — or null if nobody is addressed.",
-      "title": "Speaker Id"
-    },
     "effects": {
       "description": "What this beat causes in the world, applied once the action has settled. Empty when nothing changes.",
       "items": {
-        "$ref": "#/$defs/Cairn2eEffect"
+        "$ref": "#/$defs/Loner3eEffect"
       },
       "title": "Effects",
       "type": "array"
@@ -524,20 +447,19 @@
     "action": {
       "anyOf": [
         {
-          "$ref": "#/$defs/Cairn2eAction"
+          "$ref": "#/$defs/Question"
         },
         {
           "type": "null"
         }
       ],
       "default": null,
-      "description": "The one action this beat resolves: a `save` when the fiction puts an actor at risk of a bad outcome, an `attack` when a blow actually lands, or null when nothing is risky enough to roll."
+      "description": "The one question this beat resolves, or null when nothing is uncertain enough to ask."
     }
   },
   "required": [
-    "focus",
     "effects"
   ],
-  "title": "TurnPlan",
+  "title": "TurnBeat",
   "type": "object"
 }

@@ -28,9 +28,10 @@ as a tag from the moment it lands.
 
 THE PLAN
 
-Your plan resolves at most one `action`, and this engine has one: a `question`. Leave `action`
-null when nothing the player does is uncertain — a conversation, a look around, a walk to a room
-they know; then the plan is whatever `effects` the turn plainly causes, and often none at all.
+Each beat resolves at most one `action`, and this engine has one: a `question`. Once it resolves,
+you are asked again for what the outcome caused. Leave `action` null when nothing the player does
+is uncertain — a conversation, a look around, a walk to a room they know; then the plan is
+whatever `effects` the turn plainly causes, and often none at all.
 
 A QUESTION
 
@@ -53,7 +54,7 @@ opposition does, or neither. More tags on a side never buys more than one die.
 
 WHAT THE DICE DECIDE
 
-The six outcomes are the labels your `branches` may use:
+These are the six answers the dice can give:
 
 - `yes-and` — they get more than they asked for.
 - `yes` — they get what they wanted.
@@ -62,11 +63,14 @@ The six outcomes are the labels your `branches` may use:
 - `no` — they do not get it, and the situation holds against them.
 - `no-and` — they do not get it, and it gets worse.
 
-Put in a branch only what the fiction adds at that outcome, and only for outcomes that need it:
+Once the dice answer, you are shown it and asked for the next beat; write there only what that
+answer actually adds:
 
 - a lasting injury, status, or constraint — a `trait-change` with `mode: add` on that actor, with
   a concrete text saying what it stops them doing. `mode: remove` when the fiction ends it.
 - something learned, opened, taken, or moved — the world effect that records it.
+
+Leave `action` null to end the turn when the next move is the player's to choose.
 
 SIBYLLINE RESPONSES
 

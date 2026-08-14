@@ -206,32 +206,6 @@
       "title": "Move",
       "type": "object"
     },
-    "OutcomeBranch_Loner3eEffect_": {
-      "additionalProperties": false,
-      "properties": {
-        "outcome": {
-          "description": "One outcome label the chosen action allows.",
-          "maxLength": 64,
-          "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$",
-          "title": "Outcome",
-          "type": "string"
-        },
-        "effects": {
-          "default": [],
-          "description": "What that outcome causes in the world.",
-          "items": {
-            "$ref": "#/$defs/Loner3eEffect"
-          },
-          "title": "Effects",
-          "type": "array"
-        }
-      },
-      "required": [
-        "outcome"
-      ],
-      "title": "OutcomeBranch[Loner3eEffect]",
-      "type": "object"
-    },
     "Question": {
       "additionalProperties": false,
       "description": "A closed dramatic question, answered by Chance d6 against Risk d6.",
@@ -461,22 +435,11 @@
     }
   },
   "additionalProperties": false,
+  "description": "The turn's framing and its first beat.",
   "properties": {
     "focus": {
       "description": "1-2 sentences: what the player is reaching for and what this turn is about.",
       "title": "Focus",
-      "type": "string"
-    },
-    "pressure": {
-      "default": "",
-      "description": "1-2 sentences: what pushes back this turn — a complication, a cost, a threat. Empty when the turn is genuinely quiet and nothing should push back.",
-      "title": "Pressure",
-      "type": "string"
-    },
-    "stakes": {
-      "default": "",
-      "description": "One sentence: what the player stands to win or lose. Empty when nothing is at stake.",
-      "title": "Stakes",
       "type": "string"
     },
     "speaker_id": {
@@ -493,20 +456,11 @@
       "title": "Speaker Id"
     },
     "effects": {
-      "description": "Consequences that happen whatever the action settles. Empty when the turn changes nothing.",
+      "description": "What this beat causes in the world, applied once the action has settled. Empty when nothing changes.",
       "items": {
         "$ref": "#/$defs/Loner3eEffect"
       },
       "title": "Effects",
-      "type": "array"
-    },
-    "branches": {
-      "default": [],
-      "description": "Consequences keyed by outcome: at most one branch per label, and only labels this action allows. Outcomes that do not occur simply never apply. An action rolled to cause a lasting change — a condition taking hold or lifted, something revealed — must carry that change in the matching outcome's branch: with no branch, even success changes nothing.",
-      "items": {
-        "$ref": "#/$defs/OutcomeBranch_Loner3eEffect_"
-      },
-      "title": "Branches",
       "type": "array"
     },
     "action": {
@@ -519,7 +473,7 @@
         }
       ],
       "default": null,
-      "description": "The one question this turn resolves, or null when nothing is uncertain enough to ask."
+      "description": "The one question this beat resolves, or null when nothing is uncertain enough to ask."
     }
   },
   "required": [

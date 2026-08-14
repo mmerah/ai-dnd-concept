@@ -10,7 +10,7 @@ state:
   frailties: Never Walks Away
   gear: Pry Bar, Chalk and Wire
   pools: luck 6/6
-  traits: Relic Hunter — (skill) Kael knows how old sanctums conceal what matters., Marked by the Past — (frailty) Old scars make certain memories hard to face., Yes And
+  traits: Relic Hunter — (skill) Kael knows how old sanctums conceal what matters., Marked by the Past — (frailty) Old scars make certain memories hard to face., Listening — (condition) Listening for the next shift of weight behind the door.
 inventory:
 - a guttering lantern — A dented tin lantern whose flame will not hold still.
   state:
@@ -42,11 +42,11 @@ SPEAKER:
 
 WHAT HAPPENED:
 - Does he hear what waits past the vault door without being heard? -> yes-and
-- Kael is Yes And
 - learned of the vault map
 - took the vault map
 - learned of the sealed vault
 - the sealed vault is Warded (the seal stirs when it is first seen)
+- Kael is Listening
 
 PLAYER ACTION:
 I lever up the loose flagstone and listen at the vault door.

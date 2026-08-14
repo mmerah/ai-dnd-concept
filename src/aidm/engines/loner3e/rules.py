@@ -7,7 +7,7 @@ from aidm.engines.sheets import resolved_threads
 from aidm.state.base import PLAYER_ID, Counter, EngineId, Entity
 from aidm.state.world import GameState
 
-from .actions import Question, TurnPlan
+from .actions import Question, TurnBeat, TurnPlan
 from .advance import Loner3eAdvancement
 from .create import Loner3eCreation
 from .mechanics import EFFECTS, Mechanics, Sheet, describe_entity
@@ -21,6 +21,7 @@ class Loner3eEngine(SheetEngine[Sheet, Question]):
     badge = ("LONER 3E", "teal-7")
     engine_dir = Path(__file__).parent
     plan_type = TurnPlan
+    beat_type = TurnBeat
     sheet_type = Sheet
     mechanics_type = Mechanics
     effects = EFFECTS

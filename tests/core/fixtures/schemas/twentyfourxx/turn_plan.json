@@ -197,6 +197,35 @@
       "title": "GainImprovisedItem",
       "type": "object"
     },
+    "LuckTest": {
+      "additionalProperties": false,
+      "description": "The SRD's standalone bad-luck test, for a beat where nothing is attempted.",
+      "properties": {
+        "act": {
+          "const": "luck-test",
+          "default": "luck-test",
+          "title": "Act",
+          "type": "string"
+        },
+        "actor_id": {
+          "description": "Exact id of the actor whose luck is tested: the player, or an actor here.",
+          "title": "Actor Id",
+          "type": "string"
+        },
+        "subject": {
+          "description": "What bad luck might arrive — running out of ammo, running into guards. The engine rolls whether it does.",
+          "minLength": 1,
+          "title": "Subject",
+          "type": "string"
+        }
+      },
+      "required": [
+        "actor_id",
+        "subject"
+      ],
+      "title": "LuckTest",
+      "type": "object"
+    },
     "Move": {
       "additionalProperties": false,
       "description": "Move an actor who actually changes location, or one item within the player's reach: picked\nup, set down here, or handed to an actor here. Moving the player to an unrevealed location\nreveals it.",
@@ -235,32 +264,6 @@
         }
       },
       "title": "Move",
-      "type": "object"
-    },
-    "OutcomeBranch_TwentyfourxxEffect_": {
-      "additionalProperties": false,
-      "properties": {
-        "outcome": {
-          "description": "One outcome label the chosen action allows.",
-          "maxLength": 64,
-          "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$",
-          "title": "Outcome",
-          "type": "string"
-        },
-        "effects": {
-          "default": [],
-          "description": "What that outcome causes in the world.",
-          "items": {
-            "$ref": "#/$defs/TwentyfourxxEffect"
-          },
-          "title": "Effects",
-          "type": "array"
-        }
-      },
-      "required": [
-        "outcome"
-      ],
-      "title": "OutcomeBranch[TwentyfourxxEffect]",
       "type": "object"
     },
     "RelationChange": {
@@ -406,6 +409,23 @@
       "title": "TraitChange",
       "type": "object"
     },
+    "TwentyfourxxAction": {
+      "discriminator": {
+        "mapping": {
+          "attempt": "#/$defs/Attempt",
+          "luck-test": "#/$defs/LuckTest"
+        },
+        "propertyName": "act"
+      },
+      "oneOf": [
+        {
+          "$ref": "#/$defs/Attempt"
+        },
+        {
+          "$ref": "#/$defs/LuckTest"
+        }
+      ]
+    },
     "TwentyfourxxEffect": {
       "discriminator": {
         "mapping": {
@@ -452,22 +472,11 @@
     }
   },
   "additionalProperties": false,
+  "description": "The turn's framing and its first beat.",
   "properties": {
     "focus": {
       "description": "1-2 sentences: what the player is reaching for and what this turn is about.",
       "title": "Focus",
-      "type": "string"
-    },
-    "pressure": {
-      "default": "",
-      "description": "1-2 sentences: what pushes back this turn — a complication, a cost, a threat. Empty when the turn is genuinely quiet and nothing should push back.",
-      "title": "Pressure",
-      "type": "string"
-    },
-    "stakes": {
-      "default": "",
-      "description": "One sentence: what the player stands to win or lose. Empty when nothing is at stake.",
-      "title": "Stakes",
       "type": "string"
     },
     "speaker_id": {
@@ -484,33 +493,24 @@
       "title": "Speaker Id"
     },
     "effects": {
-      "description": "Consequences that happen whatever the action settles. Empty when the turn changes nothing.",
+      "description": "What this beat causes in the world, applied once the action has settled. Empty when nothing changes.",
       "items": {
         "$ref": "#/$defs/TwentyfourxxEffect"
       },
       "title": "Effects",
       "type": "array"
     },
-    "branches": {
-      "default": [],
-      "description": "Consequences keyed by outcome: at most one branch per label, and only labels this action allows. Outcomes that do not occur simply never apply. An action rolled to cause a lasting change — a condition taking hold or lifted, something revealed — must carry that change in the matching outcome's branch: with no branch, even success changes nothing.",
-      "items": {
-        "$ref": "#/$defs/OutcomeBranch_TwentyfourxxEffect_"
-      },
-      "title": "Branches",
-      "type": "array"
-    },
     "action": {
       "anyOf": [
         {
-          "$ref": "#/$defs/Attempt"
+          "$ref": "#/$defs/TwentyfourxxAction"
         },
         {
           "type": "null"
         }
       ],
       "default": null,
-      "description": "The one attempt this turn resolves, or null when nothing the player does is risky enough to roll."
+      "description": "The one action this beat resolves: an `attempt` when what an actor does is risky, a `luck-test` when only bad luck is in question, or null when nothing calls for the dice."
     }
   },
   "required": [

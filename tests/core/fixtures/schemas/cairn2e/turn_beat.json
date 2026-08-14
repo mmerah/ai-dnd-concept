@@ -493,26 +493,7 @@
     }
   },
   "additionalProperties": false,
-  "description": "The turn's framing and its first beat.",
   "properties": {
-    "focus": {
-      "description": "1-2 sentences: what the player is reaching for and what this turn is about.",
-      "title": "Focus",
-      "type": "string"
-    },
-    "speaker_id": {
-      "anyOf": [
-        {
-          "type": "string"
-        },
-        {
-          "type": "null"
-        }
-      ],
-      "default": null,
-      "description": "Exact id of the NPC the player addresses — one they have met and who is here with them — or null if nobody is addressed.",
-      "title": "Speaker Id"
-    },
     "effects": {
       "description": "What this beat causes in the world, applied once the action has settled. Empty when nothing changes.",
       "items": {
@@ -535,9 +516,8 @@
     }
   },
   "required": [
-    "focus",
     "effects"
   ],
-  "title": "TurnPlan",
+  "title": "TurnBeat",
   "type": "object"
 }

@@ -77,6 +77,23 @@ def plan(**output: object) -> ModelResponse:
     return ModelResponse(parts=[ToolCallPart(tool_name="turn_plan", args=args)])
 
 
+def beat(**output: object) -> ModelResponse:
+    """The same role asked again once the dice have settled: the plan's shape without framing."""
+    args = json.dumps({"effects": [], **output})
+    return ModelResponse(parts=[ToolCallPart(tool_name="turn_beat", args=args)])
+
+
+def ends_the_turn() -> Stub:
+    """The continuation a turn gets when a test is not about the loop: it adds nothing."""
+    quiet = beat()
+
+    def stub(messages: list[ModelMessage], info: AgentInfo) -> ModelResponse:
+        del messages, info
+        return quiet
+
+    return stub
+
+
 def text(body: str) -> ModelResponse:
     return ModelResponse(parts=[TextPart(body)])
 
@@ -109,6 +126,7 @@ async def played(
     prompt: str,
     *,
     director: Model,
+    beats: Model | None = None,
     narrator: Model | None = None,
     worldkeeper: Model | None = None,
     rng: Random | None = None,
@@ -117,9 +135,10 @@ async def played(
     """The turn with every role stubbed, built the way the session builds it."""
     config = settings()
     stages = build_stages(engine, config)
-    roles = (stages.director, stages.narrator, stages.worldkeeper)
+    roles = (stages.director, stages.beat, stages.narrator, stages.worldkeeper)
     models = (
         director,
+        beats or FunctionModel(ends_the_turn()),
         narrator or FunctionModel(scripted(text("You wait."))),
         worldkeeper or FunctionModel(scripted(structured(creations=[]))),
     )

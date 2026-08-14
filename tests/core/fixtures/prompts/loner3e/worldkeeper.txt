@@ -42,11 +42,11 @@ I lever up the loose flagstone and listen at the vault door.
 
 WHAT HAPPENED:
 - Does he hear what waits past the vault door without being heard? -> yes-and
-- Kael is Yes And
 - learned of the vault map
 - took the vault map
 - learned of the sealed vault
 - the sealed vault is Warded (the seal stirs when it is first seen)
+- Kael is Listening
 
 NARRATION:
 The flagstone lifts. Beyond the door, something shifts its weight and waits.

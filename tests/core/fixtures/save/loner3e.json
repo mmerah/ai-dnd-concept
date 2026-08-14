@@ -1,5 +1,5 @@
 {
-  "save_version": 61,
+  "save_version": 62,
   "scenario_id": "whispering-vault",
   "character_id": "kael",
   "scenario": {
@@ -141,9 +141,9 @@
             "text": "(frailty) Old scars make certain memories hard to face."
           },
           {
-            "id": "yes-and",
-            "name": "Yes And",
-            "text": ""
+            "id": "listening",
+            "name": "Listening",
+            "text": "(condition) Listening for the next shift of weight behind the door."
           }
         ]
       },
@@ -286,10 +286,7 @@
       "vault-charted",
       "vault-sighted"
     ],
-    "pending_notes": [
-      "The chart marks the stair to the vault door. Press on what opening the seal will cost.",
-      "Kael has found the vault door. Press on what opening the seal will cost."
-    ]
+    "pending_notes": []
   },
   "mechanics": {
     "sheets": {

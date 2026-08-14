@@ -14,7 +14,7 @@ from aidm.state.base import Entity, EntityId, Slug
 from aidm.state.dice import roll_pool
 from aidm.state.effects import Reveal
 from aidm.state.facts import Fact, entity_fact
-from aidm.state.plan import Branched, Resolution
+from aidm.state.plan import Beat, Resolution, TurnPlanBase
 from aidm.state.world import GameState
 
 from .mechanics import LUCK_MAX, TIES_PER_TWIST, Loner3eEffect, Mechanics
@@ -33,8 +33,6 @@ type Position = Literal["advantage", "neutral", "disadvantage"]
 
 class Question(Action):
     """A closed dramatic question, answered by Chance d6 against Risk d6."""
-
-    outcomes = frozenset[Slug]({"yes-and", "yes", "yes-but", "no-but", "no", "no-and"})
 
     act: Literal["question"] = "question"
     actor_id: EntityId = Field(
@@ -66,12 +64,16 @@ class Question(Action):
         return resolve_question(draft, self, rng, twist_table_of(engine, draft))
 
 
-class TurnPlan(Branched[Loner3eEffect, Question]):
+class TurnBeat(Beat[Loner3eEffect, Question]):
     action: Question | None = Field(
         default=None,
-        description="The one question this turn resolves, or null when nothing is uncertain "
+        description="The one question this beat resolves, or null when nothing is uncertain "
         "enough to ask.",
     )
+
+
+class TurnPlan(TurnBeat, TurnPlanBase):
+    """The turn's framing and its first beat."""
 
 
 @runtime_checkable

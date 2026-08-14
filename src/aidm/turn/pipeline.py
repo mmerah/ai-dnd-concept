@@ -8,7 +8,7 @@ from aidm.config import Settings
 from aidm.engines.loader import Engine
 from aidm.engines.transact import transact
 from aidm.state.apply import apply_effect
-from aidm.state.base import Entity, EntityId, slug, text_slug
+from aidm.state.base import Entity, EntityId, Frozen, slug, text_slug
 from aidm.state.facts import CORE, Fact, narrator_evidence
 from aidm.state.plan import Resolution
 from aidm.state.turn import Creation, MemoryProposal, StepTrace, Turn, WorldkeeperReport
@@ -27,7 +27,7 @@ class TurnResult:
     turn: Turn
 
 
-TURN_STEPS: tuple[str, ...] = ("director", "resolve", "hooks", "narrator", "worldkeeper")
+TURN_STEPS: tuple[str, ...] = ("director", "resolve", "beat", "hooks", "narrator", "worldkeeper")
 
 
 def apply_report(
@@ -92,20 +92,47 @@ async def run_turn(
     announce("director")
     plan_prompt = prompts.render_director(snapshot, engine.renderer(state), state.scenario, prompt)
     plan = await stages.director.run(plan_prompt, PlanContext(engine=engine, state=state), history)
-    # Notes are read once: the draft carries none forward, so the next turn shows only new ones.
+    # Each Director call consumes the notes its own prompt rendered, so a note a beat writes
+    # steers the next beat of this turn — or the next turn, when no further call renders it.
     draft.world.pending_notes = ()
     steps.append(_traced("director", plan_prompt, plan))
 
     announce("resolve")
-    acted = transact(engine, draft, lambda d: engine.resolve_action(d, plan, rng), rng)
-    draft = acted.state.draft()
-    facts = list(acted.facts)
-    steps.append(StepTrace(name="resolve", output=narrator_evidence(acted.resolved)))
+    beats = [transact(engine, draft, _resolver(engine, plan, rng), rng)]
+    draft = beats[-1].state.draft()
+    # An outcome of None means nothing was rolled, so there is no consequence to ask about.
+    while (
+        beats[-1].outcome is not None
+        and beats[-1].flow == "continue"
+        and len(beats) < settings.max_beats
+    ):
+        announce("beat")
+        beat_prompt = prompts.render_director(
+            SceneSnapshot.of(draft),
+            engine.renderer(draft),
+            draft.scenario,
+            prompt,
+            happened=narrator_evidence(beats[-1].facts),
+        )
+        beat = await stages.beat.run(beat_prompt, PlanContext(engine=engine, state=draft), history)
+        draft.world.pending_notes = ()
+        steps.append(_traced(f"beat-{len(beats)}", beat_prompt, beat))
+        announce("resolve")
+        beats.append(transact(engine, draft, _resolver(engine, beat, rng), rng))
+        draft = beats[-1].state.draft()
+
+    facts = [fact for beat in beats for fact in beat.facts]
+    steps.append(
+        StepTrace(
+            name="resolve",
+            output=narrator_evidence([fact for beat in beats for fact in beat.resolved]),
+        )
+    )
 
     announce("hooks")
     evidence = narrator_evidence(facts)
-    fired_trace = "\n".join(fact.trace for fact in acted.fired) or "- (no hooks fired)"
-    steps.append(StepTrace(name="hooks", output=fired_trace))
+    fired = [fact.trace for beat in beats for fact in beat.fired]
+    steps.append(StepTrace(name="hooks", output="\n".join(fired) or "- (no hooks fired)"))
 
     announce("narrator")
     narrator_prompt = prompts.render_narrator(
@@ -155,6 +182,10 @@ async def run_turn(
         state=final,
         turn=Turn(prompt=prompt, facts=tuple(facts), narration=narration, steps=tuple(steps)),
     )
+
+
+def _resolver(engine: Engine, beat: Frozen, rng: Random) -> Callable[[GameState], Resolution]:
+    return lambda draft: engine.resolve_beat(draft, beat, rng)
 
 
 def _traced(name: str, rendered: str, output: BaseModel) -> StepTrace:

@@ -10,7 +10,7 @@ from aidm.state.base import EngineId, Entity, EntityId
 from aidm.state.facts import Fact
 from aidm.state.world import GameState
 
-from .actions import Cairn2eAction, TurnPlan
+from .actions import Cairn2eAction, TurnBeat, TurnPlan
 from .advance import Cairn2eAdvancement
 from .create import Cairn2eCreation
 from .mechanics import (
@@ -36,6 +36,7 @@ class Cairn2eEngine(SheetEngine[Sheet, Cairn2eAction]):
     badge = ("CAIRN 2E", "green-8")
     engine_dir = Path(__file__).parent
     plan_type = TurnPlan
+    beat_type = TurnBeat
     sheet_type = Sheet
     mechanics_type = Mechanics
     effects = EFFECTS

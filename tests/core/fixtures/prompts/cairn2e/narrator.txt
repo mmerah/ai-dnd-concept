@@ -8,7 +8,7 @@ state:
   background: Relic-Hunter
   dexterity 13/13, fatigue 0, gold 12, hp 4/4, strength 11/11, willpower 9/9
   armor 0, slots 1/10
-  traits: Relic Hunter — (skill) Kael knows how old sanctums conceal what matters., Marked by the Past — (frailty) Old scars make certain memories hard to face., Fail
+  traits: Relic Hunter — (skill) Kael knows how old sanctums conceal what matters., Marked by the Past — (frailty) Old scars make certain memories hard to face., Listening — (condition) Listening for the next shift of weight behind the door.
 inventory:
 - a guttering lantern — A dented tin lantern whose flame will not hold still.
   state:
@@ -45,11 +45,11 @@ SPEAKER:
 
 WHAT HAPPENED:
 - the flagstone grinds and whatever waits past the door hears it — dexterity save -> fail
-- Kael is Fail
 - learned of the vault map
 - took the vault map
 - learned of the sealed vault
 - the sealed vault is Warded (the seal stirs when it is first seen)
+- Kael is Listening
 
 PLAYER ACTION:
 I lever up the loose flagstone and listen at the vault door.

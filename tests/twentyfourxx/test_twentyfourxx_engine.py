@@ -4,7 +4,14 @@ import pytest
 from core_test_support import TWENTYFOURXX, capability, game
 from loner3e_test_support import at_milestone
 
-from aidm.engines.twentyfourxx.actions import Attempt, outcome_for, pool_faces, resolve_attempt
+from aidm.engines.twentyfourxx.actions import (
+    Attempt,
+    LuckTest,
+    outcome_for,
+    pool_faces,
+    resolve_attempt,
+    resolve_luck_test,
+)
 from aidm.engines.twentyfourxx.advance import Advance
 from aidm.engines.twentyfourxx.mechanics import Mechanics, Sheet
 from aidm.engines.twentyfourxx.rules import TwentyfourxxEngine
@@ -140,6 +147,27 @@ def test_bad_luck_that_bites_hands_the_turn_back_even_when_the_attempt_succeeded
 
     assert resolution.outcome == "success"
     assert resolution.flow == "yield-to-player"
+
+
+def test_a_standalone_luck_test_needs_no_attempt_and_only_trouble_hands_the_turn_back() -> None:
+    _, state = game(TWENTYFOURXX)
+    action = LuckTest(actor_id=PLAYER_ID, subject="running out of oil")
+
+    draft = state.draft()
+    trouble = resolve_luck_test(draft, action, Random(2))
+    assert trouble.outcome == "trouble"
+    assert trouble.flow == "yield-to-player"
+    assert len(draft.world.pending_notes) == 1
+
+    signs = resolve_luck_test(state.draft(), action, Random(0))
+    assert signs.outcome == "signs"
+    assert signs.flow == "continue"
+
+    draft = state.draft()
+    clear = resolve_luck_test(draft, action, Random(5))
+    assert clear.outcome == "clear"
+    assert clear.flow == "continue"
+    assert draft.world.pending_notes == ()
 
 
 def test_creation_vendors_the_kit_as_traits_and_lands_the_training_die() -> None:

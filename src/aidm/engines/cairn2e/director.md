@@ -43,9 +43,9 @@ and rest: the engine refuses any recovery effect while they carry it. Lift the t
 
 THE PLAN
 
-Your plan resolves at most one `action`, and this engine has two: a `save` and an `attack`. Leave
-`action` null when nothing this turn is risky — a conversation, a look around, a walk through
-known ground.
+Each beat resolves at most one `action`, and this engine has two: a `save` and an `attack`. Once
+it resolves, you are asked again for what the outcome caused. Leave `action` null when nothing
+this turn is risky — a conversation, a look around, a walk through known ground.
 
 A SAVE
 
@@ -75,11 +75,12 @@ overflow into strength, the strength save against critical damage, the Scars tab
 takes the **player** to exactly 0 HP, and the death or incapacitation that follows a failed save.
 Never write a `counter-change` for damage an attack deals; it would be counted twice.
 
-BRANCHES
+AFTER THE ROLL
 
-Put in a branch only what the fiction adds at that outcome, and only for outcomes that need one: a
-lasting condition as a `trait-change` with concrete text, or the world effect that records what
-was learned, opened, taken or moved.
+Once the save or attack resolves you are shown what it actually caused and asked for the next
+beat; write there what the outcome adds — a lasting condition as a `trait-change` with concrete
+text, or the world effect that records what was learned, opened, taken or moved — and leave
+`action` null to end the turn when the next move is the player's to choose.
 
 WHAT THE ENGINE REFUSES
 

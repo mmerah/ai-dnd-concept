@@ -6,6 +6,7 @@ from core_test_support import (
     CAIRN2E,
     LONER3E,
     TWENTYFOURXX,
+    beat,
     game,
     plan,
     played,
@@ -47,27 +48,26 @@ CREATIONS = [
         },
     }
 ]
-TURN_STEPS = ("director", "resolve", "hooks", "narrator", "worldkeeper")
+TURN_STEPS = ("director", "beat-1", "resolve", "hooks", "narrator", "worldkeeper")
+# What the second beat writes once the roll has landed: the same shape under every engine.
+SECOND_BEAT = beat(
+    effects=[
+        {
+            "op": "trait-change",
+            "mode": "add",
+            "entity_id": "player",
+            "trait_id": "listening",
+            "text": "(condition) Listening for the next shift of weight behind the door.",
+        }
+    ]
+)
 
 
-def _branch(outcome: str) -> dict[str, object]:
-    return {
-        "outcome": outcome,
-        "effects": [
-            {"op": "trait-change", "mode": "add", "entity_id": "player", "trait_id": outcome}
-        ],
-    }
+def _plan(action: dict[str, object]) -> ModelResponse:
+    return plan(effects=[TAKE_THE_MAP], action=action)
 
 
-def _plan(action: dict[str, object], outcomes: tuple[str, ...]) -> ModelResponse:
-    return plan(
-        effects=[TAKE_THE_MAP],
-        action=action,
-        branches=[_branch(outcome) for outcome in outcomes],
-    )
-
-
-# The fiction resolved by the engine's own action and outcome labels.
+# The fiction resolved by the engine's own action.
 SCRIPTS: Mapping[EngineId, ModelResponse] = {
     LONER3E: _plan(
         {
@@ -77,8 +77,7 @@ SCRIPTS: Mapping[EngineId, ModelResponse] = {
             "leverage": ["Quiet Hands"],
             "trouble": [],
             "opponent_id": None,
-        },
-        ("yes-and", "yes-but", "no"),
+        }
     ),
     TWENTYFOURXX: _plan(
         {
@@ -89,8 +88,7 @@ SCRIPTS: Mapping[EngineId, ModelResponse] = {
             "helped": "Relic Hunter",
             "hindered": "",
             "luck_test": "something behind the door is already listening back",
-        },
-        ("success", "setback", "disaster"),
+        }
     ),
     CAIRN2E: _plan(
         {
@@ -98,8 +96,7 @@ SCRIPTS: Mapping[EngineId, ModelResponse] = {
             "actor_id": "player",
             "attribute": "dexterity",
             "risk": "the flagstone grinds and whatever waits past the door hears it",
-        },
-        ("pass", "fail"),
+        }
     ),
 }
 
@@ -117,6 +114,7 @@ async def _played(engine_id: EngineId) -> TurnResult:
         _behind(state),
         PROMPT,
         director=FunctionModel(scripted(SCRIPTS[engine_id])),
+        beats=FunctionModel(scripted(SECOND_BEAT)),
         narrator=FunctionModel(scripted(text(NARRATION))),
         worldkeeper=FunctionModel(scripted(structured(creations=CREATIONS))),
         rng=Random(SEED),

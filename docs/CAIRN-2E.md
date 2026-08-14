@@ -691,14 +691,17 @@ is scenario-authoring scope, not a deviation.
    Camp, medical healing and a week's rest for attribute loss land as Director-written
    `counter-change` effects; torches, lanterns and rations carry `uses` the Director spends;
    prices inform authored gear and rulings; gold moves through `counter-change`; light is
-   fiction.
+   fiction. "At most one action" is now at most one action per beat, up to three beats a turn.
 2. **Reactions, the Die of Fate, morale and panic are the Director's rulings.** The 2d6 and 1d6
    tables are never rolled, and the engine counts no casualties and knows no group size, so
-   morale and panic land as ordinary willpower saves the Director calls for.
+   morale and panic land as ordinary willpower saves the Director calls for. A morale save can
+   now follow the blow that triggered it inside the same turn, because the Director is asked
+   again once the blow resolves.
 3. **One attack, one target, one die pool.** Detachments, blast, and two weapons at once
    (`d8+d8`) are not modelled: a large group is one actor with one sheet, a blast is several
    attacks or fiction, and the `impaired`/`enhanced` modifiers plus `joined_by`'s
-   roll-everything-keep-highest carry the rest when the Director sets them.
+   roll-everything-keep-highest carry the rest when the Director sets them. Those several attacks
+   can now be written across the beats of one turn rather than several.
 4. **Scars are rolled only for the player, and the stat change lands the moment the scar
    does**, where several SRD rows defer it to "once mended" or "when you recover". The engine
    has no downtime clock to defer to; every other actor is an NPC mechanically, and a companion

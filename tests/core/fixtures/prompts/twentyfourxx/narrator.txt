@@ -9,7 +9,7 @@ state:
   origin: Human
   skills: Climbing d10, Stealth d10, Tracking d8
   pools: credits 2
-  traits: Relic Hunter — (skill) Kael knows how old sanctums conceal what matters., Marked by the Past — (frailty) Old scars make certain memories hard to face., Success
+  traits: Relic Hunter — (skill) Kael knows how old sanctums conceal what matters., Marked by the Past — (frailty) Old scars make certain memories hard to face., Listening — (condition) Listening for the next shift of weight behind the door.
 inventory:
 - a guttering lantern — A dented tin lantern whose flame will not hold still.
   state:
@@ -42,11 +42,11 @@ SPEAKER:
 WHAT HAPPENED:
 - Listen at the vault door without being heard -> success
 - bad luck — something behind the door is already listening back: signs of it
-- Kael is Success
 - learned of the vault map
 - took the vault map
 - learned of the sealed vault
 - the sealed vault is Warded (the seal stirs when it is first seen)
+- Kael is Listening
 
 PLAYER ACTION:
 I lever up the loose flagstone and listen at the vault door.

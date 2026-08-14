@@ -1,45 +1,7 @@
 [
   {
     "focus": "Kael works the sealed door before whatever is behind it notices him.",
-    "pressure": "The whispering rises the longer he works.",
-    "stakes": "The way into the vault, or being heard trying.",
     "effects": [],
-    "branches": [
-      {
-        "outcome": "yes-and",
-        "effects": [
-          {
-            "op": "move",
-            "to_id": "vault"
-          }
-        ]
-      },
-      {
-        "outcome": "yes-but",
-        "effects": [
-          {
-            "op": "trait-change",
-            "mode": "add",
-            "entity_id": "player",
-            "text": "(condition) The whispering drowns out anything said softly.",
-            "trait_id": "ears-ringing"
-          }
-        ]
-      },
-      {
-        "outcome": "no-and",
-        "effects": [
-          {
-            "op": "counter-change",
-            "mode": "adjust",
-            "entity_id": "player",
-            "counter": "luck",
-            "amount": -1,
-            "why": "the seal takes something out of him"
-          }
-        ]
-      }
-    ],
     "action": {
       "act": "question",
       "actor_id": "player",
@@ -53,5 +15,19 @@
       ],
       "opponent_id": null
     }
+  },
+  {
+    "focus": "Kael turns out the abbot's desk for whatever the abbey wanted hidden there.",
+    "effects": [
+      {
+        "op": "reveal",
+        "entity_id": "vault_map"
+      },
+      {
+        "op": "move",
+        "entity_id": "vault_map"
+      }
+    ],
+    "action": null
   }
 ]

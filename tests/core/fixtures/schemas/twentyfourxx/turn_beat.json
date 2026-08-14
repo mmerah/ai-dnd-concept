@@ -69,113 +69,58 @@
       "title": "AdvanceThread",
       "type": "object"
     },
-    "Attack": {
+    "Attempt": {
       "additionalProperties": false,
-      "description": "One attack, which always hits: the weapon die less the target's armor comes off their HP.",
+      "description": "One risky attempt, answered by the highest die of a pool.",
       "properties": {
         "act": {
-          "const": "attack",
-          "default": "attack",
+          "const": "attempt",
+          "default": "attempt",
           "title": "Act",
           "type": "string"
         },
-        "attacker_id": {
-          "description": "Exact id of the actor striking: the player, or an actor here with them.",
-          "title": "Attacker Id",
+        "actor_id": {
+          "description": "Exact id of the actor attempting this: the player, or an actor here.",
+          "title": "Actor Id",
           "type": "string"
         },
-        "target_id": {
-          "description": "Exact id of the actor being struck, who must be here too.",
-          "title": "Target Id",
+        "goal": {
+          "description": "What the actor is trying to do and what they risk by trying, in one line.",
+          "minLength": 1,
+          "title": "Goal",
           "type": "string"
         },
-        "weapon_id": {
-          "anyOf": [
-            {
-              "type": "string"
-            },
-            {
-              "type": "null"
-            }
-          ],
-          "default": null,
-          "description": "Exact id of a weapon the attacker carries; null is an unarmed blow, always d4.",
-          "title": "Weapon Id"
-        },
-        "modifier": {
-          "default": "normal",
-          "description": "`impaired` (a position of weakness: cover, bound hands, a distant shot) rolls d4 whatever the weapon; `enhanced` (a position of advantage: a helpless foe, a daring manoeuvre) rolls d12.",
-          "enum": [
-            "normal",
-            "impaired",
-            "enhanced"
-          ],
-          "title": "Modifier",
+        "skill": {
+          "default": "",
+          "description": "The skill on the actor's sheet this calls on, copied exactly as it is written there. Empty when none of theirs applies: they roll the bare d6.",
+          "title": "Skill",
           "type": "string"
         },
-        "joined_by": {
-          "default": [],
-          "description": "Other actors here striking the same target in the same round; every damage die is rolled and only the single highest counts.",
-          "items": {
-            "type": "string"
-          },
-          "title": "Joined By",
-          "type": "array"
+        "helped": {
+          "default": "",
+          "description": "One tag in the scene that makes this easier — a trait on the actor, on what they carry, on where they stand, or on who stands there with them — copied exactly. Empty when nothing helps; you cannot invent one.",
+          "title": "Helped",
+          "type": "string"
+        },
+        "hindered": {
+          "default": "",
+          "description": "One tag in the scene that makes this harder, copied the same way. Empty when nothing hinders.",
+          "title": "Hindered",
+          "type": "string"
+        },
+        "luck_test": {
+          "default": "",
+          "description": "What bad luck might arrive alongside this — running out of ammo, running into guards. The engine rolls whether it does. Empty for no test.",
+          "title": "Luck Test",
+          "type": "string"
         }
       },
       "required": [
-        "attacker_id",
-        "target_id"
+        "actor_id",
+        "goal"
       ],
-      "title": "Attack",
+      "title": "Attempt",
       "type": "object"
-    },
-    "Attribute": {
-      "enum": [
-        "strength",
-        "dexterity",
-        "willpower"
-      ],
-      "type": "string"
-    },
-    "Cairn2eAction": {
-      "discriminator": {
-        "mapping": {
-          "attack": "#/$defs/Attack",
-          "save": "#/$defs/Save"
-        },
-        "propertyName": "act"
-      },
-      "oneOf": [
-        {
-          "$ref": "#/$defs/Save"
-        },
-        {
-          "$ref": "#/$defs/Attack"
-        }
-      ]
-    },
-    "Cairn2eEffect": {
-      "discriminator": {
-        "mapping": {
-          "advance-thread": "#/$defs/WorldOp",
-          "counter-change": "#/$defs/CounterChange",
-          "gain-improvised-item": "#/$defs/WorldOp",
-          "move": "#/$defs/WorldOp",
-          "relation-change": "#/$defs/WorldOp",
-          "reveal": "#/$defs/WorldOp",
-          "trait-change": "#/$defs/WorldOp"
-        },
-        "propertyName": "op"
-      },
-      "oneOf": [
-        {
-          "$ref": "#/$defs/WorldOp"
-        },
-        {
-          "$ref": "#/$defs/CounterChange"
-        }
-      ]
     },
     "CounterChange": {
       "additionalProperties": false,
@@ -250,6 +195,35 @@
         "item_name"
       ],
       "title": "GainImprovisedItem",
+      "type": "object"
+    },
+    "LuckTest": {
+      "additionalProperties": false,
+      "description": "The SRD's standalone bad-luck test, for a beat where nothing is attempted.",
+      "properties": {
+        "act": {
+          "const": "luck-test",
+          "default": "luck-test",
+          "title": "Act",
+          "type": "string"
+        },
+        "actor_id": {
+          "description": "Exact id of the actor whose luck is tested: the player, or an actor here.",
+          "title": "Actor Id",
+          "type": "string"
+        },
+        "subject": {
+          "description": "What bad luck might arrive — running out of ammo, running into guards. The engine rolls whether it does.",
+          "minLength": 1,
+          "title": "Subject",
+          "type": "string"
+        }
+      },
+      "required": [
+        "actor_id",
+        "subject"
+      ],
+      "title": "LuckTest",
       "type": "object"
     },
     "Move": {
@@ -383,40 +357,6 @@
       "title": "Reveal",
       "type": "object"
     },
-    "Save": {
-      "additionalProperties": false,
-      "description": "A roll to avoid a bad outcome: d20 under the attribute, where 1 always passes and 20 always\nfails.",
-      "properties": {
-        "act": {
-          "const": "save",
-          "default": "save",
-          "title": "Act",
-          "type": "string"
-        },
-        "actor_id": {
-          "description": "Exact id of the actor at risk: the player, or an actor here with them; when two sides oppose each other, whoever is most at risk saves.",
-          "title": "Actor Id",
-          "type": "string"
-        },
-        "attribute": {
-          "$ref": "#/$defs/Attribute",
-          "description": "Which attribute answers: strength for force and endurance, dexterity for speed, reflexes and stealth, willpower for nerve, persuasion, morale, panic and reading a spell."
-        },
-        "risk": {
-          "description": "What the actor avoids by passing, in one line.",
-          "minLength": 1,
-          "title": "Risk",
-          "type": "string"
-        }
-      },
-      "required": [
-        "actor_id",
-        "attribute",
-        "risk"
-      ],
-      "title": "Save",
-      "type": "object"
-    },
     "TraitChange": {
       "additionalProperties": false,
       "description": "Put a lasting condition, skill, or frailty on an entity, or lift one the fiction ends. The\ntrait shows the id written out: `battle-worn` appears as Battle Worn.",
@@ -469,6 +409,45 @@
       "title": "TraitChange",
       "type": "object"
     },
+    "TwentyfourxxAction": {
+      "discriminator": {
+        "mapping": {
+          "attempt": "#/$defs/Attempt",
+          "luck-test": "#/$defs/LuckTest"
+        },
+        "propertyName": "act"
+      },
+      "oneOf": [
+        {
+          "$ref": "#/$defs/Attempt"
+        },
+        {
+          "$ref": "#/$defs/LuckTest"
+        }
+      ]
+    },
+    "TwentyfourxxEffect": {
+      "discriminator": {
+        "mapping": {
+          "advance-thread": "#/$defs/WorldOp",
+          "counter-change": "#/$defs/CounterChange",
+          "gain-improvised-item": "#/$defs/WorldOp",
+          "move": "#/$defs/WorldOp",
+          "relation-change": "#/$defs/WorldOp",
+          "reveal": "#/$defs/WorldOp",
+          "trait-change": "#/$defs/WorldOp"
+        },
+        "propertyName": "op"
+      },
+      "oneOf": [
+        {
+          "$ref": "#/$defs/WorldOp"
+        },
+        {
+          "$ref": "#/$defs/CounterChange"
+        }
+      ]
+    },
     "WorldOp": {
       "anyOf": [
         {
@@ -493,30 +472,11 @@
     }
   },
   "additionalProperties": false,
-  "description": "The turn's framing and its first beat.",
   "properties": {
-    "focus": {
-      "description": "1-2 sentences: what the player is reaching for and what this turn is about.",
-      "title": "Focus",
-      "type": "string"
-    },
-    "speaker_id": {
-      "anyOf": [
-        {
-          "type": "string"
-        },
-        {
-          "type": "null"
-        }
-      ],
-      "default": null,
-      "description": "Exact id of the NPC the player addresses — one they have met and who is here with them — or null if nobody is addressed.",
-      "title": "Speaker Id"
-    },
     "effects": {
       "description": "What this beat causes in the world, applied once the action has settled. Empty when nothing changes.",
       "items": {
-        "$ref": "#/$defs/Cairn2eEffect"
+        "$ref": "#/$defs/TwentyfourxxEffect"
       },
       "title": "Effects",
       "type": "array"
@@ -524,20 +484,19 @@
     "action": {
       "anyOf": [
         {
-          "$ref": "#/$defs/Cairn2eAction"
+          "$ref": "#/$defs/TwentyfourxxAction"
         },
         {
           "type": "null"
         }
       ],
       "default": null,
-      "description": "The one action this beat resolves: a `save` when the fiction puts an actor at risk of a bad outcome, an `attack` when a blow actually lands, or null when nothing is risky enough to roll."
+      "description": "The one action this beat resolves: an `attempt` when what an actor does is risky, a `luck-test` when only bad luck is in question, or null when nothing calls for the dice."
     }
   },
   "required": [
-    "focus",
     "effects"
   ],
-  "title": "TurnPlan",
+  "title": "TurnBeat",
   "type": "object"
 }

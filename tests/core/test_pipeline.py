@@ -4,10 +4,12 @@ from random import Random
 import pytest
 from core_test_support import (
     answered,
+    beat,
     initialized,
     plan,
     played,
     scripted,
+    settings,
     shown,
     structured,
     text,
@@ -21,14 +23,19 @@ from pydantic_ai.messages import (
 )
 from pydantic_ai.models.function import AgentInfo, FunctionModel
 
-from aidm.engines.loner3e.actions import Question, outcome_for
+from aidm.engines.loner3e.actions import outcome_for
 from aidm.engines.loner3e.mechanics import Mechanics
 from aidm.state.base import PLAYER_ID, Counter, EntityId
 from aidm.state.world import Hook, HookMatch, Memory, Thread
 from aidm.turn.pipeline import TURN_STEPS
 from aidm.turn.roles import ChannelSafeModel
 
-STEPS = ("director", "resolve", "hooks", "narrator", "worldkeeper")
+QUIET_STEPS = ("director", "resolve", "hooks", "narrator", "worldkeeper")
+ASKED = {
+    "act": "question",
+    "actor_id": "player",
+    "question": "Does the door give before the whispering finds him?",
+}
 
 
 async def test_an_engine_uses_the_shared_pipeline_and_safe_narrator_prompt() -> None:
@@ -45,7 +52,9 @@ async def test_an_engine_uses_the_shared_pipeline_and_safe_narrator_prompt() -> 
         on_step=steps.append,
     )
 
-    assert tuple(steps) == STEPS == TURN_STEPS
+    # A turn that rolls nothing costs one Director call: the beat badge never lights.
+    assert tuple(steps) == QUIET_STEPS
+    assert set(TURN_STEPS) == {*QUIET_STEPS, "beat"}
     # Finding the map reveals the vault in the same pass, which fires the vault's own hook in
     # the same turn: the round-based drain lets one hook's fact feed the next.
     assert [fact.kind for fact in result.turn.facts] == [
@@ -92,51 +101,119 @@ async def test_a_speaker_the_turn_walks_away_from_narrates_the_scene_instead_of_
     assert "(none — narrate the scene)" in shown(result.turn, "narrator")
 
 
-async def test_the_resolver_applies_only_the_branch_of_the_outcome_rolled() -> None:
-    """The point of the redesign: the engine rolls, picks the outcome, and applies its branch."""
+async def test_the_engine_rolls_the_outcome_the_facts_then_record() -> None:
+    """The engine makes every roll and picks the outcome; the plan never states one."""
     engine, state = initialized()
-
-    def branch(outcome: str) -> dict[str, object]:
-        return {
-            "outcome": outcome,
-            "effects": [
-                {"op": "trait-change", "mode": "add", "entity_id": "player", "trait_id": outcome}
-            ],
-        }
-
-    director = FunctionModel(
-        scripted(
-            plan(
-                action={
-                    "act": "question",
-                    "actor_id": "player",
-                    "question": "Does the door give before the whispering finds him?",
-                },
-                branches=[branch(outcome) for outcome in sorted(Question.outcomes)],
-            )
-        )
-    )
-    narrator = FunctionModel(scripted(text("You falter.")))
     result = await played(
         engine,
         state,
         "I plead with the door.",
-        director=director,
-        narrator=narrator,
+        director=FunctionModel(scripted(plan(action=ASKED))),
+        narrator=FunctionModel(scripted(text("You falter."))),
         rng=Random(2),
     )
 
     chance, risk = (fact.data["kept"] for fact in result.turn.facts if fact.kind == "dice_rolled")
     assert isinstance(chance, int) and isinstance(risk, int)
-    held = {trait.id for trait in result.state.player.traits}
-    assert held & Question.outcomes == {outcome_for(chance, risk)}
+    answer = next(fact for fact in result.turn.facts if fact.kind == "question_answered")
+    assert answer.data["outcome"] == outcome_for(chance, risk)
     engine.validate(result.state)
+
+
+async def test_a_later_beat_walks_the_way_the_first_one_opened() -> None:
+    """The semantic heart of the loop: a consequence written after the roll, against the state
+    that roll left behind — legal only because the beat before it revealed the way."""
+    engine, state = initialized()
+    onward = {"op": "move", "to_id": "bell_tower"}
+    result = await played(
+        engine,
+        state,
+        "I search the cloister for another way up.",
+        director=FunctionModel(
+            scripted(
+                plan(
+                    action=ASKED,
+                    effects=[
+                        {"op": "move", "to_id": "cloister"},
+                        {
+                            "op": "relation-change",
+                            "mode": "reveal",
+                            "kind": "connected",
+                            "source": "cloister",
+                            "target": "bell_tower",
+                        },
+                    ],
+                )
+            )
+        ),
+        beats=FunctionModel(scripted(beat(effects=[onward]))),
+    )
+
+    assert result.state.player.parent_id == "bell_tower"
+    assert [step.name for step in result.turn.steps] == [
+        "director",
+        "beat-1",
+        "resolve",
+        "hooks",
+        "narrator",
+        "worldkeeper",
+    ]
+    too_early = engine.beat_type.model_validate({"effects": [onward]})
+    assert engine.check_beat(state, too_early) is not None
+
+
+async def test_the_loop_stops_at_max_beats_however_many_actions_the_director_writes() -> None:
+    engine, state = initialized()
+    asked = beat(action=ASKED)
+    # Two continuations only: a third call would run the script dry and fail the turn.
+    result = await played(
+        engine,
+        state,
+        "I keep working at the seal.",
+        director=FunctionModel(scripted(plan(action=ASKED))),
+        beats=FunctionModel(scripted(asked, asked)),
+    )
+
+    assert settings().max_beats == 3
+    assert [step.name for step in result.turn.steps] == [
+        "director",
+        "beat-1",
+        "beat-2",
+        "resolve",
+        "hooks",
+        "narrator",
+        "worldkeeper",
+    ]
+    assert [fact.kind for fact in result.turn.facts].count("question_answered") == 3
+
+
+async def test_a_beat_that_fails_discards_what_the_beats_before_it_did() -> None:
+    engine, state = initialized()
+    before = state.model_dump_json()
+
+    def boom(messages: list[ModelMessage], info: AgentInfo) -> ModelResponse:
+        del messages, info
+        raise RuntimeError("the beat exploded")
+
+    with pytest.raises(RuntimeError, match="the beat exploded"):
+        await played(
+            engine,
+            state,
+            "I take the map and read it.",
+            director=FunctionModel(
+                scripted(plan(action=ASKED, effects=[{"op": "move", "entity_id": "vault_map"}]))
+            ),
+            beats=FunctionModel(boom),
+        )
+
+    assert state.model_dump_json() == before
+    assert state.world.require(EntityId("vault_map")).parent_id != PLAYER_ID
 
 
 async def test_a_plan_answered_as_plain_text_is_asked_again_for_the_tool_call() -> None:
     """Accepting prose as well would cost `tool_choice: required`, and gpt-oss needs it."""
     engine, state = initialized()
-    spoken = 'Here is the plan:\n{"focus": "Kael waits.", "effects": [], "branches": []}'
+    spoken = 'Here is the plan:\n{"focus": "Kael waits.", "effects": []}'
     director = FunctionModel(scripted(text(spoken), plan(focus="Kael waits.")))
     result = await played(engine, state, "I wait.", director=director)
 
@@ -150,20 +227,20 @@ async def test_a_tool_call_with_a_channel_marker_in_its_name_still_lands() -> No
         parts=[
             ToolCallPart(
                 tool_name="turn_plan<|channel|>json",
-                args=json.dumps({"focus": "Kael waits.", "effects": [], "branches": []}),
+                args=json.dumps({"focus": "Kael waits.", "effects": []}),
             )
         ]
     )
     director = ChannelSafeModel(FunctionModel(scripted(marked)))
     result = await played(engine, state, "I wait.", director=director)
 
-    assert answered(result.turn, "director")["branches"] == []
+    assert answered(result.turn, "director")["effects"] == []
 
 
 async def test_an_illegal_plan_is_retried_with_the_reason() -> None:
     engine, state = initialized()
     responses = scripted(
-        plan(branches=[{"outcome": "strong", "effects": ()}]),
+        plan(effects=[{"op": "reveal", "entity_id": "nowhere"}]),
         plan(),
     )
     calls: list[list[ModelMessage]] = []
@@ -174,12 +251,12 @@ async def test_an_illegal_plan_is_retried_with_the_reason() -> None:
 
     result = await played(engine, state, "I wait.", director=FunctionModel(recording))
 
-    assert answered(result.turn, "director")["branches"] == []
+    assert answered(result.turn, "director")["effects"] == []
     assert result.turn.facts == ()
     retry = calls[-1][-1]
     assert isinstance(retry, ModelRequest)
     reasons = [part.content for part in retry.parts if isinstance(part, RetryPromptPart)]
-    assert any("settles no outcome" in str(reason) for reason in reasons)
+    assert any("unknown entity id 'nowhere'" in str(reason) for reason in reasons)
 
 
 async def test_worldkeeper_creations_receive_valid_engine_rules_before_commit() -> None:
@@ -361,15 +438,7 @@ async def test_memory_reaches_the_director_alone_and_only_for_who_is_here() -> N
 async def test_the_director_reads_the_canon_and_only_the_narrator_is_kept_from_it() -> None:
     engine, state = initialized()
     steps: list[str] = []
-    director = FunctionModel(
-        scripted(
-            plan(
-                focus="Kael presses toward the vault door.",
-                pressure="The undercroft air grows colder.",
-                stakes="Finding it now or losing the trail.",
-            )
-        )
-    )
+    director = FunctionModel(scripted(plan(focus="Kael presses toward the vault door.")))
     result = await played(
         engine,
         state,
@@ -378,7 +447,7 @@ async def test_the_director_reads_the_canon_and_only_the_narrator_is_kept_from_i
         on_step=steps.append,
     )
 
-    assert tuple(steps) == ("director", "resolve", "hooks", "narrator", "worldkeeper")
+    assert tuple(steps) == QUIET_STEPS
     director_prompt = shown(result.turn, "director")
     # Elena reaches the one Director's prompt; the narrator never does.
     assert "Elena" in director_prompt

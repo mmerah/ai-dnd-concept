@@ -13,7 +13,7 @@ from aidm.state.base import PLAYER_ID, Entity, EntityId, Frozen, Slug, Trait
 from aidm.state.dice import roll_pool, roll_sum
 from aidm.state.effects import Reveal
 from aidm.state.facts import Fact, entity_fact
-from aidm.state.plan import Branched, Flow, Resolution
+from aidm.state.plan import Beat, Flow, Resolution, TurnPlanBase
 from aidm.state.world import GameState
 
 from .mechanics import (
@@ -39,8 +39,6 @@ class Save(Action):
     """A roll to avoid a bad outcome: d20 under the attribute, where 1 always passes and 20 always
     fails."""
 
-    outcomes = frozenset[Slug]({"pass", "fail"})
-
     act: Literal["save"] = "save"
     actor_id: EntityId = Field(
         description="Exact id of the actor at risk: the player, or an actor here with them; when "
@@ -60,8 +58,6 @@ class Save(Action):
 
 class Attack(Action):
     """One attack, which always hits: the weapon die less the target's armor comes off their HP."""
-
-    outcomes = frozenset[Slug]({"blocked", "hit", "wounded", "down"})
 
     act: Literal["attack"] = "attack"
     attacker_id: EntityId = Field(
@@ -95,13 +91,17 @@ class Attack(Action):
 type Cairn2eAction = Annotated[Save | Attack, Field(discriminator="act")]
 
 
-class TurnPlan(Branched[Cairn2eEffect, Cairn2eAction]):
+class TurnBeat(Beat[Cairn2eEffect, Cairn2eAction]):
     action: Cairn2eAction | None = Field(
         default=None,
-        description="The one action this turn resolves: a `save` when the fiction puts an actor "
+        description="The one action this beat resolves: a `save` when the fiction puts an actor "
         "at risk of a bad outcome, an `attack` when a blow actually lands, or null when nothing "
         "is risky enough to roll.",
     )
+
+
+class TurnPlan(TurnBeat, TurnPlanBase):
+    """The turn's framing and its first beat."""
 
 
 class Scar(Frozen):

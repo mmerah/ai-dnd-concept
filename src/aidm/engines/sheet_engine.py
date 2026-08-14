@@ -6,18 +6,12 @@ from typing import cast
 
 from pydantic import JsonValue, TypeAdapter
 
+from aidm.state import plan
 from aidm.state.apply import apply_effect, reveal_target
-from aidm.state.base import Entity, EntityId, Frozen, Slug
+from aidm.state.base import Entity, EntityId, Frozen
 from aidm.state.effects import WorldOp
 from aidm.state.facts import Fact
-from aidm.state.plan import (
-    Branched,
-    Resolution,
-    Resolver,
-    TurnPlanBase,
-    check_branched,
-    resolve_branched,
-)
+from aidm.state.plan import Beat, Resolution, Resolver
 from aidm.state.world import GameState
 
 from .actions import Action
@@ -34,13 +28,13 @@ class SheetEngine[S: SheetBase, A: Action](Engine):
     sheet_type: type[S]
     mechanics_type: type[SheetMechanics[S]]
     effects: TypeAdapter[EngineEffect]
-    # Narrowed so a plan carrying the wrong action is a type error; never reassigned.
-    plan_type: type[Branched[EngineEffect, A]]  # pyright: ignore[reportIncompatibleVariableOverride]
+    # Narrowed so a beat carrying the wrong action is a type error; never reassigned.
+    beat_type: type[Beat[EngineEffect, A]]  # pyright: ignore[reportIncompatibleVariableOverride]
 
     def __init__(self, extra_packs: Path | None = None) -> None:
         super().__init__(extra_packs)
         # Read once here so a missing declaration fails the build, not the turn that first needs it.
-        _ = self.sheet_type, self.mechanics_type, self.effects
+        _ = self.sheet_type, self.mechanics_type, self.effects, self.beat_type
 
     def check_overlay(self, payloads: Iterable[dict[str, JsonValue]]) -> None:
         for rules in payloads:
@@ -85,27 +79,25 @@ class SheetEngine[S: SheetBase, A: Action](Engine):
     @abstractmethod
     def describe(self, state: GameState, entity: Entity) -> str: ...
 
-    def check_plan(self, state: GameState, plan: TurnPlanBase) -> str | None:
-        typed = self._typed(plan)
+    def check_beat(self, state: GameState, beat: Frozen) -> str | None:
+        typed = self._typed(beat)
         if typed is None:
-            return f"this engine answers with a {self.plan_type.__name__}"
-        action = typed.action
-        labels = frozenset[Slug]() if action is None else action.outcomes
-        return check_branched(state, typed, labels, self.apply, self._resolver(action))
+            return f"this engine answers with a {self.beat_type.__name__}"
+        return plan.check_beat(state, typed, self.apply, self._resolver(typed.action))
 
-    def resolve_action(self, draft: GameState, plan: TurnPlanBase, rng: Random) -> Resolution:
-        typed = self._typed(plan)
+    def resolve_beat(self, draft: GameState, beat: Frozen, rng: Random) -> Resolution:
+        typed = self._typed(beat)
         if typed is None:
-            raise ValueError(f"a {type(plan).__name__} is no {self.plan_type.__name__}")
-        return resolve_branched(draft, typed, self.apply, self._resolver(typed.action), rng)
+            raise ValueError(f"a {type(beat).__name__} is no {self.beat_type.__name__}")
+        return plan.resolve_beat(draft, typed, self.apply, self._resolver(typed.action), rng)
 
     def _resolver(self, action: A | None) -> Resolver | None:
         if action is None:
             return None
         return lambda draft, rng: action.resolve(self, draft, rng)
 
-    def _typed(self, plan: TurnPlanBase) -> Branched[EngineEffect, A] | None:
+    def _typed(self, beat: Frozen) -> Beat[EngineEffect, A] | None:
         # `isinstance` narrows to the bare class, dropping the arguments the declaration pins.
-        if not isinstance(plan, self.plan_type):
+        if not isinstance(beat, self.beat_type):
             return None
-        return cast("Branched[EngineEffect, A]", plan)
+        return cast("Beat[EngineEffect, A]", beat)

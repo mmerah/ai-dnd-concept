@@ -7,7 +7,7 @@ from aidm.engines.sheets import resolved_threads
 from aidm.state.base import Counter, EngineId, Entity
 from aidm.state.world import GameState
 
-from .actions import Attempt, TurnPlan
+from .actions import TurnBeat, TurnPlan, TwentyfourxxAction
 from .advance import TwentyfourxxAdvancement
 from .create import TwentyfourxxCreation
 from .mechanics import EFFECTS, Mechanics, Sheet, describe_entity
@@ -16,11 +16,12 @@ from .pack import Pack
 ENGINE_ID: EngineId = EngineId("twentyfourxx")
 
 
-class TwentyfourxxEngine(SheetEngine[Sheet, Attempt]):
+class TwentyfourxxEngine(SheetEngine[Sheet, TwentyfourxxAction]):
     id = ENGINE_ID
     badge = ("24XX", "indigo-7")
     engine_dir = Path(__file__).parent
     plan_type = TurnPlan
+    beat_type = TurnBeat
     sheet_type = Sheet
     mechanics_type = Mechanics
     effects = EFFECTS

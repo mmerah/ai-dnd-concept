@@ -1,5 +1,5 @@
 {
-  "save_version": 61,
+  "save_version": 62,
   "facts": [
     {
       "source": "core",
@@ -28,16 +28,6 @@
         "attribute": "dexterity",
         "rolled": 15,
         "score": 13
-      }
-    },
-    {
-      "source": "core",
-      "kind": "trait_added",
-      "trace": "Kael is Fail",
-      "narrator": "Kael is Fail",
-      "data": {
-        "entity_id": "player",
-        "trait_id": "fail"
       }
     },
     {
@@ -125,6 +115,16 @@
     },
     {
       "source": "core",
+      "kind": "trait_added",
+      "trace": "Kael is Listening",
+      "narrator": "Kael is Listening",
+      "data": {
+        "entity_id": "player",
+        "trait_id": "listening"
+      }
+    },
+    {
+      "source": "core",
       "kind": "entity_created",
       "trace": "new actor: Sister Auber",
       "narrator": "new actor: Sister Auber",
@@ -143,42 +143,12 @@
       "name": "director",
       "output": {
         "focus": "Kael acts.",
-        "pressure": "",
-        "stakes": "",
         "speaker_id": null,
         "effects": [
           {
             "op": "move",
             "entity_id": "vault_map",
             "to_id": null
-          }
-        ],
-        "branches": [
-          {
-            "outcome": "pass",
-            "effects": [
-              {
-                "op": "trait-change",
-                "mode": "add",
-                "entity_id": "player",
-                "trait_id": "pass",
-                "text": "",
-                "why": ""
-              }
-            ]
-          },
-          {
-            "outcome": "fail",
-            "effects": [
-              {
-                "op": "trait-change",
-                "mode": "add",
-                "entity_id": "player",
-                "trait_id": "fail",
-                "text": "",
-                "why": ""
-              }
-            ]
           }
         ],
         "action": {
@@ -190,8 +160,24 @@
       }
     },
     {
+      "name": "beat-1",
+      "output": {
+        "effects": [
+          {
+            "op": "trait-change",
+            "mode": "add",
+            "entity_id": "player",
+            "trait_id": "listening",
+            "text": "(condition) Listening for the next shift of weight behind the door.",
+            "why": ""
+          }
+        ],
+        "action": null
+      }
+    },
+    {
       "name": "resolve",
-      "output": "- the flagstone grinds and whatever waits past the door hears it — dexterity save -> fail\n- Kael is Fail\n- learned of the vault map\n- took the vault map"
+      "output": "- the flagstone grinds and whatever waits past the door hears it — dexterity save -> fail\n- learned of the vault map\n- took the vault map\n- Kael is Listening"
     },
     {
       "name": "hooks",

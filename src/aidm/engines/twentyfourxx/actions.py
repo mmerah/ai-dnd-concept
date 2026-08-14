@@ -1,6 +1,6 @@
 from collections.abc import Mapping
 from random import Random
-from typing import Literal
+from typing import Annotated, Literal
 
 from pydantic import Field
 
@@ -13,7 +13,7 @@ from aidm.state.base import PLAYER_ID, Entity, EntityId, Slug
 from aidm.state.dice import roll_pool
 from aidm.state.effects import Reveal
 from aidm.state.facts import Fact, entity_fact
-from aidm.state.plan import Branched, Flow, Resolution
+from aidm.state.plan import Beat, Flow, Resolution, TurnPlanBase
 from aidm.state.world import GameState
 
 from .mechanics import DEFAULT_FACE, HINDERED_FACE, Mechanics, Sheet, TwentyfourxxEffect
@@ -24,8 +24,6 @@ SIGNS = 4  # 3-4 on the bad-luck die
 
 class Attempt(Action):
     """One risky attempt, answered by the highest die of a pool."""
-
-    outcomes = frozenset[Slug]({"disaster", "setback", "success"})
 
     act: Literal["attempt"] = "attempt"
     actor_id: EntityId = Field(
@@ -62,12 +60,38 @@ class Attempt(Action):
         return resolve_attempt(draft, self, rng)
 
 
-class TurnPlan(Branched[TwentyfourxxEffect, Attempt]):
-    action: Attempt | None = Field(
-        default=None,
-        description="The one attempt this turn resolves, or null when nothing the player does "
-        "is risky enough to roll.",
+class LuckTest(Action):
+    """The SRD's standalone bad-luck test, for a beat where nothing is attempted."""
+
+    act: Literal["luck-test"] = "luck-test"
+    actor_id: EntityId = Field(
+        description="Exact id of the actor whose luck is tested: the player, or an actor here."
     )
+    subject: str = Field(
+        min_length=1,
+        description="What bad luck might arrive — running out of ammo, running into guards. The "
+        "engine rolls whether it does.",
+    )
+
+    def resolve(self, engine: Engine, draft: GameState, rng: Random) -> Resolution:
+        del engine
+        return resolve_luck_test(draft, self, rng)
+
+
+type TwentyfourxxAction = Annotated[Attempt | LuckTest, Field(discriminator="act")]
+
+
+class TurnBeat(Beat[TwentyfourxxEffect, TwentyfourxxAction]):
+    action: TwentyfourxxAction | None = Field(
+        default=None,
+        description="The one action this beat resolves: an `attempt` when what an actor does is "
+        "risky, a `luck-test` when only bad luck is in question, or null when nothing calls for "
+        "the dice.",
+    )
+
+
+class TurnPlan(TurnBeat, TurnPlanBase):
+    """The turn's framing and its first beat."""
 
 
 def outcome_for(kept: int) -> Slug:
@@ -109,10 +133,19 @@ def resolve_attempt(draft: GameState, action: Attempt, rng: Random) -> Resolutio
         "yield-to-player" if outcome == "disaster" and actor.id == PLAYER_ID else "continue"
     )
     if action.luck_test:
-        tested, trouble = _bad_luck(draft, actor, action.luck_test, rng)
+        tested, luck = _bad_luck(draft, actor, action.luck_test, rng)
         facts.extend(tested)
-        if trouble:
+        if luck == "trouble":
             flow = "yield-to-player"
+    return Resolution(facts=tuple(facts), outcome=outcome, flow=flow)
+
+
+def resolve_luck_test(draft: GameState, action: LuckTest, rng: Random) -> Resolution:
+    actor = require_actor_here(draft, action.actor_id)
+    facts = apply_effect(draft, Reveal(entity_id=action.actor_id))
+    tested, outcome = _bad_luck(draft, actor, action.subject, rng)
+    facts.extend(tested)
+    flow: Flow = "yield-to-player" if outcome == "trouble" else "continue"
     return Resolution(facts=tuple(facts), outcome=outcome, flow=flow)
 
 
@@ -144,10 +177,10 @@ def _refuse_unless_ready(
 
 def _bad_luck(
     draft: GameState, actor: Entity, subject: str, rng: Random
-) -> tuple[list[Fact], bool]:
+) -> tuple[list[Fact], Slug]:
     kept, rolled = roll_pool((6,), f"bad luck — {subject}", rng)
     if kept > SIGNS:
-        return [rolled], False
+        return [rolled], "clear"
     trouble = kept <= TROUBLE
     note = (
         f"Bad luck has caught up with them: {subject} — the narration showed it arriving this "
@@ -164,4 +197,4 @@ def _bad_luck(
         f"bad luck — {subject}: {label}",
         {"subject": subject, "trouble": trouble},
     )
-    return [rolled, tested], trouble
+    return [rolled, tested], "trouble" if trouble else "signs"

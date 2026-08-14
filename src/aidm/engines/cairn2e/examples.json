@@ -1,33 +1,7 @@
 [
   {
     "focus": "Kael eases the loose flagstone up without letting it grind against its neighbours.",
-    "pressure": "Any noise that carries below might wake whatever is sealed there.",
-    "stakes": "What is hidden under the abbot's desk, or being heard finding it.",
     "effects": [],
-    "branches": [
-      {
-        "outcome": "pass",
-        "effects": [
-          {
-            "op": "move",
-            "entity_id": "vault_map"
-          }
-        ]
-      },
-      {
-        "outcome": "fail",
-        "effects": [
-          {
-            "op": "counter-change",
-            "mode": "adjust",
-            "entity_id": "player",
-            "counter": "fatigue",
-            "amount": 1,
-            "why": "the flagstone grinds and Kael has to force it the rest of the way"
-          }
-        ]
-      }
-    ],
     "action": {
       "act": "save",
       "actor_id": "player",
@@ -37,34 +11,7 @@
   },
   {
     "focus": "Kael drives the bloated rat off the cloister stair before it can double back on him.",
-    "pressure": "It has grown fat on the dead garden and does not scare off easily.",
-    "stakes": "The stair down, or a bite worth remembering.",
     "effects": [],
-    "branches": [
-      {
-        "outcome": "down",
-        "effects": [
-          {
-            "op": "advance-thread",
-            "thread_id": "vault-seal",
-            "stage": "stair-cleared",
-            "why": "the stair down is finally clear of the rat"
-          }
-        ]
-      },
-      {
-        "outcome": "wounded",
-        "effects": [
-          {
-            "op": "trait-change",
-            "mode": "add",
-            "entity_id": "cloister_rat",
-            "trait_id": "reeling",
-            "text": "(condition) Reeling, and gives Kael a wide berth before it comes on again."
-          }
-        ]
-      }
-    ],
     "action": {
       "act": "attack",
       "attacker_id": "player",
@@ -73,5 +20,19 @@
       "modifier": "normal",
       "joined_by": []
     }
+  },
+  {
+    "focus": "Kael turns out the abbot's desk for whatever the abbey wanted hidden there.",
+    "effects": [
+      {
+        "op": "reveal",
+        "entity_id": "vault_map"
+      },
+      {
+        "op": "move",
+        "entity_id": "vault_map"
+      }
+    ],
+    "action": null
   }
 ]

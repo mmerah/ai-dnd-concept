@@ -899,8 +899,10 @@ stands. Nothing diverges silently: a rule not listed here is implemented as prin
    Director's instructions carry the SRD's Dramatic / Quiet / Meanwhile vocabulary and it judges
    the mood from the fiction. The same instructions carry the Sibylline Responses guidance, and it
    decides when to ask the Oracle.
-6. **One Oracle question per turn.** The SRD's scene is a run of questions; a turn here resolves
-   at most one, because one plan resolves one action. A conflict is several turns of exchanges.
+6. **A twist interrupts the same turn, a beat late.** The SRD has a twist interrupt the scene the
+   moment it fires; here it fires inside a beat and reaches the Director as a scenario note on the
+   next Director call, so it interrupts the same turn — except when it fires in the last beat a
+   turn resolves, where no further call renders the note and it lands the turn after.
 7. **One game-wide Twist Counter.** The SRD's counter belongs to the solo player, who is the only
    one rolling. Here any actor can be the subject of a question, so a single tally covers every
    roll — a tie anywhere moves the same counter.

@@ -22,6 +22,7 @@ from pydantic_ai.toolsets import AbstractToolset
 
 from aidm.config import ProviderConfig, Role, RoleConfig, Settings
 from aidm.engines.loader import Engine, Offer, ProposalBase, Subsystem
+from aidm.state.base import Frozen
 from aidm.state.effects import AdvanceThread
 from aidm.state.plan import TurnPlanBase
 from aidm.state.turn import WorldkeeperReport
@@ -114,7 +115,8 @@ class Stage[Deps, Out]:
 
 @dataclass(frozen=True, slots=True)
 class PlanContext:
-    """What the Director's output validator judges a plan against: the untouched committed state."""
+    """What the Director's output validator judges against: the state the answer will be resolved
+    against — the committed state for the turn's plan, the turn's own draft for a later beat."""
 
     engine: Engine
     state: GameState
@@ -132,6 +134,7 @@ class Stages:
     """The turn's model-facing roles, built once per session."""
 
     director: Stage[PlanContext, TurnPlanBase]
+    beat: Stage[PlanContext, Frozen]
     narrator: Stage[None, str]
     worldkeeper: Stage[GameState, WorldkeeperReport]
 
@@ -154,7 +157,7 @@ def director_stage(engine: Engine, settings: Settings) -> Stage[PlanContext, Tur
         deps = ctx.deps
         if fault := scene.check_speaker(scene.SceneSnapshot.of(deps.state), plan.speaker_id):
             raise ModelRetry(fault)
-        if refused := deps.engine.check_plan(deps.state, plan):
+        if refused := deps.engine.check_beat(deps.state, plan):
             raise ModelRetry(refused)
         return plan
 
@@ -164,6 +167,25 @@ def director_stage(engine: Engine, settings: Settings) -> Stage[PlanContext, Tur
         instructions=f"{prompts.DIRECTOR}\n\n{engine.director_instructions}",
         # Keeps `tool_choice: required`; under `auto` gpt-oss truncates its own tool call arguments
         output_type=ToolOutput(engine.plan_type, name="turn_plan"),
+        deps_type=PlanContext,
+        toolsets=engine.director_toolsets,
+        validator=legal,
+    )
+
+
+def beat_stage(engine: Engine, settings: Settings) -> Stage[PlanContext, Frozen]:
+    """The Director asked again once the dice have spoken: same role, same rules, no framing."""
+
+    def legal(ctx: RunContext[PlanContext], beat: Frozen) -> Frozen:
+        if refused := ctx.deps.engine.check_beat(ctx.deps.state, beat):
+            raise ModelRetry(refused)
+        return beat
+
+    return Stage.of(
+        "director",
+        settings,
+        instructions=f"{prompts.BEAT}\n\n{prompts.DIRECTOR}\n\n{engine.director_instructions}",
+        output_type=ToolOutput(engine.beat_type, name="turn_beat"),
         deps_type=PlanContext,
         toolsets=engine.director_toolsets,
         validator=legal,
@@ -228,6 +250,7 @@ def subsystem_stage(
 def build_stages(engine: Engine, settings: Settings) -> Stages:
     return Stages(
         director=director_stage(engine, settings),
+        beat=beat_stage(engine, settings),
         narrator=narrator_stage(settings),
         worldkeeper=worldkeeper_stage(settings),
     )

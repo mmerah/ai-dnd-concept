@@ -1,5 +1,5 @@
 {
-  "save_version": 61,
+  "save_version": 62,
   "facts": [
     {
       "source": "core",
@@ -60,16 +60,6 @@
         "entity_id": "player",
         "subject": "something behind the door is already listening back",
         "trouble": false
-      }
-    },
-    {
-      "source": "core",
-      "kind": "trait_added",
-      "trace": "Kael is Success",
-      "narrator": "Kael is Success",
-      "data": {
-        "entity_id": "player",
-        "trait_id": "success"
       }
     },
     {
@@ -157,6 +147,16 @@
     },
     {
       "source": "core",
+      "kind": "trait_added",
+      "trace": "Kael is Listening",
+      "narrator": "Kael is Listening",
+      "data": {
+        "entity_id": "player",
+        "trait_id": "listening"
+      }
+    },
+    {
+      "source": "core",
       "kind": "entity_created",
       "trace": "new actor: Sister Auber",
       "narrator": "new actor: Sister Auber",
@@ -175,55 +175,12 @@
       "name": "director",
       "output": {
         "focus": "Kael acts.",
-        "pressure": "",
-        "stakes": "",
         "speaker_id": null,
         "effects": [
           {
             "op": "move",
             "entity_id": "vault_map",
             "to_id": null
-          }
-        ],
-        "branches": [
-          {
-            "outcome": "success",
-            "effects": [
-              {
-                "op": "trait-change",
-                "mode": "add",
-                "entity_id": "player",
-                "trait_id": "success",
-                "text": "",
-                "why": ""
-              }
-            ]
-          },
-          {
-            "outcome": "setback",
-            "effects": [
-              {
-                "op": "trait-change",
-                "mode": "add",
-                "entity_id": "player",
-                "trait_id": "setback",
-                "text": "",
-                "why": ""
-              }
-            ]
-          },
-          {
-            "outcome": "disaster",
-            "effects": [
-              {
-                "op": "trait-change",
-                "mode": "add",
-                "entity_id": "player",
-                "trait_id": "disaster",
-                "text": "",
-                "why": ""
-              }
-            ]
           }
         ],
         "action": {
@@ -238,8 +195,24 @@
       }
     },
     {
+      "name": "beat-1",
+      "output": {
+        "effects": [
+          {
+            "op": "trait-change",
+            "mode": "add",
+            "entity_id": "player",
+            "trait_id": "listening",
+            "text": "(condition) Listening for the next shift of weight behind the door.",
+            "why": ""
+          }
+        ],
+        "action": null
+      }
+    },
+    {
       "name": "resolve",
-      "output": "- Listen at the vault door without being heard -> success\n- bad luck — something behind the door is already listening back: signs of it\n- Kael is Success\n- learned of the vault map\n- took the vault map"
+      "output": "- Listen at the vault door without being heard -> success\n- bad luck — something behind the door is already listening back: signs of it\n- learned of the vault map\n- took the vault map\n- Kael is Listening"
     },
     {
       "name": "hooks",

@@ -3,7 +3,6 @@ from random import Random
 from core_test_support import capability, initialized
 from loner3e_test_support import at_milestone
 
-from aidm.engines.counters import CounterChange
 from aidm.engines.loader import Engine
 from aidm.engines.loner3e.actions import (
     HARM,
@@ -23,35 +22,19 @@ from aidm.state.apply import fire_hooks
 from aidm.state.base import PLAYER_ID, Counter, Entity, EntityId
 from aidm.state.effects import TraitChange
 from aidm.state.facts import CORE, Fact
-from aidm.state.plan import OutcomeBranch, TurnPlanBase
+from aidm.state.plan import TurnPlanBase
 from aidm.state.world import PARTY_MEMBER, GameState, Hook, HookMatch, Relation
 
 TWISTS = twist_table(Loner3eEngine().packs, SRD_PACK)
-YES_AND = OutcomeBranch(
-    outcome="yes-and",
-    effects=(TraitChange(mode="add", entity_id=PLAYER_ID, trait_id="sure-footed"),),
-)
+SURE_FOOTED = TraitChange(mode="add", entity_id=PLAYER_ID, trait_id="sure-footed")
 FOE = EntityId("mara")
-NO_AND = OutcomeBranch(
-    outcome="no-and",
-    effects=(
-        CounterChange(
-            mode="adjust",
-            entity_id=PLAYER_ID,
-            counter="luck",
-            amount=-1,
-            why="the seal takes something out of him",
-        ),
-    ),
-)
 
 
 def _plan(engine: Engine, **action: object) -> TurnPlanBase:
     return engine.plan_type.model_validate(
         {
             "focus": "Kael works the sealed door.",
-            "effects": (),
-            "branches": (YES_AND, NO_AND),
+            "effects": (SURE_FOOTED,),
             "action": {
                 "act": "question",
                 "question": "Does he get the seal open before the whispering finds him?",
@@ -84,7 +67,6 @@ def test_the_outcome_ladder_covers_every_pair_of_dice() -> None:
         "no": 9,
         "no-and": 3,
     }
-    assert set(tally) == Question.outcomes
 
 
 def test_the_twist_table_reads_a_subject_off_one_die_and_an_action_off_the_other() -> None:
@@ -94,11 +76,11 @@ def test_the_twist_table_reads_a_subject_off_one_die_and_an_action_off_the_other
     assert "A PHYSICAL EVENT / ALTERS THE LOCATION" in twist_note(*twist_pairing(4, 2, TWISTS))
 
 
-def test_a_question_rolls_two_dice_and_applies_only_the_branch_it_landed_on() -> None:
+def test_a_question_rolls_two_dice_before_the_beats_own_effects_land() -> None:
     engine, state = initialized()
     draft = state.draft()
 
-    facts = engine.resolve_action(draft, _plan(engine, actor_id=PLAYER_ID), Random(17)).facts
+    facts = engine.resolve_beat(draft, _plan(engine, actor_id=PLAYER_ID), Random(17)).facts
 
     assert [fact.kind for fact in facts] == [
         "dice_rolled",
@@ -110,20 +92,15 @@ def test_a_question_rolls_two_dice_and_applies_only_the_branch_it_landed_on() ->
     assert draft.mechanics_as(Mechanics).sheets[PLAYER_ID].luck.current == LUCK_MAX
 
 
-def test_check_plan_owes_the_model_every_refusal_the_resolve_raises() -> None:
+def test_check_beat_owes_the_model_every_refusal_the_resolve_raises() -> None:
     engine, state = initialized()
     sheet_tag = _plan(engine, actor_id=PLAYER_ID, leverage=["Reads Old Stonework"])
     scene_tag = _plan(engine, actor_id=PLAYER_ID, leverage=["Unsteady Lantern"])
-    assert engine.check_plan(state, sheet_tag) is None
-    assert engine.check_plan(state, scene_tag) is None
+    assert engine.check_beat(state, sheet_tag) is None
+    assert engine.check_beat(state, scene_tag) is None
 
     invented = _plan(engine, actor_id=PLAYER_ID, leverage=["Silver Tongue"])
     assert "has no tag" in _refusal(engine, state, invented)
-
-    quiet = engine.plan_type.model_validate(
-        {"focus": "Kael waits.", "effects": (), "branches": (YES_AND,)}
-    )
-    assert "settles no outcome" in _refusal(engine, state, quiet)
 
     elsewhere = _plan(engine, actor_id=PLAYER_ID, opponent_id="cloister_rat")
     assert "is not here with the player" in _refusal(engine, state, elsewhere)
@@ -175,7 +152,8 @@ def test_a_tie_ticks_the_twist_and_the_third_tie_calls_one() -> None:
 
 def test_a_conflict_exchange_moves_luck_off_whichever_side_lost_it() -> None:
     _, state = initialized()
-    assert set(HARM) == Question.outcomes
+    # Every answer the ladder can give costs somebody luck in a conflict.
+    assert set(HARM) == {"yes-and", "yes", "yes-but", "no-but", "no", "no-and"}
 
     for seed in range(200):
         draft = state.draft()
@@ -350,6 +328,6 @@ def test_a_hook_reaches_the_engine_s_own_effects() -> None:
 
 
 def _refusal(engine: Engine, state: GameState, plan: TurnPlanBase) -> str:
-    refused = engine.check_plan(state, plan)
+    refused = engine.check_beat(state, plan)
     assert refused is not None
     return refused

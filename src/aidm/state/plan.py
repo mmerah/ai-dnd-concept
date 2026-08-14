@@ -5,37 +5,13 @@ from typing import Literal, cast
 
 from pydantic import Field, ValidationError, model_validator
 
-from .base import EntityId, Frozen, Slug, duplicates
+from .base import EntityId, Frozen, Slug
 from .facts import Fact
 from .world import GameState
 
 
-class TurnPlanBase(Frozen):
-    """One turn, answered in one plan."""
-
-    focus: str = Field(
-        description="1-2 sentences: what the player is reaching for and what this turn is about."
-    )
-    pressure: str = Field(
-        default="",
-        description=(
-            "1-2 sentences: what pushes back this turn — a complication, a cost, a threat. Empty "
-            "when the turn is genuinely quiet and nothing should push back."
-        ),
-    )
-    stakes: str = Field(
-        default="",
-        description=(
-            "One sentence: what the player stands to win or lose. Empty when nothing is at stake."
-        ),
-    )
-    speaker_id: EntityId | None = Field(
-        default=None,
-        description=(
-            "Exact id of the NPC the player addresses — one they have met and who is here with "
-            "them — or null if nobody is addressed."
-        ),
-    )
+class Authored(Frozen):
+    """Anything the Director writes: one turn's framing, or one of its beats."""
 
     @model_validator(mode="before")
     @classmethod
@@ -57,28 +33,28 @@ class TurnPlanBase(Frozen):
         return decoded
 
 
-class OutcomeBranch[E](Frozen):
-    """What follows in the fiction if the action lands on this outcome, and only then."""
+class TurnPlanBase(Authored):
+    """How the turn is framed. What it does is its beats."""
 
-    outcome: Slug = Field(description="One outcome label the chosen action allows.")
-    effects: tuple[E, ...] = Field(default=(), description="What that outcome causes in the world.")
+    focus: str = Field(
+        description="1-2 sentences: what the player is reaching for and what this turn is about."
+    )
+    speaker_id: EntityId | None = Field(
+        default=None,
+        description=(
+            "Exact id of the NPC the player addresses — one they have met and who is here with "
+            "them — or null if nobody is addressed."
+        ),
+    )
 
 
-class Branched[E, A](TurnPlanBase):
-    """The common plan shape: unconditional effects plus effects per outcome, over the
-    engine's own effect vocabulary."""
+class Beat[E, A](Authored):
+    """One action and what it causes, over the engine's own vocabulary. A turn is one beat, or
+    several when what the dice settled asks for another."""
 
     effects: tuple[E, ...] = Field(
-        description="Consequences that happen whatever the action settles. Empty when the turn "
-        "changes nothing."
-    )
-    branches: tuple[OutcomeBranch[E], ...] = Field(
-        default=(),
-        description="Consequences keyed by outcome: at most one branch per label, and only labels "
-        "this action allows. Outcomes that do not occur simply never apply. An action rolled to "
-        "cause a lasting change — a condition taking hold or lifted, something revealed — must "
-        "carry that change in the matching outcome's branch: with no branch, even success "
-        "changes nothing.",
+        description="What this beat causes in the world, applied once the action has settled. "
+        "Empty when nothing changes."
     )
     action: A | None = None
 
@@ -95,57 +71,34 @@ class Resolution(Frozen):
 
 
 type Apply[E] = Callable[[GameState, E], list[Fact]]
+type Resolver = Callable[[GameState, Random], Resolution]
 
 
 def apply_all[E](draft: GameState, effects: Sequence[E], apply: Apply[E]) -> list[Fact]:
     return [fact for effect in effects for fact in apply(draft, effect)]
 
 
-def apply_branch[E, A](
-    draft: GameState, plan: Branched[E, A], outcome: Slug | None, apply: Apply[E]
-) -> list[Fact]:
-    """An outcome the model wrote no branch for is fine: not every outcome needs consequences."""
-    branch = next((held for held in plan.branches if held.outcome == outcome), None)
-    return [] if branch is None else apply_all(draft, branch.effects, apply)
-
-
-def check_effects[E, A](
-    state: GameState, plan: Branched[E, A], labels: frozenset[Slug], apply: Apply[E]
+def check_beat[E, A](
+    state: GameState, beat: Beat[E, A], apply: Apply[E], resolve: Resolver | None
 ) -> str | None:
-    named = [branch.outcome for branch in plan.branches]
-    if repeated := duplicates(named):
-        return f"one branch per outcome, and {repeated} is branched twice"
-    if outside := sorted(set(named) - labels):
-        allowed = ", ".join(sorted(labels))
-        if not allowed:
-            return (
-                f"this action settles no outcome, so it takes no branches: move what {outside} "
-                "would cause into `effects`, or choose an action that can fail"
-            )
-        return f"{outside} is no outcome of this action. Its outcomes are: {allowed}"
-    # Branches are alternatives: each is trialled with the unconditional effects, never a sibling.
-    alternatives = [(*branch.effects, *plan.effects) for branch in plan.branches] or [plan.effects]
-    for group in alternatives:
-        if fault := check_draft(state, _applied(group, apply)):
-            return fault
-    return None
+    """One trial in the order the beat runs: a trial roll first, then what it causes."""
+
+    def played(draft: GameState) -> None:
+        if resolve is not None:
+            _ = resolve(draft, Random(0))
+        _ = apply_all(draft, beat.effects, apply)
+
+    return check_draft(state, played)
 
 
-def check_action[E, A](
-    state: GameState,
-    plan: Branched[E, A],
-    labels: frozenset[Slug],
-    apply: Apply[E],
-    resolve: Callable[[GameState, Random], object],
-) -> str | None:
-    """An action that cannot resolve is refused before the plan's effects are judged."""
-    if refused := check_draft(state, lambda draft: resolve(draft, Random(0))):
-        return refused
-    return check_effects(state, plan, labels, apply)
-
-
-def _applied[E](effects: Sequence[E], apply: Apply[E]) -> Callable[[GameState], object]:
-    return lambda draft: apply_all(draft, effects, apply)
+def resolve_beat[E, A](
+    draft: GameState, beat: Beat[E, A], apply: Apply[E], resolve: Resolver | None, rng: Random
+) -> Resolution:
+    if resolve is None:
+        return Resolution(facts=tuple(apply_all(draft, beat.effects, apply)))
+    settled = resolve(draft, rng)
+    facts = (*settled.facts, *apply_all(draft, beat.effects, apply))
+    return Resolution(facts=facts, outcome=settled.outcome, flow=settled.flow)
 
 
 def check_draft(
@@ -160,36 +113,3 @@ def check_draft(
     except ValueError as refused:
         return str(refused)
     return None
-
-
-type Resolver = Callable[[GameState, Random], Resolution]
-
-
-def check_branched[E, A](
-    state: GameState,
-    plan: Branched[E, A],
-    labels: frozenset[Slug],
-    apply: Apply[E],
-    resolve: Resolver | None,
-) -> str | None:
-    if resolve is None:
-        return check_effects(state, plan, frozenset(), apply)
-    return check_action(state, plan, labels, apply, resolve)
-
-
-def resolve_branched[E, A](
-    draft: GameState,
-    plan: Branched[E, A],
-    apply: Apply[E],
-    resolve: Resolver | None,
-    rng: Random,
-) -> Resolution:
-    if resolve is None:
-        return Resolution(facts=tuple(apply_all(draft, plan.effects, apply)))
-    settled = resolve(draft, rng)
-    facts = (
-        *settled.facts,
-        *apply_branch(draft, plan, settled.outcome, apply),
-        *apply_all(draft, plan.effects, apply),
-    )
-    return Resolution(facts=facts, outcome=settled.outcome, flow=settled.flow)

@@ -1,5 +1,5 @@
 {
-  "save_version": 61,
+  "save_version": 62,
   "facts": [
     {
       "source": "core",
@@ -46,16 +46,6 @@
         "chance": 5,
         "risk": 4,
         "position": "advantage"
-      }
-    },
-    {
-      "source": "core",
-      "kind": "trait_added",
-      "trace": "Kael is Yes And",
-      "narrator": "Kael is Yes And",
-      "data": {
-        "entity_id": "player",
-        "trait_id": "yes-and"
       }
     },
     {
@@ -143,6 +133,16 @@
     },
     {
       "source": "core",
+      "kind": "trait_added",
+      "trace": "Kael is Listening",
+      "narrator": "Kael is Listening",
+      "data": {
+        "entity_id": "player",
+        "trait_id": "listening"
+      }
+    },
+    {
+      "source": "core",
       "kind": "entity_created",
       "trace": "new actor: Sister Auber",
       "narrator": "new actor: Sister Auber",
@@ -161,55 +161,12 @@
       "name": "director",
       "output": {
         "focus": "Kael acts.",
-        "pressure": "",
-        "stakes": "",
         "speaker_id": null,
         "effects": [
           {
             "op": "move",
             "entity_id": "vault_map",
             "to_id": null
-          }
-        ],
-        "branches": [
-          {
-            "outcome": "yes-and",
-            "effects": [
-              {
-                "op": "trait-change",
-                "mode": "add",
-                "entity_id": "player",
-                "trait_id": "yes-and",
-                "text": "",
-                "why": ""
-              }
-            ]
-          },
-          {
-            "outcome": "yes-but",
-            "effects": [
-              {
-                "op": "trait-change",
-                "mode": "add",
-                "entity_id": "player",
-                "trait_id": "yes-but",
-                "text": "",
-                "why": ""
-              }
-            ]
-          },
-          {
-            "outcome": "no",
-            "effects": [
-              {
-                "op": "trait-change",
-                "mode": "add",
-                "entity_id": "player",
-                "trait_id": "no",
-                "text": "",
-                "why": ""
-              }
-            ]
           }
         ],
         "action": {
@@ -225,8 +182,24 @@
       }
     },
     {
+      "name": "beat-1",
+      "output": {
+        "effects": [
+          {
+            "op": "trait-change",
+            "mode": "add",
+            "entity_id": "player",
+            "trait_id": "listening",
+            "text": "(condition) Listening for the next shift of weight behind the door.",
+            "why": ""
+          }
+        ],
+        "action": null
+      }
+    },
+    {
       "name": "resolve",
-      "output": "- Does he hear what waits past the vault door without being heard? -> yes-and\n- Kael is Yes And\n- learned of the vault map\n- took the vault map"
+      "output": "- Does he hear what waits past the vault door without being heard? -> yes-and\n- learned of the vault map\n- took the vault map\n- Kael is Listening"
     },
     {
       "name": "hooks",
