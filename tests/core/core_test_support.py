@@ -26,6 +26,7 @@ REPOSITORY_ROOT = Path(__file__).parents[2]
 SCENARIOS = REPOSITORY_ROOT / "scenarios"
 CHARACTERS = REPOSITORY_ROOT / "characters"
 LONER3E = EngineId("loner3e")
+TWENTYFOURXX = EngineId("twentyfourxx")
 
 
 def updated[T: BaseModel](model: T, **changes: object) -> T:

@@ -1,0 +1,136 @@
+{
+  "name": "Core tables",
+  "source": "https://24xx-srd.carrd.co/",
+  "license": "24XX rules are CC BY Jason Tocci",
+  "starting_kit": [{ "id": "comm", "label": "Comm", "detail": "A smartphone." }],
+  "specialties": [
+    {
+      "id": "face",
+      "label": "Face",
+      "detail": "Take an extensive disguise wardrobe.",
+      "skills": ["Reading People", "Deception"],
+      "kit": [
+        { "id": "disguise-wardrobe", "label": "Disguise Wardrobe", "detail": "Extensive." }
+      ]
+    },
+    {
+      "id": "muscle",
+      "label": "Muscle",
+      "detail": "Take a sword, firearm, or cyber-arm.",
+      "skills": ["Intimidation"],
+      "choices": [
+        { "id": "hand-to-hand", "label": "Hand-to-hand", "skills": ["Hand-to-hand"] },
+        { "id": "shooting", "label": "Shooting", "skills": ["Shooting"] }
+      ]
+    },
+    {
+      "id": "psychic",
+      "label": "Psychic",
+      "detail": "Take a bottle of PsychOut, which amplifies powers and is addictive.",
+      "choices": [
+        {
+          "id": "both-at-d8",
+          "label": "Telepathy and Telekinesis",
+          "detail": "Both at d8: sense surface thoughts; as strong as your arms.",
+          "skills": ["Telepathy", "Telekinesis"]
+        },
+        {
+          "id": "telepathy-at-d10",
+          "label": "Telepathy at d10",
+          "detail": "Sense surface thoughts.",
+          "skills": ["Telepathy"],
+          "die": 10
+        },
+        {
+          "id": "telekinesis-at-d10",
+          "label": "Telekinesis at d10",
+          "detail": "As strong as your arms.",
+          "skills": ["Telekinesis"],
+          "die": 10
+        }
+      ],
+      "kit": [
+        {
+          "id": "psychout",
+          "label": "Bottle of PsychOut",
+          "detail": "Amplifies powers; addictive."
+        }
+      ]
+    },
+    {
+      "id": "medic",
+      "label": "Medic",
+      "detail": "Take a medkit and cyber-surgery tools (bulky).",
+      "skills": ["Medicine", "Electronics"],
+      "kit": [
+        { "id": "medkit", "label": "Medkit" },
+        { "id": "cyber-surgery-tools", "label": "Cyber-surgery Tools", "detail": "Bulky." }
+      ]
+    },
+    {
+      "id": "sneak",
+      "label": "Sneak",
+      "detail": "Take climbing gear and night vision goggles.",
+      "skills": ["Climbing", "Stealth"],
+      "kit": [
+        { "id": "climbing-gear", "label": "Climbing Gear" },
+        { "id": "night-vision-goggles", "label": "Night Vision Goggles" }
+      ]
+    },
+    {
+      "id": "tech",
+      "label": "Tech",
+      "detail": "Take repair tools and a custom computer (bulky).",
+      "skills": ["Hacking", "Electronics"],
+      "kit": [
+        { "id": "repair-tools", "label": "Repair Tools" },
+        { "id": "custom-computer", "label": "Custom Computer", "detail": "Bulky." }
+      ]
+    }
+  ],
+  "origins": [
+    {
+      "id": "alien",
+      "label": "Alien",
+      "detail": "Invent two traits: electric current, wings, natural camouflage, six-limbed.",
+      "invents": 2,
+      "traits": [
+        { "id": "electric-current", "label": "Electric Current" },
+        { "id": "wings", "label": "Wings" },
+        { "id": "natural-camouflage", "label": "Natural Camouflage" },
+        { "id": "six-limbed", "label": "Six-limbed" }
+      ]
+    },
+    {
+      "id": "android",
+      "label": "Android",
+      "detail": "Take an upgrade-ready cyber-body: synth skin (looks human) or a case (breaks harmlessly for defense).",
+      "increases": 1
+    },
+    {
+      "id": "human",
+      "label": "Human",
+      "detail": "Take new skills and/or increase skills you already have.",
+      "increases": 3
+    }
+  ],
+  "skills": [
+    { "id": "climbing", "label": "Climbing" },
+    { "id": "connections", "label": "Connections" },
+    { "id": "deception", "label": "Deception" },
+    { "id": "electronics", "label": "Electronics" },
+    { "id": "engines", "label": "Engines" },
+    { "id": "explosives", "label": "Explosives" },
+    { "id": "hacking", "label": "Hacking" },
+    { "id": "hand-to-hand", "label": "Hand-to-hand" },
+    { "id": "intimidation", "label": "Intimidation" },
+    { "id": "labor", "label": "Labor" },
+    { "id": "persuasion", "label": "Persuasion" },
+    { "id": "piloting", "label": "Piloting" },
+    { "id": "running", "label": "Running" },
+    { "id": "shooting", "label": "Shooting" },
+    { "id": "spacewalking", "label": "Spacewalking" },
+    { "id": "stealth", "label": "Stealth" },
+    { "id": "tracking", "label": "Tracking" }
+  ]
+}

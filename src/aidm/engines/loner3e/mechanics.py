@@ -4,10 +4,9 @@ from pydantic import Field, TypeAdapter
 
 from aidm.engines.counters import (
     CounterChange,
-    adjust,
+    move_pool,
     read_mechanics,
     render_counters,
-    spend,
     write_mechanics,
 )
 from aidm.state.apply import apply_effect, reveal_target
@@ -70,17 +69,6 @@ def apply(draft: GameState, effect: Loner3eEffect) -> list[Fact]:
         return apply_effect(draft, effect)
     mechanics = read_mechanics(draft, Mechanics)
     entity, seen = reveal_target(draft, effect.entity_id)
-    facts = [*seen, *_move_pool(mechanics, entity, effect)]
+    facts = [*seen, *move_pool(mechanics.sheets.get(entity.id), entity, effect)]
     write_mechanics(draft, mechanics)
     return facts
-
-
-def _move_pool(mechanics: Mechanics, entity: Entity, effect: CounterChange) -> list[Fact]:
-    sheet = mechanics.sheets.get(entity.id)
-    counter = None if sheet is None else sheet.counters().get(effect.counter)
-    if counter is None:
-        known = ", ".join(sorted(sheet.counters())) if sheet else "(none)"
-        raise ValueError(f"{entity.name} has no pool {effect.counter!r}. Their pools are: {known}")
-    if effect.mode == "adjust":
-        return adjust(entity, effect.counter, counter, effect.amount, effect.why)
-    return spend(entity, effect.counter, counter, effect.amount, effect.why)

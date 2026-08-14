@@ -895,17 +895,17 @@ stands. Nothing diverges silently: a rule not listed here is implemented as prin
 4. **Sheets are actors-only.** The SRD gives non-living characters — objects, vehicles, curses —
    a Concept, Skills, Frailties and Luck. Here they are entities with traits, which the resolver
    already reads as tags; a non-living character gets a sheet the first time an engine needs one.
-5. **The Scene Director makes the player's own judgment calls.** The next-scene mood is not
-   rolled: the Scene Director's instructions carry the SRD's Dramatic / Quiet / Meanwhile
-   vocabulary and it judges the mood from the fiction. The Rules Director's instructions carry
-   the Sibylline Responses guidance, and it decides when to ask the Oracle.
+5. **The Director makes the player's own judgment calls.** The next-scene mood is not rolled: the
+   Director's instructions carry the SRD's Dramatic / Quiet / Meanwhile vocabulary and it judges
+   the mood from the fiction. The same instructions carry the Sibylline Responses guidance, and it
+   decides when to ask the Oracle.
 6. **One Oracle question per turn.** The SRD's scene is a run of questions; a turn here resolves
    at most one, because one plan resolves one action. A conflict is several turns of exchanges.
 7. **One game-wide Twist Counter.** The SRD's counter belongs to the solo player, who is the only
    one rolling. Here any actor can be the subject of a question, so a single tally covers every
    roll — a tie anywhere moves the same counter.
 8. **The Twist Counter is hidden from the player.** The SRD's solo player keeps the tally
-   themselves; here it lives in mechanics, paces the Directors, and is never recited — rising
+   themselves; here it lives in mechanics, paces the Director, and is never recited — rising
    tension shows only in the fiction.
 9. **Concept is a closed menu.** Creation offers the chosen pack's concept table, where the SRD
    asks for a free one-line phrase.
@@ -914,7 +914,7 @@ stands. Nothing diverges silently: a rule not listed here is implemented as prin
     draught, a night in the cold — because those are the moments Luck exists to absorb.
 11. **The Adventure Maker, the 5W+H framing table, and the open-ended inspiration tables are not
     rolled.** Setting, tone, premise and the Verb/Noun/Adjective prompts are authoring inputs;
-    scenarios are authored ahead of play, and the Directors take their inspiration from the
+    scenarios are authored ahead of play, and the Director takes its inspiration from the
     authored world instead.
 12. **Appendix A (Loner Diceless) is not implemented.** The dice are the point of the resolver;
     a diceless matrix would be a second engine, not a mode of this one.
@@ -926,6 +926,7 @@ How this SRD maps onto `src/aidm/engines/loner3e/`:
 - **Sheet** (`mechanics.py`): `concept`, `skills` (2 at creation), `frailties` (1), `gear` (2),
   `luck` Counter 6/6 — the SRD's protagonist shape, applied to every actor ("everything is a
   character"). `milestones` tracks growth spent; the game-wide `twist` Counter caps at 3.
+  `pack` records the table set the character was built from, and the twist table is read from it.
 - **Plan** (`actions.py`): one action, the closed `Question`; `leverage`/`trouble` name the
   tags justifying advantage/disadvantage, refused unless written on a sheet or trait in the
   scene ("tags are not numbers" — and the model cannot invent one).
@@ -934,11 +935,11 @@ How this SRD maps onto `src/aidm/engines/loner3e/`:
   both-≤3/both-≥4 modifiers are `outcome_for`, fully enumerable. Harm & Luck applies the
   3/2/1 table when `opponent_id` is set; those exchanges never tick the Twist Counter, per
   the SRD. Ties elsewhere tick it; at 3 the resolver rolls the 2d6 subject × action twist
-  table and hands the rolled pairing to the next turn's Directors via `pending_notes`.
-- **Directors carry** the solo player's own judgment calls: the Rules Director's instructions
-  hold the Sibylline Responses guidance and decide when to ask the Oracle; the Scene Director's
-  hold the Dramatic / Quiet / Meanwhile mood vocabulary in place of the next-scene roll; the
-  Adventure Maker stays authoring-time. The Oracle's dice stay in the resolver.
+  table and hands the rolled pairing to the next turn's Director via `pending_notes`.
+- **The Director carries** the solo player's own judgment calls: its instructions hold the
+  Sibylline Responses guidance and decide when to ask the Oracle, and the Dramatic / Quiet /
+  Meanwhile mood vocabulary in place of the next-scene roll; the Adventure Maker stays
+  authoring-time. The Oracle's dice stay in the resolver.
 - **Creation/advancement** (`create.py`, `advance.py`): the 8-step protagonist recipe as
   creation steps; post-game growth as milestone-driven advancement.
 

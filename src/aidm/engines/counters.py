@@ -1,10 +1,14 @@
-from typing import Annotated, Literal, Self
+from typing import Annotated, Literal, Protocol, Self
 
 from pydantic import Field, model_validator
 
 from aidm.state.base import Counter, Entity, EntityId, Frozen, Mutable, Slug
 from aidm.state.facts import Fact, explained_fact
 from aidm.state.world import GameState
+
+
+class Pools(Protocol):
+    def counters(self) -> dict[Slug, Counter]: ...
 
 
 def write_mechanics(state: GameState, mechanics: Mutable) -> None:
@@ -85,3 +89,13 @@ def counter_fact(entity: Entity, key: str, counter: Counter, delta: int, why: st
 
 def render_counters(counters: dict[Slug, Counter]) -> str:
     return ", ".join(f"{key} {pool(counters[key])}" for key in sorted(counters))
+
+
+def move_pool(sheet: Pools | None, entity: Entity, effect: CounterChange) -> list[Fact]:
+    counter = None if sheet is None else sheet.counters().get(effect.counter)
+    if counter is None:
+        known = ", ".join(sorted(sheet.counters())) if sheet else "(none)"
+        raise ValueError(f"{entity.name} has no pool {effect.counter!r}. Their pools are: {known}")
+    if effect.mode == "adjust":
+        return adjust(entity, effect.counter, counter, effect.amount, effect.why)
+    return spend(entity, effect.counter, counter, effect.amount, effect.why)

@@ -4,7 +4,7 @@ from pathlib import Path
 import pytest
 
 SOURCE = Path(__file__).parents[2] / "src" / "aidm"
-ENGINES = ("aidm.engines.loner3e",)
+ENGINES = ("aidm.engines.loner3e", "aidm.engines.twentyfourxx")
 # One direction: state <- content <- engines <- turn <- app <- ui, with `aidm.config` a leaf
 # every layer may read. An engine ships its own panels, so it may import nicegui; `aidm.ui` and
 # the other engine stay closed to it.
@@ -66,11 +66,12 @@ def test_packages_import_only_in_the_allowed_direction(
 
 
 def test_only_the_loader_names_a_concrete_engine() -> None:
-    """Adding an engine is one line in `loader.ENGINE_MODULES`, the only place naming one."""
+    """Adding an engine is one line in `loader.ENGINE_MODULES`; no engine imports another."""
     naming = {
         str(path.relative_to(SOURCE))
         for path in SOURCE.rglob("*.py")
-        if path.parts[-2] != "loner3e"
-        if any(name.startswith(ENGINES) for name in _file_imports(path))
+        for name in _file_imports(path)
+        if name.startswith(ENGINES)
+        if not name.startswith(f"aidm.engines.{path.parts[-2]}")
     }
     assert naming == set()

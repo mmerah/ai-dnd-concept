@@ -1,0 +1,42 @@
+[
+  {
+    "focus": "Kael forces the vault's seal before whatever is behind it notices him.",
+    "pressure": "The whispering rises the longer he works.",
+    "stakes": "The way into the vault, or being heard trying.",
+    "branches": [
+      {
+        "outcome": "setback",
+        "effects": [
+          {
+            "op": "trait-change",
+            "mode": "add",
+            "entity_id": "player",
+            "text": "(condition) The whispering drowns out anything said softly.",
+            "trait_id": "ears-ringing"
+          }
+        ]
+      },
+      {
+        "outcome": "disaster",
+        "effects": [
+          {
+            "op": "counter-change",
+            "mode": "adjust",
+            "entity_id": "player",
+            "counter": "credits",
+            "amount": -1,
+            "why": "the seal breaks and takes his tools with it"
+          }
+        ]
+      }
+    ],
+    "action": {
+      "act": "attempt",
+      "actor_id": "player",
+      "goal": "Force the vault's seal before the whispering finds him",
+      "skill": "Hacking",
+      "helped": "Repair Tools",
+      "luck_test": "the seal's failsafe alerts something in the dark"
+    }
+  }
+]

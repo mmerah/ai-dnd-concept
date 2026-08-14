@@ -1,0 +1,16 @@
+ON OFFER
+Kael finishes a job.
+
+RULES TEXT
+Say which skill this job improves. One skill only: a skill already on the sheet rises a step up the ladder, or a new one is taken at d8. The engine pays the d6 credits and records the job itself, so propose neither.
+
+THE CHARACTER
+Kael
+specialty: Sneak
+origin: Human
+skills: Climbing d10, Stealth d10, Tracking d8
+pools: credits 2
+traits: Relic Hunter[id=relic-hunter] — (skill) Kael knows how old sanctums conceal what matters., Marked by the Past[id=marked-by-the-past] — (frailty) Old scars make certain memories hard to face.
+
+WHAT THE PLAYER WANTS
+I want to strike harder.

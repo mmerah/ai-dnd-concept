@@ -17,7 +17,10 @@ from aidm.state.facts import Fact
 from aidm.state.plan import TurnPlanBase
 from aidm.state.world import GameState
 
-ENGINE_MODULES: tuple[str, ...] = ("aidm.engines.loner3e.rules",)
+ENGINE_MODULES: tuple[str, ...] = (
+    "aidm.engines.loner3e.rules",
+    "aidm.engines.twentyfourxx.rules",
+)
 ENGINE = "ENGINE"
 WORLD_EXAMPLES: Path = Path(__file__).parent / "examples.json"
 

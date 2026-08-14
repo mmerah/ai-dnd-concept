@@ -5,6 +5,7 @@ from pydantic import Field, model_validator
 
 from aidm.engines.counters import counter_fact, read_mechanics, write_mechanics
 from aidm.engines.loader import Offer, ProposalBase, Subsystem
+from aidm.engines.sheets import resolved_threads
 from aidm.state.base import PLAYER_ID, Entity, EntityId
 from aidm.state.facts import Fact, explained_fact
 from aidm.state.plan import check_draft
@@ -49,7 +50,7 @@ class Loner3eAdvancement(Subsystem):
     def offers(self, state: GameState) -> tuple[Offer, ...]:
         # Milestone-driven and deterministic, never inferred by a model: one milestone is earned
         # per resolved thread, so the offer tracks the count directly instead of guessing intent.
-        earned = sum(1 for thread in state.world.threads.values() if thread.status == "resolved")
+        earned = resolved_threads(state.world)
         sheets = read_mechanics(state, Mechanics).sheets
         return tuple(
             _offer(state, subject_id)

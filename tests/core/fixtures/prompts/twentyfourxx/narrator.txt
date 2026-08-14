@@ -1,0 +1,52 @@
+SCENARIO:
+The Whispering Vault
+The abbey of Saint Corvin was abandoned in a single night. Kael has come for the sealed vault beneath it, and the abbot's study is the only room still lit.
+
+PLAYER CHARACTER:
+Kael — A scarred relic-hunter who came to the abbey for what is sealed beneath it. — at the abbot's study
+state:
+  specialty: Sneak
+  origin: Human
+  skills: Climbing d10, Stealth d10, Tracking d8
+  pools: credits 2
+  traits: Relic Hunter — (skill) Kael knows how old sanctums conceal what matters., Marked by the Past — (frailty) Old scars make certain memories hard to face., Success
+inventory:
+- a guttering lantern — A dented tin lantern whose flame will not hold still.
+  state:
+    traits: Unsteady Lantern — (gear) Its shifting light exposes seams and movement in deep shadow.
+- the vault map — A creased chart of the undercroft, marking a stair the abbey's own plans deny.
+
+HERE WITH THE PLAYER:
+- Mara (npc) — at the abbot's study — The abbey's last scribe, cautious and tired, still cataloguing books nobody will read.
+  state:
+    pools: credits 2
+
+EXITS FROM HERE:
+- the cloister
+
+KNOWN TO THE PLAYER, BUT ELSEWHERE:
+- the cloister (location) — A frost-rimed colonnade around a dead garden; Brother Tomas sweeps it to no purpose.
+- the sealed vault (location) — The undercroft chamber Kael came for, its door bearing a seal nobody living can read.
+  state:
+    traits: Warded — The seal answers a touch, and something behind the door answers with it.
+- Brother Tomas (npc) — at the cloister — A deaf old porter who sweeps the cloister and knows almost nothing about the vault.
+  state:
+    pools: credits 2
+
+THE DIRECTOR'S PLAN — what was meant, not what happened:
+Kael acts.
+
+SPEAKER:
+(none — narrate the scene)
+
+WHAT HAPPENED:
+- Listen at the vault door without being heard -> success
+- bad luck — something behind the door is already listening back: signs of it
+- Kael is Success
+- learned of the vault map
+- took the vault map
+- learned of the sealed vault
+- the sealed vault is Warded (the seal stirs when it is first seen)
+
+PLAYER ACTION:
+I lever up the loose flagstone and listen at the vault door.

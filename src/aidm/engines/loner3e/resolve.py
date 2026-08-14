@@ -1,9 +1,10 @@
-import re
 from collections.abc import Mapping
 from random import Random
 from typing import Literal
 
 from aidm.engines.counters import adjust, read_mechanics, write_mechanics
+from aidm.engines.sheets import require_sheet
+from aidm.engines.tags import carriers, tag_key
 from aidm.state.apply import apply_effect, require_actor_here
 from aidm.state.base import Entity, Slug
 from aidm.state.dice import roll_pool
@@ -12,7 +13,7 @@ from aidm.state.facts import Fact, entity_fact
 from aidm.state.world import GameState
 
 from .actions import Question
-from .mechanics import LUCK_MAX, TIES_PER_TWIST, Mechanics, Sheet
+from .mechanics import LUCK_MAX, TIES_PER_TWIST, Mechanics
 
 HARM: dict[Slug, int] = {
     "yes-and": 3,
@@ -59,24 +60,15 @@ def outcome_for(chance: int, risk: int) -> Slug:
     return side
 
 
-def _key(tag: str) -> str:
-    return re.sub(r"[^a-z0-9]+", "-", tag.lower()).strip("-")
-
-
 def available_tags(draft: GameState, actor: Entity, mechanics: Mechanics) -> dict[str, str]:
     known: dict[str, str] = {}
-    carriers = [actor, *draft.world.children(actor.id, "item")]
-    place = draft.world.location_of(actor)
-    if place is not None:
-        carriers.append(draft.world.require(place))
-        carriers.extend(draft.world.children(place))
-    for carrier in carriers:
+    for carrier in carriers(draft, actor):
         sheet = mechanics.sheets.get(carrier.id)
         for tag in sheet.tags() if sheet is not None else ():
-            known[_key(tag)] = tag
+            known[tag_key(tag)] = tag
         for trait in carrier.traits:
-            known[_key(trait.id)] = trait.name
-            known[_key(trait.name)] = trait.name
+            known[tag_key(trait.id)] = trait.name
+            known[tag_key(trait.name)] = trait.name
     return known
 
 
@@ -86,7 +78,7 @@ def resolve_question(
     actor = require_actor_here(draft, action.actor_id)
     facts = apply_effect(draft, Reveal(entity_id=action.actor_id))
     mechanics = read_mechanics(draft, Mechanics)
-    _ = _sheet(mechanics, actor)
+    _ = require_sheet(mechanics.sheets, actor)
     opponent: Entity | None = None
     if action.opponent_id is not None:
         opponent = require_actor_here(draft, action.opponent_id)
@@ -94,8 +86,8 @@ def resolve_question(
     known = available_tags(draft, actor, mechanics)
     _refuse_unless_ready(known, actor, action, mechanics, opponent)
 
-    leverage = {known[_key(tag)] for tag in action.leverage}
-    trouble = {known[_key(tag)] for tag in action.trouble}
+    leverage = {known[tag_key(tag)] for tag in action.leverage}
+    trouble = {known[tag_key(tag)] for tag in action.trouble}
     # A tag counts once however often it is named, and cancels the same tag on the other side.
     net = len(leverage - trouble) - len(trouble - leverage)
     position: Position = "advantage" if net > 0 else "disadvantage" if net < 0 else "neutral"
@@ -144,26 +136,19 @@ def _twist(
     return [subject_fact, action_fact, due]
 
 
-def _sheet(mechanics: Mechanics, actor: Entity) -> Sheet:
-    sheet = mechanics.sheets.get(actor.id)
-    if sheet is None:
-        raise ValueError(f"{actor.name} has no character sheet")
-    return sheet
-
-
 def _strike(
     draft: GameState, mechanics: Mechanics, actor: Entity, opponent: Entity, outcome: Slug
 ) -> list[Fact]:
     harm = HARM[outcome]
     hit, striker = (opponent, actor) if harm > 0 else (actor, opponent)
-    luck = _sheet(mechanics, hit).luck
+    luck = require_sheet(mechanics.sheets, hit).luck
     facts = adjust(hit, "luck", luck, -abs(harm), f"{striker.name} gets the better of the exchange")
     if luck.current == 0:
         draft.world.pending_notes = (*draft.world.pending_notes, defeat_note(hit.name))
         facts.append(entity_fact(hit, "conflict_lost", f"{hit.name} is out of luck", {}))
         # SRD: luck resets after conflicts, and a side at 0 is the only end the engine can see.
         for side in (hit, striker):
-            pool = _sheet(mechanics, side).luck
+            pool = require_sheet(mechanics.sheets, side).luck
             refill = (pool.maximum or LUCK_MAX) - pool.current
             facts.extend(adjust(side, "luck", pool, refill, "the conflict is over"))
     return facts
@@ -177,7 +162,7 @@ def _refuse_unless_ready(
     opponent: Entity | None,
 ) -> None:
     for tag in (*action.leverage, *action.trouble):
-        if _key(tag) not in known:
+        if tag_key(tag) not in known:
             written = ", ".join(sorted(set(known.values())))
             raise ValueError(
                 f"{actor.name} has no tag {tag!r} to draw on. The tags in play are: {written}"
@@ -187,7 +172,7 @@ def _refuse_unless_ready(
     if opponent.id == actor.id:
         raise ValueError(f"{actor.name} cannot be their own opposition in a conflict.")
     for side in (actor, opponent):
-        if _sheet(mechanics, side).luck.current == 0:
+        if require_sheet(mechanics.sheets, side).luck.current == 0:
             raise ValueError(
                 f"{side.name} is already out of luck, so that conflict is over. Settle what it "
                 "costs them instead of rolling it again."

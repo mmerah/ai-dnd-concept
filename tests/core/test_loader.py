@@ -1,15 +1,38 @@
 from collections.abc import Mapping
 from pathlib import Path
 from random import Random
+from typing import get_args
 
 from pydantic import JsonValue, TypeAdapter
 
 from aidm.engines.loader import WORLD_EXAMPLES, Engine, EntityRenderer, engine_text
 from aidm.state.base import EngineId, Entity, EntityId, Frozen
-from aidm.state.effects import WorldEffect, effect_key, effect_keys
+from aidm.state.effects import WorldEffect
 from aidm.state.facts import Fact
 from aidm.state.plan import TurnPlanBase
 from aidm.state.world import GameState
+
+
+def _effect_key(effect: Frozen) -> str:
+    """An op, or an op and the mode it is in: what one worked example teaches."""
+    dumped = effect.model_dump()
+    mode = dumped.get("mode")
+    return f"{dumped['op']}/{mode}" if mode else str(dumped["op"])
+
+
+def _effect_keys(union: object) -> frozenset[str]:
+    """Every key an effect union can produce, so a worked example can be demanded per mode."""
+    members, _ = get_args(union)
+    # A `type X = ...` alias is a TypeAliasType; get_args does not resolve it on its own.
+    keys: set[str] = set()
+    for member in get_args(getattr(members, "__value__", members)):
+        op = member.model_fields["op"].default
+        mode = member.model_fields.get("mode")
+        if mode is None:
+            keys.add(op)
+        else:
+            keys.update(f"{op}/{value}" for value in get_args(mode.annotation))
+    return frozenset(keys)
 
 
 def _engine(tmp_path: Path) -> Engine:
@@ -66,4 +89,4 @@ def test_an_engine_without_content_loads_and_advertises_no_tool(tmp_path: Path) 
 def test_the_shared_examples_teach_every_world_effect() -> None:
     """Adding an op is a union member, an apply case, and one worked example here."""
     entries = TypeAdapter(list[WorldEffect]).validate_json(engine_text(WORLD_EXAMPLES))
-    assert {effect_key(entry) for entry in entries} == effect_keys(WorldEffect.__value__)
+    assert {_effect_key(entry) for entry in entries} == _effect_keys(WorldEffect.__value__)

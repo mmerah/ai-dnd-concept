@@ -1,0 +1,23 @@
+{
+  "additionalProperties": false,
+  "description": "The one change a job buys. The engine pays the credits and records the job itself.",
+  "properties": {
+    "skill": {
+      "description": "The skill this job improves, in title case: one already on the sheet to raise it a step, or a new one to take at d8.",
+      "minLength": 1,
+      "title": "Skill",
+      "type": "string"
+    },
+    "why": {
+      "description": "One short sentence the player reads before confirming.",
+      "title": "Why",
+      "type": "string"
+    }
+  },
+  "required": [
+    "skill",
+    "why"
+  ],
+  "title": "Advance",
+  "type": "object"
+}

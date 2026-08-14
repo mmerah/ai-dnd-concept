@@ -1,0 +1,272 @@
+{
+  "save_version": 61,
+  "facts": [
+    {
+      "source": "core",
+      "kind": "dice_rolled",
+      "trace": "Listen at the vault door without being heard — Stealth: d10+d6 [8, 5] -> 8",
+      "narrator": null,
+      "data": {
+        "faces": [
+          10,
+          6
+        ],
+        "rolled": [
+          8,
+          5
+        ],
+        "kept": 8,
+        "reason": "Listen at the vault door without being heard — Stealth"
+      }
+    },
+    {
+      "source": "core",
+      "kind": "attempt_resolved",
+      "trace": "Listen at the vault door without being heard -> success",
+      "narrator": "Listen at the vault door without being heard -> success",
+      "data": {
+        "entity_id": "player",
+        "outcome": "success",
+        "kept": 8,
+        "skill": "Stealth",
+        "faces": [
+          10,
+          6
+        ]
+      }
+    },
+    {
+      "source": "core",
+      "kind": "dice_rolled",
+      "trace": "bad luck — something behind the door is already listening back: 1d6 [4] -> 4",
+      "narrator": null,
+      "data": {
+        "faces": [
+          6
+        ],
+        "rolled": [
+          4
+        ],
+        "kept": 4,
+        "reason": "bad luck — something behind the door is already listening back"
+      }
+    },
+    {
+      "source": "core",
+      "kind": "luck_tested",
+      "trace": "bad luck — something behind the door is already listening back: signs of it",
+      "narrator": "bad luck — something behind the door is already listening back: signs of it",
+      "data": {
+        "entity_id": "player",
+        "subject": "something behind the door is already listening back",
+        "trouble": false
+      }
+    },
+    {
+      "source": "core",
+      "kind": "trait_added",
+      "trace": "Kael is Success",
+      "narrator": "Kael is Success",
+      "data": {
+        "entity_id": "player",
+        "trait_id": "success"
+      }
+    },
+    {
+      "source": "core",
+      "kind": "entity_discovered",
+      "trace": "learned of the vault map",
+      "narrator": "learned of the vault map",
+      "data": {
+        "entity_id": "vault_map",
+        "name": "the vault map"
+      }
+    },
+    {
+      "source": "core",
+      "kind": "entity_moved",
+      "trace": "took the vault map",
+      "narrator": "took the vault map",
+      "data": {
+        "entity_id": "vault_map",
+        "entity_name": "the vault map",
+        "to_id": "player",
+        "to_name": "Kael",
+        "to_kind": "actor"
+      }
+    },
+    {
+      "source": "core",
+      "kind": "hook_fired",
+      "trace": "hook vault-charted fired",
+      "narrator": null,
+      "data": {
+        "hook_id": "vault-charted"
+      }
+    },
+    {
+      "source": "core",
+      "kind": "thread_advanced",
+      "trace": "The sealed vault is active at seal-found (the chart marks the stair down to the door)",
+      "narrator": null,
+      "data": {
+        "thread_id": "vault-seal",
+        "status": "active",
+        "stage": "seal-found"
+      }
+    },
+    {
+      "source": "core",
+      "kind": "entity_discovered",
+      "trace": "learned of the sealed vault",
+      "narrator": "learned of the sealed vault",
+      "data": {
+        "entity_id": "vault",
+        "name": "the sealed vault"
+      }
+    },
+    {
+      "source": "core",
+      "kind": "hook_fired",
+      "trace": "hook vault-sighted fired",
+      "narrator": null,
+      "data": {
+        "hook_id": "vault-sighted"
+      }
+    },
+    {
+      "source": "core",
+      "kind": "thread_advanced",
+      "trace": "The sealed vault is active at seal-found (the vault door is found)",
+      "narrator": null,
+      "data": {
+        "thread_id": "vault-seal",
+        "status": "active",
+        "stage": "seal-found"
+      }
+    },
+    {
+      "source": "core",
+      "kind": "trait_added",
+      "trace": "the sealed vault is Warded (the seal stirs when it is first seen)",
+      "narrator": "the sealed vault is Warded (the seal stirs when it is first seen)",
+      "data": {
+        "entity_id": "vault",
+        "trait_id": "warded"
+      }
+    },
+    {
+      "source": "core",
+      "kind": "entity_created",
+      "trace": "new actor: Sister Auber",
+      "narrator": "new actor: Sister Auber",
+      "data": {
+        "entity_id": "sister_auber",
+        "kind": "actor",
+        "name": "Sister Auber"
+      }
+    }
+  ],
+  "entry": "turn",
+  "prompt": "I lever up the loose flagstone and listen at the vault door.",
+  "narration": "The flagstone lifts. Beyond the door, something shifts its weight and waits.",
+  "steps": [
+    {
+      "name": "director",
+      "output": {
+        "focus": "Kael acts.",
+        "pressure": "",
+        "stakes": "",
+        "speaker_id": null,
+        "effects": [
+          {
+            "op": "move",
+            "entity_id": "vault_map",
+            "to_id": null
+          }
+        ],
+        "branches": [
+          {
+            "outcome": "success",
+            "effects": [
+              {
+                "op": "trait-change",
+                "mode": "add",
+                "entity_id": "player",
+                "trait_id": "success",
+                "text": "",
+                "why": ""
+              }
+            ]
+          },
+          {
+            "outcome": "setback",
+            "effects": [
+              {
+                "op": "trait-change",
+                "mode": "add",
+                "entity_id": "player",
+                "trait_id": "setback",
+                "text": "",
+                "why": ""
+              }
+            ]
+          },
+          {
+            "outcome": "disaster",
+            "effects": [
+              {
+                "op": "trait-change",
+                "mode": "add",
+                "entity_id": "player",
+                "trait_id": "disaster",
+                "text": "",
+                "why": ""
+              }
+            ]
+          }
+        ],
+        "action": {
+          "act": "attempt",
+          "actor_id": "player",
+          "goal": "Listen at the vault door without being heard",
+          "skill": "Stealth",
+          "helped": "Relic Hunter",
+          "hindered": "",
+          "luck_test": "something behind the door is already listening back"
+        }
+      }
+    },
+    {
+      "name": "resolve",
+      "output": "- Listen at the vault door without being heard -> success\n- bad luck — something behind the door is already listening back: signs of it\n- Kael is Success\n- learned of the vault map\n- took the vault map"
+    },
+    {
+      "name": "hooks",
+      "output": "hook vault-charted fired\nThe sealed vault is active at seal-found (the chart marks the stair down to the door)\nlearned of the sealed vault\nhook vault-sighted fired\nThe sealed vault is active at seal-found (the vault door is found)\nthe sealed vault is Warded (the seal stirs when it is first seen)"
+    },
+    {
+      "name": "narrator",
+      "output": "The flagstone lifts. Beyond the door, something shifts its weight and waits."
+    },
+    {
+      "name": "worldkeeper",
+      "output": {
+        "creations": [
+          {
+            "kind": "actor",
+            "name": "Sister Auber",
+            "brief": "A lay sister who keeps the vault keys.",
+            "detail": {
+              "description": "She has kept the abbey's keys for thirty years.",
+              "hook": "She knows which doors were sealed and by whom."
+            },
+            "location": null
+          }
+        ],
+        "memories": [],
+        "thread_moves": []
+      }
+    }
+  ]
+}

@@ -1,16 +1,11 @@
-import logging
 from collections.abc import Mapping
-from pathlib import Path
-from re import fullmatch
 from typing import Self
 
 from pydantic import Field, model_validator
 
-from aidm.content.store import ENCODING
 from aidm.state.base import Frozen
 from aidm.state.creation import ContentSlug
 
-LOGGER = logging.getLogger(__name__)
 SRD_PACK: ContentSlug = "srd"
 
 
@@ -42,22 +37,6 @@ class Pack(Frozen):
             if column is not None and len(column) != 6:
                 raise ValueError("a twist column is one d6: exactly six entries")
         return self
-
-
-def load_packs(paths: Mapping[str, Path]) -> dict[str, Pack]:
-    """A broken user pack is skipped with a log line: it must not block the way to the launcher."""
-    packs: dict[str, Pack] = {}
-    for stem, path in paths.items():
-        if fullmatch(r"[a-z0-9-]+", stem) is None:
-            LOGGER.warning("skipping content pack %s: its name is not a slug", path)
-            continue
-        try:
-            packs[stem] = Pack.model_validate_json(path.read_text(encoding=ENCODING))
-        except (OSError, ValueError) as broken:
-            LOGGER.warning("skipping content pack %s: %s", path, broken)
-    if not packs:
-        raise ValueError("no usable content pack was found")
-    return packs
 
 
 def twist_table(packs: Mapping[str, Pack], chosen: ContentSlug) -> tuple[tuple[str, str], ...]:

@@ -1,4 +1,4 @@
-from typing import Annotated, Literal, Self, get_args
+from typing import Annotated, Literal, Self
 
 from pydantic import Field, model_validator
 
@@ -132,25 +132,3 @@ class AdvanceThread(Frozen):
 # effect union is `WorldOp | <its mechanical ops>` under the same discriminator.
 type WorldOp = Reveal | Move | GainImprovisedItem | TraitChange | RelationChange | AdvanceThread
 type WorldEffect = Annotated[WorldOp, Field(discriminator="op")]
-
-
-def effect_key(effect: Frozen) -> str:
-    """An op, or an op and the mode it is in: what one worked example teaches."""
-    dumped = effect.model_dump()
-    mode = dumped.get("mode")
-    return f"{dumped['op']}/{mode}" if mode else str(dumped["op"])
-
-
-def effect_keys(union: object) -> frozenset[str]:
-    """Every key an effect union can produce, so a worked example can be demanded per mode."""
-    members, _ = get_args(union)
-    # A `type X = ...` alias is a TypeAliasType; get_args does not resolve it on its own.
-    keys: set[str] = set()
-    for member in get_args(getattr(members, "__value__", members)):
-        op = member.model_fields["op"].default
-        mode = member.model_fields.get("mode")
-        if mode is None:
-            keys.add(op)
-        else:
-            keys.update(f"{op}/{value}" for value in get_args(mode.annotation))
-    return frozenset(keys)

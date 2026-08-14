@@ -2,6 +2,7 @@ from collections.abc import Mapping
 
 from aidm.content.authored import CharacterOverlay, CharacterProfile, CreatedCharacter
 from aidm.engines.loader import Creation
+from aidm.engines.packs import pack_step
 from aidm.state.creation import CreationOption, CreationStep, Picks, check_picks, picked
 
 from .pack import Pack, PackEntry
@@ -12,13 +13,7 @@ class Loner3eCreation(Creation):
         self._packs = packs
 
     def steps(self, picks: Picks) -> tuple[CreationStep, ...]:
-        first = CreationStep(
-            id="pack",
-            prompt="Choose a table set",
-            options=tuple(
-                CreationOption(id=pack_id, label=pack.name) for pack_id, pack in self._packs.items()
-            ),
-        )
+        first = pack_step(self._packs)
         chosen = picked(picks, "pack")
         pack = self._packs.get(chosen[0]) if chosen else None
         if pack is None:

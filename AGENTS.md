@@ -46,6 +46,8 @@ Tests must be deterministic and require no network.
   the turn's draft and records facts. The model never writes state; every roll and every ledger
   change happens in resolver code, never in model output.
 - State evolves through transactions: copy the committed state, mutate the copy, revalidate the whole copy once at the end. A failed transaction never replaces the committed state, and committed state is never mutated again.
+- An engine owns its mechanics end to end: it declares the typed overlay authored content is validated against, refuses a state it cannot play rather than repairing one, and seeds whatever an entity created during play needs.
+- Content a user may extend loads from files: user copies merge over shipped ones by name, and an unreadable one is skipped with a log line instead of taking the app down.
 - Only the narrating role writes player-facing prose, and it never sees unrevealed canon: its input type must have no field a leak could travel through.
 - One composition root, built once. Below it collaborators and paths are explicit; no globals.
 - A save names its own origin and its own format version. That version is the only compatibility gate: refuse a stale save rather than converting it.

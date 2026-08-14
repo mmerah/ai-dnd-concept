@@ -1,0 +1,9 @@
+{
+  "entities": {
+    "cloister_rat": {
+      "skills": {
+        "Intimidation": 8
+      }
+    }
+  }
+}

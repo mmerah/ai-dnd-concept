@@ -2,7 +2,7 @@ from collections.abc import Mapping
 from random import Random
 
 import pytest
-from core_test_support import LONER3E, game, plan, played, scripted, structured, text
+from core_test_support import LONER3E, TWENTYFOURXX, game, plan, played, scripted, structured, text
 from golden_test_support import FIXTURES, dumped, golden
 from pydantic_ai.messages import ModelResponse
 from pydantic_ai.models.function import FunctionModel
@@ -69,6 +69,18 @@ SCRIPTS: Mapping[EngineId, ModelResponse] = {
             "opponent_id": None,
         },
         ("yes-and", "yes-but", "no"),
+    ),
+    TWENTYFOURXX: _plan(
+        {
+            "act": "attempt",
+            "actor_id": "player",
+            "goal": "Listen at the vault door without being heard",
+            "skill": "Stealth",
+            "helped": "Relic Hunter",
+            "hindered": "",
+            "luck_test": "something behind the door is already listening back",
+        },
+        ("success", "setback", "disaster"),
     ),
 }
 
