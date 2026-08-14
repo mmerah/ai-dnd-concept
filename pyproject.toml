@@ -31,7 +31,7 @@ dev = [
 [tool.pytest.ini_options]
 addopts = ["--import-mode=importlib"]
 asyncio_mode = "auto"
-pythonpath = ["tests/core", "tests/loner3e", "tests/ui", "tests/probe"]
+pythonpath = ["tests/core", "tests/loner3e", "tests/ui"]
 testpaths = ["tests"]
 
 [tool.basedpyright]
@@ -41,7 +41,6 @@ extraPaths = [
   "tests/core",
   "tests/loner3e",
   "tests/ui",
-  "tests/probe",
 ]
 typeCheckingMode = "strict"
 venvPath = "."
