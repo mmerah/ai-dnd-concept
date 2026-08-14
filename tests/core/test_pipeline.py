@@ -133,15 +133,14 @@ async def test_the_resolver_applies_only_the_branch_of_the_outcome_rolled() -> N
     engine.validate(result.state)
 
 
-async def test_a_plan_answered_as_plain_text_json_settles_the_turn() -> None:
-    """Small models often emit the plan JSON as text before obeying the tool call; the text
-    fallback accepts it so the turn costs no retry round trip."""
+async def test_a_plan_answered_as_plain_text_is_asked_again_for_the_tool_call() -> None:
+    """Accepting prose as well would cost `tool_choice: required`, and gpt-oss needs it."""
     engine, state = initialized()
-    spoken = 'Here is the plan:\n{"focus": "Kael waits.", "branches": []}'
-    director = FunctionModel(scripted(text(spoken)))
+    spoken = 'Here is the plan:\n{"focus": "Kael waits.", "effects": [], "branches": []}'
+    director = FunctionModel(scripted(text(spoken), plan(focus="Kael waits.")))
     result = await played(engine, state, "I wait.", director=director)
 
-    assert answered(result.turn, "director")["branches"] == []
+    assert answered(result.turn, "director")["focus"] == "Kael waits."
     assert result.turn.facts == ()
 
 
@@ -151,7 +150,7 @@ async def test_a_tool_call_with_a_channel_marker_in_its_name_still_lands() -> No
         parts=[
             ToolCallPart(
                 tool_name="turn_plan<|channel|>json",
-                args=json.dumps({"focus": "Kael waits.", "branches": []}),
+                args=json.dumps({"focus": "Kael waits.", "effects": [], "branches": []}),
             )
         ]
     )

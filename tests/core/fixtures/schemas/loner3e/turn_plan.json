@@ -493,8 +493,7 @@
       "title": "Speaker Id"
     },
     "effects": {
-      "default": [],
-      "description": "Consequences that happen whatever the action settles.",
+      "description": "Consequences that happen whatever the action settles. Empty when the turn changes nothing.",
       "items": {
         "$ref": "#/$defs/Loner3eEffect"
       },
@@ -524,7 +523,8 @@
     }
   },
   "required": [
-    "focus"
+    "focus",
+    "effects"
   ],
   "title": "TurnPlan",
   "type": "object"

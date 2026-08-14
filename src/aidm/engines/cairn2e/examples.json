@@ -3,6 +3,7 @@
     "focus": "Kael eases the loose flagstone up without letting it grind against its neighbours.",
     "pressure": "Any noise that carries below might wake whatever is sealed there.",
     "stakes": "What is hidden under the abbot's desk, or being heard finding it.",
+    "effects": [],
     "branches": [
       {
         "outcome": "pass",
@@ -38,6 +39,7 @@
     "focus": "Kael drives the bloated rat off the cloister stair before it can double back on him.",
     "pressure": "It has grown fat on the dead garden and does not scare off easily.",
     "stakes": "The stair down, or a bite worth remembering.",
+    "effects": [],
     "branches": [
       {
         "outcome": "down",

@@ -65,6 +65,26 @@ to rediscover. Step-by-step detail lives in git history, not here. Every entry w
   `outcomes`/`resolve` pair on six action classes. A shared effect alias would have saved ~10 more
   and was refused: it renames the `$defs` key the Director's schema shows.
 
+### Director fidelity: two fixes the probes forced (2026-08-14)
+
+On "I search the study." every engine named the vault map in `focus` and revealed it in no plan.
+Both causes are in how the plan is asked for, not in the prose that asks:
+
+- **`Branched.effects` is required, not defaulted.** An optional array a small model may omit is
+  an array it omits: forcing the key moved the reveal from 3/12 to 12/12 per engine. Required
+  alone over-fires on a quiet turn (talk revealed 6/12), so `director.md` pairs it with the
+  sentence naming the empty list as the right answer — talk back to 1/12, search still 12/12.
+  Prose alone moved nothing (3/12 → 3/12): the schema is what this model obeys.
+- **The Director takes one `ToolOutput`, no `TextOutput` fallback.** Two output types make
+  pydantic-ai send `tool_choice: auto`, under which gpt-oss-120b truncated its own tool call
+  arguments 17 times in 50 and skipped the call 8 more; under `required`, 0 and 0. The truncation
+  returns `finish_reason: tool_calls` on unterminated JSON, so nothing upstream reports an error,
+  and it is **not** a token limit — those answers ran ~150 output tokens against a 2048 budget.
+- Shipped, across the three engines: the searched-for map revealed 36/36, a pure-talk turn
+  revealed 1/36, no truncation and no retry. Forcing `action` required as well was measured and
+  refused: it buys nothing and reveals on talk turns 6/12.
+  `turn_plan.json` and the director instructions moved; no persisted byte did.
+
 ## Next
 
 - PLAN.md Phase 1 Part C (steps 7–9): the Director's beat loop. `Transacted.flow` is already

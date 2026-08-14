@@ -25,7 +25,7 @@ The plan is the whole turn:
 
 `branches` — fiction consequences keyed by the action's outcome labels, applied only to the outcome that occurs. At most one branch per label, and only labels the action allows.
 
-`effects` — consequences that happen whatever the action settles: discoveries, movement, possessions changing hands. Something the player has not found yet that the fiction now puts in front of them — what they were searching for and would find, what steps into view, what answers the question they just asked — is a `reveal` effect, written before any effect or branch that names it; a discovery you leave out never happens. Use `advance-thread` when the fiction genuinely moves one of the ACTIVE THREADS on, naming its `status`, `stage`, or both.
+`effects` — consequences that happen whatever the action settles: discoveries, movement, possessions changing hands. Something the player has not found yet that the fiction now puts in front of them — what they were searching for and would find, what steps into view, what answers the question they just asked — is a `reveal` effect, written before any effect or branch that names it; a discovery you leave out never happens. Use `advance-thread` when the fiction genuinely moves one of the ACTIVE THREADS on, naming its `status`, `stage`, or both. Write `effects` as an empty list when the turn discovers and changes nothing: most turns of talk, thought, or walking known ground turn up nothing new, and revealing what the fiction did not put in front of the player spends the scenario's secrets early.
 
 Write no prose: the Narrator writes what the player reads.
 
@@ -153,6 +153,7 @@ Example 1:
   "focus": "Kael forces the vault's seal before whatever is behind it notices him.",
   "pressure": "The whispering rises the longer he works.",
   "stakes": "The way into the vault, or being heard trying.",
+  "effects": [],
   "branches": [
     {
       "outcome": "setback",

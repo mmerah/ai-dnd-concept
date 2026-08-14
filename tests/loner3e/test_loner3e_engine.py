@@ -50,6 +50,7 @@ def _plan(engine: Engine, **action: object) -> TurnPlanBase:
     return engine.plan_type.model_validate(
         {
             "focus": "Kael works the sealed door.",
+            "effects": (),
             "branches": (YES_AND, NO_AND),
             "action": {
                 "act": "question",
@@ -119,7 +120,9 @@ def test_check_plan_owes_the_model_every_refusal_the_resolve_raises() -> None:
     invented = _plan(engine, actor_id=PLAYER_ID, leverage=["Silver Tongue"])
     assert "has no tag" in _refusal(engine, state, invented)
 
-    quiet = engine.plan_type.model_validate({"focus": "Kael waits.", "branches": (YES_AND,)})
+    quiet = engine.plan_type.model_validate(
+        {"focus": "Kael waits.", "effects": (), "branches": (YES_AND,)}
+    )
     assert "settles no outcome" in _refusal(engine, state, quiet)
 
     elsewhere = _plan(engine, actor_id=PLAYER_ID, opponent_id="cloister_rat")

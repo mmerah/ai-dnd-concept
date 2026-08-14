@@ -3,6 +3,7 @@
     "focus": "Kael works the sealed door before whatever is behind it notices him.",
     "pressure": "The whispering rises the longer he works.",
     "stakes": "The way into the vault, or being heard trying.",
+    "effects": [],
     "branches": [
       {
         "outcome": "yes-and",

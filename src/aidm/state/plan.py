@@ -69,7 +69,8 @@ class Branched[E, A](TurnPlanBase):
     engine's own effect vocabulary."""
 
     effects: tuple[E, ...] = Field(
-        default=(), description="Consequences that happen whatever the action settles."
+        description="Consequences that happen whatever the action settles. Empty when the turn "
+        "changes nothing."
     )
     branches: tuple[OutcomeBranch[E], ...] = Field(
         default=(),

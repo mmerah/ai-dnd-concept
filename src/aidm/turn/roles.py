@@ -3,8 +3,7 @@ from dataclasses import dataclass
 from functools import cached_property
 from types import NoneType
 
-from pydantic import ValidationError
-from pydantic_ai import Agent, ModelRetry, NativeOutput, RunContext, TextOutput, ToolOutput
+from pydantic_ai import Agent, ModelRetry, NativeOutput, RunContext, ToolOutput
 from pydantic_ai.messages import (
     ModelMessage,
     ModelRequest,
@@ -163,10 +162,8 @@ def director_stage(engine: Engine, settings: Settings) -> Stage[PlanContext, Tur
         "director",
         settings,
         instructions=f"{prompts.DIRECTOR}\n\n{engine.director_instructions}",
-        output_type=[
-            ToolOutput(engine.plan_type, name="turn_plan"),
-            TextOutput(plan_from_text(engine.plan_type)),
-        ],
+        # Keeps `tool_choice: required`; under `auto` gpt-oss truncates its own tool call arguments
+        output_type=ToolOutput(engine.plan_type, name="turn_plan"),
         deps_type=PlanContext,
         toolsets=engine.director_toolsets,
         validator=legal,
@@ -234,23 +231,6 @@ def build_stages(engine: Engine, settings: Settings) -> Stages:
         narrator=narrator_stage(settings),
         worldkeeper=worldkeeper_stage(settings),
     )
-
-
-def plan_from_text(plan_type: type[TurnPlanBase]) -> Callable[[str], TurnPlanBase]:
-    """gpt-oss sometimes answers the Director in plain text instead of calling `turn_plan`."""
-
-    def parse(text: str) -> TurnPlanBase:
-        start, end = text.find("{"), text.rfind("}")
-        if start < 0 or end <= start:
-            raise ModelRetry("Answer with one `turn_plan` tool call.")
-        try:
-            return plan_type.model_validate_json(text[start : end + 1])
-        except ValidationError as invalid:
-            first = invalid.errors()[0]
-            where = ".".join(str(loc) for loc in first["loc"])
-            raise ModelRetry(f"the plan did not validate — {where}: {first['msg']}") from invalid
-
-    return parse
 
 
 def exchanges_to_messages(history: Sequence[Exchange]) -> list[ModelMessage]:
