@@ -50,6 +50,12 @@
           "description": "Stable slug for the point it has reached, or null to leave it as it is.",
           "title": "Stage"
         },
+        "tick": {
+          "default": 0,
+          "description": "How many segments this fills on the thread's clock, when it has one.",
+          "title": "Tick",
+          "type": "integer"
+        },
         "why": {
           "default": "",
           "description": "One short sentence saying what causes this change, for the player.",

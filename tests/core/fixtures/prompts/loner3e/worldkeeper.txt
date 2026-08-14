@@ -7,6 +7,8 @@ EVERYTHING THAT EXISTS:
 - the cloister[id=cloister] (location) — A frost-rimed colonnade around a dead garden; Brother Tomas sweeps it to no purpose.
 - the bell tower[id=bell_tower] (location) — A cramped climb of rotten ladders above the nave, its bell long since stilled.
 - the sealed vault[id=vault] (location) — The undercroft chamber Kael came for, its door bearing a seal nobody living can read.
+  state:
+    traits: Warded[id=warded] — The seal answers a touch, and something behind the door answers with it.
 - Mara[id=mara] (npc) — at the abbot's study — The abbey's last scribe, cautious and tired, still cataloguing books nobody will read.
   state:
     pools: luck 6/6
@@ -44,6 +46,7 @@ WHAT HAPPENED:
 - learned of the vault map
 - took the vault map
 - learned of the sealed vault
+- the sealed vault is Warded (the seal stirs when it is first seen)
 
 NARRATION:
 The flagstone lifts. Beyond the door, something shifts its weight and waits.

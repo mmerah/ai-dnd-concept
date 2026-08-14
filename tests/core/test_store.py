@@ -2,10 +2,11 @@ import json
 from pathlib import Path
 
 import pytest
-from core_test_support import LONER3E, initialized, updated
+from core_test_support import LONER3E, initialized, scenario, updated
 from pydantic import ValidationError
 
-from aidm.content.store import ENCODING, FileStore, load_character, load_scenario
+from aidm.app.session import build_engine
+from aidm.content.store import ENCODING, FileStore, load_character, load_scenario, write_scenario
 from aidm.state.base import PLAYER_ID
 from aidm.state.facts import CORE, Fact, narrator_evidence
 from aidm.state.turn import Applied, StepTrace, Turn
@@ -137,7 +138,20 @@ def test_storage_rejects_unsafe_slugs(tmp_path: Path, slug: str) -> None:
 
 def test_content_paths_reject_an_unsafe_id(tmp_path: Path) -> None:
     """A game route supplies these ids, and each one names a directory."""
+    binding = build_engine(LONER3E).binding()
     with pytest.raises(ValueError, match="invalid content id"):
-        load_scenario(tmp_path, "../escape", LONER3E)
+        load_scenario(tmp_path, "../escape", binding)
     with pytest.raises(ValueError, match="invalid content id"):
-        load_character(tmp_path, "kael/../..", LONER3E)
+        load_character(tmp_path, "kael/../..", binding)
+
+
+def test_write_scenario_round_trips_and_refuses_a_duplicate(tmp_path: Path) -> None:
+    original = scenario()
+    binding = build_engine(LONER3E).binding()
+
+    write_scenario(tmp_path, "vault-copy", LONER3E, original.world, original.overlay)
+    loaded = load_scenario(tmp_path, "vault-copy", binding)
+
+    assert (loaded.world, loaded.overlay) == (original.world, original.overlay)
+    with pytest.raises(ValueError, match="already exists"):
+        write_scenario(tmp_path, "vault-copy", LONER3E, original.world, original.overlay)

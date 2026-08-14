@@ -1,8 +1,9 @@
-from collections.abc import Collection, Mapping
+from collections.abc import Callable, Collection, Iterable, Mapping
+from dataclasses import dataclass
 from functools import cached_property
 from typing import Self
 
-from pydantic import Field, JsonValue, model_validator
+from pydantic import BaseModel, Field, JsonValue, model_validator
 
 from aidm.state.base import (
     PLAYER_ID,
@@ -17,7 +18,16 @@ from aidm.state.base import (
 from aidm.state.effects import AdvanceThread
 from aidm.state.world import Hook, Memory, Relation, ScenarioMeta, Thread, WorldState
 
-type Rules = dict[str, JsonValue]
+type EffectParse = Callable[[JsonValue], Frozen]
+
+
+@dataclass(frozen=True, slots=True)
+class Binding:
+    """What loading content needs from an engine, so `content` never imports one."""
+
+    engine: EngineId
+    parse_effect: EffectParse
+    rules_type: type[BaseModel]
 
 
 class ScenarioWorld(Frozen):
@@ -65,24 +75,13 @@ class ScenarioWorld(Frozen):
                     f"the player has met and stands beside who they set out with, "
                     f"unlike {companion!r}"
                 )
-        wanted = sorted(
-            {
-                effect.thread_id
-                for hook in self.world.hooks
-                for effect in hook.effects
-                if isinstance(effect, AdvanceThread)
-            }
-            - set(self.world.threads)
-        )
-        if wanted:
-            raise ValueError(f"hooks advance threads the scenario never authors: {wanted}")
         return self
 
 
 class ScenarioOverlay(Frozen):
     """`<engine>.json`: what one ruleset adds to the entities that need it."""
 
-    entities: dict[EntityId, Rules] = Field(default_factory=dict)
+    entities: dict[EntityId, dict[str, JsonValue]] = Field(default_factory=dict)
 
 
 class CharacterProfile(Frozen):
@@ -110,8 +109,8 @@ class CharacterProfile(Frozen):
 
 
 class CharacterOverlay(Frozen):
-    character: Rules
-    entities: dict[EntityId, Rules] = Field(default_factory=dict)
+    character: dict[str, JsonValue]
+    entities: dict[EntityId, dict[str, JsonValue]] = Field(default_factory=dict)
 
 
 class CreatedCharacter(Frozen):
@@ -161,10 +160,27 @@ class Character(Frozen):
 
 def _require_authored(
     engine: EngineId,
-    overlay: Mapping[EntityId, Rules],
+    overlay: Mapping[EntityId, dict[str, JsonValue]],
     authored: Collection[EntityId],
 ) -> None:
     """An overlay keys off the authored ids, so a typo must fail at load, not go unread."""
     unknown = sorted(entity_id for entity_id in overlay if entity_id not in authored)
     if unknown:
         raise ValueError(f"the {engine!r} overlay names unauthored ids: {unknown}")
+
+
+def check_hooks(world: ScenarioWorld, binding: Binding) -> None:
+    """Hook effects are the engine's own vocabulary; core only checks the threads they name."""
+    for hook in world.hooks:
+        for effect in hook.effects:
+            parsed = binding.parse_effect(effect)
+            if isinstance(parsed, AdvanceThread) and parsed.thread_id not in world.world.threads:
+                raise ValueError(
+                    f"hook {hook.id!r} advances the unauthored thread {parsed.thread_id!r}"
+                )
+
+
+def check_overlay(binding: Binding, authored: Iterable[dict[str, JsonValue]]) -> None:
+    """The engine's own payload model, so a mistyped overlay field fails at load, not mid-turn."""
+    for rules in authored:
+        _ = binding.rules_type.model_validate(rules)

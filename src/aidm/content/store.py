@@ -11,6 +11,7 @@ from aidm.state.turn import TraceEntry
 from aidm.state.world import GameState, ScenarioMeta
 
 from .authored import (
+    Binding,
     Character,
     CharacterOverlay,
     CharacterProfile,
@@ -18,6 +19,8 @@ from .authored import (
     Scenario,
     ScenarioOverlay,
     ScenarioWorld,
+    check_hooks,
+    check_overlay,
 )
 
 ENCODING = "utf-8"
@@ -36,24 +39,29 @@ def read_characters(directory: Path, engines: Sequence[EngineId]) -> Playable[Ch
     return _playable(directory, PROFILE_FILE, CharacterProfile, engines)
 
 
-def load_scenario(directory: Path, name: Slug, engine: EngineId) -> Scenario:
+def load_scenario(directory: Path, name: Slug, binding: Binding) -> Scenario:
     folder = directory / content_id(name)
-    return Scenario(
+    scenario = Scenario(
         id=name,
-        engine=engine,
+        engine=binding.engine,
         world=_read(folder / WORLD_FILE, ScenarioWorld),
-        overlay=_read(folder / f"{engine}.json", ScenarioOverlay),
+        overlay=_read(folder / f"{binding.engine}.json", ScenarioOverlay),
     )
+    check_hooks(scenario.world, binding)
+    check_overlay(binding, scenario.overlay.entities.values())
+    return scenario
 
 
-def load_character(directory: Path, name: Slug, engine: EngineId) -> Character:
+def load_character(directory: Path, name: Slug, binding: Binding) -> Character:
     folder = directory / content_id(name)
-    return Character(
+    character = Character(
         id=name,
-        engine=engine,
+        engine=binding.engine,
         profile=_read(folder / PROFILE_FILE, CharacterProfile),
-        overlay=_read(folder / f"{engine}.json", CharacterOverlay),
+        overlay=_read(folder / f"{binding.engine}.json", CharacterOverlay),
     )
+    check_overlay(binding, (character.overlay.character, *character.overlay.entities.values()))
+    return character
 
 
 def write_character(
@@ -64,6 +72,16 @@ def write_character(
         raise ValueError(f"character {name!r} already exists")
     _write(folder / PROFILE_FILE, created.profile.model_dump_json(indent=2))
     _write(folder / f"{engine}.json", created.overlay.model_dump_json(indent=2))
+
+
+def write_scenario(
+    directory: Path, name: Slug, engine: EngineId, scenario: ScenarioWorld, overlay: ScenarioOverlay
+) -> None:
+    folder = directory / content_id(name)
+    if folder.exists():
+        raise ValueError(f"scenario {name!r} already exists")
+    _write(folder / WORLD_FILE, scenario.model_dump_json(indent=2))
+    _write(folder / f"{engine}.json", overlay.model_dump_json(indent=2))
 
 
 def _playable[T: BaseModel](

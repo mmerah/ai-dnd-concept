@@ -113,12 +113,18 @@ class AdvanceThread(Frozen):
         default=None,
         description="Stable slug for the point it has reached, or null to leave it as it is.",
     )
+    tick: int = Field(
+        default=0,
+        description="How many segments this fills on the thread's clock, when it has one.",
+    )
     why: Why = ""
 
     @model_validator(mode="after")
     def _moves_something(self) -> Self:
-        if self.status is None and self.stage is None:
-            raise ValueError("advance-thread moves a thread's status, its stage, or both")
+        if self.tick < 0:
+            raise ValueError("a tick fills a clock; it never runs one backwards")
+        if self.status is None and self.stage is None and not self.tick:
+            raise ValueError("advance-thread moves a thread's status, its stage, or its clock")
         return self
 
 
@@ -138,8 +144,9 @@ def effect_key(effect: Frozen) -> str:
 def effect_keys(union: object) -> frozenset[str]:
     """Every key an effect union can produce, so a worked example can be demanded per mode."""
     members, _ = get_args(union)
+    # A `type X = ...` alias is a TypeAliasType; get_args does not resolve it on its own.
     keys: set[str] = set()
-    for member in get_args(members):
+    for member in get_args(getattr(members, "__value__", members)):
         op = member.model_fields["op"].default
         mode = member.model_fields.get("mode")
         if mode is None:

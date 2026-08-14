@@ -185,7 +185,10 @@ def _threads(threads: Sequence[Thread]) -> str:
 
 def _thread_line(thread: Thread) -> str:
     stage = f" at {thread.stage}" if thread.stage is not None else ""
-    line = f"- {thread.title}[id={prompt_id(thread.id)}] — {thread.status}{stage}"
+    clock = (
+        "" if thread.clock is None else f" [clock {thread.clock.current}/{thread.clock.maximum}]"
+    )
+    line = f"- {thread.title}[id={prompt_id(thread.id)}] — {thread.status}{stage}{clock}"
     return f"{line}\n  note: {thread.note}" if thread.note else line
 
 

@@ -1,52 +1,26 @@
-import re
-from dataclasses import dataclass
+from collections.abc import Sequence
 from random import Random
-from typing import Literal
 
 from .facts import CORE, Fact
 
-# Bounds prevent model-written expressions from stalling a turn.
-_DICE = re.compile(r"^([1-9]\d{0,2})d([1-9]\d{0,3})$")
 
-RollMode = Literal["normal", "advantage"]
-
-
-@dataclass(frozen=True, slots=True)
-class Rolled:
-    total: int
-    dice: tuple[int, ...]
-
-
-def _evaluate(expression: str, rng: Random) -> Rolled:
-    matched = _DICE.match(expression.replace(" ", ""))
-    if matched is None:
-        raise ValueError(f"malformed dice expression {expression!r}")
-    drawn = tuple(rng.randint(1, int(matched[2])) for _ in range(int(matched[1])))
-    return Rolled(total=sum(drawn), dice=drawn)
-
-
-def roll(
-    expression: str,
-    reason: str,
-    rng: Random,
-    *,
-    mode: RollMode = "normal",
-) -> tuple[Rolled, Fact]:
-    kept, dropped = _evaluate(expression, rng), None
-    if mode == "advantage":
-        pair = sorted((kept, _evaluate(expression, rng)), key=lambda outcome: outcome.total)
-        kept, dropped = pair[-1], pair[0]
-    against = "" if dropped is None else f" ({mode}, dropped {dropped.total})"
-    faces = ", ".join(str(die) for die in kept.dice)
+def roll_pool(faces: Sequence[int], reason: str, rng: Random) -> tuple[int, Fact]:
+    """Roll one die per entry and keep the highest; a single die is a pool of one."""
+    if not faces:
+        raise ValueError("a dice pool rolls at least one die")
+    drawn = tuple(rng.randint(1, face) for face in faces)
+    kept = max(drawn)
+    shown = ", ".join(str(die) for die in drawn)
     return kept, Fact(
         source=CORE,
         kind="dice_rolled",
-        trace=f"{reason}: {expression} [{faces}] -> {kept.total}{against}",
-        data={
-            "dice": expression,
-            "mode": mode,
-            "rolled": list(kept.dice),
-            "total": kept.total,
-            "reason": reason,
-        },
+        trace=f"{reason}: {_notation(faces)} [{shown}] -> {kept}",
+        data={"faces": list(faces), "rolled": list(drawn), "kept": kept, "reason": reason},
     )
+
+
+def _notation(faces: Sequence[int]) -> str:
+    """`2d6` for a uniform pool, `d8+d10` for a mixed one."""
+    if len(set(faces)) == 1:
+        return f"{len(faces)}d{faces[0]}"
+    return "+".join(f"d{face}" for face in faces)

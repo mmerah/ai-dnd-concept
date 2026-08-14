@@ -1,5 +1,6 @@
 from collections.abc import Callable
 from dataclasses import dataclass, field
+from pathlib import Path
 from random import Random
 
 from aidm.config import Settings
@@ -31,8 +32,8 @@ def build_subsystem_advisors(
     return {system.id: subsystem_stage(system, settings) for system in engine.subsystems}
 
 
-def build_engine(engine_id: EngineId) -> Engine:
-    return engine_class(engine_id)()
+def build_engine(engine_id: EngineId, extra_packs: Path | None = None) -> Engine:
+    return engine_class(engine_id)(extra_packs)
 
 
 def begin_game(engine: Engine, scenario: Scenario, character: Character) -> GameState:
@@ -70,7 +71,7 @@ def begin_game(engine: Engine, scenario: Scenario, character: Character) -> Game
         world=world,
     )
     engine.begin(state, rules)
-    engine.commit(state)  # begin() only writes the mechanics; the commit validates them
+    engine.validate(state)  # begin() writes the mechanics; validate() refuses a half-written one
     # An instance handed to a model field is not revalidated, so the composed world asks explicitly.
     return state.committed()
 
@@ -161,7 +162,7 @@ class GameSession:
             raise ValueError(refused)
         draft = self.state.draft()
         facts = system.resolve(draft, offer, proposal, self.rng)
-        self.engine.commit(draft)
+        self.engine.validate(draft)
         entry = Applied(capability=capability, subject_id=offer.subject_id, facts=facts)
         self._commit(draft.committed(), entry)
         return facts
@@ -199,7 +200,7 @@ class GameSession:
                 f"save scenario is {state.scenario.title!r}, "
                 f"selected scenario is {self.scenario.meta.title!r}"
             )
-        self.engine.commit(state)
+        self.engine.validate(state)
         return state
 
 
@@ -215,7 +216,7 @@ class Runtime:
         """Memoised: every open session shares the one built engine."""
         held = self._engines.get(engine_id)
         if held is None:
-            held = build_engine(engine_id)
+            held = build_engine(engine_id, self.config.packs_dir / engine_id)
             self._engines[engine_id] = held
         return held
 
@@ -235,8 +236,8 @@ class Runtime:
         engine = self.engine(target.engine)
         return GameSession(
             target=target,
-            scenario=load_scenario(config.scenarios_dir, target.scenario_id, target.engine),
-            character=load_character(config.characters_dir, target.character_id, target.engine),
+            scenario=load_scenario(config.scenarios_dir, target.scenario_id, engine.binding()),
+            character=load_character(config.characters_dir, target.character_id, engine.binding()),
             engine=engine,
             stages=build_stages(engine, config),
             subsystem_advisors=build_subsystem_advisors(engine, config),

@@ -1,18 +1,21 @@
 {
-  "save_version": 59,
+  "save_version": 61,
   "facts": [
     {
       "source": "core",
       "kind": "dice_rolled",
-      "trace": "Does he hear what waits past the vault door without being heard? — chance: 1d6 [5] -> 5 (advantage, dropped 4)",
+      "trace": "Does he hear what waits past the vault door without being heard? — chance: 2d6 [4, 5] -> 5",
       "narrator": null,
       "data": {
-        "dice": "1d6",
-        "mode": "advantage",
+        "faces": [
+          6,
+          6
+        ],
         "rolled": [
+          4,
           5
         ],
-        "total": 5,
+        "kept": 5,
         "reason": "Does he hear what waits past the vault door without being heard? — chance"
       }
     },
@@ -22,12 +25,13 @@
       "trace": "Does he hear what waits past the vault door without being heard? — risk: 1d6 [4] -> 4",
       "narrator": null,
       "data": {
-        "dice": "1d6",
-        "mode": "normal",
+        "faces": [
+          6
+        ],
         "rolled": [
           4
         ],
-        "total": 4,
+        "kept": 4,
         "reason": "Does he hear what waits past the vault door without being heard? — risk"
       }
     },
@@ -105,6 +109,36 @@
       "data": {
         "entity_id": "vault",
         "name": "the sealed vault"
+      }
+    },
+    {
+      "source": "core",
+      "kind": "hook_fired",
+      "trace": "hook vault-sighted fired",
+      "narrator": null,
+      "data": {
+        "hook_id": "vault-sighted"
+      }
+    },
+    {
+      "source": "core",
+      "kind": "thread_advanced",
+      "trace": "The sealed vault is active at seal-found (the vault door is found)",
+      "narrator": null,
+      "data": {
+        "thread_id": "vault-seal",
+        "status": "active",
+        "stage": "seal-found"
+      }
+    },
+    {
+      "source": "core",
+      "kind": "trait_added",
+      "trace": "the sealed vault is Warded (the seal stirs when it is first seen)",
+      "narrator": "the sealed vault is Warded (the seal stirs when it is first seen)",
+      "data": {
+        "entity_id": "vault",
+        "trait_id": "warded"
       }
     },
     {
@@ -196,7 +230,7 @@
     },
     {
       "name": "hooks",
-      "output": "hook vault-charted fired\nThe sealed vault is active at seal-found (the chart marks the stair down to the door)\nlearned of the sealed vault"
+      "output": "hook vault-charted fired\nThe sealed vault is active at seal-found (the chart marks the stair down to the door)\nlearned of the sealed vault\nhook vault-sighted fired\nThe sealed vault is active at seal-found (the vault door is found)\nthe sealed vault is Warded (the seal stirs when it is first seen)"
     },
     {
       "name": "narrator",

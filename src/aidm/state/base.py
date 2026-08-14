@@ -1,5 +1,5 @@
 import re
-from collections import Counter
+from collections import Counter as Tally
 from collections.abc import Iterable
 from typing import Annotated, Literal, NewType, Self
 
@@ -28,7 +28,7 @@ SLUG_MAX = 64
 Slug = Annotated[str, Field(pattern=rf"^{SLUG_PATTERN}$", max_length=SLUG_MAX)]
 
 PLAYER_ID = EntityId("player")
-SAVE_VERSION = 59
+SAVE_VERSION = 61
 
 
 def content_id(value: str) -> Slug:
@@ -62,12 +62,29 @@ def _capped(words: str, limit: int) -> str:
 
 
 def duplicates(ids: Iterable[str]) -> list[str]:
-    return sorted(name for name, count in Counter(ids).items() if count > 1)
+    return sorted(name for name, count in Tally(ids).items() if count > 1)
 
 
 def require_unique(what: str, ids: Iterable[str]) -> None:
     if found := duplicates(ids):
         raise ValueError(f"duplicate {what}: {found}")
+
+
+class Counter(Mutable):
+    current: int
+    maximum: int | None = None  # None is unbounded: wealth, experience
+
+    @model_validator(mode="after")
+    def _within_bounds(self) -> Self:
+        if self.current < 0:
+            raise ValueError(f"{self.current} is below zero")
+        if self.maximum is not None and self.current > self.maximum:
+            raise ValueError(f"{self.current} is above maximum {self.maximum}")
+        return self
+
+    def clamped(self, value: int) -> int:
+        bounded = max(value, 0)
+        return bounded if self.maximum is None else min(bounded, self.maximum)
 
 
 class EntityDetail(Frozen):

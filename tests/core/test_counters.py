@@ -1,8 +1,8 @@
 import pytest
 from pydantic import ValidationError
 
-from aidm.engines.counters import Counter, CounterChange, adjust, spend
-from aidm.state.base import Entity, EntityId
+from aidm.engines.counters import CounterChange, adjust, spend
+from aidm.state.base import Counter, Entity, EntityId
 
 KAEL = Entity(id=EntityId("kael"), kind="actor", name="Kael", brief="", known=True)
 

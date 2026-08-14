@@ -1,3 +1,6 @@
+from random import Random
+
+import pytest
 from core_test_support import initialized
 
 from aidm.app.session import build_engine
@@ -34,7 +37,7 @@ def test_engine_initialization_and_state_contract() -> None:
 
     assert state.engine == engine.id
     assert read_mechanics(state, Mechanics).sheets[PLAYER_ID].luck.current == LUCK_MAX
-    engine.commit(state)
+    engine.validate(state)
 
     restored = GameState.model_validate_json(state.model_dump_json())
     assert restored == state
@@ -57,13 +60,13 @@ def test_effect_resolution_is_pure_and_renders_every_fact() -> None:
         "counter_changed",
     }
     assert first_state.model_dump_json() != before
-    engine.commit(first_state)
+    engine.validate(first_state)
     for fact in first_facts:
         assert fact.trace
         assert fact.narrator is None or str(fact.data) not in fact.narrator
 
 
-def test_a_created_entity_gains_engine_state_in_the_same_commit() -> None:
+def test_a_created_actor_is_refused_until_the_engine_seeds_it() -> None:
     engine, state = initialized()
     actor = Entity(
         id=EntityId("created-actor"),
@@ -86,7 +89,12 @@ def test_a_created_entity_gains_engine_state_in_the_same_commit() -> None:
     for entity in (actor, item):
         _ = working.add(entity)
     grown = working.committed()
-    engine.commit(grown)
+
+    with pytest.raises(ValueError, match="no character sheet"):
+        engine.validate(grown)
+    for entity in (actor, item):
+        engine.seed(grown, entity, Random(0))
+    engine.validate(grown)
 
     mechanics = read_mechanics(grown, Mechanics)
     assert mechanics.sheets[actor.id] == Sheet()

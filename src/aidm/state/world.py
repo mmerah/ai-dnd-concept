@@ -5,6 +5,7 @@ from pydantic import Field, JsonValue, model_validator
 
 from .base import (
     PLAYER_ID,
+    Counter,
     EngineId,
     Entity,
     EntityId,
@@ -16,7 +17,6 @@ from .base import (
     ThreadStatus,
     require_unique,
 )
-from .effects import WorldEffect
 from .facts import Fact, entity_fact
 
 _HOLDERS: Mapping[Kind, tuple[Kind, ...]] = {
@@ -80,6 +80,13 @@ class Thread(Mutable):
     status: ThreadStatus = "active"
     stage: Slug | None = None
     note: str = ""
+    clock: Counter | None = None
+
+    @model_validator(mode="after")
+    def _a_clock_fills(self) -> Self:
+        if self.clock is not None and self.clock.maximum is None:
+            raise ValueError(f"thread {self.id!r} has a clock with no maximum to fill")
+        return self
 
 
 class Memory(Mutable):
@@ -108,8 +115,10 @@ class Hook(Frozen):
 
     id: Slug
     match: HookMatch
-    effects: tuple[WorldEffect, ...] = ()
+    # The engine's own vocabulary, parsed by the engine at load and at fire time.
+    effects: tuple[JsonValue, ...] = ()
     note: str = ""
+    once: bool = True
 
 
 class WorldState(Mutable):

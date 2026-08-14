@@ -1,5 +1,5 @@
 {
-  "save_version": 59,
+  "save_version": 61,
   "scenario_id": "whispering-vault",
   "character_id": "kael",
   "scenario": {
@@ -171,7 +171,8 @@
         "title": "The sealed vault",
         "status": "active",
         "stage": "unfound",
-        "note": "Kael came for the vault and does not yet know where its door is."
+        "note": "Kael came for the vault and does not yet know where its door is.",
+        "clock": null
       }
     },
     "memories": {
@@ -199,7 +200,6 @@
           {
             "op": "advance-thread",
             "thread_id": "vault-seal",
-            "status": null,
             "stage": "seal-found",
             "why": "the vault door is found"
           },
@@ -207,12 +207,13 @@
             "op": "trait-change",
             "mode": "add",
             "entity_id": "vault",
-            "trait_id": "warded",
             "text": "The seal answers a touch, and something behind the door answers with it.",
-            "why": "the seal stirs when it is first seen"
+            "why": "the seal stirs when it is first seen",
+            "trait_id": "warded"
           }
         ],
-        "note": "Kael has found the vault door. Press on what opening the seal will cost."
+        "note": "Kael has found the vault door. Press on what opening the seal will cost.",
+        "once": true
       },
       {
         "id": "vault-charted",
@@ -226,7 +227,6 @@
           {
             "op": "advance-thread",
             "thread_id": "vault-seal",
-            "status": null,
             "stage": "seal-found",
             "why": "the chart marks the stair down to the door"
           },
@@ -235,7 +235,8 @@
             "entity_id": "vault"
           }
         ],
-        "note": "The chart marks the stair to the vault door. Press on what opening the seal will cost."
+        "note": "The chart marks the stair to the vault door. Press on what opening the seal will cost.",
+        "once": true
       },
       {
         "id": "archivist-found",
@@ -249,12 +250,12 @@
           {
             "op": "advance-thread",
             "thread_id": "vault-seal",
-            "status": null,
             "stage": "rite-known",
             "why": "Elena alone remembers the sealing rite"
           }
         ],
-        "note": "Elena remembers the rite that sealed the vault. Let her name her price for it."
+        "note": "Elena remembers the rite that sealed the vault. Let her name her price for it.",
+        "once": true
       }
     ],
     "fired_hooks": [],
@@ -263,6 +264,7 @@
   "mechanics": {
     "sheets": {
       "mara": {
+        "pack": "srd",
         "concept": "",
         "skills": [],
         "frailties": [],
@@ -277,6 +279,7 @@
         }
       },
       "tomas": {
+        "pack": "srd",
         "concept": "",
         "skills": [],
         "frailties": [],
@@ -291,6 +294,7 @@
         }
       },
       "elena": {
+        "pack": "srd",
         "concept": "",
         "skills": [],
         "frailties": [],
@@ -305,6 +309,7 @@
         }
       },
       "cloister_rat": {
+        "pack": "srd",
         "concept": "A bloated rat that will not be driven off",
         "skills": [
           "Hard to Frighten"
@@ -323,6 +328,7 @@
         }
       },
       "player": {
+        "pack": "srd",
         "concept": "A Wary Relic-Hunter",
         "skills": [
           "Reads Old Stonework",

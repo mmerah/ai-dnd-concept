@@ -1,9 +1,8 @@
 from typing import Annotated
 
-from pydantic import Field
+from pydantic import Field, TypeAdapter
 
 from aidm.engines.counters import (
-    Counter,
     CounterChange,
     adjust,
     read_mechanics,
@@ -12,20 +11,26 @@ from aidm.engines.counters import (
     write_mechanics,
 )
 from aidm.state.apply import apply_effect, reveal_target
-from aidm.state.base import Entity, EntityId, Mutable, Slug
+from aidm.state.base import Counter, Entity, EntityId, Mutable, Slug
+from aidm.state.creation import ContentSlug
 from aidm.state.effects import WorldOp
 from aidm.state.facts import Fact
 from aidm.state.world import GameState
+
+from .pack import SRD_PACK
 
 LUCK_MAX = 6
 TIES_PER_TWIST = 3
 
 type Loner3eEffect = Annotated[WorldOp | CounterChange, Field(discriminator="op")]
+EFFECTS: TypeAdapter[Loner3eEffect] = TypeAdapter(Loner3eEffect)
 
 
 class Sheet(Mutable):
     """The one sheet shape, whether it belongs to the player or to an NPC."""
 
+    # The table set this character was built from; the twist table is read from it.
+    pack: ContentSlug = SRD_PACK
     concept: str = ""
     skills: tuple[str, ...] = ()
     frailties: tuple[str, ...] = ()

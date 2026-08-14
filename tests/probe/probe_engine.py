@@ -4,7 +4,7 @@ from typing import Literal, Self
 from pydantic import Field, JsonValue, model_validator
 
 from aidm.state.base import Entity, EntityId, Frozen, Mutable, Slug
-from aidm.state.dice import roll
+from aidm.state.dice import roll_pool
 from aidm.state.facts import Fact
 
 SOURCE = "probe"
@@ -99,11 +99,11 @@ def resolve(mechanics: Mechanics, action: Strike, rng: Random) -> list[Fact]:
     fighter = mechanics.fighters[action.actor_id]
     track = fighter.tracks[action.track_id]
     stat = {"edge": fighter.edge, "heart": fighter.heart, "iron": fighter.iron}[action.stat]
-    rolled, action_fact = roll("1d6", f"{action.stat} strike", rng)
-    scored = rolled.total + stat
-    first, first_fact = roll("1d10", "challenge", rng)
-    second, second_fact = roll("1d10", "challenge", rng)
-    outcome = _outcome(scored, first.total, second.total)
+    rolled, action_fact = roll_pool((6,), f"{action.stat} strike", rng)
+    scored = rolled + stat
+    first, first_fact = roll_pool((10,), "challenge", rng)
+    second, second_fact = roll_pool((10,), "challenge", rng)
+    outcome = _outcome(scored, first, second)
     marked = _mark(track, outcome)
     fighter.momentum = _momentum(fighter, outcome)
     return [

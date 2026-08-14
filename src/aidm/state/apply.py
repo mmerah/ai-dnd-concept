@@ -1,4 +1,4 @@
-from collections.abc import Sequence
+from collections.abc import Callable, Sequence
 
 from pydantic import JsonValue
 
@@ -252,31 +252,73 @@ def _advance_thread(draft: GameState, effect: AdvanceThread) -> list[Fact]:
     if thread is None:
         known = ", ".join(sorted(draft.world.threads)) or "(none)"
         raise ValueError(f"unknown thread {effect.thread_id!r}. The threads are: {known}")
+    clock = thread.clock
+    if effect.tick:
+        if clock is None:
+            raise ValueError(
+                f"the thread {thread.id!r} has no clock to tick. Move its stage or status instead."
+            )
+        clock.current = clock.clamped(clock.current + effect.tick)
     thread.status = effect.status or thread.status
     thread.stage = effect.stage or thread.stage
     moved = f"{thread.title} is {thread.status}" + (f" at {thread.stage}" if thread.stage else "")
+    data: dict[str, JsonValue] = {
+        "thread_id": thread.id,
+        "status": thread.status,
+        "stage": thread.stage,
+    }
+    if clock is not None:
+        moved += f" (clock {clock.current}/{clock.maximum})"
+        data |= {
+            "clock_current": clock.current,
+            "clock_maximum": clock.maximum,
+            "clock_filled": clock.current == clock.maximum,
+        }
     return [
-        Fact(
-            source=CORE,
-            kind="thread_advanced",
-            trace=explained(moved, effect.why),
-            data={"thread_id": thread.id, "status": thread.status, "stage": thread.stage},
-        )
+        Fact(source=CORE, kind="thread_advanced", trace=explained(moved, effect.why), data=data)
     ]
 
 
-def fire_hooks(draft: GameState, facts: Sequence[Fact]) -> list[Fact]:
-    """One pass over unfired hooks per turn; chaining happens across turns, never as a fixpoint."""
+type EffectApply = Callable[[GameState, JsonValue], list[Fact]]
+
+
+MAX_HOOK_ROUNDS = 3
+
+
+def fire_hooks(draft: GameState, facts: Sequence[Fact], apply: EffectApply) -> list[Fact]:
+    """Hooks fire in rounds: what one hook writes can fire the next, but a bounded number of times,
+    so hooks authored to feed each other stop instead of looping."""
+    fired: list[Fact] = []
+    pending: Sequence[Fact] = facts
+    for _ in range(MAX_HOOK_ROUNDS):
+        produced = _hook_round(draft, pending, apply)
+        fired.extend(produced)
+        if not produced:
+            return fired
+        pending = produced
+    fired.append(
+        Fact(
+            source=CORE,
+            kind="hooks_capped",
+            trace=f"hook chain stopped after {MAX_HOOK_ROUNDS} rounds",
+        )
+    )
+    return fired
+
+
+def _hook_round(draft: GameState, facts: Sequence[Fact], apply: EffectApply) -> list[Fact]:
     fired: list[Fact] = []
     world = draft.world
     for hook in world.hooks:
-        if hook.id in world.fired_hooks or not any(hook.match.matches(fact) for fact in facts):
+        already = hook.id in world.fired_hooks
+        if (hook.once and already) or not any(hook.match.matches(fact) for fact in facts):
             continue
-        world.fired_hooks = (*world.fired_hooks, hook.id)
+        if not already:
+            world.fired_hooks = (*world.fired_hooks, hook.id)
         fired.append(_hook_fact(hook, "hook_fired", f"hook {hook.id} fired"))
         for effect in hook.effects:
             try:
-                fired.extend(apply_effect(draft, effect))
+                fired.extend(apply(draft, effect))
             except ValueError as refused:
                 fired.append(_hook_fact(hook, "hook_failed", f"hook {hook.id} stopped: {refused}"))
                 break

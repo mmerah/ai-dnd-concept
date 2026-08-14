@@ -6,7 +6,7 @@ from pydantic import BaseModel
 
 from aidm.config import Settings
 from aidm.engines.loader import Engine
-from aidm.state.apply import apply_effect, fire_hooks
+from aidm.state.apply import EffectApply, apply_effect, fire_hooks
 from aidm.state.base import Entity, EntityId, slug, text_slug
 from aidm.state.facts import CORE, Fact, narrator_evidence
 from aidm.state.plan import TurnPlanBase
@@ -37,10 +37,21 @@ def resolve_plan(
     return draft.committed().draft(), facts
 
 
-def apply_hooks(draft: GameState, facts: Sequence[Fact]) -> tuple[GameState, list[Fact]]:
+def apply_hooks(
+    draft: GameState, facts: Sequence[Fact], apply: EffectApply
+) -> tuple[GameState, list[Fact]]:
     """Runs before the Narrator, so a hook's consequences are narrated the turn they happen."""
-    fired = fire_hooks(draft, facts)
+    fired = fire_hooks(draft, facts, apply)
     return (draft.committed().draft() if fired else draft), fired
+
+
+def seed_created(engine: Engine, draft: GameState, facts: Sequence[Fact], rng: Random) -> None:
+    """Whoever created an entity this turn — resolver, hook, or Worldkeeper — the engine gives it
+    the mechanics a pure `validate` then insists on."""
+    for fact in facts:
+        created = fact.data.get("entity_id") if fact.kind == "entity_created" else None
+        if isinstance(created, str):
+            engine.seed(draft, draft.world.require(EntityId(created)), rng)
 
 
 def apply_report(
@@ -115,7 +126,7 @@ async def run_turn(
     steps.append(StepTrace(name="resolve", output=evidence))
 
     announce("hooks")
-    draft, fired = apply_hooks(draft, facts)
+    draft, fired = apply_hooks(draft, facts, engine.apply_effect)
     if fired:
         facts.extend(fired)
         evidence = narrator_evidence(facts)
@@ -147,16 +158,17 @@ async def run_turn(
         narration=narration,
     )
     report = await stages.worldkeeper.run(keeper_prompt, draft, history)
-    facts.extend(
-        apply_report(
-            draft, report, max_growth=settings.max_growth, max_memories=settings.max_memories
-        )
+    reported = apply_report(
+        draft, report, max_growth=settings.max_growth, max_memories=settings.max_memories
     )
+    draft, fired_late = apply_hooks(draft, reported, engine.apply_effect)
+    facts.extend([*reported, *fired_late])
     steps.append(_traced("worldkeeper", keeper_prompt, report))
 
     draft.history = (*draft.history, Exchange(prompt=prompt, narration=narration))
     draft.turn += 1
-    engine.commit(draft)
+    seed_created(engine, draft, facts, rng)
+    engine.validate(draft)
     final = draft.committed()
     return TurnResult(
         state=final,

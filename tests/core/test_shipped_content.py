@@ -9,8 +9,9 @@ from aidm.state.base import EngineId
 
 @pytest.mark.parametrize("engine_id", engine_ids())
 def test_shipped_content_composes_under_every_registered_engine(engine_id: EngineId) -> None:
-    selected_scenario = load_scenario(SCENARIOS, "whispering-vault", engine_id)
-    selected_character = load_character(CHARACTERS, "kael", engine_id)
     engine = build_engine(engine_id)
+    binding = engine.binding()
+    selected_scenario = load_scenario(SCENARIOS, "whispering-vault", binding)
+    selected_character = load_character(CHARACTERS, "kael", binding)
 
     begin_game(engine, selected_scenario, selected_character)

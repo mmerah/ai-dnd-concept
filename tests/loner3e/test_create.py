@@ -31,10 +31,12 @@ def test_a_created_character_plays_through_the_authored_load_path(tmp_path: Path
     }
     created = creation.create("Fen", "A wandering scribe with too many questions.", picks)
     write_character(tmp_path, "fen", LONER3E, created)
-    character = load_character(tmp_path, "fen", LONER3E)
-    scenario = load_scenario(SCENARIOS, "whispering-vault", LONER3E)
+    binding = engine.binding()
+    character = load_character(tmp_path, "fen", binding)
+    scenario = load_scenario(SCENARIOS, "whispering-vault", binding)
     state = begin_game(engine, scenario, character)
     sheet = read_mechanics(state, Mechanics).sheets[PLAYER_ID]
+    assert sheet.pack == "srd"
     assert sheet.skills == ("Quiet Hands", "Reads Old Stonework")
     assert sheet.frailties == ("Never Walks Away",)
     assert sheet.gear == ("Pry Bar", "Chalk and Wire")

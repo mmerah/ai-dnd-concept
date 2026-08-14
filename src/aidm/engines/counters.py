@@ -2,7 +2,7 @@ from typing import Annotated, Literal, Self
 
 from pydantic import Field, model_validator
 
-from aidm.state.base import Entity, EntityId, Frozen, Mutable, Slug
+from aidm.state.base import Counter, Entity, EntityId, Frozen, Mutable, Slug
 from aidm.state.facts import Fact, explained_fact
 from aidm.state.world import GameState
 
@@ -16,23 +16,6 @@ def write_mechanics(state: GameState, mechanics: Mutable) -> None:
 
 def read_mechanics[M: Mutable](state: GameState, model: type[M]) -> M:
     return model.model_validate(state.mechanics)
-
-
-class Counter(Mutable):
-    current: int
-    maximum: int | None = None  # None is unbounded: wealth, experience
-
-    @model_validator(mode="after")
-    def _within_bounds(self) -> Self:
-        if self.current < 0:
-            raise ValueError(f"{self.current} is below zero")
-        if self.maximum is not None and self.current > self.maximum:
-            raise ValueError(f"{self.current} is above maximum {self.maximum}")
-        return self
-
-    def clamped(self, value: int) -> int:
-        bounded = max(value, 0)
-        return bounded if self.maximum is None else min(bounded, self.maximum)
 
 
 class CounterChange(Frozen):

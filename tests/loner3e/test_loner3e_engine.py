@@ -3,11 +3,12 @@ from random import Random
 from core_test_support import capability, initialized
 from loner3e_test_support import at_milestone
 
-from aidm.engines.counters import Counter, CounterChange, read_mechanics, write_mechanics
+from aidm.engines.counters import CounterChange, read_mechanics, write_mechanics
 from aidm.engines.loader import Engine
 from aidm.engines.loner3e.actions import Question
 from aidm.engines.loner3e.advance import Milestone
 from aidm.engines.loner3e.mechanics import LUCK_MAX, TIES_PER_TWIST, Mechanics
+from aidm.engines.loner3e.pack import SRD_PACK, twist_table
 from aidm.engines.loner3e.resolve import (
     HARM,
     available_tags,
@@ -18,12 +19,14 @@ from aidm.engines.loner3e.resolve import (
     twist_pairing,
 )
 from aidm.engines.loner3e.rules import LABELS, Loner3eEngine
-from aidm.state.base import PLAYER_ID, EntityId
+from aidm.state.apply import fire_hooks
+from aidm.state.base import PLAYER_ID, Counter, Entity, EntityId
 from aidm.state.effects import TraitChange
+from aidm.state.facts import CORE, Fact
 from aidm.state.plan import OutcomeBranch, TurnPlanBase
-from aidm.state.world import PARTY_MEMBER, GameState, Relation
+from aidm.state.world import PARTY_MEMBER, GameState, Hook, HookMatch, Relation
 
-TWISTS = Loner3eEngine().twists
+TWISTS = twist_table(Loner3eEngine().packs, SRD_PACK)
 YES_AND = OutcomeBranch(
     outcome="yes-and",
     effects=(TraitChange(mode="add", entity_id=PLAYER_ID, trait_id="sure-footed"),),
@@ -282,11 +285,64 @@ def test_an_npc_party_members_milestone_writes_their_own_sheet_not_the_players()
     assert [fact.kind for fact in facts] == ["skill_gained", "counter_changed"]
 
 
+def test_an_actor_seeded_after_a_milestone_is_not_owed_the_ones_they_missed() -> None:
+    engine, state = initialized()
+    ready = at_milestone(state)
+    draft = ready.draft()
+    newcomer = Entity(
+        id=EntityId("newcomer"),
+        kind="actor",
+        name="A Newcomer",
+        brief="Falls in beside Kael.",
+        known=True,
+        parent_id=draft.player_location,
+    )
+    _ = draft.add(newcomer)
+    engine.seed(draft, newcomer, Random(0))
+    joined = Relation(kind=PARTY_MEMBER, source=newcomer.id, target=PLAYER_ID, known=True)
+    draft.world.relations[joined.id] = joined
+    walked_in = draft.committed()
+
+    engine.validate(walked_in)
+    offered = {offer.subject_id for offer in capability(engine).offers(walked_in)}
+    assert offered == {PLAYER_ID}
+
+
 def test_the_one_action_is_worked_through_in_the_directors_instructions() -> None:
     """An action without an example teaches the model nothing: coverage is asserted, not hoped."""
     engine, _ = initialized()
 
     assert engine.director_instructions.count('"act": "question"') == 1
+
+
+def test_a_hook_reaches_the_engine_s_own_effects() -> None:
+    engine, state = initialized()
+    draft = state.draft()
+    draft.world.hooks = (
+        Hook(
+            id="strain",
+            match=HookMatch(kind="entity_discovered"),
+            effects=(
+                {
+                    "op": "counter-change",
+                    "mode": "adjust",
+                    "entity_id": "player",
+                    "counter": "luck",
+                    "amount": -1,
+                    "why": "the strain of it",
+                },
+            ),
+        ),
+    )
+
+    fired = fire_hooks(
+        draft,
+        [Fact(source=CORE, kind="entity_discovered", trace="the map is found")],
+        engine.apply_effect,
+    )
+
+    assert [fact.kind for fact in fired] == ["hook_fired", "counter_changed"]
+    assert read_mechanics(draft, Mechanics).sheets[PLAYER_ID].luck.current == LUCK_MAX - 1
 
 
 def _refusal(engine: Engine, state: GameState, plan: TurnPlanBase) -> str:

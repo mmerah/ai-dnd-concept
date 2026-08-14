@@ -1,5 +1,7 @@
+import logging
 from collections.abc import Mapping
 from pathlib import Path
+from re import fullmatch
 from typing import Self
 
 from pydantic import Field, model_validator
@@ -7,6 +9,9 @@ from pydantic import Field, model_validator
 from aidm.content.store import ENCODING
 from aidm.state.base import Frozen
 from aidm.state.creation import ContentSlug
+
+LOGGER = logging.getLogger(__name__)
+SRD_PACK: ContentSlug = "srd"
 
 
 class PackEntry(Frozen):
@@ -39,25 +44,28 @@ class Pack(Frozen):
         return self
 
 
-def load_packs(directory: Path) -> dict[str, Pack]:
-    packs = {
-        path.stem: Pack.model_validate_json(path.read_text(encoding=ENCODING))
-        for path in sorted(directory.glob("*.json"))
-    }
+def load_packs(paths: Mapping[str, Path]) -> dict[str, Pack]:
+    """A broken user pack is skipped with a log line: it must not block the way to the launcher."""
+    packs: dict[str, Pack] = {}
+    for stem, path in paths.items():
+        if fullmatch(r"[a-z0-9-]+", stem) is None:
+            LOGGER.warning("skipping content pack %s: its name is not a slug", path)
+            continue
+        try:
+            packs[stem] = Pack.model_validate_json(path.read_text(encoding=ENCODING))
+        except (OSError, ValueError) as broken:
+            LOGGER.warning("skipping content pack %s: %s", path, broken)
     if not packs:
-        raise ValueError(f"no packs in {str(directory)!r}")
+        raise ValueError("no usable content pack was found")
     return packs
 
 
-def twist_table(packs: Mapping[str, Pack]) -> tuple[tuple[str, str], ...]:
-    """Exactly one pack carries the twist columns; the resolver rolls against that one."""
-    carrying = [
-        pack
-        for pack in packs.values()
-        if pack.twist_subjects is not None and pack.twist_actions is not None
-    ]
-    if len(carrying) != 1:
-        raise ValueError("exactly one pack must carry the twist table")
-    chosen = carrying[0]
-    assert chosen.twist_subjects is not None and chosen.twist_actions is not None
-    return tuple(zip(chosen.twist_subjects, chosen.twist_actions, strict=True))
+def twist_table(packs: Mapping[str, Pack], chosen: ContentSlug) -> tuple[tuple[str, str], ...]:
+    """The chosen set's own twist columns, or the SRD's: AP01 and most user packs publish none."""
+    pack = packs.get(chosen)
+    if pack is None:
+        raise ValueError(f"the {chosen!r} table set is not installed")
+    source = pack if pack.twist_subjects is not None else packs.get(SRD_PACK)
+    if source is None or source.twist_subjects is None or source.twist_actions is None:
+        raise ValueError(f"neither the {chosen!r} table set nor the SRD one carries twists")
+    return tuple(zip(source.twist_subjects, source.twist_actions, strict=True))

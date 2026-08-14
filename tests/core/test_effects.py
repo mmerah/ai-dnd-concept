@@ -1,9 +1,10 @@
 import pytest
 from core_test_support import initialized
 
-from aidm.state.apply import apply_effect
-from aidm.state.base import PLAYER_ID, EntityId
+from aidm.state.apply import MAX_HOOK_ROUNDS, apply_effect, fire_hooks
+from aidm.state.base import PLAYER_ID, Counter, EntityId
 from aidm.state.effects import (
+    AdvanceThread,
     GainImprovisedItem,
     Move,
     RelationChange,
@@ -11,8 +12,8 @@ from aidm.state.effects import (
     TraitChange,
     WorldOp,
 )
-from aidm.state.facts import Fact
-from aidm.state.world import CONNECTED, LOCKED_TAG, PARTY_MEMBER
+from aidm.state.facts import CORE, Fact
+from aidm.state.world import CONNECTED, LOCKED_TAG, PARTY_MEMBER, Hook, HookMatch, Thread
 
 BELL_TOWER = EntityId("bell_tower")
 CLOISTER = EntityId("cloister")
@@ -152,3 +153,80 @@ def test_acting_on_an_unrevealed_actor_reveals_it_before_its_traits_change() -> 
     kinds = turn.kinds(change)
 
     assert kinds == ["entity_discovered", "trait_added"]
+
+
+def test_a_repeating_hook_fires_on_every_tick_of_its_clock() -> None:
+    engine, state = initialized()
+    draft = state.draft()
+    draft.world.threads["ritual"] = Thread(
+        id="ritual", title="The rite", clock=Counter(current=0, maximum=2)
+    )
+    draft.world.hooks = (
+        Hook(
+            id="rite-moves",
+            once=False,
+            match=HookMatch(kind="thread_advanced", data={"thread_id": "ritual"}),
+            note="the rite moves on",
+        ),
+    )
+
+    for filled in (1, 2):
+        moved = apply_effect(draft, AdvanceThread(thread_id="ritual", tick=1))
+        assert moved[0].data["clock_current"] == filled
+        assert [fact.kind for fact in fire_hooks(draft, moved, engine.apply_effect)] == [
+            "hook_fired"
+        ]
+
+    assert draft.world.fired_hooks == ("rite-moves",)
+    assert draft.world.threads["ritual"].clock == Counter(current=2, maximum=2)
+
+
+def test_a_tick_on_a_thread_without_a_clock_is_refused() -> None:
+    turn = Applied()
+    with pytest.raises(ValueError, match="no clock to tick"):
+        _ = turn(AdvanceThread(thread_id="vault-seal", tick=1))
+
+
+def test_a_hook_that_fills_a_clock_fires_the_filled_clock_hook_in_the_same_pass() -> None:
+    engine, state = initialized()
+    draft = state.draft()
+    draft.world.threads["trial"] = Thread(
+        id="trial", title="The trial", clock=Counter(current=0, maximum=2)
+    )
+    draft.world.hooks = (
+        Hook(
+            id="ticker",
+            once=False,
+            match=HookMatch(kind="entity_discovered"),
+            effects=({"op": "advance-thread", "thread_id": "trial", "tick": 1},),
+        ),
+        Hook(
+            id="finale",
+            match=HookMatch(kind="thread_advanced", data={"clock_filled": True}),
+        ),
+    )
+
+    first = apply_effect(draft, Reveal(entity_id=VAULT_MAP))
+    assert [fact.kind for fact in fire_hooks(draft, first, engine.apply_effect)] == [
+        "hook_fired",
+        "thread_advanced",
+    ]
+
+    second = apply_effect(draft, Reveal(entity_id=VAULT))
+    assert [fact.kind for fact in fire_hooks(draft, second, engine.apply_effect)] == [
+        "hook_fired",
+        "thread_advanced",
+        "hook_fired",
+    ]
+
+
+def test_hooks_that_feed_each_other_stop_at_the_round_cap() -> None:
+    engine, state = initialized()
+    draft = state.draft()
+    draft.world.hooks = (Hook(id="self-feeder", once=False, match=HookMatch(kind="hook_fired")),)
+    seed = Fact(source=CORE, kind="hook_fired", trace="seed")
+
+    fired = fire_hooks(draft, [seed], engine.apply_effect)
+
+    assert fired[-1].kind == "hooks_capped"
+    assert sum(1 for fact in fired if fact.kind == "hook_fired") == MAX_HOOK_ROUNDS

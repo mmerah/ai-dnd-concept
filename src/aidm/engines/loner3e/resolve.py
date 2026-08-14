@@ -6,7 +6,7 @@ from typing import Literal
 from aidm.engines.counters import adjust, read_mechanics, write_mechanics
 from aidm.state.apply import apply_effect, require_actor_here
 from aidm.state.base import Entity, Slug
-from aidm.state.dice import RollMode, roll
+from aidm.state.dice import roll_pool
 from aidm.state.effects import Reveal
 from aidm.state.facts import Fact, entity_fact
 from aidm.state.world import GameState
@@ -129,9 +129,9 @@ def _twist(
     draft: GameState, actor: Entity, rng: Random, twists: tuple[tuple[str, str], ...]
 ) -> list[Fact]:
     """The SRD's table is rolled here so the dice trace; the Director only reads the pairing."""
-    subject_die, subject_fact = roll("1d6", "twist — subject", rng)
-    action_die, action_fact = roll("1d6", "twist — action", rng)
-    subject, action = twist_pairing(subject_die.total, action_die.total, twists)
+    subject_die, subject_fact = roll_pool((6,), "twist — subject", rng)
+    action_die, action_fact = roll_pool((6,), "twist — action", rng)
+    subject, action = twist_pairing(subject_die, action_die, twists)
     draft.world.pending_notes = (*draft.world.pending_notes, twist_note(subject, action))
     # Narrated the turn it lands, as the SRD interrupts the scene: an unnamed intrusion needs
     # no canon, and the note steers the next turn's development.
@@ -196,8 +196,8 @@ def _refuse_unless_ready(
 
 def _pair(action: Question, rng: Random, position: Position) -> tuple[int, int, list[Fact]]:
     """One extra die at most, and only for the side the surviving tags favour."""
-    chance_mode: RollMode = "advantage" if position == "advantage" else "normal"
-    risk_mode: RollMode = "advantage" if position == "disadvantage" else "normal"
-    chance, chance_fact = roll("1d6", f"{action.question} — chance", rng, mode=chance_mode)
-    risk, risk_fact = roll("1d6", f"{action.question} — risk", rng, mode=risk_mode)
-    return chance.total, risk.total, [chance_fact, risk_fact]
+    chance_faces = (6, 6) if position == "advantage" else (6,)
+    risk_faces = (6, 6) if position == "disadvantage" else (6,)
+    chance, chance_fact = roll_pool(chance_faces, f"{action.question} — chance", rng)
+    risk, risk_fact = roll_pool(risk_faces, f"{action.question} — risk", rng)
+    return chance, risk, [chance_fact, risk_fact]

@@ -62,6 +62,7 @@ class Settings(BaseSettings):
     saves_dir: Path = Path("saves")
     scenarios_dir: Path = Path("scenarios")
     characters_dir: Path = Path("characters")
+    packs_dir: Path = Path("packs")
 
     def role(self, name: Role) -> RoleConfig:
         found = self.roles.get(name, RoleConfig())

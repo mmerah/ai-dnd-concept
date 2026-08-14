@@ -42,6 +42,7 @@ class Loner3eCreation(Creation):
             profile=CharacterProfile(name=name, brief=brief),
             overlay=CharacterOverlay(
                 character={
+                    "pack": picked(picks, "pack")[0],
                     "concept": _label(pack.concepts, picked(picks, "concept")[0]),
                     "skills": [_label(pack.skills, skill) for skill in picked(picks, "skills")],
                     "frailties": [_label(pack.frailties, picked(picks, "frailty")[0])],

@@ -6,20 +6,20 @@ from pathlib import Path
 from random import Random
 from typing import ClassVar
 
-from pydantic import JsonValue, TypeAdapter
+from pydantic import BaseModel, JsonValue, TypeAdapter
 from pydantic_ai.toolsets import AbstractToolset
 
-from aidm.content.authored import CreatedCharacter, Rules
+from aidm.content.authored import Binding, CreatedCharacter
 from aidm.content.store import ENCODING
 from aidm.state.base import EngineId, Entity, EntityId, Frozen, Slug
 from aidm.state.creation import CreationStep, Picks
-from aidm.state.effects import WorldEffect, effect_key, effect_keys
 from aidm.state.facts import Fact
 from aidm.state.plan import TurnPlanBase
 from aidm.state.world import GameState
 
 ENGINE_MODULES: tuple[str, ...] = ("aidm.engines.loner3e.rules",)
 ENGINE = "ENGINE"
+WORLD_EXAMPLES: Path = Path(__file__).parent / "examples.json"
 
 type EntityRenderer = Callable[[Entity], str]
 
@@ -78,9 +78,11 @@ class Engine(ABC):
     id: ClassVar[EngineId]
     badge: ClassVar[tuple[str, str]]
     plan_type: ClassVar[type[TurnPlanBase]]
+    # The authored overlay payload this engine reads, validated at load.
+    rules_type: ClassVar[type[BaseModel]]
     engine_dir: ClassVar[Path]
 
-    def __init__(self) -> None:
+    def __init__(self, extra_packs: Path | None = None) -> None:
         self.director_instructions: str = (
             engine_text(self.engine_dir / "director.md")
             + _effect_vocabulary()
@@ -92,15 +94,28 @@ class Engine(ABC):
         # An engine that creates characters replaces this; the app offers only what it finds.
         self.creation: Creation | None = None
 
-    @abstractmethod
-    def begin(self, state: GameState, rules: Mapping[EntityId, Rules]) -> None:
-        """Writes the mechanics of a new game from the authored rules; the caller commits."""
+    def binding(self) -> Binding:
+        return Binding(engine=self.id, parse_effect=self.parse_effect, rules_type=self.rules_type)
 
     @abstractmethod
-    def commit(self, state: GameState) -> None:
-        """Called at load, at the end of every transaction, and after a new game is composed: it
-        gives an entity created during play its mechanics and validates the half core cannot read.
-        """
+    def begin(self, state: GameState, rules: Mapping[EntityId, dict[str, JsonValue]]) -> None:
+        """Writes the mechanics of a new game from the authored rules; the caller validates."""
+
+    @abstractmethod
+    def validate(self, state: GameState) -> None:
+        """Refuses a state whose mechanics are missing or contradict the world; never repairs it."""
+
+    @abstractmethod
+    def seed(self, draft: GameState, entity: Entity, rng: Random) -> None:
+        """Gives an entity created during play whatever mechanics this engine tracks for it."""
+
+    @abstractmethod
+    def parse_effect(self, effect: JsonValue) -> Frozen:
+        """This engine's effect vocabulary: raises on an authored effect it cannot apply."""
+
+    @abstractmethod
+    def apply_effect(self, draft: GameState, effect: JsonValue) -> list[Fact]:
+        """Applies one authored hook effect, parsed through this engine's own vocabulary."""
 
     @abstractmethod
     def renderer(self, state: GameState) -> EntityRenderer: ...
@@ -162,13 +177,7 @@ def _examples(engine_dir: Path, plan_type: type[TurnPlanBase]) -> str:
 
 def _effect_vocabulary() -> str:
     """Only the world half is shared: what an engine's own effects mean is its own to teach."""
-    entries = TypeAdapter(list[JsonValue]).validate_json(
-        engine_text(Path(__file__).parent / "examples.json")
-    )
-    checked = TypeAdapter(list[WorldEffect]).validate_python(entries)
-    missing = effect_keys(WorldEffect.__value__) - {effect_key(entry) for entry in checked}
-    if missing:
-        raise ValueError(f"the shared examples.json teaches no {sorted(missing)}")
+    entries = TypeAdapter(list[JsonValue]).validate_json(engine_text(WORLD_EXAMPLES))
     lines = "\n".join(json.dumps(entry) for entry in entries)
     header = (
         "## World effects\n\nA worked example of every effect that changes the world. Ids, keys, "

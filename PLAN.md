@@ -188,7 +188,8 @@ maintainer chose the full redesign, with 24XX implemented at the end as the proo
 
 Summary: roster merges the two Directors into one (3 in-turn roles, Worldkeeper survives, live
 probe gates the merged schema); `Advancement` generalizes to a subject-aware `Subsystem` with
-one generic trace entry (NPC advancement falls out; combat plugs in the same way later);
+one generic trace entry (NPC advancement falls out; combat stays engine-internal — a
+`CombatState` in the engine's mechanics payload, never a subsystem);
 threads gain optional clocks and hooks become repeating and engine-effect-capable; engines
 declare a typed overlay model (`rules_type`) and split `commit` into pure `validate` + `seed`;
 packs load from a user-facing `Settings.packs_dir` with pack identity in saves; `roll_pool`
@@ -200,7 +201,47 @@ registration line.
 Done when: REFACTOR.md's acceptance bar holds and 24XX plays a turn. Phase 5's creator script
 then binds to `ScenarioWorld` + `Engine.rules_type` + `write_scenario`, all landed here.
 
-## Phase 5 — Scenario creator (~3–4 days)
+## Phase 5 — Proposal study resolved: two amendments to REFACTOR.md step 5
+
+Two external refactor proposals (GEMINI-PROPOSAL.md, GPT-PROPOSAL.md — deleted 2026-08-14
+after adjudication, in git history) were evaluated against the post-step-3 tree. Everything
+in them is already shipped (steps 1–3), already scheduled (steps 4–9, phases 6–7), or
+rejected on verified grounds — the roster and Worldkeeper questions in particular were
+already adjudicated in REFACTOR.md with the live-probe evidence. Two items were adopted.
+Both amend REFACTOR.md step 5 (threads/clocks/hooks): **implement them inside that step**,
+not as a phase of their own — this phase closes when step 5 lands with these semantics.
+
+1. **`fire_hooks` becomes a bounded drain** (GPT's reaction queue, verified gap). As
+   step 5 stands, a hook that ticks a clock to full can never fire the filled-clock hook:
+   matching scans only the facts passed in (`state/apply.py:273`), facts produced by a fired
+   hook's own effects are never rescanned, and facts do not survive the turn — so the chain
+   is not "one turn late", it is dead. Change `fire_hooks(draft, facts, apply)` (the
+   signature step 5 already gives it) to run its existing one-pass body in rounds: round 1
+   matches the input facts; every fact the round's fired hooks produced (each `hook_fired`
+   fact and its effects' facts) becomes the input of the next round; stop when a round fires
+   nothing, or after `MAX_HOOK_ROUNDS = 3` rounds (depth for fact → clock-filling hook →
+   thread-advancing hook, with one round of slack). Within a round, hooks keep authored
+   order and fire at most once against the round's facts, exactly as today; the
+   `fired_hooks` once-guard, `Hook.once`, `hook_failed` handling, and note appending are
+   unchanged. If the final round still produced facts, append one
+   `Fact(source=CORE, kind="hooks_capped", trace="hook chain stopped after 3 rounds")` —
+   never a silent stop. Both of step 5's call sites (post-resolve and post-Worldkeeper
+   report) call the same drain; the second call site stays, because the report lands after
+   narration.
+2. **`clock_filled` in the fact data** (the authoring surface for the above). Step 5 puts
+   clock values into the `thread_advanced` fact data; write them as `clock_current`,
+   `clock_maximum`, and `"clock_filled": current == maximum`, and omit all three keys for a
+   clockless thread. A filled-clock hook then matches
+   `{"kind": "thread_advanced", "data": {"thread_id": "...", "clock_filled": true}}` —
+   one boolean instead of the maximum duplicated across two fields. Subset matching is
+   untouched.
+
+Tests, added to step 5's list: a hook ticking a clock to full fires the filled-clock hook in
+the same transaction; two repeating hooks authored to feed each other stop at the round cap
+with the `hooks_capped` fact; a hook matching on `clock_filled: true` fires only when the
+tick fills the clock. No golden movement beyond what step 5 already regenerates.
+
+## Phase 6 — Scenario creator (~3–4 days)
 
 Premise → a complete scenario in the exact on-disk format, authored by a strong model at
 authoring time. This is a script, not the app: agentic workflows are fine outside the turn
@@ -234,7 +275,7 @@ that appears on the home page and plays a first turn under every shipped engine.
 validity is judged by playing it, not asserted by the script. PDF/notes ingestion is a later
 input mode for the same script, not a separate system.
 
-## Phase 6 — Media: scene illustrations (~2–3 days)
+## Phase 7 — Media: scene illustrations (~2–3 days)
 
 Presentation only, outside mechanical truth: the game must be indistinguishable with media
 disabled, and a failed generation must cost nothing but a log line.
@@ -260,47 +301,3 @@ disabled, and a failed generation must cost nothing but a log line.
 Done when: with media enabled a turn grows an illustration within seconds after the narration,
 and with it disabled (the default) nothing in state, saves, prompts, or tests differs.
 
-# Considered and decided without a phase (updated 2026-08-13)
-
-- **Engine-configurable turn pipeline**: deferred until the 24XX implementation demands a stage
-  the fixed pipeline cannot express — that second engine is what earns the port. Engines
-  already configure the turn through their plan type, instructions, toolsets, `check_plan`
-  refusals, and the `pending_notes` channel (how loner3e's twist reaches the Directors without
-  core changes); a Loner mood roll would be one more resolver-side note, not a pipeline hook.
-- **Loner's tables as a content pack**: reversed 2026-08-13 (previously rejected). Loner 3e
-  publishes adventure packs (e.g. AP01, lonersrd.zotiquestgames.com/adventure_packs/) that
-  swap exactly the data a pack holds — creation tables — so packs are real published content,
-  not speculation. Phase 3 step 6 ships two packs (SRD + AP01 fantasy) with selection as
-  creation step 0. Scope stays engine-local: no core loader; a scenario-pins-a-pack overlay
-  field only if a scenario ever wants to restrict the choice.
-- **Speculative engine-prep refactors**: rejected. The 2026-08-13 audit checked both shelf
-  sketches against the current `Engine` ABC — 24XX and Cairn fit it essentially unchanged
-  (multiple action shapes are just the engine's own `plan_type`; item overlays already reach
-  `begin`; stats and HP are `Counter`s). Not built until the engine that needs it lands:
-  `roll_pool` for heterogeneous dice (~12 LOC when 24XX arrives), per-action `check_action`
-  labels (one signature change when Cairn arrives), an `AllocationStep` creation type, and
-  `Engine.describe_created` for the UI preview.
-- **Keeping the story engine**: rejected. The recentering rule is official, freely licensed
-  systems only; a first-party ruleset competes with them for maintenance and eval attention
-  while nobody would choose it. Its only structural value — proving the engine boundary with a
-  second implementation — is already carried by the probe engine (`tests/probe/`).
-- **Runnable stubs for 24XX / Cairn 2e**: rejected in favour of docs-only SRD extractions.
-  A skeleton package is dead code with a maintenance cost; the `Engine` ABC stays honest
-  through loner3e plus the probe engine.
-- **Rebuilding World Core as its own ECS layer**: rejected. The boundary test proves engine
-  concepts never leaked into core; `state/world.py` already is the neutral world layer. ECS
-  components, event-sourced projections, and an `EngineAdapter` interface are not adopted — the
-  existing `Engine` ABC is smaller and proven by three implementations.
-- **Keeping dnd5e as a dormant engine**: rejected. 46k lines of artifact with a broken
-  advancement backlog is not worth the tree weight; git history keeps it.
-- **Fact as the domain event stream**: already the architecture; memories and thread judgment
-  build on it without an event bus.
-- **FrozenMap removal**: rejected. Frozen Pydantic models do not deep-freeze contained dicts;
-  the wrapper enforces the repository's frozen-value invariant.
-- **Plain-text Director fallback removal**: rejected. It is a tested provider workaround, not an
-  unused second design.
-- **Deeper Loner compliance** (non-living sheets, Goal/Motive/Nemesis as sheet fields,
-  free-text concept, Adventure Maker tables): rejected for now — named as deviations in
-  docs/LONER-3E.md instead (Phase 3 step 10). The SRD itself says Goal/Motive/Nemesis emerge
-  from play (threads already carry them); the Adventure Maker is an authoring-time tool that
-  belongs to the Phase 5 script if anywhere.

@@ -1,4 +1,4 @@
-from collections.abc import Callable, Iterable, Sequence
+from collections.abc import Callable, Sequence
 from dataclasses import dataclass
 from functools import cached_property
 from types import NoneType
@@ -23,7 +23,7 @@ from pydantic_ai.toolsets import AbstractToolset
 
 from aidm.config import ProviderConfig, Role, RoleConfig, Settings
 from aidm.engines.loader import Engine, Offer, ProposalBase, Subsystem
-from aidm.state.base import Slug
+from aidm.state.effects import AdvanceThread
 from aidm.state.plan import TurnPlanBase
 from aidm.state.turn import WorldkeeperReport
 from aidm.state.world import Exchange, GameState
@@ -137,9 +137,17 @@ class Stages:
     worldkeeper: Stage[GameState, WorldkeeperReport]
 
 
-def _unknown_threads(state: GameState, wanted: Iterable[Slug]) -> str | None:
-    missing = sorted(set(wanted) - set(state.world.threads))
-    return f"no such thread: {', '.join(missing)}" if missing else None
+def _thread_moves(state: GameState, moves: Sequence[AdvanceThread]) -> str | None:
+    """Applied after the narration with no trial, so this retry is the only guard a bad move
+    gets."""
+    if missing := sorted({move.thread_id for move in moves} - set(state.world.threads)):
+        return f"no such thread: {', '.join(missing)}"
+    clockless = sorted(
+        move.thread_id
+        for move in moves
+        if move.tick and state.world.threads[move.thread_id].clock is None
+    )
+    return f"no clock to tick on: {', '.join(clockless)}" if clockless else None
 
 
 def director_stage(engine: Engine, settings: Settings) -> Stage[PlanContext, TurnPlanBase]:
@@ -186,7 +194,7 @@ def worldkeeper_stage(settings: Settings) -> Stage[GameState, WorldkeeperReport]
                 f"nobody holds a memory who does not exist: {', '.join(strangers)}. Use an exact "
                 "id from the catalogue, or null for the world."
             )
-        if fault := _unknown_threads(state, (move.thread_id for move in report.thread_moves)):
+        if fault := _thread_moves(state, report.thread_moves):
             raise ModelRetry(fault)
         return report
 

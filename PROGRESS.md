@@ -141,11 +141,77 @@ Tracking PLAN.md. One bullet per landed step; `uv run pytest && ruff check && ru
     which only `Loner3eEngine.commit`'s backfill keeps total — the split into pure `validate`
     must keep a path that gives every actor a sheet.
 
+  - step 4 dice pools (SAVE_VERSION 59→60): `roll_pool(faces, reason, rng)` keeps the highest die
+    and replaces `roll`/`RollMode` — expression parsing gone, `Rolled.total`→`kept`, fact data
+    `dice`/`mode`/`total` → `faces`/`kept`; loner3e advantage is a `(6, 6)` pool, disadvantage the
+    same pool on the risk side; probe engine ported. Fixture diff: the one advantage roll's trace
+    (`2d6 [4, 5] -> 5`) and the data keys — dice values themselves unmoved.
+
+  - step 5 threads/clocks/hooks (shares step 4's bump and regen, as REFACTOR allows): `Counter` to
+    `state/base.py` (`collections.Counter` imported as `Tally` there); `Thread.clock: Counter | None`
+    (a clock must name its maximum) rendered in the Director's thread lines; `AdvanceThread.tick`
+    refuses a clockless thread; `Hook.once` and `Hook.effects: tuple[JsonValue, ...]` parsed by the
+    engine — two new abstract methods, `Engine.parse_effect` (load) and `Engine.apply_effect`
+    (fire), with `Binding` (engine id + parse_effect) replacing the `EngineId` argument of
+    `load_scenario`/`load_character` so the "hooks advance only authored threads" check runs
+    engine-bound in `content.check_hooks`; `fire_hooks` takes the engine's apply and runs a second
+    pass over the Worldkeeper report's facts. `_effect_vocabulary`'s completeness raise is now a
+    test — which exposed and fixed a latent bug: `effect_keys` never unwrapped the PEP-695 alias, so
+    the old startup check was vacuous. Fixtures: `tick` in two schemas, `clock`/`once` in saves, and
+    hook effects now stored as authored (no default-filled `status: null`).
+
+  - step 6 typed overlays + validate/seed + write_scenario (no persisted bytes): `Engine.rules_type`
+    (loner3e: `Sheet`) joins `Binding`, so `load_scenario`/`load_character` validate every authored
+    overlay payload field-by-field at load (`content.check_overlay`); `commit` splits into pure
+    `validate` (refuses a missing player, an actor with no sheet, a sheet with no actor — never
+    repairs) and `seed(draft, entity, rng)`, driven by `pipeline.seed_created` over every
+    `entity_created` fact of the turn, whoever wrote it. A seeded NPC starts at the resolved-thread
+    count, so joining late owes them no milestone back-pay (new test). `write_scenario` beside
+    `write_character` with a round-trip test; the `Rules` alias is gone (it read as a sibling of
+    `rules_type` while being the untyped half). `test_engine_contract` inverted: a created actor is
+    refused until seeded.
+
+  - step 7 packs (SAVE_VERSION 60→61): `Settings.packs_dir`, `engines/packs.py:pack_paths` merging
+    user files over shipped by stem, `Engine.__init__(extra_packs)` fed by `Runtime.engine` from
+    `packs_dir / engine_id`; a broken pack is a logged skip, not a launcher crash. `Sheet.pack`
+    records the table set at creation, `twist_table(packs, chosen)` reads the *player's* set and
+    falls back to the SRD's for sets that publish none (AP01, most user packs) — the singleton
+    raise is gone — and `validate` refuses a save whose set is not installed. Fixtures: version
+    line plus `"pack": "srd"` on every sheet.
+
+  - PLAN.md phase 5 (proposal study) landed inside step 5, as that section directs: `fire_hooks` is
+    a bounded drain — rounds of the same one-pass body, each round matching the facts the previous
+    round produced, stopping at `MAX_HOOK_ROUNDS = 3` with a `hooks_capped` fact, never silently;
+    `thread_advanced` data carries `clock_filled` so a filled-clock hook matches one boolean.
+    This closed a dead chain, not a late one: the shipped scenario's `vault-charted` reveals the
+    vault, and `vault-sighted` now fires on that reveal in the same turn (it could never fire
+    before). Fixture movement is exactly that chain — the Warded trait, two fired hooks, two
+    pending notes, and the narrator seeing the trait it caused.
+
+  - adversarial review (fable subagent, staged diff). Fixed: the Worldkeeper could kill a turn
+    after narration by ticking a clockless thread (its moves are applied untried — now a
+    `ModelRetry` in `_thread_moves`); `AdvanceThread.tick` accepted negatives and drained a clock
+    (refused in the validator, not `Field(ge=0)`, which would move two schema fixtures); a pack
+    file whose stem is not a slug loaded and then crashed the creation page (skipped with the
+    other unreadable ones); dead `Engine.extra_packs` attribute; `Rolled` collapsed to
+    `tuple[int, Fact]` (every caller read one field); `EXAMPLES` → `WORLD_EXAMPLES`, which names
+    the shared world-effect file beside `_examples()`, which reads each engine's own. Verified
+    clean: rng order, `once` semantics and `fired_hooks` uniqueness, save round-trip, the
+    validate/seed split closing the `offers()` hazard, layering, every comment and docstring.
+    Kept as is with reasons: `parse_effect` + `apply_effect` (a `TypeAdapter[Frozen]` attribute
+    fails on invariance; a covariant return does not), `Binding`, `check_hooks`/`check_overlay`
+    placement, `seed_created` at end of turn, `twist_table`'s SRD fallback.
+    Two accepted gaps: a resumed save's hooks are parsed at fire time only (the scenario they were
+    copied from is checked at load in the same session), and the `hooks` step trace records the
+    first hook pass only — the Worldkeeper-pass fires reach `turn.facts` but no step.
+
+  - verified end to end: 117 tests, ruff, format, basedpyright green; `Runtime` opens the shipped
+    game from a clean temp save dir. Prod LOC 4,881 against REFACTOR's 4,780–4,880 band, before
+    phase 8's trim.
+
 ## Next
 
-- Phase 4 step 4 (dice pools) and step 5 (threads/clocks/hooks), then 6–9. Two notes for
-  whoever picks step 5 up: it needs `Engine.effect_adapter`, which REFACTOR.md only introduces
-  in step 6, so step 5 must land the engine-bound effect parsing itself (an engine method that
-  parses one authored `JsonValue` effect keeps `content/` below `engines/` without casts); and
-  the "hooks advance only authored threads" check moves out of `ScenarioWorld` into that
-  engine-bound pass.
+- Phase 4 step 8 (docs + trim: CLAUDE.md/AGENTS.md roster and validate/seed wording, README,
+  superseded PLAN entries, comment trim, LOC audit) then step 9 (the 24XX engine as the proof).
+  Step 8 also moves PLAN.md's phase 5 section out — it shipped inside step 5 — and renumbers what
+  follows. Still owed from step 2: the live gpt-oss-120b probe of the merged Director schema.

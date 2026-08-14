@@ -40,18 +40,19 @@ def with_entity(state: GameState, entity: Entity) -> GameState:
 
 
 def scenario() -> Scenario:
-    return load_scenario(SCENARIOS, "whispering-vault", LONER3E)
+    return load_scenario(SCENARIOS, "whispering-vault", build_engine(LONER3E).binding())
 
 
 def character() -> Character:
-    return load_character(CHARACTERS, "kael", LONER3E)
+    return load_character(CHARACTERS, "kael", build_engine(LONER3E).binding())
 
 
 def game(engine_id: EngineId) -> tuple[Engine, GameState]:
     """The shipped scenario and character, composed under one engine."""
-    selected_scenario = load_scenario(SCENARIOS, "whispering-vault", engine_id)
-    selected_character = load_character(CHARACTERS, "kael", engine_id)
     engine = build_engine(engine_id)
+    binding = engine.binding()
+    selected_scenario = load_scenario(SCENARIOS, "whispering-vault", binding)
+    selected_character = load_character(CHARACTERS, "kael", binding)
     return engine, begin_game(engine, selected_scenario, selected_character)
 
 
