@@ -27,7 +27,6 @@ SCENARIOS = REPOSITORY_ROOT / "scenarios"
 CHARACTERS = REPOSITORY_ROOT / "characters"
 LONER3E = EngineId("loner3e")
 TWENTYFOURXX = EngineId("twentyfourxx")
-CAIRN2E = EngineId("cairn2e")
 
 
 def updated[T: BaseModel](model: T, **changes: object) -> T:

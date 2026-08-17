@@ -21,7 +21,6 @@ from .vocabulary import EFFECT_CALLS, EFFECTS_CARD, ROLLS_CARD, card, translate
 ENGINE_MODULES: tuple[str, ...] = (
     "aidm.engines.loner3e.rules",
     "aidm.engines.twentyfourxx.rules",
-    "aidm.engines.cairn2e.rules",
 )
 ENGINE = "ENGINE"
 WORKED_PLANS = (

@@ -4,7 +4,7 @@ from pathlib import Path
 import pytest
 
 SOURCE = Path(__file__).parents[2] / "src" / "aidm"
-ENGINES = ("aidm.engines.loner3e", "aidm.engines.twentyfourxx", "aidm.engines.cairn2e")
+ENGINES = ("aidm.engines.loner3e", "aidm.engines.twentyfourxx")
 # One direction: state <- content <- engines <- turn <- app <- ui, with `aidm.config` a leaf
 # every layer may read. An engine ships its own panels, so it may import nicegui; `aidm.ui` and
 # the other engine stay closed to it.

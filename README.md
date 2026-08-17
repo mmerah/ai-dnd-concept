@@ -16,10 +16,7 @@ A role-separated narrative game platform. Two rules engines ship:
 Candidate engines are docs, not code: an exact SRD extraction per system under `docs/`, each
 ending with a sketch of what its engine package would look like here. The rule for the shelf —
 official, freely licensed, low mechanical overhead: a system the Directors can drive without a
-rules lawyer. On it now:
-
-- `docs/CAIRN-2E.md` — Cairn 2e (CC BY-SA 4.0, Yochai Gal). HP, three stats, armour, damage
-  dice; ~2× the code of loner3e, implemented only if that texture is wanted.
+rules lawyer.
 
 `docs/LONER-3E.md` and `docs/24XX.md` are the same extraction for the two shipped engines. An
 engine package appears only when it is next to be played; a skeleton package is dead code.
@@ -111,7 +108,5 @@ each change and its reason, then confirms.
 - `docs/24XX.md`, the 24XX engine's prose, instructions and pack
   (`src/aidm/engines/twentyfourxx/`) derive from the 24XX SRD and are CC BY 4.0 — 24XX rules
   are CC BY Jason Tocci, <https://24xx-srd.carrd.co>.
-- The shelf extraction carries its system's license: `docs/CAIRN-2E.md` CC BY-SA 4.0
-  (Yochai Gal).
 - The license of the rest of the code is an open decision the maintainer has not made yet; this
   section records that rather than inventing one.

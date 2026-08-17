@@ -1,7 +1,7 @@
 from collections.abc import Callable, Mapping
 
 import pytest
-from core_test_support import CAIRN2E, LONER3E, TWENTYFOURXX, capability, game, settings
+from core_test_support import LONER3E, TWENTYFOURXX, capability, game, settings
 from golden_test_support import FIXTURES, golden
 from loner3e_test_support import at_milestone
 
@@ -27,7 +27,6 @@ type OfferReady = Callable[[GameState], GameState]
 READY_FOR_ADVANCEMENT: Mapping[EngineId, OfferReady] = {
     LONER3E: at_milestone,
     TWENTYFOURXX: at_milestone,
-    CAIRN2E: at_milestone,
 }
 
 

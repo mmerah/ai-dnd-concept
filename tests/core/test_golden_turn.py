@@ -3,7 +3,6 @@ from random import Random
 
 import pytest
 from core_test_support import (
-    CAIRN2E,
     LONER3E,
     TWENTYFOURXX,
     beat,
@@ -89,14 +88,6 @@ SCRIPTS: Mapping[EngineId, ModelResponse] = {
             helped="Relic Hunter",
             hindered="",
             luck_test="something behind the door is already listening back",
-        )
-    ),
-    CAIRN2E: _plan(
-        call(
-            "save",
-            actor_id="player",
-            attribute="dexterity",
-            risk="the flagstone grinds and whatever waits past the door hears it",
         )
     ),
 }
