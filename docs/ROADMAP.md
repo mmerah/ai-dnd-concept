@@ -15,8 +15,6 @@ Status of the proof of concept, and where it should go. Kept short on purpose. P
 ### Reliability
 
 - Nothing checks narration against facts. The Worldkeeper only adds canon, so a turn that narrates a consequence the state never recorded commits looking healthy.
-- Live evals are manual evidence, not a gate. Golden fixtures and offline oracle parity protect refactors; same-hour live runs measure model-facing changes. At 3 runs per case the noise floor is large: nothing below n=9 should be attributed to a change.
-- Provider lottery, not architecture: Groq answers `finish_reason: "error"` under forced tool choice, which cost 12% of one suite's turns; excluding it through OpenRouter routing preferences recovered them, and it has still leaked through since. Every structured role is on `NativeOutput` now: the shrunk 2.2KB `DirectorBeat` schema passed a live probe (2026-08-17), so the `ToolOutput` workaround and its backend shims are gone. The backend lottery itself remains a live risk.
 
 ### Canon quality
 

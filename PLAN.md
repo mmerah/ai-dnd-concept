@@ -26,39 +26,7 @@ phases move to PROGRESS.md.
 Per phase: `uv run pytest && uv run ruff check && uv run ruff format --check && uv run
 basedpyright` green after every numbered step, one commit per step.
 
-## Phase 1 — One small Director contract
-
-Shipped in full; see PROGRESS.md.
-
-## Phase 2 — Engine-true mechanics
-
-Shipped in full; see PROGRESS.md.
-
-## Phase 3 — Narration checked against facts (~1 day)
-
-A mechanically perfect engine can still commit a narration that contradicts its own facts, and
-nothing today would notice (ROADMAP.md). That silent desync is a worse accuracy failure for the
-player than any remaining rules deviation.
-
-1. A `checker` role in config (a small, cheap model is fine; add `ROLES__CHECKER__MODEL` support
-   like every other role). Output model, somewhere role-adjacent like `turn/roles.py`:
-   `class Verdict(Frozen): contradicted: bool; contradiction: str = ""` — the one sentence naming
-   what the narration got wrong, empty otherwise. Instructions in `turn/prompts/checker.md`: you
-   are shown WHAT HAPPENED (the evidence) and the narration; report a contradiction only when the
-   narration *states a mechanical outcome* the evidence does not record, or the reverse of one it
-   does — style, elaboration and staging are not contradictions.
-2. In `run_turn` after the narrator: run the checker on evidence + narration. If `contradicted`,
-   re-run the narrator once with one appended line ("Your last draft contradicted the record:
-   {contradiction}. Rewrite it to match."), keep the second draft either way, and log (never
-   fail the turn) if the recheck still objects. Trace both as `StepTrace` steps.
-3. Working rule 2 applies: the `Verdict` schema is small, but one live `NativeOutput` probe comes
-   before fixture work. Tests stub with `FunctionModel`: one contradiction path (narrator re-runs
-   once), one clean path (no second call). Regenerate `prompts`/`turn`/`save`; bump.
-
-Done when: a stubbed contradicting narration provably triggers exactly one retry, a clean one
-none, and a live turn runs end to end with the checker on.
-
-## Phase 4 — Scenario creator (~3–4 days)
+## Phase 1 — Scenario creator (~3–4 days)
 
 Premise → a complete scenario in the exact on-disk format, authored by a strong model at
 authoring time. This is a script, not the app: agentic workflows are fine outside the turn
@@ -92,7 +60,7 @@ that appears on the home page and plays a first turn under every shipped engine.
 validity is judged by playing it, not asserted by the script. PDF/notes ingestion is a later
 input mode for the same script, not a separate system.
 
-## Phase 5 — Media: scene illustrations (~2–3 days)
+## Phase 2 — Media: scene illustrations (~2–3 days)
 
 Presentation only, outside mechanical truth: the game must be indistinguishable with media
 disabled, and a failed generation must cost nothing but a log line.
