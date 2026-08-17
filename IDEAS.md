@@ -4,6 +4,12 @@
 - [] Scene/Core director should both know everything (core does not right now, makes no sense)
 - [] Verify Oracle engine against Loner 3e. Or: make oracle uniquely loner 3e
 - [] Worldkeeper: wanted to add memory to player but said "we have no id"
+- [] Block remaining deviations towards engines:
+  - [] A clock for Cairn scar timing, deprivation daily fatigue, Loner/24XX downtime
+  - [] Group size and casualty counting (Cairn morale's first-casualty and half-number triggers). Panic alone is implementable as a panicked trait, but morale keeps the entry alive, so it buys no deletion.
+  - [] Elided content (Cairn Bonds' 16 unpublished rows, 19 background pages) — authoring them under their real names would misattribute the publisher.
+  - [] Creation-form redesign (24XX origin stacking needs counted picks, not a multi-select; Loner/Cairn menu ceilings).
+  - [] Architecture (turn loop standing in for procedural scaffolding, advancement per resolved thread, gear-as-traits, twist timing) — these are the app's shape, and closing them means a different app.
 
 ## Ideas
 

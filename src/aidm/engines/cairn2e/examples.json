@@ -18,8 +18,8 @@
       "name": "attack",
       "args": {
         "attacker_id": "player",
-        "target_id": "cloister_rat",
-        "weapon_id": null,
+        "target_ids": ["cloister_rat"],
+        "weapon_ids": [],
         "modifier": "normal",
         "joined_by": []
       }

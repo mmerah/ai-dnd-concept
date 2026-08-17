@@ -3,6 +3,7 @@ from random import Random
 import pytest
 from core_test_support import TWENTYFOURXX, capability, game
 from loner3e_test_support import at_milestone
+from pydantic import ValidationError
 
 from aidm.engines.twentyfourxx.actions import (
     Attempt,
@@ -15,8 +16,10 @@ from aidm.engines.twentyfourxx.actions import (
 from aidm.engines.twentyfourxx.advance import Advance
 from aidm.engines.twentyfourxx.mechanics import Mechanics, Sheet
 from aidm.engines.twentyfourxx.rules import TwentyfourxxEngine
-from aidm.state.base import PLAYER_ID
+from aidm.state.base import PLAYER_ID, EntityId
 from aidm.state.creation import Picks
+
+MARA = EntityId("mara")
 
 
 @pytest.mark.parametrize(
@@ -36,7 +39,20 @@ def test_the_die_pool_is_built_from_the_sheet_help_and_hindrance(
     action = Attempt(
         actor_id=PLAYER_ID, goal="climb the wall", skill=skill, helped=helped, hindered=hindered
     )
-    assert pool_faces(sheet, action) == expected
+    assert pool_faces(sheet, action, None) == expected
+
+
+def test_a_helper_rolls_their_own_skill_die_into_the_pool() -> None:
+    sheet = Sheet(skills={"Climbing": 10})
+    helper = Sheet(skills={"Hacking": 12})
+    action = Attempt(
+        actor_id=PLAYER_ID,
+        goal="climb the wall",
+        skill="Climbing",
+        helper_id=MARA,
+        helper_skill="Hacking",
+    )
+    assert pool_faces(sheet, action, helper) == (10, 12)
 
 
 @pytest.mark.parametrize(
@@ -68,6 +84,28 @@ def test_an_attempt_is_refused_before_it_rolls_when_the_plan_invents_something()
     unknown_tag = Attempt(actor_id=PLAYER_ID, goal="Kael calls in a favor.", helped="Silver Tongue")
     with pytest.raises(ValueError, match="tagged"):
         resolve_attempt(state.draft(), unknown_tag, Random(0))
+
+
+def test_an_ally_who_lacks_the_named_skill_is_refused() -> None:
+    _, state = game(TWENTYFOURXX)
+    action = Attempt(
+        actor_id=PLAYER_ID,
+        goal="Kael picks the lock while Mara covers the door.",
+        helper_id=MARA,
+        helper_skill="Lockpicking",
+    )
+    with pytest.raises(ValueError, match="helper_skill"):
+        resolve_attempt(state.draft(), action, Random(0))
+
+
+def test_naming_both_an_ally_and_a_helped_tag_is_refused_at_the_schema() -> None:
+    with pytest.raises(ValidationError):
+        Attempt(
+            actor_id=PLAYER_ID,
+            goal="Kael picks the lock.",
+            helper_id=MARA,
+            helped="a steady rope",
+        )
 
 
 def test_a_job_raises_one_skill_a_step_and_pays_rolled_credits() -> None:

@@ -882,7 +882,13 @@ Rows are the Risk Die, columns the Chance Die.
 ## Deviations in this repo
 
 Every divergence between `src/aidm/engines/loner3e/` and the rules above, with the reason it
-stands. Nothing diverges silently: a rule not listed here is implemented as printed.
+stands. Nothing diverges silently: a rule not listed here is implemented as printed. The SRD's
+optional tools are not deviations by their own text: the Adventure Maker, the 5W+H frame and the
+open-ended inspiration tables are offered "if you need inspiration" and stay authoring-time —
+scenarios here are authored ahead of play; the next-scene mood roll is for when "you're unsure",
+and deciding when to ask the Oracle is the player-seat judgment — the Director holds that seat.
+Appendix A is by its own words a *version* of Loner that removes dice — an alternative game, not
+a rule of this one.
 
 1. **Milestones trigger per resolved thread, not post-adventure.** SRD growth happens when an
    adventure ends. Threads are this app's adventures, and a resolved thread is the one growth
@@ -895,32 +901,22 @@ stands. Nothing diverges silently: a rule not listed here is implemented as prin
 4. **Sheets are actors-only.** The SRD gives non-living characters — objects, vehicles, curses —
    a Concept, Skills, Frailties and Luck. Here they are entities with traits, which the resolver
    already reads as tags; a non-living character gets a sheet the first time an engine needs one.
-5. **The Director makes the player's own judgment calls.** The next-scene mood is not rolled: the
-   Director's instructions carry the SRD's Dramatic / Quiet / Meanwhile vocabulary and it judges
-   the mood from the fiction. The same instructions carry the Sibylline Responses guidance, and it
-   decides when to ask the Oracle.
-6. **A twist interrupts the same turn, a beat late.** The SRD has a twist interrupt the scene the
+5. **A twist interrupts the same turn, a beat late.** The SRD has a twist interrupt the scene the
    moment it fires; here it fires inside a beat and reaches the Director as a scenario note on the
    next Director call, so it always interrupts the same turn: every rolled beat is followed by
    another Director call, and the last one — whether the roll asked to settle or the beat cap cut
    the loop short — is a settle beat that may write what the twist caused but may not roll again.
-7. **One game-wide Twist Counter.** The SRD's counter belongs to the solo player, who is the only
+6. **One game-wide Twist Counter.** The SRD's counter belongs to the solo player, who is the only
    one rolling. Here any actor can be the subject of a question, so a single tally covers every
    roll — a tie anywhere moves the same counter.
-8. **The Twist Counter is hidden from the player.** The SRD's solo player keeps the tally
+7. **The Twist Counter is hidden from the player.** The SRD's solo player keeps the tally
    themselves; here it lives in mechanics, paces the Director, and is never recited — rising
    tension shows only in the fiction.
-9. **Concept is a closed menu.** Creation offers the chosen pack's concept table, where the SRD
+8. **Concept is a closed menu.** Creation offers the chosen pack's concept table, where the SRD
    asks for a free one-line phrase.
-10. **Luck can be charged outside a conflict.** The SRD moves Luck only through Harm & Luck. The
-    Director may also write a `counter-change` for a hazard no conflict covers — a fall, a bad
-    draught, a night in the cold — because those are the moments Luck exists to absorb.
-11. **The Adventure Maker, the 5W+H framing table, and the open-ended inspiration tables are not
-    rolled.** Setting, tone, premise and the Verb/Noun/Adjective prompts are authoring inputs;
-    scenarios are authored ahead of play, and the Director takes its inspiration from the
-    authored world instead.
-12. **Appendix A (Loner Diceless) is not implemented.** The dice are the point of the resolver;
-    a diceless matrix would be a second engine, not a mode of this one.
+9. **Luck can be charged outside a conflict.** The SRD moves Luck only through Harm & Luck. The
+   Director may also write a `counter-change` for a hazard no conflict covers — a fall, a bad
+   draught, a night in the cold — because those are the moments Luck exists to absorb.
 
 ## Engine package sketch
 

@@ -50,10 +50,80 @@ to rediscover. Step-by-step detail lives in git history, not here. Every entry w
   and one try of `NativeOutput`. `ToolOutput` is kept until a probe says otherwise; needs
   network.
 
+### Phase 1, steps 4-6 — the enrichment proofs (2026-08-17)
+
+Three engine enrichments, **not one byte of wire contract changed** — that was the point of each.
+Every one is a new arg or a widened arg on an existing call, taught by the generated vocabulary
+card, with no schema growth the Director pays for.
+
+- **Step 4, 24XX ally help** (closes 24XX deviation 1). `Attempt` grew `helper_id` +
+  `helper_skill`: the ally rolls their own skill die into the pool. One help die still, as
+  `pool_faces` insists — the helper's die when `helper_id` is set, the flat d6 when only `helped`
+  names a circumstance, and **naming both is refused at the schema** by a `model_validator`, since
+  the SRD leaves stacking to the table. A helper must be here, not the actor, and carry the named
+  skill on *their own* sheet; `_require_skill` is shared by actor and helper so both refusals read
+  the same. Risk-sharing stays fiction (the engine tracks no harm).
+- **Step 5, Cairn's rolled tables** (narrows CAIRN-2E deviation 2 to morale and panic). Two new
+  rolls, one union branch and one vocabulary line each: `fate` (one d6 on a `question`, 4+
+  favorable) and `reaction` (2d6 on an NPC's `actor_id` into the SRD's five rows, hostile through
+  helpful, `reaction_for` resolver-side like `SCARS`). Each writes a fact plus a pending note that
+  steers the next Director call — so the answer reaches the same turn's next beat. Morale and panic
+  stay willpower-save rulings: the engine counts no casualties and knows no group size.
+- **Step 6, Cairn's attack widened** (shrinks CAIRN-2E deviation 3 to detachments alone).
+  `weapon_id` -> `weapon_ids` (dual wield: every named weapon's die in the pool, keep highest;
+  empty is still the unarmed d4) and `target_id` -> `target_ids` (blast: one roll of the shared
+  pool per target, each through the existing `_damage` path). `Resolution.outcome` is the worst
+  per-target outcome by `SEVERITY`, **the player's own whenever they are a target**, and
+  `_followup` now reads the grave-fact scan against `PLAYER_ID` instead of taking a single target.
+  Owned drift: an impaired multi-die pool is several d4s keep-highest, slightly kinder than the
+  SRD's flat d4 — inherited from `joined_by`.
+- `SAVE_VERSION` 63 -> 64: the 24XX `attempt_resolved` fact gained a `helper` key, so trace bytes
+  moved. Regenerated: both engines' `instructions`, and the `save`/`state`/`turn` families.
+- **Still not done: the live probe** (working rule 2), unchanged from steps 1-3 — needs network.
+  `ToolOutput` stays until a probe says otherwise.
+
+### Fidelity pass — deviations closed, not reworded (2026-08-17)
+
+The deviation lists went **32 entries -> 20** across the three engine docs. What each engine
+diverges on is now the honest short list; the rest is implemented as printed.
+
+- **Cairn `stowed` armor** closes the carried-is-worn deviation: `armor_of` skips an item traited
+  `stowed`, so a shield counts only while worn or held. The Director stows and dons by
+  `trait-change`.
+- **Cairn detachments** needed no new state once blast landed: one actor with one sheet, `impaired`
+  striking it, `enhanced` plus several `target_ids` striking back, rout on critical damage,
+  destroyed at 0 strength — taught in `director.md`, entry deleted. Its "impaired multi-d4" drift
+  note went with it: the SRD's impaired die and its keep-highest rule compose to exactly what we
+  roll, so there was never a drift to own.
+- **Cairn `pass-time`** closes the scar-timing and deprivation-tick deviations. `Mechanics.day` is
+  the running tally; `Sheet.mending` records the five SRD rows whose payout defers ("once mended",
+  "when you recover", "after recovery"), paid out through the existing `_recover` when the Director
+  names the healed actor in `mended_ids`. Deprivation adds one Fatigue per full day, resolver-side
+  through `adjust` + `check_load`, so the tick obeys the ten-slot law.
+- **The time mechanism is engine-level, deliberately.** Only Cairn has a mechanical consumer of
+  elapsed days: 24XX's harm is fiction by its own deviation and Loner's Luck resets per conflict,
+  not per day. A core field with one reader is the abstraction the port rule forbids, and the seat
+  a second engine would need already exists — its own `actions` mapping and `resolve_roll` rng. It
+  is a **roll, not an effect**: deferred scar payouts roll dice and `apply`/hook paths carry no
+  `Random`.
+- **Naming stays clear of `Thread.clock`** (progress clocks, ticked by `advance-thread`): the call
+  is `pass-time`, the tally `day`, the ledger `mending`. `director.md` states the distinction once.
+- **Eight entries were reclassified, not implemented** — each rule is either implemented as printed
+  or a ruling the SRD explicitly leaves to the table (24XX help stacking "your call!", the bad-luck
+  test, "*may* hinder at times", "invent or roll"; Cairn's abstract inventory; Loner's mood roll
+  "if you're unsure", the Adventure Maker, Appendix A). They live as one preamble carve-out per doc
+  so nothing diverges silently.
+- What still blocks the remaining 20: a calendar beyond day counting, group size and casualty
+  counting (Cairn morale), content elided from the extractions (Cairn Bonds' 16 rows, 19 background
+  pages), creation-form redesigns, and the app's own architecture. Bond rows 10 and 15 are now
+  expressible by a later pack step without reopening the time design.
+- `SAVE_VERSION` 64 -> 65 (`Sheet.mending`, `Mechanics.day`); `save`/`state`/`turn` and
+  `instructions/cairn2e` regenerated. The `turn_plan`/`turn_beat` schemas did not move — every new
+  call rides the generic `RuleCall`.
+
 ## Next
 
-- PLAN.md Phase 1 steps 4-6: 24XX ally help, Cairn's `fate`/`reaction` tables, Cairn's widened
-  attack. None of them change the wire contract — that is the point of each.
+- The live probe of the shrunk contract: one real turn per engine, and one try of `NativeOutput`.
 - PLAN.md Phase 2: the scenario creator.
 - Close the Cairn 2e, Loner 3e, 24XX fidelity deviations, per their docs' "Deviations in this
   repo" sections.

@@ -1,7 +1,8 @@
 from collections.abc import Mapping
 from random import Random
+from typing import Self
 
-from pydantic import Field
+from pydantic import Field, model_validator
 
 from aidm.engines.sheets import require_sheet
 from aidm.engines.tags import carriers, tag_key
@@ -40,6 +41,16 @@ class Attempt(Frozen):
         "what they carry, on where they stand, or on who stands there with them — copied "
         "exactly. Empty when nothing helps; you cannot invent one.",
     )
+    helper_id: EntityId | None = Field(
+        default=None,
+        description="Exact id of an ally here who helps with this — they roll their own skill "
+        "die into the pool. Null when nobody helps.",
+    )
+    helper_skill: str = Field(
+        default="",
+        description="The skill on the *helper's* sheet this calls on, copied exactly as it is "
+        "written there. Empty when none of theirs applies: they roll the bare d6.",
+    )
     hindered: str = Field(
         default="",
         description="One tag in the scene that makes this harder, copied the same way. Empty "
@@ -50,6 +61,19 @@ class Attempt(Frozen):
         description="What bad luck might arrive alongside this — running out of ammo, running "
         "into guards. The engine rolls whether it does. Empty for no test.",
     )
+
+    @model_validator(mode="after")
+    def _one_help_die(self) -> Self:
+        if self.helper_id is not None and self.helped:
+            raise ValueError(
+                "help is one die: name the ally in `helper_id` or the circumstance in `helped`, "
+                "never both"
+            )
+        if self.helper_skill and self.helper_id is None:
+            raise ValueError(
+                "`helper_skill` is the skill of the ally in `helper_id`; name them too"
+            )
+        return self
 
 
 class LuckTest(Frozen):
@@ -73,9 +97,11 @@ def outcome_for(kept: int) -> Slug:
     return "success"
 
 
-def pool_faces(sheet: Sheet, action: Attempt) -> tuple[int, ...]:
-    """Hindrance drops the die to a d4; help adds one d6, and never more than one."""
+def pool_faces(sheet: Sheet, action: Attempt, helper: Sheet | None) -> tuple[int, ...]:
+    """Hindrance drops the die to a d4; help adds one die at most — the helper's own, or a d6."""
     base = HINDERED_FACE if action.hindered else sheet.face(action.skill)
+    if helper is not None:
+        return (base, helper.face(action.helper_skill))
     return (base, DEFAULT_FACE) if action.helped else (base,)
 
 
@@ -83,10 +109,11 @@ def resolve_attempt(draft: GameState, action: Attempt, rng: Random) -> Resolutio
     actor = require_actor_here(draft, action.actor_id)
     facts = apply_effect(draft, Reveal(entity_id=action.actor_id))
     sheet = require_sheet(draft.mechanics_as(Mechanics).sheets, actor)
+    helper_sheet = _helper_sheet(draft, actor, action, facts)
     known = _known_tags(draft, actor)
     _refuse_unless_ready(actor, action, sheet, known)
 
-    faces = pool_faces(sheet, action)
+    faces = pool_faces(sheet, action, helper_sheet)
     kept, rolled = roll_pool(faces, f"{action.goal} — {action.skill or 'no skill'}", rng)
     facts.append(rolled)
 
@@ -96,7 +123,13 @@ def resolve_attempt(draft: GameState, action: Attempt, rng: Random) -> Resolutio
             actor,
             "attempt_resolved",
             f"{action.goal} -> {outcome}",
-            {"outcome": outcome, "kept": kept, "skill": action.skill, "faces": list(faces)},
+            {
+                "outcome": outcome,
+                "kept": kept,
+                "skill": action.skill,
+                "faces": list(faces),
+                "helper": action.helper_id,
+            },
         )
     )
 
@@ -127,15 +160,36 @@ def _known_tags(draft: GameState, actor: Entity) -> dict[str, str]:
     return known
 
 
+def _helper_sheet(
+    draft: GameState, actor: Entity, action: Attempt, facts: list[Fact]
+) -> Sheet | None:
+    if action.helper_id is None:
+        return None
+    if action.helper_id == actor.id:
+        raise ValueError(
+            f"{actor.name} cannot help themselves. Name the ally who does, or leave `helper_id` "
+            "null."
+        )
+    helper = require_actor_here(draft, action.helper_id)
+    facts.extend(apply_effect(draft, Reveal(entity_id=action.helper_id)))
+    sheet = require_sheet(draft.mechanics_as(Mechanics).sheets, helper)
+    _require_skill(helper, sheet, action.helper_skill, "helper_skill")
+    return sheet
+
+
+def _require_skill(actor: Entity, sheet: Sheet, skill: str, field: str) -> None:
+    if skill and skill not in sheet.skills:
+        written = ", ".join(sorted(sheet.skills)) or "(none)"
+        raise ValueError(
+            f"{actor.name} has no skill {skill!r}. Their skills are: {written}. Leave "
+            f"`{field}` empty to roll the bare d6."
+        )
+
+
 def _refuse_unless_ready(
     actor: Entity, action: Attempt, sheet: Sheet, known: Mapping[str, str]
 ) -> None:
-    if action.skill and action.skill not in sheet.skills:
-        written = ", ".join(sorted(sheet.skills)) or "(none)"
-        raise ValueError(
-            f"{actor.name} has no skill {action.skill!r}. Their skills are: {written}. Leave "
-            "`skill` empty to roll the bare d6."
-        )
+    _require_skill(actor, sheet, action.skill, "skill")
     for tag in (action.helped, action.hindered):
         if tag and tag_key(tag) not in known:
             written = ", ".join(sorted(set(known.values()))) or "(none)"

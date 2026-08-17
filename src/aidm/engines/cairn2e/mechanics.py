@@ -15,8 +15,9 @@ from aidm.engines.counters import (
 from aidm.engines.sheets import SheetBase, SheetMechanics
 from aidm.engines.vocabulary import EngineEffect
 from aidm.state.apply import apply_effect, reveal_target
-from aidm.state.base import Counter, Entity, EntityId, Mutable, Slug, Trait
+from aidm.state.base import PLAYER_ID, Counter, Entity, EntityId, Mutable, Slug, Trait
 from aidm.state.dice import roll_sum
+from aidm.state.effects import TraitChange
 from aidm.state.facts import Fact, entity_fact
 from aidm.state.world import GameState
 
@@ -24,6 +25,7 @@ MAX_SLOTS = 10
 MAX_ARMOR = 3
 UNARMED_DIE = 4
 DEPRIVED: Slug = "deprived"
+STOWED: Slug = "stowed"
 
 type DamageDie = Literal[0, 4, 6, 8, 10, 12]
 type Attribute = Literal["strength", "dexterity", "willpower"]
@@ -43,6 +45,8 @@ class Sheet(SheetBase):
     armor: int = Field(default=0, ge=0, le=MAX_ARMOR)
     # The growth subsystem's own ledger, deliberately not offered to the Director below.
     growths: Counter = Counter(current=0)
+    # Scar rows whose payout waits on recovery; each id is also a trait the actor carries.
+    mending: list[Slug] = Field(default_factory=list)
 
     def counters(self) -> dict[Slug, Counter]:
         return {
@@ -121,6 +125,8 @@ class ItemRules(Mutable):
 class Mechanics(SheetMechanics[Sheet]):
     # Only authored items; anything else is one ordinary slot.
     items: dict[EntityId, ItemRules] = Field(default_factory=dict)
+    # The running tally of full days passed in play; a Bond that grows by the month reads it.
+    day: int = Field(default=0, ge=0)
 
     def rules_of(self, item_id: EntityId) -> ItemRules:
         found = self.items.get(item_id)
@@ -161,8 +167,13 @@ def check_items(state: GameState, mechanics: Mechanics) -> None:
 
 
 def armor_of(state: GameState, mechanics: Mechanics, actor: Entity) -> int:
+    """Armor counts only while worn or held: an item traited `stowed` is packed away."""
     sheet = mechanics.sheets.get(actor.id)
-    worn = sum(mechanics.rules_of(item.id).armor for item in state.world.children(actor.id, "item"))
+    worn = sum(
+        mechanics.rules_of(item.id).armor
+        for item in state.world.children(actor.id, "item")
+        if item.trait(STOWED) is None
+    )
     natural = sheet.armor if sheet is not None else 0
     return min(natural + worn, MAX_ARMOR)
 
@@ -254,11 +265,12 @@ def _describe_item(rules: ItemRules) -> str:
 def describe_entity(state: GameState, mechanics: Mechanics, entity: Entity) -> str:
     sheet = mechanics.sheets.get(entity.id)
     if sheet is not None:
+        day = f", day {mechanics.day}" if entity.id == PLAYER_ID and mechanics.day > 0 else ""
         lines = (
             f"background: {sheet.background}" if sheet.background else "",
             render_counters(sheet.counters()),
             f"armor {armor_of(state, mechanics, entity)}, "
-            f"slots {slots_used(state, mechanics, entity, sheet)}/{MAX_SLOTS}",
+            f"slots {slots_used(state, mechanics, entity, sheet)}/{MAX_SLOTS}{day}",
         )
         return "\n".join(line for line in lines if line)
     rules = mechanics.items.get(entity.id)
@@ -297,11 +309,24 @@ def _apply_counter_change(
     return [*seen, *moved, *collapse_facts]
 
 
+def _check_mending_removal(draft: GameState, mechanics: Mechanics, effect: TraitChange) -> None:
+    sheet = mechanics.sheets.get(effect.entity_id)
+    if sheet is not None and effect.trait_id in sheet.mending:
+        entity = draft.world.require(effect.entity_id)
+        raise ValueError(
+            f"{entity.name}'s {effect.trait_id!r} mends only through rest: when the fiction "
+            "has healed them, name them in `pass-time`'s `mended_ids` and the engine pays the "
+            "scar's recovery out."
+        )
+
+
 def apply(draft: GameState, effect: EngineEffect) -> list[Fact]:
     mechanics = draft.mechanics_as(Mechanics)
     if isinstance(effect, CounterChange):
         facts = _apply_counter_change(draft, mechanics, effect)
     else:
+        if isinstance(effect, TraitChange) and effect.mode == "remove":
+            _check_mending_removal(draft, mechanics, effect)
         facts = apply_effect(draft, effect)
     # An item picked up or handed over is what fills the slots, and core knows nothing about them.
     facts.extend(check_load(draft, mechanics))

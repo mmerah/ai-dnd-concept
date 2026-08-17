@@ -680,37 +680,28 @@ content the engine would need as data, not as rules.
 Every divergence between `src/aidm/engines/cairn2e/` and the rules above, with the reason it
 stands. Nothing diverges silently: a rule not listed here is implemented as printed. Omens and
 the eight Character Trait tables are published *content* with no mechanical effect; their absence
-is scenario-authoring scope, not a deviation.
+is scenario-authoring scope, not a deviation. Inventory is abstract and Warden-adjudicated by the
+SRD's own line: the Backpack's six slots and the "four or five carried comfortably" guidance are
+that adjudication, not mechanics this engine is missing.
 
 1. **The turn loop and the Director stand in for Cairn's procedural scaffolding.** The plan
-   resolves at most one action — a `save` or an `attack` — and the dungeon, wilderness and
-   downtime cycles are turn structure the app already provides. With them go every procedure
-   they drive: watches, weather, path and terrain difficulty, getting lost, the two d6 event
-   tables, Wilderness Actions, Downtime's Milestones and Costs, rest and Make Camp, ammunition,
-   a torch's burn-down and the 40ft light radius, and the Marketplace as a shop. Rest, Make
-   Camp, medical healing and a week's rest for attribute loss land as Director-written
-   `counter-change` effects; torches, lanterns and rations carry `uses` the Director spends;
-   prices inform authored gear and rulings; gold moves through `counter-change`; light is
-   fiction. "At most one action" is now at most one action per beat, up to three beats a turn.
-2. **Reactions, the Die of Fate, morale and panic are the Director's rulings.** The 2d6 and 1d6
-   tables are never rolled, and the engine counts no casualties and knows no group size, so
-   morale and panic land as ordinary willpower saves the Director calls for. A morale save can
-   now follow the blow that triggered it inside the same turn, because the Director is asked
-   again once the blow resolves.
-3. **One attack, one target, one die pool.** Detachments, blast, and two weapons at once
-   (`d8+d8`) are not modelled: a large group is one actor with one sheet, a blast is several
-   attacks or fiction, and the `impaired`/`enhanced` modifiers plus `joined_by`'s
-   roll-everything-keep-highest carry the rest when the Director sets them. Those several attacks
-   can now be written across the beats of one turn rather than several.
-4. **Scars are rolled only for the player, and the stat change lands the moment the scar
-   does**, where several SRD rows defer it to "once mended" or "when you recover". The engine
-   has no downtime clock to defer to; every other actor is an NPC mechanically, and a companion
-   who drops takes critical damage like any other.
-5. **Growth triggers per resolved thread, not per Warden ruling, and is written as a `Trait`**
+   resolves at most one action — a `save`, an `attack`, the `fate` die or a `reaction` — and
+   the dungeon, wilderness and downtime cycles are turn structure the app already provides. With
+   them go every procedure they drive: watches, weather, path and terrain difficulty, getting
+   lost, the two d6 event tables, Wilderness Actions, Downtime's Milestones and Costs, rest and
+   Make Camp, ammunition, a torch's burn-down and the 40ft light radius, and the Marketplace as a
+   shop. Rest, Make Camp, medical healing and a week's rest for attribute loss land as
+   Director-written `counter-change` effects; torches, lanterns and rations carry `uses` the
+   Director spends; prices inform authored gear and rulings; gold moves through `counter-change`;
+   light is fiction. "At most one action" is now at most one action per beat, up to three beats a
+   turn.
+2. **Morale and panic are the Director's rulings.** The engine counts no casualties and knows no
+   group size, so both land as ordinary willpower saves the Director calls for.
+3. **Growth triggers per resolved thread, not per Warden ruling, and is written as a `Trait`**
    rather than a sheet field — the same reasoning LONER-3E's deviation 1 gives. Cairn is
    classless: what a character has done and carries is what defines them, and a trait is read
    by the resolver and the Director alike.
-6. **Creation is deterministic picks, not dice.** Attributes and Hit Protection come from
+4. **Creation is deterministic picks, not dice.** Attributes and Hit Protection come from
    pre-rolled spreads, starting gold is a fixed number per background, and a background's d6
    tables are chosen rather than rolled, their rows landing as descriptive traits that grant no
    item, companion or number — the published rows hand out statted homunculi and blunderbusses,
@@ -720,17 +711,9 @@ is scenario-authoring scope, not a deviation.
    recipe. Six of the twenty backgrounds ship, and only Aurifex's gear is the published list:
    the other nineteen pages are elided from this extraction, and inventing their contents under
    their real names would misattribute them.
-7. **Bonds are not implemented.** Their rows carry live mechanics — item grants, slot costs,
+5. **Bonds are not implemented.** Their rows carry live mechanics — item grants, slot costs,
    Fatigue absorption, condition immunities — and are the one content elision with real rules
    in it.
-8. **The Backpack is not a container of its own**: a character has ten flat slots, and the
-   "four or five carried comfortably" guidance is fiction the Director weighs.
-9. **Deprivation does not tick a Fatigue per day.** There is no calendar here; the engine
-   enforces the half of the rule it can see — a deprived character recovers no HP, attribute or
-   slot, and any effect that would is refused — and the daily Fatigue is the Director's to
-   write.
-10. **Armor a character carries is armor they are wearing.** The SRD counts a shield only while
-    it is held, and nothing here distinguishes carried from readied.
 
 ## Engine package
 
@@ -741,32 +724,41 @@ How this SRD maps onto `src/aidm/engines/cairn2e/`:
   and a `growths` ledger the advancement subsystem reads but the Director never sees. An
   `ItemRules` carries `slots` (0 petty, 1 ordinary, 2 bulky), a `damage` die, `armor`, and an
   optional `uses` Counter; both shapes validate through one discriminating `RULES` adapter since
-  Cairn authors rules for items as well as actors. `slots_used` sums carried items plus Fatigue
-  against the flat `MAX_SLOTS = 10`; `check_load` empties HP to 0 at exactly ten and refuses an
-  eleventh; `collapsed` writes the `dead`/`paralysed`/`delirious` trait the instant an attribute
-  hits 0; the `deprived` trait blocks any `counter-change` that would recover HP, an attribute or
-  a slot.
-- **Plan** (`actions.py`): `TurnPlan.action` is `Save | Attack | None`, discriminated on `act`. A
-  `Save` names the actor, the attribute, and the risk in one line. An `Attack` names attacker,
-  target, an optional carried `weapon_id` (null is an unarmed d4), a `modifier` (`impaired` d4 /
-  `enhanced` d12), and `joined_by` for other attackers on the same target. `SAVE_LABELS` is
-  `pass`/`fail`; `ATTACK_LABELS` is `blocked`/`hit`/`wounded`/`down`.
+  Cairn authors rules for items as well as actors. `armor_of` is the natural score plus each
+  carried item's own, capped at 3, skipping any item traited `stowed` — armor counts only while
+  worn or held, and the Director stows and dons by `trait-change`. `slots_used` sums carried
+  items plus Fatigue against the flat `MAX_SLOTS = 10`; `check_load` empties HP to 0 at exactly
+  ten and refuses an eleventh; `collapsed` writes the `dead`/`paralysed`/`delirious` trait the
+  instant an attribute hits 0; the `deprived` trait blocks any `counter-change` that would recover
+  HP, an attribute or a slot. `Sheet` also carries `mending`, the scars whose payout waits on
+  recovery; `Mechanics` counts `day`, the running tally of days passed.
+- **Plan** (`actions.py`): the wire contract is one shared `RuleCall` shape, and the engine's
+  `actions` mapping names the five it takes. A `Save` names the actor, the attribute and the risk.
+  An `Attack` names attacker, `target_ids` (several only for a blast), carried `weapon_ids` (empty
+  is an unarmed d4, several is dual wield), a `modifier` (`impaired` d4 / `enhanced` d12), and
+  `joined_by`. A `Fate` names the uncertain `question`; a `Reaction` the NPC's `actor_id`. A
+  `PassTime` names how many `days` pass and, when a rest has completed one, which actors'
+  `mended_ids` the fiction has healed.
 - **Resolver** (`actions.py`): `resolve_save` rolls d20 against the attribute through `saved()`
-  (1 always passes, 20 always fails). `resolve_attack` builds the dice pool from the weapon (or
-  modifier) faces of the attacker and everyone in `joined_by`, keeps the highest, and subtracts
-  the target's armor. Zero damage is `blocked`; damage within HP is `hit`; damage that overflows
-  HP moves into strength and forces a strength save with the new score (`wounded` on a pass,
-  `down` on a fail, which marks the player `critical-damage` or an NPC `dead`); strength emptied
-  by the overflow is death outright, with no save owed. Damage that takes the player's HP to
-  exactly 0 additionally rolls the twelve-row Scars table (`SCARS`), indexed by the HP lost in
-  that blow: some rows roll a d6 location, rows 8 and 10 gate their payout behind a save, and the
-  recovery roll moves a counter's maximum by `higher`, `add` or `set`.
+  (1 always passes, 20 always fails). `resolve_attack` builds the dice pool once from every named
+  weapon (or the modifier) plus each joiner's best die, keeping the highest, then rolls that same
+  pool once per target and subtracts the target's armor, reporting the worst outcome across
+  targets. Zero damage is `blocked`; damage within HP is `hit`; damage that overflows HP moves
+  into strength and forces a strength save with the new score (`wounded` on a pass, `down` on a
+  fail, which marks the player `critical-damage` or an NPC `dead`); strength emptied by the
+  overflow is death outright, with no save owed. Damage that takes the player's HP to exactly 0
+  additionally rolls the twelve-row Scars table (`SCARS`), indexed by the HP lost in that blow:
+  some rows roll a d6 location, rows 8 and 10 gate their payout behind a save, and the recovery
+  roll moves a counter's maximum by `higher`, `add` or `set`; rows with a mending clause record a
+  pending recovery paid out by `pass-time`, which also adds each deprived actor's daily Fatigue.
+  `resolve_fate` rolls one d6, 4 or more favorable; `resolve_reaction` rolls 2d6 through
+  `reaction_for`. Both leave a pending note.
 - **What the Director carries**: `director.md` teaches the sheet shape, the inventory rule, the
   `counter-change` effect (the engine's one effect beyond world ops), when to call a save —
-  including morale, panic, retreat and a spell read while deprived or in danger — and that
-  reactions, the Die of Fate, and every rest/Make Camp/healing effect are its own rulings to
-  write, never the engine's to roll. `advancement.md` carries Growth's trigger framework and
-  worked-example magnitude for the ability a `Growth` proposal writes.
+  including morale, panic, retreat and a spell read while deprived or in danger — when to call
+  the fate die or a reaction, and when to pass days, and that every rest/Make Camp/healing effect
+  is its own ruling to write, never the engine's to roll. `advancement.md` carries Growth's
+  trigger framework and worked-example magnitude for the ability a `Growth` proposal writes.
 - **Creation/advancement** (`create.py`, `advance.py`, `packs/srd.json`): `Cairn2eCreation` steps
   through pack, background, an optional trait pick sized to the background's `chooses`, and a
   pre-rolled attribute spread; `create()` turns the background's gear into item entities and its

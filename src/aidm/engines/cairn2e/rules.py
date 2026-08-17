@@ -12,7 +12,19 @@ from aidm.state.facts import Fact
 from aidm.state.plan import Resolution
 from aidm.state.world import GameState
 
-from .actions import Attack, Save, resolve_attack, resolve_save
+from .actions import (
+    Attack,
+    Fate,
+    PassTime,
+    Reaction,
+    Save,
+    check_mending,
+    resolve_attack,
+    resolve_fate,
+    resolve_pass_time,
+    resolve_reaction,
+    resolve_save,
+)
 from .advance import Cairn2eAdvancement
 from .create import Cairn2eCreation
 from .mechanics import (
@@ -37,7 +49,13 @@ class Cairn2eEngine(SheetEngine[Sheet]):
     engine_dir = Path(__file__).parent
     sheet_type = Sheet
     mechanics_type = Mechanics
-    actions = {"save": Save, "attack": Attack}
+    actions = {
+        "save": Save,
+        "attack": Attack,
+        "fate": Fate,
+        "reaction": Reaction,
+        "pass-time": PassTime,
+    }
 
     def __init__(self, extra_packs: Path | None = None) -> None:
         super().__init__(extra_packs)
@@ -58,6 +76,7 @@ class Cairn2eEngine(SheetEngine[Sheet]):
         mechanics = state.mechanics_as(Mechanics)
         check_items(state, mechanics)
         check_load_limits(state, mechanics)
+        check_mending(state, mechanics)
 
     def apply(self, draft: GameState, effect: EngineEffect) -> list[Fact]:
         """Cairn's own: deprivation refusals, item pools, and the load check the base has not."""
@@ -76,6 +95,12 @@ class Cairn2eEngine(SheetEngine[Sheet]):
                 return resolve_save(draft, roll, rng)
             case Attack():
                 return resolve_attack(draft, roll, rng)
+            case Fate():
+                return resolve_fate(draft, roll, rng)
+            case Reaction():
+                return resolve_reaction(draft, roll, rng)
+            case PassTime():
+                return resolve_pass_time(draft, roll, rng)
             case _:
                 raise TypeError(f"{type(roll).__name__} is no cairn2e roll")
 

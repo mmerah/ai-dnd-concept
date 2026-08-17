@@ -1,5 +1,5 @@
 {
-  "save_version": 63,
+  "save_version": 65,
   "scenario_id": "whispering-vault",
   "character_id": "kael",
   "scenario": {
@@ -320,7 +320,8 @@
         "growths": {
           "current": 0,
           "maximum": null
-        }
+        },
+        "mending": []
       },
       "tomas": {
         "background": "",
@@ -352,7 +353,8 @@
         "growths": {
           "current": 0,
           "maximum": null
-        }
+        },
+        "mending": []
       },
       "elena": {
         "background": "",
@@ -384,7 +386,8 @@
         "growths": {
           "current": 0,
           "maximum": null
-        }
+        },
+        "mending": []
       },
       "cloister_rat": {
         "background": "",
@@ -416,7 +419,8 @@
         "growths": {
           "current": 0,
           "maximum": null
-        }
+        },
+        "mending": []
       },
       "player": {
         "background": "Relic-Hunter",
@@ -448,7 +452,8 @@
         "growths": {
           "current": 0,
           "maximum": null
-        }
+        },
+        "mending": []
       },
       "sister_auber": {
         "background": "",
@@ -480,7 +485,8 @@
         "growths": {
           "current": 0,
           "maximum": null
-        }
+        },
+        "mending": []
       }
     },
     "items": {
@@ -499,7 +505,8 @@
           "maximum": 6
         }
       }
-    }
+    },
+    "day": 0
   },
   "history": [
     {

@@ -122,6 +122,8 @@ What a `roll` may name, and the `args` each one takes. One roll at most per beat
   - `goal` (required) — What the actor is trying to do and what they risk by trying, in one line.
   - `skill` (default "") — The skill on the actor's sheet this calls on, copied exactly as it is written there. Empty when none of theirs applies: they roll the bare d6.
   - `helped` (default "") — One tag in the scene that makes this easier — a trait on the actor, on what they carry, on where they stand, or on who stands there with them — copied exactly. Empty when nothing helps; you cannot invent one.
+  - `helper_id` (default null) — Exact id of an ally here who helps with this — they roll their own skill die into the pool. Null when nobody helps.
+  - `helper_skill` (default "") — The skill on the *helper's* sheet this calls on, copied exactly as it is written there. Empty when none of theirs applies: they roll the bare d6.
   - `hindered` (default "") — One tag in the scene that makes this harder, copied the same way. Empty when nothing hinders.
   - `luck_test` (default "") — What bad luck might arrive alongside this — running out of ammo, running into guards. The engine rolls whether it does. Empty for no test.
 
