@@ -1,6 +1,7 @@
 # Adventure sources and progressive world expansion
 
-Research note for a possible near-term redesign. This is direction, not an implementation plan.
+Research note. Adopted 2026-08-17 into PLAN.md Phases 2–3; PLAN.md is the implementation
+authority where the two differ.
 
 ## Conclusion
 

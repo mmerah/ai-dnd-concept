@@ -63,6 +63,11 @@ Done-when met: `scripts/create_scenario.py rats-of-thornhill "..."` produced
 
 ## Next
 
-- PLAN.md Phase 2 (media), Phase 3 (player-facing UI per docs/ui-mock).
-- PDF/notes ingestion is a one-parameter change to `author_scenario`, not a new system: the
-  premise argument becomes extracted source text.
+- PLAN.md Phase 2 (progressive world expansion: Expander tool, strict topology, Adventure
+  triple, premise-start), Phase 3 (source system: PDF ingestion, grounded expansion, fused
+  authoring), Phase 4 (media), Phase 5 (player-facing UI per docs/ui-mock + journal export).
+- 2026-08-17: `docs/ADVENTURE-SOURCES-RESEARCH.md` and `docs/SYBYL-LEARNINGS.md` were adopted
+  into the plan. Decisions: Expander behind a Director tool (not Director-owned create effects);
+  Worldkeeper keeps creation but locations are created with a connection; the full
+  `GameState + CanonSource + ExpansionPolicy` triple with a real PDF source system, no interim
+  stand-ins; scenario authoring and PDF ingestion share one source system.

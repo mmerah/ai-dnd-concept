@@ -1,6 +1,8 @@
 # Sybyl learnings
 
-Status: research note and candidate near-future work. This does not change the current roadmap.
+Status: adopted 2026-08-17 where it fit — item 3 fused into PLAN.md Phase 3 (one source system
+with PDF ingestion), item 1 as the Phase 5 journal export; items 2, 4, 5 are in PLAN.md's
+deferred list with their triggers.
 
 ## Decision
 

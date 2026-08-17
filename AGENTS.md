@@ -27,6 +27,9 @@ Tests must be deterministic and require no network.
 - Validate external, persistence, model, and tool boundaries with strict Pydantic V2 models.
 - Fail fast on invalid data, broken invariants, and incompatible state.
 - Keep code simple, DRY, and maintainable. Avoid speculative abstractions.
+- A capability the plan commits to is built in its real form; never ship an interim stand-in
+  whose replacement is already scheduled. YAGNI applies to features nobody decided on, not to
+  decided ones.
 - Introduce a port only once a second implementation exists. A protocol that decouples core from a concrete choice earns its place on the first one.
 - Use descriptive names before adding prose to explain code.
 - Keep functions below 100 lines and files below 1000 lines.
@@ -55,7 +58,7 @@ Tests must be deterministic and require no network.
 ## Framework rules
 
 - Use Pydantic V2 APIs only. Validation runs at the transaction boundary, not per field change; `model_copy(update=...)` does not validate.
-- Pydantic AI roles return validated structured output. Tools and output validators request retries with `ModelRetry`; in the turn loop tools are read-only lookups — mutation belongs to resolvers, and an authoring tool may apply a typed patch to its in-memory draft but never to game state, a save, or a file.
+- Pydantic AI roles return validated structured output. Tools and output validators request retries with `ModelRetry`; in the turn loop tools are read-only lookups, with one exception: an expansion tool may apply a typed, validated canon patch to the turn's disposable draft through resolver code. No tool ever writes committed state, a save, or a file; an authoring tool may apply a typed patch to its in-memory draft.
 - NiceGUI reflects session state only. Keep domain logic out of the UI package and update refreshable views. A panel only renders state and submits typed decisions.
 - Keep each role's model, endpoint, retries, token budget, and reasoning level in one config module.
 
