@@ -121,9 +121,33 @@ diverges on is now the honest short list; the rest is implemented as printed.
   `instructions/cairn2e` regenerated. The `turn_plan`/`turn_beat` schemas did not move — every new
   call rides the generic `RuleCall`.
 
+### Drastic simplification — Cairn 2e deleted, wire contract cut to the bone (2026-08-17)
+
+Deliberate reversal of scope, not a loss: Cairn's procedural mechanics wrapped the codebase to
+their image the way 5e's once did. Four commits (`848d371`, `c9bbbe5`, `147c45f`, plus
+stragglers), every one green on all four suites.
+
+- **Cairn 2e deleted entirely**: the package (~1,600 lines, more than Loner + 24XX combined),
+  `tests/cairn2e/`, `docs/CAIRN-2E.md`, its fixtures, the whispering-vault overlay, Kael's sheet.
+  With it went the only overrides of `SheetEngine.apply`/`check_overlay` and the whole time
+  machinery (`day`, `mending`, `pass-time`) — and most of the remaining deviation ledger.
+- **`DirectorPlan` deleted**; `DirectorBeat(roll, effects)` is the one wire type for director,
+  beat, and settle stages. `focus` and `speaker_id` gone: the narrator composes from the player's
+  prompt, the scene, and the evidence — `check_speaker`, `voice()`, and the SPEAKER prompt
+  section went with them. `schemas/turn_plan.json` deleted (was byte-identical to `turn_beat`).
+- **`why` deleted from all four effects** (`trait-change`, `relation-change`, `advance-thread`,
+  `counter-change`): the mechanical trace stands alone as narrator evidence. `explained()` died;
+  `explained_fact` stays for the advancement subsystems' `proposal.why`. `TraitChange.text`
+  deliberately kept — it is state, not narration.
+- **`counter-change` investigated and kept**: Loner's luck reset/hazards and 24XX's credits are
+  fiction-driven ledger moves no roll owns; cutting it would force worse machinery.
+- `SAVE_VERSION` 65 → 67 (one bump per byte-moving commit); `save`/`state`/`turn`/`prompts`/
+  `instructions` regenerated each time, diffs read. `tests/core/test_golden_state.py` carries its
+  own `FIXTURE_SAVE_VERSION` pin — bump both or the suite catches you.
+
 ## Next
 
 - The live probe of the shrunk contract: one real turn per engine, and one try of `NativeOutput`.
 - PLAN.md Phase 2: the scenario creator.
-- Close the Cairn 2e, Loner 3e, 24XX fidelity deviations, per their docs' "Deviations in this
-  repo" sections.
+- Close the Loner 3e and 24XX fidelity deviations, per their docs' "Deviations in this repo"
+  sections.
