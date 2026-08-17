@@ -2,7 +2,10 @@ import json
 from collections.abc import Callable, Iterable, Mapping, Sequence
 from pathlib import Path
 
-from aidm.engines.loader import Engine, EntityRenderer, Offer, engine_text
+from aidm.content.store import engine_text
+from aidm.engines.advancement import Offer
+from aidm.engines.loader import Engine, EntityRenderer
+from aidm.engines.sheets import SheetBase
 from aidm.state.base import Entity, EntityId, Trait
 from aidm.state.world import GameState, Memory, ScenarioMeta, Thread
 
@@ -15,6 +18,7 @@ def render_director(
     scenario: ScenarioMeta,
     prompt: str,
     happened: str = "",
+    preface: str = "",
 ) -> str:
     # The Director writes no prose, so the canon side leaks nothing by reaching it.
     canon = (
@@ -28,12 +32,14 @@ def render_director(
     )
     # The scene is already the one the earlier beats left behind, so what happened comes last.
     so_far = (("WHAT JUST HAPPENED", happened),) if happened else ()
+    again = (("ASKED AGAIN", preface),) if preface else ()
     return _sections(
         (
             *_scene_sections(scene, describe, scenario, ids=True),
             *canon,
             ("PLAYER ACTION", prompt),
             *so_far,
+            *again,
         )
     )
 
@@ -80,7 +86,7 @@ def render_worldkeeper(
     )
 
 
-def render_proposal(engine: Engine, state: GameState, offer: Offer, intent: str) -> str:
+def render_proposal(engine: Engine[SheetBase], state: GameState, offer: Offer, intent: str) -> str:
     subject = state.world.require(offer.subject_id)
     sections = (
         ("ON OFFER", offer.prompt),
@@ -243,8 +249,8 @@ def _with_state(line: str, state: str, indent: str = "") -> str:
 _PROMPTS_DIR = Path(__file__).parent / "prompts"
 
 DIRECTOR = engine_text(_PROMPTS_DIR / "director.md")
-# Not roles of their own: the Director's mid-turn prefaces, prepended to DIRECTOR for the two
-# continuation stages.
+# Not roles of their own: the Director's mid-turn framing, rendered into the prompt's own
+# ASKED AGAIN section rather than prepended to its instructions.
 BEAT = engine_text(_PROMPTS_DIR / "beat.md")
 SETTLE = engine_text(_PROMPTS_DIR / "settle.md")
 CORE_ADVISOR = engine_text(_PROMPTS_DIR / "core_advisor.md")

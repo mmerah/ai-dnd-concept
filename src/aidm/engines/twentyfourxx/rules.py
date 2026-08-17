@@ -1,8 +1,8 @@
 from pathlib import Path
 from random import Random
 
+from aidm.engines.loader import Engine
 from aidm.engines.packs import load_packs, pack_paths
-from aidm.engines.sheet_engine import SheetEngine
 from aidm.engines.sheets import resolved_threads
 from aidm.state.base import Counter, EngineId, Entity, Frozen
 from aidm.state.plan import Resolution
@@ -17,7 +17,7 @@ from .pack import Pack
 ENGINE_ID: EngineId = EngineId("twentyfourxx")
 
 
-class TwentyfourxxEngine(SheetEngine[Sheet]):
+class TwentyfourxxEngine(Engine[Sheet]):
     id = ENGINE_ID
     badge = ("24XX", "indigo-7")
     engine_dir = Path(__file__).parent
@@ -28,7 +28,7 @@ class TwentyfourxxEngine(SheetEngine[Sheet]):
     def __init__(self, extra_packs: Path | None = None) -> None:
         super().__init__(extra_packs)
         self.packs = load_packs(pack_paths(self.engine_dir / "packs", extra_packs), Pack)
-        self.subsystems = (TwentyfourxxAdvancement(self.engine_dir),)
+        self.advancement = TwentyfourxxAdvancement(self.engine_dir)
         self.creation = TwentyfourxxCreation(self.packs)
 
     def new_sheet(self, draft: GameState, rng: Random) -> Sheet:

@@ -1,13 +1,11 @@
-from typing import Annotated, Literal, Protocol, Self
+from typing import Annotated, Literal, Self
 
 from pydantic import Field, model_validator
 
 from aidm.state.base import Counter, Entity, EntityId, Frozen, Slug
 from aidm.state.facts import Fact, explained_fact
 
-
-class Pools(Protocol):
-    def counters(self) -> dict[Slug, Counter]: ...
+from .sheets import SheetBase
 
 
 class CounterChange(Frozen):
@@ -56,13 +54,13 @@ def adjust(entity: Entity, key: str, counter: Counter, amount: int, why: str) ->
     return [counter_fact(entity, key, counter, landed, why)]
 
 
-def spend(entity: Entity, key: str, counter: Counter, amount: int, why: str) -> list[Fact]:
+def spend(entity: Entity, key: str, counter: Counter, amount: int) -> list[Fact]:
     if counter.current < amount:
         raise ValueError(
             f"{entity.name} holds {counter.current} {key}, so {amount} cannot be spent."
         )
     counter.current -= amount
-    return [counter_fact(entity, key, counter, -amount, why or f"spent {key}")]
+    return [counter_fact(entity, key, counter, -amount, f"spent {key}")]
 
 
 def counter_fact(entity: Entity, key: str, counter: Counter, delta: int, why: str) -> Fact:
@@ -75,11 +73,11 @@ def render_counters(counters: dict[Slug, Counter]) -> str:
     return ", ".join(f"{key} {pool(counters[key])}" for key in sorted(counters))
 
 
-def move_pool(sheet: Pools | None, entity: Entity, effect: CounterChange) -> list[Fact]:
+def move_pool(sheet: SheetBase | None, entity: Entity, effect: CounterChange) -> list[Fact]:
     counter = None if sheet is None else sheet.counters().get(effect.counter)
     if counter is None:
         known = ", ".join(sorted(sheet.counters())) if sheet else "(none)"
         raise ValueError(f"{entity.name} has no pool {effect.counter!r}. Their pools are: {known}")
     if effect.mode == "adjust":
         return adjust(entity, effect.counter, counter, effect.amount, "")
-    return spend(entity, effect.counter, counter, effect.amount, "")
+    return spend(entity, effect.counter, counter, effect.amount)

@@ -4,22 +4,23 @@ import pytest
 from core_test_support import SCENARIOS
 from loner3e_test_support import LONER3E
 
-from aidm.app.session import begin_game
+from aidm.app.session import begin_game, build_engine
 from aidm.content.store import load_character, load_scenario, write_character
+from aidm.engines.loader import Engine
 from aidm.engines.loner3e.mechanics import LUCK_MAX, Mechanics
-from aidm.engines.loner3e.rules import Loner3eEngine
+from aidm.engines.sheets import SheetBase
 from aidm.state.base import PLAYER_ID
 from aidm.state.creation import Picks
 
 
-def _creation(engine: Loner3eEngine):
+def _creation(engine: Engine[SheetBase]):
     creation = engine.creation
     assert creation is not None
     return creation
 
 
 def test_a_created_character_plays_through_the_authored_load_path(tmp_path: Path) -> None:
-    engine = Loner3eEngine()
+    engine = build_engine(LONER3E)
     creation = _creation(engine)
     picks: Picks = {
         "pack": ("srd",),
@@ -43,7 +44,7 @@ def test_a_created_character_plays_through_the_authored_load_path(tmp_path: Path
 
 
 def test_an_illegal_pick_set_is_refused_with_the_reason(tmp_path: Path) -> None:
-    creation = _creation(Loner3eEngine())
+    creation = _creation(build_engine(LONER3E))
     chosen: Picks = {"pack": ("srd",)}
     legal: Picks = {
         step.id: chosen.get(step.id, tuple(option.id for option in step.options[: step.choose]))

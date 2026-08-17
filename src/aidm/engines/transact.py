@@ -9,6 +9,7 @@ from aidm.state.plan import Followup, Resolution
 from aidm.state.world import GameState
 
 from .loader import Engine
+from .sheets import SheetBase
 
 
 @dataclass(frozen=True, slots=True)
@@ -27,7 +28,7 @@ class Transacted:
 
 
 def transact(
-    engine: Engine,
+    engine: Engine[SheetBase],
     draft: GameState,
     resolve: Callable[[GameState], Resolution],
     rng: Random,
@@ -46,7 +47,9 @@ def transact(
     )
 
 
-def _seed_created(engine: Engine, draft: GameState, facts: Sequence[Fact], rng: Random) -> None:
+def _seed_created(
+    engine: Engine[SheetBase], draft: GameState, facts: Sequence[Fact], rng: Random
+) -> None:
     """Whoever created an entity this turn."""
     for fact in facts:
         created = fact.data.get("entity_id") if fact.kind == "entity_created" else None

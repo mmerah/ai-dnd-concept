@@ -1,8 +1,8 @@
 from pathlib import Path
 from random import Random
 
+from aidm.engines.loader import Engine
 from aidm.engines.packs import load_packs, pack_paths
-from aidm.engines.sheet_engine import SheetEngine
 from aidm.engines.sheets import resolved_threads
 from aidm.state.base import PLAYER_ID, Counter, EngineId, Entity, Frozen
 from aidm.state.plan import Resolution
@@ -17,7 +17,7 @@ from .pack import Pack, twist_table
 ENGINE_ID: EngineId = EngineId("loner3e")
 
 
-class Loner3eEngine(SheetEngine[Sheet]):
+class Loner3eEngine(Engine[Sheet]):
     id = ENGINE_ID
     badge = ("LONER 3E", "teal-7")
     engine_dir = Path(__file__).parent
@@ -28,7 +28,7 @@ class Loner3eEngine(SheetEngine[Sheet]):
     def __init__(self, extra_packs: Path | None = None) -> None:
         super().__init__(extra_packs)
         self.packs = load_packs(pack_paths(self.engine_dir / "packs", extra_packs), Pack)
-        self.subsystems = (Loner3eAdvancement(self.engine_dir),)
+        self.advancement = Loner3eAdvancement(self.engine_dir)
         self.creation = Loner3eCreation(self.packs)
 
     def check_mechanics(self, state: GameState) -> None:

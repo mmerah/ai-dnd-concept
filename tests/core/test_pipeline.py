@@ -1,11 +1,9 @@
-import json
 from random import Random
 
 import pytest
 from core_test_support import (
     TWENTYFOURXX,
     answered,
-    beat,
     call,
     game,
     initialized,
@@ -17,13 +15,7 @@ from core_test_support import (
     structured,
     text,
 )
-from pydantic_ai.messages import (
-    ModelMessage,
-    ModelRequest,
-    ModelResponse,
-    RetryPromptPart,
-    ToolCallPart,
-)
+from pydantic_ai.messages import ModelMessage, ModelRequest, ModelResponse, RetryPromptPart
 from pydantic_ai.models.function import AgentInfo, FunctionModel
 
 from aidm.engines.loner3e.actions import outcome_for
@@ -32,7 +24,6 @@ from aidm.state.base import PLAYER_ID, Counter, EntityId
 from aidm.state.plan import DirectorBeat
 from aidm.state.world import Hook, HookMatch, Memory, Thread
 from aidm.turn.pipeline import TURN_STEPS
-from aidm.turn.roles import ChannelSafeModel
 
 QUIET_STEPS = ("director", "resolve", "hooks", "narrator", "worldkeeper")
 ASKED = call(
@@ -88,7 +79,7 @@ async def test_the_engine_rolls_the_outcome_the_facts_then_record() -> None:
         engine,
         state,
         "I plead with the door.",
-        director=FunctionModel(scripted(plan(roll=ASKED))),
+        director=FunctionModel(scripted(plan(roll=ASKED), plan())),
         narrator=FunctionModel(scripted(text("You falter."))),
         rng=Random(2),
     )
@@ -123,10 +114,10 @@ async def test_a_later_beat_walks_the_way_the_first_one_opened() -> None:
                             target="bell_tower",
                         ),
                     ],
-                )
+                ),
+                plan(effects=[onward]),
             )
         ),
-        beats=FunctionModel(scripted(beat(effects=[onward]))),
     )
 
     assert result.state.player.parent_id == "bell_tower"
@@ -146,15 +137,16 @@ async def test_the_loop_stops_at_max_beats_and_still_gets_its_settle_pass() -> N
     """The cap cuts the rolling short; the last roll still reaches the Director as a settle beat,
     which may write what it caused but may not roll again."""
     engine, state = initialized()
-    asked = beat(roll=ASKED)
-    # Two rolling continuations only: a third call would run the script dry and fail the turn.
+    asked = plan(roll=ASKED)
+    # Two rolling continuations, then the settle pass: a fifth call would run the script dry and
+    # fail the turn.
     result = await played(
         engine,
         state,
         "I keep working at the seal.",
-        director=FunctionModel(scripted(plan(roll=ASKED))),
-        beats=FunctionModel(scripted(asked, asked)),
-        settle=FunctionModel(scripted(beat(effects=[call("reveal", entity_id="vault")]))),
+        director=FunctionModel(
+            scripted(asked, asked, asked, plan(effects=[call("reveal", entity_id="vault")]))
+        ),
     )
 
     assert settings().max_beats == 3
@@ -182,11 +174,10 @@ async def test_a_roll_that_settles_the_turn_still_gets_its_last_beat() -> None:
         "I listen at the door.",
         director=FunctionModel(
             scripted(
-                plan(roll=call("luck-test", actor_id="player", subject="a patrol wandering by"))
+                plan(roll=call("luck-test", actor_id="player", subject="a patrol wandering by")),
+                plan(effects=[call("reveal", entity_id="vault")]),
             )
         ),
-        beats=FunctionModel(scripted(beat(roll=ASKED))),
-        settle=FunctionModel(scripted(beat(effects=[call("reveal", entity_id="vault")]))),
         rng=Random(2),
     )
 
@@ -208,9 +199,15 @@ async def test_a_settle_beat_that_rolls_again_is_refused() -> None:
         engine,
         state,
         "I keep working at the seal.",
-        director=FunctionModel(scripted(plan(roll=ASKED))),
-        beats=FunctionModel(scripted(beat(roll=ASKED), beat(roll=ASKED))),
-        settle=FunctionModel(scripted(beat(roll=ASKED), beat())),
+        director=FunctionModel(
+            scripted(
+                plan(roll=ASKED),  # director
+                plan(roll=ASKED),  # beat-1
+                plan(roll=ASKED),  # beat-2
+                plan(roll=ASKED),  # beat-3, attempt 1: refused, the settle pass may not roll
+                plan(),  # beat-3, attempt 2
+            )
+        ),
     )
 
     assert [step.name for step in result.turn.steps].count("beat-3") == 1
@@ -220,9 +217,15 @@ async def test_a_settle_beat_that_rolls_again_is_refused() -> None:
 async def test_a_beat_that_fails_discards_what_the_beats_before_it_did() -> None:
     engine, state = initialized()
     before = state.model_dump_json()
+    first = plan(roll=ASKED, effects=[call("move", entity_id="vault_map")])
+    calls = 0
 
-    def boom(messages: list[ModelMessage], info: AgentInfo) -> ModelResponse:
+    def stub(messages: list[ModelMessage], info: AgentInfo) -> ModelResponse:
         del messages, info
+        nonlocal calls
+        calls += 1
+        if calls == 1:
+            return first
         raise RuntimeError("the beat exploded")
 
     with pytest.raises(RuntimeError, match="the beat exploded"):
@@ -230,41 +233,11 @@ async def test_a_beat_that_fails_discards_what_the_beats_before_it_did() -> None
             engine,
             state,
             "I take the map and read it.",
-            director=FunctionModel(
-                scripted(plan(roll=ASKED, effects=[call("move", entity_id="vault_map")]))
-            ),
-            beats=FunctionModel(boom),
+            director=FunctionModel(stub),
         )
 
     assert state.model_dump_json() == before
     assert state.world.require(EntityId("vault_map")).parent_id != PLAYER_ID
-
-
-async def test_a_plan_answered_as_plain_text_is_asked_again_for_the_tool_call() -> None:
-    """Accepting prose as well would cost `tool_choice: required`, and gpt-oss needs it."""
-    engine, state = initialized()
-    spoken = 'Here is the plan:\n{"effects": []}'
-    director = FunctionModel(scripted(text(spoken), plan()))
-    result = await played(engine, state, "I wait.", director=director)
-
-    assert answered(result.turn, "director")["effects"] == []
-    assert result.turn.facts == ()
-
-
-async def test_a_tool_call_with_a_channel_marker_in_its_name_still_lands() -> None:
-    engine, state = initialized()
-    marked = ModelResponse(
-        parts=[
-            ToolCallPart(
-                tool_name="turn_plan<|channel|>json",
-                args=json.dumps({"effects": []}),
-            )
-        ]
-    )
-    director = ChannelSafeModel(FunctionModel(scripted(marked)))
-    result = await played(engine, state, "I wait.", director=director)
-
-    assert answered(result.turn, "director")["effects"] == []
 
 
 async def test_an_illegal_plan_is_retried_with_the_reason() -> None:

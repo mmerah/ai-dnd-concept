@@ -1,37 +1,14 @@
-import json
 from collections.abc import Callable
-from typing import Literal, cast
+from typing import Literal
 
-from pydantic import Field, JsonValue, ValidationError, model_validator
+from pydantic import Field, JsonValue, ValidationError
 
 from .base import Frozen, Slug
 from .facts import Fact
 from .world import GameState
 
 
-class Authored(Frozen):
-    """Anything the Director writes: one turn's framing, one of its beats, or a call inside one."""
-
-    @model_validator(mode="before")
-    @classmethod
-    def _decode_stringified_fields(cls, data: object) -> object:
-        """Some backends serialize a tool call's nested arguments as JSON; the payload is valid."""
-        if not isinstance(data, dict):
-            return data
-        decoded = cast("dict[object, object]", data).copy()
-        for key, value in decoded.items():
-            if not isinstance(value, str) or value[:1] not in "{[":
-                continue
-            try:
-                loaded = json.loads(value)
-            except ValueError:
-                continue
-            if isinstance(loaded, (dict, list)):
-                decoded[key] = loaded
-        return decoded
-
-
-class RuleCall(Authored):
+class RuleCall(Frozen):
     """One call into the engine's vocabulary: what is called, and what it is called with."""
 
     name: Slug = Field(description="Exact name of the call, as the vocabulary below spells it.")
@@ -42,7 +19,7 @@ class RuleCall(Authored):
     )
 
 
-class DirectorBeat(Authored):
+class DirectorBeat(Frozen):
     """One thing put to the dice and what it causes. A turn is one beat, or several when what the
     dice settled asks for another."""
 

@@ -80,7 +80,7 @@ def test_a_trace_round_trips_its_turn_and_applied_entries(tmp_path: Path) -> Non
             StepTrace(name="resolve", output=narrator_evidence(facts)),
         ),
     )
-    applied = Applied(capability="advancement", subject_id=PLAYER_ID, facts=facts)
+    applied = Applied(subject_id=PLAYER_ID, facts=facts)
 
     store.append_trace("poc", turn)
     store.append_trace("poc", applied)

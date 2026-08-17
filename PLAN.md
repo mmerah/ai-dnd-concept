@@ -26,8 +26,8 @@ basedpyright` green after every numbered step, one commit per step.
 
 ## Phase 1 — One small Director contract
 
-Shipped in full; see PROGRESS.md. The live probe of the shrunk contract (working rule 2) is
-still owed: one real turn per engine, and one try of `NativeOutput`.
+Shipped in full; see PROGRESS.md. The live probe passed (2026-08-17): the shrunk contract runs
+under `NativeOutput`, and the `ToolOutput`-era shims are deleted.
 
 ## Phase 2 — Scenario creator (~3–4 days)
 

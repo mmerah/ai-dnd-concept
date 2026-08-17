@@ -39,11 +39,13 @@ def translate(beat: DirectorBeat, actions: Mapping[Slug, type[Frozen]]) -> Typed
     """Authored examples come through here too, so prose and the wire share one gate."""
     return TypedBeat(
         roll=None if beat.roll is None else _roll(beat.roll, actions),
-        # Spread last: an `op` smuggled into `args` must not rename the call.
-        effects=tuple(
-            EFFECTS.validate_python({**call.args, "op": call.name}) for call in beat.effects
-        ),
+        effects=tuple(translate_effect(call) for call in beat.effects),
     )
+
+
+def translate_effect(call: RuleCall) -> EngineEffect:
+    # Spread last: an `op` smuggled into `args` must not rename the call.
+    return EFFECTS.validate_python({**call.args, "op": call.name})
 
 
 def _roll(call: RuleCall, actions: Mapping[Slug, type[Frozen]]) -> Frozen:

@@ -2,7 +2,7 @@ from typing import Annotated, Literal
 
 from pydantic import Field, JsonValue
 
-from .base import SAVE_VERSION, EntityDetail, EntityId, Frozen, Kind, Slug
+from .base import SAVE_VERSION, EntityDetail, EntityId, Frozen, Kind
 from .effects import AdvanceThread
 from .facts import Fact
 
@@ -58,10 +58,9 @@ class Turn(TraceEntryBase):
 
 
 class Applied(TraceEntryBase):
-    """One subsystem change: the same transaction as a turn, without a prompt or a narration."""
+    """One advancement change: the same transaction as a turn, without a prompt or a narration."""
 
-    entry: Literal["subsystem"] = "subsystem"
-    capability: Slug
+    entry: Literal["advancement"] = "advancement"
     subject_id: EntityId
 
 

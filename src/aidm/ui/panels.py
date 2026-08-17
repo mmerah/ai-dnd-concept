@@ -5,7 +5,6 @@ from contextlib import contextmanager
 from nicegui import ui
 
 from aidm.app.session import Drafted, GameSession, Offer
-from aidm.state.base import Slug
 from aidm.state.facts import Fact
 from aidm.state.turn import Applied, StepTrace, TraceEntry, Turn
 
@@ -59,8 +58,8 @@ def trace_panel(session: GameSession) -> None:
             case Turn(prompt=prompt):
                 turns += 1
                 titles.append(f"turn {turns}: {prompt}")
-            case Applied(capability=capability):
-                titles.append(f"after turn {turns}: {capability}")
+            case Applied(entry=entry_kind):
+                titles.append(f"after turn {turns}: {entry_kind}")
     for index, entry in reversed(list(enumerate(entries))):
         with ui.expansion(titles[index], value=index == len(entries) - 1):
             _entry_trace(entry)
@@ -73,8 +72,8 @@ def _section(title: str, body: str) -> None:
 
 def _entry_trace(entry: TraceEntry) -> None:
     match entry:
-        case Applied(capability=capability, facts=facts):
-            _section(capability.upper(), _facts(facts))
+        case Applied(entry=entry_kind, facts=facts):
+            _section(entry_kind.upper(), _facts(facts))
         case Turn():
             _turn_trace(entry)
 
@@ -105,19 +104,18 @@ def _facts(facts: Sequence[Fact]) -> str:
     return "\n".join(lines) or "- (none)"
 
 
-def subsystem_panel(session: GameSession, capability: Slug, refresh: Callable[[], None]) -> None:
-    """One panel for every subsystem of every engine."""
-    drafted = session.drafted.get(capability)
-    if drafted is not None:
-        _review(session, capability, drafted, refresh)
+def advancement_panel(session: GameSession, refresh: Callable[[], None]) -> None:
+    """The one advancement panel; shown only when the engine plugs in a growth mechanic."""
+    if session.drafted is not None:
+        _review(session, session.drafted, refresh)
         return
-    offers = session.offers(capability)
+    offers = session.offers()
     if not offers:
         ui.label("Nothing is on offer.").classes("opacity-70")
         return
     for offer in offers:
         _summary(offer)
-        _intent_form(session, capability, offer, refresh)
+        _intent_form(session, offer, refresh)
 
 
 def _summary(offer: Offer) -> None:
@@ -126,9 +124,7 @@ def _summary(offer: Offer) -> None:
         ui.label(offer.text).classes("text-sm opacity-70 whitespace-pre-wrap")
 
 
-def _intent_form(
-    session: GameSession, capability: Slug, offer: Offer, refresh: Callable[[], None]
-) -> None:
+def _intent_form(session: GameSession, offer: Offer, refresh: Callable[[], None]) -> None:
     box = ui.textarea("How do you want to grow?").classes("w-full mt-3").props("outlined")
 
     async def propose() -> None:
@@ -140,20 +136,16 @@ def _intent_form(
         if refuse_if_busy(session):
             return
         async with working(session):
-            session.drafted[capability] = Drafted(
-                offer=offer, proposal=await session.propose(capability, offer, intent)
-            )
+            session.drafted = Drafted(offer=offer, proposal=await session.propose(offer, intent))
         refresh()
 
     ui.button("Propose", on_click=propose).props("color=primary")
 
 
-def _review(
-    session: GameSession, capability: Slug, drafted: Drafted, refresh: Callable[[], None]
-) -> None:
+def _review(session: GameSession, drafted: Drafted, refresh: Callable[[], None]) -> None:
     ui.label("Proposed changes").classes("text-sm font-bold mt-3")
     try:
-        lines = [f"- {fact.trace}" for fact in session.preview(capability, drafted)]
+        lines = [f"- {fact.trace}" for fact in session.preview(drafted)]
     except ValueError as stale:
         # A turn since the proposal may have changed the character from under the draft.
         lines = [f"This proposal no longer applies: {stale}. Discard it and propose again."]
@@ -161,18 +153,18 @@ def _review(
         ui.label(line).classes("text-sm whitespace-pre-wrap")
 
     def discard() -> None:
-        _ = session.drafted.pop(capability, None)
+        session.drafted = None
         refresh()
 
     def confirm() -> None:
         if refuse_if_busy(session):
             return
         try:
-            _ = session.apply_proposal(capability, drafted)
+            _ = session.apply_proposal(drafted)
         except ValueError as error:
             ui.notify(str(error), type="negative", multi_line=True)
             return
-        _ = session.drafted.pop(capability, None)
+        session.drafted = None
         refresh()
 
     with ui.row().classes("w-full mt-3").style("gap: 0.75rem"):

@@ -4,34 +4,28 @@ import pytest
 from core_test_support import initialized
 
 from aidm.app.session import build_engine
-from aidm.engines.counters import CounterChange
 from aidm.engines.loader import Engine, engines
 from aidm.engines.loner3e.actions import Question
 from aidm.engines.loner3e.mechanics import LUCK_MAX, Mechanics, Sheet
 from aidm.engines.loner3e.rules import Loner3eEngine
-from aidm.engines.sheet_engine import SheetEngine
+from aidm.engines.sheets import SheetBase
 from aidm.state.base import PLAYER_ID, EngineId, Entity, EntityId, Frozen
-from aidm.state.effects import Move
 from aidm.state.facts import Fact
-from aidm.state.plan import Resolution
+from aidm.state.plan import Resolution, RuleCall
 from aidm.state.world import GameState
 
 
-def _turn(engine: Engine, state: GameState) -> tuple[GameState, tuple[Fact, ...]]:
+def _turn(engine: Engine[SheetBase], state: GameState) -> tuple[GameState, tuple[Fact, ...]]:
     draft = state.draft()
-    effects: tuple[Frozen, ...] = (
-        Move(entity_id=EntityId("vault_map")),
-        CounterChange(
-            mode="adjust",
-            entity_id=PLAYER_ID,
-            counter="luck",
-            amount=-1,
+    calls = (
+        RuleCall(name="move", args={"entity_id": "vault_map"}),
+        RuleCall(
+            name="counter-change",
+            args={"mode": "adjust", "entity_id": PLAYER_ID, "counter": "luck", "amount": -1},
         ),
     )
     facts = [
-        fact
-        for effect in effects
-        for fact in engine.apply_effect(draft, effect.model_dump(mode="json"))
+        fact for call in calls for fact in engine.apply_effect(draft, call.model_dump(mode="json"))
     ]
     return draft.committed(), tuple(facts)
 
@@ -106,7 +100,7 @@ def test_a_created_actor_is_refused_until_the_engine_seeds_it() -> None:
 
 
 def test_a_sheet_engine_that_declares_nothing_is_refused_before_it_plays() -> None:
-    class Undeclared(SheetEngine[Sheet]):
+    class Undeclared(Engine[Sheet]):
         id = EngineId("undeclared")
         badge = ("UNDECLARED", "grey-6")
         engine_dir = Loner3eEngine.engine_dir

@@ -145,9 +145,37 @@ stragglers), every one green on all four suites.
   `instructions` regenerated each time, diffs read. `tests/core/test_golden_state.py` carries its
   own `FIXTURE_SAVE_VERSION` pin — bump both or the suite catches you.
 
+### Seat deletions — one Director stage, one Engine class, one effect shape (2026-08-17)
+
+The live probe passed (maintainer, real turns per engine), which unlocked `NativeOutput` and the
+deletion of every abstraction seat holding exactly one implementation. One commit, `SAVE_VERSION`
+67 → 68.
+
+- **One Director stage.** `beat_stage`/`settle_stage` deleted; the beat/settle prefaces moved from
+  instructions into the rendered prompt (an `ASKED AGAIN` section), and the settle no-roll rule is
+  a `PlanContext.settle` flag on the one validator. Instructions are now byte-identical across
+  every Director call of a turn — provider prompt caching applies to the ~15.7KB that matters —
+  and the per-engine `beat`/`settle` instruction fixtures (~32KB) are gone.
+- **`NativeOutput` everywhere.** The Director left `ToolOutput`; `ChannelSafeModel` and
+  `Authored._decode_stringified_fields` (both backend shims for tool-call quirks) deleted.
+- **`Engine` is one concrete class.** The abstract `Engine`/`SheetEngine` split had one subclass;
+  merged into `Engine[S: SheetBase]` in `engines/loader.py`, `sheet_engine.py` deleted.
+  `engine_text` moved to `content/store.py` to keep the import graph acyclic.
+- **`Subsystem` ABC folded into `ThreadAdvancement`.** `engine.subsystems: tuple` became
+  `advancement: ThreadAdvancement | None`; the session's capability-dict and the UI's tabs loop
+  went with it. The `Applied` trace entry dropped its constant `capability` field and its `entry`
+  literal became `"advancement"` — free inside this same save-version bump. A second out-of-band
+  capability re-earns the seat; combat never will — it is the turn loop.
+- **Hooks author the wire shape.** `Hook.effects` entries are `{"name", "args"}` like every
+  Director effect — one format for authors and for the Phase 2 creator agent. `translate_effect`
+  is the one gate both paths share; whispering-vault converted.
+- **Small deletions:** `roll_sum`, the `Pools` protocol (`move_pool` types against `SheetBase`),
+  `spend`'s dead `why` parameter.
+- Fixture movement was exactly the predicted set each step: save-version bytes, the `ASKED AGAIN`
+  section, deleted beat/settle instructions, hook envelopes in `state`/`save`. Nothing else moved.
+
 ## Next
 
-- The live probe of the shrunk contract: one real turn per engine, and one try of `NativeOutput`.
 - PLAN.md Phase 2: the scenario creator.
 - Close the Loner 3e and 24XX fidelity deviations, per their docs' "Deviations in this repo"
   sections.

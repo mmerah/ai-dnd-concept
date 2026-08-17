@@ -29,11 +29,11 @@ def test_adjust_clamps_to_the_counters_bounds_and_reports_only_a_real_move() -> 
 def test_spend_pays_the_pool_and_refuses_what_it_cannot_cover() -> None:
     counter = Counter(current=5, maximum=5)
 
-    (spent,) = spend(KAEL, "stress", counter, 2, "")
+    (spent,) = spend(KAEL, "stress", counter, 2)
     assert (spent.data["current"], counter.current) == (3, 3)
 
     with pytest.raises(ValueError, match="cannot be spent"):
-        _ = spend(KAEL, "stress", counter, 4, "")
+        _ = spend(KAEL, "stress", counter, 4)
 
 
 def test_counter_change_spend_requires_a_positive_amount() -> None:

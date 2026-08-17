@@ -5,7 +5,7 @@ from pathlib import Path
 from random import Random
 
 from pydantic import BaseModel, JsonValue, SecretStr
-from pydantic_ai.messages import ModelMessage, ModelResponse, TextPart, ToolCallPart
+from pydantic_ai.messages import ModelMessage, ModelResponse, TextPart
 from pydantic_ai.models import Model
 from pydantic_ai.models.function import AgentInfo, FunctionModel
 
@@ -13,7 +13,9 @@ from aidm.app.session import begin_game, build_engine
 from aidm.config import ProviderConfig, Providers, Settings
 from aidm.content.authored import Character, Scenario
 from aidm.content.store import load_character, load_scenario
-from aidm.engines.loader import Engine, Subsystem
+from aidm.engines.advancement import ThreadAdvancement
+from aidm.engines.loader import Engine
+from aidm.engines.sheets import SheetBase
 from aidm.state.base import EngineId, Entity
 from aidm.state.turn import Turn
 from aidm.state.world import GameState
@@ -48,7 +50,7 @@ def character() -> Character:
     return load_character(CHARACTERS, "kael", build_engine(LONER3E).binding())
 
 
-def game(engine_id: EngineId) -> tuple[Engine, GameState]:
+def game(engine_id: EngineId) -> tuple[Engine[SheetBase], GameState]:
     """The shipped scenario and character, composed under one engine."""
     engine = build_engine(engine_id)
     binding = engine.binding()
@@ -57,13 +59,14 @@ def game(engine_id: EngineId) -> tuple[Engine, GameState]:
     return engine, begin_game(engine, selected_scenario, selected_character)
 
 
-def initialized() -> tuple[Engine, GameState]:
+def initialized() -> tuple[Engine[SheetBase], GameState]:
     return game(LONER3E)
 
 
-def capability(engine: Engine) -> Subsystem:
+def capability(engine: Engine[SheetBase]) -> ThreadAdvancement:
     """The shipped engine grows its characters; a test that asks for the capability wants it."""
-    return engine.subsystems[0]
+    assert engine.advancement is not None
+    return engine.advancement
 
 
 def structured(**output: object) -> ModelResponse:
@@ -76,26 +79,10 @@ def call(name: str, **args: object) -> dict[str, object]:
 
 
 def plan(**output: object) -> ModelResponse:
-    """The director answers by calling the plan tool, as ToolOutput presents it."""
-    args = json.dumps({"effects": [], **output})
-    return ModelResponse(parts=[ToolCallPart(tool_name="turn_plan", args=args)])
-
-
-def beat(**output: object) -> ModelResponse:
-    """The same role asked again once the dice have settled: the plan's shape without framing."""
-    args = json.dumps({"effects": [], **output})
-    return ModelResponse(parts=[ToolCallPart(tool_name="turn_beat", args=args)])
-
-
-def ends_the_turn() -> Stub:
-    """The continuation a turn gets when a test is not about the loop: it adds nothing."""
-    quiet = beat()
-
-    def stub(messages: list[ModelMessage], info: AgentInfo) -> ModelResponse:
-        del messages, info
-        return quiet
-
-    return stub
+    """The director answers a `DirectorBeat`, as `NativeOutput` presents it — the same shape for
+    the turn's first ask and every later beat."""
+    body: dict[str, object] = {"effects": [], **output}
+    return structured(**body)
 
 
 def text(body: str) -> ModelResponse:
@@ -125,26 +112,24 @@ def answered(turn: Turn, name: str) -> dict[str, JsonValue]:
 
 
 async def played(
-    engine: Engine,
+    engine: Engine[SheetBase],
     state: GameState,
     prompt: str,
     *,
     director: Model,
-    beats: Model | None = None,
-    settle: Model | None = None,
     narrator: Model | None = None,
     worldkeeper: Model | None = None,
     rng: Random | None = None,
     on_step: Callable[[str], None] | None = None,
 ) -> TurnResult:
-    """The turn with every role stubbed, built the way the session builds it."""
+    """The turn with every role stubbed, built the way the session builds it. One Director model
+    now answers the turn's first ask and every later beat, so a script that rolls must script its
+    own continuation too."""
     config = settings()
     stages = build_stages(engine, config)
-    roles = (stages.director, stages.beat, stages.settle, stages.narrator, stages.worldkeeper)
+    roles = (stages.director, stages.narrator, stages.worldkeeper)
     models = (
         director,
-        beats or FunctionModel(ends_the_turn()),
-        settle or FunctionModel(ends_the_turn()),
         narrator or FunctionModel(scripted(text("You wait."))),
         worldkeeper or FunctionModel(scripted(structured(creations=[]))),
     )

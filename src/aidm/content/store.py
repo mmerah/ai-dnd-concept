@@ -105,6 +105,13 @@ def _read[T: BaseModel](path: Path, model: type[T]) -> T:
     return model.model_validate_json(path.read_text(encoding=ENCODING))
 
 
+def engine_text(path: Path) -> str:
+    """In content so `engines.loader` and `engines.advancement` share it without a cycle."""
+    if not path.is_file():
+        raise ValueError(f"engine file {str(path)!r} is missing")
+    return path.read_text(encoding=ENCODING)
+
+
 def _require_save_version(stored: int, what: str) -> None:
     if stored != SAVE_VERSION:
         raise ValueError(f"{what} is version {stored}, this build needs {SAVE_VERSION}")

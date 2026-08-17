@@ -5,7 +5,6 @@ import pytest
 from core_test_support import (
     LONER3E,
     TWENTYFOURXX,
-    beat,
     call,
     game,
     plan,
@@ -50,7 +49,7 @@ CREATIONS = [
 ]
 TURN_STEPS = ("director", "beat-1", "resolve", "hooks", "narrator", "worldkeeper")
 # What the second beat writes once the roll has landed: the same shape under every engine.
-SECOND_BEAT = beat(
+SECOND_BEAT = plan(
     effects=[
         call(
             "trait-change",
@@ -105,9 +104,7 @@ async def _played(engine_id: EngineId) -> TurnResult:
         engine,
         _behind(state),
         PROMPT,
-        director=FunctionModel(scripted(SCRIPTS[engine_id])),
-        beats=FunctionModel(scripted(SECOND_BEAT)),
-        settle=FunctionModel(scripted(SECOND_BEAT)),
+        director=FunctionModel(scripted(SCRIPTS[engine_id], SECOND_BEAT)),
         narrator=FunctionModel(scripted(text(NARRATION))),
         worldkeeper=FunctionModel(scripted(structured(creations=CREATIONS))),
         rng=Random(SEED),

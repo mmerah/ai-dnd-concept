@@ -2,9 +2,8 @@ from random import Random
 
 from pydantic import Field
 
-from aidm.engines.advancement import ThreadAdvancement
+from aidm.engines.advancement import ProposalBase, ThreadAdvancement
 from aidm.engines.counters import adjust
-from aidm.engines.loader import ProposalBase
 from aidm.state.base import Counter, EntityId
 from aidm.state.dice import roll_pool
 from aidm.state.facts import Fact, explained_fact

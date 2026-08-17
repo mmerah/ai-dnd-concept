@@ -115,7 +115,8 @@ class Hook(Frozen):
 
     id: Slug
     match: HookMatch
-    # The engine's own vocabulary, parsed by the engine at load and at fire time.
+    # The engine's own vocabulary, in the Director's own wire shape ({"name", "args"}), parsed by
+    # the engine at load and at fire time.
     effects: tuple[JsonValue, ...] = ()
     note: str = ""
     once: bool = True

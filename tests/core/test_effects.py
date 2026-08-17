@@ -196,7 +196,7 @@ def test_a_hook_that_fills_a_clock_fires_the_filled_clock_hook_in_the_same_pass(
             id="ticker",
             once=False,
             match=HookMatch(kind="entity_discovered"),
-            effects=({"op": "advance-thread", "thread_id": "trial", "tick": 1},),
+            effects=({"name": "advance-thread", "args": {"thread_id": "trial", "tick": 1}},),
         ),
         Hook(
             id="finale",
@@ -216,6 +216,23 @@ def test_a_hook_that_fills_a_clock_fires_the_filled_clock_hook_in_the_same_pass(
         "thread_advanced",
         "hook_fired",
     ]
+
+
+def test_a_hook_effect_the_vocabulary_does_not_take_lands_as_hook_failed() -> None:
+    engine, state = initialized()
+    draft = state.draft()
+    draft.world.hooks = (
+        Hook(
+            id="broken",
+            match=HookMatch(kind="entity_discovered"),
+            effects=({"name": "no-such-call", "args": {}},),
+        ),
+    )
+
+    seen = apply_effect(draft, Reveal(entity_id=VAULT_MAP))
+    fired = fire_hooks(draft, seen, engine.apply_effect)
+
+    assert [fact.kind for fact in fired] == ["hook_fired", "hook_failed"]
 
 
 def test_hooks_that_feed_each_other_stop_at_the_round_cap() -> None:

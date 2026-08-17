@@ -38,9 +38,10 @@ async def test_an_illegal_proposal_is_retried_with_the_engines_reason(tmp_path: 
     game = loner3e_session(tmp_path)
     game.state = at_milestone(game.state)
 
-    offer = game.offers("advancement")[0]
-    with game.subsystem_advisors["advancement"].agent.override(model=_answers(ILLEGAL, LEGAL)):
-        proposal = await game.propose("advancement", offer, "Kael has learned to trust his rope.")
+    offer = game.offers()[0]
+    assert game.advisor is not None
+    with game.advisor.agent.override(model=_answers(ILLEGAL, LEGAL)):
+        proposal = await game.propose(offer, "Kael has learned to trust his rope.")
 
     assert proposal == LEGAL
     gear = game.state.mechanics_as(Mechanics).sheets[PLAYER_ID].gear
@@ -50,10 +51,10 @@ async def test_an_illegal_proposal_is_retried_with_the_engines_reason(tmp_path: 
 def test_confirming_commits_exactly_the_proposed_delta(tmp_path: Path) -> None:
     game = loner3e_session(tmp_path)
     game.state = at_milestone(game.state)
-    offer = game.offers("advancement")[0]
+    offer = game.offers()[0]
     drafted = Drafted(offer=offer, proposal=LEGAL)
 
-    facts = game.apply_proposal("advancement", drafted)
+    facts = game.apply_proposal(drafted)
 
     sheet = Mechanics.model_validate(game.state.mechanics).sheets[PLAYER_ID]
     assert (sheet.gear[-1], sheet.milestones.current) == ("Waxed Rope", 1)
@@ -61,13 +62,13 @@ def test_confirming_commits_exactly_the_proposed_delta(tmp_path: Path) -> None:
         "Kael gained gear Waxed Rope (he never climbs without it now)",
         "Kael milestones +1 -> 1 (a milestone spent)",
     ]
-    entry = Applied(entry="subsystem", capability="advancement", subject_id=PLAYER_ID, facts=facts)
+    entry = Applied(subject_id=PLAYER_ID, facts=facts)
     assert game.entries == [entry]
     assert FileStore(tmp_path).load_trace("poc") == (entry,)
     assert FileStore(tmp_path).load("poc") == game.state
-    assert game.offers("advancement") == ()
+    assert game.offers() == ()
     with pytest.raises(ValueError, match="no longer on offer"):
-        _ = game.apply_proposal("advancement", drafted)
+        _ = game.apply_proposal(drafted)
 
 
 def test_a_hook_matching_an_advancement_fact_fires_on_confirm(tmp_path: Path) -> None:
@@ -82,10 +83,10 @@ def test_a_hook_matching_an_advancement_fact_fires_on_confirm(tmp_path: Path) ->
         ),
     )
     game.state = draft.committed()
-    offer = game.offers("advancement")[0]
+    offer = game.offers()[0]
     drafted = Drafted(offer=offer, proposal=LEGAL)
 
-    facts = game.apply_proposal("advancement", drafted)
+    facts = game.apply_proposal(drafted)
 
     assert "hook_fired" in [fact.kind for fact in facts]
     assert game.state.world.pending_notes == ("Someone noticed the new gear; press on it.",)
@@ -95,11 +96,11 @@ def test_a_refused_proposal_leaves_the_committed_state_untouched(tmp_path: Path)
     game = loner3e_session(tmp_path)
     game.state = at_milestone(game.state)
     before = game.state.model_dump_json()
-    offer = game.offers("advancement")[0]
+    offer = game.offers()[0]
     drafted = Drafted(offer=offer, proposal=ILLEGAL)
 
     with pytest.raises(ValueError, match="carries no tag"):
-        _ = game.apply_proposal("advancement", drafted)
+        _ = game.apply_proposal(drafted)
 
     assert game.state.model_dump_json() == before
     assert game.entries == []

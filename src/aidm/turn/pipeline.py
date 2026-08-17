@@ -6,6 +6,7 @@ from pydantic import BaseModel
 
 from aidm.config import Settings
 from aidm.engines.loader import Engine
+from aidm.engines.sheets import SheetBase
 from aidm.engines.transact import transact
 from aidm.state.apply import apply_effect
 from aidm.state.base import Entity, EntityId, slug, text_slug
@@ -72,7 +73,7 @@ async def run_turn(
     state: GameState,
     prompt: str,
     *,
-    engine: Engine,
+    engine: Engine[SheetBase],
     stages: Stages,
     settings: Settings,
     rng: Random,
@@ -103,7 +104,6 @@ async def run_turn(
     # A roll earns another beat; the cap and a roll that asks to settle both earn one last one.
     while beats[-1].followup != "none":
         last = beats[-1].followup == "settle" or len(beats) >= settings.max_beats
-        stage = stages.settle if last else stages.beat
         announce("beat")
         beat_prompt = prompts.render_director(
             SceneSnapshot.of(draft),
@@ -111,8 +111,11 @@ async def run_turn(
             draft.scenario,
             prompt,
             happened=narrator_evidence(beats[-1].facts),
+            preface=prompts.SETTLE if last else prompts.BEAT,
         )
-        beat = await stage.run(beat_prompt, PlanContext(engine=engine, state=draft), history)
+        beat = await stages.director.run(
+            beat_prompt, PlanContext(engine=engine, state=draft, settle=last), history
+        )
         draft.world.pending_notes = ()
         steps.append(_traced(f"beat-{len(beats)}", beat_prompt, beat))
         announce("resolve")
@@ -182,7 +185,9 @@ async def run_turn(
     )
 
 
-def _resolver(engine: Engine, beat: DirectorBeat, rng: Random) -> Callable[[GameState], Resolution]:
+def _resolver(
+    engine: Engine[SheetBase], beat: DirectorBeat, rng: Random
+) -> Callable[[GameState], Resolution]:
     return lambda draft: engine.resolve_beat(draft, beat, rng)
 
 

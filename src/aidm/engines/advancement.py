@@ -1,25 +1,42 @@
-from abc import abstractmethod
+from abc import ABC, abstractmethod
+from pathlib import Path
 from random import Random
 from typing import ClassVar
 
-from aidm.state.base import PLAYER_ID, Counter, EntityId, Slug
+from aidm.content.store import engine_text
+from aidm.state.base import PLAYER_ID, Counter, EntityId, Frozen, Slug
 from aidm.state.facts import Fact
 from aidm.state.plan import check_draft
 from aidm.state.world import GameState
 
 from .counters import counter_fact
-from .loader import Offer, ProposalBase, Subsystem
 from .sheets import resolved_threads
 
 
-class ThreadAdvancement(Subsystem):
+class Offer(Frozen):
+    """One change advancement holds open for one subject, already resolved out of content."""
+
+    subject_id: EntityId
+    prompt: str
+    text: str = ""
+
+
+class ProposalBase(Frozen):
+    """What the advisor writes, in the engine's own vocabulary."""
+
+
+class ThreadAdvancement(ABC):
     """One advance per resolved thread per party member, tracked directly rather than inferred."""
 
     id: ClassVar[Slug] = "advancement"
+    proposal_type: ClassVar[type[ProposalBase]]
     ledger_key: ClassVar[Slug]
     occasion: ClassVar[str]
     offer_text: ClassVar[str]
     spent_why: ClassVar[str]
+
+    def __init__(self, engine_dir: Path) -> None:
+        self.instructions = engine_text(engine_dir / f"{self.id}.md")
 
     def offers(self, state: GameState) -> tuple[Offer, ...]:
         earned = resolved_threads(state.world)

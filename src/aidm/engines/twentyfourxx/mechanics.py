@@ -21,7 +21,7 @@ class Sheet(SheetBase):
     origin: str = ""
     skills: dict[str, SkillDie] = Field(default_factory=dict)
     credits: Counter = Counter(current=STARTING_CREDITS)
-    # The advancement subsystem's own ledger.
+    # The advancement ledger.
     jobs: Counter = Counter(current=0)
 
     def counters(self) -> dict[Slug, Counter]:

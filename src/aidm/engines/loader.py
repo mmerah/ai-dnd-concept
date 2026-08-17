@@ -5,18 +5,31 @@ from pathlib import Path
 from random import Random
 from typing import ClassVar
 
-from pydantic import JsonValue, TypeAdapter
+from pydantic import JsonValue, TypeAdapter, ValidationError
 from pydantic_ai.toolsets import AbstractToolset
 
 from aidm.content.authored import Binding, CreatedCharacter
-from aidm.content.store import ENCODING
+from aidm.content.store import engine_text
+from aidm.state.apply import apply_effect, reveal_target
 from aidm.state.base import EngineId, Entity, EntityId, Frozen, Slug
 from aidm.state.creation import CreationStep, Picks
 from aidm.state.facts import Fact
-from aidm.state.plan import DirectorBeat, Resolution
+from aidm.state.plan import DirectorBeat, Resolution, RuleCall, check_draft
 from aidm.state.world import GameState
 
-from .vocabulary import EFFECT_CALLS, EFFECTS_CARD, ROLLS_CARD, card, translate
+from .advancement import ThreadAdvancement
+from .counters import CounterChange, move_pool
+from .sheets import SheetBase, SheetMechanics, actor_sheets, check_sheets
+from .vocabulary import (
+    EFFECT_CALLS,
+    EFFECTS_CARD,
+    ROLLS_CARD,
+    EngineEffect,
+    TypedBeat,
+    card,
+    translate,
+    translate_effect,
+)
 
 ENGINE_MODULES: tuple[str, ...] = (
     "aidm.engines.loner3e.rules",
@@ -33,41 +46,6 @@ WORKED_PLANS = (
 type EntityRenderer = Callable[[Entity], str]
 
 
-class Offer(Frozen):
-    """One change a subsystem holds open for one subject, already resolved out of content."""
-
-    subject_id: EntityId
-    prompt: str
-    text: str = ""
-
-
-class ProposalBase(Frozen):
-    """What a subsystem writes, in the engine's own vocabulary."""
-
-
-class Subsystem(ABC):
-    """Optional capability an engine plugs in."""
-
-    id: ClassVar[Slug]
-    proposal_type: ClassVar[type[ProposalBase]]
-
-    def __init__(self, engine_dir: Path) -> None:
-        self.instructions = engine_text(engine_dir / f"{self.id}.md")
-
-    @abstractmethod
-    def offers(self, state: GameState) -> tuple[Offer, ...]: ...
-
-    @abstractmethod
-    def resolve(
-        self, draft: GameState, offer: Offer, proposal: ProposalBase, rng: Random
-    ) -> tuple[Fact, ...]:
-        """Mutates the draft; the caller's commit revalidates both halves of the copy."""
-
-    @abstractmethod
-    def violation(self, state: GameState, offer: Offer, proposal: ProposalBase) -> str | None:
-        """One legality rule for the advisor's retry and for the commit, so neither can drift."""
-
-
 class Creation(ABC):
     """The optional creation capability: an engine without one offers no new-character page."""
 
@@ -80,17 +58,22 @@ class Creation(ABC):
         """Raises ValueError with the reason the page shows when the pick set is illegal."""
 
 
-class Engine(ABC):
+class Engine[S: SheetBase](ABC):
     """One object per engine: its metadata, its plan lifecycle, and the mechanics half of the
-    state core keeps but cannot read. What content it needs is its own to load."""
+    state core keeps but cannot read. Mechanics are one sheet per actor, and this engine resolves
+    its own rolls. What content it needs is its own to load."""
 
     id: ClassVar[EngineId]
     badge: ClassVar[tuple[str, str]]
     engine_dir: ClassVar[Path]
     # What a beat's `roll` may name: this engine's own vocabulary, by the name a call gives it.
     actions: ClassVar[Mapping[Slug, type[Frozen]]]
+    sheet_type: type[S]
+    mechanics_type: type[SheetMechanics[S]]
 
     def __init__(self, extra_packs: Path | None = None) -> None:
+        # Read once here so a missing declaration fails the build, not the turn that first needs it.
+        _ = self.sheet_type, self.mechanics_type, self.actions
         parts = (
             engine_text(self.engine_dir / "director.md"),
             card("Rolls", ROLLS_CARD, self.actions),
@@ -100,49 +83,88 @@ class Engine(ABC):
         self.director_instructions: str = "\n\n".join(part for part in parts if part)
         # An engine with content advertises its own lookups; one without teaches the model no tool.
         self.director_toolsets: tuple[AbstractToolset[object], ...] = ()
-        self.subsystems: tuple[Subsystem, ...] = ()
+        # An engine with no growth mechanic plugs in none; the app offers only what it finds.
+        self.advancement: ThreadAdvancement | None = None
         # An engine that creates characters replaces this; the app offers only what it finds.
         self.creation: Creation | None = None
 
-    @abstractmethod
     def check_overlay(self, payloads: Iterable[dict[str, JsonValue]]) -> None:
-        """Refuses an authored overlay this engine cannot read."""
+        for rules in payloads:
+            _ = self.sheet_type.model_validate(rules)
 
     def binding(self) -> Binding:
         return Binding(
             engine=self.id, parse_effect=self.parse_effect, check_overlay=self.check_overlay
         )
 
-    @abstractmethod
     def begin(self, state: GameState, rules: Mapping[EntityId, dict[str, JsonValue]]) -> None:
-        """Writes the mechanics of a new game from the authored rules; the caller validates."""
+        sheets = actor_sheets(state, rules, self.sheet_type, self.id)
+        state.set_mechanics(self.mechanics_type(sheets=sheets))
 
-    @abstractmethod
     def validate(self, state: GameState) -> None:
-        """Refuses a state whose mechanics are missing or contradict the world; never repairs it."""
+        check_sheets(state, state.mechanics_as(self.mechanics_type).sheets, self.id)
+        self.check_mechanics(state)
 
-    @abstractmethod
+    def check_mechanics(self, state: GameState) -> None:  # noqa: B027 (a hook, not abstract)
+        """Whatever this engine tracks beyond one sheet per actor."""
+
     def seed(self, draft: GameState, entity: Entity, rng: Random) -> None:
-        """Gives an entity created during play whatever mechanics this engine tracks for it."""
+        mechanics = draft.mechanics_as(self.mechanics_type)
+        if entity.kind != "actor" or entity.id in mechanics.sheets:
+            return
+        mechanics.sheets[entity.id] = self.new_sheet(draft, rng)
 
     @abstractmethod
+    def new_sheet(self, draft: GameState, rng: Random) -> S: ...
+
     def parse_effect(self, effect: JsonValue) -> Frozen:
-        """This engine's effect vocabulary: raises on an authored effect it cannot apply."""
+        return translate_effect(RuleCall.model_validate(effect))
 
-    @abstractmethod
     def apply_effect(self, draft: GameState, effect: JsonValue) -> list[Fact]:
-        """Applies one authored hook effect, parsed through this engine's own vocabulary."""
+        return self.apply(draft, translate_effect(RuleCall.model_validate(effect)))
+
+    def apply(self, draft: GameState, effect: EngineEffect) -> list[Fact]:
+        if not isinstance(effect, CounterChange):
+            return apply_effect(draft, effect)
+        entity, seen = reveal_target(draft, effect.entity_id)
+        sheets = draft.mechanics_as(self.mechanics_type).sheets
+        return [*seen, *move_pool(sheets.get(entity.id), entity, effect)]
+
+    def renderer(self, state: GameState) -> EntityRenderer:
+        return lambda entity: self.describe(state, entity)
 
     @abstractmethod
-    def renderer(self, state: GameState) -> EntityRenderer: ...
+    def describe(self, state: GameState, entity: Entity) -> str: ...
 
     @abstractmethod
+    def resolve_roll(self, draft: GameState, roll: Frozen, rng: Random) -> Resolution:
+        """Rolls one translated call and mutates the draft."""
+
     def check_beat(self, state: GameState, beat: DirectorBeat) -> str | None:
-        """Must not raise: an output validator that raises kills the turn instead of retrying.
-        A plan is a beat with framing on it, so the first beat of a turn comes through here too."""
+        """Returns the refusal instead of raising: a raising output validator kills the turn
+        instead of retrying it."""
+        try:
+            typed = translate(beat, self.actions)
+        except ValidationError as broken:
+            return _named(broken)
+        except ValueError as refused:
+            return str(refused)
+        return check_draft(state, lambda draft: self._play(draft, typed, Random(0)))
 
-    @abstractmethod
-    def resolve_beat(self, draft: GameState, beat: DirectorBeat, rng: Random) -> Resolution: ...
+    def resolve_beat(self, draft: GameState, beat: DirectorBeat, rng: Random) -> Resolution:
+        return self._play(draft, translate(beat, self.actions), rng)
+
+    def _play(self, draft: GameState, beat: TypedBeat, rng: Random) -> Resolution:
+        """The order the beat runs: the roll first, then what it causes."""
+        settled = None if beat.roll is None else self.resolve_roll(draft, beat.roll, rng)
+        caused = [fact for effect in beat.effects for fact in self.apply(draft, effect)]
+        if settled is None:
+            return Resolution(facts=tuple(caused), followup="none")
+        return Resolution(
+            facts=(*settled.facts, *caused),
+            outcome=settled.outcome,
+            followup=settled.followup,
+        )
 
     def _worked_plans(self) -> str:
         path = self.engine_dir / "examples.json"
@@ -156,7 +178,14 @@ class Engine(ABC):
         return "\n\n".join(["## Worked plans", WORKED_PLANS, *blocks]) if blocks else ""
 
 
-def engines() -> tuple[type[Engine], ...]:
+def _named(broken: ValidationError) -> str:
+    """`check_draft` renders the message alone; a translation fault needs the field it names."""
+    first = broken.errors()[0]
+    where = ".".join(str(part) for part in first["loc"])
+    return f"{where}: {first['msg']}" if where else first["msg"]
+
+
+def engines() -> tuple[type[Engine[SheetBase]], ...]:
     """Imported by name, because a static import would put core back inside the engine packages."""
     found = tuple(_engine_class(module) for module in ENGINE_MODULES)
     if len({engine.id for engine in found}) != len(found):
@@ -168,21 +197,17 @@ def engine_ids() -> tuple[EngineId, ...]:
     return tuple(engine.id for engine in engines())
 
 
-def engine_class(engine_id: EngineId) -> type[Engine]:
+def engine_class(engine_id: EngineId) -> type[Engine[SheetBase]]:
     found = next((engine for engine in engines() if engine.id == engine_id), None)
     if found is None:
         raise ValueError(f"unknown engine {engine_id!r}")
     return found
 
 
-def engine_text(path: Path) -> str:
-    if not path.is_file():
-        raise ValueError(f"engine file {str(path)!r} is missing")
-    return path.read_text(encoding=ENCODING)
-
-
-def _engine_class(module: str) -> type[Engine]:
+def _engine_class(module: str) -> type[Engine[SheetBase]]:
     declared = getattr(import_module(module), ENGINE, None)
     if not (isinstance(declared, type) and issubclass(declared, Engine)):
         raise ValueError(f"engine module {module!r} declares no {ENGINE}")
-    return declared
+    # issubclass narrows only to the unparameterized generic; the sheet type is checked at
+    # construction by check_overlay/begin, not statically knowable from a dynamic import.
+    return declared  # pyright: ignore[reportUnknownVariableType]

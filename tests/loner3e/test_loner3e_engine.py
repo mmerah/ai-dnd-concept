@@ -18,6 +18,7 @@ from aidm.engines.loner3e.advance import Milestone
 from aidm.engines.loner3e.mechanics import LUCK_MAX, TIES_PER_TWIST, Mechanics
 from aidm.engines.loner3e.pack import SRD_PACK, twist_table
 from aidm.engines.loner3e.rules import Loner3eEngine
+from aidm.engines.sheets import SheetBase
 from aidm.state.apply import fire_hooks
 from aidm.state.base import PLAYER_ID, Counter, Entity, EntityId
 from aidm.state.effects import TraitChange
@@ -310,11 +311,13 @@ def test_a_hook_reaches_the_engine_s_own_effects() -> None:
             match=HookMatch(kind="entity_discovered"),
             effects=(
                 {
-                    "op": "counter-change",
-                    "mode": "adjust",
-                    "entity_id": "player",
-                    "counter": "luck",
-                    "amount": -1,
+                    "name": "counter-change",
+                    "args": {
+                        "mode": "adjust",
+                        "entity_id": "player",
+                        "counter": "luck",
+                        "amount": -1,
+                    },
                 },
             ),
         ),
@@ -330,7 +333,7 @@ def test_a_hook_reaches_the_engine_s_own_effects() -> None:
     assert draft.mechanics_as(Mechanics).sheets[PLAYER_ID].luck.current == LUCK_MAX - 1
 
 
-def _refusal(engine: Engine, state: GameState, plan: DirectorBeat) -> str:
+def _refusal(engine: Engine[SheetBase], state: GameState, plan: DirectorBeat) -> str:
     refused = engine.check_beat(state, plan)
     assert refused is not None
     return refused

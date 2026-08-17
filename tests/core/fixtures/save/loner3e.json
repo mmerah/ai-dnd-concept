@@ -1,5 +1,5 @@
 {
-  "save_version": 67,
+  "save_version": 68,
   "scenario_id": "whispering-vault",
   "character_id": "kael",
   "scenario": {
@@ -222,16 +222,20 @@
         },
         "effects": [
           {
-            "op": "advance-thread",
-            "thread_id": "vault-seal",
-            "stage": "seal-found"
+            "name": "advance-thread",
+            "args": {
+              "thread_id": "vault-seal",
+              "stage": "seal-found"
+            }
           },
           {
-            "op": "trait-change",
-            "mode": "add",
-            "entity_id": "vault",
-            "text": "The seal answers a touch, and something behind the door answers with it.",
-            "trait_id": "warded"
+            "name": "trait-change",
+            "args": {
+              "mode": "add",
+              "entity_id": "vault",
+              "text": "The seal answers a touch, and something behind the door answers with it.",
+              "trait_id": "warded"
+            }
           }
         ],
         "note": "Kael has found the vault door. Press on what opening the seal will cost.",
@@ -247,13 +251,17 @@
         },
         "effects": [
           {
-            "op": "advance-thread",
-            "thread_id": "vault-seal",
-            "stage": "seal-found"
+            "name": "advance-thread",
+            "args": {
+              "thread_id": "vault-seal",
+              "stage": "seal-found"
+            }
           },
           {
-            "op": "reveal",
-            "entity_id": "vault"
+            "name": "reveal",
+            "args": {
+              "entity_id": "vault"
+            }
           }
         ],
         "note": "The chart marks the stair to the vault door. Press on what opening the seal will cost.",
@@ -269,9 +277,11 @@
         },
         "effects": [
           {
-            "op": "advance-thread",
-            "thread_id": "vault-seal",
-            "stage": "rite-known"
+            "name": "advance-thread",
+            "args": {
+              "thread_id": "vault-seal",
+              "stage": "rite-known"
+            }
           }
         ],
         "note": "Elena remembers the rite that sealed the vault. Let her name her price for it.",
