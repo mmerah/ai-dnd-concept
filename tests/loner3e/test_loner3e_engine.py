@@ -7,7 +7,6 @@ from aidm.engines.loader import Engine
 from aidm.engines.loner3e.actions import (
     HARM,
     Question,
-    available_tags,
     defeat_note,
     outcome_for,
     resolve_question,
@@ -39,8 +38,6 @@ def _plan(**args: object) -> DirectorBeat:
                 "name": "question",
                 "args": {
                     "question": "Does he get the seal open before the whispering finds him?",
-                    "leverage": [],
-                    "trouble": [],
                     "opponent_id": None,
                 }
                 | args,
@@ -96,37 +93,44 @@ def test_a_question_rolls_two_dice_before_the_beats_own_effects_land() -> None:
 
 def test_check_beat_owes_the_model_every_refusal_the_resolve_raises() -> None:
     engine, state = initialized()
-    sheet_tag = _plan(actor_id=PLAYER_ID, leverage=["Reads Old Stonework"])
-    scene_tag = _plan(actor_id=PLAYER_ID, leverage=["Unsteady Lantern"])
-    assert engine.check_beat(state, sheet_tag) is None
-    assert engine.check_beat(state, scene_tag) is None
-
-    invented = _plan(actor_id=PLAYER_ID, leverage=["Silver Tongue"])
-    assert "has no tag" in _refusal(engine, state, invented)
-
     elsewhere = _plan(actor_id=PLAYER_ID, opponent_id="cloister_rat")
     assert "is not here with the player" in _refusal(engine, state, elsewhere)
     alone = _plan(actor_id=PLAYER_ID, opponent_id=PLAYER_ID)
     assert "their own opposition" in _refusal(engine, state, alone)
 
+    accepted = _plan(actor_id=PLAYER_ID, position="advantage", edge="Reads Old Stonework")
+    assert engine.check_beat(state, accepted) is None
 
-def test_a_tag_named_twice_buys_no_more_than_naming_it_once() -> None:
+
+def test_an_effect_this_engine_has_not_is_refused_by_naming_every_effect_it_has() -> None:
+    """The engine's own union is nested, so the retry names its ops as well as the world's."""
+    engine, state = initialized()
+    unknown = DirectorBeat.model_validate({"effects": ({"name": "counter-change", "args": {}},)})
+
+    refusal = _refusal(engine, state, unknown)
+
+    assert "'reveal'" in refusal
+    assert "'restore-luck'" in refusal
+
+
+def test_the_judged_position_is_what_reaches_the_dice_and_the_record() -> None:
     _, state = initialized()
-    trouble = ("Never Walks Away", "Marked by the Past")
-
-    once = Question(
+    action = Question(
         actor_id=PLAYER_ID,
         question="Does he force the seal before the whispering finds him?",
-        leverage=("Pry Bar",),
-        trouble=trouble,
+        position="disadvantage",
+        edge="Never Walks Away",
     )
-    twice = once.model_copy(update={"leverage": ("Pry Bar", "Pry Bar")})
 
-    for action in (once, twice):
-        draft = state.draft()
-        facts = resolve_question(draft, action, Random(1), TWISTS).facts
-        (answered,) = [fact for fact in facts if fact.kind == "question_answered"]
-        assert answered.data["position"] == "disadvantage"
+    facts = resolve_question(state.draft(), action, Random(1), TWISTS).facts
+
+    (answered,) = [fact for fact in facts if fact.kind == "question_answered"]
+    assert (answered.data["position"], answered.data["edge"]) == (
+        "disadvantage",
+        "Never Walks Away",
+    )
+    (risk,) = [fact for fact in facts if str(fact.data.get("reason", "")).endswith("risk")]
+    assert risk.data["faces"] == [6, 6]
 
 
 def test_a_tie_ticks_the_twist_and_the_third_tie_calls_one() -> None:
@@ -205,17 +209,6 @@ def test_an_actor_already_at_zero_luck_refuses_another_exchange() -> None:
 
     again = _plan(actor_id=PLAYER_ID, opponent_id=FOE)
     assert "already out of luck" in _refusal(engine, spent, again)
-
-
-def test_an_opponents_sheet_tags_reach_the_resolver_as_tags_in_play() -> None:
-    _, state = initialized()
-    draft = state.draft()
-    player = draft.world.require(PLAYER_ID)
-    player.parent_id = EntityId("cloister")
-
-    tags = available_tags(draft, player, draft.mechanics_as(Mechanics))
-
-    assert "Hard to Frighten" in tags.values()
 
 
 def test_a_milestone_opens_an_offer_and_the_caps_refuse_what_breaks_them() -> None:
@@ -299,27 +292,21 @@ def test_the_one_roll_is_worked_through_in_the_directors_instructions() -> None:
     assert engine.director_instructions.count('"name": "question"') == 1
     # Rendered from the model, so what the prompt promises is what a retry would enforce.
     assert "`question` — A closed dramatic question" in engine.director_instructions
-    assert "`leverage` (list of at most 3; default [])" in engine.director_instructions
+    assert (
+        '`position` (one of `advantage`, `neutral`, `disadvantage`; default "neutral")'
+        in engine.director_instructions
+    )
 
 
 def test_a_hook_reaches_the_engine_s_own_effects() -> None:
     engine, state = initialized()
     draft = state.draft()
+    draft.mechanics_as(Mechanics).sheets[PLAYER_ID].luck.current = LUCK_MAX - 2
     draft.world.hooks = (
         Hook(
             id="strain",
             match=HookMatch(kind="entity_discovered"),
-            effects=(
-                {
-                    "name": "counter-change",
-                    "args": {
-                        "mode": "adjust",
-                        "entity_id": "player",
-                        "counter": "luck",
-                        "amount": -1,
-                    },
-                },
-            ),
+            effects=({"name": "restore-luck", "args": {"actor_id": "player"}},),
         ),
     )
 
@@ -330,7 +317,16 @@ def test_a_hook_reaches_the_engine_s_own_effects() -> None:
     )
 
     assert [fact.kind for fact in fired] == ["hook_fired", "counter_changed"]
-    assert draft.mechanics_as(Mechanics).sheets[PLAYER_ID].luck.current == LUCK_MAX - 1
+    assert draft.mechanics_as(Mechanics).sheets[PLAYER_ID].luck.current == LUCK_MAX
+
+
+def test_restoring_luck_that_is_already_full_is_a_quiet_no_op() -> None:
+    engine, state = initialized()
+    draft = state.draft()
+
+    assert (
+        engine.apply_effect(draft, {"name": "restore-luck", "args": {"actor_id": PLAYER_ID}}) == []
+    )
 
 
 def _refusal(engine: Engine[SheetBase], state: GameState, plan: DirectorBeat) -> str:

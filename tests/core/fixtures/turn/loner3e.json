@@ -1,5 +1,5 @@
 {
-  "save_version": 68,
+  "save_version": 69,
   "facts": [
     {
       "source": "core",
@@ -45,7 +45,8 @@
         "outcome": "yes-and",
         "chance": 5,
         "risk": 4,
-        "position": "advantage"
+        "position": "advantage",
+        "edge": "Quiet Hands"
       }
     },
     {
@@ -165,10 +166,8 @@
           "args": {
             "actor_id": "player",
             "question": "Does he hear what waits past the vault door without being heard?",
-            "leverage": [
-              "Quiet Hands"
-            ],
-            "trouble": [],
+            "position": "advantage",
+            "edge": "Quiet Hands",
             "opponent_id": null
           }
         },

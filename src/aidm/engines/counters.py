@@ -1,42 +1,5 @@
-from typing import Annotated, Literal, Self
-
-from pydantic import Field, model_validator
-
-from aidm.state.base import Counter, Entity, EntityId, Frozen, Slug
+from aidm.state.base import Counter, Entity, Slug
 from aidm.state.facts import Fact, explained_fact
-
-from .sheets import SheetBase
-
-
-class CounterChange(Frozen):
-    """Move a counter: `adjust` shifts it by a delta, clamped to the counter's own bounds;
-    `spend` pays a cost from it and refuses when the pool cannot cover it."""
-
-    op: Literal["counter-change"] = "counter-change"
-    mode: Literal["adjust", "spend"] = Field(
-        description="`adjust` moves the pool, `spend` pays from it and can refuse."
-    )
-    entity_id: Annotated[
-        EntityId,
-        Field(
-            description="Exact id of the entity affected; an actor must be here with the player."
-        ),
-    ]
-    counter: Annotated[
-        Slug,
-        Field(description="Exact key of one of that entity's counters, as its state spells it."),
-    ]
-    amount: int = Field(
-        description="For `adjust`, how much the pool moves: negative to reduce. For `spend`, how "
-        "much of the pool is paid, always positive."
-    )
-
-    @model_validator(mode="after")
-    def _spend_pays(self) -> Self:
-        """A negative spend would refill the pool it claims to pay from."""
-        if self.mode == "spend" and self.amount < 1:
-            raise ValueError("spend pays a positive amount; use adjust to raise a pool")
-        return self
 
 
 def pool(counter: Counter) -> str:
@@ -71,13 +34,3 @@ def counter_fact(entity: Entity, key: str, counter: Counter, delta: int, why: st
 
 def render_counters(counters: dict[Slug, Counter]) -> str:
     return ", ".join(f"{key} {pool(counters[key])}" for key in sorted(counters))
-
-
-def move_pool(sheet: SheetBase | None, entity: Entity, effect: CounterChange) -> list[Fact]:
-    counter = None if sheet is None else sheet.counters().get(effect.counter)
-    if counter is None:
-        known = ", ".join(sorted(sheet.counters())) if sheet else "(none)"
-        raise ValueError(f"{entity.name} has no pool {effect.counter!r}. Their pools are: {known}")
-    if effect.mode == "adjust":
-        return adjust(entity, effect.counter, counter, effect.amount, "")
-    return spend(entity, effect.counter, counter, effect.amount)

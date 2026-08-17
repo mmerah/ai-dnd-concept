@@ -36,12 +36,12 @@ injuries and broken gear are traits, the same ones the player reads in the scene
 
 THIS ENGINE'S OWN EFFECT
 
-Beside the world effects, this engine takes one more: `counter-change`, which moves an actor's
-`credits` pool. Use it to charge for gear bought, repairs paid for, or a debt collected — never
-for a roll's own outcome, which the engine settles itself.
+Beside the world effects, this engine takes one more: `change-credits`, which pays or charges an
+actor's ₡ — gear bought, repairs paid for, a debt collected, pay earned. Never for a roll's own
+outcome, which the engine settles itself. A charge their credits cannot cover is refused.
 
 ```json
-{"name": "counter-change", "args": {"mode": "adjust", "entity_id": "player", "counter": "credits", "amount": -1}}
+{"name": "change-credits", "args": {"actor_id": "player", "amount": -1}}
 ```
 
 The sheet's `skills` change only through advancement. A lasting change to what someone is — an
@@ -117,10 +117,10 @@ What a `roll` may name, and the `args` each one takes. One roll at most per beat
   - `actor_id` (required) — Exact id of the actor attempting this: the player, or an actor here.
   - `goal` (required) — What the actor is trying to do and what they risk by trying, in one line.
   - `skill` (default "") — The skill on the actor's sheet this calls on, copied exactly as it is written there. Empty when none of theirs applies: they roll the bare d6.
-  - `helped` (default "") — One tag in the scene that makes this easier — a trait on the actor, on what they carry, on where they stand, or on who stands there with them — copied exactly. Empty when nothing helps; you cannot invent one.
+  - `helped` (default "") — The circumstance that makes this easier — a skill, a piece of gear, the ground they hold, an ally's presence — in a few words. Empty when nothing does.
   - `helper_id` (default null) — Exact id of an ally here who helps with this — they roll their own skill die into the pool. Null when nobody helps.
   - `helper_skill` (default "") — The skill on the *helper's* sheet this calls on, copied exactly as it is written there. Empty when none of theirs applies: they roll the bare d6.
-  - `hindered` (default "") — One tag in the scene that makes this harder, copied the same way. Empty when nothing hinders.
+  - `hindered` (default "") — The circumstance that makes this harder, in a few words. Empty when nothing does.
   - `luck_test` (default "") — What bad luck might arrive alongside this — running out of ammo, running into guards. The engine rolls whether it does. Empty for no test.
 
 `luck-test` — The SRD's standalone bad-luck test, for a beat where nothing is attempted.
@@ -160,11 +160,9 @@ What an `effects` entry may name, and the `args` each one takes. A beat writes a
   - `stage` (default null) — Stable slug for the point it has reached, or null to leave it as it is.
   - `tick` (default 0) — How many segments this fills on the thread's clock, when it has one.
 
-`counter-change` — Move a counter: `adjust` shifts it by a delta, clamped to the counter's own bounds; `spend` pays a cost from it and refuses when the pool cannot cover it.
-  - `mode` (one of `adjust`, `spend`; required) — `adjust` moves the pool, `spend` pays from it and can refuse.
-  - `entity_id` (required) — Exact id of the entity affected; an actor must be here with the player.
-  - `counter` (required) — Exact key of one of that entity's counters, as its state spells it.
-  - `amount` (required) — For `adjust`, how much the pool moves: negative to reduce. For `spend`, how much of the pool is paid, always positive.
+`change-credits` — Move an actor's credits for gear bought, repairs paid, debts collected or pay earned — never for a roll's own outcome, which the engine settles itself.
+  - `actor_id` (required) — Exact id of the actor: the player, or an actor here.
+  - `amount` (required) — Positive to pay them, negative to charge them. A charge the pool cannot cover is refused.
 
 ## Worked plans
 
@@ -180,7 +178,7 @@ Example 1:
       "actor_id": "player",
       "goal": "Force the vault's seal before the whispering finds him",
       "skill": "Hacking",
-      "helped": "Repair Tools",
+      "helped": "the repair kit he never travels without",
       "luck_test": "the seal's failsafe alerts something in the dark"
     }
   },

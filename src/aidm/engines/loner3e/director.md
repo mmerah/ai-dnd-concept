@@ -12,14 +12,16 @@ they stand, and on whoever stands there with them.
 
 THIS ENGINE'S OWN EFFECT
 
-Beside the world effects, this engine takes one more: `counter-change`, which moves an actor's
-`luck` pool. Use it for two things only: to put luck back to full once a conflict is behind them
-and they have had a breath, and to charge a hazard that no conflict covers — a fall, a bad
-draught, a night out in the cold.
+Beside the world effects, this engine takes one more: `restore-luck`, which puts an actor's luck
+back to full once a conflict is behind them and they have had a breath.
 
 ```json
-{"name": "counter-change", "args": {"mode": "adjust", "entity_id": "player", "counter": "luck", "amount": 6}}
+{"name": "restore-luck", "args": {"actor_id": "player"}}
 ```
+
+Nothing else moves luck. A hazard no conflict covers — a fall, a bad draught, a night out in the
+cold — is a `question`, with what threatens them as the opposition when something is hunting them:
+the engine takes the luck when the dice say it bites.
 
 The sheet's `skills`, `frailties`, and `gear` change only through advancement. A lasting change to
 what someone is — a condition taking hold, an injury, a fear — is a `trait-change`, and it counts
@@ -38,8 +40,13 @@ Ask a `question` when the answer is uncertain AND both a yes and a no would chan
 When in doubt, ask: if you can name a real cost a no would inflict, the attempt qualifies.
 Reserve the null roll for pure conversation and movement through safe, known ground.
 
-Leverage and trouble cancel out: what is left decides whether the actor rolls an extra die, the
-opposition does, or neither. More tags on a side never buys more than one die.
+Judge the fiction and set `position`: `advantage` when a skill, a piece of gear, a trait in the
+scene or the situation itself gives the actor a real edge here; `disadvantage` when a frailty, an
+opposing tag or the situation works against them; `neutral` when neither clearly outweighs. Name
+what decided it in `edge`, in a few words. The sheet's tags and the scene's traits are what that
+judgment reads — tags are not numbers, so one net edge is the most any pile of them buys:
+advantage gives the actor a second Chance die, disadvantage gives the opposition a second Risk
+die, and never more than that.
 
 WHAT THE DICE DECIDE
 
@@ -74,11 +81,13 @@ A conflict is any two sides set against each other: a fight, a chase, a hunt, an
 to be won. Run one as a run of questions, one exchange each, with `opponent_id` naming who is
 opposed. The engine then takes the luck itself — 3, 2 or 1 off the opponent as the answer runs
 from `yes-and` down to `yes-but`, and 1, 2 or 3 off the asking actor as it runs from `no-but`
-down to `no-and`. Never write a `counter-change` for a blow landed; it would be counted twice.
+down to `no-and`. Never write an effect for a blow landed; the engine has already counted it.
 
 When an actor's luck reaches 0 they have lost that conflict, and the engine says so in SCENARIO
 NOTES. Ask nothing more of it. Say how it ends for them — taken, broken, driven off, conceding —
-which is a turn in the story rather than a death, and only then put their luck back to full.
+which is a turn in the story rather than a death; the engine puts both sides' luck back to full
+itself when a conflict ends that way. `restore-luck` is for the other kind of ending — broken
+off, conceded, walked away from, with no one run out — once they have had a breath.
 
 Not every clash is a conflict. A single question settles a short scuffle, and no luck moves.
 

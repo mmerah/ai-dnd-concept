@@ -11,12 +11,12 @@ injuries and broken gear are traits, the same ones the player reads in the scene
 
 THIS ENGINE'S OWN EFFECT
 
-Beside the world effects, this engine takes one more: `counter-change`, which moves an actor's
-`credits` pool. Use it to charge for gear bought, repairs paid for, or a debt collected — never
-for a roll's own outcome, which the engine settles itself.
+Beside the world effects, this engine takes one more: `change-credits`, which pays or charges an
+actor's ₡ — gear bought, repairs paid for, a debt collected, pay earned. Never for a roll's own
+outcome, which the engine settles itself. A charge their credits cannot cover is refused.
 
 ```json
-{"name": "counter-change", "args": {"mode": "adjust", "entity_id": "player", "counter": "credits", "amount": -1}}
+{"name": "change-credits", "args": {"actor_id": "player", "amount": -1}}
 ```
 
 The sheet's `skills` change only through advancement. A lasting change to what someone is — an

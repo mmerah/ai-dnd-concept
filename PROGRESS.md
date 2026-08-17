@@ -174,8 +174,77 @@ deletion of every abstraction seat holding exactly one implementation. One commi
 - Fixture movement was exactly the predicted set each step: save-version bytes, the `ASKED AGAIN`
   section, deleted beat/settle instructions, hook envelopes in `state`/`save`. Nothing else moved.
 
+### Phase 2, step 1 — engines own their effect vocabulary (2026-08-17)
+
+- **`counter-change` is gone**, with `CounterChange`, `move_pool`, and the global `EngineEffect`
+  union. `Engine.effects: ClassVar[Mapping[Slug, type[Frozen]]]` is the symmetric declaration to
+  `actions`; `effect_adapter(own)` builds the per-engine union (`WorldEffect` nested, still
+  discriminated) and `translate`/`translate_effect` take that adapter as an argument.
+- **The card is derived, not written**: `WORLD_CALLS` comes off the `WorldEffect` union, and the
+  effects card renders `{**WORLD_CALLS, **self.effects}` — an op the adapter takes cannot be
+  missing from the prompt.
+- `Engine.apply` is the `is_world_op` guard (a `TypeIs` in `state/effects.py`, kept under the
+  alias) plus `apply_effect`; an engine with its own effects overrides and falls through to
+  `super()`. `SheetBase` lost abstract `counters()` — it existed only to service `counter-change`
+  — and is now a docstring-only bound; both engines keep their concrete `counters()`.
+- **One rules-true effect each**: loner3e `restore-luck` (refill to max, quiet no-op when full —
+  closes LONER-3E deviation 9: a hazard is a `question`, never a ledger poke) and 24XX
+  `change-credits` (`adjust` up, `spend` down so an overdraw is refused, zero refused at the
+  schema).
+- `requires-python`/`pythonVersion` moved 3.12 → 3.13: `typing.TypeIs` is the only guard that
+  narrows the negative branch, so the alternative was an inlined isinstance tuple in `loader.py`.
+- Fixture movement was exactly the predicted set: the two `instructions/*/director.txt` files.
+  No `save`/`state`/`turn` bytes moved, so `SAVE_VERSION` stayed at 68.
+
+### Phase 2, step 2 — judgment in, string-matching out (2026-08-17)
+
+- **Loner's `Question` states its judgment**: `leverage`/`trouble` (up to three exact tag strings
+  each, counted into a net position) are gone; `position` (`advantage`/`neutral`/`disadvantage`,
+  the existing `Position` alias) plus free-text `edge` replace them, and `edge` joins the
+  `question_answered` fact data. The "has no tag to draw on" refusal, `available_tags` and
+  `Sheet.tags()` are deleted.
+- **24XX's `helped`/`hindered` are prose**, not tags to match: `_known_tags` and the tag half of
+  `_refuse_unless_ready` are gone (which left that function a one-line wrapper around
+  `_require_skill`, so it went too). `skill`/`helper_skill` stay exact — the die genuinely comes
+  off the sheet.
+- **`engines/tags.py` deleted** (`carriers`, `tag_key` had no callers left).
+- No deviation entry moved either way: the SRD makes both calls intuitive ("tags are not
+  numbers"), so the judgment fields are the faithful reading, not a new divergence.
+- `SAVE_VERSION` 68 → 69 (`edge` in the fact data, moved plan args). Regenerated: both
+  `instructions`, `save`/`state`/`turn`. `schemas/turn_beat.json` did not move — every roll still
+  rides the generic `RuleCall`.
+
+### Phase 2, step 3 — creation asks in three shapes (2026-08-17)
+
+- **`state/creation.py` grew two shapes beside the fixed menu**: `TextStep(id, prompt, hint,
+  count, max_length)` for a question answered in the player's own words, and `repeats: bool` on
+  `CreationStep` for a pick that may be named more than once. `type AnyStep = CreationStep |
+  TextStep`, `Picks` widened to `Mapping[Slug, tuple[str, ...]]` (free text does not fit
+  `ContentSlug`), and `check_picks` dispatches — one legality rule still serves page and `create`.
+- **Loner's Concept is a free line** (closes LONER-3E deviation 8): the pack's first three concept
+  labels are the input's placeholder, which is what the SRD's "table as inspiration" actually is.
+  `pack.concepts` stays as the hint source.
+- **24XX's Alien types its traits** (`Trait(id=text_slug(written, taken), name=written)`, ids
+  deduped against the kit) and `Origin._invented_traits_fit_the_menu` is gone — the four SRD
+  examples are hints now. The origin's increases step is `repeats=True`, so a Human's 3 stack onto
+  one skill through the existing `raised` ladder (closes 24XX deviations 4 and 6; what remains of
+  the old entry 4 is a trimmed entry naming the one live residue — Muscle's weapon and Android's
+  cyber-body produce nothing at all, not even a trait).
+- **UI dispatches on step shape** (`ui/create.py`): a text step is `count` `ui.input`s, a
+  `repeats` step is `choose` single `ui.select`s (Quasar's multi-select cannot hold a duplicate
+  value), everything else is the multi-select as before. `_shape` grew the step kind, `hint`,
+  `count` and `repeats` so the form still rebuilds only when what a step *asks* moved; a text
+  step's answers survive pack switches, having no options to prune against.
+- **Blank slots are missing picks, not illegal ones**: a repeatable step's widgets answer by slot,
+  so `_check_chosen` counts non-blank picks (an unanswered slot read as `offers no ['']` before),
+  and `_choice_is_whole` lets a repeatable step ask for more picks than it offers options.
+- Deviation lists now stand at **Loner 1-7 and 24XX 1-5**. No fixture moved and `SAVE_VERSION`
+  stayed at 69: creation output shape is unchanged, and the shipped characters are hand-written.
+
 ## Next
 
-- PLAN.md Phase 2: the scenario creator.
-- Close the Loner 3e and 24XX fidelity deviations, per their docs' "Deviations in this repo"
-  sections.
+- PLAN.md Phase 2 continues at **step 4** (one model owner per thread: the Worldkeeper's
+  `thread_moves` goes, the Director's `advance-thread` stays), then step 5 (24XX kits as carried
+  items) and step 6 (advancement waits for a recorded `complete-job`/`end-adventure` boundary,
+  `ThreadAdvancement` → `Advancement`).
+- Then Phase 3 (narration checked against facts), Phase 4 (scenario creator), Phase 5 (media).

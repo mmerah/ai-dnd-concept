@@ -1,7 +1,7 @@
 import pytest
 from pydantic import ValidationError
 
-from aidm.engines.counters import CounterChange, adjust, spend
+from aidm.engines.counters import adjust, spend
 from aidm.state.base import Counter, Entity, EntityId
 
 KAEL = Entity(id=EntityId("kael"), kind="actor", name="Kael", brief="", known=True)
@@ -34,8 +34,3 @@ def test_spend_pays_the_pool_and_refuses_what_it_cannot_cover() -> None:
 
     with pytest.raises(ValueError, match="cannot be spent"):
         _ = spend(KAEL, "stress", counter, 4)
-
-
-def test_counter_change_spend_requires_a_positive_amount() -> None:
-    with pytest.raises(ValidationError, match="positive amount"):
-        CounterChange(mode="spend", entity_id=EntityId("kael"), counter="stress", amount=-1)

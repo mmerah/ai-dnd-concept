@@ -1,4 +1,3 @@
-from collections.abc import Mapping
 from random import Random
 from typing import Literal
 
@@ -6,7 +5,6 @@ from pydantic import Field
 
 from aidm.engines.counters import adjust
 from aidm.engines.sheets import require_sheet
-from aidm.engines.tags import carriers, tag_key
 from aidm.state.apply import apply_effect, require_actor_here
 from aidm.state.base import Entity, EntityId, Frozen, Slug
 from aidm.state.dice import roll_pool
@@ -29,6 +27,14 @@ HARM: dict[Slug, int] = {
 type Position = Literal["advantage", "neutral", "disadvantage"]
 
 
+class RestoreLuck(Frozen):
+    """Put an actor's luck back to full, once a conflict is behind them and they have had a
+    breather. The engine already refills both sides when a conflict ends at 0."""
+
+    op: Literal["restore-luck"] = "restore-luck"
+    actor_id: EntityId = Field(description="Exact id of the actor: the player, or an actor here.")
+
+
 class Question(Frozen):
     """A closed dramatic question, answered by Chance d6 against Risk d6."""
 
@@ -40,16 +46,16 @@ class Question(Frozen):
         description="The closed dramatic question the dice answer, phrased so that yes is what "
         "the actor wants.",
     )
-    leverage: tuple[str, ...] = Field(
-        default=(),
-        max_length=3,
-        description="Tags that make this easier, each copied exactly as it is written on the "
-        "actor's sheet or on a trait in the scene. Empty when none applies; you cannot invent one.",
+    position: Position = Field(
+        default="neutral",
+        description="Your judgment of the fiction: `advantage` when a skill, gear, trait or the "
+        "situation gives the actor a real edge here; `disadvantage` when a frailty, an opposing "
+        "tag or the situation works against them; `neutral` when neither clearly outweighs.",
     )
-    trouble: tuple[str, ...] = Field(
-        default=(),
-        max_length=3,
-        description="Tags that make this harder, copied the same way. Empty when none applies.",
+    edge: str = Field(
+        default="",
+        description="The tag or circumstance that decided the position, in a few words. Empty "
+        "for neutral.",
     )
     opponent_id: EntityId | None = Field(
         default=None,
@@ -91,18 +97,6 @@ def outcome_for(chance: int, risk: int) -> Slug:
     return side
 
 
-def available_tags(draft: GameState, actor: Entity, mechanics: Mechanics) -> dict[str, str]:
-    known: dict[str, str] = {}
-    for carrier in carriers(draft, actor):
-        sheet = mechanics.sheets.get(carrier.id)
-        for tag in sheet.tags() if sheet is not None else ():
-            known[tag_key(tag)] = tag
-        for trait in carrier.traits:
-            known[tag_key(trait.id)] = trait.name
-            known[tag_key(trait.name)] = trait.name
-    return known
-
-
 def resolve_question(
     draft: GameState, action: Question, rng: Random, twists: tuple[tuple[str, str], ...]
 ) -> Resolution:
@@ -114,16 +108,9 @@ def resolve_question(
     if action.opponent_id is not None:
         opponent = require_actor_here(draft, action.opponent_id)
         facts.extend(apply_effect(draft, Reveal(entity_id=action.opponent_id)))
-    known = available_tags(draft, actor, mechanics)
-    _refuse_unless_ready(known, actor, action, mechanics, opponent)
+    _refuse_unless_ready(actor, mechanics, opponent)
 
-    leverage = {known[tag_key(tag)] for tag in action.leverage}
-    trouble = {known[tag_key(tag)] for tag in action.trouble}
-    # A tag counts once however often it is named, and cancels the same tag on the other side.
-    net = len(leverage - trouble) - len(trouble - leverage)
-    position: Position = "advantage" if net > 0 else "disadvantage" if net < 0 else "neutral"
-
-    chance, risk, facts_rolled = _pair(action, rng, position)
+    chance, risk, facts_rolled = _pair(action, rng)
     facts.extend(facts_rolled)
 
     outcome = outcome_for(chance, risk)
@@ -132,7 +119,13 @@ def resolve_question(
             actor,
             "question_answered",
             f"{action.question} -> {outcome}",
-            {"outcome": outcome, "chance": chance, "risk": risk, "position": position},
+            {
+                "outcome": outcome,
+                "chance": chance,
+                "risk": risk,
+                "position": action.position,
+                "edge": action.edge,
+            },
         )
     )
     if opponent is not None:
@@ -145,6 +138,15 @@ def resolve_question(
             mechanics.twist.current = 0
             facts.extend(_twist(draft, actor, rng, twists))
     return Resolution(facts=tuple(facts), outcome=outcome)
+
+
+def apply_restore_luck(draft: GameState, effect: RestoreLuck) -> list[Fact]:
+    actor = require_actor_here(draft, effect.actor_id)
+    facts = apply_effect(draft, Reveal(entity_id=actor.id))
+    luck = require_sheet(draft.mechanics_as(Mechanics).sheets, actor).luck
+    refill = (luck.maximum or LUCK_MAX) - luck.current
+    # Already full is a quiet no-op: `adjust` writes no fact for a zero delta.
+    return [*facts, *adjust(actor, "luck", luck, refill, "the conflict is behind them")]
 
 
 def _twist(
@@ -184,19 +186,7 @@ def _strike(
     return facts
 
 
-def _refuse_unless_ready(
-    known: Mapping[str, str],
-    actor: Entity,
-    action: Question,
-    mechanics: Mechanics,
-    opponent: Entity | None,
-) -> None:
-    for tag in (*action.leverage, *action.trouble):
-        if tag_key(tag) not in known:
-            written = ", ".join(sorted(set(known.values())))
-            raise ValueError(
-                f"{actor.name} has no tag {tag!r} to draw on. The tags in play are: {written}"
-            )
+def _refuse_unless_ready(actor: Entity, mechanics: Mechanics, opponent: Entity | None) -> None:
     if opponent is None:
         return
     if opponent.id == actor.id:
@@ -209,10 +199,10 @@ def _refuse_unless_ready(
             )
 
 
-def _pair(action: Question, rng: Random, position: Position) -> tuple[int, int, list[Fact]]:
-    """One extra die at most, and only for the side the surviving tags favour."""
-    chance_faces = (6, 6) if position == "advantage" else (6,)
-    risk_faces = (6, 6) if position == "disadvantage" else (6,)
+def _pair(action: Question, rng: Random) -> tuple[int, int, list[Fact]]:
+    """One extra die at most, and only for the side the judged position favours."""
+    chance_faces = (6, 6) if action.position == "advantage" else (6,)
+    risk_faces = (6, 6) if action.position == "disadvantage" else (6,)
     chance, chance_fact = roll_pool(chance_faces, f"{action.question} — chance", rng)
     risk, risk_fact = roll_pool(risk_faces, f"{action.question} — risk", rng)
     return chance, risk, [chance_fact, risk_fact]

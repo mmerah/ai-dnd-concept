@@ -19,15 +19,19 @@ def _turn(engine: Engine[SheetBase], state: GameState) -> tuple[GameState, tuple
     draft = state.draft()
     calls = (
         RuleCall(name="move", args={"entity_id": "vault_map"}),
-        RuleCall(
-            name="counter-change",
-            args={"mode": "adjust", "entity_id": PLAYER_ID, "counter": "luck", "amount": -1},
-        ),
+        RuleCall(name="restore-luck", args={"actor_id": PLAYER_ID}),
     )
     facts = [
         fact for call in calls for fact in engine.apply_effect(draft, call.model_dump(mode="json"))
     ]
     return draft.committed(), tuple(facts)
+
+
+def _spent(state: GameState) -> GameState:
+    """Luck short of full, so the engine's own effect has something to restore."""
+    draft = state.draft()
+    draft.mechanics_as(Mechanics).sheets[PLAYER_ID].luck.current = 1
+    return draft.committed()
 
 
 def test_engine_initialization_and_state_contract() -> None:
@@ -46,6 +50,7 @@ def test_effect_resolution_is_pure_and_renders_every_fact() -> None:
     turn has to touch both a core action and engine state to be worth asserting.
     """
     engine, state = initialized()
+    state = _spent(state)
     before = state.model_dump_json()
 
     first_state, first_facts = _turn(engine, state)

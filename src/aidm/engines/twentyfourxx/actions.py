@@ -1,11 +1,10 @@
-from collections.abc import Mapping
 from random import Random
-from typing import Self
+from typing import Literal, Self
 
 from pydantic import Field, model_validator
 
+from aidm.engines.counters import adjust, spend
 from aidm.engines.sheets import require_sheet
-from aidm.engines.tags import carriers, tag_key
 from aidm.state.apply import apply_effect, require_actor_here
 from aidm.state.base import PLAYER_ID, Entity, EntityId, Frozen, Slug
 from aidm.state.dice import roll_pool
@@ -37,9 +36,8 @@ class Attempt(Frozen):
     )
     helped: str = Field(
         default="",
-        description="One tag in the scene that makes this easier — a trait on the actor, on "
-        "what they carry, on where they stand, or on who stands there with them — copied "
-        "exactly. Empty when nothing helps; you cannot invent one.",
+        description="The circumstance that makes this easier — a skill, a piece of gear, the "
+        "ground they hold, an ally's presence — in a few words. Empty when nothing does.",
     )
     helper_id: EntityId | None = Field(
         default=None,
@@ -53,8 +51,8 @@ class Attempt(Frozen):
     )
     hindered: str = Field(
         default="",
-        description="One tag in the scene that makes this harder, copied the same way. Empty "
-        "when nothing hinders.",
+        description="The circumstance that makes this harder, in a few words. Empty when "
+        "nothing does.",
     )
     luck_test: str = Field(
         default="",
@@ -89,6 +87,34 @@ class LuckTest(Frozen):
     )
 
 
+class ChangeCredits(Frozen):
+    """Move an actor's credits for gear bought, repairs paid, debts collected or pay earned —
+    never for a roll's own outcome, which the engine settles itself."""
+
+    op: Literal["change-credits"] = "change-credits"
+    actor_id: EntityId = Field(description="Exact id of the actor: the player, or an actor here.")
+    amount: int = Field(
+        description="Positive to pay them, negative to charge them. A charge the pool cannot "
+        "cover is refused."
+    )
+
+    @model_validator(mode="after")
+    def _moves_the_pool(self) -> Self:
+        if self.amount == 0:
+            raise ValueError("change-credits moves the pool; zero moves nothing")
+        return self
+
+
+def apply_change_credits(draft: GameState, effect: ChangeCredits) -> list[Fact]:
+    actor = require_actor_here(draft, effect.actor_id)
+    facts = apply_effect(draft, Reveal(entity_id=actor.id))
+    credits = require_sheet(draft.mechanics_as(Mechanics).sheets, actor).credits
+    if effect.amount > 0:
+        return [*facts, *adjust(actor, "credits", credits, effect.amount, "paid")]
+    # `spend`, not a negative adjust: an overdraw is refused, not clamped.
+    return [*facts, *spend(actor, "credits", credits, -effect.amount)]
+
+
 def outcome_for(kept: int) -> Slug:
     if kept <= 2:
         return "disaster"
@@ -110,8 +136,7 @@ def resolve_attempt(draft: GameState, action: Attempt, rng: Random) -> Resolutio
     facts = apply_effect(draft, Reveal(entity_id=action.actor_id))
     sheet = require_sheet(draft.mechanics_as(Mechanics).sheets, actor)
     helper_sheet = _helper_sheet(draft, actor, action, facts)
-    known = _known_tags(draft, actor)
-    _refuse_unless_ready(actor, action, sheet, known)
+    _require_skill(actor, sheet, action.skill, "skill")
 
     faces = pool_faces(sheet, action, helper_sheet)
     kept, rolled = roll_pool(faces, f"{action.goal} — {action.skill or 'no skill'}", rng)
@@ -151,15 +176,6 @@ def resolve_luck_test(draft: GameState, action: LuckTest, rng: Random) -> Resolu
     return Resolution(facts=tuple(facts), outcome=outcome, followup=followup)
 
 
-def _known_tags(draft: GameState, actor: Entity) -> dict[str, str]:
-    known: dict[str, str] = {}
-    for carrier in carriers(draft, actor):
-        for trait in carrier.traits:
-            known[tag_key(trait.id)] = trait.name
-            known[tag_key(trait.name)] = trait.name
-    return known
-
-
 def _helper_sheet(
     draft: GameState, actor: Entity, action: Attempt, facts: list[Fact]
 ) -> Sheet | None:
@@ -184,18 +200,6 @@ def _require_skill(actor: Entity, sheet: Sheet, skill: str, field: str) -> None:
             f"{actor.name} has no skill {skill!r}. Their skills are: {written}. Leave "
             f"`{field}` empty to roll the bare d6."
         )
-
-
-def _refuse_unless_ready(
-    actor: Entity, action: Attempt, sheet: Sheet, known: Mapping[str, str]
-) -> None:
-    _require_skill(actor, sheet, action.skill, "skill")
-    for tag in (action.helped, action.hindered):
-        if tag and tag_key(tag) not in known:
-            written = ", ".join(sorted(set(known.values()))) or "(none)"
-            raise ValueError(
-                f"nothing in this scene is tagged {tag!r}. The tags in play are: {written}"
-            )
 
 
 def _bad_luck(

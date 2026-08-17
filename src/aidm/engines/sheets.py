@@ -1,17 +1,14 @@
-from abc import ABC, abstractmethod
+from abc import ABC
 from collections.abc import Mapping
 
 from pydantic import Field, JsonValue
 
-from aidm.state.base import PLAYER_ID, Counter, EngineId, Entity, EntityId, Mutable, Slug
+from aidm.state.base import PLAYER_ID, EngineId, Entity, EntityId, Mutable
 from aidm.state.world import GameState, WorldState
 
 
 class SheetBase(Mutable, ABC):
-    """One actor's mechanics: the pools an effect may move are what core needs off it."""
-
-    @abstractmethod
-    def counters(self) -> dict[Slug, Counter]: ...
+    """One actor's mechanics, whatever this engine's rules make of them."""
 
 
 class SheetMechanics[S: SheetBase](Mutable):

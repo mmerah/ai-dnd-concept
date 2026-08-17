@@ -3,10 +3,11 @@ from random import Random
 import pytest
 from core_test_support import TWENTYFOURXX, capability, game
 from loner3e_test_support import at_milestone
-from pydantic import ValidationError
+from pydantic import JsonValue, ValidationError
 
 from aidm.engines.twentyfourxx.actions import (
     Attempt,
+    ChangeCredits,
     LuckTest,
     outcome_for,
     pool_faces,
@@ -70,7 +71,7 @@ def test_the_outcome_ladder_maps_the_kept_die_to_a_result(kept: int, expected: s
     assert outcome_for(kept) == expected
 
 
-def test_an_attempt_is_refused_before_it_rolls_when_the_plan_invents_something() -> None:
+def test_an_attempt_is_refused_before_it_rolls_when_the_skill_is_not_on_the_sheet() -> None:
     _, state = game(TWENTYFOURXX)
 
     unknown_skill = Attempt(actor_id=PLAYER_ID, goal="Kael picks the lock.", skill="Lockpicking")
@@ -80,10 +81,6 @@ def test_an_attempt_is_refused_before_it_rolls_when_the_plan_invents_something()
     assert "Climbing" in message
     assert "Stealth" in message
     assert "Tracking" in message
-
-    unknown_tag = Attempt(actor_id=PLAYER_ID, goal="Kael calls in a favor.", helped="Silver Tongue")
-    with pytest.raises(ValueError, match="tagged"):
-        resolve_attempt(state.draft(), unknown_tag, Random(0))
 
 
 def test_an_ally_who_lacks_the_named_skill_is_refused() -> None:
@@ -148,6 +145,28 @@ def test_a_skill_already_at_d12_is_refused_and_the_refusal_reaches_the_advisor()
     message = advancement.violation(maxed, offer, capped)
     assert message is not None
     assert "d12" in message
+
+
+def test_credits_are_paid_charged_and_never_overdrawn() -> None:
+    engine, state = game(TWENTYFOURXX)
+    draft = state.draft()
+    sheet = draft.mechanics_as(Mechanics).sheets[PLAYER_ID]
+    before = sheet.credits.current
+
+    paid = engine.apply_effect(draft, _credits(3))
+    assert [fact.kind for fact in paid] == ["counter_changed"]
+    assert sheet.credits.current == before + 3
+
+    with pytest.raises(ValueError, match="cannot be spent"):
+        _ = engine.apply_effect(draft, _credits(-(before + 4)))
+    assert sheet.credits.current == before + 3
+
+    with pytest.raises(ValidationError):
+        _ = ChangeCredits(actor_id=PLAYER_ID, amount=0)
+
+
+def _credits(amount: int) -> dict[str, JsonValue]:
+    return {"name": "change-credits", "args": {"actor_id": PLAYER_ID, "amount": amount}}
 
 
 def test_a_tested_bad_luck_risk_that_lands_leaves_a_note_for_the_next_turn() -> None:
@@ -228,14 +247,14 @@ def test_creation_vendors_the_kit_as_traits_and_lands_the_training_die() -> None
     }
 
 
-def test_an_alien_picks_its_two_traits_from_the_menu() -> None:
+def test_an_alien_invents_traits_the_menu_never_listed() -> None:
     creation = TwentyfourxxEngine().creation
     assert creation is not None
     picks: Picks = {
         "pack": ("srd",),
         "specialty": ("sneak",),
         "origin": ("alien",),
-        "traits": ("wings", "natural-camouflage"),
+        "traits": ("Wings", "A tail that reads the air"),
     }
     created = creation.create("Ixl", "Feathered and patient.", picks)
     names = [trait.name for trait in created.profile.traits]
@@ -244,5 +263,18 @@ def test_an_alien_picks_its_two_traits_from_the_menu() -> None:
         "Climbing Gear",
         "Night Vision Goggles",
         "Wings",
-        "Natural Camouflage",
+        "A tail that reads the air",
     ]
+
+
+def test_a_humans_three_increases_can_stack_onto_one_skill() -> None:
+    creation = TwentyfourxxEngine().creation
+    assert creation is not None
+    picks: Picks = {
+        "pack": ("srd",),
+        "specialty": ("sneak",),
+        "origin": ("human",),
+        "skills": ("tracking", "tracking", "tracking"),
+    }
+    created = creation.create("Rho", "Never stops moving.", picks)
+    assert created.overlay.character["skills"] == {"Climbing": 8, "Stealth": 8, "Tracking": 12}

@@ -41,15 +41,9 @@ class Origin(Frozen):
     label: str
     detail: str = ""
     increases: int = Field(default=0, ge=0, le=3)
-    # The menu an origin's invented traits are chosen from; `invents` of them are picked.
+    # Example traits shown as hints when the player invents their own; not a bound on their answer.
     traits: tuple[CreationOption, ...] = ()
     invents: int = Field(default=0, ge=0)
-
-    @model_validator(mode="after")
-    def _invented_traits_fit_the_menu(self) -> Self:
-        if self.invents > len(self.traits):
-            raise ValueError(f"{self.invents} traits cannot be chosen from {len(self.traits)}")
-        return self
 
 
 class Pack(Frozen):

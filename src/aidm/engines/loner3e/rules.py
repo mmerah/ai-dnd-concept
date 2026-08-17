@@ -5,10 +5,11 @@ from aidm.engines.loader import Engine
 from aidm.engines.packs import load_packs, pack_paths
 from aidm.engines.sheets import resolved_threads
 from aidm.state.base import PLAYER_ID, Counter, EngineId, Entity, Frozen
+from aidm.state.facts import Fact
 from aidm.state.plan import Resolution
 from aidm.state.world import GameState
 
-from .actions import Question, resolve_question
+from .actions import Question, RestoreLuck, apply_restore_luck, resolve_question
 from .advance import Loner3eAdvancement
 from .create import Loner3eCreation
 from .mechanics import Mechanics, Sheet, describe_entity
@@ -24,6 +25,7 @@ class Loner3eEngine(Engine[Sheet]):
     sheet_type = Sheet
     mechanics_type = Mechanics
     actions = {"question": Question}
+    effects = {"restore-luck": RestoreLuck}
 
     def __init__(self, extra_packs: Path | None = None) -> None:
         super().__init__(extra_packs)
@@ -51,6 +53,13 @@ class Loner3eEngine(Engine[Sheet]):
     def twists(self, state: GameState) -> tuple[tuple[str, str], ...]:
         """The player's own table set: an NPC sheet is seeded with the default and never selects."""
         return twist_table(self.packs, state.mechanics_as(Mechanics).sheets[PLAYER_ID].pack)
+
+    def apply(self, draft: GameState, effect: Frozen) -> list[Fact]:
+        match effect:
+            case RestoreLuck():
+                return apply_restore_luck(draft, effect)
+            case _:
+                return super().apply(draft, effect)
 
 
 ENGINE = Loner3eEngine

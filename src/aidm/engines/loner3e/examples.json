@@ -6,13 +6,8 @@
       "args": {
         "actor_id": "player",
         "question": "Does he get the sealed door open before the whispering finds him?",
-        "leverage": [
-          "Reads Old Stonework",
-          "Pry Bar"
-        ],
-        "trouble": [
-          "Never Walks Away"
-        ],
+        "position": "advantage",
+        "edge": "Reads Old Stonework",
         "opponent_id": null
       }
     }

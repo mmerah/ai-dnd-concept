@@ -3,7 +3,15 @@ from collections.abc import Mapping
 from aidm.content.authored import CharacterOverlay, CharacterProfile, CreatedCharacter
 from aidm.engines.loader import Creation
 from aidm.engines.packs import pack_step
-from aidm.state.creation import CreationOption, CreationStep, Picks, check_picks, picked
+from aidm.state.creation import (
+    AnyStep,
+    CreationOption,
+    CreationStep,
+    Picks,
+    TextStep,
+    check_picks,
+    picked,
+)
 
 from .pack import Pack, PackEntry
 
@@ -12,7 +20,7 @@ class Loner3eCreation(Creation):
     def __init__(self, packs: Mapping[str, Pack]) -> None:
         self._packs = packs
 
-    def steps(self, picks: Picks) -> tuple[CreationStep, ...]:
+    def steps(self, picks: Picks) -> tuple[AnyStep, ...]:
         first = pack_step(self._packs)
         chosen = picked(picks, "pack")
         pack = self._packs.get(chosen[0]) if chosen else None
@@ -20,7 +28,11 @@ class Loner3eCreation(Creation):
             return (first,)
         return (
             first,
-            CreationStep(id="concept", prompt="Choose a concept", options=_options(pack.concepts)),
+            TextStep(
+                id="concept",
+                prompt="Their concept, in one line",
+                hint=", ".join(entry.label for entry in pack.concepts[:3]),
+            ),
             CreationStep(
                 id="skills", prompt="Choose two skills", options=_options(pack.skills), choose=2
             ),
@@ -38,7 +50,7 @@ class Loner3eCreation(Creation):
             overlay=CharacterOverlay(
                 character={
                     "pack": picked(picks, "pack")[0],
-                    "concept": _label(pack.concepts, picked(picks, "concept")[0]),
+                    "concept": picked(picks, "concept")[0],
                     "skills": [_label(pack.skills, skill) for skill in picked(picks, "skills")],
                     "frailties": [_label(pack.frailties, picked(picks, "frailty")[0])],
                     "gear": [_label(pack.gear, gear) for gear in picked(picks, "gear")],

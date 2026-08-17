@@ -1,4 +1,4 @@
-from typing import Annotated, Literal, Self
+from typing import Annotated, Literal, Self, TypeIs
 
 from pydantic import Field, model_validator
 
@@ -126,3 +126,10 @@ class AdvanceThread(Frozen):
 # effect union is `WorldOp | <its mechanical ops>` under the same discriminator.
 type WorldOp = Reveal | Move | GainImprovisedItem | TraitChange | RelationChange | AdvanceThread
 type WorldEffect = Annotated[WorldOp, Field(discriminator="op")]
+
+
+def is_world_op(effect: Frozen) -> TypeIs[WorldOp]:
+    # Kept directly under the alias, so a new op is added to both or neither.
+    return isinstance(
+        effect, (Reveal, Move, GainImprovisedItem, TraitChange, RelationChange, AdvanceThread)
+    )

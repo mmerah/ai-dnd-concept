@@ -73,8 +73,8 @@ SCRIPTS: Mapping[EngineId, ModelResponse] = {
             "question",
             actor_id="player",
             question="Does he hear what waits past the vault door without being heard?",
-            leverage=["Quiet Hands"],
-            trouble=[],
+            position="advantage",
+            edge="Quiet Hands",
             opponent_id=None,
         )
     ),
@@ -84,7 +84,7 @@ SCRIPTS: Mapping[EngineId, ModelResponse] = {
             actor_id="player",
             goal="Listen at the vault door without being heard",
             skill="Stealth",
-            helped="Relic Hunter",
+            helped="the relic-hunter's ear for old stone",
             hindered="",
             luck_test="something behind the door is already listening back",
         )

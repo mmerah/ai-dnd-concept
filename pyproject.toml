@@ -2,7 +2,7 @@
 name = "aidm"
 version = "0.1.0"
 description = "AI Dungeon Master"
-requires-python = ">=3.12"
+requires-python = ">=3.13"
 dependencies = [
     "nicegui>=2.0",
     "pydantic>=2.9",
@@ -45,7 +45,7 @@ extraPaths = [
 typeCheckingMode = "strict"
 venvPath = "."
 venv = ".venv"
-pythonVersion = "3.12"
+pythonVersion = "3.13"
 reportUnusedCallResult = false # NiceGUI's builder API returns elements by design
 reportUnannotatedClassAttribute = false # pydantic's `model_config` is unannotated
 

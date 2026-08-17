@@ -912,11 +912,6 @@ a rule of this one.
 7. **The Twist Counter is hidden from the player.** The SRD's solo player keeps the tally
    themselves; here it lives in mechanics, paces the Director, and is never recited — rising
    tension shows only in the fiction.
-8. **Concept is a closed menu.** Creation offers the chosen pack's concept table, where the SRD
-   asks for a free one-line phrase.
-9. **Luck can be charged outside a conflict.** The SRD moves Luck only through Harm & Luck. The
-   Director may also write a `counter-change` for a hazard no conflict covers — a fall, a bad
-   draught, a night in the cold — because those are the moments Luck exists to absorb.
 
 ## Engine package sketch
 
@@ -926,11 +921,14 @@ How this SRD maps onto `src/aidm/engines/loner3e/`:
   `luck` Counter 6/6 — the SRD's protagonist shape, applied to every actor ("everything is a
   character"). `milestones` tracks growth spent; the game-wide `twist` Counter caps at 3.
   `pack` records the table set the character was built from, and the twist table is read from it.
-- **Plan** (`actions.py`): one action, the closed `Question`; `leverage`/`trouble` name the
-  tags justifying advantage/disadvantage, refused unless written on a sheet or trait in the
-  scene ("tags are not numbers" — and the model cannot invent one).
+- **Plan** (`actions.py`): one action, the closed `Question`; `position` is the Director's own
+  advantage/neutral/disadvantage judgment and `edge` names what decided it — "tags are not
+  numbers", so the SRD leaves this call intuitive, and the sheet's tags and the scene's traits
+  are what the judgment reads, never counted. The engine's own effect, `restore-luck`, refills
+  an actor's luck once a conflict is behind them — nothing else moves the pool.
 - **Resolver** (`actions.py`): Chance d6 vs Risk d6; advantage adds the extra die of that
-  color, keep highest, hard cap two; net tags decide the side. The six outcomes and the
+  color, keep highest, hard cap two; the judged `position` decides which side gets the extra
+  die. The six outcomes and the
   both-≤3/both-≥4 modifiers are `outcome_for`, fully enumerable. Harm & Luck applies the
   3/2/1 table when `opponent_id` is set; those exchanges never tick the Twist Counter, per
   the SRD. Ties elsewhere tick it; at 3 the resolver rolls the 2d6 subject × action twist
@@ -940,6 +938,7 @@ How this SRD maps onto `src/aidm/engines/loner3e/`:
   Meanwhile mood vocabulary in place of the next-scene roll; the Adventure Maker stays
   authoring-time. The Oracle's dice stay in the resolver.
 - **Creation/advancement** (`create.py`, `advance.py`): the 8-step protagonist recipe as
-  creation steps; post-game growth as milestone-driven advancement.
+  creation steps, with the Concept step a free line — the chosen pack's own concept table is
+  offered as hint text, never as a menu; post-game growth as milestone-driven advancement.
 
 Divergences live in **Deviations in this repo** above, not here.

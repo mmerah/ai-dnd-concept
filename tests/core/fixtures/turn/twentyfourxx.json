@@ -1,5 +1,5 @@
 {
-  "save_version": 68,
+  "save_version": 69,
   "facts": [
     {
       "source": "core",
@@ -181,7 +181,7 @@
             "actor_id": "player",
             "goal": "Listen at the vault door without being heard",
             "skill": "Stealth",
-            "helped": "Relic Hunter",
+            "helped": "the relic-hunter's ear for old stone",
             "hindered": "",
             "luck_test": "something behind the door is already listening back"
           }

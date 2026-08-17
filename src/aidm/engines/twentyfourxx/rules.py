@@ -5,10 +5,18 @@ from aidm.engines.loader import Engine
 from aidm.engines.packs import load_packs, pack_paths
 from aidm.engines.sheets import resolved_threads
 from aidm.state.base import Counter, EngineId, Entity, Frozen
+from aidm.state.facts import Fact
 from aidm.state.plan import Resolution
 from aidm.state.world import GameState
 
-from .actions import Attempt, LuckTest, resolve_attempt, resolve_luck_test
+from .actions import (
+    Attempt,
+    ChangeCredits,
+    LuckTest,
+    apply_change_credits,
+    resolve_attempt,
+    resolve_luck_test,
+)
 from .advance import TwentyfourxxAdvancement
 from .create import TwentyfourxxCreation
 from .mechanics import Mechanics, Sheet, describe_entity
@@ -24,6 +32,7 @@ class TwentyfourxxEngine(Engine[Sheet]):
     sheet_type = Sheet
     mechanics_type = Mechanics
     actions = {"attempt": Attempt, "luck-test": LuckTest}
+    effects = {"change-credits": ChangeCredits}
 
     def __init__(self, extra_packs: Path | None = None) -> None:
         super().__init__(extra_packs)
@@ -47,6 +56,13 @@ class TwentyfourxxEngine(Engine[Sheet]):
                 return resolve_luck_test(draft, roll, rng)
             case _:
                 raise TypeError(f"{type(roll).__name__} is no 24xx roll")
+
+    def apply(self, draft: GameState, effect: Frozen) -> list[Fact]:
+        match effect:
+            case ChangeCredits():
+                return apply_change_credits(draft, effect)
+            case _:
+                return super().apply(draft, effect)
 
 
 ENGINE = TwentyfourxxEngine

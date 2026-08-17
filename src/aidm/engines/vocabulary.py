@@ -12,13 +12,6 @@ from aidm.state.base import Frozen, Slug
 from aidm.state.effects import WorldEffect
 from aidm.state.plan import DirectorBeat, RuleCall
 
-from .counters import CounterChange
-
-# `WorldEffect`, not `WorldOp`: nested undiscriminated, a faulty effect reports against every
-# branch pydantic tried, and that error is the Director's whole retry.
-type EngineEffect = Annotated[WorldEffect | CounterChange, Field(discriminator="op")]
-EFFECTS: TypeAdapter[EngineEffect] = TypeAdapter(EngineEffect)
-
 ROLLS_CARD = (
     "What a `roll` may name, and the `args` each one takes. One roll at most per beat, and only "
     "what the list below spells."
@@ -32,20 +25,22 @@ EFFECTS_CARD = (
 @dataclass(frozen=True, slots=True)
 class TypedBeat:
     roll: Frozen | None
-    effects: tuple[EngineEffect, ...]
+    effects: tuple[Frozen, ...]
 
 
-def translate(beat: DirectorBeat, actions: Mapping[Slug, type[Frozen]]) -> TypedBeat:
+def translate(
+    beat: DirectorBeat, actions: Mapping[Slug, type[Frozen]], effects: TypeAdapter[Frozen]
+) -> TypedBeat:
     """Authored examples come through here too, so prose and the wire share one gate."""
     return TypedBeat(
         roll=None if beat.roll is None else _roll(beat.roll, actions),
-        effects=tuple(translate_effect(call) for call in beat.effects),
+        effects=tuple(translate_effect(call, effects) for call in beat.effects),
     )
 
 
-def translate_effect(call: RuleCall) -> EngineEffect:
+def translate_effect(call: RuleCall, effects: TypeAdapter[Frozen]) -> Frozen:
     # Spread last: an `op` smuggled into `args` must not rename the call.
-    return EFFECTS.validate_python({**call.args, "op": call.name})
+    return effects.validate_python({**call.args, "op": call.name})
 
 
 def _roll(call: RuleCall, actions: Mapping[Slug, type[Frozen]]) -> Frozen:
@@ -125,7 +120,16 @@ def _members(annotation: object) -> tuple[type[Frozen], ...]:
     raise TypeError(f"{annotation} is no union of call models")
 
 
-# Derived: an effect the union takes but the card omits would teach the Director nothing.
-EFFECT_CALLS: Mapping[Slug, type[Frozen]] = {
-    str(model.model_fields["op"].default): model for model in _members(EngineEffect)
+# Derived from the union, so an op the adapter takes cannot be missing from the card.
+WORLD_CALLS: Mapping[Slug, type[Frozen]] = {
+    str(model.model_fields["op"].default): model for model in _members(WorldEffect)
 }
+
+
+def effect_adapter(own: Mapping[Slug, type[Frozen]]) -> TypeAdapter[Frozen]:
+    members = (WorldEffect, *own.values())
+    # A dynamic Union: the engine's declaration is the single source, so card and adapter cannot
+    # drift. Nesting the already-discriminated WorldEffect keeps retry errors naming the exact
+    # field (see PROGRESS.md, Phase 1 step 1).
+    union = Union[members]  # pyright: ignore[reportInvalidTypeArguments] # noqa: UP007
+    return TypeAdapter(Annotated[union, Field(discriminator="op")])

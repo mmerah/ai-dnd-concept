@@ -21,9 +21,6 @@ class Sheet(SheetBase):
     luck: Counter = Counter(current=LUCK_MAX, maximum=LUCK_MAX)
     milestones: Counter = Counter(current=0)
 
-    def tags(self) -> tuple[str, ...]:
-        return (*self.skills, *self.frailties, *self.gear)
-
     def counters(self) -> dict[Slug, Counter]:
         return {"luck": self.luck}
 

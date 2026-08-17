@@ -7,7 +7,7 @@
         "actor_id": "player",
         "goal": "Force the vault's seal before the whispering finds him",
         "skill": "Hacking",
-        "helped": "Repair Tools",
+        "helped": "the repair kit he never travels without",
         "luck_test": "the seal's failsafe alerts something in the dark"
       }
     }

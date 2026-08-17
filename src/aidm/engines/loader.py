@@ -10,23 +10,23 @@ from pydantic_ai.toolsets import AbstractToolset
 
 from aidm.content.authored import Binding, CreatedCharacter
 from aidm.content.store import engine_text
-from aidm.state.apply import apply_effect, reveal_target
+from aidm.state.apply import apply_effect
 from aidm.state.base import EngineId, Entity, EntityId, Frozen, Slug
-from aidm.state.creation import CreationStep, Picks
+from aidm.state.creation import AnyStep, Picks
+from aidm.state.effects import is_world_op
 from aidm.state.facts import Fact
 from aidm.state.plan import DirectorBeat, Resolution, RuleCall, check_draft
 from aidm.state.world import GameState
 
 from .advancement import ThreadAdvancement
-from .counters import CounterChange, move_pool
 from .sheets import SheetBase, SheetMechanics, actor_sheets, check_sheets
 from .vocabulary import (
-    EFFECT_CALLS,
     EFFECTS_CARD,
     ROLLS_CARD,
-    EngineEffect,
+    WORLD_CALLS,
     TypedBeat,
     card,
+    effect_adapter,
     translate,
     translate_effect,
 )
@@ -50,7 +50,7 @@ class Creation(ABC):
     """The optional creation capability: an engine without one offers no new-character page."""
 
     @abstractmethod
-    def steps(self, picks: Picks) -> tuple[CreationStep, ...]:
+    def steps(self, picks: Picks) -> tuple[AnyStep, ...]:
         """Tolerates partial or stale picks, so follow-up steps appear as parents are picked."""
 
     @abstractmethod
@@ -68,16 +68,19 @@ class Engine[S: SheetBase](ABC):
     engine_dir: ClassVar[Path]
     # What a beat's `roll` may name: this engine's own vocabulary, by the name a call gives it.
     actions: ClassVar[Mapping[Slug, type[Frozen]]]
+    # What an `effects` entry may name beyond the world ops: this engine's own effects, by name.
+    effects: ClassVar[Mapping[Slug, type[Frozen]]] = {}
     sheet_type: type[S]
     mechanics_type: type[SheetMechanics[S]]
 
     def __init__(self, extra_packs: Path | None = None) -> None:
         # Read once here so a missing declaration fails the build, not the turn that first needs it.
         _ = self.sheet_type, self.mechanics_type, self.actions
+        self._effects: TypeAdapter[Frozen] = effect_adapter(self.effects)
         parts = (
             engine_text(self.engine_dir / "director.md"),
             card("Rolls", ROLLS_CARD, self.actions),
-            card("Effects", EFFECTS_CARD, EFFECT_CALLS),
+            card("Effects", EFFECTS_CARD, {**WORLD_CALLS, **self.effects}),
             self._worked_plans(),
         )
         self.director_instructions: str = "\n\n".join(part for part in parts if part)
@@ -118,17 +121,17 @@ class Engine[S: SheetBase](ABC):
     def new_sheet(self, draft: GameState, rng: Random) -> S: ...
 
     def parse_effect(self, effect: JsonValue) -> Frozen:
-        return translate_effect(RuleCall.model_validate(effect))
+        return translate_effect(RuleCall.model_validate(effect), self._effects)
 
     def apply_effect(self, draft: GameState, effect: JsonValue) -> list[Fact]:
-        return self.apply(draft, translate_effect(RuleCall.model_validate(effect)))
+        return self.apply(draft, translate_effect(RuleCall.model_validate(effect), self._effects))
 
-    def apply(self, draft: GameState, effect: EngineEffect) -> list[Fact]:
-        if not isinstance(effect, CounterChange):
-            return apply_effect(draft, effect)
-        entity, seen = reveal_target(draft, effect.entity_id)
-        sheets = draft.mechanics_as(self.mechanics_type).sheets
-        return [*seen, *move_pool(sheets.get(entity.id), entity, effect)]
+    def apply(self, draft: GameState, effect: Frozen) -> list[Fact]:
+        """An engine with its own effects overrides this, falling through to super() for world
+        ops."""
+        if not is_world_op(effect):
+            raise TypeError(f"{type(effect).__name__} is no effect this engine applies")
+        return apply_effect(draft, effect)
 
     def renderer(self, state: GameState) -> EntityRenderer:
         return lambda entity: self.describe(state, entity)
@@ -144,7 +147,7 @@ class Engine[S: SheetBase](ABC):
         """Returns the refusal instead of raising: a raising output validator kills the turn
         instead of retrying it."""
         try:
-            typed = translate(beat, self.actions)
+            typed = translate(beat, self.actions, self._effects)
         except ValidationError as broken:
             return _named(broken)
         except ValueError as refused:
@@ -152,7 +155,7 @@ class Engine[S: SheetBase](ABC):
         return check_draft(state, lambda draft: self._play(draft, typed, Random(0)))
 
     def resolve_beat(self, draft: GameState, beat: DirectorBeat, rng: Random) -> Resolution:
-        return self._play(draft, translate(beat, self.actions), rng)
+        return self._play(draft, translate(beat, self.actions, self._effects), rng)
 
     def _play(self, draft: GameState, beat: TypedBeat, rng: Random) -> Resolution:
         """The order the beat runs: the roll first, then what it causes."""
@@ -173,7 +176,7 @@ class Engine[S: SheetBase](ABC):
         plans = TypeAdapter(list[DirectorBeat]).validate_json(engine_text(path))
         blocks: list[str] = []
         for number, plan in enumerate(plans, start=1):
-            _ = translate(plan, self.actions)
+            _ = translate(plan, self.actions, self._effects)
             blocks.append(f"Example {number}:\n\n```json\n{plan.model_dump_json(indent=2)}\n```")
         return "\n\n".join(["## Worked plans", WORKED_PLANS, *blocks]) if blocks else ""
 
