@@ -64,7 +64,7 @@
       "skills": ["Medicine", "Electronics"],
       "kit": [
         { "id": "medkit", "label": "Medkit" },
-        { "id": "cyber-surgery-tools", "label": "Cyber-surgery Tools", "detail": "Bulky." }
+        { "id": "cyber-surgery-tools", "label": "Cyber-surgery Tools", "bulky": true }
       ]
     },
     {
@@ -84,7 +84,7 @@
       "skills": ["Hacking", "Electronics"],
       "kit": [
         { "id": "repair-tools", "label": "Repair Tools" },
-        { "id": "custom-computer", "label": "Custom Computer", "detail": "Bulky." }
+        { "id": "custom-computer", "label": "Custom Computer", "bulky": true }
       ]
     }
   ],

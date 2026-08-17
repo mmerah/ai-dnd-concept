@@ -3,13 +3,19 @@ from random import Random
 
 from aidm.engines.loader import Engine
 from aidm.engines.packs import load_packs, pack_paths
-from aidm.engines.sheets import resolved_threads
 from aidm.state.base import PLAYER_ID, Counter, EngineId, Entity, Frozen
 from aidm.state.facts import Fact
 from aidm.state.plan import Resolution
 from aidm.state.world import GameState
 
-from .actions import Question, RestoreLuck, apply_restore_luck, resolve_question
+from .actions import (
+    EndAdventure,
+    Question,
+    RestoreLuck,
+    apply_end_adventure,
+    apply_restore_luck,
+    resolve_question,
+)
 from .advance import Loner3eAdvancement
 from .create import Loner3eCreation
 from .mechanics import Mechanics, Sheet, describe_entity
@@ -25,7 +31,7 @@ class Loner3eEngine(Engine[Sheet]):
     sheet_type = Sheet
     mechanics_type = Mechanics
     actions = {"question": Question}
-    effects = {"restore-luck": RestoreLuck}
+    effects = {"restore-luck": RestoreLuck, "end-adventure": EndAdventure}
 
     def __init__(self, extra_packs: Path | None = None) -> None:
         super().__init__(extra_packs)
@@ -40,7 +46,7 @@ class Loner3eEngine(Engine[Sheet]):
     def new_sheet(self, draft: GameState, rng: Random) -> Sheet:
         del rng  # nothing on a loner3e sheet is rolled
         # A newcomer starts level with the party: milestones earned before they joined are not owed.
-        return Sheet(milestones=Counter(current=resolved_threads(draft.world)))
+        return Sheet(milestones=Counter(current=draft.mechanics_as(Mechanics).completed.current))
 
     def describe(self, state: GameState, entity: Entity) -> str:
         return describe_entity(state.mechanics_as(Mechanics), entity)
@@ -58,6 +64,8 @@ class Loner3eEngine(Engine[Sheet]):
         match effect:
             case RestoreLuck():
                 return apply_restore_luck(draft, effect)
+            case EndAdventure():
+                return apply_end_adventure(draft)
             case _:
                 return super().apply(draft, effect)
 

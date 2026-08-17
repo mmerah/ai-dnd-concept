@@ -1,68 +1,5 @@
 {
   "$defs": {
-    "AdvanceThread": {
-      "additionalProperties": false,
-      "description": "Move a storyline the scenario is tracking: where it stands now, or that it is over.",
-      "properties": {
-        "op": {
-          "const": "advance-thread",
-          "default": "advance-thread",
-          "title": "Op",
-          "type": "string"
-        },
-        "thread_id": {
-          "description": "Exact id of one thread in ACTIVE THREADS.",
-          "maxLength": 64,
-          "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$",
-          "title": "Thread Id",
-          "type": "string"
-        },
-        "status": {
-          "anyOf": [
-            {
-              "enum": [
-                "active",
-                "resolved",
-                "dormant"
-              ],
-              "type": "string"
-            },
-            {
-              "type": "null"
-            }
-          ],
-          "default": null,
-          "description": "Where the thread now stands, or null to leave it as it is.",
-          "title": "Status"
-        },
-        "stage": {
-          "anyOf": [
-            {
-              "maxLength": 64,
-              "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$",
-              "type": "string"
-            },
-            {
-              "type": "null"
-            }
-          ],
-          "default": null,
-          "description": "Stable slug for the point it has reached, or null to leave it as it is.",
-          "title": "Stage"
-        },
-        "tick": {
-          "default": 0,
-          "description": "How many segments this fills on the thread's clock, when it has one.",
-          "title": "Tick",
-          "type": "integer"
-        }
-      },
-      "required": [
-        "thread_id"
-      ],
-      "title": "AdvanceThread",
-      "type": "object"
-    },
     "Creation": {
       "additionalProperties": false,
       "properties": {
@@ -177,14 +114,6 @@
         "$ref": "#/$defs/MemoryProposal"
       },
       "title": "Memories",
-      "type": "array"
-    },
-    "thread_moves": {
-      "default": [],
-      "items": {
-        "$ref": "#/$defs/AdvanceThread"
-      },
-      "title": "Thread Moves",
       "type": "array"
     }
   },

@@ -1,29 +1,53 @@
 {
-  "additionalProperties": false,
-  "description": "The one change a milestone buys. The engine records the milestone itself.",
-  "properties": {
-    "change": {
-      "description": "Which of the four growths this milestone spends.",
-      "enum": [
-        "skill",
-        "gear",
-        "frailty",
-        "rewrite"
+  "$defs": {
+    "Change": {
+      "additionalProperties": false,
+      "description": "One change the post-adventure update writes.",
+      "properties": {
+        "kind": {
+          "description": "Which of the four growths this change spends.",
+          "enum": [
+            "skill",
+            "gear",
+            "frailty",
+            "rewrite"
+          ],
+          "title": "Kind",
+          "type": "string"
+        },
+        "tag": {
+          "description": "The new tag in title case — or, for a rewrite, the tag already written on the sheet, copied exactly.",
+          "minLength": 1,
+          "title": "Tag",
+          "type": "string"
+        },
+        "into": {
+          "default": "",
+          "description": "A rewrite only: what that tag becomes, in title case. Empty otherwise.",
+          "title": "Into",
+          "type": "string"
+        }
+      },
+      "required": [
+        "kind",
+        "tag"
       ],
       "title": "Change",
-      "type": "string"
-    },
-    "tag": {
-      "description": "The new tag in title case — or, for a rewrite, the tag already written on the sheet, copied exactly.",
-      "minLength": 1,
-      "title": "Tag",
-      "type": "string"
-    },
-    "into": {
-      "default": "",
-      "description": "A rewrite only: what that tag becomes, in title case. Empty otherwise.",
-      "title": "Into",
-      "type": "string"
+      "type": "object"
+    }
+  },
+  "additionalProperties": false,
+  "description": "Everything this adventure changed on the sheet, at once, as the post-adventure update.",
+  "properties": {
+    "changes": {
+      "description": "Each change: a new skill, new gear, a new frailty, or one rewrite.",
+      "items": {
+        "$ref": "#/$defs/Change"
+      },
+      "maxItems": 4,
+      "minItems": 1,
+      "title": "Changes",
+      "type": "array"
     },
     "why": {
       "description": "One short sentence the player reads before confirming.",
@@ -32,10 +56,9 @@
     }
   },
   "required": [
-    "change",
-    "tag",
+    "changes",
     "why"
   ],
-  "title": "Milestone",
+  "title": "AdventureGrowth",
   "type": "object"
 }

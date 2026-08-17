@@ -46,7 +46,7 @@ def test_screening_drops_known_names_repeats_and_excess_then_sorts_locations_fir
     ]
 
 
-async def test_the_report_keeps_new_memories_drops_a_repeat_moves_a_thread_and_retries() -> None:
+async def test_the_report_keeps_new_memories_drops_a_repeat_and_retries() -> None:
     engine, state = initialized()
     keeper = FunctionModel(
         scripted(
@@ -58,9 +58,6 @@ async def test_the_report_keeps_new_memories_drops_a_repeat_moves_a_thread_and_r
                     _memory(CONFIDED, "mara"),
                     _memory(CHARTED),
                     _memory("Over the cap of two, and dropped."),
-                ],
-                thread_moves=[
-                    {"op": "advance-thread", "thread_id": "vault-seal", "stage": "seal-found"}
                 ],
             ),
         )
@@ -81,4 +78,3 @@ async def test_the_report_keeps_new_memories_drops_a_repeat_moves_a_thread_and_r
     assert len(kept) == 2
     # A memory is bookkeeping, like a thread: neither reaches the player's narration.
     assert all(fact.narrator is None for fact in kept)
-    assert result.state.world.threads["vault-seal"].stage == "seal-found"

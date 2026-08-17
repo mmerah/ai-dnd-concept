@@ -5,7 +5,7 @@ from pydantic import JsonValue
 from aidm.content.authored import CharacterOverlay, CharacterProfile, CreatedCharacter
 from aidm.engines.loader import Creation
 from aidm.engines.packs import pack_step
-from aidm.state.base import Trait, text_slug
+from aidm.state.base import PLAYER_ID, Entity, EntityId, Trait, text_slug
 from aidm.state.creation import (
     AnyStep,
     CreationOption,
@@ -17,7 +17,7 @@ from aidm.state.creation import (
 )
 
 from .mechanics import SkillDie, raised
-from .pack import Origin, Pack, SkillGrant, Specialty
+from .pack import KitItem, Origin, Pack, SkillGrant, Specialty
 
 
 class TwentyfourxxCreation(Creation):
@@ -91,18 +91,14 @@ class TwentyfourxxCreation(Creation):
             skills[label] = raised(skills.get(label))
         skills_json: dict[str, JsonValue] = {skill: die for skill, die in skills.items()}
 
-        kit = tuple(
-            Trait(id=option.id, name=option.label, text=option.detail)
-            for option in (*pack.starting_kit, *specialty.kit)
-        )
-        invented: list[Trait] = []
+        traits: list[Trait] = []
         for written in picked(picks, "traits"):
-            taken = [trait.id for trait in (*kit, *invented)]
-            invented.append(Trait(id=text_slug(written, taken), name=written))
-        traits = (*kit, *invented)
+            taken = [trait.id for trait in traits]
+            traits.append(Trait(id=text_slug(written, taken), name=written))
+        items = tuple(_carried(entry) for entry in (*pack.starting_kit, *specialty.kit))
 
         return CreatedCharacter(
-            profile=CharacterProfile(name=name, brief=brief, traits=traits),
+            profile=CharacterProfile(name=name, brief=brief, traits=tuple(traits), items=items),
             overlay=CharacterOverlay(
                 character={
                     "specialty": specialty.label,
@@ -111,6 +107,23 @@ class TwentyfourxxCreation(Creation):
                 }
             ),
         )
+
+
+BULKY = Trait(
+    id="bulky", name="Bulky", text="Heavy or awkward to lug; more than one may hinder at times."
+)
+
+
+def _carried(entry: KitItem) -> Entity:
+    return Entity(
+        id=EntityId(entry.id),
+        kind="item",
+        name=entry.label,
+        brief=entry.detail or entry.label,
+        known=True,
+        parent_id=PLAYER_ID,
+        traits=[BULKY] if entry.bulky else [],
+    )
 
 
 def _options(

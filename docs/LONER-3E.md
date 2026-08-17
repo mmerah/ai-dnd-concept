@@ -890,26 +890,21 @@ and deciding when to ask the Oracle is the player-seat judgment — the Director
 Appendix A is by its own words a *version* of Loner that removes dice — an alternative game, not
 a rule of this one.
 
-1. **Milestones trigger per resolved thread, not post-adventure.** SRD growth happens when an
-   adventure ends. Threads are this app's adventures, and a resolved thread is the one growth
-   trigger the engine can see without asking a model to judge that the story is over.
-2. **One change per milestone.** The SRD's post-adventure growth allows several changes at once;
-   a milestone here buys exactly one, sized to its per-thread trigger.
-3. **Goal, Motive and Nemesis are not sheet fields.** They map to the shared world: threads carry
+1. **Goal, Motive and Nemesis are not sheet fields.** They map to the shared world: threads carry
    what the character is working toward, entities and relations carry who stands in the way. The
    SRD asks for them to emerge from play, and in this app play writes them to the world.
-4. **Sheets are actors-only.** The SRD gives non-living characters — objects, vehicles, curses —
+2. **Sheets are actors-only.** The SRD gives non-living characters — objects, vehicles, curses —
    a Concept, Skills, Frailties and Luck. Here they are entities with traits, which the resolver
    already reads as tags; a non-living character gets a sheet the first time an engine needs one.
-5. **A twist interrupts the same turn, a beat late.** The SRD has a twist interrupt the scene the
+3. **A twist interrupts the same turn, a beat late.** The SRD has a twist interrupt the scene the
    moment it fires; here it fires inside a beat and reaches the Director as a scenario note on the
    next Director call, so it always interrupts the same turn: every rolled beat is followed by
    another Director call, and the last one — whether the roll asked to settle or the beat cap cut
    the loop short — is a settle beat that may write what the twist caused but may not roll again.
-6. **One game-wide Twist Counter.** The SRD's counter belongs to the solo player, who is the only
+4. **One game-wide Twist Counter.** The SRD's counter belongs to the solo player, who is the only
    one rolling. Here any actor can be the subject of a question, so a single tally covers every
    roll — a tie anywhere moves the same counter.
-7. **The Twist Counter is hidden from the player.** The SRD's solo player keeps the tally
+5. **The Twist Counter is hidden from the player.** The SRD's solo player keeps the tally
    themselves; here it lives in mechanics, paces the Director, and is never recited — rising
    tension shows only in the fiction.
 
@@ -919,13 +914,15 @@ How this SRD maps onto `src/aidm/engines/loner3e/`:
 
 - **Sheet** (`mechanics.py`): `concept`, `skills` (2 at creation), `frailties` (1), `gear` (2),
   `luck` Counter 6/6 — the SRD's protagonist shape, applied to every actor ("everything is a
-  character"). `milestones` tracks growth spent; the game-wide `twist` Counter caps at 3.
+  character"). `milestones` tracks growth spent; the game-wide `twist` Counter caps at 3, and the
+  game-wide `completed` tally counts adventures closed.
   `pack` records the table set the character was built from, and the twist table is read from it.
 - **Plan** (`actions.py`): one action, the closed `Question`; `position` is the Director's own
   advantage/neutral/disadvantage judgment and `edge` names what decided it — "tags are not
   numbers", so the SRD leaves this call intuitive, and the sheet's tags and the scene's traits
-  are what the judgment reads, never counted. The engine's own effect, `restore-luck`, refills
-  an actor's luck once a conflict is behind them — nothing else moves the pool.
+  are what the judgment reads, never counted. The engine's own effects: `restore-luck` refills
+  an actor's luck once a conflict is behind them — nothing else moves the pool — and
+  `end-adventure` records the fiction's own boundary that post-adventure growth is owed against.
 - **Resolver** (`actions.py`): Chance d6 vs Risk d6; advantage adds the extra die of that
   color, keep highest, hard cap two; the judged `position` decides which side gets the extra
   die. The six outcomes and the
@@ -939,6 +936,7 @@ How this SRD maps onto `src/aidm/engines/loner3e/`:
   authoring-time. The Oracle's dice stay in the resolver.
 - **Creation/advancement** (`create.py`, `advance.py`): the 8-step protagonist recipe as
   creation steps, with the Concept step a free line — the chosen pack's own concept table is
-  offered as hint text, never as a menu; post-game growth as milestone-driven advancement.
+  offered as hint text, never as a menu; growth is the SRD's post-adventure update, up to four
+  changes at once, offered once per recorded adventure ending.
 
 Divergences live in **Deviations in this repo** above, not here.

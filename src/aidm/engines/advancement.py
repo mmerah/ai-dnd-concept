@@ -10,7 +10,6 @@ from aidm.state.plan import check_draft
 from aidm.state.world import GameState
 
 from .counters import counter_fact
-from .sheets import resolved_threads
 
 
 class Offer(Frozen):
@@ -25,8 +24,8 @@ class ProposalBase(Frozen):
     """What the advisor writes, in the engine's own vocabulary."""
 
 
-class ThreadAdvancement(ABC):
-    """One advance per resolved thread per party member, tracked directly rather than inferred."""
+class Advancement(ABC):
+    """One advance per boundary the fiction closed, per party member."""
 
     id: ClassVar[Slug] = "advancement"
     proposal_type: ClassVar[type[ProposalBase]]
@@ -39,7 +38,7 @@ class ThreadAdvancement(ABC):
         self.instructions = engine_text(engine_dir / f"{self.id}.md")
 
     def offers(self, state: GameState) -> tuple[Offer, ...]:
-        earned = resolved_threads(state.world)
+        earned = self.earned(state)
         return tuple(
             Offer(
                 subject_id=subject_id,
@@ -68,6 +67,10 @@ class ThreadAdvancement(ABC):
 
     @abstractmethod
     def ledger(self, state: GameState, subject_id: EntityId) -> Counter: ...
+
+    @abstractmethod
+    def earned(self, state: GameState) -> int:
+        """How many boundaries the fiction has closed: what an advance is owed against."""
 
     @abstractmethod
     def grant(

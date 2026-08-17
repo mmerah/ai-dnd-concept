@@ -31,7 +31,9 @@ class Sheet(SheetBase):
         return self.skills.get(skill, DEFAULT_FACE)
 
 
-class Mechanics(SheetMechanics[Sheet]): ...
+class Mechanics(SheetMechanics[Sheet]):
+    # How many jobs the fiction has closed, game-wide: what advancement is owed against.
+    completed: Counter = Counter(current=0)
 
 
 def raised(current: SkillDie | None) -> SkillDie:

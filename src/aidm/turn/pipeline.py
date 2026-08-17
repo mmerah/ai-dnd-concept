@@ -8,7 +8,6 @@ from aidm.config import Settings
 from aidm.engines.loader import Engine
 from aidm.engines.sheets import SheetBase
 from aidm.engines.transact import transact
-from aidm.state.apply import apply_effect
 from aidm.state.base import Entity, EntityId, slug, text_slug
 from aidm.state.facts import CORE, Fact, narrator_evidence
 from aidm.state.plan import DirectorBeat, Resolution
@@ -39,8 +38,6 @@ def apply_report(
         for creation in admitted(report.creations, draft, max_growth)
     ]
     facts.extend(_remembered(report.memories, draft, max_memories))
-    for move in report.thread_moves:
-        facts.extend(apply_effect(draft, move))
     return facts
 
 

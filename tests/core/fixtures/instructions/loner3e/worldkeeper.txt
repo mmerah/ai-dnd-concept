@@ -12,6 +12,4 @@ MEMORIES — durable facts about people and places that will still matter many t
 - ALREADY REMEMBERED is what is kept for whoever is here; never write one of those again in other words.
 - Keep none on most turns: a turn is worth a memory only when it changed what someone knows.
 
-THREAD MOVES — an `advance-thread` for a thread in ACTIVE THREADS the turn plainly moved, naming its `status`, its `stage`, or both. Move nothing the narration merely hinted at, and never invent a stage the scenario has not used.
-
 WHAT HAPPENED lists what the engine already recorded this turn; anything covered there is already kept and is not yours to record again.

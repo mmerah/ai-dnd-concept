@@ -2,28 +2,29 @@ import json
 from pathlib import Path
 
 import pytest
-from loner3e_test_support import at_milestone, loner3e_session
+from core_test_support import at_boundary
+from loner3e_test_support import loner3e_session
 from pydantic_ai.messages import ModelMessage, ModelResponse, TextPart
 from pydantic_ai.models.function import AgentInfo, FunctionModel
 
 from aidm.app.session import Drafted
 from aidm.content.store import FileStore
-from aidm.engines.loner3e.advance import Milestone
+from aidm.engines.loner3e.advance import AdventureGrowth, Change
 from aidm.engines.loner3e.mechanics import Mechanics
 from aidm.state.base import PLAYER_ID
 from aidm.state.turn import Applied
 from aidm.state.world import Hook, HookMatch
 
-LEGAL = Milestone(change="gear", tag="Waxed Rope", why="he never climbs without it now")
-ILLEGAL = Milestone(
-    change="rewrite",
-    tag="Never Held a Blade",
-    into="Holds It Well",
+LEGAL = AdventureGrowth(
+    changes=(Change(kind="gear", tag="Waxed Rope"),), why="he never climbs without it now"
+)
+ILLEGAL = AdventureGrowth(
+    changes=(Change(kind="rewrite", tag="Never Held a Blade", into="Holds It Well"),),
     why="a tag the sheet does not carry",
 )
 
 
-def _answers(*proposals: Milestone) -> FunctionModel:
+def _answers(*proposals: AdventureGrowth) -> FunctionModel:
     """One scripted answer per attempt: a refused proposal sends the advisor round again."""
     remaining = iter(proposals)
 
@@ -36,7 +37,7 @@ def _answers(*proposals: Milestone) -> FunctionModel:
 
 async def test_an_illegal_proposal_is_retried_with_the_engines_reason(tmp_path: Path) -> None:
     game = loner3e_session(tmp_path)
-    game.state = at_milestone(game.state)
+    game.state = at_boundary(game.state)
 
     offer = game.offers()[0]
     assert game.advisor is not None
@@ -50,7 +51,7 @@ async def test_an_illegal_proposal_is_retried_with_the_engines_reason(tmp_path: 
 
 def test_confirming_commits_exactly_the_proposed_delta(tmp_path: Path) -> None:
     game = loner3e_session(tmp_path)
-    game.state = at_milestone(game.state)
+    game.state = at_boundary(game.state)
     offer = game.offers()[0]
     drafted = Drafted(offer=offer, proposal=LEGAL)
 
@@ -73,7 +74,7 @@ def test_confirming_commits_exactly_the_proposed_delta(tmp_path: Path) -> None:
 
 def test_a_hook_matching_an_advancement_fact_fires_on_confirm(tmp_path: Path) -> None:
     game = loner3e_session(tmp_path)
-    game.state = at_milestone(game.state)
+    game.state = at_boundary(game.state)
     draft = game.state.draft()
     draft.world.hooks = (
         Hook(
@@ -94,7 +95,7 @@ def test_a_hook_matching_an_advancement_fact_fires_on_confirm(tmp_path: Path) ->
 
 def test_a_refused_proposal_leaves_the_committed_state_untouched(tmp_path: Path) -> None:
     game = loner3e_session(tmp_path)
-    game.state = at_milestone(game.state)
+    game.state = at_boundary(game.state)
     before = game.state.model_dump_json()
     offer = game.offers()[0]
     drafted = Drafted(offer=offer, proposal=ILLEGAL)

@@ -8,6 +8,15 @@ from aidm.state.creation import ContentSlug, CreationOption
 from .mechanics import SkillDie
 
 
+class KitItem(Frozen):
+    """One piece of starting gear, carried as an item entity rather than written on the sheet."""
+
+    id: ContentSlug
+    label: str
+    detail: str = ""
+    bulky: bool = False
+
+
 class SkillGrant(Frozen):
     """One side of a specialty's either/or: its skills land on the sheet at `die`."""
 
@@ -20,14 +29,14 @@ class SkillGrant(Frozen):
 
 class Specialty(Frozen):
     """One of the SRD's six specialties: `skills` land at d8, `choices` offer one grant,
-    and `kit` lands as traits on the created character."""
+    and `kit` is the gear they start carrying."""
 
     id: ContentSlug
     label: str
     detail: str = ""
     skills: tuple[str, ...] = ()
     choices: tuple[SkillGrant, ...] = ()
-    kit: tuple[CreationOption, ...] = ()
+    kit: tuple[KitItem, ...] = ()
 
     @model_validator(mode="after")
     def _grants_a_skill_some_way(self) -> Self:
@@ -53,7 +62,7 @@ class Pack(Frozen):
     source: str
     license: str
     # What every character takes regardless of specialty: the SRD's comm.
-    starting_kit: tuple[CreationOption, ...] = ()
+    starting_kit: tuple[KitItem, ...] = ()
     specialties: tuple[Specialty, ...] = Field(min_length=1)
     origins: tuple[Origin, ...] = Field(min_length=1)
     # The skill menu an origin's increases are chosen from.

@@ -3,7 +3,6 @@ from random import Random
 
 from aidm.engines.loader import Engine
 from aidm.engines.packs import load_packs, pack_paths
-from aidm.engines.sheets import resolved_threads
 from aidm.state.base import Counter, EngineId, Entity, Frozen
 from aidm.state.facts import Fact
 from aidm.state.plan import Resolution
@@ -12,8 +11,10 @@ from aidm.state.world import GameState
 from .actions import (
     Attempt,
     ChangeCredits,
+    CompleteJob,
     LuckTest,
     apply_change_credits,
+    apply_complete_job,
     resolve_attempt,
     resolve_luck_test,
 )
@@ -32,7 +33,7 @@ class TwentyfourxxEngine(Engine[Sheet]):
     sheet_type = Sheet
     mechanics_type = Mechanics
     actions = {"attempt": Attempt, "luck-test": LuckTest}
-    effects = {"change-credits": ChangeCredits}
+    effects = {"change-credits": ChangeCredits, "complete-job": CompleteJob}
 
     def __init__(self, extra_packs: Path | None = None) -> None:
         super().__init__(extra_packs)
@@ -43,7 +44,7 @@ class TwentyfourxxEngine(Engine[Sheet]):
     def new_sheet(self, draft: GameState, rng: Random) -> Sheet:
         del rng  # nothing on a fresh 24xx sheet is rolled
         # A newcomer starts level with the party: jobs done before they joined are not owed.
-        return Sheet(jobs=Counter(current=resolved_threads(draft.world)))
+        return Sheet(jobs=Counter(current=draft.mechanics_as(Mechanics).completed.current))
 
     def describe(self, state: GameState, entity: Entity) -> str:
         return describe_entity(state.mechanics_as(Mechanics), entity)
@@ -61,6 +62,8 @@ class TwentyfourxxEngine(Engine[Sheet]):
         match effect:
             case ChangeCredits():
                 return apply_change_credits(draft, effect)
+            case CompleteJob():
+                return apply_complete_job(draft)
             case _:
                 return super().apply(draft, effect)
 

@@ -11,10 +11,9 @@ from pydantic_ai.providers.openai import OpenAIProvider
 from pydantic_ai.toolsets import AbstractToolset
 
 from aidm.config import ProviderConfig, Role, RoleConfig, Settings
-from aidm.engines.advancement import Offer, ProposalBase, ThreadAdvancement
+from aidm.engines.advancement import Advancement, Offer, ProposalBase
 from aidm.engines.loader import Engine
 from aidm.engines.sheets import SheetBase
-from aidm.state.effects import AdvanceThread
 from aidm.state.plan import DirectorBeat
 from aidm.state.turn import WorldkeeperReport
 from aidm.state.world import Exchange, GameState
@@ -99,7 +98,7 @@ class PlanContext:
 
 @dataclass(frozen=True, slots=True)
 class AdvancementContext:
-    advancement: ThreadAdvancement
+    advancement: Advancement
     state: GameState
     offer: Offer
 
@@ -111,19 +110,6 @@ class Stages:
     director: Stage[PlanContext, DirectorBeat]
     narrator: Stage[None, str]
     worldkeeper: Stage[GameState, WorldkeeperReport]
-
-
-def _thread_moves(state: GameState, moves: Sequence[AdvanceThread]) -> str | None:
-    """Applied after the narration with no trial, so this retry is the only guard a bad move
-    gets."""
-    if missing := sorted({move.thread_id for move in moves} - set(state.world.threads)):
-        return f"no such thread: {', '.join(missing)}"
-    clockless = sorted(
-        move.thread_id
-        for move in moves
-        if move.tick and state.world.threads[move.thread_id].clock is None
-    )
-    return f"no clock to tick on: {', '.join(clockless)}" if clockless else None
 
 
 def director_stage(
@@ -174,8 +160,6 @@ def worldkeeper_stage(settings: Settings) -> Stage[GameState, WorldkeeperReport]
                 f"nobody holds a memory who does not exist: {', '.join(strangers)}. Use an exact "
                 "id from the catalogue, or null for the world."
             )
-        if fault := _thread_moves(state, report.thread_moves):
-            raise ModelRetry(fault)
         return report
 
     return Stage.of(
@@ -189,7 +173,7 @@ def worldkeeper_stage(settings: Settings) -> Stage[GameState, WorldkeeperReport]
 
 
 def advancement_stage(
-    advancement: ThreadAdvancement, settings: Settings
+    advancement: Advancement, settings: Settings
 ) -> Stage[AdvancementContext, ProposalBase]:
     def legal(ctx: RunContext[AdvancementContext], proposal: ProposalBase) -> ProposalBase:
         deps = ctx.deps

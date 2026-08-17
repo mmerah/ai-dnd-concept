@@ -9,14 +9,24 @@ starts with nothing. A skill not written on the sheet is not missing — it roll
 anyone has. `credits` (₡) are what they spend on gear and repairs. There are no hit points:
 injuries and broken gear are traits, the same ones the player reads in the scene.
 
-THIS ENGINE'S OWN EFFECT
+THIS ENGINE'S OWN EFFECTS
 
-Beside the world effects, this engine takes one more: `change-credits`, which pays or charges an
-actor's ₡ — gear bought, repairs paid for, a debt collected, pay earned. Never for a roll's own
-outcome, which the engine settles itself. A charge their credits cannot cover is refused.
+Beside the world effects, this engine takes two more.
+
+`change-credits` pays or charges an actor's ₡ — gear bought, repairs paid for, a debt collected,
+pay earned. Never for a roll's own outcome, which the engine settles itself. A charge their
+credits cannot cover is refused.
 
 ```json
 {"name": "change-credits", "args": {"actor_id": "player", "amount": -1}}
+```
+
+`complete-job` records that the job is done — the fiction's own boundary, and what advancement
+is owed against. Write it once, when the crew's engagement genuinely closes, usually in the
+same beat that resolves its thread. A scene ending is not a job ending.
+
+```json
+{"name": "complete-job", "args": {}}
 ```
 
 The sheet's `skills` change only through advancement. A lasting change to what someone is — an

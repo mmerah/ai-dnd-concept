@@ -9,7 +9,7 @@ from aidm.state.apply import apply_effect, require_actor_here
 from aidm.state.base import Entity, EntityId, Frozen, Slug
 from aidm.state.dice import roll_pool
 from aidm.state.effects import Reveal
-from aidm.state.facts import Fact, entity_fact
+from aidm.state.facts import CORE, Fact, entity_fact
 from aidm.state.plan import Resolution
 from aidm.state.world import GameState
 
@@ -33,6 +33,14 @@ class RestoreLuck(Frozen):
 
     op: Literal["restore-luck"] = "restore-luck"
     actor_id: EntityId = Field(description="Exact id of the actor: the player, or an actor here.")
+
+
+class EndAdventure(Frozen):
+    """Record that the adventure has ended — the fiction's own boundary, written once when the
+    story genuinely closes, usually alongside resolving its thread. Never for a mere scene
+    ending."""
+
+    op: Literal["end-adventure"] = "end-adventure"
 
 
 class Question(Frozen):
@@ -147,6 +155,11 @@ def apply_restore_luck(draft: GameState, effect: RestoreLuck) -> list[Fact]:
     refill = (luck.maximum or LUCK_MAX) - luck.current
     # Already full is a quiet no-op: `adjust` writes no fact for a zero delta.
     return [*facts, *adjust(actor, "luck", luck, refill, "the conflict is behind them")]
+
+
+def apply_end_adventure(draft: GameState) -> list[Fact]:
+    draft.mechanics_as(Mechanics).completed.current += 1
+    return [Fact(source=CORE, kind="adventure_completed", trace="the adventure has ended")]
 
 
 def _twist(

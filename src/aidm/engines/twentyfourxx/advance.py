@@ -2,7 +2,7 @@ from random import Random
 
 from pydantic import Field
 
-from aidm.engines.advancement import ProposalBase, ThreadAdvancement
+from aidm.engines.advancement import Advancement, ProposalBase
 from aidm.engines.counters import adjust
 from aidm.state.base import Counter, EntityId
 from aidm.state.dice import roll_pool
@@ -29,12 +29,15 @@ class Advance(ProposalBase):
     why: str = Field(description="One short sentence the player reads before confirming.")
 
 
-class TwentyfourxxAdvancement(ThreadAdvancement):
+class TwentyfourxxAdvancement(Advancement):
     proposal_type = Advance
     ledger_key = "jobs"
     occasion = "finishes a job"
     offer_text = GROWTH
     spent_why = "a job's advance taken"
+
+    def earned(self, state: GameState) -> int:
+        return state.mechanics_as(Mechanics).completed.current
 
     def ledger(self, state: GameState, subject_id: EntityId) -> Counter:
         return state.mechanics_as(Mechanics).sheets[subject_id].jobs

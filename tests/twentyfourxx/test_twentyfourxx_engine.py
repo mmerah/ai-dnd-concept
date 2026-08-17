@@ -1,13 +1,13 @@
 from random import Random
 
 import pytest
-from core_test_support import TWENTYFOURXX, capability, game
-from loner3e_test_support import at_milestone
+from core_test_support import TWENTYFOURXX, at_boundary, capability, game
 from pydantic import JsonValue, ValidationError
 
 from aidm.engines.twentyfourxx.actions import (
     Attempt,
     ChangeCredits,
+    CompleteJob,
     LuckTest,
     outcome_for,
     pool_faces,
@@ -108,7 +108,7 @@ def test_naming_both_an_ally_and_a_helped_tag_is_refused_at_the_schema() -> None
 def test_a_job_raises_one_skill_a_step_and_pays_rolled_credits() -> None:
     engine, state = game(TWENTYFOURXX)
     advancement = capability(engine)
-    ready = at_milestone(state)
+    ready = at_boundary(state)
     (offer,) = advancement.offers(ready)
     before = ready.mechanics_as(Mechanics).sheets[PLAYER_ID]
 
@@ -129,10 +129,23 @@ def test_a_job_raises_one_skill_a_step_and_pays_rolled_credits() -> None:
     assert draft.committed().mechanics_as(Mechanics).sheets[PLAYER_ID].skills["Lockpicking"] == 8
 
 
+def test_an_advance_is_offered_only_once_a_job_is_recorded() -> None:
+    engine, state = game(TWENTYFOURXX)
+    advancement = capability(engine)
+    assert advancement.offers(state) == ()
+
+    draft = state.draft()
+    engine.apply(draft, CompleteJob())
+    after = draft.committed()
+
+    (offer,) = advancement.offers(after)
+    assert offer.subject_id == PLAYER_ID
+
+
 def test_a_skill_already_at_d12_is_refused_and_the_refusal_reaches_the_advisor() -> None:
     engine, state = game(TWENTYFOURXX)
     advancement = capability(engine)
-    ready = at_milestone(state)
+    ready = at_boundary(state)
 
     draft = ready.draft()
     mechanics = draft.mechanics_as(Mechanics)
@@ -227,7 +240,7 @@ def test_a_standalone_luck_test_needs_no_attempt_and_only_trouble_hands_the_turn
     assert draft.world.pending_notes == ()
 
 
-def test_creation_vendors_the_kit_as_traits_and_lands_the_training_die() -> None:
+def test_creation_hands_over_the_kit_as_carried_items_and_lands_the_training_die() -> None:
     creation = TwentyfourxxEngine().creation
     assert creation is not None
     picks: Picks = {
@@ -238,13 +251,28 @@ def test_creation_vendors_the_kit_as_traits_and_lands_the_training_die() -> None
         "skills": ("stealth", "deception", "connections"),
     }
     created = creation.create("Vex", "A quiet reader of rooms.", picks)
-    assert [trait.name for trait in created.profile.traits] == ["Comm", "Bottle of PsychOut"]
+    assert [item.name for item in created.profile.items] == ["Comm", "Bottle of PsychOut"]
+    assert created.profile.traits == ()
     assert created.overlay.character["skills"] == {
         "Telepathy": 10,
         "Stealth": 8,
         "Deception": 8,
         "Connections": 8,
     }
+
+
+def test_a_bulky_kit_item_carries_the_bulky_trait() -> None:
+    creation = TwentyfourxxEngine().creation
+    assert creation is not None
+    picks: Picks = {
+        "pack": ("srd",),
+        "specialty": ("tech",),
+        "origin": ("human",),
+        "skills": ("climbing", "stealth", "tracking"),
+    }
+    created = creation.create("Wren", "Solders anything.", picks)
+    computer = next(item for item in created.profile.items if item.id == "custom-computer")
+    assert [trait.id for trait in computer.traits] == ["bulky"]
 
 
 def test_an_alien_invents_traits_the_menu_never_listed() -> None:
@@ -258,13 +286,7 @@ def test_an_alien_invents_traits_the_menu_never_listed() -> None:
     }
     created = creation.create("Ixl", "Feathered and patient.", picks)
     names = [trait.name for trait in created.profile.traits]
-    assert names == [
-        "Comm",
-        "Climbing Gear",
-        "Night Vision Goggles",
-        "Wings",
-        "A tail that reads the air",
-    ]
+    assert names == ["Wings", "A tail that reads the air"]
 
 
 def test_a_humans_three_increases_can_stack_onto_one_skill() -> None:

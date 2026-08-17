@@ -3,7 +3,6 @@ from typing import Annotated, Literal
 from pydantic import Field, JsonValue
 
 from .base import SAVE_VERSION, EntityDetail, EntityId, Frozen, Kind
-from .effects import AdvanceThread
 from .facts import Fact
 
 
@@ -34,7 +33,6 @@ class MemoryProposal(Frozen):
 class WorldkeeperReport(Frozen):
     creations: tuple[Creation, ...] = ()
     memories: tuple[MemoryProposal, ...] = ()
-    thread_moves: tuple[AdvanceThread, ...] = ()
 
 
 class StepTrace(Frozen):

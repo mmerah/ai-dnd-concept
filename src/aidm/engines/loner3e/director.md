@@ -10,10 +10,12 @@ is how long someone can keep evading the worst before a conflict turns against t
 plain words, not numbers. Traits count as tags too: those on the actor, on what they carry, on the place
 they stand, and on whoever stands there with them.
 
-THIS ENGINE'S OWN EFFECT
+THIS ENGINE'S OWN EFFECTS
 
-Beside the world effects, this engine takes one more: `restore-luck`, which puts an actor's luck
-back to full once a conflict is behind them and they have had a breath.
+Beside the world effects, this engine takes two more.
+
+`restore-luck` puts an actor's luck back to full once a conflict is behind them and they have had
+a breath.
 
 ```json
 {"name": "restore-luck", "args": {"actor_id": "player"}}
@@ -26,6 +28,15 @@ the engine takes the luck when the dice say it bites.
 The sheet's `skills`, `frailties`, and `gear` change only through advancement. A lasting change to
 what someone is — a condition taking hold, an injury, a fear — is a `trait-change`, and it counts
 as a tag from the moment it lands.
+
+`end-adventure` records that the adventure has ended — the fiction's own boundary, and what
+post-adventure growth is owed against. Write it once, when the story the character has been
+living genuinely closes, usually in the same beat that resolves its thread. A scene ending is
+not an adventure ending.
+
+```json
+{"name": "end-adventure", "args": {}}
+```
 
 THE PLAN
 

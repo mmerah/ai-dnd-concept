@@ -6,7 +6,7 @@ from random import Random
 from aidm.config import Settings
 from aidm.content.authored import Character, Scenario
 from aidm.content.store import FileStore, load_character, load_scenario
-from aidm.engines.advancement import Offer, ProposalBase, ThreadAdvancement
+from aidm.engines.advancement import Advancement, Offer, ProposalBase
 from aidm.engines.loader import Engine, engine_class
 from aidm.engines.sheets import SheetBase
 from aidm.engines.transact import transact
@@ -184,7 +184,7 @@ class GameSession:
         self._commit(applied.state, entry)
         return applied.facts
 
-    def _advancement(self) -> ThreadAdvancement:
+    def _advancement(self) -> Advancement:
         if self.engine.advancement is None:
             raise ValueError(f"the {self.engine.id!r} engine has no advancement")
         return self.engine.advancement

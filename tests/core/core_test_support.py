@@ -13,7 +13,7 @@ from aidm.app.session import begin_game, build_engine
 from aidm.config import ProviderConfig, Providers, Settings
 from aidm.content.authored import Character, Scenario
 from aidm.content.store import load_character, load_scenario
-from aidm.engines.advancement import ThreadAdvancement
+from aidm.engines.advancement import Advancement
 from aidm.engines.loader import Engine
 from aidm.engines.sheets import SheetBase
 from aidm.state.base import EngineId, Entity
@@ -42,6 +42,14 @@ def with_entity(state: GameState, entity: Entity) -> GameState:
     return draft.committed()
 
 
+def at_boundary(state: GameState) -> GameState:
+    """One boundary recorded — an adventure ended, a job done — the trigger both engines count."""
+    draft = state.draft()
+    assert isinstance(draft.mechanics, dict)
+    draft.mechanics = {**draft.mechanics, "completed": {"current": 1}}
+    return draft.committed()
+
+
 def scenario() -> Scenario:
     return load_scenario(SCENARIOS, "whispering-vault", build_engine(LONER3E).binding())
 
@@ -63,7 +71,7 @@ def initialized() -> tuple[Engine[SheetBase], GameState]:
     return game(LONER3E)
 
 
-def capability(engine: Engine[SheetBase]) -> ThreadAdvancement:
+def capability(engine: Engine[SheetBase]) -> Advancement:
     """The shipped engine grows its characters; a test that asks for the capability wants it."""
     assert engine.advancement is not None
     return engine.advancement

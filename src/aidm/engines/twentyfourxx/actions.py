@@ -9,7 +9,7 @@ from aidm.state.apply import apply_effect, require_actor_here
 from aidm.state.base import PLAYER_ID, Entity, EntityId, Frozen, Slug
 from aidm.state.dice import roll_pool
 from aidm.state.effects import Reveal
-from aidm.state.facts import Fact, entity_fact
+from aidm.state.facts import CORE, Fact, entity_fact
 from aidm.state.plan import Followup, Resolution
 from aidm.state.world import GameState
 
@@ -113,6 +113,19 @@ def apply_change_credits(draft: GameState, effect: ChangeCredits) -> list[Fact]:
         return [*facts, *adjust(actor, "credits", credits, effect.amount, "paid")]
     # `spend`, not a negative adjust: an overdraw is refused, not clamped.
     return [*facts, *spend(actor, "credits", credits, -effect.amount)]
+
+
+class CompleteJob(Frozen):
+    """Record that the job is done — the fiction's own boundary, written once when the crew's
+    engagement genuinely closes, usually alongside resolving its thread. Never for a mere scene
+    ending."""
+
+    op: Literal["complete-job"] = "complete-job"
+
+
+def apply_complete_job(draft: GameState) -> list[Fact]:
+    draft.mechanics_as(Mechanics).completed.current += 1
+    return [Fact(source=CORE, kind="job_completed", trace="the job is done")]
 
 
 def outcome_for(kept: int) -> Slug:

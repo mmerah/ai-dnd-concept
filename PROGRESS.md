@@ -241,10 +241,45 @@ deletion of every abstraction seat holding exactly one implementation. One commi
 - Deviation lists now stand at **Loner 1-7 and 24XX 1-5**. No fixture moved and `SAVE_VERSION`
   stayed at 69: creation output shape is unchanged, and the shipped characters are hand-written.
 
+### Phase 2, steps 4-6 — one owner per thread, gear as gear, growth on the fiction's boundary (2026-08-17)
+
+- **Step 4, the Worldkeeper stops moving threads.** `thread_moves` left `WorldkeeperReport`, with
+  `_thread_moves` (`turn/roles.py`), the `apply_report` loop and the THREAD MOVES prompt section.
+  The Director's `advance-thread` is the one model owner, and it is the better-guarded one: it is
+  validated against a trial draft before narration, where the report's only guard was a shallow
+  retry applied after it.
+- **Step 5, 24XX gear is carried items** (closes 24XX deviation 5). `KitItem(id, label, detail,
+  bulky)` replaces `CreationOption` for `Pack.starting_kit` and `Specialty.kit`; `create()` builds
+  each as an `Entity(kind="item", parent_id=PLAYER_ID, known=True)` on `CharacterProfile.items`,
+  a bulky one carrying the `bulky` trait *on the item*. The character's own `traits` are now only
+  the invented origin traits. `packs/srd.json` marks `"bulky": true` where the SRD says bulky, in
+  place of the `"detail": "Bulky."` string. `director.md` needed no change — LOAD and HARM AND
+  DEFENCE already described items.
+- **Step 6, advancement counts recorded boundaries, not resolved threads** (closes LONER-3E
+  deviations 1-2 and 24XX deviation 1). `ThreadAdvancement` → `Advancement`; `offers()` calls a
+  new abstract `earned(state)`, each engine returning `mechanics_as(Mechanics).completed.current`.
+  `resolved_threads` is deleted; both `new_sheet` newcomer ledgers seed from `completed` instead.
+- **Two argument-free engine effects carry the trigger**: Loner `end-adventure`, 24XX
+  `complete-job` — the step-1 mechanism paying off, one `Mapping` entry and one `apply` case each.
+  The vocabulary card renders them as `(no arguments)` with no special casing.
+- **Loner's proposal is the SRD's whole post-adventure update.** `Milestone` → `Change` (a plain
+  `Frozen`, no `why`), wrapped in `AdventureGrowth(changes: 1-4, why)`; `grant` loops, and `_gain`
+  /`_rewrite` take the parent's `why`. `ledger_key` stays `milestones` — the sheet field did not
+  move, so no save bytes did either. 24XX's single-skill `Advance` was already its SRD; only its
+  trigger changed.
+- Deviation lists now stand at **Loner 1-5 and 24XX 1-3** — what remains is architectural
+  (world-mapped Goal/Motive/Nemesis, actor-only sheets, twist timing/scope/secrecy; the compressed
+  advise-and-revise loop, fiction-side harm, Muscle's and Android's unmechanized picks).
+- `SAVE_VERSION` 69 → 70 (one bump for the three steps, since they stage together): the
+  worldkeeper report lost a key and `Mechanics` gained `completed`. Fixture movement was exactly
+  the predicted set — `schemas/worldkeeper_report`, `schemas/loner3e/proposal`, both
+  `instructions/*/{director,worldkeeper}`, `prompts/loner3e/advisor`, and the
+  `save`/`state`/`turn` families.
+- **Not done: the live probe of the reshaped advisor schema** (working rule 2). `AdventureGrowth`
+  nests `Change` in a `$defs` array — still small, still `NativeOutput`, but unprobed; needs
+  network.
+
 ## Next
 
-- PLAN.md Phase 2 continues at **step 4** (one model owner per thread: the Worldkeeper's
-  `thread_moves` goes, the Director's `advance-thread` stays), then step 5 (24XX kits as carried
-  items) and step 6 (advancement waits for a recorded `complete-job`/`end-adventure` boundary,
-  `ThreadAdvancement` → `Advancement`).
-- Then Phase 3 (narration checked against facts), Phase 4 (scenario creator), Phase 5 (media).
+- PLAN.md **Phase 3** (narration checked against facts: a `checker` role, one narrator retry on a
+  contradiction), then Phase 4 (scenario creator), Phase 5 (media).

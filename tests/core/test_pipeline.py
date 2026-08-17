@@ -20,9 +20,9 @@ from pydantic_ai.models.function import AgentInfo, FunctionModel
 
 from aidm.engines.loner3e.actions import outcome_for
 from aidm.engines.loner3e.mechanics import Mechanics
-from aidm.state.base import PLAYER_ID, Counter, EntityId
+from aidm.state.base import PLAYER_ID, EntityId
 from aidm.state.plan import DirectorBeat
-from aidm.state.world import Hook, HookMatch, Memory, Thread
+from aidm.state.world import Memory
 from aidm.turn.pipeline import TURN_STEPS
 
 QUIET_STEPS = ("director", "resolve", "hooks", "narrator", "worldkeeper")
@@ -370,41 +370,6 @@ async def test_a_hook_fires_on_its_fact_moves_its_thread_and_steers_the_next_tur
     # The note steers the Director, which is the only role shown the scenario's own voice.
     assert "Press on what opening the seal will cost" in shown(after.turn, "director")
     assert after.state.world.pending_notes == ()
-
-
-async def test_a_clock_the_worldkeeper_ticks_fires_its_hook_in_the_same_turn() -> None:
-    engine, state = initialized()
-    draft = state.draft()
-    draft.world.threads["trial"] = Thread(
-        id="trial", title="The trial", clock=Counter(current=1, maximum=2)
-    )
-    draft.world.hooks = (
-        Hook(
-            id="trial-complete",
-            match=HookMatch(kind="thread_advanced", data={"clock_filled": True}),
-            note="The trial is complete; press the consequence.",
-        ),
-    )
-    primed = draft.committed()
-
-    result = await played(
-        engine,
-        primed,
-        "I wait.",
-        director=FunctionModel(scripted(plan())),
-        worldkeeper=FunctionModel(
-            scripted(
-                structured(
-                    creations=[],
-                    thread_moves=[{"op": "advance-thread", "thread_id": "trial", "tick": 1}],
-                )
-            )
-        ),
-    )
-
-    assert result.state.world.fired_hooks == ("trial-complete",)
-    assert "hook_fired" in [fact.kind for fact in result.turn.facts]
-    assert result.state.world.pending_notes == ("The trial is complete; press the consequence.",)
 
 
 async def test_memory_reaches_the_director_alone_and_only_for_who_is_here() -> None:

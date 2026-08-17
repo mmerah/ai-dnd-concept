@@ -1,11 +1,11 @@
 from random import Random
 
-from core_test_support import capability, initialized
-from loner3e_test_support import at_milestone
+from core_test_support import at_boundary, capability, initialized
 
 from aidm.engines.loader import Engine
 from aidm.engines.loner3e.actions import (
     HARM,
+    EndAdventure,
     Question,
     defeat_note,
     outcome_for,
@@ -13,7 +13,7 @@ from aidm.engines.loner3e.actions import (
     twist_note,
     twist_pairing,
 )
-from aidm.engines.loner3e.advance import Milestone
+from aidm.engines.loner3e.advance import AdventureGrowth, Change
 from aidm.engines.loner3e.mechanics import LUCK_MAX, TIES_PER_TWIST, Mechanics
 from aidm.engines.loner3e.pack import SRD_PACK, twist_table
 from aidm.engines.loner3e.rules import Loner3eEngine
@@ -105,7 +105,7 @@ def test_check_beat_owes_the_model_every_refusal_the_resolve_raises() -> None:
 def test_an_effect_this_engine_has_not_is_refused_by_naming_every_effect_it_has() -> None:
     """The engine's own union is nested, so the retry names its ops as well as the world's."""
     engine, state = initialized()
-    unknown = DirectorBeat.model_validate({"effects": ({"name": "counter-change", "args": {}},)})
+    unknown = DirectorBeat.model_validate({"effects": ({"name": "no-such-effect", "args": {}},)})
 
     refusal = _refusal(engine, state, unknown)
 
@@ -211,24 +211,26 @@ def test_an_actor_already_at_zero_luck_refuses_another_exchange() -> None:
     assert "already out of luck" in _refusal(engine, spent, again)
 
 
-def test_a_milestone_opens_an_offer_and_the_caps_refuse_what_breaks_them() -> None:
+def test_an_adventures_end_opens_an_offer_and_the_caps_refuse_what_breaks_them() -> None:
     engine, state = initialized()
     advancement = capability(engine)
     assert advancement.offers(state) == ()
 
-    ready = at_milestone(state)
+    ready = at_boundary(state)
     (offer,) = advancement.offers(ready)
 
-    legal = Milestone(
-        change="skill", tag="Reads a Second Tongue", why="the old texts finally make sense"
+    legal = AdventureGrowth(
+        changes=(Change(kind="skill", tag="Reads a Second Tongue"),),
+        why="the old texts finally make sense",
     )
-    rewrite = Milestone(
-        change="rewrite",
-        tag="Never Walks Away",
-        into="Knows When to Walk Away",
+    rewrite = AdventureGrowth(
+        changes=(Change(kind="rewrite", tag="Never Walks Away", into="Knows When to Walk Away"),),
         why="the vault taught him the cost",
     )
-    unwritten = rewrite.model_copy(update={"tag": "Never Held a Blade"})
+    unwritten = AdventureGrowth(
+        changes=(Change(kind="rewrite", tag="Never Held a Blade", into="Knows When to Walk Away"),),
+        why="the vault taught him the cost",
+    )
 
     assert advancement.violation(ready, offer, legal) is None
     assert advancement.violation(ready, offer, rewrite) is None
@@ -237,7 +239,7 @@ def test_a_milestone_opens_an_offer_and_the_caps_refuse_what_breaks_them() -> No
     )
 
 
-def test_an_npc_party_members_milestone_writes_their_own_sheet_not_the_players() -> None:
+def test_an_npc_party_members_growth_writes_their_own_sheet_not_the_players() -> None:
     engine, state = initialized()
     draft = state.draft()
     joined = Relation(kind=PARTY_MEMBER, source=FOE, target=PLAYER_ID, known=True)
@@ -245,12 +247,13 @@ def test_an_npc_party_members_milestone_writes_their_own_sheet_not_the_players()
     with_companion = draft.committed()
 
     advancement = capability(engine)
-    ready = at_milestone(with_companion)
+    ready = at_boundary(with_companion)
     offers = {offer.subject_id: offer for offer in advancement.offers(ready)}
     assert set(offers) == {PLAYER_ID, FOE}
 
-    grow_mara = Milestone(
-        change="skill", tag="Reads Old Stonework", why="she has read enough of it now"
+    grow_mara = AdventureGrowth(
+        changes=(Change(kind="skill", tag="Reads Old Stonework"),),
+        why="she has read enough of it now",
     )
     draft = ready.draft()
     facts = advancement.resolve(draft, offers[FOE], grow_mara, Random(0))
@@ -262,9 +265,9 @@ def test_an_npc_party_members_milestone_writes_their_own_sheet_not_the_players()
     assert [fact.kind for fact in facts] == ["skill_gained", "counter_changed"]
 
 
-def test_an_actor_seeded_after_a_milestone_is_not_owed_the_ones_they_missed() -> None:
+def test_an_actor_seeded_after_an_adventure_is_not_owed_the_growth_they_missed() -> None:
     engine, state = initialized()
-    ready = at_milestone(state)
+    ready = at_boundary(state)
     draft = ready.draft()
     newcomer = Entity(
         id=EntityId("newcomer"),
@@ -283,6 +286,64 @@ def test_an_actor_seeded_after_a_milestone_is_not_owed_the_ones_they_missed() ->
     engine.validate(walked_in)
     offered = {offer.subject_id for offer in capability(engine).offers(walked_in)}
     assert offered == {PLAYER_ID}
+
+
+def test_end_adventure_gates_the_offer_and_a_second_one_earns_a_second() -> None:
+    engine, state = initialized()
+    advancement = capability(engine)
+    assert advancement.offers(state) == ()
+
+    draft = state.draft()
+    engine.apply(draft, EndAdventure())
+    once = draft.committed()
+    (offer,) = advancement.offers(once)
+
+    change = AdventureGrowth(
+        changes=(Change(kind="gear", tag="Waxed Rope"),), why="he never climbs without it now"
+    )
+    draft = once.draft()
+    advancement.resolve(draft, offer, change, Random(0))
+    spent = draft.committed()
+    assert advancement.offers(spent) == ()
+
+    draft = spent.draft()
+    engine.apply(draft, EndAdventure())
+    twice = draft.committed()
+    assert len(advancement.offers(twice)) == 1
+
+
+def test_an_adventure_growth_with_three_changes_lands_all_three_on_the_sheet() -> None:
+    engine, state = initialized()
+    advancement = capability(engine)
+    draft = state.draft()
+    engine.apply(draft, EndAdventure())
+    ready = draft.committed()
+    (offer,) = advancement.offers(ready)
+
+    growth = AdventureGrowth(
+        changes=(
+            Change(kind="skill", tag="Reads Old Stonework"),
+            Change(kind="gear", tag="Waxed Rope"),
+            Change(kind="frailty", tag="Flinches at the Dark"),
+        ),
+        why="the vault left its mark on him",
+    )
+    draft = ready.draft()
+    facts = advancement.resolve(draft, offer, growth, Random(0))
+    grown = draft.committed()
+
+    sheet = grown.mechanics_as(Mechanics).sheets[PLAYER_ID]
+    assert (sheet.skills[-1], sheet.gear[-1], sheet.frailties[-1]) == (
+        "Reads Old Stonework",
+        "Waxed Rope",
+        "Flinches at the Dark",
+    )
+    assert [fact.kind for fact in facts] == [
+        "skill_gained",
+        "gear_gained",
+        "frailty_gained",
+        "counter_changed",
+    ]
 
 
 def test_the_one_roll_is_worked_through_in_the_directors_instructions() -> None:

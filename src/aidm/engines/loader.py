@@ -18,7 +18,7 @@ from aidm.state.facts import Fact
 from aidm.state.plan import DirectorBeat, Resolution, RuleCall, check_draft
 from aidm.state.world import GameState
 
-from .advancement import ThreadAdvancement
+from .advancement import Advancement
 from .sheets import SheetBase, SheetMechanics, actor_sheets, check_sheets
 from .vocabulary import (
     EFFECTS_CARD,
@@ -87,7 +87,7 @@ class Engine[S: SheetBase](ABC):
         # An engine with content advertises its own lookups; one without teaches the model no tool.
         self.director_toolsets: tuple[AbstractToolset[object], ...] = ()
         # An engine with no growth mechanic plugs in none; the app offers only what it finds.
-        self.advancement: ThreadAdvancement | None = None
+        self.advancement: Advancement | None = None
         # An engine that creates characters replaces this; the app offers only what it finds.
         self.creation: Creation | None = None
 

@@ -4,7 +4,7 @@ from collections.abc import Mapping
 from pydantic import Field, JsonValue
 
 from aidm.state.base import PLAYER_ID, EngineId, Entity, EntityId, Mutable
-from aidm.state.world import GameState, WorldState
+from aidm.state.world import GameState
 
 
 class SheetBase(Mutable, ABC):
@@ -47,7 +47,3 @@ def require_sheet[S](sheets: Mapping[EntityId, S], actor: Entity) -> S:
     if sheet is None:
         raise ValueError(f"{actor.name} has no character sheet")
     return sheet
-
-
-def resolved_threads(world: WorldState) -> int:
-    return sum(1 for thread in world.threads.values() if thread.status == "resolved")
