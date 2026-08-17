@@ -1,5 +1,5 @@
 import json
-from collections.abc import Iterator, Sequence
+from collections.abc import Iterator, Mapping, Sequence
 from dataclasses import dataclass
 from pathlib import Path
 from re import fullmatch
@@ -74,13 +74,17 @@ def write_character(
 
 
 def write_scenario(
-    directory: Path, name: Slug, engine: EngineId, scenario: ScenarioWorld, overlay: ScenarioOverlay
+    directory: Path,
+    name: Slug,
+    scenario: ScenarioWorld,
+    overlays: Mapping[EngineId, ScenarioOverlay],
 ) -> None:
     folder = directory / content_id(name)
     if folder.exists():
         raise ValueError(f"scenario {name!r} already exists")
     _write(folder / WORLD_FILE, scenario.model_dump_json(indent=2))
-    _write(folder / f"{engine}.json", overlay.model_dump_json(indent=2))
+    for engine, overlay in overlays.items():
+        _write(folder / f"{engine}.json", overlay.model_dump_json(indent=2))
 
 
 def _playable[T: BaseModel](

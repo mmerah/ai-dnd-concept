@@ -1,0 +1,13 @@
+{
+  "entities": {
+    "old_miller": {
+      "skills": {
+        "Prying": 8,
+        "Stealth": 10
+      },
+      "credits": {
+        "current": 0
+      }
+    }
+  }
+}

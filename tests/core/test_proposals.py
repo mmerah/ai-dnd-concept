@@ -13,7 +13,6 @@ from aidm.engines.loner3e.advance import AdventureGrowth, Change
 from aidm.engines.loner3e.mechanics import Mechanics
 from aidm.state.base import PLAYER_ID
 from aidm.state.turn import Applied
-from aidm.state.world import Hook, HookMatch
 
 LEGAL = AdventureGrowth(
     changes=(Change(kind="gear", tag="Waxed Rope"),), why="he never climbs without it now"
@@ -70,27 +69,6 @@ def test_confirming_commits_exactly_the_proposed_delta(tmp_path: Path) -> None:
     assert game.offers() == ()
     with pytest.raises(ValueError, match="no longer on offer"):
         _ = game.apply_proposal(drafted)
-
-
-def test_a_hook_matching_an_advancement_fact_fires_on_confirm(tmp_path: Path) -> None:
-    game = loner3e_session(tmp_path)
-    game.state = at_boundary(game.state)
-    draft = game.state.draft()
-    draft.world.hooks = (
-        Hook(
-            id="growth-noticed",
-            match=HookMatch(kind="gear_gained"),
-            note="Someone noticed the new gear; press on it.",
-        ),
-    )
-    game.state = draft.committed()
-    offer = game.offers()[0]
-    drafted = Drafted(offer=offer, proposal=LEGAL)
-
-    facts = game.apply_proposal(drafted)
-
-    assert "hook_fired" in [fact.kind for fact in facts]
-    assert game.state.world.pending_notes == ("Someone noticed the new gear; press on it.",)
 
 
 def test_a_refused_proposal_leaves_the_committed_state_untouched(tmp_path: Path) -> None:

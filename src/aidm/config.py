@@ -7,7 +7,7 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 ProviderName = Literal["openrouter", "local"]
 ReasoningEffort = Literal["none", "minimal", "low", "medium", "high", "xhigh", "max"]
 # The roles a build has. A stage is built by name, so an unbuildable name cannot be configured.
-Role = Literal["director", "narrator", "worldkeeper", "advisor"]
+Role = Literal["director", "narrator", "worldkeeper", "advisor", "scenario_creator"]
 
 
 class ProviderConfig(BaseModel):
@@ -26,6 +26,14 @@ class RoleConfig(BaseModel):
     max_tokens: int = Field(default=2048, ge=1)
     reasoning_effort: ReasoningEffort = "low"
     temperature: float | None = Field(default=None, ge=0.0, le=2.0)
+
+
+# An authoring pass writes whole collections in one patch; the turn-loop defaults cannot.
+ROLE_DEFAULTS: dict[Role, RoleConfig] = {
+    "scenario_creator": RoleConfig(
+        model="openai/gpt-oss-120b", max_tokens=32768, reasoning_effort="high"
+    ),
+}
 
 
 class Providers(BaseModel):
@@ -66,7 +74,17 @@ class Settings(BaseSettings):
     packs_dir: Path = Path("packs")
 
     def role(self, name: Role) -> RoleConfig:
-        found = self.roles.get(name, RoleConfig())
+        defaults = ROLE_DEFAULTS.get(name, RoleConfig())
+        supplied = self.roles.get(name)
+        # A partial override keeps the role's other defaults; model_copy would skip validation.
+        found = (
+            defaults
+            if supplied is None
+            else RoleConfig.model_validate(
+                defaults.model_dump()
+                | {field: getattr(supplied, field) for field in supplied.model_fields_set}
+            )
+        )
         if not self.providers.for_name(found.provider).api_key.get_secret_value():
             raise ValueError(
                 f"role {name!r} uses provider {found.provider!r}, which has no api_key"

@@ -1,11 +1,11 @@
 # Plan
 
-The phased plan for what is built next, in order. Phase 1 (the small Director contract) and the
-2026-08-17 drastic simplification (Cairn 2e deleted, the wire contract cut to `roll` + `effects`)
-and Phase 2 (engine-true mechanics) shipped and live in PROGRESS.md. Phase 3 checks narration
-against facts, Phase 4 is the scenario creator, Phase 5 media. Each phase carries enough detail to
-implement without prior context; only the next unshipped phase needs full resolution. Shipped
-phases move to PROGRESS.md.
+The phased plan for what is built next, in order. The Director-contract work, the 2026-08-17
+drastic simplification (Cairn 2e deleted, the wire contract cut to `roll` + `effects`), and the
+engine-true mechanics and the scenario creator all shipped (git history has the detail). Phase 2
+below is media, Phase 3 the player-facing UI; `docs/ui-mock/index.html` is the visual reference
+for both. Each phase carries enough detail to implement without prior context; only the next
+unshipped phase needs full resolution. Shipped phases move to PROGRESS.md.
 
 ## Working rules
 
@@ -26,40 +26,6 @@ phases move to PROGRESS.md.
 Per phase: `uv run pytest && uv run ruff check && uv run ruff format --check && uv run
 basedpyright` green after every numbered step, one commit per step.
 
-## Phase 1 — Scenario creator (~3–4 days)
-
-Premise → a complete scenario in the exact on-disk format, authored by a strong model at
-authoring time. This is a script, not the app: agentic workflows are fine outside the turn
-loop, where speed and small-model reliability do not constrain the design.
-
-1. `scripts/create_scenario.py <slug> "<premise>"`. A pydantic-ai agent whose output type **is**
-   `ScenarioWorld` (`NativeOutput`) — the strictest spec of the shared format already exists and
-   is the validator. Role config key `creator` (set a strong model in `.env`:
-   `ROLES__CREATOR__MODEL=...`). Give it one read-only tool returning whispering-vault's
-   `world.json` as the worked example, and put the authoring bar in the instructions: 4+
-   locations connected by relations with at least one hidden and one `locked` way, 2+ NPCs with
-   at least one unrevealed, one secret item, at least one thread with hooks that advance it on
-   `entity_discovered` facts, hook `note`s that steer the Director, and `detail.hook` on every
-   entity worth one.
-2. Validation loop, in the script: `ScenarioWorld` validates structurally on output (the agent
-   retries on `ValidationError` for free). Then validate the world alone — a `Scenario` per
-   shipped engine with an empty/default overlay, `begin_game` with the shipped `kael`, and the
-   engine's normal mechanics validation. Any `ValueError` goes back to the agent as a retry
-   message, max 3 rounds, then fail loudly with the reason.
-3. Overlays: a second agent call per shipped engine, output that engine's strict
-   authored-overlay model, prompted with the generated world and engine-provided authoring
-   guidance/defaults. Re-run step 2's loop with each generated overlay in place — the overlay
-   is what `begin_game` exercises beyond shared structure.
-4. Files land in `scenarios/<slug>/` only after every shipped engine validates. The script
-   prints a summary (entities, relations, threads, hooks per engine) and the author reviews the
-   diff before committing — generated content merges by the same review as hand-written
-   content.
-
-Done when: `uv run python scripts/create_scenario.py rats-of-thornhill "..."` yields a scenario
-that appears on the home page and plays a first turn under every shipped engine. Quality beyond
-validity is judged by playing it, not asserted by the script. PDF/notes ingestion is a later
-input mode for the same script, not a separate system.
-
 ## Phase 2 — Media: scene illustrations (~2–3 days)
 
 Presentation only, outside mechanical truth: the game must be indistinguishable with media
@@ -76,7 +42,8 @@ disabled, and a failed generation must cost nothing but a log line.
    schedule generation as a background asyncio task writing
    `saves/<slug>.media/turn-<n>.png`. The turn returns without waiting. `restart()` discards the
    media directory alongside the save.
-3. UI: the chat panel shows the image above its exchange when the file exists; refresh on next
+3. UI: the play page shows the newest existing `turn-<n>.png` as scene-header art above the
+   narration (the placement the ui-mock settled on), not inline per exchange; refresh on next
    submit (simplest) picks up late arrivals, a `ui.timer` only if that feels bad in practice. No
    gallery, no regeneration button.
 4. Tests: the request builder is pure — one test on its output for a known state; the generate
@@ -85,3 +52,56 @@ disabled, and a failed generation must cost nothing but a log line.
 
 Done when: with media enabled a turn grows an illustration within seconds after the narration,
 and with it disabled (the default) nothing in state, saves, prompts, or tests differs.
+
+## Phase 3 — Player-facing UI (~2–3 days)
+
+Re-skin the game page from a debug surface into a play surface, per `docs/ui-mock/index.html`
+(open it in a browser first; its README explains each view). This phase renders existing state
+only: no new state fields, no persisted-byte change (no `SAVE_VERSION` bump), no model calls, no
+new dependencies. Domain logic stays out of `src/aidm/ui/` — the UI renders view models built at
+the app boundary.
+
+**The leak rule, the one hard constraint:** a player-facing surface may only receive data through
+a type that has no field a leak could travel through — the same rule the Narrator already obeys.
+`VisibleScene` (`src/aidm/turn/scene.py`) is that type for the scene: it strips unrevealed
+entities, unknown exits, and `detail.hook` by construction. Reuse it; never hand raw `GameState`,
+`Hook`s, `pending_notes`, or thread `note`s (Director steering text) to a player panel. Trace and
+raw state stay available, but only inside the explicitly-labelled dev tab.
+
+1. Player view models in a new `src/aidm/app/views.py`, all frozen (`Frozen` from
+   `aidm.state.base`) with pure builders taking `GameState`:
+   - `PlayerScene`: wraps `VisibleScene.of(SceneSnapshot.of(state))` plus the location's `brief`
+     and exit lock markers (`Exit.locked` is already on the scene's exits).
+   - `JournalView`: chronicle from `state.history` (each `Exchange` is already player-safe),
+     thread cards from `state.world.threads` showing `title`, `status`, `stage`, and the clock as
+     "n / max" — not `note` — and memories from `state.world.memories` whose `owner` is `None` or
+     names an entity with `known=True` (an authored memory can belong to someone the player has
+     not met).
+   Tests (`tests/` mirrors the package layout): build a small `WorldState` with one unrevealed
+   entity, one unknown exit, and one hidden-owner memory; assert none of them appear in either
+   view. This test is the leak rule's regression net — keep it strict.
+2. Engine-owned sheet summary: add an abstract `sheet_view(self, state: GameState) ->
+   tuple[tuple[str, str], ...]` to `Engine` (`src/aidm/engines/loader.py`) returning ordered
+   (label, value) pairs for the player's sheet — e.g. loner3e: Concept / Skills / Frailty / Luck
+   "4 / 6"; twentyfourxx: Specialty / Origin / Skills "Stealth d10" / Credits. Each engine reads
+   its own mechanics via `state.mechanics_as(...)` exactly as its rules code does. Engines return
+   data; NiceGUI stays out of `src/aidm/engines/`. One test per engine on a begun game's state.
+3. Game page restructure (`src/aidm/ui/app.py` + `panels.py`), keeping the existing splitter,
+   `GameView` refresh pattern, and busy handling:
+   - Left: scene header (location name, brief, the Phase 2 image when present), then the chat,
+     then the input row. Show the entities-here and known-exits from `PlayerScene` as compact
+     rows under the header (`docs/ui-mock` "Here now" / "Exits" cards are the look to approximate,
+     not pixel-match).
+   - Right tabs become: `scene` (character mini + `sheet_view` pairs + threads), `journal`
+     (`JournalView`), the advancement tab as today, and `dev` (the current trace + state panels,
+     unchanged). Default tab: `scene`.
+   - Role badges stay in the header; they double as the turn progress indicator.
+4. Out of scope, deliberately: dialogue speaker attribution (needs structured Narrator output —
+   `speaker_id` was deleted in the 2026-08-17 simplification; reintroducing it is a schema change
+   with a live-probe cost, not polish), suggestion chips (nothing authors them), mid-game engine
+   switching (mock-only presentation), the map view (the catalogue list is the same data), home
+   page re-skin, and portraits/entity icons (later media phases).
+
+Done when: `uv run aidm` plays a turn narration-first with the rails populated from view models,
+the leak test pins that no unrevealed name can reach a player panel, trace/state still work under
+dev, and the suite is green with no fixture movement.

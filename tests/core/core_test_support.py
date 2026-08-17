@@ -8,6 +8,7 @@ from pydantic import BaseModel, JsonValue, SecretStr
 from pydantic_ai.messages import ModelMessage, ModelResponse, TextPart
 from pydantic_ai.models import Model
 from pydantic_ai.models.function import AgentInfo, FunctionModel
+from pydantic_settings import SettingsConfigDict
 
 from aidm.app.session import begin_game, build_engine
 from aidm.config import ProviderConfig, Providers, Settings
@@ -23,6 +24,13 @@ from aidm.turn.pipeline import TurnResult, run_turn
 from aidm.turn.roles import build_stages
 
 type Stub = Callable[[list[ModelMessage], AgentInfo], ModelResponse]
+
+
+class EnvFileFreeSettings(Settings):
+    """The checkout's .env must not leak into tests; monkeypatched env vars still apply."""
+
+    model_config = SettingsConfigDict(env_file=None)
+
 
 REPOSITORY_ROOT = Path(__file__).parents[2]
 SCENARIOS = REPOSITORY_ROOT / "scenarios"
@@ -156,7 +164,7 @@ async def played(
 
 
 def settings() -> Settings:
-    return Settings(
+    return EnvFileFreeSettings(
         providers=Providers(
             openrouter=ProviderConfig(
                 base_url="https://example.invalid/v1",

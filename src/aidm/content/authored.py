@@ -1,4 +1,4 @@
-from collections.abc import Callable, Collection, Iterable, Mapping
+from collections.abc import Callable, Collection, Iterable, Mapping, Sequence
 from dataclasses import dataclass
 from functools import cached_property
 from typing import Self
@@ -15,8 +15,12 @@ from aidm.state.base import (
     Trait,
     require_unique,
 )
-from aidm.state.effects import AdvanceThread
-from aidm.state.world import Hook, Memory, Relation, ScenarioMeta, Thread, WorldState
+from aidm.state.world import CONNECTED, Hook, Memory, Relation, ScenarioMeta, Thread, WorldState
+
+# The id-shaped keys committed facts actually carry; any other match key is not policed here.
+_FACT_ENTITY_KEYS = ("entity_id", "to_id", "target")
+# Effect keys that must name an existing entity; created ids (`trait_id`, `stage`) are free.
+_EFFECT_ENTITY_KEYS = ("entity_id", "to_id", "source", "target", "actor_id")
 
 type EffectParse = Callable[[JsonValue], Frozen]
 
@@ -76,6 +80,75 @@ class ScenarioWorld(Frozen):
                     f"unlike {companion!r}"
                 )
         return self
+
+    @model_validator(mode="after")
+    def _every_location_reachable(self) -> Self:
+        """An unknown or locked way still counts — the player can discover or open it — but a
+        location no walk of `connected` relations reaches is content nobody can ever visit."""
+        ways = [relation for relation in self.relations if relation.kind == CONNECTED]
+        reached = _walk(ways, self.starting_location_id)
+        unreachable = sorted(
+            entity.id
+            for entity in self.entities
+            if entity.kind == "location" and entity.id not in reached
+        )
+        if unreachable:
+            raise ValueError(
+                f"locations no walk of `connected` relations reaches from "
+                f"{self.starting_location_id!r}: {unreachable}"
+            )
+        return self
+
+    @model_validator(mode="after")
+    def _every_known_location_reachable_by_known_ways(self) -> Self:
+        """A player who knows a place exists but has no known way to walk there hits a refusal
+        for a place the premise told them about; movement is gated by `connected` relations, so
+        this is a real dead end, not a cosmetic one."""
+        known_ways = [
+            relation for relation in self.relations if relation.kind == CONNECTED and relation.known
+        ]
+        reached = _walk(known_ways, self.starting_location_id)
+        stranded = sorted(
+            entity.id
+            for entity in self.entities
+            if entity.kind == "location" and entity.known and entity.id not in reached
+        )
+        if stranded:
+            raise ValueError(
+                f"locations the player knows of but no known way reaches from "
+                f"{self.starting_location_id!r}: {stranded}"
+            )
+        return self
+
+    @model_validator(mode="after")
+    def _hooks_wait_on_authored_ids(self) -> Self:
+        pools = _id_pools(self, _FACT_ENTITY_KEYS)
+        dangling = [
+            f"hook {hook.id!r} waits on {key}={value!r}"
+            for hook in self.hooks
+            for key, value in _dangling_ids(pools, hook.match.data)
+        ]
+        if dangling:
+            raise ValueError(
+                f"hooks waiting on ids nothing authored carries can never fire: "
+                f"{'; '.join(dangling)}"
+            )
+        return self
+
+
+def _walk(ways: Sequence[Relation], start: EntityId) -> set[EntityId]:
+    reached = {start}
+    frontier = [start]
+    while frontier:
+        here = frontier.pop()
+        for way in ways:
+            if not way.touches(here) or (way.directed and way.source != here):
+                continue
+            far = way.far_end(here)
+            if far not in reached:
+                reached.add(far)
+                frontier.append(far)
+    return reached
 
 
 class ScenarioOverlay(Frozen):
@@ -170,11 +243,35 @@ def _require_authored(
 
 
 def check_hooks(world: ScenarioWorld, binding: Binding) -> None:
-    """Hook effects are the engine's own vocabulary; core only checks the threads they name."""
+    """Hook effects are the engine's own vocabulary; core only checks the ids they reference."""
+    pools = _id_pools(world, _EFFECT_ENTITY_KEYS)
+    dangling: list[str] = []
     for hook in world.hooks:
         for effect in hook.effects:
-            parsed = binding.parse_effect(effect)
-            if isinstance(parsed, AdvanceThread) and parsed.thread_id not in world.world.threads:
-                raise ValueError(
-                    f"hook {hook.id!r} advances the unauthored thread {parsed.thread_id!r}"
-                )
+            data = binding.parse_effect(effect).model_dump()
+            dangling.extend(
+                f"hook {hook.id!r} effect {data.get('op')!r} names {key}={value!r}"
+                for key, value in _dangling_ids(pools, data)
+            )
+    if dangling:
+        raise ValueError(
+            f"hook effects naming ids nothing authored carries would fail mid-game: "
+            f"{'; '.join(dangling)}"
+        )
+
+
+def _id_pools(world: ScenarioWorld, entity_keys: Iterable[str]) -> dict[str, set[str]]:
+    entity_ids: set[str] = {PLAYER_ID, *world.world.entities}
+    return {**dict.fromkeys(entity_keys, entity_ids), "thread_id": set(world.world.threads)}
+
+
+def _dangling_ids(
+    pools: Mapping[str, set[str]], data: Mapping[str, object]
+) -> list[tuple[str, object]]:
+    """Absent or null keys pass: null already means the player or 'leave as is', never a typo."""
+    return [
+        (key, value)
+        for key, pool in pools.items()
+        if (value := data.get(key)) is not None
+        and (not isinstance(value, str) or value not in pool)
+    ]

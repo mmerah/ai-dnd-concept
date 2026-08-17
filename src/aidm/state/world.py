@@ -1,5 +1,5 @@
 from collections.abc import Iterator, Mapping
-from typing import Self
+from typing import Literal, Self
 
 from pydantic import Field, JsonValue, PrivateAttr, model_validator
 
@@ -97,10 +97,25 @@ class Memory(Mutable):
     text: str = Field(min_length=1, max_length=300)
 
 
+# Core world-op kinds only: engine kinds are per-ruleset (as WORLD_CALLS); hook_* chains hooks.
+type HookFactKind = Literal[
+    "entity_created",
+    "entity_discovered",
+    "entity_moved",
+    "trait_added",
+    "trait_removed",
+    "relation_added",
+    "relation_removed",
+    "relation_untagged",
+    "relation_revealed",
+    "thread_advanced",
+]
+
+
 class HookMatch(Frozen):
     """A fact this hook waits for: its kind, and the data fields that must equal these."""
 
-    kind: str
+    kind: HookFactKind
     data: dict[str, JsonValue] = Field(default_factory=dict)
 
     def matches(self, fact: Fact) -> bool:

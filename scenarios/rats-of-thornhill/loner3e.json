@@ -1,0 +1,42 @@
+{
+  "entities": {
+    "old_miller": {
+      "concept": "Eldric, the old miller who holds a rusted iron key to the mill undercroft",
+      "skills": [
+        "Keyholder",
+        "Mill Knowledge"
+      ],
+      "frailties": [
+        "Old Age",
+        "Physical Weakness"
+      ],
+      "gear": [
+        "rusted iron key"
+      ]
+    },
+    "rat_swarm": {
+      "concept": "A massive, swarming horde of rats that have emptied the grain cellars",
+      "skills": [
+        "Overwhelming Numbers",
+        "Scurry"
+      ],
+      "frailties": [
+        "Fire",
+        "Bright Light"
+      ]
+    },
+    "lysa_barn_keeper": {
+      "concept": "Lysa, the sturdy barn keeper who watches over the tithe barn",
+      "skills": [
+        "Observation",
+        "Lantern Use"
+      ],
+      "frailties": [
+        "Fear of Rats"
+      ],
+      "gear": [
+        "lantern"
+      ]
+    }
+  }
+}

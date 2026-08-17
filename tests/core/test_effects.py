@@ -238,8 +238,17 @@ def test_a_hook_effect_the_vocabulary_does_not_take_lands_as_hook_failed() -> No
 def test_hooks_that_feed_each_other_stop_at_the_round_cap() -> None:
     engine, state = initialized()
     draft = state.draft()
-    draft.world.hooks = (Hook(id="self-feeder", once=False, match=HookMatch(kind="hook_fired")),)
-    seed = Fact(source=CORE, kind="hook_fired", trace="seed")
+    draft.world.hooks = (
+        Hook(
+            id="self-feeder",
+            once=False,
+            match=HookMatch(kind="thread_advanced"),
+            effects=(
+                {"name": "advance-thread", "args": {"thread_id": "vault-seal", "status": "active"}},
+            ),
+        ),
+    )
+    seed = Fact(source=CORE, kind="thread_advanced", trace="seed")
 
     fired = fire_hooks(draft, [seed], engine.apply_effect)
 

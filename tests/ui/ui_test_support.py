@@ -1,5 +1,6 @@
 from pathlib import Path
 
+from core_test_support import EnvFileFreeSettings
 from pydantic import SecretStr
 
 from aidm.config import ProviderConfig, Providers, Settings
@@ -11,7 +12,7 @@ SCENARIOS = REPOSITORY_ROOT / "scenarios"
 
 
 def ui_settings(saves_dir: Path, scenarios_dir: Path = SCENARIOS) -> Settings:
-    return Settings(
+    return EnvFileFreeSettings(
         providers=Providers(
             openrouter=ProviderConfig(
                 base_url="https://example.invalid/v1",

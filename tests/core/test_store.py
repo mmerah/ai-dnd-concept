@@ -149,9 +149,9 @@ def test_write_scenario_round_trips_and_refuses_a_duplicate(tmp_path: Path) -> N
     original = scenario()
     binding = build_engine(LONER3E).binding()
 
-    write_scenario(tmp_path, "vault-copy", LONER3E, original.world, original.overlay)
+    write_scenario(tmp_path, "vault-copy", original.world, {LONER3E: original.overlay})
     loaded = load_scenario(tmp_path, "vault-copy", binding)
 
     assert (loaded.world, loaded.overlay) == (original.world, original.overlay)
     with pytest.raises(ValueError, match="already exists"):
-        write_scenario(tmp_path, "vault-copy", LONER3E, original.world, original.overlay)
+        write_scenario(tmp_path, "vault-copy", original.world, {LONER3E: original.overlay})

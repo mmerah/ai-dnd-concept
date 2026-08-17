@@ -24,8 +24,10 @@ def _opening_state(config: Settings, engine: EngineId) -> GameState:
 
 
 def _scenarios_copy(tmp_path: Path) -> Path:
+    """Only the shipped scenario: `scenarios/` also holds generated ones, and a catalogue
+    assertion that counts them moves every time somebody authors one."""
     scenarios = tmp_path / "scenarios"
-    shutil.copytree(SCENARIOS, scenarios)
+    shutil.copytree(SCENARIOS / "whispering-vault", scenarios / "whispering-vault")
     return scenarios
 
 
@@ -35,6 +37,7 @@ def test_an_overlay_decides_which_rules_a_scenario_offers(tmp_path: Path) -> Non
 
     assert catalog.scenario("whispering-vault").engines == ("loner3e", "twentyfourxx")
     assert [option.id for option in catalog.characters] == ["kael"]
+    controller.choose_scenario("whispering-vault")
     controller.choose_engine(LONER3E)
 
     assert [option.id for option in controller.compatible_characters()] == ["kael"]
@@ -104,6 +107,7 @@ def test_a_save_from_another_build_is_reported_not_offered(tmp_path: Path) -> No
     FileStore(tmp_path).save(slug, updated(state, save_version=state.save_version - 1))
 
     controller = LauncherController(load_catalog(config))
+    controller.choose_scenario("whispering-vault")
 
     assert [save.slug for save in controller.catalog.saves] == []
     assert [broken.slug for broken in controller.catalog.unreadable] == [slug]

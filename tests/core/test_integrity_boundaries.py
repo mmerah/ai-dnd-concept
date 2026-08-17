@@ -1,4 +1,7 @@
 import json
+import re
+from pathlib import Path
+from typing import get_args
 
 import pytest
 from core_test_support import (
@@ -12,15 +15,18 @@ from core_test_support import (
 )
 from pydantic import ValidationError
 
+import aidm.state.apply
+import aidm.state.world
 from aidm.content.authored import (
     Character,
     CharacterOverlay,
     CharacterProfile,
     ScenarioWorld,
+    check_hooks,
 )
 from aidm.engines.loner3e.mechanics import LUCK_MAX, Mechanics
 from aidm.state.base import PLAYER_ID, Entity, EntityId
-from aidm.state.world import GameState
+from aidm.state.world import CONNECTED, GameState, Hook, HookFactKind, HookMatch, Relation
 
 HELD = EntityId("frayed_rope")
 UNHELD = EntityId("silk_rope")
@@ -98,6 +104,82 @@ def test_scenario_topology_is_validated() -> None:
     with pytest.raises(ValidationError, match="duplicate entity ids"):
         # Keyed by id from a flat array, so the duplicate has to be caught before it collapses.
         ScenarioWorld.model_validate_json(_DOUBLED)
+
+
+def test_a_location_no_walk_reaches_is_refused() -> None:
+    world = scenario().world
+    undercroft = Entity(
+        id=EntityId("undercroft"),
+        kind="location",
+        name="the undercroft",
+        brief="A chamber no passage names.",
+        known=False,
+    )
+    with pytest.raises(ValidationError, match=r"no walk.*undercroft"):
+        updated(world, entities=(*world.entities, undercroft))
+
+
+def test_a_known_location_no_known_way_reaches_is_refused() -> None:
+    """Reachable through an unknown way, so only the stricter known-way rule can catch it."""
+    world = scenario().world
+    chapel = Entity(
+        id=EntityId("chapel"),
+        kind="location",
+        name="the chapel",
+        brief="A chapel the premise names.",
+        known=True,
+    )
+    way = Relation(
+        kind=CONNECTED, source=world.starting_location_id, target=chapel.id, directed=False
+    )
+    with pytest.raises(ValidationError, match=r"knows of but no known way.*chapel"):
+        updated(world, entities=(*world.entities, chapel), relations=(*world.relations, way))
+
+
+def test_a_hook_waiting_on_an_unauthored_id_is_refused() -> None:
+    world = scenario().world
+    ghost = Hook(
+        id="ghost-sighted", match=HookMatch(kind="entity_discovered", data={"entity_id": "ghost"})
+    )
+    with pytest.raises(ValidationError, match=r"never fire.*ghost"):
+        updated(world, hooks=(*world.hooks, ghost))
+
+
+def test_a_hook_effect_naming_an_unauthored_id_is_refused() -> None:
+    engine, _ = initialized()
+    world = scenario().world
+    haunted = Hook(
+        id="vault-haunted",
+        match=HookMatch(kind="entity_discovered", data={"entity_id": "vault"}),
+        effects=({"name": "reveal", "args": {"entity_id": "ghost"}},),
+    )
+    with pytest.raises(ValueError, match=r"vault-haunted.*reveal.*entity_id='ghost'"):
+        check_hooks(updated(world, hooks=(*world.hooks, haunted)), engine.binding())
+
+
+def test_a_hook_waiting_on_a_kind_core_never_emits_is_refused() -> None:
+    with pytest.raises(ValidationError, match="entity_discoverd"):
+        _ = HookMatch.model_validate({"kind": "entity_discoverd"})
+
+
+_FACT_KIND_PATTERNS = (
+    # Fact(source=CORE, kind="...") and the second argument of *_fact(entity, "...") helpers.
+    re.compile(r'Fact\([^)]*?kind="([a-z_]+)"'),
+    re.compile(r'_fact\(\s*[\w.]+,\s*"([a-z_]+)"'),
+)
+_UNMATCHABLE = {"hook_fired", "hook_failed", "hooks_capped"}
+
+
+def test_the_hookable_set_tracks_the_kinds_core_actually_emits() -> None:
+    """A kind added to core's world ops goes into `HookFactKind`, or is unmatchable here."""
+    sources = (Path(aidm.state.world.__file__), Path(aidm.state.apply.__file__))
+    emitted = {
+        kind
+        for source in sources
+        for pattern in _FACT_KIND_PATTERNS
+        for kind in pattern.findall(source.read_text())
+    }
+    assert emitted == set(get_args(HookFactKind.__value__)) | _UNMATCHABLE
 
 
 def test_a_scenario_starts_the_party_it_authors() -> None:

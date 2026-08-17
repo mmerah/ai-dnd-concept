@@ -2,6 +2,8 @@
 
 - [] Eval coverage: evaluate what pipeline does for different scenarios. Expected VS what happens. Light eval runs, re-use the codebase src because that's what we evaluate. In scripts
 - [] Worldkeeper: wanted to add memory to player but said "we have no id"
+- [] Compare with https://github.com/zeruhur/sybyl/tree/main project, what does this do that we don't? How is it better? blogpost: https://zotiquest.substack.com/p/the-leather-diary-a-loner-playthrough
+- [] No scenario creation? No scenarios? Only premises? But how do we bring though a PDF ingestor? How do we connect locations? Move in the world?
 
 ## Ideas
 
