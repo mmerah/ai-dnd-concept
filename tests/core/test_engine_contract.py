@@ -26,7 +26,6 @@ def _turn(engine: Engine, state: GameState) -> tuple[GameState, tuple[Fact, ...]
             entity_id=PLAYER_ID,
             counter="luck",
             amount=-1,
-            why="the strain of prying",
         ),
     )
     facts = [

@@ -12,7 +12,7 @@ from .effects import (
     TraitChange,
     WorldEffect,
 )
-from .facts import CORE, Fact, explained, explained_fact
+from .facts import CORE, Fact, explained_fact
 from .world import CONNECTED, LOCKED_TAG, PARTY_MEMBER, GameState, Hook, Relation
 
 
@@ -148,7 +148,7 @@ def _add_trait(draft: GameState, effect: TraitChange) -> list[Fact]:
     trace = f"{entity.name} is {name}"
     return [
         *seen,
-        explained_fact(entity, "trait_added", trace, {"trait_id": effect.trait_id}, effect.why),
+        explained_fact(entity, "trait_added", trace, {"trait_id": effect.trait_id}, ""),
     ]
 
 
@@ -163,7 +163,7 @@ def _remove_trait(draft: GameState, effect: TraitChange) -> list[Fact]:
     entity.traits.remove(held)
     trace = f"{entity.name} is no longer {held.name}"
     data = {"trait_id": effect.trait_id}
-    return [*seen, explained_fact(entity, "trait_removed", trace, data, effect.why)]
+    return [*seen, explained_fact(entity, "trait_removed", trace, data, "")]
 
 
 def _relation_of(
@@ -204,7 +204,7 @@ def _relation_change(draft: GameState, effect: RelationChange) -> list[Fact]:
     data: dict[str, JsonValue] = {"kind": relation.kind, "target": relation.target}
     match effect.mode:
         case "add":
-            return [*seen, explained_fact(source, "relation_added", joined, data, effect.why)]
+            return [*seen, explained_fact(source, "relation_added", joined, data, "")]
         case "remove":
             del draft.world.relations[relation.id]
             return [
@@ -213,7 +213,7 @@ def _relation_change(draft: GameState, effect: RelationChange) -> list[Fact]:
                     "relation_removed",
                     f"{joined} broken",
                     data,
-                    effect.why,
+                    "",
                     narrate=relation.known,
                 )
             ]
@@ -231,7 +231,7 @@ def _relation_change(draft: GameState, effect: RelationChange) -> list[Fact]:
                     "relation_untagged",
                     f"{joined} untagged {effect.tag}",
                     {**data, "tag": effect.tag},
-                    effect.why,
+                    "",
                     narrate=relation.known,
                 )
             ]
@@ -242,7 +242,7 @@ def _relation_change(draft: GameState, effect: RelationChange) -> list[Fact]:
             relation.known = True
             return [
                 *seen,
-                explained_fact(source, "relation_revealed", f"{joined} revealed", data, effect.why),
+                explained_fact(source, "relation_revealed", f"{joined} revealed", data, ""),
             ]
 
 
@@ -274,9 +274,7 @@ def _advance_thread(draft: GameState, effect: AdvanceThread) -> list[Fact]:
             "clock_maximum": clock.maximum,
             "clock_filled": clock.current == clock.maximum,
         }
-    return [
-        Fact(source=CORE, kind="thread_advanced", trace=explained(moved, effect.why), data=data)
-    ]
+    return [Fact(source=CORE, kind="thread_advanced", trace=moved, data=data)]
 
 
 type EffectApply = Callable[[GameState, JsonValue], list[Fact]]

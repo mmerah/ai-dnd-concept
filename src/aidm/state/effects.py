@@ -8,9 +8,6 @@ TargetId = Annotated[
     EntityId,
     Field(description="Exact id of the entity affected; an actor must be here with the player."),
 ]
-Why = Annotated[
-    str, Field(description="One short sentence saying what causes this change, for the player.")
-]
 
 
 class Reveal(Frozen):
@@ -67,7 +64,6 @@ class TraitChange(Frozen):
         default="",
         description="The constraint or benefit it puts on the entity, in prose. Adding only.",
     )
-    why: Why = ""
 
 
 class RelationChange(Frozen):
@@ -92,7 +88,6 @@ class RelationChange(Frozen):
         default=None,
         description="For `untag` only: the exact id of a tag the tie carries, such as `locked`.",
     )
-    why: Why = ""
 
     @model_validator(mode="after")
     def _tag_belongs_to_untag(self) -> Self:
@@ -117,7 +112,6 @@ class AdvanceThread(Frozen):
         default=0,
         description="How many segments this fills on the thread's clock, when it has one.",
     )
-    why: Why = ""
 
     @model_validator(mode="after")
     def _moves_something(self) -> Self:

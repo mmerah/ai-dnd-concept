@@ -66,4 +66,4 @@ WHAT JUST HAPPENED:
 - learned of the vault map
 - took the vault map
 - learned of the sealed vault
-- the sealed vault is Warded (the seal stirs when it is first seen)
+- the sealed vault is Warded

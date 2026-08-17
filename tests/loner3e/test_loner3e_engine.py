@@ -315,7 +315,6 @@ def test_a_hook_reaches_the_engine_s_own_effects() -> None:
                     "entity_id": "player",
                     "counter": "luck",
                     "amount": -1,
-                    "why": "the strain of it",
                 },
             ),
         ),

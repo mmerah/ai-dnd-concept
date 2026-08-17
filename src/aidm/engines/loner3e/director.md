@@ -18,7 +18,7 @@ and they have had a breath, and to charge a hazard that no conflict covers — a
 draught, a night out in the cold.
 
 ```json
-{"name": "counter-change", "args": {"mode": "adjust", "entity_id": "player", "counter": "luck", "amount": 6, "why": "the fight is over and he has got his breath back"}}
+{"name": "counter-change", "args": {"mode": "adjust", "entity_id": "player", "counter": "luck", "amount": 6}}
 ```
 
 The sheet's `skills`, `frailties`, and `gear` change only through advancement. A lasting change to

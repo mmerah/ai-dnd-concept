@@ -32,10 +32,6 @@ class CounterChange(Frozen):
         description="For `adjust`, how much the pool moves: negative to reduce. For `spend`, how "
         "much of the pool is paid, always positive."
     )
-    why: str = Field(
-        default="",
-        description="One short sentence saying what causes this change, for the player.",
-    )
 
     @model_validator(mode="after")
     def _spend_pays(self) -> Self:
@@ -85,5 +81,5 @@ def move_pool(sheet: Pools | None, entity: Entity, effect: CounterChange) -> lis
         known = ", ".join(sorted(sheet.counters())) if sheet else "(none)"
         raise ValueError(f"{entity.name} has no pool {effect.counter!r}. Their pools are: {known}")
     if effect.mode == "adjust":
-        return adjust(entity, effect.counter, counter, effect.amount, effect.why)
-    return spend(entity, effect.counter, counter, effect.amount, effect.why)
+        return adjust(entity, effect.counter, counter, effect.amount, "")
+    return spend(entity, effect.counter, counter, effect.amount, "")

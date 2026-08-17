@@ -55,12 +55,6 @@
           "description": "How many segments this fills on the thread's clock, when it has one.",
           "title": "Tick",
           "type": "integer"
-        },
-        "why": {
-          "default": "",
-          "description": "One short sentence saying what causes this change, for the player.",
-          "title": "Why",
-          "type": "string"
         }
       },
       "required": [

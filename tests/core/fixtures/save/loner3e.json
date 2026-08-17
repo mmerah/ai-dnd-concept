@@ -1,5 +1,5 @@
 {
-  "save_version": 66,
+  "save_version": 67,
   "scenario_id": "whispering-vault",
   "character_id": "kael",
   "scenario": {
@@ -224,15 +224,13 @@
           {
             "op": "advance-thread",
             "thread_id": "vault-seal",
-            "stage": "seal-found",
-            "why": "the vault door is found"
+            "stage": "seal-found"
           },
           {
             "op": "trait-change",
             "mode": "add",
             "entity_id": "vault",
             "text": "The seal answers a touch, and something behind the door answers with it.",
-            "why": "the seal stirs when it is first seen",
             "trait_id": "warded"
           }
         ],
@@ -251,8 +249,7 @@
           {
             "op": "advance-thread",
             "thread_id": "vault-seal",
-            "stage": "seal-found",
-            "why": "the chart marks the stair down to the door"
+            "stage": "seal-found"
           },
           {
             "op": "reveal",
@@ -274,8 +271,7 @@
           {
             "op": "advance-thread",
             "thread_id": "vault-seal",
-            "stage": "rite-known",
-            "why": "Elena alone remembers the sealing rite"
+            "stage": "rite-known"
           }
         ],
         "note": "Elena remembers the rite that sealed the vault. Let her name her price for it.",

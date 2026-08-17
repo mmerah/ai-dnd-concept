@@ -1,5 +1,5 @@
 {
-  "save_version": 66,
+  "save_version": 67,
   "facts": [
     {
       "source": "core",
@@ -83,7 +83,7 @@
     {
       "source": "core",
       "kind": "thread_advanced",
-      "trace": "The sealed vault is active at seal-found (the chart marks the stair down to the door)",
+      "trace": "The sealed vault is active at seal-found",
       "narrator": null,
       "data": {
         "thread_id": "vault-seal",
@@ -113,7 +113,7 @@
     {
       "source": "core",
       "kind": "thread_advanced",
-      "trace": "The sealed vault is active at seal-found (the vault door is found)",
+      "trace": "The sealed vault is active at seal-found",
       "narrator": null,
       "data": {
         "thread_id": "vault-seal",
@@ -124,8 +124,8 @@
     {
       "source": "core",
       "kind": "trait_added",
-      "trace": "the sealed vault is Warded (the seal stirs when it is first seen)",
-      "narrator": "the sealed vault is Warded (the seal stirs when it is first seen)",
+      "trace": "the sealed vault is Warded",
+      "narrator": "the sealed vault is Warded",
       "data": {
         "entity_id": "vault",
         "trait_id": "warded"
@@ -205,7 +205,7 @@
     },
     {
       "name": "hooks",
-      "output": "hook vault-charted fired\nThe sealed vault is active at seal-found (the chart marks the stair down to the door)\nlearned of the sealed vault\nhook vault-sighted fired\nThe sealed vault is active at seal-found (the vault door is found)\nthe sealed vault is Warded (the seal stirs when it is first seen)"
+      "output": "hook vault-charted fired\nThe sealed vault is active at seal-found\nlearned of the sealed vault\nhook vault-sighted fired\nThe sealed vault is active at seal-found\nthe sealed vault is Warded"
     },
     {
       "name": "narrator",

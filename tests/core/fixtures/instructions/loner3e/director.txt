@@ -43,7 +43,7 @@ and they have had a breath, and to charge a hazard that no conflict covers — a
 draught, a night out in the cold.
 
 ```json
-{"name": "counter-change", "args": {"mode": "adjust", "entity_id": "player", "counter": "luck", "amount": 6, "why": "the fight is over and he has got his breath back"}}
+{"name": "counter-change", "args": {"mode": "adjust", "entity_id": "player", "counter": "luck", "amount": 6}}
 ```
 
 The sheet's `skills`, `frailties`, and `gear` change only through advancement. A lasting change to
@@ -153,7 +153,6 @@ What an `effects` entry may name, and the `args` each one takes. A beat writes a
   - `entity_id` (required) — Exact id of the entity affected; an actor must be here with the player.
   - `trait_id` (required) — Stable slug for the trait, such as `poisoned`; to remove, the exact id of a trait the entity carries.
   - `text` (default "") — The constraint or benefit it puts on the entity, in prose. Adding only.
-  - `why` (default "") — One short sentence saying what causes this change, for the player.
 
 `relation-change` — Record, break, unblock, or reveal a lasting tie between two entities. Containment is not a tie: carrying an item or standing somewhere are moves. `reveal` shows the player a way through they did not know about; write it before moving them through a passage they have not found. `untag` lifts a block such as `locked` when the fiction opens it.
   - `mode` (one of `add`, `remove`, `untag`, `reveal`; required) — What happens to the tie: `add` records it, `remove` breaks it, `untag` lifts a tag it carries, `reveal` shows it to the player.
@@ -161,21 +160,18 @@ What an `effects` entry may name, and the `args` each one takes. A beat writes a
   - `source` (required) — Exact id of the tie's source entity.
   - `target` (required) — Exact id of the tie's target entity.
   - `tag` (default null) — For `untag` only: the exact id of a tag the tie carries, such as `locked`.
-  - `why` (default "") — One short sentence saying what causes this change, for the player.
 
 `advance-thread` — Move a storyline the scenario is tracking: where it stands now, or that it is over.
   - `thread_id` (required) — Exact id of one thread in ACTIVE THREADS.
   - `status` (one of `active`, `resolved`, `dormant`; default null) — Where the thread now stands, or null to leave it as it is.
   - `stage` (default null) — Stable slug for the point it has reached, or null to leave it as it is.
   - `tick` (default 0) — How many segments this fills on the thread's clock, when it has one.
-  - `why` (default "") — One short sentence saying what causes this change, for the player.
 
 `counter-change` — Move a counter: `adjust` shifts it by a delta, clamped to the counter's own bounds; `spend` pays a cost from it and refuses when the pool cannot cover it.
   - `mode` (one of `adjust`, `spend`; required) — `adjust` moves the pool, `spend` pays from it and can refuse.
   - `entity_id` (required) — Exact id of the entity affected; an actor must be here with the player.
   - `counter` (required) — Exact key of one of that entity's counters, as its state spells it.
   - `amount` (required) — For `adjust`, how much the pool moves: negative to reduce. For `spend`, how much of the pool is paid, always positive.
-  - `why` (default "") — One short sentence saying what causes this change, for the player.
 
 ## Worked plans
 

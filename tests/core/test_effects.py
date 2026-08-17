@@ -89,9 +89,7 @@ def test_movement_follows_the_connections_the_world_authors() -> None:
 def test_a_party_member_travels_with_the_player() -> None:
     turn = Applied()
 
-    joined = RelationChange(
-        mode="add", kind=PARTY_MEMBER, source=MARA, target=PLAYER_ID, why="Mara comes along"
-    )
+    joined = RelationChange(mode="add", kind=PARTY_MEMBER, source=MARA, target=PLAYER_ID)
     assert turn.kinds(joined) == ["relation_added"]
     moved = turn(Move(to_id=CLOISTER))
     assert [fact.data["entity_id"] for fact in moved] == [PLAYER_ID, MARA]
@@ -149,7 +147,7 @@ def test_acting_on_an_unrevealed_actor_reveals_it_before_its_traits_change() -> 
     turn = Applied()
     _ = turn(Move(to_id=CLOISTER))
 
-    change = TraitChange(mode="add", entity_id=RAT, trait_id="hurt", why="the lantern")
+    change = TraitChange(mode="add", entity_id=RAT, trait_id="hurt")
     kinds = turn.kinds(change)
 
     assert kinds == ["entity_discovered", "trait_added"]
