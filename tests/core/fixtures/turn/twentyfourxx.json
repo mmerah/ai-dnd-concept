@@ -1,5 +1,5 @@
 {
-  "save_version": 65,
+  "save_version": 66,
   "facts": [
     {
       "source": "core",
@@ -193,9 +193,7 @@
               "entity_id": "vault_map"
             }
           }
-        ],
-        "focus": "Kael acts.",
-        "speaker_id": null
+        ]
       }
     },
     {

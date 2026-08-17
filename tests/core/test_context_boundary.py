@@ -124,28 +124,19 @@ def test_the_roles_shown_everything_get_ids_placement_detail_and_unrevealed_cano
     assert PLAYER_ID not in {entity.id for entity in (*scene.here, *scene.catalogue())}
 
 
-def test_narrator_prompt_orders_plan_before_outcome_and_checks_the_speaker() -> None:
+def test_narrator_prompt_names_no_id_and_hides_unmet_canon() -> None:
     held = state()
     scene = VisibleScene.of(SceneSnapshot.of(held))
 
-    def render(speaker_id: EntityId) -> str:
-        return render_narrator(
-            scene,
-            _renderer(held),
-            held.scenario,
-            focus="Mara answers cautiously.",
-            speaker_id=speaker_id,
-            evidence="- the map was found",
-            prompt="What does Mara say?",
-        )
-
-    prompt = render(EntityId("mara"))
+    prompt = render_narrator(
+        scene,
+        _renderer(held),
+        held.scenario,
+        evidence="- the map was found",
+        prompt="What does Mara say?",
+    )
 
     assert "pools: luck 6/6" in prompt
-    assert prompt.index("THE DIRECTOR'S PLAN") < prompt.index("WHAT HAPPENED")
     assert "The Secret" not in prompt
     # The Narrator writes prose and never names an id; its own instructions forbid reciting one.
     assert "[id=" not in prompt
-
-    # An actor the scene does not hold is one the Narrator may not voice, not a fault to raise on.
-    assert "(none — narrate the scene)" in render(EntityId("hidden-actor"))

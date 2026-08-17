@@ -1,6 +1,5 @@
 [
   {
-    "focus": "Kael works the sealed door before whatever is behind it notices him.",
     "effects": [],
     "roll": {
       "name": "question",
@@ -19,7 +18,6 @@
     }
   },
   {
-    "focus": "Kael turns out the abbot's desk for whatever the abbey wanted hidden there.",
     "effects": [
       {
         "name": "reveal",

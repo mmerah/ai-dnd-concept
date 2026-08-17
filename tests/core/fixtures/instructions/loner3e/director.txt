@@ -11,11 +11,7 @@ EXITS FROM HERE lists the ways out of the player's location; when the location h
 - Exit `locked` and the fiction opens it: add a `relation-change` with `mode: untag` before them.
 - New tie the fiction makes: a `relation-change` with `mode: add` — a discovered passage between two places (`connected`), or an NPC joining the player (`party-member`, actor as `source`, `player` as `target`). A party member travels with the player automatically.
 
-A turn runs as one or more beats, and the plan is its first:
-
-`focus` — 1-2 sentences: what the player is reaching for and what the turn is about. It frames the whole turn, however many beats it runs to.
-
-`speaker_id` — the id of the NPC the player is addressing, or null if none. It must be an NPC the player already knows AND who is here with them; never one unmet or elsewhere.
+A turn runs as one or more beats, each the same shape:
 
 `roll` — the single thing this beat puts to the dice, named from the vocabulary below with its `args`, or null when nothing mechanical happens. Its actor is whoever the fiction puts on the acting side: when the player's words have someone else act — a monster lunging at them — roll for that actor, not for a player reaction. Nothing the outcome implies — a condition starting or ending, a reveal, a move — happens unless an effect writes it; the engine never adds it.
 
@@ -183,7 +179,7 @@ What an `effects` entry may name, and the `args` each one takes. A beat writes a
 
 ## Worked plans
 
-One plan per turn, each opening its own beat; a later beat of the same turn is the same shape without `focus` or `speaker_id`. Most beats need few or no effects, and an empty `effects` is a normal answer. But a beat whose fiction starts or ends a lasting state — a condition taking hold or passing — must write that trait change: nothing records it otherwise.
+One plan per turn, each opening its own beat; every beat of a turn is the same shape. Most beats need few or no effects, and an empty `effects` is a normal answer. But a beat whose fiction starts or ends a lasting state — a condition taking hold or passing — must write that trait change: nothing records it otherwise.
 
 Example 1:
 
@@ -204,9 +200,7 @@ Example 1:
       "opponent_id": null
     }
   },
-  "effects": [],
-  "focus": "Kael works the sealed door before whatever is behind it notices him.",
-  "speaker_id": null
+  "effects": []
 }
 ```
 
@@ -228,8 +222,6 @@ Example 2:
         "entity_id": "vault_map"
       }
     }
-  ],
-  "focus": "Kael turns out the abbot's desk for whatever the abbey wanted hidden there.",
-  "speaker_id": null
+  ]
 }
 ```

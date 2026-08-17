@@ -1,6 +1,5 @@
 [
   {
-    "focus": "Kael forces the vault's seal before whatever is behind it notices him.",
     "effects": [],
     "roll": {
       "name": "attempt",
@@ -14,7 +13,6 @@
     }
   },
   {
-    "focus": "Kael turns out the abbot's desk for whatever the abbey wanted hidden there.",
     "effects": [
       {
         "name": "reveal",

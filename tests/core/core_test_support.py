@@ -77,7 +77,7 @@ def call(name: str, **args: object) -> dict[str, object]:
 
 def plan(**output: object) -> ModelResponse:
     """The director answers by calling the plan tool, as ToolOutput presents it."""
-    args = json.dumps({"focus": "Kael acts.", "effects": [], **output})
+    args = json.dumps({"effects": [], **output})
     return ModelResponse(parts=[ToolCallPart(tool_name="turn_plan", args=args)])
 
 

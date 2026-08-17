@@ -4,7 +4,7 @@ from typing import Literal, cast
 
 from pydantic import Field, JsonValue, ValidationError, model_validator
 
-from .base import EntityId, Frozen, Slug
+from .base import Frozen, Slug
 from .facts import Fact
 from .world import GameState
 
@@ -55,21 +55,6 @@ class DirectorBeat(Authored):
         default=(),
         description="What this beat causes in the world, applied once the roll has settled. Empty "
         "when nothing changes.",
-    )
-
-
-class DirectorPlan(DirectorBeat):
-    """How the turn is framed, and its first beat."""
-
-    focus: str = Field(
-        description="1-2 sentences: what the player is reaching for and what this turn is about."
-    )
-    speaker_id: EntityId | None = Field(
-        default=None,
-        description=(
-            "Exact id of the NPC the player addresses — one they have met and who is here with "
-            "them — or null if nobody is addressed."
-        ),
     )
 
 

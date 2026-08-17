@@ -34,12 +34,6 @@ KNOWN TO THE PLAYER, BUT ELSEWHERE:
   state:
     pools: luck 6/6
 
-THE DIRECTOR'S PLAN — what was meant, not what happened:
-Kael acts.
-
-SPEAKER:
-(none — narrate the scene)
-
 WHAT HAPPENED:
 - Does he hear what waits past the vault door without being heard? -> yes-and
 - learned of the vault map

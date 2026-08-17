@@ -23,11 +23,11 @@ from pydantic_ai.toolsets import AbstractToolset
 from aidm.config import ProviderConfig, Role, RoleConfig, Settings
 from aidm.engines.loader import Engine, Offer, ProposalBase, Subsystem
 from aidm.state.effects import AdvanceThread
-from aidm.state.plan import DirectorBeat, DirectorPlan
+from aidm.state.plan import DirectorBeat
 from aidm.state.turn import WorldkeeperReport
 from aidm.state.world import Exchange, GameState
 
-from . import prompts, scene
+from . import prompts
 
 
 class ChannelSafeModel(WrapperModel):
@@ -132,7 +132,7 @@ class SubsystemContext:
 class Stages:
     """The turn's model-facing roles, built once per session."""
 
-    director: Stage[PlanContext, DirectorPlan]
+    director: Stage[PlanContext, DirectorBeat]
     beat: Stage[PlanContext, DirectorBeat]
     settle: Stage[PlanContext, DirectorBeat]
     narrator: Stage[None, str]
@@ -152,12 +152,9 @@ def _thread_moves(state: GameState, moves: Sequence[AdvanceThread]) -> str | Non
     return f"no clock to tick on: {', '.join(clockless)}" if clockless else None
 
 
-def director_stage(engine: Engine, settings: Settings) -> Stage[PlanContext, DirectorPlan]:
-    def legal(ctx: RunContext[PlanContext], plan: DirectorPlan) -> DirectorPlan:
-        deps = ctx.deps
-        if fault := scene.check_speaker(scene.SceneSnapshot.of(deps.state), plan.speaker_id):
-            raise ModelRetry(fault)
-        if refused := deps.engine.check_beat(deps.state, plan):
+def director_stage(engine: Engine, settings: Settings) -> Stage[PlanContext, DirectorBeat]:
+    def legal(ctx: RunContext[PlanContext], plan: DirectorBeat) -> DirectorBeat:
+        if refused := ctx.deps.engine.check_beat(ctx.deps.state, plan):
             raise ModelRetry(refused)
         return plan
 
@@ -166,7 +163,7 @@ def director_stage(engine: Engine, settings: Settings) -> Stage[PlanContext, Dir
         settings,
         instructions=f"{prompts.DIRECTOR}\n\n{engine.director_instructions}",
         # Keeps `tool_choice: required`; under `auto` gpt-oss truncates its own tool call arguments
-        output_type=ToolOutput(DirectorPlan, name="turn_plan"),
+        output_type=ToolOutput(DirectorBeat, name="turn_plan"),
         deps_type=PlanContext,
         toolsets=engine.director_toolsets,
         validator=legal,

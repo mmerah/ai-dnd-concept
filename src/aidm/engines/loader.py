@@ -13,7 +13,7 @@ from aidm.content.store import ENCODING
 from aidm.state.base import EngineId, Entity, EntityId, Frozen, Slug
 from aidm.state.creation import CreationStep, Picks
 from aidm.state.facts import Fact
-from aidm.state.plan import DirectorBeat, DirectorPlan, Resolution
+from aidm.state.plan import DirectorBeat, Resolution
 from aidm.state.world import GameState
 
 from .vocabulary import EFFECT_CALLS, EFFECTS_CARD, ROLLS_CARD, card, translate
@@ -24,10 +24,10 @@ ENGINE_MODULES: tuple[str, ...] = (
 )
 ENGINE = "ENGINE"
 WORKED_PLANS = (
-    "One plan per turn, each opening its own beat; a later beat of the same turn is the same shape "
-    "without `focus` or `speaker_id`. Most beats need few or no effects, and an empty `effects` is "
-    "a normal answer. But a beat whose fiction starts or ends a lasting state — a condition taking "
-    "hold or passing — must write that trait change: nothing records it otherwise."
+    "One plan per turn, each opening its own beat; every beat of a turn is the same shape. Most "
+    "beats need few or no effects, and an empty `effects` is a normal answer. But a beat whose "
+    "fiction starts or ends a lasting state — a condition taking hold or passing — must write that "
+    "trait change: nothing records it otherwise."
 )
 
 type EntityRenderer = Callable[[Entity], str]
@@ -148,7 +148,7 @@ class Engine(ABC):
         path = self.engine_dir / "examples.json"
         if not path.is_file():
             return ""
-        plans = TypeAdapter(list[DirectorPlan]).validate_json(engine_text(path))
+        plans = TypeAdapter(list[DirectorBeat]).validate_json(engine_text(path))
         blocks: list[str] = []
         for number, plan in enumerate(plans, start=1):
             _ = translate(plan, self.actions)

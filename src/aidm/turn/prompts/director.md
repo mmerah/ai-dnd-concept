@@ -11,11 +11,7 @@ EXITS FROM HERE lists the ways out of the player's location; when the location h
 - Exit `locked` and the fiction opens it: add a `relation-change` with `mode: untag` before them.
 - New tie the fiction makes: a `relation-change` with `mode: add` — a discovered passage between two places (`connected`), or an NPC joining the player (`party-member`, actor as `source`, `player` as `target`). A party member travels with the player automatically.
 
-A turn runs as one or more beats, and the plan is its first:
-
-`focus` — 1-2 sentences: what the player is reaching for and what the turn is about. It frames the whole turn, however many beats it runs to.
-
-`speaker_id` — the id of the NPC the player is addressing, or null if none. It must be an NPC the player already knows AND who is here with them; never one unmet or elsewhere.
+A turn runs as one or more beats, each the same shape:
 
 `roll` — the single thing this beat puts to the dice, named from the vocabulary below with its `args`, or null when nothing mechanical happens. Its actor is whoever the fiction puts on the acting side: when the player's words have someone else act — a monster lunging at them — roll for that actor, not for a player reaction. Nothing the outcome implies — a condition starting or ending, a reveal, a move — happens unless an effect writes it; the engine never adds it.
 

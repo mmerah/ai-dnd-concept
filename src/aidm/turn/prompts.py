@@ -43,16 +43,12 @@ def render_narrator(
     describe: EntityRenderer,
     scenario: ScenarioMeta,
     *,
-    focus: str,
-    speaker_id: EntityId | None,
     evidence: str,
     prompt: str,
 ) -> str:
     return _sections(
         (
             *_scene_sections(scene, describe, scenario, ids=False),
-            ("THE DIRECTOR'S PLAN — what was meant, not what happened", focus),
-            ("SPEAKER", _speaker(scene, speaker_id)),
             ("WHAT HAPPENED", evidence),
             ("PLAYER ACTION", prompt),
         )
@@ -218,14 +214,6 @@ def _detail(entity: Entity) -> str:
     described = f"\n  detail: {entity.detail.description}" if entity.detail.description else ""
     hooked = f"\n  hook: {entity.detail.hook}" if entity.detail.hook else ""
     return f"{described}{hooked}"
-
-
-def _speaker(scene: VisibleScene, speaker_id: EntityId | None) -> str:
-    """A speaker the turn moved out of the scene is fiction, not a fault: narration goes on."""
-    speaker = scene.voice(speaker_id)
-    if speaker is None:
-        return "(none — narrate the scene)"
-    return f"{speaker.name} — {speaker.brief}"
 
 
 def _label(entity: Entity, *, ids: bool) -> str:

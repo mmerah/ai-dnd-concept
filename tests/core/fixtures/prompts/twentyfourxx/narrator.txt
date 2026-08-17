@@ -33,12 +33,6 @@ KNOWN TO THE PLAYER, BUT ELSEWHERE:
   state:
     pools: credits 2
 
-THE DIRECTOR'S PLAN — what was meant, not what happened:
-Kael acts.
-
-SPEAKER:
-(none — narrate the scene)
-
 WHAT HAPPENED:
 - Listen at the vault door without being heard -> success
 - bad luck — something behind the door is already listening back: signs of it

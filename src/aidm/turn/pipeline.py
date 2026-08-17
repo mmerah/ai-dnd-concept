@@ -139,8 +139,6 @@ async def run_turn(
         VisibleScene.of(SceneSnapshot.of(draft)),
         engine.renderer(draft),
         draft.scenario,
-        focus=plan.focus,
-        speaker_id=plan.speaker_id,
         evidence=evidence,
         prompt=prompt,
     )

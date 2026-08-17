@@ -81,30 +81,6 @@ async def test_an_engine_uses_the_shared_pipeline_and_safe_narrator_prompt() -> 
     assert result.state.history[-1].prompt == "I search beneath the desk."
 
 
-async def test_a_speaker_the_turn_walks_away_from_narrates_the_scene_instead_of_dying() -> None:
-    """The director picks a speaker who is here; the plan then moves the player elsewhere. The
-    speaker leaving is fiction, so the turn still commits."""
-    engine, state = initialized()
-    result = await played(
-        engine,
-        state,
-        "I leave for the cloister.",
-        director=FunctionModel(
-            scripted(
-                plan(
-                    effects=[call("move", to_id="cloister")],
-                    focus="Kael leaves.",
-                    speaker_id="mara",
-                )
-            )
-        ),
-    )
-
-    assert result.state.player.parent_id == "cloister"
-    assert result.state.turn == 1
-    assert "(none — narrate the scene)" in shown(result.turn, "narrator")
-
-
 async def test_the_engine_rolls_the_outcome_the_facts_then_record() -> None:
     """The engine makes every roll and picks the outcome; the plan never states one."""
     engine, state = initialized()
@@ -267,11 +243,11 @@ async def test_a_beat_that_fails_discards_what_the_beats_before_it_did() -> None
 async def test_a_plan_answered_as_plain_text_is_asked_again_for_the_tool_call() -> None:
     """Accepting prose as well would cost `tool_choice: required`, and gpt-oss needs it."""
     engine, state = initialized()
-    spoken = 'Here is the plan:\n{"focus": "Kael waits.", "effects": []}'
-    director = FunctionModel(scripted(text(spoken), plan(focus="Kael waits.")))
+    spoken = 'Here is the plan:\n{"effects": []}'
+    director = FunctionModel(scripted(text(spoken), plan()))
     result = await played(engine, state, "I wait.", director=director)
 
-    assert answered(result.turn, "director")["focus"] == "Kael waits."
+    assert answered(result.turn, "director")["effects"] == []
     assert result.turn.facts == ()
 
 
@@ -281,7 +257,7 @@ async def test_a_tool_call_with_a_channel_marker_in_its_name_still_lands() -> No
         parts=[
             ToolCallPart(
                 tool_name="turn_plan<|channel|>json",
-                args=json.dumps({"focus": "Kael waits.", "effects": []}),
+                args=json.dumps({"effects": []}),
             )
         ]
     )
@@ -492,7 +468,7 @@ async def test_memory_reaches_the_director_alone_and_only_for_who_is_here() -> N
 async def test_the_director_reads_the_canon_and_only_the_narrator_is_kept_from_it() -> None:
     engine, state = initialized()
     steps: list[str] = []
-    director = FunctionModel(scripted(plan(focus="Kael presses toward the vault door.")))
+    director = FunctionModel(scripted(plan()))
     result = await played(
         engine,
         state,

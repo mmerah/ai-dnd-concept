@@ -28,7 +28,7 @@ prompt → DIRECTOR → resolve → hooks → NARRATOR → WORLDKEEPER → commi
          one plan  engine code  facts fire  prose        new canon
 ```
 
-The Director judges what the turn is about and answers with one structured turn plan — the focus,
+The Director judges what the turn is about and answers with one structured turn plan —
 what pushes back, what is at stake, the single action resolved this turn, its fiction consequences
 keyed by outcome, and unconditional effects. Engine code validates the plan against committed
 state, resolves it deterministically on a draft (rolls, costs, intrinsic outcomes), committed Facts

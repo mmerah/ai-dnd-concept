@@ -22,7 +22,7 @@ from aidm.state.apply import fire_hooks
 from aidm.state.base import PLAYER_ID, Counter, Entity, EntityId
 from aidm.state.effects import TraitChange
 from aidm.state.facts import CORE, Fact
-from aidm.state.plan import DirectorPlan
+from aidm.state.plan import DirectorBeat
 from aidm.state.world import PARTY_MEMBER, GameState, Hook, HookMatch, Relation
 
 TWISTS = twist_table(Loner3eEngine().packs, SRD_PACK)
@@ -30,10 +30,9 @@ SURE_FOOTED = TraitChange(mode="add", entity_id=PLAYER_ID, trait_id="sure-footed
 FOE = EntityId("mara")
 
 
-def _plan(**args: object) -> DirectorPlan:
-    return DirectorPlan.model_validate(
+def _plan(**args: object) -> DirectorBeat:
+    return DirectorBeat.model_validate(
         {
-            "focus": "Kael works the sealed door.",
             "effects": ({"name": "trait-change", "args": SURE_FOOTED.model_dump()},),
             "roll": {
                 "name": "question",
@@ -332,7 +331,7 @@ def test_a_hook_reaches_the_engine_s_own_effects() -> None:
     assert draft.mechanics_as(Mechanics).sheets[PLAYER_ID].luck.current == LUCK_MAX - 1
 
 
-def _refusal(engine: Engine, state: GameState, plan: DirectorPlan) -> str:
+def _refusal(engine: Engine, state: GameState, plan: DirectorBeat) -> str:
     refused = engine.check_beat(state, plan)
     assert refused is not None
     return refused
