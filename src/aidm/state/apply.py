@@ -54,14 +54,11 @@ def reveal_target(draft: GameState, entity_id: EntityId) -> tuple[Entity, list[F
 
 
 def _require_open_way(draft: GameState, here: EntityId, destination: Entity) -> None:
-    exits = draft.world.connections(here)
-    if not exits:
-        return
     found = draft.world.relation(CONNECTED, here, destination.id)
     if found is None:
         open_exits = [
             draft.world.require(way.far_end(here)).name
-            for way in exits
+            for way in draft.world.connections(here)
             if way.known and LOCKED_TAG not in way.tags
         ]
         reachable = ", ".join(open_exits) or "(none)"

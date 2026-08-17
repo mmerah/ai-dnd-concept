@@ -7,7 +7,7 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 ProviderName = Literal["openrouter", "local"]
 ReasoningEffort = Literal["none", "minimal", "low", "medium", "high", "xhigh", "max"]
 # The roles a build has. A stage is built by name, so an unbuildable name cannot be configured.
-Role = Literal["director", "narrator", "worldkeeper", "advisor", "scenario_creator"]
+Role = Literal["director", "narrator", "worldkeeper", "expander", "advisor", "scenario_creator"]
 
 
 class ProviderConfig(BaseModel):
@@ -28,11 +28,10 @@ class RoleConfig(BaseModel):
     temperature: float | None = Field(default=None, ge=0.0, le=2.0)
 
 
-# An authoring pass writes whole collections in one patch; the turn-loop defaults cannot.
+# Authoring passes write whole records, which the turn-loop defaults cannot.
 ROLE_DEFAULTS: dict[Role, RoleConfig] = {
-    "scenario_creator": RoleConfig(
-        model="openai/gpt-oss-120b", max_tokens=32768, reasoning_effort="high"
-    ),
+    "expander": RoleConfig(max_tokens=8192, reasoning_effort="medium"),
+    "scenario_creator": RoleConfig(max_tokens=32768, reasoning_effort="high"),
 }
 
 

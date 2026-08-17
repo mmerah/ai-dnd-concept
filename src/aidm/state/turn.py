@@ -14,9 +14,10 @@ class Creation(Frozen):
     location: str | None = Field(
         default=None,
         description=(
-            "For a person or item, the place they are: a location already in the catalogue, or one "
-            "created this same turn. Null places them where the player is, and is also correct "
-            "for a location entry itself."
+            "The place this belongs to: for a person or item where they are, and for a new "
+            "location the place it connects to, so the player can walk there. Either a location "
+            "already in the catalogue or one created this same turn; null means where the player "
+            "is."
         ),
     )
 

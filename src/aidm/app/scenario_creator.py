@@ -27,10 +27,11 @@ from aidm.content.authored import (
     ScenarioWorld,
     check_hooks,
 )
+from aidm.content.sources import ExpansionPolicy
 from aidm.content.store import ENCODING, WORLD_FILE, engine_text, load_character, write_scenario
 from aidm.engines.loader import Engine, engine_ids
 from aidm.engines.sheets import SheetBase
-from aidm.engines.vocabulary import WORLD_CALLS, card
+from aidm.engines.vocabulary import HOOK_EFFECTS_CARD, WORLD_CALLS, card
 from aidm.state.base import EngineId, Entity, EntityId, Frozen, RelationId, Slug, content_id
 from aidm.state.world import CONNECTED, LOCKED_TAG, Hook, Memory, Relation, ScenarioMeta, Thread
 from aidm.turn.roles import Stage
@@ -44,18 +45,17 @@ REQUEST_LIMIT = 40
 WORKED_EXAMPLE = "whispering-vault"
 # Every generated scenario must be playable by the character the app ships with.
 STARTER = "kael"
-HOOK_EFFECTS_CARD = (
-    "What a hook's `effects` may name, and the `args` each one takes. A hook writes only these: "
-    "one `world.json` is loaded by every ruleset, so an effect belonging to one engine would "
-    "refuse the others."
-)
 
 _PROMPTS_DIR = Path(__file__).parent / "prompts"
 
-WORLD_INSTRUCTIONS = (
-    f"{engine_text(_PROMPTS_DIR / 'scenario_world.md')}\n\n"
-    f"{card('Hook effects', HOOK_EFFECTS_CARD, WORLD_CALLS)}"
-)
+_BASE_INSTRUCTIONS = engine_text(_PROMPTS_DIR / "scenario_world.md")
+_HOOK_CARD = card("Hook effects", HOOK_EFFECTS_CARD, WORLD_CALLS)
+
+
+def _instructions(bar: str) -> str:
+    return f"{_BASE_INSTRUCTIONS}\n\n{engine_text(_PROMPTS_DIR / bar)}\n\n{_HOOK_CARD}"
+
+
 OVERLAY_INSTRUCTIONS = engine_text(_PROMPTS_DIR / "scenario_overlay.md")
 
 
@@ -82,6 +82,7 @@ class ScenarioPatch(Frozen):
 class WorldDraft:
     """The scenario under authorship: mutated only by `apply`, judged only by `world()`."""
 
+    expansion: ExpansionPolicy = "closed"
     meta: ScenarioMeta | None = None
     starting_location_id: EntityId | None = None
     starting_party: tuple[EntityId, ...] = ()
@@ -150,6 +151,7 @@ class WorldDraft:
             raise ValueError("the draft has no `starting_location_id` yet")
         return ScenarioWorld(
             meta=self.meta,
+            expansion=self.expansion,
             starting_location_id=self.starting_location_id,
             starting_party=self.starting_party,
             entities=tuple(self.entities.values()),
@@ -230,7 +232,37 @@ def _bar_unmet(world: ScenarioWorld) -> list[str]:
     return unmet
 
 
-def playability(draft: WorldDraft, slug: Slug, playing: Sequence[Playtest]) -> str | None:
+def _opening_unmet(world: ScenarioWorld) -> list[str]:
+    """An opening slice's bar: what the first scene needs, since the rest materializes in play."""
+    unmet: list[str] = []
+    beyond = [entity for entity in world.entities if entity.id != world.starting_location_id]
+    if len(beyond) < 2:
+        unmet.append(
+            f"two or three entities besides the starting location; the draft has {len(beyond)}"
+        )
+    if not world.threads:
+        unmet.append("at least one thread")
+    return unmet
+
+
+@dataclass(frozen=True, slots=True)
+class Brief:
+    """How much world one run authors: the instructions it works from, the bar it is held to, and
+    the policy the scenario it writes carries."""
+
+    instructions: str
+    unmet: Callable[[ScenarioWorld], list[str]]
+    expansion: ExpansionPolicy
+
+
+FULL = Brief(_instructions("scenario_bar.md"), _bar_unmet, "closed")
+# An opening slice is deliberately thin: the rest of the world is written during play.
+OPENING = Brief(_instructions("scenario_opening.md"), _opening_unmet, "generative")
+
+
+def playability(
+    draft: WorldDraft, slug: Slug, playing: Sequence[Playtest], brief: Brief = FULL
+) -> str | None:
     """The exact reason the draft will not play, or None. Building the `ScenarioWorld` is the
     structural check; pydantic's ValidationError is a ValueError, so one except covers both."""
     try:
@@ -239,7 +271,7 @@ def playability(draft: WorldDraft, slug: Slug, playing: Sequence[Playtest]) -> s
             playtest.check(slug, world, ScenarioOverlay())
     except ValueError as refused:
         return str(refused)
-    if unmet := _bar_unmet(world):
+    if unmet := brief.unmet(world):
         listed = "\n".join(f"- {item}" for item in unmet)
         return f"the draft plays, but it is under the bar. Still missing:\n{listed}"
     return None
@@ -266,7 +298,7 @@ async def ask_until_playable[T](
 
 
 def authoring_toolset(
-    slug: Slug, playing: Sequence[Playtest], config: Settings
+    slug: Slug, playing: Sequence[Playtest], config: Settings, brief: Brief = FULL
 ) -> FunctionToolset[WorldDraft]:
     def worked_example() -> str:
         """The shipped scenario's world.json: the format and the quality bar to match."""
@@ -289,26 +321,26 @@ def authoring_toolset(
     def validate_scenario(ctx: RunContext[WorldDraft]) -> str:
         """Whether the draft plays: 'ok', or the exact reason it will not. Fix what it names and
         call it again; the scenario is only done once it answers 'ok'."""
-        return playability(ctx.deps, slug, playing) or "ok"
+        return playability(ctx.deps, slug, playing, brief) or "ok"
 
     return FunctionToolset(tools=[worked_example, scenario_so_far, write, validate_scenario])
 
 
 def world_stage(
-    slug: Slug, playing: Sequence[Playtest], config: Settings
+    slug: Slug, playing: Sequence[Playtest], config: Settings, brief: Brief = FULL
 ) -> Stage[WorldDraft, str]:
     """The run ends on the `finish` tool, not on bare text: an author that only ever calls tools
     would otherwise never end its own turn."""
 
     def playable(ctx: RunContext[WorldDraft], summary: str) -> str:
-        if reason := playability(ctx.deps, slug, playing):
+        if reason := playability(ctx.deps, slug, playing, brief):
             raise ModelRetry(f"the draft does not play yet, so it is not finished: {reason}")
         return summary
 
     return Stage.of(
         "scenario_creator",
         config,
-        instructions=WORLD_INSTRUCTIONS,
+        instructions=brief.instructions,
         output_type=ToolOutput(
             str,
             name="finish",
@@ -318,7 +350,7 @@ def world_stage(
             ),
         ),
         deps_type=WorldDraft,
-        toolsets=[authoring_toolset(slug, playing, config)],
+        toolsets=[authoring_toolset(slug, playing, config, brief)],
         validator=playable,
     )
 
@@ -341,17 +373,21 @@ def _world_prompt(slug: Slug, premise: str) -> str:
 
 
 async def authored_world(
-    stage: Stage[WorldDraft, str], slug: Slug, premise: str, playing: Sequence[Playtest]
+    stage: Stage[WorldDraft, str],
+    slug: Slug,
+    premise: str,
+    playing: Sequence[Playtest],
+    brief: Brief = FULL,
 ) -> ScenarioWorld:
     """The agent authors into the draft; the draft, revalidated here, is the deliverable —
     the agent saying 'ok' is never trusted."""
-    draft = WorldDraft()
+    draft = WorldDraft(expansion=brief.expansion)
     _ = await stage.agent.run(
         _world_prompt(slug, premise),
         deps=draft,
         usage_limits=UsageLimits(request_limit=REQUEST_LIMIT),
     )
-    if reason := playability(draft, slug, playing):
+    if reason := playability(draft, slug, playing, brief):
         raise ValueError(f"the author stopped on an unplayable draft: {reason}")
     return draft.world()
 
@@ -389,10 +425,12 @@ async def _authored_overlay(
 
 
 async def author_scenario(
-    slug: Slug, premise: str, config: Settings
+    slug: Slug, premise: str, config: Settings, brief: Brief = FULL
 ) -> tuple[ScenarioWorld, dict[EngineId, ScenarioOverlay]]:
     playing = playtests(config)
-    world = await authored_world(world_stage(slug, playing, config), slug, premise, playing)
+    world = await authored_world(
+        world_stage(slug, playing, config, brief), slug, premise, playing, brief
+    )
     overlays = {
         playtest.engine.id: await _authored_overlay(playtest, slug, world, config)
         for playtest in playing
@@ -411,15 +449,22 @@ def summarize(world: ScenarioWorld, overlays: Mapping[EngineId, ScenarioOverlay]
     return "\n".join(lines)
 
 
+OPENING_FLAG = "--opening"
+
+
 def main() -> None:
-    args = sys.argv[1:]
+    args = [arg for arg in sys.argv[1:] if arg != OPENING_FLAG]
+    # An opening slice is the scenario's own source, so the premise is written beside it verbatim.
+    opening = OPENING_FLAG in sys.argv[1:]
     if len(args) != 2:
-        raise SystemExit('usage: create_scenario.py <slug> "<premise>"')
+        raise SystemExit(f'usage: create_scenario.py <slug> "<premise>" [{OPENING_FLAG}]')
     try:
         slug = content_id(args[0])
         config = load_settings()
-        world, overlays = asyncio.run(author_scenario(slug, args[1], config))
-        write_scenario(config.scenarios_dir, slug, world, overlays)
+        premise = args[1]
+        brief = OPENING if opening else FULL
+        world, overlays = asyncio.run(author_scenario(slug, premise, config, brief))
+        write_scenario(config.scenarios_dir, slug, world, overlays, premise if opening else None)
     except (ValueError, UnexpectedModelBehavior, UsageLimitExceeded) as refused:
         raise SystemExit(f"scenario not created: {refused}") from refused
     print(summarize(world, overlays))

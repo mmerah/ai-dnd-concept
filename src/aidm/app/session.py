@@ -5,7 +5,8 @@ from random import Random
 
 from aidm.config import Settings
 from aidm.content.authored import Character, Scenario
-from aidm.content.store import FileStore, load_character, load_scenario
+from aidm.content.sources import CanonSource
+from aidm.content.store import FileStore, load_character, load_scenario, read_source
 from aidm.engines.advancement import Advancement, Offer, ProposalBase
 from aidm.engines.loader import Engine, engine_class
 from aidm.engines.sheets import SheetBase
@@ -37,6 +38,13 @@ def build_advisor(
     if engine.advancement is None:
         return None
     return advancement_stage(engine.advancement, settings)
+
+
+def open_source(config: Settings, target: LaunchTarget, scenario: Scenario) -> CanonSource | None:
+    """A `closed` world plays on its own canon alone, so nothing is opened for it to grow from."""
+    if scenario.world.expansion == "closed":
+        return None
+    return read_source(config.scenarios_dir, target.scenario_id, scenario.meta.premise)
 
 
 def build_engine(engine_id: EngineId, extra_packs: Path | None = None) -> Engine[SheetBase]:
@@ -255,12 +263,13 @@ class Runtime:
     def _open(self, target: LaunchTarget) -> GameSession:
         config = self.config
         engine = self.engine(target.engine)
+        scenario = load_scenario(config.scenarios_dir, target.scenario_id, engine.binding())
         return GameSession(
             target=target,
-            scenario=load_scenario(config.scenarios_dir, target.scenario_id, engine.binding()),
+            scenario=scenario,
             character=load_character(config.characters_dir, target.character_id, engine.binding()),
             engine=engine,
-            stages=build_stages(engine, config),
+            stages=build_stages(engine, config, open_source(config, target, scenario)),
             advisor=build_advisor(engine, config),
             store=FileStore(config.saves_dir),
             settings=config,

@@ -6,6 +6,7 @@ from aidm.content.store import engine_text
 from aidm.engines.advancement import Offer
 from aidm.engines.loader import Engine, EntityRenderer
 from aidm.engines.sheets import SheetBase
+from aidm.engines.vocabulary import HOOK_EFFECTS_CARD, WORLD_CALLS, card
 from aidm.state.base import Entity, EntityId, Trait
 from aidm.state.world import GameState, Memory, ScenarioMeta, Thread
 
@@ -82,6 +83,37 @@ def render_worldkeeper(
             ("PLAYER", prompt),
             ("WHAT HAPPENED", evidence),
             ("NARRATION", narration),
+        )
+    )
+
+
+def render_expander(
+    scene: SceneSnapshot,
+    describe: EntityRenderer,
+    scenario: ScenarioMeta,
+    *,
+    context: str,
+    request: str,
+) -> str:
+    """The Expander writes records and never prose, so all of canon may reach it."""
+    return _sections(
+        (
+            _premise(scenario),
+            ("THE SOURCE", context),
+            (
+                "PLAYER CHARACTER",
+                _character(scene.player, scene.location, scene.inventory, describe, ids=True),
+            ),
+            (
+                "EVERYTHING THAT EXISTS",
+                _entities(scene.catalogue(), describe, placement=scene.placement_of, detail=True),
+            ),
+            (
+                "EXITS FROM WHERE THE PLAYER STANDS",
+                "\n".join(_exit_line(exit) for exit in scene.exits) or "- (none)",
+            ),
+            ("ACTIVE THREADS", _threads(scene.threads)),
+            ("WHAT THE DIRECTOR NEEDS", request),
         )
     )
 
@@ -256,3 +288,7 @@ SETTLE = engine_text(_PROMPTS_DIR / "settle.md")
 CORE_ADVISOR = engine_text(_PROMPTS_DIR / "core_advisor.md")
 NARRATOR = engine_text(_PROMPTS_DIR / "narrator.md")
 WORLDKEEPER = engine_text(_PROMPTS_DIR / "worldkeeper.md")
+EXPANDER = (
+    f"{engine_text(_PROMPTS_DIR / 'expander.md')}\n\n"
+    f"{card('Hook effects', HOOK_EFFECTS_CARD, WORLD_CALLS)}"
+)

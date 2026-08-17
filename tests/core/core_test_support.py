@@ -13,6 +13,7 @@ from pydantic_settings import SettingsConfigDict
 from aidm.app.session import begin_game, build_engine
 from aidm.config import ProviderConfig, Providers, Settings
 from aidm.content.authored import Character, Scenario
+from aidm.content.sources import CanonSource
 from aidm.content.store import load_character, load_scenario
 from aidm.engines.advancement import Advancement
 from aidm.engines.loader import Engine
@@ -135,6 +136,8 @@ async def played(
     director: Model,
     narrator: Model | None = None,
     worldkeeper: Model | None = None,
+    expander: Model | None = None,
+    source: CanonSource | None = None,
     rng: Random | None = None,
     on_step: Callable[[str], None] | None = None,
 ) -> TurnResult:
@@ -142,7 +145,7 @@ async def played(
     now answers the turn's first ask and every later beat, so a script that rolls must script its
     own continuation too."""
     config = settings()
-    stages = build_stages(engine, config)
+    stages = build_stages(engine, config, source)
     roles = (stages.director, stages.narrator, stages.worldkeeper)
     models = (
         director,
@@ -152,6 +155,8 @@ async def played(
     with ExitStack() as stack:
         for role, model in zip(roles, models, strict=True):
             stack.enter_context(role.agent.override(model=model))
+        if stages.expander is not None and expander is not None:
+            stack.enter_context(stages.expander.agent.override(model=expander))
         return await run_turn(
             state,
             prompt,

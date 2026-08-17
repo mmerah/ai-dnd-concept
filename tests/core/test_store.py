@@ -6,7 +6,14 @@ from core_test_support import LONER3E, initialized, scenario, updated
 from pydantic import ValidationError
 
 from aidm.app.session import build_engine
-from aidm.content.store import ENCODING, FileStore, load_character, load_scenario, write_scenario
+from aidm.content.store import (
+    ENCODING,
+    FileStore,
+    load_character,
+    load_scenario,
+    read_source,
+    write_scenario,
+)
 from aidm.state.base import PLAYER_ID
 from aidm.state.facts import CORE, Fact, narrator_evidence
 from aidm.state.turn import Applied, StepTrace, Turn
@@ -155,3 +162,17 @@ def test_write_scenario_round_trips_and_refuses_a_duplicate(tmp_path: Path) -> N
     assert (loaded.world, loaded.overlay) == (original.world, original.overlay)
     with pytest.raises(ValueError, match="already exists"):
         write_scenario(tmp_path, "vault-copy", original.world, {LONER3E: original.overlay})
+
+
+def test_a_scenario_expands_from_its_own_source_or_else_from_its_premise(tmp_path: Path) -> None:
+    original = scenario()
+    premise = "The abbey emptied in a night, and the road out is not where it was."
+    grown = updated(original.world, expansion="generative")
+
+    write_scenario(tmp_path, "grown", grown, {LONER3E: original.overlay}, premise)
+    write_scenario(tmp_path, "curated", original.world, {LONER3E: original.overlay})
+    loaded = load_scenario(tmp_path, "grown", build_engine(LONER3E).binding())
+
+    assert loaded.world.expansion == "generative"
+    assert read_source(tmp_path, "grown", "unread").context() == premise
+    assert read_source(tmp_path, "curated", premise).context() == premise

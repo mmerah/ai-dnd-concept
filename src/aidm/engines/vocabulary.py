@@ -20,6 +20,11 @@ EFFECTS_CARD = (
     "What an `effects` entry may name, and the `args` each one takes. A beat writes as many as "
     "the fiction causes, or none."
 )
+HOOK_EFFECTS_CARD = (
+    "What a hook's `effects` may name, and the `args` each one takes. A hook writes only these: "
+    "one `world.json` is loaded by every ruleset, so an effect belonging to one engine would "
+    "refuse the others."
+)
 
 
 @dataclass(frozen=True, slots=True)

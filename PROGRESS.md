@@ -61,11 +61,78 @@ Done-when met: `scripts/create_scenario.py rats-of-thornhill "..."` produced
   one got wrong and no rule can catch: the thread's destination was an empty room, and the
   creature the title turns on had no hook. Both are now questions in the prompt's review pass.
 
+### Phase 2 — Progressive world expansion
+
+Done-when met: a game whose `world.json` says `"expansion": "generative"` plays turns in which the
+Director materializes canon mid-plan through `expand_world` and walks the player into it; a
+`closed` scenario plays with a byte-identical Director agent. No save byte moved — `SAVE_VERSION`
+stayed 70, and only the worldkeeper instructions and the `worldkeeper_report` schema fixture drifted.
+
+- **Movement now follows explicit topology, always.** The `_require_open_way` wildcard (an
+  exit-less location could reach anywhere) is gone, and `connected` is refused when `directed`.
+  The consequence that made step 1 mandatory rather than cosmetic: a Worldkeeper-created location
+  would otherwise be unreachable forever, so `apply_report` writes an undirected `connected`
+  relation from it to the location its `location` field names — which is why that field's
+  description and the worldkeeper prompt now say "the place it connects to". The relation is
+  `known` only when the anchor is: a known relation may not name an entity the player has not met,
+  and the Worldkeeper is shown unrevealed canon it may anchor to.
+- **The adventure triple is `GameState` + `ScenarioWorld.expansion` + a `CanonSource`.**
+  `content/sources.py` holds the policy literal, the protocol, and `PremiseSource`;
+  `store.read_source` reads the scenario dir's `source.md` and falls back to `meta.premise`.
+  Nothing lands on `GameState`, so a save resumes under its scenario's policy and a restart replays
+  the same opening. `Runtime._open` is the only place a source is built, through `open_source`,
+  which returns None for `closed` — that check is the only reader of the policy, so **no
+  `Adventure` record carrying it exists**: an `Adventure(policy, source)` pair was written and
+  deleted in review because nothing ever read `policy` back. Phase 3's `grounded` branch adds the
+  parameter it actually needs at `build_stages` when it exists.
+- **The Expander is a role behind a Director tool, not a pipeline stage.** `turn/expansion.py` is
+  the leaf — `ExpansionPatch`, `Expansions`, and `apply_patch`, the one
+  resolver that reaches the world. The stage and toolset live in `turn/roles.py` with the other
+  role builders: `roles` already owns `Stage` and `PlanContext`, so putting the stage in
+  `expansion.py` would have needed both extracted to break a cycle, for nothing.
+- **What keeps the leak rule holding by construction:** every entity in a patch is forced
+  `known=False`, so `draft.add` emits an `entity_created` fact whose `narrator` is already None;
+  relations, threads, and hooks emit `canon_materialized`, a kind `HookFactKind` deliberately
+  excludes and which never narrates. The Director's own `reveal`/`relation-change`/`move` effects
+  are the only way the player learns anything. The one place this had to be added by hand is
+  `_connect`: its trace names the *anchor*, so it narrates only when the anchor is known — gating
+  on the created location alone (always `known=True`) put an unmet name in `Fact.narrator`, which
+  is persisted and which Phase 5's journal export will read.
+- **The tool applies through `transact`**, so created actors are seeded and hooks fire on the one
+  mutation sequence. `PlanContext` grew the turn's `rng` and an `Expansions` record; the first
+  Director call now receives the turn draft rather than the committed state (byte-identical at that
+  point) so the tool has something disposable to write into. A patch is refused twice: by the
+  Expander's own output validator (so the *Expander* retries, not the Director), then really by
+  `transact` — which is outside the tool's `try`, because a half-applied draft is not a state to
+  plan another beat against. **That only holds because the trial runs the whole sequence**: the
+  validator wraps `transact` too, not just `apply_patch`, or hook-firing and seeding would be
+  unexercised until the real pass, where a failure kills the turn instead of asking again.
+  `expand_world` is registered `sequential=True` — two calls in one model answer would otherwise
+  interleave on the same draft, each validating against a state without the other's canon, and both
+  slipping the cap. Cap is 2 per turn; a bad `anchor_id`, the cap, and an Expander that exhausts
+  its retries each get their own retry message, because "plan with what exists" is wrong advice for
+  a typo'd id.
+- **`--opening` authors a slice, not a scenario.** A `Brief` (instructions + bar + policy) is what
+  `playability`, `authoring_toolset`, `world_stage` and `authored_world` now take, defaulting to
+  `FULL`. The bar text moved out of `scenario_world.md` into `scenario_bar.md` /
+  `scenario_opening.md`. `write_scenario` grew an optional source argument.
+- **Live probe passed first try (working rule 2), 2026-08-17.** `ExpansionPatch` is ~5.5 KB of
+  JSON schema — 2.5x the DirectorBeat envelope — and gpt-oss-120b answered it cleanly under
+  `NativeOutput` at 8192 tokens / medium reasoning. A premise-start scenario, one turn of "I follow
+  the road north": the Director called `expand_world`, the Expander returned one location and its
+  undirected `connected` relation, and the Director's own `reveal` + `move` walked the player in.
+  **The standing "keep the schema tiny" rule was over-fitted to the old 15-17 KB failure** —
+  reusing the real `Entity`/`Relation`/`Thread`/`Hook` models is fine, so a later role should probe
+  at the size its domain wants rather than hand-shrinking a parallel wire shape first.
+- Observed in that probe, not fixed: the Expander wrote `detail.description` in second person
+  ("A faint glint catches your eye"). Cosmetic — `detail` reaches the Director and Worldkeeper, not
+  the Narrator — but `expander.md` says "you write records, never prose the player reads" and the
+  model still drifted. Worth a sharper line there if it recurs.
+
 ## Next
 
-- PLAN.md Phase 2 (progressive world expansion: Expander tool, strict topology, Adventure
-  triple, premise-start), Phase 3 (source system: PDF ingestion, grounded expansion, fused
-  authoring), Phase 4 (media), Phase 5 (player-facing UI per docs/ui-mock + journal export).
+- PLAN.md Phase 3 (source system: PDF ingestion, grounded expansion, fused authoring), Phase 4
+  (media), Phase 5 (player-facing UI per docs/ui-mock + journal export).
 - 2026-08-17: `docs/ADVENTURE-SOURCES-RESEARCH.md` and `docs/SYBYL-LEARNINGS.md` were adopted
   into the plan. Decisions: Expander behind a Director tool (not Director-owned create effects);
   Worldkeeper keeps creation but locations are created with a connection; the full

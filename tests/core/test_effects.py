@@ -2,7 +2,7 @@ import pytest
 from core_test_support import initialized
 
 from aidm.state.apply import MAX_HOOK_ROUNDS, apply_effect, fire_hooks
-from aidm.state.base import PLAYER_ID, Counter, EntityId
+from aidm.state.base import PLAYER_ID, Counter, Entity, EntityId
 from aidm.state.effects import (
     AdvanceThread,
     GainImprovisedItem,
@@ -84,6 +84,17 @@ def test_movement_follows_the_connections_the_world_authors() -> None:
         RelationChange(mode="untag", kind=CONNECTED, source=CLOISTER, target=VAULT, tag=LOCKED_TAG)
     )
     assert turn.kinds(Move(to_id=VAULT)) == ["entity_moved"]
+
+
+def test_movement_is_refused_where_no_way_is_authored_at_all() -> None:
+    """Topology alone decides where the player may walk: an exit-less place strands them."""
+    turn = Applied()
+    pit = Entity(id=EntityId("oubliette"), kind="location", name="the oubliette", brief="A pit.")
+    turn.draft.world.entities[pit.id] = pit
+    turn.draft.player.parent_id = pit.id
+
+    with pytest.raises(ValueError, match="no way leads from here"):
+        _ = turn(Move(to_id=STUDY))
 
 
 def test_a_party_member_travels_with_the_player() -> None:

@@ -21,10 +21,12 @@ from .authored import (
     ScenarioWorld,
     check_hooks,
 )
+from .sources import PremiseSource
 
 ENCODING = "utf-8"
 WORLD_FILE = "world.json"
 PROFILE_FILE = "base.json"
+SOURCE_FILE = "source.md"
 _SAVE_SLUG_PATTERN = r"[a-z0-9][a-z0-9_-]*"
 
 type Playable[T] = Iterator[tuple[Slug, T, tuple[EngineId, ...]]]
@@ -49,6 +51,13 @@ def load_scenario(directory: Path, name: Slug, binding: Binding) -> Scenario:
     check_hooks(scenario.world, binding)
     binding.check_overlay(scenario.overlay.entities.values())
     return scenario
+
+
+def read_source(directory: Path, name: Slug, premise: str) -> PremiseSource:
+    """A scenario's own source text when it ships one, else the premise it was authored from."""
+    path = directory / content_id(name) / SOURCE_FILE
+    text = path.read_text(encoding=ENCODING) if path.is_file() else premise
+    return PremiseSource(text=text)
 
 
 def load_character(directory: Path, name: Slug, binding: Binding) -> Character:
@@ -78,6 +87,7 @@ def write_scenario(
     name: Slug,
     scenario: ScenarioWorld,
     overlays: Mapping[EngineId, ScenarioOverlay],
+    source: str | None = None,
 ) -> None:
     folder = directory / content_id(name)
     if folder.exists():
@@ -85,6 +95,8 @@ def write_scenario(
     _write(folder / WORLD_FILE, scenario.model_dump_json(indent=2))
     for engine, overlay in overlays.items():
         _write(folder / f"{engine}.json", overlay.model_dump_json(indent=2))
+    if source is not None:
+        _write(folder / SOURCE_FILE, source)
 
 
 def _playable[T: BaseModel](

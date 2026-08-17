@@ -1,0 +1,11 @@
+{
+  "entities": {
+    "grelkin": {
+      "skills": {
+        "Fishing": 10,
+        "Perception": 8,
+        "Endurance": 12
+      }
+    }
+  }
+}

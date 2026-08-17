@@ -189,8 +189,13 @@ class WorldState(Mutable):
             raise ValueError(
                 f"known relation {relation.id!r} names an entity the player has not met"
             )
-        if relation.kind == CONNECTED and any(end.kind != "location" for end in ends):
-            raise ValueError(f"{CONNECTED!r} joins two locations, and {relation.id!r} does not")
+        if relation.kind == CONNECTED:
+            if any(end.kind != "location" for end in ends):
+                raise ValueError(f"{CONNECTED!r} joins two locations, and {relation.id!r} does not")
+            if relation.directed:
+                raise ValueError(
+                    f"{CONNECTED!r} is walked both ways, so {relation.id!r} may not be directed"
+                )
         if relation.kind == PARTY_MEMBER and (
             ends[0].kind != "actor" or relation.target != PLAYER_ID
         ):

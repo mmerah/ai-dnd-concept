@@ -9,12 +9,13 @@ from aidm.engines.loader import Engine
 from aidm.engines.sheets import SheetBase
 from aidm.engines.transact import transact
 from aidm.state.base import Entity, EntityId, slug, text_slug
-from aidm.state.facts import CORE, Fact, narrator_evidence
+from aidm.state.facts import CORE, Fact, explained_fact, narrator_evidence
 from aidm.state.plan import DirectorBeat, Resolution
 from aidm.state.turn import Creation, MemoryProposal, StepTrace, Turn, WorldkeeperReport
-from aidm.state.world import Exchange, GameState, Memory
+from aidm.state.world import CONNECTED, Exchange, GameState, Memory, Relation
 
 from . import prompts
+from .expansion import Expansions
 from .roles import PlanContext, Stages, exchanges_to_messages
 from .scene import SceneSnapshot, VisibleScene
 
@@ -33,10 +34,14 @@ TURN_STEPS: tuple[str, ...] = ("director", "resolve", "beat", "hooks", "narrator
 def apply_report(
     draft: GameState, report: WorldkeeperReport, *, max_growth: int, max_memories: int
 ) -> list[Fact]:
-    facts = [
-        draft.add(_created_entity(creation, draft))
-        for creation in admitted(report.creations, draft, max_growth)
-    ]
+    facts: list[Fact] = []
+    for creation in admitted(report.creations, draft, max_growth):
+        # Resolved before the entity exists, so a location cannot name itself as its own anchor.
+        anchor = _placed(creation, draft)
+        entity = _created_entity(creation, draft, anchor)
+        facts.append(draft.add(entity))
+        if entity.kind == "location":
+            facts.append(_connect(draft, entity, anchor))
     facts.extend(_remembered(report.memories, draft, max_memories))
     return facts
 
@@ -85,11 +90,16 @@ async def run_turn(
     history = exchanges_to_messages(state.history[-settings.history_window :])
     steps: list[StepTrace] = []
     draft = state.draft()
-    snapshot = SceneSnapshot.of(state)
+    snapshot = SceneSnapshot.of(draft)
+    expansions = Expansions()
 
     announce("director")
-    plan_prompt = prompts.render_director(snapshot, engine.renderer(state), state.scenario, prompt)
-    plan = await stages.director.run(plan_prompt, PlanContext(engine=engine, state=state), history)
+    plan_prompt = prompts.render_director(snapshot, engine.renderer(draft), draft.scenario, prompt)
+    plan = await stages.director.run(
+        plan_prompt,
+        PlanContext(engine=engine, state=draft, rng=rng, expansions=expansions),
+        history,
+    )
     # Each Director call consumes the notes its own prompt rendered, so a note a beat writes
     # steers the next beat of this turn — or the next turn, when no further call renders it.
     draft.world.pending_notes = ()
@@ -111,7 +121,9 @@ async def run_turn(
             preface=prompts.SETTLE if last else prompts.BEAT,
         )
         beat = await stages.director.run(
-            beat_prompt, PlanContext(engine=engine, state=draft, settle=last), history
+            beat_prompt,
+            PlanContext(engine=engine, state=draft, rng=rng, expansions=expansions, settle=last),
+            history,
         )
         draft.world.pending_notes = ()
         steps.append(_traced(f"beat-{len(beats)}", beat_prompt, beat))
@@ -121,7 +133,8 @@ async def run_turn(
         if last:
             break
 
-    facts = [fact for beat in beats for fact in beat.facts]
+    facts = [*expansions.facts, *(fact for beat in beats for fact in beat.facts)]
+    steps.extend(expansions.steps)
     steps.append(
         StepTrace(
             name="resolve",
@@ -205,7 +218,7 @@ def admitted(creations: Sequence[Creation], state: GameState, maximum: int) -> t
     return tuple(sorted(kept, key=lambda creation: creation.kind != "location"))
 
 
-def _created_entity(creation: Creation, state: GameState) -> Entity:
+def _created_entity(creation: Creation, state: GameState, anchor_id: EntityId) -> Entity:
     return Entity(
         id=slug(creation.name, state.world.all_ids()),
         kind=creation.kind,
@@ -213,14 +226,37 @@ def _created_entity(creation: Creation, state: GameState) -> Entity:
         brief=creation.brief,
         detail=creation.detail,
         known=True,
-        parent_id=None if creation.kind == "location" else _placed(creation, state),
+        parent_id=None if creation.kind == "location" else anchor_id,
     )
 
 
 def _placed(creation: Creation, state: GameState) -> EntityId:
+    """The location the `location` field names: where a person or thing stands, and the place a new
+    location is joined to. Nothing named puts it where the player is."""
     if creation.location is not None:
         wanted = creation.location.casefold()
         for entity in state.world.of_kind("location"):
             if entity.name.casefold() == wanted:
                 return entity.id
     return state.player_location
+
+
+def _connect(draft: GameState, location: Entity, anchor_id: EntityId) -> Fact:
+    """Movement follows `connected` relations alone, so a created location arrives joined to one
+    the player can already reach."""
+    anchor = draft.world.require(anchor_id)
+    # A known way may not name an entity the player has not met.
+    relation = Relation(
+        kind=CONNECTED, source=location.id, target=anchor.id, directed=False, known=anchor.known
+    )
+    draft.world.relations[relation.id] = relation
+    joined = f"{location.name} — {CONNECTED} — {anchor.name}"
+    # The trace names the anchor, so an unmet one keeps the whole line out of player-facing prose.
+    return explained_fact(
+        location,
+        "relation_added",
+        joined,
+        {"kind": CONNECTED, "target": anchor.id},
+        "",
+        narrate=anchor.known,
+    )

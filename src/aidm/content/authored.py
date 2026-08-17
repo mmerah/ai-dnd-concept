@@ -5,6 +5,7 @@ from typing import Self
 
 from pydantic import Field, JsonValue, model_validator
 
+from aidm.content.sources import ExpansionPolicy
 from aidm.state.base import (
     PLAYER_ID,
     EngineId,
@@ -38,6 +39,7 @@ class ScenarioWorld(Frozen):
     """`world.json`: the narrative canon, authored once for every ruleset."""
 
     meta: ScenarioMeta
+    expansion: ExpansionPolicy = "closed"
     starting_location_id: EntityId
     starting_party: tuple[EntityId, ...] = ()
     entities: tuple[Entity, ...] = ()
@@ -137,12 +139,13 @@ class ScenarioWorld(Frozen):
 
 
 def _walk(ways: Sequence[Relation], start: EntityId) -> set[EntityId]:
+    """Every `connected` way is undirected, so a walk follows one from either end."""
     reached = {start}
     frontier = [start]
     while frontier:
         here = frontier.pop()
         for way in ways:
-            if not way.touches(here) or (way.directed and way.source != here):
+            if not way.touches(here):
                 continue
             far = way.far_end(here)
             if far not in reached:

@@ -2,10 +2,12 @@ from types import NoneType
 
 import pytest
 from core_test_support import SCENARIOS, scenario, scripted, settings, text, updated
+from pydantic import JsonValue
 from pydantic_ai.messages import ModelResponse, ToolCallPart
 from pydantic_ai.models.function import FunctionModel
 
 from aidm.app.scenario_creator import (
+    OPENING,
     ScenarioPatch,
     WorldDraft,
     ask_until_playable,
@@ -16,7 +18,7 @@ from aidm.app.scenario_creator import (
 )
 from aidm.content.store import load_scenario
 from aidm.state.base import Entity, EntityId
-from aidm.state.world import Relation, ScenarioMeta
+from aidm.state.world import Relation, ScenarioMeta, Thread
 from aidm.turn.roles import Stage
 
 
@@ -42,6 +44,14 @@ def test_a_world_colliding_with_the_character_is_refused() -> None:
         colliding = updated(world, entities=(*world.entities, extra))
         with pytest.raises(ValueError, match="appears twice"):
             playtest.check("whispering-vault", colliding, shipped.overlay)
+
+
+def _as_patch() -> dict[str, JsonValue]:
+    """The shipped world as one write: `expansion` is the CLI's to set, never the author's, so no
+    patch carries it."""
+    body = scenario().world.model_dump(mode="json")
+    del body["expansion"]
+    return body
 
 
 def _location(name: str) -> Entity:
@@ -114,7 +124,7 @@ def test_validation_names_what_the_draft_is_missing() -> None:
 
 def test_the_shipped_world_written_as_one_patch_is_playable() -> None:
     draft = WorldDraft()
-    patch = ScenarioPatch.model_validate(scenario().world.model_dump(mode="json"))
+    patch = ScenarioPatch.model_validate(_as_patch())
     _ = draft.apply(patch)
     assert playability(draft, "authored", playtests(settings())) is None
 
@@ -123,7 +133,7 @@ async def test_the_agent_authors_through_the_write_tool() -> None:
     config = settings()
     playing = playtests(config)
     stage = world_stage("authored", playing, config)
-    patch_args = {"patch": scenario().world.model_dump(mode="json")}
+    patch_args = {"patch": _as_patch()}
     author = scripted(
         ModelResponse(parts=[ToolCallPart(tool_name="write", args=patch_args)]),
         _finish("Authored the vault."),
@@ -139,7 +149,7 @@ async def test_finishing_an_unplayable_draft_is_refused_and_asked_again() -> Non
     config = settings()
     playing = playtests(config)
     stage = world_stage("authored", playing, config)
-    patch_args = {"patch": scenario().world.model_dump(mode="json")}
+    patch_args = {"patch": _as_patch()}
     author = scripted(
         _finish("all done, and it is great"),
         ModelResponse(parts=[ToolCallPart(tool_name="write", args=patch_args)]),
@@ -163,6 +173,41 @@ def test_a_thin_draft_hears_every_unmet_bar_item_at_once() -> None:
     assert reason is not None
     for wanted in ("locations", "locked", "actors", "item", "thread", "hook"):
         assert wanted in reason
+
+
+def test_an_opening_slice_passes_a_bar_the_whole_scenario_would_fail() -> None:
+    """Premise-start authors the first scene and nothing else: the rest is written during play."""
+    draft = WorldDraft(expansion=OPENING.expansion)
+    _ = draft.apply(
+        ScenarioPatch(
+            meta=ScenarioMeta(title="The Cell", premise="Get out."),
+            starting_location_id=EntityId("cell"),
+            entities=(
+                _location("cell"),
+                Entity(
+                    id=EntityId("gaoler"),
+                    kind="actor",
+                    name="the gaoler",
+                    brief="He keeps the only key.",
+                    known=True,
+                    parent_id=EntityId("cell"),
+                ),
+                Entity(
+                    id=EntityId("loose_stone"),
+                    kind="item",
+                    name="a loose stone",
+                    brief="It grinds when the wall is leaned on.",
+                    parent_id=EntityId("cell"),
+                ),
+            ),
+            threads=(Thread(id="the-way-out", title="The way out", stage="barred"),),
+        )
+    )
+    playing = playtests(settings())
+
+    assert playability(draft, "authored", playing, OPENING) is None
+    assert playability(draft, "authored", playing) is not None
+    assert draft.world().expansion == "generative"
 
 
 async def test_the_author_is_asked_again_with_the_reason() -> None:
