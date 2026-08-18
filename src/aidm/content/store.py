@@ -69,7 +69,9 @@ def read_source(directory: Path, name: Slug, premise: str) -> CanonSource:
 def require_source(directory: Path, name: Slug) -> Path:
     path = source_file(directory, name)
     if path is None:
-        raise ValueError(f"scenario {name!r} is grounded but ships no {SOURCE_STEM} document")
+        raise ValueError(
+            f"scenario {name!r} expands from a document but ships no {SOURCE_STEM} file"
+        )
     return path
 
 

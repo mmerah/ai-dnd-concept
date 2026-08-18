@@ -6,9 +6,8 @@ from typing import Literal, Protocol
 
 from pypdf import PdfReader
 
-type ExpansionPolicy = Literal["closed", "grounded", "generative"]
+type ExpansionPolicy = Literal["closed", "grounded", "generative", "extended"]
 
-CONTEXT_BUDGET = 2000
 RECORD_CHARS = 600
 MIN_RECORD = 24
 SEARCH_RESULTS = 6
@@ -26,41 +25,27 @@ class SourceRecord:
 class CanonSource(Protocol):
     """What may exist beyond the state already materialized."""
 
-    def context(self) -> str: ...
-
-    def search(self, query: str) -> tuple[SourceRecord, ...]: ...
+    def passages(self, query: str) -> str:
+        """The text this source offers for those words, or `""` when it offers nothing."""
+        ...
 
 
 @dataclass(frozen=True, slots=True)
 class PremiseSource:
-    """A scenario's own words: its `source.md` when it ships one, else the premise it was authored
-    from."""
-
     text: str
 
-    def context(self) -> str:
-        return self.text
-
-    def search(self, query: str) -> tuple[SourceRecord, ...]:
-        """A premise is already whole in the prompt, so there is nothing left to look up."""
+    def passages(self, query: str) -> str:
+        """A premise is whole and short, so every need is answered with all of it."""
         del query
-        return ()
+        return self.text
 
 
 @dataclass(frozen=True, slots=True)
 class RecordSource:
     records: tuple[SourceRecord, ...]
 
-    def context(self) -> str:
-        """The document's opening, bounded: the rest is reached with `search`."""
-        shown: list[SourceRecord] = []
-        spent = 0
-        for record in self.records:
-            if spent + len(record.text) > CONTEXT_BUDGET:
-                break
-            shown.append(record)
-            spent += len(record.text)
-        return render(shown)
+    def passages(self, query: str) -> str:
+        return render(self.search(query))
 
     def search(self, query: str) -> tuple[SourceRecord, ...]:
         """Every record holding a word of the query, the most of them first, ties in document
@@ -74,6 +59,23 @@ class RecordSource:
         ]
         found = sorted((row for row in scored if row[0]), key=lambda row: (-row[0], row[1]))
         return tuple(record for _, _, record in found[:SEARCH_RESULTS])
+
+
+SILENT = (
+    "The adventure's text holds no passage on this need. What follows is the adventure's premise: "
+    "write canon of your own that is consistent with it."
+)
+
+
+@dataclass(frozen=True, slots=True)
+class ExtendedSource:
+    """The document where it speaks, the premise where it is silent."""
+
+    document: RecordSource
+    premise: str
+
+    def passages(self, query: str) -> str:
+        return self.document.passages(query) or f"{SILENT}\n\n{self.premise}"
 
 
 def render(records: Sequence[SourceRecord]) -> str:

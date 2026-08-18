@@ -185,6 +185,26 @@ that document. No persisted-byte change: `SAVE_VERSION` unmoved, no fixture move
   into a record (`MIN_RECORD` only drops a footer that stands alone); `context()` assumes document
   order is orientation, which holds for an adventure and fails for a rulebook that opens on
   generator tables.
+- **A retrieval miss is a refusal, not a fallback.** `render(source.search(...)) or
+  source.context()` handed the Expander the document's first four records whenever retrieval
+  missed — bearing on nothing that was asked, labelled THE SOURCE — so a `grounded` expansion could
+  be grounded in nothing. The fourth instance of the same silent-degradation shape. `CanonSource`
+  is now one method, `passages(query)`, where `""` means the source offers nothing and
+  `expand_world` refuses to the Director without calling the Expander at all; `context()`,
+  `CONTEXT_BUDGET` and `PremiseSource.search` went with the fallback. **A source answers for
+  itself, and the empty string carries the meaning a fallback was swallowing.**
+- **`extended` is the fourth policy: the document where it speaks, the premise where it is
+  silent.** It is a composite of the two sources that already existed rather than a branch, because
+  only the composite knows *why* it is returning the premise — which is what lets it prefix the
+  `SILENT` notice so the Expander can tell the halves apart. Its premise half is `meta.premise`,
+  never the document: a fallback earns its keep by being short and general. `grounded` stays strict
+  and loud; `extended` is the quiet one, and the creator still writes `grounded`, so `extended` is
+  reached by editing one field.
+- **The anchor name is folded into the query, so a miss is rarer than it looks** — any record
+  merely naming the anchor becomes THE SOURCE. It stays because a `need` written as an identifier
+  retrieves nothing without it. The Expander's own out is what covers the gap: told that passages
+  never touching the need should be answered with an empty patch, it returns "nothing was added"
+  and the Director replans. Untested live; worth watching in a trace.
 - **The leak rule now covers source text**, pinned by a test: a record's distinctive word reaches
   the Expander's prompt and never the Narrator's.
 - The fixture PDF is hand-built (a minimal five-object PDF committed under
@@ -231,14 +251,38 @@ that document. No persisted-byte change: `SAVE_VERSION` unmoved, no fixture move
   grounded world held exactly the four records of the `context()` head and nothing past `p1-5`:
   `scenario_world.md` never mentioned the tool at all. Naming a tool only in a schema description
   or a prompt heading is not an instruction.
+- **The retrieval-miss fallback was a fourth silent degradation, the same shape as the three
+  above.** `expand_world` read `source.search(...) or source.context()`, which is right for a
+  premise — its `search` returns nothing and the whole premise *is* the source — and wrong for a
+  document: a miss handed the Expander the document's first four records, bearing on nothing that
+  was asked, under the heading `THE SOURCE`. The model then invented canon and the trace showed a
+  grounded expansion grounded in nothing. **The rule these four share: a degradation that reads as
+  success in the trace is worse than a refusal, and a fallback chosen by the *caller* cannot know
+  which source it is falling back for.**
+- **`passages(need)` replaced `context()` and `search()` on `CanonSource`, so a source answers for
+  itself and `""` carries the meaning.** `PremiseSource.passages` is its whole text always;
+  `RecordSource.passages` is `render(search(...))`, empty on a miss. `search` stays a public method
+  because its ranking is tested directly, but is off the protocol; `context()` and
+  `CONTEXT_BUDGET` are deleted with their only caller, which also retires the "document order is
+  orientation" ceiling recorded above. An empty answer is now a `ModelRetry` to the Director in the
+  same class as the bad-anchor and cap refusals — the Expander is never called, and nothing is
+  recorded in `Expansions`, because there was nothing to write from.
+- **`extended` is the fourth `ExpansionPolicy`: the document where it speaks, the premise where it
+  is silent.** It is a composite source (`ExtendedSource` holding a `RecordSource` and a
+  `PremiseSource`) rather than a branch in `expand_world`, because both behaviours already existed
+  and a composite is the only thing that knows *why* it is returning the premise — so it prefixes
+  `SILENT`, telling the Expander plainly that the text is silent and to write canon consistent with
+  the adventure. Its premise half is `scenario.meta.premise`, never the document: a fallback earns
+  its keep by being short and general. Strict `grounded` still refuses on a miss, deliberately —
+  it is the loud counterpart to `extended`'s quiet one. The scenario creator still authors
+  `grounded`; the new policy is reached by editing one field in `world.json`.
 
 ## Next
 
 - PLAN.md Phase 4 (media), Phase 5 (player-facing UI per docs/ui-mock + journal export).
 - Sources are unfinished in two places, both needing a model rather than a fixture: no scenario has
   been authored from a real PDF end to end, and the known extraction ceilings above (one block per
-  page, footers riding into a record, `context()` assuming document order is orientation) are
-  measured but unfixed.
+  page, footers riding into a record) are measured but unfixed.
 - The ceiling on whole-document authoring is ~19k tokens for a 76-page book across up to
   `REQUEST_LIMIT` requests. When that bites, the answer is the Expander's shape — resolver-side
   retrieval and a size guard that refuses a too-large document — not the tool back.

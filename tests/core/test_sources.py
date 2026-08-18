@@ -5,7 +5,7 @@ from core_test_support import LONER3E, scenario, settings, updated
 
 from aidm.app.launcher import LaunchTarget
 from aidm.app.session import build_engine, open_source
-from aidm.content.sources import PremiseSource, ingest
+from aidm.content.sources import ingest
 from aidm.content.store import load_scenario, write_scenario
 
 FIXTURES = Path(__file__).parent / "fixtures" / "source"
@@ -39,9 +39,8 @@ def test_search_ranks_by_the_words_asked_for() -> None:
 
     assert found
     assert "Bell House" in found[0].text
-    # A search that finds nothing is not an error: the Expander is simply shown fewer passages.
     assert source.search("submarine") == ()
-    assert PremiseSource(text="The abbey emptied in a night.").search("tide") == ()
+    assert source.passages("submarine") == ""
 
 
 def test_a_grounded_scenario_is_refused_without_its_document_and_ingests_it_when_present(

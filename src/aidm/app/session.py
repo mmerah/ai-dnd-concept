@@ -5,7 +5,7 @@ from random import Random
 
 from aidm.config import Settings
 from aidm.content.authored import Character, Scenario
-from aidm.content.sources import CanonSource, ingest
+from aidm.content.sources import CanonSource, ExtendedSource, ingest
 from aidm.content.store import FileStore, load_character, load_scenario, read_source, require_source
 from aidm.engines.advancement import Advancement, Offer, ProposalBase
 from aidm.engines.loader import Engine, engine_class
@@ -41,13 +41,20 @@ def build_advisor(
 
 
 def open_source(config: Settings, target: LaunchTarget, scenario: Scenario) -> CanonSource | None:
-    """A `closed` world plays on its own canon alone; a `grounded` one is refused rather than
-    played without the document its expansions must cite."""
+    """A `closed` world plays on its own canon alone; a `grounded` or `extended` one is refused
+    rather than played without the document its expansions are written from."""
     match scenario.world.expansion:
         case "closed":
             return None
         case "grounded":
             return ingest(require_source(config.scenarios_dir, target.scenario_id))
+        case "extended":
+            return ExtendedSource(
+                document=ingest(require_source(config.scenarios_dir, target.scenario_id)),
+                # The premise, never the document: a fallback earns its keep by being short and
+                # general where the document had nothing specific.
+                premise=scenario.meta.premise,
+            )
         case "generative":
             return read_source(config.scenarios_dir, target.scenario_id, scenario.meta.premise)
 

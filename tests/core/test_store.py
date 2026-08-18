@@ -174,5 +174,5 @@ def test_a_scenario_expands_from_its_own_source_or_else_from_its_premise(tmp_pat
     loaded = load_scenario(tmp_path, "grown", build_engine(LONER3E).binding())
 
     assert loaded.world.expansion == "generative"
-    assert read_source(tmp_path, "grown", "unread").context() == premise
-    assert read_source(tmp_path, "curated", premise).context() == premise
+    assert read_source(tmp_path, "grown", "unread").passages("road") == premise
+    assert read_source(tmp_path, "curated", premise).passages("road") == premise

@@ -19,7 +19,7 @@ from pydantic_ai.providers.openai import OpenAIProvider
 from pydantic_ai.toolsets import AbstractToolset, FunctionToolset
 
 from aidm.config import ProviderConfig, Role, RoleConfig, Settings
-from aidm.content.sources import CanonSource, render
+from aidm.content.sources import CanonSource
 from aidm.engines.advancement import Advancement, Offer, ProposalBase
 from aidm.engines.loader import Engine
 from aidm.engines.sheets import SheetBase
@@ -253,12 +253,17 @@ def expansion_toolset(
                 f"you have already reached for new canon {MAX_EXPANSIONS} times this turn. Plan "
                 "the rest with what already exists."
             )
+        # The anchor name is folded in because a `need` written as an identifier retrieves nothing
+        # on its own.
+        found = source.passages(" ".join((anchor.name, need, *queries)))
+        if not found:
+            raise ModelRetry(
+                f"the source holds nothing about {need!r}. Ask again with the words the "
+                "adventure's own text would use for it, or plan this turn with what exists."
+            )
         asked = (
             f"kind: {kind}\nanchor: {anchor.name}[id={prompts.prompt_id(anchor.id)}]\nneed: {need}"
         )
-        # The resolver searches, so a miss costs fewer passages and never a retry. The anchor name
-        # is folded in because a `need` written as an identifier retrieves nothing on its own.
-        found = render(source.search(" ".join((anchor.name, need, *queries)))) or source.context()
         prompt = prompts.render_expander(
             SceneSnapshot.of(draft),
             engine.renderer(draft),
