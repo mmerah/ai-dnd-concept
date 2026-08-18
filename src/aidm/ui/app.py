@@ -1,4 +1,5 @@
 import logging
+from pathlib import Path
 
 from nicegui import ui
 
@@ -25,6 +26,15 @@ LOGGER = logging.getLogger(__name__)
 class GameView:
     def __init__(self, session: GameSession) -> None:
         self.session = session
+        self.shown_art: tuple[Path | None, bool] = (None, False)
+
+    @ui.refreshable_method
+    def art(self) -> None:
+        path = self.session.scene_art()
+        if path is not None:
+            ui.image(path).classes("w-full rounded-borders")
+        elif self.session.scene_pending():
+            ui.skeleton().classes("w-full rounded-borders").style("height: 8rem")
 
     @ui.refreshable_method
     def chat(self) -> None:
@@ -47,13 +57,21 @@ class GameView:
         state_panel(self.session)
 
     def refresh_all(self) -> None:
-        for panel in (self.chat, self.roles, self.trace, self.advancement, self.state):
+        for panel in (self.art, self.chat, self.roles, self.trace, self.advancement, self.state):
             panel.refresh()
 
 
 def on_step(view: GameView, step: str) -> None:
     view.session.step = step
     view.roles.refresh()
+
+
+def poll_art(view: GameView) -> None:
+    """The illustration is generated after the turn commits, so the page watches for it to land."""
+    shown = (view.session.scene_art(), view.session.scene_pending())
+    if shown != view.shown_art:
+        view.shown_art = shown
+        view.art.refresh()
 
 
 async def submit(view: GameView, box: ui.input) -> None:
@@ -126,6 +144,7 @@ def _game_page(session: GameSession) -> None:
 
     with ui.splitter(value=55).classes("w-full h-screen") as splitter:
         with splitter.before, ui.column().classes("w-full h-full p-4").style("gap: 0.5rem"):
+            view.art()
             with ui.scroll_area().classes("w-full flex-grow"):
                 view.chat()
             with ui.row().classes("w-full no-wrap").style("gap: 0.5rem"):
@@ -146,3 +165,6 @@ def _game_page(session: GameSession) -> None:
                         view.advancement()
                 with ui.tab_panel(state_tab), ui.scroll_area().classes("w-full h-full"):
                     view.state()
+
+    if session.media is not None:
+        ui.timer(3.0, lambda: poll_art(view))

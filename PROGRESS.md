@@ -277,9 +277,70 @@ that document. No persisted-byte change: `SAVE_VERSION` unmoved, no fixture move
   it is the loud counterpart to `extended`'s quiet one. The scenario creator still authors
   `grounded`; the new policy is reached by editing one field in `world.json`.
 
+### Phase 4 — Media: scene illustrations
+
+Done-when met: with `MEDIA__ENABLED=true` a turn grows an illustration seconds after the narration,
+and with it off (the default) nothing in state, saves, prompts, or tests differs. No persisted-byte
+change: `SAVE_VERSION` unmoved, no fixture moved.
+
+- **An image is of a scene, not of a turn.** PLAN said `turn-<n>.png` every turn; what shipped is
+  content-addressed — `saves/<slug>.media/<sha1(location|sorted revealed ids)[:12]>.<ext>`. A turn
+  that changes nothing visible reuses the file, and walking back into a room redisplays the picture
+  it already paid for. That also means an unrevealed arrival never burns a generation, which the
+  key test pins.
+- **Icons split by origin, because authored canon outlives one save.** An entity id in the
+  scenario's `world.json` writes to `scenarios/<slug>/icons/<id>.<ext>` — shared by every save and
+  character, committable, and pre-bakeable by dropping files there; anything the Worldkeeper or
+  Expander invented writes under the save's media dir. `restart()` clears only the save side
+  (`FileStore.discard` now rmtree's `<slug>.media`), so a scenario's cast is paid for once.
+  `whispering-vault`'s five non-location entities ship pre-baked (~700 KB each, 3.4 MB — big enough
+  that a downscale step will be wanted before many scenarios ship art).
+- **Naming the attachments is what makes an icon a likeness.** The first live run passed the icons
+  as bare reference images and the scene redrew Mara as a different person (and a different
+  gender). Adding "the attached images are reference likenesses of, in order: <names>" made the
+  scene reproduce the icon's face and clothes exactly. An icon prompt also has to refuse scenery
+  outright — "one centred subject on a plain flat background" still produced a full desk scene
+  until it said "no scenery, no other figures".
+- **The image call is raw `httpx`, not a `Stage`.** pydantic-ai's `OpenAIChatModel` never surfaces
+  OpenRouter's `message.images`, so a role would have bought nothing. One POST with
+  `modalities: ["image", "text"]`, validated by a strict four-model reply shape.
+- **Aspect ratio is a request field, and it had to be probed to be believed.** OpenRouter passes
+  `image_config: {"aspect_ratio": ...}` through to Gemini image models: `1:1` returns
+  1024×1024, `3:4` returns 896×1200, and the default (1408×768) merely *looked* like 16:9. So
+  `MediaConfig.scene_ratio`/`icon_ratio` ship as "16:9"/"1:1", and the prompts name the form
+  outright — "draw one wide establishing view … not a portrait" against "draw a portrait token,
+  not a scene" — because the earlier wording produced a full desk scene for an icon. **Deleting
+  a file is the regeneration mechanism**: cached-forever means `rm scenarios/<slug>/icons/*` and
+  replay, which is how the vault's five were reshot square.
+- **The reply names its own format.** `google/gemini-3.1-flash-lite-image` returns
+  `data:image/jpeg`, not png, so files are written with the suffix the media type gives and looked
+  up by stem across the three supported suffixes. Assuming `.png` would have written jpegs under a
+  png name.
+- Live probe (working rule 2), 2026-08-18: the model exists, answers in one call, and costs
+  ~$0.034 per image — which is what makes the caching decision structural rather than tidy. An
+  icon plus a scene is two calls, and only the first visit to a scene pays.
+- Two guards an adversarial review found missing, both cheap and both about honesty rather than
+  crashes: a scene already generating is not generated twice (the file check alone let a second
+  turn in an unchanged room pay for the same image, and the first finisher cleared the shared
+  key so the placeholder vanished early), and `MEDIA__ENABLED=true` with no api key is refused
+  at settings validation rather than 401-ing into a log line every turn.
+- No model decides whether to illustrate: `illustration_request` is a pure builder over
+  `VisibleScene`, so the leak rule holds for media by construction (the test asserts an unrevealed
+  entity's name never reaches the prompt), and a failed generation is one `LOGGER.exception` and no
+  file — never a notification, never a failed turn.
+- The page shows the current scene's file above the chat when it exists, and a 3 s `ui.timer`
+  watches for it to land, because generation starts *after* the turn commits: without the poll the
+  player would always see the previous scene's art. While a generation is in flight the slot holds
+  a skeleton — `Illustrator.generating` is a live key set, not a guess from the missing file, so a
+  scene whose generation *failed* stops showing a placeholder instead of waiting forever.
+
 ## Next
 
-- PLAN.md Phase 4 (media), Phase 5 (player-facing UI per docs/ui-mock + journal export).
+- PLAN.md Phase 5 (player-facing UI per docs/ui-mock + journal export).
+- Media left deliberately unbuilt: icons are full-size jpegs (~700 KB) with no downscale, and
+  nothing pre-bakes a newly authored scenario's icons but a hand-run script. The player and
+  carried items are drawn by nothing today — Phase 5 gives the player's icon its reader (the chat
+  avatar) and adds the character dir as a third icon origin.
 - Sources are unfinished in two places, both needing a model rather than a fixture: no scenario has
   been authored from a real PDF end to end, and the known extraction ceilings above (one block per
   page, footers riding into a record) are measured but unfixed.

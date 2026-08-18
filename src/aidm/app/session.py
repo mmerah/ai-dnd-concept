@@ -1,3 +1,4 @@
+from asyncio import Task, create_task
 from collections.abc import Callable
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -21,6 +22,7 @@ from aidm.turn.prompts import render_proposal
 from aidm.turn.roles import AdvancementContext, Stage, Stages, advancement_stage, build_stages
 
 from .launcher import LaunchTarget
+from .media import ICON_DIR, Illustrator
 
 
 @dataclass(frozen=True, slots=True)
@@ -57,6 +59,22 @@ def open_source(config: Settings, target: LaunchTarget, scenario: Scenario) -> C
             )
         case "generative":
             return read_source(config.scenarios_dir, target.scenario_id, scenario.meta.premise)
+
+
+def open_media(
+    config: Settings, target: LaunchTarget, scenario: Scenario, store: FileStore
+) -> Illustrator | None:
+    """Icons for authored canon are shared by every save of the scenario; scene art and the icons
+    of what play invented belong to the one save."""
+    if not config.media.enabled:
+        return None
+    return Illustrator(
+        config=config.media,
+        provider=config.providers.for_name(config.media.provider),
+        saves=store.media_dir(target.slug),
+        authored=config.scenarios_dir / target.scenario_id / ICON_DIR,
+        authored_ids=frozenset(scenario.world.world.entities),
+    )
 
 
 def build_engine(engine_id: EngineId, extra_packs: Path | None = None) -> Engine[SheetBase]:
@@ -113,11 +131,13 @@ class GameSession:
     advisor: Stage[AdvancementContext, ProposalBase] | None
     store: FileStore
     settings: Settings
+    media: Illustrator | None = None
     rng: Random = field(default_factory=Random)
     entries: list[TraceEntry] = field(default_factory=list)
     busy: bool = False
     step: str | None = None
     drafted: Drafted | None = None
+    _tasks: set[Task[None]] = field(default_factory=set, repr=False)
     state: GameState = field(init=False)
 
     def __post_init__(self) -> None:
@@ -157,7 +177,23 @@ class GameSession:
             on_step=on_step,
         )
         self._commit(result.state, result.turn)
+        self._illustrate(result.turn.narration)
         return result.turn
+
+    def scene_art(self) -> Path | None:
+        return None if self.media is None else self.media.scene_art(self.state)
+
+    def scene_pending(self) -> bool:
+        return self.media is not None and self.media.scene_pending(self.state)
+
+    def _illustrate(self, narration: str) -> None:
+        """Fire and forget: the turn is committed already, and the image lands when it lands. The
+        set holds the task, which asyncio otherwise garbage-collects mid-flight."""
+        if self.media is None:
+            return
+        task = create_task(self.media.illustrate(self.state, narration))
+        self._tasks.add(task)
+        task.add_done_callback(self._tasks.discard)
 
     def offers(self) -> tuple[Offer, ...]:
         advancement = self.engine.advancement
@@ -216,6 +252,10 @@ class GameSession:
 
     def restart(self) -> None:
         opening = self._begun()
+        for task in self._tasks:
+            # An illustration of the discarded timeline would write itself back into the emptied
+            # media directory.
+            task.cancel()
         self.store.discard(self.slug)
         self.state = opening
         self.entries = []
@@ -276,6 +316,7 @@ class Runtime:
         config = self.config
         engine = self.engine(target.engine)
         scenario = load_scenario(config.scenarios_dir, target.scenario_id, engine.binding())
+        store = FileStore(config.saves_dir)
         return GameSession(
             target=target,
             scenario=scenario,
@@ -283,6 +324,7 @@ class Runtime:
             engine=engine,
             stages=build_stages(engine, config, open_source(config, target, scenario)),
             advisor=build_advisor(engine, config),
-            store=FileStore(config.saves_dir),
+            store=store,
             settings=config,
+            media=open_media(config, target, scenario, store),
         )

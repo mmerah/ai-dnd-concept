@@ -55,6 +55,10 @@ The app opens at <http://localhost:8080>. Configure
 home page lists saves and lets you choose a scenario, rules engine, and compatible character. The
 game header always identifies the active engine.
 
+Scene illustrations are off by default. `MEDIA__ENABLED=true` in `.env` turns them on
+(`MEDIA__MODEL` picks the image model). An image is generated after a turn commits, in the
+background, and only when the place or its revealed cast has changed since the last one.
+
 Run repository checks with:
 
 ```bash

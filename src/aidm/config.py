@@ -28,6 +28,19 @@ class RoleConfig(BaseModel):
     temperature: float | None = Field(default=None, ge=0.0, le=2.0)
 
 
+class MediaConfig(BaseModel):
+    """Scene illustrations: presentation only, so the default is off and a failure costs a log
+    line."""
+
+    model_config = ConfigDict(frozen=True)
+
+    enabled: bool = False
+    provider: ProviderName = "openrouter"
+    model: str = "google/gemini-3.1-flash-lite-image"
+    scene_ratio: str = "16:9"
+    icon_ratio: str = "1:1"
+
+
 # Authoring passes write whole records, which the turn-loop defaults cannot.
 ROLE_DEFAULTS: dict[Role, RoleConfig] = {
     "expander": RoleConfig(max_tokens=8192, reasoning_effort="medium"),
@@ -63,6 +76,7 @@ class Settings(BaseSettings):
 
     providers: Providers = Providers()
     roles: dict[Role, RoleConfig] = Field(default_factory=dict)
+    media: MediaConfig = MediaConfig()
     max_beats: int = Field(default=3, ge=1)
     max_growth: int = Field(default=3, ge=0)
     max_memories: int = Field(default=2, ge=0)
@@ -94,6 +108,8 @@ class Settings(BaseSettings):
     def _keys_present(self) -> Self:
         for name in self.roles:
             self.role(name)
+        if self.media.enabled and not self.providers.for_name(self.media.provider).api_key:
+            raise ValueError(f"media uses provider {self.media.provider!r}, which has no api_key")
         return self
 
 

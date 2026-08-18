@@ -3,6 +3,7 @@ from collections.abc import Iterator, Mapping, Sequence
 from dataclasses import dataclass
 from pathlib import Path
 from re import fullmatch
+from shutil import rmtree
 
 from pydantic import BaseModel, ConfigDict, JsonValue, TypeAdapter
 
@@ -211,9 +212,13 @@ class FileStore:
             entries.append(TRACE_ADAPTER.validate_json(line))
         return tuple(entries)
 
+    def media_dir(self, slug: str) -> Path:
+        return _safe_path(self.directory, slug, ".media")
+
     def discard(self, slug: str) -> None:
         self._save_path(slug).unlink(missing_ok=True)
         self._trace_path(slug).unlink(missing_ok=True)
+        rmtree(self.media_dir(slug), ignore_errors=True)
 
     def _save_path(self, slug: str) -> Path:
         return _safe_path(self.directory, slug, ".json")
