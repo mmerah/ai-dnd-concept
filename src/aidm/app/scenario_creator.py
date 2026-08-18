@@ -2,7 +2,7 @@ import asyncio
 import json
 import sys
 from collections.abc import Callable, Mapping, Sequence
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from pathlib import Path
 from types import NoneType
 
@@ -27,7 +27,7 @@ from aidm.content.authored import (
     ScenarioWorld,
     check_hooks,
 )
-from aidm.content.sources import ExpansionPolicy
+from aidm.content.sources import ExpansionPolicy, ingest, render
 from aidm.content.store import ENCODING, WORLD_FILE, engine_text, load_character, write_scenario
 from aidm.engines.loader import Engine, engine_ids
 from aidm.engines.sheets import SheetBase
@@ -298,7 +298,10 @@ async def ask_until_playable[T](
 
 
 def authoring_toolset(
-    slug: Slug, playing: Sequence[Playtest], config: Settings, brief: Brief = FULL
+    slug: Slug,
+    playing: Sequence[Playtest],
+    config: Settings,
+    brief: Brief = FULL,
 ) -> FunctionToolset[WorldDraft]:
     def worked_example() -> str:
         """The shipped scenario's world.json: the format and the quality bar to match."""
@@ -327,7 +330,10 @@ def authoring_toolset(
 
 
 def world_stage(
-    slug: Slug, playing: Sequence[Playtest], config: Settings, brief: Brief = FULL
+    slug: Slug,
+    playing: Sequence[Playtest],
+    config: Settings,
+    brief: Brief = FULL,
 ) -> Stage[WorldDraft, str]:
     """The run ends on the `finish` tool, not on bare text: an author that only ever calls tools
     would otherwise never end its own turn."""
@@ -368,14 +374,15 @@ def overlay_stage(
     )
 
 
-def _world_prompt(slug: Slug, premise: str) -> str:
-    return f"PREMISE:\n{premise}\n\nWill be saved as: {slug!r}"
+def _world_prompt(slug: Slug, premise: str, sourced: bool) -> str:
+    heading = "SOURCE DOCUMENT:" if sourced else "PREMISE:"
+    return f"{heading}\n{premise}\n\nWill be saved as: {slug!r}"
 
 
 async def authored_world(
     stage: Stage[WorldDraft, str],
     slug: Slug,
-    premise: str,
+    prompt: str,
     playing: Sequence[Playtest],
     brief: Brief = FULL,
 ) -> ScenarioWorld:
@@ -383,7 +390,7 @@ async def authored_world(
     the agent saying 'ok' is never trusted."""
     draft = WorldDraft(expansion=brief.expansion)
     _ = await stage.agent.run(
-        _world_prompt(slug, premise),
+        prompt,
         deps=draft,
         usage_limits=UsageLimits(request_limit=REQUEST_LIMIT),
     )
@@ -425,11 +432,19 @@ async def _authored_overlay(
 
 
 async def author_scenario(
-    slug: Slug, premise: str, config: Settings, brief: Brief = FULL
+    slug: Slug,
+    premise: str,
+    config: Settings,
+    brief: Brief = FULL,
+    sourced: bool = False,
 ) -> tuple[ScenarioWorld, dict[EngineId, ScenarioOverlay]]:
     playing = playtests(config)
     world = await authored_world(
-        world_stage(slug, playing, config, brief), slug, premise, playing, brief
+        world_stage(slug, playing, config, brief),
+        slug,
+        _world_prompt(slug, premise, sourced),
+        playing,
+        brief,
     )
     overlays = {
         playtest.engine.id: await _authored_overlay(playtest, slug, world, config)
@@ -452,19 +467,39 @@ def summarize(world: ScenarioWorld, overlays: Mapping[EngineId, ScenarioOverlay]
 OPENING_FLAG = "--opening"
 
 
+def source_file(given: str) -> Path | None:
+    """The argument as a file, or None for a premise — prose long enough to overrun the
+    filesystem's name limit is an answer here, not a failure."""
+    path = Path(given)
+    try:
+        return path if path.is_file() else None
+    except OSError:
+        return None
+
+
 def main() -> None:
     args = [arg for arg in sys.argv[1:] if arg != OPENING_FLAG]
     # An opening slice is the scenario's own source, so the premise is written beside it verbatim.
     opening = OPENING_FLAG in sys.argv[1:]
     if len(args) != 2:
-        raise SystemExit(f'usage: create_scenario.py <slug> "<premise>" [{OPENING_FLAG}]')
+        raise SystemExit(
+            f'usage: create_scenario.py <slug> "<premise>"|<source file> [{OPENING_FLAG}]'
+        )
     try:
         slug = content_id(args[0])
         config = load_settings()
-        premise = args[1]
+        given = source_file(args[1])
+        records = None if given is None else ingest(given)
+        premise = args[1] if records is None else render(records.records)
         brief = OPENING if opening else FULL
-        world, overlays = asyncio.run(author_scenario(slug, premise, config, brief))
-        write_scenario(config.scenarios_dir, slug, world, overlays, premise if opening else None)
+        # A scenario authored from a document is grounded in it: play expands by citing records.
+        if records is not None:
+            brief = replace(brief, expansion="grounded")
+        sourced = given is not None
+        world, overlays = asyncio.run(author_scenario(slug, premise, config, brief, sourced))
+        write_scenario(
+            config.scenarios_dir, slug, world, overlays, given or (args[1] if opening else None)
+        )
     except (ValueError, UnexpectedModelBehavior, UsageLimitExceeded) as refused:
         raise SystemExit(f"scenario not created: {refused}") from refused
     print(summarize(world, overlays))

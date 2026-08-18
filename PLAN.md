@@ -4,8 +4,8 @@ The phased plan for what is built next, in order. The Director-contract work, th
 drastic simplification (Cairn 2e deleted, the wire contract cut to `roll` + `effects`), and the
 engine-true mechanics and the scenario creator all shipped (git history has the detail). The
 2026-08-17 research pass (`docs/ADVENTURE-SOURCES-RESEARCH.md`, `docs/SYBYL-LEARNINGS.md`) was
-adopted: Phase 2 (progressive world expansion) shipped, Phase 3 is the source system (PDF
-ingestion, grounded expansion, fused authoring), Phase 4 media, Phase 5 the player-facing UI;
+adopted: Phase 2 (progressive world expansion) and Phase 3 (the source system: PDF ingestion,
+grounded expansion, fused authoring) shipped, Phase 4 is media and Phase 5 the player-facing UI;
 `docs/ui-mock/index.html` is the visual reference for 4 and 5. Each phase carries enough detail to
 implement without prior context; only the next unshipped phase needs full resolution. Shipped
 phases move to PROGRESS.md.
@@ -28,31 +28,6 @@ phases move to PROGRESS.md.
 
 Per phase: `uv run pytest && uv run ruff check && uv run ruff format --check && uv run
 basedpyright` green after every numbered step, one commit per step.
-
-## Phase 3 — Sources: PDF ingestion, grounded expansion, fused authoring (~3–5 days)
-
-The second `CanonSource`: a real document. One ingestion system feeds both scenario creation and
-runtime expansion — no separate "PDF scenario creator".
-
-1. **Ingestor.** PDF, Markdown, or plain text → immutable normalized `SourceRecord`s (id, text,
-   page provenance, `visibility: player | private`) in `src/aidm/content/sources.py`, written as
-   `sources.json` in the scenario dir; `RecordSource` joins `PremiseSource` as the second
-   `CanonSource`, growing the protocol with `search(query) -> tuple[SourceRecord, ...]` — plain
-   text search, a real choice, not a stub; a vector index is a separate decision if search proves
-   insufficient. Extraction is deterministic; tests run on a small fixture document, no network.
-   The PDF text dependency is chosen here (a pypdf-class library, nothing heavier).
-2. **Fused authoring.** `create_scenario` accepts a source file path in place of a premise: it is
-   ingested first, and `authoring_toolset` (`src/aidm/app/scenario_creator.py`) grows a read-only
-   `search_source` tool over the records. Everything still passes the strict authored-content
-   models and engine validation before any file is written (absorbs `docs/SYBYL-LEARNINGS.md`
-   item 3).
-3. **Grounded expansion.** Policy `grounded`: the Expander gains the same `search_source` tool
-   and its patch names the record ids it drew from, refused when they do not exist.
-4. **The leak rule extends to sources.** Raw source text reaches only the authoring agent and the
-   Expander; the Narrator's input type still has no field it could travel through.
-
-Done when: a shipped fixture document ingests to records, a scenario is created from a PDF alone,
-and a `grounded` game expands only with canon that cites its records.
 
 ## Phase 4 — Media: scene illustrations (~2–3 days)
 

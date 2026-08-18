@@ -19,7 +19,7 @@ from pydantic_ai.providers.openai import OpenAIProvider
 from pydantic_ai.toolsets import AbstractToolset, FunctionToolset
 
 from aidm.config import ProviderConfig, Role, RoleConfig, Settings
-from aidm.content.sources import CanonSource
+from aidm.content.sources import CanonSource, render
 from aidm.engines.advancement import Advancement, Offer, ProposalBase
 from aidm.engines.loader import Engine
 from aidm.engines.sheets import SheetBase
@@ -229,35 +229,49 @@ def expansion_toolset(
     source: CanonSource,
 ) -> FunctionToolset[PlanContext]:
     async def expand_world(
-        ctx: RunContext[PlanContext], kind: Kind, anchor_id: EntityId, need: str
+        ctx: RunContext[PlanContext],
+        kind: Kind,
+        anchor_id: EntityId,
+        need: str,
+        queries: tuple[str, ...] = (),
     ) -> str:
         """Write canon this world does not hold yet, when what the turn reaches for is genuinely
-        absent — never as a replacement for something that already exists. Name the kind of thing
-        missing, the exact id of the entity it hangs off, and the need it fills. What comes back is
-        unknown to the player, so reveal it or move them to it in this same plan. Returns the ids
-        written."""
+        absent — never as a replacement for something that already exists. Read EXISTS BUT THE
+        PLAYER DOES NOT KNOW IT YET first: while anything there answers the turn, this call is
+        wrong, and so is calling it for a turn that reaches for nothing in particular. Name the
+        kind of thing missing, the exact id of the entity it hangs off, the need it fills in a
+        sentence of plain words, and in `queries` the words the adventure's own text would use for
+        it — names, places, and objects — which is how the source is looked up for you. What comes
+        back is unknown to the player, so reveal it or move them to it in this same plan. Returns
+        the ids written."""
         deps, draft = ctx.deps, ctx.deps.state
         anchor = draft.world.find(anchor_id)
         if anchor is None:
             raise ModelRetry(f"nothing here has id {anchor_id!r}. Use an id you were shown.")
         if deps.expansions.capped():
             raise ModelRetry(
-                f"the world was already expanded {MAX_EXPANSIONS} times this turn. Plan the rest "
-                "with what already exists."
+                f"you have already reached for new canon {MAX_EXPANSIONS} times this turn. Plan "
+                "the rest with what already exists."
             )
         asked = (
             f"kind: {kind}\nanchor: {anchor.name}[id={prompts.prompt_id(anchor.id)}]\nneed: {need}"
         )
+        # The resolver searches, so a miss costs fewer passages and never a retry. The anchor name
+        # is folded in because a `need` written as an identifier retrieves nothing on its own.
+        found = render(source.search(" ".join((anchor.name, need, *queries)))) or source.context()
         prompt = prompts.render_expander(
             SceneSnapshot.of(draft),
             engine.renderer(draft),
             draft.scenario,
-            context=source.context(),
+            context=found,
             request=asked,
         )
         try:
             patch = await expander.run(prompt, deps)
         except UnexpectedModelBehavior as refused:
+            # Recorded before the retry: an expansion that wrote nothing is the one the trace is
+            # read for, and the Expander's own prompt and reason exist nowhere else.
+            deps.expansions.record(prompt, f"no canon written: {refused}")
             raise ModelRetry(
                 f"no canon could be written ({refused}). Plan this turn with what already exists."
             ) from refused
@@ -298,21 +312,17 @@ def build_stages(
 ) -> Stages:
     """A game with nothing to expand from builds no Expander, so its Director agent is the one
     shipped today."""
-    expander, expand_tool = (None, None) if source is None else _expansion(engine, settings, source)
+    expander: Stage[PlanContext, ExpansionPatch] | None = None
+    expand_tool: FunctionToolset[PlanContext] | None = None
+    if source is not None:
+        expander = expander_stage(settings)
+        expand_tool = expansion_toolset(engine, expander, source)
     return Stages(
         director=director_stage(engine, settings, expand_tool),
         narrator=narrator_stage(settings),
         worldkeeper=worldkeeper_stage(settings),
         expander=expander,
     )
-
-
-def _expansion(
-    engine: Engine[SheetBase], settings: Settings, source: CanonSource
-) -> tuple[Stage[PlanContext, ExpansionPatch], FunctionToolset[PlanContext]]:
-    """Paired, so `build_stages` needs no second narrowing of the optional source."""
-    expander = expander_stage(settings)
-    return expander, expansion_toolset(engine, expander, source)
 
 
 def exchanges_to_messages(history: Sequence[Exchange]) -> list[ModelMessage]:

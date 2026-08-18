@@ -1,0 +1,197 @@
+{
+  "meta": {
+    "title": "The Drowned Road's Secret",
+    "premise": "A pilgrim on the Drowned Road must help the bell keeper Ovid Sarn locate the hidden bronze key and unlock the crypt beneath the Lantern Chapel before the tide returns. The journey begins at the Bell House, where the tide bell rings twice a day."
+  },
+  "expansion": "grounded",
+  "starting_location_id": "bell_house",
+  "starting_party": [],
+  "entities": [
+    {
+      "id": "tarns_end",
+      "kind": "location",
+      "name": "Tarn's End",
+      "brief": "A fishing village of forty houses, a smokehouse, and the inn Ebb Tide where tide tables are chalked on the bar.",
+      "detail": null,
+      "known": true,
+      "parent_id": null,
+      "traits": []
+    },
+    {
+      "id": "bell_house",
+      "kind": "location",
+      "name": "Bell House",
+      "brief": "A squat stone tower with a single bronze bell hanging open to the weather.",
+      "detail": {
+        "description": "A loose brick in the north wall hides something swaddled in oilcloth.",
+        "hook": "Inspect the brick for a hidden object."
+      },
+      "known": true,
+      "parent_id": null,
+      "traits": []
+    },
+    {
+      "id": "lantern_chapel",
+      "kind": "location",
+      "name": "Lantern Chapel",
+      "brief": "A black stone chapel on the lone rock; its lamp burns night and day.",
+      "detail": {
+        "description": "A narrow stair at the rear is sealed with rubble, but the stones can be moved.",
+        "hook": "Clear the rubble to reveal a hidden stair."
+      },
+      "known": false,
+      "parent_id": null,
+      "traits": []
+    },
+    {
+      "id": "crypt_entrance",
+      "kind": "location",
+      "name": "Crypt Entrance",
+      "brief": "An iron grate sealed with a fish-shaped lock, half submerged in brackish water.",
+      "detail": {
+        "description": "The iron grate bears a fish‑shaped lock matching a bronze key.",
+        "hook": "Find the key to unlock the grate."
+      },
+      "known": false,
+      "parent_id": null,
+      "traits": []
+    },
+    {
+      "id": "ovid_sarn",
+      "kind": "actor",
+      "name": "Ovid Sarn",
+      "brief": "The bell keeper, heavy and silent, rings the tide bell twice daily.",
+      "detail": null,
+      "known": true,
+      "parent_id": "bell_house",
+      "traits": []
+    },
+    {
+      "id": "mara_voss",
+      "kind": "actor",
+      "name": "Mara Voss",
+      "brief": "The lone caretaker of the Lantern Chapel, unseen by most travelers.",
+      "detail": null,
+      "known": false,
+      "parent_id": "lantern_chapel",
+      "traits": []
+    },
+    {
+      "id": "bronze_key",
+      "kind": "item",
+      "name": "Bronze Key",
+      "brief": "A flatfish‑shaped bronze key wrapped in stiff oilcloth.",
+      "detail": {
+        "description": "A bronze key shaped like a flatfish, wrapped in oilcloth.",
+        "hook": "Use it on the crypt's lock to open the entrance."
+      },
+      "known": false,
+      "parent_id": "bell_house",
+      "traits": []
+    }
+  ],
+  "relations": [
+    {
+      "kind": "connected",
+      "source": "tarns_end",
+      "target": "bell_house",
+      "directed": false,
+      "known": true,
+      "tags": []
+    },
+    {
+      "kind": "connected",
+      "source": "bell_house",
+      "target": "lantern_chapel",
+      "directed": false,
+      "known": false,
+      "tags": []
+    },
+    {
+      "kind": "connected",
+      "source": "lantern_chapel",
+      "target": "crypt_entrance",
+      "directed": false,
+      "known": false,
+      "tags": [
+        "locked"
+      ]
+    }
+  ],
+  "threads": [
+    {
+      "id": "crypt-revelation",
+      "title": "Opening the Crypt",
+      "status": "active",
+      "stage": "unfound",
+      "note": "The player must locate the bronze key, reveal the hidden stair, and unlock the crypt.",
+      "clock": null
+    }
+  ],
+  "memories": [
+    {
+      "id": "ovid-brother",
+      "owner": null,
+      "text": "Ovid Sarn's younger brother Wren drowned trying to beat the tide home; his oilskin coat hangs in the Bell House."
+    },
+    {
+      "id": "key-legend",
+      "owner": null,
+      "text": "A bronze key shaped like a flatfish lies wrapped in oilcloth behind a loose brick in the Bell House's north wall, but no one knows where it fits."
+    }
+  ],
+  "hooks": [
+    {
+      "id": "key-discovered",
+      "match": {
+        "kind": "entity_discovered",
+        "data": {
+          "entity_id": "bronze_key"
+        }
+      },
+      "effects": [
+        {
+          "name": "relation-change",
+          "args": {
+            "mode": "untag",
+            "kind": "connected",
+            "source": "lantern_chapel",
+            "target": "crypt_entrance",
+            "tag": "locked"
+          }
+        },
+        {
+          "name": "relation-change",
+          "args": {
+            "mode": "reveal",
+            "kind": "connected",
+            "source": "lantern_chapel",
+            "target": "crypt_entrance"
+          }
+        }
+      ],
+      "note": "The bronze key can remove the lock on the crypt entrance.",
+      "once": true
+    },
+    {
+      "id": "crypt-revealed",
+      "match": {
+        "kind": "entity_discovered",
+        "data": {
+          "entity_id": "crypt_entrance"
+        }
+      },
+      "effects": [
+        {
+          "name": "advance-thread",
+          "args": {
+            "thread_id": "crypt-revelation",
+            "stage": "seal-found"
+          }
+        }
+      ],
+      "note": "The crypt entrance is now known; the player can explore it.",
+      "once": true
+    }
+  ]
+}

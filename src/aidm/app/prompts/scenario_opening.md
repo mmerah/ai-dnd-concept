@@ -10,9 +10,3 @@ the first scene needs, and author that as concretely as a whole scenario would.
 - One thread: what the premise is about, with a `stage` naming where it stands and a `note`
   telling the Director what it means right now.
 - A `detail.hook` on every entity, because those hooks are where the world grows from.
-- Names, briefs, and details specific enough to be unmistakable. No generic taverns, no
-  placeholder names, nothing the premise did not earn.
-- Never write a template. `"..."`, `TBD`, an empty `entities`, or any field left as a
-  placeholder is a wrong answer; every field carries finished content.
-
-Write canon, not prose for the player: the Narrator writes what the player reads.

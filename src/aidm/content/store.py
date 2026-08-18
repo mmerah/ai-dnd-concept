@@ -21,12 +21,13 @@ from .authored import (
     ScenarioWorld,
     check_hooks,
 )
-from .sources import PremiseSource
+from .sources import CanonSource, PremiseSource
 
 ENCODING = "utf-8"
 WORLD_FILE = "world.json"
 PROFILE_FILE = "base.json"
-SOURCE_FILE = "source.md"
+SOURCE_STEM = "source"
+SOURCE_SUFFIXES = (".md", ".txt", ".pdf")
 _SAVE_SLUG_PATTERN = r"[a-z0-9][a-z0-9_-]*"
 
 type Playable[T] = Iterator[tuple[Slug, T, tuple[EngineId, ...]]]
@@ -53,11 +54,23 @@ def load_scenario(directory: Path, name: Slug, binding: Binding) -> Scenario:
     return scenario
 
 
-def read_source(directory: Path, name: Slug, premise: str) -> PremiseSource:
-    """A scenario's own source text when it ships one, else the premise it was authored from."""
-    path = directory / content_id(name) / SOURCE_FILE
-    text = path.read_text(encoding=ENCODING) if path.is_file() else premise
+def source_file(directory: Path, name: Slug) -> Path | None:
+    folder = directory / content_id(name)
+    paths = (folder / f"{SOURCE_STEM}{suffix}" for suffix in SOURCE_SUFFIXES)
+    return next((path for path in paths if path.is_file()), None)
+
+
+def read_source(directory: Path, name: Slug, premise: str) -> CanonSource:
+    path = source_file(directory, name)
+    text = premise if path is None else path.read_text(encoding=ENCODING)
     return PremiseSource(text=text)
+
+
+def require_source(directory: Path, name: Slug) -> Path:
+    path = source_file(directory, name)
+    if path is None:
+        raise ValueError(f"scenario {name!r} is grounded but ships no {SOURCE_STEM} document")
+    return path
 
 
 def load_character(directory: Path, name: Slug, binding: Binding) -> Character:
@@ -87,7 +100,7 @@ def write_scenario(
     name: Slug,
     scenario: ScenarioWorld,
     overlays: Mapping[EngineId, ScenarioOverlay],
-    source: str | None = None,
+    source: str | Path | None = None,
 ) -> None:
     folder = directory / content_id(name)
     if folder.exists():
@@ -95,8 +108,10 @@ def write_scenario(
     _write(folder / WORLD_FILE, scenario.model_dump_json(indent=2))
     for engine, overlay in overlays.items():
         _write(folder / f"{engine}.json", overlay.model_dump_json(indent=2))
-    if source is not None:
-        _write(folder / SOURCE_FILE, source)
+    if isinstance(source, Path):
+        _copy(folder / f"{SOURCE_STEM}{source.suffix}", source)
+    elif source is not None:
+        _write(folder / f"{SOURCE_STEM}{SOURCE_SUFFIXES[0]}", source)
 
 
 def _playable[T: BaseModel](
@@ -210,6 +225,11 @@ def _line_version(line: str) -> int:
     parsed: JsonValue = json.loads(line)
     version = parsed.get("save_version", 0) if isinstance(parsed, dict) else 0
     return version if isinstance(version, int) else 0
+
+
+def _copy(path: Path, original: Path) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    _ = path.write_bytes(original.read_bytes())
 
 
 def _write(path: Path, body: str) -> None:

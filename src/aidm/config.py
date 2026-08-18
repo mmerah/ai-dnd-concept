@@ -31,7 +31,7 @@ class RoleConfig(BaseModel):
 # Authoring passes write whole records, which the turn-loop defaults cannot.
 ROLE_DEFAULTS: dict[Role, RoleConfig] = {
     "expander": RoleConfig(max_tokens=8192, reasoning_effort="medium"),
-    "scenario_creator": RoleConfig(max_tokens=32768, reasoning_effort="high"),
+    "scenario_creator": RoleConfig(max_tokens=32768, reasoning_effort="medium"),
 }
 
 

@@ -8,7 +8,7 @@ from aidm.state.base import Entity, Frozen
 from aidm.state.facts import CORE, Fact
 from aidm.state.plan import Resolution
 from aidm.state.turn import StepTrace
-from aidm.state.world import GameState, Hook, Relation, Thread
+from aidm.state.world import CONNECTED, GameState, Hook, Relation, Thread
 
 MAX_EXPANSIONS = 2
 
@@ -21,8 +21,7 @@ class ExpansionPatch(Frozen):
         default=(), description="New locations, actors, and items, each with an unused id."
     )
     relations: tuple[Relation, ...] = Field(
-        default=(),
-        description="New ties: `connected` joins two locations both ways, so `directed` is false.",
+        default=(), description="New ties: `connected` joins two locations the player can walk."
     )
     threads: tuple[Thread, ...] = Field(
         default=(), description="New storylines this canon opens, each with an unused id."
@@ -42,12 +41,13 @@ class Expansions:
     def capped(self) -> bool:
         return len(self.steps) >= MAX_EXPANSIONS
 
-    def record(self, prompt: str, patch: ExpansionPatch) -> None:
+    def record(self, prompt: str, answer: ExpansionPatch | str) -> None:
+        """A refusal is recorded as its reason, so a turn that wrote no canon still says why."""
         self.steps.append(
             StepTrace(
                 name=f"expander-{len(self.steps) + 1}",
                 prompt=prompt,
-                output=patch.model_dump(mode="json"),
+                output=answer if isinstance(answer, str) else answer.model_dump(mode="json"),
             )
         )
 
@@ -83,6 +83,9 @@ def _added_entity(draft: GameState, entity: Entity) -> Fact:
 def _added_relation(draft: GameState, relation: Relation) -> Fact:
     materialized = relation.model_copy(deep=True)
     materialized.known = False
+    # Resolved from the kind, as a Director-written tie already is: a `connected` left directed by
+    # a defaulted field would fail the whole patch over something the engine knows on its own.
+    materialized.directed = materialized.kind != CONNECTED
     if materialized.id in draft.world.relations:
         raise ValueError(f"a tie {materialized.id!r} already joins those two")
     _ = draft.world.require(materialized.source)

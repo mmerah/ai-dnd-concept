@@ -1,3 +1,4 @@
+from pathlib import Path
 from types import NoneType
 
 import pytest
@@ -14,6 +15,7 @@ from aidm.app.scenario_creator import (
     authored_world,
     playability,
     playtests,
+    source_file,
     world_stage,
 )
 from aidm.content.store import load_scenario
@@ -237,3 +239,14 @@ async def test_the_author_gives_up_after_every_round_is_refused() -> None:
     with stage.agent.override(model=scripted_model):
         with pytest.raises(ValueError, match="wrong"):
             _ = await ask_until_playable(stage, "write it", check)
+
+
+def test_a_premise_is_never_mistaken_for_a_path() -> None:
+    """A premise long enough to overrun the filesystem's name limit is prose, not a missing file."""
+    long_premise = "The abbey emptied in a night, and the road out is not where it was. " * 6
+    assert len(long_premise) > 300
+
+    assert source_file(long_premise) is None
+    assert source_file("a quiet abbey") is None
+    fixture = str(Path(__file__).parent / "fixtures" / "source" / "drowned-road.md")
+    assert source_file(fixture) == Path(fixture)

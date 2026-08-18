@@ -157,6 +157,27 @@ def test_a_hook_effect_naming_an_unauthored_id_is_refused() -> None:
         check_hooks(updated(world, hooks=(*world.hooks, haunted)), engine.binding())
 
 
+def test_hooks_chaining_discovery_into_discovery_are_refused() -> None:
+    """`fire_hooks` feeds a hook's own facts back into matching, so three linked reveals open the
+    whole scenario on the first one."""
+    engine, _ = initialized()
+    world = scenario().world
+    chain = (
+        Hook(
+            id="map-read",
+            match=HookMatch(kind="entity_discovered", data={"entity_id": "vault_map"}),
+            effects=({"name": "reveal", "args": {"entity_id": "elena"}},),
+        ),
+        Hook(
+            id="archivist-speaks",
+            match=HookMatch(kind="entity_discovered", data={"entity_id": "elena"}),
+            effects=({"name": "reveal", "args": {"entity_id": "vault"}},),
+        ),
+    )
+    with pytest.raises(ValueError, match=r"domino.*archivist-speaks"):
+        check_hooks(updated(world, hooks=(*world.hooks, *chain)), engine.binding())
+
+
 def test_a_hook_waiting_on_a_kind_core_never_emits_is_refused() -> None:
     with pytest.raises(ValidationError, match="entity_discoverd"):
         _ = HookMatch.model_validate({"kind": "entity_discoverd"})

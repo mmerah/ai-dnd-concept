@@ -129,10 +129,119 @@ stayed 70, and only the worldkeeper instructions and the `worldkeeper_report` sc
   the Narrator — but `expander.md` says "you write records, never prose the player reads" and the
   model still drifted. Worth a sharper line there if it recurs.
 
+### Phase 3 — Sources: PDF ingestion, grounded expansion, fused authoring
+
+Done-when met: the shipped fixture document ingests to records, `create_scenario.py <slug> <file>`
+authors from a document alone, and a `grounded` game plays turns whose expansions are written from
+that document. No persisted-byte change: `SAVE_VERSION` unmoved, no fixture moved.
+
+- **One ingestion system, two consumers, and neither of them holds a tool.** `content/sources.py`
+  holds `SourceRecord`, `RecordSource`, and `ingest(path)`. The author is given the whole document
+  in its prompt; the Expander is given the passages a resolver-side `source.search(...)` retrieved
+  for the need the Director named. A `search_source` tool served both at first and was deleted from
+  both — see the entry below on what it cost.
+- **A scenario ships its source document, not the records ingested from it.** `sources.json` was
+  written beside `world.json` for one round and removed: once `source_ids` was gone, nothing
+  outside a single turn referenced a record id, so freezing the ingested form bought no stability
+  and cost a second artifact plus an unreadable diff. `scenarios/<slug>/source.{md,txt,pdf}` is the
+  original; `open_source` ingests it for `grounded`, reads it whole for `generative`, and refuses a
+  `grounded` scenario that ships none. The policy's only reader is still `open_source`.
+- **Extraction is `pypdf` in its default mode, and that was settled by probing real books, not by
+  reasoning.** Layout mode was chosen first, because it is the only mode that preserves the blank
+  lines between paragraphs. A probe against Mörk Borg's free adventure (a two-column dungeon key in
+  a letter-spaced display face) showed what that costs: layout mode reads a page as one grid, so it
+  weaves side-by-side columns together *word by word* and turns tracked type into
+  `"Ga s se s lea k f rom hole s"`. The default mode gives clean words and keeps columns in
+  readable order — its only loss is paragraph blank lines, and `_capped` already handles that.
+  **The rule this leaves: judge an extractor on a real book, never on a fixture you built.**
+- **A word broken across a line keeps its hyphen** (`_LINE_BREAK_HYPHEN`). Normalising whitespace
+  turned `slaughter-\nhouse` into `slaughter- house`, which matched neither "slaughterhouse" nor
+  "house" — 12 terms unsearchable across the two probe documents, now none. Rejoining on the hyphen
+  rather than closing it up is deliberate: nothing here can tell a wrapped word from a real
+  compound, and `pink-violet` must survive.
+- Records are blank-line blocks, capped at `RECORD_CHARS` on a **word**
+  boundary, and blocks under `MIN_RECORD` (page numbers, running headers) are dropped, which leaves
+  deliberate gaps in the `p<page>-<n>` ids. The cap was written on line boundaries first and that
+  was a bug: an unwrapped Markdown paragraph is one line, so it passed through whole, and
+  `context()` — which stops before the first record that overflows `CONTEXT_BUDGET` — then returned
+  the empty string, silently emptying every prompt's THE SOURCE section.
+- **Search ranks by how many distinct query words a record holds**, ties in document order. It
+  counted *occurrences* first, and two pages of real prose showed why that fails: `"the"` appears
+  thirteen times in a long passage, so one paragraph won three unrelated queries on stopwords
+  alone. Matching stays substring-based on purpose — with no stemmer it is what makes "chapel"
+  find "chapels". A vector index is still a separate decision; nothing has needed one.
+- **`SourceRecord` is `id` and `text`, and PLAN's other two fields were both cut.** `page` went
+  because the id is already `p<page>-<n>` — the same fact twice. `visibility` was kept for one
+  round on the argument that ingestion is the only moment a read-aloud marker can be recognised,
+  then cut when the probe disproved that argument: a PDF's boxed read-aloud text is a *visual* box
+  carrying no marker, so 0 of 194 probe records could ever be `player`, and what shipped was a
+  Markdown-blockquote rule any later read-aloud phase would replace outright. **The rule worth
+  keeping: a field is earned by a reader, and "a later phase will want it" counts only when this
+  phase can actually produce the value.** Whoever wants read-aloud text must first decide how a PDF
+  marks it. The quote marker is still stripped from ingested text; it just classifies nothing.
+- **Known ceilings, measured on the probe documents, none of them fixed:** in the default
+  extraction mode a PDF page arrives as one block, so a record's edges come from `RECORD_CHARS` and
+  not from the author's paragraphs; a page footer glued to the last block of its page rides along
+  into a record (`MIN_RECORD` only drops a footer that stands alone); `context()` assumes document
+  order is orientation, which holds for an adventure and fails for a rulebook that opens on
+  generator tables.
+- **The leak rule now covers source text**, pinned by a test: a record's distinctive word reaches
+  the Expander's prompt and never the Narrator's.
+- The fixture PDF is hand-built (a minimal five-object PDF committed under
+  `tests/core/fixtures/source/`), so the suite reads PDFs without a writer dependency.
+- **Everything below was found by the first live run, not by the suite.** A scenario authored from
+  a real document, played for one turn, exposed four defects at once — three of which predate
+  Phase 3 and none of which any offline test could have caught.
+- **A failed expansion used to leave no trace at all.** `Expansions.record` ran only after
+  `expander.run()` returned, so an Expander that exhausted its retries discarded the one artifact
+  needed to debug it. It now records `no canon written: <reason>` as the step. This was the
+  expensive defect: not for its size, but because it destroyed the evidence for the other three.
+- **A hook's own `reveal` re-enters matching, so authored hooks can form a domino line.** One
+  Director `reveal` fired three hooks in sequence and advanced a thread three stages, ending the
+  adventure on turn one and stopped only by `MAX_HOOK_ROUNDS`. Chaining is deliberate
+  (`apply.py:284`) and the shipped `whispering-vault` chains one hop — which is also why the
+  authored scenario chained, since that file is the `worked_example` it is told to match. So the
+  rule is chain *length*, not chain existence: `check_hooks` now refuses a hook that is both fired
+  by a hook and fires another. It lives there rather than in the authoring bar because
+  `playability` reaches it through `Playtest.check` for both briefs with no duplication, and it
+  catches hand-authored worlds the bar never sees.
+- **`Relation.directed` defaults to `True`, and `connected` must be undirected.** An Expander patch
+  that merely omitted the field was refused by `check_draft` — and that is the patch shape its
+  prompt asks for. `_added_relation` now resolves `directed` from the kind, exactly as
+  `_relation_change` always has for Director-written ties.
+- **The Expander's `search_source` tool and `source_ids` field are deleted; resolver code searches
+  the source instead.** The shipped grounded run failed every attempt: the model never called the
+  tool (it answered from the `context()` head already in its prompt), so `RecordSource.cite`'s
+  empty-`source_ids` refusal fired first, and the retry that followed asked only about provenance —
+  gpt-oss-120b answered `{"source_ids": ["search_source", "p1-5"]}` with the patch emptied, echoing
+  a token out of the field description, until the three retries were spent. Not a
+  `NativeOutput`-versus-tools problem: the Director calls `expand_world` under
+  `NativeOutput(DirectorBeat)` on the same model in the same trace. **The rule: never spend a
+  role's retry budget on a field the resolver already knows the answer to.** `cite` never verified
+  grounding either — it checked that an id string existed, which any id in the prompt satisfies.
+- **The authoring agent lost its `search_source` tool too, and is handed the whole document.** It
+  had never been observed calling it either: the world it authored held exactly the four records of
+  the `context()` head and nothing past `p1-5`, so a two-page source produced a bare-minimum world.
+  Full text is ~3.3k tokens for a two-page document and ~19k for a 76-page book, re-sent across up
+  to `REQUEST_LIMIT` requests — affordable for what is authored today, and the ceiling is loud
+  (a context-length failure) where the tool's was silent (a world written from the first 1.7 KB).
+  **When a book-scale document breaks it, the answer is the Expander's shape — resolver-side
+  retrieval and a size guard — not the tool back.**
+- **The authoring agent must be told to use the source, not merely given access to it.** Its first
+  grounded world held exactly the four records of the `context()` head and nothing past `p1-5`:
+  `scenario_world.md` never mentioned the tool at all. Naming a tool only in a schema description
+  or a prompt heading is not an instruction.
+
 ## Next
 
-- PLAN.md Phase 3 (source system: PDF ingestion, grounded expansion, fused authoring), Phase 4
-  (media), Phase 5 (player-facing UI per docs/ui-mock + journal export).
+- PLAN.md Phase 4 (media), Phase 5 (player-facing UI per docs/ui-mock + journal export).
+- Sources are unfinished in two places, both needing a model rather than a fixture: no scenario has
+  been authored from a real PDF end to end, and the known extraction ceilings above (one block per
+  page, footers riding into a record, `context()` assuming document order is orientation) are
+  measured but unfixed.
+- The ceiling on whole-document authoring is ~19k tokens for a 76-page book across up to
+  `REQUEST_LIMIT` requests. When that bites, the answer is the Expander's shape — resolver-side
+  retrieval and a size guard that refuses a too-large document — not the tool back.
 - 2026-08-17: `docs/ADVENTURE-SOURCES-RESEARCH.md` and `docs/SYBYL-LEARNINGS.md` were adopted
   into the plan. Decisions: Expander behind a Director tool (not Director-owned create effects);
   Worldkeeper keeps creation but locations are created with a connection; the full

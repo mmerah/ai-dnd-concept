@@ -15,7 +15,7 @@ from core_test_support import (
 from pydantic_ai.messages import ModelMessage, ModelResponse, ToolCallPart
 from pydantic_ai.models.function import AgentInfo, FunctionModel
 
-from aidm.content.sources import PremiseSource
+from aidm.content.sources import PremiseSource, RecordSource, SourceRecord
 from aidm.state.base import EntityId
 from aidm.turn.roles import build_stages
 
@@ -35,7 +35,8 @@ WATCHER = {
     "brief": "A drowned sister who never left her post.",
     "parent_id": "sunken_gallery",
 }
-WAY = {"kind": "connected", "source": "cloister", "target": "sunken_gallery", "directed": False}
+# No `directed`: `connected` is walked both ways, and the resolver settles that from the kind.
+WAY = {"kind": "connected", "source": "cloister", "target": "sunken_gallery"}
 DOWNWARD = "I follow the stair down past the cloister."
 
 
@@ -106,6 +107,8 @@ async def test_travel_beyond_the_frontier_expands_the_world_inside_one_turn() ->
     assert "Verrin" not in shown(result.turn, "narrator")
     materialized = [fact for fact in result.turn.facts if fact.kind == "canon_materialized"]
     assert materialized and all(fact.narrator is None for fact in materialized)
+    # A premise holds no records to search, so it reaches the Expander whole, as it always did.
+    assert "galleries nobody has walked" in shown(result.turn, "expander-1")
 
 
 async def test_an_expander_that_cannot_write_costs_only_its_own_tool_call() -> None:
@@ -129,6 +132,70 @@ async def test_an_expander_that_cannot_write_costs_only_its_own_tool_call() -> N
     assert result.state.player.parent_id == "cloister"
     assert not [fact for fact in result.turn.facts if fact.kind == "canon_materialized"]
     assert result.state.world.require(EntityId("vault")).name == "the sealed vault"
+    # The turn wrote no canon, so its trace is the only record of what was asked and why it failed.
+    refusal = next(step for step in result.turn.steps if step.name == "expander-1")
+    assert "a way down" in (refusal.prompt or "")
+    assert isinstance(refusal.output, str) and "no canon written" in refusal.output
+
+
+async def test_a_grounded_expansion_is_shown_the_passages_the_director_asked_for() -> None:
+    """The source is searched by resolver code, so the Expander answers once, from the records the
+    Director's own terms retrieved and nothing else."""
+    engine, state = initialized()
+    document = RecordSource(
+        records=(
+            SourceRecord(
+                id="p1-1",
+                text=(
+                    "Below the cloister the undercroft runs on into flooded galleries nobody has "
+                    "walked."
+                ),
+            ),
+            SourceRecord(id="p2-1", text="Marsh light bewilders anyone crossing at dusk."),
+        )
+    )
+    director = FunctionModel(
+        scripted(
+            _tool_call(
+                "expand_world",
+                kind="location",
+                anchor_id="cloister",
+                need="the place the stair below the cloister descends to",
+                queries=["undercroft", "flooded galleries"],
+            ),
+            plan(
+                effects=[
+                    call("move", to_id="cloister"),
+                    call(
+                        "relation-change",
+                        mode="reveal",
+                        kind="connected",
+                        source="cloister",
+                        target="sunken_gallery",
+                    ),
+                    call("move", to_id="sunken_gallery"),
+                ]
+            ),
+        )
+    )
+    result = await played(
+        engine,
+        state,
+        DOWNWARD,
+        director=director,
+        # One answer: nothing about the source can refuse a patch, so nothing costs a retry.
+        expander=FunctionModel(scripted(structured(entities=[GALLERY], relations=[WAY]))),
+        source=document,
+        narrator=FunctionModel(scripted(text("Water closes over your boots."))),
+    )
+
+    world = result.state.world
+    assert world.require(EntityId("sunken_gallery")).known
+    assert result.state.player.parent_id == "sunken_gallery"
+    asked = shown(result.turn, "expander-1")
+    assert "[p1-1]" in asked and "undercroft" in asked
+    assert "bewilders" not in asked
+    assert "undercroft" not in shown(result.turn, "narrator")
 
 
 def test_a_closed_adventure_leaves_the_director_the_agent_it_ships_with() -> None:

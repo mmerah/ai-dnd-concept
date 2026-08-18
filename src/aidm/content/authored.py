@@ -246,20 +246,53 @@ def _require_authored(
 
 
 def check_hooks(world: ScenarioWorld, binding: Binding) -> None:
-    """Hook effects are the engine's own vocabulary; core only checks the ids they reference."""
+    """Hook effects are the engine's own vocabulary; core only checks the ids they reference, and
+    the chains they form."""
     pools = _id_pools(world, _EFFECT_ENTITY_KEYS)
     dangling: list[str] = []
+    revealed: dict[Slug, set[str]] = {}
     for hook in world.hooks:
-        for effect in hook.effects:
-            data = binding.parse_effect(effect).model_dump()
+        effects = [binding.parse_effect(effect).model_dump() for effect in hook.effects]
+        for data in effects:
             dangling.extend(
                 f"hook {hook.id!r} effect {data.get('op')!r} names {key}={value!r}"
                 for key, value in _dangling_ids(pools, data)
             )
+        revealed[hook.id] = {
+            entity_id
+            for data in effects
+            if data.get("op") == "reveal" and isinstance(entity_id := data["entity_id"], str)
+        }
     if dangling:
         raise ValueError(
             f"hook effects naming ids nothing authored carries would fail mid-game: "
             f"{'; '.join(dangling)}"
+        )
+    _no_hook_domino(world, revealed)
+
+
+def _no_hook_domino(world: ScenarioWorld, revealed: Mapping[Slug, set[str]]) -> None:
+    """`fire_hooks` feeds each round's facts back into matching, so a hook's own `reveal` fires the
+    hook waiting on that discovery. One such step is a consequence; a hook that is both fired by
+    another and fires a third is a domino that opens the whole adventure on one turn."""
+    waiting = {
+        awaited: hook.id
+        for hook in world.hooks
+        if hook.match.kind == "entity_discovered"
+        and isinstance(awaited := hook.match.data.get("entity_id"), str)
+    }
+    edges = [
+        (hook_id, waiting[entity_id])
+        for hook_id, entity_ids in revealed.items()
+        for entity_id in entity_ids
+        if entity_id in waiting
+    ]
+    middle = sorted({fired for _, fired in edges} & {fires for fires, _ in edges})
+    if middle:
+        raise ValueError(
+            f"hooks chaining discoveries into a domino, so one reveal fires the lot: {middle}. "
+            "A hook another hook fires may not reveal what a third hook waits for; put the "
+            "consequences in one hook, or wait on something the player must do next."
         )
 
 
