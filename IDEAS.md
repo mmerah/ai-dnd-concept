@@ -6,6 +6,7 @@
 - [] CONFIG_VARIABLES into config, no magic variable/global VARIABLE anywhere. Re-organization of codebase, clearer, easier to navigate, files have a structure that make sense, models are in separate files, clean functional programming. No change in behavior
 - [] RAG on scenarios? .pdf -> source.md in scenario/<id>/ folder, then RAG on it?
 - [] naming: variables, files, methods, classes generally need some renaming to represent more clearly what they do, and with more details
+- [] Narrator does not see speaker memory when player adress someone.
 
 ## Ideas
 

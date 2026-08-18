@@ -1,5 +1,5 @@
 {
-  "save_version": 70,
+  "save_version": 71,
   "scenario_id": "whispering-vault",
   "character_id": "kael",
   "scenario": {
@@ -389,15 +389,30 @@
   "history": [
     {
       "prompt": "I try the vault door.",
-      "narration": "The iron handle does not turn."
+      "lines": [
+        {
+          "speaker_id": null,
+          "text": "The iron handle does not turn."
+        }
+      ]
     },
     {
       "prompt": "I look for another way in.",
-      "narration": "A flagstone by the wall sits proud of its neighbours."
+      "lines": [
+        {
+          "speaker_id": null,
+          "text": "A flagstone by the wall sits proud of its neighbours."
+        }
+      ]
     },
     {
       "prompt": "I lever up the loose flagstone and listen at the vault door.",
-      "narration": "The flagstone lifts. Beyond the door, something shifts its weight and waits."
+      "lines": [
+        {
+          "speaker_id": null,
+          "text": "The flagstone lifts. Beyond the door, something shifts its weight and waits."
+        }
+      ]
     }
   ],
   "turn": 1

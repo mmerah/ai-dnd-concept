@@ -117,6 +117,9 @@ def test_a_sheet_engine_that_declares_nothing_is_refused_before_it_plays() -> No
         def describe(self, state: GameState, entity: Entity) -> str:
             return ""
 
+        def sheet_view(self, state: GameState) -> tuple[tuple[str, str], ...]:
+            return ()
+
         def resolve_roll(self, draft: GameState, roll: Frozen, rng: Random) -> Resolution:
             return Resolution()
 

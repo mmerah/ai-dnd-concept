@@ -3,7 +3,7 @@ from random import Random
 
 from aidm.engines.loader import Engine
 from aidm.engines.packs import load_packs, pack_paths
-from aidm.state.base import Counter, EngineId, Entity, Frozen
+from aidm.state.base import PLAYER_ID, Counter, EngineId, Entity, Frozen
 from aidm.state.facts import Fact
 from aidm.state.plan import Resolution
 from aidm.state.world import GameState
@@ -48,6 +48,18 @@ class TwentyfourxxEngine(Engine[Sheet]):
 
     def describe(self, state: GameState, entity: Entity) -> str:
         return describe_entity(state.mechanics_as(Mechanics), entity)
+
+    def sheet_view(self, state: GameState) -> tuple[tuple[str, str], ...]:
+        sheet = state.mechanics_as(Mechanics).sheets[PLAYER_ID]
+        return (
+            ("Specialty", sheet.specialty),
+            ("Origin", sheet.origin),
+            (
+                "Skills",
+                ", ".join(f"{name} d{face}" for name, face in sorted(sheet.skills.items())),
+            ),
+            ("Credits", str(sheet.credits.current)),
+        )
 
     def resolve_roll(self, draft: GameState, roll: Frozen, rng: Random) -> Resolution:
         match roll:

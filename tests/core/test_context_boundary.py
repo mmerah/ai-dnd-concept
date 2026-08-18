@@ -124,7 +124,7 @@ def test_the_roles_shown_everything_get_ids_placement_detail_and_unrevealed_cano
     assert PLAYER_ID not in {entity.id for entity in (*scene.here, *scene.catalogue())}
 
 
-def test_narrator_prompt_names_no_id_and_hides_unmet_canon() -> None:
+def test_narrator_prompt_names_only_ids_of_entities_the_player_has_met() -> None:
     held = state()
     scene = VisibleScene.of(SceneSnapshot.of(held))
 
@@ -138,5 +138,6 @@ def test_narrator_prompt_names_no_id_and_hides_unmet_canon() -> None:
 
     assert "pools: luck 6/6" in prompt
     assert "The Secret" not in prompt
-    # The Narrator writes prose and never names an id; its own instructions forbid reciting one.
-    assert "[id=" not in prompt
+    # The Narrator names an id only in `speaker_id`; every id it is shown belongs to someone met.
+    assert "Mara[id=mara]" in prompt
+    assert "hidden-actor" not in prompt

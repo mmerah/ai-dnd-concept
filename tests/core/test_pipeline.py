@@ -7,13 +7,13 @@ from core_test_support import (
     call,
     game,
     initialized,
+    narrated,
     plan,
     played,
     scripted,
     settings,
     shown,
     structured,
-    text,
 )
 from pydantic_ai.messages import ModelMessage, ModelRequest, ModelResponse, RetryPromptPart
 from pydantic_ai.models.function import AgentInfo, FunctionModel
@@ -37,7 +37,7 @@ async def test_an_engine_uses_the_shared_pipeline_and_safe_narrator_prompt() -> 
     engine, state = initialized()
     steps: list[str] = []
     director = FunctionModel(scripted(plan(effects=[call("move", entity_id="vault_map")])))
-    narrator = FunctionModel(scripted(text("A creased chart slides into your hand.")))
+    narrator = FunctionModel(scripted(narrated("A creased chart slides into your hand.")))
     result = await played(
         engine,
         state,
@@ -80,7 +80,7 @@ async def test_the_engine_rolls_the_outcome_the_facts_then_record() -> None:
         state,
         "I plead with the door.",
         director=FunctionModel(scripted(plan(roll=ASKED), plan())),
-        narrator=FunctionModel(scripted(text("You falter."))),
+        narrator=FunctionModel(scripted(narrated("You falter."))),
         rng=Random(2),
     )
 
@@ -262,6 +262,34 @@ async def test_an_illegal_plan_is_retried_with_the_reason() -> None:
     assert any("unknown entity id 'nowhere'" in str(reason) for reason in reasons)
 
 
+async def test_a_narrated_line_spoken_by_someone_not_here_is_retried_with_the_id() -> None:
+    """The leak rule holds on `speaker_id` too: Elena is real canon, unmet and elsewhere."""
+    engine, state = initialized()
+    responses = scripted(
+        structured(lines=[{"speaker_id": "elena", "text": "You should not be here."}]),
+        narrated("The door settles."),
+    )
+    calls: list[list[ModelMessage]] = []
+
+    def recording(messages: list[ModelMessage], info: AgentInfo) -> ModelResponse:
+        calls.append(list(messages))
+        return responses(messages, info)
+
+    result = await played(
+        engine,
+        state,
+        "I wait.",
+        director=FunctionModel(scripted(plan())),
+        narrator=FunctionModel(recording),
+    )
+
+    retry = calls[-1][-1]
+    assert isinstance(retry, ModelRequest)
+    reasons = [part.content for part in retry.parts if isinstance(part, RetryPromptPart)]
+    assert any("elena" in str(reason) for reason in reasons)
+    assert result.state.history[-1].narration == "The door settles."
+
+
 async def test_worldkeeper_creations_receive_valid_engine_rules_before_commit() -> None:
     engine, state = initialized()
     detail = {
@@ -269,7 +297,7 @@ async def test_worldkeeper_creations_receive_valid_engine_rules_before_commit() 
         "hook": "Carries news from beyond the abbey.",
     }
     director = FunctionModel(scripted(plan()))
-    narrator = FunctionModel(scripted(text("A courier enters.")))
+    narrator = FunctionModel(scripted(narrated("A courier enters.")))
     worldkeeper = FunctionModel(
         scripted(
             structured(

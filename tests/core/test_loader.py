@@ -34,6 +34,10 @@ def _engine(tmp_path: Path) -> Engine[NoSheet]:
             del state, entity
             return ""
 
+        def sheet_view(self, state: GameState) -> tuple[tuple[str, str], ...]:
+            del state
+            return ()
+
         def resolve_roll(self, draft: GameState, roll: Frozen, rng: Random) -> Resolution:
             del draft, roll, rng
             return Resolution()

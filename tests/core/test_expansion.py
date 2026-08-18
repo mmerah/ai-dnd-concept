@@ -4,13 +4,13 @@ from core_test_support import (
     Stub,
     call,
     initialized,
+    narrated,
     plan,
     played,
     scripted,
     settings,
     shown,
     structured,
-    text,
 )
 from pydantic_ai.messages import ModelMessage, ModelResponse, ToolCallPart
 from pydantic_ai.models.function import AgentInfo, FunctionModel
@@ -113,7 +113,7 @@ async def test_travel_beyond_the_frontier_expands_the_world_inside_one_turn() ->
         director=director,
         expander=FunctionModel(scripted(structured(entities=[GALLERY, WATCHER], relations=[WAY]))),
         source=FRONTIER,
-        narrator=FunctionModel(scripted(text("Water closes over your boots."))),
+        narrator=FunctionModel(scripted(narrated("Water closes over your boots."))),
     )
 
     world = result.state.world
@@ -199,7 +199,7 @@ async def test_a_grounded_expansion_is_shown_the_passages_the_director_asked_for
         # One answer: nothing about the source can refuse a patch, so nothing costs a retry.
         expander=FunctionModel(scripted(structured(entities=[GALLERY], relations=[WAY]))),
         source=DOCUMENT,
-        narrator=FunctionModel(scripted(text("Water closes over your boots."))),
+        narrator=FunctionModel(scripted(narrated("Water closes over your boots."))),
     )
 
     world = result.state.world

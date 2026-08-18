@@ -1,7 +1,7 @@
 import logging
 import re
 from base64 import b64decode, b64encode
-from collections.abc import Sequence
+from collections.abc import Mapping, Sequence
 from dataclasses import dataclass, field
 from hashlib import sha1
 from pathlib import Path
@@ -12,7 +12,9 @@ from pydantic import BaseModel, ConfigDict
 from aidm.config import MediaConfig, ProviderConfig
 from aidm.state.base import Entity, EntityId
 from aidm.state.world import GameState
-from aidm.turn.scene import SceneSnapshot, VisibleScene
+from aidm.turn.scene import VisibleScene
+
+from .views import player_scene
 
 LOGGER = logging.getLogger(__name__)
 
@@ -22,11 +24,6 @@ MAX_REFERENCES = 4
 SUFFIXES = {"image/png": ".png", "image/jpeg": ".jpg", "image/webp": ".webp"}
 STYLE = "Painterly fantasy illustration, muted colours, no text or lettering."
 _FILENAME_SAFE = re.compile(r"[a-z0-9_-]+")
-
-
-def visible(state: GameState) -> VisibleScene:
-    """The leak rule: an illustrator sees exactly what the Narrator does, and no unrevealed name."""
-    return VisibleScene.of(SceneSnapshot.of(state))
 
 
 def scene_key(scene: VisibleScene) -> str:
@@ -79,20 +76,33 @@ class Illustrator:
     config: MediaConfig
     provider: ProviderConfig
     saves: Path
-    authored: Path
-    authored_ids: frozenset[EntityId]
+    icon_dirs: Mapping[EntityId, Path]
     generating: set[str] = field(default_factory=set)
 
     def scene_art(self, state: GameState) -> Path | None:
-        return _existing(self.saves, scene_key(visible(state)))
+        return _existing(self.saves, scene_key(player_scene(state)))
 
     def scene_pending(self, state: GameState) -> bool:
         """A scene with no file and no generation in flight is one that failed, not one to wait
         for: the page must stop showing a placeholder for it."""
-        return scene_key(visible(state)) in self.generating
+        return scene_key(player_scene(state)) in self.generating
+
+    def _icon_dir(self, entity_id: EntityId) -> Path | None:
+        """None when the id cannot name a file; anything play invented lives under the save."""
+        if _FILENAME_SAFE.fullmatch(entity_id) is None:
+            LOGGER.warning("entity id %r cannot name a file; no icon", entity_id)
+            return None
+        return self.icon_dirs.get(entity_id, self.saves / ICON_DIR)
+
+    def icon(self, entity_id: EntityId) -> Path | None:
+        """What the chat shows as an avatar: a cached icon only, never a generation."""
+        directory = self._icon_dir(entity_id)
+        return None if directory is None else _existing(directory, entity_id)
 
     async def illustrate(self, state: GameState, narration: str) -> None:
-        scene = visible(state)
+        scene = player_scene(state)
+        # The chat avatar wants the player's icon even when this scene's art is already cached.
+        _ = await self._drawn_icon(scene.player)
         key = scene_key(scene)
         if key in self.generating or _existing(self.saves, key) is not None:
             return
@@ -110,7 +120,7 @@ class Illustrator:
         icons = {
             entity.name: icon
             for entity in subjects[:MAX_REFERENCES]
-            if (icon := await self._icon(entity)) is not None
+            if (icon := await self._drawn_icon(entity)) is not None
         }
         generated = await self._generate(
             illustration_request(scene, narration, tuple(icons)),
@@ -120,12 +130,11 @@ class Illustrator:
         if generated is not None:
             _write(self.saves / f"{key}{generated.suffix}", generated.data)
 
-    async def _icon(self, entity: Entity) -> Path | None:
-        if _FILENAME_SAFE.fullmatch(entity.id) is None:
-            LOGGER.warning("entity id %r cannot name a file; no icon", entity.id)
+    async def _drawn_icon(self, entity: Entity) -> Path | None:
+        """The cached icon, or one drawn now and kept."""
+        directory = self._icon_dir(entity.id)
+        if directory is None:
             return None
-        # Authored canon is shared by every save of its scenario; what play invented is not.
-        directory = self.authored if entity.id in self.authored_ids else self.saves / ICON_DIR
         found = _existing(directory, entity.id)
         if found is not None:
             return found

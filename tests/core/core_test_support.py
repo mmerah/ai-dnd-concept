@@ -106,6 +106,11 @@ def text(body: str) -> ModelResponse:
     return ModelResponse(parts=[TextPart(body)])
 
 
+def narrated(body: str) -> ModelResponse:
+    """The narrator's answer, as `NativeOutput(Narration)` presents it."""
+    return structured(lines=[{"speaker_id": None, "text": body}])
+
+
 def scripted(*responses: ModelResponse) -> Stub:
     """Call N answers with response N, because a retried output asks the model again."""
     remaining = iter(responses)
@@ -149,7 +154,7 @@ async def played(
     roles = (stages.director, stages.narrator, stages.worldkeeper)
     models = (
         director,
-        narrator or FunctionModel(scripted(text("You wait."))),
+        narrator or FunctionModel(scripted(narrated("You wait."))),
         worldkeeper or FunctionModel(scripted(structured(creations=[]))),
     )
     with ExitStack() as stack:

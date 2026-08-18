@@ -14,8 +14,11 @@ from .home import home_page
 from .panels import (
     advancement_panel,
     chat,
+    journal_panel,
     page_header,
     role_badges,
+    scene_header,
+    sheet_panel,
     state_panel,
     trace_panel,
 )
@@ -27,14 +30,17 @@ class GameView:
     def __init__(self, session: GameSession) -> None:
         self.session = session
         self.shown_art: tuple[Path | None, bool] = (None, False)
+        # Both are built by the page below this view, and the panels reach them through it.
+        self.composer: ui.input | None = None
+        self.transcript: ui.scroll_area | None = None
+
+    def fill_composer(self, text: str) -> None:
+        if self.composer is not None:
+            self.composer.value = text
 
     @ui.refreshable_method
-    def art(self) -> None:
-        path = self.session.scene_art()
-        if path is not None:
-            ui.image(path).classes("w-full rounded-borders")
-        elif self.session.scene_pending():
-            ui.skeleton().classes("w-full rounded-borders").style("height: 8rem")
+    def scene(self) -> None:
+        scene_header(self.session, self.fill_composer)
 
     @ui.refreshable_method
     def chat(self) -> None:
@@ -43,6 +49,14 @@ class GameView:
     @ui.refreshable_method
     def roles(self) -> None:
         role_badges(self.session)
+
+    @ui.refreshable_method
+    def sheet(self) -> None:
+        sheet_panel(self.session)
+
+    @ui.refreshable_method
+    def journal(self) -> None:
+        journal_panel(self.session)
 
     @ui.refreshable_method
     def trace(self) -> None:
@@ -57,7 +71,16 @@ class GameView:
         state_panel(self.session)
 
     def refresh_all(self) -> None:
-        for panel in (self.art, self.chat, self.roles, self.trace, self.advancement, self.state):
+        for panel in (
+            self.scene,
+            self.chat,
+            self.roles,
+            self.sheet,
+            self.journal,
+            self.trace,
+            self.advancement,
+            self.state,
+        ):
             panel.refresh()
 
 
@@ -71,7 +94,7 @@ def poll_art(view: GameView) -> None:
     shown = (view.session.scene_art(), view.session.scene_pending())
     if shown != view.shown_art:
         view.shown_art = shown
-        view.art.refresh()
+        view.scene.refresh()
 
 
 async def submit(view: GameView, box: ui.input) -> None:
@@ -88,6 +111,9 @@ async def submit(view: GameView, box: ui.input) -> None:
             ui.notify("Something is on offer. Check the advancement tab.")
     session.step = None
     view.refresh_all()
+    if (transcript := view.transcript) is not None:
+        # Deferred: the refreshed bubbles must reach the client before it can scroll past them.
+        ui.timer(0.1, lambda: transcript.scroll_to(percent=1.0), once=True)
 
 
 def restart(view: GameView) -> None:
@@ -142,29 +168,42 @@ def _game_page(session: GameSession) -> None:
         ui.space()
         ui.button("restart", on_click=lambda: restart(view)).props("flat color=white dense")
 
-    with ui.splitter(value=55).classes("w-full h-screen") as splitter:
+    # The header eats 4rem and the page its own padding, so a bare `h-screen` puts the input
+    # row below the fold.
+    with ui.splitter(value=55).classes("w-full").style("height: calc(100vh - 6rem)") as splitter:
         with splitter.before, ui.column().classes("w-full h-full p-4").style("gap: 0.5rem"):
-            view.art()
-            with ui.scroll_area().classes("w-full flex-grow"):
+            view.scene()
+            with ui.scroll_area().classes("w-full flex-grow") as transcript:
                 view.chat()
             with ui.row().classes("w-full no-wrap").style("gap: 0.5rem"):
-                box = ui.input(placeholder="What do you do?").classes("flex-grow").props("outlined")
+                box = (
+                    ui.input(placeholder="What do you do?")
+                    .classes("flex-grow")
+                    .props("outlined autogrow type=textarea")
+                )
                 box.on("keydown.enter", lambda: submit(view, box))
                 ui.button(icon="send", on_click=lambda: submit(view, box)).props("round")
+            view.composer, view.transcript = box, transcript
         with splitter.after, ui.column().classes("w-full h-full").style("gap: 0"):
             advancement = session.engine.advancement
             with ui.tabs().classes("w-full") as tabs:
-                trace_tab = ui.tab("trace")
+                scene_tab = ui.tab("scene")
+                journal_tab = ui.tab("journal")
                 advancement_tab = None if advancement is None else ui.tab(advancement.id)
-                state_tab = ui.tab("state")
-            with ui.tab_panels(tabs, value=trace_tab).classes("w-full flex-grow"):
-                with ui.tab_panel(trace_tab), ui.scroll_area().classes("w-full h-full"):
-                    view.trace()
+                dev_tab = ui.tab("dev")
+            with ui.tab_panels(tabs, value=scene_tab).classes("w-full flex-grow"):
+                with ui.tab_panel(scene_tab), ui.scroll_area().classes("w-full h-full"):
+                    view.sheet()
+                with ui.tab_panel(journal_tab), ui.scroll_area().classes("w-full h-full"):
+                    view.journal()
                 if advancement_tab is not None:
                     with ui.tab_panel(advancement_tab), ui.scroll_area().classes("w-full h-full"):
                         view.advancement()
-                with ui.tab_panel(state_tab), ui.scroll_area().classes("w-full h-full"):
-                    view.state()
+                with ui.tab_panel(dev_tab), ui.scroll_area().classes("w-full h-full"):
+                    with ui.expansion("trace", value=True).classes("w-full"):
+                        view.trace()
+                    with ui.expansion("state").classes("w-full"):
+                        view.state()
 
     if session.media is not None:
         ui.timer(3.0, lambda: poll_art(view))

@@ -55,7 +55,7 @@ def render_narrator(
 ) -> str:
     return _sections(
         (
-            *_scene_sections(scene, describe, scenario, ids=False),
+            *_scene_sections(scene, describe, scenario, ids=True),
             ("WHAT HAPPENED", evidence),
             ("PLAYER ACTION", prompt),
         )

@@ -2,7 +2,6 @@ from collections.abc import Callable, Sequence
 from dataclasses import dataclass
 from functools import cached_property
 from random import Random
-from types import NoneType
 
 from pydantic_ai import (
     Agent,
@@ -27,11 +26,11 @@ from aidm.engines.transact import transact
 from aidm.state.base import EntityId, Kind
 from aidm.state.plan import DirectorBeat, check_draft
 from aidm.state.turn import WorldkeeperReport
-from aidm.state.world import Exchange, GameState
+from aidm.state.world import Exchange, GameState, Narration
 
 from . import prompts
 from .expansion import MAX_EXPANSIONS, ExpansionPatch, Expansions, apply_patch, written
-from .scene import SceneSnapshot
+from .scene import SceneSnapshot, VisibleScene
 
 
 @dataclass(frozen=True)
@@ -124,7 +123,7 @@ class Stages:
     """The turn's model-facing roles, built once per session."""
 
     director: Stage[PlanContext, DirectorBeat]
-    narrator: Stage[None, str]
+    narrator: Stage[VisibleScene, Narration]
     worldkeeper: Stage[GameState, WorldkeeperReport]
     # Built only when the adventure may expand; the turn reaches it through the Director's tool.
     expander: Stage[PlanContext, ExpansionPatch] | None = None
@@ -162,9 +161,31 @@ def director_stage(
     )
 
 
-def narrator_stage(settings: Settings) -> Stage[None, str]:
+def narrator_stage(settings: Settings) -> Stage[VisibleScene, Narration]:
+    def attributed(ctx: RunContext[VisibleScene], narration: Narration) -> Narration:
+        """The leak rule holds through the validator, not through trust."""
+        present = {ctx.deps.player.id, *(entity.id for entity in ctx.deps.here)}
+        strangers = sorted(
+            {
+                line.speaker_id
+                for line in narration.lines
+                if line.speaker_id is not None and line.speaker_id not in present
+            }
+        )
+        if strangers:
+            raise ModelRetry(
+                f"nobody here has id {', '.join(strangers)}. Only the player or someone here with "
+                "them speaks; leave `speaker_id` null for narration."
+            )
+        return narration
+
     return Stage.of(
-        "narrator", settings, instructions=prompts.NARRATOR, output_type=str, deps_type=NoneType
+        "narrator",
+        settings,
+        instructions=prompts.NARRATOR,
+        output_type=NativeOutput(Narration),
+        deps_type=VisibleScene,
+        validator=attributed,
     )
 
 

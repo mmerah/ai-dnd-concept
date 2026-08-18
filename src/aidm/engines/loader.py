@@ -140,6 +140,10 @@ class Engine[S: SheetBase](ABC):
     def describe(self, state: GameState, entity: Entity) -> str: ...
 
     @abstractmethod
+    def sheet_view(self, state: GameState) -> tuple[tuple[str, str], ...]:
+        """Ordered (label, value) pairs summarising the player's own sheet for the player."""
+
+    @abstractmethod
     def resolve_roll(self, draft: GameState, roll: Frozen, rng: Random) -> Resolution:
         """Rolls one translated call and mutates the draft."""
 

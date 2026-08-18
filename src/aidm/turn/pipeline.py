@@ -148,17 +148,18 @@ async def run_turn(
     steps.append(StepTrace(name="hooks", output="\n".join(fired) or "- (no hooks fired)"))
 
     announce("narrator")
+    visible = VisibleScene.of(SceneSnapshot.of(draft))
     narrator_prompt = prompts.render_narrator(
-        VisibleScene.of(SceneSnapshot.of(draft)),
+        visible,
         engine.renderer(draft),
         draft.scenario,
         evidence=evidence,
         prompt=prompt,
     )
-    narration = await stages.narrator.run(narrator_prompt, None, history)
-    if not narration:
+    narration = await stages.narrator.run(narrator_prompt, visible, history)
+    if not narration.text:
         raise ValueError("the narrator answered with nothing")
-    steps.append(StepTrace(name="narrator", prompt=narrator_prompt, output=narration))
+    steps.append(_traced("narrator", narrator_prompt, narration))
 
     announce("worldkeeper")
     keeper_prompt = prompts.render_worldkeeper(
@@ -167,7 +168,7 @@ async def run_turn(
         draft.scenario,
         prompt=prompt,
         evidence=evidence,
-        narration=narration,
+        narration=narration.text,
     )
     report = await stages.worldkeeper.run(keeper_prompt, draft, history)
     reported = transact(
@@ -186,12 +187,12 @@ async def run_turn(
     facts.extend(reported.facts)
     steps.append(_traced("worldkeeper", keeper_prompt, report))
 
-    draft.history = (*draft.history, Exchange(prompt=prompt, narration=narration))
+    draft.history = (*draft.history, Exchange(prompt=prompt, lines=narration.lines))
     draft.turn += 1
     final = draft.committed()
     return TurnResult(
         state=final,
-        turn=Turn(prompt=prompt, facts=tuple(facts), narration=narration, steps=tuple(steps)),
+        turn=Turn(prompt=prompt, facts=tuple(facts), narration=narration.text, steps=tuple(steps)),
     )
 
 

@@ -12,7 +12,7 @@ from aidm.engines.advancement import Advancement, Offer, ProposalBase
 from aidm.engines.loader import Engine, engine_class
 from aidm.engines.sheets import SheetBase
 from aidm.engines.transact import transact
-from aidm.state.base import PLAYER_ID, SAVE_VERSION, EngineId, Entity
+from aidm.state.base import PLAYER_ID, SAVE_VERSION, EngineId, Entity, EntityId
 from aidm.state.facts import Fact
 from aidm.state.plan import Resolution
 from aidm.state.turn import Applied, TraceEntry, Turn
@@ -23,6 +23,7 @@ from aidm.turn.roles import AdvancementContext, Stage, Stages, advancement_stage
 
 from .launcher import LaunchTarget
 from .media import ICON_DIR, Illustrator
+from .views import journal_markdown
 
 
 @dataclass(frozen=True, slots=True)
@@ -62,18 +63,29 @@ def open_source(config: Settings, target: LaunchTarget, scenario: Scenario) -> C
 
 
 def open_media(
-    config: Settings, target: LaunchTarget, scenario: Scenario, store: FileStore
+    config: Settings,
+    target: LaunchTarget,
+    scenario: Scenario,
+    character: Character,
+    store: FileStore,
 ) -> Illustrator | None:
-    """Icons for authored canon are shared by every save of the scenario; scene art and the icons
-    of what play invented belong to the one save."""
+    """Icons for authored canon are shared by every save of the scenario, the character's own by
+    every game it plays; scene art and the icons of what play invented belong to the one save."""
     if not config.media.enabled:
         return None
+    scenario_icons = config.scenarios_dir / target.scenario_id / ICON_DIR
+    character_icons = config.characters_dir / target.character_id / ICON_DIR
     return Illustrator(
         config=config.media,
         provider=config.providers.for_name(config.media.provider),
         saves=store.media_dir(target.slug),
-        authored=config.scenarios_dir / target.scenario_id / ICON_DIR,
-        authored_ids=frozenset(scenario.world.world.entities),
+        icon_dirs={
+            **{entity_id: scenario_icons for entity_id in scenario.world.world.entities},
+            **{
+                entity_id: character_icons
+                for entity_id in (PLAYER_ID, *(item.id for item in character.profile.items))
+            },
+        },
     )
 
 
@@ -185,6 +197,12 @@ class GameSession:
 
     def scene_pending(self) -> bool:
         return self.media is not None and self.media.scene_pending(self.state)
+
+    def icon(self, entity_id: EntityId) -> Path | None:
+        return None if self.media is None else self.media.icon(entity_id)
+
+    def export_journal(self) -> Path:
+        return self.store.write_journal(self.slug, journal_markdown(self.state))
 
     def _illustrate(self, narration: str) -> None:
         """Fire and forget: the turn is committed already, and the image lands when it lands. The
@@ -316,15 +334,16 @@ class Runtime:
         config = self.config
         engine = self.engine(target.engine)
         scenario = load_scenario(config.scenarios_dir, target.scenario_id, engine.binding())
+        character = load_character(config.characters_dir, target.character_id, engine.binding())
         store = FileStore(config.saves_dir)
         return GameSession(
             target=target,
             scenario=scenario,
-            character=load_character(config.characters_dir, target.character_id, engine.binding()),
+            character=character,
             engine=engine,
             stages=build_stages(engine, config, open_source(config, target, scenario)),
             advisor=build_advisor(engine, config),
             store=store,
             settings=config,
-            media=open_media(config, target, scenario, store),
+            media=open_media(config, target, scenario, character, store),
         )

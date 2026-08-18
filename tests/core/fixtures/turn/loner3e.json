@@ -1,5 +1,5 @@
 {
-  "save_version": 70,
+  "save_version": 71,
   "facts": [
     {
       "source": "core",
@@ -208,7 +208,14 @@
     },
     {
       "name": "narrator",
-      "output": "The flagstone lifts. Beyond the door, something shifts its weight and waits."
+      "output": {
+        "lines": [
+          {
+            "speaker_id": null,
+            "text": "The flagstone lifts. Beyond the door, something shifts its weight and waits."
+          }
+        ]
+      }
     },
     {
       "name": "worldkeeper",

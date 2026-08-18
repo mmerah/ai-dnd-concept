@@ -179,27 +179,6 @@ that document. No persisted-byte change: `SAVE_VERSION` unmoved, no fixture move
   keeping: a field is earned by a reader, and "a later phase will want it" counts only when this
   phase can actually produce the value.** Whoever wants read-aloud text must first decide how a PDF
   marks it. The quote marker is still stripped from ingested text; it just classifies nothing.
-- **Known ceilings, measured on the probe documents, none of them fixed:** in the default
-  extraction mode a PDF page arrives as one block, so a record's edges come from `RECORD_CHARS` and
-  not from the author's paragraphs; a page footer glued to the last block of its page rides along
-  into a record (`MIN_RECORD` only drops a footer that stands alone); `context()` assumes document
-  order is orientation, which holds for an adventure and fails for a rulebook that opens on
-  generator tables.
-- **A retrieval miss is a refusal, not a fallback.** `render(source.search(...)) or
-  source.context()` handed the Expander the document's first four records whenever retrieval
-  missed — bearing on nothing that was asked, labelled THE SOURCE — so a `grounded` expansion could
-  be grounded in nothing. The fourth instance of the same silent-degradation shape. `CanonSource`
-  is now one method, `passages(query)`, where `""` means the source offers nothing and
-  `expand_world` refuses to the Director without calling the Expander at all; `context()`,
-  `CONTEXT_BUDGET` and `PremiseSource.search` went with the fallback. **A source answers for
-  itself, and the empty string carries the meaning a fallback was swallowing.**
-- **`extended` is the fourth policy: the document where it speaks, the premise where it is
-  silent.** It is a composite of the two sources that already existed rather than a branch, because
-  only the composite knows *why* it is returning the premise — which is what lets it prefix the
-  `SILENT` notice so the Expander can tell the halves apart. Its premise half is `meta.premise`,
-  never the document: a fallback earns its keep by being short and general. `grounded` stays strict
-  and loud; `extended` is the quiet one, and the creator still writes `grounded`, so `extended` is
-  reached by editing one field.
 - **The anchor name is folded into the query, so a miss is rarer than it looks** — any record
   merely naming the anchor becomes THE SOURCE. It stays because a `need` written as an identifier
   retrieves nothing without it. The Expander's own out is what covers the gap: told that passages
@@ -263,8 +242,8 @@ that document. No persisted-byte change: `SAVE_VERSION` unmoved, no fixture move
   itself and `""` carries the meaning.** `PremiseSource.passages` is its whole text always;
   `RecordSource.passages` is `render(search(...))`, empty on a miss. `search` stays a public method
   because its ranking is tested directly, but is off the protocol; `context()` and
-  `CONTEXT_BUDGET` are deleted with their only caller, which also retires the "document order is
-  orientation" ceiling recorded above. An empty answer is now a `ModelRetry` to the Director in the
+  `CONTEXT_BUDGET` are deleted with their only caller, which also retired the "document order is
+  orientation" ceiling the earlier design carried. An empty answer is now a `ModelRetry` to the Director in the
   same class as the bad-anchor and cap refusals — the Expander is never called, and nothing is
   recorded in `Expansions`, because there was nothing to write from.
 - **`extended` is the fourth `ExpansionPolicy`: the document where it speaks, the premise where it
@@ -334,21 +313,73 @@ change: `SAVE_VERSION` unmoved, no fixture moved.
   a skeleton — `Illustrator.generating` is a live key set, not a guess from the missing file, so a
   scene whose generation *failed* stops showing a placeholder instead of waiting forever.
 
+### Phase 5 — Player-facing UI
+
+Done-when met: `uv run aidm` plays narration-first with the rails built from view models, NPC
+dialogue arrives attributed and iconed, trace and state still work under `dev`, and the leak test
+pins that no unrevealed name reaches a player panel. `SAVE_VERSION` 70 -> 71; the `save`/`state`/
+`turn` families and the two narrator fixtures moved, and nothing else did.
+
+- **`PlayerScene` was not built, because `VisibleScene` already is it.** PLAN described it as a
+  wrapper over `VisibleScene` "plus the location's `brief` and exit lock markers" — and both were
+  already there (`location.brief`, `Exit.locked`). A type with no field of its own is the
+  `Adventure(policy, source)` record again, so what shipped is `views.player_scene(state)`, one
+  builder. `JournalView` did earn its place: it is the only thing that drops `Thread.note` (Director
+  steering text) and filters memories by whether their owner has been met.
+- **The Narrator is now shown ids, and that is not a leak.** `speaker_id` is an `EntityId`, so
+  `render_narrator` flips to `ids=True` — a role cannot name an id it was never shown, and every id
+  in that prompt belongs to a revealed entity by construction. The old boundary assertion
+  (`"[id=" not in prompt`) is replaced by one that every id shown is a met entity's. The rule now
+  holds twice: by construction in `VisibleScene`, and by an output validator that `ModelRetry`s a
+  `speaker_id` outside `{player} | here`.
+- **`Exchange.narration` became a property joining `lines`.** Prompts, the history replay and the
+  journal read exactly the string they read before. `Turn.narration` stayed a plain `str`: the trace
+  records what was said, and the chat is the only reader that cares who said it.
+- **Live probe passed first try (working rule 2), 2026-08-18.** `Narration` is 686 bytes of JSON
+  schema and gpt-oss-120b answered it under `NativeOutput` with correct attribution — Mara's reply
+  carried her id, the surrounding prose carried null. The Phase 2 lesson holds: probe at the size
+  the domain wants.
+- **Icons became a directory lookup**, `icon_dirs: Mapping[EntityId, Path]` replacing `authored`
+  plus `authored_ids`, with `characters/<slug>/icons/` as the third directory for the player and
+  what the character brought. The player's icon is generated *before* the scene-key guard in
+  `illustrate`, so it lands on a turn whose room picture is already cached — otherwise the chat
+  avatar would never appear in a scene visited twice.
+- **The splitter's `h-screen` had always put the input row below the fold**, since the header takes
+  4rem the splitter does not subtract. Harmless on a debug surface, wrong on a play surface:
+  `calc(100vh - 6rem)`.
+- Three bubble looks so who is talking reads at a glance: the player's own (sent), an NPC's (the
+  Quasar default), and the DM's (`grey-3`, and one shipped material icon rather than a generated
+  file). A speaker with no icon file gets a letter avatar, never a blank.
+- The journal export names its speakers (`**Mara:** ...`). `Exchange.narration` alone was right for
+  a prompt and wrong for a reader: without the bubbles, a quoted line reads as narration.
+- `trace` and `state` became two expansions inside one `dev` tab, so the four tabs are `scene`,
+  `journal`, the engine's advancement, and `dev`.
+- Verified in the running app against a hand-seeded save (attributed lines, `MEDIA__ENABLED` off):
+  attribution, avatars, rails, all four tabs and the markdown export. **A live turn has not been
+  played through the new Narrator schema inside the app, and no chat avatar has been exercised
+  against a real generated icon file.**
+- Out of scope exactly as PLAN said: suggestion chips, mid-game engine switching, the map view, and
+  the home-page re-skin.
+
 ## Next
 
-- PLAN.md Phase 5 (player-facing UI per docs/ui-mock + journal export).
-- Media left deliberately unbuilt: icons are full-size jpegs (~700 KB) with no downscale, and
-  nothing pre-bakes a newly authored scenario's icons but a hand-run script. The player and
-  carried items are drawn by nothing today — Phase 5 gives the player's icon its reader (the chat
-  avatar) and adds the character dir as a third icon origin.
-- Sources are unfinished in two places, both needing a model rather than a fixture: no scenario has
-  been authored from a real PDF end to end, and the known extraction ceilings above (one block per
-  page, footers riding into a record) are measured but unfixed.
-- The ceiling on whole-document authoring is ~19k tokens for a 76-page book across up to
+- PLAN.md Phase 6: the scenario creator becomes a page, and authoring ends when the user says so.
+- No scenario has been authored from a real PDF end to end. The suite proves ingestion on a
+  hand-built fixture; only a real book proves the pipeline.
+
+## Standing limitations
+
+Measured, deliberate, and unfixed. Each names what would make it worth fixing.
+
+- **Icons are full-size jpegs (~700 KB) with no downscale**, and nothing pre-bakes a newly authored
+  scenario's art but a hand-run script. Worth fixing when more than a couple of scenarios ship art.
+- **Carried items are drawn by nothing**: only the player and whoever stands in the scene get an
+  icon, so inventory rows fall back to letter avatars.
+- **Extraction ceilings, measured on real books**: in `pypdf`'s default mode a PDF page arrives as
+  one block, so a record's edges come from `RECORD_CHARS` rather than the author's paragraphs, and
+  a page footer glued to its page's last block rides into a record. `MIN_RECORD` only drops a
+  footer that stands alone.
+- **Whole-document authoring is ~19k tokens for a 76-page book**, re-sent across up to
   `REQUEST_LIMIT` requests. When that bites, the answer is the Expander's shape — resolver-side
-  retrieval and a size guard that refuses a too-large document — not the tool back.
-- 2026-08-17: `docs/ADVENTURE-SOURCES-RESEARCH.md` and `docs/SYBYL-LEARNINGS.md` were adopted
-  into the plan. Decisions: Expander behind a Director tool (not Director-owned create effects);
-  Worldkeeper keeps creation but locations are created with a connection; the full
-  `GameState + CanonSource + ExpansionPolicy` triple with a real PDF source system, no interim
-  stand-ins; scenario authoring and PDF ingestion share one source system.
+  retrieval and a size guard that refuses a too-large document — not the deleted `search_source`
+  tool back.

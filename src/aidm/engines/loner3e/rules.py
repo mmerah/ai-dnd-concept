@@ -51,6 +51,16 @@ class Loner3eEngine(Engine[Sheet]):
     def describe(self, state: GameState, entity: Entity) -> str:
         return describe_entity(state.mechanics_as(Mechanics), entity)
 
+    def sheet_view(self, state: GameState) -> tuple[tuple[str, str], ...]:
+        sheet = state.mechanics_as(Mechanics).sheets[PLAYER_ID]
+        return (
+            ("Concept", sheet.concept),
+            ("Skills", ", ".join(sheet.skills)),
+            ("Frailties", ", ".join(sheet.frailties)),
+            ("Gear", ", ".join(sheet.gear)),
+            ("Luck", f"{sheet.luck.current} / {sheet.luck.maximum}"),
+        )
+
     def resolve_roll(self, draft: GameState, roll: Frozen, rng: Random) -> Resolution:
         if not isinstance(roll, Question):
             raise TypeError(f"{type(roll).__name__} is no loner3e roll")

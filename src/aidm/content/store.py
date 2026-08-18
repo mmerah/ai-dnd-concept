@@ -212,12 +212,18 @@ class FileStore:
             entries.append(TRACE_ADAPTER.validate_json(line))
         return tuple(entries)
 
+    def write_journal(self, slug: str, body: str) -> Path:
+        path = self._journal_path(slug)
+        _write(path, body)
+        return path
+
     def media_dir(self, slug: str) -> Path:
         return _safe_path(self.directory, slug, ".media")
 
     def discard(self, slug: str) -> None:
         self._save_path(slug).unlink(missing_ok=True)
         self._trace_path(slug).unlink(missing_ok=True)
+        self._journal_path(slug).unlink(missing_ok=True)
         rmtree(self.media_dir(slug), ignore_errors=True)
 
     def _save_path(self, slug: str) -> Path:
@@ -225,6 +231,9 @@ class FileStore:
 
     def _trace_path(self, slug: str) -> Path:
         return _safe_path(self.directory, slug, ".trace.jsonl")
+
+    def _journal_path(self, slug: str) -> Path:
+        return _safe_path(self.directory, slug, ".journal.md")
 
 
 def _line_version(line: str) -> int:

@@ -7,11 +7,11 @@ from core_test_support import (
     TWENTYFOURXX,
     call,
     game,
+    narrated,
     plan,
     played,
     scripted,
     structured,
-    text,
 )
 from golden_test_support import FIXTURES, dumped, golden
 from pydantic_ai.messages import ModelResponse
@@ -19,17 +19,20 @@ from pydantic_ai.models.function import FunctionModel
 
 from aidm.engines.loader import engine_ids
 from aidm.state.base import EngineId
-from aidm.state.world import Exchange, GameState
+from aidm.state.world import Exchange, GameState, Line
 from aidm.turn.pipeline import TurnResult
 
 PROMPT = "I lever up the loose flagstone and listen at the vault door."
 # Played turns, so the history window, its rendering, and its replay as messages all run on real
 # exchanges rather than on an empty tuple.
 HISTORY = (
-    Exchange(prompt="I try the vault door.", narration="The iron handle does not turn."),
+    Exchange(
+        prompt="I try the vault door.",
+        lines=(Line(text="The iron handle does not turn."),),
+    ),
     Exchange(
         prompt="I look for another way in.",
-        narration="A flagstone by the wall sits proud of its neighbours.",
+        lines=(Line(text="A flagstone by the wall sits proud of its neighbours."),),
     ),
 )
 NARRATION = "The flagstone lifts. Beyond the door, something shifts its weight and waits."
@@ -105,7 +108,7 @@ async def _played(engine_id: EngineId) -> TurnResult:
         _behind(state),
         PROMPT,
         director=FunctionModel(scripted(SCRIPTS[engine_id], SECOND_BEAT)),
-        narrator=FunctionModel(scripted(text(NARRATION))),
+        narrator=FunctionModel(scripted(narrated(NARRATION))),
         worldkeeper=FunctionModel(scripted(structured(creations=CREATIONS))),
         rng=Random(SEED),
     )

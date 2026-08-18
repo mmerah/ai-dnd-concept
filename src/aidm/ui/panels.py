@@ -1,12 +1,23 @@
 import json
 from collections.abc import Callable, Generator, Sequence
 from contextlib import contextmanager
+from pathlib import Path
 
 from nicegui import ui
 
 from aidm.app.session import Drafted, GameSession, Offer
+from aidm.app.views import (
+    JournalView,
+    ThreadSummary,
+    attributed_line,
+    played_turns,
+    player_scene,
+    thread_summaries,
+)
+from aidm.state.base import PLAYER_ID, EntityId
 from aidm.state.facts import Fact
 from aidm.state.turn import Applied, StepTrace, TraceEntry, Turn
+from aidm.turn.scene import Exit
 
 from .busy import refuse_if_busy, working
 
@@ -32,12 +43,147 @@ def page_header(title: str, badge: tuple[str, str] | None = None) -> Generator[N
         yield
 
 
+DM_ICON = "auto_stories"
+
+
+def scene_header(session: GameSession, fill_composer: Callable[[str], None]) -> None:
+    scene = player_scene(session.state)
+    ui.label(scene.location.name).classes("text-h6 font-bold")
+    ui.label(scene.location.brief).classes("text-sm opacity-70")
+    art = session.scene_art()
+    if art is not None:
+        ui.image(art).classes("w-full rounded-borders")
+    elif session.scene_pending():
+        ui.skeleton().classes("w-full rounded-borders").style("height: 8rem")
+    _heading("Here now")
+    if not scene.here:
+        ui.label("Nobody but you.").classes("text-sm opacity-70")
+    for entity in scene.here:
+        _entity_row(session.icon(entity.id), entity.name, entity.brief)
+    _heading("Exits")
+    if not scene.exits:
+        ui.label("None found yet.").classes("text-sm opacity-70")
+    for exit in scene.exits:
+        _exit_button(exit, fill_composer)
+
+
+def _entity_row(icon: Path | None, name: str, sub: str) -> None:
+    with ui.row().classes("w-full items-center no-wrap mt-2").style("gap: 0.5rem"):
+        _avatar(icon, name)
+        with ui.column().style("gap: 0"):
+            ui.label(name).classes("text-sm font-bold")
+            ui.label(sub).classes("text-xs opacity-70")
+
+
+def _exit_button(exit: Exit, fill_composer: Callable[[str], None]) -> None:
+    """The button writes the move into the composer; the player still sends it themselves."""
+    label = f"{exit.name} (locked)" if exit.locked else exit.name
+    ui.button(
+        label, icon="arrow_forward", on_click=lambda: fill_composer(f"Go to {exit.name}")
+    ).props("flat dense no-caps align=left").classes("w-full")
+
+
 def chat(session: GameSession) -> None:
     if not session.state.history:
         ui.label(session.state.scenario.premise).classes("text-sm italic opacity-70")
-    for exchange in session.state.history:
-        ui.chat_message(exchange.prompt, name="You", sent=True)
-        ui.chat_message(exchange.narration, name="DM")
+    for played in played_turns(session.state.history, session.entries):
+        _bubble(session, PLAYER_ID, played.exchange.prompt, sent=True)
+        for line in played.exchange.lines:
+            _bubble(session, line.speaker_id, line.text, sent=False)
+        if played.outcomes:
+            ui.label(" · ".join(played.outcomes)).classes("text-xs opacity-60 q-px-md")
+
+
+def _bubble(session: GameSession, speaker_id: EntityId | None, text: str, *, sent: bool) -> None:
+    speaker = None if speaker_id is None else session.state.world.require(speaker_id)
+    icon = None if speaker_id is None else session.icon(speaker_id)
+    name = "DM" if speaker is None else speaker.name
+    message = ui.chat_message(text, name=name, sent=sent).classes("w-full")
+    if speaker is None:
+        message.props("bg-color=grey-3")
+    with message.add_slot("avatar"):
+        _avatar(icon, None if speaker is None else name)
+
+
+def _avatar(icon: Path | None, name: str | None) -> None:
+    """`name` is None for the DM, whose avatar is the one shipped material icon."""
+    with ui.avatar(color="grey-8", size="42px").classes("q-mx-sm"):
+        if icon is not None:
+            ui.image(icon)
+        elif name is None:
+            ui.icon(DM_ICON)
+        else:
+            ui.label(name[:1].upper()).classes("text-subtitle1")
+
+
+def sheet_panel(session: GameSession) -> None:
+    player = session.state.player
+    _entity_row(session.icon(PLAYER_ID), player.name, player.brief)
+    if player.traits:
+        _heading("Traits")
+        with ui.row().classes("w-full items-center").style("gap: 0.35rem"):
+            for trait in player.traits:
+                badge = ui.badge(trait.name).props("color=grey-8 outline")
+                if trait.text:
+                    badge.tooltip(trait.text)
+    for label, value in session.engine.sheet_view(session.state):
+        _labeled_value(label, value)
+    inventory = player_scene(session.state).inventory
+    if inventory:
+        _heading("Carrying")
+        for item in inventory:
+            _entity_row(session.icon(item.id), item.name, item.brief)
+    threads = thread_summaries(session.state)
+    if threads:
+        _heading("Threads")
+        for thread in threads:
+            _thread_card(thread)
+
+
+def _labeled_value(label: str, value: str) -> None:
+    with ui.row().classes("w-full items-baseline no-wrap mt-2").style("gap: 0.5rem"):
+        ui.label(label).classes("text-xs font-bold opacity-60")
+        ui.label(value or "—").classes("text-sm")
+
+
+def _heading(title: str) -> None:
+    ui.label(title).classes("text-xs font-bold opacity-60 mt-4")
+
+
+def _thread_card(thread: ThreadSummary) -> None:
+    with ui.column().classes("w-full mt-2").style("gap: 0"):
+        ui.label(thread.title).classes("text-sm font-bold")
+        parts = (thread.status, thread.stage or "", thread.clock)
+        ui.label(" · ".join(part for part in parts if part)).classes("text-xs opacity-60")
+
+
+def journal_panel(session: GameSession) -> None:
+    view = JournalView.of(session.state)
+
+    def export() -> None:
+        ui.notify(f"Journal written to {session.export_journal()}")
+
+    ui.button("Export markdown", icon="download", on_click=export).props("flat dense")
+    if view.threads:
+        _heading("Threads")
+        for thread in view.threads:
+            _thread_card(thread)
+    if view.memories:
+        _heading("What is remembered")
+        for memory in view.memories:
+            ui.label(f"- {memory}").classes("text-sm whitespace-pre-wrap")
+    scene = player_scene(session.state)
+    if scene.known_elsewhere:
+        _heading("What you know of")
+        for entity in scene.known_elsewhere:
+            _entity_row(
+                session.icon(entity.id), entity.name, scene.placement_of(entity) or entity.brief
+            )
+    _heading("Chronicle")
+    for number, exchange in reversed(list(enumerate(view.chronicle, start=1))):
+        with ui.expansion(f"turn {number}: {exchange.prompt}").classes("w-full"):
+            for line in exchange.lines:
+                ui.markdown(attributed_line(session.state, line)).classes("text-sm")
 
 
 def role_badges(session: GameSession) -> None:
