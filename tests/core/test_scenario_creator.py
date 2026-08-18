@@ -1,4 +1,3 @@
-from pathlib import Path
 from types import NoneType
 
 import pytest
@@ -9,14 +8,12 @@ from pydantic_ai.models.function import FunctionModel
 
 from aidm.app.scenario_creator import (
     OPENING,
+    AuthoringSession,
     ScenarioPatch,
     WorldDraft,
     ask_until_playable,
-    authored_world,
     playability,
     playtests,
-    source_file,
-    world_stage,
 )
 from aidm.content.store import load_scenario
 from aidm.state.base import Entity, EntityId
@@ -49,8 +46,8 @@ def test_a_world_colliding_with_the_character_is_refused() -> None:
 
 
 def _as_patch() -> dict[str, JsonValue]:
-    """The shipped world as one write: `expansion` is the CLI's to set, never the author's, so no
-    patch carries it."""
+    """The shipped world as one write: `expansion` is the session's to set, never the author's,
+    so no patch carries it."""
     body = scenario().world.model_dump(mode="json")
     del body["expansion"]
     return body
@@ -99,6 +96,12 @@ def test_write_upserts_elements_by_id() -> None:
     assert [relation.tags for relation in draft.relations.values()] == [["locked"]]
 
 
+def test_a_patched_art_style_reaches_the_world() -> None:
+    draft = WorldDraft()
+    _ = draft.apply(ScenarioPatch.model_validate(_as_patch() | {"art_style": "ink-wash noir"}))
+    assert draft.world().art_style == "ink-wash noir"
+
+
 def test_remove_drops_by_id_and_refuses_an_unknown_one() -> None:
     draft = WorldDraft()
     _ = draft.apply(ScenarioPatch(entities=(_location("cell"),)))
@@ -133,33 +136,82 @@ def test_the_shipped_world_written_as_one_patch_is_playable() -> None:
 
 async def test_the_agent_authors_through_the_write_tool() -> None:
     config = settings()
-    playing = playtests(config)
-    stage = world_stage("authored", playing, config)
-    patch_args = {"patch": _as_patch()}
+    session = AuthoringSession(
+        slug="authored", premise="a vault", config=config, expansion="closed"
+    )
     author = scripted(
-        ModelResponse(parts=[ToolCallPart(tool_name="write", args=patch_args)]),
+        ModelResponse(parts=[ToolCallPart(tool_name="write", args={"patch": _as_patch()})]),
         _finish("Authored the vault."),
     )
-    with stage.agent.override(model=FunctionModel(author)):
-        world = await authored_world(stage, "authored", "a vault", playing)
-    assert world.meta.title == scenario().world.meta.title
+    with session.stage.agent.override(model=FunctionModel(author)):
+        _ = await session.send(session.opening_prompt)
+    assert session.draft.world().meta.title == scenario().world.meta.title
 
 
 async def test_finishing_an_unplayable_draft_is_refused_and_asked_again() -> None:
-    """Were the first `finish` accepted, `authored_world`'s own post-run check would raise on the
-    empty draft — so this passing pins both the refusal and the retry that authors for real."""
+    """This pins the output validator's own retry: an empty draft's `finish` is refused and the
+    author is asked again in the same run. Post-run revalidation lives in `write()`, not here."""
     config = settings()
-    playing = playtests(config)
-    stage = world_stage("authored", playing, config)
-    patch_args = {"patch": _as_patch()}
+    session = AuthoringSession(
+        slug="authored", premise="a vault", config=config, expansion="closed"
+    )
     author = scripted(
         _finish("all done, and it is great"),
-        ModelResponse(parts=[ToolCallPart(tool_name="write", args=patch_args)]),
+        ModelResponse(parts=[ToolCallPart(tool_name="write", args={"patch": _as_patch()})]),
         _finish("Authored the vault."),
     )
-    with stage.agent.override(model=FunctionModel(author)):
-        world = await authored_world(stage, "authored", "a vault", playing)
-    assert world.meta.title == scenario().world.meta.title
+    with session.stage.agent.override(model=FunctionModel(author)):
+        _ = await session.send(session.opening_prompt)
+    assert session.draft.world().meta.title == scenario().world.meta.title
+
+
+async def test_a_session_goes_on_authoring_after_it_finishes() -> None:
+    config = settings()
+    session = AuthoringSession(
+        slug="authored", premise="a vault", config=config, expansion="closed"
+    )
+    addition = ScenarioPatch(
+        entities=(_location("belfry"),),
+        relations=(
+            Relation(
+                kind="connected",
+                source=EntityId("study"),
+                target=EntityId("belfry"),
+                directed=False,
+                known=True,
+            ),
+        ),
+    )
+    author = scripted(
+        ModelResponse(parts=[ToolCallPart(tool_name="write", args={"patch": _as_patch()})]),
+        _finish("Authored the vault."),
+        ModelResponse(
+            parts=[
+                ToolCallPart(tool_name="write", args={"patch": addition.model_dump(mode="json")})
+            ]
+        ),
+        _finish("Added the bell tower."),
+    )
+    with session.stage.agent.override(model=FunctionModel(author)):
+        _ = await session.send(session.opening_prompt)
+        assert session.refusal() is None
+        before = len(session.history)
+        _ = await session.send("add a bell tower")
+    assert EntityId("belfry") in session.draft.entities
+    assert len(session.history) > before
+
+
+async def test_an_unplayable_draft_is_never_written() -> None:
+    session = AuthoringSession(
+        slug="authored", premise="a vault", config=settings(), expansion="closed"
+    )
+    with pytest.raises(ValueError, match="does not play"):
+        _ = await session.write()
+
+
+def test_a_cited_session_needs_a_document() -> None:
+    with pytest.raises(ValueError, match="document"):
+        AuthoringSession(slug="authored", premise="a vault", config=settings(), expansion="cited")
 
 
 def test_a_thin_draft_hears_every_unmet_bar_item_at_once() -> None:
@@ -179,7 +231,7 @@ def test_a_thin_draft_hears_every_unmet_bar_item_at_once() -> None:
 
 def test_an_opening_slice_passes_a_bar_the_whole_scenario_would_fail() -> None:
     """Premise-start authors the first scene and nothing else: the rest is written during play."""
-    draft = WorldDraft(expansion=OPENING.expansion)
+    draft = WorldDraft(expansion="invented")
     _ = draft.apply(
         ScenarioPatch(
             meta=ScenarioMeta(title="The Cell", premise="Get out."),
@@ -209,7 +261,7 @@ def test_an_opening_slice_passes_a_bar_the_whole_scenario_would_fail() -> None:
 
     assert playability(draft, "authored", playing, OPENING) is None
     assert playability(draft, "authored", playing) is not None
-    assert draft.world().expansion == "generative"
+    assert draft.world().expansion == "invented"
 
 
 async def test_the_author_is_asked_again_with_the_reason() -> None:
@@ -239,14 +291,3 @@ async def test_the_author_gives_up_after_every_round_is_refused() -> None:
     with stage.agent.override(model=scripted_model):
         with pytest.raises(ValueError, match="wrong"):
             _ = await ask_until_playable(stage, "write it", check)
-
-
-def test_a_premise_is_never_mistaken_for_a_path() -> None:
-    """A premise long enough to overrun the filesystem's name limit is prose, not a missing file."""
-    long_premise = "The abbey emptied in a night, and the road out is not where it was. " * 6
-    assert len(long_premise) > 300
-
-    assert source_file(long_premise) is None
-    assert source_file("a quiet abbey") is None
-    fixture = str(Path(__file__).parent / "fixtures" / "source" / "drowned-road.md")
-    assert source_file(fixture) == Path(fixture)

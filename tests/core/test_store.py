@@ -167,12 +167,12 @@ def test_write_scenario_round_trips_and_refuses_a_duplicate(tmp_path: Path) -> N
 def test_a_scenario_expands_from_its_own_source_or_else_from_its_premise(tmp_path: Path) -> None:
     original = scenario()
     premise = "The abbey emptied in a night, and the road out is not where it was."
-    grown = updated(original.world, expansion="generative")
+    grown = updated(original.world, expansion="invented")
 
     write_scenario(tmp_path, "grown", grown, {LONER3E: original.overlay}, premise)
     write_scenario(tmp_path, "curated", original.world, {LONER3E: original.overlay})
     loaded = load_scenario(tmp_path, "grown", build_engine(LONER3E).binding())
 
-    assert loaded.world.expansion == "generative"
+    assert loaded.world.expansion == "invented"
     assert read_source(tmp_path, "grown", "unread").passages("road") == premise
     assert read_source(tmp_path, "curated", premise).passages("road") == premise

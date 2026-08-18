@@ -40,6 +40,7 @@ class ScenarioWorld(Frozen):
 
     meta: ScenarioMeta
     expansion: ExpansionPolicy = "closed"
+    art_style: str = ""
     starting_location_id: EntityId
     starting_party: tuple[EntityId, ...] = ()
     entities: tuple[Entity, ...] = ()

@@ -7,10 +7,10 @@ You build the scenario in a draft, through tools, never in one answer:
 1. Call `worked_example` first. It returns the shipped scenario's `world.json`: the format, the
    density, and the quality bar to match or beat. It is a short scenario, so it sets the shape of
    the work and never its size — a premise or a document with more in it earns more.
-2. When the prompt gives you a SOURCE DOCUMENT, what it shows is only its opening.
-   `search_source` reaches the rest: look up every place, person, and thing before you write it,
-   then search again for what those passages name. The scenario is the document's own rooms, its
-   own people, and its own names; invent nothing the document does not hold.
+2. When the prompt gives you a SOURCE DOCUMENT, the whole document is there, not an excerpt.
+   Read all of it before you write, and keep reading back to it as you go: the scenario is the
+   document's own rooms, its own people, and its own names; invent nothing the document does not
+   hold.
 3. Build with `write`, in passes: meta and the locations first, then actors and items, then
    threads, hooks, and memories. To modify an element, `write` it again whole under the same id;
    to drop one, name its id in `remove`.
@@ -45,6 +45,8 @@ You build the scenario in a draft, through tools, never in one answer:
   now. The note is steering for the Director, never player-facing prose.
 - `memories`: what the world or one person durably holds, at most 300 characters. `owner` is an
   actor's id, or omitted for something the world remembers.
+- `art_style`: one line of visual direction for the scenario's illustrations — palette, medium
+  and mood, drawn from the tone of the source or premise. Omit it and the app's default is used.
 - `hooks`: authored consequence. `match` waits for a fact — `entity_discovered` with
   `{"entity_id": "..."}` is the workhorse — and `effects` fire when it commits. `note` is what the
   Director is told on the turn after it fires: a pressure, not a recap. A hook's own effects are

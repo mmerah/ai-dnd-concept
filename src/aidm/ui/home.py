@@ -20,7 +20,7 @@ LOGGER = logging.getLogger(__name__)
 
 def home_page(config: Settings) -> None:
     controller = LauncherController(load_catalog(config))
-    with page_header("AI Dungeon Master"):
+    with page_header("AI Dungeon Master", home=False):
         ui.space()
         ui.label("Choose your game").classes("text-sm opacity-80")
 
@@ -31,7 +31,7 @@ def home_page(config: Settings) -> None:
                 "text-body1 opacity-70"
             )
             _new_game(controller)
-            _new_characters(controller)
+            _new_content(controller)
             _saved_games(controller)
 
 
@@ -77,8 +77,11 @@ def _new_game(controller: LauncherController) -> None:
     form()
 
 
-def _new_characters(controller: LauncherController) -> None:
+def _new_content(controller: LauncherController) -> None:
     with ui.row().classes("items-center").style("gap: 0.5rem"):
+        ui.button(
+            "New scenario", icon="auto_stories", on_click=lambda: ui.navigate.to("/create-scenario")
+        ).props("outline dense")
         ui.label("New character:").classes("text-sm opacity-70")
         for option in controller.catalog.engines:
             ui.button(

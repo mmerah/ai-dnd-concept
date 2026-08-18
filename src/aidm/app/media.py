@@ -34,7 +34,7 @@ def scene_key(scene: VisibleScene) -> str:
 
 
 def illustration_request(
-    scene: VisibleScene, narration: str, referenced: Sequence[str] = ()
+    scene: VisibleScene, narration: str, referenced: Sequence[str] = (), style: str = STYLE
 ) -> str:
     lines = [
         "Draw one wide establishing view of the place below, as somebody standing in it sees it. "
@@ -51,15 +51,15 @@ def illustration_request(
             f"The attached images are reference likenesses of, in order: {', '.join(referenced)}. "
             f"Keep each one's appearance."
         )
-    lines.append(STYLE)
+    lines.append(style)
     return "\n".join(lines)
 
 
-def icon_request(entity: Entity) -> str:
+def icon_request(entity: Entity, style: str = STYLE) -> str:
     return (
         f"Draw a portrait token, not a scene: {entity.name} — {entity.brief}. "
         f"The subject alone, centred and filling the square, on a plain flat background — "
-        f"no setting, no other figures, no props beyond what it carries, no border. {STYLE}"
+        f"no setting, no other figures, no props beyond what it carries, no border. {style}"
     )
 
 
@@ -77,6 +77,7 @@ class Illustrator:
     provider: ProviderConfig
     saves: Path
     icon_dirs: Mapping[EntityId, Path]
+    style: str = STYLE
     generating: set[str] = field(default_factory=set)
 
     def scene_art(self, state: GameState) -> Path | None:
@@ -123,7 +124,7 @@ class Illustrator:
             if (icon := await self._drawn_icon(entity)) is not None
         }
         generated = await self._generate(
-            illustration_request(scene, narration, tuple(icons)),
+            illustration_request(scene, narration, tuple(icons), style=self.style),
             self.config.scene_ratio,
             tuple(icons.values()),
         )
@@ -138,7 +139,7 @@ class Illustrator:
         found = _existing(directory, entity.id)
         if found is not None:
             return found
-        generated = await self._generate(icon_request(entity), self.config.icon_ratio)
+        generated = await self._generate(icon_request(entity, self.style), self.config.icon_ratio)
         if generated is None:
             return None
         path = directory / f"{entity.id}{generated.suffix}"

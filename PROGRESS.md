@@ -361,15 +361,83 @@ pins that no unrevealed name reaches a player panel. `SAVE_VERSION` 70 -> 71; th
 - Out of scope exactly as PLAN said: suggestion chips, mid-game engine switching, the map view, and
   the home-page re-skin.
 
-### Phase 6 — The scenario creator becomes a page (in progress)
+### Phase 6 — The scenario creator becomes a page
 
-- [x] 1. `ui/create.py` -> `character_create.py`, `creation_page` -> `character_page`; pure rename.
+Done-when met: `/create-scenario` authors a scenario from a form, reads the whole draft back,
+revises it by conversation and writes it to `scenarios/<slug>/` without leaving the browser, under
+a policy and an art style the form chose; and no authoring entry point exists outside the app —
+`scripts/create_scenario.py`, `scenario_creator.main()`, `OPENING_FLAG` and `source_file` are all
+deleted, and `scripts/` with them. No persisted-byte change: `SAVE_VERSION` unmoved, no fixture
+moved.
+
+- `ui/create.py` -> `character_create.py`, `creation_page` -> `character_page`; pure rename.
+- **`AuthoringSession` is what a run became: draft, message history and stage in one object the
+  page holds, exactly as `GameSession` holds a game.** `send` is one agent turn against the same
+  draft and the same history, so a revision instruction is the same agent continuing, and
+  `write(ScenarioPatch)` upserting by id is all "modify" ever needed. The model's `finish` ends
+  its *turn*; only `write()` ends the session.
+- **Every refusal moved ahead of the run, into `__post_init__`**: a `grounded` or `extended`
+  policy with no document, a slug whose directory already exists, and nothing to author from at
+  all. Each used to surface after a multi-minute agentic run — the slug one from `write_scenario`
+  itself, with the whole authored draft already paid for and nowhere to put it.
+- **A premise-started scenario ships its premise as `source.md`**, where the CLI did that only for
+  `--opening`. So generative expansion now grounds on what the form was given rather than on the
+  `meta.premise` the author wrote, and the empty-ask refusal above is what keeps an *empty*
+  `source.md` from shadowing `meta.premise` in `read_source`.
+- `write()` is the only thing that reaches disk, and it revalidates the draft first — the agent
+  saying "ok" is still never trusted — then authors every shipped engine's overlay, so
+  `write_scenario`'s all-engines-or-nothing rule still decides what lands. An unfinished session
+  leaves no directory behind.
+- **`Brief` lost its `expansion` field.** The policy is the session's argument and the form's
+  select, defaulting to `grounded` the moment a document is uploaded and `generative` otherwise —
+  which retires "`extended` is reached by editing one field in `world.json`". `--opening` survived
+  as the form's "How much to author" control, since a capability with no surface is not kept.
+- **`art_style` lives on `ScenarioWorld`, not `ScenarioMeta`** — authored content, where
+  `ScenarioMeta` is copied into every save. `ScenarioPatch` carries it so a document's own tone can
+  pick the palette, and the form's value overrides what the model wrote at `write()` time.
+  `Illustrator` grew a `style` field defaulting to `media.STYLE`, and `open_media` passes
+  `scenario.world.art_style or STYLE`; both prompt builders take the style rather than reading the
+  module constant.
+- `busy.py`'s `refuse_if_busy`/`working` now take a `Busy` protocol (`busy: bool`) instead of
+  `GameSession`. The port earned its place on the second implementation, not before it.
+- The page disables the form once a session opens — the knobs are chosen once — and the read-back
+  is `WorldDraft.pretty()` as JSON beside `session.refusal()`, so the user sees whether Save will
+  be accepted before pressing it. `working()` swallows a failure, so the notify-and-navigate of a
+  successful save has to sit *inside* the block: after it, a failed write would read as a success.
+- **`scenario_world.md` was still instructing the author to call `search_source`**, a tool Phase 3
+  deleted when the whole document moved into the prompt. Fixed while adding the `art_style` bullet.
+- **The four expansion policies were renamed to say how the source is consulted**, since the old
+  names mixed three vocabularies: `grounded` -> `cited`, `generative` -> `invented`, `extended` ->
+  `cited_or_invented`, `closed` unchanged. `PremiseSource` -> `WholeSource` (it holds a whole
+  *document* now, not only a premise) and `ExtendedSource` -> `CitedOrInventedSource`. **Entries
+  above this one use the old names**; `expansion` is authored content, so no save moved and the one
+  scenario on disk carrying the field was rewritten by hand.
+- **Making the policy a free form knob made a combination the CLI could not produce**: a document
+  with `invented`, where `read_source` used to `read_text()` a PDF and die on the bytes at game
+  open. Both whole-document readers — that one and the authoring prompt — now go through
+  `sources.whole_text`, which extracts instead of reading raw and drops the `[p1-1]` record ids
+  that only a searching reader cites.
+- **The whole-document path is the unbounded one, and it now refuses rather than truncates.**
+  `cited` and `cited_or_invented` are bounded by construction (`SEARCH_RESULTS` x `RECORD_CHARS`,
+  whatever the book's size); `invented` and authoring hand over the entire text, every prompt.
+  `WHOLE_CHARS = 120_000` (~30k tokens) is the line, and the refusal names the two searching
+  policies as the remedy — the standing "when that bites, the answer is the Expander's shape" note
+  below is what it buys time for.
+- **`page_header` gated its home link on the engine badge**, so the one page with no badge had no
+  way back but the browser's. `home` is its own parameter now, false only on the home page itself.
+  Found by review, after an HTTP smoke test that asserted the wrong thing.
+- Verified offline and by rendering all three pages over HTTP: the form's fields, and a home link
+  on both create pages and none on the home page. **No scenario has been authored through the page
+  live**: the agentic run, the upload path and the overlay pass have not been exercised against a
+  real model.
+- Out of scope by PLAN's own step 7: `scripts/bake_icons.py`. Icons still generate on first play,
+  into the scenario dir; pre-baking is worth writing when authoring a scenario for someone else.
 
 ## Next
 
-- PLAN.md Phase 6: the scenario creator becomes a page, and authoring ends when the user says so.
-- No scenario has been authored from a real PDF end to end. The suite proves ingestion on a
-  hand-built fixture; only a real book proves the pipeline.
+- No scenario has been authored from a real PDF end to end, and none has been authored through the
+  new page at all. The suite proves ingestion on a hand-built fixture; only a real book proves the
+  pipeline.
 
 ## Standing limitations
 
@@ -383,6 +451,13 @@ Measured, deliberate, and unfixed. Each names what would make it worth fixing.
   one block, so a record's edges come from `RECORD_CHARS` rather than the author's paragraphs, and
   a page footer glued to its page's last block rides into a record. `MIN_RECORD` only drops a
   footer that stands alone.
+- **A document is ingested synchronously while the session is built**, on the event loop, so a
+  book-sized PDF freezes every connected client for the length of the extraction. Worth fixing
+  when a real book is authored through the page — the ingest moves to a worker thread.
+- **Clearing the upload does not reset the policy**: the installed NiceGUI's `ui.upload` exposes
+  no remove callback, so a document dropped and then cleared leaves the session `grounded` with a
+  path the user thought they withdrew. Worth fixing when a NiceGUI version offers the hook — the
+  page refuses nothing wrongly today, since the file is still on disk and still ingests.
 - **Whole-document authoring is ~19k tokens for a 76-page book**, re-sent across up to
   `REQUEST_LIMIT` requests. When that bites, the answer is the Expander's shape — resolver-side
   retrieval and a size guard that refuses a too-large document — not the deleted `search_source`

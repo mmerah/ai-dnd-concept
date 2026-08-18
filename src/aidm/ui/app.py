@@ -22,6 +22,7 @@ from .panels import (
     state_panel,
     trace_panel,
 )
+from .scenario_create import scenario_page
 
 LOGGER = logging.getLogger(__name__)
 
@@ -159,6 +160,10 @@ def _register_pages(runtime: Runtime) -> None:
     @ui.page("/create/{engine}")
     def _create(engine: str) -> None:  # pyright: ignore[reportUnusedFunction]
         character_page(runtime, as_engine_id(engine))
+
+    @ui.page("/create-scenario")
+    def _create_scenario() -> None:  # pyright: ignore[reportUnusedFunction]
+        scenario_page(runtime.config)
 
 
 def _game_page(session: GameSession) -> None:

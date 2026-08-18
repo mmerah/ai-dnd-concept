@@ -1,8 +1,6 @@
-import asyncio
 import json
-import sys
 from collections.abc import Callable, Mapping, Sequence
-from dataclasses import dataclass, field, replace
+from dataclasses import dataclass, field
 from pathlib import Path
 from types import NoneType
 
@@ -12,14 +10,12 @@ from pydantic_ai import (
     NativeOutput,
     RunContext,
     ToolOutput,
-    UnexpectedModelBehavior,
     UsageLimits,
 )
-from pydantic_ai.exceptions import UsageLimitExceeded
 from pydantic_ai.messages import ModelMessage
 from pydantic_ai.toolsets import FunctionToolset
 
-from aidm.config import Settings, load_settings
+from aidm.config import Settings
 from aidm.content.authored import (
     Character,
     Scenario,
@@ -27,12 +23,12 @@ from aidm.content.authored import (
     ScenarioWorld,
     check_hooks,
 )
-from aidm.content.sources import ExpansionPolicy, ingest, render
+from aidm.content.sources import ExpansionPolicy, whole_text
 from aidm.content.store import ENCODING, WORLD_FILE, engine_text, load_character, write_scenario
 from aidm.engines.loader import Engine, engine_ids
 from aidm.engines.sheets import SheetBase
 from aidm.engines.vocabulary import HOOK_EFFECTS_CARD, WORLD_CALLS, card
-from aidm.state.base import EngineId, Entity, EntityId, Frozen, RelationId, Slug, content_id
+from aidm.state.base import EngineId, Entity, EntityId, Frozen, RelationId, Slug
 from aidm.state.world import CONNECTED, LOCKED_TAG, Hook, Memory, Relation, ScenarioMeta, Thread
 from aidm.turn.roles import Stage
 
@@ -70,6 +66,14 @@ class ScenarioPatch(Frozen):
     meta: ScenarioMeta | None = None
     starting_location_id: EntityId | None = None
     starting_party: tuple[EntityId, ...] | None = None
+    art_style: str | None = Field(
+        default=None,
+        description=(
+            "One line of visual direction for this scenario's illustrations — palette, medium "
+            "and mood, written from the tone of the source or premise. Left unset, the app's "
+            "default style is used."
+        ),
+    )
     entities: tuple[Entity, ...] = ()
     relations: tuple[Relation, ...] = ()
     threads: tuple[Thread, ...] = ()
@@ -83,6 +87,7 @@ class WorldDraft:
     """The scenario under authorship: mutated only by `apply`, judged only by `world()`."""
 
     expansion: ExpansionPolicy = "closed"
+    art_style: str = ""
     meta: ScenarioMeta | None = None
     starting_location_id: EntityId | None = None
     starting_party: tuple[EntityId, ...] = ()
@@ -103,6 +108,9 @@ class WorldDraft:
         if patch.starting_party is not None:
             self.starting_party = patch.starting_party
             changed.append("starting_party")
+        if patch.art_style is not None:
+            self.art_style = patch.art_style
+            changed.append("art_style")
         for entity in patch.entities:
             self.entities[entity.id] = entity
         for relation in patch.relations:
@@ -152,6 +160,7 @@ class WorldDraft:
         return ScenarioWorld(
             meta=self.meta,
             expansion=self.expansion,
+            art_style=self.art_style,
             starting_location_id=self.starting_location_id,
             starting_party=self.starting_party,
             entities=tuple(self.entities.values()),
@@ -166,6 +175,7 @@ class WorldDraft:
         # most needed exactly when it will not yet build.
         body: dict[str, JsonValue] = {
             "meta": None if self.meta is None else self.meta.model_dump(mode="json"),
+            "art_style": self.art_style,
             "starting_location_id": self.starting_location_id,
             "starting_party": list(self.starting_party),
             "entities": [entity.model_dump(mode="json") for entity in self.entities.values()],
@@ -247,17 +257,15 @@ def _opening_unmet(world: ScenarioWorld) -> list[str]:
 
 @dataclass(frozen=True, slots=True)
 class Brief:
-    """How much world one run authors: the instructions it works from, the bar it is held to, and
-    the policy the scenario it writes carries."""
+    """How much world one run authors: the instructions it works from and the bar it is held to."""
 
     instructions: str
     unmet: Callable[[ScenarioWorld], list[str]]
-    expansion: ExpansionPolicy
 
 
-FULL = Brief(_instructions("scenario_bar.md"), _bar_unmet, "closed")
+FULL = Brief(_instructions("scenario_bar.md"), _bar_unmet)
 # An opening slice is deliberately thin: the rest of the world is written during play.
-OPENING = Brief(_instructions("scenario_opening.md"), _opening_unmet, "generative")
+OPENING = Brief(_instructions("scenario_opening.md"), _opening_unmet)
 
 
 def playability(
@@ -379,26 +387,6 @@ def _world_prompt(slug: Slug, premise: str, sourced: bool) -> str:
     return f"{heading}\n{premise}\n\nWill be saved as: {slug!r}"
 
 
-async def authored_world(
-    stage: Stage[WorldDraft, str],
-    slug: Slug,
-    prompt: str,
-    playing: Sequence[Playtest],
-    brief: Brief = FULL,
-) -> ScenarioWorld:
-    """The agent authors into the draft; the draft, revalidated here, is the deliverable —
-    the agent saying 'ok' is never trusted."""
-    draft = WorldDraft(expansion=brief.expansion)
-    _ = await stage.agent.run(
-        prompt,
-        deps=draft,
-        usage_limits=UsageLimits(request_limit=REQUEST_LIMIT),
-    )
-    if reason := playability(draft, slug, playing, brief):
-        raise ValueError(f"the author stopped on an unplayable draft: {reason}")
-    return draft.world()
-
-
 def _overlay_prompt(engine: Engine[SheetBase], world: ScenarioWorld, config: Settings) -> str:
     example = engine_text(config.scenarios_dir / WORKED_EXAMPLE / f"{engine.id}.json")
     return (
@@ -431,28 +419,6 @@ async def _authored_overlay(
     return _as_overlay(typed)
 
 
-async def author_scenario(
-    slug: Slug,
-    premise: str,
-    config: Settings,
-    brief: Brief = FULL,
-    sourced: bool = False,
-) -> tuple[ScenarioWorld, dict[EngineId, ScenarioOverlay]]:
-    playing = playtests(config)
-    world = await authored_world(
-        world_stage(slug, playing, config, brief),
-        slug,
-        _world_prompt(slug, premise, sourced),
-        playing,
-        brief,
-    )
-    overlays = {
-        playtest.engine.id: await _authored_overlay(playtest, slug, world, config)
-        for playtest in playing
-    }
-    return world, overlays
-
-
 def summarize(world: ScenarioWorld, overlays: Mapping[EngineId, ScenarioOverlay]) -> str:
     lines = [
         world.meta.title,
@@ -464,42 +430,69 @@ def summarize(world: ScenarioWorld, overlays: Mapping[EngineId, ScenarioOverlay]
     return "\n".join(lines)
 
 
-OPENING_FLAG = "--opening"
+@dataclass
+class AuthoringSession:
+    """One scenario under authorship across many agent runs. The model's `finish` ends its turn
+    and hands back a draft; only `write` ends the session, and only it reaches disk."""
 
+    slug: Slug
+    premise: str
+    config: Settings
+    expansion: ExpansionPolicy
+    art_style: str = ""
+    document: Path | None = None
+    brief: Brief = FULL
+    history: list[ModelMessage] = field(default_factory=list)
+    busy: bool = False
+    playing: tuple[Playtest, ...] = field(init=False)
+    stage: Stage[WorldDraft, str] = field(init=False)
+    draft: WorldDraft = field(init=False)
+    opening_prompt: str = field(init=False)
 
-def source_file(given: str) -> Path | None:
-    """The argument as a file, or None for a premise — prose long enough to overrun the
-    filesystem's name limit is an answer here, not a failure."""
-    path = Path(given)
-    try:
-        return path if path.is_file() else None
-    except OSError:
-        return None
+    def __post_init__(self) -> None:
+        if self.document is None and not self.premise:
+            raise ValueError("give a premise, a document, or both: there is nothing to author from")
+        if self.expansion in ("cited", "cited_or_invented") and self.document is None:
+            raise ValueError(
+                f"a {self.expansion!r} scenario expands from a document: give one, or author it "
+                "as `invented` or `closed`"
+            )
+        if (self.config.scenarios_dir / self.slug).exists():
+            raise ValueError(f"scenario {self.slug!r} already exists")
+        self.playing = playtests(self.config)
+        self.stage = world_stage(self.slug, self.playing, self.config, self.brief)
+        self.draft = WorldDraft(expansion=self.expansion)
+        given = self.premise if self.document is None else whole_text(self.document)
+        self.opening_prompt = _world_prompt(self.slug, given, self.document is not None)
 
-
-def main() -> None:
-    args = [arg for arg in sys.argv[1:] if arg != OPENING_FLAG]
-    # An opening slice is the scenario's own source, so the premise is written beside it verbatim.
-    opening = OPENING_FLAG in sys.argv[1:]
-    if len(args) != 2:
-        raise SystemExit(
-            f'usage: create_scenario.py <slug> "<premise>"|<source file> [{OPENING_FLAG}]'
+    async def send(self, instruction: str) -> str:
+        """One agent turn against the same draft and the same history."""
+        result = await self.stage.agent.run(
+            instruction,
+            deps=self.draft,
+            message_history=self.history,
+            usage_limits=UsageLimits(request_limit=REQUEST_LIMIT),
         )
-    try:
-        slug = content_id(args[0])
-        config = load_settings()
-        given = source_file(args[1])
-        records = None if given is None else ingest(given)
-        premise = args[1] if records is None else render(records.records)
-        brief = OPENING if opening else FULL
-        # A scenario authored from a document is grounded in it: play expands by citing records.
-        if records is not None:
-            brief = replace(brief, expansion="grounded")
-        sourced = given is not None
-        world, overlays = asyncio.run(author_scenario(slug, premise, config, brief, sourced))
+        self.history = list(result.all_messages())
+        return result.output
+
+    def refusal(self) -> str | None:
+        return playability(self.draft, self.slug, self.playing, self.brief)
+
+    async def write(self) -> str:
+        """The user's finish: the draft is revalidated here — the agent saying 'ok' is never
+        trusted — then every engine's overlay is authored, and `write_scenario` lands nothing
+        unless all of them validate."""
+        if reason := self.refusal():
+            raise ValueError(f"the draft does not play: {reason}")
+        # The form's style overrides whatever the author wrote from the source's own tone.
+        self.draft.art_style = self.art_style or self.draft.art_style
+        world = self.draft.world()
+        overlays = {
+            playtest.engine.id: await _authored_overlay(playtest, self.slug, world, self.config)
+            for playtest in self.playing
+        }
         write_scenario(
-            config.scenarios_dir, slug, world, overlays, given or (args[1] if opening else None)
+            self.config.scenarios_dir, self.slug, world, overlays, self.document or self.premise
         )
-    except (ValueError, UnexpectedModelBehavior, UsageLimitExceeded) as refused:
-        raise SystemExit(f"scenario not created: {refused}") from refused
-    print(summarize(world, overlays))
+        return summarize(world, overlays)

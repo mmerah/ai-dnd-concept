@@ -6,7 +6,7 @@ from random import Random
 
 from aidm.config import Settings
 from aidm.content.authored import Character, Scenario
-from aidm.content.sources import CanonSource, ExtendedSource, ingest
+from aidm.content.sources import CanonSource, CitedOrInventedSource, ingest
 from aidm.content.store import FileStore, load_character, load_scenario, read_source, require_source
 from aidm.engines.advancement import Advancement, Offer, ProposalBase
 from aidm.engines.loader import Engine, engine_class
@@ -22,7 +22,7 @@ from aidm.turn.prompts import render_proposal
 from aidm.turn.roles import AdvancementContext, Stage, Stages, advancement_stage, build_stages
 
 from .launcher import LaunchTarget
-from .media import ICON_DIR, Illustrator
+from .media import ICON_DIR, STYLE, Illustrator
 from .views import journal_markdown
 
 
@@ -44,21 +44,21 @@ def build_advisor(
 
 
 def open_source(config: Settings, target: LaunchTarget, scenario: Scenario) -> CanonSource | None:
-    """A `closed` world plays on its own canon alone; a `grounded` or `extended` one is refused
-    rather than played without the document its expansions are written from."""
+    """A `closed` world plays on its own canon alone; a `cited` or `cited_or_invented` one is
+    refused rather than played without the document its expansions are written from."""
     match scenario.world.expansion:
         case "closed":
             return None
-        case "grounded":
+        case "cited":
             return ingest(require_source(config.scenarios_dir, target.scenario_id))
-        case "extended":
-            return ExtendedSource(
+        case "cited_or_invented":
+            return CitedOrInventedSource(
                 document=ingest(require_source(config.scenarios_dir, target.scenario_id)),
                 # The premise, never the document: a fallback earns its keep by being short and
                 # general where the document had nothing specific.
                 premise=scenario.meta.premise,
             )
-        case "generative":
+        case "invented":
             return read_source(config.scenarios_dir, target.scenario_id, scenario.meta.premise)
 
 
@@ -86,6 +86,7 @@ def open_media(
                 for entity_id in (PLAYER_ID, *(item.id for item in character.profile.items))
             },
         },
+        style=scenario.world.art_style or STYLE,
     )
 
 

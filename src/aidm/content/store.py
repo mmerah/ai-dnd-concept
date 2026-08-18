@@ -22,7 +22,7 @@ from .authored import (
     ScenarioWorld,
     check_hooks,
 )
-from .sources import CanonSource, PremiseSource
+from .sources import CanonSource, WholeSource, whole_text
 
 ENCODING = "utf-8"
 WORLD_FILE = "world.json"
@@ -62,9 +62,11 @@ def source_file(directory: Path, name: Slug) -> Path | None:
 
 
 def read_source(directory: Path, name: Slug, premise: str) -> CanonSource:
+    """Whole and unsearched — extracted rather than read raw, which is what reads a PDF as words
+    rather than as bytes."""
     path = source_file(directory, name)
-    text = premise if path is None else path.read_text(encoding=ENCODING)
-    return PremiseSource(text=text)
+    text = premise if path is None else whole_text(path)
+    return WholeSource(text=text)
 
 
 def require_source(directory: Path, name: Slug) -> Path:

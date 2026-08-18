@@ -7,6 +7,7 @@
 - [] RAG on scenarios? .pdf -> source.md in scenario/<id>/ folder, then RAG on it?
 - [] naming: variables, files, methods, classes generally need some renaming to represent more clearly what they do, and with more details
 - [] Narrator does not see speaker memory when player adress someone.
+- [] pyproject.toml should FIX versions.
 
 ## Ideas
 

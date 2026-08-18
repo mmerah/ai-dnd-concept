@@ -30,10 +30,11 @@ def show_engine_badge(badge: tuple[str, str]) -> None:
 
 
 @contextmanager
-def page_header(title: str, badge: tuple[str, str] | None = None) -> Generator[None]:
-    """The pages that show an engine badge are the ones a home link leaves from."""
+def page_header(
+    title: str, badge: tuple[str, str] | None = None, home: bool = True
+) -> Generator[None]:
     with ui.header().classes("items-center").style("gap: 1rem"):
-        if badge is not None:
+        if home:
             ui.button(icon="home", on_click=lambda: ui.navigate.to("/")).props(
                 "flat color=white round"
             )

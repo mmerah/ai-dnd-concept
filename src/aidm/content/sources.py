@@ -6,11 +6,14 @@ from typing import Literal, Protocol
 
 from pypdf import PdfReader
 
-type ExpansionPolicy = Literal["closed", "grounded", "generative", "extended"]
+type ExpansionPolicy = Literal["closed", "cited", "invented", "cited_or_invented"]
 
 RECORD_CHARS = 600
 MIN_RECORD = 24
 SEARCH_RESULTS = 6
+# A searched source answers in at most SEARCH_RESULTS records; a whole one answers with the book.
+# ~30k tokens, which admits a 76-page adventure and refuses what would swallow the context.
+WHOLE_CHARS = 120_000
 _BLANK_LINE = re.compile(r"\n\s*\n")
 _WORD = re.compile(r"[a-z0-9']{3,}")
 _LINE_BREAK_HYPHEN = re.compile(r"(\w)-\s+(\w)")
@@ -31,11 +34,11 @@ class CanonSource(Protocol):
 
 
 @dataclass(frozen=True, slots=True)
-class PremiseSource:
+class WholeSource:
     text: str
 
     def passages(self, query: str) -> str:
-        """A premise is whole and short, so every need is answered with all of it."""
+        """Whole text, so every need is answered with all of it."""
         del query
         return self.text
 
@@ -68,7 +71,7 @@ SILENT = (
 
 
 @dataclass(frozen=True, slots=True)
-class ExtendedSource:
+class CitedOrInventedSource:
     """The document where it speaks, the premise where it is silent."""
 
     document: RecordSource
@@ -80,6 +83,18 @@ class ExtendedSource:
 
 def render(records: Sequence[SourceRecord]) -> str:
     return "\n\n".join(f"[{record.id}] {record.text}" for record in records)
+
+
+def whole_text(path: Path) -> str:
+    """A document as one text. Ids belong to search results; a reader handed the whole document
+    cites nothing, so they would be noise."""
+    text = "\n\n".join(record.text for record in ingest(path).records)
+    if len(text) > WHOLE_CHARS:
+        raise ValueError(
+            f"{path.name} is {len(text)} characters, too large to hand to a model whole: author "
+            f"it `cited` or `cited_or_invented`, which search the document instead"
+        )
+    return text
 
 
 def ingest(path: Path) -> RecordSource:

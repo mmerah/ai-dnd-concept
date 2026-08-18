@@ -1,12 +1,15 @@
 from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
+from typing import Protocol
 
 from nicegui import ui
 
-from aidm.app.session import GameSession
+
+class Busy(Protocol):
+    busy: bool
 
 
-def refuse_if_busy(session: GameSession) -> bool:
+def refuse_if_busy(session: Busy) -> bool:
     if not session.busy:
         return False
     ui.notify("Finish the current turn first.", type="warning")
@@ -14,7 +17,7 @@ def refuse_if_busy(session: GameSession) -> bool:
 
 
 @asynccontextmanager
-async def working(session: GameSession) -> AsyncGenerator[None]:
+async def working(session: Busy) -> AsyncGenerator[None]:
     """A failure is shown to the player and swallowed: the session must never stay busy."""
     session.busy = True
     try:

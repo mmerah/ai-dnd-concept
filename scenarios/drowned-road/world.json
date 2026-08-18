@@ -3,7 +3,7 @@
     "title": "The Drowned Road's Secret",
     "premise": "A pilgrim on the Drowned Road must help the bell keeper Ovid Sarn locate the hidden bronze key and unlock the crypt beneath the Lantern Chapel before the tide returns. The journey begins at the Bell House, where the tide bell rings twice a day."
   },
-  "expansion": "grounded",
+  "expansion": "cited",
   "starting_location_id": "bell_house",
   "starting_party": [],
   "entities": [

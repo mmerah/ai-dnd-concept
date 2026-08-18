@@ -5,7 +5,7 @@ from core_test_support import LONER3E, scenario, settings, updated
 
 from aidm.app.launcher import LaunchTarget
 from aidm.app.session import build_engine, open_source
-from aidm.content.sources import ingest
+from aidm.content.sources import WHOLE_CHARS, ingest, whole_text
 from aidm.content.store import load_scenario, write_scenario
 
 FIXTURES = Path(__file__).parent / "fixtures" / "source"
@@ -43,22 +43,34 @@ def test_search_ranks_by_the_words_asked_for() -> None:
     assert source.passages("submarine") == ""
 
 
-def test_a_grounded_scenario_is_refused_without_its_document_and_ingests_it_when_present(
+def test_a_cited_scenario_is_refused_without_its_document_and_ingests_it_when_present(
     tmp_path: Path,
 ) -> None:
     original = scenario()
     config = updated(settings(), scenarios_dir=tmp_path)
     binding = build_engine(LONER3E).binding()
-    grounded = updated(original.world, expansion="grounded")
+    cited = updated(original.world, expansion="cited")
     document = FIXTURES / "drowned-road.pdf"
 
-    write_scenario(tmp_path, "bare", grounded, {LONER3E: original.overlay})
-    write_scenario(tmp_path, "sourced", grounded, {LONER3E: original.overlay}, document)
+    write_scenario(tmp_path, "bare", cited, {LONER3E: original.overlay})
+    write_scenario(tmp_path, "sourced", cited, {LONER3E: original.overlay}, document)
 
     with pytest.raises(ValueError, match="ships no source"):
         _ = open_source(config, _target("bare"), load_scenario(tmp_path, "bare", binding))
     opened = open_source(config, _target("sourced"), load_scenario(tmp_path, "sourced", binding))
     assert opened == ingest(document)
+
+
+def test_whole_text_refuses_a_document_too_large_to_hand_to_a_model_whole(tmp_path: Path) -> None:
+    text = "a short adventure about a bell and a tide"
+    small = tmp_path / "small.md"
+    small.write_text(text, encoding="utf-8")
+    assert whole_text(small) == text
+
+    big = tmp_path / "big.md"
+    big.write_text("a" * (WHOLE_CHARS + 1), encoding="utf-8")
+    with pytest.raises(ValueError, match="too large"):
+        _ = whole_text(big)
 
 
 def _target(name: str) -> LaunchTarget:
