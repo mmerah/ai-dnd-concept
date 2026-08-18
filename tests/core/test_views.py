@@ -4,7 +4,7 @@ from aidm.app.views import JournalView, journal_markdown, played_turns, player_s
 from aidm.engines.loner3e.mechanics import Mechanics, Sheet
 from aidm.state.base import PLAYER_ID, SAVE_VERSION, Counter, Entity, EntityId, Kind
 from aidm.state.facts import Fact
-from aidm.state.turn import Applied, Turn
+from aidm.state.trace import Applied, Turn
 from aidm.state.world import (
     CONNECTED,
     Exchange,

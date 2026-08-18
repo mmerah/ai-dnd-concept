@@ -78,7 +78,6 @@ class Settings(BaseSettings):
     roles: dict[Role, RoleConfig] = Field(default_factory=dict)
     media: MediaConfig = MediaConfig()
     max_beats: int = Field(default=3, ge=1)
-    max_growth: int = Field(default=3, ge=0)
     max_memories: int = Field(default=2, ge=0)
     history_window: int = Field(default=6, ge=0)
     saves_dir: Path = Path("saves")

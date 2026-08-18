@@ -4,22 +4,25 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from random import Random
 
+from pydantic_ai import Agent
+
 from aidm.config import Settings
 from aidm.content.authored import Character, Scenario
 from aidm.content.sources import CanonSource, CitedOrInventedSource, ingest
 from aidm.content.store import FileStore, load_character, load_scenario, read_source, require_source
 from aidm.engines.advancement import Advancement, Offer, ProposalBase
-from aidm.engines.loader import Engine, engine_class
+from aidm.engines.engine import Engine
+from aidm.engines.registry import engine_class
 from aidm.engines.sheets import SheetBase
 from aidm.engines.transact import transact
 from aidm.state.base import PLAYER_ID, SAVE_VERSION, EngineId, Entity, EntityId
+from aidm.state.beat import Resolution
 from aidm.state.facts import Fact
-from aidm.state.plan import Resolution
-from aidm.state.turn import Applied, TraceEntry, Turn
+from aidm.state.trace import Applied, TraceEntry, Turn
 from aidm.state.world import PARTY_MEMBER, GameState, Relation
+from aidm.turn.agents import AdvancementContext, TurnAgents, advisor_agent, build_turn_agents
 from aidm.turn.pipeline import TURN_STEPS, run_turn
 from aidm.turn.prompts import render_proposal
-from aidm.turn.roles import AdvancementContext, Stage, Stages, advancement_stage, build_stages
 
 from .launcher import LaunchTarget
 from .media import ICON_DIR, STYLE, Illustrator
@@ -37,10 +40,10 @@ class Drafted:
 
 def build_advisor(
     engine: Engine[SheetBase], settings: Settings
-) -> Stage[AdvancementContext, ProposalBase] | None:
+) -> Agent[AdvancementContext, ProposalBase] | None:
     if engine.advancement is None:
         return None
-    return advancement_stage(engine.advancement, settings)
+    return advisor_agent(engine.advancement, settings)
 
 
 def open_source(config: Settings, target: LaunchTarget, scenario: Scenario) -> CanonSource | None:
@@ -140,8 +143,8 @@ class GameSession:
     scenario: Scenario
     character: Character
     engine: Engine[SheetBase]
-    stages: Stages
-    advisor: Stage[AdvancementContext, ProposalBase] | None
+    stages: TurnAgents
+    advisor: Agent[AdvancementContext, ProposalBase] | None
     store: FileStore
     settings: Settings
     media: Illustrator | None = None
@@ -226,7 +229,8 @@ class GameSession:
         """The advisor drafts the change; nothing is committed until the player confirms it."""
         advancement, advisor = self._advancement(), self._advisor()
         deps = AdvancementContext(advancement=advancement, state=self.state, offer=offer)
-        return await advisor.run(render_proposal(self.engine, self.state, offer, intent), deps)
+        prompt = render_proposal(self.engine, self.state, offer, intent)
+        return (await advisor.run(prompt, deps=deps)).output
 
     def preview(self, drafted: Drafted) -> tuple[Fact, ...]:
         """What the change would write, read off a throwaway draft, not the committed state."""
@@ -264,7 +268,7 @@ class GameSession:
             raise ValueError(f"the {self.engine.id!r} engine has no advancement")
         return self.engine.advancement
 
-    def _advisor(self) -> Stage[AdvancementContext, ProposalBase]:
+    def _advisor(self) -> Agent[AdvancementContext, ProposalBase]:
         if self.advisor is None:
             raise ValueError(f"the {self.engine.id!r} engine has no advancement")
         return self.advisor
@@ -342,7 +346,7 @@ class Runtime:
             scenario=scenario,
             character=character,
             engine=engine,
-            stages=build_stages(engine, config, open_source(config, target, scenario)),
+            stages=build_turn_agents(engine, config, open_source(config, target, scenario)),
             advisor=build_advisor(engine, config),
             store=store,
             settings=config,

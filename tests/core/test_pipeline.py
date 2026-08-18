@@ -19,9 +19,7 @@ from pydantic_ai.messages import ModelMessage, ModelRequest, ModelResponse, Retr
 from pydantic_ai.models.function import AgentInfo, FunctionModel
 
 from aidm.engines.loner3e.actions import outcome_for
-from aidm.engines.loner3e.mechanics import Mechanics
 from aidm.state.base import PLAYER_ID, EntityId
-from aidm.state.plan import DirectorBeat
 from aidm.state.world import Memory
 from aidm.turn.pipeline import TURN_STEPS
 
@@ -129,8 +127,8 @@ async def test_a_later_beat_walks_the_way_the_first_one_opened() -> None:
         "narrator",
         "worldkeeper",
     ]
-    too_early = DirectorBeat.model_validate({"effects": [onward]})
-    assert engine.check_beat(state, too_early) is not None
+    too_early = engine.beat_type.model_validate({"effects": [onward]})
+    assert engine.check_beat(state, too_early, False) is not None
 
 
 async def test_the_loop_stops_at_max_beats_and_still_gets_its_settle_pass() -> None:
@@ -288,71 +286,6 @@ async def test_a_narrated_line_spoken_by_someone_not_here_is_retried_with_the_id
     reasons = [part.content for part in retry.parts if isinstance(part, RetryPromptPart)]
     assert any("elena" in str(reason) for reason in reasons)
     assert result.state.history[-1].narration == "The door settles."
-
-
-async def test_worldkeeper_creations_receive_valid_engine_rules_before_commit() -> None:
-    engine, state = initialized()
-    detail = {
-        "description": "Newly arrived from the road.",
-        "hook": "Carries news from beyond the abbey.",
-    }
-    director = FunctionModel(scripted(plan()))
-    narrator = FunctionModel(scripted(narrated("A courier enters.")))
-    worldkeeper = FunctionModel(
-        scripted(
-            structured(
-                creations=[
-                    {
-                        "kind": "location",
-                        "name": "The Rain Gallery",
-                        "brief": "An open arcade beyond the study.",
-                        "detail": detail,
-                    },
-                    {
-                        "kind": "actor",
-                        "name": "Iven",
-                        "brief": "A rain-soaked courier.",
-                        "location": "The Rain Gallery",
-                        "detail": detail,
-                    },
-                    {
-                        "kind": "item",
-                        "name": "a sealed letter",
-                        "brief": "Red wax bears no crest.",
-                        "location": "The Rain Gallery",
-                        "detail": detail,
-                    },
-                ]
-            )
-        )
-    )
-    result = await played(
-        engine,
-        state,
-        "Who comes through the door?",
-        director=director,
-        narrator=narrator,
-        worldkeeper=worldkeeper,
-    )
-
-    names = {"The Rain Gallery", "Iven", "a sealed letter"}
-    created = {
-        entity.kind: entity
-        for entity in result.state.world.entities.values()
-        if entity.name in names
-    }
-    assert set(created) == {"location", "actor", "item"}
-    location, actor, item = created["location"], created["actor"], created["item"]
-    assert actor.parent_id == location.id
-    assert item.parent_id == location.id
-    assert location.parent_id is None
-    mechanics = result.state.mechanics_as(Mechanics)
-    assert set(mechanics.sheets[actor.id].counters()) == {"luck"}
-    assert item.id not in mechanics.sheets
-    resolved = next(step.output for step in result.turn.steps if step.name == "resolve")
-    assert resolved == "- (nothing mechanical happened)"
-    assert "new actor" not in shown(result.turn, "narrator")
-    engine.validate(result.state)
 
 
 async def test_a_failed_role_never_mutates_the_input_state() -> None:

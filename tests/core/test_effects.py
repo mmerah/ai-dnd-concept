@@ -1,7 +1,7 @@
 import pytest
 from core_test_support import initialized
 
-from aidm.state.apply import MAX_HOOK_ROUNDS, apply_effect, fire_hooks
+from aidm.state.apply_effects import apply_effect
 from aidm.state.base import PLAYER_ID, Counter, Entity, EntityId
 from aidm.state.effects import (
     AdvanceThread,
@@ -13,6 +13,7 @@ from aidm.state.effects import (
     WorldOp,
 )
 from aidm.state.facts import CORE, Fact
+from aidm.state.hooks import MAX_HOOK_ROUNDS, fire_hooks
 from aidm.state.world import CONNECTED, LOCKED_TAG, PARTY_MEMBER, Hook, HookMatch, Thread
 
 BELL_TOWER = EntityId("bell_tower")
@@ -165,26 +166,24 @@ def test_acting_on_an_unrevealed_actor_reveals_it_before_its_traits_change() -> 
 
 
 def test_a_repeating_hook_fires_on_every_tick_of_its_clock() -> None:
-    engine, state = initialized()
+    _, state = initialized()
     draft = state.draft()
     draft.world.threads["ritual"] = Thread(
         id="ritual", title="The rite", clock=Counter(current=0, maximum=2)
     )
-    draft.world.hooks = (
-        Hook(
+    draft.world.hooks = {
+        "rite-moves": Hook(
             id="rite-moves",
             once=False,
             match=HookMatch(kind="thread_advanced", data={"thread_id": "ritual"}),
             note="the rite moves on",
         ),
-    )
+    }
 
     for filled in (1, 2):
         moved = apply_effect(draft, AdvanceThread(thread_id="ritual", tick=1))
         assert moved[0].data["clock_current"] == filled
-        assert [fact.kind for fact in fire_hooks(draft, moved, engine.apply_effect)] == [
-            "hook_fired"
-        ]
+        assert [fact.kind for fact in fire_hooks(draft, moved)] == ["hook_fired"]
 
     assert draft.world.fired_hooks == ("rite-moves",)
     assert draft.world.threads["ritual"].clock == Counter(current=2, maximum=2)
@@ -197,71 +196,66 @@ def test_a_tick_on_a_thread_without_a_clock_is_refused() -> None:
 
 
 def test_a_hook_that_fills_a_clock_fires_the_filled_clock_hook_in_the_same_pass() -> None:
-    engine, state = initialized()
+    _, state = initialized()
     draft = state.draft()
     draft.world.threads["trial"] = Thread(
         id="trial", title="The trial", clock=Counter(current=0, maximum=2)
     )
-    draft.world.hooks = (
-        Hook(
+    draft.world.hooks = {
+        "ticker": Hook(
             id="ticker",
             once=False,
             match=HookMatch(kind="entity_discovered"),
-            effects=({"name": "advance-thread", "args": {"thread_id": "trial", "tick": 1}},),
+            effects=(AdvanceThread(thread_id="trial", tick=1),),
         ),
-        Hook(
+        "finale": Hook(
             id="finale",
             match=HookMatch(kind="thread_advanced", data={"clock_filled": True}),
         ),
-    )
+    }
 
     first = apply_effect(draft, Reveal(entity_id=VAULT_MAP))
-    assert [fact.kind for fact in fire_hooks(draft, first, engine.apply_effect)] == [
-        "hook_fired",
-        "thread_advanced",
-    ]
+    assert [fact.kind for fact in fire_hooks(draft, first)] == ["hook_fired", "thread_advanced"]
 
     second = apply_effect(draft, Reveal(entity_id=VAULT))
-    assert [fact.kind for fact in fire_hooks(draft, second, engine.apply_effect)] == [
+    assert [fact.kind for fact in fire_hooks(draft, second)] == [
         "hook_fired",
         "thread_advanced",
         "hook_fired",
     ]
 
 
-def test_a_hook_effect_the_vocabulary_does_not_take_lands_as_hook_failed() -> None:
-    engine, state = initialized()
+def test_a_hook_effect_that_fails_to_apply_lands_as_hook_failed() -> None:
+    _, state = initialized()
     draft = state.draft()
-    draft.world.hooks = (
-        Hook(
+    draft.world.hooks = {
+        "broken": Hook(
             id="broken",
             match=HookMatch(kind="entity_discovered"),
-            effects=({"name": "no-such-call", "args": {}},),
+            effects=(Reveal(entity_id=EntityId("ghost")),),
         ),
-    )
+    }
 
     seen = apply_effect(draft, Reveal(entity_id=VAULT_MAP))
-    fired = fire_hooks(draft, seen, engine.apply_effect)
+    fired = fire_hooks(draft, seen)
 
     assert [fact.kind for fact in fired] == ["hook_fired", "hook_failed"]
 
 
 def test_hooks_that_feed_each_other_stop_at_the_round_cap() -> None:
-    engine, state = initialized()
+    _, state = initialized()
     draft = state.draft()
-    draft.world.hooks = (
-        Hook(
+    draft.world.hooks = {
+        "self-feeder": Hook(
             id="self-feeder",
             once=False,
             match=HookMatch(kind="thread_advanced"),
-            effects=(
-                {"name": "advance-thread", "args": {"thread_id": "vault-seal", "status": "active"}},
-            ),
+            effects=(AdvanceThread(thread_id="vault-seal", status="active"),),
         ),
-    )
+    }
     seed = Fact(source=CORE, kind="thread_advanced", trace="seed")
 
-    fired = fire_hooks(draft, [seed], engine.apply_effect)
+    fired = fire_hooks(draft, [seed])
 
     assert fired[-1].kind == "hooks_capped"
     assert sum(1 for fact in fired if fact.kind == "hook_fired") == MAX_HOOK_ROUNDS

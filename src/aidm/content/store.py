@@ -8,19 +8,18 @@ from shutil import rmtree
 from pydantic import BaseModel, ConfigDict, JsonValue, TypeAdapter
 
 from aidm.state.base import SAVE_VERSION, EngineId, Slug, content_id
-from aidm.state.turn import TraceEntry
+from aidm.state.trace import TraceEntry
 from aidm.state.world import GameState, ScenarioMeta
 
 from .authored import (
-    Binding,
     Character,
     CharacterOverlay,
     CharacterProfile,
     CreatedCharacter,
+    EngineBinding,
     Scenario,
     ScenarioOverlay,
     ScenarioWorld,
-    check_hooks,
 )
 from .sources import CanonSource, WholeSource, whole_text
 
@@ -42,7 +41,7 @@ def read_characters(directory: Path, engines: Sequence[EngineId]) -> Playable[Ch
     return _playable(directory, PROFILE_FILE, CharacterProfile, engines)
 
 
-def load_scenario(directory: Path, name: Slug, binding: Binding) -> Scenario:
+def load_scenario(directory: Path, name: Slug, binding: EngineBinding) -> Scenario:
     folder = directory / content_id(name)
     scenario = Scenario(
         id=name,
@@ -50,7 +49,6 @@ def load_scenario(directory: Path, name: Slug, binding: Binding) -> Scenario:
         world=_read(folder / WORLD_FILE, ScenarioWorld),
         overlay=_read(folder / f"{binding.engine}.json", ScenarioOverlay),
     )
-    check_hooks(scenario.world, binding)
     binding.check_overlay(scenario.overlay.entities.values())
     return scenario
 
@@ -78,7 +76,7 @@ def require_source(directory: Path, name: Slug) -> Path:
     return path
 
 
-def load_character(directory: Path, name: Slug, binding: Binding) -> Character:
+def load_character(directory: Path, name: Slug, binding: EngineBinding) -> Character:
     folder = directory / content_id(name)
     character = Character(
         id=name,
@@ -142,7 +140,7 @@ def _read[T: BaseModel](path: Path, model: type[T]) -> T:
 
 
 def engine_text(path: Path) -> str:
-    """In content so `engines.loader` and `engines.advancement` share it without a cycle."""
+    """In content so `engines.engine` and `engines.advancement` share it without a cycle."""
     if not path.is_file():
         raise ValueError(f"engine file {str(path)!r} is missing")
     return path.read_text(encoding=ENCODING)

@@ -2,28 +2,29 @@ from random import Random
 
 import pytest
 from core_test_support import initialized
+from pydantic import ValidationError
 
 from aidm.app.session import build_engine
-from aidm.engines.loader import Engine, engines
-from aidm.engines.loner3e.actions import Question
+from aidm.engines.engine import Engine
+from aidm.engines.loner3e.actions import Loner3eBeat, RestoreLuck
 from aidm.engines.loner3e.mechanics import LUCK_MAX, Mechanics, Sheet
 from aidm.engines.loner3e.rules import Loner3eEngine
+from aidm.engines.registry import engines
 from aidm.engines.sheets import SheetBase
 from aidm.state.base import PLAYER_ID, EngineId, Entity, EntityId, Frozen
+from aidm.state.beat import Resolution
+from aidm.state.effects import Move, WorldEffect
 from aidm.state.facts import Fact
-from aidm.state.plan import Resolution, RuleCall
 from aidm.state.world import GameState
 
 
 def _turn(engine: Engine[SheetBase], state: GameState) -> tuple[GameState, tuple[Fact, ...]]:
     draft = state.draft()
-    calls = (
-        RuleCall(name="move", args={"entity_id": "vault_map"}),
-        RuleCall(name="restore-luck", args={"actor_id": PLAYER_ID}),
+    effects: tuple[WorldEffect | RestoreLuck, ...] = (
+        Move(entity_id=EntityId("vault_map")),
+        RestoreLuck(actor_id=PLAYER_ID),
     )
-    facts = [
-        fact for call in calls for fact in engine.apply_effect(draft, call.model_dump(mode="json"))
-    ]
+    facts = [fact for effect in effects for fact in engine.apply(draft, effect)]
     return draft.committed(), tuple(facts)
 
 
@@ -109,7 +110,6 @@ def test_a_sheet_engine_that_declares_nothing_is_refused_before_it_plays() -> No
         id = EngineId("undeclared")
         badge = ("UNDECLARED", "grey-6")
         engine_dir = Loner3eEngine.engine_dir
-        actions = {"question": Question}
 
         def new_sheet(self, draft: GameState, rng: Random) -> Sheet:
             return Sheet()
@@ -123,8 +123,18 @@ def test_a_sheet_engine_that_declares_nothing_is_refused_before_it_plays() -> No
         def resolve_roll(self, draft: GameState, roll: Frozen, rng: Random) -> Resolution:
             return Resolution()
 
+        def unpack_beat(self, beat: Frozen) -> tuple[Frozen | None, tuple[Frozen, ...]]:
+            raise TypeError
+
     with pytest.raises(AttributeError, match="sheet_type"):
         _ = Undeclared()
+
+
+def test_a_beat_naming_a_roll_this_engine_has_not_is_refused() -> None:
+    """What replaces the deleted translation guard: typed output rejects a roll this engine does
+    not have at validation, before the beat ever reaches the engine."""
+    with pytest.raises(ValidationError):
+        _ = Loner3eBeat.model_validate({"roll": {"op": "attempt", "actor_id": PLAYER_ID}})
 
 
 def test_every_registered_engine_builds_itself() -> None:

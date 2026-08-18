@@ -1,7 +1,7 @@
 from collections.abc import Sequence
 
 from aidm.state.base import Frozen, Slug, ThreadStatus
-from aidm.state.turn import TraceEntry, Turn
+from aidm.state.trace import TraceEntry, Turn
 from aidm.state.world import Exchange, GameState, Line
 from aidm.turn.scene import SceneSnapshot, VisibleScene
 

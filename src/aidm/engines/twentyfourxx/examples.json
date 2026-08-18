@@ -2,29 +2,23 @@
   {
     "effects": [],
     "roll": {
-      "name": "attempt",
-      "args": {
-        "actor_id": "player",
-        "goal": "Force the vault's seal before the whispering finds him",
-        "skill": "Hacking",
-        "helped": "the repair kit he never travels without",
-        "luck_test": "the seal's failsafe alerts something in the dark"
-      }
+      "op": "attempt",
+      "actor_id": "player",
+      "goal": "Force the vault's seal before the whispering finds him",
+      "skill": "Hacking",
+      "helped": "the repair kit he never travels without",
+      "luck_test": "the seal's failsafe alerts something in the dark"
     }
   },
   {
     "effects": [
       {
-        "name": "reveal",
-        "args": {
-          "entity_id": "vault_map"
-        }
+        "op": "reveal",
+        "entity_id": "vault_map"
       },
       {
-        "name": "move",
-        "args": {
-          "entity_id": "vault_map"
-        }
+        "op": "move",
+        "entity_id": "vault_map"
       }
     ],
     "roll": null

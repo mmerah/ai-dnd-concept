@@ -1,6 +1,5 @@
 from collections.abc import Callable, Sequence
 from dataclasses import dataclass
-from functools import cached_property
 from random import Random
 
 from pydantic_ai import (
@@ -17,85 +16,58 @@ from pydantic_ai.output import OutputSpec
 from pydantic_ai.providers.openai import OpenAIProvider
 from pydantic_ai.toolsets import AbstractToolset, FunctionToolset
 
-from aidm.config import ProviderConfig, Role, RoleConfig, Settings
+from aidm.config import Role, Settings
 from aidm.content.sources import CanonSource
 from aidm.engines.advancement import Advancement, Offer, ProposalBase
-from aidm.engines.loader import Engine
+from aidm.engines.engine import Engine
 from aidm.engines.sheets import SheetBase
 from aidm.engines.transact import transact
-from aidm.state.base import EntityId, Kind
-from aidm.state.plan import DirectorBeat, check_draft
-from aidm.state.turn import WorldkeeperReport
+from aidm.state.base import EntityId, Frozen, Kind
+from aidm.state.beat import check_draft
 from aidm.state.world import Exchange, GameState, Narration
 
 from . import prompts
 from .expansion import MAX_EXPANSIONS, ExpansionPatch, Expansions, apply_patch, written
+from .reports import WorldkeeperReport
 from .scene import SceneSnapshot, VisibleScene
 
 
-@dataclass(frozen=True)
-class Stage[Deps, Out]:
-    name: str
-    instructions: str
-    output_type: OutputSpec[Out]
-    deps_type: type[Deps]
-    role: RoleConfig
-    provider: ProviderConfig
-    toolsets: Sequence[AbstractToolset[Deps]] = ()
-
-    @cached_property
-    def agent(self) -> Agent[Deps, Out]:
-        provider = OpenAIProvider(
-            base_url=self.provider.base_url,
-            api_key=self.provider.api_key.get_secret_value(),
-        )
-        model = OpenAIChatModel(self.role.model, provider=provider)
-        settings = OpenAIChatModelSettings(
-            max_tokens=self.role.max_tokens,
-            openai_reasoning_effort=self.role.reasoning_effort,
-        )
-        if self.role.temperature is not None:
-            settings["temperature"] = self.role.temperature
-        return Agent(
-            model,
-            name=self.name,
-            output_type=self.output_type,
-            instructions=self.instructions,
-            deps_type=self.deps_type,
-            toolsets=list(self.toolsets),
-            retries=self.role.retries,
-            model_settings=settings,
-        )
-
-    async def run(self, prompt: str, deps: Deps, recent: Sequence[ModelMessage] = ()) -> Out:
-        result = await self.agent.run(prompt, deps=deps, message_history=list(recent))
-        return result.output
-
-    @classmethod
-    def of[D, O](
-        cls,
-        name: Role,
-        settings: Settings,
-        *,
-        instructions: str,
-        output_type: OutputSpec[O],
-        deps_type: type[D],
-        toolsets: Sequence[AbstractToolset[D]] = (),
-        validator: Callable[[RunContext[D], O], O] | None = None,
-    ) -> "Stage[D, O]":
-        role = settings.role(name)
-        built = Stage(
-            name=name,
-            instructions=instructions,
-            output_type=output_type,
-            deps_type=deps_type,
-            role=role,
-            provider=settings.providers.for_name(role.provider),
-            toolsets=toolsets,
-        )
-        if validator is not None:
-            _ = built.agent.output_validator(validator)
-        return built
+def build_agent[Deps, Out](
+    role: Role,
+    settings: Settings,
+    *,
+    instructions: str,
+    output_type: OutputSpec[Out],
+    deps_type: type[Deps],
+    toolsets: Sequence[AbstractToolset[Deps]] = (),
+    validator: Callable[[RunContext[Deps], Out], Out] | None = None,
+) -> Agent[Deps, Out]:
+    role_config = settings.role(role)
+    provider_config = settings.providers.for_name(role_config.provider)
+    provider = OpenAIProvider(
+        base_url=provider_config.base_url,
+        api_key=provider_config.api_key.get_secret_value(),
+    )
+    model = OpenAIChatModel(role_config.model, provider=provider)
+    model_settings = OpenAIChatModelSettings(
+        max_tokens=role_config.max_tokens,
+        openai_reasoning_effort=role_config.reasoning_effort,
+    )
+    if role_config.temperature is not None:
+        model_settings["temperature"] = role_config.temperature
+    agent = Agent(
+        model,
+        name=role,
+        output_type=output_type,
+        instructions=instructions,
+        deps_type=deps_type,
+        toolsets=list(toolsets),
+        retries=role_config.retries,
+        model_settings=model_settings,
+    )
+    if validator is not None:
+        _ = agent.output_validator(validator)
+    return agent
 
 
 @dataclass(frozen=True, slots=True)
@@ -119,49 +91,44 @@ class AdvancementContext:
 
 
 @dataclass(frozen=True, slots=True)
-class Stages:
+class TurnAgents:
     """The turn's model-facing roles, built once per session."""
 
-    director: Stage[PlanContext, DirectorBeat]
-    narrator: Stage[VisibleScene, Narration]
-    worldkeeper: Stage[GameState, WorldkeeperReport]
+    director: Agent[PlanContext, Frozen]
+    narrator: Agent[VisibleScene, Narration]
+    worldkeeper: Agent[GameState, WorldkeeperReport]
     # Built only when the adventure may expand; the turn reaches it through the Director's tool.
-    expander: Stage[PlanContext, ExpansionPatch] | None = None
+    expander: Agent[PlanContext, ExpansionPatch] | None = None
 
 
-def director_stage(
+def director_agent(
     engine: Engine[SheetBase],
     settings: Settings,
     expand_tool: FunctionToolset[PlanContext] | None = None,
-) -> Stage[PlanContext, DirectorBeat]:
+) -> Agent[PlanContext, Frozen]:
     """One role for the turn's first ask and every later beat: `PlanContext.settle` is the only
     thing that changes what a call may legally answer."""
 
-    def legal(ctx: RunContext[PlanContext], plan: DirectorBeat) -> DirectorBeat:
-        if ctx.deps.settle and plan.roll is not None:
-            raise ModelRetry(
-                "this is the turn's last beat: leave `roll` null and write only what the dice "
-                "already settled."
-            )
-        if refused := ctx.deps.engine.check_beat(ctx.deps.state, plan):
+    def legal(ctx: RunContext[PlanContext], plan: Frozen) -> Frozen:
+        if refused := ctx.deps.engine.check_beat(ctx.deps.state, plan, ctx.deps.settle):
             raise ModelRetry(refused)
         return plan
 
     toolsets: list[AbstractToolset[PlanContext]] = list(engine.director_toolsets)
     if expand_tool is not None:
         toolsets.append(expand_tool)
-    return Stage.of(
+    return build_agent(
         "director",
         settings,
-        instructions=f"{prompts.DIRECTOR}\n\n{engine.director_instructions}",
-        output_type=NativeOutput(DirectorBeat),
+        instructions=prompts.director_instructions(engine.director_instructions),
+        output_type=NativeOutput(engine.beat_type),
         deps_type=PlanContext,
         toolsets=toolsets,
         validator=legal,
     )
 
 
-def narrator_stage(settings: Settings) -> Stage[VisibleScene, Narration]:
+def narrator_agent(settings: Settings) -> Agent[VisibleScene, Narration]:
     def attributed(ctx: RunContext[VisibleScene], narration: Narration) -> Narration:
         """The leak rule holds through the validator, not through trust."""
         present = {ctx.deps.player.id, *(entity.id for entity in ctx.deps.here)}
@@ -179,7 +146,7 @@ def narrator_stage(settings: Settings) -> Stage[VisibleScene, Narration]:
             )
         return narration
 
-    return Stage.of(
+    return build_agent(
         "narrator",
         settings,
         instructions=prompts.NARRATOR,
@@ -189,7 +156,7 @@ def narrator_stage(settings: Settings) -> Stage[VisibleScene, Narration]:
     )
 
 
-def worldkeeper_stage(settings: Settings) -> Stage[GameState, WorldkeeperReport]:
+def worldkeeper_agent(settings: Settings) -> Agent[GameState, WorldkeeperReport]:
     def known(ctx: RunContext[GameState], report: WorldkeeperReport) -> WorldkeeperReport:
         state = ctx.deps
         strangers = sorted(
@@ -206,7 +173,7 @@ def worldkeeper_stage(settings: Settings) -> Stage[GameState, WorldkeeperReport]
             )
         return report
 
-    return Stage.of(
+    return build_agent(
         "worldkeeper",
         settings,
         instructions=prompts.WORLDKEEPER,
@@ -216,7 +183,7 @@ def worldkeeper_stage(settings: Settings) -> Stage[GameState, WorldkeeperReport]
     )
 
 
-def expander_stage(settings: Settings) -> Stage[PlanContext, ExpansionPatch]:
+def expander_agent(settings: Settings) -> Agent[PlanContext, ExpansionPatch]:
     """A patch that would not commit is refused here, against a throwaway draft, so the turn's own
     draft only ever sees canon that lands."""
 
@@ -226,15 +193,13 @@ def expander_stage(settings: Settings) -> Stage[PlanContext, ExpansionPatch]:
         # The whole mutation sequence the real one will run, hooks and seeding included: whatever
         # a thinner trial skipped would fail the turn outright instead of asking again.
         def trial(draft: GameState) -> object:
-            return transact(
-                deps.engine, draft, lambda copy: apply_patch(deps.engine, copy, patch), Random(0)
-            )
+            return transact(deps.engine, draft, lambda copy: apply_patch(copy, patch), Random(0))
 
         if refused := check_draft(deps.state, trial):
             raise ModelRetry(refused)
         return patch
 
-    return Stage.of(
+    return build_agent(
         "expander",
         settings,
         instructions=prompts.EXPANDER,
@@ -246,7 +211,7 @@ def expander_stage(settings: Settings) -> Stage[PlanContext, ExpansionPatch]:
 
 def expansion_toolset(
     engine: Engine[SheetBase],
-    expander: Stage[PlanContext, ExpansionPatch],
+    expander: Agent[PlanContext, ExpansionPatch],
     source: CanonSource,
 ) -> FunctionToolset[PlanContext]:
     async def expand_world(
@@ -293,7 +258,7 @@ def expansion_toolset(
             request=asked,
         )
         try:
-            patch = await expander.run(prompt, deps)
+            patch = (await expander.run(prompt, deps=deps)).output
         except UnexpectedModelBehavior as refused:
             # Recorded before the retry: an expansion that wrote nothing is the one the trace is
             # read for, and the Expander's own prompt and reason exist nowhere else.
@@ -304,7 +269,7 @@ def expansion_toolset(
         deps.expansions.record(prompt, patch)
         # Outside the retry: the patch's own author already ran this sequence against a throwaway
         # draft, and a half-applied draft is not a state to plan another beat against.
-        landed = transact(engine, draft, lambda copy: apply_patch(engine, copy, patch), deps.rng)
+        landed = transact(engine, draft, lambda copy: apply_patch(copy, patch), deps.rng)
         deps.expansions.facts.extend(landed.facts)
         return written(patch)
 
@@ -313,9 +278,9 @@ def expansion_toolset(
     return FunctionToolset(tools=[Tool(expand_world, sequential=True)])
 
 
-def advancement_stage(
+def advisor_agent(
     advancement: Advancement, settings: Settings
-) -> Stage[AdvancementContext, ProposalBase]:
+) -> Agent[AdvancementContext, ProposalBase]:
     def legal(ctx: RunContext[AdvancementContext], proposal: ProposalBase) -> ProposalBase:
         deps = ctx.deps
         refused = deps.advancement.violation(deps.state, deps.offer, proposal)
@@ -323,30 +288,30 @@ def advancement_stage(
             raise ModelRetry(refused)
         return proposal
 
-    return Stage.of(
+    return build_agent(
         "advisor",
         settings,
-        instructions=f"{prompts.CORE_ADVISOR}\n\n{advancement.instructions}",
+        instructions=prompts.advisor_instructions(advancement.instructions),
         output_type=NativeOutput(advancement.proposal_type),
         deps_type=AdvancementContext,
         validator=legal,
     )
 
 
-def build_stages(
+def build_turn_agents(
     engine: Engine[SheetBase], settings: Settings, source: CanonSource | None = None
-) -> Stages:
+) -> TurnAgents:
     """A game with nothing to expand from builds no Expander, so its Director agent is the one
     shipped today."""
-    expander: Stage[PlanContext, ExpansionPatch] | None = None
+    expander: Agent[PlanContext, ExpansionPatch] | None = None
     expand_tool: FunctionToolset[PlanContext] | None = None
     if source is not None:
-        expander = expander_stage(settings)
+        expander = expander_agent(settings)
         expand_tool = expansion_toolset(engine, expander, source)
-    return Stages(
-        director=director_stage(engine, settings, expand_tool),
-        narrator=narrator_stage(settings),
-        worldkeeper=worldkeeper_stage(settings),
+    return TurnAgents(
+        director=director_agent(engine, settings, expand_tool),
+        narrator=narrator_agent(settings),
+        worldkeeper=worldkeeper_agent(settings),
         expander=expander,
     )
 

@@ -119,64 +119,6 @@ confirm it. Present dilemmas you do not know how to solve. Improvise a ruling to
 this SRD leaves open, and revise a ruling that proved unsatisfying rather than clinging to it.
 
 
-## Rolls
-
-What a `roll` may name, and the `args` each one takes. One roll at most per beat, and only what the list below spells.
-
-`attempt` — One risky attempt, answered by the highest die of a pool.
-  - `actor_id` (required) — Exact id of the actor attempting this: the player, or an actor here.
-  - `goal` (required) — What the actor is trying to do and what they risk by trying, in one line.
-  - `skill` (default "") — The skill on the actor's sheet this calls on, copied exactly as it is written there. Empty when none of theirs applies: they roll the bare d6.
-  - `helped` (default "") — The circumstance that makes this easier — a skill, a piece of gear, the ground they hold, an ally's presence — in a few words. Empty when nothing does.
-  - `helper_id` (default null) — Exact id of an ally here who helps with this — they roll their own skill die into the pool. Null when nobody helps.
-  - `helper_skill` (default "") — The skill on the *helper's* sheet this calls on, copied exactly as it is written there. Empty when none of theirs applies: they roll the bare d6.
-  - `hindered` (default "") — The circumstance that makes this harder, in a few words. Empty when nothing does.
-  - `luck_test` (default "") — What bad luck might arrive alongside this — running out of ammo, running into guards. The engine rolls whether it does. Empty for no test.
-
-`luck-test` — The SRD's standalone bad-luck test, for a beat where nothing is attempted.
-  - `actor_id` (required) — Exact id of the actor whose luck is tested: the player, or an actor here.
-  - `subject` (required) — What bad luck might arrive — running out of ammo, running into guards. The engine rolls whether it does.
-
-## Effects
-
-What an `effects` entry may name, and the `args` each one takes. A beat writes as many as the fiction causes, or none.
-
-`reveal` — Reveal an entity that exists but the player does not know yet: they notice it, are told of it, or reach it. Prefer this over inventing a replacement.
-  - `entity_id` (required) — Exact id of the unrevealed canon entity.
-
-`move` — Move an actor who actually changes location, or one item within the player's reach: picked up, set down here, or handed to an actor here. Moving the player to an unrevealed location reveals it.
-  - `entity_id` (default null) — Exact id of the actor or item that moves; null moves the player. An item must be one the player carries, or one loose at their location.
-  - `to_id` (default null) — Exact id of where it goes: for an actor the location they enter; for an item an actor here with the player, or the player's own location to set it down. An actor always names one; null hands the item to the player.
-
-`gain-improvised-item` — Give the player an ordinary incidental object that is not in canon and is not worth a canon entry of its own. Never a substitute for an item that already exists.
-  - `item_name` (required) — The object written out, such as 'a handful of gravel'.
-
-`trait-change` — Put a lasting condition, skill, or frailty on an entity, or lift one the fiction ends. The trait shows the id written out: `battle-worn` appears as Battle Worn.
-  - `mode` (one of `add`, `remove`; required) — `add` puts the trait on, `remove` lifts one the entity carries.
-  - `entity_id` (required) — Exact id of the entity affected; an actor must be here with the player.
-  - `trait_id` (required) — Stable slug for the trait, such as `poisoned`; to remove, the exact id of a trait the entity carries.
-  - `text` (default "") — The constraint or benefit it puts on the entity, in prose. Adding only.
-
-`relation-change` — Record, break, unblock, or reveal a lasting tie between two entities. Containment is not a tie: carrying an item or standing somewhere are moves. `reveal` shows the player a way through they did not know about; write it before moving them through a passage they have not found. `untag` lifts a block such as `locked` when the fiction opens it.
-  - `mode` (one of `add`, `remove`, `untag`, `reveal`; required) — What happens to the tie: `add` records it, `remove` breaks it, `untag` lifts a tag it carries, `reveal` shows it to the player.
-  - `kind` (required) — What the tie is: `connected` joins two locations the player can walk between, `party-member` puts an actor here into the player's party (source is the actor, target is `player`).
-  - `source` (required) — Exact id of the tie's source entity.
-  - `target` (required) — Exact id of the tie's target entity.
-  - `tag` (default null) — For `untag` only: the exact id of a tag the tie carries, such as `locked`.
-
-`advance-thread` — Move a storyline the scenario is tracking: where it stands now, or that it is over.
-  - `thread_id` (required) — Exact id of one thread in ACTIVE THREADS.
-  - `status` (one of `active`, `resolved`, `dormant`; default null) — Where the thread now stands, or null to leave it as it is.
-  - `stage` (default null) — Stable slug for the point it has reached, or null to leave it as it is.
-  - `tick` (default 0) — How many segments this fills on the thread's clock, when it has one.
-
-`change-credits` — Move an actor's credits for gear bought, repairs paid, debts collected or pay earned — never for a roll's own outcome, which the engine settles itself.
-  - `actor_id` (required) — Exact id of the actor: the player, or an actor here.
-  - `amount` (required) — Positive to pay them, negative to charge them. A charge the pool cannot cover is refused.
-
-`complete-job` — Record that the job is done — the fiction's own boundary, written once when the crew's engagement genuinely closes, usually alongside resolving its thread. Never for a mere scene ending.
-  - (no arguments)
-
 ## Worked plans
 
 One plan per turn, each opening its own beat; every beat of a turn is the same shape. Most beats need few or no effects, and an empty `effects` is a normal answer. But a beat whose fiction starts or ends a lasting state — a condition taking hold or passing — must write that trait change: nothing records it otherwise.
@@ -186,14 +128,15 @@ Example 1:
 ```json
 {
   "roll": {
-    "name": "attempt",
-    "args": {
-      "actor_id": "player",
-      "goal": "Force the vault's seal before the whispering finds him",
-      "skill": "Hacking",
-      "helped": "the repair kit he never travels without",
-      "luck_test": "the seal's failsafe alerts something in the dark"
-    }
+    "op": "attempt",
+    "actor_id": "player",
+    "goal": "Force the vault's seal before the whispering finds him",
+    "skill": "Hacking",
+    "helped": "the repair kit he never travels without",
+    "helper_id": null,
+    "helper_skill": "",
+    "hindered": "",
+    "luck_test": "the seal's failsafe alerts something in the dark"
   },
   "effects": []
 }
@@ -206,16 +149,13 @@ Example 2:
   "roll": null,
   "effects": [
     {
-      "name": "reveal",
-      "args": {
-        "entity_id": "vault_map"
-      }
+      "op": "reveal",
+      "entity_id": "vault_map"
     },
     {
-      "name": "move",
-      "args": {
-        "entity_id": "vault_map"
-      }
+      "op": "move",
+      "entity_id": "vault_map",
+      "to_id": null
     }
   ]
 }

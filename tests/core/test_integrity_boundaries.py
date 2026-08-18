@@ -15,17 +15,13 @@ from core_test_support import (
 )
 from pydantic import ValidationError
 
-import aidm.state.apply
+import aidm.state.apply_effects
+import aidm.state.hooks
 import aidm.state.world
-from aidm.content.authored import (
-    Character,
-    CharacterOverlay,
-    CharacterProfile,
-    ScenarioWorld,
-    check_hooks,
-)
+from aidm.content.authored import Character, CharacterOverlay, CharacterProfile, ScenarioWorld
 from aidm.engines.loner3e.mechanics import LUCK_MAX, Mechanics
 from aidm.state.base import PLAYER_ID, Entity, EntityId
+from aidm.state.effects import Reveal
 from aidm.state.world import CONNECTED, GameState, Hook, HookFactKind, HookMatch, Relation
 
 HELD = EntityId("frayed_rope")
@@ -146,36 +142,34 @@ def test_a_hook_waiting_on_an_unauthored_id_is_refused() -> None:
 
 
 def test_a_hook_effect_naming_an_unauthored_id_is_refused() -> None:
-    engine, _ = initialized()
     world = scenario().world
     haunted = Hook(
         id="vault-haunted",
         match=HookMatch(kind="entity_discovered", data={"entity_id": "vault"}),
-        effects=({"name": "reveal", "args": {"entity_id": "ghost"}},),
+        effects=(Reveal(entity_id=EntityId("ghost")),),
     )
-    with pytest.raises(ValueError, match=r"vault-haunted.*reveal.*entity_id='ghost'"):
-        check_hooks(updated(world, hooks=(*world.hooks, haunted)), engine.binding())
+    with pytest.raises(ValidationError, match=r"vault-haunted.*reveal.*entity_id='ghost'"):
+        updated(world, hooks=(*world.hooks, haunted))
 
 
 def test_hooks_chaining_discovery_into_discovery_are_refused() -> None:
     """`fire_hooks` feeds a hook's own facts back into matching, so three linked reveals open the
     whole scenario on the first one."""
-    engine, _ = initialized()
     world = scenario().world
     chain = (
         Hook(
             id="map-read",
             match=HookMatch(kind="entity_discovered", data={"entity_id": "vault_map"}),
-            effects=({"name": "reveal", "args": {"entity_id": "elena"}},),
+            effects=(Reveal(entity_id=ELENA),),
         ),
         Hook(
             id="archivist-speaks",
             match=HookMatch(kind="entity_discovered", data={"entity_id": "elena"}),
-            effects=({"name": "reveal", "args": {"entity_id": "vault"}},),
+            effects=(Reveal(entity_id=EntityId("vault")),),
         ),
     )
-    with pytest.raises(ValueError, match=r"domino.*archivist-speaks"):
-        check_hooks(updated(world, hooks=(*world.hooks, *chain)), engine.binding())
+    with pytest.raises(ValidationError, match=r"domino.*archivist-speaks"):
+        updated(world, hooks=(*world.hooks, *chain))
 
 
 def test_a_hook_waiting_on_a_kind_core_never_emits_is_refused() -> None:
@@ -193,7 +187,11 @@ _UNMATCHABLE = {"hook_fired", "hook_failed", "hooks_capped"}
 
 def test_the_hookable_set_tracks_the_kinds_core_actually_emits() -> None:
     """A kind added to core's world ops goes into `HookFactKind`, or is unmatchable here."""
-    sources = (Path(aidm.state.world.__file__), Path(aidm.state.apply.__file__))
+    sources = (
+        Path(aidm.state.world.__file__),
+        Path(aidm.state.apply_effects.__file__),
+        Path(aidm.state.hooks.__file__),
+    )
     emitted = {
         kind
         for source in sources

@@ -4,9 +4,8 @@ from pathlib import Path
 
 from aidm.content.store import engine_text
 from aidm.engines.advancement import Offer
-from aidm.engines.loader import Engine, EntityRenderer
+from aidm.engines.engine import Engine, EntityRenderer
 from aidm.engines.sheets import SheetBase
-from aidm.engines.vocabulary import HOOK_EFFECTS_CARD, WORLD_CALLS, card
 from aidm.state.base import Entity, EntityId, Trait
 from aidm.state.world import GameState, Memory, ScenarioMeta, Thread
 
@@ -76,7 +75,7 @@ def render_worldkeeper(
             _premise(scenario),
             (
                 "EVERYTHING THAT EXISTS",
-                _entities(scene.catalogue(), describe, placement=scene.placement_of, detail=True),
+                _entities(scene.catalogue(), describe, placement=scene.placement_of),
             ),
             ("ALREADY REMEMBERED", _memories(scene)),
             ("ACTIVE THREADS", _threads(scene.threads)),
@@ -288,7 +287,12 @@ SETTLE = engine_text(_PROMPTS_DIR / "settle.md")
 CORE_ADVISOR = engine_text(_PROMPTS_DIR / "core_advisor.md")
 NARRATOR = engine_text(_PROMPTS_DIR / "narrator.md")
 WORLDKEEPER = engine_text(_PROMPTS_DIR / "worldkeeper.md")
-EXPANDER = (
-    f"{engine_text(_PROMPTS_DIR / 'expander.md')}\n\n"
-    f"{card('Hook effects', HOOK_EFFECTS_CARD, WORLD_CALLS)}"
-)
+EXPANDER = engine_text(_PROMPTS_DIR / "expander.md")
+
+
+def director_instructions(engine_instructions: str) -> str:
+    return f"{DIRECTOR}\n\n{engine_instructions}"
+
+
+def advisor_instructions(engine_instructions: str) -> str:
+    return f"{CORE_ADVISOR}\n\n{engine_instructions}"

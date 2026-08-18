@@ -12,7 +12,7 @@ from aidm.content.store import FileStore
 from aidm.engines.loner3e.advance import AdventureGrowth, Change
 from aidm.engines.loner3e.mechanics import Mechanics
 from aidm.state.base import PLAYER_ID
-from aidm.state.turn import Applied
+from aidm.state.trace import Applied
 
 LEGAL = AdventureGrowth(
     changes=(Change(kind="gear", tag="Waxed Rope"),), why="he never climbs without it now"
@@ -40,7 +40,7 @@ async def test_an_illegal_proposal_is_retried_with_the_engines_reason(tmp_path: 
 
     offer = game.offers()[0]
     assert game.advisor is not None
-    with game.advisor.agent.override(model=_answers(ILLEGAL, LEGAL)):
+    with game.advisor.override(model=_answers(ILLEGAL, LEGAL)):
         proposal = await game.propose(offer, "Kael has learned to trust his rope.")
 
     assert proposal == LEGAL

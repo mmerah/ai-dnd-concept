@@ -66,7 +66,7 @@ def test_packages_import_only_in_the_allowed_direction(
 
 
 def test_only_the_loader_names_a_concrete_engine() -> None:
-    """Adding an engine is one line in `loader.ENGINE_MODULES`; no engine imports another."""
+    """Adding an engine is one line in `registry.ENGINE_MODULES`; no engine imports another."""
     naming = {
         str(path.relative_to(SOURCE))
         for path in SOURCE.rglob("*.py")

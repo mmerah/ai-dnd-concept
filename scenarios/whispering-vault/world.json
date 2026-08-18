@@ -135,20 +135,16 @@
       },
       "effects": [
         {
-          "name": "advance-thread",
-          "args": {
-            "thread_id": "vault-seal",
-            "stage": "seal-found"
-          }
+          "op": "advance-thread",
+          "thread_id": "vault-seal",
+          "stage": "seal-found"
         },
         {
-          "name": "trait-change",
-          "args": {
-            "mode": "add",
-            "entity_id": "vault",
-            "text": "The seal answers a touch, and something behind the door answers with it.",
-            "trait_id": "warded"
-          }
+          "op": "trait-change",
+          "mode": "add",
+          "entity_id": "vault",
+          "text": "The seal answers a touch, and something behind the door answers with it.",
+          "trait_id": "warded"
         }
       ],
       "note": "Kael has found the vault door. Press on what opening the seal will cost."
@@ -163,17 +159,13 @@
       },
       "effects": [
         {
-          "name": "advance-thread",
-          "args": {
-            "thread_id": "vault-seal",
-            "stage": "seal-found"
-          }
+          "op": "advance-thread",
+          "thread_id": "vault-seal",
+          "stage": "seal-found"
         },
         {
-          "name": "reveal",
-          "args": {
-            "entity_id": "vault"
-          }
+          "op": "reveal",
+          "entity_id": "vault"
         }
       ],
       "note": "The chart marks the stair to the vault door. Press on what opening the seal will cost."
@@ -188,11 +180,9 @@
       },
       "effects": [
         {
-          "name": "advance-thread",
-          "args": {
-            "thread_id": "vault-seal",
-            "stage": "rite-known"
-          }
+          "op": "advance-thread",
+          "thread_id": "vault-seal",
+          "stage": "rite-known"
         }
       ],
       "note": "Elena remembers the rite that sealed the vault. Let her name her price for it."

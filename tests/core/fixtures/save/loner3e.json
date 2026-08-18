@@ -1,5 +1,5 @@
 {
-  "save_version": 71,
+  "save_version": 72,
   "scenario_id": "whispering-vault",
   "character_id": "kael",
   "scenario": {
@@ -146,19 +146,6 @@
             "text": "(condition) Listening for the next shift of weight behind the door."
           }
         ]
-      },
-      "sister_auber": {
-        "id": "sister_auber",
-        "kind": "actor",
-        "name": "Sister Auber",
-        "brief": "A lay sister who keeps the vault keys.",
-        "detail": {
-          "description": "She has kept the abbey's keys for thirty years.",
-          "hook": "She knows which doors were sealed and by whom."
-        },
-        "known": true,
-        "parent_id": "study",
-        "traits": []
       }
     },
     "relations": {
@@ -209,10 +196,15 @@
         "id": "mara-catalogued-with-elena",
         "owner": "mara",
         "text": "Mara catalogued the vault ledgers beside Elena for two winters, until the night Elena went below alone and never came back up."
+      },
+      "mara-confirmed-the-vault-door-has-not-opened-in-thirty-years": {
+        "id": "mara-confirmed-the-vault-door-has-not-opened-in-thirty-years",
+        "owner": "mara",
+        "text": "Mara confirmed the vault door has not opened in thirty years."
       }
     },
-    "hooks": [
-      {
+    "hooks": {
+      "vault-sighted": {
         "id": "vault-sighted",
         "match": {
           "kind": "entity_discovered",
@@ -222,26 +214,24 @@
         },
         "effects": [
           {
-            "name": "advance-thread",
-            "args": {
-              "thread_id": "vault-seal",
-              "stage": "seal-found"
-            }
+            "op": "advance-thread",
+            "thread_id": "vault-seal",
+            "status": null,
+            "stage": "seal-found",
+            "tick": 0
           },
           {
-            "name": "trait-change",
-            "args": {
-              "mode": "add",
-              "entity_id": "vault",
-              "text": "The seal answers a touch, and something behind the door answers with it.",
-              "trait_id": "warded"
-            }
+            "op": "trait-change",
+            "mode": "add",
+            "entity_id": "vault",
+            "trait_id": "warded",
+            "text": "The seal answers a touch, and something behind the door answers with it."
           }
         ],
         "note": "Kael has found the vault door. Press on what opening the seal will cost.",
         "once": true
       },
-      {
+      "vault-charted": {
         "id": "vault-charted",
         "match": {
           "kind": "entity_discovered",
@@ -251,23 +241,21 @@
         },
         "effects": [
           {
-            "name": "advance-thread",
-            "args": {
-              "thread_id": "vault-seal",
-              "stage": "seal-found"
-            }
+            "op": "advance-thread",
+            "thread_id": "vault-seal",
+            "status": null,
+            "stage": "seal-found",
+            "tick": 0
           },
           {
-            "name": "reveal",
-            "args": {
-              "entity_id": "vault"
-            }
+            "op": "reveal",
+            "entity_id": "vault"
           }
         ],
         "note": "The chart marks the stair to the vault door. Press on what opening the seal will cost.",
         "once": true
       },
-      {
+      "archivist-found": {
         "id": "archivist-found",
         "match": {
           "kind": "entity_discovered",
@@ -277,17 +265,17 @@
         },
         "effects": [
           {
-            "name": "advance-thread",
-            "args": {
-              "thread_id": "vault-seal",
-              "stage": "rite-known"
-            }
+            "op": "advance-thread",
+            "thread_id": "vault-seal",
+            "status": null,
+            "stage": "rite-known",
+            "tick": 0
           }
         ],
         "note": "Elena remembers the rite that sealed the vault. Let her name her price for it.",
         "once": true
       }
-    ],
+    },
     "fired_hooks": [
       "vault-charted",
       "vault-sighted"
@@ -374,21 +362,6 @@
           "Pry Bar",
           "Chalk and Wire"
         ],
-        "luck": {
-          "current": 6,
-          "maximum": 6
-        },
-        "milestones": {
-          "current": 0,
-          "maximum": null
-        }
-      },
-      "sister_auber": {
-        "pack": "srd",
-        "concept": "",
-        "skills": [],
-        "frailties": [],
-        "gear": [],
         "luck": {
           "current": 6,
           "maximum": 6

@@ -21,7 +21,7 @@ Status of the proof of concept, and where it should go. Kept short on purpose. P
 - Growth can only create, never deepen. `WorldkeeperReport` carries creations and nothing else, so an entity the story develops gets no update.
 - A relation carries tags and nothing else — no note, no state of its own — so a connection can be locked but not described.
 - Core interprets exactly two relation kinds and one tag (`connected`, `party-member`, `locked`). Any other kind a role writes is inert state that only a prompt reads.
-- A hook is one-shot by default (`once`), and `fired_hooks` records only that it fired, never how often, so a hook cannot fire a second time with a different consequence and a repeatable one has no bound. Chaining itself works: hooks fire in bounded rounds within a turn (`MAX_HOOK_ROUNDS` in `state/apply.py`) and react to subsystem changes as well as turns.
+- A hook is one-shot by default (`once`), and `fired_hooks` records only that it fired, never how often, so a hook cannot fire a second time with a different consequence and a repeatable one has no bound. Chaining itself works: hooks fire in bounded rounds within a turn (`MAX_HOOK_ROUNDS` in `state/hooks.py`) and react to subsystem changes as well as turns.
 
 ### Structure and scale
 

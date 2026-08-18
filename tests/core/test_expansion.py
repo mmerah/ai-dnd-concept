@@ -12,8 +12,10 @@ from core_test_support import (
     shown,
     structured,
 )
+from pydantic_ai import Agent
 from pydantic_ai.messages import ModelMessage, ModelResponse, ToolCallPart
 from pydantic_ai.models.function import AgentInfo, FunctionModel
+from pydantic_ai.toolsets import FunctionToolset
 
 from aidm.content.sources import (
     SILENT,
@@ -22,8 +24,9 @@ from aidm.content.sources import (
     SourceRecord,
     WholeSource,
 )
+from aidm.engines.loner3e.mechanics import Mechanics
 from aidm.state.base import EntityId
-from aidm.turn.roles import build_stages
+from aidm.turn.agents import PlanContext, build_turn_agents
 
 FRONTIER = WholeSource(
     text="Below the abbey cloister the undercroft runs on into galleries nobody has walked."
@@ -134,6 +137,46 @@ async def test_travel_beyond_the_frontier_expands_the_world_inside_one_turn() ->
     assert materialized and all(fact.narrator is None for fact in materialized)
     # A premise holds no records to search, so it reaches the Expander whole, as it always did.
     assert "galleries nobody has walked" in shown(result.turn, "expander-1")
+
+
+async def test_an_expander_created_actor_receives_valid_engine_rules_before_commit() -> None:
+    """Creation now arrives from the Expander mid-plan rather than the Worldkeeper after the fact;
+    the seeding invariant — a created actor gets a valid sheet before the state commits — travels
+    with it."""
+    engine, state = initialized()
+    director = FunctionModel(
+        scripted(
+            _tool_call(
+                "expand_world",
+                kind="actor",
+                anchor_id="cloister",
+                need="who else haunts the flooded gallery below",
+            ),
+            plan(),
+        )
+    )
+    letter = {
+        "id": "sealed_letter",
+        "kind": "item",
+        "name": "a sealed letter",
+        "brief": "Red wax bears no crest.",
+        "parent_id": "sunken_gallery",
+    }
+    result = await played(
+        engine,
+        state,
+        DOWNWARD,
+        director=director,
+        expander=FunctionModel(
+            scripted(structured(entities=[GALLERY, WATCHER, letter], relations=[WAY]))
+        ),
+        source=FRONTIER,
+    )
+
+    mechanics = result.state.mechanics_as(Mechanics)
+    assert set(mechanics.sheets[EntityId("gallery_watcher")].counters()) == {"luck"}
+    assert EntityId("sealed_letter") not in mechanics.sheets
+    engine.validate(result.state)
 
 
 async def test_an_expander_that_cannot_write_costs_only_its_own_tool_call() -> None:
@@ -259,11 +302,20 @@ async def test_a_fallback_source_says_the_document_is_silent() -> None:
     assert result.state.world.find(EntityId("sunken_gallery")) is not None
 
 
+def _tool_names(agent: Agent[PlanContext, object]) -> set[str]:
+    return {
+        name
+        for toolset in agent.toolsets
+        if isinstance(toolset, FunctionToolset)
+        for name in toolset.tools
+    }
+
+
 def test_a_closed_adventure_leaves_the_director_the_agent_it_ships_with() -> None:
     engine, _ = initialized()
 
-    closed = build_stages(engine, settings())
-    opened = build_stages(engine, settings(), FRONTIER)
+    closed = build_turn_agents(engine, settings())
+    opened = build_turn_agents(engine, settings(), FRONTIER)
 
-    assert (closed.expander, tuple(closed.director.toolsets)) == (None, ())
-    assert opened.expander is not None and len(opened.director.toolsets) == 1
+    assert (closed.expander, _tool_names(closed.director)) == (None, set())
+    assert opened.expander is not None and _tool_names(opened.director) == {"expand_world"}

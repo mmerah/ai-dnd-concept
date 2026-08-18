@@ -5,18 +5,19 @@ from random import Random
 from pydantic import BaseModel
 
 from aidm.config import Settings
-from aidm.engines.loader import Engine
+from aidm.engines.engine import Engine
 from aidm.engines.sheets import SheetBase
 from aidm.engines.transact import transact
-from aidm.state.base import Entity, EntityId, slug, text_slug
-from aidm.state.facts import CORE, Fact, explained_fact, narrator_evidence
-from aidm.state.plan import DirectorBeat, Resolution
-from aidm.state.turn import Creation, MemoryProposal, StepTrace, Turn, WorldkeeperReport
-from aidm.state.world import CONNECTED, Exchange, GameState, Memory, Relation
+from aidm.state.base import Frozen, text_slug
+from aidm.state.beat import Resolution
+from aidm.state.facts import CORE, Fact, narrator_evidence
+from aidm.state.trace import StepTrace, Turn
+from aidm.state.world import Exchange, GameState, Memory
 
 from . import prompts
+from .agents import PlanContext, TurnAgents, exchanges_to_messages
 from .expansion import Expansions
-from .roles import PlanContext, Stages, exchanges_to_messages
+from .reports import MemoryProposal
 from .scene import SceneSnapshot, VisibleScene
 
 
@@ -31,25 +32,10 @@ class TurnResult:
 TURN_STEPS: tuple[str, ...] = ("director", "resolve", "beat", "hooks", "narrator", "worldkeeper")
 
 
-def apply_report(
-    draft: GameState, report: WorldkeeperReport, *, max_growth: int, max_memories: int
-) -> list[Fact]:
-    facts: list[Fact] = []
-    for creation in admitted(report.creations, draft, max_growth):
-        # Resolved before the entity exists, so a location cannot name itself as its own anchor.
-        anchor = _placed(creation, draft)
-        entity = _created_entity(creation, draft, anchor)
-        facts.append(draft.add(entity))
-        if entity.kind == "location":
-            facts.append(_connect(draft, entity, anchor))
-    facts.extend(_remembered(report.memories, draft, max_memories))
-    return facts
-
-
-def _remembered(proposals: Sequence[MemoryProposal], draft: GameState, maximum: int) -> list[Fact]:
+def remember(draft: GameState, memories: Sequence[MemoryProposal], maximum: int) -> list[Fact]:
     seen = {memory.text.casefold() for memory in draft.world.memories.values()}
     kept: list[Fact] = []
-    for proposal in proposals:
+    for proposal in memories:
         normalized = proposal.text.casefold()
         if normalized in seen or len(kept) >= maximum:
             continue
@@ -76,7 +62,7 @@ async def run_turn(
     prompt: str,
     *,
     engine: Engine[SheetBase],
-    stages: Stages,
+    stages: TurnAgents,
     settings: Settings,
     rng: Random,
     on_step: Callable[[str], None] | None = None,
@@ -95,11 +81,13 @@ async def run_turn(
 
     announce("director")
     plan_prompt = prompts.render_director(snapshot, engine.renderer(draft), draft.scenario, prompt)
-    plan = await stages.director.run(
-        plan_prompt,
-        PlanContext(engine=engine, state=draft, rng=rng, expansions=expansions),
-        history,
-    )
+    plan = (
+        await stages.director.run(
+            plan_prompt,
+            deps=PlanContext(engine=engine, state=draft, rng=rng, expansions=expansions),
+            message_history=history,
+        )
+    ).output
     # Each Director call consumes the notes its own prompt rendered, so a note a beat writes
     # steers the next beat of this turn — or the next turn, when no further call renders it.
     draft.world.pending_notes = ()
@@ -120,11 +108,15 @@ async def run_turn(
             happened=narrator_evidence(beats[-1].facts),
             preface=prompts.SETTLE if last else prompts.BEAT,
         )
-        beat = await stages.director.run(
-            beat_prompt,
-            PlanContext(engine=engine, state=draft, rng=rng, expansions=expansions, settle=last),
-            history,
-        )
+        beat = (
+            await stages.director.run(
+                beat_prompt,
+                deps=PlanContext(
+                    engine=engine, state=draft, rng=rng, expansions=expansions, settle=last
+                ),
+                message_history=history,
+            )
+        ).output
         draft.world.pending_notes = ()
         steps.append(_traced(f"beat-{len(beats)}", beat_prompt, beat))
         announce("resolve")
@@ -156,7 +148,9 @@ async def run_turn(
         evidence=evidence,
         prompt=prompt,
     )
-    narration = await stages.narrator.run(narrator_prompt, visible, history)
+    narration = (
+        await stages.narrator.run(narrator_prompt, deps=visible, message_history=history)
+    ).output
     if not narration.text:
         raise ValueError("the narrator answered with nothing")
     steps.append(_traced("narrator", narrator_prompt, narration))
@@ -170,17 +164,13 @@ async def run_turn(
         evidence=evidence,
         narration=narration.text,
     )
-    report = await stages.worldkeeper.run(keeper_prompt, draft, history)
+    report = (
+        await stages.worldkeeper.run(keeper_prompt, deps=draft, message_history=history)
+    ).output
     reported = transact(
         engine,
         draft,
-        lambda d: Resolution(
-            facts=tuple(
-                apply_report(
-                    d, report, max_growth=settings.max_growth, max_memories=settings.max_memories
-                )
-            )
-        ),
+        lambda d: Resolution(facts=tuple(remember(d, report.memories, settings.max_memories))),
         rng,
     )
     draft = reported.state.draft()
@@ -197,67 +187,10 @@ async def run_turn(
 
 
 def _resolver(
-    engine: Engine[SheetBase], beat: DirectorBeat, rng: Random
+    engine: Engine[SheetBase], beat: Frozen, rng: Random
 ) -> Callable[[GameState], Resolution]:
     return lambda draft: engine.resolve_beat(draft, beat, rng)
 
 
 def _traced(name: str, rendered: str, output: BaseModel) -> StepTrace:
     return StepTrace(name=name, prompt=rendered, output=output.model_dump(mode="json"))
-
-
-def admitted(creations: Sequence[Creation], state: GameState, maximum: int) -> tuple[Creation, ...]:
-    """Locations sort first so an entity placed at one created this same report resolves."""
-    seen = {entity.name.casefold() for entity in state.world.entities.values()}
-    kept: list[Creation] = []
-    for creation in creations:
-        normalized = creation.name.casefold()
-        if normalized in seen or len(kept) >= maximum:
-            continue
-        kept.append(creation)
-        seen.add(normalized)
-    return tuple(sorted(kept, key=lambda creation: creation.kind != "location"))
-
-
-def _created_entity(creation: Creation, state: GameState, anchor_id: EntityId) -> Entity:
-    return Entity(
-        id=slug(creation.name, state.world.all_ids()),
-        kind=creation.kind,
-        name=creation.name,
-        brief=creation.brief,
-        detail=creation.detail,
-        known=True,
-        parent_id=None if creation.kind == "location" else anchor_id,
-    )
-
-
-def _placed(creation: Creation, state: GameState) -> EntityId:
-    """The location the `location` field names: where a person or thing stands, and the place a new
-    location is joined to. Nothing named puts it where the player is."""
-    if creation.location is not None:
-        wanted = creation.location.casefold()
-        for entity in state.world.of_kind("location"):
-            if entity.name.casefold() == wanted:
-                return entity.id
-    return state.player_location
-
-
-def _connect(draft: GameState, location: Entity, anchor_id: EntityId) -> Fact:
-    """Movement follows `connected` relations alone, so a created location arrives joined to one
-    the player can already reach."""
-    anchor = draft.world.require(anchor_id)
-    # A known way may not name an entity the player has not met.
-    relation = Relation(
-        kind=CONNECTED, source=location.id, target=anchor.id, directed=False, known=anchor.known
-    )
-    draft.world.relations[relation.id] = relation
-    joined = f"{location.name} — {CONNECTED} — {anchor.name}"
-    # The trace names the anchor, so an unmet one keeps the whole line out of player-facing prose.
-    return explained_fact(
-        location,
-        "relation_added",
-        joined,
-        {"kind": CONNECTED, "target": anchor.id},
-        "",
-        narrate=anchor.known,
-    )

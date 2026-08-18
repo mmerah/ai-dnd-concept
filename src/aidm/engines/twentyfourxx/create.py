@@ -3,7 +3,7 @@ from collections.abc import Mapping
 from pydantic import JsonValue
 
 from aidm.content.authored import CharacterOverlay, CharacterProfile, CreatedCharacter
-from aidm.engines.loader import Creation
+from aidm.engines.engine import CharacterCreation
 from aidm.engines.packs import pack_step
 from aidm.state.base import PLAYER_ID, Entity, EntityId, Trait, text_slug
 from aidm.state.creation import (
@@ -20,7 +20,7 @@ from .mechanics import SkillDie, raised
 from .pack import KitItem, Origin, Pack, SkillGrant, Specialty
 
 
-class TwentyfourxxCreation(Creation):
+class TwentyfourxxCreation(CharacterCreation):
     def __init__(self, packs: Mapping[str, Pack]) -> None:
         self._packs = packs
 

@@ -1,15 +1,16 @@
 from pathlib import Path
 from random import Random
 
-from aidm.engines.loader import Engine
+from aidm.engines.engine import Engine
 from aidm.engines.packs import load_packs, pack_paths
 from aidm.state.base import PLAYER_ID, Counter, EngineId, Entity, Frozen
+from aidm.state.beat import Resolution
 from aidm.state.facts import Fact
-from aidm.state.plan import Resolution
 from aidm.state.world import GameState
 
 from .actions import (
     EndAdventure,
+    Loner3eBeat,
     Question,
     RestoreLuck,
     apply_end_adventure,
@@ -30,8 +31,7 @@ class Loner3eEngine(Engine[Sheet]):
     engine_dir = Path(__file__).parent
     sheet_type = Sheet
     mechanics_type = Mechanics
-    actions = {"question": Question}
-    effects = {"restore-luck": RestoreLuck, "end-adventure": EndAdventure}
+    beat_type = Loner3eBeat
 
     def __init__(self, extra_packs: Path | None = None) -> None:
         super().__init__(extra_packs)
@@ -65,6 +65,11 @@ class Loner3eEngine(Engine[Sheet]):
         if not isinstance(roll, Question):
             raise TypeError(f"{type(roll).__name__} is no loner3e roll")
         return resolve_question(draft, roll, rng, self.twists(draft))
+
+    def unpack_beat(self, beat: Frozen) -> tuple[Frozen | None, tuple[Frozen, ...]]:
+        if not isinstance(beat, Loner3eBeat):
+            raise TypeError(f"{type(beat).__name__} is no loner3e beat")
+        return beat.roll, beat.effects
 
     def twists(self, state: GameState) -> tuple[tuple[str, str], ...]:
         """The player's own table set: an NPC sheet is seeded with the default and never selects."""

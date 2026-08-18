@@ -17,7 +17,7 @@ from golden_test_support import FIXTURES, dumped, golden
 from pydantic_ai.messages import ModelResponse
 from pydantic_ai.models.function import FunctionModel
 
-from aidm.engines.loader import engine_ids
+from aidm.engines.registry import engine_ids
 from aidm.state.base import EngineId
 from aidm.state.world import Exchange, GameState, Line
 from aidm.turn.pipeline import TurnResult
@@ -39,15 +39,10 @@ NARRATION = "The flagstone lifts. Beyond the door, something shifts its weight a
 SEED = 11
 # One unconditional effect every engine shares, so the two traces differ only by their roll.
 TAKE_THE_MAP = call("move", entity_id="vault_map")
-CREATIONS = [
+MEMORIES = [
     {
-        "kind": "actor",
-        "name": "Sister Auber",
-        "brief": "A lay sister who keeps the vault keys.",
-        "detail": {
-            "description": "She has kept the abbey's keys for thirty years.",
-            "hook": "She knows which doors were sealed and by whom.",
-        },
+        "owner_id": "mara",
+        "text": "Mara confirmed the vault door has not opened in thirty years.",
     }
 ]
 TURN_STEPS = ("director", "beat-1", "resolve", "hooks", "narrator", "worldkeeper")
@@ -109,7 +104,7 @@ async def _played(engine_id: EngineId) -> TurnResult:
         PROMPT,
         director=FunctionModel(scripted(SCRIPTS[engine_id], SECOND_BEAT)),
         narrator=FunctionModel(scripted(narrated(NARRATION))),
-        worldkeeper=FunctionModel(scripted(structured(creations=CREATIONS))),
+        worldkeeper=FunctionModel(scripted(structured(memories=MEMORIES))),
         rng=Random(SEED),
     )
 

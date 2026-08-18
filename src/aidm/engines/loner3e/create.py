@@ -1,7 +1,7 @@
 from collections.abc import Mapping
 
 from aidm.content.authored import CharacterOverlay, CharacterProfile, CreatedCharacter
-from aidm.engines.loader import Creation
+from aidm.engines.engine import CharacterCreation
 from aidm.engines.packs import pack_step
 from aidm.state.creation import (
     AnyStep,
@@ -16,7 +16,7 @@ from aidm.state.creation import (
 from .pack import Pack, PackEntry
 
 
-class Loner3eCreation(Creation):
+class Loner3eCreation(CharacterCreation):
     def __init__(self, packs: Mapping[str, Pack]) -> None:
         self._packs = packs
 

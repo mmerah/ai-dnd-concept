@@ -2,29 +2,23 @@
   {
     "effects": [],
     "roll": {
-      "name": "question",
-      "args": {
-        "actor_id": "player",
-        "question": "Does he get the sealed door open before the whispering finds him?",
-        "position": "advantage",
-        "edge": "Reads Old Stonework",
-        "opponent_id": null
-      }
+      "op": "question",
+      "actor_id": "player",
+      "question": "Does he get the sealed door open before the whispering finds him?",
+      "position": "advantage",
+      "edge": "Reads Old Stonework",
+      "opponent_id": null
     }
   },
   {
     "effects": [
       {
-        "name": "reveal",
-        "args": {
-          "entity_id": "vault_map"
-        }
+        "op": "reveal",
+        "entity_id": "vault_map"
       },
       {
-        "name": "move",
-        "args": {
-          "entity_id": "vault_map"
-        }
+        "op": "move",
+        "entity_id": "vault_map"
       }
     ],
     "roll": null

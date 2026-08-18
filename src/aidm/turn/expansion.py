@@ -2,12 +2,10 @@ from dataclasses import dataclass, field
 
 from pydantic import Field, JsonValue
 
-from aidm.engines.loader import Engine
-from aidm.engines.sheets import SheetBase
 from aidm.state.base import Entity, Frozen
+from aidm.state.beat import Resolution
 from aidm.state.facts import CORE, Fact
-from aidm.state.plan import Resolution
-from aidm.state.turn import StepTrace
+from aidm.state.trace import StepTrace
 from aidm.state.world import CONNECTED, GameState, Hook, Relation, Thread
 
 MAX_EXPANSIONS = 2
@@ -52,13 +50,13 @@ class Expansions:
         )
 
 
-def apply_patch(engine: Engine[SheetBase], draft: GameState, patch: ExpansionPatch) -> Resolution:
+def apply_patch(draft: GameState, patch: ExpansionPatch) -> Resolution:
     """The one place a patch reaches the world: add-only, unknown, and refused whole on any id the
     draft already holds."""
     facts = [_added_entity(draft, entity) for entity in patch.entities]
     facts.extend(_added_relation(draft, relation) for relation in patch.relations)
     facts.extend(_opened(draft, thread) for thread in patch.threads)
-    facts.extend(_authored(engine, draft, patch.hooks))
+    facts.extend(_authored(draft, patch.hooks))
     return Resolution(facts=tuple(facts), followup="none")
 
 
@@ -101,18 +99,13 @@ def _opened(draft: GameState, thread: Thread) -> Fact:
     return _materialized(f"thread {thread.id}", {"thread_id": thread.id})
 
 
-def _authored(engine: Engine[SheetBase], draft: GameState, hooks: tuple[Hook, ...]) -> list[Fact]:
-    """A hook's effects are the engine's own vocabulary, parsed here so a broken one is refused
-    while the patch can still be rewritten, rather than silently at fire time."""
-    held = {hook.id for hook in draft.world.hooks}
+def _authored(draft: GameState, hooks: tuple[Hook, ...]) -> list[Fact]:
     facts: list[Fact] = []
     for hook in hooks:
-        if hook.id in held:
+        if hook.id in draft.world.hooks:
             raise ValueError(f"a hook {hook.id!r} already exists")
-        for effect in hook.effects:
-            _ = engine.parse_effect(effect)
+        draft.world.hooks[hook.id] = hook
         facts.append(_materialized(f"hook {hook.id}", {"hook_id": hook.id}))
-    draft.world.hooks = (*draft.world.hooks, *hooks)
     return facts
 
 

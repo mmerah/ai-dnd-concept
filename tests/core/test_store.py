@@ -16,7 +16,7 @@ from aidm.content.store import (
 )
 from aidm.state.base import PLAYER_ID
 from aidm.state.facts import CORE, Fact, narrator_evidence
-from aidm.state.turn import Applied, StepTrace, Turn
+from aidm.state.trace import Applied, StepTrace, Turn
 
 
 def test_save_and_trace_round_trip(tmp_path: Path) -> None:

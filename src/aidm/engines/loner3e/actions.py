@@ -1,16 +1,21 @@
 from random import Random
-from typing import Literal
+from typing import Annotated, Literal
 
 from pydantic import Field
 
 from aidm.engines.counters import adjust
 from aidm.engines.sheets import require_sheet
-from aidm.state.apply import apply_effect, require_actor_here
+from aidm.state.apply_effects import apply_effect, require_actor_here
 from aidm.state.base import Entity, EntityId, Frozen, Slug
+from aidm.state.beat import (
+    BEAT_DOC,
+    BEAT_EFFECTS_DESCRIPTION,
+    BEAT_ROLL_DESCRIPTION,
+    Resolution,
+)
 from aidm.state.dice import roll_pool
-from aidm.state.effects import Reveal
+from aidm.state.effects import Reveal, WorldOp
 from aidm.state.facts import CORE, Fact, entity_fact
-from aidm.state.plan import Resolution
 from aidm.state.world import GameState
 
 from .mechanics import LUCK_MAX, TIES_PER_TWIST, Mechanics
@@ -46,6 +51,7 @@ class EndAdventure(Frozen):
 class Question(Frozen):
     """A closed dramatic question, answered by Chance d6 against Risk d6."""
 
+    op: Literal["question"] = "question"
     actor_id: EntityId = Field(
         description="Exact id of the actor the question is about: the player, or an actor here."
     )
@@ -70,6 +76,16 @@ class Question(Frozen):
         description="Exact id of the actor opposing this, set only when the question is one "
         "exchange of a conflict; the engine then takes luck off whichever side loses it.",
     )
+
+
+type Loner3eEffect = Annotated[WorldOp | RestoreLuck | EndAdventure, Field(discriminator="op")]
+
+
+class Loner3eBeat(Frozen):
+    __doc__ = BEAT_DOC
+
+    roll: Question | None = Field(default=None, description=BEAT_ROLL_DESCRIPTION)
+    effects: tuple[Loner3eEffect, ...] = Field(default=(), description=BEAT_EFFECTS_DESCRIPTION)
 
 
 def twist_pairing(

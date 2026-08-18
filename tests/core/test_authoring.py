@@ -6,19 +6,14 @@ from pydantic import JsonValue
 from pydantic_ai.messages import ModelResponse, ToolCallPart
 from pydantic_ai.models.function import FunctionModel
 
-from aidm.app.scenario_creator import (
-    OPENING,
-    AuthoringSession,
-    ScenarioPatch,
-    WorldDraft,
-    ask_until_playable,
-    playability,
-    playtests,
-)
+from aidm.app.authoring.agents import ask_until_playable
+from aidm.app.authoring.draft import ScenarioPatch, WorldDraft
+from aidm.app.authoring.playability import OPENING, playability, playtests
+from aidm.app.authoring.session import AuthoringSession
 from aidm.content.store import load_scenario
 from aidm.state.base import Entity, EntityId
 from aidm.state.world import Relation, ScenarioMeta, Thread
-from aidm.turn.roles import Stage
+from aidm.turn.agents import build_agent
 
 
 async def test_the_shipped_scenario_passes_every_engine() -> None:
@@ -91,9 +86,9 @@ def test_write_upserts_elements_by_id() -> None:
     )
     _ = draft.apply(ScenarioPatch(entities=(renamed,), relations=(relocked,)))
 
-    assert draft.entities[EntityId("cell")].name == "the deep cell"
+    assert draft.canon.entities[EntityId("cell")].name == "the deep cell"
     # An undirected relation sorts its endpoints, so the rewrite hit the same id.
-    assert [relation.tags for relation in draft.relations.values()] == [["locked"]]
+    assert [relation.tags for relation in draft.canon.relations.values()] == [["locked"]]
 
 
 def test_a_patched_art_style_reaches_the_world() -> None:
@@ -106,7 +101,7 @@ def test_remove_drops_by_id_and_refuses_an_unknown_one() -> None:
     draft = WorldDraft()
     _ = draft.apply(ScenarioPatch(entities=(_location("cell"),)))
     assert draft.apply(ScenarioPatch(remove=(EntityId("cell"),))) == "wrote: removed 1"
-    assert not draft.entities
+    assert not draft.canon.entities
     with pytest.raises(ValueError, match="nothing in the draft"):
         _ = draft.apply(ScenarioPatch(remove=("ghost",)))
 
@@ -143,7 +138,7 @@ async def test_the_agent_authors_through_the_write_tool() -> None:
         ModelResponse(parts=[ToolCallPart(tool_name="write", args={"patch": _as_patch()})]),
         _finish("Authored the vault."),
     )
-    with session.stage.agent.override(model=FunctionModel(author)):
+    with session.agent.override(model=FunctionModel(author)):
         _ = await session.send(session.opening_prompt)
     assert session.draft.world().meta.title == scenario().world.meta.title
 
@@ -160,7 +155,7 @@ async def test_finishing_an_unplayable_draft_is_refused_and_asked_again() -> Non
         ModelResponse(parts=[ToolCallPart(tool_name="write", args={"patch": _as_patch()})]),
         _finish("Authored the vault."),
     )
-    with session.stage.agent.override(model=FunctionModel(author)):
+    with session.agent.override(model=FunctionModel(author)):
         _ = await session.send(session.opening_prompt)
     assert session.draft.world().meta.title == scenario().world.meta.title
 
@@ -192,12 +187,12 @@ async def test_a_session_goes_on_authoring_after_it_finishes() -> None:
         ),
         _finish("Added the bell tower."),
     )
-    with session.stage.agent.override(model=FunctionModel(author)):
+    with session.agent.override(model=FunctionModel(author)):
         _ = await session.send(session.opening_prompt)
         assert session.refusal() is None
         before = len(session.history)
         _ = await session.send("add a bell tower")
-    assert EntityId("belfry") in session.draft.entities
+    assert EntityId("belfry") in session.draft.canon.entities
     assert len(session.history) > before
 
 
@@ -265,7 +260,7 @@ def test_an_opening_slice_passes_a_bar_the_whole_scenario_would_fail() -> None:
 
 
 async def test_the_author_is_asked_again_with_the_reason() -> None:
-    stage = Stage.of(
+    agent = build_agent(
         "scenario_creator", settings(), instructions="", output_type=str, deps_type=NoneType
     )
 
@@ -273,14 +268,14 @@ async def test_the_author_is_asked_again_with_the_reason() -> None:
         if answer != "yes":
             raise ValueError("wrong")
 
-    with stage.agent.override(model=FunctionModel(scripted(text("no"), text("yes")))):
-        result = await ask_until_playable(stage, "write it", check)
+    with agent.override(model=FunctionModel(scripted(text("no"), text("yes")))):
+        result = await ask_until_playable(agent, "write it", check)
 
     assert result == "yes"
 
 
 async def test_the_author_gives_up_after_every_round_is_refused() -> None:
-    stage = Stage.of(
+    agent = build_agent(
         "scenario_creator", settings(), instructions="", output_type=str, deps_type=NoneType
     )
 
@@ -288,6 +283,6 @@ async def test_the_author_gives_up_after_every_round_is_refused() -> None:
         raise ValueError("wrong")
 
     scripted_model = FunctionModel(scripted(text("no"), text("no"), text("no")))
-    with stage.agent.override(model=scripted_model):
+    with agent.override(model=scripted_model):
         with pytest.raises(ValueError, match="wrong"):
-            _ = await ask_until_playable(stage, "write it", check)
+            _ = await ask_until_playable(agent, "write it", check)

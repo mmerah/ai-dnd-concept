@@ -16,6 +16,7 @@ from aidm.state.base import (
     Trait,
     require_unique,
 )
+from aidm.state.effects import Reveal
 from aidm.state.world import CONNECTED, Hook, Memory, Relation, ScenarioMeta, Thread, WorldState
 
 # The id-shaped keys committed facts actually carry; any other match key is not policed here.
@@ -23,15 +24,12 @@ _FACT_ENTITY_KEYS = ("entity_id", "to_id", "target")
 # Effect keys that must name an existing entity; created ids (`trait_id`, `stage`) are free.
 _EFFECT_ENTITY_KEYS = ("entity_id", "to_id", "source", "target", "actor_id")
 
-type EffectParse = Callable[[JsonValue], Frozen]
-
 
 @dataclass(frozen=True, slots=True)
-class Binding:
+class EngineBinding:
     """What loading content needs from an engine, so `content` never imports one."""
 
     engine: EngineId
-    parse_effect: EffectParse
     check_overlay: Callable[[Iterable[dict[str, JsonValue]]], None]
 
 
@@ -57,12 +55,13 @@ class ScenarioWorld(Frozen):
         require_unique("relations", [relation.id for relation in self.relations])
         require_unique("threads", [thread.id for thread in self.threads])
         require_unique("memories", [memory.id for memory in self.memories])
+        require_unique("hooks", [hook.id for hook in self.hooks])
         return WorldState(
             entities={entity.id: entity for entity in self.entities},
             relations={relation.id: relation for relation in self.relations},
             threads={thread.id: thread for thread in self.threads},
             memories={memory.id: memory for memory in self.memories},
-            hooks=self.hooks,
+            hooks={hook.id: hook for hook in self.hooks},
         )
 
     @model_validator(mode="after")
@@ -136,6 +135,29 @@ class ScenarioWorld(Frozen):
                 f"hooks waiting on ids nothing authored carries can never fire: "
                 f"{'; '.join(dangling)}"
             )
+        return self
+
+    @model_validator(mode="after")
+    def _hook_effects_are_sound(self) -> Self:
+        pools = _id_pools(self, _EFFECT_ENTITY_KEYS)
+        dangling: list[str] = []
+        revealed: dict[Slug, set[str]] = {}
+        for hook in self.hooks:
+            effects = [effect.model_dump() for effect in hook.effects]
+            for data in effects:
+                dangling.extend(
+                    f"hook {hook.id!r} effect {data.get('op')!r} names {key}={value!r}"
+                    for key, value in _dangling_ids(pools, data)
+                )
+            revealed[hook.id] = {
+                effect.entity_id for effect in hook.effects if isinstance(effect, Reveal)
+            }
+        if dangling:
+            raise ValueError(
+                f"hook effects naming ids nothing authored carries would fail mid-game: "
+                f"{'; '.join(dangling)}"
+            )
+        _no_hook_domino(self, revealed)
         return self
 
 
@@ -244,32 +266,6 @@ def _require_authored(
     unknown = sorted(entity_id for entity_id in overlay if entity_id not in authored)
     if unknown:
         raise ValueError(f"the {engine!r} overlay names unauthored ids: {unknown}")
-
-
-def check_hooks(world: ScenarioWorld, binding: Binding) -> None:
-    """Hook effects are the engine's own vocabulary; core only checks the ids they reference, and
-    the chains they form."""
-    pools = _id_pools(world, _EFFECT_ENTITY_KEYS)
-    dangling: list[str] = []
-    revealed: dict[Slug, set[str]] = {}
-    for hook in world.hooks:
-        effects = [binding.parse_effect(effect).model_dump() for effect in hook.effects]
-        for data in effects:
-            dangling.extend(
-                f"hook {hook.id!r} effect {data.get('op')!r} names {key}={value!r}"
-                for key, value in _dangling_ids(pools, data)
-            )
-        revealed[hook.id] = {
-            entity_id
-            for data in effects
-            if data.get("op") == "reveal" and isinstance(entity_id := data["entity_id"], str)
-        }
-    if dangling:
-        raise ValueError(
-            f"hook effects naming ids nothing authored carries would fail mid-game: "
-            f"{'; '.join(dangling)}"
-        )
-    _no_hook_domino(world, revealed)
 
 
 def _no_hook_domino(world: ScenarioWorld, revealed: Mapping[Slug, set[str]]) -> None:

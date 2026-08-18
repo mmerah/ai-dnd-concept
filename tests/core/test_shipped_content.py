@@ -3,7 +3,7 @@ from core_test_support import CHARACTERS, SCENARIOS
 
 from aidm.app.session import begin_game, build_engine
 from aidm.content.store import load_character, load_scenario
-from aidm.engines.loader import engine_ids
+from aidm.engines.registry import engine_ids
 from aidm.state.base import EngineId
 
 

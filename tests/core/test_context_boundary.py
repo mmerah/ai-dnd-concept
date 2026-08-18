@@ -1,7 +1,7 @@
 from core_test_support import LONER3E, game, updated, with_entity
 
 from aidm.content.authored import ScenarioMeta
-from aidm.engines.loader import EntityRenderer
+from aidm.engines.engine import EntityRenderer
 from aidm.engines.loner3e.mechanics import Mechanics, Sheet
 from aidm.state.base import PLAYER_ID, SAVE_VERSION, Entity, EntityId, Kind
 from aidm.state.world import GameState, WorldState
@@ -95,32 +95,30 @@ def test_prompt_ids_escape_control_characters_and_bracket_delimiters() -> None:
     assert "\n" not in escaped
 
 
-def test_the_roles_shown_everything_get_ids_placement_detail_and_unrevealed_canon() -> None:
-    """The Director and Worldkeeper may both be told everything; the Narrator may not."""
+def test_the_roles_shown_everything_get_ids_and_placement_but_no_detail() -> None:
+    """The Director and Worldkeeper may both be told everything exists; neither is shown authored
+    detail text, which only the Expander reaches."""
     held = _with_detail(state(), EntityId("mara"))
     scene = SceneSnapshot.of(held)
     describe = _renderer(held)
     director = render_director(scene, describe, held.scenario, "I look around.")
-    catalogued = (
-        render_worldkeeper(
-            scene,
-            describe,
-            held.scenario,
-            prompt="Who is she?",
-            evidence="- nothing changed",
-            narration="Mara closes her folio.",
-        ),
+    catalogued = render_worldkeeper(
+        scene,
+        describe,
+        held.scenario,
+        prompt="Who is she?",
+        evidence="- nothing changed",
+        narration="Mara closes her folio.",
     )
 
     assert "Kael[id=player]" in director
     assert "a lantern[id=lantern] — A dented light." in director
     assert "a ledger[id=ledger] (item) — held by Mara" in director
     assert "The Secret[id=hidden-actor]" in director
-    for prompt in (director, *catalogued):
+    for prompt in (director, catalogued):
         assert "pools: luck 6/6" in prompt
-    for prompt in catalogued:
-        assert f"detail: {DESCRIPTION}" in prompt
-        assert f"hook: {HOOK}" in prompt
+        assert f"detail: {DESCRIPTION}" not in prompt
+        assert f"hook: {HOOK}" not in prompt
     assert PLAYER_ID not in {entity.id for entity in (*scene.here, *scene.catalogue())}
 
 

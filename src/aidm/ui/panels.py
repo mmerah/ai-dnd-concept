@@ -16,7 +16,7 @@ from aidm.app.views import (
 )
 from aidm.state.base import PLAYER_ID, EntityId
 from aidm.state.facts import Fact
-from aidm.state.turn import Applied, StepTrace, TraceEntry, Turn
+from aidm.state.trace import Applied, StepTrace, TraceEntry, Turn
 from aidm.turn.scene import Exit
 
 from .busy import refuse_if_busy, working

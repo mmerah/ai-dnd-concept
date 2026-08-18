@@ -151,23 +151,19 @@
       },
       "effects": [
         {
-          "name": "relation-change",
-          "args": {
-            "mode": "untag",
-            "kind": "connected",
-            "source": "lantern_chapel",
-            "target": "crypt_entrance",
-            "tag": "locked"
-          }
+          "op": "relation-change",
+          "mode": "untag",
+          "kind": "connected",
+          "source": "lantern_chapel",
+          "target": "crypt_entrance",
+          "tag": "locked"
         },
         {
-          "name": "relation-change",
-          "args": {
-            "mode": "reveal",
-            "kind": "connected",
-            "source": "lantern_chapel",
-            "target": "crypt_entrance"
-          }
+          "op": "relation-change",
+          "mode": "reveal",
+          "kind": "connected",
+          "source": "lantern_chapel",
+          "target": "crypt_entrance"
         }
       ],
       "note": "The bronze key can remove the lock on the crypt entrance.",
@@ -183,11 +179,9 @@
       },
       "effects": [
         {
-          "name": "advance-thread",
-          "args": {
-            "thread_id": "crypt-revelation",
-            "stage": "seal-found"
-          }
+          "op": "advance-thread",
+          "thread_id": "crypt-revelation",
+          "stage": "seal-found"
         }
       ],
       "note": "The crypt entrance is now known; the player can explore it.",

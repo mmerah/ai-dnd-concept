@@ -16,13 +16,13 @@ from aidm.content.authored import Character, Scenario
 from aidm.content.sources import CanonSource
 from aidm.content.store import load_character, load_scenario
 from aidm.engines.advancement import Advancement
-from aidm.engines.loader import Engine
+from aidm.engines.engine import Engine
 from aidm.engines.sheets import SheetBase
 from aidm.state.base import EngineId, Entity
-from aidm.state.turn import Turn
+from aidm.state.trace import Turn
 from aidm.state.world import GameState
+from aidm.turn.agents import build_turn_agents
 from aidm.turn.pipeline import TurnResult, run_turn
-from aidm.turn.roles import build_stages
 
 type Stub = Callable[[list[ModelMessage], AgentInfo], ModelResponse]
 
@@ -91,13 +91,13 @@ def structured(**output: object) -> ModelResponse:
 
 
 def call(name: str, **args: object) -> dict[str, object]:
-    """One wire call: the vocabulary name, and what it is named with."""
-    return {"name": name, "args": args}
+    """One typed op: the discriminator, and the fields it carries."""
+    return {"op": name, **args}
 
 
 def plan(**output: object) -> ModelResponse:
-    """The director answers a `DirectorBeat`, as `NativeOutput` presents it — the same shape for
-    the turn's first ask and every later beat."""
+    """The director answers its engine's own beat model, as `NativeOutput` presents it — the same
+    shape for the turn's first ask and every later beat."""
     body: dict[str, object] = {"effects": [], **output}
     return structured(**body)
 
@@ -150,18 +150,18 @@ async def played(
     now answers the turn's first ask and every later beat, so a script that rolls must script its
     own continuation too."""
     config = settings()
-    stages = build_stages(engine, config, source)
+    stages = build_turn_agents(engine, config, source)
     roles = (stages.director, stages.narrator, stages.worldkeeper)
     models = (
         director,
         narrator or FunctionModel(scripted(narrated("You wait."))),
-        worldkeeper or FunctionModel(scripted(structured(creations=[]))),
+        worldkeeper or FunctionModel(scripted(structured())),
     )
     with ExitStack() as stack:
         for role, model in zip(roles, models, strict=True):
-            stack.enter_context(role.agent.override(model=model))
+            stack.enter_context(role.override(model=model))
         if stages.expander is not None and expander is not None:
-            stack.enter_context(stages.expander.agent.override(model=expander))
+            stack.enter_context(stages.expander.override(model=expander))
         return await run_turn(
             state,
             prompt,
@@ -181,7 +181,6 @@ def settings() -> Settings:
                 api_key=SecretStr("test"),
             )
         ),
-        max_growth=3,
         max_memories=2,
         history_window=6,
         saves_dir=Path("saves"),

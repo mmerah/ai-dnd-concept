@@ -1,5 +1,5 @@
 {
-  "save_version": 71,
+  "save_version": 72,
   "facts": [
     {
       "source": "core",
@@ -144,13 +144,12 @@
     },
     {
       "source": "core",
-      "kind": "entity_created",
-      "trace": "new actor: Sister Auber",
-      "narrator": "new actor: Sister Auber",
+      "kind": "memory_kept",
+      "trace": "remembered: Mara confirmed the vault door has not opened in thirty years.",
+      "narrator": null,
       "data": {
-        "entity_id": "sister_auber",
-        "kind": "actor",
-        "name": "Sister Auber"
+        "memory_id": "mara-confirmed-the-vault-door-has-not-opened-in-thirty-years",
+        "owner": "mara"
       }
     }
   ],
@@ -162,21 +161,18 @@
       "name": "director",
       "output": {
         "roll": {
-          "name": "question",
-          "args": {
-            "actor_id": "player",
-            "question": "Does he hear what waits past the vault door without being heard?",
-            "position": "advantage",
-            "edge": "Quiet Hands",
-            "opponent_id": null
-          }
+          "op": "question",
+          "actor_id": "player",
+          "question": "Does he hear what waits past the vault door without being heard?",
+          "position": "advantage",
+          "edge": "Quiet Hands",
+          "opponent_id": null
         },
         "effects": [
           {
-            "name": "move",
-            "args": {
-              "entity_id": "vault_map"
-            }
+            "op": "move",
+            "entity_id": "vault_map",
+            "to_id": null
           }
         ]
       }
@@ -187,13 +183,11 @@
         "roll": null,
         "effects": [
           {
-            "name": "trait-change",
-            "args": {
-              "mode": "add",
-              "entity_id": "player",
-              "trait_id": "listening",
-              "text": "(condition) Listening for the next shift of weight behind the door."
-            }
+            "op": "trait-change",
+            "mode": "add",
+            "entity_id": "player",
+            "trait_id": "listening",
+            "text": "(condition) Listening for the next shift of weight behind the door."
           }
         ]
       }
@@ -220,19 +214,12 @@
     {
       "name": "worldkeeper",
       "output": {
-        "creations": [
+        "memories": [
           {
-            "kind": "actor",
-            "name": "Sister Auber",
-            "brief": "A lay sister who keeps the vault keys.",
-            "detail": {
-              "description": "She has kept the abbey's keys for thirty years.",
-              "hook": "She knows which doors were sealed and by whom."
-            },
-            "location": null
+            "owner_id": "mara",
+            "text": "Mara confirmed the vault door has not opened in thirty years."
           }
-        ],
-        "memories": []
+        ]
       }
     }
   ]

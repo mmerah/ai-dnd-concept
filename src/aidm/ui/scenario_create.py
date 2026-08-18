@@ -5,8 +5,9 @@ from pathlib import Path
 from nicegui import ui
 from nicegui.events import UploadEventArguments
 
+from aidm.app.authoring.playability import FULL, OPENING
+from aidm.app.authoring.session import AuthoringSession
 from aidm.app.media import STYLE
-from aidm.app.scenario_creator import FULL, OPENING, AuthoringSession
 from aidm.config import Settings
 from aidm.content.sources import ExpansionPolicy
 from aidm.state.base import content_id

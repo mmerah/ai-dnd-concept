@@ -17,6 +17,7 @@ from .base import (
     ThreadStatus,
     require_unique,
 )
+from .effects import WorldEffect
 from .facts import Fact, entity_fact
 
 _HOLDERS: Mapping[Kind, tuple[Kind, ...]] = {
@@ -97,7 +98,8 @@ class Memory(Mutable):
     text: str = Field(min_length=1, max_length=300)
 
 
-# Core world-op kinds only: engine kinds are per-ruleset (as WORLD_CALLS); hook_* chains hooks.
+# Core world-op kinds only: engine kinds are per-ruleset (each engine's own effect union);
+# hook_* chains hooks.
 type HookFactKind = Literal[
     "entity_created",
     "entity_discovered",
@@ -130,9 +132,7 @@ class Hook(Frozen):
 
     id: Slug
     match: HookMatch
-    # The engine's own vocabulary, in the Director's own wire shape ({"name", "args"}), parsed by
-    # the engine at load and at fire time.
-    effects: tuple[JsonValue, ...] = ()
+    effects: tuple[WorldEffect, ...] = ()
     note: str = ""
     once: bool = True
 
@@ -144,7 +144,7 @@ class WorldState(Mutable):
     relations: dict[RelationId, Relation] = Field(default_factory=dict)
     threads: dict[Slug, Thread] = Field(default_factory=dict)
     memories: dict[Slug, Memory] = Field(default_factory=dict)
-    hooks: tuple[Hook, ...] = ()
+    hooks: dict[Slug, Hook] = Field(default_factory=dict)
     # A tuple, not a set: a save's bytes are a golden fixture, and set ordering is not stable.
     fired_hooks: tuple[Slug, ...] = ()
     pending_notes: tuple[str, ...] = ()
@@ -156,6 +156,7 @@ class WorldState(Mutable):
             ("relation", self.relations),
             ("thread", self.threads),
             ("memory", self.memories),
+            ("hook", self.hooks),
         )
         mismatched = sorted(
             f"{what} {key!r}"
@@ -174,8 +175,7 @@ class WorldState(Mutable):
         for memory in self.memories.values():
             if memory.owner is not None and memory.owner not in self.entities:
                 raise ValueError(f"memory {memory.id!r} is held by unknown entity {memory.owner!r}")
-        require_unique("hook ids", (hook.id for hook in self.hooks))
-        authored = {hook.id for hook in self.hooks}
+        authored = set(self.hooks)
         if unknown := sorted(set(self.fired_hooks) - authored):
             raise ValueError(f"fired hooks name no authored hook: {unknown}")
         require_unique("fired hooks", self.fired_hooks)

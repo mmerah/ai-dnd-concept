@@ -2,7 +2,7 @@ from random import Random
 
 import pytest
 from core_test_support import TWENTYFOURXX, at_boundary, capability, game
-from pydantic import JsonValue, ValidationError
+from pydantic import ValidationError
 
 from aidm.engines.twentyfourxx.actions import (
     Attempt,
@@ -166,20 +166,20 @@ def test_credits_are_paid_charged_and_never_overdrawn() -> None:
     sheet = draft.mechanics_as(Mechanics).sheets[PLAYER_ID]
     before = sheet.credits.current
 
-    paid = engine.apply_effect(draft, _credits(3))
+    paid = engine.apply(draft, _credits(3))
     assert [fact.kind for fact in paid] == ["counter_changed"]
     assert sheet.credits.current == before + 3
 
     with pytest.raises(ValueError, match="cannot be spent"):
-        _ = engine.apply_effect(draft, _credits(-(before + 4)))
+        _ = engine.apply(draft, _credits(-(before + 4)))
     assert sheet.credits.current == before + 3
 
     with pytest.raises(ValidationError):
         _ = ChangeCredits(actor_id=PLAYER_ID, amount=0)
 
 
-def _credits(amount: int) -> dict[str, JsonValue]:
-    return {"name": "change-credits", "args": {"actor_id": PLAYER_ID, "amount": amount}}
+def _credits(amount: int) -> ChangeCredits:
+    return ChangeCredits(actor_id=PLAYER_ID, amount=amount)
 
 
 def test_a_tested_bad_luck_risk_that_lands_leaves_a_note_for_the_next_turn() -> None:

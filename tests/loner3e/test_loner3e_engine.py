@@ -2,11 +2,13 @@ from random import Random
 
 from core_test_support import at_boundary, capability, initialized
 
-from aidm.engines.loader import Engine
+from aidm.engines.engine import Engine
 from aidm.engines.loner3e.actions import (
     HARM,
     EndAdventure,
+    Loner3eBeat,
     Question,
+    RestoreLuck,
     defeat_note,
     outcome_for,
     resolve_question,
@@ -18,30 +20,25 @@ from aidm.engines.loner3e.mechanics import LUCK_MAX, TIES_PER_TWIST, Mechanics
 from aidm.engines.loner3e.pack import SRD_PACK, twist_table
 from aidm.engines.loner3e.rules import Loner3eEngine
 from aidm.engines.sheets import SheetBase
-from aidm.state.apply import fire_hooks
 from aidm.state.base import PLAYER_ID, Counter, Entity, EntityId
 from aidm.state.effects import TraitChange
-from aidm.state.facts import CORE, Fact
-from aidm.state.plan import DirectorBeat
-from aidm.state.world import PARTY_MEMBER, GameState, Hook, HookMatch, Relation
+from aidm.state.world import PARTY_MEMBER, GameState, Relation
 
 TWISTS = twist_table(Loner3eEngine().packs, SRD_PACK)
 SURE_FOOTED = TraitChange(mode="add", entity_id=PLAYER_ID, trait_id="sure-footed")
 FOE = EntityId("mara")
 
 
-def _plan(**args: object) -> DirectorBeat:
-    return DirectorBeat.model_validate(
+def _plan(**args: object) -> Loner3eBeat:
+    return Loner3eBeat.model_validate(
         {
-            "effects": ({"name": "trait-change", "args": SURE_FOOTED.model_dump()},),
+            "effects": (SURE_FOOTED.model_dump(),),
             "roll": {
-                "name": "question",
-                "args": {
-                    "question": "Does he get the seal open before the whispering finds him?",
-                    "opponent_id": None,
-                }
-                | args,
-            },
+                "op": "question",
+                "question": "Does he get the seal open before the whispering finds him?",
+                "opponent_id": None,
+            }
+            | args,
         }
     )
 
@@ -99,18 +96,7 @@ def test_check_beat_owes_the_model_every_refusal_the_resolve_raises() -> None:
     assert "their own opposition" in _refusal(engine, state, alone)
 
     accepted = _plan(actor_id=PLAYER_ID, position="advantage", edge="Reads Old Stonework")
-    assert engine.check_beat(state, accepted) is None
-
-
-def test_an_effect_this_engine_has_not_is_refused_by_naming_every_effect_it_has() -> None:
-    """The engine's own union is nested, so the retry names its ops as well as the world's."""
-    engine, state = initialized()
-    unknown = DirectorBeat.model_validate({"effects": ({"name": "no-such-effect", "args": {}},)})
-
-    refusal = _refusal(engine, state, unknown)
-
-    assert "'reveal'" in refusal
-    assert "'restore-luck'" in refusal
+    assert engine.check_beat(state, accepted, False) is None
 
 
 def test_the_judged_position_is_what_reaches_the_dice_and_the_record() -> None:
@@ -350,47 +336,17 @@ def test_the_one_roll_is_worked_through_in_the_directors_instructions() -> None:
     """A roll without an example teaches the model nothing: coverage is asserted, not hoped."""
     engine, _ = initialized()
 
-    assert engine.director_instructions.count('"name": "question"') == 1
-    # Rendered from the model, so what the prompt promises is what a retry would enforce.
-    assert "`question` — A closed dramatic question" in engine.director_instructions
-    assert (
-        '`position` (one of `advantage`, `neutral`, `disadvantage`; default "neutral")'
-        in engine.director_instructions
-    )
-
-
-def test_a_hook_reaches_the_engine_s_own_effects() -> None:
-    engine, state = initialized()
-    draft = state.draft()
-    draft.mechanics_as(Mechanics).sheets[PLAYER_ID].luck.current = LUCK_MAX - 2
-    draft.world.hooks = (
-        Hook(
-            id="strain",
-            match=HookMatch(kind="entity_discovered"),
-            effects=({"name": "restore-luck", "args": {"actor_id": "player"}},),
-        ),
-    )
-
-    fired = fire_hooks(
-        draft,
-        [Fact(source=CORE, kind="entity_discovered", trace="the map is found")],
-        engine.apply_effect,
-    )
-
-    assert [fact.kind for fact in fired] == ["hook_fired", "counter_changed"]
-    assert draft.mechanics_as(Mechanics).sheets[PLAYER_ID].luck.current == LUCK_MAX
+    assert engine.director_instructions.count('"op": "question"') == 1
 
 
 def test_restoring_luck_that_is_already_full_is_a_quiet_no_op() -> None:
     engine, state = initialized()
     draft = state.draft()
 
-    assert (
-        engine.apply_effect(draft, {"name": "restore-luck", "args": {"actor_id": PLAYER_ID}}) == []
-    )
+    assert engine.apply(draft, RestoreLuck(actor_id=PLAYER_ID)) == []
 
 
-def _refusal(engine: Engine[SheetBase], state: GameState, plan: DirectorBeat) -> str:
-    refused = engine.check_beat(state, plan)
+def _refusal(engine: Engine[SheetBase], state: GameState, plan: Loner3eBeat) -> str:
+    refused = engine.check_beat(state, plan, False)
     assert refused is not None
     return refused

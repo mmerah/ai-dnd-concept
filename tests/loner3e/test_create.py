@@ -6,7 +6,7 @@ from loner3e_test_support import LONER3E
 
 from aidm.app.session import begin_game, build_engine
 from aidm.content.store import load_character, load_scenario, write_character
-from aidm.engines.loader import Engine
+from aidm.engines.engine import Engine
 from aidm.engines.loner3e.mechanics import LUCK_MAX, Mechanics
 from aidm.engines.sheets import SheetBase
 from aidm.state.base import PLAYER_ID

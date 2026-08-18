@@ -1,5 +1,5 @@
 {
-  "save_version": 71,
+  "save_version": 72,
   "scenario_id": "whispering-vault",
   "character_id": "kael",
   "scenario": {
@@ -187,8 +187,8 @@
         "text": "Mara catalogued the vault ledgers beside Elena for two winters, until the night Elena went below alone and never came back up."
       }
     },
-    "hooks": [
-      {
+    "hooks": {
+      "vault-sighted": {
         "id": "vault-sighted",
         "match": {
           "kind": "entity_discovered",
@@ -198,26 +198,24 @@
         },
         "effects": [
           {
-            "name": "advance-thread",
-            "args": {
-              "thread_id": "vault-seal",
-              "stage": "seal-found"
-            }
+            "op": "advance-thread",
+            "thread_id": "vault-seal",
+            "status": null,
+            "stage": "seal-found",
+            "tick": 0
           },
           {
-            "name": "trait-change",
-            "args": {
-              "mode": "add",
-              "entity_id": "vault",
-              "text": "The seal answers a touch, and something behind the door answers with it.",
-              "trait_id": "warded"
-            }
+            "op": "trait-change",
+            "mode": "add",
+            "entity_id": "vault",
+            "trait_id": "warded",
+            "text": "The seal answers a touch, and something behind the door answers with it."
           }
         ],
         "note": "Kael has found the vault door. Press on what opening the seal will cost.",
         "once": true
       },
-      {
+      "vault-charted": {
         "id": "vault-charted",
         "match": {
           "kind": "entity_discovered",
@@ -227,23 +225,21 @@
         },
         "effects": [
           {
-            "name": "advance-thread",
-            "args": {
-              "thread_id": "vault-seal",
-              "stage": "seal-found"
-            }
+            "op": "advance-thread",
+            "thread_id": "vault-seal",
+            "status": null,
+            "stage": "seal-found",
+            "tick": 0
           },
           {
-            "name": "reveal",
-            "args": {
-              "entity_id": "vault"
-            }
+            "op": "reveal",
+            "entity_id": "vault"
           }
         ],
         "note": "The chart marks the stair to the vault door. Press on what opening the seal will cost.",
         "once": true
       },
-      {
+      "archivist-found": {
         "id": "archivist-found",
         "match": {
           "kind": "entity_discovered",
@@ -253,17 +249,17 @@
         },
         "effects": [
           {
-            "name": "advance-thread",
-            "args": {
-              "thread_id": "vault-seal",
-              "stage": "rite-known"
-            }
+            "op": "advance-thread",
+            "thread_id": "vault-seal",
+            "status": null,
+            "stage": "rite-known",
+            "tick": 0
           }
         ],
         "note": "Elena remembers the rite that sealed the vault. Let her name her price for it.",
         "once": true
       }
-    ],
+    },
     "fired_hooks": [],
     "pending_notes": []
   },

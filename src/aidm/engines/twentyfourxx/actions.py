@@ -1,16 +1,22 @@
 from random import Random
-from typing import Literal, Self
+from typing import Annotated, Literal, Self
 
 from pydantic import Field, model_validator
 
 from aidm.engines.counters import adjust, spend
 from aidm.engines.sheets import require_sheet
-from aidm.state.apply import apply_effect, require_actor_here
+from aidm.state.apply_effects import apply_effect, require_actor_here
 from aidm.state.base import PLAYER_ID, Entity, EntityId, Frozen, Slug
+from aidm.state.beat import (
+    BEAT_DOC,
+    BEAT_EFFECTS_DESCRIPTION,
+    BEAT_ROLL_DESCRIPTION,
+    Followup,
+    Resolution,
+)
 from aidm.state.dice import roll_pool
-from aidm.state.effects import Reveal
+from aidm.state.effects import Reveal, WorldOp
 from aidm.state.facts import CORE, Fact, entity_fact
-from aidm.state.plan import Followup, Resolution
 from aidm.state.world import GameState
 
 from .mechanics import DEFAULT_FACE, HINDERED_FACE, Mechanics, Sheet
@@ -22,6 +28,7 @@ SIGNS = 4  # 3-4 on the bad-luck die
 class Attempt(Frozen):
     """One risky attempt, answered by the highest die of a pool."""
 
+    op: Literal["attempt"] = "attempt"
     actor_id: EntityId = Field(
         description="Exact id of the actor attempting this: the player, or an actor here."
     )
@@ -77,6 +84,7 @@ class Attempt(Frozen):
 class LuckTest(Frozen):
     """The SRD's standalone bad-luck test, for a beat where nothing is attempted."""
 
+    op: Literal["luck-test"] = "luck-test"
     actor_id: EntityId = Field(
         description="Exact id of the actor whose luck is tested: the player, or an actor here."
     )
@@ -121,6 +129,21 @@ class CompleteJob(Frozen):
     ending."""
 
     op: Literal["complete-job"] = "complete-job"
+
+
+type TwentyfourxxRoll = Annotated[Attempt | LuckTest, Field(discriminator="op")]
+type TwentyfourxxEffect = Annotated[
+    WorldOp | ChangeCredits | CompleteJob, Field(discriminator="op")
+]
+
+
+class TwentyfourxxBeat(Frozen):
+    __doc__ = BEAT_DOC
+
+    roll: TwentyfourxxRoll | None = Field(default=None, description=BEAT_ROLL_DESCRIPTION)
+    effects: tuple[TwentyfourxxEffect, ...] = Field(
+        default=(), description=BEAT_EFFECTS_DESCRIPTION
+    )
 
 
 def apply_complete_job(draft: GameState) -> list[Fact]:
