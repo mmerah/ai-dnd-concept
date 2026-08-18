@@ -1,11 +1,6 @@
 # Plan
 
-The phased plan for what is built next, in order. Phases 1-6 have all shipped and moved to
-PROGRESS.md: the scenario creator, progressive world expansion, the source system (PDF ingestion,
-grounded expansion, fused authoring), scene illustrations, the player-facing UI, and the authoring
-page. Nothing is planned next; what stands is the working rules a future phase inherits and the
-deferred items below. Each phase carries enough detail to implement without prior context; only
-the next unshipped phase needs full resolution. Shipped phases move to PROGRESS.md.
+The phased plan for what is built next, in order. Shipped phases move to PROGRESS.md.
 
 ## Working rules
 
@@ -28,6 +23,4 @@ basedpyright` green after every numbered step, one commit per step.
 
 ## Deferred, with their trigger
 
-- Player-agency eval: when live eval gates come back (working rule 3).
-- Provider/cost UX (connection checks, per-turn latency, token counts): shell polish after the
-  play surface exists.
+- 
