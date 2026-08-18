@@ -361,6 +361,10 @@ pins that no unrevealed name reaches a player panel. `SAVE_VERSION` 70 -> 71; th
 - Out of scope exactly as PLAN said: suggestion chips, mid-game engine switching, the map view, and
   the home-page re-skin.
 
+### Phase 6 — The scenario creator becomes a page (in progress)
+
+- [x] 1. `ui/create.py` -> `character_create.py`, `creation_page` -> `character_page`; pure rename.
+
 ## Next
 
 - PLAN.md Phase 6: the scenario creator becomes a page, and authoring ends when the user says so.

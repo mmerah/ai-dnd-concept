@@ -16,7 +16,7 @@ from .panels import page_header
 LOGGER = logging.getLogger(__name__)
 
 
-def creation_page(runtime: Runtime, engine_id: EngineId) -> None:
+def character_page(runtime: Runtime, engine_id: EngineId) -> None:
     engine = runtime.engine(engine_id)
     with page_header("New character", engine.badge):
         pass
