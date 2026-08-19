@@ -48,12 +48,8 @@ def state() -> GameState:
         ),
     )
     memories = (
-        Memory(id="world-memory", owner=None, text="The vault has stood for a century."),
-        Memory(
-            id="secret-memory",
-            owner=EntityId("hidden-actor"),
-            text="The Secret keeps a hidden ledger.",
-        ),
+        Memory(owner=None, text="The vault has stood for a century."),
+        Memory(owner=EntityId("hidden-actor"), text="The Secret keeps a hidden ledger."),
     )
     held = GameState(
         save_version=SAVE_VERSION,
@@ -65,7 +61,7 @@ def state() -> GameState:
             entities={entity.id: entity for entity in entities},
             relations={relation.id: relation for relation in relations},
             threads={thread.id: thread for thread in threads},
-            memories={memory.id: memory for memory in memories},
+            memories=list(memories),
         ),
     )
     held.set_mechanics(
@@ -126,8 +122,8 @@ def test_a_turn_shows_the_player_only_the_facts_it_may_narrate() -> None:
         prompt="What do I do?",
         narration="The seal gives.",
         facts=(
-            Fact(source="core", kind="rolled", trace="rolled 4", narrator="the seal cracks"),
-            Fact(source="core", kind="entity_created", trace="new actor: The Secret"),
+            Fact(kind="rolled", trace="rolled 4", narrator="the seal cracks"),
+            Fact(kind="entity_created", trace="new actor: The Secret"),
         ),
     )
     played = played_turns(history, [Applied(subject_id=PLAYER_ID), turn])

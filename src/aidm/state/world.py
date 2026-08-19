@@ -1,5 +1,5 @@
 from collections.abc import Iterator, Mapping
-from typing import Annotated, Literal, Self
+from typing import Self
 
 from pydantic import Field, JsonValue, PrivateAttr, model_validator
 
@@ -17,7 +17,7 @@ from .base import (
     ThreadStatus,
     require_unique,
 )
-from .effects import WorldEffect
+from .effects import AdvanceThread
 from .facts import Fact, entity_fact
 from .history import Exchange
 
@@ -93,53 +93,22 @@ class Thread(Mutable):
         return self
 
 
-class Memory(Mutable):
+class Memory(Frozen):
     """A durable fact the world or one of its people holds, outliving the history window."""
 
-    id: Slug
     owner: EntityId | None = None
     text: str = Field(min_length=1, max_length=300)
 
 
-class FactMatch(Frozen):
-    """A committed fact this hook waits for: every field set here must equal the fact's own, and
-    a field left null waits for any value of it."""
-
-    def matches(self, fact: Fact) -> bool:
-        wanted = self.model_dump(exclude_none=True)
-        return fact.kind == wanted.pop("kind") and all(
-            fact.data.get(key) == value for key, value in wanted.items()
-        )
-
-
-class DiscoveryMatch(FactMatch):
-    """Waits for the player learning of an entity — the workhorse of authored consequence."""
-
-    kind: Literal["entity_discovered"] = "entity_discovered"
-    entity_id: EntityId | None = None
-
-
-class ThreadMatch(FactMatch):
-    """Waits for a thread moving: to a stage, or onto the last segment of its clock."""
-
-    kind: Literal["thread_advanced"] = "thread_advanced"
-    thread_id: Slug | None = None
-    stage: Slug | None = None
-    clock_filled: bool | None = None
-
-
-type HookMatch = Annotated[DiscoveryMatch | ThreadMatch, Field(discriminator="kind")]
-
-
 class Hook(Frozen):
-    """Authored consequence: a committed fact fires it, so a scenario advances without engine
-    code. Its `note` steers the Director on the following turn."""
+    """Authored consequence: the player learning of an entity fires it once, so a scenario
+    advances without engine code. Its `note` steers the Director on the following turn."""
 
     id: Slug
-    match: HookMatch
-    effects: tuple[WorldEffect, ...] = ()
+    on_discover: EntityId
     note: str = ""
-    once: bool = True
+    reveals: tuple[EntityId, ...] = ()
+    advance_thread: AdvanceThread | None = None
 
 
 class WorldState(Mutable):
@@ -148,7 +117,7 @@ class WorldState(Mutable):
     entities: dict[EntityId, Entity] = Field(default_factory=dict)
     relations: dict[RelationId, Relation] = Field(default_factory=dict)
     threads: dict[Slug, Thread] = Field(default_factory=dict)
-    memories: dict[Slug, Memory] = Field(default_factory=dict)
+    memories: list[Memory] = Field(default_factory=list)
     hooks: dict[Slug, Hook] = Field(default_factory=dict)
     # A tuple, not a set: a save's bytes are a golden fixture, and set ordering is not stable.
     fired_hooks: tuple[Slug, ...] = ()
@@ -160,7 +129,6 @@ class WorldState(Mutable):
             ("entity", self.entities),
             ("relation", self.relations),
             ("thread", self.threads),
-            ("memory", self.memories),
             ("hook", self.hooks),
         )
         mismatched = sorted(
@@ -177,9 +145,9 @@ class WorldState(Mutable):
             check_placement(entity, holder)
         for relation in self.relations.values():
             self._check_relation(relation)
-        for memory in self.memories.values():
+        for memory in self.memories:
             if memory.owner is not None and memory.owner not in self.entities:
-                raise ValueError(f"memory {memory.id!r} is held by unknown entity {memory.owner!r}")
+                raise ValueError(f"a memory is held by unknown entity {memory.owner!r}")
         authored = set(self.hooks)
         if unknown := sorted(set(self.fired_hooks) - authored):
             raise ValueError(f"fired hooks name no authored hook: {unknown}")

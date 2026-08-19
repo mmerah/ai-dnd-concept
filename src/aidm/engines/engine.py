@@ -140,7 +140,6 @@ class Engine[S: SheetBase](ABC):
             return Resolution(facts=tuple(caused), followup="none")
         return Resolution(
             facts=(*settled.facts, *caused),
-            outcome=settled.outcome,
             followup=settled.followup,
         )
 

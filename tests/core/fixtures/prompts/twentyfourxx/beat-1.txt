@@ -27,8 +27,6 @@ EXITS FROM HERE:
 KNOWN TO THE PLAYER, BUT ELSEWHERE:
 - the cloister[id=cloister] (location) — A frost-rimed colonnade around a dead garden; Brother Tomas sweeps it to no purpose.
 - the sealed vault[id=vault] (location) — The undercroft chamber Kael came for, its door bearing a seal nobody living can read.
-  state:
-    traits: Warded[id=warded] — The seal answers a touch, and something behind the door answers with it.
 - Brother Tomas[id=tomas] (npc) — at the cloister — A deaf old porter who sweeps the cloister and knows almost nothing about the vault.
   state:
     pools: credits 2
@@ -54,7 +52,7 @@ MEMORIES:
 SCENARIO NOTES:
 - Bad luck is circling: signs of something behind the door is already listening back showed this turn. Let the scene warn of it before it bites.
 - The chart marks the stair to the vault door. Press on what opening the seal will cost.
-- Kael has found the vault door. Press on what opening the seal will cost.
+- Kael has found the vault door: the seal answers a touch, and something behind it answers with it. Press on what opening the seal will cost.
 
 PLAYER ACTION:
 I lever up the loose flagstone and listen at the vault door.
@@ -65,7 +63,6 @@ WHAT JUST HAPPENED:
 - learned of the vault map
 - took the vault map
 - learned of the sealed vault
-- the sealed vault is Warded
 
 ASKED AGAIN:
 THIS IS THE SAME TURN, ONE BEAT ON. The dice have settled the roll you planned, and WHAT JUST HAPPENED lists what it actually caused. The scene below already holds those changes. Write the next beat of the same turn: the `effects` the outcome now causes, and one more `roll` only if the fiction plainly runs straight on into it.

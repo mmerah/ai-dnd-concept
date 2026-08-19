@@ -5,9 +5,9 @@ from typing import Protocol
 
 from pydantic import ValidationError
 
+from aidm.app.registry import ENGINES, engine_class
 from aidm.config import Settings
 from aidm.content.store import FileStore, SaveShell, read_characters, read_scenarios
-from aidm.engines.registry import engine_class, engines
 from aidm.state.base import EngineId, Frozen, Slug
 
 
@@ -182,7 +182,7 @@ class LauncherController:
 
 
 def load_catalog(config: Settings) -> LauncherCatalog:
-    engine_options = tuple(EngineOption(id=engine.id, badge=engine.badge) for engine in engines())
+    engine_options = tuple(EngineOption(id=engine.id, badge=engine.badge) for engine in ENGINES)
     engine_ids = tuple(option.id for option in engine_options)
     scenarios = tuple(
         ContentOption(id=name, title=world.meta.title, subtitle=world.meta.premise, engines=engines)

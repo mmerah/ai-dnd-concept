@@ -15,8 +15,7 @@ from pydantic import ValidationError
 from aidm.content.authored import Character, CharacterOverlay, CharacterProfile, ScenarioWorld
 from aidm.engines.loner3e.mechanics import LUCK_MAX, Mechanics
 from aidm.state.base import PLAYER_ID, Entity, EntityId
-from aidm.state.effects import Reveal
-from aidm.state.world import CONNECTED, DiscoveryMatch, GameState, Hook, Relation
+from aidm.state.world import CONNECTED, GameState, Hook, Relation
 
 HELD = EntityId("frayed_rope")
 UNHELD = EntityId("silk_rope")
@@ -126,40 +125,16 @@ def test_a_known_location_no_known_way_reaches_is_refused() -> None:
 
 def test_a_hook_waiting_on_an_unauthored_id_is_refused() -> None:
     world = scenario().world
-    ghost = Hook(id="ghost-sighted", match=DiscoveryMatch(entity_id=EntityId("ghost")))
+    ghost = Hook(id="ghost-sighted", on_discover=EntityId("ghost"))
     with pytest.raises(ValidationError, match=r"never fire.*ghost"):
         updated(world, hooks=(*world.hooks, ghost))
 
 
-def test_a_hook_effect_naming_an_unauthored_id_is_refused() -> None:
+def test_a_hook_revealing_an_unauthored_id_is_refused() -> None:
     world = scenario().world
-    haunted = Hook(
-        id="vault-haunted",
-        match=DiscoveryMatch(entity_id=EntityId("vault")),
-        effects=(Reveal(entity_id=EntityId("ghost")),),
-    )
-    with pytest.raises(ValidationError, match=r"vault-haunted.*reveal.*entity='ghost'"):
+    haunted = Hook(id="vault-haunted", on_discover=EntityId("vault"), reveals=(EntityId("ghost"),))
+    with pytest.raises(ValidationError, match=r"vault-haunted.*ghost"):
         updated(world, hooks=(*world.hooks, haunted))
-
-
-def test_hooks_chaining_discovery_into_discovery_are_refused() -> None:
-    """`fire_hooks` feeds a hook's own facts back into matching, so three linked reveals open the
-    whole scenario on the first one."""
-    world = scenario().world
-    chain = (
-        Hook(
-            id="map-read",
-            match=DiscoveryMatch(entity_id=EntityId("vault_map")),
-            effects=(Reveal(entity_id=ELENA),),
-        ),
-        Hook(
-            id="archivist-speaks",
-            match=DiscoveryMatch(entity_id=ELENA),
-            effects=(Reveal(entity_id=EntityId("vault")),),
-        ),
-    )
-    with pytest.raises(ValidationError, match=r"domino.*archivist-speaks"):
-        updated(world, hooks=(*world.hooks, *chain))
 
 
 def test_a_scenario_starts_the_party_it_authors() -> None:

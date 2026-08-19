@@ -16,7 +16,7 @@ from aidm.state.beat import (
 )
 from aidm.state.dice import roll_pool
 from aidm.state.effects import Reveal, WorldOp
-from aidm.state.facts import CORE, Fact, entity_fact
+from aidm.state.facts import Fact, entity_fact
 from aidm.state.world import GameState
 
 from .mechanics import DEFAULT_FACE, HINDERED_FACE, Mechanics, Sheet
@@ -148,7 +148,7 @@ class TwentyfourxxBeat(Frozen):
 
 def apply_complete_job(draft: GameState) -> list[Fact]:
     draft.mechanics_as(Mechanics).completed.current += 1
-    return [Fact(source=CORE, kind="job_completed", trace="the job is done")]
+    return [Fact(kind="job_completed", trace="the job is done")]
 
 
 def outcome_for(kept: int) -> Slug:
@@ -200,7 +200,7 @@ def resolve_attempt(draft: GameState, action: Attempt, rng: Random) -> Resolutio
         facts.extend(tested)
         if luck == "trouble":
             followup = "settle"
-    return Resolution(facts=tuple(facts), outcome=outcome, followup=followup)
+    return Resolution(facts=tuple(facts), followup=followup)
 
 
 def resolve_luck_test(draft: GameState, action: LuckTest, rng: Random) -> Resolution:
@@ -209,7 +209,7 @@ def resolve_luck_test(draft: GameState, action: LuckTest, rng: Random) -> Resolu
     tested, outcome = _bad_luck(draft, actor, action.subject, rng)
     facts.extend(tested)
     followup: Followup = "settle" if outcome == "trouble" else "continue"
-    return Resolution(facts=tuple(facts), outcome=outcome, followup=followup)
+    return Resolution(facts=tuple(facts), followup=followup)
 
 
 def _helper_sheet(

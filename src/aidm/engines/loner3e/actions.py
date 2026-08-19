@@ -15,7 +15,7 @@ from aidm.state.beat import (
 )
 from aidm.state.dice import roll_pool
 from aidm.state.effects import Reveal, WorldOp
-from aidm.state.facts import CORE, Fact, entity_fact
+from aidm.state.facts import Fact, entity_fact
 from aidm.state.world import GameState
 
 from .mechanics import LUCK_MAX, TIES_PER_TWIST, Mechanics
@@ -161,7 +161,7 @@ def resolve_question(
         if mechanics.twist.current >= TIES_PER_TWIST:
             mechanics.twist.current = 0
             facts.extend(_twist(draft, actor, rng, twists))
-    return Resolution(facts=tuple(facts), outcome=outcome)
+    return Resolution(facts=tuple(facts))
 
 
 def apply_restore_luck(draft: GameState, effect: RestoreLuck) -> list[Fact]:
@@ -175,7 +175,7 @@ def apply_restore_luck(draft: GameState, effect: RestoreLuck) -> list[Fact]:
 
 def apply_end_adventure(draft: GameState) -> list[Fact]:
     draft.mechanics_as(Mechanics).completed.current += 1
-    return [Fact(source=CORE, kind="adventure_completed", trace="the adventure has ended")]
+    return [Fact(kind="adventure_completed", trace="the adventure has ended")]
 
 
 def _twist(

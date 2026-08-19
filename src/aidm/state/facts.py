@@ -4,14 +4,12 @@ from pydantic import Field, JsonValue
 
 from .base import Entity, Frozen
 
-CORE = "core"
 NOTHING_MECHANICAL = "- (nothing mechanical happened)"
 
 
 class Fact(Frozen):
     """One thing that occurred, rendered where its values were in scope."""
 
-    source: str
     kind: str
     trace: str
     narrator: str | None = None
@@ -24,7 +22,6 @@ def entity_fact(
 ) -> Fact:
     """An entity the player has not learned of narrates nothing, so no unknown name leaks."""
     return Fact(
-        source=CORE,
         kind=kind,
         trace=trace,
         narrator=trace if narrate and entity.known else None,

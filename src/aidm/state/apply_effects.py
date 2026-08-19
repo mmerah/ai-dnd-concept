@@ -10,7 +10,7 @@ from .effects import (
     TraitChange,
     WorldEffect,
 )
-from .facts import CORE, Fact, entity_fact
+from .facts import Fact, entity_fact
 from .world import CONNECTED, PARTY_MEMBER, GameState, Relation
 
 
@@ -258,4 +258,4 @@ def _advance_thread(draft: GameState, effect: AdvanceThread) -> list[Fact]:
             "clock_maximum": clock.maximum,
             "clock_filled": clock.current == clock.maximum,
         }
-    return [Fact(source=CORE, kind="thread_advanced", trace=moved, data=data)]
+    return [Fact(kind="thread_advanced", trace=moved, data=data)]

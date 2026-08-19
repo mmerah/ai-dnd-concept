@@ -83,6 +83,3 @@ class TwentyfourxxEngine(Engine[Sheet]):
                 return apply_complete_job(draft)
             case _:
                 return super().apply(draft, effect)
-
-
-ENGINE = TwentyfourxxEngine

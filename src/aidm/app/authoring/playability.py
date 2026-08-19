@@ -2,15 +2,14 @@ from collections.abc import Callable, Sequence
 from dataclasses import dataclass
 from pathlib import Path
 
+from aidm.app.registry import engine_ids
 from aidm.config import Settings
 from aidm.content.authored import Character, Scenario, ScenarioOverlay, ScenarioWorld
 from aidm.content.store import engine_text, load_character
 from aidm.engines.engine import Engine
-from aidm.engines.registry import engine_ids
 from aidm.engines.sheets import SheetBase
 from aidm.state.base import Slug
-from aidm.state.effects import AdvanceThread
-from aidm.state.world import CONNECTED, DiscoveryMatch, Hook
+from aidm.state.world import CONNECTED
 
 from ..session import begin_game, build_engine
 from .draft import WorldDraft
@@ -46,12 +45,6 @@ def playtests(config: Settings) -> tuple[Playtest, ...]:
     return tuple(built)
 
 
-def _advances_on_discovery(hook: Hook) -> bool:
-    return isinstance(hook.match, DiscoveryMatch) and any(
-        isinstance(effect, AdvanceThread) for effect in hook.effects
-    )
-
-
 def _bar_unmet(world: ScenarioWorld) -> list[str]:
     """The bar the instructions set, checked mechanically — every unmet item found at once."""
     unmet: list[str] = []
@@ -73,8 +66,8 @@ def _bar_unmet(world: ScenarioWorld) -> list[str]:
         unmet.append("at least one item starting `known: false` — a secret to find")
     if not world.threads:
         unmet.append("at least one thread")
-    if not any(_advances_on_discovery(hook) for hook in world.hooks):
-        unmet.append("at least one hook that advances a thread on an `entity_discovered` fact")
+    if not any(hook.advance_thread is not None for hook in world.hooks):
+        unmet.append("at least one hook that advances a thread when an entity is discovered")
     return unmet
 
 

@@ -110,11 +110,9 @@
   ],
   "memories": [
     {
-      "id": "the-abbey-emptied-in-one-night",
       "text": "The abbey emptied in a single night: meals were left half-eaten, doors left open, and no brother has been seen on the road since."
     },
     {
-      "id": "mara-catalogued-with-elena",
       "owner": "mara",
       "text": "Mara catalogued the vault ledgers beside Elena for two winters, until the night Elena went below alone and never came back up."
     }
@@ -122,59 +120,22 @@
   "hooks": [
     {
       "id": "vault-sighted",
-      "match": {
-        "kind": "entity_discovered",
-        "entity_id": "vault"
-      },
-      "effects": [
-        {
-          "op": "advance-thread",
-          "thread_id": "vault-seal",
-          "stage": "seal-found"
-        },
-        {
-          "op": "trait-change",
-          "mode": "add",
-          "entity_id": "vault",
-          "text": "The seal answers a touch, and something behind the door answers with it.",
-          "trait_id": "warded"
-        }
-      ],
-      "note": "Kael has found the vault door. Press on what opening the seal will cost."
+      "on_discover": "vault",
+      "note": "Kael has found the vault door: the seal answers a touch, and something behind it answers with it. Press on what opening the seal will cost.",
+      "advance_thread": { "thread_id": "vault-seal", "stage": "seal-found" }
     },
     {
       "id": "vault-charted",
-      "match": {
-        "kind": "entity_discovered",
-        "entity_id": "vault_map"
-      },
-      "effects": [
-        {
-          "op": "advance-thread",
-          "thread_id": "vault-seal",
-          "stage": "seal-found"
-        },
-        {
-          "op": "reveal",
-          "entity_id": "vault"
-        }
-      ],
-      "note": "The chart marks the stair to the vault door. Press on what opening the seal will cost."
+      "on_discover": "vault_map",
+      "note": "The chart marks the stair to the vault door. Press on what opening the seal will cost.",
+      "reveals": ["vault"],
+      "advance_thread": { "thread_id": "vault-seal", "stage": "seal-found" }
     },
     {
       "id": "archivist-found",
-      "match": {
-        "kind": "entity_discovered",
-        "entity_id": "elena"
-      },
-      "effects": [
-        {
-          "op": "advance-thread",
-          "thread_id": "vault-seal",
-          "stage": "rite-known"
-        }
-      ],
-      "note": "Elena remembers the rite that sealed the vault. Let her name her price for it."
+      "on_discover": "elena",
+      "note": "Elena remembers the rite that sealed the vault. Let her name her price for it.",
+      "advance_thread": { "thread_id": "vault-seal", "stage": "rite-known" }
     }
   ]
 }

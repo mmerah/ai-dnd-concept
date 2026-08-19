@@ -8,7 +8,8 @@ from aidm.state.world import Hook, Memory, Relation, ScenarioMeta, Thread
 
 class ScenarioPatch(Frozen):
     """One pass over the draft. A set field replaces its value; an element whose id the draft
-    already holds is replaced whole; `remove` drops ids from whichever collection holds them."""
+    already holds is replaced whole; `remove` drops ids from whichever collection holds them. A
+    memory has no id: a new one is appended, and one the draft already holds is dropped."""
 
     meta: ScenarioMeta | None = None
     starting_location_id: EntityId | None = None
@@ -40,7 +41,7 @@ class WorldDraft(Mutable):
     entities: dict[EntityId, Entity] = Field(default_factory=dict)
     relations: dict[RelationId, Relation] = Field(default_factory=dict)
     threads: dict[Slug, Thread] = Field(default_factory=dict)
-    memories: dict[Slug, Memory] = Field(default_factory=dict)
+    memories: list[Memory] = Field(default_factory=list)
     hooks: dict[Slug, Hook] = Field(default_factory=dict)
 
     def apply(self, patch: ScenarioPatch) -> str:
@@ -63,8 +64,13 @@ class WorldDraft(Mutable):
             self.relations[relation.id] = relation
         for thread in patch.threads:
             self.threads[thread.id] = thread
-        for memory in patch.memories:
-            self.memories[memory.id] = memory
+        # A memory is identified by its text, here and in the Worldkeeper's own dedupe.
+        kept = [
+            memory
+            for memory in patch.memories
+            if all(held.text.casefold() != memory.text.casefold() for held in self.memories)
+        ]
+        self.memories.extend(kept)
         for hook in patch.hooks:
             self.hooks[hook.id] = hook
         wrote.extend(
@@ -73,7 +79,7 @@ class WorldDraft(Mutable):
                 ("entities", patch.entities),
                 ("relations", patch.relations),
                 ("threads", patch.threads),
-                ("memories", patch.memories),
+                ("memories", kept),
                 ("hooks", patch.hooks),
             )
             if group
@@ -91,8 +97,6 @@ class WorldDraft(Mutable):
             del self.relations[RelationId(target)]
         elif target in self.threads:
             del self.threads[target]
-        elif target in self.memories:
-            del self.memories[target]
         elif target in self.hooks:
             del self.hooks[target]
         else:
@@ -120,6 +124,6 @@ class WorldDraft(Mutable):
             entities=tuple(self.entities.values()),
             relations=tuple(self.relations.values()),
             threads=tuple(self.threads.values()),
-            memories=tuple(self.memories.values()),
+            memories=tuple(self.memories),
             hooks=tuple(self.hooks.values()),
         )

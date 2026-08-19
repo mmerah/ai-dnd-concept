@@ -1,7 +1,7 @@
 from collections.abc import Sequence
 from random import Random
 
-from .facts import CORE, Fact
+from .facts import Fact
 
 
 def roll_pool(faces: Sequence[int], reason: str, rng: Random) -> tuple[int, Fact]:
@@ -12,7 +12,6 @@ def roll_pool(faces: Sequence[int], reason: str, rng: Random) -> tuple[int, Fact
     kept = max(drawn)
     shown = ", ".join(str(die) for die in drawn)
     return kept, Fact(
-        source=CORE,
         kind="dice_rolled",
         trace=f"{reason}: {_notation(faces)} [{shown}] -> {kept}",
         data={"faces": list(faces), "rolled": list(drawn), "kept": kept, "reason": reason},

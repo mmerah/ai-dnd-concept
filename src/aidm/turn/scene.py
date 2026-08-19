@@ -93,7 +93,7 @@ class SceneSnapshot(BaseScene):
             ),
             memories=tuple(
                 memory
-                for memory in world.memories.values()
+                for memory in world.memories
                 if memory.owner is None or memory.owner in present
             ),
             notes=world.pending_notes,

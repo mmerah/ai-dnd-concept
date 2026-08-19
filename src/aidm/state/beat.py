@@ -3,7 +3,7 @@ from typing import Literal
 
 from pydantic import ValidationError
 
-from .base import Frozen, Slug
+from .base import Frozen
 from .facts import Fact
 from .world import GameState
 
@@ -27,7 +27,6 @@ type Followup = Literal["none", "settle", "continue"]
 
 class Resolution(Frozen):
     facts: tuple[Fact, ...] = ()
-    outcome: Slug | None = None
     followup: Followup = "continue"
 
 

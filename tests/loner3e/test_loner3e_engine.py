@@ -150,8 +150,9 @@ def test_a_conflict_exchange_moves_luck_off_whichever_side_lost_it() -> None:
     for seed in range(200):
         draft = state.draft()
         resolution = resolve_question(draft, _duel(), Random(seed), TWISTS)
-        facts, outcome = resolution.facts, resolution.outcome
-        assert outcome is not None
+        facts = resolution.facts
+        answered = next(fact for fact in facts if fact.kind == "question_answered")
+        outcome = str(answered.data["outcome"])
         sheets = draft.mechanics_as(Mechanics).sheets
         harm = HARM[outcome]
         loser = FOE if harm > 0 else PLAYER_ID
@@ -172,8 +173,9 @@ def test_luck_running_out_ends_the_conflict_and_resets_both_pools() -> None:
     for seed in range(200):
         draft = hurt.draft()
         resolution = resolve_question(draft, _duel(), Random(seed), TWISTS)
-        facts, outcome = resolution.facts, resolution.outcome
-        assert outcome is not None
+        facts = resolution.facts
+        answered = next(fact for fact in facts if fact.kind == "question_answered")
+        outcome = str(answered.data["outcome"])
         if HARM[outcome] > 0:
             break
     else:

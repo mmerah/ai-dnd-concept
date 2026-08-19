@@ -7,6 +7,6 @@ A floor to clear, not a target to stop at: a premise or a document with more in 
 - Two or more actors, at least one of them unknown at the start, holding something the player
   needs.
 - At least one item that is secret: unknown, placed where finding it is a discovery.
-- At least one thread, advanced by hooks that fire on `entity_discovered` for the entities that
-  actually move it.
+- At least one thread, advanced by hooks whose `on_discover` names the entities that actually
+  move it.
 - A `detail.hook` on every entity that could lead somewhere.

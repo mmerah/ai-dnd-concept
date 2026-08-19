@@ -1,5 +1,5 @@
 {
-  "save_version": 73,
+  "save_version": 75,
   "scenario_id": "whispering-vault",
   "character_id": "kael",
   "scenario": {
@@ -47,13 +47,7 @@
         "detail": null,
         "known": true,
         "parent_id": null,
-        "traits": [
-          {
-            "id": "warded",
-            "name": "Warded",
-            "text": "The seal answers a touch, and something behind the door answers with it."
-          }
-        ]
+        "traits": []
       },
       "mara": {
         "id": "mara",
@@ -181,88 +175,61 @@
         "clock": null
       }
     },
-    "memories": {
-      "the-abbey-emptied-in-one-night": {
-        "id": "the-abbey-emptied-in-one-night",
+    "memories": [
+      {
         "owner": null,
         "text": "The abbey emptied in a single night: meals were left half-eaten, doors left open, and no brother has been seen on the road since."
       },
-      "mara-catalogued-with-elena": {
-        "id": "mara-catalogued-with-elena",
+      {
         "owner": "mara",
         "text": "Mara catalogued the vault ledgers beside Elena for two winters, until the night Elena went below alone and never came back up."
       },
-      "mara-confirmed-the-vault-door-has-not-opened-in-thirty-years": {
-        "id": "mara-confirmed-the-vault-door-has-not-opened-in-thirty-years",
+      {
         "owner": "mara",
         "text": "Mara confirmed the vault door has not opened in thirty years."
       }
-    },
+    ],
     "hooks": {
       "vault-sighted": {
         "id": "vault-sighted",
-        "match": {
-          "kind": "entity_discovered",
-          "entity_id": "vault"
-        },
-        "effects": [
-          {
-            "op": "advance-thread",
-            "thread_id": "vault-seal",
-            "status": null,
-            "stage": "seal-found",
-            "tick": 0
-          },
-          {
-            "op": "trait-change",
-            "mode": "add",
-            "entity_id": "vault",
-            "trait_id": "warded",
-            "text": "The seal answers a touch, and something behind the door answers with it."
-          }
-        ],
-        "note": "Kael has found the vault door. Press on what opening the seal will cost.",
-        "once": true
+        "on_discover": "vault",
+        "note": "Kael has found the vault door: the seal answers a touch, and something behind it answers with it. Press on what opening the seal will cost.",
+        "reveals": [],
+        "advance_thread": {
+          "op": "advance-thread",
+          "thread_id": "vault-seal",
+          "status": null,
+          "stage": "seal-found",
+          "tick": 0
+        }
       },
       "vault-charted": {
         "id": "vault-charted",
-        "match": {
-          "kind": "entity_discovered",
-          "entity_id": "vault_map"
-        },
-        "effects": [
-          {
-            "op": "advance-thread",
-            "thread_id": "vault-seal",
-            "status": null,
-            "stage": "seal-found",
-            "tick": 0
-          },
-          {
-            "op": "reveal",
-            "entity_id": "vault"
-          }
-        ],
+        "on_discover": "vault_map",
         "note": "The chart marks the stair to the vault door. Press on what opening the seal will cost.",
-        "once": true
+        "reveals": [
+          "vault"
+        ],
+        "advance_thread": {
+          "op": "advance-thread",
+          "thread_id": "vault-seal",
+          "status": null,
+          "stage": "seal-found",
+          "tick": 0
+        }
       },
       "archivist-found": {
         "id": "archivist-found",
-        "match": {
-          "kind": "entity_discovered",
-          "entity_id": "elena"
-        },
-        "effects": [
-          {
-            "op": "advance-thread",
-            "thread_id": "vault-seal",
-            "status": null,
-            "stage": "rite-known",
-            "tick": 0
-          }
-        ],
+        "on_discover": "elena",
         "note": "Elena remembers the rite that sealed the vault. Let her name her price for it.",
-        "once": true
+        "reveals": [],
+        "advance_thread": {
+          "op": "advance-thread",
+          "thread_id": "vault-seal",
+          "status": null,
+          "stage": "rite-known",
+          "tick": 0
+        }
       }
     },
     "fired_hooks": [

@@ -4,7 +4,7 @@ from golden_test_support import FIXTURES, golden_json
 from pydantic import BaseModel
 from pydantic_ai.toolsets import AbstractToolset, FunctionToolset
 
-from aidm.engines.registry import engine_ids
+from aidm.app.registry import engine_ids
 from aidm.state.base import EngineId, EntityDetail
 from aidm.turn.reports import WorldkeeperReport
 

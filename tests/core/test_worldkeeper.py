@@ -38,9 +38,9 @@ async def test_the_report_keeps_new_memories_drops_a_repeat_and_retries() -> Non
     )
 
     memories = result.state.world.memories
-    assert [memory.text for memory in memories.values()][-2:] == [CONFIDED, CHARTED]
+    assert [memory.text for memory in memories][-2:] == [CONFIDED, CHARTED]
     assert len(memories) == 4  # the two authored, plus the two admitted under the cap of two
-    assert [memory.owner for memory in memories.values()][-2:] == ["mara", None]
+    assert [memory.owner for memory in memories][-2:] == ["mara", None]
     kept = [fact for fact in result.turn.facts if fact.kind == "memory_kept"]
     assert len(kept) == 2
     # A memory is bookkeeping, like a thread: neither reaches the player's narration.

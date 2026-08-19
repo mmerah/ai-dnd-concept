@@ -123,12 +123,10 @@
   ],
   "memories": [
     {
-      "id": "ovid-brother",
       "owner": null,
       "text": "Ovid Sarn's younger brother Wren drowned trying to beat the tide home; his oilskin coat hangs in the Bell House."
     },
     {
-      "id": "key-legend",
       "owner": null,
       "text": "A bronze key shaped like a flatfish lies wrapped in oilcloth behind a loose brick in the Bell House's north wall, but no one knows where it fits."
     }
@@ -136,44 +134,14 @@
   "hooks": [
     {
       "id": "key-discovered",
-      "match": {
-        "kind": "entity_discovered",
-        "entity_id": "bronze_key"
-      },
-      "effects": [
-        {
-          "op": "relation-change",
-          "mode": "unlock",
-          "kind": "connected",
-          "source": "lantern_chapel",
-          "target": "crypt_entrance"
-        },
-        {
-          "op": "relation-change",
-          "mode": "reveal",
-          "kind": "connected",
-          "source": "lantern_chapel",
-          "target": "crypt_entrance"
-        }
-      ],
-      "note": "The bronze key can remove the lock on the crypt entrance.",
-      "once": true
+      "on_discover": "bronze_key",
+      "note": "The bronze key can remove the lock on the crypt entrance: the way to the crypt can now be revealed and unlocked."
     },
     {
       "id": "crypt-revealed",
-      "match": {
-        "kind": "entity_discovered",
-        "entity_id": "crypt_entrance"
-      },
-      "effects": [
-        {
-          "op": "advance-thread",
-          "thread_id": "crypt-revelation",
-          "stage": "seal-found"
-        }
-      ],
+      "on_discover": "crypt_entrance",
       "note": "The crypt entrance is now known; the player can explore it.",
-      "once": true
+      "advance_thread": { "thread_id": "crypt-revelation", "stage": "seal-found" }
     }
   ]
 }

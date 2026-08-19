@@ -6,13 +6,13 @@ from random import Random
 
 from pydantic_ai import Agent
 
+from aidm.app.registry import engine_class
 from aidm.config import Settings
 from aidm.content.authored import Character, Scenario
 from aidm.content.sources import CanonSource, CitedOrInventedSource, ingest
 from aidm.content.store import FileStore, load_character, load_scenario, read_source, require_source
 from aidm.engines.advancement import Advancement, Offer, ProposalBase
 from aidm.engines.engine import Engine
-from aidm.engines.registry import engine_class
 from aidm.engines.sheets import SheetBase
 from aidm.engines.transact import transact
 from aidm.state.base import PLAYER_ID, SAVE_VERSION, EngineId, Entity, EntityId

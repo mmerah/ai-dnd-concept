@@ -83,6 +83,3 @@ class Loner3eEngine(Engine[Sheet]):
                 return apply_end_adventure(draft)
             case _:
                 return super().apply(draft, effect)
-
-
-ENGINE = Loner3eEngine

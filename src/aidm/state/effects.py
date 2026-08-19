@@ -121,23 +121,3 @@ def is_world_op(effect: Frozen) -> TypeIs[WorldOp]:
     return isinstance(
         effect, (Reveal, Move, GainImprovisedItem, TraitChange, RelationChange, AdvanceThread)
     )
-
-
-type IdReference = tuple[Literal["entity", "thread"], str]
-
-
-def references(effect: WorldOp) -> tuple[IdReference, ...]:
-    """The authored ids an effect names, so a hook that would fail mid-game is refused at load."""
-    match effect:
-        case Reveal(entity_id=entity_id):
-            return (("entity", entity_id),)
-        case Move(entity_id=entity_id, to_id=to_id):
-            return (("entity", entity_id), ("entity", to_id))
-        case GainImprovisedItem():
-            return ()
-        case TraitChange(entity_id=entity_id):
-            return (("entity", entity_id),)
-        case RelationChange(source=source, target=target):
-            return (("entity", source), ("entity", target))
-        case AdvanceThread(thread_id=thread_id):
-            return (("thread", thread_id),)

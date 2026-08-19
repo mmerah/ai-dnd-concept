@@ -18,7 +18,9 @@ from aidm.engines.twentyfourxx.advance import Advance
 from aidm.engines.twentyfourxx.mechanics import Mechanics, Sheet
 from aidm.engines.twentyfourxx.rules import TwentyfourxxEngine
 from aidm.state.base import PLAYER_ID, EntityId
+from aidm.state.beat import Resolution
 from aidm.state.creation import Picks
+from aidm.state.facts import Fact
 
 MARA = EntityId("mara")
 
@@ -182,6 +184,10 @@ def _credits(amount: int) -> ChangeCredits:
     return ChangeCredits(actor_id=PLAYER_ID, amount=amount)
 
 
+def _tested(resolution: Resolution) -> Fact:
+    return next(fact for fact in resolution.facts if fact.kind == "luck_tested")
+
+
 def test_a_tested_bad_luck_risk_that_lands_leaves_a_note_for_the_next_turn() -> None:
     _, state = game(TWENTYFOURXX)
     action = Attempt(
@@ -215,7 +221,8 @@ def test_bad_luck_that_bites_hands_the_turn_back_even_when_the_attempt_succeeded
     # Seed 6 succeeds and still lands trouble, so the yield can only come from the luck test.
     resolution = resolve_attempt(state.draft(), action, Random(6))
 
-    assert resolution.outcome == "success"
+    resolved = next(fact for fact in resolution.facts if fact.kind == "attempt_resolved")
+    assert resolved.data["outcome"] == "success"
     assert resolution.followup == "settle"
 
 
@@ -225,17 +232,17 @@ def test_a_standalone_luck_test_needs_no_attempt_and_only_trouble_hands_the_turn
 
     draft = state.draft()
     trouble = resolve_luck_test(draft, action, Random(2))
-    assert trouble.outcome == "trouble"
+    assert _tested(trouble).data["trouble"] is True
     assert trouble.followup == "settle"
     assert len(draft.world.pending_notes) == 1
 
     signs = resolve_luck_test(state.draft(), action, Random(0))
-    assert signs.outcome == "signs"
+    assert _tested(signs).data["trouble"] is False
     assert signs.followup == "continue"
 
     draft = state.draft()
     clear = resolve_luck_test(draft, action, Random(5))
-    assert clear.outcome == "clear"
+    assert not any(fact.kind == "luck_tested" for fact in clear.facts)
     assert clear.followup == "continue"
     assert draft.world.pending_notes == ()
 

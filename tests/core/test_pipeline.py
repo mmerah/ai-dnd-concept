@@ -56,11 +56,10 @@ async def test_an_engine_uses_the_shared_pipeline_and_safe_narrator_prompt() -> 
         "entity_discovered",
         "entity_moved",
         "hook_fired",
-        "thread_advanced",
         "entity_discovered",
+        "thread_advanced",
         "hook_fired",
         "thread_advanced",
-        "trait_added",
     ]
     assert {item.id for item in result.state.world.children(PLAYER_ID, "item")} == {
         "lantern",
@@ -321,8 +320,7 @@ async def test_a_hook_fires_on_its_fact_moves_its_thread_and_steers_the_next_tur
     thread = found.state.world.threads["vault-seal"]
     assert (thread.status, thread.stage) == ("active", "seal-found")
     assert found.state.world.fired_hooks == ("vault-sighted",)
-    # The hook's own consequence reaches the Narrator the turn it happens; the thread never does.
-    assert "Warded" in shown(found.turn, "narrator")
+    # The thread the hook moves is Director bookkeeping and never reaches the Narrator.
     assert "vault-seal" not in shown(found.turn, "narrator")
 
     after = await played(
@@ -341,16 +339,9 @@ async def test_memory_reaches_the_director_alone_and_only_for_who_is_here() -> N
     """A memory may hold canon the player has not earned, so the narrating role is shown none."""
     engine, state = initialized()
     draft = state.draft()
-    elsewhere = Memory(
-        id="tomas-kept-the-keys",
-        owner=EntityId("tomas"),
-        text="Brother Tomas kept the undercroft keys.",
-    )
-    here = Memory(
-        id="the-study-was-searched", owner=EntityId("study"), text="The study was searched once."
-    )
-    for memory in (elsewhere, here):
-        draft.world.memories[memory.id] = memory
+    elsewhere = Memory(owner=EntityId("tomas"), text="Brother Tomas kept the undercroft keys.")
+    here = Memory(owner=EntityId("study"), text="The study was searched once.")
+    draft.world.memories.extend((elsewhere, here))
     result = await played(
         engine,
         draft.committed(),

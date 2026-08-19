@@ -44,16 +44,15 @@ You build the scenario in a draft, through tools, never in one answer:
   it stands (`unfound`, `seal-found`), and a `note` that tells the Director what it means right
   now. The note is steering for the Director, never player-facing prose.
 - `memories`: what the world or one person durably holds, at most 300 characters. `owner` is an
-  actor's id, or omitted for something the world remembers.
+  actor's id, or omitted for something the world remembers. A memory has no id, so it can be
+  neither rewritten nor removed, and writing one the draft already holds adds nothing.
 - `art_style`: one line of visual direction for the scenario's illustrations — palette, medium
   and mood, drawn from the tone of the source or premise. Omit it and the app's default is used.
-- `hooks`: authored consequence. `match` waits for a fact — `{"kind": "entity_discovered",
-  "entity_id": "..."}` is the workhorse, or wait on a thread advancing instead — and `effects`
-  fire when it commits. `note` is what the Director is told on the turn after it fires: a
-  pressure, not a recap. A hook's own effects are matched again, so a hook that reveals what
-  another hook waits for fires it in the same turn: one such step is a consequence, a chain of
-  three is refused and would open the whole scenario on a single reveal. Steps the player is
-  meant to walk through wait on what they do at each one.
+- `hooks`: authored consequence. `on_discover` is the id of the entity whose discovery fires the
+  hook. It then reveals every id in `reveals`, applies its `advance_thread`, and hands the
+  Director its `note` on the turn after: a pressure, not a recap. A hook fires once. A hook that
+  reveals what another hook waits on fires it in the same turn, so steps the player is meant to
+  walk through wait on what they do at each one.
 - Names, briefs, and details specific enough to be unmistakable. No generic taverns, no
   placeholder names, nothing the premise did not earn.
 - Never write a template. `"..."`, `TBD`, an empty `entities`, or any field left as a

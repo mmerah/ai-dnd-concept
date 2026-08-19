@@ -74,7 +74,7 @@ class JournalView(Frozen):
             # An authored memory can belong to someone the player has not met.
             memories=tuple(
                 memory.text
-                for memory in world.memories.values()
+                for memory in world.memories
                 if memory.owner is None or world.require(memory.owner).known
             ),
         )

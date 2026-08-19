@@ -2,7 +2,7 @@ from collections.abc import Callable, Sequence
 from dataclasses import dataclass
 from random import Random
 
-from aidm.state.base import EntityId, Slug
+from aidm.state.base import EntityId
 from aidm.state.beat import Followup, Resolution
 from aidm.state.facts import Fact
 from aidm.state.hooks import fire_hooks
@@ -19,7 +19,6 @@ class Transacted:
     state: GameState
     resolved: tuple[Fact, ...]
     fired: tuple[Fact, ...]
-    outcome: Slug | None = None
     followup: Followup = "continue"
 
     @property
@@ -42,7 +41,6 @@ def transact(
         state=draft.committed(),
         resolved=resolution.facts,
         fired=tuple(fired),
-        outcome=resolution.outcome,
         followup=resolution.followup,
     )
 

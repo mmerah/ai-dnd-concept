@@ -15,7 +15,7 @@ from aidm.content.store import (
     write_scenario,
 )
 from aidm.state.base import PLAYER_ID
-from aidm.state.facts import CORE, Fact, narrator_evidence
+from aidm.state.facts import Fact, narrator_evidence
 from aidm.state.trace import Applied, StepTrace, Turn
 
 
@@ -72,8 +72,8 @@ def test_a_trace_round_trips_its_turn_and_applied_entries(tmp_path: Path) -> Non
     """A Turn and an Applied, each carrying real facts, survive an append and a reload unchanged."""
     store = FileStore(tmp_path)
     facts = (
-        Fact(source=CORE, kind="dice_rolled", trace="a falling stone: 1d6 [4] -> 4"),
-        Fact(source=CORE, kind="counter_changed", trace="Kael luck -1 -> 5/6", narrator="hurt"),
+        Fact(kind="dice_rolled", trace="a falling stone: 1d6 [4] -> 4"),
+        Fact(kind="counter_changed", trace="Kael luck -1 -> 5/6", narrator="hurt"),
     )
     turn = Turn(
         prompt="I brace.",

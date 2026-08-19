@@ -1,8 +1,7 @@
 {
-  "save_version": 73,
+  "save_version": 75,
   "facts": [
     {
-      "source": "core",
       "kind": "dice_rolled",
       "trace": "Does he hear what waits past the vault door without being heard? — chance: 2d6 [4, 5] -> 5",
       "narrator": null,
@@ -20,7 +19,6 @@
       }
     },
     {
-      "source": "core",
       "kind": "dice_rolled",
       "trace": "Does he hear what waits past the vault door without being heard? — risk: 1d6 [4] -> 4",
       "narrator": null,
@@ -36,7 +34,6 @@
       }
     },
     {
-      "source": "core",
       "kind": "question_answered",
       "trace": "Does he hear what waits past the vault door without being heard? -> yes-and",
       "narrator": "Does he hear what waits past the vault door without being heard? -> yes-and",
@@ -50,7 +47,6 @@
       }
     },
     {
-      "source": "core",
       "kind": "entity_discovered",
       "trace": "learned of the vault map",
       "narrator": "learned of the vault map",
@@ -60,7 +56,6 @@
       }
     },
     {
-      "source": "core",
       "kind": "entity_moved",
       "trace": "took the vault map",
       "narrator": "took the vault map",
@@ -73,7 +68,6 @@
       }
     },
     {
-      "source": "core",
       "kind": "hook_fired",
       "trace": "hook vault-charted fired",
       "narrator": null,
@@ -82,18 +76,6 @@
       }
     },
     {
-      "source": "core",
-      "kind": "thread_advanced",
-      "trace": "The sealed vault is active at seal-found",
-      "narrator": null,
-      "data": {
-        "thread_id": "vault-seal",
-        "status": "active",
-        "stage": "seal-found"
-      }
-    },
-    {
-      "source": "core",
       "kind": "entity_discovered",
       "trace": "learned of the sealed vault",
       "narrator": "learned of the sealed vault",
@@ -103,16 +85,6 @@
       }
     },
     {
-      "source": "core",
-      "kind": "hook_fired",
-      "trace": "hook vault-sighted fired",
-      "narrator": null,
-      "data": {
-        "hook_id": "vault-sighted"
-      }
-    },
-    {
-      "source": "core",
       "kind": "thread_advanced",
       "trace": "The sealed vault is active at seal-found",
       "narrator": null,
@@ -123,17 +95,24 @@
       }
     },
     {
-      "source": "core",
-      "kind": "trait_added",
-      "trace": "the sealed vault is Warded",
-      "narrator": "the sealed vault is Warded",
+      "kind": "hook_fired",
+      "trace": "hook vault-sighted fired",
+      "narrator": null,
       "data": {
-        "entity_id": "vault",
-        "trait_id": "warded"
+        "hook_id": "vault-sighted"
       }
     },
     {
-      "source": "core",
+      "kind": "thread_advanced",
+      "trace": "The sealed vault is active at seal-found",
+      "narrator": null,
+      "data": {
+        "thread_id": "vault-seal",
+        "status": "active",
+        "stage": "seal-found"
+      }
+    },
+    {
       "kind": "trait_added",
       "trace": "Kael is Listening",
       "narrator": "Kael is Listening",
@@ -143,12 +122,10 @@
       }
     },
     {
-      "source": "core",
       "kind": "memory_kept",
       "trace": "remembered: Mara confirmed the vault door has not opened in thirty years.",
       "narrator": null,
       "data": {
-        "memory_id": "mara-confirmed-the-vault-door-has-not-opened-in-thirty-years",
         "owner": "mara"
       }
     }
@@ -198,7 +175,7 @@
     },
     {
       "name": "hooks",
-      "output": "hook vault-charted fired\nThe sealed vault is active at seal-found\nlearned of the sealed vault\nhook vault-sighted fired\nThe sealed vault is active at seal-found\nthe sealed vault is Warded"
+      "output": "hook vault-charted fired\nlearned of the sealed vault\nThe sealed vault is active at seal-found\nhook vault-sighted fired\nThe sealed vault is active at seal-found"
     },
     {
       "name": "narrator",

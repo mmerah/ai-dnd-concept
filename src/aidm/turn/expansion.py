@@ -4,7 +4,7 @@ from pydantic import Field, JsonValue
 
 from aidm.state.base import Entity, Frozen
 from aidm.state.beat import Resolution
-from aidm.state.facts import CORE, Fact
+from aidm.state.facts import Fact
 from aidm.state.trace import StepTrace
 from aidm.state.world import GameState, Hook, Relation, Thread
 
@@ -101,6 +101,11 @@ def _authored(draft: GameState, hooks: tuple[Hook, ...]) -> list[Fact]:
     for hook in hooks:
         if hook.id in draft.world.hooks:
             raise ValueError(f"a hook {hook.id!r} already exists")
+        for entity_id in (hook.on_discover, *hook.reveals):
+            _ = draft.world.require(entity_id)
+        advance = hook.advance_thread
+        if advance is not None and advance.thread_id not in draft.world.threads:
+            raise ValueError(f"a hook names unknown thread {advance.thread_id!r}")
         draft.world.hooks[hook.id] = hook
         facts.append(_materialized(f"hook {hook.id}", {"hook_id": hook.id}))
     return facts
@@ -108,4 +113,4 @@ def _authored(draft: GameState, hooks: tuple[Hook, ...]) -> list[Fact]:
 
 def _materialized(what: str, data: dict[str, JsonValue]) -> Fact:
     """Private canon coming into being is not a fictional event, so it narrates nothing."""
-    return Fact(source=CORE, kind="canon_materialized", trace=f"materialized {what}", data=data)
+    return Fact(kind="canon_materialized", trace=f"materialized {what}", data=data)

@@ -4,12 +4,12 @@ import pytest
 from core_test_support import initialized
 from pydantic import ValidationError
 
+from aidm.app.registry import ENGINES
 from aidm.app.session import build_engine
 from aidm.engines.engine import Engine
 from aidm.engines.loner3e.actions import Loner3eBeat, RestoreLuck
 from aidm.engines.loner3e.mechanics import LUCK_MAX, Mechanics, Sheet
 from aidm.engines.loner3e.rules import Loner3eEngine
-from aidm.engines.registry import engines
 from aidm.engines.sheets import SheetBase
 from aidm.state.base import PLAYER_ID, EngineId, Entity, EntityId, Frozen
 from aidm.state.beat import Resolution
@@ -138,6 +138,7 @@ def test_a_beat_naming_a_roll_this_engine_has_not_is_refused() -> None:
 
 
 def test_every_registered_engine_builds_itself() -> None:
-    """Registration is data: a new engine is one line in `ENGINE_MODULES` and its own package."""
-    for engine in engines():
+    """Registration is data: a new engine is one line in `app.registry.ENGINES`."""
+    assert len({engine.id for engine in ENGINES}) == len(ENGINES)
+    for engine in ENGINES:
         _ = build_engine(engine.id)

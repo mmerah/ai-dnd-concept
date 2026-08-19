@@ -9,9 +9,9 @@ from aidm.config import Settings
 from aidm.engines.engine import Engine
 from aidm.engines.sheets import SheetBase
 from aidm.engines.transact import Transacted, transact
-from aidm.state.base import Frozen, text_slug
+from aidm.state.base import Frozen
 from aidm.state.beat import Resolution
-from aidm.state.facts import CORE, Fact, narrator_evidence
+from aidm.state.facts import Fact, narrator_evidence
 from aidm.state.history import Exchange
 from aidm.state.trace import StepTrace, Turn
 from aidm.state.world import GameState, Memory
@@ -35,25 +35,20 @@ TURN_STEPS: tuple[str, ...] = ("director", "resolve", "beat", "hooks", "narrator
 
 
 def remember(draft: GameState, memories: Sequence[MemoryProposal], maximum: int) -> list[Fact]:
-    seen = {memory.text.casefold() for memory in draft.world.memories.values()}
+    seen = {memory.text.casefold() for memory in draft.world.memories}
     kept: list[Fact] = []
     for proposal in memories:
         normalized = proposal.text.casefold()
         if normalized in seen or len(kept) >= maximum:
             continue
         seen.add(normalized)
-        memory = Memory(
-            id=text_slug(proposal.text, draft.world.memories),
-            owner=proposal.owner_id,
-            text=proposal.text,
-        )
-        draft.world.memories[memory.id] = memory
+        memory = Memory(owner=proposal.owner_id, text=proposal.text)
+        draft.world.memories.append(memory)
         kept.append(
             Fact(
-                source=CORE,
                 kind="memory_kept",
                 trace=f"remembered: {memory.text}",
-                data={"memory_id": memory.id, "owner": memory.owner},
+                data={"owner": memory.owner},
             )
         )
     return kept

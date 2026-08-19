@@ -2,7 +2,7 @@ import pytest
 from core_test_support import at_boundary, capability, game
 from golden_test_support import FIXTURES, golden
 
-from aidm.engines.registry import engine_ids
+from aidm.app.registry import engine_ids
 from aidm.state.base import EngineId
 from aidm.turn import prompts
 from aidm.turn.prompts import render_proposal
