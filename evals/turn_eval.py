@@ -13,7 +13,7 @@ from aidm.content.store import load_character, load_scenario
 from aidm.engines.engine import Engine
 from aidm.engines.sheets import SheetBase
 from aidm.state.base import EngineId, EntityId, Frozen
-from aidm.state.world import GameState
+from aidm.state.world import Game
 from aidm.turn.agents import build_turn_agents
 from aidm.turn.pipeline import TurnResult, run_turn
 
@@ -36,7 +36,7 @@ class Case:
     engine_id: EngineId
     prompt: str
     expectations: tuple[Expectation, ...]
-    setup: Callable[[GameState], GameState] = lambda state: state
+    setup: Callable[[Game], Game] = lambda state: state
 
 
 class Run(Frozen):
@@ -71,7 +71,7 @@ class Report(Frozen):
     cases: list[CaseResult]
 
 
-def begin(engine_id: EngineId, settings: Settings) -> tuple[Engine[SheetBase], GameState]:
+def begin(engine_id: EngineId, settings: Settings) -> tuple[Engine[SheetBase], Game]:
     engine = build_engine(engine_id)
     binding = engine.binding()
     scenario = load_scenario(ROOT / settings.scenarios_dir, SCENARIO_ID, binding)
@@ -79,7 +79,7 @@ def begin(engine_id: EngineId, settings: Settings) -> tuple[Engine[SheetBase], G
     return engine, begin_game(engine, scenario, character)
 
 
-def staged(state: GameState, at: str, ways: Sequence[tuple[str, str]]) -> GameState:
+def staged(state: Game, at: str, ways: Sequence[tuple[str, str]]) -> Game:
     draft = state.draft()
     for source, target in ways:
         source_id, target_id = EntityId(source), EntityId(target)
@@ -120,7 +120,7 @@ def cases_for(engine_id: EngineId, settings: Settings) -> tuple[Case, ...]:
     _, start = begin(engine_id, settings)
     before = frozenset(trait.id for trait in start.player.traits)
 
-    def in_cloister(far: str) -> Callable[[GameState], GameState]:
+    def in_cloister(far: str) -> Callable[[Game], Game]:
         return lambda state: staged(state, "cloister", [("cloister", far)])
 
     return (

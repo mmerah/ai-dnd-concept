@@ -5,6 +5,7 @@ from core_test_support import initialized
 
 from aidm.app.registry import ENGINES
 from aidm.app.session import build_engine
+from aidm.content.store import SavedGame
 from aidm.engines.engine import Engine
 from aidm.engines.loner3e.actions import apply_restore_luck
 from aidm.engines.loner3e.mechanics import LUCK_MAX, Mechanics, Sheet
@@ -12,10 +13,10 @@ from aidm.engines.loner3e.rules import Loner3eEngine
 from aidm.state import actions
 from aidm.state.base import PLAYER_ID, EngineId, Entity, EntityId
 from aidm.state.facts import Fact
-from aidm.state.world import GameState
+from aidm.state.world import Game
 
 
-def _turn(state: GameState) -> tuple[GameState, tuple[Fact, ...]]:
+def _turn(state: Game) -> tuple[Game, tuple[Fact, ...]]:
     """A core action and an engine action on one draft, so a shallow copy shows up in either."""
     draft = state.draft()
     facts = [
@@ -25,10 +26,10 @@ def _turn(state: GameState) -> tuple[GameState, tuple[Fact, ...]]:
     return draft.committed(), tuple(facts)
 
 
-def _spent(state: GameState) -> GameState:
+def _spent(state: Game) -> Game:
     """Luck short of full, so the engine's own action has something to restore."""
     draft = state.draft()
-    draft.mechanics_as(Mechanics).sheets[PLAYER_ID].luck.current = 1
+    Mechanics.of(draft).sheets[PLAYER_ID].luck.current = 1
     return draft.committed()
 
 
@@ -36,28 +37,28 @@ def test_engine_initialization_and_state_contract() -> None:
     engine, state = initialized()
 
     assert state.engine == engine.id
-    assert state.mechanics_as(Mechanics).sheets[PLAYER_ID].luck.current == LUCK_MAX
+    assert Mechanics.of(state).sheets[PLAYER_ID].luck.current == LUCK_MAX
     engine.validate(state)
 
-    restored = GameState.model_validate_json(state.model_dump_json())
-    assert restored.model_dump() == state.model_dump()
+    saved = SavedGame.model_validate_json(SavedGame.of(state).model_dump_json())
+    assert engine.restored(saved) == state
 
 
 def test_action_resolution_is_pure_and_renders_every_fact() -> None:
     engine, state = initialized()
     state = _spent(state)
-    before = state.model_dump_json()
+    before = SavedGame.of(state).model_dump_json()
 
     first_state, first_facts = _turn(state)
 
     assert (first_state, first_facts) == _turn(state)
-    assert state.model_dump_json() == before
+    assert SavedGame.of(state).model_dump_json() == before
     assert {fact.kind for fact in first_facts} >= {
         "entity_discovered",
         "entity_moved",
         "counter_changed",
     }
-    assert first_state.model_dump_json() != before
+    assert SavedGame.of(first_state).model_dump_json() != before
     engine.validate(first_state)
     for fact in first_facts:
         assert fact.trace
@@ -94,7 +95,7 @@ def test_a_created_actor_is_refused_until_the_engine_seeds_it() -> None:
         engine.seed(grown, entity, Random(0))
     engine.validate(grown)
 
-    mechanics = grown.mechanics_as(Mechanics)
+    mechanics = Mechanics.of(grown)
     assert mechanics.sheets[actor.id] == Sheet()
     assert item.id not in mechanics.sheets
 
@@ -105,13 +106,13 @@ def test_a_sheet_engine_that_declares_nothing_is_refused_before_it_plays() -> No
         badge = ("UNDECLARED", "grey-6")
         engine_dir = Loner3eEngine.engine_dir
 
-        def new_sheet(self, draft: GameState, rng: Random) -> Sheet:
+        def new_sheet(self, draft: Game, rng: Random) -> Sheet:
             return Sheet()
 
-        def describe(self, state: GameState, entity: Entity) -> str:
+        def describe(self, state: Game, entity: Entity) -> str:
             return ""
 
-        def sheet_view(self, state: GameState) -> tuple[tuple[str, str], ...]:
+        def sheet_view(self, state: Game) -> tuple[tuple[str, str], ...]:
             return ()
 
     with pytest.raises(AttributeError, match="sheet_type"):

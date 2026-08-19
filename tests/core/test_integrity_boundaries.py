@@ -13,9 +13,10 @@ from core_test_support import (
 from pydantic import ValidationError
 
 from aidm.content.authored import Character, CharacterOverlay, CharacterProfile, ScenarioWorld
+from aidm.content.store import SavedGame
 from aidm.engines.loner3e.mechanics import LUCK_MAX, Mechanics
 from aidm.state.base import PLAYER_ID, Entity, EntityId
-from aidm.state.world import GameState, Hook
+from aidm.state.world import Game, Hook
 
 HELD = EntityId("frayed_rope")
 UNHELD = EntityId("silk_rope")
@@ -61,7 +62,7 @@ def test_world_and_game_state_reject_inconsistent_topology() -> None:
     with pytest.raises(ValidationError, match="duplicate entity ids"):
         type(state.world).model_validate({"entities": [twice, twice]})
 
-    with pytest.raises(ValidationError, match="player entity must be known"):
+    with pytest.raises(ValueError, match="player entity must be known"):
         with_entity(state, updated(state.player, known=False))
 
     with pytest.raises(ValidationError, match="not in a valid location"):
@@ -161,33 +162,17 @@ def test_a_character_knows_the_gear_they_start_with() -> None:
         _character(holds=_rope(HELD, known=False), gear_for=HELD)
 
 
-def _luck(state: GameState) -> int:
-    return state.mechanics_as(Mechanics).sheets[PLAYER_ID].luck.current
+def _luck(state: Game) -> int:
+    return Mechanics.of(state).sheets[PLAYER_ID].luck.current
 
 
-def test_two_reads_in_one_draft_share_one_live_mechanics() -> None:
+def test_a_mechanics_mutation_lands_on_the_commit_and_nowhere_else() -> None:
     _, state = initialized()
     draft = state.draft()
-
-    assert draft.mechanics_as(Mechanics) is draft.mechanics_as(Mechanics)
-
-
-def test_a_mutation_with_no_write_back_survives_the_commit() -> None:
-    _, state = initialized()
-    draft = state.draft()
-    draft.mechanics_as(Mechanics).sheets[PLAYER_ID].luck.current = 1
+    Mechanics.of(draft).sheets[PLAYER_ID].luck.current = 1
 
     committed = draft.committed()
 
     assert _luck(committed) == 1
-    assert Mechanics.model_validate(committed.mechanics).sheets[PLAYER_ID].luck.current == 1
-
-
-def test_a_mutation_against_a_committed_state_reaches_no_save_or_draft() -> None:
-    _, state = initialized()
-    state.mechanics_as(Mechanics).sheets[PLAYER_ID].luck.current = 1
-
-    saved = Mechanics.model_validate(state.model_dump()["mechanics"])
-
-    assert saved.sheets[PLAYER_ID].luck.current == LUCK_MAX
-    assert _luck(state.draft()) == LUCK_MAX
+    assert SavedGame.of(committed).mechanics != SavedGame.of(state).mechanics
+    assert _luck(state) == LUCK_MAX

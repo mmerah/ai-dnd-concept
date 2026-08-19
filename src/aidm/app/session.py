@@ -10,16 +10,23 @@ from aidm.app.registry import engine_class
 from aidm.config import Settings
 from aidm.content.authored import Character, Scenario
 from aidm.content.sources import CanonSource, CitedOrInventedSource, ingest
-from aidm.content.store import FileStore, load_character, load_scenario, read_source, require_source
+from aidm.content.store import (
+    FileStore,
+    SavedGame,
+    load_character,
+    load_scenario,
+    read_source,
+    require_source,
+)
 from aidm.engines.advancement import Advancement, Offer, ProposalBase
 from aidm.engines.engine import Engine
 from aidm.engines.sheets import SheetBase
 from aidm.engines.transact import transact
-from aidm.state.base import PLAYER_ID, SAVE_VERSION, EngineId, Entity, EntityId
+from aidm.state.base import PLAYER_ID, EngineId, Entity, EntityId
 from aidm.state.facts import Fact
 from aidm.state.resolution import Resolution
 from aidm.state.trace import Applied, TraceEntry, Turn
-from aidm.state.world import GameState
+from aidm.state.world import Game
 from aidm.turn.agents import AdvancementContext, TurnAgents, advisor_agent, build_turn_agents
 from aidm.turn.pipeline import TURN_STEPS, run_turn
 from aidm.turn.prompts import render_proposal
@@ -97,7 +104,7 @@ def build_engine(engine_id: EngineId, extra_packs: Path | None = None) -> Engine
     return engine_class(engine_id)(extra_packs)
 
 
-def begin_game(engine: Engine[SheetBase], scenario: Scenario, character: Character) -> GameState:
+def begin_game(engine: Engine[SheetBase], scenario: Scenario, character: Character) -> Game:
     """One opening state, so the app, the evals, and the tests all start a game the same way."""
     authored = scenario.world
     # Loaded content outlives the mutable game state, which restart() rebuilds from it.
@@ -121,17 +128,16 @@ def begin_game(engine: Engine[SheetBase], scenario: Scenario, character: Charact
         **character.overlay.entities,
         PLAYER_ID: character.overlay.character,
     }
-    state = GameState(
-        save_version=SAVE_VERSION,
+    state = Game(
         scenario_id=scenario.id,
         character_id=character.id,
         scenario=scenario.meta,
         engine=engine.id,
         world=world,
+        mechanics=engine.opening_mechanics(world, rules),
     )
-    engine.begin(state, rules)
-    engine.validate(state)  # begin() writes the mechanics; validate() refuses a half-written one
-    # An instance handed to a model field is not revalidated, so the composed world asks explicitly.
+    engine.validate(state)
+    # The world was composed here by hand, so the commit is the only thing that validates it.
     return state.committed()
 
 
@@ -152,7 +158,7 @@ class GameSession:
     step: str | None = None
     drafted: Drafted | None = None
     _tasks: set[Task[None]] = field(default_factory=set, repr=False)
-    state: GameState = field(init=False)
+    state: Game = field(init=False)
 
     def __post_init__(self) -> None:
         if self.engine.id != self.target.engine:
@@ -164,7 +170,7 @@ class GameSession:
         if saved is None:
             self.state = self._begun()
             return
-        self.state = self._resumable(saved)
+        self.state = self._resumable(self.engine.restored(saved))
         self.entries = list(self.store.load_trace(self.slug))
 
     @property
@@ -281,16 +287,16 @@ class GameSession:
         self.entries = []
         self.drafted = None
 
-    def _commit(self, state: GameState, entry: TraceEntry) -> None:
-        self.store.save(self.slug, state)
+    def _commit(self, state: Game, entry: TraceEntry) -> None:
+        self.store.save(self.slug, SavedGame.of(state))
         self.store.append_trace(self.slug, entry)
         self.state = state
         self.entries.append(entry)
 
-    def _begun(self) -> GameState:
+    def _begun(self) -> Game:
         return begin_game(self.engine, self.scenario, self.character)
 
-    def _resumable(self, state: GameState) -> GameState:
+    def _resumable(self, state: Game) -> Game:
         if (state.scenario_id, state.character_id) != (self.scenario.id, self.character.id):
             raise ValueError(
                 f"save is {state.scenario_id!r}/{state.character_id!r}, "

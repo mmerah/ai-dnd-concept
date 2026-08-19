@@ -24,10 +24,12 @@ from aidm.content.sources import CanonSource
 from aidm.content.store import load_character, load_scenario
 from aidm.engines.advancement import Advancement
 from aidm.engines.engine import Engine
+from aidm.engines.loner3e.mechanics import Mechanics as Loner3eMechanics
 from aidm.engines.sheets import SheetBase
+from aidm.engines.twentyfourxx.mechanics import Mechanics as TwentyfourxxMechanics
 from aidm.state.base import EngineId, Entity
 from aidm.state.trace import Turn
-from aidm.state.world import GameState
+from aidm.state.world import Game
 from aidm.turn.agents import build_turn_agents
 from aidm.turn.pipeline import TurnResult, run_turn
 
@@ -52,7 +54,7 @@ def updated[T: BaseModel](model: T, **changes: object) -> T:
     return type(model).model_validate(model.model_dump(round_trip=True) | changes)
 
 
-def with_entity(state: GameState, entity: Entity) -> GameState:
+def with_entity(state: Game, entity: Entity) -> Game:
     draft = state.draft()
     entities = draft.world.entities
     held = draft.world.find(entity.id)
@@ -63,11 +65,11 @@ def with_entity(state: GameState, entity: Entity) -> GameState:
     return draft.committed()
 
 
-def at_boundary(state: GameState) -> GameState:
+def at_boundary(state: Game) -> Game:
     """One boundary recorded — an adventure ended, a job done — the trigger both engines count."""
     draft = state.draft()
-    assert isinstance(draft.mechanics, dict)
-    draft.mechanics = {**draft.mechanics, "completed": {"current": 1}}
+    assert isinstance(draft.mechanics, Loner3eMechanics | TwentyfourxxMechanics)
+    draft.mechanics.completed.current = 1
     return draft.committed()
 
 
@@ -79,7 +81,7 @@ def character() -> Character:
     return load_character(CHARACTERS, "kael", build_engine(LONER3E).binding())
 
 
-def game(engine_id: EngineId) -> tuple[Engine[SheetBase], GameState]:
+def game(engine_id: EngineId) -> tuple[Engine[SheetBase], Game]:
     """The shipped scenario and character, composed under one engine."""
     engine = build_engine(engine_id)
     binding = engine.binding()
@@ -88,7 +90,7 @@ def game(engine_id: EngineId) -> tuple[Engine[SheetBase], GameState]:
     return engine, begin_game(engine, selected_scenario, selected_character)
 
 
-def initialized() -> tuple[Engine[SheetBase], GameState]:
+def initialized() -> tuple[Engine[SheetBase], Game]:
     return game(LONER3E)
 
 
@@ -159,7 +161,7 @@ def shown(turn: Turn, name: str) -> str:
 
 async def played(
     engine: Engine[SheetBase],
-    state: GameState,
+    state: Game,
     prompt: str,
     *,
     director: Model,

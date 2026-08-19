@@ -4,7 +4,7 @@ from random import Random
 from aidm.engines.engine import Engine
 from aidm.engines.sheets import SheetBase, SheetMechanics
 from aidm.state.base import Counter, EngineId, Entity, Slug
-from aidm.state.world import GameState
+from aidm.state.world import Game
 
 
 class NoSheet(SheetBase):
@@ -24,15 +24,15 @@ def _engine(tmp_path: Path) -> Engine[NoSheet]:
         sheet_type = NoSheet
         mechanics_type = SheetMechanics[NoSheet]
 
-        def new_sheet(self, draft: GameState, rng: Random) -> NoSheet:
+        def new_sheet(self, draft: Game, rng: Random) -> NoSheet:
             del draft, rng
             return NoSheet()
 
-        def describe(self, state: GameState, entity: Entity) -> str:
+        def describe(self, state: Game, entity: Entity) -> str:
             del state, entity
             return ""
 
-        def sheet_view(self, state: GameState) -> tuple[tuple[str, str], ...]:
+        def sheet_view(self, state: Game) -> tuple[tuple[str, str], ...]:
             del state
             return ()
 

@@ -1,7 +1,9 @@
 from collections.abc import Iterator, Mapping
+from copy import deepcopy
+from dataclasses import dataclass, replace
 from typing import Self
 
-from pydantic import Field, JsonValue, PrivateAttr, model_validator
+from pydantic import Field, model_validator
 
 from .base import (
     PLAYER_ID,
@@ -101,7 +103,7 @@ class Hook(Frozen):
 
 
 class WorldState(Mutable):
-    """The whole persistent fiction; `GameState` holds the played game around it."""
+    """The whole persistent fiction; `Game` holds the played game around it."""
 
     entities: list[Entity] = Field(default_factory=list)
     threads: list[Thread] = Field(default_factory=list)
@@ -196,24 +198,29 @@ class WorldState(Mutable):
         return None if current.id == entity.id else current.id
 
 
+def check_player_playable(world: WorldState) -> None:
+    if not world.require_kind(PLAYER_ID, "actor").known:
+        raise ValueError("the player entity must be known")
+
+
 class ScenarioMeta(Frozen):
     title: str
     premise: str
 
 
-class GameState(Mutable):
-    save_version: int
+@dataclass(slots=True)
+class Game:
+    """The game as it is played; `SavedGame` is the boundary that validates one."""
+
     scenario_id: Slug
     character_id: Slug
     scenario: ScenarioMeta
     engine: EngineId
     world: WorldState
     # Opaque to core: the engine that wrote it is the only reader and the only validator.
-    mechanics: JsonValue = None
+    mechanics: Mutable
     history: tuple[Exchange, ...] = ()
-    turn: int = Field(default=0, ge=0)
-    # Ignored by dump and validate, so no persisted byte depends on the cache.
-    _live_mechanics: Mutable | None = PrivateAttr(default=None)
+    turn: int = 0
 
     @property
     def player(self) -> Entity:
@@ -229,37 +236,19 @@ class GameState(Mutable):
     def is_here(self, entity: Entity) -> bool:
         return self.world.location_of(entity) == self.player_location
 
-    def mechanics_as[M: Mutable](self, model: type[M]) -> M:
-        """One parsed mechanics per transaction, so a mutation cannot be lost by not writing it."""
-        held = self._live_mechanics
-        if isinstance(held, model):
-            return held
-        parsed = model.model_validate(self.mechanics)
-        self._live_mechanics = parsed
-        return parsed
-
-    def set_mechanics(self, mechanics: Mutable) -> None:
-        self._live_mechanics = mechanics
-
-    def flush_mechanics(self) -> None:
-        live = self._live_mechanics
-        if live is None:
-            return
-        # Dumping runs no validator, so the dump is validated back: that is the commit gate.
-        payload = live.model_dump(mode="json")
-        _ = type(live).model_validate(payload)
-        self.mechanics = payload
-
     def draft(self) -> Self:
         """A working copy a resolution mutates; a failed turn never replaces the committed state."""
-        copied = self.model_copy(deep=True)
-        copied._live_mechanics = None
-        return copied
+        return deepcopy(self)
 
     def committed(self) -> Self:
         """One validation per transaction, over the whole copy rather than per field change."""
-        self.flush_mechanics()
-        return type(self).model_validate(self.model_dump(round_trip=True))
+        landed = replace(
+            self,
+            world=_revalidated(self.world),
+            mechanics=_revalidated(self.mechanics),
+        )
+        check_player_playable(landed.world)
+        return landed
 
     def add(self, entity: Entity) -> Fact:
         """Copy into the fact, so a later move in the same turn cannot rewrite the entry."""
@@ -292,11 +281,10 @@ class GameState(Mutable):
             },
         )
 
-    @model_validator(mode="after")
-    def _the_player_is_playable(self) -> Self:
-        if not self.player.known:
-            raise ValueError("the player entity must be known")
-        return self
+
+def _revalidated[M: Mutable](model: M) -> M:
+    """Dumping runs no validator, so the dump is validated back: that is the commit gate."""
+    return type(model).model_validate(model.model_dump(round_trip=True))
 
 
 def _move_summary(entity: Entity, destination: Entity) -> str:

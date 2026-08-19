@@ -4,12 +4,14 @@ from dataclasses import dataclass
 from pathlib import Path
 from re import fullmatch
 from shutil import rmtree
+from typing import Self
 
-from pydantic import BaseModel, ConfigDict, JsonValue, TypeAdapter
+from pydantic import BaseModel, ConfigDict, Field, JsonValue, TypeAdapter, model_validator
 
-from aidm.state.base import SAVE_VERSION, EngineId, Slug, content_id
+from aidm.state.base import SAVE_VERSION, EngineId, Mutable, Slug, content_id
+from aidm.state.history import Exchange
 from aidm.state.trace import TraceEntry
-from aidm.state.world import GameState, ScenarioMeta
+from aidm.state.world import Game, ScenarioMeta, WorldState, check_player_playable
 
 from .authored import (
     Character,
@@ -151,6 +153,51 @@ def _require_save_version(stored: int, what: str) -> None:
         raise ValueError(f"{what} is version {stored}, this build needs {SAVE_VERSION}")
 
 
+class SavedGame(BaseModel):
+    # Revalidated on the way out too: a runtime `Game` validates nothing itself.
+    model_config = ConfigDict(extra="forbid", revalidate_instances="always")
+
+    save_version: int = SAVE_VERSION
+    scenario_id: Slug
+    character_id: Slug
+    scenario: ScenarioMeta
+    engine: EngineId
+    world: WorldState
+    mechanics: JsonValue
+    history: tuple[Exchange, ...] = ()
+    turn: int = Field(default=0, ge=0)
+
+    @model_validator(mode="after")
+    def _the_player_is_playable(self) -> Self:
+        check_player_playable(self.world)
+        return self
+
+    @classmethod
+    def of(cls, state: Game) -> Self:
+        return cls(
+            scenario_id=state.scenario_id,
+            character_id=state.character_id,
+            scenario=state.scenario,
+            engine=state.engine,
+            world=state.world,
+            mechanics=state.mechanics.model_dump(mode="json"),
+            history=state.history,
+            turn=state.turn,
+        )
+
+    def game(self, mechanics: Mutable) -> Game:
+        return Game(
+            scenario_id=self.scenario_id,
+            character_id=self.character_id,
+            scenario=self.scenario,
+            engine=self.engine,
+            world=self.world,
+            mechanics=mechanics,
+            history=self.history,
+            turn=self.turn,
+        )
+
+
 class SaveShell(BaseModel):
     model_config = ConfigDict(extra="ignore")
 
@@ -184,15 +231,15 @@ class FileStore:
         _require_save_version(shell.save_version, "save")
         return shell
 
-    def load(self, slug: str) -> GameState | None:
+    def load(self, slug: str) -> SavedGame | None:
         """The shell probes the stored version first, so drift fails readably."""
         if self.shell(slug) is None:
             return None
         body = self._save_path(slug).read_text(encoding=ENCODING)
-        return GameState.model_validate_json(body)
+        return SavedGame.model_validate_json(body)
 
-    def save(self, slug: str, state: GameState) -> None:
-        _write(self._save_path(slug), state.model_dump_json(indent=2))
+    def save(self, slug: str, saved: SavedGame) -> None:
+        _write(self._save_path(slug), saved.model_dump_json(indent=2))
 
     def append_trace(self, slug: str, entry: TraceEntry) -> None:
         path = self._trace_path(slug)

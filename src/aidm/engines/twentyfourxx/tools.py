@@ -9,7 +9,7 @@ from aidm.engines.sheets import require_sheet
 from aidm.engines.transact import act, sequential_toolset
 from aidm.state.base import EntityId
 from aidm.state.resolution import Resolution
-from aidm.state.world import GameState
+from aidm.state.world import Game
 
 from .actions import (
     Attempt,
@@ -61,10 +61,10 @@ def director_toolset() -> AbstractToolset[PlanContext]:
     return toolset.prepared(_narrow_to_skills_in_play)
 
 
-def _skills_in_play(state: GameState) -> set[str]:
+def _skills_in_play(state: Game) -> set[str]:
     """The skills a `roll_attempt` may name; `is_here` already covers the player, who stands at
     their own location."""
-    sheets = state.mechanics_as(Mechanics).sheets
+    sheets = Mechanics.of(state).sheets
     return {
         skill
         for actor in state.world.of_kind("actor")

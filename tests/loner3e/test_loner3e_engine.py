@@ -70,7 +70,7 @@ def test_a_question_puts_two_dice_to_the_answer_and_costs_no_luck_on_its_own() -
     facts = resolve_question(draft, _seal(), Random(17), TWISTS).facts
 
     assert [fact.kind for fact in facts] == ["dice_rolled", "dice_rolled", "question_answered"]
-    assert draft.mechanics_as(Mechanics).sheets[PLAYER_ID].luck.current == LUCK_MAX
+    assert Mechanics.of(draft).sheets[PLAYER_ID].luck.current == LUCK_MAX
 
 
 def test_a_question_the_fiction_cannot_carry_is_refused_with_the_reason() -> None:
@@ -106,7 +106,7 @@ def test_the_judged_position_is_what_reaches_the_dice_and_the_record() -> None:
 def test_a_tie_ticks_the_twist_and_the_third_tie_calls_one() -> None:
     _, state = initialized()
     draft = state.draft()
-    mechanics = draft.mechanics_as(Mechanics)
+    mechanics = Mechanics.of(draft)
     mechanics.twist.current = TIES_PER_TWIST - 1
     primed = draft.committed()
 
@@ -122,7 +122,7 @@ def test_a_tie_ticks_the_twist_and_the_third_tie_calls_one() -> None:
 
     (due,) = [fact for fact in facts if fact.kind == "twist_due"]
     rolled = twist_note(str(due.data["subject"]), str(due.data["action"]))
-    assert draft.mechanics_as(Mechanics).twist.current == 0
+    assert Mechanics.of(draft).twist.current == 0
     assert rolled in draft.world.pending_notes
 
 
@@ -137,19 +137,19 @@ def test_a_conflict_exchange_moves_luck_off_whichever_side_lost_it() -> None:
         facts = resolution.facts
         answered = next(fact for fact in facts if fact.kind == "question_answered")
         outcome = str(answered.data["outcome"])
-        sheets = draft.mechanics_as(Mechanics).sheets
+        sheets = Mechanics.of(draft).sheets
         harm = HARM[outcome]
         loser = FOE if harm > 0 else PLAYER_ID
         assert sheets[loser].luck.current == LUCK_MAX - abs(harm)
         assert sheets[FOE if loser == PLAYER_ID else PLAYER_ID].luck.current == LUCK_MAX
         assert not any(fact.kind == "twist_due" for fact in facts)
-        assert draft.mechanics_as(Mechanics).twist.current == 0
+        assert Mechanics.of(draft).twist.current == 0
 
 
 def test_luck_running_out_ends_the_conflict_and_resets_both_pools() -> None:
     _, state = initialized()
     draft = state.draft()
-    mechanics = draft.mechanics_as(Mechanics)
+    mechanics = Mechanics.of(draft)
     # A 10-max pool proves the reset lands on the sheet's own maximum, not on a +LUCK_MAX delta.
     mechanics.sheets[FOE].luck = Counter(current=1, maximum=10)
     hurt = draft.committed()
@@ -165,7 +165,7 @@ def test_luck_running_out_ends_the_conflict_and_resets_both_pools() -> None:
     else:
         raise AssertionError("no seed under 200 answered yes")
 
-    sheets = draft.mechanics_as(Mechanics).sheets
+    sheets = Mechanics.of(draft).sheets
     assert sheets[FOE].luck.current == 10
     assert sheets[PLAYER_ID].luck.current == LUCK_MAX
     assert any(fact.kind == "conflict_lost" for fact in facts)
@@ -175,7 +175,7 @@ def test_luck_running_out_ends_the_conflict_and_resets_both_pools() -> None:
 def test_an_actor_already_at_zero_luck_refuses_another_exchange() -> None:
     _, state = initialized()
     draft = state.draft()
-    draft.mechanics_as(Mechanics).sheets[FOE].luck.current = 0
+    Mechanics.of(draft).sheets[FOE].luck.current = 0
     spent = draft.committed()
 
     with pytest.raises(ValueError, match="already out of luck"):
@@ -229,9 +229,9 @@ def test_an_npc_party_members_growth_writes_their_own_sheet_not_the_players() ->
     facts = advancement.resolve(draft, offers[FOE], grow_mara, Random(0))
     grown = draft.committed()
 
-    sheets = grown.mechanics_as(Mechanics).sheets
+    sheets = Mechanics.of(grown).sheets
     assert sheets[FOE].skills[-1] == "Reads Old Stonework"
-    assert sheets[PLAYER_ID].skills == ready.mechanics_as(Mechanics).sheets[PLAYER_ID].skills
+    assert sheets[PLAYER_ID].skills == Mechanics.of(ready).sheets[PLAYER_ID].skills
     assert [fact.kind for fact in facts] == ["skill_gained", "counter_changed"]
 
 
@@ -301,7 +301,7 @@ def test_an_adventure_growth_with_three_changes_lands_all_three_on_the_sheet() -
     facts = advancement.resolve(draft, offer, growth, Random(0))
     grown = draft.committed()
 
-    sheet = grown.mechanics_as(Mechanics).sheets[PLAYER_ID]
+    sheet = Mechanics.of(grown).sheets[PLAYER_ID]
     assert (sheet.skills[-1], sheet.gear[-1], sheet.frailties[-1]) == (
         "Reads Old Stonework",
         "Waxed Rope",

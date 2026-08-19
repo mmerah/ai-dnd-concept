@@ -18,9 +18,10 @@ from pydantic_ai.messages import ModelResponse
 from pydantic_ai.models.function import FunctionModel
 
 from aidm.app.registry import engine_ids
+from aidm.content.store import SavedGame
 from aidm.state.base import EngineId
 from aidm.state.history import Exchange, Line
-from aidm.state.world import GameState
+from aidm.state.world import Game
 from aidm.turn.pipeline import TurnResult
 
 PROMPT = "I lever up the loose flagstone and listen at the vault door."
@@ -84,7 +85,7 @@ SCRIPTS: Mapping[EngineId, tuple[ModelResponse, ...]] = {
 }
 
 
-def _behind(state: GameState) -> GameState:
+def _behind(state: Game) -> Game:
     draft = state.draft()
     draft.history = HISTORY
     return draft.committed()
@@ -116,4 +117,4 @@ async def test_a_scripted_turn_renders_and_records_unchanged(engine_id: EngineId
         FIXTURES / "turn" / f"{engine_id}.json",
         dumped(result.turn, exclude={"steps": {"__all__": {"prompt"}}}),
     )
-    golden(FIXTURES / "save" / f"{engine_id}.json", dumped(result.state))
+    golden(FIXTURES / "save" / f"{engine_id}.json", dumped(SavedGame.of(result.state)))

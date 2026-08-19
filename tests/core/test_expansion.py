@@ -155,7 +155,7 @@ async def test_an_expander_created_actor_receives_valid_engine_rules_before_comm
         source=FRONTIER,
     )
 
-    mechanics = result.state.mechanics_as(Mechanics)
+    mechanics = Mechanics.of(result.state)
     assert set(mechanics.sheets[EntityId("gallery_watcher")].counters()) == {"luck"}
     assert EntityId("sealed_letter") not in mechanics.sheets
     engine.validate(result.state)

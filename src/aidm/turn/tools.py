@@ -9,7 +9,7 @@ from aidm.state import actions
 from aidm.state.base import PLAYER_ID, EntityId, Slug
 from aidm.state.facts import Fact
 from aidm.state.resolution import Resolution
-from aidm.state.world import AdvanceThread, GameState
+from aidm.state.world import AdvanceThread, Game
 
 
 def core_toolset() -> FunctionToolset[PlanContext]:
@@ -113,16 +113,16 @@ def core_toolset() -> FunctionToolset[PlanContext]:
     )
 
 
-def _resolved(ctx: RunContext[PlanContext], apply: Callable[[GameState], list[Fact]]) -> str:
+def _resolved(ctx: RunContext[PlanContext], apply: Callable[[Game], list[Fact]]) -> str:
     return act(ctx, lambda draft, _rng: Resolution(facts=tuple(apply(draft))))
 
 
-def _a_locked_way_out(state: GameState) -> bool:
+def _a_locked_way_out(state: Game) -> bool:
     here = state.world.require_kind(state.player_location, "location")
     return any(way.locked for way in here.exits)
 
 
-def _an_actor_to_recruit(state: GameState) -> bool:
+def _an_actor_to_recruit(state: Game) -> bool:
     return any(
         entity.kind == "actor" and entity.id != PLAYER_ID and entity.id not in state.world.party
         for entity in state.world.entities
@@ -130,16 +130,16 @@ def _an_actor_to_recruit(state: GameState) -> bool:
     )
 
 
-def _a_party_member(state: GameState) -> bool:
+def _a_party_member(state: Game) -> bool:
     return bool(state.world.party)
 
 
-def _an_unresolved_thread(state: GameState) -> bool:
+def _an_unresolved_thread(state: Game) -> bool:
     # The set the scene renders under ACTIVE THREADS: a thread put dormant is still movable.
     return any(thread.status != "resolved" for thread in state.world.threads)
 
 
-def _a_trait_in_reach(state: GameState) -> bool:
+def _a_trait_in_reach(state: Game) -> bool:
     # `is_here` is false of a location, which carries tags of its own that `add_trait` may write.
     return any(
         entity.traits
@@ -148,7 +148,7 @@ def _a_trait_in_reach(state: GameState) -> bool:
     )
 
 
-_APPLIES: Mapping[str, Callable[[GameState], bool]] = {
+_APPLIES: Mapping[str, Callable[[Game], bool]] = {
     "unlock_exit": _a_locked_way_out,
     "join_party": _an_actor_to_recruit,
     "leave_party": _a_party_member,
@@ -157,6 +157,6 @@ _APPLIES: Mapping[str, Callable[[GameState], bool]] = {
 }
 
 
-def possible(name: str, state: GameState) -> bool:
+def possible(name: str, state: Game) -> bool:
     applies = _APPLIES.get(name)
     return applies is None or applies(state)

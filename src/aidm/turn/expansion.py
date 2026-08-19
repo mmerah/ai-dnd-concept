@@ -5,7 +5,7 @@ from aidm.state.base import Entity, EntityId, Exit, Frozen
 from aidm.state.facts import Fact
 from aidm.state.resolution import Resolution
 from aidm.state.trace import StepTrace
-from aidm.state.world import GameState, Hook, Thread
+from aidm.state.world import Game, Hook, Thread
 
 MAX_EXPANSIONS = 2
 
@@ -51,7 +51,7 @@ def record(log: TurnLog, prompt: str, answer: ExpansionPatch | str) -> None:
     )
 
 
-def apply_patch(draft: GameState, patch: ExpansionPatch) -> Resolution:
+def apply_patch(draft: Game, patch: ExpansionPatch) -> Resolution:
     """The one place a patch reaches the world: add-only, unknown, and refused whole on any id the
     draft already holds."""
     facts = [_added_entity(draft, entity) for entity in patch.entities]
@@ -70,7 +70,7 @@ def written(patch: ExpansionPatch) -> str:
     return "\n".join(lines) or "nothing was added"
 
 
-def _added_entity(draft: GameState, entity: Entity) -> Fact:
+def _added_entity(draft: Game, entity: Entity) -> Fact:
     # Copied, so the patch recorded in the trace is not the object the world goes on mutating.
     materialized = entity.model_copy(deep=True)
     materialized.known = False
@@ -79,7 +79,7 @@ def _added_entity(draft: GameState, entity: Entity) -> Fact:
     return draft.add(materialized)
 
 
-def _added_exit(draft: GameState, link: ExitLink) -> Fact:
+def _added_exit(draft: Game, link: ExitLink) -> Fact:
     here = draft.world.require_kind(link.location_id, "location")
     if here.exit_to(link.to) is not None:
         raise ValueError(f"a way already leads from {here.id!r} to {link.to!r}")
@@ -89,14 +89,14 @@ def _added_exit(draft: GameState, link: ExitLink) -> Fact:
     )
 
 
-def _opened(draft: GameState, thread: Thread) -> Fact:
+def _opened(draft: Game, thread: Thread) -> Fact:
     if draft.world.thread(thread.id) is not None:
         raise ValueError(f"a thread {thread.id!r} already exists")
     draft.world.threads.append(thread.model_copy(deep=True))
     return _materialized(f"thread {thread.id}", {"thread_id": thread.id})
 
 
-def _authored(draft: GameState, hooks: tuple[Hook, ...]) -> list[Fact]:
+def _authored(draft: Game, hooks: tuple[Hook, ...]) -> list[Fact]:
     facts: list[Fact] = []
     for hook in hooks:
         if draft.world.hook(hook.id) is not None:

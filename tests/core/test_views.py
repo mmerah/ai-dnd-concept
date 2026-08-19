@@ -2,11 +2,11 @@ from core_test_support import LONER3E
 
 from aidm.app.views import JournalView, journal_markdown, played_turns, player_scene
 from aidm.engines.loner3e.mechanics import Mechanics, Sheet
-from aidm.state.base import PLAYER_ID, SAVE_VERSION, Counter, Entity, EntityId, Exit, Kind
+from aidm.state.base import PLAYER_ID, Counter, Entity, EntityId, Exit, Kind
 from aidm.state.facts import Fact
 from aidm.state.history import Exchange, Line
 from aidm.state.trace import Applied, Turn
-from aidm.state.world import GameState, Memory, ScenarioMeta, Thread, WorldState
+from aidm.state.world import Game, Memory, ScenarioMeta, Thread, WorldState
 
 
 def _entity(entity_id: str, kind: Kind, name: str, brief: str, **fields: object) -> Entity:
@@ -15,7 +15,7 @@ def _entity(entity_id: str, kind: Kind, name: str, brief: str, **fields: object)
     )
 
 
-def state() -> GameState:
+def state() -> Game:
     entities = (
         _entity(
             "study",
@@ -42,8 +42,7 @@ def state() -> GameState:
         Memory(owner=None, text="The vault has stood for a century."),
         Memory(owner=EntityId("hidden-actor"), text="The Secret keeps a hidden ledger."),
     )
-    held = GameState(
-        save_version=SAVE_VERSION,
+    held = Game(
         scenario_id="whispering-vault",
         character_id="kael",
         scenario=ScenarioMeta(title="Test", premise="Test"),
@@ -53,9 +52,9 @@ def state() -> GameState:
             threads=list(threads),
             memories=list(memories),
         ),
-    )
-    held.set_mechanics(
-        Mechanics(sheets={entity.id: Sheet() for entity in entities if entity.kind == "actor"})
+        mechanics=Mechanics(
+            sheets={entity.id: Sheet() for entity in entities if entity.kind == "actor"}
+        ),
     )
     return held.committed()
 

@@ -7,7 +7,7 @@ from aidm.engines.advancement import Offer
 from aidm.engines.engine import Engine, EntityRenderer
 from aidm.engines.sheets import SheetBase
 from aidm.state.base import Entity, EntityId, Exit, Trait
-from aidm.state.world import GameState, Memory, ScenarioMeta, Thread
+from aidm.state.world import Game, Memory, ScenarioMeta, Thread
 
 from .scene import BaseScene, SceneSnapshot, VisibleScene
 
@@ -110,7 +110,7 @@ def render_expander(
     )
 
 
-def render_proposal(engine: Engine[SheetBase], state: GameState, offer: Offer, intent: str) -> str:
+def render_proposal(engine: Engine[SheetBase], state: Game, offer: Offer, intent: str) -> str:
     subject = state.world.require(offer.subject_id)
     sections = (
         ("ON OFFER", offer.prompt),

@@ -7,7 +7,7 @@ from aidm.content.store import engine_text
 from aidm.state.base import PLAYER_ID, Counter, EntityId, Frozen, Slug
 from aidm.state.facts import Fact
 from aidm.state.resolution import check_draft
-from aidm.state.world import GameState
+from aidm.state.world import Game
 
 from .counters import counter_fact
 
@@ -37,7 +37,7 @@ class Advancement(ABC):
     def __init__(self, engine_dir: Path) -> None:
         self.instructions = engine_text(engine_dir / f"{self.id}.md")
 
-    def offers(self, state: GameState) -> tuple[Offer, ...]:
+    def offers(self, state: Game) -> tuple[Offer, ...]:
         earned = self.earned(state)
         return tuple(
             Offer(
@@ -50,7 +50,7 @@ class Advancement(ABC):
         )
 
     def resolve(
-        self, draft: GameState, offer: Offer, proposal: ProposalBase, rng: Random
+        self, draft: Game, offer: Offer, proposal: ProposalBase, rng: Random
     ) -> tuple[Fact, ...]:
         granted = self.grant(draft, offer.subject_id, proposal, rng)
         ledger = self.ledger(draft, offer.subject_id)
@@ -58,7 +58,7 @@ class Advancement(ABC):
         subject = draft.world.require(offer.subject_id)
         return (*granted, counter_fact(subject, self.ledger_key, ledger, 1, self.spent_why))
 
-    def violation(self, state: GameState, offer: Offer, proposal: ProposalBase) -> str | None:
+    def violation(self, state: Game, offer: Offer, proposal: ProposalBase) -> str | None:
         return check_draft(
             state,
             lambda draft: self.resolve(draft, offer, proposal, Random(0)),
@@ -66,14 +66,14 @@ class Advancement(ABC):
         )
 
     @abstractmethod
-    def ledger(self, state: GameState, subject_id: EntityId) -> Counter: ...
+    def ledger(self, state: Game, subject_id: EntityId) -> Counter: ...
 
     @abstractmethod
-    def earned(self, state: GameState) -> int:
+    def earned(self, state: Game) -> int:
         """How many boundaries the fiction has closed: what an advance is owed against."""
 
     @abstractmethod
     def grant(
-        self, draft: GameState, subject_id: EntityId, proposal: ProposalBase, rng: Random
+        self, draft: Game, subject_id: EntityId, proposal: ProposalBase, rng: Random
     ) -> tuple[Fact, ...]:
         """Writes what the proposal buys; moving the ledger itself belongs to the base."""

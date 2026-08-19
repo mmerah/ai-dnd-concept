@@ -1,4 +1,5 @@
 import json
+from dataclasses import fields
 from pathlib import Path
 
 import pytest
@@ -9,6 +10,7 @@ from aidm.app.session import build_engine
 from aidm.content.store import (
     ENCODING,
     FileStore,
+    SavedGame,
     load_character,
     load_scenario,
     read_source,
@@ -17,6 +19,7 @@ from aidm.content.store import (
 from aidm.state.base import PLAYER_ID
 from aidm.state.facts import Fact, narrator_evidence
 from aidm.state.trace import Applied, StepTrace, Turn
+from aidm.state.world import Game
 
 
 def test_save_and_trace_round_trip(tmp_path: Path) -> None:
@@ -25,8 +28,8 @@ def test_save_and_trace_round_trip(tmp_path: Path) -> None:
     assert store.load("missing") is None
     assert store.shell("missing") is None
 
-    store.save("current", state)
-    assert store.load("current") == state
+    store.save("current", SavedGame.of(state))
+    assert store.load("current") == SavedGame.of(state)
     assert store.slugs() == ("current",)
 
     turn = Turn(
@@ -53,10 +56,15 @@ def test_save_and_trace_round_trip(tmp_path: Path) -> None:
     assert store.load_trace("current") == ()
 
 
+def test_a_save_carries_every_field_the_played_game_holds() -> None:
+    """A field added to `Game` and forgotten in `SavedGame.of` would silently never persist."""
+    assert {field.name for field in fields(Game)} | {"save_version"} == set(SavedGame.model_fields)
+
+
 def test_shell_reads_a_save_whose_world_is_garbage(tmp_path: Path) -> None:
     _, state = initialized()
     store = FileStore(tmp_path)
-    body = json.loads(state.model_dump_json())
+    body = json.loads(SavedGame.of(state).model_dump_json())
     body["world"] = {"entities": {"player": "garbage"}}
     (tmp_path / "broken.json").write_text(json.dumps(body), encoding=ENCODING)
 
@@ -106,7 +114,8 @@ def test_a_save_or_trace_from_another_build_is_refused(tmp_path: Path) -> None:
     """A file written before `save_version` existed reads as version 0, not as a schema error."""
     _, state = initialized()
     store = FileStore(tmp_path)
-    stale = updated(state, save_version=state.save_version - 1)
+    saved = SavedGame.of(state)
+    stale = updated(saved, save_version=saved.save_version - 1)
 
     store.save("stale", stale)
     with pytest.raises(ValueError, match="save is version"):
@@ -114,7 +123,7 @@ def test_a_save_or_trace_from_another_build_is_refused(tmp_path: Path) -> None:
     with pytest.raises(ValueError, match="save is version"):
         store.shell("stale")
 
-    store.save("ancient", state)
+    store.save("ancient", saved)
     body = json.loads((tmp_path / "ancient.json").read_text(encoding=ENCODING))
     del body["save_version"]
     (tmp_path / "ancient.json").write_text(json.dumps(body), encoding=ENCODING)

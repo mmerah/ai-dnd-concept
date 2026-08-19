@@ -11,7 +11,7 @@ from pydantic import BaseModel, ConfigDict
 
 from aidm.config import MediaConfig, ProviderConfig
 from aidm.state.base import Entity, EntityId
-from aidm.state.world import GameState
+from aidm.state.world import Game
 from aidm.turn.scene import VisibleScene
 
 from .views import player_scene
@@ -80,10 +80,10 @@ class Illustrator:
     style: str = STYLE
     generating: set[str] = field(default_factory=set)
 
-    def scene_art(self, state: GameState) -> Path | None:
+    def scene_art(self, state: Game) -> Path | None:
         return _existing(self.saves, scene_key(player_scene(state)))
 
-    def scene_pending(self, state: GameState) -> bool:
+    def scene_pending(self, state: Game) -> bool:
         """A scene with no file and no generation in flight is one that failed, not one to wait
         for: the page must stop showing a placeholder for it."""
         return scene_key(player_scene(state)) in self.generating
@@ -100,7 +100,7 @@ class Illustrator:
         directory = self._icon_dir(entity_id)
         return None if directory is None else _existing(directory, entity_id)
 
-    async def illustrate(self, state: GameState, narration: str) -> None:
+    async def illustrate(self, state: Game, narration: str) -> None:
         scene = player_scene(state)
         # The chat avatar wants the player's icon even when this scene's art is already cached.
         _ = await self._drawn_icon(scene.player)

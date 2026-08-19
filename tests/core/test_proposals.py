@@ -8,7 +8,7 @@ from pydantic_ai.messages import ModelMessage, ModelResponse, TextPart
 from pydantic_ai.models.function import AgentInfo, FunctionModel
 
 from aidm.app.session import Drafted
-from aidm.content.store import FileStore
+from aidm.content.store import FileStore, SavedGame
 from aidm.engines.loner3e.advance import AdventureGrowth, Change
 from aidm.engines.loner3e.mechanics import Mechanics
 from aidm.state.base import PLAYER_ID
@@ -44,7 +44,7 @@ async def test_an_illegal_proposal_is_retried_with_the_engines_reason(tmp_path: 
         proposal = await game.propose(offer, "Kael has learned to trust his rope.")
 
     assert proposal == LEGAL
-    gear = game.state.mechanics_as(Mechanics).sheets[PLAYER_ID].gear
+    gear = Mechanics.of(game.state).sheets[PLAYER_ID].gear
     assert "Waxed Rope" not in gear  # proposing commits nothing
 
 
@@ -56,7 +56,7 @@ def test_confirming_commits_exactly_the_proposed_delta(tmp_path: Path) -> None:
 
     facts = game.apply_proposal(drafted)
 
-    sheet = Mechanics.model_validate(game.state.mechanics).sheets[PLAYER_ID]
+    sheet = Mechanics.of(game.state).sheets[PLAYER_ID]
     assert (sheet.gear[-1], sheet.milestones.current) == ("Waxed Rope", 1)
     assert [fact.trace for fact in facts] == [
         "Kael gained gear Waxed Rope (he never climbs without it now)",
@@ -65,7 +65,7 @@ def test_confirming_commits_exactly_the_proposed_delta(tmp_path: Path) -> None:
     entry = Applied(subject_id=PLAYER_ID, facts=facts)
     assert game.entries == [entry]
     assert FileStore(tmp_path).load_trace("poc") == (entry,)
-    assert FileStore(tmp_path).load("poc") == game.state
+    assert FileStore(tmp_path).load("poc") == SavedGame.of(game.state)
     assert game.offers() == ()
     with pytest.raises(ValueError, match="no longer on offer"):
         _ = game.apply_proposal(drafted)
@@ -74,13 +74,13 @@ def test_confirming_commits_exactly_the_proposed_delta(tmp_path: Path) -> None:
 def test_a_refused_proposal_leaves_the_committed_state_untouched(tmp_path: Path) -> None:
     game = loner3e_session(tmp_path)
     game.state = at_boundary(game.state)
-    before = game.state.model_dump_json()
+    before = SavedGame.of(game.state).model_dump_json()
     offer = game.offers()[0]
     drafted = Drafted(offer=offer, proposal=ILLEGAL)
 
     with pytest.raises(ValueError, match="carries no tag"):
         _ = game.apply_proposal(drafted)
 
-    assert game.state.model_dump_json() == before
+    assert SavedGame.of(game.state).model_dump_json() == before
     assert game.entries == []
     assert FileStore(tmp_path).load("poc") is None

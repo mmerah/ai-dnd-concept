@@ -2,14 +2,14 @@ from pydantic import JsonValue
 
 from .base import PLAYER_ID, Entity, EntityId, Exit, Slug, Trait, slug
 from .facts import Fact, entity_fact
-from .world import AdvanceThread, GameState
+from .world import AdvanceThread, Game
 
 
-def reveal(draft: GameState, entity_id: EntityId) -> list[Fact]:
+def reveal(draft: Game, entity_id: EntityId) -> list[Fact]:
     return draft.reveal(draft.world.require(entity_id))
 
 
-def require_actor_here(state: GameState, actor_id: EntityId) -> Entity:
+def require_actor_here(state: Game, actor_id: EntityId) -> Entity:
     if actor_id == PLAYER_ID:
         return state.player
     actor = state.world.require_kind(actor_id, "actor")
@@ -21,14 +21,14 @@ def require_actor_here(state: GameState, actor_id: EntityId) -> Entity:
     return actor
 
 
-def reveal_target(draft: GameState, entity_id: EntityId) -> tuple[Entity, list[Fact]]:
+def reveal_target(draft: Game, entity_id: EntityId) -> tuple[Entity, list[Fact]]:
     """A place or a thing is not revealed by being acted on, so no unlearned name leaks."""
     entity = draft.world.require(entity_id)
     seen = draft.reveal(require_actor_here(draft, entity_id)) if entity.kind == "actor" else []
     return entity, seen
 
 
-def _walkable_exit(draft: GameState, here: Entity, destination: Entity) -> Exit:
+def _walkable_exit(draft: Game, here: Entity, destination: Entity) -> Exit:
     found = here.exit_to(destination.id)
     if found is None:
         open_exits = [draft.world.require(way.to).name for way in here.exits if not way.locked]
@@ -42,14 +42,14 @@ def _walkable_exit(draft: GameState, here: Entity, destination: Entity) -> Exit:
     return found
 
 
-def move(draft: GameState, entity_id: EntityId, to_id: EntityId) -> list[Fact]:
+def move(draft: Game, entity_id: EntityId, to_id: EntityId) -> list[Fact]:
     moving = draft.world.require(entity_id)
     if moving.kind == "item":
         return _move_item(draft, moving, to_id)
     return _move_actor(draft, entity_id, to_id)
 
 
-def _move_actor(draft: GameState, actor_id: EntityId, to_id: EntityId) -> list[Fact]:
+def _move_actor(draft: Game, actor_id: EntityId, to_id: EntityId) -> list[Fact]:
     destination = draft.world.require_kind(to_id, "location")
     here = draft.player_location
     if actor_id == PLAYER_ID:
@@ -73,7 +73,7 @@ def _move_actor(draft: GameState, actor_id: EntityId, to_id: EntityId) -> list[F
     return [*revealed, draft.move(actor, destination)]
 
 
-def _move_item(draft: GameState, item: Entity, to_id: EntityId) -> list[Fact]:
+def _move_item(draft: Game, item: Entity, to_id: EntityId) -> list[Fact]:
     if to_id == PLAYER_ID:
         if item.parent_id == PLAYER_ID:
             raise ValueError(f"the player already carries item {item.id!r}")
@@ -91,7 +91,7 @@ def _move_item(draft: GameState, item: Entity, to_id: EntityId) -> list[Fact]:
     return [*draft.reveal(item), draft.move(item, receiver)]
 
 
-def improvise(draft: GameState, item_name: str) -> list[Fact]:
+def improvise(draft: Game, item_name: str) -> list[Fact]:
     item = Entity(
         id=slug(item_name, draft.world.all_ids()),
         kind="item",
@@ -104,7 +104,7 @@ def improvise(draft: GameState, item_name: str) -> list[Fact]:
     return [created, draft.move(item, draft.player)]
 
 
-def add_trait(draft: GameState, entity_id: EntityId, trait_id: Slug, text: str = "") -> list[Fact]:
+def add_trait(draft: Game, entity_id: EntityId, trait_id: Slug, text: str = "") -> list[Fact]:
     entity, seen = reveal_target(draft, entity_id)
     if entity.trait(trait_id) is not None:
         raise ValueError(f"{entity.name} already carries the trait {trait_id!r}")
@@ -114,7 +114,7 @@ def add_trait(draft: GameState, entity_id: EntityId, trait_id: Slug, text: str =
     return [*seen, entity_fact(entity, "trait_added", trace, {"trait_id": trait_id})]
 
 
-def remove_trait(draft: GameState, entity_id: EntityId, trait_id: Slug) -> list[Fact]:
+def remove_trait(draft: Game, entity_id: EntityId, trait_id: Slug) -> list[Fact]:
     entity, seen = reveal_target(draft, entity_id)
     held = entity.trait(trait_id)
     if held is None:
@@ -127,7 +127,7 @@ def remove_trait(draft: GameState, entity_id: EntityId, trait_id: Slug) -> list[
     return [*seen, entity_fact(entity, "trait_removed", trace, {"trait_id": trait_id})]
 
 
-def unlock_exit(draft: GameState, to_id: EntityId) -> list[Fact]:
+def unlock_exit(draft: Game, to_id: EntityId) -> list[Fact]:
     here = draft.world.require_kind(draft.player_location, "location")
     there = draft.world.require_kind(to_id, "location")
     way = here.exit_to(to_id)
@@ -151,7 +151,7 @@ def unlock_exit(draft: GameState, to_id: EntityId) -> list[Fact]:
     ]
 
 
-def join_party(draft: GameState, actor_id: EntityId) -> list[Fact]:
+def join_party(draft: Game, actor_id: EntityId) -> list[Fact]:
     actor = require_actor_here(draft, actor_id)
     if actor_id in draft.world.party:
         raise ValueError(f"{actor.name} already travels with the player")
@@ -160,7 +160,7 @@ def join_party(draft: GameState, actor_id: EntityId) -> list[Fact]:
     return [*seen, entity_fact(actor, "party_joined", f"{actor.name} travels with the player", {})]
 
 
-def leave_party(draft: GameState, actor_id: EntityId) -> list[Fact]:
+def leave_party(draft: Game, actor_id: EntityId) -> list[Fact]:
     actor = draft.world.require_kind(actor_id, "actor")
     if actor_id not in draft.world.party:
         raise ValueError(f"{actor.name} does not travel with the player")
@@ -168,7 +168,7 @@ def leave_party(draft: GameState, actor_id: EntityId) -> list[Fact]:
     return [entity_fact(actor, "party_left", f"{actor.name} no longer travels with the player", {})]
 
 
-def advance_thread(draft: GameState, effect: AdvanceThread) -> list[Fact]:
+def advance_thread(draft: Game, effect: AdvanceThread) -> list[Fact]:
     """Threads are the Director's bookkeeping, so nothing here reaches the Narrator."""
     thread = draft.world.thread(effect.thread_id)
     if thread is None:

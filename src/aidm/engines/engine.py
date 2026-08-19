@@ -9,12 +9,12 @@ from pydantic import JsonValue
 from pydantic_ai.toolsets import AbstractToolset
 
 from aidm.content.authored import CreatedCharacter, EngineBinding
-from aidm.content.store import engine_text
+from aidm.content.store import SavedGame, engine_text
 from aidm.state.base import EngineId, Entity, EntityId
 from aidm.state.creation import AnyStep, Picks
 from aidm.state.facts import Fact
 from aidm.state.trace import StepTrace
-from aidm.state.world import GameState
+from aidm.state.world import Game, WorldState
 
 from .advancement import Advancement
 from .sheets import SheetBase, SheetMechanics, actor_sheets, check_sheets
@@ -38,7 +38,7 @@ class PlanContext:
     state."""
 
     engine: "Engine[SheetBase]"
-    state: GameState
+    state: Game
     rng: Random
     log: TurnLog
 
@@ -82,32 +82,36 @@ class Engine[S: SheetBase](ABC):
     def binding(self) -> EngineBinding:
         return EngineBinding(engine=self.id, check_overlay=self.check_overlay)
 
-    def begin(self, state: GameState, rules: Mapping[EntityId, dict[str, JsonValue]]) -> None:
-        sheets = actor_sheets(state, rules, self.sheet_type, self.id)
-        state.set_mechanics(self.mechanics_type(sheets=sheets))
+    def opening_mechanics(
+        self, world: WorldState, rules: Mapping[EntityId, dict[str, JsonValue]]
+    ) -> SheetMechanics[S]:
+        return self.mechanics_type(sheets=actor_sheets(world, rules, self.sheet_type, self.id))
 
-    def validate(self, state: GameState) -> None:
-        check_sheets(state, state.mechanics_as(self.mechanics_type).sheets, self.id)
+    def restored(self, saved: SavedGame) -> Game:
+        return saved.game(self.mechanics_type.model_validate(saved.mechanics))
+
+    def validate(self, state: Game) -> None:
+        check_sheets(state.world, self.mechanics_type.of(state).sheets, self.id)
         self.check_mechanics(state)
 
-    def check_mechanics(self, state: GameState) -> None:  # noqa: B027 (a hook, not abstract)
+    def check_mechanics(self, state: Game) -> None:  # noqa: B027 (a hook, not abstract)
         """Whatever this engine tracks beyond one sheet per actor."""
 
-    def seed(self, draft: GameState, entity: Entity, rng: Random) -> None:
-        mechanics = draft.mechanics_as(self.mechanics_type)
+    def seed(self, draft: Game, entity: Entity, rng: Random) -> None:
+        mechanics = self.mechanics_type.of(draft)
         if entity.kind != "actor" or entity.id in mechanics.sheets:
             return
         mechanics.sheets[entity.id] = self.new_sheet(draft, rng)
 
     @abstractmethod
-    def new_sheet(self, draft: GameState, rng: Random) -> S: ...
+    def new_sheet(self, draft: Game, rng: Random) -> S: ...
 
-    def renderer(self, state: GameState) -> EntityRenderer:
+    def renderer(self, state: Game) -> EntityRenderer:
         return lambda entity: self.describe(state, entity)
 
     @abstractmethod
-    def describe(self, state: GameState, entity: Entity) -> str: ...
+    def describe(self, state: Game, entity: Entity) -> str: ...
 
     @abstractmethod
-    def sheet_view(self, state: GameState) -> tuple[tuple[str, str], ...]:
+    def sheet_view(self, state: Game) -> tuple[tuple[str, str], ...]:
         """Ordered (label, value) pairs summarising the player's own sheet for the player."""

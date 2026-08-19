@@ -2,12 +2,12 @@ from collections.abc import Sequence
 
 from .actions import advance_thread
 from .facts import Fact
-from .world import GameState, Hook
+from .world import Game, Hook
 
 MAX_HOOK_ROUNDS = 3
 
 
-def fire_hooks(draft: GameState, facts: Sequence[Fact]) -> list[Fact]:
+def fire_hooks(draft: Game, facts: Sequence[Fact]) -> list[Fact]:
     """Hooks fire in bounded rounds, so hooks feeding each other stop instead of looping."""
     fired: list[Fact] = []
     pending: Sequence[Fact] = facts
@@ -26,7 +26,7 @@ def fire_hooks(draft: GameState, facts: Sequence[Fact]) -> list[Fact]:
     return fired
 
 
-def _hook_round(draft: GameState, facts: Sequence[Fact]) -> list[Fact]:
+def _hook_round(draft: Game, facts: Sequence[Fact]) -> list[Fact]:
     discovered = {
         entity_id
         for fact in facts

@@ -1,10 +1,11 @@
 from abc import ABC
 from collections.abc import Mapping
+from typing import Self
 
 from pydantic import Field, JsonValue
 
 from aidm.state.base import PLAYER_ID, EngineId, Entity, EntityId, Mutable
-from aidm.state.world import GameState
+from aidm.state.world import Game, WorldState
 
 
 class SheetBase(Mutable, ABC):
@@ -14,15 +15,25 @@ class SheetBase(Mutable, ABC):
 class SheetMechanics[S: SheetBase](Mutable):
     sheets: dict[EntityId, S] = Field(default_factory=dict)
 
+    @classmethod
+    def of(cls, state: Game) -> Self:
+        mechanics = state.mechanics
+        if not isinstance(mechanics, cls):
+            # Both engines name their model `Mechanics`, so only the module tells them apart.
+            raise ValueError(
+                f"the state carries {type(mechanics).__module__} mechanics, not {cls.__module__}"
+            )
+        return mechanics
+
 
 def actor_sheets[S: Mutable](
-    state: GameState,
+    world: WorldState,
     rules: Mapping[EntityId, dict[str, JsonValue]],
     sheet: type[S],
     engine: EngineId,
 ) -> dict[EntityId, S]:
     sheets: dict[EntityId, S] = {}
-    for entity in state.world.entities:
+    for entity in world.entities:
         authored = rules.get(entity.id)
         if entity.kind != "actor":
             if authored:
@@ -32,13 +43,13 @@ def actor_sheets[S: Mutable](
     return sheets
 
 
-def check_sheets(state: GameState, sheets: Mapping[EntityId, object], engine: EngineId) -> None:
+def check_sheets(world: WorldState, sheets: Mapping[EntityId, object], engine: EngineId) -> None:
     if PLAYER_ID not in sheets:
         raise ValueError(f"the {engine} mechanics name no player")
-    actors = {entity.id for entity in state.world.of_kind("actor")}
+    actors = {entity.id for entity in world.of_kind("actor")}
     if missing := sorted(actors - set(sheets)):
         raise ValueError(f"actors carry no character sheet: {missing}")
-    if gone := sorted(set(sheets) - state.world.all_ids()):
+    if gone := sorted(set(sheets) - world.all_ids()):
         raise ValueError(f"mechanics name actors the world does not hold: {gone}")
 
 

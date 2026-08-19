@@ -3,8 +3,8 @@ from core_test_support import LONER3E, game, updated, with_entity
 from aidm.content.authored import ScenarioMeta
 from aidm.engines.engine import EntityRenderer
 from aidm.engines.loner3e.mechanics import Mechanics, Sheet
-from aidm.state.base import PLAYER_ID, SAVE_VERSION, Entity, EntityId, Kind
-from aidm.state.world import GameState, WorldState
+from aidm.state.base import PLAYER_ID, Entity, EntityId, Kind
+from aidm.state.world import Game, WorldState
 from aidm.turn.prompts import (
     prompt_id,
     render_director,
@@ -17,7 +17,7 @@ DESCRIPTION = "She writes in a compact cipher."
 HOOK = "Her missing folio points toward the vault."
 
 
-def _with_detail(held: GameState, entity_id: EntityId) -> GameState:
+def _with_detail(held: Game, entity_id: EntityId) -> Game:
     entity = held.world.require_kind(entity_id, "actor")
     detailed = updated(entity, detail={"description": DESCRIPTION, "hook": HOOK})
     return with_entity(held, detailed)
@@ -29,7 +29,7 @@ def _entity(entity_id: str, kind: Kind, name: str, brief: str, **fields: object)
     )
 
 
-def state() -> GameState:
+def state() -> Game:
     entities = (
         _entity("study", "location", "Study", "A small room.", known=True),
         _entity("player", "actor", "Kael", "A hunter.", known=True, parent_id="study"),
@@ -38,21 +38,20 @@ def state() -> GameState:
         _entity("lantern", "item", "a lantern", "A dented light.", known=True, parent_id=PLAYER_ID),
         _entity("ledger", "item", "a ledger", "Mara's notes.", known=True, parent_id="mara"),
     )
-    held = GameState(
-        save_version=SAVE_VERSION,
+    held = Game(
         scenario_id="whispering-vault",
         character_id="kael",
         scenario=ScenarioMeta(title="Test", premise="Test"),
         engine=LONER3E,
         world=WorldState(entities=list(entities)),
-    )
-    held.set_mechanics(
-        Mechanics(sheets={entity.id: Sheet() for entity in entities if entity.kind == "actor"})
+        mechanics=Mechanics(
+            sheets={entity.id: Sheet() for entity in entities if entity.kind == "actor"}
+        ),
     )
     return held.committed()
 
 
-def _renderer(held: GameState) -> EntityRenderer:
+def _renderer(held: Game) -> EntityRenderer:
     engine, _ = game(LONER3E)
     return engine.renderer(held)
 

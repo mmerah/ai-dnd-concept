@@ -44,10 +44,10 @@ def test_a_user_pack_may_carry_its_own_twist_table(tmp_path: Path) -> None:
 
 def test_a_game_records_its_table_set_and_is_refused_without_it() -> None:
     engine, state = initialized()
-    assert state.mechanics_as(Mechanics).sheets[PLAYER_ID].pack == SRD_PACK
+    assert Mechanics.of(state).sheets[PLAYER_ID].pack == SRD_PACK
 
     draft = state.draft()
-    mechanics = draft.mechanics_as(Mechanics)
+    mechanics = Mechanics.of(draft)
     mechanics.sheets[PLAYER_ID] = mechanics.sheets[PLAYER_ID].model_copy(
         update={"pack": "uninstalled"}
     )

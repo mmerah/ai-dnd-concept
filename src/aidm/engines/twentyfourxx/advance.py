@@ -7,7 +7,7 @@ from aidm.engines.counters import adjust
 from aidm.state.base import Counter, EntityId
 from aidm.state.dice import roll_pool
 from aidm.state.facts import Fact, explained_fact
-from aidm.state.world import GameState
+from aidm.state.world import Game
 
 from .mechanics import Mechanics, Sheet, raised
 
@@ -36,17 +36,17 @@ class TwentyfourxxAdvancement(Advancement):
     offer_text = GROWTH
     spent_why = "a job's advance taken"
 
-    def earned(self, state: GameState) -> int:
-        return state.mechanics_as(Mechanics).completed.current
+    def earned(self, state: Game) -> int:
+        return Mechanics.of(state).completed.current
 
-    def ledger(self, state: GameState, subject_id: EntityId) -> Counter:
-        return state.mechanics_as(Mechanics).sheets[subject_id].jobs
+    def ledger(self, state: Game, subject_id: EntityId) -> Counter:
+        return Mechanics.of(state).sheets[subject_id].jobs
 
     def grant(
-        self, draft: GameState, subject_id: EntityId, proposal: ProposalBase, rng: Random
+        self, draft: Game, subject_id: EntityId, proposal: ProposalBase, rng: Random
     ) -> tuple[Fact, ...]:
         assert isinstance(proposal, Advance)
-        sheet = draft.mechanics_as(Mechanics).sheets[subject_id]
+        sheet = Mechanics.of(draft).sheets[subject_id]
         subject = draft.world.require(subject_id)
 
         skill = _on_sheet(sheet, proposal.skill)

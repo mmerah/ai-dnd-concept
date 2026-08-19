@@ -4,7 +4,7 @@ from pydantic import ValidationError
 
 from .base import Frozen
 from .facts import Fact
-from .world import GameState
+from .world import Game
 
 
 class Resolution(Frozen):
@@ -12,7 +12,7 @@ class Resolution(Frozen):
 
 
 def check_draft(
-    state: GameState, act: Callable[[GameState], object], what: str = "the state this leaves"
+    state: Game, act: Callable[[Game], object], what: str = "the state this leaves"
 ) -> str | None:
     draft = state.draft()
     try:

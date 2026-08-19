@@ -7,7 +7,7 @@ from aidm.state import actions
 from aidm.state.base import PLAYER_ID, Counter, Entity, EntityId
 from aidm.state.facts import Fact
 from aidm.state.hooks import MAX_HOOK_ROUNDS, fire_hooks
-from aidm.state.world import AdvanceThread, GameState, Hook, Thread
+from aidm.state.world import AdvanceThread, Game, Hook, Thread
 
 BELL_TOWER = EntityId("bell_tower")
 CLOISTER = EntityId("cloister")
@@ -21,7 +21,7 @@ VAULT = EntityId("vault")
 VAULT_MAP = EntityId("vault_map")
 
 
-def _draft() -> GameState:
+def _draft() -> Game:
     _, state = initialized()
     return state.draft()
 

@@ -3,6 +3,7 @@ from core_test_support import game
 from golden_test_support import FIXTURES, dumped, golden
 
 from aidm.app.registry import engine_ids
+from aidm.content.store import SavedGame
 from aidm.state.base import SAVE_VERSION, EngineId
 
 # The version the golden state and turn fixtures were cut at. A save-shape change moves it, and
@@ -17,4 +18,4 @@ def test_the_save_version_the_fixtures_were_cut_at_has_not_moved() -> None:
 @pytest.mark.parametrize("engine_id", engine_ids())
 def test_the_initial_state_of_a_shipped_game_serializes_unchanged(engine_id: EngineId) -> None:
     _, state = game(engine_id)
-    golden(FIXTURES / "state" / f"{engine_id}.json", dumped(state))
+    golden(FIXTURES / "state" / f"{engine_id}.json", dumped(SavedGame.of(state)))

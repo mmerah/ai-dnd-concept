@@ -7,11 +7,11 @@ from aidm.engines.engine import PlanContext
 from aidm.engines.transact import act, sequential_toolset
 from aidm.state.base import EntityId
 from aidm.state.resolution import Resolution
-from aidm.state.world import GameState
+from aidm.state.world import Game
 
 from .actions import Question, apply_end_adventure, apply_restore_luck, resolve_question
 
-type Twists = Callable[[GameState], tuple[tuple[str, str], ...]]
+type Twists = Callable[[Game], tuple[tuple[str, str], ...]]
 
 
 def director_toolset(twists: Twists) -> FunctionToolset[PlanContext]:

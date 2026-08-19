@@ -6,7 +6,7 @@ from pydantic import Field, model_validator
 from aidm.engines.advancement import Advancement, ProposalBase
 from aidm.state.base import Counter, Entity, EntityId, Frozen
 from aidm.state.facts import Fact, explained_fact
-from aidm.state.world import GameState
+from aidm.state.world import Game
 
 from .mechanics import Mechanics, Sheet
 
@@ -58,18 +58,18 @@ class Loner3eAdvancement(Advancement):
     offer_text = GROWTH
     spent_why = "a milestone spent"
 
-    def ledger(self, state: GameState, subject_id: EntityId) -> Counter:
-        return state.mechanics_as(Mechanics).sheets[subject_id].milestones
+    def ledger(self, state: Game, subject_id: EntityId) -> Counter:
+        return Mechanics.of(state).sheets[subject_id].milestones
 
-    def earned(self, state: GameState) -> int:
-        return state.mechanics_as(Mechanics).completed.current
+    def earned(self, state: Game) -> int:
+        return Mechanics.of(state).completed.current
 
     def grant(
-        self, draft: GameState, subject_id: EntityId, proposal: ProposalBase, rng: Random
+        self, draft: Game, subject_id: EntityId, proposal: ProposalBase, rng: Random
     ) -> tuple[Fact, ...]:
         del rng  # post-adventure growth spends nothing random
         assert isinstance(proposal, AdventureGrowth)
-        sheet = draft.mechanics_as(Mechanics).sheets[subject_id]
+        sheet = Mechanics.of(draft).sheets[subject_id]
         subject = draft.world.require(subject_id)
         # Sequential against the live sheet, so a rewrite may name what an earlier change wrote.
         return tuple(

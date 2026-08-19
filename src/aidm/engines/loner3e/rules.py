@@ -4,7 +4,7 @@ from random import Random
 from aidm.engines.engine import Engine
 from aidm.engines.packs import load_packs, pack_paths
 from aidm.state.base import PLAYER_ID, Counter, EngineId, Entity
-from aidm.state.world import GameState
+from aidm.state.world import Game
 
 from .advance import Loner3eAdvancement
 from .create import Loner3eCreation
@@ -29,20 +29,20 @@ class Loner3eEngine(Engine[Sheet]):
         self.creation = Loner3eCreation(self.packs)
         self.director_toolsets = (director_toolset(self.twists),)
 
-    def check_mechanics(self, state: GameState) -> None:
-        if (chosen := state.mechanics_as(Mechanics).sheets[PLAYER_ID].pack) not in self.packs:
+    def check_mechanics(self, state: Game) -> None:
+        if (chosen := Mechanics.of(state).sheets[PLAYER_ID].pack) not in self.packs:
             raise ValueError(f"this game plays the {chosen!r} table set, which is not installed")
 
-    def new_sheet(self, draft: GameState, rng: Random) -> Sheet:
+    def new_sheet(self, draft: Game, rng: Random) -> Sheet:
         del rng  # nothing on a loner3e sheet is rolled
         # A newcomer starts level with the party: milestones earned before they joined are not owed.
-        return Sheet(milestones=Counter(current=draft.mechanics_as(Mechanics).completed.current))
+        return Sheet(milestones=Counter(current=Mechanics.of(draft).completed.current))
 
-    def describe(self, state: GameState, entity: Entity) -> str:
-        return describe_entity(state.mechanics_as(Mechanics), entity)
+    def describe(self, state: Game, entity: Entity) -> str:
+        return describe_entity(Mechanics.of(state), entity)
 
-    def sheet_view(self, state: GameState) -> tuple[tuple[str, str], ...]:
-        sheet = state.mechanics_as(Mechanics).sheets[PLAYER_ID]
+    def sheet_view(self, state: Game) -> tuple[tuple[str, str], ...]:
+        sheet = Mechanics.of(state).sheets[PLAYER_ID]
         return (
             ("Concept", sheet.concept),
             ("Skills", ", ".join(sheet.skills)),
@@ -51,6 +51,6 @@ class Loner3eEngine(Engine[Sheet]):
             ("Luck", f"{sheet.luck.current} / {sheet.luck.maximum}"),
         )
 
-    def twists(self, state: GameState) -> tuple[tuple[str, str], ...]:
+    def twists(self, state: Game) -> tuple[tuple[str, str], ...]:
         """The player's own table set: an NPC sheet is seeded with the default and never selects."""
-        return twist_table(self.packs, state.mechanics_as(Mechanics).sheets[PLAYER_ID].pack)
+        return twist_table(self.packs, Mechanics.of(state).sheets[PLAYER_ID].pack)

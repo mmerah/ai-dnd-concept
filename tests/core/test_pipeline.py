@@ -17,6 +17,7 @@ from core_test_support import (
 from pydantic_ai.messages import ModelMessage, ModelResponse
 from pydantic_ai.models.function import AgentInfo, FunctionModel
 
+from aidm.content.store import SavedGame
 from aidm.engines.loner3e.actions import outcome_for
 from aidm.engines.twentyfourxx.mechanics import Mechanics
 from aidm.state.base import PLAYER_ID, EntityId
@@ -144,10 +145,10 @@ async def test_a_call_its_own_fields_refuse_is_retried_rather_than_killing_the_t
 
 
 async def test_a_later_call_is_judged_against_the_mechanics_the_earlier_one_moved() -> None:
-    """Mechanics are flushed on every apply; an unflushed pool would pass this trial and then die
-    outside the retry."""
+    """A trial copy carries the pool the earlier call emptied, so the second call is refused as a
+    retry rather than dying outside it."""
     engine, state = game(TWENTYFOURXX)
-    credits = state.mechanics_as(Mechanics).sheets[PLAYER_ID].credits.current
+    credits = Mechanics.of(state).sheets[PLAYER_ID].credits.current
     director = recorded(
         tool_call("change_credits", actor_id="player", amount=-credits),
         tool_call("change_credits", actor_id="player", amount=-1),
@@ -155,7 +156,7 @@ async def test_a_later_call_is_judged_against_the_mechanics_the_earlier_one_move
     )
     result = await played(engine, state, "I pay what I owe.", director=FunctionModel(director.stub))
 
-    assert result.state.mechanics_as(Mechanics).sheets[PLAYER_ID].credits.current == 0
+    assert Mechanics.of(result.state).sheets[PLAYER_ID].credits.current == 0
     assert director.reasons()
 
 
@@ -191,18 +192,18 @@ async def test_a_failed_role_never_mutates_the_input_state() -> None:
             text("The map is in hand."),
         )
     )
-    before = state.model_dump_json()
+    before = SavedGame.of(state).model_dump_json()
     with pytest.raises(RuntimeError, match="narrator exploded"):
         await played(
             engine, state, "I take the map.", director=director, narrator=FunctionModel(boom)
         )
 
-    assert state.model_dump_json() == before
+    assert SavedGame.of(state).model_dump_json() == before
 
 
 async def test_a_director_run_that_fails_discards_what_the_earlier_tool_call_did() -> None:
     engine, state = initialized()
-    before = state.model_dump_json()
+    before = SavedGame.of(state).model_dump_json()
     first = tool_call("move", entity_id="vault_map", to_id="player")
     calls = 0
 
@@ -222,7 +223,7 @@ async def test_a_director_run_that_fails_discards_what_the_earlier_tool_call_did
             director=FunctionModel(stub),
         )
 
-    assert state.model_dump_json() == before
+    assert SavedGame.of(state).model_dump_json() == before
     assert state.world.require(EntityId("vault_map")).parent_id != PLAYER_ID
 
 

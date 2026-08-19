@@ -14,6 +14,7 @@ from aidm.app.views import (
     player_scene,
     thread_summaries,
 )
+from aidm.content.store import SavedGame
 from aidm.state.base import PLAYER_ID, EntityId
 from aidm.state.facts import Fact
 from aidm.state.trace import Applied, StepTrace, TraceEntry, Turn
@@ -318,6 +319,6 @@ def _review(session: GameSession, drafted: Drafted, refresh: Callable[[], None])
 
 def state_panel(session: GameSession) -> None:
     ui.code(
-        session.state.model_dump_json(indent=2),
+        SavedGame.of(session.state).model_dump_json(indent=2),
         language="json",
     ).classes("w-full text-xs")

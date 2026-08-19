@@ -7,12 +7,12 @@ from aidm.app.media import Illustrator, illustration_request, scene_key
 from aidm.app.views import player_scene
 from aidm.config import MediaConfig, ProviderConfig
 from aidm.state.base import Entity, EntityId
-from aidm.state.world import GameState
+from aidm.state.world import Game
 
 NARRATION = "The door groans open."
 
 
-def _placed(state: GameState, name: str, *, known: bool) -> GameState:
+def _placed(state: Game, name: str, *, known: bool) -> Game:
     return with_entity(
         state,
         Entity(

@@ -13,7 +13,7 @@ from aidm.state.facts import Fact, narrator_evidence
 from aidm.state.history import Exchange
 from aidm.state.resolution import Resolution
 from aidm.state.trace import StepTrace, Turn
-from aidm.state.world import GameState, Memory
+from aidm.state.world import Game, Memory
 
 from . import prompts
 from .agents import TurnAgents, exchanges_to_messages
@@ -25,7 +25,7 @@ from .scene import SceneSnapshot, VisibleScene
 class TurnResult:
     """The committed state and the entry recording how it was reached, kept apart."""
 
-    state: GameState
+    state: Game
     turn: Turn
 
 
@@ -33,7 +33,7 @@ TURN_STEPS: tuple[str, ...] = ("director", "hooks", "narrator", "worldkeeper")
 DIRECTOR_REQUEST_LIMIT = 16
 
 
-def remember(draft: GameState, memories: Sequence[MemoryProposal], maximum: int) -> list[Fact]:
+def remember(draft: Game, memories: Sequence[MemoryProposal], maximum: int) -> list[Fact]:
     seen = {memory.text.casefold() for memory in draft.world.memories}
     kept: list[Fact] = []
     for proposal in memories:
@@ -54,7 +54,7 @@ def remember(draft: GameState, memories: Sequence[MemoryProposal], maximum: int)
 
 
 async def run_turn(
-    state: GameState,
+    state: Game,
     prompt: str,
     *,
     engine: Engine[SheetBase],

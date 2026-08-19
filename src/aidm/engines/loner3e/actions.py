@@ -10,7 +10,7 @@ from aidm.state.base import Entity, EntityId, Frozen, Slug
 from aidm.state.dice import roll_pool
 from aidm.state.facts import Fact, entity_fact
 from aidm.state.resolution import Resolution
-from aidm.state.world import GameState
+from aidm.state.world import Game
 
 from .mechanics import LUCK_MAX, TIES_PER_TWIST, Mechanics
 
@@ -84,11 +84,11 @@ def outcome_for(chance: int, risk: int) -> Slug:
 
 
 def resolve_question(
-    draft: GameState, action: Question, rng: Random, twists: tuple[tuple[str, str], ...]
+    draft: Game, action: Question, rng: Random, twists: tuple[tuple[str, str], ...]
 ) -> Resolution:
     actor = require_actor_here(draft, action.actor_id)
     facts = reveal(draft, action.actor_id)
-    mechanics = draft.mechanics_as(Mechanics)
+    mechanics = Mechanics.of(draft)
     _ = require_sheet(mechanics.sheets, actor)
     opponent: Entity | None = None
     if action.opponent_id is not None:
@@ -126,22 +126,22 @@ def resolve_question(
     return Resolution(facts=tuple(facts))
 
 
-def apply_restore_luck(draft: GameState, actor_id: EntityId) -> list[Fact]:
+def apply_restore_luck(draft: Game, actor_id: EntityId) -> list[Fact]:
     actor = require_actor_here(draft, actor_id)
     facts = reveal(draft, actor.id)
-    luck = require_sheet(draft.mechanics_as(Mechanics).sheets, actor).luck
+    luck = require_sheet(Mechanics.of(draft).sheets, actor).luck
     refill = (luck.maximum or LUCK_MAX) - luck.current
     # Already full is a quiet no-op: `adjust` writes no fact for a zero delta.
     return [*facts, *adjust(actor, "luck", luck, refill, "the conflict is behind them")]
 
 
-def apply_end_adventure(draft: GameState) -> list[Fact]:
-    draft.mechanics_as(Mechanics).completed.current += 1
+def apply_end_adventure(draft: Game) -> list[Fact]:
+    Mechanics.of(draft).completed.current += 1
     return [Fact(kind="adventure_completed", trace="the adventure has ended")]
 
 
 def _twist(
-    draft: GameState, actor: Entity, rng: Random, twists: tuple[tuple[str, str], ...]
+    draft: Game, actor: Entity, rng: Random, twists: tuple[tuple[str, str], ...]
 ) -> list[Fact]:
     """The SRD's table is rolled here so the dice trace; the Director only reads the pairing."""
     subject_die, subject_fact = roll_pool((6,), "twist — subject", rng)
@@ -160,7 +160,7 @@ def _twist(
 
 
 def _strike(
-    draft: GameState, mechanics: Mechanics, actor: Entity, opponent: Entity, outcome: Slug
+    draft: Game, mechanics: Mechanics, actor: Entity, opponent: Entity, outcome: Slug
 ) -> list[Fact]:
     harm = HARM[outcome]
     hit, striker = (opponent, actor) if harm > 0 else (actor, opponent)

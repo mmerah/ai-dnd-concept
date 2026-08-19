@@ -200,9 +200,10 @@ destinations. The ids are already bracketed beside every entity in the prompt, t
 differs per tool and per argument, and no eval has shown a turn lost to an invented id. Fold it in
 when one does.
 
-Still owed: one `evals/turn_eval.py` run. Every cut in 7.2 was verified duplication, but step 3's
-lesson was that prose deleted from the Director's surface carries instruction, and only the eval
-sees that.
+Confirmed by eval: `evals/results/step-7-repair.json` reads like the runs before it on every case
+but `three-things` (below), so nothing the Director lost in 7.2 cost it a turn. That was the open
+question — step 3's lesson is that prose deleted from the Director's surface carries instruction,
+and only the eval sees it.
 
 ### Broken tool arguments are repaired at the model boundary
 
@@ -241,9 +242,43 @@ hours later. A same-hour baseline (`evals/results/ab-baseline.json`, n=18, promp
 (`evals/results/three-things-trait.json`, 24xx 56%), which the control invalidates. Next attempt: run both arms back
 to back at n=18 with loner3e as the control, and only believe a move the control does not make.
 
+### Phase 1 step 8 — runtime `Game` separated from `SavedGame`
+
+- `GameState` is `Game`, a `@dataclass(slots=True)` in `state/world.py` with no validation of its
+  own. Its `mechanics` holds the engine's validated instance directly, typed as `Mutable` — core
+  cannot name `SheetMechanics` without importing `engines`, so the field stays opaque and
+  `Mechanics.of(state)` (`SheetMechanics.of`, `engines/sheets.py`) narrows it back. Both engines
+  name their model `Mechanics`, so its refusal names the module.
+- `SavedGame` (`content/store.py`) is the only validation boundary a save crosses: same fields in
+  the same order, `mechanics: JsonValue`, and `save_version` defaulted so the runtime object no
+  longer carries a persistence concern. `SavedGame.of(state)` encodes, `Engine.restored(saved)`
+  decodes — the one place a stored mechanics payload becomes an engine type. `FileStore` speaks
+  `SavedGame` on both sides. It carries `revalidate_instances="always"`: a `Game` validates
+  nothing itself, so the world it hands over is validated on the way out and copied rather than
+  left shared with the game still being played.
+- The fixtures did not move, so SAVE_VERSION stays at 79: the DTO's field order and its
+  `model_dump(mode="json")` mechanics are what `flush_mechanics` was already writing.
+- `mechanics_as`/`set_mechanics`/`flush_mechanics`/`_live_mechanics` are gone, and with them the
+  step 3 hazard they created — a trial copy re-parsing stale mechanics JSON is now impossible,
+  because there is no JSON to be stale. `apply_to_draft` lost its flush line.
+- `committed()` revalidates the world and the mechanics and checks the player is known; `draft()`
+  is `deepcopy`. Mechanics now behave exactly like the world: a mutation against a *committed*
+  state does reach a save, where the old parse-on-read quietly discarded it. The transaction
+  discipline (mutate a draft, commit once) is what stands, and its test says so.
+- `Engine.opening_mechanics(world, rules)` (was `begin`) returns the mechanics instead of writing
+  them into a half-built state, so `Game` is constructed once with every field. `check_sheets`
+  takes a `WorldState` too.
+- The player-is-known rule now runs at both boundaries — `Game.committed()` and `SavedGame` — as
+  one `check_player_playable(world)`. The review caught it: as a `GameState` validator it had also
+  been gating every *load*, and `SavedGame` without it would play a save whose player is unknown.
+- Tests: the two flush-shaped ones are gone; `SavedGame.of(state).model_dump_json()` is the
+  "nothing changed" snapshot, and the round-trip test now runs the real boundary
+  (`engine.restored(SavedGame.model_validate_json(...)) == state`, on dataclass equality). One new
+  test pins `SavedGame`'s fields to `Game`'s: the two now restate each other, and a field added to
+  the runtime game and forgotten in `of()` would otherwise be dropped in silence.
+
 ## Next
 
-- Phase 1 step 8 — separate runtime `Game` from `SavedGame`.
-- Re-run `evals/turn_eval.py` once to confirm steps 5–7 moved nothing.
+- Phase 1 step 9 — deduplicate the engines' shared spine.
 - Finish the `three-things` trait A/B above, or drop the 24xx prompt widening if it shows
   nothing.

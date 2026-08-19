@@ -22,7 +22,7 @@ from aidm.llm import build_agent
 from aidm.state.base import EntityId, Kind
 from aidm.state.history import Exchange, Narration
 from aidm.state.resolution import check_draft
-from aidm.state.world import GameState
+from aidm.state.world import Game
 
 from . import prompts
 from .expansion import MAX_EXPANSIONS, ExpansionPatch, apply_patch, capped, record, written
@@ -34,7 +34,7 @@ from .tools import core_toolset, possible, sequential_toolset
 @dataclass(frozen=True, slots=True)
 class AdvancementContext:
     advancement: Advancement
-    state: GameState
+    state: Game
     offer: Offer
 
 
@@ -44,7 +44,7 @@ class TurnAgents:
 
     director: Agent[PlanContext, str]
     narrator: Agent[VisibleScene, Narration]
-    worldkeeper: Agent[GameState, WorldkeeperReport]
+    worldkeeper: Agent[Game, WorldkeeperReport]
     # Built only when the adventure may expand; the turn reaches it through the Director's tool.
     expander: Agent[PlanContext, ExpansionPatch] | None = None
 
@@ -99,8 +99,8 @@ def narrator_agent(settings: Settings) -> Agent[VisibleScene, Narration]:
     )
 
 
-def worldkeeper_agent(settings: Settings) -> Agent[GameState, WorldkeeperReport]:
-    def known(ctx: RunContext[GameState], report: WorldkeeperReport) -> WorldkeeperReport:
+def worldkeeper_agent(settings: Settings) -> Agent[Game, WorldkeeperReport]:
+    def known(ctx: RunContext[Game], report: WorldkeeperReport) -> WorldkeeperReport:
         state = ctx.deps
         strangers = sorted(
             {
@@ -121,7 +121,7 @@ def worldkeeper_agent(settings: Settings) -> Agent[GameState, WorldkeeperReport]
         settings,
         instructions=prompts.WORLDKEEPER,
         output_type=NativeOutput(WorldkeeperReport),
-        deps_type=GameState,
+        deps_type=Game,
         validator=known,
     )
 
@@ -135,7 +135,7 @@ def expander_agent(settings: Settings) -> Agent[PlanContext, ExpansionPatch]:
 
         # The whole mutation sequence the real one will run, hooks and seeding included: whatever
         # a thinner trial skipped would fail the turn outright instead of asking again.
-        def trial(draft: GameState) -> object:
+        def trial(draft: Game) -> object:
             return apply_to_draft(
                 deps.engine, draft, lambda copy, _rng: apply_patch(copy, patch), Random(0)
             )

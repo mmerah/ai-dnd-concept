@@ -1,7 +1,7 @@
 from collections.abc import Iterable, Mapping
 
 from aidm.state.base import PLAYER_ID, Entity, EntityId, Exit, Frozen
-from aidm.state.world import GameState, Memory, Thread
+from aidm.state.world import Game, Memory, Thread
 
 
 class BaseScene(Frozen):
@@ -30,7 +30,7 @@ class SceneSnapshot(BaseScene):
     notes: tuple[str, ...] = ()
 
     @classmethod
-    def of(cls, state: GameState) -> "SceneSnapshot":
+    def of(cls, state: Game) -> "SceneSnapshot":
         world = state.world
         player = state.player
         location = world.require_kind(state.player_location, "location")

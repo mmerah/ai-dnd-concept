@@ -10,7 +10,7 @@ from aidm.state.base import EntityId
 from aidm.state.facts import Fact
 from aidm.state.hooks import fire_hooks
 from aidm.state.resolution import Resolution, check_draft
-from aidm.state.world import GameState
+from aidm.state.world import Game
 
 from .engine import Engine, PlanContext
 from .sheets import SheetBase
@@ -18,7 +18,7 @@ from .sheets import SheetBase
 NOTHING_CHANGED = "- (nothing changed)"
 
 # The rng is a parameter so a trial run against a throwaway copy cannot consume the turn's dice.
-type Play = Callable[[GameState, Random], Resolution]
+type Play = Callable[[Game, Random], Resolution]
 
 
 @dataclass(frozen=True, slots=True)
@@ -33,23 +33,18 @@ class Resolved:
         return (*self.resolved, *self.fired)
 
 
-def apply_to_draft(
-    engine: Engine[SheetBase], draft: GameState, play: Play, rng: Random
-) -> Resolved:
+def apply_to_draft(engine: Engine[SheetBase], draft: Game, play: Play, rng: Random) -> Resolved:
     """Every mutation runs this sequence, so hooks and seeding cannot be forgotten by a caller."""
     resolution = play(draft, rng)
     fired = fire_hooks(draft, resolution.facts)
     _seed_created(engine, draft, [*resolution.facts, *fired], rng)
     engine.validate(draft)
-    # Written back here, not at commit: a later tool takes trial copies of this same draft, and an
-    # unflushed mechanics mutation would be missing from every one of them.
-    draft.flush_mechanics()
     return Resolved(resolved=resolution.facts, fired=tuple(fired))
 
 
 def transact(
-    engine: Engine[SheetBase], draft: GameState, play: Play, rng: Random
-) -> tuple[GameState, tuple[Fact, ...]]:
+    engine: Engine[SheetBase], draft: Game, play: Play, rng: Random
+) -> tuple[Game, tuple[Fact, ...]]:
     """A draft mutated and committed whole, for a change that stands on its own outside a turn."""
     landed = apply_to_draft(engine, draft, play, rng)
     return draft.committed(), landed.facts
@@ -81,7 +76,7 @@ def sequential_toolset(
 
 
 def _seed_created(
-    engine: Engine[SheetBase], draft: GameState, facts: Sequence[Fact], rng: Random
+    engine: Engine[SheetBase], draft: Game, facts: Sequence[Fact], rng: Random
 ) -> None:
     for fact in facts:
         created = fact.data.get("entity_id") if fact.kind == "entity_created" else None

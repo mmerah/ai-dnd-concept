@@ -10,7 +10,7 @@ from aidm.state.base import Entity, EntityId, Frozen, Slug
 from aidm.state.dice import roll_pool
 from aidm.state.facts import Fact, entity_fact
 from aidm.state.resolution import Resolution
-from aidm.state.world import GameState
+from aidm.state.world import Game
 
 from .mechanics import DEFAULT_FACE, HINDERED_FACE, Mechanics, Sheet
 
@@ -79,20 +79,20 @@ class LuckTest(Frozen):
     )
 
 
-def apply_change_credits(draft: GameState, actor_id: EntityId, amount: int) -> list[Fact]:
+def apply_change_credits(draft: Game, actor_id: EntityId, amount: int) -> list[Fact]:
     if amount == 0:
         raise ValueError("changing credits moves the pool; zero moves nothing")
     actor = require_actor_here(draft, actor_id)
     facts = reveal(draft, actor.id)
-    credits = require_sheet(draft.mechanics_as(Mechanics).sheets, actor).credits
+    credits = require_sheet(Mechanics.of(draft).sheets, actor).credits
     if amount > 0:
         return [*facts, *adjust(actor, "credits", credits, amount, "paid")]
     # `spend`, not a negative adjust: an overdraw is refused, not clamped.
     return [*facts, *spend(actor, "credits", credits, -amount)]
 
 
-def apply_complete_job(draft: GameState) -> list[Fact]:
-    draft.mechanics_as(Mechanics).completed.current += 1
+def apply_complete_job(draft: Game) -> list[Fact]:
+    Mechanics.of(draft).completed.current += 1
     return [Fact(kind="job_completed", trace="the job is done")]
 
 
@@ -112,10 +112,10 @@ def pool_faces(sheet: Sheet, action: Attempt, helper: Sheet | None) -> tuple[int
     return (base, DEFAULT_FACE) if action.helped else (base,)
 
 
-def resolve_attempt(draft: GameState, action: Attempt, rng: Random) -> Resolution:
+def resolve_attempt(draft: Game, action: Attempt, rng: Random) -> Resolution:
     actor = require_actor_here(draft, action.actor_id)
     facts = reveal(draft, action.actor_id)
-    sheet = require_sheet(draft.mechanics_as(Mechanics).sheets, actor)
+    sheet = require_sheet(Mechanics.of(draft).sheets, actor)
     helper_sheet = _helper_sheet(draft, actor, action, facts)
     _require_skill(actor, sheet, action.skill, "skill")
 
@@ -144,16 +144,14 @@ def resolve_attempt(draft: GameState, action: Attempt, rng: Random) -> Resolutio
     return Resolution(facts=tuple(facts))
 
 
-def resolve_luck_test(draft: GameState, action: LuckTest, rng: Random) -> Resolution:
+def resolve_luck_test(draft: Game, action: LuckTest, rng: Random) -> Resolution:
     actor = require_actor_here(draft, action.actor_id)
     facts = reveal(draft, action.actor_id)
     facts.extend(_bad_luck(draft, actor, action.subject, rng))
     return Resolution(facts=tuple(facts))
 
 
-def _helper_sheet(
-    draft: GameState, actor: Entity, action: Attempt, facts: list[Fact]
-) -> Sheet | None:
+def _helper_sheet(draft: Game, actor: Entity, action: Attempt, facts: list[Fact]) -> Sheet | None:
     if action.helper_id is None:
         return None
     if action.helper_id == actor.id:
@@ -163,7 +161,7 @@ def _helper_sheet(
         )
     helper = require_actor_here(draft, action.helper_id)
     facts.extend(reveal(draft, action.helper_id))
-    sheet = require_sheet(draft.mechanics_as(Mechanics).sheets, helper)
+    sheet = require_sheet(Mechanics.of(draft).sheets, helper)
     _require_skill(helper, sheet, action.helper_skill, "helper_skill")
     return sheet
 
@@ -177,7 +175,7 @@ def _require_skill(actor: Entity, sheet: Sheet, skill: str, field: str) -> None:
         )
 
 
-def _bad_luck(draft: GameState, actor: Entity, subject: str, rng: Random) -> list[Fact]:
+def _bad_luck(draft: Game, actor: Entity, subject: str, rng: Random) -> list[Fact]:
     kept, rolled = roll_pool((6,), f"bad luck — {subject}", rng)
     if kept > SIGNS:
         return [rolled]
