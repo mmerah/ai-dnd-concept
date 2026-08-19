@@ -142,7 +142,69 @@ were carrying instruction, not just illustration.
   `_upsert`/`_drop` pair over a read-only `id` protocol.
 - SAVE_VERSION 77 → 78; only the JSON container shape moved.
 
+### Phase 1 step 7 — the Director's tool surface
+
+Folded in from PHASE-1-ADDITIONAL-APPROACH.md; the old steps 7–10 became 8–11. The Director now
+sees fewer tools, each described once, and the closed sets it has to type are closed on the wire.
+
+- 7.1 the action model is the tool parameter (`Question`, `Attempt`, `LuckTest`,
+      `AdvanceThread`); `AdvanceThread.op` and `unlock_exit.location_id` deleted.
+  - Pydantic AI flattens a single model-like parameter, so the wire did not move: the same
+    properties, plus a `title` and the models' own `minLength`. The `Args:` line naming the model
+    parameter satisfies `require_parameter_descriptions=True` and never reaches the model, but
+    griffe needs a summary line before `Args:`, so a tool cannot be described by its model's
+    docstring alone — `Question`/`Attempt`/`LuckTest` lost theirs to avoid sending both.
+  - A model's class docstring is sent as the schema's own `description` whenever the function
+    also has one, so `AdvanceThread`'s moved onto `Hook.advance_thread` as a `Field` description —
+    the slot the Expander actually reads — rather than being said twice to the Director.
+  - Cross-field refusals (`_one_help_die`, `_moves_something`) are tool-argument validation now,
+    which Pydantic AI retries by itself — the step 3 note about building ops inside the play
+    closure no longer applies to these three.
+  - SAVE_VERSION 78 → 79 for the `op` deletion alone.
+- 7.2 one owner per instruction: tool text stops restating `director.md`.
+  - 13 sentences cut, each checked against the prompt line that already owned it; nothing had to
+    move into a prompt, so every cut was pure duplication. `add_trait`'s "shows the id written
+    out" moved from the description to the `trait_id` field, where it is a legal-value statement.
+  - The review found more: an owned sentence hides in a tool description that still reads well
+    without it, so the pass is worth making twice. `director_tools.json` ended at 9394 → 8373
+    (loner3e) and 10714 → 9624 (24xx) bytes, ~11%.
+- 7.3 tools filtered to what the draft makes possible.
+  - `possible(name, state)` in `turn/tools.py` over a five-entry `_APPLIES` mapping; a name with
+    no entry is always offered. `director_agent` applies it — `core_toolset()` stays an unfiltered
+    `FunctionToolset` so `test_golden_schemas` keeps pinning the whole vocabulary.
+  - The predicate takes a state rather than a `RunContext`, so its tests need no agent harness.
+  - The trap this shape sets, and the review caught twice: a predicate must offer whatever the
+    *resolver* accepts, not what the tool's happy path suggests. `advance_thread(status=
+    "dormant")` destroyed its own precondition while the scene went on rendering the thread under
+    ACTIVE THREADS, and `add_trait` can tag the player's location, which `is_here` is false of.
+    Read the resolver's guard and the scene's own filter before writing a predicate.
+  - `expand_world` is filtered on `capped(log)` and keeps its `ModelRetry` guard: the cap is a
+    cost boundary, and a tool definition already in flight would walk through the filter.
+  - A test that reaches into `Engine.director_toolsets` now has to unwrap a `WrapperToolset`
+    (`test_expansion.py` did, `test_golden_schemas.py` follows in 7.4).
+- 7.4 24xx `skill`/`helper_skill` narrowed to an enum of the sheets in play.
+  - The engine owns its own mechanics, so the narrowing lives in `twentyfourxx/tools.py`:
+    `director_toolset()` returns its `FunctionToolset` wrapped in `.prepared(...)`. Core never
+    learns what a 24xx skill is, and `test_package_boundary` stays satisfied.
+  - A prepare function is handed the *same* definition objects on every step, so the schema dict
+    and each property dict are copied before the enum is written and the result rebuilt with
+    `dataclasses.replace`. Mutating in place accumulates across steps.
+  - `skills_in_play` needs no player special case: `is_here` is true of the player, who stands at
+    their own location. It needs no missing-sheet guard either — `engine.validate` runs on every
+    `apply_to_draft`, so an actor here without a sheet never reaches the Director.
+  - The golden pins the *static* vocabulary: `_definitions` unwraps a `WrapperToolset`, so no
+    `enum` appears in `director_tools.json` and the per-step narrowing has its own test.
+
+Left out of the source proposal, with its trigger: enums for entity ids, thread ids, and exit
+destinations. The ids are already bracketed beside every entity in the prompt, the legal set
+differs per tool and per argument, and no eval has shown a turn lost to an invented id. Fold it in
+when one does.
+
+Still owed: one `evals/turn_eval.py` run. Every cut in 7.2 was verified duplication, but step 3's
+lesson was that prose deleted from the Director's surface carries instruction, and only the eval
+sees that.
+
 ## Next
 
-- Phase 1 step 7 — separate runtime `Game` from `SavedGame`.
-- Re-run `evals/turn_eval.py` once to confirm steps 5 and 6 moved nothing.
+- Phase 1 step 8 — separate runtime `Game` from `SavedGame`.
+- Re-run `evals/turn_eval.py` once to confirm steps 5–7 moved nothing.

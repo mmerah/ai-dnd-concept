@@ -27,13 +27,27 @@ type Position = Literal["advantage", "neutral", "disadvantage"]
 
 
 class Question(Frozen):
-    """A closed dramatic question, answered by Chance d6 against Risk d6."""
-
-    actor_id: EntityId
-    question: str = Field(min_length=1)
-    position: Position = "neutral"
-    edge: str = ""
-    opponent_id: EntityId | None = None
+    actor_id: EntityId = Field(
+        description="Exact id of the actor the question is about: the player, or an actor here."
+    )
+    question: str = Field(
+        min_length=1,
+        description="The closed dramatic question the dice answer, phrased so that yes is what "
+        "the actor wants.",
+    )
+    position: Position = Field(
+        default="neutral",
+        description="Your judgment of the fiction: which side the tags and the scene favour.",
+    )
+    edge: str = Field(
+        default="",
+        description="The tag or circumstance that decided the position, in a few words. Empty "
+        "for neutral.",
+    )
+    opponent_id: EntityId | None = Field(
+        default=None,
+        description="Exact id of the actor opposed in this exchange of a conflict, or null.",
+    )
 
 
 def twist_pairing(

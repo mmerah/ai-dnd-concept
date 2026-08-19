@@ -28,7 +28,7 @@ from . import prompts
 from .expansion import MAX_EXPANSIONS, ExpansionPatch, apply_patch, capped, record, written
 from .reports import WorldkeeperReport
 from .scene import SceneSnapshot, VisibleScene
-from .tools import core_toolset, sequential_toolset
+from .tools import core_toolset, possible, sequential_toolset
 
 
 @dataclass(frozen=True, slots=True)
@@ -55,9 +55,12 @@ def director_agent(
     expand_tool: FunctionToolset[PlanContext] | None = None,
 ) -> Agent[PlanContext, str]:
     """Everything that happens this turn happens through a tool; the closing text only traces."""
-    toolsets: list[AbstractToolset[PlanContext]] = [core_toolset(), *engine.director_toolsets]
+    toolsets: list[AbstractToolset[PlanContext]] = [
+        core_toolset().filtered(lambda ctx, tool: possible(tool.name, ctx.deps.state)),
+        *engine.director_toolsets,
+    ]
     if expand_tool is not None:
-        toolsets.append(expand_tool)
+        toolsets.append(expand_tool.filtered(lambda ctx, _tool: not capped(ctx.deps.log)))
     return build_agent(
         "director",
         settings,

@@ -13,7 +13,7 @@ from core_test_support import (
 from pydantic_ai import Agent
 from pydantic_ai.messages import ModelMessage, ModelResponse
 from pydantic_ai.models.function import AgentInfo, FunctionModel
-from pydantic_ai.toolsets import FunctionToolset
+from pydantic_ai.toolsets import FilteredToolset, FunctionToolset
 
 from aidm.content.sources import (
     SILENT,
@@ -281,8 +281,9 @@ def _tool_names(agent: Agent[PlanContext, object]) -> set[str]:
     return {
         name
         for toolset in agent.toolsets
-        if isinstance(toolset, FunctionToolset)
-        for name in toolset.tools
+        for unwrapped in [toolset.wrapped if isinstance(toolset, FilteredToolset) else toolset]
+        if isinstance(unwrapped, FunctionToolset)
+        for name in unwrapped.tools
     }
 
 

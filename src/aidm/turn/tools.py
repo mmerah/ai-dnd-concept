@@ -1,4 +1,4 @@
-from collections.abc import Callable
+from collections.abc import Callable, Mapping
 
 from pydantic_ai import RunContext
 from pydantic_ai.toolsets import FunctionToolset
@@ -6,7 +6,7 @@ from pydantic_ai.toolsets import FunctionToolset
 from aidm.engines.engine import PlanContext
 from aidm.engines.transact import act, sequential_toolset
 from aidm.state import actions
-from aidm.state.base import EntityId, Slug, ThreadStatus
+from aidm.state.base import PLAYER_ID, EntityId, Slug
 from aidm.state.facts import Fact
 from aidm.state.resolution import Resolution
 from aidm.state.world import AdvanceThread, GameState
@@ -15,7 +15,7 @@ from aidm.state.world import AdvanceThread, GameState
 def core_toolset() -> FunctionToolset[PlanContext]:
     def reveal(ctx: RunContext[PlanContext], entity_id: EntityId) -> str:
         """Reveal an entity that exists but the player does not know yet: they notice it, are told
-        of it, or reach it. Prefer this over inventing a replacement.
+        of it, or reach it.
 
         Args:
             entity_id: Exact id of the unrevealed canon entity.
@@ -24,8 +24,7 @@ def core_toolset() -> FunctionToolset[PlanContext]:
 
     def move(ctx: RunContext[PlanContext], entity_id: EntityId, to_id: EntityId) -> str:
         """Move an actor who actually changes location, or one item within the player's reach:
-        picked up, set down here, or handed to an actor here. Moving the player to an unrevealed
-        location reveals it.
+        picked up, set down here, or handed to an actor here.
 
         Args:
             entity_id: Exact id of the actor or item that moves; `player` is the played character.
@@ -38,7 +37,7 @@ def core_toolset() -> FunctionToolset[PlanContext]:
 
     def gain_improvised_item(ctx: RunContext[PlanContext], item_name: str) -> str:
         """Give the player an ordinary incidental object that is not in canon and is not worth a
-        canon entry of its own. Never a substitute for an item that already exists.
+        canon entry of its own.
 
         Args:
             item_name: The object written out, such as 'a handful of gravel'.
@@ -48,12 +47,12 @@ def core_toolset() -> FunctionToolset[PlanContext]:
     def add_trait(
         ctx: RunContext[PlanContext], entity_id: EntityId, trait_id: Slug, text: str
     ) -> str:
-        """Put a lasting condition, skill, or frailty on an entity. The trait shows the id written
-        out: `battle-worn` appears as Battle Worn.
+        """Put a lasting condition, skill, or frailty on an entity.
 
         Args:
             entity_id: Exact id of the entity affected; an actor must be here with the player.
-            trait_id: Stable slug for the trait, such as `poisoned`.
+            trait_id: Stable slug for the trait, such as `poisoned`; it shows written out, so
+                `battle-worn` appears as Battle Worn.
             text: The constraint or benefit it puts on the entity, in prose.
         """
         return _resolved(ctx, lambda draft: actions.add_trait(draft, entity_id, trait_id, text))
@@ -67,40 +66,24 @@ def core_toolset() -> FunctionToolset[PlanContext]:
         """
         return _resolved(ctx, lambda draft: actions.remove_trait(draft, entity_id, trait_id))
 
-    def advance_thread(
-        ctx: RunContext[PlanContext],
-        thread_id: Slug,
-        status: ThreadStatus | None = None,
-        stage: Slug | None = None,
-        tick: int = 0,
-    ) -> str:
+    def advance_thread(ctx: RunContext[PlanContext], advance: AdvanceThread) -> str:
         """Move a storyline the scenario is tracking: where it stands now, or that it is over.
 
         Args:
-            thread_id: Exact id of one thread in ACTIVE THREADS.
-            status: Where the thread now stands, or null to leave it as it is.
-            stage: Stable slug for the point it has reached, or null to leave it as it is.
-            tick: How many segments this fills on the thread's clock, when it has one.
+            advance: The movement to apply.
         """
-        return _resolved(
-            ctx,
-            # Built inside the play, so the model's own retry carries what the fields refuse.
-            lambda draft: actions.advance_thread(
-                draft, AdvanceThread(thread_id=thread_id, status=status, stage=stage, tick=tick)
-            ),
-        )
+        return _resolved(ctx, lambda draft: actions.advance_thread(draft, advance))
 
-    def unlock_exit(ctx: RunContext[PlanContext], location_id: EntityId, to_id: EntityId) -> str:
-        """Open a locked way when the fiction opens it — a key turned, a bar lifted, a seal broken.
+    def unlock_exit(ctx: RunContext[PlanContext], to_id: EntityId) -> str:
+        """Open a locked way out of the player's location.
 
         Args:
-            location_id: Exact id of the location the way leads from.
-            to_id: Exact id of the location it leads to.
+            to_id: Exact id of the location the way leads to.
         """
-        return _resolved(ctx, lambda draft: actions.unlock_exit(draft, location_id, to_id))
+        return _resolved(ctx, lambda draft: actions.unlock_exit(draft, to_id))
 
     def join_party(ctx: RunContext[PlanContext], actor_id: EntityId) -> str:
-        """Put an actor here with the player into their party; a party member travels with them.
+        """Put an actor into the player's party.
 
         Args:
             actor_id: Exact id of the actor joining, who must be here with the player.
@@ -132,3 +115,48 @@ def core_toolset() -> FunctionToolset[PlanContext]:
 
 def _resolved(ctx: RunContext[PlanContext], apply: Callable[[GameState], list[Fact]]) -> str:
     return act(ctx, lambda draft, _rng: Resolution(facts=tuple(apply(draft))))
+
+
+def _a_locked_way_out(state: GameState) -> bool:
+    here = state.world.require_kind(state.player_location, "location")
+    return any(way.locked for way in here.exits)
+
+
+def _an_actor_to_recruit(state: GameState) -> bool:
+    return any(
+        entity.kind == "actor" and entity.id != PLAYER_ID and entity.id not in state.world.party
+        for entity in state.world.entities
+        if state.is_here(entity)
+    )
+
+
+def _a_party_member(state: GameState) -> bool:
+    return bool(state.world.party)
+
+
+def _an_unresolved_thread(state: GameState) -> bool:
+    # The set the scene renders under ACTIVE THREADS: a thread put dormant is still movable.
+    return any(thread.status != "resolved" for thread in state.world.threads)
+
+
+def _a_trait_in_reach(state: GameState) -> bool:
+    # `is_here` is false of a location, which carries tags of its own that `add_trait` may write.
+    return any(
+        entity.traits
+        for entity in state.world.entities
+        if state.is_here(entity) or entity.id == state.player_location
+    )
+
+
+_APPLIES: Mapping[str, Callable[[GameState], bool]] = {
+    "unlock_exit": _a_locked_way_out,
+    "join_party": _an_actor_to_recruit,
+    "leave_party": _a_party_member,
+    "advance_thread": _an_unresolved_thread,
+    "remove_trait": _a_trait_in_reach,
+}
+
+
+def possible(name: str, state: GameState) -> bool:
+    applies = _APPLIES.get(name)
+    return applies is None or applies(state)

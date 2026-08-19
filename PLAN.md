@@ -167,7 +167,62 @@ Dead after step 3; this commit removes it and moves the docs.
   ids unique and hands the lists straight to `WorldState`. `WorldDraft`
   (`app/authoring/draft.py`) uses the same lists. Persisted bytes move: bump + regen.
 
-### 7. Separate runtime Game from SavedGame — ~1–2 days
+### 7. Shrink the Director's tool surface — ~1 day
+
+The Director sees 13 tools (24xx) plus `expand_world`, every one of them present on every turn,
+and their docstrings re-teach what `director.md` already taught. Four moves, each its own commit:
+the schema stops duplicating the models, the vocabulary stops duplicating the prompt, a tool the
+state makes impossible is absent rather than discouraged, and a closed value set is a closed value
+set. Nothing here changes what a tool *does* — every resolver, refusal, and fact stays put.
+
+1. **The action model is the parameter.** Pydantic AI flattens a tool's single model-like
+   parameter: the model's own JSON schema becomes the tool's, with no `{"attempt": {...}}`
+   nesting, and the model's class docstring becomes the tool description when the function has
+   none (probed against 2.16.0 — `_function_schema._build_schema`). So `roll_attempt(ctx,
+   attempt: Attempt)`, `roll_luck_test(ctx, test: LuckTest)`, `roll_question(ctx, question:
+   Question)`, `advance_thread(ctx, advance: AdvanceThread)`: the eight-field reconstruction in
+   each tool body goes, and the field descriptions move from the docstring `Args:` onto
+   `Field(description=...)` on the model, where they are written once.
+   `require_parameter_descriptions=True` still wants one `Args:` line for the model parameter
+   itself; it never reaches the model.
+   - Cross-field refusals (`Attempt._one_help_die`, `AdvanceThread._moves_something`) now surface
+     as tool-argument validation, which Pydantic AI already retries — the step 3 note about
+     building ops inside the play closure stops applying to these three, and the closures
+     collapse to `act(ctx, lambda draft, rng: resolve_attempt(draft, attempt, rng))`.
+   - `AdvanceThread.op` goes: it discriminates nothing since step 4, and as a tool parameter it
+     would be a required literal the model has to type. It survives only in the `save`/`state`
+     fixtures, so this is a bump + regen and no `world.json` edit.
+   - Drop `unlock_exit.location_id`: a way is unlocked from where the player stands, so the
+     resolver derives it. `actions.unlock_exit(draft, to_id)` reads `draft.player_location`.
+2. **One owner per instruction.** Tool text is prompt tokens on every turn, and roughly 4.7k
+   characters of it restates `director.md` and the engines' `director.md`. Establish the split
+   and cut to it: director instructions own decision and sequence policy, engine instructions own
+   system semantics, a tool description owns *when to call it and what it does* in a sentence or
+   two, a field description owns the legal value alone, and the resolver owns the rule. Anything
+   deleted from a docstring that is not already in a prompt moves into one — the step 3 lesson
+   that `examples.json` was carrying instruction, not illustration, is the standing warning here.
+   Regenerate `schemas/*/director_tools.json` and the `instructions/*` fixtures.
+3. **A tool the state makes impossible is absent.** `AbstractToolset.filtered()` re-runs its
+   predicate before every step, and `RunContext.deps.state` is the turn's live draft, so a tool
+   that becomes possible mid-run appears mid-run. `core_toolset()` keeps returning the plain
+   `FunctionToolset` (the golden schema pins the whole vocabulary); `director_agent` wraps it,
+   with one name → `Callable[[GameState], bool]` mapping in `turn/tools.py`: `unlock_exit` needs a
+   locked way out of here, `join_party` an actor here who is neither the player nor already in the
+   party, `leave_party` a non-empty party, `advance_thread` an active thread, `remove_trait` a
+   trait on the player, on someone here, or on what they carry. `expand_world` is filtered on
+   `capped(log)`; its `ModelRetry` guard stays, because the cap is a cost boundary and a tool
+   definition already in flight would otherwise walk through it. The engine toolsets are not
+   filtered: `restore_luck` is the only engine tool a state ever forbids, and one predicate does
+   not earn a per-engine mechanism.
+4. **A closed set is an enum.** 24xx's `skill` and `helper_skill` are free strings the resolver
+   refuses unless copied exactly off a sheet — the model is allowed to invent an invalid value and
+   the turn pays a retry for it. The engine owns its own mechanics, so `twentyfourxx/tools.py`
+   wraps its own toolset in `.prepared(...)` and writes `enum` onto those two properties of
+   `roll_attempt`: `""` plus the skills on the sheets of the player and of every actor here.
+   `test_golden_schemas._definitions` unwraps a `WrapperToolset` so the golden still pins the
+   static vocabulary; one focused test covers the narrowing, and one covers the filtering in 3.
+
+### 8. Separate runtime Game from SavedGame — ~1–2 days
 
 - Runtime `Game` (rename of `GameState`): a plain dataclass, not a Pydantic model — its
   `mechanics` holds the engine's validated mechanics instance directly, and `SavedGame` is now
@@ -179,7 +234,7 @@ Dead after step 3; this commit removes it and moves the docs.
   `committed()` validates the world copy + `engine.validate` instead of a full dump/re-parse
   round-trip. Draft-per-turn lifecycle is already in place from step 3.
 
-### 8. Deduplicate the engines' shared spine — ~half day
+### 9. Deduplicate the engines' shared spine — ~half day
 
 - Lift `completed: Counter` onto `SheetMechanics` (`engines/sheets.py`); delete it from both
   engines' `Mechanics`. `Advancement.earned()` becomes concrete on the base, narrowing with
@@ -189,13 +244,13 @@ Dead after step 3; this commit removes it and moves the docs.
 - Both `new_sheet` newcomer-parity lines now read the lifted counter. Both `director.md`s and
   `director_tools.json` move with it.
 
-### 9. Outcomes onto Exchange — ~1 h
+### 10. Outcomes onto Exchange — ~1 h
 
 - `Exchange` (`state/history.py`) gains `outcomes: tuple[str, ...]`; `run_turn` fills it with
   the turn's `fact.narrator` strings at commit. Delete `played_turns`, `PlayedTurn`,
   `_outcomes` (`app/views.py`); `ui/panels.chat` reads the one object. Bump + regen.
 
-### 10. Reorganize around the new seams — ~half day
+### 11. Reorganize around the new seams — ~half day
 
 - Move `Game` out of `state/world.py` into its own module; split `content/store.py` into
   authored-content I/O and save/trace persistence; move `app/authoring/` up to
@@ -204,4 +259,9 @@ Dead after step 3; this commit removes it and moves the docs.
 
 ## Deferred, with their trigger
 
-- 
+- Enums for entity ids, thread ids, and exit destinations on the Director's tools (the rest of
+  PHASE-1-ADDITIONAL-APPROACH.md's item 3). Every id is already bracketed beside its entity in the
+  prompt, the legal set differs per tool and per argument, and step 7.4's mechanism is per-engine
+  by design. Trigger: an eval run that loses turns to an invented id — and when it fires, note
+  that `unlock_exit.to_id` and `advance_thread.thread_id` are the two whose legal set step 7.3
+  already computes, so enumerating those two replaces their predicate rather than joining it.

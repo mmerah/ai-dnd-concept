@@ -65,7 +65,7 @@ def test_movement_walks_unfound_ways_and_stops_at_locked_ones() -> None:
     # `cloister`—`vault` is authored in world.json already `locked`.
     with pytest.raises(ValueError, match="is locked"):
         _ = actions.move(draft, PLAYER_ID, VAULT)
-    _ = actions.unlock_exit(draft, CLOISTER, VAULT)
+    _ = actions.unlock_exit(draft, VAULT)
     mirrored = draft.world.require(VAULT).exit_to(CLOISTER)
     assert mirrored is not None and mirrored.locked is False
     assert _kinds(actions.move(draft, PLAYER_ID, VAULT)) == ["entity_discovered", "entity_moved"]

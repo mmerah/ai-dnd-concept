@@ -2,7 +2,7 @@ import pytest
 from core_test_support import capability, game
 from golden_test_support import FIXTURES, golden_json
 from pydantic import BaseModel
-from pydantic_ai.toolsets import AbstractToolset, FunctionToolset
+from pydantic_ai.toolsets import AbstractToolset, FunctionToolset, WrapperToolset
 
 from aidm.app.registry import engine_ids
 from aidm.engines.engine import PlanContext
@@ -44,6 +44,9 @@ def test_the_shared_role_output_schemas_are_unchanged() -> None:
 
 
 def _definitions(toolset: AbstractToolset[PlanContext]) -> list[dict[str, object]]:
+    # The golden pins the fixed vocabulary; a wrapper's per-step narrowing has its own test.
+    while isinstance(toolset, WrapperToolset):
+        toolset = toolset.wrapped
     if not isinstance(toolset, FunctionToolset):
         raise TypeError(f"{type(toolset).__name__} declares no tools to lock")
     return [

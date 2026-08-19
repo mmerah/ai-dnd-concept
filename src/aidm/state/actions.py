@@ -127,8 +127,8 @@ def remove_trait(draft: GameState, entity_id: EntityId, trait_id: Slug) -> list[
     return [*seen, entity_fact(entity, "trait_removed", trace, {"trait_id": trait_id})]
 
 
-def unlock_exit(draft: GameState, location_id: EntityId, to_id: EntityId) -> list[Fact]:
-    here = draft.world.require_kind(location_id, "location")
+def unlock_exit(draft: GameState, to_id: EntityId) -> list[Fact]:
+    here = draft.world.require_kind(draft.player_location, "location")
     there = draft.world.require_kind(to_id, "location")
     way = here.exit_to(to_id)
     if way is None:
@@ -137,7 +137,7 @@ def unlock_exit(draft: GameState, location_id: EntityId, to_id: EntityId) -> lis
         raise ValueError(f"the way from {here.name} to {there.name} is not locked")
     way.locked = False
     # A lock holds both ways, so leaving the way back shut would strand the player behind it.
-    back = there.exit_to(location_id)
+    back = there.exit_to(here.id)
     if back is not None:
         back.locked = False
     return [

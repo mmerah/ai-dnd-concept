@@ -19,16 +19,41 @@ SIGNS = 4  # 3-4 on the bad-luck die
 
 
 class Attempt(Frozen):
-    """One risky attempt, answered by the highest die of a pool."""
-
-    actor_id: EntityId
-    goal: str = Field(min_length=1)
-    skill: str = ""
-    helped: str = ""
-    helper_id: EntityId | None = None
-    helper_skill: str = ""
-    hindered: str = ""
-    luck_test: str = ""
+    actor_id: EntityId = Field(
+        description="Exact id of the actor attempting this: the player, or an actor here."
+    )
+    goal: str = Field(
+        min_length=1,
+        description="What the actor is trying to do and what they risk by trying, in one line.",
+    )
+    skill: str = Field(
+        default="",
+        description="The skill on the actor's sheet this calls on, or empty for none.",
+    )
+    helped: str = Field(
+        default="",
+        description="The circumstance that makes this easier — a skill, a piece of gear, the "
+        "ground they hold, an ally's presence — in a few words. Empty when nothing does, and "
+        "never alongside `helper_id`.",
+    )
+    helper_id: EntityId | None = Field(
+        default=None,
+        description="Exact id of an ally here who helps with this — they roll their own skill "
+        "die into the pool. Null when nobody helps.",
+    )
+    helper_skill: str = Field(
+        default="",
+        description="The skill on the *helper's* sheet this calls on, or empty for none.",
+    )
+    hindered: str = Field(
+        default="",
+        description="The circumstance that makes this harder, in a few words. Empty when "
+        "nothing does.",
+    )
+    luck_test: str = Field(
+        default="",
+        description="What bad luck might arrive alongside this. Empty for no test.",
+    )
 
     @model_validator(mode="after")
     def _one_help_die(self) -> Self:
@@ -45,10 +70,13 @@ class Attempt(Frozen):
 
 
 class LuckTest(Frozen):
-    """The SRD's standalone bad-luck test, for a turn where nothing is attempted."""
-
-    actor_id: EntityId
-    subject: str = Field(min_length=1)
+    actor_id: EntityId = Field(
+        description="Exact id of the actor whose luck is tested: the player, or an actor here."
+    )
+    subject: str = Field(
+        min_length=1,
+        description="What bad luck might arrive — running out of ammo, running into guards.",
+    )
 
 
 def apply_change_credits(draft: GameState, actor_id: EntityId, amount: int) -> list[Fact]:

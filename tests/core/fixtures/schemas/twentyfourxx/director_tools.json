@@ -1,7 +1,7 @@
 [
   {
     "name": "reveal",
-    "description": "Reveal an entity that exists but the player does not know yet: they notice it, are told\nof it, or reach it. Prefer this over inventing a replacement.",
+    "description": "Reveal an entity that exists but the player does not know yet: they notice it, are told\nof it, or reach it.",
     "parameters": {
       "additionalProperties": false,
       "properties": {
@@ -18,7 +18,7 @@
   },
   {
     "name": "move",
-    "description": "Move an actor who actually changes location, or one item within the player's reach:\npicked up, set down here, or handed to an actor here. Moving the player to an unrevealed\nlocation reveals it.",
+    "description": "Move an actor who actually changes location, or one item within the player's reach:\npicked up, set down here, or handed to an actor here.",
     "parameters": {
       "additionalProperties": false,
       "properties": {
@@ -40,7 +40,7 @@
   },
   {
     "name": "gain_improvised_item",
-    "description": "Give the player an ordinary incidental object that is not in canon and is not worth a\ncanon entry of its own. Never a substitute for an item that already exists.",
+    "description": "Give the player an ordinary incidental object that is not in canon and is not worth a\ncanon entry of its own.",
     "parameters": {
       "additionalProperties": false,
       "properties": {
@@ -57,7 +57,7 @@
   },
   {
     "name": "add_trait",
-    "description": "Put a lasting condition, skill, or frailty on an entity. The trait shows the id written\nout: `battle-worn` appears as Battle Worn.",
+    "description": "Put a lasting condition, skill, or frailty on an entity.",
     "parameters": {
       "additionalProperties": false,
       "properties": {
@@ -66,7 +66,7 @@
           "type": "string"
         },
         "trait_id": {
-          "description": "Stable slug for the trait, such as `poisoned`.",
+          "description": "Stable slug for the trait, such as `poisoned`; it shows written out, so\n`battle-worn` appears as Battle Worn.",
           "maxLength": 64,
           "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$",
           "type": "string"
@@ -160,26 +160,22 @@
       "required": [
         "thread_id"
       ],
+      "title": "AdvanceThread",
       "type": "object"
     }
   },
   {
     "name": "unlock_exit",
-    "description": "Open a locked way when the fiction opens it — a key turned, a bar lifted, a seal broken.",
+    "description": "Open a locked way out of the player's location.",
     "parameters": {
       "additionalProperties": false,
       "properties": {
-        "location_id": {
-          "description": "Exact id of the location the way leads from.",
-          "type": "string"
-        },
         "to_id": {
-          "description": "Exact id of the location it leads to.",
+          "description": "Exact id of the location the way leads to.",
           "type": "string"
         }
       },
       "required": [
-        "location_id",
         "to_id"
       ],
       "type": "object"
@@ -187,7 +183,7 @@
   },
   {
     "name": "join_party",
-    "description": "Put an actor here with the player into their party; a party member travels with them.",
+    "description": "Put an actor into the player's party.",
     "parameters": {
       "additionalProperties": false,
       "properties": {
@@ -221,7 +217,7 @@
   },
   {
     "name": "roll_attempt",
-    "description": "Put one risky attempt to the highest die of a pool. Call for one only when failing would\ncost something real. Never state the outcome yourself: what comes back is what the dice\nsettled.",
+    "description": "Put one risky attempt to the highest die of a pool.",
     "parameters": {
       "additionalProperties": false,
       "properties": {
@@ -231,16 +227,17 @@
         },
         "goal": {
           "description": "What the actor is trying to do and what they risk by trying, in one line.",
+          "minLength": 1,
           "type": "string"
         },
         "skill": {
           "default": "",
-          "description": "The skill on the actor's sheet this calls on, copied exactly as it is written\nthere. Empty when none of theirs applies: they roll the bare d6.",
+          "description": "The skill on the actor's sheet this calls on, or empty for none.",
           "type": "string"
         },
         "helped": {
           "default": "",
-          "description": "The circumstance that makes this easier — a skill, a piece of gear, the ground\nthey hold, an ally's presence — in a few words. Empty when nothing does, and never\nalongside `helper_id`.",
+          "description": "The circumstance that makes this easier — a skill, a piece of gear, the ground they hold, an ally's presence — in a few words. Empty when nothing does, and never alongside `helper_id`.",
           "type": "string"
         },
         "helper_id": {
@@ -253,21 +250,21 @@
             }
           ],
           "default": null,
-          "description": "Exact id of an ally here who helps with this — they roll their own skill die\ninto the pool. Null when nobody helps."
+          "description": "Exact id of an ally here who helps with this — they roll their own skill die into the pool. Null when nobody helps."
         },
         "helper_skill": {
           "default": "",
-          "description": "The skill on the *helper's* sheet this calls on, copied exactly as it is\nwritten there. Empty when none of theirs applies: they roll the bare d6.",
+          "description": "The skill on the *helper's* sheet this calls on, or empty for none.",
           "type": "string"
         },
         "hindered": {
           "default": "",
-          "description": "The circumstance that makes this harder, in a few words. Empty when nothing\ndoes.",
+          "description": "The circumstance that makes this harder, in a few words. Empty when nothing does.",
           "type": "string"
         },
         "luck_test": {
           "default": "",
-          "description": "What bad luck might arrive alongside this — running out of ammo, running\ninto guards. The engine rolls whether it does. Empty for no test.",
+          "description": "What bad luck might arrive alongside this. Empty for no test.",
           "type": "string"
         }
       },
@@ -275,12 +272,13 @@
         "actor_id",
         "goal"
       ],
+      "title": "Attempt",
       "type": "object"
     }
   },
   {
     "name": "roll_luck_test",
-    "description": "Put the SRD's standalone bad-luck test to the dice, for a turn where nothing is\nattempted but bad luck might still arrive.",
+    "description": "Put the SRD's standalone bad-luck test to the dice.",
     "parameters": {
       "additionalProperties": false,
       "properties": {
@@ -289,7 +287,8 @@
           "type": "string"
         },
         "subject": {
-          "description": "What bad luck might arrive — running out of ammo, running into guards. The\nengine rolls whether it does.",
+          "description": "What bad luck might arrive — running out of ammo, running into guards.",
+          "minLength": 1,
           "type": "string"
         }
       },
@@ -297,12 +296,13 @@
         "actor_id",
         "subject"
       ],
+      "title": "LuckTest",
       "type": "object"
     }
   },
   {
     "name": "change_credits",
-    "description": "Move an actor's credits for gear bought, repairs paid, debts collected or pay earned —\nnever for a roll's own outcome, which the engine settles itself.",
+    "description": "Move an actor's credits.",
     "parameters": {
       "additionalProperties": false,
       "properties": {
@@ -311,7 +311,7 @@
           "type": "string"
         },
         "amount": {
-          "description": "Positive to pay them, negative to charge them. A charge the pool cannot cover\nis refused.",
+          "description": "Positive to pay them, negative to charge them.",
           "type": "integer"
         }
       },
@@ -324,7 +324,7 @@
   },
   {
     "name": "complete_job",
-    "description": "Record that the job is done — the fiction's own boundary, called once when the crew's\nengagement genuinely closes, usually alongside resolving its thread. Never for a mere scene\nending.",
+    "description": "Record that the job is done.",
     "parameters": {
       "additionalProperties": false,
       "properties": {},

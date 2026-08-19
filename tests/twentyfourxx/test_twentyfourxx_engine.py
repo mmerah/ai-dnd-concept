@@ -3,7 +3,11 @@ from random import Random
 import pytest
 from core_test_support import TWENTYFOURXX, at_boundary, capability, game
 from pydantic import ValidationError
+from pydantic_ai import RunContext
+from pydantic_ai.models.test import TestModel
+from pydantic_ai.usage import RunUsage
 
+from aidm.engines.engine import PlanContext, TurnLog
 from aidm.engines.twentyfourxx.actions import (
     Attempt,
     LuckTest,
@@ -17,6 +21,7 @@ from aidm.engines.twentyfourxx.actions import (
 from aidm.engines.twentyfourxx.advance import Advance
 from aidm.engines.twentyfourxx.mechanics import Mechanics, Sheet
 from aidm.engines.twentyfourxx.rules import TwentyfourxxEngine
+from aidm.engines.twentyfourxx.tools import director_toolset
 from aidm.state.base import PLAYER_ID, EntityId
 from aidm.state.creation import Picks
 from aidm.state.facts import Fact
@@ -95,6 +100,25 @@ def test_an_ally_who_lacks_the_named_skill_is_refused() -> None:
     )
     with pytest.raises(ValueError, match="helper_skill"):
         resolve_attempt(state.draft(), action, Random(0))
+
+
+async def test_roll_attempt_narrows_skill_and_helper_skill_to_who_is_here() -> None:
+    engine, state = game(TWENTYFOURXX)
+    ctx = RunContext(
+        deps=PlanContext(engine=engine, state=state, rng=Random(0), log=TurnLog()),
+        model=TestModel(),
+        usage=RunUsage(),
+    )
+
+    tools = await director_toolset().get_tools(ctx)
+    schema = tools["roll_attempt"].tool_def.parameters_json_schema
+
+    # Kael (the player, in the study) carries Climbing/Stealth/Tracking; Mara (also in the
+    # study) carries none. The cloister rat's Intimidation is off the sheet: it is in the
+    # cloister, not here.
+    expected = ["", "Climbing", "Stealth", "Tracking"]
+    assert schema["properties"]["skill"]["enum"] == expected
+    assert schema["properties"]["helper_skill"]["enum"] == expected
 
 
 def test_naming_both_an_ally_and_a_helped_tag_is_refused_at_the_schema() -> None:

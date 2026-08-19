@@ -1,5 +1,5 @@
 from collections.abc import Iterator, Mapping
-from typing import Literal, Self
+from typing import Self
 
 from pydantic import Field, JsonValue, PrivateAttr, model_validator
 
@@ -56,9 +56,6 @@ class Thread(Mutable):
 
 
 class AdvanceThread(Frozen):
-    """Move a storyline the scenario is tracking: where it stands now, or that it is over."""
-
-    op: Literal["advance-thread"] = "advance-thread"
     thread_id: Slug = Field(description="Exact id of one thread in ACTIVE THREADS.")
     status: ThreadStatus | None = Field(
         default=None, description="Where the thread now stands, or null to leave it as it is."
@@ -96,7 +93,11 @@ class Hook(Frozen):
     on_discover: EntityId
     note: str = ""
     reveals: tuple[EntityId, ...] = ()
-    advance_thread: AdvanceThread | None = None
+    advance_thread: AdvanceThread | None = Field(
+        default=None,
+        description="Move a storyline the scenario is tracking: where it stands now, or "
+        "that it is over.",
+    )
 
 
 class WorldState(Mutable):

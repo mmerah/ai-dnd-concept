@@ -1,5 +1,5 @@
 {
-  "save_version": 78,
+  "save_version": 79,
   "scenario_id": "whispering-vault",
   "character_id": "kael",
   "scenario": {
@@ -218,7 +218,6 @@
         "note": "Kael has found the vault door: the seal answers a touch, and something behind it answers with it. Press on what opening the seal will cost.",
         "reveals": [],
         "advance_thread": {
-          "op": "advance-thread",
           "thread_id": "vault-seal",
           "status": null,
           "stage": "seal-found",
@@ -233,7 +232,6 @@
           "vault"
         ],
         "advance_thread": {
-          "op": "advance-thread",
           "thread_id": "vault-seal",
           "status": null,
           "stage": "seal-found",
@@ -246,7 +244,6 @@
         "note": "Elena remembers the rite that sealed the vault. Let her name her price for it.",
         "reveals": [],
         "advance_thread": {
-          "op": "advance-thread",
           "thread_id": "vault-seal",
           "status": null,
           "stage": "rite-known",
