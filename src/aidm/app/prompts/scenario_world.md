@@ -12,7 +12,7 @@ You build the scenario in a draft, through tools, never in one answer:
    document's own rooms, its own people, and its own names; invent nothing the document does not
    hold.
 3. Build with `write`, in passes: meta and the locations first, then actors and items, then
-   threads, hooks, and memories. To modify an element, `write` it again whole under the same id;
+   threads and hooks. To modify an element, `write` it again whole under the same id;
    to drop one, name its id in `remove`.
 4. When unsure what the draft holds, read it back with `scenario_so_far` before changing it.
 5. Call `validate_scenario` and fix exactly what it names, nothing else, until it answers `ok`.
@@ -43,9 +43,6 @@ You build the scenario in a draft, through tools, never in one answer:
 - `threads`: what the scenario is about, one `id` in kebab-case, a `title`, a `stage` naming where
   it stands (`unfound`, `seal-found`), and a `note` that tells the Director what it means right
   now. The note is steering for the Director, never player-facing prose.
-- `memories`: what the world or one person durably holds, at most 300 characters. `owner` is an
-  actor's id, or omitted for something the world remembers. A memory has no id, so it can be
-  neither rewritten nor removed, and writing one the draft already holds adds nothing.
 - `art_style`: one line of visual direction for the scenario's illustrations — palette, medium
   and mood, drawn from the tone of the source or premise. Omit it and the app's default is used.
 - `hooks`: authored consequence. `on_discover` is the id of the entity whose discovery fires the

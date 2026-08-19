@@ -9,19 +9,21 @@ from core_test_support import (
     played,
     recorded,
     scripted,
+    settings,
     shown,
     structured,
     text,
     tool_call,
+    updated,
 )
 from pydantic_ai.messages import ModelMessage, ModelResponse
 from pydantic_ai.models.function import AgentInfo, FunctionModel
 
+from aidm.config import RoleConfig
 from aidm.content.store import SavedGame
 from aidm.engines.loner3e.actions import outcome_for
 from aidm.engines.twentyfourxx.mechanics import Mechanics
 from aidm.state.base import PLAYER_ID, EntityId
-from aidm.state.world import Memory
 from aidm.turn.pipeline import TURN_STEPS
 
 
@@ -204,6 +206,25 @@ async def test_a_failed_role_never_mutates_the_input_state() -> None:
     assert SavedGame.of(state).model_dump_json() == before
 
 
+async def test_a_turn_over_its_role_ceiling_fails_before_any_model_call() -> None:
+    """A ceiling this low is exceeded by the interpreter's own rendered prompt alone, so the turn
+    never reaches a model — an aidm-owned error instead of a raw provider 400."""
+    engine, state = initialized()
+    tiny = updated(settings(), roles={"interpreter": RoleConfig(max_input_tokens=1)})
+    before = SavedGame.of(state).model_dump_json()
+
+    with pytest.raises(ValueError, match="interpreter"):
+        await played(
+            engine,
+            state,
+            "I take the map.",
+            director=FunctionModel(scripted(text("unreachable"))),
+            config=tiny,
+        )
+
+    assert SavedGame.of(state).model_dump_json() == before
+
+
 async def test_a_director_run_that_fails_discards_what_the_earlier_tool_call_did() -> None:
     engine, state = initialized()
     before = SavedGame.of(state).model_dump_json()
@@ -257,30 +278,6 @@ async def test_a_hook_fires_on_its_fact_moves_its_thread_and_steers_the_next_tur
     # The note steers the Director, which is the only role shown the scenario's own voice.
     assert "Press on what opening the seal will cost" in shown(after.turn, "director")
     assert after.state.world.pending_notes == ()
-
-
-async def test_memory_reaches_the_director_alone_and_only_for_who_is_here() -> None:
-    """A memory may hold canon the player has not earned, so the narrating role is shown none."""
-    engine, state = initialized()
-    draft = state.draft()
-    elsewhere = Memory(owner=EntityId("tomas"), text="Brother Tomas kept the undercroft keys.")
-    here = Memory(owner=EntityId("study"), text="The study was searched once.")
-    draft.world.memories.extend((elsewhere, here))
-    result = await played(
-        engine,
-        draft.committed(),
-        "I look around.",
-        director=FunctionModel(scripted(text("Nothing new here."))),
-    )
-
-    remembered = "Mara catalogued the vault ledgers"
-    director_prompt = shown(result.turn, "director")
-    assert remembered in director_prompt
-    assert "The abbey emptied in a single night" in director_prompt
-    assert "The study was searched once." in director_prompt
-    # Tomas sweeps the cloister, so what he remembers is not this scene's to weave in.
-    assert "undercroft keys" not in director_prompt
-    assert remembered not in shown(result.turn, "narrator")
 
 
 async def test_the_director_reads_the_canon_and_only_the_narrator_is_kept_from_it() -> None:

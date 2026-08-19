@@ -1,5 +1,5 @@
 import logging
-from collections.abc import Callable, Sequence
+from collections.abc import Callable
 from dataclasses import dataclass
 from random import Random
 
@@ -7,19 +7,17 @@ from pydantic import BaseModel
 from pydantic_ai import UnexpectedModelBehavior
 from pydantic_ai.usage import UsageLimits
 
-from aidm.config import Settings
+from aidm.config import Role, Settings
 from aidm.engines.engine import Engine, PlanContext, TurnLog
 from aidm.engines.sheets import SheetBase
-from aidm.engines.transact import apply_to_draft
-from aidm.state.facts import Fact, narrator_evidence, narrator_lines
+from aidm.state.facts import narrator_evidence, narrator_lines
 from aidm.state.history import Exchange
-from aidm.state.resolution import Resolution
 from aidm.state.trace import StepTrace, Turn
-from aidm.state.world import Game, Memory
+from aidm.state.world import Game
 
 from . import prompts
 from .agents import TurnAgents, exchanges_to_messages
-from .reports import MemoryProposal, TurnInterpretation
+from .reports import TurnInterpretation
 from .scene import SceneSnapshot, VisibleScene
 
 LOGGER = logging.getLogger(__name__)
@@ -33,28 +31,10 @@ class TurnResult:
     turn: Turn
 
 
-TURN_STEPS: tuple[str, ...] = ("interpreter", "director", "hooks", "narrator", "worldkeeper")
+TURN_STEPS: tuple[str, ...] = ("interpreter", "director", "hooks", "narrator")
 DIRECTOR_REQUEST_LIMIT = 16
-
-
-def remember(draft: Game, memories: Sequence[MemoryProposal], maximum: int) -> list[Fact]:
-    seen = {memory.text.casefold() for memory in draft.world.memories}
-    kept: list[Fact] = []
-    for proposal in memories:
-        normalized = proposal.text.casefold()
-        if normalized in seen or len(kept) >= maximum:
-            continue
-        seen.add(normalized)
-        memory = Memory(owner=proposal.owner_id, text=proposal.text)
-        draft.world.memories.append(memory)
-        kept.append(
-            Fact(
-                kind="memory_kept",
-                trace=f"remembered: {memory.text}",
-                data={"owner": memory.owner},
-            )
-        )
-    return kept
+# ponytail: 4 chars/token estimate, swap for the provider's tokenizer if it starts misfiring
+CHARS_PER_TOKEN = 4
 
 
 async def run_turn(
@@ -73,7 +53,10 @@ async def run_turn(
         if on_step is not None:
             on_step(step)
 
-    history = exchanges_to_messages(state.history[-settings.history_window :])
+    history = exchanges_to_messages(state.history)
+    history_chars = sum(
+        len(exchange.prompt) + len(exchange.narration) for exchange in state.history
+    )
     log = TurnLog()
     draft = state.draft()
 
@@ -81,6 +64,7 @@ async def run_turn(
 
     announce("interpreter")
     interpreter_prompt = prompts.render_interpreter(scene, describe, draft.scenario, prompt)
+    _ensure_input_budget("interpreter", settings, interpreter_prompt, history_chars)
     plan: TurnInterpretation | None = None
     try:
         plan = (await stages.interpreter.run(interpreter_prompt, message_history=history)).output
@@ -98,6 +82,7 @@ async def run_turn(
 
     announce("director")
     director_prompt = prompts.render_director(scene, describe, draft.scenario, prompt, plan)
+    _ensure_input_budget("director", settings, director_prompt, history_chars)
     shown = len(draft.world.pending_notes)
     directed = await stages.director.run(
         director_prompt,
@@ -113,11 +98,8 @@ async def run_turn(
     )
 
     announce("hooks")
-    steps.append(
-        StepTrace(
-            name="hooks", output="\n".join(fact.trace for fact in log.fired) or "- (no hooks fired)"
-        )
-    )
+    hooks = [fact.trace for fact in log.facts if fact.kind.startswith("hook")]
+    steps.append(StepTrace(name="hooks", output="\n".join(hooks) or "- (no hooks fired)"))
 
     announce("narrator")
     evidence = narrator_evidence(facts)
@@ -129,35 +111,13 @@ async def run_turn(
         evidence=evidence,
         prompt=prompt,
     )
+    _ensure_input_budget("narrator", settings, narrator_prompt, history_chars)
     narration = (
         await stages.narrator.run(narrator_prompt, deps=visible, message_history=history)
     ).output
     if not narration.text:
         raise ValueError("the narrator answered with nothing")
     steps.append(_traced("narrator", narrator_prompt, narration))
-
-    announce("worldkeeper")
-    keeper_prompt = prompts.render_worldkeeper(
-        SceneSnapshot.of(draft),
-        engine.renderer(draft),
-        draft.scenario,
-        prompt=prompt,
-        evidence=evidence,
-        narration=narration.text,
-    )
-    report = (
-        await stages.worldkeeper.run(keeper_prompt, deps=draft, message_history=history)
-    ).output
-    kept = apply_to_draft(
-        engine,
-        draft,
-        lambda copy, _rng: Resolution(
-            facts=tuple(remember(copy, report.memories, settings.max_memories))
-        ),
-        rng,
-    )
-    facts.extend(kept.facts)
-    steps.append(_traced("worldkeeper", keeper_prompt, report))
 
     draft.history = (
         *draft.history,
@@ -172,3 +132,13 @@ async def run_turn(
 
 def _traced(name: str, rendered: str, output: BaseModel) -> StepTrace:
     return StepTrace(name=name, prompt=rendered, output=output.model_dump(mode="json"))
+
+
+def _ensure_input_budget(role: Role, settings: Settings, rendered: str, history_chars: int) -> None:
+    ceiling = settings.role(role).max_input_tokens
+    estimate = (len(rendered) + history_chars) // CHARS_PER_TOKEN
+    if estimate > ceiling:
+        raise ValueError(
+            f"{role} input is about {estimate} tokens, over its {ceiling}-token ceiling; "
+            "this game has too much history for a turn to fit"
+        )

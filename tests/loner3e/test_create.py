@@ -4,7 +4,7 @@ import pytest
 from core_test_support import SCENARIOS
 from loner3e_test_support import LONER3E
 
-from aidm.app.session import begin_game, build_engine
+from aidm.app.registry import begin_game, build_engine
 from aidm.content.store import load_character, load_scenario, write_character
 from aidm.engines.engine import Engine
 from aidm.engines.loner3e.mechanics import LUCK_MAX, Mechanics

@@ -1,13 +1,13 @@
 import json
-from collections.abc import Callable, Iterable, Mapping, Sequence
+from collections.abc import Callable, Iterable, Sequence
 from pathlib import Path
 
 from aidm.content.store import engine_text
 from aidm.engines.advancement import Offer
 from aidm.engines.engine import Engine, EntityRenderer
 from aidm.engines.sheets import SheetBase
-from aidm.state.base import Entity, EntityId, Exit, Trait
-from aidm.state.world import Game, Memory, ScenarioMeta, Thread
+from aidm.state.base import Entity, Exit, Trait
+from aidm.state.world import Game, ScenarioMeta, Thread
 
 from .reports import TurnInterpretation
 from .scene import BaseScene, SceneSnapshot, VisibleScene
@@ -50,31 +50,6 @@ def render_narrator(
             *_scene_sections(scene, describe, scenario, ids=True),
             ("WHAT HAPPENED", evidence),
             ("PLAYER ACTION", prompt),
-        )
-    )
-
-
-def render_worldkeeper(
-    scene: SceneSnapshot,
-    describe: EntityRenderer,
-    scenario: ScenarioMeta,
-    *,
-    prompt: str,
-    evidence: str,
-    narration: str,
-) -> str:
-    return _sections(
-        (
-            _premise(scenario),
-            (
-                "EVERYTHING THAT EXISTS",
-                _entities(scene.catalogue(), describe, placement=scene.placement_of),
-            ),
-            ("ALREADY REMEMBERED", _memories(scene)),
-            ("ACTIVE THREADS", _threads(scene.threads)),
-            ("PLAYER", prompt),
-            ("WHAT HAPPENED", evidence),
-            ("NARRATION", narration),
         )
     )
 
@@ -148,7 +123,6 @@ def _direction_sections(
             _entities(scene.hidden, describe, placement=scene.placement_of),
         ),
         ("ACTIVE THREADS", _threads(scene.threads)),
-        ("MEMORIES", _memories(scene)),
         ("SCENARIO NOTES", "\n".join(f"- {note}" for note in scene.notes) or "- (none)"),
         ("PLAYER ACTION", prompt),
     )
@@ -253,16 +227,6 @@ def _thread_line(thread: Thread) -> str:
     return f"{line}\n  note: {thread.note}" if thread.note else line
 
 
-def _memories(scene: SceneSnapshot) -> str:
-    by_id = {entity.id: entity for entity in scene.canon}
-    return "\n".join(_memory_line(memory, by_id) for memory in scene.memories) or "- (none)"
-
-
-def _memory_line(memory: Memory, by_id: Mapping[EntityId, Entity]) -> str:
-    whose = "the world" if memory.owner is None else _label(by_id[memory.owner], ids=True)
-    return f"- {whose} remembers: {memory.text}"
-
-
 def _headline(entity: Entity, placement: str, *, ids: bool = True) -> str:
     kind = "npc" if entity.kind == "actor" else entity.kind
     placed = f" — {placement}" if placement else ""
@@ -307,7 +271,6 @@ DIRECTOR = engine_text(_PROMPTS_DIR / "director.md")
 INTERPRETER = engine_text(_PROMPTS_DIR / "interpreter.md")
 CORE_ADVISOR = engine_text(_PROMPTS_DIR / "core_advisor.md")
 NARRATOR = engine_text(_PROMPTS_DIR / "narrator.md")
-WORLDKEEPER = engine_text(_PROMPTS_DIR / "worldkeeper.md")
 EXPANDER = engine_text(_PROMPTS_DIR / "expander.md")
 
 

@@ -23,7 +23,6 @@ def test_opening_does_not_save_and_restart_discards_durable_state(tmp_path: Path
     assert game.state.turn == 0
     assert game.entries == []
     assert store.load("poc") is None
-    assert store.load_trace("poc") == ()
 
 
 @pytest.mark.parametrize(

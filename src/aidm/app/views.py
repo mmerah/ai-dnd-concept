@@ -1,5 +1,5 @@
 from aidm.state.base import Frozen, Slug, ThreadStatus
-from aidm.state.history import Exchange, Line
+from aidm.state.history import Line
 from aidm.state.world import Game
 from aidm.turn.scene import SceneSnapshot, VisibleScene
 
@@ -30,42 +30,16 @@ def thread_summaries(state: Game) -> tuple[ThreadSummary, ...]:
     )
 
 
-class JournalView(Frozen):
-    """What the player may read back: their own exchanges, the threads, and met-owner memories."""
-
-    chronicle: tuple[Exchange, ...] = ()
-    threads: tuple[ThreadSummary, ...] = ()
-    memories: tuple[str, ...] = ()
-
-    @classmethod
-    def of(cls, state: Game) -> "JournalView":
-        world = state.world
-        return cls(
-            chronicle=state.history,
-            threads=thread_summaries(state),
-            # An authored memory can belong to someone the player has not met.
-            memories=tuple(
-                memory.text
-                for memory in world.memories
-                if memory.owner is None or world.require(memory.owner).known
-            ),
-        )
-
-
 def journal_markdown(state: Game) -> str:
     """A projection only: the journal is written for a reader and never read back."""
-    view = JournalView.of(state)
+    threads = thread_summaries(state)
     lines = [f"# {state.scenario.title}", "", state.scenario.premise, ""]
-    for number, exchange in enumerate(view.chronicle, start=1):
+    for number, exchange in enumerate(state.history, start=1):
         told = "\n".join(attributed_line(state, line) for line in exchange.lines)
         lines.extend((f"## Turn {number}", "", f"> {exchange.prompt}", "", told, ""))
-    if view.threads:
+    if threads:
         lines.extend(("## Threads", ""))
-        lines.extend(f"- {_thread_line(thread)}" for thread in view.threads)
-        lines.append("")
-    if view.memories:
-        lines.extend(("## What is remembered", ""))
-        lines.extend(f"- {memory}" for memory in view.memories)
+        lines.extend(f"- {_thread_line(thread)}" for thread in threads)
         lines.append("")
     return "\n".join(lines)
 

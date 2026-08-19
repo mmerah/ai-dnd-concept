@@ -9,7 +9,6 @@ from aidm.turn.prompts import (
     prompt_id,
     render_director,
     render_narrator,
-    render_worldkeeper,
 )
 from aidm.turn.scene import SceneSnapshot, VisibleScene
 
@@ -95,30 +94,21 @@ def test_prompt_ids_escape_control_characters_and_bracket_delimiters() -> None:
     assert "\n" not in escaped
 
 
-def test_the_roles_shown_everything_get_ids_and_placement_but_no_detail() -> None:
-    """The Director and Worldkeeper may both be told everything exists; neither is shown authored
-    detail text, which only the Expander reaches."""
+def test_the_director_shown_everything_gets_ids_and_placement_but_no_detail() -> None:
+    """The Director may be told everything exists; it is never shown authored detail text, which
+    only the Expander reaches."""
     held = _with_detail(state(), EntityId("mara"))
     scene = SceneSnapshot.of(held)
     describe = _renderer(held)
     director = render_director(scene, describe, held.scenario, "I look around.", None)
-    catalogued = render_worldkeeper(
-        scene,
-        describe,
-        held.scenario,
-        prompt="Who is she?",
-        evidence="- nothing changed",
-        narration="Mara closes her folio.",
-    )
 
     assert "Kael[id=player]" in director
     assert "a lantern[id=lantern] — A dented light." in director
     assert "a ledger[id=ledger] (item) — held by Mara" in director
     assert "The Secret[id=hidden-actor]" in director
-    for prompt in (director, catalogued):
-        assert "pools: luck 6/6" in prompt
-        assert f"detail: {DESCRIPTION}" not in prompt
-        assert f"hook: {HOOK}" not in prompt
+    assert "pools: luck 6/6" in director
+    assert f"detail: {DESCRIPTION}" not in director
+    assert f"hook: {HOOK}" not in director
     assert PLAYER_ID not in {entity.id for entity in (*scene.here, *scene.catalogue())}
 
 

@@ -24,11 +24,7 @@ type EntityRenderer = Callable[[Entity], str]
 
 @dataclass(slots=True)
 class TurnLog:
-    """Every fact the Director's tools wrote, the hooks' subset again on its own, and the
-    Expander's steps."""
-
     facts: list[Fact] = field(default_factory=list)
-    fired: list[Fact] = field(default_factory=list)
     steps: list[StepTrace] = field(default_factory=list)
 
 

@@ -1,5 +1,4 @@
 {
-  "save_version": 81,
   "facts": [
     {
       "kind": "entity_discovered",
@@ -120,17 +119,8 @@
         "entity_id": "player",
         "trait_id": "listening"
       }
-    },
-    {
-      "kind": "memory_kept",
-      "trace": "remembered: Mara confirmed the vault door has not opened in thirty years.",
-      "narrator": null,
-      "data": {
-        "owner": "mara"
-      }
     }
   ],
-  "entry": "turn",
   "prompt": "I lever up the loose flagstone and listen at the vault door.",
   "narration": "The flagstone lifts. Beyond the door, something shifts its weight and waits.",
   "steps": [
@@ -163,7 +153,7 @@
     },
     {
       "name": "hooks",
-      "output": "hook vault-charted fired\nlearned of the sealed vault\nThe sealed vault is active at seal-found\nhook vault-sighted fired\nThe sealed vault is active at seal-found"
+      "output": "hook vault-charted fired\nhook vault-sighted fired"
     },
     {
       "name": "narrator",
@@ -172,17 +162,6 @@
           {
             "speaker_id": null,
             "text": "The flagstone lifts. Beyond the door, something shifts its weight and waits."
-          }
-        ]
-      }
-    },
-    {
-      "name": "worldkeeper",
-      "output": {
-        "memories": [
-          {
-            "owner_id": "mara",
-            "text": "Mara confirmed the vault door has not opened in thirty years."
           }
         ]
       }

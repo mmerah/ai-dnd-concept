@@ -5,7 +5,7 @@ from pydantic import Field
 from aidm.content.authored import ScenarioWorld
 from aidm.content.sources import ExpansionPolicy
 from aidm.state.base import Entity, EntityId, Frozen, Mutable
-from aidm.state.world import Hook, Memory, ScenarioMeta, Thread
+from aidm.state.world import Hook, ScenarioMeta, Thread
 
 
 def _index[T: Entity | Thread | Hook](kept: list[T], target: str) -> int | None:
@@ -31,8 +31,7 @@ def _drop[T: Entity | Thread | Hook](kept: list[T], target: str) -> bool:
 
 class ScenarioPatch(Frozen):
     """One pass over the draft. A set field replaces its value; an element whose id the draft
-    already holds is replaced whole; `remove` drops ids from whichever collection holds them. A
-    memory has no id: a new one is appended, and one the draft already holds is dropped."""
+    already holds is replaced whole; `remove` drops ids from whichever collection holds them."""
 
     meta: ScenarioMeta | None = None
     starting_location_id: EntityId | None = None
@@ -47,7 +46,6 @@ class ScenarioPatch(Frozen):
     )
     entities: tuple[Entity, ...] = ()
     threads: tuple[Thread, ...] = ()
-    memories: tuple[Memory, ...] = ()
     hooks: tuple[Hook, ...] = ()
     remove: tuple[str, ...] = ()
 
@@ -62,7 +60,6 @@ class WorldDraft(Mutable):
     starting_party: tuple[EntityId, ...] = ()
     entities: list[Entity] = Field(default_factory=list)
     threads: list[Thread] = Field(default_factory=list)
-    memories: list[Memory] = Field(default_factory=list)
     hooks: list[Hook] = Field(default_factory=list)
 
     def apply(self, patch: ScenarioPatch) -> str:
@@ -81,20 +78,12 @@ class WorldDraft(Mutable):
             wrote.append("art_style")
         _upsert(self.entities, patch.entities)
         _upsert(self.threads, patch.threads)
-        # A memory is identified by its text, here and in the Worldkeeper's own dedupe.
-        kept = [
-            memory
-            for memory in patch.memories
-            if all(held.text.casefold() != memory.text.casefold() for held in self.memories)
-        ]
-        self.memories.extend(kept)
         _upsert(self.hooks, patch.hooks)
         wrote.extend(
             f"{len(group)} {what}"
             for what, group in (
                 ("entities", patch.entities),
                 ("threads", patch.threads),
-                ("memories", kept),
                 ("hooks", patch.hooks),
             )
             if group
@@ -131,6 +120,5 @@ class WorldDraft(Mutable):
             starting_party=self.starting_party,
             entities=tuple(self.entities),
             threads=tuple(self.threads),
-            memories=tuple(self.memories),
             hooks=tuple(self.hooks),
         )

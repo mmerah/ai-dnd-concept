@@ -13,6 +13,7 @@ from aidm.engines.twentyfourxx.actions import (
     Attempt,
     LuckTest,
     apply_change_credits,
+    director_toolset,
     outcome_for,
     pool_faces,
     resolve_attempt,
@@ -21,11 +22,9 @@ from aidm.engines.twentyfourxx.actions import (
 from aidm.engines.twentyfourxx.advance import Advance
 from aidm.engines.twentyfourxx.mechanics import Mechanics, Sheet
 from aidm.engines.twentyfourxx.rules import TwentyfourxxEngine
-from aidm.engines.twentyfourxx.tools import director_toolset
 from aidm.state.base import PLAYER_ID, EntityId
 from aidm.state.creation import Picks
 from aidm.state.facts import Fact
-from aidm.state.resolution import Resolution
 
 MARA = EntityId("mara")
 
@@ -205,8 +204,8 @@ def test_credits_are_paid_charged_and_never_overdrawn() -> None:
         _ = apply_change_credits(draft, PLAYER_ID, 0)
 
 
-def _tested(resolution: Resolution) -> Fact:
-    return next(fact for fact in resolution.facts if fact.kind == "luck_tested")
+def _tested(resolution: tuple[Fact, ...]) -> Fact:
+    return next(fact for fact in resolution if fact.kind == "luck_tested")
 
 
 def test_a_tested_bad_luck_risk_that_lands_leaves_a_note_for_the_next_turn() -> None:
@@ -216,7 +215,7 @@ def test_a_tested_bad_luck_risk_that_lands_leaves_a_note_for_the_next_turn() -> 
     )
 
     draft = state.draft()
-    facts = resolve_attempt(draft, action, Random(2)).facts
+    facts = resolve_attempt(draft, action, Random(2))
     (bad_luck_roll,) = [
         fact
         for fact in facts
@@ -229,7 +228,7 @@ def test_a_tested_bad_luck_risk_that_lands_leaves_a_note_for_the_next_turn() -> 
     assert any(fact.kind == "luck_tested" for fact in facts)
 
     draft = state.draft()
-    facts = resolve_attempt(draft, action, Random(1)).facts
+    facts = resolve_attempt(draft, action, Random(1))
     assert draft.world.pending_notes == state.world.pending_notes == ()
     assert not any(fact.kind == "luck_tested" for fact in facts)
 
@@ -248,7 +247,7 @@ def test_a_standalone_luck_test_needs_no_attempt_and_only_bad_luck_leaves_a_note
 
     draft = state.draft()
     clear = resolve_luck_test(draft, action, Random(5))
-    assert not any(fact.kind == "luck_tested" for fact in clear.facts)
+    assert not any(fact.kind == "luck_tested" for fact in clear)
     assert draft.world.pending_notes == ()
 
 

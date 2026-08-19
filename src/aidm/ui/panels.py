@@ -7,7 +7,6 @@ from nicegui import ui
 
 from aidm.app.session import Drafted, GameSession, Offer
 from aidm.app.views import (
-    JournalView,
     ThreadSummary,
     attributed_line,
     player_scene,
@@ -156,20 +155,16 @@ def _thread_card(thread: ThreadSummary) -> None:
 
 
 def journal_panel(session: GameSession) -> None:
-    view = JournalView.of(session.state)
+    threads = thread_summaries(session.state)
 
     def export() -> None:
         ui.notify(f"Journal written to {session.export_journal()}")
 
     ui.button("Export markdown", icon="download", on_click=export).props("flat dense")
-    if view.threads:
+    if threads:
         _heading("Threads")
-        for thread in view.threads:
+        for thread in threads:
             _thread_card(thread)
-    if view.memories:
-        _heading("What is remembered")
-        for memory in view.memories:
-            ui.label(f"- {memory}").classes("text-sm whitespace-pre-wrap")
     scene = player_scene(session.state)
     if scene.known_elsewhere:
         _heading("What you know of")
@@ -178,7 +173,7 @@ def journal_panel(session: GameSession) -> None:
                 session.icon(entity.id), entity.name, scene.placement_of(entity) or entity.brief
             )
     _heading("Chronicle")
-    for number, exchange in reversed(list(enumerate(view.chronicle, start=1))):
+    for number, exchange in reversed(list(enumerate(session.state.history, start=1))):
         with ui.expansion(f"turn {number}: {exchange.prompt}").classes("w-full"):
             for line in exchange.lines:
                 ui.markdown(attributed_line(session.state, line)).classes("text-sm")
@@ -202,8 +197,8 @@ def trace_panel(session: GameSession) -> None:
             case Turn(prompt=prompt):
                 turns += 1
                 titles.append(f"turn {turns}: {prompt}")
-            case Applied(entry=entry_kind):
-                titles.append(f"after turn {turns}: {entry_kind}")
+            case Applied():
+                titles.append(f"after turn {turns}: advancement")
     for index, entry in reversed(list(enumerate(entries))):
         with ui.expansion(titles[index], value=index == len(entries) - 1):
             _entry_trace(entry)
@@ -216,8 +211,8 @@ def _section(title: str, body: str) -> None:
 
 def _entry_trace(entry: TraceEntry) -> None:
     match entry:
-        case Applied(entry=entry_kind, facts=facts):
-            _section(entry_kind.upper(), _facts(facts))
+        case Applied(facts=facts):
+            _section("ADVANCEMENT", _facts(facts))
         case Turn():
             _turn_trace(entry)
 

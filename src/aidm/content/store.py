@@ -1,4 +1,3 @@
-import json
 from collections.abc import Iterator, Mapping, Sequence
 from dataclasses import dataclass
 from pathlib import Path
@@ -6,11 +5,10 @@ from re import fullmatch
 from shutil import rmtree
 from typing import Self
 
-from pydantic import BaseModel, ConfigDict, Field, JsonValue, TypeAdapter, model_validator
+from pydantic import BaseModel, ConfigDict, Field, JsonValue, model_validator
 
 from aidm.state.base import SAVE_VERSION, EngineId, Mutable, Slug, content_id
 from aidm.state.history import Exchange
-from aidm.state.trace import TraceEntry
 from aidm.state.world import Game, ScenarioMeta, WorldState, check_player_playable
 
 from .authored import (
@@ -148,11 +146,6 @@ def engine_text(path: Path) -> str:
     return path.read_text(encoding=ENCODING)
 
 
-def _require_save_version(stored: int, what: str) -> None:
-    if stored != SAVE_VERSION:
-        raise ValueError(f"{what} is version {stored}, this build needs {SAVE_VERSION}")
-
-
 class SavedGame(BaseModel):
     # Revalidated on the way out too: a runtime `Game` validates nothing itself.
     model_config = ConfigDict(extra="forbid", revalidate_instances="always")
@@ -209,9 +202,6 @@ class SaveShell(BaseModel):
     turn: int
 
 
-TRACE_ADAPTER: TypeAdapter[TraceEntry] = TypeAdapter(TraceEntry)
-
-
 @dataclass(frozen=True, slots=True)
 class FileStore:
     directory: Path
@@ -228,7 +218,10 @@ class FileStore:
         if not path.exists():
             return None
         shell = SaveShell.model_validate_json(path.read_text(encoding=ENCODING))
-        _require_save_version(shell.save_version, "save")
+        if shell.save_version != SAVE_VERSION:
+            raise ValueError(
+                f"save is version {shell.save_version}, this build needs {SAVE_VERSION}"
+            )
         return shell
 
     def load(self, slug: str) -> SavedGame | None:
@@ -241,24 +234,6 @@ class FileStore:
     def save(self, slug: str, saved: SavedGame) -> None:
         _write(self._save_path(slug), saved.model_dump_json(indent=2))
 
-    def append_trace(self, slug: str, entry: TraceEntry) -> None:
-        path = self._trace_path(slug)
-        path.parent.mkdir(parents=True, exist_ok=True)
-        with path.open("a", encoding=ENCODING) as file:
-            file.write(TRACE_ADAPTER.dump_json(entry).decode(ENCODING) + "\n")
-
-    def load_trace(self, slug: str) -> tuple[TraceEntry, ...]:
-        path = self._trace_path(slug)
-        if not path.exists():
-            return ()
-        entries: list[TraceEntry] = []
-        for line in path.read_text(encoding=ENCODING).splitlines():
-            if not line:
-                continue
-            _require_save_version(_line_version(line), "trace")
-            entries.append(TRACE_ADAPTER.validate_json(line))
-        return tuple(entries)
-
     def write_journal(self, slug: str, body: str) -> Path:
         path = self._journal_path(slug)
         _write(path, body)
@@ -269,25 +244,14 @@ class FileStore:
 
     def discard(self, slug: str) -> None:
         self._save_path(slug).unlink(missing_ok=True)
-        self._trace_path(slug).unlink(missing_ok=True)
         self._journal_path(slug).unlink(missing_ok=True)
         rmtree(self.media_dir(slug), ignore_errors=True)
 
     def _save_path(self, slug: str) -> Path:
         return _safe_path(self.directory, slug, ".json")
 
-    def _trace_path(self, slug: str) -> Path:
-        return _safe_path(self.directory, slug, ".trace.jsonl")
-
     def _journal_path(self, slug: str) -> Path:
         return _safe_path(self.directory, slug, ".journal.md")
-
-
-def _line_version(line: str) -> int:
-    """A line written before `save_version` existed reports as 0, not as a validation error."""
-    parsed: JsonValue = json.loads(line)
-    version = parsed.get("save_version", 0) if isinstance(parsed, dict) else 0
-    return version if isinstance(version, int) else 0
 
 
 def _copy(path: Path, original: Path) -> None:

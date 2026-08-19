@@ -10,7 +10,6 @@ from core_test_support import (
     planned,
     played,
     scripted,
-    structured,
     text,
     tool_call,
 )
@@ -49,13 +48,7 @@ LISTENING = tool_call(
     trait_id="listening",
     text="(condition) Listening for the next shift of weight behind the door.",
 )
-MEMORIES = [
-    {
-        "owner_id": "mara",
-        "text": "Mara confirmed the vault door has not opened in thirty years.",
-    }
-]
-TURN_STEPS = ("interpreter", "director", "hooks", "narrator", "worldkeeper")
+TURN_STEPS = ("interpreter", "director", "hooks", "narrator")
 # The fiction resolved by the engine's own roll.
 SCRIPTS: Mapping[EngineId, tuple[ModelResponse, ...]] = {
     LONER3E: (
@@ -123,7 +116,6 @@ async def _played(engine_id: EngineId) -> TurnResult:
         interpreter=FunctionModel(scripted(PLANS[engine_id])),
         director=FunctionModel(scripted(*SCRIPTS[engine_id])),
         narrator=FunctionModel(scripted(narrated(NARRATION))),
-        worldkeeper=FunctionModel(scripted(structured(memories=MEMORIES))),
         rng=Random(SEED),
     )
 

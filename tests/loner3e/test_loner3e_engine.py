@@ -67,7 +67,7 @@ def test_a_question_puts_two_dice_to_the_answer_and_costs_no_luck_on_its_own() -
     _, state = initialized()
     draft = state.draft()
 
-    facts = resolve_question(draft, _seal(), Random(17), TWISTS).facts
+    facts = resolve_question(draft, _seal(), Random(17), TWISTS)
 
     assert [fact.kind for fact in facts] == ["dice_rolled", "dice_rolled", "question_answered"]
     assert Mechanics.of(draft).sheets[PLAYER_ID].luck.current == LUCK_MAX
@@ -92,7 +92,7 @@ def test_the_judged_position_is_what_reaches_the_dice_and_the_record() -> None:
         edge="Never Walks Away",
     )
 
-    facts = resolve_question(state.draft(), action, Random(1), TWISTS).facts
+    facts = resolve_question(state.draft(), action, Random(1), TWISTS)
 
     (answered,) = [fact for fact in facts if fact.kind == "question_answered"]
     assert (answered.data["position"], answered.data["edge"]) == (
@@ -113,7 +113,7 @@ def test_a_tie_ticks_the_twist_and_the_third_tie_calls_one() -> None:
     action = Question(actor_id=PLAYER_ID, question="Does he slip past unheard?")
     for seed in range(200):
         draft = primed.draft()
-        facts = resolve_question(draft, action, Random(seed), TWISTS).facts
+        facts = resolve_question(draft, action, Random(seed), TWISTS)
         (answered,) = [fact for fact in facts if fact.kind == "question_answered"]
         if answered.data["chance"] == answered.data["risk"]:
             break
@@ -133,8 +133,7 @@ def test_a_conflict_exchange_moves_luck_off_whichever_side_lost_it() -> None:
 
     for seed in range(200):
         draft = state.draft()
-        resolution = resolve_question(draft, _duel(), Random(seed), TWISTS)
-        facts = resolution.facts
+        facts = resolve_question(draft, _duel(), Random(seed), TWISTS)
         answered = next(fact for fact in facts if fact.kind == "question_answered")
         outcome = str(answered.data["outcome"])
         sheets = Mechanics.of(draft).sheets
@@ -156,8 +155,7 @@ def test_luck_running_out_ends_the_conflict_and_resets_both_pools() -> None:
 
     for seed in range(200):
         draft = hurt.draft()
-        resolution = resolve_question(draft, _duel(), Random(seed), TWISTS)
-        facts = resolution.facts
+        facts = resolve_question(draft, _duel(), Random(seed), TWISTS)
         answered = next(fact for fact in facts if fact.kind == "question_answered")
         outcome = str(answered.data["outcome"])
         if HARM[outcome] > 0:

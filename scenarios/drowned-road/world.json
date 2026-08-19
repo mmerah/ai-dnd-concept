@@ -130,16 +130,6 @@
       "clock": null
     }
   ],
-  "memories": [
-    {
-      "owner": null,
-      "text": "Ovid Sarn's younger brother Wren drowned trying to beat the tide home; his oilskin coat hangs in the Bell House."
-    },
-    {
-      "owner": null,
-      "text": "A bronze key shaped like a flatfish lies wrapped in oilcloth behind a loose brick in the Bell House's north wall, but no one knows where it fits."
-    }
-  ],
   "hooks": [
     {
       "id": "key-discovered",

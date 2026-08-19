@@ -7,7 +7,7 @@ from random import Random
 from statistics import mean
 from time import perf_counter
 
-from aidm.app.session import begin_game, build_engine
+from aidm.app.registry import begin_game, build_engine
 from aidm.config import Settings, load_settings
 from aidm.content.store import load_character, load_scenario
 from aidm.engines.engine import Engine

@@ -1,15 +1,19 @@
+from collections.abc import Callable
 from random import Random
 from typing import Literal
 
 from pydantic import Field
+from pydantic_ai import RunContext
+from pydantic_ai.toolsets import FunctionToolset
 
 from aidm.engines.counters import adjust
+from aidm.engines.engine import PlanContext
 from aidm.engines.sheets import require_sheet
+from aidm.engines.transact import act, sequential_toolset
 from aidm.state.actions import require_actor_here, reveal
 from aidm.state.base import Entity, EntityId, Frozen, Slug
 from aidm.state.dice import roll_pool
 from aidm.state.facts import Fact, entity_fact
-from aidm.state.resolution import Resolution
 from aidm.state.world import Game
 
 from .mechanics import LUCK_MAX, TIES_PER_TWIST, Mechanics
@@ -85,7 +89,7 @@ def outcome_for(chance: int, risk: int) -> Slug:
 
 def resolve_question(
     draft: Game, action: Question, rng: Random, twists: tuple[tuple[str, str], ...]
-) -> Resolution:
+) -> tuple[Fact, ...]:
     actor = require_actor_here(draft, action.actor_id)
     facts = reveal(draft, action.actor_id)
     mechanics = Mechanics.of(draft)
@@ -123,7 +127,7 @@ def resolve_question(
         if mechanics.twist.current >= TIES_PER_TWIST:
             mechanics.twist.current = 0
             facts.extend(_twist(draft, actor, rng, twists))
-    return Resolution(facts=tuple(facts))
+    return tuple(facts)
 
 
 def apply_restore_luck(draft: Game, actor_id: EntityId) -> list[Fact]:
@@ -192,3 +196,29 @@ def _pair(action: Question, rng: Random) -> tuple[int, int, list[Fact]]:
     chance, chance_fact = roll_pool(chance_faces, f"{action.question} — chance", rng)
     risk, risk_fact = roll_pool(risk_faces, f"{action.question} — risk", rng)
     return chance, risk, [chance_fact, risk_fact]
+
+
+type Twists = Callable[[Game], tuple[tuple[str, str], ...]]
+
+
+def director_toolset(twists: Twists) -> FunctionToolset[PlanContext]:
+    def roll_question(ctx: RunContext[PlanContext], question: Question) -> str:
+        """Put a closed dramatic question to Chance d6 against Risk d6.
+
+        Args:
+            question: The question to put to the dice.
+        """
+        return act(ctx, lambda draft, rng: resolve_question(draft, question, rng, twists(draft)))
+
+    def restore_luck(ctx: RunContext[PlanContext], actor_id: EntityId) -> str:
+        """Put an actor's luck back to full.
+
+        Args:
+            actor_id: Exact id of the actor: the player, or an actor here.
+        """
+        return act(
+            ctx,
+            lambda draft, _rng: tuple(apply_restore_luck(draft, actor_id)),
+        )
+
+    return sequential_toolset([roll_question, restore_luck])

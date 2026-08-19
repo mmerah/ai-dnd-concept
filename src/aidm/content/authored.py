@@ -15,7 +15,7 @@ from aidm.state.base import (
     Trait,
     require_unique,
 )
-from aidm.state.world import Hook, Memory, ScenarioMeta, Thread, WorldState
+from aidm.state.world import Hook, ScenarioMeta, Thread, WorldState
 
 
 @dataclass(frozen=True, slots=True)
@@ -36,7 +36,6 @@ class ScenarioWorld(Frozen):
     starting_party: tuple[EntityId, ...] = ()
     entities: tuple[Entity, ...] = ()
     threads: tuple[Thread, ...] = ()
-    memories: tuple[Memory, ...] = ()
     hooks: tuple[Hook, ...] = ()
 
     @property
@@ -46,7 +45,6 @@ class ScenarioWorld(Frozen):
         return WorldState(
             entities=list(self.entities),
             threads=list(self.threads),
-            memories=list(self.memories),
             hooks=list(self.hooks),
         )
 

@@ -1,5 +1,4 @@
 from collections.abc import Callable, Sequence
-from dataclasses import dataclass
 from random import Random
 
 from pydantic_ai import ModelRetry, RunContext
@@ -9,8 +8,7 @@ from pydantic_ai.toolsets import FunctionToolset
 from aidm.state.base import EntityId
 from aidm.state.facts import Fact
 from aidm.state.hooks import fire_hooks
-from aidm.state.resolution import Resolution, check_draft
-from aidm.state.world import Game
+from aidm.state.world import Game, check_draft
 
 from .engine import Engine, PlanContext
 from .sheets import SheetBase
@@ -18,28 +16,19 @@ from .sheets import SheetBase
 NOTHING_CHANGED = "- (nothing changed)"
 
 # The rng is a parameter so a trial run against a throwaway copy cannot consume the turn's dice.
-type Play = Callable[[Game, Random], Resolution]
+type Play = Callable[[Game, Random], tuple[Fact, ...]]
 
 
-@dataclass(frozen=True, slots=True)
-class Resolved:
-    """One mutation of a draft: the facts resolved, and the facts hooks fired in reaction."""
-
-    resolved: tuple[Fact, ...]
-    fired: tuple[Fact, ...]
-
-    @property
-    def facts(self) -> tuple[Fact, ...]:
-        return (*self.resolved, *self.fired)
-
-
-def apply_to_draft(engine: Engine[SheetBase], draft: Game, play: Play, rng: Random) -> Resolved:
+def apply_to_draft(
+    engine: Engine[SheetBase], draft: Game, play: Play, rng: Random
+) -> tuple[Fact, ...]:
     """Every mutation runs this sequence, so hooks and seeding cannot be forgotten by a caller."""
     resolution = play(draft, rng)
-    fired = fire_hooks(draft, resolution.facts)
-    _seed_created(engine, draft, [*resolution.facts, *fired], rng)
+    fired = fire_hooks(draft, resolution)
+    landed = (*resolution, *fired)
+    _seed_created(engine, draft, landed, rng)
     engine.validate(draft)
-    return Resolved(resolved=resolution.facts, fired=tuple(fired))
+    return landed
 
 
 def transact(
@@ -47,7 +36,7 @@ def transact(
 ) -> tuple[Game, tuple[Fact, ...]]:
     """A draft mutated and committed whole, for a change that stands on its own outside a turn."""
     landed = apply_to_draft(engine, draft, play, rng)
-    return draft.committed(), landed.facts
+    return draft.committed(), landed
 
 
 def act(ctx: RunContext[PlanContext], play: Play) -> str:
@@ -59,9 +48,8 @@ def act(ctx: RunContext[PlanContext], play: Play) -> str:
         raise ModelRetry(refused)
     already_pending = len(deps.state.world.pending_notes)
     landed = apply_to_draft(deps.engine, deps.state, play, deps.rng)
-    deps.log.facts.extend(landed.facts)
-    deps.log.fired.extend(landed.fired)
-    lines = [f"- {fact.trace}" for fact in landed.facts]
+    deps.log.facts.extend(landed)
+    lines = [f"- {fact.trace}" for fact in landed]
     lines.extend(f"- {note}" for note in deps.state.world.pending_notes[already_pending:])
     return "\n".join(lines) or NOTHING_CHANGED
 

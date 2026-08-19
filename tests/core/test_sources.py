@@ -4,7 +4,8 @@ import pytest
 from core_test_support import LONER3E, scenario, settings, updated
 
 from aidm.app.launcher import LaunchTarget
-from aidm.app.session import build_engine, open_source
+from aidm.app.registry import build_engine
+from aidm.app.session import open_source
 from aidm.content.sources import WHOLE_CHARS, ingest, whole_text
 from aidm.content.store import load_scenario, write_scenario
 

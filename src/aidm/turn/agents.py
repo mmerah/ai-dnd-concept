@@ -21,12 +21,11 @@ from aidm.engines.transact import apply_to_draft
 from aidm.llm import build_agent
 from aidm.state.base import EntityId, Kind
 from aidm.state.history import Exchange, Narration
-from aidm.state.resolution import check_draft
-from aidm.state.world import Game
+from aidm.state.world import Game, check_draft
 
 from . import prompts
 from .expansion import MAX_EXPANSIONS, ExpansionPatch, apply_patch, capped, record, written
-from .reports import TurnInterpretation, WorldkeeperReport
+from .reports import TurnInterpretation
 from .scene import SceneSnapshot, VisibleScene
 from .tools import core_toolset, offered_tools, possible, sequential_toolset, vocabulary
 
@@ -45,7 +44,6 @@ class TurnAgents:
     interpreter: Agent[None, TurnInterpretation]
     director: Agent[PlanContext, str]
     narrator: Agent[VisibleScene, Narration]
-    worldkeeper: Agent[Game, WorldkeeperReport]
     # Built only when the adventure may expand; the turn reaches it through the Director's tool.
     expander: Agent[PlanContext, ExpansionPatch] | None = None
 
@@ -128,33 +126,6 @@ def narrator_agent(settings: Settings) -> Agent[VisibleScene, Narration]:
         output_type=NativeOutput(Narration),
         deps_type=VisibleScene,
         validator=attributed,
-    )
-
-
-def worldkeeper_agent(settings: Settings) -> Agent[Game, WorldkeeperReport]:
-    def known(ctx: RunContext[Game], report: WorldkeeperReport) -> WorldkeeperReport:
-        state = ctx.deps
-        strangers = sorted(
-            {
-                memory.owner_id
-                for memory in report.memories
-                if memory.owner_id is not None and state.world.find(memory.owner_id) is None
-            }
-        )
-        if strangers:
-            raise ModelRetry(
-                f"nobody holds a memory who does not exist: {', '.join(strangers)}. Use an exact "
-                "id from the catalogue, or null for the world."
-            )
-        return report
-
-    return build_agent(
-        "worldkeeper",
-        settings,
-        instructions=prompts.WORLDKEEPER,
-        output_type=NativeOutput(WorldkeeperReport),
-        deps_type=Game,
-        validator=known,
     )
 
 
@@ -254,8 +225,7 @@ def expansion_toolset(
         landed = apply_to_draft(
             engine, draft, lambda copy, _rng: apply_patch(copy, patch), deps.rng
         )
-        deps.log.facts.extend(landed.facts)
-        deps.log.fired.extend(landed.fired)
+        deps.log.facts.extend(landed)
         return written(patch)
 
     return sequential_toolset([expand_world])
@@ -295,7 +265,6 @@ def build_turn_agents(
         interpreter=interpreter_agent(engine, settings),
         director=director_agent(engine, settings, expand_tool),
         narrator=narrator_agent(settings),
-        worldkeeper=worldkeeper_agent(settings),
         expander=expander,
     )
 

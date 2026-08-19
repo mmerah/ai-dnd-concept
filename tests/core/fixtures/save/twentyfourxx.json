@@ -1,5 +1,5 @@
 {
-  "save_version": 81,
+  "save_version": 82,
   "scenario_id": "whispering-vault",
   "character_id": "kael",
   "scenario": {
@@ -113,7 +113,7 @@
         "id": "elena",
         "kind": "actor",
         "name": "Elena",
-        "brief": "The vault's former archivist, hiding in the bell tower; she alone remembers the sealing rite.",
+        "brief": "The vault's former archivist, hiding in the bell tower; she alone remembers the sealing rite; she catalogued the vault ledgers beside Mara for two winters, until the night she went below alone and never came back up.",
         "detail": null,
         "known": false,
         "parent_id": "bell_tower",
@@ -195,20 +195,6 @@
         "stage": "seal-found",
         "note": "Kael came for the vault and does not yet know where its door is.",
         "clock": null
-      }
-    ],
-    "memories": [
-      {
-        "owner": null,
-        "text": "The abbey emptied in a single night: meals were left half-eaten, doors left open, and no brother has been seen on the road since."
-      },
-      {
-        "owner": "mara",
-        "text": "Mara catalogued the vault ledgers beside Elena for two winters, until the night Elena went below alone and never came back up."
-      },
-      {
-        "owner": "mara",
-        "text": "Mara confirmed the vault door has not opened in thirty years."
       }
     ],
     "hooks": [

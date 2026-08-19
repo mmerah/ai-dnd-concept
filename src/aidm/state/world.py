@@ -1,9 +1,9 @@
-from collections.abc import Iterator, Mapping
+from collections.abc import Callable, Iterator, Mapping
 from copy import deepcopy
 from dataclasses import dataclass, replace
 from typing import Self
 
-from pydantic import Field, model_validator
+from pydantic import Field, ValidationError, model_validator
 
 from .base import (
     PLAYER_ID,
@@ -80,13 +80,6 @@ class AdvanceThread(Frozen):
         return self
 
 
-class Memory(Frozen):
-    """A durable fact the world or one of its people holds, outliving the history window."""
-
-    owner: EntityId | None = None
-    text: str = Field(min_length=1, max_length=300)
-
-
 class Hook(Frozen):
     """Authored consequence: the player learning of an entity fires it once, so a scenario
     advances without engine code. Its `note` steers the Director on the following turn."""
@@ -107,7 +100,6 @@ class WorldState(Mutable):
 
     entities: list[Entity] = Field(default_factory=list)
     threads: list[Thread] = Field(default_factory=list)
-    memories: list[Memory] = Field(default_factory=list)
     hooks: list[Hook] = Field(default_factory=list)
     party: list[EntityId] = Field(default_factory=list)
     # A tuple, not a set: a save's bytes are a golden fixture, and set ordering is not stable.
@@ -125,9 +117,6 @@ class WorldState(Mutable):
             check_placement(entity, holder)
             self._check_exits(entity)
         self._check_party()
-        for memory in self.memories:
-            if memory.owner is not None and self.find(memory.owner) is None:
-                raise ValueError(f"a memory is held by unknown entity {memory.owner!r}")
         authored = {hook.id for hook in self.hooks}
         if unknown := sorted(set(self.fired_hooks) - authored):
             raise ValueError(f"fired hooks name no authored hook: {unknown}")
@@ -280,6 +269,20 @@ class Game:
                 "to_kind": destination.kind,
             },
         )
+
+
+def check_draft(
+    state: Game, act: Callable[[Game], object], what: str = "the state this leaves"
+) -> str | None:
+    draft = state.draft()
+    try:
+        _ = act(draft)
+        _ = draft.committed()
+    except ValidationError as broken:
+        return f"{what} is invalid: {broken.errors()[0]['msg']}"
+    except ValueError as refused:
+        return str(refused)
+    return None
 
 
 def _revalidated[M: Mutable](model: M) -> M:

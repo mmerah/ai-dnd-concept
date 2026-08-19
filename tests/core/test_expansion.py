@@ -111,7 +111,6 @@ async def test_travel_beyond_the_frontier_expands_the_world_inside_one_turn() ->
         "expander-1",
         "hooks",
         "narrator",
-        "worldkeeper",
     ]
     # Materializing private canon is not a fictional event, and the Director revealed only the way.
     assert not world.require(EntityId("gallery_watcher")).known
@@ -123,9 +122,8 @@ async def test_travel_beyond_the_frontier_expands_the_world_inside_one_turn() ->
 
 
 async def test_an_expander_created_actor_receives_valid_engine_rules_before_commit() -> None:
-    """Creation now arrives from the Expander mid-plan rather than the Worldkeeper after the fact;
-    the seeding invariant — a created actor gets a valid sheet before the state commits — travels
-    with it."""
+    """Creation now arrives from the Expander mid-plan rather than after the fact; the seeding
+    invariant — a created actor gets a valid sheet before the state commits — travels with it."""
     engine, state = initialized()
     director = FunctionModel(
         scripted(

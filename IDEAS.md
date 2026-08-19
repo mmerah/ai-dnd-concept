@@ -13,6 +13,8 @@
 - [] ui-mock had visible tools/actions in the chat, we need that
 - [] Best explanation of loner I found: https://keeper.farirpgs.com/resources/zotiquest-games/loner/introduction/ -> Use to make sure the engine is fully compliant (drastic changes might be needed!). Only thing obviously is our AI-as-GM approach
 - [] Best explanation of 24xx I found: https://keeper.farirpgs.com/resources/jason-tocci/24xx/ -> Use to make sure the engine is fully compliant (drastic changes might be needed!). Only thing obviously is our AI-as-GM approach
+- [] UI has some issues: Not fitting to window, scene image not fully displayed because 16:9 aspect ratio? (why should it go through length of the chat, why not as a corner of the chat and the chat stays around it). When you start a game -> no scene initially you have to send a first prompt. Not only issues -> play and you will see
+- [] The hooks in the vault scenario make no sense to me. When they are fired they give info that make no sense at that point and generally they are fired at moments that make no sense?
 
 ## Ideas
 

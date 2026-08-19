@@ -10,7 +10,6 @@ from aidm.engines.transact import act, sequential_toolset
 from aidm.state import actions
 from aidm.state.base import PLAYER_ID, EntityId, Slug
 from aidm.state.facts import Fact
-from aidm.state.resolution import Resolution
 from aidm.state.world import AdvanceThread, Game
 
 
@@ -147,7 +146,7 @@ def _declared(toolset: AbstractToolset[PlanContext]) -> FunctionToolset[PlanCont
 
 
 def _resolved(ctx: RunContext[PlanContext], apply: Callable[[Game], list[Fact]]) -> str:
-    return act(ctx, lambda draft, _rng: Resolution(facts=tuple(apply(draft))))
+    return act(ctx, lambda draft, _rng: tuple(apply(draft)))
 
 
 def _a_locked_way_out(state: Game) -> bool:

@@ -64,7 +64,6 @@ def test_confirming_commits_exactly_the_proposed_delta(tmp_path: Path) -> None:
     ]
     entry = Applied(subject_id=PLAYER_ID, facts=facts)
     assert game.entries == [entry]
-    assert FileStore(tmp_path).load_trace("poc") == (entry,)
     assert FileStore(tmp_path).load("poc") == SavedGame.of(game.state)
     assert game.offers() == ()
     with pytest.raises(ValueError, match="no longer on offer"):

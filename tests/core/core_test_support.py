@@ -17,7 +17,7 @@ from pydantic_ai.models import Model
 from pydantic_ai.models.function import AgentInfo, FunctionModel
 from pydantic_settings import SettingsConfigDict
 
-from aidm.app.session import begin_game, build_engine
+from aidm.app.registry import begin_game, build_engine
 from aidm.config import ProviderConfig, Providers, Settings
 from aidm.content.authored import Character, Scenario
 from aidm.content.sources import CanonSource
@@ -172,22 +172,21 @@ async def played(
     interpreter: Model | None = None,
     director: Model,
     narrator: Model | None = None,
-    worldkeeper: Model | None = None,
     expander: Model | None = None,
     source: CanonSource | None = None,
     rng: Random | None = None,
     on_step: Callable[[str], None] | None = None,
+    config: Settings | None = None,
 ) -> TurnResult:
     """The turn with every role stubbed, built the way the session builds it. One Director run
     answers with a tool call per model request, closed by a final text response."""
-    config = settings()
+    config = config or settings()
     stages = build_turn_agents(engine, config, source)
-    roles = (stages.interpreter, stages.director, stages.narrator, stages.worldkeeper)
+    roles = (stages.interpreter, stages.director, stages.narrator)
     models = (
         interpreter or FunctionModel(scripted(planned("Nothing here calls for a mechanic."))),
         director,
         narrator or FunctionModel(scripted(narrated("You wait."))),
-        worldkeeper or FunctionModel(scripted(structured())),
     )
     with ExitStack() as stack:
         for role, model in zip(roles, models, strict=True):
@@ -213,8 +212,6 @@ def settings() -> Settings:
                 api_key=SecretStr("test"),
             )
         ),
-        max_memories=2,
-        history_window=6,
         saves_dir=Path("saves"),
         scenarios_dir=SCENARIOS,
         characters_dir=CHARACTERS,

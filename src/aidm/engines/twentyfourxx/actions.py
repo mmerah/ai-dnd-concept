@@ -1,21 +1,23 @@
+import dataclasses
 from random import Random
 from typing import Self
 
 from pydantic import Field, model_validator
+from pydantic_ai import RunContext
+from pydantic_ai.tools import ObjectJsonSchema, ToolDefinition
+from pydantic_ai.toolsets import AbstractToolset
 
 from aidm.engines.counters import adjust, spend
+from aidm.engines.engine import PlanContext
 from aidm.engines.sheets import require_sheet
+from aidm.engines.transact import act, sequential_toolset
 from aidm.state.actions import require_actor_here, reveal
 from aidm.state.base import Entity, EntityId, Frozen, Slug
 from aidm.state.dice import roll_pool
 from aidm.state.facts import Fact, entity_fact
-from aidm.state.resolution import Resolution
 from aidm.state.world import Game
 
 from .mechanics import DEFAULT_FACE, HINDERED_FACE, Mechanics, Sheet
-
-TROUBLE = 2  # 1-2 on the bad-luck die
-SIGNS = 4  # 3-4 on the bad-luck die
 
 
 class Attempt(Frozen):
@@ -79,16 +81,8 @@ class LuckTest(Frozen):
     )
 
 
-def apply_change_credits(draft: Game, actor_id: EntityId, amount: int) -> list[Fact]:
-    if amount == 0:
-        raise ValueError("changing credits moves the pool; zero moves nothing")
-    actor = require_actor_here(draft, actor_id)
-    facts = reveal(draft, actor.id)
-    credits = require_sheet(Mechanics.of(draft).sheets, actor).credits
-    if amount > 0:
-        return [*facts, *adjust(actor, "credits", credits, amount, "paid")]
-    # `spend`, not a negative adjust: an overdraw is refused, not clamped.
-    return [*facts, *spend(actor, "credits", credits, -amount)]
+TROUBLE = 2  # 1-2 on the bad-luck die
+SIGNS = 4  # 3-4 on the bad-luck die
 
 
 def outcome_for(kept: int) -> Slug:
@@ -107,7 +101,58 @@ def pool_faces(sheet: Sheet, action: Attempt, helper: Sheet | None) -> tuple[int
     return (base, DEFAULT_FACE) if action.helped else (base,)
 
 
-def resolve_attempt(draft: Game, action: Attempt, rng: Random) -> Resolution:
+def _require_skill(actor: Entity, sheet: Sheet, skill: str, field: str) -> None:
+    if skill and skill not in sheet.skills:
+        written = ", ".join(sorted(sheet.skills)) or "(none)"
+        raise ValueError(
+            f"{actor.name} has no skill {skill!r}. Their skills are: {written}. Leave "
+            f"`{field}` empty to roll the bare d6."
+        )
+
+
+def _skills_in_play(state: Game) -> set[str]:
+    """The skills a `roll_attempt` may name; `is_here` already covers the player, who stands at
+    their own location."""
+    sheets = Mechanics.of(state).sheets
+    return {
+        skill
+        for actor in state.world.of_kind("actor")
+        if state.is_here(actor)
+        for skill in require_sheet(sheets, actor).skills
+    }
+
+
+def _narrow_to_skills_in_play(
+    ctx: RunContext[PlanContext], tools: list[ToolDefinition]
+) -> list[ToolDefinition]:
+    skills = _skills_in_play(ctx.deps.state)
+    return [
+        _with_skill_enum(tool, skills) if tool.name == "roll_attempt" else tool for tool in tools
+    ]
+
+
+def _with_skill_enum(tool: ToolDefinition, skills: set[str]) -> ToolDefinition:
+    # Copied, never mutated: a prepare function is handed the same definition on every step.
+    properties: dict[str, ObjectJsonSchema] = dict(tool.parameters_json_schema["properties"])
+    for name in ("skill", "helper_skill"):
+        properties[name] = {**properties[name], "enum": ["", *sorted(skills)]}
+    schema = {**tool.parameters_json_schema, "properties": properties}
+    return dataclasses.replace(tool, parameters_json_schema=schema)
+
+
+def apply_change_credits(draft: Game, actor_id: EntityId, amount: int) -> list[Fact]:
+    if amount == 0:
+        raise ValueError("changing credits moves the pool; zero moves nothing")
+    actor = require_actor_here(draft, actor_id)
+    facts = reveal(draft, actor.id)
+    credits = require_sheet(Mechanics.of(draft).sheets, actor).credits
+    if amount > 0:
+        return [*facts, *adjust(actor, "credits", credits, amount, "paid")]
+    # `spend`, not a negative adjust: an overdraw is refused, not clamped.
+    return [*facts, *spend(actor, "credits", credits, -amount)]
+
+
+def resolve_attempt(draft: Game, action: Attempt, rng: Random) -> tuple[Fact, ...]:
     actor = require_actor_here(draft, action.actor_id)
     facts = reveal(draft, action.actor_id)
     sheet = require_sheet(Mechanics.of(draft).sheets, actor)
@@ -136,14 +181,14 @@ def resolve_attempt(draft: Game, action: Attempt, rng: Random) -> Resolution:
 
     if action.luck_test:
         facts.extend(_bad_luck(draft, actor, action.luck_test, rng))
-    return Resolution(facts=tuple(facts))
+    return tuple(facts)
 
 
-def resolve_luck_test(draft: Game, action: LuckTest, rng: Random) -> Resolution:
+def resolve_luck_test(draft: Game, action: LuckTest, rng: Random) -> tuple[Fact, ...]:
     actor = require_actor_here(draft, action.actor_id)
     facts = reveal(draft, action.actor_id)
     facts.extend(_bad_luck(draft, actor, action.subject, rng))
-    return Resolution(facts=tuple(facts))
+    return tuple(facts)
 
 
 def _helper_sheet(draft: Game, actor: Entity, action: Attempt, facts: list[Fact]) -> Sheet | None:
@@ -159,15 +204,6 @@ def _helper_sheet(draft: Game, actor: Entity, action: Attempt, facts: list[Fact]
     sheet = require_sheet(Mechanics.of(draft).sheets, helper)
     _require_skill(helper, sheet, action.helper_skill, "helper_skill")
     return sheet
-
-
-def _require_skill(actor: Entity, sheet: Sheet, skill: str, field: str) -> None:
-    if skill and skill not in sheet.skills:
-        written = ", ".join(sorted(sheet.skills)) or "(none)"
-        raise ValueError(
-            f"{actor.name} has no skill {skill!r}. Their skills are: {written}. Leave "
-            f"`{field}` empty to roll the bare d6."
-        )
 
 
 def _bad_luck(draft: Game, actor: Entity, subject: str, rng: Random) -> list[Fact]:
@@ -191,3 +227,36 @@ def _bad_luck(draft: Game, actor: Entity, subject: str, rng: Random) -> list[Fac
         {"subject": subject, "trouble": trouble},
     )
     return [rolled, tested]
+
+
+def director_toolset() -> AbstractToolset[PlanContext]:
+    def roll_attempt(ctx: RunContext[PlanContext], attempt: Attempt) -> str:
+        """Put one risky attempt to the highest die of a pool.
+
+        Args:
+            attempt: The attempt to put to the dice.
+        """
+        return act(ctx, lambda draft, rng: resolve_attempt(draft, attempt, rng))
+
+    def roll_luck_test(ctx: RunContext[PlanContext], test: LuckTest) -> str:
+        """Put the SRD's standalone bad-luck test to the dice.
+
+        Args:
+            test: The luck test to put to the dice.
+        """
+        return act(ctx, lambda draft, rng: resolve_luck_test(draft, test, rng))
+
+    def change_credits(ctx: RunContext[PlanContext], actor_id: EntityId, amount: int) -> str:
+        """Move an actor's credits.
+
+        Args:
+            actor_id: Exact id of the actor: the player, or an actor here.
+            amount: Positive to pay them, negative to charge them.
+        """
+        return act(
+            ctx,
+            lambda draft, _rng: tuple(apply_change_credits(draft, actor_id, amount)),
+        )
+
+    toolset = sequential_toolset([roll_attempt, roll_luck_test, change_credits])
+    return toolset.prepared(_narrow_to_skills_in_play)

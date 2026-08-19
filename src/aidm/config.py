@@ -7,9 +7,7 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 ProviderName = Literal["openrouter", "local"]
 ReasoningEffort = Literal["none", "minimal", "low", "medium", "high", "xhigh", "max"]
 # The roles a build has. A stage is built by name, so an unbuildable name cannot be configured.
-Role = Literal[
-    "director", "interpreter", "narrator", "worldkeeper", "expander", "advisor", "scenario_creator"
-]
+Role = Literal["director", "interpreter", "narrator", "expander", "advisor", "scenario_creator"]
 
 
 class ProviderConfig(BaseModel):
@@ -28,6 +26,7 @@ class RoleConfig(BaseModel):
     max_tokens: int = Field(default=2048, ge=1)
     reasoning_effort: ReasoningEffort = "low"
     temperature: float | None = Field(default=None, ge=0.0, le=2.0)
+    max_input_tokens: int = Field(default=96_000, ge=1)
 
 
 class MediaConfig(BaseModel):
@@ -83,8 +82,6 @@ class Settings(BaseSettings):
     providers: Providers = Providers()
     roles: dict[Role, RoleConfig] = Field(default_factory=dict)
     media: MediaConfig = MediaConfig()
-    max_memories: int = Field(default=2, ge=0)
-    history_window: int = Field(default=6, ge=0)
     saves_dir: Path = Path("saves")
     scenarios_dir: Path = Path("scenarios")
     characters_dir: Path = Path("characters")

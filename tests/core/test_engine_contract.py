@@ -3,8 +3,7 @@ from random import Random
 import pytest
 from core_test_support import initialized
 
-from aidm.app.registry import ENGINES
-from aidm.app.session import build_engine
+from aidm.app.registry import ENGINES, build_engine
 from aidm.content.store import SavedGame
 from aidm.engines.engine import Engine
 from aidm.engines.loner3e.actions import apply_restore_luck

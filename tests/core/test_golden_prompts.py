@@ -20,7 +20,6 @@ def test_every_role_assembles_the_same_instructions(engine_id: EngineId) -> None
         ),
         "director": prompts.director_instructions(engine.director_instructions),
         "narrator": prompts.NARRATOR,
-        "worldkeeper": prompts.WORLDKEEPER,
         "advisor": prompts.advisor_instructions(capability(engine).instructions),
     }
     for name, instructions in roles.items():

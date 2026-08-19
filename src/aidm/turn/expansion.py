@@ -3,7 +3,6 @@ from pydantic import Field, JsonValue
 from aidm.engines.engine import TurnLog
 from aidm.state.base import Entity, EntityId, Exit, Frozen
 from aidm.state.facts import Fact
-from aidm.state.resolution import Resolution
 from aidm.state.trace import StepTrace
 from aidm.state.world import Game, Hook, Thread
 
@@ -51,14 +50,14 @@ def record(log: TurnLog, prompt: str, answer: ExpansionPatch | str) -> None:
     )
 
 
-def apply_patch(draft: Game, patch: ExpansionPatch) -> Resolution:
+def apply_patch(draft: Game, patch: ExpansionPatch) -> tuple[Fact, ...]:
     """The one place a patch reaches the world: add-only, unknown, and refused whole on any id the
     draft already holds."""
     facts = [_added_entity(draft, entity) for entity in patch.entities]
     facts.extend(_added_exit(draft, link) for link in patch.exits)
     facts.extend(_opened(draft, thread) for thread in patch.threads)
     facts.extend(_authored(draft, patch.hooks))
-    return Resolution(facts=tuple(facts))
+    return tuple(facts)
 
 
 def written(patch: ExpansionPatch) -> str:

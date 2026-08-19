@@ -19,8 +19,6 @@ def ui_settings(saves_dir: Path, scenarios_dir: Path = SCENARIOS) -> Settings:
                 api_key=SecretStr("test"),
             )
         ),
-        max_memories=2,
-        history_window=6,
         scenarios_dir=scenarios_dir,
         characters_dir=REPOSITORY_ROOT / "characters",
         saves_dir=saves_dir,

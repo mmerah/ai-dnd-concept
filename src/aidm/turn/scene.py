@@ -1,7 +1,7 @@
 from collections.abc import Iterable, Mapping
 
 from aidm.state.base import PLAYER_ID, Entity, EntityId, Exit, Frozen
-from aidm.state.world import Game, Memory, Thread
+from aidm.state.world import Game, Thread
 
 
 class BaseScene(Frozen):
@@ -26,7 +26,6 @@ class SceneSnapshot(BaseScene):
     canon: tuple[Entity, ...]
     party: tuple[EntityId, ...]
     threads: tuple[Thread, ...] = ()
-    memories: tuple[Memory, ...] = ()
     notes: tuple[str, ...] = ()
 
     @classmethod
@@ -44,11 +43,6 @@ class SceneSnapshot(BaseScene):
         ]
         locations = {entity.id: world.location_of(entity) for entity in placed}
         party = tuple(world.party)
-        present = {
-            PLAYER_ID,
-            location.id,
-            *(held for held, place in locations.items() if place == location.id),
-        }
         exit_names = {way.to: world.require(way.to).name for way in location.exits}
         exits = tuple(sorted(location.exits, key=lambda way: exit_names[way.to]))
         return cls(
@@ -76,11 +70,6 @@ class SceneSnapshot(BaseScene):
                     (thread for thread in world.threads if thread.status != "resolved"),
                     key=lambda thread: thread.title,
                 )
-            ),
-            memories=tuple(
-                memory
-                for memory in world.memories
-                if memory.owner is None or memory.owner in present
             ),
             notes=world.pending_notes,
         )

@@ -2,7 +2,7 @@ from collections.abc import Callable, Sequence
 from dataclasses import dataclass
 from pathlib import Path
 
-from aidm.app.registry import engine_ids
+from aidm.app.registry import begin_game, build_engine, engine_ids
 from aidm.config import Settings
 from aidm.content.authored import Character, Scenario, ScenarioOverlay, ScenarioWorld
 from aidm.content.store import engine_text, load_character
@@ -10,7 +10,6 @@ from aidm.engines.engine import Engine
 from aidm.engines.sheets import SheetBase
 from aidm.state.base import Slug
 
-from ..session import begin_game, build_engine
 from .draft import WorldDraft
 
 # Every generated scenario must be playable by the character the app ships with.

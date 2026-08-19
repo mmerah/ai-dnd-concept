@@ -6,7 +6,6 @@ from random import Random
 
 from pydantic_ai import Agent
 
-from aidm.app.registry import engine_class
 from aidm.config import Settings
 from aidm.content.authored import Character, Scenario
 from aidm.content.sources import CanonSource, CitedOrInventedSource, ingest
@@ -22,9 +21,8 @@ from aidm.engines.advancement import Advancement, Offer, ProposalBase
 from aidm.engines.engine import Engine
 from aidm.engines.sheets import SheetBase
 from aidm.engines.transact import transact
-from aidm.state.base import PLAYER_ID, EngineId, Entity, EntityId
+from aidm.state.base import PLAYER_ID, EngineId, EntityId
 from aidm.state.facts import Fact
-from aidm.state.resolution import Resolution
 from aidm.state.trace import Applied, TraceEntry, Turn
 from aidm.state.world import Game
 from aidm.turn.agents import AdvancementContext, TurnAgents, advisor_agent, build_turn_agents
@@ -33,6 +31,7 @@ from aidm.turn.prompts import render_proposal
 
 from .launcher import LaunchTarget
 from .media import ICON_DIR, STYLE, Illustrator
+from .registry import begin_game, build_engine
 from .views import journal_markdown
 
 
@@ -100,47 +99,6 @@ def open_media(
     )
 
 
-def build_engine(engine_id: EngineId, extra_packs: Path | None = None) -> Engine[SheetBase]:
-    return engine_class(engine_id)(extra_packs)
-
-
-def begin_game(engine: Engine[SheetBase], scenario: Scenario, character: Character) -> Game:
-    """One opening state, so the app, the evals, and the tests all start a game the same way."""
-    authored = scenario.world
-    # Loaded content outlives the mutable game state, which restart() rebuilds from it.
-    world = authored.world.model_copy(deep=True)
-    player = Entity(
-        id=PLAYER_ID,
-        kind="actor",
-        name=character.name,
-        brief=character.brief,
-        known=True,
-        parent_id=authored.starting_location_id,
-        traits=list(character.profile.traits),
-    )
-    for entity in (*(item.model_copy(deep=True) for item in character.profile.items), player):
-        if world.find(entity.id) is not None:
-            raise ValueError(f"authored entity id {entity.id!r} appears twice")
-        world.entities.append(entity)
-    world.party = list(authored.starting_party)
-    rules = {
-        **scenario.overlay.entities,
-        **character.overlay.entities,
-        PLAYER_ID: character.overlay.character,
-    }
-    state = Game(
-        scenario_id=scenario.id,
-        character_id=character.id,
-        scenario=scenario.meta,
-        engine=engine.id,
-        world=world,
-        mechanics=engine.opening_mechanics(world, rules),
-    )
-    engine.validate(state)
-    # The world was composed here by hand, so the commit is the only thing that validates it.
-    return state.committed()
-
-
 @dataclass
 class GameSession:
     target: LaunchTarget
@@ -171,7 +129,6 @@ class GameSession:
             self.state = self._begun()
             return
         self.state = self._resumable(self.engine.restored(saved))
-        self.entries = list(self.store.load_trace(self.slug))
 
     @property
     def slug(self) -> str:
@@ -242,8 +199,8 @@ class GameSession:
         _, facts = transact(
             self.engine,
             self.state.draft(),
-            lambda draft, rng: Resolution(
-                facts=advancement.resolve(draft, drafted.offer, drafted.proposal, rng)
+            lambda draft, rng: tuple(
+                advancement.resolve(draft, drafted.offer, drafted.proposal, rng)
             ),
             Random(0),
         )
@@ -260,7 +217,7 @@ class GameSession:
         state, facts = transact(
             self.engine,
             self.state.draft(),
-            lambda draft, rng: Resolution(facts=advancement.resolve(draft, offer, proposal, rng)),
+            lambda draft, rng: tuple(advancement.resolve(draft, offer, proposal, rng)),
             self.rng,
         )
         self._commit(state, Applied(subject_id=offer.subject_id, facts=facts))
@@ -289,7 +246,6 @@ class GameSession:
 
     def _commit(self, state: Game, entry: TraceEntry) -> None:
         self.store.save(self.slug, SavedGame.of(state))
-        self.store.append_trace(self.slug, entry)
         self.state = state
         self.entries.append(entry)
 
