@@ -1,5 +1,5 @@
 {
-  "save_version": 72,
+  "save_version": 73,
   "facts": [
     {
       "source": "core",
@@ -172,7 +172,7 @@
           {
             "op": "move",
             "entity_id": "vault_map",
-            "to_id": null
+            "to_id": "player"
           }
         ]
       }

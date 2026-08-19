@@ -37,8 +37,8 @@ You build the scenario in a draft, through tools, never in one answer:
   by an actor, and a location is inside nothing (`null`).
 - `detail` on an entity worth one: `description` is what a close look reveals, `hook` is the lead
   it offers — what it lets the player pull on next. Neither ever reaches the player unearned.
-- `relations`: `kind: "connected"` joins two locations both ways (`directed: false`). A way the
-  player has not found yet is `known: false`. A way that is shut is tagged `["locked"]`. A
+- `relations`: `kind: "connected"` joins two locations both ways. A way the
+  player has not found yet is `known: false`. A way that is shut is `locked: true`. A
   relation may only be `known: true` when both ends are.
 - `threads`: what the scenario is about, one `id` in kebab-case, a `title`, a `stage` naming where
   it stands (`unfound`, `seal-found`), and a `note` that tells the Director what it means right
@@ -47,12 +47,13 @@ You build the scenario in a draft, through tools, never in one answer:
   actor's id, or omitted for something the world remembers.
 - `art_style`: one line of visual direction for the scenario's illustrations — palette, medium
   and mood, drawn from the tone of the source or premise. Omit it and the app's default is used.
-- `hooks`: authored consequence. `match` waits for a fact — `entity_discovered` with
-  `{"entity_id": "..."}` is the workhorse — and `effects` fire when it commits. `note` is what the
-  Director is told on the turn after it fires: a pressure, not a recap. A hook's own effects are
-  matched again, so a hook that reveals what another hook waits for fires it in the same turn: one
-  such step is a consequence, a chain of three is refused and would open the whole scenario on a
-  single reveal. Steps the player is meant to walk through wait on what they do at each one.
+- `hooks`: authored consequence. `match` waits for a fact — `{"kind": "entity_discovered",
+  "entity_id": "..."}` is the workhorse, or wait on a thread advancing instead — and `effects`
+  fire when it commits. `note` is what the Director is told on the turn after it fires: a
+  pressure, not a recap. A hook's own effects are matched again, so a hook that reveals what
+  another hook waits for fires it in the same turn: one such step is a consequence, a chain of
+  three is refused and would open the whole scenario on a single reveal. Steps the player is
+  meant to walk through wait on what they do at each one.
 - Names, briefs, and details specific enough to be unmistakable. No generic taverns, no
   placeholder names, nothing the premise did not earn.
 - Never write a template. `"..."`, `TBD`, an empty `entities`, or any field left as a

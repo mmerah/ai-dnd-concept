@@ -21,7 +21,7 @@ from aidm.state.world import GameState
 def _turn(engine: Engine[SheetBase], state: GameState) -> tuple[GameState, tuple[Fact, ...]]:
     draft = state.draft()
     effects: tuple[WorldEffect | RestoreLuck, ...] = (
-        Move(entity_id=EntityId("vault_map")),
+        Move(entity_id=EntityId("vault_map"), to_id=PLAYER_ID),
         RestoreLuck(actor_id=PLAYER_ID),
     )
     facts = [fact for effect in effects for fact in engine.apply(draft, effect)]

@@ -18,8 +18,8 @@ from aidm.content.authored import ScenarioOverlay, ScenarioWorld
 from aidm.content.store import ENCODING, WORLD_FILE, engine_text
 from aidm.engines.engine import Engine
 from aidm.engines.sheets import SheetBase
+from aidm.llm import build_agent
 from aidm.state.base import EngineId, EntityId, Frozen, Slug
-from aidm.turn.agents import build_agent
 
 from .draft import ScenarioPatch, WorldDraft
 from .playability import FULL, Brief, Playtest, playability
@@ -71,7 +71,7 @@ def authoring_toolset(
     def scenario_so_far(ctx: RunContext[WorldDraft]) -> str:
         """The whole draft as it stands, as pretty JSON: read it back before modifying or
         removing anything, so every id you name is one it actually holds."""
-        return ctx.deps.pretty()
+        return ctx.deps.as_json()
 
     def write(ctx: RunContext[WorldDraft], patch: ScenarioPatch) -> str:
         """Apply one patch to the draft. An element whose id the draft already holds is replaced

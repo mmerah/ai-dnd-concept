@@ -95,27 +95,20 @@
       "kind": "connected",
       "source": "tarns_end",
       "target": "bell_house",
-      "directed": false,
-      "known": true,
-      "tags": []
+      "known": true
     },
     {
       "kind": "connected",
       "source": "bell_house",
       "target": "lantern_chapel",
-      "directed": false,
-      "known": false,
-      "tags": []
+      "known": false
     },
     {
       "kind": "connected",
       "source": "lantern_chapel",
       "target": "crypt_entrance",
-      "directed": false,
       "known": false,
-      "tags": [
-        "locked"
-      ]
+      "locked": true
     }
   ],
   "threads": [
@@ -145,18 +138,15 @@
       "id": "key-discovered",
       "match": {
         "kind": "entity_discovered",
-        "data": {
-          "entity_id": "bronze_key"
-        }
+        "entity_id": "bronze_key"
       },
       "effects": [
         {
           "op": "relation-change",
-          "mode": "untag",
+          "mode": "unlock",
           "kind": "connected",
           "source": "lantern_chapel",
-          "target": "crypt_entrance",
-          "tag": "locked"
+          "target": "crypt_entrance"
         },
         {
           "op": "relation-change",
@@ -173,9 +163,7 @@
       "id": "crypt-revealed",
       "match": {
         "kind": "entity_discovered",
-        "data": {
-          "entity_id": "crypt_entrance"
-        }
+        "entity_id": "crypt_entrance"
       },
       "effects": [
         {

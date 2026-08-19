@@ -240,38 +240,26 @@
           "type": "string"
         },
         "entity_id": {
-          "anyOf": [
-            {
-              "type": "string"
-            },
-            {
-              "type": "null"
-            }
-          ],
-          "default": null,
-          "description": "Exact id of the actor or item that moves; null moves the player. An item must be one the player carries, or one loose at their location.",
-          "title": "Entity Id"
+          "description": "Exact id of the actor or item that moves; `player` is the played character. An item must be one the player carries, or one loose at their location.",
+          "title": "Entity Id",
+          "type": "string"
         },
         "to_id": {
-          "anyOf": [
-            {
-              "type": "string"
-            },
-            {
-              "type": "null"
-            }
-          ],
-          "default": null,
-          "description": "Exact id of where it goes: for an actor the location they enter; for an item an actor here with the player, or the player's own location to set it down. An actor always names one; null hands the item to the player.",
-          "title": "To Id"
+          "description": "Exact id of where it goes: for an actor the location they enter; for an item, `player` to pick it up, an actor here with the player to hand it over, or the player's own location to set it down.",
+          "title": "To Id",
+          "type": "string"
         }
       },
+      "required": [
+        "entity_id",
+        "to_id"
+      ],
       "title": "Move",
       "type": "object"
     },
     "RelationChange": {
       "additionalProperties": false,
-      "description": "Record, break, unblock, or reveal a lasting tie between two entities. Containment is not a\ntie: carrying an item or standing somewhere are moves. `reveal` shows the player a way through\nthey did not know about; write it before moving them through a passage they have not found.\n`untag` lifts a block such as `locked` when the fiction opens it.",
+      "description": "Record, break, unblock, or reveal a lasting tie between two entities. Containment is not a\ntie: carrying an item or standing somewhere are moves. `reveal` shows the player a way through\nthey did not know about; write it before moving them through a passage they have not found.\n`unlock` opens a locked way when the fiction opens it.",
       "properties": {
         "op": {
           "const": "relation-change",
@@ -280,11 +268,11 @@
           "type": "string"
         },
         "mode": {
-          "description": "What happens to the tie: `add` records it, `remove` breaks it, `untag` lifts a tag it carries, `reveal` shows it to the player.",
+          "description": "What happens to the tie: `add` records it, `remove` breaks it, `unlock` opens a way that was locked, `reveal` shows it to the player.",
           "enum": [
             "add",
             "remove",
-            "untag",
+            "unlock",
             "reveal"
           ],
           "title": "Mode",
@@ -306,21 +294,6 @@
           "description": "Exact id of the tie's target entity.",
           "title": "Target",
           "type": "string"
-        },
-        "tag": {
-          "anyOf": [
-            {
-              "maxLength": 64,
-              "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$",
-              "type": "string"
-            },
-            {
-              "type": "null"
-            }
-          ],
-          "default": null,
-          "description": "For `untag` only: the exact id of a tag the tie carries, such as `locked`.",
-          "title": "Tag"
         }
       },
       "required": [

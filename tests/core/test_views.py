@@ -4,12 +4,11 @@ from aidm.app.views import JournalView, journal_markdown, played_turns, player_s
 from aidm.engines.loner3e.mechanics import Mechanics, Sheet
 from aidm.state.base import PLAYER_ID, SAVE_VERSION, Counter, Entity, EntityId, Kind
 from aidm.state.facts import Fact
+from aidm.state.history import Exchange, Line
 from aidm.state.trace import Applied, Turn
 from aidm.state.world import (
     CONNECTED,
-    Exchange,
     GameState,
-    Line,
     Memory,
     Relation,
     ScenarioMeta,
@@ -37,7 +36,6 @@ def state() -> GameState:
             kind=CONNECTED,
             source=EntityId("crypt"),
             target=EntityId("study"),
-            directed=False,
             known=False,
         ),
     )

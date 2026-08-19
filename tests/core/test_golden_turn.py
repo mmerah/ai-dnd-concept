@@ -19,7 +19,8 @@ from pydantic_ai.models.function import FunctionModel
 
 from aidm.engines.registry import engine_ids
 from aidm.state.base import EngineId
-from aidm.state.world import Exchange, GameState, Line
+from aidm.state.history import Exchange, Line
+from aidm.state.world import GameState
 from aidm.turn.pipeline import TurnResult
 
 PROMPT = "I lever up the loose flagstone and listen at the vault door."
@@ -38,7 +39,7 @@ HISTORY = (
 NARRATION = "The flagstone lifts. Beyond the door, something shifts its weight and waits."
 SEED = 11
 # One unconditional effect every engine shares, so the two traces differ only by their roll.
-TAKE_THE_MAP = call("move", entity_id="vault_map")
+TAKE_THE_MAP = call("move", entity_id="vault_map", to_id="player")
 MEMORIES = [
     {
         "owner_id": "mara",

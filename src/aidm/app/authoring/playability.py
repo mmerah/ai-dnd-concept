@@ -10,7 +10,7 @@ from aidm.engines.registry import engine_ids
 from aidm.engines.sheets import SheetBase
 from aidm.state.base import Slug
 from aidm.state.effects import AdvanceThread
-from aidm.state.world import CONNECTED, LOCKED_TAG, Hook
+from aidm.state.world import CONNECTED, DiscoveryMatch, Hook
 
 from ..session import begin_game, build_engine
 from .draft import WorldDraft
@@ -47,7 +47,7 @@ def playtests(config: Settings) -> tuple[Playtest, ...]:
 
 
 def _advances_on_discovery(hook: Hook) -> bool:
-    return hook.match.kind == "entity_discovered" and any(
+    return isinstance(hook.match, DiscoveryMatch) and any(
         isinstance(effect, AdvanceThread) for effect in hook.effects
     )
 
@@ -61,8 +61,8 @@ def _bar_unmet(world: ScenarioWorld) -> list[str]:
     ways = [relation for relation in world.relations if relation.kind == CONNECTED]
     if all(way.known for way in ways):
         unmet.append("at least one `connected` relation starting `known: false` — a way to find")
-    if not any(LOCKED_TAG in way.tags for way in ways):
-        unmet.append(f"at least one `connected` relation tagged {LOCKED_TAG!r}")
+    if not any(way.locked for way in ways):
+        unmet.append("at least one `connected` relation starting `locked: true`")
     actors = [entity for entity in world.entities if entity.kind == "actor"]
     if len(actors) < 2:
         actor_ids = sorted(actor.id for actor in actors)

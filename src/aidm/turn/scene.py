@@ -1,7 +1,7 @@
 from collections.abc import Iterable, Mapping
 
 from aidm.state.base import PLAYER_ID, Entity, EntityId, Frozen
-from aidm.state.world import LOCKED_TAG, GameState, Memory, Thread
+from aidm.state.world import GameState, Memory, Thread
 
 
 class Exit(Frozen):
@@ -59,7 +59,7 @@ class SceneSnapshot(BaseScene):
                         location_id=relation.far_end(location.id),
                         name=world.require(relation.far_end(location.id)).name,
                         known=relation.known,
-                        locked=LOCKED_TAG in relation.tags,
+                        locked=relation.locked,
                     )
                     for relation in world.connections(location.id)
                 ),

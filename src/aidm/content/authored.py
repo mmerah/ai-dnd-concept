@@ -1,7 +1,7 @@
 from collections.abc import Callable, Collection, Iterable, Mapping, Sequence
 from dataclasses import dataclass
 from functools import cached_property
-from typing import Self
+from typing import Literal, Self
 
 from pydantic import Field, JsonValue, model_validator
 
@@ -16,13 +16,18 @@ from aidm.state.base import (
     Trait,
     require_unique,
 )
-from aidm.state.effects import Reveal
-from aidm.state.world import CONNECTED, Hook, Memory, Relation, ScenarioMeta, Thread, WorldState
-
-# The id-shaped keys committed facts actually carry; any other match key is not policed here.
-_FACT_ENTITY_KEYS = ("entity_id", "to_id", "target")
-# Effect keys that must name an existing entity; created ids (`trait_id`, `stage`) are free.
-_EFFECT_ENTITY_KEYS = ("entity_id", "to_id", "source", "target", "actor_id")
+from aidm.state.effects import Reveal, references
+from aidm.state.world import (
+    CONNECTED,
+    DiscoveryMatch,
+    Hook,
+    Memory,
+    Relation,
+    ScenarioMeta,
+    Thread,
+    ThreadMatch,
+    WorldState,
+)
 
 
 @dataclass(frozen=True, slots=True)
@@ -124,12 +129,19 @@ class ScenarioWorld(Frozen):
 
     @model_validator(mode="after")
     def _hooks_wait_on_authored_ids(self) -> Self:
-        pools = _id_pools(self, _FACT_ENTITY_KEYS)
-        dangling = [
-            f"hook {hook.id!r} waits on {key}={value!r}"
-            for hook in self.hooks
-            for key, value in _dangling_ids(pools, hook.match.data)
-        ]
+        entity_ids = {PLAYER_ID, *self.world.entities}
+        thread_ids = set(self.world.threads)
+        dangling: list[str] = []
+        for hook in self.hooks:
+            match hook.match:
+                case DiscoveryMatch(entity_id=entity_id) if entity_id is not None:
+                    if entity_id not in entity_ids:
+                        dangling.append(f"hook {hook.id!r} waits on entity_id={entity_id!r}")
+                case ThreadMatch(thread_id=thread_id) if thread_id is not None:
+                    if thread_id not in thread_ids:
+                        dangling.append(f"hook {hook.id!r} waits on thread_id={thread_id!r}")
+                case _:
+                    pass
         if dangling:
             raise ValueError(
                 f"hooks waiting on ids nothing authored carries can never fire: "
@@ -139,16 +151,19 @@ class ScenarioWorld(Frozen):
 
     @model_validator(mode="after")
     def _hook_effects_are_sound(self) -> Self:
-        pools = _id_pools(self, _EFFECT_ENTITY_KEYS)
+        pools: dict[Literal["entity", "thread"], set[str]] = {
+            "entity": {PLAYER_ID, *self.world.entities},
+            "thread": set(self.world.threads),
+        }
         dangling: list[str] = []
-        revealed: dict[Slug, set[str]] = {}
+        revealed: dict[Slug, set[EntityId]] = {}
         for hook in self.hooks:
-            effects = [effect.model_dump() for effect in hook.effects]
-            for data in effects:
-                dangling.extend(
-                    f"hook {hook.id!r} effect {data.get('op')!r} names {key}={value!r}"
-                    for key, value in _dangling_ids(pools, data)
-                )
+            dangling.extend(
+                f"hook {hook.id!r} effect {effect.op!r} names {kind}={value!r}"
+                for effect in hook.effects
+                for kind, value in references(effect)
+                if value not in pools[kind]
+            )
             revealed[hook.id] = {
                 effect.entity_id for effect in hook.effects if isinstance(effect, Reveal)
             }
@@ -268,15 +283,14 @@ def _require_authored(
         raise ValueError(f"the {engine!r} overlay names unauthored ids: {unknown}")
 
 
-def _no_hook_domino(world: ScenarioWorld, revealed: Mapping[Slug, set[str]]) -> None:
+def _no_hook_domino(world: ScenarioWorld, revealed: Mapping[Slug, set[EntityId]]) -> None:
     """`fire_hooks` feeds each round's facts back into matching, so a hook's own `reveal` fires the
     hook waiting on that discovery. One such step is a consequence; a hook that is both fired by
     another and fires a third is a domino that opens the whole adventure on one turn."""
     waiting = {
-        awaited: hook.id
+        hook.match.entity_id: hook.id
         for hook in world.hooks
-        if hook.match.kind == "entity_discovered"
-        and isinstance(awaited := hook.match.data.get("entity_id"), str)
+        if isinstance(hook.match, DiscoveryMatch) and hook.match.entity_id is not None
     }
     edges = [
         (hook_id, waiting[entity_id])
@@ -291,20 +305,3 @@ def _no_hook_domino(world: ScenarioWorld, revealed: Mapping[Slug, set[str]]) -> 
             "A hook another hook fires may not reveal what a third hook waits for; put the "
             "consequences in one hook, or wait on something the player must do next."
         )
-
-
-def _id_pools(world: ScenarioWorld, entity_keys: Iterable[str]) -> dict[str, set[str]]:
-    entity_ids: set[str] = {PLAYER_ID, *world.world.entities}
-    return {**dict.fromkeys(entity_keys, entity_ids), "thread_id": set(world.world.threads)}
-
-
-def _dangling_ids(
-    pools: Mapping[str, set[str]], data: Mapping[str, object]
-) -> list[tuple[str, object]]:
-    """Absent or null keys pass: null already means the player or 'leave as is', never a typo."""
-    return [
-        (key, value)
-        for key, pool in pools.items()
-        if (value := data.get(key)) is not None
-        and (not isinstance(value, str) or value not in pool)
-    ]

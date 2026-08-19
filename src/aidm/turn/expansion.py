@@ -6,7 +6,7 @@ from aidm.state.base import Entity, Frozen
 from aidm.state.beat import Resolution
 from aidm.state.facts import CORE, Fact
 from aidm.state.trace import StepTrace
-from aidm.state.world import CONNECTED, GameState, Hook, Relation, Thread
+from aidm.state.world import GameState, Hook, Relation, Thread
 
 MAX_EXPANSIONS = 2
 
@@ -81,9 +81,6 @@ def _added_entity(draft: GameState, entity: Entity) -> Fact:
 def _added_relation(draft: GameState, relation: Relation) -> Fact:
     materialized = relation.model_copy(deep=True)
     materialized.known = False
-    # Resolved from the kind, as a Director-written tie already is: a `connected` left directed by
-    # a defaulted field would fail the whole patch over something the engine knows on its own.
-    materialized.directed = materialized.kind != CONNECTED
     if materialized.id in draft.world.relations:
         raise ValueError(f"a tie {materialized.id!r} already joins those two")
     _ = draft.world.require(materialized.source)

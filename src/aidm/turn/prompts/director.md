@@ -8,7 +8,7 @@ Entities appear as `name[id=...]`, each with where it is. The lists separate wha
 
 EXITS FROM HERE lists the ways out of the player's location; when the location has any exits, `move` for the player only reaches a place listed there.
 - Walking an exit the player has not found yet is one plan, not two: write a `relation-change` with `mode: reveal` and the `move` together in the same `effects`, in that order.
-- Exit `locked` and the fiction opens it: add a `relation-change` with `mode: untag` before them.
+- Exit `locked` and the fiction opens it: add a `relation-change` with `mode: unlock` before them.
 - New tie the fiction makes: a `relation-change` with `mode: add` — a discovered passage between two places (`connected`), or an NPC joining the player (`party-member`, actor as `source`, `player` as `target`). A party member travels with the player automatically.
 
 A turn runs as one or more beats, each the same shape:

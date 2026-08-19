@@ -11,9 +11,9 @@ from aidm.app.authoring.draft import ScenarioPatch, WorldDraft
 from aidm.app.authoring.playability import OPENING, playability, playtests
 from aidm.app.authoring.session import AuthoringSession
 from aidm.content.store import load_scenario
+from aidm.llm import build_agent
 from aidm.state.base import Entity, EntityId
 from aidm.state.world import Relation, ScenarioMeta, Thread
-from aidm.turn.agents import build_agent
 
 
 async def test_the_shipped_scenario_passes_every_engine() -> None:
@@ -69,7 +69,6 @@ def test_write_upserts_elements_by_id() -> None:
                     kind="connected",
                     source=EntityId("cell"),
                     target=EntityId("hall"),
-                    directed=False,
                 ),
             ),
         )
@@ -81,14 +80,13 @@ def test_write_upserts_elements_by_id() -> None:
         kind="connected",
         source=EntityId("hall"),
         target=EntityId("cell"),
-        directed=False,
-        tags=["locked"],
+        locked=True,
     )
     _ = draft.apply(ScenarioPatch(entities=(renamed,), relations=(relocked,)))
 
-    assert draft.canon.entities[EntityId("cell")].name == "the deep cell"
+    assert draft.entities[EntityId("cell")].name == "the deep cell"
     # An undirected relation sorts its endpoints, so the rewrite hit the same id.
-    assert [relation.tags for relation in draft.canon.relations.values()] == [["locked"]]
+    assert [relation.locked for relation in draft.relations.values()] == [True]
 
 
 def test_a_patched_art_style_reaches_the_world() -> None:
@@ -101,7 +99,7 @@ def test_remove_drops_by_id_and_refuses_an_unknown_one() -> None:
     draft = WorldDraft()
     _ = draft.apply(ScenarioPatch(entities=(_location("cell"),)))
     assert draft.apply(ScenarioPatch(remove=(EntityId("cell"),))) == "wrote: removed 1"
-    assert not draft.canon.entities
+    assert not draft.entities
     with pytest.raises(ValueError, match="nothing in the draft"):
         _ = draft.apply(ScenarioPatch(remove=("ghost",)))
 
@@ -172,7 +170,6 @@ async def test_a_session_goes_on_authoring_after_it_finishes() -> None:
                 kind="connected",
                 source=EntityId("study"),
                 target=EntityId("belfry"),
-                directed=False,
                 known=True,
             ),
         ),
@@ -192,7 +189,7 @@ async def test_a_session_goes_on_authoring_after_it_finishes() -> None:
         assert session.refusal() is None
         before = len(session.history)
         _ = await session.send("add a bell tower")
-    assert EntityId("belfry") in session.draft.canon.entities
+    assert EntityId("belfry") in session.draft.entities
     assert len(session.history) > before
 
 

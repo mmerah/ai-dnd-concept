@@ -1,12 +1,9 @@
-import json
-from dataclasses import dataclass, field
-
-from pydantic import Field, JsonValue
+from pydantic import Field
 
 from aidm.content.authored import ScenarioWorld
 from aidm.content.sources import ExpansionPolicy
-from aidm.state.base import Entity, EntityId, Frozen, RelationId
-from aidm.state.world import Hook, Memory, Relation, ScenarioMeta, Thread, WorldState
+from aidm.state.base import Entity, EntityId, Frozen, Mutable, RelationId, Slug
+from aidm.state.world import Hook, Memory, Relation, ScenarioMeta, Thread
 
 
 class ScenarioPatch(Frozen):
@@ -32,8 +29,7 @@ class ScenarioPatch(Frozen):
     remove: tuple[str, ...] = ()
 
 
-@dataclass
-class WorldDraft:
+class WorldDraft(Mutable):
     """The scenario under authorship: mutated only by `apply`, judged only by `world()`."""
 
     expansion: ExpansionPolicy = "closed"
@@ -41,62 +37,74 @@ class WorldDraft:
     meta: ScenarioMeta | None = None
     starting_location_id: EntityId | None = None
     starting_party: tuple[EntityId, ...] = ()
-    canon: WorldState = field(default_factory=WorldState)
+    entities: dict[EntityId, Entity] = Field(default_factory=dict)
+    relations: dict[RelationId, Relation] = Field(default_factory=dict)
+    threads: dict[Slug, Thread] = Field(default_factory=dict)
+    memories: dict[Slug, Memory] = Field(default_factory=dict)
+    hooks: dict[Slug, Hook] = Field(default_factory=dict)
 
     def apply(self, patch: ScenarioPatch) -> str:
-        changed: list[str] = []
+        wrote: list[str] = []
         if patch.meta is not None:
             self.meta = patch.meta
-            changed.append("meta")
+            wrote.append("meta")
         if patch.starting_location_id is not None:
             self.starting_location_id = patch.starting_location_id
-            changed.append("starting_location_id")
+            wrote.append("starting_location_id")
         if patch.starting_party is not None:
             self.starting_party = patch.starting_party
-            changed.append("starting_party")
+            wrote.append("starting_party")
         if patch.art_style is not None:
             self.art_style = patch.art_style
-            changed.append("art_style")
+            wrote.append("art_style")
         for entity in patch.entities:
-            self.canon.entities[entity.id] = entity
+            self.entities[entity.id] = entity
         for relation in patch.relations:
-            self.canon.relations[relation.id] = relation
+            self.relations[relation.id] = relation
         for thread in patch.threads:
-            self.canon.threads[thread.id] = thread
+            self.threads[thread.id] = thread
         for memory in patch.memories:
-            self.canon.memories[memory.id] = memory
+            self.memories[memory.id] = memory
         for hook in patch.hooks:
-            self.canon.hooks[hook.id] = hook
-        counts = {
-            "entities": len(patch.entities),
-            "relations": len(patch.relations),
-            "threads": len(patch.threads),
-            "memories": len(patch.memories),
-            "hooks": len(patch.hooks),
-        }
-        changed.extend(f"{count} {what}" for what, count in counts.items() if count)
+            self.hooks[hook.id] = hook
+        wrote.extend(
+            f"{len(group)} {what}"
+            for what, group in (
+                ("entities", patch.entities),
+                ("relations", patch.relations),
+                ("threads", patch.threads),
+                ("memories", patch.memories),
+                ("hooks", patch.hooks),
+            )
+            if group
+        )
         for target in patch.remove:
             self._remove(target)
         if patch.remove:
-            changed.append(f"removed {len(patch.remove)}")
-        return f"wrote: {', '.join(changed)}" if changed else "nothing to change"
+            wrote.append(f"removed {len(patch.remove)}")
+        return f"wrote: {', '.join(wrote)}" if wrote else "nothing to change"
 
     def _remove(self, target: str) -> None:
-        if target in self.canon.entities:
-            del self.canon.entities[EntityId(target)]
-        elif target in self.canon.relations:
-            del self.canon.relations[RelationId(target)]
-        elif target in self.canon.threads:
-            del self.canon.threads[target]
-        elif target in self.canon.memories:
-            del self.canon.memories[target]
-        elif target in self.canon.hooks:
-            del self.canon.hooks[target]
+        if target in self.entities:
+            del self.entities[EntityId(target)]
+        elif target in self.relations:
+            del self.relations[RelationId(target)]
+        elif target in self.threads:
+            del self.threads[target]
+        elif target in self.memories:
+            del self.memories[target]
+        elif target in self.hooks:
+            del self.hooks[target]
         else:
             raise ValueError(
                 f"nothing in the draft has id {target!r}; read `scenario_so_far` and remove ids "
                 "exactly as it spells them"
             )
+
+    def as_json(self) -> str:
+        """The draft as its author reads it back; `expansion` is the app's own policy, not canon
+        they write."""
+        return self.model_dump_json(indent=2, exclude={"expansion"})
 
     def world(self) -> ScenarioWorld:
         if self.meta is None:
@@ -109,19 +117,9 @@ class WorldDraft:
             art_style=self.art_style,
             starting_location_id=self.starting_location_id,
             starting_party=self.starting_party,
-            entities=tuple(self.canon.entities.values()),
-            relations=tuple(self.canon.relations.values()),
-            threads=tuple(self.canon.threads.values()),
-            memories=tuple(self.canon.memories.values()),
-            hooks=tuple(self.canon.hooks.values()),
+            entities=tuple(self.entities.values()),
+            relations=tuple(self.relations.values()),
+            threads=tuple(self.threads.values()),
+            memories=tuple(self.memories.values()),
+            hooks=tuple(self.hooks.values()),
         )
-
-    def pretty(self) -> str:
-        body: dict[str, JsonValue] = {
-            "meta": None if self.meta is None else self.meta.model_dump(mode="json"),
-            "art_style": self.art_style,
-            "starting_location_id": self.starting_location_id,
-            "starting_party": list(self.starting_party),
-            **self.canon.model_dump(mode="json", exclude={"fired_hooks", "pending_notes"}),
-        }
-        return json.dumps(body, indent=2)

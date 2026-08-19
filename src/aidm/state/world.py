@@ -1,5 +1,5 @@
-from collections.abc import Iterator, Mapping, Sequence
-from typing import Literal, Self
+from collections.abc import Iterator, Mapping
+from typing import Annotated, Literal, Self
 
 from pydantic import Field, JsonValue, PrivateAttr, model_validator
 
@@ -19,6 +19,7 @@ from .base import (
 )
 from .effects import WorldEffect
 from .facts import Fact, entity_fact
+from .history import Exchange
 
 _HOLDERS: Mapping[Kind, tuple[Kind, ...]] = {
     "actor": ("location",),
@@ -41,7 +42,6 @@ def check_placement(entity: Entity, holder: Entity | None) -> None:
 
 CONNECTED: Slug = "connected"
 PARTY_MEMBER: Slug = "party-member"
-LOCKED_TAG: Slug = "locked"
 
 
 class Relation(Mutable):
@@ -50,9 +50,12 @@ class Relation(Mutable):
     kind: Slug
     source: EntityId
     target: EntityId
-    directed: bool = True
     known: bool = False
-    tags: list[Slug] = Field(default_factory=list)
+    locked: bool = False
+
+    @property
+    def directed(self) -> bool:
+        return self.kind != CONNECTED
 
     @property
     def id(self) -> RelationId:
@@ -98,32 +101,34 @@ class Memory(Mutable):
     text: str = Field(min_length=1, max_length=300)
 
 
-# Core world-op kinds only: engine kinds are per-ruleset (each engine's own effect union);
-# hook_* chains hooks.
-type HookFactKind = Literal[
-    "entity_created",
-    "entity_discovered",
-    "entity_moved",
-    "trait_added",
-    "trait_removed",
-    "relation_added",
-    "relation_removed",
-    "relation_untagged",
-    "relation_revealed",
-    "thread_advanced",
-]
-
-
-class HookMatch(Frozen):
-    """A fact this hook waits for: its kind, and the data fields that must equal these."""
-
-    kind: HookFactKind
-    data: dict[str, JsonValue] = Field(default_factory=dict)
+class FactMatch(Frozen):
+    """A committed fact this hook waits for: every field set here must equal the fact's own, and
+    a field left null waits for any value of it."""
 
     def matches(self, fact: Fact) -> bool:
-        return fact.kind == self.kind and all(
-            fact.data.get(key) == value for key, value in self.data.items()
+        wanted = self.model_dump(exclude_none=True)
+        return fact.kind == wanted.pop("kind") and all(
+            fact.data.get(key) == value for key, value in wanted.items()
         )
+
+
+class DiscoveryMatch(FactMatch):
+    """Waits for the player learning of an entity — the workhorse of authored consequence."""
+
+    kind: Literal["entity_discovered"] = "entity_discovered"
+    entity_id: EntityId | None = None
+
+
+class ThreadMatch(FactMatch):
+    """Waits for a thread moving: to a stage, or onto the last segment of its clock."""
+
+    kind: Literal["thread_advanced"] = "thread_advanced"
+    thread_id: Slug | None = None
+    stage: Slug | None = None
+    clock_filled: bool | None = None
+
+
+type HookMatch = Annotated[DiscoveryMatch | ThreadMatch, Field(discriminator="kind")]
 
 
 class Hook(Frozen):
@@ -192,10 +197,6 @@ class WorldState(Mutable):
         if relation.kind == CONNECTED:
             if any(end.kind != "location" for end in ends):
                 raise ValueError(f"{CONNECTED!r} joins two locations, and {relation.id!r} does not")
-            if relation.directed:
-                raise ValueError(
-                    f"{CONNECTED!r} is walked both ways, so {relation.id!r} may not be directed"
-                )
         if relation.kind == PARTY_MEMBER and (
             ends[0].kind != "actor" or relation.target != PLAYER_ID
         ):
@@ -259,39 +260,6 @@ class WorldState(Mutable):
         while current.parent_id is not None:
             current = self.require(current.parent_id)
         return None if current.id == entity.id else current.id
-
-
-class Line(Frozen):
-    speaker_id: EntityId | None = Field(
-        default=None,
-        description="Exact id of who speaks this line, or null when it is narration, not speech.",
-    )
-    text: str = Field(min_length=1, description="One spoken line, or a passage of narration.")
-
-
-def narration_text(lines: Sequence[Line]) -> str:
-    return "\n".join(line.text for line in lines)
-
-
-class Narration(Frozen):
-    """The Narrator's answer: the one role that writes prose now says who speaks each line."""
-
-    lines: tuple[Line, ...] = Field(
-        description="The narration in order: 2-4 sentences in all, split by who says them."
-    )
-
-    @property
-    def text(self) -> str:
-        return narration_text(self.lines)
-
-
-class Exchange(Frozen):
-    prompt: str
-    lines: tuple[Line, ...]
-
-    @property
-    def narration(self) -> str:
-        return narration_text(self.lines)
 
 
 class ScenarioMeta(Frozen):

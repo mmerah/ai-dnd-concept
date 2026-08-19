@@ -3,16 +3,18 @@ from dataclasses import dataclass
 from random import Random
 
 from pydantic import BaseModel
+from pydantic_ai.messages import ModelMessage
 
 from aidm.config import Settings
 from aidm.engines.engine import Engine
 from aidm.engines.sheets import SheetBase
-from aidm.engines.transact import transact
+from aidm.engines.transact import Transacted, transact
 from aidm.state.base import Frozen, text_slug
 from aidm.state.beat import Resolution
 from aidm.state.facts import CORE, Fact, narrator_evidence
+from aidm.state.history import Exchange
 from aidm.state.trace import StepTrace, Turn
-from aidm.state.world import Exchange, GameState, Memory
+from aidm.state.world import GameState, Memory
 
 from . import prompts
 from .agents import PlanContext, TurnAgents, exchanges_to_messages
@@ -57,6 +59,110 @@ def remember(draft: GameState, memories: Sequence[MemoryProposal], maximum: int)
     return kept
 
 
+@dataclass(frozen=True, slots=True)
+class BeatRun:
+    draft: GameState
+    beats: tuple[Transacted, ...]
+    steps: tuple[StepTrace, ...]
+
+
+async def _ask_director(
+    draft: GameState,
+    prompt: str,
+    step_name: str,
+    *,
+    engine: Engine[SheetBase],
+    stages: TurnAgents,
+    rng: Random,
+    expansions: Expansions,
+    history: Sequence[ModelMessage],
+    happened: str = "",
+    preface: str = "",
+    settle: bool = False,
+) -> tuple[Frozen, StepTrace]:
+    """The first ask and every later beat render, call, and trace the Director the same way;
+    only what they ask it to settle differs."""
+    director_prompt = prompts.render_director(
+        SceneSnapshot.of(draft),
+        engine.renderer(draft),
+        draft.scenario,
+        prompt,
+        happened=happened,
+        preface=preface,
+    )
+    plan = (
+        await stages.director.run(
+            director_prompt,
+            deps=PlanContext(
+                engine=engine, state=draft, rng=rng, expansions=expansions, settle=settle
+            ),
+            message_history=history,
+        )
+    ).output
+    # Each Director call consumes the notes its own prompt rendered, so a note a beat writes
+    # steers the next beat of this turn — or the next turn, when no further call renders it.
+    draft.world.pending_notes = ()
+    return plan, _traced(step_name, director_prompt, plan)
+
+
+async def _run_beats(
+    draft: GameState,
+    prompt: str,
+    *,
+    engine: Engine[SheetBase],
+    stages: TurnAgents,
+    settings: Settings,
+    rng: Random,
+    expansions: Expansions,
+    history: Sequence[ModelMessage],
+    announce: Callable[[str], None],
+) -> BeatRun:
+    """The first Director plan, then one more beat per roll — the cap and a roll that asks to
+    settle both earn one last one."""
+    steps: list[StepTrace] = []
+
+    announce("director")
+    plan, step = await _ask_director(
+        draft,
+        prompt,
+        "director",
+        engine=engine,
+        stages=stages,
+        rng=rng,
+        expansions=expansions,
+        history=history,
+    )
+    steps.append(step)
+
+    announce("resolve")
+    beats = [transact(engine, draft, _resolver(engine, plan, rng), rng)]
+    draft = beats[-1].state.draft()
+    while beats[-1].followup != "none":
+        last = beats[-1].followup == "settle" or len(beats) >= settings.max_beats
+        announce("beat")
+        beat, step = await _ask_director(
+            draft,
+            prompt,
+            f"beat-{len(beats)}",
+            engine=engine,
+            stages=stages,
+            rng=rng,
+            expansions=expansions,
+            history=history,
+            happened=narrator_evidence(beats[-1].facts),
+            preface=prompts.SETTLE if last else prompts.BEAT,
+            settle=last,
+        )
+        steps.append(step)
+        announce("resolve")
+        beats.append(transact(engine, draft, _resolver(engine, beat, rng), rng))
+        draft = beats[-1].state.draft()
+        if last:
+            break
+
+    return BeatRun(draft=draft, beats=tuple(beats), steps=tuple(steps))
+
+
 async def run_turn(
     state: GameState,
     prompt: str,
@@ -74,56 +180,20 @@ async def run_turn(
             on_step(step)
 
     history = exchanges_to_messages(state.history[-settings.history_window :])
-    steps: list[StepTrace] = []
-    draft = state.draft()
-    snapshot = SceneSnapshot.of(draft)
     expansions = Expansions()
-
-    announce("director")
-    plan_prompt = prompts.render_director(snapshot, engine.renderer(draft), draft.scenario, prompt)
-    plan = (
-        await stages.director.run(
-            plan_prompt,
-            deps=PlanContext(engine=engine, state=draft, rng=rng, expansions=expansions),
-            message_history=history,
-        )
-    ).output
-    # Each Director call consumes the notes its own prompt rendered, so a note a beat writes
-    # steers the next beat of this turn — or the next turn, when no further call renders it.
-    draft.world.pending_notes = ()
-    steps.append(_traced("director", plan_prompt, plan))
-
-    announce("resolve")
-    beats = [transact(engine, draft, _resolver(engine, plan, rng), rng)]
-    draft = beats[-1].state.draft()
-    # A roll earns another beat; the cap and a roll that asks to settle both earn one last one.
-    while beats[-1].followup != "none":
-        last = beats[-1].followup == "settle" or len(beats) >= settings.max_beats
-        announce("beat")
-        beat_prompt = prompts.render_director(
-            SceneSnapshot.of(draft),
-            engine.renderer(draft),
-            draft.scenario,
-            prompt,
-            happened=narrator_evidence(beats[-1].facts),
-            preface=prompts.SETTLE if last else prompts.BEAT,
-        )
-        beat = (
-            await stages.director.run(
-                beat_prompt,
-                deps=PlanContext(
-                    engine=engine, state=draft, rng=rng, expansions=expansions, settle=last
-                ),
-                message_history=history,
-            )
-        ).output
-        draft.world.pending_notes = ()
-        steps.append(_traced(f"beat-{len(beats)}", beat_prompt, beat))
-        announce("resolve")
-        beats.append(transact(engine, draft, _resolver(engine, beat, rng), rng))
-        draft = beats[-1].state.draft()
-        if last:
-            break
+    run = await _run_beats(
+        state.draft(),
+        prompt,
+        engine=engine,
+        stages=stages,
+        settings=settings,
+        rng=rng,
+        expansions=expansions,
+        history=history,
+        announce=announce,
+    )
+    draft, beats = run.draft, run.beats
+    steps = list(run.steps)
 
     facts = [*expansions.facts, *(fact for beat in beats for fact in beat.facts)]
     steps.extend(expansions.steps)

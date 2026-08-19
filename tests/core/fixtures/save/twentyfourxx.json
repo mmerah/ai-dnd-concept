@@ -1,5 +1,5 @@
 {
-  "save_version": 72,
+  "save_version": 73,
   "scenario_id": "whispering-vault",
   "character_id": "kael",
   "scenario": {
@@ -153,27 +153,22 @@
         "kind": "connected",
         "source": "study",
         "target": "cloister",
-        "directed": false,
         "known": true,
-        "tags": []
+        "locked": false
       },
       "connected/bell_tower/cloister": {
         "kind": "connected",
         "source": "cloister",
         "target": "bell_tower",
-        "directed": false,
         "known": false,
-        "tags": []
+        "locked": false
       },
       "connected/cloister/vault": {
         "kind": "connected",
         "source": "cloister",
         "target": "vault",
-        "directed": false,
         "known": false,
-        "tags": [
-          "locked"
-        ]
+        "locked": true
       }
     },
     "threads": {
@@ -208,9 +203,7 @@
         "id": "vault-sighted",
         "match": {
           "kind": "entity_discovered",
-          "data": {
-            "entity_id": "vault"
-          }
+          "entity_id": "vault"
         },
         "effects": [
           {
@@ -235,9 +228,7 @@
         "id": "vault-charted",
         "match": {
           "kind": "entity_discovered",
-          "data": {
-            "entity_id": "vault_map"
-          }
+          "entity_id": "vault_map"
         },
         "effects": [
           {
@@ -259,9 +250,7 @@
         "id": "archivist-found",
         "match": {
           "kind": "entity_discovered",
-          "data": {
-            "entity_id": "elena"
-          }
+          "entity_id": "elena"
         },
         "effects": [
           {

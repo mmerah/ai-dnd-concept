@@ -14,7 +14,7 @@ from aidm.state.effects import (
 )
 from aidm.state.facts import CORE, Fact
 from aidm.state.hooks import MAX_HOOK_ROUNDS, fire_hooks
-from aidm.state.world import CONNECTED, LOCKED_TAG, PARTY_MEMBER, Hook, HookMatch, Thread
+from aidm.state.world import CONNECTED, PARTY_MEMBER, DiscoveryMatch, Hook, Thread, ThreadMatch
 
 BELL_TOWER = EntityId("bell_tower")
 CLOISTER = EntityId("cloister")
@@ -50,16 +50,14 @@ def test_world_effects_move_and_reveal_only_what_the_player_witnesses() -> None:
     arrived = Move(to_id=STUDY, entity_id=ELENA)
     assert turn.kinds(arrived) == ["entity_discovered", "entity_moved"]
     assert turn.kinds(Move(to_id=VAULT, entity_id=MARA)) == ["entity_moved"]
-    assert turn.kinds(Move(to_id=CLOISTER)) == ["entity_moved"]
+    assert turn.kinds(Move(entity_id=PLAYER_ID, to_id=CLOISTER)) == ["entity_moved"]
     hidden = RelationChange(mode="remove", kind=CONNECTED, source=CLOISTER, target=VAULT)
     assert turn(hidden)[0].narrator is None, "a hidden tie's trace names an unmet place"
 
     with pytest.raises(ValueError, match="would not be witnessed"):
         _ = turn(Move(to_id=VAULT, entity_id=ELENA))
     with pytest.raises(ValueError, match="is a actor, not a location"):
-        _ = turn(Move(to_id=MARA))
-    with pytest.raises(ValueError, match="name it in `to_id`"):
-        _ = turn(Move(entity_id=ELENA))
+        _ = turn(Move(entity_id=PLAYER_ID, to_id=MARA))
     with pytest.raises(ValueError, match="unknown entity id"):
         _ = turn(Reveal(entity_id=EntityId("ghost")))
 
@@ -67,24 +65,20 @@ def test_world_effects_move_and_reveal_only_what_the_player_witnesses() -> None:
 def test_movement_follows_the_connections_the_world_authors() -> None:
     turn = Applied()
 
-    assert turn.kinds(Move(to_id=CLOISTER)) == ["entity_moved"]
+    assert turn.kinds(Move(entity_id=PLAYER_ID, to_id=CLOISTER)) == ["entity_moved"]
     with pytest.raises(ValueError, match="has not found the way to the bell tower"):
-        _ = turn(Move(to_id=BELL_TOWER))
+        _ = turn(Move(entity_id=PLAYER_ID, to_id=BELL_TOWER))
     revealed = RelationChange(mode="reveal", kind=CONNECTED, source=CLOISTER, target=BELL_TOWER)
     assert turn.kinds(revealed) == ["entity_discovered", "relation_revealed"]
-    assert turn.kinds(Move(to_id=BELL_TOWER)) == ["entity_moved"]
+    assert turn.kinds(Move(entity_id=PLAYER_ID, to_id=BELL_TOWER)) == ["entity_moved"]
 
-    _ = turn(Move(to_id=CLOISTER))
-    # `cloister`—`vault` is authored in world.json already carrying the `locked` tag.
+    _ = turn(Move(entity_id=PLAYER_ID, to_id=CLOISTER))
+    # `cloister`—`vault` is authored in world.json already `locked`.
     _ = turn(RelationChange(mode="reveal", kind=CONNECTED, source=CLOISTER, target=VAULT))
     with pytest.raises(ValueError, match="is locked"):
-        _ = turn(Move(to_id=VAULT))
-    with pytest.raises(ValueError, match="belongs to no other mode"):
-        _ = RelationChange(mode="untag", kind=CONNECTED, source=CLOISTER, target=VAULT)
-    _ = turn(
-        RelationChange(mode="untag", kind=CONNECTED, source=CLOISTER, target=VAULT, tag=LOCKED_TAG)
-    )
-    assert turn.kinds(Move(to_id=VAULT)) == ["entity_moved"]
+        _ = turn(Move(entity_id=PLAYER_ID, to_id=VAULT))
+    _ = turn(RelationChange(mode="unlock", kind=CONNECTED, source=CLOISTER, target=VAULT))
+    assert turn.kinds(Move(entity_id=PLAYER_ID, to_id=VAULT)) == ["entity_moved"]
 
 
 def test_movement_is_refused_where_no_way_is_authored_at_all() -> None:
@@ -95,7 +89,7 @@ def test_movement_is_refused_where_no_way_is_authored_at_all() -> None:
     turn.draft.player.parent_id = pit.id
 
     with pytest.raises(ValueError, match="no way leads from here"):
-        _ = turn(Move(to_id=STUDY))
+        _ = turn(Move(entity_id=PLAYER_ID, to_id=STUDY))
 
 
 def test_a_party_member_travels_with_the_player() -> None:
@@ -103,21 +97,21 @@ def test_a_party_member_travels_with_the_player() -> None:
 
     joined = RelationChange(mode="add", kind=PARTY_MEMBER, source=MARA, target=PLAYER_ID)
     assert turn.kinds(joined) == ["relation_added"]
-    moved = turn(Move(to_id=CLOISTER))
+    moved = turn(Move(entity_id=PLAYER_ID, to_id=CLOISTER))
     assert [fact.data["entity_id"] for fact in moved] == [PLAYER_ID, MARA]
 
     left = RelationChange(mode="remove", kind=PARTY_MEMBER, source=MARA, target=PLAYER_ID)
     assert turn.kinds(left) == ["relation_removed"]
-    assert turn.kinds(Move(to_id=STUDY)) == ["entity_moved"]
+    assert turn.kinds(Move(entity_id=PLAYER_ID, to_id=STUDY)) == ["entity_moved"]
 
 
 def test_inventory_effects_gate_on_position_and_carrying() -> None:
     turn = Applied()
 
-    took = turn(Move(entity_id=VAULT_MAP))[1]
+    took = turn(Move(entity_id=VAULT_MAP, to_id=PLAYER_ID))[1]
     assert (took.data["entity_id"], took.data["to_id"]) == (VAULT_MAP, PLAYER_ID)
     with pytest.raises(ValueError, match="already carries"):
-        _ = turn(Move(entity_id=VAULT_MAP))
+        _ = turn(Move(entity_id=VAULT_MAP, to_id=PLAYER_ID))
     with pytest.raises(ValueError, match="player's own location"):
         _ = turn(Move(entity_id=LANTERN, to_id=VAULT))
     (dropped,) = turn(Move(entity_id=LANTERN, to_id=STUDY))
@@ -130,7 +124,7 @@ def test_inventory_effects_gate_on_position_and_carrying() -> None:
     assert carried.data["entity_id"] == created.data["entity_id"]
 
     with pytest.raises(ValueError, match="not loose at the player's location"):
-        _ = turn(Move(entity_id=VAULT_MAP))
+        _ = turn(Move(entity_id=VAULT_MAP, to_id=PLAYER_ID))
     with pytest.raises(ValueError, match="does not carry"):
         _ = turn(Move(entity_id=VAULT_MAP, to_id=STUDY))
     with pytest.raises(ValueError, match="not here with the player"):
@@ -157,7 +151,7 @@ def test_trait_changes_round_trip_and_refuse_what_the_entity_does_not_carry() ->
 def test_acting_on_an_unrevealed_actor_reveals_it_before_its_traits_change() -> None:
     """The leak rule: an actor is revealed by being acted on, an item or a place is not."""
     turn = Applied()
-    _ = turn(Move(to_id=CLOISTER))
+    _ = turn(Move(entity_id=PLAYER_ID, to_id=CLOISTER))
 
     change = TraitChange(mode="add", entity_id=RAT, trait_id="hurt")
     kinds = turn.kinds(change)
@@ -175,7 +169,7 @@ def test_a_repeating_hook_fires_on_every_tick_of_its_clock() -> None:
         "rite-moves": Hook(
             id="rite-moves",
             once=False,
-            match=HookMatch(kind="thread_advanced", data={"thread_id": "ritual"}),
+            match=ThreadMatch(thread_id="ritual"),
             note="the rite moves on",
         ),
     }
@@ -205,12 +199,12 @@ def test_a_hook_that_fills_a_clock_fires_the_filled_clock_hook_in_the_same_pass(
         "ticker": Hook(
             id="ticker",
             once=False,
-            match=HookMatch(kind="entity_discovered"),
+            match=DiscoveryMatch(),
             effects=(AdvanceThread(thread_id="trial", tick=1),),
         ),
         "finale": Hook(
             id="finale",
-            match=HookMatch(kind="thread_advanced", data={"clock_filled": True}),
+            match=ThreadMatch(clock_filled=True),
         ),
     }
 
@@ -231,7 +225,7 @@ def test_a_hook_effect_that_fails_to_apply_lands_as_hook_failed() -> None:
     draft.world.hooks = {
         "broken": Hook(
             id="broken",
-            match=HookMatch(kind="entity_discovered"),
+            match=DiscoveryMatch(),
             effects=(Reveal(entity_id=EntityId("ghost")),),
         ),
     }
@@ -249,7 +243,7 @@ def test_hooks_that_feed_each_other_stop_at_the_round_cap() -> None:
         "self-feeder": Hook(
             id="self-feeder",
             once=False,
-            match=HookMatch(kind="thread_advanced"),
+            match=ThreadMatch(),
             effects=(AdvanceThread(thread_id="vault-seal", status="active"),),
         ),
     }

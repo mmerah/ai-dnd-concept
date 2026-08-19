@@ -34,7 +34,9 @@ ASKED = call(
 async def test_an_engine_uses_the_shared_pipeline_and_safe_narrator_prompt() -> None:
     engine, state = initialized()
     steps: list[str] = []
-    director = FunctionModel(scripted(plan(effects=[call("move", entity_id="vault_map")])))
+    director = FunctionModel(
+        scripted(plan(effects=[call("move", entity_id="vault_map", to_id="player")]))
+    )
     narrator = FunctionModel(scripted(narrated("A creased chart slides into your hand.")))
     result = await played(
         engine,
@@ -93,7 +95,7 @@ async def test_a_later_beat_walks_the_way_the_first_one_opened() -> None:
     """The semantic heart of the loop: a consequence written after the roll, against the state
     that roll left behind — legal only because the beat before it revealed the way."""
     engine, state = initialized()
-    onward = call("move", to_id="bell_tower")
+    onward = call("move", entity_id="player", to_id="bell_tower")
     result = await played(
         engine,
         state,
@@ -103,7 +105,7 @@ async def test_a_later_beat_walks_the_way_the_first_one_opened() -> None:
                 plan(
                     roll=ASKED,
                     effects=[
-                        call("move", to_id="cloister"),
+                        call("move", entity_id="player", to_id="cloister"),
                         call(
                             "relation-change",
                             mode="reveal",
@@ -215,7 +217,7 @@ async def test_a_settle_beat_that_rolls_again_is_refused() -> None:
 async def test_a_beat_that_fails_discards_what_the_beats_before_it_did() -> None:
     engine, state = initialized()
     before = state.model_dump_json()
-    first = plan(roll=ASKED, effects=[call("move", entity_id="vault_map")])
+    first = plan(roll=ASKED, effects=[call("move", entity_id="vault_map", to_id="player")])
     calls = 0
 
     def stub(messages: list[ModelMessage], info: AgentInfo) -> ModelResponse:
@@ -295,7 +297,9 @@ async def test_a_failed_role_never_mutates_the_input_state() -> None:
         del messages, info
         raise RuntimeError("narrator exploded")
 
-    director = FunctionModel(scripted(plan(effects=[call("move", entity_id="vault_map")])))
+    director = FunctionModel(
+        scripted(plan(effects=[call("move", entity_id="vault_map", to_id="player")]))
+    )
     before = state.model_dump_json()
     with pytest.raises(RuntimeError, match="narrator exploded"):
         await played(

@@ -58,7 +58,6 @@ DOCUMENT = RecordSource(
 )
 # Nothing in it shares a word with the anchor or the need below, so every search of it misses.
 UNHELPFUL = RecordSource(records=DOCUMENT.records[1:])
-# No `directed`: `connected` is walked both ways, and the resolver settles that from the kind.
 WAY = {"kind": "connected", "source": "cloister", "target": "sunken_gallery"}
 DOWNWARD = "I follow the stair down past the cloister."
 
@@ -96,7 +95,7 @@ async def test_travel_beyond_the_frontier_expands_the_world_inside_one_turn() ->
             ),
             plan(
                 effects=[
-                    call("move", to_id="cloister"),
+                    call("move", entity_id="player", to_id="cloister"),
                     call(
                         "relation-change",
                         mode="reveal",
@@ -104,7 +103,7 @@ async def test_travel_beyond_the_frontier_expands_the_world_inside_one_turn() ->
                         source="cloister",
                         target="sunken_gallery",
                     ),
-                    call("move", to_id="sunken_gallery"),
+                    call("move", entity_id="player", to_id="sunken_gallery"),
                 ]
             ),
         )
@@ -184,7 +183,7 @@ async def test_an_expander_that_cannot_write_costs_only_its_own_tool_call() -> N
     director = FunctionModel(
         scripted(
             _tool_call("expand_world", kind="location", anchor_id="cloister", need="a way down"),
-            plan(effects=[call("move", to_id="cloister")]),
+            plan(effects=[call("move", entity_id="player", to_id="cloister")]),
         )
     )
     result = await played(
@@ -221,7 +220,7 @@ async def test_a_cited_expansion_is_shown_the_passages_the_director_asked_for() 
             ),
             plan(
                 effects=[
-                    call("move", to_id="cloister"),
+                    call("move", entity_id="player", to_id="cloister"),
                     call(
                         "relation-change",
                         mode="reveal",
@@ -229,7 +228,7 @@ async def test_a_cited_expansion_is_shown_the_passages_the_director_asked_for() 
                         source="cloister",
                         target="sunken_gallery",
                     ),
-                    call("move", to_id="sunken_gallery"),
+                    call("move", entity_id="player", to_id="sunken_gallery"),
                 ]
             ),
         )
@@ -261,7 +260,7 @@ async def test_a_cited_miss_refuses_the_director_and_never_calls_the_expander() 
     director = FunctionModel(
         scripted(
             _tool_call("expand_world", kind="location", anchor_id="cloister", need="a way down"),
-            plan(effects=[call("move", to_id="cloister")]),
+            plan(effects=[call("move", entity_id="player", to_id="cloister")]),
         )
     )
 
@@ -283,7 +282,7 @@ async def test_a_fallback_source_says_the_document_is_silent() -> None:
     director = FunctionModel(
         scripted(
             _tool_call("expand_world", kind="location", anchor_id="cloister", need="a way down"),
-            plan(effects=[call("move", to_id="cloister")]),
+            plan(effects=[call("move", entity_id="player", to_id="cloister")]),
         )
     )
 

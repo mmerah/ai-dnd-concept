@@ -83,25 +83,20 @@
       "kind": "connected",
       "source": "study",
       "target": "cloister",
-      "directed": false,
       "known": true
     },
     {
       "kind": "connected",
       "source": "cloister",
       "target": "bell_tower",
-      "directed": false,
       "known": false
     },
     {
       "kind": "connected",
       "source": "cloister",
       "target": "vault",
-      "directed": false,
       "known": false,
-      "tags": [
-        "locked"
-      ]
+      "locked": true
     }
   ],
   "threads": [
@@ -129,9 +124,7 @@
       "id": "vault-sighted",
       "match": {
         "kind": "entity_discovered",
-        "data": {
-          "entity_id": "vault"
-        }
+        "entity_id": "vault"
       },
       "effects": [
         {
@@ -153,9 +146,7 @@
       "id": "vault-charted",
       "match": {
         "kind": "entity_discovered",
-        "data": {
-          "entity_id": "vault_map"
-        }
+        "entity_id": "vault_map"
       },
       "effects": [
         {
@@ -174,9 +165,7 @@
       "id": "archivist-found",
       "match": {
         "kind": "entity_discovered",
-        "data": {
-          "entity_id": "elena"
-        }
+        "entity_id": "elena"
       },
       "effects": [
         {

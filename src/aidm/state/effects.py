@@ -24,16 +24,14 @@ class Move(Frozen):
     reveals it."""
 
     op: Literal["move"] = "move"
-    entity_id: EntityId | None = Field(
-        default=None,
-        description="Exact id of the actor or item that moves; null moves the player. An item "
-        "must be one the player carries, or one loose at their location.",
+    entity_id: EntityId = Field(
+        description="Exact id of the actor or item that moves; `player` is the played character. "
+        "An item must be one the player carries, or one loose at their location.",
     )
-    to_id: EntityId | None = Field(
-        default=None,
-        description="Exact id of where it goes: for an actor the location they enter; for an item "
-        "an actor here with the player, or the player's own location to set it down. An actor "
-        "always names one; null hands the item to the player.",
+    to_id: EntityId = Field(
+        description="Exact id of where it goes: for an actor the location they enter; for an item, "
+        "`player` to pick it up, an actor here with the player to hand it over, or the player's "
+        "own location to set it down.",
     )
 
 
@@ -70,12 +68,12 @@ class RelationChange(Frozen):
     """Record, break, unblock, or reveal a lasting tie between two entities. Containment is not a
     tie: carrying an item or standing somewhere are moves. `reveal` shows the player a way through
     they did not know about; write it before moving them through a passage they have not found.
-    `untag` lifts a block such as `locked` when the fiction opens it."""
+    `unlock` opens a locked way when the fiction opens it."""
 
     op: Literal["relation-change"] = "relation-change"
-    mode: Literal["add", "remove", "untag", "reveal"] = Field(
-        description="What happens to the tie: `add` records it, `remove` breaks it, `untag` lifts "
-        "a tag it carries, `reveal` shows it to the player."
+    mode: Literal["add", "remove", "unlock", "reveal"] = Field(
+        description="What happens to the tie: `add` records it, `remove` breaks it, `unlock` "
+        "opens a way that was locked, `reveal` shows it to the player."
     )
     kind: Slug = Field(
         description="What the tie is: `connected` joins two locations the player can walk "
@@ -84,16 +82,6 @@ class RelationChange(Frozen):
     )
     source: EntityId = Field(description="Exact id of the tie's source entity.")
     target: EntityId = Field(description="Exact id of the tie's target entity.")
-    tag: Slug | None = Field(
-        default=None,
-        description="For `untag` only: the exact id of a tag the tie carries, such as `locked`.",
-    )
-
-    @model_validator(mode="after")
-    def _tag_belongs_to_untag(self) -> Self:
-        if (self.tag is None) != (self.mode != "untag"):
-            raise ValueError("`tag` names the tag `untag` lifts, and belongs to no other mode")
-        return self
 
 
 class AdvanceThread(Frozen):
@@ -133,3 +121,23 @@ def is_world_op(effect: Frozen) -> TypeIs[WorldOp]:
     return isinstance(
         effect, (Reveal, Move, GainImprovisedItem, TraitChange, RelationChange, AdvanceThread)
     )
+
+
+type IdReference = tuple[Literal["entity", "thread"], str]
+
+
+def references(effect: WorldOp) -> tuple[IdReference, ...]:
+    """The authored ids an effect names, so a hook that would fail mid-game is refused at load."""
+    match effect:
+        case Reveal(entity_id=entity_id):
+            return (("entity", entity_id),)
+        case Move(entity_id=entity_id, to_id=to_id):
+            return (("entity", entity_id), ("entity", to_id))
+        case GainImprovisedItem():
+            return ()
+        case TraitChange(entity_id=entity_id):
+            return (("entity", entity_id),)
+        case RelationChange(source=source, target=target):
+            return (("entity", source), ("entity", target))
+        case AdvanceThread(thread_id=thread_id):
+            return (("thread", thread_id),)

@@ -166,7 +166,8 @@ def scenario_page(config: Settings) -> None:
                 else:
                     ui.label(refusal).classes("text-negative text-sm")
                 with ui.scroll_area().classes("w-full").style("height: calc(100vh - 22rem)"):
-                    ui.code(session.draft.pretty(), language="json").classes("w-full")
+                    readable = session.draft.as_json()
+                    ui.code(readable, language="json").classes("w-full")
                 ui.button("Save scenario", icon="save", on_click=save).props(
                     "color=primary"
                 ).classes("q-mt-md")

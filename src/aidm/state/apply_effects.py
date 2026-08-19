@@ -10,8 +10,8 @@ from .effects import (
     TraitChange,
     WorldEffect,
 )
-from .facts import CORE, Fact, explained_fact
-from .world import CONNECTED, LOCKED_TAG, PARTY_MEMBER, GameState, Relation
+from .facts import CORE, Fact, entity_fact
+from .world import CONNECTED, PARTY_MEMBER, GameState, Relation
 
 
 def apply_effect(draft: GameState, effect: WorldEffect) -> list[Fact]:
@@ -32,8 +32,8 @@ def apply_effect(draft: GameState, effect: WorldEffect) -> list[Fact]:
             return _advance_thread(draft, effect)
 
 
-def require_actor_here(state: GameState, actor_id: EntityId | None) -> Entity:
-    if actor_id is None or actor_id == PLAYER_ID:
+def require_actor_here(state: GameState, actor_id: EntityId) -> Entity:
+    if actor_id == PLAYER_ID:
         return state.player
     actor = state.world.require_kind(actor_id, "actor")
     if not state.is_here(actor):
@@ -57,7 +57,7 @@ def _require_open_way(draft: GameState, here: EntityId, destination: Entity) -> 
         open_exits = [
             draft.world.require(way.far_end(here)).name
             for way in draft.world.connections(here)
-            if way.known and LOCKED_TAG not in way.tags
+            if way.known and not way.locked
         ]
         reachable = ", ".join(open_exits) or "(none)"
         raise ValueError(
@@ -70,25 +70,22 @@ def _require_open_way(draft: GameState, here: EntityId, destination: Entity) -> 
             "plan, not two: put a `relation-change` with `mode: reveal` for that way immediately "
             "before this move, in the same list"
         )
-    if LOCKED_TAG in found.tags:
+    if found.locked:
         raise ValueError(f"the way to {destination.name} is locked and must be dealt with first")
 
 
 def _move(draft: GameState, effect: Move) -> list[Fact]:
-    if effect.entity_id is not None and effect.entity_id != PLAYER_ID:
-        moving = draft.world.require(effect.entity_id)
-        if moving.kind == "item":
-            return _move_item(draft, moving, effect.to_id)
+    moving = draft.world.require(effect.entity_id)
+    if moving.kind == "item":
+        return _move_item(draft, moving, effect.to_id)
     return _move_actor(draft, effect)
 
 
 def _move_actor(draft: GameState, effect: Move) -> list[Fact]:
-    if effect.to_id is None:
-        raise ValueError("an actor moves to a location; name it in `to_id`")
     destination = draft.world.require_kind(effect.to_id, "location")
     here = draft.player_location
     actor_id = effect.entity_id
-    if actor_id is None or actor_id == PLAYER_ID:
+    if actor_id == PLAYER_ID:
         _require_open_way(draft, here, destination)
         facts = [*draft.reveal(destination), draft.move(draft.player, destination)]
         for member_id in draft.world.party():
@@ -103,8 +100,8 @@ def _move_actor(draft: GameState, effect: Move) -> list[Fact]:
     return [*revealed, draft.move(actor, destination)]
 
 
-def _move_item(draft: GameState, item: Entity, to_id: EntityId | None) -> list[Fact]:
-    if to_id is None or to_id == PLAYER_ID:
+def _move_item(draft: GameState, item: Entity, to_id: EntityId) -> list[Fact]:
+    if to_id == PLAYER_ID:
         if item.parent_id == PLAYER_ID:
             raise ValueError(f"the player already carries item {item.id!r}")
         if item.parent_id != draft.player_location:
@@ -143,7 +140,7 @@ def _add_trait(draft: GameState, effect: TraitChange) -> list[Fact]:
     trace = f"{entity.name} is {name}"
     return [
         *seen,
-        explained_fact(entity, "trait_added", trace, {"trait_id": effect.trait_id}, ""),
+        entity_fact(entity, "trait_added", trace, {"trait_id": effect.trait_id}),
     ]
 
 
@@ -158,7 +155,7 @@ def _remove_trait(draft: GameState, effect: TraitChange) -> list[Fact]:
     entity.traits.remove(held)
     trace = f"{entity.name} is no longer {held.name}"
     data = {"trait_id": effect.trait_id}
-    return [*seen, explained_fact(entity, "trait_removed", trace, data, "")]
+    return [*seen, entity_fact(entity, "trait_removed", trace, data)]
 
 
 def _relation_of(
@@ -187,8 +184,6 @@ def _relation_change(draft: GameState, effect: RelationChange) -> list[Fact]:
             kind=effect.kind,
             source=effect.source,
             target=effect.target,
-            # a connection is walkable both ways, so `connected` is the one undirected kind
-            directed=effect.kind != CONNECTED,
             known=True,
         )
         seen = [*draft.reveal(source), *draft.reveal(receiver)]
@@ -199,34 +194,28 @@ def _relation_change(draft: GameState, effect: RelationChange) -> list[Fact]:
     data: dict[str, JsonValue] = {"kind": relation.kind, "target": relation.target}
     match effect.mode:
         case "add":
-            return [*seen, explained_fact(source, "relation_added", joined, data, "")]
+            return [*seen, entity_fact(source, "relation_added", joined, data)]
         case "remove":
             del draft.world.relations[relation.id]
             return [
-                explained_fact(
+                entity_fact(
                     source,
                     "relation_removed",
                     f"{joined} broken",
                     data,
-                    "",
                     narrate=relation.known,
                 )
             ]
-        case "untag":
-            if effect.tag not in relation.tags:
-                held = ", ".join(sorted(relation.tags)) or "(none)"
-                raise ValueError(
-                    f"the {relation.kind!r} relation carries no tag {effect.tag!r}. "
-                    f"Its tags are: {held}"
-                )
-            relation.tags.remove(effect.tag)
+        case "unlock":
+            if not relation.locked:
+                raise ValueError(f"the {relation.kind!r} relation is not locked")
+            relation.locked = False
             return [
-                explained_fact(
+                entity_fact(
                     source,
-                    "relation_untagged",
-                    f"{joined} untagged {effect.tag}",
-                    {**data, "tag": effect.tag},
-                    "",
+                    "relation_unlocked",
+                    f"{joined} unlocked",
+                    data,
                     narrate=relation.known,
                 )
             ]
@@ -237,7 +226,7 @@ def _relation_change(draft: GameState, effect: RelationChange) -> list[Fact]:
             relation.known = True
             return [
                 *seen,
-                explained_fact(source, "relation_revealed", f"{joined} revealed", data, ""),
+                entity_fact(source, "relation_revealed", f"{joined} revealed", data),
             ]
 
 
