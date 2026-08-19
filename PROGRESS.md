@@ -368,11 +368,29 @@ Both land in one tree, so they share one SAVE_VERSION bump (80 → 81) rather th
   are gone from `app/views.py`, and `ui/panels.chat` iterates `state.history` directly — the UI no
   longer re-pairs history against the trace from the end to find what a turn told the player.
 
+#### Eval baseline (`evals/results/step-11-baseline.json`, n=9 per case)
+
+94% → **97%** (87/90), errors 0/90, Director calls 1.00, 5.0 → 7.4 seconds per turn. The move is
+`win-written` doing what it was meant to (`risky-lock` 78% → 89% loner3e, 78% → 100% 24xx), not
+steps 10–11, which change nothing a case can see. This is the baseline step 12 is measured against.
+
+The four remaining failures, read off `Run.planned` rather than guessed:
+
+- Both `three-things` misses (one run per engine) planned the turn perfectly —
+  `move, reveal, move, add_trait` — and the Director executed only the first step. Execution, not
+  interpretation, and the exact inverse of what this case used to fail on. One run per engine is
+  the noise floor; believe it when a second run repeats it.
+- `loner3e/risky-lock` planned `unlock_exit if yes` and `add_trait if no`, and the dice landed on a
+  *winning* face nobody had named, so the door stayed shut. That is the branch-coverage gap: a
+  `when` naming one face of a side leaves the rest of that side unplanned. `interpreter.md` now
+  says to write the side rather than the face ("the answer is a yes of any kind"), and to split a
+  side into faces only where the fiction pays differently for each. **Unverified** — the fix is
+  reasoned from the recorded plan, not from a re-run.
+
 ## Next
 
 - Phase 1 step 12 — reorganize around the new seams.
-- Re-run the eval once on `win-written` to cut a clean baseline; the `step-9-declared` numbers were
-  scored under the stricter expectation, so `risky-lock` reads low in that file.
+- The branch-coverage wording above is untested; the next eval run is its first evidence.
 - The plan is the instrument now: when a case regresses, read `Run.planned` before the facts. A
   mechanic missing from the plan is an interpretation bug in `interpreter.md`; a mechanic planned
   and not in the facts is an execution bug in `director.md`. That distinction is what closed
