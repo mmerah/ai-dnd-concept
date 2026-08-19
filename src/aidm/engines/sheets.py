@@ -22,7 +22,7 @@ def actor_sheets[S: Mutable](
     engine: EngineId,
 ) -> dict[EntityId, S]:
     sheets: dict[EntityId, S] = {}
-    for entity in state.world.entities.values():
+    for entity in state.world.entities:
         authored = rules.get(entity.id)
         if entity.kind != "actor":
             if authored:

@@ -44,7 +44,7 @@ def state() -> GameState:
         character_id="kael",
         scenario=ScenarioMeta(title="Test", premise="Test"),
         engine=LONER3E,
-        world=WorldState(entities={entity.id: entity for entity in entities}),
+        world=WorldState(entities=list(entities)),
     )
     held.set_mechanics(
         Mechanics(sheets={entity.id: Sheet() for entity in entities if entity.kind == "actor"})
@@ -71,6 +71,7 @@ def test_the_narrators_view_has_no_field_that_could_hold_unrevealed_canon() -> N
         "known_elsewhere",
         "placements",
         "exits",
+        "exit_names",
     }
     dumped = str(visible.model_dump())
     assert "The Secret" not in dumped

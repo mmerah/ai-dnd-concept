@@ -891,7 +891,7 @@ Appendix A is by its own words a *version* of Loner that removes dice — an alt
 a rule of this one.
 
 1. **Goal, Motive and Nemesis are not sheet fields.** They map to the shared world: threads carry
-   what the character is working toward, entities and relations carry who stands in the way. The
+   what the character is working toward, and entities carry who stands in the way. The
    SRD asks for them to emerge from play, and in this app play writes them to the world.
 2. **Sheets are actors-only.** The SRD gives non-living characters — objects, vehicles, curses —
    a Concept, Skills, Frailties and Luck. Here they are entities with traits, which the resolver

@@ -7,7 +7,7 @@ from aidm.state import actions
 from aidm.state.base import PLAYER_ID, Counter, Entity, EntityId
 from aidm.state.facts import Fact
 from aidm.state.hooks import MAX_HOOK_ROUNDS, fire_hooks
-from aidm.state.world import CONNECTED, PARTY_MEMBER, AdvanceThread, GameState, Hook, Thread
+from aidm.state.world import AdvanceThread, GameState, Hook, Thread
 
 BELL_TOWER = EntityId("bell_tower")
 CLOISTER = EntityId("cloister")
@@ -38,8 +38,6 @@ def test_world_actions_move_and_reveal_only_what_the_player_witnesses() -> None:
     assert _kinds(actions.move(draft, ELENA, STUDY)) == ["entity_discovered", "entity_moved"]
     assert _kinds(actions.move(draft, MARA, VAULT)) == ["entity_moved"]
     assert _kinds(actions.move(draft, PLAYER_ID, CLOISTER)) == ["entity_moved"]
-    hidden = actions.relation_change(draft, "remove", CONNECTED, CLOISTER, VAULT)
-    assert hidden[0].narrator is None, "a hidden tie's trace names an unmet place"
 
     with pytest.raises(ValueError, match="would not be witnessed"):
         _ = actions.move(draft, ELENA, VAULT)
@@ -49,30 +47,35 @@ def test_world_actions_move_and_reveal_only_what_the_player_witnesses() -> None:
         _ = actions.reveal(draft, EntityId("ghost"))
 
 
-def test_movement_follows_the_connections_the_world_authors() -> None:
+def test_movement_walks_unfound_ways_and_stops_at_locked_ones() -> None:
     draft = _draft()
 
     assert _kinds(actions.move(draft, PLAYER_ID, CLOISTER)) == ["entity_moved"]
-    with pytest.raises(ValueError, match="has not found the way to the bell tower"):
-        _ = actions.move(draft, PLAYER_ID, BELL_TOWER)
-    revealed = actions.relation_change(draft, "reveal", CONNECTED, CLOISTER, BELL_TOWER)
-    assert _kinds(revealed) == ["entity_discovered", "relation_revealed"]
-    assert _kinds(actions.move(draft, PLAYER_ID, BELL_TOWER)) == ["entity_moved"]
+    # `cloister`—`bell_tower` is authored unknown both ways: walking it finds it.
+    assert _kinds(actions.move(draft, PLAYER_ID, BELL_TOWER)) == [
+        "entity_discovered",
+        "entity_moved",
+    ]
+    way = draft.world.require(CLOISTER).exit_to(BELL_TOWER)
+    assert way is not None and way.known is True
+    back = draft.world.require(BELL_TOWER).exit_to(CLOISTER)
+    assert back is not None and back.known is True
 
     _ = actions.move(draft, PLAYER_ID, CLOISTER)
     # `cloister`—`vault` is authored in world.json already `locked`.
-    _ = actions.relation_change(draft, "reveal", CONNECTED, CLOISTER, VAULT)
     with pytest.raises(ValueError, match="is locked"):
         _ = actions.move(draft, PLAYER_ID, VAULT)
-    _ = actions.relation_change(draft, "unlock", CONNECTED, CLOISTER, VAULT)
-    assert _kinds(actions.move(draft, PLAYER_ID, VAULT)) == ["entity_moved"]
+    _ = actions.unlock_exit(draft, CLOISTER, VAULT)
+    mirrored = draft.world.require(VAULT).exit_to(CLOISTER)
+    assert mirrored is not None and mirrored.locked is False
+    assert _kinds(actions.move(draft, PLAYER_ID, VAULT)) == ["entity_discovered", "entity_moved"]
 
 
 def test_movement_is_refused_where_no_way_is_authored_at_all() -> None:
     """Topology alone decides where the player may walk: an exit-less place strands them."""
     draft = _draft()
     pit = Entity(id=EntityId("oubliette"), kind="location", name="the oubliette", brief="A pit.")
-    draft.world.entities[pit.id] = pit
+    draft.world.entities.append(pit)
     draft.player.parent_id = pit.id
 
     with pytest.raises(ValueError, match="no way leads from here"):
@@ -82,13 +85,13 @@ def test_movement_is_refused_where_no_way_is_authored_at_all() -> None:
 def test_a_party_member_travels_with_the_player() -> None:
     draft = _draft()
 
-    joined = actions.relation_change(draft, "add", PARTY_MEMBER, MARA, PLAYER_ID)
-    assert _kinds(joined) == ["relation_added"]
+    joined = actions.join_party(draft, MARA)
+    assert _kinds(joined) == ["party_joined"]
     moved = actions.move(draft, PLAYER_ID, CLOISTER)
     assert [fact.data["entity_id"] for fact in moved] == [PLAYER_ID, MARA]
 
-    left = actions.relation_change(draft, "remove", PARTY_MEMBER, MARA, PLAYER_ID)
-    assert _kinds(left) == ["relation_removed"]
+    left = actions.leave_party(draft, MARA)
+    assert _kinds(left) == ["party_left"]
     assert _kinds(actions.move(draft, PLAYER_ID, STUDY)) == ["entity_moved"]
 
 
@@ -144,8 +147,8 @@ def test_acting_on_an_unrevealed_actor_reveals_it_before_its_traits_change() -> 
 
 def test_a_tick_fills_the_threads_clock_and_stops_at_its_maximum() -> None:
     draft = _draft()
-    draft.world.threads["ritual"] = Thread(
-        id="ritual", title="The rite", clock=Counter(current=0, maximum=2)
+    draft.world.threads.append(
+        Thread(id="ritual", title="The rite", clock=Counter(current=0, maximum=2))
     )
 
     for filled in (1, 2, 2):
@@ -161,29 +164,30 @@ def test_a_tick_on_a_thread_without_a_clock_is_refused() -> None:
 
 def test_a_hook_reveals_and_advances_its_thread_when_its_entity_is_discovered() -> None:
     draft = _draft()
-    draft.world.hooks = {
-        "chart-read": Hook(
+    draft.world.hooks = [
+        Hook(
             id="chart-read",
             on_discover=VAULT_MAP,
             reveals=(ELENA,),
             advance_thread=AdvanceThread(thread_id="vault-seal", stage="rite-known"),
             note="the archivist is close",
         ),
-    }
+    ]
 
     fired = fire_hooks(draft, actions.reveal(draft, VAULT_MAP))
 
     assert _kinds(fired) == ["hook_fired", "entity_discovered", "thread_advanced"]
     assert draft.world.fired_hooks == ("chart-read",)
     assert draft.world.pending_notes == ("the archivist is close",)
-    assert draft.world.threads["vault-seal"].stage == "rite-known"
+    thread = draft.world.thread("vault-seal")
+    assert thread is not None and thread.stage == "rite-known"
 
 
 def test_a_hook_that_cannot_apply_lands_as_hook_failed() -> None:
     draft = _draft()
-    draft.world.hooks = {
-        "broken": Hook(id="broken", on_discover=VAULT_MAP, reveals=(EntityId("ghost"),)),
-    }
+    draft.world.hooks = [
+        Hook(id="broken", on_discover=VAULT_MAP, reveals=(EntityId("ghost"),)),
+    ]
 
     fired = fire_hooks(draft, actions.reveal(draft, VAULT_MAP))
 
@@ -194,10 +198,10 @@ def test_hooks_that_feed_each_other_stop_at_the_round_cap() -> None:
     """A hook's own reveal fires the hook waiting on it, so a chain is bounded, not endless."""
     draft = _draft()
     chain = ((VAULT_MAP, ELENA), (ELENA, VAULT), (VAULT, BELL_TOWER), (BELL_TOWER, RAT))
-    draft.world.hooks = {
-        f"link-{number}": Hook(id=f"link-{number}", on_discover=seen, reveals=(revealed,))
+    draft.world.hooks = [
+        Hook(id=f"link-{number}", on_discover=seen, reveals=(revealed,))
         for number, (seen, revealed) in enumerate(chain)
-    }
+    ]
 
     fired = fire_hooks(draft, actions.reveal(draft, VAULT_MAP))
 

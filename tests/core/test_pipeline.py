@@ -104,7 +104,6 @@ async def test_the_director_reacts_in_run_to_its_own_earlier_tool_call() -> None
         director=FunctionModel(
             scripted(
                 tool_call("move", entity_id="player", to_id="cloister"),
-                tool_call("reveal_way", location_id="cloister", to_id="bell_tower"),
                 tool_call("move", entity_id="player", to_id="bell_tower"),
                 text("A rotten ladder climbs into the dark."),
             )
@@ -139,7 +138,8 @@ async def test_a_call_its_own_fields_refuse_is_retried_rather_than_killing_the_t
     )
     result = await played(engine, state, "I press on.", director=FunctionModel(director.stub))
 
-    assert result.state.world.threads["vault-seal"].stage == "seal-found"
+    thread = result.state.world.thread("vault-seal")
+    assert thread is not None and thread.stage == "seal-found"
     assert any("status, its stage, or its clock" in reason for reason in director.reasons())
 
 
@@ -237,8 +237,8 @@ async def test_a_hook_fires_on_its_fact_moves_its_thread_and_steers_the_next_tur
         ),
     )
 
-    thread = found.state.world.threads["vault-seal"]
-    assert (thread.status, thread.stage) == ("active", "seal-found")
+    thread = found.state.world.thread("vault-seal")
+    assert thread is not None and (thread.status, thread.stage) == ("active", "seal-found")
     assert found.state.world.fired_hooks == ("vault-sighted",)
     # The thread the hook moves is Director bookkeeping and never reaches the Narrator.
     assert "vault-seal" not in shown(found.turn, "narrator")

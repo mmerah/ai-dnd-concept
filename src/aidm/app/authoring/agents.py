@@ -174,8 +174,7 @@ async def authored_overlay(
 def summarize(world: ScenarioWorld, overlays: Mapping[EngineId, ScenarioOverlay]) -> str:
     lines = [
         world.meta.title,
-        f"{len(world.entities)} entities, {len(world.relations)} relations, "
-        f"{len(world.threads)} threads, {len(world.hooks)} hooks",
+        f"{len(world.entities)} entities, {len(world.threads)} threads, {len(world.hooks)} hooks",
     ]
     for engine_id, overlay in overlays.items():
         lines.append(f"{engine_id}: {len(overlay.entities)} entities with mechanics")

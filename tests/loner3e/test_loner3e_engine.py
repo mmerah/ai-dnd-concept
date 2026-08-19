@@ -19,7 +19,6 @@ from aidm.engines.loner3e.mechanics import LUCK_MAX, TIES_PER_TWIST, Mechanics
 from aidm.engines.loner3e.pack import SRD_PACK, twist_table
 from aidm.engines.loner3e.rules import Loner3eEngine
 from aidm.state.base import PLAYER_ID, Counter, Entity, EntityId
-from aidm.state.world import PARTY_MEMBER, Relation
 
 TWISTS = twist_table(Loner3eEngine().packs, SRD_PACK)
 FOE = EntityId("mara")
@@ -214,8 +213,7 @@ def test_an_adventures_end_opens_an_offer_and_the_caps_refuse_what_breaks_them()
 def test_an_npc_party_members_growth_writes_their_own_sheet_not_the_players() -> None:
     engine, state = initialized()
     draft = state.draft()
-    joined = Relation(kind=PARTY_MEMBER, source=FOE, target=PLAYER_ID, known=True)
-    draft.world.relations[joined.id] = joined
+    draft.world.party.append(FOE)
     with_companion = draft.committed()
 
     advancement = capability(engine)
@@ -251,8 +249,7 @@ def test_an_actor_seeded_after_an_adventure_is_not_owed_the_growth_they_missed()
     )
     _ = draft.add(newcomer)
     engine.seed(draft, newcomer, Random(0))
-    joined = Relation(kind=PARTY_MEMBER, source=newcomer.id, target=PLAYER_ID, known=True)
-    draft.world.relations[joined.id] = joined
+    draft.world.party.append(newcomer.id)
     walked_in = draft.committed()
 
     engine.validate(walked_in)

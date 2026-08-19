@@ -1,6 +1,5 @@
 from collections.abc import Callable, Collection, Iterable, Mapping, Sequence
 from dataclasses import dataclass
-from functools import cached_property
 from typing import Self
 
 from pydantic import Field, JsonValue, model_validator
@@ -16,15 +15,7 @@ from aidm.state.base import (
     Trait,
     require_unique,
 )
-from aidm.state.world import (
-    CONNECTED,
-    Hook,
-    Memory,
-    Relation,
-    ScenarioMeta,
-    Thread,
-    WorldState,
-)
+from aidm.state.world import Hook, Memory, ScenarioMeta, Thread, WorldState
 
 
 @dataclass(frozen=True, slots=True)
@@ -44,39 +35,34 @@ class ScenarioWorld(Frozen):
     starting_location_id: EntityId
     starting_party: tuple[EntityId, ...] = ()
     entities: tuple[Entity, ...] = ()
-    relations: tuple[Relation, ...] = ()
     threads: tuple[Thread, ...] = ()
     memories: tuple[Memory, ...] = ()
     hooks: tuple[Hook, ...] = ()
 
-    @cached_property
+    @property
     def world(self) -> WorldState:
-        """The authored canon as the one shape that validates it. The file keys nothing by id
-        because an id-keyed JSON object collapses a duplicate silently."""
-        require_unique("entity ids", [entity.id for entity in self.entities])
-        require_unique("relations", [relation.id for relation in self.relations])
-        require_unique("threads", [thread.id for thread in self.threads])
-        require_unique("hooks", [hook.id for hook in self.hooks])
+        """The authored canon as the one shape that validates it. Built fresh each access but
+        shares its `Entity` objects with `self.entities`: read, never mutate, what this returns."""
         return WorldState(
-            entities={entity.id: entity for entity in self.entities},
-            relations={relation.id: relation for relation in self.relations},
-            threads={thread.id: thread for thread in self.threads},
+            entities=list(self.entities),
+            threads=list(self.threads),
             memories=list(self.memories),
-            hooks={hook.id: hook for hook in self.hooks},
+            hooks=list(self.hooks),
         )
 
     @model_validator(mode="after")
     def _playable_canon(self) -> Self:
-        if PLAYER_ID in self.world.entities:
+        world = self.world
+        if world.find(PLAYER_ID) is not None:
             raise ValueError(f"an entity claims the reserved player id {PLAYER_ID!r}")
-        starting_location = self.world.entities.get(self.starting_location_id)
+        starting_location = world.find(self.starting_location_id)
         if starting_location is None or starting_location.kind != "location":
             raise ValueError(
                 f"starting_location_id {self.starting_location_id!r} is not a location here"
             )
         require_unique("starting party", self.starting_party)
         for companion in self.starting_party:
-            actor = self.world.require_kind(companion, "actor")
+            actor = world.require_kind(companion, "actor")
             if not (actor.known and actor.parent_id == self.starting_location_id):
                 raise ValueError(
                     f"the player has met and stands beside who they set out with, "
@@ -86,10 +72,9 @@ class ScenarioWorld(Frozen):
 
     @model_validator(mode="after")
     def _every_location_reachable(self) -> Self:
-        """An unknown or locked way still counts — the player can discover or open it — but a
-        location no walk of `connected` relations reaches is content nobody can ever visit."""
-        ways = [relation for relation in self.relations if relation.kind == CONNECTED]
-        reached = _walk(ways, self.starting_location_id)
+        """A locked or unfound way still counts — the player can open or walk it — but a location
+        no walk of exits reaches is content nobody can ever visit."""
+        reached = _walk(self.entities, self.starting_location_id)
         unreachable = sorted(
             entity.id
             for entity in self.entities
@@ -97,36 +82,15 @@ class ScenarioWorld(Frozen):
         )
         if unreachable:
             raise ValueError(
-                f"locations no walk of `connected` relations reaches from "
+                f"locations no walk of exits reaches from "
                 f"{self.starting_location_id!r}: {unreachable}"
             )
         return self
 
     @model_validator(mode="after")
-    def _every_known_location_reachable_by_known_ways(self) -> Self:
-        """A player who knows a place exists but has no known way to walk there hits a refusal
-        for a place the premise told them about; movement is gated by `connected` relations, so
-        this is a real dead end, not a cosmetic one."""
-        known_ways = [
-            relation for relation in self.relations if relation.kind == CONNECTED and relation.known
-        ]
-        reached = _walk(known_ways, self.starting_location_id)
-        stranded = sorted(
-            entity.id
-            for entity in self.entities
-            if entity.kind == "location" and entity.known and entity.id not in reached
-        )
-        if stranded:
-            raise ValueError(
-                f"locations the player knows of but no known way reaches from "
-                f"{self.starting_location_id!r}: {stranded}"
-            )
-        return self
-
-    @model_validator(mode="after")
     def _hooks_name_authored_ids(self) -> Self:
-        entities = {PLAYER_ID, *self.world.entities}
-        threads = set(self.world.threads)
+        entities = {PLAYER_ID, *(entity.id for entity in self.entities)}
+        threads = {thread.id for thread in self.threads}
         dangling: list[str] = []
         for hook in self.hooks:
             named: list[tuple[str, str]] = [
@@ -146,19 +110,16 @@ class ScenarioWorld(Frozen):
         return self
 
 
-def _walk(ways: Sequence[Relation], start: EntityId) -> set[EntityId]:
-    """Every `connected` way is undirected, so a walk follows one from either end."""
+def _walk(entities: Sequence[Entity], start: EntityId) -> set[EntityId]:
+    by_id = {entity.id: entity for entity in entities}
     reached = {start}
     frontier = [start]
     while frontier:
-        here = frontier.pop()
-        for way in ways:
-            if not way.touches(here):
-                continue
-            far = way.far_end(here)
-            if far not in reached:
-                reached.add(far)
-                frontier.append(far)
+        here = by_id.get(frontier.pop())
+        for way in () if here is None else here.exits:
+            if way.to not in reached:
+                reached.add(way.to)
+                frontier.append(way.to)
     return reached
 
 
@@ -216,7 +177,7 @@ class Scenario(Frozen):
 
     @model_validator(mode="after")
     def _overlay_fits_the_world(self) -> Self:
-        _require_authored(self.engine, self.overlay.entities, self.world.world.entities)
+        _require_authored(self.engine, self.overlay.entities, self.world.world.all_ids())
         return self
 
 

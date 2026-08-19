@@ -1,9 +1,32 @@
+from collections.abc import Iterable
+
 from pydantic import Field
 
 from aidm.content.authored import ScenarioWorld
 from aidm.content.sources import ExpansionPolicy
-from aidm.state.base import Entity, EntityId, Frozen, Mutable, RelationId, Slug
-from aidm.state.world import Hook, Memory, Relation, ScenarioMeta, Thread
+from aidm.state.base import Entity, EntityId, Frozen, Mutable
+from aidm.state.world import Hook, Memory, ScenarioMeta, Thread
+
+
+def _index[T: Entity | Thread | Hook](kept: list[T], target: str) -> int | None:
+    return next((index for index, held in enumerate(kept) if held.id == target), None)
+
+
+def _upsert[T: Entity | Thread | Hook](kept: list[T], written: Iterable[T]) -> None:
+    for one in written:
+        found = _index(kept, one.id)
+        if found is None:
+            kept.append(one)
+        else:
+            kept[found] = one
+
+
+def _drop[T: Entity | Thread | Hook](kept: list[T], target: str) -> bool:
+    found = _index(kept, target)
+    if found is None:
+        return False
+    del kept[found]
+    return True
 
 
 class ScenarioPatch(Frozen):
@@ -23,7 +46,6 @@ class ScenarioPatch(Frozen):
         ),
     )
     entities: tuple[Entity, ...] = ()
-    relations: tuple[Relation, ...] = ()
     threads: tuple[Thread, ...] = ()
     memories: tuple[Memory, ...] = ()
     hooks: tuple[Hook, ...] = ()
@@ -38,11 +60,10 @@ class WorldDraft(Mutable):
     meta: ScenarioMeta | None = None
     starting_location_id: EntityId | None = None
     starting_party: tuple[EntityId, ...] = ()
-    entities: dict[EntityId, Entity] = Field(default_factory=dict)
-    relations: dict[RelationId, Relation] = Field(default_factory=dict)
-    threads: dict[Slug, Thread] = Field(default_factory=dict)
+    entities: list[Entity] = Field(default_factory=list)
+    threads: list[Thread] = Field(default_factory=list)
     memories: list[Memory] = Field(default_factory=list)
-    hooks: dict[Slug, Hook] = Field(default_factory=dict)
+    hooks: list[Hook] = Field(default_factory=list)
 
     def apply(self, patch: ScenarioPatch) -> str:
         wrote: list[str] = []
@@ -58,12 +79,8 @@ class WorldDraft(Mutable):
         if patch.art_style is not None:
             self.art_style = patch.art_style
             wrote.append("art_style")
-        for entity in patch.entities:
-            self.entities[entity.id] = entity
-        for relation in patch.relations:
-            self.relations[relation.id] = relation
-        for thread in patch.threads:
-            self.threads[thread.id] = thread
+        _upsert(self.entities, patch.entities)
+        _upsert(self.threads, patch.threads)
         # A memory is identified by its text, here and in the Worldkeeper's own dedupe.
         kept = [
             memory
@@ -71,13 +88,11 @@ class WorldDraft(Mutable):
             if all(held.text.casefold() != memory.text.casefold() for held in self.memories)
         ]
         self.memories.extend(kept)
-        for hook in patch.hooks:
-            self.hooks[hook.id] = hook
+        _upsert(self.hooks, patch.hooks)
         wrote.extend(
             f"{len(group)} {what}"
             for what, group in (
                 ("entities", patch.entities),
-                ("relations", patch.relations),
                 ("threads", patch.threads),
                 ("memories", kept),
                 ("hooks", patch.hooks),
@@ -91,19 +106,12 @@ class WorldDraft(Mutable):
         return f"wrote: {', '.join(wrote)}" if wrote else "nothing to change"
 
     def _remove(self, target: str) -> None:
-        if target in self.entities:
-            del self.entities[EntityId(target)]
-        elif target in self.relations:
-            del self.relations[RelationId(target)]
-        elif target in self.threads:
-            del self.threads[target]
-        elif target in self.hooks:
-            del self.hooks[target]
-        else:
-            raise ValueError(
-                f"nothing in the draft has id {target!r}; read `scenario_so_far` and remove ids "
-                "exactly as it spells them"
-            )
+        if _drop(self.entities, target) or _drop(self.threads, target) or _drop(self.hooks, target):
+            return
+        raise ValueError(
+            f"nothing in the draft has id {target!r}; read `scenario_so_far` and remove ids "
+            "exactly as it spells them"
+        )
 
     def as_json(self) -> str:
         """The draft as its author reads it back; `expansion` is the app's own policy, not canon
@@ -121,9 +129,8 @@ class WorldDraft(Mutable):
             art_style=self.art_style,
             starting_location_id=self.starting_location_id,
             starting_party=self.starting_party,
-            entities=tuple(self.entities.values()),
-            relations=tuple(self.relations.values()),
-            threads=tuple(self.threads.values()),
+            entities=tuple(self.entities),
+            threads=tuple(self.threads),
             memories=tuple(self.memories),
-            hooks=tuple(self.hooks.values()),
+            hooks=tuple(self.hooks),
         )

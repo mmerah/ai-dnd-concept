@@ -110,10 +110,39 @@ were carrying instruction, not just illustration.
   `test_a_beat_naming_a_roll_this_engine_has_not_is_refused` (the typed-union guard it covered is
   what the tool signatures now are), and 24xx's followup test. 191 → 187.
 
+### Phase 1 step 5 — Relation deleted
+
+- `Exit(to, known, locked)` lives on `Entity.exits` (locations only, ids unique, no self-exit) and
+  `WorldState.party` is a plain list. `Relation`, `RelationId`, `CONNECTED`, `PARTY_MEMBER`,
+  `world.relations/relation()/connections()/party()` and the `reveal_way` tool are gone.
+- Exits are directional and authors write both ends, so every rule about a way has to say what it
+  does to the way back. Walking one reveals both ends (the room the player just entered would
+  otherwise show no way out at all) and `unlock_exit` clears both (a one-way unlock strands them
+  behind the door they opened). A resolver that touches one exit and not its mirror is a bug.
+- `_check_party` refuses `player` in the party: `require_actor_here` accepts the player, and
+  `Advancement.offers` iterates `(PLAYER_ID, *party)`, so self-joining doubled their own offer.
+- `ScenarioWorld._every_known_location_reachable_by_known_ways` is deleted with them: an unknown
+  way is walkable now, so it described no dead end.
+- `turn/scene.py` lost its own `Exit`; `BaseScene` carries the state model plus `exit_names`, so a
+  name joins at render time and the Narrator's view still holds only known ways.
+- `ExpansionPatch.relations` → `exits: tuple[ExitLink, ...]` (`location_id` + `Exit`); a new
+  location carries its own exits back, and every materialized way starts unknown.
+- SAVE_VERSION 76 → 77.
+
+### Phase 1 step 6 — one collection shape for worlds
+
+- `WorldState.entities/threads/hooks` are ordered lists beside `memories` and `party`. Uniqueness
+  moved into `_consistent_fiction` (`duplicate entity ids`), which is what replaced the old
+  "keys disagree with their ids" invariant — with no key there is nothing to disagree.
+- Lookups are linear: `find`/`require`/`require_kind`, plus `thread(id)` and `hook(id)`. Worlds
+  hold under ten entities, so the scan is cheaper than the dict it replaced.
+- `ScenarioWorld.world` is a plain `@property` that hands its tuples straight to `WorldState`; it
+  builds a fresh one per read, which is why `begin_game` still deep-copies before mutating.
+- `WorldDraft` holds the same lists; `apply`/`_remove` upsert and drop by id through one
+  `_upsert`/`_drop` pair over a read-only `id` protocol.
+- SAVE_VERSION 77 → 78; only the JSON container shape moved.
+
 ## Next
 
-- Phase 1 step 5 — delete Relation: `Exit(to, known, locked)` on `Entity.exits`,
-  `WorldState.party`, movement auto-revealing an unknown exit, `reveal_way` deleted while
-  `unlock_exit`/`join_party`/`leave_party` keep their schemas. Persisted bytes move there: bump
-  SAVE_VERSION + FIXTURE_SAVE_VERSION and regenerate `save`/`state`/`turn`.
-- Re-run `evals/turn_eval.py` once after step 4 to confirm the deletion moved nothing.
+- Phase 1 step 7 — separate runtime `Game` from `SavedGame`.
+- Re-run `evals/turn_eval.py` once to confirm steps 5 and 6 moved nothing.

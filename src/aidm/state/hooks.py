@@ -35,7 +35,7 @@ def _hook_round(draft: GameState, facts: Sequence[Fact]) -> list[Fact]:
     }
     fired: list[Fact] = []
     world = draft.world
-    for hook in world.hooks.values():
+    for hook in world.hooks:
         if hook.id in world.fired_hooks or hook.on_discover not in discovered:
             continue
         world.fired_hooks = (*world.fired_hooks, hook.id)

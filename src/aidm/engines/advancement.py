@@ -45,7 +45,7 @@ class Advancement(ABC):
                 prompt=f"{state.world.require(subject_id).name} {self.occasion}.",
                 text=self.offer_text,
             )
-            for subject_id in (PLAYER_ID, *state.world.party())
+            for subject_id in (PLAYER_ID, *state.world.party)
             if earned > self.ledger(state, subject_id).current
         )
 

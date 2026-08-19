@@ -19,8 +19,7 @@ Status of the proof of concept, and where it should go. Kept short on purpose. P
 ### Canon quality
 
 - Growth can only create, never deepen. `WorldkeeperReport` carries creations and nothing else, so an entity the story develops gets no update.
-- A relation carries `known` and `locked` and nothing else — no note, no state of its own — so a connection can be locked but not described.
-- Core interprets exactly two relation kinds (`connected`, `party-member`). Any other kind a role writes is inert state that only a prompt reads.
+- An exit carries `known` and `locked` and nothing else — no note, no state of its own — so a way can be locked but not described.
 - A hook waits on one entity's discovery and fires once, so nothing else a turn produces can be waited on and no consequence can repeat. Chaining works: hooks fire in bounded rounds within a turn (`MAX_HOOK_ROUNDS` in `state/hooks.py`), so one hook's reveal fires the hook waiting on it.
 
 ### Structure and scale

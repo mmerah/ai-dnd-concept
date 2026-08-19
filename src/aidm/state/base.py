@@ -22,13 +22,12 @@ Kind = Literal["actor", "location", "item"]
 ThreadStatus = Literal["active", "resolved", "dormant"]
 EngineId = NewType("EngineId", str)
 EntityId = NewType("EntityId", str)
-RelationId = NewType("RelationId", str)
 SLUG_PATTERN = r"[a-z0-9]+(?:-[a-z0-9]+)*"
 SLUG_MAX = 64
 Slug = Annotated[str, Field(pattern=rf"^{SLUG_PATTERN}$", max_length=SLUG_MAX)]
 
 PLAYER_ID = EntityId("player")
-SAVE_VERSION = 76
+SAVE_VERSION = 78
 
 
 def content_id(value: str) -> Slug:
@@ -101,6 +100,14 @@ class Trait(Frozen):
     text: str = ""
 
 
+class Exit(Mutable):
+    """A way out of one location, in one direction: an author writes both ends."""
+
+    to: EntityId
+    known: bool = False
+    locked: bool = False
+
+
 class Entity(Mutable):
     id: EntityId
     kind: Kind
@@ -111,11 +118,22 @@ class Entity(Mutable):
     # Which kinds may hold which is one rule, in `world.check_placement`.
     parent_id: EntityId | None = None
     traits: list[Trait] = Field(default_factory=list)
+    exits: list[Exit] = Field(default_factory=list)
 
     def trait(self, trait_id: str) -> Trait | None:
         return next((held for held in self.traits if held.id == trait_id), None)
 
+    def exit_to(self, to_id: EntityId) -> Exit | None:
+        return next((way for way in self.exits if way.to == to_id), None)
+
     @model_validator(mode="after")
     def _traits_are_unambiguous(self) -> Self:
         require_unique(f"trait ids on {self.id!r}", (held.id for held in self.traits))
+        return self
+
+    @model_validator(mode="after")
+    def _exits_are_unambiguous(self) -> Self:
+        require_unique(f"exits of {self.id!r}", (way.to for way in self.exits))
+        if any(way.to == self.id for way in self.exits):
+            raise ValueError(f"location {self.id!r} has an exit to itself")
         return self

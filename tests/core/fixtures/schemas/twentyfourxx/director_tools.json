@@ -164,28 +164,6 @@
     }
   },
   {
-    "name": "reveal_way",
-    "description": "Show the player a way through they did not know about. Call this before moving them\nthrough a passage they have not found.",
-    "parameters": {
-      "additionalProperties": false,
-      "properties": {
-        "location_id": {
-          "description": "Exact id of the location the way leads from.",
-          "type": "string"
-        },
-        "to_id": {
-          "description": "Exact id of the location it leads to.",
-          "type": "string"
-        }
-      },
-      "required": [
-        "location_id",
-        "to_id"
-      ],
-      "type": "object"
-    }
-  },
-  {
     "name": "unlock_exit",
     "description": "Open a locked way when the fiction opens it — a key turned, a bar lifted, a seal broken.",
     "parameters": {

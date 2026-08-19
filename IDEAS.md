@@ -9,6 +9,7 @@
 - [] Narrator does not see speaker memory when player adress someone.
 - [] pyproject.toml should FIX versions.
 - [] Run "uv run python evals/turn_eval.py run --label my-run" multiple times and identify where things are inconsistent. Then figure out fixes (maybe the tools are too difficult to use, need to be separated, or a multi-step thing converted into a tool that combine operations, maybe instruction clarity, maybe examples in tools description to teach the model, ...)
+- [] Make scenario authoring easier for agents (Tools? Format? Loop? ...)
 
 ## Ideas
 
@@ -20,3 +21,4 @@
 - [] NPC can join/leave player party. NPC can also level-up.
 - [] Conversation/Message history: passed straight but without context. Would be nice if it had location where the message happened at least, would help when agent receive a list of message
 - [] Engines: more modular? what about combat? should it also be similar to advancement where it ships with a UI as well. Thus we can have an oracle combat, story combat or any other combat system that the engine define?
+- [] would make “hidden canon relevant to this scene” a deterministic projection: adjacent locations, entities referenced by current threads/hooks, things related to present entities, etc. Keep the full canon in state, but don't assume the model needs the whole database every turn.

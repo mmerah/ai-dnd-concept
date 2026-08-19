@@ -2,19 +2,11 @@ from core_test_support import LONER3E
 
 from aidm.app.views import JournalView, journal_markdown, played_turns, player_scene
 from aidm.engines.loner3e.mechanics import Mechanics, Sheet
-from aidm.state.base import PLAYER_ID, SAVE_VERSION, Counter, Entity, EntityId, Kind
+from aidm.state.base import PLAYER_ID, SAVE_VERSION, Counter, Entity, EntityId, Exit, Kind
 from aidm.state.facts import Fact
 from aidm.state.history import Exchange, Line
 from aidm.state.trace import Applied, Turn
-from aidm.state.world import (
-    CONNECTED,
-    GameState,
-    Memory,
-    Relation,
-    ScenarioMeta,
-    Thread,
-    WorldState,
-)
+from aidm.state.world import GameState, Memory, ScenarioMeta, Thread, WorldState
 
 
 def _entity(entity_id: str, kind: Kind, name: str, brief: str, **fields: object) -> Entity:
@@ -25,19 +17,18 @@ def _entity(entity_id: str, kind: Kind, name: str, brief: str, **fields: object)
 
 def state() -> GameState:
     entities = (
-        _entity("study", "location", "Study", "A small room.", known=True),
+        _entity(
+            "study",
+            "location",
+            "Study",
+            "A small room.",
+            known=True,
+            exits=[Exit(to=EntityId("crypt"))],
+        ),
         _entity("player", "actor", "Kael", "A hunter.", known=True, parent_id="study"),
         _entity("mara", "actor", "Mara", "A known scribe.", known=True, parent_id="study"),
         _entity("hidden-actor", "actor", "The Secret", "Unrevealed canon.", parent_id="study"),
         _entity("crypt", "location", "Crypt", "A sealed vault.", known=False),
-    )
-    relations = (
-        Relation(
-            kind=CONNECTED,
-            source=EntityId("crypt"),
-            target=EntityId("study"),
-            known=False,
-        ),
     )
     threads = (
         Thread(
@@ -58,9 +49,8 @@ def state() -> GameState:
         scenario=ScenarioMeta(title="Test", premise="Test"),
         engine=LONER3E,
         world=WorldState(
-            entities={entity.id: entity for entity in entities},
-            relations={relation.id: relation for relation in relations},
-            threads={thread.id: thread for thread in threads},
+            entities=list(entities),
+            threads=list(threads),
             memories=list(memories),
         ),
     )
@@ -74,7 +64,7 @@ def test_the_player_scene_holds_no_unrevealed_entity_or_unknown_exit() -> None:
     scene = player_scene(state())
 
     assert "The Secret" not in str(scene.model_dump())
-    assert "crypt" not in {exit.location_id for exit in scene.exits}
+    assert "crypt" not in {exit.to for exit in scene.exits}
     assert EntityId("mara") in {entity.id for entity in scene.here}
 
 

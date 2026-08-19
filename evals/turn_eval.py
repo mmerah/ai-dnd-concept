@@ -13,7 +13,7 @@ from aidm.content.store import load_character, load_scenario
 from aidm.engines.engine import Engine
 from aidm.engines.sheets import SheetBase
 from aidm.state.base import EngineId, EntityId, Frozen
-from aidm.state.world import CONNECTED, GameState
+from aidm.state.world import GameState
 from aidm.turn.agents import build_turn_agents
 from aidm.turn.pipeline import TurnResult, run_turn
 
@@ -82,13 +82,17 @@ def begin(engine_id: EngineId, settings: Settings) -> tuple[Engine[SheetBase], G
 def staged(state: GameState, at: str, ways: Sequence[tuple[str, str]]) -> GameState:
     draft = state.draft()
     for source, target in ways:
-        way = draft.world.relation(CONNECTED, EntityId(source), EntityId(target))
-        if way is None:
+        source_id, target_id = EntityId(source), EntityId(target)
+        exit_ = draft.world.require_kind(source_id, "location").exit_to(target_id)
+        if exit_ is None:
             raise ValueError(f"no way joins {source!r} and {target!r}")
-        # A known way needs both ends known: the world refuses a relation to an unmet place.
-        for end in (way.source, way.target):
-            draft.world.require(end).known = True
-        way.known = True
+        # A known way needs both ends known: the world refuses a known exit to an unmet place.
+        draft.world.require(source_id).known = True
+        draft.world.require(target_id).known = True
+        exit_.known = True
+        mirror = draft.world.require_kind(target_id, "location").exit_to(source_id)
+        if mirror is not None:
+            mirror.known = True
     draft.player.parent_id = EntityId(at)
     return draft.committed()
 
@@ -104,7 +108,7 @@ def inside(result: TurnResult, entity_id: str, holder: str) -> bool:
 
 
 def staged_at(result: TurnResult, thread_id: str, stage: str) -> bool:
-    thread = result.state.world.threads.get(thread_id)
+    thread = result.state.world.thread(thread_id)
     return thread is not None and thread.stage == stage
 
 

@@ -56,7 +56,7 @@ DOCUMENT = RecordSource(
 )
 # Nothing in it shares a word with the anchor or the need below, so every search of it misses.
 UNHELPFUL = RecordSource(records=DOCUMENT.records[1:])
-WAY = {"kind": "connected", "source": "cloister", "target": "sunken_gallery"}
+WAY = {"location_id": "cloister", "to": "sunken_gallery"}
 DOWNWARD = "I follow the stair down past the cloister."
 
 
@@ -88,7 +88,6 @@ async def test_travel_beyond_the_frontier_expands_the_world_inside_one_turn() ->
                 need="the place the stair below the cloister descends to",
             ),
             tool_call("move", entity_id="player", to_id="cloister"),
-            tool_call("reveal_way", location_id="cloister", to_id="sunken_gallery"),
             tool_call("move", entity_id="player", to_id="sunken_gallery"),
             text("Water closes over your boots."),
         )
@@ -98,7 +97,7 @@ async def test_travel_beyond_the_frontier_expands_the_world_inside_one_turn() ->
         state,
         DOWNWARD,
         director=director,
-        expander=FunctionModel(scripted(structured(entities=[GALLERY, WATCHER], relations=[WAY]))),
+        expander=FunctionModel(scripted(structured(entities=[GALLERY, WATCHER], exits=[WAY]))),
         source=FRONTIER,
         narrator=FunctionModel(scripted(narrated("Water closes over your boots."))),
     )
@@ -151,7 +150,7 @@ async def test_an_expander_created_actor_receives_valid_engine_rules_before_comm
         DOWNWARD,
         director=director,
         expander=FunctionModel(
-            scripted(structured(entities=[GALLERY, WATCHER, letter], relations=[WAY]))
+            scripted(structured(entities=[GALLERY, WATCHER, letter], exits=[WAY]))
         ),
         source=FRONTIER,
     )
@@ -204,7 +203,6 @@ async def test_a_cited_expansion_is_shown_the_passages_the_director_asked_for() 
                 queries=["undercroft", "flooded galleries"],
             ),
             tool_call("move", entity_id="player", to_id="cloister"),
-            tool_call("reveal_way", location_id="cloister", to_id="sunken_gallery"),
             tool_call("move", entity_id="player", to_id="sunken_gallery"),
             text("Water closes over your boots."),
         )
@@ -215,7 +213,7 @@ async def test_a_cited_expansion_is_shown_the_passages_the_director_asked_for() 
         DOWNWARD,
         director=director,
         # One answer: nothing about the source can refuse a patch, so nothing costs a retry.
-        expander=FunctionModel(scripted(structured(entities=[GALLERY], relations=[WAY]))),
+        expander=FunctionModel(scripted(structured(entities=[GALLERY], exits=[WAY]))),
         source=DOCUMENT,
         narrator=FunctionModel(scripted(narrated("Water closes over your boots."))),
     )
@@ -269,7 +267,7 @@ async def test_a_fallback_source_says_the_document_is_silent() -> None:
         state,
         DOWNWARD,
         director=director,
-        expander=FunctionModel(scripted(structured(entities=[GALLERY], relations=[WAY]))),
+        expander=FunctionModel(scripted(structured(entities=[GALLERY], exits=[WAY]))),
         source=CitedOrInventedSource(document=UNHELPFUL, premise=FRONTIER.text),
     )
 

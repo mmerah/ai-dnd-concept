@@ -15,7 +15,13 @@
       "detail": null,
       "known": true,
       "parent_id": null,
-      "traits": []
+      "traits": [],
+      "exits": [
+        {
+          "to": "bell_house",
+          "known": true
+        }
+      ]
     },
     {
       "id": "bell_house",
@@ -28,7 +34,16 @@
       },
       "known": true,
       "parent_id": null,
-      "traits": []
+      "traits": [],
+      "exits": [
+        {
+          "to": "tarns_end",
+          "known": true
+        },
+        {
+          "to": "lantern_chapel"
+        }
+      ]
     },
     {
       "id": "lantern_chapel",
@@ -41,7 +56,16 @@
       },
       "known": false,
       "parent_id": null,
-      "traits": []
+      "traits": [],
+      "exits": [
+        {
+          "to": "bell_house"
+        },
+        {
+          "to": "crypt_entrance",
+          "locked": true
+        }
+      ]
     },
     {
       "id": "crypt_entrance",
@@ -54,7 +78,13 @@
       },
       "known": false,
       "parent_id": null,
-      "traits": []
+      "traits": [],
+      "exits": [
+        {
+          "to": "lantern_chapel",
+          "locked": true
+        }
+      ]
     },
     {
       "id": "ovid_sarn",
@@ -88,27 +118,6 @@
       "known": false,
       "parent_id": "bell_house",
       "traits": []
-    }
-  ],
-  "relations": [
-    {
-      "kind": "connected",
-      "source": "tarns_end",
-      "target": "bell_house",
-      "known": true
-    },
-    {
-      "kind": "connected",
-      "source": "bell_house",
-      "target": "lantern_chapel",
-      "known": false
-    },
-    {
-      "kind": "connected",
-      "source": "lantern_chapel",
-      "target": "crypt_entrance",
-      "known": false,
-      "locked": true
     }
   ],
   "threads": [

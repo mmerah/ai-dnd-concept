@@ -1,12 +1,8 @@
-from typing import Literal
-
 from pydantic import JsonValue
 
-from .base import PLAYER_ID, Entity, EntityId, Slug, Trait, slug
+from .base import PLAYER_ID, Entity, EntityId, Exit, Slug, Trait, slug
 from .facts import Fact, entity_fact
-from .world import CONNECTED, PARTY_MEMBER, AdvanceThread, GameState, Relation
-
-type RelationMode = Literal["add", "remove", "unlock", "reveal"]
+from .world import AdvanceThread, GameState
 
 
 def reveal(draft: GameState, entity_id: EntityId) -> list[Fact]:
@@ -32,26 +28,18 @@ def reveal_target(draft: GameState, entity_id: EntityId) -> tuple[Entity, list[F
     return entity, seen
 
 
-def _require_open_way(draft: GameState, here: EntityId, destination: Entity) -> None:
-    found = draft.world.relation(CONNECTED, here, destination.id)
+def _walkable_exit(draft: GameState, here: Entity, destination: Entity) -> Exit:
+    found = here.exit_to(destination.id)
     if found is None:
-        open_exits = [
-            draft.world.require(way.far_end(here)).name
-            for way in draft.world.connections(here)
-            if way.known and not way.locked
-        ]
+        open_exits = [draft.world.require(way.to).name for way in here.exits if not way.locked]
         reachable = ", ".join(open_exits) or "(none)"
         raise ValueError(
             f"no way leads from here to {destination.name}. From here the player can reach: "
             f"{reachable}"
         )
-    if not found.known:
-        raise ValueError(
-            f"the player has not found the way to {destination.name} yet: call `reveal_way` for "
-            "it first, then move them again"
-        )
     if found.locked:
         raise ValueError(f"the way to {destination.name} is locked and must be dealt with first")
+    return found
 
 
 def move(draft: GameState, entity_id: EntityId, to_id: EntityId) -> list[Fact]:
@@ -65,9 +53,15 @@ def _move_actor(draft: GameState, actor_id: EntityId, to_id: EntityId) -> list[F
     destination = draft.world.require_kind(to_id, "location")
     here = draft.player_location
     if actor_id == PLAYER_ID:
-        _require_open_way(draft, here, destination)
+        way = _walkable_exit(draft, draft.world.require(here), destination)
+        # Walking a way is finding it, in both directions: the player who arrived can see the
+        # door they came through, and the destination is revealed below, so both ends are known.
+        way.known = True
+        back = destination.exit_to(here)
+        if back is not None:
+            back.known = True
         facts = [*draft.reveal(destination), draft.move(draft.player, destination)]
-        for member_id in draft.world.party():
+        for member_id in draft.world.party:
             member = draft.world.require_kind(member_id, "actor")
             if member.parent_id != destination.id:
                 facts.append(draft.move(member, destination))
@@ -133,78 +127,52 @@ def remove_trait(draft: GameState, entity_id: EntityId, trait_id: Slug) -> list[
     return [*seen, entity_fact(entity, "trait_removed", trace, {"trait_id": trait_id})]
 
 
-def _relation_of(
-    draft: GameState, kind: Slug, source: EntityId, target_id: EntityId
-) -> tuple[Relation, Entity, Entity]:
-    relation = draft.world.relation(kind, source, target_id)
-    if relation is None:
-        raise ValueError(f"no {kind!r} relation joins {source!r} and {target_id!r}")
-    return relation, draft.world.require(relation.source), draft.world.require(relation.target)
-
-
-def relation_change(
-    draft: GameState, mode: RelationMode, kind: Slug, source_id: EntityId, target_id: EntityId
-) -> list[Fact]:
-    seen: list[Fact] = []
-    if mode == "add":
-        if draft.world.relation(kind, source_id, target_id) is not None:
-            raise ValueError(f"a {kind!r} relation already joins {source_id!r} and {target_id!r}")
-        source = (
-            require_actor_here(draft, source_id)
-            if kind == PARTY_MEMBER
-            else draft.world.require(source_id)
+def unlock_exit(draft: GameState, location_id: EntityId, to_id: EntityId) -> list[Fact]:
+    here = draft.world.require_kind(location_id, "location")
+    there = draft.world.require_kind(to_id, "location")
+    way = here.exit_to(to_id)
+    if way is None:
+        raise ValueError(f"no way leads from {here.name} to {there.name}")
+    if not way.locked:
+        raise ValueError(f"the way from {here.name} to {there.name} is not locked")
+    way.locked = False
+    # A lock holds both ways, so leaving the way back shut would strand the player behind it.
+    back = there.exit_to(location_id)
+    if back is not None:
+        back.locked = False
+    return [
+        entity_fact(
+            here,
+            "exit_unlocked",
+            f"the way from {here.name} to {there.name} is unlocked",
+            {"to_id": to_id},
+            narrate=way.known,
         )
-        receiver = draft.world.require(target_id)
-        relation = Relation(kind=kind, source=source_id, target=target_id, known=True)
-        seen = [*draft.reveal(source), *draft.reveal(receiver)]
-        draft.world.relations[relation.id] = relation
-    else:
-        relation, source, receiver = _relation_of(draft, kind, source_id, target_id)
-    joined = f"{source.name} — {relation.kind} — {receiver.name}"
-    data: dict[str, JsonValue] = {"kind": relation.kind, "target": relation.target}
-    match mode:
-        case "add":
-            return [*seen, entity_fact(source, "relation_added", joined, data)]
-        case "remove":
-            del draft.world.relations[relation.id]
-            return [
-                entity_fact(
-                    source,
-                    "relation_removed",
-                    f"{joined} broken",
-                    data,
-                    narrate=relation.known,
-                )
-            ]
-        case "unlock":
-            if not relation.locked:
-                raise ValueError(f"the {relation.kind!r} relation is not locked")
-            relation.locked = False
-            return [
-                entity_fact(
-                    source,
-                    "relation_unlocked",
-                    f"{joined} unlocked",
-                    data,
-                    narrate=relation.known,
-                )
-            ]
-        case "reveal":
-            if relation.known:
-                return []
-            seen = [*draft.reveal(source), *draft.reveal(receiver)]
-            relation.known = True
-            return [
-                *seen,
-                entity_fact(source, "relation_revealed", f"{joined} revealed", data),
-            ]
+    ]
+
+
+def join_party(draft: GameState, actor_id: EntityId) -> list[Fact]:
+    actor = require_actor_here(draft, actor_id)
+    if actor_id in draft.world.party:
+        raise ValueError(f"{actor.name} already travels with the player")
+    seen = draft.reveal(actor)
+    draft.world.party.append(actor_id)
+    return [*seen, entity_fact(actor, "party_joined", f"{actor.name} travels with the player", {})]
+
+
+def leave_party(draft: GameState, actor_id: EntityId) -> list[Fact]:
+    actor = draft.world.require_kind(actor_id, "actor")
+    if actor_id not in draft.world.party:
+        raise ValueError(f"{actor.name} does not travel with the player")
+    draft.world.party.remove(actor_id)
+    return [entity_fact(actor, "party_left", f"{actor.name} no longer travels with the player", {})]
 
 
 def advance_thread(draft: GameState, effect: AdvanceThread) -> list[Fact]:
     """Threads are the Director's bookkeeping, so nothing here reaches the Narrator."""
-    thread = draft.world.threads.get(effect.thread_id)
+    thread = draft.world.thread(effect.thread_id)
     if thread is None:
-        known = ", ".join(sorted(draft.world.threads)) or "(none)"
+        known = ", ".join(sorted(thread.id for thread in draft.world.threads)) or "(none)"
         raise ValueError(f"unknown thread {effect.thread_id!r}. The threads are: {known}")
     clock = thread.clock
     if effect.tick:

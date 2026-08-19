@@ -1,14 +1,7 @@
 from collections.abc import Iterable, Mapping
 
-from aidm.state.base import PLAYER_ID, Entity, EntityId, Frozen
+from aidm.state.base import PLAYER_ID, Entity, EntityId, Exit, Frozen
 from aidm.state.world import GameState, Memory, Thread
-
-
-class Exit(Frozen):
-    location_id: EntityId
-    name: str
-    known: bool
-    locked: bool
 
 
 class BaseScene(Frozen):
@@ -19,9 +12,13 @@ class BaseScene(Frozen):
     known_elsewhere: tuple[Entity, ...]
     placements: dict[EntityId, str]
     exits: tuple[Exit, ...] = ()
+    exit_names: dict[EntityId, str] = {}
 
     def placement_of(self, entity: Entity) -> str:
         return self.placements[entity.id]
+
+    def exit_name(self, way: Exit) -> str:
+        return self.exit_names[way.to]
 
 
 class SceneSnapshot(BaseScene):
@@ -37,7 +34,7 @@ class SceneSnapshot(BaseScene):
         world = state.world
         player = state.player
         location = world.require_kind(state.player_location, "location")
-        canon = tuple(world.entities.values())
+        canon = tuple(world.entities)
         by_id = {entity.id: entity for entity in canon}
         shown = [entity for entity in canon if entity.id != PLAYER_ID]
         inventory = world.children(PLAYER_ID, "item")
@@ -46,26 +43,14 @@ class SceneSnapshot(BaseScene):
             entity for entity in shown if entity.id not in carried_ids and entity.id != location.id
         ]
         locations = {entity.id: world.location_of(entity) for entity in placed}
-        party = world.party()
+        party = tuple(world.party)
         present = {
             PLAYER_ID,
             location.id,
             *(held for held, place in locations.items() if place == location.id),
         }
-        exits = tuple(
-            sorted(
-                (
-                    Exit(
-                        location_id=relation.far_end(location.id),
-                        name=world.require(relation.far_end(location.id)).name,
-                        known=relation.known,
-                        locked=relation.locked,
-                    )
-                    for relation in world.connections(location.id)
-                ),
-                key=lambda exit: exit.name,
-            )
-        )
+        exit_names = {way.to: world.require(way.to).name for way in location.exits}
+        exits = tuple(sorted(location.exits, key=lambda way: exit_names[way.to]))
         return cls(
             player=player,
             location=location,
@@ -84,10 +69,11 @@ class SceneSnapshot(BaseScene):
             canon=canon,
             placements=_placements(by_id, canon, frozenset(by_id), party),
             exits=exits,
+            exit_names=exit_names,
             party=party,
             threads=tuple(
                 sorted(
-                    (thread for thread in world.threads.values() if thread.status != "resolved"),
+                    (thread for thread in world.threads if thread.status != "resolved"),
                     key=lambda thread: thread.title,
                 )
             ),
@@ -117,6 +103,7 @@ class VisibleScene(BaseScene):
             *snapshot.known_elsewhere,
         )
         met = frozenset(entity.id for entity in snapshot.canon if entity.known)
+        known_exits = tuple(way for way in snapshot.exits if way.known)
         return cls(
             player=_undetailed(snapshot.player),
             location=_undetailed(snapshot.location),
@@ -124,7 +111,8 @@ class VisibleScene(BaseScene):
             here=tuple(_undetailed(entity) for entity in snapshot.here),
             known_elsewhere=tuple(_undetailed(entity) for entity in snapshot.known_elsewhere),
             placements=_placements(by_id, shown, met, snapshot.party),
-            exits=tuple(exit for exit in snapshot.exits if exit.known),
+            exits=known_exits,
+            exit_names={way.to: snapshot.exit_name(way) for way in known_exits},
         )
 
 

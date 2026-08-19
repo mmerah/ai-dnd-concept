@@ -1,5 +1,5 @@
 {
-  "save_version": 76,
+  "save_version": 78,
   "scenario_id": "whispering-vault",
   "character_id": "kael",
   "scenario": {
@@ -8,8 +8,8 @@
   },
   "engine": "loner3e",
   "world": {
-    "entities": {
-      "study": {
+    "entities": [
+      {
         "id": "study",
         "kind": "location",
         "name": "the abbot's study",
@@ -17,9 +17,16 @@
         "detail": null,
         "known": true,
         "parent_id": null,
-        "traits": []
+        "traits": [],
+        "exits": [
+          {
+            "to": "cloister",
+            "known": true,
+            "locked": false
+          }
+        ]
       },
-      "cloister": {
+      {
         "id": "cloister",
         "kind": "location",
         "name": "the cloister",
@@ -27,9 +34,26 @@
         "detail": null,
         "known": true,
         "parent_id": null,
-        "traits": []
+        "traits": [],
+        "exits": [
+          {
+            "to": "study",
+            "known": true,
+            "locked": false
+          },
+          {
+            "to": "bell_tower",
+            "known": false,
+            "locked": false
+          },
+          {
+            "to": "vault",
+            "known": false,
+            "locked": true
+          }
+        ]
       },
-      "bell_tower": {
+      {
         "id": "bell_tower",
         "kind": "location",
         "name": "the bell tower",
@@ -37,9 +61,16 @@
         "detail": null,
         "known": false,
         "parent_id": null,
-        "traits": []
+        "traits": [],
+        "exits": [
+          {
+            "to": "cloister",
+            "known": false,
+            "locked": false
+          }
+        ]
       },
-      "vault": {
+      {
         "id": "vault",
         "kind": "location",
         "name": "the sealed vault",
@@ -47,9 +78,16 @@
         "detail": null,
         "known": false,
         "parent_id": null,
-        "traits": []
+        "traits": [],
+        "exits": [
+          {
+            "to": "cloister",
+            "known": false,
+            "locked": true
+          }
+        ]
       },
-      "mara": {
+      {
         "id": "mara",
         "kind": "actor",
         "name": "Mara",
@@ -57,9 +95,10 @@
         "detail": null,
         "known": true,
         "parent_id": "study",
-        "traits": []
+        "traits": [],
+        "exits": []
       },
-      "tomas": {
+      {
         "id": "tomas",
         "kind": "actor",
         "name": "Brother Tomas",
@@ -67,9 +106,10 @@
         "detail": null,
         "known": true,
         "parent_id": "cloister",
-        "traits": []
+        "traits": [],
+        "exits": []
       },
-      "elena": {
+      {
         "id": "elena",
         "kind": "actor",
         "name": "Elena",
@@ -77,9 +117,10 @@
         "detail": null,
         "known": false,
         "parent_id": "bell_tower",
-        "traits": []
+        "traits": [],
+        "exits": []
       },
-      "cloister_rat": {
+      {
         "id": "cloister_rat",
         "kind": "actor",
         "name": "a bloated rat",
@@ -87,9 +128,10 @@
         "detail": null,
         "known": false,
         "parent_id": "cloister",
-        "traits": []
+        "traits": [],
+        "exits": []
       },
-      "vault_map": {
+      {
         "id": "vault_map",
         "kind": "item",
         "name": "the vault map",
@@ -97,9 +139,10 @@
         "detail": null,
         "known": false,
         "parent_id": "study",
-        "traits": []
+        "traits": [],
+        "exits": []
       },
-      "lantern": {
+      {
         "id": "lantern",
         "kind": "item",
         "name": "a guttering lantern",
@@ -113,9 +156,10 @@
             "name": "Unsteady Lantern",
             "text": "(gear) Its shifting light exposes seams and movement in deep shadow."
           }
-        ]
+        ],
+        "exits": []
       },
-      "player": {
+      {
         "id": "player",
         "kind": "actor",
         "name": "Kael",
@@ -134,34 +178,12 @@
             "name": "Marked by the Past",
             "text": "(frailty) Old scars make certain memories hard to face."
           }
-        ]
+        ],
+        "exits": []
       }
-    },
-    "relations": {
-      "connected/cloister/study": {
-        "kind": "connected",
-        "source": "study",
-        "target": "cloister",
-        "known": true,
-        "locked": false
-      },
-      "connected/bell_tower/cloister": {
-        "kind": "connected",
-        "source": "cloister",
-        "target": "bell_tower",
-        "known": false,
-        "locked": false
-      },
-      "connected/cloister/vault": {
-        "kind": "connected",
-        "source": "cloister",
-        "target": "vault",
-        "known": false,
-        "locked": true
-      }
-    },
-    "threads": {
-      "vault-seal": {
+    ],
+    "threads": [
+      {
         "id": "vault-seal",
         "title": "The sealed vault",
         "status": "active",
@@ -169,7 +191,7 @@
         "note": "Kael came for the vault and does not yet know where its door is.",
         "clock": null
       }
-    },
+    ],
     "memories": [
       {
         "owner": null,
@@ -180,8 +202,8 @@
         "text": "Mara catalogued the vault ledgers beside Elena for two winters, until the night Elena went below alone and never came back up."
       }
     ],
-    "hooks": {
-      "vault-sighted": {
+    "hooks": [
+      {
         "id": "vault-sighted",
         "on_discover": "vault",
         "note": "Kael has found the vault door: the seal answers a touch, and something behind it answers with it. Press on what opening the seal will cost.",
@@ -194,7 +216,7 @@
           "tick": 0
         }
       },
-      "vault-charted": {
+      {
         "id": "vault-charted",
         "on_discover": "vault_map",
         "note": "The chart marks the stair to the vault door. Press on what opening the seal will cost.",
@@ -209,7 +231,7 @@
           "tick": 0
         }
       },
-      "archivist-found": {
+      {
         "id": "archivist-found",
         "on_discover": "elena",
         "note": "Elena remembers the rite that sealed the vault. Let her name her price for it.",
@@ -222,7 +244,8 @@
           "tick": 0
         }
       }
-    },
+    ],
+    "party": [],
     "fired_hooks": [],
     "pending_notes": []
   },

@@ -9,7 +9,6 @@ from aidm.content.store import engine_text, load_character
 from aidm.engines.engine import Engine
 from aidm.engines.sheets import SheetBase
 from aidm.state.base import Slug
-from aidm.state.world import CONNECTED
 
 from ..session import begin_game, build_engine
 from .draft import WorldDraft
@@ -51,11 +50,11 @@ def _bar_unmet(world: ScenarioWorld) -> list[str]:
     locations = sorted(entity.id for entity in world.entities if entity.kind == "location")
     if len(locations) < 4:
         unmet.append(f"four or more locations; the draft has {len(locations)}: {locations}")
-    ways = [relation for relation in world.relations if relation.kind == CONNECTED]
+    ways = [way for entity in world.entities for way in entity.exits]
     if all(way.known for way in ways):
-        unmet.append("at least one `connected` relation starting `known: false` — a way to find")
+        unmet.append("at least one exit starting `known: false` — a way to find")
     if not any(way.locked for way in ways):
-        unmet.append("at least one `connected` relation starting `locked: true`")
+        unmet.append("at least one exit starting `locked: true`")
     actors = [entity for entity in world.entities if entity.kind == "actor"]
     if len(actors) < 2:
         actor_ids = sorted(actor.id for actor in actors)

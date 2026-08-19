@@ -12,7 +12,6 @@ from .base import (
     Frozen,
     Kind,
     Mutable,
-    RelationId,
     Slug,
     ThreadStatus,
     require_unique,
@@ -37,42 +36,6 @@ def check_placement(entity: Entity, holder: Entity | None) -> None:
         raise ValueError(f"{entity.kind} {entity.id!r} is not in a valid {' or '.join(allowed)}")
     if holder.kind not in allowed:
         raise ValueError(f"{entity.kind} {entity.id!r} is in a {holder.kind}, which cannot hold it")
-
-
-CONNECTED: Slug = "connected"
-PARTY_MEMBER: Slug = "party-member"
-
-
-class Relation(Mutable):
-    """A lasting tie that is not containment: `parent_id` still owns the holder topology."""
-
-    kind: Slug
-    source: EntityId
-    target: EntityId
-    known: bool = False
-    locked: bool = False
-
-    @property
-    def directed(self) -> bool:
-        return self.kind != CONNECTED
-
-    @property
-    def id(self) -> RelationId:
-        """An undirected tie sorts its endpoints, so `a-b` and `b-a` are one relation, not two."""
-        ends = (self.source, self.target)
-        first, second = ends if self.directed else tuple(sorted(ends))
-        return RelationId(f"{self.kind}/{first}/{second}")
-
-    def joins(self, source: EntityId, target: EntityId) -> bool:
-        if (self.source, self.target) == (source, target):
-            return True
-        return not self.directed and (self.source, self.target) == (target, source)
-
-    def touches(self, entity_id: EntityId) -> bool:
-        return entity_id in (self.source, self.target)
-
-    def far_end(self, entity_id: EntityId) -> EntityId:
-        return self.target if entity_id == self.source else self.source
 
 
 class Thread(Mutable):
@@ -139,97 +102,74 @@ class Hook(Frozen):
 class WorldState(Mutable):
     """The whole persistent fiction; `GameState` holds the played game around it."""
 
-    entities: dict[EntityId, Entity] = Field(default_factory=dict)
-    relations: dict[RelationId, Relation] = Field(default_factory=dict)
-    threads: dict[Slug, Thread] = Field(default_factory=dict)
+    entities: list[Entity] = Field(default_factory=list)
+    threads: list[Thread] = Field(default_factory=list)
     memories: list[Memory] = Field(default_factory=list)
-    hooks: dict[Slug, Hook] = Field(default_factory=dict)
+    hooks: list[Hook] = Field(default_factory=list)
+    party: list[EntityId] = Field(default_factory=list)
     # A tuple, not a set: a save's bytes are a golden fixture, and set ordering is not stable.
     fired_hooks: tuple[Slug, ...] = ()
     pending_notes: tuple[str, ...] = ()
 
     @model_validator(mode="after")
     def _consistent_fiction(self) -> Self:
-        keyed = (
-            ("entity", self.entities),
-            ("relation", self.relations),
-            ("thread", self.threads),
-            ("hook", self.hooks),
-        )
-        mismatched = sorted(
-            f"{what} {key!r}"
-            for what, entries in keyed
-            for key, entry in entries.items()
-            if key != entry.id
-        )
-        if mismatched:
-            raise ValueError(f"keys disagree with their ids: {mismatched}")
-        for entity in self.entities.values():
+        require_unique("entity ids", (entity.id for entity in self.entities))
+        require_unique("thread ids", (thread.id for thread in self.threads))
+        require_unique("hook ids", (hook.id for hook in self.hooks))
+        for entity in self.entities:
             # `find`, not `require`: a dangling id is a topology fault, not a lookup failure.
             holder = None if entity.parent_id is None else self.find(entity.parent_id)
             check_placement(entity, holder)
-        for relation in self.relations.values():
-            self._check_relation(relation)
+            self._check_exits(entity)
+        self._check_party()
         for memory in self.memories:
-            if memory.owner is not None and memory.owner not in self.entities:
+            if memory.owner is not None and self.find(memory.owner) is None:
                 raise ValueError(f"a memory is held by unknown entity {memory.owner!r}")
-        authored = set(self.hooks)
+        authored = {hook.id for hook in self.hooks}
         if unknown := sorted(set(self.fired_hooks) - authored):
             raise ValueError(f"fired hooks name no authored hook: {unknown}")
         require_unique("fired hooks", self.fired_hooks)
         return self
 
-    def _check_relation(self, relation: Relation) -> None:
-        """The two kinds core interprets are checked here, so a typo'd slug fails at load rather
-        than silently disabling movement gating or party travel."""
-        ends = [self.require(relation.source), self.require(relation.target)]
-        if relation.known and not all(end.known for end in ends):
-            raise ValueError(
-                f"known relation {relation.id!r} names an entity the player has not met"
-            )
-        if relation.kind == CONNECTED:
-            if any(end.kind != "location" for end in ends):
-                raise ValueError(f"{CONNECTED!r} joins two locations, and {relation.id!r} does not")
-        if relation.kind == PARTY_MEMBER and (
-            ends[0].kind != "actor" or relation.target != PLAYER_ID
-        ):
-            raise ValueError(
-                f"{PARTY_MEMBER!r} puts an actor in the player's party, unlike {relation.id!r}"
-            )
+    def _check_exits(self, entity: Entity) -> None:
+        """A way the player knows must lead somewhere they may be told about, or the scene would
+        name a place they have not learned of."""
+        if entity.exits and entity.kind != "location":
+            raise ValueError(f"{entity.kind} {entity.id!r} cannot have exits")
+        for way in entity.exits:
+            far = self.require_kind(way.to, "location")
+            if way.known and not (entity.known and far.known):
+                raise ValueError(
+                    f"the known way from {entity.id!r} to {way.to!r} names a place the player "
+                    "has not met"
+                )
 
-    def connections(self, location_id: EntityId) -> tuple[Relation, ...]:
-        return tuple(
-            relation
-            for relation in self.relations.values()
-            if relation.kind == CONNECTED and relation.touches(location_id)
-        )
-
-    def party(self) -> tuple[EntityId, ...]:
-        return tuple(
-            relation.source for relation in self.relations.values() if relation.kind == PARTY_MEMBER
-        )
-
-    def relation(self, kind: Slug, source: EntityId, target: EntityId) -> Relation | None:
-        return next(
-            (
-                relation
-                for relation in self.relations.values()
-                if relation.kind == kind and relation.joins(source, target)
-            ),
-            None,
-        )
+    def _check_party(self) -> None:
+        require_unique("party members", self.party)
+        if PLAYER_ID in self.party:
+            raise ValueError("the player cannot travel with themselves")
+        for member_id in self.party:
+            member = self.require_kind(member_id, "actor")
+            if not member.known:
+                raise ValueError(f"{member_id!r} travels with the player without being met")
 
     def of_kind(self, kind: Kind) -> Iterator[Entity]:
-        return (entity for entity in self.entities.values() if entity.kind == kind)
+        return (entity for entity in self.entities if entity.kind == kind)
 
     def all_ids(self) -> set[EntityId]:
-        return set(self.entities)
+        return {entity.id for entity in self.entities}
 
     def find(self, entity_id: EntityId) -> Entity | None:
-        return self.entities.get(entity_id)
+        return next((entity for entity in self.entities if entity.id == entity_id), None)
+
+    def thread(self, thread_id: Slug) -> Thread | None:
+        return next((thread for thread in self.threads if thread.id == thread_id), None)
+
+    def hook(self, hook_id: Slug) -> Hook | None:
+        return next((hook for hook in self.hooks if hook.id == hook_id), None)
 
     def require(self, entity_id: EntityId) -> Entity:
-        entity = self.entities.get(entity_id)
+        entity = self.find(entity_id)
         if entity is None:
             raise ValueError(f"unknown entity id {entity_id!r}. Use only ids you were shown.")
         return entity
@@ -244,7 +184,7 @@ class WorldState(Mutable):
         return entity
 
     def children(self, entity_id: EntityId, kind: Kind | None = None) -> tuple[Entity, ...]:
-        held = self.entities.values() if kind is None else self.of_kind(kind)
+        held = self.entities if kind is None else self.of_kind(kind)
         return tuple(entity for entity in held if entity.parent_id == entity_id)
 
     def location_of(self, entity: Entity) -> EntityId | None:
@@ -324,7 +264,7 @@ class GameState(Mutable):
         """Copy into the fact, so a later move in the same turn cannot rewrite the entry."""
         if self.world.find(entity.id) is not None:
             raise ValueError(f"entity id {entity.id!r} already exists")
-        self.world.entities[entity.id] = entity
+        self.world.entities.append(entity)
         summary = f"new {entity.kind}: {entity.name}"
         return entity_fact(
             entity, "entity_created", summary, {"kind": entity.kind, "name": entity.name}

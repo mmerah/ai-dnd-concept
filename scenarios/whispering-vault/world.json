@@ -11,7 +11,13 @@
       "name": "the abbot's study",
       "brief": "A cramped room of ledgers and cold candle stubs; a loose flagstone hides something under the desk.",
       "known": true,
-      "parent_id": null
+      "parent_id": null,
+      "exits": [
+        {
+          "to": "cloister",
+          "known": true
+        }
+      ]
     },
     {
       "id": "cloister",
@@ -19,7 +25,20 @@
       "name": "the cloister",
       "brief": "A frost-rimed colonnade around a dead garden; Brother Tomas sweeps it to no purpose.",
       "known": true,
-      "parent_id": null
+      "parent_id": null,
+      "exits": [
+        {
+          "to": "study",
+          "known": true
+        },
+        {
+          "to": "bell_tower"
+        },
+        {
+          "to": "vault",
+          "locked": true
+        }
+      ]
     },
     {
       "id": "bell_tower",
@@ -27,7 +46,12 @@
       "name": "the bell tower",
       "brief": "A cramped climb of rotten ladders above the nave, its bell long since stilled.",
       "known": false,
-      "parent_id": null
+      "parent_id": null,
+      "exits": [
+        {
+          "to": "cloister"
+        }
+      ]
     },
     {
       "id": "vault",
@@ -35,7 +59,13 @@
       "name": "the sealed vault",
       "brief": "The undercroft chamber Kael came for, its door bearing a seal nobody living can read.",
       "known": false,
-      "parent_id": null
+      "parent_id": null,
+      "exits": [
+        {
+          "to": "cloister",
+          "locked": true
+        }
+      ]
     },
     {
       "id": "mara",
@@ -76,27 +106,6 @@
       "brief": "A creased chart of the undercroft, marking a stair the abbey's own plans deny.",
       "known": false,
       "parent_id": "study"
-    }
-  ],
-  "relations": [
-    {
-      "kind": "connected",
-      "source": "study",
-      "target": "cloister",
-      "known": true
-    },
-    {
-      "kind": "connected",
-      "source": "cloister",
-      "target": "bell_tower",
-      "known": false
-    },
-    {
-      "kind": "connected",
-      "source": "cloister",
-      "target": "vault",
-      "known": false,
-      "locked": true
     }
   ],
   "threads": [

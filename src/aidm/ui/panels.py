@@ -17,7 +17,6 @@ from aidm.app.views import (
 from aidm.state.base import PLAYER_ID, EntityId
 from aidm.state.facts import Fact
 from aidm.state.trace import Applied, StepTrace, TraceEntry, Turn
-from aidm.turn.scene import Exit
 
 from .busy import refuse_if_busy, working
 
@@ -64,8 +63,14 @@ def scene_header(session: GameSession, fill_composer: Callable[[str], None]) -> 
     _heading("Exits")
     if not scene.exits:
         ui.label("None found yet.").classes("text-sm opacity-70")
-    for exit in scene.exits:
-        _exit_button(exit, fill_composer)
+    for way in scene.exits:
+        name = scene.exit_name(way)
+        # The button writes the move into the composer; the player still sends it themselves.
+        ui.button(
+            f"{name} (locked)" if way.locked else name,
+            icon="arrow_forward",
+            on_click=lambda name=name: fill_composer(f"Go to {name}"),
+        ).props("flat dense no-caps align=left").classes("w-full")
 
 
 def _entity_row(icon: Path | None, name: str, sub: str) -> None:
@@ -74,14 +79,6 @@ def _entity_row(icon: Path | None, name: str, sub: str) -> None:
         with ui.column().style("gap: 0"):
             ui.label(name).classes("text-sm font-bold")
             ui.label(sub).classes("text-xs opacity-70")
-
-
-def _exit_button(exit: Exit, fill_composer: Callable[[str], None]) -> None:
-    """The button writes the move into the composer; the player still sends it themselves."""
-    label = f"{exit.name} (locked)" if exit.locked else exit.name
-    ui.button(
-        label, icon="arrow_forward", on_click=lambda: fill_composer(f"Go to {exit.name}")
-    ).props("flat dense no-caps align=left").classes("w-full")
 
 
 def chat(session: GameSession) -> None:

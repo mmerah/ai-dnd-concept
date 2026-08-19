@@ -29,7 +29,7 @@ def thread_summaries(state: GameState) -> tuple[ThreadSummary, ...]:
             if thread.clock is None
             else f"{thread.clock.current} / {thread.clock.maximum}",
         )
-        for thread in sorted(state.world.threads.values(), key=lambda thread: thread.title)
+        for thread in sorted(state.world.threads, key=lambda thread: thread.title)
     )
 
 

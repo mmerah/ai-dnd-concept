@@ -37,9 +37,9 @@ You build the scenario in a draft, through tools, never in one answer:
   by an actor, and a location is inside nothing (`null`).
 - `detail` on an entity worth one: `description` is what a close look reveals, `hook` is the lead
   it offers — what it lets the player pull on next. Neither ever reaches the player unearned.
-- `relations`: `kind: "connected"` joins two locations both ways. A way the
-  player has not found yet is `known: false`. A way that is shut is `locked: true`. A
-  relation may only be `known: true` when both ends are.
+- `exits` on a location: each one names where it leads (`to`). A way the player has not found
+  yet is `known: false`; a way that is shut is `locked: true`. Exits are one-way, so a passage
+  both ways is written on both locations. An exit may only be `known: true` when both ends are.
 - `threads`: what the scenario is about, one `id` in kebab-case, a `title`, a `stage` naming where
   it stands (`unfound`, `seal-found`), and a `note` that tells the Director what it means right
   now. The note is steering for the Director, never player-facing prose.

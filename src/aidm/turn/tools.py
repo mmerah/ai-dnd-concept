@@ -1,5 +1,4 @@
 from collections.abc import Callable
-from typing import Literal
 
 from pydantic_ai import RunContext
 from pydantic_ai.toolsets import FunctionToolset
@@ -7,10 +6,10 @@ from pydantic_ai.toolsets import FunctionToolset
 from aidm.engines.engine import PlanContext
 from aidm.engines.transact import act, sequential_toolset
 from aidm.state import actions
-from aidm.state.base import PLAYER_ID, EntityId, Slug, ThreadStatus
+from aidm.state.base import EntityId, Slug, ThreadStatus
 from aidm.state.facts import Fact
 from aidm.state.resolution import Resolution
-from aidm.state.world import CONNECTED, PARTY_MEMBER, AdvanceThread, GameState
+from aidm.state.world import AdvanceThread, GameState
 
 
 def core_toolset() -> FunctionToolset[PlanContext]:
@@ -91,16 +90,6 @@ def core_toolset() -> FunctionToolset[PlanContext]:
             ),
         )
 
-    def reveal_way(ctx: RunContext[PlanContext], location_id: EntityId, to_id: EntityId) -> str:
-        """Show the player a way through they did not know about. Call this before moving them
-        through a passage they have not found.
-
-        Args:
-            location_id: Exact id of the location the way leads from.
-            to_id: Exact id of the location it leads to.
-        """
-        return _way(ctx, "reveal", location_id, to_id)
-
     def unlock_exit(ctx: RunContext[PlanContext], location_id: EntityId, to_id: EntityId) -> str:
         """Open a locked way when the fiction opens it — a key turned, a bar lifted, a seal broken.
 
@@ -108,7 +97,7 @@ def core_toolset() -> FunctionToolset[PlanContext]:
             location_id: Exact id of the location the way leads from.
             to_id: Exact id of the location it leads to.
         """
-        return _way(ctx, "unlock", location_id, to_id)
+        return _resolved(ctx, lambda draft: actions.unlock_exit(draft, location_id, to_id))
 
     def join_party(ctx: RunContext[PlanContext], actor_id: EntityId) -> str:
         """Put an actor here with the player into their party; a party member travels with them.
@@ -116,7 +105,7 @@ def core_toolset() -> FunctionToolset[PlanContext]:
         Args:
             actor_id: Exact id of the actor joining, who must be here with the player.
         """
-        return _party(ctx, "add", actor_id)
+        return _resolved(ctx, lambda draft: actions.join_party(draft, actor_id))
 
     def leave_party(ctx: RunContext[PlanContext], actor_id: EntityId) -> str:
         """Take an actor out of the player's party when the fiction parts them.
@@ -124,7 +113,7 @@ def core_toolset() -> FunctionToolset[PlanContext]:
         Args:
             actor_id: Exact id of the actor leaving.
         """
-        return _party(ctx, "remove", actor_id)
+        return _resolved(ctx, lambda draft: actions.leave_party(draft, actor_id))
 
     return sequential_toolset(
         [
@@ -134,7 +123,6 @@ def core_toolset() -> FunctionToolset[PlanContext]:
             add_trait,
             remove_trait,
             advance_thread,
-            reveal_way,
             unlock_exit,
             join_party,
             leave_party,
@@ -144,20 +132,3 @@ def core_toolset() -> FunctionToolset[PlanContext]:
 
 def _resolved(ctx: RunContext[PlanContext], apply: Callable[[GameState], list[Fact]]) -> str:
     return act(ctx, lambda draft, _rng: Resolution(facts=tuple(apply(draft))))
-
-
-def _way(
-    ctx: RunContext[PlanContext],
-    mode: Literal["reveal", "unlock"],
-    location_id: EntityId,
-    to_id: EntityId,
-) -> str:
-    return _resolved(
-        ctx, lambda draft: actions.relation_change(draft, mode, CONNECTED, location_id, to_id)
-    )
-
-
-def _party(ctx: RunContext[PlanContext], mode: Literal["add", "remove"], actor_id: EntityId) -> str:
-    return _resolved(
-        ctx, lambda draft: actions.relation_change(draft, mode, PARTY_MEMBER, actor_id, PLAYER_ID)
-    )

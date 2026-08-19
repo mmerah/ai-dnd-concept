@@ -12,8 +12,8 @@ from aidm.app.authoring.playability import OPENING, playability, playtests
 from aidm.app.authoring.session import AuthoringSession
 from aidm.content.store import load_scenario
 from aidm.llm import build_agent
-from aidm.state.base import Entity, EntityId
-from aidm.state.world import Relation, ScenarioMeta, Thread
+from aidm.state.base import Entity, EntityId, Exit
+from aidm.state.world import ScenarioMeta, Thread
 
 
 async def test_the_shipped_scenario_passes_every_engine() -> None:
@@ -63,30 +63,22 @@ def test_write_upserts_elements_by_id() -> None:
         ScenarioPatch(
             meta=ScenarioMeta(title="The Cell", premise="Get out."),
             starting_location_id=EntityId("cell"),
-            entities=(_location("cell"), _location("hall")),
-            relations=(
-                Relation(
-                    kind="connected",
-                    source=EntityId("cell"),
-                    target=EntityId("hall"),
-                ),
+            entities=(
+                _location("cell").model_copy(update={"exits": [Exit(to=EntityId("hall"))]}),
+                _location("hall"),
             ),
         )
     )
     assert "meta" in confirmation and "2 entities" in confirmation
 
-    renamed = _location("cell").model_copy(update={"name": "the deep cell"})
-    relocked = Relation(
-        kind="connected",
-        source=EntityId("hall"),
-        target=EntityId("cell"),
-        locked=True,
+    renamed = _location("cell").model_copy(
+        update={"name": "the deep cell", "exits": [Exit(to=EntityId("hall"), locked=True)]}
     )
-    _ = draft.apply(ScenarioPatch(entities=(renamed,), relations=(relocked,)))
+    _ = draft.apply(ScenarioPatch(entities=(renamed,)))
 
-    assert draft.entities[EntityId("cell")].name == "the deep cell"
-    # An undirected relation sorts its endpoints, so the rewrite hit the same id.
-    assert [relation.locked for relation in draft.relations.values()] == [True]
+    cell = next(entity for entity in draft.entities if entity.id == EntityId("cell"))
+    assert cell.name == "the deep cell"
+    assert cell.exits == [Exit(to=EntityId("hall"), locked=True)]
 
 
 def test_a_patched_art_style_reaches_the_world() -> None:
@@ -163,15 +155,11 @@ async def test_a_session_goes_on_authoring_after_it_finishes() -> None:
     session = AuthoringSession(
         slug="authored", premise="a vault", config=config, expansion="closed"
     )
+    study = next(entity for entity in scenario().world.entities if entity.id == EntityId("study"))
     addition = ScenarioPatch(
-        entities=(_location("belfry"),),
-        relations=(
-            Relation(
-                kind="connected",
-                source=EntityId("study"),
-                target=EntityId("belfry"),
-                known=True,
-            ),
+        entities=(
+            _location("belfry"),
+            study.model_copy(update={"exits": [*study.exits, Exit(to=EntityId("belfry"))]}),
         ),
     )
     author = scripted(
@@ -189,7 +177,7 @@ async def test_a_session_goes_on_authoring_after_it_finishes() -> None:
         assert session.refusal() is None
         before = len(session.history)
         _ = await session.send("add a bell tower")
-    assert EntityId("belfry") in session.draft.entities
+    assert EntityId("belfry") in {entity.id for entity in session.draft.entities}
     assert len(session.history) > before
 
 

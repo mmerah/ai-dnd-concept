@@ -6,10 +6,10 @@ from aidm.content.store import engine_text
 from aidm.engines.advancement import Offer
 from aidm.engines.engine import Engine, EntityRenderer
 from aidm.engines.sheets import SheetBase
-from aidm.state.base import Entity, EntityId, Trait
+from aidm.state.base import Entity, EntityId, Exit, Trait
 from aidm.state.world import GameState, Memory, ScenarioMeta, Thread
 
-from .scene import BaseScene, Exit, SceneSnapshot, VisibleScene
+from .scene import BaseScene, SceneSnapshot, VisibleScene
 
 
 def render_director(
@@ -102,7 +102,7 @@ def render_expander(
             ),
             (
                 "EXITS FROM WHERE THE PLAYER STANDS",
-                "\n".join(_exit_line(exit) for exit in scene.exits) or "- (none)",
+                "\n".join(_exit_line(scene, way) for way in scene.exits) or "- (none)",
             ),
             ("ACTIVE THREADS", _threads(scene.threads)),
             ("WHAT THE DIRECTOR NEEDS", request),
@@ -149,7 +149,7 @@ def _scene_sections(
         ),
         (
             "EXITS FROM HERE",
-            "\n".join(_exit_line(exit, ids=ids) for exit in scene.exits) or "- (none)",
+            "\n".join(_exit_line(scene, way, ids=ids) for way in scene.exits) or "- (none)",
         ),
         (
             "KNOWN TO THE PLAYER, BUT ELSEWHERE",
@@ -202,11 +202,11 @@ def _entities(
     )
 
 
-def _exit_line(exit: Exit, *, ids: bool = True) -> str:
-    labelled = f"[id={prompt_id(exit.location_id)}]" if ids else ""
-    locked = " — locked" if exit.locked else ""
-    unfound = " — the player has not found this way yet" if not exit.known else ""
-    return f"- {exit.name}{labelled}{locked}{unfound}"
+def _exit_line(scene: BaseScene, way: Exit, *, ids: bool = True) -> str:
+    labelled = f"[id={prompt_id(way.to)}]" if ids else ""
+    locked = " — locked" if way.locked else ""
+    unfound = " — the player has not found this way yet" if not way.known else ""
+    return f"- {scene.exit_name(way)}{labelled}{locked}{unfound}"
 
 
 def _threads(threads: Sequence[Thread]) -> str:

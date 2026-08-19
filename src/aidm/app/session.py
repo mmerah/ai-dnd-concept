@@ -19,7 +19,7 @@ from aidm.state.base import PLAYER_ID, SAVE_VERSION, EngineId, Entity, EntityId
 from aidm.state.facts import Fact
 from aidm.state.resolution import Resolution
 from aidm.state.trace import Applied, TraceEntry, Turn
-from aidm.state.world import PARTY_MEMBER, GameState, Relation
+from aidm.state.world import GameState
 from aidm.turn.agents import AdvancementContext, TurnAgents, advisor_agent, build_turn_agents
 from aidm.turn.pipeline import TURN_STEPS, run_turn
 from aidm.turn.prompts import render_proposal
@@ -83,7 +83,7 @@ def open_media(
         provider=config.providers.for_name(config.media.provider),
         saves=store.media_dir(target.slug),
         icon_dirs={
-            **{entity_id: scenario_icons for entity_id in scenario.world.world.entities},
+            **{entity_id: scenario_icons for entity_id in scenario.world.world.all_ids()},
             **{
                 entity_id: character_icons
                 for entity_id in (PLAYER_ID, *(item.id for item in character.profile.items))
@@ -112,12 +112,10 @@ def begin_game(engine: Engine[SheetBase], scenario: Scenario, character: Charact
         traits=list(character.profile.traits),
     )
     for entity in (*(item.model_copy(deep=True) for item in character.profile.items), player):
-        if entity.id in world.entities:
+        if world.find(entity.id) is not None:
             raise ValueError(f"authored entity id {entity.id!r} appears twice")
-        world.entities[entity.id] = entity
-    for companion in authored.starting_party:
-        travelling = Relation(kind=PARTY_MEMBER, source=companion, target=PLAYER_ID, known=True)
-        world.relations[travelling.id] = travelling
+        world.entities.append(entity)
+    world.party = list(authored.starting_party)
     rules = {
         **scenario.overlay.entities,
         **character.overlay.entities,

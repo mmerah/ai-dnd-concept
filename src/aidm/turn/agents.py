@@ -103,7 +103,7 @@ def worldkeeper_agent(settings: Settings) -> Agent[GameState, WorldkeeperReport]
             {
                 memory.owner_id
                 for memory in report.memories
-                if memory.owner_id is not None and memory.owner_id not in state.world.entities
+                if memory.owner_id is not None and state.world.find(memory.owner_id) is None
             }
         )
         if strangers:

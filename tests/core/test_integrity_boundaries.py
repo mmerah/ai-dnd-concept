@@ -15,7 +15,7 @@ from pydantic import ValidationError
 from aidm.content.authored import Character, CharacterOverlay, CharacterProfile, ScenarioWorld
 from aidm.engines.loner3e.mechanics import LUCK_MAX, Mechanics
 from aidm.state.base import PLAYER_ID, Entity, EntityId
-from aidm.state.world import CONNECTED, GameState, Hook, Relation
+from aidm.state.world import GameState, Hook
 
 HELD = EntityId("frayed_rope")
 UNHELD = EntityId("silk_rope")
@@ -57,11 +57,9 @@ def _rope(item_id: EntityId, *, known: bool = True) -> Entity:
 
 def test_world_and_game_state_reject_inconsistent_topology() -> None:
     _, state = initialized()
-    player = state.world.require(PLAYER_ID)
-    with pytest.raises(ValidationError, match="keys disagree"):
-        type(state.world).model_validate(
-            {"entities": {"wrong-key": player.model_dump(round_trip=True)}}
-        )
+    twice = state.world.require(PLAYER_ID).model_dump(round_trip=True)
+    with pytest.raises(ValidationError, match="duplicate entity ids"):
+        type(state.world).model_validate({"entities": [twice, twice]})
 
     with pytest.raises(ValidationError, match="player entity must be known"):
         with_entity(state, updated(state.player, known=False))
@@ -79,7 +77,7 @@ def test_an_engine_refuses_an_authored_payload_it_cannot_read() -> None:
     them — and it has to fire at launch, not on the turn that first reads the entity."""
     engine, _ = initialized()
     authored = scenario()
-    entities = authored.world.world.entities.values()
+    entities = authored.world.world.entities
     actor = next(entity for entity in entities if entity.kind == "actor")
     poisoned = updated(authored, overlay={"entities": {actor.id: {"gear": None}}})
 
@@ -108,19 +106,22 @@ def test_a_location_no_walk_reaches_is_refused() -> None:
         updated(world, entities=(*world.entities, undercroft))
 
 
-def test_a_known_location_no_known_way_reaches_is_refused() -> None:
-    """Reachable through an unknown way, so only the stricter known-way rule can catch it."""
-    world = scenario().world
-    chapel = Entity(
-        id=EntityId("chapel"),
-        kind="location",
-        name="the chapel",
-        brief="A chapel the premise names.",
-        known=True,
-    )
-    way = Relation(kind=CONNECTED, source=world.starting_location_id, target=chapel.id)
-    with pytest.raises(ValidationError, match=r"knows of but no known way.*chapel"):
-        updated(world, entities=(*world.entities, chapel), relations=(*world.relations, way))
+def test_world_state_rejects_broken_exits_and_party() -> None:
+    world = scenario().world.world
+    study = world.require(EntityId("study"))
+    exposed = updated(study, exits=(*study.exits, {"to": "bell_tower", "known": True}))
+    with pytest.raises(ValidationError, match="has not met"):
+        updated(world, entities=tuple(exposed if e.id == study.id else e for e in world.entities))
+
+    with pytest.raises(ValidationError, match="without being met"):
+        updated(world, party=(ELENA,))
+    with pytest.raises(ValidationError, match="cannot travel with themselves"):
+        updated(world, party=(PLAYER_ID,))
+
+    mara = world.require(MARA)
+    wandering = updated(mara, exits=({"to": "study"},))
+    with pytest.raises(ValidationError, match="cannot have exits"):
+        updated(world, entities=tuple(wandering if e.id == mara.id else e for e in world.entities))
 
 
 def test_a_hook_waiting_on_an_unauthored_id_is_refused() -> None:
@@ -143,7 +144,7 @@ def test_a_scenario_starts_the_party_it_authors() -> None:
     authored = scenario()
     started = updated(authored, world=updated(authored.world, starting_party=(MARA,)))
 
-    assert begin_game(engine, started, character()).world.party() == (MARA,)
+    assert begin_game(engine, started, character()).world.party == [MARA]
     with pytest.raises(ValidationError, match="who they set out with"):
         updated(authored.world, starting_party=(ELENA,))
 
