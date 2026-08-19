@@ -31,7 +31,7 @@ WHAT AN ACTOR HAS
 Every actor carries `skills` written as dice: d8, d10, or d12, each a step up a ladder that
 starts with nothing. A skill not written on the sheet is not missing — it rolls the bare d6
 anyone has. `credits` (₡) are what they spend on gear and repairs. There are no hit points:
-injuries and broken gear are traits, the same ones the player reads in the scene.
+injuries, conditions and broken gear are traits, the same ones the player reads in the scene.
 
 THIS ENGINE'S OWN TOOLS
 
@@ -53,8 +53,10 @@ credits cannot cover is refused.
 is owed against. Call it once, when the crew's engagement genuinely closes, usually alongside
 resolving its thread. A scene ending is not a job ending.
 
-The sheet's `skills` change only through advancement. A lasting change to what someone is — an
-injury, a broken item, a fear — is `add_trait`, and it counts as a tag from the moment it lands.
+The sheet's `skills` change only through advancement. A lasting change to what someone is — a
+condition taking hold, an injury, a broken item, a fear — is `add_trait`, and it counts as a tag
+from the moment it lands. No roll has to stand behind one: a state the fiction alone leaves on
+someone is the same call.
 
 The attempt's actor is whoever the fiction puts on the acting side: when the player's words have
 someone else act — a guard lunging at them — roll for that actor, not for a player reaction.

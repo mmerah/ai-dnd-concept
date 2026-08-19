@@ -1,0 +1,828 @@
+{
+  "label": "step-7-widened",
+  "repeats": 18,
+  "seed": 1000,
+  "cases": [
+    {
+      "id": "loner3e/three-things",
+      "engine": "loner3e",
+      "prompt": "I climb up from the cloister into the bell tower, hand my lantern to the woman I find there, and I am left winded and shaking from the climb.",
+      "expectations": [
+        "player-in-tower",
+        "elena-known",
+        "lantern-given",
+        "trait-gained"
+      ],
+      "runs": [
+        {
+          "error": null,
+          "passed": {
+            "player-in-tower": true,
+            "elena-known": true,
+            "lantern-given": true,
+            "trait-gained": true
+          },
+          "facts": [
+            "entity_discovered",
+            "hook_fired",
+            "thread_advanced",
+            "entity_moved",
+            "entity_moved",
+            "trait_added",
+            "memory_kept"
+          ],
+          "director_calls": 1,
+          "total_steps": 4,
+          "seconds": 7.270664700998168,
+          "narration_chars": 310
+        },
+        {
+          "error": null,
+          "passed": {
+            "player-in-tower": true,
+            "elena-known": true,
+            "lantern-given": true,
+            "trait-gained": true
+          },
+          "facts": [
+            "entity_discovered",
+            "hook_fired",
+            "thread_advanced",
+            "entity_moved",
+            "entity_moved",
+            "trait_added",
+            "memory_kept"
+          ],
+          "director_calls": 1,
+          "total_steps": 4,
+          "seconds": 5.383462403999147,
+          "narration_chars": 223
+        },
+        {
+          "error": null,
+          "passed": {
+            "player-in-tower": true,
+            "elena-known": true,
+            "lantern-given": true,
+            "trait-gained": true
+          },
+          "facts": [
+            "entity_discovered",
+            "hook_fired",
+            "thread_advanced",
+            "entity_moved",
+            "entity_moved",
+            "trait_added",
+            "memory_kept"
+          ],
+          "director_calls": 1,
+          "total_steps": 4,
+          "seconds": 5.886314240997308,
+          "narration_chars": 458
+        },
+        {
+          "error": null,
+          "passed": {
+            "player-in-tower": true,
+            "elena-known": true,
+            "lantern-given": true,
+            "trait-gained": false
+          },
+          "facts": [
+            "entity_moved",
+            "entity_discovered",
+            "hook_fired",
+            "thread_advanced",
+            "entity_moved",
+            "memory_kept"
+          ],
+          "director_calls": 1,
+          "total_steps": 4,
+          "seconds": 4.986209365997638,
+          "narration_chars": 427
+        },
+        {
+          "error": null,
+          "passed": {
+            "player-in-tower": true,
+            "elena-known": true,
+            "lantern-given": true,
+            "trait-gained": true
+          },
+          "facts": [
+            "entity_discovered",
+            "hook_fired",
+            "thread_advanced",
+            "entity_moved",
+            "entity_moved",
+            "trait_added",
+            "memory_kept"
+          ],
+          "director_calls": 1,
+          "total_steps": 4,
+          "seconds": 4.875086536001618,
+          "narration_chars": 395
+        },
+        {
+          "error": null,
+          "passed": {
+            "player-in-tower": true,
+            "elena-known": true,
+            "lantern-given": true,
+            "trait-gained": false
+          },
+          "facts": [
+            "entity_moved",
+            "entity_discovered",
+            "hook_fired",
+            "thread_advanced",
+            "entity_moved"
+          ],
+          "director_calls": 1,
+          "total_steps": 4,
+          "seconds": 3.252853096000763,
+          "narration_chars": 331
+        },
+        {
+          "error": null,
+          "passed": {
+            "player-in-tower": true,
+            "elena-known": true,
+            "lantern-given": true,
+            "trait-gained": false
+          },
+          "facts": [
+            "entity_moved",
+            "entity_discovered",
+            "hook_fired",
+            "thread_advanced",
+            "entity_moved",
+            "memory_kept"
+          ],
+          "director_calls": 1,
+          "total_steps": 4,
+          "seconds": 3.389681674001622,
+          "narration_chars": 356
+        },
+        {
+          "error": null,
+          "passed": {
+            "player-in-tower": true,
+            "elena-known": true,
+            "lantern-given": true,
+            "trait-gained": true
+          },
+          "facts": [
+            "entity_discovered",
+            "hook_fired",
+            "thread_advanced",
+            "entity_moved",
+            "entity_moved",
+            "trait_added",
+            "memory_kept"
+          ],
+          "director_calls": 1,
+          "total_steps": 4,
+          "seconds": 3.2577932929998497,
+          "narration_chars": 393
+        },
+        {
+          "error": null,
+          "passed": {
+            "player-in-tower": true,
+            "elena-known": true,
+            "lantern-given": true,
+            "trait-gained": true
+          },
+          "facts": [
+            "entity_discovered",
+            "hook_fired",
+            "thread_advanced",
+            "entity_moved",
+            "entity_moved",
+            "trait_added",
+            "memory_kept"
+          ],
+          "director_calls": 1,
+          "total_steps": 4,
+          "seconds": 4.635060035001516,
+          "narration_chars": 241
+        },
+        {
+          "error": null,
+          "passed": {
+            "player-in-tower": true,
+            "elena-known": true,
+            "lantern-given": true,
+            "trait-gained": true
+          },
+          "facts": [
+            "entity_discovered",
+            "hook_fired",
+            "thread_advanced",
+            "entity_moved",
+            "entity_moved",
+            "trait_added",
+            "memory_kept"
+          ],
+          "director_calls": 1,
+          "total_steps": 4,
+          "seconds": 4.024533580002753,
+          "narration_chars": 601
+        },
+        {
+          "error": null,
+          "passed": {
+            "player-in-tower": true,
+            "elena-known": true,
+            "lantern-given": true,
+            "trait-gained": false
+          },
+          "facts": [
+            "entity_moved",
+            "entity_discovered",
+            "hook_fired",
+            "thread_advanced",
+            "entity_moved",
+            "memory_kept"
+          ],
+          "director_calls": 1,
+          "total_steps": 4,
+          "seconds": 3.148660756996833,
+          "narration_chars": 345
+        },
+        {
+          "error": null,
+          "passed": {
+            "player-in-tower": true,
+            "elena-known": true,
+            "lantern-given": true,
+            "trait-gained": true
+          },
+          "facts": [
+            "dice_rolled",
+            "dice_rolled",
+            "question_answered",
+            "entity_moved",
+            "entity_discovered",
+            "hook_fired",
+            "thread_advanced",
+            "entity_moved",
+            "trait_added",
+            "memory_kept",
+            "memory_kept"
+          ],
+          "director_calls": 1,
+          "total_steps": 4,
+          "seconds": 4.8946840909993625,
+          "narration_chars": 252
+        },
+        {
+          "error": null,
+          "passed": {
+            "player-in-tower": true,
+            "elena-known": true,
+            "lantern-given": false,
+            "trait-gained": true
+          },
+          "facts": [
+            "entity_discovered",
+            "hook_fired",
+            "thread_advanced",
+            "entity_moved",
+            "trait_added"
+          ],
+          "director_calls": 1,
+          "total_steps": 4,
+          "seconds": 6.340339135997056,
+          "narration_chars": 262
+        },
+        {
+          "error": null,
+          "passed": {
+            "player-in-tower": true,
+            "elena-known": true,
+            "lantern-given": true,
+            "trait-gained": false
+          },
+          "facts": [
+            "entity_moved",
+            "entity_discovered",
+            "hook_fired",
+            "thread_advanced",
+            "entity_moved"
+          ],
+          "director_calls": 1,
+          "total_steps": 4,
+          "seconds": 5.736018789000809,
+          "narration_chars": 428
+        },
+        {
+          "error": null,
+          "passed": {
+            "player-in-tower": true,
+            "elena-known": true,
+            "lantern-given": true,
+            "trait-gained": true
+          },
+          "facts": [
+            "entity_discovered",
+            "hook_fired",
+            "thread_advanced",
+            "entity_moved",
+            "entity_moved",
+            "trait_added"
+          ],
+          "director_calls": 1,
+          "total_steps": 4,
+          "seconds": 5.872183704002964,
+          "narration_chars": 459
+        },
+        {
+          "error": null,
+          "passed": {
+            "player-in-tower": true,
+            "elena-known": true,
+            "lantern-given": true,
+            "trait-gained": true
+          },
+          "facts": [
+            "entity_discovered",
+            "hook_fired",
+            "thread_advanced",
+            "entity_moved",
+            "entity_moved",
+            "trait_added",
+            "memory_kept"
+          ],
+          "director_calls": 1,
+          "total_steps": 4,
+          "seconds": 3.797922997000569,
+          "narration_chars": 348
+        },
+        {
+          "error": null,
+          "passed": {
+            "player-in-tower": true,
+            "elena-known": true,
+            "lantern-given": true,
+            "trait-gained": false
+          },
+          "facts": [
+            "entity_moved",
+            "entity_discovered",
+            "hook_fired",
+            "thread_advanced",
+            "entity_moved",
+            "memory_kept",
+            "memory_kept"
+          ],
+          "director_calls": 1,
+          "total_steps": 4,
+          "seconds": 7.594225026001368,
+          "narration_chars": 280
+        },
+        {
+          "error": null,
+          "passed": {
+            "player-in-tower": true,
+            "elena-known": true,
+            "lantern-given": true,
+            "trait-gained": true
+          },
+          "facts": [
+            "entity_discovered",
+            "hook_fired",
+            "thread_advanced",
+            "entity_moved",
+            "entity_moved",
+            "trait_added",
+            "memory_kept"
+          ],
+          "director_calls": 1,
+          "total_steps": 4,
+          "seconds": 7.090333330001158,
+          "narration_chars": 462
+        }
+      ]
+    },
+    {
+      "id": "twentyfourxx/three-things",
+      "engine": "twentyfourxx",
+      "prompt": "I climb up from the cloister into the bell tower, hand my lantern to the woman I find there, and I am left winded and shaking from the climb.",
+      "expectations": [
+        "player-in-tower",
+        "elena-known",
+        "lantern-given",
+        "trait-gained"
+      ],
+      "runs": [
+        {
+          "error": null,
+          "passed": {
+            "player-in-tower": true,
+            "elena-known": true,
+            "lantern-given": true,
+            "trait-gained": false
+          },
+          "facts": [
+            "entity_discovered",
+            "hook_fired",
+            "thread_advanced",
+            "entity_moved",
+            "entity_moved"
+          ],
+          "director_calls": 1,
+          "total_steps": 4,
+          "seconds": 5.08413888799987,
+          "narration_chars": 257
+        },
+        {
+          "error": null,
+          "passed": {
+            "player-in-tower": true,
+            "elena-known": true,
+            "lantern-given": false,
+            "trait-gained": true
+          },
+          "facts": [
+            "entity_discovered",
+            "hook_fired",
+            "thread_advanced",
+            "dice_rolled",
+            "attempt_resolved",
+            "trait_added",
+            "entity_moved",
+            "memory_kept"
+          ],
+          "director_calls": 1,
+          "total_steps": 4,
+          "seconds": 5.587821245000669,
+          "narration_chars": 537
+        },
+        {
+          "error": null,
+          "passed": {
+            "player-in-tower": true,
+            "elena-known": true,
+            "lantern-given": true,
+            "trait-gained": false
+          },
+          "facts": [
+            "entity_moved",
+            "entity_discovered",
+            "hook_fired",
+            "thread_advanced",
+            "dice_rolled",
+            "attempt_resolved",
+            "entity_moved"
+          ],
+          "director_calls": 1,
+          "total_steps": 4,
+          "seconds": 5.419240021998121,
+          "narration_chars": 359
+        },
+        {
+          "error": null,
+          "passed": {
+            "player-in-tower": true,
+            "elena-known": true,
+            "lantern-given": true,
+            "trait-gained": true
+          },
+          "facts": [
+            "dice_rolled",
+            "attempt_resolved",
+            "entity_discovered",
+            "hook_fired",
+            "thread_advanced",
+            "entity_moved",
+            "entity_moved",
+            "trait_added",
+            "memory_kept"
+          ],
+          "director_calls": 1,
+          "total_steps": 4,
+          "seconds": 12.232168436999928,
+          "narration_chars": 408
+        },
+        {
+          "error": null,
+          "passed": {
+            "player-in-tower": true,
+            "elena-known": true,
+            "lantern-given": true,
+            "trait-gained": false
+          },
+          "facts": [
+            "dice_rolled",
+            "attempt_resolved",
+            "entity_discovered",
+            "hook_fired",
+            "thread_advanced",
+            "entity_moved",
+            "entity_moved",
+            "memory_kept"
+          ],
+          "director_calls": 1,
+          "total_steps": 4,
+          "seconds": 8.158330729002046,
+          "narration_chars": 267
+        },
+        {
+          "error": null,
+          "passed": {
+            "player-in-tower": true,
+            "elena-known": true,
+            "lantern-given": true,
+            "trait-gained": false
+          },
+          "facts": [
+            "dice_rolled",
+            "attempt_resolved",
+            "entity_moved",
+            "entity_discovered",
+            "hook_fired",
+            "thread_advanced",
+            "entity_moved",
+            "memory_kept"
+          ],
+          "director_calls": 1,
+          "total_steps": 4,
+          "seconds": 3.9852071500026796,
+          "narration_chars": 393
+        },
+        {
+          "error": null,
+          "passed": {
+            "player-in-tower": true,
+            "elena-known": true,
+            "lantern-given": true,
+            "trait-gained": true
+          },
+          "facts": [
+            "entity_discovered",
+            "hook_fired",
+            "thread_advanced",
+            "dice_rolled",
+            "attempt_resolved",
+            "entity_moved",
+            "entity_moved",
+            "trait_added"
+          ],
+          "director_calls": 1,
+          "total_steps": 4,
+          "seconds": 8.996759469999233,
+          "narration_chars": 310
+        },
+        {
+          "error": null,
+          "passed": {
+            "player-in-tower": false,
+            "elena-known": false,
+            "lantern-given": false,
+            "trait-gained": true
+          },
+          "facts": [
+            "dice_rolled",
+            "attempt_resolved",
+            "trait_added",
+            "memory_kept"
+          ],
+          "director_calls": 1,
+          "total_steps": 4,
+          "seconds": 4.440357413001038,
+          "narration_chars": 461
+        },
+        {
+          "error": null,
+          "passed": {
+            "player-in-tower": true,
+            "elena-known": true,
+            "lantern-given": true,
+            "trait-gained": true
+          },
+          "facts": [
+            "entity_discovered",
+            "hook_fired",
+            "thread_advanced",
+            "entity_moved",
+            "entity_moved",
+            "trait_added",
+            "memory_kept"
+          ],
+          "director_calls": 1,
+          "total_steps": 4,
+          "seconds": 9.883535715001926,
+          "narration_chars": 324
+        },
+        {
+          "error": null,
+          "passed": {
+            "player-in-tower": true,
+            "elena-known": true,
+            "lantern-given": true,
+            "trait-gained": true
+          },
+          "facts": [
+            "entity_moved",
+            "entity_discovered",
+            "hook_fired",
+            "thread_advanced",
+            "entity_moved",
+            "trait_added",
+            "memory_kept"
+          ],
+          "director_calls": 1,
+          "total_steps": 4,
+          "seconds": 6.369789758002298,
+          "narration_chars": 432
+        },
+        {
+          "error": null,
+          "passed": {
+            "player-in-tower": true,
+            "elena-known": true,
+            "lantern-given": true,
+            "trait-gained": false
+          },
+          "facts": [
+            "dice_rolled",
+            "attempt_resolved",
+            "entity_discovered",
+            "hook_fired",
+            "thread_advanced",
+            "entity_moved",
+            "entity_moved",
+            "memory_kept"
+          ],
+          "director_calls": 1,
+          "total_steps": 4,
+          "seconds": 7.175993898999877,
+          "narration_chars": 546
+        },
+        {
+          "error": null,
+          "passed": {
+            "player-in-tower": true,
+            "elena-known": true,
+            "lantern-given": true,
+            "trait-gained": true
+          },
+          "facts": [
+            "dice_rolled",
+            "attempt_resolved",
+            "entity_discovered",
+            "hook_fired",
+            "thread_advanced",
+            "entity_moved",
+            "entity_moved",
+            "trait_added",
+            "memory_kept",
+            "memory_kept"
+          ],
+          "director_calls": 1,
+          "total_steps": 4,
+          "seconds": 8.529492211000615,
+          "narration_chars": 272
+        },
+        {
+          "error": null,
+          "passed": {
+            "player-in-tower": true,
+            "elena-known": true,
+            "lantern-given": true,
+            "trait-gained": false
+          },
+          "facts": [
+            "entity_moved",
+            "entity_discovered",
+            "hook_fired",
+            "thread_advanced",
+            "dice_rolled",
+            "attempt_resolved",
+            "entity_moved",
+            "memory_kept"
+          ],
+          "director_calls": 1,
+          "total_steps": 4,
+          "seconds": 5.845381712002563,
+          "narration_chars": 463
+        },
+        {
+          "error": null,
+          "passed": {
+            "player-in-tower": true,
+            "elena-known": true,
+            "lantern-given": true,
+            "trait-gained": false
+          },
+          "facts": [
+            "entity_discovered",
+            "hook_fired",
+            "thread_advanced",
+            "dice_rolled",
+            "attempt_resolved",
+            "entity_moved",
+            "entity_moved",
+            "memory_kept"
+          ],
+          "director_calls": 1,
+          "total_steps": 4,
+          "seconds": 5.396171291999053,
+          "narration_chars": 315
+        },
+        {
+          "error": null,
+          "passed": {
+            "player-in-tower": true,
+            "elena-known": true,
+            "lantern-given": false,
+            "trait-gained": true
+          },
+          "facts": [
+            "entity_discovered",
+            "hook_fired",
+            "thread_advanced",
+            "dice_rolled",
+            "attempt_resolved",
+            "trait_added",
+            "entity_moved",
+            "memory_kept"
+          ],
+          "director_calls": 1,
+          "total_steps": 4,
+          "seconds": 7.5269791899991105,
+          "narration_chars": 451
+        },
+        {
+          "error": null,
+          "passed": {
+            "player-in-tower": false,
+            "elena-known": true,
+            "lantern-given": false,
+            "trait-gained": true
+          },
+          "facts": [
+            "entity_discovered",
+            "hook_fired",
+            "thread_advanced",
+            "dice_rolled",
+            "attempt_resolved",
+            "trait_added",
+            "memory_kept"
+          ],
+          "director_calls": 1,
+          "total_steps": 4,
+          "seconds": 4.984481957002572,
+          "narration_chars": 488
+        },
+        {
+          "error": null,
+          "passed": {
+            "player-in-tower": true,
+            "elena-known": true,
+            "lantern-given": true,
+            "trait-gained": false
+          },
+          "facts": [
+            "entity_discovered",
+            "hook_fired",
+            "thread_advanced",
+            "dice_rolled",
+            "attempt_resolved",
+            "entity_moved",
+            "entity_moved",
+            "memory_kept"
+          ],
+          "director_calls": 1,
+          "total_steps": 4,
+          "seconds": 6.132421963997331,
+          "narration_chars": 485
+        },
+        {
+          "error": null,
+          "passed": {
+            "player-in-tower": true,
+            "elena-known": true,
+            "lantern-given": true,
+            "trait-gained": false
+          },
+          "facts": [
+            "entity_discovered",
+            "hook_fired",
+            "thread_advanced",
+            "dice_rolled",
+            "attempt_resolved",
+            "entity_moved",
+            "entity_moved"
+          ],
+          "director_calls": 1,
+          "total_steps": 4,
+          "seconds": 6.020633526000893,
+          "narration_chars": 205
+        }
+      ]
+    }
+  ]
+}

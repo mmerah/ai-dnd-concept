@@ -204,7 +204,46 @@ Still owed: one `evals/turn_eval.py` run. Every cut in 7.2 was verified duplicat
 lesson was that prose deleted from the Director's surface carries instruction, and only the eval
 sees that.
 
+### Broken tool arguments are repaired at the model boundary
+
+Not a plan step: 9 of 90 runs in `evals/results/step-7.json` died as `Tool '<name>' exceeded max
+retries`, every one of them a backend handing back tool arguments whose closing brace was missing.
+The model re-emits the identical truncated JSON when asked to fix it, so the retries only burn the
+turn.
+
+- `RepairedToolArgs` (`src/aidm/llm.py`) wraps every role's model in `build_agent`, so one place
+  covers every tool and every role. `repaired()` touches only arguments that do not already parse
+  as an object, tries three repairs in order — unfence, unwrap a double-encoded string, close what
+  is still open (dropping a dangling comma) — and returns the original bytes when none of them
+  parses, so a call is never silently reshaped. A repair logs a warning.
+- Deliberately not repaired: single-quoted JSON, Python literals, prose wrapped around the object,
+  and dropping a truncated dangling key. The first three need a re-parse that can mangle an
+  apostrophe in narration text; the last silently drops a field the resolver needs, turning a loud
+  failure into a wrong action.
+- `evals/results/step-7-repair.json`: errors 9/90 → 0/90, cases fully passed 80% → 87%,
+  expectations held 85% → 93%, seconds/turn 8.0 → 5.8 (a dead turn was paying for two retries).
+
+### Open: `three-things` loses its trait, worst on 24xx
+
+Both engines drop the third clause of "climb, hand over the lantern, and I am left winded and
+shaking" — the turn records the move and the handover and never calls `add_trait`. The recorded
+facts say so plainly: the failing runs hold `entity_moved`/`entity_discovered`/`entity_moved` and
+no `trait_added`. A rarer second mode loses the whole turn: 24xx rolls `roll_attempt` for the climb
+and stops on the outcome without moving anyone.
+
+24xx's `director.md` framed traits as damage ("There are no hit points: injuries and broken gear
+are traits", HARM AND DEFENCE), while loner3e's names "a condition taking hold", so the wording was
+widened to match and to say that no roll has to stand behind a trait. **Unverified**: the A/B was
+abandoned half-run, and the arm that did complete says why it has to be same-hour with a control —
+`loner3e/three-things`, which no edit touched, read `trait-gained` 89% at one hour and 44% two
+hours later. A same-hour baseline (`evals/results/ab-baseline.json`, n=18, prompt reverted) puts
+24xx at 44% and loner3e at 67%; the only candidate data is an earlier-hour n=9 run
+(`evals/results/three-things-trait.json`, 24xx 56%), which the control invalidates. Next attempt: run both arms back
+to back at n=18 with loner3e as the control, and only believe a move the control does not make.
+
 ## Next
 
 - Phase 1 step 8 — separate runtime `Game` from `SavedGame`.
 - Re-run `evals/turn_eval.py` once to confirm steps 5–7 moved nothing.
+- Finish the `three-things` trait A/B above, or drop the 24xx prompt widening if it shows
+  nothing.
