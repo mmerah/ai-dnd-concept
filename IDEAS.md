@@ -8,6 +8,7 @@
 - [] naming: variables, files, methods, classes generally need some renaming to represent more clearly what they do, and with more details
 - [] Narrator does not see speaker memory when player adress someone.
 - [] pyproject.toml should FIX versions.
+- [] Run "uv run python evals/turn_eval.py run --label my-run" multiple times and identify where things are inconsistent. Then figure out fixes (maybe the tools are too difficult to use, need to be separated, or a multi-step thing converted into a tool that combine operations, maybe instruction clarity, maybe examples in tools description to teach the model, ...)
 
 ## Ideas
 
