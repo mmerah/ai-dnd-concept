@@ -234,7 +234,81 @@ set. Nothing here changes what a tool *does* — every resolver, refusal, and fa
   `committed()` validates the world copy + `engine.validate` instead of a full dump/re-parse
   round-trip. Draft-per-turn lifecycle is already in place from step 3.
 
-### 9. Deduplicate the engines' shared spine — ~half day
+### 9. Split interpretation from execution — ~1 day
+
+Folded in from PHASE-1-EVAL-IMPROV-PROPOSITION.md. The Director currently reads free-form player
+intent, decides whether mechanics apply at all, decides whether the fiction is worth dice, picks
+tools, sequences them, reacts to what they answer, and remembers the clauses it has not covered
+yet — in one loop. `three-things` fails on exactly that load: the move and the handover land and
+the third clause never becomes `add_trait`. One cheap structured call ahead of it takes the first
+half of that job.
+
+The new role writes no state and calls no tool; it compiles the player's words into this build's
+mechanical vocabulary and hands the Director an ordered plan. Both roles read the same rendered
+scene, so nothing new has to be assembled for it.
+
+1. **The role.** `Role` (`config.py`) gains `"interpreter"`, with `ROLE_DEFAULTS` at
+   `max_tokens=4096, reasoning_effort="medium"` — it judges the engine's roll rule, which is the
+   part that has to be reasoned. In `turn/reports.py`:
+   `MechanicStep(tool: str, instruction: str, when: str = "")` and
+   `TurnInterpretation(mechanics: tuple[MechanicStep, ...] = (), explanation: str)`, both
+   `Frozen`, both with `Field(description=...)`. `explanation` carries no default on purpose: an
+   empty answer would otherwise pass for a considered "no mechanics" decision, which is the one
+   reading of an empty plan that has to be earned. `interpreter_agent` in `turn/agents.py` is
+   `NativeOutput(TurnInterpretation)`, `deps_type=None`, no tools — a small schema natively,
+   which working rule 2 already says is safe.
+2. **What it is shown.** `prompts.render_interpreter` is `render_director` without the plan
+   section: the two share one `_direction_sections` helper. Instructions are
+   `interpreter_instructions(engine.director_instructions, vocabulary(engine))`: the engine's
+   `director.md` verbatim, as the Director gets it, plus the tool list `vocabulary()`
+   (`turn/tools.py`) renders from the toolsets themselves — name and description, core then
+   engine, unwrapping a `WrapperToolset` the way the golden schema test does. No mechanic is
+   named by hand in a prompt file, so a renamed or added tool cannot drift out of the role that
+   plans it, and each engine's own tools are in the list for free.
+   `turn/prompts/interpreter.md` is the static half and owns one rule of its own: a roll is where
+   the plan branches. `expand_world` is deliberately outside the vocabulary — reaching for absent
+   canon stays the Director's call, behind its own cost cap. An output validator refuses a step
+   naming a tool no toolset declares; it deliberately does *not* narrow to `possible()`, because
+   a step may be what makes the next one legal.
+3. **The turn.** `TURN_STEPS` becomes `("interpreter", "director", "hooks", "narrator",
+   "worldkeeper")`; `run_turn` runs the interpreter first on the same `message_history` and
+   traces it like any other role. `render_director` gains a `plan: TurnInterpretation | None`
+   parameter and renders it as the last section, `MECHANICS PLAN — EXECUTE THIS`, after
+   `PLAYER ACTION`: numbered `[if <outcome>: ]tool — instruction` lines, or one line saying no
+   mechanic is needed, plus the explanation. The role is advisory, so an
+   `UnexpectedModelBehavior` is logged and the section says no plan was read rather than killing
+   a turn the Director could have judged alone. Nothing else in the pipeline moves; the
+   Director's toolsets are untouched.
+
+   A step carries `when`: empty for what the player's words already settled, otherwise the
+   outcome it waits on in the engine's own words. Free text, not an enum — loner3e answers
+   `yes-and…no-and` and 24xx answers `disaster/setback/success`, so an enum would force a
+   per-engine output schema and break `SHARED_OUTPUTS` being engine-independent.
+4. **The Director becomes an executor.** `turn/prompts/director.md` opens on the plan — execute
+   every step in order, never drop one or swap a different mechanic in because you would have
+   planned it differently, and when a tool result contradicts a later step, skip or adapt it and
+   say so in the closing line. The plan stops at a roll, so what the dice leave behind is still
+   the Director's to write. Everything else in that prompt stays: step 3's lesson is that prose
+   cut from this surface costs turns, and this step's variable is the plan, not the trim.
+5. **Fixtures and version.** New `instructions/*/interpreter.txt`, `prompts/*/interpreter.txt`,
+   and `schemas/turn_interpretation.json`; `prompts/*/director.txt` and both `turn/*.json` move.
+   `played()` (`tests/core/core_test_support.py`) takes an `interpreter` model defaulting to an
+   empty plan, so no existing test has to script one; `test_golden_turn` scripts a real one.
+   Persisted trace bytes move: SAVE_VERSION 79 → 80, `FIXTURE_SAVE_VERSION` with it, `save`/
+   `state`/`turn` regenerated. One new test, that the plan reaches the Director's prompt and no
+   other role's; the generated vocabulary needs none of its own, since the instructions golden
+   pins every line of it.
+6. **Eval.** Three cases were scoring a legitimate reading as failure and were rewritten with the
+   step: `open-the-way-and-climb` asked the player to *search* for a hidden person, which both
+   engines' own rules make a fair roll whose `no` correctly reveals nobody; `three-things` asked
+   for "winded and shaking", which both engines' definition of `add_trait` ("a *lasting* change")
+   tells the model not to write; and `risky-lock`'s `narrated-fact` scored flavour, since
+   `dice_rolled` carries no narrator line and an honest "the door holds" writes nothing. The
+   third is now `outcome-written` — the roll reached state as an unlock or as a trait — which is
+   what a branching plan is for. `Run.planned` records the plan beside the facts, so a failure
+   says whether a mechanic was never named or named and not executed.
+
+### 10. Deduplicate the engines' shared spine — ~half day
 
 - Lift `completed: Counter` onto `SheetMechanics` (`engines/sheets.py`); delete it from both
   engines' `Mechanics`. `Advancement.earned()` becomes concrete on the base, narrowing with
@@ -244,13 +318,13 @@ set. Nothing here changes what a tool *does* — every resolver, refusal, and fa
 - Both `new_sheet` newcomer-parity lines now read the lifted counter. Both `director.md`s and
   `director_tools.json` move with it.
 
-### 10. Outcomes onto Exchange — ~1 h
+### 11. Outcomes onto Exchange — ~1 h
 
 - `Exchange` (`state/history.py`) gains `outcomes: tuple[str, ...]`; `run_turn` fills it with
   the turn's `fact.narrator` strings at commit. Delete `played_turns`, `PlayedTurn`,
   `_outcomes` (`app/views.py`); `ui/panels.chat` reads the one object. Bump + regen.
 
-### 11. Reorganize around the new seams — ~half day
+### 12. Reorganize around the new seams — ~half day
 
 - Move `Game` out of `state/world.py` into its own module; split `content/store.py` into
   authored-content I/O and save/trace persistence; move `app/authoring/` up to
@@ -259,6 +333,10 @@ set. Nothing here changes what a tool *does* — every resolver, refusal, and fa
 
 ## Deferred, with their trigger
 
+- Shrinking the Director's toolset to the tools step 9's plan named. The plan stops at a roll and
+  the Director still needs whatever the outcome demands, so the filtered set would be "the planned
+  tools plus everything consequence-handling reaches" — nearly the whole vocabulary. Trigger: an
+  eval run where the Director calls a mechanic nobody planned and the turn is worse for it.
 - Enums for entity ids, thread ids, and exit destinations on the Director's tools (the rest of
   PHASE-1-ADDITIONAL-APPROACH.md's item 3). Every id is already bracketed beside its entity in the
   prompt, the legal set differs per tool and per argument, and step 7.4's mechanism is per-engine

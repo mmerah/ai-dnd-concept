@@ -117,6 +117,14 @@ def narrated(body: str) -> ModelResponse:
     return structured(lines=[{"speaker_id": None, "text": body}])
 
 
+def planned(explanation: str, *steps: tuple[str, str] | tuple[str, str, str]) -> ModelResponse:
+    fields = ("tool", "instruction", "when")
+    return structured(
+        mechanics=[dict(zip(fields, step, strict=False)) for step in steps],
+        explanation=explanation,
+    )
+
+
 def scripted(*responses: ModelResponse) -> Stub:
     """Call N answers with response N, because a retried output asks the model again."""
     remaining = iter(responses)
@@ -164,6 +172,7 @@ async def played(
     state: Game,
     prompt: str,
     *,
+    interpreter: Model | None = None,
     director: Model,
     narrator: Model | None = None,
     worldkeeper: Model | None = None,
@@ -176,8 +185,9 @@ async def played(
     answers with a tool call per model request, closed by a final text response."""
     config = settings()
     stages = build_turn_agents(engine, config, source)
-    roles = (stages.director, stages.narrator, stages.worldkeeper)
+    roles = (stages.interpreter, stages.director, stages.narrator, stages.worldkeeper)
     models = (
+        interpreter or FunctionModel(scripted(planned("Nothing here calls for a mechanic."))),
         director,
         narrator or FunctionModel(scripted(narrated("You wait."))),
         worldkeeper or FunctionModel(scripted(structured())),

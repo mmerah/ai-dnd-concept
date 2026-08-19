@@ -7,6 +7,7 @@ from core_test_support import (
     TWENTYFOURXX,
     game,
     narrated,
+    planned,
     played,
     scripted,
     structured,
@@ -54,7 +55,7 @@ MEMORIES = [
         "text": "Mara confirmed the vault door has not opened in thirty years.",
     }
 ]
-TURN_STEPS = ("director", "hooks", "narrator", "worldkeeper")
+TURN_STEPS = ("interpreter", "director", "hooks", "narrator", "worldkeeper")
 # The fiction resolved by the engine's own roll.
 SCRIPTS: Mapping[EngineId, tuple[ModelResponse, ...]] = {
     LONER3E: (
@@ -83,6 +84,28 @@ SCRIPTS: Mapping[EngineId, tuple[ModelResponse, ...]] = {
         text(NARRATION),
     ),
 }
+# The last step waits on the roll before it, which is what pins the conditional rendering.
+WHY = (
+    "He takes the chart he has just levered up, then listens at the door, which is where the "
+    "dice come in."
+)
+PLANS: Mapping[EngineId, ModelResponse] = {
+    LONER3E: planned(
+        WHY,
+        ("move", "Move vault_map into the player's hands."),
+        (
+            "roll_question",
+            "Ask whether he hears what waits past the vault door without being heard.",
+        ),
+        ("add_trait", "Mark him as listening for what moves behind it.", "the answer is a no"),
+    ),
+    TWENTYFOURXX: planned(
+        WHY,
+        ("move", "Move vault_map into the player's hands."),
+        ("roll_attempt", "Resolve listening at the vault door; being heard is the risk."),
+        ("add_trait", "Mark him as listening for what moves behind it.", "the roll is a setback"),
+    ),
+}
 
 
 def _behind(state: Game) -> Game:
@@ -97,6 +120,7 @@ async def _played(engine_id: EngineId) -> TurnResult:
         engine,
         _behind(state),
         PROMPT,
+        interpreter=FunctionModel(scripted(PLANS[engine_id])),
         director=FunctionModel(scripted(*SCRIPTS[engine_id])),
         narrator=FunctionModel(scripted(narrated(NARRATION))),
         worldkeeper=FunctionModel(scripted(structured(memories=MEMORIES))),

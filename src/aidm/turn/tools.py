@@ -1,9 +1,11 @@
 from collections.abc import Callable, Mapping
 
 from pydantic_ai import RunContext
-from pydantic_ai.toolsets import FunctionToolset
+from pydantic_ai.tools import ToolDefinition
+from pydantic_ai.toolsets import AbstractToolset, FunctionToolset, WrapperToolset
 
-from aidm.engines.engine import PlanContext
+from aidm.engines.engine import Engine, PlanContext
+from aidm.engines.sheets import SheetBase
 from aidm.engines.transact import act, sequential_toolset
 from aidm.state import actions
 from aidm.state.base import PLAYER_ID, EntityId, Slug
@@ -111,6 +113,31 @@ def core_toolset() -> FunctionToolset[PlanContext]:
             leave_party,
         ]
     )
+
+
+def offered_tools(engine: Engine[SheetBase]) -> tuple[ToolDefinition, ...]:
+    """Every tool the Director may be handed this game, unfiltered: the vocabulary a turn is
+    planned in, so a renamed tool cannot drift out of the role that plans it."""
+    return tuple(
+        tool.tool_def
+        for toolset in (core_toolset(), *engine.director_toolsets)
+        for tool in _declared(toolset).tools.values()
+    )
+
+
+def vocabulary(engine: Engine[SheetBase]) -> str:
+    return "\n".join(
+        f"- `{tool.name}` — {' '.join((tool.description or '').split())}"
+        for tool in offered_tools(engine)
+    )
+
+
+def _declared(toolset: AbstractToolset[PlanContext]) -> FunctionToolset[PlanContext]:
+    while isinstance(toolset, WrapperToolset):
+        toolset = toolset.wrapped
+    if not isinstance(toolset, FunctionToolset):
+        raise TypeError(f"{type(toolset).__name__} declares no tools to plan from")
+    return toolset
 
 
 def _resolved(ctx: RunContext[PlanContext], apply: Callable[[Game], list[Fact]]) -> str:

@@ -297,3 +297,25 @@ async def test_the_director_reads_the_canon_and_only_the_narrator_is_kept_from_i
     # Elena reaches the one Director's prompt; the narrator never does.
     assert "Elena" in director_prompt
     assert "Elena" not in shown(result.turn, "narrator")
+
+
+async def test_a_turn_whose_plan_cannot_be_read_still_plays() -> None:
+    """The Interpreter is advisory: the Director judged the mechanics alone before it existed."""
+    engine, state = initialized()
+
+    def unreadable(messages: list[ModelMessage], info: AgentInfo) -> ModelResponse:
+        del messages, info
+        return structured(mechanics=[])
+
+    result = await played(
+        engine,
+        state,
+        "I take the map.",
+        director=FunctionModel(
+            scripted(tool_call("move", entity_id="vault_map", to_id="player"), text("Taken."))
+        ),
+        interpreter=FunctionModel(unreadable),
+    )
+
+    assert result.state.world.require(EntityId("vault_map")).parent_id == PLAYER_ID
+    assert "no plan was read" in shown(result.turn, "director")

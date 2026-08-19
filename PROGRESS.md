@@ -224,7 +224,13 @@ turn.
 - `evals/results/step-7-repair.json`: errors 9/90 → 0/90, cases fully passed 80% → 87%,
   expectations held 85% → 93%, seconds/turn 8.0 → 5.8 (a dead turn was paying for two retries).
 
-### Open: `three-things` loses its trait, worst on 24xx
+### Closed by step 9: `three-things` lost its trait, worst on 24xx
+
+Kept for the lesson in it. The cause was never the trait wording: the interpreter's plan showed
+24xx rolling for a clause the player had *declared*, which turned the trait into a branch the dice
+could decline. Both engines read 100% once declared acts were put beyond the dice. The suspected
+cause below was wrong, and no amount of A/B on the Director's prompt would have found it — the
+turn had no record of what was decided before the tools were called.
 
 Both engines drop the third clause of "climb, hand over the lantern, and I am left winded and
 shaking" — the turn records the move and the handover and never calls `add_trait`. The recorded
@@ -277,8 +283,69 @@ to back at n=18 with loner3e as the control, and only believe a move the control
   test pins `SavedGame`'s fields to `Game`'s: the two now restate each other, and a field added to
   the runtime game and forgotten in `of()` would otherwise be dropped in silence.
 
+### Phase 1 step 9 — interpretation split from execution
+
+Folded in from PHASE-1-EVAL-IMPROV-PROPOSITION.md; the old steps 9–11 became 10–12. An
+Interpreter role compiles the player's words into a mechanics plan; the Director executes it.
+
+- 9.1 role + models: `Role`/`ROLE_DEFAULTS` (`max_tokens=4096`, medium effort),
+      `MechanicStep`/`TurnInterpretation` (`turn/reports.py`), `interpreter_agent` —
+      `NativeOutput`, `deps_type=type(None)`, no tools, no validator.
+- 9.2 prompts: `interpreter.md` + `vocabulary(engine)` (`turn/tools.py`) — the mechanics list is
+  rendered from the toolsets (name + description, core then engine, `WrapperToolset` unwrapped),
+  never written by hand, so it cannot drift and each engine gets its own. `render_interpreter`
+  and `render_director(plan=...)` share `_direction_sections`.
+- 9.3 pipeline: `TURN_STEPS` leads with `interpreter`, `run_turn` runs it first on the same
+  `message_history`, `played()` takes an interpreter stub defaulting to an empty plan.
+- 9.4 `director.md` reframed as an executor: new opener + one EXECUTE THE PLAN paragraph, nothing
+  else cut — step 3's lesson is that prose cut from that surface costs turns.
+- 9.5 SAVE_VERSION 79 → 80, fixtures regenerated (new `instructions|prompts/*/interpreter.txt` and
+  `schemas/turn_interpretation.json`; `director.txt`, `save`/`state`/`turn` moved), one new test.
+
+- 9.6 branching plans: `MechanicStep.when` — empty for what the player's words settled, otherwise
+  the outcome the step waits on, rendered as `3. if the answer is a no: add_trait — …`. Free text,
+  not an enum: loner3e answers `yes-and…no-and` and 24xx `disaster/setback/success`, so an enum
+  would force a per-engine output schema. `explanation` lost its default — an empty answer was
+  passing for a considered "no mechanics" decision.
+- 9.7 review findings applied: an output validator refuses a step naming a tool no toolset
+  declares (deliberately *not* narrowed to `possible()` — a step may be what makes the next one
+  legal); an `UnexpectedModelBehavior` from this advisory role is logged and the section reads
+  "no plan was read; judge the mechanics yourself" instead of killing a turn the Director could
+  have judged alone. Rejected: reverting SAVE_VERSION (step 3 bumped for moved trace bytes on the
+  same reasoning) and deleting `_declared` as dead code (24xx ships a `PreparedToolset`, so the
+  unwrap is live).
+
+#### Eval evidence
+
+Three cases were scoring a legitimate reading as failure and were rewritten with the step; see
+PLAN.md step 9.6 for which and why. `Run.planned` now records the plan beside the facts, and it
+paid for itself on the first read: **every** 24xx `three-things` failure had `roll_attempt` in its
+plan and every pass did not. The interpreter was putting a *declared* act to the dice, which made
+the trait conditional on `setback`/`disaster`, so a `success` correctly wrote nothing. One
+paragraph in `interpreter.md` — the player's own words settle what they did, never roll for a
+declared act or outcome — closed it.
+
+| n=9 per case | step-7-repair | step-9-interpreter | step-9-branching | step-9-declared |
+|---|---|---|---|---|
+| score | 87% | 86% | 90% | **94%** |
+| errors | 0% | 0% | 0% | 0% |
+| seconds/turn | 5.8 | 5.2 | 4.5 | 5.0 |
+
+`three-things` is at 100% on both engines, first time since step 3; `open-the-way-and-climb` too.
+The first two columns share the old case prompts and the last two the new ones, so read the pairs,
+not the row.
+
+A losing roll that changes nothing is a legitimate turn — the door holds and the world stands as
+it was — so `risky-lock`'s second expectation is `win-written` (`won_ways_are_open`): only an
+outcome the player *won* has to open the door they forced. The 7/9 both engines read under
+`outcome-written` was the eval punishing an honest failed roll, not a turn that lost its outcome.
+
 ## Next
 
-- Phase 1 step 9 — deduplicate the engines' shared spine.
-- Finish the `three-things` trait A/B above, or drop the 24xx prompt widening if it shows
-  nothing.
+- Phase 1 step 10 — deduplicate the engines' shared spine.
+- Re-run the eval once on `win-written` to cut a clean baseline for step 10; the `step-9-declared`
+  numbers were scored under the stricter expectation, so `risky-lock` reads low in that file.
+- The plan is the instrument now: when a case regresses, read `Run.planned` before the facts. A
+  mechanic missing from the plan is an interpretation bug in `interpreter.md`; a mechanic planned
+  and not in the facts is an execution bug in `director.md`. That distinction is what closed
+  `three-things`.

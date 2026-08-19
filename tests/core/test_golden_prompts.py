@@ -6,6 +6,7 @@ from aidm.app.registry import engine_ids
 from aidm.state.base import EngineId
 from aidm.turn import prompts
 from aidm.turn.prompts import render_proposal
+from aidm.turn.tools import vocabulary
 
 WANTED = "I want to strike harder."
 
@@ -14,6 +15,9 @@ WANTED = "I want to strike harder."
 def test_every_role_assembles_the_same_instructions(engine_id: EngineId) -> None:
     engine, _ = game(engine_id)
     roles = {
+        "interpreter": prompts.interpreter_instructions(
+            engine.director_instructions, vocabulary(engine)
+        ),
         "director": prompts.director_instructions(engine.director_instructions),
         "narrator": prompts.NARRATOR,
         "worldkeeper": prompts.WORLDKEEPER,

@@ -101,7 +101,7 @@ def test_the_roles_shown_everything_get_ids_and_placement_but_no_detail() -> Non
     held = _with_detail(state(), EntityId("mara"))
     scene = SceneSnapshot.of(held)
     describe = _renderer(held)
-    director = render_director(scene, describe, held.scenario, "I look around.")
+    director = render_director(scene, describe, held.scenario, "I look around.", None)
     catalogued = render_worldkeeper(
         scene,
         describe,

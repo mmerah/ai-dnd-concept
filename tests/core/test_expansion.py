@@ -106,6 +106,7 @@ async def test_travel_beyond_the_frontier_expands_the_world_inside_one_turn() ->
     assert result.state.player.parent_id == "sunken_gallery"
     assert world.require(EntityId("sunken_gallery")).known
     assert [step.name for step in result.turn.steps] == [
+        "interpreter",
         "director",
         "expander-1",
         "hooks",

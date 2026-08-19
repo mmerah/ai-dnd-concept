@@ -5,10 +5,11 @@ The abbey of Saint Corvin was abandoned in a single night. Kael has come for the
 PLAYER CHARACTER:
 Kael[id=player] — A scarred relic-hunter who came to the abbey for what is sealed beneath it. — at the abbot's study[id=study]
 state:
-  specialty: Sneak
-  origin: Human
-  skills: Climbing d10, Stealth d10, Tracking d8
-  pools: credits 2
+  concept: A Wary Relic-Hunter
+  skills: Reads Old Stonework, Quiet Hands
+  frailties: Never Walks Away
+  gear: Pry Bar, Chalk and Wire
+  pools: luck 6/6
   traits: Relic Hunter[id=relic-hunter] — (skill) Kael knows how old sanctums conceal what matters., Marked by the Past[id=marked-by-the-past] — (frailty) Old scars make certain memories hard to face.
 inventory:
 - a guttering lantern[id=lantern] — A dented tin lantern whose flame will not hold still.
@@ -18,7 +19,7 @@ inventory:
 HERE WITH THE PLAYER:
 - Mara[id=mara] (npc) — at the abbot's study — The abbey's last scribe, cautious and tired, still cataloguing books nobody will read.
   state:
-    pools: credits 2
+    pools: luck 6/6
 
 EXITS FROM HERE:
 - the cloister[id=cloister]
@@ -27,18 +28,20 @@ KNOWN TO THE PLAYER, BUT ELSEWHERE:
 - the cloister[id=cloister] (location) — A frost-rimed colonnade around a dead garden; Brother Tomas sweeps it to no purpose.
 - Brother Tomas[id=tomas] (npc) — at the cloister — A deaf old porter who sweeps the cloister and knows almost nothing about the vault.
   state:
-    pools: credits 2
+    pools: luck 6/6
 
 EXISTS BUT THE PLAYER DOES NOT KNOW IT YET:
 - the bell tower[id=bell_tower] (location) — A cramped climb of rotten ladders above the nave, its bell long since stilled.
 - the sealed vault[id=vault] (location) — The undercroft chamber Kael came for, its door bearing a seal nobody living can read.
 - Elena[id=elena] (npc) — at the bell tower — The vault's former archivist, hiding in the bell tower; she alone remembers the sealing rite.
   state:
-    pools: credits 2
+    pools: luck 6/6
 - a bloated rat[id=cloister_rat] (npc) — at the cloister — It has grown fat on the dead garden and does not run from a lantern.
   state:
-    skills: Intimidation d8
-    pools: credits 2
+    concept: A bloated rat that will not be driven off
+    skills: Hard to Frighten
+    frailties: Slow and Heavy
+    pools: luck 6/6
 - the vault map[id=vault_map] (item) — at the abbot's study — A creased chart of the undercroft, marking a stair the abbey's own plans deny.
 
 ACTIVE THREADS:
@@ -54,9 +57,3 @@ SCENARIO NOTES:
 
 PLAYER ACTION:
 I lever up the loose flagstone and listen at the vault door.
-
-MECHANICS PLAN — EXECUTE THIS:
-1. move — Move vault_map into the player's hands.
-2. roll_attempt — Resolve listening at the vault door; being heard is the risk.
-3. if the roll is a setback: add_trait — Mark him as listening for what moves behind it.
-why: He takes the chart he has just levered up, then listens at the door, which is where the dice come in.

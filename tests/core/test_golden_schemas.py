@@ -7,7 +7,7 @@ from pydantic_ai.toolsets import AbstractToolset, FunctionToolset, WrapperToolse
 from aidm.app.registry import engine_ids
 from aidm.engines.engine import PlanContext
 from aidm.state.base import EngineId, EntityDetail
-from aidm.turn.reports import WorldkeeperReport
+from aidm.turn.reports import TurnInterpretation, WorldkeeperReport
 from aidm.turn.tools import core_toolset
 
 # A role's output schema is sent to the model, so its field descriptions steer it exactly as the
@@ -16,6 +16,7 @@ from aidm.turn.tools import core_toolset
 SHARED_OUTPUTS: dict[str, type[BaseModel]] = {
     "worldkeeper_report": WorldkeeperReport,
     "entity_detail": EntityDetail,
+    "turn_interpretation": TurnInterpretation,
 }
 
 
