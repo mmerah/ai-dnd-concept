@@ -1,5 +1,5 @@
 {
-  "save_version": 80,
+  "save_version": 81,
   "scenario_id": "whispering-vault",
   "character_id": "kael",
   "scenario": {
@@ -336,13 +336,13 @@
         }
       }
     },
-    "twist": {
-      "current": 0,
-      "maximum": 3
-    },
     "completed": {
       "current": 0,
       "maximum": null
+    },
+    "twist": {
+      "current": 0,
+      "maximum": 3
     }
   },
   "history": [],

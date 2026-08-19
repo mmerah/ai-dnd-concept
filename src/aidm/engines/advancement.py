@@ -10,6 +10,7 @@ from aidm.state.resolution import check_draft
 from aidm.state.world import Game
 
 from .counters import counter_fact
+from .sheets import SheetMechanics
 
 
 class Offer(Frozen):
@@ -68,9 +69,9 @@ class Advancement(ABC):
     @abstractmethod
     def ledger(self, state: Game, subject_id: EntityId) -> Counter: ...
 
-    @abstractmethod
     def earned(self, state: Game) -> int:
         """How many boundaries the fiction has closed: what an advance is owed against."""
+        return SheetMechanics.of(state).completed.current
 
     @abstractmethod
     def grant(

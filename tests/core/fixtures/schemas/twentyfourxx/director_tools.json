@@ -216,6 +216,15 @@
     }
   },
   {
+    "name": "complete_chapter",
+    "description": "Record that the chapter of the story this character has been living has closed.",
+    "parameters": {
+      "additionalProperties": false,
+      "properties": {},
+      "type": "object"
+    }
+  },
+  {
     "name": "roll_attempt",
     "description": "Put one risky attempt to the highest die of a pool.",
     "parameters": {
@@ -319,15 +328,6 @@
         "actor_id",
         "amount"
       ],
-      "type": "object"
-    }
-  },
-  {
-    "name": "complete_job",
-    "description": "Record that the job is done.",
-    "parameters": {
-      "additionalProperties": false,
-      "properties": {},
       "type": "object"
     }
   }

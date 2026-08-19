@@ -60,13 +60,15 @@ class Engine[S: SheetBase](ABC):
 
     id: ClassVar[EngineId]
     badge: ClassVar[tuple[str, str]]
+    # The engine's own wording for the boundary `complete_chapter` records.
+    chapter_ending: ClassVar[str]
     engine_dir: ClassVar[Path]
     sheet_type: type[S]
     mechanics_type: type[SheetMechanics[S]]
 
     def __init__(self, extra_packs: Path | None = None) -> None:
         # Read once here so a missing declaration fails the build, not the turn that first needs it.
-        _ = self.sheet_type, self.mechanics_type
+        _ = self.sheet_type, self.mechanics_type, self.chapter_ending
         self.director_instructions: str = engine_text(self.engine_dir / "director.md")
         # An engine's own mechanics reach the Director as tools; core's world vocabulary is shared.
         self.director_toolsets: tuple[AbstractToolset[PlanContext], ...] = ()

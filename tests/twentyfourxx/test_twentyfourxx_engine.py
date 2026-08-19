@@ -8,11 +8,11 @@ from pydantic_ai.models.test import TestModel
 from pydantic_ai.usage import RunUsage
 
 from aidm.engines.engine import PlanContext, TurnLog
+from aidm.engines.sheets import complete_chapter
 from aidm.engines.twentyfourxx.actions import (
     Attempt,
     LuckTest,
     apply_change_credits,
-    apply_complete_job,
     outcome_for,
     pool_faces,
     resolve_attempt,
@@ -162,7 +162,7 @@ def test_an_advance_is_offered_only_once_a_job_is_recorded() -> None:
     assert advancement.offers(state) == ()
 
     draft = state.draft()
-    apply_complete_job(draft)
+    complete_chapter(draft, engine.chapter_ending)
     after = draft.committed()
 
     (offer,) = advancement.offers(after)

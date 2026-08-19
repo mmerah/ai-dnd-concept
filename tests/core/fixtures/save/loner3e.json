@@ -1,5 +1,5 @@
 {
-  "save_version": 80,
+  "save_version": 81,
   "scenario_id": "whispering-vault",
   "character_id": "kael",
   "scenario": {
@@ -351,13 +351,13 @@
         }
       }
     },
-    "twist": {
-      "current": 0,
-      "maximum": 3
-    },
     "completed": {
       "current": 0,
       "maximum": null
+    },
+    "twist": {
+      "current": 0,
+      "maximum": 3
     }
   },
   "history": [
@@ -368,7 +368,8 @@
           "speaker_id": null,
           "text": "The iron handle does not turn."
         }
-      ]
+      ],
+      "outcomes": []
     },
     {
       "prompt": "I look for another way in.",
@@ -377,7 +378,8 @@
           "speaker_id": null,
           "text": "A flagstone by the wall sits proud of its neighbours."
         }
-      ]
+      ],
+      "outcomes": []
     },
     {
       "prompt": "I lever up the loose flagstone and listen at the vault door.",
@@ -386,6 +388,13 @@
           "speaker_id": null,
           "text": "The flagstone lifts. Beyond the door, something shifts its weight and waits."
         }
+      ],
+      "outcomes": [
+        "learned of the vault map",
+        "took the vault map",
+        "learned of the sealed vault",
+        "Does he hear what waits past the vault door without being heard? -> yes-and",
+        "Kael is Listening"
       ]
     }
   ],

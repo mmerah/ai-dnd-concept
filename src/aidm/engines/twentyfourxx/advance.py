@@ -36,9 +36,6 @@ class TwentyfourxxAdvancement(Advancement):
     offer_text = GROWTH
     spent_why = "a job's advance taken"
 
-    def earned(self, state: Game) -> int:
-        return Mechanics.of(state).completed.current
-
     def ledger(self, state: Game, subject_id: EntityId) -> Counter:
         return Mechanics.of(state).sheets[subject_id].jobs
 

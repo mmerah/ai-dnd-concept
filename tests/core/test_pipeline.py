@@ -64,6 +64,9 @@ async def test_an_engine_uses_the_shared_pipeline_and_safe_narrator_prompt() -> 
     assert "engine_data" not in shown(result.turn, "narrator")
     assert result.state.turn == 1
     assert result.state.history[-1].prompt == "I search beneath the desk."
+    outcomes = result.state.history[-1].outcomes
+    # Filtered, not copied: a hook firing is bookkeeping and never reaches the player.
+    assert outcomes and len(outcomes) < len(result.turn.facts)
 
 
 async def test_the_engine_rolls_the_outcome_the_facts_then_record() -> None:

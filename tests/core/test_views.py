@@ -1,11 +1,9 @@
 from core_test_support import LONER3E
 
-from aidm.app.views import JournalView, journal_markdown, played_turns, player_scene
+from aidm.app.views import JournalView, journal_markdown, player_scene
 from aidm.engines.loner3e.mechanics import Mechanics, Sheet
-from aidm.state.base import PLAYER_ID, Counter, Entity, EntityId, Exit, Kind
-from aidm.state.facts import Fact
+from aidm.state.base import Counter, Entity, EntityId, Exit, Kind
 from aidm.state.history import Exchange, Line
-from aidm.state.trace import Applied, Turn
 from aidm.state.world import Game, Memory, ScenarioMeta, Thread, WorldState
 
 
@@ -99,22 +97,3 @@ def test_the_journal_export_writes_the_chronicle_and_leaks_no_steering_note() ->
     assert "The vault has stood for a century." in markdown
     assert "Director steering text" not in markdown
     assert "The Secret keeps a hidden ledger." not in markdown
-
-
-def test_a_turn_shows_the_player_only_the_facts_it_may_narrate() -> None:
-    """One trace entry per turn, paired from the end, so an unbacked older turn shows nothing."""
-    history = (
-        Exchange(prompt="Before the trace", lines=(Line(text="You arrive."),)),
-        Exchange(prompt="What do I do?", lines=(Line(text="The seal gives."),)),
-    )
-    turn = Turn(
-        prompt="What do I do?",
-        narration="The seal gives.",
-        facts=(
-            Fact(kind="rolled", trace="rolled 4", narrator="the seal cracks"),
-            Fact(kind="entity_created", trace="new actor: The Secret"),
-        ),
-    )
-    played = played_turns(history, [Applied(subject_id=PLAYER_ID), turn])
-
-    assert [entry.outcomes for entry in played] == [(), ("the seal cracks",)]

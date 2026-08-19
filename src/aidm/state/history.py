@@ -32,6 +32,8 @@ class Narration(Frozen):
 class Exchange(Frozen):
     prompt: str
     lines: tuple[Line, ...]
+    # Only what the turn's facts were allowed to tell the player, never the full set.
+    outcomes: tuple[str, ...] = ()
 
     @property
     def narration(self) -> str:

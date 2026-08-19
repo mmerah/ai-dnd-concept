@@ -43,6 +43,9 @@ def explained_fact(
     return entity_fact(entity, kind, rendered, data, narrate=narrate)
 
 
+def narrator_lines(facts: Sequence[Fact]) -> tuple[str, ...]:
+    return tuple(told for fact in facts if (told := fact.narrator) is not None)
+
+
 def narrator_evidence(facts: Sequence[Fact]) -> str:
-    lines = [f"- {rendered}" for fact in facts if (rendered := fact.narrator) is not None]
-    return "\n".join(lines) or NOTHING_MECHANICAL
+    return "\n".join(f"- {told}" for told in narrator_lines(facts)) or NOTHING_MECHANICAL

@@ -135,11 +135,6 @@ def apply_restore_luck(draft: Game, actor_id: EntityId) -> list[Fact]:
     return [*facts, *adjust(actor, "luck", luck, refill, "the conflict is behind them")]
 
 
-def apply_end_adventure(draft: Game) -> list[Fact]:
-    Mechanics.of(draft).completed.current += 1
-    return [Fact(kind="adventure_completed", trace="the adventure has ended")]
-
-
 def _twist(
     draft: Game, actor: Entity, rng: Random, twists: tuple[tuple[str, str], ...]
 ) -> list[Fact]:

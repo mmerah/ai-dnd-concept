@@ -28,8 +28,6 @@ class Sheet(SheetBase):
 class Mechanics(SheetMechanics[Sheet]):
     # One tally for the whole game, as the note it fires says: a tie anywhere moves the same one.
     twist: Counter = Counter(current=0, maximum=TIES_PER_TWIST)
-    # How many adventures the fiction has closed, game-wide: what advancement is owed against.
-    completed: Counter = Counter(current=0)
 
 
 def describe_entity(mechanics: Mechanics, entity: Entity) -> str:

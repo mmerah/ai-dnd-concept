@@ -15,7 +15,6 @@ from .actions import (
     Attempt,
     LuckTest,
     apply_change_credits,
-    apply_complete_job,
     resolve_attempt,
     resolve_luck_test,
 )
@@ -53,11 +52,7 @@ def director_toolset() -> AbstractToolset[PlanContext]:
             ),
         )
 
-    def complete_job(ctx: RunContext[PlanContext]) -> str:
-        """Record that the job is done."""
-        return act(ctx, lambda draft, _rng: Resolution(facts=tuple(apply_complete_job(draft))))
-
-    toolset = sequential_toolset([roll_attempt, roll_luck_test, change_credits, complete_job])
+    toolset = sequential_toolset([roll_attempt, roll_luck_test, change_credits])
     return toolset.prepared(_narrow_to_skills_in_play)
 
 

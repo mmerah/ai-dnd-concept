@@ -6,7 +6,6 @@ from core_test_support import at_boundary, capability, initialized
 from aidm.engines.loner3e.actions import (
     HARM,
     Question,
-    apply_end_adventure,
     apply_restore_luck,
     defeat_note,
     outcome_for,
@@ -18,6 +17,7 @@ from aidm.engines.loner3e.advance import AdventureGrowth, Change
 from aidm.engines.loner3e.mechanics import LUCK_MAX, TIES_PER_TWIST, Mechanics
 from aidm.engines.loner3e.pack import SRD_PACK, twist_table
 from aidm.engines.loner3e.rules import Loner3eEngine
+from aidm.engines.sheets import complete_chapter
 from aidm.state.base import PLAYER_ID, Counter, Entity, EntityId
 
 TWISTS = twist_table(Loner3eEngine().packs, SRD_PACK)
@@ -257,13 +257,13 @@ def test_an_actor_seeded_after_an_adventure_is_not_owed_the_growth_they_missed()
     assert offered == {PLAYER_ID}
 
 
-def test_end_adventure_gates_the_offer_and_a_second_one_earns_a_second() -> None:
+def test_a_closed_chapter_gates_the_offer_and_a_second_one_earns_a_second() -> None:
     engine, state = initialized()
     advancement = capability(engine)
     assert advancement.offers(state) == ()
 
     draft = state.draft()
-    apply_end_adventure(draft)
+    complete_chapter(draft, engine.chapter_ending)
     once = draft.committed()
     (offer,) = advancement.offers(once)
 
@@ -276,7 +276,7 @@ def test_end_adventure_gates_the_offer_and_a_second_one_earns_a_second() -> None
     assert advancement.offers(spent) == ()
 
     draft = spent.draft()
-    apply_end_adventure(draft)
+    complete_chapter(draft, engine.chapter_ending)
     twice = draft.committed()
     assert len(advancement.offers(twice)) == 1
 
@@ -285,7 +285,7 @@ def test_an_adventure_growth_with_three_changes_lands_all_three_on_the_sheet() -
     engine, state = initialized()
     advancement = capability(engine)
     draft = state.draft()
-    apply_end_adventure(draft)
+    complete_chapter(draft, engine.chapter_ending)
     ready = draft.committed()
     (offer,) = advancement.offers(ready)
 

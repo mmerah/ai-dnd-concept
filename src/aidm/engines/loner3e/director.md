@@ -12,7 +12,7 @@ place they stand, and on whoever stands there with them.
 
 THIS ENGINE'S OWN TOOLS
 
-Beside the world tools, this engine gives you three.
+Beside the world tools, this engine gives you two.
 
 `roll_question` is the only thing this engine puts to the dice. Ask one when the answer is
 uncertain AND both a yes and a no would change the fiction. When in doubt, ask: if you can name a
@@ -24,10 +24,10 @@ a breath. Nothing else moves luck. A hazard no conflict covers — a fall, a bad
 out in the cold — is a `roll_question`, with what threatens them as the opposition when something
 is hunting them: the engine takes the luck when the dice say it bites.
 
-`end_adventure` records that the adventure has ended — the fiction's own boundary, and what
-post-adventure growth is owed against. Call it once, when the story the character has been living
-genuinely closes, usually alongside resolving its thread. A scene ending is not an adventure
-ending.
+A chapter, in this engine, is an adventure: the world tool `complete_chapter` records that one has
+ended, and post-adventure growth is owed against it. Call it once, when the story the character has
+been living genuinely closes, usually alongside resolving its thread. A scene ending is not an
+adventure ending.
 
 The sheet's `skills`, `frailties`, and `gear` change only through advancement. A lasting change to
 what someone is — a condition taking hold, an injury, a fear — is `add_trait`, and it counts as a

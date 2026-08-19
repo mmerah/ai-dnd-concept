@@ -10,7 +10,6 @@ from aidm.app.views import (
     JournalView,
     ThreadSummary,
     attributed_line,
-    played_turns,
     player_scene,
     thread_summaries,
 )
@@ -85,12 +84,12 @@ def _entity_row(icon: Path | None, name: str, sub: str) -> None:
 def chat(session: GameSession) -> None:
     if not session.state.history:
         ui.label(session.state.scenario.premise).classes("text-sm italic opacity-70")
-    for played in played_turns(session.state.history, session.entries):
-        _bubble(session, PLAYER_ID, played.exchange.prompt, sent=True)
-        for line in played.exchange.lines:
+    for exchange in session.state.history:
+        _bubble(session, PLAYER_ID, exchange.prompt, sent=True)
+        for line in exchange.lines:
             _bubble(session, line.speaker_id, line.text, sent=False)
-        if played.outcomes:
-            ui.label(" · ".join(played.outcomes)).classes("text-xs opacity-60 q-px-md")
+        if exchange.outcomes:
+            ui.label(" · ".join(exchange.outcomes)).classes("text-xs opacity-60 q-px-md")
 
 
 def _bubble(session: GameSession, speaker_id: EntityId | None, text: str, *, sent: bool) -> None:

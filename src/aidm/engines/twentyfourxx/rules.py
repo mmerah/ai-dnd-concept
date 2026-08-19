@@ -18,6 +18,7 @@ ENGINE_ID: EngineId = EngineId("twentyfourxx")
 class TwentyfourxxEngine(Engine[Sheet]):
     id = ENGINE_ID
     badge = ("24XX", "indigo-7")
+    chapter_ending = "the job is done"
     engine_dir = Path(__file__).parent
     sheet_type = Sheet
     mechanics_type = Mechanics

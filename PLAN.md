@@ -314,7 +314,8 @@ scene, so nothing new has to be assembled for it.
   engines' `Mechanics`. `Advancement.earned()` becomes concrete on the base, narrowing with
   `isinstance(state.mechanics, SheetMechanics)` (the base cannot see the engine's own type).
 - Merge `end_adventure`/`complete_job` into one shared `complete_chapter` tool whose
-  player-facing wording ("the adventure has ended" / "the job is done") the engine supplies.
+  player-facing wording ("the adventure has ended" / "the job is done") the engine supplies: the
+  fact narrates it, so the boundary reaches the chat and not only the trace.
 - Both `new_sheet` newcomer-parity lines now read the lifted counter. Both `director.md`s and
   `director_tools.json` move with it.
 

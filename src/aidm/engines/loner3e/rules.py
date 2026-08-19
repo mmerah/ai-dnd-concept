@@ -18,6 +18,7 @@ ENGINE_ID: EngineId = EngineId("loner3e")
 class Loner3eEngine(Engine[Sheet]):
     id = ENGINE_ID
     badge = ("LONER 3E", "teal-7")
+    chapter_ending = "the adventure has ended"
     engine_dir = Path(__file__).parent
     sheet_type = Sheet
     mechanics_type = Mechanics

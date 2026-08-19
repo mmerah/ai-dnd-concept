@@ -20,6 +20,7 @@ def _engine(tmp_path: Path) -> Engine[NoSheet]:
     class BareEngine(Engine[NoSheet]):
         id = EngineId("test")
         badge = ("TEST", "grey-6")
+        chapter_ending = "the test has ended"
         engine_dir = tmp_path
         sheet_type = NoSheet
         mechanics_type = SheetMechanics[NoSheet]

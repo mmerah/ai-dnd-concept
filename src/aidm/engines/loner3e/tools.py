@@ -9,7 +9,7 @@ from aidm.state.base import EntityId
 from aidm.state.resolution import Resolution
 from aidm.state.world import Game
 
-from .actions import Question, apply_end_adventure, apply_restore_luck, resolve_question
+from .actions import Question, apply_restore_luck, resolve_question
 
 type Twists = Callable[[Game], tuple[tuple[str, str], ...]]
 
@@ -34,8 +34,4 @@ def director_toolset(twists: Twists) -> FunctionToolset[PlanContext]:
             lambda draft, _rng: Resolution(facts=tuple(apply_restore_luck(draft, actor_id))),
         )
 
-    def end_adventure(ctx: RunContext[PlanContext]) -> str:
-        """Record that the adventure has ended."""
-        return act(ctx, lambda draft, _rng: Resolution(facts=tuple(apply_end_adventure(draft))))
-
-    return sequential_toolset([roll_question, restore_luck, end_adventure])
+    return sequential_toolset([roll_question, restore_luck])

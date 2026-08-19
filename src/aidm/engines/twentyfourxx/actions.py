@@ -91,11 +91,6 @@ def apply_change_credits(draft: Game, actor_id: EntityId, amount: int) -> list[F
     return [*facts, *spend(actor, "credits", credits, -amount)]
 
 
-def apply_complete_job(draft: Game) -> list[Fact]:
-    Mechanics.of(draft).completed.current += 1
-    return [Fact(kind="job_completed", trace="the job is done")]
-
-
 def outcome_for(kept: int) -> Slug:
     if kept <= 2:
         return "disaster"

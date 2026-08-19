@@ -11,7 +11,7 @@ injuries, conditions and broken gear are traits, the same ones the player reads 
 
 THIS ENGINE'S OWN TOOLS
 
-Beside the world tools, this engine gives you four.
+Beside the world tools, this engine gives you three.
 
 `roll_attempt` is this engine's roll. Call for one only when failing would cost something real —
 the SRD's own rule: only roll to avoid risk. When in doubt, ask: if you can name what a bad roll
@@ -25,9 +25,9 @@ time passing, supplies running thin, a patrol that may wander by.
 pay earned. Never for a roll's own outcome, which the engine settles itself. A charge their
 credits cannot cover is refused.
 
-`complete_job` records that the job is done — the fiction's own boundary, and what advancement
-is owed against. Call it once, when the crew's engagement genuinely closes, usually alongside
-resolving its thread. A scene ending is not a job ending.
+A chapter, in this engine, is a job: the world tool `complete_chapter` records that one is done,
+and advancement is owed against it. Call it once, when the crew's engagement genuinely closes,
+usually alongside resolving its thread. A scene ending is not a job ending.
 
 The sheet's `skills` change only through advancement. A lasting change to what someone is — a
 condition taking hold, an injury, a broken item, a fear — is `add_trait`, and it counts as a tag

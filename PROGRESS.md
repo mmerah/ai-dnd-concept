@@ -340,11 +340,39 @@ it was — so `risky-lock`'s second expectation is `win-written` (`won_ways_are_
 outcome the player *won* has to open the door they forced. The 7/9 both engines read under
 `outcome-written` was the eval punishing an honest failed roll, not a turn that lost its outcome.
 
+### Phase 1 steps 10 and 11 — the shared spine, and outcomes onto Exchange
+
+Both land in one tree, so they share one SAVE_VERSION bump (80 → 81) rather than one each.
+
+- 10.1 `completed: Counter` lifted onto `SheetMechanics` (`engines/sheets.py`), deleted from both
+  engines' `Mechanics` — which leaves 24xx's with nothing of its own but the name the engine binds
+  to. `Advancement.earned` is concrete on the base over `SheetMechanics.of(state)`.
+- 10.2 A generic-narrowing detour, recorded because it looked justified and was not:
+  `mechanics: SheetMechanics[SheetBase] = SheetMechanics.of(state)` really does fail basedpyright
+  (`SheetMechanics[Unknown]`), which bought a whole extra non-generic base class. Chaining instead
+  — `SheetMechanics.of(state).completed.current` — is clean, because the unknown parameter only
+  types `sheets`, which no shared reader touches. Bind no intermediate variable and the generic
+  costs nothing. (`SheetMechanics[SheetBase].of(...)` is never the way out either: a parametrized
+  Pydantic generic is a *different* class, so its `isinstance` is a trap even where a test passes.)
+- 10.3 `end_adventure` + `complete_job` → one core `complete_chapter` tool over
+  `sheets.complete_chapter(draft, engine.chapter_ending)`; the fact kind is `chapter_completed`
+  for both. `Engine.chapter_ending` is a `ClassVar` read in `__init__` beside `sheet_type`, so an
+  engine that forgets it fails at build — which is exactly how the test suite's `BareEngine`
+  caught it. Each engine's `director.md` now says what a chapter is *there* (an adventure, a job).
+  The wording is player-facing: the fact carries `narrator=ending`, so closing a chapter reaches
+  the Narrator's evidence and the chat's own outcome line, not only the trace. That is a
+  deliberate behaviour change — both engines' old facts narrated nothing, and an adventure ending
+  without the player being told is the boundary they most deserve to see.
+- 11.1 `Exchange.outcomes` is filled at commit from `narrated(facts)` (`state/facts.py`, extracted
+  from `narrator_evidence`, which now reads over it). `PlayedTurn`, `played_turns` and `_outcomes`
+  are gone from `app/views.py`, and `ui/panels.chat` iterates `state.history` directly — the UI no
+  longer re-pairs history against the trace from the end to find what a turn told the player.
+
 ## Next
 
-- Phase 1 step 10 — deduplicate the engines' shared spine.
-- Re-run the eval once on `win-written` to cut a clean baseline for step 10; the `step-9-declared`
-  numbers were scored under the stricter expectation, so `risky-lock` reads low in that file.
+- Phase 1 step 12 — reorganize around the new seams.
+- Re-run the eval once on `win-written` to cut a clean baseline; the `step-9-declared` numbers were
+  scored under the stricter expectation, so `risky-lock` reads low in that file.
 - The plan is the instrument now: when a case regresses, read `Run.planned` before the facts. A
   mechanic missing from the plan is an interpretation bug in `interpreter.md`; a mechanic planned
   and not in the facts is an execution bug in `director.md`. That distinction is what closed

@@ -4,7 +4,8 @@ from typing import Self
 
 from pydantic import Field, JsonValue
 
-from aidm.state.base import PLAYER_ID, EngineId, Entity, EntityId, Mutable
+from aidm.state.base import PLAYER_ID, Counter, EngineId, Entity, EntityId, Mutable
+from aidm.state.facts import Fact
 from aidm.state.world import Game, WorldState
 
 
@@ -14,6 +15,8 @@ class SheetBase(Mutable, ABC):
 
 class SheetMechanics[S: SheetBase](Mutable):
     sheets: dict[EntityId, S] = Field(default_factory=dict)
+    # How many chapters the fiction has closed, game-wide: what advancement is owed against.
+    completed: Counter = Counter(current=0)
 
     @classmethod
     def of(cls, state: Game) -> Self:
@@ -58,3 +61,8 @@ def require_sheet[S](sheets: Mapping[EntityId, S], actor: Entity) -> S:
     if sheet is None:
         raise ValueError(f"{actor.name} has no character sheet")
     return sheet
+
+
+def complete_chapter(draft: Game, ending: str) -> list[Fact]:
+    SheetMechanics.of(draft).completed.current += 1
+    return [Fact(kind="chapter_completed", trace=ending, narrator=ending)]

@@ -24,9 +24,7 @@ from aidm.content.sources import CanonSource
 from aidm.content.store import load_character, load_scenario
 from aidm.engines.advancement import Advancement
 from aidm.engines.engine import Engine
-from aidm.engines.loner3e.mechanics import Mechanics as Loner3eMechanics
-from aidm.engines.sheets import SheetBase
-from aidm.engines.twentyfourxx.mechanics import Mechanics as TwentyfourxxMechanics
+from aidm.engines.sheets import SheetBase, SheetMechanics
 from aidm.state.base import EngineId, Entity
 from aidm.state.trace import Turn
 from aidm.state.world import Game
@@ -68,8 +66,7 @@ def with_entity(state: Game, entity: Entity) -> Game:
 def at_boundary(state: Game) -> Game:
     """One boundary recorded — an adventure ended, a job done — the trigger both engines count."""
     draft = state.draft()
-    assert isinstance(draft.mechanics, Loner3eMechanics | TwentyfourxxMechanics)
-    draft.mechanics.completed.current = 1
+    SheetMechanics.of(draft).completed.current = 1
     return draft.committed()
 
 

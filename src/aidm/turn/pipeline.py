@@ -11,7 +11,7 @@ from aidm.config import Settings
 from aidm.engines.engine import Engine, PlanContext, TurnLog
 from aidm.engines.sheets import SheetBase
 from aidm.engines.transact import apply_to_draft
-from aidm.state.facts import Fact, narrator_evidence
+from aidm.state.facts import Fact, narrator_evidence, narrator_lines
 from aidm.state.history import Exchange
 from aidm.state.resolution import Resolution
 from aidm.state.trace import StepTrace, Turn
@@ -159,7 +159,10 @@ async def run_turn(
     facts.extend(kept.facts)
     steps.append(_traced("worldkeeper", keeper_prompt, report))
 
-    draft.history = (*draft.history, Exchange(prompt=prompt, lines=narration.lines))
+    draft.history = (
+        *draft.history,
+        Exchange(prompt=prompt, lines=narration.lines, outcomes=narrator_lines(facts)),
+    )
     draft.turn += 1
     return TurnResult(
         state=draft.committed(),

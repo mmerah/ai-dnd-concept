@@ -4,8 +4,8 @@ from pydantic_ai import RunContext
 from pydantic_ai.tools import ToolDefinition
 from pydantic_ai.toolsets import AbstractToolset, FunctionToolset, WrapperToolset
 
+from aidm.engines import sheets
 from aidm.engines.engine import Engine, PlanContext
-from aidm.engines.sheets import SheetBase
 from aidm.engines.transact import act, sequential_toolset
 from aidm.state import actions
 from aidm.state.base import PLAYER_ID, EntityId, Slug
@@ -100,6 +100,11 @@ def core_toolset() -> FunctionToolset[PlanContext]:
         """
         return _resolved(ctx, lambda draft: actions.leave_party(draft, actor_id))
 
+    def complete_chapter(ctx: RunContext[PlanContext]) -> str:
+        """Record that the chapter of the story this character has been living has closed."""
+        ending = ctx.deps.engine.chapter_ending
+        return _resolved(ctx, lambda draft: sheets.complete_chapter(draft, ending))
+
     return sequential_toolset(
         [
             reveal,
@@ -111,11 +116,12 @@ def core_toolset() -> FunctionToolset[PlanContext]:
             unlock_exit,
             join_party,
             leave_party,
+            complete_chapter,
         ]
     )
 
 
-def offered_tools(engine: Engine[SheetBase]) -> tuple[ToolDefinition, ...]:
+def offered_tools(engine: Engine[sheets.SheetBase]) -> tuple[ToolDefinition, ...]:
     """Every tool the Director may be handed this game, unfiltered: the vocabulary a turn is
     planned in, so a renamed tool cannot drift out of the role that plans it."""
     return tuple(
@@ -125,7 +131,7 @@ def offered_tools(engine: Engine[SheetBase]) -> tuple[ToolDefinition, ...]:
     )
 
 
-def vocabulary(engine: Engine[SheetBase]) -> str:
+def vocabulary(engine: Engine[sheets.SheetBase]) -> str:
     return "\n".join(
         f"- `{tool.name}` — {' '.join((tool.description or '').split())}"
         for tool in offered_tools(engine)

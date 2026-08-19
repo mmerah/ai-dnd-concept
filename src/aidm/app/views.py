@@ -1,8 +1,5 @@
-from collections.abc import Sequence
-
 from aidm.state.base import Frozen, Slug, ThreadStatus
 from aidm.state.history import Exchange, Line
-from aidm.state.trace import TraceEntry, Turn
 from aidm.state.world import Game
 from aidm.turn.scene import SceneSnapshot, VisibleScene
 
@@ -31,31 +28,6 @@ def thread_summaries(state: Game) -> tuple[ThreadSummary, ...]:
         )
         for thread in sorted(state.world.threads, key=lambda thread: thread.title)
     )
-
-
-class PlayedTurn(Frozen):
-    """One exchange and the player-safe rendering of what its facts settled."""
-
-    exchange: Exchange
-    outcomes: tuple[str, ...] = ()
-
-
-def played_turns(
-    history: Sequence[Exchange], entries: Sequence[TraceEntry]
-) -> tuple[PlayedTurn, ...]:
-    """History and trace both grow one entry per turn, so pairing them from the end cannot slip."""
-    turns = [entry for entry in entries if isinstance(entry, Turn)]
-    paired = dict(zip(reversed(range(len(history))), reversed(turns), strict=False))
-    return tuple(
-        PlayedTurn(exchange=exchange, outcomes=_outcomes(paired.get(index)))
-        for index, exchange in enumerate(history)
-    )
-
-
-def _outcomes(turn: Turn | None) -> tuple[str, ...]:
-    if turn is None:
-        return ()
-    return tuple(told for fact in turn.facts if (told := fact.narrator) is not None)
 
 
 class JournalView(Frozen):
