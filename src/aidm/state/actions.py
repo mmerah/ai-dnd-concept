@@ -1,35 +1,16 @@
+from typing import Literal
+
 from pydantic import JsonValue
 
 from .base import PLAYER_ID, Entity, EntityId, Slug, Trait, slug
-from .effects import (
-    AdvanceThread,
-    GainImprovisedItem,
-    Move,
-    RelationChange,
-    Reveal,
-    TraitChange,
-    WorldEffect,
-)
 from .facts import Fact, entity_fact
-from .world import CONNECTED, PARTY_MEMBER, GameState, Relation
+from .world import CONNECTED, PARTY_MEMBER, AdvanceThread, GameState, Relation
+
+type RelationMode = Literal["add", "remove", "unlock", "reveal"]
 
 
-def apply_effect(draft: GameState, effect: WorldEffect) -> list[Fact]:
-    match effect:
-        case Reveal(entity_id=entity_id):
-            return draft.reveal(draft.world.require(entity_id))
-        case Move():
-            return _move(draft, effect)
-        case GainImprovisedItem(item_name=item_name):
-            return _improvise(draft, item_name)
-        case TraitChange(mode="add"):
-            return _add_trait(draft, effect)
-        case TraitChange():
-            return _remove_trait(draft, effect)
-        case RelationChange():
-            return _relation_change(draft, effect)
-        case AdvanceThread():
-            return _advance_thread(draft, effect)
+def reveal(draft: GameState, entity_id: EntityId) -> list[Fact]:
+    return draft.reveal(draft.world.require(entity_id))
 
 
 def require_actor_here(state: GameState, actor_id: EntityId) -> Entity:
@@ -66,25 +47,23 @@ def _require_open_way(draft: GameState, here: EntityId, destination: Entity) -> 
         )
     if not found.known:
         raise ValueError(
-            f"the player has not found the way to {destination.name} yet, so walking it is one "
-            "plan, not two: put a `relation-change` with `mode: reveal` for that way immediately "
-            "before this move, in the same list"
+            f"the player has not found the way to {destination.name} yet: call `reveal_way` for "
+            "it first, then move them again"
         )
     if found.locked:
         raise ValueError(f"the way to {destination.name} is locked and must be dealt with first")
 
 
-def _move(draft: GameState, effect: Move) -> list[Fact]:
-    moving = draft.world.require(effect.entity_id)
+def move(draft: GameState, entity_id: EntityId, to_id: EntityId) -> list[Fact]:
+    moving = draft.world.require(entity_id)
     if moving.kind == "item":
-        return _move_item(draft, moving, effect.to_id)
-    return _move_actor(draft, effect)
+        return _move_item(draft, moving, to_id)
+    return _move_actor(draft, entity_id, to_id)
 
 
-def _move_actor(draft: GameState, effect: Move) -> list[Fact]:
-    destination = draft.world.require_kind(effect.to_id, "location")
+def _move_actor(draft: GameState, actor_id: EntityId, to_id: EntityId) -> list[Fact]:
+    destination = draft.world.require_kind(to_id, "location")
     here = draft.player_location
-    actor_id = effect.entity_id
     if actor_id == PLAYER_ID:
         _require_open_way(draft, here, destination)
         facts = [*draft.reveal(destination), draft.move(draft.player, destination)]
@@ -118,7 +97,7 @@ def _move_item(draft: GameState, item: Entity, to_id: EntityId) -> list[Fact]:
     return [*draft.reveal(item), draft.move(item, receiver)]
 
 
-def _improvise(draft: GameState, item_name: str) -> list[Fact]:
+def improvise(draft: GameState, item_name: str) -> list[Fact]:
     item = Entity(
         id=slug(item_name, draft.world.all_ids()),
         kind="item",
@@ -131,31 +110,27 @@ def _improvise(draft: GameState, item_name: str) -> list[Fact]:
     return [created, draft.move(item, draft.player)]
 
 
-def _add_trait(draft: GameState, effect: TraitChange) -> list[Fact]:
-    entity, seen = reveal_target(draft, effect.entity_id)
-    if entity.trait(effect.trait_id) is not None:
-        raise ValueError(f"{entity.name} already carries the trait {effect.trait_id!r}")
-    name = effect.trait_id.replace("-", " ").title()
-    entity.traits.append(Trait(id=effect.trait_id, name=name, text=effect.text))
+def add_trait(draft: GameState, entity_id: EntityId, trait_id: Slug, text: str = "") -> list[Fact]:
+    entity, seen = reveal_target(draft, entity_id)
+    if entity.trait(trait_id) is not None:
+        raise ValueError(f"{entity.name} already carries the trait {trait_id!r}")
+    name = trait_id.replace("-", " ").title()
+    entity.traits.append(Trait(id=trait_id, name=name, text=text))
     trace = f"{entity.name} is {name}"
-    return [
-        *seen,
-        entity_fact(entity, "trait_added", trace, {"trait_id": effect.trait_id}),
-    ]
+    return [*seen, entity_fact(entity, "trait_added", trace, {"trait_id": trait_id})]
 
 
-def _remove_trait(draft: GameState, effect: TraitChange) -> list[Fact]:
-    entity, seen = reveal_target(draft, effect.entity_id)
-    held = entity.trait(effect.trait_id)
+def remove_trait(draft: GameState, entity_id: EntityId, trait_id: Slug) -> list[Fact]:
+    entity, seen = reveal_target(draft, entity_id)
+    held = entity.trait(trait_id)
     if held is None:
         carried = ", ".join(sorted(one.id for one in entity.traits)) or "(none)"
         raise ValueError(
-            f"{entity.name} carries no trait {effect.trait_id!r}. Their traits are: {carried}"
+            f"{entity.name} carries no trait {trait_id!r}. Their traits are: {carried}"
         )
     entity.traits.remove(held)
     trace = f"{entity.name} is no longer {held.name}"
-    data = {"trait_id": effect.trait_id}
-    return [*seen, entity_fact(entity, "trait_removed", trace, data)]
+    return [*seen, entity_fact(entity, "trait_removed", trace, {"trait_id": trait_id})]
 
 
 def _relation_of(
@@ -167,32 +142,27 @@ def _relation_of(
     return relation, draft.world.require(relation.source), draft.world.require(relation.target)
 
 
-def _relation_change(draft: GameState, effect: RelationChange) -> list[Fact]:
+def relation_change(
+    draft: GameState, mode: RelationMode, kind: Slug, source_id: EntityId, target_id: EntityId
+) -> list[Fact]:
     seen: list[Fact] = []
-    if effect.mode == "add":
-        if draft.world.relation(effect.kind, effect.source, effect.target) is not None:
-            raise ValueError(
-                f"a {effect.kind!r} relation already joins {effect.source!r} and {effect.target!r}"
-            )
+    if mode == "add":
+        if draft.world.relation(kind, source_id, target_id) is not None:
+            raise ValueError(f"a {kind!r} relation already joins {source_id!r} and {target_id!r}")
         source = (
-            require_actor_here(draft, effect.source)
-            if effect.kind == PARTY_MEMBER
-            else draft.world.require(effect.source)
+            require_actor_here(draft, source_id)
+            if kind == PARTY_MEMBER
+            else draft.world.require(source_id)
         )
-        receiver = draft.world.require(effect.target)
-        relation = Relation(
-            kind=effect.kind,
-            source=effect.source,
-            target=effect.target,
-            known=True,
-        )
+        receiver = draft.world.require(target_id)
+        relation = Relation(kind=kind, source=source_id, target=target_id, known=True)
         seen = [*draft.reveal(source), *draft.reveal(receiver)]
         draft.world.relations[relation.id] = relation
     else:
-        relation, source, receiver = _relation_of(draft, effect.kind, effect.source, effect.target)
+        relation, source, receiver = _relation_of(draft, kind, source_id, target_id)
     joined = f"{source.name} — {relation.kind} — {receiver.name}"
     data: dict[str, JsonValue] = {"kind": relation.kind, "target": relation.target}
-    match effect.mode:
+    match mode:
         case "add":
             return [*seen, entity_fact(source, "relation_added", joined, data)]
         case "remove":
@@ -230,7 +200,7 @@ def _relation_change(draft: GameState, effect: RelationChange) -> list[Fact]:
             ]
 
 
-def _advance_thread(draft: GameState, effect: AdvanceThread) -> list[Fact]:
+def advance_thread(draft: GameState, effect: AdvanceThread) -> list[Fact]:
     """Threads are the Director's bookkeeping, so nothing here reaches the Narrator."""
     thread = draft.world.threads.get(effect.thread_id)
     if thread is None:

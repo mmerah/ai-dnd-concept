@@ -1,4 +1,4 @@
-from core_test_support import initialized, plan, played, scripted, structured
+from core_test_support import initialized, played, scripted, structured, text
 from pydantic_ai.models.function import FunctionModel
 
 AUTHORED = (
@@ -33,7 +33,7 @@ async def test_the_report_keeps_new_memories_drops_a_repeat_and_retries() -> Non
         engine,
         state,
         "I ask Mara about Elena.",
-        director=FunctionModel(scripted(plan())),
+        director=FunctionModel(scripted(text("Nothing to add."))),
         worldkeeper=keeper,
     )
 

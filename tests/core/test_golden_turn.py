@@ -5,13 +5,13 @@ import pytest
 from core_test_support import (
     LONER3E,
     TWENTYFOURXX,
-    call,
     game,
     narrated,
-    plan,
     played,
     scripted,
     structured,
+    text,
+    tool_call,
 )
 from golden_test_support import FIXTURES, dumped, golden
 from pydantic_ai.messages import ModelResponse
@@ -38,55 +38,48 @@ HISTORY = (
 )
 NARRATION = "The flagstone lifts. Beyond the door, something shifts its weight and waits."
 SEED = 11
-# One unconditional effect every engine shares, so the two traces differ only by their roll.
-TAKE_THE_MAP = call("move", entity_id="vault_map", to_id="player")
+# One unconditional tool call every engine shares, so the two traces differ only by their roll.
+TAKE_THE_MAP = tool_call("move", entity_id="vault_map", to_id="player")
+# What the last tool call writes once the roll has landed: the same shape under every engine.
+LISTENING = tool_call(
+    "add_trait",
+    entity_id="player",
+    trait_id="listening",
+    text="(condition) Listening for the next shift of weight behind the door.",
+)
 MEMORIES = [
     {
         "owner_id": "mara",
         "text": "Mara confirmed the vault door has not opened in thirty years.",
     }
 ]
-TURN_STEPS = ("director", "beat-1", "resolve", "hooks", "narrator", "worldkeeper")
-# What the second beat writes once the roll has landed: the same shape under every engine.
-SECOND_BEAT = plan(
-    effects=[
-        call(
-            "trait-change",
-            mode="add",
-            entity_id="player",
-            trait_id="listening",
-            text="(condition) Listening for the next shift of weight behind the door.",
-        )
-    ]
-)
-
-
-def _plan(roll: dict[str, object]) -> ModelResponse:
-    return plan(effects=[TAKE_THE_MAP], roll=roll)
-
-
+TURN_STEPS = ("director", "hooks", "narrator", "worldkeeper")
 # The fiction resolved by the engine's own roll.
-SCRIPTS: Mapping[EngineId, ModelResponse] = {
-    LONER3E: _plan(
-        call(
-            "question",
+SCRIPTS: Mapping[EngineId, tuple[ModelResponse, ...]] = {
+    LONER3E: (
+        TAKE_THE_MAP,
+        tool_call(
+            "roll_question",
             actor_id="player",
             question="Does he hear what waits past the vault door without being heard?",
             position="advantage",
             edge="Quiet Hands",
-            opponent_id=None,
-        )
+        ),
+        LISTENING,
+        text(NARRATION),
     ),
-    TWENTYFOURXX: _plan(
-        call(
-            "attempt",
+    TWENTYFOURXX: (
+        TAKE_THE_MAP,
+        tool_call(
+            "roll_attempt",
             actor_id="player",
             goal="Listen at the vault door without being heard",
             skill="Stealth",
             helped="the relic-hunter's ear for old stone",
-            hindered="",
             luck_test="something behind the door is already listening back",
-        )
+        ),
+        LISTENING,
+        text(NARRATION),
     ),
 }
 
@@ -103,7 +96,7 @@ async def _played(engine_id: EngineId) -> TurnResult:
         engine,
         _behind(state),
         PROMPT,
-        director=FunctionModel(scripted(SCRIPTS[engine_id], SECOND_BEAT)),
+        director=FunctionModel(scripted(*SCRIPTS[engine_id])),
         narrator=FunctionModel(scripted(narrated(NARRATION))),
         worldkeeper=FunctionModel(scripted(structured(memories=MEMORIES))),
         rng=Random(SEED),

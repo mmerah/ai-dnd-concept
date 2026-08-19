@@ -37,7 +37,7 @@ pythonpath = ["tests/core", "tests/loner3e", "tests/ui"]
 testpaths = ["tests"]
 
 [tool.basedpyright]
-include = ["src", "tests"]
+include = ["src", "tests", "evals"]
 extraPaths = [
   "src",
   "tests/core",

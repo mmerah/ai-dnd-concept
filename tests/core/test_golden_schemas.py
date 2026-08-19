@@ -5,8 +5,10 @@ from pydantic import BaseModel
 from pydantic_ai.toolsets import AbstractToolset, FunctionToolset
 
 from aidm.app.registry import engine_ids
+from aidm.engines.engine import PlanContext
 from aidm.state.base import EngineId, EntityDetail
 from aidm.turn.reports import WorldkeeperReport
+from aidm.turn.tools import core_toolset
 
 # A role's output schema is sent to the model, so its field descriptions steer it exactly as the
 # instructions do. Every one of these is engine-independent: what each engine's calls mean is
@@ -27,20 +29,12 @@ def test_the_proposal_schema_the_advisor_answers_with_is_unchanged(engine_id: En
 
 
 @pytest.mark.parametrize("engine_id", engine_ids())
-def test_the_beat_schema_the_director_answers_with_is_unchanged(engine_id: EngineId) -> None:
-    engine, _ = game(engine_id)
-    golden_json(
-        FIXTURES / "schemas" / engine_id / "beat.json",
-        engine.beat_type.model_json_schema(),
-    )
-
-
-@pytest.mark.parametrize("engine_id", engine_ids())
 def test_the_director_is_offered_the_same_tools(engine_id: EngineId) -> None:
     engine, _ = game(engine_id)
+    toolsets: tuple[AbstractToolset[PlanContext], ...] = (core_toolset(), *engine.director_toolsets)
     golden_json(
         FIXTURES / "schemas" / engine_id / "director_tools.json",
-        [tool for toolset in engine.director_toolsets for tool in _definitions(toolset)],
+        [tool for toolset in toolsets for tool in _definitions(toolset)],
     )
 
 
@@ -49,7 +43,7 @@ def test_the_shared_role_output_schemas_are_unchanged() -> None:
         golden_json(FIXTURES / "schemas" / f"{name}.json", output.model_json_schema())
 
 
-def _definitions(toolset: AbstractToolset[object]) -> list[dict[str, object]]:
+def _definitions(toolset: AbstractToolset[PlanContext]) -> list[dict[str, object]]:
     if not isinstance(toolset, FunctionToolset):
         raise TypeError(f"{type(toolset).__name__} declares no tools to lock")
     return [

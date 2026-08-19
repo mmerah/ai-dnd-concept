@@ -1,11 +1,18 @@
 import json
 from collections.abc import Callable
 from contextlib import ExitStack
+from dataclasses import dataclass, field
 from pathlib import Path
 from random import Random
 
-from pydantic import BaseModel, JsonValue, SecretStr
-from pydantic_ai.messages import ModelMessage, ModelResponse, TextPart
+from pydantic import BaseModel, SecretStr
+from pydantic_ai.messages import (
+    ModelMessage,
+    ModelResponse,
+    RetryPromptPart,
+    TextPart,
+    ToolCallPart,
+)
 from pydantic_ai.models import Model
 from pydantic_ai.models.function import AgentInfo, FunctionModel
 from pydantic_settings import SettingsConfigDict
@@ -90,16 +97,8 @@ def structured(**output: object) -> ModelResponse:
     return ModelResponse(parts=[TextPart(json.dumps(output))])
 
 
-def call(name: str, **args: object) -> dict[str, object]:
-    """One typed op: the discriminator, and the fields it carries."""
-    return {"op": name, **args}
-
-
-def plan(**output: object) -> ModelResponse:
-    """The director answers its engine's own beat model, as `NativeOutput` presents it — the same
-    shape for the turn's first ask and every later beat."""
-    body: dict[str, object] = {"effects": [], **output}
-    return structured(**body)
+def tool_call(name: str, **args: object) -> ModelResponse:
+    return ModelResponse(parts=[ToolCallPart(tool_name=name, args=json.dumps(args))])
 
 
 def text(body: str) -> ModelResponse:
@@ -122,15 +121,35 @@ def scripted(*responses: ModelResponse) -> Stub:
     return stub
 
 
+@dataclass(slots=True)
+class Recorder:
+    """A scripted stub that keeps what it was asked, so a test can read the retries it was sent."""
+
+    stub: Stub
+    calls: list[list[ModelMessage]] = field(default_factory=list)
+
+    def reasons(self) -> list[str]:
+        return [
+            str(part.content)
+            for messages in self.calls
+            for part in messages[-1].parts
+            if isinstance(part, RetryPromptPart)
+        ]
+
+
+def recorded(*responses: ModelResponse) -> Recorder:
+    answer = scripted(*responses)
+    calls: list[list[ModelMessage]] = []
+
+    def stub(messages: list[ModelMessage], info: AgentInfo) -> ModelResponse:
+        calls.append(list(messages))
+        return answer(messages, info)
+
+    return Recorder(stub=stub, calls=calls)
+
+
 def shown(turn: Turn, name: str) -> str:
     return next(step.prompt or "" for step in turn.steps if step.name == name)
-
-
-def answered(turn: Turn, name: str) -> dict[str, JsonValue]:
-    output = next(step.output for step in turn.steps if step.name == name)
-    if not isinstance(output, dict):
-        raise TypeError(f"step {name!r} answered {type(output).__name__}, not a structured output")
-    return output
 
 
 async def played(
@@ -146,9 +165,8 @@ async def played(
     rng: Random | None = None,
     on_step: Callable[[str], None] | None = None,
 ) -> TurnResult:
-    """The turn with every role stubbed, built the way the session builds it. One Director model
-    now answers the turn's first ask and every later beat, so a script that rolls must script its
-    own continuation too."""
+    """The turn with every role stubbed, built the way the session builds it. One Director run
+    answers with a tool call per model request, closed by a final text response."""
     config = settings()
     stages = build_turn_agents(engine, config, source)
     roles = (stages.director, stages.narrator, stages.worldkeeper)

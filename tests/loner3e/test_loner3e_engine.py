@@ -1,14 +1,13 @@
 from random import Random
 
+import pytest
 from core_test_support import at_boundary, capability, initialized
 
-from aidm.engines.engine import Engine
 from aidm.engines.loner3e.actions import (
     HARM,
-    EndAdventure,
-    Loner3eBeat,
     Question,
-    RestoreLuck,
+    apply_end_adventure,
+    apply_restore_luck,
     defeat_note,
     outcome_for,
     resolve_question,
@@ -19,27 +18,20 @@ from aidm.engines.loner3e.advance import AdventureGrowth, Change
 from aidm.engines.loner3e.mechanics import LUCK_MAX, TIES_PER_TWIST, Mechanics
 from aidm.engines.loner3e.pack import SRD_PACK, twist_table
 from aidm.engines.loner3e.rules import Loner3eEngine
-from aidm.engines.sheets import SheetBase
 from aidm.state.base import PLAYER_ID, Counter, Entity, EntityId
-from aidm.state.effects import TraitChange
-from aidm.state.world import PARTY_MEMBER, GameState, Relation
+from aidm.state.world import PARTY_MEMBER, Relation
 
 TWISTS = twist_table(Loner3eEngine().packs, SRD_PACK)
-SURE_FOOTED = TraitChange(mode="add", entity_id=PLAYER_ID, trait_id="sure-footed")
 FOE = EntityId("mara")
 
 
-def _plan(**args: object) -> Loner3eBeat:
-    return Loner3eBeat.model_validate(
+def _seal(**args: object) -> Question:
+    return Question.model_validate(
         {
-            "effects": (SURE_FOOTED.model_dump(),),
-            "roll": {
-                "op": "question",
-                "question": "Does he get the seal open before the whispering finds him?",
-                "opponent_id": None,
-            }
-            | args,
+            "actor_id": PLAYER_ID,
+            "question": "Does he get the seal open before the whispering finds him?",
         }
+        | args
     )
 
 
@@ -72,31 +64,24 @@ def test_the_twist_table_reads_a_subject_off_one_die_and_an_action_off_the_other
     assert "A PHYSICAL EVENT / ALTERS THE LOCATION" in twist_note(*twist_pairing(4, 2, TWISTS))
 
 
-def test_a_question_rolls_two_dice_before_the_beats_own_effects_land() -> None:
-    engine, state = initialized()
+def test_a_question_puts_two_dice_to_the_answer_and_costs_no_luck_on_its_own() -> None:
+    _, state = initialized()
     draft = state.draft()
 
-    facts = engine.resolve_beat(draft, _plan(actor_id=PLAYER_ID), Random(17)).facts
+    facts = resolve_question(draft, _seal(), Random(17), TWISTS).facts
 
-    assert [fact.kind for fact in facts] == [
-        "dice_rolled",
-        "dice_rolled",
-        "question_answered",
-        "trait_added",
-    ]
-    assert draft.world.require(PLAYER_ID).trait("sure-footed") is not None
+    assert [fact.kind for fact in facts] == ["dice_rolled", "dice_rolled", "question_answered"]
     assert draft.mechanics_as(Mechanics).sheets[PLAYER_ID].luck.current == LUCK_MAX
 
 
-def test_check_beat_owes_the_model_every_refusal_the_resolve_raises() -> None:
-    engine, state = initialized()
-    elsewhere = _plan(actor_id=PLAYER_ID, opponent_id="cloister_rat")
-    assert "is not here with the player" in _refusal(engine, state, elsewhere)
-    alone = _plan(actor_id=PLAYER_ID, opponent_id=PLAYER_ID)
-    assert "their own opposition" in _refusal(engine, state, alone)
+def test_a_question_the_fiction_cannot_carry_is_refused_with_the_reason() -> None:
+    _, state = initialized()
 
-    accepted = _plan(actor_id=PLAYER_ID, position="advantage", edge="Reads Old Stonework")
-    assert engine.check_beat(state, accepted, False) is None
+    elsewhere = _seal(opponent_id="cloister_rat")
+    with pytest.raises(ValueError, match="is not here with the player"):
+        _ = resolve_question(state.draft(), elsewhere, Random(0), TWISTS)
+    with pytest.raises(ValueError, match="their own opposition"):
+        _ = resolve_question(state.draft(), _seal(opponent_id=PLAYER_ID), Random(0), TWISTS)
 
 
 def test_the_judged_position_is_what_reaches_the_dice_and_the_record() -> None:
@@ -189,14 +174,13 @@ def test_luck_running_out_ends_the_conflict_and_resets_both_pools() -> None:
 
 
 def test_an_actor_already_at_zero_luck_refuses_another_exchange() -> None:
-    engine, state = initialized()
+    _, state = initialized()
     draft = state.draft()
-    mechanics = draft.mechanics_as(Mechanics)
-    mechanics.sheets[FOE].luck.current = 0
+    draft.mechanics_as(Mechanics).sheets[FOE].luck.current = 0
     spent = draft.committed()
 
-    again = _plan(actor_id=PLAYER_ID, opponent_id=FOE)
-    assert "already out of luck" in _refusal(engine, spent, again)
+    with pytest.raises(ValueError, match="already out of luck"):
+        _ = resolve_question(spent.draft(), _duel(), Random(0), TWISTS)
 
 
 def test_an_adventures_end_opens_an_offer_and_the_caps_refuse_what_breaks_them() -> None:
@@ -282,7 +266,7 @@ def test_end_adventure_gates_the_offer_and_a_second_one_earns_a_second() -> None
     assert advancement.offers(state) == ()
 
     draft = state.draft()
-    engine.apply(draft, EndAdventure())
+    apply_end_adventure(draft)
     once = draft.committed()
     (offer,) = advancement.offers(once)
 
@@ -295,7 +279,7 @@ def test_end_adventure_gates_the_offer_and_a_second_one_earns_a_second() -> None
     assert advancement.offers(spent) == ()
 
     draft = spent.draft()
-    engine.apply(draft, EndAdventure())
+    apply_end_adventure(draft)
     twice = draft.committed()
     assert len(advancement.offers(twice)) == 1
 
@@ -304,7 +288,7 @@ def test_an_adventure_growth_with_three_changes_lands_all_three_on_the_sheet() -
     engine, state = initialized()
     advancement = capability(engine)
     draft = state.draft()
-    engine.apply(draft, EndAdventure())
+    apply_end_adventure(draft)
     ready = draft.committed()
     (offer,) = advancement.offers(ready)
 
@@ -334,21 +318,7 @@ def test_an_adventure_growth_with_three_changes_lands_all_three_on_the_sheet() -
     ]
 
 
-def test_the_one_roll_is_worked_through_in_the_directors_instructions() -> None:
-    """A roll without an example teaches the model nothing: coverage is asserted, not hoped."""
-    engine, _ = initialized()
-
-    assert engine.director_instructions.count('"op": "question"') == 1
-
-
 def test_restoring_luck_that_is_already_full_is_a_quiet_no_op() -> None:
-    engine, state = initialized()
-    draft = state.draft()
+    _, state = initialized()
 
-    assert engine.apply(draft, RestoreLuck(actor_id=PLAYER_ID)) == []
-
-
-def _refusal(engine: Engine[SheetBase], state: GameState, plan: Loner3eBeat) -> str:
-    refused = engine.check_beat(state, plan, False)
-    assert refused is not None
-    return refused
+    assert apply_restore_luck(state.draft(), PLAYER_ID) == []

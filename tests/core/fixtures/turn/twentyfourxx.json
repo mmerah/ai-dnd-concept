@@ -1,64 +1,6 @@
 {
-  "save_version": 75,
+  "save_version": 76,
   "facts": [
-    {
-      "kind": "dice_rolled",
-      "trace": "Listen at the vault door without being heard — Stealth: d10+d6 [8, 5] -> 8",
-      "narrator": null,
-      "data": {
-        "faces": [
-          10,
-          6
-        ],
-        "rolled": [
-          8,
-          5
-        ],
-        "kept": 8,
-        "reason": "Listen at the vault door without being heard — Stealth"
-      }
-    },
-    {
-      "kind": "attempt_resolved",
-      "trace": "Listen at the vault door without being heard -> success",
-      "narrator": "Listen at the vault door without being heard -> success",
-      "data": {
-        "entity_id": "player",
-        "outcome": "success",
-        "kept": 8,
-        "skill": "Stealth",
-        "faces": [
-          10,
-          6
-        ],
-        "helper": null
-      }
-    },
-    {
-      "kind": "dice_rolled",
-      "trace": "bad luck — something behind the door is already listening back: 1d6 [4] -> 4",
-      "narrator": null,
-      "data": {
-        "faces": [
-          6
-        ],
-        "rolled": [
-          4
-        ],
-        "kept": 4,
-        "reason": "bad luck — something behind the door is already listening back"
-      }
-    },
-    {
-      "kind": "luck_tested",
-      "trace": "bad luck — something behind the door is already listening back: signs of it",
-      "narrator": "bad luck — something behind the door is already listening back: signs of it",
-      "data": {
-        "entity_id": "player",
-        "subject": "something behind the door is already listening back",
-        "trouble": false
-      }
-    },
     {
       "kind": "entity_discovered",
       "trace": "learned of the vault map",
@@ -126,6 +68,64 @@
       }
     },
     {
+      "kind": "dice_rolled",
+      "trace": "Listen at the vault door without being heard — Stealth: d10+d6 [8, 5] -> 8",
+      "narrator": null,
+      "data": {
+        "faces": [
+          10,
+          6
+        ],
+        "rolled": [
+          8,
+          5
+        ],
+        "kept": 8,
+        "reason": "Listen at the vault door without being heard — Stealth"
+      }
+    },
+    {
+      "kind": "attempt_resolved",
+      "trace": "Listen at the vault door without being heard -> success",
+      "narrator": "Listen at the vault door without being heard -> success",
+      "data": {
+        "entity_id": "player",
+        "outcome": "success",
+        "kept": 8,
+        "skill": "Stealth",
+        "faces": [
+          10,
+          6
+        ],
+        "helper": null
+      }
+    },
+    {
+      "kind": "dice_rolled",
+      "trace": "bad luck — something behind the door is already listening back: 1d6 [4] -> 4",
+      "narrator": null,
+      "data": {
+        "faces": [
+          6
+        ],
+        "rolled": [
+          4
+        ],
+        "kept": 4,
+        "reason": "bad luck — something behind the door is already listening back"
+      }
+    },
+    {
+      "kind": "luck_tested",
+      "trace": "bad luck — something behind the door is already listening back: signs of it",
+      "narrator": "bad luck — something behind the door is already listening back: signs of it",
+      "data": {
+        "entity_id": "player",
+        "subject": "something behind the door is already listening back",
+        "trouble": false
+      }
+    },
+    {
       "kind": "trait_added",
       "trace": "Kael is Listening",
       "narrator": "Kael is Listening",
@@ -149,45 +149,7 @@
   "steps": [
     {
       "name": "director",
-      "output": {
-        "roll": {
-          "op": "attempt",
-          "actor_id": "player",
-          "goal": "Listen at the vault door without being heard",
-          "skill": "Stealth",
-          "helped": "the relic-hunter's ear for old stone",
-          "helper_id": null,
-          "helper_skill": "",
-          "hindered": "",
-          "luck_test": "something behind the door is already listening back"
-        },
-        "effects": [
-          {
-            "op": "move",
-            "entity_id": "vault_map",
-            "to_id": "player"
-          }
-        ]
-      }
-    },
-    {
-      "name": "beat-1",
-      "output": {
-        "roll": null,
-        "effects": [
-          {
-            "op": "trait-change",
-            "mode": "add",
-            "entity_id": "player",
-            "trait_id": "listening",
-            "text": "(condition) Listening for the next shift of weight behind the door."
-          }
-        ]
-      }
-    },
-    {
-      "name": "resolve",
-      "output": "- Listen at the vault door without being heard -> success\n- bad luck — something behind the door is already listening back: signs of it\n- learned of the vault map\n- took the vault map\n- Kael is Listening"
+      "output": "The flagstone lifts. Beyond the door, something shifts its weight and waits."
     },
     {
       "name": "hooks",

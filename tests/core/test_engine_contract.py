@@ -2,34 +2,31 @@ from random import Random
 
 import pytest
 from core_test_support import initialized
-from pydantic import ValidationError
 
 from aidm.app.registry import ENGINES
 from aidm.app.session import build_engine
 from aidm.engines.engine import Engine
-from aidm.engines.loner3e.actions import Loner3eBeat, RestoreLuck
+from aidm.engines.loner3e.actions import apply_restore_luck
 from aidm.engines.loner3e.mechanics import LUCK_MAX, Mechanics, Sheet
 from aidm.engines.loner3e.rules import Loner3eEngine
-from aidm.engines.sheets import SheetBase
-from aidm.state.base import PLAYER_ID, EngineId, Entity, EntityId, Frozen
-from aidm.state.beat import Resolution
-from aidm.state.effects import Move, WorldEffect
+from aidm.state import actions
+from aidm.state.base import PLAYER_ID, EngineId, Entity, EntityId
 from aidm.state.facts import Fact
 from aidm.state.world import GameState
 
 
-def _turn(engine: Engine[SheetBase], state: GameState) -> tuple[GameState, tuple[Fact, ...]]:
+def _turn(state: GameState) -> tuple[GameState, tuple[Fact, ...]]:
+    """A core action and an engine action on one draft, so a shallow copy shows up in either."""
     draft = state.draft()
-    effects: tuple[WorldEffect | RestoreLuck, ...] = (
-        Move(entity_id=EntityId("vault_map"), to_id=PLAYER_ID),
-        RestoreLuck(actor_id=PLAYER_ID),
-    )
-    facts = [fact for effect in effects for fact in engine.apply(draft, effect)]
+    facts = [
+        *actions.move(draft, EntityId("vault_map"), PLAYER_ID),
+        *apply_restore_luck(draft, PLAYER_ID),
+    ]
     return draft.committed(), tuple(facts)
 
 
 def _spent(state: GameState) -> GameState:
-    """Luck short of full, so the engine's own effect has something to restore."""
+    """Luck short of full, so the engine's own action has something to restore."""
     draft = state.draft()
     draft.mechanics_as(Mechanics).sheets[PLAYER_ID].luck.current = 1
     return draft.committed()
@@ -46,17 +43,14 @@ def test_engine_initialization_and_state_contract() -> None:
     assert restored.model_dump() == state.model_dump()
 
 
-def test_effect_resolution_is_pure_and_renders_every_fact() -> None:
-    """Load-bearing: a draft that shallow-copies would corrupt the committed state silently, so the
-    turn has to touch both a core action and engine state to be worth asserting.
-    """
+def test_action_resolution_is_pure_and_renders_every_fact() -> None:
     engine, state = initialized()
     state = _spent(state)
     before = state.model_dump_json()
 
-    first_state, first_facts = _turn(engine, state)
+    first_state, first_facts = _turn(state)
 
-    assert (first_state, first_facts) == _turn(engine, state)
+    assert (first_state, first_facts) == _turn(state)
     assert state.model_dump_json() == before
     assert {fact.kind for fact in first_facts} >= {
         "entity_discovered",
@@ -120,21 +114,8 @@ def test_a_sheet_engine_that_declares_nothing_is_refused_before_it_plays() -> No
         def sheet_view(self, state: GameState) -> tuple[tuple[str, str], ...]:
             return ()
 
-        def resolve_roll(self, draft: GameState, roll: Frozen, rng: Random) -> Resolution:
-            return Resolution()
-
-        def unpack_beat(self, beat: Frozen) -> tuple[Frozen | None, tuple[Frozen, ...]]:
-            raise TypeError
-
     with pytest.raises(AttributeError, match="sheet_type"):
         _ = Undeclared()
-
-
-def test_a_beat_naming_a_roll_this_engine_has_not_is_refused() -> None:
-    """What replaces the deleted translation guard: typed output rejects a roll this engine does
-    not have at validation, before the beat ever reaches the engine."""
-    with pytest.raises(ValidationError):
-        _ = Loner3eBeat.model_validate({"roll": {"op": "attempt", "actor_id": PLAYER_ID}})
 
 
 def test_every_registered_engine_builds_itself() -> None:

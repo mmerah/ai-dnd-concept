@@ -16,8 +16,8 @@ from aidm.engines.engine import Engine
 from aidm.engines.sheets import SheetBase
 from aidm.engines.transact import transact
 from aidm.state.base import PLAYER_ID, SAVE_VERSION, EngineId, Entity, EntityId
-from aidm.state.beat import Resolution
 from aidm.state.facts import Fact
+from aidm.state.resolution import Resolution
 from aidm.state.trace import Applied, TraceEntry, Turn
 from aidm.state.world import PARTY_MEMBER, GameState, Relation
 from aidm.turn.agents import AdvancementContext, TurnAgents, advisor_agent, build_turn_agents
@@ -235,15 +235,15 @@ class GameSession:
     def preview(self, drafted: Drafted) -> tuple[Fact, ...]:
         """What the change would write, read off a throwaway draft, not the committed state."""
         advancement = self._advancement()
-        trial = transact(
+        _, facts = transact(
             self.engine,
             self.state.draft(),
-            lambda draft: Resolution(
-                facts=advancement.resolve(draft, drafted.offer, drafted.proposal, Random(0))
+            lambda draft, rng: Resolution(
+                facts=advancement.resolve(draft, drafted.offer, drafted.proposal, rng)
             ),
             Random(0),
         )
-        return trial.facts
+        return facts
 
     def apply_proposal(self, drafted: Drafted) -> tuple[Fact, ...]:
         """The legality rule runs again here: a turn since the draft may have made it illegal."""
@@ -253,15 +253,14 @@ class GameSession:
             raise ValueError("that change is no longer on offer")
         if refused := advancement.violation(self.state, offer, proposal):
             raise ValueError(refused)
-        applied = transact(
+        state, facts = transact(
             self.engine,
             self.state.draft(),
-            lambda draft: Resolution(facts=advancement.resolve(draft, offer, proposal, self.rng)),
+            lambda draft, rng: Resolution(facts=advancement.resolve(draft, offer, proposal, rng)),
             self.rng,
         )
-        entry = Applied(subject_id=offer.subject_id, facts=applied.facts)
-        self._commit(applied.state, entry)
-        return applied.facts
+        self._commit(state, Applied(subject_id=offer.subject_id, facts=facts))
+        return facts
 
     def _advancement(self) -> Advancement:
         if self.engine.advancement is None:

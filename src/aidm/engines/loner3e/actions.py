@@ -1,21 +1,15 @@
 from random import Random
-from typing import Annotated, Literal
+from typing import Literal
 
 from pydantic import Field
 
 from aidm.engines.counters import adjust
 from aidm.engines.sheets import require_sheet
-from aidm.state.apply_effects import apply_effect, require_actor_here
+from aidm.state.actions import require_actor_here, reveal
 from aidm.state.base import Entity, EntityId, Frozen, Slug
-from aidm.state.beat import (
-    BEAT_DOC,
-    BEAT_EFFECTS_DESCRIPTION,
-    BEAT_ROLL_DESCRIPTION,
-    Resolution,
-)
 from aidm.state.dice import roll_pool
-from aidm.state.effects import Reveal, WorldOp
 from aidm.state.facts import Fact, entity_fact
+from aidm.state.resolution import Resolution
 from aidm.state.world import GameState
 
 from .mechanics import LUCK_MAX, TIES_PER_TWIST, Mechanics
@@ -32,60 +26,14 @@ HARM: dict[Slug, int] = {
 type Position = Literal["advantage", "neutral", "disadvantage"]
 
 
-class RestoreLuck(Frozen):
-    """Put an actor's luck back to full, once a conflict is behind them and they have had a
-    breather. The engine already refills both sides when a conflict ends at 0."""
-
-    op: Literal["restore-luck"] = "restore-luck"
-    actor_id: EntityId = Field(description="Exact id of the actor: the player, or an actor here.")
-
-
-class EndAdventure(Frozen):
-    """Record that the adventure has ended — the fiction's own boundary, written once when the
-    story genuinely closes, usually alongside resolving its thread. Never for a mere scene
-    ending."""
-
-    op: Literal["end-adventure"] = "end-adventure"
-
-
 class Question(Frozen):
     """A closed dramatic question, answered by Chance d6 against Risk d6."""
 
-    op: Literal["question"] = "question"
-    actor_id: EntityId = Field(
-        description="Exact id of the actor the question is about: the player, or an actor here."
-    )
-    question: str = Field(
-        min_length=1,
-        description="The closed dramatic question the dice answer, phrased so that yes is what "
-        "the actor wants.",
-    )
-    position: Position = Field(
-        default="neutral",
-        description="Your judgment of the fiction: `advantage` when a skill, gear, trait or the "
-        "situation gives the actor a real edge here; `disadvantage` when a frailty, an opposing "
-        "tag or the situation works against them; `neutral` when neither clearly outweighs.",
-    )
-    edge: str = Field(
-        default="",
-        description="The tag or circumstance that decided the position, in a few words. Empty "
-        "for neutral.",
-    )
-    opponent_id: EntityId | None = Field(
-        default=None,
-        description="Exact id of the actor opposing this, set only when the question is one "
-        "exchange of a conflict; the engine then takes luck off whichever side loses it.",
-    )
-
-
-type Loner3eEffect = Annotated[WorldOp | RestoreLuck | EndAdventure, Field(discriminator="op")]
-
-
-class Loner3eBeat(Frozen):
-    __doc__ = BEAT_DOC
-
-    roll: Question | None = Field(default=None, description=BEAT_ROLL_DESCRIPTION)
-    effects: tuple[Loner3eEffect, ...] = Field(default=(), description=BEAT_EFFECTS_DESCRIPTION)
+    actor_id: EntityId
+    question: str = Field(min_length=1)
+    position: Position = "neutral"
+    edge: str = ""
+    opponent_id: EntityId | None = None
 
 
 def twist_pairing(
@@ -125,13 +73,13 @@ def resolve_question(
     draft: GameState, action: Question, rng: Random, twists: tuple[tuple[str, str], ...]
 ) -> Resolution:
     actor = require_actor_here(draft, action.actor_id)
-    facts = apply_effect(draft, Reveal(entity_id=action.actor_id))
+    facts = reveal(draft, action.actor_id)
     mechanics = draft.mechanics_as(Mechanics)
     _ = require_sheet(mechanics.sheets, actor)
     opponent: Entity | None = None
     if action.opponent_id is not None:
         opponent = require_actor_here(draft, action.opponent_id)
-        facts.extend(apply_effect(draft, Reveal(entity_id=action.opponent_id)))
+        facts.extend(reveal(draft, action.opponent_id))
     _refuse_unless_ready(actor, mechanics, opponent)
 
     chance, risk, facts_rolled = _pair(action, rng)
@@ -164,9 +112,9 @@ def resolve_question(
     return Resolution(facts=tuple(facts))
 
 
-def apply_restore_luck(draft: GameState, effect: RestoreLuck) -> list[Fact]:
-    actor = require_actor_here(draft, effect.actor_id)
-    facts = apply_effect(draft, Reveal(entity_id=actor.id))
+def apply_restore_luck(draft: GameState, actor_id: EntityId) -> list[Fact]:
+    actor = require_actor_here(draft, actor_id)
+    facts = reveal(draft, actor.id)
     luck = require_sheet(draft.mechanics_as(Mechanics).sheets, actor).luck
     refill = (luck.maximum or LUCK_MAX) - luck.current
     # Already full is a quiet no-op: `adjust` writes no fact for a zero delta.

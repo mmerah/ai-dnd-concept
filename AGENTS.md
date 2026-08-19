@@ -58,7 +58,7 @@ Tests must be deterministic and require no network.
 ## Framework rules
 
 - Use Pydantic V2 APIs only. Validation runs at the transaction boundary, not per field change; `model_copy(update=...)` does not validate.
-- Pydantic AI roles return validated structured output. Tools and output validators request retries with `ModelRetry`; in the turn loop tools are read-only lookups, with one exception: an expansion tool may apply a typed, validated canon patch to the turn's disposable draft through resolver code. No tool ever writes committed state, a save, or a file; an authoring tool may apply a typed patch to its in-memory draft.
+- Pydantic AI roles return validated structured output. Tools and output validators request retries with `ModelRetry`; turn-loop tools mutate only the turn's draft, through resolver code, and are refused against a throwaway copy first. No tool ever writes committed state, a save, or a file; an authoring tool may apply a typed patch to its in-memory draft.
 - NiceGUI reflects session state only. Keep domain logic out of the UI package and update refreshable views. A panel only renders state and submits typed decisions.
 - Keep each role's model, endpoint, retries, token budget, and reasoning level in one config module.
 

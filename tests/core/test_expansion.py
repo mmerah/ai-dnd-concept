@@ -1,19 +1,17 @@
-import json
-
 from core_test_support import (
     Stub,
-    call,
     initialized,
     narrated,
-    plan,
     played,
     scripted,
     settings,
     shown,
     structured,
+    text,
+    tool_call,
 )
 from pydantic_ai import Agent
-from pydantic_ai.messages import ModelMessage, ModelResponse, ToolCallPart
+from pydantic_ai.messages import ModelMessage, ModelResponse
 from pydantic_ai.models.function import AgentInfo, FunctionModel
 from pydantic_ai.toolsets import FunctionToolset
 
@@ -62,10 +60,6 @@ WAY = {"kind": "connected", "source": "cloister", "target": "sunken_gallery"}
 DOWNWARD = "I follow the stair down past the cloister."
 
 
-def _tool_call(name: str, **args: object) -> ModelResponse:
-    return ModelResponse(parts=[ToolCallPart(tool_name=name, args=json.dumps(args))])
-
-
 def _unreachable(messages: list[ModelMessage], info: AgentInfo) -> ModelResponse:
     del messages, info
     raise AssertionError("the Expander was called for a need the source holds nothing on")
@@ -87,25 +81,16 @@ async def test_travel_beyond_the_frontier_expands_the_world_inside_one_turn() ->
     engine, state = initialized()
     director = FunctionModel(
         scripted(
-            _tool_call(
+            tool_call(
                 "expand_world",
                 kind="location",
                 anchor_id="cloister",
                 need="the place the stair below the cloister descends to",
             ),
-            plan(
-                effects=[
-                    call("move", entity_id="player", to_id="cloister"),
-                    call(
-                        "relation-change",
-                        mode="reveal",
-                        kind="connected",
-                        source="cloister",
-                        target="sunken_gallery",
-                    ),
-                    call("move", entity_id="player", to_id="sunken_gallery"),
-                ]
-            ),
+            tool_call("move", entity_id="player", to_id="cloister"),
+            tool_call("reveal_way", location_id="cloister", to_id="sunken_gallery"),
+            tool_call("move", entity_id="player", to_id="sunken_gallery"),
+            text("Water closes over your boots."),
         )
     )
     result = await played(
@@ -124,7 +109,6 @@ async def test_travel_beyond_the_frontier_expands_the_world_inside_one_turn() ->
     assert [step.name for step in result.turn.steps] == [
         "director",
         "expander-1",
-        "resolve",
         "hooks",
         "narrator",
         "worldkeeper",
@@ -145,13 +129,13 @@ async def test_an_expander_created_actor_receives_valid_engine_rules_before_comm
     engine, state = initialized()
     director = FunctionModel(
         scripted(
-            _tool_call(
+            tool_call(
                 "expand_world",
                 kind="actor",
                 anchor_id="cloister",
                 need="who else haunts the flooded gallery below",
             ),
-            plan(),
+            text("Nothing more to do here yet."),
         )
     )
     letter = {
@@ -182,8 +166,9 @@ async def test_an_expander_that_cannot_write_costs_only_its_own_tool_call() -> N
     engine, state = initialized()
     director = FunctionModel(
         scripted(
-            _tool_call("expand_world", kind="location", anchor_id="cloister", need="a way down"),
-            plan(effects=[call("move", entity_id="player", to_id="cloister")]),
+            tool_call("expand_world", kind="location", anchor_id="cloister", need="a way down"),
+            tool_call("move", entity_id="player", to_id="cloister"),
+            text("The stair goes nowhere yet."),
         )
     )
     result = await played(
@@ -211,26 +196,17 @@ async def test_a_cited_expansion_is_shown_the_passages_the_director_asked_for() 
     engine, state = initialized()
     director = FunctionModel(
         scripted(
-            _tool_call(
+            tool_call(
                 "expand_world",
                 kind="location",
                 anchor_id="cloister",
                 need="the place the stair below the cloister descends to",
                 queries=["undercroft", "flooded galleries"],
             ),
-            plan(
-                effects=[
-                    call("move", entity_id="player", to_id="cloister"),
-                    call(
-                        "relation-change",
-                        mode="reveal",
-                        kind="connected",
-                        source="cloister",
-                        target="sunken_gallery",
-                    ),
-                    call("move", entity_id="player", to_id="sunken_gallery"),
-                ]
-            ),
+            tool_call("move", entity_id="player", to_id="cloister"),
+            tool_call("reveal_way", location_id="cloister", to_id="sunken_gallery"),
+            tool_call("move", entity_id="player", to_id="sunken_gallery"),
+            text("Water closes over your boots."),
         )
     )
     result = await played(
@@ -259,8 +235,9 @@ async def test_a_cited_miss_refuses_the_director_and_never_calls_the_expander() 
     engine, state = initialized()
     director = FunctionModel(
         scripted(
-            _tool_call("expand_world", kind="location", anchor_id="cloister", need="a way down"),
-            plan(effects=[call("move", entity_id="player", to_id="cloister")]),
+            tool_call("expand_world", kind="location", anchor_id="cloister", need="a way down"),
+            tool_call("move", entity_id="player", to_id="cloister"),
+            text("The stair goes nowhere yet."),
         )
     )
 
@@ -281,8 +258,9 @@ async def test_a_fallback_source_says_the_document_is_silent() -> None:
     engine, state = initialized()
     director = FunctionModel(
         scripted(
-            _tool_call("expand_world", kind="location", anchor_id="cloister", need="a way down"),
-            plan(effects=[call("move", entity_id="player", to_id="cloister")]),
+            tool_call("expand_world", kind="location", anchor_id="cloister", need="a way down"),
+            tool_call("move", entity_id="player", to_id="cloister"),
+            text("The stair goes nowhere yet."),
         )
     )
 
@@ -316,5 +294,5 @@ def test_a_closed_adventure_leaves_the_director_the_agent_it_ships_with() -> Non
     closed = build_turn_agents(engine, settings())
     opened = build_turn_agents(engine, settings(), FRONTIER)
 
-    assert (closed.expander, _tool_names(closed.director)) == (None, set())
-    assert opened.expander is not None and _tool_names(opened.director) == {"expand_world"}
+    assert (closed.expander, "expand_world" in _tool_names(closed.director)) == (None, False)
+    assert opened.expander is not None and "expand_world" in _tool_names(opened.director)

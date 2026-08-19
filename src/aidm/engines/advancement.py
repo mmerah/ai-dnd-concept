@@ -5,8 +5,8 @@ from typing import ClassVar
 
 from aidm.content.store import engine_text
 from aidm.state.base import PLAYER_ID, Counter, EntityId, Frozen, Slug
-from aidm.state.beat import check_draft
 from aidm.state.facts import Fact
+from aidm.state.resolution import check_draft
 from aidm.state.world import GameState
 
 from .counters import counter_fact

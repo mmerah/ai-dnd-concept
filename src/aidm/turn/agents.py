@@ -7,7 +7,6 @@ from pydantic_ai import (
     ModelRetry,
     NativeOutput,
     RunContext,
-    Tool,
     UnexpectedModelBehavior,
 )
 from pydantic_ai.messages import ModelMessage, ModelRequest, ModelResponse, TextPart, UserPromptPart
@@ -16,32 +15,20 @@ from pydantic_ai.toolsets import AbstractToolset, FunctionToolset
 from aidm.config import Settings
 from aidm.content.sources import CanonSource
 from aidm.engines.advancement import Advancement, Offer, ProposalBase
-from aidm.engines.engine import Engine
+from aidm.engines.engine import Engine, PlanContext
 from aidm.engines.sheets import SheetBase
-from aidm.engines.transact import transact
+from aidm.engines.transact import apply_to_draft
 from aidm.llm import build_agent
-from aidm.state.base import EntityId, Frozen, Kind
-from aidm.state.beat import check_draft
+from aidm.state.base import EntityId, Kind
 from aidm.state.history import Exchange, Narration
+from aidm.state.resolution import check_draft
 from aidm.state.world import GameState
 
 from . import prompts
-from .expansion import MAX_EXPANSIONS, ExpansionPatch, Expansions, apply_patch, written
+from .expansion import MAX_EXPANSIONS, ExpansionPatch, apply_patch, capped, record, written
 from .reports import WorldkeeperReport
 from .scene import SceneSnapshot, VisibleScene
-
-
-@dataclass(frozen=True, slots=True)
-class PlanContext:
-    """What a planning call is resolved against: the engine, the state its answer is judged on —
-    the committed state for the turn's plan, the turn's own draft once it is under way — and the
-    dice and expansion record the `expand_world` tool writes through."""
-
-    engine: Engine[SheetBase]
-    state: GameState
-    rng: Random
-    expansions: Expansions
-    settle: bool = False
+from .tools import core_toolset, sequential_toolset
 
 
 @dataclass(frozen=True, slots=True)
@@ -55,7 +42,7 @@ class AdvancementContext:
 class TurnAgents:
     """The turn's model-facing roles, built once per session."""
 
-    director: Agent[PlanContext, Frozen]
+    director: Agent[PlanContext, str]
     narrator: Agent[VisibleScene, Narration]
     worldkeeper: Agent[GameState, WorldkeeperReport]
     # Built only when the adventure may expand; the turn reaches it through the Director's tool.
@@ -66,26 +53,18 @@ def director_agent(
     engine: Engine[SheetBase],
     settings: Settings,
     expand_tool: FunctionToolset[PlanContext] | None = None,
-) -> Agent[PlanContext, Frozen]:
-    """One role for the turn's first ask and every later beat: `PlanContext.settle` is the only
-    thing that changes what a call may legally answer."""
-
-    def legal(ctx: RunContext[PlanContext], plan: Frozen) -> Frozen:
-        if refused := ctx.deps.engine.check_beat(ctx.deps.state, plan, ctx.deps.settle):
-            raise ModelRetry(refused)
-        return plan
-
-    toolsets: list[AbstractToolset[PlanContext]] = list(engine.director_toolsets)
+) -> Agent[PlanContext, str]:
+    """Everything that happens this turn happens through a tool; the closing text only traces."""
+    toolsets: list[AbstractToolset[PlanContext]] = [core_toolset(), *engine.director_toolsets]
     if expand_tool is not None:
         toolsets.append(expand_tool)
     return build_agent(
         "director",
         settings,
         instructions=prompts.director_instructions(engine.director_instructions),
-        output_type=NativeOutput(engine.beat_type),
+        output_type=str,
         deps_type=PlanContext,
         toolsets=toolsets,
-        validator=legal,
     )
 
 
@@ -154,7 +133,9 @@ def expander_agent(settings: Settings) -> Agent[PlanContext, ExpansionPatch]:
         # The whole mutation sequence the real one will run, hooks and seeding included: whatever
         # a thinner trial skipped would fail the turn outright instead of asking again.
         def trial(draft: GameState) -> object:
-            return transact(deps.engine, draft, lambda copy: apply_patch(copy, patch), Random(0))
+            return apply_to_draft(
+                deps.engine, draft, lambda copy, _rng: apply_patch(copy, patch), Random(0)
+            )
 
         if refused := check_draft(deps.state, trial):
             raise ModelRetry(refused)
@@ -185,17 +166,22 @@ def expansion_toolset(
         """Write canon this world does not hold yet, when what the turn reaches for is genuinely
         absent — never as a replacement for something that already exists. Read EXISTS BUT THE
         PLAYER DOES NOT KNOW IT YET first: while anything there answers the turn, this call is
-        wrong, and so is calling it for a turn that reaches for nothing in particular. Name the
-        kind of thing missing, the exact id of the entity it hangs off, the need it fills in a
-        sentence of plain words, and in `queries` the words the adventure's own text would use for
-        it — names, places, and objects — which is how the source is looked up for you. What comes
-        back is unknown to the player, so reveal it or move them to it in this same plan. Returns
-        the ids written."""
+        wrong, and so is calling it for a turn that reaches for nothing in particular. What comes
+        back is unknown to the player, so reveal it or move them to it in this same turn. Returns
+        the ids written.
+
+        Args:
+            kind: The kind of thing that is missing.
+            anchor_id: Exact id of the entity the missing thing hangs off.
+            need: The need it fills, in a sentence of plain words.
+            queries: The words the adventure's own text would use for it — names, places, and
+                objects — which is how the source is looked up for you.
+        """
         deps, draft = ctx.deps, ctx.deps.state
         anchor = draft.world.find(anchor_id)
         if anchor is None:
             raise ModelRetry(f"nothing here has id {anchor_id!r}. Use an id you were shown.")
-        if deps.expansions.capped():
+        if capped(deps.log):
             raise ModelRetry(
                 f"you have already reached for new canon {MAX_EXPANSIONS} times this turn. Plan "
                 "the rest with what already exists."
@@ -223,20 +209,21 @@ def expansion_toolset(
         except UnexpectedModelBehavior as refused:
             # Recorded before the retry: an expansion that wrote nothing is the one the trace is
             # read for, and the Expander's own prompt and reason exist nowhere else.
-            deps.expansions.record(prompt, f"no canon written: {refused}")
+            record(deps.log, prompt, f"no canon written: {refused}")
             raise ModelRetry(
                 f"no canon could be written ({refused}). Plan this turn with what already exists."
             ) from refused
-        deps.expansions.record(prompt, patch)
+        record(deps.log, prompt, patch)
         # Outside the retry: the patch's own author already ran this sequence against a throwaway
-        # draft, and a half-applied draft is not a state to plan another beat against.
-        landed = transact(engine, draft, lambda copy: apply_patch(copy, patch), deps.rng)
-        deps.expansions.facts.extend(landed.facts)
+        # draft, and a half-applied draft is not a state the rest of the turn can act against.
+        landed = apply_to_draft(
+            engine, draft, lambda copy, _rng: apply_patch(copy, patch), deps.rng
+        )
+        deps.log.facts.extend(landed.facts)
+        deps.log.fired.extend(landed.fired)
         return written(patch)
 
-    # One expansion at a time: two calls in one answer would interleave on the same draft, each
-    # validating against a state without the other's canon.
-    return FunctionToolset(tools=[Tool(expand_world, sequential=True)])
+    return sequential_toolset([expand_world])
 
 
 def advisor_agent(

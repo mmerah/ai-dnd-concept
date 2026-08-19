@@ -33,10 +33,10 @@ KNOWN TO THE PLAYER, BUT ELSEWHERE:
     pools: luck 6/6
 
 WHAT HAPPENED:
-- Does he hear what waits past the vault door without being heard? -> yes-and
 - learned of the vault map
 - took the vault map
 - learned of the sealed vault
+- Does he hear what waits past the vault door without being heard? -> yes-and
 - Kael is Listening
 
 PLAYER ACTION:

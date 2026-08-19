@@ -149,7 +149,7 @@ Dead after step 3; this commit removes it and moves the docs.
   `joins`/`touches`/`far_end`, `connections()`, `relation()`, `party()`, `_check_relation`,
   and the `reveal_way` tool. Rewire the bodies of `unlock_exit`/`join_party`/`leave_party`
   (built final in step 3) from relations to exits/party — their schemas do not move.
-- Movement (`state/apply_effects.py`): the player moving through an exit that exists but is
+- Movement (`state/actions.py`): the player moving through an exit that exists but is
   unknown auto-reveals it — the Director moving them IS the fiction revealing the way; a
   locked exit still refuses.
 - Rewrite `_walk` in `content/authored.py` over exits; `turn/scene.py` deletes its own `Exit`

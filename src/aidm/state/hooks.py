@@ -1,6 +1,6 @@
 from collections.abc import Sequence
 
-from .apply_effects import apply_effect
+from .actions import advance_thread
 from .facts import Fact
 from .world import GameState, Hook
 
@@ -44,7 +44,7 @@ def _hook_round(draft: GameState, facts: Sequence[Fact]) -> list[Fact]:
             for entity_id in hook.reveals:
                 fired.extend(draft.reveal(world.require(entity_id)))
             if hook.advance_thread is not None:
-                fired.extend(apply_effect(draft, hook.advance_thread))
+                fired.extend(advance_thread(draft, hook.advance_thread))
         except ValueError as refused:
             # The note claims the consequence landed, so a refused hook must not steer on it.
             fired.append(_hook_fact(hook, "hook_failed", f"hook {hook.id} stopped: {refused}"))

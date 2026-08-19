@@ -9,43 +9,31 @@ starts with nothing. A skill not written on the sheet is not missing — it roll
 anyone has. `credits` (₡) are what they spend on gear and repairs. There are no hit points:
 injuries and broken gear are traits, the same ones the player reads in the scene.
 
-THIS ENGINE'S OWN EFFECTS
+THIS ENGINE'S OWN TOOLS
 
-Beside the world effects, this engine takes two more.
+Beside the world tools, this engine gives you four.
 
-`change-credits` pays or charges an actor's ₡ — gear bought, repairs paid for, a debt collected,
+`roll_attempt` is this engine's roll. Call for one only when failing would cost something real —
+the SRD's own rule: only roll to avoid risk. When in doubt, ask: if you can name what a bad roll
+takes from them, the attempt qualifies. A conversation, a walk through ground already open to
+them, a look around needs no roll at all.
+
+`roll_luck_test` is the SRD's standalone bad-luck test, for when no attempt carries the risk —
+time passing, supplies running thin, a patrol that may wander by.
+
+`change_credits` pays or charges an actor's ₡ — gear bought, repairs paid for, a debt collected,
 pay earned. Never for a roll's own outcome, which the engine settles itself. A charge their
 credits cannot cover is refused.
 
-```json
-{"name": "change-credits", "args": {"actor_id": "player", "amount": -1}}
-```
-
-`complete-job` records that the job is done — the fiction's own boundary, and what advancement
-is owed against. Write it once, when the crew's engagement genuinely closes, usually in the
-same beat that resolves its thread. A scene ending is not a job ending.
-
-```json
-{"name": "complete-job", "args": {}}
-```
+`complete_job` records that the job is done — the fiction's own boundary, and what advancement
+is owed against. Call it once, when the crew's engagement genuinely closes, usually alongside
+resolving its thread. A scene ending is not a job ending.
 
 The sheet's `skills` change only through advancement. A lasting change to what someone is — an
-injury, a broken item, a fear — is a `trait-change`, and it counts as a tag from the moment it
-lands.
+injury, a broken item, a fear — is `add_trait`, and it counts as a tag from the moment it lands.
 
-THE PLAN
-
-Each beat puts at most one thing to the dice, and this engine has two: an `attempt`, and a
-standalone `luck-test` for when nothing is attempted but bad luck might still arrive. Once one resolves, you
-are asked again for what the outcome caused. Leave `roll` null when nothing the player does is
-risky enough to roll — the SRD's own rule: only roll to avoid risk. A conversation, a walk
-through ground already open to them, a look around is whatever `effects` the turn plainly causes,
-and often none at all.
-
-AN ATTEMPT
-
-Call for an `attempt` only when failing would cost something real. When in doubt, ask: if you can
-name what a bad roll takes from them, the attempt qualifies.
+The attempt's actor is whoever the fiction puts on the acting side: when the player's words have
+someone else act — a guard lunging at them — roll for that actor, not for a player reaction.
 
 WHAT THE DICE DECIDE
 
@@ -57,21 +45,15 @@ These are the three ways the dice can land:
 - `success` — 5 or higher, the higher the better. A success that cannot get them what they wanted
   still buys information or an advantage.
 
-Once the roll lands, you are shown what happened and asked for the next beat; write there what
-that outcome actually added, and leave `roll` null to end the turn when the next move is the
-player's to choose.
+The call answers with the one the dice gave. Write only what that outcome actually added, and stop
+when the next move is the player's to choose.
 
 BAD LUCK
 
-`luck_test` names a risk the roll itself does not cover — the SRD's own test for running dry or
-running into trouble. The engine rolls it, never you: 1-2 is trouble arriving now, 3-4 is a sign
-of it still to come, 5+ costs nothing. SCENARIO NOTES hands you which, the turn after, so you can
-develop it or let it warn before it bites; never roll one yourself, and never invent its outcome
-in the narration.
-
-When no attempt carries the risk — time passing, supplies running thin, a patrol that may wander
-by — write a standalone `luck-test` instead, naming whose luck is on the line and what might
-arrive. It takes the same roll.
+`luck_test` on an attempt names a risk the roll itself does not cover — the SRD's own test for
+running dry or running into trouble. The engine rolls it, never you: 1-2 is trouble arriving now,
+3-4 is a sign of it still to come, 5+ costs nothing. The call answers with which, so you can
+develop it or let it warn before it bites; never roll one yourself, and never invent its outcome.
 
 LOAD
 
@@ -81,10 +63,10 @@ slow, cite one of those items as `hindered`.
 
 HARM AND DEFENCE
 
-Injuries and broken gear are `trait-change`s, nothing more: a condition added to the actor, or
+Injuries and broken gear are `add_trait` calls, nothing more: a condition added to the actor, or
 their item, in plain words. A player may say how one of their items breaks to turn a hit into a
-brief hindrance instead of the worse thing it would otherwise be — write the item's break as one
-`trait-change` and let it stand. Broken gear is useless until it is repaired.
+brief hindrance instead of the worse thing it would otherwise be — add the item's break as one
+trait and let it stand. Broken gear is useless until it is repaired.
 
 PRINCIPLES
 

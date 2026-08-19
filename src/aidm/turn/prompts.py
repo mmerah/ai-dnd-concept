@@ -17,8 +17,6 @@ def render_director(
     describe: EntityRenderer,
     scenario: ScenarioMeta,
     prompt: str,
-    happened: str = "",
-    preface: str = "",
 ) -> str:
     # The Director writes no prose, so the canon side leaks nothing by reaching it.
     canon = (
@@ -30,16 +28,11 @@ def render_director(
         ("MEMORIES", _memories(scene)),
         ("SCENARIO NOTES", "\n".join(f"- {note}" for note in scene.notes) or "- (none)"),
     )
-    # The scene is already the one the earlier beats left behind, so what happened comes last.
-    so_far = (("WHAT JUST HAPPENED", happened),) if happened else ()
-    again = (("ASKED AGAIN", preface),) if preface else ()
     return _sections(
         (
             *_scene_sections(scene, describe, scenario, ids=True),
             *canon,
             ("PLAYER ACTION", prompt),
-            *so_far,
-            *again,
         )
     )
 
@@ -280,10 +273,6 @@ def _with_state(line: str, state: str, indent: str = "") -> str:
 _PROMPTS_DIR = Path(__file__).parent / "prompts"
 
 DIRECTOR = engine_text(_PROMPTS_DIR / "director.md")
-# Not roles of their own: the Director's mid-turn framing, rendered into the prompt's own
-# ASKED AGAIN section rather than prepended to its instructions.
-BEAT = engine_text(_PROMPTS_DIR / "beat.md")
-SETTLE = engine_text(_PROMPTS_DIR / "settle.md")
 CORE_ADVISOR = engine_text(_PROMPTS_DIR / "core_advisor.md")
 NARRATOR = engine_text(_PROMPTS_DIR / "narrator.md")
 WORLDKEEPER = engine_text(_PROMPTS_DIR / "worldkeeper.md")

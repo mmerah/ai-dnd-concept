@@ -1,1 +1,324 @@
-[]
+[
+  {
+    "name": "reveal",
+    "description": "Reveal an entity that exists but the player does not know yet: they notice it, are told\nof it, or reach it. Prefer this over inventing a replacement.",
+    "parameters": {
+      "additionalProperties": false,
+      "properties": {
+        "entity_id": {
+          "description": "Exact id of the unrevealed canon entity.",
+          "type": "string"
+        }
+      },
+      "required": [
+        "entity_id"
+      ],
+      "type": "object"
+    }
+  },
+  {
+    "name": "move",
+    "description": "Move an actor who actually changes location, or one item within the player's reach:\npicked up, set down here, or handed to an actor here. Moving the player to an unrevealed\nlocation reveals it.",
+    "parameters": {
+      "additionalProperties": false,
+      "properties": {
+        "entity_id": {
+          "description": "Exact id of the actor or item that moves; `player` is the played character.\nAn item must be one the player carries, or one loose at their location.",
+          "type": "string"
+        },
+        "to_id": {
+          "description": "Exact id of where it goes: for an actor the location they enter; for an item,\n`player` to pick it up, an actor here with the player to hand it over, or the\nplayer's own location to set it down.",
+          "type": "string"
+        }
+      },
+      "required": [
+        "entity_id",
+        "to_id"
+      ],
+      "type": "object"
+    }
+  },
+  {
+    "name": "gain_improvised_item",
+    "description": "Give the player an ordinary incidental object that is not in canon and is not worth a\ncanon entry of its own. Never a substitute for an item that already exists.",
+    "parameters": {
+      "additionalProperties": false,
+      "properties": {
+        "item_name": {
+          "description": "The object written out, such as 'a handful of gravel'.",
+          "type": "string"
+        }
+      },
+      "required": [
+        "item_name"
+      ],
+      "type": "object"
+    }
+  },
+  {
+    "name": "add_trait",
+    "description": "Put a lasting condition, skill, or frailty on an entity. The trait shows the id written\nout: `battle-worn` appears as Battle Worn.",
+    "parameters": {
+      "additionalProperties": false,
+      "properties": {
+        "entity_id": {
+          "description": "Exact id of the entity affected; an actor must be here with the player.",
+          "type": "string"
+        },
+        "trait_id": {
+          "description": "Stable slug for the trait, such as `poisoned`.",
+          "maxLength": 64,
+          "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$",
+          "type": "string"
+        },
+        "text": {
+          "description": "The constraint or benefit it puts on the entity, in prose.",
+          "type": "string"
+        }
+      },
+      "required": [
+        "entity_id",
+        "trait_id",
+        "text"
+      ],
+      "type": "object"
+    }
+  },
+  {
+    "name": "remove_trait",
+    "description": "Lift a lasting condition, skill, or frailty the fiction has ended.",
+    "parameters": {
+      "additionalProperties": false,
+      "properties": {
+        "entity_id": {
+          "description": "Exact id of the entity affected; an actor must be here with the player.",
+          "type": "string"
+        },
+        "trait_id": {
+          "description": "Exact id of a trait the entity carries.",
+          "maxLength": 64,
+          "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$",
+          "type": "string"
+        }
+      },
+      "required": [
+        "entity_id",
+        "trait_id"
+      ],
+      "type": "object"
+    }
+  },
+  {
+    "name": "advance_thread",
+    "description": "Move a storyline the scenario is tracking: where it stands now, or that it is over.",
+    "parameters": {
+      "additionalProperties": false,
+      "properties": {
+        "thread_id": {
+          "description": "Exact id of one thread in ACTIVE THREADS.",
+          "maxLength": 64,
+          "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$",
+          "type": "string"
+        },
+        "status": {
+          "anyOf": [
+            {
+              "enum": [
+                "active",
+                "resolved",
+                "dormant"
+              ],
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Where the thread now stands, or null to leave it as it is."
+        },
+        "stage": {
+          "anyOf": [
+            {
+              "maxLength": 64,
+              "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Stable slug for the point it has reached, or null to leave it as it is."
+        },
+        "tick": {
+          "default": 0,
+          "description": "How many segments this fills on the thread's clock, when it has one.",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "thread_id"
+      ],
+      "type": "object"
+    }
+  },
+  {
+    "name": "reveal_way",
+    "description": "Show the player a way through they did not know about. Call this before moving them\nthrough a passage they have not found.",
+    "parameters": {
+      "additionalProperties": false,
+      "properties": {
+        "location_id": {
+          "description": "Exact id of the location the way leads from.",
+          "type": "string"
+        },
+        "to_id": {
+          "description": "Exact id of the location it leads to.",
+          "type": "string"
+        }
+      },
+      "required": [
+        "location_id",
+        "to_id"
+      ],
+      "type": "object"
+    }
+  },
+  {
+    "name": "unlock_exit",
+    "description": "Open a locked way when the fiction opens it — a key turned, a bar lifted, a seal broken.",
+    "parameters": {
+      "additionalProperties": false,
+      "properties": {
+        "location_id": {
+          "description": "Exact id of the location the way leads from.",
+          "type": "string"
+        },
+        "to_id": {
+          "description": "Exact id of the location it leads to.",
+          "type": "string"
+        }
+      },
+      "required": [
+        "location_id",
+        "to_id"
+      ],
+      "type": "object"
+    }
+  },
+  {
+    "name": "join_party",
+    "description": "Put an actor here with the player into their party; a party member travels with them.",
+    "parameters": {
+      "additionalProperties": false,
+      "properties": {
+        "actor_id": {
+          "description": "Exact id of the actor joining, who must be here with the player.",
+          "type": "string"
+        }
+      },
+      "required": [
+        "actor_id"
+      ],
+      "type": "object"
+    }
+  },
+  {
+    "name": "leave_party",
+    "description": "Take an actor out of the player's party when the fiction parts them.",
+    "parameters": {
+      "additionalProperties": false,
+      "properties": {
+        "actor_id": {
+          "description": "Exact id of the actor leaving.",
+          "type": "string"
+        }
+      },
+      "required": [
+        "actor_id"
+      ],
+      "type": "object"
+    }
+  },
+  {
+    "name": "roll_question",
+    "description": "Put a closed dramatic question to Chance d6 against Risk d6. Ask one when the answer is\nuncertain and both a yes and a no would change the fiction. Never state the answer\nyourself: what comes back is what the dice settled.",
+    "parameters": {
+      "$defs": {
+        "Position": {
+          "enum": [
+            "advantage",
+            "neutral",
+            "disadvantage"
+          ],
+          "type": "string"
+        }
+      },
+      "additionalProperties": false,
+      "properties": {
+        "actor_id": {
+          "description": "Exact id of the actor the question is about: the player, or an actor here.",
+          "type": "string"
+        },
+        "question": {
+          "description": "The closed dramatic question the dice answer, phrased so that yes is what\nthe actor wants.",
+          "type": "string"
+        },
+        "position": {
+          "$ref": "#/$defs/Position",
+          "default": "neutral",
+          "description": "Your judgment of the fiction: `advantage` when a skill, gear, trait or the\nsituation gives the actor a real edge here; `disadvantage` when a frailty, an\nopposing tag or the situation works against them; `neutral` when neither clearly\noutweighs."
+        },
+        "edge": {
+          "default": "",
+          "description": "The tag or circumstance that decided the position, in a few words. Empty for\nneutral.",
+          "type": "string"
+        },
+        "opponent_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Exact id of the actor opposing this, set only when the question is one\nexchange of a conflict; the engine then takes luck off whichever side loses it."
+        }
+      },
+      "required": [
+        "actor_id",
+        "question"
+      ],
+      "type": "object"
+    }
+  },
+  {
+    "name": "restore_luck",
+    "description": "Put an actor's luck back to full, once a conflict is behind them and they have had a\nbreather. The engine already refills both sides when a conflict ends at 0.",
+    "parameters": {
+      "additionalProperties": false,
+      "properties": {
+        "actor_id": {
+          "description": "Exact id of the actor: the player, or an actor here.",
+          "type": "string"
+        }
+      },
+      "required": [
+        "actor_id"
+      ],
+      "type": "object"
+    }
+  },
+  {
+    "name": "end_adventure",
+    "description": "Record that the adventure has ended — the fiction's own boundary, called once when the\nstory genuinely closes, usually alongside resolving its thread. Never for a mere scene\nending.",
+    "parameters": {
+      "additionalProperties": false,
+      "properties": {},
+      "type": "object"
+    }
+  }
+]

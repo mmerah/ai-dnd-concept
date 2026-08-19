@@ -1,10 +1,9 @@
-from dataclasses import dataclass, field
-
 from pydantic import Field, JsonValue
 
+from aidm.engines.engine import TurnLog
 from aidm.state.base import Entity, Frozen
-from aidm.state.beat import Resolution
 from aidm.state.facts import Fact
+from aidm.state.resolution import Resolution
 from aidm.state.trace import StepTrace
 from aidm.state.world import GameState, Hook, Relation, Thread
 
@@ -29,25 +28,19 @@ class ExpansionPatch(Frozen):
     )
 
 
-@dataclass(slots=True)
-class Expansions:
-    """What `expand_world` wrote into a turn's draft, for `run_turn` to fold into the turn."""
+def capped(log: TurnLog) -> bool:
+    return len(log.steps) >= MAX_EXPANSIONS
 
-    facts: list[Fact] = field(default_factory=list)
-    steps: list[StepTrace] = field(default_factory=list)
 
-    def capped(self) -> bool:
-        return len(self.steps) >= MAX_EXPANSIONS
-
-    def record(self, prompt: str, answer: ExpansionPatch | str) -> None:
-        """A refusal is recorded as its reason, so a turn that wrote no canon still says why."""
-        self.steps.append(
-            StepTrace(
-                name=f"expander-{len(self.steps) + 1}",
-                prompt=prompt,
-                output=answer if isinstance(answer, str) else answer.model_dump(mode="json"),
-            )
+def record(log: TurnLog, prompt: str, answer: ExpansionPatch | str) -> None:
+    """A refusal is recorded as its reason, so a turn that wrote no canon still says why."""
+    log.steps.append(
+        StepTrace(
+            name=f"expander-{len(log.steps) + 1}",
+            prompt=prompt,
+            output=answer if isinstance(answer, str) else answer.model_dump(mode="json"),
         )
+    )
 
 
 def apply_patch(draft: GameState, patch: ExpansionPatch) -> Resolution:
@@ -57,7 +50,7 @@ def apply_patch(draft: GameState, patch: ExpansionPatch) -> Resolution:
     facts.extend(_added_relation(draft, relation) for relation in patch.relations)
     facts.extend(_opened(draft, thread) for thread in patch.threads)
     facts.extend(_authored(draft, patch.hooks))
-    return Resolution(facts=tuple(facts), followup="none")
+    return Resolution(facts=tuple(facts))
 
 
 def written(patch: ExpansionPatch) -> str:

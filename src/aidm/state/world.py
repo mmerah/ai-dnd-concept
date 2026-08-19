@@ -1,5 +1,5 @@
 from collections.abc import Iterator, Mapping
-from typing import Self
+from typing import Literal, Self
 
 from pydantic import Field, JsonValue, PrivateAttr, model_validator
 
@@ -17,7 +17,6 @@ from .base import (
     ThreadStatus,
     require_unique,
 )
-from .effects import AdvanceThread
 from .facts import Fact, entity_fact
 from .history import Exchange
 
@@ -90,6 +89,32 @@ class Thread(Mutable):
     def _a_clock_fills(self) -> Self:
         if self.clock is not None and self.clock.maximum is None:
             raise ValueError(f"thread {self.id!r} has a clock with no maximum to fill")
+        return self
+
+
+class AdvanceThread(Frozen):
+    """Move a storyline the scenario is tracking: where it stands now, or that it is over."""
+
+    op: Literal["advance-thread"] = "advance-thread"
+    thread_id: Slug = Field(description="Exact id of one thread in ACTIVE THREADS.")
+    status: ThreadStatus | None = Field(
+        default=None, description="Where the thread now stands, or null to leave it as it is."
+    )
+    stage: Slug | None = Field(
+        default=None,
+        description="Stable slug for the point it has reached, or null to leave it as it is.",
+    )
+    tick: int = Field(
+        default=0,
+        description="How many segments this fills on the thread's clock, when it has one.",
+    )
+
+    @model_validator(mode="after")
+    def _moves_something(self) -> Self:
+        if self.tick < 0:
+            raise ValueError("a tick fills a clock; it never runs one backwards")
+        if self.status is None and self.stage is None and not self.tick:
+            raise ValueError("advance-thread moves a thread's status, its stage, or its clock")
         return self
 
 
@@ -275,7 +300,7 @@ class GameState(Mutable):
     def set_mechanics(self, mechanics: Mutable) -> None:
         self._live_mechanics = mechanics
 
-    def _flush_mechanics(self) -> None:
+    def flush_mechanics(self) -> None:
         live = self._live_mechanics
         if live is None:
             return
@@ -287,13 +312,12 @@ class GameState(Mutable):
     def draft(self) -> Self:
         """A working copy a resolution mutates; a failed turn never replaces the committed state."""
         copied = self.model_copy(deep=True)
-        # A draft is only taken from a committed state, so re-parsing loses nothing
         copied._live_mechanics = None
         return copied
 
     def committed(self) -> Self:
         """One validation per transaction, over the whole copy rather than per field change."""
-        self._flush_mechanics()
+        self.flush_mechanics()
         return type(self).model_validate(self.model_dump(round_trip=True))
 
     def add(self, entity: Entity) -> Fact:

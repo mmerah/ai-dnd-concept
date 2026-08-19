@@ -43,6 +43,8 @@ class MediaConfig(BaseModel):
 
 # Authoring passes write whole records, which the turn-loop defaults cannot.
 ROLE_DEFAULTS: dict[Role, RoleConfig] = {
+    # A tool loop spends its budget across many calls, and choosing between tools needs the effort.
+    "director": RoleConfig(max_tokens=8192, reasoning_effort="medium"),
     "expander": RoleConfig(max_tokens=8192, reasoning_effort="medium"),
     "scenario_creator": RoleConfig(max_tokens=32768, reasoning_effort="medium"),
 }
@@ -77,7 +79,6 @@ class Settings(BaseSettings):
     providers: Providers = Providers()
     roles: dict[Role, RoleConfig] = Field(default_factory=dict)
     media: MediaConfig = MediaConfig()
-    max_beats: int = Field(default=3, ge=1)
     max_memories: int = Field(default=2, ge=0)
     history_window: int = Field(default=6, ge=0)
     saves_dir: Path = Path("saves")

@@ -1,22 +1,15 @@
 from random import Random
-from typing import Annotated, Literal, Self
+from typing import Self
 
 from pydantic import Field, model_validator
 
 from aidm.engines.counters import adjust, spend
 from aidm.engines.sheets import require_sheet
-from aidm.state.apply_effects import apply_effect, require_actor_here
-from aidm.state.base import PLAYER_ID, Entity, EntityId, Frozen, Slug
-from aidm.state.beat import (
-    BEAT_DOC,
-    BEAT_EFFECTS_DESCRIPTION,
-    BEAT_ROLL_DESCRIPTION,
-    Followup,
-    Resolution,
-)
+from aidm.state.actions import require_actor_here, reveal
+from aidm.state.base import Entity, EntityId, Frozen, Slug
 from aidm.state.dice import roll_pool
-from aidm.state.effects import Reveal, WorldOp
 from aidm.state.facts import Fact, entity_fact
+from aidm.state.resolution import Resolution
 from aidm.state.world import GameState
 
 from .mechanics import DEFAULT_FACE, HINDERED_FACE, Mechanics, Sheet
@@ -28,44 +21,14 @@ SIGNS = 4  # 3-4 on the bad-luck die
 class Attempt(Frozen):
     """One risky attempt, answered by the highest die of a pool."""
 
-    op: Literal["attempt"] = "attempt"
-    actor_id: EntityId = Field(
-        description="Exact id of the actor attempting this: the player, or an actor here."
-    )
-    goal: str = Field(
-        min_length=1,
-        description="What the actor is trying to do and what they risk by trying, in one line.",
-    )
-    skill: str = Field(
-        default="",
-        description="The skill on the actor's sheet this calls on, copied exactly as it is "
-        "written there. Empty when none of theirs applies: they roll the bare d6.",
-    )
-    helped: str = Field(
-        default="",
-        description="The circumstance that makes this easier — a skill, a piece of gear, the "
-        "ground they hold, an ally's presence — in a few words. Empty when nothing does.",
-    )
-    helper_id: EntityId | None = Field(
-        default=None,
-        description="Exact id of an ally here who helps with this — they roll their own skill "
-        "die into the pool. Null when nobody helps.",
-    )
-    helper_skill: str = Field(
-        default="",
-        description="The skill on the *helper's* sheet this calls on, copied exactly as it is "
-        "written there. Empty when none of theirs applies: they roll the bare d6.",
-    )
-    hindered: str = Field(
-        default="",
-        description="The circumstance that makes this harder, in a few words. Empty when "
-        "nothing does.",
-    )
-    luck_test: str = Field(
-        default="",
-        description="What bad luck might arrive alongside this — running out of ammo, running "
-        "into guards. The engine rolls whether it does. Empty for no test.",
-    )
+    actor_id: EntityId
+    goal: str = Field(min_length=1)
+    skill: str = ""
+    helped: str = ""
+    helper_id: EntityId | None = None
+    helper_skill: str = ""
+    hindered: str = ""
+    luck_test: str = ""
 
     @model_validator(mode="after")
     def _one_help_die(self) -> Self:
@@ -82,68 +45,22 @@ class Attempt(Frozen):
 
 
 class LuckTest(Frozen):
-    """The SRD's standalone bad-luck test, for a beat where nothing is attempted."""
+    """The SRD's standalone bad-luck test, for a turn where nothing is attempted."""
 
-    op: Literal["luck-test"] = "luck-test"
-    actor_id: EntityId = Field(
-        description="Exact id of the actor whose luck is tested: the player, or an actor here."
-    )
-    subject: str = Field(
-        min_length=1,
-        description="What bad luck might arrive — running out of ammo, running into guards. The "
-        "engine rolls whether it does.",
-    )
+    actor_id: EntityId
+    subject: str = Field(min_length=1)
 
 
-class ChangeCredits(Frozen):
-    """Move an actor's credits for gear bought, repairs paid, debts collected or pay earned —
-    never for a roll's own outcome, which the engine settles itself."""
-
-    op: Literal["change-credits"] = "change-credits"
-    actor_id: EntityId = Field(description="Exact id of the actor: the player, or an actor here.")
-    amount: int = Field(
-        description="Positive to pay them, negative to charge them. A charge the pool cannot "
-        "cover is refused."
-    )
-
-    @model_validator(mode="after")
-    def _moves_the_pool(self) -> Self:
-        if self.amount == 0:
-            raise ValueError("change-credits moves the pool; zero moves nothing")
-        return self
-
-
-def apply_change_credits(draft: GameState, effect: ChangeCredits) -> list[Fact]:
-    actor = require_actor_here(draft, effect.actor_id)
-    facts = apply_effect(draft, Reveal(entity_id=actor.id))
+def apply_change_credits(draft: GameState, actor_id: EntityId, amount: int) -> list[Fact]:
+    if amount == 0:
+        raise ValueError("changing credits moves the pool; zero moves nothing")
+    actor = require_actor_here(draft, actor_id)
+    facts = reveal(draft, actor.id)
     credits = require_sheet(draft.mechanics_as(Mechanics).sheets, actor).credits
-    if effect.amount > 0:
-        return [*facts, *adjust(actor, "credits", credits, effect.amount, "paid")]
+    if amount > 0:
+        return [*facts, *adjust(actor, "credits", credits, amount, "paid")]
     # `spend`, not a negative adjust: an overdraw is refused, not clamped.
-    return [*facts, *spend(actor, "credits", credits, -effect.amount)]
-
-
-class CompleteJob(Frozen):
-    """Record that the job is done — the fiction's own boundary, written once when the crew's
-    engagement genuinely closes, usually alongside resolving its thread. Never for a mere scene
-    ending."""
-
-    op: Literal["complete-job"] = "complete-job"
-
-
-type TwentyfourxxRoll = Annotated[Attempt | LuckTest, Field(discriminator="op")]
-type TwentyfourxxEffect = Annotated[
-    WorldOp | ChangeCredits | CompleteJob, Field(discriminator="op")
-]
-
-
-class TwentyfourxxBeat(Frozen):
-    __doc__ = BEAT_DOC
-
-    roll: TwentyfourxxRoll | None = Field(default=None, description=BEAT_ROLL_DESCRIPTION)
-    effects: tuple[TwentyfourxxEffect, ...] = Field(
-        default=(), description=BEAT_EFFECTS_DESCRIPTION
-    )
+    return [*facts, *spend(actor, "credits", credits, -amount)]
 
 
 def apply_complete_job(draft: GameState) -> list[Fact]:
@@ -169,7 +86,7 @@ def pool_faces(sheet: Sheet, action: Attempt, helper: Sheet | None) -> tuple[int
 
 def resolve_attempt(draft: GameState, action: Attempt, rng: Random) -> Resolution:
     actor = require_actor_here(draft, action.actor_id)
-    facts = apply_effect(draft, Reveal(entity_id=action.actor_id))
+    facts = reveal(draft, action.actor_id)
     sheet = require_sheet(draft.mechanics_as(Mechanics).sheets, actor)
     helper_sheet = _helper_sheet(draft, actor, action, facts)
     _require_skill(actor, sheet, action.skill, "skill")
@@ -194,22 +111,16 @@ def resolve_attempt(draft: GameState, action: Attempt, rng: Random) -> Resolutio
         )
     )
 
-    followup: Followup = "settle" if outcome == "disaster" and actor.id == PLAYER_ID else "continue"
     if action.luck_test:
-        tested, luck = _bad_luck(draft, actor, action.luck_test, rng)
-        facts.extend(tested)
-        if luck == "trouble":
-            followup = "settle"
-    return Resolution(facts=tuple(facts), followup=followup)
+        facts.extend(_bad_luck(draft, actor, action.luck_test, rng))
+    return Resolution(facts=tuple(facts))
 
 
 def resolve_luck_test(draft: GameState, action: LuckTest, rng: Random) -> Resolution:
     actor = require_actor_here(draft, action.actor_id)
-    facts = apply_effect(draft, Reveal(entity_id=action.actor_id))
-    tested, outcome = _bad_luck(draft, actor, action.subject, rng)
-    facts.extend(tested)
-    followup: Followup = "settle" if outcome == "trouble" else "continue"
-    return Resolution(facts=tuple(facts), followup=followup)
+    facts = reveal(draft, action.actor_id)
+    facts.extend(_bad_luck(draft, actor, action.subject, rng))
+    return Resolution(facts=tuple(facts))
 
 
 def _helper_sheet(
@@ -223,7 +134,7 @@ def _helper_sheet(
             "null."
         )
     helper = require_actor_here(draft, action.helper_id)
-    facts.extend(apply_effect(draft, Reveal(entity_id=action.helper_id)))
+    facts.extend(reveal(draft, action.helper_id))
     sheet = require_sheet(draft.mechanics_as(Mechanics).sheets, helper)
     _require_skill(helper, sheet, action.helper_skill, "helper_skill")
     return sheet
@@ -238,12 +149,10 @@ def _require_skill(actor: Entity, sheet: Sheet, skill: str, field: str) -> None:
         )
 
 
-def _bad_luck(
-    draft: GameState, actor: Entity, subject: str, rng: Random
-) -> tuple[list[Fact], Slug]:
+def _bad_luck(draft: GameState, actor: Entity, subject: str, rng: Random) -> list[Fact]:
     kept, rolled = roll_pool((6,), f"bad luck — {subject}", rng)
     if kept > SIGNS:
-        return [rolled], "clear"
+        return [rolled]
     trouble = kept <= TROUBLE
     note = (
         f"Bad luck has caught up with them: {subject} — the narration showed it arriving this "
@@ -260,4 +169,4 @@ def _bad_luck(
         f"bad luck — {subject}: {label}",
         {"subject": subject, "trouble": trouble},
     )
-    return [rolled, tested], "trouble" if trouble else "signs"
+    return [rolled, tested]

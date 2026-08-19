@@ -1,51 +1,6 @@
 {
-  "save_version": 75,
+  "save_version": 76,
   "facts": [
-    {
-      "kind": "dice_rolled",
-      "trace": "Does he hear what waits past the vault door without being heard? — chance: 2d6 [4, 5] -> 5",
-      "narrator": null,
-      "data": {
-        "faces": [
-          6,
-          6
-        ],
-        "rolled": [
-          4,
-          5
-        ],
-        "kept": 5,
-        "reason": "Does he hear what waits past the vault door without being heard? — chance"
-      }
-    },
-    {
-      "kind": "dice_rolled",
-      "trace": "Does he hear what waits past the vault door without being heard? — risk: 1d6 [4] -> 4",
-      "narrator": null,
-      "data": {
-        "faces": [
-          6
-        ],
-        "rolled": [
-          4
-        ],
-        "kept": 4,
-        "reason": "Does he hear what waits past the vault door without being heard? — risk"
-      }
-    },
-    {
-      "kind": "question_answered",
-      "trace": "Does he hear what waits past the vault door without being heard? -> yes-and",
-      "narrator": "Does he hear what waits past the vault door without being heard? -> yes-and",
-      "data": {
-        "entity_id": "player",
-        "outcome": "yes-and",
-        "chance": 5,
-        "risk": 4,
-        "position": "advantage",
-        "edge": "Quiet Hands"
-      }
-    },
     {
       "kind": "entity_discovered",
       "trace": "learned of the vault map",
@@ -113,6 +68,51 @@
       }
     },
     {
+      "kind": "dice_rolled",
+      "trace": "Does he hear what waits past the vault door without being heard? — chance: 2d6 [4, 5] -> 5",
+      "narrator": null,
+      "data": {
+        "faces": [
+          6,
+          6
+        ],
+        "rolled": [
+          4,
+          5
+        ],
+        "kept": 5,
+        "reason": "Does he hear what waits past the vault door without being heard? — chance"
+      }
+    },
+    {
+      "kind": "dice_rolled",
+      "trace": "Does he hear what waits past the vault door without being heard? — risk: 1d6 [4] -> 4",
+      "narrator": null,
+      "data": {
+        "faces": [
+          6
+        ],
+        "rolled": [
+          4
+        ],
+        "kept": 4,
+        "reason": "Does he hear what waits past the vault door without being heard? — risk"
+      }
+    },
+    {
+      "kind": "question_answered",
+      "trace": "Does he hear what waits past the vault door without being heard? -> yes-and",
+      "narrator": "Does he hear what waits past the vault door without being heard? -> yes-and",
+      "data": {
+        "entity_id": "player",
+        "outcome": "yes-and",
+        "chance": 5,
+        "risk": 4,
+        "position": "advantage",
+        "edge": "Quiet Hands"
+      }
+    },
+    {
       "kind": "trait_added",
       "trace": "Kael is Listening",
       "narrator": "Kael is Listening",
@@ -136,42 +136,7 @@
   "steps": [
     {
       "name": "director",
-      "output": {
-        "roll": {
-          "op": "question",
-          "actor_id": "player",
-          "question": "Does he hear what waits past the vault door without being heard?",
-          "position": "advantage",
-          "edge": "Quiet Hands",
-          "opponent_id": null
-        },
-        "effects": [
-          {
-            "op": "move",
-            "entity_id": "vault_map",
-            "to_id": "player"
-          }
-        ]
-      }
-    },
-    {
-      "name": "beat-1",
-      "output": {
-        "roll": null,
-        "effects": [
-          {
-            "op": "trait-change",
-            "mode": "add",
-            "entity_id": "player",
-            "trait_id": "listening",
-            "text": "(condition) Listening for the next shift of weight behind the door."
-          }
-        ]
-      }
-    },
-    {
-      "name": "resolve",
-      "output": "- Does he hear what waits past the vault door without being heard? -> yes-and\n- learned of the vault map\n- took the vault map\n- Kael is Listening"
+      "output": "The flagstone lifts. Beyond the door, something shifts its weight and waits."
     },
     {
       "name": "hooks",

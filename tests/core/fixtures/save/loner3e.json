@@ -1,5 +1,5 @@
 {
-  "save_version": 75,
+  "save_version": 76,
   "scenario_id": "whispering-vault",
   "character_id": "kael",
   "scenario": {
@@ -236,7 +236,10 @@
       "vault-charted",
       "vault-sighted"
     ],
-    "pending_notes": []
+    "pending_notes": [
+      "The chart marks the stair to the vault door. Press on what opening the seal will cost.",
+      "Kael has found the vault door: the seal answers a touch, and something behind it answers with it. Press on what opening the seal will cost."
+    ]
   },
   "mechanics": {
     "sheets": {
