@@ -46,7 +46,7 @@ EXISTS BUT THE PLAYER DOES NOT KNOW IT YET:
 
 ACTIVE THREADS:
 - The sealed vault[id=vault-seal] — active at unfound
-  note: Kael came for the vault and does not yet know where its door is.
+  note: Kael came for the vault under the abbey: the way down to it, the seal on its door, and what opening that seal costs.
 
 SCENARIO NOTES:
 - (none)

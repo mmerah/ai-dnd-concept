@@ -47,14 +47,9 @@ async def test_an_engine_uses_the_shared_pipeline_and_safe_narrator_prompt() -> 
     )
 
     assert tuple(steps) == TURN_STEPS
-    # Finding the map reveals the vault in the same pass, which fires the vault's own hook in
-    # the same turn: the round-based drain lets one hook's fact feed the next.
     assert [fact.kind for fact in result.turn.facts] == [
         "entity_discovered",
         "entity_moved",
-        "hook_fired",
-        "entity_discovered",
-        "thread_advanced",
         "hook_fired",
         "thread_advanced",
     ]
@@ -263,7 +258,7 @@ async def test_a_hook_fires_on_its_fact_moves_its_thread_and_steers_the_next_tur
     )
 
     thread = found.state.world.thread("vault-seal")
-    assert thread is not None and (thread.status, thread.stage) == ("active", "seal-found")
+    assert thread is not None and (thread.status, thread.stage) == ("active", "door-found")
     assert found.state.world.fired_hooks == ("vault-sighted",)
     # The thread the hook moves is Director bookkeeping and never reaches the Narrator.
     assert "vault-seal" not in shown(found.turn, "narrator")

@@ -150,8 +150,7 @@ def cases_for(engine_id: EngineId, settings: Settings) -> tuple[Case, ...]:
             expectations=(
                 Expectation("chart-known", lambda r: known(r, "vault_map")),
                 Expectation("chart-carried", lambda r: inside(r, "vault_map", "player")),
-                Expectation("vault-known", lambda r: known(r, "vault")),
-                Expectation("seal-found", lambda r: staged_at(r, "vault-seal", "seal-found")),
+                Expectation("stair-charted", lambda r: staged_at(r, "vault-seal", "stair-charted")),
             ),
         ),
         Case(

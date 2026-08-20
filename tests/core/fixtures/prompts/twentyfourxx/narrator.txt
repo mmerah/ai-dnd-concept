@@ -26,7 +26,6 @@ EXITS FROM HERE:
 
 KNOWN TO THE PLAYER, BUT ELSEWHERE:
 - the cloister[id=cloister] (location) — A frost-rimed colonnade around a dead garden; Brother Tomas sweeps it to no purpose.
-- the sealed vault[id=vault] (location) — The undercroft chamber Kael came for, its door bearing a seal nobody living can read.
 - Brother Tomas[id=tomas] (npc) — at the cloister — A deaf old porter who sweeps the cloister and knows almost nothing about the vault.
   state:
     pools: credits 2
@@ -34,7 +33,6 @@ KNOWN TO THE PLAYER, BUT ELSEWHERE:
 WHAT HAPPENED:
 - learned of the vault map
 - took the vault map
-- learned of the sealed vault
 - Listen at the vault door without being heard -> success
 - bad luck — something behind the door is already listening back: signs of it
 - Kael is Listening

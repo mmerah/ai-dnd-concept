@@ -30,40 +30,13 @@
       }
     },
     {
-      "kind": "entity_discovered",
-      "trace": "learned of the sealed vault",
-      "narrator": "learned of the sealed vault",
-      "data": {
-        "entity_id": "vault",
-        "name": "the sealed vault"
-      }
-    },
-    {
       "kind": "thread_advanced",
-      "trace": "The sealed vault is active at seal-found",
+      "trace": "The sealed vault is active at stair-charted",
       "narrator": null,
       "data": {
         "thread_id": "vault-seal",
         "status": "active",
-        "stage": "seal-found"
-      }
-    },
-    {
-      "kind": "hook_fired",
-      "trace": "hook vault-sighted fired",
-      "narrator": null,
-      "data": {
-        "hook_id": "vault-sighted"
-      }
-    },
-    {
-      "kind": "thread_advanced",
-      "trace": "The sealed vault is active at seal-found",
-      "narrator": null,
-      "data": {
-        "thread_id": "vault-seal",
-        "status": "active",
-        "stage": "seal-found"
+        "stage": "stair-charted"
       }
     },
     {
@@ -166,7 +139,7 @@
     },
     {
       "name": "hooks",
-      "output": "hook vault-charted fired\nhook vault-sighted fired"
+      "output": "hook vault-charted fired"
     },
     {
       "name": "narrator",

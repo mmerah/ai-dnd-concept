@@ -76,7 +76,7 @@
         "name": "the sealed vault",
         "brief": "The undercroft chamber Kael came for, its door bearing a seal nobody living can read.",
         "detail": null,
-        "known": true,
+        "known": false,
         "parent_id": null,
         "traits": [],
         "exits": [
@@ -192,35 +192,33 @@
         "id": "vault-seal",
         "title": "The sealed vault",
         "status": "active",
-        "stage": "seal-found",
-        "note": "Kael came for the vault and does not yet know where its door is.",
+        "stage": "stair-charted",
+        "note": "Kael came for the vault under the abbey: the way down to it, the seal on its door, and what opening that seal costs.",
         "clock": null
       }
     ],
     "hooks": [
       {
-        "id": "vault-sighted",
-        "on_discover": "vault",
-        "note": "Kael has found the vault door: the seal answers a touch, and something behind it answers with it. Press on what opening the seal will cost.",
+        "id": "vault-charted",
+        "on_discover": "vault_map",
+        "note": "The chart marks a stair down from the cloister that the abbey's own plans deny. Kael knows where to look now, and nothing more than that. Press on getting down there.",
         "reveals": [],
         "advance_thread": {
           "thread_id": "vault-seal",
           "status": null,
-          "stage": "seal-found",
+          "stage": "stair-charted",
           "tick": 0
         }
       },
       {
-        "id": "vault-charted",
-        "on_discover": "vault_map",
-        "note": "The chart marks the stair to the vault door. Press on what opening the seal will cost.",
-        "reveals": [
-          "vault"
-        ],
+        "id": "vault-sighted",
+        "on_discover": "vault",
+        "note": "The vault door is no longer a rumour: Kael knows the way to it, and the seal on it answers a touch. Press on what opening the seal will cost.",
+        "reveals": [],
         "advance_thread": {
           "thread_id": "vault-seal",
           "status": null,
-          "stage": "seal-found",
+          "stage": "door-found",
           "tick": 0
         }
       },
@@ -239,12 +237,10 @@
     ],
     "party": [],
     "fired_hooks": [
-      "vault-charted",
-      "vault-sighted"
+      "vault-charted"
     ],
     "pending_notes": [
-      "The chart marks the stair to the vault door. Press on what opening the seal will cost.",
-      "Kael has found the vault door: the seal answers a touch, and something behind it answers with it. Press on what opening the seal will cost.",
+      "The chart marks a stair down from the cloister that the abbey's own plans deny. Kael knows where to look now, and nothing more than that. Press on getting down there.",
       "Bad luck is circling: signs of something behind the door is already listening back showed this turn. Let the scene warn of it before it bites."
     ]
   },
@@ -359,7 +355,6 @@
       "outcomes": [
         "learned of the vault map",
         "took the vault map",
-        "learned of the sealed vault",
         "Listen at the vault door without being heard -> success",
         "bad luck — something behind the door is already listening back: signs of it",
         "Kael is Listening"
