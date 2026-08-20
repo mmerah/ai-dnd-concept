@@ -16,7 +16,7 @@ from core_test_support import (
     tool_call,
     updated,
 )
-from pydantic_ai.messages import ModelMessage, ModelResponse
+from pydantic_ai.messages import ModelMessage, ModelResponse, ToolReturnPart
 from pydantic_ai.models.function import AgentInfo, FunctionModel
 
 from aidm.config import RoleConfig
@@ -50,8 +50,6 @@ async def test_an_engine_uses_the_shared_pipeline_and_safe_narrator_prompt() -> 
     assert [fact.kind for fact in result.turn.facts] == [
         "entity_discovered",
         "entity_moved",
-        "hook_fired",
-        "thread_advanced",
     ]
     assert {item.id for item in result.state.world.children(PLAYER_ID, "item")} == {
         "lantern",
@@ -62,8 +60,7 @@ async def test_an_engine_uses_the_shared_pipeline_and_safe_narrator_prompt() -> 
     assert result.state.turn == 1
     assert result.state.history[-1].prompt == "I search beneath the desk."
     outcomes = result.state.history[-1].outcomes
-    # Filtered, not copied: a hook firing is bookkeeping and never reaches the player.
-    assert outcomes and len(outcomes) < len(result.turn.facts)
+    assert outcomes == tuple(fact.trace for fact in result.turn.facts)
 
 
 async def test_the_engine_rolls_the_outcome_the_facts_then_record() -> None:
@@ -126,6 +123,20 @@ async def test_an_illegal_tool_call_is_retried_with_the_reason() -> None:
 
     assert result.state.world.require(EntityId("vault")).known
     assert any("unknown entity id 'nowhere'" in reason for reason in director.reasons())
+
+
+async def test_a_discovered_entitys_instruction_comes_back_with_the_tool_result() -> None:
+    engine, state = initialized()
+    director = recorded(tool_call("reveal", entity_id="vault"), text("Something is there."))
+    await played(engine, state, "I wait.", director=FunctionModel(director.stub))
+
+    returns = [
+        part.content
+        for msg in director.calls[-1]
+        for part in msg.parts
+        if isinstance(part, ToolReturnPart)
+    ]
+    assert any("press on what opening it will cost" in str(c) for c in returns)
 
 
 async def test_a_call_its_own_fields_refuse_is_retried_rather_than_killing_the_turn() -> None:
@@ -244,35 +255,6 @@ async def test_a_director_run_that_fails_discards_what_the_earlier_tool_call_did
 
     assert SavedGame.of(state).model_dump_json() == before
     assert state.world.require(EntityId("vault_map")).parent_id != PLAYER_ID
-
-
-async def test_a_hook_fires_on_its_fact_moves_its_thread_and_steers_the_next_turn() -> None:
-    engine, state = initialized()
-    found = await played(
-        engine,
-        state,
-        "I ask Mara where the vault door is.",
-        director=FunctionModel(
-            scripted(tool_call("reveal", entity_id="vault"), text("Mara points to the vault."))
-        ),
-    )
-
-    thread = found.state.world.thread("vault-seal")
-    assert thread is not None and (thread.status, thread.stage) == ("active", "door-found")
-    assert found.state.world.fired_hooks == ("vault-sighted",)
-    # The thread the hook moves is Director bookkeeping and never reaches the Narrator.
-    assert "vault-seal" not in shown(found.turn, "narrator")
-
-    after = await played(
-        engine,
-        found.state,
-        "I wait.",
-        director=FunctionModel(scripted(text("Nothing more happens."))),
-    )
-
-    # The note steers the Director, which is the only role shown the scenario's own voice.
-    assert "Press on what opening the seal will cost" in shown(after.turn, "director")
-    assert after.state.world.pending_notes == ()
 
 
 async def test_the_director_reads_the_canon_and_only_the_narrator_is_kept_from_it() -> None:

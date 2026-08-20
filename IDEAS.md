@@ -1,13 +1,9 @@
 ## Loose ends
 
-- [] Tool calling / Structured output: Quick question: what would be better? question -> call tool change game state but then the context is still in the first message and contain outdated stuff? Do we need to track what changes in-context and return that as tool output?
-- [] Eval coverage: evaluate what pipeline does for different scenarios. Expected VS what happens. Light eval runs, re-use the codebase src because that's what we evaluate. In scripts
-- [] Worldkeeper: wanted to add memory to player but said "we have no id". Makes no sense to add memory to player though? Or is that journal feature?
 - [] Codex: Comment simplification round
 - [] CONFIG_VARIABLES into config, no magic variable/global VARIABLE anywhere. Re-organization of codebase, clearer, easier to navigate, files have a structure that make sense, models are in separate files, clean functional programming. No change in behavior
 - [] RAG on scenarios? .pdf -> source.md in scenario/<id>/ folder, then RAG on it?
 - [] naming: variables, files, methods, classes generally need some renaming to represent more clearly what they do, and with more details
-- [] Narrator does not see speaker memory when player adress someone.
 - [] pyproject.toml should FIX versions.
 - [] Run "uv run python evals/turn_eval.py run --label my-run" multiple times and identify where things are inconsistent. Then figure out fixes (maybe the tools are too difficult to use, need to be separated, or a multi-step thing converted into a tool that combine operations, maybe instruction clarity, maybe examples in tools description to teach the model, maybe we need an agent whose sole role is suggesting what tools to call in what order to remove some decision making out of the director? ...)
 - [] Make scenario authoring easier for agents (Tools? Format? Loop? ...)
@@ -15,7 +11,6 @@
 - [] Best explanation of loner I found: https://keeper.farirpgs.com/resources/zotiquest-games/loner/introduction/ -> Use to make sure the engine is fully compliant (drastic changes might be needed!). Only thing obviously is our AI-as-GM approach
 - [] Best explanation of 24xx I found: https://keeper.farirpgs.com/resources/jason-tocci/24xx/ -> Use to make sure the engine is fully compliant (drastic changes might be needed!). Only thing obviously is our AI-as-GM approach
 - [] UI has some issues: Not fitting to window, scene image not fully displayed because 16:9 aspect ratio? (why should it go through length of the chat, why not as a corner of the chat and the chat stays around it). When you start a game -> no scene initially you have to send a first prompt. Not only issues -> play and you will see
-- [] The hooks in the vault scenario make no sense to me. When they are fired they give info that make no sense at that point and generally they are fired at moments that make no sense?
 
 ## Ideas
 

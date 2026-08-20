@@ -7,7 +7,6 @@ from pydantic_ai.toolsets import FunctionToolset
 
 from aidm.state.base import EntityId
 from aidm.state.facts import Fact
-from aidm.state.hooks import fire_hooks
 from aidm.state.world import Game, check_draft
 
 from .engine import Engine, PlanContext
@@ -22,10 +21,8 @@ type Play = Callable[[Game, Random], tuple[Fact, ...]]
 def apply_to_draft(
     engine: Engine[SheetBase], draft: Game, play: Play, rng: Random
 ) -> tuple[Fact, ...]:
-    """Every mutation runs this sequence, so hooks and seeding cannot be forgotten by a caller."""
-    resolution = play(draft, rng)
-    fired = fire_hooks(draft, resolution)
-    landed = (*resolution, *fired)
+    """Every mutation runs this sequence, so seeding cannot be forgotten by a caller."""
+    landed = play(draft, rng)
     _seed_created(engine, draft, landed, rng)
     engine.validate(draft)
     return landed
@@ -51,6 +48,7 @@ def act(ctx: RunContext[PlanContext], play: Play) -> str:
     deps.log.facts.extend(landed)
     lines = [f"- {fact.trace}" for fact in landed]
     lines.extend(f"- {note}" for note in deps.state.world.pending_notes[already_pending:])
+    lines.extend(_reached(deps.state, landed))
     return "\n".join(lines) or NOTHING_CHANGED
 
 
@@ -70,3 +68,16 @@ def _seed_created(
         created = fact.data.get("entity_id") if fact.kind == "entity_created" else None
         if isinstance(created, str):
             engine.seed(draft, draft.world.require(EntityId(created)), rng)
+
+
+def _reached(draft: Game, facts: Sequence[Fact]) -> list[str]:
+    # The prompt was rendered before the discovery, so the instruction authored for it arrives here.
+    lines: list[str] = []
+    for fact in facts:
+        found = fact.data.get("entity_id") if fact.kind == "entity_discovered" else None
+        if not isinstance(found, str):
+            continue
+        detail = draft.world.require(EntityId(found)).detail
+        if detail is not None and detail.when_reached:
+            lines.append(f"- {detail.when_reached}")
+    return lines

@@ -15,7 +15,7 @@ from aidm.state.base import (
     Trait,
     require_unique,
 )
-from aidm.state.world import Hook, ScenarioMeta, Thread, WorldState
+from aidm.state.world import ScenarioMeta, Thread, WorldState
 
 
 @dataclass(frozen=True, slots=True)
@@ -36,7 +36,6 @@ class ScenarioWorld(Frozen):
     starting_party: tuple[EntityId, ...] = ()
     entities: tuple[Entity, ...] = ()
     threads: tuple[Thread, ...] = ()
-    hooks: tuple[Hook, ...] = ()
 
     @property
     def world(self) -> WorldState:
@@ -45,7 +44,6 @@ class ScenarioWorld(Frozen):
         return WorldState(
             entities=list(self.entities),
             threads=list(self.threads),
-            hooks=list(self.hooks),
         )
 
     @model_validator(mode="after")
@@ -82,28 +80,6 @@ class ScenarioWorld(Frozen):
             raise ValueError(
                 f"locations no walk of exits reaches from "
                 f"{self.starting_location_id!r}: {unreachable}"
-            )
-        return self
-
-    @model_validator(mode="after")
-    def _hooks_name_authored_ids(self) -> Self:
-        entities = {PLAYER_ID, *(entity.id for entity in self.entities)}
-        threads = {thread.id for thread in self.threads}
-        dangling: list[str] = []
-        for hook in self.hooks:
-            named: list[tuple[str, str]] = [
-                ("entity", entity_id) for entity_id in (hook.on_discover, *hook.reveals)
-            ]
-            if hook.advance_thread is not None:
-                named.append(("thread", hook.advance_thread.thread_id))
-            dangling.extend(
-                f"hook {hook.id!r} names {kind} {value!r}"
-                for kind, value in named
-                if value not in (entities if kind == "entity" else threads)
-            )
-        if dangling:
-            raise ValueError(
-                f"hooks naming ids nothing authored carries can never fire: {'; '.join(dangling)}"
             )
         return self
 

@@ -4,15 +4,7 @@ from golden_test_support import FIXTURES, dumped, golden
 
 from aidm.app.registry import engine_ids
 from aidm.content.store import SavedGame
-from aidm.state.base import SAVE_VERSION, EngineId
-
-# The version the golden state and turn fixtures were cut at. A save-shape change moves it, and
-# must regenerate those fixtures in the same commit.
-FIXTURE_SAVE_VERSION = 82
-
-
-def test_the_save_version_the_fixtures_were_cut_at_has_not_moved() -> None:
-    assert SAVE_VERSION == FIXTURE_SAVE_VERSION
+from aidm.state.base import EngineId
 
 
 @pytest.mark.parametrize("engine_id", engine_ids())

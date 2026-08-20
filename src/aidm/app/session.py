@@ -8,14 +8,13 @@ from pydantic_ai import Agent
 
 from aidm.config import Settings
 from aidm.content.authored import Character, Scenario
-from aidm.content.sources import CanonSource, CitedOrInventedSource, ingest
+from aidm.content.sources import CanonSource, OpenSource, ingest
 from aidm.content.store import (
     FileStore,
     SavedGame,
     load_character,
     load_scenario,
-    read_source,
-    require_source,
+    source_file,
 )
 from aidm.engines.advancement import Advancement, Offer, ProposalBase
 from aidm.engines.engine import Engine
@@ -53,22 +52,12 @@ def build_advisor(
 
 
 def open_source(config: Settings, target: LaunchTarget, scenario: Scenario) -> CanonSource | None:
-    """A `closed` world plays on its own canon alone; a `cited` or `cited_or_invented` one is
-    refused rather than played without the document its expansions are written from."""
-    match scenario.world.expansion:
-        case "closed":
-            return None
-        case "cited":
-            return ingest(require_source(config.scenarios_dir, target.scenario_id))
-        case "cited_or_invented":
-            return CitedOrInventedSource(
-                document=ingest(require_source(config.scenarios_dir, target.scenario_id)),
-                # The premise, never the document: a fallback earns its keep by being short and
-                # general where the document had nothing specific.
-                premise=scenario.meta.premise,
-            )
-        case "invented":
-            return read_source(config.scenarios_dir, target.scenario_id, scenario.meta.premise)
+    if scenario.world.expansion == "closed":
+        return None
+    path = source_file(config.scenarios_dir, target.scenario_id)
+    if path is None:
+        return OpenSource(premise=scenario.meta.premise)
+    return OpenSource(document=ingest(path), premise=scenario.meta.premise)
 
 
 def open_media(

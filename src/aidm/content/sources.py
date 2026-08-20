@@ -6,13 +6,13 @@ from typing import Literal, Protocol
 
 from pypdf import PdfReader
 
-type ExpansionPolicy = Literal["closed", "cited", "invented", "cited_or_invented"]
+type ExpansionPolicy = Literal["closed", "open"]
 
 RECORD_CHARS = 600
 MIN_RECORD = 24
 SEARCH_RESULTS = 6
-# A searched source answers in at most SEARCH_RESULTS records; a whole one answers with the book.
-# ~30k tokens, which admits a 76-page adventure and refuses what would swallow the context.
+# The ceiling on a document handed to an author whole: ~30k tokens, which admits a 76-page
+# adventure and refuses what would swallow the context.
 WHOLE_CHARS = 120_000
 _BLANK_LINE = re.compile(r"\n\s*\n")
 _WORD = re.compile(r"[a-z0-9']{3,}")
@@ -31,16 +31,6 @@ class CanonSource(Protocol):
     def passages(self, query: str) -> str:
         """The text this source offers for those words, or `""` when it offers nothing."""
         ...
-
-
-@dataclass(frozen=True, slots=True)
-class WholeSource:
-    text: str
-
-    def passages(self, query: str) -> str:
-        """Whole text, so every need is answered with all of it."""
-        del query
-        return self.text
 
 
 @dataclass(frozen=True, slots=True)
@@ -71,11 +61,9 @@ SILENT = (
 
 
 @dataclass(frozen=True, slots=True)
-class CitedOrInventedSource:
-    """The document where it speaks, the premise where it is silent."""
-
-    document: RecordSource
+class OpenSource:
     premise: str
+    document: RecordSource = RecordSource(records=())
 
     def passages(self, query: str) -> str:
         return self.document.passages(query) or f"{SILENT}\n\n{self.premise}"
@@ -92,7 +80,7 @@ def whole_text(path: Path) -> str:
     if len(text) > WHOLE_CHARS:
         raise ValueError(
             f"{path.name} is {len(text)} characters, too large to hand to a model whole: author "
-            f"it `cited` or `cited_or_invented`, which search the document instead"
+            f"it `open`, which searches the document instead"
         )
     return text
 

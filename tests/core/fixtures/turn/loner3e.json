@@ -22,24 +22,6 @@
       }
     },
     {
-      "kind": "hook_fired",
-      "trace": "hook vault-charted fired",
-      "narrator": null,
-      "data": {
-        "hook_id": "vault-charted"
-      }
-    },
-    {
-      "kind": "thread_advanced",
-      "trace": "The sealed vault is active at stair-charted",
-      "narrator": null,
-      "data": {
-        "thread_id": "vault-seal",
-        "status": "active",
-        "stage": "stair-charted"
-      }
-    },
-    {
       "kind": "dice_rolled",
       "trace": "Does he hear what waits past the vault door without being heard? — chance: 2d6 [4, 5] -> 5",
       "narrator": null,
@@ -123,10 +105,6 @@
     {
       "name": "director",
       "output": "The flagstone lifts. Beyond the door, something shifts its weight and waits."
-    },
-    {
-      "name": "hooks",
-      "output": "hook vault-charted fired"
     },
     {
       "name": "narrator",

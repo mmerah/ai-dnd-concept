@@ -174,7 +174,9 @@ def cases_for(engine_id: EngineId, settings: Settings) -> tuple[Case, ...]:
             expectations=(
                 Expectation("player-in-tower", lambda r: inside(r, "player", "bell_tower")),
                 Expectation("elena-known", lambda r: known(r, "elena")),
-                Expectation("rite-known", lambda r: staged_at(r, "vault-seal", "rite-known")),
+                Expectation(
+                    "archivist-found", lambda r: staged_at(r, "vault-seal", "archivist-found")
+                ),
             ),
             setup=in_cloister("bell_tower"),
         ),

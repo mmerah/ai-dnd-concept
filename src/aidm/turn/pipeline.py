@@ -31,7 +31,7 @@ class TurnResult:
     turn: Turn
 
 
-TURN_STEPS: tuple[str, ...] = ("interpreter", "director", "hooks", "narrator")
+TURN_STEPS: tuple[str, ...] = ("interpreter", "director", "narrator")
 DIRECTOR_REQUEST_LIMIT = 16
 # ponytail: 4 chars/token estimate, swap for the provider's tokenizer if it starts misfiring
 CHARS_PER_TOKEN = 4
@@ -96,10 +96,6 @@ async def run_turn(
     steps.extend(
         (StepTrace(name="director", prompt=director_prompt, output=directed.output), *log.steps)
     )
-
-    announce("hooks")
-    hooks = [fact.trace for fact in log.facts if fact.kind.startswith("hook")]
-    steps.append(StepTrace(name="hooks", output="\n".join(hooks) or "- (no hooks fired)"))
 
     announce("narrator")
     evidence = narrator_evidence(facts)

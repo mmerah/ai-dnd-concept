@@ -1,5 +1,4 @@
 {
-  "save_version": 82,
   "scenario_id": "whispering-vault",
   "character_id": "kael",
   "scenario": {
@@ -75,7 +74,10 @@
         "kind": "location",
         "name": "the sealed vault",
         "brief": "The undercroft chamber Kael came for, its door bearing a seal nobody living can read.",
-        "detail": null,
+        "detail": {
+          "description": "The door is stone, and the seal cut into it is unweathered where everything around it has worn.",
+          "when_reached": "Kael has found the vault door: advance thread vault-seal to stage door-found. The seal is the whole obstacle now — press on what opening it will cost."
+        },
         "known": false,
         "parent_id": null,
         "traits": [],
@@ -114,7 +116,10 @@
         "kind": "actor",
         "name": "Elena",
         "brief": "The vault's former archivist, hiding in the bell tower; she alone remembers the sealing rite; she catalogued the vault ledgers beside Mara for two winters, until the night she went below alone and never came back up.",
-        "detail": null,
+        "detail": {
+          "description": "She carries the sealing rite in her head and nowhere else.",
+          "when_reached": "Kael has found the archivist: advance thread vault-seal to stage archivist-found. She will name a price before she gives the rite up, and the rite is not known until she has."
+        },
         "known": false,
         "parent_id": "bell_tower",
         "traits": [],
@@ -136,7 +141,10 @@
         "kind": "item",
         "name": "the vault map",
         "brief": "A creased chart of the undercroft, marking a stair the abbey's own plans deny.",
-        "detail": null,
+        "detail": {
+          "description": "Drawn in an old hand; the undercroft it maps is larger than the abbey standing over it.",
+          "when_reached": "Kael has the stair charted: advance thread vault-seal to stage stair-charted. The chart marks a way down from the cloister that the abbey's own plans deny — press on getting down there."
+        },
         "known": true,
         "parent_id": "player",
         "traits": [],
@@ -192,55 +200,13 @@
         "id": "vault-seal",
         "title": "The sealed vault",
         "status": "active",
-        "stage": "stair-charted",
+        "stage": "unfound",
         "note": "Kael came for the vault under the abbey: the way down to it, the seal on its door, and what opening that seal costs.",
         "clock": null
       }
     ],
-    "hooks": [
-      {
-        "id": "vault-charted",
-        "on_discover": "vault_map",
-        "note": "The chart marks a stair down from the cloister that the abbey's own plans deny. Kael knows where to look now, and nothing more than that. Press on getting down there.",
-        "reveals": [],
-        "advance_thread": {
-          "thread_id": "vault-seal",
-          "status": null,
-          "stage": "stair-charted",
-          "tick": 0
-        }
-      },
-      {
-        "id": "vault-sighted",
-        "on_discover": "vault",
-        "note": "The vault door is no longer a rumour: Kael knows the way to it, and the seal on it answers a touch. Press on what opening the seal will cost.",
-        "reveals": [],
-        "advance_thread": {
-          "thread_id": "vault-seal",
-          "status": null,
-          "stage": "door-found",
-          "tick": 0
-        }
-      },
-      {
-        "id": "archivist-found",
-        "on_discover": "elena",
-        "note": "Elena remembers the rite that sealed the vault. Let her name her price for it.",
-        "reveals": [],
-        "advance_thread": {
-          "thread_id": "vault-seal",
-          "status": null,
-          "stage": "rite-known",
-          "tick": 0
-        }
-      }
-    ],
     "party": [],
-    "fired_hooks": [
-      "vault-charted"
-    ],
     "pending_notes": [
-      "The chart marks a stair down from the cloister that the abbey's own plans deny. Kael knows where to look now, and nothing more than that. Press on getting down there.",
       "Bad luck is circling: signs of something behind the door is already listening back showed this turn. Let the scene warn of it before it bites."
     ]
   },

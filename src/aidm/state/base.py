@@ -27,7 +27,6 @@ SLUG_MAX = 64
 Slug = Annotated[str, Field(pattern=rf"^{SLUG_PATTERN}$", max_length=SLUG_MAX)]
 
 PLAYER_ID = EntityId("player")
-SAVE_VERSION = 82
 
 
 def content_id(value: str) -> Slug:
@@ -88,12 +87,12 @@ class Counter(Mutable):
 
 class EntityDetail(Frozen):
     description: str
-    hook: str
+    when_reached: str
 
 
 class Trait(Frozen):
     """A lasting fictional quality: a skill, a frailty, a condition, a ward. Core never interprets
-    one; both engines read them and shared hooks author them."""
+    one; both engines read them and the Director authors them."""
 
     id: Slug
     name: str

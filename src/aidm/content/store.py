@@ -1,3 +1,4 @@
+import logging
 from collections.abc import Iterator, Mapping, Sequence
 from dataclasses import dataclass
 from pathlib import Path
@@ -7,7 +8,7 @@ from typing import Self
 
 from pydantic import BaseModel, ConfigDict, Field, JsonValue, model_validator
 
-from aidm.state.base import SAVE_VERSION, EngineId, Mutable, Slug, content_id
+from aidm.state.base import EngineId, Mutable, Slug, content_id
 from aidm.state.history import Exchange
 from aidm.state.world import Game, ScenarioMeta, WorldState, check_player_playable
 
@@ -21,7 +22,6 @@ from .authored import (
     ScenarioOverlay,
     ScenarioWorld,
 )
-from .sources import CanonSource, WholeSource, whole_text
 
 ENCODING = "utf-8"
 WORLD_FILE = "world.json"
@@ -30,24 +30,43 @@ SOURCE_STEM = "source"
 SOURCE_SUFFIXES = (".md", ".txt", ".pdf")
 _SAVE_SLUG_PATTERN = r"[a-z0-9][a-z0-9_-]*"
 
-type Playable[T] = Iterator[tuple[Slug, T, tuple[EngineId, ...]]]
+LOGGER = logging.getLogger(__name__)
 
 
-def read_scenarios(directory: Path, engines: Sequence[EngineId]) -> Playable[ScenarioWorld]:
-    return _playable(directory, WORLD_FILE, ScenarioWorld, engines)
+def read_scenarios(directory: Path) -> Iterator[tuple[Slug, ScenarioWorld]]:
+    for path in _content_dirs(directory, WORLD_FILE):
+        try:
+            found = content_id(path.name), _read(path / WORLD_FILE, ScenarioWorld)
+        except ValueError as unreadable:
+            # The home screen is the only way into the app: one half-written scenario must not
+            # take it down.
+            LOGGER.warning("skipping scenario %r: %s", path.name, unreadable)
+            continue
+        yield found
 
 
-def read_characters(directory: Path, engines: Sequence[EngineId]) -> Playable[CharacterProfile]:
-    return _playable(directory, PROFILE_FILE, CharacterProfile, engines)
+def read_characters(
+    directory: Path, engines: Sequence[EngineId]
+) -> Iterator[tuple[Slug, CharacterProfile, tuple[EngineId, ...]]]:
+    for path in _content_dirs(directory, PROFILE_FILE):
+        written = tuple(engine for engine in engines if (path / f"{engine}.json").is_file())
+        if written:
+            yield content_id(path.name), _read(path / PROFILE_FILE, CharacterProfile), written
+
+
+def _content_dirs(directory: Path, canon: str) -> Iterator[Path]:
+    return (path for path in sorted(directory.iterdir()) if (path / canon).is_file())
 
 
 def load_scenario(directory: Path, name: Slug, binding: EngineBinding) -> Scenario:
     folder = directory / content_id(name)
+    overlay_path = folder / f"{binding.engine}.json"
+    overlay = _read(overlay_path, ScenarioOverlay) if overlay_path.is_file() else ScenarioOverlay()
     scenario = Scenario(
         id=name,
         engine=binding.engine,
         world=_read(folder / WORLD_FILE, ScenarioWorld),
-        overlay=_read(folder / f"{binding.engine}.json", ScenarioOverlay),
+        overlay=overlay,
     )
     binding.check_overlay(scenario.overlay.entities.values())
     return scenario
@@ -57,23 +76,6 @@ def source_file(directory: Path, name: Slug) -> Path | None:
     folder = directory / content_id(name)
     paths = (folder / f"{SOURCE_STEM}{suffix}" for suffix in SOURCE_SUFFIXES)
     return next((path for path in paths if path.is_file()), None)
-
-
-def read_source(directory: Path, name: Slug, premise: str) -> CanonSource:
-    """Whole and unsearched — extracted rather than read raw, which is what reads a PDF as words
-    rather than as bytes."""
-    path = source_file(directory, name)
-    text = premise if path is None else whole_text(path)
-    return WholeSource(text=text)
-
-
-def require_source(directory: Path, name: Slug) -> Path:
-    path = source_file(directory, name)
-    if path is None:
-        raise ValueError(
-            f"scenario {name!r} expands from a document but ships no {SOURCE_STEM} file"
-        )
-    return path
 
 
 def load_character(directory: Path, name: Slug, binding: EngineBinding) -> Character:
@@ -117,22 +119,6 @@ def write_scenario(
         _write(folder / f"{SOURCE_STEM}{SOURCE_SUFFIXES[0]}", source)
 
 
-def _playable[T: BaseModel](
-    directory: Path, canon: str, model: type[T], engines: Sequence[EngineId]
-) -> Playable[T]:
-    """A directory holding no canon file is not content; one with no overlay plays under no rules.
-
-    Skipping both keeps a scratch directory or a half-written scenario out of the launcher instead
-    of failing the home screen, which is the only way into the app.
-    """
-    for path in sorted(directory.iterdir()):
-        if not (path / canon).is_file():
-            continue
-        written = tuple(engine for engine in engines if (path / f"{engine}.json").is_file())
-        if written:
-            yield content_id(path.name), _read(path / canon, model), written
-
-
 def _read[T: BaseModel](path: Path, model: type[T]) -> T:
     if not path.is_file():
         raise ValueError(f"{path.parent.name!r} has no {path.name}")
@@ -150,7 +136,6 @@ class SavedGame(BaseModel):
     # Revalidated on the way out too: a runtime `Game` validates nothing itself.
     model_config = ConfigDict(extra="forbid", revalidate_instances="always")
 
-    save_version: int = SAVE_VERSION
     scenario_id: Slug
     character_id: Slug
     scenario: ScenarioMeta
@@ -194,7 +179,6 @@ class SavedGame(BaseModel):
 class SaveShell(BaseModel):
     model_config = ConfigDict(extra="ignore")
 
-    save_version: int = 0
     engine: EngineId
     scenario_id: Slug
     character_id: Slug
@@ -217,19 +201,13 @@ class FileStore:
         path = self._save_path(slug)
         if not path.exists():
             return None
-        shell = SaveShell.model_validate_json(path.read_text(encoding=ENCODING))
-        if shell.save_version != SAVE_VERSION:
-            raise ValueError(
-                f"save is version {shell.save_version}, this build needs {SAVE_VERSION}"
-            )
-        return shell
+        return SaveShell.model_validate_json(path.read_text(encoding=ENCODING))
 
     def load(self, slug: str) -> SavedGame | None:
-        """The shell probes the stored version first, so drift fails readably."""
-        if self.shell(slug) is None:
+        path = self._save_path(slug)
+        if not path.exists():
             return None
-        body = self._save_path(slug).read_text(encoding=ENCODING)
-        return SavedGame.model_validate_json(body)
+        return SavedGame.model_validate_json(path.read_text(encoding=ENCODING))
 
     def save(self, slug: str, saved: SavedGame) -> None:
         _write(self._save_path(slug), saved.model_dump_json(indent=2))

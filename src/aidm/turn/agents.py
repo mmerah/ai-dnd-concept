@@ -136,8 +136,8 @@ def expander_agent(settings: Settings) -> Agent[PlanContext, ExpansionPatch]:
     def sound(ctx: RunContext[PlanContext], patch: ExpansionPatch) -> ExpansionPatch:
         deps = ctx.deps
 
-        # The whole mutation sequence the real one will run, hooks and seeding included: whatever
-        # a thinner trial skipped would fail the turn outright instead of asking again.
+        # The whole mutation sequence the real one will run, seeding included: whatever a thinner
+        # trial skipped would fail the turn outright instead of asking again.
         def trial(draft: Game) -> object:
             return apply_to_draft(
                 deps.engine, draft, lambda copy, _rng: apply_patch(copy, patch), Random(0)

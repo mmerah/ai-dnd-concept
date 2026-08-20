@@ -44,22 +44,23 @@ def test_search_ranks_by_the_words_asked_for() -> None:
     assert source.passages("submarine") == ""
 
 
-def test_a_cited_scenario_is_refused_without_its_document_and_ingests_it_when_present(
+def test_an_open_scenario_searches_its_document_and_falls_back_to_its_premise(
     tmp_path: Path,
 ) -> None:
     original = scenario()
     config = updated(settings(), scenarios_dir=tmp_path)
     binding = build_engine(LONER3E).binding()
-    cited = updated(original.world, expansion="cited")
+    grown = updated(original.world, expansion="open")
     document = FIXTURES / "drowned-road.pdf"
 
-    write_scenario(tmp_path, "bare", cited, {LONER3E: original.overlay})
-    write_scenario(tmp_path, "sourced", cited, {LONER3E: original.overlay}, document)
+    write_scenario(tmp_path, "bare", grown, {})
+    write_scenario(tmp_path, "sourced", grown, {}, document)
 
-    with pytest.raises(ValueError, match="ships no source"):
-        _ = open_source(config, _target("bare"), load_scenario(tmp_path, "bare", binding))
-    opened = open_source(config, _target("sourced"), load_scenario(tmp_path, "sourced", binding))
-    assert opened == ingest(document)
+    sourced = open_source(config, _target("sourced"), load_scenario(tmp_path, "sourced", binding))
+    bare = open_source(config, _target("bare"), load_scenario(tmp_path, "bare", binding))
+
+    assert sourced is not None and "Bell House" in sourced.passages("tide bell keeper")
+    assert bare is not None and grown.meta.premise in bare.passages("tide bell keeper")
 
 
 def test_whole_text_refuses_a_document_too_large_to_hand_to_a_model_whole(tmp_path: Path) -> None:

@@ -80,47 +80,24 @@ class AdvanceThread(Frozen):
         return self
 
 
-class Hook(Frozen):
-    """Authored consequence: the player learning of an entity fires it once, so a scenario
-    advances without engine code. Its `note` steers the Director on the following turn."""
-
-    id: Slug
-    on_discover: EntityId
-    note: str = ""
-    reveals: tuple[EntityId, ...] = ()
-    advance_thread: AdvanceThread | None = Field(
-        default=None,
-        description="Move a storyline the scenario is tracking: where it stands now, or "
-        "that it is over.",
-    )
-
-
 class WorldState(Mutable):
     """The whole persistent fiction; `Game` holds the played game around it."""
 
     entities: list[Entity] = Field(default_factory=list)
     threads: list[Thread] = Field(default_factory=list)
-    hooks: list[Hook] = Field(default_factory=list)
     party: list[EntityId] = Field(default_factory=list)
-    # A tuple, not a set: a save's bytes are a golden fixture, and set ordering is not stable.
-    fired_hooks: tuple[Slug, ...] = ()
     pending_notes: tuple[str, ...] = ()
 
     @model_validator(mode="after")
     def _consistent_fiction(self) -> Self:
         require_unique("entity ids", (entity.id for entity in self.entities))
         require_unique("thread ids", (thread.id for thread in self.threads))
-        require_unique("hook ids", (hook.id for hook in self.hooks))
         for entity in self.entities:
             # `find`, not `require`: a dangling id is a topology fault, not a lookup failure.
             holder = None if entity.parent_id is None else self.find(entity.parent_id)
             check_placement(entity, holder)
             self._check_exits(entity)
         self._check_party()
-        authored = {hook.id for hook in self.hooks}
-        if unknown := sorted(set(self.fired_hooks) - authored):
-            raise ValueError(f"fired hooks name no authored hook: {unknown}")
-        require_unique("fired hooks", self.fired_hooks)
         return self
 
     def _check_exits(self, entity: Entity) -> None:
@@ -156,9 +133,6 @@ class WorldState(Mutable):
 
     def thread(self, thread_id: Slug) -> Thread | None:
         return next((thread for thread in self.threads if thread.id == thread_id), None)
-
-    def hook(self, hook_id: Slug) -> Hook | None:
-        return next((hook for hook in self.hooks if hook.id == hook_id), None)
 
     def require(self, entity_id: EntityId) -> Entity:
         entity = self.find(entity_id)

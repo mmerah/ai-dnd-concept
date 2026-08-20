@@ -5,14 +5,14 @@ from pydantic import Field
 from aidm.content.authored import ScenarioWorld
 from aidm.content.sources import ExpansionPolicy
 from aidm.state.base import Entity, EntityId, Frozen, Mutable
-from aidm.state.world import Hook, ScenarioMeta, Thread
+from aidm.state.world import ScenarioMeta, Thread
 
 
-def _index[T: Entity | Thread | Hook](kept: list[T], target: str) -> int | None:
+def _index[T: Entity | Thread](kept: list[T], target: str) -> int | None:
     return next((index for index, held in enumerate(kept) if held.id == target), None)
 
 
-def _upsert[T: Entity | Thread | Hook](kept: list[T], written: Iterable[T]) -> None:
+def _upsert[T: Entity | Thread](kept: list[T], written: Iterable[T]) -> None:
     for one in written:
         found = _index(kept, one.id)
         if found is None:
@@ -21,7 +21,7 @@ def _upsert[T: Entity | Thread | Hook](kept: list[T], written: Iterable[T]) -> N
             kept[found] = one
 
 
-def _drop[T: Entity | Thread | Hook](kept: list[T], target: str) -> bool:
+def _drop[T: Entity | Thread](kept: list[T], target: str) -> bool:
     found = _index(kept, target)
     if found is None:
         return False
@@ -46,7 +46,6 @@ class ScenarioPatch(Frozen):
     )
     entities: tuple[Entity, ...] = ()
     threads: tuple[Thread, ...] = ()
-    hooks: tuple[Hook, ...] = ()
     remove: tuple[str, ...] = ()
 
 
@@ -60,7 +59,6 @@ class WorldDraft(Mutable):
     starting_party: tuple[EntityId, ...] = ()
     entities: list[Entity] = Field(default_factory=list)
     threads: list[Thread] = Field(default_factory=list)
-    hooks: list[Hook] = Field(default_factory=list)
 
     def apply(self, patch: ScenarioPatch) -> str:
         wrote: list[str] = []
@@ -78,13 +76,11 @@ class WorldDraft(Mutable):
             wrote.append("art_style")
         _upsert(self.entities, patch.entities)
         _upsert(self.threads, patch.threads)
-        _upsert(self.hooks, patch.hooks)
         wrote.extend(
             f"{len(group)} {what}"
             for what, group in (
                 ("entities", patch.entities),
                 ("threads", patch.threads),
-                ("hooks", patch.hooks),
             )
             if group
         )
@@ -95,7 +91,7 @@ class WorldDraft(Mutable):
         return f"wrote: {', '.join(wrote)}" if wrote else "nothing to change"
 
     def _remove(self, target: str) -> None:
-        if _drop(self.entities, target) or _drop(self.threads, target) or _drop(self.hooks, target):
+        if _drop(self.entities, target) or _drop(self.threads, target):
             return
         raise ValueError(
             f"nothing in the draft has id {target!r}; read `scenario_so_far` and remove ids "
@@ -120,5 +116,4 @@ class WorldDraft(Mutable):
             starting_party=self.starting_party,
             entities=tuple(self.entities),
             threads=tuple(self.threads),
-            hooks=tuple(self.hooks),
         )

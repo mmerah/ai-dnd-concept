@@ -9,7 +9,7 @@ The `Memory` model in `state/world.py`, `WorldState.memories`, and the memory-ow
 check that went with it. `ScenarioWorld.memories` in authored content, and the `"memories"` arrays
 in the two shipped scenarios. The Worldkeeper role entire: `worldkeeper_agent`, `WorldkeeperReport`,
 `MemoryProposal`, `render_worldkeeper`, `prompts/worldkeeper.md`, and its turn step. `Settings.max_memories`
-and `Settings.history_window`. A turn now runs Interpreter -> Director -> hooks -> Narrator, three
+and `Settings.history_window`. A turn now runs Interpreter -> Director -> Narrator, three
 role calls instead of four, and the conversation window is unbounded:
 `history = exchanges_to_messages(state.history)`.
 

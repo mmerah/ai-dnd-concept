@@ -5,14 +5,14 @@
       "title": "Description",
       "type": "string"
     },
-    "hook": {
-      "title": "Hook",
+    "when_reached": {
+      "title": "When Reached",
       "type": "string"
     }
   },
   "required": [
     "description",
-    "hook"
+    "when_reached"
   ],
   "title": "EntityDetail",
   "type": "object"

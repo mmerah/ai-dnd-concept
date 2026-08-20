@@ -1,17 +1,13 @@
-from types import NoneType
-
 import pytest
-from core_test_support import SCENARIOS, scenario, scripted, settings, text, updated
+from core_test_support import SCENARIOS, scenario, scripted, settings, updated
 from pydantic import JsonValue
 from pydantic_ai.messages import ModelResponse, ToolCallPart
 from pydantic_ai.models.function import FunctionModel
 
-from aidm.app.authoring.agents import ask_until_playable
 from aidm.app.authoring.draft import ScenarioPatch, WorldDraft
 from aidm.app.authoring.playability import OPENING, playability, playtests
 from aidm.app.authoring.session import AuthoringSession
 from aidm.content.store import load_scenario
-from aidm.llm import build_agent
 from aidm.state.base import Entity, EntityId, Exit
 from aidm.state.world import ScenarioMeta, Thread
 
@@ -19,7 +15,7 @@ from aidm.state.world import ScenarioMeta, Thread
 async def test_the_shipped_scenario_passes_every_engine() -> None:
     for playtest in playtests(settings()):
         shipped = load_scenario(SCENARIOS, "whispering-vault", playtest.engine.binding())
-        playtest.check("whispering-vault", shipped.world, shipped.overlay)
+        playtest.check("whispering-vault", shipped.world)
 
 
 def test_a_world_colliding_with_the_character_is_refused() -> None:
@@ -37,7 +33,7 @@ def test_a_world_colliding_with_the_character_is_refused() -> None:
         )
         colliding = updated(world, entities=(*world.entities, extra))
         with pytest.raises(ValueError, match="appears twice"):
-            playtest.check("whispering-vault", colliding, shipped.overlay)
+            playtest.check("whispering-vault", colliding)
 
 
 def _as_patch() -> dict[str, JsonValue]:
@@ -189,11 +185,6 @@ async def test_an_unplayable_draft_is_never_written() -> None:
         _ = await session.write()
 
 
-def test_a_cited_session_needs_a_document() -> None:
-    with pytest.raises(ValueError, match="document"):
-        AuthoringSession(slug="authored", premise="a vault", config=settings(), expansion="cited")
-
-
 def test_a_thin_draft_hears_every_unmet_bar_item_at_once() -> None:
     draft = WorldDraft()
     _ = draft.apply(
@@ -205,13 +196,13 @@ def test_a_thin_draft_hears_every_unmet_bar_item_at_once() -> None:
     )
     reason = playability(draft, "authored", ())
     assert reason is not None
-    for wanted in ("locations", "locked", "actors", "item", "thread", "hook"):
+    for wanted in ("locations", "locked", "actors", "item", "thread", "when_reached"):
         assert wanted in reason
 
 
 def test_an_opening_slice_passes_a_bar_the_whole_scenario_would_fail() -> None:
     """Premise-start authors the first scene and nothing else: the rest is written during play."""
-    draft = WorldDraft(expansion="invented")
+    draft = WorldDraft(expansion="open")
     _ = draft.apply(
         ScenarioPatch(
             meta=ScenarioMeta(title="The Cell", premise="Get out."),
@@ -241,33 +232,4 @@ def test_an_opening_slice_passes_a_bar_the_whole_scenario_would_fail() -> None:
 
     assert playability(draft, "authored", playing, OPENING) is None
     assert playability(draft, "authored", playing) is not None
-    assert draft.world().expansion == "invented"
-
-
-async def test_the_author_is_asked_again_with_the_reason() -> None:
-    agent = build_agent(
-        "scenario_creator", settings(), instructions="", output_type=str, deps_type=NoneType
-    )
-
-    def check(answer: str) -> None:
-        if answer != "yes":
-            raise ValueError("wrong")
-
-    with agent.override(model=FunctionModel(scripted(text("no"), text("yes")))):
-        result = await ask_until_playable(agent, "write it", check)
-
-    assert result == "yes"
-
-
-async def test_the_author_gives_up_after_every_round_is_refused() -> None:
-    agent = build_agent(
-        "scenario_creator", settings(), instructions="", output_type=str, deps_type=NoneType
-    )
-
-    def check(answer: str) -> None:
-        raise ValueError("wrong")
-
-    scripted_model = FunctionModel(scripted(text("no"), text("no"), text("no")))
-    with agent.override(model=scripted_model):
-        with pytest.raises(ValueError, match="wrong"):
-            _ = await ask_until_playable(agent, "write it", check)
+    assert draft.world().expansion == "open"

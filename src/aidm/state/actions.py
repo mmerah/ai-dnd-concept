@@ -183,14 +183,16 @@ def advance_thread(draft: Game, effect: AdvanceThread) -> list[Fact]:
         clock.current = clock.clamped(clock.current + effect.tick)
     thread.status = effect.status or thread.status
     thread.stage = effect.stage or thread.stage
-    moved = f"{thread.title} is {thread.status}" + (f" at {thread.stage}" if thread.stage else "")
+    moved = f"thread {thread.title!r} — status {thread.status}"
+    if thread.stage:
+        moved += f", stage {thread.stage}"
     data: dict[str, JsonValue] = {
         "thread_id": thread.id,
         "status": thread.status,
         "stage": thread.stage,
     }
     if clock is not None:
-        moved += f" (clock {clock.current}/{clock.maximum})"
+        moved += f", clock {clock.current}/{clock.maximum}"
         data |= {
             "clock_current": clock.current,
             "clock_maximum": clock.maximum,

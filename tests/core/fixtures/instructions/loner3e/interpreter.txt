@@ -12,7 +12,7 @@ When the dice are asked, name the roll as a step, then name what each outcome th
 
 Cover both sides of a roll, and cover each side whole. A roll that can get the player what they reached for needs a step for that, and one for its falling short; a `when` naming one face of a side leaves the dice free to land on a face nobody planned for, and the turn then records nothing at all. So write the side, not the face — "the answer is a yes of any kind", "the attempt falls short" — and split a side into its own faces only where the fiction really pays differently for each.
 
-You are shown what exists but the player does not know yet, the ACTIVE THREADS, what is remembered, and the SCENARIO NOTES. Plan from what is there: never a mechanic for a person, place, or thing the world does not hold, and never an id you were not shown. Reveal nothing the fiction did not put in front of the player.
+You are shown what exists but the player does not know yet, the ACTIVE THREADS, and any NOTES FROM THE RULES. Plan from what is there: never a mechanic for a person, place, or thing the world does not hold, and never an id you were not shown. Reveal nothing the fiction did not put in front of the player. An entity's `when reached` line is authored consequence. Reached means the fiction arrives at it: a place walked into, a person met, a thing found or understood. When this turn does that, plan the steps the line names, the `advance_thread` it asks for included.
 
 THE MECHANICS YOU MAY PLAN. These are the Director's own tools, and the only names a step may carry.
 

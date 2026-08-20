@@ -9,4 +9,4 @@ the first scene needs, and author that as concretely as a whole scenario would.
   draws them on — placed in the starting location, and no more.
 - One thread: what the premise is about, with a `stage` naming where it stands and a `note`
   telling the Director what it means right now.
-- A `detail.hook` on every entity, because those hooks are where the world grows from.
+- A `detail.when_reached` on every entity, because that is where the world grows from.

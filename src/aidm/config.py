@@ -21,7 +21,7 @@ class RoleConfig(BaseModel):
     model_config = ConfigDict(frozen=True)
 
     provider: ProviderName = "openrouter"
-    model: str = "deepseek/deepseek-v4-flash-0731"
+    model: str = "deepseek/deepseek-v4-flash-0731:nitro"
     retries: int = Field(default=3, ge=0)
     max_tokens: int = Field(default=2048, ge=1)
     reasoning_effort: ReasoningEffort = "low"
@@ -47,7 +47,7 @@ ROLE_DEFAULTS: dict[Role, RoleConfig] = {
     # A tool loop spends its budget across many calls, and choosing between tools needs the effort.
     "director": RoleConfig(max_tokens=8192, reasoning_effort="low"),
     # It judges the engine's own roll rule, which is the part of the turn that needs reasoning.
-    "interpreter": RoleConfig(max_tokens=4096, reasoning_effort="low"),
+    "interpreter": RoleConfig(max_tokens=8192, reasoning_effort="low"),
     "expander": RoleConfig(max_tokens=8192, reasoning_effort="low"),
     "scenario_creator": RoleConfig(max_tokens=32768, reasoning_effort="medium"),
 }

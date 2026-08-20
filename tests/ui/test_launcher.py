@@ -8,7 +8,7 @@ from aidm.app.launcher import LauncherController, LaunchTarget, load_catalog
 from aidm.app.session import Runtime
 from aidm.config import Settings
 from aidm.content.store import ENCODING, FileStore, SavedGame
-from aidm.state.base import SAVE_VERSION, EngineId
+from aidm.state.base import EngineId
 from aidm.state.world import Game
 
 
@@ -31,7 +31,7 @@ def _scenarios_copy(tmp_path: Path) -> Path:
     return scenarios
 
 
-def test_an_overlay_decides_which_rules_a_scenario_offers(tmp_path: Path) -> None:
+def test_an_overlay_decides_which_rules_a_character_offers(tmp_path: Path) -> None:
     catalog = load_catalog(ui_settings(tmp_path))
     controller = LauncherController(catalog)
 
@@ -49,10 +49,11 @@ def test_an_overlay_decides_which_rules_a_scenario_offers(tmp_path: Path) -> Non
     }
 
 
-def test_content_is_offered_only_for_the_rulesets_it_ships(tmp_path: Path) -> None:
-    """An overlay's presence is the whole compatibility check, so this item is the first that lets a
-    directory sit under `scenarios/` offering nothing. The home screen is the only way into the app,
-    so an unplayable directory has to be skipped rather than break it."""
+def test_a_scenario_with_no_overlay_is_offered_under_every_engine(tmp_path: Path) -> None:
+    """An overlay is optional enrichment, not a compatibility gate: `aaa-draft` ships only
+    `world.json` and still plays under every engine. `notes` holds no canon file at all, so it is
+    still skipped — the home screen is the only way into the app, and a scratch directory must not
+    break it."""
     scenarios = _scenarios_copy(tmp_path)
     (scenarios / "notes").mkdir()
     shutil.copytree(scenarios / "whispering-vault", scenarios / "aaa-draft")
@@ -62,7 +63,11 @@ def test_content_is_offered_only_for_the_rulesets_it_ships(tmp_path: Path) -> No
 
     controller = LauncherController(load_catalog(ui_settings(tmp_path, scenarios)))
 
-    assert [option.id for option in controller.catalog.scenarios] == ["whispering-vault"]
+    assert [option.id for option in controller.catalog.scenarios] == [
+        "aaa-draft",
+        "whispering-vault",
+    ]
+    controller.choose_scenario("aaa-draft")
     assert controller.available_engines() == ("loner3e", "twentyfourxx")
     assert controller.selected_engine == "loner3e"
 
@@ -99,22 +104,6 @@ def test_a_save_whose_rules_were_withdrawn_is_reported_not_offered(tmp_path: Pat
     assert saved.problem == "scenario 'whispering-vault' no longer offers the 'retired' engine"
 
 
-def test_a_save_from_another_build_is_reported_not_offered(tmp_path: Path) -> None:
-    """Unreadable, not absent: offering it as a new game would crash on navigation."""
-    config = ui_settings(tmp_path)
-    slug = "whispering-vault--kael--loner3e"
-    state = _opening_state(config, LONER3E)
-    FileStore(tmp_path).save(slug, updated(SavedGame.of(state), save_version=SAVE_VERSION - 1))
-
-    controller = LauncherController(load_catalog(config))
-    controller.choose_scenario("whispering-vault")
-
-    assert [save.slug for save in controller.catalog.saves] == []
-    assert [broken.slug for broken in controller.catalog.unreadable] == [slug]
-    assert "save is version" in controller.catalog.unreadable[0].problem
-    assert controller.new_game().slug == slug
-
-
 def test_one_corrupt_save_does_not_hide_the_others_and_stays_readable(tmp_path: Path) -> None:
     config = ui_settings(tmp_path)
     FileStore(tmp_path).save("good", SavedGame.of(_opening_state(config, LONER3E)))
@@ -127,3 +116,7 @@ def test_one_corrupt_save_does_not_hide_the_others_and_stays_readable(tmp_path: 
     problem = catalog.unreadable[0].problem
     assert "\n" not in problem
     assert len(problem) <= 200
+
+    controller = LauncherController(catalog)
+    controller.choose_scenario("whispering-vault")
+    assert controller.new_game().slug == "whispering-vault--kael--loner3e"

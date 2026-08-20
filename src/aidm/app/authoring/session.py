@@ -9,7 +9,7 @@ from aidm.content.sources import ExpansionPolicy, whole_text
 from aidm.content.store import write_scenario
 from aidm.state.base import Slug
 
-from .agents import REQUEST_LIMIT, authored_overlay, summarize, world_agent, world_prompt
+from .agents import REQUEST_LIMIT, summarize, world_agent, world_prompt
 from .draft import WorldDraft
 from .playability import FULL, Brief, Playtest, playability, playtests
 
@@ -35,11 +35,6 @@ class AuthoringSession:
     def __post_init__(self) -> None:
         if self.document is None and not self.premise:
             raise ValueError("give a premise, a document, or both: there is nothing to author from")
-        if self.expansion in ("cited", "cited_or_invented") and self.document is None:
-            raise ValueError(
-                f"a {self.expansion!r} scenario expands from a document: give one, or author it "
-                "as `invented` or `closed`"
-            )
         if (self.config.scenarios_dir / self.slug).exists():
             raise ValueError(f"scenario {self.slug!r} already exists")
         self.playing = playtests(self.config)
@@ -63,17 +58,13 @@ class AuthoringSession:
         return playability(self.draft, self.slug, self.playing, self.brief)
 
     async def write(self) -> str:
-        """Revalidates the draft — the agent's 'ok' is never trusted — before writing overlays."""
+        """Revalidates the draft — the agent's 'ok' is never trusted — before it reaches disk."""
         if reason := self.refusal():
             raise ValueError(f"the draft does not play: {reason}")
         # The form's style overrides whatever the author wrote from the source's own tone.
         self.draft.art_style = self.art_style or self.draft.art_style
         world = self.draft.world()
-        overlays = {
-            playtest.engine.id: await authored_overlay(playtest, self.slug, world, self.config)
-            for playtest in self.playing
-        }
         write_scenario(
-            self.config.scenarios_dir, self.slug, world, overlays, self.document or self.premise
+            self.config.scenarios_dir, self.slug, world, {}, self.document or self.premise
         )
-        return summarize(world, overlays)
+        return summarize(world)

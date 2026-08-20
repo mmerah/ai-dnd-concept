@@ -20,7 +20,6 @@ Status of the proof of concept, and where it should go. Kept short on purpose. P
 
 - Growth can only create, never deepen. Nothing in a turn updates an entity the story develops.
 - An exit carries `known` and `locked` and nothing else — no note, no state of its own — so a way can be locked but not described.
-- A hook waits on one entity's discovery and fires once, so nothing else a turn produces can be waited on and no consequence can repeat. Chaining works: hooks fire in bounded rounds within a turn (`MAX_HOOK_ROUNDS` in `state/hooks.py`), so one hook's reveal fires the hook waiting on it.
 
 ### Structure and scale
 

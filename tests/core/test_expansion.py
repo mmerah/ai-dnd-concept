@@ -17,17 +17,16 @@ from pydantic_ai.toolsets import FilteredToolset, FunctionToolset
 
 from aidm.content.sources import (
     SILENT,
-    CitedOrInventedSource,
+    OpenSource,
     RecordSource,
     SourceRecord,
-    WholeSource,
 )
 from aidm.engines.loner3e.mechanics import Mechanics
 from aidm.state.base import EntityId
 from aidm.turn.agents import PlanContext, build_turn_agents
 
-FRONTIER = WholeSource(
-    text="Below the abbey cloister the undercroft runs on into galleries nobody has walked."
+FRONTIER = OpenSource(
+    premise="Below the abbey cloister the undercroft runs on into galleries nobody has walked."
 )
 GALLERY = {
     "id": "sunken_gallery",
@@ -109,7 +108,6 @@ async def test_travel_beyond_the_frontier_expands_the_world_inside_one_turn() ->
         "interpreter",
         "director",
         "expander-1",
-        "hooks",
         "narrator",
     ]
     # Materializing private canon is not a fictional event, and the Director revealed only the way.
@@ -117,7 +115,7 @@ async def test_travel_beyond_the_frontier_expands_the_world_inside_one_turn() ->
     assert "Verrin" not in shown(result.turn, "narrator")
     materialized = [fact for fact in result.turn.facts if fact.kind == "canon_materialized"]
     assert materialized and all(fact.narrator is None for fact in materialized)
-    # A premise holds no records to search, so it reaches the Expander whole, as it always did.
+    # No document to search, so the source falls back to its premise, prefixed with SILENT.
     assert "galleries nobody has walked" in shown(result.turn, "expander-1")
 
 
@@ -188,7 +186,7 @@ async def test_an_expander_that_cannot_write_costs_only_its_own_tool_call() -> N
     assert isinstance(refusal.output, str) and "no canon written" in refusal.output
 
 
-async def test_a_cited_expansion_is_shown_the_passages_the_director_asked_for() -> None:
+async def test_an_open_expansion_is_shown_the_passages_the_director_asked_for() -> None:
     """The source is searched by resolver code, so the Expander answers once, from the records the
     Director's own terms retrieved and nothing else."""
     engine, state = initialized()
@@ -226,9 +224,9 @@ async def test_a_cited_expansion_is_shown_the_passages_the_director_asked_for() 
     assert "undercroft" not in shown(result.turn, "narrator")
 
 
-async def test_a_cited_miss_refuses_the_director_and_never_calls_the_expander() -> None:
-    """Strict grounding has nothing to write from on a retrieval miss, so it says so instead of
-    handing the Expander passages that bear on nothing."""
+async def test_a_retrieval_miss_refuses_the_director_and_never_calls_the_expander() -> None:
+    """A retrieval miss has nothing to write from, so it says so instead of handing the Expander
+    passages that bear on nothing."""
     engine, state = initialized()
     director = FunctionModel(
         scripted(
@@ -267,7 +265,7 @@ async def test_a_fallback_source_says_the_document_is_silent() -> None:
         DOWNWARD,
         director=director,
         expander=FunctionModel(scripted(structured(entities=[GALLERY], exits=[WAY]))),
-        source=CitedOrInventedSource(document=UNHELPFUL, premise=FRONTIER.text),
+        source=OpenSource(document=UNHELPFUL, premise=FRONTIER.premise),
     )
 
     asked = shown(result.turn, "expander-1")

@@ -16,7 +16,7 @@ from aidm.content.authored import Character, CharacterOverlay, CharacterProfile,
 from aidm.content.store import SavedGame
 from aidm.engines.loner3e.mechanics import LUCK_MAX, Mechanics
 from aidm.state.base import PLAYER_ID, Entity, EntityId
-from aidm.state.world import Game, Hook
+from aidm.state.world import Game
 
 HELD = EntityId("frayed_rope")
 UNHELD = EntityId("silk_rope")
@@ -123,20 +123,6 @@ def test_world_state_rejects_broken_exits_and_party() -> None:
     wandering = updated(mara, exits=({"to": "study"},))
     with pytest.raises(ValidationError, match="cannot have exits"):
         updated(world, entities=tuple(wandering if e.id == mara.id else e for e in world.entities))
-
-
-def test_a_hook_waiting_on_an_unauthored_id_is_refused() -> None:
-    world = scenario().world
-    ghost = Hook(id="ghost-sighted", on_discover=EntityId("ghost"))
-    with pytest.raises(ValidationError, match=r"never fire.*ghost"):
-        updated(world, hooks=(*world.hooks, ghost))
-
-
-def test_a_hook_revealing_an_unauthored_id_is_refused() -> None:
-    world = scenario().world
-    haunted = Hook(id="vault-haunted", on_discover=EntityId("vault"), reveals=(EntityId("ghost"),))
-    with pytest.raises(ValidationError, match=r"vault-haunted.*ghost"):
-        updated(world, hooks=(*world.hooks, haunted))
 
 
 def test_a_scenario_starts_the_party_it_authors() -> None:

@@ -24,21 +24,20 @@ engine package appears only when it is next to be played; a skeleton package is 
 See PLAN.md for the phases.
 
 ```text
-prompt → DIRECTOR → resolve → hooks → NARRATOR → WORLDKEEPER → commit
-         one plan  engine code  facts fire  prose        new canon
+prompt → INTERPRETER → DIRECTOR → resolve → NARRATOR → commit
+         one plan      tool calls  engine code  prose
 ```
 
-The Director judges what the turn is about and answers with one structured turn plan —
-what pushes back, what is at stake, the single action resolved this turn, its fiction consequences
+The Director judges what the turn is about and answers with one structured turn plan — what
+pushes back, what is at stake, the single action resolved this turn, its fiction consequences
 keyed by outcome, and unconditional effects. Engine code validates the plan against committed
-state, resolves it deterministically on a draft (rolls, costs, intrinsic outcomes), committed Facts
-fire the scenario's authored hooks, and core commits a fully revalidated state. An engine is
-ordinary typed Python: its own strict mechanics model, the typed overlay authored content is
-validated against, and action models with their resolvers. Core owns the fiction — entities,
-placement, relations, threads and their clocks, traits — and persists the engine's mechanics as
-one opaque payload it never reads. The Narrator receives no unrevealed canon; for visible entities
-it receives the same state as the other roles, with instructions to translate mechanics into
-fiction rather than recite stat blocks.
+state, resolves it deterministically on a draft (rolls, costs, intrinsic outcomes), and core
+commits a fully revalidated state. An engine is ordinary typed Python: its own strict mechanics
+model, the typed overlay authored content is validated against, and action models with their
+resolvers. Core owns the fiction — entities, placement, relations, threads and their clocks,
+traits — and persists the engine's mechanics as one opaque payload it never reads. The Narrator
+receives no unrevealed canon; for visible entities it receives the same state as the other roles,
+with instructions to translate mechanics into fiction rather than recite stat blocks.
 
 ## Run
 
@@ -52,8 +51,9 @@ uv run aidm
 The app opens at <http://localhost:8080>. Configure
 `PROVIDERS__OPENROUTER__API_KEY` in `.env`. Content packs load from `packs/<engine>/*.json`
 (`PACKS_DIR` moves that directory), and a user pack replaces a shipped one of the same name. The
-home page lists saves and lets you choose a scenario, rules engine, and compatible character. The
-game header always identifies the active engine.
+home page lists saves and lets you choose a scenario — every scenario plays under every engine —
+then a rules engine and a character whose overlay supports it. The game header always identifies
+the active engine.
 
 Scene illustrations are off by default. `MEDIA__ENABLED=true` in `.env` turns them on
 (`MEDIA__MODEL` picks the image model). An image is generated after a turn commits, in the
@@ -78,8 +78,8 @@ src/aidm/app/             composition root: launcher catalog, sessions, runtime
 src/aidm/engines/loner3e/ Loner 3e engine: tag sheets, the closed question, the outcome ladder
 src/aidm/engines/twentyfourxx/ 24XX engine: skill dice, one attempt, three outcomes
 src/aidm/ui/              NiceGUI shell: renders state, submits decisions
-characters/               shared character canon plus one overlay per supported engine
-scenarios/                shared world canon plus one overlay per supported engine
+characters/               shared character canon plus one overlay per playable engine
+scenarios/                shared world canon; an engine overlay is optional enrichment
 tests/                    per-package suites: core, loner3e, probe, ui
 ```
 

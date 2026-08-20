@@ -18,9 +18,7 @@ from .panels import page_header
 LOGGER = logging.getLogger(__name__)
 
 _EXPANSION_LABELS: dict[ExpansionPolicy, str] = {
-    "invented": "invented — the premise or document, expanded freely in play",
-    "cited": "cited — written only from passages found in the document",
-    "cited_or_invented": "cited_or_invented — the document, and the premise where it is silent",
+    "open": "open — the document where it speaks, the premise where it is silent",
     "closed": "closed — the authored world is all there is",
 }
 _BRIEF_LABELS = {"full": "a whole scenario", "opening": "an opening slice, grown in play"}
@@ -51,7 +49,6 @@ def scenario_page(config: Settings) -> None:
                 target = Path(tempfile.mkdtemp()) / event.file.name
                 await event.file.save(target)
                 document = target
-                expansion.set_value("cited")
                 ui.notify(f"Using {event.file.name}")
 
             upload = (
@@ -60,7 +57,7 @@ def scenario_page(config: Settings) -> None:
                 .props("outlined")
             )
             expansion = (
-                ui.select(options=_EXPANSION_LABELS, label="How the world grows", value="invented")
+                ui.select(options=_EXPANSION_LABELS, label="How the world grows", value="open")
                 .classes("w-full")
                 .props("outlined")
             )

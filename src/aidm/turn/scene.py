@@ -132,5 +132,5 @@ def _placement(
 
 
 def _undetailed(entity: Entity) -> Entity:
-    """`detail.hook` is authored as canon the player has not reached, so the Narrator gets none."""
+    """`detail.when_reached` is canon authored before it is reached, so the Narrator gets none."""
     return entity.model_copy(update={"detail": None})

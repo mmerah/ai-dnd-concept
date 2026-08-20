@@ -6,10 +6,8 @@ The phased plan for what is built next, in order. Shipped phases move to PROGRES
 
 1. **Golden fixtures are the behavior contract.** `AIDM_GOLDEN_REGEN=1` rewrites them; use it only
    in the same commit as the change that justifies the movement, and read the diff — an unexpected
-   fixture moving is a bug, not churn. Any phase that changes persisted bytes bumps `SAVE_VERSION`
-   (`src/aidm/state/base.py`) and regenerates the `save/state/turn` fixture families; stale saves
-   are refused, never converted. `tests/core/test_golden_state.py` pins `FIXTURE_SAVE_VERSION` —
-   bump both or the suite catches you.
+   fixture moving is a bug, not churn. A save names no version: a stale save fails validation and
+   is refused, never converted.
 2. **Probe a new role's output mode live before trusting it.** gpt-oss-120b emitted zero plan
    effects under `NativeOutput` on the Director's large schema, while small schemas (worldkeeper,
    advisor, scene) are fine natively. Every new role — and every schema a phase reshapes — starts
@@ -226,16 +224,16 @@ Done when: `grep -rn "SAVE_VERSION\|save_version" src tests` returns nothing.
 ### Step 2 — hooks leave; consequences become authored text
 
 The hook subsystem fires deterministically on discovery, which times narrative beats wrong
-(IDEAS.md). The consequence moves into `detail.hook` on the triggering entity, and the Director
+(IDEAS.md). The consequence moves into `detail.when_reached` on the triggering entity, and the Director
 now reads `detail` for every entity it is shown — hidden, present, elsewhere, and carried — so a
 consequence stays visible until acted on, not for one turn. The Narrator stays blind by
 construction: `VisibleScene` strips `detail` (`_undetailed`). Threads and clocks are untouched.
 
 - Convert scenario JSON in this same commit. For each hook: append its `note` — plus "then reveal
   <ids>" for `reveals` and "advance thread <thread_id> to <stage>/<status>" for `advance_thread` —
-  to the `detail.hook` of the `on_discover` entity, then delete the `hooks` array.
+  to the `detail.when_reached` of the `on_discover` entity, then delete the `hooks` array.
   `EntityDetail.description` is required: when creating a `detail`, write a one-line description
-  too. Example, drowned-road `key-discovered` → `bronze_key.detail.hook`: "The bronze key removes
+  too. Example, drowned-road `key-discovered` → `bronze_key.detail.when_reached`: "The bronze key removes
   the lock on the crypt entrance: reveal that way and unlock it once Kael works this out." Do both
   `scenarios/*/world.json`.
 - Delete `src/aidm/state/hooks.py`.
@@ -257,12 +255,12 @@ construction: `VisibleScene` strips `detail` (`_undetailed`). Threads and clocks
   `_remove`; narrow the three generic bounds to `[T: Entity | Thread]` and drop the `Hook` import.
 - `src/aidm/app/authoring/agents.py`: drop the hooks count in `summarize`.
 - `src/aidm/app/authoring/playability.py` `_bar_unmet`: replace the hook item with "at least one
-  unknown entity whose `detail.hook` carries a consequence" (check
-  `entity.detail is not None and entity.detail.hook and not entity.known`).
+  unknown entity whose `detail.when_reached` carries a consequence" (check
+  `entity.detail is not None and entity.detail.when_reached and not entity.known`).
 - Prompts: `turn/prompts/expander.md` deletes its `hooks` bullet and extends the entity bullet —
-  a consequence new canon carries is written into its `detail.hook` as an instruction to the
+  a consequence new canon carries is written into its `detail.when_reached` as an instruction to the
   Director. `app/prompts/scenario_world.md` replaces the `hooks` collection bullet the same way:
-  what to reveal, which thread to advance and to where, written into `detail.hook` of the entity
+  what to reveal, which thread to advance and to where, written into `detail.when_reached` of the entity
   that triggers it. `app/prompts/scenario_bar.md` rewords its hook item likewise.
   `turn/prompts/director.md` gains one sentence: an entity's `hook` line is authored
   consequence — when the fiction reaches it, reveal and advance what it names yourself; written
@@ -365,6 +363,6 @@ and `grep -rn '"invented"' src scenarios` return nothing.
 - `uv run pytest && uv run ruff check && uv run ruff format --check && uv run basedpyright` after
   every step, one commit per step.
 - `uv run aidm` after steps 2 and 4: play three turns of each scenario, watch a converted
-  `detail.hook` consequence land at a sensible moment, and see an `open` scenario expand.
+  `detail.when_reached` consequence land at a sensible moment, and see an `open` scenario expand.
 - After step 3: launch whispering-vault under 24XX with its loner3e overlay file temporarily
   renamed away, and confirm default sheets play.

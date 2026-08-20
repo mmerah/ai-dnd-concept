@@ -13,12 +13,12 @@ from aidm.turn.prompts import (
 from aidm.turn.scene import SceneSnapshot, VisibleScene
 
 DESCRIPTION = "She writes in a compact cipher."
-HOOK = "Her missing folio points toward the vault."
+WHEN_REACHED = "Her missing folio points toward the vault."
 
 
 def _with_detail(held: Game, entity_id: EntityId) -> Game:
     entity = held.world.require_kind(entity_id, "actor")
-    detailed = updated(entity, detail={"description": DESCRIPTION, "hook": HOOK})
+    detailed = updated(entity, detail={"description": DESCRIPTION, "when_reached": WHEN_REACHED})
     return with_entity(held, detailed)
 
 
@@ -73,8 +73,8 @@ def test_the_narrators_view_has_no_field_that_could_hold_unrevealed_canon() -> N
     }
     dumped = str(visible.model_dump())
     assert "The Secret" not in dumped
-    assert HOOK not in dumped
-    assert HOOK in str(snapshot.model_dump())
+    assert WHEN_REACHED not in dumped
+    assert WHEN_REACHED in str(snapshot.model_dump())
 
 
 def test_a_placement_never_names_an_entity_the_player_has_not_met() -> None:
@@ -94,9 +94,8 @@ def test_prompt_ids_escape_control_characters_and_bracket_delimiters() -> None:
     assert "\n" not in escaped
 
 
-def test_the_director_shown_everything_gets_ids_and_placement_but_no_detail() -> None:
-    """The Director may be told everything exists; it is never shown authored detail text, which
-    only the Expander reaches."""
+def test_the_director_is_shown_authored_detail() -> None:
+    """The Director reads authored detail text because a consequence lives there."""
     held = _with_detail(state(), EntityId("mara"))
     scene = SceneSnapshot.of(held)
     describe = _renderer(held)
@@ -107,8 +106,8 @@ def test_the_director_shown_everything_gets_ids_and_placement_but_no_detail() ->
     assert "a ledger[id=ledger] (item) — held by Mara" in director
     assert "The Secret[id=hidden-actor]" in director
     assert "pools: luck 6/6" in director
-    assert f"detail: {DESCRIPTION}" not in director
-    assert f"hook: {HOOK}" not in director
+    assert f"detail: {DESCRIPTION}" in director
+    assert f"when reached: {WHEN_REACHED}" in director
     assert PLAYER_ID not in {entity.id for entity in (*scene.here, *scene.catalogue())}
 
 

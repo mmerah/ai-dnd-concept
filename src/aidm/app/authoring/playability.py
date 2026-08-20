@@ -28,9 +28,8 @@ class Playtest:
     engine: Engine[SheetBase]
     character: Character
 
-    def check(self, slug: Slug, world: ScenarioWorld, overlay: ScenarioOverlay) -> None:
-        scenario = Scenario(id=slug, engine=self.engine.id, world=world, overlay=overlay)
-        self.engine.check_overlay(overlay.entities.values())
+    def check(self, slug: Slug, world: ScenarioWorld) -> None:
+        scenario = Scenario(id=slug, engine=self.engine.id, world=world, overlay=ScenarioOverlay())
         _ = begin_game(self.engine, scenario, self.character)
 
 
@@ -64,8 +63,13 @@ def _bar_unmet(world: ScenarioWorld) -> list[str]:
         unmet.append("at least one item starting `known: false` — a secret to find")
     if not world.threads:
         unmet.append("at least one thread")
-    if not any(hook.advance_thread is not None for hook in world.hooks):
-        unmet.append("at least one hook that advances a thread when an entity is discovered")
+    if not any(
+        entity.detail is not None and entity.detail.when_reached and not entity.known
+        for entity in world.entities
+    ):
+        unmet.append(
+            "at least one unknown entity whose `detail.when_reached` carries a consequence"
+        )
     return unmet
 
 
@@ -102,7 +106,7 @@ def playability(
     try:
         world = draft.world()
         for playtest in playing:
-            playtest.check(slug, world, ScenarioOverlay())
+            playtest.check(slug, world)
     except ValueError as refused:
         return str(refused)
     if unmet := brief.unmet(world):

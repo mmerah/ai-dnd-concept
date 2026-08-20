@@ -48,7 +48,7 @@ LISTENING = tool_call(
     trait_id="listening",
     text="(condition) Listening for the next shift of weight behind the door.",
 )
-TURN_STEPS = ("interpreter", "director", "hooks", "narrator")
+TURN_STEPS = ("interpreter", "director", "narrator")
 # The fiction resolved by the engine's own roll.
 SCRIPTS: Mapping[EngineId, tuple[ModelResponse, ...]] = {
     LONER3E: (

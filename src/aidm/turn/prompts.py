@@ -47,7 +47,7 @@ def render_narrator(
 ) -> str:
     return _sections(
         (
-            *_scene_sections(scene, describe, scenario, ids=True),
+            *_scene_sections(scene, describe, scenario),
             ("WHAT HAPPENED", evidence),
             ("PLAYER ACTION", prompt),
         )
@@ -69,11 +69,11 @@ def render_expander(
             ("THE SOURCE", context),
             (
                 "PLAYER CHARACTER",
-                _character(scene.player, scene.location, scene.inventory, describe, ids=True),
+                _character(scene.player, scene.location, scene.inventory, describe),
             ),
             (
                 "EVERYTHING THAT EXISTS",
-                _entities(scene.catalogue(), describe, placement=scene.placement_of, detail=True),
+                _entities(scene.catalogue(), describe, placement=scene.placement_of),
             ),
             (
                 "EXITS FROM WHERE THE PLAYER STANDS",
@@ -117,13 +117,13 @@ def _direction_sections(
 ) -> tuple[tuple[str, str], ...]:
     # These roles write no prose, so the canon side leaks nothing by reaching them.
     return (
-        *_scene_sections(scene, describe, scenario, ids=True),
+        *_scene_sections(scene, describe, scenario),
         (
             "EXISTS BUT THE PLAYER DOES NOT KNOW IT YET",
             _entities(scene.hidden, describe, placement=scene.placement_of),
         ),
         ("ACTIVE THREADS", _threads(scene.threads)),
-        ("SCENARIO NOTES", "\n".join(f"- {note}" for note in scene.notes) or "- (none)"),
+        ("NOTES FROM THE RULES", "\n".join(f"- {note}" for note in scene.notes) or "- (none)"),
         ("PLAYER ACTION", prompt),
     )
 
@@ -140,25 +140,25 @@ def _plan(plan: TurnInterpretation | None) -> str:
 
 
 def _scene_sections(
-    scene: BaseScene, describe: EntityRenderer, scenario: ScenarioMeta, *, ids: bool
+    scene: BaseScene, describe: EntityRenderer, scenario: ScenarioMeta
 ) -> tuple[tuple[str, str], ...]:
     return (
         _premise(scenario),
         (
             "PLAYER CHARACTER",
-            _character(scene.player, scene.location, scene.inventory, describe, ids=ids),
+            _character(scene.player, scene.location, scene.inventory, describe),
         ),
         (
             "HERE WITH THE PLAYER",
-            _entities(scene.here, describe, placement=scene.placement_of, ids=ids),
+            _entities(scene.here, describe, placement=scene.placement_of),
         ),
         (
             "EXITS FROM HERE",
-            "\n".join(_exit_line(scene, way, ids=ids) for way in scene.exits) or "- (none)",
+            "\n".join(_exit_line(scene, way) for way in scene.exits) or "- (none)",
         ),
         (
             "KNOWN TO THE PLAYER, BUT ELSEWHERE",
-            _entities(scene.known_elsewhere, describe, placement=scene.placement_of, ids=ids),
+            _entities(scene.known_elsewhere, describe, placement=scene.placement_of),
         ),
     )
 
@@ -168,20 +168,18 @@ def _character(
     location: Entity,
     inventory: Sequence[Entity],
     describe: EntityRenderer,
-    *,
-    ids: bool,
 ) -> str:
     held = "\n".join(
         _with_state(
-            f"- {_label(item, ids=ids)} — {item.brief}",
-            entity_state(item, describe, ids=ids),
+            f"- {_label(item)} — {item.brief}{_detail(item)}",
+            entity_state(item, describe),
             "  ",
         )
         for item in sorted(inventory, key=lambda item: item.name)
     )
     line = _with_state(
-        f"{_label(player, ids=ids)} — {player.brief} — at {_label(location, ids=ids)}",
-        entity_state(player, describe, ids=ids),
+        f"{_label(player)} — {player.brief} — at {_label(location)}",
+        entity_state(player, describe),
     )
     return f"{line}\ninventory:\n{held or '- (none)'}"
 
@@ -191,14 +189,12 @@ def _entities(
     describe: EntityRenderer,
     *,
     placement: Callable[[Entity], str],
-    ids: bool = True,
-    detail: bool = False,
 ) -> str:
     return (
         "\n".join(
             _with_state(
-                _headline(entity, placement(entity), ids=ids) + (_detail(entity) if detail else ""),
-                entity_state(entity, describe, ids=ids),
+                _headline(entity, placement(entity)) + _detail(entity),
+                entity_state(entity, describe),
                 "  ",
             )
             for entity in entities
@@ -207,8 +203,8 @@ def _entities(
     )
 
 
-def _exit_line(scene: BaseScene, way: Exit, *, ids: bool = True) -> str:
-    labelled = f"[id={prompt_id(way.to)}]" if ids else ""
+def _exit_line(scene: BaseScene, way: Exit) -> str:
+    labelled = f"[id={prompt_id(way.to)}]"
     locked = " — locked" if way.locked else ""
     unfound = " — the player has not found this way yet" if not way.known else ""
     return f"- {scene.exit_name(way)}{labelled}{locked}{unfound}"
@@ -219,42 +215,42 @@ def _threads(threads: Sequence[Thread]) -> str:
 
 
 def _thread_line(thread: Thread) -> str:
-    stage = f" at {thread.stage}" if thread.stage is not None else ""
-    clock = (
-        "" if thread.clock is None else f" [clock {thread.clock.current}/{thread.clock.maximum}]"
-    )
-    line = f"- {thread.title}[id={prompt_id(thread.id)}] — {thread.status}{stage}{clock}"
+    stage = f", stage {thread.stage}" if thread.stage is not None else ""
+    clock = "" if thread.clock is None else f", clock {thread.clock.current}/{thread.clock.maximum}"
+    line = f"- {thread.title}[id={prompt_id(thread.id)}] — status {thread.status}{stage}{clock}"
     return f"{line}\n  note: {thread.note}" if thread.note else line
 
 
-def _headline(entity: Entity, placement: str, *, ids: bool = True) -> str:
+def _headline(entity: Entity, placement: str) -> str:
     kind = "npc" if entity.kind == "actor" else entity.kind
     placed = f" — {placement}" if placement else ""
-    return f"- {_label(entity, ids=ids)} ({kind}){placed} — {entity.brief}"
+    return f"- {_label(entity)} ({kind}){placed} — {entity.brief}"
 
 
 def _detail(entity: Entity) -> str:
     if entity.detail is None:
         return ""
     described = f"\n  detail: {entity.detail.description}" if entity.detail.description else ""
-    hooked = f"\n  hook: {entity.detail.hook}" if entity.detail.hook else ""
-    return f"{described}{hooked}"
+    reached = (
+        f"\n  when reached: {entity.detail.when_reached}" if entity.detail.when_reached else ""
+    )
+    return f"{described}{reached}"
 
 
-def _label(entity: Entity, *, ids: bool) -> str:
-    return f"{entity.name}[id={prompt_id(entity.id)}]" if ids else entity.name
+def _label(entity: Entity) -> str:
+    return f"{entity.name}[id={prompt_id(entity.id)}]"
 
 
-def entity_state(entity: Entity, describe: EntityRenderer, *, ids: bool = True) -> str:
+def entity_state(entity: Entity, describe: EntityRenderer) -> str:
     """Traits are core fiction and the engine never sees them; both reach the prompt here."""
     parts = [describe(entity)]
     if entity.traits:
-        parts.append("traits: " + ", ".join(_trait(held, ids=ids) for held in entity.traits))
+        parts.append("traits: " + ", ".join(_trait(held) for held in entity.traits))
     return "\n".join(part for part in parts if part)
 
 
-def _trait(trait: Trait, *, ids: bool) -> str:
-    name = f"{trait.name}[id={trait.id}]" if ids else trait.name
+def _trait(trait: Trait) -> str:
+    name = f"{trait.name}[id={trait.id}]"
     return name + (f" — {trait.text}" if trait.text else "")
 
 

@@ -6,8 +6,7 @@ from core_test_support import initialized
 from aidm.state import actions
 from aidm.state.base import PLAYER_ID, Counter, Entity, EntityId
 from aidm.state.facts import Fact
-from aidm.state.hooks import MAX_HOOK_ROUNDS, fire_hooks
-from aidm.state.world import AdvanceThread, Game, Hook, Thread
+from aidm.state.world import AdvanceThread, Game, Thread
 
 BELL_TOWER = EntityId("bell_tower")
 CLOISTER = EntityId("cloister")
@@ -160,50 +159,3 @@ def test_a_tick_on_a_thread_without_a_clock_is_refused() -> None:
     draft = _draft()
     with pytest.raises(ValueError, match="no clock to tick"):
         _ = actions.advance_thread(draft, AdvanceThread(thread_id="vault-seal", tick=1))
-
-
-def test_a_hook_reveals_and_advances_its_thread_when_its_entity_is_discovered() -> None:
-    draft = _draft()
-    draft.world.hooks = [
-        Hook(
-            id="chart-read",
-            on_discover=VAULT_MAP,
-            reveals=(ELENA,),
-            advance_thread=AdvanceThread(thread_id="vault-seal", stage="rite-known"),
-            note="the archivist is close",
-        ),
-    ]
-
-    fired = fire_hooks(draft, actions.reveal(draft, VAULT_MAP))
-
-    assert _kinds(fired) == ["hook_fired", "entity_discovered", "thread_advanced"]
-    assert draft.world.fired_hooks == ("chart-read",)
-    assert draft.world.pending_notes == ("the archivist is close",)
-    thread = draft.world.thread("vault-seal")
-    assert thread is not None and thread.stage == "rite-known"
-
-
-def test_a_hook_that_cannot_apply_lands_as_hook_failed() -> None:
-    draft = _draft()
-    draft.world.hooks = [
-        Hook(id="broken", on_discover=VAULT_MAP, reveals=(EntityId("ghost"),)),
-    ]
-
-    fired = fire_hooks(draft, actions.reveal(draft, VAULT_MAP))
-
-    assert _kinds(fired) == ["hook_fired", "hook_failed"]
-
-
-def test_hooks_that_feed_each_other_stop_at_the_round_cap() -> None:
-    """A hook's own reveal fires the hook waiting on it, so a chain is bounded, not endless."""
-    draft = _draft()
-    chain = ((VAULT_MAP, ELENA), (ELENA, VAULT), (VAULT, BELL_TOWER), (BELL_TOWER, RAT))
-    draft.world.hooks = [
-        Hook(id=f"link-{number}", on_discover=seen, reveals=(revealed,))
-        for number, (seen, revealed) in enumerate(chain)
-    ]
-
-    fired = fire_hooks(draft, actions.reveal(draft, VAULT_MAP))
-
-    assert fired[-1].kind == "hooks_capped"
-    assert sum(1 for fact in fired if fact.kind == "hook_fired") == MAX_HOOK_ROUNDS

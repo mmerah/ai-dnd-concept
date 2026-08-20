@@ -185,8 +185,10 @@ def load_catalog(config: Settings) -> LauncherCatalog:
     engine_options = tuple(EngineOption(id=engine.id, badge=engine.badge) for engine in ENGINES)
     engine_ids = tuple(option.id for option in engine_options)
     scenarios = tuple(
-        ContentOption(id=name, title=world.meta.title, subtitle=world.meta.premise, engines=engines)
-        for name, world, engines in read_scenarios(config.scenarios_dir, engine_ids)
+        ContentOption(
+            id=name, title=world.meta.title, subtitle=world.meta.premise, engines=engine_ids
+        )
+        for name, world in read_scenarios(config.scenarios_dir)
     )
     characters = tuple(
         ContentOption(id=name, title=profile.name, subtitle=profile.brief, engines=engines)
