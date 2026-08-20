@@ -78,10 +78,9 @@ class Report(Frozen):
 
 def begin(engine_id: EngineId, settings: Settings) -> tuple[Engine[SheetBase], Game]:
     engine = build_engine(engine_id)
-    binding = engine.binding()
-    scenario = load_scenario(ROOT / settings.scenarios_dir, SCENARIO_ID, binding)
-    character = load_character(ROOT / settings.characters_dir, CHARACTER_ID, binding)
-    return engine, begin_game(engine, scenario, character)
+    scenario = load_scenario(ROOT / settings.scenarios_dir, SCENARIO_ID)
+    character = load_character(ROOT / settings.characters_dir, CHARACTER_ID, engine.binding())
+    return engine, begin_game(engine, SCENARIO_ID, scenario, character)
 
 
 def staged(state: Game, at: str, ways: Sequence[tuple[str, str]]) -> Game:

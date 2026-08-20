@@ -1,5 +1,5 @@
 import logging
-from collections.abc import Iterator, Mapping, Sequence
+from collections.abc import Iterator, Sequence
 from dataclasses import dataclass
 from pathlib import Path
 from re import fullmatch
@@ -19,8 +19,6 @@ from .authored import (
     CreatedCharacter,
     EngineBinding,
     Scenario,
-    ScenarioOverlay,
-    ScenarioWorld,
 )
 
 ENCODING = "utf-8"
@@ -33,10 +31,10 @@ _SAVE_SLUG_PATTERN = r"[a-z0-9][a-z0-9_-]*"
 LOGGER = logging.getLogger(__name__)
 
 
-def read_scenarios(directory: Path) -> Iterator[tuple[Slug, ScenarioWorld]]:
+def read_scenarios(directory: Path) -> Iterator[tuple[Slug, Scenario]]:
     for path in _content_dirs(directory, WORLD_FILE):
         try:
-            found = content_id(path.name), _read(path / WORLD_FILE, ScenarioWorld)
+            found = content_id(path.name), _read(path / WORLD_FILE, Scenario)
         except ValueError as unreadable:
             # The home screen is the only way into the app: one half-written scenario must not
             # take it down.
@@ -58,18 +56,9 @@ def _content_dirs(directory: Path, canon: str) -> Iterator[Path]:
     return (path for path in sorted(directory.iterdir()) if (path / canon).is_file())
 
 
-def load_scenario(directory: Path, name: Slug, binding: EngineBinding) -> Scenario:
+def load_scenario(directory: Path, name: Slug) -> Scenario:
     folder = directory / content_id(name)
-    overlay_path = folder / f"{binding.engine}.json"
-    overlay = _read(overlay_path, ScenarioOverlay) if overlay_path.is_file() else ScenarioOverlay()
-    scenario = Scenario(
-        id=name,
-        engine=binding.engine,
-        world=_read(folder / WORLD_FILE, ScenarioWorld),
-        overlay=overlay,
-    )
-    binding.check_overlay(scenario.overlay.entities.values())
-    return scenario
+    return _read(folder / WORLD_FILE, Scenario)
 
 
 def source_file(directory: Path, name: Slug) -> Path | None:
@@ -103,16 +92,13 @@ def write_character(
 def write_scenario(
     directory: Path,
     name: Slug,
-    scenario: ScenarioWorld,
-    overlays: Mapping[EngineId, ScenarioOverlay],
+    scenario: Scenario,
     source: str | Path | None = None,
 ) -> None:
     folder = directory / content_id(name)
     if folder.exists():
         raise ValueError(f"scenario {name!r} already exists")
     _write(folder / WORLD_FILE, scenario.model_dump_json(indent=2))
-    for engine, overlay in overlays.items():
-        _write(folder / f"{engine}.json", overlay.model_dump_json(indent=2))
     if isinstance(source, Path):
         _copy(folder / f"{SOURCE_STEM}{source.suffix}", source)
     elif source is not None:

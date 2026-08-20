@@ -7,7 +7,6 @@ from core_test_support import LONER3E, initialized, scenario
 from pydantic import ValidationError
 
 from aidm.app.registry import build_engine
-from aidm.content.authored import ScenarioOverlay
 from aidm.content.store import (
     ENCODING,
     FileStore,
@@ -52,38 +51,25 @@ def test_content_paths_reject_an_unsafe_id(tmp_path: Path) -> None:
     """A game route supplies these ids, and each one names a directory."""
     binding = build_engine(LONER3E).binding()
     with pytest.raises(ValueError, match="invalid content id"):
-        load_scenario(tmp_path, "../escape", binding)
+        load_scenario(tmp_path, "../escape")
     with pytest.raises(ValueError, match="invalid content id"):
         load_character(tmp_path, "kael/../..", binding)
 
 
 def test_write_scenario_round_trips_and_refuses_a_duplicate(tmp_path: Path) -> None:
     original = scenario()
-    binding = build_engine(LONER3E).binding()
 
-    write_scenario(tmp_path, "vault-copy", original.world, {LONER3E: original.overlay})
-    loaded = load_scenario(tmp_path, "vault-copy", binding)
+    write_scenario(tmp_path, "vault-copy", original)
+    loaded = load_scenario(tmp_path, "vault-copy")
 
-    assert (loaded.world, loaded.overlay) == (original.world, original.overlay)
+    assert loaded == original
     with pytest.raises(ValueError, match="already exists"):
-        write_scenario(tmp_path, "vault-copy", original.world, {LONER3E: original.overlay})
-
-
-def test_a_bare_scenario_plays_under_every_engine(tmp_path: Path) -> None:
-    """An overlay is optional enrichment, not a compatibility gate: `bare` ships only world.json."""
-    original = scenario()
-    binding = build_engine(LONER3E).binding()
-
-    write_scenario(tmp_path, "bare", original.world, {})
-
-    [(slug, _)] = list(read_scenarios(tmp_path))
-    assert slug == "bare"
-    assert load_scenario(tmp_path, "bare", binding).overlay == ScenarioOverlay()
+        write_scenario(tmp_path, "vault-copy", original)
 
 
 def test_read_scenarios_skips_a_world_that_fails_to_validate(tmp_path: Path) -> None:
     original = scenario()
-    write_scenario(tmp_path, "good", original.world, {LONER3E: original.overlay})
+    write_scenario(tmp_path, "good", original)
     broken = tmp_path / "broken"
     broken.mkdir()
     (broken / "world.json").write_text(json.dumps({"meta": {}}), encoding=ENCODING)

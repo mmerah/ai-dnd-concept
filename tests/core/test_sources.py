@@ -4,7 +4,6 @@ import pytest
 from core_test_support import LONER3E, scenario, settings, updated
 
 from aidm.app.launcher import LaunchTarget
-from aidm.app.registry import build_engine
 from aidm.app.session import open_source
 from aidm.content.sources import WHOLE_CHARS, ingest, whole_text
 from aidm.content.store import load_scenario, write_scenario
@@ -49,15 +48,14 @@ def test_an_open_scenario_searches_its_document_and_falls_back_to_its_premise(
 ) -> None:
     original = scenario()
     config = updated(settings(), scenarios_dir=tmp_path)
-    binding = build_engine(LONER3E).binding()
-    grown = updated(original.world, expansion="open")
+    grown = updated(original, expansion="open")
     document = FIXTURES / "drowned-road.pdf"
 
-    write_scenario(tmp_path, "bare", grown, {})
-    write_scenario(tmp_path, "sourced", grown, {}, document)
+    write_scenario(tmp_path, "bare", grown)
+    write_scenario(tmp_path, "sourced", grown, document)
 
-    sourced = open_source(config, _target("sourced"), load_scenario(tmp_path, "sourced", binding))
-    bare = open_source(config, _target("bare"), load_scenario(tmp_path, "bare", binding))
+    sourced = open_source(config, _target("sourced"), load_scenario(tmp_path, "sourced"))
+    bare = open_source(config, _target("bare"), load_scenario(tmp_path, "bare"))
 
     assert sourced is not None and "Bell House" in sourced.passages("tide bell keeper")
     assert bare is not None and grown.meta.premise in bare.passages("tide bell keeper")

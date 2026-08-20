@@ -5,7 +5,7 @@ from aidm.engines.engine import Engine
 from aidm.engines.loner3e.rules import Loner3eEngine
 from aidm.engines.sheets import SheetBase
 from aidm.engines.twentyfourxx.rules import TwentyfourxxEngine
-from aidm.state.base import PLAYER_ID, EngineId, Entity
+from aidm.state.base import PLAYER_ID, EngineId, Entity, Slug
 from aidm.state.world import Game
 
 # Engine's sheet type param is invariant, so each concrete engine's own sheet type doesn't
@@ -31,32 +31,31 @@ def build_engine(engine_id: EngineId, extra_packs: Path | None = None) -> Engine
     return engine_class(engine_id)(extra_packs)
 
 
-def begin_game(engine: Engine[SheetBase], scenario: Scenario, character: Character) -> Game:
+def begin_game(
+    engine: Engine[SheetBase], scenario_id: Slug, scenario: Scenario, character: Character
+) -> Game:
     """One opening state, so the app, the evals, and the tests all start a game the same way."""
-    authored = scenario.world
     # Loaded content outlives the mutable game state, which restart() rebuilds from it.
-    world = authored.world.model_copy(deep=True)
+    world = scenario.world.model_copy(deep=True)
     player = Entity(
         id=PLAYER_ID,
         kind="actor",
         name=character.name,
         brief=character.brief,
         known=True,
-        parent_id=authored.starting_location_id,
+        parent_id=scenario.starting_location_id,
         traits=list(character.profile.traits),
     )
     for entity in (*(item.model_copy(deep=True) for item in character.profile.items), player):
         if world.find(entity.id) is not None:
             raise ValueError(f"authored entity id {entity.id!r} appears twice")
         world.entities.append(entity)
-    world.party = list(authored.starting_party)
     rules = {
-        **scenario.overlay.entities,
         **character.overlay.entities,
         PLAYER_ID: character.overlay.character,
     }
     state = Game(
-        scenario_id=scenario.id,
+        scenario_id=scenario_id,
         character_id=character.id,
         scenario=scenario.meta,
         engine=engine.id,

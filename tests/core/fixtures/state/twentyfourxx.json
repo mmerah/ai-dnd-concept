@@ -247,9 +247,7 @@
       "cloister_rat": {
         "specialty": "",
         "origin": "",
-        "skills": {
-          "Intimidation": 8
-        },
+        "skills": {},
         "credits": {
           "current": 2,
           "maximum": null

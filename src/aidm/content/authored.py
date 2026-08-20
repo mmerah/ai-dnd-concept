@@ -5,17 +5,8 @@ from typing import Self
 from pydantic import Field, JsonValue, model_validator
 
 from aidm.content.sources import ExpansionPolicy
-from aidm.state.base import (
-    PLAYER_ID,
-    EngineId,
-    Entity,
-    EntityId,
-    Frozen,
-    Slug,
-    Trait,
-    require_unique,
-)
-from aidm.state.world import ScenarioMeta, Thread, WorldState
+from aidm.state.base import PLAYER_ID, EngineId, Entity, EntityId, Frozen, Slug, Trait
+from aidm.state.world import ScenarioMeta, WorldState
 
 
 @dataclass(frozen=True, slots=True)
@@ -26,43 +17,29 @@ class EngineBinding:
     check_overlay: Callable[[Iterable[dict[str, JsonValue]]], None]
 
 
-class ScenarioWorld(Frozen):
-    """`world.json`: the narrative canon, authored once for every ruleset."""
+class Scenario(Frozen):
+    """`world.json`: the starting state, authored once for every ruleset."""
 
     meta: ScenarioMeta
     expansion: ExpansionPolicy = "closed"
     art_style: str = ""
     starting_location_id: EntityId
-    starting_party: tuple[EntityId, ...] = ()
-    entities: tuple[Entity, ...] = ()
-    threads: tuple[Thread, ...] = ()
-
-    @property
-    def world(self) -> WorldState:
-        """The authored canon as the one shape that validates it. Built fresh each access but
-        shares its `Entity` objects with `self.entities`: read, never mutate, what this returns."""
-        return WorldState(
-            entities=list(self.entities),
-            threads=list(self.threads),
-        )
+    # Shared by every game of this scenario: read-only — `begin_game` deep-copies before mutating.
+    world: WorldState
 
     @model_validator(mode="after")
     def _playable_canon(self) -> Self:
-        world = self.world
-        if world.find(PLAYER_ID) is not None:
+        if self.world.find(PLAYER_ID) is not None:
             raise ValueError(f"an entity claims the reserved player id {PLAYER_ID!r}")
-        starting_location = world.find(self.starting_location_id)
+        starting_location = self.world.find(self.starting_location_id)
         if starting_location is None or starting_location.kind != "location":
             raise ValueError(
                 f"starting_location_id {self.starting_location_id!r} is not a location here"
             )
-        require_unique("starting party", self.starting_party)
-        for companion in self.starting_party:
-            actor = world.require_kind(companion, "actor")
-            if not (actor.known and actor.parent_id == self.starting_location_id):
+        for companion in self.world.party:
+            if self.world.require(companion).parent_id != self.starting_location_id:
                 raise ValueError(
-                    f"the player has met and stands beside who they set out with, "
-                    f"unlike {companion!r}"
+                    f"the player stands beside who they set out with, unlike {companion!r}"
                 )
         return self
 
@@ -70,10 +47,10 @@ class ScenarioWorld(Frozen):
     def _every_location_reachable(self) -> Self:
         """A locked or unfound way still counts — the player can open or walk it — but a location
         no walk of exits reaches is content nobody can ever visit."""
-        reached = _walk(self.entities, self.starting_location_id)
+        reached = _walk(self.world.entities, self.starting_location_id)
         unreachable = sorted(
             entity.id
-            for entity in self.entities
+            for entity in self.world.entities
             if entity.kind == "location" and entity.id not in reached
         )
         if unreachable:
@@ -95,12 +72,6 @@ def _walk(entities: Sequence[Entity], start: EntityId) -> set[EntityId]:
                 reached.add(way.to)
                 frontier.append(way.to)
     return reached
-
-
-class ScenarioOverlay(Frozen):
-    """`<engine>.json`: what one ruleset adds to the entities that need it."""
-
-    entities: dict[EntityId, dict[str, JsonValue]] = Field(default_factory=dict)
 
 
 class CharacterProfile(Frozen):
@@ -137,22 +108,6 @@ class CreatedCharacter(Frozen):
 
     profile: CharacterProfile
     overlay: CharacterOverlay
-
-
-class Scenario(Frozen):
-    id: Slug
-    engine: EngineId
-    world: ScenarioWorld
-    overlay: ScenarioOverlay
-
-    @property
-    def meta(self) -> ScenarioMeta:
-        return self.world.meta
-
-    @model_validator(mode="after")
-    def _overlay_fits_the_world(self) -> Self:
-        _require_authored(self.engine, self.overlay.entities, self.world.world.all_ids())
-        return self
 
 
 class Character(Frozen):

@@ -21,8 +21,6 @@ rules lawyer.
 `docs/LONER-3E.md` and `docs/24XX.md` are the same extraction for the two shipped engines. An
 engine package appears only when it is next to be played; a skeleton package is dead code.
 
-See PLAN.md for the phases.
-
 ```text
 prompt → INTERPRETER → DIRECTOR → resolve → NARRATOR → commit
          one plan      tool calls  engine code  prose
@@ -79,7 +77,7 @@ src/aidm/engines/loner3e/ Loner 3e engine: tag sheets, the closed question, the 
 src/aidm/engines/twentyfourxx/ 24XX engine: skill dice, one attempt, three outcomes
 src/aidm/ui/              NiceGUI shell: renders state, submits decisions
 characters/               shared character canon plus one overlay per playable engine
-scenarios/                shared world canon; an engine overlay is optional enrichment
+scenarios/                each scenario's starting world state, engine-free
 tests/                    per-package suites: core, loner3e, probe, ui
 ```
 
@@ -96,7 +94,6 @@ each change and its reason, then confirms.
 ## Docs
 
 - `AGENTS.md`: durable engineering and architecture rules.
-- `PLAN.md`: the phased plan for what is built next.
 - `docs/ROADMAP.md`: known weaknesses and direction.
 - `IDEAS.md`: loose ends and the idea backlog.
 

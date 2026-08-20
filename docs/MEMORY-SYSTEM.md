@@ -6,7 +6,7 @@ should take.
 ## What was deleted
 
 The `Memory` model in `state/world.py`, `WorldState.memories`, and the memory-owner invariant
-check that went with it. `ScenarioWorld.memories` in authored content, and the `"memories"` arrays
+check that went with it. The scenario model's `memories` in authored content, and the `"memories"` arrays
 in the two shipped scenarios. The Worldkeeper role entire: `worldkeeper_agent`, `WorldkeeperReport`,
 `MemoryProposal`, `render_worldkeeper`, `prompts/worldkeeper.md`, and its turn step. `Settings.max_memories`
 and `Settings.history_window`. A turn now runs Interpreter -> Director -> Narrator, three

@@ -52,7 +52,7 @@ def build_advisor(
 
 
 def open_source(config: Settings, target: LaunchTarget, scenario: Scenario) -> CanonSource | None:
-    if scenario.world.expansion == "closed":
+    if scenario.expansion == "closed":
         return None
     path = source_file(config.scenarios_dir, target.scenario_id)
     if path is None:
@@ -78,13 +78,13 @@ def open_media(
         provider=config.providers.for_name(config.media.provider),
         saves=store.media_dir(target.slug),
         icon_dirs={
-            **{entity_id: scenario_icons for entity_id in scenario.world.world.all_ids()},
+            **{entity_id: scenario_icons for entity_id in scenario.world.all_ids()},
             **{
                 entity_id: character_icons
                 for entity_id in (PLAYER_ID, *(item.id for item in character.profile.items))
             },
         },
-        style=scenario.world.art_style or STYLE,
+        style=scenario.art_style or STYLE,
     )
 
 
@@ -239,13 +239,13 @@ class GameSession:
         self.entries.append(entry)
 
     def _begun(self) -> Game:
-        return begin_game(self.engine, self.scenario, self.character)
+        return begin_game(self.engine, self.target.scenario_id, self.scenario, self.character)
 
     def _resumable(self, state: Game) -> Game:
-        if (state.scenario_id, state.character_id) != (self.scenario.id, self.character.id):
+        if (state.scenario_id, state.character_id) != (self.target.scenario_id, self.character.id):
             raise ValueError(
                 f"save is {state.scenario_id!r}/{state.character_id!r}, "
-                f"selected is {self.scenario.id!r}/{self.character.id!r}"
+                f"selected is {self.target.scenario_id!r}/{self.character.id!r}"
             )
         if state.scenario != self.scenario.meta:
             raise ValueError(
@@ -286,7 +286,7 @@ class Runtime:
     def _open(self, target: LaunchTarget) -> GameSession:
         config = self.config
         engine = self.engine(target.engine)
-        scenario = load_scenario(config.scenarios_dir, target.scenario_id, engine.binding())
+        scenario = load_scenario(config.scenarios_dir, target.scenario_id)
         character = load_character(config.characters_dir, target.character_id, engine.binding())
         store = FileStore(config.saves_dir)
         return GameSession(

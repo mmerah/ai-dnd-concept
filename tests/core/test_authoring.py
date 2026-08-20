@@ -13,35 +13,33 @@ from aidm.state.world import ScenarioMeta, Thread
 
 
 async def test_the_shipped_scenario_passes_every_engine() -> None:
+    shipped = load_scenario(SCENARIOS, "whispering-vault")
     for playtest in playtests(settings()):
-        shipped = load_scenario(SCENARIOS, "whispering-vault", playtest.engine.binding())
-        playtest.check("whispering-vault", shipped.world)
+        playtest.check(shipped)
 
 
 def test_a_world_colliding_with_the_character_is_refused() -> None:
+    shipped = load_scenario(SCENARIOS, "whispering-vault")
+    # "lantern" is the id of the item the shipped character kael starts holding.
+    extra = Entity(
+        id=EntityId("lantern"),
+        kind="item",
+        name="a second lantern",
+        brief="An identical lantern, left behind by whoever came before.",
+        known=True,
+        parent_id=shipped.starting_location_id,
+    )
+    colliding = updated(
+        shipped, world=updated(shipped.world, entities=(*shipped.world.entities, extra))
+    )
     for playtest in playtests(settings()):
-        shipped = load_scenario(SCENARIOS, "whispering-vault", playtest.engine.binding())
-        world = shipped.world
-        # "lantern" is the id of the item the shipped character kael starts holding.
-        extra = Entity(
-            id=EntityId("lantern"),
-            kind="item",
-            name="a second lantern",
-            brief="An identical lantern, left behind by whoever came before.",
-            known=True,
-            parent_id=world.starting_location_id,
-        )
-        colliding = updated(world, entities=(*world.entities, extra))
         with pytest.raises(ValueError, match="appears twice"):
-            playtest.check("whispering-vault", colliding)
+            playtest.check(colliding)
 
 
 def _as_patch() -> dict[str, JsonValue]:
-    """The shipped world as one write: `expansion` is the session's to set, never the author's,
-    so no patch carries it."""
-    body = scenario().world.model_dump(mode="json")
-    del body["expansion"]
-    return body
+    """The shipped scenario as `worked_example` teaches it, without the session's `expansion`."""
+    return WorldDraft.of(scenario()).model_dump(mode="json", exclude={"expansion"})
 
 
 def _location(name: str) -> Entity:
@@ -77,10 +75,10 @@ def test_write_upserts_elements_by_id() -> None:
     assert cell.exits == [Exit(to=EntityId("hall"), locked=True)]
 
 
-def test_a_patched_art_style_reaches_the_world() -> None:
+def test_a_patched_art_style_reaches_the_scenario() -> None:
     draft = WorldDraft()
     _ = draft.apply(ScenarioPatch.model_validate(_as_patch() | {"art_style": "ink-wash noir"}))
-    assert draft.world().art_style == "ink-wash noir"
+    assert draft.scenario().art_style == "ink-wash noir"
 
 
 def test_remove_drops_by_id_and_refuses_an_unknown_one() -> None:
@@ -93,7 +91,7 @@ def test_remove_drops_by_id_and_refuses_an_unknown_one() -> None:
 
 
 def test_validation_names_what_the_draft_is_missing() -> None:
-    empty = playability(WorldDraft(), "authored", ())
+    empty = playability(WorldDraft(), ())
     assert empty is not None and "meta" in empty
 
     draft = WorldDraft()
@@ -104,7 +102,7 @@ def test_validation_names_what_the_draft_is_missing() -> None:
             entities=(_location("cell"),),
         )
     )
-    dangling = playability(draft, "authored", ())
+    dangling = playability(draft, ())
     assert dangling is not None and "nowhere" in dangling
 
 
@@ -112,7 +110,7 @@ def test_the_shipped_world_written_as_one_patch_is_playable() -> None:
     draft = WorldDraft()
     patch = ScenarioPatch.model_validate(_as_patch())
     _ = draft.apply(patch)
-    assert playability(draft, "authored", playtests(settings())) is None
+    assert playability(draft, playtests(settings())) is None
 
 
 async def test_the_agent_authors_through_the_write_tool() -> None:
@@ -126,7 +124,7 @@ async def test_the_agent_authors_through_the_write_tool() -> None:
     )
     with session.agent.override(model=FunctionModel(author)):
         _ = await session.send(session.opening_prompt)
-    assert session.draft.world().meta.title == scenario().world.meta.title
+    assert session.draft.scenario().meta.title == scenario().meta.title
 
 
 async def test_finishing_an_unplayable_draft_is_refused_and_asked_again() -> None:
@@ -143,7 +141,7 @@ async def test_finishing_an_unplayable_draft_is_refused_and_asked_again() -> Non
     )
     with session.agent.override(model=FunctionModel(author)):
         _ = await session.send(session.opening_prompt)
-    assert session.draft.world().meta.title == scenario().world.meta.title
+    assert session.draft.scenario().meta.title == scenario().meta.title
 
 
 async def test_a_session_goes_on_authoring_after_it_finishes() -> None:
@@ -194,7 +192,7 @@ def test_a_thin_draft_hears_every_unmet_bar_item_at_once() -> None:
             entities=(_location("cell"),),
         )
     )
-    reason = playability(draft, "authored", ())
+    reason = playability(draft, ())
     assert reason is not None
     for wanted in ("locations", "locked", "actors", "item", "thread", "when_reached"):
         assert wanted in reason
@@ -230,6 +228,6 @@ def test_an_opening_slice_passes_a_bar_the_whole_scenario_would_fail() -> None:
     )
     playing = playtests(settings())
 
-    assert playability(draft, "authored", playing, OPENING) is None
-    assert playability(draft, "authored", playing) is not None
-    assert draft.world().expansion == "open"
+    assert playability(draft, playing, OPENING) is None
+    assert playability(draft, playing) is not None
+    assert draft.scenario().expansion == "open"

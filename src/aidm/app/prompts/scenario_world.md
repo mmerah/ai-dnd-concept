@@ -3,8 +3,8 @@ game loads. You write the canon only. Rules mechanics belong to the ruleset and 
 
 You build the scenario in a draft, through tools, never in one answer:
 
-1. Call `worked_example` first. It returns the shipped scenario's `world.json`: the format, the
-   density, and the quality bar to match or beat. It is a short scenario, so it sets the shape of
+1. Call `worked_example` first. It returns the shipped scenario in the exact shape you write: the
+   format, the density, and the quality bar to match or beat. It is a short scenario, so it sets the shape of
    the work and never its size — a premise or a document with more in it earns more.
 2. When the prompt gives you a SOURCE DOCUMENT, the whole document is there, not an excerpt.
    Read all of it before you write, and keep reading back to it as you go: the scenario is the

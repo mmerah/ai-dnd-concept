@@ -2,10 +2,10 @@ from collections.abc import Iterable
 
 from pydantic import Field
 
-from aidm.content.authored import ScenarioWorld
+from aidm.content.authored import Scenario
 from aidm.content.sources import ExpansionPolicy
 from aidm.state.base import Entity, EntityId, Frozen, Mutable
-from aidm.state.world import ScenarioMeta, Thread
+from aidm.state.world import ScenarioMeta, Thread, WorldState
 
 
 def _index[T: Entity | Thread](kept: list[T], target: str) -> int | None:
@@ -50,7 +50,7 @@ class ScenarioPatch(Frozen):
 
 
 class WorldDraft(Mutable):
-    """The scenario under authorship: mutated only by `apply`, judged only by `world()`."""
+    """The scenario under authorship, flat in `ScenarioPatch` vocabulary until `scenario()`."""
 
     expansion: ExpansionPolicy = "closed"
     art_style: str = ""
@@ -59,6 +59,18 @@ class WorldDraft(Mutable):
     starting_party: tuple[EntityId, ...] = ()
     entities: list[Entity] = Field(default_factory=list)
     threads: list[Thread] = Field(default_factory=list)
+
+    @classmethod
+    def of(cls, scenario: Scenario) -> "WorldDraft":
+        return cls(
+            expansion=scenario.expansion,
+            art_style=scenario.art_style,
+            meta=scenario.meta,
+            starting_location_id=scenario.starting_location_id,
+            starting_party=tuple(scenario.world.party),
+            entities=[entity.model_copy(deep=True) for entity in scenario.world.entities],
+            threads=[thread.model_copy(deep=True) for thread in scenario.world.threads],
+        )
 
     def apply(self, patch: ScenarioPatch) -> str:
         wrote: list[str] = []
@@ -103,17 +115,19 @@ class WorldDraft(Mutable):
         they write."""
         return self.model_dump_json(indent=2, exclude={"expansion"})
 
-    def world(self) -> ScenarioWorld:
+    def scenario(self) -> Scenario:
         if self.meta is None:
             raise ValueError("the draft has no `meta` yet: write a title and premise first")
         if self.starting_location_id is None:
             raise ValueError("the draft has no `starting_location_id` yet")
-        return ScenarioWorld(
+        return Scenario(
             meta=self.meta,
             expansion=self.expansion,
             art_style=self.art_style,
             starting_location_id=self.starting_location_id,
-            starting_party=self.starting_party,
-            entities=tuple(self.entities),
-            threads=tuple(self.threads),
+            world=WorldState(
+                entities=list(self.entities),
+                threads=list(self.threads),
+                party=list(self.starting_party),
+            ),
         )

@@ -257,13 +257,9 @@
       },
       "cloister_rat": {
         "pack": "srd",
-        "concept": "A bloated rat that will not be driven off",
-        "skills": [
-          "Hard to Frighten"
-        ],
-        "frailties": [
-          "Slow and Heavy"
-        ],
+        "concept": "",
+        "skills": [],
+        "frailties": [],
         "gear": [],
         "luck": {
           "current": 6,

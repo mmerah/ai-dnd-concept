@@ -49,17 +49,12 @@ def test_an_overlay_decides_which_rules_a_character_offers(tmp_path: Path) -> No
     }
 
 
-def test_a_scenario_with_no_overlay_is_offered_under_every_engine(tmp_path: Path) -> None:
-    """An overlay is optional enrichment, not a compatibility gate: `aaa-draft` ships only
-    `world.json` and still plays under every engine. `notes` holds no canon file at all, so it is
-    still skipped — the home screen is the only way into the app, and a scratch directory must not
-    break it."""
+def test_a_directory_holding_no_canon_is_skipped(tmp_path: Path) -> None:
+    """`notes` holds no canon file at all, so the catalogue skips it — the home screen is the only
+    way into the app, and a scratch directory must not break it."""
     scenarios = _scenarios_copy(tmp_path)
     (scenarios / "notes").mkdir()
     shutil.copytree(scenarios / "whispering-vault", scenarios / "aaa-draft")
-    for overlay in (scenarios / "aaa-draft").glob("*.json"):
-        if overlay.name != "world.json":
-            overlay.unlink()
 
     controller = LauncherController(load_catalog(ui_settings(tmp_path, scenarios)))
 

@@ -38,7 +38,7 @@ class AuthoringSession:
         if (self.config.scenarios_dir / self.slug).exists():
             raise ValueError(f"scenario {self.slug!r} already exists")
         self.playing = playtests(self.config)
-        self.agent = world_agent(self.slug, self.playing, self.config, self.brief)
+        self.agent = world_agent(self.playing, self.config, self.brief)
         self.draft = WorldDraft(expansion=self.expansion)
         given = self.premise if self.document is None else whole_text(self.document)
         self.opening_prompt = world_prompt(self.slug, given, self.document is not None)
@@ -55,7 +55,7 @@ class AuthoringSession:
         return result.output
 
     def refusal(self) -> str | None:
-        return playability(self.draft, self.slug, self.playing, self.brief)
+        return playability(self.draft, self.playing, self.brief)
 
     async def write(self) -> str:
         """Revalidates the draft — the agent's 'ok' is never trusted — before it reaches disk."""
@@ -63,8 +63,8 @@ class AuthoringSession:
             raise ValueError(f"the draft does not play: {reason}")
         # The form's style overrides whatever the author wrote from the source's own tone.
         self.draft.art_style = self.art_style or self.draft.art_style
-        world = self.draft.world()
+        scenario = self.draft.scenario()
         write_scenario(
-            self.config.scenarios_dir, self.slug, world, {}, self.document or self.premise
+            self.config.scenarios_dir, self.slug, scenario, self.document or self.premise
         )
-        return summarize(world)
+        return summarize(scenario)

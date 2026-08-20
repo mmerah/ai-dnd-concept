@@ -1,9 +1,11 @@
 import json
+from pathlib import Path
 
 import pytest
 from core_test_support import (
     LONER3E,
     begin_game,
+    build_engine,
     character,
     initialized,
     scenario,
@@ -12,8 +14,8 @@ from core_test_support import (
 )
 from pydantic import ValidationError
 
-from aidm.content.authored import Character, CharacterOverlay, CharacterProfile, ScenarioWorld
-from aidm.content.store import SavedGame
+from aidm.content.authored import Character, CharacterOverlay, CharacterProfile, Scenario
+from aidm.content.store import SavedGame, load_character
 from aidm.engines.loner3e.mechanics import LUCK_MAX, Mechanics
 from aidm.state.base import PLAYER_ID, Entity, EntityId
 from aidm.state.world import Game
@@ -22,12 +24,13 @@ HELD = EntityId("frayed_rope")
 UNHELD = EntityId("silk_rope")
 MARA = EntityId("mara")
 ELENA = EntityId("elena")
+TOMAS = EntityId("tomas")
 _HALL = {"id": "hall", "kind": "location", "name": "the hall", "brief": "A hall.", "known": True}
 _DOUBLED = json.dumps(
     {
         "meta": {"title": "Twice Over", "premise": "One id, authored twice."},
         "starting_location_id": "hall",
-        "entities": [_HALL, {**_HALL, "name": "the hall again"}],
+        "world": {"entities": [_HALL, {**_HALL, "name": "the hall again"}]},
     }
 )
 
@@ -73,29 +76,27 @@ def test_world_and_game_state_reject_inconsistent_topology() -> None:
         with_entity(state, updated(carried, kind="location"))
 
 
-def test_an_engine_refuses_an_authored_payload_it_cannot_read() -> None:
-    """Only actors carry engine mechanics now, so the overlay's forbid-extra guard fires on one of
-    them — and it has to fire at launch, not on the turn that first reads the entity."""
-    engine, _ = initialized()
-    authored = scenario()
-    entities = authored.world.world.entities
-    actor = next(entity for entity in entities if entity.kind == "actor")
-    poisoned = updated(authored, overlay={"entities": {actor.id: {"gear": None}}})
+def test_an_engine_refuses_an_authored_payload_it_cannot_read(tmp_path: Path) -> None:
+    """The engine's own sheet type is the schema a character overlay is checked against at load."""
+    folder = tmp_path / "broken"
+    folder.mkdir()
+    _ = (folder / "base.json").write_text('{"name": "Broken", "brief": "Built for this test."}')
+    _ = (folder / f"{LONER3E}.json").write_text('{"character": {"gear": null}}')
 
-    with pytest.raises(ValueError, match="gear"):
-        begin_game(engine, poisoned, character())
+    with pytest.raises(ValidationError, match="gear"):
+        _ = load_character(tmp_path, "broken", build_engine(LONER3E).binding())
 
 
 def test_scenario_topology_is_validated() -> None:
     with pytest.raises(ValidationError, match="starting_location_id"):
-        updated(scenario().world, starting_location_id=EntityId("missing"))
+        updated(scenario(), starting_location_id=EntityId("missing"))
     with pytest.raises(ValidationError, match="duplicate entity ids"):
         # Keyed by id from a flat array, so the duplicate has to be caught before it collapses.
-        ScenarioWorld.model_validate_json(_DOUBLED)
+        Scenario.model_validate_json(_DOUBLED)
 
 
 def test_a_location_no_walk_reaches_is_refused() -> None:
-    world = scenario().world
+    authored = scenario()
     undercroft = Entity(
         id=EntityId("undercroft"),
         kind="location",
@@ -103,12 +104,13 @@ def test_a_location_no_walk_reaches_is_refused() -> None:
         brief="A chamber no passage names.",
         known=False,
     )
+    grown = updated(authored.world, entities=(*authored.world.entities, undercroft))
     with pytest.raises(ValidationError, match=r"no walk.*undercroft"):
-        updated(world, entities=(*world.entities, undercroft))
+        updated(authored, world=grown)
 
 
 def test_world_state_rejects_broken_exits_and_party() -> None:
-    world = scenario().world.world
+    world = scenario().world
     study = world.require(EntityId("study"))
     exposed = updated(study, exits=(*study.exits, {"to": "bell_tower", "known": True}))
     with pytest.raises(ValidationError, match="has not met"):
@@ -126,14 +128,16 @@ def test_world_state_rejects_broken_exits_and_party() -> None:
 
 
 def test_a_scenario_starts_the_party_it_authors() -> None:
-    """A scenario holds no player, so the tie to one is named as an id and made at composition."""
-    engine, _ = initialized()
+    """A scenario holds no player, but its party is already the authored world's own."""
+    engine = build_engine(LONER3E)
     authored = scenario()
-    started = updated(authored, world=updated(authored.world, starting_party=(MARA,)))
+    started = updated(authored, world=updated(authored.world, party=[MARA]))
 
-    assert begin_game(engine, started, character()).world.party == [MARA]
+    begun = begin_game(engine, "whispering-vault", started, character())
+    assert begun.world.party == [MARA]
+    # Tomas is known and unique, so this is the stands-at-start check alone, not the party's own.
     with pytest.raises(ValidationError, match="who they set out with"):
-        updated(authored.world, starting_party=(ELENA,))
+        updated(authored, world=updated(authored.world, party=[TOMAS]))
 
 
 def test_an_overlay_may_not_name_an_entity_the_author_never_wrote() -> None:
