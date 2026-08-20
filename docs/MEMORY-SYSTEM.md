@@ -9,8 +9,8 @@ The `Memory` model in `state/world.py`, `WorldState.memories`, and the memory-ow
 check that went with it. The scenario model's `memories` in authored content, and the `"memories"` arrays
 in the two shipped scenarios. The Worldkeeper role entire: `worldkeeper_agent`, `WorldkeeperReport`,
 `MemoryProposal`, `render_worldkeeper`, `prompts/worldkeeper.md`, and its turn step. `Settings.max_memories`
-and `Settings.history_window`. A turn now runs Interpreter -> Director -> Narrator, three
-role calls instead of four, and the conversation window is unbounded:
+and `Settings.history_window`. A turn now runs Director -> Narrator, and the conversation window is
+unbounded:
 `history = exchanges_to_messages(state.history)`.
 
 Three player-facing surfaces went with it and are recorded nowhere else: `JournalView.memories`,
@@ -32,7 +32,7 @@ When players start hitting that ceiling, memory comes back — not as a role gue
 every turn, but as a durable fact per entity, deduped on text so the same
 fact is never written twice. It is written by a role that runs *after* narration, so it records
 what actually happened rather than what a plan predicted. It is shown only to roles that may see
-canon — the Director, the Interpreter, anything that resolves mechanics — and never the Narrator:
+canon — the Director and anything else that resolves mechanics — and never the Narrator:
 the Narrator's input type must carry no field an unrevealed fact could travel through, the same
 rule that already keeps hidden entities out of its prompt. The old shape is worth copying almost
 whole: `owner: EntityId | None` for the world itself or one entity, `text` as one concrete

@@ -22,15 +22,14 @@ rules lawyer.
 engine package appears only when it is next to be played; a skeleton package is dead code.
 
 ```text
-prompt → INTERPRETER → DIRECTOR → resolve → NARRATOR → commit
-         one plan      tool calls  engine code  prose
+prompt → DIRECTOR → resolve → NARRATOR → commit
+         tool calls  engine code  prose
 ```
 
-The Director judges what the turn is about and answers with one structured turn plan — what
-pushes back, what is at stake, the single action resolved this turn, its fiction consequences
-keyed by outcome, and unconditional effects. Engine code validates the plan against committed
-state, resolves it deterministically on a draft (rolls, costs, intrinsic outcomes), and core
-commits a fully revalidated state. An engine is ordinary typed Python: its own strict mechanics
+The Director judges what the turn is about and calls a tool for every mechanic it asks for, one
+at a time, reading what each call answers before the next. Engine code resolves every call
+deterministically on a draft (rolls, costs, intrinsic outcomes), and core commits a fully
+revalidated state. An engine is ordinary typed Python: its own strict mechanics
 model, the typed overlay authored content is validated against, and action models with their
 resolvers. Core owns the fiction — entities, placement, relations, threads and their clocks,
 traits — and persists the engine's mechanics as one opaque payload it never reads. The Narrator

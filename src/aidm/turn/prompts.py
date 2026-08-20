@@ -9,17 +9,7 @@ from aidm.engines.sheets import SheetBase
 from aidm.state.base import Entity, Exit, Trait
 from aidm.state.world import Game, ScenarioMeta, Thread
 
-from .reports import TurnInterpretation
 from .scene import BaseScene, SceneSnapshot, VisibleScene
-
-
-def render_interpreter(
-    scene: SceneSnapshot,
-    describe: EntityRenderer,
-    scenario: ScenarioMeta,
-    prompt: str,
-) -> str:
-    return _sections(_direction_sections(scene, describe, scenario, prompt))
 
 
 def render_director(
@@ -27,12 +17,18 @@ def render_director(
     describe: EntityRenderer,
     scenario: ScenarioMeta,
     prompt: str,
-    plan: TurnInterpretation | None,
 ) -> str:
+    # The Director writes no prose, so the canon side leaks nothing by reaching it.
     return _sections(
         (
-            *_direction_sections(scene, describe, scenario, prompt),
-            ("MECHANICS PLAN — EXECUTE THIS", _plan(plan)),
+            *_scene_sections(scene, describe, scenario),
+            (
+                "EXISTS BUT THE PLAYER DOES NOT KNOW IT YET",
+                _entities(scene.hidden, describe, placement=scene.placement_of),
+            ),
+            ("ACTIVE THREADS", _threads(scene.threads)),
+            ("NOTES FROM THE RULES", "\n".join(f"- {note}" for note in scene.notes) or "- (none)"),
+            ("PLAYER ACTION", prompt),
         )
     )
 
@@ -107,36 +103,6 @@ def _sections(parts: Iterable[tuple[str, str]]) -> str:
 
 def _premise(scenario: ScenarioMeta) -> tuple[str, str]:
     return "SCENARIO", f"{scenario.title}\n{scenario.premise}"
-
-
-def _direction_sections(
-    scene: SceneSnapshot,
-    describe: EntityRenderer,
-    scenario: ScenarioMeta,
-    prompt: str,
-) -> tuple[tuple[str, str], ...]:
-    # These roles write no prose, so the canon side leaks nothing by reaching them.
-    return (
-        *_scene_sections(scene, describe, scenario),
-        (
-            "EXISTS BUT THE PLAYER DOES NOT KNOW IT YET",
-            _entities(scene.hidden, describe, placement=scene.placement_of),
-        ),
-        ("ACTIVE THREADS", _threads(scene.threads)),
-        ("NOTES FROM THE RULES", "\n".join(f"- {note}" for note in scene.notes) or "- (none)"),
-        ("PLAYER ACTION", prompt),
-    )
-
-
-def _plan(plan: TurnInterpretation | None) -> str:
-    if plan is None:
-        return "- (no plan was read this turn; judge the mechanics yourself)"
-    lines = [
-        f"{number}. {f'if {step.when}: ' if step.when else ''}{step.tool} — {step.instruction}"
-        for number, step in enumerate(plan.mechanics, 1)
-    ]
-    body = "\n".join(lines) or "- (no mechanic is needed this turn)"
-    return f"{body}\nwhy: {plan.explanation}"
 
 
 def _scene_sections(
@@ -264,7 +230,6 @@ def _with_state(line: str, state: str, indent: str = "") -> str:
 _PROMPTS_DIR = Path(__file__).parent / "prompts"
 
 DIRECTOR = engine_text(_PROMPTS_DIR / "director.md")
-INTERPRETER = engine_text(_PROMPTS_DIR / "interpreter.md")
 CORE_ADVISOR = engine_text(_PROMPTS_DIR / "core_advisor.md")
 NARRATOR = engine_text(_PROMPTS_DIR / "narrator.md")
 EXPANDER = engine_text(_PROMPTS_DIR / "expander.md")
@@ -272,10 +237,6 @@ EXPANDER = engine_text(_PROMPTS_DIR / "expander.md")
 
 def director_instructions(engine_instructions: str) -> str:
     return f"{DIRECTOR}\n\n{engine_instructions}"
-
-
-def interpreter_instructions(engine_instructions: str, mechanics: str) -> str:
-    return f"{INTERPRETER}\n{mechanics}\n\n{engine_instructions}"
 
 
 def advisor_instructions(engine_instructions: str) -> str:

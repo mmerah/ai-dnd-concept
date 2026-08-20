@@ -80,29 +80,6 @@
   "narration": "The flagstone lifts. Beyond the door, something shifts its weight and waits.",
   "steps": [
     {
-      "name": "interpreter",
-      "output": {
-        "mechanics": [
-          {
-            "tool": "move",
-            "instruction": "Move vault_map into the player's hands.",
-            "when": ""
-          },
-          {
-            "tool": "roll_question",
-            "instruction": "Ask whether he hears what waits past the vault door without being heard.",
-            "when": ""
-          },
-          {
-            "tool": "add_trait",
-            "instruction": "Mark him as listening for what moves behind it.",
-            "when": "the answer is a no"
-          }
-        ],
-        "explanation": "He takes the chart he has just levered up, then listens at the door, which is where the dice come in."
-      }
-    },
-    {
       "name": "director",
       "output": "The flagstone lifts. Beyond the door, something shifts its weight and waits."
     },

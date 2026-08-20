@@ -1,10 +1,7 @@
-import logging
 from collections.abc import Callable
 from dataclasses import dataclass
 from random import Random
 
-from pydantic import BaseModel
-from pydantic_ai import UnexpectedModelBehavior
 from pydantic_ai.usage import UsageLimits
 
 from aidm.config import Role, Settings
@@ -17,21 +14,16 @@ from aidm.state.world import Game
 
 from . import prompts
 from .agents import TurnAgents, exchanges_to_messages
-from .reports import TurnInterpretation
 from .scene import SceneSnapshot, VisibleScene
-
-LOGGER = logging.getLogger(__name__)
 
 
 @dataclass(frozen=True, slots=True)
 class TurnResult:
-    """The committed state and the entry recording how it was reached, kept apart."""
-
     state: Game
     turn: Turn
 
 
-TURN_STEPS: tuple[str, ...] = ("interpreter", "director", "narrator")
+TURN_STEPS: tuple[str, ...] = ("director", "narrator")
 DIRECTOR_REQUEST_LIMIT = 16
 # ponytail: 4 chars/token estimate, swap for the provider's tokenizer if it starts misfiring
 CHARS_PER_TOKEN = 4
@@ -47,8 +39,6 @@ async def run_turn(
     rng: Random,
     on_step: Callable[[str], None] | None = None,
 ) -> TurnResult:
-    """A new role is one more explicit call in this sequence."""
-
     def announce(step: str) -> None:
         if on_step is not None:
             on_step(step)
@@ -62,26 +52,8 @@ async def run_turn(
 
     scene, describe = SceneSnapshot.of(draft), engine.renderer(draft)
 
-    announce("interpreter")
-    interpreter_prompt = prompts.render_interpreter(scene, describe, draft.scenario, prompt)
-    _ensure_input_budget("interpreter", settings, interpreter_prompt, history_chars)
-    plan: TurnInterpretation | None = None
-    try:
-        plan = (await stages.interpreter.run(interpreter_prompt, message_history=history)).output
-    except UnexpectedModelBehavior as unread:
-        # Advisory, like the Expander: a plan nobody could read costs the turn its plan, not the
-        # turn — the Director judged the mechanics alone before this role existed.
-        LOGGER.warning("no plan was read: %s", unread)
-    steps: list[StepTrace] = [
-        StepTrace(
-            name="interpreter",
-            prompt=interpreter_prompt,
-            output=None if plan is None else plan.model_dump(mode="json"),
-        )
-    ]
-
     announce("director")
-    director_prompt = prompts.render_director(scene, describe, draft.scenario, prompt, plan)
+    director_prompt = prompts.render_director(scene, describe, draft.scenario, prompt)
     _ensure_input_budget("director", settings, director_prompt, history_chars)
     shown = len(draft.world.pending_notes)
     directed = await stages.director.run(
@@ -93,9 +65,10 @@ async def run_turn(
     # Only what the prompt rendered is spent; a note its own tools wrote steers the next turn too.
     draft.world.pending_notes = draft.world.pending_notes[shown:]
     facts = list(log.facts)
-    steps.extend(
-        (StepTrace(name="director", prompt=director_prompt, output=directed.output), *log.steps)
-    )
+    steps: list[StepTrace] = [
+        StepTrace(name="director", prompt=director_prompt, output=directed.output),
+        *log.steps,
+    ]
 
     announce("narrator")
     evidence = narrator_evidence(facts)
@@ -113,7 +86,9 @@ async def run_turn(
     ).output
     if not narration.text:
         raise ValueError("the narrator answered with nothing")
-    steps.append(_traced("narrator", narrator_prompt, narration))
+    steps.append(
+        StepTrace(name="narrator", prompt=narrator_prompt, output=narration.model_dump(mode="json"))
+    )
 
     draft.history = (
         *draft.history,
@@ -124,10 +99,6 @@ async def run_turn(
         state=draft.committed(),
         turn=Turn(prompt=prompt, facts=tuple(facts), narration=narration.text, steps=tuple(steps)),
     )
-
-
-def _traced(name: str, rendered: str, output: BaseModel) -> StepTrace:
-    return StepTrace(name=name, prompt=rendered, output=output.model_dump(mode="json"))
 
 
 def _ensure_input_budget(role: Role, settings: Settings, rendered: str, history_chars: int) -> None:

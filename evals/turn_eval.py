@@ -13,7 +13,6 @@ from aidm.content.store import load_character, load_scenario
 from aidm.engines.engine import Engine
 from aidm.engines.sheets import SheetBase
 from aidm.state.base import EngineId, EntityId, Frozen
-from aidm.state.trace import StepTrace
 from aidm.state.world import Game
 from aidm.turn.agents import build_turn_agents
 from aidm.turn.pipeline import TurnResult, run_turn
@@ -45,8 +44,6 @@ class Case:
 class Run(Frozen):
     error: str | None = None
     passed: dict[str, bool] = {}
-    # The plan beside the facts: a failure says whether a mechanic was never named or never run.
-    planned: list[str] = []
     facts: list[str] = []
     director_calls: int = 0
     total_steps: int = 0
@@ -216,18 +213,6 @@ def cases_for(engine_id: EngineId, settings: Settings) -> tuple[Case, ...]:
     )
 
 
-def planned_steps(steps: Sequence[StepTrace]) -> list[str]:
-    output = next((step.output for step in steps if step.name == "interpreter"), None)
-    mechanics = output.get("mechanics") if isinstance(output, dict) else None
-    if not isinstance(mechanics, list):
-        return []
-    return [
-        f"{step.get('tool')}{' if ' + str(when) if (when := step.get('when')) else ''}"
-        for step in mechanics
-        if isinstance(step, dict)
-    ]
-
-
 async def play(case: Case, settings: Settings, seed: int) -> Run:
     engine, state = begin(case.engine_id, settings)
     opening = case.setup(state)
@@ -246,7 +231,6 @@ async def play(case: Case, settings: Settings, seed: int) -> Run:
         steps = result.turn.steps
         return Run(
             passed={check.name: check.holds(result) for check in case.expectations},
-            planned=planned_steps(steps),
             facts=[fact.kind for fact in result.turn.facts],
             director_calls=sum(1 for step in steps if step.name == "director"),
             total_steps=len(steps),

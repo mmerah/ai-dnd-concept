@@ -1,5 +1,5 @@
 {
-  "label": "phase1-no-memory-ds4-flash-nitro",
+  "label": "baseline",
   "repeats": 9,
   "seed": 1000,
   "cases": [
@@ -20,64 +20,15 @@
             "chart-carried": true,
             "stair-charted": true
           },
-          "planned": [
-            "reveal",
-            "advance_thread",
-            "move"
-          ],
-          "facts": [
-            "entity_discovered",
-            "thread_advanced",
-            "entity_moved"
-          ],
-          "director_calls": 1,
-          "total_steps": 3,
-          "seconds": 27.740031115999955,
-          "narration_chars": 420
-        },
-        {
-          "error": null,
-          "passed": {
-            "chart-known": true,
-            "chart-carried": true,
-            "stair-charted": true
-          },
-          "planned": [
-            "reveal",
-            "advance_thread",
-            "move"
-          ],
-          "facts": [
-            "entity_discovered",
-            "thread_advanced",
-            "entity_moved"
-          ],
-          "director_calls": 1,
-          "total_steps": 3,
-          "seconds": 22.302959848000683,
-          "narration_chars": 708
-        },
-        {
-          "error": null,
-          "passed": {
-            "chart-known": true,
-            "chart-carried": true,
-            "stair-charted": true
-          },
-          "planned": [
-            "reveal",
-            "move",
-            "advance_thread"
-          ],
           "facts": [
             "entity_discovered",
             "entity_moved",
             "thread_advanced"
           ],
           "director_calls": 1,
-          "total_steps": 3,
-          "seconds": 14.569380389999424,
-          "narration_chars": 657
+          "total_steps": 2,
+          "seconds": 12.667169894997642,
+          "narration_chars": 494
         },
         {
           "error": null,
@@ -86,20 +37,15 @@
             "chart-carried": true,
             "stair-charted": true
           },
-          "planned": [
-            "reveal",
-            "move",
-            "advance_thread"
-          ],
           "facts": [
             "entity_discovered",
             "entity_moved",
             "thread_advanced"
           ],
           "director_calls": 1,
-          "total_steps": 3,
-          "seconds": 22.481977149998784,
-          "narration_chars": 659
+          "total_steps": 2,
+          "seconds": 11.385336784001993,
+          "narration_chars": 476
         },
         {
           "error": null,
@@ -108,64 +54,15 @@
             "chart-carried": true,
             "stair-charted": true
           },
-          "planned": [
-            "reveal",
-            "advance_thread",
-            "move"
-          ],
-          "facts": [
-            "entity_discovered",
-            "thread_advanced",
-            "entity_moved"
-          ],
-          "director_calls": 1,
-          "total_steps": 3,
-          "seconds": 16.544601861000046,
-          "narration_chars": 433
-        },
-        {
-          "error": null,
-          "passed": {
-            "chart-known": true,
-            "chart-carried": true,
-            "stair-charted": true
-          },
-          "planned": [
-            "reveal",
-            "advance_thread",
-            "move"
-          ],
-          "facts": [
-            "entity_discovered",
-            "thread_advanced",
-            "entity_moved"
-          ],
-          "director_calls": 1,
-          "total_steps": 3,
-          "seconds": 10.887668878000113,
-          "narration_chars": 560
-        },
-        {
-          "error": null,
-          "passed": {
-            "chart-known": true,
-            "chart-carried": true,
-            "stair-charted": true
-          },
-          "planned": [
-            "reveal",
-            "move",
-            "advance_thread"
-          ],
           "facts": [
             "entity_discovered",
             "entity_moved",
             "thread_advanced"
           ],
           "director_calls": 1,
-          "total_steps": 3,
-          "seconds": 15.751949543000592,
-          "narration_chars": 632
+          "total_steps": 2,
+          "seconds": 16.375952240003244,
+          "narration_chars": 522
         },
         {
           "error": null,
@@ -174,20 +71,15 @@
             "chart-carried": true,
             "stair-charted": true
           },
-          "planned": [
-            "reveal",
-            "advance_thread",
-            "move"
-          ],
           "facts": [
             "entity_discovered",
-            "thread_advanced",
-            "entity_moved"
+            "entity_moved",
+            "thread_advanced"
           ],
           "director_calls": 1,
-          "total_steps": 3,
-          "seconds": 18.55738922100136,
-          "narration_chars": 520
+          "total_steps": 2,
+          "seconds": 15.008687809997355,
+          "narration_chars": 885
         },
         {
           "error": null,
@@ -196,20 +88,83 @@
             "chart-carried": true,
             "stair-charted": true
           },
-          "planned": [
-            "reveal",
-            "advance_thread",
-            "move"
-          ],
           "facts": [
             "entity_discovered",
-            "thread_advanced",
-            "entity_moved"
+            "entity_moved",
+            "thread_advanced"
           ],
           "director_calls": 1,
-          "total_steps": 3,
-          "seconds": 18.499973267000314,
-          "narration_chars": 468
+          "total_steps": 2,
+          "seconds": 7.425680571002886,
+          "narration_chars": 376
+        },
+        {
+          "error": null,
+          "passed": {
+            "chart-known": true,
+            "chart-carried": true,
+            "stair-charted": true
+          },
+          "facts": [
+            "entity_discovered",
+            "entity_moved",
+            "thread_advanced"
+          ],
+          "director_calls": 1,
+          "total_steps": 2,
+          "seconds": 7.0118832899970585,
+          "narration_chars": 826
+        },
+        {
+          "error": null,
+          "passed": {
+            "chart-known": true,
+            "chart-carried": true,
+            "stair-charted": true
+          },
+          "facts": [
+            "entity_discovered",
+            "entity_moved",
+            "thread_advanced"
+          ],
+          "director_calls": 1,
+          "total_steps": 2,
+          "seconds": 6.060925542002224,
+          "narration_chars": 532
+        },
+        {
+          "error": null,
+          "passed": {
+            "chart-known": true,
+            "chart-carried": true,
+            "stair-charted": true
+          },
+          "facts": [
+            "entity_discovered",
+            "entity_moved",
+            "thread_advanced"
+          ],
+          "director_calls": 1,
+          "total_steps": 2,
+          "seconds": 10.780336891002662,
+          "narration_chars": 584
+        },
+        {
+          "error": null,
+          "passed": {
+            "chart-known": true,
+            "chart-carried": true,
+            "stair-charted": true
+          },
+          "facts": [
+            "entity_discovered",
+            "entity_moved",
+            "thread_advanced"
+          ],
+          "director_calls": 1,
+          "total_steps": 2,
+          "seconds": 11.176752047002083,
+          "narration_chars": 612
         }
       ]
     },
@@ -228,15 +183,14 @@
             "player-in-cloister": true,
             "nothing-invented": true
           },
-          "planned": [],
           "facts": [
             "entity_moved",
             "entity_discovered"
           ],
           "director_calls": 1,
-          "total_steps": 3,
-          "seconds": 12.850713153999095,
-          "narration_chars": 372
+          "total_steps": 2,
+          "seconds": 12.071619997997914,
+          "narration_chars": 556
         },
         {
           "error": null,
@@ -244,18 +198,13 @@
             "player-in-cloister": true,
             "nothing-invented": true
           },
-          "planned": [
-            "move",
-            "reveal"
-          ],
           "facts": [
-            "entity_moved",
-            "entity_discovered"
+            "entity_moved"
           ],
           "director_calls": 1,
-          "total_steps": 3,
-          "seconds": 16.862599333000617,
-          "narration_chars": 535
+          "total_steps": 2,
+          "seconds": 12.880081931998575,
+          "narration_chars": 786
         },
         {
           "error": null,
@@ -263,18 +212,14 @@
             "player-in-cloister": true,
             "nothing-invented": true
           },
-          "planned": [
-            "move",
-            "reveal"
-          ],
           "facts": [
             "entity_moved",
             "entity_discovered"
           ],
           "director_calls": 1,
-          "total_steps": 3,
-          "seconds": 23.8192885440003,
-          "narration_chars": 434
+          "total_steps": 2,
+          "seconds": 8.327108438999858,
+          "narration_chars": 618
         },
         {
           "error": null,
@@ -282,17 +227,14 @@
             "player-in-cloister": true,
             "nothing-invented": true
           },
-          "planned": [
-            "move"
-          ],
           "facts": [
             "entity_moved",
             "entity_discovered"
           ],
           "director_calls": 1,
-          "total_steps": 3,
-          "seconds": 18.596122737999394,
-          "narration_chars": 603
+          "total_steps": 2,
+          "seconds": 7.283993619999819,
+          "narration_chars": 513
         },
         {
           "error": null,
@@ -300,18 +242,14 @@
             "player-in-cloister": true,
             "nothing-invented": true
           },
-          "planned": [
-            "move",
-            "reveal"
-          ],
           "facts": [
             "entity_moved",
             "entity_discovered"
           ],
           "director_calls": 1,
-          "total_steps": 3,
-          "seconds": 22.548292677000063,
-          "narration_chars": 409
+          "total_steps": 2,
+          "seconds": 10.042420418001711,
+          "narration_chars": 572
         },
         {
           "error": null,
@@ -319,19 +257,14 @@
             "player-in-cloister": true,
             "nothing-invented": true
           },
-          "planned": [
-            "move",
-            "reveal"
-          ],
           "facts": [
-            "entity_moved",
             "entity_moved",
             "entity_discovered"
           ],
           "director_calls": 1,
-          "total_steps": 3,
-          "seconds": 28.974815278999813,
-          "narration_chars": 1067
+          "total_steps": 2,
+          "seconds": 9.741392722000455,
+          "narration_chars": 512
         },
         {
           "error": null,
@@ -339,18 +272,14 @@
             "player-in-cloister": true,
             "nothing-invented": true
           },
-          "planned": [
-            "move",
-            "reveal"
-          ],
           "facts": [
             "entity_moved",
             "entity_discovered"
           ],
           "director_calls": 1,
-          "total_steps": 3,
-          "seconds": 14.848485250000522,
-          "narration_chars": 586
+          "total_steps": 2,
+          "seconds": 6.948733469998842,
+          "narration_chars": 626
         },
         {
           "error": null,
@@ -358,18 +287,14 @@
             "player-in-cloister": true,
             "nothing-invented": true
           },
-          "planned": [
-            "move",
-            "reveal"
-          ],
           "facts": [
             "entity_moved",
             "entity_discovered"
           ],
           "director_calls": 1,
-          "total_steps": 3,
-          "seconds": 19.959447268000076,
-          "narration_chars": 387
+          "total_steps": 2,
+          "seconds": 6.807209897000575,
+          "narration_chars": 770
         },
         {
           "error": null,
@@ -377,18 +302,14 @@
             "player-in-cloister": true,
             "nothing-invented": true
           },
-          "planned": [
-            "move",
-            "reveal"
-          ],
           "facts": [
             "entity_moved",
             "entity_discovered"
           ],
           "director_calls": 1,
-          "total_steps": 3,
-          "seconds": 22.01776989699829,
-          "narration_chars": 531
+          "total_steps": 2,
+          "seconds": 19.677534769001795,
+          "narration_chars": 522
         }
       ]
     },
@@ -409,20 +330,15 @@
             "elena-known": true,
             "archivist-found": true
           },
-          "planned": [
-            "move",
-            "reveal",
-            "advance_thread"
-          ],
           "facts": [
             "entity_moved",
             "entity_discovered",
             "thread_advanced"
           ],
           "director_calls": 1,
-          "total_steps": 3,
-          "seconds": 18.177601418999984,
-          "narration_chars": 493
+          "total_steps": 2,
+          "seconds": 21.58174545899965,
+          "narration_chars": 564
         },
         {
           "error": null,
@@ -431,20 +347,15 @@
             "elena-known": true,
             "archivist-found": true
           },
-          "planned": [
-            "move",
-            "reveal",
-            "advance_thread"
-          ],
           "facts": [
             "entity_moved",
             "entity_discovered",
             "thread_advanced"
           ],
           "director_calls": 1,
-          "total_steps": 3,
-          "seconds": 30.636669520001306,
-          "narration_chars": 395
+          "total_steps": 2,
+          "seconds": 7.903553211999679,
+          "narration_chars": 517
         },
         {
           "error": null,
@@ -453,20 +364,15 @@
             "elena-known": true,
             "archivist-found": true
           },
-          "planned": [
-            "move",
-            "reveal",
-            "advance_thread"
-          ],
           "facts": [
             "entity_moved",
             "entity_discovered",
             "thread_advanced"
           ],
           "director_calls": 1,
-          "total_steps": 3,
-          "seconds": 18.970708421999007,
-          "narration_chars": 352
+          "total_steps": 2,
+          "seconds": 9.686584055001731,
+          "narration_chars": 536
         },
         {
           "error": null,
@@ -475,20 +381,15 @@
             "elena-known": true,
             "archivist-found": true
           },
-          "planned": [
-            "move",
-            "reveal",
-            "advance_thread"
-          ],
           "facts": [
             "entity_moved",
             "entity_discovered",
             "thread_advanced"
           ],
           "director_calls": 1,
-          "total_steps": 3,
-          "seconds": 14.236301397999341,
-          "narration_chars": 557
+          "total_steps": 2,
+          "seconds": 8.880733597001381,
+          "narration_chars": 392
         },
         {
           "error": null,
@@ -497,20 +398,15 @@
             "elena-known": true,
             "archivist-found": true
           },
-          "planned": [
-            "move",
-            "reveal",
-            "advance_thread"
-          ],
           "facts": [
             "entity_moved",
             "entity_discovered",
             "thread_advanced"
           ],
           "director_calls": 1,
-          "total_steps": 3,
-          "seconds": 20.381791251000323,
-          "narration_chars": 687
+          "total_steps": 2,
+          "seconds": 11.160830343997077,
+          "narration_chars": 515
         },
         {
           "error": null,
@@ -519,20 +415,15 @@
             "elena-known": true,
             "archivist-found": true
           },
-          "planned": [
-            "move if a settled climb; no roll called for",
-            "reveal if a settled arrival}",
-            "advance_thread if a settled arrival}"
-          ],
           "facts": [
             "entity_moved",
             "entity_discovered",
             "thread_advanced"
           ],
           "director_calls": 1,
-          "total_steps": 3,
-          "seconds": 15.017783721001251,
-          "narration_chars": 487
+          "total_steps": 2,
+          "seconds": 5.979732265997882,
+          "narration_chars": 538
         },
         {
           "error": null,
@@ -541,20 +432,15 @@
             "elena-known": true,
             "archivist-found": true
           },
-          "planned": [
-            "move",
-            "reveal",
-            "advance_thread"
-          ],
           "facts": [
             "entity_moved",
             "entity_discovered",
             "thread_advanced"
           ],
           "director_calls": 1,
-          "total_steps": 3,
-          "seconds": 32.70884759399996,
-          "narration_chars": 749
+          "total_steps": 2,
+          "seconds": 5.92993057700005,
+          "narration_chars": 615
         },
         {
           "error": null,
@@ -563,20 +449,15 @@
             "elena-known": true,
             "archivist-found": true
           },
-          "planned": [
-            "move",
-            "reveal",
-            "advance_thread"
-          ],
           "facts": [
             "entity_moved",
             "entity_discovered",
             "thread_advanced"
           ],
           "director_calls": 1,
-          "total_steps": 3,
-          "seconds": 24.951634342000034,
-          "narration_chars": 480
+          "total_steps": 2,
+          "seconds": 6.781412374999491,
+          "narration_chars": 645
         },
         {
           "error": null,
@@ -585,20 +466,15 @@
             "elena-known": true,
             "archivist-found": true
           },
-          "planned": [
-            "move",
-            "reveal",
-            "advance_thread"
-          ],
           "facts": [
             "entity_moved",
             "entity_discovered",
             "thread_advanced"
           ],
           "director_calls": 1,
-          "total_steps": 3,
-          "seconds": 31.615463944999647,
-          "narration_chars": 409
+          "total_steps": 2,
+          "seconds": 8.552684758997202,
+          "narration_chars": 528
         }
       ]
     },
@@ -621,67 +497,6 @@
             "lantern-given": true,
             "trait-gained": true
           },
-          "planned": [
-            "move",
-            "reveal",
-            "advance_thread",
-            "move",
-            "add_trait"
-          ],
-          "facts": [
-            "entity_moved",
-            "entity_discovered",
-            "thread_advanced",
-            "entity_moved",
-            "trait_added"
-          ],
-          "director_calls": 1,
-          "total_steps": 3,
-          "seconds": 60.389768099999856,
-          "narration_chars": 757
-        },
-        {
-          "error": null,
-          "passed": {
-            "player-in-tower": true,
-            "elena-known": true,
-            "lantern-given": true,
-            "trait-gained": true
-          },
-          "planned": [
-            "move",
-            "reveal",
-            "advance_thread",
-            "move",
-            "add_trait"
-          ],
-          "facts": [
-            "entity_moved",
-            "entity_discovered",
-            "thread_advanced",
-            "entity_moved",
-            "trait_added"
-          ],
-          "director_calls": 1,
-          "total_steps": 3,
-          "seconds": 67.24218658499922,
-          "narration_chars": 575
-        },
-        {
-          "error": null,
-          "passed": {
-            "player-in-tower": true,
-            "elena-known": true,
-            "lantern-given": true,
-            "trait-gained": true
-          },
-          "planned": [
-            "move",
-            "reveal",
-            "move",
-            "add_trait",
-            "advance_thread"
-          ],
           "facts": [
             "entity_moved",
             "entity_discovered",
@@ -690,9 +505,9 @@
             "thread_advanced"
           ],
           "director_calls": 1,
-          "total_steps": 3,
-          "seconds": 37.07724766999854,
-          "narration_chars": 737
+          "total_steps": 2,
+          "seconds": 9.945089488999656,
+          "narration_chars": 601
         },
         {
           "error": null,
@@ -702,39 +517,6 @@
             "lantern-given": true,
             "trait-gained": true
           },
-          "planned": [
-            "move",
-            "advance_thread",
-            "move",
-            "add_trait"
-          ],
-          "facts": [
-            "entity_moved",
-            "entity_discovered",
-            "thread_advanced",
-            "entity_moved",
-            "trait_added"
-          ],
-          "director_calls": 1,
-          "total_steps": 3,
-          "seconds": 29.443879813999956,
-          "narration_chars": 683
-        },
-        {
-          "error": null,
-          "passed": {
-            "player-in-tower": true,
-            "elena-known": true,
-            "lantern-given": true,
-            "trait-gained": true
-          },
-          "planned": [
-            "move",
-            "reveal",
-            "advance_thread",
-            "move",
-            "add_trait"
-          ],
           "facts": [
             "entity_moved",
             "entity_discovered",
@@ -743,9 +525,9 @@
             "thread_advanced"
           ],
           "director_calls": 1,
-          "total_steps": 3,
-          "seconds": 36.75021987400032,
-          "narration_chars": 365
+          "total_steps": 2,
+          "seconds": 13.318625604999397,
+          "narration_chars": 723
         },
         {
           "error": null,
@@ -755,24 +537,31 @@
             "lantern-given": true,
             "trait-gained": true
           },
-          "planned": [
-            "move",
-            "reveal",
-            "advance_thread",
-            "move",
-            "add_trait"
-          ],
           "facts": [
             "entity_moved",
             "entity_discovered",
-            "thread_advanced",
             "entity_moved",
-            "trait_added"
+            "trait_added",
+            "thread_advanced"
           ],
           "director_calls": 1,
-          "total_steps": 3,
-          "seconds": 79.03039433399863,
-          "narration_chars": 810
+          "total_steps": 2,
+          "seconds": 13.9651793990015,
+          "narration_chars": 985
+        },
+        {
+          "error": "ValueError: the narrator answered with nothing",
+          "passed": {
+            "player-in-tower": false,
+            "elena-known": false,
+            "lantern-given": false,
+            "trait-gained": false
+          },
+          "facts": [],
+          "director_calls": 0,
+          "total_steps": 0,
+          "seconds": 7.587866836001922,
+          "narration_chars": 0
         },
         {
           "error": null,
@@ -782,23 +571,17 @@
             "lantern-given": true,
             "trait-gained": true
           },
-          "planned": [
-            "move",
-            "reveal",
-            "move",
-            "add_trait"
-          ],
           "facts": [
-            "entity_moved",
             "entity_discovered",
-            "thread_advanced",
             "entity_moved",
-            "trait_added"
+            "entity_moved",
+            "trait_added",
+            "thread_advanced"
           ],
           "director_calls": 1,
-          "total_steps": 3,
-          "seconds": 36.874902543000644,
-          "narration_chars": 671
+          "total_steps": 2,
+          "seconds": 9.593990303997998,
+          "narration_chars": 836
         },
         {
           "error": null,
@@ -808,23 +591,17 @@
             "lantern-given": true,
             "trait-gained": true
           },
-          "planned": [
-            "move",
-            "reveal",
-            "advance_thread",
-            "move",
-            "add_trait"
-          ],
           "facts": [
-            "entity_moved",
             "entity_discovered",
             "entity_moved",
-            "trait_added"
+            "entity_moved",
+            "trait_added",
+            "thread_advanced"
           ],
           "director_calls": 1,
-          "total_steps": 3,
-          "seconds": 31.05043720499998,
-          "narration_chars": 657
+          "total_steps": 2,
+          "seconds": 10.911012475000462,
+          "narration_chars": 1007
         },
         {
           "error": null,
@@ -834,24 +611,51 @@
             "lantern-given": true,
             "trait-gained": true
           },
-          "planned": [
-            "move",
-            "reveal",
-            "advance_thread",
-            "move",
-            "add_trait"
-          ],
           "facts": [
             "entity_moved",
             "entity_discovered",
-            "thread_advanced",
             "entity_moved",
-            "trait_added"
+            "trait_added",
+            "thread_advanced"
           ],
           "director_calls": 1,
-          "total_steps": 3,
-          "seconds": 39.406682978999015,
-          "narration_chars": 477
+          "total_steps": 2,
+          "seconds": 10.503043499000341,
+          "narration_chars": 740
+        },
+        {
+          "error": null,
+          "passed": {
+            "player-in-tower": true,
+            "elena-known": true,
+            "lantern-given": true,
+            "trait-gained": true
+          },
+          "facts": [
+            "entity_moved",
+            "entity_discovered",
+            "entity_moved",
+            "trait_added",
+            "thread_advanced"
+          ],
+          "director_calls": 1,
+          "total_steps": 2,
+          "seconds": 8.061676645997068,
+          "narration_chars": 679
+        },
+        {
+          "error": "UnexpectedModelBehavior: Exceeded maximum output retries (3)",
+          "passed": {
+            "player-in-tower": false,
+            "elena-known": false,
+            "lantern-given": false,
+            "trait-gained": false
+          },
+          "facts": [],
+          "director_calls": 0,
+          "total_steps": 0,
+          "seconds": 12.848182837002241,
+          "narration_chars": 0
         }
       ]
     },
@@ -870,24 +674,17 @@
             "dice-rolled": true,
             "win-written": true
           },
-          "planned": [
-            "advance_thread",
-            "roll_question",
-            "unlock_exit",
-            "advance_thread",
-            "add_trait"
-          ],
           "facts": [
-            "thread_advanced",
             "dice_rolled",
             "dice_rolled",
             "question_answered",
-            "trait_added"
+            "trait_added",
+            "entity_discovered"
           ],
           "director_calls": 1,
-          "total_steps": 3,
-          "seconds": 64.63834997699996,
-          "narration_chars": 441
+          "total_steps": 2,
+          "seconds": 16.678579806000926,
+          "narration_chars": 769
         },
         {
           "error": null,
@@ -895,23 +692,15 @@
             "dice-rolled": true,
             "win-written": true
           },
-          "planned": [
-            "advance_thread",
-            "roll_question",
-            "advance_thread",
-            "add_trait"
-          ],
           "facts": [
-            "thread_advanced",
             "dice_rolled",
             "dice_rolled",
-            "question_answered",
-            "trait_added"
+            "question_answered"
           ],
           "director_calls": 1,
-          "total_steps": 3,
-          "seconds": 114.71824463899975,
-          "narration_chars": 860
+          "total_steps": 2,
+          "seconds": 10.502692351001315,
+          "narration_chars": 693
         },
         {
           "error": null,
@@ -919,122 +708,19 @@
             "dice-rolled": true,
             "win-written": true
           },
-          "planned": [
-            "roll_question",
-            "unlock_exit if the answer is a yes of any kind",
-            "add_trait if the attempt falls short"
-          ],
           "facts": [
             "dice_rolled",
             "dice_rolled",
             "question_answered",
             "exit_unlocked",
-            "trait_added",
-            "thread_advanced",
-            "entity_moved"
-          ],
-          "director_calls": 1,
-          "total_steps": 3,
-          "seconds": 45.597468956999364,
-          "narration_chars": 700
-        },
-        {
-          "error": null,
-          "passed": {
-            "dice-rolled": true,
-            "win-written": true
-          },
-          "planned": [
-            "advance_thread",
-            "roll_question",
-            "unlock_exit",
-            "add_trait"
-          ],
-          "facts": [
-            "thread_advanced",
-            "dice_rolled",
-            "dice_rolled",
-            "question_answered",
-            "trait_added"
-          ],
-          "director_calls": 1,
-          "total_steps": 3,
-          "seconds": 85.37672396600101,
-          "narration_chars": 352
-        },
-        {
-          "error": null,
-          "passed": {
-            "dice-rolled": true,
-            "win-written": true
-          },
-          "planned": [
-            "advance_thread",
-            "roll_question",
-            "unlock_exit",
-            "add_trait"
-          ],
-          "facts": [
-            "thread_advanced",
-            "dice_rolled",
-            "dice_rolled",
-            "question_answered",
-            "exit_unlocked"
-          ],
-          "director_calls": 1,
-          "total_steps": 3,
-          "seconds": 53.28999061000104,
-          "narration_chars": 473
-        },
-        {
-          "error": null,
-          "passed": {
-            "dice-rolled": true,
-            "win-written": true
-          },
-          "planned": [
-            "advance_thread",
-            "roll_question",
-            "unlock_exit",
-            "add_trait if the answer is a no of any kind"
-          ],
-          "facts": [
-            "thread_advanced",
-            "dice_rolled",
-            "dice_rolled",
-            "question_answered",
-            "trait_added"
-          ],
-          "director_calls": 1,
-          "total_steps": 3,
-          "seconds": 66.3343598600004,
-          "narration_chars": 405
-        },
-        {
-          "error": null,
-          "passed": {
-            "dice-rolled": true,
-            "win-written": true
-          },
-          "planned": [
-            "advance_thread",
-            "roll_question",
-            "advance_thread if any yes (yes-and, yes, yes-but)",
-            "add_trait if any no (no-but, no, no-and)"
-          ],
-          "facts": [
-            "thread_advanced",
-            "dice_rolled",
-            "dice_rolled",
-            "question_answered",
             "thread_advanced",
             "trait_added",
-            "exit_unlocked"
+            "entity_discovered"
           ],
           "director_calls": 1,
-          "total_steps": 3,
-          "seconds": 90.15172707199963,
-          "narration_chars": 362
+          "total_steps": 2,
+          "seconds": 14.732855000002019,
+          "narration_chars": 603
         },
         {
           "error": null,
@@ -1042,23 +728,16 @@
             "dice-rolled": true,
             "win-written": true
           },
-          "planned": [
-            "advance_thread",
-            "roll_question",
-            "unlock_exit if the answer is 'yes' of any kind (yes, yes-and, yes-but)",
-            "add_trait if the answer is 'no' of any kind (no, no-but, no-and)"
-          ],
           "facts": [
-            "thread_advanced",
             "dice_rolled",
             "dice_rolled",
             "question_answered",
             "trait_added"
           ],
           "director_calls": 1,
-          "total_steps": 3,
-          "seconds": 61.72912198500126,
-          "narration_chars": 550
+          "total_steps": 2,
+          "seconds": 8.9328538080008,
+          "narration_chars": 553
         },
         {
           "error": null,
@@ -1066,23 +745,89 @@
             "dice-rolled": true,
             "win-written": true
           },
-          "planned": [
-            "roll_question",
-            "unlock_exit",
-            "advance_thread",
-            "add_trait"
-          ],
           "facts": [
             "dice_rolled",
             "dice_rolled",
             "question_answered",
-            "exit_unlocked",
+            "trait_added"
+          ],
+          "director_calls": 1,
+          "total_steps": 2,
+          "seconds": 11.47468704700077,
+          "narration_chars": 409
+        },
+        {
+          "error": null,
+          "passed": {
+            "dice-rolled": true,
+            "win-written": true
+          },
+          "facts": [
+            "dice_rolled",
+            "dice_rolled",
+            "question_answered",
+            "trait_added",
             "thread_advanced"
           ],
           "director_calls": 1,
-          "total_steps": 3,
-          "seconds": 63.627903988999606,
-          "narration_chars": 402
+          "total_steps": 2,
+          "seconds": 14.735299856998608,
+          "narration_chars": 654
+        },
+        {
+          "error": null,
+          "passed": {
+            "dice-rolled": true,
+            "win-written": true
+          },
+          "facts": [
+            "dice_rolled",
+            "dice_rolled",
+            "question_answered",
+            "exit_unlocked",
+            "trait_added",
+            "thread_advanced"
+          ],
+          "director_calls": 1,
+          "total_steps": 2,
+          "seconds": 14.690618756998447,
+          "narration_chars": 653
+        },
+        {
+          "error": null,
+          "passed": {
+            "dice-rolled": true,
+            "win-written": true
+          },
+          "facts": [
+            "dice_rolled",
+            "dice_rolled",
+            "question_answered"
+          ],
+          "director_calls": 1,
+          "total_steps": 2,
+          "seconds": 8.179060892001871,
+          "narration_chars": 443
+        },
+        {
+          "error": null,
+          "passed": {
+            "dice-rolled": true,
+            "win-written": true
+          },
+          "facts": [
+            "thread_advanced",
+            "dice_rolled",
+            "dice_rolled",
+            "question_answered",
+            "exit_unlocked",
+            "entity_moved",
+            "thread_advanced"
+          ],
+          "director_calls": 1,
+          "total_steps": 2,
+          "seconds": 23.957571185001143,
+          "narration_chars": 683
         }
       ]
     },
@@ -1103,106 +848,15 @@
             "chart-carried": true,
             "stair-charted": true
           },
-          "planned": [
-            "reveal",
-            "move"
-          ],
-          "facts": [
-            "entity_discovered",
-            "thread_advanced",
-            "entity_moved"
-          ],
-          "director_calls": 1,
-          "total_steps": 3,
-          "seconds": 16.698473813999954,
-          "narration_chars": 441
-        },
-        {
-          "error": null,
-          "passed": {
-            "chart-known": true,
-            "chart-carried": true,
-            "stair-charted": true
-          },
-          "planned": [
-            "reveal",
-            "advance_thread",
-            "move"
-          ],
-          "facts": [
-            "entity_discovered",
-            "thread_advanced",
-            "entity_moved"
-          ],
-          "director_calls": 1,
-          "total_steps": 3,
-          "seconds": 21.487461014001383,
-          "narration_chars": 518
-        },
-        {
-          "error": null,
-          "passed": {
-            "chart-known": true,
-            "chart-carried": true,
-            "stair-charted": true
-          },
-          "planned": [
-            "reveal",
-            "move"
-          ],
-          "facts": [
-            "entity_discovered",
-            "thread_advanced",
-            "entity_moved"
-          ],
-          "director_calls": 1,
-          "total_steps": 3,
-          "seconds": 26.93663083499996,
-          "narration_chars": 415
-        },
-        {
-          "error": null,
-          "passed": {
-            "chart-known": true,
-            "chart-carried": true,
-            "stair-charted": true
-          },
-          "planned": [
-            "reveal",
-            "advance_thread",
-            "move"
-          ],
-          "facts": [
-            "entity_discovered",
-            "thread_advanced",
-            "entity_moved"
-          ],
-          "director_calls": 1,
-          "total_steps": 3,
-          "seconds": 25.81762148800044,
-          "narration_chars": 502
-        },
-        {
-          "error": null,
-          "passed": {
-            "chart-known": true,
-            "chart-carried": true,
-            "stair-charted": true
-          },
-          "planned": [
-            "reveal",
-            "move",
-            "advance_thread"
-          ],
           "facts": [
             "entity_discovered",
             "entity_moved",
             "thread_advanced"
           ],
           "director_calls": 1,
-          "total_steps": 3,
-          "seconds": 18.24159960200086,
-          "narration_chars": 456
+          "total_steps": 2,
+          "seconds": 8.588780278998456,
+          "narration_chars": 632
         },
         {
           "error": null,
@@ -1211,20 +865,15 @@
             "chart-carried": true,
             "stair-charted": true
           },
-          "planned": [
-            "reveal",
-            "move",
-            "advance_thread"
-          ],
           "facts": [
             "entity_discovered",
             "entity_moved",
             "thread_advanced"
           ],
           "director_calls": 1,
-          "total_steps": 3,
-          "seconds": 17.713596407000296,
-          "narration_chars": 491
+          "total_steps": 2,
+          "seconds": 8.288950386999204,
+          "narration_chars": 580
         },
         {
           "error": null,
@@ -1233,20 +882,15 @@
             "chart-carried": true,
             "stair-charted": true
           },
-          "planned": [
-            "reveal",
-            "move",
-            "advance_thread"
-          ],
           "facts": [
             "entity_discovered",
             "entity_moved",
             "thread_advanced"
           ],
           "director_calls": 1,
-          "total_steps": 3,
-          "seconds": 29.910328467,
-          "narration_chars": 494
+          "total_steps": 2,
+          "seconds": 6.284741678999126,
+          "narration_chars": 756
         },
         {
           "error": null,
@@ -1255,20 +899,15 @@
             "chart-carried": true,
             "stair-charted": true
           },
-          "planned": [
-            "reveal",
-            "advance_thread",
-            "move"
-          ],
           "facts": [
             "entity_discovered",
-            "thread_advanced",
-            "entity_moved"
+            "entity_moved",
+            "thread_advanced"
           ],
           "director_calls": 1,
-          "total_steps": 3,
-          "seconds": 20.86027015699983,
-          "narration_chars": 386
+          "total_steps": 2,
+          "seconds": 7.509927105002134,
+          "narration_chars": 598
         },
         {
           "error": null,
@@ -1277,20 +916,83 @@
             "chart-carried": true,
             "stair-charted": true
           },
-          "planned": [
-            "reveal",
-            "advance_thread",
-            "move"
-          ],
           "facts": [
             "entity_discovered",
-            "thread_advanced",
-            "entity_moved"
+            "entity_moved",
+            "thread_advanced"
           ],
           "director_calls": 1,
-          "total_steps": 3,
-          "seconds": 27.0906751980001,
-          "narration_chars": 397
+          "total_steps": 2,
+          "seconds": 4.966018786002678,
+          "narration_chars": 571
+        },
+        {
+          "error": null,
+          "passed": {
+            "chart-known": true,
+            "chart-carried": true,
+            "stair-charted": true
+          },
+          "facts": [
+            "entity_discovered",
+            "entity_moved",
+            "thread_advanced"
+          ],
+          "director_calls": 1,
+          "total_steps": 2,
+          "seconds": 7.597818696998729,
+          "narration_chars": 615
+        },
+        {
+          "error": null,
+          "passed": {
+            "chart-known": true,
+            "chart-carried": true,
+            "stair-charted": true
+          },
+          "facts": [
+            "entity_discovered",
+            "entity_moved",
+            "thread_advanced"
+          ],
+          "director_calls": 1,
+          "total_steps": 2,
+          "seconds": 8.865543226002046,
+          "narration_chars": 588
+        },
+        {
+          "error": null,
+          "passed": {
+            "chart-known": true,
+            "chart-carried": true,
+            "stair-charted": true
+          },
+          "facts": [
+            "entity_discovered",
+            "entity_moved",
+            "thread_advanced"
+          ],
+          "director_calls": 1,
+          "total_steps": 2,
+          "seconds": 9.553654506002204,
+          "narration_chars": 575
+        },
+        {
+          "error": null,
+          "passed": {
+            "chart-known": true,
+            "chart-carried": true,
+            "stair-charted": true
+          },
+          "facts": [
+            "entity_discovered",
+            "entity_moved",
+            "thread_advanced"
+          ],
+          "director_calls": 1,
+          "total_steps": 2,
+          "seconds": 5.476286320001236,
+          "narration_chars": 724
         }
       ]
     },
@@ -1309,17 +1011,14 @@
             "player-in-cloister": true,
             "nothing-invented": true
           },
-          "planned": [
-            "move"
-          ],
           "facts": [
             "entity_moved",
             "entity_discovered"
           ],
           "director_calls": 1,
-          "total_steps": 3,
-          "seconds": 23.021950250000373,
-          "narration_chars": 752
+          "total_steps": 2,
+          "seconds": 5.612336619000416,
+          "narration_chars": 297
         },
         {
           "error": null,
@@ -1327,18 +1026,14 @@
             "player-in-cloister": true,
             "nothing-invented": true
           },
-          "planned": [
-            "move",
-            "reveal"
-          ],
           "facts": [
             "entity_moved",
             "entity_discovered"
           ],
           "director_calls": 1,
-          "total_steps": 3,
-          "seconds": 27.246101081000234,
-          "narration_chars": 582
+          "total_steps": 2,
+          "seconds": 9.104436096000427,
+          "narration_chars": 1011
         },
         {
           "error": null,
@@ -1346,18 +1041,14 @@
             "player-in-cloister": true,
             "nothing-invented": true
           },
-          "planned": [
-            "move",
-            "reveal"
-          ],
           "facts": [
             "entity_moved",
             "entity_discovered"
           ],
           "director_calls": 1,
-          "total_steps": 3,
-          "seconds": 21.587114664998808,
-          "narration_chars": 379
+          "total_steps": 2,
+          "seconds": 6.662378959998023,
+          "narration_chars": 631
         },
         {
           "error": null,
@@ -1365,18 +1056,14 @@
             "player-in-cloister": true,
             "nothing-invented": true
           },
-          "planned": [
-            "move",
-            "reveal"
-          ],
           "facts": [
             "entity_moved",
             "entity_discovered"
           ],
           "director_calls": 1,
-          "total_steps": 3,
-          "seconds": 23.32661240699963,
-          "narration_chars": 438
+          "total_steps": 2,
+          "seconds": 12.785903424002754,
+          "narration_chars": 434
         },
         {
           "error": null,
@@ -1384,18 +1071,13 @@
             "player-in-cloister": true,
             "nothing-invented": true
           },
-          "planned": [
-            "move",
-            "reveal"
-          ],
           "facts": [
-            "entity_moved",
-            "entity_discovered"
+            "entity_moved"
           ],
           "director_calls": 1,
-          "total_steps": 3,
-          "seconds": 21.831504597001185,
-          "narration_chars": 533
+          "total_steps": 2,
+          "seconds": 6.457190401000844,
+          "narration_chars": 581
         },
         {
           "error": null,
@@ -1403,18 +1085,14 @@
             "player-in-cloister": true,
             "nothing-invented": true
           },
-          "planned": [
-            "move",
-            "reveal"
-          ],
           "facts": [
             "entity_moved",
             "entity_discovered"
           ],
           "director_calls": 1,
-          "total_steps": 3,
-          "seconds": 28.736818661998768,
-          "narration_chars": 527
+          "total_steps": 2,
+          "seconds": 6.959300597998663,
+          "narration_chars": 622
         },
         {
           "error": null,
@@ -1422,18 +1100,13 @@
             "player-in-cloister": true,
             "nothing-invented": true
           },
-          "planned": [
-            "move",
-            "reveal"
-          ],
           "facts": [
-            "entity_moved",
-            "entity_discovered"
+            "entity_moved"
           ],
           "director_calls": 1,
-          "total_steps": 3,
-          "seconds": 31.13222618799955,
-          "narration_chars": 440
+          "total_steps": 2,
+          "seconds": 5.39987635199941,
+          "narration_chars": 567
         },
         {
           "error": null,
@@ -1441,18 +1114,13 @@
             "player-in-cloister": true,
             "nothing-invented": true
           },
-          "planned": [
-            "move",
-            "reveal"
-          ],
           "facts": [
-            "entity_moved",
-            "entity_discovered"
+            "entity_moved"
           ],
           "director_calls": 1,
-          "total_steps": 3,
-          "seconds": 26.797949431000234,
-          "narration_chars": 398
+          "total_steps": 2,
+          "seconds": 7.086246870996547,
+          "narration_chars": 485
         },
         {
           "error": null,
@@ -1460,18 +1128,14 @@
             "player-in-cloister": true,
             "nothing-invented": true
           },
-          "planned": [
-            "move",
-            "reveal"
-          ],
           "facts": [
             "entity_moved",
             "entity_discovered"
           ],
           "director_calls": 1,
-          "total_steps": 3,
-          "seconds": 20.394863609999447,
-          "narration_chars": 494
+          "total_steps": 2,
+          "seconds": 5.631342795000819,
+          "narration_chars": 576
         }
       ]
     },
@@ -1492,20 +1156,15 @@
             "elena-known": true,
             "archivist-found": true
           },
-          "planned": [
-            "move",
-            "reveal",
-            "advance_thread"
-          ],
           "facts": [
             "entity_moved",
             "entity_discovered",
             "thread_advanced"
           ],
           "director_calls": 1,
-          "total_steps": 3,
-          "seconds": 21.70530734699969,
-          "narration_chars": 598
+          "total_steps": 2,
+          "seconds": 9.170876088999648,
+          "narration_chars": 588
         },
         {
           "error": null,
@@ -1514,20 +1173,15 @@
             "elena-known": true,
             "archivist-found": true
           },
-          "planned": [
-            "move",
-            "reveal",
-            "advance_thread"
-          ],
           "facts": [
             "entity_moved",
             "entity_discovered",
             "thread_advanced"
           ],
           "director_calls": 1,
-          "total_steps": 3,
-          "seconds": 26.44751117099986,
-          "narration_chars": 474
+          "total_steps": 2,
+          "seconds": 11.100629196000227,
+          "narration_chars": 415
         },
         {
           "error": null,
@@ -1536,20 +1190,28 @@
             "elena-known": true,
             "archivist-found": true
           },
-          "planned": [
-            "move",
-            "reveal",
-            "advance_thread"
-          ],
           "facts": [
             "entity_moved",
             "entity_discovered",
             "thread_advanced"
           ],
           "director_calls": 1,
-          "total_steps": 3,
-          "seconds": 10.384745897001267,
-          "narration_chars": 503
+          "total_steps": 2,
+          "seconds": 9.968181568001455,
+          "narration_chars": 454
+        },
+        {
+          "error": "UnexpectedModelBehavior: Exceeded maximum output retries (3)",
+          "passed": {
+            "player-in-tower": false,
+            "elena-known": false,
+            "archivist-found": false
+          },
+          "facts": [],
+          "director_calls": 0,
+          "total_steps": 0,
+          "seconds": 11.463459611000872,
+          "narration_chars": 0
         },
         {
           "error": null,
@@ -1558,20 +1220,17 @@
             "elena-known": true,
             "archivist-found": true
           },
-          "planned": [
-            "move",
-            "reveal",
-            "advance_thread"
-          ],
           "facts": [
-            "entity_moved",
+            "dice_rolled",
+            "attempt_resolved",
             "entity_discovered",
-            "thread_advanced"
+            "thread_advanced",
+            "entity_moved"
           ],
           "director_calls": 1,
-          "total_steps": 3,
-          "seconds": 30.949220958000296,
-          "narration_chars": 499
+          "total_steps": 2,
+          "seconds": 9.507701271002588,
+          "narration_chars": 670
         },
         {
           "error": null,
@@ -1580,20 +1239,15 @@
             "elena-known": true,
             "archivist-found": true
           },
-          "planned": [
-            "move",
-            "reveal",
-            "advance_thread"
-          ],
           "facts": [
             "entity_moved",
             "entity_discovered",
             "thread_advanced"
           ],
           "director_calls": 1,
-          "total_steps": 3,
-          "seconds": 24.596544050999,
-          "narration_chars": 460
+          "total_steps": 2,
+          "seconds": 10.166245559001254,
+          "narration_chars": 681
         },
         {
           "error": null,
@@ -1602,20 +1256,15 @@
             "elena-known": true,
             "archivist-found": true
           },
-          "planned": [
-            "move",
-            "reveal",
-            "advance_thread"
-          ],
           "facts": [
             "entity_moved",
             "entity_discovered",
             "thread_advanced"
           ],
           "director_calls": 1,
-          "total_steps": 3,
-          "seconds": 28.611283821999677,
-          "narration_chars": 585
+          "total_steps": 2,
+          "seconds": 10.180842388999736,
+          "narration_chars": 542
         },
         {
           "error": null,
@@ -1624,20 +1273,18 @@
             "elena-known": true,
             "archivist-found": true
           },
-          "planned": [
-            "move",
-            "reveal",
-            "advance_thread"
-          ],
           "facts": [
+            "dice_rolled",
+            "attempt_resolved",
+            "trait_added",
             "entity_moved",
             "entity_discovered",
             "thread_advanced"
           ],
           "director_calls": 1,
-          "total_steps": 3,
-          "seconds": 36.32328953100114,
-          "narration_chars": 354
+          "total_steps": 2,
+          "seconds": 21.171282209998026,
+          "narration_chars": 396
         },
         {
           "error": null,
@@ -1646,41 +1293,17 @@
             "elena-known": true,
             "archivist-found": true
           },
-          "planned": [
-            "move",
-            "reveal",
-            "advance_thread"
-          ],
           "facts": [
+            "dice_rolled",
+            "attempt_resolved",
             "entity_moved",
             "entity_discovered",
             "thread_advanced"
           ],
           "director_calls": 1,
-          "total_steps": 3,
-          "seconds": 24.880199295999773,
-          "narration_chars": 549
-        },
-        {
-          "error": null,
-          "passed": {
-            "player-in-tower": true,
-            "elena-known": true,
-            "archivist-found": true
-          },
-          "planned": [
-            "move",
-            "reveal"
-          ],
-          "facts": [
-            "entity_moved",
-            "entity_discovered",
-            "thread_advanced"
-          ],
-          "director_calls": 1,
-          "total_steps": 3,
-          "seconds": 26.645378866998726,
-          "narration_chars": 284
+          "total_steps": 2,
+          "seconds": 9.42994461300259,
+          "narration_chars": 544
         }
       ]
     },
@@ -1703,24 +1326,17 @@
             "lantern-given": true,
             "trait-gained": true
           },
-          "planned": [
-            "move",
-            "reveal",
-            "advance_thread",
-            "move",
-            "add_trait"
-          ],
           "facts": [
-            "entity_moved",
             "entity_discovered",
-            "thread_advanced",
             "entity_moved",
-            "trait_added"
+            "trait_added",
+            "thread_advanced",
+            "entity_moved"
           ],
           "director_calls": 1,
-          "total_steps": 3,
-          "seconds": 30.322524085000623,
-          "narration_chars": 485
+          "total_steps": 2,
+          "seconds": 11.818455960998108,
+          "narration_chars": 586
         },
         {
           "error": null,
@@ -1730,24 +1346,17 @@
             "lantern-given": true,
             "trait-gained": true
           },
-          "planned": [
-            "move",
-            "reveal",
-            "advance_thread",
-            "move",
-            "add_trait"
-          ],
           "facts": [
             "entity_moved",
             "entity_discovered",
-            "thread_advanced",
             "entity_moved",
-            "trait_added"
+            "trait_added",
+            "thread_advanced"
           ],
           "director_calls": 1,
-          "total_steps": 3,
-          "seconds": 48.80926808500044,
-          "narration_chars": 438
+          "total_steps": 2,
+          "seconds": 18.211336873999244,
+          "narration_chars": 851
         },
         {
           "error": null,
@@ -1757,23 +1366,17 @@
             "lantern-given": true,
             "trait-gained": true
           },
-          "planned": [
-            "move",
-            "reveal",
-            "move",
-            "add_trait"
-          ],
           "facts": [
             "entity_moved",
             "entity_discovered",
+            "trait_added",
             "thread_advanced",
-            "entity_moved",
-            "trait_added"
+            "entity_moved"
           ],
           "director_calls": 1,
-          "total_steps": 3,
-          "seconds": 21.941818502000388,
-          "narration_chars": 648
+          "total_steps": 2,
+          "seconds": 20.981858567000018,
+          "narration_chars": 687
         },
         {
           "error": null,
@@ -1783,24 +1386,17 @@
             "lantern-given": true,
             "trait-gained": true
           },
-          "planned": [
-            "move",
-            "reveal",
-            "advance_thread",
-            "move",
-            "add_trait"
-          ],
           "facts": [
-            "entity_moved",
             "entity_discovered",
-            "thread_advanced",
             "entity_moved",
-            "trait_added"
+            "entity_moved",
+            "trait_added",
+            "thread_advanced"
           ],
           "director_calls": 1,
-          "total_steps": 3,
-          "seconds": 41.704025902001376,
-          "narration_chars": 571
+          "total_steps": 2,
+          "seconds": 8.739215063000302,
+          "narration_chars": 644
         },
         {
           "error": null,
@@ -1810,23 +1406,17 @@
             "lantern-given": true,
             "trait-gained": true
           },
-          "planned": [
-            "reveal",
-            "advance_thread",
-            "move",
-            "add_trait"
-          ],
           "facts": [
             "entity_moved",
             "entity_discovered",
-            "thread_advanced",
             "entity_moved",
-            "trait_added"
+            "trait_added",
+            "thread_advanced"
           ],
           "director_calls": 1,
-          "total_steps": 3,
-          "seconds": 36.96269117599877,
-          "narration_chars": 544
+          "total_steps": 2,
+          "seconds": 17.71853130999807,
+          "narration_chars": 787
         },
         {
           "error": null,
@@ -1836,39 +1426,6 @@
             "lantern-given": true,
             "trait-gained": true
           },
-          "planned": [
-            "move",
-            "reveal",
-            "advance_thread",
-            "move",
-            "add_trait"
-          ],
-          "facts": [
-            "entity_moved",
-            "entity_discovered",
-            "thread_advanced",
-            "entity_moved",
-            "trait_added"
-          ],
-          "director_calls": 1,
-          "total_steps": 3,
-          "seconds": 47.84289087899924,
-          "narration_chars": 708
-        },
-        {
-          "error": null,
-          "passed": {
-            "player-in-tower": true,
-            "elena-known": true,
-            "lantern-given": true,
-            "trait-gained": true
-          },
-          "planned": [
-            "move",
-            "reveal",
-            "move",
-            "add_trait"
-          ],
           "facts": [
             "entity_moved",
             "entity_discovered",
@@ -1877,9 +1434,9 @@
             "thread_advanced"
           ],
           "director_calls": 1,
-          "total_steps": 3,
-          "seconds": 41.997519657999874,
-          "narration_chars": 386
+          "total_steps": 2,
+          "seconds": 9.621284857999854,
+          "narration_chars": 635
         },
         {
           "error": null,
@@ -1889,24 +1446,37 @@
             "lantern-given": true,
             "trait-gained": true
           },
-          "planned": [
-            "move",
-            "add_trait",
-            "reveal",
-            "advance_thread",
-            "move"
-          ],
           "facts": [
+            "entity_moved",
+            "entity_discovered",
+            "trait_added",
+            "entity_moved",
+            "thread_advanced"
+          ],
+          "director_calls": 1,
+          "total_steps": 2,
+          "seconds": 15.505024394002248,
+          "narration_chars": 898
+        },
+        {
+          "error": null,
+          "passed": {
+            "player-in-tower": true,
+            "elena-known": true,
+            "lantern-given": true,
+            "trait-gained": true
+          },
+          "facts": [
+            "entity_discovered",
             "entity_moved",
             "trait_added",
-            "entity_discovered",
-            "thread_advanced",
-            "entity_moved"
+            "entity_moved",
+            "thread_advanced"
           ],
           "director_calls": 1,
-          "total_steps": 3,
-          "seconds": 43.44023421299971,
-          "narration_chars": 450
+          "total_steps": 2,
+          "seconds": 8.759272723000322,
+          "narration_chars": 603
         },
         {
           "error": null,
@@ -1916,24 +1486,17 @@
             "lantern-given": true,
             "trait-gained": true
           },
-          "planned": [
-            "move",
-            "reveal",
-            "advance_thread",
-            "move",
-            "add_trait"
-          ],
           "facts": [
             "entity_moved",
             "entity_discovered",
-            "thread_advanced",
             "entity_moved",
-            "trait_added"
+            "trait_added",
+            "thread_advanced"
           ],
           "director_calls": 1,
-          "total_steps": 3,
-          "seconds": 43.84422476399959,
-          "narration_chars": 574
+          "total_steps": 2,
+          "seconds": 15.005236891000095,
+          "narration_chars": 613
         }
       ]
     },
@@ -1952,23 +1515,29 @@
             "dice-rolled": true,
             "win-written": true
           },
-          "planned": [
-            "advance_thread",
-            "roll_attempt",
-            "unlock_exit if success",
-            "add_trait if setback",
-            "add_trait if disaster"
-          ],
           "facts": [
-            "thread_advanced",
             "dice_rolled",
             "attempt_resolved",
-            "trait_added"
+            "dice_rolled",
+            "trait_added",
+            "thread_advanced"
           ],
           "director_calls": 1,
-          "total_steps": 3,
-          "seconds": 56.481463395999526,
-          "narration_chars": 582
+          "total_steps": 2,
+          "seconds": 12.782036026997957,
+          "narration_chars": 485
+        },
+        {
+          "error": "UnexpectedModelBehavior: Exceeded maximum output retries (3)",
+          "passed": {
+            "dice-rolled": false,
+            "win-written": false
+          },
+          "facts": [],
+          "director_calls": 0,
+          "total_steps": 0,
+          "seconds": 15.188516050002363,
+          "narration_chars": 0
         },
         {
           "error": null,
@@ -1976,23 +1545,15 @@
             "dice-rolled": true,
             "win-written": true
           },
-          "planned": [
-            "advance_thread",
-            "roll_attempt",
-            "add_trait if disaster",
-            "add_trait if setback",
-            "unlock_exit if success"
-          ],
           "facts": [
-            "thread_advanced",
             "dice_rolled",
             "attempt_resolved",
             "trait_added"
           ],
           "director_calls": 1,
-          "total_steps": 3,
-          "seconds": 72.82915985799991,
-          "narration_chars": 634
+          "total_steps": 2,
+          "seconds": 11.476453958999628,
+          "narration_chars": 695
         },
         {
           "error": null,
@@ -2000,23 +1561,15 @@
             "dice-rolled": true,
             "win-written": true
           },
-          "planned": [
-            "advance_thread",
-            "roll_attempt",
-            "unlock_exit if success",
-            "add_trait if setback",
-            "add_trait if disaster"
-          ],
           "facts": [
-            "thread_advanced",
             "dice_rolled",
             "attempt_resolved",
-            "exit_unlocked"
+            "trait_added"
           ],
           "director_calls": 1,
-          "total_steps": 3,
-          "seconds": 50.420101641000656,
-          "narration_chars": 380
+          "total_steps": 2,
+          "seconds": 9.312289175999467,
+          "narration_chars": 514
         },
         {
           "error": null,
@@ -2024,24 +1577,16 @@
             "dice-rolled": true,
             "win-written": true
           },
-          "planned": [
-            "advance_thread",
-            "roll_attempt",
-            "unlock_exit",
-            "unlock_exit if success",
-            "add_trait if setback",
-            "add_trait if disaster"
-          ],
           "facts": [
-            "thread_advanced",
             "dice_rolled",
             "attempt_resolved",
-            "trait_added"
+            "trait_added",
+            "thread_advanced"
           ],
           "director_calls": 1,
-          "total_steps": 3,
-          "seconds": 48.22299141000076,
-          "narration_chars": 420
+          "total_steps": 2,
+          "seconds": 11.225523839002562,
+          "narration_chars": 645
         },
         {
           "error": null,
@@ -2049,21 +1594,15 @@
             "dice-rolled": true,
             "win-written": true
           },
-          "planned": [
-            "roll_attempt",
-            "advance_thread if success",
-            "add_trait if setback",
-            "add_trait if disaster"
-          ],
           "facts": [
             "dice_rolled",
             "attempt_resolved",
             "trait_added"
           ],
           "director_calls": 1,
-          "total_steps": 3,
-          "seconds": 39.70388351800102,
-          "narration_chars": 484
+          "total_steps": 2,
+          "seconds": 13.838667048003117,
+          "narration_chars": 727
         },
         {
           "error": null,
@@ -2071,22 +1610,15 @@
             "dice-rolled": true,
             "win-written": true
           },
-          "planned": [
-            "roll_attempt",
-            "unlock_exit if success",
-            "advance_thread if success",
-            "add_trait if setback",
-            "add_trait if disaster"
-          ],
           "facts": [
             "dice_rolled",
             "attempt_resolved",
             "trait_added"
           ],
           "director_calls": 1,
-          "total_steps": 3,
-          "seconds": 92.39316964400132,
-          "narration_chars": 407
+          "total_steps": 2,
+          "seconds": 9.771646264998708,
+          "narration_chars": 766
         },
         {
           "error": null,
@@ -2094,23 +1626,16 @@
             "dice-rolled": true,
             "win-written": true
           },
-          "planned": [
-            "advance_thread",
-            "roll_attempt",
-            "unlock_exit if success",
-            "add_trait if setback",
-            "add_trait if disaster"
-          ],
           "facts": [
-            "thread_advanced",
             "dice_rolled",
             "attempt_resolved",
+            "dice_rolled",
             "trait_added"
           ],
           "director_calls": 1,
-          "total_steps": 3,
-          "seconds": 34.258942077998654,
-          "narration_chars": 461
+          "total_steps": 2,
+          "seconds": 10.069756341999891,
+          "narration_chars": 460
         },
         {
           "error": null,
@@ -2118,41 +1643,15 @@
             "dice-rolled": true,
             "win-written": true
           },
-          "planned": [
-            "advance_thread",
-            "roll_attempt",
-            "add_trait",
-            "unlock_exit"
-          ],
           "facts": [
-            "thread_advanced",
             "dice_rolled",
             "attempt_resolved",
             "trait_added"
           ],
           "director_calls": 1,
-          "total_steps": 3,
-          "seconds": 75.91325712900107,
-          "narration_chars": 493
-        },
-        {
-          "error": null,
-          "passed": {
-            "dice-rolled": true,
-            "win-written": true
-          },
-          "planned": [],
-          "facts": [
-            "dice_rolled",
-            "attempt_resolved",
-            "dice_rolled",
-            "luck_tested",
-            "trait_added"
-          ],
-          "director_calls": 1,
-          "total_steps": 3,
-          "seconds": 87.19754642500084,
-          "narration_chars": 445
+          "total_steps": 2,
+          "seconds": 15.283701904001646,
+          "narration_chars": 811
         }
       ]
     }

@@ -56,9 +56,3 @@ NOTES FROM THE RULES:
 
 PLAYER ACTION:
 I lever up the loose flagstone and listen at the vault door.
-
-MECHANICS PLAN — EXECUTE THIS:
-1. move — Move vault_map into the player's hands.
-2. roll_question — Ask whether he hears what waits past the vault door without being heard.
-3. if the answer is a no: add_trait — Mark him as listening for what moves behind it.
-why: He takes the chart he has just levered up, then listens at the door, which is where the dice come in.

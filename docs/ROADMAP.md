@@ -26,7 +26,7 @@ Status of the proof of concept, and where it should go. Kept short on purpose. I
 
 - History is the whole game, sent verbatim. No summarisation, no retrieval; a long game sends its entire history every turn.
 - No undo. A save is a single current state, not a history of commits.
-- Three sequential role calls per turn — Interpreter, Director, Narrator — with no streaming.
+- Two sequential role calls per turn — Director, Narrator — with no streaming.
 - The turn trace lives only in memory: a resume shows an empty Trace tab.
 - The State tab is a raw JSON dump of the game state.
 

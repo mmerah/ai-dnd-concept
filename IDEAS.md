@@ -1,5 +1,6 @@
 ## Loose ends
 
+- [] Tool result formatting: we did it for threads but others are also not done. move (what location? item?), adding/removing trait, giving items, ... all must identify, what kind of stuff/object/thing to be as clear as possible. When I read "- Kael is Wrenched Knee" it's unclear what it is, same for "gave a guttering lantern to Elena", ... Should IDs be in there btw?
 - [] Codex: Comment simplification round
 - [] CONFIG_VARIABLES into config, no magic variable/global VARIABLE anywhere. Re-organization of codebase, clearer, easier to navigate, files have a structure that make sense, models are in separate files, clean functional programming. No change in behavior
 - [] RAG on scenarios? .pdf -> source.md in scenario/<id>/ folder, then RAG on it?

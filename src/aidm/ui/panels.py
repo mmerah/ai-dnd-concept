@@ -221,17 +221,13 @@ def _turn_trace(turn: Turn) -> None:
     for step in turn.steps:
         _section(step.name.upper(), _output(step))
     _section("FACTS (private)", _facts(turn.facts))
-    shown = [step for step in turn.steps if step.prompt is not None]
-    if shown:
-        with ui.expansion("what each role was shown").classes("w-full mt-3"):
-            for step in shown:
-                _section(step.name.upper(), step.prompt or "")
+    with ui.expansion("what each role was shown").classes("w-full mt-3"):
+        for step in turn.steps:
+            _section(step.name.upper(), step.prompt)
 
 
 def _output(step: StepTrace) -> str:
     match step.output:
-        case None:
-            return "- (nothing)"
         case str() as text:
             return text
         case body:

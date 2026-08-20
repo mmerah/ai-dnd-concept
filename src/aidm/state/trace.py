@@ -6,8 +6,8 @@ from .facts import Fact
 
 class StepTrace(Frozen):
     name: str
-    prompt: str | None = None
-    output: dict[str, JsonValue] | str | None = None
+    prompt: str
+    output: dict[str, JsonValue] | str
 
 
 class TraceEntryBase(Frozen):

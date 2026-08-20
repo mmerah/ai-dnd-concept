@@ -25,9 +25,8 @@ from aidm.state.world import Game, check_draft
 
 from . import prompts
 from .expansion import MAX_EXPANSIONS, ExpansionPatch, apply_patch, capped, record, written
-from .reports import TurnInterpretation
 from .scene import SceneSnapshot, VisibleScene
-from .tools import core_toolset, offered_tools, possible, sequential_toolset, vocabulary
+from .tools import core_toolset, possible, sequential_toolset
 
 
 @dataclass(frozen=True, slots=True)
@@ -39,44 +38,10 @@ class AdvancementContext:
 
 @dataclass(frozen=True, slots=True)
 class TurnAgents:
-    """The turn's model-facing roles, built once per session."""
-
-    interpreter: Agent[None, TurnInterpretation]
     director: Agent[PlanContext, str]
     narrator: Agent[VisibleScene, Narration]
     # Built only when the adventure may expand; the turn reaches it through the Director's tool.
     expander: Agent[PlanContext, ExpansionPatch] | None = None
-
-
-def interpreter_agent(
-    engine: Engine[SheetBase], settings: Settings
-) -> Agent[None, TurnInterpretation]:
-    """No tools and no state: it names the mechanics the turn needs, the Director calls them."""
-    named = {tool.name for tool in offered_tools(engine)}
-
-    def offered(ctx: RunContext[None], plan: TurnInterpretation) -> TurnInterpretation:
-        """A step naming a tool that does not exist is an instruction the Director can only
-        ignore, and its prompt tells it not to."""
-        del ctx
-        # Not narrowed to what `possible` allows: a step may be what makes the next one legal.
-        unknown = sorted({step.tool for step in plan.mechanics} - named)
-        if unknown:
-            raise ModelRetry(
-                f"no tool is called {', '.join(unknown)}. Name one of the mechanics you were "
-                "shown, spelled exactly as it is written there."
-            )
-        return plan
-
-    return build_agent(
-        "interpreter",
-        settings,
-        instructions=prompts.interpreter_instructions(
-            engine.director_instructions, vocabulary(engine)
-        ),
-        output_type=NativeOutput(TurnInterpretation),
-        deps_type=type(None),
-        validator=offered,
-    )
 
 
 def director_agent(
@@ -254,15 +219,12 @@ def advisor_agent(
 def build_turn_agents(
     engine: Engine[SheetBase], settings: Settings, source: CanonSource | None = None
 ) -> TurnAgents:
-    """A game with nothing to expand from builds no Expander, so its Director agent is the one
-    shipped today."""
     expander: Agent[PlanContext, ExpansionPatch] | None = None
     expand_tool: FunctionToolset[PlanContext] | None = None
     if source is not None:
         expander = expander_agent(settings)
         expand_tool = expansion_toolset(engine, expander, source)
     return TurnAgents(
-        interpreter=interpreter_agent(engine, settings),
         director=director_agent(engine, settings, expand_tool),
         narrator=narrator_agent(settings),
         expander=expander,

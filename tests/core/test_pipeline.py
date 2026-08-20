@@ -213,13 +213,13 @@ async def test_a_failed_role_never_mutates_the_input_state() -> None:
 
 
 async def test_a_turn_over_its_role_ceiling_fails_before_any_model_call() -> None:
-    """A ceiling this low is exceeded by the interpreter's own rendered prompt alone, so the turn
+    """A ceiling this low is exceeded by the director's own rendered prompt alone, so the turn
     never reaches a model — an aidm-owned error instead of a raw provider 400."""
     engine, state = initialized()
-    tiny = updated(settings(), roles={"interpreter": RoleConfig(max_input_tokens=1)})
+    tiny = updated(settings(), roles={"director": RoleConfig(max_input_tokens=1)})
     before = SavedGame.of(state).model_dump_json()
 
-    with pytest.raises(ValueError, match="interpreter"):
+    with pytest.raises(ValueError, match="director"):
         await played(
             engine,
             state,
@@ -255,44 +255,3 @@ async def test_a_director_run_that_fails_discards_what_the_earlier_tool_call_did
 
     assert SavedGame.of(state).model_dump_json() == before
     assert state.world.require(EntityId("vault_map")).parent_id != PLAYER_ID
-
-
-async def test_the_director_reads_the_canon_and_only_the_narrator_is_kept_from_it() -> None:
-    engine, state = initialized()
-    steps: list[str] = []
-    director = FunctionModel(scripted(text("I press on.")))
-    result = await played(
-        engine,
-        state,
-        "I press on.",
-        director=director,
-        on_step=steps.append,
-    )
-
-    assert tuple(steps) == TURN_STEPS
-    director_prompt = shown(result.turn, "director")
-    # Elena reaches the one Director's prompt; the narrator never does.
-    assert "Elena" in director_prompt
-    assert "Elena" not in shown(result.turn, "narrator")
-
-
-async def test_a_turn_whose_plan_cannot_be_read_still_plays() -> None:
-    """The Interpreter is advisory: the Director judged the mechanics alone before it existed."""
-    engine, state = initialized()
-
-    def unreadable(messages: list[ModelMessage], info: AgentInfo) -> ModelResponse:
-        del messages, info
-        return structured(mechanics=[])
-
-    result = await played(
-        engine,
-        state,
-        "I take the map.",
-        director=FunctionModel(
-            scripted(tool_call("move", entity_id="vault_map", to_id="player"), text("Taken."))
-        ),
-        interpreter=FunctionModel(unreadable),
-    )
-
-    assert result.state.world.require(EntityId("vault_map")).parent_id == PLAYER_ID
-    assert "no plan was read" in shown(result.turn, "director")

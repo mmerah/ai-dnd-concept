@@ -113,14 +113,6 @@ def narrated(body: str) -> ModelResponse:
     return structured(lines=[{"speaker_id": None, "text": body}])
 
 
-def planned(explanation: str, *steps: tuple[str, str] | tuple[str, str, str]) -> ModelResponse:
-    fields = ("tool", "instruction", "when")
-    return structured(
-        mechanics=[dict(zip(fields, step, strict=False)) for step in steps],
-        explanation=explanation,
-    )
-
-
 def scripted(*responses: ModelResponse) -> Stub:
     """Call N answers with response N, because a retried output asks the model again."""
     remaining = iter(responses)
@@ -160,7 +152,7 @@ def recorded(*responses: ModelResponse) -> Recorder:
 
 
 def shown(turn: Turn, name: str) -> str:
-    return next(step.prompt or "" for step in turn.steps if step.name == name)
+    return next(step.prompt for step in turn.steps if step.name == name)
 
 
 async def played(
@@ -168,7 +160,6 @@ async def played(
     state: Game,
     prompt: str,
     *,
-    interpreter: Model | None = None,
     director: Model,
     narrator: Model | None = None,
     expander: Model | None = None,
@@ -181,15 +172,10 @@ async def played(
     answers with a tool call per model request, closed by a final text response."""
     config = config or settings()
     stages = build_turn_agents(engine, config, source)
-    roles = (stages.interpreter, stages.director, stages.narrator)
-    models = (
-        interpreter or FunctionModel(scripted(planned("Nothing here calls for a mechanic."))),
-        director,
-        narrator or FunctionModel(scripted(narrated("You wait."))),
-    )
+    narrator = narrator or FunctionModel(scripted(narrated("You wait.")))
     with ExitStack() as stack:
-        for role, model in zip(roles, models, strict=True):
-            stack.enter_context(role.override(model=model))
+        stack.enter_context(stages.director.override(model=director))
+        stack.enter_context(stages.narrator.override(model=narrator))
         if stages.expander is not None and expander is not None:
             stack.enter_context(stages.expander.override(model=expander))
         return await run_turn(
