@@ -53,7 +53,7 @@ Tests must be deterministic and require no network.
 - Content a user may extend loads from files: user copies merge over shipped ones by name, and an unreadable one is skipped with a log line instead of taking the app down.
 - Only the narrating role writes player-facing prose, and it never sees unrevealed canon: its input type must have no field a leak could travel through.
 - One composition root, built once. Below it collaborators and paths are explicit; no globals.
-- A save names its own origin and its own format version. That version is the only compatibility gate: refuse a stale save rather than converting it.
+- A save names its own origin, and no format version: strict validation is the only compatibility gate. Refuse a stale save rather than converting it.
 
 ## Framework rules
 
@@ -66,6 +66,9 @@ Tests must be deterministic and require no network.
 
 - Test core behavior and integrity boundaries, not exact creative prose, live model quality, or trivial wiring.
 - Stub model calls with `FunctionModel` or an equivalent; never require network access.
+- Evals are manual and noisy. Live eval gates stay suspended; golden fixtures and offline parity
+  tests are the safety net. Only same-hour runs of the same tree are comparable, and nothing
+  below n=9 per case is attributable to a change.
 
 Change this file only for a rule expected to hold across every future phase. A rule that a refactor
 can falsify does not belong here.

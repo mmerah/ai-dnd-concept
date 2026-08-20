@@ -1,6 +1,6 @@
 # Weaknesses and direction
 
-Status of the proof of concept, and where it should go. Kept short on purpose. PLAN.md holds the phased next work, IDEAS.md the loose ends. This file is the standing list of what is weak about the build as it stands.
+Status of the proof of concept, and where it should go. Kept short on purpose. IDEAS.md holds the loose ends. This file is the standing list of what is weak about the build as it stands.
 
 ## Invariants worth preserving
 
@@ -15,6 +15,7 @@ Status of the proof of concept, and where it should go. Kept short on purpose. P
 ### Reliability
 
 - Nothing checks narration against facts. A turn that narrates a consequence the state never recorded commits looking healthy.
+- A hidden entity's `when reached` text is visible to the Director every turn, so it may advance a thread before the player reaches it, guarded only by prose in `director.md`.
 
 ### Canon quality
 
