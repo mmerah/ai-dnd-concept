@@ -1,18 +1,19 @@
 from collections.abc import Callable, Mapping
 
 from pydantic_ai import RunContext
-from pydantic_ai.toolsets import FunctionToolset
+from pydantic_ai.tools import ToolDefinition
+from pydantic_ai.toolsets import AbstractToolset
 
 from aidm.engines import sheets
 from aidm.engines.engine import PlanContext
-from aidm.engines.transact import act, sequential_toolset
+from aidm.engines.transact import act, sequential_toolset, with_enum
 from aidm.state import actions
 from aidm.state.base import PLAYER_ID, EntityId, Slug
 from aidm.state.facts import Fact
 from aidm.state.world import AdvanceThread, Game
 
 
-def core_toolset() -> FunctionToolset[PlanContext]:
+def core_toolset() -> AbstractToolset[PlanContext]:
     def reveal(ctx: RunContext[PlanContext], entity_id: EntityId) -> str:
         """Reveal an entity that exists but the player does not know yet: they notice it, are told
         of it, or reach it.
@@ -116,16 +117,32 @@ def core_toolset() -> FunctionToolset[PlanContext]:
             leave_party,
             complete_chapter,
         ]
-    )
+    ).prepared(_narrow_unlock_targets)
 
 
 def _resolved(ctx: RunContext[PlanContext], apply: Callable[[Game], list[Fact]]) -> str:
     return act(ctx, lambda draft, _rng: tuple(apply(draft)))
 
 
-def _a_locked_way_out(state: Game) -> bool:
+def _unlock_targets(state: Game) -> list[str]:
     here = state.world.require_kind(state.player_location, "location")
-    return any(way.locked for way in here.exits)
+    return sorted(w.to for w in here.exits if w.locked)
+
+
+def _narrow_unlock_targets(
+    ctx: RunContext[PlanContext], tools: list[ToolDefinition]
+) -> list[ToolDefinition]:
+    # This runs before the `possible()` filter drops `unlock_exit`, so with nothing locked the tool
+    # is still here and an enum would be empty: no legal value at all.
+    targets = _unlock_targets(ctx.deps.state)
+    return [
+        with_enum(tool, ("to_id",), targets) if tool.name == "unlock_exit" and targets else tool
+        for tool in tools
+    ]
+
+
+def _a_locked_way_out(state: Game) -> bool:
+    return bool(_unlock_targets(state))
 
 
 def _an_actor_to_recruit(state: Game) -> bool:

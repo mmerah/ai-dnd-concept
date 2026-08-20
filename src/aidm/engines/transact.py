@@ -1,8 +1,9 @@
+import dataclasses
 from collections.abc import Callable, Sequence
 from random import Random
 
 from pydantic_ai import ModelRetry, RunContext
-from pydantic_ai.tools import ToolFuncEither
+from pydantic_ai.tools import ObjectJsonSchema, ToolDefinition, ToolFuncEither
 from pydantic_ai.toolsets import FunctionToolset
 
 from aidm.state.base import EntityId
@@ -59,6 +60,15 @@ def sequential_toolset(
     return FunctionToolset(
         tools=tools, sequential=True, require_parameter_descriptions=True, max_retries=2
     )
+
+
+def with_enum(tool: ToolDefinition, fields: Sequence[str], values: Sequence[str]) -> ToolDefinition:
+    # Copied, never mutated: a prepare function is handed the same definition on every step.
+    properties: dict[str, ObjectJsonSchema] = dict(tool.parameters_json_schema["properties"])
+    for name in fields:
+        properties[name] = {**properties[name], "enum": list(values)}
+    schema = {**tool.parameters_json_schema, "properties": properties}
+    return dataclasses.replace(tool, parameters_json_schema=schema)
 
 
 def _seed_created(

@@ -1,16 +1,15 @@
-import dataclasses
 from random import Random
 from typing import Self
 
 from pydantic import Field, model_validator
 from pydantic_ai import RunContext
-from pydantic_ai.tools import ObjectJsonSchema, ToolDefinition
+from pydantic_ai.tools import ToolDefinition
 from pydantic_ai.toolsets import AbstractToolset
 
 from aidm.engines.counters import adjust, spend
 from aidm.engines.engine import PlanContext
 from aidm.engines.sheets import require_sheet
-from aidm.engines.transact import act, sequential_toolset
+from aidm.engines.transact import act, sequential_toolset, with_enum
 from aidm.state.actions import require_actor_here, reveal
 from aidm.state.base import Entity, EntityId, Frozen, Slug
 from aidm.state.dice import roll_pool
@@ -127,17 +126,11 @@ def _narrow_to_skills_in_play(
 ) -> list[ToolDefinition]:
     skills = _skills_in_play(ctx.deps.state)
     return [
-        _with_skill_enum(tool, skills) if tool.name == "roll_attempt" else tool for tool in tools
+        with_enum(tool, ("skill", "helper_skill"), ["", *sorted(skills)])
+        if tool.name == "roll_attempt"
+        else tool
+        for tool in tools
     ]
-
-
-def _with_skill_enum(tool: ToolDefinition, skills: set[str]) -> ToolDefinition:
-    # Copied, never mutated: a prepare function is handed the same definition on every step.
-    properties: dict[str, ObjectJsonSchema] = dict(tool.parameters_json_schema["properties"])
-    for name in ("skill", "helper_skill"):
-        properties[name] = {**properties[name], "enum": ["", *sorted(skills)]}
-    schema = {**tool.parameters_json_schema, "properties": properties}
-    return dataclasses.replace(tool, parameters_json_schema=schema)
 
 
 def apply_change_credits(draft: Game, actor_id: EntityId, amount: int) -> list[Fact]:
