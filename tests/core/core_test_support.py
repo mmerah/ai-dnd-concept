@@ -75,14 +75,15 @@ def scenario() -> Scenario:
 
 
 def character() -> Character:
-    return load_character(CHARACTERS, "kael", build_engine(LONER3E).binding())
+    engine = build_engine(LONER3E)
+    return load_character(CHARACTERS, "kael", engine.id, engine.check_overlay)
 
 
 def game(engine_id: EngineId) -> tuple[Engine[SheetBase], Game]:
     """The shipped scenario and character, composed under one engine."""
     engine = build_engine(engine_id)
     selected_scenario = load_scenario(SCENARIOS, "whispering-vault")
-    selected_character = load_character(CHARACTERS, "kael", engine.binding())
+    selected_character = load_character(CHARACTERS, "kael", engine.id, engine.check_overlay)
     return engine, begin_game(engine, "whispering-vault", selected_scenario, selected_character)
 
 

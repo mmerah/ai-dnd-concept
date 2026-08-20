@@ -1,5 +1,4 @@
-from collections.abc import Callable, Collection, Iterable, Mapping, Sequence
-from dataclasses import dataclass
+from collections.abc import Sequence
 from typing import Self
 
 from pydantic import Field, JsonValue, model_validator
@@ -9,18 +8,11 @@ from aidm.state.base import PLAYER_ID, EngineId, Entity, EntityId, Frozen, Slug,
 from aidm.state.world import ScenarioMeta, WorldState
 
 
-@dataclass(frozen=True, slots=True)
-class EngineBinding:
-    """What loading content needs from an engine, so `content` never imports one."""
-
-    engine: EngineId
-    check_overlay: Callable[[Iterable[dict[str, JsonValue]]], None]
-
-
 class Scenario(Frozen):
-    """`world.json`: the starting state, authored once for every ruleset."""
+    """`world.json`: the starting state, authored once for the rulesets it names."""
 
     meta: ScenarioMeta
+    engines: tuple[EngineId, ...] = Field(min_length=1)
     expansion: ExpansionPolicy = "closed"
     art_style: str = ""
     starting_location_id: EntityId
@@ -100,7 +92,6 @@ class CharacterProfile(Frozen):
 
 class CharacterOverlay(Frozen):
     character: dict[str, JsonValue]
-    entities: dict[EntityId, dict[str, JsonValue]] = Field(default_factory=dict)
 
 
 class CreatedCharacter(Frozen):
@@ -112,7 +103,6 @@ class CreatedCharacter(Frozen):
 
 class Character(Frozen):
     id: Slug
-    engine: EngineId
     profile: CharacterProfile
     overlay: CharacterOverlay
 
@@ -123,21 +113,3 @@ class Character(Frozen):
     @property
     def brief(self) -> str:
         return self.profile.brief
-
-    @model_validator(mode="after")
-    def _overlay_fits_the_character(self) -> Self:
-        _require_authored(
-            self.engine, self.overlay.entities, {item.id for item in self.profile.items}
-        )
-        return self
-
-
-def _require_authored(
-    engine: EngineId,
-    overlay: Mapping[EntityId, dict[str, JsonValue]],
-    authored: Collection[EntityId],
-) -> None:
-    """An overlay keys off the authored ids, so a typo must fail at load, not go unread."""
-    unknown = sorted(entity_id for entity_id in overlay if entity_id not in authored)
-    if unknown:
-        raise ValueError(f"the {engine!r} overlay names unauthored ids: {unknown}")

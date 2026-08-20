@@ -4,7 +4,7 @@ from pydantic import Field
 
 from aidm.content.authored import Scenario
 from aidm.content.sources import ExpansionPolicy
-from aidm.state.base import Entity, EntityId, Frozen, Mutable
+from aidm.state.base import EngineId, Entity, EntityId, Frozen, Mutable
 from aidm.state.world import ScenarioMeta, Thread, WorldState
 
 
@@ -111,11 +111,9 @@ class WorldDraft(Mutable):
         )
 
     def as_json(self) -> str:
-        """The draft as its author reads it back; `expansion` is the app's own policy, not canon
-        they write."""
         return self.model_dump_json(indent=2, exclude={"expansion"})
 
-    def scenario(self) -> Scenario:
+    def scenario(self, engines: tuple[EngineId, ...]) -> Scenario:
         if self.meta is None:
             raise ValueError("the draft has no `meta` yet: write a title and premise first")
         if self.starting_location_id is None:
@@ -123,6 +121,7 @@ class WorldDraft(Mutable):
         return Scenario(
             meta=self.meta,
             expansion=self.expansion,
+            engines=engines,
             art_style=self.art_style,
             starting_location_id=self.starting_location_id,
             world=WorldState(

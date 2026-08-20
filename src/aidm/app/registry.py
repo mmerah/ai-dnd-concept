@@ -50,17 +50,13 @@ def begin_game(
         if world.find(entity.id) is not None:
             raise ValueError(f"authored entity id {entity.id!r} appears twice")
         world.entities.append(entity)
-    rules = {
-        **character.overlay.entities,
-        PLAYER_ID: character.overlay.character,
-    }
     state = Game(
         scenario_id=scenario_id,
         character_id=character.id,
         scenario=scenario.meta,
         engine=engine.id,
         world=world,
-        mechanics=engine.opening_mechanics(world, rules),
+        mechanics=engine.opening_mechanics(world, character.overlay.character),
     )
     engine.validate(state)
     # The world was composed here by hand, so the commit is the only thing that validates it.

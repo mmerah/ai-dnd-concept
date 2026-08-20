@@ -1,5 +1,5 @@
 from abc import ABC, abstractmethod
-from collections.abc import Callable, Iterable, Mapping
+from collections.abc import Callable
 from dataclasses import dataclass, field
 from pathlib import Path
 from random import Random
@@ -8,9 +8,9 @@ from typing import ClassVar
 from pydantic import JsonValue
 from pydantic_ai.toolsets import AbstractToolset
 
-from aidm.content.authored import CreatedCharacter, EngineBinding
+from aidm.content.authored import CreatedCharacter
 from aidm.content.store import SavedGame, engine_text
-from aidm.state.base import EngineId, Entity, EntityId
+from aidm.state.base import EngineId, Entity
 from aidm.state.creation import AnyStep, Picks
 from aidm.state.facts import Fact
 from aidm.state.trace import StepTrace
@@ -73,17 +73,13 @@ class Engine[S: SheetBase](ABC):
         # An engine that creates characters replaces this; the app offers only what it finds.
         self.creation: CharacterCreation | None = None
 
-    def check_overlay(self, payloads: Iterable[dict[str, JsonValue]]) -> None:
-        for rules in payloads:
-            _ = self.sheet_type.model_validate(rules)
-
-    def binding(self) -> EngineBinding:
-        return EngineBinding(engine=self.id, check_overlay=self.check_overlay)
+    def check_overlay(self, rules: dict[str, JsonValue]) -> None:
+        _ = self.sheet_type.model_validate(rules)
 
     def opening_mechanics(
-        self, world: WorldState, rules: Mapping[EntityId, dict[str, JsonValue]]
+        self, world: WorldState, player_rules: dict[str, JsonValue]
     ) -> SheetMechanics[S]:
-        return self.mechanics_type(sheets=actor_sheets(world, rules, self.sheet_type, self.id))
+        return self.mechanics_type(sheets=actor_sheets(world, player_rules, self.sheet_type))
 
     def restored(self, saved: SavedGame) -> Game:
         return saved.game(self.mechanics_type.model_validate(saved.mechanics))

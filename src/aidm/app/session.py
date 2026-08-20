@@ -287,7 +287,9 @@ class Runtime:
         config = self.config
         engine = self.engine(target.engine)
         scenario = load_scenario(config.scenarios_dir, target.scenario_id)
-        character = load_character(config.characters_dir, target.character_id, engine.binding())
+        character = load_character(
+            config.characters_dir, target.character_id, engine.id, engine.check_overlay
+        )
         store = FileStore(config.saves_dir)
         return GameSession(
             target=target,

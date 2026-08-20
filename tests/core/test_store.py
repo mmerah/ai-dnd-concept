@@ -6,7 +6,7 @@ import pytest
 from core_test_support import LONER3E, initialized, scenario
 from pydantic import ValidationError
 
-from aidm.app.registry import build_engine
+from aidm.app.registry import build_engine, engine_ids
 from aidm.content.store import (
     ENCODING,
     FileStore,
@@ -49,11 +49,11 @@ def test_storage_rejects_unsafe_slugs(tmp_path: Path, slug: str) -> None:
 
 def test_content_paths_reject_an_unsafe_id(tmp_path: Path) -> None:
     """A game route supplies these ids, and each one names a directory."""
-    binding = build_engine(LONER3E).binding()
+    engine = build_engine(LONER3E)
     with pytest.raises(ValueError, match="invalid content id"):
         load_scenario(tmp_path, "../escape")
     with pytest.raises(ValueError, match="invalid content id"):
-        load_character(tmp_path, "kael/../..", binding)
+        load_character(tmp_path, "kael/../..", engine.id, engine.check_overlay)
 
 
 def test_write_scenario_round_trips_and_refuses_a_duplicate(tmp_path: Path) -> None:
@@ -74,4 +74,4 @@ def test_read_scenarios_skips_a_world_that_fails_to_validate(tmp_path: Path) -> 
     broken.mkdir()
     (broken / "world.json").write_text(json.dumps({"meta": {}}), encoding=ENCODING)
 
-    assert [slug for slug, _ in read_scenarios(tmp_path)] == ["good"]
+    assert [slug for slug, _, _ in read_scenarios(tmp_path, engine_ids())] == ["good"]

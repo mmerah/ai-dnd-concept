@@ -7,6 +7,7 @@ from pydantic_ai.models.function import FunctionModel
 from aidm.app.authoring.draft import ScenarioPatch, WorldDraft
 from aidm.app.authoring.playability import OPENING, playability, playtests
 from aidm.app.authoring.session import AuthoringSession
+from aidm.app.registry import engine_ids
 from aidm.content.store import load_scenario
 from aidm.state.base import Entity, EntityId, Exit
 from aidm.state.world import ScenarioMeta, Thread
@@ -14,7 +15,7 @@ from aidm.state.world import ScenarioMeta, Thread
 
 async def test_the_shipped_scenario_passes_every_engine() -> None:
     shipped = load_scenario(SCENARIOS, "whispering-vault")
-    for playtest in playtests(settings()):
+    for playtest in playtests(settings(), engine_ids()):
         playtest.check(shipped)
 
 
@@ -32,7 +33,7 @@ def test_a_world_colliding_with_the_character_is_refused() -> None:
     colliding = updated(
         shipped, world=updated(shipped.world, entities=(*shipped.world.entities, extra))
     )
-    for playtest in playtests(settings()):
+    for playtest in playtests(settings(), engine_ids()):
         with pytest.raises(ValueError, match="appears twice"):
             playtest.check(colliding)
 
@@ -78,7 +79,7 @@ def test_write_upserts_elements_by_id() -> None:
 def test_a_patched_art_style_reaches_the_scenario() -> None:
     draft = WorldDraft()
     _ = draft.apply(ScenarioPatch.model_validate(_as_patch() | {"art_style": "ink-wash noir"}))
-    assert draft.scenario().art_style == "ink-wash noir"
+    assert draft.scenario(engine_ids()).art_style == "ink-wash noir"
 
 
 def test_remove_drops_by_id_and_refuses_an_unknown_one() -> None:
@@ -91,7 +92,8 @@ def test_remove_drops_by_id_and_refuses_an_unknown_one() -> None:
 
 
 def test_validation_names_what_the_draft_is_missing() -> None:
-    empty = playability(WorldDraft(), ())
+    playing = playtests(settings(), engine_ids())
+    empty = playability(WorldDraft(), playing)
     assert empty is not None and "meta" in empty
 
     draft = WorldDraft()
@@ -102,7 +104,7 @@ def test_validation_names_what_the_draft_is_missing() -> None:
             entities=(_location("cell"),),
         )
     )
-    dangling = playability(draft, ())
+    dangling = playability(draft, playing)
     assert dangling is not None and "nowhere" in dangling
 
 
@@ -110,13 +112,13 @@ def test_the_shipped_world_written_as_one_patch_is_playable() -> None:
     draft = WorldDraft()
     patch = ScenarioPatch.model_validate(_as_patch())
     _ = draft.apply(patch)
-    assert playability(draft, playtests(settings())) is None
+    assert playability(draft, playtests(settings(), engine_ids())) is None
 
 
 async def test_the_agent_authors_through_the_write_tool() -> None:
     config = settings()
     session = AuthoringSession(
-        slug="authored", premise="a vault", config=config, expansion="closed"
+        slug="authored", premise="a vault", config=config, expansion="closed", engines=engine_ids()
     )
     author = scripted(
         ModelResponse(parts=[ToolCallPart(tool_name="write", args={"patch": _as_patch()})]),
@@ -124,7 +126,7 @@ async def test_the_agent_authors_through_the_write_tool() -> None:
     )
     with session.agent.override(model=FunctionModel(author)):
         _ = await session.send(session.opening_prompt)
-    assert session.draft.scenario().meta.title == scenario().meta.title
+    assert session.draft.scenario(engine_ids()).meta.title == scenario().meta.title
 
 
 async def test_finishing_an_unplayable_draft_is_refused_and_asked_again() -> None:
@@ -132,7 +134,7 @@ async def test_finishing_an_unplayable_draft_is_refused_and_asked_again() -> Non
     author is asked again in the same run. Post-run revalidation lives in `write()`, not here."""
     config = settings()
     session = AuthoringSession(
-        slug="authored", premise="a vault", config=config, expansion="closed"
+        slug="authored", premise="a vault", config=config, expansion="closed", engines=engine_ids()
     )
     author = scripted(
         _finish("all done, and it is great"),
@@ -141,13 +143,13 @@ async def test_finishing_an_unplayable_draft_is_refused_and_asked_again() -> Non
     )
     with session.agent.override(model=FunctionModel(author)):
         _ = await session.send(session.opening_prompt)
-    assert session.draft.scenario().meta.title == scenario().meta.title
+    assert session.draft.scenario(engine_ids()).meta.title == scenario().meta.title
 
 
 async def test_a_session_goes_on_authoring_after_it_finishes() -> None:
     config = settings()
     session = AuthoringSession(
-        slug="authored", premise="a vault", config=config, expansion="closed"
+        slug="authored", premise="a vault", config=config, expansion="closed", engines=engine_ids()
     )
     study = next(entity for entity in scenario().world.entities if entity.id == EntityId("study"))
     addition = ScenarioPatch(
@@ -177,7 +179,11 @@ async def test_a_session_goes_on_authoring_after_it_finishes() -> None:
 
 async def test_an_unplayable_draft_is_never_written() -> None:
     session = AuthoringSession(
-        slug="authored", premise="a vault", config=settings(), expansion="closed"
+        slug="authored",
+        premise="a vault",
+        config=settings(),
+        expansion="closed",
+        engines=engine_ids(),
     )
     with pytest.raises(ValueError, match="does not play"):
         _ = await session.write()
@@ -192,7 +198,7 @@ def test_a_thin_draft_hears_every_unmet_bar_item_at_once() -> None:
             entities=(_location("cell"),),
         )
     )
-    reason = playability(draft, ())
+    reason = playability(draft, playtests(settings(), engine_ids()))
     assert reason is not None
     for wanted in ("locations", "locked", "actors", "item", "thread", "when_reached"):
         assert wanted in reason
@@ -226,8 +232,8 @@ def test_an_opening_slice_passes_a_bar_the_whole_scenario_would_fail() -> None:
             threads=(Thread(id="the-way-out", title="The way out", stage="barred"),),
         )
     )
-    playing = playtests(settings())
+    playing = playtests(settings(), engine_ids())
 
     assert playability(draft, playing, OPENING) is None
     assert playability(draft, playing) is not None
-    assert draft.scenario().expansion == "open"
+    assert draft.scenario(engine_ids()).expansion == "open"

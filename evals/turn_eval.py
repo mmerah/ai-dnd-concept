@@ -76,7 +76,9 @@ class Report(Frozen):
 def begin(engine_id: EngineId, settings: Settings) -> tuple[Engine[SheetBase], Game]:
     engine = build_engine(engine_id)
     scenario = load_scenario(ROOT / settings.scenarios_dir, SCENARIO_ID)
-    character = load_character(ROOT / settings.characters_dir, CHARACTER_ID, engine.binding())
+    character = load_character(
+        ROOT / settings.characters_dir, CHARACTER_ID, engine.id, engine.check_overlay
+    )
     return engine, begin_game(engine, SCENARIO_ID, scenario, character)
 
 

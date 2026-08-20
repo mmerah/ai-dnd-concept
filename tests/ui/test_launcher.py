@@ -1,7 +1,9 @@
+import json
 import shutil
 from pathlib import Path
 
 from core_test_support import LONER3E, updated
+from pydantic import JsonValue
 from ui_test_support import SCENARIOS, ui_settings
 
 from aidm.app.launcher import LauncherController, LaunchTarget, load_catalog
@@ -28,6 +30,15 @@ def _scenarios_copy(tmp_path: Path) -> Path:
     assertion that counts them moves every time somebody authors one."""
     scenarios = tmp_path / "scenarios"
     shutil.copytree(SCENARIOS / "whispering-vault", scenarios / "whispering-vault")
+    return scenarios
+
+
+def _declaring(tmp_path: Path, *engines: str) -> Path:
+    scenarios = _scenarios_copy(tmp_path)
+    world = scenarios / "whispering-vault" / "world.json"
+    canon: dict[str, JsonValue] = json.loads(world.read_text(encoding=ENCODING))
+    canon["engines"] = list(engines)
+    _ = world.write_text(json.dumps(canon), encoding=ENCODING)
     return scenarios
 
 
@@ -65,6 +76,18 @@ def test_a_directory_holding_no_canon_is_skipped(tmp_path: Path) -> None:
     controller.choose_scenario("aaa-draft")
     assert controller.available_engines() == ("loner3e", "twentyfourxx")
     assert controller.selected_engine == "loner3e"
+
+
+def test_a_scenario_offers_only_the_rules_it_names(tmp_path: Path) -> None:
+    catalog = load_catalog(ui_settings(tmp_path, _declaring(tmp_path, "loner3e")))
+
+    assert catalog.scenario("whispering-vault").engines == ("loner3e",)
+
+
+def test_a_scenario_naming_an_uninstalled_engine_is_skipped(tmp_path: Path) -> None:
+    catalog = load_catalog(ui_settings(tmp_path, _declaring(tmp_path, "cairn2e")))
+
+    assert not catalog.scenarios
 
 
 def test_launcher_lists_and_resolves_an_existing_save(tmp_path: Path) -> None:

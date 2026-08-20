@@ -21,7 +21,6 @@ from aidm.state.base import PLAYER_ID, Entity, EntityId
 from aidm.state.world import Game
 
 HELD = EntityId("frayed_rope")
-UNHELD = EntityId("silk_rope")
 MARA = EntityId("mara")
 ELENA = EntityId("elena")
 TOMAS = EntityId("tomas")
@@ -30,21 +29,21 @@ _DOUBLED = json.dumps(
     {
         "meta": {"title": "Twice Over", "premise": "One id, authored twice."},
         "starting_location_id": "hall",
+        "engines": ["loner3e"],
         "world": {"entities": [_HALL, {**_HALL, "name": "the hall again"}]},
     }
 )
 
 
-def _character(*, holds: Entity, gear_for: EntityId) -> Character:
+def _character(*, holds: Entity) -> Character:
     return Character(
         id="test-character",
-        engine=LONER3E,
         profile=CharacterProfile(
             name="Test Character",
             brief="A character built only for this test.",
             items=(holds,),
         ),
-        overlay=CharacterOverlay(character={}, entities={gear_for: {}}),
+        overlay=CharacterOverlay(character={}),
     )
 
 
@@ -83,8 +82,9 @@ def test_an_engine_refuses_an_authored_payload_it_cannot_read(tmp_path: Path) ->
     _ = (folder / "base.json").write_text('{"name": "Broken", "brief": "Built for this test."}')
     _ = (folder / f"{LONER3E}.json").write_text('{"character": {"gear": null}}')
 
+    engine = build_engine(LONER3E)
     with pytest.raises(ValidationError, match="gear"):
-        _ = load_character(tmp_path, "broken", build_engine(LONER3E).binding())
+        _ = load_character(tmp_path, "broken", engine.id, engine.check_overlay)
 
 
 def test_scenario_topology_is_validated() -> None:
@@ -140,16 +140,10 @@ def test_a_scenario_starts_the_party_it_authors() -> None:
         updated(authored, world=updated(authored.world, party=[TOMAS]))
 
 
-def test_an_overlay_may_not_name_an_entity_the_author_never_wrote() -> None:
-    """An overlay keys off authored ids, so a typo must fail at load, not go silently unread."""
-    with pytest.raises(ValidationError, match="unauthored ids"):
-        _character(holds=_rope(HELD), gear_for=UNHELD)
-
-
 def test_a_character_knows_the_gear_they_start_with() -> None:
     """Unknown carried gear would be hidden canon inside the inventory the Narrator is shown."""
     with pytest.raises(ValidationError, match="knows the gear they start with"):
-        _character(holds=_rope(HELD, known=False), gear_for=HELD)
+        _character(holds=_rope(HELD, known=False))
 
 
 def _luck(state: Game) -> int:

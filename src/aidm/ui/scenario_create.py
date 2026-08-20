@@ -8,9 +8,10 @@ from nicegui.events import UploadEventArguments
 from aidm.app.authoring.playability import FULL, OPENING
 from aidm.app.authoring.session import AuthoringSession
 from aidm.app.media import STYLE
+from aidm.app.registry import engine_ids
 from aidm.config import Settings
 from aidm.content.sources import ExpansionPolicy
-from aidm.state.base import content_id
+from aidm.state.base import EngineId, content_id
 
 from .busy import refuse_if_busy, working
 from .panels import page_header
@@ -61,6 +62,16 @@ def scenario_page(config: Settings) -> None:
                 .classes("w-full")
                 .props("outlined")
             )
+            engines = (
+                ui.select(
+                    options=list(engine_ids()),
+                    value=list(engine_ids()),
+                    multiple=True,
+                    label="Rules it plays under",
+                )
+                .classes("w-full")
+                .props("outlined")
+            )
             brief = (
                 ui.select(options=_BRIEF_LABELS, label="How much to author", value="full")
                 .classes("w-full")
@@ -92,6 +103,7 @@ def scenario_page(config: Settings) -> None:
                         premise=(premise.value or "").strip(),
                         config=config,
                         expansion=_policy(expansion.value),
+                        engines=_engines(engines.value),
                         art_style=(art_style.value or "").strip(),
                         document=document,
                         brief=FULL if brief.value == "full" else OPENING,
@@ -106,7 +118,16 @@ def scenario_page(config: Settings) -> None:
                     session.expansion,
                     document is not None,
                 )
-                for widget in (slug, premise, upload, expansion, brief, art_style, author_button):
+                for widget in (
+                    slug,
+                    premise,
+                    upload,
+                    expansion,
+                    engines,
+                    brief,
+                    art_style,
+                    author_button,
+                ):
                     widget.disable()
                 readback.refresh()
                 async with working(session):
@@ -187,3 +208,14 @@ def _policy(value: object) -> ExpansionPolicy:
     if not isinstance(value, str) or value not in _EXPANSION_LABELS:
         raise ValueError(f"{value!r} is not one of the expansion policies")
     return value
+
+
+def _engines(value: object) -> tuple[EngineId, ...]:
+    chosen = (
+        tuple(engine for engine in engine_ids() if engine in value)
+        if isinstance(value, list)
+        else ()
+    )
+    if not chosen:
+        raise ValueError("choose at least one ruleset")
+    return chosen

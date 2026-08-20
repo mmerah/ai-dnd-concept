@@ -7,7 +7,7 @@ from pydantic_ai.messages import ModelMessage
 from aidm.config import Settings
 from aidm.content.sources import ExpansionPolicy, whole_text
 from aidm.content.store import write_scenario
-from aidm.state.base import Slug
+from aidm.state.base import EngineId, Slug
 
 from .agents import REQUEST_LIMIT, summarize, world_agent, world_prompt
 from .draft import WorldDraft
@@ -22,6 +22,7 @@ class AuthoringSession:
     premise: str
     config: Settings
     expansion: ExpansionPolicy
+    engines: tuple[EngineId, ...]
     art_style: str = ""
     document: Path | None = None
     brief: Brief = FULL
@@ -37,7 +38,7 @@ class AuthoringSession:
             raise ValueError("give a premise, a document, or both: there is nothing to author from")
         if (self.config.scenarios_dir / self.slug).exists():
             raise ValueError(f"scenario {self.slug!r} already exists")
-        self.playing = playtests(self.config)
+        self.playing = playtests(self.config, self.engines)
         self.agent = world_agent(self.playing, self.config, self.brief)
         self.draft = WorldDraft(expansion=self.expansion)
         given = self.premise if self.document is None else whole_text(self.document)
@@ -63,7 +64,7 @@ class AuthoringSession:
             raise ValueError(f"the draft does not play: {reason}")
         # The form's style overrides whatever the author wrote from the source's own tone.
         self.draft.art_style = self.art_style or self.draft.art_style
-        scenario = self.draft.scenario()
+        scenario = self.draft.scenario(self.engines)
         write_scenario(
             self.config.scenarios_dir, self.slug, scenario, self.document or self.premise
         )

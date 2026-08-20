@@ -1,5 +1,5 @@
 import logging
-from collections.abc import Iterator, Sequence
+from collections.abc import Callable, Iterator, Sequence
 from dataclasses import dataclass
 from pathlib import Path
 from re import fullmatch
@@ -17,7 +17,6 @@ from .authored import (
     CharacterOverlay,
     CharacterProfile,
     CreatedCharacter,
-    EngineBinding,
     Scenario,
 )
 
@@ -31,16 +30,23 @@ _SAVE_SLUG_PATTERN = r"[a-z0-9][a-z0-9_-]*"
 LOGGER = logging.getLogger(__name__)
 
 
-def read_scenarios(directory: Path) -> Iterator[tuple[Slug, Scenario]]:
+def read_scenarios(
+    directory: Path, engines: Sequence[EngineId]
+) -> Iterator[tuple[Slug, Scenario, tuple[EngineId, ...]]]:
     for path in _content_dirs(directory, WORLD_FILE):
         try:
-            found = content_id(path.name), _read(path / WORLD_FILE, Scenario)
+            scenario = _read(path / WORLD_FILE, Scenario)
         except ValueError as unreadable:
             # The home screen is the only way into the app: one half-written scenario must not
             # take it down.
             LOGGER.warning("skipping scenario %r: %s", path.name, unreadable)
             continue
-        yield found
+        # Installed order, so a scenario naming an engine twice cannot offer it twice.
+        playable = tuple(engine for engine in engines if engine in scenario.engines)
+        if not playable:
+            LOGGER.warning("skipping scenario %r: it names no installed engine", path.name)
+            continue
+        yield content_id(path.name), scenario, playable
 
 
 def read_characters(
@@ -67,15 +73,19 @@ def source_file(directory: Path, name: Slug) -> Path | None:
     return next((path for path in paths if path.is_file()), None)
 
 
-def load_character(directory: Path, name: Slug, binding: EngineBinding) -> Character:
+def load_character(
+    directory: Path,
+    name: Slug,
+    engine: EngineId,
+    check_overlay: Callable[[dict[str, JsonValue]], None],
+) -> Character:
     folder = directory / content_id(name)
     character = Character(
         id=name,
-        engine=binding.engine,
         profile=_read(folder / PROFILE_FILE, CharacterProfile),
-        overlay=_read(folder / f"{binding.engine}.json", CharacterOverlay),
+        overlay=_read(folder / f"{engine}.json", CharacterOverlay),
     )
-    binding.check_overlay((character.overlay.character, *character.overlay.entities.values()))
+    check_overlay(character.overlay.character)
     return character
 
 

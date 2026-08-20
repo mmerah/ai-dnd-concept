@@ -30,20 +30,12 @@ class SheetMechanics[S: SheetBase](Mutable):
 
 
 def actor_sheets[S: Mutable](
-    world: WorldState,
-    rules: Mapping[EntityId, dict[str, JsonValue]],
-    sheet: type[S],
-    engine: EngineId,
+    world: WorldState, player_rules: dict[str, JsonValue], sheet: type[S]
 ) -> dict[EntityId, S]:
-    sheets: dict[EntityId, S] = {}
-    for entity in world.entities:
-        authored = rules.get(entity.id)
-        if entity.kind != "actor":
-            if authored:
-                raise ValueError(f"{engine} writes mechanics for actors only, not {entity.id!r}")
-            continue
-        sheets[entity.id] = sheet.model_validate(authored or {})
-    return sheets
+    return {
+        entity.id: sheet.model_validate(player_rules if entity.id == PLAYER_ID else {})
+        for entity in world.of_kind("actor")
+    }
 
 
 def check_sheets(world: WorldState, sheets: Mapping[EntityId, object], engine: EngineId) -> None:

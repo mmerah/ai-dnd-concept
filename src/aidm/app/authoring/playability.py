@@ -2,12 +2,13 @@ from collections.abc import Callable, Sequence
 from dataclasses import dataclass
 from pathlib import Path
 
-from aidm.app.registry import begin_game, build_engine, engine_ids
+from aidm.app.registry import begin_game, build_engine
 from aidm.config import Settings
 from aidm.content.authored import Character, Scenario
 from aidm.content.store import engine_text, load_character
 from aidm.engines.engine import Engine
 from aidm.engines.sheets import SheetBase
+from aidm.state.base import EngineId
 
 from .draft import WorldDraft
 
@@ -32,11 +33,11 @@ class Playtest:
         _ = begin_game(self.engine, "draft", scenario, self.character)
 
 
-def playtests(config: Settings) -> tuple[Playtest, ...]:
+def playtests(config: Settings, engines: Sequence[EngineId]) -> tuple[Playtest, ...]:
     built: list[Playtest] = []
-    for engine_id in engine_ids():
+    for engine_id in engines:
         engine = build_engine(engine_id)
-        character = load_character(config.characters_dir, STARTER, engine.binding())
+        character = load_character(config.characters_dir, STARTER, engine.id, engine.check_overlay)
         built.append(Playtest(engine=engine, character=character))
     return tuple(built)
 
@@ -104,7 +105,7 @@ OPENING = Brief(_instructions("scenario_opening.md"), _opening_unmet)
 def playability(draft: WorldDraft, playing: Sequence[Playtest], brief: Brief = FULL) -> str | None:
     """The exact reason the draft will not play, or None; ValidationError counts as ValueError."""
     try:
-        scenario = draft.scenario()
+        scenario = draft.scenario(tuple(playtest.engine.id for playtest in playing))
         for playtest in playing:
             playtest.check(scenario)
     except ValueError as refused:
