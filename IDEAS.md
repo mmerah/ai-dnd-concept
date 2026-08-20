@@ -1,5 +1,6 @@
 ## Loose ends
 
+- [] Tool calling / Structured output: Quick question: what would be better? question -> call tool change game state but then the context is still in the first message and contain outdated stuff? Do we need to track what changes in-context and return that as tool output?
 - [] Eval coverage: evaluate what pipeline does for different scenarios. Expected VS what happens. Light eval runs, re-use the codebase src because that's what we evaluate. In scripts
 - [] Worldkeeper: wanted to add memory to player but said "we have no id". Makes no sense to add memory to player though? Or is that journal feature?
 - [] Codex: Comment simplification round
