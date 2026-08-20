@@ -188,3 +188,183 @@ Done when: both engine directories hold six modules and the golden tool schemas 
   against `step-11-baseline`. A drop of one case at n=9 is noise; a drop across cases is not.
 - `uv run aidm`: start a game, play three turns, resume it. Steps 2 and 5 both touch what a resume
   reads.
+
+## Phase 2 — the locked cuts
+
+Four decided deletions. Everything here removes plumbing that serves the developer or acts over
+the model's head; nothing that helps a weak model perform is touched. Saves are disposable until
+release-point, so no step bumps a save version — step 1 deletes the concept (the version alone:
+`SaveShell` and the byte-golden fixtures stay, they cost nothing recurring and catch drift).
+Order matters: step 1 first, and within step 2 the scenario JSON converts in the same commit as
+the code — a removed field refuses the old files at load.
+
+### Step 1 — save versioning leaves
+
+Strict validation is the compatibility gate. A stale save now fails at resume (`SavedGame`'s
+`extra="forbid"` refuses its `save_version` key) rather than at listing — acceptable until
+release-point.
+
+- `src/aidm/state/base.py`: delete `SAVE_VERSION`.
+- `src/aidm/content/store.py`: `SavedGame` and `SaveShell` each lose their `save_version` field;
+  `FileStore.shell` loses the version check. `SaveShell` itself stays: the launcher's cheap
+  listing and tolerant partial read are worth its ten lines.
+- `tests/core/test_golden_state.py`: delete `FIXTURE_SAVE_VERSION` and
+  `test_the_save_version_the_fixtures_were_cut_at_has_not_moved`; keep the serialization golden
+  and both fixture families — they are the reviewed diff when step 2 moves persisted bytes.
+- `tests/core/test_store.py`: delete `test_a_save_from_another_build_is_refused`; drop
+  `| {"save_version"}` from the field-parity test.
+- `tests/ui/test_launcher.py`: delete the wrong-version save test and the `SAVE_VERSION` import;
+  fold its `controller.new_game().slug == slug` assertion into
+  `test_one_corrupt_save_does_not_hide_the_others_and_stays_readable`.
+- Regenerate `state/` and `save/` fixtures: exactly one `save_version` line vanishes from each.
+- This file, working rule 1: delete from "Any phase that changes persisted bytes" through "the
+  suite catches you"; add "A save names no version: a stale save fails validation and is refused,
+  never converted."
+
+Done when: `grep -rn "SAVE_VERSION\|save_version" src tests` returns nothing.
+
+### Step 2 — hooks leave; consequences become authored text
+
+The hook subsystem fires deterministically on discovery, which times narrative beats wrong
+(IDEAS.md). The consequence moves into `detail.hook` on the triggering entity, and the Director
+now reads `detail` for every entity it is shown — hidden, present, elsewhere, and carried — so a
+consequence stays visible until acted on, not for one turn. The Narrator stays blind by
+construction: `VisibleScene` strips `detail` (`_undetailed`). Threads and clocks are untouched.
+
+- Convert scenario JSON in this same commit. For each hook: append its `note` — plus "then reveal
+  <ids>" for `reveals` and "advance thread <thread_id> to <stage>/<status>" for `advance_thread` —
+  to the `detail.hook` of the `on_discover` entity, then delete the `hooks` array.
+  `EntityDetail.description` is required: when creating a `detail`, write a one-line description
+  too. Example, drowned-road `key-discovered` → `bronze_key.detail.hook`: "The bronze key removes
+  the lock on the crypt entrance: reveal that way and unlock it once Kael works this out." Do both
+  `scenarios/*/world.json`.
+- Delete `src/aidm/state/hooks.py`.
+- `src/aidm/state/world.py`: delete `Hook`, `WorldState.hooks`, `WorldState.fired_hooks`,
+  `WorldState.hook()`, and the hook lines in `_consistent_fiction`. `AdvanceThread` stays.
+- `src/aidm/engines/transact.py`: drop the `fire_hooks` import and call (`landed = resolution`);
+  `apply_to_draft`'s docstring drops "hooks and".
+- `src/aidm/content/authored.py`: delete `ScenarioWorld.hooks`, `_hooks_name_authored_ids`, the
+  hooks line in the `world` property, and the `Hook` import.
+- `src/aidm/turn/expansion.py`: delete `ExpansionPatch.hooks`, `_authored`, the hook lines in
+  `apply_patch` and `written`, and the `Hook` import.
+- `src/aidm/turn/pipeline.py`: drop `"hooks"` from `TURN_STEPS`; delete the `announce("hooks")`
+  block and its `StepTrace`.
+- `src/aidm/turn/prompts.py`: pass `detail=True` in `_direction_sections`' hidden `_entities`
+  call and in `_scene_sections`' two `_entities` calls, and render `_detail(item)` on inventory
+  lines in `_character` (a carried item's hook must not vanish). Safe for the Narrator: its
+  entities carry `detail=None`.
+- `src/aidm/app/authoring/draft.py`: drop hooks from `ScenarioPatch`, `WorldDraft`, `apply`, and
+  `_remove`; narrow the three generic bounds to `[T: Entity | Thread]` and drop the `Hook` import.
+- `src/aidm/app/authoring/agents.py`: drop the hooks count in `summarize`.
+- `src/aidm/app/authoring/playability.py` `_bar_unmet`: replace the hook item with "at least one
+  unknown entity whose `detail.hook` carries a consequence" (check
+  `entity.detail is not None and entity.detail.hook and not entity.known`).
+- Prompts: `turn/prompts/expander.md` deletes its `hooks` bullet and extends the entity bullet —
+  a consequence new canon carries is written into its `detail.hook` as an instruction to the
+  Director. `app/prompts/scenario_world.md` replaces the `hooks` collection bullet the same way:
+  what to reveal, which thread to advance and to where, written into `detail.hook` of the entity
+  that triggers it. `app/prompts/scenario_bar.md` rewords its hook item likewise.
+  `turn/prompts/director.md` gains one sentence: an entity's `hook` line is authored
+  consequence — when the fiction reaches it, reveal and advance what it names yourself; written
+  as standing instructions, a hook already acted on reads as done.
+- Tests: `tests/core/test_actions.py` — delete the three hook tests and the `state.hooks` import.
+  `test_pipeline.py` — delete the hook test (~line 249); in the narrator-filter test drop
+  `hook_fired` AND `thread_advanced` from the expected kinds and replace the
+  `len(outcomes) < len(result.turn.facts)` assertion (all remaining facts narrate; assert
+  `outcomes == tuple(fact.trace for fact in result.turn.facts)` or script one un-narrated fact).
+  `test_integrity_boundaries.py` — delete the two hook tests and the `Hook` import.
+  `test_expansion.py` — drop hooks entries. `test_golden_turn.py` — update `TURN_STEPS`.
+  `test_authoring.py` — update the wanted-words list. `test_context_boundary.py` — the Director
+  now sees `detail`/`hook:` for known and hidden entities alike: flip those assertions; keep the
+  Narrator assertions (never shown) exactly as they are.
+- Regenerate golden fixtures (`AIDM_GOLDEN_REGEN=1 uv run pytest`). Expect movement in
+  `prompts/*/{director,interpreter}.txt` (detail lines appear), `instructions/*/director.txt`,
+  `turn/`, `state/`, and `save/` (hooks and fired_hooks leave the world). No `schemas/` fixture
+  moves. Read the diff.
+- Docs: `README.md` pipeline diagram drops `hooks` (and the stale `WORLDKEEPER` label left from
+  phase 1) and the "committed Facts fire the scenario's authored hooks" sentence is rewritten.
+  `docs/ROADMAP.md` (~line 23) drops its hooks/`MAX_HOOK_ROUNDS` paragraph.
+  `docs/MEMORY-SYSTEM.md` (~line 12) drops "hooks" from its pipeline line. Delete the answered
+  hook complaint in `IDEAS.md` (line 18).
+
+Done when: `grep -rn "on_discover\|fire_hooks\|fired_hooks" src tests scenarios` returns nothing
+and a turn's steps are interpreter, director, narrator.
+
+### Step 3 — scenario overlays become optional
+
+An NPC without authored mechanics gets a default sheet — `actor_sheets` already validates `{}` —
+exactly as play-created entities do via `new_sheet`. Every scenario plays under every engine; an
+overlay file becomes optional enrichment. Character overlays stay mandatory: the player's own
+sheet is the point of creation.
+
+- `src/aidm/content/store.py`: `load_scenario` reads `<engine>.json` when present, else uses
+  `ScenarioOverlay()`. `read_scenarios` offers any directory holding `world.json` under every
+  engine — and skips, with a log line, a directory whose `world.json` does not read (catch
+  `ValidationError`/`ValueError` per directory: a half-written scenario must not take down the
+  home page). `read_characters` keeps the per-engine overlay probe; split `_playable` accordingly
+  and rewrite its docstring, whose overlay rationale is gone.
+- `src/aidm/app/authoring/agents.py`: delete `TypedOverlay`, `overlay_agent`, `authored_overlay`,
+  `_overlay_prompt`, `_as_overlay`, `OVERLAY_INSTRUCTIONS`, `ask_until_playable`, `ROUNDS`, and
+  the imports they leave unused; `summarize(world)` loses its overlays parameter. Delete
+  `app/prompts/scenario_overlay.md`.
+- `src/aidm/app/authoring/session.py` `write()`: pass `overlays={}` to `write_scenario` (which
+  keeps its signature — hand-authored overlays still load) and drop unused imports.
+- `src/aidm/app/authoring/playability.py`: `Playtest.check` drops its `overlay` parameter and the
+  `check_overlay` call — its only remaining caller passes an empty overlay; shipped overlay files
+  are still validated by `load_scenario`.
+- Tests: `tests/ui/test_launcher.py` — `test_content_is_offered_only_for_the_rulesets_it_ships`
+  now asserts the world-only scenario IS offered under every engine (rename it); rename
+  `test_an_overlay_decides_which_rules_a_scenario_offers` to say it is about characters, the rule
+  it still pins. `tests/core/test_authoring.py` — delete the overlay-authoring tests plus
+  `test_the_author_is_asked_again_with_the_reason`,
+  `test_the_author_gives_up_after_every_round_is_refused`, and the `ask_until_playable` import.
+  `test_store.py` — a scenario directory with only `world.json` lists every engine and loads with
+  an empty overlay. No `schemas/` fixture moves.
+- `README.md`: reword the two sentences saying content plays only under engines it ships overlays
+  for (home-page paragraph and the scenarios/characters lines in Layout).
+
+Done when: a scenario directory holding only `world.json` starts and plays under both engines,
+and `grep -rn "TypedOverlay\|authored_overlay\|ask_until_playable" src tests` returns nothing.
+
+### Step 4 — expansion policies fold to closed | open
+
+`open` is today's `cited_or_invented` generalized: search the document where one exists, fall
+back to the premise where it is silent — which subsumes `cited` (document answers everything)
+and `invented` (no document, always the premise). Lost deliberately: the strict `cited` refusal.
+
+- `src/aidm/content/sources.py`: `ExpansionPolicy = Literal["closed", "open"]`. Rename
+  `CitedOrInventedSource` to `OpenSource` with a reworded docstring and a default
+  `document: RecordSource = RecordSource(records=())`, so no call site builds a null object.
+  Delete `WholeSource`. `whole_text` stays for authoring; its too-large error now says "author it
+  `open`, which searches the document".
+- `src/aidm/content/store.py`: delete `read_source` and `require_source`; `source_file` stays.
+- `src/aidm/app/session.py` `open_source`: `closed` returns `None`; `open` returns
+  `OpenSource(premise=scenario.meta.premise)` when `source_file(...)` is `None`, else
+  `OpenSource(document=ingest(path), premise=...)`. Rewrite its docstring, which names the dead
+  policies.
+- `src/aidm/app/authoring/session.py` `__post_init__`: delete the cited/cited_or_invented
+  document-requirement check.
+- `src/aidm/ui/scenario_create.py`: `_EXPANSION_LABELS` shrinks to `closed` and `open` ("the
+  document where it speaks, the premise where it is silent"); the select defaults to `"open"`;
+  delete the now-redundant `expansion.set_value(...)` line in the upload handler.
+- `scenarios/drowned-road/world.json`: `"expansion": "cited"` → `"open"`.
+- Tests: `tests/core/test_authoring.py` — delete `test_a_cited_session_needs_a_document`; change
+  both `expansion="invented"` sites (and the final assertion) to `"open"`.
+  `test_sources.py` — replace `WholeSource` cases with `OpenSource`; rewrite the
+  refused-without-document test as: an `open` scenario with a document searches it, one without
+  answers from its premise. `test_expansion.py` — replace `read_source`/`WholeSource`
+  construction with `OpenSource` and rename the two `cited` tests. `test_store.py` — delete
+  `test_a_scenario_expands_from_its_own_source_or_else_from_its_premise`; the behavior now lives
+  in `open_source` and is covered in `test_sources.py`.
+
+Done when: `grep -rn "cited_or_invented\|WholeSource\|read_source\|require_source" src tests`
+and `grep -rn '"invented"' src scenarios` return nothing.
+
+### Verifying the phase
+
+- `uv run pytest && uv run ruff check && uv run ruff format --check && uv run basedpyright` after
+  every step, one commit per step.
+- `uv run aidm` after steps 2 and 4: play three turns of each scenario, watch a converted
+  `detail.hook` consequence land at a sensible moment, and see an `open` scenario expand.
+- After step 3: launch whispering-vault under 24XX with its loner3e overlay file temporarily
+  renamed away, and confirm default sheets play.
