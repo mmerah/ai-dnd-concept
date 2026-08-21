@@ -34,11 +34,6 @@ EXISTS BUT THE PLAYER DOES NOT KNOW IT YET:
 - the sealed vault[id=vault] (location) — The undercroft chamber Kael came for, its door bearing a seal nobody living can read.
   detail: The door is stone, and the seal cut into it is unweathered where everything around it has worn.
   when reached: Kael has found the vault door: advance thread vault-seal to stage door-found. The seal is the whole obstacle now — press on what opening it will cost.
-- Elena[id=elena] (npc) — at the bell tower — The vault's former archivist, hiding in the bell tower; she alone remembers the sealing rite; she catalogued the vault ledgers beside Mara for two winters, until the night she went below alone and never came back up.
-  detail: She carries the sealing rite in her head and nowhere else.
-  when reached: Kael has found the archivist: advance thread vault-seal to stage archivist-found. She will name a price before she gives the rite up, and the rite is not known until she has.
-  state:
-    pools: credits 2
 - a bloated rat[id=cloister_rat] (npc) — at the cloister — It has grown fat on the dead garden and does not run from a lantern.
   state:
     pools: credits 2

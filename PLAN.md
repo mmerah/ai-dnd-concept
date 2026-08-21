@@ -1,7 +1,8 @@
 # Plan
 
-Four phases. Each one ships on its own and reverts on its own. Do them in order: phase 4 does not
-work without phase 3, and phase 2 makes phase 4's validation single-engine.
+Five phases. Each one ships on its own and reverts on its own. Do them in order: phase 4 does not
+work without phase 3, phase 2 makes phase 4's validation single-engine, and phase 5 comes last so
+its annotation sweep does not fight phase 4's deletions.
 
 ## How to work a phase
 
@@ -337,3 +338,77 @@ staging. Gate green. Then by hand: play `drowned-road` past its four locations a
 world grows and the Director prompt stays inside its budget.
 
 **Done when** no `"expander"` role exists anywhere, and a `grows` scenario extends itself in play.
+
+---
+
+# Phase 5 — Microkernel cut
+
+**Goal.** Core keeps fiction, transactions, roles, and the capability seats; sheets, chapters, and
+"every actor has a sheet" become the two shipped engines' own choices. `engines/sheets.py` stays,
+demoted from contract to library: only concrete engine packages may import it.
+
+**Expected effect.** No behavior change. The contract a future engine must satisfy shrinks to:
+opaque mechanics, `validate`, a `seed` hook, an overlay check, `describe`/`sheet_view`, and the
+optional `advancement`/`creation`/`director_toolsets` seats. The one model-facing change is who
+owns the `complete_chapter` tool's wording, so step 1 alone takes an eval run.
+
+### Step 1 — chapter closure becomes an engine tool
+
+The one core tool that touches mechanics is `complete_chapter` (`turn/tools.py:102-105`), reading
+`Engine.chapter_ending`.
+
+1. Delete the tool from `core_toolset()` and the `from aidm.engines import sheets` import in
+   `turn/tools.py`; delete `Engine.chapter_ending` (`engines/engine.py:59-60`) and its build-time
+   read (`:67`).
+2. Each engine adds `complete_chapter` to its own `director_toolset`, calling
+   `sheets.complete_chapter(draft, ...)` with its ending as a module constant — loner3e
+   `"the adventure has ended"`, twentyfourxx `"the job is done"` — and a docstring in its own
+   vocabulary (the adventure closing / the job done). `sheets.complete_chapter` itself stays.
+3. `Advancement.earned` (`engines/advancement.py:71-73`) becomes abstract; each engine's
+   advancement returns `Mechanics.of(state).completed.current`, and `advancement.py` drops its
+   `SheetMechanics` import.
+4. `loner3e/director.md:27` and `twentyfourxx/director.md:28` call it "the world tool"; it is now
+   the engine's own — reword to "the `complete_chapter` tool".
+5. Tests reading `engine.chapter_ending` (`tests/loner3e/test_loner3e_engine.py:264,277,286`,
+   `tests/twentyfourxx/test_twentyfourxx_engine.py:164`, `tests/core/test_engine.py:23`) use the
+   engine's own constant or drop the declaration.
+
+**Verify.** Regenerate schema and prompt goldens: core loses the tool, each engine gains it, and
+the director prompt diff shows only the reworded line. Gate green, then one eval at n=9 against
+`baseline.json` — the docstring wording is the only model-facing change.
+
+### Step 2 — the contract sheds the sheet type
+
+1. `Engine[S: SheetBase]` becomes plain `Engine`; delete `sheet_type`; `mechanics_type` is typed
+   `type[Mutable]` (`restored` still validates through it, unchanged).
+2. `check_overlay` becomes abstract; each engine writes `_ = Sheet.model_validate(rules)`.
+3. `opening_mechanics(world, player_rules) -> Mutable` becomes abstract; each engine returns
+   `Mechanics(sheets=actor_sheets(world, player_rules, Sheet))`.
+4. `seed` becomes a no-op hook (same shape `check_mechanics` has today); its current body —
+   actor-only, idempotent, `new_sheet` — moves into both engines, and `new_sheet` leaves the
+   contract.
+5. Sweep every `Engine[SheetBase]` annotation to `Engine` and drop the now-unused `SheetBase`
+   imports: `engines/engine.py:36`, `engines/transact.py:23,33,75`, `turn/pipeline.py:36`,
+   `turn/prompts.py:84`, `turn/agents.py:48,126,220`, `app/registry.py:13,23,30,35` (both
+   `pyright: ignore[reportAssignmentType]` lines and the comment above them go),
+   `app/session.py:47,96,264,267`, `app/authoring/playability.py:28`, `evals/turn_eval.py:76`,
+   `tests/core/core_test_support.py`, `tests/loner3e/test_create.py:16`.
+
+### Step 3 — actor-has-a-sheet becomes engine policy
+
+1. `Engine.validate` becomes abstract and `check_mechanics` is deleted: loner3e's `validate` is
+   `check_sheets(...)` plus its pack check; twentyfourxx's is `check_sheets(...)` alone.
+2. `engines/engine.py` now imports nothing from `.sheets`. Add the demotion to
+   `tests/core/test_package_boundary.py`: outside `tests/`, only the concrete engine packages
+   may import `aidm.engines.sheets`.
+3. `tests/core/test_engine.py`'s bare engine goes sheet-less — mechanics an empty `Mutable`
+   subclass, `validate` a no-op, the default `seed` — proving the contract holds with no sheet
+   concept at all; `NoSheet` is deleted. In `tests/core/test_engine_contract.py:102-118` the
+   declares-nothing engine now trips on `mechanics_type`; the seeding test (`:67-99`) must pass
+   unchanged, since loner3e still seeds and still refuses an unsheeted actor.
+
+**Verify.** Gate green; no golden or eval movement — steps 2 and 3 are typing and ownership only.
+
+**Done when** no module outside `engines/loner3e/` and `engines/twentyfourxx/` imports
+`aidm.engines.sheets`, `basedpyright` passes with the registry ignores gone, and step 1's eval is
+within noise of 90/90.

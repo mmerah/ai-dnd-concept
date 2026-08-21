@@ -6,6 +6,13 @@
 - [x] Verify — regen prompt goldens (schema goldens pin the unprepared vocabulary — unchanged by design), read diffs, gate green (pytest/ruff/format/basedpyright)
 - [x] Stage (no commit); live eval n=9 left to maintainer (manual per AGENTS.md)
 
+# Phase 3 progress
+
+- [x] Step — `SceneSnapshot.of` hidden becomes `_reachable_hidden(world, here)`: here, one exit away, or a location signposted from known canon; `canon` stays full
+- [x] Verify — director goldens regenerated via `test_golden_turn.py` (the plan's `test_golden_prompts.py` command doesn't cover them); diff is exactly `elena` leaving both engines, `bell_tower`/`vault`/`vault_map`/`cloister_rat` stay; `test_context_boundary.py` unchanged; gate green (184 passed, ruff/format/basedpyright 0/0/0)
+- [x] Adversarial review (opus) — correct on all edge cases (rootless non-locations impossible, nesting via `location_of`, player must be known, determinism); docstring trimmed to one line, helper folded to a `near` set + one comprehension; gate re-run green
+- [x] Stage (no commit); live eval n=9 (`take-the-chart`, `open-the-way-and-climb`) left to maintainer (manual)
+
 # Phase 2 progress
 
 - [x] Step 1 — required `Scenario.engines` (min_length=1); both shipped `world.json` declare `["loner3e", "twentyfourxx"]`

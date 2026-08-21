@@ -1,7 +1,7 @@
 from collections.abc import Iterable, Mapping
 
 from aidm.state.base import PLAYER_ID, Entity, EntityId, Exit, Frozen
-from aidm.state.world import Game, Thread
+from aidm.state.world import Game, Thread, WorldState
 
 
 class BaseScene(Frozen):
@@ -59,7 +59,7 @@ class SceneSnapshot(BaseScene):
                 for entity in shown
                 if entity.known and entity.id in locations and locations[entity.id] != location.id
             ),
-            hidden=tuple(entity for entity in shown if not entity.known),
+            hidden=_reachable_hidden(world, location),
             canon=canon,
             placements=_placements(by_id, canon, frozenset(by_id), party),
             exits=exits,
@@ -76,6 +76,17 @@ class SceneSnapshot(BaseScene):
 
     def catalogue(self) -> tuple[Entity, ...]:
         return tuple(entity for entity in self.canon if entity.id != PLAYER_ID)
+
+
+def _reachable_hidden(world: WorldState, here: Entity) -> tuple[Entity, ...]:
+    """Unknown canon a turn could touch: here, one exit away, or a signposted location."""
+    near = {here.id, *(way.to for way in here.exits)}
+    signposted = {way.to for entity in world.entities if entity.known for way in entity.exits}
+    return tuple(
+        entity
+        for entity in world.entities
+        if not entity.known and (world.location_of(entity) in near or entity.id in signposted)
+    )
 
 
 class VisibleScene(BaseScene):
