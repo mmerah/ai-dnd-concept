@@ -27,9 +27,7 @@ Tests must be deterministic and require no network.
 - Validate external, persistence, model, and tool boundaries with strict Pydantic V2 models.
 - Fail fast on invalid data, broken invariants, and incompatible state.
 - Keep code simple, DRY, and maintainable. Avoid speculative abstractions.
-- A capability the plan commits to is built in its real form; never ship an interim stand-in
-  whose replacement is already scheduled. YAGNI applies to features nobody decided on, not to
-  decided ones.
+- A capability the plan commits to is built in its real form; never ship an interim stand-in whose replacement is already scheduled. YAGNI applies to features nobody decided on, not to decided ones.
 - Introduce a port only once a second implementation exists. A protocol that decouples core from a concrete choice earns its place on the first one.
 - Use descriptive names before adding prose to explain code.
 - Keep functions below 100 lines and files below 1000 lines.
@@ -45,12 +43,8 @@ Tests must be deterministic and require no network.
 
 ## Design rules
 
-- The model proposes typed, validated output; engine code resolves it deterministically against
-  the turn's draft and records facts. The model never writes state; every roll and every ledger
-  change happens in resolver code, never in model output.
-- State evolves through transactions: copy the committed state, mutate the copy, revalidate the whole copy once at the end. A failed transaction never replaces the committed state, and committed state is never mutated again.
+- The model proposes typed, validated output; engine code resolves it deterministically against the turn's draft and records facts. The model never writes state; every roll and every ledger change happens in resolver code, never in model output.
 - An engine owns its mechanics end to end: it declares the typed overlay authored content is validated against, refuses a state it cannot play rather than repairing one, and seeds whatever an entity created during play needs.
-- Content a user may extend loads from files: user copies merge over shipped ones by name, and an unreadable one is skipped with a log line instead of taking the app down.
 - Only the narrating role writes player-facing prose, and it never sees unrevealed canon: its input type must have no field a leak could travel through.
 - One composition root, built once. Below it collaborators and paths are explicit; no globals.
 - A save names its own origin, and no format version: strict validation is the only compatibility gate. Refuse a stale save rather than converting it.
@@ -66,9 +60,6 @@ Tests must be deterministic and require no network.
 
 - Test core behavior and integrity boundaries, not exact creative prose, live model quality, or trivial wiring.
 - Stub model calls with `FunctionModel` or an equivalent; never require network access.
-- Evals are manual and noisy. Live eval gates stay suspended; golden fixtures and offline parity
-  tests are the safety net. Only same-hour runs of the same tree are comparable, and nothing
-  below n=9 per case is attributable to a change.
 
 Change this file only for a rule expected to hold across every future phase. A rule that a refactor
 can falsify does not belong here.
