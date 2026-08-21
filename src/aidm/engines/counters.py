@@ -1,5 +1,5 @@
 from aidm.state.base import Counter, Entity, Slug
-from aidm.state.facts import Fact, explained_fact
+from aidm.state.facts import Fact, explained_fact, labeled
 
 
 def pool(counter: Counter) -> str:
@@ -28,7 +28,7 @@ def spend(entity: Entity, key: str, counter: Counter, amount: int) -> list[Fact]
 
 def counter_fact(entity: Entity, key: str, counter: Counter, delta: int, why: str) -> Fact:
     data = {"counter": key, "delta": delta, "current": counter.current, "maximum": counter.maximum}
-    trace = f"{entity.name} {key} {delta:+d} -> {pool(counter)}"
+    trace = f"{labeled(entity)} {key} {delta:+d} -> {pool(counter)}"
     return explained_fact(entity, "counter_changed", trace, data, why)
 
 

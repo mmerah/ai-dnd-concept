@@ -155,6 +155,18 @@
           "default": 0,
           "description": "How many segments this fills on the thread's clock, when it has one.",
           "type": "integer"
+        },
+        "note": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Replace the thread's private bookkeeping note with what its new state means for play, or null to keep it."
         }
       },
       "required": [

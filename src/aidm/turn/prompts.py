@@ -5,7 +5,7 @@ from pathlib import Path
 from aidm.content.store import engine_text
 from aidm.engines.advancement import Offer
 from aidm.engines.engine import Engine, EntityRenderer
-from aidm.state.base import Entity, Exit, Trait
+from aidm.state.base import Entity, Exit, Trait, kind_word
 from aidm.state.world import Game, ScenarioMeta, Thread
 
 from .scene import BaseScene, SceneSnapshot, VisibleScene
@@ -156,9 +156,8 @@ def _thread_line(thread: Thread) -> str:
 
 
 def _headline(entity: Entity, placement: str) -> str:
-    kind = "npc" if entity.kind == "actor" else entity.kind
     placed = f" — {placement}" if placement else ""
-    return f"- {_label(entity)} ({kind}){placed} — {entity.brief}"
+    return f"- {_label(entity)} ({kind_word(entity.kind)}){placed} — {entity.brief}"
 
 
 def _detail(entity: Entity) -> str:

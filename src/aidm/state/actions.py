@@ -1,7 +1,7 @@
 from pydantic import JsonValue
 
 from .base import PLAYER_ID, Entity, EntityId, Exit, Slug, Trait, slug
-from .facts import Fact, entity_fact
+from .facts import Fact, entity_fact, labeled
 from .world import AdvanceThread, Game
 
 
@@ -110,7 +110,9 @@ def add_trait(draft: Game, entity_id: EntityId, trait_id: Slug, text: str = "") 
         raise ValueError(f"{entity.name} already carries the trait {trait_id!r}")
     name = trait_id.replace("-", " ").title()
     entity.traits.append(Trait(id=trait_id, name=name, text=text))
-    trace = f"{entity.name} is {name}"
+    trace = f"{labeled(entity)} gained the trait {name}[{trait_id}]"
+    if text:
+        trace += f" — {text}"
     return [*seen, entity_fact(entity, "trait_added", trace, {"trait_id": trait_id})]
 
 
@@ -123,7 +125,7 @@ def remove_trait(draft: Game, entity_id: EntityId, trait_id: Slug) -> list[Fact]
             f"{entity.name} carries no trait {trait_id!r}. Their traits are: {carried}"
         )
     entity.traits.remove(held)
-    trace = f"{entity.name} is no longer {held.name}"
+    trace = f"{labeled(entity)} lost the trait {held.name}[{held.id}]"
     return [*seen, entity_fact(entity, "trait_removed", trace, {"trait_id": trait_id})]
 
 
@@ -144,7 +146,7 @@ def unlock_exit(draft: Game, to_id: EntityId) -> list[Fact]:
         entity_fact(
             here,
             "exit_unlocked",
-            f"the way from {here.name} to {there.name} is unlocked",
+            f"the way from {here.name}[{here.id}] to {there.name}[{there.id}] is unlocked",
             {"to_id": to_id},
             narrate=way.known,
         )
@@ -157,7 +159,8 @@ def join_party(draft: Game, actor_id: EntityId) -> list[Fact]:
         raise ValueError(f"{actor.name} already travels with the player")
     seen = draft.reveal(actor)
     draft.world.party.append(actor_id)
-    return [*seen, entity_fact(actor, "party_joined", f"{actor.name} travels with the player", {})]
+    trace = f"{labeled(actor)} travels with the player"
+    return [*seen, entity_fact(actor, "party_joined", trace, {})]
 
 
 def leave_party(draft: Game, actor_id: EntityId) -> list[Fact]:
@@ -165,7 +168,8 @@ def leave_party(draft: Game, actor_id: EntityId) -> list[Fact]:
     if actor_id not in draft.world.party:
         raise ValueError(f"{actor.name} does not travel with the player")
     draft.world.party.remove(actor_id)
-    return [entity_fact(actor, "party_left", f"{actor.name} no longer travels with the player", {})]
+    trace = f"{labeled(actor)} no longer travels with the player"
+    return [entity_fact(actor, "party_left", trace, {})]
 
 
 def advance_thread(draft: Game, effect: AdvanceThread) -> list[Fact]:
@@ -183,13 +187,16 @@ def advance_thread(draft: Game, effect: AdvanceThread) -> list[Fact]:
         clock.current = clock.clamped(clock.current + effect.tick)
     thread.status = effect.status or thread.status
     thread.stage = effect.stage or thread.stage
-    moved = f"thread {thread.title!r} — status {thread.status}"
+    if effect.note is not None:
+        thread.note = effect.note
+    moved = f"thread {thread.title}[{thread.id}] — status {thread.status}"
     if thread.stage:
         moved += f", stage {thread.stage}"
     data: dict[str, JsonValue] = {
         "thread_id": thread.id,
         "status": thread.status,
         "stage": thread.stage,
+        "note": thread.note,
     }
     if clock is not None:
         moved += f", clock {clock.current}/{clock.maximum}"
@@ -198,4 +205,6 @@ def advance_thread(draft: Game, effect: AdvanceThread) -> list[Fact]:
             "clock_maximum": clock.maximum,
             "clock_filled": clock.current == clock.maximum,
         }
+    if thread.note:
+        moved += f" — note: {thread.note}"
     return [Fact(kind="thread_advanced", trace=moved, data=data)]

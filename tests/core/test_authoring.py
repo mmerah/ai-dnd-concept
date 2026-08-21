@@ -64,12 +64,15 @@ def test_write_upserts_elements_by_id() -> None:
             ),
         )
     )
-    assert "meta" in confirmation and "2 entities" in confirmation
+    assert "set meta" in confirmation
+    assert "created location cell[cell]" in confirmation
+    assert "created location hall[hall]" in confirmation
 
     renamed = _location("cell").model_copy(
         update={"name": "the deep cell", "exits": [Exit(to=EntityId("hall"), locked=True)]}
     )
-    _ = draft.apply(ScenarioPatch(entities=(renamed,)))
+    modification = draft.apply(ScenarioPatch(entities=(renamed,)))
+    assert modification == "modified location the deep cell[cell]"
 
     cell = next(entity for entity in draft.entities if entity.id == EntityId("cell"))
     assert cell.name == "the deep cell"
@@ -85,7 +88,8 @@ def test_a_patched_art_style_reaches_the_scenario() -> None:
 def test_remove_drops_by_id_and_refuses_an_unknown_one() -> None:
     draft = WorldDraft()
     _ = draft.apply(ScenarioPatch(entities=(_location("cell"),)))
-    assert draft.apply(ScenarioPatch(remove=(EntityId("cell"),))) == "wrote: removed 1"
+    deletion = draft.apply(ScenarioPatch(remove=(EntityId("cell"),)))
+    assert deletion == "deleted location cell[cell]"
     assert not draft.entities
     with pytest.raises(ValueError, match="nothing in the draft"):
         _ = draft.apply(ScenarioPatch(remove=("ghost",)))

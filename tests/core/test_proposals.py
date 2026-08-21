@@ -60,7 +60,7 @@ def test_confirming_commits_exactly_the_proposed_delta(tmp_path: Path) -> None:
     assert (sheet.gear[-1], sheet.milestones.current) == ("Waxed Rope", 1)
     assert [fact.trace for fact in facts] == [
         "Kael gained gear Waxed Rope (he never climbs without it now)",
-        "Kael milestones +1 -> 1 (a milestone spent)",
+        "the player Kael[player] milestones +1 -> 1 (a milestone spent)",
     ]
     entry = Applied(subject_id=PLAYER_ID, facts=facts)
     assert game.entries == [entry]

@@ -2,7 +2,7 @@ from collections.abc import Mapping, Sequence
 
 from pydantic import Field, JsonValue
 
-from .base import Entity, Frozen
+from .base import PLAYER_ID, Entity, Frozen, kind_word
 
 NOTHING_MECHANICAL = "- (nothing mechanical happened)"
 
@@ -15,6 +15,12 @@ class Fact(Frozen):
     narrator: str | None = None
     # The structured values behind the prose, so a test or a richer trace reads them untyped.
     data: dict[str, JsonValue] = Field(default_factory=dict)
+
+
+def labeled(entity: Entity) -> str:
+    """A trace names an entity by kind, name, and exact id, so the Director can reuse the id."""
+    word = "player" if entity.id == PLAYER_ID else kind_word(entity.kind)
+    return f"the {word} {entity.name}[{entity.id}]"
 
 
 def entity_fact(

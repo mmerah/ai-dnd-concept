@@ -16,9 +16,10 @@ from .base import (
     Mutable,
     Slug,
     ThreadStatus,
+    kind_word,
     require_unique,
 )
-from .facts import Fact, entity_fact
+from .facts import Fact, entity_fact, labeled
 from .history import Exchange
 
 _HOLDERS: Mapping[Kind, tuple[Kind, ...]] = {
@@ -69,6 +70,11 @@ class AdvanceThread(Frozen):
     tick: int = Field(
         default=0,
         description="How many segments this fills on the thread's clock, when it has one.",
+    )
+    note: str | None = Field(
+        default=None,
+        description="Replace the thread's private bookkeeping note with what its new state means "
+        "for play, or null to keep it.",
     )
 
     @model_validator(mode="after")
@@ -232,7 +238,7 @@ class Game:
         if self.world.find(entity.id) is not None:
             raise ValueError(f"entity id {entity.id!r} already exists")
         self.world.entities.append(entity)
-        summary = f"new {entity.kind}: {entity.name}"
+        summary = f"new {kind_word(entity.kind)}: {entity.name}[{entity.id}]"
         return entity_fact(
             entity, "entity_created", summary, {"kind": entity.kind, "name": entity.name}
         )
@@ -241,7 +247,7 @@ class Game:
         if entity.known:
             return []
         entity.known = True
-        summary = f"learned of {entity.name}"
+        summary = f"learned of {labeled(entity)}"
         return [entity_fact(entity, "entity_discovered", summary, {"name": entity.name})]
 
     def move(self, entity: Entity, destination: Entity) -> Fact:
@@ -280,9 +286,10 @@ def _revalidated[M: Mutable](model: M) -> M:
 
 def _move_summary(entity: Entity, destination: Entity) -> str:
     if entity.kind == "actor":
-        return f"{entity.name} moved to {destination.name}"
+        return f"{labeled(entity)} moved to {labeled(destination)}"
     if destination.id == PLAYER_ID:
-        return f"took {entity.name}"
+        return f"{labeled(destination)} took {labeled(entity)}"
     if destination.kind == "actor":
-        return f"gave {entity.name} to {destination.name}"
-    return f"left {entity.name} at {destination.name}"
+        # The giver is always the player: an item only ever moves to an actor by being handed over.
+        return f"the player gave {labeled(entity)} to {labeled(destination)}"
+    return f"the player left {labeled(entity)} at {labeled(destination)}"

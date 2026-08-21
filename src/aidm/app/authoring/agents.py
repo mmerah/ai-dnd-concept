@@ -34,7 +34,7 @@ def authoring_toolset(
     def write(ctx: RunContext[WorldDraft], patch: ScenarioPatch) -> str:
         """Apply one patch to the draft. An element whose id the draft already holds is replaced
         whole, so send the complete element when modifying one; `remove` drops ids from whichever
-        collection holds them. Returns a short summary of what changed."""
+        collection holds them. Returns each change as `created|modified|deleted kind name[id]`."""
         try:
             return ctx.deps.apply(patch)
         except ValueError as refused:

@@ -32,10 +32,10 @@ KNOWN TO THE PLAYER, BUT ELSEWHERE:
     pools: luck 6/6
 
 WHAT HAPPENED:
-- learned of the vault map
-- took the vault map
+- learned of the item the vault map[vault_map]
+- the player Kael[player] took the item the vault map[vault_map]
 - Does he hear what waits past the vault door without being heard? -> yes-and
-- Kael is Listening
+- the player Kael[player] gained the trait Listening[listening] — (condition) Listening for the next shift of weight behind the door.
 
 PLAYER ACTION:
 I lever up the loose flagstone and listen at the vault door.

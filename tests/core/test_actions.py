@@ -107,6 +107,7 @@ def test_inventory_actions_gate_on_position_and_carrying() -> None:
     assert (dropped.data["entity_id"], dropped.data["to_kind"]) == (LANTERN, "location")
     (given,) = actions.move(draft, VAULT_MAP, MARA)
     assert (given.data["entity_id"], given.data["to_id"]) == (VAULT_MAP, MARA)
+    assert given.trace == "the player gave the item the vault map[vault_map] to the npc Mara[mara]"
 
     created, carried = actions.improvise(draft, "a rusty key")
     assert created.data["name"] == "a rusty key"
@@ -153,6 +154,13 @@ def test_a_tick_fills_the_threads_clock_and_stops_at_its_maximum() -> None:
     for filled in (1, 2, 2):
         moved = actions.advance_thread(draft, AdvanceThread(thread_id="ritual", tick=1))
         assert moved[0].data["clock_current"] == filled
+
+    (renoted,) = actions.advance_thread(
+        draft, AdvanceThread(thread_id="ritual", status="resolved", note="the rite is complete")
+    )
+    ritual = draft.world.thread("ritual")
+    assert ritual is not None and ritual.note == "the rite is complete"
+    assert renoted.trace.endswith("— note: the rite is complete")
 
 
 def test_a_tick_on_a_thread_without_a_clock_is_refused() -> None:

@@ -11,21 +11,30 @@ def _index[T: Entity | Thread](kept: list[T], target: str) -> int | None:
     return next((index for index, held in enumerate(kept) if held.id == target), None)
 
 
-def _upsert[T: Entity | Thread](kept: list[T], written: Iterable[T]) -> None:
+def _describe(item: Entity | Thread, verb: str) -> str:
+    if isinstance(item, Entity):
+        return f"{verb} {item.kind} {item.name}[{item.id}]"
+    return f"{verb} thread {item.title}[{item.id}]"
+
+
+def _upsert[T: Entity | Thread](kept: list[T], written: Iterable[T]) -> list[str]:
+    lines: list[str] = []
     for one in written:
         found = _index(kept, one.id)
         if found is None:
             kept.append(one)
+            lines.append(_describe(one, "created"))
         else:
             kept[found] = one
+            lines.append(_describe(one, "modified"))
+    return lines
 
 
-def _drop[T: Entity | Thread](kept: list[T], target: str) -> bool:
+def _drop[T: Entity | Thread](kept: list[T], target: str) -> T | None:
     found = _index(kept, target)
     if found is None:
-        return False
-    del kept[found]
-    return True
+        return None
+    return kept.pop(found)
 
 
 class ScenarioPatch(Frozen):
@@ -93,42 +102,34 @@ class WorldDraft(Mutable):
         )
 
     def apply(self, patch: ScenarioPatch) -> str:
-        wrote: list[str] = []
+        changed: list[str] = []
         if patch.meta is not None:
             self.meta = patch.meta
-            wrote.append("meta")
+            changed.append("set meta")
         if patch.starting_location_id is not None:
             self.starting_location_id = patch.starting_location_id
-            wrote.append("starting_location_id")
+            changed.append("set starting_location_id")
         if patch.starting_party is not None:
             self.starting_party = patch.starting_party
-            wrote.append("starting_party")
+            changed.append("set starting_party")
         if patch.art_style is not None:
             self.art_style = patch.art_style
-            wrote.append("art_style")
-        _upsert(self.entities, patch.entities)
-        _upsert(self.threads, patch.threads)
-        wrote.extend(
-            f"{len(group)} {what}"
-            for what, group in (
-                ("entities", patch.entities),
-                ("threads", patch.threads),
-            )
-            if group
-        )
-        for target in patch.remove:
-            self._remove(target)
-        if patch.remove:
-            wrote.append(f"removed {len(patch.remove)}")
-        return f"wrote: {', '.join(wrote)}" if wrote else "nothing to change"
+            changed.append("set art_style")
+        changed.extend(_upsert(self.entities, patch.entities))
+        changed.extend(_upsert(self.threads, patch.threads))
+        changed.extend(self._remove(target) for target in patch.remove)
+        return "\n".join(changed) if changed else "nothing to change"
 
-    def _remove(self, target: str) -> None:
-        if _drop(self.entities, target) or _drop(self.threads, target):
-            return
-        raise ValueError(
-            f"nothing in the draft has id {target!r}; read `scenario_so_far` and remove ids "
-            "exactly as it spells them"
-        )
+    def _remove(self, target: str) -> str:
+        removed = _drop(self.entities, target)
+        if removed is None:
+            removed = _drop(self.threads, target)
+        if removed is None:
+            raise ValueError(
+                f"nothing in the draft has id {target!r}; read `scenario_so_far` and remove ids "
+                "exactly as it spells them"
+            )
+        return _describe(removed, "deleted")
 
     def as_json(self) -> str:
         return self.model_dump_json(indent=2, exclude={"grows"})

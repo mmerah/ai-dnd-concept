@@ -1,4 +1,4 @@
-from aidm.state.base import Frozen, Slug, ThreadStatus
+from aidm.state.base import Frozen, ThreadStatus
 from aidm.state.history import Line
 from aidm.state.world import Game
 from aidm.turn.scene import SceneSnapshot, VisibleScene
@@ -12,7 +12,7 @@ def player_scene(state: Game) -> VisibleScene:
 class ThreadSummary(Frozen):
     title: str
     status: ThreadStatus
-    stage: Slug | None = None
+    stage: str | None = None
     clock: str = ""
 
 
@@ -21,7 +21,7 @@ def thread_summaries(state: Game) -> tuple[ThreadSummary, ...]:
         ThreadSummary(
             title=thread.title,
             status=thread.status,
-            stage=thread.stage,
+            stage=None if thread.stage is None else thread.stage.replace("-", " "),
             clock=""
             if thread.clock is None
             else f"{thread.clock.current} / {thread.clock.maximum}",

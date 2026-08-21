@@ -2,8 +2,8 @@
   "facts": [
     {
       "kind": "entity_discovered",
-      "trace": "learned of the vault map",
-      "narrator": "learned of the vault map",
+      "trace": "learned of the item the vault map[vault_map]",
+      "narrator": "learned of the item the vault map[vault_map]",
       "data": {
         "entity_id": "vault_map",
         "name": "the vault map"
@@ -11,8 +11,8 @@
     },
     {
       "kind": "entity_moved",
-      "trace": "took the vault map",
-      "narrator": "took the vault map",
+      "trace": "the player Kael[player] took the item the vault map[vault_map]",
+      "narrator": "the player Kael[player] took the item the vault map[vault_map]",
       "data": {
         "entity_id": "vault_map",
         "entity_name": "the vault map",
@@ -68,8 +68,8 @@
     },
     {
       "kind": "trait_added",
-      "trace": "Kael is Listening",
-      "narrator": "Kael is Listening",
+      "trace": "the player Kael[player] gained the trait Listening[listening] — (condition) Listening for the next shift of weight behind the door.",
+      "narrator": "the player Kael[player] gained the trait Listening[listening] — (condition) Listening for the next shift of weight behind the door.",
       "data": {
         "entity_id": "player",
         "trait_id": "listening"

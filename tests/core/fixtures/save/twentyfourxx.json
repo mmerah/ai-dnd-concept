@@ -317,11 +317,11 @@
         }
       ],
       "outcomes": [
-        "learned of the vault map",
-        "took the vault map",
+        "learned of the item the vault map[vault_map]",
+        "the player Kael[player] took the item the vault map[vault_map]",
         "Listen at the vault door without being heard -> success",
         "bad luck — something behind the door is already listening back: signs of it",
-        "Kael is Listening"
+        "the player Kael[player] gained the trait Listening[listening] — (condition) Listening for the next shift of weight behind the door."
       ]
     }
   ],

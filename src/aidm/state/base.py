@@ -19,6 +19,13 @@ class Mutable(BaseModel):
 
 
 Kind = Literal["actor", "location", "item"]
+
+
+def kind_word(kind: Kind) -> str:
+    """Prompts and traces say 'npc', because 'actor' reads as the player too."""
+    return "npc" if kind == "actor" else kind
+
+
 ThreadStatus = Literal["active", "resolved", "dormant"]
 EngineId = NewType("EngineId", str)
 EntityId = NewType("EntityId", str)
