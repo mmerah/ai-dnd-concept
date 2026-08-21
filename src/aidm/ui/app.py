@@ -1,136 +1,203 @@
 import logging
-from pathlib import Path
+from collections.abc import Callable
+from functools import partial
 
 from nicegui import ui
+from nicegui.events import ValueChangeEventArguments
 
-from aidm.app.launch import LaunchTarget, as_engine_id
-from aidm.app.runtime import GameSession, Runtime
-from aidm.config import load_settings
+from aidm.app.launch import (
+    LauncherController,
+    LaunchTarget,
+    SaveOption,
+    as_engine_id,
+    load_catalog,
+)
+from aidm.app.runtime import Runtime
+from aidm.config import Settings, load_settings
 from aidm.state.model import content_id
 
-from .busy import refuse_if_busy, working
-from .character_create import character_page
-from .home import home_page
-from .panels import (
-    advancement_panel,
-    chat,
-    journal_panel,
-    page_header,
-    scene_header,
-    sheet_panel,
-    state_panel,
-    trace_panel,
-    turn_progress,
-)
-from .scenario_create import scenario_page
+from .create import character_page, scenario_page
+from .game import game_page, page_header, show_engine_badge
 
 LOGGER = logging.getLogger(__name__)
 
 
-class GameView:
-    def __init__(self, session: GameSession) -> None:
-        self.session = session
-        self.shown_art: tuple[Path | None, bool] = (None, False)
-        # Both are built by the page below this view, and the panels reach them through it.
-        self.composer: ui.input | None = None
-        self.transcript: ui.scroll_area | None = None
+def home_page(config: Settings) -> None:
+    controller = LauncherController(load_catalog(config))
+    with page_header("AI Dungeon Master", home=False):
+        ui.space()
+        ui.label("Choose your game").classes("text-sm opacity-80")
 
-    def fill_composer(self, text: str) -> None:
-        if self.composer is not None:
-            self.composer.value = text
-
-    @ui.refreshable_method
-    def scene(self) -> None:
-        scene_header(self.session, self.fill_composer)
-
-    @ui.refreshable_method
-    def chat(self) -> None:
-        chat(self.session)
-
-    @ui.refreshable_method
-    def progress(self) -> None:
-        turn_progress(self.session)
-
-    @ui.refreshable_method
-    def sheet(self) -> None:
-        sheet_panel(self.session)
-
-    @ui.refreshable_method
-    def journal(self) -> None:
-        journal_panel(self.session)
-
-    @ui.refreshable_method
-    def trace(self) -> None:
-        trace_panel(self.session)
-
-    @ui.refreshable_method
-    def advancement(self) -> None:
-        advancement_panel(self.session, self.refresh_all)
-
-    @ui.refreshable_method
-    def state(self) -> None:
-        state_panel(self.session)
-
-    def refresh_all(self) -> None:
-        for panel in (
-            self.scene,
-            self.chat,
-            self.progress,
-            self.sheet,
-            self.journal,
-            self.trace,
-            self.advancement,
-            self.state,
-        ):
-            panel.refresh()
+    with ui.column().classes("w-full q-pa-lg items-center").style("gap: 1.5rem"):
+        with ui.column().style("width: min(64rem, 100%); gap: 1.5rem"):
+            ui.label("Begin an adventure").classes("text-h4 font-bold")
+            ui.label("Choose a scenario, the rules to play it under, then a character.").classes(
+                "text-body1 opacity-70"
+            )
+            _new_game(controller)
+            _new_content(controller)
+            _saved_games(controller)
 
 
-def _idle(busy: bool) -> bool:
-    """Bound to `session.busy`, so the composer follows the turn through every exit `working`
-    takes, including the failure it swallows."""
-    return not busy
+def _new_game(controller: LauncherController) -> None:
+    @ui.refreshable
+    def form() -> None:
+        with ui.card().classes("w-full q-pa-lg"):
+            ui.label("New or current game").classes("text-h6 font-bold")
+            if controller.selected_scenario is None or controller.selected_engine is None:
+                ui.label("No playable scenario was found.").classes("text-negative")
+                return
+            scenario = controller.catalog.scenario(controller.selected_scenario)
+            show_engine_badge(controller.catalog.badge(controller.selected_engine))
+            ui.select(
+                options={option.id: option.title for option in controller.catalog.scenarios},
+                value=controller.selected_scenario,
+                label="Scenario",
+                on_change=_chosen("scenario", controller.choose_scenario, form.refresh),  # pyright: ignore[reportUnknownArgumentType]
+            ).classes("w-full")
+            ui.label(scenario.subtitle).classes("text-sm opacity-70")
+            ui.select(
+                options={engine: engine for engine in controller.available_engines()},
+                value=controller.selected_engine,
+                label="Rules",
+                on_change=_chosen(  # pyright: ignore[reportUnknownArgumentType]
+                    "engine",
+                    lambda value: controller.choose_engine(as_engine_id(value)),
+                    form.refresh,
+                ),
+            ).classes("w-full")
+            compatible = controller.compatible_characters()
+            ui.select(
+                options={option.id: f"{option.title} — {option.subtitle}" for option in compatible},
+                value=controller.selected_character,
+                label="Character",
+                on_change=_chosen("character", controller.choose_character, form.refresh),  # pyright: ignore[reportUnknownArgumentType]
+            ).classes("w-full")
+            if not compatible:
+                ui.label("No character is written for these rules.").classes("text-negative")
+                return
+            _action(controller)
+
+    form()
 
 
-def on_step(view: GameView, step: str) -> None:
-    view.session.step = step
-    view.progress.refresh()
+def _new_content(controller: LauncherController) -> None:
+    with ui.row().classes("items-center").style("gap: 0.5rem"):
+        ui.button(
+            "New scenario", icon="auto_stories", on_click=lambda: ui.navigate.to("/create-scenario")
+        ).props("outline dense")
+        ui.label("New character:").classes("text-sm opacity-70")
+        for option in controller.catalog.engines:
+            ui.button(
+                option.id,
+                icon="person_add",
+                on_click=partial(_navigate_create, option.id),
+            ).props("outline dense")
 
 
-def poll_art(view: GameView) -> None:
-    """The illustration is generated after the turn commits, so the page watches for it to land."""
-    shown = (view.session.scene_art(), view.session.scene_pending())
-    if shown != view.shown_art:
-        view.shown_art = shown
-        view.scene.refresh()
+def _navigate_create(engine: str) -> None:
+    ui.navigate.to(f"/create/{engine}")
 
 
-async def submit(view: GameView, box: ui.input) -> None:
-    session = view.session
-    prompt = (box.value or "").strip()
-    LOGGER.info("player submitted prompt: non_empty=%s busy=%s", bool(prompt), session.busy)
-    if not prompt or refuse_if_busy(session):
+def _chosen(
+    what: str,
+    choose: Callable[[str], None],
+    refresh: Callable[[], object],
+) -> Callable[[ValueChangeEventArguments[object]], None]:
+    """One handler per select: they differ only in the choice they record."""
+
+    def handle(event: ValueChangeEventArguments[object]) -> None:
+        LOGGER.info("launcher %s selected: %r", what, event.value)
+        if not isinstance(event.value, str):
+            ui.notify(f"Choose a {what}.", type="warning")
+            return
+        try:
+            choose(event.value)
+        except ValueError as error:
+            ui.notify(str(error), type="negative")
+            return
+        refresh()
+
+    return handle
+
+
+def _action(controller: LauncherController) -> None:
+    target = controller.new_game()
+    catalog = controller.catalog
+    existing = next((save for save in catalog.saves if save.slug == target.slug), None)
+    unreadable = next((save for save in catalog.unreadable if save.slug == target.slug), None)
+    blocked = unreadable or (existing if existing is not None and not existing.resumable else None)
+    if blocked is not None:
+        ui.label(blocked.problem or "This save cannot be resumed.").classes(
+            "text-negative text-sm q-mt-md"
+        )
+        ui.label("Delete or fix the save to continue this game.").classes("text-xs opacity-60")
         return
-    box.value = ""
-    # Quasar never saw the typed value change, so only an explicit push empties the composer.
-    _ = box.run_method("updateValue")
-    async with working(session):
-        was_offered = session.pending()
-        await session.submit(prompt, on_step=lambda step: on_step(view, step))
-        if not was_offered and session.pending():
-            ui.notify("Something is on offer. Check the advancement tab.")
-    session.step = None
-    view.refresh_all()
-    if (transcript := view.transcript) is not None:
-        # Deferred: the refreshed bubbles must reach the client before it can scroll past them.
-        ui.timer(0.1, lambda: transcript.scroll_to(percent=1.0), once=True)
+    ui.button(
+        "Continue game" if existing is not None else "Start game",
+        icon="play_arrow",
+        on_click=lambda: _start(controller),
+    ).props("color=primary").classes("q-mt-md")
 
 
-def restart(view: GameView) -> None:
-    session = view.session
-    if refuse_if_busy(session):
+def _start(controller: LauncherController) -> None:
+    LOGGER.info(
+        "launcher start requested: scenario=%r character=%r",
+        controller.selected_scenario,
+        controller.selected_character,
+    )
+    try:
+        target = controller.new_game()
+    except ValueError as error:
+        ui.notify(str(error), type="warning")
         return
-    session.restart()
-    view.refresh_all()
+    ui.navigate.to(target.path)
+
+
+def _saved_games(controller: LauncherController) -> None:
+    catalog = controller.catalog
+    ui.label("Saved games").classes("text-h5 font-bold q-mt-md")
+    if not catalog.saves and not catalog.unreadable:
+        ui.label("No saved games yet.").classes("text-body1 opacity-60")
+        return
+    with ui.column().classes("w-full").style("gap: 0.75rem"):
+        for saved in catalog.saves:
+            _saved_card(controller, saved)
+        for broken in catalog.unreadable:
+            with ui.card().classes("w-full q-pa-md"):
+                ui.label(broken.slug).classes("text-h6 font-bold")
+                ui.label(f"Unreadable save: {broken.problem}").classes("text-negative text-sm")
+
+
+def _saved_card(controller: LauncherController, saved: SaveOption) -> None:
+    with ui.card().classes("w-full q-pa-md"):
+        with ui.row().classes("w-full items-center").style("gap: 1rem"):
+            with ui.column().classes("col").style("gap: 0.25rem"):
+                ui.label(saved.scenario_title).classes("text-h6 font-bold")
+                ui.label(f"{saved.character_title} · turn {saved.turn}").classes(
+                    "text-sm opacity-70"
+                )
+            show_engine_badge(controller.catalog.badge(saved.engine))
+            if saved.resumable:
+                ui.button(
+                    "Resume",
+                    icon="play_arrow",
+                    on_click=partial(_resume, controller, saved.slug),
+                ).props("color=primary")
+            else:
+                ui.label(saved.problem or "Save cannot be resumed.").classes(
+                    "text-negative text-sm"
+                )
+
+
+def _resume(controller: LauncherController, slug: str) -> None:
+    LOGGER.info("launcher resume requested: slug=%s", slug)
+    try:
+        target = controller.resume(slug)
+    except ValueError as error:
+        ui.notify(str(error), type="negative")
+        return
+    ui.navigate.to(target.path)
 
 
 def start() -> None:
@@ -154,7 +221,7 @@ def _register_pages(runtime: Runtime) -> None:
         character: str,
         engine: str,
     ) -> None:
-        _game_page(
+        game_page(
             runtime.session(
                 LaunchTarget(
                     slug=slug,
@@ -172,62 +239,3 @@ def _register_pages(runtime: Runtime) -> None:
     @ui.page("/create-scenario")
     def _create_scenario() -> None:  # pyright: ignore[reportUnusedFunction]
         scenario_page(runtime.config)
-
-
-def _game_page(session: GameSession) -> None:
-    session.illustrate_scene()
-    view = GameView(session)
-    with page_header(session.state.scenario.title, session.engine.badge):
-        ui.space()
-        ui.button("restart", on_click=lambda: restart(view)).props("flat color=white dense")
-
-    # The header eats 4rem and the page its own padding, so a bare `h-screen` puts the input
-    # row below the fold.
-    with ui.splitter(value=55).classes("w-full").style("height: calc(100vh - 6rem)") as splitter:
-        with splitter.before, ui.column().classes("w-full h-full p-4").style("gap: 0.5rem"):
-            view.scene()
-            with ui.scroll_area().classes("w-full flex-grow") as transcript:
-                view.chat()
-            view.progress()
-            with ui.row().classes("w-full no-wrap").style("gap: 0.5rem"):
-                box = (
-                    ui.input(placeholder="What do you do?")
-                    .classes("flex-grow")
-                    .props("outlined autogrow type=textarea")
-                    .bind_enabled_from(session, "busy", backward=_idle)
-                )
-                # Enter sends; without the prevent the browser also leaves its newline behind.
-                box.on(
-                    "keydown.enter",
-                    lambda: submit(view, box),
-                    js_handler="(e) => { if (e.shiftKey) return; e.preventDefault(); emit(); }",
-                )
-                _ = (
-                    ui.button(icon="send", on_click=lambda: submit(view, box))
-                    .props("round")
-                    .bind_enabled_from(session, "busy", backward=_idle)
-                )
-            view.composer, view.transcript = box, transcript
-        with splitter.after, ui.column().classes("w-full h-full").style("gap: 0"):
-            advancement = session.engine.advancement
-            with ui.tabs().classes("w-full") as tabs:
-                scene_tab = ui.tab("scene")
-                journal_tab = ui.tab("journal")
-                advancement_tab = None if advancement is None else ui.tab(advancement.id)
-                dev_tab = ui.tab("dev")
-            with ui.tab_panels(tabs, value=scene_tab).classes("w-full flex-grow"):
-                with ui.tab_panel(scene_tab), ui.scroll_area().classes("w-full h-full"):
-                    view.sheet()
-                with ui.tab_panel(journal_tab), ui.scroll_area().classes("w-full h-full"):
-                    view.journal()
-                if advancement_tab is not None:
-                    with ui.tab_panel(advancement_tab), ui.scroll_area().classes("w-full h-full"):
-                        view.advancement()
-                with ui.tab_panel(dev_tab), ui.scroll_area().classes("w-full h-full"):
-                    with ui.expansion("trace", value=True).classes("w-full"):
-                        view.trace()
-                    with ui.expansion("state").classes("w-full"):
-                        view.state()
-
-    if session.media is not None:
-        ui.timer(3.0, lambda: poll_art(view))
