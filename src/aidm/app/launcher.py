@@ -7,7 +7,7 @@ from pydantic import ValidationError
 
 from aidm.app.registry import ENGINES, engine_class
 from aidm.config import Settings
-from aidm.content.store import FileStore, SaveShell, read_characters, read_scenarios
+from aidm.content.io import FileStore, SaveShell, read_characters, read_scenarios
 from aidm.state.model import EngineId, Frozen, Slug
 
 

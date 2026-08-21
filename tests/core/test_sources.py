@@ -2,7 +2,7 @@ from pathlib import Path
 
 import pytest
 
-from aidm.content.sources import WHOLE_CHARS, whole_text
+from aidm.content.io import WHOLE_CHARS, whole_text
 
 FIXTURES = Path(__file__).parent / "fixtures" / "source"
 

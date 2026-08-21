@@ -4,8 +4,8 @@ from pydantic_ai import Agent, ModelRetry, RunContext, ToolOutput
 from pydantic_ai.toolsets import FunctionToolset
 
 from aidm.config import Settings
-from aidm.content.authored import Scenario
-from aidm.content.store import load_scenario
+from aidm.content.io import load_scenario
+from aidm.content.model import Scenario
 from aidm.llm import build_agent
 from aidm.state.model import Slug
 

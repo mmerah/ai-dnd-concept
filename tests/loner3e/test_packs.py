@@ -3,7 +3,7 @@ from pathlib import Path
 import pytest
 from core_test_support import initialized
 
-from aidm.content.store import ENCODING
+from aidm.content.io import ENCODING
 from aidm.engines.loner3e.mechanics import Mechanics
 from aidm.engines.loner3e.pack import SRD_PACK, Pack, PackEntry, twist_table
 from aidm.engines.loner3e.rules import Loner3eEngine

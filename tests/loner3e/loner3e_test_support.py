@@ -5,7 +5,7 @@ from core_test_support import LONER3E, character, scenario, settings
 
 from aidm.app.registry import build_engine
 from aidm.app.session import GameSession, LaunchTarget, build_advisor
-from aidm.content.store import FileStore
+from aidm.content.io import FileStore
 from aidm.turn.agents import build_turn_agents
 
 TARGET = LaunchTarget(

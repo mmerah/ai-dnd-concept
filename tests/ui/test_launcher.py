@@ -9,7 +9,7 @@ from ui_test_support import SCENARIOS, ui_settings
 from aidm.app.launcher import LauncherController, LaunchTarget, load_catalog
 from aidm.app.session import Runtime
 from aidm.config import Settings
-from aidm.content.store import ENCODING, FileStore, SavedGame
+from aidm.content.io import ENCODING, FileStore, SavedGame
 from aidm.state.model import EngineId, Game
 
 

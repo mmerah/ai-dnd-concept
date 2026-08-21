@@ -2,9 +2,8 @@ from pydantic import JsonValue
 from pydantic_ai import UsageLimits
 
 from aidm.config import Settings
-from aidm.content.authored import Character
-from aidm.content.sources import whole_text
-from aidm.content.store import source_file
+from aidm.content.io import source_file, whole_text
+from aidm.content.model import Character
 from aidm.engines.engine import Engine
 from aidm.state.model import Entity, EntityId, Exit, Fact, Frozen, Game, Thread, WorldState
 

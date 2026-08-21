@@ -8,8 +8,8 @@ from typing import ClassVar
 from pydantic import JsonValue
 from pydantic_ai.toolsets import AbstractToolset
 
-from aidm.content.authored import CreatedCharacter
-from aidm.content.store import SavedGame, engine_text
+from aidm.content.io import SavedGame, engine_text
+from aidm.content.model import CreatedCharacter
 from aidm.state.model import (
     AnyStep,
     EngineId,

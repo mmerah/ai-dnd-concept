@@ -20,7 +20,7 @@ from pydantic_ai.messages import ModelMessage, ModelResponse, ToolReturnPart
 from pydantic_ai.models.function import AgentInfo, FunctionModel
 
 from aidm.config import RoleConfig
-from aidm.content.store import SavedGame
+from aidm.content.io import SavedGame
 from aidm.engines.loner3e.actions import outcome_for
 from aidm.engines.twentyfourxx.mechanics import Mechanics
 from aidm.state.model import PLAYER_ID, EntityId

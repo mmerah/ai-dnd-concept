@@ -9,7 +9,7 @@ from time import perf_counter
 
 from aidm.app.registry import begin_game, build_engine
 from aidm.config import Settings, load_settings
-from aidm.content.store import load_character, load_scenario
+from aidm.content.io import load_character, load_scenario
 from aidm.engines.engine import Engine
 from aidm.state.model import EngineId, EntityId, Frozen, Game
 from aidm.turn.agents import build_turn_agents

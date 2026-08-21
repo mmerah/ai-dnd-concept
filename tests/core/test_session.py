@@ -6,8 +6,8 @@ from loner3e_test_support import TARGET
 from loner3e_test_support import loner3e_session as session
 
 from aidm.app.session import Runtime
-from aidm.content.authored import ScenarioMeta
-from aidm.content.store import FileStore, SavedGame
+from aidm.content.io import FileStore, SavedGame
+from aidm.content.model import ScenarioMeta
 
 
 def test_opening_does_not_save_and_restart_discards_durable_state(tmp_path: Path) -> None:

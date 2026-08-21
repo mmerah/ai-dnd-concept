@@ -2,7 +2,7 @@ import json
 from collections.abc import Callable, Iterable, Sequence
 from pathlib import Path
 
-from aidm.content.store import engine_text
+from aidm.content.io import engine_text
 from aidm.engines.advancement import Offer
 from aidm.engines.engine import Engine, EntityRenderer
 from aidm.state.model import Entity, Exit, Game, ScenarioMeta, Thread, Trait, kind_word

@@ -2,7 +2,7 @@ from collections.abc import Iterable
 
 from pydantic import Field
 
-from aidm.content.authored import Scenario
+from aidm.content.model import Scenario
 from aidm.state.model import (
     PLAYER_ID,
     EngineId,

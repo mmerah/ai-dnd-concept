@@ -14,8 +14,8 @@ from core_test_support import (
 )
 from pydantic import ValidationError
 
-from aidm.content.authored import Character, CharacterOverlay, CharacterProfile, Scenario
-from aidm.content.store import SavedGame, load_character
+from aidm.content.io import SavedGame, load_character
+from aidm.content.model import Character, CharacterOverlay, CharacterProfile, Scenario
 from aidm.engines.loner3e.mechanics import LUCK_MAX, Mechanics
 from aidm.state.model import PLAYER_ID, Entity, EntityId, Game
 

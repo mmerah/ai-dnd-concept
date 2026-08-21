@@ -1,6 +1,6 @@
 from collections.abc import Mapping
 
-from aidm.content.authored import CharacterOverlay, CharacterProfile, CreatedCharacter
+from aidm.content.model import CharacterOverlay, CharacterProfile, CreatedCharacter
 from aidm.engines.engine import CharacterCreation
 from aidm.engines.packs import pack_step
 from aidm.state.model import (

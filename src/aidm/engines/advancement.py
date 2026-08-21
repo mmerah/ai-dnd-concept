@@ -3,7 +3,7 @@ from pathlib import Path
 from random import Random
 from typing import ClassVar
 
-from aidm.content.store import engine_text
+from aidm.content.io import engine_text
 from aidm.state.model import PLAYER_ID, Counter, EntityId, Fact, Frozen, Game, Slug, check_draft
 
 from .counters import counter_fact

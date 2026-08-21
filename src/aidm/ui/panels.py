@@ -13,7 +13,7 @@ from aidm.app.views import (
     player_scene,
     thread_summaries,
 )
-from aidm.content.store import SavedGame
+from aidm.content.io import SavedGame
 from aidm.state.model import (
     PLAYER_ID,
     Applied,

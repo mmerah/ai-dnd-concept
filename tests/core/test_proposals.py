@@ -8,7 +8,7 @@ from pydantic_ai.messages import ModelMessage, ModelResponse, TextPart
 from pydantic_ai.models.function import AgentInfo, FunctionModel
 
 from aidm.app.session import Drafted
-from aidm.content.store import FileStore, SavedGame
+from aidm.content.io import FileStore, SavedGame
 from aidm.engines.loner3e.advance import AdventureGrowth, Change
 from aidm.engines.loner3e.mechanics import Mechanics
 from aidm.state.model import PLAYER_ID, Applied

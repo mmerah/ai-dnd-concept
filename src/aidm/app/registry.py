@@ -1,6 +1,6 @@
 from pathlib import Path
 
-from aidm.content.authored import Character, Scenario
+from aidm.content.model import Character, Scenario
 from aidm.engines.engine import Engine
 from aidm.engines.loner3e.rules import Loner3eEngine
 from aidm.engines.twentyfourxx.rules import TwentyfourxxEngine

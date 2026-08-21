@@ -19,8 +19,8 @@ from pydantic_settings import SettingsConfigDict
 
 from aidm.app.registry import begin_game, build_engine
 from aidm.config import ProviderConfig, Providers, Settings
-from aidm.content.authored import Character, Scenario
-from aidm.content.store import load_character, load_scenario
+from aidm.content.io import load_character, load_scenario
+from aidm.content.model import Character, Scenario
 from aidm.engines.advancement import Advancement
 from aidm.engines.engine import Engine
 from aidm.engines.sheets import SheetMechanics
