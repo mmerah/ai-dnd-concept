@@ -16,11 +16,11 @@ from .panels import (
     chat,
     journal_panel,
     page_header,
-    role_badges,
     scene_header,
     sheet_panel,
     state_panel,
     trace_panel,
+    turn_progress,
 )
 from .scenario_create import scenario_page
 
@@ -48,8 +48,8 @@ class GameView:
         chat(self.session)
 
     @ui.refreshable_method
-    def roles(self) -> None:
-        role_badges(self.session)
+    def progress(self) -> None:
+        turn_progress(self.session)
 
     @ui.refreshable_method
     def sheet(self) -> None:
@@ -75,7 +75,7 @@ class GameView:
         for panel in (
             self.scene,
             self.chat,
-            self.roles,
+            self.progress,
             self.sheet,
             self.journal,
             self.trace,
@@ -85,9 +85,15 @@ class GameView:
             panel.refresh()
 
 
+def _idle(busy: bool) -> bool:
+    """Bound to `session.busy`, so the composer follows the turn through every exit `working`
+    takes, including the failure it swallows."""
+    return not busy
+
+
 def on_step(view: GameView, step: str) -> None:
     view.session.step = step
-    view.roles.refresh()
+    view.progress.refresh()
 
 
 def poll_art(view: GameView) -> None:
@@ -105,6 +111,8 @@ async def submit(view: GameView, box: ui.input) -> None:
     if not prompt or refuse_if_busy(session):
         return
     box.value = ""
+    # Quasar never saw the typed value change, so only an explicit push empties the composer.
+    _ = box.run_method("updateValue")
     async with working(session):
         was_offered = session.pending()
         await session.submit(prompt, on_step=lambda step: on_step(view, step))
@@ -167,9 +175,9 @@ def _register_pages(runtime: Runtime) -> None:
 
 
 def _game_page(session: GameSession) -> None:
+    session.illustrate_scene()
     view = GameView(session)
     with page_header(session.state.scenario.title, session.engine.badge):
-        view.roles()
         ui.space()
         ui.button("restart", on_click=lambda: restart(view)).props("flat color=white dense")
 
@@ -180,14 +188,25 @@ def _game_page(session: GameSession) -> None:
             view.scene()
             with ui.scroll_area().classes("w-full flex-grow") as transcript:
                 view.chat()
+            view.progress()
             with ui.row().classes("w-full no-wrap").style("gap: 0.5rem"):
                 box = (
                     ui.input(placeholder="What do you do?")
                     .classes("flex-grow")
                     .props("outlined autogrow type=textarea")
+                    .bind_enabled_from(session, "busy", backward=_idle)
                 )
-                box.on("keydown.enter", lambda: submit(view, box))
-                ui.button(icon="send", on_click=lambda: submit(view, box)).props("round")
+                # Enter sends; without the prevent the browser also leaves its newline behind.
+                box.on(
+                    "keydown.enter",
+                    lambda: submit(view, box),
+                    js_handler="(e) => { if (e.shiftKey) return; e.preventDefault(); emit(); }",
+                )
+                _ = (
+                    ui.button(icon="send", on_click=lambda: submit(view, box))
+                    .props("round")
+                    .bind_enabled_from(session, "busy", backward=_idle)
+                )
             view.composer, view.transcript = box, transcript
         with splitter.after, ui.column().classes("w-full h-full").style("gap: 0"):
             advancement = session.engine.advancement

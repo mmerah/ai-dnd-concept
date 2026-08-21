@@ -3,9 +3,8 @@ from collections.abc import Iterable
 from pydantic import Field
 
 from aidm.content.authored import Scenario
-from aidm.content.sources import ExpansionPolicy
-from aidm.state.base import EngineId, Entity, EntityId, Frozen, Mutable
-from aidm.state.world import ScenarioMeta, Thread, WorldState
+from aidm.state.base import PLAYER_ID, EngineId, Entity, EntityId, Frozen, Mutable
+from aidm.state.world import Game, ScenarioMeta, Thread, WorldState
 
 
 def _index[T: Entity | Thread](kept: list[T], target: str) -> int | None:
@@ -52,7 +51,7 @@ class ScenarioPatch(Frozen):
 class WorldDraft(Mutable):
     """The scenario under authorship, flat in `ScenarioPatch` vocabulary until `scenario()`."""
 
-    expansion: ExpansionPolicy = "closed"
+    grows: bool = False
     art_style: str = ""
     meta: ScenarioMeta | None = None
     starting_location_id: EntityId | None = None
@@ -63,13 +62,34 @@ class WorldDraft(Mutable):
     @classmethod
     def of(cls, scenario: Scenario) -> "WorldDraft":
         return cls(
-            expansion=scenario.expansion,
+            grows=scenario.grows,
             art_style=scenario.art_style,
             meta=scenario.meta,
             starting_location_id=scenario.starting_location_id,
             starting_party=tuple(scenario.world.party),
             entities=[entity.model_copy(deep=True) for entity in scenario.world.entities],
             threads=[thread.model_copy(deep=True) for thread in scenario.world.threads],
+        )
+
+    @classmethod
+    def of_game(cls, state: Game) -> "WorldDraft":
+        """The live world as a draft, minus the player, what they carry, and any party member
+        play has sent away from their side — all things a `Scenario` refuses."""
+        world = state.world
+        return cls(
+            meta=state.scenario,
+            starting_location_id=state.player_location,
+            starting_party=tuple(
+                member
+                for member in world.party
+                if world.require(member).parent_id == state.player_location
+            ),
+            entities=[
+                entity.model_copy(deep=True)
+                for entity in world.entities
+                if PLAYER_ID not in (entity.id, entity.parent_id)
+            ],
+            threads=[thread.model_copy(deep=True) for thread in world.threads],
         )
 
     def apply(self, patch: ScenarioPatch) -> str:
@@ -111,7 +131,7 @@ class WorldDraft(Mutable):
         )
 
     def as_json(self) -> str:
-        return self.model_dump_json(indent=2, exclude={"expansion"})
+        return self.model_dump_json(indent=2, exclude={"grows"})
 
     def scenario(self, engines: tuple[EngineId, ...]) -> Scenario:
         if self.meta is None:
@@ -120,7 +140,7 @@ class WorldDraft(Mutable):
             raise ValueError("the draft has no `starting_location_id` yet")
         return Scenario(
             meta=self.meta,
-            expansion=self.expansion,
+            grows=self.grows,
             engines=engines,
             art_style=self.art_style,
             starting_location_id=self.starting_location_id,

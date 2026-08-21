@@ -50,37 +50,6 @@ def render_narrator(
     )
 
 
-def render_expander(
-    scene: SceneSnapshot,
-    describe: EntityRenderer,
-    scenario: ScenarioMeta,
-    *,
-    context: str,
-    request: str,
-) -> str:
-    """The Expander writes records and never prose, so all of canon may reach it."""
-    return _sections(
-        (
-            _premise(scenario),
-            ("THE SOURCE", context),
-            (
-                "PLAYER CHARACTER",
-                _character(scene.player, scene.location, scene.inventory, describe),
-            ),
-            (
-                "EVERYTHING THAT EXISTS",
-                _entities(scene.catalogue(), describe, placement=scene.placement_of),
-            ),
-            (
-                "EXITS FROM WHERE THE PLAYER STANDS",
-                "\n".join(_exit_line(scene, way) for way in scene.exits) or "- (none)",
-            ),
-            ("ACTIVE THREADS", _threads(scene.threads)),
-            ("WHAT THE DIRECTOR NEEDS", request),
-        )
-    )
-
-
 def render_proposal(engine: Engine[SheetBase], state: Game, offer: Offer, intent: str) -> str:
     subject = state.world.require(offer.subject_id)
     sections = (
@@ -232,7 +201,6 @@ _PROMPTS_DIR = Path(__file__).parent / "prompts"
 DIRECTOR = engine_text(_PROMPTS_DIR / "director.md")
 CORE_ADVISOR = engine_text(_PROMPTS_DIR / "core_advisor.md")
 NARRATOR = engine_text(_PROMPTS_DIR / "narrator.md")
-EXPANDER = engine_text(_PROMPTS_DIR / "expander.md")
 
 
 def director_instructions(engine_instructions: str) -> str:

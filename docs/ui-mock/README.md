@@ -20,7 +20,7 @@ Then open `http://localhost:8088`.
 4. Open **Hero**. The shared portrait, traits and inventory stay stable while the mechanical sheet changes with the engine. The advancement card also adapts.
 5. Open **Journal** and **World**. These are player-facing replacements for trying to understand the game through raw state.
 6. Open **Home**. It demonstrates scenario + engine + compatible-character selection, saves, and a redesigned engine-specific character creator.
-7. Open **Create**. Walk through Source -> World draft -> Engines -> Media -> Review. Source can be a premise or an ingested PDF; output remains shared authored world data plus validated per-engine overlays.
+7. Open **Create**. Walk through Source -> World draft -> Engines -> Media -> Review. Source can be a premise or a PDF read as source text; output remains shared authored world data plus validated per-engine overlays.
 8. Open **Dev** in the left rail. Trace, raw state, the role pipeline, and engine-private mechanics still exist, but they are intentionally outside the normal player experience.
 
 ## What the prototype is trying to test
@@ -31,7 +31,7 @@ Then open `http://localhost:8088`.
 - Do portraits, scene art and icons feel like part of the fiction rather than decorative attachments?
 - Should advancement live on the character sheet instead of being a generic engine tab?
 - Is a journal + known-world view a better mental model than a raw state panel?
-- Does the scenario-creator flow make premise/PDF ingestion feel like authoring rather than runtime magic?
+- Does the scenario-creator flow make premise/PDF source text feel like authoring rather than runtime magic?
 
 ## Current features represented
 
@@ -56,7 +56,7 @@ Then open `http://localhost:8088`.
 - Known-world map/catalogue
 - Player journal / recap
 - Scenario creation from a premise
-- Scenario creation from an ingested PDF
+- Scenario creation from a PDF source document
 - Shared-world review with private-canon separation
 - Engine compatibility / overlay review
 - Media planning with hidden-content safeguards

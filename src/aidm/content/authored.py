@@ -3,7 +3,6 @@ from typing import Self
 
 from pydantic import Field, JsonValue, model_validator
 
-from aidm.content.sources import ExpansionPolicy
 from aidm.state.base import PLAYER_ID, EngineId, Entity, EntityId, Frozen, Slug, Trait
 from aidm.state.world import ScenarioMeta, WorldState
 
@@ -13,7 +12,8 @@ class Scenario(Frozen):
 
     meta: ScenarioMeta
     engines: tuple[EngineId, ...] = Field(min_length=1)
-    expansion: ExpansionPolicy = "closed"
+    # A growing scenario is extended between turns by a background authoring run.
+    grows: bool = False
     art_style: str = ""
     starting_location_id: EntityId
     # Shared by every game of this scenario: read-only — `begin_game` deep-copies before mutating.

@@ -9,6 +9,7 @@ from aidm.content.store import engine_text, load_character
 from aidm.engines.engine import Engine
 from aidm.engines.sheets import SheetBase
 from aidm.state.base import EngineId
+from aidm.state.world import WorldState
 
 from .draft import WorldDraft
 
@@ -100,6 +101,34 @@ class Brief:
 FULL = Brief(_instructions("scenario_bar.md"), _bar_unmet)
 # An opening slice is deliberately thin: the rest of the world is written during play.
 OPENING = Brief(_instructions("scenario_opening.md"), _opening_unmet)
+
+
+def extend_brief(before: WorldState) -> Brief:
+    """A brief bound to the world it extends: what counts as new is only meaningful against what
+    already existed."""
+    held = {entity.id for entity in before.entities}
+
+    def unmet(scenario: Scenario) -> list[str]:
+        added = {
+            entity.id
+            for entity in scenario.world.entities
+            if entity.kind == "location" and entity.id not in held
+        }
+        if not added:
+            return ["at least one location the world did not already hold"]
+        if not any(
+            way.to in added
+            for entity in scenario.world.entities
+            if entity.id in held and entity.known
+            for way in entity.exits
+        ):
+            return [
+                "at least one exit from a location the player already knows of into one of the "
+                f"new ones: {sorted(added)}"
+            ]
+        return []
+
+    return Brief(_instructions("scenario_extend.md"), unmet)
 
 
 def playability(draft: WorldDraft, playing: Sequence[Playtest], brief: Brief = FULL) -> str | None:

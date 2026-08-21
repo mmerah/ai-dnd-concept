@@ -39,8 +39,8 @@ def test_a_world_colliding_with_the_character_is_refused() -> None:
 
 
 def _as_patch() -> dict[str, JsonValue]:
-    """The shipped scenario as `worked_example` teaches it, without the session's `expansion`."""
-    return WorldDraft.of(scenario()).model_dump(mode="json", exclude={"expansion"})
+    """The shipped scenario as `worked_example` teaches it, without the session's `grows`."""
+    return WorldDraft.of(scenario()).model_dump(mode="json", exclude={"grows"})
 
 
 def _location(name: str) -> Entity:
@@ -118,7 +118,7 @@ def test_the_shipped_world_written_as_one_patch_is_playable() -> None:
 async def test_the_agent_authors_through_the_write_tool() -> None:
     config = settings()
     session = AuthoringSession(
-        slug="authored", premise="a vault", config=config, expansion="closed", engines=engine_ids()
+        slug="authored", premise="a vault", config=config, grows=False, engines=engine_ids()
     )
     author = scripted(
         ModelResponse(parts=[ToolCallPart(tool_name="write", args={"patch": _as_patch()})]),
@@ -134,7 +134,7 @@ async def test_finishing_an_unplayable_draft_is_refused_and_asked_again() -> Non
     author is asked again in the same run. Post-run revalidation lives in `write()`, not here."""
     config = settings()
     session = AuthoringSession(
-        slug="authored", premise="a vault", config=config, expansion="closed", engines=engine_ids()
+        slug="authored", premise="a vault", config=config, grows=False, engines=engine_ids()
     )
     author = scripted(
         _finish("all done, and it is great"),
@@ -149,7 +149,7 @@ async def test_finishing_an_unplayable_draft_is_refused_and_asked_again() -> Non
 async def test_a_session_goes_on_authoring_after_it_finishes() -> None:
     config = settings()
     session = AuthoringSession(
-        slug="authored", premise="a vault", config=config, expansion="closed", engines=engine_ids()
+        slug="authored", premise="a vault", config=config, grows=False, engines=engine_ids()
     )
     study = next(entity for entity in scenario().world.entities if entity.id == EntityId("study"))
     addition = ScenarioPatch(
@@ -182,7 +182,7 @@ async def test_an_unplayable_draft_is_never_written() -> None:
         slug="authored",
         premise="a vault",
         config=settings(),
-        expansion="closed",
+        grows=False,
         engines=engine_ids(),
     )
     with pytest.raises(ValueError, match="does not play"):
@@ -206,7 +206,7 @@ def test_a_thin_draft_hears_every_unmet_bar_item_at_once() -> None:
 
 def test_an_opening_slice_passes_a_bar_the_whole_scenario_would_fail() -> None:
     """Premise-start authors the first scene and nothing else: the rest is written during play."""
-    draft = WorldDraft(expansion="open")
+    draft = WorldDraft(grows=True)
     _ = draft.apply(
         ScenarioPatch(
             meta=ScenarioMeta(title="The Cell", premise="Get out."),
@@ -236,4 +236,4 @@ def test_an_opening_slice_passes_a_bar_the_whole_scenario_would_fail() -> None:
 
     assert playability(draft, playing, OPENING) is None
     assert playability(draft, playing) is not None
-    assert draft.scenario(engine_ids()).expansion == "open"
+    assert draft.scenario(engine_ids()).grows

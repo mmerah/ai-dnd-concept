@@ -28,4 +28,8 @@ class Applied(TraceEntryBase):
     subject_id: EntityId
 
 
-type TraceEntry = Turn | Applied
+class Extended(TraceEntryBase):
+    """Canon a background authoring run appended."""
+
+
+type TraceEntry = Turn | Applied | Extended

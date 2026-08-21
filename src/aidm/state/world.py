@@ -166,6 +166,20 @@ def check_player_playable(world: WorldState) -> None:
         raise ValueError("the player entity must be known")
 
 
+def frontier(world: WorldState) -> int:
+    """Unknown locations a known location leads to: doors the player can still find."""
+    known = {entity.id for entity in world.entities if entity.known}
+    return len(
+        {
+            way.to
+            for entity in world.entities
+            if entity.id in known
+            for way in entity.exits
+            if not world.require(way.to).known
+        }
+    )
+
+
 class ScenarioMeta(Frozen):
     title: str
     premise: str

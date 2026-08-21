@@ -20,7 +20,6 @@ from pydantic_settings import SettingsConfigDict
 from aidm.app.registry import begin_game, build_engine
 from aidm.config import ProviderConfig, Providers, Settings
 from aidm.content.authored import Character, Scenario
-from aidm.content.sources import CanonSource
 from aidm.content.store import load_character, load_scenario
 from aidm.engines.advancement import Advancement
 from aidm.engines.engine import Engine
@@ -163,8 +162,6 @@ async def played(
     *,
     director: Model,
     narrator: Model | None = None,
-    expander: Model | None = None,
-    source: CanonSource | None = None,
     rng: Random | None = None,
     on_step: Callable[[str], None] | None = None,
     config: Settings | None = None,
@@ -172,13 +169,11 @@ async def played(
     """The turn with every role stubbed, built the way the session builds it. One Director run
     answers with a tool call per model request, closed by a final text response."""
     config = config or settings()
-    stages = build_turn_agents(engine, config, source)
+    stages = build_turn_agents(engine, config)
     narrator = narrator or FunctionModel(scripted(narrated("You wait.")))
     with ExitStack() as stack:
         stack.enter_context(stages.director.override(model=director))
         stack.enter_context(stages.narrator.override(model=narrator))
-        if stages.expander is not None and expander is not None:
-            stack.enter_context(stages.expander.override(model=expander))
         return await run_turn(
             state,
             prompt,

@@ -218,8 +218,7 @@ def cases_for(engine_id: EngineId, settings: Settings) -> tuple[Case, ...]:
 async def play(case: Case, settings: Settings, seed: int) -> Run:
     engine, state = begin(case.engine_id, settings)
     opening = case.setup(state)
-    # No source: a closed scenario builds no Expander, so no turn can expand its canon.
-    stages = build_turn_agents(engine, settings, None)
+    stages = build_turn_agents(engine, settings)
     started = perf_counter()
     try:
         result = await run_turn(

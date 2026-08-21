@@ -5,7 +5,7 @@ from pydantic_ai import Agent, UsageLimits
 from pydantic_ai.messages import ModelMessage
 
 from aidm.config import Settings
-from aidm.content.sources import ExpansionPolicy, whole_text
+from aidm.content.sources import whole_text
 from aidm.content.store import write_scenario
 from aidm.state.base import EngineId, Slug
 
@@ -21,7 +21,7 @@ class AuthoringSession:
     slug: Slug
     premise: str
     config: Settings
-    expansion: ExpansionPolicy
+    grows: bool
     engines: tuple[EngineId, ...]
     art_style: str = ""
     document: Path | None = None
@@ -40,7 +40,7 @@ class AuthoringSession:
             raise ValueError(f"scenario {self.slug!r} already exists")
         self.playing = playtests(self.config, self.engines)
         self.agent = world_agent(self.playing, self.config, self.brief)
-        self.draft = WorldDraft(expansion=self.expansion)
+        self.draft = WorldDraft(grows=self.grows)
         given = self.premise if self.document is None else whole_text(self.document)
         self.opening_prompt = world_prompt(self.slug, given, self.document is not None)
 

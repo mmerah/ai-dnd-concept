@@ -1,10 +1,11 @@
 ## The bar
 
-You author an opening slice, not a whole scenario. The world grows during play — canon is written
-as the player reaches for it — so what you leave out is not missing, it is room. Author only what
-the first scene needs, and author that as concretely as a whole scenario would.
+You author an opening slice, not a whole scenario. The world grows between turns, when it runs
+thin — so what you leave out is not missing, it is room. Author only what the first scene needs,
+and author that as concretely as a whole scenario would.
 
-- The starting location, and no second one: the way onward is written when the player walks it.
+- The starting location, and no second one: the way onward is written for you before the player
+  reaches it.
 - Two or three entities the first scene needs — the person who meets the player, the thing that
   draws them on — placed in the starting location, and no more.
 - One thread: what the premise is about, with a `stage` naming where it stands and a `note`

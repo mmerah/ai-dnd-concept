@@ -1,3 +1,4 @@
+import logging
 from asyncio import Task, create_task
 from collections.abc import Callable
 from dataclasses import dataclass, field
@@ -6,24 +7,18 @@ from random import Random
 
 from pydantic_ai import Agent
 
+from aidm.app.authoring.extend import apply_patch, author_extension
 from aidm.config import Settings
 from aidm.content.authored import Character, Scenario
-from aidm.content.sources import CanonSource, OpenSource, ingest
-from aidm.content.store import (
-    FileStore,
-    SavedGame,
-    load_character,
-    load_scenario,
-    source_file,
-)
+from aidm.content.store import FileStore, SavedGame, load_character, load_scenario
 from aidm.engines.advancement import Advancement, Offer, ProposalBase
 from aidm.engines.engine import Engine
 from aidm.engines.sheets import SheetBase
 from aidm.engines.transact import transact
 from aidm.state.base import PLAYER_ID, EngineId, EntityId
 from aidm.state.facts import Fact
-from aidm.state.trace import Applied, TraceEntry, Turn
-from aidm.state.world import Game
+from aidm.state.trace import Applied, Extended, TraceEntry, Turn
+from aidm.state.world import Game, frontier
 from aidm.turn.agents import AdvancementContext, TurnAgents, advisor_agent, build_turn_agents
 from aidm.turn.pipeline import TURN_STEPS, run_turn
 from aidm.turn.prompts import render_proposal
@@ -32,6 +27,11 @@ from .launcher import LaunchTarget
 from .media import ICON_DIR, STYLE, Illustrator
 from .registry import begin_game, build_engine
 from .views import journal_markdown
+
+LOGGER = logging.getLogger(__name__)
+
+# The step name the page lights while an authoring run grows the world.
+WORLDSMITH = "worldsmith"
 
 
 @dataclass(frozen=True, slots=True)
@@ -49,15 +49,6 @@ def build_advisor(
     if engine.advancement is None:
         return None
     return advisor_agent(engine.advancement, settings)
-
-
-def open_source(config: Settings, target: LaunchTarget, scenario: Scenario) -> CanonSource | None:
-    if scenario.expansion == "closed":
-        return None
-    path = source_file(config.scenarios_dir, target.scenario_id)
-    if path is None:
-        return OpenSource(premise=scenario.meta.premise)
-    return OpenSource(document=ingest(path), premise=scenario.meta.premise)
 
 
 def open_media(
@@ -104,7 +95,7 @@ class GameSession:
     busy: bool = False
     step: str | None = None
     drafted: Drafted | None = None
-    _tasks: set[Task[None]] = field(default_factory=set, repr=False)
+    _illustrations: set[Task[None]] = field(default_factory=set, repr=False)
     state: Game = field(init=False)
 
     def __post_init__(self) -> None:
@@ -125,7 +116,7 @@ class GameSession:
 
     @property
     def role_names(self) -> tuple[str, ...]:
-        return TURN_STEPS
+        return (*TURN_STEPS, WORLDSMITH) if self.scenario.grows else TURN_STEPS
 
     async def submit(
         self,
@@ -144,6 +135,10 @@ class GameSession:
         )
         self._commit(result.state, result.turn)
         self._illustrate(result.turn.narration)
+        if self.scenario.grows and frontier(self.state.world) <= 1:
+            if on_step is not None:
+                on_step(WORLDSMITH)
+            await self._extend()
         return result.turn
 
     def scene_art(self) -> Path | None:
@@ -151,6 +146,10 @@ class GameSession:
 
     def scene_pending(self) -> bool:
         return self.media is not None and self.media.scene_pending(self.state)
+
+    def illustrate_scene(self) -> None:
+        """Draw where the player stands with no turn behind it, so an opening scene has art."""
+        self._illustrate("")
 
     def icon(self, entity_id: EntityId) -> Path | None:
         return None if self.media is None else self.media.icon(entity_id)
@@ -164,8 +163,8 @@ class GameSession:
         if self.media is None:
             return
         task = create_task(self.media.illustrate(self.state, narration))
-        self._tasks.add(task)
-        task.add_done_callback(self._tasks.discard)
+        self._illustrations.add(task)
+        task.add_done_callback(self._illustrations.discard)
 
     def offers(self) -> tuple[Offer, ...]:
         advancement = self.engine.advancement
@@ -224,19 +223,31 @@ class GameSession:
 
     def restart(self) -> None:
         opening = self._begun()
-        for task in self._tasks:
-            # An illustration of the discarded timeline would write itself back into the emptied
-            # media directory.
-            task.cancel()
         self.store.discard(self.slug)
         self.state = opening
         self.entries = []
         self.drafted = None
+        self.illustrate_scene()
 
     def _commit(self, state: Game, entry: TraceEntry) -> None:
         self.store.save(self.slug, SavedGame.of(state))
         self.state = state
         self.entries.append(entry)
+
+    async def _extend(self) -> None:
+        """The world grows inside the turn that ran it thin; a failed run costs a log line, and
+        the next thin turn tries again."""
+        try:
+            patch = await author_extension(self.settings, self.engine, self.character, self.state)
+            state, facts = transact(
+                self.engine,
+                self.state.draft(),
+                lambda draft, _rng: apply_patch(draft, patch),
+                self.rng,
+            )
+            self._commit(state, Extended(facts=facts))
+        except Exception:
+            LOGGER.exception("extending %r failed", self.slug)
 
     def _begun(self) -> Game:
         return begin_game(self.engine, self.target.scenario_id, self.scenario, self.character)
@@ -296,7 +307,7 @@ class Runtime:
             scenario=scenario,
             character=character,
             engine=engine,
-            stages=build_turn_agents(engine, config, open_source(config, target, scenario)),
+            stages=build_turn_agents(engine, config),
             advisor=build_advisor(engine, config),
             store=store,
             settings=config,

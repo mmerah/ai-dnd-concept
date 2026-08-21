@@ -2,10 +2,11 @@ import json
 from collections.abc import Callable, Generator, Sequence
 from contextlib import contextmanager
 from pathlib import Path
+from time import monotonic
 
 from nicegui import ui
 
-from aidm.app.session import Drafted, GameSession, Offer
+from aidm.app.session import WORLDSMITH, Drafted, GameSession, Offer
 from aidm.app.views import (
     ThreadSummary,
     attributed_line,
@@ -15,7 +16,7 @@ from aidm.app.views import (
 from aidm.content.store import SavedGame
 from aidm.state.base import PLAYER_ID, EntityId
 from aidm.state.facts import Fact
-from aidm.state.trace import Applied, StepTrace, TraceEntry, Turn
+from aidm.state.trace import Applied, Extended, StepTrace, TraceEntry, Turn
 
 from .busy import refuse_if_busy, working
 
@@ -45,31 +46,52 @@ def page_header(
 DM_ICON = "auto_stories"
 
 
+_SCENE_HEIGHT = "calc(25vh - 1rem)"
+# Art and skeleton share one box, so the scene does not jump when a picture lands in it.
+_ART_BOX = f"flex: none; height: {_SCENE_HEIGHT}; max-width: 50%; aspect-ratio: 16 / 9"
+
+
 def scene_header(session: GameSession, fill_composer: Callable[[str], None]) -> None:
     scene = player_scene(session.state)
-    ui.label(scene.location.name).classes("text-h6 font-bold")
-    ui.label(scene.location.brief).classes("text-sm opacity-70")
+    # A quarter of the column at most: the art holds it and the text beside it scrolls.
+    with (
+        ui.row()
+        .classes("w-full items-start no-wrap")
+        .style(f"max-height: {_SCENE_HEIGHT}; overflow: hidden; gap: 0.75rem")
+    ):
+        _scene_art(session)
+        with (
+            ui.column()
+            .classes("flex-grow")
+            .style(f"max-height: {_SCENE_HEIGHT}; overflow-y: auto; gap: 0; min-width: 0")
+        ):
+            ui.label(scene.location.name).classes("text-h6 font-bold")
+            ui.label(scene.location.brief).classes("text-sm opacity-70")
+            _heading("Here now", tight=True)
+            if not scene.here:
+                ui.label("Nobody but you.").classes("text-sm opacity-70")
+            for entity in scene.here:
+                _entity_row(session.icon(entity.id), entity.name, entity.brief)
+            _heading("Exits", tight=True)
+            if not scene.exits:
+                ui.label("None found yet.").classes("text-sm opacity-70")
+            for way in scene.exits:
+                name = scene.exit_name(way)
+                # The button writes the move into the composer; the player still sends it.
+                ui.button(
+                    f"{name} (locked)" if way.locked else name,
+                    icon="arrow_forward",
+                    on_click=lambda name=name: fill_composer(f"Go to {name}"),
+                ).props("flat dense no-caps align=left").classes("w-full")
+
+
+def _scene_art(session: GameSession) -> None:
     art = session.scene_art()
     if art is not None:
-        ui.image(art).classes("w-full rounded-borders")
+        # `contain` letterboxes a frame drawn at another ratio instead of cropping its subject.
+        ui.image(art).props("fit=contain").classes("rounded-borders").style(_ART_BOX)
     elif session.scene_pending():
-        ui.skeleton().classes("w-full rounded-borders").style("height: 8rem")
-    _heading("Here now")
-    if not scene.here:
-        ui.label("Nobody but you.").classes("text-sm opacity-70")
-    for entity in scene.here:
-        _entity_row(session.icon(entity.id), entity.name, entity.brief)
-    _heading("Exits")
-    if not scene.exits:
-        ui.label("None found yet.").classes("text-sm opacity-70")
-    for way in scene.exits:
-        name = scene.exit_name(way)
-        # The button writes the move into the composer; the player still sends it themselves.
-        ui.button(
-            f"{name} (locked)" if way.locked else name,
-            icon="arrow_forward",
-            on_click=lambda name=name: fill_composer(f"Go to {name}"),
-        ).props("flat dense no-caps align=left").classes("w-full")
+        ui.skeleton().classes("rounded-borders").style(_ART_BOX)
 
 
 def _entity_row(icon: Path | None, name: str, sub: str) -> None:
@@ -143,8 +165,8 @@ def _labeled_value(label: str, value: str) -> None:
         ui.label(value or "—").classes("text-sm")
 
 
-def _heading(title: str) -> None:
-    ui.label(title).classes("text-xs font-bold opacity-60 mt-4")
+def _heading(title: str, *, tight: bool = False) -> None:
+    ui.label(title).classes(f"text-xs font-bold opacity-60 {'mt-2' if tight else 'mt-4'}")
 
 
 def _thread_card(thread: ThreadSummary) -> None:
@@ -179,11 +201,81 @@ def journal_panel(session: GameSession) -> None:
                 ui.markdown(attributed_line(session.state, line)).classes("text-sm")
 
 
-def role_badges(session: GameSession) -> None:
-    with ui.row().classes("items-center").style("gap: 0.25rem"):
-        for role in session.role_names:
-            colour = "primary" if session.step == role else "grey-7"
-            ui.badge(role).props(f"color={colour}")
+# Icon, label and one plain sentence per pipeline step, keyed by what `role_names` yields. The
+# sentence is both the hover explanation and the running commentary, so it says what the step does
+# and what to expect from it.
+_STEP_COPY: dict[str, tuple[str, str, str]] = {
+    "director": (
+        "gavel",
+        "Director",
+        "Works out what your action actually does: who reacts, what changes, "
+        "and whether the dice decide it.",
+    ),
+    "narrator": (
+        DM_ICON,
+        "Narrator",
+        "Writes what you see and hear this turn.",
+    ),
+    WORLDSMITH: (
+        "public",
+        "Worldsmith",
+        "Writes new places and people into the world, because it was running out of somewhere "
+        "for you to go. This one is slow — a few minutes is normal.",
+    ),
+}
+
+
+def _step_copy(step: str) -> tuple[str, str, str]:
+    return _STEP_COPY.get(step, ("bolt", step, ""))
+
+
+def turn_progress(session: GameSession) -> None:
+    """The page's one progress indicator: the pipeline as a step track, the running step lit,
+    named and timed."""
+    steps = session.role_names
+    running = session.step
+    reached = steps.index(running) if running in steps else -1
+    with ui.column().classes("w-full").style("gap: 0.15rem"):
+        with ui.row().classes("w-full items-center no-wrap").style("gap: 0.4rem"):
+            for index, step in enumerate(steps):
+                _step_chip(step, active=index == reached, done=index < reached)
+            if running is None:
+                ui.label("Your move.").classes("text-xs opacity-50")
+        if running is not None:
+            ui.label(_step_copy(running)[2]).classes("text-xs opacity-70")
+
+
+def _step_chip(step: str, *, active: bool, done: bool) -> None:
+    icon, label, description = _step_copy(step)
+    chip = ui.row().classes("items-center no-wrap rounded-borders q-px-sm q-py-xs")
+    chip.style("gap: 0.3rem; border: 1px solid currentColor")
+    if active:
+        chip.classes("bg-primary text-white").style("border-color: transparent")
+    else:
+        chip.classes("opacity-40")
+    with chip:
+        if active:
+            ui.spinner(size="1.1rem", color="white")
+        else:
+            ui.icon("check" if done else icon, size="1.1rem")
+        ui.label(label).classes("text-sm" + (" font-bold" if active else ""))
+        if active:
+            _elapsed()
+    if description:
+        chip.tooltip(description)
+
+
+def _elapsed() -> None:
+    """The timer is a child of the refreshable that draws the chip, so a repaint deletes it rather
+    than leaving it ticking alongside its replacement."""
+    started = monotonic()
+    ticker = ui.label("0:00").classes("text-xs font-mono")
+    ui.timer(1.0, lambda: ticker.set_text(_clock(monotonic() - started)))
+
+
+def _clock(seconds: float) -> str:
+    minutes, rest = divmod(int(seconds), 60)
+    return f"{minutes}:{rest:02d}"
 
 
 def trace_panel(session: GameSession) -> None:
@@ -199,6 +291,8 @@ def trace_panel(session: GameSession) -> None:
                 titles.append(f"turn {turns}: {prompt}")
             case Applied():
                 titles.append(f"after turn {turns}: advancement")
+            case Extended():
+                titles.append(f"after turn {turns}: the world grew")
     for index, entry in reversed(list(enumerate(entries))):
         with ui.expansion(titles[index], value=index == len(entries) - 1):
             _entry_trace(entry)
@@ -213,6 +307,8 @@ def _entry_trace(entry: TraceEntry) -> None:
     match entry:
         case Applied(facts=facts):
             _section("ADVANCEMENT", _facts(facts))
+        case Extended(facts=facts):
+            _section("THE WORLD GREW", _facts(facts))
         case Turn():
             _turn_trace(entry)
 

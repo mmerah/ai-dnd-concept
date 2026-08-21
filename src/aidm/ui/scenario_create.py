@@ -10,7 +10,6 @@ from aidm.app.authoring.session import AuthoringSession
 from aidm.app.media import STYLE
 from aidm.app.registry import engine_ids
 from aidm.config import Settings
-from aidm.content.sources import ExpansionPolicy
 from aidm.state.base import EngineId, content_id
 
 from .busy import refuse_if_busy, working
@@ -18,10 +17,6 @@ from .panels import page_header
 
 LOGGER = logging.getLogger(__name__)
 
-_EXPANSION_LABELS: dict[ExpansionPolicy, str] = {
-    "open": "open — the document where it speaks, the premise where it is silent",
-    "closed": "closed — the authored world is all there is",
-}
 _BRIEF_LABELS = {"full": "a whole scenario", "opening": "an opening slice, grown in play"}
 
 
@@ -57,11 +52,7 @@ def scenario_page(config: Settings) -> None:
                 .classes("w-full")
                 .props("outlined")
             )
-            expansion = (
-                ui.select(options=_EXPANSION_LABELS, label="How the world grows", value="open")
-                .classes("w-full")
-                .props("outlined")
-            )
+            grows = ui.switch("Grows during play", value=True).classes("w-full")
             engines = (
                 ui.select(
                     options=list(engine_ids()),
@@ -102,7 +93,7 @@ def scenario_page(config: Settings) -> None:
                         slug=content_id(slug.value or ""),
                         premise=(premise.value or "").strip(),
                         config=config,
-                        expansion=_policy(expansion.value),
+                        grows=bool(grows.value),
                         engines=_engines(engines.value),
                         art_style=(art_style.value or "").strip(),
                         document=document,
@@ -113,16 +104,16 @@ def scenario_page(config: Settings) -> None:
                     return
                 session = new_session
                 LOGGER.info(
-                    "scenario authoring started: slug=%s expansion=%s document=%s",
+                    "scenario authoring started: slug=%s grows=%s document=%s",
                     session.slug,
-                    session.expansion,
+                    session.grows,
                     document is not None,
                 )
                 for widget in (
                     slug,
                     premise,
                     upload,
-                    expansion,
+                    grows,
                     engines,
                     brief,
                     art_style,
@@ -202,12 +193,6 @@ def scenario_page(config: Settings) -> None:
                 status.refresh()
 
             readback()
-
-
-def _policy(value: object) -> ExpansionPolicy:
-    if not isinstance(value, str) or value not in _EXPANSION_LABELS:
-        raise ValueError(f"{value!r} is not one of the expansion policies")
-    return value
 
 
 def _engines(value: object) -> tuple[EngineId, ...]:

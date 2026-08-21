@@ -25,6 +25,18 @@ def test_opening_does_not_save_and_restart_discards_durable_state(tmp_path: Path
     assert store.load("poc") is None
 
 
+def test_restart_keeps_scene_art_a_replayed_scene_would_reuse(tmp_path: Path) -> None:
+    """Art is keyed by the visible scene, so a frame drawn before a restart still fits after."""
+    game = session(tmp_path)
+    art = FileStore(tmp_path).media_dir("poc") / "abc123def456.jpg"
+    art.parent.mkdir(parents=True, exist_ok=True)
+    _ = art.write_bytes(b"art")
+
+    game.restart()
+
+    assert art.read_bytes() == b"art"
+
+
 @pytest.mark.parametrize(
     ("change", "message"),
     (

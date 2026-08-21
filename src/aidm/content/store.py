@@ -3,7 +3,6 @@ from collections.abc import Callable, Iterator, Sequence
 from dataclasses import dataclass
 from pathlib import Path
 from re import fullmatch
-from shutil import rmtree
 from typing import Self
 
 from pydantic import BaseModel, ConfigDict, Field, JsonValue, model_validator
@@ -219,7 +218,6 @@ class FileStore:
     def discard(self, slug: str) -> None:
         self._save_path(slug).unlink(missing_ok=True)
         self._journal_path(slug).unlink(missing_ok=True)
-        rmtree(self.media_dir(slug), ignore_errors=True)
 
     def _save_path(self, slug: str) -> Path:
         return _safe_path(self.directory, slug, ".json")

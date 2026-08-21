@@ -7,7 +7,7 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 ProviderName = Literal["openrouter", "local"]
 ReasoningEffort = Literal["none", "minimal", "low", "medium", "high", "xhigh", "max"]
 # The roles a build has. A stage is built by name, so an unbuildable name cannot be configured.
-Role = Literal["director", "narrator", "expander", "advisor", "scenario_creator"]
+Role = Literal["director", "narrator", "advisor", "scenario_creator"]
 
 
 class ProviderConfig(BaseModel):
@@ -46,7 +46,6 @@ class MediaConfig(BaseModel):
 ROLE_DEFAULTS: dict[Role, RoleConfig] = {
     # A tool loop spends its budget across many calls, and choosing between tools needs the effort.
     "director": RoleConfig(max_tokens=8192, reasoning_effort="low"),
-    "expander": RoleConfig(max_tokens=8192, reasoning_effort="low"),
     "scenario_creator": RoleConfig(max_tokens=32768, reasoning_effort="medium"),
 }
 
