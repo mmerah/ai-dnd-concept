@@ -4,7 +4,7 @@ from golden_test_support import FIXTURES, golden
 
 from aidm.app.launch import engine_ids
 from aidm.state.model import EngineId
-from aidm.turn import context as prompts
+from aidm.turn import context
 from aidm.turn.context import render_proposal
 
 WANTED = "I want to strike harder."
@@ -14,9 +14,9 @@ WANTED = "I want to strike harder."
 def test_every_role_assembles_the_same_instructions(engine_id: EngineId) -> None:
     engine, _ = game(engine_id)
     roles = {
-        "director": prompts.director_instructions(engine.director_instructions),
-        "narrator": prompts.NARRATOR,
-        "advisor": prompts.advisor_instructions(capability(engine).instructions),
+        "director": context.director_instructions(engine.director_instructions),
+        "narrator": context.NARRATOR,
+        "advisor": context.advisor_instructions(capability(engine).instructions),
     }
     for name, instructions in roles.items():
         golden(FIXTURES / "instructions" / engine_id / f"{name}.txt", instructions)
