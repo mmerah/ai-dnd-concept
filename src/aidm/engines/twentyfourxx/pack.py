@@ -2,8 +2,7 @@ from typing import Self
 
 from pydantic import Field, model_validator
 
-from aidm.state.base import Frozen
-from aidm.state.creation import ContentSlug, CreationOption
+from aidm.state.model import ContentSlug, CreationOption, Frozen
 
 from .mechanics import SkillDie
 

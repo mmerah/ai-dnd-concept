@@ -5,8 +5,7 @@ from pathlib import Path
 from aidm.content.store import engine_text
 from aidm.engines.advancement import Offer
 from aidm.engines.engine import Engine, EntityRenderer
-from aidm.state.base import Entity, Exit, Trait, kind_word
-from aidm.state.world import Game, ScenarioMeta, Thread
+from aidm.state.model import Entity, Exit, Game, ScenarioMeta, Thread, Trait, kind_word
 
 from .scene import BaseScene, SceneSnapshot, VisibleScene
 

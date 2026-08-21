@@ -7,7 +7,7 @@ from aidm.config import Settings
 from aidm.content.authored import Scenario
 from aidm.content.store import load_scenario
 from aidm.llm import build_agent
-from aidm.state.base import Slug
+from aidm.state.model import Slug
 
 from .draft import ScenarioPatch, WorldDraft
 from .playability import FULL, Brief, Playtest, playability

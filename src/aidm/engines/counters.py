@@ -1,5 +1,4 @@
-from aidm.state.base import Counter, Entity, Slug
-from aidm.state.facts import Fact, explained_fact, labeled
+from aidm.state.model import Counter, Entity, Fact, Slug, explained_fact, labeled
 
 
 def pool(counter: Counter) -> str:

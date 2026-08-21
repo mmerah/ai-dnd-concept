@@ -4,9 +4,7 @@ from random import Random
 from typing import ClassVar
 
 from aidm.content.store import engine_text
-from aidm.state.base import PLAYER_ID, Counter, EntityId, Frozen, Slug
-from aidm.state.facts import Fact
-from aidm.state.world import Game, check_draft
+from aidm.state.model import PLAYER_ID, Counter, EntityId, Fact, Frozen, Game, Slug, check_draft
 
 from .counters import counter_fact
 

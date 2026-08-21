@@ -4,8 +4,7 @@ from aidm.content.authored import Character, Scenario
 from aidm.engines.engine import Engine
 from aidm.engines.loner3e.rules import Loner3eEngine
 from aidm.engines.twentyfourxx.rules import TwentyfourxxEngine
-from aidm.state.base import PLAYER_ID, EngineId, Entity, Slug
-from aidm.state.world import Game
+from aidm.state.model import PLAYER_ID, EngineId, Entity, Game, Slug
 
 ENGINES: tuple[type[Engine], ...] = (Loner3eEngine, TwentyfourxxEngine)
 

@@ -10,8 +10,7 @@ from httpx import AsyncClient
 from pydantic import BaseModel, ConfigDict
 
 from aidm.config import MediaConfig, ProviderConfig
-from aidm.state.base import Entity, EntityId
-from aidm.state.world import Game
+from aidm.state.model import Entity, EntityId, Game
 from aidm.turn.scene import VisibleScene
 
 from .views import player_scene

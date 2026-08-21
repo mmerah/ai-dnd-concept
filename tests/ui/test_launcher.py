@@ -10,8 +10,7 @@ from aidm.app.launcher import LauncherController, LaunchTarget, load_catalog
 from aidm.app.session import Runtime
 from aidm.config import Settings
 from aidm.content.store import ENCODING, FileStore, SavedGame
-from aidm.state.base import EngineId
-from aidm.state.world import Game
+from aidm.state.model import EngineId, Game
 
 
 def _opening_state(config: Settings, engine: EngineId) -> Game:

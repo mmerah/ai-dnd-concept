@@ -7,7 +7,7 @@ from aidm.content.store import ENCODING
 from aidm.engines.loner3e.mechanics import Mechanics
 from aidm.engines.loner3e.pack import SRD_PACK, Pack, PackEntry, twist_table
 from aidm.engines.loner3e.rules import Loner3eEngine
-from aidm.state.base import PLAYER_ID
+from aidm.state.model import PLAYER_ID
 
 
 def test_a_broken_user_pack_is_skipped_and_the_shipped_ones_still_load(tmp_path: Path) -> None:

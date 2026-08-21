@@ -24,9 +24,7 @@ from aidm.config import Settings
 from aidm.content.authored import Character
 from aidm.content.store import FileStore
 from aidm.engines.engine import Engine
-from aidm.state.base import PLAYER_ID, Entity, EntityId, Exit
-from aidm.state.trace import Extended
-from aidm.state.world import Game, Thread
+from aidm.state.model import PLAYER_ID, Entity, EntityId, Exit, Extended, Game, Thread
 
 _CRYPT_ID = EntityId("sub_crypt")
 

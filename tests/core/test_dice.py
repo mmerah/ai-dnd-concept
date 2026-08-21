@@ -1,6 +1,6 @@
 from random import Random
 
-from aidm.state.dice import roll_pool
+from aidm.state.actions import roll_pool
 
 
 def test_a_pool_keeps_its_highest_die_and_traces_every_one() -> None:

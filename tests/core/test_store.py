@@ -16,7 +16,7 @@ from aidm.content.store import (
     read_scenarios,
     write_scenario,
 )
-from aidm.state.world import Game
+from aidm.state.model import Game
 
 
 def test_a_save_carries_every_field_the_played_game_holds() -> None:

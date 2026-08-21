@@ -1,6 +1,4 @@
-from aidm.state.base import Frozen, ThreadStatus
-from aidm.state.history import Line
-from aidm.state.world import Game
+from aidm.state.model import Frozen, Game, Line, ThreadStatus
 from aidm.turn.scene import SceneSnapshot, VisibleScene
 
 

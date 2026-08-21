@@ -6,7 +6,7 @@ from pydantic_ai.toolsets import AbstractToolset, FunctionToolset, WrapperToolse
 
 from aidm.app.registry import engine_ids
 from aidm.engines.engine import PlanContext
-from aidm.state.base import EngineId, EntityDetail
+from aidm.state.model import EngineId, EntityDetail
 from aidm.turn.tools import core_toolset
 
 # A role's output schema is sent to the model, so its field descriptions steer it exactly as the

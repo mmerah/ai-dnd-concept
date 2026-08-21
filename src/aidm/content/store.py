@@ -7,9 +7,17 @@ from typing import Self
 
 from pydantic import BaseModel, ConfigDict, Field, JsonValue, model_validator
 
-from aidm.state.base import EngineId, Mutable, Slug, content_id
-from aidm.state.history import Exchange
-from aidm.state.world import Game, ScenarioMeta, WorldState, check_player_playable
+from aidm.state.model import (
+    EngineId,
+    Exchange,
+    Game,
+    Mutable,
+    ScenarioMeta,
+    Slug,
+    WorldState,
+    check_player_playable,
+    content_id,
+)
 
 from .authored import (
     Character,

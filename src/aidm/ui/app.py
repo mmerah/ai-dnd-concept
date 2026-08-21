@@ -6,7 +6,7 @@ from nicegui import ui
 from aidm.app.launcher import LaunchTarget, as_engine_id
 from aidm.app.session import GameSession, Runtime
 from aidm.config import load_settings
-from aidm.state.base import content_id
+from aidm.state.model import content_id
 
 from .busy import refuse_if_busy, working
 from .character_create import character_page

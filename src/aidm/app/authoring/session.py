@@ -7,7 +7,7 @@ from pydantic_ai.messages import ModelMessage
 from aidm.config import Settings
 from aidm.content.sources import whole_text
 from aidm.content.store import write_scenario
-from aidm.state.base import EngineId, Slug
+from aidm.state.model import EngineId, Slug
 
 from .agents import REQUEST_LIMIT, summarize, world_agent, world_prompt
 from .draft import WorldDraft

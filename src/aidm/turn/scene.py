@@ -1,7 +1,6 @@
 from collections.abc import Iterable, Mapping
 
-from aidm.state.base import PLAYER_ID, Entity, EntityId, Exit, Frozen
-from aidm.state.world import Game, Thread, WorldState
+from aidm.state.model import PLAYER_ID, Entity, EntityId, Exit, Frozen, Game, Thread, WorldState
 
 
 class BaseScene(Frozen):

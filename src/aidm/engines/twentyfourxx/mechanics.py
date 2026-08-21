@@ -4,7 +4,7 @@ from pydantic import Field
 
 from aidm.engines.counters import render_counters
 from aidm.engines.sheets import SheetBase, SheetMechanics
-from aidm.state.base import Counter, Entity, Slug
+from aidm.state.model import Counter, Entity, Slug
 
 STARTING_CREDITS = 2
 DEFAULT_FACE = 6  # an unlisted skill rolls the bare d6

@@ -6,9 +6,7 @@ from pydantic_ai import ModelRetry, RunContext
 from pydantic_ai.tools import ObjectJsonSchema, ToolDefinition, ToolFuncEither
 from pydantic_ai.toolsets import FunctionToolset
 
-from aidm.state.base import EntityId
-from aidm.state.facts import Fact
-from aidm.state.world import Game, check_draft
+from aidm.state.model import EntityId, Fact, Game, check_draft
 
 from .engine import Engine, PlanContext
 

@@ -4,9 +4,7 @@ from typing import Literal, Self
 from pydantic import Field, model_validator
 
 from aidm.engines.advancement import Advancement, ProposalBase
-from aidm.state.base import Counter, Entity, EntityId, Frozen
-from aidm.state.facts import Fact, explained_fact
-from aidm.state.world import Game
+from aidm.state.model import Counter, Entity, EntityId, Fact, Frozen, Game, explained_fact
 
 from .mechanics import Mechanics, Sheet
 

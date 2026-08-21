@@ -3,8 +3,7 @@ from core_test_support import LONER3E, game, updated, with_entity
 from aidm.content.authored import ScenarioMeta
 from aidm.engines.engine import EntityRenderer
 from aidm.engines.loner3e.mechanics import Mechanics, Sheet
-from aidm.state.base import PLAYER_ID, Entity, EntityId, Kind
-from aidm.state.world import Game, WorldState
+from aidm.state.model import PLAYER_ID, Entity, EntityId, Game, Kind, WorldState
 from aidm.turn.prompts import (
     prompt_id,
     render_director,

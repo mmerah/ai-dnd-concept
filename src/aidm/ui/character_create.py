@@ -8,8 +8,7 @@ from nicegui.events import ValueChangeEventArguments
 from aidm.app.session import Runtime
 from aidm.content.authored import CreatedCharacter
 from aidm.content.store import write_character
-from aidm.state.base import EngineId, Slug, text_slug
-from aidm.state.creation import AnyStep, CreationStep, TextStep, picked
+from aidm.state.model import AnyStep, CreationStep, EngineId, Slug, TextStep, picked, text_slug
 
 from .panels import page_header
 

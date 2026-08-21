@@ -18,7 +18,7 @@ from aidm.engines.loner3e.advance import AdventureGrowth, Change
 from aidm.engines.loner3e.mechanics import LUCK_MAX, TIES_PER_TWIST, Mechanics
 from aidm.engines.loner3e.pack import SRD_PACK, twist_table
 from aidm.engines.loner3e.rules import Loner3eEngine
-from aidm.state.base import PLAYER_ID, Counter, Entity, EntityId
+from aidm.state.model import PLAYER_ID, Counter, Entity, EntityId
 
 TWISTS = twist_table(Loner3eEngine().packs, SRD_PACK)
 FOE = EntityId("mara")

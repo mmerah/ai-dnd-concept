@@ -3,8 +3,7 @@ from typing import Self
 
 from pydantic import Field, model_validator
 
-from aidm.state.base import Frozen
-from aidm.state.creation import ContentSlug
+from aidm.state.model import ContentSlug, Frozen
 
 SRD_PACK: ContentSlug = "srd"
 

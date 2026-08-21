@@ -9,8 +9,7 @@ from pydantic import SecretStr
 from aidm.app.media import Generated, Illustrator, illustration_request, scene_key
 from aidm.app.views import player_scene
 from aidm.config import MediaConfig, ProviderConfig
-from aidm.state.base import Entity, EntityId
-from aidm.state.world import Game
+from aidm.state.model import Entity, EntityId, Game
 
 NARRATION = "The door groans open."
 

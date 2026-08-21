@@ -9,8 +9,7 @@ from aidm.config import Settings
 from aidm.engines.advancement import Advancement, Offer, ProposalBase
 from aidm.engines.engine import Engine, PlanContext
 from aidm.llm import build_agent
-from aidm.state.history import Exchange, Narration
-from aidm.state.world import Game
+from aidm.state.model import Exchange, Game, Narration
 
 from . import prompts
 from .scene import VisibleScene

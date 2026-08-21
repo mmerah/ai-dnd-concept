@@ -9,8 +9,7 @@ from aidm.app.authoring.playability import OPENING, playability, playtests
 from aidm.app.authoring.session import AuthoringSession
 from aidm.app.registry import engine_ids
 from aidm.content.store import load_scenario
-from aidm.state.base import Entity, EntityId, Exit
-from aidm.state.world import ScenarioMeta, Thread
+from aidm.state.model import Entity, EntityId, Exit, ScenarioMeta, Thread
 
 
 async def test_the_shipped_scenario_passes_every_engine() -> None:

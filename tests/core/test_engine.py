@@ -3,8 +3,7 @@ from pathlib import Path
 from pydantic import JsonValue
 
 from aidm.engines.engine import Engine
-from aidm.state.base import EngineId, Entity, Mutable
-from aidm.state.world import Game, WorldState
+from aidm.state.model import EngineId, Entity, Game, Mutable, WorldState
 
 
 class BareMechanics(Mutable): ...

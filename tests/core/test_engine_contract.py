@@ -11,9 +11,7 @@ from aidm.engines.loner3e.actions import apply_restore_luck
 from aidm.engines.loner3e.mechanics import LUCK_MAX, Mechanics, Sheet
 from aidm.engines.loner3e.rules import Loner3eEngine
 from aidm.state import actions
-from aidm.state.base import PLAYER_ID, EngineId, Entity, EntityId
-from aidm.state.facts import Fact
-from aidm.state.world import Game, WorldState
+from aidm.state.model import PLAYER_ID, EngineId, Entity, EntityId, Fact, Game, WorldState
 
 
 def _turn(state: Game) -> tuple[Game, tuple[Fact, ...]]:

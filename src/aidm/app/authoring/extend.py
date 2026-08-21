@@ -6,9 +6,7 @@ from aidm.content.authored import Character
 from aidm.content.sources import whole_text
 from aidm.content.store import source_file
 from aidm.engines.engine import Engine
-from aidm.state.base import Entity, EntityId, Exit, Frozen
-from aidm.state.facts import Fact
-from aidm.state.world import Game, Thread, WorldState
+from aidm.state.model import Entity, EntityId, Exit, Fact, Frozen, Game, Thread, WorldState
 
 from .agents import REQUEST_LIMIT, world_agent
 from .draft import WorldDraft

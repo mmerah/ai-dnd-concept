@@ -1,7 +1,6 @@
 from aidm.engines.counters import render_counters
 from aidm.engines.sheets import SheetBase, SheetMechanics
-from aidm.state.base import Counter, Entity, Slug
-from aidm.state.creation import ContentSlug
+from aidm.state.model import ContentSlug, Counter, Entity, Slug
 
 from .pack import SRD_PACK
 

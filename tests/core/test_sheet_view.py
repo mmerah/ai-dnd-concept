@@ -2,7 +2,7 @@ import pytest
 from core_test_support import game
 
 from aidm.app.registry import engine_ids
-from aidm.state.base import EngineId
+from aidm.state.model import EngineId
 
 
 @pytest.mark.parametrize("engine_id", engine_ids())

@@ -14,9 +14,16 @@ from aidm.app.views import (
     thread_summaries,
 )
 from aidm.content.store import SavedGame
-from aidm.state.base import PLAYER_ID, EntityId
-from aidm.state.facts import Fact
-from aidm.state.trace import Applied, Extended, StepTrace, TraceEntry, Turn
+from aidm.state.model import (
+    PLAYER_ID,
+    Applied,
+    EntityId,
+    Extended,
+    Fact,
+    StepTrace,
+    TraceEntry,
+    Turn,
+)
 
 from .busy import refuse_if_busy, working
 

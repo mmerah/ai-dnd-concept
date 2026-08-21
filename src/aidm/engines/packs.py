@@ -7,7 +7,7 @@ from typing import Protocol
 from pydantic import BaseModel
 
 from aidm.content.store import ENCODING
-from aidm.state.creation import CreationOption, CreationStep
+from aidm.state.model import CreationOption, CreationStep
 
 LOGGER = logging.getLogger(__name__)
 

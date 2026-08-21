@@ -22,9 +22,7 @@ from aidm.engines.twentyfourxx.actions import (
 from aidm.engines.twentyfourxx.advance import Advance
 from aidm.engines.twentyfourxx.mechanics import Mechanics, Sheet
 from aidm.engines.twentyfourxx.rules import TwentyfourxxEngine
-from aidm.state.base import PLAYER_ID, EntityId
-from aidm.state.creation import Picks
-from aidm.state.facts import Fact
+from aidm.state.model import PLAYER_ID, EntityId, Fact, Picks
 
 MARA = EntityId("mara")
 

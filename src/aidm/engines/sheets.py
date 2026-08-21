@@ -4,9 +4,17 @@ from typing import Self
 
 from pydantic import Field, JsonValue
 
-from aidm.state.base import PLAYER_ID, Counter, EngineId, Entity, EntityId, Mutable
-from aidm.state.facts import Fact
-from aidm.state.world import Game, WorldState
+from aidm.state.model import (
+    PLAYER_ID,
+    Counter,
+    EngineId,
+    Entity,
+    EntityId,
+    Fact,
+    Game,
+    Mutable,
+    WorldState,
+)
 
 
 class SheetBase(Mutable, ABC):

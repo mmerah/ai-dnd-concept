@@ -8,7 +8,7 @@ from pydantic import ValidationError
 from aidm.app.registry import ENGINES, engine_class
 from aidm.config import Settings
 from aidm.content.store import FileStore, SaveShell, read_characters, read_scenarios
-from aidm.state.base import EngineId, Frozen, Slug
+from aidm.state.model import EngineId, Frozen, Slug
 
 
 def as_engine_id(value: str) -> EngineId:

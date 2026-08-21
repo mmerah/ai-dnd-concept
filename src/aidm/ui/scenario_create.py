@@ -10,7 +10,7 @@ from aidm.app.authoring.session import AuthoringSession
 from aidm.app.media import STYLE
 from aidm.app.registry import engine_ids
 from aidm.config import Settings
-from aidm.state.base import EngineId, content_id
+from aidm.state.model import EngineId, content_id
 
 from .busy import refuse_if_busy, working
 from .panels import page_header

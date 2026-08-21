@@ -2,9 +2,19 @@ from core_test_support import LONER3E
 
 from aidm.app.views import journal_markdown, player_scene
 from aidm.engines.loner3e.mechanics import Mechanics, Sheet
-from aidm.state.base import Counter, Entity, EntityId, Exit, Kind
-from aidm.state.history import Exchange, Line
-from aidm.state.world import Game, ScenarioMeta, Thread, WorldState
+from aidm.state.model import (
+    Counter,
+    Entity,
+    EntityId,
+    Exchange,
+    Exit,
+    Game,
+    Kind,
+    Line,
+    ScenarioMeta,
+    Thread,
+    WorldState,
+)
 
 
 def _entity(entity_id: str, kind: Kind, name: str, brief: str, **fields: object) -> Entity:

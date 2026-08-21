@@ -14,10 +14,18 @@ from aidm.content.store import FileStore, SavedGame, load_character, load_scenar
 from aidm.engines.advancement import Advancement, Offer, ProposalBase
 from aidm.engines.engine import Engine
 from aidm.engines.transact import transact
-from aidm.state.base import PLAYER_ID, EngineId, EntityId
-from aidm.state.facts import Fact
-from aidm.state.trace import Applied, Extended, TraceEntry, Turn
-from aidm.state.world import Game, frontier
+from aidm.state.model import (
+    PLAYER_ID,
+    Applied,
+    EngineId,
+    EntityId,
+    Extended,
+    Fact,
+    Game,
+    TraceEntry,
+    Turn,
+    frontier,
+)
 from aidm.turn.agents import AdvancementContext, TurnAgents, advisor_agent, build_turn_agents
 from aidm.turn.pipeline import TURN_STEPS, run_turn
 from aidm.turn.prompts import render_proposal

@@ -7,8 +7,7 @@ from pydantic_ai.usage import RunUsage
 
 from aidm.engines.engine import PlanContext, TurnLog
 from aidm.state import actions
-from aidm.state.base import PLAYER_ID, EntityId
-from aidm.state.world import AdvanceThread
+from aidm.state.model import PLAYER_ID, AdvanceThread, EntityId
 from aidm.turn.tools import core_toolset, possible
 
 MARA = EntityId("mara")

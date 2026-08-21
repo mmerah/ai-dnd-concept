@@ -7,9 +7,7 @@ from pydantic_ai.toolsets import AbstractToolset
 from aidm.engines.engine import PlanContext
 from aidm.engines.transact import act, sequential_toolset, with_enum
 from aidm.state import actions
-from aidm.state.base import PLAYER_ID, EntityId, Slug
-from aidm.state.facts import Fact
-from aidm.state.world import AdvanceThread, Game
+from aidm.state.model import PLAYER_ID, AdvanceThread, EntityId, Fact, Game, Slug
 
 
 def core_toolset() -> AbstractToolset[PlanContext]:

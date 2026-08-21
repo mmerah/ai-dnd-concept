@@ -7,8 +7,7 @@ from aidm.config import Settings
 from aidm.content.authored import Character, Scenario
 from aidm.content.store import engine_text, load_character
 from aidm.engines.engine import Engine
-from aidm.state.base import EngineId
-from aidm.state.world import WorldState
+from aidm.state.model import EngineId, WorldState
 
 from .draft import WorldDraft
 

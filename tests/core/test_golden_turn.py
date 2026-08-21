@@ -18,9 +18,7 @@ from pydantic_ai.models.function import FunctionModel
 
 from aidm.app.registry import engine_ids
 from aidm.content.store import SavedGame
-from aidm.state.base import EngineId
-from aidm.state.history import Exchange, Line
-from aidm.state.world import Game
+from aidm.state.model import EngineId, Exchange, Game, Line
 from aidm.turn.pipeline import TurnResult
 
 PROMPT = "I lever up the loose flagstone and listen at the vault door."

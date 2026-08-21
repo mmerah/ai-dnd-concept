@@ -5,15 +5,19 @@ from pydantic import JsonValue
 from aidm.content.authored import CharacterOverlay, CharacterProfile, CreatedCharacter
 from aidm.engines.engine import CharacterCreation
 from aidm.engines.packs import pack_step
-from aidm.state.base import PLAYER_ID, Entity, EntityId, Trait, text_slug
-from aidm.state.creation import (
+from aidm.state.model import (
+    PLAYER_ID,
     AnyStep,
     CreationOption,
     CreationStep,
+    Entity,
+    EntityId,
     Picks,
     TextStep,
+    Trait,
     check_picks,
     picked,
+    text_slug,
 )
 
 from .mechanics import SkillDie, raised

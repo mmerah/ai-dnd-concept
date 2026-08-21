@@ -11,8 +11,7 @@ from aidm.app.session import Drafted
 from aidm.content.store import FileStore, SavedGame
 from aidm.engines.loner3e.advance import AdventureGrowth, Change
 from aidm.engines.loner3e.mechanics import Mechanics
-from aidm.state.base import PLAYER_ID
-from aidm.state.trace import Applied
+from aidm.state.model import PLAYER_ID, Applied
 
 LEGAL = AdventureGrowth(
     changes=(Change(kind="gear", tag="Waxed Rope"),), why="he never climbs without it now"

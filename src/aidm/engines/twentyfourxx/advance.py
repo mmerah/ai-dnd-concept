@@ -4,10 +4,8 @@ from pydantic import Field
 
 from aidm.engines.advancement import Advancement, ProposalBase
 from aidm.engines.counters import adjust
-from aidm.state.base import Counter, EntityId
-from aidm.state.dice import roll_pool
-from aidm.state.facts import Fact, explained_fact
-from aidm.state.world import Game
+from aidm.state.actions import roll_pool
+from aidm.state.model import Counter, EntityId, Fact, Game, explained_fact
 
 from .mechanics import Mechanics, Sheet, raised
 

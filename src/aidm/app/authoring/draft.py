@@ -3,8 +3,18 @@ from collections.abc import Iterable
 from pydantic import Field
 
 from aidm.content.authored import Scenario
-from aidm.state.base import PLAYER_ID, EngineId, Entity, EntityId, Frozen, Mutable
-from aidm.state.world import Game, ScenarioMeta, Thread, WorldState
+from aidm.state.model import (
+    PLAYER_ID,
+    EngineId,
+    Entity,
+    EntityId,
+    Frozen,
+    Game,
+    Mutable,
+    ScenarioMeta,
+    Thread,
+    WorldState,
+)
 
 
 def _index[T: Entity | Thread](kept: list[T], target: str) -> int | None:
