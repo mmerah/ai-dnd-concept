@@ -100,14 +100,21 @@ class Illustrator:
         directory = self._icon_dir(entity_id)
         return None if directory is None else _existing(directory, entity_id)
 
+    def _claim(self, key: str) -> bool:
+        # Synchronous: an await between the read and the write would let two callers both pay.
+        if key in self.generating:
+            return False
+        self.generating.add(key)
+        return True
+
     async def illustrate(self, state: Game, narration: str) -> None:
         scene = player_scene(state)
+        key = scene_key(scene)
+        drawing = _existing(self.saves, key) is None and self._claim(key)
         # The chat avatar wants the player's icon even when this scene's art is already cached.
         _ = await self._drawn_icon(scene.player)
-        key = scene_key(scene)
-        if key in self.generating or _existing(self.saves, key) is not None:
+        if not drawing:
             return
-        self.generating.add(key)
         try:
             await self._draw(scene, key, narration)
         finally:
@@ -132,14 +139,23 @@ class Illustrator:
             _write(self.saves / f"{key}{generated.suffix}", generated.data)
 
     async def _drawn_icon(self, entity: Entity) -> Path | None:
-        """The cached icon, or one drawn now and kept."""
+        """The cached icon, or one drawn now and kept; a loser of the race goes without."""
         directory = self._icon_dir(entity.id)
         if directory is None:
             return None
         found = _existing(directory, entity.id)
         if found is not None:
             return found
-        generated = await self._generate(icon_request(entity, self.style), self.config.icon_ratio)
+        # An entity id is `[a-z0-9_-]+`, so the colon keeps icon claims off the scene keys.
+        claim = f"icon:{entity.id}"
+        if not self._claim(claim):
+            return None
+        try:
+            generated = await self._generate(
+                icon_request(entity, self.style), self.config.icon_ratio
+            )
+        finally:
+            self.generating.discard(claim)
         if generated is None:
             return None
         path = directory / f"{entity.id}{generated.suffix}"

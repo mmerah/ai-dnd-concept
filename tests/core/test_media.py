@@ -1,15 +1,27 @@
+from asyncio import gather, sleep
+from collections.abc import Sequence
 from pathlib import Path
 
+import pytest
 from core_test_support import initialized, with_entity
 from pydantic import SecretStr
 
-from aidm.app.media import Illustrator, illustration_request, scene_key
+from aidm.app.media import Generated, Illustrator, illustration_request, scene_key
 from aidm.app.views import player_scene
 from aidm.config import MediaConfig, ProviderConfig
 from aidm.state.base import Entity, EntityId
 from aidm.state.world import Game
 
 NARRATION = "The door groans open."
+
+
+def _illustrator(tmp_path: Path) -> Illustrator:
+    return Illustrator(
+        config=MediaConfig(enabled=True),
+        provider=ProviderConfig(base_url="https://example.invalid/v1", api_key=SecretStr("test")),
+        saves=tmp_path / "save.media",
+        icon_dirs={},
+    )
 
 
 def _placed(state: Game, name: str, *, known: bool) -> Game:
@@ -64,3 +76,29 @@ def test_an_icon_is_looked_up_in_the_directory_its_entity_belongs_to(tmp_path: P
     assert illustrator.icon(EntityId("player")) == character_dir / "player.png"
     assert illustrator.icon(EntityId("invented")) == saves_dir / "icons" / "invented.png"
     assert illustrator.icon(EntityId("nobody")) is None
+
+
+async def test_concurrent_illustrations_of_one_scene_generate_it_once(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Media is billed per call, and the page can be built twice for one open."""
+    _, state = initialized()
+    prompts: list[str] = []
+
+    async def _generate(
+        _self: Illustrator, prompt: str, _ratio: str, _references: Sequence[Path] = ()
+    ) -> Generated | None:
+        prompts.append(prompt)
+        await sleep(0)  # a real generation suspends; without this nothing can interleave
+        return Generated(data=b"\x89PNG", suffix=".png")
+
+    monkeypatch.setattr(Illustrator, "_generate", _generate)
+    illustrator = _illustrator(tmp_path)
+    _ = await gather(
+        illustrator.illustrate(state, NARRATION), illustrator.illustrate(state, NARRATION)
+    )
+    scene_prompts = [prompt for prompt in prompts if prompt.startswith("Draw one wide")]
+    assert len(scene_prompts) == 1
+    # Every other prompt is an icon: a repeat is a second bill for the same picture.
+    assert len(prompts) == len(set(prompts))
+    assert illustrator.generating == set()
