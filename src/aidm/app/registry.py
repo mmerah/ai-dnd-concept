@@ -2,7 +2,7 @@ from pathlib import Path
 
 from aidm.content.model import Character, Scenario
 from aidm.engines.core import Engine
-from aidm.engines.loner3e.rules import Loner3eEngine
+from aidm.engines.loner3e.engine import Loner3eEngine
 from aidm.engines.twentyfourxx.rules import TwentyfourxxEngine
 from aidm.state.model import PLAYER_ID, EngineId, Entity, Game, Slug
 

@@ -1,7 +1,7 @@
 from core_test_support import LONER3E
 
 from aidm.app.views import journal_markdown, player_scene
-from aidm.engines.loner3e.mechanics import Mechanics, Sheet
+from aidm.engines.loner3e.engine import Mechanics, Sheet
 from aidm.state.model import (
     Counter,
     Entity,

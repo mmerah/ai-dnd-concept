@@ -16,7 +16,7 @@ from pydantic import ValidationError
 
 from aidm.content.io import SavedGame, load_character
 from aidm.content.model import Character, CharacterOverlay, CharacterProfile, Scenario
-from aidm.engines.loner3e.mechanics import LUCK_MAX, Mechanics
+from aidm.engines.loner3e.engine import LUCK_MAX, Mechanics
 from aidm.state.model import PLAYER_ID, Entity, EntityId, Game
 
 HELD = EntityId("frayed_rope")
