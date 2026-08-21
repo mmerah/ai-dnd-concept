@@ -20,15 +20,19 @@ from aidm.engines.core import (
     actor_sheets,
     adjust,
     check_sheets,
+    chipped,
     complete_chapter,
+    counter_effect,
+    dice_event,
     load_packs,
     pack_paths,
     pack_step,
     render_counters,
+    require_dice_role,
     require_sheet,
     sequential_toolset,
 )
-from aidm.state.actions import require_actor_here, reveal, roll_pool
+from aidm.state.actions import require_actor_here, roll_pool
 from aidm.state.model import (
     PLAYER_ID,
     AnyStep,
@@ -39,9 +43,11 @@ from aidm.state.model import (
     EngineId,
     Entity,
     EntityId,
+    EventBadge,
     Fact,
     Frozen,
     Game,
+    MechanicEvent,
     Picks,
     Slug,
     TextStep,
@@ -208,13 +214,13 @@ def resolve_question(
     draft: Game, action: Question, rng: Random, twists: tuple[tuple[str, str], ...]
 ) -> tuple[Fact, ...]:
     actor = require_actor_here(draft, action.actor_id)
-    facts = reveal(draft, action.actor_id)
+    facts = draft.reveal(actor)
     mechanics = Mechanics.of(draft)
     _ = require_sheet(mechanics.sheets, actor)
     opponent: Entity | None = None
     if action.opponent_id is not None:
         opponent = require_actor_here(draft, action.opponent_id)
-        facts.extend(reveal(draft, action.opponent_id))
+        facts.extend(draft.reveal(opponent))
     _refuse_unless_ready(actor, mechanics, opponent)
 
     chance, risk, facts_rolled = _pair(action, rng)
@@ -227,6 +233,7 @@ def resolve_question(
             "question_answered",
             f"{action.question} -> {outcome}",
             {
+                "question": action.question,
                 "outcome": outcome,
                 "chance": chance,
                 "risk": risk,
@@ -249,11 +256,14 @@ def resolve_question(
 
 def apply_restore_luck(draft: Game, actor_id: EntityId) -> list[Fact]:
     actor = require_actor_here(draft, actor_id)
-    facts = reveal(draft, actor.id)
+    facts = draft.reveal(actor)
     luck = require_sheet(Mechanics.of(draft).sheets, actor).luck
     refill = (luck.maximum or LUCK_MAX) - luck.current
     # Already full is a quiet no-op: `adjust` writes no fact for a zero delta.
-    return [*facts, *adjust(actor, "luck", luck, refill, "the conflict is behind them")]
+    return [
+        *facts,
+        *chipped(adjust(actor, "luck", luck, refill, "the conflict is behind them"), "favorite"),
+    ]
 
 
 def apply_complete_chapter(draft: Game) -> list[Fact]:
@@ -264,8 +274,8 @@ def _twist(
     draft: Game, actor: Entity, rng: Random, twists: tuple[tuple[str, str], ...]
 ) -> list[Fact]:
     """The SRD's table is rolled here so the dice trace; the Director only reads the pairing."""
-    subject_die, subject_fact = roll_pool((6,), "twist — subject", rng)
-    action_die, action_fact = roll_pool((6,), "twist — action", rng)
+    subject_die, subject_fact = roll_pool((6,), "twist — subject", rng, role="subject")
+    action_die, action_fact = roll_pool((6,), "twist — action", rng, role="action")
     subject, action = twist_pairing(subject_die, action_die, twists)
     draft.world.pending_notes = (*draft.world.pending_notes, twist_note(subject, action))
     # Narrated the turn it lands, as the SRD interrupts the scene: an unnamed intrusion needs
@@ -314,9 +324,56 @@ def _pair(action: Question, rng: Random) -> tuple[int, int, list[Fact]]:
     """One extra die at most, and only for the side the judged position favours."""
     chance_faces = (6, 6) if action.position == "advantage" else (6,)
     risk_faces = (6, 6) if action.position == "disadvantage" else (6,)
-    chance, chance_fact = roll_pool(chance_faces, f"{action.question} — chance", rng)
-    risk, risk_fact = roll_pool(risk_faces, f"{action.question} — risk", rng)
+    chance, chance_fact = roll_pool(chance_faces, f"{action.question} — chance", rng, role="chance")
+    risk, risk_fact = roll_pool(risk_faces, f"{action.question} — risk", rng, role="risk")
     return chance, risk, [chance_fact, risk_fact]
+
+
+def question_events(facts: tuple[Fact, ...]) -> tuple[MechanicEvent, ...]:
+    answered = next((fact for fact in facts if fact.kind == "question_answered"), None)
+    if answered is None:
+        raise ValueError("no 'question_answered' fact anchors this call")
+    if answered.narrator is None:
+        return ()
+    badges = [EventBadge(label="Position", value=str(answered.data["position"]).capitalize())]
+    edge = str(answered.data["edge"])
+    if edge:
+        badges.append(EventBadge(label="Edge", value=edge))
+    # Kept in fact order, never regrouped by kind: that order is the story of the exchange.
+    effects = [
+        counter_effect(fact) if fact.kind == "counter_changed" else fact.narrator
+        for fact in facts
+        if fact.narrator is not None and fact.kind in ("counter_changed", "conflict_lost")
+    ]
+    oracle = MechanicEvent(
+        tool="roll_question",
+        title="Oracle",
+        subject=str(answered.data["question"]),
+        badges=tuple(badges),
+        dice=(
+            dice_event("Chance", require_dice_role(facts, "chance")),
+            dice_event("Risk", require_dice_role(facts, "risk")),
+        ),
+        outcome=str(answered.data["outcome"]),
+        effects=tuple(effects),
+    )
+    twist = next((fact for fact in facts if fact.kind == "twist_due"), None)
+    if twist is None or twist.narrator is None:
+        return (oracle,)
+    return (oracle, _twist_event(twist, facts))
+
+
+def _twist_event(twist: Fact, facts: tuple[Fact, ...]) -> MechanicEvent:
+    return MechanicEvent(
+        tool="roll_question",
+        title="Twist",
+        subject=f"{twist.data['subject']} / {twist.data['action']}",
+        dice=(
+            dice_event("Subject", require_dice_role(facts, "subject")),
+            dice_event("Action", require_dice_role(facts, "action")),
+        ),
+        icon="bolt",
+    )
 
 
 type Twists = Callable[[Game], tuple[tuple[str, str], ...]]
@@ -565,3 +622,8 @@ class Loner3eEngine(Engine):
     def twists(self, state: Game) -> tuple[tuple[str, str], ...]:
         """The player's own table set: an NPC sheet is seeded with the default and never selects."""
         return twist_table(self.packs, Mechanics.of(state).sheets[PLAYER_ID].pack)
+
+    def player_events(self, tool_name: str, facts: tuple[Fact, ...]) -> tuple[MechanicEvent, ...]:
+        if tool_name == "roll_question":
+            return question_events(facts)
+        return super().player_events(tool_name, facts)

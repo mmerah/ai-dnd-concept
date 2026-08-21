@@ -137,3 +137,30 @@ def test_one_corrupt_save_does_not_hide_the_others_and_stays_readable(tmp_path: 
     controller = LauncherController(catalog)
     controller.choose_scenario("whispering-vault")
     assert controller.new_game().slug == "whispering-vault--kael--loner3e"
+
+
+def test_a_save_whose_body_is_stale_is_reported_not_offered(tmp_path: Path) -> None:
+    """Only the strict body, not the lenient shell, catches a history entry with a stale field."""
+    config = ui_settings(tmp_path)
+    body = json.loads(SavedGame.of(_opening_state(config, LONER3E)).model_dump_json())
+    body["history"] = [{"prompt": "test", "lines": [], "events": [], "outcomes": []}]
+    (tmp_path / "stale.json").write_text(json.dumps(body), encoding=ENCODING)
+
+    catalog = load_catalog(config)
+
+    assert not catalog.saves
+    assert [broken.slug for broken in catalog.unreadable] == ["stale"]
+    assert "\n" not in catalog.unreadable[0].problem
+
+
+def test_a_save_whose_mechanics_are_broken_is_reported_not_offered(tmp_path: Path) -> None:
+    """`mechanics` is untyped JSON on `SavedGame`; only the engine's model catches a bad blob."""
+    config = ui_settings(tmp_path)
+    body = json.loads(SavedGame.of(_opening_state(config, LONER3E)).model_dump_json())
+    body["mechanics"] = {"not": "the loner3e shape"}
+    (tmp_path / "broken-mechanics.json").write_text(json.dumps(body), encoding=ENCODING)
+
+    catalog = load_catalog(config)
+
+    assert not catalog.saves
+    assert [broken.slug for broken in catalog.unreadable] == ["broken-mechanics"]

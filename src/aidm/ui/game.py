@@ -1,5 +1,6 @@
 import json
 import logging
+from asyncio import AbstractEventLoop, get_running_loop
 from collections.abc import AsyncGenerator, Callable, Generator, Sequence
 from contextlib import asynccontextmanager, contextmanager
 from pathlib import Path
@@ -21,14 +22,18 @@ from aidm.content.io import SavedGame
 from aidm.state.model import (
     PLAYER_ID,
     Applied,
+    DiceEvent,
     EntityId,
     Extended,
     Fact,
+    MechanicEvent,
     StepTrace,
     TraceEntry,
     Turn,
 )
 from aidm.turn.context import player_scene
+
+from . import theme
 
 
 class Busy(Protocol):
@@ -65,6 +70,7 @@ def show_engine_badge(badge: tuple[str, str]) -> None:
 def page_header(
     title: str, badge: tuple[str, str] | None = None, home: bool = True
 ) -> Generator[None]:
+    theme.apply()
     with ui.header().classes("items-center").style("gap: 1rem"):
         if home:
             ui.button(icon="home", on_click=lambda: ui.navigate.to("/")).props(
@@ -113,10 +119,10 @@ def scene_header(session: GameSession, fill_composer: Callable[[str], None]) -> 
                 name = scene.exit_name(way)
                 # The button writes the move into the composer; the player still sends it.
                 ui.button(
-                    f"{name} (locked)" if way.locked else name,
-                    icon="arrow_forward",
+                    name,
+                    icon="lock" if way.locked else "arrow_forward",
                     on_click=lambda name=name: fill_composer(f"Go to {name}"),
-                ).props("flat dense no-caps align=left").classes("w-full")
+                ).props("flat dense no-caps align=left rounded").classes("w-full")
 
 
 def _scene_art(session: GameSession) -> None:
@@ -141,10 +147,48 @@ def chat(session: GameSession) -> None:
         ui.label(session.state.scenario.premise).classes("text-sm italic opacity-70")
     for exchange in session.state.history:
         _bubble(session, PLAYER_ID, exchange.prompt, sent=True)
+        for event in exchange.events:
+            _mechanic_event(event)
         for line in exchange.lines:
             _bubble(session, line.speaker_id, line.text, sent=False)
-        if exchange.outcomes:
-            ui.label(" · ".join(exchange.outcomes)).classes("text-xs opacity-60 q-px-md")
+
+
+def _mechanic_event(event: MechanicEvent) -> None:
+    """Reads `MechanicEvent` only: no engine knowledge of Loner outcomes or 24XX thresholds."""
+    with ui.row().classes("game-card w-full items-start no-wrap"):
+        ui.icon(event.icon).classes("game-card-icon")
+        with ui.column().classes("flex-grow").style("gap: 0.3rem"):
+            with ui.row().classes("items-baseline no-wrap").style("gap: 0.5rem"):
+                ui.label(event.title).classes("text-sm font-bold")
+                if event.subject:
+                    ui.label(event.subject).classes("text-sm opacity-80")
+            if event.badges:
+                with ui.row().classes("items-center").style("gap: 0.35rem"):
+                    for badge in event.badges:
+                        text = f"{badge.label}: {badge.value}" if badge.value else badge.label
+                        ui.badge(text).props("outline")
+            if event.dice:
+                with ui.row().classes("items-start").style("gap: 1rem"):
+                    for group in event.dice:
+                        _dice_group(group)
+            if event.outcome:
+                ui.label(event.outcome).classes("game-outcome")
+            for effect in event.effects:
+                ui.label(effect).classes("text-xs opacity-80")
+
+
+def _dice_group(die: DiceEvent) -> None:
+    with ui.column().style("gap: 0.2rem"):
+        ui.label(die.label).classes("text-xs opacity-60")
+        with ui.row().classes("no-wrap").style("gap: 0.3rem"):
+            for face, value in zip(die.faces, die.rolled, strict=True):
+                with (
+                    ui.column()
+                    .classes("game-die" + (" game-die-kept" if value == die.kept else ""))
+                    .style("gap: 0")
+                ):
+                    ui.label(f"d{face}").classes("game-die-face")
+                    ui.label(str(value)).classes("game-die-value")
 
 
 def _bubble(session: GameSession, speaker_id: EntityId | None, text: str, *, sent: bool) -> None:
@@ -260,40 +304,27 @@ def _step_copy(step: str) -> tuple[str, str, str]:
     return _STEP_COPY.get(step, ("bolt", step, ""))
 
 
-def turn_progress(session: GameSession) -> None:
-    """The page's one progress indicator: the pipeline as a step track, the running step lit,
-    named and timed."""
-    steps = session.role_names
-    running = session.step
-    reached = steps.index(running) if running in steps else -1
-    with ui.column().classes("w-full").style("gap: 0.15rem"):
-        with ui.row().classes("w-full items-center no-wrap").style("gap: 0.4rem"):
-            for index, step in enumerate(steps):
-                _step_chip(step, active=index == reached, done=index < reached)
-            if running is None:
-                ui.label("Your move.").classes("text-xs opacity-50")
-        if running is not None:
-            ui.label(_step_copy(running)[2]).classes("text-xs opacity-70")
+def live_turn(session: GameSession, prompt: str | None, events: Sequence[MechanicEvent]) -> None:
+    if prompt is not None:
+        _bubble(session, PLAYER_ID, prompt, sent=True)
+    for event in events:
+        _mechanic_event(event)
+    if session.step is not None:
+        _inline_status(session.step)
 
 
-def _step_chip(step: str, *, active: bool, done: bool) -> None:
-    icon, label, description = _step_copy(step)
-    chip = ui.row().classes("items-center no-wrap rounded-borders q-px-sm q-py-xs")
-    chip.style("gap: 0.3rem; border: 1px solid currentColor")
-    if active:
-        chip.classes("bg-primary text-white").style("border-color: transparent")
-    else:
-        chip.classes("opacity-40")
-    with chip:
-        if active:
-            ui.spinner(size="1.1rem", color="white")
-        else:
-            ui.icon("check" if done else icon, size="1.1rem")
-        ui.label(label).classes("text-sm" + (" font-bold" if active else ""))
-        if active:
-            _elapsed()
+def _inline_status(step: str) -> None:
+    _, label, description = _step_copy(step)
+    with ui.row().classes("items-center no-wrap q-py-xs").style("gap: 0.4rem"):
+        ui.spinner(size="1.1rem")
+        ui.label(label).classes("text-sm font-bold")
+        _elapsed()
     if description:
-        chip.tooltip(description)
+        ui.label(description).classes("text-xs opacity-70")
+
+
+def _composer_placeholder(step: str | None) -> str:
+    return "What do you do?" if step is None else f"{_step_copy(step)[1]} is working..."
 
 
 def _elapsed() -> None:
@@ -451,6 +482,9 @@ class GameView:
         # Both are built by the page below this view, and the panels reach them through it.
         self.composer: ui.input | None = None
         self.transcript: ui.scroll_area | None = None
+        # The turn in flight, owned by the view, never by game state; cleared on success or failure.
+        self.live_prompt: str | None = None
+        self.live_events: list[MechanicEvent] = []
 
     def fill_composer(self, text: str) -> None:
         if self.composer is not None:
@@ -465,8 +499,8 @@ class GameView:
         chat(self.session)
 
     @ui.refreshable_method
-    def progress(self) -> None:
-        turn_progress(self.session)
+    def live_turn(self) -> None:
+        live_turn(self.session, self.live_prompt, self.live_events)
 
     @ui.refreshable_method
     def sheet(self) -> None:
@@ -492,7 +526,7 @@ class GameView:
         for panel in (
             self.scene,
             self.chat,
-            self.progress,
+            self.live_turn,
             self.sheet,
             self.journal,
             self.trace,
@@ -510,7 +544,27 @@ def _idle(busy: bool) -> bool:
 
 def on_step(view: GameView, step: str) -> None:
     view.session.step = step
-    view.progress.refresh()
+    view.live_turn.refresh()
+    if view.composer is not None:
+        view.composer.props(f'placeholder="{_composer_placeholder(step)}"')
+
+
+def on_event(view: GameView, event: MechanicEvent, loop: AbstractEventLoop) -> None:
+    """Pydantic AI runs sync director tools off-loop, in an anyio worker thread: this callback
+    fires there too, so the UI update it triggers must be scheduled back onto the event loop."""
+    loop.call_soon_threadsafe(_apply_event, view, event)
+
+
+def _apply_event(view: GameView, event: MechanicEvent) -> None:
+    view.live_events.append(event)
+    view.live_turn.refresh()
+    _scroll(view)
+
+
+def _scroll(view: GameView) -> None:
+    if (transcript := view.transcript) is not None:
+        # A method call on an existing element needs no NiceGUI slot; `ui.timer` here would.
+        get_running_loop().call_later(0.1, lambda: transcript.scroll_to(percent=1.0))
 
 
 def poll_art(view: GameView) -> None:
@@ -530,16 +584,25 @@ async def submit(view: GameView, box: ui.input) -> None:
     box.value = ""
     # Quasar never saw the typed value change, so only an explicit push empties the composer.
     _ = box.run_method("updateValue")
+    view.live_prompt, view.live_events = prompt, []
+    view.live_turn.refresh()
+    _scroll(view)
+    loop = get_running_loop()
     async with working(session):
         was_offered = session.pending()
-        await session.submit(prompt, on_step=lambda step: on_step(view, step))
+        await session.submit(
+            prompt,
+            on_step=lambda step: on_step(view, step),
+            on_event=lambda event: on_event(view, event, loop),
+        )
         if not was_offered and session.pending():
             ui.notify("Something is on offer. Check the advancement tab.")
     session.step = None
+    view.live_prompt, view.live_events = None, []
+    if view.composer is not None:
+        view.composer.props(f'placeholder="{_composer_placeholder(None)}"')
     view.refresh_all()
-    if (transcript := view.transcript) is not None:
-        # Deferred: the refreshed bubbles must reach the client before it can scroll past them.
-        ui.timer(0.1, lambda: transcript.scroll_to(percent=1.0), once=True)
+    _scroll(view)
 
 
 def restart(view: GameView) -> None:
@@ -547,6 +610,7 @@ def restart(view: GameView) -> None:
     if refuse_if_busy(session):
         return
     session.restart()
+    view.live_prompt, view.live_events = None, []
     view.refresh_all()
 
 
@@ -562,14 +626,18 @@ def game_page(session: GameSession) -> None:
     with ui.splitter(value=55).classes("w-full").style("height: calc(100vh - 6rem)") as splitter:
         with splitter.before, ui.column().classes("w-full h-full p-4").style("gap: 0.5rem"):
             view.scene()
-            with ui.scroll_area().classes("w-full flex-grow") as transcript:
+            with ui.scroll_area().classes("w-full flex-grow game-transcript") as transcript:
                 view.chat()
-            view.progress()
-            with ui.row().classes("w-full no-wrap").style("gap: 0.5rem"):
+                view.live_turn()
+            with (
+                ui.row()
+                .classes("w-full no-wrap items-end game-composer q-pa-sm")
+                .style("gap: 0.5rem")
+            ):
                 box = (
-                    ui.input(placeholder="What do you do?")
+                    ui.input(placeholder=_composer_placeholder(None))
                     .classes("flex-grow")
-                    .props("outlined autogrow type=textarea")
+                    .props("outlined autogrow type=textarea borderless")
                     .bind_enabled_from(session, "busy", backward=_idle)
                 )
                 # Enter sends; without the prevent the browser also leaves its newline behind.
@@ -580,7 +648,7 @@ def game_page(session: GameSession) -> None:
                 )
                 _ = (
                     ui.button(icon="send", on_click=lambda: submit(view, box))
-                    .props("round")
+                    .props("round flat")
                     .bind_enabled_from(session, "busy", backward=_idle)
                 )
             view.composer, view.transcript = box, transcript
@@ -590,7 +658,7 @@ def game_page(session: GameSession) -> None:
                 scene_tab = ui.tab("scene")
                 journal_tab = ui.tab("journal")
                 advancement_tab = None if advancement is None else ui.tab(advancement.id)
-                dev_tab = ui.tab("dev")
+                dev_tab = ui.tab("dev", icon="code").classes("game-dev-tab")
             with ui.tab_panels(tabs, value=scene_tab).classes("w-full flex-grow"):
                 with ui.tab_panel(scene_tab), ui.scroll_area().classes("w-full h-full"):
                     view.sheet()

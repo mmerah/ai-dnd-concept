@@ -181,16 +181,6 @@ class SavedGame(BaseModel):
         )
 
 
-class SaveShell(BaseModel):
-    model_config = ConfigDict(extra="ignore")
-
-    engine: EngineId
-    scenario_id: Slug
-    character_id: Slug
-    scenario: ScenarioMeta
-    turn: int
-
-
 @dataclass(frozen=True, slots=True)
 class FileStore:
     directory: Path
@@ -201,12 +191,6 @@ class FileStore:
             for path in sorted(self.directory.glob("*.json"))
             if fullmatch(_SAVE_SLUG_PATTERN, path.stem) is not None
         )
-
-    def shell(self, slug: str) -> SaveShell | None:
-        path = self._save_path(slug)
-        if not path.exists():
-            return None
-        return SaveShell.model_validate_json(path.read_text(encoding=ENCODING))
 
     def load(self, slug: str) -> SavedGame | None:
         path = self._save_path(slug)

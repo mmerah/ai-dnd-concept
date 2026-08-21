@@ -296,7 +296,7 @@
           "text": "The iron handle does not turn."
         }
       ],
-      "outcomes": []
+      "events": []
     },
     {
       "prompt": "I look for another way in.",
@@ -306,7 +306,7 @@
           "text": "A flagstone by the wall sits proud of its neighbours."
         }
       ],
-      "outcomes": []
+      "events": []
     },
     {
       "prompt": "I lever up the loose flagstone and listen at the vault door.",
@@ -316,12 +316,71 @@
           "text": "The flagstone lifts. Beyond the door, something shifts its weight and waits."
         }
       ],
-      "outcomes": [
-        "learned of the item the vault map[vault_map]",
-        "the player Kael[player] took the item the vault map[vault_map]",
-        "Listen at the vault door without being heard -> success",
-        "bad luck — something behind the door is already listening back: signs of it",
-        "the player Kael[player] gained the trait Listening[listening] — (condition) Listening for the next shift of weight behind the door."
+      "events": [
+        {
+          "tool": "move",
+          "title": "Took the vault map",
+          "subject": "",
+          "badges": [],
+          "dice": [],
+          "outcome": "",
+          "effects": [],
+          "icon": "back_hand"
+        },
+        {
+          "tool": "roll_attempt",
+          "title": "Attempt",
+          "subject": "Listen at the vault door without being heard",
+          "badges": [
+            {
+              "label": "Skill",
+              "value": "Stealth"
+            },
+            {
+              "label": "Help",
+              "value": "d6"
+            }
+          ],
+          "dice": [
+            {
+              "label": "Pool",
+              "faces": [
+                10,
+                6
+              ],
+              "rolled": [
+                8,
+                5
+              ],
+              "kept": 8
+            },
+            {
+              "label": "Luck",
+              "faces": [
+                6
+              ],
+              "rolled": [
+                4
+              ],
+              "kept": 4
+            }
+          ],
+          "outcome": "success",
+          "effects": [
+            "bad luck — something behind the door is already listening back: signs of it"
+          ],
+          "icon": "casino"
+        },
+        {
+          "tool": "add_trait",
+          "title": "Kael gained Listening",
+          "subject": "",
+          "badges": [],
+          "dice": [],
+          "outcome": "",
+          "effects": [],
+          "icon": "add_circle"
+        }
       ]
     }
   ],

@@ -24,10 +24,8 @@ _FILENAME_SAFE = re.compile(r"[a-z0-9_-]+")
 
 
 def scene_key(scene: VisibleScene) -> str:
-    """What an image is of: the place and its revealed cast. Re-entering a scene reuses its file
-    instead of paying for the same picture again."""
-    parts = (scene.location.id, *sorted(entity.id for entity in scene.here))
-    return sha1("|".join(parts).encode(), usedforsecurity=False).hexdigest()[:12]
+    """Keyed on the place alone: who's present can change turn to turn without a new picture."""
+    return sha1(scene.location.id.encode(), usedforsecurity=False).hexdigest()[:12]
 
 
 def illustration_request(

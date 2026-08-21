@@ -7,7 +7,8 @@
       "data": {
         "entity_id": "vault_map",
         "name": "the vault map"
-      }
+      },
+      "chip": null
     },
     {
       "kind": "entity_moved",
@@ -16,9 +17,14 @@
       "data": {
         "entity_id": "vault_map",
         "entity_name": "the vault map",
+        "entity_kind": "item",
         "to_id": "player",
         "to_name": "Kael",
         "to_kind": "actor"
+      },
+      "chip": {
+        "title": "Took the vault map",
+        "icon": "back_hand"
       }
     },
     {
@@ -35,8 +41,10 @@
           5
         ],
         "kept": 5,
-        "reason": "Does he hear what waits past the vault door without being heard? — chance"
-      }
+        "reason": "Does he hear what waits past the vault door without being heard? — chance",
+        "role": "chance"
+      },
+      "chip": null
     },
     {
       "kind": "dice_rolled",
@@ -50,8 +58,10 @@
           4
         ],
         "kept": 4,
-        "reason": "Does he hear what waits past the vault door without being heard? — risk"
-      }
+        "reason": "Does he hear what waits past the vault door without being heard? — risk",
+        "role": "risk"
+      },
+      "chip": null
     },
     {
       "kind": "question_answered",
@@ -59,12 +69,14 @@
       "narrator": "Does he hear what waits past the vault door without being heard? -> yes-and",
       "data": {
         "entity_id": "player",
+        "question": "Does he hear what waits past the vault door without being heard?",
         "outcome": "yes-and",
         "chance": 5,
         "risk": 4,
         "position": "advantage",
         "edge": "Quiet Hands"
-      }
+      },
+      "chip": null
     },
     {
       "kind": "trait_added",
@@ -72,7 +84,13 @@
       "narrator": "the player Kael[player] gained the trait Listening[listening] — (condition) Listening for the next shift of weight behind the door.",
       "data": {
         "entity_id": "player",
-        "trait_id": "listening"
+        "trait_id": "listening",
+        "entity_name": "Kael",
+        "trait_name": "Listening"
+      },
+      "chip": {
+        "title": "Kael gained Listening",
+        "icon": "add_circle"
       }
     }
   ],

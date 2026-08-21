@@ -8,10 +8,12 @@ from pydantic import SecretStr
 
 from aidm.app.media import Generated, Illustrator, illustration_request, scene_key
 from aidm.config import MediaConfig, ProviderConfig
-from aidm.state.model import Entity, EntityId, Game
+from aidm.state import actions
+from aidm.state.model import PLAYER_ID, Entity, EntityId, Game
 from aidm.turn.context import player_scene
 
 NARRATION = "The door groans open."
+CLOISTER = EntityId("cloister")
 
 
 def _illustrator(tmp_path: Path) -> Illustrator:
@@ -47,11 +49,15 @@ def test_illustration_request_names_the_scene_and_no_unrevealed_canon() -> None:
     assert "Pale Watcher" not in request
 
 
-def test_scene_key_moves_only_when_the_revealed_cast_does() -> None:
+def test_scene_key_holds_through_a_change_of_cast_but_not_of_place() -> None:
+    """Staying put reuses the cached art; only leaving the location asks for a new picture."""
     _, state = initialized()
     key = scene_key(player_scene(state))
     assert scene_key(player_scene(_placed(state, "Pale Watcher", known=False))) == key
-    assert scene_key(player_scene(_placed(state, "Brass Lantern", known=True))) != key
+    assert scene_key(player_scene(_placed(state, "Brass Lantern", known=True))) == key
+    draft = state.draft()
+    _ = actions.move(draft, PLAYER_ID, CLOISTER)
+    assert scene_key(player_scene(draft.committed())) != key
 
 
 def test_an_icon_is_looked_up_in_the_directory_its_entity_belongs_to(tmp_path: Path) -> None:

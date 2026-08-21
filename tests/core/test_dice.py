@@ -4,7 +4,7 @@ from aidm.state.actions import roll_pool
 
 
 def test_a_pool_keeps_its_highest_die_and_traces_every_one() -> None:
-    kept, fact = roll_pool((6, 6), "a forced door", Random(0))
+    kept, fact = roll_pool((6, 6), "a forced door", Random(0), role="pool")
     raw = fact.data["rolled"]
     assert isinstance(raw, list)
     dice = [die for die in raw if isinstance(die, int)]

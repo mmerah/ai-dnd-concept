@@ -6,6 +6,7 @@ from pydantic import JsonValue
 from .model import (
     PLAYER_ID,
     AdvanceThread,
+    Chip,
     Entity,
     EntityId,
     Exit,
@@ -19,8 +20,12 @@ from .model import (
 )
 
 
-def roll_pool(faces: Sequence[int], reason: str, rng: Random) -> tuple[int, Fact]:
-    """Roll one die per entry and keep the highest; a single die is a pool of one."""
+def _sentence(text: str) -> str:
+    return text[:1].upper() + text[1:]
+
+
+def roll_pool(faces: Sequence[int], reason: str, rng: Random, *, role: str) -> tuple[int, Fact]:
+    """Keeps the highest die; `role` tags this roll for a projection, stable across resolvers."""
     if not faces:
         raise ValueError("a dice pool rolls at least one die")
     drawn = tuple(rng.randint(1, face) for face in faces)
@@ -29,7 +34,13 @@ def roll_pool(faces: Sequence[int], reason: str, rng: Random) -> tuple[int, Fact
     return kept, Fact(
         kind="dice_rolled",
         trace=f"{reason}: {_notation(faces)} [{shown}] -> {kept}",
-        data={"faces": list(faces), "rolled": list(drawn), "kept": kept, "reason": reason},
+        data={
+            "faces": list(faces),
+            "rolled": list(drawn),
+            "kept": kept,
+            "reason": reason,
+            "role": role,
+        },
     )
 
 
@@ -41,7 +52,14 @@ def _notation(faces: Sequence[int]) -> str:
 
 
 def reveal(draft: Game, entity_id: EntityId) -> list[Fact]:
-    return draft.reveal(draft.world.require(entity_id))
+    """The standalone `reveal` tool's resolver: byproduct reveals go through `Game.reveal`,
+    chip-less."""
+    entity = draft.world.require(entity_id)
+    facts = draft.reveal(entity)
+    if not facts:
+        return facts
+    chip = Chip(title=_sentence(f"{entity.name} discovered"), icon="visibility")
+    return [facts[0].model_copy(update={"chip": chip})]
 
 
 def require_actor_here(state: Game, actor_id: EntityId) -> Entity:
@@ -99,7 +117,9 @@ def _move_actor(draft: Game, actor_id: EntityId, to_id: EntityId) -> list[Fact]:
         for member_id in draft.world.party:
             member = draft.world.require_kind(member_id, "actor")
             if member.parent_id != destination.id:
-                facts.append(draft.move(member, destination))
+                # One card per travel: the player's own move already carries it.
+                followed = draft.move(member, destination)
+                facts.append(followed.model_copy(update={"chip": None}))
         return facts
     actor = draft.world.require_kind(actor_id, "actor")
     if actor.parent_id != here and destination.id != here:
@@ -136,7 +156,8 @@ def improvise(draft: Game, item_name: str) -> list[Fact]:
         parent_id=draft.player_location,
     )
     created = draft.add(item)
-    return [created, draft.move(item, draft.player)]
+    moved = draft.move(item, draft.player)
+    return [created, moved]
 
 
 def add_trait(draft: Game, entity_id: EntityId, trait_id: Slug, text: str = "") -> list[Fact]:
@@ -148,7 +169,9 @@ def add_trait(draft: Game, entity_id: EntityId, trait_id: Slug, text: str = "") 
     trace = f"{labeled(entity)} gained the trait {name}[{trait_id}]"
     if text:
         trace += f" — {text}"
-    return [*seen, entity_fact(entity, "trait_added", trace, {"trait_id": trait_id})]
+    data = {"trait_id": trait_id, "entity_name": entity.name, "trait_name": name}
+    chip = Chip(title=f"{entity.name} gained {name}", icon="add_circle")
+    return [*seen, entity_fact(entity, "trait_added", trace, data, chip=chip)]
 
 
 def remove_trait(draft: Game, entity_id: EntityId, trait_id: Slug) -> list[Fact]:
@@ -161,7 +184,9 @@ def remove_trait(draft: Game, entity_id: EntityId, trait_id: Slug) -> list[Fact]
         )
     entity.traits.remove(held)
     trace = f"{labeled(entity)} lost the trait {held.name}[{held.id}]"
-    return [*seen, entity_fact(entity, "trait_removed", trace, {"trait_id": trait_id})]
+    data = {"trait_id": trait_id, "entity_name": entity.name, "trait_name": held.name}
+    chip = Chip(title=f"{entity.name} lost {held.name}", icon="remove_circle")
+    return [*seen, entity_fact(entity, "trait_removed", trace, data, chip=chip)]
 
 
 def unlock_exit(draft: Game, to_id: EntityId) -> list[Fact]:
@@ -177,13 +202,15 @@ def unlock_exit(draft: Game, to_id: EntityId) -> list[Fact]:
     back = there.exit_to(here.id)
     if back is not None:
         back.locked = False
+    chip = Chip(title=_sentence(f"{there.name} unlocked"), icon="lock_open")
     return [
         entity_fact(
             here,
             "exit_unlocked",
             f"the way from {here.name}[{here.id}] to {there.name}[{there.id}] is unlocked",
-            {"to_id": to_id},
+            {"to_id": to_id, "to_name": there.name},
             narrate=way.known,
+            chip=chip,
         )
     ]
 
@@ -195,7 +222,8 @@ def join_party(draft: Game, actor_id: EntityId) -> list[Fact]:
     seen = draft.reveal(actor)
     draft.world.party.append(actor_id)
     trace = f"{labeled(actor)} travels with the player"
-    return [*seen, entity_fact(actor, "party_joined", trace, {})]
+    chip = Chip(title=f"{actor.name} joins your party", icon="group_add")
+    return [*seen, entity_fact(actor, "party_joined", trace, {"name": actor.name}, chip=chip)]
 
 
 def leave_party(draft: Game, actor_id: EntityId) -> list[Fact]:
@@ -204,7 +232,8 @@ def leave_party(draft: Game, actor_id: EntityId) -> list[Fact]:
         raise ValueError(f"{actor.name} does not travel with the player")
     draft.world.party.remove(actor_id)
     trace = f"{labeled(actor)} no longer travels with the player"
-    return [entity_fact(actor, "party_left", trace, {})]
+    chip = Chip(title=f"{actor.name} leaves your party", icon="group_remove")
+    return [entity_fact(actor, "party_left", trace, {"name": actor.name}, chip=chip)]
 
 
 def advance_thread(draft: Game, effect: AdvanceThread) -> list[Fact]:

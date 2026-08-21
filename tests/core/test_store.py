@@ -4,7 +4,6 @@ from pathlib import Path
 
 import pytest
 from core_test_support import LONER3E, initialized, scenario
-from pydantic import ValidationError
 
 from aidm.app.launch import build_engine, engine_ids
 from aidm.content.io import (
@@ -16,7 +15,7 @@ from aidm.content.io import (
     read_scenarios,
     write_scenario,
 )
-from aidm.state.model import Game
+from aidm.state.model import EventBadge, Exchange, Game, MechanicEvent
 
 
 def test_a_save_carries_every_field_the_played_game_holds() -> None:
@@ -24,19 +23,30 @@ def test_a_save_carries_every_field_the_played_game_holds() -> None:
     assert {field.name for field in fields(Game)} == set(SavedGame.model_fields)
 
 
-def test_shell_reads_a_save_whose_world_is_garbage(tmp_path: Path) -> None:
+def test_a_saved_games_exchange_events_round_trip(tmp_path: Path) -> None:
     _, state = initialized()
+    draft = state.draft()
+    draft.history = (
+        Exchange(
+            prompt="I take the map.",
+            lines=(),
+            events=(
+                MechanicEvent(
+                    tool="move",
+                    title="the vault map moved to Kael",
+                    badges=(EventBadge(label="Position", value="Neutral"),),
+                ),
+            ),
+        ),
+    )
+    saved = SavedGame.of(draft.committed())
     store = FileStore(tmp_path)
-    body = json.loads(SavedGame.of(state).model_dump_json())
-    body["world"] = {"entities": {"player": "garbage"}}
-    (tmp_path / "broken.json").write_text(json.dumps(body), encoding=ENCODING)
 
-    shell = store.shell("broken")
+    store.save("roundtrip", saved)
+    reloaded = store.load("roundtrip")
 
-    assert shell is not None
-    assert (shell.engine, shell.scenario_id, shell.turn) == (LONER3E, "whispering-vault", 0)
-    with pytest.raises(ValidationError):
-        store.load("broken")
+    assert reloaded is not None
+    assert reloaded.history == saved.history
 
 
 @pytest.mark.parametrize("slug", ("../escape", "/absolute", "bad slug", ""))

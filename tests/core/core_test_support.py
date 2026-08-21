@@ -22,7 +22,7 @@ from aidm.config import ProviderConfig, Providers, Settings
 from aidm.content.io import load_character, load_scenario
 from aidm.content.model import Character, Scenario
 from aidm.engines.core import Advancement, Engine, SheetMechanics
-from aidm.state.model import EngineId, Entity, Game, Turn
+from aidm.state.model import EngineId, Entity, Game, MechanicEvent, Turn
 from aidm.turn.run import TurnResult, build_turn_agents, run_turn
 
 type Stub = Callable[[list[ModelMessage], AgentInfo], ModelResponse]
@@ -159,6 +159,7 @@ async def played(
     narrator: Model | None = None,
     rng: Random | None = None,
     on_step: Callable[[str], None] | None = None,
+    on_event: Callable[[MechanicEvent], None] | None = None,
     config: Settings | None = None,
 ) -> TurnResult:
     """The turn with every role stubbed, built the way the session builds it. One Director run
@@ -177,6 +178,7 @@ async def played(
             settings=config,
             rng=Random(0) if rng is None else rng,
             on_step=on_step,
+            on_event=on_event,
         )
 
 

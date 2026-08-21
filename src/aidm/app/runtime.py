@@ -22,6 +22,7 @@ from aidm.state.model import (
     Frozen,
     Game,
     Line,
+    MechanicEvent,
     ThreadStatus,
     TraceEntry,
     Turn,
@@ -29,7 +30,6 @@ from aidm.state.model import (
 )
 from aidm.turn.context import render_proposal
 from aidm.turn.run import (
-    TURN_STEPS,
     AdvancementContext,
     TurnAgents,
     advisor_agent,
@@ -161,27 +161,23 @@ class GameSession:
     def __post_init__(self) -> None:
         if self.engine.id != self.target.engine:
             raise ValueError(f"{self.target} was opened with the {self.engine.id!r} engine")
-        shell = self.store.shell(self.slug)
-        if shell is not None and shell.engine != self.engine.id:
-            raise ValueError(f"save {self.slug!r} plays {shell.engine!r}, not {self.engine.id!r}")
-        saved = None if shell is None else self.store.load(self.slug)
+        saved = self.store.load(self.slug)
         if saved is None:
             self.state = self._begun()
             return
+        if saved.engine != self.engine.id:
+            raise ValueError(f"save {self.slug!r} plays {saved.engine!r}, not {self.engine.id!r}")
         self.state = self._resumable(self.engine.restored(saved))
 
     @property
     def slug(self) -> str:
         return self.target.slug
 
-    @property
-    def role_names(self) -> tuple[str, ...]:
-        return (*TURN_STEPS, WORLDSMITH) if self.scenario.grows else TURN_STEPS
-
     async def submit(
         self,
         prompt: str,
         on_step: Callable[[str], None] | None = None,
+        on_event: Callable[[MechanicEvent], None] | None = None,
     ) -> Turn:
         """Commit only after the full turn succeeds."""
         result = await run_turn(
@@ -192,6 +188,7 @@ class GameSession:
             settings=self.settings,
             rng=self.rng,
             on_step=on_step,
+            on_event=on_event,
         )
         self._commit(result.state, result.turn)
         self._illustrate(result.turn.narration)

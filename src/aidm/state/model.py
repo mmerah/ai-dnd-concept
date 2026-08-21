@@ -150,6 +150,13 @@ class Entity(Mutable):
 NOTHING_MECHANICAL = "- (nothing mechanical happened)"
 
 
+class Chip(Frozen):
+    """A small player-facing card a fact earns, phrased where its own values were in scope."""
+
+    title: str
+    icon: str = "casino"
+
+
 class Fact(Frozen):
     """One thing that occurred, rendered where its values were in scope."""
 
@@ -158,6 +165,7 @@ class Fact(Frozen):
     narrator: str | None = None
     # The structured values behind the prose, so a test or a richer trace reads them untyped.
     data: dict[str, JsonValue] = Field(default_factory=dict)
+    chip: Chip | None = None
 
 
 def labeled(entity: Entity) -> str:
@@ -167,7 +175,13 @@ def labeled(entity: Entity) -> str:
 
 
 def entity_fact(
-    entity: Entity, kind: str, trace: str, data: Mapping[str, JsonValue], *, narrate: bool = True
+    entity: Entity,
+    kind: str,
+    trace: str,
+    data: Mapping[str, JsonValue],
+    *,
+    narrate: bool = True,
+    chip: Chip | None = None,
 ) -> Fact:
     """An entity the player has not learned of narrates nothing, so no unknown name leaks."""
     return Fact(
@@ -175,6 +189,7 @@ def entity_fact(
         trace=trace,
         narrator=trace if narrate and entity.known else None,
         data={"entity_id": entity.id, **data},
+        chip=chip,
     )
 
 
@@ -224,11 +239,44 @@ class Narration(Frozen):
         return narration_text(self.lines)
 
 
+class EventBadge(Frozen):
+    label: str
+    value: str
+
+
+class DiceEvent(Frozen):
+    label: str
+    faces: tuple[int, ...]
+    rolled: tuple[int, ...]
+    kept: int
+
+    @model_validator(mode="after")
+    def _rolled_matches_faces(self) -> Self:
+        if len(self.rolled) != len(self.faces):
+            raise ValueError("one rolled value per face")
+        for die, face in zip(self.rolled, self.faces, strict=True):
+            if not 1 <= die <= face:
+                raise ValueError(f"a d{face} cannot show {die}")
+        if self.kept not in self.rolled:
+            raise ValueError("the kept die must be among those rolled")
+        return self
+
+
+class MechanicEvent(Frozen):
+    tool: str
+    title: str
+    subject: str = ""
+    badges: tuple[EventBadge, ...] = ()
+    dice: tuple[DiceEvent, ...] = ()
+    outcome: str = ""
+    effects: tuple[str, ...] = ()
+    icon: str = "casino"
+
+
 class Exchange(Frozen):
     prompt: str
     lines: tuple[Line, ...]
-    # Only what the turn's facts were allowed to tell the player, never the full set.
-    outcomes: tuple[str, ...] = ()
+    events: tuple[MechanicEvent, ...] = ()
 
     @property
     def narration(self) -> str:
@@ -488,6 +536,8 @@ class Game:
         )
 
     def reveal(self, entity: Entity) -> list[Fact]:
+        """No chip: a reveal is mostly a byproduct of some other action, which carries its own
+        chip. Only the standalone `reveal` tool, in `actions.reveal`, cards a discovery."""
         if entity.known:
             return []
         entity.known = True
@@ -496,16 +546,19 @@ class Game:
 
     def move(self, entity: Entity, destination: Entity) -> Fact:
         entity.parent_id = destination.id
+        trace, chip = _move_summary(entity, destination)
         return entity_fact(
             entity,
             "entity_moved",
-            _move_summary(entity, destination),
+            trace,
             {
                 "entity_name": entity.name,
+                "entity_kind": entity.kind,
                 "to_id": destination.id,
                 "to_name": destination.name,
                 "to_kind": destination.kind,
             },
+            chip=chip,
         )
 
 
@@ -528,15 +581,29 @@ def _revalidated[M: Mutable](model: M) -> M:
     return type(model).model_validate(model.model_dump(round_trip=True))
 
 
-def _move_summary(entity: Entity, destination: Entity) -> str:
+def _move_summary(entity: Entity, destination: Entity) -> tuple[str, Chip]:
+    """Trace (ids, for the Director) and chip (plain names, for the player), from one branch."""
+    icon = "directions_walk"
     if entity.kind == "actor":
-        return f"{labeled(entity)} moved to {labeled(destination)}"
+        return (
+            f"{labeled(entity)} moved to {labeled(destination)}",
+            Chip(title=f"{entity.name} moved to {destination.name}", icon=icon),
+        )
     if destination.id == PLAYER_ID:
-        return f"{labeled(destination)} took {labeled(entity)}"
+        return (
+            f"{labeled(destination)} took {labeled(entity)}",
+            Chip(title=f"Took {entity.name}", icon="back_hand"),
+        )
     if destination.kind == "actor":
         # The giver is always the player: an item only ever moves to an actor by being handed over.
-        return f"the player gave {labeled(entity)} to {labeled(destination)}"
-    return f"the player left {labeled(entity)} at {labeled(destination)}"
+        return (
+            f"the player gave {labeled(entity)} to {labeled(destination)}",
+            Chip(title=f"Gave {entity.name} to {destination.name}", icon=icon),
+        )
+    return (
+        f"the player left {labeled(entity)} at {labeled(destination)}",
+        Chip(title=f"Left {entity.name} at {destination.name}", icon=icon),
+    )
 
 
 # An option id is named by the engine and may run hyphens together ('red---fire'), so it is

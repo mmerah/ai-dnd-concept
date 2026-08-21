@@ -59,8 +59,56 @@ async def test_an_engine_uses_the_shared_pipeline_and_safe_narrator_prompt() -> 
     assert "engine_data" not in shown(result.turn, "narrator")
     assert result.state.turn == 1
     assert result.state.history[-1].prompt == "I search beneath the desk."
-    outcomes = result.state.history[-1].outcomes
-    assert outcomes == tuple(fact.trace for fact in result.turn.facts)
+
+
+async def test_on_event_fires_once_per_visible_tool_in_resolver_order() -> None:
+    engine, state = initialized()
+    fired: list[str] = []
+    director = FunctionModel(
+        scripted(
+            tool_call("move", entity_id="vault_map", to_id="player"),
+            tool_call("add_trait", entity_id="player", trait_id="listening", text="listening"),
+            text("Kael takes the map and listens."),
+        )
+    )
+    result = await played(
+        engine,
+        state,
+        "I take the map and listen.",
+        director=director,
+        on_event=lambda event: fired.append(event.tool),
+    )
+
+    assert fired == ["move", "add_trait"]
+    assert [event.tool for event in result.state.history[-1].events] == ["move", "add_trait"]
+
+
+async def test_a_narrator_failure_leaves_history_and_events_untouched() -> None:
+    engine, state = initialized()
+    fired: list[str] = []
+
+    def boom(messages: list[ModelMessage], info: AgentInfo) -> ModelResponse:
+        del messages, info
+        raise RuntimeError("narrator exploded")
+
+    director = FunctionModel(
+        scripted(
+            tool_call("move", entity_id="vault_map", to_id="player"),
+            text("The map is in hand."),
+        )
+    )
+    with pytest.raises(RuntimeError, match="narrator exploded"):
+        await played(
+            engine,
+            state,
+            "I take the map.",
+            director=director,
+            narrator=FunctionModel(boom),
+            on_event=lambda event: fired.append(event.tool),
+        )
+
+    assert fired == ["move"]
+    assert state.history == ()
 
 
 async def test_the_engine_rolls_the_outcome_the_facts_then_record() -> None:

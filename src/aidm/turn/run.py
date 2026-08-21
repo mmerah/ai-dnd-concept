@@ -29,12 +29,12 @@ from aidm.state.model import (
     Exchange,
     Fact,
     Game,
+    MechanicEvent,
     Narration,
     Slug,
     StepTrace,
     Turn,
     narrator_evidence,
-    narrator_lines,
 )
 
 from . import context
@@ -320,6 +320,7 @@ async def run_turn(
     settings: Settings,
     rng: Random,
     on_step: Callable[[str], None] | None = None,
+    on_event: Callable[[MechanicEvent], None] | None = None,
 ) -> TurnResult:
     def announce(step: str) -> None:
         if on_step is not None:
@@ -329,7 +330,7 @@ async def run_turn(
     history_chars = sum(
         len(exchange.prompt) + len(exchange.narration) for exchange in state.history
     )
-    log = TurnLog()
+    log = TurnLog(on_event=on_event)
     draft = state.draft()
 
     scene, describe = SceneSnapshot.of(draft), engine.renderer(draft)
@@ -374,7 +375,7 @@ async def run_turn(
 
     draft.history = (
         *draft.history,
-        Exchange(prompt=prompt, lines=narration.lines, outcomes=narrator_lines(facts)),
+        Exchange(prompt=prompt, lines=narration.lines, events=tuple(log.events)),
     )
     draft.turn += 1
     return TurnResult(

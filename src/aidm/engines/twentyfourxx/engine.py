@@ -21,17 +21,21 @@ from aidm.engines.core import (
     actor_sheets,
     adjust,
     check_sheets,
+    chipped,
     complete_chapter,
+    dice_by_role,
+    dice_event,
     load_packs,
     pack_paths,
     pack_step,
     render_counters,
+    require_dice_role,
     require_sheet,
     sequential_toolset,
     spend,
     with_enum,
 )
-from aidm.state.actions import require_actor_here, reveal, roll_pool
+from aidm.state.actions import require_actor_here, roll_pool
 from aidm.state.model import (
     PLAYER_ID,
     AnyStep,
@@ -42,9 +46,11 @@ from aidm.state.model import (
     EngineId,
     Entity,
     EntityId,
+    EventBadge,
     Fact,
     Frozen,
     Game,
+    MechanicEvent,
     Picks,
     Slug,
     TextStep,
@@ -288,12 +294,12 @@ def apply_change_credits(draft: Game, actor_id: EntityId, amount: int) -> list[F
     if amount == 0:
         raise ValueError("changing credits moves the pool; zero moves nothing")
     actor = require_actor_here(draft, actor_id)
-    facts = reveal(draft, actor.id)
+    facts = draft.reveal(actor)
     credits = require_sheet(Mechanics.of(draft).sheets, actor).credits
     if amount > 0:
-        return [*facts, *adjust(actor, "credits", credits, amount, "paid")]
+        return [*facts, *chipped(adjust(actor, "credits", credits, amount, "paid"), "payments")]
     # `spend`, not a negative adjust: an overdraw is refused, not clamped.
-    return [*facts, *spend(actor, "credits", credits, -amount)]
+    return [*facts, *chipped(spend(actor, "credits", credits, -amount), "payments")]
 
 
 def apply_complete_chapter(draft: Game) -> list[Fact]:
@@ -302,13 +308,15 @@ def apply_complete_chapter(draft: Game) -> list[Fact]:
 
 def resolve_attempt(draft: Game, action: Attempt, rng: Random) -> tuple[Fact, ...]:
     actor = require_actor_here(draft, action.actor_id)
-    facts = reveal(draft, action.actor_id)
+    facts = draft.reveal(actor)
     sheet = require_sheet(Mechanics.of(draft).sheets, actor)
     helper_sheet = _helper_sheet(draft, actor, action, facts)
     _require_skill(actor, sheet, action.skill, "skill")
 
     faces = pool_faces(sheet, action, helper_sheet)
-    kept, rolled = roll_pool(faces, f"{action.goal} — {action.skill or 'no skill'}", rng)
+    kept, rolled = roll_pool(
+        faces, f"{action.goal} — {action.skill or 'no skill'}", rng, role="pool"
+    )
     facts.append(rolled)
 
     outcome = outcome_for(kept)
@@ -318,11 +326,13 @@ def resolve_attempt(draft: Game, action: Attempt, rng: Random) -> tuple[Fact, ..
             "attempt_resolved",
             f"{action.goal} -> {outcome}",
             {
+                "goal": action.goal,
                 "outcome": outcome,
                 "kept": kept,
                 "skill": action.skill,
                 "faces": list(faces),
                 "helper": action.helper_id,
+                "hindered": bool(action.hindered),
             },
         )
     )
@@ -334,7 +344,7 @@ def resolve_attempt(draft: Game, action: Attempt, rng: Random) -> tuple[Fact, ..
 
 def resolve_luck_test(draft: Game, action: LuckTest, rng: Random) -> tuple[Fact, ...]:
     actor = require_actor_here(draft, action.actor_id)
-    facts = reveal(draft, action.actor_id)
+    facts = draft.reveal(actor)
     facts.extend(_bad_luck(draft, actor, action.subject, rng))
     return tuple(facts)
 
@@ -348,14 +358,14 @@ def _helper_sheet(draft: Game, actor: Entity, action: Attempt, facts: list[Fact]
             "null."
         )
     helper = require_actor_here(draft, action.helper_id)
-    facts.extend(reveal(draft, action.helper_id))
+    facts.extend(draft.reveal(helper))
     sheet = require_sheet(Mechanics.of(draft).sheets, helper)
     _require_skill(helper, sheet, action.helper_skill, "helper_skill")
     return sheet
 
 
 def _bad_luck(draft: Game, actor: Entity, subject: str, rng: Random) -> list[Fact]:
-    kept, rolled = roll_pool((6,), f"bad luck — {subject}", rng)
+    kept, rolled = roll_pool((6,), f"bad luck — {subject}", rng, role="luck")
     if kept > SIGNS:
         return [rolled]
     trouble = kept <= TROUBLE
@@ -375,6 +385,73 @@ def _bad_luck(draft: Game, actor: Entity, subject: str, rng: Random) -> list[Fac
         {"subject": subject, "trouble": trouble},
     )
     return [rolled, tested]
+
+
+def attempt_events(facts: tuple[Fact, ...]) -> tuple[MechanicEvent, ...]:
+    resolved = next((fact for fact in facts if fact.kind == "attempt_resolved"), None)
+    if resolved is None:
+        raise ValueError("no 'attempt_resolved' fact anchors this call")
+    if resolved.narrator is None:
+        return ()
+    badges = tuple(
+        badge
+        for badge in (_skill_badge(resolved), _help_badge(resolved), _hindered_badge(resolved))
+        if badge is not None
+    )
+    effects = tuple(
+        fact.narrator for fact in facts if fact.kind == "luck_tested" and fact.narrator is not None
+    )
+    dice = [dice_event("Pool", require_dice_role(facts, "pool"))]
+    # A riding luck test shows its die even when it came up clear and left no `luck_tested` fact.
+    if (luck_roll := dice_by_role(facts, "luck")) is not None:
+        dice.append(dice_event("Luck", luck_roll))
+    event = MechanicEvent(
+        tool="roll_attempt",
+        title="Attempt",
+        subject=str(resolved.data["goal"]),
+        badges=badges,
+        dice=tuple(dice),
+        outcome=str(resolved.data["outcome"]),
+        effects=effects,
+    )
+    return (event,)
+
+
+def luck_test_events(facts: tuple[Fact, ...]) -> tuple[MechanicEvent, ...]:
+    rolled = require_dice_role(facts, "luck")
+    tested = next((fact for fact in facts if fact.kind == "luck_tested"), None)
+    outcome = ""
+    if tested is not None and tested.narrator is not None:
+        outcome = "Trouble" if tested.data["trouble"] else "Signs"
+    return (
+        MechanicEvent(
+            tool="roll_luck_test",
+            title="Luck Test",
+            dice=(dice_event("Luck", rolled),),
+            outcome=outcome,
+            icon="warning",
+        ),
+    )
+
+
+def _skill_badge(resolved: Fact) -> EventBadge | None:
+    skill = resolved.data["skill"]
+    return EventBadge(label="Skill", value=skill) if isinstance(skill, str) and skill else None
+
+
+def _help_badge(resolved: Fact) -> EventBadge | None:
+    """Shows only the die, never the helper's name, to match the unnamed skill badge."""
+    faces = resolved.data["faces"]
+    if not isinstance(faces, list) or len(faces) < 2:
+        return None
+    help_die = faces[-1]
+    if not isinstance(help_die, int):
+        raise ValueError(f"attempt_resolved carries a non-int help die: {faces!r}")
+    return EventBadge(label="Help", value=f"d{help_die}")
+
+
+def _hindered_badge(resolved: Fact) -> EventBadge | None:
+    return EventBadge(label="Hindered", value="") if resolved.data["hindered"] else None
 
 
 def director_toolset() -> AbstractToolset[PlanContext]:
@@ -464,7 +541,7 @@ class TwentyfourxxAdvancement(Advancement):
             narrate=False,
         )
 
-        earned, dice_fact = roll_pool((6,), "credits earned", rng)
+        earned, dice_fact = roll_pool((6,), "credits earned", rng, role="credits")
         credit_facts = adjust(subject, "credits", sheet.credits, earned, "paid for the job")
         return (grown, dice_fact, *credit_facts)
 
@@ -654,3 +731,10 @@ class TwentyfourxxEngine(Engine):
             ),
             ("Credits", str(sheet.credits.current)),
         )
+
+    def player_events(self, tool_name: str, facts: tuple[Fact, ...]) -> tuple[MechanicEvent, ...]:
+        if tool_name == "roll_attempt":
+            return attempt_events(facts)
+        if tool_name == "roll_luck_test":
+            return luck_test_events(facts)
+        return super().player_events(tool_name, facts)

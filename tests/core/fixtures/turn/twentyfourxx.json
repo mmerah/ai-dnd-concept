@@ -7,7 +7,8 @@
       "data": {
         "entity_id": "vault_map",
         "name": "the vault map"
-      }
+      },
+      "chip": null
     },
     {
       "kind": "entity_moved",
@@ -16,9 +17,14 @@
       "data": {
         "entity_id": "vault_map",
         "entity_name": "the vault map",
+        "entity_kind": "item",
         "to_id": "player",
         "to_name": "Kael",
         "to_kind": "actor"
+      },
+      "chip": {
+        "title": "Took the vault map",
+        "icon": "back_hand"
       }
     },
     {
@@ -35,8 +41,10 @@
           5
         ],
         "kept": 8,
-        "reason": "Listen at the vault door without being heard — Stealth"
-      }
+        "reason": "Listen at the vault door without being heard — Stealth",
+        "role": "pool"
+      },
+      "chip": null
     },
     {
       "kind": "attempt_resolved",
@@ -44,6 +52,7 @@
       "narrator": "Listen at the vault door without being heard -> success",
       "data": {
         "entity_id": "player",
+        "goal": "Listen at the vault door without being heard",
         "outcome": "success",
         "kept": 8,
         "skill": "Stealth",
@@ -51,8 +60,10 @@
           10,
           6
         ],
-        "helper": null
-      }
+        "helper": null,
+        "hindered": false
+      },
+      "chip": null
     },
     {
       "kind": "dice_rolled",
@@ -66,8 +77,10 @@
           4
         ],
         "kept": 4,
-        "reason": "bad luck — something behind the door is already listening back"
-      }
+        "reason": "bad luck — something behind the door is already listening back",
+        "role": "luck"
+      },
+      "chip": null
     },
     {
       "kind": "luck_tested",
@@ -77,7 +90,8 @@
         "entity_id": "player",
         "subject": "something behind the door is already listening back",
         "trouble": false
-      }
+      },
+      "chip": null
     },
     {
       "kind": "trait_added",
@@ -85,7 +99,13 @@
       "narrator": "the player Kael[player] gained the trait Listening[listening] — (condition) Listening for the next shift of weight behind the door.",
       "data": {
         "entity_id": "player",
-        "trait_id": "listening"
+        "trait_id": "listening",
+        "entity_name": "Kael",
+        "trait_name": "Listening"
+      },
+      "chip": {
+        "title": "Kael gained Listening",
+        "icon": "add_circle"
       }
     }
   ],

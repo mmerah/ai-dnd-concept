@@ -18,15 +18,18 @@ from aidm.content.model import CreatedCharacter
 from aidm.state.model import (
     PLAYER_ID,
     AnyStep,
+    Chip,
     Counter,
     CreationOption,
     CreationStep,
+    DiceEvent,
     EngineId,
     Entity,
     EntityId,
     Fact,
     Frozen,
     Game,
+    MechanicEvent,
     Mutable,
     Picks,
     Slug,
@@ -44,6 +47,8 @@ type EntityRenderer = Callable[[Entity], str]
 class TurnLog:
     facts: list[Fact] = field(default_factory=list)
     steps: list[StepTrace] = field(default_factory=list)
+    events: list[MechanicEvent] = field(default_factory=list)
+    on_event: Callable[[MechanicEvent], None] | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -116,6 +121,73 @@ class Engine(ABC):
     def sheet_view(self, state: Game) -> tuple[tuple[str, str], ...]:
         """Ordered (label, value) pairs summarising the player's own sheet for the player."""
 
+    def player_events(self, tool_name: str, facts: tuple[Fact, ...]) -> tuple[MechanicEvent, ...]:
+        """A chip event per fact carrying both a chip and narrator text: the narrator gate stays
+        centralized so an unrevealed entity's chip can never show, whatever a resolver sets."""
+        return tuple(
+            MechanicEvent(tool=tool_name, title=fact.chip.title, icon=fact.chip.icon)
+            for fact in facts
+            if fact.chip is not None and fact.narrator is not None
+        )
+
+
+def dice_event(label: str, fact: Fact) -> DiceEvent:
+    """A `dice_rolled` fact's own data, typed: the whitelisted exception to the narrator gate."""
+    kept = fact.data["kept"]
+    if not isinstance(kept, int):
+        raise ValueError(f"a dice_rolled fact carries a non-int kept value: {kept!r}")
+    return DiceEvent(
+        label=label, faces=_ints(fact.data["faces"]), rolled=_ints(fact.data["rolled"]), kept=kept
+    )
+
+
+def counter_effect(fact: Fact) -> str:
+    """Built from a `counter_changed` fact's data, prefixed by owner unless it is the player."""
+    if fact.narrator is None:
+        raise ValueError("a counter_changed fact with no narrator text cannot become an effect")
+    key, delta, current, maximum = (
+        fact.data["counter"],
+        fact.data["delta"],
+        fact.data["current"],
+        fact.data["maximum"],
+    )
+    if not isinstance(delta, int) or not isinstance(current, int):
+        raise ValueError(f"a counter_changed fact carries non-int values: {fact.data!r}")
+    if maximum is not None and not isinstance(maximum, int):
+        raise ValueError(f"a counter_changed fact carries a non-int maximum: {maximum!r}")
+    entity_id = fact.data["entity_id"]
+    if not isinstance(entity_id, str):
+        raise ValueError(f"a counter_changed fact carries a non-str entity id: {entity_id!r}")
+    pool_text = str(current) if maximum is None else f"{current}/{maximum}"
+    line = f"{str(key).capitalize()} {delta:+d} -> {pool_text}"
+    return line if entity_id == PLAYER_ID else f"{fact.data['entity_name']}: {line}"
+
+
+def dice_by_role(facts: Sequence[Fact], role: str) -> Fact | None:
+    return next(
+        (fact for fact in facts if fact.kind == "dice_rolled" and fact.data.get("role") == role),
+        None,
+    )
+
+
+def require_dice_role(facts: Sequence[Fact], role: str) -> Fact:
+    """The same lookup for a role a resolver call always rolls, so a miss is a bug, not a case."""
+    found = dice_by_role(facts, role)
+    if found is None:
+        raise ValueError(f"no dice_rolled fact carries role {role!r}")
+    return found
+
+
+def _ints(value: JsonValue) -> tuple[int, ...]:
+    if not isinstance(value, list):
+        raise ValueError(f"expected a list of dice, got {value!r}")
+    ints: list[int] = []
+    for item in value:
+        if not isinstance(item, int):
+            raise ValueError(f"expected dice values to be ints, got {value!r}")
+        ints.append(item)
+    return tuple(ints)
+
 
 def pool(counter: Counter) -> str:
     if counter.maximum is None:
@@ -142,9 +214,25 @@ def spend(entity: Entity, key: str, counter: Counter, amount: int) -> list[Fact]
 
 
 def counter_fact(entity: Entity, key: str, counter: Counter, delta: int, why: str) -> Fact:
-    data = {"counter": key, "delta": delta, "current": counter.current, "maximum": counter.maximum}
+    data = {
+        "counter": key,
+        "delta": delta,
+        "current": counter.current,
+        "maximum": counter.maximum,
+        "entity_name": entity.name,
+    }
     trace = f"{labeled(entity)} {key} {delta:+d} -> {pool(counter)}"
     return explained_fact(entity, "counter_changed", trace, data, why)
+
+
+def chipped(facts: list[Fact], icon: str) -> list[Fact]:
+    """Chips a counter fact only where the narrator will read it, keeping the gate centralized."""
+    return [
+        f
+        if f.narrator is None
+        else f.model_copy(update={"chip": Chip(title=counter_effect(f), icon=icon)})
+        for f in facts
+    ]
 
 
 def render_counters(counters: dict[Slug, Counter]) -> str:
@@ -199,7 +287,16 @@ def require_sheet[S](sheets: Mapping[EntityId, S], actor: Entity) -> S:
 
 def complete_chapter(draft: Game, ending: str) -> list[Fact]:
     SheetMechanics.of(draft).completed.current += 1
-    return [Fact(kind="chapter_completed", trace=ending, narrator=ending)]
+    chip = Chip(title=ending, icon="auto_stories")
+    return [
+        Fact(
+            kind="chapter_completed",
+            trace=ending,
+            narrator=ending,
+            data={"ending": ending},
+            chip=chip,
+        )
+    ]
 
 
 NOTHING_CHANGED = "- (nothing changed)"
@@ -232,6 +329,10 @@ def act(ctx: RunContext[PlanContext], play: Play) -> str:
     already_pending = len(deps.state.world.pending_notes)
     landed = apply_to_draft(deps.engine, deps.state, play, deps.rng)
     deps.log.facts.extend(landed)
+    for event in deps.engine.player_events(ctx.tool_name or "", landed):
+        deps.log.events.append(event)
+        if deps.log.on_event is not None:
+            deps.log.on_event(event)
     lines = [f"- {fact.trace}" for fact in landed]
     lines.extend(f"- {note}" for note in deps.state.world.pending_notes[already_pending:])
     lines.extend(_reached(deps.state, landed))

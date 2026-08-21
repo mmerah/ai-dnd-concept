@@ -7,7 +7,7 @@ from typing import Protocol
 from pydantic import ValidationError
 
 from aidm.config import Settings
-from aidm.content.io import FileStore, SaveShell, read_characters, read_scenarios
+from aidm.content.io import FileStore, SavedGame, read_characters, read_scenarios
 from aidm.content.model import Character, Scenario
 from aidm.engines.core import Engine
 from aidm.engines.loner3e.engine import Loner3eEngine
@@ -250,13 +250,16 @@ def load_catalog(config: Settings) -> LauncherCatalog:
     unreadable: list[UnreadableSave] = []
     for slug in files.slugs():
         try:
-            shell = files.shell(slug)
+            saved = files.load(slug)
+            if saved is None:
+                continue
+            # An installed engine's mechanics must still parse, or /game would crash on resume.
+            if saved.engine in engine_ids:
+                engine_class(saved.engine).mechanics_type.model_validate(saved.mechanics)
         except (ValidationError, ValueError) as error:
             unreadable.append(UnreadableSave(slug=slug, problem=_brief(error)))
             continue
-        if shell is None:
-            continue
-        saves.append(_save_option(slug, shell, scenarios, characters))
+        saves.append(_save_option(slug, saved, scenarios, characters))
     return LauncherCatalog(
         engines=engine_options,
         scenarios=scenarios,
@@ -268,38 +271,38 @@ def load_catalog(config: Settings) -> LauncherCatalog:
 
 def _save_option(
     slug: str,
-    shell: SaveShell,
+    saved: SavedGame,
     scenarios: Sequence[ContentOption],
     characters: Sequence[ContentOption],
 ) -> SaveOption:
-    character = _one(characters, shell.character_id)
+    character = _one(characters, saved.character_id)
     return SaveOption(
         slug=slug,
-        scenario_id=shell.scenario_id,
-        character_id=shell.character_id,
-        engine=shell.engine,
-        scenario_title=shell.scenario.title,
-        character_title=shell.character_id if character is None else character.title,
-        turn=shell.turn,
-        problem=_unplayable_reason(shell, scenarios, characters),
+        scenario_id=saved.scenario_id,
+        character_id=saved.character_id,
+        engine=saved.engine,
+        scenario_title=saved.scenario.title,
+        character_title=saved.character_id if character is None else character.title,
+        turn=saved.turn,
+        problem=_unplayable_reason(saved, scenarios, characters),
     )
 
 
 def _unplayable_reason(
-    shell: SaveShell,
+    saved: SavedGame,
     scenarios: Sequence[ContentOption],
     characters: Sequence[ContentOption],
 ) -> str | None:
     """A save names its own origin, so the only question left is whether that origin still plays."""
     for purpose, wanted, offered in (
-        ("scenario", shell.scenario_id, scenarios),
-        ("character", shell.character_id, characters),
+        ("scenario", saved.scenario_id, scenarios),
+        ("character", saved.character_id, characters),
     ):
         found = _one(offered, wanted)
         if found is None:
             return f"{purpose} {wanted!r} is gone"
-        if shell.engine not in found.engines:
-            return f"{purpose} {wanted!r} no longer offers the {shell.engine!r} engine"
+        if saved.engine not in found.engines:
+            return f"{purpose} {wanted!r} no longer offers the {saved.engine!r} engine"
     return None
 
 
