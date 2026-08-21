@@ -8,7 +8,6 @@ from pydantic_ai.toolsets import AbstractToolset
 from aidm.config import Settings
 from aidm.engines.advancement import Advancement, Offer, ProposalBase
 from aidm.engines.engine import Engine, PlanContext
-from aidm.engines.sheets import SheetBase
 from aidm.llm import build_agent
 from aidm.state.history import Exchange, Narration
 from aidm.state.world import Game
@@ -32,7 +31,7 @@ class TurnAgents:
 
 
 def director_agent(
-    engine: Engine[SheetBase],
+    engine: Engine,
     settings: Settings,
 ) -> Agent[PlanContext, str]:
     """Everything that happens this turn happens through a tool; the closing text only traces."""
@@ -98,7 +97,7 @@ def advisor_agent(
     )
 
 
-def build_turn_agents(engine: Engine[SheetBase], settings: Settings) -> TurnAgents:
+def build_turn_agents(engine: Engine, settings: Settings) -> TurnAgents:
     return TurnAgents(director=director_agent(engine, settings), narrator=narrator_agent(settings))
 
 

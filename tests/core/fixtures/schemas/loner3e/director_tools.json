@@ -216,15 +216,6 @@
     }
   },
   {
-    "name": "complete_chapter",
-    "description": "Record that the chapter of the story this character has been living has closed.",
-    "parameters": {
-      "additionalProperties": false,
-      "properties": {},
-      "type": "object"
-    }
-  },
-  {
     "name": "roll_question",
     "description": "Put a closed dramatic question to Chance d6 against Risk d6.",
     "parameters": {
@@ -294,6 +285,15 @@
       "required": [
         "actor_id"
       ],
+      "type": "object"
+    }
+  },
+  {
+    "name": "complete_chapter",
+    "description": "Record that the adventure this character has been living has ended.",
+    "parameters": {
+      "additionalProperties": false,
+      "properties": {},
       "type": "object"
     }
   }

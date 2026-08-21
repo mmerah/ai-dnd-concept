@@ -6,7 +6,6 @@ from pydantic_ai.usage import UsageLimits
 
 from aidm.config import Role, Settings
 from aidm.engines.engine import Engine, PlanContext, TurnLog
-from aidm.engines.sheets import SheetBase
 from aidm.state.facts import narrator_evidence, narrator_lines
 from aidm.state.history import Exchange
 from aidm.state.trace import StepTrace, Turn
@@ -33,7 +32,7 @@ async def run_turn(
     state: Game,
     prompt: str,
     *,
-    engine: Engine[SheetBase],
+    engine: Engine,
     stages: TurnAgents,
     settings: Settings,
     rng: Random,

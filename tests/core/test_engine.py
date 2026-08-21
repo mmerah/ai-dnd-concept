@@ -1,33 +1,37 @@
 from pathlib import Path
-from random import Random
+
+from pydantic import JsonValue
 
 from aidm.engines.engine import Engine
-from aidm.engines.sheets import SheetBase, SheetMechanics
-from aidm.state.base import Counter, EngineId, Entity, Slug
-from aidm.state.world import Game
+from aidm.state.base import EngineId, Entity, Mutable
+from aidm.state.world import Game, WorldState
 
 
-class NoSheet(SheetBase):
-    def counters(self) -> dict[Slug, Counter]:
-        return {}
+class BareMechanics(Mutable): ...
 
 
-def _engine(tmp_path: Path) -> Engine[NoSheet]:
-    """Only the procedure: no packs, no examples, and no advancement file, because an
-    engine played from the fiction alone must load without content ceremony."""
+def _engine(tmp_path: Path) -> Engine:
+    """Only the procedure: no packs, no examples, no advancement file, and no sheet concept at
+    all, because an engine played from the fiction alone must load without content ceremony."""
     (tmp_path / "director.md").write_text("Test procedure.\n", encoding="utf-8")
 
-    class BareEngine(Engine[NoSheet]):
+    class BareEngine(Engine):
         id = EngineId("test")
         badge = ("TEST", "grey-6")
-        chapter_ending = "the test has ended"
         engine_dir = tmp_path
-        sheet_type = NoSheet
-        mechanics_type = SheetMechanics[NoSheet]
+        mechanics_type = BareMechanics
 
-        def new_sheet(self, draft: Game, rng: Random) -> NoSheet:
-            del draft, rng
-            return NoSheet()
+        def check_overlay(self, rules: dict[str, JsonValue]) -> None:
+            del rules
+
+        def opening_mechanics(
+            self, world: WorldState, player_rules: dict[str, JsonValue]
+        ) -> BareMechanics:
+            del world, player_rules
+            return BareMechanics()
+
+        def validate(self, state: Game) -> None:
+            del state
 
         def describe(self, state: Game, entity: Entity) -> str:
             del state, entity

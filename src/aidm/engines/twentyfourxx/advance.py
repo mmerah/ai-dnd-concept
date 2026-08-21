@@ -39,6 +39,9 @@ class TwentyfourxxAdvancement(Advancement):
     def ledger(self, state: Game, subject_id: EntityId) -> Counter:
         return Mechanics.of(state).sheets[subject_id].jobs
 
+    def earned(self, state: Game) -> int:
+        return Mechanics.of(state).completed.current
+
     def grant(
         self, draft: Game, subject_id: EntityId, proposal: ProposalBase, rng: Random
     ) -> tuple[Fact, ...]:

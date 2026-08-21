@@ -24,7 +24,6 @@ from aidm.config import Settings
 from aidm.content.authored import Character
 from aidm.content.store import FileStore
 from aidm.engines.engine import Engine
-from aidm.engines.sheets import SheetBase
 from aidm.state.base import PLAYER_ID, Entity, EntityId, Exit
 from aidm.state.trace import Extended
 from aidm.state.world import Game, Thread
@@ -65,7 +64,7 @@ def _stub_author(monkeypatch: pytest.MonkeyPatch) -> list[Game]:
 
     async def authored(
         config: Settings,
-        engine: Engine[SheetBase],
+        engine: Engine,
         character: Character,
         state: Game,
     ) -> ExtensionPatch:

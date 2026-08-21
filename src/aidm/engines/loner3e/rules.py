@@ -1,10 +1,13 @@
 from pathlib import Path
 from random import Random
 
+from pydantic import JsonValue
+
 from aidm.engines.engine import Engine
 from aidm.engines.packs import load_packs, pack_paths
+from aidm.engines.sheets import actor_sheets, check_sheets
 from aidm.state.base import PLAYER_ID, Counter, EngineId, Entity
-from aidm.state.world import Game
+from aidm.state.world import Game, WorldState
 
 from .actions import director_toolset
 from .advance import Loner3eAdvancement
@@ -15,12 +18,10 @@ from .pack import Pack, twist_table
 ENGINE_ID: EngineId = EngineId("loner3e")
 
 
-class Loner3eEngine(Engine[Sheet]):
+class Loner3eEngine(Engine):
     id = ENGINE_ID
     badge = ("LONER 3E", "teal-7")
-    chapter_ending = "the adventure has ended"
     engine_dir = Path(__file__).parent
-    sheet_type = Sheet
     mechanics_type = Mechanics
 
     def __init__(self, extra_packs: Path | None = None) -> None:
@@ -30,14 +31,25 @@ class Loner3eEngine(Engine[Sheet]):
         self.creation = Loner3eCreation(self.packs)
         self.director_toolsets = (director_toolset(self.twists),)
 
-    def check_mechanics(self, state: Game) -> None:
-        if (chosen := Mechanics.of(state).sheets[PLAYER_ID].pack) not in self.packs:
+    def check_overlay(self, rules: dict[str, JsonValue]) -> None:
+        _ = Sheet.model_validate(rules)
+
+    def opening_mechanics(self, world: WorldState, player_rules: dict[str, JsonValue]) -> Mechanics:
+        return Mechanics(sheets=actor_sheets(world, player_rules, Sheet))
+
+    def validate(self, state: Game) -> None:
+        mechanics = Mechanics.of(state)
+        check_sheets(state.world, mechanics.sheets, self.id)
+        if (chosen := mechanics.sheets[PLAYER_ID].pack) not in self.packs:
             raise ValueError(f"this game plays the {chosen!r} table set, which is not installed")
 
-    def new_sheet(self, draft: Game, rng: Random) -> Sheet:
+    def seed(self, draft: Game, entity: Entity, rng: Random) -> None:
         del rng  # nothing on a loner3e sheet is rolled
+        mechanics = Mechanics.of(draft)
+        if entity.kind != "actor" or entity.id in mechanics.sheets:
+            return
         # A newcomer starts level with the party: milestones earned before they joined are not owed.
-        return Sheet(milestones=Counter(current=Mechanics.of(draft).completed.current))
+        mechanics.sheets[entity.id] = Sheet(milestones=Counter(current=mechanics.completed.current))
 
     def describe(self, state: Game, entity: Entity) -> str:
         return describe_entity(Mechanics.of(state), entity)

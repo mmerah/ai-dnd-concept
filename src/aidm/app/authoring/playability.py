@@ -7,7 +7,6 @@ from aidm.config import Settings
 from aidm.content.authored import Character, Scenario
 from aidm.content.store import engine_text, load_character
 from aidm.engines.engine import Engine
-from aidm.engines.sheets import SheetBase
 from aidm.state.base import EngineId
 from aidm.state.world import WorldState
 
@@ -26,7 +25,7 @@ def _instructions(bar: str) -> str:
 
 @dataclass(frozen=True, slots=True)
 class Playtest:
-    engine: Engine[SheetBase]
+    engine: Engine
     character: Character
 
     def check(self, scenario: Scenario) -> None:

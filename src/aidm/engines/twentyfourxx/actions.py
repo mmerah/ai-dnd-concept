@@ -8,7 +8,7 @@ from pydantic_ai.toolsets import AbstractToolset
 
 from aidm.engines.counters import adjust, spend
 from aidm.engines.engine import PlanContext
-from aidm.engines.sheets import require_sheet
+from aidm.engines.sheets import complete_chapter, require_sheet
 from aidm.engines.transact import act, sequential_toolset, with_enum
 from aidm.state.actions import require_actor_here, reveal
 from aidm.state.base import Entity, EntityId, Frozen, Slug
@@ -145,6 +145,10 @@ def apply_change_credits(draft: Game, actor_id: EntityId, amount: int) -> list[F
     return [*facts, *spend(actor, "credits", credits, -amount)]
 
 
+def apply_complete_chapter(draft: Game) -> list[Fact]:
+    return complete_chapter(draft, "the job is done")
+
+
 def resolve_attempt(draft: Game, action: Attempt, rng: Random) -> tuple[Fact, ...]:
     actor = require_actor_here(draft, action.actor_id)
     facts = reveal(draft, action.actor_id)
@@ -251,5 +255,9 @@ def director_toolset() -> AbstractToolset[PlanContext]:
             lambda draft, _rng: tuple(apply_change_credits(draft, actor_id, amount)),
         )
 
-    toolset = sequential_toolset([roll_attempt, roll_luck_test, change_credits])
+    def complete_chapter(ctx: RunContext[PlanContext]) -> str:
+        """Record that the job this crew has been running is done."""
+        return act(ctx, lambda draft, _rng: tuple(apply_complete_chapter(draft)))
+
+    toolset = sequential_toolset([roll_attempt, roll_luck_test, change_credits, complete_chapter])
     return toolset.prepared(_narrow_to_skills_in_play)

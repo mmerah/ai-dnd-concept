@@ -11,7 +11,6 @@ from aidm.app.registry import begin_game, build_engine
 from aidm.config import Settings, load_settings
 from aidm.content.store import load_character, load_scenario
 from aidm.engines.engine import Engine
-from aidm.engines.sheets import SheetBase
 from aidm.state.base import EngineId, EntityId, Frozen
 from aidm.state.world import Game
 from aidm.turn.agents import build_turn_agents
@@ -73,7 +72,7 @@ class Report(Frozen):
     cases: list[CaseResult]
 
 
-def begin(engine_id: EngineId, settings: Settings) -> tuple[Engine[SheetBase], Game]:
+def begin(engine_id: EngineId, settings: Settings) -> tuple[Engine, Game]:
     engine = build_engine(engine_id)
     scenario = load_scenario(ROOT / settings.scenarios_dir, SCENARIO_ID)
     character = load_character(

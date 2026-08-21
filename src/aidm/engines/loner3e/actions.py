@@ -8,7 +8,7 @@ from pydantic_ai.toolsets import FunctionToolset
 
 from aidm.engines.counters import adjust
 from aidm.engines.engine import PlanContext
-from aidm.engines.sheets import require_sheet
+from aidm.engines.sheets import complete_chapter, require_sheet
 from aidm.engines.transact import act, sequential_toolset
 from aidm.state.actions import require_actor_here, reveal
 from aidm.state.base import Entity, EntityId, Frozen, Slug
@@ -139,6 +139,10 @@ def apply_restore_luck(draft: Game, actor_id: EntityId) -> list[Fact]:
     return [*facts, *adjust(actor, "luck", luck, refill, "the conflict is behind them")]
 
 
+def apply_complete_chapter(draft: Game) -> list[Fact]:
+    return complete_chapter(draft, "the adventure has ended")
+
+
 def _twist(
     draft: Game, actor: Entity, rng: Random, twists: tuple[tuple[str, str], ...]
 ) -> list[Fact]:
@@ -221,4 +225,8 @@ def director_toolset(twists: Twists) -> FunctionToolset[PlanContext]:
             lambda draft, _rng: tuple(apply_restore_luck(draft, actor_id)),
         )
 
-    return sequential_toolset([roll_question, restore_luck])
+    def complete_chapter(ctx: RunContext[PlanContext]) -> str:
+        """Record that the adventure this character has been living has ended."""
+        return act(ctx, lambda draft, _rng: tuple(apply_complete_chapter(draft)))
+
+    return sequential_toolset([roll_question, restore_luck, complete_chapter])

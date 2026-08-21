@@ -8,12 +8,11 @@ from aidm.app.registry import begin_game, build_engine
 from aidm.content.store import load_character, load_scenario, write_character
 from aidm.engines.engine import Engine
 from aidm.engines.loner3e.mechanics import LUCK_MAX, Mechanics
-from aidm.engines.sheets import SheetBase
 from aidm.state.base import PLAYER_ID
 from aidm.state.creation import CreationStep, Picks
 
 
-def _creation(engine: Engine[SheetBase]):
+def _creation(engine: Engine):
     creation = engine.creation
     assert creation is not None
     return creation

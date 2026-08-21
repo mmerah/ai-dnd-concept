@@ -5,7 +5,6 @@ from pathlib import Path
 from aidm.content.store import engine_text
 from aidm.engines.advancement import Offer
 from aidm.engines.engine import Engine, EntityRenderer
-from aidm.engines.sheets import SheetBase
 from aidm.state.base import Entity, Exit, Trait
 from aidm.state.world import Game, ScenarioMeta, Thread
 
@@ -50,7 +49,7 @@ def render_narrator(
     )
 
 
-def render_proposal(engine: Engine[SheetBase], state: Game, offer: Offer, intent: str) -> str:
+def render_proposal(engine: Engine, state: Game, offer: Offer, intent: str) -> str:
     subject = state.world.require(offer.subject_id)
     sections = (
         ("ON OFFER", offer.prompt),

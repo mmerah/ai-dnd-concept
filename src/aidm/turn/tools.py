@@ -4,7 +4,6 @@ from pydantic_ai import RunContext
 from pydantic_ai.tools import ToolDefinition
 from pydantic_ai.toolsets import AbstractToolset
 
-from aidm.engines import sheets
 from aidm.engines.engine import PlanContext
 from aidm.engines.transact import act, sequential_toolset, with_enum
 from aidm.state import actions
@@ -99,11 +98,6 @@ def core_toolset() -> AbstractToolset[PlanContext]:
         """
         return _resolved(ctx, lambda draft: actions.leave_party(draft, actor_id))
 
-    def complete_chapter(ctx: RunContext[PlanContext]) -> str:
-        """Record that the chapter of the story this character has been living has closed."""
-        ending = ctx.deps.engine.chapter_ending
-        return _resolved(ctx, lambda draft: sheets.complete_chapter(draft, ending))
-
     return sequential_toolset(
         [
             reveal,
@@ -115,7 +109,6 @@ def core_toolset() -> AbstractToolset[PlanContext]:
             unlock_exit,
             join_party,
             leave_party,
-            complete_chapter,
         ]
     ).prepared(_narrow_unlock_targets)
 

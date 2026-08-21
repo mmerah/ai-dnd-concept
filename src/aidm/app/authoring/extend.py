@@ -6,7 +6,6 @@ from aidm.content.authored import Character
 from aidm.content.sources import whole_text
 from aidm.content.store import source_file
 from aidm.engines.engine import Engine
-from aidm.engines.sheets import SheetBase
 from aidm.state.base import Entity, EntityId, Exit, Frozen
 from aidm.state.facts import Fact
 from aidm.state.world import Game, Thread, WorldState
@@ -30,7 +29,7 @@ class ExtensionPatch(Frozen):
 
 async def author_extension(
     config: Settings,
-    engine: Engine[SheetBase],
+    engine: Engine,
     character: Character,
     state: Game,
 ) -> ExtensionPatch:

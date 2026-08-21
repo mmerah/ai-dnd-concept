@@ -13,7 +13,6 @@ from aidm.content.authored import Character, Scenario
 from aidm.content.store import FileStore, SavedGame, load_character, load_scenario
 from aidm.engines.advancement import Advancement, Offer, ProposalBase
 from aidm.engines.engine import Engine
-from aidm.engines.sheets import SheetBase
 from aidm.engines.transact import transact
 from aidm.state.base import PLAYER_ID, EngineId, EntityId
 from aidm.state.facts import Fact
@@ -44,7 +43,7 @@ class Drafted:
 
 
 def build_advisor(
-    engine: Engine[SheetBase], settings: Settings
+    engine: Engine, settings: Settings
 ) -> Agent[AdvancementContext, ProposalBase] | None:
     if engine.advancement is None:
         return None
@@ -84,7 +83,7 @@ class GameSession:
     target: LaunchTarget
     scenario: Scenario
     character: Character
-    engine: Engine[SheetBase]
+    engine: Engine
     stages: TurnAgents
     advisor: Agent[AdvancementContext, ProposalBase] | None
     store: FileStore
@@ -272,10 +271,10 @@ class Runtime:
     """The composition root: settings, the built engines, and the games currently open."""
 
     config: Settings
-    _engines: dict[EngineId, Engine[SheetBase]] = field(default_factory=dict, repr=False)
+    _engines: dict[EngineId, Engine] = field(default_factory=dict, repr=False)
     _sessions: dict[str, GameSession] = field(default_factory=dict, repr=False)
 
-    def engine(self, engine_id: EngineId) -> Engine[SheetBase]:
+    def engine(self, engine_id: EngineId) -> Engine:
         """Memoised: every open session shares the one built engine."""
         held = self._engines.get(engine_id)
         if held is None:

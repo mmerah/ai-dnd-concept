@@ -2,6 +2,7 @@ from random import Random
 
 import pytest
 from core_test_support import initialized
+from pydantic import JsonValue
 
 from aidm.app.registry import ENGINES, build_engine
 from aidm.content.store import SavedGame
@@ -12,7 +13,7 @@ from aidm.engines.loner3e.rules import Loner3eEngine
 from aidm.state import actions
 from aidm.state.base import PLAYER_ID, EngineId, Entity, EntityId
 from aidm.state.facts import Fact
-from aidm.state.world import Game
+from aidm.state.world import Game, WorldState
 
 
 def _turn(state: Game) -> tuple[Game, tuple[Fact, ...]]:
@@ -99,22 +100,33 @@ def test_a_created_actor_is_refused_until_the_engine_seeds_it() -> None:
     assert item.id not in mechanics.sheets
 
 
-def test_a_sheet_engine_that_declares_nothing_is_refused_before_it_plays() -> None:
-    class Undeclared(Engine[Sheet]):
+def test_an_engine_that_declares_nothing_is_refused_before_it_plays() -> None:
+    class Undeclared(Engine):
         id = EngineId("undeclared")
         badge = ("UNDECLARED", "grey-6")
         engine_dir = Loner3eEngine.engine_dir
 
-        def new_sheet(self, draft: Game, rng: Random) -> Sheet:
-            return Sheet()
+        def check_overlay(self, rules: dict[str, JsonValue]) -> None:
+            del rules
+
+        def opening_mechanics(
+            self, world: WorldState, player_rules: dict[str, JsonValue]
+        ) -> Mechanics:
+            del world, player_rules
+            return Mechanics()
+
+        def validate(self, state: Game) -> None:
+            del state
 
         def describe(self, state: Game, entity: Entity) -> str:
+            del state, entity
             return ""
 
         def sheet_view(self, state: Game) -> tuple[tuple[str, str], ...]:
+            del state
             return ()
 
-    with pytest.raises(AttributeError, match="sheet_type"):
+    with pytest.raises(AttributeError, match="mechanics_type"):
         _ = Undeclared()
 
 

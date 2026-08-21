@@ -10,14 +10,13 @@ from pydantic_ai.toolsets import AbstractToolset
 
 from aidm.content.authored import CreatedCharacter
 from aidm.content.store import SavedGame, engine_text
-from aidm.state.base import EngineId, Entity
+from aidm.state.base import EngineId, Entity, Mutable
 from aidm.state.creation import AnyStep, Picks
 from aidm.state.facts import Fact
 from aidm.state.trace import StepTrace
 from aidm.state.world import Game, WorldState
 
 from .advancement import Advancement
-from .sheets import SheetBase, SheetMechanics, actor_sheets, check_sheets
 
 type EntityRenderer = Callable[[Entity], str]
 
@@ -33,7 +32,7 @@ class PlanContext:
     """What a Director tool resolves against; `state` is the turn's own draft, never committed
     state."""
 
-    engine: "Engine[SheetBase]"
+    engine: "Engine"
     state: Game
     rng: Random
     log: TurnLog
@@ -51,54 +50,42 @@ class CharacterCreation(ABC):
         """Raises ValueError with the reason the page shows when the pick set is illegal."""
 
 
-class Engine[S: SheetBase](ABC):
+class Engine(ABC):
     """One object per engine: its metadata, its plan lifecycle, and the mechanics half of state."""
 
     id: ClassVar[EngineId]
     badge: ClassVar[tuple[str, str]]
-    # The engine's own wording for the boundary `complete_chapter` records.
-    chapter_ending: ClassVar[str]
     engine_dir: ClassVar[Path]
-    sheet_type: type[S]
-    mechanics_type: type[SheetMechanics[S]]
+    mechanics_type: type[Mutable]
 
     def __init__(self, extra_packs: Path | None = None) -> None:
         # Read once here so a missing declaration fails the build, not the turn that first needs it.
-        _ = self.sheet_type, self.mechanics_type, self.chapter_ending
+        _ = self.mechanics_type
         self.director_instructions: str = engine_text(self.engine_dir / "director.md")
         # An engine's own mechanics reach the Director as tools; core's world vocabulary is shared.
         self.director_toolsets: tuple[AbstractToolset[PlanContext], ...] = ()
-        # An engine with no growth mechanic plugs in none; the app offers only what it finds.
+        # Optional capabilities an engine plugs in; the app offers only what it finds.
         self.advancement: Advancement | None = None
-        # An engine that creates characters replaces this; the app offers only what it finds.
         self.creation: CharacterCreation | None = None
 
+    @abstractmethod
     def check_overlay(self, rules: dict[str, JsonValue]) -> None:
-        _ = self.sheet_type.model_validate(rules)
+        """Refuses authored character rules this engine cannot play."""
 
+    @abstractmethod
     def opening_mechanics(
         self, world: WorldState, player_rules: dict[str, JsonValue]
-    ) -> SheetMechanics[S]:
-        return self.mechanics_type(sheets=actor_sheets(world, player_rules, self.sheet_type))
+    ) -> Mutable: ...
 
     def restored(self, saved: SavedGame) -> Game:
         return saved.game(self.mechanics_type.model_validate(saved.mechanics))
 
-    def validate(self, state: Game) -> None:
-        check_sheets(state.world, self.mechanics_type.of(state).sheets, self.id)
-        self.check_mechanics(state)
-
-    def check_mechanics(self, state: Game) -> None:  # noqa: B027 (a hook, not abstract)
-        """Whatever this engine tracks beyond one sheet per actor."""
-
-    def seed(self, draft: Game, entity: Entity, rng: Random) -> None:
-        mechanics = self.mechanics_type.of(draft)
-        if entity.kind != "actor" or entity.id in mechanics.sheets:
-            return
-        mechanics.sheets[entity.id] = self.new_sheet(draft, rng)
-
     @abstractmethod
-    def new_sheet(self, draft: Game, rng: Random) -> S: ...
+    def validate(self, state: Game) -> None:
+        """Refuses a state this engine cannot play, rather than repairing one."""
+
+    def seed(self, draft: Game, entity: Entity, rng: Random) -> None:  # noqa: B027
+        """Whatever this engine must give an entity created during play; a hook, not abstract."""
 
     def renderer(self, state: Game) -> EntityRenderer:
         return lambda entity: self.describe(state, entity)

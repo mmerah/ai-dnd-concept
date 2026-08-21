@@ -11,7 +11,6 @@ from aidm.state.facts import Fact
 from aidm.state.world import Game, check_draft
 
 from .engine import Engine, PlanContext
-from .sheets import SheetBase
 
 NOTHING_CHANGED = "- (nothing changed)"
 
@@ -19,9 +18,7 @@ NOTHING_CHANGED = "- (nothing changed)"
 type Play = Callable[[Game, Random], tuple[Fact, ...]]
 
 
-def apply_to_draft(
-    engine: Engine[SheetBase], draft: Game, play: Play, rng: Random
-) -> tuple[Fact, ...]:
+def apply_to_draft(engine: Engine, draft: Game, play: Play, rng: Random) -> tuple[Fact, ...]:
     """Every mutation runs this sequence, so seeding cannot be forgotten by a caller."""
     landed = play(draft, rng)
     _seed_created(engine, draft, landed, rng)
@@ -29,9 +26,7 @@ def apply_to_draft(
     return landed
 
 
-def transact(
-    engine: Engine[SheetBase], draft: Game, play: Play, rng: Random
-) -> tuple[Game, tuple[Fact, ...]]:
+def transact(engine: Engine, draft: Game, play: Play, rng: Random) -> tuple[Game, tuple[Fact, ...]]:
     """A draft mutated and committed whole, for a change that stands on its own outside a turn."""
     landed = apply_to_draft(engine, draft, play, rng)
     return draft.committed(), landed
@@ -71,9 +66,7 @@ def with_enum(tool: ToolDefinition, fields: Sequence[str], values: Sequence[str]
     return dataclasses.replace(tool, parameters_json_schema=schema)
 
 
-def _seed_created(
-    engine: Engine[SheetBase], draft: Game, facts: Sequence[Fact], rng: Random
-) -> None:
+def _seed_created(engine: Engine, draft: Game, facts: Sequence[Fact], rng: Random) -> None:
     for fact in facts:
         created = fact.data.get("entity_id") if fact.kind == "entity_created" else None
         if isinstance(created, str):

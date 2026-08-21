@@ -23,7 +23,7 @@ from aidm.content.authored import Character, Scenario
 from aidm.content.store import load_character, load_scenario
 from aidm.engines.advancement import Advancement
 from aidm.engines.engine import Engine
-from aidm.engines.sheets import SheetBase, SheetMechanics
+from aidm.engines.sheets import SheetMechanics
 from aidm.state.base import EngineId, Entity
 from aidm.state.trace import Turn
 from aidm.state.world import Game
@@ -78,7 +78,7 @@ def character() -> Character:
     return load_character(CHARACTERS, "kael", engine.id, engine.check_overlay)
 
 
-def game(engine_id: EngineId) -> tuple[Engine[SheetBase], Game]:
+def game(engine_id: EngineId) -> tuple[Engine, Game]:
     """The shipped scenario and character, composed under one engine."""
     engine = build_engine(engine_id)
     selected_scenario = load_scenario(SCENARIOS, "whispering-vault")
@@ -86,11 +86,11 @@ def game(engine_id: EngineId) -> tuple[Engine[SheetBase], Game]:
     return engine, begin_game(engine, "whispering-vault", selected_scenario, selected_character)
 
 
-def initialized() -> tuple[Engine[SheetBase], Game]:
+def initialized() -> tuple[Engine, Game]:
     return game(LONER3E)
 
 
-def capability(engine: Engine[SheetBase]) -> Advancement:
+def capability(engine: Engine) -> Advancement:
     """The shipped engine grows its characters; a test that asks for the capability wants it."""
     assert engine.advancement is not None
     return engine.advancement
@@ -156,7 +156,7 @@ def shown(turn: Turn, name: str) -> str:
 
 
 async def played(
-    engine: Engine[SheetBase],
+    engine: Engine,
     state: Game,
     prompt: str,
     *,

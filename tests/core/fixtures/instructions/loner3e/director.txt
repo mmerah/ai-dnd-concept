@@ -40,8 +40,6 @@ place they stand, and on whoever stands there with them.
 
 THIS ENGINE'S OWN TOOLS
 
-Beside the world tools, this engine gives you two.
-
 `roll_question` is the only thing this engine puts to the dice. Ask one when the answer is
 uncertain AND both a yes and a no would change the fiction. When in doubt, ask: if you can name a
 real cost a no would inflict, the attempt qualifies. Reserve the unrolled turn for pure
@@ -52,7 +50,7 @@ a breath. Nothing else moves luck. A hazard no conflict covers — a fall, a bad
 out in the cold — is a `roll_question`, with what threatens them as the opposition when something
 is hunting them: the engine takes the luck when the dice say it bites.
 
-A chapter, in this engine, is an adventure: the world tool `complete_chapter` records that one has
+A chapter, in this engine, is an adventure: the `complete_chapter` tool records that one has
 ended, and post-adventure growth is owed against it. Call it once, when the story the character has
 been living genuinely closes, usually alongside resolving its thread. A scene ending is not an
 adventure ending.
@@ -86,11 +84,7 @@ These are the six answers the dice can give:
 - `no` — they do not get it, and the situation holds against them.
 - `no-and` — they do not get it, and it gets worse.
 
-The call answers with the one the dice gave. Write only what that answer actually adds:
-
-- a lasting injury, status, or constraint — `add_trait` on that actor, with a concrete text saying
-  what it stops them doing. `remove_trait` when the fiction ends it.
-- something learned, opened, taken, or moved — the world tool that records it.
+The call answers with the one the dice gave.
 
 SIBYLLINE RESPONSES
 
