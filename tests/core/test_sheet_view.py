@@ -1,7 +1,7 @@
 import pytest
 from core_test_support import game
 
-from aidm.app.registry import engine_ids
+from aidm.app.launch import engine_ids
 from aidm.state.model import EngineId
 
 

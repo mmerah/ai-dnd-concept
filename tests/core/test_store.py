@@ -6,7 +6,7 @@ import pytest
 from core_test_support import LONER3E, initialized, scenario
 from pydantic import ValidationError
 
-from aidm.app.registry import build_engine, engine_ids
+from aidm.app.launch import build_engine, engine_ids
 from aidm.content.io import (
     ENCODING,
     FileStore,

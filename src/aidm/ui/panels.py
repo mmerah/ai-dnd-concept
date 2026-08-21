@@ -6,8 +6,11 @@ from time import monotonic
 
 from nicegui import ui
 
-from aidm.app.session import WORLDSMITH, Drafted, GameSession, Offer
-from aidm.app.views import (
+from aidm.app.runtime import (
+    WORLDSMITH,
+    Drafted,
+    GameSession,
+    Offer,
     ThreadSummary,
     attributed_line,
     thread_summaries,

@@ -17,7 +17,7 @@ from pydantic_ai.models import Model
 from pydantic_ai.models.function import AgentInfo, FunctionModel
 from pydantic_settings import SettingsConfigDict
 
-from aidm.app.registry import begin_game, build_engine
+from aidm.app.launch import begin_game, build_engine
 from aidm.config import ProviderConfig, Providers, Settings
 from aidm.content.io import load_character, load_scenario
 from aidm.content.model import Character, Scenario

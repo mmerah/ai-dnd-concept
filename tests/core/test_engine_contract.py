@@ -4,7 +4,7 @@ import pytest
 from core_test_support import initialized
 from pydantic import JsonValue
 
-from aidm.app.registry import ENGINES, build_engine
+from aidm.app.launch import ENGINES, build_engine
 from aidm.content.io import SavedGame
 from aidm.engines.core import Engine
 from aidm.engines.loner3e.engine import (

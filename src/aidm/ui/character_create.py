@@ -5,7 +5,7 @@ from pathlib import Path
 from nicegui import ui
 from nicegui.events import ValueChangeEventArguments
 
-from aidm.app.session import Runtime
+from aidm.app.runtime import Runtime
 from aidm.content.io import write_character
 from aidm.content.model import CreatedCharacter
 from aidm.state.model import AnyStep, CreationStep, EngineId, Slug, TextStep, picked, text_slug

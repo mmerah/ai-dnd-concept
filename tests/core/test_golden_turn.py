@@ -16,7 +16,7 @@ from golden_test_support import FIXTURES, dumped, golden
 from pydantic_ai.messages import ModelResponse
 from pydantic_ai.models.function import FunctionModel
 
-from aidm.app.registry import engine_ids
+from aidm.app.launch import engine_ids
 from aidm.content.io import SavedGame
 from aidm.state.model import EngineId, Exchange, Game, Line
 from aidm.turn.run import TurnResult

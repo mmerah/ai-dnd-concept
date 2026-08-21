@@ -5,7 +5,7 @@ from core_test_support import settings, updated
 from loner3e_test_support import TARGET
 from loner3e_test_support import loner3e_session as session
 
-from aidm.app.session import Runtime
+from aidm.app.runtime import Runtime
 from aidm.content.io import FileStore, SavedGame
 from aidm.content.model import ScenarioMeta
 

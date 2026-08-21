@@ -7,7 +7,7 @@ from loner3e_test_support import loner3e_session
 from pydantic_ai.messages import ModelMessage, ModelResponse, TextPart
 from pydantic_ai.models.function import AgentInfo, FunctionModel
 
-from aidm.app.session import Drafted
+from aidm.app.runtime import Drafted
 from aidm.content.io import FileStore, SavedGame
 from aidm.engines.loner3e.engine import AdventureGrowth, Change, Mechanics
 from aidm.state.model import PLAYER_ID, Applied

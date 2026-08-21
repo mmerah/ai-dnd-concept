@@ -15,11 +15,18 @@ from core_test_support import (
 from loner3e_test_support import loner3e_session
 from pydantic_ai.models.function import FunctionModel
 
-import aidm.app.session
-from aidm.app.authoring.draft import ScenarioPatch, WorldDraft
-from aidm.app.authoring.extend import ExitLink, ExtensionPatch, delta
-from aidm.app.authoring.playability import Playtest, extend_brief, playability
-from aidm.app.session import WORLDSMITH, GameSession
+import aidm.app.runtime
+from aidm.app.authoring import (
+    ExitLink,
+    ExtensionPatch,
+    Playtest,
+    ScenarioPatch,
+    WorldDraft,
+    delta,
+    extend_brief,
+    playability,
+)
+from aidm.app.runtime import WORLDSMITH, GameSession
 from aidm.config import Settings
 from aidm.content.io import FileStore
 from aidm.content.model import Character
@@ -70,7 +77,7 @@ def _stub_author(monkeypatch: pytest.MonkeyPatch) -> list[Game]:
         seen.append(state)
         return _ADDED
 
-    monkeypatch.setattr(aidm.app.session, "author_extension", authored)
+    monkeypatch.setattr(aidm.app.runtime, "author_extension", authored)
     return seen
 
 

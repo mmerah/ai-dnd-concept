@@ -5,7 +5,7 @@ from functools import partial
 from nicegui import ui
 from nicegui.events import ValueChangeEventArguments
 
-from aidm.app.launcher import (
+from aidm.app.launch import (
     LauncherController,
     SaveOption,
     as_engine_id,

@@ -78,4 +78,4 @@ def test_only_the_loader_names_a_concrete_engine() -> None:
         if name.startswith(ENGINES)
         if not name.startswith(f"aidm.engines.{path.parts[-2]}")
     }
-    assert naming == {"app/registry.py"}
+    assert naming == {"app/launch.py"}

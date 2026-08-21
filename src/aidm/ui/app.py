@@ -3,8 +3,8 @@ from pathlib import Path
 
 from nicegui import ui
 
-from aidm.app.launcher import LaunchTarget, as_engine_id
-from aidm.app.session import GameSession, Runtime
+from aidm.app.launch import LaunchTarget, as_engine_id
+from aidm.app.runtime import GameSession, Runtime
 from aidm.config import load_settings
 from aidm.state.model import content_id
 

@@ -3,8 +3,8 @@ from random import Random
 
 from core_test_support import LONER3E, character, scenario, settings
 
-from aidm.app.registry import build_engine
-from aidm.app.session import GameSession, LaunchTarget, build_advisor
+from aidm.app.launch import build_engine
+from aidm.app.runtime import GameSession, LaunchTarget, build_advisor
 from aidm.content.io import FileStore
 from aidm.turn.run import build_turn_agents
 

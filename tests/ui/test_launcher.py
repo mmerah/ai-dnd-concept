@@ -6,8 +6,8 @@ from core_test_support import LONER3E, updated
 from pydantic import JsonValue
 from ui_test_support import SCENARIOS, ui_settings
 
-from aidm.app.launcher import LauncherController, LaunchTarget, load_catalog
-from aidm.app.session import Runtime
+from aidm.app.launch import LauncherController, LaunchTarget, load_catalog
+from aidm.app.runtime import Runtime
 from aidm.config import Settings
 from aidm.content.io import ENCODING, FileStore, SavedGame
 from aidm.state.model import EngineId, Game
