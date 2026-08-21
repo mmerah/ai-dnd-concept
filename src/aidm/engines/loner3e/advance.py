@@ -3,7 +3,7 @@ from typing import Literal, Self
 
 from pydantic import Field, model_validator
 
-from aidm.engines.advancement import Advancement, ProposalBase
+from aidm.engines.core import Advancement, ProposalBase
 from aidm.state.model import Counter, Entity, EntityId, Fact, Frozen, Game, explained_fact
 
 from .mechanics import Mechanics, Sheet

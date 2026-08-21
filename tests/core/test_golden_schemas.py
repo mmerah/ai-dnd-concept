@@ -5,7 +5,7 @@ from pydantic import BaseModel
 from pydantic_ai.toolsets import AbstractToolset, FunctionToolset, WrapperToolset
 
 from aidm.app.registry import engine_ids
-from aidm.engines.engine import PlanContext
+from aidm.engines.core import PlanContext
 from aidm.state.model import EngineId, EntityDetail
 from aidm.turn.tools import core_toolset
 

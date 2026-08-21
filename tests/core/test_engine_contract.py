@@ -6,7 +6,7 @@ from pydantic import JsonValue
 
 from aidm.app.registry import ENGINES, build_engine
 from aidm.content.io import SavedGame
-from aidm.engines.engine import Engine
+from aidm.engines.core import Engine
 from aidm.engines.loner3e.actions import apply_restore_luck
 from aidm.engines.loner3e.mechanics import LUCK_MAX, Mechanics, Sheet
 from aidm.engines.loner3e.rules import Loner3eEngine

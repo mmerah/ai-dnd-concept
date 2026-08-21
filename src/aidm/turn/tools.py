@@ -4,8 +4,7 @@ from pydantic_ai import RunContext
 from pydantic_ai.tools import ToolDefinition
 from pydantic_ai.toolsets import AbstractToolset
 
-from aidm.engines.engine import PlanContext
-from aidm.engines.transact import act, sequential_toolset, with_enum
+from aidm.engines.core import PlanContext, act, sequential_toolset, with_enum
 from aidm.state import actions
 from aidm.state.model import PLAYER_ID, AdvanceThread, EntityId, Fact, Game, Slug
 

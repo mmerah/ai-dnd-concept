@@ -23,7 +23,7 @@ from aidm.app.session import WORLDSMITH, GameSession
 from aidm.config import Settings
 from aidm.content.io import FileStore
 from aidm.content.model import Character
-from aidm.engines.engine import Engine
+from aidm.engines.core import Engine
 from aidm.state.model import PLAYER_ID, Entity, EntityId, Exit, Extended, Game, Thread
 
 _CRYPT_ID = EntityId("sub_crypt")

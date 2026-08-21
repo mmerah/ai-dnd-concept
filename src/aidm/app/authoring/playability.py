@@ -6,7 +6,7 @@ from aidm.app.registry import begin_game, build_engine
 from aidm.config import Settings
 from aidm.content.io import engine_text, load_character
 from aidm.content.model import Character, Scenario
-from aidm.engines.engine import Engine
+from aidm.engines.core import Engine
 from aidm.state.model import EngineId, WorldState
 
 from .draft import WorldDraft

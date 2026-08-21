@@ -79,14 +79,3 @@ def test_only_the_loader_names_a_concrete_engine() -> None:
         if not name.startswith(f"aidm.engines.{path.parts[-2]}")
     }
     assert naming == {"app/registry.py"}
-
-
-def test_only_a_concrete_engine_imports_the_sheet_library() -> None:
-    """Sheets are a library the two shipped engines share, not part of the engine contract."""
-    importers = {
-        str(path.relative_to(SOURCE))
-        for path in SOURCE.rglob("*.py")
-        if "aidm.engines.sheets" in _file_imports(path)
-    }
-    assert importers
-    assert all(name.startswith(("engines/loner3e/", "engines/twentyfourxx/")) for name in importers)

@@ -7,7 +7,7 @@ from pydantic_ai import RunContext
 from pydantic_ai.models.test import TestModel
 from pydantic_ai.usage import RunUsage
 
-from aidm.engines.engine import PlanContext, TurnLog
+from aidm.engines.core import PlanContext, TurnLog
 from aidm.engines.twentyfourxx.actions import (
     Attempt,
     LuckTest,

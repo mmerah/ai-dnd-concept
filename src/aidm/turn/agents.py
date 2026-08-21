@@ -6,8 +6,7 @@ from pydantic_ai.messages import ModelMessage, ModelRequest, ModelResponse, Text
 from pydantic_ai.toolsets import AbstractToolset
 
 from aidm.config import Settings
-from aidm.engines.advancement import Advancement, Offer, ProposalBase
-from aidm.engines.engine import Engine, PlanContext
+from aidm.engines.core import Advancement, Engine, Offer, PlanContext, ProposalBase
 from aidm.llm import build_agent
 from aidm.state.model import Exchange, Game, Narration
 

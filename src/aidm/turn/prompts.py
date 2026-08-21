@@ -3,8 +3,7 @@ from collections.abc import Callable, Iterable, Sequence
 from pathlib import Path
 
 from aidm.content.io import engine_text
-from aidm.engines.advancement import Offer
-from aidm.engines.engine import Engine, EntityRenderer
+from aidm.engines.core import Engine, EntityRenderer, Offer
 from aidm.state.model import Entity, Exit, Game, ScenarioMeta, Thread, Trait, kind_word
 
 from .scene import BaseScene, SceneSnapshot, VisibleScene

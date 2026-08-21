@@ -5,7 +5,7 @@ from pydantic_ai import RunContext
 from pydantic_ai.models.test import TestModel
 from pydantic_ai.usage import RunUsage
 
-from aidm.engines.engine import PlanContext, TurnLog
+from aidm.engines.core import PlanContext, TurnLog
 from aidm.state import actions
 from aidm.state.model import PLAYER_ID, AdvanceThread, EntityId
 from aidm.turn.tools import core_toolset, possible

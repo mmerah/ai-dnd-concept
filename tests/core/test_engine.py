@@ -2,7 +2,7 @@ from pathlib import Path
 
 from pydantic import JsonValue
 
-from aidm.engines.engine import Engine
+from aidm.engines.core import Engine
 from aidm.state.model import EngineId, Entity, Game, Mutable, WorldState
 
 

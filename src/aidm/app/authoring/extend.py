@@ -4,7 +4,7 @@ from pydantic_ai import UsageLimits
 from aidm.config import Settings
 from aidm.content.io import source_file, whole_text
 from aidm.content.model import Character
-from aidm.engines.engine import Engine
+from aidm.engines.core import Engine
 from aidm.state.model import Entity, EntityId, Exit, Fact, Frozen, Game, Thread, WorldState
 
 from .agents import REQUEST_LIMIT, world_agent

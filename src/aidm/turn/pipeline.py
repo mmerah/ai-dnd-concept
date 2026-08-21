@@ -5,7 +5,7 @@ from random import Random
 from pydantic_ai.usage import UsageLimits
 
 from aidm.config import Role, Settings
-from aidm.engines.engine import Engine, PlanContext, TurnLog
+from aidm.engines.core import Engine, PlanContext, TurnLog
 from aidm.state.model import Exchange, Game, StepTrace, Turn, narrator_evidence, narrator_lines
 
 from . import prompts
