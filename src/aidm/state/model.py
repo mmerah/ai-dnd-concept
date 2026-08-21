@@ -263,9 +263,10 @@ class DiceEvent(Frozen):
 
 
 class MechanicEvent(Frozen):
+    """Player-facing: no field for model-authored free text, so a canon leak has no channel."""
+
     tool: str
     title: str
-    subject: str = ""
     badges: tuple[EventBadge, ...] = ()
     dice: tuple[DiceEvent, ...] = ()
     outcome: str = ""

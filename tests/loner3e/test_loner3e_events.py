@@ -40,7 +40,6 @@ def test_a_neutral_question_shows_one_chance_die_and_one_risk_die() -> None:
     assert len(oracle.dice[0].rolled) == 1
     assert len(oracle.dice[1].rolled) == 1
     assert oracle.title == "Oracle"
-    assert oracle.subject == _seal().question
     assert oracle.badges == (EventBadge(label="Position", value="Neutral"),)
 
 
@@ -119,6 +118,8 @@ def test_a_twist_card_lands_only_once_a_twist_fires() -> None:
     oracle, twist = events
     assert oracle.title == "Oracle"
     assert twist.title == "Twist"
+    assert [badge.label for badge in twist.badges] == ["Subject", "Action"]
+    assert all(badge.value for badge in twist.badges)
     assert len(twist.dice) == 2
     assert all(len(die.rolled) == 1 for die in twist.dice)
 

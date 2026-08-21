@@ -158,10 +158,7 @@ def _mechanic_event(event: MechanicEvent) -> None:
     with ui.row().classes("game-card w-full items-start no-wrap"):
         ui.icon(event.icon).classes("game-card-icon")
         with ui.column().classes("flex-grow").style("gap: 0.3rem"):
-            with ui.row().classes("items-baseline no-wrap").style("gap: 0.5rem"):
-                ui.label(event.title).classes("text-sm font-bold")
-                if event.subject:
-                    ui.label(event.subject).classes("text-sm opacity-80")
+            ui.label(event.title).classes("text-sm font-bold")
             if event.badges:
                 with ui.row().classes("items-center").style("gap: 0.35rem"):
                     for badge in event.badges:
@@ -304,35 +301,31 @@ def _step_copy(step: str) -> tuple[str, str, str]:
     return _STEP_COPY.get(step, ("bolt", step, ""))
 
 
-def live_turn(session: GameSession, prompt: str | None, events: Sequence[MechanicEvent]) -> None:
+def live_turn(
+    session: GameSession, prompt: str | None, events: Sequence[MechanicEvent], elapsed: float
+) -> ui.label | None:
     if prompt is not None:
         _bubble(session, PLAYER_ID, prompt, sent=True)
     for event in events:
         _mechanic_event(event)
     if session.step is not None:
-        _inline_status(session.step)
+        return _inline_status(session.step, elapsed)
+    return None
 
 
-def _inline_status(step: str) -> None:
+def _inline_status(step: str, elapsed: float) -> ui.label:
     _, label, description = _step_copy(step)
     with ui.row().classes("items-center no-wrap q-py-xs").style("gap: 0.4rem"):
         ui.spinner(size="1.1rem")
         ui.label(label).classes("text-sm font-bold")
-        _elapsed()
+        ticker = ui.label(_clock(elapsed)).classes("text-xs font-mono")
     if description:
         ui.label(description).classes("text-xs opacity-70")
+    return ticker
 
 
 def _composer_placeholder(step: str | None) -> str:
     return "What do you do?" if step is None else f"{_step_copy(step)[1]} is working..."
-
-
-def _elapsed() -> None:
-    """The timer is a child of the refreshable that draws the chip, so a repaint deletes it rather
-    than leaving it ticking alongside its replacement."""
-    started = monotonic()
-    ticker = ui.label("0:00").classes("text-xs font-mono")
-    ui.timer(1.0, lambda: ticker.set_text(_clock(monotonic() - started)))
 
 
 def _clock(seconds: float) -> str:
@@ -485,6 +478,8 @@ class GameView:
         # The turn in flight, owned by the view, never by game state; cleared on success or failure.
         self.live_prompt: str | None = None
         self.live_events: list[MechanicEvent] = []
+        self.step_started: float | None = None
+        self.ticker: ui.label | None = None
 
     def fill_composer(self, text: str) -> None:
         if self.composer is not None:
@@ -500,7 +495,8 @@ class GameView:
 
     @ui.refreshable_method
     def live_turn(self) -> None:
-        live_turn(self.session, self.live_prompt, self.live_events)
+        elapsed = 0.0 if self.step_started is None else monotonic() - self.step_started
+        self.ticker = live_turn(self.session, self.live_prompt, self.live_events, elapsed)
 
     @ui.refreshable_method
     def sheet(self) -> None:
@@ -544,6 +540,7 @@ def _idle(busy: bool) -> bool:
 
 def on_step(view: GameView, step: str) -> None:
     view.session.step = step
+    view.step_started = monotonic()
     view.live_turn.refresh()
     if view.composer is not None:
         view.composer.props(f'placeholder="{_composer_placeholder(step)}"')
@@ -565,6 +562,13 @@ def _scroll(view: GameView) -> None:
     if (transcript := view.transcript) is not None:
         # A method call on an existing element needs no NiceGUI slot; `ui.timer` here would.
         get_running_loop().call_later(0.1, lambda: transcript.scroll_to(percent=1.0))
+
+
+def tick_elapsed(view: GameView) -> None:
+    """The timer lives on the page, not in the refreshable."""
+    ticker, started = view.ticker, view.step_started
+    if ticker is not None and started is not None and not ticker.is_deleted:
+        ticker.set_text(_clock(monotonic() - started))
 
 
 def poll_art(view: GameView) -> None:
@@ -598,7 +602,7 @@ async def submit(view: GameView, box: ui.input) -> None:
         if not was_offered and session.pending():
             ui.notify("Something is on offer. Check the advancement tab.")
     session.step = None
-    view.live_prompt, view.live_events = None, []
+    view.live_prompt, view.live_events, view.step_started = None, [], None
     if view.composer is not None:
         view.composer.props(f'placeholder="{_composer_placeholder(None)}"')
     view.refresh_all()
@@ -673,5 +677,6 @@ def game_page(session: GameSession) -> None:
                     with ui.expansion("state").classes("w-full"):
                         view.state()
 
+    ui.timer(1.0, lambda: tick_elapsed(view))
     if session.media is not None:
         ui.timer(3.0, lambda: poll_art(view))

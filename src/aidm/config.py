@@ -23,7 +23,7 @@ class RoleConfig(BaseModel):
     provider: ProviderName = "openrouter"
     model: str = "deepseek/deepseek-v4-flash-0731:nitro"
     retries: int = Field(default=3, ge=0)
-    max_tokens: int = Field(default=2048, ge=1)
+    max_tokens: int = Field(default=4096, ge=1)
     reasoning_effort: ReasoningEffort = "minimal"
     temperature: float | None = Field(default=None, ge=0.0, le=2.0)
     max_input_tokens: int = Field(default=96_000, ge=1)

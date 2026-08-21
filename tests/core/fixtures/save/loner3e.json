@@ -336,7 +336,6 @@
         {
           "tool": "move",
           "title": "Took the vault map",
-          "subject": "",
           "badges": [],
           "dice": [],
           "outcome": "",
@@ -346,7 +345,6 @@
         {
           "tool": "roll_question",
           "title": "Oracle",
-          "subject": "Does he hear what waits past the vault door without being heard?",
           "badges": [
             {
               "label": "Position",
@@ -388,7 +386,6 @@
         {
           "tool": "add_trait",
           "title": "Kael gained Listening",
-          "subject": "",
           "badges": [],
           "dice": [],
           "outcome": "",

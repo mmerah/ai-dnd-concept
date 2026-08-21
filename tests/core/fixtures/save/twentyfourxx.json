@@ -320,7 +320,6 @@
         {
           "tool": "move",
           "title": "Took the vault map",
-          "subject": "",
           "badges": [],
           "dice": [],
           "outcome": "",
@@ -330,7 +329,6 @@
         {
           "tool": "roll_attempt",
           "title": "Attempt",
-          "subject": "Listen at the vault door without being heard",
           "badges": [
             {
               "label": "Skill",
@@ -374,7 +372,6 @@
         {
           "tool": "add_trait",
           "title": "Kael gained Listening",
-          "subject": "",
           "badges": [],
           "dice": [],
           "outcome": "",

@@ -408,7 +408,6 @@ def attempt_events(facts: tuple[Fact, ...]) -> tuple[MechanicEvent, ...]:
     event = MechanicEvent(
         tool="roll_attempt",
         title="Attempt",
-        subject=str(resolved.data["goal"]),
         badges=badges,
         dice=tuple(dice),
         outcome=str(resolved.data["outcome"]),

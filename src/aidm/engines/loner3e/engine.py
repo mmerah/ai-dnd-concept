@@ -345,10 +345,10 @@ def question_events(facts: tuple[Fact, ...]) -> tuple[MechanicEvent, ...]:
         for fact in facts
         if fact.narrator is not None and fact.kind in ("counter_changed", "conflict_lost")
     ]
+    # The question is director-authored and names unrevealed canon even on a "no": never shown.
     oracle = MechanicEvent(
         tool="roll_question",
         title="Oracle",
-        subject=str(answered.data["question"]),
         badges=tuple(badges),
         dice=(
             dice_event("Chance", require_dice_role(facts, "chance")),
@@ -367,7 +367,10 @@ def _twist_event(twist: Fact, facts: tuple[Fact, ...]) -> MechanicEvent:
     return MechanicEvent(
         tool="roll_question",
         title="Twist",
-        subject=f"{twist.data['subject']} / {twist.data['action']}",
+        badges=(
+            EventBadge(label="Subject", value=str(twist.data["subject"])),
+            EventBadge(label="Action", value=str(twist.data["action"])),
+        ),
         dice=(
             dice_event("Subject", require_dice_role(facts, "subject")),
             dice_event("Action", require_dice_role(facts, "action")),

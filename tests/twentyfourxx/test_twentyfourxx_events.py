@@ -34,7 +34,6 @@ def test_the_pool_faces_rolls_and_kept_are_preserved_on_the_card() -> None:
     assert die.rolled == tuple(values)
     assert die.kept == rolled.data["kept"]
     assert event.title == "Attempt"
-    assert event.subject == GOAL
 
 
 def test_the_skill_badge_names_the_skill_used() -> None:
