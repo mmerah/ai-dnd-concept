@@ -4,12 +4,13 @@ from aidm.content.model import ScenarioMeta
 from aidm.engines.core import EntityRenderer
 from aidm.engines.loner3e.engine import Mechanics, Sheet
 from aidm.state.model import PLAYER_ID, Entity, EntityId, Game, Kind, WorldState
-from aidm.turn.prompts import (
+from aidm.turn.context import (
+    SceneSnapshot,
+    VisibleScene,
     prompt_id,
     render_director,
     render_narrator,
 )
-from aidm.turn.scene import SceneSnapshot, VisibleScene
 
 DESCRIPTION = "She writes in a compact cipher."
 WHEN_REACHED = "Her missing folio points toward the vault."

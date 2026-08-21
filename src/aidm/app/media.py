@@ -11,9 +11,7 @@ from pydantic import BaseModel, ConfigDict
 
 from aidm.config import MediaConfig, ProviderConfig
 from aidm.state.model import Entity, EntityId, Game
-from aidm.turn.scene import VisibleScene
-
-from .views import player_scene
+from aidm.turn.context import VisibleScene, player_scene
 
 LOGGER = logging.getLogger(__name__)
 

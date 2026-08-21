@@ -1,6 +1,6 @@
 from core_test_support import LONER3E
 
-from aidm.app.views import journal_markdown, player_scene
+from aidm.app.views import journal_markdown
 from aidm.engines.loner3e.engine import Mechanics, Sheet
 from aidm.state.model import (
     Counter,
@@ -15,6 +15,7 @@ from aidm.state.model import (
     Thread,
     WorldState,
 )
+from aidm.turn.context import player_scene
 
 
 def _entity(entity_id: str, kind: Kind, name: str, brief: str, **fields: object) -> Entity:

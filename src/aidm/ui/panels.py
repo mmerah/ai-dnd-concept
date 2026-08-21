@@ -10,7 +10,6 @@ from aidm.app.session import WORLDSMITH, Drafted, GameSession, Offer
 from aidm.app.views import (
     ThreadSummary,
     attributed_line,
-    player_scene,
     thread_summaries,
 )
 from aidm.content.io import SavedGame
@@ -24,6 +23,7 @@ from aidm.state.model import (
     TraceEntry,
     Turn,
 )
+from aidm.turn.context import player_scene
 
 from .busy import refuse_if_busy, working
 

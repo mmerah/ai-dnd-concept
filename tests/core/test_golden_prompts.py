@@ -4,8 +4,8 @@ from golden_test_support import FIXTURES, golden
 
 from aidm.app.registry import engine_ids
 from aidm.state.model import EngineId
-from aidm.turn import prompts
-from aidm.turn.prompts import render_proposal
+from aidm.turn import context as prompts
+from aidm.turn.context import render_proposal
 
 WANTED = "I want to strike harder."
 

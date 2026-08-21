@@ -7,9 +7,9 @@ from core_test_support import initialized, with_entity
 from pydantic import SecretStr
 
 from aidm.app.media import Generated, Illustrator, illustration_request, scene_key
-from aidm.app.views import player_scene
 from aidm.config import MediaConfig, ProviderConfig
 from aidm.state.model import Entity, EntityId, Game
+from aidm.turn.context import player_scene
 
 NARRATION = "The door groans open."
 

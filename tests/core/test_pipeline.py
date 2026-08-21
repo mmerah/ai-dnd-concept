@@ -24,7 +24,7 @@ from aidm.content.io import SavedGame
 from aidm.engines.loner3e.engine import outcome_for
 from aidm.engines.twentyfourxx.engine import Mechanics
 from aidm.state.model import PLAYER_ID, EntityId
-from aidm.turn.pipeline import TURN_STEPS
+from aidm.turn.run import TURN_STEPS
 
 
 async def test_an_engine_uses_the_shared_pipeline_and_safe_narrator_prompt() -> None:

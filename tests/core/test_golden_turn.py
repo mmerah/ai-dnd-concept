@@ -19,7 +19,7 @@ from pydantic_ai.models.function import FunctionModel
 from aidm.app.registry import engine_ids
 from aidm.content.io import SavedGame
 from aidm.state.model import EngineId, Exchange, Game, Line
-from aidm.turn.pipeline import TurnResult
+from aidm.turn.run import TurnResult
 
 PROMPT = "I lever up the loose flagstone and listen at the vault door."
 # Played turns, so the history window, its rendering, and its replay as messages all run on real

@@ -1,10 +1,4 @@
 from aidm.state.model import Frozen, Game, Line, ThreadStatus
-from aidm.turn.scene import SceneSnapshot, VisibleScene
-
-
-def player_scene(state: Game) -> VisibleScene:
-    """What any player-facing surface may see, stripped of unrevealed canon by construction."""
-    return VisibleScene.of(SceneSnapshot.of(state))
 
 
 class ThreadSummary(Frozen):
