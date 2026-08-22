@@ -274,10 +274,53 @@ class MechanicEvent(Frozen):
     icon: str = "casino"
 
 
+# Laxer than `Slug`: 24XX's defence options are carried-item entity ids, which allow underscores.
+OptionId = Annotated[str, Field(pattern=r"^[a-z0-9_-]+$", max_length=64)]
+
+
+class Option(Frozen):
+    id: OptionId
+    label: str = Field(min_length=1)
+    detail: str = ""
+
+
+class PendingDecision(Frozen):
+    """One decision the game waits on; None at `Game.pending` means the composer is the only way."""
+
+    kind: Slug
+    # A prose-less segment replays into model history from this alone, so it can never be empty.
+    prompt: str = Field(min_length=1)
+    options: tuple[Option, ...]
+    free_text: bool = True
+    payload: dict[str, JsonValue]
+
+    @model_validator(mode="after")
+    def _is_answerable(self) -> Self:
+        require_unique("option ids", (option.id for option in self.options))
+        if not self.options and not self.free_text:
+            raise ValueError(f"the {self.kind!r} decision offers no way to answer it")
+        return self
+
+
+class Answer(Frozen):
+    """What the player submits: a chosen option or written text, never both."""
+
+    option_id: OptionId | None = None
+    text: str = ""
+
+    @model_validator(mode="after")
+    def _answers_one_way(self) -> Self:
+        if (self.option_id is None) == (not self.text):
+            raise ValueError("an answer is either a chosen option or written text")
+        return self
+
+
 class Exchange(Frozen):
     prompt: str
     lines: tuple[Line, ...]
     events: tuple[MechanicEvent, ...] = ()
+    # The suspending decision's prompt: the pause has to survive after `Game.pending` clears.
+    decision: str = ""
 
     @property
     def narration(self) -> str:
@@ -497,6 +540,7 @@ class Game:
     mechanics: Mutable
     history: tuple[Exchange, ...] = ()
     turn: int = 0
+    pending: PendingDecision | None = None
 
     @property
     def player(self) -> Entity:

@@ -167,8 +167,11 @@ def render_director(
     describe: EntityRenderer,
     scenario: ScenarioMeta,
     prompt: str,
+    *,
+    resumed: str = "",
 ) -> str:
     # The Director writes no prose, so the canon side leaks nothing by reaching it.
+    decided = (("THE PLAYER'S DECISION, ALREADY RESOLVED", resumed),) if resumed else ()
     return _sections(
         (
             *_scene_sections(scene, describe, scenario),
@@ -178,6 +181,7 @@ def render_director(
             ),
             ("ACTIVE THREADS", _threads(scene.threads)),
             ("NOTES FROM THE RULES", "\n".join(f"- {note}" for note in scene.notes) or "- (none)"),
+            *decided,
             ("PLAYER ACTION", prompt),
         )
     )

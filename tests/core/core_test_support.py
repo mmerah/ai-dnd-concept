@@ -22,8 +22,8 @@ from aidm.config import ProviderConfig, Providers, Settings
 from aidm.content.io import load_character, load_scenario
 from aidm.content.model import Character, Scenario
 from aidm.engines.core import Advancement, Engine, SheetMechanics
-from aidm.state.model import EngineId, Entity, Game, MechanicEvent, Turn
-from aidm.turn.run import TurnResult, build_turn_agents, run_turn
+from aidm.state.model import Answer, EngineId, Entity, Game, MechanicEvent, Turn
+from aidm.turn.run import TurnResult, build_turn_agents, run_segment
 
 type Stub = Callable[[list[ModelMessage], AgentInfo], ModelResponse]
 
@@ -153,7 +153,7 @@ def shown(turn: Turn, name: str) -> str:
 async def played(
     engine: Engine,
     state: Game,
-    prompt: str,
+    player_input: str | Answer,
     *,
     director: Model,
     narrator: Model | None = None,
@@ -170,9 +170,9 @@ async def played(
     with ExitStack() as stack:
         stack.enter_context(stages.director.override(model=director))
         stack.enter_context(stages.narrator.override(model=narrator))
-        return await run_turn(
+        return await run_segment(
             state,
-            prompt,
+            player_input,
             engine=engine,
             stages=stages,
             settings=config,

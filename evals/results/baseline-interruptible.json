@@ -1,0 +1,1905 @@
+{
+  "label": "baseline-interruptible",
+  "repeats": 9,
+  "seed": 1000,
+  "cases": [
+    {
+      "id": "loner3e/take-the-chart",
+      "engine": "loner3e",
+      "prompt": "I search the abbot's desk, find the folded chart hidden under the loose flagstone beneath it, and pick the chart up and keep it.",
+      "expectations": [
+        "chart-known",
+        "chart-carried",
+        "stair-charted"
+      ],
+      "runs": [
+        {
+          "error": null,
+          "passed": {
+            "chart-known": true,
+            "chart-carried": true,
+            "stair-charted": true
+          },
+          "facts": [
+            "entity_discovered",
+            "entity_moved",
+            "thread_advanced"
+          ],
+          "director_calls": 1,
+          "total_steps": 2,
+          "seconds": 10.743749973999002,
+          "narration_chars": 546
+        },
+        {
+          "error": null,
+          "passed": {
+            "chart-known": true,
+            "chart-carried": true,
+            "stair-charted": true
+          },
+          "facts": [
+            "entity_discovered",
+            "entity_moved",
+            "thread_advanced"
+          ],
+          "director_calls": 1,
+          "total_steps": 2,
+          "seconds": 9.372016864001125,
+          "narration_chars": 436
+        },
+        {
+          "error": null,
+          "passed": {
+            "chart-known": true,
+            "chart-carried": true,
+            "stair-charted": true
+          },
+          "facts": [
+            "entity_discovered",
+            "entity_moved",
+            "thread_advanced"
+          ],
+          "director_calls": 1,
+          "total_steps": 2,
+          "seconds": 9.753235836000385,
+          "narration_chars": 453
+        },
+        {
+          "error": null,
+          "passed": {
+            "chart-known": true,
+            "chart-carried": true,
+            "stair-charted": true
+          },
+          "facts": [
+            "entity_discovered",
+            "thread_advanced",
+            "entity_moved"
+          ],
+          "director_calls": 1,
+          "total_steps": 2,
+          "seconds": 9.772669385998597,
+          "narration_chars": 371
+        },
+        {
+          "error": null,
+          "passed": {
+            "chart-known": true,
+            "chart-carried": true,
+            "stair-charted": true
+          },
+          "facts": [
+            "entity_discovered",
+            "entity_moved",
+            "thread_advanced"
+          ],
+          "director_calls": 1,
+          "total_steps": 2,
+          "seconds": 12.809916869000517,
+          "narration_chars": 854
+        },
+        {
+          "error": null,
+          "passed": {
+            "chart-known": true,
+            "chart-carried": true,
+            "stair-charted": true
+          },
+          "facts": [
+            "entity_discovered",
+            "entity_moved",
+            "thread_advanced"
+          ],
+          "director_calls": 1,
+          "total_steps": 2,
+          "seconds": 14.881494469000245,
+          "narration_chars": 485
+        },
+        {
+          "error": null,
+          "passed": {
+            "chart-known": true,
+            "chart-carried": true,
+            "stair-charted": true
+          },
+          "facts": [
+            "entity_discovered",
+            "entity_moved",
+            "thread_advanced"
+          ],
+          "director_calls": 1,
+          "total_steps": 2,
+          "seconds": 8.480494277000616,
+          "narration_chars": 430
+        },
+        {
+          "error": null,
+          "passed": {
+            "chart-known": true,
+            "chart-carried": true,
+            "stair-charted": true
+          },
+          "facts": [
+            "entity_discovered",
+            "entity_moved",
+            "thread_advanced"
+          ],
+          "director_calls": 1,
+          "total_steps": 2,
+          "seconds": 8.936428037999576,
+          "narration_chars": 531
+        },
+        {
+          "error": null,
+          "passed": {
+            "chart-known": true,
+            "chart-carried": true,
+            "stair-charted": true
+          },
+          "facts": [
+            "entity_discovered",
+            "entity_moved",
+            "thread_advanced"
+          ],
+          "director_calls": 1,
+          "total_steps": 2,
+          "seconds": 7.678476921000765,
+          "narration_chars": 428
+        }
+      ]
+    },
+    {
+      "id": "loner3e/walk-and-look",
+      "engine": "loner3e",
+      "prompt": "I walk from the study out into the cloister, and there I look around.",
+      "expectations": [
+        "player-in-cloister",
+        "nothing-invented"
+      ],
+      "runs": [
+        {
+          "error": null,
+          "passed": {
+            "player-in-cloister": true,
+            "nothing-invented": true
+          },
+          "facts": [
+            "entity_moved",
+            "entity_discovered"
+          ],
+          "director_calls": 1,
+          "total_steps": 2,
+          "seconds": 12.168669484999555,
+          "narration_chars": 723
+        },
+        {
+          "error": null,
+          "passed": {
+            "player-in-cloister": true,
+            "nothing-invented": true
+          },
+          "facts": [
+            "entity_moved",
+            "entity_discovered"
+          ],
+          "director_calls": 1,
+          "total_steps": 2,
+          "seconds": 15.856295393999972,
+          "narration_chars": 501
+        },
+        {
+          "error": null,
+          "passed": {
+            "player-in-cloister": true,
+            "nothing-invented": true
+          },
+          "facts": [
+            "entity_moved",
+            "entity_discovered"
+          ],
+          "director_calls": 1,
+          "total_steps": 2,
+          "seconds": 15.92942209299872,
+          "narration_chars": 505
+        },
+        {
+          "error": null,
+          "passed": {
+            "player-in-cloister": true,
+            "nothing-invented": true
+          },
+          "facts": [
+            "entity_moved",
+            "entity_discovered"
+          ],
+          "director_calls": 1,
+          "total_steps": 2,
+          "seconds": 12.211473811999895,
+          "narration_chars": 555
+        },
+        {
+          "error": null,
+          "passed": {
+            "player-in-cloister": true,
+            "nothing-invented": true
+          },
+          "facts": [
+            "entity_moved",
+            "entity_discovered"
+          ],
+          "director_calls": 1,
+          "total_steps": 2,
+          "seconds": 14.64877985000021,
+          "narration_chars": 356
+        },
+        {
+          "error": null,
+          "passed": {
+            "player-in-cloister": true,
+            "nothing-invented": true
+          },
+          "facts": [
+            "entity_moved",
+            "entity_discovered"
+          ],
+          "director_calls": 1,
+          "total_steps": 2,
+          "seconds": 19.13982253100039,
+          "narration_chars": 614
+        },
+        {
+          "error": null,
+          "passed": {
+            "player-in-cloister": true,
+            "nothing-invented": true
+          },
+          "facts": [
+            "entity_moved",
+            "entity_discovered"
+          ],
+          "director_calls": 1,
+          "total_steps": 2,
+          "seconds": 11.041435716999331,
+          "narration_chars": 458
+        },
+        {
+          "error": null,
+          "passed": {
+            "player-in-cloister": true,
+            "nothing-invented": true
+          },
+          "facts": [
+            "entity_moved",
+            "entity_discovered"
+          ],
+          "director_calls": 1,
+          "total_steps": 2,
+          "seconds": 13.127665002999493,
+          "narration_chars": 441
+        },
+        {
+          "error": null,
+          "passed": {
+            "player-in-cloister": true,
+            "nothing-invented": true
+          },
+          "facts": [
+            "entity_moved"
+          ],
+          "director_calls": 1,
+          "total_steps": 2,
+          "seconds": 12.780264937000538,
+          "narration_chars": 380
+        }
+      ]
+    },
+    {
+      "id": "loner3e/open-the-way-and-climb",
+      "engine": "loner3e",
+      "prompt": "I climb the stair from the cloister up into the bell tower, and the moment I am up there I see the woman who keeps it standing among the beams.",
+      "expectations": [
+        "player-in-tower",
+        "elena-known",
+        "archivist-found"
+      ],
+      "runs": [
+        {
+          "error": null,
+          "passed": {
+            "player-in-tower": true,
+            "elena-known": true,
+            "archivist-found": true
+          },
+          "facts": [
+            "entity_moved",
+            "entity_discovered",
+            "thread_advanced"
+          ],
+          "director_calls": 1,
+          "total_steps": 2,
+          "seconds": 11.956306811000104,
+          "narration_chars": 524
+        },
+        {
+          "error": null,
+          "passed": {
+            "player-in-tower": true,
+            "elena-known": true,
+            "archivist-found": true
+          },
+          "facts": [
+            "entity_moved",
+            "entity_discovered",
+            "thread_advanced"
+          ],
+          "director_calls": 1,
+          "total_steps": 2,
+          "seconds": 6.133611580999059,
+          "narration_chars": 423
+        },
+        {
+          "error": null,
+          "passed": {
+            "player-in-tower": true,
+            "elena-known": true,
+            "archivist-found": true
+          },
+          "facts": [
+            "entity_moved",
+            "entity_discovered",
+            "thread_advanced"
+          ],
+          "director_calls": 1,
+          "total_steps": 2,
+          "seconds": 8.027998367999317,
+          "narration_chars": 481
+        },
+        {
+          "error": null,
+          "passed": {
+            "player-in-tower": true,
+            "elena-known": true,
+            "archivist-found": true
+          },
+          "facts": [
+            "entity_moved",
+            "entity_discovered",
+            "thread_advanced"
+          ],
+          "director_calls": 1,
+          "total_steps": 2,
+          "seconds": 7.7875310920007905,
+          "narration_chars": 521
+        },
+        {
+          "error": null,
+          "passed": {
+            "player-in-tower": true,
+            "elena-known": true,
+            "archivist-found": true
+          },
+          "facts": [
+            "entity_moved",
+            "entity_discovered",
+            "thread_advanced"
+          ],
+          "director_calls": 1,
+          "total_steps": 2,
+          "seconds": 8.126306552998358,
+          "narration_chars": 524
+        },
+        {
+          "error": null,
+          "passed": {
+            "player-in-tower": true,
+            "elena-known": true,
+            "archivist-found": true
+          },
+          "facts": [
+            "entity_moved",
+            "entity_discovered",
+            "thread_advanced"
+          ],
+          "director_calls": 1,
+          "total_steps": 2,
+          "seconds": 6.757244176000313,
+          "narration_chars": 393
+        },
+        {
+          "error": null,
+          "passed": {
+            "player-in-tower": true,
+            "elena-known": true,
+            "archivist-found": true
+          },
+          "facts": [
+            "entity_moved",
+            "entity_discovered",
+            "thread_advanced"
+          ],
+          "director_calls": 1,
+          "total_steps": 2,
+          "seconds": 6.736293683999975,
+          "narration_chars": 471
+        },
+        {
+          "error": null,
+          "passed": {
+            "player-in-tower": true,
+            "elena-known": true,
+            "archivist-found": true
+          },
+          "facts": [
+            "entity_moved",
+            "entity_discovered",
+            "thread_advanced"
+          ],
+          "director_calls": 1,
+          "total_steps": 2,
+          "seconds": 13.325361806000728,
+          "narration_chars": 420
+        },
+        {
+          "error": null,
+          "passed": {
+            "player-in-tower": false,
+            "elena-known": true,
+            "archivist-found": true
+          },
+          "facts": [
+            "entity_discovered",
+            "thread_advanced"
+          ],
+          "director_calls": 1,
+          "total_steps": 2,
+          "seconds": 21.086309099000573,
+          "narration_chars": 607
+        }
+      ]
+    },
+    {
+      "id": "loner3e/three-things",
+      "engine": "loner3e",
+      "prompt": "I climb up from the cloister into the bell tower, hand my lantern to the woman I find there, and the climb leaves me with a wrenched knee I will be limping on for a long while.",
+      "expectations": [
+        "player-in-tower",
+        "elena-known",
+        "lantern-given",
+        "trait-gained"
+      ],
+      "runs": [
+        {
+          "error": null,
+          "passed": {
+            "player-in-tower": true,
+            "elena-known": true,
+            "lantern-given": true,
+            "trait-gained": true
+          },
+          "facts": [
+            "entity_discovered",
+            "entity_moved",
+            "entity_moved",
+            "trait_added",
+            "thread_advanced"
+          ],
+          "director_calls": 1,
+          "total_steps": 2,
+          "seconds": 17.164320424000834,
+          "narration_chars": 614
+        },
+        {
+          "error": null,
+          "passed": {
+            "player-in-tower": true,
+            "elena-known": true,
+            "lantern-given": true,
+            "trait-gained": true
+          },
+          "facts": [
+            "entity_moved",
+            "entity_discovered",
+            "entity_moved",
+            "trait_added",
+            "thread_advanced"
+          ],
+          "director_calls": 1,
+          "total_steps": 2,
+          "seconds": 15.891241994999291,
+          "narration_chars": 892
+        },
+        {
+          "error": null,
+          "passed": {
+            "player-in-tower": true,
+            "elena-known": true,
+            "lantern-given": true,
+            "trait-gained": true
+          },
+          "facts": [
+            "entity_moved",
+            "entity_discovered",
+            "trait_added",
+            "thread_advanced",
+            "entity_moved"
+          ],
+          "director_calls": 1,
+          "total_steps": 2,
+          "seconds": 10.424803400999735,
+          "narration_chars": 700
+        },
+        {
+          "error": null,
+          "passed": {
+            "player-in-tower": true,
+            "elena-known": true,
+            "lantern-given": true,
+            "trait-gained": true
+          },
+          "facts": [
+            "entity_moved",
+            "entity_discovered",
+            "trait_added",
+            "entity_moved",
+            "thread_advanced"
+          ],
+          "director_calls": 1,
+          "total_steps": 2,
+          "seconds": 9.00846631099921,
+          "narration_chars": 383
+        },
+        {
+          "error": null,
+          "passed": {
+            "player-in-tower": true,
+            "elena-known": true,
+            "lantern-given": true,
+            "trait-gained": true
+          },
+          "facts": [
+            "entity_moved",
+            "entity_discovered",
+            "entity_moved",
+            "trait_added",
+            "thread_advanced"
+          ],
+          "director_calls": 1,
+          "total_steps": 2,
+          "seconds": 14.87122298199938,
+          "narration_chars": 468
+        },
+        {
+          "error": null,
+          "passed": {
+            "player-in-tower": true,
+            "elena-known": true,
+            "lantern-given": true,
+            "trait-gained": true
+          },
+          "facts": [
+            "entity_moved",
+            "entity_discovered",
+            "entity_moved",
+            "trait_added",
+            "thread_advanced"
+          ],
+          "director_calls": 1,
+          "total_steps": 2,
+          "seconds": 21.473423823999838,
+          "narration_chars": 925
+        },
+        {
+          "error": null,
+          "passed": {
+            "player-in-tower": true,
+            "elena-known": true,
+            "lantern-given": true,
+            "trait-gained": true
+          },
+          "facts": [
+            "entity_discovered",
+            "entity_moved",
+            "thread_advanced",
+            "entity_moved",
+            "trait_added"
+          ],
+          "director_calls": 1,
+          "total_steps": 2,
+          "seconds": 17.288675681000313,
+          "narration_chars": 504
+        },
+        {
+          "error": null,
+          "passed": {
+            "player-in-tower": true,
+            "elena-known": true,
+            "lantern-given": true,
+            "trait-gained": true
+          },
+          "facts": [
+            "entity_moved",
+            "entity_discovered",
+            "entity_moved",
+            "thread_advanced",
+            "trait_added"
+          ],
+          "director_calls": 1,
+          "total_steps": 2,
+          "seconds": 14.595758327999647,
+          "narration_chars": 510
+        },
+        {
+          "error": null,
+          "passed": {
+            "player-in-tower": true,
+            "elena-known": true,
+            "lantern-given": true,
+            "trait-gained": true
+          },
+          "facts": [
+            "entity_moved",
+            "entity_discovered",
+            "trait_added",
+            "entity_moved",
+            "thread_advanced"
+          ],
+          "director_calls": 1,
+          "total_steps": 2,
+          "seconds": 10.666590976999942,
+          "narration_chars": 739
+        }
+      ]
+    },
+    {
+      "id": "loner3e/risky-climb",
+      "engine": "loner3e",
+      "prompt": "I go up the bell tower's ladders at a run, two rungs at a time — I have to reach the top before the light goes.",
+      "expectations": [
+        "dice-rolled",
+        "win-upstairs"
+      ],
+      "runs": [
+        {
+          "error": null,
+          "passed": {
+            "dice-rolled": true,
+            "win-upstairs": true
+          },
+          "facts": [
+            "entity_moved",
+            "dice_rolled",
+            "dice_rolled",
+            "question_answered",
+            "trait_added"
+          ],
+          "director_calls": 1,
+          "total_steps": 2,
+          "seconds": 16.323787455001366,
+          "narration_chars": 361
+        },
+        {
+          "error": null,
+          "passed": {
+            "dice-rolled": true,
+            "win-upstairs": true
+          },
+          "facts": [
+            "dice_rolled",
+            "dice_rolled",
+            "question_answered"
+          ],
+          "director_calls": 1,
+          "total_steps": 2,
+          "seconds": 10.338513620999947,
+          "narration_chars": 402
+        },
+        {
+          "error": null,
+          "passed": {
+            "dice-rolled": true,
+            "win-upstairs": true
+          },
+          "facts": [
+            "dice_rolled",
+            "dice_rolled",
+            "question_answered",
+            "entity_moved",
+            "entity_discovered",
+            "thread_advanced",
+            "trait_added"
+          ],
+          "director_calls": 1,
+          "total_steps": 2,
+          "seconds": 14.506253194000237,
+          "narration_chars": 385
+        },
+        {
+          "error": null,
+          "passed": {
+            "dice-rolled": true,
+            "win-upstairs": true
+          },
+          "facts": [
+            "dice_rolled",
+            "dice_rolled",
+            "question_answered",
+            "trait_added"
+          ],
+          "director_calls": 1,
+          "total_steps": 2,
+          "seconds": 14.626387599000736,
+          "narration_chars": 508
+        },
+        {
+          "error": null,
+          "passed": {
+            "dice-rolled": true,
+            "win-upstairs": true
+          },
+          "facts": [
+            "dice_rolled",
+            "dice_rolled",
+            "question_answered",
+            "trait_added"
+          ],
+          "director_calls": 1,
+          "total_steps": 2,
+          "seconds": 13.839938434000942,
+          "narration_chars": 545
+        },
+        {
+          "error": null,
+          "passed": {
+            "dice-rolled": true,
+            "win-upstairs": true
+          },
+          "facts": [
+            "dice_rolled",
+            "dice_rolled",
+            "question_answered",
+            "entity_moved",
+            "entity_discovered",
+            "thread_advanced"
+          ],
+          "director_calls": 1,
+          "total_steps": 2,
+          "seconds": 15.544844133000879,
+          "narration_chars": 432
+        },
+        {
+          "error": null,
+          "passed": {
+            "dice-rolled": true,
+            "win-upstairs": true
+          },
+          "facts": [
+            "dice_rolled",
+            "dice_rolled",
+            "question_answered",
+            "entity_moved",
+            "trait_added",
+            "entity_discovered",
+            "thread_advanced"
+          ],
+          "director_calls": 1,
+          "total_steps": 2,
+          "seconds": 18.128696543000842,
+          "narration_chars": 455
+        },
+        {
+          "error": null,
+          "passed": {
+            "dice-rolled": true,
+            "win-upstairs": true
+          },
+          "facts": [
+            "dice_rolled",
+            "dice_rolled",
+            "question_answered",
+            "entity_moved",
+            "trait_added"
+          ],
+          "director_calls": 1,
+          "total_steps": 2,
+          "seconds": 19.761515936999785,
+          "narration_chars": 455
+        },
+        {
+          "error": null,
+          "passed": {
+            "dice-rolled": true,
+            "win-upstairs": true
+          },
+          "facts": [
+            "dice_rolled",
+            "dice_rolled",
+            "question_answered",
+            "entity_moved",
+            "entity_discovered",
+            "thread_advanced"
+          ],
+          "director_calls": 1,
+          "total_steps": 2,
+          "seconds": 13.757089037000696,
+          "narration_chars": 495
+        }
+      ]
+    },
+    {
+      "id": "loner3e/fight-the-rat",
+      "engine": "loner3e",
+      "prompt": "The bloated rat springs at my throat and I fight it in earnest — it has to die before it slips back into the walls.",
+      "expectations": [
+        "rat-engaged",
+        "luck-moved",
+        "hands-back"
+      ],
+      "runs": [
+        {
+          "error": null,
+          "passed": {
+            "rat-engaged": true,
+            "luck-moved": true,
+            "hands-back": true
+          },
+          "facts": [
+            "entity_discovered",
+            "dice_rolled",
+            "dice_rolled",
+            "question_answered",
+            "counter_changed"
+          ],
+          "director_calls": 1,
+          "total_steps": 2,
+          "seconds": 11.270402512998771,
+          "narration_chars": 451
+        },
+        {
+          "error": null,
+          "passed": {
+            "rat-engaged": true,
+            "luck-moved": true,
+            "hands-back": true
+          },
+          "facts": [
+            "entity_discovered",
+            "dice_rolled",
+            "dice_rolled",
+            "question_answered",
+            "counter_changed"
+          ],
+          "director_calls": 1,
+          "total_steps": 2,
+          "seconds": 10.031262152000636,
+          "narration_chars": 417
+        },
+        {
+          "error": null,
+          "passed": {
+            "rat-engaged": true,
+            "luck-moved": true,
+            "hands-back": true
+          },
+          "facts": [
+            "entity_discovered",
+            "dice_rolled",
+            "dice_rolled",
+            "question_answered",
+            "counter_changed"
+          ],
+          "director_calls": 1,
+          "total_steps": 2,
+          "seconds": 12.224883688000773,
+          "narration_chars": 310
+        },
+        {
+          "error": null,
+          "passed": {
+            "rat-engaged": true,
+            "luck-moved": true,
+            "hands-back": true
+          },
+          "facts": [
+            "entity_discovered",
+            "dice_rolled",
+            "dice_rolled",
+            "question_answered",
+            "counter_changed"
+          ],
+          "director_calls": 1,
+          "total_steps": 2,
+          "seconds": 12.99772806600049,
+          "narration_chars": 635
+        },
+        {
+          "error": null,
+          "passed": {
+            "rat-engaged": true,
+            "luck-moved": true,
+            "hands-back": true
+          },
+          "facts": [
+            "entity_discovered",
+            "dice_rolled",
+            "dice_rolled",
+            "question_answered",
+            "counter_changed"
+          ],
+          "director_calls": 1,
+          "total_steps": 2,
+          "seconds": 16.490709501998936,
+          "narration_chars": 408
+        },
+        {
+          "error": null,
+          "passed": {
+            "rat-engaged": true,
+            "luck-moved": true,
+            "hands-back": true
+          },
+          "facts": [
+            "entity_discovered",
+            "dice_rolled",
+            "dice_rolled",
+            "question_answered",
+            "counter_changed"
+          ],
+          "director_calls": 1,
+          "total_steps": 2,
+          "seconds": 8.63310816000012,
+          "narration_chars": 913
+        },
+        {
+          "error": null,
+          "passed": {
+            "rat-engaged": true,
+            "luck-moved": true,
+            "hands-back": true
+          },
+          "facts": [
+            "entity_discovered",
+            "dice_rolled",
+            "dice_rolled",
+            "question_answered",
+            "counter_changed"
+          ],
+          "director_calls": 1,
+          "total_steps": 2,
+          "seconds": 14.927631776999988,
+          "narration_chars": 403
+        },
+        {
+          "error": null,
+          "passed": {
+            "rat-engaged": true,
+            "luck-moved": true,
+            "hands-back": true
+          },
+          "facts": [
+            "entity_discovered",
+            "dice_rolled",
+            "dice_rolled",
+            "question_answered",
+            "counter_changed"
+          ],
+          "director_calls": 1,
+          "total_steps": 2,
+          "seconds": 6.928457119000086,
+          "narration_chars": 437
+        },
+        {
+          "error": null,
+          "passed": {
+            "rat-engaged": true,
+            "luck-moved": true,
+            "hands-back": true
+          },
+          "facts": [
+            "entity_discovered",
+            "dice_rolled",
+            "dice_rolled",
+            "question_answered",
+            "counter_changed"
+          ],
+          "director_calls": 1,
+          "total_steps": 2,
+          "seconds": 13.15143836199968,
+          "narration_chars": 692
+        }
+      ]
+    },
+    {
+      "id": "twentyfourxx/take-the-chart",
+      "engine": "twentyfourxx",
+      "prompt": "I search the abbot's desk, find the folded chart hidden under the loose flagstone beneath it, and pick the chart up and keep it.",
+      "expectations": [
+        "chart-known",
+        "chart-carried",
+        "stair-charted"
+      ],
+      "runs": [
+        {
+          "error": null,
+          "passed": {
+            "chart-known": true,
+            "chart-carried": true,
+            "stair-charted": true
+          },
+          "facts": [
+            "entity_discovered",
+            "entity_moved",
+            "thread_advanced"
+          ],
+          "director_calls": 1,
+          "total_steps": 2,
+          "seconds": 8.58235223599877,
+          "narration_chars": 541
+        },
+        {
+          "error": null,
+          "passed": {
+            "chart-known": true,
+            "chart-carried": true,
+            "stair-charted": true
+          },
+          "facts": [
+            "entity_discovered",
+            "entity_moved",
+            "thread_advanced"
+          ],
+          "director_calls": 1,
+          "total_steps": 2,
+          "seconds": 11.979003828000714,
+          "narration_chars": 479
+        },
+        {
+          "error": null,
+          "passed": {
+            "chart-known": true,
+            "chart-carried": true,
+            "stair-charted": true
+          },
+          "facts": [
+            "entity_discovered",
+            "entity_moved",
+            "thread_advanced"
+          ],
+          "director_calls": 1,
+          "total_steps": 2,
+          "seconds": 7.881807136000134,
+          "narration_chars": 657
+        },
+        {
+          "error": null,
+          "passed": {
+            "chart-known": true,
+            "chart-carried": true,
+            "stair-charted": true
+          },
+          "facts": [
+            "entity_discovered",
+            "entity_moved",
+            "thread_advanced"
+          ],
+          "director_calls": 1,
+          "total_steps": 2,
+          "seconds": 9.108059964999484,
+          "narration_chars": 497
+        },
+        {
+          "error": null,
+          "passed": {
+            "chart-known": true,
+            "chart-carried": true,
+            "stair-charted": true
+          },
+          "facts": [
+            "entity_discovered",
+            "entity_moved",
+            "thread_advanced"
+          ],
+          "director_calls": 1,
+          "total_steps": 2,
+          "seconds": 10.997777136999503,
+          "narration_chars": 579
+        },
+        {
+          "error": null,
+          "passed": {
+            "chart-known": true,
+            "chart-carried": true,
+            "stair-charted": true
+          },
+          "facts": [
+            "entity_discovered",
+            "entity_moved",
+            "thread_advanced"
+          ],
+          "director_calls": 1,
+          "total_steps": 2,
+          "seconds": 9.355562022999948,
+          "narration_chars": 475
+        },
+        {
+          "error": null,
+          "passed": {
+            "chart-known": true,
+            "chart-carried": true,
+            "stair-charted": true
+          },
+          "facts": [
+            "entity_discovered",
+            "entity_moved",
+            "thread_advanced"
+          ],
+          "director_calls": 1,
+          "total_steps": 2,
+          "seconds": 10.284193003999462,
+          "narration_chars": 418
+        },
+        {
+          "error": null,
+          "passed": {
+            "chart-known": true,
+            "chart-carried": true,
+            "stair-charted": true
+          },
+          "facts": [
+            "entity_discovered",
+            "entity_moved",
+            "thread_advanced"
+          ],
+          "director_calls": 1,
+          "total_steps": 2,
+          "seconds": 10.143690509001317,
+          "narration_chars": 395
+        },
+        {
+          "error": null,
+          "passed": {
+            "chart-known": true,
+            "chart-carried": true,
+            "stair-charted": true
+          },
+          "facts": [
+            "entity_discovered",
+            "entity_moved",
+            "thread_advanced"
+          ],
+          "director_calls": 1,
+          "total_steps": 2,
+          "seconds": 9.794450413999584,
+          "narration_chars": 498
+        }
+      ]
+    },
+    {
+      "id": "twentyfourxx/walk-and-look",
+      "engine": "twentyfourxx",
+      "prompt": "I walk from the study out into the cloister, and there I look around.",
+      "expectations": [
+        "player-in-cloister",
+        "nothing-invented"
+      ],
+      "runs": [
+        {
+          "error": null,
+          "passed": {
+            "player-in-cloister": true,
+            "nothing-invented": true
+          },
+          "facts": [
+            "entity_moved",
+            "entity_discovered"
+          ],
+          "director_calls": 1,
+          "total_steps": 2,
+          "seconds": 16.281394505000208,
+          "narration_chars": 592
+        },
+        {
+          "error": null,
+          "passed": {
+            "player-in-cloister": true,
+            "nothing-invented": true
+          },
+          "facts": [
+            "entity_moved",
+            "entity_discovered"
+          ],
+          "director_calls": 1,
+          "total_steps": 2,
+          "seconds": 12.457143970999823,
+          "narration_chars": 446
+        },
+        {
+          "error": null,
+          "passed": {
+            "player-in-cloister": true,
+            "nothing-invented": true
+          },
+          "facts": [
+            "entity_moved",
+            "entity_discovered"
+          ],
+          "director_calls": 1,
+          "total_steps": 2,
+          "seconds": 11.509153451001112,
+          "narration_chars": 452
+        },
+        {
+          "error": null,
+          "passed": {
+            "player-in-cloister": true,
+            "nothing-invented": true
+          },
+          "facts": [
+            "entity_moved",
+            "entity_discovered"
+          ],
+          "director_calls": 1,
+          "total_steps": 2,
+          "seconds": 9.228961906999757,
+          "narration_chars": 461
+        },
+        {
+          "error": null,
+          "passed": {
+            "player-in-cloister": true,
+            "nothing-invented": true
+          },
+          "facts": [
+            "entity_moved",
+            "entity_discovered"
+          ],
+          "director_calls": 1,
+          "total_steps": 2,
+          "seconds": 10.242837821000649,
+          "narration_chars": 527
+        },
+        {
+          "error": null,
+          "passed": {
+            "player-in-cloister": true,
+            "nothing-invented": true
+          },
+          "facts": [
+            "entity_moved",
+            "entity_discovered"
+          ],
+          "director_calls": 1,
+          "total_steps": 2,
+          "seconds": 9.0338098430002,
+          "narration_chars": 473
+        },
+        {
+          "error": null,
+          "passed": {
+            "player-in-cloister": true,
+            "nothing-invented": true
+          },
+          "facts": [
+            "entity_moved"
+          ],
+          "director_calls": 1,
+          "total_steps": 2,
+          "seconds": 12.342559875998631,
+          "narration_chars": 563
+        },
+        {
+          "error": null,
+          "passed": {
+            "player-in-cloister": true,
+            "nothing-invented": true
+          },
+          "facts": [
+            "entity_moved"
+          ],
+          "director_calls": 1,
+          "total_steps": 2,
+          "seconds": 6.735805812999388,
+          "narration_chars": 485
+        },
+        {
+          "error": null,
+          "passed": {
+            "player-in-cloister": true,
+            "nothing-invented": true
+          },
+          "facts": [
+            "entity_moved",
+            "entity_discovered"
+          ],
+          "director_calls": 1,
+          "total_steps": 2,
+          "seconds": 12.782993050001096,
+          "narration_chars": 442
+        }
+      ]
+    },
+    {
+      "id": "twentyfourxx/open-the-way-and-climb",
+      "engine": "twentyfourxx",
+      "prompt": "I climb the stair from the cloister up into the bell tower, and the moment I am up there I see the woman who keeps it standing among the beams.",
+      "expectations": [
+        "player-in-tower",
+        "elena-known",
+        "archivist-found"
+      ],
+      "runs": [
+        {
+          "error": null,
+          "passed": {
+            "player-in-tower": true,
+            "elena-known": true,
+            "archivist-found": true
+          },
+          "facts": [
+            "entity_moved",
+            "entity_discovered",
+            "thread_advanced"
+          ],
+          "director_calls": 1,
+          "total_steps": 2,
+          "seconds": 8.418007317000956,
+          "narration_chars": 464
+        },
+        {
+          "error": null,
+          "passed": {
+            "player-in-tower": true,
+            "elena-known": true,
+            "archivist-found": true
+          },
+          "facts": [
+            "entity_moved",
+            "entity_discovered",
+            "thread_advanced"
+          ],
+          "director_calls": 1,
+          "total_steps": 2,
+          "seconds": 10.606132255001285,
+          "narration_chars": 785
+        },
+        {
+          "error": null,
+          "passed": {
+            "player-in-tower": false,
+            "elena-known": false,
+            "archivist-found": false
+          },
+          "facts": [
+            "dice_rolled",
+            "attempt_resolved",
+            "defence_taken",
+            "trait_added"
+          ],
+          "director_calls": 3,
+          "total_steps": 5,
+          "seconds": 33.34418527699927,
+          "narration_chars": 1107
+        },
+        {
+          "error": null,
+          "passed": {
+            "player-in-tower": true,
+            "elena-known": true,
+            "archivist-found": true
+          },
+          "facts": [
+            "dice_rolled",
+            "attempt_resolved",
+            "entity_moved",
+            "entity_discovered",
+            "trait_added",
+            "thread_advanced",
+            "defence_taken",
+            "trait_added"
+          ],
+          "director_calls": 3,
+          "total_steps": 5,
+          "seconds": 33.677927860000636,
+          "narration_chars": 847
+        },
+        {
+          "error": null,
+          "passed": {
+            "player-in-tower": true,
+            "elena-known": true,
+            "archivist-found": true
+          },
+          "facts": [
+            "entity_moved",
+            "entity_discovered",
+            "thread_advanced"
+          ],
+          "director_calls": 1,
+          "total_steps": 2,
+          "seconds": 8.370580616001462,
+          "narration_chars": 454
+        },
+        {
+          "error": null,
+          "passed": {
+            "player-in-tower": true,
+            "elena-known": true,
+            "archivist-found": true
+          },
+          "facts": [
+            "entity_moved",
+            "entity_discovered",
+            "thread_advanced"
+          ],
+          "director_calls": 1,
+          "total_steps": 2,
+          "seconds": 9.371162617000664,
+          "narration_chars": 409
+        },
+        {
+          "error": null,
+          "passed": {
+            "player-in-tower": true,
+            "elena-known": true,
+            "archivist-found": true
+          },
+          "facts": [
+            "entity_moved",
+            "entity_discovered",
+            "thread_advanced"
+          ],
+          "director_calls": 1,
+          "total_steps": 2,
+          "seconds": 7.189292989000023,
+          "narration_chars": 535
+        },
+        {
+          "error": null,
+          "passed": {
+            "player-in-tower": false,
+            "elena-known": false,
+            "archivist-found": false
+          },
+          "facts": [
+            "dice_rolled",
+            "attempt_resolved",
+            "trait_added",
+            "defence_taken"
+          ],
+          "director_calls": 3,
+          "total_steps": 5,
+          "seconds": 24.223509336999996,
+          "narration_chars": 1148
+        },
+        {
+          "error": null,
+          "passed": {
+            "player-in-tower": true,
+            "elena-known": true,
+            "archivist-found": true
+          },
+          "facts": [
+            "entity_moved",
+            "entity_discovered",
+            "thread_advanced"
+          ],
+          "director_calls": 1,
+          "total_steps": 2,
+          "seconds": 8.750641832999463,
+          "narration_chars": 468
+        }
+      ]
+    },
+    {
+      "id": "twentyfourxx/three-things",
+      "engine": "twentyfourxx",
+      "prompt": "I climb up from the cloister into the bell tower, hand my lantern to the woman I find there, and the climb leaves me with a wrenched knee I will be limping on for a long while.",
+      "expectations": [
+        "player-in-tower",
+        "elena-known",
+        "lantern-given",
+        "trait-gained"
+      ],
+      "runs": [
+        {
+          "error": null,
+          "passed": {
+            "player-in-tower": true,
+            "elena-known": true,
+            "lantern-given": true,
+            "trait-gained": true
+          },
+          "facts": [
+            "entity_moved",
+            "entity_discovered",
+            "entity_moved",
+            "trait_added",
+            "thread_advanced"
+          ],
+          "director_calls": 1,
+          "total_steps": 2,
+          "seconds": 9.861628978000226,
+          "narration_chars": 528
+        },
+        {
+          "error": null,
+          "passed": {
+            "player-in-tower": true,
+            "elena-known": true,
+            "lantern-given": true,
+            "trait-gained": true
+          },
+          "facts": [
+            "entity_moved",
+            "trait_added",
+            "entity_discovered",
+            "entity_moved",
+            "thread_advanced"
+          ],
+          "director_calls": 1,
+          "total_steps": 2,
+          "seconds": 20.122510888999386,
+          "narration_chars": 464
+        },
+        {
+          "error": null,
+          "passed": {
+            "player-in-tower": true,
+            "elena-known": true,
+            "lantern-given": true,
+            "trait-gained": true
+          },
+          "facts": [
+            "entity_moved",
+            "entity_discovered",
+            "entity_moved",
+            "trait_added",
+            "thread_advanced"
+          ],
+          "director_calls": 1,
+          "total_steps": 2,
+          "seconds": 12.651885126000707,
+          "narration_chars": 549
+        },
+        {
+          "error": null,
+          "passed": {
+            "player-in-tower": true,
+            "elena-known": true,
+            "lantern-given": true,
+            "trait-gained": true
+          },
+          "facts": [
+            "entity_moved",
+            "entity_discovered",
+            "entity_moved",
+            "trait_added",
+            "thread_advanced"
+          ],
+          "director_calls": 1,
+          "total_steps": 2,
+          "seconds": 9.66591902899927,
+          "narration_chars": 380
+        },
+        {
+          "error": null,
+          "passed": {
+            "player-in-tower": true,
+            "elena-known": true,
+            "lantern-given": true,
+            "trait-gained": true
+          },
+          "facts": [
+            "entity_moved",
+            "entity_discovered",
+            "thread_advanced",
+            "trait_added",
+            "entity_moved"
+          ],
+          "director_calls": 1,
+          "total_steps": 2,
+          "seconds": 13.86325774099896,
+          "narration_chars": 725
+        },
+        {
+          "error": null,
+          "passed": {
+            "player-in-tower": true,
+            "elena-known": true,
+            "lantern-given": true,
+            "trait-gained": true
+          },
+          "facts": [
+            "entity_discovered",
+            "entity_moved",
+            "thread_advanced",
+            "entity_moved",
+            "trait_added"
+          ],
+          "director_calls": 1,
+          "total_steps": 2,
+          "seconds": 13.07659758599948,
+          "narration_chars": 687
+        },
+        {
+          "error": null,
+          "passed": {
+            "player-in-tower": true,
+            "elena-known": true,
+            "lantern-given": true,
+            "trait-gained": true
+          },
+          "facts": [
+            "entity_moved",
+            "entity_discovered",
+            "entity_moved",
+            "trait_added",
+            "thread_advanced"
+          ],
+          "director_calls": 1,
+          "total_steps": 2,
+          "seconds": 10.38812211899858,
+          "narration_chars": 514
+        },
+        {
+          "error": null,
+          "passed": {
+            "player-in-tower": true,
+            "elena-known": true,
+            "lantern-given": true,
+            "trait-gained": true
+          },
+          "facts": [
+            "entity_discovered",
+            "entity_moved",
+            "entity_moved",
+            "trait_added",
+            "thread_advanced"
+          ],
+          "director_calls": 1,
+          "total_steps": 2,
+          "seconds": 14.435223476999454,
+          "narration_chars": 597
+        },
+        {
+          "error": null,
+          "passed": {
+            "player-in-tower": true,
+            "elena-known": true,
+            "lantern-given": true,
+            "trait-gained": true
+          },
+          "facts": [
+            "entity_moved",
+            "entity_discovered",
+            "thread_advanced",
+            "entity_moved",
+            "trait_added"
+          ],
+          "director_calls": 1,
+          "total_steps": 2,
+          "seconds": 14.555632569999943,
+          "narration_chars": 533
+        }
+      ]
+    },
+    {
+      "id": "twentyfourxx/risky-climb",
+      "engine": "twentyfourxx",
+      "prompt": "I go up the bell tower's ladders at a run, two rungs at a time — I have to reach the top before the light goes.",
+      "expectations": [
+        "staked",
+        "dice-rolled",
+        "win-upstairs"
+      ],
+      "runs": [
+        {
+          "error": null,
+          "passed": {
+            "staked": true,
+            "dice-rolled": true,
+            "win-upstairs": true
+          },
+          "facts": [
+            "dice_rolled",
+            "attempt_resolved",
+            "entity_moved",
+            "entity_discovered",
+            "thread_advanced"
+          ],
+          "director_calls": 2,
+          "total_steps": 3,
+          "seconds": 16.450903445000222,
+          "narration_chars": 419
+        },
+        {
+          "error": null,
+          "passed": {
+            "staked": true,
+            "dice-rolled": true,
+            "win-upstairs": true
+          },
+          "facts": [
+            "dice_rolled",
+            "attempt_resolved",
+            "trait_added",
+            "trait_added",
+            "entity_moved",
+            "defence_taken"
+          ],
+          "director_calls": 3,
+          "total_steps": 5,
+          "seconds": 34.29006331599885,
+          "narration_chars": 941
+        },
+        {
+          "error": null,
+          "passed": {
+            "staked": true,
+            "dice-rolled": true,
+            "win-upstairs": true
+          },
+          "facts": [
+            "entity_moved",
+            "dice_rolled",
+            "attempt_resolved",
+            "entity_discovered",
+            "thread_advanced"
+          ],
+          "director_calls": 2,
+          "total_steps": 4,
+          "seconds": 18.636686240999552,
+          "narration_chars": 992
+        },
+        {
+          "error": null,
+          "passed": {
+            "staked": true,
+            "dice-rolled": true,
+            "win-upstairs": true
+          },
+          "facts": [
+            "dice_rolled",
+            "attempt_resolved",
+            "trait_added",
+            "defence_taken",
+            "dice_rolled",
+            "attempt_resolved",
+            "dice_rolled",
+            "luck_tested",
+            "defence_taken",
+            "trait_added"
+          ],
+          "director_calls": 4,
+          "total_steps": 7,
+          "seconds": 32.63666719200046,
+          "narration_chars": 2121
+        },
+        {
+          "error": null,
+          "passed": {
+            "staked": true,
+            "dice-rolled": true,
+            "win-upstairs": true
+          },
+          "facts": [
+            "entity_moved",
+            "dice_rolled",
+            "attempt_resolved",
+            "trait_added",
+            "defence_taken",
+            "dice_rolled",
+            "luck_tested",
+            "trait_added"
+          ],
+          "director_calls": 3,
+          "total_steps": 6,
+          "seconds": 33.279190860999734,
+          "narration_chars": 1605
+        },
+        {
+          "error": null,
+          "passed": {
+            "staked": true,
+            "dice-rolled": true,
+            "win-upstairs": true
+          },
+          "facts": [
+            "entity_moved",
+            "dice_rolled",
+            "attempt_resolved",
+            "trait_added",
+            "trait_added",
+            "defence_taken"
+          ],
+          "director_calls": 3,
+          "total_steps": 6,
+          "seconds": 30.574524015999486,
+          "narration_chars": 1329
+        },
+        {
+          "error": null,
+          "passed": {
+            "staked": true,
+            "dice-rolled": true,
+            "win-upstairs": true
+          },
+          "facts": [
+            "dice_rolled",
+            "attempt_resolved",
+            "trait_added",
+            "entity_moved",
+            "entity_discovered",
+            "thread_advanced",
+            "defence_taken"
+          ],
+          "director_calls": 3,
+          "total_steps": 5,
+          "seconds": 22.518540836001193,
+          "narration_chars": 1055
+        },
+        {
+          "error": null,
+          "passed": {
+            "staked": true,
+            "dice-rolled": true,
+            "win-upstairs": true
+          },
+          "facts": [
+            "dice_rolled",
+            "attempt_resolved",
+            "dice_rolled",
+            "entity_moved",
+            "trait_added",
+            "trait_added",
+            "defence_taken"
+          ],
+          "director_calls": 3,
+          "total_steps": 5,
+          "seconds": 26.060626700000284,
+          "narration_chars": 1016
+        },
+        {
+          "error": null,
+          "passed": {
+            "staked": true,
+            "dice-rolled": true,
+            "win-upstairs": true
+          },
+          "facts": [
+            "dice_rolled",
+            "attempt_resolved",
+            "dice_rolled",
+            "luck_tested",
+            "entity_moved",
+            "entity_discovered",
+            "thread_advanced"
+          ],
+          "director_calls": 2,
+          "total_steps": 3,
+          "seconds": 15.56623209800091,
+          "narration_chars": 513
+        }
+      ]
+    }
+  ]
+}

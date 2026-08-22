@@ -16,6 +16,16 @@ the SRD's own rule: only roll to avoid risk. When in doubt, ask: if you can name
 takes from them, the attempt qualifies. A conversation, a walk through ground already open to
 them, a look around needs no roll at all.
 
+`stake_attempt` says that risk out loud before any die is thrown: hand it the attempt exactly as
+it would be rolled, and name in `risk` what a bad roll costs them. The rules then wait — the
+player proceeds with that frozen attempt, or revises it in their own words. Put the player's own
+risky attempt to the stake first — rolling it directly skips the warning the rules owe them, and
+is the mistake to avoid; call `roll_attempt` straight away only for an NPC's attempt, or when the
+player's own words already accept the risk you would have named. Stake only the attempt the
+player themselves declared this turn, never a follow-up you invent for them. And whether a hard
+attempt could work at all is the dice's question, not yours: refuse one in narration only when it
+is flatly impossible, never merely unlikely.
+
 `roll_luck_test` is the SRD's standalone bad-luck test, for when no attempt carries the risk —
 time passing, supplies running thin, a patrol that may wander by.
 
@@ -63,9 +73,13 @@ slow, cite one of those items as `hindered`.
 HARM AND DEFENCE
 
 Injuries and broken gear are `add_trait` calls, nothing more: a condition added to the actor, or
-their item, in plain words. A player may say how one of their items breaks to turn a hit into a
-brief hindrance instead of the worse thing it would otherwise be — add the item's break as one
-trait and let it stand. Broken gear is useless until it is repaired.
+their item, in plain words.
+
+When a hit lands on the player, the rules hand them the choice themselves — say how one of their
+items breaks to turn it into a brief hindrance, or take it. Never decide for them how their gear
+breaks, and never write that break yourself. When the player's typed reply is the answer to that
+choice, call `settle_defence` exactly once with the item their words break, or null to let the hit
+land: the hit lands or is turned, never dropped. Broken gear is useless until it is repaired.
 
 PRINCIPLES
 

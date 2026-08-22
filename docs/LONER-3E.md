@@ -896,11 +896,11 @@ a rule of this one.
 2. **Sheets are actors-only.** The SRD gives non-living characters — objects, vehicles, curses —
    a Concept, Skills, Frailties and Luck. Here they are entities with traits, which the resolver
    already reads as tags; a non-living character gets a sheet the first time an engine needs one.
-3. **A twist interrupts the same turn, a beat late.** The SRD has a twist interrupt the scene the
-   moment it fires; here it fires inside a beat and reaches the Director as a scenario note on the
-   next Director call, so it always interrupts the same turn: every rolled beat is followed by
-   another Director call, and the last one — whether the roll asked to settle or the beat cap cut
-   the loop short — is a settle beat that may write what the twist caused but may not roll again.
+3. **A twist fires inside the question that rolled it.** The SRD has a twist interrupt the scene
+   the moment it fires; here the tie that calls one is inside a resolved question, so the
+   narration shows the twist arriving in that same turn rather than cutting the question short.
+   The pairing reaches the Director in that call's own answer, and it develops what arrived in the
+   same interaction.
 4. **One game-wide Twist Counter.** The SRD's counter belongs to the solo player, who is the only
    one rolling. Here any actor can be the subject of a question, so a single tally covers every
    roll — a tie anywhere moves the same counter.
@@ -912,29 +912,33 @@ a rule of this one.
 
 How this SRD maps onto `src/aidm/engines/loner3e/`:
 
-- **Sheet** (`mechanics.py`): `concept`, `skills` (2 at creation), `frailties` (1), `gear` (2),
+- **Sheet** (`engine.py`): `concept`, `skills` (2 at creation), `frailties` (1), `gear` (2),
   `luck` Counter 6/6 — the SRD's protagonist shape, applied to every actor ("everything is a
   character"). `milestones` tracks growth spent; the game-wide `twist` Counter caps at 3, and the
   game-wide `completed` tally counts adventures closed.
   `pack` records the table set the character was built from, and the twist table is read from it.
-- **Plan** (`actions.py`): one action, the closed `Question`; `position` is the Director's own
+- **Plan** (`engine.py`): one action, the closed `Question`; `position` is the Director's own
   advantage/neutral/disadvantage judgment and `edge` names what decided it — "tags are not
   numbers", so the SRD leaves this call intuitive, and the sheet's tags and the scene's traits
   are what the judgment reads, never counted. The engine's own effects: `restore-luck` refills
   an actor's luck once a conflict is behind them — nothing else moves the pool — and
   `end-adventure` records the fiction's own boundary that post-adventure growth is owed against.
-- **Resolver** (`actions.py`): Chance d6 vs Risk d6; advantage adds the extra die of that
+- **Resolver** (`engine.py`): Chance d6 vs Risk d6; advantage adds the extra die of that
   color, keep highest, hard cap two; the judged `position` decides which side gets the extra
   die. The six outcomes and the
   both-≤3/both-≥4 modifiers are `outcome_for`, fully enumerable. Harm & Luck applies the
   3/2/1 table when `opponent_id` is set; those exchanges never tick the Twist Counter, per
-  the SRD. Ties elsewhere tick it; at 3 the resolver rolls the 2d6 subject × action twist
-  table and hands the rolled pairing to the next turn's Director via `pending_notes`.
+  the SRD. An exchange that leaves both sides holding luck suspends the turn, so the conflict
+  runs one exchange per player input — the SRD's series of key actions, each one the player's own
+  choice; a side reaching 0 luck ends it instead, and the defeat note steers the same run. Ties
+  outside a conflict tick the counter; at 3 the resolver rolls the 2d6 subject × action twist
+  table and hands the rolled pairing straight back through `pending_notes`, in the answer to the
+  call that rolled it.
 - **The Director carries** the solo player's own judgment calls: its instructions hold the
   Sibylline Responses guidance and decide when to ask the Oracle, and the Dramatic / Quiet /
   Meanwhile mood vocabulary in place of the next-scene roll; the Adventure Maker stays
   authoring-time. The Oracle's dice stay in the resolver.
-- **Creation/advancement** (`create.py`, `advance.py`): the 8-step protagonist recipe as
+- **Creation/advancement** (`engine.py`): the 8-step protagonist recipe as
   creation steps, with the Concept step a free line — the chosen pack's own concept table is
   offered as hint text, never as a menu; growth is the SRD's post-adventure update, up to four
   changes at once, offered once per recorded adventure ending.

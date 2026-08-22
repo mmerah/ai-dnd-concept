@@ -1,4 +1,5 @@
 ## Loose ends
+- [] Eval baseline-interruptible (2026-08-22, 9 repeats): 96/99 runs pass; only open-the-way-and-climb drops (24xx 78%, loner3e 89%) because a staked-then-lost climb fairly strands the player below — tighten the case in evals/turn_eval.py (score arrival only on a won roll, like risky-climb's win-upstairs), not the director.
 
 - [] Codex: Comment simplification round
 - [] CONFIG_VARIABLES into config, no magic variable/global VARIABLE anywhere. Re-organization of codebase (kinda done already), clearer, easier to navigate, files have a structure that make sense, models are in separate files, clean functional programming. No change in behavior

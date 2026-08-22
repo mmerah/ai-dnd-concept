@@ -229,7 +229,7 @@
   },
   {
     "name": "roll_question",
-    "description": "Put a closed dramatic question to Chance d6 against Risk d6.",
+    "description": "Put a closed dramatic question to Chance d6 against Risk d6. An exchange of a\nconflict names who is opposed in `question.opponent_id`.",
     "parameters": {
       "$defs": {
         "Position": {
@@ -272,7 +272,7 @@
             }
           ],
           "default": null,
-          "description": "Exact id of the actor opposed in this exchange of a conflict, or null."
+          "description": "Exact id of the actor here who actively contends against this one — fights back, gives chase, argues back, hunts. A question about beating, escaping, or overcoming someone must name them here: luck moves only through this field. Null only when nothing fights back."
         }
       },
       "required": [

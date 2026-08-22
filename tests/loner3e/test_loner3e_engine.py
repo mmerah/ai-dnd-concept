@@ -15,6 +15,7 @@ from aidm.engines.loner3e.engine import (
     Question,
     apply_complete_chapter,
     apply_restore_luck,
+    conflict_prompt,
     defeat_note,
     outcome_for,
     resolve_question,
@@ -22,7 +23,7 @@ from aidm.engines.loner3e.engine import (
     twist_pairing,
     twist_table,
 )
-from aidm.state.model import PLAYER_ID, Counter, Entity, EntityId
+from aidm.state.model import PLAYER_ID, Counter, Entity, EntityId, PendingDecision
 
 TWISTS = twist_table(Loner3eEngine().packs, SRD_PACK)
 FOE = EntityId("mara")
@@ -172,6 +173,36 @@ def test_luck_running_out_ends_the_conflict_and_resets_both_pools() -> None:
     assert sheets[PLAYER_ID].luck.current == LUCK_MAX
     assert any(fact.kind == "conflict_lost" for fact in facts)
     assert defeat_note(draft.world.require(FOE).name) in draft.world.pending_notes
+    # The conflict is over, so the defeat note steers the same run instead of handing control back.
+    assert draft.pending is None
+
+
+def test_an_exchange_both_sides_survive_hands_the_next_key_action_to_the_player() -> None:
+    _, state = initialized()
+    draft = state.draft()
+
+    _ = resolve_question(draft, _duel(), Random(0), TWISTS)
+
+    decision = draft.pending
+    assert decision is not None
+    foe = draft.world.require(FOE)
+    assert (decision.kind, decision.prompt) == ("conflict", conflict_prompt(draft.player, foe))
+    assert foe.name in decision.prompt
+    assert (decision.options, decision.free_text) == ((), True)
+
+
+def test_the_engine_plays_the_hand_back_and_refuses_every_other_decision() -> None:
+    engine, _ = initialized()
+    hand_back = PendingDecision(
+        kind="conflict", prompt="Say your next key action.", options=(), payload={}
+    )
+
+    engine.check_pending(hand_back)
+
+    with pytest.raises(ValueError, match="cannot play a 'defence' decision"):
+        engine.check_pending(hand_back.model_copy(update={"kind": "defence"}))
+    with pytest.raises(ValueError, match="carries no payload"):
+        engine.check_pending(hand_back.model_copy(update={"payload": {"outcome": "no"}}))
 
 
 def test_an_actor_already_at_zero_luck_refuses_another_exchange() -> None:

@@ -3,6 +3,7 @@ import logging
 from asyncio import AbstractEventLoop, get_running_loop
 from collections.abc import AsyncGenerator, Callable, Generator, Sequence
 from contextlib import asynccontextmanager, contextmanager
+from functools import partial
 from pathlib import Path
 from time import monotonic
 from typing import Protocol
@@ -21,12 +22,14 @@ from aidm.app.runtime import (
 from aidm.content.io import SavedGame
 from aidm.state.model import (
     PLAYER_ID,
+    Answer,
     Applied,
     DiceEvent,
     EntityId,
     Extended,
     Fact,
     MechanicEvent,
+    Option,
     StepTrace,
     TraceEntry,
     Turn,
@@ -151,6 +154,8 @@ def chat(session: GameSession) -> None:
             _mechanic_event(event)
         for line in exchange.lines:
             _bubble(session, line.speaker_id, line.text, sent=False)
+        if exchange.decision:
+            ui.label(f"Paused: {exchange.decision}").classes("text-xs italic opacity-60")
 
 
 def _mechanic_event(event: MechanicEvent) -> None:
@@ -499,6 +504,10 @@ class GameView:
         self.ticker = live_turn(self.session, self.live_prompt, self.live_events, elapsed)
 
     @ui.refreshable_method
+    def decision(self) -> None:
+        decision_panel(self)
+
+    @ui.refreshable_method
     def sheet(self) -> None:
         sheet_panel(self.session)
 
@@ -523,6 +532,7 @@ class GameView:
             self.scene,
             self.chat,
             self.live_turn,
+            self.decision,
             self.sheet,
             self.journal,
             self.trace,
@@ -532,10 +542,10 @@ class GameView:
             panel.refresh()
 
 
-def _idle(busy: bool) -> bool:
-    """Bound to `session.busy`, so the composer follows the turn through every exit `working`
-    takes, including the failure it swallows."""
-    return not busy
+def _can_type(session: GameSession, busy: bool) -> bool:
+    """Bound to `session.busy`; a decision with no free text takes the composer away too."""
+    pending = session.state.pending
+    return not busy and (pending is None or pending.free_text)
 
 
 def on_step(view: GameView, step: str) -> None:
@@ -579,27 +589,20 @@ def poll_art(view: GameView) -> None:
         view.scene.refresh()
 
 
-async def submit(view: GameView, box: ui.input) -> None:
+async def _send(view: GameView, player_input: str | Answer, bubble: str) -> None:
     session = view.session
-    prompt = (box.value or "").strip()
-    LOGGER.info("player submitted prompt: non_empty=%s busy=%s", bool(prompt), session.busy)
-    if not prompt or refuse_if_busy(session):
-        return
-    box.value = ""
-    # Quasar never saw the typed value change, so only an explicit push empties the composer.
-    _ = box.run_method("updateValue")
-    view.live_prompt, view.live_events = prompt, []
+    view.live_prompt, view.live_events = bubble, []
     view.live_turn.refresh()
     _scroll(view)
     loop = get_running_loop()
     async with working(session):
-        was_offered = session.pending()
+        was_offered = session.advancement_offered()
         await session.submit(
-            prompt,
+            player_input,
             on_step=lambda step: on_step(view, step),
             on_event=lambda event: on_event(view, event, loop),
         )
-        if not was_offered and session.pending():
+        if not was_offered and session.advancement_offered():
             ui.notify("Something is on offer. Check the advancement tab.")
     session.step = None
     view.live_prompt, view.live_events, view.step_started = None, [], None
@@ -607,6 +610,40 @@ async def submit(view: GameView, box: ui.input) -> None:
         view.composer.props(f'placeholder="{_composer_placeholder(None)}"')
     view.refresh_all()
     _scroll(view)
+
+
+async def submit(view: GameView, box: ui.input) -> None:
+    session = view.session
+    typed = (box.value or "").strip()
+    LOGGER.info("player submitted prompt: non_empty=%s busy=%s", bool(typed), session.busy)
+    if not typed or refuse_if_busy(session):
+        return
+    box.value = ""
+    # Quasar never saw the typed value change, so only an explicit push empties the composer.
+    _ = box.run_method("updateValue")
+    typed_input = typed if session.state.pending is None else Answer(text=typed)
+    await _send(view, typed_input, typed)
+
+
+def decision_panel(view: GameView) -> None:
+    pending = view.session.state.pending
+    if pending is None:
+        return
+
+    async def answer(option: Option) -> None:
+        if refuse_if_busy(view.session):
+            return
+        await _send(view, Answer(option_id=option.id), option.label)
+
+    with ui.column().classes("game-card w-full").style("gap: 0.5rem"):
+        ui.label(pending.prompt).classes("text-sm font-bold whitespace-pre-wrap")
+        with ui.row().classes("w-full items-center").style("gap: 0.5rem"):
+            for option in pending.options:
+                button = ui.button(option.label, on_click=partial(answer, option)).props(
+                    "no-caps outline"
+                )
+                if option.detail:
+                    button.tooltip(option.detail)
 
 
 def restart(view: GameView) -> None:
@@ -633,6 +670,7 @@ def game_page(session: GameSession) -> None:
             with ui.scroll_area().classes("w-full flex-grow game-transcript") as transcript:
                 view.chat()
                 view.live_turn()
+            view.decision()
             with (
                 ui.row()
                 .classes("w-full no-wrap items-end game-composer q-pa-sm")
@@ -642,7 +680,7 @@ def game_page(session: GameSession) -> None:
                     ui.input(placeholder=_composer_placeholder(None))
                     .classes("flex-grow")
                     .props("outlined autogrow type=textarea borderless")
-                    .bind_enabled_from(session, "busy", backward=_idle)
+                    .bind_enabled_from(session, "busy", backward=partial(_can_type, session))
                 )
                 # Enter sends; without the prevent the browser also leaves its newline behind.
                 box.on(
@@ -653,7 +691,7 @@ def game_page(session: GameSession) -> None:
                 _ = (
                     ui.button(icon="send", on_click=lambda: submit(view, box))
                     .props("round flat")
-                    .bind_enabled_from(session, "busy", backward=_idle)
+                    .bind_enabled_from(session, "busy", backward=partial(_can_type, session))
                 )
             view.composer, view.transcript = box, transcript
         with splitter.after, ui.column().classes("w-full h-full").style("gap: 0"):

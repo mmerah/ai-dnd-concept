@@ -48,6 +48,7 @@ from aidm.state.model import (
     Frozen,
     Game,
     MechanicEvent,
+    PendingDecision,
     Picks,
     Slug,
     TextStep,
@@ -104,6 +105,14 @@ def twist_table(packs: Mapping[str, Pack], chosen: ContentSlug) -> tuple[tuple[s
 
 LUCK_MAX = 6
 TIES_PER_TWIST = 3
+
+
+def conflict_prompt(actor: Entity, opponent: Entity) -> str:
+    foe = actor if opponent.id == PLAYER_ID else opponent
+    return (
+        f"The exchange against {foe.name} is resolved and the conflict goes on. "
+        "Say your next key action."
+    )
 
 
 class Sheet(SheetBase):
@@ -173,7 +182,10 @@ class Question(Frozen):
     )
     opponent_id: EntityId | None = Field(
         default=None,
-        description="Exact id of the actor opposed in this exchange of a conflict, or null.",
+        description="Exact id of the actor here who actively contends against this one — fights "
+        "back, gives chase, argues back, hunts. A question about beating, escaping, or "
+        "overcoming someone must name them here: luck moves only through this field. Null only "
+        "when nothing fights back.",
     )
 
 
@@ -243,7 +255,13 @@ def resolve_question(
         )
     )
     if opponent is not None:
-        facts.extend(_strike(draft, mechanics, actor, opponent, outcome))
+        exchange = _strike(draft, mechanics, actor, opponent, outcome)
+        facts.extend(exchange)
+        # The pools are refilled the moment a side hits 0, so only the fact says the conflict ended.
+        if not any(fact.kind == "conflict_lost" for fact in exchange):
+            draft.pending = PendingDecision(
+                kind="conflict", prompt=conflict_prompt(actor, opponent), options=(), payload={}
+            )
     elif chance == risk:
         # The tally itself never becomes a fact: it paces the Director, and the Narrator would
         # only be handed a number it is told never to recite. A conflict exchange never ticks it.
@@ -279,7 +297,7 @@ def _twist(
     subject, action = twist_pairing(subject_die, action_die, twists)
     draft.world.pending_notes = (*draft.world.pending_notes, twist_note(subject, action))
     # Narrated the turn it lands, as the SRD interrupts the scene: an unnamed intrusion needs
-    # no canon, and the note steers the next turn's development.
+    # no canon, and `act` echoes the note into the answer of the call that rolled it.
     due = entity_fact(
         actor,
         "twist_due",
@@ -384,7 +402,8 @@ type Twists = Callable[[Game], tuple[tuple[str, str], ...]]
 
 def director_toolset(twists: Twists) -> FunctionToolset[PlanContext]:
     def roll_question(ctx: RunContext[PlanContext], question: Question) -> str:
-        """Put a closed dramatic question to Chance d6 against Risk d6.
+        """Put a closed dramatic question to Chance d6 against Risk d6. An exchange of a
+        conflict names who is opposed in `question.opponent_id`.
 
         Args:
             question: The question to put to the dice.
@@ -622,11 +641,18 @@ class Loner3eEngine(Engine):
             ("Luck", f"{sheet.luck.current} / {sheet.luck.maximum}"),
         )
 
+    def check_pending(self, pending: PendingDecision) -> None:
+        """The hand-back is the whole decision: no options, nothing frozen, no `resume`."""
+        if pending.kind != "conflict":
+            super().check_pending(pending)
+        elif pending.payload:
+            raise ValueError("a conflict decision freezes nothing, so it carries no payload")
+
     def twists(self, state: Game) -> tuple[tuple[str, str], ...]:
         """The player's own table set: an NPC sheet is seeded with the default and never selects."""
         return twist_table(self.packs, Mechanics.of(state).sheets[PLAYER_ID].pack)
 
-    def player_events(self, tool_name: str, facts: tuple[Fact, ...]) -> tuple[MechanicEvent, ...]:
-        if tool_name == "roll_question":
+    def player_events(self, source: str, facts: tuple[Fact, ...]) -> tuple[MechanicEvent, ...]:
+        if source == "roll_question":
             return question_events(facts)
-        return super().player_events(tool_name, facts)
+        return super().player_events(source, facts)

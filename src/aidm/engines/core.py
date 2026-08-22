@@ -31,6 +31,8 @@ from aidm.state.model import (
     Game,
     MechanicEvent,
     Mutable,
+    OptionId,
+    PendingDecision,
     Picks,
     Slug,
     StepTrace,
@@ -50,6 +52,13 @@ class TurnLog:
     events: list[MechanicEvent] = field(default_factory=list)
     on_event: Callable[[MechanicEvent], None] | None = None
 
+    def landed(self, facts: tuple[Fact, ...], events: tuple[MechanicEvent, ...]) -> None:
+        self.facts.extend(facts)
+        self.events.extend(events)
+        if self.on_event is not None:
+            for event in events:
+                self.on_event(event)
+
 
 @dataclass(frozen=True, slots=True)
 class PlanContext:
@@ -60,6 +69,9 @@ class PlanContext:
     state: Game
     rng: Random
     log: TurnLog
+    # The run began with a re-suspended decision: it develops what the answer caused, no more.
+    suspended_at_start: bool = False
+    answered: PendingDecision | None = None
 
 
 class CharacterCreation(ABC):
@@ -102,7 +114,10 @@ class Engine(ABC):
     ) -> Mutable: ...
 
     def restored(self, saved: SavedGame) -> Game:
-        return saved.game(self.mechanics_type.model_validate(saved.mechanics))
+        state = saved.game(self.mechanics_type.model_validate(saved.mechanics))
+        if state.pending is not None:
+            self.check_pending(state.pending)
+        return state
 
     @abstractmethod
     def validate(self, state: Game) -> None:
@@ -110,6 +125,17 @@ class Engine(ABC):
 
     def seed(self, draft: Game, entity: Entity, rng: Random) -> None:  # noqa: B027
         """Whatever this engine must give an entity created during play; a hook, not abstract."""
+
+    def resume(
+        self, draft: Game, pending: PendingDecision, option_id: OptionId, rng: Random
+    ) -> tuple[Fact, ...]:
+        """Applies a closed answer through the tools' own resolvers; may set `pending` again."""
+        del draft, option_id, rng
+        raise ValueError(f"the {self.id!r} engine resumes no {pending.kind!r} decision")
+
+    def check_pending(self, pending: PendingDecision) -> None:
+        """Refuses a decision whose kind this engine does not play or whose payload is invalid."""
+        raise ValueError(f"the {self.id!r} engine cannot play a {pending.kind!r} decision")
 
     def renderer(self, state: Game) -> EntityRenderer:
         return lambda entity: self.describe(state, entity)
@@ -121,11 +147,14 @@ class Engine(ABC):
     def sheet_view(self, state: Game) -> tuple[tuple[str, str], ...]:
         """Ordered (label, value) pairs summarising the player's own sheet for the player."""
 
-    def player_events(self, tool_name: str, facts: tuple[Fact, ...]) -> tuple[MechanicEvent, ...]:
+    def player_events(self, source: str, facts: tuple[Fact, ...]) -> tuple[MechanicEvent, ...]:
         """A chip event per fact carrying both a chip and narrator text: the narrator gate stays
-        centralized so an unrevealed entity's chip can never show, whatever a resolver sets."""
+        centralized so an unrevealed entity's chip can never show, whatever a resolver sets.
+
+        The `source` is the tool that landed the facts, or the kind of decision a resume answered.
+        """
         return tuple(
-            MechanicEvent(tool=tool_name, title=fact.chip.title, icon=fact.chip.icon)
+            MechanicEvent(tool=source, title=fact.chip.title, icon=fact.chip.icon)
             for fact in facts
             if fact.chip is not None and fact.narrator is not None
         )
@@ -300,6 +329,7 @@ def complete_chapter(draft: Game, ending: str) -> list[Fact]:
 
 
 NOTHING_CHANGED = "- (nothing changed)"
+RULES_WAIT = "the rules now wait on the player's decision"
 
 # The rng is a parameter so a trial run against a throwaway copy cannot consume the turn's dice.
 type Play = Callable[[Game, Random], tuple[Fact, ...]]
@@ -307,7 +337,12 @@ type Play = Callable[[Game, Random], tuple[Fact, ...]]
 
 def apply_to_draft(engine: Engine, draft: Game, play: Play, rng: Random) -> tuple[Fact, ...]:
     """Every mutation runs this sequence, so seeding cannot be forgotten by a caller."""
+    before = draft.pending
     landed = play(draft, rng)
+    if before is not None and draft.pending is not before:
+        raise ValueError("the rules already wait on a decision; they take one at a time")
+    if draft.pending is not None:
+        engine.check_pending(draft.pending)
     _seed_created(engine, draft, landed, rng)
     engine.validate(draft)
     return landed
@@ -315,7 +350,10 @@ def apply_to_draft(engine: Engine, draft: Game, play: Play, rng: Random) -> tupl
 
 def transact(engine: Engine, draft: Game, play: Play, rng: Random) -> tuple[Game, tuple[Fact, ...]]:
     """A draft mutated and committed whole, for a change that stands on its own outside a turn."""
+    before = draft.pending
     landed = apply_to_draft(engine, draft, play, rng)
+    if draft.pending is not before:
+        raise ValueError("a change outside a turn cannot open a decision for the player")
     return draft.committed(), landed
 
 
@@ -327,15 +365,14 @@ def act(ctx: RunContext[PlanContext], play: Play) -> str:
     ):
         raise ModelRetry(refused)
     already_pending = len(deps.state.world.pending_notes)
+    decided_before = deps.state.pending
     landed = apply_to_draft(deps.engine, deps.state, play, deps.rng)
-    deps.log.facts.extend(landed)
-    for event in deps.engine.player_events(ctx.tool_name or "", landed):
-        deps.log.events.append(event)
-        if deps.log.on_event is not None:
-            deps.log.on_event(event)
+    deps.log.landed(landed, deps.engine.player_events(ctx.tool_name or "", landed))
     lines = [f"- {fact.trace}" for fact in landed]
     lines.extend(f"- {note}" for note in deps.state.world.pending_notes[already_pending:])
     lines.extend(_reached(deps.state, landed))
+    if decided_before is None and deps.state.pending is not None:
+        lines.append(f"- {RULES_WAIT}")
     return "\n".join(lines) or NOTHING_CHANGED
 
 
@@ -348,13 +385,26 @@ def sequential_toolset(
     )
 
 
-def with_enum(tool: ToolDefinition, fields: Sequence[str], values: Sequence[str]) -> ToolDefinition:
+def with_enum(
+    tool: ToolDefinition, fields: Sequence[str], values: Sequence[str], inside: str | None = None
+) -> ToolDefinition:
+    """`inside` names the `$defs` entry the fields sit in: a tool taking one model flattens its
+    schema, a tool taking more than one argument nests it."""
+    schema = tool.parameters_json_schema
+    if inside is None:
+        return dataclasses.replace(tool, parameters_json_schema=_enumerated(schema, fields, values))
+    defs = {**schema["$defs"], inside: _enumerated(schema["$defs"][inside], fields, values)}
+    return dataclasses.replace(tool, parameters_json_schema={**schema, "$defs": defs})
+
+
+def _enumerated(
+    schema: ObjectJsonSchema, fields: Sequence[str], values: Sequence[str]
+) -> ObjectJsonSchema:
     # Copied, never mutated: a prepare function is handed the same definition on every step.
-    properties: dict[str, ObjectJsonSchema] = dict(tool.parameters_json_schema["properties"])
+    properties: dict[str, ObjectJsonSchema] = dict(schema["properties"])
     for name in fields:
         properties[name] = {**properties[name], "enum": list(values)}
-    schema = {**tool.parameters_json_schema, "properties": properties}
-    return dataclasses.replace(tool, parameters_json_schema=schema)
+    return {**schema, "properties": properties}
 
 
 def _seed_created(engine: Engine, draft: Game, facts: Sequence[Fact], rng: Random) -> None:

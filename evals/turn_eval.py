@@ -1,7 +1,7 @@
 import argparse
 import asyncio
-from collections.abc import Callable, Sequence
-from dataclasses import dataclass
+from collections.abc import Callable, Mapping, Sequence
+from dataclasses import dataclass, field
 from pathlib import Path
 from random import Random
 from statistics import mean
@@ -11,8 +11,8 @@ from aidm.app.launch import begin_game, build_engine
 from aidm.config import Settings, load_settings
 from aidm.content.io import load_character, load_scenario
 from aidm.engines.core import Engine
-from aidm.state.model import EngineId, EntityId, Frozen, Game
-from aidm.turn.run import TurnResult, build_turn_agents, run_turn
+from aidm.state.model import Answer, EngineId, EntityId, Frozen, Game, Turn
+from aidm.turn.run import TurnResult, build_turn_agents, run_segment
 
 ROOT = Path(__file__).resolve().parents[1]
 RESULTS = ROOT / "evals" / "results"
@@ -21,6 +21,14 @@ CHARACTER_ID = "kael"
 ENGINES = (EngineId("loner3e"), EngineId("twentyfourxx"))
 # Both engines' outcomes for an attempt that got what it reached for.
 WON = ("yes-and", "yes", "yes-but", "success")
+# How many segments one scripted interaction may take before it is scored as a runaway. The
+# longest faithful chain is stake -> proceed (rolls, may hit) -> defence answered: three.
+SEGMENT_CAP = 4
+# Every pending kind either engine can mint with options on it, answered the way that keeps the
+# scripted action going: a hand-back nobody answers would end the interaction and fail the
+# expectations for the pipeline's shape rather than for the Director's judgment. Loner's
+# `conflict` carries no options, so no answer can script it.
+ANSWERS: Mapping[str, str] = {"stake": "proceed", "defence": "take-it"}
 
 
 @dataclass(frozen=True, slots=True)
@@ -36,6 +44,8 @@ class Case:
     prompt: str
     expectations: tuple[Expectation, ...]
     setup: Callable[[Game], Game] = lambda state: state
+    # Which option answers each pending kind this case's fixture can suspend on.
+    answers: Mapping[str, str] = field(default_factory=lambda: ANSWERS)
 
 
 class Run(Frozen):
@@ -120,11 +130,33 @@ def gained_a_trait(result: TurnResult, before: frozenset[str]) -> bool:
     return bool({trait.id for trait in result.state.player.traits} - before)
 
 
-def won_ways_are_open(result: TurnResult) -> bool:
-    """A roll the player won has to open the door they forced; a roll they lost may leave the
-    world exactly as it was — "the door holds" is a legitimate turn."""
+def luck_moved(result: TurnResult) -> bool:
+    return any(
+        fact.kind == "counter_changed" and fact.data.get("counter") == "luck"
+        for fact in result.turn.facts
+    )
+
+
+def conflict_handed_back(result: TurnResult) -> bool:
+    pending = result.state.pending
+    return pending is not None and pending.kind == "conflict"
+
+
+def staked_before_rolling(result: TurnResult) -> bool:
+    """The first segment ended on the stake's hand-back, with no roll taken in it."""
+    history = result.state.history
+    return (
+        bool(history)
+        and bool(history[0].decision)
+        and not any(event.tool == "roll_attempt" for event in history[0].events)
+    )
+
+
+def won_climbs_arrive(result: TurnResult) -> bool:
+    """A climb the player won has to land them up there; a lost one may leave them below —
+    "the ladder gives and drops them back" is a legitimate turn."""
     won = any(fact.data.get("outcome") in WON for fact in result.turn.facts)
-    return not won or has_fact(result, "exit_unlocked")
+    return not won or inside(result, "player", "bell_tower")
 
 
 def cases_for(engine_id: EngineId, settings: Settings) -> tuple[Case, ...]:
@@ -134,7 +166,11 @@ def cases_for(engine_id: EngineId, settings: Settings) -> tuple[Case, ...]:
     def in_cloister(far: str) -> Callable[[Game], Game]:
         return lambda state: staged(state, "cloister", [("cloister", far)])
 
-    return (
+    # Only 24XX declares the stake tool, so only there is skipping it a miss.
+    stake_checks = (
+        (Expectation("staked", staked_before_rolling),) if engine_id == "twentyfourxx" else ()
+    )
+    cases = (
         Case(
             id=f"{engine_id}/take-the-chart",
             engine_id=engine_id,
@@ -197,43 +233,85 @@ def cases_for(engine_id: EngineId, settings: Settings) -> tuple[Case, ...]:
             setup=in_cloister("bell_tower"),
         ),
         Case(
-            id=f"{engine_id}/risky-lock",
+            id=f"{engine_id}/risky-climb",
             engine_id=engine_id,
+            # Canon carries the danger (the tower is "a cramped climb of rotten ladders"), the
+            # player's words carry the recklessness but never accept a named risk — naming it is
+            # the GM's job, so 24XX owes a stake here. The sealed vault made a poor target: its
+            # canon says forcing it is impossible, so refusing the roll was the faithful ruling.
             prompt=(
-                "I set my shoulder to the locked vault door and try to force it open with my "
-                "bare hands, knowing it may go badly for me."
+                "I go up the bell tower's ladders at a run, two rungs at a time — I have to "
+                "reach the top before the light goes."
             ),
             expectations=(
+                *stake_checks,
                 Expectation("dice-rolled", lambda r: has_fact(r, "dice_rolled")),
-                Expectation("win-written", won_ways_are_open),
+                Expectation("win-upstairs", won_climbs_arrive),
             ),
-            setup=in_cloister("vault"),
+            setup=in_cloister("bell_tower"),
         ),
     )
+    if engine_id == "loner3e":
+        cases += (
+            Case(
+                id=f"{engine_id}/fight-the-rat",
+                engine_id=engine_id,
+                prompt=(
+                    "The bloated rat springs at my throat and I fight it in earnest — it has "
+                    "to die before it slips back into the walls."
+                ),
+                expectations=(
+                    # Without this, a conflict opened against Brother Tomas — also in the
+                    # cloister — would score both other checks; either side of the exchange
+                    # reveals the rat, so it holds whichever one the Director puts on the acting
+                    # side.
+                    Expectation("rat-engaged", lambda r: known(r, "cloister_rat")),
+                    Expectation("luck-moved", luck_moved),
+                    Expectation("hands-back", conflict_handed_back),
+                ),
+                setup=lambda state: staged(state, "cloister", []),
+            ),
+        )
+    return cases
 
 
 async def play(case: Case, settings: Settings, seed: int) -> Run:
     engine, state = begin(case.engine_id, settings)
-    opening = case.setup(state)
     stages = build_turn_agents(engine, settings)
+    rng = Random(seed)
     started = perf_counter()
     try:
-        result = await run_turn(
-            opening,
-            case.prompt,
-            engine=engine,
-            stages=stages,
-            settings=settings,
-            rng=Random(seed),
-        )
-        steps = result.turn.steps
+        segments: list[TurnResult] = []
+        played, player_input = case.setup(state), case.prompt
+        for _ in range(SEGMENT_CAP):
+            result = await run_segment(
+                played,
+                player_input,
+                engine=engine,
+                stages=stages,
+                settings=settings,
+                rng=rng,
+            )
+            segments.append(result)
+            played = result.state
+            if played.pending is None:
+                break
+            chosen = case.answers.get(played.pending.kind)
+            if chosen is None:
+                # An unscripted hand-back ends the interaction; the expectations judge it.
+                break
+            player_input = Answer(option_id=chosen)
+        else:
+            raise ValueError(f"the interaction was still going after {SEGMENT_CAP} segments")
+        merged = _merged(case.prompt, segments)
+        steps = merged.turn.steps
         return Run(
-            passed={check.name: check.holds(result) for check in case.expectations},
-            facts=[fact.kind for fact in result.turn.facts],
+            passed={check.name: check.holds(merged) for check in case.expectations},
+            facts=[fact.kind for fact in merged.turn.facts],
             director_calls=sum(1 for step in steps if step.name == "director"),
             total_steps=len(steps),
             seconds=perf_counter() - started,
-            narration_chars=len(result.turn.narration),
+            narration_chars=len(merged.turn.narration),
         )
     except Exception as error:  # one failed turn is data, not the end of the benchmark
         return Run(
@@ -241,6 +319,21 @@ async def play(case: Case, settings: Settings, seed: int) -> Run:
             passed={check.name: False for check in case.expectations},
             seconds=perf_counter() - started,
         )
+
+
+def _merged(prompt: str, segments: Sequence[TurnResult]) -> TurnResult:
+    """The interaction as one result: every segment's prose, facts and steps, the last state."""
+    return TurnResult(
+        state=segments[-1].state,
+        turn=Turn(
+            prompt=prompt,
+            facts=tuple(fact for segment in segments for fact in segment.turn.facts),
+            narration="\n".join(
+                segment.turn.narration for segment in segments if segment.turn.narration
+            ),
+            steps=tuple(step for segment in segments for step in segment.turn.steps),
+        ),
+    )
 
 
 async def play_all(

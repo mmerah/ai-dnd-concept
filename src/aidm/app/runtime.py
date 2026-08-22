@@ -14,6 +14,7 @@ from aidm.content.model import Character, Scenario
 from aidm.engines.core import Advancement, Engine, Offer, ProposalBase, transact
 from aidm.state.model import (
     PLAYER_ID,
+    Answer,
     Applied,
     EngineId,
     EntityId,
@@ -34,7 +35,7 @@ from aidm.turn.run import (
     TurnAgents,
     advisor_agent,
     build_turn_agents,
-    run_turn,
+    run_segment,
 )
 
 from .launch import LaunchTarget, begin_game, build_engine
@@ -175,14 +176,14 @@ class GameSession:
 
     async def submit(
         self,
-        prompt: str,
+        player_input: str | Answer,
         on_step: Callable[[str], None] | None = None,
         on_event: Callable[[MechanicEvent], None] | None = None,
     ) -> Turn:
-        """Commit only after the full turn succeeds."""
-        result = await run_turn(
+        """Commit only after the full segment succeeds."""
+        result = await run_segment(
             self.state,
-            prompt,
+            player_input,
             engine=self.engine,
             stages=self.stages,
             settings=self.settings,
@@ -225,10 +226,12 @@ class GameSession:
 
     def offers(self) -> tuple[Offer, ...]:
         advancement = self.engine.advancement
-        return () if advancement is None else advancement.offers(self.state)
+        # An advance mid-suspension could invalidate the frozen payload the decision holds.
+        if advancement is None or self.state.pending is not None:
+            return ()
+        return advancement.offers(self.state)
 
-    def pending(self) -> bool:
-        """Whether anything is on offer at all, for the notification a finished turn raises."""
+    def advancement_offered(self) -> bool:
         return bool(self.offers())
 
     async def propose(self, offer: Offer, intent: str) -> ProposalBase:

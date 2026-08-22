@@ -312,7 +312,8 @@
           "text": "The iron handle does not turn."
         }
       ],
-      "events": []
+      "events": [],
+      "decision": ""
     },
     {
       "prompt": "I look for another way in.",
@@ -322,7 +323,8 @@
           "text": "A flagstone by the wall sits proud of its neighbours."
         }
       ],
-      "events": []
+      "events": [],
+      "decision": ""
     },
     {
       "prompt": "I lever up the loose flagstone and listen at the vault door.",
@@ -392,8 +394,10 @@
           "effects": [],
           "icon": "add_circle"
         }
-      ]
+      ],
+      "decision": ""
     }
   ],
-  "turn": 1
+  "turn": 1,
+  "pending": null
 }

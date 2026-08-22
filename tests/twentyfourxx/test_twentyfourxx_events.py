@@ -28,7 +28,7 @@ def test_the_pool_faces_rolls_and_kept_are_preserved_on_the_card() -> None:
     assert isinstance(faces, list)
     assert isinstance(values, list)
 
-    (event,) = attempt_events(facts)
+    (event,) = attempt_events("roll_attempt", facts)
     (die,) = event.dice
     assert die.faces == tuple(faces)
     assert die.rolled == tuple(values)
@@ -40,7 +40,7 @@ def test_the_skill_badge_names_the_skill_used() -> None:
     _, state = game(TWENTYFOURXX)
     facts = resolve_attempt(state.draft(), _climb(), Random(0))
 
-    (event,) = attempt_events(facts)
+    (event,) = attempt_events("roll_attempt", facts)
     assert event.badges == (EventBadge(label="Skill", value="Climbing"),)
 
 
@@ -48,7 +48,7 @@ def test_a_circumstance_help_adds_a_bare_d6() -> None:
     _, state = game(TWENTYFOURXX)
     facts = resolve_attempt(state.draft(), _climb(helped="a steady rope"), Random(0))
 
-    (event,) = attempt_events(facts)
+    (event,) = attempt_events("roll_attempt", facts)
     assert EventBadge(label="Help", value="d6") in event.badges
 
 
@@ -57,7 +57,7 @@ def test_the_outcome_ladder_is_mapped_onto_the_card() -> None:
     facts = resolve_attempt(state.draft(), _climb(), Random(0))
     (resolved,) = [fact for fact in facts if fact.kind == "attempt_resolved"]
 
-    (event,) = attempt_events(facts)
+    (event,) = attempt_events("roll_attempt", facts)
     assert event.outcome == resolved.data["outcome"]
 
 
@@ -88,7 +88,7 @@ def test_a_luck_test_attached_to_an_attempt_adds_a_luck_dice_group() -> None:
     _, state = game(TWENTYFOURXX)
     facts = resolve_attempt(state.draft(), _climb(luck_test="a rope frays"), Random(0))
 
-    (event,) = attempt_events(facts)
+    (event,) = attempt_events("roll_attempt", facts)
     assert [die.label for die in event.dice] == ["Pool", "Luck"]
     assert len(event.effects) == 1
     assert event.effects[0] == "bad luck — a rope frays: signs of it"
@@ -99,7 +99,7 @@ def test_a_clear_luck_test_attached_to_an_attempt_still_adds_a_luck_dice_group()
     _, state = game(TWENTYFOURXX)
     facts = resolve_attempt(state.draft(), _climb(luck_test="a rope frays"), Random(1))
 
-    (event,) = attempt_events(facts)
+    (event,) = attempt_events("roll_attempt", facts)
     assert [die.label for die in event.dice] == ["Pool", "Luck"]
     assert event.effects == ()
 
@@ -108,7 +108,7 @@ def test_a_hindered_attempt_badges_hindered() -> None:
     _, state = game(TWENTYFOURXX)
     facts = resolve_attempt(state.draft(), _climb(hindered="loose scree"), Random(0))
 
-    (event,) = attempt_events(facts)
+    (event,) = attempt_events("roll_attempt", facts)
     assert EventBadge(label="Hindered", value="") in event.badges
 
 

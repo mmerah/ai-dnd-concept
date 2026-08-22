@@ -299,5 +299,6 @@
     }
   },
   "history": [],
-  "turn": 0
+  "turn": 0,
+  "pending": null
 }

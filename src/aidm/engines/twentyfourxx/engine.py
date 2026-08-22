@@ -35,10 +35,11 @@ from aidm.engines.core import (
     spend,
     with_enum,
 )
-from aidm.state.actions import require_actor_here, roll_pool
+from aidm.state.actions import add_trait, require_actor_here, roll_pool
 from aidm.state.model import (
     PLAYER_ID,
     AnyStep,
+    Chip,
     ContentSlug,
     Counter,
     CreationOption,
@@ -51,6 +52,9 @@ from aidm.state.model import (
     Frozen,
     Game,
     MechanicEvent,
+    Option,
+    OptionId,
+    PendingDecision,
     Picks,
     Slug,
     TextStep,
@@ -240,6 +244,21 @@ class LuckTest(Frozen):
 TROUBLE = 2  # 1-2 on the bad-luck die
 SIGNS = 4  # 3-4 on the bad-luck die
 
+HURT: tuple[Slug, ...] = ("disaster", "setback")
+BROKEN: Slug = "broken"
+TAKE_THE_HIT: OptionId = "take-it"
+DEFENCE_PROMPT = (
+    "A hit lands: say how one of your items breaks to turn it into a brief hindrance, or take it."
+)
+BREAK_TEXT = "Broken turning a hit into a brief hindrance; useless until repaired."
+
+
+class Defence(Frozen):
+    """The hit a defence decision is answered against, frozen while the player chooses."""
+
+    outcome: Slug
+    goal: str
+
 
 def outcome_for(kept: int) -> Slug:
     if kept <= 2:
@@ -281,13 +300,27 @@ def _skills_in_play(state: Game) -> set[str]:
 def _narrow_to_skills_in_play(
     ctx: RunContext[PlanContext], tools: list[ToolDefinition]
 ) -> list[ToolDefinition]:
-    skills = _skills_in_play(ctx.deps.state)
-    return [
-        with_enum(tool, ("skill", "helper_skill"), ["", *sorted(skills)])
-        if tool.name == "roll_attempt"
-        else tool
-        for tool in tools
-    ]
+    skills = ["", *sorted(_skills_in_play(ctx.deps.state))]
+    return [_with_skills(tool, skills) for tool in tools]
+
+
+def _with_skills(tool: ToolDefinition, skills: list[str]) -> ToolDefinition:
+    fields = ("skill", "helper_skill")
+    if tool.name == "roll_attempt":
+        return with_enum(tool, fields, skills)
+    if tool.name == "stake_attempt":
+        return with_enum(tool, fields, skills, inside="Attempt")
+    return tool
+
+
+def _defence_to_settle(ctx: RunContext[PlanContext]) -> PendingDecision | None:
+    """One hit, one settlement: the decision an open answer consumed, until this run settles it."""
+    answered = ctx.deps.answered
+    if answered is None or answered.kind != "defence":
+        return None
+    if any(fact.kind in ("defence_turned", "defence_taken") for fact in ctx.deps.log.facts):
+        return None
+    return answered
 
 
 def apply_change_credits(draft: Game, actor_id: EntityId, amount: int) -> list[Fact]:
@@ -306,12 +339,79 @@ def apply_complete_chapter(draft: Game) -> list[Fact]:
     return complete_chapter(draft, "the job is done")
 
 
-def resolve_attempt(draft: Game, action: Attempt, rng: Random) -> tuple[Fact, ...]:
+def _require_playable(
+    draft: Game, action: Attempt
+) -> tuple[Entity, Sheet, Sheet | None, list[Fact]]:
+    """Everything an attempt must satisfy before any die is rolled, with the reveals it earns."""
     actor = require_actor_here(draft, action.actor_id)
     facts = draft.reveal(actor)
     sheet = require_sheet(Mechanics.of(draft).sheets, actor)
     helper_sheet = _helper_sheet(draft, actor, action, facts)
     _require_skill(actor, sheet, action.skill, "skill")
+    return actor, sheet, helper_sheet, facts
+
+
+def resolve_stake(draft: Game, action: Attempt, risk: str) -> tuple[Fact, ...]:
+    if action.actor_id != PLAYER_ID:
+        raise ValueError(
+            "the advise step is the player's own: stake only the player's attempt, and roll an "
+            "NPC's directly"
+        )
+    # Validated against a copy: freezing an attempt reveals nothing and rolls nothing yet.
+    _ = _require_playable(draft.draft(), action)
+    draft.pending = PendingDecision(
+        kind="stake",
+        prompt=risk,
+        options=(Option(id="proceed", label="Proceed"),),
+        payload=action.model_dump(mode="json"),
+    )
+    return ()
+
+
+def resolve_defence(draft: Game, goal: str, item_id: EntityId | None) -> tuple[Fact, ...]:
+    player = draft.player
+    if item_id is None:
+        return (
+            entity_fact(
+                player,
+                "defence_taken",
+                f"{goal}: the hit lands in full",
+                {"goal": goal},
+                chip=Chip(title="Took the hit", icon="heart_broken"),
+            ),
+        )
+    item = draft.world.require_kind(item_id, "item")
+    if item.parent_id != PLAYER_ID:
+        raise ValueError(f"the player does not carry {item.name}, so it cannot break for them")
+    if item.trait(BROKEN) is not None:
+        raise ValueError(f"{item.name} is already broken, so it turns nothing")
+    return (
+        *add_trait(draft, item_id, BROKEN, BREAK_TEXT),
+        entity_fact(
+            player,
+            "defence_turned",
+            f"{goal}: {item.name} breaks, turning the hit into a brief hindrance",
+            {"goal": goal, "item_id": item_id},
+        ),
+    )
+
+
+def _defence_decision(draft: Game, outcome: Slug, goal: str) -> PendingDecision:
+    unbroken = tuple(
+        Option(id=item.id, label=f"Break the {item.name}")
+        for item in draft.world.children(PLAYER_ID, "item")
+        if item.trait(BROKEN) is None
+    )
+    return PendingDecision(
+        kind="defence",
+        prompt=DEFENCE_PROMPT,
+        options=(*unbroken, Option(id=TAKE_THE_HIT, label="Take the hit")),
+        payload={"outcome": outcome, "goal": goal},
+    )
+
+
+def resolve_attempt(draft: Game, action: Attempt, rng: Random) -> tuple[Fact, ...]:
+    actor, sheet, helper_sheet, facts = _require_playable(draft, action)
 
     faces = pool_faces(sheet, action, helper_sheet)
     kept, rolled = roll_pool(
@@ -339,6 +439,9 @@ def resolve_attempt(draft: Game, action: Attempt, rng: Random) -> tuple[Fact, ..
 
     if action.luck_test:
         facts.extend(_bad_luck(draft, actor, action.luck_test, rng))
+    # `Attempt` names no target, and the printed defence is the player's own: only their roll hits.
+    if action.actor_id == PLAYER_ID and outcome in HURT:
+        draft.pending = _defence_decision(draft, outcome, action.goal)
     return tuple(facts)
 
 
@@ -387,7 +490,7 @@ def _bad_luck(draft: Game, actor: Entity, subject: str, rng: Random) -> list[Fac
     return [rolled, tested]
 
 
-def attempt_events(facts: tuple[Fact, ...]) -> tuple[MechanicEvent, ...]:
+def attempt_events(source: str, facts: tuple[Fact, ...]) -> tuple[MechanicEvent, ...]:
     resolved = next((fact for fact in facts if fact.kind == "attempt_resolved"), None)
     if resolved is None:
         raise ValueError("no 'attempt_resolved' fact anchors this call")
@@ -406,7 +509,7 @@ def attempt_events(facts: tuple[Fact, ...]) -> tuple[MechanicEvent, ...]:
     if (luck_roll := dice_by_role(facts, "luck")) is not None:
         dice.append(dice_event("Luck", luck_roll))
     event = MechanicEvent(
-        tool="roll_attempt",
+        tool=source,
         title="Attempt",
         badges=badges,
         dice=tuple(dice),
@@ -455,12 +558,39 @@ def _hindered_badge(resolved: Fact) -> EventBadge | None:
 
 def director_toolset() -> AbstractToolset[PlanContext]:
     def roll_attempt(ctx: RunContext[PlanContext], attempt: Attempt) -> str:
-        """Put one risky attempt to the highest die of a pool.
+        """Put one risky attempt to the highest die of a pool. The player's own attempt goes to
+        `stake_attempt` first; roll here directly only for an NPC's attempt, or when the player's
+        words already accepted the named risk.
 
         Args:
             attempt: The attempt to put to the dice.
         """
         return act(ctx, lambda draft, rng: resolve_attempt(draft, attempt, rng))
+
+    def stake_attempt(ctx: RunContext[PlanContext], attempt: Attempt, risk: str) -> str:
+        """Name the risk of one attempt out loud and hand the player the choice to proceed or
+        revise, before anything is rolled.
+
+        Args:
+            attempt: The attempt exactly as it would be rolled; it is frozen here, so what the
+                player proceeds with is what rolls.
+            risk: What a bad roll costs them, in one line, in your own words: the warning the
+                player reads before deciding.
+        """
+        return act(ctx, lambda draft, _rng: resolve_stake(draft, attempt, risk))
+
+    def settle_defence(ctx: RunContext[PlanContext], item_id: EntityId | None) -> str:
+        """Settle the hit the player's own words just answered for: their item breaks and turns
+        it into a brief hindrance, or the hit lands in full.
+
+        Args:
+            item_id: Exact id of the carried, unbroken item their words break, or null when they
+                take the hit instead.
+        """
+        answered = _defence_to_settle(ctx)
+        assert answered is not None  # the filter below offers this tool only while one is open
+        goal = Defence.model_validate(answered.payload).goal
+        return act(ctx, lambda draft, _rng: resolve_defence(draft, goal, item_id))
 
     def roll_luck_test(ctx: RunContext[PlanContext], test: LuckTest) -> str:
         """Put the SRD's standalone bad-luck test to the dice.
@@ -486,8 +616,21 @@ def director_toolset() -> AbstractToolset[PlanContext]:
         """Record that the job this crew has been running is done."""
         return act(ctx, lambda draft, _rng: tuple(apply_complete_chapter(draft)))
 
-    toolset = sequential_toolset([roll_attempt, roll_luck_test, change_credits, complete_chapter])
-    return toolset.prepared(_narrow_to_skills_in_play)
+    toolset = sequential_toolset(
+        [
+            roll_attempt,
+            stake_attempt,
+            settle_defence,
+            roll_luck_test,
+            change_credits,
+            complete_chapter,
+        ]
+    )
+    # A hit the player answered in words has to land or be turned, once; nothing else settles one.
+    offered = toolset.filtered(
+        lambda ctx, tool: tool.name != "settle_defence" or _defence_to_settle(ctx) is not None
+    )
+    return offered.prepared(_narrow_to_skills_in_play)
 
 
 GROWTH = (
@@ -716,6 +859,27 @@ class TwentyfourxxEngine(Engine):
         # A newcomer starts level with the party: jobs done before they joined are not owed.
         mechanics.sheets[entity.id] = Sheet(jobs=Counter(current=mechanics.completed.current))
 
+    def resume(
+        self, draft: Game, pending: PendingDecision, option_id: OptionId, rng: Random
+    ) -> tuple[Fact, ...]:
+        match pending.kind, option_id:
+            case ("stake", "proceed"):
+                return resolve_attempt(draft, Attempt.model_validate(pending.payload), rng)
+            case ("defence", _):
+                goal = Defence.model_validate(pending.payload).goal
+                item = None if option_id == TAKE_THE_HIT else EntityId(option_id)
+                return resolve_defence(draft, goal, item)
+            case _:
+                return super().resume(draft, pending, option_id, rng)
+
+    def check_pending(self, pending: PendingDecision) -> None:
+        if pending.kind == "stake":
+            _ = Attempt.model_validate(pending.payload)
+        elif pending.kind == "defence":
+            _ = Defence.model_validate(pending.payload)
+        else:
+            super().check_pending(pending)
+
     def describe(self, state: Game, entity: Entity) -> str:
         return describe_entity(Mechanics.of(state), entity)
 
@@ -731,9 +895,9 @@ class TwentyfourxxEngine(Engine):
             ("Credits", str(sheet.credits.current)),
         )
 
-    def player_events(self, tool_name: str, facts: tuple[Fact, ...]) -> tuple[MechanicEvent, ...]:
-        if tool_name == "roll_attempt":
-            return attempt_events(facts)
-        if tool_name == "roll_luck_test":
+    def player_events(self, source: str, facts: tuple[Fact, ...]) -> tuple[MechanicEvent, ...]:
+        if source in ("roll_attempt", "stake"):
+            return attempt_events(source, facts)
+        if source == "roll_luck_test":
             return luck_test_events(facts)
-        return super().player_events(tool_name, facts)
+        return super().player_events(source, facts)

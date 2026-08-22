@@ -1,0 +1,744 @@
+{
+  "label": "pipeline-accuracy-2",
+  "repeats": 20,
+  "seed": 1000,
+  "cases": [
+    {
+      "id": "loner3e/fight-the-rat",
+      "engine": "loner3e",
+      "prompt": "The bloated rat springs at my throat and I fight it in earnest — it has to die before it slips back into the walls.",
+      "expectations": [
+        "rat-engaged",
+        "luck-moved",
+        "hands-back"
+      ],
+      "runs": [
+        {
+          "error": null,
+          "passed": {
+            "rat-engaged": true,
+            "luck-moved": true,
+            "hands-back": true
+          },
+          "facts": [
+            "entity_discovered",
+            "dice_rolled",
+            "dice_rolled",
+            "question_answered",
+            "counter_changed"
+          ],
+          "director_calls": 1,
+          "total_steps": 2,
+          "seconds": 13.51252013499834,
+          "narration_chars": 624
+        },
+        {
+          "error": null,
+          "passed": {
+            "rat-engaged": true,
+            "luck-moved": true,
+            "hands-back": true
+          },
+          "facts": [
+            "entity_discovered",
+            "dice_rolled",
+            "dice_rolled",
+            "question_answered",
+            "counter_changed"
+          ],
+          "director_calls": 1,
+          "total_steps": 2,
+          "seconds": 22.648294401000385,
+          "narration_chars": 342
+        },
+        {
+          "error": null,
+          "passed": {
+            "rat-engaged": true,
+            "luck-moved": true,
+            "hands-back": true
+          },
+          "facts": [
+            "entity_discovered",
+            "dice_rolled",
+            "dice_rolled",
+            "question_answered",
+            "counter_changed"
+          ],
+          "director_calls": 1,
+          "total_steps": 2,
+          "seconds": 16.29366432200004,
+          "narration_chars": 725
+        },
+        {
+          "error": null,
+          "passed": {
+            "rat-engaged": true,
+            "luck-moved": true,
+            "hands-back": true
+          },
+          "facts": [
+            "entity_discovered",
+            "dice_rolled",
+            "dice_rolled",
+            "question_answered",
+            "counter_changed"
+          ],
+          "director_calls": 1,
+          "total_steps": 2,
+          "seconds": 19.73672321399863,
+          "narration_chars": 438
+        },
+        {
+          "error": null,
+          "passed": {
+            "rat-engaged": true,
+            "luck-moved": true,
+            "hands-back": true
+          },
+          "facts": [
+            "entity_discovered",
+            "dice_rolled",
+            "dice_rolled",
+            "question_answered",
+            "counter_changed"
+          ],
+          "director_calls": 1,
+          "total_steps": 2,
+          "seconds": 10.990921795999384,
+          "narration_chars": 847
+        },
+        {
+          "error": null,
+          "passed": {
+            "rat-engaged": true,
+            "luck-moved": true,
+            "hands-back": true
+          },
+          "facts": [
+            "entity_discovered",
+            "dice_rolled",
+            "dice_rolled",
+            "question_answered",
+            "counter_changed"
+          ],
+          "director_calls": 1,
+          "total_steps": 2,
+          "seconds": 16.475423332998616,
+          "narration_chars": 654
+        },
+        {
+          "error": null,
+          "passed": {
+            "rat-engaged": true,
+            "luck-moved": true,
+            "hands-back": true
+          },
+          "facts": [
+            "entity_discovered",
+            "dice_rolled",
+            "dice_rolled",
+            "question_answered",
+            "counter_changed"
+          ],
+          "director_calls": 1,
+          "total_steps": 2,
+          "seconds": 21.295024429999103,
+          "narration_chars": 725
+        },
+        {
+          "error": null,
+          "passed": {
+            "rat-engaged": true,
+            "luck-moved": true,
+            "hands-back": true
+          },
+          "facts": [
+            "entity_discovered",
+            "dice_rolled",
+            "dice_rolled",
+            "question_answered",
+            "counter_changed"
+          ],
+          "director_calls": 1,
+          "total_steps": 2,
+          "seconds": 7.553456439000001,
+          "narration_chars": 558
+        },
+        {
+          "error": null,
+          "passed": {
+            "rat-engaged": true,
+            "luck-moved": true,
+            "hands-back": true
+          },
+          "facts": [
+            "entity_discovered",
+            "dice_rolled",
+            "dice_rolled",
+            "question_answered",
+            "counter_changed"
+          ],
+          "director_calls": 1,
+          "total_steps": 2,
+          "seconds": 29.054943840001215,
+          "narration_chars": 376
+        },
+        {
+          "error": null,
+          "passed": {
+            "rat-engaged": true,
+            "luck-moved": true,
+            "hands-back": true
+          },
+          "facts": [
+            "entity_discovered",
+            "dice_rolled",
+            "dice_rolled",
+            "question_answered",
+            "counter_changed"
+          ],
+          "director_calls": 1,
+          "total_steps": 2,
+          "seconds": 14.955012555999929,
+          "narration_chars": 680
+        },
+        {
+          "error": null,
+          "passed": {
+            "rat-engaged": true,
+            "luck-moved": true,
+            "hands-back": true
+          },
+          "facts": [
+            "entity_discovered",
+            "dice_rolled",
+            "dice_rolled",
+            "question_answered",
+            "counter_changed"
+          ],
+          "director_calls": 1,
+          "total_steps": 2,
+          "seconds": 13.202050014000633,
+          "narration_chars": 326
+        },
+        {
+          "error": null,
+          "passed": {
+            "rat-engaged": true,
+            "luck-moved": true,
+            "hands-back": true
+          },
+          "facts": [
+            "entity_discovered",
+            "dice_rolled",
+            "dice_rolled",
+            "question_answered",
+            "counter_changed"
+          ],
+          "director_calls": 1,
+          "total_steps": 2,
+          "seconds": 15.88316004599983,
+          "narration_chars": 516
+        },
+        {
+          "error": null,
+          "passed": {
+            "rat-engaged": true,
+            "luck-moved": true,
+            "hands-back": true
+          },
+          "facts": [
+            "entity_discovered",
+            "dice_rolled",
+            "dice_rolled",
+            "question_answered",
+            "counter_changed"
+          ],
+          "director_calls": 1,
+          "total_steps": 2,
+          "seconds": 15.067783402000714,
+          "narration_chars": 548
+        },
+        {
+          "error": null,
+          "passed": {
+            "rat-engaged": true,
+            "luck-moved": true,
+            "hands-back": true
+          },
+          "facts": [
+            "entity_discovered",
+            "dice_rolled",
+            "dice_rolled",
+            "question_answered",
+            "counter_changed"
+          ],
+          "director_calls": 1,
+          "total_steps": 2,
+          "seconds": 13.829382973000975,
+          "narration_chars": 760
+        },
+        {
+          "error": null,
+          "passed": {
+            "rat-engaged": true,
+            "luck-moved": true,
+            "hands-back": true
+          },
+          "facts": [
+            "entity_discovered",
+            "dice_rolled",
+            "dice_rolled",
+            "question_answered",
+            "counter_changed"
+          ],
+          "director_calls": 1,
+          "total_steps": 2,
+          "seconds": 12.19582236899987,
+          "narration_chars": 407
+        },
+        {
+          "error": null,
+          "passed": {
+            "rat-engaged": true,
+            "luck-moved": true,
+            "hands-back": true
+          },
+          "facts": [
+            "entity_discovered",
+            "dice_rolled",
+            "dice_rolled",
+            "question_answered",
+            "counter_changed"
+          ],
+          "director_calls": 1,
+          "total_steps": 2,
+          "seconds": 7.564006394999524,
+          "narration_chars": 459
+        },
+        {
+          "error": null,
+          "passed": {
+            "rat-engaged": true,
+            "luck-moved": true,
+            "hands-back": true
+          },
+          "facts": [
+            "entity_discovered",
+            "dice_rolled",
+            "dice_rolled",
+            "question_answered",
+            "counter_changed"
+          ],
+          "director_calls": 1,
+          "total_steps": 2,
+          "seconds": 9.425757850000082,
+          "narration_chars": 593
+        },
+        {
+          "error": null,
+          "passed": {
+            "rat-engaged": true,
+            "luck-moved": true,
+            "hands-back": true
+          },
+          "facts": [
+            "entity_discovered",
+            "dice_rolled",
+            "dice_rolled",
+            "question_answered",
+            "counter_changed"
+          ],
+          "director_calls": 1,
+          "total_steps": 2,
+          "seconds": 11.098488853000163,
+          "narration_chars": 687
+        },
+        {
+          "error": null,
+          "passed": {
+            "rat-engaged": true,
+            "luck-moved": true,
+            "hands-back": true
+          },
+          "facts": [
+            "entity_discovered",
+            "dice_rolled",
+            "dice_rolled",
+            "question_answered",
+            "counter_changed"
+          ],
+          "director_calls": 1,
+          "total_steps": 2,
+          "seconds": 16.059298455000317,
+          "narration_chars": 554
+        },
+        {
+          "error": null,
+          "passed": {
+            "rat-engaged": true,
+            "luck-moved": true,
+            "hands-back": true
+          },
+          "facts": [
+            "entity_discovered",
+            "dice_rolled",
+            "dice_rolled",
+            "question_answered",
+            "counter_changed"
+          ],
+          "director_calls": 1,
+          "total_steps": 2,
+          "seconds": 6.153308290000496,
+          "narration_chars": 478
+        }
+      ]
+    },
+    {
+      "id": "twentyfourxx/risky-lock",
+      "engine": "twentyfourxx",
+      "prompt": "I set my shoulder to the locked vault door and heave at it with everything I have, trying to force it open.",
+      "expectations": [
+        "staked",
+        "dice-rolled",
+        "win-written"
+      ],
+      "runs": [
+        {
+          "error": null,
+          "passed": {
+            "staked": true,
+            "dice-rolled": true,
+            "win-written": true
+          },
+          "facts": [
+            "dice_rolled",
+            "attempt_resolved",
+            "defence_taken",
+            "trait_added",
+            "thread_advanced"
+          ],
+          "director_calls": 3,
+          "total_steps": 5,
+          "seconds": 43.79736670600141,
+          "narration_chars": 1008
+        },
+        {
+          "error": null,
+          "passed": {
+            "staked": true,
+            "dice-rolled": true,
+            "win-written": true
+          },
+          "facts": [
+            "dice_rolled",
+            "attempt_resolved",
+            "trait_added",
+            "defence_taken"
+          ],
+          "director_calls": 3,
+          "total_steps": 5,
+          "seconds": 28.31056716400053,
+          "narration_chars": 1412
+        },
+        {
+          "error": null,
+          "passed": {
+            "staked": false,
+            "dice-rolled": false,
+            "win-written": true
+          },
+          "facts": [],
+          "director_calls": 1,
+          "total_steps": 2,
+          "seconds": 8.64774792299977,
+          "narration_chars": 476
+        },
+        {
+          "error": null,
+          "passed": {
+            "staked": true,
+            "dice-rolled": true,
+            "win-written": true
+          },
+          "facts": [
+            "dice_rolled",
+            "attempt_resolved",
+            "exit_unlocked",
+            "thread_advanced"
+          ],
+          "director_calls": 2,
+          "total_steps": 3,
+          "seconds": 14.655128272999718,
+          "narration_chars": 562
+        },
+        {
+          "error": null,
+          "passed": {
+            "staked": true,
+            "dice-rolled": true,
+            "win-written": true
+          },
+          "facts": [
+            "dice_rolled",
+            "attempt_resolved",
+            "trait_added",
+            "defence_taken"
+          ],
+          "director_calls": 3,
+          "total_steps": 5,
+          "seconds": 21.486060810999334,
+          "narration_chars": 939
+        },
+        {
+          "error": null,
+          "passed": {
+            "staked": false,
+            "dice-rolled": false,
+            "win-written": true
+          },
+          "facts": [],
+          "director_calls": 1,
+          "total_steps": 2,
+          "seconds": 16.61436199000127,
+          "narration_chars": 430
+        },
+        {
+          "error": null,
+          "passed": {
+            "staked": true,
+            "dice-rolled": true,
+            "win-written": true
+          },
+          "facts": [
+            "dice_rolled",
+            "attempt_resolved",
+            "trait_added",
+            "defence_taken"
+          ],
+          "director_calls": 3,
+          "total_steps": 5,
+          "seconds": 20.02934399699916,
+          "narration_chars": 897
+        },
+        {
+          "error": null,
+          "passed": {
+            "staked": false,
+            "dice-rolled": false,
+            "win-written": true
+          },
+          "facts": [],
+          "director_calls": 1,
+          "total_steps": 2,
+          "seconds": 12.635519474999455,
+          "narration_chars": 493
+        },
+        {
+          "error": null,
+          "passed": {
+            "staked": true,
+            "dice-rolled": true,
+            "win-written": false
+          },
+          "facts": [
+            "dice_rolled",
+            "attempt_resolved",
+            "thread_advanced"
+          ],
+          "director_calls": 2,
+          "total_steps": 3,
+          "seconds": 25.701034337000237,
+          "narration_chars": 360
+        },
+        {
+          "error": null,
+          "passed": {
+            "staked": true,
+            "dice-rolled": true,
+            "win-written": true
+          },
+          "facts": [
+            "dice_rolled",
+            "attempt_resolved",
+            "defence_taken",
+            "trait_added",
+            "trait_added",
+            "thread_advanced"
+          ],
+          "director_calls": 3,
+          "total_steps": 5,
+          "seconds": 32.83333242899971,
+          "narration_chars": 1167
+        },
+        {
+          "error": null,
+          "passed": {
+            "staked": false,
+            "dice-rolled": false,
+            "win-written": true
+          },
+          "facts": [
+            "thread_advanced"
+          ],
+          "director_calls": 1,
+          "total_steps": 2,
+          "seconds": 21.629691468999226,
+          "narration_chars": 657
+        },
+        {
+          "error": "ValueError: the interaction was still going after 4 segments",
+          "passed": {
+            "staked": false,
+            "dice-rolled": false,
+            "win-written": false
+          },
+          "facts": [],
+          "director_calls": 0,
+          "total_steps": 0,
+          "seconds": 47.72945086999971,
+          "narration_chars": 0
+        },
+        {
+          "error": null,
+          "passed": {
+            "staked": false,
+            "dice-rolled": false,
+            "win-written": true
+          },
+          "facts": [],
+          "director_calls": 1,
+          "total_steps": 2,
+          "seconds": 7.691902370999742,
+          "narration_chars": 343
+        },
+        {
+          "error": null,
+          "passed": {
+            "staked": true,
+            "dice-rolled": true,
+            "win-written": true
+          },
+          "facts": [
+            "thread_advanced",
+            "dice_rolled",
+            "attempt_resolved",
+            "trait_added",
+            "defence_taken",
+            "dice_rolled",
+            "luck_tested"
+          ],
+          "director_calls": 3,
+          "total_steps": 5,
+          "seconds": 33.2709849999992,
+          "narration_chars": 848
+        },
+        {
+          "error": null,
+          "passed": {
+            "staked": false,
+            "dice-rolled": false,
+            "win-written": true
+          },
+          "facts": [],
+          "director_calls": 1,
+          "total_steps": 2,
+          "seconds": 11.108651856000506,
+          "narration_chars": 500
+        },
+        {
+          "error": null,
+          "passed": {
+            "staked": true,
+            "dice-rolled": true,
+            "win-written": true
+          },
+          "facts": [
+            "thread_advanced",
+            "dice_rolled",
+            "attempt_resolved",
+            "trait_added",
+            "trait_added",
+            "defence_taken"
+          ],
+          "director_calls": 3,
+          "total_steps": 5,
+          "seconds": 26.9626890920008,
+          "narration_chars": 777
+        },
+        {
+          "error": null,
+          "passed": {
+            "staked": false,
+            "dice-rolled": false,
+            "win-written": true
+          },
+          "facts": [],
+          "director_calls": 1,
+          "total_steps": 2,
+          "seconds": 11.834522073999324,
+          "narration_chars": 454
+        },
+        {
+          "error": null,
+          "passed": {
+            "staked": false,
+            "dice-rolled": true,
+            "win-written": true
+          },
+          "facts": [
+            "dice_rolled",
+            "attempt_resolved",
+            "defence_taken",
+            "trait_added"
+          ],
+          "director_calls": 2,
+          "total_steps": 4,
+          "seconds": 25.888349226999708,
+          "narration_chars": 783
+        },
+        {
+          "error": null,
+          "passed": {
+            "staked": true,
+            "dice-rolled": true,
+            "win-written": true
+          },
+          "facts": [
+            "dice_rolled",
+            "attempt_resolved",
+            "trait_added",
+            "thread_advanced",
+            "exit_unlocked",
+            "defence_taken",
+            "trait_added",
+            "thread_advanced"
+          ],
+          "director_calls": 3,
+          "total_steps": 5,
+          "seconds": 32.08309486500002,
+          "narration_chars": 687
+        },
+        {
+          "error": null,
+          "passed": {
+            "staked": true,
+            "dice-rolled": true,
+            "win-written": true
+          },
+          "facts": [
+            "dice_rolled",
+            "attempt_resolved",
+            "defence_taken",
+            "trait_added"
+          ],
+          "director_calls": 3,
+          "total_steps": 5,
+          "seconds": 21.105481042000974,
+          "narration_chars": 1073
+        }
+      ]
+    }
+  ]
+}

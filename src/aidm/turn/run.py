@@ -10,6 +10,8 @@ from pydantic_ai.usage import UsageLimits
 
 from aidm.config import Role, Settings
 from aidm.engines.core import (
+    NOTHING_CHANGED,
+    RULES_WAIT,
     Advancement,
     Engine,
     Offer,
@@ -17,6 +19,7 @@ from aidm.engines.core import (
     ProposalBase,
     TurnLog,
     act,
+    apply_to_draft,
     sequential_toolset,
     with_enum,
 )
@@ -25,16 +28,23 @@ from aidm.state import actions
 from aidm.state.model import (
     PLAYER_ID,
     AdvanceThread,
+    Answer,
     EntityId,
     Exchange,
     Fact,
     Game,
+    Line,
     MechanicEvent,
     Narration,
+    Option,
+    PendingDecision,
     Slug,
     StepTrace,
     Turn,
+    check_draft,
+    narration_text,
     narrator_evidence,
+    narrator_lines,
 )
 
 from . import context
@@ -226,8 +236,17 @@ def director_agent(
 ) -> Agent[PlanContext, str]:
     """Everything that happens this turn happens through a tool; the closing text only traces."""
     toolsets: list[AbstractToolset[PlanContext]] = [
-        core_toolset().filtered(lambda ctx, tool: possible(tool.name, ctx.deps.state)),
-        *engine.director_toolsets,
+        core_toolset().filtered(
+            lambda ctx, tool: (
+                (ctx.deps.state.pending is None or ctx.deps.suspended_at_start)
+                and possible(tool.name, ctx.deps.state)
+            )
+        ),
+        # A suspended run may develop what the answer caused; it may not open new mechanics.
+        *(
+            toolset.filtered(lambda ctx, _tool: ctx.deps.state.pending is None)
+            for toolset in engine.director_toolsets
+        ),
     ]
     return build_agent(
         "director",
@@ -295,8 +314,18 @@ def exchanges_to_messages(history: Sequence[Exchange]) -> list[ModelMessage]:
     messages: list[ModelMessage] = []
     for exchange in history:
         messages.append(ModelRequest(parts=[UserPromptPart(content=exchange.prompt)]))
-        messages.append(ModelResponse(parts=[TextPart(content=exchange.narration)]))
+        messages.append(ModelResponse(parts=[TextPart(content=_replayed(exchange))]))
     return messages
+
+
+def _replayed(exchange: Exchange) -> str:
+    parts = [exchange.narration]
+    if exchange.decision:
+        parts.append(f"[The rules paused the turn for the player: {exchange.decision}]")
+    body = "\n".join(part for part in parts if part)
+    if not body:
+        raise ValueError("an exchange with neither prose nor a decision has nothing to replay")
+    return body
 
 
 @dataclass(frozen=True, slots=True)
@@ -311,9 +340,9 @@ DIRECTOR_REQUEST_LIMIT = 16
 CHARS_PER_TOKEN = 4
 
 
-async def run_turn(
+async def run_segment(
     state: Game,
-    prompt: str,
+    player_input: str | Answer,
     *,
     engine: Engine,
     stages: TurnAgents,
@@ -322,26 +351,41 @@ async def run_turn(
     on_step: Callable[[str], None] | None = None,
     on_event: Callable[[MechanicEvent], None] | None = None,
 ) -> TurnResult:
+    """One player input to the next hand-back, committed whole."""
+
     def announce(step: str) -> None:
         if on_step is not None:
             on_step(step)
 
     history = exchanges_to_messages(state.history)
     history_chars = sum(
-        len(exchange.prompt) + len(exchange.narration) for exchange in state.history
+        len(exchange.prompt) + len(exchange.narration) + len(exchange.decision)
+        for exchange in state.history
     )
     log = TurnLog(on_event=on_event)
     draft = state.draft()
+    # Any input consumes the decision, a revision included: it never survives its own answer.
+    consumed, draft.pending = draft.pending, None
+    prompt, resumed, answered = _consume(engine, draft, player_input, consumed, rng, log)
 
     scene, describe = SceneSnapshot.of(draft), engine.renderer(draft)
 
     announce("director")
-    director_prompt = context.render_director(scene, describe, draft.scenario, prompt)
+    director_prompt = context.render_director(
+        scene, describe, draft.scenario, prompt, resumed=resumed
+    )
     _ensure_input_budget("director", settings, director_prompt, history_chars)
     shown = len(draft.world.pending_notes)
     directed = await stages.director.run(
         director_prompt,
-        deps=PlanContext(engine=engine, state=draft, rng=rng, log=log),
+        deps=PlanContext(
+            engine=engine,
+            state=draft,
+            rng=rng,
+            log=log,
+            suspended_at_start=draft.pending is not None,
+            answered=answered,
+        ),
         message_history=history,
         usage_limits=UsageLimits(request_limit=DIRECTOR_REQUEST_LIMIT),
     )
@@ -353,35 +397,103 @@ async def run_turn(
         *log.steps,
     ]
 
-    announce("narrator")
-    evidence = narrator_evidence(facts)
-    visible = VisibleScene.of(SceneSnapshot.of(draft))
-    narrator_prompt = context.render_narrator(
-        visible,
-        engine.renderer(draft),
-        draft.scenario,
-        evidence=evidence,
-        prompt=prompt,
-    )
-    _ensure_input_budget("narrator", settings, narrator_prompt, history_chars)
-    narration = (
-        await stages.narrator.run(narrator_prompt, deps=visible, message_history=history)
-    ).output
-    if not narration.text:
-        raise ValueError("the narrator answered with nothing")
-    steps.append(
-        StepTrace(name="narrator", prompt=narrator_prompt, output=narration.model_dump(mode="json"))
-    )
+    lines: tuple[Line, ...] = ()
+    if draft.pending is None or narrator_lines(facts):
+        announce("narrator")
+        visible = VisibleScene.of(SceneSnapshot.of(draft))
+        narrator_prompt = context.render_narrator(
+            visible,
+            engine.renderer(draft),
+            draft.scenario,
+            evidence=narrator_evidence(facts),
+            prompt=prompt,
+        )
+        _ensure_input_budget("narrator", settings, narrator_prompt, history_chars)
+        narration = (
+            await stages.narrator.run(narrator_prompt, deps=visible, message_history=history)
+        ).output
+        if not narration.text:
+            raise ValueError("the narrator answered with nothing")
+        lines = narration.lines
+        steps.append(
+            StepTrace(
+                name="narrator", prompt=narrator_prompt, output=narration.model_dump(mode="json")
+            )
+        )
 
     draft.history = (
         *draft.history,
-        Exchange(prompt=prompt, lines=narration.lines, events=tuple(log.events)),
+        Exchange(
+            prompt=prompt,
+            lines=lines,
+            events=tuple(log.events),
+            decision="" if draft.pending is None else draft.pending.prompt,
+        ),
     )
     draft.turn += 1
     return TurnResult(
         state=draft.committed(),
-        turn=Turn(prompt=prompt, facts=tuple(facts), narration=narration.text, steps=tuple(steps)),
+        turn=Turn(
+            prompt=prompt,
+            facts=tuple(facts),
+            narration=narration_text(lines),
+            steps=tuple(steps),
+        ),
     )
+
+
+def _consume(
+    engine: Engine,
+    draft: Game,
+    player_input: str | Answer,
+    consumed: PendingDecision | None,
+    rng: Random,
+    log: TurnLog,
+) -> tuple[str, str, PendingDecision | None]:
+    """The PLAYER ACTION, what a closed answer resolved, and the decision an open answer used."""
+    if isinstance(player_input, str):
+        return player_input, "", None
+    chosen = player_input.option_id
+    if chosen is None:
+        if consumed is not None:
+            draft.world.pending_notes = (
+                *draft.world.pending_notes,
+                f'The rules paused play to ask the player: "{consumed.prompt}" '
+                "The PLAYER ACTION is their answer.",
+            )
+        return player_input.text, "", consumed
+    if consumed is None:
+        raise ValueError(f"no decision is open, so option {chosen!r} answers nothing")
+    option = next((one for one in consumed.options if one.id == chosen), None)
+    if option is None:
+        raise ValueError(f"the {consumed.kind!r} decision offers no option {chosen!r}")
+    landed = _resume(engine, draft, consumed, option, rng, log)
+    traces = "\n".join(f"- {fact.trace}" for fact in landed) or NOTHING_CHANGED
+    # A resume that re-suspended has no tool answer to carry the wait, so the prompt says it.
+    if draft.pending is not None:
+        traces += f"\n- {RULES_WAIT}"
+    section = f"asked: {consumed.prompt}\nthe player chose: {option.label}\n{traces}"
+    return option.label, section, None
+
+
+def _resume(
+    engine: Engine,
+    draft: Game,
+    pending: PendingDecision,
+    option: Option,
+    rng: Random,
+    log: TurnLog,
+) -> tuple[Fact, ...]:
+    """A refusal raises: the engine enumerated the option, so it is never model error."""
+
+    def play(target: Game, dice: Random) -> tuple[Fact, ...]:
+        return engine.resume(target, pending, option.id, dice)
+
+    if refused := check_draft(draft, lambda copy: apply_to_draft(engine, copy, play, Random(0))):
+        raise ValueError(refused)
+    landed = apply_to_draft(engine, draft, play, rng)
+    log.landed(landed, engine.player_events(pending.kind, landed))
+    return landed
 
 
 def _ensure_input_budget(role: Role, settings: Settings, rendered: str, history_chars: int) -> None:

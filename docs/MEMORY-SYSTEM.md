@@ -27,8 +27,8 @@ extra role; the turn got faster and lost a role.
 ## What a re-implementation looks like
 
 The signal to start is now explicit rather than a hunch: `RoleConfig.max_input_tokens` caps each
-role's estimated input, and `run_turn` refuses a turn that exceeds it before calling the model.
-When players start hitting that ceiling, memory comes back — not as a role guessing what to keep
+role's estimated input, and `run_segment` refuses a segment that exceeds it before calling the
+model. When players start hitting that ceiling, memory comes back — not as a role guessing what to keep
 every turn, but as a durable fact per entity, deduped on text so the same
 fact is never written twice. It is written by a role that runs *after* narration, so it records
 what actually happened rather than what a plan predicted. It is shown only to roles that may see

@@ -229,7 +229,7 @@
   },
   {
     "name": "roll_attempt",
-    "description": "Put one risky attempt to the highest die of a pool.",
+    "description": "Put one risky attempt to the highest die of a pool. The player's own attempt goes to\n`stake_attempt` first; roll here directly only for an NPC's attempt, or when the player's\nwords already accepted the named risk.",
     "parameters": {
       "additionalProperties": false,
       "properties": {
@@ -285,6 +285,111 @@
         "goal"
       ],
       "title": "Attempt",
+      "type": "object"
+    }
+  },
+  {
+    "name": "stake_attempt",
+    "description": "Name the risk of one attempt out loud and hand the player the choice to proceed or\nrevise, before anything is rolled.",
+    "parameters": {
+      "$defs": {
+        "Attempt": {
+          "additionalProperties": false,
+          "properties": {
+            "actor_id": {
+              "description": "Exact id of the actor attempting this: the player, or an actor here.",
+              "type": "string"
+            },
+            "goal": {
+              "description": "What the actor is trying to do and what they risk by trying, in one line.",
+              "minLength": 1,
+              "type": "string"
+            },
+            "skill": {
+              "default": "",
+              "description": "The skill on the actor's sheet this calls on, or empty for none.",
+              "type": "string"
+            },
+            "helped": {
+              "default": "",
+              "description": "The circumstance that makes this easier — a skill, a piece of gear, the ground they hold, an ally's presence — in a few words. Empty when nothing does, and never alongside `helper_id`.",
+              "type": "string"
+            },
+            "helper_id": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "description": "Exact id of an ally here who helps with this — they roll their own skill die into the pool. Null when nobody helps."
+            },
+            "helper_skill": {
+              "default": "",
+              "description": "The skill on the *helper's* sheet this calls on, or empty for none.",
+              "type": "string"
+            },
+            "hindered": {
+              "default": "",
+              "description": "The circumstance that makes this harder, in a few words. Empty when nothing does.",
+              "type": "string"
+            },
+            "luck_test": {
+              "default": "",
+              "description": "What bad luck might arrive alongside this. Empty for no test.",
+              "type": "string"
+            }
+          },
+          "required": [
+            "actor_id",
+            "goal"
+          ],
+          "title": "Attempt",
+          "type": "object"
+        }
+      },
+      "additionalProperties": false,
+      "properties": {
+        "attempt": {
+          "$ref": "#/$defs/Attempt",
+          "description": "The attempt exactly as it would be rolled; it is frozen here, so what the\nplayer proceeds with is what rolls."
+        },
+        "risk": {
+          "description": "What a bad roll costs them, in one line, in your own words: the warning the\nplayer reads before deciding.",
+          "type": "string"
+        }
+      },
+      "required": [
+        "attempt",
+        "risk"
+      ],
+      "type": "object"
+    }
+  },
+  {
+    "name": "settle_defence",
+    "description": "Settle the hit the player's own words just answered for: their item breaks and turns\nit into a brief hindrance, or the hit lands in full.",
+    "parameters": {
+      "additionalProperties": false,
+      "properties": {
+        "item_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "Exact id of the carried, unbroken item their words break, or null when they\ntake the hit instead."
+        }
+      },
+      "required": [
+        "item_id"
+      ],
       "type": "object"
     }
   },

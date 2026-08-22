@@ -1,16 +1,27 @@
 from random import Random
 
 import pytest
-from core_test_support import TWENTYFOURXX, at_boundary, capability, game
+from core_test_support import (
+    TWENTYFOURXX,
+    at_boundary,
+    capability,
+    game,
+    played,
+    scripted,
+    text,
+    tool_call,
+)
 from pydantic import ValidationError
 from pydantic_ai import RunContext
+from pydantic_ai.models.function import FunctionModel
 from pydantic_ai.models.test import TestModel
 from pydantic_ai.usage import RunUsage
 
-from aidm.engines.core import PlanContext, TurnLog
+from aidm.engines.core import Engine, PlanContext, TurnLog
 from aidm.engines.twentyfourxx.engine import (
     Advance,
     Attempt,
+    Defence,
     LuckTest,
     Mechanics,
     Sheet,
@@ -22,10 +33,24 @@ from aidm.engines.twentyfourxx.engine import (
     pool_faces,
     resolve_attempt,
     resolve_luck_test,
+    resolve_stake,
 )
-from aidm.state.model import PLAYER_ID, EntityId, Fact, Picks
+from aidm.state.model import (
+    PLAYER_ID,
+    Answer,
+    EntityId,
+    Fact,
+    Game,
+    Option,
+    PendingDecision,
+    Picks,
+)
 
 MARA = EntityId("mara")
+LANTERN = EntityId("lantern")
+RISK = "The hinges may take your hand with them."
+# The seed on which Kael's own attempt is a disaster: the hit that hands him the defence.
+HIT = 2
 
 
 @pytest.mark.parametrize(
@@ -117,6 +142,10 @@ async def test_roll_attempt_narrows_skill_and_helper_skill_to_who_is_here() -> N
     expected = ["", "Climbing", "Stealth", "Tracking"]
     assert schema["properties"]["skill"]["enum"] == expected
     assert schema["properties"]["helper_skill"]["enum"] == expected
+
+    # The stake takes a second argument, so its attempt is a `$defs` entry rather than flattened.
+    staked = tools["stake_attempt"].tool_def.parameters_json_schema["$defs"]["Attempt"]
+    assert staked["properties"]["skill"]["enum"] == expected
 
 
 def test_naming_both_an_ally_and_a_helped_tag_is_refused_at_the_schema() -> None:
@@ -248,6 +277,170 @@ def test_a_standalone_luck_test_needs_no_attempt_and_only_bad_luck_leaves_a_note
     clear = resolve_luck_test(draft, action, Random(5))
     assert not any(fact.kind == "luck_tested" for fact in clear)
     assert draft.world.pending_notes == ()
+
+
+def _forcing(**args: object) -> Attempt:
+    return Attempt.model_validate(
+        {"actor_id": PLAYER_ID, "goal": "Kael forces the vault door", "skill": "Climbing"} | args
+    )
+
+
+def _waiting(draft: Game) -> PendingDecision:
+    decision = draft.pending
+    assert decision is not None
+    return decision
+
+
+def _hit(state: Game) -> tuple[Game, PendingDecision]:
+    """A draft carrying the defence decision Kael's own disaster opened, ready to be answered."""
+    draft = state.draft()
+    _ = resolve_attempt(draft, _forcing(), Random(HIT))
+    decision = _waiting(draft)
+    draft.pending = None
+    return draft, decision
+
+
+async def _offered(
+    engine: Engine, state: Game, answered: PendingDecision | None, *, settled: bool = False
+) -> set[str]:
+    landed = [Fact(kind="defence_taken", trace="the hit lands in full")] if settled else []
+    deps = PlanContext(
+        engine=engine, state=state, rng=Random(0), log=TurnLog(facts=landed), answered=answered
+    )
+    ctx = RunContext(deps=deps, model=TestModel(), usage=RunUsage())
+    return set(await director_toolset().get_tools(ctx))
+
+
+def test_a_stake_freezes_a_playable_attempt_and_waits_on_the_player() -> None:
+    _, state = game(TWENTYFOURXX)
+    draft = state.draft()
+
+    assert resolve_stake(draft, _forcing(), RISK) == ()
+
+    decision = _waiting(draft)
+    assert (decision.kind, decision.prompt, decision.free_text) == ("stake", RISK, True)
+    assert [option.id for option in decision.options] == ["proceed"]
+    assert Attempt.model_validate(decision.payload) == _forcing()
+
+
+def test_a_stake_on_an_npc_attempt_is_refused() -> None:
+    _, state = game(TWENTYFOURXX)
+    draft = state.draft()
+
+    with pytest.raises(ValueError, match="the player's own"):
+        _ = resolve_stake(draft, _forcing(actor_id="mara"), RISK)
+    assert draft.pending is None
+
+
+def test_a_stake_on_an_attempt_the_sheet_cannot_carry_freezes_nothing() -> None:
+    _, state = game(TWENTYFOURXX)
+    draft = state.draft()
+
+    with pytest.raises(ValueError, match="no skill 'Lockpicking'"):
+        _ = resolve_stake(draft, _forcing(skill="Lockpicking"), RISK)
+    assert draft.pending is None
+
+
+def test_proceeding_rolls_the_frozen_attempt_and_a_hit_hands_back_the_defence() -> None:
+    engine, state = game(TWENTYFOURXX)
+    draft = state.draft()
+    _ = resolve_stake(draft, _forcing(), RISK)
+    staked = _waiting(draft)
+    draft.pending = None
+
+    facts = engine.resume(draft, staked, "proceed", Random(HIT))
+
+    (resolved,) = [fact for fact in facts if fact.kind == "attempt_resolved"]
+    assert resolved.data["outcome"] == "disaster"
+    decision = _waiting(draft)
+    assert decision.kind == "defence"
+    assert [option.id for option in decision.options] == ["lantern", "take-it"]
+    assert Defence.model_validate(decision.payload) == Defence(
+        outcome="disaster", goal=_forcing().goal
+    )
+
+
+def test_breaking_an_item_turns_the_hit_and_that_item_is_never_offered_again() -> None:
+    engine, state = game(TWENTYFOURXX)
+    draft, decision = _hit(state)
+
+    facts = engine.resume(draft, decision, "lantern", Random(0))
+
+    assert [fact.kind for fact in facts] == ["trait_added", "defence_turned"]
+    assert draft.world.require(LANTERN).trait("broken") is not None
+    _ = resolve_attempt(draft, _forcing(), Random(HIT))
+    assert [option.id for option in _waiting(draft).options] == ["take-it"]
+
+
+def test_taking_the_hit_records_it_landing_in_full() -> None:
+    engine, state = game(TWENTYFOURXX)
+    draft, decision = _hit(state)
+
+    (landed,) = engine.resume(draft, decision, "take-it", Random(0))
+
+    assert landed.kind == "defence_taken"
+    assert landed.narrator is not None
+    assert draft.world.require(LANTERN).trait("broken") is None
+    assert draft.pending is None
+
+
+def test_an_npcs_own_disaster_hands_the_player_nothing() -> None:
+    _, state = game(TWENTYFOURXX)
+    draft = state.draft()
+
+    facts = resolve_attempt(draft, Attempt(actor_id=MARA, goal="Mara shoulders it"), Random(HIT))
+
+    (resolved,) = [fact for fact in facts if fact.kind == "attempt_resolved"]
+    assert resolved.data["outcome"] == "disaster"
+    assert draft.pending is None
+
+
+async def test_the_settle_tool_is_offered_once_where_an_answer_consumed_a_defence() -> None:
+    engine, state = game(TWENTYFOURXX)
+    _, decision = _hit(state)
+
+    assert "settle_defence" not in await _offered(engine, state, None)
+    assert "settle_defence" in await _offered(engine, state, decision)
+    # One hit is settled once: a second call would break a second item for the same blow.
+    assert "settle_defence" not in await _offered(engine, state, decision, settled=True)
+
+
+async def test_a_hit_the_player_answered_in_their_own_words_is_still_turned() -> None:
+    engine, state = game(TWENTYFOURXX)
+    draft, decision = _hit(state)
+    draft.pending = decision
+    suspended = draft.committed()
+
+    result = await played(
+        engine,
+        suspended,
+        Answer(text="I swing the lantern into the gap and let it take the blow."),
+        director=FunctionModel(
+            scripted(tool_call("settle_defence", item_id="lantern"), text("The glass gives way."))
+        ),
+    )
+
+    assert [fact.kind for fact in result.turn.facts] == ["trait_added", "defence_turned"]
+    assert result.state.world.require(LANTERN).trait("broken") is not None
+    assert result.state.pending is None
+
+
+def test_a_decision_this_engine_cannot_play_or_read_is_refused() -> None:
+    engine, _ = game(TWENTYFOURXX)
+
+    with pytest.raises(ValueError, match="cannot play a 'spend-momentum' decision"):
+        engine.check_pending(
+            PendingDecision(kind="spend-momentum", prompt="Spend a point?", options=(), payload={})
+        )
+    with pytest.raises(ValidationError):
+        engine.check_pending(
+            PendingDecision(
+                kind="stake",
+                prompt=RISK,
+                options=(Option(id="proceed", label="Proceed"),),
+                payload={"goal": "an attempt with no actor"},
+            )
+        )
 
 
 def test_creation_hands_over_the_kit_as_carried_items_and_lands_the_training_die() -> None:

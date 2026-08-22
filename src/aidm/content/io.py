@@ -14,6 +14,7 @@ from aidm.state.model import (
     Exchange,
     Game,
     Mutable,
+    PendingDecision,
     ScenarioMeta,
     Slug,
     WorldState,
@@ -149,6 +150,7 @@ class SavedGame(BaseModel):
     mechanics: JsonValue
     history: tuple[Exchange, ...] = ()
     turn: int = Field(default=0, ge=0)
+    pending: PendingDecision | None
 
     @model_validator(mode="after")
     def _the_player_is_playable(self) -> Self:
@@ -166,6 +168,7 @@ class SavedGame(BaseModel):
             mechanics=state.mechanics.model_dump(mode="json"),
             history=state.history,
             turn=state.turn,
+            pending=state.pending,
         )
 
     def game(self, mechanics: Mutable) -> Game:
@@ -178,6 +181,7 @@ class SavedGame(BaseModel):
             mechanics=mechanics,
             history=self.history,
             turn=self.turn,
+            pending=self.pending,
         )
 
 

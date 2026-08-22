@@ -1,0 +1,180 @@
+{
+  "label": "conflict-trigger",
+  "repeats": 9,
+  "seed": 1000,
+  "cases": [
+    {
+      "id": "loner3e/fight-the-rat",
+      "engine": "loner3e",
+      "prompt": "The bloated rat springs at my throat and I fight it in earnest — it has to die before it slips back into the walls.",
+      "expectations": [
+        "luck-moved",
+        "hands-back"
+      ],
+      "runs": [
+        {
+          "error": null,
+          "passed": {
+            "luck-moved": true,
+            "hands-back": true
+          },
+          "facts": [
+            "entity_discovered",
+            "dice_rolled",
+            "dice_rolled",
+            "question_answered",
+            "counter_changed"
+          ],
+          "director_calls": 1,
+          "total_steps": 2,
+          "seconds": 7.70999695699993,
+          "narration_chars": 504
+        },
+        {
+          "error": null,
+          "passed": {
+            "luck-moved": true,
+            "hands-back": true
+          },
+          "facts": [
+            "entity_discovered",
+            "dice_rolled",
+            "dice_rolled",
+            "question_answered",
+            "counter_changed"
+          ],
+          "director_calls": 1,
+          "total_steps": 2,
+          "seconds": 7.1249917410004855,
+          "narration_chars": 701
+        },
+        {
+          "error": null,
+          "passed": {
+            "luck-moved": true,
+            "hands-back": true
+          },
+          "facts": [
+            "entity_discovered",
+            "dice_rolled",
+            "dice_rolled",
+            "question_answered",
+            "counter_changed"
+          ],
+          "director_calls": 1,
+          "total_steps": 2,
+          "seconds": 22.066393844999766,
+          "narration_chars": 901
+        },
+        {
+          "error": null,
+          "passed": {
+            "luck-moved": true,
+            "hands-back": true
+          },
+          "facts": [
+            "entity_discovered",
+            "dice_rolled",
+            "dice_rolled",
+            "question_answered",
+            "counter_changed"
+          ],
+          "director_calls": 1,
+          "total_steps": 2,
+          "seconds": 15.834875866000402,
+          "narration_chars": 436
+        },
+        {
+          "error": null,
+          "passed": {
+            "luck-moved": true,
+            "hands-back": true
+          },
+          "facts": [
+            "entity_discovered",
+            "dice_rolled",
+            "dice_rolled",
+            "question_answered",
+            "counter_changed"
+          ],
+          "director_calls": 1,
+          "total_steps": 2,
+          "seconds": 22.55650241100011,
+          "narration_chars": 331
+        },
+        {
+          "error": null,
+          "passed": {
+            "luck-moved": true,
+            "hands-back": true
+          },
+          "facts": [
+            "entity_discovered",
+            "dice_rolled",
+            "dice_rolled",
+            "question_answered",
+            "counter_changed"
+          ],
+          "director_calls": 1,
+          "total_steps": 2,
+          "seconds": 11.012141014000008,
+          "narration_chars": 377
+        },
+        {
+          "error": null,
+          "passed": {
+            "luck-moved": true,
+            "hands-back": true
+          },
+          "facts": [
+            "entity_discovered",
+            "dice_rolled",
+            "dice_rolled",
+            "question_answered",
+            "counter_changed"
+          ],
+          "director_calls": 1,
+          "total_steps": 2,
+          "seconds": 17.40360521400089,
+          "narration_chars": 285
+        },
+        {
+          "error": null,
+          "passed": {
+            "luck-moved": true,
+            "hands-back": true
+          },
+          "facts": [
+            "entity_discovered",
+            "dice_rolled",
+            "dice_rolled",
+            "question_answered",
+            "counter_changed"
+          ],
+          "director_calls": 1,
+          "total_steps": 2,
+          "seconds": 6.9673170229998505,
+          "narration_chars": 394
+        },
+        {
+          "error": null,
+          "passed": {
+            "luck-moved": true,
+            "hands-back": true
+          },
+          "facts": [
+            "entity_discovered",
+            "dice_rolled",
+            "dice_rolled",
+            "question_answered",
+            "counter_changed"
+          ],
+          "director_calls": 1,
+          "total_steps": 2,
+          "seconds": 13.748381101000632,
+          "narration_chars": 440
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,786 @@
+{
+  "label": "pipeline-accuracy-4",
+  "repeats": 20,
+  "seed": 1000,
+  "cases": [
+    {
+      "id": "loner3e/risky-climb",
+      "engine": "loner3e",
+      "prompt": "I go up the bell tower's ladders at a run, two rungs at a time — I have to reach the top before the light goes.",
+      "expectations": [
+        "dice-rolled",
+        "win-upstairs"
+      ],
+      "runs": [
+        {
+          "error": null,
+          "passed": {
+            "dice-rolled": true,
+            "win-upstairs": true
+          },
+          "facts": [
+            "entity_moved",
+            "dice_rolled",
+            "dice_rolled",
+            "question_answered",
+            "trait_added"
+          ],
+          "director_calls": 1,
+          "total_steps": 2,
+          "seconds": 24.701707129999704,
+          "narration_chars": 571
+        },
+        {
+          "error": null,
+          "passed": {
+            "dice-rolled": true,
+            "win-upstairs": true
+          },
+          "facts": [
+            "dice_rolled",
+            "dice_rolled",
+            "question_answered",
+            "entity_moved",
+            "trait_added",
+            "entity_discovered",
+            "thread_advanced"
+          ],
+          "director_calls": 1,
+          "total_steps": 2,
+          "seconds": 24.549777247000748,
+          "narration_chars": 429
+        },
+        {
+          "error": null,
+          "passed": {
+            "dice-rolled": true,
+            "win-upstairs": true
+          },
+          "facts": [
+            "dice_rolled",
+            "dice_rolled",
+            "question_answered",
+            "entity_moved",
+            "entity_discovered",
+            "thread_advanced"
+          ],
+          "director_calls": 1,
+          "total_steps": 2,
+          "seconds": 22.500986827000816,
+          "narration_chars": 598
+        },
+        {
+          "error": null,
+          "passed": {
+            "dice-rolled": true,
+            "win-upstairs": true
+          },
+          "facts": [
+            "dice_rolled",
+            "dice_rolled",
+            "question_answered",
+            "trait_added"
+          ],
+          "director_calls": 1,
+          "total_steps": 2,
+          "seconds": 15.731751190000068,
+          "narration_chars": 625
+        },
+        {
+          "error": null,
+          "passed": {
+            "dice-rolled": true,
+            "win-upstairs": true
+          },
+          "facts": [
+            "dice_rolled",
+            "dice_rolled",
+            "question_answered",
+            "trait_added",
+            "entity_moved"
+          ],
+          "director_calls": 1,
+          "total_steps": 2,
+          "seconds": 22.248222542000804,
+          "narration_chars": 546
+        },
+        {
+          "error": null,
+          "passed": {
+            "dice-rolled": true,
+            "win-upstairs": true
+          },
+          "facts": [
+            "dice_rolled",
+            "dice_rolled",
+            "question_answered",
+            "trait_added",
+            "trait_added"
+          ],
+          "director_calls": 1,
+          "total_steps": 2,
+          "seconds": 15.625505175999933,
+          "narration_chars": 650
+        },
+        {
+          "error": null,
+          "passed": {
+            "dice-rolled": true,
+            "win-upstairs": true
+          },
+          "facts": [
+            "dice_rolled",
+            "dice_rolled",
+            "question_answered",
+            "entity_moved",
+            "entity_discovered",
+            "thread_advanced",
+            "trait_added"
+          ],
+          "director_calls": 1,
+          "total_steps": 2,
+          "seconds": 16.897510593000334,
+          "narration_chars": 723
+        },
+        {
+          "error": null,
+          "passed": {
+            "dice-rolled": true,
+            "win-upstairs": true
+          },
+          "facts": [
+            "dice_rolled",
+            "dice_rolled",
+            "question_answered",
+            "entity_moved",
+            "trait_added"
+          ],
+          "director_calls": 1,
+          "total_steps": 2,
+          "seconds": 40.11919928499992,
+          "narration_chars": 588
+        },
+        {
+          "error": null,
+          "passed": {
+            "dice-rolled": true,
+            "win-upstairs": true
+          },
+          "facts": [
+            "entity_moved",
+            "dice_rolled",
+            "dice_rolled",
+            "question_answered",
+            "entity_discovered",
+            "thread_advanced"
+          ],
+          "director_calls": 1,
+          "total_steps": 2,
+          "seconds": 25.794551183000294,
+          "narration_chars": 530
+        },
+        {
+          "error": null,
+          "passed": {
+            "dice-rolled": true,
+            "win-upstairs": true
+          },
+          "facts": [
+            "entity_moved",
+            "dice_rolled",
+            "dice_rolled",
+            "question_answered",
+            "trait_added"
+          ],
+          "director_calls": 1,
+          "total_steps": 2,
+          "seconds": 31.45557283099879,
+          "narration_chars": 397
+        },
+        {
+          "error": null,
+          "passed": {
+            "dice-rolled": true,
+            "win-upstairs": true
+          },
+          "facts": [
+            "entity_moved",
+            "dice_rolled",
+            "dice_rolled",
+            "question_answered",
+            "entity_discovered",
+            "thread_advanced"
+          ],
+          "director_calls": 1,
+          "total_steps": 2,
+          "seconds": 18.334871282000677,
+          "narration_chars": 676
+        },
+        {
+          "error": null,
+          "passed": {
+            "dice-rolled": true,
+            "win-upstairs": true
+          },
+          "facts": [
+            "dice_rolled",
+            "dice_rolled",
+            "question_answered",
+            "entity_moved",
+            "entity_discovered",
+            "thread_advanced"
+          ],
+          "director_calls": 1,
+          "total_steps": 2,
+          "seconds": 17.693438686999798,
+          "narration_chars": 450
+        },
+        {
+          "error": null,
+          "passed": {
+            "dice-rolled": true,
+            "win-upstairs": true
+          },
+          "facts": [
+            "entity_moved",
+            "dice_rolled",
+            "dice_rolled",
+            "question_answered",
+            "entity_discovered",
+            "trait_added",
+            "thread_advanced"
+          ],
+          "director_calls": 1,
+          "total_steps": 2,
+          "seconds": 21.38949691400012,
+          "narration_chars": 461
+        },
+        {
+          "error": null,
+          "passed": {
+            "dice-rolled": true,
+            "win-upstairs": true
+          },
+          "facts": [
+            "dice_rolled",
+            "dice_rolled",
+            "question_answered",
+            "entity_discovered",
+            "thread_advanced",
+            "entity_moved"
+          ],
+          "director_calls": 1,
+          "total_steps": 2,
+          "seconds": 12.426414650999504,
+          "narration_chars": 446
+        },
+        {
+          "error": null,
+          "passed": {
+            "dice-rolled": true,
+            "win-upstairs": true
+          },
+          "facts": [
+            "dice_rolled",
+            "dice_rolled",
+            "question_answered",
+            "entity_moved",
+            "entity_discovered",
+            "thread_advanced"
+          ],
+          "director_calls": 1,
+          "total_steps": 2,
+          "seconds": 11.942260675999933,
+          "narration_chars": 484
+        },
+        {
+          "error": null,
+          "passed": {
+            "dice-rolled": true,
+            "win-upstairs": true
+          },
+          "facts": [
+            "dice_rolled",
+            "dice_rolled",
+            "question_answered",
+            "entity_moved",
+            "entity_discovered",
+            "thread_advanced"
+          ],
+          "director_calls": 1,
+          "total_steps": 2,
+          "seconds": 21.69594545200016,
+          "narration_chars": 507
+        },
+        {
+          "error": null,
+          "passed": {
+            "dice-rolled": true,
+            "win-upstairs": true
+          },
+          "facts": [
+            "dice_rolled",
+            "dice_rolled",
+            "question_answered",
+            "entity_moved",
+            "entity_discovered",
+            "thread_advanced"
+          ],
+          "director_calls": 1,
+          "total_steps": 2,
+          "seconds": 14.213249136999366,
+          "narration_chars": 754
+        },
+        {
+          "error": null,
+          "passed": {
+            "dice-rolled": true,
+            "win-upstairs": true
+          },
+          "facts": [
+            "dice_rolled",
+            "dice_rolled",
+            "question_answered",
+            "trait_added"
+          ],
+          "director_calls": 1,
+          "total_steps": 2,
+          "seconds": 12.549399642000935,
+          "narration_chars": 442
+        },
+        {
+          "error": null,
+          "passed": {
+            "dice-rolled": true,
+            "win-upstairs": true
+          },
+          "facts": [
+            "dice_rolled",
+            "dice_rolled",
+            "question_answered",
+            "entity_moved",
+            "trait_added"
+          ],
+          "director_calls": 1,
+          "total_steps": 2,
+          "seconds": 18.346724503999212,
+          "narration_chars": 552
+        },
+        {
+          "error": null,
+          "passed": {
+            "dice-rolled": true,
+            "win-upstairs": true
+          },
+          "facts": [
+            "dice_rolled",
+            "dice_rolled",
+            "question_answered"
+          ],
+          "director_calls": 1,
+          "total_steps": 2,
+          "seconds": 16.023369368000203,
+          "narration_chars": 625
+        }
+      ]
+    },
+    {
+      "id": "twentyfourxx/risky-climb",
+      "engine": "twentyfourxx",
+      "prompt": "I go up the bell tower's ladders at a run, two rungs at a time — I have to reach the top before the light goes.",
+      "expectations": [
+        "staked",
+        "dice-rolled",
+        "win-upstairs"
+      ],
+      "runs": [
+        {
+          "error": null,
+          "passed": {
+            "staked": true,
+            "dice-rolled": true,
+            "win-upstairs": true
+          },
+          "facts": [
+            "dice_rolled",
+            "attempt_resolved",
+            "entity_moved",
+            "trait_added",
+            "trait_added",
+            "defence_taken"
+          ],
+          "director_calls": 3,
+          "total_steps": 5,
+          "seconds": 31.191418477999832,
+          "narration_chars": 1148
+        },
+        {
+          "error": null,
+          "passed": {
+            "staked": true,
+            "dice-rolled": true,
+            "win-upstairs": true
+          },
+          "facts": [
+            "entity_moved",
+            "dice_rolled",
+            "attempt_resolved",
+            "trait_added",
+            "defence_taken"
+          ],
+          "director_calls": 3,
+          "total_steps": 6,
+          "seconds": 41.86041438000029,
+          "narration_chars": 1493
+        },
+        {
+          "error": "UnexpectedModelBehavior: Tool 'move' exceeded max retries count of 2. Consider raising the retry limit, or see the docs on tool retries: https://ai.pydantic.dev/tools-advanced/#tool-retries",
+          "passed": {
+            "staked": false,
+            "dice-rolled": false,
+            "win-upstairs": false
+          },
+          "facts": [],
+          "director_calls": 0,
+          "total_steps": 0,
+          "seconds": 12.406666057999246,
+          "narration_chars": 0
+        },
+        {
+          "error": null,
+          "passed": {
+            "staked": true,
+            "dice-rolled": true,
+            "win-upstairs": true
+          },
+          "facts": [
+            "dice_rolled",
+            "attempt_resolved",
+            "entity_moved"
+          ],
+          "director_calls": 2,
+          "total_steps": 3,
+          "seconds": 26.73222700899896,
+          "narration_chars": 601
+        },
+        {
+          "error": null,
+          "passed": {
+            "staked": true,
+            "dice-rolled": true,
+            "win-upstairs": true
+          },
+          "facts": [
+            "dice_rolled",
+            "attempt_resolved",
+            "entity_moved",
+            "trait_added",
+            "entity_discovered",
+            "thread_advanced",
+            "defence_taken",
+            "trait_added",
+            "entity_moved"
+          ],
+          "director_calls": 3,
+          "total_steps": 5,
+          "seconds": 29.069552185001157,
+          "narration_chars": 965
+        },
+        {
+          "error": null,
+          "passed": {
+            "staked": true,
+            "dice-rolled": true,
+            "win-upstairs": true
+          },
+          "facts": [
+            "dice_rolled",
+            "attempt_resolved",
+            "entity_moved",
+            "trait_added",
+            "defence_taken",
+            "trait_added"
+          ],
+          "director_calls": 3,
+          "total_steps": 5,
+          "seconds": 33.18469277999975,
+          "narration_chars": 897
+        },
+        {
+          "error": null,
+          "passed": {
+            "staked": true,
+            "dice-rolled": true,
+            "win-upstairs": true
+          },
+          "facts": [
+            "dice_rolled",
+            "attempt_resolved",
+            "entity_moved",
+            "trait_added",
+            "defence_taken",
+            "trait_added"
+          ],
+          "director_calls": 3,
+          "total_steps": 5,
+          "seconds": 40.08212703400022,
+          "narration_chars": 957
+        },
+        {
+          "error": null,
+          "passed": {
+            "staked": true,
+            "dice-rolled": true,
+            "win-upstairs": true
+          },
+          "facts": [
+            "dice_rolled",
+            "attempt_resolved",
+            "entity_moved",
+            "entity_discovered",
+            "thread_advanced"
+          ],
+          "director_calls": 2,
+          "total_steps": 3,
+          "seconds": 20.73005464900052,
+          "narration_chars": 355
+        },
+        {
+          "error": null,
+          "passed": {
+            "staked": true,
+            "dice-rolled": true,
+            "win-upstairs": true
+          },
+          "facts": [
+            "dice_rolled",
+            "attempt_resolved",
+            "dice_rolled",
+            "luck_tested",
+            "entity_moved",
+            "trait_added",
+            "entity_discovered",
+            "thread_advanced",
+            "defence_taken",
+            "trait_added"
+          ],
+          "director_calls": 3,
+          "total_steps": 5,
+          "seconds": 44.567258486000355,
+          "narration_chars": 1038
+        },
+        {
+          "error": null,
+          "passed": {
+            "staked": true,
+            "dice-rolled": true,
+            "win-upstairs": true
+          },
+          "facts": [
+            "dice_rolled",
+            "attempt_resolved",
+            "trait_added",
+            "defence_taken"
+          ],
+          "director_calls": 3,
+          "total_steps": 5,
+          "seconds": 25.285709079998924,
+          "narration_chars": 1116
+        },
+        {
+          "error": null,
+          "passed": {
+            "staked": true,
+            "dice-rolled": true,
+            "win-upstairs": true
+          },
+          "facts": [
+            "dice_rolled",
+            "attempt_resolved",
+            "trait_added",
+            "defence_taken"
+          ],
+          "director_calls": 3,
+          "total_steps": 5,
+          "seconds": 26.524373090000154,
+          "narration_chars": 871
+        },
+        {
+          "error": null,
+          "passed": {
+            "staked": true,
+            "dice-rolled": true,
+            "win-upstairs": true
+          },
+          "facts": [
+            "dice_rolled",
+            "attempt_resolved",
+            "entity_moved",
+            "trait_added",
+            "defence_taken"
+          ],
+          "director_calls": 3,
+          "total_steps": 5,
+          "seconds": 26.691383422999934,
+          "narration_chars": 828
+        },
+        {
+          "error": null,
+          "passed": {
+            "staked": true,
+            "dice-rolled": true,
+            "win-upstairs": true
+          },
+          "facts": [
+            "dice_rolled",
+            "attempt_resolved",
+            "entity_moved",
+            "trait_added",
+            "entity_discovered",
+            "thread_advanced",
+            "defence_taken",
+            "trait_added"
+          ],
+          "director_calls": 3,
+          "total_steps": 5,
+          "seconds": 32.29308560100071,
+          "narration_chars": 734
+        },
+        {
+          "error": null,
+          "passed": {
+            "staked": true,
+            "dice-rolled": true,
+            "win-upstairs": true
+          },
+          "facts": [
+            "dice_rolled",
+            "attempt_resolved",
+            "entity_moved",
+            "trait_added",
+            "entity_discovered",
+            "thread_advanced",
+            "defence_taken",
+            "trait_added"
+          ],
+          "director_calls": 3,
+          "total_steps": 5,
+          "seconds": 36.98935482300112,
+          "narration_chars": 1122
+        },
+        {
+          "error": null,
+          "passed": {
+            "staked": true,
+            "dice-rolled": true,
+            "win-upstairs": true
+          },
+          "facts": [
+            "dice_rolled",
+            "attempt_resolved",
+            "entity_moved"
+          ],
+          "director_calls": 2,
+          "total_steps": 3,
+          "seconds": 17.75802138799918,
+          "narration_chars": 505
+        },
+        {
+          "error": null,
+          "passed": {
+            "staked": false,
+            "dice-rolled": false,
+            "win-upstairs": true
+          },
+          "facts": [],
+          "director_calls": 1,
+          "total_steps": 2,
+          "seconds": 12.104158201000246,
+          "narration_chars": 572
+        },
+        {
+          "error": null,
+          "passed": {
+            "staked": true,
+            "dice-rolled": true,
+            "win-upstairs": true
+          },
+          "facts": [
+            "dice_rolled",
+            "attempt_resolved",
+            "trait_added",
+            "entity_moved",
+            "entity_discovered",
+            "thread_advanced",
+            "defence_taken",
+            "trait_added"
+          ],
+          "director_calls": 3,
+          "total_steps": 5,
+          "seconds": 39.73258954999983,
+          "narration_chars": 1246
+        },
+        {
+          "error": null,
+          "passed": {
+            "staked": true,
+            "dice-rolled": true,
+            "win-upstairs": true
+          },
+          "facts": [
+            "dice_rolled",
+            "attempt_resolved",
+            "entity_moved",
+            "trait_added",
+            "entity_discovered",
+            "thread_advanced",
+            "defence_taken",
+            "trait_added"
+          ],
+          "director_calls": 3,
+          "total_steps": 5,
+          "seconds": 38.05919256099878,
+          "narration_chars": 1158
+        },
+        {
+          "error": null,
+          "passed": {
+            "staked": true,
+            "dice-rolled": true,
+            "win-upstairs": true
+          },
+          "facts": [
+            "dice_rolled",
+            "attempt_resolved",
+            "entity_moved",
+            "entity_discovered",
+            "thread_advanced"
+          ],
+          "director_calls": 2,
+          "total_steps": 3,
+          "seconds": 18.042154296001172,
+          "narration_chars": 573
+        },
+        {
+          "error": null,
+          "passed": {
+            "staked": true,
+            "dice-rolled": true,
+            "win-upstairs": true
+          },
+          "facts": [
+            "entity_moved",
+            "dice_rolled",
+            "attempt_resolved",
+            "trait_added",
+            "defence_taken"
+          ],
+          "director_calls": 3,
+          "total_steps": 6,
+          "seconds": 30.17581612199865,
+          "narration_chars": 1452
+        }
+      ]
+    }
+  ]
+}
