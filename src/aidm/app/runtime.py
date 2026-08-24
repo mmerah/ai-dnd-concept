@@ -11,11 +11,19 @@ from aidm.app.authoring import apply_patch, author_extension
 from aidm.config import Settings
 from aidm.content.io import FileStore, SavedGame, load_character, load_scenario
 from aidm.content.model import Character, Scenario
-from aidm.engines.core import Advancement, Engine, Offer, ProposalBase, transact
+from aidm.engines.core import Advancement, AdvancementOffer, Engine, ProposalBase, transact
 from aidm.state.entities import PLAYER_ID, EngineId, EntityId, Frozen
 from aidm.state.facts import Fact
 from aidm.state.model import Game, ThreadStatus, frontier
-from aidm.state.play import Answer, Applied, Extended, Line, MechanicEvent, TraceEntry, Turn
+from aidm.state.play import (
+    AdvanceApplied,
+    Answer,
+    Line,
+    MechanicEvent,
+    TraceEntry,
+    TurnTrace,
+    WorldExtended,
+)
 from aidm.turn.context import render_proposal
 from aidm.turn.run import (
     AdvancementContext,
@@ -57,7 +65,7 @@ def journal_markdown(state: Game) -> str:
     lines = [f"# {state.scenario.title}", "", state.scenario.premise, ""]
     for number, exchange in enumerate(state.history, start=1):
         told = "\n".join(attributed_line(state, line) for line in exchange.lines)
-        lines.extend((f"## Turn {number}", "", f"> {exchange.prompt}", "", told, ""))
+        lines.extend((f"## TurnTrace {number}", "", f"> {exchange.prompt}", "", told, ""))
     if threads:
         lines.extend(("## Threads", ""))
         lines.extend(f"- {_thread_line(thread)}" for thread in threads)
@@ -81,10 +89,10 @@ LOGGER = logging.getLogger(__name__)
 
 
 @dataclass(frozen=True, slots=True)
-class Drafted:
+class DraftedAdvance:
     """Hold an advancement offer and its uncommitted proposal."""
 
-    offer: Offer
+    offer: AdvancementOffer
     proposal: ProposalBase
 
 
@@ -138,7 +146,7 @@ class GameSession:
     entries: list[TraceEntry] = field(default_factory=list)
     busy: bool = False
     step: TurnStep | None = None
-    drafted: Drafted | None = None
+    drafted: DraftedAdvance | None = None
     _illustrations: set[Task[None]] = field(default_factory=set, repr=False)
     state: Game = field(init=False)
 
@@ -162,7 +170,7 @@ class GameSession:
         player_input: str | Answer,
         on_step: Callable[[TurnStep], None] | None = None,
         on_event: Callable[[MechanicEvent], None] | None = None,
-    ) -> Turn:
+    ) -> TurnTrace:
         """Commit only after the full segment succeeds."""
         result = await run_segment(
             self.state,
@@ -209,7 +217,7 @@ class GameSession:
         self._illustrations.add(task)
         task.add_done_callback(self._illustrations.discard)
 
-    def offers(self) -> tuple[Offer, ...]:
+    def offers(self) -> tuple[AdvancementOffer, ...]:
         advancement = self.engine.advancement
         # An advance mid-suspension could invalidate the frozen payload the decision holds.
         if advancement is None or self.state.pending is not None:
@@ -219,14 +227,14 @@ class GameSession:
     def advancement_offered(self) -> bool:
         return bool(self.offers())
 
-    async def propose(self, offer: Offer, intent: str) -> ProposalBase:
+    async def propose(self, offer: AdvancementOffer, intent: str) -> ProposalBase:
         """The advisor drafts the change; nothing is committed until the player confirms it."""
         advancement, advisor = self._advancement(), self._advisor()
         deps = AdvancementContext(advancement=advancement, state=self.state, offer=offer)
         prompt = render_proposal(self.engine, self.state, offer, intent)
         return (await advisor.run(prompt, deps=deps)).output
 
-    def preview(self, drafted: Drafted) -> tuple[Fact, ...]:
+    def preview(self, drafted: DraftedAdvance) -> tuple[Fact, ...]:
         """What the change would write, read off a throwaway draft, not the committed state."""
         advancement = self._advancement()
         _, facts = transact(
@@ -239,7 +247,7 @@ class GameSession:
         )
         return facts
 
-    def apply_proposal(self, drafted: Drafted) -> tuple[Fact, ...]:
+    def apply_proposal(self, drafted: DraftedAdvance) -> tuple[Fact, ...]:
         """The legality rule runs again here: a turn since the draft may have made it illegal."""
         advancement = self._advancement()
         offer, proposal = drafted.offer, drafted.proposal
@@ -253,7 +261,7 @@ class GameSession:
             lambda draft, rng: tuple(advancement.resolve(draft, offer, proposal, rng)),
             self.rng,
         )
-        self._commit(state, Applied(subject_id=offer.subject_id, facts=facts))
+        self._commit(state, AdvanceApplied(subject_id=offer.subject_id, facts=facts))
         return facts
 
     def _advancement(self) -> Advancement:
@@ -289,7 +297,7 @@ class GameSession:
                 lambda draft, _rng: apply_patch(draft, patch),
                 self.rng,
             )
-            self._commit(state, Extended(facts=facts))
+            self._commit(state, WorldExtended(facts=facts))
         except Exception:
             LOGGER.exception("extending %r failed", self.slug)
 

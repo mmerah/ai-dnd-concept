@@ -24,7 +24,7 @@ from aidm.content.model import Character, Scenario
 from aidm.engines.core import Advancement, Engine, SheetMechanics
 from aidm.state.entities import EngineId, Entity
 from aidm.state.model import Game
-from aidm.state.play import Answer, MechanicEvent, Turn
+from aidm.state.play import Answer, MechanicEvent, TurnTrace
 from aidm.turn.run import TurnResult, TurnStep, build_turn_agents, run_segment
 
 type Stub = Callable[[list[ModelMessage], AgentInfo], ModelResponse]
@@ -148,7 +148,7 @@ def recorded(*responses: ModelResponse) -> Recorder:
     return Recorder(stub=stub, calls=calls)
 
 
-def shown(turn: Turn, name: str) -> str:
+def shown(turn: TurnTrace, name: str) -> str:
     return next(step.prompt for step in turn.steps if step.name == name)
 
 

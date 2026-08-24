@@ -419,7 +419,7 @@ def _reached(draft: Game, facts: Sequence[Fact]) -> list[str]:
     return lines
 
 
-class Offer(Frozen):
+class AdvancementOffer(Frozen):
     """One change advancement holds open for one subject, already resolved out of content."""
 
     subject_id: EntityId
@@ -444,10 +444,10 @@ class Advancement(ABC):
     def __init__(self, engine_dir: Path) -> None:
         self.instructions = engine_text(engine_dir / f"{self.id}.md")
 
-    def offers(self, state: Game) -> tuple[Offer, ...]:
+    def offers(self, state: Game) -> tuple[AdvancementOffer, ...]:
         earned = self.earned(state)
         return tuple(
-            Offer(
+            AdvancementOffer(
                 subject_id=subject_id,
                 prompt=f"{state.world.require(subject_id).name} {self.occasion}.",
                 text=self.offer_text,
@@ -457,7 +457,7 @@ class Advancement(ABC):
         )
 
     def resolve(
-        self, draft: Game, offer: Offer, proposal: ProposalBase, rng: Random
+        self, draft: Game, offer: AdvancementOffer, proposal: ProposalBase, rng: Random
     ) -> tuple[Fact, ...]:
         granted = self.grant(draft, offer.subject_id, proposal, rng)
         ledger = self.ledger(draft, offer.subject_id)
@@ -465,7 +465,9 @@ class Advancement(ABC):
         subject = draft.world.require(offer.subject_id)
         return (*granted, counter_fact(subject, self.ledger_key, ledger, 1, self.spent_why))
 
-    def advance_refusal(self, state: Game, offer: Offer, proposal: ProposalBase) -> str | None:
+    def advance_refusal(
+        self, state: Game, offer: AdvancementOffer, proposal: ProposalBase
+    ) -> str | None:
         return draft_refusal(
             state,
             lambda draft: self.resolve(draft, offer, proposal, Random(0)),

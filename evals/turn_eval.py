@@ -13,7 +13,7 @@ from aidm.content.io import load_character, load_scenario
 from aidm.engines.core import Engine
 from aidm.state.entities import EngineId, EntityId, Frozen
 from aidm.state.model import Game
-from aidm.state.play import Answer, Turn
+from aidm.state.play import Answer, TurnTrace
 from aidm.turn.run import TurnResult, build_turn_agents, run_segment
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -323,7 +323,7 @@ def _merged(prompt: str, segments: Sequence[TurnResult]) -> TurnResult:
     """The interaction as one result: every segment's prose, facts and steps, the last state."""
     return TurnResult(
         state=segments[-1].state,
-        turn=Turn(
+        turn=TurnTrace(
             prompt=prompt,
             facts=tuple(fact for segment in segments for fact in segment.turn.facts),
             narration="\n".join(

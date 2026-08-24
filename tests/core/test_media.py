@@ -6,7 +6,7 @@ import pytest
 from core_test_support import initialized, with_entity
 from pydantic import SecretStr
 
-from aidm.app.media import Generated, Illustrator, illustration_request, scene_key
+from aidm.app.media import GeneratedImage, Illustrator, illustration_request, scene_key
 from aidm.config import MediaConfig, ProviderConfig
 from aidm.state import actions
 from aidm.state.entities import PLAYER_ID, Entity, EntityId
@@ -94,10 +94,10 @@ async def test_concurrent_illustrations_of_one_scene_generate_it_once(
 
     async def _generate(
         _self: Illustrator, prompt: str, _ratio: str, _references: Sequence[Path] = ()
-    ) -> Generated | None:
+    ) -> GeneratedImage | None:
         prompts.append(prompt)
         await sleep(0)  # a real generation suspends; without this nothing can interleave
-        return Generated(data=b"\x89PNG", suffix=".png")
+        return GeneratedImage(data=b"\x89PNG", suffix=".png")
 
     monkeypatch.setattr(Illustrator, "_generate", _generate)
     illustrator = _illustrator(tmp_path)

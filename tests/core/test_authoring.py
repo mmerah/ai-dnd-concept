@@ -5,11 +5,11 @@ from pydantic_ai.messages import ModelResponse, ToolCallPart
 from pydantic_ai.models.function import FunctionModel
 
 from aidm.app.authoring import (
-    OPENING,
+    OPENING_SLICE,
     AuthoringSession,
     ScenarioPatch,
     WorldDraft,
-    playtests,
+    playtest_checks,
     scenario_refusal,
 )
 from aidm.app.launch import engine_ids
@@ -20,7 +20,7 @@ from aidm.state.model import ScenarioMeta, Thread
 
 async def test_the_shipped_scenario_passes_every_engine() -> None:
     shipped = load_scenario(SCENARIOS, "whispering-vault")
-    for playtest in playtests(settings(), engine_ids()):
+    for playtest in playtest_checks(settings(), engine_ids()):
         playtest.check(shipped)
 
 
@@ -38,7 +38,7 @@ def test_a_world_colliding_with_the_character_is_refused() -> None:
     colliding = updated(
         shipped, world=updated(shipped.world, entities=(*shipped.world.entities, extra))
     )
-    for playtest in playtests(settings(), engine_ids()):
+    for playtest in playtest_checks(settings(), engine_ids()):
         with pytest.raises(ValueError, match="appears twice"):
             playtest.check(colliding)
 
@@ -101,7 +101,7 @@ def test_remove_drops_by_id_and_refuses_an_unknown_one() -> None:
 
 
 def test_validation_names_what_the_draft_is_missing() -> None:
-    playing = playtests(settings(), engine_ids())
+    playing = playtest_checks(settings(), engine_ids())
     empty = scenario_refusal(WorldDraft(), playing)
     assert empty is not None and "meta" in empty
 
@@ -121,7 +121,7 @@ def test_the_shipped_world_written_as_one_patch_is_playable() -> None:
     draft = WorldDraft()
     patch = ScenarioPatch.model_validate(_as_patch())
     _ = draft.apply(patch)
-    assert scenario_refusal(draft, playtests(settings(), engine_ids())) is None
+    assert scenario_refusal(draft, playtest_checks(settings(), engine_ids())) is None
 
 
 async def test_the_agent_authors_through_the_write_tool() -> None:
@@ -205,7 +205,7 @@ def test_a_thin_draft_hears_every_unmet_bar_item_at_once() -> None:
             entities=(_location("cell"),),
         )
     )
-    reason = scenario_refusal(draft, playtests(settings(), engine_ids()))
+    reason = scenario_refusal(draft, playtest_checks(settings(), engine_ids()))
     assert reason is not None
     for wanted in ("locations", "locked", "actors", "item", "thread", "when_reached"):
         assert wanted in reason
@@ -238,8 +238,8 @@ def test_an_opening_slice_passes_a_bar_the_whole_scenario_would_fail() -> None:
             threads=(Thread(id="the-way-out", title="The way out", stage="barred"),),
         )
     )
-    playing = playtests(settings(), engine_ids())
+    playing = playtest_checks(settings(), engine_ids())
 
-    assert scenario_refusal(draft, playing, OPENING) is None
+    assert scenario_refusal(draft, playing, OPENING_SLICE) is None
     assert scenario_refusal(draft, playing) is not None
     assert draft.scenario(engine_ids()).grows

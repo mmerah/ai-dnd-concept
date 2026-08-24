@@ -6,7 +6,7 @@ from pathlib import Path
 from nicegui import ui
 from nicegui.events import UploadEventArguments, ValueChangeEventArguments
 
-from aidm.app.authoring import FULL, OPENING, AuthoringSession
+from aidm.app.authoring import OPENING_SLICE, WHOLE_SCENARIO, AuthoringSession
 from aidm.app.launch import engine_ids
 from aidm.app.runtime import Runtime
 from aidm.config import Settings
@@ -358,7 +358,7 @@ def scenario_page(config: Settings) -> None:
                         engines=_engines(engines.value),
                         art_style=(art_style.value or "").strip(),
                         document=document,
-                        brief=FULL if brief.value == "full" else OPENING,
+                        brief=WHOLE_SCENARIO if brief.value == "full" else OPENING_SLICE,
                     )
                 except ValueError as error:
                     ui.notify(str(error), type="negative")

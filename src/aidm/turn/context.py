@@ -3,7 +3,7 @@ from collections.abc import Callable, Iterable, Mapping, Sequence
 from pathlib import Path
 
 from aidm.content.io import engine_text
-from aidm.engines.core import Engine, EntityRenderer, Offer
+from aidm.engines.core import AdvancementOffer, Engine, EntityRenderer
 from aidm.state.entities import PLAYER_ID, Entity, EntityId, Exit, Frozen, Trait, kind_word
 from aidm.state.model import Game, ScenarioMeta, Thread, WorldState
 
@@ -193,7 +193,7 @@ def render_narrator(
     )
 
 
-def render_proposal(engine: Engine, state: Game, offer: Offer, intent: str) -> str:
+def render_proposal(engine: Engine, state: Game, offer: AdvancementOffer, intent: str) -> str:
     subject = state.world.require(offer.subject_id)
     sections = (
         ("ON OFFER", offer.prompt),

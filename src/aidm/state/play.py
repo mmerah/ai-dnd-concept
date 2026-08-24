@@ -131,20 +131,20 @@ class TraceEntryBase(Frozen):
     facts: tuple[Fact, ...] = ()
 
 
-class Turn(TraceEntryBase):
+class TurnTrace(TraceEntryBase):
     prompt: str
     narration: str
     steps: tuple[StepTrace, ...] = ()
 
 
-class Applied(TraceEntryBase):
+class AdvanceApplied(TraceEntryBase):
     """One advancement change: the same transaction as a turn, without a prompt or a narration."""
 
     subject_id: EntityId
 
 
-class Extended(TraceEntryBase):
+class WorldExtended(TraceEntryBase):
     """Canon a background authoring run appended."""
 
 
-type TraceEntry = Turn | Applied | Extended
+type TraceEntry = TurnTrace | AdvanceApplied | WorldExtended

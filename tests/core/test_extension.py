@@ -19,7 +19,7 @@ import aidm.app.runtime
 from aidm.app.authoring import (
     ExitLink,
     ExtensionPatch,
-    Playtest,
+    PlaytestCheck,
     ScenarioPatch,
     WorldDraft,
     delta,
@@ -33,7 +33,7 @@ from aidm.content.model import Character
 from aidm.engines.core import Engine
 from aidm.state.entities import PLAYER_ID, Entity, EntityId, Exit
 from aidm.state.model import Game, Thread
-from aidm.state.play import Extended
+from aidm.state.play import WorldExtended
 from aidm.turn.run import TurnStep
 
 _CRYPT_ID = EntityId("sub_crypt")
@@ -107,7 +107,7 @@ def test_the_live_world_becomes_a_scenario_the_extending_author_can_hold(tmp_pat
 
     unmet = scenario_refusal(
         draft,
-        (Playtest(engine=game.engine, character=game.character),),
+        (PlaytestCheck(engine=game.engine, character=game.character),),
         extend_brief(game.state.world),
     )
     assert isinstance(unmet, str)
@@ -153,7 +153,7 @@ async def test_a_thin_world_grows_inside_the_turn_that_ran_it_thin(
     assert saved is not None
     assert _CRYPT_ID in {entity.id for entity in saved.world.entities}
 
-    assert any(isinstance(entry, Extended) for entry in game.entries)
+    assert any(isinstance(entry, WorldExtended) for entry in game.entries)
     assert (SCENARIOS / "whispering-vault" / "world.json").read_bytes() == authored
     assert game.offers()
 

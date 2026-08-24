@@ -4,9 +4,9 @@ from collections.abc import Callable, Sequence
 from nicegui import ui
 
 from aidm.app.runtime import (
-    Drafted,
+    AdvancementOffer,
+    DraftedAdvance,
     GameSession,
-    Offer,
     ThreadSummary,
     attributed_line,
     thread_summaries,
@@ -14,7 +14,7 @@ from aidm.app.runtime import (
 from aidm.content.io import SavedGame
 from aidm.state.entities import PLAYER_ID
 from aidm.state.facts import Fact
-from aidm.state.play import Applied, Extended, StepTrace, TraceEntry, Turn
+from aidm.state.play import AdvanceApplied, StepTrace, TraceEntry, TurnTrace, WorldExtended
 from aidm.turn.context import player_scene
 
 from .widgets import entity_row, heading, labeled_value, refuse_if_busy, working
@@ -84,12 +84,12 @@ def trace_panel(session: GameSession) -> None:
     titles: list[str] = []
     for entry in entries:
         match entry:
-            case Turn(prompt=prompt):
+            case TurnTrace(prompt=prompt):
                 turns += 1
                 titles.append(f"turn {turns}: {prompt}")
-            case Applied():
+            case AdvanceApplied():
                 titles.append(f"after turn {turns}: advancement")
-            case Extended():
+            case WorldExtended():
                 titles.append(f"after turn {turns}: the world grew")
     for index, entry in reversed(list(enumerate(entries))):
         with ui.expansion(titles[index], value=index == len(entries) - 1):
@@ -103,15 +103,15 @@ def _section(title: str, body: str) -> None:
 
 def _entry_trace(entry: TraceEntry) -> None:
     match entry:
-        case Applied(facts=facts):
+        case AdvanceApplied(facts=facts):
             _section("ADVANCEMENT", _facts(facts))
-        case Extended(facts=facts):
+        case WorldExtended(facts=facts):
             _section("THE WORLD GREW", _facts(facts))
-        case Turn():
+        case TurnTrace():
             _turn_trace(entry)
 
 
-def _turn_trace(turn: Turn) -> None:
+def _turn_trace(turn: TurnTrace) -> None:
     for step in turn.steps:
         _section(step.name.upper(), _output(step))
     _section("FACTS (private)", _facts(turn.facts))
@@ -147,13 +147,15 @@ def advancement_panel(session: GameSession, refresh: Callable[[], None]) -> None
         _intent_form(session, offer, refresh)
 
 
-def _summary(offer: Offer) -> None:
+def _summary(offer: AdvancementOffer) -> None:
     ui.label(offer.prompt).classes("text-sm font-bold")
     if offer.text:
         ui.label(offer.text).classes("text-sm opacity-70 whitespace-pre-wrap")
 
 
-def _intent_form(session: GameSession, offer: Offer, refresh: Callable[[], None]) -> None:
+def _intent_form(
+    session: GameSession, offer: AdvancementOffer, refresh: Callable[[], None]
+) -> None:
     box = ui.textarea("How do you want to grow?").classes("w-full mt-3").props("outlined")
 
     async def propose() -> None:
@@ -165,13 +167,15 @@ def _intent_form(session: GameSession, offer: Offer, refresh: Callable[[], None]
         if refuse_if_busy(session):
             return
         async with working(session):
-            session.drafted = Drafted(offer=offer, proposal=await session.propose(offer, intent))
+            session.drafted = DraftedAdvance(
+                offer=offer, proposal=await session.propose(offer, intent)
+            )
         refresh()
 
     ui.button("Propose", on_click=propose).props("color=primary")
 
 
-def _review(session: GameSession, drafted: Drafted, refresh: Callable[[], None]) -> None:
+def _review(session: GameSession, drafted: DraftedAdvance, refresh: Callable[[], None]) -> None:
     ui.label("Proposed changes").classes("text-sm font-bold mt-3")
     try:
         lines = [f"- {fact.trace}" for fact in session.preview(drafted)]

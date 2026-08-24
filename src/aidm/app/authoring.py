@@ -178,7 +178,7 @@ def _instructions(bar: str) -> str:
 
 
 @dataclass(frozen=True, slots=True)
-class Playtest:
+class PlaytestCheck:
     engine: Engine
     character: Character
 
@@ -187,8 +187,8 @@ class Playtest:
         _ = begin_game(self.engine, "draft", scenario, self.character)
 
 
-def playtests(config: Settings, engines: Sequence[EngineId]) -> tuple[Playtest, ...]:
-    built: list[Playtest] = []
+def playtest_checks(config: Settings, engines: Sequence[EngineId]) -> tuple[PlaytestCheck, ...]:
+    built: list[PlaytestCheck] = []
     for engine_id in engines:
         engine = build_engine(engine_id)
         character = load_character(
@@ -197,7 +197,7 @@ def playtests(config: Settings, engines: Sequence[EngineId]) -> tuple[Playtest, 
             engine.id,
             engine.check_overlay,
         )
-        built.append(Playtest(engine=engine, character=character))
+        built.append(PlaytestCheck(engine=engine, character=character))
     return tuple(built)
 
 
@@ -256,19 +256,19 @@ def _opening_unmet(scenario: Scenario) -> list[str]:
 
 
 @dataclass(frozen=True, slots=True)
-class Brief:
+class AuthoringBrief:
     """How much world one run authors: the instructions it works from and the bar it is held to."""
 
     instructions: str
     unmet: Callable[[Scenario], list[str]]
 
 
-FULL = Brief(_instructions("scenario_bar.md"), _bar_unmet)
+WHOLE_SCENARIO = AuthoringBrief(_instructions("scenario_bar.md"), _bar_unmet)
 # An opening slice is deliberately thin: the rest of the world is written during play.
-OPENING = Brief(_instructions("scenario_opening.md"), _opening_unmet)
+OPENING_SLICE = AuthoringBrief(_instructions("scenario_opening.md"), _opening_unmet)
 
 
-def extend_brief(before: WorldState) -> Brief:
+def extend_brief(before: WorldState) -> AuthoringBrief:
     """Bind the extension bar to what the world already contains."""
     held = {entity.id for entity in before.entities}
 
@@ -292,11 +292,11 @@ def extend_brief(before: WorldState) -> Brief:
             ]
         return []
 
-    return Brief(_instructions("scenario_extend.md"), unmet)
+    return AuthoringBrief(_instructions("scenario_extend.md"), unmet)
 
 
 def scenario_refusal(
-    draft: WorldDraft, playing: Sequence[Playtest], brief: Brief = FULL
+    draft: WorldDraft, playing: Sequence[PlaytestCheck], brief: AuthoringBrief = WHOLE_SCENARIO
 ) -> str | None:
     """The exact reason the draft will not play, or None; ValidationError counts as ValueError."""
     try:
@@ -312,9 +312,9 @@ def scenario_refusal(
 
 
 def authoring_toolset(
-    playing: Sequence[Playtest],
+    playing: Sequence[PlaytestCheck],
     config: Settings,
-    brief: Brief = FULL,
+    brief: AuthoringBrief = WHOLE_SCENARIO,
 ) -> FunctionToolset[WorldDraft]:
     def worked_example() -> str:
         """The shipped scenario in the draft shape patches are written in: the bar to match."""
@@ -345,9 +345,9 @@ def authoring_toolset(
 
 
 def world_agent(
-    playing: Sequence[Playtest],
+    playing: Sequence[PlaytestCheck],
     config: Settings,
-    brief: Brief = FULL,
+    brief: AuthoringBrief = WHOLE_SCENARIO,
 ) -> Agent[WorldDraft, str]:
     """Ends on the `finish` tool, not bare text: a tool-only author would never end its own turn."""
 
@@ -407,7 +407,7 @@ async def author_extension(
     """Run once because `finish` retries unplayable drafts inside the agent run."""
     document = source_file(config.scenarios_dir, state.scenario_id)
     draft = WorldDraft.from_game(state)
-    playing = (Playtest(engine=engine, character=character),)
+    playing = (PlaytestCheck(engine=engine, character=character),)
     agent = world_agent(playing, config, extend_brief(state.world))
     given = (
         state.scenario.premise
@@ -490,10 +490,10 @@ class AuthoringSession:
     engines: tuple[EngineId, ...]
     art_style: str = ""
     document: Path | None = None
-    brief: Brief = FULL
+    brief: AuthoringBrief = WHOLE_SCENARIO
     history: list[ModelMessage] = field(default_factory=list)
     busy: bool = False
-    playing: tuple[Playtest, ...] = field(init=False)
+    playing: tuple[PlaytestCheck, ...] = field(init=False)
     agent: Agent[WorldDraft, str] = field(init=False)
     draft: WorldDraft = field(init=False)
     opening_prompt: str = field(init=False)
@@ -503,7 +503,7 @@ class AuthoringSession:
             raise ValueError("give a premise, a document, or both: there is nothing to author from")
         if (self.config.scenarios_dir / self.slug).exists():
             raise ValueError(f"scenario {self.slug!r} already exists")
-        self.playing = playtests(self.config, self.engines)
+        self.playing = playtest_checks(self.config, self.engines)
         self.agent = world_agent(self.playing, self.config, self.brief)
         self.draft = WorldDraft(grows=self.grows)
         given = (

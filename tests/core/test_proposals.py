@@ -7,11 +7,11 @@ from loner3e_test_support import loner3e_session
 from pydantic_ai.messages import ModelMessage, ModelResponse, TextPart
 from pydantic_ai.models.function import AgentInfo, FunctionModel
 
-from aidm.app.runtime import Drafted
+from aidm.app.runtime import DraftedAdvance
 from aidm.content.io import FileStore, SavedGame
 from aidm.engines.loner3e.rules import AdventureGrowth, Change, Mechanics
 from aidm.state.entities import PLAYER_ID
-from aidm.state.play import Applied
+from aidm.state.play import AdvanceApplied
 
 LEGAL = AdventureGrowth(
     changes=(Change(kind="gear", tag="Waxed Rope"),), why="he never climbs without it now"
@@ -51,7 +51,7 @@ def test_confirming_commits_exactly_the_proposed_delta(tmp_path: Path) -> None:
     game = loner3e_session(tmp_path)
     game.state = at_boundary(game.state)
     offer = game.offers()[0]
-    drafted = Drafted(offer=offer, proposal=LEGAL)
+    drafted = DraftedAdvance(offer=offer, proposal=LEGAL)
 
     facts = game.apply_proposal(drafted)
 
@@ -61,7 +61,7 @@ def test_confirming_commits_exactly_the_proposed_delta(tmp_path: Path) -> None:
         "Kael gained gear Waxed Rope (he never climbs without it now)",
         "the player Kael[player] milestones +1 -> 1 (a milestone spent)",
     ]
-    entry = Applied(subject_id=PLAYER_ID, facts=facts)
+    entry = AdvanceApplied(subject_id=PLAYER_ID, facts=facts)
     assert game.entries == [entry]
     assert FileStore(tmp_path).load("poc") == SavedGame.from_game(game.state)
     assert game.offers() == ()
@@ -74,7 +74,7 @@ def test_a_refused_proposal_leaves_the_committed_state_untouched(tmp_path: Path)
     game.state = at_boundary(game.state)
     before = SavedGame.from_game(game.state).model_dump_json()
     offer = game.offers()[0]
-    drafted = Drafted(offer=offer, proposal=ILLEGAL)
+    drafted = DraftedAdvance(offer=offer, proposal=ILLEGAL)
 
     with pytest.raises(ValueError, match="carries no tag"):
         _ = game.apply_proposal(drafted)

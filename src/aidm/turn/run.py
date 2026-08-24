@@ -14,9 +14,9 @@ from aidm.engines.core import (
     NOTHING_CHANGED,
     RULES_WAIT,
     Advancement,
+    AdvancementOffer,
     Engine,
     EventCause,
-    Offer,
     PlanContext,
     ProposalBase,
     TurnLog,
@@ -39,7 +39,7 @@ from aidm.state.play import (
     Option,
     PendingDecision,
     StepTrace,
-    Turn,
+    TurnTrace,
     narration_text,
 )
 
@@ -48,7 +48,7 @@ from .context import SceneSnapshot, VisibleScene
 
 
 @dataclass(frozen=True, slots=True)
-class CoreTool:
+class DirectorTool:
     """A director tool with the state predicate that decides whether it is offered at all."""
 
     func: ToolFuncEither[PlanContext, ...]
@@ -142,15 +142,15 @@ def core_toolset() -> AbstractToolset[PlanContext]:
         return _resolved(ctx, lambda draft: actions.leave_party(draft, actor_id))
 
     tools = (
-        CoreTool(reveal),
-        CoreTool(move),
-        CoreTool(gain_improvised_item),
-        CoreTool(add_trait),
-        CoreTool(remove_trait, _a_trait_in_reach),
-        CoreTool(advance_thread, _an_unresolved_thread),
-        CoreTool(unlock_exit, _a_locked_way_out),
-        CoreTool(join_party, _an_actor_to_recruit),
-        CoreTool(leave_party, _a_party_member),
+        DirectorTool(reveal),
+        DirectorTool(move),
+        DirectorTool(gain_improvised_item),
+        DirectorTool(add_trait),
+        DirectorTool(remove_trait, _a_trait_in_reach),
+        DirectorTool(advance_thread, _an_unresolved_thread),
+        DirectorTool(unlock_exit, _a_locked_way_out),
+        DirectorTool(join_party, _an_actor_to_recruit),
+        DirectorTool(leave_party, _a_party_member),
     )
     # Keyed off the functions themselves, so a renamed tool cannot lose its predicate.
     applies = {tool.func.__name__: tool.applies for tool in tools}
@@ -215,7 +215,7 @@ def _a_trait_in_reach(state: Game) -> bool:
 class AdvancementContext:
     advancement: Advancement
     state: Game
-    offer: Offer
+    offer: AdvancementOffer
 
 
 @dataclass(frozen=True, slots=True)
@@ -322,7 +322,7 @@ def _replayed(exchange: Exchange) -> str:
 @dataclass(frozen=True, slots=True)
 class TurnResult:
     state: Game
-    turn: Turn
+    turn: TurnTrace
 
 
 type TurnStep = Literal["director", "narrator", "worldsmith"]
@@ -421,7 +421,7 @@ async def run_segment(
     draft.turn += 1
     return TurnResult(
         state=draft.committed(),
-        turn=Turn(
+        turn=TurnTrace(
             prompt=prompt,
             facts=tuple(facts),
             narration=narration_text(lines),

@@ -56,7 +56,7 @@ def icon_request(entity: Entity, style: str) -> str:
 
 
 @dataclass(frozen=True, slots=True)
-class Generated:
+class GeneratedImage:
     data: bytes
     suffix: str
 
@@ -155,7 +155,7 @@ class Illustrator:
 
     async def _generate(
         self, prompt: str, ratio: str, references: Sequence[Path] = ()
-    ) -> Generated | None:
+    ) -> GeneratedImage | None:
         """A failed generation costs a log line and nothing else: media is outside the game."""
         content: list[dict[str, object]] = [{"type": "text", "text": prompt}]
         content.extend(
@@ -214,13 +214,13 @@ class _ImageReply(BaseModel):
         return images[0].image_url.url if images else None
 
 
-def _decode(url: str) -> Generated | None:
+def _decode(url: str) -> GeneratedImage | None:
     header, _, payload = url.partition(",")
     suffix = SUFFIXES.get(header.removeprefix("data:").removesuffix(";base64"))
     if suffix is None or not payload:
         LOGGER.warning("image reply is not a supported data uri: %r", header[:40])
         return None
-    return Generated(data=b64decode(payload), suffix=suffix)
+    return GeneratedImage(data=b64decode(payload), suffix=suffix)
 
 
 def _data_uri(path: Path) -> str:
