@@ -14,11 +14,7 @@ DIFF_LINES = 40
 
 
 def golden(path: Path, actual: str) -> None:
-    """Lock a rendered artefact against a checked-in fixture.
-
-    A fixture is rewritten only under `AIDM_GOLDEN_REGEN=1`, and only in the same commit as the
-    change that justifies it. That run never reports success — see `tests/conftest.py`.
-    """
+    """Regenerate fixtures only when explicitly enabled, and never report that run as passing."""
     if REGENERATE:
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_text(actual, encoding=ENCODING)

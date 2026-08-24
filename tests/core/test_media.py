@@ -50,7 +50,6 @@ def test_illustration_request_names_the_scene_and_no_unrevealed_canon() -> None:
 
 
 def test_scene_key_holds_through_a_change_of_cast_but_not_of_place() -> None:
-    """Staying put reuses the cached art; only leaving the location asks for a new picture."""
     _, state = initialized()
     key = scene_key(player_scene(state))
     assert scene_key(player_scene(_placed(state, "Pale Watcher", known=False))) == key
@@ -86,7 +85,6 @@ def test_an_icon_is_looked_up_in_the_directory_its_entity_belongs_to(tmp_path: P
 async def test_concurrent_illustrations_of_one_scene_generate_it_once(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    """Media is billed per call, and the page can be built twice for one open."""
     _, state = initialized()
     prompts: list[str] = []
 

@@ -69,7 +69,6 @@ def test_movement_walks_unfound_ways_and_stops_at_locked_ones() -> None:
 
 
 def test_movement_is_refused_where_no_way_is_authored_at_all() -> None:
-    """Topology alone decides where the player may walk: an exit-less place strands them."""
     draft = _draft()
     pit = Entity(id=EntityId("oubliette"), kind="location", name="the oubliette", brief="A pit.")
     draft.world.entities.append(pit)
@@ -136,7 +135,6 @@ def test_trait_changes_round_trip_and_refuse_what_the_entity_does_not_carry() ->
 
 
 def test_acting_on_an_unrevealed_actor_reveals_it_before_its_traits_change() -> None:
-    """The leak rule: an actor is revealed by being acted on, an item or a place is not."""
     draft = _draft()
     _ = actions.move(draft, PLAYER_ID, CLOISTER)
 

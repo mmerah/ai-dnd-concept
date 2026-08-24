@@ -47,8 +47,7 @@ def read_scenarios(
         try:
             scenario = _read(path / WORLD_FILE, Scenario)
         except ValueError as unreadable:
-            # The home screen is the only way into the app: one half-written scenario must not
-            # take it down.
+            # Skip incomplete scenarios so the home screen remains usable.
             LOGGER.warning("skipping scenario %r: %s", path.name, unreadable)
             continue
         # Installed order, so a scenario naming an engine twice cannot offer it twice.
@@ -241,8 +240,7 @@ def _safe_path(directory: Path, stem: str, suffix: str) -> Path:
 
 
 MIN_PASSAGE = 24
-# The ceiling on a document handed to an author whole: ~30k tokens, which admits a 76-page
-# adventure and refuses what would swallow the context.
+# This ~30k-token ceiling admits a 76-page adventure without swallowing the context.
 WHOLE_CHARS = 120_000
 _BLANK_LINE = re.compile(r"\n\s*\n")
 _LINE_BREAK_HYPHEN = re.compile(r"(\w)-\s+(\w)")
@@ -263,8 +261,7 @@ def whole_text(path: Path) -> str:
 
 
 def _pdf_pages(path: Path) -> tuple[str, ...]:
-    # Not layout mode: it reads a page as one grid, so it weaves side-by-side columns together
-    # word by word and turns a letter-spaced display font into gibberish.
+    # Layout mode interleaves columns and mangles letter-spaced display text.
     return tuple(page.extract_text() for page in PdfReader(path).pages)
 
 

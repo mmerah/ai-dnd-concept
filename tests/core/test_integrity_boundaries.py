@@ -75,7 +75,6 @@ def test_world_and_game_state_reject_inconsistent_topology() -> None:
 
 
 def test_an_engine_refuses_an_authored_payload_it_cannot_read(tmp_path: Path) -> None:
-    """The engine's own sheet type is the schema a character overlay is checked against at load."""
     folder = tmp_path / "broken"
     folder.mkdir()
     _ = (folder / "base.json").write_text('{"name": "Broken", "brief": "Built for this test."}')
@@ -127,7 +126,6 @@ def test_world_state_rejects_broken_exits_and_party() -> None:
 
 
 def test_a_scenario_starts_the_party_it_authors() -> None:
-    """A scenario holds no player, but its party is already the authored world's own."""
     engine = build_engine(LONER3E)
     authored = scenario()
     started = updated(authored, world=updated(authored.world, party=[MARA]))
@@ -140,7 +138,6 @@ def test_a_scenario_starts_the_party_it_authors() -> None:
 
 
 def test_a_character_knows_the_gear_they_start_with() -> None:
-    """Unknown carried gear would be hidden canon inside the inventory the Narrator is shown."""
     with pytest.raises(ValidationError, match="knows the gear they start with"):
         _character(holds=_rope(HELD, known=False))
 

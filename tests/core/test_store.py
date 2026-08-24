@@ -19,7 +19,6 @@ from aidm.state.model import EventBadge, Exchange, Game, MechanicEvent
 
 
 def test_a_save_carries_every_field_the_played_game_holds() -> None:
-    """A field added to `Game` and forgotten in `SavedGame.of` would silently never persist."""
     assert {field.name for field in fields(Game)} == set(SavedGame.model_fields)
 
 
@@ -58,7 +57,6 @@ def test_storage_rejects_unsafe_slugs(tmp_path: Path, slug: str) -> None:
 
 
 def test_content_paths_reject_an_unsafe_id(tmp_path: Path) -> None:
-    """A game route supplies these ids, and each one names a directory."""
     engine = build_engine(LONER3E)
     with pytest.raises(ValueError, match="invalid content id"):
         load_scenario(tmp_path, "../escape")

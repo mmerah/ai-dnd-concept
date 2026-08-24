@@ -21,7 +21,6 @@ class Scenario(Frozen):
 
     meta: ScenarioMeta
     engines: tuple[EngineId, ...] = Field(min_length=1)
-    # A growing scenario is extended between turns by a background authoring run.
     grows: bool = False
     art_style: str = ""
     starting_location_id: EntityId
@@ -46,8 +45,7 @@ class Scenario(Frozen):
 
     @model_validator(mode="after")
     def _every_location_reachable(self) -> Self:
-        """A locked or unfound way still counts — the player can open or walk it — but a location
-        no walk of exits reaches is content nobody can ever visit."""
+        """Count locked and unknown exits because play can still open or discover them."""
         reached = _walk(self.world.entities, self.starting_location_id)
         unreachable = sorted(
             entity.id
@@ -85,8 +83,7 @@ class CharacterProfile(Frozen):
 
     @model_validator(mode="after")
     def _held_and_known(self) -> Self:
-        """Own gear is known gear: an unknown carried item would be hidden canon inside the
-        inventory the Narrator is shown, so the two prompts would contradict each other."""
+        """Reject unknown carried gear because the Narrator sees the inventory."""
         wrong_kind = sorted(item.id for item in self.items if item.kind != "item")
         if wrong_kind:
             raise ValueError(f"a character's profile holds items only: {wrong_kind}")

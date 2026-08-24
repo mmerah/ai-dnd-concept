@@ -62,8 +62,7 @@ class TurnLog:
 
 @dataclass(frozen=True, slots=True)
 class PlanContext:
-    """What a Director tool resolves against; `state` is the turn's own draft, never committed
-    state."""
+    """Director tools resolve against the turn's draft, never committed state."""
 
     engine: "Engine"
     state: Game
@@ -100,7 +99,6 @@ class Engine(ABC):
         self.director_instructions: str = engine_text(self.engine_dir / "director.md")
         # An engine's own mechanics reach the Director as tools; core's world vocabulary is shared.
         self.director_toolsets: tuple[AbstractToolset[PlanContext], ...] = ()
-        # Optional capabilities an engine plugs in; the app offers only what it finds.
         self.advancement: Advancement | None = None
         self.creation: CharacterCreation | None = None
 
@@ -148,11 +146,7 @@ class Engine(ABC):
         """Ordered (label, value) pairs summarising the player's own sheet for the player."""
 
     def player_events(self, source: str, facts: tuple[Fact, ...]) -> tuple[MechanicEvent, ...]:
-        """A chip event per fact carrying both a chip and narrator text: the narrator gate stays
-        centralized so an unrevealed entity's chip can never show, whatever a resolver sets.
-
-        The `source` is the tool that landed the facts, or the kind of decision a resume answered.
-        """
+        """Keep chip visibility at the narrator gate so unrevealed entities cannot bypass it."""
         return tuple(
             MechanicEvent(tool=source, title=fact.chip.title, icon=fact.chip.icon)
             for fact in facts
@@ -388,8 +382,7 @@ def sequential_toolset(
 def with_enum(
     tool: ToolDefinition, fields: Sequence[str], values: Sequence[str], inside: str | None = None
 ) -> ToolDefinition:
-    """`inside` names the `$defs` entry the fields sit in: a tool taking one model flattens its
-    schema, a tool taking more than one argument nests it."""
+    """Use `inside` when multiple tool arguments nest model fields under `$defs`."""
     schema = tool.parameters_json_schema
     if inside is None:
         return dataclasses.replace(tool, parameters_json_schema=_enumerated(schema, fields, values))

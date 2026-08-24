@@ -100,8 +100,7 @@ class EntityDetail(Frozen):
 
 
 class Trait(Frozen):
-    """A lasting fictional quality: a skill, a frailty, a condition, a ward. Core never interprets
-    one; both engines read them and the Director authors them."""
+    """A lasting fictional quality interpreted by engines, not core."""
 
     id: Slug
     name: str
@@ -443,8 +442,7 @@ class WorldState(Mutable):
         return self
 
     def _check_exits(self, entity: Entity) -> None:
-        """A way the player knows must lead somewhere they may be told about, or the scene would
-        name a place they have not learned of."""
+        """Reject known exits that would expose an unknown destination."""
         if entity.exits and entity.kind != "location":
             raise ValueError(f"{entity.kind} {entity.id!r} cannot have exits")
         for way in entity.exits:
@@ -581,8 +579,7 @@ class Game:
         )
 
     def reveal(self, entity: Entity) -> list[Fact]:
-        """No chip: a reveal is mostly a byproduct of some other action, which carries its own
-        chip. Only the standalone `reveal` tool, in `actions.reveal`, cards a discovery."""
+        """Leave chips to the containing action or the standalone reveal resolver."""
         if entity.known:
             return []
         entity.known = True
@@ -651,8 +648,7 @@ def _move_summary(entity: Entity, destination: Entity) -> tuple[str, Chip]:
     )
 
 
-# An option id is named by the engine and may run hyphens together ('red---fire'), so it is
-# laxer than `Slug`.
+# Engine option ids may contain repeated hyphens, unlike `Slug`.
 ContentSlug = Annotated[str, Field(pattern=r"^[a-z0-9-]+$", max_length=64)]
 
 type Picks = Mapping[Slug, tuple[str, ...]]
@@ -685,7 +681,7 @@ class TextStep(Frozen):
 
     id: Slug
     prompt: str
-    hint: str = ""  # placeholder examples, shown greyed in the input
+    hint: str = ""
     count: int = 1
     max_length: int = 100
 
@@ -711,8 +707,7 @@ def check_picks(steps: Sequence[AnyStep], picks: Picks) -> None:
 
 
 def _check_chosen(step: CreationStep, chosen: tuple[str, ...]) -> None:
-    # A repeatable step answers by slot, so a slot nobody has picked yet arrives blank: it is a
-    # pick still missing, not an option nothing offers.
+    # Blank repeat slots are missing picks, not invalid offered options.
     named = tuple(pick for pick in chosen if pick)
     if not step.repeats and len(set(named)) != len(named):
         raise ValueError(f"{step.id!r} repeats a pick")

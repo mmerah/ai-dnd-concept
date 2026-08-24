@@ -91,14 +91,12 @@ def _thread_line(thread: ThreadSummary) -> str:
 
 LOGGER = logging.getLogger(__name__)
 
-# The step name the page lights while an authoring run grows the world.
 WORLDSMITH = "worldsmith"
 
 
 @dataclass(frozen=True, slots=True)
 class Drafted:
-    """The advancement tab's pending change: what was offered, and what the advisor wrote against
-    it."""
+    """Hold an advancement offer and its uncommitted proposal."""
 
     offer: Offer
     proposal: ProposalBase
@@ -119,8 +117,7 @@ def open_media(
     character: Character,
     store: FileStore,
 ) -> Illustrator | None:
-    """Icons for authored canon are shared by every save of the scenario, the character's own by
-    every game it plays; scene art and the icons of what play invented belong to the one save."""
+    """Share authored icons across games while keeping generated canon and scenes per save."""
     if not config.media.enabled:
         return None
     scenario_icons = config.scenarios_dir / target.scenario_id / ICON_DIR
@@ -216,8 +213,7 @@ class GameSession:
         return self.store.write_journal(self.slug, journal_markdown(self.state))
 
     def _illustrate(self, narration: str) -> None:
-        """Fire and forget: the turn is committed already, and the image lands when it lands. The
-        set holds the task, which asyncio otherwise garbage-collects mid-flight."""
+        """Retain background tasks because asyncio may collect unreferenced tasks early."""
         if self.media is None:
             return
         task = create_task(self.media.illustrate(self.state, narration))
@@ -295,8 +291,7 @@ class GameSession:
         self.entries.append(entry)
 
     async def _extend(self) -> None:
-        """The world grows inside the turn that ran it thin; a failed run costs a log line, and
-        the next thin turn tries again."""
+        """Log failed growth so the next thin turn can retry it."""
         try:
             patch = await author_extension(self.settings, self.engine, self.character, self.state)
             state, facts = transact(

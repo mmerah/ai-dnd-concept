@@ -557,8 +557,7 @@ def on_step(view: GameView, step: str) -> None:
 
 
 def on_event(view: GameView, event: MechanicEvent, loop: AbstractEventLoop) -> None:
-    """Pydantic AI runs sync director tools off-loop, in an anyio worker thread: this callback
-    fires there too, so the UI update it triggers must be scheduled back onto the event loop."""
+    """Schedule refreshes on NiceGUI's loop because sync tools emit from worker threads."""
     loop.call_soon_threadsafe(_apply_event, view, event)
 
 
@@ -662,8 +661,7 @@ def game_page(session: GameSession) -> None:
         ui.space()
         ui.button("restart", on_click=lambda: restart(view)).props("flat color=white dense")
 
-    # The header eats 4rem and the page its own padding, so a bare `h-screen` puts the input
-    # row below the fold.
+    # Account for the header and page padding so the input stays above the fold.
     with ui.splitter(value=55).classes("w-full").style("height: calc(100vh - 6rem)") as splitter:
         with splitter.before, ui.column().classes("w-full h-full p-4").style("gap: 0.5rem"):
             view.scene()

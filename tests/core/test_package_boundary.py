@@ -5,9 +5,7 @@ import pytest
 
 SOURCE = Path(__file__).parents[2] / "src" / "aidm"
 ENGINES = ("aidm.engines.loner3e", "aidm.engines.twentyfourxx")
-# One direction: state <- content <- engines <- turn <- app <- ui, with `aidm.config` a leaf
-# every layer may read. An engine ships its own panels, so it may import nicegui; `aidm.ui` and
-# the other engine stay closed to it.
+# Dependencies flow state <- content <- engines <- turn <- app <- ui; config is a shared leaf.
 FORBIDDEN = {
     "state": {"aidm.content", "aidm.engines", "aidm.turn", "aidm.app", "aidm.ui", "nicegui"},
     "content": {"aidm.engines", "aidm.turn", "aidm.app", "aidm.ui", "nicegui"},
@@ -45,8 +43,7 @@ def _file_imports(path: Path) -> set[str]:
         elif isinstance(node, ast.ImportFrom):
             base = _absolute(_package_of(path), node)
             imports.add(base)
-            # `from aidm.engines import sheets` imports the submodule without naming it in
-            # `node.module`, so record each `base.alias` too.
+            # `from package import module` stores the module in aliases, not `node.module`.
             imports.update(f"{base}.{alias.name}" for alias in node.names)
     return imports
 
@@ -70,7 +67,6 @@ def test_packages_import_only_in_the_allowed_direction(
 
 
 def test_only_the_loader_names_a_concrete_engine() -> None:
-    """Adding an engine is one line in `app.launch.ENGINES`; no engine imports another."""
     naming = {
         str(path.relative_to(SOURCE))
         for path in SOURCE.rglob("*.py")

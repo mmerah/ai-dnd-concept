@@ -10,8 +10,7 @@ class BareMechanics(Mutable): ...
 
 
 def _engine(tmp_path: Path) -> Engine:
-    """Only the procedure: no packs, no examples, no advancement file, and no sheet concept at
-    all, because an engine played from the fiction alone must load without content ceremony."""
+    """Build a fiction-only engine with no optional capabilities."""
     (tmp_path / "director.md").write_text("Test procedure.\n", encoding="utf-8")
 
     class BareEngine(Engine):

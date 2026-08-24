@@ -17,7 +17,7 @@ VAULT_SEAL = "vault-seal"
 
 def test_possible_tracks_the_draft() -> None:
     _, state = game(LONER3E)
-    assert possible("move", state) is True  # no predicate: always offered
+    assert possible("move", state) is True
     assert possible("leave_party", state) is False
 
     draft = state.draft()
@@ -28,7 +28,6 @@ def test_possible_tracks_the_draft() -> None:
 
 
 def test_a_thread_put_dormant_can_still_be_moved() -> None:
-    """The scene keeps rendering it, so hiding the tool would strand the Director on it."""
     _, state = game(LONER3E)
     draft = state.draft()
     _ = actions.advance_thread(draft, AdvanceThread(thread_id=VAULT_SEAL, status="dormant"))

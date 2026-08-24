@@ -52,8 +52,7 @@ def _notation(faces: Sequence[int]) -> str:
 
 
 def reveal(draft: Game, entity_id: EntityId) -> list[Fact]:
-    """The standalone `reveal` tool's resolver: byproduct reveals go through `Game.reveal`,
-    chip-less."""
+    """Give standalone reveals a chip; byproduct reveals remain chip-less."""
     entity = draft.world.require(entity_id)
     facts = draft.reveal(entity)
     if not facts:
@@ -107,8 +106,7 @@ def _move_actor(draft: Game, actor_id: EntityId, to_id: EntityId) -> list[Fact]:
     here = draft.player_location
     if actor_id == PLAYER_ID:
         way = _walkable_exit(draft, draft.world.require(here), destination)
-        # Walking a way is finding it, in both directions: the player who arrived can see the
-        # door they came through, and the destination is revealed below, so both ends are known.
+        # Arrival reveals both directions because the player can see the way back.
         way.known = True
         back = destination.exit_to(here)
         if back is not None:
@@ -117,7 +115,7 @@ def _move_actor(draft: Game, actor_id: EntityId, to_id: EntityId) -> list[Fact]:
         for member_id in draft.world.party:
             member = draft.world.require_kind(member_id, "actor")
             if member.parent_id != destination.id:
-                # One card per travel: the player's own move already carries it.
+                # The player's move already supplies the single travel card.
                 followed = draft.move(member, destination)
                 facts.append(followed.model_copy(update={"chip": None}))
         return facts

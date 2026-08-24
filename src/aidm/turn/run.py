@@ -164,8 +164,7 @@ def _unlock_targets(state: Game) -> list[str]:
 def _narrow_unlock_targets(
     ctx: RunContext[PlanContext], tools: list[ToolDefinition]
 ) -> list[ToolDefinition]:
-    # This runs before the `possible()` filter drops `unlock_exit`, so with nothing locked the tool
-    # is still here and an enum would be empty: no legal value at all.
+    # This runs before impossible tools are filtered, so an empty enum would have no legal value.
     targets = _unlock_targets(ctx.deps.state)
     return [
         with_enum(tool, ("to_id",), targets) if tool.name == "unlock_exit" and targets else tool

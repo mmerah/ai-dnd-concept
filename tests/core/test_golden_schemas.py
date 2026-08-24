@@ -9,9 +9,7 @@ from aidm.engines.core import PlanContext
 from aidm.state.model import EngineId, EntityDetail
 from aidm.turn.run import core_toolset
 
-# A role's output schema is sent to the model, so its field descriptions steer it exactly as the
-# instructions do. Every one of these is engine-independent: what each engine's calls mean is
-# taught by its instructions, not by its wire shape.
+# Schema descriptions steer the model; engine-specific meaning belongs in instructions.
 SHARED_OUTPUTS: dict[str, type[BaseModel]] = {
     "entity_detail": EntityDetail,
 }

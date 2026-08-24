@@ -84,7 +84,6 @@ def test_a_clear_luck_test_still_shows_the_die_with_no_outcome_label() -> None:
 
 
 def test_a_luck_test_attached_to_an_attempt_adds_a_luck_dice_group() -> None:
-    """The luck die belongs on the card whether or not the test bites."""
     _, state = game(TWENTYFOURXX)
     facts = resolve_attempt(state.draft(), _climb(luck_test="a rope frays"), Random(0))
 
@@ -95,7 +94,6 @@ def test_a_luck_test_attached_to_an_attempt_adds_a_luck_dice_group() -> None:
 
 
 def test_a_clear_luck_test_attached_to_an_attempt_still_adds_a_luck_dice_group() -> None:
-    """A clear luck test still rolled a die, though it left no `luck_tested` fact behind."""
     _, state = game(TWENTYFOURXX)
     facts = resolve_attempt(state.draft(), _climb(luck_test="a rope frays"), Random(1))
 

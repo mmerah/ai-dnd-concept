@@ -133,7 +133,6 @@ def test_an_engine_that_declares_nothing_is_refused_before_it_plays() -> None:
 
 
 def test_every_registered_engine_builds_itself() -> None:
-    """Registration is data: a new engine is one line in `app.launch.ENGINES`."""
     assert len({engine.id for engine in ENGINES}) == len(ENGINES)
     for engine in ENGINES:
         _ = build_engine(engine.id)

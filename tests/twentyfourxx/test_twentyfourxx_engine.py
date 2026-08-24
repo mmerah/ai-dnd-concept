@@ -136,9 +136,7 @@ async def test_roll_attempt_narrows_skill_and_helper_skill_to_who_is_here() -> N
     tools = await director_toolset().get_tools(ctx)
     schema = tools["roll_attempt"].tool_def.parameters_json_schema
 
-    # Kael (the player, in the study) carries Climbing/Stealth/Tracking; Mara (also in the
-    # study) carries none. The cloister rat's Intimidation is off the sheet: it is in the
-    # cloister, not here.
+    # Only Kael's local skills qualify; Mara has none and the rat is elsewhere.
     expected = ["", "Climbing", "Stealth", "Tracking"]
     assert schema["properties"]["skill"]["enum"] == expected
     assert schema["properties"]["helper_skill"]["enum"] == expected

@@ -22,8 +22,7 @@ from aidm.state.model import EngineId, Exchange, Game, Line
 from aidm.turn.run import TurnResult
 
 PROMPT = "I lever up the loose flagstone and listen at the vault door."
-# Played turns, so the history window, its rendering, and its replay as messages all run on real
-# exchanges rather than on an empty tuple.
+# Use played turns so history rendering and replay cover real exchanges.
 HISTORY = (
     Exchange(
         prompt="I try the vault door.",

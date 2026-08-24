@@ -138,8 +138,6 @@ async def test_the_agent_authors_through_the_write_tool() -> None:
 
 
 async def test_finishing_an_unplayable_draft_is_refused_and_asked_again() -> None:
-    """This pins the output validator's own retry: an empty draft's `finish` is refused and the
-    author is asked again in the same run. Post-run revalidation lives in `write()`, not here."""
     config = settings()
     session = AuthoringSession(
         slug="authored", premise="a vault", config=config, grows=False, engines=engine_ids()
@@ -213,7 +211,6 @@ def test_a_thin_draft_hears_every_unmet_bar_item_at_once() -> None:
 
 
 def test_an_opening_slice_passes_a_bar_the_whole_scenario_would_fail() -> None:
-    """Premise-start authors the first scene and nothing else: the rest is written during play."""
     draft = WorldDraft(grows=True)
     _ = draft.apply(
         ScenarioPatch(

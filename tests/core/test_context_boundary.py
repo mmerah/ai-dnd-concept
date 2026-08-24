@@ -95,7 +95,6 @@ def test_prompt_ids_escape_control_characters_and_bracket_delimiters() -> None:
 
 
 def test_the_director_is_shown_authored_detail() -> None:
-    """The Director reads authored detail text because a consequence lives there."""
     held = _with_detail(state(), EntityId("mara"))
     scene = SceneSnapshot.of(held)
     describe = _renderer(held)

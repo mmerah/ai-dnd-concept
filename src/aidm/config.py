@@ -6,7 +6,7 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 
 ProviderName = Literal["openrouter", "local"]
 ReasoningEffort = Literal["none", "minimal", "low", "medium", "high", "xhigh", "max"]
-# The roles a build has. A stage is built by name, so an unbuildable name cannot be configured.
+# A stage is built by name, so an unbuildable role cannot be configured.
 Role = Literal["director", "narrator", "advisor", "scenario_creator"]
 
 
@@ -30,8 +30,7 @@ class RoleConfig(BaseModel):
 
 
 class MediaConfig(BaseModel):
-    """Scene illustrations: presentation only, so the default is off and a failure costs a log
-    line."""
+    """Media is optional presentation, so failures only log and the default is off."""
 
     model_config = ConfigDict(frozen=True)
 
@@ -42,9 +41,8 @@ class MediaConfig(BaseModel):
     icon_ratio: str = "1:1"
 
 
-# Authoring passes write whole records, which the turn-loop defaults cannot.
 ROLE_DEFAULTS: dict[Role, RoleConfig] = {
-    # A tool loop spends its budget across many calls, and choosing between tools needs the effort.
+    # Tool loops divide the budget across calls and need reasoning to choose among tools.
     "director": RoleConfig(max_tokens=8192, reasoning_effort="low"),
     "scenario_creator": RoleConfig(max_tokens=32768, reasoning_effort="medium"),
 }

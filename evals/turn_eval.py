@@ -21,13 +21,9 @@ CHARACTER_ID = "kael"
 ENGINES = (EngineId("loner3e"), EngineId("twentyfourxx"))
 # Both engines' outcomes for an attempt that got what it reached for.
 WON = ("yes-and", "yes", "yes-but", "success")
-# How many segments one scripted interaction may take before it is scored as a runaway. The
-# longest faithful chain is stake -> proceed (rolls, may hit) -> defence answered: three.
+# The longest valid chain is stake -> proceed -> defence.
 SEGMENT_CAP = 4
-# Every pending kind either engine can mint with options on it, answered the way that keeps the
-# scripted action going: a hand-back nobody answers would end the interaction and fail the
-# expectations for the pipeline's shape rather than for the Director's judgment. Loner's
-# `conflict` carries no options, so no answer can script it.
+# Script option-bearing decisions that continue the action; Loner conflicts have no options.
 ANSWERS: Mapping[str, str] = {"stake": "proceed", "defence": "take-it"}
 
 
@@ -153,8 +149,7 @@ def staked_before_rolling(result: TurnResult) -> bool:
 
 
 def won_climbs_arrive(result: TurnResult) -> bool:
-    """A climb the player won has to land them up there; a lost one may leave them below —
-    "the ladder gives and drops them back" is a legitimate turn."""
+    """Require successful climbs to arrive while allowing failed climbs to remain below."""
     won = any(fact.data.get("outcome") in WON for fact in result.turn.facts)
     return not won or inside(result, "player", "bell_tower")
 
@@ -196,8 +191,7 @@ def cases_for(engine_id: EngineId, settings: Settings) -> tuple[Case, ...]:
         Case(
             id=f"{engine_id}/open-the-way-and-climb",
             engine_id=engine_id,
-            # No searching: a search for a hidden person is a legitimate roll under both engines,
-            # and a `no` correctly leaves Elena unrevealed — which this case would score a miss.
+            # Exclude searches because a valid failed search leaves Elena hidden.
             prompt=(
                 "I climb the stair from the cloister up into the bell tower, and the moment I am "
                 "up there I see the woman who keeps it standing among the beams."
@@ -214,8 +208,7 @@ def cases_for(engine_id: EngineId, settings: Settings) -> tuple[Case, ...]:
         Case(
             id=f"{engine_id}/three-things",
             engine_id=engine_id,
-            # The third clause has to be lasting: both engines define `add_trait` that way, so
-            # "winded and shaking" scored rule-compliance as failure.
+            # Require a lasting effect because both engines define `add_trait` that way.
             prompt=(
                 "I climb up from the cloister into the bell tower, hand my lantern to the woman "
                 "I find there, and the climb leaves me with a wrenched knee I will be limping on "
@@ -235,10 +228,7 @@ def cases_for(engine_id: EngineId, settings: Settings) -> tuple[Case, ...]:
         Case(
             id=f"{engine_id}/risky-climb",
             engine_id=engine_id,
-            # Canon carries the danger (the tower is "a cramped climb of rotten ladders"), the
-            # player's words carry the recklessness but never accept a named risk — naming it is
-            # the GM's job, so 24XX owes a stake here. The sealed vault made a poor target: its
-            # canon says forcing it is impossible, so refusing the roll was the faithful ruling.
+            # Reckless climbing implies danger without accepting a risk, so 24XX must stake it.
             prompt=(
                 "I go up the bell tower's ladders at a run, two rungs at a time — I have to "
                 "reach the top before the light goes."
@@ -261,10 +251,7 @@ def cases_for(engine_id: EngineId, settings: Settings) -> tuple[Case, ...]:
                     "to die before it slips back into the walls."
                 ),
                 expectations=(
-                    # Without this, a conflict opened against Brother Tomas — also in the
-                    # cloister — would score both other checks; either side of the exchange
-                    # reveals the rat, so it holds whichever one the Director puts on the acting
-                    # side.
+                    # Require the rat so a Tomas conflict cannot satisfy the other checks.
                     Expectation("rat-engaged", lambda r: known(r, "cloister_rat")),
                     Expectation("luck-moved", luck_moved),
                     Expectation("hands-back", conflict_handed_back),
@@ -313,7 +300,7 @@ async def play(case: Case, settings: Settings, seed: int) -> Run:
             seconds=perf_counter() - started,
             narration_chars=len(merged.turn.narration),
         )
-    except Exception as error:  # one failed turn is data, not the end of the benchmark
+    except Exception as error:
         return Run(
             error=f"{type(error).__name__}: {error}",
             passed={check.name: False for check in case.expectations},

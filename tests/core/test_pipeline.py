@@ -112,7 +112,6 @@ async def test_a_narrator_failure_leaves_history_and_events_untouched() -> None:
 
 
 async def test_the_engine_rolls_the_outcome_the_facts_then_record() -> None:
-    """The engine makes every roll and picks the outcome; the director's tool never states one."""
     engine, state = initialized()
     result = await played(
         engine,
@@ -140,8 +139,6 @@ async def test_the_engine_rolls_the_outcome_the_facts_then_record() -> None:
 
 
 async def test_the_director_reacts_in_run_to_its_own_earlier_tool_call() -> None:
-    """The semantic heart of the new loop: a later tool call is judged against the draft an
-    earlier call in the same run already changed — legal only because of that ordering."""
     engine, state = initialized()
     result = await played(
         engine,
@@ -188,8 +185,6 @@ async def test_a_discovered_entitys_instruction_comes_back_with_the_tool_result(
 
 
 async def test_a_call_its_own_fields_refuse_is_retried_rather_than_killing_the_turn() -> None:
-    """Every op is built inside the play, so a cross-field validator reaches the model as a
-    retry."""
     engine, state = initialized()
     director = recorded(
         tool_call("advance_thread", thread_id="vault-seal"),
@@ -204,8 +199,6 @@ async def test_a_call_its_own_fields_refuse_is_retried_rather_than_killing_the_t
 
 
 async def test_a_later_call_is_judged_against_the_mechanics_the_earlier_one_moved() -> None:
-    """A trial copy carries the pool the earlier call emptied, so the second call is refused as a
-    retry rather than dying outside it."""
     engine, state = game(TWENTYFOURXX)
     credits = Mechanics.of(state).sheets[PLAYER_ID].credits.current
     director = recorded(
@@ -220,7 +213,6 @@ async def test_a_later_call_is_judged_against_the_mechanics_the_earlier_one_move
 
 
 async def test_a_narrated_line_spoken_by_someone_not_here_is_retried_with_the_id() -> None:
-    """The leak rule holds on `speaker_id` too: Elena is real canon, unmet and elsewhere."""
     engine, state = initialized()
     narrator = recorded(
         structured(lines=[{"speaker_id": "elena", "text": "You should not be here."}]),
@@ -261,8 +253,6 @@ async def test_a_failed_role_never_mutates_the_input_state() -> None:
 
 
 async def test_a_turn_over_its_role_ceiling_fails_before_any_model_call() -> None:
-    """A ceiling this low is exceeded by the director's own rendered prompt alone, so the turn
-    never reaches a model — an aidm-owned error instead of a raw provider 400."""
     engine, state = initialized()
     tiny = updated(settings(), roles={"director": RoleConfig(max_input_tokens=1)})
     before = SavedGame.of(state).model_dump_json()

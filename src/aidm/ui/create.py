@@ -64,9 +64,7 @@ def character_page(runtime: Runtime, engine_id: EngineId) -> None:
                     nonlocal rendered
                     steps = creation.steps(picks)
                     rendered = _shape(steps)
-                    # A pack switch keeps step ids but swaps their options, so a choice step's
-                    # picks are pruned by surviving option, not only by surviving step. A text
-                    # step has no options to prune against: its answers survive with its id.
+                    # Pack switches may preserve step ids while replacing their valid options.
                     offered = {
                         step.id: {option.id for option in step.options}
                         for step in steps
@@ -75,8 +73,7 @@ def character_page(runtime: Runtime, engine_id: EngineId) -> None:
                     written = {step.id: step.count for step in steps if isinstance(step, TextStep)}
                     for step_id in list(picks):
                         if (asked := written.get(step_id)) is not None:
-                            # A pack can ask the same step for fewer answers; the surplus would
-                            # otherwise sit in picks with no input left to clear it.
+                            # Drop surplus answers when a pack reduces a step's count.
                             picks[step_id] = picks[step_id][:asked]
                             continue
                         kept = tuple(
@@ -133,9 +130,7 @@ def character_page(runtime: Runtime, engine_id: EngineId) -> None:
                                 ui.label(text).classes("text-sm")
 
                 def refresh_form_and_preview() -> None:
-                    # Rebuilding drops what the player is part-way through answering, so the form
-                    # is rebuilt only when an answer changed what a step asks or offers — and it
-                    # goes first, so the preview reads the pruned picks.
+                    # Rebuild only changed widgets to preserve unfinished input.
                     if _shape(creation.steps(picks)) != rendered:
                         form.refresh()
                     preview.refresh()
@@ -163,9 +158,7 @@ def _preview_lines(created: CreatedCharacter) -> list[tuple[str, str]]:
 
 
 def _shape(steps: Sequence[AnyStep]) -> tuple[str, ...]:
-    """Everything a rendered step puts on screen. What is *picked* is deliberately out: a step
-    whose options are unmoved renders the same widget, and rebuilding it would take the cursor
-    with it."""
+    """Exclude picks so unchanged widgets retain focus while answers change."""
     parts: list[str] = []
     for step in steps:
         if isinstance(step, TextStep):
@@ -191,8 +184,7 @@ def _step_widget(
     if isinstance(step, TextStep):
         _written_widget(step, picks, refresh)
     elif step.repeats:
-        # Quasar's multi-select cannot hold the same value twice, so a repeatable step is one
-        # select per pick.
+        # Quasar multi-selects cannot hold duplicate values, so repeats use separate selects.
         _repeated_widget(step, picks, refresh)
     else:
         _chosen_widget(step, picks, refresh)

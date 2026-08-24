@@ -62,7 +62,6 @@ def test_the_outcome_ladder_covers_every_pair_of_dice() -> None:
 
 
 def test_the_twist_table_reads_a_subject_off_one_die_and_an_action_off_the_other() -> None:
-    """The SRD's own worked example: a twist roll of (4, 2)."""
     assert len(TWISTS) == 6
     assert twist_pairing(4, 2, TWISTS) == ("A physical event", "Alters the location")
     assert "A PHYSICAL EVENT / ALTERS THE LOCATION" in twist_note(*twist_pairing(4, 2, TWISTS))

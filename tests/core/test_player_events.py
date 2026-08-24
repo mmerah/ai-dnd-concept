@@ -15,7 +15,6 @@ MARA = EntityId("mara")
 
 
 def test_a_visible_move_produces_a_chip_event() -> None:
-    """The title is built from typed data, never narrator/trace text, which carries entity ids."""
     engine, state = initialized()
     draft = state.draft()
     facts = tuple(actions.move(draft, PLAYER_ID, CLOISTER))
@@ -29,7 +28,6 @@ def test_a_visible_move_produces_a_chip_event() -> None:
 
 
 def test_move_chip_titles_read_who_moved_and_who_or_where_received_it() -> None:
-    """An actor's own move is unchanged; an item's is phrased by its destination."""
     engine, state = initialized()
     draft = state.draft()
 
@@ -44,7 +42,6 @@ def test_move_chip_titles_read_who_moved_and_who_or_where_received_it() -> None:
 
 
 def test_advance_thread_produces_no_event() -> None:
-    """`thread_advanced` carries no narrator text, and `advance_thread` is not a core-chip tool."""
     engine, state = initialized()
     draft = state.draft()
     facts = tuple(
@@ -111,7 +108,6 @@ def test_the_remaining_core_chips_carry_id_free_titles() -> None:
 
 
 def test_a_tool_call_on_an_unrevealed_entity_produces_nothing() -> None:
-    """A location is not revealed by being acted on, so its `trait_added` fact has no narrator."""
     engine, state = initialized()
     draft = state.draft()
     facts = tuple(actions.add_trait(draft, BELL_TOWER, "haunted", "a cold draft moves through it"))

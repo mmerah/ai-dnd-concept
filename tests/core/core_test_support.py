@@ -162,8 +162,7 @@ async def played(
     on_event: Callable[[MechanicEvent], None] | None = None,
     config: Settings | None = None,
 ) -> TurnResult:
-    """The turn with every role stubbed, built the way the session builds it. One Director run
-    answers with a tool call per model request, closed by a final text response."""
+    """Build a session-style turn with every model role stubbed."""
     config = config or settings()
     stages = build_turn_agents(engine, config)
     narrator = narrator or FunctionModel(scripted(narrated("You wait.")))

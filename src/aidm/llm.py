@@ -58,8 +58,7 @@ def _closed(args: str) -> str:
 
 
 def repaired(args: str) -> str:
-    """Fix a tool call's arguments when a small, unambiguous repair makes them an object, and
-    leave them exactly as they came otherwise."""
+    """Repair unambiguous object arguments and otherwise preserve them exactly."""
     text = args
     for fix in (_unfenced, _unwrapped, _closed):
         if _object(text):
@@ -69,8 +68,7 @@ def repaired(args: str) -> str:
 
 
 class RepairedToolArgs(WrapperModel):
-    """Some gpt-oss backends hand back a tool call whose arguments are cut short or wrapped, and
-    the model re-emits the same broken JSON when asked to fix it, so the run dies on retries."""
+    """Repair malformed gpt-oss tool arguments that model retries repeat unchanged."""
 
     async def request(
         self,

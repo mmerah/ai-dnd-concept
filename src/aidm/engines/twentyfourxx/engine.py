@@ -82,7 +82,6 @@ class Sheet(SheetBase):
     origin: str = ""
     skills: dict[str, SkillDie] = Field(default_factory=dict)
     credits: Counter = Counter(current=STARTING_CREDITS)
-    # The advancement ledger.
     jobs: Counter = Counter(current=0)
 
     def counters(self) -> dict[Slug, Counter]:
@@ -139,8 +138,7 @@ class SkillGrant(Frozen):
 
 
 class Specialty(Frozen):
-    """One of the SRD's six specialties: `skills` land at d8, `choices` offer one grant,
-    and `kit` is the gear they start carrying."""
+    """A specialty grants fixed skills, one chosen grant, and starting gear."""
 
     id: ContentSlug
     label: str
@@ -286,8 +284,7 @@ def _require_skill(actor: Entity, sheet: Sheet, skill: str, field: str) -> None:
 
 
 def _skills_in_play(state: Game) -> set[str]:
-    """The skills a `roll_attempt` may name; `is_here` already covers the player, who stands at
-    their own location."""
+    """Limit attempt skills to actors present with the player."""
     sheets = Mechanics.of(state).sheets
     return {
         skill
@@ -852,7 +849,7 @@ class TwentyfourxxEngine(Engine):
         check_sheets(state.world, Mechanics.of(state).sheets, self.id)
 
     def seed(self, draft: Game, entity: Entity, rng: Random) -> None:
-        del rng  # nothing on a fresh 24xx sheet is rolled
+        del rng
         mechanics = Mechanics.of(draft)
         if entity.kind != "actor" or entity.id in mechanics.sheets:
             return

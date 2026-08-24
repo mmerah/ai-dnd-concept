@@ -26,7 +26,6 @@ def test_opening_does_not_save_and_restart_discards_durable_state(tmp_path: Path
 
 
 def test_restart_keeps_scene_art_a_replayed_scene_would_reuse(tmp_path: Path) -> None:
-    """Art is keyed by the visible scene, so a frame drawn before a restart still fits after."""
     game = session(tmp_path)
     art = FileStore(tmp_path).media_dir("poc") / "abc123def456.jpg"
     art.parent.mkdir(parents=True, exist_ok=True)
@@ -48,7 +47,6 @@ def test_restart_keeps_scene_art_a_replayed_scene_would_reuse(tmp_path: Path) ->
 def test_resume_refuses_a_save_that_is_not_this_game(
     tmp_path: Path, change: dict[str, object], message: str
 ) -> None:
-    """A save names its own origin by id; the meta comparison catches an edit under a kept id."""
     game = session(tmp_path)
     FileStore(tmp_path).save("poc", updated(SavedGame.of(game.state), **change))
 
@@ -66,7 +64,6 @@ def test_exporting_the_journal_writes_a_file_a_restart_then_discards(tmp_path: P
 
 
 def test_one_open_game_per_slug_and_it_keeps_the_origin_it_was_opened_with(tmp_path: Path) -> None:
-    """A page render resolves the session by slug; rebuilding it drops the turn in flight."""
     runtime = Runtime(updated(settings(), saves_dir=tmp_path))
     opened = runtime.session(TARGET)
 

@@ -92,7 +92,6 @@ async def _turn(game: GameSession, on_step: Callable[[str], None] | None = None)
 
 
 def test_the_live_world_becomes_a_scenario_the_extending_author_can_hold(tmp_path: Path) -> None:
-    """The live world holds the player and their gear, which a `Scenario` refuses."""
     game = loner3e_session(tmp_path)
     draft = WorldDraft.of_game(game.state)
     scenario = draft.scenario((LONER3E,))
@@ -134,7 +133,6 @@ def test_delta_is_the_canon_a_pass_added_and_the_ways_into_it(tmp_path: Path) ->
 async def test_a_thin_world_grows_inside_the_turn_that_ran_it_thin(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    """Canon lands in the save; the scenario other games load is never written to."""
     authored = (SCENARIOS / "whispering-vault" / "world.json").read_bytes()
     game = _grown(tmp_path)
     seen = _stub_author(monkeypatch)

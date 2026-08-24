@@ -68,8 +68,7 @@ def _drop[T: Entity | Thread](kept: list[T], target: str) -> T | None:
 
 
 class ScenarioPatch(Frozen):
-    """One pass over the draft. A set field replaces its value; an element whose id the draft
-    already holds is replaced whole; `remove` drops ids from whichever collection holds them."""
+    """One pass: fields replace values, elements replace matching ids, and `remove` drops ids."""
 
     meta: ScenarioMeta | None = None
     starting_location_id: EntityId | None = None
@@ -112,8 +111,7 @@ class WorldDraft(Mutable):
 
     @classmethod
     def of_game(cls, state: Game) -> "WorldDraft":
-        """The live world as a draft, minus the player, what they carry, and any party member
-        play has sent away from their side — all things a `Scenario` refuses."""
+        """Exclude player-owned state because `Scenario` refuses it."""
         world = state.world
         return cls(
             meta=state.scenario,
@@ -274,8 +272,7 @@ OPENING = Brief(_instructions("scenario_opening.md"), _opening_unmet)
 
 
 def extend_brief(before: WorldState) -> Brief:
-    """A brief bound to the world it extends: what counts as new is only meaningful against what
-    already existed."""
+    """Bind the extension bar to what the world already contains."""
     held = {entity.id for entity in before.entities}
 
     def unmet(scenario: Scenario) -> list[str]:
@@ -411,8 +408,7 @@ async def author_extension(
     character: Character,
     state: Game,
 ) -> ExtensionPatch:
-    """One authoring run against the live world, answered as the canon it added. The `finish`
-    validator refuses an unplayable draft inside the run, so there is no outer retry loop."""
+    """Run once because `finish` retries unplayable drafts inside the agent run."""
     document = source_file(config.scenarios_dir, state.scenario_id)
     draft = WorldDraft.of_game(state)
     playing = (Playtest(engine=engine, character=character),)
@@ -428,8 +424,7 @@ async def author_extension(
 
 
 def delta(before: WorldState, after: WorldDraft) -> ExtensionPatch:
-    """What an extension pass added. Add-only: a change to canon that already existed is ignored,
-    except a new way out of it, which is how new canon is reached at all."""
+    """Keep additions and new exits, but ignore edits to existing canon."""
     held = {entity.id: entity for entity in before.entities}
     opened = {thread.id for thread in before.threads}
     return ExtensionPatch(
@@ -446,8 +441,7 @@ def delta(before: WorldState, after: WorldDraft) -> ExtensionPatch:
 
 
 def apply_patch(draft: Game, patch: ExtensionPatch) -> tuple[Fact, ...]:
-    """The one place a patch reaches the world: add-only, unknown, and refused whole on any id the
-    draft already holds."""
+    """Materialize additions as unknown canon and refuse existing ids."""
     facts = [_added_entity(draft, entity) for entity in patch.entities]
     facts.extend(_added_exit(draft, link) for link in patch.exits)
     facts.extend(_opened(draft, thread) for thread in patch.threads)

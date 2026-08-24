@@ -40,8 +40,7 @@ def illustration_request(
     if narration:
         lines.append(f"What just happened: {narration}")
     if referenced:
-        # Naming the attachments in order is what makes an icon a likeness rather than a mood
-        # board: without it the same character is redrawn differently every scene.
+        # Map attachments to names so recurring characters retain their likeness.
         lines.append(
             f"The attached images are reference likenesses of, in order: {', '.join(referenced)}. "
             f"Keep each one's appearance."
@@ -79,8 +78,7 @@ class Illustrator:
         return _existing(self.saves, scene_key(player_scene(state)))
 
     def scene_pending(self, state: Game) -> bool:
-        """A scene with no file and no generation in flight is one that failed, not one to wait
-        for: the page must stop showing a placeholder for it."""
+        """Only in-flight scenes wait; missing inactive scenes have failed."""
         return scene_key(player_scene(state)) in self.generating
 
     def _icon_dir(self, entity_id: EntityId) -> Path | None:

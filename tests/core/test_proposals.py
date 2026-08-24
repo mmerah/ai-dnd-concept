@@ -43,7 +43,7 @@ async def test_an_illegal_proposal_is_retried_with_the_engines_reason(tmp_path: 
 
     assert proposal == LEGAL
     gear = Mechanics.of(game.state).sheets[PLAYER_ID].gear
-    assert "Waxed Rope" not in gear  # proposing commits nothing
+    assert "Waxed Rope" not in gear
 
 
 def test_confirming_commits_exactly_the_proposed_delta(tmp_path: Path) -> None:

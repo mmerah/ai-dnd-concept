@@ -263,8 +263,7 @@ def resolve_question(
                 kind="conflict", prompt=conflict_prompt(actor, opponent), options=(), payload={}
             )
     elif chance == risk:
-        # The tally itself never becomes a fact: it paces the Director, and the Narrator would
-        # only be handed a number it is told never to recite. A conflict exchange never ticks it.
+        # Keep pacing tallies from the Narrator and exclude conflict exchanges.
         mechanics.twist.current += 1
         if mechanics.twist.current >= TIES_PER_TWIST:
             mechanics.twist.current = 0
@@ -296,8 +295,7 @@ def _twist(
     action_die, action_fact = roll_pool((6,), "twist — action", rng, role="action")
     subject, action = twist_pairing(subject_die, action_die, twists)
     draft.world.pending_notes = (*draft.world.pending_notes, twist_note(subject, action))
-    # Narrated the turn it lands, as the SRD interrupts the scene: an unnamed intrusion needs
-    # no canon, and `act` echoes the note into the answer of the call that rolled it.
+    # Echo the unnamed SRD intrusion in the call that rolled it without adding canon.
     due = entity_fact(
         actor,
         "twist_due",
@@ -485,7 +483,7 @@ class Loner3eAdvancement(Advancement):
     def grant(
         self, draft: Game, subject_id: EntityId, proposal: ProposalBase, rng: Random
     ) -> tuple[Fact, ...]:
-        del rng  # post-adventure growth spends nothing random
+        del rng
         assert isinstance(proposal, AdventureGrowth)
         sheet = Mechanics.of(draft).sheets[subject_id]
         subject = draft.world.require(subject_id)
@@ -621,7 +619,7 @@ class Loner3eEngine(Engine):
             raise ValueError(f"this game plays the {chosen!r} table set, which is not installed")
 
     def seed(self, draft: Game, entity: Entity, rng: Random) -> None:
-        del rng  # nothing on a loner3e sheet is rolled
+        del rng
         mechanics = Mechanics.of(draft)
         if entity.kind != "actor" or entity.id in mechanics.sheets:
             return

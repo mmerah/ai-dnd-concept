@@ -76,7 +76,6 @@ def test_the_six_way_outcome_is_mapped_onto_the_card() -> None:
 
 
 def test_a_defeat_shows_the_owner_prefixed_effects_in_fact_order() -> None:
-    """Effects land in the order the exchange happened: down, out of luck, refill — not by kind."""
     _, state = initialized()
     draft = state.draft()
     Mechanics.of(draft).sheets[FOE].luck.current = 1

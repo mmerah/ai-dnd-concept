@@ -25,8 +25,7 @@ def _opening_state(config: Settings, engine: EngineId) -> Game:
 
 
 def _scenarios_copy(tmp_path: Path) -> Path:
-    """Only the shipped scenario: `scenarios/` also holds generated ones, and a catalogue
-    assertion that counts them moves every time somebody authors one."""
+    """Copy only the shipped scenario so generated local scenarios cannot affect counts."""
     scenarios = tmp_path / "scenarios"
     shutil.copytree(SCENARIOS / "whispering-vault", scenarios / "whispering-vault")
     return scenarios
@@ -60,8 +59,6 @@ def test_an_overlay_decides_which_rules_a_character_offers(tmp_path: Path) -> No
 
 
 def test_a_directory_holding_no_canon_is_skipped(tmp_path: Path) -> None:
-    """`notes` holds no canon file at all, so the catalogue skips it — the home screen is the only
-    way into the app, and a scratch directory must not break it."""
     scenarios = _scenarios_copy(tmp_path)
     (scenarios / "notes").mkdir()
     shutil.copytree(scenarios / "whispering-vault", scenarios / "aaa-draft")
@@ -110,7 +107,6 @@ def test_launcher_lists_and_resolves_an_existing_save(tmp_path: Path) -> None:
 
 
 def test_a_save_whose_rules_were_withdrawn_is_reported_not_offered(tmp_path: Path) -> None:
-    """The save still names its origin; that origin no longer ships the overlay it needs."""
     config = ui_settings(tmp_path)
     state = _opening_state(config, LONER3E)
     FileStore(tmp_path).save("withdrawn", updated(SavedGame.of(state), engine="retired"))
@@ -140,7 +136,6 @@ def test_one_corrupt_save_does_not_hide_the_others_and_stays_readable(tmp_path: 
 
 
 def test_a_save_whose_body_is_stale_is_reported_not_offered(tmp_path: Path) -> None:
-    """Only the strict body, not the lenient shell, catches a history entry with a stale field."""
     config = ui_settings(tmp_path)
     body = json.loads(SavedGame.of(_opening_state(config, LONER3E)).model_dump_json())
     body["history"] = [{"prompt": "test", "lines": [], "events": [], "outcomes": []}]
@@ -154,7 +149,6 @@ def test_a_save_whose_body_is_stale_is_reported_not_offered(tmp_path: Path) -> N
 
 
 def test_a_save_whose_mechanics_are_broken_is_reported_not_offered(tmp_path: Path) -> None:
-    """`mechanics` is untyped JSON on `SavedGame`; only the engine's model catches a bad blob."""
     config = ui_settings(tmp_path)
     body = json.loads(SavedGame.of(_opening_state(config, LONER3E)).model_dump_json())
     body["mechanics"] = {"not": "the loner3e shape"}
