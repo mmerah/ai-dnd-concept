@@ -85,6 +85,7 @@ def _stub_author(monkeypatch: pytest.MonkeyPatch) -> list[Game]:
 
 
 async def _turn(game: GameSession, on_step: Callable[[TurnStep], None] | None = None) -> None:
+    assert game.stages is not None
     director = FunctionModel(scripted(text("nothing to do")))
     narrator = FunctionModel(scripted(narrated("You wait.")))
     with (

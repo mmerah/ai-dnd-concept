@@ -195,6 +195,11 @@ class FileStore:
     def save(self, slug: str, saved: SavedGame) -> None:
         _write(self._save_path(slug), saved.model_dump_json(indent=2))
 
+    def stamp(self, slug: str) -> int:
+        """A viewer in another process polls this rather than re-parsing the save every tick."""
+        path = self._save_path(slug)
+        return path.stat().st_mtime_ns if path.exists() else 0
+
     def write_journal(self, slug: str, body: str) -> Path:
         path = self._journal_path(slug)
         _write(path, body)
@@ -220,8 +225,11 @@ def _copy(path: Path, original: Path) -> None:
 
 
 def _write(path: Path, body: str) -> None:
+    """Two processes may read one save; a reader must never see a half-written file."""
     path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(body, encoding=ENCODING)
+    staged = path.with_name(f"{path.name}.writing")
+    staged.write_text(body, encoding=ENCODING)
+    staged.replace(path)
 
 
 def _safe_path(directory: Path, stem: str, suffix: str) -> Path:

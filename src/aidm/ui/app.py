@@ -36,7 +36,7 @@ def home_page(settings: Settings) -> None:
                 "text-body1 opacity-70"
             )
             _new_game(controller)
-            _new_content(controller)
+            _new_content(controller, settings)
             _saved_games(controller)
 
 
@@ -82,11 +82,19 @@ def _new_game(controller: LauncherController) -> None:
     form()
 
 
-def _new_content(controller: LauncherController) -> None:
+def _new_content(controller: LauncherController, settings: Settings) -> None:
     with ui.row().classes("items-center").style("gap: 0.5rem"):
-        ui.button(
-            "New scenario", icon="auto_stories", on_click=lambda: ui.navigate.to("/create-scenario")
-        ).props("outline dense")
+        # Authoring calls a model; in code mode no key need be configured, so the page would raise.
+        if settings.code_mode:
+            ui.label("New scenario: call begin_scenario() in the terminal.").classes(
+                "text-sm opacity-70"
+            )
+        else:
+            ui.button(
+                "New scenario",
+                icon="auto_stories",
+                on_click=lambda: ui.navigate.to("/create-scenario"),
+            ).props("outline dense")
         ui.label("New character:").classes("text-sm opacity-70")
         for option in controller.catalog.engines:
             ui.button(
@@ -239,4 +247,7 @@ def _register_pages(runtime: Runtime) -> None:
 
     @ui.page("/create-scenario")
     def _create_scenario() -> None:  # pyright: ignore[reportUnusedFunction]
+        if runtime.settings.code_mode:
+            ui.label("Code mode authors scenarios in the terminal: call begin_scenario().")
+            return
         scenario_page(runtime.settings)

@@ -135,6 +135,9 @@ def _facts(facts: Sequence[Fact]) -> str:
 
 def advancement_panel(session: GameSession, refresh: Callable[[], None]) -> None:
     """The one advancement panel; shown only when the engine plugs in a growth mechanic."""
+    if session.settings.code_mode:
+        _offered_only(session)
+        return
     if session.drafted is not None:
         _review(session, session.drafted, refresh)
         return
@@ -145,6 +148,17 @@ def advancement_panel(session: GameSession, refresh: Callable[[], None]) -> None
     for offer in offers:
         _summary(offer)
         _intent_form(session, offer, refresh)
+
+
+def _offered_only(session: GameSession) -> None:
+    """Code mode drafts and commits in the MCP server; a second writer here would race it."""
+    offers = session.offers()
+    if not offers:
+        ui.label("Nothing is on offer.").classes("opacity-70")
+        return
+    for offer in offers:
+        _summary(offer)
+    ui.label("Ask for it in the terminal.").classes("text-sm opacity-60 mt-3")
 
 
 def _summary(offer: AdvancementOffer) -> None:

@@ -197,6 +197,11 @@ class GameView:
         self.step_started: float | None = None
         self.ticker: ui.label | None = None
 
+    @property
+    def viewing(self) -> bool:
+        """Code mode plays the turn in the MCP server, so this window only shows what it wrote."""
+        return self.session.settings.code_mode
+
     def fill_composer(self, text: str) -> None:
         if self.composer is not None:
             self.composer.value = text
@@ -347,6 +352,9 @@ def decision_panel(view: GameView) -> None:
 
     with ui.column().classes("game-card w-full").style("gap: 0.5rem"):
         ui.label(pending.prompt).classes("text-sm font-bold whitespace-pre-wrap")
+        if view.viewing:
+            ui.label("Answer in the terminal.").classes("text-sm opacity-60")
+            return
         with ui.row().classes("w-full items-center").style("gap: 0.5rem"):
             for option in pending.options:
                 button = ui.button(option.label, on_click=partial(answer, option)).props(
@@ -354,6 +362,36 @@ def decision_panel(view: GameView) -> None:
                 )
                 if option.detail:
                     button.tooltip(option.detail)
+
+
+def composer(view: GameView) -> None:
+    session = view.session
+    with ui.row().classes("w-full no-wrap items-end game-composer q-pa-sm").style("gap: 0.5rem"):
+        box = (
+            ui.input(placeholder=_composer_placeholder(None))
+            .classes("flex-grow")
+            .props("outlined autogrow type=textarea borderless")
+            .bind_enabled_from(session, "busy", backward=partial(_can_type, session))
+        )
+        # Enter sends; without the prevent the browser also leaves its newline behind.
+        box.on(
+            "keydown.enter",
+            lambda: submit(view, box),
+            js_handler="(e) => { if (e.shiftKey) return; e.preventDefault(); emit(); }",
+        )
+        _ = (
+            ui.button(icon="send", on_click=lambda: submit(view, box))
+            .props("round flat")
+            .bind_enabled_from(session, "busy", backward=partial(_can_type, session))
+        )
+    view.composer = box
+
+
+def poll_save(view: GameView) -> None:
+    """The turn commits in another process, so the viewer watches the save file for it to land."""
+    if view.session.reload():
+        view.session.illustrate_scene()
+        view.refresh_all()
 
 
 def restart(view: GameView) -> None:
@@ -370,7 +408,8 @@ def game_page(session: GameSession) -> None:
     view = GameView(session)
     with page_header(session.state.scenario.title, session.engine.badge):
         ui.space()
-        ui.button("restart", on_click=lambda: restart(view)).props("flat color=white dense")
+        if not view.viewing:
+            ui.button("restart", on_click=lambda: restart(view)).props("flat color=white dense")
 
     # Account for the header and page padding so the input stays above the fold.
     with ui.splitter(value=55).classes("w-full").style("height: calc(100vh - 6rem)") as splitter:
@@ -380,29 +419,13 @@ def game_page(session: GameSession) -> None:
                 view.chat()
                 view.live_turn()
             view.decision()
-            with (
-                ui.row()
-                .classes("w-full no-wrap items-end game-composer q-pa-sm")
-                .style("gap: 0.5rem")
-            ):
-                box = (
-                    ui.input(placeholder=_composer_placeholder(None))
-                    .classes("flex-grow")
-                    .props("outlined autogrow type=textarea borderless")
-                    .bind_enabled_from(session, "busy", backward=partial(_can_type, session))
+            if view.viewing:
+                ui.label("Played in the terminal; this window follows along.").classes(
+                    "w-full text-xs opacity-60 q-pa-sm"
                 )
-                # Enter sends; without the prevent the browser also leaves its newline behind.
-                box.on(
-                    "keydown.enter",
-                    lambda: submit(view, box),
-                    js_handler="(e) => { if (e.shiftKey) return; e.preventDefault(); emit(); }",
-                )
-                _ = (
-                    ui.button(icon="send", on_click=lambda: submit(view, box))
-                    .props("round flat")
-                    .bind_enabled_from(session, "busy", backward=partial(_can_type, session))
-                )
-            view.composer, view.transcript = box, transcript
+            else:
+                composer(view)
+            view.transcript = transcript
         with splitter.after, ui.column().classes("w-full h-full").style("gap: 0"):
             advancement = session.engine.advancement
             with ui.tabs().classes("w-full") as tabs:
@@ -425,5 +448,7 @@ def game_page(session: GameSession) -> None:
                         view.state()
 
     ui.timer(1.0, lambda: tick_elapsed(view))
+    if view.viewing:
+        ui.timer(2.0, lambda: poll_save(view))
     if session.media is not None:
         ui.timer(3.0, lambda: poll_art(view))

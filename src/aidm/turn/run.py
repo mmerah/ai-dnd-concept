@@ -218,12 +218,9 @@ class TurnAgents:
     narrator: Agent[VisibleScene, Narration]
 
 
-def director_agent(
-    engine: Engine,
-    settings: Settings,
-) -> Agent[DirectorContext, str]:
-    """Everything that happens this turn happens through a tool; the closing text only traces."""
-    toolsets: list[AbstractToolset[DirectorContext]] = [
+def gated_toolsets(engine: Engine) -> list[AbstractToolset[DirectorContext]]:
+    """Every harness gates the same way, so which one drives the turn cannot change the rules."""
+    return [
         core_toolset().filtered(
             lambda ctx, _tool: ctx.deps.draft.pending is None or ctx.deps.suspended_at_start
         ),
@@ -233,32 +230,45 @@ def director_agent(
             for toolset in engine.director_toolsets
         ),
     ]
+
+
+def director_agent(
+    engine: Engine,
+    settings: Settings,
+) -> Agent[DirectorContext, str]:
+    """Everything that happens this turn happens through a tool; the closing text only traces."""
     return build_agent(
         "director",
         settings,
         instructions=context.director_instructions(engine.director_instructions),
         output_type=str,
         deps_type=DirectorContext,
-        toolsets=toolsets,
+        toolsets=gated_toolsets(engine),
+    )
+
+
+def speakers_refusal(scene: VisibleScene, lines: Sequence[Line]) -> str | None:
+    """Only the player or someone here with them speaks; the leak rule holds by check, not trust."""
+    present = {scene.player.id, *(entity.id for entity in scene.here)}
+    strangers = sorted(
+        {
+            line.speaker_id
+            for line in lines
+            if line.speaker_id is not None and line.speaker_id not in present
+        }
+    )
+    if not strangers:
+        return None
+    return (
+        f"nobody here has id {', '.join(strangers)}. Only the player or someone here with "
+        "them speaks; leave `speaker_id` null for narration."
     )
 
 
 def narrator_agent(settings: Settings) -> Agent[VisibleScene, Narration]:
     def attributed(ctx: RunContext[VisibleScene], narration: Narration) -> Narration:
-        """The leak rule holds through the validator, not through trust."""
-        present = {ctx.deps.player.id, *(entity.id for entity in ctx.deps.here)}
-        strangers = sorted(
-            {
-                line.speaker_id
-                for line in narration.lines
-                if line.speaker_id is not None and line.speaker_id not in present
-            }
-        )
-        if strangers:
-            raise ModelRetry(
-                f"nobody here has id {', '.join(strangers)}. Only the player or someone here with "
-                "them speaks; leave `speaker_id` null for narration."
-            )
+        if refused := speakers_refusal(ctx.deps, narration.lines):
+            raise ModelRetry(refused)
         return narration
 
     return build_agent(
@@ -351,7 +361,7 @@ async def run_segment(
     draft = state.draft()
     # Any input consumes the decision, a revision included: it never survives its own answer.
     consumed, draft.pending = draft.pending, None
-    prompt, resumed, answered = _consume(engine, draft, player_input, consumed, rng, log)
+    prompt, resumed, answered = consume_answer(engine, draft, player_input, consumed, rng, log)
 
     scene, describe = SceneSnapshot.from_game(draft), engine.renderer(draft)
 
@@ -428,7 +438,7 @@ async def run_segment(
     )
 
 
-def _consume(
+def consume_answer(
     engine: Engine,
     draft: Game,
     player_input: str | Answer,

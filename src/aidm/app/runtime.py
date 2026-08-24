@@ -7,7 +7,7 @@ from random import Random
 
 from pydantic_ai import Agent
 
-from aidm.app.authoring import apply_patch, author_extension
+from aidm.app.authoring import ExtensionPatch, apply_patch, author_extension
 from aidm.config import Settings
 from aidm.content.io import FileStore, SavedGame, load_character, load_scenario
 from aidm.content.model import Character, Scenario
@@ -137,7 +137,7 @@ class GameSession:
     scenario: Scenario
     character: Character
     engine: Engine
-    stages: TurnAgents
+    stages: TurnAgents | None
     advisor: Agent[AdvancementContext, ProposalBase] | None
     store: FileStore
     settings: Settings
@@ -149,8 +149,10 @@ class GameSession:
     drafted: DraftedAdvance | None = None
     _illustrations: set[Task[None]] = field(default_factory=set, repr=False)
     state: Game = field(init=False)
+    _stamp: int = field(init=False, default=0)
 
     def __post_init__(self) -> None:
+        self._stamp = self.store.stamp(self.slug)
         if self.engine.id != self.target.engine:
             raise ValueError(f"{self.target} was opened with the {self.engine.id!r} engine")
         saved = self.store.load(self.slug)
@@ -172,6 +174,8 @@ class GameSession:
         on_event: Callable[[MechanicEvent], None] | None = None,
     ) -> TurnTrace:
         """Commit only after the full segment succeeds."""
+        if self.stages is None:
+            raise ValueError("code mode plays the turn in the MCP server, not here")
         result = await run_segment(
             self.state,
             player_input,
@@ -182,12 +186,9 @@ class GameSession:
             on_step=on_step,
             on_event=on_event,
         )
-        self._commit(result.state, result.turn)
+        self.commit(result.state, result.turn)
         self._illustrate(result.turn.narration)
-        if (
-            self.scenario.grows
-            and frontier(self.state.world) <= self.settings.authoring.growth_frontier
-        ):
+        if self.growth_due():
             if on_step is not None:
                 on_step("scenario_creator")
             await self._extend()
@@ -229,10 +230,12 @@ class GameSession:
 
     async def propose(self, offer: AdvancementOffer, intent: str) -> ProposalBase:
         """The advisor drafts the change; nothing is committed until the player confirms it."""
-        advancement, advisor = self._advancement(), self._advisor()
+        advancement = self._advancement()
+        if self.advisor is None:
+            raise ValueError("code mode drafts the proposal in the MCP server, not here")
         deps = AdvancementContext(advancement=advancement, state=self.state, offer=offer)
         prompt = render_proposal(self.engine, self.state, offer, intent)
-        return (await advisor.run(prompt, deps=deps)).output
+        return (await self.advisor.run(prompt, deps=deps)).output
 
     def preview(self, drafted: DraftedAdvance) -> tuple[Fact, ...]:
         """What the change would write, read off a throwaway draft, not the committed state."""
@@ -261,18 +264,13 @@ class GameSession:
             lambda draft, rng: tuple(advancement.resolve(draft, offer, proposal, rng)),
             self.rng,
         )
-        self._commit(state, AdvanceApplied(subject_id=offer.subject_id, facts=facts))
+        self.commit(state, AdvanceApplied(subject_id=offer.subject_id, facts=facts))
         return facts
 
     def _advancement(self) -> Advancement:
         if self.engine.advancement is None:
             raise ValueError(f"the {self.engine.id!r} engine has no advancement")
         return self.engine.advancement
-
-    def _advisor(self) -> Agent[AdvancementContext, ProposalBase]:
-        if self.advisor is None:
-            raise ValueError(f"the {self.engine.id!r} engine has no advancement")
-        return self.advisor
 
     def restart(self) -> None:
         opening = self._begun()
@@ -282,24 +280,50 @@ class GameSession:
         self.drafted = None
         self.illustrate_scene()
 
-    def _commit(self, state: Game, entry: TraceEntry) -> None:
+    def commit(self, state: Game, entry: TraceEntry | None = None) -> None:
+        """Code mode commits per tool call, so a landed change has no turn trace to record yet."""
         self.store.save(self.slug, SavedGame.from_game(state))
         self.state = state
-        self.entries.append(entry)
+        self._stamp = self.store.stamp(self.slug)
+        if entry is not None:
+            self.entries.append(entry)
+
+    def reload(self) -> bool:
+        """Code mode plays the turn in another process; the viewer re-reads what that committed."""
+        stamp = self.store.stamp(self.slug)
+        if stamp == self._stamp:
+            return False
+        saved = self.store.load(self.slug)
+        if saved is None:
+            return False
+        self._stamp = stamp
+        self.state = self._resumable(self.engine.restored(saved))
+        return True
+
+    def growth_due(self) -> bool:
+        return (
+            self.scenario.grows
+            and frontier(self.state.world) <= self.settings.authoring.growth_frontier
+        )
 
     async def _extend(self) -> None:
-        """Log failed growth so the next thin turn can retry it."""
+        """A failure only logs: growth is a bonus, and it retries on the next thin turn."""
         try:
             patch = await author_extension(self.settings, self.engine, self.character, self.state)
-            state, facts = transact(
-                self.engine,
-                self.state.draft(),
-                lambda draft, _rng: apply_patch(draft, patch),
-                self.rng,
-            )
-            self._commit(state, WorldExtended(facts=facts))
+            _ = self.apply_growth(patch)
         except Exception:
             LOGGER.exception("extending %r failed", self.slug)
+
+    def apply_growth(self, patch: ExtensionPatch) -> tuple[Fact, ...]:
+        """Applied to the current state, which may have moved since the patch was authored."""
+        state, facts = transact(
+            self.engine,
+            self.state.draft(),
+            lambda draft, _rng: apply_patch(draft, patch),
+            self.rng,
+        )
+        self.commit(state, WorldExtended(facts=facts))
+        return facts
 
     def _begun(self) -> Game:
         return begin_game(self.engine, self.target.scenario_id, self.scenario, self.character)
@@ -359,8 +383,8 @@ class Runtime:
             scenario=scenario,
             character=character,
             engine=engine,
-            stages=build_turn_agents(engine, settings),
-            advisor=build_advisor(engine, settings),
+            stages=None if settings.code_mode else build_turn_agents(engine, settings),
+            advisor=None if settings.code_mode else build_advisor(engine, settings),
             store=store,
             settings=settings,
             media=open_media(settings, target, scenario, character, store),

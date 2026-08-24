@@ -5,8 +5,8 @@ Status of the proof of concept, and where it should go. Kept short on purpose. I
 ## Invariants worth preserving
 
 - The model proposes, Python decides. Resolvers run against a draft; only a revalidated commit replaces state.
-- Every turn commits whole or not at all; a role failure leaves committed state untouched.
-- The Narrator writes the only player-facing prose. The Director reads the whole canon side; the Narrator's input type carries no field unrevealed canon could travel through.
+- Every turn commits whole or not at all; a role failure leaves committed state untouched. Code mode commits per accepted tool call instead — each commit is a legal state, so a crash cannot desync state from what the transcript already narrated.
+- The Narrator writes the only player-facing prose. The Director reads the whole canon side; the Narrator's input type carries no field unrevealed canon could travel through. Code mode holds this by prompt instruction, not by type.
 - One structured plan from the Director, resolved by engine code.
 - Content is data; procedures are Python. Nothing parses rules prose at run time, and what the model reads is rendered from the same values the resolver reads, so the two cannot drift.
 

@@ -445,9 +445,33 @@ def scenario_agent(
     )
 
 
-def world_prompt(slug: Slug, premise: str, sourced: bool) -> str:
-    heading = "SOURCE DOCUMENT:" if sourced else "PREMISE:"
-    return f"{heading}\n{premise}\n\nWill be saved as: {slug!r}"
+def given_text(settings: Settings, premise: str, document: Path | None) -> str:
+    if document is None:
+        return f"PREMISE:\n{premise}"
+    return f"SOURCE DOCUMENT:\n{whole_text(document, settings.authoring.source_max_chars)}"
+
+
+def world_prompt(settings: Settings, slug: Slug, premise: str, document: Path | None) -> str:
+    return f"{given_text(settings, premise, document)}\n\nWill be saved as: {slug!r}"
+
+
+def check_new_scenario(settings: Settings, slug: Slug, premise: str, document: Path | None) -> None:
+    if document is None and not premise:
+        raise ValueError("give a premise, a document, or both: there is nothing to author from")
+    if (settings.scenarios_dir / slug).exists():
+        raise ValueError(f"scenario {slug!r} already exists")
+
+
+def write_draft(
+    settings: Settings,
+    slug: Slug,
+    draft: ScenarioDraft,
+    engines: tuple[EngineId, ...],
+    source: Path | str,
+) -> str:
+    scenario = draft.scenario(engines)
+    write_scenario(settings.scenarios_dir, slug, scenario, source)
+    return summarize(scenario)
 
 
 def summarize(scenario: Scenario) -> str:
@@ -469,6 +493,12 @@ class ExtensionPatch(Frozen):
     threads: tuple[Thread, ...] = ()
 
 
+def extension_prompt(settings: Settings, state: Game) -> str:
+    document = source_file(settings.scenarios_dir, state.scenario_id)
+    given = given_text(settings, state.scenario.premise, document)
+    return f"{given}\n\nExtend the world `scenario_so_far` holds."
+
+
 async def author_extension(
     settings: Settings,
     engine: Engine,
@@ -476,18 +506,11 @@ async def author_extension(
     state: Game,
 ) -> ExtensionPatch:
     """Run once because `finish` retries unplayable drafts inside the agent run."""
-    document = source_file(settings.scenarios_dir, state.scenario_id)
     draft = ScenarioDraft.from_game(state)
     playing = (PlaytestCheck(engine=engine, character=character),)
     agent = scenario_agent(playing, settings, extend_brief(state.world))
-    given = (
-        state.scenario.premise
-        if document is None
-        else whole_text(document, settings.authoring.source_max_chars)
-    )
-    heading = "PREMISE:" if document is None else "SOURCE DOCUMENT:"
     _ = await agent.run(
-        f"{heading}\n{given}\n\nExtend the world `scenario_so_far` holds.",
+        extension_prompt(settings, state),
         deps=draft,
         usage_limits=UsageLimits(request_limit=settings.authoring.request_limit),
     )
@@ -570,19 +593,11 @@ class AuthoringSession:
     opening_prompt: str = field(init=False)
 
     def __post_init__(self) -> None:
-        if self.document is None and not self.premise:
-            raise ValueError("give a premise, a document, or both: there is nothing to author from")
-        if (self.settings.scenarios_dir / self.slug).exists():
-            raise ValueError(f"scenario {self.slug!r} already exists")
+        check_new_scenario(self.settings, self.slug, self.premise, self.document)
         self.playing = playtest_checks(self.settings, self.engines)
         self.agent = scenario_agent(self.playing, self.settings, self.brief)
         self.draft = ScenarioDraft(grows=self.grows)
-        given = (
-            self.premise
-            if self.document is None
-            else whole_text(self.document, self.settings.authoring.source_max_chars)
-        )
-        self.opening_prompt = world_prompt(self.slug, given, self.document is not None)
+        self.opening_prompt = world_prompt(self.settings, self.slug, self.premise, self.document)
 
     async def send(self, instruction: str) -> str:
         """One agent turn against the same draft and the same history."""
@@ -604,8 +619,97 @@ class AuthoringSession:
             raise ValueError(f"the draft does not play: {reason}")
         # The form's style overrides whatever the author wrote from the source's own tone.
         self.draft.art_style = self.art_style or self.draft.art_style
-        scenario = self.draft.scenario(self.engines)
-        write_scenario(
-            self.settings.scenarios_dir, self.slug, scenario, self.document or self.premise
+        return write_draft(
+            self.settings, self.slug, self.draft, self.engines, self.document or self.premise
         )
-        return summarize(scenario)
+
+
+@dataclass
+class AuthoringRun:
+    """One draft under authorship in the MCP server, held between tool calls."""
+
+    draft: ScenarioDraft
+    playing: tuple[PlaytestCheck, ...]
+    brief: AuthoringBrief
+    toolset: FunctionToolset[ScenarioDraft]
+
+    def refusal(self) -> str | None:
+        return scenario_refusal(self.draft, self.playing, self.brief)
+
+
+@dataclass
+class GrowthRun(AuthoringRun):
+    """Grows a world in play; `base` is the state the finished draft is diffed against."""
+
+    base: Game
+
+    def patch(self) -> ExtensionPatch:
+        return extension_patch(self.base.world, self.draft)
+
+
+@dataclass
+class ScenarioRun(AuthoringRun):
+    """Writes a whole new scenario; needs no open game."""
+
+    settings: Settings
+    slug: Slug
+    premise: str
+    document: Path | None
+    engines: tuple[EngineId, ...]
+
+    def write(self) -> str:
+        return write_draft(
+            self.settings, self.slug, self.draft, self.engines, self.document or self.premise
+        )
+
+
+_HOW_TO_WORK = (
+    "Write with `write`, join locations with `connect`, and read the whole draft back with "
+    "`scenario_so_far` whenever you have lost track of it. Each answer ends with what the draft "
+    "still needs. Call `{finish}` with a two or three sentence summary once it plays."
+)
+
+
+def _briefing(settings: Settings, brief: AuthoringBrief, prompt: str, finish: str) -> str:
+    return "\n\n".join((_instructions(settings, brief), prompt, _HOW_TO_WORK.format(finish=finish)))
+
+
+def growth_run(
+    settings: Settings, engine: Engine, character: Character, state: Game
+) -> tuple[GrowthRun, str]:
+    brief = extend_brief(state.world)
+    playing = (PlaytestCheck(engine=engine, character=character),)
+    run = GrowthRun(
+        draft=ScenarioDraft.from_game(state),
+        playing=playing,
+        brief=brief,
+        toolset=authoring_toolset(playing, brief),
+        base=state,
+    )
+    return run, _briefing(settings, brief, extension_prompt(settings, state), "finish_growth")
+
+
+def scenario_run(
+    settings: Settings,
+    slug: Slug,
+    premise: str,
+    grows: bool,
+    engines: Sequence[EngineId],
+    document: Path | None,
+) -> tuple[ScenarioRun, str]:
+    check_new_scenario(settings, slug, premise, document)
+    brief = OPENING_SLICE if grows else WHOLE_SCENARIO
+    playing = playtest_checks(settings, engines)
+    run = ScenarioRun(
+        draft=ScenarioDraft(grows=grows),
+        playing=playing,
+        brief=brief,
+        toolset=authoring_toolset(playing, brief),
+        settings=settings,
+        slug=slug,
+        premise=premise,
+        document=document,
+        engines=tuple(engines),
+    )
+    prompt = world_prompt(settings, slug, premise, document)
+    return run, _briefing(settings, brief, prompt, "finish_scenario")

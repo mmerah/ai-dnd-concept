@@ -3,7 +3,7 @@ from pathlib import Path
 from random import Random
 
 from pydantic import JsonValue
-from pydantic_ai import RunContext
+from pydantic_ai import ModelRetry, RunContext
 from pydantic_ai.tools import ToolDefinition
 from pydantic_ai.toolsets import AbstractToolset
 
@@ -131,7 +131,8 @@ def director_toolset() -> AbstractToolset[DirectorContext]:
             item_id: Exact id of the carried, unbroken item to break, or null to take the hit.
         """
         answered = _defence_to_settle(ctx)
-        assert answered is not None  # the filter below offers this tool only while one is open
+        if answered is None:
+            raise ModelRetry("no hit is waiting to be settled; there is nothing to break or take.")
         goal = Defence.model_validate(answered.payload).goal
         return apply_tool_call(ctx, lambda draft, _rng: resolve_defence(draft, goal, item_id))
 

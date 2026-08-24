@@ -104,10 +104,16 @@ class Settings(BaseSettings):
     media: MediaConfig = MediaConfig()
     turn: TurnConfig = TurnConfig()
     authoring: AuthoringConfig = AuthoringConfig()
+    # "code" hands the turn loop to a coding agent over MCP (app/mcp.py); the UI turns viewer.
+    harness: Literal["builtin", "code"] = "builtin"
     saves_dir: Path = Path("saves")
     scenarios_dir: Path = Path("scenarios")
     characters_dir: Path = Path("characters")
     packs_dir: Path = Path("packs")
+
+    @property
+    def code_mode(self) -> bool:
+        return self.harness == "code"
 
     def role(self, name: Role) -> RoleConfig:
         defaults = ROLE_DEFAULTS.get(name, RoleConfig())
