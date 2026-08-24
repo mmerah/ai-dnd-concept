@@ -1,10 +1,11 @@
-from collections.abc import Callable, Mapping, Sequence
+from collections.abc import Callable, Sequence
 from dataclasses import dataclass
 from random import Random
+from typing import Literal
 
 from pydantic_ai import Agent, ModelRetry, NativeOutput, RunContext
 from pydantic_ai.messages import ModelMessage, ModelRequest, ModelResponse, TextPart, UserPromptPart
-from pydantic_ai.tools import ToolDefinition
+from pydantic_ai.tools import ToolDefinition, ToolFuncEither
 from pydantic_ai.toolsets import AbstractToolset
 from pydantic_ai.usage import UsageLimits
 
@@ -14,6 +15,7 @@ from aidm.engines.core import (
     RULES_WAIT,
     Advancement,
     Engine,
+    EventCause,
     Offer,
     PlanContext,
     ProposalBase,
@@ -25,30 +27,32 @@ from aidm.engines.core import (
 )
 from aidm.llm import build_agent
 from aidm.state import actions
-from aidm.state.model import (
-    PLAYER_ID,
-    AdvanceThread,
+from aidm.state.entities import PLAYER_ID, EntityId, Slug
+from aidm.state.facts import Fact, narrator_evidence, narrator_lines
+from aidm.state.model import AdvanceThread, Game, check_draft
+from aidm.state.play import (
     Answer,
-    EntityId,
     Exchange,
-    Fact,
-    Game,
     Line,
     MechanicEvent,
     Narration,
     Option,
     PendingDecision,
-    Slug,
     StepTrace,
     Turn,
-    check_draft,
     narration_text,
-    narrator_evidence,
-    narrator_lines,
 )
 
 from . import context
 from .context import SceneSnapshot, VisibleScene
+
+
+@dataclass(frozen=True, slots=True)
+class CoreTool:
+    """A director tool with the state predicate that decides whether it is offered at all."""
+
+    func: ToolFuncEither[PlanContext, ...]
+    applies: Callable[[Game], bool] = lambda _state: True
 
 
 def core_toolset() -> AbstractToolset[PlanContext]:
@@ -137,19 +141,24 @@ def core_toolset() -> AbstractToolset[PlanContext]:
         """
         return _resolved(ctx, lambda draft: actions.leave_party(draft, actor_id))
 
-    return sequential_toolset(
-        [
-            reveal,
-            move,
-            gain_improvised_item,
-            add_trait,
-            remove_trait,
-            advance_thread,
-            unlock_exit,
-            join_party,
-            leave_party,
-        ]
-    ).prepared(_narrow_unlock_targets)
+    tools = (
+        CoreTool(reveal),
+        CoreTool(move),
+        CoreTool(gain_improvised_item),
+        CoreTool(add_trait),
+        CoreTool(remove_trait, _a_trait_in_reach),
+        CoreTool(advance_thread, _an_unresolved_thread),
+        CoreTool(unlock_exit, _a_locked_way_out),
+        CoreTool(join_party, _an_actor_to_recruit),
+        CoreTool(leave_party, _a_party_member),
+    )
+    # Keyed off the functions themselves, so a renamed tool cannot lose its predicate.
+    applies = {tool.func.__name__: tool.applies for tool in tools}
+    return (
+        sequential_toolset([tool.func for tool in tools])
+        .prepared(_narrow_unlock_targets)
+        .filtered(lambda ctx, tool: applies[tool.name](ctx.deps.state))
+    )
 
 
 def _resolved(ctx: RunContext[PlanContext], apply: Callable[[Game], list[Fact]]) -> str:
@@ -202,20 +211,6 @@ def _a_trait_in_reach(state: Game) -> bool:
     )
 
 
-_APPLIES: Mapping[str, Callable[[Game], bool]] = {
-    "unlock_exit": _a_locked_way_out,
-    "join_party": _an_actor_to_recruit,
-    "leave_party": _a_party_member,
-    "advance_thread": _an_unresolved_thread,
-    "remove_trait": _a_trait_in_reach,
-}
-
-
-def possible(name: str, state: Game) -> bool:
-    applies = _APPLIES.get(name)
-    return applies is None or applies(state)
-
-
 @dataclass(frozen=True, slots=True)
 class AdvancementContext:
     advancement: Advancement
@@ -236,10 +231,7 @@ def director_agent(
     """Everything that happens this turn happens through a tool; the closing text only traces."""
     toolsets: list[AbstractToolset[PlanContext]] = [
         core_toolset().filtered(
-            lambda ctx, tool: (
-                (ctx.deps.state.pending is None or ctx.deps.suspended_at_start)
-                and possible(tool.name, ctx.deps.state)
-            )
+            lambda ctx, _tool: ctx.deps.state.pending is None or ctx.deps.suspended_at_start
         ),
         # A suspended run may develop what the answer caused; it may not open new mechanics.
         *(
@@ -333,10 +325,7 @@ class TurnResult:
     turn: Turn
 
 
-TURN_STEPS: tuple[str, ...] = ("director", "narrator")
-DIRECTOR_REQUEST_LIMIT = 16
-# ponytail: 4 chars/token estimate, swap for the provider's tokenizer if it starts misfiring
-CHARS_PER_TOKEN = 4
+type TurnStep = Literal["director", "narrator", "worldsmith"]
 
 
 async def run_segment(
@@ -347,12 +336,12 @@ async def run_segment(
     stages: TurnAgents,
     settings: Settings,
     rng: Random,
-    on_step: Callable[[str], None] | None = None,
+    on_step: Callable[[TurnStep], None] | None = None,
     on_event: Callable[[MechanicEvent], None] | None = None,
 ) -> TurnResult:
     """One player input to the next hand-back, committed whole."""
 
-    def announce(step: str) -> None:
+    def announce(step: TurnStep) -> None:
         if on_step is not None:
             on_step(step)
 
@@ -386,7 +375,7 @@ async def run_segment(
             answered=answered,
         ),
         message_history=history,
-        usage_limits=UsageLimits(request_limit=DIRECTOR_REQUEST_LIMIT),
+        usage_limits=UsageLimits(request_limit=settings.turn.director_request_limit),
     )
     # Only what the prompt rendered is spent; a note its own tools wrote steers the next turn too.
     draft.world.pending_notes = draft.world.pending_notes[shown:]
@@ -491,13 +480,13 @@ def _resume(
     if refused := check_draft(draft, lambda copy: apply_to_draft(engine, copy, play, Random(0))):
         raise ValueError(refused)
     landed = apply_to_draft(engine, draft, play, rng)
-    log.landed(landed, engine.player_events(pending.kind, landed))
+    log.landed(landed, engine.player_events(EventCause("decision", pending.kind), landed))
     return landed
 
 
 def _ensure_input_budget(role: Role, settings: Settings, rendered: str, history_chars: int) -> None:
     ceiling = settings.role(role).max_input_tokens
-    estimate = (len(rendered) + history_chars) // CHARS_PER_TOKEN
+    estimate = (len(rendered) + history_chars) // settings.turn.chars_per_token
     if estimate > ceiling:
         raise ValueError(
             f"{role} input is about {estimate} tokens, over its {ceiling}-token ceiling; "

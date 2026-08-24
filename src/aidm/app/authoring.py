@@ -20,21 +20,9 @@ from aidm.content.io import (
 from aidm.content.model import Character, Scenario
 from aidm.engines.core import Engine
 from aidm.llm import build_agent
-from aidm.state.model import (
-    PLAYER_ID,
-    EngineId,
-    Entity,
-    EntityId,
-    Exit,
-    Fact,
-    Frozen,
-    Game,
-    Mutable,
-    ScenarioMeta,
-    Slug,
-    Thread,
-    WorldState,
-)
+from aidm.state.entities import PLAYER_ID, EngineId, Entity, EntityId, Exit, Frozen, Mutable, Slug
+from aidm.state.facts import Fact
+from aidm.state.model import Game, ScenarioMeta, Thread, WorldState
 
 
 def _index[T: Entity | Thread](kept: list[T], target: str) -> int | None:
@@ -181,9 +169,6 @@ class WorldDraft(Mutable):
         )
 
 
-# Every generated scenario must be playable by the character the app ships with.
-STARTER = "kael"
-
 _PROMPTS_DIR = Path(__file__).parent / "prompts"
 _BASE_INSTRUCTIONS = engine_text(_PROMPTS_DIR / "scenario_world.md")
 
@@ -206,9 +191,18 @@ def playtests(config: Settings, engines: Sequence[EngineId]) -> tuple[Playtest, 
     built: list[Playtest] = []
     for engine_id in engines:
         engine = build_engine(engine_id)
-        character = load_character(config.characters_dir, STARTER, engine.id, engine.check_overlay)
+        character = load_character(
+            config.characters_dir,
+            config.authoring.starter_character,
+            engine.id,
+            engine.check_overlay,
+        )
         built.append(Playtest(engine=engine, character=character))
     return tuple(built)
+
+
+MIN_LOCATIONS = 4
+MIN_ACTORS = 2
 
 
 def _bar_unmet(scenario: Scenario) -> list[str]:
@@ -216,7 +210,7 @@ def _bar_unmet(scenario: Scenario) -> list[str]:
     unmet: list[str] = []
     entities, threads = scenario.world.entities, scenario.world.threads
     locations = sorted(entity.id for entity in entities if entity.kind == "location")
-    if len(locations) < 4:
+    if len(locations) < MIN_LOCATIONS:
         unmet.append(f"four or more locations; the draft has {len(locations)}: {locations}")
     ways = [way for entity in entities for way in entity.exits]
     if all(way.known for way in ways):
@@ -224,7 +218,7 @@ def _bar_unmet(scenario: Scenario) -> list[str]:
     if not any(way.locked for way in ways):
         unmet.append("at least one exit starting `locked: true`")
     actors = [entity for entity in entities if entity.kind == "actor"]
-    if len(actors) < 2:
+    if len(actors) < MIN_ACTORS:
         actor_ids = sorted(actor.id for actor in actors)
         unmet.append(f"two or more actors; the draft has {len(actors)}: {actor_ids}")
     if all(actor.known for actor in actors):
@@ -243,13 +237,16 @@ def _bar_unmet(scenario: Scenario) -> list[str]:
     return unmet
 
 
+MIN_OPENING_ENTITIES = 2
+
+
 def _opening_unmet(scenario: Scenario) -> list[str]:
     """An opening slice's bar: what the first scene needs, since the rest materializes in play."""
     unmet: list[str] = []
     beyond = [
         entity for entity in scenario.world.entities if entity.id != scenario.starting_location_id
     ]
-    if len(beyond) < 2:
+    if len(beyond) < MIN_OPENING_ENTITIES:
         unmet.append(
             f"two or three entities besides the starting location; the draft has {len(beyond)}"
         )
@@ -312,11 +309,6 @@ def playability(draft: WorldDraft, playing: Sequence[Playtest], brief: Brief = F
     return None
 
 
-# An author works in passes; past REQUEST_LIMIT calls the run is spinning, not authoring.
-REQUEST_LIMIT = 40
-WORKED_EXAMPLE = "whispering-vault"
-
-
 def authoring_toolset(
     playing: Sequence[Playtest],
     config: Settings,
@@ -324,7 +316,9 @@ def authoring_toolset(
 ) -> FunctionToolset[WorldDraft]:
     def worked_example() -> str:
         """The shipped scenario in the draft shape patches are written in: the bar to match."""
-        return WorldDraft.of(load_scenario(config.scenarios_dir, WORKED_EXAMPLE)).as_json()
+        return WorldDraft.of(
+            load_scenario(config.scenarios_dir, config.authoring.worked_example)
+        ).as_json()
 
     def scenario_so_far(ctx: RunContext[WorldDraft]) -> str:
         """The whole draft as it stands, as pretty JSON: read it back before modifying or
@@ -413,12 +407,16 @@ async def author_extension(
     draft = WorldDraft.of_game(state)
     playing = (Playtest(engine=engine, character=character),)
     agent = world_agent(playing, config, extend_brief(state.world))
-    given = state.scenario.premise if document is None else whole_text(document)
+    given = (
+        state.scenario.premise
+        if document is None
+        else whole_text(document, config.authoring.source_max_chars)
+    )
     heading = "PREMISE:" if document is None else "SOURCE DOCUMENT:"
     _ = await agent.run(
         f"{heading}\n{given}\n\nExtend the world `scenario_so_far` holds.",
         deps=draft,
-        usage_limits=UsageLimits(request_limit=REQUEST_LIMIT),
+        usage_limits=UsageLimits(request_limit=config.authoring.request_limit),
     )
     return delta(state.world, draft)
 
@@ -506,7 +504,11 @@ class AuthoringSession:
         self.playing = playtests(self.config, self.engines)
         self.agent = world_agent(self.playing, self.config, self.brief)
         self.draft = WorldDraft(grows=self.grows)
-        given = self.premise if self.document is None else whole_text(self.document)
+        given = (
+            self.premise
+            if self.document is None
+            else whole_text(self.document, self.config.authoring.source_max_chars)
+        )
         self.opening_prompt = world_prompt(self.slug, given, self.document is not None)
 
     async def send(self, instruction: str) -> str:
@@ -515,7 +517,7 @@ class AuthoringSession:
             instruction,
             deps=self.draft,
             message_history=self.history,
-            usage_limits=UsageLimits(request_limit=REQUEST_LIMIT),
+            usage_limits=UsageLimits(request_limit=self.config.authoring.request_limit),
         )
         self.history = list(result.all_messages())
         return result.output

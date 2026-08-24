@@ -1,8 +1,10 @@
 from pathlib import Path
-from typing import Literal, Self
+from typing import Annotated, Literal, Self
 
 from pydantic import BaseModel, ConfigDict, Field, SecretStr, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
+
+Slug = Annotated[str, Field(pattern=r"^[a-z0-9]+(?:-[a-z0-9]+)*$", max_length=64)]
 
 ProviderName = Literal["openrouter", "local"]
 ReasoningEffort = Literal["none", "minimal", "low", "medium", "high", "xhigh", "max"]
@@ -39,6 +41,29 @@ class MediaConfig(BaseModel):
     model: str = "google/gemini-3.1-flash-lite-image"
     scene_ratio: str = "16:9"
     icon_ratio: str = "1:1"
+    timeout: float = Field(default=180.0, gt=0.0)
+    max_references: int = Field(default=4, ge=0)
+    style: str = "Painterly fantasy illustration, muted colours, no text or lettering."
+
+
+class TurnConfig(BaseModel):
+    model_config = ConfigDict(frozen=True)
+
+    director_request_limit: int = Field(default=16, ge=1)
+    chars_per_token: int = Field(default=4, ge=1)
+
+
+class AuthoringConfig(BaseModel):
+    model_config = ConfigDict(frozen=True)
+
+    # An author works in passes; past this many calls the run is spinning, not authoring.
+    request_limit: int = Field(default=40, ge=1)
+    # Every generated scenario must be playable by the character the app ships with.
+    starter_character: Slug = "kael"
+    worked_example: Slug = "whispering-vault"
+    growth_frontier: int = Field(default=1, ge=0)
+    # This ~30k-token ceiling admits a 76-page adventure without swallowing the context.
+    source_max_chars: int = Field(default=120_000, ge=1)
 
 
 ROLE_DEFAULTS: dict[Role, RoleConfig] = {
@@ -77,6 +102,8 @@ class Settings(BaseSettings):
     providers: Providers = Providers()
     roles: dict[Role, RoleConfig] = Field(default_factory=dict)
     media: MediaConfig = MediaConfig()
+    turn: TurnConfig = TurnConfig()
+    authoring: AuthoringConfig = AuthoringConfig()
     saves_dir: Path = Path("saves")
     scenarios_dir: Path = Path("scenarios")
     characters_dir: Path = Path("characters")

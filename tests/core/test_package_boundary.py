@@ -13,11 +13,15 @@ FORBIDDEN = {
     "turn": {"aidm.app", "aidm.ui", "nicegui"},
     "app": {"aidm.ui", "nicegui"},
     "ui": {"aidm.engines"},
+    # Each engine's mechanics stay pure Python; only its engine.py plugs into the model.
+    "engines/loner3e/rules.py": {"pydantic_ai"},
+    "engines/twentyfourxx/rules.py": {"pydantic_ai"},
 }
 
 
 def _source_files(package: str) -> tuple[Path, ...]:
-    files = tuple((SOURCE / package).rglob("*.py"))
+    target = SOURCE / package
+    files = (target,) if target.is_file() else tuple(target.rglob("*.py"))
     assert files, f"no python files under src/aidm/{package}: renamed without updating the tables?"
     return files
 

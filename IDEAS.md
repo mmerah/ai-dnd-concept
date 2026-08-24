@@ -1,7 +1,6 @@
 ## Loose ends
 
-- [] CONFIG_VARIABLES into config, no magic variable/global VARIABLE anywhere. Re-organization of codebase (kinda done already), clearer, easier to navigate, files have a structure that make sense, models are in separate files, clean functional programming. No change in behavior
-- [] RAG on scenarios? .pdf -> source.md in scenario/<id>/ folder, then RAG on it?
+- [] RAG on scenarios? .pdf -> source.md in scenario/<id>/ folder, then RAG on it? Is the drowned-road scenario extending based on source.md?
 - [] naming: variables, files, methods, classes generally need some renaming to represent more clearly what they do, and with more details
 - [] pyproject.toml should FIX versions.
 - [] Run "uv run python evals/turn_eval.py run --label my-run" multiple times and identify where things are inconsistent. Then figure out fixes (maybe the tools are too difficult to use, need to be separated, or a multi-step thing converted into a tool that combine operations, maybe instruction clarity, maybe examples in tools description to teach the model, maybe we need an agent whose sole role is suggesting what tools to call in what order to remove some decision making out of the director? ...)

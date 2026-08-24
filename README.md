@@ -66,28 +66,6 @@ uv run pytest
 
 ## Layout
 
-```text
-src/aidm/state/model.py           the state vocabulary: entities, world, facts, history, traces, creation steps
-src/aidm/state/actions.py         deterministic transformations and dice
-src/aidm/content/model.py         authored scenario/character schema
-src/aidm/content/io.py            filesystem and source-document boundary, saves
-src/aidm/engines/core.py          the engine contract and shared mechanics library
-src/aidm/engines/loner3e/engine.py       Loner 3e engine: tag sheets, the closed question, the outcome ladder
-src/aidm/engines/twentyfourxx/engine.py  24XX engine: skill dice, one attempt, three outcomes
-src/aidm/turn/context.py          what each role sees and how it renders
-src/aidm/turn/run.py              agents, tools, the turn loop
-src/aidm/app/launch.py            what is playable and how a game begins
-src/aidm/app/runtime.py           open sessions and projections
-src/aidm/app/authoring.py         the scenario-authoring workflow
-src/aidm/app/media.py             illustrations
-src/aidm/ui/app.py                routing and home
-src/aidm/ui/game.py               the game screen
-src/aidm/ui/create.py             creation screens
-characters/                       shared character canon plus one overlay per playable engine
-scenarios/                        each scenario's starting world state, engine-free
-tests/                            per-package suites: core, loner3e, probe, ui
-```
-
 One distribution. The import direction — `state <- content <- engines <- turn <- app <- ui`, with
 `aidm/config.py` a leaf every layer may read — is enforced by
 `tests/core/test_package_boundary.py`: an engine does not import another or `aidm.ui`, and

@@ -21,15 +21,15 @@ from pydantic_ai.models.function import AgentInfo, FunctionModel
 
 from aidm.config import RoleConfig
 from aidm.content.io import SavedGame
-from aidm.engines.loner3e.engine import outcome_for
-from aidm.engines.twentyfourxx.engine import Mechanics
-from aidm.state.model import PLAYER_ID, EntityId
-from aidm.turn.run import TURN_STEPS
+from aidm.engines.loner3e.rules import outcome_for
+from aidm.engines.twentyfourxx.rules import Mechanics
+from aidm.state.entities import PLAYER_ID, EntityId
+from aidm.turn.run import TurnStep
 
 
 async def test_an_engine_uses_the_shared_pipeline_and_safe_narrator_prompt() -> None:
     engine, state = initialized()
-    steps: list[str] = []
+    steps: list[TurnStep] = []
     director = FunctionModel(
         scripted(
             tool_call("move", entity_id="vault_map", to_id="player"),
@@ -46,7 +46,7 @@ async def test_an_engine_uses_the_shared_pipeline_and_safe_narrator_prompt() -> 
         on_step=steps.append,
     )
 
-    assert tuple(steps) == TURN_STEPS
+    assert tuple(steps) == ("director", "narrator")
     assert [fact.kind for fact in result.turn.facts] == [
         "entity_discovered",
         "entity_moved",
@@ -76,11 +76,11 @@ async def test_on_event_fires_once_per_visible_tool_in_resolver_order() -> None:
         state,
         "I take the map and listen.",
         director=director,
-        on_event=lambda event: fired.append(event.tool),
+        on_event=lambda event: fired.append(event.source),
     )
 
     assert fired == ["move", "add_trait"]
-    assert [event.tool for event in result.state.history[-1].events] == ["move", "add_trait"]
+    assert [event.source for event in result.state.history[-1].events] == ["move", "add_trait"]
 
 
 async def test_a_narrator_failure_leaves_history_and_events_untouched() -> None:
@@ -104,7 +104,7 @@ async def test_a_narrator_failure_leaves_history_and_events_untouched() -> None:
             "I take the map.",
             director=director,
             narrator=FunctionModel(boom),
-            on_event=lambda event: fired.append(event.tool),
+            on_event=lambda event: fired.append(event.source),
         )
 
     assert fired == ["move"]
@@ -154,7 +154,7 @@ async def test_the_director_reacts_in_run_to_its_own_earlier_tool_call() -> None
     )
 
     assert result.state.player.parent_id == "bell_tower"
-    assert tuple(step.name for step in result.turn.steps) == TURN_STEPS
+    assert tuple(step.name for step in result.turn.steps) == ("director", "narrator")
 
 
 async def test_an_illegal_tool_call_is_retried_with_the_reason() -> None:

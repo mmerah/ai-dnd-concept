@@ -9,10 +9,12 @@ from pydantic import SecretStr
 from aidm.app.media import Generated, Illustrator, illustration_request, scene_key
 from aidm.config import MediaConfig, ProviderConfig
 from aidm.state import actions
-from aidm.state.model import PLAYER_ID, Entity, EntityId, Game
+from aidm.state.entities import PLAYER_ID, Entity, EntityId
+from aidm.state.model import Game
 from aidm.turn.context import player_scene
 
 NARRATION = "The door groans open."
+STYLE = MediaConfig().style
 CLOISTER = EntityId("cloister")
 
 
@@ -22,6 +24,7 @@ def _illustrator(tmp_path: Path) -> Illustrator:
         provider=ProviderConfig(base_url="https://example.invalid/v1", api_key=SecretStr("test")),
         saves=tmp_path / "save.media",
         icon_dirs={},
+        style=STYLE,
     )
 
 
@@ -42,7 +45,7 @@ def _placed(state: Game, name: str, *, known: bool) -> Game:
 def test_illustration_request_names_the_scene_and_no_unrevealed_canon() -> None:
     _, state = initialized()
     state = _placed(_placed(state, "Brass Lantern", known=True), "Pale Watcher", known=False)
-    request = illustration_request(player_scene(state), NARRATION)
+    request = illustration_request(player_scene(state), NARRATION, STYLE)
     assert state.world.require(state.player_location).name in request
     assert "Brass Lantern" in request
     assert NARRATION in request
@@ -75,6 +78,7 @@ def test_an_icon_is_looked_up_in_the_directory_its_entity_belongs_to(tmp_path: P
         provider=ProviderConfig(base_url="https://example.invalid/v1", api_key=SecretStr("test")),
         saves=saves_dir,
         icon_dirs={EntityId("mara"): scenario_dir, EntityId("player"): character_dir},
+        style=STYLE,
     )
     assert illustrator.icon(EntityId("mara")) == scenario_dir / "mara.png"
     assert illustrator.icon(EntityId("player")) == character_dir / "player.png"

@@ -14,7 +14,8 @@ from aidm.app.authoring import (
 )
 from aidm.app.launch import engine_ids
 from aidm.content.io import load_scenario
-from aidm.state.model import Entity, EntityId, Exit, ScenarioMeta, Thread
+from aidm.state.entities import Entity, EntityId, Exit
+from aidm.state.model import ScenarioMeta, Thread
 
 
 async def test_the_shipped_scenario_passes_every_engine() -> None:

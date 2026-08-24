@@ -2,11 +2,12 @@ from random import Random
 
 from core_test_support import initialized
 
-from aidm.engines.loner3e.engine import (
+from aidm.engines.core import EventCause
+from aidm.engines.loner3e.engine import Loner3eEngine
+from aidm.engines.loner3e.rules import (
     HARM,
+    RULES,
     SRD_PACK,
-    TIES_PER_TWIST,
-    Loner3eEngine,
     Mechanics,
     Question,
     apply_restore_luck,
@@ -15,7 +16,8 @@ from aidm.engines.loner3e.engine import (
     resolve_question,
     twist_table,
 )
-from aidm.state.model import PLAYER_ID, EntityId, EventBadge
+from aidm.state.entities import PLAYER_ID, EntityId
+from aidm.state.play import EventBadge
 
 TWISTS = twist_table(Loner3eEngine().packs, SRD_PACK)
 FOE = EntityId("mara")
@@ -103,7 +105,7 @@ def test_a_defeat_shows_the_owner_prefixed_effects_in_fact_order() -> None:
 def test_a_twist_card_lands_only_once_a_twist_fires() -> None:
     _, state = initialized()
     draft = state.draft()
-    Mechanics.of(draft).twist.current = TIES_PER_TWIST - 1
+    Mechanics.of(draft).twist.current = RULES.ties_per_twist - 1
     primed = draft.committed()
 
     for seed in range(200):
@@ -130,5 +132,5 @@ def test_restoring_luck_shows_as_a_counter_chip() -> None:
     spent = draft.committed()
 
     facts = tuple(apply_restore_luck(spent.draft(), PLAYER_ID))
-    (event,) = engine.player_events("restore_luck", facts)
+    (event,) = engine.player_events(EventCause("tool", "restore_luck"), facts)
     assert event.title == "Luck +5 -> 6/6"

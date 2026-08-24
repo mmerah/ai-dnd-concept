@@ -10,16 +10,14 @@ from httpx import AsyncClient
 from pydantic import BaseModel, ConfigDict
 
 from aidm.config import MediaConfig, ProviderConfig
-from aidm.state.model import Entity, EntityId, Game
+from aidm.state.entities import Entity, EntityId
+from aidm.state.model import Game
 from aidm.turn.context import VisibleScene, player_scene
 
 LOGGER = logging.getLogger(__name__)
 
-TIMEOUT = 180.0
 ICON_DIR = "icons"
-MAX_REFERENCES = 4
 SUFFIXES = {"image/png": ".png", "image/jpeg": ".jpg", "image/webp": ".webp"}
-STYLE = "Painterly fantasy illustration, muted colours, no text or lettering."
 _FILENAME_SAFE = re.compile(r"[a-z0-9_-]+")
 
 
@@ -29,7 +27,7 @@ def scene_key(scene: VisibleScene) -> str:
 
 
 def illustration_request(
-    scene: VisibleScene, narration: str, referenced: Sequence[str] = (), style: str = STYLE
+    scene: VisibleScene, narration: str, style: str, referenced: Sequence[str] = ()
 ) -> str:
     lines = [
         "Draw one wide establishing view of the place below, as somebody standing in it sees it. "
@@ -49,7 +47,7 @@ def illustration_request(
     return "\n".join(lines)
 
 
-def icon_request(entity: Entity, style: str = STYLE) -> str:
+def icon_request(entity: Entity, style: str) -> str:
     return (
         f"Draw a portrait token, not a scene: {entity.name} — {entity.brief}. "
         f"The subject alone, centred and filling the square, on a plain flat background — "
@@ -71,7 +69,7 @@ class Illustrator:
     provider: ProviderConfig
     saves: Path
     icon_dirs: Mapping[EntityId, Path]
-    style: str = STYLE
+    style: str
     generating: set[str] = field(default_factory=set)
 
     def scene_art(self, state: Game) -> Path | None:
@@ -120,11 +118,11 @@ class Illustrator:
         )
         icons = {
             entity.name: icon
-            for entity in subjects[:MAX_REFERENCES]
+            for entity in subjects[: self.config.max_references]
             if (icon := await self._drawn_icon(entity)) is not None
         }
         generated = await self._generate(
-            illustration_request(scene, narration, tuple(icons), style=self.style),
+            illustration_request(scene, narration, self.style, tuple(icons)),
             self.config.scene_ratio,
             tuple(icons.values()),
         )
@@ -164,7 +162,7 @@ class Illustrator:
             {"type": "image_url", "image_url": {"url": _data_uri(path)}} for path in references
         )
         try:
-            async with AsyncClient(timeout=TIMEOUT) as client:
+            async with AsyncClient(timeout=self.config.timeout) as client:
                 reply = await client.post(
                     f"{self.provider.base_url}/chat/completions",
                     headers={"Authorization": f"Bearer {self.provider.api_key.get_secret_value()}"},

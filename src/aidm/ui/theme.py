@@ -1,3 +1,5 @@
+from functools import cache
+
 from nicegui import ui
 
 _CSS = """
@@ -70,13 +72,12 @@ body, body.body--dark, .nicegui-content, .q-page {
 """
 
 
-_injected = False
+@cache
+def _inject_css() -> None:
+    # `shared=True` appends to the app-wide head on every call; injected once per process.
+    ui.add_css(_CSS, shared=True)
 
 
 def apply() -> None:
-    global _injected
     ui.dark_mode(True)
-    if not _injected:
-        # `shared=True` appends to the app-wide head on every call; injected once per process.
-        ui.add_css(_CSS, shared=True)
-        _injected = True
+    _inject_css()

@@ -4,7 +4,9 @@ import pytest
 from core_test_support import initialized
 
 from aidm.state import actions
-from aidm.state.model import PLAYER_ID, AdvanceThread, Counter, Entity, EntityId, Fact, Game, Thread
+from aidm.state.entities import PLAYER_ID, Counter, Entity, EntityId
+from aidm.state.facts import Fact
+from aidm.state.model import AdvanceThread, Game, Thread
 
 BELL_TOWER = EntityId("bell_tower")
 CLOISTER = EntityId("cloister")

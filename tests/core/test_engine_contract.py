@@ -7,15 +7,12 @@ from pydantic import JsonValue
 from aidm.app.launch import ENGINES, build_engine
 from aidm.content.io import SavedGame
 from aidm.engines.core import Engine
-from aidm.engines.loner3e.engine import (
-    LUCK_MAX,
-    Loner3eEngine,
-    Mechanics,
-    Sheet,
-    apply_restore_luck,
-)
+from aidm.engines.loner3e.engine import Loner3eEngine
+from aidm.engines.loner3e.rules import RULES, Mechanics, Sheet, apply_restore_luck
 from aidm.state import actions
-from aidm.state.model import PLAYER_ID, EngineId, Entity, EntityId, Fact, Game, WorldState
+from aidm.state.entities import PLAYER_ID, EngineId, Entity, EntityId
+from aidm.state.facts import Fact
+from aidm.state.model import Game, WorldState
 
 
 def _turn(state: Game) -> tuple[Game, tuple[Fact, ...]]:
@@ -39,7 +36,7 @@ def test_engine_initialization_and_state_contract() -> None:
     engine, state = initialized()
 
     assert state.engine == engine.id
-    assert Mechanics.of(state).sheets[PLAYER_ID].luck.current == LUCK_MAX
+    assert Mechanics.of(state).sheets[PLAYER_ID].luck.current == RULES.luck_max
     engine.validate(state)
 
     saved = SavedGame.model_validate_json(SavedGame.of(state).model_dump_json())

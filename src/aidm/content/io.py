@@ -9,18 +9,9 @@ from typing import Self
 from pydantic import BaseModel, ConfigDict, Field, JsonValue, model_validator
 from pypdf import PdfReader
 
-from aidm.state.model import (
-    EngineId,
-    Exchange,
-    Game,
-    Mutable,
-    PendingDecision,
-    ScenarioMeta,
-    Slug,
-    WorldState,
-    check_player_playable,
-    content_id,
-)
+from aidm.state.entities import EngineId, Mutable, Slug, content_id
+from aidm.state.model import Game, ScenarioMeta, WorldState, check_player_playable
+from aidm.state.play import Exchange, PendingDecision
 
 from .model import (
     Character,
@@ -240,20 +231,18 @@ def _safe_path(directory: Path, stem: str, suffix: str) -> Path:
 
 
 MIN_PASSAGE = 24
-# This ~30k-token ceiling admits a 76-page adventure without swallowing the context.
-WHOLE_CHARS = 120_000
 _BLANK_LINE = re.compile(r"\n\s*\n")
 _LINE_BREAK_HYPHEN = re.compile(r"(\w)-\s+(\w)")
 
 
-def whole_text(path: Path) -> str:
+def whole_text(path: Path, max_chars: int) -> str:
     pages = (
         _pdf_pages(path) if path.suffix.lower() == ".pdf" else (path.read_text(encoding="utf-8"),)
     )
     text = "\n\n".join(passage for page in pages for passage in _passages(page))
     if not text:
         raise ValueError(f"{path.name} holds no readable text")
-    if len(text) > WHOLE_CHARS:
+    if len(text) > max_chars:
         raise ValueError(
             f"{path.name} is {len(text)} characters, too large to hand to a model whole"
         )

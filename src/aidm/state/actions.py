@@ -3,21 +3,9 @@ from random import Random
 
 from pydantic import JsonValue
 
-from .model import (
-    PLAYER_ID,
-    AdvanceThread,
-    Chip,
-    Entity,
-    EntityId,
-    Exit,
-    Fact,
-    Game,
-    Slug,
-    Trait,
-    entity_fact,
-    labeled,
-    slug,
-)
+from .entities import PLAYER_ID, Entity, EntityId, Exit, Slug, Trait, slug
+from .facts import Chip, Fact, entity_fact, labeled
+from .model import AdvanceThread, Game
 
 
 def _sentence(text: str) -> str:

@@ -26,12 +26,15 @@ from aidm.app.authoring import (
     extend_brief,
     playability,
 )
-from aidm.app.runtime import WORLDSMITH, GameSession
+from aidm.app.runtime import GameSession
 from aidm.config import Settings
 from aidm.content.io import FileStore
 from aidm.content.model import Character
 from aidm.engines.core import Engine
-from aidm.state.model import PLAYER_ID, Entity, EntityId, Exit, Extended, Game, Thread
+from aidm.state.entities import PLAYER_ID, Entity, EntityId, Exit
+from aidm.state.model import Game, Thread
+from aidm.state.play import Extended
+from aidm.turn.run import TurnStep
 
 _CRYPT_ID = EntityId("sub_crypt")
 
@@ -81,7 +84,7 @@ def _stub_author(monkeypatch: pytest.MonkeyPatch) -> list[Game]:
     return seen
 
 
-async def _turn(game: GameSession, on_step: Callable[[str], None] | None = None) -> None:
+async def _turn(game: GameSession, on_step: Callable[[TurnStep], None] | None = None) -> None:
     director = FunctionModel(scripted(text("nothing to do")))
     narrator = FunctionModel(scripted(narrated("You wait.")))
     with (
@@ -136,12 +139,12 @@ async def test_a_thin_world_grows_inside_the_turn_that_ran_it_thin(
     authored = (SCENARIOS / "whispering-vault" / "world.json").read_bytes()
     game = _grown(tmp_path)
     seen = _stub_author(monkeypatch)
-    steps: list[str] = []
+    steps: list[TurnStep] = []
 
     await _turn(game, steps.append)
 
     assert len(seen) == 1
-    assert WORLDSMITH in steps
+    assert "worldsmith" in steps
     grown = game.state.world.find(_CRYPT_ID)
     assert grown is not None
     assert grown.known is False

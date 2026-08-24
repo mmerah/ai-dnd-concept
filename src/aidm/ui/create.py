@@ -8,23 +8,14 @@ from nicegui.events import UploadEventArguments, ValueChangeEventArguments
 
 from aidm.app.authoring import FULL, OPENING, AuthoringSession
 from aidm.app.launch import engine_ids
-from aidm.app.media import STYLE
 from aidm.app.runtime import Runtime
 from aidm.config import Settings
 from aidm.content.io import write_character
 from aidm.content.model import CreatedCharacter
-from aidm.state.model import (
-    AnyStep,
-    CreationStep,
-    EngineId,
-    Slug,
-    TextStep,
-    content_id,
-    picked,
-    text_slug,
-)
+from aidm.state.creation import AnyStep, CreationStep, TextStep, picked
+from aidm.state.entities import EngineId, Slug, content_id, text_slug
 
-from .game import page_header, refuse_if_busy, working
+from .widgets import page_header, refuse_if_busy, working
 
 LOGGER = logging.getLogger(__name__)
 
@@ -337,7 +328,9 @@ def scenario_page(config: Settings) -> None:
                 .props("outlined")
             )
             art_style = (
-                ui.input(label="Art style", placeholder=STYLE).classes("w-full").props("outlined")
+                ui.input(label="Art style", placeholder=config.media.style)
+                .classes("w-full")
+                .props("outlined")
             )
             author_button = (
                 ui.button("Author", icon="auto_stories", on_click=lambda: start())

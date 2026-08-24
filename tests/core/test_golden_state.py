@@ -4,7 +4,7 @@ from golden_test_support import FIXTURES, dumped, golden
 
 from aidm.app.launch import engine_ids
 from aidm.content.io import SavedGame
-from aidm.state.model import EngineId
+from aidm.state.entities import EngineId
 
 
 @pytest.mark.parametrize("engine_id", engine_ids())

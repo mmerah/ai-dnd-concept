@@ -3,7 +3,7 @@ from core_test_support import at_boundary, capability, game
 from golden_test_support import FIXTURES, golden
 
 from aidm.app.launch import engine_ids
-from aidm.state.model import EngineId
+from aidm.state.entities import EngineId
 from aidm.turn import context
 from aidm.turn.context import render_proposal
 

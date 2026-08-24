@@ -14,10 +14,11 @@ from aidm.app.launch import (
 )
 from aidm.app.runtime import Runtime
 from aidm.config import Settings, load_settings
-from aidm.state.model import content_id
+from aidm.state.entities import content_id
 
 from .create import character_page, scenario_page
-from .game import game_page, page_header, show_engine_badge
+from .game import game_page
+from .widgets import page_header, show_engine_badge
 
 LOGGER = logging.getLogger(__name__)
 

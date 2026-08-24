@@ -12,7 +12,8 @@ from aidm.content.model import Character, Scenario
 from aidm.engines.core import Engine
 from aidm.engines.loner3e.engine import Loner3eEngine
 from aidm.engines.twentyfourxx.engine import TwentyfourxxEngine
-from aidm.state.model import PLAYER_ID, EngineId, Entity, Frozen, Game, Slug
+from aidm.state.entities import PLAYER_ID, EngineId, Entity, Frozen, Slug
+from aidm.state.model import Game
 
 ENGINES: tuple[type[Engine], ...] = (Loner3eEngine, TwentyfourxxEngine)
 
@@ -306,6 +307,9 @@ def _unplayable_reason(
     return None
 
 
+BRIEF_ERROR_WIDTH = 200
+
+
 def _brief(error: Exception) -> str:
     """A rejected save shows a one-line reason; a full validation traceback is unreadable."""
-    return shorten(str(error), width=200, placeholder=" ...")
+    return shorten(str(error), width=BRIEF_ERROR_WIDTH, placeholder=" ...")

@@ -4,19 +4,8 @@ from pathlib import Path
 
 from aidm.content.io import engine_text
 from aidm.engines.core import Engine, EntityRenderer, Offer
-from aidm.state.model import (
-    PLAYER_ID,
-    Entity,
-    EntityId,
-    Exit,
-    Frozen,
-    Game,
-    ScenarioMeta,
-    Thread,
-    Trait,
-    WorldState,
-    kind_word,
-)
+from aidm.state.entities import PLAYER_ID, Entity, EntityId, Exit, Frozen, Trait, kind_word
+from aidm.state.model import Game, ScenarioMeta, Thread, WorldState
 
 
 class BaseScene(Frozen):

@@ -16,8 +16,9 @@ from pydantic import ValidationError
 
 from aidm.content.io import SavedGame, load_character
 from aidm.content.model import Character, CharacterOverlay, CharacterProfile, Scenario
-from aidm.engines.loner3e.engine import LUCK_MAX, Mechanics
-from aidm.state.model import PLAYER_ID, Entity, EntityId, Game
+from aidm.engines.loner3e.rules import RULES, Mechanics
+from aidm.state.entities import PLAYER_ID, Entity, EntityId
+from aidm.state.model import Game
 
 HELD = EntityId("frayed_rope")
 MARA = EntityId("mara")
@@ -155,4 +156,4 @@ def test_a_mechanics_mutation_lands_on_the_commit_and_nowhere_else() -> None:
 
     assert _luck(committed) == 1
     assert SavedGame.of(committed).mechanics != SavedGame.of(state).mechanics
-    assert _luck(state) == LUCK_MAX
+    assert _luck(state) == RULES.luck_max

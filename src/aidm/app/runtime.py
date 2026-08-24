@@ -12,34 +12,22 @@ from aidm.config import Settings
 from aidm.content.io import FileStore, SavedGame, load_character, load_scenario
 from aidm.content.model import Character, Scenario
 from aidm.engines.core import Advancement, Engine, Offer, ProposalBase, transact
-from aidm.state.model import (
-    PLAYER_ID,
-    Answer,
-    Applied,
-    EngineId,
-    EntityId,
-    Extended,
-    Fact,
-    Frozen,
-    Game,
-    Line,
-    MechanicEvent,
-    ThreadStatus,
-    TraceEntry,
-    Turn,
-    frontier,
-)
+from aidm.state.entities import PLAYER_ID, EngineId, EntityId, Frozen
+from aidm.state.facts import Fact
+from aidm.state.model import Game, ThreadStatus, frontier
+from aidm.state.play import Answer, Applied, Extended, Line, MechanicEvent, TraceEntry, Turn
 from aidm.turn.context import render_proposal
 from aidm.turn.run import (
     AdvancementContext,
     TurnAgents,
+    TurnStep,
     advisor_agent,
     build_turn_agents,
     run_segment,
 )
 
 from .launch import LaunchTarget, begin_game, build_engine
-from .media import ICON_DIR, STYLE, Illustrator
+from .media import ICON_DIR, Illustrator
 
 
 class ThreadSummary(Frozen):
@@ -91,8 +79,6 @@ def _thread_line(thread: ThreadSummary) -> str:
 
 LOGGER = logging.getLogger(__name__)
 
-WORLDSMITH = "worldsmith"
-
 
 @dataclass(frozen=True, slots=True)
 class Drafted:
@@ -133,7 +119,7 @@ def open_media(
                 for entity_id in (PLAYER_ID, *(item.id for item in character.profile.items))
             },
         },
-        style=scenario.art_style or STYLE,
+        style=scenario.art_style or config.media.style,
     )
 
 
@@ -151,7 +137,7 @@ class GameSession:
     rng: Random = field(default_factory=Random)
     entries: list[TraceEntry] = field(default_factory=list)
     busy: bool = False
-    step: str | None = None
+    step: TurnStep | None = None
     drafted: Drafted | None = None
     _illustrations: set[Task[None]] = field(default_factory=set, repr=False)
     state: Game = field(init=False)
@@ -174,7 +160,7 @@ class GameSession:
     async def submit(
         self,
         player_input: str | Answer,
-        on_step: Callable[[str], None] | None = None,
+        on_step: Callable[[TurnStep], None] | None = None,
         on_event: Callable[[MechanicEvent], None] | None = None,
     ) -> Turn:
         """Commit only after the full segment succeeds."""
@@ -190,9 +176,12 @@ class GameSession:
         )
         self._commit(result.state, result.turn)
         self._illustrate(result.turn.narration)
-        if self.scenario.grows and frontier(self.state.world) <= 1:
+        if (
+            self.scenario.grows
+            and frontier(self.state.world) <= self.settings.authoring.growth_frontier
+        ):
             if on_step is not None:
-                on_step(WORLDSMITH)
+                on_step("worldsmith")
             await self._extend()
         return result.turn
 

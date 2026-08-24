@@ -3,17 +3,8 @@ from typing import Self
 
 from pydantic import Field, JsonValue, model_validator
 
-from aidm.state.model import (
-    PLAYER_ID,
-    EngineId,
-    Entity,
-    EntityId,
-    Frozen,
-    ScenarioMeta,
-    Slug,
-    Trait,
-    WorldState,
-)
+from aidm.state.entities import PLAYER_ID, EngineId, Entity, EntityId, Frozen, Slug, Trait
+from aidm.state.model import ScenarioMeta, WorldState
 
 
 class Scenario(Frozen):

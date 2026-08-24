@@ -19,15 +19,9 @@ from aidm.engines.core import (
     transact,
 )
 from aidm.engines.loner3e.engine import Loner3eEngine
-from aidm.state.model import (
-    Answer,
-    Exchange,
-    Fact,
-    Game,
-    Option,
-    OptionId,
-    PendingDecision,
-)
+from aidm.state.facts import Fact
+from aidm.state.model import Game
+from aidm.state.play import Answer, Exchange, Option, OptionId, PendingDecision
 from aidm.turn.run import exchanges_to_messages
 
 DECISION = PendingDecision(

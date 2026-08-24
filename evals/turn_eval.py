@@ -11,7 +11,9 @@ from aidm.app.launch import begin_game, build_engine
 from aidm.config import Settings, load_settings
 from aidm.content.io import load_character, load_scenario
 from aidm.engines.core import Engine
-from aidm.state.model import Answer, EngineId, EntityId, Frozen, Game, Turn
+from aidm.state.entities import EngineId, EntityId, Frozen
+from aidm.state.model import Game
+from aidm.state.play import Answer, Turn
 from aidm.turn.run import TurnResult, build_turn_agents, run_segment
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -144,7 +146,7 @@ def staked_before_rolling(result: TurnResult) -> bool:
     return (
         bool(history)
         and bool(history[0].decision)
-        and not any(event.tool == "roll_attempt" for event in history[0].events)
+        and not any(event.source == "roll_attempt" for event in history[0].events)
     )
 
 

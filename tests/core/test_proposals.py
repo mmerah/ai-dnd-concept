@@ -9,8 +9,9 @@ from pydantic_ai.models.function import AgentInfo, FunctionModel
 
 from aidm.app.runtime import Drafted
 from aidm.content.io import FileStore, SavedGame
-from aidm.engines.loner3e.engine import AdventureGrowth, Change, Mechanics
-from aidm.state.model import PLAYER_ID, Applied
+from aidm.engines.loner3e.rules import AdventureGrowth, Change, Mechanics
+from aidm.state.entities import PLAYER_ID
+from aidm.state.play import Applied
 
 LEGAL = AdventureGrowth(
     changes=(Change(kind="gear", tag="Waxed Rope"),), why="he never climbs without it now"

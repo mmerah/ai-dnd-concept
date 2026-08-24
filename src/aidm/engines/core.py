@@ -6,7 +6,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from random import Random
 from re import fullmatch
-from typing import ClassVar, Protocol, Self
+from typing import ClassVar, Literal, Protocol, Self
 
 from pydantic import BaseModel, Field, JsonValue
 from pydantic_ai import ModelRetry, RunContext
@@ -15,34 +15,30 @@ from pydantic_ai.toolsets import AbstractToolset, FunctionToolset
 
 from aidm.content.io import ENCODING, SavedGame, engine_text
 from aidm.content.model import CreatedCharacter
-from aidm.state.model import (
+from aidm.state.creation import AnyStep, CreationOption, CreationStep, Picks
+from aidm.state.entities import (
     PLAYER_ID,
-    AnyStep,
-    Chip,
     Counter,
-    CreationOption,
-    CreationStep,
-    DiceEvent,
     EngineId,
     Entity,
     EntityId,
-    Fact,
     Frozen,
-    Game,
-    MechanicEvent,
     Mutable,
-    OptionId,
-    PendingDecision,
-    Picks,
     Slug,
-    StepTrace,
-    WorldState,
-    check_draft,
-    explained_fact,
-    labeled,
 )
+from aidm.state.facts import Chip, Fact, explained_fact, labeled
+from aidm.state.model import Game, WorldState, check_draft
+from aidm.state.play import DiceEvent, MechanicEvent, OptionId, PendingDecision, StepTrace
 
 type EntityRenderer = Callable[[Entity], str]
+
+
+@dataclass(frozen=True, slots=True)
+class EventCause:
+    """What produced a batch of facts: a director tool call, or an answered decision's kind."""
+
+    origin: Literal["tool", "decision"]
+    name: str
 
 
 @dataclass(slots=True)
@@ -145,10 +141,12 @@ class Engine(ABC):
     def sheet_view(self, state: Game) -> tuple[tuple[str, str], ...]:
         """Ordered (label, value) pairs summarising the player's own sheet for the player."""
 
-    def player_events(self, source: str, facts: tuple[Fact, ...]) -> tuple[MechanicEvent, ...]:
+    def player_events(
+        self, cause: EventCause, facts: tuple[Fact, ...]
+    ) -> tuple[MechanicEvent, ...]:
         """Keep chip visibility at the narrator gate so unrevealed entities cannot bypass it."""
         return tuple(
-            MechanicEvent(tool=source, title=fact.chip.title, icon=fact.chip.icon)
+            MechanicEvent(source=cause.name, title=fact.chip.title, icon=fact.chip.icon)
             for fact in facts
             if fact.chip is not None and fact.narrator is not None
         )
@@ -361,7 +359,8 @@ def act(ctx: RunContext[PlanContext], play: Play) -> str:
     already_pending = len(deps.state.world.pending_notes)
     decided_before = deps.state.pending
     landed = apply_to_draft(deps.engine, deps.state, play, deps.rng)
-    deps.log.landed(landed, deps.engine.player_events(ctx.tool_name or "", landed))
+    cause = EventCause("tool", ctx.tool_name or "")
+    deps.log.landed(landed, deps.engine.player_events(cause, landed))
     lines = [f"- {fact.trace}" for fact in landed]
     lines.extend(f"- {note}" for note in deps.state.world.pending_notes[already_pending:])
     lines.extend(_reached(deps.state, landed))

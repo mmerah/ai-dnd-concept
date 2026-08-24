@@ -3,14 +3,13 @@ from random import Random
 import pytest
 from core_test_support import at_boundary, capability, initialized
 
-from aidm.engines.loner3e.engine import (
+from aidm.engines.loner3e.engine import Loner3eEngine
+from aidm.engines.loner3e.rules import (
     HARM,
-    LUCK_MAX,
+    RULES,
     SRD_PACK,
-    TIES_PER_TWIST,
     AdventureGrowth,
     Change,
-    Loner3eEngine,
     Mechanics,
     Question,
     apply_complete_chapter,
@@ -23,7 +22,8 @@ from aidm.engines.loner3e.engine import (
     twist_pairing,
     twist_table,
 )
-from aidm.state.model import PLAYER_ID, Counter, Entity, EntityId, PendingDecision
+from aidm.state.entities import PLAYER_ID, Counter, Entity, EntityId
+from aidm.state.play import PendingDecision
 
 TWISTS = twist_table(Loner3eEngine().packs, SRD_PACK)
 FOE = EntityId("mara")
@@ -74,7 +74,7 @@ def test_a_question_puts_two_dice_to_the_answer_and_costs_no_luck_on_its_own() -
     facts = resolve_question(draft, _seal(), Random(17), TWISTS)
 
     assert [fact.kind for fact in facts] == ["dice_rolled", "dice_rolled", "question_answered"]
-    assert Mechanics.of(draft).sheets[PLAYER_ID].luck.current == LUCK_MAX
+    assert Mechanics.of(draft).sheets[PLAYER_ID].luck.current == RULES.luck_max
 
 
 def test_a_question_the_fiction_cannot_carry_is_refused_with_the_reason() -> None:
@@ -111,7 +111,7 @@ def test_a_tie_ticks_the_twist_and_the_third_tie_calls_one() -> None:
     _, state = initialized()
     draft = state.draft()
     mechanics = Mechanics.of(draft)
-    mechanics.twist.current = TIES_PER_TWIST - 1
+    mechanics.twist.current = RULES.ties_per_twist - 1
     primed = draft.committed()
 
     action = Question(actor_id=PLAYER_ID, question="Does he slip past unheard?")
@@ -143,8 +143,8 @@ def test_a_conflict_exchange_moves_luck_off_whichever_side_lost_it() -> None:
         sheets = Mechanics.of(draft).sheets
         harm = HARM[outcome]
         loser = FOE if harm > 0 else PLAYER_ID
-        assert sheets[loser].luck.current == LUCK_MAX - abs(harm)
-        assert sheets[FOE if loser == PLAYER_ID else PLAYER_ID].luck.current == LUCK_MAX
+        assert sheets[loser].luck.current == RULES.luck_max - abs(harm)
+        assert sheets[FOE if loser == PLAYER_ID else PLAYER_ID].luck.current == RULES.luck_max
         assert not any(fact.kind == "twist_due" for fact in facts)
         assert Mechanics.of(draft).twist.current == 0
 
@@ -153,7 +153,7 @@ def test_luck_running_out_ends_the_conflict_and_resets_both_pools() -> None:
     _, state = initialized()
     draft = state.draft()
     mechanics = Mechanics.of(draft)
-    # A 10-max pool proves the reset lands on the sheet's own maximum, not on a +LUCK_MAX delta.
+    # A 10-max pool proves the reset lands on the sheet's own maximum, not on a +luck_max delta.
     mechanics.sheets[FOE].luck = Counter(current=1, maximum=10)
     hurt = draft.committed()
 
@@ -169,7 +169,7 @@ def test_luck_running_out_ends_the_conflict_and_resets_both_pools() -> None:
 
     sheets = Mechanics.of(draft).sheets
     assert sheets[FOE].luck.current == 10
-    assert sheets[PLAYER_ID].luck.current == LUCK_MAX
+    assert sheets[PLAYER_ID].luck.current == RULES.luck_max
     assert any(fact.kind == "conflict_lost" for fact in facts)
     assert defeat_note(draft.world.require(FOE).name) in draft.world.pending_notes
     # The conflict is over, so the defeat note steers the same run instead of handing control back.

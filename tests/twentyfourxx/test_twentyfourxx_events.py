@@ -2,7 +2,8 @@ from random import Random
 
 from core_test_support import TWENTYFOURXX, game
 
-from aidm.engines.twentyfourxx.engine import (
+from aidm.engines.core import EventCause
+from aidm.engines.twentyfourxx.rules import (
     Attempt,
     LuckTest,
     apply_change_credits,
@@ -11,7 +12,8 @@ from aidm.engines.twentyfourxx.engine import (
     resolve_attempt,
     resolve_luck_test,
 )
-from aidm.state.model import PLAYER_ID, EventBadge
+from aidm.state.entities import PLAYER_ID
+from aidm.state.play import EventBadge
 
 GOAL = "Kael scales the crumbling wall"
 
@@ -114,7 +116,7 @@ def test_paying_credits_shows_as_a_counter_chip() -> None:
     engine, state = game(TWENTYFOURXX)
     facts = tuple(apply_change_credits(state.draft(), PLAYER_ID, 3))
 
-    (event,) = engine.player_events("change_credits", facts)
+    (event,) = engine.player_events(EventCause("tool", "change_credits"), facts)
     assert event.title == "Credits +3 -> 5"
     assert event.icon == "payments"
 
@@ -123,6 +125,16 @@ def test_charging_credits_shows_as_a_counter_chip() -> None:
     engine, state = game(TWENTYFOURXX)
     facts = tuple(apply_change_credits(state.draft(), PLAYER_ID, -1))
 
-    (event,) = engine.player_events("change_credits", facts)
+    (event,) = engine.player_events(EventCause("tool", "change_credits"), facts)
     assert event.title == "Credits -1 -> 1"
     assert event.icon == "payments"
+
+
+def test_an_answered_stake_shows_the_same_attempt_card_as_the_tool() -> None:
+    """The two causes an attempt arrives by: the tool that rolls it, and the stake resumed."""
+    engine, state = game(TWENTYFOURXX)
+    facts = resolve_attempt(state.draft(), _climb(), Random(0))
+
+    (rolled,) = engine.player_events(EventCause("tool", "roll_attempt"), facts)
+    (resumed,) = engine.player_events(EventCause("decision", "stake"), facts)
+    assert resumed == rolled.model_copy(update={"source": "stake"})
