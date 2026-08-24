@@ -15,7 +15,7 @@ def test_opening_does_not_save_and_restart_discards_durable_state(tmp_path: Path
     game = session(tmp_path)
     assert store.slugs() == ()
 
-    store.save("poc", updated(SavedGame.of(game.state), turn=7))
+    store.save("poc", updated(SavedGame.from_game(game.state), turn=7))
     assert session(tmp_path).state.turn == 7
 
     game = session(tmp_path)
@@ -48,7 +48,7 @@ def test_resume_refuses_a_save_that_is_not_this_game(
     tmp_path: Path, change: dict[str, object], message: str
 ) -> None:
     game = session(tmp_path)
-    FileStore(tmp_path).save("poc", updated(SavedGame.of(game.state), **change))
+    FileStore(tmp_path).save("poc", updated(SavedGame.from_game(game.state), **change))
 
     with pytest.raises(ValueError, match=message):
         session(tmp_path)

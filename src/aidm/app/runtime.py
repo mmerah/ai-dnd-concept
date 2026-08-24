@@ -275,7 +275,7 @@ class GameSession:
         self.illustrate_scene()
 
     def _commit(self, state: Game, entry: TraceEntry) -> None:
-        self.store.save(self.slug, SavedGame.of(state))
+        self.store.save(self.slug, SavedGame.from_game(state))
         self.state = state
         self.entries.append(entry)
 

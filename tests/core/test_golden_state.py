@@ -10,4 +10,4 @@ from aidm.state.entities import EngineId
 @pytest.mark.parametrize("engine_id", engine_ids())
 def test_the_initial_state_of_a_shipped_game_serializes_unchanged(engine_id: EngineId) -> None:
     _, state = game(engine_id)
-    golden(FIXTURES / "state" / f"{engine_id}.json", dumped(SavedGame.of(state)))
+    golden(FIXTURES / "state" / f"{engine_id}.json", dumped(SavedGame.from_game(state)))

@@ -356,7 +356,7 @@ async def run_segment(
     consumed, draft.pending = draft.pending, None
     prompt, resumed, answered = _consume(engine, draft, player_input, consumed, rng, log)
 
-    scene, describe = SceneSnapshot.of(draft), engine.renderer(draft)
+    scene, describe = SceneSnapshot.from_game(draft), engine.renderer(draft)
 
     announce("director")
     director_prompt = context.render_director(
@@ -388,7 +388,7 @@ async def run_segment(
     lines: tuple[Line, ...] = ()
     if draft.pending is None or narrator_lines(facts):
         announce("narrator")
-        visible = VisibleScene.of(SceneSnapshot.of(draft))
+        visible = VisibleScene.revealed_from(SceneSnapshot.from_game(draft))
         narrator_prompt = context.render_narrator(
             visible,
             engine.renderer(draft),

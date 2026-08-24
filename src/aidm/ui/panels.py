@@ -203,6 +203,6 @@ def _review(session: GameSession, drafted: Drafted, refresh: Callable[[], None])
 
 def state_panel(session: GameSession) -> None:
     ui.code(
-        SavedGame.of(session.state).model_dump_json(indent=2),
+        SavedGame.from_game(session.state).model_dump_json(indent=2),
         language="json",
     ).classes("w-full text-xs")

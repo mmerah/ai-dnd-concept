@@ -33,7 +33,7 @@ class SceneSnapshot(BaseScene):
     notes: tuple[str, ...] = ()
 
     @classmethod
-    def of(cls, state: Game) -> "SceneSnapshot":
+    def from_game(cls, state: Game) -> "SceneSnapshot":
         world = state.world
         player = state.player
         location = world.require_kind(state.player_location, "location")
@@ -97,7 +97,7 @@ class VisibleScene(BaseScene):
     """The Narrator's view: it holds no unrevealed entity and names none, by construction."""
 
     @classmethod
-    def of(cls, snapshot: SceneSnapshot) -> "VisibleScene":
+    def revealed_from(cls, snapshot: SceneSnapshot) -> "VisibleScene":
         by_id = {entity.id: entity for entity in snapshot.canon}
         shown = (
             snapshot.player,
@@ -355,4 +355,4 @@ def advisor_instructions(engine_instructions: str) -> str:
 
 def player_scene(state: Game) -> VisibleScene:
     """What any player-facing surface may see, stripped of unrevealed canon by construction."""
-    return VisibleScene.of(SceneSnapshot.of(state))
+    return VisibleScene.revealed_from(SceneSnapshot.from_game(state))

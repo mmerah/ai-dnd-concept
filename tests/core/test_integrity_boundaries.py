@@ -144,16 +144,16 @@ def test_a_character_knows_the_gear_they_start_with() -> None:
 
 
 def _luck(state: Game) -> int:
-    return Mechanics.of(state).sheets[PLAYER_ID].luck.current
+    return Mechanics.of_game(state).sheets[PLAYER_ID].luck.current
 
 
 def test_a_mechanics_mutation_lands_on_the_commit_and_nowhere_else() -> None:
     _, state = initialized()
     draft = state.draft()
-    Mechanics.of(draft).sheets[PLAYER_ID].luck.current = 1
+    Mechanics.of_game(draft).sheets[PLAYER_ID].luck.current = 1
 
     committed = draft.committed()
 
     assert _luck(committed) == 1
-    assert SavedGame.of(committed).mechanics != SavedGame.of(state).mechanics
+    assert SavedGame.from_game(committed).mechanics != SavedGame.from_game(state).mechanics
     assert _luck(state) == RULES.luck_max

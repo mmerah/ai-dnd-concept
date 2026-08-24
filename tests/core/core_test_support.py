@@ -62,7 +62,7 @@ def with_entity(state: Game, entity: Entity) -> Game:
 def at_boundary(state: Game) -> Game:
     """One boundary recorded — an adventure ended, a job done — the trigger both engines count."""
     draft = state.draft()
-    SheetMechanics.of(draft).completed.current = 1
+    SheetMechanics.of_game(draft).completed.current = 1
     return draft.committed()
 
 

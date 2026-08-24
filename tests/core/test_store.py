@@ -39,7 +39,7 @@ def test_a_saved_games_exchange_events_round_trip(tmp_path: Path) -> None:
             ),
         ),
     )
-    saved = SavedGame.of(draft.committed())
+    saved = SavedGame.from_game(draft.committed())
     store = FileStore(tmp_path)
 
     store.save("roundtrip", saved)

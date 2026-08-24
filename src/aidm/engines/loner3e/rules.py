@@ -204,7 +204,7 @@ def resolve_question(
 ) -> tuple[Fact, ...]:
     actor = require_actor_here(draft, action.actor_id)
     facts = draft.reveal(actor)
-    mechanics = Mechanics.of(draft)
+    mechanics = Mechanics.of_game(draft)
     _ = require_sheet(mechanics.sheets, actor)
     opponent: Entity | None = None
     if action.opponent_id is not None:
@@ -258,7 +258,7 @@ def _shortfall(pool: Counter) -> int:
 def apply_restore_luck(draft: Game, actor_id: EntityId) -> list[Fact]:
     actor = require_actor_here(draft, actor_id)
     facts = draft.reveal(actor)
-    luck = require_sheet(Mechanics.of(draft).sheets, actor).luck
+    luck = require_sheet(Mechanics.of_game(draft).sheets, actor).luck
     refill = _shortfall(luck)
     # Already full is a quiet no-op: `adjust` writes no fact for a zero delta.
     return [

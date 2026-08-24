@@ -86,7 +86,7 @@ class WorldDraft(Mutable):
     threads: list[Thread] = Field(default_factory=list)
 
     @classmethod
-    def of(cls, scenario: Scenario) -> "WorldDraft":
+    def from_scenario(cls, scenario: Scenario) -> "WorldDraft":
         return cls(
             grows=scenario.grows,
             art_style=scenario.art_style,
@@ -98,7 +98,7 @@ class WorldDraft(Mutable):
         )
 
     @classmethod
-    def of_game(cls, state: Game) -> "WorldDraft":
+    def from_game(cls, state: Game) -> "WorldDraft":
         """Exclude player-owned state because `Scenario` refuses it."""
         world = state.world
         return cls(
@@ -316,7 +316,7 @@ def authoring_toolset(
 ) -> FunctionToolset[WorldDraft]:
     def worked_example() -> str:
         """The shipped scenario in the draft shape patches are written in: the bar to match."""
-        return WorldDraft.of(
+        return WorldDraft.from_scenario(
             load_scenario(config.scenarios_dir, config.authoring.worked_example)
         ).as_json()
 
@@ -404,7 +404,7 @@ async def author_extension(
 ) -> ExtensionPatch:
     """Run once because `finish` retries unplayable drafts inside the agent run."""
     document = source_file(config.scenarios_dir, state.scenario_id)
-    draft = WorldDraft.of_game(state)
+    draft = WorldDraft.from_game(state)
     playing = (Playtest(engine=engine, character=character),)
     agent = world_agent(playing, config, extend_brief(state.world))
     given = (

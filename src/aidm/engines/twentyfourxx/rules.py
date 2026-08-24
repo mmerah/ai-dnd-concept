@@ -266,7 +266,7 @@ def apply_change_credits(draft: Game, actor_id: EntityId, amount: int) -> list[F
         raise ValueError("changing credits moves the pool; zero moves nothing")
     actor = require_actor_here(draft, actor_id)
     facts = draft.reveal(actor)
-    credits = require_sheet(Mechanics.of(draft).sheets, actor).credits
+    credits = require_sheet(Mechanics.of_game(draft).sheets, actor).credits
     if amount > 0:
         return [*facts, *chipped(adjust(actor, "credits", credits, amount, "paid"), "payments")]
     # `spend`, not a negative adjust: an overdraw is refused, not clamped.
@@ -283,7 +283,7 @@ def _require_playable(
     """Everything an attempt must satisfy before any die is rolled, with the reveals it earns."""
     actor = require_actor_here(draft, action.actor_id)
     facts = draft.reveal(actor)
-    sheet = require_sheet(Mechanics.of(draft).sheets, actor)
+    sheet = require_sheet(Mechanics.of_game(draft).sheets, actor)
     helper_sheet = _helper_sheet(draft, actor, action, facts)
     _require_skill(actor, sheet, action.skill, "skill")
     return actor, sheet, helper_sheet, facts
@@ -400,7 +400,7 @@ def _helper_sheet(draft: Game, actor: Entity, action: Attempt, facts: list[Fact]
         )
     helper = require_actor_here(draft, action.helper_id)
     facts.extend(draft.reveal(helper))
-    sheet = require_sheet(Mechanics.of(draft).sheets, helper)
+    sheet = require_sheet(Mechanics.of_game(draft).sheets, helper)
     _require_skill(helper, sheet, action.helper_skill, "helper_skill")
     return sheet
 

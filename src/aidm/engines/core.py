@@ -270,7 +270,7 @@ class SheetMechanics[S: SheetBase](Mutable):
     completed: Counter = Counter(current=0)
 
     @classmethod
-    def of(cls, state: Game) -> Self:
+    def of_game(cls, state: Game) -> Self:
         mechanics = state.mechanics
         if not isinstance(mechanics, cls):
             # Both engines name their model `Mechanics`, so only the module tells them apart.
@@ -307,7 +307,7 @@ def require_sheet[S](sheets: Mapping[EntityId, S], actor: Entity) -> S:
 
 
 def complete_chapter(draft: Game, ending: str) -> list[Fact]:
-    SheetMechanics.of(draft).completed.current += 1
+    SheetMechanics.of_game(draft).completed.current += 1
     chip = Chip(title=ending, icon="auto_stories")
     return [
         Fact(

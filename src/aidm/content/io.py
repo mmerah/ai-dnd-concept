@@ -148,7 +148,7 @@ class SavedGame(BaseModel):
         return self
 
     @classmethod
-    def of(cls, state: Game) -> Self:
+    def from_game(cls, state: Game) -> Self:
         return cls(
             scenario_id=state.scenario_id,
             character_id=state.character_id,

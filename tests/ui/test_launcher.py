@@ -89,7 +89,7 @@ def test_a_scenario_naming_an_uninstalled_engine_is_skipped(tmp_path: Path) -> N
 
 def test_launcher_lists_and_resolves_an_existing_save(tmp_path: Path) -> None:
     config = ui_settings(tmp_path)
-    FileStore(tmp_path).save("old-game", SavedGame.of(_opening_state(config, LONER3E)))
+    FileStore(tmp_path).save("old-game", SavedGame.from_game(_opening_state(config, LONER3E)))
 
     controller = LauncherController(load_catalog(config))
     saved = controller.catalog.save("old-game")
@@ -110,7 +110,7 @@ def test_launcher_lists_and_resolves_an_existing_save(tmp_path: Path) -> None:
 def test_a_save_whose_rules_were_withdrawn_is_reported_not_offered(tmp_path: Path) -> None:
     config = ui_settings(tmp_path)
     state = _opening_state(config, LONER3E)
-    FileStore(tmp_path).save("withdrawn", updated(SavedGame.of(state), engine="retired"))
+    FileStore(tmp_path).save("withdrawn", updated(SavedGame.from_game(state), engine="retired"))
 
     saved = load_catalog(config).save("withdrawn")
 
@@ -120,7 +120,7 @@ def test_a_save_whose_rules_were_withdrawn_is_reported_not_offered(tmp_path: Pat
 
 def test_one_corrupt_save_does_not_hide_the_others_and_stays_readable(tmp_path: Path) -> None:
     config = ui_settings(tmp_path)
-    FileStore(tmp_path).save("good", SavedGame.of(_opening_state(config, LONER3E)))
+    FileStore(tmp_path).save("good", SavedGame.from_game(_opening_state(config, LONER3E)))
     (tmp_path / "broken.json").write_text("{not json", encoding=ENCODING)
 
     catalog = load_catalog(config)
@@ -138,7 +138,7 @@ def test_one_corrupt_save_does_not_hide_the_others_and_stays_readable(tmp_path: 
 
 def test_a_save_whose_body_is_stale_is_reported_not_offered(tmp_path: Path) -> None:
     config = ui_settings(tmp_path)
-    body = json.loads(SavedGame.of(_opening_state(config, LONER3E)).model_dump_json())
+    body = json.loads(SavedGame.from_game(_opening_state(config, LONER3E)).model_dump_json())
     body["history"] = [{"prompt": "test", "lines": [], "events": [], "outcomes": []}]
     (tmp_path / "stale.json").write_text(json.dumps(body), encoding=ENCODING)
 
@@ -151,7 +151,7 @@ def test_a_save_whose_body_is_stale_is_reported_not_offered(tmp_path: Path) -> N
 
 def test_a_save_whose_mechanics_are_broken_is_reported_not_offered(tmp_path: Path) -> None:
     config = ui_settings(tmp_path)
-    body = json.loads(SavedGame.of(_opening_state(config, LONER3E)).model_dump_json())
+    body = json.loads(SavedGame.from_game(_opening_state(config, LONER3E)).model_dump_json())
     body["mechanics"] = {"not": "the loner3e shape"}
     (tmp_path / "broken-mechanics.json").write_text(json.dumps(body), encoding=ENCODING)
 

@@ -58,8 +58,8 @@ def _renderer(held: Game) -> EntityRenderer:
 
 def test_the_narrators_view_has_no_field_that_could_hold_unrevealed_canon() -> None:
     held = _with_detail(state(), EntityId("mara"))
-    snapshot = SceneSnapshot.of(held)
-    visible = VisibleScene.of(snapshot)
+    snapshot = SceneSnapshot.from_game(held)
+    visible = VisibleScene.revealed_from(snapshot)
 
     assert [entity.id for entity in snapshot.hidden] == ["hidden-actor"]
     assert set(VisibleScene.model_fields) == {
@@ -82,10 +82,10 @@ def test_a_placement_never_names_an_entity_the_player_has_not_met() -> None:
     held = state()
     ledger = held.world.require_kind(EntityId("ledger"), "item")
     held = with_entity(held, updated(ledger, parent_id="hidden-actor"))
-    snapshot = SceneSnapshot.of(held)
+    snapshot = SceneSnapshot.from_game(held)
 
     assert snapshot.placement_of(ledger) == "held by The Secret"
-    assert VisibleScene.of(snapshot).placement_of(ledger) == ""
+    assert VisibleScene.revealed_from(snapshot).placement_of(ledger) == ""
 
 
 def test_prompt_ids_escape_control_characters_and_bracket_delimiters() -> None:
@@ -97,7 +97,7 @@ def test_prompt_ids_escape_control_characters_and_bracket_delimiters() -> None:
 
 def test_the_director_is_shown_authored_detail() -> None:
     held = _with_detail(state(), EntityId("mara"))
-    scene = SceneSnapshot.of(held)
+    scene = SceneSnapshot.from_game(held)
     describe = _renderer(held)
     director = render_director(scene, describe, held.scenario, "I look around.")
 
@@ -113,7 +113,7 @@ def test_the_director_is_shown_authored_detail() -> None:
 
 def test_narrator_prompt_names_only_ids_of_entities_the_player_has_met() -> None:
     held = state()
-    scene = VisibleScene.of(SceneSnapshot.of(held))
+    scene = VisibleScene.revealed_from(SceneSnapshot.from_game(held))
 
     prompt = render_narrator(
         scene,

@@ -91,17 +91,17 @@ class Loner3eAdvancement(Advancement):
     spent_why = "a milestone spent"
 
     def ledger(self, state: Game, subject_id: EntityId) -> Counter:
-        return Mechanics.of(state).sheets[subject_id].milestones
+        return Mechanics.of_game(state).sheets[subject_id].milestones
 
     def earned(self, state: Game) -> int:
-        return Mechanics.of(state).completed.current
+        return Mechanics.of_game(state).completed.current
 
     def grant(
         self, draft: Game, subject_id: EntityId, proposal: ProposalBase, rng: Random
     ) -> tuple[Fact, ...]:
         del rng
         assert isinstance(proposal, AdventureGrowth)
-        sheet = Mechanics.of(draft).sheets[subject_id]
+        sheet = Mechanics.of_game(draft).sheets[subject_id]
         subject = draft.world.require(subject_id)
         # Sequential against the live sheet, so a rewrite may name what an earlier change wrote.
         return tuple(
@@ -226,24 +226,24 @@ class Loner3eEngine(Engine):
         return Mechanics(sheets=actor_sheets(world, player_rules, Sheet))
 
     def validate(self, state: Game) -> None:
-        mechanics = Mechanics.of(state)
+        mechanics = Mechanics.of_game(state)
         check_sheets(state.world, mechanics.sheets, self.id)
         if (chosen := mechanics.sheets[PLAYER_ID].pack) not in self.packs:
             raise ValueError(f"this game plays the {chosen!r} table set, which is not installed")
 
     def seed(self, draft: Game, entity: Entity, rng: Random) -> None:
         del rng
-        mechanics = Mechanics.of(draft)
+        mechanics = Mechanics.of_game(draft)
         if entity.kind != "actor" or entity.id in mechanics.sheets:
             return
         # A newcomer starts level with the party: milestones earned before they joined are not owed.
         mechanics.sheets[entity.id] = Sheet(milestones=Counter(current=mechanics.completed.current))
 
     def describe(self, state: Game, entity: Entity) -> str:
-        return describe_entity(Mechanics.of(state), entity)
+        return describe_entity(Mechanics.of_game(state), entity)
 
     def sheet_view(self, state: Game) -> tuple[tuple[str, str], ...]:
-        sheet = Mechanics.of(state).sheets[PLAYER_ID]
+        sheet = Mechanics.of_game(state).sheets[PLAYER_ID]
         return (
             ("Concept", sheet.concept),
             ("Skills", ", ".join(sheet.skills)),
@@ -261,7 +261,7 @@ class Loner3eEngine(Engine):
 
     def twists(self, state: Game) -> tuple[tuple[str, str], ...]:
         """The player's own table set: an NPC sheet is seeded with the default and never selects."""
-        return twist_table(self.packs, Mechanics.of(state).sheets[PLAYER_ID].pack)
+        return twist_table(self.packs, Mechanics.of_game(state).sheets[PLAYER_ID].pack)
 
     def player_events(
         self, cause: EventCause, facts: tuple[Fact, ...]

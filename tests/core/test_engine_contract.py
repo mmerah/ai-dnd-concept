@@ -28,7 +28,7 @@ def _turn(state: Game) -> tuple[Game, tuple[Fact, ...]]:
 def _spent(state: Game) -> Game:
     """Luck short of full, so the engine's own action has something to restore."""
     draft = state.draft()
-    Mechanics.of(draft).sheets[PLAYER_ID].luck.current = 1
+    Mechanics.of_game(draft).sheets[PLAYER_ID].luck.current = 1
     return draft.committed()
 
 
@@ -36,28 +36,28 @@ def test_engine_initialization_and_state_contract() -> None:
     engine, state = initialized()
 
     assert state.engine == engine.id
-    assert Mechanics.of(state).sheets[PLAYER_ID].luck.current == RULES.luck_max
+    assert Mechanics.of_game(state).sheets[PLAYER_ID].luck.current == RULES.luck_max
     engine.validate(state)
 
-    saved = SavedGame.model_validate_json(SavedGame.of(state).model_dump_json())
+    saved = SavedGame.model_validate_json(SavedGame.from_game(state).model_dump_json())
     assert engine.restored(saved) == state
 
 
 def test_action_resolution_is_pure_and_renders_every_fact() -> None:
     engine, state = initialized()
     state = _spent(state)
-    before = SavedGame.of(state).model_dump_json()
+    before = SavedGame.from_game(state).model_dump_json()
 
     first_state, first_facts = _turn(state)
 
     assert (first_state, first_facts) == _turn(state)
-    assert SavedGame.of(state).model_dump_json() == before
+    assert SavedGame.from_game(state).model_dump_json() == before
     assert {fact.kind for fact in first_facts} >= {
         "entity_discovered",
         "entity_moved",
         "counter_changed",
     }
-    assert SavedGame.of(first_state).model_dump_json() != before
+    assert SavedGame.from_game(first_state).model_dump_json() != before
     engine.validate(first_state)
     for fact in first_facts:
         assert fact.trace
@@ -94,7 +94,7 @@ def test_a_created_actor_is_refused_until_the_engine_seeds_it() -> None:
         engine.seed(grown, entity, Random(0))
     engine.validate(grown)
 
-    mechanics = Mechanics.of(grown)
+    mechanics = Mechanics.of_game(grown)
     assert mechanics.sheets[actor.id] == Sheet()
     assert item.id not in mechanics.sheets
 

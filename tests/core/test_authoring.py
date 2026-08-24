@@ -45,7 +45,7 @@ def test_a_world_colliding_with_the_character_is_refused() -> None:
 
 def _as_patch() -> dict[str, JsonValue]:
     """The shipped scenario as `worked_example` teaches it, without the session's `grows`."""
-    return WorldDraft.of(scenario()).model_dump(mode="json", exclude={"grows"})
+    return WorldDraft.from_scenario(scenario()).model_dump(mode="json", exclude={"grows"})
 
 
 def _location(name: str) -> Entity:

@@ -105,4 +105,4 @@ async def test_a_scripted_turn_renders_and_records_unchanged(engine_id: EngineId
         FIXTURES / "turn" / f"{engine_id}.json",
         dumped(result.turn, exclude={"steps": {"__all__": {"prompt"}}}),
     )
-    golden(FIXTURES / "save" / f"{engine_id}.json", dumped(SavedGame.of(result.state)))
+    golden(FIXTURES / "save" / f"{engine_id}.json", dumped(SavedGame.from_game(result.state)))

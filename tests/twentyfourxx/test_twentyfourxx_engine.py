@@ -155,14 +155,14 @@ def test_a_job_raises_one_skill_a_step_and_pays_rolled_credits() -> None:
     advancement = capability(engine)
     ready = at_boundary(state)
     (offer,) = advancement.offers(ready)
-    before = Mechanics.of(ready).sheets[PLAYER_ID]
+    before = Mechanics.of_game(ready).sheets[PLAYER_ID]
 
     raise_existing = Advance(skill="Tracking", why="the climb taught them the route")
     draft = ready.draft()
     facts = advancement.resolve(draft, offer, raise_existing, Random(3))
     grown = draft.committed()
 
-    sheet = Mechanics.of(grown).sheets[PLAYER_ID]
+    sheet = Mechanics.of_game(grown).sheets[PLAYER_ID]
     assert sheet.skills["Tracking"] == 10
     assert sheet.jobs.current == before.jobs.current + 1
     (dice_fact,) = [fact for fact in facts if fact.kind == "dice_rolled"]
@@ -171,7 +171,7 @@ def test_a_job_raises_one_skill_a_step_and_pays_rolled_credits() -> None:
     take_new = Advance(skill="Lockpicking", why="the job called for it")
     draft = ready.draft()
     advancement.resolve(draft, offer, take_new, Random(4))
-    grown = Mechanics.of(draft.committed())
+    grown = Mechanics.of_game(draft.committed())
     assert grown.sheets[PLAYER_ID].skills["Lockpicking"] == 8
 
 
@@ -194,7 +194,7 @@ def test_a_skill_already_at_d12_is_refused_and_the_refusal_reaches_the_advisor()
     ready = at_boundary(state)
 
     draft = ready.draft()
-    mechanics = Mechanics.of(draft)
+    mechanics = Mechanics.of_game(draft)
     mechanics.sheets[PLAYER_ID].skills["Climbing"] = 12
     maxed = draft.committed()
 
@@ -209,7 +209,7 @@ def test_a_skill_already_at_d12_is_refused_and_the_refusal_reaches_the_advisor()
 def test_credits_are_paid_charged_and_never_overdrawn() -> None:
     _, state = game(TWENTYFOURXX)
     draft = state.draft()
-    sheet = Mechanics.of(draft).sheets[PLAYER_ID]
+    sheet = Mechanics.of_game(draft).sheets[PLAYER_ID]
     before = sheet.credits.current
 
     paid = apply_change_credits(draft, PLAYER_ID, 3)

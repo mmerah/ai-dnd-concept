@@ -96,7 +96,7 @@ async def _turn(game: GameSession, on_step: Callable[[TurnStep], None] | None = 
 
 def test_the_live_world_becomes_a_scenario_the_extending_author_can_hold(tmp_path: Path) -> None:
     game = loner3e_session(tmp_path)
-    draft = WorldDraft.of_game(game.state)
+    draft = WorldDraft.from_game(game.state)
     scenario = draft.scenario((LONER3E,))
 
     ids = {entity.id for entity in scenario.world.entities}
@@ -116,7 +116,7 @@ def test_the_live_world_becomes_a_scenario_the_extending_author_can_hold(tmp_pat
 
 def test_delta_is_the_canon_a_pass_added_and_the_ways_into_it(tmp_path: Path) -> None:
     game = loner3e_session(tmp_path)
-    draft = WorldDraft.of_game(game.state)
+    draft = WorldDraft.from_game(game.state)
     cloister = next(entity for entity in draft.entities if entity.id == EntityId("cloister"))
     edited_cloister = updated(cloister, exits=[*cloister.exits, Exit(to=_CRYPT_ID)], brief="edited")
     _ = draft.apply(

@@ -70,7 +70,7 @@ from aidm.state.play import MechanicEvent, OptionId, PendingDecision
 
 def _skills_in_play(state: Game) -> set[str]:
     """Limit attempt skills to actors present with the player."""
-    sheets = Mechanics.of(state).sheets
+    sheets = Mechanics.of_game(state).sheets
     return {
         skill
         for actor in state.world.of_kind("actor")
@@ -190,16 +190,16 @@ class TwentyfourxxAdvancement(Advancement):
     spent_why = "a job's advance taken"
 
     def ledger(self, state: Game, subject_id: EntityId) -> Counter:
-        return Mechanics.of(state).sheets[subject_id].jobs
+        return Mechanics.of_game(state).sheets[subject_id].jobs
 
     def earned(self, state: Game) -> int:
-        return Mechanics.of(state).completed.current
+        return Mechanics.of_game(state).completed.current
 
     def grant(
         self, draft: Game, subject_id: EntityId, proposal: ProposalBase, rng: Random
     ) -> tuple[Fact, ...]:
         assert isinstance(proposal, Advance)
-        sheet = Mechanics.of(draft).sheets[subject_id]
+        sheet = Mechanics.of_game(draft).sheets[subject_id]
         subject = draft.world.require(subject_id)
 
         skill = _on_sheet(sheet, proposal.skill)
@@ -377,11 +377,11 @@ class TwentyfourxxEngine(Engine):
         return Mechanics(sheets=actor_sheets(world, player_rules, Sheet))
 
     def validate(self, state: Game) -> None:
-        check_sheets(state.world, Mechanics.of(state).sheets, self.id)
+        check_sheets(state.world, Mechanics.of_game(state).sheets, self.id)
 
     def seed(self, draft: Game, entity: Entity, rng: Random) -> None:
         del rng
-        mechanics = Mechanics.of(draft)
+        mechanics = Mechanics.of_game(draft)
         if entity.kind != "actor" or entity.id in mechanics.sheets:
             return
         # A newcomer starts level with the party: jobs done before they joined are not owed.
@@ -409,10 +409,10 @@ class TwentyfourxxEngine(Engine):
             super().check_pending(pending)
 
     def describe(self, state: Game, entity: Entity) -> str:
-        return describe_entity(Mechanics.of(state), entity)
+        return describe_entity(Mechanics.of_game(state), entity)
 
     def sheet_view(self, state: Game) -> tuple[tuple[str, str], ...]:
-        sheet = Mechanics.of(state).sheets[PLAYER_ID]
+        sheet = Mechanics.of_game(state).sheets[PLAYER_ID]
         return (
             ("Specialty", sheet.specialty),
             ("Origin", sheet.origin),
