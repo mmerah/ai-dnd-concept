@@ -2,7 +2,7 @@ ON OFFER
 Kael finishes an adventure.
 
 RULES TEXT
-Say how the character has changed over this adventure. Each change is one of four: a new skill, a new piece of signature gear, a new frailty, or one tag they already carry rewritten.
+Choose 1-4 changes from this adventure: a new skill, signature gear, a frailty, or a rewrite of an existing tag.
 
 THE CHARACTER
 Kael

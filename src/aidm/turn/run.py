@@ -57,84 +57,78 @@ class DirectorTool:
 
 def core_toolset() -> AbstractToolset[DirectorContext]:
     def reveal(ctx: RunContext[DirectorContext], entity_id: EntityId) -> str:
-        """Reveal an entity that exists but the player does not know yet: they notice it, are told
-        of it, or reach it.
+        """Make a hidden entity known when the player notices, finds, or reaches it.
 
         Args:
-            entity_id: Exact id of the unrevealed canon entity.
+            entity_id: Exact id of the hidden entity.
         """
         return _resolved(ctx, lambda draft: actions.reveal(draft, entity_id))
 
     def move(ctx: RunContext[DirectorContext], entity_id: EntityId, to_id: EntityId) -> str:
-        """Move an actor who actually changes location, or one item within the player's reach:
-        picked up, set down here, or handed to an actor here.
+        """Move an actor to a new location, or move a nearby item.
 
         Args:
-            entity_id: Exact id of the actor or item that moves; `player` is the played character.
-                An item must be one the player carries, or one loose at their location.
-            to_id: Exact id of where it goes: for an actor the location they enter; for an item,
-                `player` to pick it up, an actor here with the player to hand it over, or the
-                player's own location to set it down.
+            entity_id: Exact actor or item id. The item must be carried by the player or loose here.
+            to_id: Exact destination id. Use a location for an actor; for an item, use `player`,
+                an actor here, or the player's location.
         """
         return _resolved(ctx, lambda draft: actions.move(draft, entity_id, to_id))
 
     def gain_improvised_item(ctx: RunContext[DirectorContext], item_name: str) -> str:
-        """Give the player an ordinary incidental object that is not in canon and is not worth a
-        canon entry of its own.
+        """Give the player an ordinary, unimportant object not already in the world.
 
         Args:
-            item_name: The object written out, such as 'a handful of gravel'.
+            item_name: The object's name, such as `a handful of gravel`.
         """
         return _resolved(ctx, lambda draft: actions.improvise(draft, item_name))
 
     def add_trait(
         ctx: RunContext[DirectorContext], entity_id: EntityId, trait_id: Slug, text: str
     ) -> str:
-        """Put a lasting condition, skill, or frailty on an entity.
+        """Add a lasting condition or quality to an entity.
 
         Args:
-            entity_id: Exact id of the entity affected; an actor must be here with the player.
-            trait_id: Stable slug for the trait, such as `poisoned`; it shows written out, so
-                `battle-worn` appears as Battle Worn.
-            text: The constraint or benefit it puts on the entity, in prose.
+            entity_id: Exact entity id. An actor must be here with the player.
+            trait_id: Stable slug, such as `poisoned`. `battle-worn` displays as Battle Worn.
+            text: The trait's effect in plain language.
         """
         return _resolved(ctx, lambda draft: actions.add_trait(draft, entity_id, trait_id, text))
 
     def remove_trait(ctx: RunContext[DirectorContext], entity_id: EntityId, trait_id: Slug) -> str:
-        """Lift a lasting condition, skill, or frailty the fiction has ended.
+        """Remove a lasting condition or quality that has ended.
 
         Args:
-            entity_id: Exact id of the entity affected; an actor must be here with the player.
-            trait_id: Exact id of a trait the entity carries.
+            entity_id: Exact entity id. An actor must be here with the player.
+            trait_id: Exact id of one of the entity's traits.
         """
         return _resolved(ctx, lambda draft: actions.remove_trait(draft, entity_id, trait_id))
 
     def advance_thread(ctx: RunContext[DirectorContext], advance: AdvanceThread) -> str:
-        """Move a storyline the scenario is tracking: where it stands now, or that it is over.
+        """Update an active storyline's status, stage, clock, or note.
 
         Args:
-            advance: The movement to apply.
+            advance: The thread update.
         """
         return _resolved(ctx, lambda draft: actions.advance_thread(draft, advance))
 
     def unlock_exit(ctx: RunContext[DirectorContext], to_id: EntityId) -> str:
-        """Open a locked way out of the player's location.
+        """Unlock an exit from the player's location.
 
         Args:
-            to_id: Exact id of the location the way leads to.
+            to_id: Exact id of the exit's destination.
         """
         return _resolved(ctx, lambda draft: actions.unlock_exit(draft, to_id))
 
     def join_party(ctx: RunContext[DirectorContext], actor_id: EntityId) -> str:
-        """Put an actor into the player's party.
+        """Add an actor here to the player's party.
 
         Args:
-            actor_id: Exact id of the actor joining, who must be here with the player.
+            actor_id: Exact id of the actor joining.
         """
         return _resolved(ctx, lambda draft: actions.join_party(draft, actor_id))
 
     def leave_party(ctx: RunContext[DirectorContext], actor_id: EntityId) -> str:
-        """Take an actor out of the player's party when the fiction parts them.
+        """Remove an actor from the player's party.
 
         Args:
             actor_id: Exact id of the actor leaving.

@@ -2,7 +2,7 @@ ON OFFER
 Kael finishes a job.
 
 RULES TEXT
-Say which skill this job improves. One skill only: a skill already on the sheet rises a step up the ladder, or a new one is taken at d8. The engine pays the d6 credits and records the job itself, so propose neither.
+Choose one skill this job improves. Raise an existing skill one step or add a new one at d8.
 
 THE CHARACTER
 Kael

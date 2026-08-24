@@ -26,7 +26,7 @@ ThreadStatus = Literal["active", "resolved", "dormant"]
 
 
 class Thread(Mutable):
-    """A storyline the scenario tracks: a quest, an investigation, or a countdown."""
+    """A storyline the scenario tracks."""
 
     id: Slug
     title: str
@@ -43,22 +43,21 @@ class Thread(Mutable):
 
 
 class AdvanceThread(Frozen):
-    thread_id: Slug = Field(description="Exact id of one thread in ACTIVE THREADS.")
+    thread_id: Slug = Field(description="Exact id of an ACTIVE THREAD.")
     status: ThreadStatus | None = Field(
-        default=None, description="Where the thread now stands, or null to leave it as it is."
+        default=None, description="New status, or null to keep the current status."
     )
     stage: Slug | None = Field(
         default=None,
-        description="Stable slug for the point it has reached, or null to leave it as it is.",
+        description="New stage slug, or null to keep the current stage.",
     )
     tick: int = Field(
         default=0,
-        description="How many segments this fills on the thread's clock, when it has one.",
+        description="Number of segments to fill on its clock. Use 0 for no change.",
     )
     note: str | None = Field(
         default=None,
-        description="Replace the thread's private bookkeeping note with what its new state means "
-        "for play, or null to keep it.",
+        description="New private note for the Director, or null to keep the current note.",
     )
 
     @model_validator(mode="after")

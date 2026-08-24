@@ -1,15 +1,15 @@
 {
   "additionalProperties": false,
-  "description": "The one change a job buys. The engine pays the credits and records the job itself.",
+  "description": "The skill increase earned by one job.",
   "properties": {
     "skill": {
-      "description": "The skill this job improves, in title case: one already on the sheet to raise it a step, or a new one to take at d8.",
+      "description": "Title-case skill to raise one step or add at d8.",
       "minLength": 1,
       "title": "Skill",
       "type": "string"
     },
     "why": {
-      "description": "One short sentence the player reads before confirming.",
+      "description": "One short reason shown to the player before confirmation.",
       "title": "Why",
       "type": "string"
     }

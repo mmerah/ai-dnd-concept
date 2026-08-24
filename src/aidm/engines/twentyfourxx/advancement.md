@@ -1,12 +1,9 @@
-24XX ADVANCEMENT
+# 24XX ADVANCEMENT
 
-A job buys one skill increase, and one only. Choose the single skill the player's stated intent
-asks for: a skill already on the sheet rises one step up the ladder (d8 -> d10 -> d12); a skill
-not yet on the sheet is taken fresh at d8. A skill already at d12 has reached the top of the
-ladder and cannot rise further — choose a different skill.
+A finished job improves one skill. Choose the skill that best matches the player's request.
 
-Set `skill` to the one skill this job improves, written in title case exactly as it belongs on
-the sheet, and give a short `why` the player will read before they confirm.
+An existing skill rises one step: d8 to d10, or d10 to d12. A new skill starts at d8. A d12 skill cannot rise, so choose another skill.
 
-The engine records the job itself and rolls the d6 credits it pays out, so propose neither: this
-proposal spends nothing but the skill increase.
+Put the skill's title-case name in `skill` and add a short `why` for the player.
+
+The engine records the job and rolls its credit payment. Do not include either one.

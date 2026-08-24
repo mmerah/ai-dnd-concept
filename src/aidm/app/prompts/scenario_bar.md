@@ -1,12 +1,11 @@
-## The bar
+## Minimum complete scenario
 
-A floor to clear, not a target to stop at: a premise or a document with more in it earns more.
+Create at least:
 
-- Four or more locations, joined by `exits` into a place the player can move through. At least
-  one way starts unknown, and at least one is `locked`.
-- Two or more actors, at least one of them unknown at the start, holding something the player
-  needs.
-- At least one item that is secret: unknown, placed where finding it is a discovery.
-- At least one thread, and a `detail.when_reached` that names which thread its discovery advances,
-  and to where.
-- A `detail.when_reached` on every entity that could lead somewhere.
+- Four connected locations, including one hidden exit and one locked exit.
+- Two actors, including one initially unknown actor who holds something the player needs.
+- One initially unknown item whose discovery matters.
+- One thread and an entity whose `detail.when_reached` advances it to a named stage.
+- A useful `detail.when_reached` on every entity that can lead onward.
+
+A rich premise or source document should produce more than this minimum.

@@ -10,9 +10,9 @@ from aidm.state.facts import Fact
 class Line(Frozen):
     speaker_id: EntityId | None = Field(
         default=None,
-        description="Exact id of who speaks this line, or null when it is narration, not speech.",
+        description="Exact speaker id for dialogue, or null for narration.",
     )
-    text: str = Field(min_length=1, description="One spoken line, or a passage of narration.")
+    text: str = Field(min_length=1, description="Dialogue only, or one passage of narration.")
 
 
 def narration_text(lines: Sequence[Line]) -> str:
@@ -20,10 +20,10 @@ def narration_text(lines: Sequence[Line]) -> str:
 
 
 class Narration(Frozen):
-    """The Narrator's answer: the one role that writes prose now says who speaks each line."""
+    """The prose the player reads, split into narration and dialogue."""
 
     lines: tuple[Line, ...] = Field(
-        description="The narration in order: 2-4 sentences in all, split by who says them."
+        description="All narration and dialogue in order, 2-4 sentences total."
     )
 
     @property

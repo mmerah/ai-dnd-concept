@@ -498,7 +498,7 @@ class PackName(Protocol):
 def pack_step(packs: Mapping[str, PackName]) -> CreationStep:
     return CreationStep(
         id="pack",
-        prompt="Choose a table set",
+        prompt="Choose a character table set",
         options=tuple(
             CreationOption(id=pack_id, label=pack.name) for pack_id, pack in packs.items()
         ),

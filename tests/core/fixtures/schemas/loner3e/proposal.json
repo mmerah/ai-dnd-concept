@@ -2,10 +2,10 @@
   "$defs": {
     "Change": {
       "additionalProperties": false,
-      "description": "One change the post-adventure update writes.",
+      "description": "One sheet change earned by the adventure.",
       "properties": {
         "kind": {
-          "description": "Which of the four growths this change spends.",
+          "description": "Type of sheet change.",
           "enum": [
             "skill",
             "gear",
@@ -16,14 +16,14 @@
           "type": "string"
         },
         "tag": {
-          "description": "The new tag in title case — or, for a rewrite, the tag already written on the sheet, copied exactly.",
+          "description": "New title-case tag, or the exact current tag for a rewrite.",
           "minLength": 1,
           "title": "Tag",
           "type": "string"
         },
         "into": {
           "default": "",
-          "description": "A rewrite only: what that tag becomes, in title case. Empty otherwise.",
+          "description": "New title-case tag for a rewrite. Empty for other kinds.",
           "title": "Into",
           "type": "string"
         }
@@ -37,10 +37,10 @@
     }
   },
   "additionalProperties": false,
-  "description": "Everything this adventure changed on the sheet, at once, as the post-adventure update.",
+  "description": "All sheet changes earned by one adventure.",
   "properties": {
     "changes": {
-      "description": "Each change: a new skill, new gear, a new frailty, or one rewrite.",
+      "description": "One to four earned changes, in reading order.",
       "items": {
         "$ref": "#/$defs/Change"
       },
@@ -50,7 +50,7 @@
       "type": "array"
     },
     "why": {
-      "description": "One short sentence the player reads before confirming.",
+      "description": "One short reason shown to the player before confirmation.",
       "title": "Why",
       "type": "string"
     }

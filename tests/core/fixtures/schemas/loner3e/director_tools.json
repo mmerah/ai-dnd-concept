@@ -1,12 +1,12 @@
 [
   {
     "name": "reveal",
-    "description": "Reveal an entity that exists but the player does not know yet: they notice it, are told\nof it, or reach it.",
+    "description": "Make a hidden entity known when the player notices, finds, or reaches it.",
     "parameters": {
       "additionalProperties": false,
       "properties": {
         "entity_id": {
-          "description": "Exact id of the unrevealed canon entity.",
+          "description": "Exact id of the hidden entity.",
           "type": "string"
         }
       },
@@ -18,16 +18,16 @@
   },
   {
     "name": "move",
-    "description": "Move an actor who actually changes location, or one item within the player's reach:\npicked up, set down here, or handed to an actor here.",
+    "description": "Move an actor to a new location, or move a nearby item.",
     "parameters": {
       "additionalProperties": false,
       "properties": {
         "entity_id": {
-          "description": "Exact id of the actor or item that moves; `player` is the played character.\nAn item must be one the player carries, or one loose at their location.",
+          "description": "Exact actor or item id. The item must be carried by the player or loose here.",
           "type": "string"
         },
         "to_id": {
-          "description": "Exact id of where it goes: for an actor the location they enter; for an item,\n`player` to pick it up, an actor here with the player to hand it over, or the\nplayer's own location to set it down.",
+          "description": "Exact destination id. Use a location for an actor; for an item, use `player`,\nan actor here, or the player's location.",
           "type": "string"
         }
       },
@@ -40,12 +40,12 @@
   },
   {
     "name": "gain_improvised_item",
-    "description": "Give the player an ordinary incidental object that is not in canon and is not worth a\ncanon entry of its own.",
+    "description": "Give the player an ordinary, unimportant object not already in the world.",
     "parameters": {
       "additionalProperties": false,
       "properties": {
         "item_name": {
-          "description": "The object written out, such as 'a handful of gravel'.",
+          "description": "The object's name, such as `a handful of gravel`.",
           "type": "string"
         }
       },
@@ -57,22 +57,22 @@
   },
   {
     "name": "add_trait",
-    "description": "Put a lasting condition, skill, or frailty on an entity.",
+    "description": "Add a lasting condition or quality to an entity.",
     "parameters": {
       "additionalProperties": false,
       "properties": {
         "entity_id": {
-          "description": "Exact id of the entity affected; an actor must be here with the player.",
+          "description": "Exact entity id. An actor must be here with the player.",
           "type": "string"
         },
         "trait_id": {
-          "description": "Stable slug for the trait, such as `poisoned`; it shows written out, so\n`battle-worn` appears as Battle Worn.",
+          "description": "Stable slug, such as `poisoned`. `battle-worn` displays as Battle Worn.",
           "maxLength": 64,
           "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$",
           "type": "string"
         },
         "text": {
-          "description": "The constraint or benefit it puts on the entity, in prose.",
+          "description": "The trait's effect in plain language.",
           "type": "string"
         }
       },
@@ -86,16 +86,16 @@
   },
   {
     "name": "remove_trait",
-    "description": "Lift a lasting condition, skill, or frailty the fiction has ended.",
+    "description": "Remove a lasting condition or quality that has ended.",
     "parameters": {
       "additionalProperties": false,
       "properties": {
         "entity_id": {
-          "description": "Exact id of the entity affected; an actor must be here with the player.",
+          "description": "Exact entity id. An actor must be here with the player.",
           "type": "string"
         },
         "trait_id": {
-          "description": "Exact id of a trait the entity carries.",
+          "description": "Exact id of one of the entity's traits.",
           "maxLength": 64,
           "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$",
           "type": "string"
@@ -110,12 +110,12 @@
   },
   {
     "name": "advance_thread",
-    "description": "Move a storyline the scenario is tracking: where it stands now, or that it is over.",
+    "description": "Update an active storyline's status, stage, clock, or note.",
     "parameters": {
       "additionalProperties": false,
       "properties": {
         "thread_id": {
-          "description": "Exact id of one thread in ACTIVE THREADS.",
+          "description": "Exact id of an ACTIVE THREAD.",
           "maxLength": 64,
           "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$",
           "type": "string"
@@ -135,7 +135,7 @@
             }
           ],
           "default": null,
-          "description": "Where the thread now stands, or null to leave it as it is."
+          "description": "New status, or null to keep the current status."
         },
         "stage": {
           "anyOf": [
@@ -149,11 +149,11 @@
             }
           ],
           "default": null,
-          "description": "Stable slug for the point it has reached, or null to leave it as it is."
+          "description": "New stage slug, or null to keep the current stage."
         },
         "tick": {
           "default": 0,
-          "description": "How many segments this fills on the thread's clock, when it has one.",
+          "description": "Number of segments to fill on its clock. Use 0 for no change.",
           "type": "integer"
         },
         "note": {
@@ -166,7 +166,7 @@
             }
           ],
           "default": null,
-          "description": "Replace the thread's private bookkeeping note with what its new state means for play, or null to keep it."
+          "description": "New private note for the Director, or null to keep the current note."
         }
       },
       "required": [
@@ -178,12 +178,12 @@
   },
   {
     "name": "unlock_exit",
-    "description": "Open a locked way out of the player's location.",
+    "description": "Unlock an exit from the player's location.",
     "parameters": {
       "additionalProperties": false,
       "properties": {
         "to_id": {
-          "description": "Exact id of the location the way leads to.",
+          "description": "Exact id of the exit's destination.",
           "type": "string"
         }
       },
@@ -195,12 +195,12 @@
   },
   {
     "name": "join_party",
-    "description": "Put an actor into the player's party.",
+    "description": "Add an actor here to the player's party.",
     "parameters": {
       "additionalProperties": false,
       "properties": {
         "actor_id": {
-          "description": "Exact id of the actor joining, who must be here with the player.",
+          "description": "Exact id of the actor joining.",
           "type": "string"
         }
       },
@@ -212,7 +212,7 @@
   },
   {
     "name": "leave_party",
-    "description": "Take an actor out of the player's party when the fiction parts them.",
+    "description": "Remove an actor from the player's party.",
     "parameters": {
       "additionalProperties": false,
       "properties": {
@@ -229,7 +229,7 @@
   },
   {
     "name": "roll_question",
-    "description": "Put a closed dramatic question to Chance d6 against Risk d6. An exchange of a\nconflict names who is opposed in `question.opponent_id`.",
+    "description": "Roll Chance against Risk for one closed dramatic question.",
     "parameters": {
       "$defs": {
         "Position": {
@@ -244,22 +244,22 @@
       "additionalProperties": false,
       "properties": {
         "actor_id": {
-          "description": "Exact id of the actor the question is about: the player, or an actor here.",
+          "description": "Exact id of the player or actor here who takes the action.",
           "type": "string"
         },
         "question": {
-          "description": "The closed dramatic question the dice answer, phrased so that yes is what the actor wants.",
+          "description": "Closed question where yes means the actor gets what they want.",
           "minLength": 1,
           "type": "string"
         },
         "position": {
           "$ref": "#/$defs/Position",
           "default": "neutral",
-          "description": "Your judgment of the fiction: which side the tags and the scene favour."
+          "description": "Which side the relevant tags and situation favour."
         },
         "edge": {
           "default": "",
-          "description": "The tag or circumstance that decided the position, in a few words. Empty for neutral.",
+          "description": "Tag or circumstance that sets the position. Empty for neutral.",
           "type": "string"
         },
         "opponent_id": {
@@ -272,7 +272,7 @@
             }
           ],
           "default": null,
-          "description": "Exact id of the actor here who actively contends against this one — fights back, gives chase, argues back, hunts. A question about beating, escaping, or overcoming someone must name them here: luck moves only through this field. Null only when nothing fights back."
+          "description": "Exact id of the actor here who resists. Null when no actor fights back."
         }
       },
       "required": [
@@ -285,12 +285,12 @@
   },
   {
     "name": "restore_luck",
-    "description": "Put an actor's luck back to full.",
+    "description": "Restore an actor's luck after a conflict ends.",
     "parameters": {
       "additionalProperties": false,
       "properties": {
         "actor_id": {
-          "description": "Exact id of the actor: the player, or an actor here.",
+          "description": "Exact id of the player or an actor here.",
           "type": "string"
         }
       },
@@ -302,7 +302,7 @@
   },
   {
     "name": "complete_chapter",
-    "description": "Record that the adventure this character has been living has ended.",
+    "description": "Record that the current adventure has ended.",
     "parameters": {
       "additionalProperties": false,
       "properties": {},

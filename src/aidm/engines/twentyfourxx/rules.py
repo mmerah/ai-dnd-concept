@@ -153,39 +153,35 @@ class Pack(Frozen):
 
 class Attempt(Frozen):
     actor_id: EntityId = Field(
-        description="Exact id of the actor attempting this: the player, or an actor here."
+        description="Exact id of the player or actor here who takes the action."
     )
     goal: str = Field(
         min_length=1,
-        description="What the actor is trying to do and what they risk by trying, in one line.",
+        description="The actor's goal and the risk they face, in one line.",
     )
     skill: str = Field(
         default="",
-        description="The skill on the actor's sheet this calls on, or empty for none.",
+        description="Matching skill from the actor's sheet, or empty for d6.",
     )
     helped: str = Field(
         default="",
-        description="The circumstance that makes this easier — a skill, a piece of gear, the "
-        "ground they hold, an ally's presence — in a few words. Empty when nothing does, and "
-        "never alongside `helper_id`.",
+        description="Helpful circumstance that adds d6. Empty when using `helper_id` or no help.",
     )
     helper_id: EntityId | None = Field(
         default=None,
-        description="Exact id of an ally here who helps with this — they roll their own skill "
-        "die into the pool. Null when nobody helps.",
+        description="Exact id of an ally here who adds their skill die, or null for no helper.",
     )
     helper_skill: str = Field(
         default="",
-        description="The skill on the *helper's* sheet this calls on, or empty for none.",
+        description="Matching skill from the helper's sheet, or empty for their d6.",
     )
     hindered: str = Field(
         default="",
-        description="The circumstance that makes this harder, in a few words. Empty when "
-        "nothing does.",
+        description="Hindering circumstance that lowers the actor's die to d4, or empty.",
     )
     luck_test: str = Field(
         default="",
-        description="What bad luck might arrive alongside this. Empty for no test.",
+        description="Separate bad luck that may arrive, or empty for no test.",
     )
 
     @model_validator(mode="after")
@@ -203,12 +199,10 @@ class Attempt(Frozen):
 
 
 class LuckTest(Frozen):
-    actor_id: EntityId = Field(
-        description="Exact id of the actor whose luck is tested: the player, or an actor here."
-    )
+    actor_id: EntityId = Field(description="Exact id of the player or actor here facing bad luck.")
     subject: str = Field(
         min_length=1,
-        description="What bad luck might arrive — running out of ammo, running into guards.",
+        description="Possible bad luck, such as low ammo or nearby guards.",
     )
 
 
@@ -222,7 +216,7 @@ TAKE_THE_HIT: OptionId = "take-it"
 
 
 DEFENCE_PROMPT = (
-    "A hit lands: say how one of your items breaks to turn it into a brief hindrance, or take it."
+    "A hit is coming. Break one carried item to make it a brief hindrance, or take the full hit."
 )
 
 
@@ -495,18 +489,15 @@ def _hindered_badge(resolved: Fact) -> EventBadge | None:
 
 
 GROWTH = (
-    "Say which skill this job improves. One skill only: a skill already on the sheet rises a "
-    "step up the ladder, or a new one is taken at d8. The engine pays the d6 credits and records "
-    "the job itself, so propose neither."
+    "Choose one skill this job improves. Raise an existing skill one step or add a new one at d8."
 )
 
 
 class Advance(ProposalBase):
-    """The one change a job buys. The engine pays the credits and records the job itself."""
+    """The skill increase earned by one job."""
 
     skill: str = Field(
         min_length=1,
-        description="The skill this job improves, in title case: one already on the sheet to "
-        "raise it a step, or a new one to take at d8.",
+        description="Title-case skill to raise one step or add at d8.",
     )
-    why: str = Field(description="One short sentence the player reads before confirming.")
+    why: str = Field(description="One short reason shown to the player before confirmation.")

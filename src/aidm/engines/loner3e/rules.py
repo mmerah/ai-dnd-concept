@@ -85,10 +85,7 @@ def twist_table(packs: Mapping[str, Pack], chosen: ContentSlug) -> tuple[tuple[s
 
 def conflict_prompt(actor: Entity, opponent: Entity) -> str:
     foe = actor if opponent.id == PLAYER_ID else opponent
-    return (
-        f"The exchange against {foe.name} is resolved and the conflict goes on. "
-        "Say your next key action."
-    )
+    return f"The exchange with {foe.name} is over, but the conflict continues. What do you do?"
 
 
 class Sheet(SheetBase):
@@ -141,28 +138,23 @@ type Position = Literal["advantage", "neutral", "disadvantage"]
 
 class Question(Frozen):
     actor_id: EntityId = Field(
-        description="Exact id of the actor the question is about: the player, or an actor here."
+        description="Exact id of the player or actor here who takes the action."
     )
     question: str = Field(
         min_length=1,
-        description="The closed dramatic question the dice answer, phrased so that yes is what "
-        "the actor wants.",
+        description="Closed question where yes means the actor gets what they want.",
     )
     position: Position = Field(
         default="neutral",
-        description="Your judgment of the fiction: which side the tags and the scene favour.",
+        description="Which side the relevant tags and situation favour.",
     )
     edge: str = Field(
         default="",
-        description="The tag or circumstance that decided the position, in a few words. Empty "
-        "for neutral.",
+        description="Tag or circumstance that sets the position. Empty for neutral.",
     )
     opponent_id: EntityId | None = Field(
         default=None,
-        description="Exact id of the actor here who actively contends against this one — fights "
-        "back, gives chase, argues back, hunts. A question about beating, escaping, or "
-        "overcoming someone must name them here: luck moves only through this field. Null only "
-        "when nothing fights back.",
+        description="Exact id of the actor here who resists. Null when no actor fights back.",
     )
 
 
@@ -381,26 +373,24 @@ def _twist_event(twist: Fact, facts: tuple[Fact, ...]) -> MechanicEvent:
 
 
 GROWTH = (
-    "Say how the character has changed over this adventure. Each change is one of four: a "
-    "new skill, a new piece of signature gear, a new frailty, or one tag they already carry "
-    "rewritten."
+    "Choose 1-4 changes from this adventure: a new skill, signature gear, a frailty, or a "
+    "rewrite of an existing tag."
 )
 
 
 class Change(Frozen):
-    """One change the post-adventure update writes."""
+    """One sheet change earned by the adventure."""
 
     kind: Literal["skill", "gear", "frailty", "rewrite"] = Field(
-        description="Which of the four growths this change spends."
+        description="Type of sheet change."
     )
     tag: str = Field(
         min_length=1,
-        description="The new tag in title case — or, for a rewrite, the tag already written on "
-        "the sheet, copied exactly.",
+        description="New title-case tag, or the exact current tag for a rewrite.",
     )
     into: str = Field(
         default="",
-        description="A rewrite only: what that tag becomes, in title case. Empty otherwise.",
+        description="New title-case tag for a rewrite. Empty for other kinds.",
     )
 
     @model_validator(mode="after")
@@ -411,11 +401,11 @@ class Change(Frozen):
 
 
 class AdventureGrowth(ProposalBase):
-    """Everything this adventure changed on the sheet, at once, as the post-adventure update."""
+    """All sheet changes earned by one adventure."""
 
     changes: tuple[Change, ...] = Field(
         min_length=1,
         max_length=4,
-        description="Each change: a new skill, new gear, a new frailty, or one rewrite.",
+        description="One to four earned changes, in reading order.",
     )
-    why: str = Field(description="One short sentence the player reads before confirming.")
+    why: str = Field(description="One short reason shown to the player before confirmation.")

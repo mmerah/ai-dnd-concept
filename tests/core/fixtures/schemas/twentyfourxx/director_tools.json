@@ -1,12 +1,12 @@
 [
   {
     "name": "reveal",
-    "description": "Reveal an entity that exists but the player does not know yet: they notice it, are told\nof it, or reach it.",
+    "description": "Make a hidden entity known when the player notices, finds, or reaches it.",
     "parameters": {
       "additionalProperties": false,
       "properties": {
         "entity_id": {
-          "description": "Exact id of the unrevealed canon entity.",
+          "description": "Exact id of the hidden entity.",
           "type": "string"
         }
       },
@@ -18,16 +18,16 @@
   },
   {
     "name": "move",
-    "description": "Move an actor who actually changes location, or one item within the player's reach:\npicked up, set down here, or handed to an actor here.",
+    "description": "Move an actor to a new location, or move a nearby item.",
     "parameters": {
       "additionalProperties": false,
       "properties": {
         "entity_id": {
-          "description": "Exact id of the actor or item that moves; `player` is the played character.\nAn item must be one the player carries, or one loose at their location.",
+          "description": "Exact actor or item id. The item must be carried by the player or loose here.",
           "type": "string"
         },
         "to_id": {
-          "description": "Exact id of where it goes: for an actor the location they enter; for an item,\n`player` to pick it up, an actor here with the player to hand it over, or the\nplayer's own location to set it down.",
+          "description": "Exact destination id. Use a location for an actor; for an item, use `player`,\nan actor here, or the player's location.",
           "type": "string"
         }
       },
@@ -40,12 +40,12 @@
   },
   {
     "name": "gain_improvised_item",
-    "description": "Give the player an ordinary incidental object that is not in canon and is not worth a\ncanon entry of its own.",
+    "description": "Give the player an ordinary, unimportant object not already in the world.",
     "parameters": {
       "additionalProperties": false,
       "properties": {
         "item_name": {
-          "description": "The object written out, such as 'a handful of gravel'.",
+          "description": "The object's name, such as `a handful of gravel`.",
           "type": "string"
         }
       },
@@ -57,22 +57,22 @@
   },
   {
     "name": "add_trait",
-    "description": "Put a lasting condition, skill, or frailty on an entity.",
+    "description": "Add a lasting condition or quality to an entity.",
     "parameters": {
       "additionalProperties": false,
       "properties": {
         "entity_id": {
-          "description": "Exact id of the entity affected; an actor must be here with the player.",
+          "description": "Exact entity id. An actor must be here with the player.",
           "type": "string"
         },
         "trait_id": {
-          "description": "Stable slug for the trait, such as `poisoned`; it shows written out, so\n`battle-worn` appears as Battle Worn.",
+          "description": "Stable slug, such as `poisoned`. `battle-worn` displays as Battle Worn.",
           "maxLength": 64,
           "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$",
           "type": "string"
         },
         "text": {
-          "description": "The constraint or benefit it puts on the entity, in prose.",
+          "description": "The trait's effect in plain language.",
           "type": "string"
         }
       },
@@ -86,16 +86,16 @@
   },
   {
     "name": "remove_trait",
-    "description": "Lift a lasting condition, skill, or frailty the fiction has ended.",
+    "description": "Remove a lasting condition or quality that has ended.",
     "parameters": {
       "additionalProperties": false,
       "properties": {
         "entity_id": {
-          "description": "Exact id of the entity affected; an actor must be here with the player.",
+          "description": "Exact entity id. An actor must be here with the player.",
           "type": "string"
         },
         "trait_id": {
-          "description": "Exact id of a trait the entity carries.",
+          "description": "Exact id of one of the entity's traits.",
           "maxLength": 64,
           "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$",
           "type": "string"
@@ -110,12 +110,12 @@
   },
   {
     "name": "advance_thread",
-    "description": "Move a storyline the scenario is tracking: where it stands now, or that it is over.",
+    "description": "Update an active storyline's status, stage, clock, or note.",
     "parameters": {
       "additionalProperties": false,
       "properties": {
         "thread_id": {
-          "description": "Exact id of one thread in ACTIVE THREADS.",
+          "description": "Exact id of an ACTIVE THREAD.",
           "maxLength": 64,
           "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$",
           "type": "string"
@@ -135,7 +135,7 @@
             }
           ],
           "default": null,
-          "description": "Where the thread now stands, or null to leave it as it is."
+          "description": "New status, or null to keep the current status."
         },
         "stage": {
           "anyOf": [
@@ -149,11 +149,11 @@
             }
           ],
           "default": null,
-          "description": "Stable slug for the point it has reached, or null to leave it as it is."
+          "description": "New stage slug, or null to keep the current stage."
         },
         "tick": {
           "default": 0,
-          "description": "How many segments this fills on the thread's clock, when it has one.",
+          "description": "Number of segments to fill on its clock. Use 0 for no change.",
           "type": "integer"
         },
         "note": {
@@ -166,7 +166,7 @@
             }
           ],
           "default": null,
-          "description": "Replace the thread's private bookkeeping note with what its new state means for play, or null to keep it."
+          "description": "New private note for the Director, or null to keep the current note."
         }
       },
       "required": [
@@ -178,12 +178,12 @@
   },
   {
     "name": "unlock_exit",
-    "description": "Open a locked way out of the player's location.",
+    "description": "Unlock an exit from the player's location.",
     "parameters": {
       "additionalProperties": false,
       "properties": {
         "to_id": {
-          "description": "Exact id of the location the way leads to.",
+          "description": "Exact id of the exit's destination.",
           "type": "string"
         }
       },
@@ -195,12 +195,12 @@
   },
   {
     "name": "join_party",
-    "description": "Put an actor into the player's party.",
+    "description": "Add an actor here to the player's party.",
     "parameters": {
       "additionalProperties": false,
       "properties": {
         "actor_id": {
-          "description": "Exact id of the actor joining, who must be here with the player.",
+          "description": "Exact id of the actor joining.",
           "type": "string"
         }
       },
@@ -212,7 +212,7 @@
   },
   {
     "name": "leave_party",
-    "description": "Take an actor out of the player's party when the fiction parts them.",
+    "description": "Remove an actor from the player's party.",
     "parameters": {
       "additionalProperties": false,
       "properties": {
@@ -229,27 +229,27 @@
   },
   {
     "name": "roll_attempt",
-    "description": "Put one risky attempt to the highest die of a pool. The player's own attempt goes to\n`stake_attempt` first; roll here directly only for an NPC's attempt, or when the player's\nwords already accepted the named risk.",
+    "description": "Roll one risky attempt. Roll an NPC's attempt directly; put the player's own attempt\nto `stake_attempt` first, unless their words already accepted the exact risk.",
     "parameters": {
       "additionalProperties": false,
       "properties": {
         "actor_id": {
-          "description": "Exact id of the actor attempting this: the player, or an actor here.",
+          "description": "Exact id of the player or actor here who takes the action.",
           "type": "string"
         },
         "goal": {
-          "description": "What the actor is trying to do and what they risk by trying, in one line.",
+          "description": "The actor's goal and the risk they face, in one line.",
           "minLength": 1,
           "type": "string"
         },
         "skill": {
           "default": "",
-          "description": "The skill on the actor's sheet this calls on, or empty for none.",
+          "description": "Matching skill from the actor's sheet, or empty for d6.",
           "type": "string"
         },
         "helped": {
           "default": "",
-          "description": "The circumstance that makes this easier — a skill, a piece of gear, the ground they hold, an ally's presence — in a few words. Empty when nothing does, and never alongside `helper_id`.",
+          "description": "Helpful circumstance that adds d6. Empty when using `helper_id` or no help.",
           "type": "string"
         },
         "helper_id": {
@@ -262,21 +262,21 @@
             }
           ],
           "default": null,
-          "description": "Exact id of an ally here who helps with this — they roll their own skill die into the pool. Null when nobody helps."
+          "description": "Exact id of an ally here who adds their skill die, or null for no helper."
         },
         "helper_skill": {
           "default": "",
-          "description": "The skill on the *helper's* sheet this calls on, or empty for none.",
+          "description": "Matching skill from the helper's sheet, or empty for their d6.",
           "type": "string"
         },
         "hindered": {
           "default": "",
-          "description": "The circumstance that makes this harder, in a few words. Empty when nothing does.",
+          "description": "Hindering circumstance that lowers the actor's die to d4, or empty.",
           "type": "string"
         },
         "luck_test": {
           "default": "",
-          "description": "What bad luck might arrive alongside this. Empty for no test.",
+          "description": "Separate bad luck that may arrive, or empty for no test.",
           "type": "string"
         }
       },
@@ -290,29 +290,29 @@
   },
   {
     "name": "stake_attempt",
-    "description": "Name the risk of one attempt out loud and hand the player the choice to proceed or\nrevise, before anything is rolled.",
+    "description": "Let the player accept or revise one risky attempt before rolling it.",
     "parameters": {
       "$defs": {
         "Attempt": {
           "additionalProperties": false,
           "properties": {
             "actor_id": {
-              "description": "Exact id of the actor attempting this: the player, or an actor here.",
+              "description": "Exact id of the player or actor here who takes the action.",
               "type": "string"
             },
             "goal": {
-              "description": "What the actor is trying to do and what they risk by trying, in one line.",
+              "description": "The actor's goal and the risk they face, in one line.",
               "minLength": 1,
               "type": "string"
             },
             "skill": {
               "default": "",
-              "description": "The skill on the actor's sheet this calls on, or empty for none.",
+              "description": "Matching skill from the actor's sheet, or empty for d6.",
               "type": "string"
             },
             "helped": {
               "default": "",
-              "description": "The circumstance that makes this easier — a skill, a piece of gear, the ground they hold, an ally's presence — in a few words. Empty when nothing does, and never alongside `helper_id`.",
+              "description": "Helpful circumstance that adds d6. Empty when using `helper_id` or no help.",
               "type": "string"
             },
             "helper_id": {
@@ -325,21 +325,21 @@
                 }
               ],
               "default": null,
-              "description": "Exact id of an ally here who helps with this — they roll their own skill die into the pool. Null when nobody helps."
+              "description": "Exact id of an ally here who adds their skill die, or null for no helper."
             },
             "helper_skill": {
               "default": "",
-              "description": "The skill on the *helper's* sheet this calls on, or empty for none.",
+              "description": "Matching skill from the helper's sheet, or empty for their d6.",
               "type": "string"
             },
             "hindered": {
               "default": "",
-              "description": "The circumstance that makes this harder, in a few words. Empty when nothing does.",
+              "description": "Hindering circumstance that lowers the actor's die to d4, or empty.",
               "type": "string"
             },
             "luck_test": {
               "default": "",
-              "description": "What bad luck might arrive alongside this. Empty for no test.",
+              "description": "Separate bad luck that may arrive, or empty for no test.",
               "type": "string"
             }
           },
@@ -355,10 +355,10 @@
       "properties": {
         "attempt": {
           "$ref": "#/$defs/Attempt",
-          "description": "The attempt exactly as it would be rolled; it is frozen here, so what the\nplayer proceeds with is what rolls."
+          "description": "The complete attempt to freeze until the player decides."
         },
         "risk": {
-          "description": "What a bad roll costs them, in one line, in your own words: the warning the\nplayer reads before deciding.",
+          "description": "One-line cost of a bad roll, shown to the player.",
           "type": "string"
         }
       },
@@ -371,7 +371,7 @@
   },
   {
     "name": "settle_defence",
-    "description": "Settle the hit the player's own words just answered for: their item breaks and turns\nit into a brief hindrance, or the hit lands in full.",
+    "description": "Apply the player's choice to break an item or take the full hit.",
     "parameters": {
       "additionalProperties": false,
       "properties": {
@@ -384,7 +384,7 @@
               "type": "null"
             }
           ],
-          "description": "Exact id of the carried, unbroken item their words break, or null when they\ntake the hit instead."
+          "description": "Exact id of the carried, unbroken item to break, or null to take the hit."
         }
       },
       "required": [
@@ -395,16 +395,16 @@
   },
   {
     "name": "roll_luck_test",
-    "description": "Put the SRD's standalone bad-luck test to the dice.",
+    "description": "Roll a standalone bad-luck test.",
     "parameters": {
       "additionalProperties": false,
       "properties": {
         "actor_id": {
-          "description": "Exact id of the actor whose luck is tested: the player, or an actor here.",
+          "description": "Exact id of the player or actor here facing bad luck.",
           "type": "string"
         },
         "subject": {
-          "description": "What bad luck might arrive — running out of ammo, running into guards.",
+          "description": "Possible bad luck, such as low ammo or nearby guards.",
           "minLength": 1,
           "type": "string"
         }
@@ -419,16 +419,16 @@
   },
   {
     "name": "change_credits",
-    "description": "Move an actor's credits.",
+    "description": "Pay or charge an actor.",
     "parameters": {
       "additionalProperties": false,
       "properties": {
         "actor_id": {
-          "description": "Exact id of the actor: the player, or an actor here.",
+          "description": "Exact id of the player or an actor here.",
           "type": "string"
         },
         "amount": {
-          "description": "Positive to pay them, negative to charge them.",
+          "description": "Positive pays the actor; negative charges them.",
           "type": "integer"
         }
       },
@@ -441,7 +441,7 @@
   },
   {
     "name": "complete_chapter",
-    "description": "Record that the job this crew has been running is done.",
+    "description": "Record that the current job has ended.",
     "parameters": {
       "additionalProperties": false,
       "properties": {},

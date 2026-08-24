@@ -100,7 +100,7 @@ class EntityDetail(Frozen):
 
 
 class Trait(Frozen):
-    """A lasting fictional quality interpreted by engines, not core."""
+    """A lasting quality."""
 
     id: Slug
     name: str
@@ -108,7 +108,7 @@ class Trait(Frozen):
 
 
 class Exit(Mutable):
-    """A way out of one location, in one direction: an author writes both ends."""
+    """A one-way exit from a location."""
 
     to: EntityId
     known: bool = False

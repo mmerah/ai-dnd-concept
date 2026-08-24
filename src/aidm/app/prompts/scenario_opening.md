@@ -1,13 +1,8 @@
-## The bar
+## Opening slice
 
-You author an opening slice, not a whole scenario. The world grows between turns, when it runs
-thin — so what you leave out is not missing, it is room. Author only what the first scene needs,
-and author that as concretely as a whole scenario would.
+Create only what the first scene needs. The world will grow later.
 
-- The starting location, and no second one: the way onward is written for you before the player
-  reaches it.
-- Two or three entities the first scene needs — the person who meets the player, the thing that
-  draws them on — placed in the starting location, and no more.
-- One thread: what the premise is about, with a `stage` naming where it stands and a `note`
-  telling the Director what it means right now.
-- A `detail.when_reached` on every entity, because that is where the world grows from.
+- Write one starting location. The app adds the route onward later.
+- Place 2-3 useful actors or items there, such as the person who meets the player or the clue that draws them onward.
+- Write one thread with a current `stage` and a `note` that tells the Director what it means now.
+- Give every entity a `detail.when_reached`; these leads let the world grow.

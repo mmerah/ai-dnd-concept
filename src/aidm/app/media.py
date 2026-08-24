@@ -30,8 +30,8 @@ def illustration_request(
     scene: VisibleScene, narration: str, style: str, referenced: Sequence[str] = ()
 ) -> str:
     lines = [
-        "Draw one wide establishing view of the place below, as somebody standing in it sees it. "
-        "Not a portrait, not a panel, no border.",
+        "Draw one wide, borderless view of this place from the eye level of someone there. "
+        "Show a single scene, not a portrait or comic panel.",
         f"The place: {scene.location.name} — {scene.location.brief}",
         *(f"Present: {entity.name} — {entity.brief}" for entity in scene.here),
     ]
@@ -40,8 +40,8 @@ def illustration_request(
     if referenced:
         # Map attachments to names so recurring characters retain their likeness.
         lines.append(
-            f"The attached images are reference likenesses of, in order: {', '.join(referenced)}. "
-            f"Keep each one's appearance."
+            f"Use the attached images as likeness references in this order: "
+            f"{', '.join(referenced)}. Keep each appearance consistent."
         )
     lines.append(style)
     return "\n".join(lines)
@@ -49,9 +49,9 @@ def illustration_request(
 
 def icon_request(entity: Entity, style: str) -> str:
     return (
-        f"Draw a portrait token, not a scene: {entity.name} — {entity.brief}. "
-        f"The subject alone, centred and filling the square, on a plain flat background — "
-        f"no setting, no other figures, no props beyond what it carries, no border. {style}"
+        f"Draw a borderless portrait token of {entity.name} — {entity.brief}. "
+        f"Centre the subject alone, filling the square on a plain background. "
+        f"Include only props they carry. {style}"
     )
 
 

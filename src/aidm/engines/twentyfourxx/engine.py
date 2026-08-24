@@ -107,34 +107,28 @@ def _defence_to_settle(ctx: RunContext[DirectorContext]) -> PendingDecision | No
 
 def director_toolset() -> AbstractToolset[DirectorContext]:
     def roll_attempt(ctx: RunContext[DirectorContext], attempt: Attempt) -> str:
-        """Put one risky attempt to the highest die of a pool. The player's own attempt goes to
-        `stake_attempt` first; roll here directly only for an NPC's attempt, or when the player's
-        words already accepted the named risk.
+        """Roll one risky attempt. Roll an NPC's attempt directly; put the player's own attempt
+        to `stake_attempt` first, unless their words already accepted the exact risk.
 
         Args:
-            attempt: The attempt to put to the dice.
+            attempt: The complete attempt to roll.
         """
         return apply_tool_call(ctx, lambda draft, rng: resolve_attempt(draft, attempt, rng))
 
     def stake_attempt(ctx: RunContext[DirectorContext], attempt: Attempt, risk: str) -> str:
-        """Name the risk of one attempt out loud and hand the player the choice to proceed or
-        revise, before anything is rolled.
+        """Let the player accept or revise one risky attempt before rolling it.
 
         Args:
-            attempt: The attempt exactly as it would be rolled; it is frozen here, so what the
-                player proceeds with is what rolls.
-            risk: What a bad roll costs them, in one line, in your own words: the warning the
-                player reads before deciding.
+            attempt: The complete attempt to freeze until the player decides.
+            risk: One-line cost of a bad roll, shown to the player.
         """
         return apply_tool_call(ctx, lambda draft, _rng: resolve_stake(draft, attempt, risk))
 
     def settle_defence(ctx: RunContext[DirectorContext], item_id: EntityId | None) -> str:
-        """Settle the hit the player's own words just answered for: their item breaks and turns
-        it into a brief hindrance, or the hit lands in full.
+        """Apply the player's choice to break an item or take the full hit.
 
         Args:
-            item_id: Exact id of the carried, unbroken item their words break, or null when they
-                take the hit instead.
+            item_id: Exact id of the carried, unbroken item to break, or null to take the hit.
         """
         answered = _defence_to_settle(ctx)
         assert answered is not None  # the filter below offers this tool only while one is open
@@ -142,19 +136,19 @@ def director_toolset() -> AbstractToolset[DirectorContext]:
         return apply_tool_call(ctx, lambda draft, _rng: resolve_defence(draft, goal, item_id))
 
     def roll_luck_test(ctx: RunContext[DirectorContext], test: LuckTest) -> str:
-        """Put the SRD's standalone bad-luck test to the dice.
+        """Roll a standalone bad-luck test.
 
         Args:
-            test: The luck test to put to the dice.
+            test: The actor and possible bad luck.
         """
         return apply_tool_call(ctx, lambda draft, rng: resolve_luck_test(draft, test, rng))
 
     def change_credits(ctx: RunContext[DirectorContext], actor_id: EntityId, amount: int) -> str:
-        """Move an actor's credits.
+        """Pay or charge an actor.
 
         Args:
-            actor_id: Exact id of the actor: the player, or an actor here.
-            amount: Positive to pay them, negative to charge them.
+            actor_id: Exact id of the player or an actor here.
+            amount: Positive pays the actor; negative charges them.
         """
         return apply_tool_call(
             ctx,
@@ -162,7 +156,7 @@ def director_toolset() -> AbstractToolset[DirectorContext]:
         )
 
     def complete_chapter(ctx: RunContext[DirectorContext]) -> str:
-        """Record that the job this crew has been running is done."""
+        """Record that the current job has ended."""
         return apply_tool_call(ctx, lambda draft, _rng: tuple(apply_complete_chapter(draft)))
 
     toolset = sequential_toolset(
@@ -247,7 +241,7 @@ class TwentyfourxxCreation(CharacterCreation):
             steps.append(
                 CreationStep(
                     id="training",
-                    prompt="Choose their training",
+                    prompt="Choose training",
                     options=_options(specialty.choices),
                 )
             )

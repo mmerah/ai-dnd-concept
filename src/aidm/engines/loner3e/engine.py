@@ -57,21 +57,20 @@ type Twists = Callable[[Game], tuple[tuple[str, str], ...]]
 
 def director_toolset(twists: Twists) -> FunctionToolset[DirectorContext]:
     def roll_question(ctx: RunContext[DirectorContext], question: Question) -> str:
-        """Put a closed dramatic question to Chance d6 against Risk d6. An exchange of a
-        conflict names who is opposed in `question.opponent_id`.
+        """Roll Chance against Risk for one closed dramatic question.
 
         Args:
-            question: The question to put to the dice.
+            question: The complete question. Include `opponent_id` when an actor resists.
         """
         return apply_tool_call(
             ctx, lambda draft, rng: resolve_question(draft, question, rng, twists(draft))
         )
 
     def restore_luck(ctx: RunContext[DirectorContext], actor_id: EntityId) -> str:
-        """Put an actor's luck back to full.
+        """Restore an actor's luck after a conflict ends.
 
         Args:
-            actor_id: Exact id of the actor: the player, or an actor here.
+            actor_id: Exact id of the player or an actor here.
         """
         return apply_tool_call(
             ctx,
@@ -79,7 +78,7 @@ def director_toolset(twists: Twists) -> FunctionToolset[DirectorContext]:
         )
 
     def complete_chapter(ctx: RunContext[DirectorContext]) -> str:
-        """Record that the adventure this character has been living has ended."""
+        """Record that the current adventure has ended."""
         return apply_tool_call(ctx, lambda draft, _rng: tuple(apply_complete_chapter(draft)))
 
     return sequential_toolset([roll_question, restore_luck, complete_chapter])
@@ -169,7 +168,7 @@ class Loner3eCreation(CharacterCreation):
             first,
             TextStep(
                 id="concept",
-                prompt="Their concept, in one line",
+                prompt="Write a one-line concept",
                 hint=", ".join(entry.label for entry in pack.concepts[:3]),
             ),
             CreationStep(

@@ -56,7 +56,7 @@ def _drop[T: Entity | Thread](kept: list[T], target: str) -> T | None:
 
 
 class ScenarioPatch(Frozen):
-    """One pass: fields replace values, elements replace matching ids, and `remove` drops ids."""
+    """One draft update. Set only the fields that change."""
 
     meta: ScenarioMeta | None = None
     starting_location_id: EntityId | None = None
@@ -64,9 +64,7 @@ class ScenarioPatch(Frozen):
     art_style: str | None = Field(
         default=None,
         description=(
-            "One line of visual direction for this scenario's illustrations — palette, medium "
-            "and mood, written from the tone of the source or premise. Left unset, the app's "
-            "default style is used."
+            "One-line palette, medium, and mood for illustrations. Null uses the app default."
         ),
     )
     entities: tuple[Entity, ...] = ()
@@ -378,15 +376,11 @@ def authoring_toolset(
         return f"{changed}\n\nDRAFT: {standing}"
 
     def scenario_so_far(ctx: RunContext[ScenarioDraft]) -> str:
-        """The whole draft as it stands, as pretty JSON: read it back before modifying or
-        removing anything, so every id you name is one it actually holds."""
+        """Read the complete current draft as formatted JSON."""
         return ctx.deps.as_json()
 
     def write(ctx: RunContext[ScenarioDraft], patch: ScenarioPatch) -> str:
-        """Apply one patch to the draft. An element whose id the draft already holds is replaced
-        whole, so send the complete element when modifying one; `remove` drops ids from whichever
-        collection holds them. Answers with each change as `created|modified|deleted kind
-        name[id]`, then with what the draft still needs."""
+        """Apply one update and return the changes plus what the draft still needs."""
         if refused := patch_refusal(patch, brief.settled):
             raise ModelRetry(refused)
         try:
@@ -402,10 +396,15 @@ def authoring_toolset(
         locked: bool = False,
         one_way: bool = False,
     ) -> str:
-        """Join two locations the draft already holds with a way between them, written on both
-        ends for you, so adding a door never means writing a location again. `known: true` is a
-        way the player starts aware of, and asks that both places be known; `locked: true` is a
-        way that starts shut; `one_way: true` writes the way there and not the way back."""
+        """Connect two locations already in the draft.
+
+        Args:
+            from_id: Exact id of the first location.
+            to_id: Exact id of the second location.
+            known: Whether the player knows this route at the start.
+            locked: Whether the route starts locked.
+            one_way: Whether the route goes only from the first location to the second.
+        """
         if {from_id, to_id} <= brief.settled:
             raise ModelRetry(
                 f"{from_id!r} and {to_id!r} are both the live game's, and nothing here can take "
@@ -438,10 +437,7 @@ def scenario_agent(
         output_type=ToolOutput(
             str,
             name="finish",
-            description=(
-                "End authorship. Call this once a change answers that the draft plays; its "
-                "argument is two or three sentences on what you authored."
-            ),
+            description="Finish a playable draft with a 2-3 sentence summary.",
         ),
         deps_type=ScenarioDraft,
         toolsets=[authoring_toolset(playing, brief)],
