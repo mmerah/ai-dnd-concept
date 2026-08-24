@@ -316,7 +316,7 @@ def _replayed(exchange: Exchange) -> str:
     body = "\n".join(part for part in parts if part)
     if not body:
         raise ValueError("an exchange with neither prose nor a decision has nothing to replay")
-    return body
+    return f"[At {exchange.place}]\n{body}"
 
 
 @dataclass(frozen=True, slots=True)
@@ -347,7 +347,10 @@ async def run_segment(
 
     history = exchanges_to_messages(state.history)
     history_chars = sum(
-        len(exchange.prompt) + len(exchange.narration) + len(exchange.decision)
+        len(exchange.prompt)
+        + len(exchange.place)
+        + len(exchange.narration)
+        + len(exchange.decision)
         for exchange in state.history
     )
     log = TurnRecord(on_event=on_event)
@@ -413,6 +416,7 @@ async def run_segment(
         *draft.history,
         Exchange(
             prompt=prompt,
+            place=draft.world.require(draft.player_location).name,
             lines=lines,
             events=tuple(log.events),
             decision="" if draft.pending is None else draft.pending.prompt,

@@ -21,7 +21,7 @@ from aidm.engines.core import (
 from aidm.engines.loner3e.engine import Loner3eEngine
 from aidm.state.facts import Fact
 from aidm.state.model import Game
-from aidm.state.play import Answer, DecisionOption, Exchange, OptionId, PendingDecision
+from aidm.state.play import Answer, DecisionOption, Exchange, Line, OptionId, PendingDecision
 from aidm.turn.run import exchanges_to_messages
 
 DECISION = PendingDecision(
@@ -205,18 +205,24 @@ def test_a_second_decision_is_refused_while_one_is_already_open() -> None:
 
 
 def test_a_paused_exchange_replays_as_a_message_and_a_silent_one_refuses() -> None:
-    paused = Exchange(prompt="I charge.", lines=(), decision=DECISION.prompt)
+    paused = Exchange(prompt="I charge.", place="the cloister", lines=(), decision=DECISION.prompt)
+    stayed = Exchange(prompt="I press on.", place="the cloister", lines=(Line(text="It gives."),))
+    moved = Exchange(prompt="I go up.", place="the bell tower", lines=(Line(text="Rope sways."),))
 
     rendered = [
         part.content
-        for message in exchanges_to_messages([paused])
+        for message in exchanges_to_messages([paused, stayed, moved])
         for part in message.parts
         if isinstance(part, TextPart)
     ]
 
-    assert rendered == [f"[The rules paused the turn for the player: {DECISION.prompt}]"]
+    assert rendered == [
+        f"[At the cloister]\n[The rules paused the turn for the player: {DECISION.prompt}]",
+        "[At the cloister]\nIt gives.",
+        "[At the bell tower]\nRope sways.",
+    ]
     with pytest.raises(ValueError, match="nothing to replay"):
-        _ = exchanges_to_messages([Exchange(prompt="I wait.", lines=())])
+        _ = exchanges_to_messages([Exchange(prompt="I wait.", place="the cloister", lines=())])
 
 
 def test_a_save_carries_a_decision_and_restore_refuses_one_the_engine_cannot_play() -> None:

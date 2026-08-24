@@ -109,6 +109,7 @@ class Answer(Frozen):
 
 class Exchange(Frozen):
     prompt: str
+    place: str
     lines: tuple[Line, ...]
     events: tuple[MechanicEvent, ...] = ()
     # The suspending decision's prompt: the pause has to survive after `Game.pending` clears.

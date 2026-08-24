@@ -68,7 +68,11 @@ def _scene_art(session: GameSession) -> None:
 def chat(session: GameSession) -> None:
     if not session.state.history:
         ui.label(session.state.scenario.premise).classes("text-sm italic opacity-70")
+    here = ""
     for exchange in session.state.history:
+        if exchange.place != here:
+            here = exchange.place
+            ui.label(here).classes("w-full text-center text-xs uppercase opacity-50 q-mt-md")
         _bubble(session, PLAYER_ID, exchange.prompt, sent=True)
         for event in exchange.events:
             _mechanic_event(event)

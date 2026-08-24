@@ -28,10 +28,12 @@ PROMPT = "I lever up the loose flagstone and listen at the vault door."
 HISTORY = (
     Exchange(
         prompt="I try the vault door.",
+        place="the sealed vault",
         lines=(Line(text="The iron handle does not turn."),),
     ),
     Exchange(
         prompt="I look for another way in.",
+        place="the sealed vault",
         lines=(Line(text="A flagstone by the wall sits proud of its neighbours."),),
     ),
 )

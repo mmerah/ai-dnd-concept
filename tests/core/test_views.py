@@ -66,6 +66,7 @@ def test_the_journal_export_writes_the_chronicle_and_leaks_no_steering_note() ->
     held.history = (
         Exchange(
             prompt="What do I do?",
+            place="the abbot's study",
             lines=(
                 Line(text="You step into the study."),
                 Line(speaker_id=EntityId("mara"), text="Shut the door behind you."),

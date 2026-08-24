@@ -29,6 +29,7 @@ def test_a_saved_games_exchange_events_round_trip(tmp_path: Path) -> None:
     draft.history = (
         Exchange(
             prompt="I take the map.",
+            place="the sealed vault",
             lines=(),
             events=(
                 MechanicEvent(

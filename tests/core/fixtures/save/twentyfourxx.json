@@ -290,6 +290,7 @@
   "history": [
     {
       "prompt": "I try the vault door.",
+      "place": "the sealed vault",
       "lines": [
         {
           "speaker_id": null,
@@ -301,6 +302,7 @@
     },
     {
       "prompt": "I look for another way in.",
+      "place": "the sealed vault",
       "lines": [
         {
           "speaker_id": null,
@@ -312,6 +314,7 @@
     },
     {
       "prompt": "I lever up the loose flagstone and listen at the vault door.",
+      "place": "the abbot's study",
       "lines": [
         {
           "speaker_id": null,
