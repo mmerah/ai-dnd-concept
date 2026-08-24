@@ -285,11 +285,11 @@ def _save_option(
         scenario_title=saved.scenario.title,
         character_title=saved.character_id if character is None else character.title,
         turn=saved.turn,
-        problem=_unplayable_reason(saved, scenarios, characters),
+        problem=_save_refusal(saved, scenarios, characters),
     )
 
 
-def _unplayable_reason(
+def _save_refusal(
     saved: SavedGame,
     scenarios: Sequence[ContentOption],
     characters: Sequence[ContentOption],

@@ -24,7 +24,7 @@ from aidm.app.authoring import (
     WorldDraft,
     delta,
     extend_brief,
-    playability,
+    scenario_refusal,
 )
 from aidm.app.runtime import GameSession
 from aidm.config import Settings
@@ -105,7 +105,7 @@ def test_the_live_world_becomes_a_scenario_the_extending_author_can_hold(tmp_pat
     assert scenario.starting_location_id == game.state.player_location
     assert EntityId("mara") in ids
 
-    unmet = playability(
+    unmet = scenario_refusal(
         draft,
         (Playtest(engine=game.engine, character=game.character),),
         extend_brief(game.state.world),

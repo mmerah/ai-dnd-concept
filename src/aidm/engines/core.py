@@ -27,7 +27,7 @@ from aidm.state.entities import (
     Slug,
 )
 from aidm.state.facts import Chip, Fact, explained_fact, labeled
-from aidm.state.model import Game, WorldState, check_draft
+from aidm.state.model import Game, WorldState, draft_refusal
 from aidm.state.play import DiceEvent, MechanicEvent, OptionId, PendingDecision, StepTrace
 
 type EntityRenderer = Callable[[Entity], str]
@@ -352,7 +352,7 @@ def transact(engine: Engine, draft: Game, play: Play, rng: Random) -> tuple[Game
 def act(ctx: RunContext[PlanContext], play: Play) -> str:
     """Refused against a throwaway copy, applied to the turn's draft, answered with what changed."""
     deps = ctx.deps
-    if refused := check_draft(
+    if refused := draft_refusal(
         deps.state, lambda copy: apply_to_draft(deps.engine, copy, play, Random(0))
     ):
         raise ModelRetry(refused)
@@ -465,8 +465,8 @@ class Advancement(ABC):
         subject = draft.world.require(offer.subject_id)
         return (*granted, counter_fact(subject, self.ledger_key, ledger, 1, self.spent_why))
 
-    def violation(self, state: Game, offer: Offer, proposal: ProposalBase) -> str | None:
-        return check_draft(
+    def advance_refusal(self, state: Game, offer: Offer, proposal: ProposalBase) -> str | None:
+        return draft_refusal(
             state,
             lambda draft: self.resolve(draft, offer, proposal, Random(0)),
             "the sheet this leaves",

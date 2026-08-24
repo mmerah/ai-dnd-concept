@@ -245,7 +245,7 @@ class GameSession:
         offer, proposal = drafted.offer, drafted.proposal
         if offer not in advancement.offers(self.state):
             raise ValueError("that change is no longer on offer")
-        if refused := advancement.violation(self.state, offer, proposal):
+        if refused := advancement.advance_refusal(self.state, offer, proposal):
             raise ValueError(refused)
         state, facts = transact(
             self.engine,

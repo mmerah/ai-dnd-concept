@@ -9,8 +9,8 @@ from aidm.app.authoring import (
     AuthoringSession,
     ScenarioPatch,
     WorldDraft,
-    playability,
     playtests,
+    scenario_refusal,
 )
 from aidm.app.launch import engine_ids
 from aidm.content.io import load_scenario
@@ -102,7 +102,7 @@ def test_remove_drops_by_id_and_refuses_an_unknown_one() -> None:
 
 def test_validation_names_what_the_draft_is_missing() -> None:
     playing = playtests(settings(), engine_ids())
-    empty = playability(WorldDraft(), playing)
+    empty = scenario_refusal(WorldDraft(), playing)
     assert empty is not None and "meta" in empty
 
     draft = WorldDraft()
@@ -113,7 +113,7 @@ def test_validation_names_what_the_draft_is_missing() -> None:
             entities=(_location("cell"),),
         )
     )
-    dangling = playability(draft, playing)
+    dangling = scenario_refusal(draft, playing)
     assert dangling is not None and "nowhere" in dangling
 
 
@@ -121,7 +121,7 @@ def test_the_shipped_world_written_as_one_patch_is_playable() -> None:
     draft = WorldDraft()
     patch = ScenarioPatch.model_validate(_as_patch())
     _ = draft.apply(patch)
-    assert playability(draft, playtests(settings(), engine_ids())) is None
+    assert scenario_refusal(draft, playtests(settings(), engine_ids())) is None
 
 
 async def test_the_agent_authors_through_the_write_tool() -> None:
@@ -205,7 +205,7 @@ def test_a_thin_draft_hears_every_unmet_bar_item_at_once() -> None:
             entities=(_location("cell"),),
         )
     )
-    reason = playability(draft, playtests(settings(), engine_ids()))
+    reason = scenario_refusal(draft, playtests(settings(), engine_ids()))
     assert reason is not None
     for wanted in ("locations", "locked", "actors", "item", "thread", "when_reached"):
         assert wanted in reason
@@ -240,6 +240,6 @@ def test_an_opening_slice_passes_a_bar_the_whole_scenario_would_fail() -> None:
     )
     playing = playtests(settings(), engine_ids())
 
-    assert playability(draft, playing, OPENING) is None
-    assert playability(draft, playing) is not None
+    assert scenario_refusal(draft, playing, OPENING) is None
+    assert scenario_refusal(draft, playing) is not None
     assert draft.scenario(engine_ids()).grows

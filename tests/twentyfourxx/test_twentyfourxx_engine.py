@@ -201,7 +201,7 @@ def test_a_skill_already_at_d12_is_refused_and_the_refusal_reaches_the_advisor()
     (offer,) = advancement.offers(maxed)
     capped = Advance(skill="Climbing", why="there is nowhere higher to climb")
 
-    message = advancement.violation(maxed, offer, capped)
+    message = advancement.advance_refusal(maxed, offer, capped)
     assert message is not None
     assert "d12" in message
 

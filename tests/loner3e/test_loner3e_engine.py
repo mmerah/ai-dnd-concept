@@ -235,9 +235,9 @@ def test_an_adventures_end_opens_an_offer_and_the_caps_refuse_what_breaks_them()
         why="the vault taught him the cost",
     )
 
-    assert advancement.violation(ready, offer, legal) is None
-    assert advancement.violation(ready, offer, rewrite) is None
-    assert advancement.violation(ready, offer, unwritten) == (
+    assert advancement.advance_refusal(ready, offer, legal) is None
+    assert advancement.advance_refusal(ready, offer, rewrite) is None
+    assert advancement.advance_refusal(ready, offer, unwritten) == (
         "Kael carries no tag 'Never Held a Blade' to rewrite"
     )
 

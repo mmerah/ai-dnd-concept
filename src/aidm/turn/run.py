@@ -29,7 +29,7 @@ from aidm.llm import build_agent
 from aidm.state import actions
 from aidm.state.entities import PLAYER_ID, EntityId, Slug
 from aidm.state.facts import Fact, narrator_evidence, narrator_lines
-from aidm.state.model import AdvanceThread, Game, check_draft
+from aidm.state.model import AdvanceThread, Game, draft_refusal
 from aidm.state.play import (
     Answer,
     Exchange,
@@ -282,7 +282,7 @@ def advisor_agent(
 ) -> Agent[AdvancementContext, ProposalBase]:
     def legal(ctx: RunContext[AdvancementContext], proposal: ProposalBase) -> ProposalBase:
         deps = ctx.deps
-        refused = deps.advancement.violation(deps.state, deps.offer, proposal)
+        refused = deps.advancement.advance_refusal(deps.state, deps.offer, proposal)
         if refused is not None:
             raise ModelRetry(refused)
         return proposal
@@ -477,7 +477,7 @@ def _resume(
     def play(target: Game, dice: Random) -> tuple[Fact, ...]:
         return engine.resume(target, pending, option.id, dice)
 
-    if refused := check_draft(draft, lambda copy: apply_to_draft(engine, copy, play, Random(0))):
+    if refused := draft_refusal(draft, lambda copy: apply_to_draft(engine, copy, play, Random(0))):
         raise ValueError(refused)
     landed = apply_to_draft(engine, draft, play, rng)
     log.landed(landed, engine.player_events(EventCause("decision", pending.kind), landed))

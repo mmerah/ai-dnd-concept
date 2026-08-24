@@ -295,7 +295,9 @@ def extend_brief(before: WorldState) -> Brief:
     return Brief(_instructions("scenario_extend.md"), unmet)
 
 
-def playability(draft: WorldDraft, playing: Sequence[Playtest], brief: Brief = FULL) -> str | None:
+def scenario_refusal(
+    draft: WorldDraft, playing: Sequence[Playtest], brief: Brief = FULL
+) -> str | None:
     """The exact reason the draft will not play, or None; ValidationError counts as ValueError."""
     try:
         scenario = draft.scenario(tuple(playtest.engine.id for playtest in playing))
@@ -337,7 +339,7 @@ def authoring_toolset(
     def validate_scenario(ctx: RunContext[WorldDraft]) -> str:
         """Whether the draft plays: 'ok', or the exact reason it will not. Fix what it names and
         call it again; the scenario is only done once it answers 'ok'."""
-        return playability(ctx.deps, playing, brief) or "ok"
+        return scenario_refusal(ctx.deps, playing, brief) or "ok"
 
     return FunctionToolset(tools=[worked_example, scenario_so_far, write, validate_scenario])
 
@@ -350,7 +352,7 @@ def world_agent(
     """Ends on the `finish` tool, not bare text: a tool-only author would never end its own turn."""
 
     def playable(ctx: RunContext[WorldDraft], summary: str) -> str:
-        if reason := playability(ctx.deps, playing, brief):
+        if reason := scenario_refusal(ctx.deps, playing, brief):
             raise ModelRetry(f"the draft does not play yet, so it is not finished: {reason}")
         return summary
 
@@ -523,7 +525,7 @@ class AuthoringSession:
         return result.output
 
     def refusal(self) -> str | None:
-        return playability(self.draft, self.playing, self.brief)
+        return scenario_refusal(self.draft, self.playing, self.brief)
 
     async def write(self) -> str:
         """Revalidates the draft — the agent's 'ok' is never trusted — before it reaches disk."""

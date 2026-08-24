@@ -253,7 +253,7 @@ class Game:
         )
 
 
-def check_draft(
+def draft_refusal(
     state: Game, act: Callable[[Game], object], what: str = "the state this leaves"
 ) -> str | None:
     draft = state.draft()
