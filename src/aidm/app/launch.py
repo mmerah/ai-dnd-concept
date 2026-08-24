@@ -82,7 +82,7 @@ class EngineOption(Frozen):
     badge: tuple[str, str]
 
 
-class ContentOption(Frozen):
+class CatalogEntry(Frozen):
     id: Slug
     title: str
     subtitle: str
@@ -111,8 +111,8 @@ class UnreadableSave(Frozen):
 
 class LauncherCatalog(Frozen):
     engines: tuple[EngineOption, ...]
-    scenarios: tuple[ContentOption, ...]
-    characters: tuple[ContentOption, ...]
+    scenarios: tuple[CatalogEntry, ...]
+    characters: tuple[CatalogEntry, ...]
     saves: tuple[SaveOption, ...]
     unreadable: tuple[UnreadableSave, ...] = ()
 
@@ -122,13 +122,13 @@ class LauncherCatalog(Frozen):
             raise ValueError(f"unknown engine {engine!r}")
         return found.badge
 
-    def scenario(self, scenario_id: Slug) -> ContentOption:
+    def scenario(self, scenario_id: Slug) -> CatalogEntry:
         found = _one(self.scenarios, scenario_id)
         if found is None:
             raise ValueError(f"unknown scenario {scenario_id!r}")
         return found
 
-    def characters_for(self, engine: EngineId) -> tuple[ContentOption, ...]:
+    def characters_for(self, engine: EngineId) -> tuple[CatalogEntry, ...]:
         """A character is playable under any engine it ships an overlay for."""
         return tuple(option for option in self.characters if engine in option.engines)
 
@@ -190,7 +190,7 @@ class LauncherController:
             return ()
         return self.catalog.scenario(self.selected_scenario).engines
 
-    def compatible_characters(self) -> tuple[ContentOption, ...]:
+    def compatible_characters(self) -> tuple[CatalogEntry, ...]:
         if self.selected_engine is None:
             return ()
         return self.catalog.characters_for(self.selected_engine)
@@ -233,20 +233,20 @@ class LauncherController:
             self.selected_character = compatible[0].id if compatible else None
 
 
-def load_catalog(config: Settings) -> LauncherCatalog:
+def load_catalog(settings: Settings) -> LauncherCatalog:
     engine_options = tuple(EngineOption(id=engine.id, badge=engine.badge) for engine in ENGINES)
     engine_ids = tuple(option.id for option in engine_options)
     scenarios = tuple(
-        ContentOption(
+        CatalogEntry(
             id=name, title=scenario.meta.title, subtitle=scenario.meta.premise, engines=playable
         )
-        for name, scenario, playable in read_scenarios(config.scenarios_dir, engine_ids)
+        for name, scenario, playable in read_scenarios(settings.scenarios_dir, engine_ids)
     )
     characters = tuple(
-        ContentOption(id=name, title=profile.name, subtitle=profile.brief, engines=engines)
-        for name, profile, engines in read_characters(config.characters_dir, engine_ids)
+        CatalogEntry(id=name, title=profile.name, subtitle=profile.brief, engines=engines)
+        for name, profile, engines in read_characters(settings.characters_dir, engine_ids)
     )
-    files = FileStore(config.saves_dir)
+    files = FileStore(settings.saves_dir)
     saves: list[SaveOption] = []
     unreadable: list[UnreadableSave] = []
     for slug in files.slugs():
@@ -258,7 +258,7 @@ def load_catalog(config: Settings) -> LauncherCatalog:
             if saved.engine in engine_ids:
                 engine_class(saved.engine).mechanics_type.model_validate(saved.mechanics)
         except (ValidationError, ValueError) as error:
-            unreadable.append(UnreadableSave(slug=slug, problem=_brief(error)))
+            unreadable.append(UnreadableSave(slug=slug, problem=_short_reason(error)))
             continue
         saves.append(_save_option(slug, saved, scenarios, characters))
     return LauncherCatalog(
@@ -273,8 +273,8 @@ def load_catalog(config: Settings) -> LauncherCatalog:
 def _save_option(
     slug: str,
     saved: SavedGame,
-    scenarios: Sequence[ContentOption],
-    characters: Sequence[ContentOption],
+    scenarios: Sequence[CatalogEntry],
+    characters: Sequence[CatalogEntry],
 ) -> SaveOption:
     character = _one(characters, saved.character_id)
     return SaveOption(
@@ -291,8 +291,8 @@ def _save_option(
 
 def _save_refusal(
     saved: SavedGame,
-    scenarios: Sequence[ContentOption],
-    characters: Sequence[ContentOption],
+    scenarios: Sequence[CatalogEntry],
+    characters: Sequence[CatalogEntry],
 ) -> str | None:
     """A save names its own origin, so the only question left is whether that origin still plays."""
     for purpose, wanted, offered in (
@@ -307,9 +307,9 @@ def _save_refusal(
     return None
 
 
-BRIEF_ERROR_WIDTH = 200
+SHORT_REASON_WIDTH = 200
 
 
-def _brief(error: Exception) -> str:
+def _short_reason(error: Exception) -> str:
     """A rejected save shows a one-line reason; a full validation traceback is unreadable."""
-    return shorten(str(error), width=BRIEF_ERROR_WIDTH, placeholder=" ...")
+    return shorten(str(error), width=SHORT_REASON_WIDTH, placeholder=" ...")

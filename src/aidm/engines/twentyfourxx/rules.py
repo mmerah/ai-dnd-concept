@@ -11,10 +11,10 @@ from aidm.engines.core import (
     adjust,
     chipped,
     complete_chapter,
-    dice_by_role,
+    dice_by_slot,
     dice_event,
     render_counters,
-    require_dice_role,
+    require_dice_slot,
     require_sheet,
     spend,
 )
@@ -23,7 +23,7 @@ from aidm.state.creation import CreationOption
 from aidm.state.entities import PLAYER_ID, ContentSlug, Counter, Entity, EntityId, Frozen, Slug
 from aidm.state.facts import Chip, Fact, entity_fact
 from aidm.state.model import Game
-from aidm.state.play import EventBadge, MechanicEvent, Option, OptionId, PendingDecision
+from aidm.state.play import DecisionOption, EventBadge, MechanicEvent, OptionId, PendingDecision
 
 
 @dataclass(frozen=True, slots=True)
@@ -300,7 +300,7 @@ def resolve_stake(draft: Game, action: Attempt, risk: str) -> tuple[Fact, ...]:
     draft.pending = PendingDecision(
         kind="stake",
         prompt=risk,
-        options=(Option(id="proceed", label="Proceed"),),
+        options=(DecisionOption(id="proceed", label="Proceed"),),
         payload=action.model_dump(mode="json"),
     )
     return ()
@@ -336,14 +336,14 @@ def resolve_defence(draft: Game, goal: str, item_id: EntityId | None) -> tuple[F
 
 def _defence_decision(draft: Game, outcome: Slug, goal: str) -> PendingDecision:
     unbroken = tuple(
-        Option(id=item.id, label=f"Break the {item.name}")
+        DecisionOption(id=item.id, label=f"Break the {item.name}")
         for item in draft.world.children(PLAYER_ID, "item")
         if item.trait(BROKEN) is None
     )
     return PendingDecision(
         kind="defence",
         prompt=DEFENCE_PROMPT,
-        options=(*unbroken, Option(id=TAKE_THE_HIT, label="Take the hit")),
+        options=(*unbroken, DecisionOption(id=TAKE_THE_HIT, label="Take the hit")),
         payload={"outcome": outcome, "goal": goal},
     )
 
@@ -353,7 +353,7 @@ def resolve_attempt(draft: Game, action: Attempt, rng: Random) -> tuple[Fact, ..
 
     faces = pool_faces(sheet, action, helper_sheet)
     kept, rolled = roll_pool(
-        faces, f"{action.goal} — {action.skill or 'no skill'}", rng, role="pool"
+        faces, f"{action.goal} — {action.skill or 'no skill'}", rng, slot="pool"
     )
     facts.append(rolled)
 
@@ -406,7 +406,7 @@ def _helper_sheet(draft: Game, actor: Entity, action: Attempt, facts: list[Fact]
 
 
 def _bad_luck(draft: Game, actor: Entity, subject: str, rng: Random) -> list[Fact]:
-    kept, rolled = roll_pool((6,), f"bad luck — {subject}", rng, role="luck")
+    kept, rolled = roll_pool((6,), f"bad luck — {subject}", rng, slot="luck")
     if kept > RULES.signs_at:
         return [rolled]
     trouble = kept <= RULES.trouble_at
@@ -442,9 +442,9 @@ def attempt_events(source: str, facts: tuple[Fact, ...]) -> tuple[MechanicEvent,
     effects = tuple(
         fact.narrator for fact in facts if fact.kind == "luck_tested" and fact.narrator is not None
     )
-    dice = [dice_event("Pool", require_dice_role(facts, "pool"))]
+    dice = [dice_event("Pool", require_dice_slot(facts, "pool"))]
     # A riding luck test shows its die even when it came up clear and left no `luck_tested` fact.
-    if (luck_roll := dice_by_role(facts, "luck")) is not None:
+    if (luck_roll := dice_by_slot(facts, "luck")) is not None:
         dice.append(dice_event("Luck", luck_roll))
     event = MechanicEvent(
         source=source,
@@ -458,7 +458,7 @@ def attempt_events(source: str, facts: tuple[Fact, ...]) -> tuple[MechanicEvent,
 
 
 def luck_test_events(facts: tuple[Fact, ...]) -> tuple[MechanicEvent, ...]:
-    rolled = require_dice_role(facts, "luck")
+    rolled = require_dice_slot(facts, "luck")
     tested = next((fact for fact in facts if fact.kind == "luck_tested"), None)
     outcome = ""
     if tested is not None and tested.narrator is not None:

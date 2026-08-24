@@ -74,7 +74,7 @@ class ScenarioPatch(Frozen):
     remove: tuple[str, ...] = ()
 
 
-class WorldDraft(Mutable):
+class ScenarioDraft(Mutable):
     """The scenario under authorship, flat in `ScenarioPatch` vocabulary until `scenario()`."""
 
     grows: bool = False
@@ -86,7 +86,7 @@ class WorldDraft(Mutable):
     threads: list[Thread] = Field(default_factory=list)
 
     @classmethod
-    def from_scenario(cls, scenario: Scenario) -> "WorldDraft":
+    def from_scenario(cls, scenario: Scenario) -> "ScenarioDraft":
         return cls(
             grows=scenario.grows,
             art_style=scenario.art_style,
@@ -98,7 +98,7 @@ class WorldDraft(Mutable):
         )
 
     @classmethod
-    def from_game(cls, state: Game) -> "WorldDraft":
+    def from_game(cls, state: Game) -> "ScenarioDraft":
         """Exclude player-owned state because `Scenario` refuses it."""
         world = state.world
         return cls(
@@ -187,13 +187,13 @@ class PlaytestCheck:
         _ = begin_game(self.engine, "draft", scenario, self.character)
 
 
-def playtest_checks(config: Settings, engines: Sequence[EngineId]) -> tuple[PlaytestCheck, ...]:
+def playtest_checks(settings: Settings, engines: Sequence[EngineId]) -> tuple[PlaytestCheck, ...]:
     built: list[PlaytestCheck] = []
     for engine_id in engines:
         engine = build_engine(engine_id)
         character = load_character(
-            config.characters_dir,
-            config.authoring.starter_character,
+            settings.characters_dir,
+            settings.authoring.starter_character,
             engine.id,
             engine.check_overlay,
         )
@@ -296,7 +296,7 @@ def extend_brief(before: WorldState) -> AuthoringBrief:
 
 
 def scenario_refusal(
-    draft: WorldDraft, playing: Sequence[PlaytestCheck], brief: AuthoringBrief = WHOLE_SCENARIO
+    draft: ScenarioDraft, playing: Sequence[PlaytestCheck], brief: AuthoringBrief = WHOLE_SCENARIO
 ) -> str | None:
     """The exact reason the draft will not play, or None; ValidationError counts as ValueError."""
     try:
@@ -313,21 +313,21 @@ def scenario_refusal(
 
 def authoring_toolset(
     playing: Sequence[PlaytestCheck],
-    config: Settings,
+    settings: Settings,
     brief: AuthoringBrief = WHOLE_SCENARIO,
-) -> FunctionToolset[WorldDraft]:
+) -> FunctionToolset[ScenarioDraft]:
     def worked_example() -> str:
         """The shipped scenario in the draft shape patches are written in: the bar to match."""
-        return WorldDraft.from_scenario(
-            load_scenario(config.scenarios_dir, config.authoring.worked_example)
+        return ScenarioDraft.from_scenario(
+            load_scenario(settings.scenarios_dir, settings.authoring.worked_example)
         ).as_json()
 
-    def scenario_so_far(ctx: RunContext[WorldDraft]) -> str:
+    def scenario_so_far(ctx: RunContext[ScenarioDraft]) -> str:
         """The whole draft as it stands, as pretty JSON: read it back before modifying or
         removing anything, so every id you name is one it actually holds."""
         return ctx.deps.as_json()
 
-    def write(ctx: RunContext[WorldDraft], patch: ScenarioPatch) -> str:
+    def write(ctx: RunContext[ScenarioDraft], patch: ScenarioPatch) -> str:
         """Apply one patch to the draft. An element whose id the draft already holds is replaced
         whole, so send the complete element when modifying one; `remove` drops ids from whichever
         collection holds them. Returns each change as `created|modified|deleted kind name[id]`."""
@@ -336,7 +336,7 @@ def authoring_toolset(
         except ValueError as refused:
             raise ModelRetry(str(refused)) from refused
 
-    def validate_scenario(ctx: RunContext[WorldDraft]) -> str:
+    def validate_scenario(ctx: RunContext[ScenarioDraft]) -> str:
         """Whether the draft plays: 'ok', or the exact reason it will not. Fix what it names and
         call it again; the scenario is only done once it answers 'ok'."""
         return scenario_refusal(ctx.deps, playing, brief) or "ok"
@@ -344,21 +344,21 @@ def authoring_toolset(
     return FunctionToolset(tools=[worked_example, scenario_so_far, write, validate_scenario])
 
 
-def world_agent(
+def scenario_agent(
     playing: Sequence[PlaytestCheck],
-    config: Settings,
+    settings: Settings,
     brief: AuthoringBrief = WHOLE_SCENARIO,
-) -> Agent[WorldDraft, str]:
+) -> Agent[ScenarioDraft, str]:
     """Ends on the `finish` tool, not bare text: a tool-only author would never end its own turn."""
 
-    def playable(ctx: RunContext[WorldDraft], summary: str) -> str:
+    def playable(ctx: RunContext[ScenarioDraft], summary: str) -> str:
         if reason := scenario_refusal(ctx.deps, playing, brief):
             raise ModelRetry(f"the draft does not play yet, so it is not finished: {reason}")
         return summary
 
     return build_agent(
         "scenario_creator",
-        config,
+        settings,
         instructions=brief.instructions,
         output_type=ToolOutput(
             str,
@@ -368,8 +368,8 @@ def world_agent(
                 "is two or three sentences on what you authored."
             ),
         ),
-        deps_type=WorldDraft,
-        toolsets=[authoring_toolset(playing, config, brief)],
+        deps_type=ScenarioDraft,
+        toolsets=[authoring_toolset(playing, settings, brief)],
         validator=playable,
     )
 
@@ -399,31 +399,31 @@ class ExtensionPatch(Frozen):
 
 
 async def author_extension(
-    config: Settings,
+    settings: Settings,
     engine: Engine,
     character: Character,
     state: Game,
 ) -> ExtensionPatch:
     """Run once because `finish` retries unplayable drafts inside the agent run."""
-    document = source_file(config.scenarios_dir, state.scenario_id)
-    draft = WorldDraft.from_game(state)
+    document = source_file(settings.scenarios_dir, state.scenario_id)
+    draft = ScenarioDraft.from_game(state)
     playing = (PlaytestCheck(engine=engine, character=character),)
-    agent = world_agent(playing, config, extend_brief(state.world))
+    agent = scenario_agent(playing, settings, extend_brief(state.world))
     given = (
         state.scenario.premise
         if document is None
-        else whole_text(document, config.authoring.source_max_chars)
+        else whole_text(document, settings.authoring.source_max_chars)
     )
     heading = "PREMISE:" if document is None else "SOURCE DOCUMENT:"
     _ = await agent.run(
         f"{heading}\n{given}\n\nExtend the world `scenario_so_far` holds.",
         deps=draft,
-        usage_limits=UsageLimits(request_limit=config.authoring.request_limit),
+        usage_limits=UsageLimits(request_limit=settings.authoring.request_limit),
     )
-    return delta(state.world, draft)
+    return extension_patch(state.world, draft)
 
 
-def delta(before: WorldState, after: WorldDraft) -> ExtensionPatch:
+def extension_patch(before: WorldState, after: ScenarioDraft) -> ExtensionPatch:
     """Keep additions and new exits, but ignore edits to existing canon."""
     held = {entity.id: entity for entity in before.entities}
     opened = {thread.id for thread in before.threads}
@@ -485,7 +485,7 @@ class AuthoringSession:
 
     slug: Slug
     premise: str
-    config: Settings
+    settings: Settings
     grows: bool
     engines: tuple[EngineId, ...]
     art_style: str = ""
@@ -494,22 +494,22 @@ class AuthoringSession:
     history: list[ModelMessage] = field(default_factory=list)
     busy: bool = False
     playing: tuple[PlaytestCheck, ...] = field(init=False)
-    agent: Agent[WorldDraft, str] = field(init=False)
-    draft: WorldDraft = field(init=False)
+    agent: Agent[ScenarioDraft, str] = field(init=False)
+    draft: ScenarioDraft = field(init=False)
     opening_prompt: str = field(init=False)
 
     def __post_init__(self) -> None:
         if self.document is None and not self.premise:
             raise ValueError("give a premise, a document, or both: there is nothing to author from")
-        if (self.config.scenarios_dir / self.slug).exists():
+        if (self.settings.scenarios_dir / self.slug).exists():
             raise ValueError(f"scenario {self.slug!r} already exists")
-        self.playing = playtest_checks(self.config, self.engines)
-        self.agent = world_agent(self.playing, self.config, self.brief)
-        self.draft = WorldDraft(grows=self.grows)
+        self.playing = playtest_checks(self.settings, self.engines)
+        self.agent = scenario_agent(self.playing, self.settings, self.brief)
+        self.draft = ScenarioDraft(grows=self.grows)
         given = (
             self.premise
             if self.document is None
-            else whole_text(self.document, self.config.authoring.source_max_chars)
+            else whole_text(self.document, self.settings.authoring.source_max_chars)
         )
         self.opening_prompt = world_prompt(self.slug, given, self.document is not None)
 
@@ -519,7 +519,7 @@ class AuthoringSession:
             instruction,
             deps=self.draft,
             message_history=self.history,
-            usage_limits=UsageLimits(request_limit=self.config.authoring.request_limit),
+            usage_limits=UsageLimits(request_limit=self.settings.authoring.request_limit),
         )
         self.history = list(result.all_messages())
         return result.output
@@ -535,6 +535,6 @@ class AuthoringSession:
         self.draft.art_style = self.art_style or self.draft.art_style
         scenario = self.draft.scenario(self.engines)
         write_scenario(
-            self.config.scenarios_dir, self.slug, scenario, self.document or self.premise
+            self.settings.scenarios_dir, self.slug, scenario, self.document or self.premise
         )
         return summarize(scenario)

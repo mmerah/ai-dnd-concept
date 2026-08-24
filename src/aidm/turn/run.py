@@ -32,11 +32,11 @@ from aidm.state.facts import Fact, narrator_evidence, narrator_lines
 from aidm.state.model import AdvanceThread, Game, draft_refusal
 from aidm.state.play import (
     Answer,
+    DecisionOption,
     Exchange,
     Line,
     MechanicEvent,
     Narration,
-    Option,
     PendingDecision,
     StepTrace,
     TurnTrace,
@@ -325,7 +325,7 @@ class TurnResult:
     turn: TurnTrace
 
 
-type TurnStep = Literal["director", "narrator", "worldsmith"]
+type TurnStep = Literal["director", "narrator", "scenario_creator"]
 
 
 async def run_segment(
@@ -468,7 +468,7 @@ def _resume(
     engine: Engine,
     draft: Game,
     pending: PendingDecision,
-    option: Option,
+    option: DecisionOption,
     rng: Random,
     log: TurnRecord,
 ) -> tuple[Fact, ...]:

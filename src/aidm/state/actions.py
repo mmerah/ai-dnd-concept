@@ -12,8 +12,8 @@ def _sentence(text: str) -> str:
     return text[:1].upper() + text[1:]
 
 
-def roll_pool(faces: Sequence[int], reason: str, rng: Random, *, role: str) -> tuple[int, Fact]:
-    """Keeps the highest die; `role` tags this roll for a projection, stable across resolvers."""
+def roll_pool(faces: Sequence[int], reason: str, rng: Random, *, slot: str) -> tuple[int, Fact]:
+    """Keeps the highest die; `slot` tags this roll for a projection, stable across resolvers."""
     if not faces:
         raise ValueError("a dice pool rolls at least one die")
     drawn = tuple(rng.randint(1, face) for face in faces)
@@ -27,7 +27,7 @@ def roll_pool(faces: Sequence[int], reason: str, rng: Random, *, role: str) -> t
             "rolled": list(drawn),
             "kept": kept,
             "reason": reason,
-            "role": role,
+            "slot": slot,
         },
     )
 

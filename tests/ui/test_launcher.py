@@ -14,7 +14,7 @@ from aidm.state.entities import EngineId
 from aidm.state.model import Game
 
 
-def _opening_state(config: Settings, engine: EngineId) -> Game:
+def _opening_state(settings: Settings, engine: EngineId) -> Game:
     """The launcher reads saves, so a test needs a state a real game would have written."""
     target = LaunchTarget(
         slug="poc",
@@ -22,7 +22,7 @@ def _opening_state(config: Settings, engine: EngineId) -> Game:
         character_id="kael",
         engine=engine,
     )
-    return Runtime(config).session(target).state
+    return Runtime(settings).session(target).state
 
 
 def _scenarios_copy(tmp_path: Path) -> Path:
@@ -88,10 +88,10 @@ def test_a_scenario_naming_an_uninstalled_engine_is_skipped(tmp_path: Path) -> N
 
 
 def test_launcher_lists_and_resolves_an_existing_save(tmp_path: Path) -> None:
-    config = ui_settings(tmp_path)
-    FileStore(tmp_path).save("old-game", SavedGame.from_game(_opening_state(config, LONER3E)))
+    settings = ui_settings(tmp_path)
+    FileStore(tmp_path).save("old-game", SavedGame.from_game(_opening_state(settings, LONER3E)))
 
-    controller = LauncherController(load_catalog(config))
+    controller = LauncherController(load_catalog(settings))
     saved = controller.catalog.save("old-game")
 
     assert (saved.scenario_title, saved.character_title, saved.turn) == (
@@ -108,22 +108,22 @@ def test_launcher_lists_and_resolves_an_existing_save(tmp_path: Path) -> None:
 
 
 def test_a_save_whose_rules_were_withdrawn_is_reported_not_offered(tmp_path: Path) -> None:
-    config = ui_settings(tmp_path)
-    state = _opening_state(config, LONER3E)
+    settings = ui_settings(tmp_path)
+    state = _opening_state(settings, LONER3E)
     FileStore(tmp_path).save("withdrawn", updated(SavedGame.from_game(state), engine="retired"))
 
-    saved = load_catalog(config).save("withdrawn")
+    saved = load_catalog(settings).save("withdrawn")
 
     assert not saved.resumable
     assert saved.problem == "scenario 'whispering-vault' no longer offers the 'retired' engine"
 
 
 def test_one_corrupt_save_does_not_hide_the_others_and_stays_readable(tmp_path: Path) -> None:
-    config = ui_settings(tmp_path)
-    FileStore(tmp_path).save("good", SavedGame.from_game(_opening_state(config, LONER3E)))
+    settings = ui_settings(tmp_path)
+    FileStore(tmp_path).save("good", SavedGame.from_game(_opening_state(settings, LONER3E)))
     (tmp_path / "broken.json").write_text("{not json", encoding=ENCODING)
 
-    catalog = load_catalog(config)
+    catalog = load_catalog(settings)
 
     assert [save.slug for save in catalog.saves] == ["good"]
     assert [broken.slug for broken in catalog.unreadable] == ["broken"]
@@ -137,12 +137,12 @@ def test_one_corrupt_save_does_not_hide_the_others_and_stays_readable(tmp_path: 
 
 
 def test_a_save_whose_body_is_stale_is_reported_not_offered(tmp_path: Path) -> None:
-    config = ui_settings(tmp_path)
-    body = json.loads(SavedGame.from_game(_opening_state(config, LONER3E)).model_dump_json())
+    settings = ui_settings(tmp_path)
+    body = json.loads(SavedGame.from_game(_opening_state(settings, LONER3E)).model_dump_json())
     body["history"] = [{"prompt": "test", "lines": [], "events": [], "outcomes": []}]
     (tmp_path / "stale.json").write_text(json.dumps(body), encoding=ENCODING)
 
-    catalog = load_catalog(config)
+    catalog = load_catalog(settings)
 
     assert not catalog.saves
     assert [broken.slug for broken in catalog.unreadable] == ["stale"]
@@ -150,12 +150,12 @@ def test_a_save_whose_body_is_stale_is_reported_not_offered(tmp_path: Path) -> N
 
 
 def test_a_save_whose_mechanics_are_broken_is_reported_not_offered(tmp_path: Path) -> None:
-    config = ui_settings(tmp_path)
-    body = json.loads(SavedGame.from_game(_opening_state(config, LONER3E)).model_dump_json())
+    settings = ui_settings(tmp_path)
+    body = json.loads(SavedGame.from_game(_opening_state(settings, LONER3E)).model_dump_json())
     body["mechanics"] = {"not": "the loner3e shape"}
     (tmp_path / "broken-mechanics.json").write_text(json.dumps(body), encoding=ENCODING)
 
-    catalog = load_catalog(config)
+    catalog = load_catalog(settings)
 
     assert not catalog.saves
     assert [broken.slug for broken in catalog.unreadable] == ["broken-mechanics"]

@@ -162,11 +162,11 @@ async def played(
     rng: Random | None = None,
     on_step: Callable[[TurnStep], None] | None = None,
     on_event: Callable[[MechanicEvent], None] | None = None,
-    config: Settings | None = None,
+    settings: Settings | None = None,
 ) -> TurnResult:
     """Build a session-style turn with every model role stubbed."""
-    config = config or settings()
-    stages = build_turn_agents(engine, config)
+    settings = settings or offline_settings()
+    stages = build_turn_agents(engine, settings)
     narrator = narrator or FunctionModel(scripted(narrated("You wait.")))
     with ExitStack() as stack:
         stack.enter_context(stages.director.override(model=director))
@@ -176,14 +176,14 @@ async def played(
             player_input,
             engine=engine,
             stages=stages,
-            settings=config,
+            settings=settings,
             rng=Random(0) if rng is None else rng,
             on_step=on_step,
             on_event=on_event,
         )
 
 
-def settings() -> Settings:
+def offline_settings() -> Settings:
     return EnvFileFreeSettings(
         providers=Providers(
             openrouter=ProviderConfig(

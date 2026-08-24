@@ -20,10 +20,10 @@ from aidm.app.authoring import (
     ExitLink,
     ExtensionPatch,
     PlaytestCheck,
+    ScenarioDraft,
     ScenarioPatch,
-    WorldDraft,
-    delta,
     extend_brief,
+    extension_patch,
     scenario_refusal,
 )
 from aidm.app.runtime import GameSession
@@ -71,12 +71,12 @@ def _stub_author(monkeypatch: pytest.MonkeyPatch) -> list[Game]:
     seen: list[Game] = []
 
     async def authored(
-        config: Settings,
+        settings: Settings,
         engine: Engine,
         character: Character,
         state: Game,
     ) -> ExtensionPatch:
-        del config, engine, character
+        del settings, engine, character
         seen.append(state)
         return _ADDED
 
@@ -96,7 +96,7 @@ async def _turn(game: GameSession, on_step: Callable[[TurnStep], None] | None = 
 
 def test_the_live_world_becomes_a_scenario_the_extending_author_can_hold(tmp_path: Path) -> None:
     game = loner3e_session(tmp_path)
-    draft = WorldDraft.from_game(game.state)
+    draft = ScenarioDraft.from_game(game.state)
     scenario = draft.scenario((LONER3E,))
 
     ids = {entity.id for entity in scenario.world.entities}
@@ -116,7 +116,7 @@ def test_the_live_world_becomes_a_scenario_the_extending_author_can_hold(tmp_pat
 
 def test_delta_is_the_canon_a_pass_added_and_the_ways_into_it(tmp_path: Path) -> None:
     game = loner3e_session(tmp_path)
-    draft = WorldDraft.from_game(game.state)
+    draft = ScenarioDraft.from_game(game.state)
     cloister = next(entity for entity in draft.entities if entity.id == EntityId("cloister"))
     edited_cloister = updated(cloister, exits=[*cloister.exits, Exit(to=_CRYPT_ID)], brief="edited")
     _ = draft.apply(
@@ -126,7 +126,7 @@ def test_delta_is_the_canon_a_pass_added_and_the_ways_into_it(tmp_path: Path) ->
         )
     )
 
-    patch = delta(game.state.world, draft)
+    patch = extension_patch(game.state.world, draft)
 
     assert [entity.id for entity in patch.entities] == [_CRYPT_ID]
     assert patch.exits == (ExitLink(location_id=EntityId("cloister"), to=_CRYPT_ID),)
@@ -144,7 +144,7 @@ async def test_a_thin_world_grows_inside_the_turn_that_ran_it_thin(
     await _turn(game, steps.append)
 
     assert len(seen) == 1
-    assert "worldsmith" in steps
+    assert "scenario_creator" in steps
     grown = game.state.world.find(_CRYPT_ID)
     assert grown is not None
     assert grown.known is False

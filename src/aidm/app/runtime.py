@@ -105,20 +105,20 @@ def build_advisor(
 
 
 def open_media(
-    config: Settings,
+    settings: Settings,
     target: LaunchTarget,
     scenario: Scenario,
     character: Character,
     store: FileStore,
 ) -> Illustrator | None:
     """Share authored icons across games while keeping generated canon and scenes per save."""
-    if not config.media.enabled:
+    if not settings.media.enabled:
         return None
-    scenario_icons = config.scenarios_dir / target.scenario_id / ICON_DIR
-    character_icons = config.characters_dir / target.character_id / ICON_DIR
+    scenario_icons = settings.scenarios_dir / target.scenario_id / ICON_DIR
+    character_icons = settings.characters_dir / target.character_id / ICON_DIR
     return Illustrator(
-        config=config.media,
-        provider=config.providers.for_name(config.media.provider),
+        config=settings.media,
+        provider=settings.providers.for_name(settings.media.provider),
         saves=store.media_dir(target.slug),
         icon_dirs={
             **{entity_id: scenario_icons for entity_id in scenario.world.all_ids()},
@@ -127,7 +127,7 @@ def open_media(
                 for entity_id in (PLAYER_ID, *(item.id for item in character.profile.items))
             },
         },
-        style=scenario.art_style or config.media.style,
+        style=scenario.art_style or settings.media.style,
     )
 
 
@@ -189,7 +189,7 @@ class GameSession:
             and frontier(self.state.world) <= self.settings.authoring.growth_frontier
         ):
             if on_step is not None:
-                on_step("worldsmith")
+                on_step("scenario_creator")
             await self._extend()
         return result.turn
 
@@ -323,7 +323,7 @@ class GameSession:
 class Runtime:
     """The composition root: settings, the built engines, and the games currently open."""
 
-    config: Settings
+    settings: Settings
     _engines: dict[EngineId, Engine] = field(default_factory=dict, repr=False)
     _sessions: dict[str, GameSession] = field(default_factory=dict, repr=False)
 
@@ -331,7 +331,7 @@ class Runtime:
         """Memoised: every open session shares the one built engine."""
         held = self._engines.get(engine_id)
         if held is None:
-            held = build_engine(engine_id, self.config.packs_dir / engine_id)
+            held = build_engine(engine_id, self.settings.packs_dir / engine_id)
             self._engines[engine_id] = held
         return held
 
@@ -347,21 +347,21 @@ class Runtime:
         return opened
 
     def _open(self, target: LaunchTarget) -> GameSession:
-        config = self.config
+        settings = self.settings
         engine = self.engine(target.engine)
-        scenario = load_scenario(config.scenarios_dir, target.scenario_id)
+        scenario = load_scenario(settings.scenarios_dir, target.scenario_id)
         character = load_character(
-            config.characters_dir, target.character_id, engine.id, engine.check_overlay
+            settings.characters_dir, target.character_id, engine.id, engine.check_overlay
         )
-        store = FileStore(config.saves_dir)
+        store = FileStore(settings.saves_dir)
         return GameSession(
             target=target,
             scenario=scenario,
             character=character,
             engine=engine,
-            stages=build_turn_agents(engine, config),
-            advisor=build_advisor(engine, config),
+            stages=build_turn_agents(engine, settings),
+            advisor=build_advisor(engine, settings),
             store=store,
-            settings=config,
-            media=open_media(config, target, scenario, character, store),
+            settings=settings,
+            media=open_media(settings, target, scenario, character, store),
         )

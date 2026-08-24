@@ -70,7 +70,7 @@ class MechanicEvent(Frozen):
 OptionId = Annotated[str, Field(pattern=r"^[a-z0-9_-]+$", max_length=64)]
 
 
-class Option(Frozen):
+class DecisionOption(Frozen):
     id: OptionId
     label: str = Field(min_length=1)
     detail: str = ""
@@ -82,7 +82,7 @@ class PendingDecision(Frozen):
     kind: Slug
     # A prose-less segment replays into model history from this alone, so it can never be empty.
     prompt: str = Field(min_length=1)
-    options: tuple[Option, ...]
+    options: tuple[DecisionOption, ...]
     free_text: bool = True
     payload: dict[str, JsonValue]
 

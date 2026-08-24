@@ -87,8 +87,8 @@ def character_page(runtime: Runtime, engine_id: EngineId) -> None:
                         return
                     try:
                         created = creation.create(title, (brief.value or "").strip(), picks)
-                        slug = text_slug(title, _taken(runtime.config.characters_dir))
-                        write_character(runtime.config.characters_dir, slug, engine_id, created)
+                        slug = text_slug(title, _taken(runtime.settings.characters_dir))
+                        write_character(runtime.settings.characters_dir, slug, engine_id, created)
                     except ValueError as refused:
                         ui.notify(str(refused), type="negative")
                         return
@@ -279,7 +279,7 @@ def _taken(directory: Path) -> tuple[str, ...]:
 _BRIEF_LABELS = {"full": "a whole scenario", "opening": "an opening slice, grown in play"}
 
 
-def scenario_page(config: Settings) -> None:
+def scenario_page(settings: Settings) -> None:
     with page_header("New scenario"):
         pass
     document: Path | None = None
@@ -328,7 +328,7 @@ def scenario_page(config: Settings) -> None:
                 .props("outlined")
             )
             art_style = (
-                ui.input(label="Art style", placeholder=config.media.style)
+                ui.input(label="Art style", placeholder=settings.media.style)
                 .classes("w-full")
                 .props("outlined")
             )
@@ -353,7 +353,7 @@ def scenario_page(config: Settings) -> None:
                     new_session = AuthoringSession(
                         slug=content_id(slug.value or ""),
                         premise=(premise.value or "").strip(),
-                        config=config,
+                        settings=settings,
                         grows=bool(grows.value),
                         engines=_engines(engines.value),
                         art_style=(art_style.value or "").strip(),

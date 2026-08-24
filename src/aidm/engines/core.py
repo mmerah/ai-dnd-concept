@@ -184,18 +184,18 @@ def counter_effect(fact: Fact) -> str:
     return line if entity_id == PLAYER_ID else f"{fact.data['entity_name']}: {line}"
 
 
-def dice_by_role(facts: Sequence[Fact], role: str) -> Fact | None:
+def dice_by_slot(facts: Sequence[Fact], slot: str) -> Fact | None:
     return next(
-        (fact for fact in facts if fact.kind == "dice_rolled" and fact.data.get("role") == role),
+        (fact for fact in facts if fact.kind == "dice_rolled" and fact.data.get("slot") == slot),
         None,
     )
 
 
-def require_dice_role(facts: Sequence[Fact], role: str) -> Fact:
-    """The same lookup for a role a resolver call always rolls, so a miss is a bug, not a case."""
-    found = dice_by_role(facts, role)
+def require_dice_slot(facts: Sequence[Fact], slot: str) -> Fact:
+    """The same lookup for a slot a resolver call always rolls, so a miss is a bug, not a case."""
+    found = dice_by_slot(facts, slot)
     if found is None:
-        raise ValueError(f"no dice_rolled fact carries role {role!r}")
+        raise ValueError(f"no dice_rolled fact carries slot {slot!r}")
     return found
 
 

@@ -15,7 +15,7 @@ from aidm.engines.core import (
     counter_effect,
     dice_event,
     render_counters,
-    require_dice_role,
+    require_dice_slot,
     require_sheet,
 )
 from aidm.state.actions import require_actor_here, roll_pool
@@ -275,8 +275,8 @@ def _twist(
     draft: Game, actor: Entity, rng: Random, twists: tuple[tuple[str, str], ...]
 ) -> list[Fact]:
     """The SRD's table is rolled here so the dice trace; the Director only reads the pairing."""
-    subject_die, subject_fact = roll_pool((RULES.die_face,), "twist — subject", rng, role="subject")
-    action_die, action_fact = roll_pool((RULES.die_face,), "twist — action", rng, role="action")
+    subject_die, subject_fact = roll_pool((RULES.die_face,), "twist — subject", rng, slot="subject")
+    action_die, action_fact = roll_pool((RULES.die_face,), "twist — action", rng, slot="action")
     subject, action = twist_pairing(subject_die, action_die, twists)
     draft.world.pending_notes = (*draft.world.pending_notes, twist_note(subject, action))
     # Echo the unnamed SRD intrusion in the call that rolled it without adding canon.
@@ -325,8 +325,8 @@ def _pair(action: Question, rng: Random) -> tuple[int, int, list[Fact]]:
     face = RULES.die_face
     chance_faces = (face, face) if action.position == "advantage" else (face,)
     risk_faces = (face, face) if action.position == "disadvantage" else (face,)
-    chance, chance_fact = roll_pool(chance_faces, f"{action.question} — chance", rng, role="chance")
-    risk, risk_fact = roll_pool(risk_faces, f"{action.question} — risk", rng, role="risk")
+    chance, chance_fact = roll_pool(chance_faces, f"{action.question} — chance", rng, slot="chance")
+    risk, risk_fact = roll_pool(risk_faces, f"{action.question} — risk", rng, slot="risk")
     return chance, risk, [chance_fact, risk_fact]
 
 
@@ -352,8 +352,8 @@ def question_events(facts: tuple[Fact, ...]) -> tuple[MechanicEvent, ...]:
         title="Oracle",
         badges=tuple(badges),
         dice=(
-            dice_event("Chance", require_dice_role(facts, "chance")),
-            dice_event("Risk", require_dice_role(facts, "risk")),
+            dice_event("Chance", require_dice_slot(facts, "chance")),
+            dice_event("Risk", require_dice_slot(facts, "risk")),
         ),
         outcome=str(answered.data["outcome"]),
         effects=tuple(effects),
@@ -373,8 +373,8 @@ def _twist_event(twist: Fact, facts: tuple[Fact, ...]) -> MechanicEvent:
             EventBadge(label="Action", value=str(twist.data["action"])),
         ),
         dice=(
-            dice_event("Subject", require_dice_role(facts, "subject")),
-            dice_event("Action", require_dice_role(facts, "action")),
+            dice_event("Subject", require_dice_slot(facts, "subject")),
+            dice_event("Action", require_dice_slot(facts, "action")),
         ),
         icon="bolt",
     )

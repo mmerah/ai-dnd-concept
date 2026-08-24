@@ -9,7 +9,7 @@ from nicegui import ui
 
 from aidm.app.runtime import GameSession
 from aidm.state.entities import PLAYER_ID, EntityId
-from aidm.state.play import Answer, DiceEvent, MechanicEvent, Option
+from aidm.state.play import Answer, DecisionOption, DiceEvent, MechanicEvent
 from aidm.turn.context import player_scene
 from aidm.turn.run import TurnStep
 
@@ -136,7 +136,7 @@ _STEP_COPY: dict[TurnStep, tuple[str, str, str]] = {
         "Narrator",
         "Writes what you see and hear this turn.",
     ),
-    "worldsmith": (
+    "scenario_creator": (
         "public",
         "Worldsmith",
         "Writes new places and people into the world, because it was running out of somewhere "
@@ -336,7 +336,7 @@ def decision_panel(view: GameView) -> None:
     if pending is None:
         return
 
-    async def answer(option: Option) -> None:
+    async def answer(option: DecisionOption) -> None:
         if refuse_if_busy(view.session):
             return
         await _send(view, Answer(option_id=option.id), option.label)

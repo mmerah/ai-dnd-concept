@@ -42,7 +42,7 @@
         ],
         "kept": 5,
         "reason": "Does he hear what waits past the vault door without being heard? — chance",
-        "role": "chance"
+        "slot": "chance"
       },
       "chip": null
     },
@@ -59,7 +59,7 @@
         ],
         "kept": 4,
         "reason": "Does he hear what waits past the vault door without being heard? — risk",
-        "role": "risk"
+        "slot": "risk"
       },
       "chip": null
     },

@@ -21,13 +21,15 @@ from aidm.engines.core import (
 from aidm.engines.loner3e.engine import Loner3eEngine
 from aidm.state.facts import Fact
 from aidm.state.model import Game
-from aidm.state.play import Answer, Exchange, Option, OptionId, PendingDecision
+from aidm.state.play import Answer, DecisionOption, Exchange, OptionId, PendingDecision
 from aidm.turn.run import exchanges_to_messages
 
 DECISION = PendingDecision(
     kind="defence",
     prompt="The blow lands unless something of yours breaks. What gives?",
-    options=(Option(id="lantern", label="Break the lantern", detail="Its glass shatters."),),
+    options=(
+        DecisionOption(id="lantern", label="Break the lantern", detail="Its glass shatters."),
+    ),
     payload={"outcome": "setback"},
 )
 

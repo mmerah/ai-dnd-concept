@@ -42,7 +42,7 @@
         ],
         "kept": 8,
         "reason": "Listen at the vault door without being heard — Stealth",
-        "role": "pool"
+        "slot": "pool"
       },
       "chip": null
     },
@@ -78,7 +78,7 @@
         ],
         "kept": 4,
         "reason": "bad luck — something behind the door is already listening back",
-        "role": "luck"
+        "slot": "luck"
       },
       "chip": null
     },

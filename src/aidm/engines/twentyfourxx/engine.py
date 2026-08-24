@@ -214,7 +214,7 @@ class TwentyfourxxAdvancement(Advancement):
             narrate=False,
         )
 
-        earned, dice_fact = roll_pool((6,), "credits earned", rng, role="credits")
+        earned, dice_fact = roll_pool((6,), "credits earned", rng, slot="credits")
         credit_facts = adjust(subject, "credits", sheet.credits, earned, "paid for the job")
         return (grown, dice_fact, *credit_facts)
 

@@ -1,7 +1,7 @@
 from pathlib import Path
 from random import Random
 
-from core_test_support import LONER3E, character, scenario, settings
+from core_test_support import LONER3E, character, offline_settings, scenario
 
 from aidm.app.launch import build_engine
 from aidm.app.runtime import GameSession, LaunchTarget, build_advisor
@@ -14,16 +14,16 @@ TARGET = LaunchTarget(
 
 
 def loner3e_session(directory: Path) -> GameSession:
-    config = settings()
+    settings = offline_settings()
     engine = build_engine(LONER3E)
     return GameSession(
         target=TARGET,
         scenario=scenario(),
         character=character(),
         engine=engine,
-        stages=build_turn_agents(engine, config),
-        advisor=build_advisor(engine, config),
+        stages=build_turn_agents(engine, settings),
+        advisor=build_advisor(engine, settings),
         store=FileStore(directory),
-        settings=config,
+        settings=settings,
         rng=Random(1),
     )

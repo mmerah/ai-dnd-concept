@@ -23,8 +23,8 @@ from .widgets import page_header, show_engine_badge
 LOGGER = logging.getLogger(__name__)
 
 
-def home_page(config: Settings) -> None:
-    controller = LauncherController(load_catalog(config))
+def home_page(settings: Settings) -> None:
+    controller = LauncherController(load_catalog(settings))
     with page_header("AI Dungeon Master", home=False):
         ui.space()
         ui.label("Choose your game").classes("text-sm opacity-80")
@@ -213,7 +213,7 @@ def start() -> None:
 def _register_pages(runtime: Runtime) -> None:
     @ui.page("/")
     def _index() -> None:  # pyright: ignore[reportUnusedFunction]
-        home_page(runtime.config)
+        home_page(runtime.settings)
 
     @ui.page("/game/{slug}/{scenario}/{character}/{engine}")
     def _game(  # pyright: ignore[reportUnusedFunction]
@@ -239,4 +239,4 @@ def _register_pages(runtime: Runtime) -> None:
 
     @ui.page("/create-scenario")
     def _create_scenario() -> None:  # pyright: ignore[reportUnusedFunction]
-        scenario_page(runtime.config)
+        scenario_page(runtime.settings)

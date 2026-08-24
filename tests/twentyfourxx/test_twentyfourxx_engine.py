@@ -38,7 +38,7 @@ from aidm.state.creation import Picks
 from aidm.state.entities import PLAYER_ID, EntityId
 from aidm.state.facts import Fact
 from aidm.state.model import Game
-from aidm.state.play import Answer, Option, PendingDecision
+from aidm.state.play import Answer, DecisionOption, PendingDecision
 
 MARA = EntityId("mara")
 LANTERN = EntityId("lantern")
@@ -429,7 +429,7 @@ def test_a_decision_this_engine_cannot_play_or_read_is_refused() -> None:
             PendingDecision(
                 kind="stake",
                 prompt=RISK,
-                options=(Option(id="proceed", label="Proceed"),),
+                options=(DecisionOption(id="proceed", label="Proceed"),),
                 payload={"goal": "an attempt with no actor"},
             )
         )

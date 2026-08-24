@@ -6,10 +6,10 @@ from core_test_support import (
     game,
     initialized,
     narrated,
+    offline_settings,
     played,
     recorded,
     scripted,
-    settings,
     shown,
     structured,
     text,
@@ -254,7 +254,7 @@ async def test_a_failed_role_never_mutates_the_input_state() -> None:
 
 async def test_a_turn_over_its_role_ceiling_fails_before_any_model_call() -> None:
     engine, state = initialized()
-    tiny = updated(settings(), roles={"director": RoleConfig(max_input_tokens=1)})
+    tiny = updated(offline_settings(), roles={"director": RoleConfig(max_input_tokens=1)})
     before = SavedGame.from_game(state).model_dump_json()
 
     with pytest.raises(ValueError, match="director"):
@@ -263,7 +263,7 @@ async def test_a_turn_over_its_role_ceiling_fails_before_any_model_call() -> Non
             state,
             "I take the map.",
             director=FunctionModel(scripted(text("unreachable"))),
-            config=tiny,
+            settings=tiny,
         )
 
     assert SavedGame.from_game(state).model_dump_json() == before

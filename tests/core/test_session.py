@@ -1,7 +1,7 @@
 from pathlib import Path
 
 import pytest
-from core_test_support import settings, updated
+from core_test_support import offline_settings, updated
 from loner3e_test_support import TARGET
 from loner3e_test_support import loner3e_session as session
 
@@ -64,7 +64,7 @@ def test_exporting_the_journal_writes_a_file_a_restart_then_discards(tmp_path: P
 
 
 def test_one_open_game_per_slug_and_it_keeps_the_origin_it_was_opened_with(tmp_path: Path) -> None:
-    runtime = Runtime(updated(settings(), saves_dir=tmp_path))
+    runtime = Runtime(updated(offline_settings(), saves_dir=tmp_path))
     opened = runtime.session(TARGET)
 
     assert runtime.session(TARGET) is opened
