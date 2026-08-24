@@ -148,10 +148,14 @@ def staked_before_rolling(result: TurnResult) -> bool:
     )
 
 
-def won_climbs_arrive(result: TurnResult) -> bool:
-    """Require successful climbs to arrive while allowing failed climbs to remain below."""
-    won = any(fact.data.get("outcome") in WON for fact in result.turn.facts)
-    return not won or inside(result, "player", "bell_tower")
+def unless_lost(holds: Callable[[TurnResult], bool]) -> Callable[[TurnResult], bool]:
+    """A lost roll fairly strands the climber below, so its consequences go unscored."""
+
+    def check(result: TurnResult) -> bool:
+        outcomes = [fact.data.get("outcome") for fact in result.turn.facts]
+        return any(o is not None and o not in WON for o in outcomes) or holds(result)
+
+    return check
 
 
 def cases_for(engine_id: EngineId, settings: Settings) -> tuple[Case, ...]:
@@ -197,10 +201,13 @@ def cases_for(engine_id: EngineId, settings: Settings) -> tuple[Case, ...]:
                 "up there I see the woman who keeps it standing among the beams."
             ),
             expectations=(
-                Expectation("player-in-tower", lambda r: inside(r, "player", "bell_tower")),
-                Expectation("elena-known", lambda r: known(r, "elena")),
                 Expectation(
-                    "archivist-found", lambda r: staged_at(r, "vault-seal", "archivist-found")
+                    "player-in-tower", unless_lost(lambda r: inside(r, "player", "bell_tower"))
+                ),
+                Expectation("elena-known", unless_lost(lambda r: known(r, "elena"))),
+                Expectation(
+                    "archivist-found",
+                    unless_lost(lambda r: staged_at(r, "vault-seal", "archivist-found")),
                 ),
             ),
             setup=in_cloister("bell_tower"),
@@ -236,7 +243,9 @@ def cases_for(engine_id: EngineId, settings: Settings) -> tuple[Case, ...]:
             expectations=(
                 *stake_checks,
                 Expectation("dice-rolled", lambda r: has_fact(r, "dice_rolled")),
-                Expectation("win-upstairs", won_climbs_arrive),
+                Expectation(
+                    "win-upstairs", unless_lost(lambda r: inside(r, "player", "bell_tower"))
+                ),
             ),
             setup=in_cloister("bell_tower"),
         ),

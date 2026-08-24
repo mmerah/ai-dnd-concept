@@ -1,7 +1,5 @@
 ## Loose ends
-- [] Eval baseline-interruptible (2026-08-22, 9 repeats): 96/99 runs pass; only open-the-way-and-climb drops (24xx 78%, loner3e 89%) because a staked-then-lost climb fairly strands the player below — tighten the case in evals/turn_eval.py (score arrival only on a won roll, like risky-climb's win-upstairs), not the director.
 
-- [] Codex: Comment simplification round
 - [] CONFIG_VARIABLES into config, no magic variable/global VARIABLE anywhere. Re-organization of codebase (kinda done already), clearer, easier to navigate, files have a structure that make sense, models are in separate files, clean functional programming. No change in behavior
 - [] RAG on scenarios? .pdf -> source.md in scenario/<id>/ folder, then RAG on it?
 - [] naming: variables, files, methods, classes generally need some renaming to represent more clearly what they do, and with more details
@@ -13,7 +11,6 @@
 
 ## Ideas
 
-- [] Codex: Comment simplification round
 - [] Improved naming of variables, fields, methods, classes, ... Sometimes it is too unclear what they do
 - [] Cleaner codebase: the global CONFIG_VARIABLES look very unclean everytime I see them. Wonder how we could do that a bit better.
 - [] Multiple rounds of refactors: no change in behavior, improvements in consistency in the codebase, removing useless ceremony, SOLID/DRY/KISS, type safety, fail fast.
