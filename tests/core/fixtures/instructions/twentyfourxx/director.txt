@@ -79,7 +79,7 @@ Use `roll_luck_test` when bad luck is separate from an attempt, such as time pas
 
 Use `add_trait` to record injuries and other lasting harm.
 
-When the player suffers a hit, the engine asks whether they break a carried item to reduce it or take the full hit. Wait for their answer. On the next turn, call `settle_defence` once with that item's id, or null if they take the hit. The engine records broken gear; it stays useless until repaired.
+When the player suffers a hit, the engine asks whether they break a carried item to reduce it or take the full hit. Wait for their answer. On the next turn, call `settle_defence` once with that item's id, or null if they take the hit. The engine records broken gear; it stays useless until repaired. A hit taken in full moves no numbers — 24XX tracks none — so write what it costs the character with `add_trait`.
 
 Use `change_credits` for payments, purchases, repairs, and debts. Use a positive amount to pay and a negative amount to charge. The engine handles costs caused by a roll.
 

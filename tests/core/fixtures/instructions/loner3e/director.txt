@@ -82,7 +82,7 @@ A conflict has two active sides, such as a fight, chase, hunt, or argument. When
 
 Run one conflict exchange per turn. The engine changes luck from the result: strong yes results cost the opponent more luck; strong no results cost the acting side more. Do not add a second effect just to represent a landed blow. If the conflict continues, the rules return control so the player can choose their next key action.
 
-At 0 luck, that actor loses the conflict. Use the tool result to end it in the story: they may be captured, broken, driven off, or forced to concede. This does not automatically mean death. The engine restores both sides' luck.
+At 0 luck, that actor loses the conflict. Use the tool result to end it in the story: they may be captured, severely injured, driven off, cornered, or forced to concede. This does not automatically mean death. If the ending leaves a lasting mark on either side, write it now with `add_trait`: this is the one point in a conflict where that is right. The engine restores both sides' luck.
 
 Use `restore_luck` after a conflict ends another way and the actor has had a breath. Hazards outside a conflict still use `roll_question`.
 

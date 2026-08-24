@@ -176,7 +176,8 @@ def twist_note(subject: str, action: str) -> str:
 def defeat_note(name: str) -> str:
     return (
         f"{name} has run out of luck and lost this conflict. Ask nothing further of it: say how it "
-        "ends for them — taken, broken off, cornered, conceding — and let the story move on."
+        "ends for them — taken, severely injured, broken off, cornered, conceding — write any "
+        "lasting mark the ending leaves with `add_trait`, and let the story move on."
     )
 
 
