@@ -2,7 +2,7 @@ from collections.abc import Callable, Iterable, Sequence
 from dataclasses import dataclass, field
 from pathlib import Path
 
-from pydantic import Field, JsonValue
+from pydantic import Field, JsonValue, ValidationError
 from pydantic_ai import Agent, ModelRetry, RunContext, ToolOutput, UsageLimits
 from pydantic_ai.messages import ModelMessage
 from pydantic_ai.toolsets import FunctionToolset
@@ -73,6 +73,14 @@ class ScenarioPatch(Frozen):
     threads: tuple[Thread, ...] = ()
     remove: tuple[str, ...] = ()
 
+    def scenario_wide(self) -> list[str]:
+        """What this patch sets for the scenario itself: optional here means leave it alone."""
+        return [
+            name
+            for name, field in type(self).model_fields.items()
+            if field.default is None and getattr(self, name) is not None
+        ]
+
 
 class ScenarioDraft(Mutable):
     """The scenario under authorship, flat in `ScenarioPatch` vocabulary until `scenario()`."""
@@ -119,18 +127,9 @@ class ScenarioDraft(Mutable):
 
     def apply(self, patch: ScenarioPatch) -> str:
         changed: list[str] = []
-        if patch.meta is not None:
-            self.meta = patch.meta
-            changed.append("set meta")
-        if patch.starting_location_id is not None:
-            self.starting_location_id = patch.starting_location_id
-            changed.append("set starting_location_id")
-        if patch.starting_party is not None:
-            self.starting_party = patch.starting_party
-            changed.append("set starting_party")
-        if patch.art_style is not None:
-            self.art_style = patch.art_style
-            changed.append("set art_style")
+        for name in patch.scenario_wide():
+            setattr(self, name, getattr(patch, name))
+            changed.append(f"set {name}")
         changed.extend(_upsert(self.entities, patch.entities))
         changed.extend(_upsert(self.threads, patch.threads))
         changed.extend(self._remove(target) for target in patch.remove)
@@ -146,6 +145,33 @@ class ScenarioDraft(Mutable):
                 "exactly as it spells them"
             )
         return _describe(removed, "deleted")
+
+    def connect(
+        self, from_id: EntityId, to_id: EntityId, known: bool, locked: bool, one_way: bool
+    ) -> str:
+        if from_id == to_id:
+            raise ValueError(f"a way leads somewhere other than {from_id!r}")
+        ends = {from_id: self._require_location(from_id), to_id: self._require_location(to_id)}
+        ways = ((from_id, to_id),) if one_way else ((from_id, to_id), (to_id, from_id))
+        # Appending to `exits` skips validation, so every refusal lands before the first append.
+        for start, end in ways:
+            if ends[start].exit_to(end) is not None:
+                raise ValueError(f"a way already leads from {start!r} to {end!r}")
+            if known and not (ends[start].known and ends[end].known):
+                raise ValueError(
+                    f"a known way from {start!r} to {end!r} names a place the player has not "
+                    "met; leave it unknown until both ends are"
+                )
+        for start, end in ways:
+            ends[start].exits.append(Exit(to=end, known=known, locked=locked))
+        return f"joined {from_id} to {to_id} {'one way' if one_way else 'both ways'}"
+
+    def _require_location(self, entity_id: EntityId) -> Entity:
+        found = _index(self.entities, entity_id)
+        held = None if found is None else self.entities[found]
+        if held is None or held.kind != "location":
+            raise ValueError(f"the draft holds no location {entity_id!r}")
+        return held
 
     def as_json(self) -> str:
         return self.model_dump_json(indent=2, exclude={"grows"})
@@ -170,11 +196,6 @@ class ScenarioDraft(Mutable):
 
 
 _PROMPTS_DIR = Path(__file__).parent / "prompts"
-_BASE_INSTRUCTIONS = engine_text(_PROMPTS_DIR / "scenario_world.md")
-
-
-def _instructions(bar: str) -> str:
-    return f"{_BASE_INSTRUCTIONS}\n\n{engine_text(_PROMPTS_DIR / bar)}"
 
 
 @dataclass(frozen=True, slots=True)
@@ -257,15 +278,16 @@ def _opening_unmet(scenario: Scenario) -> list[str]:
 
 @dataclass(frozen=True, slots=True)
 class AuthoringBrief:
-    """How much world one run authors: the instructions it works from and the bar it is held to."""
+    """How much world one run authors: the bar it is held to, and the canon it may not rewrite."""
 
-    instructions: str
+    bar_prompt: str
     unmet: Callable[[Scenario], list[str]]
+    settled: frozenset[str] = frozenset()
 
 
-WHOLE_SCENARIO = AuthoringBrief(_instructions("scenario_bar.md"), _bar_unmet)
+WHOLE_SCENARIO = AuthoringBrief("scenario_bar.md", _bar_unmet)
 # An opening slice is deliberately thin: the rest of the world is written during play.
-OPENING_SLICE = AuthoringBrief(_instructions("scenario_opening.md"), _opening_unmet)
+OPENING_SLICE = AuthoringBrief("scenario_opening.md", _opening_unmet)
 
 
 def extend_brief(before: WorldState) -> AuthoringBrief:
@@ -292,7 +314,24 @@ def extend_brief(before: WorldState) -> AuthoringBrief:
             ]
         return []
 
-    return AuthoringBrief(_instructions("scenario_extend.md"), unmet)
+    return AuthoringBrief(
+        "scenario_extend.md", unmet, frozenset(held | {thread.id for thread in before.threads})
+    )
+
+
+def _instructions(settings: Settings, brief: AuthoringBrief) -> str:
+    """The worked example rides in the prompt, so reading it costs no tool call."""
+    example = ScenarioDraft.from_scenario(
+        load_scenario(settings.scenarios_dir, settings.authoring.worked_example)
+    ).as_json()
+    return "\n\n".join(
+        (
+            engine_text(_PROMPTS_DIR / "scenario_world.md"),
+            engine_text(_PROMPTS_DIR / brief.bar_prompt),
+            engine_text(_PROMPTS_DIR / "scenario_example.md"),
+            f"```json\n{example}\n```",
+        )
+    )
 
 
 def scenario_refusal(
@@ -303,6 +342,8 @@ def scenario_refusal(
         scenario = draft.scenario(tuple(playtest.engine.id for playtest in playing))
         for playtest in playing:
             playtest.check(scenario)
+    except ValidationError as broken:
+        return str(broken.errors()[0]["msg"])
     except ValueError as refused:
         return str(refused)
     if unmet := brief.unmet(scenario):
@@ -311,16 +352,30 @@ def scenario_refusal(
     return None
 
 
+def patch_refusal(patch: ScenarioPatch, settled: frozenset[str]) -> str | None:
+    """A pass over a world in play only adds: the live game is already standing on the rest."""
+    if not settled:
+        return None
+    if moved := patch.scenario_wide():
+        return f"a scenario already in play keeps its {', '.join(moved)}"
+    held = {item.id for item in (*patch.entities, *patch.threads)} | set(patch.remove)
+    if taken := sorted(held & settled):
+        return (
+            f"the live game already holds {taken}, some of it beyond what `scenario_so_far` "
+            "shows you. Write ids of your own, and reach what is already there with `connect`."
+        )
+    return None
+
+
 def authoring_toolset(
     playing: Sequence[PlaytestCheck],
-    settings: Settings,
     brief: AuthoringBrief = WHOLE_SCENARIO,
 ) -> FunctionToolset[ScenarioDraft]:
-    def worked_example() -> str:
-        """The shipped scenario in the draft shape patches are written in: the bar to match."""
-        return ScenarioDraft.from_scenario(
-            load_scenario(settings.scenarios_dir, settings.authoring.worked_example)
-        ).as_json()
+    def answer(draft: ScenarioDraft, changed: str) -> str:
+        standing = scenario_refusal(draft, playing, brief) or (
+            "it plays. Read it back and judge it as a thing to play before you finish."
+        )
+        return f"{changed}\n\nDRAFT: {standing}"
 
     def scenario_so_far(ctx: RunContext[ScenarioDraft]) -> str:
         """The whole draft as it stands, as pretty JSON: read it back before modifying or
@@ -330,18 +385,38 @@ def authoring_toolset(
     def write(ctx: RunContext[ScenarioDraft], patch: ScenarioPatch) -> str:
         """Apply one patch to the draft. An element whose id the draft already holds is replaced
         whole, so send the complete element when modifying one; `remove` drops ids from whichever
-        collection holds them. Returns each change as `created|modified|deleted kind name[id]`."""
+        collection holds them. Answers with each change as `created|modified|deleted kind
+        name[id]`, then with what the draft still needs."""
+        if refused := patch_refusal(patch, brief.settled):
+            raise ModelRetry(refused)
         try:
-            return ctx.deps.apply(patch)
+            return answer(ctx.deps, ctx.deps.apply(patch))
         except ValueError as refused:
             raise ModelRetry(str(refused)) from refused
 
-    def validate_scenario(ctx: RunContext[ScenarioDraft]) -> str:
-        """Whether the draft plays: 'ok', or the exact reason it will not. Fix what it names and
-        call it again; the scenario is only done once it answers 'ok'."""
-        return scenario_refusal(ctx.deps, playing, brief) or "ok"
+    def connect(
+        ctx: RunContext[ScenarioDraft],
+        from_id: EntityId,
+        to_id: EntityId,
+        known: bool = False,
+        locked: bool = False,
+        one_way: bool = False,
+    ) -> str:
+        """Join two locations the draft already holds with a way between them, written on both
+        ends for you, so adding a door never means writing a location again. `known: true` is a
+        way the player starts aware of, and asks that both places be known; `locked: true` is a
+        way that starts shut; `one_way: true` writes the way there and not the way back."""
+        if {from_id, to_id} <= brief.settled:
+            raise ModelRetry(
+                f"{from_id!r} and {to_id!r} are both the live game's, and nothing here can take "
+                "a way between them back. Join one of them to a location this pass wrote."
+            )
+        try:
+            return answer(ctx.deps, ctx.deps.connect(from_id, to_id, known, locked, one_way))
+        except ValueError as refused:
+            raise ModelRetry(str(refused)) from refused
 
-    return FunctionToolset(tools=[worked_example, scenario_so_far, write, validate_scenario])
+    return FunctionToolset(tools=[scenario_so_far, write, connect])
 
 
 def scenario_agent(
@@ -359,17 +434,17 @@ def scenario_agent(
     return build_agent(
         "scenario_creator",
         settings,
-        instructions=brief.instructions,
+        instructions=_instructions(settings, brief),
         output_type=ToolOutput(
             str,
             name="finish",
             description=(
-                "End authorship. Call this only once `validate_scenario` answers ok; its argument "
-                "is two or three sentences on what you authored."
+                "End authorship. Call this once a change answers that the draft plays; its "
+                "argument is two or three sentences on what you authored."
             ),
         ),
         deps_type=ScenarioDraft,
-        toolsets=[authoring_toolset(playing, settings, brief)],
+        toolsets=[authoring_toolset(playing, brief)],
         validator=playable,
     )
 
@@ -424,7 +499,7 @@ async def author_extension(
 
 
 def extension_patch(before: WorldState, after: ScenarioDraft) -> ExtensionPatch:
-    """Keep additions and new exits, but ignore edits to existing canon."""
+    """What the live world takes from the grown draft: new entities, new ways in, new threads."""
     held = {entity.id: entity for entity in before.entities}
     opened = {thread.id for thread in before.threads}
     return ExtensionPatch(

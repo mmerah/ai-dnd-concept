@@ -1,6 +1,5 @@
 ## Loose ends
 
-- [] Make scenario authoring easier for agents (Tools? Format? Loop? ...)
 - [] Easier english (codex): prompts, tool description, field/schema docstrings/description (objective: easy, positive-first, english, merge duplication, less is more, less confusing)
 - [] RAG on scenarios? .pdf -> source.md in scenario/<id>/ folder, then RAG on it? Is the drowned-road scenario extending based on source.md?
 - [] Run "uv run python evals/turn_eval.py run --label my-run" multiple times and identify where things are inconsistent. Then figure out fixes (maybe the tools are too difficult to use, need to be separated, or a multi-step thing converted into a tool that combine operations, maybe instruction clarity, maybe examples in tools description to teach the model, maybe we need an agent whose sole role is suggesting what tools to call in what order to remove some decision making out of the director? ...)
