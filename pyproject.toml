@@ -4,12 +4,12 @@ version = "0.1.0"
 description = "AI Dungeon Master"
 requires-python = ">=3.13"
 dependencies = [
-    "nicegui>=2.0",
-    "pydantic>=2.9",
-    "pydantic-ai-slim[openai]>=1.0",
-    "pydantic-settings>=2.5",
-    "httpx>=0.28",
-    "pypdf>=6.16.1",
+    "nicegui==3.16.0",
+    "pydantic==2.13.4",
+    "pydantic-ai-slim[openai]==2.33.0",
+    "pydantic-settings==2.15.0",
+    "httpx==0.28.1",
+    "pypdf==6.16.2",
 ]
 
 [project.scripts]
@@ -24,10 +24,10 @@ packages = ["src/aidm"]
 
 [dependency-groups]
 dev = [
-    "basedpyright>=1.39.9",
-    "pytest>=8",
-    "pytest-asyncio>=0.24",
-    "ruff>=0.6",
+    "basedpyright==1.39.10",
+    "pytest==9.1.1",
+    "pytest-asyncio==1.4.0",
+    "ruff==0.16.4",
 ]
 
 [tool.pytest.ini_options]
@@ -53,6 +53,7 @@ reportUnannotatedClassAttribute = false # pydantic's `model_config` is unannotat
 
 [tool.ruff]
 line-length = 100
+extend-exclude = [".agents"] # vendored skills, ruff 0.16 formats md code blocks
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "UP", "B"]
