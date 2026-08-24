@@ -10,12 +10,12 @@ from aidm.content.model import CharacterOverlay, CharacterProfile, CreatedCharac
 from aidm.engines.core import (
     Advancement,
     CharacterCreation,
+    DirectorContext,
     Engine,
     EventCause,
-    PlanContext,
     ProposalBase,
-    act,
     actor_sheets,
+    apply_tool_call,
     check_sheets,
     load_packs,
     pack_paths,
@@ -55,30 +55,32 @@ from aidm.state.play import MechanicEvent, PendingDecision
 type Twists = Callable[[Game], tuple[tuple[str, str], ...]]
 
 
-def director_toolset(twists: Twists) -> FunctionToolset[PlanContext]:
-    def roll_question(ctx: RunContext[PlanContext], question: Question) -> str:
+def director_toolset(twists: Twists) -> FunctionToolset[DirectorContext]:
+    def roll_question(ctx: RunContext[DirectorContext], question: Question) -> str:
         """Put a closed dramatic question to Chance d6 against Risk d6. An exchange of a
         conflict names who is opposed in `question.opponent_id`.
 
         Args:
             question: The question to put to the dice.
         """
-        return act(ctx, lambda draft, rng: resolve_question(draft, question, rng, twists(draft)))
+        return apply_tool_call(
+            ctx, lambda draft, rng: resolve_question(draft, question, rng, twists(draft))
+        )
 
-    def restore_luck(ctx: RunContext[PlanContext], actor_id: EntityId) -> str:
+    def restore_luck(ctx: RunContext[DirectorContext], actor_id: EntityId) -> str:
         """Put an actor's luck back to full.
 
         Args:
             actor_id: Exact id of the actor: the player, or an actor here.
         """
-        return act(
+        return apply_tool_call(
             ctx,
             lambda draft, _rng: tuple(apply_restore_luck(draft, actor_id)),
         )
 
-    def complete_chapter(ctx: RunContext[PlanContext]) -> str:
+    def complete_chapter(ctx: RunContext[DirectorContext]) -> str:
         """Record that the adventure this character has been living has ended."""
-        return act(ctx, lambda draft, _rng: tuple(apply_complete_chapter(draft)))
+        return apply_tool_call(ctx, lambda draft, _rng: tuple(apply_complete_chapter(draft)))
 
     return sequential_toolset([roll_question, restore_luck, complete_chapter])
 

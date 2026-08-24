@@ -6,7 +6,7 @@ from pydantic_ai.models.test import TestModel
 from pydantic_ai.toolsets import ToolsetTool
 from pydantic_ai.usage import RunUsage
 
-from aidm.engines.core import Engine, PlanContext, TurnLog
+from aidm.engines.core import DirectorContext, Engine, TurnRecord
 from aidm.state import actions
 from aidm.state.entities import PLAYER_ID, EntityId
 from aidm.state.model import AdvanceThread, Game
@@ -17,9 +17,9 @@ CLOISTER = EntityId("cloister")
 VAULT_SEAL = "vault-seal"
 
 
-async def _offered(engine: Engine, state: Game) -> dict[str, ToolsetTool[PlanContext]]:
+async def _offered(engine: Engine, state: Game) -> dict[str, ToolsetTool[DirectorContext]]:
     ctx = RunContext(
-        deps=PlanContext(engine=engine, state=state, rng=Random(0), log=TurnLog()),
+        deps=DirectorContext(engine=engine, draft=state, rng=Random(0), log=TurnRecord()),
         model=TestModel(),
         usage=RunUsage(),
     )

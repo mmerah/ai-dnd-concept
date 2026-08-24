@@ -11,10 +11,10 @@ from pydantic_ai.toolsets import FunctionToolset
 from aidm.content.io import SavedGame
 from aidm.engines.core import (
     RULES_WAIT,
+    DirectorContext,
     Engine,
-    PlanContext,
-    act,
     apply_to_draft,
+    apply_tool_call,
     sequential_toolset,
     transact,
 )
@@ -67,10 +67,10 @@ def _hit(draft: Game, *, narrate: bool) -> tuple[Fact, ...]:
     )
 
 
-def _toolset(*, narrate: bool) -> FunctionToolset[PlanContext]:
-    def strike(ctx: RunContext[PlanContext]) -> str:
+def _toolset(*, narrate: bool) -> FunctionToolset[DirectorContext]:
+    def strike(ctx: RunContext[DirectorContext]) -> str:
         """Take a hit the player may turn by breaking something of theirs."""
-        return act(ctx, lambda draft, _rng: _hit(draft, narrate=narrate))
+        return apply_tool_call(ctx, lambda draft, _rng: _hit(draft, narrate=narrate))
 
     return sequential_toolset([strike])
 

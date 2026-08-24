@@ -15,13 +15,13 @@ from aidm.engines.core import (
     RULES_WAIT,
     Advancement,
     AdvancementOffer,
+    DirectorContext,
     Engine,
     EventCause,
-    PlanContext,
     ProposalBase,
-    TurnLog,
-    act,
+    TurnRecord,
     apply_to_draft,
+    apply_tool_call,
     sequential_toolset,
     with_enum,
 )
@@ -51,12 +51,12 @@ from .context import SceneSnapshot, VisibleScene
 class DirectorTool:
     """A director tool with the state predicate that decides whether it is offered at all."""
 
-    func: ToolFuncEither[PlanContext, ...]
+    func: ToolFuncEither[DirectorContext, ...]
     applies: Callable[[Game], bool] = lambda _state: True
 
 
-def core_toolset() -> AbstractToolset[PlanContext]:
-    def reveal(ctx: RunContext[PlanContext], entity_id: EntityId) -> str:
+def core_toolset() -> AbstractToolset[DirectorContext]:
+    def reveal(ctx: RunContext[DirectorContext], entity_id: EntityId) -> str:
         """Reveal an entity that exists but the player does not know yet: they notice it, are told
         of it, or reach it.
 
@@ -65,7 +65,7 @@ def core_toolset() -> AbstractToolset[PlanContext]:
         """
         return _resolved(ctx, lambda draft: actions.reveal(draft, entity_id))
 
-    def move(ctx: RunContext[PlanContext], entity_id: EntityId, to_id: EntityId) -> str:
+    def move(ctx: RunContext[DirectorContext], entity_id: EntityId, to_id: EntityId) -> str:
         """Move an actor who actually changes location, or one item within the player's reach:
         picked up, set down here, or handed to an actor here.
 
@@ -78,7 +78,7 @@ def core_toolset() -> AbstractToolset[PlanContext]:
         """
         return _resolved(ctx, lambda draft: actions.move(draft, entity_id, to_id))
 
-    def gain_improvised_item(ctx: RunContext[PlanContext], item_name: str) -> str:
+    def gain_improvised_item(ctx: RunContext[DirectorContext], item_name: str) -> str:
         """Give the player an ordinary incidental object that is not in canon and is not worth a
         canon entry of its own.
 
@@ -88,7 +88,7 @@ def core_toolset() -> AbstractToolset[PlanContext]:
         return _resolved(ctx, lambda draft: actions.improvise(draft, item_name))
 
     def add_trait(
-        ctx: RunContext[PlanContext], entity_id: EntityId, trait_id: Slug, text: str
+        ctx: RunContext[DirectorContext], entity_id: EntityId, trait_id: Slug, text: str
     ) -> str:
         """Put a lasting condition, skill, or frailty on an entity.
 
@@ -100,7 +100,7 @@ def core_toolset() -> AbstractToolset[PlanContext]:
         """
         return _resolved(ctx, lambda draft: actions.add_trait(draft, entity_id, trait_id, text))
 
-    def remove_trait(ctx: RunContext[PlanContext], entity_id: EntityId, trait_id: Slug) -> str:
+    def remove_trait(ctx: RunContext[DirectorContext], entity_id: EntityId, trait_id: Slug) -> str:
         """Lift a lasting condition, skill, or frailty the fiction has ended.
 
         Args:
@@ -109,7 +109,7 @@ def core_toolset() -> AbstractToolset[PlanContext]:
         """
         return _resolved(ctx, lambda draft: actions.remove_trait(draft, entity_id, trait_id))
 
-    def advance_thread(ctx: RunContext[PlanContext], advance: AdvanceThread) -> str:
+    def advance_thread(ctx: RunContext[DirectorContext], advance: AdvanceThread) -> str:
         """Move a storyline the scenario is tracking: where it stands now, or that it is over.
 
         Args:
@@ -117,7 +117,7 @@ def core_toolset() -> AbstractToolset[PlanContext]:
         """
         return _resolved(ctx, lambda draft: actions.advance_thread(draft, advance))
 
-    def unlock_exit(ctx: RunContext[PlanContext], to_id: EntityId) -> str:
+    def unlock_exit(ctx: RunContext[DirectorContext], to_id: EntityId) -> str:
         """Open a locked way out of the player's location.
 
         Args:
@@ -125,7 +125,7 @@ def core_toolset() -> AbstractToolset[PlanContext]:
         """
         return _resolved(ctx, lambda draft: actions.unlock_exit(draft, to_id))
 
-    def join_party(ctx: RunContext[PlanContext], actor_id: EntityId) -> str:
+    def join_party(ctx: RunContext[DirectorContext], actor_id: EntityId) -> str:
         """Put an actor into the player's party.
 
         Args:
@@ -133,7 +133,7 @@ def core_toolset() -> AbstractToolset[PlanContext]:
         """
         return _resolved(ctx, lambda draft: actions.join_party(draft, actor_id))
 
-    def leave_party(ctx: RunContext[PlanContext], actor_id: EntityId) -> str:
+    def leave_party(ctx: RunContext[DirectorContext], actor_id: EntityId) -> str:
         """Take an actor out of the player's party when the fiction parts them.
 
         Args:
@@ -157,12 +157,12 @@ def core_toolset() -> AbstractToolset[PlanContext]:
     return (
         sequential_toolset([tool.func for tool in tools])
         .prepared(_narrow_unlock_targets)
-        .filtered(lambda ctx, tool: applies[tool.name](ctx.deps.state))
+        .filtered(lambda ctx, tool: applies[tool.name](ctx.deps.draft))
     )
 
 
-def _resolved(ctx: RunContext[PlanContext], apply: Callable[[Game], list[Fact]]) -> str:
-    return act(ctx, lambda draft, _rng: tuple(apply(draft)))
+def _resolved(ctx: RunContext[DirectorContext], apply: Callable[[Game], list[Fact]]) -> str:
+    return apply_tool_call(ctx, lambda draft, _rng: tuple(apply(draft)))
 
 
 def _unlock_targets(state: Game) -> list[str]:
@@ -171,10 +171,10 @@ def _unlock_targets(state: Game) -> list[str]:
 
 
 def _narrow_unlock_targets(
-    ctx: RunContext[PlanContext], tools: list[ToolDefinition]
+    ctx: RunContext[DirectorContext], tools: list[ToolDefinition]
 ) -> list[ToolDefinition]:
     # This runs before impossible tools are filtered, so an empty enum would have no legal value.
-    targets = _unlock_targets(ctx.deps.state)
+    targets = _unlock_targets(ctx.deps.draft)
     return [
         with_enum(tool, ("to_id",), targets) if tool.name == "unlock_exit" and targets else tool
         for tool in tools
@@ -220,22 +220,22 @@ class AdvancementContext:
 
 @dataclass(frozen=True, slots=True)
 class TurnAgents:
-    director: Agent[PlanContext, str]
+    director: Agent[DirectorContext, str]
     narrator: Agent[VisibleScene, Narration]
 
 
 def director_agent(
     engine: Engine,
     settings: Settings,
-) -> Agent[PlanContext, str]:
+) -> Agent[DirectorContext, str]:
     """Everything that happens this turn happens through a tool; the closing text only traces."""
-    toolsets: list[AbstractToolset[PlanContext]] = [
+    toolsets: list[AbstractToolset[DirectorContext]] = [
         core_toolset().filtered(
-            lambda ctx, _tool: ctx.deps.state.pending is None or ctx.deps.suspended_at_start
+            lambda ctx, _tool: ctx.deps.draft.pending is None or ctx.deps.suspended_at_start
         ),
         # A suspended run may develop what the answer caused; it may not open new mechanics.
         *(
-            toolset.filtered(lambda ctx, _tool: ctx.deps.state.pending is None)
+            toolset.filtered(lambda ctx, _tool: ctx.deps.draft.pending is None)
             for toolset in engine.director_toolsets
         ),
     ]
@@ -244,7 +244,7 @@ def director_agent(
         settings,
         instructions=context.director_instructions(engine.director_instructions),
         output_type=str,
-        deps_type=PlanContext,
+        deps_type=DirectorContext,
         toolsets=toolsets,
     )
 
@@ -350,7 +350,7 @@ async def run_segment(
         len(exchange.prompt) + len(exchange.narration) + len(exchange.decision)
         for exchange in state.history
     )
-    log = TurnLog(on_event=on_event)
+    log = TurnRecord(on_event=on_event)
     draft = state.draft()
     # Any input consumes the decision, a revision included: it never survives its own answer.
     consumed, draft.pending = draft.pending, None
@@ -366,9 +366,9 @@ async def run_segment(
     shown = len(draft.world.pending_notes)
     directed = await stages.director.run(
         director_prompt,
-        deps=PlanContext(
+        deps=DirectorContext(
             engine=engine,
-            state=draft,
+            draft=draft,
             rng=rng,
             log=log,
             suspended_at_start=draft.pending is not None,
@@ -436,7 +436,7 @@ def _consume(
     player_input: str | Answer,
     consumed: PendingDecision | None,
     rng: Random,
-    log: TurnLog,
+    log: TurnRecord,
 ) -> tuple[str, str, PendingDecision | None]:
     """The PLAYER ACTION, what a closed answer resolved, and the decision an open answer used."""
     if isinstance(player_input, str):
@@ -470,7 +470,7 @@ def _resume(
     pending: PendingDecision,
     option: Option,
     rng: Random,
-    log: TurnLog,
+    log: TurnRecord,
 ) -> tuple[Fact, ...]:
     """A refusal raises: the engine enumerated the option, so it is never model error."""
 

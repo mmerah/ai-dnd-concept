@@ -17,7 +17,7 @@ from pydantic_ai.models.function import FunctionModel
 from pydantic_ai.models.test import TestModel
 from pydantic_ai.usage import RunUsage
 
-from aidm.engines.core import Engine, PlanContext, TurnLog
+from aidm.engines.core import DirectorContext, Engine, TurnRecord
 from aidm.engines.twentyfourxx.engine import TwentyfourxxEngine, director_toolset
 from aidm.engines.twentyfourxx.rules import (
     Advance,
@@ -122,7 +122,7 @@ def test_an_ally_who_lacks_the_named_skill_is_refused() -> None:
 async def test_roll_attempt_narrows_skill_and_helper_skill_to_who_is_here() -> None:
     engine, state = game(TWENTYFOURXX)
     ctx = RunContext(
-        deps=PlanContext(engine=engine, state=state, rng=Random(0), log=TurnLog()),
+        deps=DirectorContext(engine=engine, draft=state, rng=Random(0), log=TurnRecord()),
         model=TestModel(),
         usage=RunUsage(),
     )
@@ -296,8 +296,8 @@ async def _offered(
     engine: Engine, state: Game, answered: PendingDecision | None, *, settled: bool = False
 ) -> set[str]:
     landed = [Fact(kind="defence_taken", trace="the hit lands in full")] if settled else []
-    deps = PlanContext(
-        engine=engine, state=state, rng=Random(0), log=TurnLog(facts=landed), answered=answered
+    deps = DirectorContext(
+        engine=engine, draft=state, rng=Random(0), log=TurnRecord(facts=landed), answered=answered
     )
     ctx = RunContext(deps=deps, model=TestModel(), usage=RunUsage())
     return set(await director_toolset().get_tools(ctx))

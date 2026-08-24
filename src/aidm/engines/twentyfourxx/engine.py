@@ -11,13 +11,13 @@ from aidm.content.model import CharacterOverlay, CharacterProfile, CreatedCharac
 from aidm.engines.core import (
     Advancement,
     CharacterCreation,
+    DirectorContext,
     Engine,
     EventCause,
-    PlanContext,
     ProposalBase,
-    act,
     actor_sheets,
     adjust,
+    apply_tool_call,
     check_sheets,
     load_packs,
     pack_paths,
@@ -80,9 +80,9 @@ def _skills_in_play(state: Game) -> set[str]:
 
 
 def _narrow_to_skills_in_play(
-    ctx: RunContext[PlanContext], tools: list[ToolDefinition]
+    ctx: RunContext[DirectorContext], tools: list[ToolDefinition]
 ) -> list[ToolDefinition]:
-    skills = ["", *sorted(_skills_in_play(ctx.deps.state))]
+    skills = ["", *sorted(_skills_in_play(ctx.deps.draft))]
     return [_with_skills(tool, skills) for tool in tools]
 
 
@@ -95,7 +95,7 @@ def _with_skills(tool: ToolDefinition, skills: list[str]) -> ToolDefinition:
     return tool
 
 
-def _defence_to_settle(ctx: RunContext[PlanContext]) -> PendingDecision | None:
+def _defence_to_settle(ctx: RunContext[DirectorContext]) -> PendingDecision | None:
     """One hit, one settlement: the decision an open answer consumed, until this run settles it."""
     answered = ctx.deps.answered
     if answered is None or answered.kind != "defence":
@@ -105,8 +105,8 @@ def _defence_to_settle(ctx: RunContext[PlanContext]) -> PendingDecision | None:
     return answered
 
 
-def director_toolset() -> AbstractToolset[PlanContext]:
-    def roll_attempt(ctx: RunContext[PlanContext], attempt: Attempt) -> str:
+def director_toolset() -> AbstractToolset[DirectorContext]:
+    def roll_attempt(ctx: RunContext[DirectorContext], attempt: Attempt) -> str:
         """Put one risky attempt to the highest die of a pool. The player's own attempt goes to
         `stake_attempt` first; roll here directly only for an NPC's attempt, or when the player's
         words already accepted the named risk.
@@ -114,9 +114,9 @@ def director_toolset() -> AbstractToolset[PlanContext]:
         Args:
             attempt: The attempt to put to the dice.
         """
-        return act(ctx, lambda draft, rng: resolve_attempt(draft, attempt, rng))
+        return apply_tool_call(ctx, lambda draft, rng: resolve_attempt(draft, attempt, rng))
 
-    def stake_attempt(ctx: RunContext[PlanContext], attempt: Attempt, risk: str) -> str:
+    def stake_attempt(ctx: RunContext[DirectorContext], attempt: Attempt, risk: str) -> str:
         """Name the risk of one attempt out loud and hand the player the choice to proceed or
         revise, before anything is rolled.
 
@@ -126,9 +126,9 @@ def director_toolset() -> AbstractToolset[PlanContext]:
             risk: What a bad roll costs them, in one line, in your own words: the warning the
                 player reads before deciding.
         """
-        return act(ctx, lambda draft, _rng: resolve_stake(draft, attempt, risk))
+        return apply_tool_call(ctx, lambda draft, _rng: resolve_stake(draft, attempt, risk))
 
-    def settle_defence(ctx: RunContext[PlanContext], item_id: EntityId | None) -> str:
+    def settle_defence(ctx: RunContext[DirectorContext], item_id: EntityId | None) -> str:
         """Settle the hit the player's own words just answered for: their item breaks and turns
         it into a brief hindrance, or the hit lands in full.
 
@@ -139,31 +139,31 @@ def director_toolset() -> AbstractToolset[PlanContext]:
         answered = _defence_to_settle(ctx)
         assert answered is not None  # the filter below offers this tool only while one is open
         goal = Defence.model_validate(answered.payload).goal
-        return act(ctx, lambda draft, _rng: resolve_defence(draft, goal, item_id))
+        return apply_tool_call(ctx, lambda draft, _rng: resolve_defence(draft, goal, item_id))
 
-    def roll_luck_test(ctx: RunContext[PlanContext], test: LuckTest) -> str:
+    def roll_luck_test(ctx: RunContext[DirectorContext], test: LuckTest) -> str:
         """Put the SRD's standalone bad-luck test to the dice.
 
         Args:
             test: The luck test to put to the dice.
         """
-        return act(ctx, lambda draft, rng: resolve_luck_test(draft, test, rng))
+        return apply_tool_call(ctx, lambda draft, rng: resolve_luck_test(draft, test, rng))
 
-    def change_credits(ctx: RunContext[PlanContext], actor_id: EntityId, amount: int) -> str:
+    def change_credits(ctx: RunContext[DirectorContext], actor_id: EntityId, amount: int) -> str:
         """Move an actor's credits.
 
         Args:
             actor_id: Exact id of the actor: the player, or an actor here.
             amount: Positive to pay them, negative to charge them.
         """
-        return act(
+        return apply_tool_call(
             ctx,
             lambda draft, _rng: tuple(apply_change_credits(draft, actor_id, amount)),
         )
 
-    def complete_chapter(ctx: RunContext[PlanContext]) -> str:
+    def complete_chapter(ctx: RunContext[DirectorContext]) -> str:
         """Record that the job this crew has been running is done."""
-        return act(ctx, lambda draft, _rng: tuple(apply_complete_chapter(draft)))
+        return apply_tool_call(ctx, lambda draft, _rng: tuple(apply_complete_chapter(draft)))
 
     toolset = sequential_toolset(
         [

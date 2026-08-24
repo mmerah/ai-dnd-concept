@@ -254,11 +254,11 @@ class Game:
 
 
 def draft_refusal(
-    state: Game, act: Callable[[Game], object], what: str = "the state this leaves"
+    state: Game, mutate: Callable[[Game], object], what: str = "the state this leaves"
 ) -> str | None:
     draft = state.draft()
     try:
-        _ = act(draft)
+        _ = mutate(draft)
         _ = draft.committed()
     except ValidationError as broken:
         return f"{what} is invalid: {broken.errors()[0]['msg']}"

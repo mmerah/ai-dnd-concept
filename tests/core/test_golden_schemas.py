@@ -5,7 +5,7 @@ from pydantic import BaseModel
 from pydantic_ai.toolsets import AbstractToolset, FunctionToolset, WrapperToolset
 
 from aidm.app.launch import engine_ids
-from aidm.engines.core import PlanContext
+from aidm.engines.core import DirectorContext
 from aidm.state.entities import EngineId, EntityDetail
 from aidm.turn.run import core_toolset
 
@@ -27,7 +27,10 @@ def test_the_proposal_schema_the_advisor_answers_with_is_unchanged(engine_id: En
 @pytest.mark.parametrize("engine_id", engine_ids())
 def test_the_director_is_offered_the_same_tools(engine_id: EngineId) -> None:
     engine, _ = game(engine_id)
-    toolsets: tuple[AbstractToolset[PlanContext], ...] = (core_toolset(), *engine.director_toolsets)
+    toolsets: tuple[AbstractToolset[DirectorContext], ...] = (
+        core_toolset(),
+        *engine.director_toolsets,
+    )
     golden_json(
         FIXTURES / "schemas" / engine_id / "director_tools.json",
         [tool for toolset in toolsets for tool in _definitions(toolset)],
@@ -39,7 +42,7 @@ def test_the_shared_role_output_schemas_are_unchanged() -> None:
         golden_json(FIXTURES / "schemas" / f"{name}.json", output.model_json_schema())
 
 
-def _definitions(toolset: AbstractToolset[PlanContext]) -> list[dict[str, object]]:
+def _definitions(toolset: AbstractToolset[DirectorContext]) -> list[dict[str, object]]:
     # The golden pins the fixed vocabulary; a wrapper's per-step narrowing has its own test.
     while isinstance(toolset, WrapperToolset):
         toolset = toolset.wrapped

@@ -42,7 +42,7 @@ class EventCause:
 
 
 @dataclass(slots=True)
-class TurnLog:
+class TurnRecord:
     facts: list[Fact] = field(default_factory=list)
     steps: list[StepTrace] = field(default_factory=list)
     events: list[MechanicEvent] = field(default_factory=list)
@@ -57,13 +57,13 @@ class TurnLog:
 
 
 @dataclass(frozen=True, slots=True)
-class PlanContext:
+class DirectorContext:
     """Director tools resolve against the turn's draft, never committed state."""
 
     engine: "Engine"
-    state: Game
+    draft: Game
     rng: Random
-    log: TurnLog
+    log: TurnRecord
     # The run began with a re-suspended decision: it develops what the answer caused, no more.
     suspended_at_start: bool = False
     answered: PendingDecision | None = None
@@ -94,7 +94,7 @@ class Engine(ABC):
         _ = self.mechanics_type
         self.director_instructions: str = engine_text(self.engine_dir / "director.md")
         # An engine's own mechanics reach the Director as tools; core's world vocabulary is shared.
-        self.director_toolsets: tuple[AbstractToolset[PlanContext], ...] = ()
+        self.director_toolsets: tuple[AbstractToolset[DirectorContext], ...] = ()
         self.advancement: Advancement | None = None
         self.creation: CharacterCreation | None = None
 
@@ -349,29 +349,29 @@ def transact(engine: Engine, draft: Game, play: Play, rng: Random) -> tuple[Game
     return draft.committed(), landed
 
 
-def act(ctx: RunContext[PlanContext], play: Play) -> str:
+def apply_tool_call(ctx: RunContext[DirectorContext], play: Play) -> str:
     """Refused against a throwaway copy, applied to the turn's draft, answered with what changed."""
     deps = ctx.deps
     if refused := draft_refusal(
-        deps.state, lambda copy: apply_to_draft(deps.engine, copy, play, Random(0))
+        deps.draft, lambda copy: apply_to_draft(deps.engine, copy, play, Random(0))
     ):
         raise ModelRetry(refused)
-    already_pending = len(deps.state.world.pending_notes)
-    decided_before = deps.state.pending
-    landed = apply_to_draft(deps.engine, deps.state, play, deps.rng)
+    already_pending = len(deps.draft.world.pending_notes)
+    decided_before = deps.draft.pending
+    landed = apply_to_draft(deps.engine, deps.draft, play, deps.rng)
     cause = EventCause("tool", ctx.tool_name or "")
     deps.log.landed(landed, deps.engine.player_events(cause, landed))
     lines = [f"- {fact.trace}" for fact in landed]
-    lines.extend(f"- {note}" for note in deps.state.world.pending_notes[already_pending:])
-    lines.extend(_reached(deps.state, landed))
-    if decided_before is None and deps.state.pending is not None:
+    lines.extend(f"- {note}" for note in deps.draft.world.pending_notes[already_pending:])
+    lines.extend(_reached(deps.draft, landed))
+    if decided_before is None and deps.draft.pending is not None:
         lines.append(f"- {RULES_WAIT}")
     return "\n".join(lines) or NOTHING_CHANGED
 
 
 def sequential_toolset(
-    tools: list[ToolFuncEither[PlanContext, ...]],
-) -> FunctionToolset[PlanContext]:
+    tools: list[ToolFuncEither[DirectorContext, ...]],
+) -> FunctionToolset[DirectorContext]:
     """One tool at a time: two calls in one answer would interleave on the same draft."""
     return FunctionToolset(
         tools=tools, sequential=True, require_parameter_descriptions=True, max_retries=2
