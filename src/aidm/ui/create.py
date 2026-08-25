@@ -14,7 +14,7 @@ from aidm.config import Settings
 from aidm.content.io import write_character
 from aidm.content.model import CreatedCharacter
 from aidm.state.creation import AnyStep, CreationStep, TextStep, picked
-from aidm.state.entities import EngineId, Slug, content_id, text_slug
+from aidm.state.entities import EngineId, Slug, content_id, slug
 
 from .widgets import page_header, refuse_if_busy, working
 
@@ -88,12 +88,14 @@ def character_page(runtime: Runtime, engine_id: EngineId) -> None:
                         return
                     try:
                         created = creation.create(title, (brief.value or "").strip(), picks)
-                        slug = text_slug(title, _taken(runtime.settings.characters_dir))
-                        write_character(runtime.settings.characters_dir, slug, engine_id, created)
+                        character_id = slug(title, _taken(runtime.settings.characters_dir))
+                        write_character(
+                            runtime.settings.characters_dir, character_id, engine_id, created
+                        )
                     except ValueError as refused:
                         ui.notify(str(refused), type="negative")
                         return
-                    LOGGER.info("character created: slug=%s engine=%s", slug, engine_id)
+                    LOGGER.info("character created: slug=%s engine=%s", character_id, engine_id)
                     ui.navigate.to("/")
 
                 @ui.refreshable
@@ -289,7 +291,7 @@ def scenario_page(settings: Settings) -> None:
 
     with ui.row().classes("no-wrap items-start").style("width: min(80rem, 100%); gap: 1rem"):
         with ui.card().classes("q-pa-lg").style("flex: 1; min-width: 0"):
-            slug = (
+            scenario_id = (
                 ui.input(label="Slug", placeholder="the-drowned-road")
                 .classes("w-full")
                 .props("outlined")
@@ -353,7 +355,7 @@ def scenario_page(settings: Settings) -> None:
                 try:
                     new_session = scenario_run(
                         settings,
-                        content_id(slug.value or ""),
+                        content_id(scenario_id.value or ""),
                         (premise.value or "").strip(),
                         bool(grows.value),
                         _engines(engines.value),
@@ -372,7 +374,7 @@ def scenario_page(settings: Settings) -> None:
                     document is not None,
                 )
                 for widget in (
-                    slug,
+                    scenario_id,
                     premise,
                     upload,
                     grows,

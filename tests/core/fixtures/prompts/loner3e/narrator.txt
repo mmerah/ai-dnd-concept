@@ -15,7 +15,7 @@ inventory:
 - a guttering lantern[id=lantern] — A dented tin lantern whose flame will not hold still.
   state:
     traits: Unsteady Lantern[id=unsteady-lantern] — (gear) Its shifting light exposes seams and movement in deep shadow.
-- the vault map[id=vault_map] — A creased chart of the undercroft, marking a stair the abbey's own plans deny.
+- the vault map[id=vault-map] — A creased chart of the undercroft, marking a stair the abbey's own plans deny.
 
 HERE WITH THE PLAYER:
 - Mara[id=mara] (npc) — at the abbot's study — The abbey's last scribe, cautious and tired, still cataloguing books nobody will read.
@@ -32,8 +32,8 @@ KNOWN TO THE PLAYER, BUT ELSEWHERE:
     pools: luck 6/6
 
 WHAT HAPPENED:
-- learned of the item the vault map[vault_map]
-- the player Kael[player] took the item the vault map[vault_map]
+- learned of the item the vault map[vault-map]
+- the player Kael[player] took the item the vault map[vault-map]
 - Does he hear what waits past the vault door without being heard? -> yes-and
 - the player Kael[player] gained the trait Listening[listening] — (condition) Listening for the next shift of weight behind the door.
 

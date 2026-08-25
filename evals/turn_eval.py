@@ -181,8 +181,8 @@ def cases_for(engine_id: EngineId, settings: Settings) -> tuple[Case, ...]:
                 "flagstone beneath it, and pick the chart up and keep it."
             ),
             expectations=(
-                Expectation("chart-known", lambda r: known(r, "vault_map")),
-                Expectation("chart-carried", lambda r: inside(r, "vault_map", "player")),
+                Expectation("chart-known", lambda r: known(r, "vault-map")),
+                Expectation("chart-carried", lambda r: inside(r, "vault-map", "player")),
                 Expectation("stair-charted", lambda r: staged_at(r, "vault-seal", "stair-charted")),
             ),
         ),
@@ -205,7 +205,7 @@ def cases_for(engine_id: EngineId, settings: Settings) -> tuple[Case, ...]:
             ),
             expectations=(
                 Expectation(
-                    "player-in-tower", unless_lost(lambda r: inside(r, "player", "bell_tower"))
+                    "player-in-tower", unless_lost(lambda r: inside(r, "player", "bell-tower"))
                 ),
                 Expectation("elena-known", unless_lost(lambda r: known(r, "elena"))),
                 Expectation(
@@ -213,7 +213,7 @@ def cases_for(engine_id: EngineId, settings: Settings) -> tuple[Case, ...]:
                     unless_lost(lambda r: staged_at(r, "vault-seal", "archivist-found")),
                 ),
             ),
-            setup=in_cloister("bell_tower"),
+            setup=in_cloister("bell-tower"),
         ),
         Case(
             id=f"{engine_id}/three-things",
@@ -225,7 +225,7 @@ def cases_for(engine_id: EngineId, settings: Settings) -> tuple[Case, ...]:
                 "for a long while."
             ),
             expectations=(
-                Expectation("player-in-tower", lambda r: inside(r, "player", "bell_tower")),
+                Expectation("player-in-tower", lambda r: inside(r, "player", "bell-tower")),
                 Expectation("elena-known", lambda r: known(r, "elena")),
                 Expectation("lantern-given", lambda r: inside(r, "lantern", "elena")),
                 Expectation(
@@ -233,7 +233,7 @@ def cases_for(engine_id: EngineId, settings: Settings) -> tuple[Case, ...]:
                     lambda r: gained_a_trait(r, before),
                 ),
             ),
-            setup=in_cloister("bell_tower"),
+            setup=in_cloister("bell-tower"),
         ),
         Case(
             id=f"{engine_id}/risky-climb",
@@ -247,10 +247,10 @@ def cases_for(engine_id: EngineId, settings: Settings) -> tuple[Case, ...]:
                 *stake_checks,
                 Expectation("dice-rolled", lambda r: has_fact(r, "dice_rolled")),
                 Expectation(
-                    "win-upstairs", unless_lost(lambda r: inside(r, "player", "bell_tower"))
+                    "win-upstairs", unless_lost(lambda r: inside(r, "player", "bell-tower"))
                 ),
             ),
-            setup=in_cloister("bell_tower"),
+            setup=in_cloister("bell-tower"),
         ),
     )
     if engine_id == "loner3e":
@@ -264,7 +264,7 @@ def cases_for(engine_id: EngineId, settings: Settings) -> tuple[Case, ...]:
                 ),
                 expectations=(
                     # Require the rat so a Tomas conflict cannot satisfy the other checks.
-                    Expectation("rat-engaged", lambda r: known(r, "cloister_rat")),
+                    Expectation("rat-engaged", lambda r: known(r, "cloister-rat")),
                     Expectation("luck-moved", luck_moved),
                     Expectation("hands-back", conflict_handed_back),
                 ),

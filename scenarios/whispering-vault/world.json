@@ -34,7 +34,7 @@
             "known": true
           },
           {
-            "to": "bell_tower"
+            "to": "bell-tower"
           },
           {
             "to": "vault",
@@ -43,7 +43,7 @@
         ]
       },
       {
-        "id": "bell_tower",
+        "id": "bell-tower",
         "kind": "location",
         "name": "the bell tower",
         "brief": "A cramped climb of rotten ladders above the nave, its bell long since stilled.",
@@ -99,10 +99,10 @@
           "when_reached": "Kael has found the archivist: advance thread vault-seal to stage archivist-found. She will name a price before she gives the rite up, and the rite is not known until she has."
         },
         "known": false,
-        "parent_id": "bell_tower"
+        "parent_id": "bell-tower"
       },
       {
-        "id": "cloister_rat",
+        "id": "cloister-rat",
         "kind": "actor",
         "name": "a bloated rat",
         "brief": "It has grown fat on the dead garden and does not run from a lantern.",
@@ -110,7 +110,7 @@
         "parent_id": "cloister"
       },
       {
-        "id": "vault_map",
+        "id": "vault-map",
         "kind": "item",
         "name": "the vault map",
         "brief": "A creased chart of the undercroft, marking a stair the abbey's own plans deny.",

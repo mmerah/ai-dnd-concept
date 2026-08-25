@@ -26,6 +26,7 @@ Tests are deterministic and run offline.
 - Reject invalid data, broken invariants, and incompatible state immediately.
 - Keep code simple and DRY. Add abstractions only for current needs.
 - Build every agreed capability directly in its final planned form. Apply YAGNI to features that were not agreed on.
+- This project is pre-stability. Choose the simplest final architecture.
 - Add a port or interface when a second implementation exists. A protocol may be useful earlier when core must stay independent of a specific dependency.
 - Choose names that make extra explanation unnecessary.
 - Keep functions below 100 lines and files below 1000 lines.

@@ -35,7 +35,6 @@ from aidm.state.model import Game
 from aidm.state.play import (
     Answer,
     Line,
-    OptionId,
     PendingDecision,
     TurnTrace,
     narration_text,
@@ -97,7 +96,7 @@ class NoArgs(ToolArgs):
 class StartTurn(ToolArgs):
     prompt: str
     """What the player did, in their words."""
-    option_id: OptionId | None = None
+    option_id: Slug | None = None
     """Exact id of the listed option their words chose, when a decision is open."""
 
 

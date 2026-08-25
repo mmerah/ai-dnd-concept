@@ -4,20 +4,20 @@ import pytest
 from core_test_support import initialized
 
 from aidm.state import actions
-from aidm.state.entities import PLAYER_ID, Counter, Entity, EntityId
+from aidm.state.entities import PLAYER_ID, SLUG_MAX, Counter, Entity, EntityId
 from aidm.state.facts import Fact
 from aidm.state.model import AdvanceThread, Game, Thread
 
-BELL_TOWER = EntityId("bell_tower")
+BELL_TOWER = EntityId("bell-tower")
 CLOISTER = EntityId("cloister")
 STUDY = EntityId("study")
 ELENA = EntityId("elena")
 LANTERN = EntityId("lantern")
 MARA = EntityId("mara")
-RAT = EntityId("cloister_rat")
+RAT = EntityId("cloister-rat")
 TOMAS = EntityId("tomas")
 VAULT = EntityId("vault")
-VAULT_MAP = EntityId("vault_map")
+VAULT_MAP = EntityId("vault-map")
 
 
 def _draft() -> Game:
@@ -50,7 +50,7 @@ def test_movement_walks_unfound_ways_and_stops_at_locked_ones() -> None:
     draft = _draft()
 
     assert _kinds(actions.move(draft, PLAYER_ID, CLOISTER)) == ["entity_moved"]
-    # `cloister`—`bell_tower` is authored unknown both ways: walking it finds it.
+    # `cloister`—`bell-tower` is authored unknown both ways: walking it finds it.
     assert _kinds(actions.move(draft, PLAYER_ID, BELL_TOWER)) == [
         "entity_discovered",
         "entity_moved",
@@ -108,12 +108,18 @@ def test_inventory_actions_gate_on_position_and_carrying() -> None:
     assert draft.world.require(LANTERN).parent_id == STUDY
     (given,) = actions.move(draft, VAULT_MAP, MARA)
     assert given.entity_id == VAULT_MAP
-    assert given.trace == "the player gave the item the vault map[vault_map] to the npc Mara[mara]"
+    assert given.trace == "the player gave the item the vault map[vault-map] to the npc Mara[mara]"
 
     created, carried = actions.improvise(draft, "a rusty key")
     assert created.entity_id is not None
     assert draft.world.require(created.entity_id).name == "a rusty key"
     assert carried.entity_id == created.entity_id
+
+    long_name = "a length of frayed rope " * 5
+    made = actions.improvise(draft, long_name)[0].entity_id
+    again = actions.improvise(draft, long_name)[0].entity_id
+    assert made is not None and again is not None and made != again
+    assert len(made) <= SLUG_MAX and len(again) <= SLUG_MAX
 
     with pytest.raises(ValueError, match="not loose at the player's location"):
         _ = actions.move(draft, VAULT_MAP, PLAYER_ID)

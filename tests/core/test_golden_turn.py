@@ -40,7 +40,7 @@ HISTORY = (
 NARRATION = "The flagstone lifts. Beyond the door, something shifts its weight and waits."
 SEED = 11
 # One unconditional tool call every engine shares, so the two traces differ only by their roll.
-TAKE_THE_MAP = tool_call("move", entity_id="vault_map", to_id="player")
+TAKE_THE_MAP = tool_call("move", entity_id="vault-map", to_id="player")
 # What the last tool call writes once the roll has landed: the same shape under every engine.
 LISTENING = tool_call(
     "add_trait",

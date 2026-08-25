@@ -27,7 +27,7 @@ from aidm.state.entities import PLAYER_ID, Entity, EntityId
 
 VAULT = EntityId("vault")
 CLOISTER = EntityId("cloister")
-GROWN = EntityId("sub_crypt")
+GROWN = EntityId("sub-crypt")
 
 LEGAL = AdventureGrowth(
     changes=(Change(kind="gear", tag="Waxed Rope"),), why="he never climbs without it now"

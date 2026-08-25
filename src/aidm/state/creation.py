@@ -3,13 +3,13 @@ from typing import Self
 
 from pydantic import Field, model_validator
 
-from aidm.state.entities import ContentSlug, Frozen, Slug
+from aidm.state.entities import Frozen, Slug
 
 type Picks = Mapping[Slug, tuple[str, ...]]
 
 
 class CreationOption(Frozen):
-    id: ContentSlug
+    id: Slug
     label: str
     detail: str = ""
 

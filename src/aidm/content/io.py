@@ -26,7 +26,7 @@ WORLD_FILE = "world.json"
 PROFILE_FILE = "base.json"
 SOURCE_STEM = "source"
 SOURCE_SUFFIXES = (".md", ".txt", ".pdf")
-_SAVE_SLUG_PATTERN = r"[a-z0-9][a-z0-9_-]*"
+_SAVE_SLUG_PATTERN = r"[a-z0-9][a-z0-9-]*"
 
 LOGGER = logging.getLogger(__name__)
 

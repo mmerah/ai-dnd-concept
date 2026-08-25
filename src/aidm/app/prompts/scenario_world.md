@@ -12,7 +12,7 @@ You create the world for a playable tabletop scenario. Rules come from the selec
 ## Scenario fields
 
 - `meta`: a title and a 2-3 sentence premise. State why the player is here and where they start.
-- `entities`: locations, actors, and items. Give every entity a unique lowercase underscore id, such as `bell_tower`; never use `player`. `known: true` means the player knows it at the start.
+- `entities`: locations, actors, and items. Give every entity a unique lowercase id of words joined by hyphens, such as `bell-tower`; never use `player`. `known: true` means the player knows it at the start.
 - `parent_id`: where an entity is. Actors are in locations. Items are in locations or held by actors. Locations use null.
 - `detail.description`: what a close look reveals.
 - `detail.when_reached`: the lead or consequence triggered when the entity is found, met, entered, or understood. Put the consequence first, including any `reveal` or `advance_thread` instruction. This text is for the Director, not the player.

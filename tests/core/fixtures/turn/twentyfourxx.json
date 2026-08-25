@@ -2,16 +2,16 @@
   "facts": [
     {
       "kind": "entity_discovered",
-      "trace": "learned of the item the vault map[vault_map]",
+      "trace": "learned of the item the vault map[vault-map]",
       "told": true,
-      "entity_id": "vault_map",
+      "entity_id": "vault-map",
       "event": null
     },
     {
       "kind": "entity_moved",
-      "trace": "the player Kael[player] took the item the vault map[vault_map]",
+      "trace": "the player Kael[player] took the item the vault map[vault-map]",
       "told": true,
-      "entity_id": "vault_map",
+      "entity_id": "vault-map",
       "event": {
         "title": "Took the vault map",
         "badges": [],

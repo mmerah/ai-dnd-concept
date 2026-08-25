@@ -32,7 +32,7 @@ from aidm.state.facts import (
     player_events,
 )
 from aidm.state.model import Game, WorldState, draft_refusal
-from aidm.state.play import OptionId, PendingDecision
+from aidm.state.play import PendingDecision
 
 type EntityRenderer = Callable[[Entity], str]
 
@@ -116,7 +116,7 @@ class Engine(ABC):
         """Whatever this engine must give an entity created during play; a hook, not abstract."""
 
     def resume(
-        self, draft: Game, pending: PendingDecision, option_id: OptionId, rng: Random
+        self, draft: Game, pending: PendingDecision, option_id: Slug, rng: Random
     ) -> tuple[Fact, ...]:
         """Applies a closed answer through the tools' own resolvers; may set `pending` again."""
         del draft, option_id, rng

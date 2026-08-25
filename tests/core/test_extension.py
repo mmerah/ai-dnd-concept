@@ -32,7 +32,7 @@ from aidm.state.model import Game, Thread
 from aidm.state.play import WorldExtended
 from aidm.turn.run import TurnStep
 
-_CRYPT_ID = EntityId("sub_crypt")
+_CRYPT_ID = EntityId("sub-crypt")
 
 
 def _crypt() -> Entity:
@@ -51,7 +51,7 @@ def _grown(directory: Path, *, thin: bool = True) -> GameSession:
     game.scenario = updated(game.scenario, grows=True)
     game.state = at_boundary(game.state)
     if thin:
-        tower = game.state.world.require(EntityId("bell_tower"))
+        tower = game.state.world.require(EntityId("bell-tower"))
         game.state = with_entity(game.state, updated(tower, known=True))
     return game
 

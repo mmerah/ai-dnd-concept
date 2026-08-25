@@ -20,7 +20,7 @@ from aidm.engines.loner3e.rules import RULES, Mechanics
 from aidm.state.entities import PLAYER_ID, Entity, EntityId
 from aidm.state.model import Game
 
-HELD = EntityId("frayed_rope")
+HELD = EntityId("frayed-rope")
 MARA = EntityId("mara")
 ELENA = EntityId("elena")
 TOMAS = EntityId("tomas")
@@ -111,7 +111,7 @@ def test_a_location_no_walk_reaches_is_refused() -> None:
 def test_world_state_rejects_broken_exits_and_party() -> None:
     world = scenario().world
     study = world.require(EntityId("study"))
-    exposed = updated(study, exits=(*study.exits, {"to": "bell_tower", "known": True}))
+    exposed = updated(study, exits=(*study.exits, {"to": "bell-tower", "known": True}))
     with pytest.raises(ValidationError, match="has not met"):
         updated(world, entities=tuple(exposed if e.id == study.id else e for e in world.entities))
 
@@ -124,6 +124,14 @@ def test_world_state_rejects_broken_exits_and_party() -> None:
     wandering = updated(mara, exits=({"to": "study"},))
     with pytest.raises(ValidationError, match="cannot have exits"):
         updated(world, entities=tuple(wandering if e.id == mara.id else e for e in world.entities))
+
+
+def test_entity_ids_use_one_grammar() -> None:
+    study = scenario().world.require(EntityId("study"))
+    with pytest.raises(ValidationError, match="pattern"):
+        _ = updated(study, id="bell_tower")
+    with pytest.raises(ValidationError, match="pattern"):
+        _ = updated(study, exits=({"to": "bell_tower"},))
 
 
 def test_a_scenario_starts_the_party_it_authors() -> None:

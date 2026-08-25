@@ -19,9 +19,10 @@ from aidm.engines.core import (
     transact,
 )
 from aidm.engines.loner3e.engine import Loner3eEngine
+from aidm.state.entities import Slug
 from aidm.state.facts import Fact
 from aidm.state.model import Game
-from aidm.state.play import Answer, DecisionOption, Exchange, Line, OptionId, PendingDecision
+from aidm.state.play import Answer, DecisionOption, Exchange, Line, PendingDecision
 from aidm.turn.run import exchanges_to_messages
 
 DECISION = PendingDecision(
@@ -44,7 +45,7 @@ class Deciding(Loner3eEngine):
             raise ValueError(f"this engine cannot play a {pending.kind!r} decision")
 
     def resume(
-        self, draft: Game, pending: PendingDecision, option_id: OptionId, rng: Random
+        self, draft: Game, pending: PendingDecision, option_id: Slug, rng: Random
     ) -> tuple[Fact, ...]:
         del pending, rng
         if self.chains:

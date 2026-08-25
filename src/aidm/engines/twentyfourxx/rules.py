@@ -14,10 +14,10 @@ from aidm.engines.sheets import (
 )
 from aidm.state.actions import add_trait, require_actor_here, roll_pool
 from aidm.state.creation import CreationOption
-from aidm.state.entities import PLAYER_ID, ContentSlug, Counter, Entity, EntityId, Frozen, Slug
+from aidm.state.entities import PLAYER_ID, Counter, Entity, EntityId, Frozen, Slug
 from aidm.state.facts import DiceEvent, EventBadge, Fact, MechanicEvent, entity_fact
 from aidm.state.model import Game
-from aidm.state.play import DecisionOption, OptionId, PendingDecision
+from aidm.state.play import DecisionOption, PendingDecision
 
 
 @dataclass(frozen=True, slots=True)
@@ -88,7 +88,7 @@ def describe_entity(mechanics: Mechanics, entity: Entity) -> str:
 class KitItem(Frozen):
     """One piece of starting gear, carried as an item entity rather than written on the sheet."""
 
-    id: ContentSlug
+    id: Slug
     label: str
     detail: str = ""
     bulky: bool = False
@@ -97,7 +97,7 @@ class KitItem(Frozen):
 class SkillGrant(Frozen):
     """One side of a specialty's either/or: its skills land on the sheet at `die`."""
 
-    id: ContentSlug
+    id: Slug
     label: str
     detail: str = ""
     skills: tuple[str, ...] = Field(min_length=1)
@@ -107,7 +107,7 @@ class SkillGrant(Frozen):
 class Specialty(Frozen):
     """A specialty grants fixed skills, one chosen grant, and starting gear."""
 
-    id: ContentSlug
+    id: Slug
     label: str
     detail: str = ""
     skills: tuple[str, ...] = ()
@@ -122,7 +122,7 @@ class Specialty(Frozen):
 
 
 class Origin(Frozen):
-    id: ContentSlug
+    id: Slug
     label: str
     detail: str = ""
     increases: int = Field(default=0, ge=0, le=3)
@@ -210,7 +210,7 @@ HURT: tuple[Slug, ...] = ("disaster", "setback")
 BROKEN: Slug = "broken"
 
 
-TAKE_THE_HIT: OptionId = "take-it"
+TAKE_THE_HIT: Slug = "take-it"
 
 
 DEFENCE_PROMPT = (

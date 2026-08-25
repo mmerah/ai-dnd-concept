@@ -32,7 +32,7 @@ async def test_an_engine_uses_the_shared_pipeline_and_safe_narrator_prompt() -> 
     steps: list[TurnStep] = []
     director = FunctionModel(
         scripted(
-            tool_call("move", entity_id="vault_map", to_id="player"),
+            tool_call("move", entity_id="vault-map", to_id="player"),
             text("The map is in hand."),
         )
     )
@@ -53,7 +53,7 @@ async def test_an_engine_uses_the_shared_pipeline_and_safe_narrator_prompt() -> 
     ]
     assert {item.id for item in result.state.world.children(PLAYER_ID, "item")} == {
         "lantern",
-        "vault_map",
+        "vault-map",
     }
     assert "Elena" not in shown(result.turn, "narrator")
     assert "engine_data" not in shown(result.turn, "narrator")
@@ -66,7 +66,7 @@ async def test_on_event_fires_once_per_visible_tool_in_resolver_order() -> None:
     fired: list[str] = []
     director = FunctionModel(
         scripted(
-            tool_call("move", entity_id="vault_map", to_id="player"),
+            tool_call("move", entity_id="vault-map", to_id="player"),
             tool_call("add_trait", entity_id="player", trait_id="listening", text="listening"),
             text("Kael takes the map and listens."),
         )
@@ -96,7 +96,7 @@ async def test_a_narrator_failure_leaves_history_and_events_untouched() -> None:
 
     director = FunctionModel(
         scripted(
-            tool_call("move", entity_id="vault_map", to_id="player"),
+            tool_call("move", entity_id="vault-map", to_id="player"),
             text("The map is in hand."),
         )
     )
@@ -153,13 +153,13 @@ async def test_the_director_reacts_in_run_to_its_own_earlier_tool_call() -> None
         director=FunctionModel(
             scripted(
                 tool_call("move", entity_id="player", to_id="cloister"),
-                tool_call("move", entity_id="player", to_id="bell_tower"),
+                tool_call("move", entity_id="player", to_id="bell-tower"),
                 text("A rotten ladder climbs into the dark."),
             )
         ),
     )
 
-    assert result.state.player.parent_id == "bell_tower"
+    assert result.state.player.parent_id == "bell-tower"
     assert tuple(step.name for step in result.turn.steps) == ("director", "narrator")
 
 
@@ -245,7 +245,7 @@ async def test_a_failed_role_never_mutates_the_input_state() -> None:
 
     director = FunctionModel(
         scripted(
-            tool_call("move", entity_id="vault_map", to_id="player"),
+            tool_call("move", entity_id="vault-map", to_id="player"),
             text("The map is in hand."),
         )
     )
@@ -278,7 +278,7 @@ async def test_a_turn_over_its_role_ceiling_fails_before_any_model_call() -> Non
 async def test_a_director_run_that_fails_discards_what_the_earlier_tool_call_did() -> None:
     engine, state = initialized()
     before = SavedGame.from_game(state).model_dump_json()
-    first = tool_call("move", entity_id="vault_map", to_id="player")
+    first = tool_call("move", entity_id="vault-map", to_id="player")
     calls = 0
 
     def stub(messages: list[ModelMessage], info: AgentInfo) -> ModelResponse:
@@ -298,4 +298,4 @@ async def test_a_director_run_that_fails_discards_what_the_earlier_tool_call_did
         )
 
     assert SavedGame.from_game(state).model_dump_json() == before
-    assert state.world.require(EntityId("vault_map")).parent_id != PLAYER_ID
+    assert state.world.require(EntityId("vault-map")).parent_id != PLAYER_ID

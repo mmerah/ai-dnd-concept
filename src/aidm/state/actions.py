@@ -127,7 +127,7 @@ def _move_item(draft: Game, item: Entity, to_id: EntityId) -> list[Fact]:
 
 def improvise(draft: Game, item_name: str) -> list[Fact]:
     item = Entity(
-        id=slug(item_name, draft.world.all_ids()),
+        id=EntityId(slug(item_name, draft.world.all_ids())),
         kind="item",
         name=item_name,
         brief=item_name,

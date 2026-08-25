@@ -19,7 +19,7 @@ def _turn(state: Game) -> tuple[Game, tuple[Fact, ...]]:
     """A core action and an engine action on one draft, so a shallow copy shows up in either."""
     draft = state.draft()
     facts = [
-        *actions.move(draft, EntityId("vault_map"), PLAYER_ID),
+        *actions.move(draft, EntityId("vault-map"), PLAYER_ID),
         *apply_restore_luck(draft, PLAYER_ID),
     ]
     return draft.committed(), tuple(facts)

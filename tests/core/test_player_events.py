@@ -7,12 +7,12 @@ from aidm.state.facts import player_events
 from aidm.state.model import AdvanceThread
 
 CLOISTER = EntityId("cloister")
-BELL_TOWER = EntityId("bell_tower")
+BELL_TOWER = EntityId("bell-tower")
 VAULT = EntityId("vault")
 TOMAS = EntityId("tomas")
 STUDY = EntityId("study")
 LANTERN = EntityId("lantern")
-VAULT_MAP = EntityId("vault_map")
+VAULT_MAP = EntityId("vault-map")
 MARA = EntityId("mara")
 
 

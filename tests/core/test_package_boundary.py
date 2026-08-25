@@ -7,7 +7,15 @@ SOURCE = Path(__file__).parents[2] / "src" / "aidm"
 ENGINES = ("aidm.engines.loner3e", "aidm.engines.twentyfourxx")
 # Dependencies flow state <- content <- engines <- turn <- app <- ui; config is a shared leaf.
 FORBIDDEN = {
-    "state": {"aidm.content", "aidm.engines", "aidm.turn", "aidm.app", "aidm.ui", "nicegui"},
+    "state": {
+        "aidm.config",
+        "aidm.content",
+        "aidm.engines",
+        "aidm.turn",
+        "aidm.app",
+        "aidm.ui",
+        "nicegui",
+    },
     "content": {"aidm.engines", "aidm.turn", "aidm.app", "aidm.ui", "nicegui"},
     "engines": {"aidm.turn", "aidm.app", "aidm.ui"},
     "turn": {"aidm.app", "aidm.ui", "nicegui"},

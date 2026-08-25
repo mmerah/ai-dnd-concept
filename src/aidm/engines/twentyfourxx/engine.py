@@ -54,10 +54,19 @@ from aidm.state.creation import (
     check_picks,
     picked,
 )
-from aidm.state.entities import PLAYER_ID, Counter, EngineId, Entity, EntityId, Trait, text_slug
+from aidm.state.entities import (
+    PLAYER_ID,
+    Counter,
+    EngineId,
+    Entity,
+    EntityId,
+    Slug,
+    Trait,
+    slug,
+)
 from aidm.state.facts import Fact, explained_fact
 from aidm.state.model import Game
-from aidm.state.play import OptionId, PendingDecision
+from aidm.state.play import PendingDecision
 
 
 def _skills_in_play(state: Game) -> set[str]:
@@ -280,7 +289,7 @@ class TwentyfourxxCreation(CharacterCreation):
         traits: list[Trait] = []
         for written in picked(picks, "traits"):
             taken = [trait.id for trait in traits]
-            traits.append(Trait(id=text_slug(written, taken), name=written))
+            traits.append(Trait(id=slug(written, taken), name=written))
         items = tuple(_carried(entry) for entry in (*pack.starting_kit, *specialty.kit))
 
         return CreatedCharacter(
@@ -352,7 +361,7 @@ class TwentyfourxxEngine(SheetEngine[Sheet]):
         self.director_toolsets = (director_toolset(),)
 
     def resume(
-        self, draft: Game, pending: PendingDecision, option_id: OptionId, rng: Random
+        self, draft: Game, pending: PendingDecision, option_id: Slug, rng: Random
     ) -> tuple[Fact, ...]:
         match pending.kind, option_id:
             case ("stake", "proceed"):

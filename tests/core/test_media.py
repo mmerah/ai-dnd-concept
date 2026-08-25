@@ -32,7 +32,7 @@ def _placed(state: Game, name: str, *, known: bool) -> Game:
     return with_entity(
         state,
         Entity(
-            id=EntityId(name.lower().replace(" ", "_")),
+            id=EntityId(name.lower().replace(" ", "-")),
             kind="item",
             name=name,
             brief=f"A {name.lower()}.",

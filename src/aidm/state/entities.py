@@ -5,7 +5,9 @@ from typing import Annotated, Literal, NewType, Self
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
-from aidm.config import SLUG_MAX, SLUG_PATTERN, Slug
+SLUG_PATTERN = r"[a-z0-9]+(?:-[a-z0-9]+)*"
+SLUG_MAX = 64
+Slug = Annotated[str, Field(pattern=rf"^{SLUG_PATTERN}$", max_length=SLUG_MAX)]
 
 
 class Frozen(BaseModel):
@@ -33,33 +35,26 @@ EntityId = NewType("EntityId", str)
 
 PLAYER_ID = EntityId("player")
 
-# Engine option ids may contain repeated hyphens, unlike `Slug`.
-ContentSlug = Annotated[str, Field(pattern=r"^[a-z0-9-]+$", max_length=64)]
+CheckedEntityId = Annotated[EntityId, Field(pattern=rf"^{SLUG_PATTERN}$", max_length=SLUG_MAX)]
 
 
 def content_id(value: str) -> Slug:
     """Narrow a routed id before it names a directory, so `Slug` downstream is a fact."""
-    if re.fullmatch(SLUG_PATTERN, value) is None:
+    if re.fullmatch(SLUG_PATTERN, value) is None or len(value) > SLUG_MAX:
         raise ValueError(f"invalid content id {value!r}")
     return value
 
 
-def slug(name: str, taken: Iterable[EntityId]) -> EntityId:
-    base = re.sub(r"[^a-z0-9]+", "_", name.lower()).strip("_") or "entity"
-    return EntityId(_unused(base, taken, "_"))
-
-
-def text_slug(text: str, taken: Iterable[str]) -> Slug:
+def slug(text: str, taken: Iterable[str]) -> Slug:
     words = re.sub(r"[^a-z0-9]+", "-", text.lower()).strip("-")
-    return _unused(_capped(words, SLUG_MAX), taken, "-", SLUG_MAX)
+    return _unused(_capped(words, SLUG_MAX), taken)
 
 
-def _unused(base: str, taken: Iterable[str], join: str, limit: int | None = None) -> str:
+def _unused(base: str, taken: Iterable[str]) -> str:
     used, candidate, number = set(taken), base, 2
     while candidate in used:
-        suffix = f"{join}{number}"
-        room = base if limit is None else _capped(base, limit - len(suffix))
-        candidate, number = f"{room}{suffix}", number + 1
+        suffix = f"-{number}"
+        candidate, number = f"{_capped(base, SLUG_MAX - len(suffix))}{suffix}", number + 1
     return candidate
 
 
@@ -109,20 +104,20 @@ class Trait(Frozen):
 class Exit(Mutable):
     """A one-way exit from a location."""
 
-    to: EntityId
+    to: CheckedEntityId
     known: bool = False
     locked: bool = False
 
 
 class Entity(Mutable):
-    id: EntityId
+    id: CheckedEntityId
     kind: Kind
     name: str
     brief: str
     detail: EntityDetail | None = None
     known: bool = False
     # Which kinds may hold which is one rule, in `world.check_placement`.
-    parent_id: EntityId | None = None
+    parent_id: CheckedEntityId | None = None
     traits: list[Trait] = Field(default_factory=list)
     exits: list[Exit] = Field(default_factory=list)
 

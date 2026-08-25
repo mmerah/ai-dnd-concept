@@ -1,5 +1,5 @@
 from collections.abc import Sequence
-from typing import Annotated, Self
+from typing import Self
 
 from pydantic import Field, JsonValue, model_validator
 
@@ -31,12 +31,8 @@ class Narration(Frozen):
         return narration_text(self.lines)
 
 
-# Laxer than `Slug`: 24XX's defence options are carried-item entity ids, which allow underscores.
-OptionId = Annotated[str, Field(pattern=r"^[a-z0-9_-]+$", max_length=64)]
-
-
 class DecisionOption(Frozen):
-    id: OptionId
+    id: Slug
     label: str = Field(min_length=1)
     detail: str = ""
 
@@ -62,7 +58,7 @@ class PendingDecision(Frozen):
 class Answer(Frozen):
     """What the player submits: a chosen option or written text, never both."""
 
-    option_id: OptionId | None = None
+    option_id: Slug | None = None
     text: str = ""
 
     @model_validator(mode="after")

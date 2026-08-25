@@ -31,14 +31,14 @@ KNOWN TO THE PLAYER, BUT ELSEWHERE:
     pools: luck 6/6
 
 EXISTS BUT THE PLAYER DOES NOT KNOW IT YET:
-- the bell tower[id=bell_tower] (location) — A cramped climb of rotten ladders above the nave, its bell long since stilled.
+- the bell tower[id=bell-tower] (location) — A cramped climb of rotten ladders above the nave, its bell long since stilled.
 - the sealed vault[id=vault] (location) — The undercroft chamber Kael came for, its door bearing a seal nobody living can read.
   detail: The door is stone, and the seal cut into it is unweathered where everything around it has worn.
   when reached: Kael has found the vault door: advance thread vault-seal to stage door-found. The seal is the whole obstacle now — press on what opening it will cost.
-- a bloated rat[id=cloister_rat] (npc) — at the cloister — It has grown fat on the dead garden and does not run from a lantern.
+- a bloated rat[id=cloister-rat] (npc) — at the cloister — It has grown fat on the dead garden and does not run from a lantern.
   state:
     pools: luck 6/6
-- the vault map[id=vault_map] (item) — at the abbot's study — A creased chart of the undercroft, marking a stair the abbey's own plans deny.
+- the vault map[id=vault-map] (item) — at the abbot's study — A creased chart of the undercroft, marking a stair the abbey's own plans deny.
   detail: Drawn in an old hand; the undercroft it maps is larger than the abbey standing over it.
   when reached: Kael has the stair charted: advance thread vault-seal to stage stair-charted. The chart marks a way down from the cloister that the abbey's own plans deny — press on getting down there.
 

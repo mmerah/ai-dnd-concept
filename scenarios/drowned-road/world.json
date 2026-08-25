@@ -5,11 +5,11 @@
   },
   "engines": ["loner3e", "twentyfourxx"],
   "grows": true,
-  "starting_location_id": "bell_house",
+  "starting_location_id": "bell-house",
   "world": {
     "entities": [
       {
-        "id": "tarns_end",
+        "id": "tarns-end",
         "kind": "location",
         "name": "Tarn's End",
         "brief": "A fishing village of forty houses, a smokehouse, and the inn Ebb Tide where tide tables are chalked on the bar.",
@@ -19,13 +19,13 @@
         "traits": [],
         "exits": [
           {
-            "to": "bell_house",
+            "to": "bell-house",
             "known": true
           }
         ]
       },
       {
-        "id": "bell_house",
+        "id": "bell-house",
         "kind": "location",
         "name": "Bell House",
         "brief": "A squat stone tower with a single bronze bell hanging open to the weather.",
@@ -38,16 +38,16 @@
         "traits": [],
         "exits": [
           {
-            "to": "tarns_end",
+            "to": "tarns-end",
             "known": true
           },
           {
-            "to": "lantern_chapel"
+            "to": "lantern-chapel"
           }
         ]
       },
       {
-        "id": "lantern_chapel",
+        "id": "lantern-chapel",
         "kind": "location",
         "name": "Lantern Chapel",
         "brief": "A black stone chapel on the lone rock; its lamp burns night and day.",
@@ -60,16 +60,16 @@
         "traits": [],
         "exits": [
           {
-            "to": "bell_house"
+            "to": "bell-house"
           },
           {
-            "to": "crypt_entrance",
+            "to": "crypt-entrance",
             "locked": true
           }
         ]
       },
       {
-        "id": "crypt_entrance",
+        "id": "crypt-entrance",
         "kind": "location",
         "name": "Crypt Entrance",
         "brief": "An iron grate sealed with a fish-shaped lock, half submerged in brackish water.",
@@ -82,33 +82,33 @@
         "traits": [],
         "exits": [
           {
-            "to": "lantern_chapel",
+            "to": "lantern-chapel",
             "locked": true
           }
         ]
       },
       {
-        "id": "ovid_sarn",
+        "id": "ovid-sarn",
         "kind": "actor",
         "name": "Ovid Sarn",
         "brief": "The bell keeper, heavy and silent, rings the tide bell twice daily.",
         "detail": null,
         "known": true,
-        "parent_id": "bell_house",
+        "parent_id": "bell-house",
         "traits": []
       },
       {
-        "id": "mara_voss",
+        "id": "mara-voss",
         "kind": "actor",
         "name": "Mara Voss",
         "brief": "The lone caretaker of the Lantern Chapel, unseen by most travelers.",
         "detail": null,
         "known": false,
-        "parent_id": "lantern_chapel",
+        "parent_id": "lantern-chapel",
         "traits": []
       },
       {
-        "id": "bronze_key",
+        "id": "bronze-key",
         "kind": "item",
         "name": "Bronze Key",
         "brief": "A flatfish\u2011shaped bronze key wrapped in stiff oilcloth.",
@@ -117,7 +117,7 @@
           "when_reached": "The bronze key removes the lock on the crypt entrance: reveal that way and unlock it once Kael works this out."
         },
         "known": false,
-        "parent_id": "bell_house",
+        "parent_id": "bell-house",
         "traits": []
       }
     ],

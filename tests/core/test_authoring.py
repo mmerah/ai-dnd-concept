@@ -169,8 +169,8 @@ async def test_an_extension_pass_only_adds_to_the_world_it_stands_on() -> None:
         _write(_as_patch()),
         _write({"entities": [_location("study").model_dump(mode="json")]}),
         _connect(from_id="study", to_id="cloister"),
-        _write({"entities": [_location("sub_crypt").model_dump(mode="json")]}),
-        _connect(from_id="cloister", to_id="sub_crypt"),
+        _write({"entities": [_location("sub-crypt").model_dump(mode="json")]}),
+        _connect(from_id="cloister", to_id="sub-crypt"),
         _finish("Extended the vault."),
     )
     with agent.override(model=FunctionModel(author.stub)):
@@ -182,8 +182,8 @@ async def test_an_extension_pass_only_adds_to_the_world_it_stands_on() -> None:
     assert "Join one of them to a location this pass wrote" in both_settled
 
     grown = extension_patch(shipped.world, draft)
-    assert [entity.id for entity in grown.entities] == [EntityId("sub_crypt")]
-    assert grown.exits == (ExitLink(location_id=EntityId("cloister"), to=EntityId("sub_crypt")),)
+    assert [entity.id for entity in grown.entities] == [EntityId("sub-crypt")]
+    assert grown.exits == (ExitLink(location_id=EntityId("cloister"), to=EntityId("sub-crypt")),)
 
 
 def test_a_patched_art_style_reaches_the_scenario() -> None:
@@ -318,7 +318,7 @@ def test_an_opening_slice_passes_a_bar_the_whole_scenario_would_fail() -> None:
                     parent_id=EntityId("cell"),
                 ),
                 Entity(
-                    id=EntityId("loose_stone"),
+                    id=EntityId("loose-stone"),
                     kind="item",
                     name="a loose stone",
                     brief="It grinds when the wall is leaned on.",

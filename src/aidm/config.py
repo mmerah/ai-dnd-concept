@@ -1,12 +1,10 @@
 from pathlib import Path
-from typing import Annotated, Literal, Self, get_args
+from typing import Literal, Self, get_args
 
 from pydantic import BaseModel, ConfigDict, Field, SecretStr, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
-SLUG_PATTERN = r"[a-z0-9]+(?:-[a-z0-9]+)*"
-SLUG_MAX = 64
-Slug = Annotated[str, Field(pattern=rf"^{SLUG_PATTERN}$", max_length=SLUG_MAX)]
+from aidm.state.entities import Slug
 
 ProviderName = Literal["openrouter", "local"]
 ReasoningEffort = Literal["none", "minimal", "low", "medium", "high", "xhigh", "max"]

@@ -81,7 +81,7 @@ def test_a_question_puts_two_dice_to_the_answer_and_costs_no_luck_on_its_own() -
 def test_a_question_the_fiction_cannot_carry_is_refused_with_the_reason() -> None:
     _, state = initialized()
 
-    elsewhere = _seal(opponent_id="cloister_rat")
+    elsewhere = _seal(opponent_id="cloister-rat")
     with pytest.raises(ValueError, match="is not here with the player"):
         _ = resolve_question(state.draft(), elsewhere, Random(0), TWISTS)
     with pytest.raises(ValueError, match="their own opposition"):

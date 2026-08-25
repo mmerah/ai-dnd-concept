@@ -14,7 +14,7 @@ from aidm.engines.sheets import (
     require_sheet,
 )
 from aidm.state.actions import require_actor_here, roll_pool
-from aidm.state.entities import PLAYER_ID, ContentSlug, Counter, Entity, EntityId, Frozen, Slug
+from aidm.state.entities import PLAYER_ID, Counter, Entity, EntityId, Frozen, Slug
 from aidm.state.facts import DiceEvent, EventBadge, Fact, MechanicEvent, entity_fact
 from aidm.state.model import Game
 from aidm.state.play import PendingDecision
@@ -34,11 +34,11 @@ class Rules:
 RULES = Rules()
 
 
-SRD_PACK: ContentSlug = "srd"
+SRD_PACK: Slug = "srd"
 
 
 class PackEntry(Frozen):
-    id: ContentSlug
+    id: Slug
     label: str
     # Empty for packs whose entries are bare phrases, such as AP01.
     detail: str = ""
@@ -67,7 +67,7 @@ class Pack(Frozen):
         return self
 
 
-def twist_table(packs: Mapping[str, Pack], chosen: ContentSlug) -> tuple[tuple[str, str], ...]:
+def twist_table(packs: Mapping[str, Pack], chosen: Slug) -> tuple[tuple[str, str], ...]:
     """The chosen set's own twist columns, or the SRD's: AP01 and most user packs publish none."""
     pack = packs.get(chosen)
     if pack is None:
@@ -87,7 +87,7 @@ class Sheet(SheetBase):
     """The one sheet shape, whether it belongs to the player or to an NPC."""
 
     # The table set this character was built from; the twist table is read from it.
-    pack: ContentSlug = SRD_PACK
+    pack: Slug = SRD_PACK
     concept: str = ""
     skills: tuple[str, ...] = ()
     frailties: tuple[str, ...] = ()
