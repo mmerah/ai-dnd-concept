@@ -1,11 +1,9 @@
 {
-  "character": {
-    "specialty": "Sneak",
-    "origin": "Human",
-    "skills": {
-      "Climbing": 10,
-      "Stealth": 10,
-      "Tracking": 8
-    }
+  "specialty": "Sneak",
+  "origin": "Human",
+  "skills": {
+    "Climbing": 10,
+    "Stealth": 10,
+    "Tracking": 8
   }
 }

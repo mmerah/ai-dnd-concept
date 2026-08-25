@@ -132,10 +132,10 @@ def character_page(runtime: Runtime, engine_id: EngineId) -> None:
 
 
 def _preview_lines(created: CreatedCharacter) -> list[tuple[str, str]]:
-    """One (label, text) row per fact, engine-agnostic: the overlay is an opaque dict here."""
+    """One (label, text) row per fact, engine-agnostic: the engine rules are an opaque dict here."""
     lines = [(trait.name, trait.text) for trait in created.profile.traits]
     lines.extend(("carrying", item.name) for item in created.profile.items)
-    for key, value in created.overlay.character.items():
+    for key, value in created.rules.items():
         if isinstance(value, dict):
             if "current" in value and "maximum" in value:
                 lines.append((key, f"{value['current']}/{value['maximum']}"))

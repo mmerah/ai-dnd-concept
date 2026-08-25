@@ -448,7 +448,7 @@ def test_creation_hands_over_the_kit_as_carried_items_and_lands_the_training_die
     created = creation.create("Vex", "A quiet reader of rooms.", picks)
     assert [item.name for item in created.profile.items] == ["Comm", "Bottle of PsychOut"]
     assert created.profile.traits == ()
-    assert created.overlay.character["skills"] == {
+    assert created.rules["skills"] == {
         "Telepathy": 10,
         "Stealth": 8,
         "Deception": 8,
@@ -494,4 +494,4 @@ def test_a_humans_three_increases_can_stack_onto_one_skill() -> None:
         "skills": ("tracking", "tracking", "tracking"),
     }
     created = creation.create("Rho", "Never stops moving.", picks)
-    assert created.overlay.character["skills"] == {"Climbing": 8, "Stealth": 8, "Tracking": 12}
+    assert created.rules["skills"] == {"Climbing": 8, "Stealth": 8, "Tracking": 12}

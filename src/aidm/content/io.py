@@ -1,3 +1,4 @@
+import json
 import logging
 import re
 from collections.abc import Callable, Iterator, Sequence
@@ -15,7 +16,6 @@ from aidm.state.play import Exchange, PendingDecision
 
 from .model import (
     Character,
-    CharacterOverlay,
     CharacterProfile,
     CreatedCharacter,
     Scenario,
@@ -83,9 +83,9 @@ def load_character(
     character = Character(
         id=name,
         profile=_read(folder / PROFILE_FILE, CharacterProfile),
-        overlay=_read(folder / f"{engine}.json", CharacterOverlay),
+        rules=json.loads(_read_text(folder / f"{engine}.json")),
     )
-    check_overlay(character.overlay.character)
+    check_overlay(character.rules)
     return character
 
 
@@ -96,7 +96,7 @@ def write_character(
     if folder.exists():
         raise ValueError(f"character {name!r} already exists")
     _write(folder / PROFILE_FILE, created.profile.model_dump_json(indent=2))
-    _write(folder / f"{engine}.json", created.overlay.model_dump_json(indent=2))
+    _write(folder / f"{engine}.json", json.dumps(created.rules, indent=2))
 
 
 def write_scenario(
@@ -115,10 +115,14 @@ def write_scenario(
         _write(folder / f"{SOURCE_STEM}{SOURCE_SUFFIXES[0]}", source)
 
 
-def _read[T: BaseModel](path: Path, model: type[T]) -> T:
+def _read_text(path: Path) -> str:
     if not path.is_file():
         raise ValueError(f"{path.parent.name!r} has no {path.name}")
-    return model.model_validate_json(path.read_text(encoding=ENCODING))
+    return path.read_text(encoding=ENCODING)
+
+
+def _read[T: BaseModel](path: Path, model: type[T]) -> T:
+    return model.model_validate_json(_read_text(path))
 
 
 def engine_text(path: Path) -> str:

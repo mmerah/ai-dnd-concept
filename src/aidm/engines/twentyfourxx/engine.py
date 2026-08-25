@@ -7,7 +7,7 @@ from pydantic_ai import ModelRetry, RunContext
 from pydantic_ai.tools import ToolDefinition
 from pydantic_ai.toolsets import AbstractToolset
 
-from aidm.content.model import CharacterOverlay, CharacterProfile, CreatedCharacter
+from aidm.content.model import CharacterProfile, CreatedCharacter
 from aidm.engines.core import (
     Advancement,
     CharacterCreation,
@@ -298,13 +298,11 @@ class TwentyfourxxCreation(CharacterCreation):
 
         return CreatedCharacter(
             profile=CharacterProfile(name=name, brief=brief, traits=tuple(traits), items=items),
-            overlay=CharacterOverlay(
-                character={
-                    "specialty": specialty.label,
-                    "origin": origin.label,
-                    "skills": skills_json,
-                }
-            ),
+            rules={
+                "specialty": specialty.label,
+                "origin": origin.label,
+                "skills": skills_json,
+            },
         )
 
 

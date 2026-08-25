@@ -56,7 +56,7 @@ def begin_game(engine: Engine, scenario_id: Slug, scenario: Scenario, character:
         scenario=scenario.meta,
         engine=engine.id,
         world=world,
-        mechanics=engine.opening_mechanics(world, character.overlay.character),
+        mechanics=engine.opening_mechanics(world, character.rules),
     )
     engine.validate(state)
     # The world was composed here by hand, so the commit is the only thing that validates it.

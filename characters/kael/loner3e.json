@@ -1,16 +1,14 @@
 {
-  "character": {
-    "concept": "A Wary Relic-Hunter",
-    "skills": [
-      "Reads Old Stonework",
-      "Quiet Hands"
-    ],
-    "frailties": [
-      "Never Walks Away"
-    ],
-    "gear": [
-      "Pry Bar",
-      "Chalk and Wire"
-    ]
-  }
+  "concept": "A Wary Relic-Hunter",
+  "skills": [
+    "Reads Old Stonework",
+    "Quiet Hands"
+  ],
+  "frailties": [
+    "Never Walks Away"
+  ],
+  "gear": [
+    "Pry Bar",
+    "Chalk and Wire"
+  ]
 }

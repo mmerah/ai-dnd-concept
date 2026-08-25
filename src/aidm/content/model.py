@@ -87,21 +87,17 @@ class CharacterProfile(Frozen):
         return self
 
 
-class CharacterOverlay(Frozen):
-    character: dict[str, JsonValue]
-
-
 class CreatedCharacter(Frozen):
     """What in-app creation produces: exactly the two files hand-authoring writes."""
 
     profile: CharacterProfile
-    overlay: CharacterOverlay
+    rules: dict[str, JsonValue]
 
 
 class Character(Frozen):
     id: Slug
     profile: CharacterProfile
-    overlay: CharacterOverlay
+    rules: dict[str, JsonValue]
 
     @property
     def name(self) -> str:

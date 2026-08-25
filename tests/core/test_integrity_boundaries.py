@@ -15,7 +15,7 @@ from core_test_support import (
 from pydantic import ValidationError
 
 from aidm.content.io import SavedGame, load_character
-from aidm.content.model import Character, CharacterOverlay, CharacterProfile, Scenario
+from aidm.content.model import Character, CharacterProfile, Scenario
 from aidm.engines.loner3e.rules import RULES, Mechanics
 from aidm.state.entities import PLAYER_ID, Entity, EntityId
 from aidm.state.model import Game
@@ -43,7 +43,7 @@ def _character(*, holds: Entity) -> Character:
             brief="A character built only for this test.",
             items=(holds,),
         ),
-        overlay=CharacterOverlay(character={}),
+        rules={},
     )
 
 

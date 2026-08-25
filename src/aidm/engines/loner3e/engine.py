@@ -6,7 +6,7 @@ from pydantic import JsonValue
 from pydantic_ai import RunContext
 from pydantic_ai.toolsets import FunctionToolset
 
-from aidm.content.model import CharacterOverlay, CharacterProfile, CreatedCharacter
+from aidm.content.model import CharacterProfile, CreatedCharacter
 from aidm.engines.core import (
     Advancement,
     CharacterCreation,
@@ -185,15 +185,13 @@ class Loner3eCreation(CharacterCreation):
         pack = self._packs[picked(picks, "pack")[0]]
         return CreatedCharacter(
             profile=CharacterProfile(name=name, brief=brief),
-            overlay=CharacterOverlay(
-                character={
-                    "pack": picked(picks, "pack")[0],
-                    "concept": picked(picks, "concept")[0],
-                    "skills": [_label(pack.skills, skill) for skill in picked(picks, "skills")],
-                    "frailties": [_label(pack.frailties, picked(picks, "frailty")[0])],
-                    "gear": [_label(pack.gear, gear) for gear in picked(picks, "gear")],
-                }
-            ),
+            rules={
+                "pack": picked(picks, "pack")[0],
+                "concept": picked(picks, "concept")[0],
+                "skills": [_label(pack.skills, skill) for skill in picked(picks, "skills")],
+                "frailties": [_label(pack.frailties, picked(picks, "frailty")[0])],
+                "gear": [_label(pack.gear, gear) for gear in picked(picks, "gear")],
+            },
         )
 
 
