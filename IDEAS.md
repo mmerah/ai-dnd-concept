@@ -1,6 +1,14 @@
 ## Loose ends
 
-- [] New agent: state keeper. Add/remove traits/tags, reveal, … Always what happens is the director forgets something. Does not reveal what we interact with. You get bit by something but doesn’t always add a tag/trait or remove it, you kill something but the entity still exists (is death a tag or tool? but description on ui for example of the bloated rat would stay with just a tag?)
+- [] docs/chat-claude-mock: Shows claude-sdk usage to have the UI directly drive claude, with the tool output of end turn ending in the chat bubble. Then the dev tab can probably show that claude code log stuff (so yousee tool calls, costs, ...). We would ideally focus on supportting 2 coding harnesses: codex and claude code. CC through the sdk, codex has a SDK as well.
+- [] UI should be clearer when there is a pending decision. Engine should really want to mark those modes clearly. Loner conflicts for example. Right now it’s just a small text mess that is extremely unclear and badly written
+- [] Few shot learning examples in instructions? Engines ship with them (5 scenarios of low-high complexity presenting how the SRD work) plus core as well (entities/threads/… manipulation)
+- [] Support of "codex" in code mode -> it can generate images!
+- [] Support of "opencode" and "pi" in code mode
+- [] Sounds/Voices
+- [] What refactor to make fate condensed and cairn barebones as easy as possible to implement
+- [] RAG? Scenario ingestion
+- [] New agent: state keeper. Add/remove traits/tags, reveal, … Always what happens is the director forgets something. Does not reveal what we interact with. You get bit by something but doesn’t always add a tag/trait or remove it, you kill something but the entity still exists (is death a tag or tool? but description on ui for example of the bloated rat would stay with just a tag?). Generally handling of "death" state. Player should die/end game?
 - [] Try again gpt-oss-20b? 120b? cheaper than ds4 flash or not? narrator with a cheaper model
 - [] add fate-condensed system
 - [] research and add cairn barebones edition
@@ -15,3 +23,6 @@
 - [] Multiple rounds of refactors: no change in behavior, improvements in consistency in the codebase, removing useless ceremony, SOLID/DRY/KISS, type safety, fail fast.
 - [] NPC can join/leave player party. NPC can also level-up.
 - [] RAG on scenarios? .pdf -> source.md in scenario/<id>/ folder, then RAG on it? Is the drowned-road scenario extending based on source.md?
+- [] Doc sweep: LLM models performance, roadmap rewrite, readme rewrite, IDeas completed/deleted
+- [] De-aify the codebase
+- [] Lots of testing to identify gaps of MVP0
