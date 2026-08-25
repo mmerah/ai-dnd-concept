@@ -40,7 +40,6 @@ from aidm.state.facts import Fact
 from aidm.state.model import Game
 from aidm.state.play import (
     Answer,
-    Exchange,
     Line,
     OptionId,
     PendingDecision,
@@ -53,9 +52,9 @@ from aidm.turn.context import (
     advisor_instructions,
     director_instructions,
     player_scene,
+    render_director,
 )
-from aidm.turn.context import render_director as render_scene
-from aidm.turn.run import consume_answer, gated_toolsets, speakers_refusal
+from aidm.turn.run import close_segment, consume_answer, gated_toolsets, speakers_refusal
 
 LOGGER = logging.getLogger(__name__)
 
@@ -66,8 +65,8 @@ SERVER_NAME = "aidm"
 RECENT_EXCHANGES = 8
 # Where `uv run aidm` serves the viewer; the port is NiceGUI's default, set in ui/app.py.
 VIEWER = "http://localhost:8080"
-# `render_scene` labels its last section PLAYER ACTION; in code mode the action is in the chat.
-ACTION_IS_IN_THE_CHAT = "(the player's message in this conversation)"
+# `render_director` labels its last section PLAYER ACTION; before `start_turn` there is none.
+NO_TURN_OPEN = "(no turn is open; call start_turn with the player's message)"
 
 PREAMBLE = """\
 CODE MODE. You are the Director and the Narrator of this game at once. The two rule sets below
@@ -75,10 +74,11 @@ were written for two separate models. Here you play both. The Director rules say
 after you writes the prose. Ignore that line. You write the prose yourself, and you give it to
 `end_turn`.
 
-The player's action reaches you as a chat message, never as a tool argument. Call `scene()` first
-every turn: you may have been compacted, and it is the only complete picture of the game. Then
-call director tools one at a time, and read each result before the next call. Then call
-`end_turn` with the player's action and the lines you wrote.
+The player's action reaches you as a chat message, never as a tool argument. Call
+`start_turn(the player's message)` first every turn: it opens the turn and hands back the whole
+picture of the game. Then call director tools one at a time, and read each result before the next
+call. Then call `end_turn` with the lines you wrote. If you were compacted mid-turn, `scene()`
+gives the picture back.
 
 `scene()` shows you canon the player has not discovered. Never put undiscovered canon in a
 narration line. Reveal it with a tool first, or leave it out.
@@ -104,16 +104,14 @@ class NoArgs(ToolArgs):
     pass
 
 
-class AnswerDecision(ToolArgs):
+class StartTurn(ToolArgs):
+    prompt: str
+    """What the player did, in their words."""
     option_id: OptionId | None = None
-    """Exact id of a listed option, or null when the player answers in their own words."""
-    text: str = ""
-    """The player's own words. One of `option_id` and `text`, never both."""
+    """Exact id of the listed option their words chose, when a decision is open."""
 
 
 class EndTurn(ToolArgs):
-    prompt: str
-    """What the player did, in their words."""
     lines: tuple[Line, ...]
     """The prose the player reads, in order."""
 
@@ -151,9 +149,10 @@ _ARGUMENTS = TypeAdapter(dict[str, JsonValue])
 class Turn:
     """Turn-scoped state the per-call commits must not lose."""
 
+    prompt: str
+    notes: tuple[str, ...] = ()
     log: TurnRecord = field(default_factory=TurnRecord)
     answered: PendingDecision | None = None
-    notes_shown: int = 0
     # The answer re-suspended: core tools may still develop what it caused.
     suspended_at_start: bool = False
 
@@ -167,7 +166,7 @@ class Harness:
     lock: asyncio.Lock = field(default_factory=asyncio.Lock)
     session: GameSession | None = None
     toolsets: tuple[AbstractToolset[DirectorContext], ...] = ()
-    turn: Turn = field(default_factory=Turn)
+    turn: Turn | None = None
     advance_args: type[AdvanceArgs] | None = None
     authoring: AuthoringRun | None = None
 
@@ -177,6 +176,11 @@ class Harness:
                 f"no game is open; call open_game(slug) first.\n{_catalogue(self.settings)}"
             )
         return self.session
+
+    def started(self) -> Turn:
+        if self.turn is None:
+            raise ModelRetry("no turn is open; call start_turn with the player's message first.")
+        return self.turn
 
     async def offered(self) -> list[types.Tool]:
         offered = [*PUBLISHED, *await _authoring_tools()]
@@ -201,7 +205,7 @@ class Harness:
         session = self.runtime.session(target)
         self.session = session
         self.toolsets = tuple(gated_toolsets(session.engine))
-        self.turn = Turn()
+        self.turn = None
         # A growth run drafts against the game it began in; opening another abandons it.
         if isinstance(self.authoring, GrowthRun):
             self.authoring = None
@@ -213,7 +217,7 @@ class Harness:
         return (
             f"opened {target.slug!r} at turn {session.state.turn}, "
             f"playing {target.scenario_id} under the {session.engine.id} engine. "
-            "Call rules(), then scene().\n"
+            "Call rules(), then start_turn with the player's message.\n"
             f"Show the player this link once: {VIEWER}{target.path} — a window that follows "
             "the game while `uv run aidm` runs in another terminal."
         )
@@ -226,14 +230,20 @@ class Harness:
         return f"{rules}\n\n{advisor_instructions(engine.advancement.instructions)}"
 
     def scene(self) -> str:
+        turn = self.turn
+        return self._picture(
+            NO_TURN_OPEN if turn is None else turn.prompt, () if turn is None else turn.notes
+        )
+
+    def _picture(self, action: str, notes: tuple[str, ...], resumed: str = "") -> str:
         session = self.opened()
         state = session.state
-        self.turn.notes_shown = len(state.world.pending_notes)
-        rendered = render_scene(
-            SceneSnapshot.from_game(state),
+        rendered = render_director(
+            SceneSnapshot.from_game(state, (*notes, *state.world.pending_notes)),
             session.engine.renderer(state),
             state.scenario,
-            ACTION_IS_IN_THE_CHAT,
+            action,
+            resumed=resumed,
         )
         sections = [
             rendered,
@@ -246,39 +256,28 @@ class Harness:
             sections.append(GROWTH_DUE)
         return "\n\n".join(sections)
 
-    def answer_decision(self, asked: AnswerDecision) -> str:
+    def start_turn(self, asked: StartTurn) -> str:
         session = self.opened()
-        if session.state.pending is None:
-            raise ModelRetry("the rules are not waiting on a decision.")
         draft = session.state.draft()
-        before = len(draft.world.pending_notes)
-        # Any input consumes the decision, a revision included: it never survives its own answer.
-        consumed, draft.pending = draft.pending, None
-        prompt, resumed, answered = consume_answer(
-            session.engine,
-            draft,
-            Answer(option_id=asked.option_id, text=asked.text),
-            consumed,
-            session.rng,
-            self.turn.log,
-        )
-        # Builtin renders these in the same director prompt; here this answer is that prompt.
-        noted = "\n".join(f"- {note}" for note in draft.world.pending_notes[before:])
-        if noted and self.turn.notes_shown == before:
-            self.turn.notes_shown = len(draft.world.pending_notes)
+        log = TurnRecord()
+        chose = asked.option_id
+        answer = Answer(option_id=chose) if chose is not None else Answer(text=asked.prompt)
+        prompt, resumed, answered = consume_answer(session.engine, draft, answer, session.rng, log)
+        notes = draft.take_notes()
         session.commit(draft.committed())
-        self.turn.answered = answered
-        self.turn.suspended_at_start = draft.pending is not None
-        answered_line = f"the player answered: {prompt}"
-        return "\n".join(
-            part
-            for part in (answered_line, resumed or "carry the turn on from here.", noted)
-            if part
+        self.turn = Turn(
+            prompt=prompt,
+            notes=notes,
+            log=log,
+            answered=answered,
+            suspended_at_start=draft.pending is not None,
         )
+        return self._picture(prompt, notes, resumed=resumed)
 
     def end_turn(self, closing: EndTurn) -> str:
-        prompt, lines = closing.prompt, closing.lines
         session = self.opened()
+        turn = self.started()
+        lines = closing.lines
         draft = session.state.draft()
         if not lines and draft.pending is None:
             raise ModelRetry(
@@ -287,34 +286,22 @@ class Harness:
             )
         if refused := speakers_refusal(player_scene(draft), lines):
             raise ModelRetry(refused)
-        # Only what `scene` rendered is spent; a note a tool wrote after it steers the next turn.
-        draft.world.pending_notes = draft.world.pending_notes[self.turn.notes_shown :]
-        draft.history = (
-            *draft.history,
-            Exchange(
-                prompt=prompt,
-                place=draft.world.require(draft.player_location).name,
-                lines=tuple(lines),
-                events=tuple(self.turn.log.events),
-                decision="" if draft.pending is None else draft.pending.prompt,
-            ),
-        )
-        draft.turn += 1
-        state = draft.committed()
+        state = close_segment(draft, turn.prompt, tuple(lines), tuple(turn.log.events))
         session.commit(
             state,
             TurnTrace(
-                prompt=prompt,
-                facts=tuple(self.turn.log.facts),
+                prompt=turn.prompt,
+                facts=tuple(turn.log.facts),
                 narration=narration_text(lines),
             ),
         )
-        self.turn = Turn()
+        self.turn = None
         closed = f"turn {state.turn} committed."
         return f"{closed}\n{GROWTH_DUE}" if session.growth_due() else closed
 
     async def call_director_tool(self, name: str, raw: dict[str, JsonValue]) -> str:
         session = self.opened()
+        _ = self.started()
         ctx, tools = await self._director_tools(name)
         tool = tools.get(name)
         if tool is None:
@@ -419,14 +406,16 @@ class Harness:
     ) -> tuple[RunContext[DirectorContext], dict[str, ToolsetTool[DirectorContext]]]:
         """A fresh draft per call: an accepted call commits, so no draft outlives its tool."""
         session = self.opened()
+        # Listing what is offered reads committed state, so it needs no open turn.
+        turn = self.turn or Turn(prompt="")
         ctx = RunContext(
             deps=DirectorContext(
                 engine=session.engine,
                 draft=session.state.draft(),
                 rng=session.rng,
-                log=self.turn.log,
-                suspended_at_start=self.turn.suspended_at_start,
-                answered=self.turn.answered,
+                log=turn.log,
+                suspended_at_start=turn.suspended_at_start,
+                answered=turn.answered,
             ),
             # A RunContext needs a model; no director tool reads one.
             model=TestModel(),
@@ -481,21 +470,21 @@ SERVER_TOOLS: tuple[ServerTool, ...] = (
         reshapes=False,
     ),
     ServerTool(
+        "start_turn",
+        "Open a turn with the player's action and get the whole game back: canon, canon the player"
+        " has not found, threads, rules notes, recent play. Call it first every turn.",
+        lambda harness, raw: harness.start_turn(StartTurn.model_validate(raw)),
+        StartTurn,
+    ),
+    ServerTool(
         "scene",
-        "The whole game: canon, canon the player has not found, threads, rules notes, recent"
-        " play. Call it at the start of every turn.",
+        "The same picture start_turn gives, for when you were compacted mid-turn.",
         lambda harness, _raw: harness.scene(),
         reshapes=False,
     ),
     ServerTool(
-        "answer_decision",
-        "Give the player's answer to the decision the rules are waiting on.",
-        lambda harness, raw: harness.answer_decision(AnswerDecision.model_validate(raw)),
-        AnswerDecision,
-    ),
-    ServerTool(
         "end_turn",
-        "Close the turn: record what the player did and the prose they read.",
+        "Close the turn with the prose the player reads.",
         lambda harness, raw: harness.end_turn(EndTurn.model_validate(raw)),
         EndTurn,
     ),
@@ -559,7 +548,7 @@ def _unavailable(name: str, pending: PendingDecision | None) -> str:
         return f"{name!r} does not apply in this state; call scene() and use what fits."
     return (
         f"the rules are waiting on the player: {pending.prompt}\n"
-        "Put that to the player, then call answer_decision."
+        "Put that to the player, then call start_turn with their answer."
     )
 
 

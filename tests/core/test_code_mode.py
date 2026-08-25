@@ -90,6 +90,7 @@ async def test_a_director_tool_call_lands_on_disk(tmp_path: Path) -> None:
     harness, store, slug = _opened(tmp_path, "loner3e")
 
     assert "reveal" in {tool.name for tool in await harness.offered()}
+    _ = await harness.call("start_turn", {"prompt": "I look around."})
     answered = await harness.call("reveal", {"entity_id": VAULT})
 
     assert "vault" in answered
@@ -99,10 +100,10 @@ async def test_a_director_tool_call_lands_on_disk(tmp_path: Path) -> None:
 async def test_end_turn_records_the_exchange_and_bumps_the_turn(tmp_path: Path) -> None:
     harness, store, slug = _opened(tmp_path, "loner3e")
 
-    _ = harness.scene()
+    _ = await harness.call("start_turn", {"prompt": "I look around."})
     _ = await harness.call(
         "end_turn",
-        {"prompt": "I look around.", "lines": [{"speaker_id": None, "text": "Dust hangs."}]},
+        {"lines": [{"speaker_id": None, "text": "Dust hangs."}]},
     )
 
     saved = _saved(store, slug)
@@ -114,8 +115,18 @@ async def test_end_turn_records_the_exchange_and_bumps_the_turn(tmp_path: Path) 
 async def test_a_turn_with_neither_prose_nor_a_decision_is_refused(tmp_path: Path) -> None:
     harness, _, _ = _opened(tmp_path, "loner3e")
 
+    _ = await harness.call("start_turn", {"prompt": "I wait."})
     with pytest.raises(ModelRetry):
-        _ = await harness.call("end_turn", {"prompt": "I wait.", "lines": []})
+        _ = await harness.call("end_turn", {"lines": []})
+
+
+async def test_no_tool_runs_a_turn_before_start_turn_opens_one(tmp_path: Path) -> None:
+    harness, _, _ = _opened(tmp_path, "loner3e")
+
+    with pytest.raises(ModelRetry):
+        _ = await harness.call("reveal", {"entity_id": VAULT})
+    with pytest.raises(ModelRetry):
+        _ = await harness.call("end_turn", {"lines": []})
 
 
 async def test_an_open_decision_blocks_every_other_tool_until_it_is_answered(
@@ -125,6 +136,7 @@ async def test_an_open_decision_blocks_every_other_tool_until_it_is_answered(
     harness, store, slug = _opened(tmp_path, "twentyfourxx")
     harness.opened().rng = Random(0)
 
+    _ = await harness.call("start_turn", {"prompt": "I climb the shaft."})
     _ = await harness.call(
         "stake_attempt",
         {"attempt": {"actor_id": "player", "goal": "climb the shaft"}, "risk": "a long fall"},
@@ -132,14 +144,18 @@ async def test_an_open_decision_blocks_every_other_tool_until_it_is_answered(
     assert _saved(store, slug).pending is not None
     with pytest.raises(ModelRetry):
         _ = await harness.call("reveal", {"entity_id": VAULT})
+    _ = await harness.call(
+        "end_turn", {"lines": [{"speaker_id": None, "text": "The shaft yawns."}]}
+    )
 
-    _ = await harness.call("answer_decision", {"option_id": "proceed"})
+    _ = await harness.call("start_turn", {"prompt": "I go on.", "option_id": "proceed"})
     pending = _saved(store, slug).pending
     assert pending is not None and pending.kind == "defence"
     # A free-text answer is the only way this decision closes, and it opens `settle_defence`.
     assert "settle_defence" not in {tool.name for tool in await harness.offered()}
+    _ = await harness.call("end_turn", {"lines": [{"speaker_id": None, "text": "You slip."}]})
 
-    _ = await harness.call("answer_decision", {"text": "I take it on the shoulder"})
+    _ = await harness.call("start_turn", {"prompt": "I take it on the shoulder"})
     assert "settle_defence" in {tool.name for tool in await harness.offered()}
 
     _ = await harness.call("settle_defence", {"item_id": None})
@@ -155,9 +171,10 @@ async def test_a_viewer_in_another_process_picks_up_what_the_server_committed(
     )
     assert viewer.state.turn == 0
 
+    _ = await harness.call("start_turn", {"prompt": "I listen."})
     _ = await harness.call(
         "end_turn",
-        {"prompt": "I listen.", "lines": [{"speaker_id": None, "text": "Water drips."}]},
+        {"lines": [{"speaker_id": None, "text": "Water drips."}]},
     )
 
     assert viewer.reload()
@@ -176,24 +193,24 @@ async def test_opening_a_new_game_writes_the_save_the_viewer_reads(tmp_path: Pat
 async def test_an_answers_note_is_shown_now_and_spent_rather_than_leaking_a_turn_late(
     tmp_path: Path,
 ) -> None:
-    """Builtin renders consumption notes in the same director prompt; the answer reply is ours."""
+    """`start_turn` takes the note `consume_answer` wrote; `scene()` still shows it mid-turn."""
     harness, _, _ = _opened(tmp_path, "twentyfourxx")
     harness.opened().rng = Random(0)
+    _ = await harness.call("start_turn", {"prompt": "I climb the shaft."})
     _ = await harness.call(
         "stake_attempt",
         {"attempt": {"actor_id": "player", "goal": "climb the shaft"}, "risk": "a long fall"},
     )
-    _ = await harness.call("answer_decision", {"option_id": "proceed"})
-    _ = harness.scene()
+    _ = await harness.call("end_turn", {"lines": [{"speaker_id": None, "text": "It yawns."}]})
+    _ = await harness.call("start_turn", {"prompt": "I go on.", "option_id": "proceed"})
+    _ = await harness.call("end_turn", {"lines": [{"speaker_id": None, "text": "You slip."}]})
 
-    answered = await harness.call("answer_decision", {"text": "I take it on the shoulder"})
-    assert "paused play" in answered
+    opened = await harness.call("start_turn", {"prompt": "I take it on the shoulder"})
 
+    assert "paused play" in opened
+    assert "paused play" in harness.scene()
     _ = await harness.call("settle_defence", {"item_id": None})
-    _ = await harness.call(
-        "end_turn",
-        {"prompt": "I climb.", "lines": [{"speaker_id": None, "text": "You slip, then hold."}]},
-    )
+    _ = await harness.call("end_turn", {"lines": [{"speaker_id": None, "text": "You hold."}]})
     assert "paused play" not in harness.scene()
 
 
@@ -201,14 +218,15 @@ async def test_end_turn_says_growth_is_due_only_when_it_is(tmp_path: Path) -> No
     """The server states it off committed state; the model never judges whether it is time."""
     harness, _, _ = _opened(tmp_path, "loner3e", growth_frontier=9)
     rested: dict[str, JsonValue] = {
-        "prompt": "I rest.",
         "lines": [{"speaker_id": None, "text": "Quiet settles."}],
     }
 
+    _ = await harness.call("start_turn", {"prompt": "I rest."})
     assert "WORLD GROWTH DUE" not in await harness.call("end_turn", rested)
 
     session = harness.opened()
     session.scenario = updated(session.scenario, grows=True)
+    _ = await harness.call("start_turn", {"prompt": "I rest."})
     assert "WORLD GROWTH DUE" in await harness.call("end_turn", rested)
     assert "WORLD GROWTH DUE" in harness.scene()
 
@@ -269,6 +287,7 @@ async def test_a_turn_tool_commits_as_usual_while_a_growth_run_is_open(tmp_path:
     harness, store, slug = _growing(tmp_path)
     _ = await harness.call("begin_growth", {})
 
+    _ = await harness.call("start_turn", {"prompt": "I look around."})
     _ = await harness.call("reveal", {"entity_id": VAULT})
     _ = await harness.call("write", {"patch": A_NEW_PLACE})
     _ = await harness.call("connect", {"from_id": CLOISTER, "to_id": GROWN})
@@ -405,11 +424,15 @@ async def test_a_resume_that_re_suspended_may_still_develop_what_the_answer_caus
     """The same gate the builtin Director runs: core tools stay, engine tools do not."""
     harness, _, _ = _opened(tmp_path, "twentyfourxx")
     harness.opened().rng = Random(0)
+    _ = await harness.call("start_turn", {"prompt": "I climb the shaft."})
     _ = await harness.call(
         "stake_attempt",
         {"attempt": {"actor_id": "player", "goal": "climb the shaft"}, "risk": "a long fall"},
     )
-    _ = await harness.call("answer_decision", {"option_id": "proceed"})
+    _ = await harness.call(
+        "end_turn", {"lines": [{"speaker_id": None, "text": "The shaft yawns."}]}
+    )
+    _ = await harness.call("start_turn", {"prompt": "I go on.", "option_id": "proceed"})
 
     offered = {tool.name for tool in await harness.offered()}
     assert "add_trait" in offered

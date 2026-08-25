@@ -202,6 +202,11 @@ class Game:
     def is_here(self, entity: Entity) -> bool:
         return self.world.location_of(entity) == self.player_location
 
+    def take_notes(self) -> tuple[str, ...]:
+        """Notes are read once; a note a tool writes after this steers the next turn."""
+        notes, self.world.pending_notes = self.world.pending_notes, ()
+        return notes
+
     def draft(self) -> Self:
         """A working copy a resolution mutates; a failed turn never replaces the committed state."""
         return deepcopy(self)

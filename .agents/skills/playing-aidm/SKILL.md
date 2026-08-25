@@ -15,11 +15,12 @@ and the server wiring (`.mcp.json`, `.codex/config.toml`) is read from there.
 2. `open_game(slug)` — opens one game. Nothing else works until this call succeeds.
 3. `rules()` — the rules for a turn under this engine. Read it once at the start. Read it again
    after a compaction.
-4. `scene()` — the whole state of the game. Call it at the start of every turn. You may have been
-   compacted, and no other call gives you back what you knew.
-5. The player writes their action as a chat message. Turn that message into tool calls. Make one
-   call at a time. Read each result before you make the next call.
-6. `end_turn(prompt, lines)` — closes the turn. Give the player's action and the prose you wrote.
+4. The player writes their action as a chat message. `start_turn(prompt)` — pass their message,
+   and `option_id` too when their words chose one of the options the rules are waiting on. It
+   opens the turn and returns the whole state of the game.
+5. Turn their message into tool calls. Make one call at a time. Read each result before you make
+   the next call. `scene()` gives the picture back if you were compacted mid-turn.
+6. `end_turn(lines)` — closes the turn with the prose you wrote.
 7. `propose_advance(subject_id, proposal)` — call it when `scene()` shows an advancement on offer
    and the player asks to grow their character. Write the proposal yourself. `rules()` carries the
    advancement rules of this engine. Show the player what the proposal changes. Then call

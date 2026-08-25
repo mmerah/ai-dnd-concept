@@ -358,18 +358,15 @@ async def run_segment(
     )
     log = TurnRecord(on_event=on_event)
     draft = state.draft()
-    # Any input consumes the decision, a revision included: it never survives its own answer.
-    consumed, draft.pending = draft.pending, None
-    prompt, resumed, answered = consume_answer(engine, draft, player_input, consumed, rng, log)
+    prompt, resumed, answered = consume_answer(engine, draft, player_input, rng, log)
 
-    scene, describe = SceneSnapshot.from_game(draft), engine.renderer(draft)
+    scene, describe = SceneSnapshot.from_game(draft, draft.take_notes()), engine.renderer(draft)
 
     announce("director")
     director_prompt = context.render_director(
         scene, describe, draft.scenario, prompt, resumed=resumed
     )
     _ensure_input_budget("director", settings, director_prompt, history_chars)
-    shown = len(draft.world.pending_notes)
     directed = await stages.director.run(
         director_prompt,
         deps=DirectorContext(
@@ -383,8 +380,6 @@ async def run_segment(
         message_history=history,
         usage_limits=UsageLimits(request_limit=settings.turn.director_request_limit),
     )
-    # Only what the prompt rendered is spent; a note its own tools wrote steers the next turn too.
-    draft.world.pending_notes = draft.world.pending_notes[shown:]
     facts = list(log.facts)
     steps = [StepTrace(name="director", prompt=director_prompt, output=directed.output)]
 
@@ -412,19 +407,8 @@ async def run_segment(
             )
         )
 
-    draft.history = (
-        *draft.history,
-        Exchange(
-            prompt=prompt,
-            place=draft.world.require(draft.player_location).name,
-            lines=lines,
-            events=tuple(log.events),
-            decision="" if draft.pending is None else draft.pending.prompt,
-        ),
-    )
-    draft.turn += 1
     return TurnResult(
-        state=draft.committed(),
+        state=close_segment(draft, prompt, lines, tuple(log.events)),
         turn=TurnTrace(
             prompt=prompt,
             facts=tuple(facts),
@@ -434,15 +418,34 @@ async def run_segment(
     )
 
 
+def close_segment(
+    draft: Game, prompt: str, lines: tuple[Line, ...], events: tuple[MechanicEvent, ...]
+) -> Game:
+    """The one place a segment becomes history: builtin and code mode differ only in when."""
+    draft.history = (
+        *draft.history,
+        Exchange(
+            prompt=prompt,
+            place=draft.world.require(draft.player_location).name,
+            lines=lines,
+            events=events,
+            decision="" if draft.pending is None else draft.pending.prompt,
+        ),
+    )
+    draft.turn += 1
+    return draft.committed()
+
+
 def consume_answer(
     engine: Engine,
     draft: Game,
     player_input: str | Answer,
-    consumed: PendingDecision | None,
     rng: Random,
     log: TurnRecord,
 ) -> tuple[str, str, PendingDecision | None]:
     """The PLAYER ACTION, what a closed answer resolved, and the decision an open answer used."""
+    # Any input consumes the decision, a revision included: it never survives its own answer.
+    consumed, draft.pending = draft.pending, None
     if isinstance(player_input, str):
         return player_input, "", None
     chosen = player_input.option_id

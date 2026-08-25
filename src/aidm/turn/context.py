@@ -33,7 +33,7 @@ class SceneSnapshot(BaseScene):
     notes: tuple[str, ...] = ()
 
     @classmethod
-    def from_game(cls, state: Game) -> "SceneSnapshot":
+    def from_game(cls, state: Game, notes: tuple[str, ...] = ()) -> "SceneSnapshot":
         world = state.world
         player = state.player
         location = world.require_kind(state.player_location, "location")
@@ -75,7 +75,7 @@ class SceneSnapshot(BaseScene):
                     key=lambda thread: thread.title,
                 )
             ),
-            notes=world.pending_notes,
+            notes=notes,
         )
 
     def catalogue(self) -> tuple[Entity, ...]:
