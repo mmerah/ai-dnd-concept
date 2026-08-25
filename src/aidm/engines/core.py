@@ -28,7 +28,7 @@ from aidm.state.entities import (
 )
 from aidm.state.facts import Chip, Fact, explained_fact, labeled
 from aidm.state.model import Game, WorldState, draft_refusal
-from aidm.state.play import DiceEvent, MechanicEvent, OptionId, PendingDecision, StepTrace
+from aidm.state.play import DiceEvent, MechanicEvent, OptionId, PendingDecision
 
 type EntityRenderer = Callable[[Entity], str]
 
@@ -44,7 +44,6 @@ class EventCause:
 @dataclass(slots=True)
 class TurnRecord:
     facts: list[Fact] = field(default_factory=list)
-    steps: list[StepTrace] = field(default_factory=list)
     events: list[MechanicEvent] = field(default_factory=list)
     on_event: Callable[[MechanicEvent], None] | None = None
 
@@ -434,7 +433,6 @@ class ProposalBase(Frozen):
 class Advancement(ABC):
     """One advance per boundary the fiction closed, per party member."""
 
-    id: ClassVar[Slug] = "advancement"
     proposal_type: ClassVar[type[ProposalBase]]
     ledger_key: ClassVar[Slug]
     occasion: ClassVar[str]
@@ -442,7 +440,7 @@ class Advancement(ABC):
     spent_why: ClassVar[str]
 
     def __init__(self, engine_dir: Path) -> None:
-        self.instructions = engine_text(engine_dir / f"{self.id}.md")
+        self.instructions = engine_text(engine_dir / "advancement.md")
 
     def offers(self, state: Game) -> tuple[AdvancementOffer, ...]:
         earned = self.earned(state)

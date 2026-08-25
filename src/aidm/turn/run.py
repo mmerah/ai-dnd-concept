@@ -387,10 +387,7 @@ async def run_segment(
     # Only what the prompt rendered is spent; a note its own tools wrote steers the next turn too.
     draft.world.pending_notes = draft.world.pending_notes[shown:]
     facts = list(log.facts)
-    steps: list[StepTrace] = [
-        StepTrace(name="director", prompt=director_prompt, output=directed.output),
-        *log.steps,
-    ]
+    steps = [StepTrace(name="director", prompt=director_prompt, output=directed.output)]
 
     lines: tuple[Line, ...] = ()
     if draft.pending is None or narrator_lines(facts):

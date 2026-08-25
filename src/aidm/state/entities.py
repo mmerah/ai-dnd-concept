@@ -5,6 +5,8 @@ from typing import Annotated, Literal, NewType, Self
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
+from aidm.config import SLUG_MAX, SLUG_PATTERN, Slug
+
 
 class Frozen(BaseModel):
     """A value nothing owns: a fact, a direction, or an authored record."""
@@ -28,9 +30,6 @@ def kind_word(kind: Kind) -> str:
 
 EngineId = NewType("EngineId", str)
 EntityId = NewType("EntityId", str)
-SLUG_PATTERN = r"[a-z0-9]+(?:-[a-z0-9]+)*"
-SLUG_MAX = 64
-Slug = Annotated[str, Field(pattern=rf"^{SLUG_PATTERN}$", max_length=SLUG_MAX)]
 
 PLAYER_ID = EntityId("player")
 

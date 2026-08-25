@@ -431,7 +431,7 @@ def game_page(session: GameSession) -> None:
             with ui.tabs().classes("w-full") as tabs:
                 scene_tab = ui.tab("scene")
                 journal_tab = ui.tab("journal")
-                advancement_tab = None if advancement is None else ui.tab(advancement.id)
+                advancement_tab = None if advancement is None else ui.tab("advancement")
                 dev_tab = ui.tab("dev", icon="code").classes("game-dev-tab")
             with ui.tab_panels(tabs, value=scene_tab).classes("w-full flex-grow"):
                 with ui.tab_panel(scene_tab), ui.scroll_area().classes("w-full h-full"):
