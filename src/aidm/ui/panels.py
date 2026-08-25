@@ -1,5 +1,5 @@
 import json
-from collections.abc import Callable, Sequence
+from collections.abc import Callable
 
 from nicegui import ui
 
@@ -13,7 +13,7 @@ from aidm.app.runtime import (
 )
 from aidm.content.io import SavedGame
 from aidm.state.entities import PLAYER_ID
-from aidm.state.facts import Fact
+from aidm.state.facts import trace_lines, traced
 from aidm.state.play import AdvanceApplied, StepTrace, TraceEntry, TurnTrace, WorldExtended
 from aidm.turn.context import player_scene
 
@@ -104,9 +104,9 @@ def _section(title: str, body: str) -> None:
 def _entry_trace(entry: TraceEntry) -> None:
     match entry:
         case AdvanceApplied(facts=facts):
-            _section("ADVANCEMENT", _facts(facts))
+            _section("ADVANCEMENT", traced(facts))
         case WorldExtended(facts=facts):
-            _section("THE WORLD GREW", _facts(facts))
+            _section("THE WORLD GREW", traced(facts))
         case TurnTrace():
             _turn_trace(entry)
 
@@ -114,7 +114,7 @@ def _entry_trace(entry: TraceEntry) -> None:
 def _turn_trace(turn: TurnTrace) -> None:
     for step in turn.steps:
         _section(step.name.upper(), _output(step))
-    _section("FACTS (private)", _facts(turn.facts))
+    _section("FACTS (private)", traced(turn.facts))
     with ui.expansion("what each role was shown").classes("w-full mt-3"):
         for step in turn.steps:
             _section(step.name.upper(), step.prompt)
@@ -126,11 +126,6 @@ def _output(step: StepTrace) -> str:
             return text
         case body:
             return json.dumps(body, indent=2)
-
-
-def _facts(facts: Sequence[Fact]) -> str:
-    lines = [f"- {fact.trace}" for fact in facts]
-    return "\n".join(lines) or "- (none)"
 
 
 def advancement_panel(session: GameSession, refresh: Callable[[], None]) -> None:
@@ -192,7 +187,7 @@ def _intent_form(
 def _review(session: GameSession, drafted: DraftedAdvance, refresh: Callable[[], None]) -> None:
     ui.label("Proposed changes").classes("text-sm font-bold mt-3")
     try:
-        lines = [f"- {fact.trace}" for fact in session.preview(drafted)]
+        lines = trace_lines(session.preview(drafted))
     except ValueError as stale:
         # A turn since the proposal may have changed the character from under the draft.
         lines = [f"This proposal no longer applies: {stale}. Discard it and propose again."]

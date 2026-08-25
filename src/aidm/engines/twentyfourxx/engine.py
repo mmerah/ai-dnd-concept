@@ -9,16 +9,16 @@ from aidm.engines.core import (
     CharacterCreation,
     Command,
     DirectorContext,
-    NoArgs,
     ProposalBase,
     SheetAdvancement,
     SheetEngine,
     adjust,
     apply_action,
     apply_play,
+    chapter_command,
     command,
 )
-from aidm.engines.packs import load_packs, pack_paths, pack_step
+from aidm.engines.packs import load_packs, pack_options, pack_paths, pack_step
 from aidm.engines.twentyfourxx.rules import (
     GROWTH,
     TAKE_THE_HIT,
@@ -36,7 +36,6 @@ from aidm.engines.twentyfourxx.rules import (
     Specialty,
     StakedAttempt,
     apply_change_credits,
-    apply_complete_chapter,
     describe_entity,
     raised,
     resolve_attempt,
@@ -108,10 +107,6 @@ def _change_credits(deps: DirectorContext, args: ChangeCredits) -> str:
     return apply_action(deps, lambda draft: apply_change_credits(draft, args.actor_id, args.amount))
 
 
-def _complete_chapter(deps: DirectorContext, _args: NoArgs) -> str:
-    return apply_action(deps, apply_complete_chapter)
-
-
 DIRECTOR_COMMANDS: tuple[Command, ...] = (
     command(
         "roll_attempt",
@@ -134,9 +129,7 @@ DIRECTOR_COMMANDS: tuple[Command, ...] = (
     ),
     command("roll_luck_test", "Roll a standalone bad-luck test.", LuckTest, _roll_luck_test),
     command("change_credits", "Pay or charge an actor.", ChangeCredits, _change_credits),
-    command(
-        "complete_chapter", "Record that the current job has ended.", NoArgs, _complete_chapter
-    ),
+    chapter_command("Record that the current job has ended.", "the job is done"),
 )
 
 
@@ -195,7 +188,7 @@ class TwentyfourxxCreation(CharacterCreation):
             CreationStep(
                 id="specialty",
                 prompt="Choose a specialty",
-                options=_options(pack.specialties),
+                options=pack_options(pack.specialties),
             ),
         ]
         specialty = _picked_entry(pack.specialties, picks, "specialty")
@@ -204,11 +197,11 @@ class TwentyfourxxCreation(CharacterCreation):
                 CreationStep(
                     id="training",
                     prompt="Choose training",
-                    options=_options(specialty.choices),
+                    options=pack_options(specialty.choices),
                 )
             )
         steps.append(
-            CreationStep(id="origin", prompt="Choose an origin", options=_options(pack.origins))
+            CreationStep(id="origin", prompt="Choose an origin", options=pack_options(pack.origins))
         )
         origin = _picked_entry(pack.origins, picks, "origin")
         if origin is not None and origin.invents:
@@ -281,14 +274,6 @@ def _carried(entry: KitItem) -> Entity:
         known=True,
         parent_id=PLAYER_ID,
         traits=[BULKY] if entry.bulky else [],
-    )
-
-
-def _options(
-    entries: tuple[Specialty, ...] | tuple[Origin, ...] | tuple[SkillGrant, ...],
-) -> tuple[CreationOption, ...]:
-    return tuple(
-        CreationOption(id=entry.id, label=entry.label, detail=entry.detail) for entry in entries
     )
 
 

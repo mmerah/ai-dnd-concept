@@ -1,7 +1,6 @@
 from collections.abc import Iterable, Sequence
 from dataclasses import dataclass
 from textwrap import shorten
-from typing import Protocol
 
 from pydantic import ValidationError
 
@@ -18,15 +17,6 @@ def engine_ids() -> tuple[EngineId, ...]:
 def as_engine_id(value: str) -> EngineId:
     """Narrow a routed string, so an unknown engine cannot reach a filename downstream."""
     return engine_class(EngineId(value)).id
-
-
-class _Identified(Protocol):
-    @property
-    def id(self) -> str: ...
-
-
-def _one[T: _Identified](options: Iterable[T], wanted: str) -> T | None:
-    return next((option for option in options if option.id == wanted), None)
 
 
 class EngineOption(Frozen):
@@ -59,6 +49,10 @@ class SaveOption(Frozen):
 class UnreadableSave(Frozen):
     slug: str
     problem: str
+
+
+def _one[T: EngineOption | CatalogEntry](options: Iterable[T], wanted: str) -> T | None:
+    return next((option for option in options if option.id == wanted), None)
 
 
 class LauncherCatalog(Frozen):

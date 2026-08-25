@@ -24,7 +24,6 @@ from aidm.engines.twentyfourxx.rules import (
     Sheet,
     StakedAttempt,
     apply_change_credits,
-    apply_complete_chapter,
     outcome_for,
     pool_faces,
     resolve_attempt,
@@ -157,9 +156,7 @@ def test_an_advance_is_offered_only_once_a_job_is_recorded() -> None:
     advancement = engine.advancement
     assert advancement.offers(state) == ()
 
-    draft = state.draft()
-    apply_complete_chapter(draft)
-    after = draft.committed()
+    after = at_boundary(state)
 
     (offer,) = advancement.offers(after)
     assert offer.subject_id == PLAYER_ID

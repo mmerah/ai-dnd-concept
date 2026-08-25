@@ -11,7 +11,6 @@ from pydantic_ai.usage import UsageLimits
 
 from aidm.config import Role, Settings
 from aidm.engines.core import (
-    NOTHING_CHANGED,
     RULES_WAIT,
     Advancement,
     AdvancementOffer,
@@ -25,7 +24,7 @@ from aidm.engines.core import (
 )
 from aidm.engines.world import commands
 from aidm.llm import build_agent, schema_of
-from aidm.state.facts import Fact, narrator_evidence, narrator_lines, player_events
+from aidm.state.facts import Fact, narrator_evidence, narrator_lines, player_events, traced
 from aidm.state.model import Game, draft_refusal
 from aidm.state.play import (
     Answer,
@@ -310,7 +309,7 @@ def consume_answer(
     if option is None:
         raise ValueError(f"the {consumed.kind!r} decision offers no option {chosen!r}")
     landed = _resume(engine, draft, consumed, option, rng, log)
-    traces = "\n".join(f"- {fact.trace}" for fact in landed) or NOTHING_CHANGED
+    traces = traced(landed)
     # A resume that re-suspended has no tool answer to carry the wait, so the prompt says it.
     if draft.pending is not None:
         traces += f"\n- {RULES_WAIT}"

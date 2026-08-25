@@ -62,12 +62,8 @@ def _capped(words: str, limit: int) -> str:
     return words[:limit].rstrip("-") or "entry"
 
 
-def duplicates(ids: Iterable[str]) -> list[str]:
-    return sorted(name for name, count in Tally(ids).items() if count > 1)
-
-
 def require_unique(what: str, ids: Iterable[str]) -> None:
-    if found := duplicates(ids):
+    if found := sorted(name for name, count in Tally(ids).items() if count > 1):
         raise ValueError(f"duplicate {what}: {found}")
 
 

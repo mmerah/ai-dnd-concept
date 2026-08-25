@@ -1,6 +1,5 @@
 import asyncio
 import logging
-from collections.abc import Sequence
 from dataclasses import dataclass, field
 from pathlib import Path
 
@@ -28,7 +27,7 @@ from aidm.config import Settings
 from aidm.engines.core import DirectorContext, ProposalBase, TurnRecord, run_command
 from aidm.engines.world import commands
 from aidm.state.entities import CheckedEntityId, EngineId, Frozen, Slug
-from aidm.state.facts import Fact
+from aidm.state.facts import traced
 from aidm.state.model import Game
 from aidm.state.play import (
     Answer,
@@ -287,7 +286,7 @@ class Harness:
         drafted = DraftedAdvance(offer=offer, proposal=asked.proposal)
         session.drafted = drafted
         return (
-            f"proposed for {asked.subject_id}:\n{_traces(session.preview(drafted))}\n"
+            f"proposed for {asked.subject_id}:\n{traced(session.preview(drafted))}\n"
             "Show the player, then call apply_advance() if they accept."
         )
 
@@ -298,7 +297,7 @@ class Harness:
             raise ModelRetry("nothing is drafted; call propose_advance first.")
         landed = session.apply_proposal(drafted)
         session.drafted = None
-        return _traces(landed)
+        return traced(landed)
 
     def begin_growth(self) -> str:
         session = self.opened()
@@ -342,7 +341,7 @@ class Harness:
         _check_playable(run)
         landed = session.apply_growth(run.patch())
         self.authoring = None
-        return f"{summary}\n{_traces(landed)}"
+        return f"{summary}\n{traced(landed)}"
 
     def finish_scenario(self, summary: str) -> str:
         run = self.authoring
@@ -422,7 +421,3 @@ def _offers(session: GameSession) -> str:
         for offer in session.offers()
     ]
     return "\n".join(listed) or "- (none)"
-
-
-def _traces(facts: Sequence[Fact]) -> str:
-    return "\n".join(f"- {fact.trace}" for fact in facts) or "- (nothing changed)"

@@ -20,6 +20,7 @@
 - [] I3: De-aify the codebase
 - [] I4: Settings can easily be changed from the UI? Write .env and restart, not live reload.
 - [] I5: lots of testing to identify gaps of MVP0
+- [] I6: a new agent, state keeper, that adds/removes traits/tags, reveals, cleans up after the director. Observed with builtin-harness and cheap models: sometimes trait modifications are forgotten, sometimes a reveal is not done when it should have been done, ... Limited set of tools but could improve builtin-harness mode performance
 
 ## Working order
 

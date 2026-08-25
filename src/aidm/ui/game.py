@@ -15,7 +15,7 @@ from aidm.turn.context import player_scene
 from aidm.turn.run import TurnStep
 
 from .panels import advancement_panel, journal_panel, sheet_panel, state_panel, trace_panel
-from .widgets import DM_ICON, avatar, entity_row, heading, page_header, refuse_if_busy, working
+from .widgets import avatar, entity_row, heading, page_header, refuse_if_busy, working
 
 _SCENE_HEIGHT = "calc(25vh - 1rem)"
 
@@ -129,20 +129,14 @@ def _bubble(session: GameSession, speaker_id: EntityId | None, text: str, *, sen
         avatar(icon, None if speaker is None else name)
 
 
-_STEP_COPY: dict[TurnStep, tuple[str, str, str]] = {
+_STEP_COPY: dict[TurnStep, tuple[str, str]] = {
     "director": (
-        "gavel",
         "Director",
         "Works out what your action actually does: who reacts, what changes, "
         "and whether the dice decide it.",
     ),
-    "narrator": (
-        DM_ICON,
-        "Narrator",
-        "Writes what you see and hear this turn.",
-    ),
+    "narrator": ("Narrator", "Writes what you see and hear this turn."),
     "scenario_creator": (
-        "public",
         "Worldsmith",
         "Writes new places and people into the world, because it was running out of somewhere "
         "for you to go. This one is slow — a few minutes is normal.",
@@ -163,7 +157,7 @@ def live_turn(
 
 
 def _inline_status(step: TurnStep, elapsed: float) -> ui.label:
-    _, label, description = _STEP_COPY[step]
+    label, description = _STEP_COPY[step]
     with ui.row().classes("items-center no-wrap q-py-xs").style("gap: 0.4rem"):
         ui.spinner(size="1.1rem")
         ui.label(label).classes("text-sm font-bold")
@@ -174,7 +168,7 @@ def _inline_status(step: TurnStep, elapsed: float) -> ui.label:
 
 
 def _composer_placeholder(step: TurnStep | None) -> str:
-    return "What do you do?" if step is None else f"{_STEP_COPY[step][1]} is working..."
+    return "What do you do?" if step is None else f"{_STEP_COPY[step][0]} is working..."
 
 
 def _clock(seconds: float) -> str:

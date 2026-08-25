@@ -9,7 +9,6 @@ from aidm.engines.core import (
     SheetBase,
     SheetMechanics,
     adjust,
-    complete_chapter,
     render_counters,
     require_sheet,
     spend,
@@ -267,10 +266,6 @@ def apply_change_credits(draft: Game, actor_id: EntityId, amount: int) -> list[F
         return [*facts, *adjust(actor, "credits", credits, amount, "paid", "payments")]
     # `spend`, not a negative adjust: an overdraw is refused, not clamped.
     return [*facts, *spend(actor, "credits", credits, -amount, "payments")]
-
-
-def apply_complete_chapter(draft: Game) -> list[Fact]:
-    return complete_chapter(draft, "the job is done")
 
 
 def _require_playable(

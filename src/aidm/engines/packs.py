@@ -1,5 +1,5 @@
 import logging
-from collections.abc import Mapping
+from collections.abc import Mapping, Sequence
 from pathlib import Path
 from re import fullmatch
 from typing import Protocol
@@ -16,6 +16,14 @@ class PackName(Protocol):
     name: str
 
 
+class PackChoice(Protocol):
+    """Anything a pack offers the player: every table set entry is asked for the same three."""
+
+    id: str
+    label: str
+    detail: str
+
+
 def pack_step(packs: Mapping[str, PackName]) -> CreationStep:
     return CreationStep(
         id="pack",
@@ -23,6 +31,12 @@ def pack_step(packs: Mapping[str, PackName]) -> CreationStep:
         options=tuple(
             CreationOption(id=pack_id, label=pack.name) for pack_id, pack in packs.items()
         ),
+    )
+
+
+def pack_options(entries: Sequence[PackChoice]) -> tuple[CreationOption, ...]:
+    return tuple(
+        CreationOption(id=entry.id, label=entry.label, detail=entry.detail) for entry in entries
     )
 
 

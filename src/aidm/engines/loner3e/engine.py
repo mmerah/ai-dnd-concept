@@ -9,12 +9,12 @@ from aidm.engines.core import (
     CharacterCreation,
     Command,
     DirectorContext,
-    NoArgs,
     ProposalBase,
     SheetAdvancement,
     SheetEngine,
     apply_action,
     apply_play,
+    chapter_command,
     command,
 )
 from aidm.engines.loner3e.rules import (
@@ -26,16 +26,14 @@ from aidm.engines.loner3e.rules import (
     PackEntry,
     Question,
     Sheet,
-    apply_complete_chapter,
     apply_restore_luck,
     describe_entity,
     resolve_question,
     twist_table,
 )
-from aidm.engines.packs import load_packs, pack_paths, pack_step
+from aidm.engines.packs import load_packs, pack_options, pack_paths, pack_step
 from aidm.state.creation import (
     AnyStep,
-    CreationOption,
     CreationStep,
     Picks,
     TextStep,
@@ -66,10 +64,6 @@ def _restore_luck(deps: DirectorContext, args: RestoreLuck) -> str:
     return apply_action(deps, lambda draft: apply_restore_luck(draft, args.actor_id))
 
 
-def _complete_chapter(deps: DirectorContext, _args: NoArgs) -> str:
-    return apply_action(deps, apply_complete_chapter)
-
-
 def director_commands(twists: Twists) -> tuple[Command, ...]:
     """Only the question roll needs the twist table, so only it is built per engine."""
 
@@ -91,12 +85,7 @@ def director_commands(twists: Twists) -> tuple[Command, ...]:
             RestoreLuck,
             _restore_luck,
         ),
-        command(
-            "complete_chapter",
-            "Record that the current adventure has ended.",
-            NoArgs,
-            _complete_chapter,
-        ),
+        chapter_command("Record that the current adventure has ended.", "the adventure has ended"),
     )
 
 
@@ -183,11 +172,16 @@ class Loner3eCreation(CharacterCreation):
                 hint=", ".join(entry.label for entry in pack.concepts[:3]),
             ),
             CreationStep(
-                id="skills", prompt="Choose two skills", options=_options(pack.skills), choose=2
+                id="skills", prompt="Choose two skills", options=pack_options(pack.skills), choose=2
             ),
-            CreationStep(id="frailty", prompt="Choose a frailty", options=_options(pack.frailties)),
             CreationStep(
-                id="gear", prompt="Choose two pieces of gear", options=_options(pack.gear), choose=2
+                id="frailty", prompt="Choose a frailty", options=pack_options(pack.frailties)
+            ),
+            CreationStep(
+                id="gear",
+                prompt="Choose two pieces of gear",
+                options=pack_options(pack.gear),
+                choose=2,
             ),
         )
 
@@ -204,12 +198,6 @@ class Loner3eCreation(CharacterCreation):
                 "gear": [_label(pack.gear, gear) for gear in picked(picks, "gear")],
             },
         )
-
-
-def _options(entries: tuple[PackEntry, ...]) -> tuple[CreationOption, ...]:
-    return tuple(
-        CreationOption(id=entry.id, label=entry.label, detail=entry.detail) for entry in entries
-    )
 
 
 def _label(entries: tuple[PackEntry, ...], chosen: str) -> str:

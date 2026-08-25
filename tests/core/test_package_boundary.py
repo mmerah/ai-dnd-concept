@@ -6,41 +6,27 @@ import pytest
 SOURCE = Path(__file__).parents[2] / "src" / "aidm"
 ENGINES = ("aidm.engines.loner3e", "aidm.engines.twentyfourxx")
 # Flow: state <- content <- engines <- turn <- authoring <- app <- {ui, harness}.
-FORBIDDEN = {
-    "state": {
-        "aidm.config",
-        "aidm.content",
-        "aidm.engines",
-        "aidm.turn",
-        "aidm.authoring",
-        "aidm.app",
-        "aidm.ui",
-        "aidm.harness",
-        "nicegui",
-    },
-    "content": {
-        "aidm.engines",
-        "aidm.turn",
-        "aidm.authoring",
-        "aidm.app",
-        "aidm.ui",
-        "aidm.harness",
-        "nicegui",
-    },
-    "engines": {
-        "pydantic_ai",
-        "aidm.turn",
-        "aidm.authoring",
-        "aidm.app",
-        "aidm.ui",
-        "aidm.harness",
-    },
-    "turn": {"aidm.authoring", "aidm.app", "aidm.ui", "aidm.harness", "nicegui"},
-    "authoring": {"aidm.app", "aidm.ui", "aidm.harness", "nicegui"},
-    "app": {"aidm.ui", "aidm.harness", "nicegui"},
-    "ui": {"aidm.engines", "aidm.harness"},
-    "harness": {"aidm.ui", "nicegui"},
+LAYERS = ("state", "content", "engines", "turn", "authoring", "app")
+# The two tops sit above `app` and import downwards; the UI additionally stays engine-agnostic.
+TOPS = {"ui": {"aidm.engines"}, "harness": set[str]()}
+# A framework belongs to the layers that own it and to nothing below them.
+CONFINED = {
+    "nicegui": ("ui",),
+    "pydantic_ai": ("turn", "authoring", "app", "ui", "harness"),
+    "aidm.config": ("turn", "authoring", "app", "ui", "harness"),
 }
+
+
+def _forbidden(package: str) -> set[str]:
+    """What a package may not name: the layers downstream of it, its sibling top, its frameworks."""
+    later = LAYERS[LAYERS.index(package) + 1 :] if package in LAYERS else ()
+    siblings = (top for top in TOPS if top != package)
+    downstream = {f"aidm.{name}" for name in (*later, *siblings)}
+    confined = {name for name, owners in CONFINED.items() if package not in owners}
+    return downstream | confined | TOPS.get(package, set())
+
+
+FORBIDDEN = {package: _forbidden(package) for package in (*LAYERS, *TOPS)}
 
 
 def _source_files(package: str) -> tuple[Path, ...]:

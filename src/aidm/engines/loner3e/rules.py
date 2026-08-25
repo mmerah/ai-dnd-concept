@@ -10,7 +10,6 @@ from aidm.engines.core import (
     SheetBase,
     SheetMechanics,
     adjust,
-    complete_chapter,
     render_counters,
     require_sheet,
 )
@@ -264,10 +263,6 @@ def apply_restore_luck(draft: Game, actor_id: EntityId) -> list[Fact]:
         *facts,
         *adjust(actor, "luck", luck, refill, "the conflict is behind them", "favorite"),
     ]
-
-
-def apply_complete_chapter(draft: Game) -> list[Fact]:
-    return complete_chapter(draft, "the adventure has ended")
 
 
 def _twist(

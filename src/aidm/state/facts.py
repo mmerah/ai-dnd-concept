@@ -6,6 +6,7 @@ from pydantic import model_validator
 from aidm.state.entities import PLAYER_ID, Entity, EntityId, Frozen, kind_word
 
 NOTHING_MECHANICAL = "- (nothing mechanical happened)"
+NOTHING_CHANGED = "- (nothing changed)"
 
 
 class EventBadge(Frozen):
@@ -93,6 +94,15 @@ def explained_fact(
 def player_events(facts: Sequence[Fact]) -> tuple[MechanicEvent, ...]:
     """The narrator's gate is the player's: an unrevealed entity earns no card of its own."""
     return tuple(fact.event for fact in facts if fact.event is not None and fact.told)
+
+
+def trace_lines(facts: Sequence[Fact]) -> list[str]:
+    """One bullet per fact: how every surface that reports what landed renders it."""
+    return [f"- {fact.trace}" for fact in facts]
+
+
+def traced(facts: Sequence[Fact], empty: str = NOTHING_CHANGED) -> str:
+    return "\n".join(trace_lines(facts)) or empty
 
 
 def narrator_lines(facts: Sequence[Fact]) -> tuple[str, ...]:

@@ -12,7 +12,6 @@ from aidm.engines.loner3e.rules import (
     Change,
     Mechanics,
     Question,
-    apply_complete_chapter,
     apply_restore_luck,
     conflict_prompt,
     defeat_note,
@@ -295,9 +294,7 @@ def test_a_closed_chapter_gates_the_offer_and_a_second_one_earns_a_second() -> N
     advancement = engine.advancement
     assert advancement.offers(state) == ()
 
-    draft = state.draft()
-    apply_complete_chapter(draft)
-    once = draft.committed()
+    once = at_boundary(state)
     (offer,) = advancement.offers(once)
 
     change = AdventureGrowth(
@@ -308,18 +305,14 @@ def test_a_closed_chapter_gates_the_offer_and_a_second_one_earns_a_second() -> N
     spent = draft.committed()
     assert advancement.offers(spent) == ()
 
-    draft = spent.draft()
-    apply_complete_chapter(draft)
-    twice = draft.committed()
+    twice = at_boundary(spent)
     assert len(advancement.offers(twice)) == 1
 
 
 def test_an_adventure_growth_with_three_changes_lands_all_three_on_the_sheet() -> None:
     engine, state = initialized()
     advancement = engine.advancement
-    draft = state.draft()
-    apply_complete_chapter(draft)
-    ready = draft.committed()
+    ready = at_boundary(state)
     (offer,) = advancement.offers(ready)
 
     growth = AdventureGrowth(

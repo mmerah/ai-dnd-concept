@@ -22,11 +22,13 @@ from aidm.state.entities import (
     Slug,
 )
 from aidm.state.facts import (
+    NOTHING_CHANGED,
     Fact,
     MechanicEvent,
     explained_fact,
     labeled,
     player_events,
+    trace_lines,
 )
 from aidm.state.model import Game, WorldState, draft_refusal
 from aidm.state.play import PendingDecision
@@ -348,6 +350,16 @@ def complete_chapter(draft: Game, ending: str) -> list[Fact]:
     ]
 
 
+def chapter_command(description: str, ending: str) -> Command:
+    """Every engine closes a chapter the same way; only what it calls one differs."""
+    return command(
+        "complete_chapter",
+        description,
+        NoArgs,
+        lambda deps, _args: apply_action(deps, lambda draft: complete_chapter(draft, ending)),
+    )
+
+
 class SheetEngine[S: SheetBase](Engine):
     """An engine whose mechanics are one sheet per actor; the shelf's shape."""
 
@@ -377,7 +389,6 @@ class SheetEngine[S: SheetBase](Engine):
         self.advancement.ledger(draft, entity.id).current = mechanics.completed.current
 
 
-NOTHING_CHANGED = "- (nothing changed)"
 RULES_WAIT = "the rules now wait on the player's decision"
 
 # The rng is a parameter so a trial run against a throwaway copy cannot consume the turn's dice.
@@ -416,7 +427,7 @@ def apply_play(deps: DirectorContext, play: Play) -> str:
     decided_before = deps.draft.pending
     landed = apply_to_draft(deps.engine, deps.draft, play, deps.rng)
     deps.log.landed(landed, player_events(landed))
-    lines = [f"- {fact.trace}" for fact in landed]
+    lines = trace_lines(landed)
     lines.extend(f"- {note}" for note in deps.draft.world.pending_notes[already_pending:])
     lines.extend(_reached(deps.draft, landed))
     if decided_before is None and deps.draft.pending is not None:
