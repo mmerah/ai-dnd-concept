@@ -3,10 +3,10 @@ from dataclasses import dataclass
 from random import Random
 from typing import Literal
 
-from pydantic_ai import Agent, ModelRetry, NativeOutput, RunContext
+from pydantic import JsonValue
+from pydantic_ai import Agent, ModelRetry, NativeOutput, RunContext, Tool
 from pydantic_ai.messages import ModelMessage, ModelRequest, ModelResponse, TextPart, UserPromptPart
-from pydantic_ai.tools import ToolDefinition, ToolFuncEither
-from pydantic_ai.toolsets import AbstractToolset
+from pydantic_ai.toolsets import FunctionToolset
 from pydantic_ai.usage import UsageLimits
 
 from aidm.config import Role, Settings
@@ -15,20 +15,18 @@ from aidm.engines.core import (
     RULES_WAIT,
     Advancement,
     AdvancementOffer,
+    Command,
     DirectorContext,
     Engine,
     ProposalBase,
     TurnRecord,
     apply_to_draft,
-    apply_tool_call,
-    sequential_toolset,
-    with_enum,
+    run_command,
 )
-from aidm.llm import build_agent
-from aidm.state import actions
-from aidm.state.entities import PLAYER_ID, EntityId, Slug
+from aidm.engines.world import commands
+from aidm.llm import build_agent, schema_of
 from aidm.state.facts import Fact, narrator_evidence, narrator_lines, player_events
-from aidm.state.model import AdvanceThread, Game, draft_refusal
+from aidm.state.model import Game, draft_refusal
 from aidm.state.play import (
     Answer,
     DecisionOption,
@@ -46,162 +44,25 @@ from . import context
 from .context import SceneSnapshot, VisibleScene
 
 
-@dataclass(frozen=True, slots=True)
-class DirectorTool:
-    """A director tool with the state predicate that decides whether it is offered at all."""
+def as_tool(found: Command) -> Tool[DirectorContext]:
+    async def call(ctx: RunContext[DirectorContext], **raw: JsonValue) -> str:
+        try:
+            return run_command(found, ctx.deps, raw)
+        except ValueError as refused:
+            raise ModelRetry(str(refused)) from refused
 
-    func: ToolFuncEither[DirectorContext, ...]
-    applies: Callable[[Game], bool] = lambda _state: True
-
-
-def core_toolset() -> AbstractToolset[DirectorContext]:
-    def reveal(ctx: RunContext[DirectorContext], entity_id: EntityId) -> str:
-        """Make a hidden entity known when the player notices, finds, or reaches it.
-
-        Args:
-            entity_id: Exact id of the hidden entity.
-        """
-        return _resolved(ctx, lambda draft: actions.reveal(draft, entity_id))
-
-    def move(ctx: RunContext[DirectorContext], entity_id: EntityId, to_id: EntityId) -> str:
-        """Move an actor to a new location, or move a nearby item.
-
-        Args:
-            entity_id: Exact actor or item id. The item must be carried by the player or loose here.
-            to_id: Exact destination id. Use a location for an actor; for an item, use `player`,
-                an actor here, or the player's location.
-        """
-        return _resolved(ctx, lambda draft: actions.move(draft, entity_id, to_id))
-
-    def gain_improvised_item(ctx: RunContext[DirectorContext], item_name: str) -> str:
-        """Give the player an ordinary, unimportant object not already in the world.
-
-        Args:
-            item_name: The object's name, such as `a handful of gravel`.
-        """
-        return _resolved(ctx, lambda draft: actions.improvise(draft, item_name))
-
-    def add_trait(
-        ctx: RunContext[DirectorContext], entity_id: EntityId, trait_id: Slug, text: str
-    ) -> str:
-        """Add a lasting condition or quality to an entity.
-
-        Args:
-            entity_id: Exact entity id. An actor must be here with the player.
-            trait_id: Stable slug, such as `poisoned`. `battle-worn` displays as Battle Worn.
-            text: The trait's effect in plain language.
-        """
-        return _resolved(ctx, lambda draft: actions.add_trait(draft, entity_id, trait_id, text))
-
-    def remove_trait(ctx: RunContext[DirectorContext], entity_id: EntityId, trait_id: Slug) -> str:
-        """Remove a lasting condition or quality that has ended.
-
-        Args:
-            entity_id: Exact entity id. An actor must be here with the player.
-            trait_id: Exact id of one of the entity's traits.
-        """
-        return _resolved(ctx, lambda draft: actions.remove_trait(draft, entity_id, trait_id))
-
-    def advance_thread(ctx: RunContext[DirectorContext], advance: AdvanceThread) -> str:
-        """Update an active storyline's status, stage, clock, or note.
-
-        Args:
-            advance: The thread update.
-        """
-        return _resolved(ctx, lambda draft: actions.advance_thread(draft, advance))
-
-    def unlock_exit(ctx: RunContext[DirectorContext], to_id: EntityId) -> str:
-        """Unlock an exit from the player's location.
-
-        Args:
-            to_id: Exact id of the exit's destination.
-        """
-        return _resolved(ctx, lambda draft: actions.unlock_exit(draft, to_id))
-
-    def join_party(ctx: RunContext[DirectorContext], actor_id: EntityId) -> str:
-        """Add an actor here to the player's party.
-
-        Args:
-            actor_id: Exact id of the actor joining.
-        """
-        return _resolved(ctx, lambda draft: actions.join_party(draft, actor_id))
-
-    def leave_party(ctx: RunContext[DirectorContext], actor_id: EntityId) -> str:
-        """Remove an actor from the player's party.
-
-        Args:
-            actor_id: Exact id of the actor leaving.
-        """
-        return _resolved(ctx, lambda draft: actions.leave_party(draft, actor_id))
-
-    tools = (
-        DirectorTool(reveal),
-        DirectorTool(move),
-        DirectorTool(gain_improvised_item),
-        DirectorTool(add_trait),
-        DirectorTool(remove_trait, _a_trait_in_reach),
-        DirectorTool(advance_thread, _an_unresolved_thread),
-        DirectorTool(unlock_exit, _a_locked_way_out),
-        DirectorTool(join_party, _an_actor_to_recruit),
-        DirectorTool(leave_party, _a_party_member),
-    )
-    # Keyed off the functions themselves, so a renamed tool cannot lose its predicate.
-    applies = {tool.func.__name__: tool.applies for tool in tools}
-    return (
-        sequential_toolset([tool.func for tool in tools])
-        .prepared(_narrow_unlock_targets)
-        .filtered(lambda ctx, tool: applies[tool.name](ctx.deps.draft))
+    return Tool.from_schema(
+        call,
+        found.name,
+        found.description,
+        schema_of(found.args),
+        takes_ctx=True,
+        sequential=True,
     )
 
 
-def _resolved(ctx: RunContext[DirectorContext], apply: Callable[[Game], list[Fact]]) -> str:
-    return apply_tool_call(ctx, lambda draft, _rng: tuple(apply(draft)))
-
-
-def _unlock_targets(state: Game) -> list[str]:
-    here = state.world.require_kind(state.player_location, "location")
-    return sorted(w.to for w in here.exits if w.locked)
-
-
-def _narrow_unlock_targets(
-    ctx: RunContext[DirectorContext], tools: list[ToolDefinition]
-) -> list[ToolDefinition]:
-    # This runs before impossible tools are filtered, so an empty enum would have no legal value.
-    targets = _unlock_targets(ctx.deps.draft)
-    return [
-        with_enum(tool, ("to_id",), targets) if tool.name == "unlock_exit" and targets else tool
-        for tool in tools
-    ]
-
-
-def _a_locked_way_out(state: Game) -> bool:
-    return bool(_unlock_targets(state))
-
-
-def _an_actor_to_recruit(state: Game) -> bool:
-    return any(
-        entity.kind == "actor" and entity.id != PLAYER_ID and entity.id not in state.world.party
-        for entity in state.world.entities
-        if state.is_here(entity)
-    )
-
-
-def _a_party_member(state: Game) -> bool:
-    return bool(state.world.party)
-
-
-def _an_unresolved_thread(state: Game) -> bool:
-    # The set the scene renders under ACTIVE THREADS: a thread put dormant is still movable.
-    return any(thread.status != "resolved" for thread in state.world.threads)
-
-
-def _a_trait_in_reach(state: Game) -> bool:
-    # `is_here` is false of a location, which carries tags of its own that `add_trait` may write.
-    return any(
-        entity.traits
-        for entity in state.world.entities
-        if state.is_here(entity) or entity.id == state.player_location
-    )
+def director_toolset(engine: Engine) -> FunctionToolset[DirectorContext]:
+    return FunctionToolset(tools=[as_tool(one) for one in commands(engine)], max_retries=2)
 
 
 @dataclass(frozen=True, slots=True)
@@ -217,20 +78,6 @@ class TurnAgents:
     narrator: Agent[VisibleScene, Narration]
 
 
-def gated_toolsets(engine: Engine) -> list[AbstractToolset[DirectorContext]]:
-    """Every harness gates the same way, so which one drives the turn cannot change the rules."""
-    return [
-        core_toolset().filtered(
-            lambda ctx, _tool: ctx.deps.draft.pending is None or ctx.deps.suspended_at_start
-        ),
-        # A suspended run may develop what the answer caused; it may not open new mechanics.
-        *(
-            toolset.filtered(lambda ctx, _tool: ctx.deps.draft.pending is None)
-            for toolset in engine.director_toolsets
-        ),
-    ]
-
-
 def director_agent(
     engine: Engine,
     settings: Settings,
@@ -242,7 +89,7 @@ def director_agent(
         instructions=context.director_instructions(engine.director_instructions),
         output_type=str,
         deps_type=DirectorContext,
-        toolsets=gated_toolsets(engine),
+        toolsets=[director_toolset(engine)],
     )
 
 

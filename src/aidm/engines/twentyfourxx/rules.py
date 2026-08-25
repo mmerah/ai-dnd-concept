@@ -16,7 +16,7 @@ from aidm.engines.core import (
 )
 from aidm.state.actions import add_trait, require_actor_here, roll_pool
 from aidm.state.creation import CreationOption
-from aidm.state.entities import PLAYER_ID, Counter, Entity, EntityId, Frozen, Slug
+from aidm.state.entities import PLAYER_ID, CheckedEntityId, Counter, Entity, EntityId, Frozen, Slug
 from aidm.state.facts import DiceEvent, EventBadge, Fact, MechanicEvent, entity_fact
 from aidm.state.model import Game
 from aidm.state.play import DecisionOption, PendingDecision
@@ -148,7 +148,7 @@ class Pack(Frozen):
 
 
 class Attempt(Frozen):
-    actor_id: EntityId = Field(
+    actor_id: CheckedEntityId = Field(
         description="Exact id of the player or actor here who takes the action."
     )
     goal: str = Field(
@@ -163,7 +163,7 @@ class Attempt(Frozen):
         default="",
         description="Helpful circumstance that adds d6. Empty when using `helper_id` or no help.",
     )
-    helper_id: EntityId | None = Field(
+    helper_id: CheckedEntityId | None = Field(
         default=None,
         description="Exact id of an ally here who adds their skill die, or null for no helper.",
     )
@@ -199,7 +199,9 @@ class StakedAttempt(Attempt):
 
 
 class LuckTest(Frozen):
-    actor_id: EntityId = Field(description="Exact id of the player or actor here facing bad luck.")
+    actor_id: CheckedEntityId = Field(
+        description="Exact id of the player or actor here facing bad luck."
+    )
     subject: str = Field(
         min_length=1,
         description="Possible bad luck, such as low ammo or nearby guards.",

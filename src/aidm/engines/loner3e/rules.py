@@ -15,7 +15,7 @@ from aidm.engines.core import (
     require_sheet,
 )
 from aidm.state.actions import require_actor_here, roll_pool
-from aidm.state.entities import PLAYER_ID, Counter, Entity, EntityId, Frozen, Slug
+from aidm.state.entities import PLAYER_ID, CheckedEntityId, Counter, Entity, EntityId, Frozen, Slug
 from aidm.state.facts import DiceEvent, EventBadge, Fact, MechanicEvent, entity_fact
 from aidm.state.model import Game
 from aidm.state.play import PendingDecision
@@ -133,7 +133,7 @@ type Position = Literal["advantage", "neutral", "disadvantage"]
 
 
 class Question(Frozen):
-    actor_id: EntityId = Field(
+    actor_id: CheckedEntityId = Field(
         description="Exact id of the player or actor here who takes the action."
     )
     question: str = Field(
@@ -148,7 +148,7 @@ class Question(Frozen):
         default="",
         description="Tag or circumstance that sets the position. Empty for neutral.",
     )
-    opponent_id: EntityId | None = Field(
+    opponent_id: CheckedEntityId | None = Field(
         default=None,
         description="Exact id of the actor here who resists. Null when no actor fights back.",
     )

@@ -8,7 +8,7 @@ from typing import Any
 import mcp_types as types
 from mcp.server import NotificationOptions, Server, ServerRequestContext
 from mcp.server.stdio import stdio_server
-from pydantic import JsonValue, TypeAdapter
+from pydantic import BaseModel, JsonValue, TypeAdapter
 from pydantic_ai import ModelRetry
 from pydantic_ai.toolsets import ToolsetTool
 
@@ -19,15 +19,16 @@ from aidm.app.codemode import (
     BeginScenario,
     EndTurn,
     Harness,
-    NoArgs,
     OpenGame,
     StartTurn,
     Summary,
-    ToolArgs,
     catalogue,
 )
 from aidm.app.runtime import Runtime
 from aidm.config import load_settings
+from aidm.engines.core import NoArgs, ProposalBase
+from aidm.engines.world import commands
+from aidm.llm import schema_of
 
 SERVER_NAME = "aidm"
 
@@ -40,6 +41,10 @@ _ARGUMENTS = TypeAdapter(dict[str, JsonValue])
 type Handler = Callable[[Harness, dict[str, JsonValue]], str]
 
 
+def _published(name: str, description: str, args: type[BaseModel]) -> types.Tool:
+    return types.Tool(name=name, description=description, input_schema=schema_of(args))
+
+
 @dataclass(frozen=True, slots=True)
 class ServerTool:
     """Name, description, behaviour and schema in one place: what is published is what is run."""
@@ -47,16 +52,10 @@ class ServerTool:
     name: str
     description: str
     run: Handler
-    args: type[ToolArgs] = NoArgs
-    # False when the call cannot change which tools are offered, so no list_changed follows it.
-    reshapes: bool = True
+    args: type[BaseModel] = NoArgs
 
     def published(self) -> types.Tool:
-        return types.Tool(
-            name=self.name,
-            description=self.description,
-            input_schema=self.args.model_json_schema(),
-        )
+        return _published(self.name, self.description, self.args)
 
 
 SERVER_TOOLS: tuple[ServerTool, ...] = (
@@ -64,7 +63,6 @@ SERVER_TOOLS: tuple[ServerTool, ...] = (
         "list_games",
         "The saves to resume and the scenarios, characters and engines a new game is built from.",
         lambda harness, _raw: catalogue(harness.settings),
-        reshapes=False,
     ),
     ServerTool(
         "open_game",
@@ -76,7 +74,6 @@ SERVER_TOOLS: tuple[ServerTool, ...] = (
         "rules",
         "How to run a turn here: the director rules, this engine's rules, the narration rules.",
         lambda harness, _raw: harness.rules(),
-        reshapes=False,
     ),
     ServerTool(
         "start_turn",
@@ -89,7 +86,6 @@ SERVER_TOOLS: tuple[ServerTool, ...] = (
         "scene",
         "The same picture start_turn gives, for when you were compacted mid-turn.",
         lambda harness, _raw: harness.scene(),
-        reshapes=False,
     ),
     ServerTool(
         "end_turn",
@@ -101,14 +97,12 @@ SERVER_TOOLS: tuple[ServerTool, ...] = (
         "begin_growth",
         "Open an authoring run that writes new unknown canon into the open game's world.",
         lambda harness, _raw: harness.begin_growth(),
-        reshapes=False,
     ),
     ServerTool(
         "begin_scenario",
         "Open an authoring run that writes a whole new scenario. No game need be open.",
         lambda harness, raw: harness.begin_scenario(BeginScenario.model_validate(raw)),
         BeginScenario,
-        reshapes=False,
     ),
     ServerTool(
         "finish_growth",
@@ -121,7 +115,6 @@ SERVER_TOOLS: tuple[ServerTool, ...] = (
         "Check the draft and write it to disk as a scenario anyone can play.",
         lambda harness, raw: harness.finish_scenario(Summary.model_validate(raw).summary),
         Summary,
-        reshapes=False,
     ),
 )
 
@@ -130,7 +123,7 @@ PROPOSE_ADVANCE = ServerTool(
     "propose_advance",
     "Draft one advancement the player asked for; nothing commits until `apply_advance`.",
     lambda harness, raw: harness.propose_advance(raw),
-    AdvanceArgs,
+    AdvanceArgs[ProposalBase],
 )
 APPLY_ADVANCE = ServerTool(
     "apply_advance",
@@ -146,12 +139,6 @@ AUTHORING = authoring_toolset((), WHOLE_SCENARIO)
 AUTHORING_TOOLS = frozenset(AUTHORING.tools)
 
 
-def reshapes(name: str) -> bool:
-    """A director tool commits game state and re-gates the list; an authoring tool cannot."""
-    tool = DISPATCH.get(name)
-    return tool.reshapes if tool is not None else name not in AUTHORING_TOOLS
-
-
 def _as_mcp_tool[D](tool: ToolsetTool[D]) -> types.Tool:
     definition = tool.tool_def
     return types.Tool(
@@ -159,10 +146,6 @@ def _as_mcp_tool[D](tool: ToolsetTool[D]) -> types.Tool:
         description=definition.description or "",
         input_schema=definition.parameters_json_schema,
     )
-
-
-def _advance_tools(args: type[AdvanceArgs]) -> tuple[types.Tool, ...]:
-    return (replace(PROPOSE_ADVANCE, args=args).published(), APPLY_ADVANCE.published())
 
 
 async def _authoring_tools() -> list[types.Tool]:
@@ -175,9 +158,10 @@ async def offered(harness: Harness) -> list[types.Tool]:
     tools = [*PUBLISHED, *await _authoring_tools()]
     if harness.session is None:
         return tools
-    tools.extend(_advance_tools(harness.advance_args()))
-    _, director = await harness.director_tools(None)
-    tools.extend(_as_mcp_tool(tool) for tool in director.values())
+    engine = harness.session.engine
+    tools.append(replace(PROPOSE_ADVANCE, args=harness.advance_args()).published())
+    tools.append(APPLY_ADVANCE.published())
+    tools.extend(_published(one.name, one.description, one.args) for one in commands(engine))
     return tools
 
 
@@ -187,7 +171,7 @@ async def call(harness: Harness, name: str, raw: dict[str, JsonValue]) -> str:
         return tool.run(harness, raw)
     if name in AUTHORING_TOOLS:
         return await harness.authoring_tool(name, raw)
-    return await harness.call_director_tool(name, raw)
+    return harness.call_director_tool(name, raw)
 
 
 def build_server(harness: Harness) -> Server[LifespanContext]:
@@ -209,7 +193,7 @@ def build_server(harness: Harness) -> Server[LifespanContext]:
                 )
             except (ModelRetry, ValueError) as refused:
                 return _content(str(refused), error=True)
-        if reshapes(params.name):
+        if params.name == "open_game":
             await ctx.session.send_tool_list_changed()
         return _content(answered)
 

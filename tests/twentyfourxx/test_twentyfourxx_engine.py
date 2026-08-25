@@ -11,13 +11,10 @@ from core_test_support import (
     tool_call,
 )
 from pydantic import ValidationError
-from pydantic_ai import RunContext
 from pydantic_ai.models.function import FunctionModel
-from pydantic_ai.models.test import TestModel
-from pydantic_ai.usage import RunUsage
 
 from aidm.engines.core import DirectorContext, Engine, TurnRecord
-from aidm.engines.twentyfourxx.engine import TwentyfourxxEngine, director_toolset
+from aidm.engines.twentyfourxx.engine import DIRECTOR_COMMANDS, TwentyfourxxEngine
 from aidm.engines.twentyfourxx.rules import (
     Advance,
     Attempt,
@@ -117,26 +114,6 @@ def test_an_ally_who_lacks_the_named_skill_is_refused() -> None:
     )
     with pytest.raises(ValueError, match="helper_skill"):
         resolve_attempt(state.draft(), action, Random(0))
-
-
-async def test_roll_attempt_narrows_skill_and_helper_skill_to_who_is_here() -> None:
-    engine, state = game(TWENTYFOURXX)
-    ctx = RunContext(
-        deps=DirectorContext(engine=engine, draft=state, rng=Random(0), log=TurnRecord()),
-        model=TestModel(),
-        usage=RunUsage(),
-    )
-
-    tools = await director_toolset().get_tools(ctx)
-    schema = tools["roll_attempt"].tool_def.parameters_json_schema
-
-    # Only Kael's local skills qualify; Mara has none and the rat is elsewhere.
-    expected = ["", "Climbing", "Stealth", "Tracking"]
-    assert schema["properties"]["skill"]["enum"] == expected
-    assert schema["properties"]["helper_skill"]["enum"] == expected
-
-    staked = tools["stake_attempt"].tool_def.parameters_json_schema
-    assert staked["properties"]["skill"]["enum"] == expected
 
 
 def test_naming_both_an_ally_and_a_helped_tag_is_refused_at_the_schema() -> None:
@@ -299,17 +276,6 @@ def _hit(state: Game) -> tuple[Game, PendingDecision]:
     return draft, decision
 
 
-async def _offered(
-    engine: Engine, state: Game, answered: PendingDecision | None, *, settled: bool = False
-) -> set[str]:
-    landed = [Fact(kind="defence_taken", trace="the hit lands in full")] if settled else []
-    deps = DirectorContext(
-        engine=engine, draft=state, rng=Random(0), log=TurnRecord(facts=landed), answered=answered
-    )
-    ctx = RunContext(deps=deps, model=TestModel(), usage=RunUsage())
-    return set(await director_toolset().get_tools(ctx))
-
-
 def test_a_stake_freezes_a_playable_attempt_and_waits_on_the_player() -> None:
     _, state = game(TWENTYFOURXX)
     draft = state.draft()
@@ -394,14 +360,29 @@ def test_an_npcs_own_disaster_hands_the_player_nothing() -> None:
     assert draft.pending is None
 
 
-async def test_the_settle_tool_is_offered_once_where_an_answer_consumed_a_defence() -> None:
+def _settle(engine: Engine, state: Game, answered: PendingDecision | None, *, settled: bool) -> str:
+    found = next(one for one in DIRECTOR_COMMANDS if one.name == "settle_defence")
+    landed = [Fact(kind="defence_taken", trace="the hit lands in full")] if settled else []
+    deps = DirectorContext(
+        engine=engine,
+        draft=state.draft(),
+        rng=Random(0),
+        log=TurnRecord(facts=landed),
+        answered=answered,
+    )
+    return found.call(deps, {"item_id": None})
+
+
+def test_one_hit_is_settled_once() -> None:
+    """A second call would break a second item for the same blow."""
     engine, state = game(TWENTYFOURXX)
     _, decision = _hit(state)
 
-    assert "settle_defence" not in await _offered(engine, state, None)
-    assert "settle_defence" in await _offered(engine, state, decision)
-    # One hit is settled once: a second call would break a second item for the same blow.
-    assert "settle_defence" not in await _offered(engine, state, decision, settled=True)
+    with pytest.raises(ValueError, match="no hit is waiting"):
+        _ = _settle(engine, state, None, settled=False)
+    assert _settle(engine, state, decision, settled=False)
+    with pytest.raises(ValueError, match="no hit is waiting"):
+        _ = _settle(engine, state, decision, settled=True)
 
 
 async def test_a_hit_the_player_answered_in_their_own_words_is_still_turned() -> None:

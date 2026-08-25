@@ -2,23 +2,21 @@ from collections.abc import Mapping
 from pathlib import Path
 from random import Random
 
-from pydantic import JsonValue
-from pydantic_ai import ModelRetry, RunContext
-from pydantic_ai.tools import ToolDefinition
-from pydantic_ai.toolsets import AbstractToolset
+from pydantic import Field, JsonValue
 
 from aidm.content.model import CharacterProfile, CreatedCharacter
 from aidm.engines.core import (
     CharacterCreation,
+    Command,
     DirectorContext,
+    NoArgs,
     ProposalBase,
     SheetAdvancement,
     SheetEngine,
     adjust,
-    apply_tool_call,
-    require_sheet,
-    sequential_toolset,
-    with_enum,
+    apply_action,
+    apply_play,
+    command,
 )
 from aidm.engines.packs import load_packs, pack_paths, pack_step
 from aidm.engines.twentyfourxx.rules import (
@@ -58,10 +56,12 @@ from aidm.state.creation import (
 )
 from aidm.state.entities import (
     PLAYER_ID,
+    CheckedEntityId,
     Counter,
     EngineId,
     Entity,
     EntityId,
+    Frozen,
     Slug,
     Trait,
     slug,
@@ -71,110 +71,73 @@ from aidm.state.model import Game
 from aidm.state.play import PendingDecision
 
 
-def _skills_in_play(state: Game) -> set[str]:
-    """Limit attempt skills to actors present with the player."""
-    sheets = Mechanics.of_game(state).sheets
-    return {
-        skill
-        for actor in state.world.of_kind("actor")
-        if state.is_here(actor)
-        for skill in require_sheet(sheets, actor).skills
-    }
-
-
-def _narrow_to_skills_in_play(
-    ctx: RunContext[DirectorContext], tools: list[ToolDefinition]
-) -> list[ToolDefinition]:
-    skills = ["", *sorted(_skills_in_play(ctx.deps.draft))]
-    return [_with_skills(tool, skills) for tool in tools]
-
-
-def _with_skills(tool: ToolDefinition, skills: list[str]) -> ToolDefinition:
-    fields = ("skill", "helper_skill")
-    if tool.name in ("roll_attempt", "stake_attempt"):
-        return with_enum(tool, fields, skills)
-    return tool
-
-
-def _defence_to_settle(ctx: RunContext[DirectorContext]) -> PendingDecision | None:
-    """One hit, one settlement: the decision an open answer consumed, until this run settles it."""
-    answered = ctx.deps.answered
-    if answered is None or answered.kind != "defence":
-        return None
-    if any(fact.kind in ("defence_turned", "defence_taken") for fact in ctx.deps.log.facts):
-        return None
-    return answered
-
-
-def director_toolset() -> AbstractToolset[DirectorContext]:
-    def roll_attempt(ctx: RunContext[DirectorContext], attempt: Attempt) -> str:
-        """Roll one risky attempt. Roll an NPC's attempt directly; put the player's own attempt
-        to `stake_attempt` first, unless their words already accepted the exact risk.
-
-        Args:
-            attempt: The complete attempt to roll.
-        """
-        return apply_tool_call(ctx, lambda draft, rng: resolve_attempt(draft, attempt, rng))
-
-    def stake_attempt(ctx: RunContext[DirectorContext], attempt: StakedAttempt) -> str:
-        """Let the player accept or revise one risky attempt before rolling it.
-
-        Args:
-            attempt: The complete attempt to freeze until the player decides.
-        """
-        return apply_tool_call(ctx, lambda draft, _rng: resolve_stake(draft, attempt))
-
-    def settle_defence(ctx: RunContext[DirectorContext], item_id: EntityId | None) -> str:
-        """Apply the player's choice to break an item or take the full hit.
-
-        Args:
-            item_id: Exact id of the carried, unbroken item to break, or null to take the hit.
-        """
-        answered = _defence_to_settle(ctx)
-        if answered is None:
-            raise ModelRetry("no hit is waiting to be settled; there is nothing to break or take.")
-        goal = Defence.model_validate(answered.payload).goal
-        return apply_tool_call(ctx, lambda draft, _rng: resolve_defence(draft, goal, item_id))
-
-    def roll_luck_test(ctx: RunContext[DirectorContext], test: LuckTest) -> str:
-        """Roll a standalone bad-luck test.
-
-        Args:
-            test: The actor and possible bad luck.
-        """
-        return apply_tool_call(ctx, lambda draft, rng: resolve_luck_test(draft, test, rng))
-
-    def change_credits(ctx: RunContext[DirectorContext], actor_id: EntityId, amount: int) -> str:
-        """Pay or charge an actor.
-
-        Args:
-            actor_id: Exact id of the player or an actor here.
-            amount: Positive pays the actor; negative charges them.
-        """
-        return apply_tool_call(
-            ctx,
-            lambda draft, _rng: tuple(apply_change_credits(draft, actor_id, amount)),
-        )
-
-    def complete_chapter(ctx: RunContext[DirectorContext]) -> str:
-        """Record that the current job has ended."""
-        return apply_tool_call(ctx, lambda draft, _rng: tuple(apply_complete_chapter(draft)))
-
-    toolset = sequential_toolset(
-        [
-            roll_attempt,
-            stake_attempt,
-            settle_defence,
-            roll_luck_test,
-            change_credits,
-            complete_chapter,
-        ]
+class SettleDefence(Frozen):
+    item_id: CheckedEntityId | None = Field(
+        description="Exact id of the carried, unbroken item to break, or null to take the hit."
     )
-    # A hit the player answered in words has to land or be turned, once; nothing else settles one.
-    offered = toolset.filtered(
-        lambda ctx, tool: tool.name != "settle_defence" or _defence_to_settle(ctx) is not None
-    )
-    return offered.prepared(_narrow_to_skills_in_play)
+
+
+class ChangeCredits(Frozen):
+    actor_id: CheckedEntityId = Field(description="Exact id of the player or an actor here.")
+    amount: int = Field(description="Positive pays the actor; negative charges them.")
+
+
+def _roll_attempt(deps: DirectorContext, attempt: Attempt) -> str:
+    return apply_play(deps, lambda draft, rng: resolve_attempt(draft, attempt, rng))
+
+
+def _stake_attempt(deps: DirectorContext, attempt: StakedAttempt) -> str:
+    return apply_play(deps, lambda draft, _rng: resolve_stake(draft, attempt))
+
+
+def _settle_defence(deps: DirectorContext, args: SettleDefence) -> str:
+    # One hit, one settlement: the decision an open answer consumed, until this run settles it.
+    answered = deps.answered
+    settled = any(fact.kind in ("defence_turned", "defence_taken") for fact in deps.log.facts)
+    if answered is None or answered.kind != "defence" or settled:
+        raise ValueError("no hit is waiting to be settled; there is nothing to break or take.")
+    goal = Defence.model_validate(answered.payload).goal
+    return apply_play(deps, lambda draft, _rng: resolve_defence(draft, goal, args.item_id))
+
+
+def _roll_luck_test(deps: DirectorContext, test: LuckTest) -> str:
+    return apply_play(deps, lambda draft, rng: resolve_luck_test(draft, test, rng))
+
+
+def _change_credits(deps: DirectorContext, args: ChangeCredits) -> str:
+    return apply_action(deps, lambda draft: apply_change_credits(draft, args.actor_id, args.amount))
+
+
+def _complete_chapter(deps: DirectorContext, _args: NoArgs) -> str:
+    return apply_action(deps, apply_complete_chapter)
+
+
+DIRECTOR_COMMANDS: tuple[Command, ...] = (
+    command(
+        "roll_attempt",
+        "Roll one risky attempt. Roll an NPC's attempt directly; put the player's own attempt\n"
+        "to `stake_attempt` first, unless their words already accepted the exact risk.",
+        Attempt,
+        _roll_attempt,
+    ),
+    command(
+        "stake_attempt",
+        "Let the player accept or revise one risky attempt before rolling it.",
+        StakedAttempt,
+        _stake_attempt,
+    ),
+    command(
+        "settle_defence",
+        "Apply the player's choice to break an item or take the full hit.",
+        SettleDefence,
+        _settle_defence,
+    ),
+    command("roll_luck_test", "Roll a standalone bad-luck test.", LuckTest, _roll_luck_test),
+    command("change_credits", "Pay or charge an actor.", ChangeCredits, _change_credits),
+    command(
+        "complete_chapter", "Record that the current job has ended.", NoArgs, _complete_chapter
+    ),
+)
 
 
 class TwentyfourxxAdvancement(SheetAdvancement):
@@ -360,7 +323,7 @@ class TwentyfourxxEngine(SheetEngine[Sheet]):
         self.packs = load_packs(pack_paths(self.engine_dir / "packs", extra_packs), Pack)
         self.advancement = TwentyfourxxAdvancement(self.engine_dir)
         self.creation = TwentyfourxxCreation(self.packs)
-        self.director_toolsets = (director_toolset(),)
+        self.director_commands = DIRECTOR_COMMANDS
 
     def resume(
         self, draft: Game, pending: PendingDecision, option_id: Slug, rng: Random

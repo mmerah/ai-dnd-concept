@@ -32,10 +32,10 @@ def kind_word(kind: Kind) -> str:
 
 EngineId = NewType("EngineId", str)
 EntityId = NewType("EntityId", str)
+# The grammar rides the field annotation: a `NewType` over an `Annotated` alias is not a type.
+CheckedEntityId = Annotated[EntityId, Field(pattern=rf"^{SLUG_PATTERN}$", max_length=SLUG_MAX)]
 
 PLAYER_ID = EntityId("player")
-
-CheckedEntityId = Annotated[EntityId, Field(pattern=rf"^{SLUG_PATTERN}$", max_length=SLUG_MAX)]
 
 
 def content_id(value: str) -> Slug:

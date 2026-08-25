@@ -4,11 +4,8 @@ from collections.abc import Sequence
 from dataclasses import dataclass, field
 from pathlib import Path
 
-from pydantic import ConfigDict, Field, JsonValue, create_model
-from pydantic_ai import ModelRetry, RunContext
-from pydantic_ai.models.test import TestModel
-from pydantic_ai.toolsets import AbstractToolset, ToolsetTool
-from pydantic_ai.usage import RunUsage
+from pydantic import ConfigDict, JsonValue
+from pydantic_ai import ModelRetry
 
 from aidm.app.authoring_run import (
     AuthoringRun,
@@ -28,8 +25,9 @@ from aidm.app.launch import (
 )
 from aidm.app.runtime import DraftedAdvance, GameSession, Runtime
 from aidm.config import Settings
-from aidm.engines.core import DirectorContext, ProposalBase, TurnRecord
-from aidm.state.entities import EngineId, EntityId, Frozen, Slug
+from aidm.engines.core import DirectorContext, ProposalBase, TurnRecord, run_command
+from aidm.engines.world import commands
+from aidm.state.entities import CheckedEntityId, EngineId, Frozen, Slug
 from aidm.state.facts import Fact
 from aidm.state.model import Game
 from aidm.state.play import (
@@ -47,7 +45,7 @@ from aidm.turn.context import (
     player_scene,
     render_director,
 )
-from aidm.turn.run import close_segment, consume_answer, gated_toolsets, speakers_refusal
+from aidm.turn.run import close_segment, consume_answer, speakers_refusal
 
 LOGGER = logging.getLogger(__name__)
 
@@ -89,10 +87,6 @@ class OpenGame(ToolArgs):
     """An existing save's slug, or `<scenario>--<character>--<engine>` to begin a new game."""
 
 
-class NoArgs(ToolArgs):
-    pass
-
-
 class StartTurn(ToolArgs):
     prompt: str
     """What the player did, in their words."""
@@ -105,12 +99,11 @@ class EndTurn(ToolArgs):
     """The prose the player reads, in order."""
 
 
-class AdvanceArgs(ToolArgs):
-    """`proposal` is replaced by the engine's own proposal type before the model ever sees it."""
-
-    subject_id: EntityId
+class AdvanceArgs[P: ProposalBase](ToolArgs):
+    subject_id: CheckedEntityId
     """Exact id of the character the offer names."""
-    proposal: ProposalBase
+    proposal: P
+    """The change to draft, in this engine's own vocabulary."""
 
 
 class BeginScenario(ToolArgs):
@@ -151,7 +144,6 @@ class Harness:
     runtime: Runtime
     lock: asyncio.Lock = field(default_factory=asyncio.Lock)
     session: GameSession | None = None
-    toolsets: tuple[AbstractToolset[DirectorContext], ...] = ()
     turn: Turn | None = None
     authoring: AuthoringRun | None = None
 
@@ -171,7 +163,6 @@ class Harness:
         target = _target(load_catalog(self.settings), slug)
         session = self.runtime.session(target)
         self.session = session
-        self.toolsets = tuple(gated_toolsets(session.engine))
         self.turn = None
         # A growth run drafts against the game it began in; opening another abandons it.
         if isinstance(self.authoring, GrowthRun):
@@ -262,29 +253,26 @@ class Harness:
         closed = f"turn {state.turn} committed."
         return f"{closed}\n{GROWTH_DUE}" if session.growth_due() else closed
 
-    async def call_director_tool(self, name: str, raw: dict[str, JsonValue]) -> str:
+    def call_director_tool(self, name: str, raw: dict[str, JsonValue]) -> str:
         session = self.opened()
-        _ = self.started()
-        ctx, tools = await self.director_tools(name)
-        tool = tools.get(name)
-        if tool is None:
-            raise ModelRetry(_unavailable(name, session.state.pending))
-        answered = await tool.toolset.call_tool(
-            name, tool.args_validator.validate_python(raw), ctx, tool
+        turn = self.started()
+        found = next((one for one in commands(session.engine) if one.name == name), None)
+        if found is None:
+            raise ModelRetry(f"{name!r} is not a command of the {session.engine.id!r} engine.")
+        deps = DirectorContext(
+            engine=session.engine,
+            draft=session.state.draft(),
+            rng=session.rng,
+            log=turn.log,
+            suspended_at_start=turn.suspended_at_start,
+            answered=turn.answered,
         )
-        session.commit(ctx.deps.draft.committed())
-        return str(answered)
+        answered = run_command(found, deps, raw)
+        session.commit(deps.draft.committed())
+        return answered
 
-    def advance_args(self) -> type[AdvanceArgs]:
-        """The proposal the model writes is the engine's own type, so the schema it reads is too."""
-        return create_model(
-            "ProposeAdvance",
-            __base__=AdvanceArgs,
-            proposal=(
-                self.opened().engine.advancement.proposal_type,
-                Field(description="The change to draft, in this engine's own vocabulary."),
-            ),
-        )
+    def advance_args(self) -> type[AdvanceArgs[ProposalBase]]:
+        return AdvanceArgs[self.opened().engine.advancement.proposal_type]
 
     def propose_advance(self, raw: dict[str, JsonValue]) -> str:
         session = self.opened()
@@ -370,41 +358,6 @@ class Harness:
         if self.authoring is not None:
             LOGGER.info("discarding the authoring run still open")
         self.authoring = run
-
-    async def director_tools(
-        self, tool_name: str | None
-    ) -> tuple[RunContext[DirectorContext], dict[str, ToolsetTool[DirectorContext]]]:
-        """A fresh draft per call: an accepted call commits, so no draft outlives its tool."""
-        session = self.opened()
-        # Listing what is offered reads committed state, so it needs no open turn.
-        turn = self.turn or Turn(prompt="")
-        ctx = RunContext(
-            deps=DirectorContext(
-                engine=session.engine,
-                draft=session.state.draft(),
-                rng=session.rng,
-                log=turn.log,
-                suspended_at_start=turn.suspended_at_start,
-                answered=turn.answered,
-            ),
-            # A RunContext needs a model; no director tool reads one.
-            model=TestModel(),
-            usage=RunUsage(),
-            tool_name=tool_name,
-        )
-        tools: dict[str, ToolsetTool[DirectorContext]] = {}
-        for toolset in self.toolsets:
-            tools |= await toolset.get_tools(ctx)
-        return ctx, tools
-
-
-def _unavailable(name: str, pending: PendingDecision | None) -> str:
-    if pending is None:
-        return f"{name!r} does not apply in this state; call scene() and use what fits."
-    return (
-        f"the rules are waiting on the player: {pending.prompt}\n"
-        "Put that to the player, then call start_turn with their answer."
-    )
 
 
 def _check_playable(run: AuthoringRun) -> None:

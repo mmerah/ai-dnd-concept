@@ -39,6 +39,26 @@ Review follow-ups (adversarial pass):
 
 Verified: `grep -rn "advancement is None\|creation is None\|advancement is not None\|creation is not None" src/ tests/` finds nothing. 261 tests passed, Ruff check and format passed, basedpyright 0 errors.
 
-## Phase 3 — Framework-free commands — TODO
+## Phase 3 — Framework-free commands — DONE except 3.9
+
+- 3.1 `Command`, `command()`, `run_command()` and `apply_command` (was `apply_tool_call`) live in `engines/core.py`. `sequential_toolset` and `with_enum` deleted. Refusals are `ValueError`; only the Pydantic AI adapter turns them into `ModelRetry`.
+- 3.2 `engines/world.py` holds the nine core commands. `DirectorTool`, `core_toolset`, `_resolved`, the five applicability predicates, `_unlock_targets`, `_narrow_unlock_targets` and `gated_toolsets` deleted from `turn/run.py`.
+- 3.3 `Engine.director_commands` replaces `director_toolsets`. 24XX lost `_skills_in_play`, `_narrow_to_skills_in_play`, `_with_skills` and both `.filtered(...)`/`.prepared(...)` chains; `settle_defence` refuses in the resolver instead.
+- 3.4 `schema_of`, `as_tool` and `director_toolset` are the whole Pydantic AI adapter, at the top of `turn/run.py`.
+- 3.5 `reshapes` deleted; `send_tool_list_changed` fires only on `open_game`. `codemode.director_tools` and `_unavailable` deleted; `call_director_tool` is synchronous.
+- 3.6 `AdvanceArgs[P: ProposalBase]` replaces `create_model`; `_advance_args` deleted.
+- 3.8 **The plan's mechanism does not work.** `NewType("EntityId", Slug)` is not a valid type form — Pydantic unwraps it at runtime, but basedpyright reports 945 errors across 20 files and ruff rejects the `TypeAlias` line written to appease it. `EntityId` stays `NewType("EntityId", str)` and `CheckedEntityId` carries the grammar on every Pydantic field that holds an entity id, which reaches the same schemas. The `Entity`/`Exit`/tool-argument fixture diff is what 3.8 asked for.
+
+Review follow-ups (adversarial pass):
+
+- `tests/core/test_code_mode.py` was never updated and was the only red in the suite. Its five director payloads used the nested `{"attempt": {...}}` shape; the published schema has always been flat, and pydantic-ai's signature-derived validator was silently tolerating both. `Frozen`'s `extra="forbid"` now rejects the wrong one. Four `offered()` assertions about tool filtering deleted; two `pytest.raises(ModelRetry)` became `ValueError`, which is what the gate raises.
+- `tests/core/test_tools.py` deleted. Its two replacements were a hand-written list of the nine command names and an assertion that a tuple is non-empty; `test_golden_schemas.py` already pins names, descriptions and schemas for both engines.
+- Two invariants were deleted rather than ported, and are back: `test_one_hit_is_settled_once` in `test_twentyfourxx_engine.py` (the refusal `_defence_to_settle` still enforces), and the suspension gate, which `test_a_resume_that_re_suspended_may_still_develop_what_the_answer_caused` covers on both branches.
+- `command_schema(Command)` became `schema_of(type[BaseModel])` and `ServerTool.published()` uses it too. `propose_advance` was publishing `"title": "AdvanceArgs[AdventureGrowth]"`; every MCP schema now drops the argument class name the same way the director's do.
+- `apply_action` in `engines/core.py` wraps the thirteen handlers that call `aidm.state.actions` and never roll. `_world_command` in `world.py` carries `during_suspension=True` once instead of nine times. `NoArgs` replaced three empty argument models.
+- 24XX's `director_commands()` closed over nothing and is now the `DIRECTOR_COMMANDS` constant; loner3e keeps a function for `roll_question` alone, which is the only handler that needs `twists`.
+- `world.commands(engine)` is the one place core and engine commands merge, for the agent, MCP and code mode alike.
+
+- 3.9 not run: it needs an API key and a live model. Baseline is `evals/results/after-stake-flatten.json`.
 
 ## Phase 4 — Package moves — TODO

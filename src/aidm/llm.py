@@ -2,6 +2,7 @@ import json
 import logging
 from collections.abc import Callable, Sequence
 
+from pydantic import BaseModel, JsonValue
 from pydantic_ai import Agent, RunContext
 from pydantic_ai.messages import ModelMessage, ModelResponse, ToolCallPart
 from pydantic_ai.models import ModelRequestParameters
@@ -10,11 +11,20 @@ from pydantic_ai.models.wrapper import WrapperModel
 from pydantic_ai.output import OutputSpec
 from pydantic_ai.providers.openai import OpenAIProvider
 from pydantic_ai.settings import ModelSettings
+from pydantic_ai.tools import GenerateToolJsonSchema
 from pydantic_ai.toolsets import AbstractToolset
 
 from aidm.config import Role, Settings
 
 LOGGER = logging.getLogger(__name__)
+
+
+def schema_of(args: type[BaseModel]) -> dict[str, JsonValue]:
+    """One schema function, so what MCP publishes is what the agent is offered."""
+    schema = args.model_json_schema(schema_generator=GenerateToolJsonSchema)
+    # The tool already names itself; the argument class name would be a second, wrong name.
+    schema.pop("title", None)
+    return schema
 
 
 def _object(text: str) -> bool:

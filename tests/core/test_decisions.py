@@ -3,19 +3,19 @@ from random import Random
 import pytest
 from core_test_support import LONER3E, game, played, recorded, scripted, shown, text, tool_call
 from pydantic import ValidationError
-from pydantic_ai import RunContext
-from pydantic_ai.messages import ModelMessage, ModelResponse, TextPart, ToolReturnPart
-from pydantic_ai.models.function import AgentInfo, FunctionModel
-from pydantic_ai.toolsets import FunctionToolset
+from pydantic_ai.messages import TextPart, ToolReturnPart
+from pydantic_ai.models.function import FunctionModel
 
 from aidm.content.io import SavedGame
 from aidm.engines.core import (
     RULES_WAIT,
+    Command,
     DirectorContext,
     Engine,
+    NoArgs,
+    apply_play,
     apply_to_draft,
-    apply_tool_call,
-    sequential_toolset,
+    command,
     transact,
 )
 from aidm.engines.loner3e.engine import Loner3eEngine
@@ -70,18 +70,19 @@ def _hit(draft: Game, *, narrate: bool) -> tuple[Fact, ...]:
     )
 
 
-def _toolset(*, narrate: bool) -> FunctionToolset[DirectorContext]:
-    def strike(ctx: RunContext[DirectorContext]) -> str:
-        """Take a hit the player may turn by breaking something of theirs."""
-        return apply_tool_call(ctx, lambda draft, _rng: _hit(draft, narrate=narrate))
+def _strike_command(*, narrate: bool) -> Command:
+    def strike(deps: DirectorContext, _args: NoArgs) -> str:
+        return apply_play(deps, lambda draft, _rng: _hit(draft, narrate=narrate))
 
-    return sequential_toolset([strike])
+    return command(
+        "strike", "Take a hit the player may turn by breaking something of theirs.", NoArgs, strike
+    )
 
 
 def _deciding(*, narrate: bool = True, chains: bool = False) -> tuple[Engine, Game]:
     engine = Deciding()
     engine.chains = chains
-    engine.director_toolsets = (_toolset(narrate=narrate),)
+    engine.director_commands = (_strike_command(narrate=narrate),)
     _, state = game(LONER3E)
     return engine, state
 
@@ -151,21 +152,16 @@ async def test_a_closed_answer_resolves_in_engine_code_before_the_director_conti
     assert result.state.pending is None
 
 
-async def test_a_re_suspended_continuation_keeps_core_tools_and_loses_the_engine_s() -> None:
+async def test_a_re_suspended_continuation_keeps_the_rules_waiting() -> None:
     engine, state = _deciding(chains=True)
-    offered: list[str] = []
-
-    def stub(messages: list[ModelMessage], info: AgentInfo) -> ModelResponse:
-        del messages
-        offered.extend(tool.name for tool in info.function_tools)
-        return text("The lantern is gone.")
 
     result = await played(
-        engine, _suspended(state), Answer(option_id="lantern"), director=FunctionModel(stub)
+        engine,
+        _suspended(state),
+        Answer(option_id="lantern"),
+        director=FunctionModel(scripted(text("The lantern is gone."))),
     )
 
-    assert "reveal" in offered
-    assert "strike" not in offered
     assert result.state.pending == DECISION
 
 

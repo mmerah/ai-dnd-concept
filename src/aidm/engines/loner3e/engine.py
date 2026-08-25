@@ -2,18 +2,20 @@ from collections.abc import Callable, Mapping
 from pathlib import Path
 from random import Random
 
-from pydantic_ai import RunContext
-from pydantic_ai.toolsets import FunctionToolset
+from pydantic import Field
 
 from aidm.content.model import CharacterProfile, CreatedCharacter
 from aidm.engines.core import (
     CharacterCreation,
+    Command,
     DirectorContext,
+    NoArgs,
     ProposalBase,
     SheetAdvancement,
     SheetEngine,
-    apply_tool_call,
-    sequential_toolset,
+    apply_action,
+    apply_play,
+    command,
 )
 from aidm.engines.loner3e.rules import (
     GROWTH,
@@ -40,7 +42,15 @@ from aidm.state.creation import (
     check_picks,
     picked,
 )
-from aidm.state.entities import PLAYER_ID, Counter, EngineId, Entity, EntityId
+from aidm.state.entities import (
+    PLAYER_ID,
+    CheckedEntityId,
+    Counter,
+    EngineId,
+    Entity,
+    EntityId,
+    Frozen,
+)
 from aidm.state.facts import Fact, explained_fact
 from aidm.state.model import Game
 from aidm.state.play import PendingDecision
@@ -48,33 +58,46 @@ from aidm.state.play import PendingDecision
 type Twists = Callable[[Game], tuple[tuple[str, str], ...]]
 
 
-def director_toolset(twists: Twists) -> FunctionToolset[DirectorContext]:
-    def roll_question(ctx: RunContext[DirectorContext], question: Question) -> str:
-        """Roll Chance against Risk for one closed dramatic question.
+class RestoreLuck(Frozen):
+    actor_id: CheckedEntityId = Field(description="Exact id of the player or an actor here.")
 
-        Args:
-            question: The complete question. Include `opponent_id` when an actor resists.
-        """
-        return apply_tool_call(
-            ctx, lambda draft, rng: resolve_question(draft, question, rng, twists(draft))
+
+def _restore_luck(deps: DirectorContext, args: RestoreLuck) -> str:
+    return apply_action(deps, lambda draft: apply_restore_luck(draft, args.actor_id))
+
+
+def _complete_chapter(deps: DirectorContext, _args: NoArgs) -> str:
+    return apply_action(deps, apply_complete_chapter)
+
+
+def director_commands(twists: Twists) -> tuple[Command, ...]:
+    """Only the question roll needs the twist table, so only it is built per engine."""
+
+    def roll_question(deps: DirectorContext, question: Question) -> str:
+        return apply_play(
+            deps, lambda draft, rng: resolve_question(draft, question, rng, twists(draft))
         )
 
-    def restore_luck(ctx: RunContext[DirectorContext], actor_id: EntityId) -> str:
-        """Restore an actor's luck after a conflict ends.
-
-        Args:
-            actor_id: Exact id of the player or an actor here.
-        """
-        return apply_tool_call(
-            ctx,
-            lambda draft, _rng: tuple(apply_restore_luck(draft, actor_id)),
-        )
-
-    def complete_chapter(ctx: RunContext[DirectorContext]) -> str:
-        """Record that the current adventure has ended."""
-        return apply_tool_call(ctx, lambda draft, _rng: tuple(apply_complete_chapter(draft)))
-
-    return sequential_toolset([roll_question, restore_luck, complete_chapter])
+    return (
+        command(
+            "roll_question",
+            "Roll Chance against Risk for one closed dramatic question.",
+            Question,
+            roll_question,
+        ),
+        command(
+            "restore_luck",
+            "Restore an actor's luck after a conflict ends.",
+            RestoreLuck,
+            _restore_luck,
+        ),
+        command(
+            "complete_chapter",
+            "Record that the current adventure has ended.",
+            NoArgs,
+            _complete_chapter,
+        ),
+    )
 
 
 class Loner3eAdvancement(SheetAdvancement):
@@ -205,7 +228,7 @@ class Loner3eEngine(SheetEngine[Sheet]):
         self.packs = load_packs(pack_paths(self.engine_dir / "packs", extra_packs), Pack)
         self.advancement = Loner3eAdvancement(self.engine_dir)
         self.creation = Loner3eCreation(self.packs)
-        self.director_toolsets = (director_toolset(self.twists),)
+        self.director_commands = director_commands(self.twists)
 
     def validate(self, state: Game) -> None:
         super().validate(state)

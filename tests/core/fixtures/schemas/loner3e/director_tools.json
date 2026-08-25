@@ -7,6 +7,8 @@
       "properties": {
         "entity_id": {
           "description": "Exact id of the hidden entity.",
+          "maxLength": 64,
+          "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$",
           "type": "string"
         }
       },
@@ -24,10 +26,14 @@
       "properties": {
         "entity_id": {
           "description": "Exact actor or item id. The item must be carried by the player or loose here.",
+          "maxLength": 64,
+          "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$",
           "type": "string"
         },
         "to_id": {
           "description": "Exact destination id. Use a location for an actor; for an item, use `player`,\nan actor here, or the player's location.",
+          "maxLength": 64,
+          "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$",
           "type": "string"
         }
       },
@@ -63,6 +69,8 @@
       "properties": {
         "entity_id": {
           "description": "Exact entity id. An actor must be here with the player.",
+          "maxLength": 64,
+          "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$",
           "type": "string"
         },
         "trait_id": {
@@ -92,6 +100,8 @@
       "properties": {
         "entity_id": {
           "description": "Exact entity id. An actor must be here with the player.",
+          "maxLength": 64,
+          "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$",
           "type": "string"
         },
         "trait_id": {
@@ -172,7 +182,6 @@
       "required": [
         "thread_id"
       ],
-      "title": "AdvanceThread",
       "type": "object"
     }
   },
@@ -184,6 +193,8 @@
       "properties": {
         "to_id": {
           "description": "Exact id of the exit's destination.",
+          "maxLength": 64,
+          "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$",
           "type": "string"
         }
       },
@@ -201,6 +212,8 @@
       "properties": {
         "actor_id": {
           "description": "Exact id of the actor joining.",
+          "maxLength": 64,
+          "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$",
           "type": "string"
         }
       },
@@ -218,6 +231,8 @@
       "properties": {
         "actor_id": {
           "description": "Exact id of the actor leaving.",
+          "maxLength": 64,
+          "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$",
           "type": "string"
         }
       },
@@ -245,6 +260,8 @@
       "properties": {
         "actor_id": {
           "description": "Exact id of the player or actor here who takes the action.",
+          "maxLength": 64,
+          "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$",
           "type": "string"
         },
         "question": {
@@ -265,6 +282,8 @@
         "opponent_id": {
           "anyOf": [
             {
+              "maxLength": 64,
+              "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$",
               "type": "string"
             },
             {
@@ -279,7 +298,6 @@
         "actor_id",
         "question"
       ],
-      "title": "Question",
       "type": "object"
     }
   },
@@ -291,6 +309,8 @@
       "properties": {
         "actor_id": {
           "description": "Exact id of the player or an actor here.",
+          "maxLength": 64,
+          "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$",
           "type": "string"
         }
       },

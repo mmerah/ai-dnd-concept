@@ -3,12 +3,12 @@ from typing import Self
 
 from pydantic import Field, JsonValue, model_validator
 
-from aidm.state.entities import EntityId, Frozen, Slug, require_unique
+from aidm.state.entities import CheckedEntityId, Frozen, Slug, require_unique
 from aidm.state.facts import Fact, MechanicEvent
 
 
 class Line(Frozen):
-    speaker_id: EntityId | None = Field(
+    speaker_id: CheckedEntityId | None = Field(
         default=None,
         description="Exact speaker id for dialogue, or null for narration.",
     )
@@ -102,7 +102,7 @@ class TurnTrace(TraceEntryBase):
 class AdvanceApplied(TraceEntryBase):
     """One advancement change: the same transaction as a turn, without a prompt or a narration."""
 
-    subject_id: EntityId
+    subject_id: CheckedEntityId
 
 
 class WorldExtended(TraceEntryBase):

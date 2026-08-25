@@ -3,7 +3,16 @@ from typing import Self
 
 from pydantic import Field, JsonValue, model_validator
 
-from aidm.state.entities import PLAYER_ID, EngineId, Entity, EntityId, Frozen, Slug, Trait
+from aidm.state.entities import (
+    PLAYER_ID,
+    CheckedEntityId,
+    EngineId,
+    Entity,
+    EntityId,
+    Frozen,
+    Slug,
+    Trait,
+)
 from aidm.state.model import ScenarioMeta, WorldState
 
 
@@ -14,7 +23,7 @@ class Scenario(Frozen):
     engines: tuple[EngineId, ...] = Field(min_length=1)
     grows: bool = False
     art_style: str = ""
-    starting_location_id: EntityId
+    starting_location_id: CheckedEntityId
     # Shared by every game of this scenario: read-only — `begin_game` deep-copies before mutating.
     world: WorldState
 

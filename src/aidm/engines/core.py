@@ -1,4 +1,3 @@
-import dataclasses
 from abc import ABC, abstractmethod
 from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass, field
@@ -6,16 +5,14 @@ from pathlib import Path
 from random import Random
 from typing import ClassVar, Self
 
-from pydantic import Field, JsonValue
-from pydantic_ai import ModelRetry, RunContext
-from pydantic_ai.tools import ObjectJsonSchema, ToolDefinition, ToolFuncEither
-from pydantic_ai.toolsets import AbstractToolset, FunctionToolset
+from pydantic import BaseModel, Field, JsonValue
 
 from aidm.content.io import SavedGame, engine_text
 from aidm.content.model import CreatedCharacter
 from aidm.state.creation import AnyStep, Picks
 from aidm.state.entities import (
     PLAYER_ID,
+    CheckedEntityId,
     Counter,
     EngineId,
     Entity,
@@ -64,6 +61,49 @@ class DirectorContext:
     answered: PendingDecision | None = None
 
 
+class NoArgs(Frozen):
+    pass
+
+
+@dataclass(frozen=True, slots=True)
+class Command:
+    name: str
+    description: str
+    args: type[BaseModel]
+    call: Callable[[DirectorContext, Mapping[str, JsonValue]], str]
+    # Core world commands may still run in a turn that opened suspended; engine mechanics may not.
+    during_suspension: bool = False
+
+
+def command[A: BaseModel](
+    name: str,
+    description: str,
+    args: type[A],
+    run: Callable[[DirectorContext, A], str],
+    *,
+    during_suspension: bool = False,
+) -> Command:
+    """Validation lives here, so both harnesses reject the same arguments the same way."""
+    if bare := [key for key, one in args.model_fields.items() if not one.description]:
+        raise ValueError(f"{name} parameters the model reads carry no description: {bare}")
+
+    def call(deps: DirectorContext, raw: Mapping[str, JsonValue]) -> str:
+        return run(deps, args.model_validate(raw))
+
+    return Command(name, description, args, call, during_suspension)
+
+
+def run_command(found: Command, deps: DirectorContext, raw: Mapping[str, JsonValue]) -> str:
+    """The one gate: a decision on the table blocks everything but developing its answer."""
+    pending = deps.draft.pending
+    if pending is not None and not (found.during_suspension and deps.suspended_at_start):
+        raise ValueError(
+            f"the rules are waiting on the player: {pending.prompt}\n"
+            "Put that to the player, then start the next turn with their answer."
+        )
+    return found.call(deps, raw)
+
+
 class CharacterCreation(ABC):
     @abstractmethod
     def steps(self, picks: Picks) -> tuple[AnyStep, ...]:
@@ -77,7 +117,7 @@ class CharacterCreation(ABC):
 class AdvancementOffer(Frozen):
     """One change advancement holds open for one subject, already resolved out of content."""
 
-    subject_id: EntityId
+    subject_id: CheckedEntityId
     prompt: str
     text: str = ""
 
@@ -156,8 +196,7 @@ class Engine(ABC):
         # Read once here so a missing declaration fails the build, not the turn that first needs it.
         _ = self.mechanics_type
         self.director_instructions: str = engine_text(self.engine_dir / "director.md")
-        # An engine's own mechanics reach the Director as tools; core's world vocabulary is shared.
-        self.director_toolsets: tuple[AbstractToolset[DirectorContext], ...] = ()
+        self.director_commands: tuple[Command, ...] = ()
 
     @abstractmethod
     def check_overlay(self, rules: dict[str, JsonValue]) -> None:
@@ -367,13 +406,12 @@ def transact(engine: Engine, draft: Game, play: Play, rng: Random) -> tuple[Game
     return draft.committed(), landed
 
 
-def apply_tool_call(ctx: RunContext[DirectorContext], play: Play) -> str:
+def apply_play(deps: DirectorContext, play: Play) -> str:
     """Refused against a throwaway copy, applied to the turn's draft, answered with what changed."""
-    deps = ctx.deps
     if refused := draft_refusal(
         deps.draft, lambda copy: apply_to_draft(deps.engine, copy, play, Random(0))
     ):
-        raise ModelRetry(refused)
+        raise ValueError(refused)
     already_pending = len(deps.draft.world.pending_notes)
     decided_before = deps.draft.pending
     landed = apply_to_draft(deps.engine, deps.draft, play, deps.rng)
@@ -386,22 +424,9 @@ def apply_tool_call(ctx: RunContext[DirectorContext], play: Play) -> str:
     return "\n".join(lines) or NOTHING_CHANGED
 
 
-def sequential_toolset(
-    tools: list[ToolFuncEither[DirectorContext, ...]],
-) -> FunctionToolset[DirectorContext]:
-    """One tool at a time: two calls in one answer would interleave on the same draft."""
-    return FunctionToolset(
-        tools=tools, sequential=True, require_parameter_descriptions=True, max_retries=2
-    )
-
-
-def with_enum(tool: ToolDefinition, fields: Sequence[str], values: Sequence[str]) -> ToolDefinition:
-    schema = tool.parameters_json_schema
-    # Copied, never mutated: a prepare function is handed the same definition on every step.
-    properties: dict[str, ObjectJsonSchema] = dict(schema["properties"])
-    for name in fields:
-        properties[name] = {**properties[name], "enum": list(values)}
-    return dataclasses.replace(tool, parameters_json_schema={**schema, "properties": properties})
+def apply_action(deps: DirectorContext, act: Callable[[Game], list[Fact]]) -> str:
+    """`aidm.state.actions` never rolls, so the turn's dice stay with the resolvers that do."""
+    return apply_play(deps, lambda draft, _rng: tuple(act(draft)))
 
 
 def _seed_created(engine: Engine, draft: Game, facts: Sequence[Fact], rng: Random) -> None:

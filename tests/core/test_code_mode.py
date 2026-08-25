@@ -142,10 +142,10 @@ async def test_an_open_decision_blocks_every_other_tool_until_it_is_answered(
     _ = await call(
         harness,
         "stake_attempt",
-        {"attempt": {"actor_id": "player", "goal": "climb the shaft", "risk": "a long fall"}},
+        {"actor_id": "player", "goal": "climb the shaft", "risk": "a long fall"},
     )
     assert _saved(store, slug).pending is not None
-    with pytest.raises(ModelRetry):
+    with pytest.raises(ValueError, match="waiting on the player"):
         _ = await call(harness, "reveal", {"entity_id": VAULT})
     _ = await call(
         harness, "end_turn", {"lines": [{"speaker_id": None, "text": "The shaft yawns."}]}
@@ -154,13 +154,10 @@ async def test_an_open_decision_blocks_every_other_tool_until_it_is_answered(
     _ = await call(harness, "start_turn", {"prompt": "I go on.", "option_id": "proceed"})
     pending = _saved(store, slug).pending
     assert pending is not None and pending.kind == "defence"
-    # A free-text answer is the only way this decision closes, and it opens `settle_defence`.
-    assert "settle_defence" not in {tool.name for tool in await offered(harness)}
+    # A free-text answer is the only way this decision closes.
     _ = await call(harness, "end_turn", {"lines": [{"speaker_id": None, "text": "You slip."}]})
 
     _ = await call(harness, "start_turn", {"prompt": "I take it on the shoulder"})
-    assert "settle_defence" in {tool.name for tool in await offered(harness)}
-
     _ = await call(harness, "settle_defence", {"item_id": None})
     assert _saved(store, slug).pending is None
 
@@ -204,7 +201,7 @@ async def test_an_answers_note_is_shown_now_and_spent_rather_than_leaking_a_turn
     _ = await call(
         harness,
         "stake_attempt",
-        {"attempt": {"actor_id": "player", "goal": "climb the shaft", "risk": "a long fall"}},
+        {"actor_id": "player", "goal": "climb the shaft", "risk": "a long fall"},
     )
     _ = await call(harness, "end_turn", {"lines": [{"speaker_id": None, "text": "It yawns."}]})
     _ = await call(harness, "start_turn", {"prompt": "I go on.", "option_id": "proceed"})
@@ -429,28 +426,22 @@ async def test_a_scenario_run_writes_a_scenario_that_loads(tmp_path: Path) -> No
 async def test_a_resume_that_re_suspended_may_still_develop_what_the_answer_caused(
     tmp_path: Path,
 ) -> None:
-    """The same gate the builtin Director runs: core tools stay, engine tools do not."""
+    """The same gate the builtin Director runs: core commands land, engine mechanics do not."""
     harness, _, _ = _opened(tmp_path, "twentyfourxx")
     harness.opened().rng = Random(0)
     _ = await call(harness, "start_turn", {"prompt": "I climb the shaft."})
     _ = await call(
         harness,
         "stake_attempt",
-        {"attempt": {"actor_id": "player", "goal": "climb the shaft", "risk": "a long fall"}},
+        {"actor_id": "player", "goal": "climb the shaft", "risk": "a long fall"},
     )
     _ = await call(
         harness, "end_turn", {"lines": [{"speaker_id": None, "text": "The shaft yawns."}]}
     )
     _ = await call(harness, "start_turn", {"prompt": "I go on.", "option_id": "proceed"})
 
-    tool_names = {tool.name for tool in await offered(harness)}
-    assert "add_trait" in tool_names
-    assert "roll_attempt" not in tool_names
-
     _ = await call(
         harness, "add_trait", {"entity_id": "player", "trait_id": "winded", "text": "Breath short."}
     )
-    with pytest.raises(ModelRetry):
-        _ = await call(
-            harness, "roll_attempt", {"attempt": {"actor_id": "player", "goal": "swing again"}}
-        )
+    with pytest.raises(ValueError, match="waiting on the player"):
+        _ = await call(harness, "roll_attempt", {"actor_id": "player", "goal": "swing again"})
