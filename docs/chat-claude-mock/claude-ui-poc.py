@@ -37,8 +37,9 @@ import os
 import queue
 import sys
 import threading
+from collections.abc import Callable
 from dataclasses import dataclass, field
-from typing import Annotated, Any, Callable
+from typing import Annotated, Any
 
 # ---------------------------------------------------------------------------
 # 1. The UI-facing event stream
@@ -128,9 +129,7 @@ class ClaudeUIBridge:
             "summaries, progress, results. Prefer one clear message over many.",
             {
                 "message": Annotated[str, "The chat message to display"],
-                "tone": Annotated[
-                    str, "One of: info, success, warning. Defaults to info."
-                ],
+                "tone": Annotated[str, "One of: info, success, warning. Defaults to info."],
             },
         )
         async def say_to_user(args: dict[str, Any]) -> dict[str, Any]:
@@ -145,11 +144,7 @@ class ClaudeUIBridge:
             )
             # Whatever we return, Claude reads. Confirming delivery keeps it
             # from re-sending the same message.
-            return {
-                "content": [
-                    {"type": "text", "text": "Displayed in the chat panel."}
-                ]
-            }
+            return {"content": [{"type": "text", "text": "Displayed in the chat panel."}]}
 
         @tool(
             "ask_user",
@@ -170,9 +165,7 @@ class ClaudeUIBridge:
             self._answer_ready.pop(question, None)
             return {"content": [{"type": "text", "text": reply or "(no answer)"}]}
 
-        return create_sdk_mcp_server(
-            name="ui", version="1.0.0", tools=[say_to_user, ask_user]
-        )
+        return create_sdk_mcp_server(name="ui", version="1.0.0", tools=[say_to_user, ask_user])
 
     # -- the session -------------------------------------------------------
 
@@ -277,25 +270,19 @@ class ClaudeUIBridge:
                                         # Prose the user isn't meant to read as
                                         # chat — goes to the side log.
                                         if block.text.strip():
-                                            self.emit(
-                                                UIEvent("prose", block.text)
-                                            )
+                                            self.emit(UIEvent("prose", block.text))
                                     elif isinstance(block, ToolUseBlock):
                                         if block.name not in ui_tools:
                                             self.emit(
                                                 UIEvent(
                                                     "tool",
-                                                    describe(
-                                                        block.name, block.input
-                                                    ),
+                                                    describe(block.name, block.input),
                                                 )
                                             )
                             elif isinstance(msg, ResultMessage):
                                 self.emit(UIEvent("result", summarize(msg)))
                     except Exception as exc:
-                        self.emit(
-                            UIEvent("error", f"{type(exc).__name__}: {exc}")
-                        )
+                        self.emit(UIEvent("error", f"{type(exc).__name__}: {exc}"))
                     finally:
                         self.busy = False
         except CLINotFoundError:
@@ -333,7 +320,7 @@ def run_tk_ui(cwd: str) -> None:
     import tkinter as tk
     from tkinter import scrolledtext, ttk
 
-    events: "queue.Queue[UIEvent]" = queue.Queue()
+    events: queue.Queue[UIEvent] = queue.Queue()
     bridge = ClaudeUIBridge(cwd, events.put, model=os.environ.get("CLAUDE_MODEL"))
 
     root = tk.Tk()
@@ -347,13 +334,23 @@ def run_tk_ui(cwd: str) -> None:
     left = ttk.Frame(split, padding=8)
     ttk.Label(left, text="CHAT — written by Claude via say_to_user").pack(anchor="w")
     chat = scrolledtext.ScrolledText(
-        left, wrap="word", state="disabled", width=52,
-        background="#12161b", foreground="#e6e0d4", borderwidth=0, padx=10, pady=10,
+        left,
+        wrap="word",
+        state="disabled",
+        width=52,
+        background="#12161b",
+        foreground="#e6e0d4",
+        borderwidth=0,
+        padx=10,
+        pady=10,
     )
     chat.pack(fill="both", expand=True, pady=(4, 0))
     for tag, colour in (
-        ("you", "#6fbfd0"), ("info", "#e6e0d4"),
-        ("success", "#8fbf6f"), ("warning", "#d99b3d"), ("ask", "#c48fd0"),
+        ("you", "#6fbfd0"),
+        ("info", "#e6e0d4"),
+        ("success", "#8fbf6f"),
+        ("warning", "#d99b3d"),
+        ("ask", "#c48fd0"),
     ):
         chat.tag_configure(tag, foreground=colour, spacing1=6, spacing3=4)
 
@@ -361,8 +358,15 @@ def run_tk_ui(cwd: str) -> None:
     right = ttk.Frame(split, padding=8)
     ttk.Label(right, text="SESSION LOG — prose, tools, cost").pack(anchor="w")
     log = scrolledtext.ScrolledText(
-        right, wrap="word", state="disabled", width=48,
-        background="#0e1114", foreground="#8b96a3", borderwidth=0, padx=10, pady=10,
+        right,
+        wrap="word",
+        state="disabled",
+        width=48,
+        background="#0e1114",
+        foreground="#8b96a3",
+        borderwidth=0,
+        padx=10,
+        pady=10,
     )
     log.pack(fill="both", expand=True, pady=(4, 0))
     log.tag_configure("prose", foreground="#b9b2a4")
@@ -404,9 +408,7 @@ def run_tk_ui(cwd: str) -> None:
 
     send_btn = ttk.Button(controls, text="Send", command=send, state="disabled")
     send_btn.pack(side="right")
-    ttk.Button(controls, text="Interrupt", command=bridge.interrupt).pack(
-        side="right", padx=(0, 6)
-    )
+    ttk.Button(controls, text="Interrupt", command=bridge.interrupt).pack(side="right", padx=(0, 6))
 
     def on_return(event):
         if event.state & 0x0001:
@@ -421,8 +423,7 @@ def run_tk_ui(cwd: str) -> None:
             while True:
                 ev = events.get_nowait()
                 if ev.kind == "bubble":
-                    write(chat, ev.text, ev.data.get("tone", "info"),
-                          prefix="Claude · ")
+                    write(chat, ev.text, ev.data.get("tone", "info"), prefix="Claude · ")
                 elif ev.kind == "ask":
                     pending_question.append(ev.text)
                     write(chat, ev.text, "ask", prefix="Claude asks · ")

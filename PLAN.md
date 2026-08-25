@@ -197,8 +197,12 @@ class Command:
 
 
 def command[A: BaseModel](
-    name: str, description: str, args: type[A],
-    run: Callable[[DirectorContext, A], str], *, during_suspension: bool = False,
+    name: str,
+    description: str,
+    args: type[A],
+    run: Callable[[DirectorContext, A], str],
+    *,
+    during_suspension: bool = False,
 ) -> Command:
     """Validation lives here, so both harnesses reject the same arguments the same way."""
 
@@ -250,8 +254,13 @@ def _move(deps: DirectorContext, args: Move) -> str:
 
 CORE_COMMANDS: tuple[Command, ...] = (
     ...,
-    command("move", "Move an actor to a new location, or move a nearby item.", Move, _move,
-            during_suspension=True),
+    command(
+        "move",
+        "Move an actor to a new location, or move a nearby item.",
+        Move,
+        _move,
+        during_suspension=True,
+    ),
     ...,
 )
 ```
@@ -314,8 +323,12 @@ def as_tool(found: Command) -> Tool[DirectorContext]:
             raise ModelRetry(str(refused)) from refused
 
     return Tool.from_schema(
-        call, found.name, found.description, command_schema(found),
-        takes_ctx=True, sequential=True,
+        call,
+        found.name,
+        found.description,
+        command_schema(found),
+        takes_ctx=True,
+        sequential=True,
     )
 
 
@@ -373,8 +386,12 @@ In `app/codemode.py`:
        if found is None:
            raise ModelRetry(f"{name!r} is not a command of the {session.engine.id!r} engine.")
        deps = DirectorContext(
-           engine=session.engine, draft=session.state.draft(), rng=session.rng,
-           log=turn.log, suspended_at_start=turn.suspended_at_start, answered=turn.answered,
+           engine=session.engine,
+           draft=session.state.draft(),
+           rng=session.rng,
+           log=turn.log,
+           suspended_at_start=turn.suspended_at_start,
+           answered=turn.answered,
        )
        answered = run_command(found, deps, raw)
        session.commit(deps.draft.committed())
@@ -476,12 +493,34 @@ Add an empty `harness/__init__.py`. Update `.mcp.json`: `"args": ["run", "python
 1. Rewrite the comment on line 8 to the new flow, and replace `FORBIDDEN` with:
    ```python
    FORBIDDEN = {
-       "state": {"aidm.config", "aidm.content", "aidm.engines", "aidm.turn", "aidm.authoring",
-                 "aidm.app", "aidm.ui", "aidm.harness", "nicegui"},
-       "content": {"aidm.engines", "aidm.turn", "aidm.authoring", "aidm.app", "aidm.ui",
-                   "aidm.harness", "nicegui"},
-       "engines": {"pydantic_ai", "aidm.turn", "aidm.authoring", "aidm.app", "aidm.ui",
-                   "aidm.harness"},
+       "state": {
+           "aidm.config",
+           "aidm.content",
+           "aidm.engines",
+           "aidm.turn",
+           "aidm.authoring",
+           "aidm.app",
+           "aidm.ui",
+           "aidm.harness",
+           "nicegui",
+       },
+       "content": {
+           "aidm.engines",
+           "aidm.turn",
+           "aidm.authoring",
+           "aidm.app",
+           "aidm.ui",
+           "aidm.harness",
+           "nicegui",
+       },
+       "engines": {
+           "pydantic_ai",
+           "aidm.turn",
+           "aidm.authoring",
+           "aidm.app",
+           "aidm.ui",
+           "aidm.harness",
+       },
        "turn": {"aidm.authoring", "aidm.app", "aidm.ui", "aidm.harness", "nicegui"},
        "authoring": {"aidm.app", "aidm.ui", "aidm.harness", "nicegui"},
        "app": {"aidm.ui", "aidm.harness", "nicegui"},
