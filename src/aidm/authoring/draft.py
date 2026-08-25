@@ -4,7 +4,6 @@ from pathlib import Path
 
 from pydantic import Field, ValidationError
 
-from aidm.app.launch import begin_game, build_engine
 from aidm.config import Settings
 from aidm.content.io import (
     load_character,
@@ -14,6 +13,7 @@ from aidm.content.io import (
 )
 from aidm.content.model import Character, Scenario
 from aidm.engines.core import Engine
+from aidm.engines.registry import begin_game, build_engine
 from aidm.state.entities import PLAYER_ID, EngineId, Entity, EntityId, Exit, Frozen, Mutable, Slug
 from aidm.state.facts import Fact
 from aidm.state.model import Game, ScenarioMeta, Thread, WorldState

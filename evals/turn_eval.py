@@ -7,10 +7,10 @@ from random import Random
 from statistics import mean
 from time import perf_counter
 
-from aidm.app.launch import begin_game, build_engine
 from aidm.config import Settings, load_settings
 from aidm.content.io import load_character, load_scenario
 from aidm.engines.core import Engine
+from aidm.engines.registry import begin_game, build_engine
 from aidm.state.entities import EngineId, EntityId, Frozen
 from aidm.state.model import Game
 from aidm.state.play import Answer, TurnTrace

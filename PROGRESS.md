@@ -70,4 +70,13 @@ Second review pass (adversarial), after the first was staged:
 
 - 3.9 run against `evals/results/after-stake-flatten.json`, 11 cases x 9 repeats, seed 1000: score 99% -> 99%, errors 0% -> 0%, director_calls 1.19 -> 1.16. `twentyfourxx/open-the-way-and-climb` gained a run and `twentyfourxx/risky-climb` lost one; every other case held at 100%. The removed enums cost nothing measurable — a model guessing ids would have shown up as retries in `director_calls`. Mean seconds moved 11.7 -> 16.1, which is the OpenRouter backend, not the schemas: latency rose on ten of eleven cases while the round-trip count stayed flat or fell (`risky-climb` is +16.1s on *fewer* calls). Recorded in `evals/results/after-commands.json`.
 
-## Phase 4 — Package moves — TODO
+## Phase 4 — Package moves — DONE
+
+- 4.1 `engines/registry.py` holds `ENGINES`, `engine_class`, `build_engine`, `begin_game`; `app/launch.py` keeps the catalog, the launch target and the controller and imports the registry. Deviation from PLAN: `engine_ids` and `as_engine_id` stayed in `launch.py`. `ui/` is forbidden from `aidm.engines` and both `ui/create.py` and `ui/app.py` call them, so moving them would have forced a re-export. `load_catalog`'s local `engine_ids` shadow became `ids = engine_ids()`.
+- 4.2 `app/authoring.py` → `authoring/draft.py`, `app/authoring_run.py` → `authoring/run.py`, `app/prompts/` → `authoring/prompts/`. `_PROMPTS_DIR` is `Path(__file__).parent / "prompts"` and moved with them.
+- 4.3 `app/codemode.py` → `harness/codemode.py`, `app/mcp.py` → `harness/mcp.py`. `.mcp.json` and `.codex/config.toml` both point at `aidm.harness.mcp`; `config.py`'s comment naming the module was updated too.
+- 4.4 `FORBIDDEN` rewritten for `state <- content <- engines <- turn <- authoring <- app <- {ui, harness}`. `"pydantic_ai"` on `engines` replaces the two per-file `rules.py` rows, and `test_only_the_loader_names_a_concrete_engine` expects `{"engines/registry.py"}`.
+
+Review follow-up (adversarial pass): the `ui` row also forbids `aidm.harness`. PLAN's table banned `aidm.ui` from `harness` but not the reverse, so the two leaves off `app` were only kept apart in one direction.
+
+Verified: 258 tests passed, Ruff check and format passed, basedpyright 0 errors. `uv run aidm` reaches "NiceGUI ready". A stdio MCP client against `aidm.harness.mcp` lists the thirteen tools and `list_games` answers with the two scenarios, one character and both engines.

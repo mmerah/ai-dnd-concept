@@ -5,7 +5,7 @@ from pathlib import Path
 import pytest
 from core_test_support import LONER3E, initialized, scenario
 
-from aidm.app.launch import build_engine, engine_ids
+from aidm.app.launch import engine_ids
 from aidm.content.io import (
     ENCODING,
     FileStore,
@@ -15,6 +15,7 @@ from aidm.content.io import (
     read_scenarios,
     write_scenario,
 )
+from aidm.engines.registry import build_engine
 from aidm.state.facts import EventBadge, MechanicEvent
 from aidm.state.model import Game
 from aidm.state.play import Exchange

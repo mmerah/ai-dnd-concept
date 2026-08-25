@@ -118,7 +118,7 @@ class Settings(BaseSettings):
     media: MediaConfig = MediaConfig()
     turn: TurnConfig = TurnConfig()
     authoring: AuthoringConfig = AuthoringConfig()
-    # "code" hands the turn loop to a coding agent over MCP (app/mcp.py); the UI turns viewer.
+    # "code" hands the turn loop to a coding agent over MCP (harness/mcp.py); the UI turns viewer.
     harness: Literal["builtin", "code"] = "builtin"
     saves_dir: Path = Path("saves")
     scenarios_dir: Path = Path("scenarios")

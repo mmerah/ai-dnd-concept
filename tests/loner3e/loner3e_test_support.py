@@ -3,9 +3,9 @@ from random import Random
 
 from core_test_support import LONER3E, character, offline_settings, scenario
 
-from aidm.app.launch import build_engine
 from aidm.app.runtime import GameSession, LaunchTarget
 from aidm.content.io import FileStore
+from aidm.engines.registry import build_engine
 from aidm.turn.run import advisor_agent, build_turn_agents
 
 TARGET = LaunchTarget(

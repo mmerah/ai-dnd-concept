@@ -1,4 +1,4 @@
 # Codex CLI does not read .mcp.json; it loads this once the project is marked trusted.
 [mcp_servers.aidm]
 command = "uv"
-args = ["run", "python", "-m", "aidm.app.mcp"]
+args = ["run", "python", "-m", "aidm.harness.mcp"]

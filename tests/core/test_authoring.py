@@ -13,7 +13,8 @@ from pydantic import JsonValue
 from pydantic_ai.messages import ModelMessage, ModelResponse, ToolCallPart, ToolReturnPart
 from pydantic_ai.models.function import FunctionModel
 
-from aidm.app.authoring import (
+from aidm.app.launch import engine_ids
+from aidm.authoring.draft import (
     OPENING_SLICE,
     ExitLink,
     ScenarioDraft,
@@ -23,8 +24,7 @@ from aidm.app.authoring import (
     playtest_checks,
     scenario_refusal,
 )
-from aidm.app.authoring_run import scenario_agent, scenario_run
-from aidm.app.launch import engine_ids
+from aidm.authoring.run import scenario_agent, scenario_run
 from aidm.content.io import load_scenario
 from aidm.state.entities import Entity, EntityId, Exit
 from aidm.state.model import ScenarioMeta, Thread

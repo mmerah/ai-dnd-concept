@@ -15,7 +15,8 @@ from core_test_support import (
 from loner3e_test_support import loner3e_session
 from pydantic_ai.models.function import FunctionModel
 
-from aidm.app.authoring import (
+from aidm.app.runtime import GameSession
+from aidm.authoring.draft import (
     ExitLink,
     PlaytestCheck,
     ScenarioDraft,
@@ -24,8 +25,7 @@ from aidm.app.authoring import (
     extension_patch,
     scenario_refusal,
 )
-from aidm.app.authoring_run import GrowthRun
-from aidm.app.runtime import GameSession
+from aidm.authoring.run import GrowthRun
 from aidm.content.io import FileStore
 from aidm.state.entities import PLAYER_ID, Entity, EntityId, Exit
 from aidm.state.model import Game, Thread

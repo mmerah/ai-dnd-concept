@@ -5,25 +5,41 @@ import pytest
 
 SOURCE = Path(__file__).parents[2] / "src" / "aidm"
 ENGINES = ("aidm.engines.loner3e", "aidm.engines.twentyfourxx")
-# Dependencies flow state <- content <- engines <- turn <- app <- ui; config is a shared leaf.
+# Flow: state <- content <- engines <- turn <- authoring <- app <- {ui, harness}.
 FORBIDDEN = {
     "state": {
         "aidm.config",
         "aidm.content",
         "aidm.engines",
         "aidm.turn",
+        "aidm.authoring",
         "aidm.app",
         "aidm.ui",
+        "aidm.harness",
         "nicegui",
     },
-    "content": {"aidm.engines", "aidm.turn", "aidm.app", "aidm.ui", "nicegui"},
-    "engines": {"aidm.turn", "aidm.app", "aidm.ui"},
-    "turn": {"aidm.app", "aidm.ui", "nicegui"},
-    "app": {"aidm.ui", "nicegui"},
-    "ui": {"aidm.engines"},
-    # Each engine's mechanics stay pure Python; only its engine.py plugs into the model.
-    "engines/loner3e/rules.py": {"pydantic_ai"},
-    "engines/twentyfourxx/rules.py": {"pydantic_ai"},
+    "content": {
+        "aidm.engines",
+        "aidm.turn",
+        "aidm.authoring",
+        "aidm.app",
+        "aidm.ui",
+        "aidm.harness",
+        "nicegui",
+    },
+    "engines": {
+        "pydantic_ai",
+        "aidm.turn",
+        "aidm.authoring",
+        "aidm.app",
+        "aidm.ui",
+        "aidm.harness",
+    },
+    "turn": {"aidm.authoring", "aidm.app", "aidm.ui", "aidm.harness", "nicegui"},
+    "authoring": {"aidm.app", "aidm.ui", "aidm.harness", "nicegui"},
+    "app": {"aidm.ui", "aidm.harness", "nicegui"},
+    "ui": {"aidm.engines", "aidm.harness"},
+    "harness": {"aidm.ui", "nicegui"},
 }
 
 
@@ -86,4 +102,4 @@ def test_only_the_loader_names_a_concrete_engine() -> None:
         if name.startswith(ENGINES)
         if not name.startswith(f"aidm.engines.{path.parts[-2]}")
     }
-    assert naming == {"app/launch.py"}
+    assert naming == {"engines/registry.py"}

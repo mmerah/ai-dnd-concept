@@ -2,7 +2,7 @@
   "mcpServers": {
     "aidm": {
       "command": "uv",
-      "args": ["run", "python", "-m", "aidm.app.mcp"]
+      "args": ["run", "python", "-m", "aidm.harness.mcp"]
     }
   }
 }

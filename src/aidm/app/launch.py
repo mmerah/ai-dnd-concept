@@ -1,6 +1,5 @@
 from collections.abc import Iterable, Sequence
 from dataclasses import dataclass
-from pathlib import Path
 from textwrap import shorten
 from typing import Protocol
 
@@ -8,59 +7,12 @@ from pydantic import ValidationError
 
 from aidm.config import Settings
 from aidm.content.io import FileStore, SavedGame, read_characters, read_scenarios
-from aidm.content.model import Character, Scenario
-from aidm.engines.core import Engine
-from aidm.engines.loner3e.engine import Loner3eEngine
-from aidm.engines.twentyfourxx.engine import TwentyfourxxEngine
-from aidm.state.entities import PLAYER_ID, EngineId, Entity, Frozen, Slug
-from aidm.state.model import Game
-
-ENGINES: tuple[type[Engine], ...] = (Loner3eEngine, TwentyfourxxEngine)
+from aidm.engines.registry import ENGINES, engine_class
+from aidm.state.entities import EngineId, Frozen, Slug
 
 
 def engine_ids() -> tuple[EngineId, ...]:
     return tuple(engine.id for engine in ENGINES)
-
-
-def engine_class(engine_id: EngineId) -> type[Engine]:
-    found = next((engine for engine in ENGINES if engine.id == engine_id), None)
-    if found is None:
-        raise ValueError(f"unknown engine {engine_id!r}")
-    return found
-
-
-def build_engine(engine_id: EngineId, extra_packs: Path | None = None) -> Engine:
-    return engine_class(engine_id)(extra_packs)
-
-
-def begin_game(engine: Engine, scenario_id: Slug, scenario: Scenario, character: Character) -> Game:
-    """One opening state, so the app, the evals, and the tests all start a game the same way."""
-    # Loaded content outlives the mutable game state, which restart() rebuilds from it.
-    world = scenario.world.model_copy(deep=True)
-    player = Entity(
-        id=PLAYER_ID,
-        kind="actor",
-        name=character.name,
-        brief=character.brief,
-        known=True,
-        parent_id=scenario.starting_location_id,
-        traits=list(character.profile.traits),
-    )
-    for entity in (*(item.model_copy(deep=True) for item in character.profile.items), player):
-        if world.find(entity.id) is not None:
-            raise ValueError(f"authored entity id {entity.id!r} appears twice")
-        world.entities.append(entity)
-    state = Game(
-        scenario_id=scenario_id,
-        character_id=character.id,
-        scenario=scenario.meta,
-        engine=engine.id,
-        world=world,
-        mechanics=engine.opening_mechanics(world, character.rules),
-    )
-    engine.validate(state)
-    # The world was composed here by hand, so the commit is the only thing that validates it.
-    return state.committed()
 
 
 def as_engine_id(value: str) -> EngineId:
@@ -235,16 +187,16 @@ class LauncherController:
 
 def load_catalog(settings: Settings) -> LauncherCatalog:
     engine_options = tuple(EngineOption(id=engine.id, badge=engine.badge) for engine in ENGINES)
-    engine_ids = tuple(option.id for option in engine_options)
+    ids = engine_ids()
     scenarios = tuple(
         CatalogEntry(
             id=name, title=scenario.meta.title, subtitle=scenario.meta.premise, engines=playable
         )
-        for name, scenario, playable in read_scenarios(settings.scenarios_dir, engine_ids)
+        for name, scenario, playable in read_scenarios(settings.scenarios_dir, ids)
     )
     characters = tuple(
         CatalogEntry(id=name, title=profile.name, subtitle=profile.brief, engines=engines)
-        for name, profile, engines in read_characters(settings.characters_dir, engine_ids)
+        for name, profile, engines in read_characters(settings.characters_dir, ids)
     )
     files = FileStore(settings.saves_dir)
     saves: list[SaveOption] = []
@@ -255,7 +207,7 @@ def load_catalog(settings: Settings) -> LauncherCatalog:
             if saved is None:
                 continue
             # An installed engine's mechanics must still parse, or /game would crash on resume.
-            if saved.engine in engine_ids:
+            if saved.engine in ids:
                 engine_class(saved.engine).mechanics_type.model_validate(saved.mechanics)
         except (ValidationError, ValueError) as error:
             unreadable.append(UnreadableSave(slug=slug, problem=_short_reason(error)))

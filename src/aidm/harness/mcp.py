@@ -12,9 +12,13 @@ from pydantic import BaseModel, JsonValue, TypeAdapter
 from pydantic_ai import ModelRetry
 from pydantic_ai.toolsets import ToolsetTool
 
-from aidm.app.authoring import WHOLE_SCENARIO, ScenarioDraft
-from aidm.app.authoring_run import authoring_context, authoring_toolset
-from aidm.app.codemode import (
+from aidm.app.runtime import Runtime
+from aidm.authoring.draft import WHOLE_SCENARIO, ScenarioDraft
+from aidm.authoring.run import authoring_context, authoring_toolset
+from aidm.config import load_settings
+from aidm.engines.core import NoArgs, ProposalBase
+from aidm.engines.world import commands
+from aidm.harness.codemode import (
     AdvanceArgs,
     BeginScenario,
     EndTurn,
@@ -24,10 +28,6 @@ from aidm.app.codemode import (
     Summary,
     catalogue,
 )
-from aidm.app.runtime import Runtime
-from aidm.config import load_settings
-from aidm.engines.core import NoArgs, ProposalBase
-from aidm.engines.world import commands
 from aidm.llm import schema_of
 
 SERVER_NAME = "aidm"

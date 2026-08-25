@@ -4,11 +4,11 @@ import pytest
 from core_test_support import initialized
 from pydantic import JsonValue
 
-from aidm.app.launch import ENGINES, build_engine
 from aidm.content.io import SavedGame
 from aidm.engines.core import Engine
 from aidm.engines.loner3e.engine import Loner3eEngine
 from aidm.engines.loner3e.rules import RULES, Mechanics, Sheet, apply_restore_luck
+from aidm.engines.registry import ENGINES, build_engine
 from aidm.state import actions
 from aidm.state.entities import PLAYER_ID, EngineId, Entity, EntityId
 from aidm.state.facts import Fact

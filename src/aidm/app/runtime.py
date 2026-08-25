@@ -7,12 +7,13 @@ from random import Random
 
 from pydantic_ai import Agent
 
-from aidm.app.authoring import ExtensionPatch, apply_patch
-from aidm.app.authoring_run import growth_run
+from aidm.authoring.draft import ExtensionPatch, apply_patch
+from aidm.authoring.run import growth_run
 from aidm.config import Settings
 from aidm.content.io import FileStore, SavedGame, load_character, load_scenario
 from aidm.content.model import Character, Scenario
 from aidm.engines.core import AdvancementOffer, Engine, ProposalBase, transact
+from aidm.engines.registry import begin_game, build_engine
 from aidm.state.entities import PLAYER_ID, EngineId, EntityId, Frozen
 from aidm.state.facts import Fact
 from aidm.state.model import Game, ThreadStatus, frontier
@@ -35,7 +36,7 @@ from aidm.turn.run import (
     run_segment,
 )
 
-from .launch import LaunchTarget, begin_game, build_engine
+from .launch import LaunchTarget
 from .media import ICON_DIR, Illustrator
 
 

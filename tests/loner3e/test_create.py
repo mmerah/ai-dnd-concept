@@ -4,9 +4,9 @@ import pytest
 from core_test_support import SCENARIOS
 from loner3e_test_support import LONER3E
 
-from aidm.app.launch import begin_game, build_engine
 from aidm.content.io import load_character, load_scenario, write_character
 from aidm.engines.loner3e.rules import RULES, Mechanics
+from aidm.engines.registry import begin_game, build_engine
 from aidm.state.creation import CreationStep, Picks
 from aidm.state.entities import PLAYER_ID
 

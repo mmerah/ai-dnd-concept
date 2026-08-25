@@ -17,11 +17,11 @@ from pydantic_ai.models import Model
 from pydantic_ai.models.function import AgentInfo, FunctionModel
 from pydantic_settings import SettingsConfigDict
 
-from aidm.app.launch import begin_game, build_engine
 from aidm.config import ProviderConfig, Providers, Settings
 from aidm.content.io import load_character, load_scenario
 from aidm.content.model import Character, Scenario
 from aidm.engines.core import Engine, SheetMechanics
+from aidm.engines.registry import begin_game, build_engine
 from aidm.state.entities import EngineId, Entity
 from aidm.state.model import Game
 from aidm.state.play import Answer, MechanicEvent, TurnTrace

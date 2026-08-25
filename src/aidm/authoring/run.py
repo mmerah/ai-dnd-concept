@@ -9,7 +9,7 @@ from pydantic_ai.models.test import TestModel
 from pydantic_ai.toolsets import FunctionToolset
 from pydantic_ai.usage import RunUsage
 
-from aidm.app.authoring import (
+from aidm.authoring.draft import (
     OPENING_SLICE,
     WHOLE_SCENARIO,
     AuthoringBrief,

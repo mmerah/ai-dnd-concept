@@ -16,13 +16,13 @@ from core_test_support import (
 from pydantic import JsonValue
 from pydantic_ai import ModelRetry
 
-from aidm.app.codemode import Harness
 from aidm.app.launch import LaunchTarget
-from aidm.app.mcp import call, offered
 from aidm.app.runtime import Runtime
 from aidm.config import AuthoringConfig, Settings
 from aidm.content.io import FileStore, SavedGame, load_scenario
 from aidm.engines.loner3e.rules import AdventureGrowth, Change, Mechanics
+from aidm.harness.codemode import Harness
+from aidm.harness.mcp import call, offered
 from aidm.state.entities import PLAYER_ID, Entity, EntityId
 
 VAULT = EntityId("vault")
