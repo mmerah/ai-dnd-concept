@@ -269,7 +269,8 @@ Rules while moving them:
 
 - The `description` is the old docstring's **summary line**, verbatim; each field's `description`
   is its `Args:` entry, verbatim, newlines and backticks included.
-- Annotate ids as bare `EntityId` / `Slug`, matching the old signature. Do not add patterns.
+- Annotate ids as bare `EntityId` / `Slug`, matching the old signature. Do not add patterns —
+  3.8 adds them everywhere at once, after 3.7's fixture gate has passed.
 - All nine get `during_suspension=True`. `advance_thread` reuses `AdvanceThread` as its args type.
 
 Delete from `turn/run.py`: `DirectorTool`, `core_toolset`, `_resolved`, `_unlock_targets`,
@@ -431,7 +432,24 @@ Keep `test_golden_schemas.py` working, though: it is what proves the schemas did
 **Done when:** the check is green, `grep -rn pydantic_ai src/aidm/engines/` finds nothing, and
 the only fixture diff is the five deleted `"title"` lines from 3.4.
 
-### 3.8 Measure the enums you removed
+### 3.8 Fold the grammar into `EntityId`
+
+Phase 1 left `EntityId` a bare `NewType` and put the kebab rule on three `Entity`/`Exit` fields
+through `CheckedEntityId`, because tool schemas were still derived from function signatures and had
+to stay byte-identical. Once 3.1-3.7 are green the arguments are Pydantic models, so:
+
+```python
+EntityId = NewType("EntityId", Slug)
+```
+
+Pydantic 2.13 unwraps the `NewType` and rejects `bell_tower`, so `CheckedEntityId` is deleted and
+`Exit.to`, `Entity.id` and `Entity.parent_id` go back to bare `EntityId`.
+
+This one **does** move the golden schemas, on purpose: every `EntityId` parameter gains the same
+`pattern` and `maxLength` pair. Read the fixture diff and confirm it is only that. Do it before
+3.9, so the eval measures the added pattern along with the removed enums.
+
+### 3.9 Measure the enums you removed
 
 The baseline already exists: `evals/results/after-stake-flatten.json`, with no code change since.
 Do not re-run it. After Phase 3 (real model calls, needs an API key):

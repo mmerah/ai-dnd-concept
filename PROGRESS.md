@@ -20,7 +20,7 @@ Review follow-ups (adversarial pass):
 - `content_id` now checks `SLUG_MAX` too; it silently accepted over-long directory names that no `Slug` field would take.
 - `_SAVE_SLUG_PATTERN` in `content/io.py` dropped its underscore allowance — save stems are three kebab ids joined by `--`.
 - `text_slug` renamed to `slug`: it is the only generator now, so the prefix was noise. Two shadowing locals in `ui/create.py` became `character_id` and `scenario_id`.
-- Deferred to Phase 3: `EntityId = NewType("EntityId", Slug)` deletes `CheckedEntityId` outright, but it also constrains every `EntityId` director tool parameter and so moves the golden schemas. Revisit once Phase 3 stops deriving tool schemas from function signatures.
+- Deferred to PLAN step 3.8: `EntityId = NewType("EntityId", Slug)` deletes `CheckedEntityId` outright, but it also constrains every `EntityId` director tool parameter and so moves the golden schemas. It waits until Phase 3 stops deriving tool schemas from function signatures.
 
 Verified: `grep -rn "ContentSlug\|OptionId" src/ tests/` finds nothing. `test_entity_ids_use_one_grammar` pins the new rule and `test_actions` pins the id cap on improvised items. `uv run pytest` 261 passed, `uv run basedpyright` 0 errors. `ruff check` / `ruff format --check` report only pre-existing failures in `docs/chat-claude-mock/claude-ui-poc.py` and in the untracked `PLAN.md`; nothing this phase touched is flagged.
 
