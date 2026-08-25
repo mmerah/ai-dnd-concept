@@ -4,7 +4,6 @@ import pytest
 from core_test_support import (
     TWENTYFOURXX,
     at_boundary,
-    capability,
     game,
     played,
     scripted,
@@ -152,7 +151,7 @@ def test_naming_both_an_ally_and_a_helped_tag_is_refused_at_the_schema() -> None
 
 def test_a_job_raises_one_skill_a_step_and_pays_rolled_credits() -> None:
     engine, state = game(TWENTYFOURXX)
-    advancement = capability(engine)
+    advancement = engine.advancement
     ready = at_boundary(state)
     (offer,) = advancement.offers(ready)
     before = Mechanics.of_game(ready).sheets[PLAYER_ID]
@@ -178,7 +177,7 @@ def test_a_job_raises_one_skill_a_step_and_pays_rolled_credits() -> None:
 
 def test_an_advance_is_offered_only_once_a_job_is_recorded() -> None:
     engine, state = game(TWENTYFOURXX)
-    advancement = capability(engine)
+    advancement = engine.advancement
     assert advancement.offers(state) == ()
 
     draft = state.draft()
@@ -191,7 +190,7 @@ def test_an_advance_is_offered_only_once_a_job_is_recorded() -> None:
 
 def test_a_skill_already_at_d12_is_refused_and_the_refusal_reaches_the_advisor() -> None:
     engine, state = game(TWENTYFOURXX)
-    advancement = capability(engine)
+    advancement = engine.advancement
     ready = at_boundary(state)
 
     draft = ready.draft()
@@ -445,7 +444,6 @@ def test_a_decision_this_engine_cannot_play_or_read_is_refused() -> None:
 
 def test_creation_hands_over_the_kit_as_carried_items_and_lands_the_training_die() -> None:
     creation = TwentyfourxxEngine().creation
-    assert creation is not None
     picks: Picks = {
         "pack": ("srd",),
         "specialty": ("psychic",),
@@ -466,7 +464,6 @@ def test_creation_hands_over_the_kit_as_carried_items_and_lands_the_training_die
 
 def test_a_bulky_kit_item_carries_the_bulky_trait() -> None:
     creation = TwentyfourxxEngine().creation
-    assert creation is not None
     picks: Picks = {
         "pack": ("srd",),
         "specialty": ("tech",),
@@ -480,7 +477,6 @@ def test_a_bulky_kit_item_carries_the_bulky_trait() -> None:
 
 def test_an_alien_invents_traits_the_menu_never_listed() -> None:
     creation = TwentyfourxxEngine().creation
-    assert creation is not None
     picks: Picks = {
         "pack": ("srd",),
         "specialty": ("sneak",),
@@ -494,7 +490,6 @@ def test_an_alien_invents_traits_the_menu_never_listed() -> None:
 
 def test_a_humans_three_increases_can_stack_onto_one_skill() -> None:
     creation = TwentyfourxxEngine().creation
-    assert creation is not None
     picks: Picks = {
         "pack": ("srd",),
         "specialty": ("sneak",),

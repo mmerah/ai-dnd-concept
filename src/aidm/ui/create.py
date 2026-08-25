@@ -27,10 +27,6 @@ def character_page(runtime: Runtime, engine_id: EngineId) -> None:
         pass
     creation = engine.creation
     with ui.column().classes("w-full q-pa-lg items-center"):
-        if creation is None:
-            with ui.card().style("width: min(48rem, 100%)").classes("q-pa-lg"):
-                ui.label("These rules offer no character creation.").classes("text-negative")
-            return
         picks: dict[Slug, tuple[str, ...]] = {}
         with ui.row().classes("no-wrap items-start").style("width: min(80rem, 100%); gap: 1rem"):
             with ui.card().classes("q-pa-lg").style("flex: 1; min-width: 0"):

@@ -24,7 +24,20 @@ Review follow-ups (adversarial pass):
 
 Verified: `grep -rn "ContentSlug\|OptionId" src/ tests/` finds nothing. `test_entity_ids_use_one_grammar` pins the new rule and `test_actions` pins the id cap on improvised items. `uv run pytest` 261 passed, `uv run basedpyright` 0 errors. `ruff check` / `ruff format --check` report only pre-existing failures in `docs/chat-claude-mock/claude-ui-poc.py` and in the untracked `PLAN.md`; nothing this phase touched is flagged.
 
-## Phase 2 — Required engine capabilities — TODO
+## Phase 2 — Required engine capabilities — DONE
+
+- 2.1 `engines/sheets.py` merged into `engines/core.py` and deleted; imports fixed in `loner3e/engine.py`, `loner3e/rules.py`, `twentyfourxx/engine.py`, `twentyfourxx/rules.py`, `core_test_support.py`, `test_player_events.py`. Order inside `core.py`: `Advancement` above `Engine` (its annotation needs it), then the counter helpers, then the sheet block — `render_counters` calls `pool`, so `pool` comes first.
+- 2.2 `Engine` and `SheetEngine` stay two classes, with the one-line `reportIncompatibleVariableOverride` ignore. The generic fold was not attempted.
+- 2.3 `advancement: Advancement` and `creation: CharacterCreation` declared next to `mechanics_type`; the two `= None` assignments in `Engine.__init__` deleted. Every guarded branch in the plan's table removed: `core.py::seed`, `runtime.py` (`build_advisor`, `offers`, `_advancement`), `codemode.py` (`open_game`, `rules`, `propose_advance`), `ui/game.py`, `ui/create.py`.
+
+Review follow-ups (adversarial pass):
+- `test_engine.py` needed no capability stub at all: no assertion reads either attribute, so `BareAdvancement`/`BareCreation` and the `advancement.md` fixture went, and the test kept its original name.
+- Three narrowing helpers existed only to turn `X | None` into `X` and are now dead: `core_test_support.py::capability` (11 call sites), `test_create.py::_creation`, and four `assert creation is not None` in `test_twentyfourxx_engine.py`. All deleted and inlined.
+- `runtime.py::build_advisor` became a passthrough over `advisor_agent(engine.advancement, settings)`; deleted and inlined at its two call sites. `propose`, `preview` and `apply_proposal` bind `advancement` locally rather than repeating `self.engine.advancement`.
+- `Harness.advance_args` was an optional field only `open_game` ever set, so both its guards (`codemode.py::propose_advance` and `mcp.py::offered`) were unreachable. It is now a method deriving the model from `opened()`, which also folds `_advance_args` in. `offered()` still publishes the two tools only when a game is open, as PLAN 2.3 asks.
+- `CharacterCreation`'s docstring lost its reason with the optional capability; deleted rather than reworded.
+
+Verified: `grep -rn "advancement is None\|creation is None\|advancement is not None\|creation is not None" src/ tests/` finds nothing. 261 tests passed, Ruff check and format passed, basedpyright 0 errors.
 
 ## Phase 3 — Framework-free commands — TODO
 

@@ -12,7 +12,7 @@ from aidm.app.authoring_run import growth_run
 from aidm.config import Settings
 from aidm.content.io import FileStore, SavedGame, load_character, load_scenario
 from aidm.content.model import Character, Scenario
-from aidm.engines.core import Advancement, AdvancementOffer, Engine, ProposalBase, transact
+from aidm.engines.core import AdvancementOffer, Engine, ProposalBase, transact
 from aidm.state.entities import PLAYER_ID, EngineId, EntityId, Frozen
 from aidm.state.facts import Fact
 from aidm.state.model import Game, ThreadStatus, frontier
@@ -95,14 +95,6 @@ class DraftedAdvance:
 
     offer: AdvancementOffer
     proposal: ProposalBase
-
-
-def build_advisor(
-    engine: Engine, settings: Settings
-) -> Agent[AdvancementContext, ProposalBase] | None:
-    if engine.advancement is None:
-        return None
-    return advisor_agent(engine.advancement, settings)
 
 
 def open_media(
@@ -222,7 +214,7 @@ class GameSession:
     def offers(self) -> tuple[AdvancementOffer, ...]:
         advancement = self.engine.advancement
         # An advance mid-suspension could invalidate the frozen payload the decision holds.
-        if advancement is None or self.state.pending is not None:
+        if self.state.pending is not None:
             return ()
         return advancement.offers(self.state)
 
@@ -231,16 +223,16 @@ class GameSession:
 
     async def propose(self, offer: AdvancementOffer, intent: str) -> ProposalBase:
         """The advisor drafts the change; nothing is committed until the player confirms it."""
-        advancement = self._advancement()
         if self.advisor is None:
             raise ValueError("code mode drafts the proposal in the MCP server, not here")
+        advancement = self.engine.advancement
         deps = AdvancementContext(advancement=advancement, state=self.state, offer=offer)
         prompt = render_proposal(self.engine, self.state, offer, intent)
         return (await self.advisor.run(prompt, deps=deps)).output
 
     def preview(self, drafted: DraftedAdvance) -> tuple[Fact, ...]:
         """What the change would write, read off a throwaway draft, not the committed state."""
-        advancement = self._advancement()
+        advancement = self.engine.advancement
         _, facts = transact(
             self.engine,
             self.state.draft(),
@@ -253,7 +245,7 @@ class GameSession:
 
     def apply_proposal(self, drafted: DraftedAdvance) -> tuple[Fact, ...]:
         """The legality rule runs again here: a turn since the draft may have made it illegal."""
-        advancement = self._advancement()
+        advancement = self.engine.advancement
         offer, proposal = drafted.offer, drafted.proposal
         if offer not in advancement.offers(self.state):
             raise ValueError("that change is no longer on offer")
@@ -267,11 +259,6 @@ class GameSession:
         )
         self.commit(state, AdvanceApplied(subject_id=offer.subject_id, facts=facts))
         return facts
-
-    def _advancement(self) -> Advancement:
-        if self.engine.advancement is None:
-            raise ValueError(f"the {self.engine.id!r} engine has no advancement")
-        return self.engine.advancement
 
     def restart(self) -> None:
         opening = self._begun()
@@ -386,7 +373,7 @@ class Runtime:
             character=character,
             engine=engine,
             stages=None if settings.code_mode else build_turn_agents(engine, settings),
-            advisor=None if settings.code_mode else build_advisor(engine, settings),
+            advisor=None if settings.code_mode else advisor_agent(engine.advancement, settings),
             store=store,
             settings=settings,
             media=open_media(settings, target, scenario, character, store),

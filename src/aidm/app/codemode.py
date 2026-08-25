@@ -28,7 +28,7 @@ from aidm.app.launch import (
 )
 from aidm.app.runtime import DraftedAdvance, GameSession, Runtime
 from aidm.config import Settings
-from aidm.engines.core import Advancement, DirectorContext, ProposalBase, TurnRecord
+from aidm.engines.core import DirectorContext, ProposalBase, TurnRecord
 from aidm.state.entities import EngineId, EntityId, Frozen, Slug
 from aidm.state.facts import Fact
 from aidm.state.model import Game
@@ -153,7 +153,6 @@ class Harness:
     session: GameSession | None = None
     toolsets: tuple[AbstractToolset[DirectorContext], ...] = ()
     turn: Turn | None = None
-    advance_args: type[AdvanceArgs] | None = None
     authoring: AuthoringRun | None = None
 
     def opened(self) -> GameSession:
@@ -177,8 +176,6 @@ class Harness:
         # A growth run drafts against the game it began in; opening another abandons it.
         if isinstance(self.authoring, GrowthRun):
             self.authoring = None
-        advancement = session.engine.advancement
-        self.advance_args = None if advancement is None else _advance_args(advancement)
         # A new game lives only in memory until something commits, and the viewer reads the file.
         if session.store.stamp(session.slug) == 0:
             session.commit(session.state)
@@ -193,8 +190,6 @@ class Harness:
     def rules(self) -> str:
         engine = self.opened().engine
         rules = f"{PREAMBLE}\n{director_instructions(engine.director_instructions)}\n\n{NARRATOR}"
-        if engine.advancement is None:
-            return rules
         return f"{rules}\n\n{advisor_instructions(engine.advancement.instructions)}"
 
     def scene(self) -> str:
@@ -280,12 +275,21 @@ class Harness:
         session.commit(ctx.deps.draft.committed())
         return str(answered)
 
+    def advance_args(self) -> type[AdvanceArgs]:
+        """The proposal the model writes is the engine's own type, so the schema it reads is too."""
+        return create_model(
+            "ProposeAdvance",
+            __base__=AdvanceArgs,
+            proposal=(
+                self.opened().engine.advancement.proposal_type,
+                Field(description="The change to draft, in this engine's own vocabulary."),
+            ),
+        )
+
     def propose_advance(self, raw: dict[str, JsonValue]) -> str:
         session = self.opened()
         advancement = session.engine.advancement
-        if advancement is None or self.advance_args is None:
-            raise ModelRetry(f"the {session.engine.id!r} engine has no advancement.")
-        asked = self.advance_args.model_validate(raw)
+        asked = self.advance_args().model_validate(raw)
         offer = next((one for one in session.offers() if one.subject_id == asked.subject_id), None)
         if offer is None:
             raise ModelRetry(f"nothing is on offer for {asked.subject_id!r}.")
@@ -400,18 +404,6 @@ def _unavailable(name: str, pending: PendingDecision | None) -> str:
     return (
         f"the rules are waiting on the player: {pending.prompt}\n"
         "Put that to the player, then call start_turn with their answer."
-    )
-
-
-def _advance_args(advancement: Advancement) -> type[AdvanceArgs]:
-    """The proposal the model writes is the engine's own type, so the schema it reads is too."""
-    return create_model(
-        "ProposeAdvance",
-        __base__=AdvanceArgs,
-        proposal=(
-            advancement.proposal_type,
-            Field(description="The change to draft, in this engine's own vocabulary."),
-        ),
     )
 
 

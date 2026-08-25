@@ -10,6 +10,8 @@ from aidm.engines.core import (
     CharacterCreation,
     DirectorContext,
     ProposalBase,
+    SheetAdvancement,
+    SheetEngine,
     apply_tool_call,
     sequential_toolset,
 )
@@ -29,7 +31,6 @@ from aidm.engines.loner3e.rules import (
     twist_table,
 )
 from aidm.engines.packs import load_packs, pack_paths, pack_step
-from aidm.engines.sheets import SheetAdvancement, SheetEngine
 from aidm.state.creation import (
     AnyStep,
     CreationOption,

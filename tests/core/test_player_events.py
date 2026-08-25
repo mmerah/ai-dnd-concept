@@ -1,6 +1,6 @@
 from core_test_support import initialized
 
-from aidm.engines.sheets import complete_chapter
+from aidm.engines.core import complete_chapter
 from aidm.state import actions
 from aidm.state.entities import PLAYER_ID, EntityId
 from aidm.state.facts import player_events

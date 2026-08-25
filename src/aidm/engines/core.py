@@ -1,12 +1,12 @@
 import dataclasses
 from abc import ABC, abstractmethod
-from collections.abc import Callable, Sequence
+from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass, field
 from pathlib import Path
 from random import Random
-from typing import ClassVar
+from typing import ClassVar, Self
 
-from pydantic import JsonValue
+from pydantic import Field, JsonValue
 from pydantic_ai import ModelRetry, RunContext
 from pydantic_ai.tools import ObjectJsonSchema, ToolDefinition, ToolFuncEither
 from pydantic_ai.toolsets import AbstractToolset, FunctionToolset
@@ -65,8 +65,6 @@ class DirectorContext:
 
 
 class CharacterCreation(ABC):
-    """The optional creation capability: an engine without one offers no new-character page."""
-
     @abstractmethod
     def steps(self, picks: Picks) -> tuple[AnyStep, ...]:
         """Tolerates partial or stale picks, so follow-up steps appear as parents are picked."""
@@ -76,6 +74,74 @@ class CharacterCreation(ABC):
         """Raises ValueError with the reason the page shows when the pick set is illegal."""
 
 
+class AdvancementOffer(Frozen):
+    """One change advancement holds open for one subject, already resolved out of content."""
+
+    subject_id: EntityId
+    prompt: str
+    text: str = ""
+
+
+class ProposalBase(Frozen):
+    """What the advisor writes, in the engine's own vocabulary."""
+
+
+class Advancement(ABC):
+    """One advance per boundary the fiction closed, per party member."""
+
+    proposal_type: ClassVar[type[ProposalBase]]
+    ledger_key: ClassVar[Slug]
+    occasion: ClassVar[str]
+    offer_text: ClassVar[str]
+    spent_why: ClassVar[str]
+
+    def __init__(self, engine_dir: Path) -> None:
+        self.instructions = engine_text(engine_dir / "advancement.md")
+
+    def offers(self, state: Game) -> tuple[AdvancementOffer, ...]:
+        earned = self.earned(state)
+        return tuple(
+            AdvancementOffer(
+                subject_id=subject_id,
+                prompt=f"{state.world.require(subject_id).name} {self.occasion}.",
+                text=self.offer_text,
+            )
+            for subject_id in (PLAYER_ID, *state.world.party)
+            if earned > self.ledger(state, subject_id).current
+        )
+
+    def resolve(
+        self, draft: Game, offer: AdvancementOffer, proposal: ProposalBase, rng: Random
+    ) -> tuple[Fact, ...]:
+        granted = self.grant(draft, offer.subject_id, proposal, rng)
+        ledger = self.ledger(draft, offer.subject_id)
+        ledger.current += 1
+        subject = draft.world.require(offer.subject_id)
+        return (*granted, counter_fact(subject, self.ledger_key, ledger, 1, self.spent_why))
+
+    def advance_refusal(
+        self, state: Game, offer: AdvancementOffer, proposal: ProposalBase
+    ) -> str | None:
+        return draft_refusal(
+            state,
+            lambda draft: self.resolve(draft, offer, proposal, Random(0)),
+            "the sheet this leaves",
+        )
+
+    @abstractmethod
+    def ledger(self, state: Game, subject_id: EntityId) -> Counter: ...
+
+    @abstractmethod
+    def earned(self, state: Game) -> int:
+        """How many boundaries the fiction has closed: what an advance is owed against."""
+
+    @abstractmethod
+    def grant(
+        self, draft: Game, subject_id: EntityId, proposal: ProposalBase, rng: Random
+    ) -> tuple[Fact, ...]:
+        """Writes what the proposal buys; moving the ledger itself belongs to the base."""
+
+
 class Engine(ABC):
     """One object per engine: its metadata, its plan lifecycle, and the mechanics half of state."""
 
@@ -83,6 +149,8 @@ class Engine(ABC):
     badge: ClassVar[tuple[str, str]]
     engine_dir: ClassVar[Path]
     mechanics_type: type[Mutable]
+    advancement: Advancement
+    creation: CharacterCreation
 
     def __init__(self, extra_packs: Path | None = None) -> None:
         # Read once here so a missing declaration fails the build, not the turn that first needs it.
@@ -90,8 +158,6 @@ class Engine(ABC):
         self.director_instructions: str = engine_text(self.engine_dir / "director.md")
         # An engine's own mechanics reach the Director as tools; core's world vocabulary is shared.
         self.director_toolsets: tuple[AbstractToolset[DirectorContext], ...] = ()
-        self.advancement: Advancement | None = None
-        self.creation: CharacterCreation | None = None
 
     @abstractmethod
     def check_overlay(self, rules: dict[str, JsonValue]) -> None:
@@ -176,6 +242,102 @@ def counter_fact(
     )
 
 
+def actor_sheets[S: Mutable](
+    world: WorldState, player_rules: dict[str, JsonValue], sheet: type[S]
+) -> dict[EntityId, S]:
+    return {
+        entity.id: sheet.model_validate(player_rules if entity.id == PLAYER_ID else {})
+        for entity in world.of_kind("actor")
+    }
+
+
+def check_sheets(world: WorldState, sheets: Mapping[EntityId, object], engine: EngineId) -> None:
+    if PLAYER_ID not in sheets:
+        raise ValueError(f"the {engine} mechanics name no player")
+    actors = {entity.id for entity in world.of_kind("actor")}
+    if missing := sorted(actors - set(sheets)):
+        raise ValueError(f"actors carry no character sheet: {missing}")
+    if gone := sorted(set(sheets) - world.all_ids()):
+        raise ValueError(f"mechanics name actors the world does not hold: {gone}")
+
+
+def require_sheet[S](sheets: Mapping[EntityId, S], actor: Entity) -> S:
+    sheet = sheets.get(actor.id)
+    if sheet is None:
+        raise ValueError(f"{actor.name} has no character sheet")
+    return sheet
+
+
+def render_counters(counters: dict[Slug, Counter]) -> str:
+    return ", ".join(f"{key} {pool(counters[key])}" for key in sorted(counters))
+
+
+class SheetBase(Mutable, ABC):
+    """One actor's mechanics, whatever this engine's rules make of them."""
+
+
+class SheetMechanics[S: SheetBase](Mutable):
+    sheets: dict[EntityId, S] = Field(default_factory=dict)
+    # How many chapters the fiction has closed, game-wide: what advancement is owed against.
+    completed: Counter = Counter(current=0)
+
+    @classmethod
+    def of_game(cls, state: Game) -> Self:
+        mechanics = state.mechanics
+        if not isinstance(mechanics, cls):
+            # Both engines name their model `Mechanics`, so only the module tells them apart.
+            raise ValueError(
+                f"the state carries {type(mechanics).__module__} mechanics, not {cls.__module__}"
+            )
+        return mechanics
+
+
+class SheetAdvancement(Advancement):
+    def earned(self, state: Game) -> int:
+        return SheetMechanics.of_game(state).completed.current
+
+
+def complete_chapter(draft: Game, ending: str) -> list[Fact]:
+    SheetMechanics.of_game(draft).completed.current += 1
+    return [
+        Fact(
+            kind="chapter_completed",
+            trace=ending,
+            told=True,
+            event=MechanicEvent(title=ending, icon="auto_stories"),
+        )
+    ]
+
+
+class SheetEngine[S: SheetBase](Engine):
+    """An engine whose mechanics are one sheet per actor; the shelf's shape."""
+
+    sheet_type: type[S]
+    # Narrows a class attribute the base only ever reads; `Engine` itself is not generic.
+    mechanics_type: type[SheetMechanics[S]]  # pyright: ignore[reportIncompatibleVariableOverride]
+
+    def check_overlay(self, rules: dict[str, JsonValue]) -> None:
+        _ = self.sheet_type.model_validate(rules)
+
+    def opening_mechanics(
+        self, world: WorldState, player_rules: dict[str, JsonValue]
+    ) -> SheetMechanics[S]:
+        return self.mechanics_type(sheets=actor_sheets(world, player_rules, self.sheet_type))
+
+    def validate(self, state: Game) -> None:
+        check_sheets(state.world, self.mechanics_type.of_game(state).sheets, self.id)
+
+    def seed(self, draft: Game, entity: Entity, rng: Random) -> None:
+        del rng
+        mechanics = self.mechanics_type.of_game(draft)
+        if entity.kind != "actor" or entity.id in mechanics.sheets:
+            return
+        # The sheet lands first: the ledger this brings level is a counter on it.
+        mechanics.sheets[entity.id] = self.sheet_type()
+        # A newcomer starts level with the party: what closed before they joined is not owed.
+        self.advancement.ledger(draft, entity.id).current = mechanics.completed.current
+
+
 NOTHING_CHANGED = "- (nothing changed)"
 RULES_WAIT = "the rules now wait on the player's decision"
 
@@ -258,71 +420,3 @@ def _reached(draft: Game, facts: Sequence[Fact]) -> list[str]:
         if detail is not None and detail.when_reached:
             lines.append(f"- {detail.when_reached}")
     return lines
-
-
-class AdvancementOffer(Frozen):
-    """One change advancement holds open for one subject, already resolved out of content."""
-
-    subject_id: EntityId
-    prompt: str
-    text: str = ""
-
-
-class ProposalBase(Frozen):
-    """What the advisor writes, in the engine's own vocabulary."""
-
-
-class Advancement(ABC):
-    """One advance per boundary the fiction closed, per party member."""
-
-    proposal_type: ClassVar[type[ProposalBase]]
-    ledger_key: ClassVar[Slug]
-    occasion: ClassVar[str]
-    offer_text: ClassVar[str]
-    spent_why: ClassVar[str]
-
-    def __init__(self, engine_dir: Path) -> None:
-        self.instructions = engine_text(engine_dir / "advancement.md")
-
-    def offers(self, state: Game) -> tuple[AdvancementOffer, ...]:
-        earned = self.earned(state)
-        return tuple(
-            AdvancementOffer(
-                subject_id=subject_id,
-                prompt=f"{state.world.require(subject_id).name} {self.occasion}.",
-                text=self.offer_text,
-            )
-            for subject_id in (PLAYER_ID, *state.world.party)
-            if earned > self.ledger(state, subject_id).current
-        )
-
-    def resolve(
-        self, draft: Game, offer: AdvancementOffer, proposal: ProposalBase, rng: Random
-    ) -> tuple[Fact, ...]:
-        granted = self.grant(draft, offer.subject_id, proposal, rng)
-        ledger = self.ledger(draft, offer.subject_id)
-        ledger.current += 1
-        subject = draft.world.require(offer.subject_id)
-        return (*granted, counter_fact(subject, self.ledger_key, ledger, 1, self.spent_why))
-
-    def advance_refusal(
-        self, state: Game, offer: AdvancementOffer, proposal: ProposalBase
-    ) -> str | None:
-        return draft_refusal(
-            state,
-            lambda draft: self.resolve(draft, offer, proposal, Random(0)),
-            "the sheet this leaves",
-        )
-
-    @abstractmethod
-    def ledger(self, state: Game, subject_id: EntityId) -> Counter: ...
-
-    @abstractmethod
-    def earned(self, state: Game) -> int:
-        """How many boundaries the fiction has closed: what an advance is owed against."""
-
-    @abstractmethod
-    def grant(
-        self, draft: Game, subject_id: EntityId, proposal: ProposalBase, rng: Random
-    ) -> tuple[Fact, ...]:
-        """Writes what the proposal buys; moving the ledger itself belongs to the base."""

@@ -1,5 +1,5 @@
 import pytest
-from core_test_support import at_boundary, capability, game
+from core_test_support import at_boundary, game
 from golden_test_support import FIXTURES, golden
 
 from aidm.app.launch import engine_ids
@@ -16,7 +16,7 @@ def test_every_role_assembles_the_same_instructions(engine_id: EngineId) -> None
     roles = {
         "director": context.director_instructions(engine.director_instructions),
         "narrator": context.NARRATOR,
-        "advisor": context.advisor_instructions(capability(engine).instructions),
+        "advisor": context.advisor_instructions(engine.advancement.instructions),
     }
     for name, instructions in roles.items():
         golden(FIXTURES / "instructions" / engine_id / f"{name}.txt", instructions)
@@ -26,7 +26,7 @@ def test_every_role_assembles_the_same_instructions(engine_id: EngineId) -> None
 def test_the_advisor_prompt_renders_unchanged(engine_id: EngineId) -> None:
     engine, state = game(engine_id)
     earned = at_boundary(state)
-    offers = capability(engine).offers(earned)
+    offers = engine.advancement.offers(earned)
     assert offers
     golden(
         FIXTURES / "prompts" / engine_id / "advisor.txt",

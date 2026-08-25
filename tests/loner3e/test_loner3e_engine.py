@@ -1,7 +1,7 @@
 from random import Random
 
 import pytest
-from core_test_support import at_boundary, capability, initialized
+from core_test_support import at_boundary, initialized
 
 from aidm.engines.loner3e.engine import Loner3eEngine
 from aidm.engines.loner3e.rules import (
@@ -217,7 +217,7 @@ def test_an_actor_already_at_zero_luck_refuses_another_exchange() -> None:
 
 def test_an_adventures_end_opens_an_offer_and_the_caps_refuse_what_breaks_them() -> None:
     engine, state = initialized()
-    advancement = capability(engine)
+    advancement = engine.advancement
     assert advancement.offers(state) == ()
 
     ready = at_boundary(state)
@@ -249,7 +249,7 @@ def test_an_npc_party_members_growth_writes_their_own_sheet_not_the_players() ->
     draft.world.party.append(FOE)
     with_companion = draft.committed()
 
-    advancement = capability(engine)
+    advancement = engine.advancement
     ready = at_boundary(with_companion)
     offers = {offer.subject_id: offer for offer in advancement.offers(ready)}
     assert set(offers) == {PLAYER_ID, FOE}
@@ -286,13 +286,13 @@ def test_an_actor_seeded_after_an_adventure_is_not_owed_the_growth_they_missed()
     walked_in = draft.committed()
 
     engine.validate(walked_in)
-    offered = {offer.subject_id for offer in capability(engine).offers(walked_in)}
+    offered = {offer.subject_id for offer in engine.advancement.offers(walked_in)}
     assert offered == {PLAYER_ID}
 
 
 def test_a_closed_chapter_gates_the_offer_and_a_second_one_earns_a_second() -> None:
     engine, state = initialized()
-    advancement = capability(engine)
+    advancement = engine.advancement
     assert advancement.offers(state) == ()
 
     draft = state.draft()
@@ -316,7 +316,7 @@ def test_a_closed_chapter_gates_the_offer_and_a_second_one_earns_a_second() -> N
 
 def test_an_adventure_growth_with_three_changes_lands_all_three_on_the_sheet() -> None:
     engine, state = initialized()
-    advancement = capability(engine)
+    advancement = engine.advancement
     draft = state.draft()
     apply_complete_chapter(draft)
     ready = draft.committed()

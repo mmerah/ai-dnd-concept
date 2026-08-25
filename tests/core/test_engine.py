@@ -11,7 +11,6 @@ class BareMechanics(Mutable): ...
 
 
 def _engine(tmp_path: Path) -> Engine:
-    """Build a fiction-only engine with no optional capabilities."""
     (tmp_path / "director.md").write_text("Test procedure.\n", encoding="utf-8")
 
     class BareEngine(Engine):
@@ -47,6 +46,4 @@ def test_an_engine_without_content_loads_and_advertises_no_tool(tmp_path: Path) 
     engine = _engine(tmp_path)
 
     assert engine.director_toolsets == ()
-    assert engine.advancement is None
-    assert engine.creation is None
     assert engine.director_instructions == "Test procedure.\n"

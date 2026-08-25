@@ -175,8 +175,7 @@ async def offered(harness: Harness) -> list[types.Tool]:
     tools = [*PUBLISHED, *await _authoring_tools()]
     if harness.session is None:
         return tools
-    if harness.advance_args is not None:
-        tools.extend(_advance_tools(harness.advance_args))
+    tools.extend(_advance_tools(harness.advance_args()))
     _, director = await harness.director_tools(None)
     tools.extend(_as_mcp_tool(tool) for tool in director.values())
     return tools

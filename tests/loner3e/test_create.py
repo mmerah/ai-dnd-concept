@@ -6,21 +6,14 @@ from loner3e_test_support import LONER3E
 
 from aidm.app.launch import begin_game, build_engine
 from aidm.content.io import load_character, load_scenario, write_character
-from aidm.engines.core import Engine
 from aidm.engines.loner3e.rules import RULES, Mechanics
 from aidm.state.creation import CreationStep, Picks
 from aidm.state.entities import PLAYER_ID
 
 
-def _creation(engine: Engine):
-    creation = engine.creation
-    assert creation is not None
-    return creation
-
-
 def test_a_created_character_plays_through_the_authored_load_path(tmp_path: Path) -> None:
     engine = build_engine(LONER3E)
-    creation = _creation(engine)
+    creation = engine.creation
     picks: Picks = {
         "pack": ("srd",),
         "concept": ("A wandering scribe who counts doors",),
@@ -43,7 +36,7 @@ def test_a_created_character_plays_through_the_authored_load_path(tmp_path: Path
 
 
 def test_an_illegal_pick_set_is_refused_with_the_reason(tmp_path: Path) -> None:
-    creation = _creation(build_engine(LONER3E))
+    creation = build_engine(LONER3E).creation
     chosen: Picks = {"pack": ("srd",)}
     legal: Picks = {
         step.id: chosen.get(

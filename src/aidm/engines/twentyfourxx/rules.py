@@ -4,13 +4,15 @@ from typing import Literal, Self, get_args
 
 from pydantic import Field, model_validator
 
-from aidm.engines.core import ProposalBase, adjust, spend
-from aidm.engines.sheets import (
+from aidm.engines.core import (
+    ProposalBase,
     SheetBase,
     SheetMechanics,
+    adjust,
     complete_chapter,
     render_counters,
     require_sheet,
+    spend,
 )
 from aidm.state.actions import add_trait, require_actor_here, roll_pool
 from aidm.state.creation import CreationOption

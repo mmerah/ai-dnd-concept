@@ -428,20 +428,18 @@ def game_page(session: GameSession) -> None:
                 composer(view)
             view.transcript = transcript
         with splitter.after, ui.column().classes("w-full h-full").style("gap: 0"):
-            advancement = session.engine.advancement
             with ui.tabs().classes("w-full") as tabs:
                 scene_tab = ui.tab("scene")
                 journal_tab = ui.tab("journal")
-                advancement_tab = None if advancement is None else ui.tab("advancement")
+                advancement_tab = ui.tab("advancement")
                 dev_tab = ui.tab("dev", icon="code").classes("game-dev-tab")
             with ui.tab_panels(tabs, value=scene_tab).classes("w-full flex-grow"):
                 with ui.tab_panel(scene_tab), ui.scroll_area().classes("w-full h-full"):
                     view.sheet()
                 with ui.tab_panel(journal_tab), ui.scroll_area().classes("w-full h-full"):
                     view.journal()
-                if advancement_tab is not None:
-                    with ui.tab_panel(advancement_tab), ui.scroll_area().classes("w-full h-full"):
-                        view.advancement()
+                with ui.tab_panel(advancement_tab), ui.scroll_area().classes("w-full h-full"):
+                    view.advancement()
                 with ui.tab_panel(dev_tab), ui.scroll_area().classes("w-full h-full"):
                     with ui.expansion("trace", value=True).classes("w-full"):
                         view.trace()
