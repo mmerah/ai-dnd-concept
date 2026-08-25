@@ -11,7 +11,7 @@ from aidm.config import Settings, load_settings
 from aidm.content.io import load_character, load_scenario
 from aidm.engines.core import Engine
 from aidm.engines.registry import begin_game, build_engine
-from aidm.state.entities import EngineId, EntityId, Frozen
+from aidm.state.entities import DEAD, EngineId, EntityId, Frozen
 from aidm.state.model import Game
 from aidm.state.play import Answer, TurnTrace
 from aidm.turn.run import TurnResult, build_turn_agents, run_segment
@@ -115,6 +115,11 @@ def inside(result: TurnResult, entity_id: str, holder: str) -> bool:
     return entity is not None and entity.parent_id == EntityId(holder)
 
 
+def dead(result: TurnResult, entity_id: str) -> bool:
+    entity = result.state.world.find(EntityId(entity_id))
+    return entity is not None and entity.trait(DEAD) is not None
+
+
 def staged_at(result: TurnResult, thread_id: str, stage: str) -> bool:
     thread = result.state.world.thread(thread_id)
     return thread is not None and thread.stage == stage
@@ -159,6 +164,13 @@ def unless_lost(holds: Callable[[TurnResult], bool]) -> Callable[[TurnResult], b
         return any(o and o not in WON for o in outcomes) or holds(result)
 
     return check
+
+
+def _rat_met(state: Game) -> Game:
+    """The kill is what is scored, so the rat is already met."""
+    draft = staged(state, "cloister", []).draft()
+    draft.world.require(EntityId("cloister-rat")).known = True
+    return draft.committed()
 
 
 def cases_for(engine_id: EngineId, settings: Settings) -> tuple[Case, ...]:
@@ -269,6 +281,16 @@ def cases_for(engine_id: EngineId, settings: Settings) -> tuple[Case, ...]:
                     Expectation("hands-back", conflict_handed_back),
                 ),
                 setup=lambda state: staged(state, "cloister", []),
+            ),
+            Case(
+                id=f"{engine_id}/finish-the-rat",
+                engine_id=engine_id,
+                prompt=(
+                    "The rat is broken at my feet and still twitching. I bring the stone down "
+                    "and finish it."
+                ),
+                expectations=(Expectation("rat-dead", lambda r: dead(r, "cloister-rat")),),
+                setup=_rat_met,
             ),
         )
     return cases

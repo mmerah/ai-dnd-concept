@@ -97,6 +97,9 @@ class Trait(Frozen):
     text: str = ""
 
 
+DEAD: Slug = "dead"
+
+
 class Exit(Mutable):
     """A one-way exit from a location."""
 

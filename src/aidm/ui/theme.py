@@ -33,6 +33,11 @@ body, body.body--dark, .nicegui-content, .q-page {
   margin: .35rem 0;
 }
 
+.game-decision {
+  border-color: var(--game-accent);
+  background: var(--game-surface-raised);
+}
+
 .game-card-icon { color: var(--game-accent); }
 
 .game-outcome { color: var(--game-accent); letter-spacing: .04em; text-transform: uppercase; }

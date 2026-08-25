@@ -6,6 +6,7 @@ from typing import Literal, Self
 from pydantic import Field, ValidationError, model_validator
 
 from aidm.state.entities import (
+    DEAD,
     PLAYER_ID,
     Counter,
     EngineId,
@@ -109,6 +110,8 @@ class WorldState(Mutable):
             member = self.require_kind(member_id, "actor")
             if not member.known:
                 raise ValueError(f"{member_id!r} travels with the player without being met")
+            if member.trait(DEAD) is not None:
+                raise ValueError(f"{member_id!r} is dead and cannot travel with the player")
 
     def of_kind(self, kind: Kind) -> Iterator[Entity]:
         return (entity for entity in self.entities if entity.kind == kind)

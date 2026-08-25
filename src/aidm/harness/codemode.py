@@ -411,7 +411,10 @@ def _waiting(pending: PendingDecision | None) -> str:
     if pending is None:
         return "- (nothing; the turn is yours to run)"
     options = "\n".join(f"- {one.id}: {one.label} {one.detail}".rstrip() for one in pending.options)
-    return f"{pending.prompt}\n{options or '- (the player answers in their own words)'}"
+    return (
+        f"{pending.kind}: {pending.prompt}\n"
+        f"{options or '- (the player answers in their own words)'}"
+    )
 
 
 def _offers(session: GameSession) -> str:

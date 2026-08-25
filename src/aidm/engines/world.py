@@ -53,6 +53,12 @@ class RemoveTrait(Frozen):
     trait_id: Slug = Field(description="Exact id of one of the entity's traits.")
 
 
+class Kill(Frozen):
+    actor_id: CheckedEntityId = Field(
+        description="Exact id of the actor who has died. They must be here with the player."
+    )
+
+
 class UnlockExit(Frozen):
     to_id: CheckedEntityId = Field(description="Exact id of the exit's destination.")
 
@@ -95,6 +101,12 @@ CORE_COMMANDS: tuple[Command, ...] = (
         "Remove a lasting condition or quality that has ended.",
         RemoveTrait,
         lambda draft, one: actions.remove_trait(draft, one.entity_id, one.trait_id),
+    ),
+    _world_command(
+        "kill",
+        "Record that an actor has died. Their body and what they carried stay in the world.",
+        Kill,
+        lambda draft, one: actions.kill(draft, one.actor_id),
     ),
     _world_command(
         "advance_thread",

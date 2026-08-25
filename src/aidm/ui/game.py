@@ -8,7 +8,7 @@ from time import monotonic
 from nicegui import ui
 
 from aidm.app.runtime import GameSession
-from aidm.state.entities import PLAYER_ID, EntityId
+from aidm.state.entities import DEAD, PLAYER_ID, Entity, EntityId
 from aidm.state.facts import DiceEvent, MechanicEvent
 from aidm.state.play import Answer, DecisionOption
 from aidm.turn.context import player_scene
@@ -43,7 +43,8 @@ def scene_header(session: GameSession, fill_composer: Callable[[str], None]) -> 
             if not scene.here:
                 ui.label("Nobody but you.").classes("text-sm opacity-70")
             for entity in scene.here:
-                entity_row(session.icon(entity.id), entity.name, entity.brief)
+                brief = entity.brief if _alive(entity) else f"Dead. {entity.brief}"
+                entity_row(session.icon(entity.id), entity.name, brief)
             heading("Exits", tight=True)
             if not scene.exits:
                 ui.label("None found yet.").classes("text-sm opacity-70")
@@ -70,7 +71,9 @@ def chat(session: GameSession) -> None:
     if not session.state.history:
         ui.label(session.state.scenario.premise).classes("text-sm italic opacity-70")
     here = ""
-    for exchange in session.state.history:
+    history = session.state.history
+    last = history[-1] if history and session.state.pending is not None else None
+    for exchange in history:
         if exchange.place != here:
             here = exchange.place
             ui.label(here).classes("w-full text-center text-xs uppercase opacity-50 q-mt-md")
@@ -79,7 +82,7 @@ def chat(session: GameSession) -> None:
             _mechanic_event(event)
         for line in exchange.lines:
             _bubble(session, line.speaker_id, line.text, sent=False)
-        if exchange.decision:
+        if exchange.decision and exchange is not last:
             ui.label(f"Paused: {exchange.decision}").classes("text-xs italic opacity-60")
 
 
@@ -167,10 +170,6 @@ def _inline_status(step: TurnStep, elapsed: float) -> ui.label:
     return ticker
 
 
-def _composer_placeholder(step: TurnStep | None) -> str:
-    return "What do you do?" if step is None else f"{_STEP_COPY[step][0]} is working..."
-
-
 def _clock(seconds: float) -> str:
     minutes, rest = divmod(int(seconds), 60)
     return f"{minutes}:{rest:02d}"
@@ -253,12 +252,21 @@ class GameView:
             panel.refresh()
 
 
+def _composer_placeholder(view: GameView) -> str:
+    step = view.session.step
+    if step is not None:
+        return f"{_STEP_COPY[step][0]} is working..."
+    if view.session.state.pending is not None:
+        return "The game is waiting on your answer."
+    return "What do you do?"
+
+
 def on_step(view: GameView, step: TurnStep) -> None:
     view.session.step = step
     view.step_started = monotonic()
     view.live_turn.refresh()
     if view.composer is not None:
-        view.composer.props(f'placeholder="{_composer_placeholder(step)}"')
+        view.composer.props(f'placeholder="{_composer_placeholder(view)}"')
 
 
 def on_event(view: GameView, event: MechanicEvent, loop: AbstractEventLoop) -> None:
@@ -311,7 +319,7 @@ async def _send(view: GameView, player_input: str | Answer, bubble: str) -> None
     session.step = None
     view.live_prompt, view.live_events, view.step_started = None, [], None
     if view.composer is not None:
-        view.composer.props(f'placeholder="{_composer_placeholder(None)}"')
+        view.composer.props(f'placeholder="{_composer_placeholder(view)}"')
     view.refresh_all()
     _scroll(view)
 
@@ -329,9 +337,17 @@ async def submit(view: GameView, box: ui.input) -> None:
     await _send(view, typed_input, typed)
 
 
+def _alive(entity: Entity) -> bool:
+    return entity.trait(DEAD) is None
+
+
+def _can_type(session: GameSession, busy: bool) -> bool:
+    return not busy and _alive(session.state.player)
+
+
 def decision_panel(view: GameView) -> None:
     pending = view.session.state.pending
-    if pending is None:
+    if pending is None or not _alive(view.session.state.player):
         return
 
     async def answer(option: DecisionOption) -> None:
@@ -339,28 +355,39 @@ def decision_panel(view: GameView) -> None:
             return
         await _send(view, Answer(option_id=option.id), option.label)
 
-    with ui.column().classes("game-card w-full").style("gap: 0.5rem"):
-        ui.label(pending.prompt).classes("text-sm font-bold whitespace-pre-wrap")
+    with ui.column().classes("game-card game-decision w-full").style("gap: 0.5rem"):
+        with ui.row().classes("items-center no-wrap").style("gap: 0.4rem"):
+            ui.icon("pause_circle").classes("game-card-icon")
+            ui.label(pending.kind).classes("text-xs font-bold game-outcome")
+            ui.label("the game is waiting on you").classes("text-xs opacity-60")
+        ui.label(pending.prompt).classes("text-base whitespace-pre-wrap")
         if view.viewing:
             ui.label("Answer in the terminal.").classes("text-sm opacity-60")
             return
-        with ui.row().classes("w-full items-center").style("gap: 0.5rem"):
-            for option in pending.options:
-                button = ui.button(option.label, on_click=partial(answer, option)).props(
-                    "no-caps outline"
-                )
-                if option.detail:
-                    button.tooltip(option.detail)
+        if pending.options:
+            with ui.row().classes("w-full items-center").style("gap: 0.5rem"):
+                for option in pending.options:
+                    button = ui.button(option.label, on_click=partial(answer, option)).props(
+                        "no-caps outline"
+                    )
+                    if option.detail:
+                        button.tooltip(option.detail)
+        pointer = "Or answer" if pending.options else "Answer"
+        ui.label(f"{pointer} in your own words below.").classes("text-xs opacity-60")
 
 
 def composer(view: GameView) -> None:
     session = view.session
     with ui.row().classes("w-full no-wrap items-end game-composer q-pa-sm").style("gap: 0.5rem"):
+        # `busy` is only the source NiceGUI needs: it re-runs every backward on its 0.1s poll.
+        ui.label("You died.").classes("text-xs self-center").style(
+            "color: var(--game-danger)"
+        ).bind_visibility_from(session, "busy", backward=lambda _: not _alive(session.state.player))
         box = (
-            ui.input(placeholder=_composer_placeholder(None))
+            ui.input(placeholder=_composer_placeholder(view))
             .classes("flex-grow")
             .props("outlined autogrow type=textarea borderless")
-            .bind_enabled_from(session, "busy", backward=lambda busy: not busy)
+            .bind_enabled_from(session, "busy", backward=partial(_can_type, session))
         )
         # Enter sends; without the prevent the browser also leaves its newline behind.
         box.on(
@@ -371,7 +398,7 @@ def composer(view: GameView) -> None:
         _ = (
             ui.button(icon="send", on_click=lambda: submit(view, box))
             .props("round flat")
-            .bind_enabled_from(session, "busy", backward=lambda busy: not busy)
+            .bind_enabled_from(session, "busy", backward=partial(_can_type, session))
         )
     view.composer = box
 

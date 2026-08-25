@@ -1,7 +1,7 @@
 from collections.abc import Sequence
 from random import Random
 
-from .entities import PLAYER_ID, Entity, EntityId, Exit, Slug, Trait, slug
+from .entities import DEAD, PLAYER_ID, Entity, EntityId, Exit, Slug, Trait, slug
 from .facts import DiceEvent, Fact, MechanicEvent, entity_fact, labeled
 from .model import AdvanceThread, Game
 
@@ -43,15 +43,39 @@ def reveal(draft: Game, entity_id: EntityId) -> list[Fact]:
 
 
 def require_actor_here(state: Game, actor_id: EntityId) -> Entity:
-    if actor_id == PLAYER_ID:
-        return state.player
-    actor = state.world.require_kind(actor_id, "actor")
-    if not state.is_here(actor):
+    actor = state.player if actor_id == PLAYER_ID else state.world.require_kind(actor_id, "actor")
+    if actor.trait(DEAD) is not None:
+        # ponytail: no resurrection path — a corpse takes no trait either way; restart is the exit.
+        raise ValueError(f"{actor.name} is dead; they take no further part.")
+    if actor_id != PLAYER_ID and not state.is_here(actor):
         raise ValueError(
             f"{actor_id!r} is not here with the player. "
             "Move them here first, or act on who is here."
         )
     return actor
+
+
+def kill(draft: Game, actor_id: EntityId) -> list[Fact]:
+    actor = draft.world.require_kind(actor_id, "actor")
+    if actor.trait(DEAD) is not None:
+        raise ValueError(f"{actor.name} is already dead")
+    if actor_id != PLAYER_ID and not draft.is_here(actor):
+        raise ValueError(f"{actor_id!r} is not here with the player, so they cannot die here")
+    facts = draft.reveal(actor)
+    actor.traits.append(Trait(id=DEAD, name="Dead"))
+    carried = draft.world.children(actor_id, "item")
+    if carried and actor.parent_id is not None:
+        where = draft.world.require(actor.parent_id)
+        for item in carried:
+            item.parent_id = where.id
+        loose = ", ".join(labeled(item) for item in carried)
+        # Untold: a dropped item may still be unrevealed, and its name must not reach the narrator.
+        facts.append(Fact(kind="items_dropped", trace=f"{loose} fell loose at {labeled(where)}"))
+    if actor_id in draft.world.party:
+        draft.world.party.remove(actor_id)
+    card = MechanicEvent(title=f"{actor.name} is dead", icon="skull")
+    facts.append(entity_fact(actor, "actor_killed", f"{labeled(actor)} is dead", event=card))
+    return facts
 
 
 def reveal_target(draft: Game, entity_id: EntityId) -> tuple[Entity, list[Fact]]:

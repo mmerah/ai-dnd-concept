@@ -24,6 +24,7 @@ from aidm.engines.core import (
 )
 from aidm.engines.world import commands
 from aidm.llm import build_agent, schema_of
+from aidm.state.entities import DEAD
 from aidm.state.facts import Fact, narrator_evidence, narrator_lines, player_events, traced
 from aidm.state.model import Game, draft_refusal
 from aidm.state.play import (
@@ -281,6 +282,8 @@ def consume_answer(
     log: TurnRecord,
 ) -> tuple[str, str, PendingDecision | None]:
     """The PLAYER ACTION, what a closed answer resolved, and the decision an open answer used."""
+    if draft.player.trait(DEAD) is not None:
+        raise ValueError("the player is dead. The only way on is to restart.")
     # Any input consumes the decision, a revision included: it never survives its own answer.
     consumed, draft.pending = draft.pending, None
     if isinstance(player_input, str):

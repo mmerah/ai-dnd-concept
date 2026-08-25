@@ -119,6 +119,25 @@
     }
   },
   {
+    "name": "kill",
+    "description": "Record that an actor has died. Their body and what they carried stay in the world.",
+    "parameters": {
+      "additionalProperties": false,
+      "properties": {
+        "actor_id": {
+          "description": "Exact id of the actor who has died. They must be here with the player.",
+          "maxLength": 64,
+          "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$",
+          "type": "string"
+        }
+      },
+      "required": [
+        "actor_id"
+      ],
+      "type": "object"
+    }
+  },
+  {
     "name": "advance_thread",
     "description": "Update an active storyline's status, stage, clock, or note.",
     "parameters": {

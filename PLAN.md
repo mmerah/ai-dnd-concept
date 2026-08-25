@@ -1,7 +1,8 @@
 # PLAN
 
 Five phases, ordered. Each phase is a report in `docs/plans/`; the report is the detail, this file is
-the stack and the reasons for the order. Ship a phase, tick it, move down. Nothing here is started.
+the stack and the reasons for the order. Ship a phase, tick it, move down. [PROGRESS.md](PROGRESS.md)
+holds the ticks; Phases 0 and 1 are done.
 
 Scope: IDEAS.md L1, L2, L5, L9, L10, I4 — L10 folds into L9's phase, so six items make five phases.
 Everything else in IDEAS.md is untouched and unordered by this plan; see "Not in this plan".

@@ -171,6 +171,26 @@ def test_a_tick_fills_the_threads_clock_and_stops_at_its_maximum() -> None:
     assert renoted.trace.endswith("— note: the rite is complete")
 
 
+def test_a_kill_drops_items_and_party_and_then_refuses_the_dead_actor() -> None:
+    draft = _draft()
+    _ = actions.move(draft, PLAYER_ID, CLOISTER)
+    _ = actions.move(draft, LANTERN, TOMAS)
+    _ = actions.join_party(draft, TOMAS)
+
+    assert _kinds(actions.kill(draft, TOMAS)) == ["items_dropped", "actor_killed"]
+    assert draft.world.require(TOMAS).trait("dead") is not None
+    assert draft.world.require(LANTERN).parent_id == CLOISTER
+    assert TOMAS not in draft.world.party
+
+    with pytest.raises(ValueError, match="dead"):
+        _ = actions.add_trait(draft, TOMAS, "hurt")
+    _ = draft.committed()
+
+    _ = actions.kill(draft, PLAYER_ID)
+    with pytest.raises(ValueError, match="dead"):
+        _ = actions.add_trait(draft, PLAYER_ID, "hurt")
+
+
 def test_a_tick_on_a_thread_without_a_clock_is_refused() -> None:
     draft = _draft()
     with pytest.raises(ValueError, match="no clock to tick"):

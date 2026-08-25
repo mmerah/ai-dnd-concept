@@ -80,7 +80,10 @@ def twist_table(packs: Mapping[str, Pack], chosen: Slug) -> tuple[tuple[str, str
 
 def conflict_prompt(actor: Entity, opponent: Entity) -> str:
     foe = actor if opponent.id == PLAYER_ID else opponent
-    return f"The exchange with {foe.name} is over, but the conflict continues. What do you do?"
+    return (
+        f"The exchange with {foe.name} is over and the conflict goes on. Press it, try something "
+        "else, or break away — say what you do."
+    )
 
 
 class Sheet(SheetBase):
