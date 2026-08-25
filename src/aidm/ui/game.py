@@ -253,12 +253,6 @@ class GameView:
             panel.refresh()
 
 
-def _can_type(session: GameSession, busy: bool) -> bool:
-    """Bound to `session.busy`; a decision with no free text takes the composer away too."""
-    pending = session.state.pending
-    return not busy and (pending is None or pending.free_text)
-
-
 def on_step(view: GameView, step: TurnStep) -> None:
     view.session.step = step
     view.step_started = monotonic()
@@ -366,7 +360,7 @@ def composer(view: GameView) -> None:
             ui.input(placeholder=_composer_placeholder(None))
             .classes("flex-grow")
             .props("outlined autogrow type=textarea borderless")
-            .bind_enabled_from(session, "busy", backward=partial(_can_type, session))
+            .bind_enabled_from(session, "busy", backward=lambda busy: not busy)
         )
         # Enter sends; without the prevent the browser also leaves its newline behind.
         box.on(
@@ -377,7 +371,7 @@ def composer(view: GameView) -> None:
         _ = (
             ui.button(icon="send", on_click=lambda: submit(view, box))
             .props("round flat")
-            .bind_enabled_from(session, "busy", backward=partial(_can_type, session))
+            .bind_enabled_from(session, "busy", backward=lambda busy: not busy)
         )
     view.composer = box
 

@@ -12,11 +12,12 @@ from aidm.engines.core import (
     ProposalBase,
     SheetAdvancement,
     SheetEngine,
+    action,
     adjust,
-    apply_action,
     apply_play,
     chapter_command,
     command,
+    rule,
 )
 from aidm.engines.packs import load_packs, pack_options, pack_paths, pack_step
 from aidm.engines.twentyfourxx.rules import (
@@ -81,14 +82,6 @@ class ChangeCredits(Frozen):
     amount: int = Field(description="Positive pays the actor; negative charges them.")
 
 
-def _roll_attempt(deps: DirectorContext, attempt: Attempt) -> str:
-    return apply_play(deps, lambda draft, rng: resolve_attempt(draft, attempt, rng))
-
-
-def _stake_attempt(deps: DirectorContext, attempt: StakedAttempt) -> str:
-    return apply_play(deps, lambda draft, _rng: resolve_stake(draft, attempt))
-
-
 def _settle_defence(deps: DirectorContext, args: SettleDefence) -> str:
     # One hit, one settlement: the decision an open answer consumed, until this run settles it.
     answered = deps.answered
@@ -99,27 +92,19 @@ def _settle_defence(deps: DirectorContext, args: SettleDefence) -> str:
     return apply_play(deps, lambda draft, _rng: resolve_defence(draft, goal, args.item_id))
 
 
-def _roll_luck_test(deps: DirectorContext, test: LuckTest) -> str:
-    return apply_play(deps, lambda draft, rng: resolve_luck_test(draft, test, rng))
-
-
-def _change_credits(deps: DirectorContext, args: ChangeCredits) -> str:
-    return apply_action(deps, lambda draft: apply_change_credits(draft, args.actor_id, args.amount))
-
-
 DIRECTOR_COMMANDS: tuple[Command, ...] = (
-    command(
+    rule(
         "roll_attempt",
         "Roll one risky attempt. Roll an NPC's attempt directly; put the player's own attempt\n"
         "to `stake_attempt` first, unless their words already accepted the exact risk.",
         Attempt,
-        _roll_attempt,
+        resolve_attempt,
     ),
-    command(
+    action(
         "stake_attempt",
         "Let the player accept or revise one risky attempt before rolling it.",
         StakedAttempt,
-        _stake_attempt,
+        resolve_stake,
     ),
     command(
         "settle_defence",
@@ -127,8 +112,13 @@ DIRECTOR_COMMANDS: tuple[Command, ...] = (
         SettleDefence,
         _settle_defence,
     ),
-    command("roll_luck_test", "Roll a standalone bad-luck test.", LuckTest, _roll_luck_test),
-    command("change_credits", "Pay or charge an actor.", ChangeCredits, _change_credits),
+    rule("roll_luck_test", "Roll a standalone bad-luck test.", LuckTest, resolve_luck_test),
+    action(
+        "change_credits",
+        "Pay or charge an actor.",
+        ChangeCredits,
+        lambda draft, one: apply_change_credits(draft, one.actor_id, one.amount),
+    ),
     chapter_command("Record that the current job has ended.", "the job is done"),
 )
 

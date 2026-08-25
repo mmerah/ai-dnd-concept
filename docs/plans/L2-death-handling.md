@@ -67,9 +67,9 @@ neither engine reads traits. Optional, only if the eval asks: name `kill` in `lo
 
 Prompt:
 
-6. `engines/world.py` — `class Kill(Frozen)` with `actor_id: CheckedEntityId`, `_kill` via
-   `apply_action`, and a `_world_command("kill", "Record that an actor has died. Their body and what
-   they carried stay in the world.", …)` entry in `CORE_COMMANDS`.
+6. `engines/world.py` — `class Kill(Frozen)` with `actor_id: CheckedEntityId`, `actions.kill`, and a
+   `_world_command("kill", "Record that an actor has died. Their body and what they carried stay in
+   the world.", Kill, lambda draft, one: actions.kill(draft, one.actor_id))` entry in `CORE_COMMANDS`.
 7. `turn/prompts/director.md:33` — extend the post-roll consequence list to "…a death, a condition, an
    opened way…". One line, in a line the model already reads after every roll.
 
@@ -79,8 +79,10 @@ added at render time:
 8. `turn/context.py:302` `_headline` — render `(npc — dead)`. One edit reaching both the Director and
    the Narrator, which share `_scene_sections`; the Narrator already sees the trait via `entity_state`
    (`context.py:321-326`), so `VisibleScene` needs no change.
-9. `ui/game.py:46` `scene_header` — prefix "Dead." to the brief in the "Here now" row. `ui/game.py:262`
-   `_can_type` — false when the player is dead, with a "You died." line by the composer.
+9. `ui/game.py:46` `scene_header` — prefix "Dead." to the brief in the "Here now" row. The composer's
+   two `bind_enabled_from(session, "busy", backward=lambda busy: not busy)` bindings take back a
+   `_can_type(session, busy)` that is also false when the player is dead, with a "You died." line
+   beside the composer.
    `ui/panels.py:26-32` already badges player traits, so the sheet shows "Dead" for free.
 10. `evals/turn_eval.py` — one Loner case `loner3e/finish-the-rat`: rat known and staged in the
     cloister, prompt "I bring the stone down and finish it", expectation `rat-dead`. Proof and trigger.

@@ -28,7 +28,6 @@ class RoleConfig(BaseModel):
     max_tokens: int = Field(default=4096, ge=1)
     reasoning_effort: ReasoningEffort = "minimal"
     temperature: float | None = Field(default=None, ge=0.0, le=2.0)
-    max_input_tokens: int = Field(default=96_000, ge=1)
 
 
 class MediaConfig(BaseModel):
@@ -50,7 +49,6 @@ class TurnConfig(BaseModel):
     model_config = ConfigDict(frozen=True)
 
     director_request_limit: int = Field(default=16, ge=1)
-    chars_per_token: int = Field(default=4, ge=1)
 
 
 class AuthoringConfig(BaseModel):

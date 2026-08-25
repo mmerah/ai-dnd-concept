@@ -9,6 +9,12 @@ Everything else in IDEAS.md is untouched and unordered by this plan; see "Not in
 > Line numbers in the reports are as of `2ce9dfa`. The working tree had staged changes to `engines/`,
 > `ui/`, `state/` and `harness/` while the reports were being written, so re-grep a symbol before
 > trusting a line number. Symbols are stable; line numbers are not.
+>
+> An over-engineering pass landed before this plan started: it deleted `prompt_id`,
+> `PendingDecision.free_text`, `_can_type`, the input-token estimator with `RoleConfig.max_input_tokens`
+> and `TurnConfig.chars_per_token`, and `ServerTool.published`, and it finished **Phase 2 step 2** early
+> (`rule()`/`action()` in `engines/core.py`, all 16 command wrappers gone). The reports below are
+> corrected for it.
 
 ---
 
@@ -58,15 +64,16 @@ under ~70% over 9 repeats *after* `kill` ships and is named in the prompt.
 
 [docs/plans/L5-engine-shape-refactor.md](docs/plans/L5-engine-shape-refactor.md)
 
-~110 lines of ceremony per engine before one mechanic exists: pack plumbing, a wrapper per director
-command, the sheet's field list written three times, two dispatch methods per decision kind. Fate
+~85 lines of ceremony per engine before one mechanic exists: pack plumbing, the sheet's field list
+written three times, two dispatch methods per decision kind. Fate
 Condensed additionally cannot represent its own dice (`DiceEvent` forbids negative faces and demands
 `kept in rolled`), cannot pause where it must (the pause point sits *between* commands, invoke happens
 *inside* one), and shadows aspects in its own mechanics. Cairn's one hard stop is different:
 `Engine.advancement` is mandatory and Cairn has no XP.
 
-Four changes land, each judged by one criterion — does the Fate engine file get shorter: a `rule()`
-command constructor, a `Decision` base class, `rows()` on the sheet, a pack-creation base. Two more are
+Three changes land, each judged by one criterion — does the Fate engine file get shorter: a `Decision`
+base class, `rows()` on the sheet, a pack-creation base. A fourth, the `rule()` command constructor,
+already landed in the pass noted above. Two more are
 designed in the report but ship with their first user, because each adds branches nothing today
 exercises: the signed/summed `DiceEvent` goes with L7 (Fate), optional `Engine.advancement` with L8
 (Cairn). Plus 7 hard-coded lists killed by colocating or reflecting: the manual
@@ -77,7 +84,7 @@ Explicitly not abstracted: no aspect system in core, no dice DSL, no advancement
 protocol beyond discovery. The ledger counter stays per-engine, which is also why no `Sheet` field moves
 and no save breaks.
 
-- ~+125 / −300, net ≈ −175, across 9 files. Golden prompts move; turn-eval baseline needs one re-run.
+- ~+90 / −240 remaining, net ≈ −150, across 9 files. Golden prompts move; turn-eval baseline needs one re-run.
 - **Exit check:** `uv run pytest` green with fixtures regenerated, plus one live loner3e turn with the
   dice card unchanged.
 - **Here, because:** it is the largest refactor and everything downstream is cheaper on the new shape.
@@ -141,10 +148,10 @@ submode.
 [docs/plans/I4-settings-from-ui.md](docs/plans/I4-settings-from-ui.md)
 
 `Settings` is a pydantic-settings `BaseSettings` (`config.py:108`) built once at the composition root
-(`ui/app.py:213`). 52 leaves: 46 editable, 2 secret (write-only), 4 read-only paths. The mark is decided
+(`ui/app.py:213`). 50 leaves: 44 editable, 2 secret (write-only), 4 read-only paths. The mark is decided
 by type — `SecretStr` → secret, `Path` → never — not by a name list.
 
-Generated form, not hand-written: 46 leaves across 6 model classes, one recursive `model_fields` walk,
+Generated form, not hand-written: 44 leaves across 6 model classes, one recursive `model_fields` walk,
 env key = `"__".join(path).upper()` which is pydantic-settings' own convention, so no mapping table. Six
 widget branches by annotation. `.env` written with `dotenv.set_key` (python-dotenv already installed
 transitively; verified it preserves comments, quoting and untouched keys). Nothing is written until

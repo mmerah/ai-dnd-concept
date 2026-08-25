@@ -1,9 +1,11 @@
 # L5: Cut the ceremony an engine pays before it writes a rule
 
-A third engine pays ~110 lines of ceremony before one mechanic exists: pack plumbing (~30), a wrapper per
-director command (~5 each), the sheet's field list written three times (~25), a two-method
-`check_pending`/`resume` dispatch per decision kind (~9 each), `__init__`/ledger (~15) — 90 of loner3e's
-641 Python lines, 130 of twentyfourxx's 805; FATE-CONDENSED.md:1369 calls decisions the largest part.
+A third engine pays ~85 lines of ceremony before one mechanic exists: pack plumbing (~30), the sheet's
+field list written three times (~25), a two-method `check_pending`/`resume` dispatch per decision kind
+(~9 each), `__init__`/ledger (~15); FATE-CONDENSED.md:1369 calls decisions the largest part.
+
+> **Step 2 already landed** (the `rule()`/`action()` constructors and the wrapper-per-command deletion),
+> ahead of this phase, in the over-engineering pass that preceded it. Steps 1 and 3-8 are untouched.
 
 ## Where Fate does not fit
 
@@ -45,9 +47,10 @@ closed sets a new engine never extends. `harness/mcp.py:134` `DISPATCH` and `twe
 
 ## Approach
 
-Six changes, each judged by "does the Fate engine file get shorter": a rule-command constructor, a
-decision base class, `rows()` on the sheet, a pack-creation base, optional advancement, a signed/summed
-`DiceEvent`. Everything else above is a list-killing edit, not an abstraction.
+Five changes remain, each judged by "does the Fate engine file get shorter": a decision base class,
+`rows()` on the sheet, a pack-creation base, optional advancement, a signed/summed `DiceEvent`. The
+sixth, a rule-command constructor, has already landed. Everything else above is a list-killing edit,
+not an abstraction.
 
 **Not abstracted, on purpose.** No aspect/tag system in core — aspects are Fate mechanics. No dice DSL
 — each engine rolls its own, only the card model is shared. No advancement tiering — Fate overrides
@@ -62,10 +65,10 @@ save breaks**. No plugin protocol beyond discovery, no command auto-registration
    `ui/game.py:106` prints `die.face_label or f"d{face}"` with no kept highlight. It has zero users
    until Fate exists and costs exactly the same then, so it ships with Fate rather than adding a
    branch nothing exercises.
-2. `engines/core.py:80` — add `rule(name, description, args, resolve)` beside `command()`, with
-   `resolve: (Game, A, Random) -> tuple[Fact, ...]`, wrapping `apply_play` itself (the trick
-   `_world_command` already plays at `engines/world.py:11`). Deletes the wrappers at
-   `loner3e/engine.py:65-70` and `twentyfourxx/engine.py:85-112`.
+2. **Done.** `engines/core.py` grew `rule(name, description, args, resolve)` for resolvers that roll
+   and `action(...)` for those that do not, both beside `command()` and both wrapping `apply_play` /
+   `apply_action`. All 16 one-line command wrappers are gone; `_world_command` is now `action` with
+   `during_suspension=True`, and each core command carries its resolver as one lambda beside its name.
 3. `engines/core.py` — `class Decision(Frozen)` with `kind: ClassVar[Slug]`, `pending(draft)` building its
    own prompt/options/payload, and `resolve(draft, option_id, rng)`; `Engine.decisions:
    ClassVar[tuple[type[Decision], ...]] = ()`; `check_pending`/`resume` go concrete — match `kind`,
@@ -73,8 +76,11 @@ save breaks**. No plugin protocol beyond discovery, no command auto-registration
    ```python
    class Decision(Frozen):
        kind: ClassVar[Slug]
-       def pending(self, draft: Game) -> PendingDecision: ...   # prompt, options, payload
+
+       def pending(self, draft: Game) -> PendingDecision: ...  # prompt, options, payload
        def resolve(self, draft: Game, option_id: Slug, rng: Random) -> tuple[Fact, ...]: ...
+
+
    # in SheetEngine, once:
    def resume(self, draft, option_id, rng):
        cls = next(d for d in self.decisions if d.kind == draft.pending.kind)
@@ -110,7 +116,8 @@ save breaks**. No plugin protocol beyond discovery, no command auto-registration
 
 ## Risk / size
 
-~+125 / −300 lines, net ≈ −175, across `engines/core.py`, `packs.py`, `registry.py`, both engines'
+~+90 / −240 lines remaining, net ≈ −150 (step 2 already took +35 / −60), across `engines/core.py`,
+`packs.py`, `registry.py`, both engines'
 `engine.py` + `rules.py`, `ui/create.py` and `authoring/draft.py`. Both engines are edited in every step but no `Sheet` field moves, so **saves survive**; step 4
 changes the Director prompt's `state:` block, so golden prompts move and the turn-eval baseline needs one
 re-run (tests that move: `tests/core/test_sheet_view.py`, `test_decisions.py`, `test_golden_prompts.py`).

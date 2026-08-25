@@ -187,7 +187,7 @@ def test_an_exchange_both_sides_survive_hands_the_next_key_action_to_the_player(
     foe = draft.world.require(FOE)
     assert (decision.kind, decision.prompt) == ("conflict", conflict_prompt(draft.player, foe))
     assert foe.name in decision.prompt
-    assert (decision.options, decision.free_text) == ((), True)
+    assert decision.options == ()
 
 
 def test_the_engine_plays_the_hand_back_and_refuses_every_other_decision() -> None:

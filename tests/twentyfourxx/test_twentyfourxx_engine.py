@@ -280,7 +280,7 @@ def test_a_stake_freezes_a_playable_attempt_and_waits_on_the_player() -> None:
     assert resolve_stake(draft, _staked_forcing()) == ()
 
     decision = _waiting(draft)
-    assert (decision.kind, decision.prompt, decision.free_text) == ("stake", RISK, True)
+    assert (decision.kind, decision.prompt) == ("stake", RISK)
     assert [option.id for option in decision.options] == ["proceed"]
     assert StakedAttempt.model_validate(decision.payload) == _staked_forcing()
 

@@ -16,7 +16,7 @@ from aidm.app.runtime import Runtime
 from aidm.authoring.draft import WHOLE_SCENARIO, ScenarioDraft
 from aidm.authoring.run import authoring_context, authoring_toolset
 from aidm.config import load_settings
-from aidm.engines.core import NoArgs, ProposalBase
+from aidm.engines.core import Command, NoArgs, ProposalBase
 from aidm.engines.world import commands
 from aidm.harness.codemode import (
     AdvanceArgs,
@@ -41,10 +41,6 @@ _ARGUMENTS = TypeAdapter(dict[str, JsonValue])
 type Handler = Callable[[Harness, dict[str, JsonValue]], str]
 
 
-def _published(name: str, description: str, args: type[BaseModel]) -> types.Tool:
-    return types.Tool(name=name, description=description, input_schema=schema_of(args))
-
-
 @dataclass(frozen=True, slots=True)
 class ServerTool:
     """Name, description, behaviour and schema in one place: what is published is what is run."""
@@ -54,8 +50,11 @@ class ServerTool:
     run: Handler
     args: type[BaseModel] = NoArgs
 
-    def published(self) -> types.Tool:
-        return _published(self.name, self.description, self.args)
+
+def _published(tool: ServerTool | Command) -> types.Tool:
+    return types.Tool(
+        name=tool.name, description=tool.description, input_schema=schema_of(tool.args)
+    )
 
 
 SERVER_TOOLS: tuple[ServerTool, ...] = (
@@ -132,7 +131,7 @@ APPLY_ADVANCE = ServerTool(
 )
 
 DISPATCH = {tool.name: tool for tool in (*SERVER_TOOLS, PROPOSE_ADVANCE, APPLY_ADVANCE)}
-PUBLISHED = tuple(tool.published() for tool in SERVER_TOOLS)
+PUBLISHED = tuple(_published(tool) for tool in SERVER_TOOLS)
 
 # One instance: its tools are listed from here and called against whichever draft is open.
 AUTHORING = authoring_toolset((), WHOLE_SCENARIO)
@@ -159,9 +158,9 @@ async def offered(harness: Harness) -> list[types.Tool]:
     if harness.session is None:
         return tools
     engine = harness.session.engine
-    tools.append(replace(PROPOSE_ADVANCE, args=harness.advance_args()).published())
-    tools.append(APPLY_ADVANCE.published())
-    tools.extend(_published(one.name, one.description, one.args) for one in commands(engine))
+    tools.append(_published(replace(PROPOSE_ADVANCE, args=harness.advance_args())))
+    tools.append(_published(APPLY_ADVANCE))
+    tools.extend(_published(one) for one in commands(engine))
     return tools
 
 

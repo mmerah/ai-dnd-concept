@@ -43,15 +43,13 @@ class PendingDecision(Frozen):
     kind: Slug
     # A prose-less segment replays into model history from this alone, so it can never be empty.
     prompt: str = Field(min_length=1)
+    # Options are a shortcut, never the only way: the player may always answer in their own words.
     options: tuple[DecisionOption, ...]
-    free_text: bool = True
     payload: dict[str, JsonValue]
 
     @model_validator(mode="after")
-    def _is_answerable(self) -> Self:
+    def _options_are_unambiguous(self) -> Self:
         require_unique("option ids", (option.id for option in self.options))
-        if not self.options and not self.free_text:
-            raise ValueError(f"the {self.kind!r} decision offers no way to answer it")
         return self
 
 

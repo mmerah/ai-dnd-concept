@@ -435,9 +435,45 @@ def apply_play(deps: DirectorContext, play: Play) -> str:
     return "\n".join(lines) or NOTHING_CHANGED
 
 
-def apply_action(deps: DirectorContext, act: Callable[[Game], list[Fact]]) -> str:
+def apply_action(deps: DirectorContext, act: Callable[[Game], Sequence[Fact]]) -> str:
     """`aidm.state.actions` never rolls, so the turn's dice stay with the resolvers that do."""
     return apply_play(deps, lambda draft, _rng: tuple(act(draft)))
+
+
+def rule[A: BaseModel](
+    name: str,
+    description: str,
+    args: type[A],
+    resolve: Callable[[Game, A, Random], Sequence[Fact]],
+    *,
+    during_suspension: bool = False,
+) -> Command:
+    """A command whose resolver rolls; the turn's own dice reach it, never a trial run's."""
+    return command(
+        name,
+        description,
+        args,
+        lambda deps, one: apply_play(deps, lambda draft, rng: tuple(resolve(draft, one, rng))),
+        during_suspension=during_suspension,
+    )
+
+
+def action[A: BaseModel](
+    name: str,
+    description: str,
+    args: type[A],
+    act: Callable[[Game, A], Sequence[Fact]],
+    *,
+    during_suspension: bool = False,
+) -> Command:
+    """A command that changes state without rolling."""
+    return command(
+        name,
+        description,
+        args,
+        lambda deps, one: apply_action(deps, lambda draft: act(draft, one)),
+        during_suspension=during_suspension,
+    )
 
 
 def _seed_created(engine: Engine, draft: Game, facts: Sequence[Fact], rng: Random) -> None:

@@ -9,7 +9,7 @@ from pydantic_ai.messages import ModelMessage, ModelRequest, ModelResponse, Text
 from pydantic_ai.toolsets import FunctionToolset
 from pydantic_ai.usage import UsageLimits
 
-from aidm.config import Role, Settings
+from aidm.config import Settings
 from aidm.engines.core import (
     RULES_WAIT,
     Advancement,
@@ -195,13 +195,6 @@ async def run_segment(
             on_step(step)
 
     history = exchanges_to_messages(state.history)
-    history_chars = sum(
-        len(exchange.prompt)
-        + len(exchange.place)
-        + len(exchange.narration)
-        + len(exchange.decision)
-        for exchange in state.history
-    )
     log = TurnRecord(on_event=on_event)
     draft = state.draft()
     prompt, resumed, answered = consume_answer(engine, draft, player_input, rng, log)
@@ -212,7 +205,6 @@ async def run_segment(
     director_prompt = context.render_director(
         scene, describe, draft.scenario, prompt, resumed=resumed
     )
-    _ensure_input_budget("director", settings, director_prompt, history_chars)
     directed = await stages.director.run(
         director_prompt,
         deps=DirectorContext(
@@ -240,7 +232,6 @@ async def run_segment(
             evidence=narrator_evidence(facts),
             prompt=prompt,
         )
-        _ensure_input_budget("narrator", settings, narrator_prompt, history_chars)
         narration = (
             await stages.narrator.run(narrator_prompt, deps=visible, message_history=history)
         ).output
@@ -335,13 +326,3 @@ def _resume(
     landed = apply_to_draft(engine, draft, play, rng)
     log.landed(landed, player_events(landed))
     return landed
-
-
-def _ensure_input_budget(role: Role, settings: Settings, rendered: str, history_chars: int) -> None:
-    ceiling = settings.role(role).max_input_tokens
-    estimate = (len(rendered) + history_chars) // settings.turn.chars_per_token
-    if estimate > ceiling:
-        raise ValueError(
-            f"{role} input is about {estimate} tokens, over its {ceiling}-token ceiling; "
-            "this game has too much history for a turn to fit"
-        )

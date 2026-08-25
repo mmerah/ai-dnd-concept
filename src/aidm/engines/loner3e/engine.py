@@ -8,14 +8,12 @@ from aidm.content.model import CharacterProfile, CreatedCharacter
 from aidm.engines.core import (
     CharacterCreation,
     Command,
-    DirectorContext,
     ProposalBase,
     SheetAdvancement,
     SheetEngine,
-    apply_action,
-    apply_play,
+    action,
     chapter_command,
-    command,
+    rule,
 )
 from aidm.engines.loner3e.rules import (
     GROWTH,
@@ -60,30 +58,20 @@ class RestoreLuck(Frozen):
     actor_id: CheckedEntityId = Field(description="Exact id of the player or an actor here.")
 
 
-def _restore_luck(deps: DirectorContext, args: RestoreLuck) -> str:
-    return apply_action(deps, lambda draft: apply_restore_luck(draft, args.actor_id))
-
-
 def director_commands(twists: Twists) -> tuple[Command, ...]:
     """Only the question roll needs the twist table, so only it is built per engine."""
-
-    def roll_question(deps: DirectorContext, question: Question) -> str:
-        return apply_play(
-            deps, lambda draft, rng: resolve_question(draft, question, rng, twists(draft))
-        )
-
     return (
-        command(
+        rule(
             "roll_question",
             "Roll Chance against Risk for one closed dramatic question.",
             Question,
-            roll_question,
+            lambda draft, one, rng: resolve_question(draft, one, rng, twists(draft)),
         ),
-        command(
+        action(
             "restore_luck",
             "Restore an actor's luck after a conflict ends.",
             RestoreLuck,
-            _restore_luck,
+            lambda draft, one: apply_restore_luck(draft, one.actor_id),
         ),
         chapter_command("Record that the current adventure has ended.", "the adventure has ended"),
     )

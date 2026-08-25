@@ -6,7 +6,6 @@ from core_test_support import (
     game,
     initialized,
     narrated,
-    offline_settings,
     played,
     recorded,
     scripted,
@@ -14,12 +13,10 @@ from core_test_support import (
     structured,
     text,
     tool_call,
-    updated,
 )
 from pydantic_ai.messages import ModelMessage, ModelResponse, ToolReturnPart
 from pydantic_ai.models.function import AgentInfo, FunctionModel
 
-from aidm.config import RoleConfig
 from aidm.content.io import SavedGame
 from aidm.engines.loner3e.rules import outcome_for
 from aidm.engines.twentyfourxx.rules import Mechanics
@@ -253,23 +250,6 @@ async def test_a_failed_role_never_mutates_the_input_state() -> None:
     with pytest.raises(RuntimeError, match="narrator exploded"):
         await played(
             engine, state, "I take the map.", director=director, narrator=FunctionModel(boom)
-        )
-
-    assert SavedGame.from_game(state).model_dump_json() == before
-
-
-async def test_a_turn_over_its_role_ceiling_fails_before_any_model_call() -> None:
-    engine, state = initialized()
-    tiny = updated(offline_settings(), roles={"director": RoleConfig(max_input_tokens=1)})
-    before = SavedGame.from_game(state).model_dump_json()
-
-    with pytest.raises(ValueError, match="director"):
-        await played(
-            engine,
-            state,
-            "I take the map.",
-            director=FunctionModel(scripted(text("unreachable"))),
-            settings=tiny,
         )
 
     assert SavedGame.from_game(state).model_dump_json() == before

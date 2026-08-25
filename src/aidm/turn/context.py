@@ -1,4 +1,3 @@
-import json
 from collections.abc import Callable, Iterable, Mapping, Sequence
 from pathlib import Path
 
@@ -204,11 +203,6 @@ def render_proposal(engine: Engine, state: Game, offer: AdvancementOffer, intent
     return "\n\n".join(f"{title}\n{body}" for title, body in sections if body)
 
 
-def prompt_id(entity_id: str) -> str:
-    escaped = json.dumps(entity_id, ensure_ascii=True)[1:-1]
-    return escaped.replace("[", "\\u005b").replace("]", "\\u005d")
-
-
 def _sections(parts: Iterable[tuple[str, str]]) -> str:
     return "\n\n".join(f"{name}:\n{body}" for name, body in parts)
 
@@ -282,7 +276,7 @@ def _entities(
 
 
 def _exit_line(scene: BaseScene, way: Exit) -> str:
-    labelled = f"[id={prompt_id(way.to)}]"
+    labelled = f"[id={way.to}]"
     locked = " — locked" if way.locked else ""
     unfound = " — the player has not found this way yet" if not way.known else ""
     return f"- {scene.exit_name(way)}{labelled}{locked}{unfound}"
@@ -295,7 +289,7 @@ def _threads(threads: Sequence[Thread]) -> str:
 def _thread_line(thread: Thread) -> str:
     stage = f", stage {thread.stage}" if thread.stage is not None else ""
     clock = "" if thread.clock is None else f", clock {thread.clock.current}/{thread.clock.maximum}"
-    line = f"- {thread.title}[id={prompt_id(thread.id)}] — status {thread.status}{stage}{clock}"
+    line = f"- {thread.title}[id={thread.id}] — status {thread.status}{stage}{clock}"
     return f"{line}\n  note: {thread.note}" if thread.note else line
 
 
@@ -315,7 +309,7 @@ def _detail(entity: Entity) -> str:
 
 
 def _label(entity: Entity) -> str:
-    return f"{entity.name}[id={prompt_id(entity.id)}]"
+    return f"{entity.name}[id={entity.id}]"
 
 
 def entity_state(entity: Entity, describe: EntityRenderer) -> str:

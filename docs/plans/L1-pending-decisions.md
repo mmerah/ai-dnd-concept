@@ -14,8 +14,9 @@ Renderer-side only. `PendingDecision.kind` is already the engine's mark of the m
 must declare its kinds through `Engine.check_pending` (`src/aidm/engines/core.py:230`), so
 `conflict` / `defence` / `stake` are authoritative and free. The panel gets a header row (pause
 icon + `kind` in the existing `.game-outcome` accent-uppercase style + "the game is waiting on
-you"), the prompt at readable size, the option buttons it already draws, and — when `free_text` —
-one line pointing at the composer, whose placeholder also switches. The duplicate `Paused:` line is
+you"), the prompt at readable size, the option buttons it already draws, and one line pointing at the
+composer — always, since every decision takes an answer in the player's own words — whose placeholder
+also switches. The duplicate `Paused:` line is
 dropped while the decision is still open. One accent border in `theme.py` separates the waiting card
 from mechanic cards. Loner's prompt is reworded to name the moves, since it is the one hand-back
 with no buttons to imply them.
@@ -41,9 +42,9 @@ Skipped: luck pools in the card — the `counter_changed` event card above it al
        ui.label(pending.prompt).classes("text-base whitespace-pre-wrap")
    ```
    then the existing `viewing` branch and option-button loop, and finally
-   `if pending.free_text: ui.label("Or answer in your own words below.").classes("text-xs opacity-60")`.
+   `ui.label("Or answer in your own words below.").classes("text-xs opacity-60")`.
 3. `src/aidm/ui/game.py` `_composer_placeholder` — take the `GameView` instead of the step so it can
-   read `view.session.state.pending`; return `"Answer the question above…"` when a free-text
+   read `view.session.state.pending`; return `"Answer the question above…"` when a
    decision is open, the step line when a step runs, `"What do you do?"` otherwise. Move it below
    `class GameView` (3.13 evaluates annotations eagerly); the three call sites — `on_step` (273),
    `_send` (326), `composer` (372) — all already hold `view`.

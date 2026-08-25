@@ -6,15 +6,15 @@ Readers: `llm.py:107` (`settings.role`), `app/runtime.py`, `turn/run.py`, `autho
 
 ## Editable fields
 
-52 leaves. The mark is decided by type, not by a name list: `SecretStr` -> secret, `Path` -> never, everything else -> editable.
+50 leaves. The mark is decided by type, not by a name list: `SecretStr` -> secret, `Path` -> never, everything else -> editable.
 
 | Group (config.py) | Leaves | Mark |
 | --- | --- | --- |
 | `Providers.openrouter/local.base_url` (:18) | 2 | editable |
 | `Providers.openrouter/local.api_key` (:19) | 2 | **secret** — write-only, never read back into the DOM |
-| `Roles.{director,narrator,advisor,scenario_creator}` x `RoleConfig` (:22): `provider, model, retries, max_tokens, reasoning_effort, temperature, max_input_tokens` | 28 | editable |
+| `Roles.{director,narrator,advisor,scenario_creator}` x `RoleConfig` (:22): `provider, model, retries, max_tokens, reasoning_effort, temperature` | 24 | editable |
 | `MediaConfig` (:34): `enabled, provider, model, scene_ratio, icon_ratio, timeout, max_references, style` | 8 | editable |
-| `TurnConfig` (:49): `director_request_limit, chars_per_token` | 2 | editable |
+| `TurnConfig` (:49): `director_request_limit` | 1 | editable |
 | `AuthoringConfig` (:56): `request_limit, starter_character, worked_example, growth_frontier, source_max_chars` | 5 | editable |
 | `Settings.harness` (:122) | 1 | editable |
 | `Settings.{saves,scenarios,characters,packs}_dir` (:123) | 4 | **never** — not rendered at all; repointing hides the save library from a running app |
@@ -23,7 +23,7 @@ No field carries a `description`, so labels come from the field name; `Ge`/`Le` 
 
 ## Approach
 
-**Generated, not hand-written.** 46 editable leaves across 6 model classes: a hand-written form is the maintenance nightmare, and a name-keyed whitelist is the table the maintainer rejects.
+**Generated, not hand-written.** 44 editable leaves across 6 model classes: a hand-written form is the maintenance nightmare, and a name-keyed whitelist is the table the maintainer rejects.
 One recursive walk over `type(model).model_fields` yields `(path, FieldInfo, value)`; the env key is `"__".join(path).upper()`, which is exactly pydantic-settings' own convention — no mapping table.
 Widget per annotation (strip `| None` first): `SecretStr`->`ui.input(password=True)` with a "set"/"not set" placeholder and empty value, `bool`->`ui.switch`, `Literal`->`ui.select(get_args)`, `int|float`->`ui.number`, `str` (incl. `Slug`)->`ui.input`. The four `Path` leaves are **skipped, not
 rendered read-only** — a widget for a value this plan forbids changing is ceremony.
