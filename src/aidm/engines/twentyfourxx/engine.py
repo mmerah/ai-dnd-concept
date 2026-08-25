@@ -13,7 +13,6 @@ from aidm.engines.core import (
     CharacterCreation,
     DirectorContext,
     Engine,
-    EventCause,
     ProposalBase,
     actor_sheets,
     adjust,
@@ -43,9 +42,7 @@ from aidm.engines.twentyfourxx.rules import (
     Specialty,
     apply_change_credits,
     apply_complete_chapter,
-    attempt_events,
     describe_entity,
-    luck_test_events,
     raised,
     resolve_attempt,
     resolve_defence,
@@ -65,7 +62,7 @@ from aidm.state.creation import (
 from aidm.state.entities import PLAYER_ID, Counter, EngineId, Entity, EntityId, Trait, text_slug
 from aidm.state.facts import Fact, explained_fact
 from aidm.state.model import Game, WorldState
-from aidm.state.play import MechanicEvent, OptionId, PendingDecision
+from aidm.state.play import OptionId, PendingDecision
 
 
 def _skills_in_play(state: Game) -> set[str]:
@@ -204,13 +201,14 @@ class TwentyfourxxAdvancement(Advancement):
             subject,
             "skill_increased",
             f"{subject.name} raised {skill} to d{die}",
-            {"skill": skill, "die": die},
             proposal.why,
             narrate=False,
         )
 
-        earned, dice_fact = roll_pool((6,), "credits earned", rng, slot="credits")
-        credit_facts = adjust(subject, "credits", sheet.credits, earned, "paid for the job")
+        earned, dice_fact = roll_pool((6,), "credits earned", rng, label="Credits")
+        credit_facts = adjust(
+            subject, "credits", sheet.credits, earned.kept, "paid for the job", "payments"
+        )
         return (grown, dice_fact, *credit_facts)
 
 
@@ -415,12 +413,3 @@ class TwentyfourxxEngine(Engine):
             ),
             ("Credits", str(sheet.credits.current)),
         )
-
-    def player_events(
-        self, cause: EventCause, facts: tuple[Fact, ...]
-    ) -> tuple[MechanicEvent, ...]:
-        if cause in (EventCause("tool", "roll_attempt"), EventCause("decision", "stake")):
-            return attempt_events(cause.name, facts)
-        if cause == EventCause("tool", "roll_luck_test"):
-            return luck_test_events(facts)
-        return super().player_events(cause, facts)

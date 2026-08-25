@@ -61,7 +61,6 @@ def test_action_resolution_is_pure_and_renders_every_fact() -> None:
     engine.validate(first_state)
     for fact in first_facts:
         assert fact.trace
-        assert fact.narrator is None or str(fact.data) not in fact.narrator
 
 
 def test_a_created_actor_is_refused_until_the_engine_seeds_it() -> None:

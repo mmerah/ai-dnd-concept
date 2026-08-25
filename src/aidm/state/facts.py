@@ -1,16 +1,44 @@
-from collections.abc import Mapping, Sequence
+from collections.abc import Sequence
+from typing import Self
 
-from pydantic import Field, JsonValue
+from pydantic import model_validator
 
-from aidm.state.entities import PLAYER_ID, Entity, Frozen, kind_word
+from aidm.state.entities import PLAYER_ID, Entity, EntityId, Frozen, kind_word
 
 NOTHING_MECHANICAL = "- (nothing mechanical happened)"
 
 
-class Chip(Frozen):
-    """A small player-facing card a fact earns, phrased where its own values were in scope."""
+class EventBadge(Frozen):
+    label: str
+    value: str
+
+
+class DiceEvent(Frozen):
+    label: str
+    faces: tuple[int, ...]
+    rolled: tuple[int, ...]
+    kept: int
+
+    @model_validator(mode="after")
+    def _rolled_matches_faces(self) -> Self:
+        if len(self.rolled) != len(self.faces):
+            raise ValueError("one rolled value per face")
+        for die, face in zip(self.rolled, self.faces, strict=True):
+            if not 1 <= die <= face:
+                raise ValueError(f"a d{face} cannot show {die}")
+        if self.kept not in self.rolled:
+            raise ValueError("the kept die must be among those rolled")
+        return self
+
+
+class MechanicEvent(Frozen):
+    """Player-facing: no field for model-authored free text, so a canon leak has no channel."""
 
     title: str
+    badges: tuple[EventBadge, ...] = ()
+    dice: tuple[DiceEvent, ...] = ()
+    outcome: str = ""
+    effects: tuple[str, ...] = ()
     icon: str = "casino"
 
 
@@ -19,10 +47,9 @@ class Fact(Frozen):
 
     kind: str
     trace: str
-    narrator: str | None = None
-    # The structured values behind the prose, so a test or a richer trace reads them untyped.
-    data: dict[str, JsonValue] = Field(default_factory=dict)
-    chip: Chip | None = None
+    told: bool = False
+    entity_id: EntityId | None = None
+    event: MechanicEvent | None = None
 
 
 def labeled(entity: Entity) -> str:
@@ -35,18 +62,17 @@ def entity_fact(
     entity: Entity,
     kind: str,
     trace: str,
-    data: Mapping[str, JsonValue],
     *,
     narrate: bool = True,
-    chip: Chip | None = None,
+    event: MechanicEvent | None = None,
 ) -> Fact:
     """An entity the player has not learned of narrates nothing, so no unknown name leaks."""
     return Fact(
         kind=kind,
         trace=trace,
-        narrator=trace if narrate and entity.known else None,
-        data={"entity_id": entity.id, **data},
-        chip=chip,
+        told=narrate and entity.known,
+        entity_id=entity.id,
+        event=event,
     )
 
 
@@ -54,18 +80,23 @@ def explained_fact(
     entity: Entity,
     kind: str,
     trace: str,
-    data: Mapping[str, JsonValue],
     why: str,
     *,
     narrate: bool = True,
+    event: MechanicEvent | None = None,
 ) -> Fact:
     """The `why` is what the advancement panel shows the player before they confirm."""
     rendered = f"{trace} ({why})" if why else trace
-    return entity_fact(entity, kind, rendered, data, narrate=narrate)
+    return entity_fact(entity, kind, rendered, narrate=narrate, event=event)
+
+
+def player_events(facts: Sequence[Fact]) -> tuple[MechanicEvent, ...]:
+    """The narrator's gate is the player's: an unrevealed entity earns no card of its own."""
+    return tuple(fact.event for fact in facts if fact.event is not None and fact.told)
 
 
 def narrator_lines(facts: Sequence[Fact]) -> tuple[str, ...]:
-    return tuple(told for fact in facts if (told := fact.narrator) is not None)
+    return tuple(fact.trace for fact in facts if fact.told)
 
 
 def narrator_evidence(facts: Sequence[Fact]) -> str:

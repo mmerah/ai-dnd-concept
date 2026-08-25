@@ -4,7 +4,7 @@ from typing import Annotated, Self
 from pydantic import Field, JsonValue, model_validator
 
 from aidm.state.entities import EntityId, Frozen, Slug, require_unique
-from aidm.state.facts import Fact
+from aidm.state.facts import Fact, MechanicEvent
 
 
 class Line(Frozen):
@@ -29,41 +29,6 @@ class Narration(Frozen):
     @property
     def text(self) -> str:
         return narration_text(self.lines)
-
-
-class EventBadge(Frozen):
-    label: str
-    value: str
-
-
-class DiceEvent(Frozen):
-    label: str
-    faces: tuple[int, ...]
-    rolled: tuple[int, ...]
-    kept: int
-
-    @model_validator(mode="after")
-    def _rolled_matches_faces(self) -> Self:
-        if len(self.rolled) != len(self.faces):
-            raise ValueError("one rolled value per face")
-        for die, face in zip(self.rolled, self.faces, strict=True):
-            if not 1 <= die <= face:
-                raise ValueError(f"a d{face} cannot show {die}")
-        if self.kept not in self.rolled:
-            raise ValueError("the kept die must be among those rolled")
-        return self
-
-
-class MechanicEvent(Frozen):
-    """Player-facing: no field for model-authored free text, so a canon leak has no channel."""
-
-    source: str
-    title: str
-    badges: tuple[EventBadge, ...] = ()
-    dice: tuple[DiceEvent, ...] = ()
-    outcome: str = ""
-    effects: tuple[str, ...] = ()
-    icon: str = "casino"
 
 
 # Laxer than `Slug`: 24XX's defence options are carried-item entity ids, which allow underscores.

@@ -10,19 +10,15 @@ from aidm.engines.core import (
     SheetBase,
     SheetMechanics,
     adjust,
-    chipped,
     complete_chapter,
-    counter_effect,
-    dice_event,
     render_counters,
-    require_dice_slot,
     require_sheet,
 )
 from aidm.state.actions import require_actor_here, roll_pool
 from aidm.state.entities import PLAYER_ID, ContentSlug, Counter, Entity, EntityId, Frozen, Slug
-from aidm.state.facts import Fact, entity_fact
+from aidm.state.facts import DiceEvent, EventBadge, Fact, MechanicEvent, entity_fact
 from aidm.state.model import Game
-from aidm.state.play import EventBadge, MechanicEvent, PendingDecision
+from aidm.state.play import PendingDecision
 
 
 @dataclass(frozen=True, slots=True)
@@ -208,37 +204,47 @@ def resolve_question(
     chance, risk, facts_rolled = _pair(action, rng)
     facts.extend(facts_rolled)
 
-    outcome = outcome_for(chance, risk)
-    facts.append(
-        entity_fact(
-            actor,
-            "question_answered",
-            f"{action.question} -> {outcome}",
-            {
-                "question": action.question,
-                "outcome": outcome,
-                "chance": chance,
-                "risk": risk,
-                "position": action.position,
-                "edge": action.edge,
-            },
-        )
-    )
+    outcome = outcome_for(chance.kept, risk.kept)
+    answered_at = len(facts)
+    facts.append(entity_fact(actor, "question_answered", f"{action.question} -> {outcome}"))
+    effects: tuple[str, ...] = ()
     if opponent is not None:
-        exchange = _strike(draft, mechanics, actor, opponent, outcome)
+        exchange, effects = _absorbed(_strike(draft, mechanics, actor, opponent, outcome))
         facts.extend(exchange)
         # The pools are refilled the moment a side hits 0, so only the fact says the conflict ended.
         if not any(fact.kind == "conflict_lost" for fact in exchange):
             draft.pending = PendingDecision(
                 kind="conflict", prompt=conflict_prompt(actor, opponent), options=(), payload={}
             )
-    elif chance == risk:
+    elif chance.kept == risk.kept:
         # Keep pacing tallies from the Narrator and exclude conflict exchanges.
         mechanics.twist.current += 1
         if _shortfall(mechanics.twist) == 0:
             mechanics.twist.current = 0
             facts.extend(_twist(draft, actor, rng, twists))
+    # The question is director-authored and names unrevealed canon even on a "no": never shown.
+    oracle = MechanicEvent(
+        title="Oracle",
+        badges=_badges(action),
+        dice=(chance, risk),
+        outcome=outcome,
+        effects=effects,
+    )
+    facts[answered_at] = facts[answered_at].model_copy(update={"event": oracle})
     return tuple(facts)
+
+
+def _badges(action: Question) -> tuple[EventBadge, ...]:
+    position = EventBadge(label="Position", value=action.position.capitalize())
+    if not action.edge:
+        return (position,)
+    return (position, EventBadge(label="Edge", value=action.edge))
+
+
+def _absorbed(exchange: list[Fact]) -> tuple[list[Fact], tuple[str, ...]]:
+    """The exchange reads as lines inside the Oracle card, so it shows no cards of its own."""
+    lines = tuple(f.event.title for f in exchange if f.told and f.event is not None)
+    return [f.model_copy(update={"event": None}) for f in exchange], lines
 
 
 def _shortfall(pool: Counter) -> int:
@@ -256,7 +262,7 @@ def apply_restore_luck(draft: Game, actor_id: EntityId) -> list[Fact]:
     # Already full is a quiet no-op: `adjust` writes no fact for a zero delta.
     return [
         *facts,
-        *chipped(adjust(actor, "luck", luck, refill, "the conflict is behind them"), "favorite"),
+        *adjust(actor, "luck", luck, refill, "the conflict is behind them", "favorite"),
     ]
 
 
@@ -268,16 +274,25 @@ def _twist(
     draft: Game, actor: Entity, rng: Random, twists: tuple[tuple[str, str], ...]
 ) -> list[Fact]:
     """The SRD's table is rolled here so the dice trace; the Director only reads the pairing."""
-    subject_die, subject_fact = roll_pool((RULES.die_face,), "twist — subject", rng, slot="subject")
-    action_die, action_fact = roll_pool((RULES.die_face,), "twist — action", rng, slot="action")
-    subject, action = twist_pairing(subject_die, action_die, twists)
+    face = (RULES.die_face,)
+    subject_die, subject_fact = roll_pool(face, "twist — subject", rng, label="Subject")
+    action_die, action_fact = roll_pool(face, "twist — action", rng, label="Action")
+    subject, action = twist_pairing(subject_die.kept, action_die.kept, twists)
     draft.world.pending_notes = (*draft.world.pending_notes, twist_note(subject, action))
     # Echo the unnamed SRD intrusion in the call that rolled it without adding canon.
     due = entity_fact(
         actor,
         "twist_due",
         f"a twist interrupts the scene: {subject} / {action}",
-        {"subject": subject, "action": action},
+        event=MechanicEvent(
+            title="Twist",
+            badges=(
+                EventBadge(label="Subject", value=subject),
+                EventBadge(label="Action", value=action),
+            ),
+            dice=(subject_die, action_die),
+            icon="bolt",
+        ),
     )
     return [subject_fact, action_fact, due]
 
@@ -288,15 +303,18 @@ def _strike(
     harm = HARM[outcome]
     hit, striker = (opponent, actor) if harm > 0 else (actor, opponent)
     luck = require_sheet(mechanics.sheets, hit).luck
-    facts = adjust(hit, "luck", luck, -abs(harm), f"{striker.name} gets the better of the exchange")
+    why = f"{striker.name} gets the better of the exchange"
+    facts = adjust(hit, "luck", luck, -abs(harm), why, "favorite")
     if luck.current == 0:
         draft.world.pending_notes = (*draft.world.pending_notes, defeat_note(hit.name))
-        facts.append(entity_fact(hit, "conflict_lost", f"{hit.name} is out of luck", {}))
+        lost = f"{hit.name} is out of luck"
+        card = MechanicEvent(title=lost, icon="favorite")
+        facts.append(entity_fact(hit, "conflict_lost", lost, event=card))
         # SRD: luck resets after conflicts, and a side at 0 is the only end the engine can see.
         for side in (hit, striker):
             pool = require_sheet(mechanics.sheets, side).luck
             refill = _shortfall(pool)
-            facts.extend(adjust(side, "luck", pool, refill, "the conflict is over"))
+            facts.extend(adjust(side, "luck", pool, refill, "the conflict is over", "favorite"))
     return facts
 
 
@@ -313,64 +331,15 @@ def _refuse_unless_ready(actor: Entity, mechanics: Mechanics, opponent: Entity |
             )
 
 
-def _pair(action: Question, rng: Random) -> tuple[int, int, list[Fact]]:
+def _pair(action: Question, rng: Random) -> tuple[DiceEvent, DiceEvent, list[Fact]]:
     """One extra die at most, and only for the side the judged position favours."""
     face = RULES.die_face
     chance_faces = (face, face) if action.position == "advantage" else (face,)
     risk_faces = (face, face) if action.position == "disadvantage" else (face,)
-    chance, chance_fact = roll_pool(chance_faces, f"{action.question} — chance", rng, slot="chance")
-    risk, risk_fact = roll_pool(risk_faces, f"{action.question} — risk", rng, slot="risk")
+    asked = action.question
+    chance, chance_fact = roll_pool(chance_faces, f"{asked} — chance", rng, label="Chance")
+    risk, risk_fact = roll_pool(risk_faces, f"{asked} — risk", rng, label="Risk")
     return chance, risk, [chance_fact, risk_fact]
-
-
-def question_events(facts: tuple[Fact, ...]) -> tuple[MechanicEvent, ...]:
-    answered = next((fact for fact in facts if fact.kind == "question_answered"), None)
-    if answered is None:
-        raise ValueError("no 'question_answered' fact anchors this call")
-    if answered.narrator is None:
-        return ()
-    badges = [EventBadge(label="Position", value=str(answered.data["position"]).capitalize())]
-    edge = str(answered.data["edge"])
-    if edge:
-        badges.append(EventBadge(label="Edge", value=edge))
-    # Kept in fact order, never regrouped by kind: that order is the story of the exchange.
-    effects = [
-        counter_effect(fact) if fact.kind == "counter_changed" else fact.narrator
-        for fact in facts
-        if fact.narrator is not None and fact.kind in ("counter_changed", "conflict_lost")
-    ]
-    # The question is director-authored and names unrevealed canon even on a "no": never shown.
-    oracle = MechanicEvent(
-        source="roll_question",
-        title="Oracle",
-        badges=tuple(badges),
-        dice=(
-            dice_event("Chance", require_dice_slot(facts, "chance")),
-            dice_event("Risk", require_dice_slot(facts, "risk")),
-        ),
-        outcome=str(answered.data["outcome"]),
-        effects=tuple(effects),
-    )
-    twist = next((fact for fact in facts if fact.kind == "twist_due"), None)
-    if twist is None or twist.narrator is None:
-        return (oracle,)
-    return (oracle, _twist_event(twist, facts))
-
-
-def _twist_event(twist: Fact, facts: tuple[Fact, ...]) -> MechanicEvent:
-    return MechanicEvent(
-        source="roll_question",
-        title="Twist",
-        badges=(
-            EventBadge(label="Subject", value=str(twist.data["subject"])),
-            EventBadge(label="Action", value=str(twist.data["action"])),
-        ),
-        dice=(
-            dice_event("Subject", require_dice_slot(facts, "subject")),
-            dice_event("Action", require_dice_slot(facts, "action")),
-        ),
-        icon="bolt",
-    )
 
 
 GROWTH = (

@@ -6,7 +6,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from random import Random
 from re import fullmatch
-from typing import ClassVar, Literal, Protocol, Self
+from typing import ClassVar, Protocol, Self
 
 from pydantic import BaseModel, Field, JsonValue
 from pydantic_ai import ModelRetry, RunContext
@@ -26,19 +26,17 @@ from aidm.state.entities import (
     Mutable,
     Slug,
 )
-from aidm.state.facts import Chip, Fact, explained_fact, labeled
+from aidm.state.facts import (
+    Fact,
+    MechanicEvent,
+    explained_fact,
+    labeled,
+    player_events,
+)
 from aidm.state.model import Game, WorldState, draft_refusal
-from aidm.state.play import DiceEvent, MechanicEvent, OptionId, PendingDecision
+from aidm.state.play import OptionId, PendingDecision
 
 type EntityRenderer = Callable[[Entity], str]
-
-
-@dataclass(frozen=True, slots=True)
-class EventCause:
-    """What produced a batch of facts: a director tool call, or an answered decision's kind."""
-
-    origin: Literal["tool", "decision"]
-    name: str
 
 
 @dataclass(slots=True)
@@ -140,74 +138,6 @@ class Engine(ABC):
     def sheet_view(self, state: Game) -> tuple[tuple[str, str], ...]:
         """Ordered (label, value) pairs summarising the player's own sheet for the player."""
 
-    def player_events(
-        self, cause: EventCause, facts: tuple[Fact, ...]
-    ) -> tuple[MechanicEvent, ...]:
-        """Keep chip visibility at the narrator gate so unrevealed entities cannot bypass it."""
-        return tuple(
-            MechanicEvent(source=cause.name, title=fact.chip.title, icon=fact.chip.icon)
-            for fact in facts
-            if fact.chip is not None and fact.narrator is not None
-        )
-
-
-def dice_event(label: str, fact: Fact) -> DiceEvent:
-    """A `dice_rolled` fact's own data, typed: the whitelisted exception to the narrator gate."""
-    kept = fact.data["kept"]
-    if not isinstance(kept, int):
-        raise ValueError(f"a dice_rolled fact carries a non-int kept value: {kept!r}")
-    return DiceEvent(
-        label=label, faces=_ints(fact.data["faces"]), rolled=_ints(fact.data["rolled"]), kept=kept
-    )
-
-
-def counter_effect(fact: Fact) -> str:
-    """Built from a `counter_changed` fact's data, prefixed by owner unless it is the player."""
-    if fact.narrator is None:
-        raise ValueError("a counter_changed fact with no narrator text cannot become an effect")
-    key, delta, current, maximum = (
-        fact.data["counter"],
-        fact.data["delta"],
-        fact.data["current"],
-        fact.data["maximum"],
-    )
-    if not isinstance(delta, int) or not isinstance(current, int):
-        raise ValueError(f"a counter_changed fact carries non-int values: {fact.data!r}")
-    if maximum is not None and not isinstance(maximum, int):
-        raise ValueError(f"a counter_changed fact carries a non-int maximum: {maximum!r}")
-    entity_id = fact.data["entity_id"]
-    if not isinstance(entity_id, str):
-        raise ValueError(f"a counter_changed fact carries a non-str entity id: {entity_id!r}")
-    pool_text = str(current) if maximum is None else f"{current}/{maximum}"
-    line = f"{str(key).capitalize()} {delta:+d} -> {pool_text}"
-    return line if entity_id == PLAYER_ID else f"{fact.data['entity_name']}: {line}"
-
-
-def dice_by_slot(facts: Sequence[Fact], slot: str) -> Fact | None:
-    return next(
-        (fact for fact in facts if fact.kind == "dice_rolled" and fact.data.get("slot") == slot),
-        None,
-    )
-
-
-def require_dice_slot(facts: Sequence[Fact], slot: str) -> Fact:
-    """The same lookup for a slot a resolver call always rolls, so a miss is a bug, not a case."""
-    found = dice_by_slot(facts, slot)
-    if found is None:
-        raise ValueError(f"no dice_rolled fact carries slot {slot!r}")
-    return found
-
-
-def _ints(value: JsonValue) -> tuple[int, ...]:
-    if not isinstance(value, list):
-        raise ValueError(f"expected a list of dice, got {value!r}")
-    ints: list[int] = []
-    for item in value:
-        if not isinstance(item, int):
-            raise ValueError(f"expected dice values to be ints, got {value!r}")
-        ints.append(item)
-    return tuple(ints)
-
 
 def pool(counter: Counter) -> str:
     if counter.maximum is None:
@@ -215,44 +145,37 @@ def pool(counter: Counter) -> str:
     return f"{counter.current}/{counter.maximum}"
 
 
-def adjust(entity: Entity, key: str, counter: Counter, amount: int, why: str) -> list[Fact]:
+def adjust(
+    entity: Entity, key: str, counter: Counter, amount: int, why: str, icon: str = "casino"
+) -> list[Fact]:
     before = counter.current
     counter.current = counter.clamped(before + amount)
     landed = counter.current - before
     if landed == 0:
         return []
-    return [counter_fact(entity, key, counter, landed, why)]
+    return [counter_fact(entity, key, counter, landed, why, icon)]
 
 
-def spend(entity: Entity, key: str, counter: Counter, amount: int) -> list[Fact]:
+def spend(
+    entity: Entity, key: str, counter: Counter, amount: int, icon: str = "casino"
+) -> list[Fact]:
     if counter.current < amount:
         raise ValueError(
             f"{entity.name} holds {counter.current} {key}, so {amount} cannot be spent."
         )
     counter.current -= amount
-    return [counter_fact(entity, key, counter, -amount, f"spent {key}")]
+    return [counter_fact(entity, key, counter, -amount, f"spent {key}", icon)]
 
 
-def counter_fact(entity: Entity, key: str, counter: Counter, delta: int, why: str) -> Fact:
-    data = {
-        "counter": key,
-        "delta": delta,
-        "current": counter.current,
-        "maximum": counter.maximum,
-        "entity_name": entity.name,
-    }
+def counter_fact(
+    entity: Entity, key: str, counter: Counter, delta: int, why: str, icon: str = "casino"
+) -> Fact:
+    moved = f"{key.capitalize()} {delta:+d} -> {pool(counter)}"
+    title = moved if entity.id == PLAYER_ID else f"{entity.name}: {moved}"
     trace = f"{labeled(entity)} {key} {delta:+d} -> {pool(counter)}"
-    return explained_fact(entity, "counter_changed", trace, data, why)
-
-
-def chipped(facts: list[Fact], icon: str) -> list[Fact]:
-    """Chips a counter fact only where the narrator will read it, keeping the gate centralized."""
-    return [
-        f
-        if f.narrator is None
-        else f.model_copy(update={"chip": Chip(title=counter_effect(f), icon=icon)})
-        for f in facts
-    ]
+    return explained_fact(
+        entity, "counter_changed", trace, why, event=MechanicEvent(title=title, icon=icon)
+    )
 
 
 def render_counters(counters: dict[Slug, Counter]) -> str:
@@ -307,14 +230,12 @@ def require_sheet[S](sheets: Mapping[EntityId, S], actor: Entity) -> S:
 
 def complete_chapter(draft: Game, ending: str) -> list[Fact]:
     SheetMechanics.of_game(draft).completed.current += 1
-    chip = Chip(title=ending, icon="auto_stories")
     return [
         Fact(
             kind="chapter_completed",
             trace=ending,
-            narrator=ending,
-            data={"ending": ending},
-            chip=chip,
+            told=True,
+            event=MechanicEvent(title=ending, icon="auto_stories"),
         )
     ]
 
@@ -358,8 +279,7 @@ def apply_tool_call(ctx: RunContext[DirectorContext], play: Play) -> str:
     already_pending = len(deps.draft.world.pending_notes)
     decided_before = deps.draft.pending
     landed = apply_to_draft(deps.engine, deps.draft, play, deps.rng)
-    cause = EventCause("tool", ctx.tool_name or "")
-    deps.log.landed(landed, deps.engine.player_events(cause, landed))
+    deps.log.landed(landed, player_events(landed))
     lines = [f"- {fact.trace}" for fact in landed]
     lines.extend(f"- {note}" for note in deps.draft.world.pending_notes[already_pending:])
     lines.extend(_reached(deps.draft, landed))
@@ -400,19 +320,17 @@ def _enumerated(
 
 def _seed_created(engine: Engine, draft: Game, facts: Sequence[Fact], rng: Random) -> None:
     for fact in facts:
-        created = fact.data.get("entity_id") if fact.kind == "entity_created" else None
-        if isinstance(created, str):
-            engine.seed(draft, draft.world.require(EntityId(created)), rng)
+        if fact.kind == "entity_created" and fact.entity_id is not None:
+            engine.seed(draft, draft.world.require(fact.entity_id), rng)
 
 
 def _reached(draft: Game, facts: Sequence[Fact]) -> list[str]:
     # The prompt was rendered before the discovery, so the instruction authored for it arrives here.
     lines: list[str] = []
     for fact in facts:
-        found = fact.data.get("entity_id") if fact.kind == "entity_discovered" else None
-        if not isinstance(found, str):
+        if fact.kind != "entity_discovered" or fact.entity_id is None:
             continue
-        detail = draft.world.require(EntityId(found)).detail
+        detail = draft.world.require(fact.entity_id).detail
         if detail is not None and detail.when_reached:
             lines.append(f"- {detail.when_reached}")
     return lines

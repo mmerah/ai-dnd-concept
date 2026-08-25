@@ -17,7 +17,6 @@ from aidm.engines.core import (
     AdvancementOffer,
     DirectorContext,
     Engine,
-    EventCause,
     ProposalBase,
     TurnRecord,
     apply_to_draft,
@@ -28,7 +27,7 @@ from aidm.engines.core import (
 from aidm.llm import build_agent
 from aidm.state import actions
 from aidm.state.entities import PLAYER_ID, EntityId, Slug
-from aidm.state.facts import Fact, narrator_evidence, narrator_lines
+from aidm.state.facts import Fact, narrator_evidence, narrator_lines, player_events
 from aidm.state.model import AdvanceThread, Game, draft_refusal
 from aidm.state.play import (
     Answer,
@@ -485,7 +484,7 @@ def _resume(
     if refused := draft_refusal(draft, lambda copy: apply_to_draft(engine, copy, play, Random(0))):
         raise ValueError(refused)
     landed = apply_to_draft(engine, draft, play, rng)
-    log.landed(landed, engine.player_events(EventCause("decision", pending.kind), landed))
+    log.landed(landed, player_events(landed))
     return landed
 
 

@@ -76,11 +76,14 @@ async def test_on_event_fires_once_per_visible_tool_in_resolver_order() -> None:
         state,
         "I take the map and listen.",
         director=director,
-        on_event=lambda event: fired.append(event.source),
+        on_event=lambda event: fired.append(event.title),
     )
 
-    assert fired == ["move", "add_trait"]
-    assert [event.source for event in result.state.history[-1].events] == ["move", "add_trait"]
+    assert fired == ["Took the vault map", "Kael gained Listening"]
+    assert [event.title for event in result.state.history[-1].events] == [
+        "Took the vault map",
+        "Kael gained Listening",
+    ]
 
 
 async def test_a_narrator_failure_leaves_history_and_events_untouched() -> None:
@@ -104,10 +107,10 @@ async def test_a_narrator_failure_leaves_history_and_events_untouched() -> None:
             "I take the map.",
             director=director,
             narrator=FunctionModel(boom),
-            on_event=lambda event: fired.append(event.source),
+            on_event=lambda event: fired.append(event.title),
         )
 
-    assert fired == ["move"]
+    assert fired == ["Took the vault map"]
     assert state.history == ()
 
 
@@ -131,10 +134,13 @@ async def test_the_engine_rolls_the_outcome_the_facts_then_record() -> None:
         rng=Random(2),
     )
 
-    chance, risk = (fact.data["kept"] for fact in result.turn.facts if fact.kind == "dice_rolled")
-    assert isinstance(chance, int) and isinstance(risk, int)
     answer = next(fact for fact in result.turn.facts if fact.kind == "question_answered")
-    assert answer.data["outcome"] == outcome_for(chance, risk)
+    assert answer.event is not None
+    chance, risk = answer.event.dice
+    rolled = [fact.trace for fact in result.turn.facts if fact.kind == "dice_rolled"]
+    for die, trace in zip(answer.event.dice, rolled, strict=True):
+        assert trace.endswith(f"-> {die.kept}")
+    assert answer.event.outcome == outcome_for(chance.kept, risk.kept)
     engine.validate(result.state)
 
 

@@ -23,6 +23,7 @@ from aidm.engines.loner3e.rules import (
     twist_table,
 )
 from aidm.state.entities import PLAYER_ID, Counter, Entity, EntityId
+from aidm.state.facts import EventBadge, player_events
 from aidm.state.play import PendingDecision
 
 TWISTS = twist_table(Loner3eEngine().packs, SRD_PACK)
@@ -98,13 +99,12 @@ def test_the_judged_position_is_what_reaches_the_dice_and_the_record() -> None:
 
     facts = resolve_question(state.draft(), action, Random(1), TWISTS)
 
-    (answered,) = [fact for fact in facts if fact.kind == "question_answered"]
-    assert (answered.data["position"], answered.data["edge"]) == (
-        "disadvantage",
-        "Never Walks Away",
+    (oracle,) = player_events(facts)
+    assert oracle.badges == (
+        EventBadge(label="Position", value="Disadvantage"),
+        EventBadge(label="Edge", value="Never Walks Away"),
     )
-    (risk,) = [fact for fact in facts if str(fact.data.get("reason", "")).endswith("risk")]
-    assert risk.data["faces"] == [6, 6]
+    assert oracle.dice[1].faces == (6, 6)
 
 
 def test_a_tie_ticks_the_twist_and_the_third_tie_calls_one() -> None:
@@ -118,14 +118,15 @@ def test_a_tie_ticks_the_twist_and_the_third_tie_calls_one() -> None:
     for seed in range(200):
         draft = primed.draft()
         facts = resolve_question(draft, action, Random(seed), TWISTS)
-        (answered,) = [fact for fact in facts if fact.kind == "question_answered"]
-        if answered.data["chance"] == answered.data["risk"]:
+        if any(fact.kind == "twist_due" for fact in facts):
             break
     else:
         raise AssertionError("no seed under 200 tied the dice")
 
-    (due,) = [fact for fact in facts if fact.kind == "twist_due"]
-    rolled = twist_note(str(due.data["subject"]), str(due.data["action"]))
+    _, twist = player_events(facts)
+    subject = next(badge.value for badge in twist.badges if badge.label == "Subject")
+    action_name = next(badge.value for badge in twist.badges if badge.label == "Action")
+    rolled = twist_note(subject, action_name)
     assert Mechanics.of_game(draft).twist.current == 0
     assert rolled in draft.world.pending_notes
 
@@ -138,8 +139,8 @@ def test_a_conflict_exchange_moves_luck_off_whichever_side_lost_it() -> None:
     for seed in range(200):
         draft = state.draft()
         facts = resolve_question(draft, _duel(), Random(seed), TWISTS)
-        answered = next(fact for fact in facts if fact.kind == "question_answered")
-        outcome = str(answered.data["outcome"])
+        (oracle,) = player_events(facts)
+        outcome = oracle.outcome
         sheets = Mechanics.of_game(draft).sheets
         harm = HARM[outcome]
         loser = FOE if harm > 0 else PLAYER_ID
@@ -160,8 +161,8 @@ def test_luck_running_out_ends_the_conflict_and_resets_both_pools() -> None:
     for seed in range(200):
         draft = hurt.draft()
         facts = resolve_question(draft, _duel(), Random(seed), TWISTS)
-        answered = next(fact for fact in facts if fact.kind == "question_answered")
-        outcome = str(answered.data["outcome"])
+        (oracle,) = player_events(facts)
+        outcome = oracle.outcome
         if HARM[outcome] > 0:
             break
     else:

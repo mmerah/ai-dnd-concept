@@ -339,7 +339,6 @@
       ],
       "events": [
         {
-          "source": "move",
           "title": "Took the vault map",
           "badges": [],
           "dice": [],
@@ -348,7 +347,6 @@
           "icon": "back_hand"
         },
         {
-          "source": "roll_question",
           "title": "Oracle",
           "badges": [
             {
@@ -389,7 +387,6 @@
           "icon": "casino"
         },
         {
-          "source": "add_trait",
           "title": "Kael gained Listening",
           "badges": [],
           "dice": [],

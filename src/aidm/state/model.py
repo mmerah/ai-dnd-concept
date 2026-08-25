@@ -19,7 +19,7 @@ from aidm.state.entities import (
     kind_word,
     require_unique,
 )
-from aidm.state.facts import Chip, Fact, entity_fact, labeled
+from aidm.state.facts import Fact, MechanicEvent, entity_fact, labeled
 from aidm.state.play import Exchange, PendingDecision
 
 ThreadStatus = Literal["active", "resolved", "dormant"]
@@ -222,34 +222,20 @@ class Game:
             raise ValueError(f"entity id {entity.id!r} already exists")
         self.world.entities.append(entity)
         summary = f"new {kind_word(entity.kind)}: {entity.name}[{entity.id}]"
-        return entity_fact(
-            entity, "entity_created", summary, {"kind": entity.kind, "name": entity.name}
-        )
+        return entity_fact(entity, "entity_created", summary)
 
     def reveal(self, entity: Entity) -> list[Fact]:
-        """Leave chips to the containing action or the standalone reveal resolver."""
+        """Leave cards to the containing action or the standalone reveal resolver."""
         if entity.known:
             return []
         entity.known = True
         summary = f"learned of {labeled(entity)}"
-        return [entity_fact(entity, "entity_discovered", summary, {"name": entity.name})]
+        return [entity_fact(entity, "entity_discovered", summary)]
 
     def move(self, entity: Entity, destination: Entity) -> Fact:
         entity.parent_id = destination.id
-        trace, chip = _move_summary(entity, destination)
-        return entity_fact(
-            entity,
-            "entity_moved",
-            trace,
-            {
-                "entity_name": entity.name,
-                "entity_kind": entity.kind,
-                "to_id": destination.id,
-                "to_name": destination.name,
-                "to_kind": destination.kind,
-            },
-            chip=chip,
-        )
+        trace, card = _move_summary(entity, destination)
+        return entity_fact(entity, "entity_moved", trace, event=card)
 
 
 def draft_refusal(
@@ -271,26 +257,26 @@ def _revalidated[M: Mutable](model: M) -> M:
     return type(model).model_validate(model.model_dump(round_trip=True))
 
 
-def _move_summary(entity: Entity, destination: Entity) -> tuple[str, Chip]:
-    """Trace (ids, for the Director) and chip (plain names, for the player), from one branch."""
+def _move_summary(entity: Entity, destination: Entity) -> tuple[str, MechanicEvent]:
+    """Trace (ids, for the Director) and card (plain names, for the player), from one branch."""
     icon = "directions_walk"
     if entity.kind == "actor":
         return (
             f"{labeled(entity)} moved to {labeled(destination)}",
-            Chip(title=f"{entity.name} moved to {destination.name}", icon=icon),
+            MechanicEvent(title=f"{entity.name} moved to {destination.name}", icon=icon),
         )
     if destination.id == PLAYER_ID:
         return (
             f"{labeled(destination)} took {labeled(entity)}",
-            Chip(title=f"Took {entity.name}", icon="back_hand"),
+            MechanicEvent(title=f"Took {entity.name}", icon="back_hand"),
         )
     if destination.kind == "actor":
         # The giver is always the player: an item only ever moves to an actor by being handed over.
         return (
             f"the player gave {labeled(entity)} to {labeled(destination)}",
-            Chip(title=f"Gave {entity.name} to {destination.name}", icon=icon),
+            MechanicEvent(title=f"Gave {entity.name} to {destination.name}", icon=icon),
         )
     return (
         f"the player left {labeled(entity)} at {labeled(destination)}",
-        Chip(title=f"Left {entity.name} at {destination.name}", icon=icon),
+        MechanicEvent(title=f"Left {entity.name} at {destination.name}", icon=icon),
     )

@@ -36,7 +36,7 @@ from aidm.engines.twentyfourxx.rules import (
 )
 from aidm.state.creation import Picks
 from aidm.state.entities import PLAYER_ID, EntityId
-from aidm.state.facts import Fact
+from aidm.state.facts import Fact, player_events
 from aidm.state.model import Game
 from aidm.state.play import Answer, DecisionOption, PendingDecision
 
@@ -166,7 +166,8 @@ def test_a_job_raises_one_skill_a_step_and_pays_rolled_credits() -> None:
     assert sheet.skills["Tracking"] == 10
     assert sheet.jobs.current == before.jobs.current + 1
     (dice_fact,) = [fact for fact in facts if fact.kind == "dice_rolled"]
-    assert sheet.credits.current - before.credits.current == dice_fact.data["kept"]
+    paid = sheet.credits.current - before.credits.current
+    assert dice_fact.trace.endswith(f"-> {paid}")
 
     take_new = Advance(skill="Lockpicking", why="the job called for it")
     draft = ready.draft()
@@ -236,14 +237,9 @@ def test_a_tested_bad_luck_risk_that_lands_leaves_a_note_for_the_next_turn() -> 
 
     draft = state.draft()
     facts = resolve_attempt(draft, action, Random(2))
-    (bad_luck_roll,) = [
-        fact
-        for fact in facts
-        if fact.kind == "dice_rolled" and fact.data["reason"] == "bad luck — running out of oil"
-    ]
-    kept = bad_luck_roll.data["kept"]
-    assert isinstance(kept, int)
-    assert 1 <= kept <= 4
+    (card,) = player_events(facts)
+    luck = next(die for die in card.dice if die.label == "Luck")
+    assert 1 <= luck.kept <= 4
     assert len(draft.world.pending_notes) == 1
     assert any(fact.kind == "luck_tested" for fact in facts)
 
@@ -259,11 +255,11 @@ def test_a_standalone_luck_test_needs_no_attempt_and_only_bad_luck_leaves_a_note
 
     draft = state.draft()
     trouble = resolve_luck_test(draft, action, Random(2))
-    assert _tested(trouble).data["trouble"] is True
+    assert _tested(trouble).trace.endswith(": trouble")
     assert len(draft.world.pending_notes) == 1
 
     signs = resolve_luck_test(state.draft(), action, Random(0))
-    assert _tested(signs).data["trouble"] is False
+    assert _tested(signs).trace.endswith(": signs of it")
 
     draft = state.draft()
     clear = resolve_luck_test(draft, action, Random(5))
@@ -343,7 +339,7 @@ def test_proceeding_rolls_the_frozen_attempt_and_a_hit_hands_back_the_defence() 
     facts = engine.resume(draft, staked, "proceed", Random(HIT))
 
     (resolved,) = [fact for fact in facts if fact.kind == "attempt_resolved"]
-    assert resolved.data["outcome"] == "disaster"
+    assert resolved.trace.endswith("-> disaster")
     decision = _waiting(draft)
     assert decision.kind == "defence"
     assert [option.id for option in decision.options] == ["lantern", "take-it"]
@@ -371,7 +367,7 @@ def test_taking_the_hit_records_it_landing_in_full() -> None:
     (landed,) = engine.resume(draft, decision, "take-it", Random(0))
 
     assert landed.kind == "defence_taken"
-    assert landed.narrator is not None
+    assert landed.told
     assert draft.world.require(LANTERN).trait("broken") is None
     assert draft.pending is None
 
@@ -383,7 +379,7 @@ def test_an_npcs_own_disaster_hands_the_player_nothing() -> None:
     facts = resolve_attempt(draft, Attempt(actor_id=MARA, goal="Mara shoulders it"), Random(HIT))
 
     (resolved,) = [fact for fact in facts if fact.kind == "attempt_resolved"]
-    assert resolved.data["outcome"] == "disaster"
+    assert resolved.trace.endswith("-> disaster")
     assert draft.pending is None
 
 

@@ -9,7 +9,8 @@ from nicegui import ui
 
 from aidm.app.runtime import GameSession
 from aidm.state.entities import PLAYER_ID, EntityId
-from aidm.state.play import Answer, DecisionOption, DiceEvent, MechanicEvent
+from aidm.state.facts import DiceEvent, MechanicEvent
+from aidm.state.play import Answer, DecisionOption
 from aidm.turn.context import player_scene
 from aidm.turn.run import TurnStep
 

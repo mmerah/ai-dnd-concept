@@ -3,108 +3,104 @@
     {
       "kind": "entity_discovered",
       "trace": "learned of the item the vault map[vault_map]",
-      "narrator": "learned of the item the vault map[vault_map]",
-      "data": {
-        "entity_id": "vault_map",
-        "name": "the vault map"
-      },
-      "chip": null
+      "told": true,
+      "entity_id": "vault_map",
+      "event": null
     },
     {
       "kind": "entity_moved",
       "trace": "the player Kael[player] took the item the vault map[vault_map]",
-      "narrator": "the player Kael[player] took the item the vault map[vault_map]",
-      "data": {
-        "entity_id": "vault_map",
-        "entity_name": "the vault map",
-        "entity_kind": "item",
-        "to_id": "player",
-        "to_name": "Kael",
-        "to_kind": "actor"
-      },
-      "chip": {
+      "told": true,
+      "entity_id": "vault_map",
+      "event": {
         "title": "Took the vault map",
+        "badges": [],
+        "dice": [],
+        "outcome": "",
+        "effects": [],
         "icon": "back_hand"
       }
     },
     {
       "kind": "dice_rolled",
       "trace": "Listen at the vault door without being heard — Stealth: d10+d6 [8, 5] -> 8",
-      "narrator": null,
-      "data": {
-        "faces": [
-          10,
-          6
-        ],
-        "rolled": [
-          8,
-          5
-        ],
-        "kept": 8,
-        "reason": "Listen at the vault door without being heard — Stealth",
-        "slot": "pool"
-      },
-      "chip": null
+      "told": false,
+      "entity_id": null,
+      "event": null
     },
     {
       "kind": "attempt_resolved",
       "trace": "Listen at the vault door without being heard -> success",
-      "narrator": "Listen at the vault door without being heard -> success",
-      "data": {
-        "entity_id": "player",
-        "goal": "Listen at the vault door without being heard",
-        "outcome": "success",
-        "kept": 8,
-        "skill": "Stealth",
-        "faces": [
-          10,
-          6
+      "told": true,
+      "entity_id": "player",
+      "event": {
+        "title": "Attempt",
+        "badges": [
+          {
+            "label": "Skill",
+            "value": "Stealth"
+          },
+          {
+            "label": "Help",
+            "value": "d6"
+          }
         ],
-        "helper": null,
-        "hindered": false
-      },
-      "chip": null
+        "dice": [
+          {
+            "label": "Pool",
+            "faces": [
+              10,
+              6
+            ],
+            "rolled": [
+              8,
+              5
+            ],
+            "kept": 8
+          },
+          {
+            "label": "Luck",
+            "faces": [
+              6
+            ],
+            "rolled": [
+              4
+            ],
+            "kept": 4
+          }
+        ],
+        "outcome": "success",
+        "effects": [
+          "bad luck — something behind the door is already listening back: signs of it"
+        ],
+        "icon": "casino"
+      }
     },
     {
       "kind": "dice_rolled",
       "trace": "bad luck — something behind the door is already listening back: 1d6 [4] -> 4",
-      "narrator": null,
-      "data": {
-        "faces": [
-          6
-        ],
-        "rolled": [
-          4
-        ],
-        "kept": 4,
-        "reason": "bad luck — something behind the door is already listening back",
-        "slot": "luck"
-      },
-      "chip": null
+      "told": false,
+      "entity_id": null,
+      "event": null
     },
     {
       "kind": "luck_tested",
       "trace": "bad luck — something behind the door is already listening back: signs of it",
-      "narrator": "bad luck — something behind the door is already listening back: signs of it",
-      "data": {
-        "entity_id": "player",
-        "subject": "something behind the door is already listening back",
-        "trouble": false
-      },
-      "chip": null
+      "told": true,
+      "entity_id": "player",
+      "event": null
     },
     {
       "kind": "trait_added",
       "trace": "the player Kael[player] gained the trait Listening[listening] — (condition) Listening for the next shift of weight behind the door.",
-      "narrator": "the player Kael[player] gained the trait Listening[listening] — (condition) Listening for the next shift of weight behind the door.",
-      "data": {
-        "entity_id": "player",
-        "trait_id": "listening",
-        "entity_name": "Kael",
-        "trait_name": "Listening"
-      },
-      "chip": {
+      "told": true,
+      "entity_id": "player",
+      "event": {
         "title": "Kael gained Listening",
+        "badges": [],
+        "dice": [],
+        "outcome": "",
+        "effects": [],
         "icon": "add_circle"
       }
     }

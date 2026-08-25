@@ -2,7 +2,7 @@ from collections.abc import Callable, Iterable, Sequence
 from dataclasses import dataclass, field
 from pathlib import Path
 
-from pydantic import Field, JsonValue, ValidationError
+from pydantic import Field, ValidationError
 from pydantic_ai import Agent, ModelRetry, RunContext, ToolOutput, UsageLimits
 from pydantic_ai.messages import ModelMessage
 from pydantic_ai.toolsets import FunctionToolset
@@ -556,21 +556,19 @@ def _added_exit(draft: Game, link: ExitLink) -> Fact:
     if here.exit_to(link.to) is not None:
         raise ValueError(f"a way already leads from {here.id!r} to {link.to!r}")
     here.exits.append(Exit(to=link.to, locked=link.locked))
-    return _materialized(
-        f"way from {here.id} to {link.to}", {"location_id": here.id, "to_id": link.to}
-    )
+    return _materialized(f"way from {here.id} to {link.to}")
 
 
 def _opened(draft: Game, thread: Thread) -> Fact:
     if draft.world.thread(thread.id) is not None:
         raise ValueError(f"a thread {thread.id!r} already exists")
     draft.world.threads.append(thread.model_copy(deep=True))
-    return _materialized(f"thread {thread.id}", {"thread_id": thread.id})
+    return _materialized(f"thread {thread.id}")
 
 
-def _materialized(what: str, data: dict[str, JsonValue]) -> Fact:
+def _materialized(what: str) -> Fact:
     """Private canon coming into being is not a fictional event, so it narrates nothing."""
-    return Fact(kind="canon_materialized", trace=f"materialized {what}", data=data)
+    return Fact(kind="canon_materialized", trace=f"materialized {what}")
 
 
 @dataclass

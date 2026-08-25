@@ -3,93 +3,95 @@
     {
       "kind": "entity_discovered",
       "trace": "learned of the item the vault map[vault_map]",
-      "narrator": "learned of the item the vault map[vault_map]",
-      "data": {
-        "entity_id": "vault_map",
-        "name": "the vault map"
-      },
-      "chip": null
+      "told": true,
+      "entity_id": "vault_map",
+      "event": null
     },
     {
       "kind": "entity_moved",
       "trace": "the player Kael[player] took the item the vault map[vault_map]",
-      "narrator": "the player Kael[player] took the item the vault map[vault_map]",
-      "data": {
-        "entity_id": "vault_map",
-        "entity_name": "the vault map",
-        "entity_kind": "item",
-        "to_id": "player",
-        "to_name": "Kael",
-        "to_kind": "actor"
-      },
-      "chip": {
+      "told": true,
+      "entity_id": "vault_map",
+      "event": {
         "title": "Took the vault map",
+        "badges": [],
+        "dice": [],
+        "outcome": "",
+        "effects": [],
         "icon": "back_hand"
       }
     },
     {
       "kind": "dice_rolled",
       "trace": "Does he hear what waits past the vault door without being heard? — chance: 2d6 [4, 5] -> 5",
-      "narrator": null,
-      "data": {
-        "faces": [
-          6,
-          6
-        ],
-        "rolled": [
-          4,
-          5
-        ],
-        "kept": 5,
-        "reason": "Does he hear what waits past the vault door without being heard? — chance",
-        "slot": "chance"
-      },
-      "chip": null
+      "told": false,
+      "entity_id": null,
+      "event": null
     },
     {
       "kind": "dice_rolled",
       "trace": "Does he hear what waits past the vault door without being heard? — risk: 1d6 [4] -> 4",
-      "narrator": null,
-      "data": {
-        "faces": [
-          6
-        ],
-        "rolled": [
-          4
-        ],
-        "kept": 4,
-        "reason": "Does he hear what waits past the vault door without being heard? — risk",
-        "slot": "risk"
-      },
-      "chip": null
+      "told": false,
+      "entity_id": null,
+      "event": null
     },
     {
       "kind": "question_answered",
       "trace": "Does he hear what waits past the vault door without being heard? -> yes-and",
-      "narrator": "Does he hear what waits past the vault door without being heard? -> yes-and",
-      "data": {
-        "entity_id": "player",
-        "question": "Does he hear what waits past the vault door without being heard?",
+      "told": true,
+      "entity_id": "player",
+      "event": {
+        "title": "Oracle",
+        "badges": [
+          {
+            "label": "Position",
+            "value": "Advantage"
+          },
+          {
+            "label": "Edge",
+            "value": "Quiet Hands"
+          }
+        ],
+        "dice": [
+          {
+            "label": "Chance",
+            "faces": [
+              6,
+              6
+            ],
+            "rolled": [
+              4,
+              5
+            ],
+            "kept": 5
+          },
+          {
+            "label": "Risk",
+            "faces": [
+              6
+            ],
+            "rolled": [
+              4
+            ],
+            "kept": 4
+          }
+        ],
         "outcome": "yes-and",
-        "chance": 5,
-        "risk": 4,
-        "position": "advantage",
-        "edge": "Quiet Hands"
-      },
-      "chip": null
+        "effects": [],
+        "icon": "casino"
+      }
     },
     {
       "kind": "trait_added",
       "trace": "the player Kael[player] gained the trait Listening[listening] — (condition) Listening for the next shift of weight behind the door.",
-      "narrator": "the player Kael[player] gained the trait Listening[listening] — (condition) Listening for the next shift of weight behind the door.",
-      "data": {
-        "entity_id": "player",
-        "trait_id": "listening",
-        "entity_name": "Kael",
-        "trait_name": "Listening"
-      },
-      "chip": {
+      "told": true,
+      "entity_id": "player",
+      "event": {
         "title": "Kael gained Listening",
+        "badges": [],
+        "dice": [],
+        "outcome": "",
+        "effects": [],
         "icon": "add_circle"
       }
     }

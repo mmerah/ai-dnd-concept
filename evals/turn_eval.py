@@ -129,9 +129,9 @@ def gained_a_trait(result: TurnResult, before: frozenset[str]) -> bool:
 
 
 def luck_moved(result: TurnResult) -> bool:
+    # The counter key sits between the actor label and the delta arrow in the trace.
     return any(
-        fact.kind == "counter_changed" and fact.data.get("counter") == "luck"
-        for fact in result.turn.facts
+        fact.kind == "counter_changed" and " luck " in fact.trace for fact in result.turn.facts
     )
 
 
@@ -146,7 +146,7 @@ def staked_before_rolling(result: TurnResult) -> bool:
     return (
         bool(history)
         and bool(history[0].decision)
-        and not any(event.source == "roll_attempt" for event in history[0].events)
+        and not any(event.title == "Attempt" for event in history[0].events)
     )
 
 
@@ -154,8 +154,9 @@ def unless_lost(holds: Callable[[TurnResult], bool]) -> Callable[[TurnResult], b
     """A lost roll fairly strands the climber below, so its consequences go unscored."""
 
     def check(result: TurnResult) -> bool:
-        outcomes = [fact.data.get("outcome") for fact in result.turn.facts]
-        return any(o is not None and o not in WON for o in outcomes) or holds(result)
+        # Empty outcome means the card carries none, so it cannot count as a loss.
+        outcomes = [fact.event.outcome for fact in result.turn.facts if fact.event is not None]
+        return any(o and o not in WON for o in outcomes) or holds(result)
 
     return check
 

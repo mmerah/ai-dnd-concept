@@ -15,8 +15,9 @@ from aidm.content.io import (
     read_scenarios,
     write_scenario,
 )
+from aidm.state.facts import EventBadge, MechanicEvent
 from aidm.state.model import Game
-from aidm.state.play import EventBadge, Exchange, MechanicEvent
+from aidm.state.play import Exchange
 
 
 def test_a_save_carries_every_field_the_played_game_holds() -> None:
@@ -33,7 +34,6 @@ def test_a_saved_games_exchange_events_round_trip(tmp_path: Path) -> None:
             lines=(),
             events=(
                 MechanicEvent(
-                    source="move",
                     title="the vault map moved to Kael",
                     badges=(EventBadge(label="Position", value="Neutral"),),
                 ),

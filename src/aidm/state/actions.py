@@ -1,10 +1,8 @@
 from collections.abc import Sequence
 from random import Random
 
-from pydantic import JsonValue
-
 from .entities import PLAYER_ID, Entity, EntityId, Exit, Slug, Trait, slug
-from .facts import Chip, Fact, entity_fact, labeled
+from .facts import DiceEvent, Fact, MechanicEvent, entity_fact, labeled
 from .model import AdvanceThread, Game
 
 
@@ -12,23 +10,18 @@ def _sentence(text: str) -> str:
     return text[:1].upper() + text[1:]
 
 
-def roll_pool(faces: Sequence[int], reason: str, rng: Random, *, slot: str) -> tuple[int, Fact]:
-    """Keeps the highest die; `slot` tags this roll for a projection, stable across resolvers."""
+def roll_pool(
+    faces: Sequence[int], reason: str, rng: Random, *, label: str
+) -> tuple[DiceEvent, Fact]:
+    """Keeps the highest die; `label` heads this pool on the card the roll will appear in."""
     if not faces:
         raise ValueError("a dice pool rolls at least one die")
     drawn = tuple(rng.randint(1, face) for face in faces)
     kept = max(drawn)
     shown = ", ".join(str(die) for die in drawn)
-    return kept, Fact(
-        kind="dice_rolled",
-        trace=f"{reason}: {_notation(faces)} [{shown}] -> {kept}",
-        data={
-            "faces": list(faces),
-            "rolled": list(drawn),
-            "kept": kept,
-            "reason": reason,
-            "slot": slot,
-        },
+    return (
+        DiceEvent(label=label, faces=tuple(faces), rolled=drawn, kept=kept),
+        Fact(kind="dice_rolled", trace=f"{reason}: {_notation(faces)} [{shown}] -> {kept}"),
     )
 
 
@@ -40,13 +33,13 @@ def _notation(faces: Sequence[int]) -> str:
 
 
 def reveal(draft: Game, entity_id: EntityId) -> list[Fact]:
-    """Give standalone reveals a chip; byproduct reveals remain chip-less."""
+    """Give standalone reveals a card; byproduct reveals remain card-less."""
     entity = draft.world.require(entity_id)
     facts = draft.reveal(entity)
     if not facts:
         return facts
-    chip = Chip(title=_sentence(f"{entity.name} discovered"), icon="visibility")
-    return [facts[0].model_copy(update={"chip": chip})]
+    card = MechanicEvent(title=_sentence(f"{entity.name} discovered"), icon="visibility")
+    return [facts[0].model_copy(update={"event": card})]
 
 
 def require_actor_here(state: Game, actor_id: EntityId) -> Entity:
@@ -105,7 +98,7 @@ def _move_actor(draft: Game, actor_id: EntityId, to_id: EntityId) -> list[Fact]:
             if member.parent_id != destination.id:
                 # The player's move already supplies the single travel card.
                 followed = draft.move(member, destination)
-                facts.append(followed.model_copy(update={"chip": None}))
+                facts.append(followed.model_copy(update={"event": None}))
         return facts
     actor = draft.world.require_kind(actor_id, "actor")
     if actor.parent_id != here and destination.id != here:
@@ -155,9 +148,8 @@ def add_trait(draft: Game, entity_id: EntityId, trait_id: Slug, text: str = "") 
     trace = f"{labeled(entity)} gained the trait {name}[{trait_id}]"
     if text:
         trace += f" — {text}"
-    data = {"trait_id": trait_id, "entity_name": entity.name, "trait_name": name}
-    chip = Chip(title=f"{entity.name} gained {name}", icon="add_circle")
-    return [*seen, entity_fact(entity, "trait_added", trace, data, chip=chip)]
+    card = MechanicEvent(title=f"{entity.name} gained {name}", icon="add_circle")
+    return [*seen, entity_fact(entity, "trait_added", trace, event=card)]
 
 
 def remove_trait(draft: Game, entity_id: EntityId, trait_id: Slug) -> list[Fact]:
@@ -170,9 +162,8 @@ def remove_trait(draft: Game, entity_id: EntityId, trait_id: Slug) -> list[Fact]
         )
     entity.traits.remove(held)
     trace = f"{labeled(entity)} lost the trait {held.name}[{held.id}]"
-    data = {"trait_id": trait_id, "entity_name": entity.name, "trait_name": held.name}
-    chip = Chip(title=f"{entity.name} lost {held.name}", icon="remove_circle")
-    return [*seen, entity_fact(entity, "trait_removed", trace, data, chip=chip)]
+    card = MechanicEvent(title=f"{entity.name} lost {held.name}", icon="remove_circle")
+    return [*seen, entity_fact(entity, "trait_removed", trace, event=card)]
 
 
 def unlock_exit(draft: Game, to_id: EntityId) -> list[Fact]:
@@ -188,15 +179,14 @@ def unlock_exit(draft: Game, to_id: EntityId) -> list[Fact]:
     back = there.exit_to(here.id)
     if back is not None:
         back.locked = False
-    chip = Chip(title=_sentence(f"{there.name} unlocked"), icon="lock_open")
+    card = MechanicEvent(title=_sentence(f"{there.name} unlocked"), icon="lock_open")
     return [
         entity_fact(
             here,
             "exit_unlocked",
             f"the way from {here.name}[{here.id}] to {there.name}[{there.id}] is unlocked",
-            {"to_id": to_id, "to_name": there.name},
             narrate=way.known,
-            chip=chip,
+            event=card,
         )
     ]
 
@@ -208,8 +198,8 @@ def join_party(draft: Game, actor_id: EntityId) -> list[Fact]:
     seen = draft.reveal(actor)
     draft.world.party.append(actor_id)
     trace = f"{labeled(actor)} travels with the player"
-    chip = Chip(title=f"{actor.name} joins your party", icon="group_add")
-    return [*seen, entity_fact(actor, "party_joined", trace, {"name": actor.name}, chip=chip)]
+    card = MechanicEvent(title=f"{actor.name} joins your party", icon="group_add")
+    return [*seen, entity_fact(actor, "party_joined", trace, event=card)]
 
 
 def leave_party(draft: Game, actor_id: EntityId) -> list[Fact]:
@@ -218,8 +208,8 @@ def leave_party(draft: Game, actor_id: EntityId) -> list[Fact]:
         raise ValueError(f"{actor.name} does not travel with the player")
     draft.world.party.remove(actor_id)
     trace = f"{labeled(actor)} no longer travels with the player"
-    chip = Chip(title=f"{actor.name} leaves your party", icon="group_remove")
-    return [entity_fact(actor, "party_left", trace, {"name": actor.name}, chip=chip)]
+    card = MechanicEvent(title=f"{actor.name} leaves your party", icon="group_remove")
+    return [entity_fact(actor, "party_left", trace, event=card)]
 
 
 def advance_thread(draft: Game, effect: AdvanceThread) -> list[Fact]:
@@ -242,19 +232,8 @@ def advance_thread(draft: Game, effect: AdvanceThread) -> list[Fact]:
     moved = f"thread {thread.title}[{thread.id}] — status {thread.status}"
     if thread.stage:
         moved += f", stage {thread.stage}"
-    data: dict[str, JsonValue] = {
-        "thread_id": thread.id,
-        "status": thread.status,
-        "stage": thread.stage,
-        "note": thread.note,
-    }
     if clock is not None:
         moved += f", clock {clock.current}/{clock.maximum}"
-        data |= {
-            "clock_current": clock.current,
-            "clock_maximum": clock.maximum,
-            "clock_filled": clock.current == clock.maximum,
-        }
     if thread.note:
         moved += f" — note: {thread.note}"
-    return [Fact(kind="thread_advanced", trace=moved, data=data)]
+    return [Fact(kind="thread_advanced", trace=moved)]

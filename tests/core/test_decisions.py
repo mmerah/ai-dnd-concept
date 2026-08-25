@@ -53,7 +53,7 @@ class Deciding(Loner3eEngine):
             Fact(
                 kind="defence_turned",
                 trace=f"{option_id} broke to turn the hit",
-                narrator="Something of yours gives way.",
+                told=True,
             ),
         )
 
@@ -64,7 +64,7 @@ def _hit(draft: Game, *, narrate: bool) -> tuple[Fact, ...]:
         Fact(
             kind="hit_taken",
             trace="the blow reaches the player",
-            narrator="The blade comes down." if narrate else None,
+            told=narrate,
         ),
     )
 

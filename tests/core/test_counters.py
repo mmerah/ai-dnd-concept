@@ -22,7 +22,8 @@ def test_adjust_clamps_to_the_counters_bounds_and_reports_only_a_real_move() -> 
     counter = Counter(current=0, maximum=5)
 
     (changed,) = adjust(KAEL, "stress", counter, 99, "the strain")
-    assert (changed.data["delta"], counter.current) == (5, 5)
+    assert changed.event is not None
+    assert (changed.event.title, counter.current) == ("Kael: Stress +5 -> 5/5", 5)
     assert adjust(KAEL, "stress", counter, 99, "the strain") == []
 
 
@@ -30,7 +31,8 @@ def test_spend_pays_the_pool_and_refuses_what_it_cannot_cover() -> None:
     counter = Counter(current=5, maximum=5)
 
     (spent,) = spend(KAEL, "stress", counter, 2)
-    assert (spent.data["current"], counter.current) == (3, 3)
+    assert spent.event is not None
+    assert (spent.event.title, counter.current) == ("Kael: Stress -2 -> 3/5", 3)
 
     with pytest.raises(ValueError, match="cannot be spent"):
         _ = spend(KAEL, "stress", counter, 4)

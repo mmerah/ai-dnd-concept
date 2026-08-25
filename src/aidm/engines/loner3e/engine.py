@@ -12,7 +12,6 @@ from aidm.engines.core import (
     CharacterCreation,
     DirectorContext,
     Engine,
-    EventCause,
     ProposalBase,
     actor_sheets,
     apply_tool_call,
@@ -34,7 +33,6 @@ from aidm.engines.loner3e.rules import (
     apply_complete_chapter,
     apply_restore_luck,
     describe_entity,
-    question_events,
     resolve_question,
     twist_table,
 )
@@ -50,7 +48,7 @@ from aidm.state.creation import (
 from aidm.state.entities import PLAYER_ID, Counter, EngineId, Entity, EntityId
 from aidm.state.facts import Fact, explained_fact
 from aidm.state.model import Game, WorldState
-from aidm.state.play import MechanicEvent, PendingDecision
+from aidm.state.play import PendingDecision
 
 type Twists = Callable[[Game], tuple[tuple[str, str], ...]]
 
@@ -124,7 +122,6 @@ def _gain(sheet: Sheet, subject: Entity, change: Change, why: str) -> Fact:
         subject,
         f"{change.kind}_gained",
         f"{subject.name} gained {change.kind} {change.tag}",
-        {"tag": change.tag},
         why,
         narrate=False,
     )
@@ -144,7 +141,6 @@ def _rewrite(sheet: Sheet, subject: Entity, change: Change, why: str) -> Fact:
         subject,
         "tag_rewritten",
         f"{subject.name} rewrote {old} as {new}",
-        {"was": old, "tag": new},
         why,
         narrate=False,
     )
@@ -261,10 +257,3 @@ class Loner3eEngine(Engine):
     def twists(self, state: Game) -> tuple[tuple[str, str], ...]:
         """The player's own table set: an NPC sheet is seeded with the default and never selects."""
         return twist_table(self.packs, Mechanics.of_game(state).sheets[PLAYER_ID].pack)
-
-    def player_events(
-        self, cause: EventCause, facts: tuple[Fact, ...]
-    ) -> tuple[MechanicEvent, ...]:
-        if cause == EventCause("tool", "roll_question"):
-            return question_events(facts)
-        return super().player_events(cause, facts)

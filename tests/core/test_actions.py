@@ -86,7 +86,7 @@ def test_a_party_member_travels_with_the_player() -> None:
     joined = actions.join_party(draft, MARA)
     assert _kinds(joined) == ["party_joined"]
     moved = actions.move(draft, PLAYER_ID, CLOISTER)
-    assert [fact.data["entity_id"] for fact in moved] == [PLAYER_ID, MARA]
+    assert [fact.entity_id for fact in moved] == [PLAYER_ID, MARA]
 
     left = actions.leave_party(draft, MARA)
     assert _kinds(left) == ["party_left"]
@@ -97,20 +97,23 @@ def test_inventory_actions_gate_on_position_and_carrying() -> None:
     draft = _draft()
 
     took = actions.move(draft, VAULT_MAP, PLAYER_ID)[1]
-    assert (took.data["entity_id"], took.data["to_id"]) == (VAULT_MAP, PLAYER_ID)
+    assert took.entity_id == VAULT_MAP
+    assert draft.world.require(VAULT_MAP).parent_id == PLAYER_ID
     with pytest.raises(ValueError, match="already carries"):
         _ = actions.move(draft, VAULT_MAP, PLAYER_ID)
     with pytest.raises(ValueError, match="player's own location"):
         _ = actions.move(draft, LANTERN, VAULT)
     (dropped,) = actions.move(draft, LANTERN, STUDY)
-    assert (dropped.data["entity_id"], dropped.data["to_kind"]) == (LANTERN, "location")
+    assert dropped.entity_id == LANTERN
+    assert draft.world.require(LANTERN).parent_id == STUDY
     (given,) = actions.move(draft, VAULT_MAP, MARA)
-    assert (given.data["entity_id"], given.data["to_id"]) == (VAULT_MAP, MARA)
+    assert given.entity_id == VAULT_MAP
     assert given.trace == "the player gave the item the vault map[vault_map] to the npc Mara[mara]"
 
     created, carried = actions.improvise(draft, "a rusty key")
-    assert created.data["name"] == "a rusty key"
-    assert carried.data["entity_id"] == created.data["entity_id"]
+    assert created.entity_id is not None
+    assert draft.world.require(created.entity_id).name == "a rusty key"
+    assert carried.entity_id == created.entity_id
 
     with pytest.raises(ValueError, match="not loose at the player's location"):
         _ = actions.move(draft, VAULT_MAP, PLAYER_ID)
@@ -124,7 +127,7 @@ def test_trait_changes_round_trip_and_refuse_what_the_entity_does_not_carry() ->
     draft = _draft()
 
     (added,) = actions.add_trait(draft, PLAYER_ID, "hunted", "watched")
-    assert added.data["trait_id"] == "hunted"
+    assert "[hunted]" in added.trace
     assert draft.player.trait("hunted") is not None
 
     assert _kinds(actions.remove_trait(draft, PLAYER_ID, "hunted")) == ["trait_removed"]
@@ -150,8 +153,9 @@ def test_a_tick_fills_the_threads_clock_and_stops_at_its_maximum() -> None:
     )
 
     for filled in (1, 2, 2):
-        moved = actions.advance_thread(draft, AdvanceThread(thread_id="ritual", tick=1))
-        assert moved[0].data["clock_current"] == filled
+        _ = actions.advance_thread(draft, AdvanceThread(thread_id="ritual", tick=1))
+        ritual = draft.world.thread("ritual")
+        assert ritual is not None and ritual.clock is not None and ritual.clock.current == filled
 
     (renoted,) = actions.advance_thread(
         draft, AdvanceThread(thread_id="ritual", status="resolved", note="the rite is complete")
