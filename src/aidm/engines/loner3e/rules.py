@@ -5,11 +5,10 @@ from typing import Literal, Self
 
 from pydantic import Field, model_validator
 
-from aidm.engines.core import (
-    ProposalBase,
+from aidm.engines.core import ProposalBase, adjust
+from aidm.engines.sheets import (
     SheetBase,
     SheetMechanics,
-    adjust,
     complete_chapter,
     render_counters,
     require_sheet,

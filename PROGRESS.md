@@ -131,4 +131,53 @@ Decisions taken inside the phase:
   `_added_exit` included.
 - `authoring.py` 713 -> 673 lines.
 
-## Phase 4 / 5 / 6 — NOT STARTED
+## Phase 4 — A sheet-shaped engine base — DONE (staged, uncommitted)
+
+- [x] 1. `src/aidm/engines/sheets.py` holds `SheetEngine[S: SheetBase]` with `check_overlay`,
+      `opening_mechanics`, `validate` and `seed` written once. Both engines are
+      `SheetEngine[Sheet]` with `sheet_type` beside `mechanics_type`; `Loner3eEngine.validate`
+      calls `super()` and keeps its pack check.
+- [x] 2. `Advancement.earned` is concrete in core (`SheetMechanics.of_game(state).completed`);
+      both overrides and the `@abstractmethod` gone.
+- [x] 3. The whole sheet family moved to `sheets.py`: `SheetBase`, `SheetMechanics`,
+      `complete_chapter`, `actor_sheets`, `check_sheets`, `require_sheet`, `render_counters`, and
+      `SheetAdvancement`, which is where the concrete `earned` went. `Advancement.earned` in core
+      stays abstract, so `grep -n Sheet src/aidm/engines/core.py` returns nothing and the flow is
+      one-way, `sheets -> core`. Both engine advancements subclass `SheetAdvancement`.
+- Suite: 259 passed, ruff clean, basedpyright 0 errors. No fixture regeneration needed.
+  `src/aidm` 8,389 -> 8,347 lines; `engines/core.py` 445 -> 415.
+
+Decisions taken inside the phase:
+
+- The counter helpers (`pool`, `counter_fact`, `adjust`, `spend`) stay in `core.py`: they are
+  written on an entity, not on a sheet, and `Advancement.resolve` is their caller.
+- `describe` did not move. The plan's rule is "identical modulo one named ClassVar", and the two
+  bodies differ by a second name too: each engine's own `describe_entity`. Moving it would trade
+  one 2-line method for a callable ClassVar in every engine.
+- `SheetEngine` narrows `Engine.mechanics_type`, which pyright reads as an invariant mutable
+  attribute. One narrow `reportIncompatibleVariableOverride` ignore, rather than making `Engine`
+  generic and spelling a type argument at ~30 call sites that do not care.
+- `seed` orders itself as the plan spelled out: the default sheet lands first, then
+  `advancement.ledger(...).current` is brought level with `completed` (skipped when an engine has
+  no advancement). `test_an_actor_seeded_after_an_adventure_is_not_owed_the_growth_they_missed`
+  pins it.
+
+Adversarial review pass (fable), on top of both phases:
+
+- It found one real regression and it was mine: the rewritten `_stub_author` left `apply_patch`'s
+  `_added_exit` branch with no test driving it. Fixed above.
+- The `core -> sheets -> core` cycle had a better answer than the deviation I took. Concrete
+  `earned` on core's `Advancement` was the only thing holding the vocabulary in `core.py`;
+  `SheetAdvancement` in `sheets.py` dissolves it, and both `rules.py` stop split-importing sheet
+  vocabulary from two modules.
+- Nothing deleted: every comment and docstring in the diff is a one-line why. `SheetAdvancement`'s
+  own docstring, added by the move, went — it restated its one-line body.
+- Rejected: refusing `grows=False` with an opening-slice brief. The combination authors an opening
+  of a world that will never grow, but the two form controls predate this work and the rule was not
+  asked for.
+- Deviations that stand: `describe` (differs by a second name, each engine's `describe_entity`,
+  which the plan's own rule refuses to move) and the `reportIncompatibleVariableOverride` ignore
+  (the alternatives are a generic `Engine` spelled at ~30 indifferent call sites, or a weaker
+  `of_game` engine-mismatch check).
+
+## Phase 5 / 6 — NOT STARTED

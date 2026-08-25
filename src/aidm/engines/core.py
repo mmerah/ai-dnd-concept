@@ -6,9 +6,9 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from random import Random
 from re import fullmatch
-from typing import ClassVar, Protocol, Self
+from typing import ClassVar, Protocol
 
-from pydantic import BaseModel, Field, JsonValue
+from pydantic import BaseModel, JsonValue
 from pydantic_ai import ModelRetry, RunContext
 from pydantic_ai.tools import ObjectJsonSchema, ToolDefinition, ToolFuncEither
 from pydantic_ai.toolsets import AbstractToolset, FunctionToolset
@@ -176,68 +176,6 @@ def counter_fact(
     return explained_fact(
         entity, "counter_changed", trace, why, event=MechanicEvent(title=title, icon=icon)
     )
-
-
-def render_counters(counters: dict[Slug, Counter]) -> str:
-    return ", ".join(f"{key} {pool(counters[key])}" for key in sorted(counters))
-
-
-class SheetBase(Mutable, ABC):
-    """One actor's mechanics, whatever this engine's rules make of them."""
-
-
-class SheetMechanics[S: SheetBase](Mutable):
-    sheets: dict[EntityId, S] = Field(default_factory=dict)
-    # How many chapters the fiction has closed, game-wide: what advancement is owed against.
-    completed: Counter = Counter(current=0)
-
-    @classmethod
-    def of_game(cls, state: Game) -> Self:
-        mechanics = state.mechanics
-        if not isinstance(mechanics, cls):
-            # Both engines name their model `Mechanics`, so only the module tells them apart.
-            raise ValueError(
-                f"the state carries {type(mechanics).__module__} mechanics, not {cls.__module__}"
-            )
-        return mechanics
-
-
-def actor_sheets[S: Mutable](
-    world: WorldState, player_rules: dict[str, JsonValue], sheet: type[S]
-) -> dict[EntityId, S]:
-    return {
-        entity.id: sheet.model_validate(player_rules if entity.id == PLAYER_ID else {})
-        for entity in world.of_kind("actor")
-    }
-
-
-def check_sheets(world: WorldState, sheets: Mapping[EntityId, object], engine: EngineId) -> None:
-    if PLAYER_ID not in sheets:
-        raise ValueError(f"the {engine} mechanics name no player")
-    actors = {entity.id for entity in world.of_kind("actor")}
-    if missing := sorted(actors - set(sheets)):
-        raise ValueError(f"actors carry no character sheet: {missing}")
-    if gone := sorted(set(sheets) - world.all_ids()):
-        raise ValueError(f"mechanics name actors the world does not hold: {gone}")
-
-
-def require_sheet[S](sheets: Mapping[EntityId, S], actor: Entity) -> S:
-    sheet = sheets.get(actor.id)
-    if sheet is None:
-        raise ValueError(f"{actor.name} has no character sheet")
-    return sheet
-
-
-def complete_chapter(draft: Game, ending: str) -> list[Fact]:
-    SheetMechanics.of_game(draft).completed.current += 1
-    return [
-        Fact(
-            kind="chapter_completed",
-            trace=ending,
-            told=True,
-            event=MechanicEvent(title=ending, icon="auto_stories"),
-        )
-    ]
 
 
 NOTHING_CHANGED = "- (nothing changed)"

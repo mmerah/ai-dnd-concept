@@ -2,20 +2,15 @@ from collections.abc import Callable, Mapping
 from pathlib import Path
 from random import Random
 
-from pydantic import JsonValue
 from pydantic_ai import RunContext
 from pydantic_ai.toolsets import FunctionToolset
 
 from aidm.content.model import CharacterProfile, CreatedCharacter
 from aidm.engines.core import (
-    Advancement,
     CharacterCreation,
     DirectorContext,
-    Engine,
     ProposalBase,
-    actor_sheets,
     apply_tool_call,
-    check_sheets,
     load_packs,
     pack_paths,
     pack_step,
@@ -36,6 +31,7 @@ from aidm.engines.loner3e.rules import (
     resolve_question,
     twist_table,
 )
+from aidm.engines.sheets import SheetAdvancement, SheetEngine
 from aidm.state.creation import (
     AnyStep,
     CreationOption,
@@ -47,7 +43,7 @@ from aidm.state.creation import (
 )
 from aidm.state.entities import PLAYER_ID, Counter, EngineId, Entity, EntityId
 from aidm.state.facts import Fact, explained_fact
-from aidm.state.model import Game, WorldState
+from aidm.state.model import Game
 from aidm.state.play import PendingDecision
 
 type Twists = Callable[[Game], tuple[tuple[str, str], ...]]
@@ -82,7 +78,7 @@ def director_toolset(twists: Twists) -> FunctionToolset[DirectorContext]:
     return sequential_toolset([roll_question, restore_luck, complete_chapter])
 
 
-class Loner3eAdvancement(Advancement):
+class Loner3eAdvancement(SheetAdvancement):
     proposal_type = AdventureGrowth
     ledger_key = "milestones"
     occasion = "finishes an adventure"
@@ -91,9 +87,6 @@ class Loner3eAdvancement(Advancement):
 
     def ledger(self, state: Game, subject_id: EntityId) -> Counter:
         return Mechanics.of_game(state).sheets[subject_id].milestones
-
-    def earned(self, state: Game) -> int:
-        return Mechanics.of_game(state).completed.current
 
     def grant(
         self, draft: Game, subject_id: EntityId, proposal: ProposalBase, rng: Random
@@ -201,10 +194,11 @@ def _label(entries: tuple[PackEntry, ...], chosen: str) -> str:
     return next(entry.label for entry in entries if entry.id == chosen)
 
 
-class Loner3eEngine(Engine):
+class Loner3eEngine(SheetEngine[Sheet]):
     id = EngineId("loner3e")
     badge = ("LONER 3E", "teal-7")
     engine_dir = Path(__file__).parent
+    sheet_type = Sheet
     mechanics_type = Mechanics
 
     def __init__(self, extra_packs: Path | None = None) -> None:
@@ -214,25 +208,10 @@ class Loner3eEngine(Engine):
         self.creation = Loner3eCreation(self.packs)
         self.director_toolsets = (director_toolset(self.twists),)
 
-    def check_overlay(self, rules: dict[str, JsonValue]) -> None:
-        _ = Sheet.model_validate(rules)
-
-    def opening_mechanics(self, world: WorldState, player_rules: dict[str, JsonValue]) -> Mechanics:
-        return Mechanics(sheets=actor_sheets(world, player_rules, Sheet))
-
     def validate(self, state: Game) -> None:
-        mechanics = Mechanics.of_game(state)
-        check_sheets(state.world, mechanics.sheets, self.id)
-        if (chosen := mechanics.sheets[PLAYER_ID].pack) not in self.packs:
+        super().validate(state)
+        if (chosen := Mechanics.of_game(state).sheets[PLAYER_ID].pack) not in self.packs:
             raise ValueError(f"this game plays the {chosen!r} table set, which is not installed")
-
-    def seed(self, draft: Game, entity: Entity, rng: Random) -> None:
-        del rng
-        mechanics = Mechanics.of_game(draft)
-        if entity.kind != "actor" or entity.id in mechanics.sheets:
-            return
-        # A newcomer starts level with the party: milestones earned before they joined are not owed.
-        mechanics.sheets[entity.id] = Sheet(milestones=Counter(current=mechanics.completed.current))
 
     def describe(self, state: Game, entity: Entity) -> str:
         return describe_entity(Mechanics.of_game(state), entity)

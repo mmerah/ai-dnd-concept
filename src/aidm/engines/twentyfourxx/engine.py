@@ -9,22 +9,18 @@ from pydantic_ai.toolsets import AbstractToolset
 
 from aidm.content.model import CharacterProfile, CreatedCharacter
 from aidm.engines.core import (
-    Advancement,
     CharacterCreation,
     DirectorContext,
-    Engine,
     ProposalBase,
-    actor_sheets,
     adjust,
     apply_tool_call,
-    check_sheets,
     load_packs,
     pack_paths,
     pack_step,
-    require_sheet,
     sequential_toolset,
     with_enum,
 )
+from aidm.engines.sheets import SheetAdvancement, SheetEngine, require_sheet
 from aidm.engines.twentyfourxx.rules import (
     GROWTH,
     TAKE_THE_HIT,
@@ -61,7 +57,7 @@ from aidm.state.creation import (
 )
 from aidm.state.entities import PLAYER_ID, Counter, EngineId, Entity, EntityId, Trait, text_slug
 from aidm.state.facts import Fact, explained_fact
-from aidm.state.model import Game, WorldState
+from aidm.state.model import Game
 from aidm.state.play import OptionId, PendingDecision
 
 
@@ -174,7 +170,7 @@ def director_toolset() -> AbstractToolset[DirectorContext]:
     return offered.prepared(_narrow_to_skills_in_play)
 
 
-class TwentyfourxxAdvancement(Advancement):
+class TwentyfourxxAdvancement(SheetAdvancement):
     proposal_type = Advance
     ledger_key = "jobs"
     occasion = "finishes a job"
@@ -183,9 +179,6 @@ class TwentyfourxxAdvancement(Advancement):
 
     def ledger(self, state: Game, subject_id: EntityId) -> Counter:
         return Mechanics.of_game(state).sheets[subject_id].jobs
-
-    def earned(self, state: Game) -> int:
-        return Mechanics.of_game(state).completed.current
 
     def grant(
         self, draft: Game, subject_id: EntityId, proposal: ProposalBase, rng: Random
@@ -348,10 +341,11 @@ def _count_prompt(what: str, count: int, verb: str = "Choose") -> str:
     return f"{verb} one {what}" if count == 1 else f"{verb} {count} {what}s"
 
 
-class TwentyfourxxEngine(Engine):
+class TwentyfourxxEngine(SheetEngine[Sheet]):
     id = EngineId("twentyfourxx")
     badge = ("24XX", "indigo-7")
     engine_dir = Path(__file__).parent
+    sheet_type = Sheet
     mechanics_type = Mechanics
 
     def __init__(self, extra_packs: Path | None = None) -> None:
@@ -360,23 +354,6 @@ class TwentyfourxxEngine(Engine):
         self.advancement = TwentyfourxxAdvancement(self.engine_dir)
         self.creation = TwentyfourxxCreation(self.packs)
         self.director_toolsets = (director_toolset(),)
-
-    def check_overlay(self, rules: dict[str, JsonValue]) -> None:
-        _ = Sheet.model_validate(rules)
-
-    def opening_mechanics(self, world: WorldState, player_rules: dict[str, JsonValue]) -> Mechanics:
-        return Mechanics(sheets=actor_sheets(world, player_rules, Sheet))
-
-    def validate(self, state: Game) -> None:
-        check_sheets(state.world, Mechanics.of_game(state).sheets, self.id)
-
-    def seed(self, draft: Game, entity: Entity, rng: Random) -> None:
-        del rng
-        mechanics = Mechanics.of_game(draft)
-        if entity.kind != "actor" or entity.id in mechanics.sheets:
-            return
-        # A newcomer starts level with the party: jobs done before they joined are not owed.
-        mechanics.sheets[entity.id] = Sheet(jobs=Counter(current=mechanics.completed.current))
 
     def resume(
         self, draft: Game, pending: PendingDecision, option_id: OptionId, rng: Random
