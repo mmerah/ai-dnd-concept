@@ -7,7 +7,7 @@ from random import Random
 
 from pydantic_ai import Agent
 
-from aidm.app.authoring import ExtensionPatch, apply_patch, author_extension
+from aidm.app.authoring import ExtensionPatch, apply_patch, growth_run
 from aidm.config import Settings
 from aidm.content.io import FileStore, SavedGame, load_character, load_scenario
 from aidm.content.model import Character, Scenario
@@ -309,8 +309,9 @@ class GameSession:
     async def _extend(self) -> None:
         """A failure only logs: growth is a bonus, and it retries on the next thin turn."""
         try:
-            patch = await author_extension(self.settings, self.engine, self.character, self.state)
-            _ = self.apply_growth(patch)
+            run = growth_run(self.settings, self.engine, self.character, self.state)
+            _ = await run.send(run.opening_prompt)
+            _ = self.apply_growth(run.patch())
         except Exception:
             LOGGER.exception("extending %r failed", self.slug)
 

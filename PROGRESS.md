@@ -107,4 +107,28 @@ Decisions taken inside the phase:
 - A second `start_turn` while one is open replaces it, discarding that turn's uncommitted cards.
   Left as is: the driver's escape hatch is `scene()`, and a guard here would block recovery.
 
-## Phase 3 / 4 / 5 / 6 — NOT STARTED
+## Phase 3 — One authoring driver — DONE (staged, uncommitted)
+
+- [x] 1. `AuthoringRun` is the single holder: `settings`, `draft`, `playing`, `brief`, `toolset`,
+      `prompt`, `history`, `busy`, plus `send()` and `refusal()`. `GrowthRun` still adds `base` +
+      `patch()`, `ScenarioRun` still adds `slug`/`premise`/`document`/`engines` + `write()`.
+- [x] 2. The agent is a `cached_property` on the run, not a field: builtin builds one on its first
+      `send`, code mode never touches it (and may hold no api key, which `Settings.role` refuses).
+      Replaces the plan's `agent: Agent | None`; nothing has to pass or check a None.
+- [x] 3. `AuthoringSession` deleted. `ui/create.py` builds a `ScenarioRun` through `scenario_run`,
+      which gained keyword-only `brief` (the form's "how much to author" select is its own control,
+      not `grows`) and `art_style`. Both survivors of the move are on `ScenarioRun`: `busy`, which
+      the UI binds to and nothing else reads, and `write()`'s form-style override plus its refusal
+      check.
+- [x] 4. `author_extension` deleted. `GameSession._extend` is now `growth_run(...)` ->
+      `await run.send(run.prompt)` -> `apply_growth(run.patch())`, the three lines code mode runs.
+- [x] 5. The draft trio (`ScenarioDraft`, `ScenarioPatch`, `ExtensionPatch`) left alone.
+- [x] 6. `growth_run`/`scenario_run` return the bare run. Only `mcp.py` wanted the briefing string
+      and it holds everything that builds one, so `_briefing` is public `briefing` and MCP calls it.
+      The field is `opening_prompt`: it is sent once, every later `send` takes a fresh instruction.
+- `tests/core/test_extension.py`'s `_stub_author` now stubs `GrowthRun.send` and writes the crypt
+  and the way into it, so the real `growth_run`/`extension_patch`/`apply_growth` path runs under it,
+  `_added_exit` included.
+- `authoring.py` 713 -> 673 lines.
+
+## Phase 4 / 5 / 6 — NOT STARTED

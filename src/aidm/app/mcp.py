@@ -22,6 +22,7 @@ from aidm.app.authoring import (
     ScenarioDraft,
     ScenarioRun,
     authoring_toolset,
+    briefing,
     growth_run,
     scenario_run,
 )
@@ -347,14 +348,12 @@ class Harness:
         # Refusing an un-due begin keeps the world from growing on a whim.
         if not session.growth_due():
             raise ModelRetry("the player still has places to find; grow the world when it is due.")
-        run, briefing = growth_run(
-            session.settings, session.engine, session.character, session.state
-        )
+        run = growth_run(session.settings, session.engine, session.character, session.state)
         self._hold(run)
-        return briefing
+        return briefing(session.settings, run.brief, run.opening_prompt, "finish_growth")
 
     def begin_scenario(self, asked: BeginScenario) -> str:
-        run, briefing = scenario_run(
+        run = scenario_run(
             self.settings,
             asked.slug,
             asked.premise,
@@ -363,7 +362,7 @@ class Harness:
             Path(asked.source) if asked.source else None,
         )
         self._hold(run)
-        return briefing
+        return briefing(self.settings, run.brief, run.opening_prompt, "finish_scenario")
 
     async def authoring_tool(self, name: str, raw: dict[str, JsonValue]) -> str:
         run = self.authoring

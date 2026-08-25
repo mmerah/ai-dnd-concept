@@ -6,7 +6,7 @@ from pathlib import Path
 from nicegui import ui
 from nicegui.events import UploadEventArguments, ValueChangeEventArguments
 
-from aidm.app.authoring import OPENING_SLICE, WHOLE_SCENARIO, AuthoringSession
+from aidm.app.authoring import OPENING_SLICE, WHOLE_SCENARIO, ScenarioRun, scenario_run
 from aidm.app.launch import engine_ids
 from aidm.app.runtime import Runtime
 from aidm.config import Settings
@@ -283,7 +283,7 @@ def scenario_page(settings: Settings) -> None:
     with page_header("New scenario"):
         pass
     document: Path | None = None
-    session: AuthoringSession | None = None
+    session: ScenarioRun | None = None
     exchanges: list[tuple[str, str]] = []
 
     with ui.row().classes("no-wrap items-start").style("width: min(80rem, 100%); gap: 1rem"):
@@ -350,15 +350,15 @@ def scenario_page(settings: Settings) -> None:
                 if session is not None:
                     return
                 try:
-                    new_session = AuthoringSession(
-                        slug=content_id(slug.value or ""),
-                        premise=(premise.value or "").strip(),
-                        settings=settings,
-                        grows=bool(grows.value),
-                        engines=_engines(engines.value),
-                        art_style=(art_style.value or "").strip(),
-                        document=document,
+                    new_session = scenario_run(
+                        settings,
+                        content_id(slug.value or ""),
+                        (premise.value or "").strip(),
+                        bool(grows.value),
+                        _engines(engines.value),
+                        document,
                         brief=WHOLE_SCENARIO if brief.value == "full" else OPENING_SLICE,
+                        art_style=(art_style.value or "").strip(),
                     )
                 except ValueError as error:
                     ui.notify(str(error), type="negative")
@@ -367,7 +367,7 @@ def scenario_page(settings: Settings) -> None:
                 LOGGER.info(
                     "scenario authoring started: slug=%s grows=%s document=%s",
                     session.slug,
-                    session.grows,
+                    session.draft.grows,
                     document is not None,
                 )
                 for widget in (
@@ -447,7 +447,7 @@ def scenario_page(settings: Settings) -> None:
                     return
                 async with working(session):
                     status.refresh()
-                    summary = await session.write()
+                    summary = session.write()
                     LOGGER.info("scenario written: slug=%s", session.slug)
                     ui.notify(summary, type="positive", multi_line=True)
                     ui.navigate.to("/")

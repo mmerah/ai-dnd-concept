@@ -15,7 +15,6 @@ from pydantic_ai.models.function import FunctionModel
 
 from aidm.app.authoring import (
     OPENING_SLICE,
-    AuthoringSession,
     ExitLink,
     ScenarioDraft,
     ScenarioPatch,
@@ -24,6 +23,7 @@ from aidm.app.authoring import (
     playtest_checks,
     scenario_agent,
     scenario_refusal,
+    scenario_run,
 )
 from aidm.app.launch import engine_ids
 from aidm.content.io import load_scenario
@@ -140,13 +140,7 @@ def _answers(history: Sequence[ModelMessage]) -> list[str]:
 
 
 async def test_every_change_answers_with_what_the_draft_still_needs() -> None:
-    session = AuthoringSession(
-        slug="authored",
-        premise="a vault",
-        settings=offline_settings(),
-        grows=False,
-        engines=engine_ids(),
-    )
+    session = scenario_run(offline_settings(), "authored", "a vault", False, engine_ids(), None)
     thin: dict[str, JsonValue] = {
         "meta": {"title": "The Cell", "premise": "Get out."},
         "starting_location_id": "study",
@@ -235,9 +229,7 @@ def test_the_shipped_world_written_as_one_patch_is_playable() -> None:
 
 async def test_the_agent_authors_through_the_write_tool() -> None:
     settings = offline_settings()
-    session = AuthoringSession(
-        slug="authored", premise="a vault", settings=settings, grows=False, engines=engine_ids()
-    )
+    session = scenario_run(settings, "authored", "a vault", False, engine_ids(), None)
     author = scripted(
         ModelResponse(parts=[ToolCallPart(tool_name="write", args={"patch": _as_patch()})]),
         _finish("Authored the vault."),
@@ -249,9 +241,7 @@ async def test_the_agent_authors_through_the_write_tool() -> None:
 
 async def test_finishing_an_unplayable_draft_is_refused_and_asked_again() -> None:
     settings = offline_settings()
-    session = AuthoringSession(
-        slug="authored", premise="a vault", settings=settings, grows=False, engines=engine_ids()
-    )
+    session = scenario_run(settings, "authored", "a vault", False, engine_ids(), None)
     author = scripted(
         _finish("all done, and it is great"),
         ModelResponse(parts=[ToolCallPart(tool_name="write", args={"patch": _as_patch()})]),
@@ -264,9 +254,7 @@ async def test_finishing_an_unplayable_draft_is_refused_and_asked_again() -> Non
 
 async def test_a_session_goes_on_authoring_after_it_finishes() -> None:
     settings = offline_settings()
-    session = AuthoringSession(
-        slug="authored", premise="a vault", settings=settings, grows=False, engines=engine_ids()
-    )
+    session = scenario_run(settings, "authored", "a vault", False, engine_ids(), None)
     study = next(entity for entity in scenario().world.entities if entity.id == EntityId("study"))
     addition = ScenarioPatch(
         entities=(
@@ -294,15 +282,9 @@ async def test_a_session_goes_on_authoring_after_it_finishes() -> None:
 
 
 async def test_an_unplayable_draft_is_never_written() -> None:
-    session = AuthoringSession(
-        slug="authored",
-        premise="a vault",
-        settings=offline_settings(),
-        grows=False,
-        engines=engine_ids(),
-    )
+    session = scenario_run(offline_settings(), "authored", "a vault", False, engine_ids(), None)
     with pytest.raises(ValueError, match="does not play"):
-        _ = await session.write()
+        _ = session.write()
 
 
 def test_a_thin_draft_hears_every_unmet_bar_item_at_once() -> None:

@@ -1,5 +1,6 @@
 from collections.abc import Callable, Iterable, Sequence
 from dataclasses import dataclass, field
+from functools import cached_property
 from pathlib import Path
 
 from pydantic import Field, ValidationError
@@ -499,24 +500,6 @@ def extension_prompt(settings: Settings, state: Game) -> str:
     return f"{given}\n\nExtend the world `scenario_so_far` holds."
 
 
-async def author_extension(
-    settings: Settings,
-    engine: Engine,
-    character: Character,
-    state: Game,
-) -> ExtensionPatch:
-    """Run once because `finish` retries unplayable drafts inside the agent run."""
-    draft = ScenarioDraft.from_game(state)
-    playing = (PlaytestCheck(engine=engine, character=character),)
-    agent = scenario_agent(playing, settings, extend_brief(state.world))
-    _ = await agent.run(
-        extension_prompt(settings, state),
-        deps=draft,
-        usage_limits=UsageLimits(request_limit=settings.authoring.request_limit),
-    )
-    return extension_patch(state.world, draft)
-
-
 def extension_patch(before: WorldState, after: ScenarioDraft) -> ExtensionPatch:
     """What the live world takes from the grown draft: new entities, new ways in, new threads."""
     held = {entity.id: entity for entity in before.entities}
@@ -571,31 +554,22 @@ def _materialized(what: str) -> Fact:
     return Fact(kind="canon_materialized", trace=f"materialized {what}")
 
 
-@dataclass
-class AuthoringSession:
-    """One scenario under authorship across many agent runs; only `write` reaches disk."""
+@dataclass(kw_only=True)
+class AuthoringRun:
+    """One draft under authorship, many turns; the UI drives `send`, code mode the toolset."""
 
-    slug: Slug
-    premise: str
     settings: Settings
-    grows: bool
-    engines: tuple[EngineId, ...]
-    art_style: str = ""
-    document: Path | None = None
-    brief: AuthoringBrief = WHOLE_SCENARIO
+    draft: ScenarioDraft
+    playing: tuple[PlaytestCheck, ...]
+    brief: AuthoringBrief
+    toolset: FunctionToolset[ScenarioDraft]
+    opening_prompt: str
     history: list[ModelMessage] = field(default_factory=list)
-    busy: bool = False
-    playing: tuple[PlaytestCheck, ...] = field(init=False)
-    agent: Agent[ScenarioDraft, str] = field(init=False)
-    draft: ScenarioDraft = field(init=False)
-    opening_prompt: str = field(init=False)
 
-    def __post_init__(self) -> None:
-        check_new_scenario(self.settings, self.slug, self.premise, self.document)
-        self.playing = playtest_checks(self.settings, self.engines)
-        self.agent = scenario_agent(self.playing, self.settings, self.brief)
-        self.draft = ScenarioDraft(grows=self.grows)
-        self.opening_prompt = world_prompt(self.settings, self.slug, self.premise, self.document)
+    @cached_property
+    def agent(self) -> Agent[ScenarioDraft, str]:
+        """Built on first send: code mode drives the toolset itself and may hold no api key."""
+        return scenario_agent(self.playing, self.settings, self.brief)
 
     async def send(self, instruction: str) -> str:
         """One agent turn against the same draft and the same history."""
@@ -611,31 +585,8 @@ class AuthoringSession:
     def refusal(self) -> str | None:
         return scenario_refusal(self.draft, self.playing, self.brief)
 
-    async def write(self) -> str:
-        """Revalidates the draft — the agent's 'ok' is never trusted — before it reaches disk."""
-        if reason := self.refusal():
-            raise ValueError(f"the draft does not play: {reason}")
-        # The form's style overrides whatever the author wrote from the source's own tone.
-        self.draft.art_style = self.art_style or self.draft.art_style
-        return write_draft(
-            self.settings, self.slug, self.draft, self.engines, self.document or self.premise
-        )
 
-
-@dataclass
-class AuthoringRun:
-    """One draft under authorship in the MCP server, held between tool calls."""
-
-    draft: ScenarioDraft
-    playing: tuple[PlaytestCheck, ...]
-    brief: AuthoringBrief
-    toolset: FunctionToolset[ScenarioDraft]
-
-    def refusal(self) -> str | None:
-        return scenario_refusal(self.draft, self.playing, self.brief)
-
-
-@dataclass
+@dataclass(kw_only=True)
 class GrowthRun(AuthoringRun):
     """Grows a world in play; `base` is the state the finished draft is diffed against."""
 
@@ -645,17 +596,23 @@ class GrowthRun(AuthoringRun):
         return extension_patch(self.base.world, self.draft)
 
 
-@dataclass
+@dataclass(kw_only=True)
 class ScenarioRun(AuthoringRun):
     """Writes a whole new scenario; needs no open game."""
 
-    settings: Settings
     slug: Slug
     premise: str
     document: Path | None
     engines: tuple[EngineId, ...]
+    art_style: str = ""
+    busy: bool = False
 
     def write(self) -> str:
+        """Revalidates the draft — the agent's 'ok' is never trusted — before it reaches disk."""
+        if reason := self.refusal():
+            raise ValueError(f"the draft does not play: {reason}")
+        # The form's style overrides whatever the author wrote from the source's own tone.
+        self.draft.art_style = self.art_style or self.draft.art_style
         return write_draft(
             self.settings, self.slug, self.draft, self.engines, self.document or self.premise
         )
@@ -668,23 +625,22 @@ _HOW_TO_WORK = (
 )
 
 
-def _briefing(settings: Settings, brief: AuthoringBrief, prompt: str, finish: str) -> str:
+def briefing(settings: Settings, brief: AuthoringBrief, prompt: str, finish: str) -> str:
     return "\n\n".join((_instructions(settings, brief), prompt, _HOW_TO_WORK.format(finish=finish)))
 
 
-def growth_run(
-    settings: Settings, engine: Engine, character: Character, state: Game
-) -> tuple[GrowthRun, str]:
+def growth_run(settings: Settings, engine: Engine, character: Character, state: Game) -> GrowthRun:
     brief = extend_brief(state.world)
     playing = (PlaytestCheck(engine=engine, character=character),)
-    run = GrowthRun(
+    return GrowthRun(
+        settings=settings,
         draft=ScenarioDraft.from_game(state),
         playing=playing,
         brief=brief,
         toolset=authoring_toolset(playing, brief),
+        opening_prompt=extension_prompt(settings, state),
         base=state,
     )
-    return run, _briefing(settings, brief, extension_prompt(settings, state), "finish_growth")
 
 
 def scenario_run(
@@ -694,20 +650,24 @@ def scenario_run(
     grows: bool,
     engines: Sequence[EngineId],
     document: Path | None,
-) -> tuple[ScenarioRun, str]:
+    *,
+    brief: AuthoringBrief | None = None,
+    art_style: str = "",
+) -> ScenarioRun:
     check_new_scenario(settings, slug, premise, document)
-    brief = OPENING_SLICE if grows else WHOLE_SCENARIO
+    if brief is None:
+        brief = OPENING_SLICE if grows else WHOLE_SCENARIO
     playing = playtest_checks(settings, engines)
-    run = ScenarioRun(
+    return ScenarioRun(
+        settings=settings,
         draft=ScenarioDraft(grows=grows),
         playing=playing,
         brief=brief,
         toolset=authoring_toolset(playing, brief),
-        settings=settings,
+        opening_prompt=world_prompt(settings, slug, premise, document),
         slug=slug,
         premise=premise,
         document=document,
         engines=tuple(engines),
+        art_style=art_style,
     )
-    prompt = world_prompt(settings, slug, premise, document)
-    return run, _briefing(settings, brief, prompt, "finish_scenario")

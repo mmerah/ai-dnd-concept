@@ -15,10 +15,9 @@ from core_test_support import (
 from loner3e_test_support import loner3e_session
 from pydantic_ai.models.function import FunctionModel
 
-import aidm.app.runtime
 from aidm.app.authoring import (
     ExitLink,
-    ExtensionPatch,
+    GrowthRun,
     PlaytestCheck,
     ScenarioDraft,
     ScenarioPatch,
@@ -27,10 +26,7 @@ from aidm.app.authoring import (
     scenario_refusal,
 )
 from aidm.app.runtime import GameSession
-from aidm.config import Settings
 from aidm.content.io import FileStore
-from aidm.content.model import Character
-from aidm.engines.core import Engine
 from aidm.state.entities import PLAYER_ID, Entity, EntityId, Exit
 from aidm.state.model import Game, Thread
 from aidm.state.play import WorldExtended
@@ -49,12 +45,6 @@ def _crypt() -> Entity:
     )
 
 
-_ADDED = ExtensionPatch(
-    entities=(_crypt(),),
-    exits=(ExitLink(location_id=EntityId("cloister"), to=_CRYPT_ID),),
-)
-
-
 def _grown(directory: Path, *, thin: bool = True) -> GameSession:
     """A scenario that grows, staged with one door left to find and a change on offer."""
     game = loner3e_session(directory)
@@ -70,17 +60,15 @@ def _stub_author(monkeypatch: pytest.MonkeyPatch) -> list[Game]:
     """The authoring run itself is one agent run; what this pins is the session hook around it."""
     seen: list[Game] = []
 
-    async def authored(
-        settings: Settings,
-        engine: Engine,
-        character: Character,
-        state: Game,
-    ) -> ExtensionPatch:
-        del settings, engine, character
-        seen.append(state)
-        return _ADDED
+    async def authored(self: GrowthRun, instruction: str) -> str:
+        del instruction
+        seen.append(self.base)
+        cloister = next(e for e in self.draft.entities if e.id == EntityId("cloister"))
+        edited = updated(cloister, exits=[*cloister.exits, Exit(to=_CRYPT_ID)])
+        _ = self.draft.apply(ScenarioPatch(entities=(_crypt(), edited)))
+        return "grew the sub-crypt"
 
-    monkeypatch.setattr(aidm.app.runtime, "author_extension", authored)
+    monkeypatch.setattr(GrowthRun, "send", authored)
     return seen
 
 
@@ -149,6 +137,9 @@ async def test_a_thin_world_grows_inside_the_turn_that_ran_it_thin(
     grown = game.state.world.find(_CRYPT_ID)
     assert grown is not None
     assert grown.known is False
+    way = game.state.world.require(EntityId("cloister")).exit_to(_CRYPT_ID)
+    assert way is not None
+    assert way.known is False
 
     saved = FileStore(tmp_path).load("poc")
     assert saved is not None
