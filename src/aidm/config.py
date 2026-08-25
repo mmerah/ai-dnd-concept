@@ -1,5 +1,5 @@
 from pathlib import Path
-from typing import Annotated, Literal, Self
+from typing import Annotated, Literal, Self, get_args
 
 from pydantic import BaseModel, ConfigDict, Field, SecretStr, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -68,11 +68,25 @@ class AuthoringConfig(BaseModel):
     source_max_chars: int = Field(default=120_000, ge=1)
 
 
-ROLE_DEFAULTS: dict[Role, RoleConfig] = {
+class Roles(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
     # Tool loops divide the budget across calls and need reasoning to choose among tools.
-    "director": RoleConfig(max_tokens=8192, reasoning_effort="low"),
-    "scenario_creator": RoleConfig(max_tokens=32768, reasoning_effort="medium"),
-}
+    director: RoleConfig = RoleConfig(max_tokens=8192, reasoning_effort="low")
+    narrator: RoleConfig = RoleConfig()
+    advisor: RoleConfig = RoleConfig()
+    scenario_creator: RoleConfig = RoleConfig(max_tokens=32768, reasoning_effort="medium")
+
+    def for_name(self, name: Role) -> RoleConfig:
+        match name:
+            case "director":
+                return self.director
+            case "narrator":
+                return self.narrator
+            case "advisor":
+                return self.advisor
+            case "scenario_creator":
+                return self.scenario_creator
 
 
 class Providers(BaseModel):
@@ -102,7 +116,7 @@ class Settings(BaseSettings):
     )
 
     providers: Providers = Providers()
-    roles: dict[Role, RoleConfig] = Field(default_factory=dict)
+    roles: Roles = Roles()
     media: MediaConfig = MediaConfig()
     turn: TurnConfig = TurnConfig()
     authoring: AuthoringConfig = AuthoringConfig()
@@ -118,17 +132,7 @@ class Settings(BaseSettings):
         return self.harness == "code"
 
     def role(self, name: Role) -> RoleConfig:
-        defaults = ROLE_DEFAULTS.get(name, RoleConfig())
-        supplied = self.roles.get(name)
-        # A partial override keeps the role's other defaults; model_copy would skip validation.
-        found = (
-            defaults
-            if supplied is None
-            else RoleConfig.model_validate(
-                defaults.model_dump()
-                | {field: getattr(supplied, field) for field in supplied.model_fields_set}
-            )
-        )
+        found = self.roles.for_name(name)
         if not self.providers.for_name(found.provider).api_key.get_secret_value():
             raise ValueError(
                 f"role {name!r} uses provider {found.provider!r}, which has no api_key"
@@ -137,8 +141,11 @@ class Settings(BaseSettings):
 
     @model_validator(mode="after")
     def _keys_present(self) -> Self:
-        for name in self.roles:
-            self.role(name)
+        # One `ROLES__*` env var fills all four, so only a role off its default was configured.
+        defaults = Roles()
+        for name in get_args(Role):
+            if self.roles.for_name(name) != defaults.for_name(name):
+                _ = self.role(name)
         if self.media.enabled and not self.providers.for_name(self.media.provider).api_key:
             raise ValueError(f"media uses provider {self.media.provider!r}, which has no api_key")
         return self

@@ -6,7 +6,8 @@ from pathlib import Path
 from nicegui import ui
 from nicegui.events import UploadEventArguments, ValueChangeEventArguments
 
-from aidm.app.authoring import OPENING_SLICE, WHOLE_SCENARIO, ScenarioRun, scenario_run
+from aidm.app.authoring import OPENING_SLICE, WHOLE_SCENARIO
+from aidm.app.authoring_run import ScenarioRun, scenario_run
 from aidm.app.launch import engine_ids
 from aidm.app.runtime import Runtime
 from aidm.config import Settings

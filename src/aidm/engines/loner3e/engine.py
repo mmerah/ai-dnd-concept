@@ -11,9 +11,6 @@ from aidm.engines.core import (
     DirectorContext,
     ProposalBase,
     apply_tool_call,
-    load_packs,
-    pack_paths,
-    pack_step,
     sequential_toolset,
 )
 from aidm.engines.loner3e.rules import (
@@ -31,6 +28,7 @@ from aidm.engines.loner3e.rules import (
     resolve_question,
     twist_table,
 )
+from aidm.engines.packs import load_packs, pack_paths, pack_step
 from aidm.engines.sheets import SheetAdvancement, SheetEngine
 from aidm.state.creation import (
     AnyStep,

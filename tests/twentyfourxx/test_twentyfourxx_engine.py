@@ -26,6 +26,7 @@ from aidm.engines.twentyfourxx.rules import (
     LuckTest,
     Mechanics,
     Sheet,
+    StakedAttempt,
     apply_change_credits,
     apply_complete_chapter,
     outcome_for,
@@ -135,8 +136,7 @@ async def test_roll_attempt_narrows_skill_and_helper_skill_to_who_is_here() -> N
     assert schema["properties"]["skill"]["enum"] == expected
     assert schema["properties"]["helper_skill"]["enum"] == expected
 
-    # The stake takes a second argument, so its attempt is a `$defs` entry rather than flattened.
-    staked = tools["stake_attempt"].tool_def.parameters_json_schema["$defs"]["Attempt"]
+    staked = tools["stake_attempt"].tool_def.parameters_json_schema
     assert staked["properties"]["skill"]["enum"] == expected
 
 
@@ -273,6 +273,18 @@ def _forcing(**args: object) -> Attempt:
     )
 
 
+def _staked_forcing(**args: object) -> StakedAttempt:
+    return StakedAttempt.model_validate(
+        {
+            "actor_id": PLAYER_ID,
+            "goal": "Kael forces the vault door",
+            "skill": "Climbing",
+            "risk": RISK,
+        }
+        | args
+    )
+
+
 def _waiting(draft: Game) -> PendingDecision:
     decision = draft.pending
     assert decision is not None
@@ -303,12 +315,12 @@ def test_a_stake_freezes_a_playable_attempt_and_waits_on_the_player() -> None:
     _, state = game(TWENTYFOURXX)
     draft = state.draft()
 
-    assert resolve_stake(draft, _forcing(), RISK) == ()
+    assert resolve_stake(draft, _staked_forcing()) == ()
 
     decision = _waiting(draft)
     assert (decision.kind, decision.prompt, decision.free_text) == ("stake", RISK, True)
     assert [option.id for option in decision.options] == ["proceed"]
-    assert Attempt.model_validate(decision.payload) == _forcing()
+    assert StakedAttempt.model_validate(decision.payload) == _staked_forcing()
 
 
 def test_a_stake_on_an_npc_attempt_is_refused() -> None:
@@ -316,7 +328,7 @@ def test_a_stake_on_an_npc_attempt_is_refused() -> None:
     draft = state.draft()
 
     with pytest.raises(ValueError, match="the player's own"):
-        _ = resolve_stake(draft, _forcing(actor_id="mara"), RISK)
+        _ = resolve_stake(draft, _staked_forcing(actor_id="mara"))
     assert draft.pending is None
 
 
@@ -325,14 +337,14 @@ def test_a_stake_on_an_attempt_the_sheet_cannot_carry_freezes_nothing() -> None:
     draft = state.draft()
 
     with pytest.raises(ValueError, match="no skill 'Lockpicking'"):
-        _ = resolve_stake(draft, _forcing(skill="Lockpicking"), RISK)
+        _ = resolve_stake(draft, _staked_forcing(skill="Lockpicking"))
     assert draft.pending is None
 
 
 def test_proceeding_rolls_the_frozen_attempt_and_a_hit_hands_back_the_defence() -> None:
     engine, state = game(TWENTYFOURXX)
     draft = state.draft()
-    _ = resolve_stake(draft, _forcing(), RISK)
+    _ = resolve_stake(draft, _staked_forcing())
     staked = _waiting(draft)
     draft.pending = None
 

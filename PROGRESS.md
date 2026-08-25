@@ -180,4 +180,97 @@ Adversarial review pass (fable), on top of both phases:
   (the alternatives are a generic `Engine` spelled at ~30 indifferent call sites, or a weaker
   `of_game` engine-mismatch check).
 
-## Phase 5 / 6 — NOT STARTED
+## Phase 5 — Config roles and a flat `stake_attempt` — DONE (staged, uncommitted)
+
+- [x] 1. `Roles` replaces `roles: dict[Role, RoleConfig]` + `ROLE_DEFAULTS` + the `model_fields_set`
+      merge: four named fields with their own defaults, and a `for_name` match mirroring
+      `Providers.for_name` in the same file. `extra="forbid"` keeps the "a role no stage is built
+      for is refused" test passing. Env var names are unchanged —
+      `nested_model_default_partial_update=True` already made `ROLES__DIRECTOR__MODEL=x` keep the
+      director's other defaults.
+- [x] 2. `StakedAttempt(Attempt)` carries `risk`, so `stake_attempt(ctx, attempt)` is one model
+      argument and pydantic-ai inlines it. `_with_skills` lost its `inside="Attempt"` branch, and
+      `with_enum` lost the `inside` parameter with its `$defs` branch. `resume` and `check_pending`
+      validate the stake payload as `StakedAttempt` — `Frozen` forbids extras, so `Attempt` would
+      now reject the saved `risk`.
+- [x] 3. `Attempt.goal` is "The actor's goal, in one line." A staked attempt no longer asks for the
+      risk twice in two places that could disagree.
+- [x] 4. `tests/core/fixtures/schemas/twentyfourxx/director_tools.json` regenerated: 12,321 ->
+      11,740 bytes. `stake_attempt` loses its `$defs`/`Attempt` nesting and gains a flat `risk`,
+      both `goal` descriptions shorten. Two side effects of flattening, both shared with every
+      other single-model tool: the `attempt:` docstring line no longer reaches the schema (it
+      still satisfies `require_parameter_descriptions`), and the schema gains
+      `title: StakedAttempt` plus `minLength` on `risk`.
+- Suite: 259 passed, ruff clean, basedpyright 0 errors.
+
+Decisions taken inside the phase:
+
+- `_enumerated` folded into `with_enum`. The plan kept it; with the `inside` branch gone it had one
+  caller and one two-line body.
+- `Settings.role` is `self.roles.for_name(name)`, not the plan's `getattr(self.roles, name)`: the
+  match is the file's own idiom and returns `RoleConfig` instead of `Any`.
+- `_keys_present` still checks only the roles the user configured — a role is configured when it
+  differs from its default. `model_fields_set` cannot say: one `ROLES__*` env var makes
+  `nested_model_default_partial_update` fill all four. Checking all four unconditionally would
+  refuse to build `Settings` on a keyless install, which the app supports up to the first agent
+  build.
+
+- [x] 5. Eval run (`evals/results/after-stake-flatten.json`): 98/99, 0 errors. Against
+      `baseline-interruptible`, the newest stored run, score 97% -> 99%, director_calls
+      1.22 -> 1.19, 13.8s -> 11.7s per case. Not a clean before/after for the flatten alone — that
+      baseline predates phases 1-6 — but the shrunk schema costs nothing, and 24XX `risky-climb`
+      scores 100% on `staked`, which is `stake_attempt` itself. The one miss is 24XX
+      `open-the-way-and-climb` at 8/9, up from 7/9.
+
+## Phase 6 — Split the three files that do two jobs — DONE (staged, uncommitted)
+
+- [x] 1. `app/mcp.py` 711 -> 246, new `app/codemode.py` 491. The controller and its typed inputs
+      (`ToolArgs` and every arg model, `Turn`, `Harness`, the prose helpers) are in `codemode.py`;
+      the protocol (`ServerTool`, `SERVER_TOOLS`, `DISPATCH`, `PUBLISHED`, `AUTHORING`,
+      `build_server`, `serve`, `main`) stays in `mcp.py`. `python -m aidm.app.mcp` is unchanged, so
+      `.mcp.json` and `.codex/config.toml` needed no edit.
+- [x] 2. `app/authoring.py` 673 -> 449, new `app/authoring_run.py` 250: the draft, the patches, the
+      briefs and the refusals in the first; `authoring_toolset`, `scenario_agent` and the three run
+      classes in the second. `_PROMPTS_DIR` and `_instructions` moved with them — the two functions
+      that call them both moved.
+- [x] 3. New `engines/packs.py` (50 lines) holds `PackName`, `pack_step`, `pack_paths`,
+      `load_packs`. `engines/core.py` 372 -> 328 and lost eight imports with them (`logging`,
+      `Mapping`, `fullmatch`, `Protocol`, `BaseModel`, `ENCODING`, `CreationOption`,
+      `CreationStep`).
+- Suite: 259 passed, ruff clean, basedpyright 0 errors. No golden fixture moved, which is the
+  proof the moves were pure. `src/aidm` 8,347 -> 8,401: three new import blocks cost more than
+  Phase 5 deleted.
+
+Decisions taken inside the phase:
+
+- `Harness.offered` and `Harness.call` became module functions in `mcp.py` taking the harness.
+  Keeping them methods would have made `codemode.py` import the `ServerTool` table, and the
+  dependency has to run one way: transport -> controller. `tests/core/test_code_mode.py` calls
+  `call(harness, ...)` accordingly.
+- Three names crossed the new boundary and lost their underscore: `director_tools`,
+  `authoring_context`, `catalogue`. Nothing else in `Harness` is read from outside.
+- `tests/core/test_package_boundary.py` was NOT updated, against the plan's instruction: its
+  `FORBIDDEN` table is keyed by package (`app`, `engines`), so all three new files are already
+  checked. Only a new *package* would need a row.
+
+## Adversarial review pass (fable), on top of phases 5 and 6
+
+- One real regression, found and fixed: `_keys_present` read `Roles.model_fields_set`, which
+  `nested_model_default_partial_update` fills for all four roles as soon as one `ROLES__*` env var
+  is set. `ROLES__DIRECTOR__PROVIDER=local` on a keyless openrouter — a local-only install — was
+  refused at load, blaming `narrator`. Now a role is checked when it differs from its default;
+  `test_configuring_one_role_does_not_key_check_the_others` pins it.
+- `authoring_context` moved from `codemode.py` to `authoring_run.py`, beside the toolset it builds
+  a context for. `mcp.py` stops reaching into the controller for an authoring helper.
+- `offered`'s local `tools_offered` is `tools` again; the director tools it merges are `director`.
+- Deleted: the `extra="forbid"` why on `Roles`, already said on the `Role` Literal above it.
+- The `Args:` sections on the 24XX director tools look dead — their text never reaches the
+  published schema — but `require_parameter_descriptions` refuses to build the schema without
+  them. Deleting them fails 59 tests. Left alone.
+- Rejected: `getattr(self.roles, name)` in place of `Roles.for_name` (needs a `cast`, breaks the
+  `Providers.for_name` idiom, and `_keys_present` is now its second caller); deleting the role loop
+  in `_keys_present` and failing at first agent build instead (loses the fail-at-load invariant);
+  moving the `ToolArgs` models to `mcp.py` (the `Harness` methods consume them, so it would reverse
+  the import direction); re-merging `authoring_run.py` (`authoring.py` now imports no pydantic-ai
+  or llm machinery at all, and `runtime.py`/`ui/create.py` each pull only their own side).
+- Suite: 260 passed, ruff clean, basedpyright 0 errors.

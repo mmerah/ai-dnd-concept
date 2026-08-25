@@ -238,7 +238,7 @@
           "type": "string"
         },
         "goal": {
-          "description": "The actor's goal and the risk they face, in one line.",
+          "description": "The actor's goal, in one line.",
           "minLength": 1,
           "type": "string"
         },
@@ -292,80 +292,66 @@
     "name": "stake_attempt",
     "description": "Let the player accept or revise one risky attempt before rolling it.",
     "parameters": {
-      "$defs": {
-        "Attempt": {
-          "additionalProperties": false,
-          "properties": {
-            "actor_id": {
-              "description": "Exact id of the player or actor here who takes the action.",
-              "type": "string"
-            },
-            "goal": {
-              "description": "The actor's goal and the risk they face, in one line.",
-              "minLength": 1,
-              "type": "string"
-            },
-            "skill": {
-              "default": "",
-              "description": "Matching skill from the actor's sheet, or empty for d6.",
-              "type": "string"
-            },
-            "helped": {
-              "default": "",
-              "description": "Helpful circumstance that adds d6. Empty when using `helper_id` or no help.",
-              "type": "string"
-            },
-            "helper_id": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "default": null,
-              "description": "Exact id of an ally here who adds their skill die, or null for no helper."
-            },
-            "helper_skill": {
-              "default": "",
-              "description": "Matching skill from the helper's sheet, or empty for their d6.",
-              "type": "string"
-            },
-            "hindered": {
-              "default": "",
-              "description": "Hindering circumstance that lowers the actor's die to d4, or empty.",
-              "type": "string"
-            },
-            "luck_test": {
-              "default": "",
-              "description": "Separate bad luck that may arrive, or empty for no test.",
-              "type": "string"
-            }
-          },
-          "required": [
-            "actor_id",
-            "goal"
-          ],
-          "title": "Attempt",
-          "type": "object"
-        }
-      },
       "additionalProperties": false,
       "properties": {
-        "attempt": {
-          "$ref": "#/$defs/Attempt",
-          "description": "The complete attempt to freeze until the player decides."
+        "actor_id": {
+          "description": "Exact id of the player or actor here who takes the action.",
+          "type": "string"
+        },
+        "goal": {
+          "description": "The actor's goal, in one line.",
+          "minLength": 1,
+          "type": "string"
+        },
+        "skill": {
+          "default": "",
+          "description": "Matching skill from the actor's sheet, or empty for d6.",
+          "type": "string"
+        },
+        "helped": {
+          "default": "",
+          "description": "Helpful circumstance that adds d6. Empty when using `helper_id` or no help.",
+          "type": "string"
+        },
+        "helper_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Exact id of an ally here who adds their skill die, or null for no helper."
+        },
+        "helper_skill": {
+          "default": "",
+          "description": "Matching skill from the helper's sheet, or empty for their d6.",
+          "type": "string"
+        },
+        "hindered": {
+          "default": "",
+          "description": "Hindering circumstance that lowers the actor's die to d4, or empty.",
+          "type": "string"
+        },
+        "luck_test": {
+          "default": "",
+          "description": "Separate bad luck that may arrive, or empty for no test.",
+          "type": "string"
         },
         "risk": {
           "description": "One-line cost of a bad roll, shown to the player.",
+          "minLength": 1,
           "type": "string"
         }
       },
       "required": [
-        "attempt",
+        "actor_id",
+        "goal",
         "risk"
       ],
+      "title": "StakedAttempt",
       "type": "object"
     }
   },

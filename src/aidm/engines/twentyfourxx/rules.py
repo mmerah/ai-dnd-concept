@@ -151,7 +151,7 @@ class Attempt(Frozen):
     )
     goal: str = Field(
         min_length=1,
-        description="The actor's goal and the risk they face, in one line.",
+        description="The actor's goal, in one line.",
     )
     skill: str = Field(
         default="",
@@ -190,6 +190,10 @@ class Attempt(Frozen):
                 "`helper_skill` is the skill of the ally in `helper_id`; name them too"
             )
         return self
+
+
+class StakedAttempt(Attempt):
+    risk: str = Field(min_length=1, description="One-line cost of a bad roll, shown to the player.")
 
 
 class LuckTest(Frozen):
@@ -277,7 +281,7 @@ def _require_playable(
     return actor, sheet, helper_sheet, facts
 
 
-def resolve_stake(draft: Game, action: Attempt, risk: str) -> tuple[Fact, ...]:
+def resolve_stake(draft: Game, action: StakedAttempt) -> tuple[Fact, ...]:
     if action.actor_id != PLAYER_ID:
         raise ValueError(
             "the advise step is the player's own: stake only the player's attempt, and roll an "
@@ -287,7 +291,7 @@ def resolve_stake(draft: Game, action: Attempt, risk: str) -> tuple[Fact, ...]:
     _ = _require_playable(draft.draft(), action)
     draft.pending = PendingDecision(
         kind="stake",
-        prompt=risk,
+        prompt=action.risk,
         options=(DecisionOption(id="proceed", label="Proceed"),),
         payload=action.model_dump(mode="json"),
     )

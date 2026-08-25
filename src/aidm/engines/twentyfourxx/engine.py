@@ -14,12 +14,10 @@ from aidm.engines.core import (
     ProposalBase,
     adjust,
     apply_tool_call,
-    load_packs,
-    pack_paths,
-    pack_step,
     sequential_toolset,
     with_enum,
 )
+from aidm.engines.packs import load_packs, pack_paths, pack_step
 from aidm.engines.sheets import SheetAdvancement, SheetEngine, require_sheet
 from aidm.engines.twentyfourxx.rules import (
     GROWTH,
@@ -36,6 +34,7 @@ from aidm.engines.twentyfourxx.rules import (
     SkillDie,
     SkillGrant,
     Specialty,
+    StakedAttempt,
     apply_change_credits,
     apply_complete_chapter,
     describe_entity,
@@ -81,10 +80,8 @@ def _narrow_to_skills_in_play(
 
 def _with_skills(tool: ToolDefinition, skills: list[str]) -> ToolDefinition:
     fields = ("skill", "helper_skill")
-    if tool.name == "roll_attempt":
+    if tool.name in ("roll_attempt", "stake_attempt"):
         return with_enum(tool, fields, skills)
-    if tool.name == "stake_attempt":
-        return with_enum(tool, fields, skills, inside="Attempt")
     return tool
 
 
@@ -108,14 +105,13 @@ def director_toolset() -> AbstractToolset[DirectorContext]:
         """
         return apply_tool_call(ctx, lambda draft, rng: resolve_attempt(draft, attempt, rng))
 
-    def stake_attempt(ctx: RunContext[DirectorContext], attempt: Attempt, risk: str) -> str:
+    def stake_attempt(ctx: RunContext[DirectorContext], attempt: StakedAttempt) -> str:
         """Let the player accept or revise one risky attempt before rolling it.
 
         Args:
             attempt: The complete attempt to freeze until the player decides.
-            risk: One-line cost of a bad roll, shown to the player.
         """
-        return apply_tool_call(ctx, lambda draft, _rng: resolve_stake(draft, attempt, risk))
+        return apply_tool_call(ctx, lambda draft, _rng: resolve_stake(draft, attempt))
 
     def settle_defence(ctx: RunContext[DirectorContext], item_id: EntityId | None) -> str:
         """Apply the player's choice to break an item or take the full hit.
@@ -360,7 +356,7 @@ class TwentyfourxxEngine(SheetEngine[Sheet]):
     ) -> tuple[Fact, ...]:
         match pending.kind, option_id:
             case ("stake", "proceed"):
-                return resolve_attempt(draft, Attempt.model_validate(pending.payload), rng)
+                return resolve_attempt(draft, StakedAttempt.model_validate(pending.payload), rng)
             case ("defence", _):
                 goal = Defence.model_validate(pending.payload).goal
                 item = None if option_id == TAKE_THE_HIT else EntityId(option_id)
@@ -370,7 +366,7 @@ class TwentyfourxxEngine(SheetEngine[Sheet]):
 
     def check_pending(self, pending: PendingDecision) -> None:
         if pending.kind == "stake":
-            _ = Attempt.model_validate(pending.payload)
+            _ = StakedAttempt.model_validate(pending.payload)
         elif pending.kind == "defence":
             _ = Defence.model_validate(pending.payload)
         else:

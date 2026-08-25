@@ -17,7 +17,6 @@ from pydantic_ai.models.function import FunctionModel
 
 from aidm.app.authoring import (
     ExitLink,
-    GrowthRun,
     PlaytestCheck,
     ScenarioDraft,
     ScenarioPatch,
@@ -25,6 +24,7 @@ from aidm.app.authoring import (
     extension_patch,
     scenario_refusal,
 )
+from aidm.app.authoring_run import GrowthRun
 from aidm.app.runtime import GameSession
 from aidm.content.io import FileStore
 from aidm.state.entities import PLAYER_ID, Entity, EntityId, Exit

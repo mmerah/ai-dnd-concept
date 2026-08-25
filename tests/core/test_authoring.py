@@ -21,10 +21,9 @@ from aidm.app.authoring import (
     extend_brief,
     extension_patch,
     playtest_checks,
-    scenario_agent,
     scenario_refusal,
-    scenario_run,
 )
+from aidm.app.authoring_run import scenario_agent, scenario_run
 from aidm.app.launch import engine_ids
 from aidm.content.io import load_scenario
 from aidm.state.entities import Entity, EntityId, Exit

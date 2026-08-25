@@ -1,21 +1,19 @@
 import dataclasses
-import logging
 from abc import ABC, abstractmethod
-from collections.abc import Callable, Mapping, Sequence
+from collections.abc import Callable, Sequence
 from dataclasses import dataclass, field
 from pathlib import Path
 from random import Random
-from re import fullmatch
-from typing import ClassVar, Protocol
+from typing import ClassVar
 
-from pydantic import BaseModel, JsonValue
+from pydantic import JsonValue
 from pydantic_ai import ModelRetry, RunContext
 from pydantic_ai.tools import ObjectJsonSchema, ToolDefinition, ToolFuncEither
 from pydantic_ai.toolsets import AbstractToolset, FunctionToolset
 
-from aidm.content.io import ENCODING, SavedGame, engine_text
+from aidm.content.io import SavedGame, engine_text
 from aidm.content.model import CreatedCharacter
-from aidm.state.creation import AnyStep, CreationOption, CreationStep, Picks
+from aidm.state.creation import AnyStep, Picks
 from aidm.state.entities import (
     PLAYER_ID,
     Counter,
@@ -235,25 +233,13 @@ def sequential_toolset(
     )
 
 
-def with_enum(
-    tool: ToolDefinition, fields: Sequence[str], values: Sequence[str], inside: str | None = None
-) -> ToolDefinition:
-    """Use `inside` when multiple tool arguments nest model fields under `$defs`."""
+def with_enum(tool: ToolDefinition, fields: Sequence[str], values: Sequence[str]) -> ToolDefinition:
     schema = tool.parameters_json_schema
-    if inside is None:
-        return dataclasses.replace(tool, parameters_json_schema=_enumerated(schema, fields, values))
-    defs = {**schema["$defs"], inside: _enumerated(schema["$defs"][inside], fields, values)}
-    return dataclasses.replace(tool, parameters_json_schema={**schema, "$defs": defs})
-
-
-def _enumerated(
-    schema: ObjectJsonSchema, fields: Sequence[str], values: Sequence[str]
-) -> ObjectJsonSchema:
     # Copied, never mutated: a prepare function is handed the same definition on every step.
     properties: dict[str, ObjectJsonSchema] = dict(schema["properties"])
     for name in fields:
         properties[name] = {**properties[name], "enum": list(values)}
-    return {**schema, "properties": properties}
+    return dataclasses.replace(tool, parameters_json_schema={**schema, "properties": properties})
 
 
 def _seed_created(engine: Engine, draft: Game, facts: Sequence[Fact], rng: Random) -> None:
@@ -340,44 +326,3 @@ class Advancement(ABC):
         self, draft: Game, subject_id: EntityId, proposal: ProposalBase, rng: Random
     ) -> tuple[Fact, ...]:
         """Writes what the proposal buys; moving the ledger itself belongs to the base."""
-
-
-LOGGER = logging.getLogger(__name__)
-
-
-class PackName(Protocol):
-    name: str
-
-
-def pack_step(packs: Mapping[str, PackName]) -> CreationStep:
-    return CreationStep(
-        id="pack",
-        prompt="Choose a character table set",
-        options=tuple(
-            CreationOption(id=pack_id, label=pack.name) for pack_id, pack in packs.items()
-        ),
-    )
-
-
-def pack_paths(shipped: Path, extra: Path | None) -> dict[str, Path]:
-    """User packs merge over shipped ones by file stem, so one can replace a shipped table set."""
-    paths = {path.stem: path for path in sorted(shipped.glob("*.json"))}
-    if extra is not None and extra.is_dir():
-        paths.update({path.stem: path for path in sorted(extra.glob("*.json"))})
-    return paths
-
-
-def load_packs[P: BaseModel](paths: Mapping[str, Path], model: type[P]) -> dict[str, P]:
-    """A broken user pack is skipped with a log line: it must not block the way to the launcher."""
-    packs: dict[str, P] = {}
-    for stem, path in paths.items():
-        if fullmatch(r"[a-z0-9-]+", stem) is None:
-            LOGGER.warning("skipping content pack %s: its name is not a slug", path)
-            continue
-        try:
-            packs[stem] = model.model_validate_json(path.read_text(encoding=ENCODING))
-        except (OSError, ValueError) as broken:
-            LOGGER.warning("skipping content pack %s: %s", path, broken)
-    if not packs:
-        raise ValueError("no usable content pack was found")
-    return packs

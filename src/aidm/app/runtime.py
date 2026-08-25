@@ -7,7 +7,8 @@ from random import Random
 
 from pydantic_ai import Agent
 
-from aidm.app.authoring import ExtensionPatch, apply_patch, growth_run
+from aidm.app.authoring import ExtensionPatch, apply_patch
+from aidm.app.authoring_run import growth_run
 from aidm.config import Settings
 from aidm.content.io import FileStore, SavedGame, load_character, load_scenario
 from aidm.content.model import Character, Scenario
