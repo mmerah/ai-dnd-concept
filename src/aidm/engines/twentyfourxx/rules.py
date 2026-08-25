@@ -290,7 +290,8 @@ def resolve_stake(draft: Game, action: StakedAttempt) -> tuple[Fact, ...]:
     _ = _require_playable(draft.draft(), action)
     draft.pending = PendingDecision(
         kind="stake",
-        prompt=action.risk,
+        # SRD: a plan may be revised before it is committed, so the stake asks rather than tells.
+        prompt=f"{action.risk}\n\nProceed, or change your plan.",
         options=(DecisionOption(id="proceed", label="Proceed"),),
         payload=action.model_dump(mode="json"),
     )
