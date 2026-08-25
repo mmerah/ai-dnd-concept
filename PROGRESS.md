@@ -39,12 +39,12 @@ Review follow-ups (adversarial pass):
 
 Verified: `grep -rn "advancement is None\|creation is None\|advancement is not None\|creation is not None" src/ tests/` finds nothing. 261 tests passed, Ruff check and format passed, basedpyright 0 errors.
 
-## Phase 3 — Framework-free commands — DONE except 3.9
+## Phase 3 — Framework-free commands — DONE
 
-- 3.1 `Command`, `command()`, `run_command()` and `apply_command` (was `apply_tool_call`) live in `engines/core.py`. `sequential_toolset` and `with_enum` deleted. Refusals are `ValueError`; only the Pydantic AI adapter turns them into `ModelRetry`.
+- 3.1 `Command`, `command()`, `run_command()` and `apply_play` (was `apply_tool_call`) live in `engines/core.py`. `sequential_toolset` and `with_enum` deleted. Refusals are `ValueError`; only the Pydantic AI adapter turns them into `ModelRetry`.
 - 3.2 `engines/world.py` holds the nine core commands. `DirectorTool`, `core_toolset`, `_resolved`, the five applicability predicates, `_unlock_targets`, `_narrow_unlock_targets` and `gated_toolsets` deleted from `turn/run.py`.
 - 3.3 `Engine.director_commands` replaces `director_toolsets`. 24XX lost `_skills_in_play`, `_narrow_to_skills_in_play`, `_with_skills` and both `.filtered(...)`/`.prepared(...)` chains; `settle_defence` refuses in the resolver instead.
-- 3.4 `schema_of`, `as_tool` and `director_toolset` are the whole Pydantic AI adapter, at the top of `turn/run.py`.
+- 3.4 `as_tool` and `director_toolset` are the whole Pydantic AI adapter, at the top of `turn/run.py`; `schema_of` sits in `llm.py` with the rest of the framework boundary.
 - 3.5 `reshapes` deleted; `send_tool_list_changed` fires only on `open_game`. `codemode.director_tools` and `_unavailable` deleted; `call_director_tool` is synchronous.
 - 3.6 `AdvanceArgs[P: ProposalBase]` replaces `create_model`; `_advance_args` deleted.
 - 3.8 **The plan's mechanism does not work.** `NewType("EntityId", Slug)` is not a valid type form — Pydantic unwraps it at runtime, but basedpyright reports 945 errors across 20 files and ruff rejects the `TypeAlias` line written to appease it. `EntityId` stays `NewType("EntityId", str)` and `CheckedEntityId` carries the grammar on every Pydantic field that holds an entity id, which reaches the same schemas. The `Entity`/`Exit`/tool-argument fixture diff is what 3.8 asked for.
@@ -53,12 +53,21 @@ Review follow-ups (adversarial pass):
 
 - `tests/core/test_code_mode.py` was never updated and was the only red in the suite. Its five director payloads used the nested `{"attempt": {...}}` shape; the published schema has always been flat, and pydantic-ai's signature-derived validator was silently tolerating both. `Frozen`'s `extra="forbid"` now rejects the wrong one. Four `offered()` assertions about tool filtering deleted; two `pytest.raises(ModelRetry)` became `ValueError`, which is what the gate raises.
 - `tests/core/test_tools.py` deleted. Its two replacements were a hand-written list of the nine command names and an assertion that a tuple is non-empty; `test_golden_schemas.py` already pins names, descriptions and schemas for both engines.
-- Two invariants were deleted rather than ported, and are back: `test_one_hit_is_settled_once` in `test_twentyfourxx_engine.py` (the refusal `_defence_to_settle` still enforces), and the suspension gate, which `test_a_resume_that_re_suspended_may_still_develop_what_the_answer_caused` covers on both branches.
+- Two invariants were deleted rather than ported, and are back: `test_one_hit_is_settled_once` in `test_twentyfourxx_engine.py` (the refusal `_settle_defence` still enforces), and the suspension gate, which `test_a_resume_that_re_suspended_may_still_develop_what_the_answer_caused` covers on both branches.
 - `command_schema(Command)` became `schema_of(type[BaseModel])` and `ServerTool.published()` uses it too. `propose_advance` was publishing `"title": "AdvanceArgs[AdventureGrowth]"`; every MCP schema now drops the argument class name the same way the director's do.
 - `apply_action` in `engines/core.py` wraps the thirteen handlers that call `aidm.state.actions` and never roll. `_world_command` in `world.py` carries `during_suspension=True` once instead of nine times. `NoArgs` replaced three empty argument models.
 - 24XX's `director_commands()` closed over nothing and is now the `DIRECTOR_COMMANDS` constant; loner3e keeps a function for `roll_question` alone, which is the only handler that needs `twists`.
 - `world.commands(engine)` is the one place core and engine commands merge, for the agent, MCP and code mode alike.
 
-- 3.9 not run: it needs an API key and a live model. Baseline is `evals/results/after-stake-flatten.json`.
+Second review pass (adversarial), after the first was staged:
+
+- `sequential_toolset` set `require_parameter_descriptions=True`; nothing replaced it, so a new argument field could have shipped to the model with no description. `command()` now refuses one at import, and `test_a_command_parameter_the_model_cannot_read_is_refused` pins it.
+- `apply_command` renamed `apply_play`: it takes a `Play`, not a `Command`, and it sits three definitions from `Command`, `command()` and `run_command()`, which all do take one.
+- `_defence_to_settle` lost its second caller with the `.filtered(...)` chain, and its one survivor raised on `None`; inlined into `_settle_defence`.
+- `schema_of` moved from `turn/run.py` to `llm.py`. `mcp.py` was importing it through the turn module to build schemas for `list_games` and `open_game`, which have no turn.
+- One `NoArgs` again: `codemode`'s copy deleted, `ServerTool.args` widened to `type[BaseModel]`. `mcp.py` had `_published(Command)` duplicating `ServerTool.published()`; both go through one `_published(name, description, args)` now, and `_advance_tools` is inlined at its one call site.
+- Left alone on purpose: `unlock_exit` still refuses without naming the locked ways out, the way `_require_skill` names an actor's skills. PLAN 3.9 sequences that after the eval so the enum removal is measured alone — and the eval says it is not needed.
+
+- 3.9 run against `evals/results/after-stake-flatten.json`, 11 cases x 9 repeats, seed 1000: score 99% -> 99%, errors 0% -> 0%, director_calls 1.19 -> 1.16. `twentyfourxx/open-the-way-and-climb` gained a run and `twentyfourxx/risky-climb` lost one; every other case held at 100%. The removed enums cost nothing measurable — a model guessing ids would have shown up as retries in `director_calls`. Mean seconds moved 11.7 -> 16.1, which is the OpenRouter backend, not the schemas: latency rose on ten of eleven cases while the round-trip count stayed flat or fell (`risky-climb` is +16.1s on *fewer* calls). Recorded in `evals/results/after-commands.json`.
 
 ## Phase 4 — Package moves — TODO
