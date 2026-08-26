@@ -11,6 +11,7 @@ dependencies = [
     "httpx==0.28.1",
     "pypdf==6.16.2",
     "mcp==2.0.0",
+    "claude-agent-sdk==0.2.144",
 ]
 
 [project.scripts]

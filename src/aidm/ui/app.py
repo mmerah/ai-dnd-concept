@@ -2,7 +2,7 @@ import logging
 from collections.abc import Callable
 from functools import partial
 
-from nicegui import ui
+from nicegui import app, ui
 from nicegui.events import ValueChangeEventArguments
 
 from aidm.app.launch import (
@@ -14,9 +14,14 @@ from aidm.app.launch import (
 )
 from aidm.app.runtime import Runtime
 from aidm.config import Settings, load_settings
+from aidm.harness.claude import ClaudeDriver
+from aidm.harness.codex import CodexDriver
+from aidm.harness.driver import Driver
+from aidm.harness.opencode import OpencodeDriver
+from aidm.harness.pi import PiDriver
 from aidm.state.entities import content_id
 
-from .create import character_page, scenario_page
+from .create import agent_scenario_page, character_page, scenario_page
 from .game import game_page
 from .widgets import page_header, show_engine_badge
 
@@ -84,8 +89,8 @@ def _new_game(controller: LauncherController) -> None:
 
 def _new_content(controller: LauncherController, settings: Settings) -> None:
     with ui.row().classes("items-center").style("gap: 0.5rem"):
-        # Authoring calls a model; in code mode no key need be configured, so the page would raise.
-        if settings.code_mode:
+        # Authoring calls a model, and only `external` has neither a key nor an agent to ask.
+        if settings.harness == "external":
             ui.label("New scenario: call begin_scenario() in the terminal.").classes(
                 "text-sm opacity-70"
             )
@@ -219,6 +224,30 @@ def start() -> None:
 
 
 def _register_pages(runtime: Runtime) -> None:
+    drivers: dict[str | None, Driver] = {}
+
+    def driver_for(slug: str | None) -> Driver | None:
+        """Memoised: one conversation per game, and `slug=None` is the authoring one."""
+        if slug not in drivers:
+            match runtime.settings.harness:
+                case "claude":
+                    drivers[slug] = ClaudeDriver(runtime=runtime, slug=slug)
+                case "codex":
+                    drivers[slug] = CodexDriver(runtime=runtime, slug=slug)
+                case "opencode":
+                    drivers[slug] = OpencodeDriver(runtime=runtime, slug=slug)
+                case "pi":
+                    drivers[slug] = PiDriver(runtime=runtime, slug=slug)
+                case _:
+                    return None
+        return drivers[slug]
+
+    async def close_drivers() -> None:
+        for driver in drivers.values():
+            await driver.close()
+
+    app.on_shutdown(close_drivers)  # pyright: ignore[reportUnknownMemberType]
+
     @ui.page("/")
     def _index() -> None:  # pyright: ignore[reportUnusedFunction]
         home_page(runtime.settings)
@@ -238,7 +267,8 @@ def _register_pages(runtime: Runtime) -> None:
                     character_id=content_id(character),
                     engine=as_engine_id(engine),
                 )
-            )
+            ),
+            driver_for(slug),
         )
 
     @ui.page("/create/{engine}")
@@ -247,7 +277,10 @@ def _register_pages(runtime: Runtime) -> None:
 
     @ui.page("/create-scenario")
     def _create_scenario() -> None:  # pyright: ignore[reportUnusedFunction]
-        if runtime.settings.code_mode:
-            ui.label("Code mode authors scenarios in the terminal: call begin_scenario().")
-            return
-        scenario_page(runtime.settings)
+        writer = driver_for(None)
+        if writer is not None:
+            agent_scenario_page(writer)
+        elif runtime.settings.harness == "external":
+            ui.label("Authoring runs in your terminal here: call begin_scenario().")
+        else:
+            scenario_page(runtime.settings)

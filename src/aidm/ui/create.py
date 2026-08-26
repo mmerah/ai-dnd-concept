@@ -12,6 +12,7 @@ from aidm.authoring.draft import BRIEFS, WHOLE_SCENARIO, brief_named
 from aidm.authoring.run import ScenarioRun, scenario_run
 from aidm.config import Settings
 from aidm.content.io import write_character
+from aidm.harness.driver import Driver
 from aidm.state.creation import AnyStep, CreationStep, TextStep, picked
 from aidm.state.entities import EngineId, Slug, content_id, slug
 
@@ -439,6 +440,81 @@ def scenario_page(settings: Settings) -> None:
                 status.refresh()
 
             readback()
+
+
+def agent_scenario_page(driver: Driver) -> None:
+    """Code mode has no api_key for the authoring roles, so the agent writes the scenario."""
+    with page_header("New scenario"):
+        pass
+    document: Path | None = None
+
+    with ui.card().classes("q-pa-lg").style("width: min(60rem, 100%)"):
+        scenario_id = (
+            ui.input(label="Slug", placeholder="the-drowned-road")
+            .classes("w-full")
+            .props("outlined")
+        )
+        premise = (
+            ui.textarea(label="Premise", placeholder="What is this adventure about?")
+            .classes("w-full")
+            .props("outlined autogrow")
+        )
+        engines = (
+            ui.select(
+                options=list(engine_ids()),
+                value=list(engine_ids()),
+                multiple=True,
+                label="Rules it plays under",
+            )
+            .classes("w-full")
+            .props("outlined")
+        )
+        grows = ui.switch("Grows during play", value=True).classes("w-full")
+
+        async def uploaded(event: UploadEventArguments) -> None:
+            nonlocal document
+            target = Path(tempfile.mkdtemp()) / event.file.name
+            await event.file.save(target)
+            document = target
+            ui.notify(f"Using {event.file.name}")
+
+        ui.upload(label="Source document", auto_upload=True, on_upload=uploaded).classes(
+            "w-full"
+        ).props("outlined")
+
+        async def write() -> None:
+            try:
+                chosen = _engines(engines.value)
+                slug_value = content_id((scenario_id.value or "").strip())
+            except ValueError as error:
+                ui.notify(str(error), type="negative")
+                return
+            # `source` is a path the tool opens, so it is named only when a document was uploaded.
+            source = "" if document is None else f" source={document}."
+            instruction = (
+                f"Write a scenario with slug {slug_value!r}, "
+                f"premise: {(premise.value or '').strip()}. "
+                f"It must play under {chosen}. grows={bool(grows.value)}.{source} "
+                "Call begin_scenario with exactly those values, then run the authoring loop and "
+                "finish_scenario."
+            )
+            write_button.disable()
+            LOGGER.info("agent authoring started: slug=%s document=%s", slug_value, document)
+            try:
+                async for line in driver.play(instruction):
+                    log.push(line)
+                ui.notify("Scenario written.", type="positive")
+            except Exception as error:
+                ui.notify(f"{type(error).__name__}: {error}", type="negative", multi_line=True)
+            finally:
+                write_button.enable()
+
+        write_button = (
+            ui.button("Write it", icon="auto_stories", on_click=write)
+            .props("color=primary")
+            .classes("q-mt-md")
+        )
+        log = ui.log(max_lines=500).classes("w-full h-96 text-xs")
 
 
 def _engines(value: object) -> tuple[EngineId, ...]:

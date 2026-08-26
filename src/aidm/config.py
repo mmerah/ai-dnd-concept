@@ -49,6 +49,10 @@ class TurnConfig(BaseModel):
     model_config = ConfigDict(frozen=True)
 
     director_request_limit: int = Field(default=16, ge=1)
+    # How many past exchanges an agent is shown; every harness reads the same depth.
+    recent_exchanges: int = Field(default=20, ge=1)
+    # Which model an agent harness plays on. Empty leaves the choice to the agent's own config.
+    harness_model: str = ""
 
 
 class AuthoringConfig(BaseModel):
@@ -116,8 +120,8 @@ class Settings(BaseSettings):
     media: MediaConfig = MediaConfig()
     turn: TurnConfig = TurnConfig()
     authoring: AuthoringConfig = AuthoringConfig()
-    # "code" hands the turn loop to a coding agent over MCP (harness/mcp.py); the UI turns viewer.
-    harness: Literal["builtin", "code"] = "builtin"
+    # Who plays the turn: the app's own roles, an agent you run yourself, or one the app launches.
+    harness: Literal["builtin", "external", "claude", "codex", "opencode", "pi"] = "builtin"
     saves_dir: Path = Path("saves")
     scenarios_dir: Path = Path("scenarios")
     characters_dir: Path = Path("characters")
@@ -125,7 +129,7 @@ class Settings(BaseSettings):
 
     @property
     def code_mode(self) -> bool:
-        return self.harness == "code"
+        return self.harness != "builtin"
 
     def role(self, name: Role) -> RoleConfig:
         found = self.roles.for_name(name)

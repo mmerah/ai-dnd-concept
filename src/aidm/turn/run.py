@@ -195,7 +195,7 @@ async def run_segment(
         if on_step is not None:
             on_step(step)
 
-    history = exchanges_to_messages(state.history)
+    history = exchanges_to_messages(state.history[-settings.turn.recent_exchanges :])
     log = TurnRecord(on_event=on_event)
     draft = state.draft()
     prompt, resumed, answered = consume_answer(engine, draft, player_input, rng, log)

@@ -1,9 +1,12 @@
+import asyncio
 import json
 import shutil
 from pathlib import Path
 from random import Random
+from typing import cast
 
 import pytest
+from claude_agent_sdk import McpSdkServerConfig
 from core_test_support import (
     CHARACTERS,
     LONER3E,
@@ -21,8 +24,10 @@ from aidm.app.runtime import Runtime
 from aidm.config import AuthoringConfig, Settings
 from aidm.content.io import FileStore, SavedGame, load_scenario
 from aidm.engines.loner3e.rules import AdventureGrowth, Change, Mechanics
+from aidm.harness.claude import ClaudeDriver
 from aidm.harness.codemode import Harness
-from aidm.harness.mcp import call, offered
+from aidm.harness.exec import ExecDriver
+from aidm.harness.mcp import SERVER_NAME, call, offered
 from aidm.state.entities import PLAYER_ID, Entity, EntityId
 
 VAULT = EntityId("vault")
@@ -57,8 +62,53 @@ def _settings(
         characters_dir=CHARACTERS,
         saves_dir=tmp_path,
         authoring=AuthoringConfig(growth_frontier=growth_frontier),
-        harness="code",
+        harness="external",
     )
+
+
+def test_the_driver_serves_this_app_s_own_mcp_server_in_process(tmp_path: Path) -> None:
+    driver = ClaudeDriver(
+        runtime=Runtime(_settings(tmp_path)), slug="whispering-vault--kael--loner3e"
+    )
+    options = driver.options()
+    assert isinstance(options.mcp_servers, dict)
+    served = cast(McpSdkServerConfig, options.mcp_servers[SERVER_NAME])
+    assert served["instance"] is not None
+    # A second aidm from `.mcp.json` would be a second writer on the same save.
+    assert options.strict_mcp_config
+
+
+async def test_the_agent_s_first_listing_already_carries_the_engine_commands(
+    tmp_path: Path,
+) -> None:
+    driver = ClaudeDriver(
+        runtime=Runtime(_settings(tmp_path)), slug="whispering-vault--kael--loner3e"
+    )
+    assert "roll_question" in {tool.name for tool in await offered(driver.opened())}
+
+
+class _Chatty(ExecDriver):
+    """One line, then a child that would outlive the turn."""
+
+    def argv(self, text: str) -> list[str]:
+        del text
+        return ["sh", "-c", "echo '{\"n\": 1}'; sleep 30"]
+
+    def line(self, event: dict[str, JsonValue]) -> str | None:
+        del event
+        return "one"
+
+
+async def test_abandoning_a_turn_kills_the_cli_it_spawned(tmp_path: Path) -> None:
+    driver = _Chatty(runtime=Runtime(_settings(tmp_path)))
+    playing = driver.play("go")
+    assert await anext(playing) == "one"
+    process = driver.process
+    assert process is not None
+    await playing.aclose()
+    # A 30s wait here is the failure: the CLI's own children outlived the turn.
+    assert await asyncio.wait_for(process.wait(), 5) != 0
+    assert driver.process is None
 
 
 def _harness(settings: Settings) -> Harness:

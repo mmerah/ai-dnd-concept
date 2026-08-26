@@ -5,10 +5,10 @@ import pytest
 
 SOURCE = Path(__file__).parents[2] / "src" / "aidm"
 ENGINES = ("aidm.engines.loner3e", "aidm.engines.twentyfourxx")
-# Flow: state <- content <- engines <- turn <- authoring <- app <- {ui, harness}.
-LAYERS = ("state", "content", "engines", "turn", "authoring", "app")
-# The two tops sit above `app` and import downwards; the UI additionally stays engine-agnostic.
-TOPS = {"ui": {"aidm.engines"}, "harness": set[str]()}
+# Flow: state <- content <- engines <- turn <- authoring <- app <- harness <- ui.
+LAYERS = ("state", "content", "engines", "turn", "authoring", "app", "harness")
+# `ui` sits above them all, imports downwards, and additionally stays engine-agnostic.
+TOPS = {"ui": {"aidm.engines"}}
 # A framework belongs to the layers that own it and to nothing below them.
 CONFINED = {
     "nicegui": ("ui",),

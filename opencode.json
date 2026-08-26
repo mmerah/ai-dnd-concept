@@ -1,0 +1,10 @@
+{
+  "$schema": "https://opencode.ai/config.json",
+  "mcp": {
+    "aidm": {
+      "type": "local",
+      "command": ["uv", "run", "python", "-m", "aidm.harness.mcp"],
+      "enabled": true
+    }
+  }
+}

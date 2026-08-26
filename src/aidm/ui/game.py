@@ -8,6 +8,7 @@ from time import monotonic
 from nicegui import ui
 
 from aidm.app.runtime import GameSession
+from aidm.harness.driver import Driver
 from aidm.state.entities import DEAD, PLAYER_ID, Entity, EntityId
 from aidm.state.facts import DiceEvent, MechanicEvent
 from aidm.state.play import Answer, DecisionOption
@@ -179,8 +180,10 @@ LOGGER = logging.getLogger(__name__)
 
 
 class GameView:
-    def __init__(self, session: GameSession) -> None:
+    def __init__(self, session: GameSession, driver: Driver | None = None) -> None:
         self.session = session
+        self.driver = driver
+        self.agent_log: ui.log | None = None
         self.shown_art: tuple[Path | None, bool] = (None, False)
         # Both are built by the page below this view, and the panels reach them through it.
         self.composer: ui.input | None = None
@@ -193,8 +196,12 @@ class GameView:
 
     @property
     def viewing(self) -> bool:
-        """Code mode plays the turn in the MCP server, so this window only shows what it wrote."""
-        return self.session.settings.code_mode
+        """An agent you start yourself writes the save from another process; this only shows it."""
+        return self.session.settings.harness == "external"
+
+    def log(self, line: str) -> None:
+        if self.agent_log is not None and not self.agent_log.is_deleted:
+            self.agent_log.push(line)
 
     def fill_composer(self, text: str) -> None:
         if self.composer is not None:
@@ -306,22 +313,45 @@ async def _send(view: GameView, player_input: str | Answer, bubble: str) -> None
     view.live_prompt, view.live_events = bubble, []
     view.live_turn.refresh()
     _scroll(view)
-    loop = get_running_loop()
     async with working(session):
-        was_offered = session.advancement_offered()
-        await session.submit(
-            player_input,
-            on_step=lambda step: on_step(view, step),
-            on_event=lambda event: on_event(view, event, loop),
-        )
-        if not was_offered and session.advancement_offered():
-            ui.notify("Something is on offer. Check the advancement tab.")
+        if view.driver is not None:
+            await _play_with_agent(view, view.driver, player_input, bubble)
+        else:
+            loop = get_running_loop()
+            was_offered = session.advancement_offered()
+            await session.submit(
+                player_input,
+                on_step=lambda step: on_step(view, step),
+                on_event=lambda event: on_event(view, event, loop),
+            )
+            if not was_offered and session.advancement_offered():
+                ui.notify("Something is on offer. Check the advancement tab.")
     session.step = None
     view.live_prompt, view.live_events, view.step_started = None, [], None
     if view.composer is not None:
         view.composer.props(f'placeholder="{_composer_placeholder(view)}"')
     view.refresh_all()
     _scroll(view)
+
+
+async def _play_with_agent(
+    view: GameView, driver: Driver, player_input: str | Answer, bubble: str
+) -> None:
+    """The agent commits through the MCP tools, so each message it sends is a cue to redraw."""
+    session = view.session
+    on_step(view, "director")
+    committed = len(session.state.history)
+    # `start_turn` takes the chosen option by id, and only the text reaches the agent.
+    chose = player_input.option_id if isinstance(player_input, Answer) else None
+    text = bubble if chose is None else f"{bubble} (option_id: {chose})"
+    async for line in driver.play(text):
+        view.log(line)
+        # A CLI the app spawned commits from its own process, so the save is the only channel.
+        poll_save(view)
+        if len(session.state.history) > committed:
+            # `end_turn` wrote the real bubble; the live one would now be a second copy.
+            view.live_prompt = None
+        view.refresh_all()
 
 
 async def submit(view: GameView, box: ui.input) -> None:
@@ -400,6 +430,10 @@ def composer(view: GameView) -> None:
             .props("round flat")
             .bind_enabled_from(session, "busy", backward=partial(_can_type, session))
         )
+        if (driver := view.driver) is not None:
+            ui.button(icon="stop", on_click=driver.interrupt).props("round flat").tooltip(
+                "Stop the agent"
+            ).bind_visibility_from(session, "busy")
     view.composer = box
 
 
@@ -419,9 +453,9 @@ def restart(view: GameView) -> None:
     view.refresh_all()
 
 
-def game_page(session: GameSession) -> None:
+def game_page(session: GameSession, driver: Driver | None = None) -> None:
     session.illustrate_scene()
-    view = GameView(session)
+    view = GameView(session, driver)
     with page_header(session.state.scenario.title, session.engine.badge):
         ui.space()
         if not view.viewing:
@@ -460,9 +494,13 @@ def game_page(session: GameSession) -> None:
                         view.trace()
                     with ui.expansion("state").classes("w-full"):
                         view.state()
+                    if driver is not None:
+                        with ui.expansion("agent", value=True).classes("w-full"):
+                            view.agent_log = ui.log(max_lines=500).classes("w-full h-64 text-xs")
 
     ui.timer(1.0, lambda: tick_elapsed(view))
-    if view.viewing:
+    if session.settings.code_mode:
+        # `external` depends on this; under `claude` it only catches a turn whose stream was lost.
         ui.timer(2.0, lambda: poll_save(view))
     if session.media is not None:
         ui.timer(3.0, lambda: poll_art(view))

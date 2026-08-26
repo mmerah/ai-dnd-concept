@@ -48,7 +48,6 @@ from aidm.turn.run import close_segment, consume_answer, speakers_refusal
 
 LOGGER = logging.getLogger(__name__)
 
-RECENT_EXCHANGES = 8
 # Where `uv run aidm` serves the viewer; the port is NiceGUI's default, set in ui/app.py.
 VIEWER = "http://localhost:8080"
 # `render_director` labels its last section PLAYER ACTION; before `start_turn` there is none.
@@ -191,6 +190,7 @@ class Harness:
     def _picture(self, action: str, notes: tuple[str, ...], resumed: str = "") -> str:
         session = self.opened()
         state = session.state
+        recent = self.settings.turn.recent_exchanges
         rendered = render_director(
             SceneSnapshot.from_game(state, (*notes, *state.world.pending_notes)),
             session.engine.renderer(state),
@@ -199,8 +199,8 @@ class Harness:
             resumed=resumed,
         )
         sections = [
+            f"RECENT PLAY (this is turn {state.turn + 1}):\n{_recent(state, recent)}",
             rendered,
-            f"RECENT PLAY (this is turn {state.turn + 1}):\n{_recent(state)}",
             f"WAITING ON THE PLAYER:\n{_waiting(state.pending)}",
             f"ADVANCEMENT ON OFFER:\n{_offers(session)}",
         ]
@@ -399,10 +399,10 @@ def _listing(catalog: LauncherCatalog) -> str:
     )
 
 
-def _recent(state: Game) -> str:
+def _recent(state: Game, limit: int) -> str:
     told = [
         f"> {exchange.prompt}\n[at {exchange.place}] {exchange.narration}"
-        for exchange in state.history[-RECENT_EXCHANGES:]
+        for exchange in state.history[-limit:]
     ]
     return "\n\n".join(told) or "(the game has not started yet)"
 

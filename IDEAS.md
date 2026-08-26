@@ -11,6 +11,7 @@
 - [] L9: docs/chat-claude-mock: Shows claude-sdk usage to have the UI directly drive claude, with the tool output of end turn ending in the chat bubble. Then the dev tab can probably show that claude code log stuff (so you see tool calls, costs, ...). We would ideally focus on supporting 2 coding harnesses: codex and claude code. CC through the sdk, codex has a SDK as well.
 - [] L10: Other harnesses, config-level. Support of "codex" in code mode -> it can generate images! Support of "opencode" and "pi" in code mode. Codex already runs through .codex/config.toml, so images are the only real work here.
 - [] L11: Sounds/Voices. app/media.py is the template.
+- [] L13: `TURN__RECENT_EXCHANGES` caps what an agent remembers, so a long game forgets its start. A per-location summary, written when the player leaves it, would carry the places already played without carrying every turn. Maybe could be part of the docs/MEMORY-SYSTEM.md? Each entity (npc, location) carries a memory (list[str]) which are created when the player change location (for the npc/location it just left), created by a summarizer agent. Builtin mode is clear on how to do that, but for codemode we need some brainstorm
 - [] L12: RAG? Scenario ingestion. .pdf -> source.md in scenario/<id>/ folder, then RAG on it? Is the drowned-road scenario extending based on source.md? Leaning skip: the source cap already swallows a 76-page adventure whole, and there is no embedding provider in the stack.
 
 ## Ideas

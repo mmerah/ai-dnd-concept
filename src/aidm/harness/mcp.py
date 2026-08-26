@@ -218,8 +218,10 @@ def main() -> None:
     logging.basicConfig(level=logging.INFO, stream=sys.stderr)
     settings = load_settings()
     # Read from .env, not a flag, so a viewer beside this server can never be a second writer.
+    # Any code-mode value: `codex` strips the environment of the CLIs it spawns, so a driver
+    # cannot hand its child a value here.
     if not settings.code_mode:
-        raise SystemExit("set HARNESS=code in .env before running the code-mode server")
+        raise SystemExit("set HARNESS to a code-mode value in .env before running this server")
     asyncio.run(serve(Harness(settings=settings, runtime=Runtime(settings))))
 
 
