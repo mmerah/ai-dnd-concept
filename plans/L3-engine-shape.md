@@ -68,7 +68,7 @@ a change with exactly one consumer lands in the phase that brings that consumer.
 ## No refactor needed — the contract already carries it
 
 - **Advancement stays mandatory.** This plan originally proposed `Engine.advancement:
-  Advancement | None`, on the strength of `docs/CAIRN-BAREBONES.md` naming it a prerequisite.
+  Advancement | None`, on the strength of `plans/L6-cairn-barebones.md` naming it a prerequisite.
   Cairn Barebones has Training (docs line 625), which is `SheetAdvancement` + `complete_chapter` in
   ~12 lines, and Fate has breakthroughs. No engine on the roadmap lacks advancement — dropped.
   (The doc was not wrong: it frames Training as a *downtime procedure* gated by Master, Costs and

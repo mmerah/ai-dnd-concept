@@ -3,7 +3,7 @@
 Five phases, in order. Each has a self-standing plan under `plans/`, concrete enough to implement
 from. This file is the authority where those plans disagreed.
 
-Verify every phase with `uv run pytest && uv run ruff check && uv run ruff format --check &&
+Progress is tracked in `PROGRESS.md`, one section per phase. Verify every phase with `uv run pytest && uv run ruff check && uv run ruff format --check &&
 uv run basedpyright`, with `UV_CACHE_DIR` unset. Baseline is 253 passing.
 
 Citations like `CAIRN-BAREBONES.md:204` are evidence gathered against the **pre-Phase-0** extractions.

@@ -24,7 +24,7 @@ from aidm.state.play import DecisionOption, PendingDecision
 
 @dataclass(frozen=True, slots=True)
 class Rules:
-    """24XX's numbers in one place; docs/24XX.md names every deviation from the SRD."""
+    """24XX's numbers in one place; docs/24XX.md points at the SRD and its deviations."""
 
     starting_credits: int = 2
     default_face: int = 6  # an unlisted skill rolls the bare d6

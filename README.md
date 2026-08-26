@@ -11,10 +11,10 @@ Two engines ship.
 | Loner 3e | Chance d6 against Risk d6, six outcomes, a Twist Counter, Harm against Luck |
 | 24XX | one skill die of d6 to d12, +d6 for help, +d4 when hindered, take the highest |
 
-`docs/LONER-3E.md` and `docs/24XX.md` hold the SRD extraction for each engine and name every deviation this implementation takes. A candidate engine is a doc, not code: the shelf takes official, freely licensed, low-overhead systems, and a package appears only when it is next to be played.
+`docs/LONER-3E.md` and `docs/24XX.md` point at each engine's official rules and name every deviation this implementation takes; the rules text itself is not copied here. A candidate engine is a pointer file, not code: the shelf takes official, freely licensed, low-overhead systems, and a package appears only when it is next to be played.
 
-- `docs/FATE-CONDENSED.md` is the next planned engine.
-- `docs/CAIRN-BAREBONES.md` will be implemented after Fate Condensed.
+- `docs/CAIRN-BAREBONES.md` is the next planned engine.
+- `docs/FATE-CONDENSED.md` will be implemented after Cairn Barebones.
 
 ## How a turn runs
 
@@ -126,10 +126,15 @@ Each engine subsystem gets a tab. Both shipped engines ship **Advancement**. The
 
 | Files | License | Attribution |
 |---|---|---|
-| `docs/LONER-3E.md`, `src/aidm/engines/loner3e/` prose, instructions and packs | CC BY-SA 4.0 | Roberto Bisceglie / Zotiquest Games, <https://lonersrd.zotiquestgames.com> |
-| `docs/24XX.md`, `src/aidm/engines/twentyfourxx/` prose, instructions and pack | CC BY 4.0 | Jason Tocci, <https://24xx-srd.carrd.co> |
-| `docs/FATE-CONDENSED.md` | CC BY 3.0 | at the top of that file; archive at <https://fate-srd.com/downloads/CC-BY-SRDs.zip> |
+| `src/aidm/engines/loner3e/` prose, instructions and packs | CC BY-SA 4.0 | Roberto Bisceglie / Zotiquest Games, <https://lonersrd.zotiquestgames.com> |
+| `src/aidm/engines/twentyfourxx/` prose, instructions and pack | CC BY 4.0 | Jason Tocci, <https://24xx-srd.carrd.co> |
 
-`packs/ap01-fantasy.json` comes from the Loner SRD site's AP01 Fantasy page. That page's footer states only "© Roberto Bisceglie", while the site declares CC BY-SA 4.0. It is treated as covered by the site's license. One email to the publisher would settle it.
+Each `docs/<game>.md` pointer file carries its game's sources, license and required attribution.
+
+`packs/ap01-fantasy.json` comes from the Loner SRD site's AP01 Fantasy page. That page carries no CC declaration at all — only the site-wide footer "© 2021-2026 Roberto Bisceglie" — while the site index declares CC BY-SA 4.0. It is treated as covered by the site's license. One email to the publisher would settle it.
+
+Fate Condensed, planned as an engine here, requires its attribution wherever a copyright appears, in the same size as the copyright text:
+
+> This work is based on Fate Condensed (found at http://www.faterpg.com/), a product of Evil Hat Productions, LLC, developed, authored, and edited by PK Sullivan, Lara Turner, Leonard Balsera, Fred Hicks, Richard Bellingham, Robert Hanz, Ryan Macklin, and Sophie Lagacé, and licensed for our use under the Creative Commons Attribution 3.0 Unported license (http://creativecommons.org/licenses/by/3.0/).
 
 The license of the rest of the code is an open decision.

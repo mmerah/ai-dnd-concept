@@ -22,7 +22,7 @@ from aidm.state.model import Game
 
 @dataclass(frozen=True, slots=True)
 class Rules:
-    """Loner 3e's numbers in one place; docs/LONER-3E.md names every deviation from the SRD."""
+    """Loner 3e's numbers in one place; docs/LONER-3E.md points at the SRD and its deviations."""
 
     luck_max: int = 6
     ties_per_twist: int = 3

@@ -4,8 +4,8 @@
 - [] L2: Few shot learning examples in instructions? Engines ship with them (5 scenarios of low-high complexity presenting how the SRD work) plus core as well (entities/threads/… manipulation). Only worth writing once L1 says which calls the model actually gets wrong.
 - [] L3: What refactor to make fate condensed and cairn barebones as easy as possible to implement. plus: look and replace hard-coded manually built list that are maintenance nightmares.
 - [] L4: Best explanation of loner I found: https://keeper.farirpgs.com/resources/zotiquest-games/loner/introduction/ and of 24xx: https://keeper.farirpgs.com/resources/jason-tocci/24xx/ -> Use to make sure both engines are fully compliant (drastic changes might be needed!). Only thing obviously is our AI-as-GM approach. Read both before adding a third engine, so a drastic change hits the base shape once.
-- [] L5: add fate-condensed system. docs/FATE-CONDENSED.md is already written.
-- [] L6: add cairn barebones edition. docs/CAIRN-BAREBONES.md is already written.
+- [] L5: add fate-condensed system. docs/FATE-CONDENSED.md points at the SRD; build the pack from the official archive.
+- [] L6: add cairn barebones edition. docs/CAIRN-BAREBONES.md points at the SRD; build the pack from the official pages.
 - [] L7: Sounds/Voices. app/media.py is the template.
 - [] L8: `TURN__RECENT_EXCHANGES` caps what an agent remembers, so a long game forgets its start. A per-location summary, written when the player leaves it, would carry the places already played without carrying every turn. Maybe could be part of the docs/MEMORY-SYSTEM.md? Each entity (npc, location) carries a memory (list[str]) which are created when the player change location (for the npc/location it just left), created by a summarizer agent. Builtin mode is clear on how to do that, but for codemode we need some brainstorm
 - [] L9: RAG? Scenario ingestion. .pdf -> source.md in scenario/<id>/ folder, then RAG on it? Is the drowned-road scenario extending based on source.md? Leaning skip: the source cap already swallows a 76-page adventure whole, and there is no embedding provider in the stack.
