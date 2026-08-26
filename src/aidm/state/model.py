@@ -187,6 +187,8 @@ class Game:
     world: WorldState
     # Opaque to core: the engine that wrote it is the only reader and the only validator.
     mechanics: Mutable
+    # Cards of the turn in flight; a harness in another process reaches the page through the save.
+    turn_events: tuple[MechanicEvent, ...]
     history: tuple[Exchange, ...] = ()
     turn: int = 0
     pending: PendingDecision | None = None

@@ -2,7 +2,7 @@
 
 Five phases, ordered. Each phase is a report in `docs/plans/`; the report is the detail, this file is
 the stack and the reasons for the order. Ship a phase, tick it, move down. [PROGRESS.md](PROGRESS.md)
-holds the ticks; Phases 0 and 1 are done.
+holds the ticks; Phases 0 to 3 are done.
 
 Scope: IDEAS.md L1, L2, L5, L9, L10, I4 — L10 folds into L9's phase, so six items make five phases.
 Everything else in IDEAS.md is untouched and unordered by this plan; see "Not in this plan".
@@ -148,14 +148,15 @@ submode.
 
 [docs/plans/I4-settings-from-ui.md](docs/plans/I4-settings-from-ui.md)
 
-`Settings` is a pydantic-settings `BaseSettings` (`config.py:108`) built once at the composition root
-(`ui/app.py:213`). 50 leaves: 44 editable, 2 secret (write-only), 4 read-only paths. The mark is decided
-by type — `SecretStr` → secret, `Path` → never — not by a name list.
+`Settings` is a pydantic-settings `BaseSettings` built once at the composition root by
+`Runtime(load_settings())` in `ui/app.py`. 49 leaves: 43 editable, 2 secret (write-only), 4 read-only
+paths. The mark is decided by type — `SecretStr` → secret, `Path` → never — not by a name list.
 
-Generated form, not hand-written: 44 leaves across 6 model classes, one recursive `model_fields` walk,
+Generated form, not hand-written: 43 leaves, one recursive `model_fields` walk,
 env key = `"__".join(path).upper()` which is pydantic-settings' own convention, so no mapping table. Six
-widget branches by annotation. `.env` written with `dotenv.set_key` (python-dotenv already installed
-transitively; verified it preserves comments, quoting and untouched keys). Nothing is written until
+widget branches by annotation; 10 leaves are `Literal` selects, `HARNESS` the widest at six values.
+`.env` written with `dotenv.set_key` (python-dotenv 1.2.3, still installed transitively; verified it
+preserves comments, quoting and untouched keys). Nothing is written until
 `Settings.model_validate` passes on the merged dump.
 
 Restart is a banner, honestly. Skipped `os.execv` and NiceGUI reload — add execv when the manual step
@@ -167,8 +168,8 @@ annoys someone. An open game costs at most a turn in flight; every turn is commi
   is never populated from `get_secret_value()`. Blank means "leave the stored key alone", not "clear it".
 - **Exit check:** `/settings`, switch `MEDIA__ENABLED` on, Save — `.env` gained the key with the existing
   API-key line and both comments intact; restart; scenes illustrate.
-- **Last, because:** Phase 3 rewrites the `harness` literal, which this form renders as a select. The
-  generated form absorbs that for free, but running it last means the field list is final.
+- **Last, because:** Phase 3 rewrote the `harness` literal and added `TURN__RECENT_EXCHANGES` and
+  `TURN__HARNESS_MODEL`. The generated form absorbs all three for free, and the field list is now final.
 
 ---
 

@@ -49,6 +49,7 @@ def state() -> Game:
         mechanics=Mechanics(
             sheets={entity.id: Sheet() for entity in entities if entity.kind == "actor"}
         ),
+        turn_events=(),
     )
     return held.committed()
 

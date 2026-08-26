@@ -11,6 +11,7 @@ from pydantic import BaseModel, ConfigDict, Field, JsonValue, model_validator
 from pypdf import PdfReader
 
 from aidm.state.entities import EngineId, Mutable, Slug, content_id
+from aidm.state.facts import MechanicEvent
 from aidm.state.model import Game, ScenarioMeta, WorldState, check_player_playable
 from aidm.state.play import Exchange, PendingDecision
 
@@ -142,6 +143,7 @@ class SavedGame(BaseModel):
     engine: EngineId
     world: WorldState
     mechanics: JsonValue
+    turn_events: tuple[MechanicEvent, ...]
     history: tuple[Exchange, ...] = ()
     turn: int = Field(default=0, ge=0)
     pending: PendingDecision | None
@@ -160,6 +162,7 @@ class SavedGame(BaseModel):
             engine=state.engine,
             world=state.world,
             mechanics=state.mechanics.model_dump(mode="json"),
+            turn_events=state.turn_events,
             history=state.history,
             turn=state.turn,
             pending=state.pending,
@@ -173,6 +176,7 @@ class SavedGame(BaseModel):
             engine=self.engine,
             world=self.world,
             mechanics=mechanics,
+            turn_events=self.turn_events,
             history=self.history,
             turn=self.turn,
             pending=self.pending,

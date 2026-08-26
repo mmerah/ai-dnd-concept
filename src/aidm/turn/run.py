@@ -260,6 +260,7 @@ def close_segment(
     draft: Game, prompt: str, lines: tuple[Line, ...], events: tuple[MechanicEvent, ...]
 ) -> Game:
     """The one place a segment becomes history: builtin and code mode differ only in when."""
+    draft.turn_events = ()
     draft.history = (
         *draft.history,
         Exchange(
@@ -284,6 +285,8 @@ def consume_answer(
     """The PLAYER ACTION, what a closed answer resolved, and the decision an open answer used."""
     if draft.player.trait(DEAD) is not None:
         raise ValueError("the player is dead. The only way on is to restart.")
+    # A new segment starts with no cards: an interrupted turn left its own on the draft.
+    draft.turn_events = ()
     # Any input consumes the decision, a revision included: it never survives its own answer.
     consumed, draft.pending = draft.pending, None
     if isinstance(player_input, str):
@@ -327,5 +330,5 @@ def _resume(
     if refused := draft_refusal(draft, lambda copy: apply_to_draft(engine, copy, play, Random(0))):
         raise ValueError(refused)
     landed = apply_to_draft(engine, draft, play, rng)
-    log.landed(landed, player_events(landed))
+    log.landed(draft, landed, player_events(landed))
     return landed

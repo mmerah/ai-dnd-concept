@@ -348,6 +348,7 @@ async def _play_with_agent(
         view.log(line)
         # A CLI the app spawned commits from its own process, so the save is the only channel.
         poll_save(view)
+        view.live_events = list(session.state.turn_events)
         if len(session.state.history) > committed:
             # `end_turn` wrote the real bubble; the live one would now be a second copy.
             view.live_prompt = None

@@ -41,6 +41,12 @@ ILLEGAL = AdventureGrowth(
     changes=(Change(kind="rewrite", tag="Never Held a Blade", into="Holds It Well"),),
     why="a tag the sheet does not carry",
 )
+A_QUESTION: dict[str, JsonValue] = {
+    "actor_id": PLAYER_ID,
+    "question": "Does he hear what waits past the vault door?",
+    "position": "advantage",
+    "edge": "Quiet Hands",
+}
 A_NEW_PLACE: dict[str, JsonValue] = {
     "entities": [
         {
@@ -146,6 +152,25 @@ async def test_a_director_tool_call_lands_on_disk(tmp_path: Path) -> None:
 
     assert "vault" in answered
     assert _saved(store, slug).world.require(VAULT).known
+
+
+async def test_the_save_carries_the_turn_s_cards_as_they_land_and_files_them_at_the_end(
+    tmp_path: Path,
+) -> None:
+    """The page streams mechanics off the save, so a harness in another process shows them too."""
+    harness, store, slug = _opened(tmp_path, "loner3e")
+
+    _ = await call(harness, "start_turn", {"prompt": "I listen at the door."})
+    assert _saved(store, slug).turn_events == ()
+    _ = await call(harness, "reveal", {"entity_id": VAULT})
+    assert len(_saved(store, slug).turn_events) == 1
+    _ = await call(harness, "roll_question", A_QUESTION)
+    assert len(_saved(store, slug).turn_events) == 2
+
+    _ = await call(harness, "end_turn", {"lines": [{"speaker_id": None, "text": "Dust hangs."}]})
+    saved = _saved(store, slug)
+    assert saved.turn_events == ()
+    assert len(saved.history[-1].events) == 2
 
 
 async def test_end_turn_records_the_exchange_and_bumps_the_turn(tmp_path: Path) -> None:

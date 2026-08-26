@@ -344,9 +344,13 @@ class TurnRecord:
     events: list[MechanicEvent] = field(default_factory=list)
     on_event: Callable[[MechanicEvent], None] | None = None
 
-    def landed(self, facts: tuple[Fact, ...], events: tuple[MechanicEvent, ...]) -> None:
+    def landed(
+        self, draft: Game, facts: tuple[Fact, ...], events: tuple[MechanicEvent, ...]
+    ) -> None:
         self.facts.extend(facts)
         self.events.extend(events)
+        # On the draft too: a harness that commits per tool call reaches the page only through it.
+        draft.turn_events = tuple(self.events)
         if self.on_event is not None:
             for event in events:
                 self.on_event(event)
@@ -403,7 +407,7 @@ def apply_play(deps: DirectorContext, play: Play) -> str:
     already_pending = len(deps.draft.world.pending_notes)
     decided_before = deps.draft.pending
     landed = apply_to_draft(deps.engine, deps.draft, play, deps.rng)
-    deps.log.landed(landed, player_events(landed))
+    deps.log.landed(deps.draft, landed, player_events(landed))
     lines = trace_lines(landed)
     lines.extend(f"- {note}" for note in deps.draft.world.pending_notes[already_pending:])
     lines.extend(_reached(deps.draft, landed))

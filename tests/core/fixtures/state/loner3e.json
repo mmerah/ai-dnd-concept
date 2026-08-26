@@ -298,6 +298,7 @@
       "maximum": 3
     }
   },
+  "turn_events": [],
   "history": [],
   "turn": 0,
   "pending": null

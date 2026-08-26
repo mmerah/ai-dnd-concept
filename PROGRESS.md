@@ -160,6 +160,14 @@ for the same reason, which also fixed a client left connected when a turn raised
 - [x] Audited offline: on a fresh `Runtime`, every mode is shown turn 1's action and prose exactly
       once, and no driver passes a session flag
 
+**The cards stream in every mode.** In code mode they all appeared at once at `end_turn`, because a
+`MechanicEvent` lived only on `Exchange` and an `Exchange` is only built when the turn closes.
+`Game.turn_events` now holds the turn in flight, so the save carries it and `poll_save` streams it
+for the spawned CLIs too. Written in `TurnRecord.landed`, the funnel every mechanic already passes
+through, so no commit site had to remember; cleared in `close_segment`, and in `consume_answer`
+because the stop button abandons a turn and leaves its cards on the draft. A driver-side `watch()`
+callback was written first and deleted: it could only ever have worked for `claude`.
+
 **Known gaps.** `opening()` tells the agent not to read the repository, but `codex` and `opencode`
 have no in-band skill delivery and must read `.agents/skills/…/SKILL.md`; both also load
 `i-have-adhd` first, which a turn of play does not need. `agent_scenario_page` has no test. The

@@ -303,6 +303,7 @@
       "maximum": 3
     }
   },
+  "turn_events": [],
   "history": [
     {
       "prompt": "I try the vault door.",

@@ -280,6 +280,7 @@
       "maximum": null
     }
   },
+  "turn_events": [],
   "history": [],
   "turn": 0,
   "pending": null
