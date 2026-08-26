@@ -139,7 +139,8 @@ class Loner3eCreation(PackCreation[Pack]):
             ),
         )
 
-    def create(self, name: str, brief: str, picks: Picks) -> CreatedCharacter:
+    def create(self, name: str, brief: str, picks: Picks, rng: Random) -> CreatedCharacter:
+        del rng
         check_picks(self.steps(picks), picks)
         pack = self.packs[picked(picks, "pack")[0]]
         return CreatedCharacter(

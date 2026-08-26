@@ -2,6 +2,7 @@ import logging
 import tempfile
 from collections.abc import Callable, Sequence
 from pathlib import Path
+from random import Random
 
 from nicegui import ui
 from nicegui.events import UploadEventArguments, ValueChangeEventArguments
@@ -28,6 +29,7 @@ def character_page(runtime: Runtime, engine_id: EngineId) -> None:
     creation = engine.creation
     with ui.column().classes("w-full q-pa-lg items-center"):
         picks: dict[Slug, tuple[str, ...]] = {}
+        seed = 0
         with ui.row().classes("no-wrap items-start").style("width: min(80rem, 100%); gap: 1rem"):
             with ui.card().classes("q-pa-lg").style("flex: 1; min-width: 0"):
                 name = (
@@ -73,9 +75,12 @@ def character_page(runtime: Runtime, engine_id: EngineId) -> None:
                             del picks[step_id]
                     for step in steps:
                         _step_widget(step, picks, refresh_form_and_preview)
-                    ui.button("Create", icon="person_add", on_click=create).props(
-                        "color=primary"
-                    ).classes("q-mt-md")
+                    with ui.row().classes("items-center q-mt-md").style("gap: 0.5rem"):
+                        ui.button("Create", icon="person_add", on_click=create).props(
+                            "color=primary"
+                        )
+                        if creation.rolls:
+                            ui.button("Reroll", icon="casino", on_click=reroll)
 
                 def create() -> None:
                     title = (name.value or "").strip()
@@ -83,7 +88,9 @@ def character_page(runtime: Runtime, engine_id: EngineId) -> None:
                         ui.notify("Name the character.", type="warning")
                         return
                     try:
-                        created = creation.create(title, (brief.value or "").strip(), picks)
+                        created = creation.create(
+                            title, (brief.value or "").strip(), picks, Random(seed)
+                        )
                         character_id = slug(title, _taken(runtime.settings.characters_dir))
                         write_character(
                             runtime.settings.characters_dir, character_id, engine_id, created
@@ -107,7 +114,7 @@ def character_page(runtime: Runtime, engine_id: EngineId) -> None:
                             ui.label(chosen or "—").classes("text-sm")
                     try:
                         created = creation.create(
-                            (name.value or "").strip() or "Unnamed", brief_text, picks
+                            (name.value or "").strip() or "Unnamed", brief_text, picks, Random(seed)
                         )
                     except ValueError as refused:
                         ui.label(f"Not ready yet: {refused}").classes("text-sm opacity-50")
@@ -126,6 +133,11 @@ def character_page(runtime: Runtime, engine_id: EngineId) -> None:
                     # Rebuild only changed widgets to preserve unfinished input.
                     if _shape(creation.steps(picks)) != rendered:
                         form.refresh()
+                    preview.refresh()
+
+                def reroll() -> None:
+                    nonlocal seed
+                    seed += 1
                     preview.refresh()
 
                 form()

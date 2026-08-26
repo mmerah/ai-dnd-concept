@@ -89,12 +89,14 @@ def require_sheet[S](sheets: Mapping[EntityId, S], actor: Entity) -> S:
 
 
 class CharacterCreation(ABC):
+    rolls: ClassVar[bool] = False
+
     @abstractmethod
     def steps(self, picks: Picks) -> tuple[AnyStep, ...]:
         """Tolerates partial or stale picks, so follow-up steps appear as parents are picked."""
 
     @abstractmethod
-    def create(self, name: str, brief: str, picks: Picks) -> CreatedCharacter:
+    def create(self, name: str, brief: str, picks: Picks, rng: Random) -> CreatedCharacter:
         """Raises ValueError with the reason the page shows when the pick set is illegal."""
 
 
@@ -218,6 +220,11 @@ class Engine(ABC):
     @abstractmethod
     def sheet_rows(self, state: Game) -> tuple[tuple[str, str], ...]:
         """Ordered (label, value) pairs summarising the player's own sheet for the player."""
+
+    def settle(self, draft: Game) -> tuple[Fact, ...]:
+        """Consequences a command's landing forces; idempotent, since a turn settles after each."""
+        del draft
+        return ()
 
     def seed(self, draft: Game, entity: Entity, rng: Random) -> None:  # noqa: B027
         """Whatever this engine must give an entity created during play; a hook, not abstract."""
@@ -380,6 +387,10 @@ def apply_to_draft(engine: Engine, draft: Game, play: Play, rng: Random) -> tupl
     """Every mutation runs this sequence, so seeding cannot be forgotten by a caller."""
     before = draft.pending
     landed = play(draft, rng)
+    decided = draft.pending
+    landed = (*landed, *engine.settle(draft))
+    if draft.pending is not decided:
+        raise ValueError("settle applies consequences; it cannot open a decision")
     if before is not None and draft.pending is not before:
         raise ValueError("the rules already wait on a decision; they take one at a time")
     if draft.pending is not None:

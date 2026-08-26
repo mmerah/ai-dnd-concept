@@ -29,9 +29,9 @@ a change with exactly one consumer lands in the phase that brings that consumer.
    from the tuple `apply_to_draft` returns (`engines/core.py:409-416`); a hook typed `-> None` drops
    the player to 0 HP with no `Fact`, no `MechanicEvent`, and no line telling the Director it
    happened.
-   **No `rng` parameter, and it must be idempotent.** `apply_play` first runs the whole command
-   against a throwaway copy (`draft_refusal(..., Random(0))`, `core.py:403-406`), so settle executes
-   twice per command. No planned settle rolls dice.
+   **No `rng` parameter, and it must be idempotent.** A turn issues several commands and every one
+   settles, so a standing condition that re-emits its `Fact` writes the same card and ledger line
+   again after each. (The trial run in `apply_play` is a `deepcopy`, so it costs determinism only.)
    Why: core `move`, `gain_improvised_item` and `kill` all change what an actor carries, and
    `Engine.validate` may only refuse, never write. Without this, Cairn's printed encumbrance rule
    — all ten slots filled reduces you to 0 HP (`CAIRN-BAREBONES.md:204`) — cannot be implemented,

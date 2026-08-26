@@ -430,7 +430,7 @@ def test_creation_hands_over_the_kit_as_carried_items_and_lands_the_training_die
         "origin": ("human",),
         "skills": ("stealth", "deception", "connections"),
     }
-    created = creation.create("Vex", "A quiet reader of rooms.", picks)
+    created = creation.create("Vex", "A quiet reader of rooms.", picks, Random(0))
     assert [item.name for item in created.profile.items] == ["Comm", "Bottle of PsychOut"]
     assert created.profile.traits == ()
     assert created.rules["skills"] == {
@@ -449,7 +449,7 @@ def test_a_bulky_kit_item_carries_the_bulky_trait() -> None:
         "origin": ("human",),
         "skills": ("climbing", "stealth", "tracking"),
     }
-    created = creation.create("Wren", "Solders anything.", picks)
+    created = creation.create("Wren", "Solders anything.", picks, Random(0))
     computer = next(item for item in created.profile.items if item.id == "custom-computer")
     assert [trait.id for trait in computer.traits] == ["bulky"]
 
@@ -462,7 +462,7 @@ def test_an_alien_invents_traits_the_menu_never_listed() -> None:
         "origin": ("alien",),
         "traits": ("Wings", "A tail that reads the air"),
     }
-    created = creation.create("Ixl", "Feathered and patient.", picks)
+    created = creation.create("Ixl", "Feathered and patient.", picks, Random(0))
     names = [trait.name for trait in created.profile.traits]
     assert names == ["Wings", "A tail that reads the air"]
 
@@ -475,5 +475,5 @@ def test_a_humans_three_increases_can_stack_onto_one_skill() -> None:
         "origin": ("human",),
         "skills": ("tracking", "tracking", "tracking"),
     }
-    created = creation.create("Rho", "Never stops moving.", picks)
+    created = creation.create("Rho", "Never stops moving.", picks, Random(0))
     assert created.rules["skills"] == {"Climbing": 8, "Stealth": 8, "Tracking": 12}

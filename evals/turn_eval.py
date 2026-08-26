@@ -1,12 +1,13 @@
 import argparse
 import asyncio
-from collections.abc import Callable, Mapping, Sequence
-from dataclasses import dataclass, field
+from collections.abc import Callable, Sequence
+from dataclasses import dataclass
 from pathlib import Path
 from random import Random
 from statistics import mean
 from time import perf_counter
 
+from aidm.app.launch import engine_ids
 from aidm.config import Settings, load_settings
 from aidm.content.io import load_character, load_scenario
 from aidm.engines.core import Engine
@@ -18,15 +19,9 @@ from aidm.turn.run import TurnResult, build_turn_agents, run_segment
 
 ROOT = Path(__file__).resolve().parents[1]
 RESULTS = ROOT / "evals" / "results"
-SCENARIO_ID = "whispering-vault"
-CHARACTER_ID = "kael"
-ENGINES = (EngineId("loner3e"), EngineId("twentyfourxx"))
-# Both engines' outcomes for an attempt that got what it reached for.
-WON = ("yes-and", "yes", "yes-but", "success")
+ENGINES = engine_ids()
 # The longest valid chain is stake -> proceed -> defence.
 SEGMENT_CAP = 4
-# Script option-bearing decisions that continue the action; Loner conflicts have no options.
-ANSWERS: Mapping[str, str] = {"stake": "proceed", "defence": "take-it"}
 
 
 @dataclass(frozen=True, slots=True)
@@ -42,8 +37,6 @@ class Case:
     prompt: str
     expectations: tuple[Expectation, ...]
     setup: Callable[[Game], Game] = lambda state: state
-    # Which option answers each pending kind this case's fixture can suspend on.
-    answers: Mapping[str, str] = field(default_factory=lambda: ANSWERS)
 
 
 class Run(Frozen):
@@ -80,11 +73,15 @@ class Report(Frozen):
 
 def begin(engine_id: EngineId, settings: Settings) -> tuple[Engine, Game]:
     engine = build_engine(engine_id)
-    scenario = load_scenario(ROOT / settings.scenarios_dir, SCENARIO_ID)
+    scenario_id = settings.authoring.worked_example
+    scenario = load_scenario(ROOT / settings.scenarios_dir, scenario_id)
     character = load_character(
-        ROOT / settings.characters_dir, CHARACTER_ID, engine.id, engine.check_overlay
+        ROOT / settings.characters_dir,
+        settings.authoring.starter_character,
+        engine.id,
+        engine.check_overlay,
     )
-    return engine, begin_game(engine, SCENARIO_ID, scenario, character)
+    return engine, begin_game(engine, scenario_id, scenario, character)
 
 
 def staged(state: Game, at: str, ways: Sequence[tuple[str, str]]) -> Game:
@@ -155,13 +152,15 @@ def staked_before_rolling(result: TurnResult) -> bool:
     )
 
 
-def unless_lost(holds: Callable[[TurnResult], bool]) -> Callable[[TurnResult], bool]:
+def unless_lost(
+    holds: Callable[[TurnResult], bool], won: Sequence[str]
+) -> Callable[[TurnResult], bool]:
     """A lost roll fairly strands the climber below, so its consequences go unscored."""
 
     def check(result: TurnResult) -> bool:
         # Empty outcome means the card carries none, so it cannot count as a loss.
         outcomes = [fact.event.outcome for fact in result.turn.facts if fact.event is not None]
-        return any(o and o not in WON for o in outcomes) or holds(result)
+        return any(o and o not in won for o in outcomes) or holds(result)
 
     return check
 
@@ -174,6 +173,13 @@ def _rat_met(state: Game) -> Game:
 
 
 def cases_for(engine_id: EngineId, settings: Settings) -> tuple[Case, ...]:
+    # `unless_lost` passes on any outcome outside these, so a missing vocabulary scores vacuously.
+    if engine_id == "loner3e":
+        won = ("yes-and", "yes", "yes-but")
+    elif engine_id == "twentyfourxx":
+        won = ("success",)
+    else:
+        raise SystemExit(f"engine {engine_id!r} declares no winning outcomes for the eval")
     _, start = begin(engine_id, settings)
     before = frozenset(trait.id for trait in start.player.traits)
 
@@ -217,12 +223,13 @@ def cases_for(engine_id: EngineId, settings: Settings) -> tuple[Case, ...]:
             ),
             expectations=(
                 Expectation(
-                    "player-in-tower", unless_lost(lambda r: inside(r, "player", "bell-tower"))
+                    "player-in-tower",
+                    unless_lost(lambda r: inside(r, "player", "bell-tower"), won),
                 ),
-                Expectation("elena-known", unless_lost(lambda r: known(r, "elena"))),
+                Expectation("elena-known", unless_lost(lambda r: known(r, "elena"), won)),
                 Expectation(
                     "archivist-found",
-                    unless_lost(lambda r: staged_at(r, "vault-seal", "archivist-found")),
+                    unless_lost(lambda r: staged_at(r, "vault-seal", "archivist-found"), won),
                 ),
             ),
             setup=in_cloister("bell-tower"),
@@ -259,7 +266,8 @@ def cases_for(engine_id: EngineId, settings: Settings) -> tuple[Case, ...]:
                 *stake_checks,
                 Expectation("dice-rolled", lambda r: has_fact(r, "dice_rolled")),
                 Expectation(
-                    "win-upstairs", unless_lost(lambda r: inside(r, "player", "bell-tower"))
+                    "win-upstairs",
+                    unless_lost(lambda r: inside(r, "player", "bell-tower"), won),
                 ),
             ),
             setup=in_cloister("bell-tower"),
@@ -317,11 +325,11 @@ async def play(case: Case, settings: Settings, seed: int) -> Run:
             played = result.state
             if played.pending is None:
                 break
-            chosen = case.answers.get(played.pending.kind)
-            if chosen is None:
+            if not played.pending.options:
                 # An unscripted hand-back ends the interaction; the expectations judge it.
                 break
-            player_input = Answer(option_id=chosen)
+            # The last option continues: stake offers proceed, defence ends on take-it.
+            player_input = Answer(option_id=played.pending.options[-1].id)
         else:
             raise ValueError(f"the interaction was still going after {SEGMENT_CAP} segments")
         merged = _merged(case.prompt, segments)

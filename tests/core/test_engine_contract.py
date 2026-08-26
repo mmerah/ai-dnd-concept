@@ -5,7 +5,7 @@ from core_test_support import initialized
 from pydantic import JsonValue
 
 from aidm.content.io import SavedGame
-from aidm.engines.core import Engine
+from aidm.engines.core import Engine, apply_to_draft
 from aidm.engines.loner3e.engine import Loner3eEngine
 from aidm.engines.loner3e.rules import RULES, Mechanics, Sheet, apply_restore_luck
 from aidm.engines.registry import ENGINES, build_engine
@@ -127,6 +127,20 @@ def test_an_engine_that_declares_nothing_is_refused_before_it_plays() -> None:
 
     with pytest.raises(AttributeError, match="mechanics_type"):
         _ = Undeclared()
+
+
+def test_settle_facts_land_in_what_apply_to_draft_returns() -> None:
+    settled = Fact(kind="counter_changed", trace="the rules settled it")
+
+    class Settling(Loner3eEngine):
+        def settle(self, draft: Game) -> tuple[Fact, ...]:
+            del draft
+            return (settled,)
+
+    _, state = initialized()
+    landed = apply_to_draft(Settling(), state.draft(), lambda draft, rng: (), Random(0))
+
+    assert settled in landed
 
 
 def test_every_registered_engine_builds_itself() -> None:
