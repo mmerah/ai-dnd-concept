@@ -97,7 +97,7 @@ def test_the_director_is_shown_authored_detail() -> None:
     assert "a lantern[id=lantern] — A dented light." in director
     assert "a ledger[id=ledger] (item) — held by Mara" in director
     assert "The Secret[id=hidden-actor]" in director
-    assert "pools: luck 6/6" in director
+    assert "luck: 6/6" in director
     assert f"detail: {DESCRIPTION}" in director
     assert f"when reached: {WHEN_REACHED}" in director
     assert PLAYER_ID not in {entity.id for entity in (*scene.here, *scene.catalogue())}
@@ -115,7 +115,7 @@ def test_narrator_prompt_names_only_ids_of_entities_the_player_has_met() -> None
         prompt="What does Mara say?",
     )
 
-    assert "pools: luck 6/6" in prompt
+    assert "luck: 6/6" in prompt
     assert "The Secret" not in prompt
     # The Narrator names an id only in `speaker_id`; every id it is shown belongs to someone met.
     assert "Mara[id=mara]" in prompt

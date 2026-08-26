@@ -20,8 +20,9 @@ def _engine(tmp_path: Path) -> Engine:
         engine_dir = tmp_path
         mechanics_type = BareMechanics
 
-        def check_overlay(self, rules: dict[str, JsonValue]) -> None:
+        def overlay_rows(self, rules: dict[str, JsonValue]) -> tuple[tuple[str, str], ...]:
             del rules
+            return ()
 
         def opening_mechanics(
             self, world: WorldState, player_rules: dict[str, JsonValue]
@@ -36,7 +37,7 @@ def _engine(tmp_path: Path) -> Engine:
             del state, entity
             return ""
 
-        def sheet_view(self, state: Game) -> tuple[tuple[str, str], ...]:
+        def sheet_rows(self, state: Game) -> tuple[tuple[str, str], ...]:
             del state
             return ()
 

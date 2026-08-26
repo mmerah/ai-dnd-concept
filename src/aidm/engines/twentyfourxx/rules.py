@@ -1,15 +1,16 @@
 from dataclasses import dataclass
 from random import Random
-from typing import Literal, Self, get_args
+from typing import ClassVar, Literal, Self, get_args
 
 from pydantic import Field, model_validator
 
 from aidm.engines.core import (
+    Decision,
     ProposalBase,
     SheetBase,
     SheetMechanics,
     adjust,
-    render_counters,
+    pool,
     require_sheet,
     spend,
 )
@@ -52,8 +53,14 @@ class Sheet(SheetBase):
     credits: Counter = Counter(current=RULES.starting_credits)
     jobs: Counter = Counter(current=0)
 
-    def counters(self) -> dict[Slug, Counter]:
-        return {"credits": self.credits}
+    def rows(self) -> tuple[tuple[str, str], ...]:
+        skills = ", ".join(f"{name} d{face}" for name, face in sorted(self.skills.items()))
+        return (
+            ("Specialty", self.specialty),
+            ("Origin", self.origin),
+            ("Skills", skills),
+            ("Credits", pool(self.credits)),
+        )
 
     def face(self, skill: str) -> int:
         return self.skills.get(skill, RULES.default_face)
@@ -70,20 +77,6 @@ def raised(current: SkillDie | None) -> SkillDie:
     if index + 1 == len(LADDER):
         raise ValueError("that skill is already d12, the top of the ladder")
     return LADDER[index + 1]
-
-
-def describe_entity(mechanics: Mechanics, entity: Entity) -> str:
-    sheet = mechanics.sheets.get(entity.id)
-    if sheet is None:
-        return ""
-    skills = ", ".join(f"{name} d{face}" for name, face in sorted(sheet.skills.items()))
-    lines = (
-        f"specialty: {sheet.specialty}" if sheet.specialty else "",
-        f"origin: {sheet.origin}" if sheet.origin else "",
-        f"skills: {skills}" if skills else "",
-        f"pools: {render_counters(sheet.counters())}",
-    )
-    return "\n".join(line for line in lines if line)
 
 
 class KitItem(Frozen):
@@ -193,8 +186,15 @@ class Attempt(Frozen):
         return self
 
 
-class StakedAttempt(Attempt):
+class StakedAttempt(Attempt, Decision):
+    kind: ClassVar[Slug] = "stake"
+
     risk: str = Field(min_length=1, description="One-line cost of a bad roll, shown to the player.")
+
+    def resolve(self, draft: Game, option_id: Slug, rng: Random) -> tuple[Fact, ...]:
+        # `proceed` is the only option the engine offers; the player's own words revise instead.
+        del option_id
+        return resolve_attempt(draft, self, rng)
 
 
 class LuckTest(Frozen):
@@ -207,10 +207,10 @@ class LuckTest(Frozen):
     )
 
 
-HURT: tuple[Slug, ...] = ("disaster", "setback")
-
-
 BROKEN: Slug = "broken"
+
+
+BREAK_TEXT = "Broken turning a hit into a brief hindrance; useless until repaired."
 
 
 TAKE_THE_HIT: Slug = "take-it"
@@ -221,14 +221,18 @@ DEFENCE_PROMPT = (
 )
 
 
-BREAK_TEXT = "Broken turning a hit into a brief hindrance; useless until repaired."
-
-
-class Defence(Frozen):
+class Defence(Decision):
     """The hit a defence decision is answered against, frozen while the player chooses."""
+
+    kind: ClassVar[Slug] = "defence"
 
     outcome: Slug
     goal: str
+
+    def resolve(self, draft: Game, option_id: Slug, rng: Random) -> tuple[Fact, ...]:
+        del rng
+        item = None if option_id == TAKE_THE_HIT else EntityId(option_id)
+        return resolve_defence(draft, self.goal, item)
 
 
 def outcome_for(kept: int) -> Slug:
@@ -288,12 +292,10 @@ def resolve_stake(draft: Game, action: StakedAttempt) -> tuple[Fact, ...]:
         )
     # Validated against a copy: freezing an attempt reveals nothing and rolls nothing yet.
     _ = _require_playable(draft.draft(), action)
-    draft.pending = PendingDecision(
-        kind="stake",
-        # SRD: a plan may be revised before it is committed, so the stake asks rather than tells.
-        prompt=f"{action.risk}\n\nProceed, or change your plan.",
-        options=(DecisionOption(id="proceed", label="Proceed"),),
-        payload=action.model_dump(mode="json"),
+    # SRD: a plan may be revised before it is committed, so the stake asks rather than tells.
+    draft.pending = action.pending(
+        f"{action.risk}\n\nProceed, or change your plan.",
+        (DecisionOption(id="proceed", label="Proceed"),),
     )
     return ()
 
@@ -330,11 +332,8 @@ def _defence_decision(draft: Game, outcome: Slug, goal: str) -> PendingDecision:
         for item in draft.world.children(PLAYER_ID, "item")
         if item.trait(BROKEN) is None
     )
-    return PendingDecision(
-        kind="defence",
-        prompt=DEFENCE_PROMPT,
-        options=(*unbroken, DecisionOption(id=TAKE_THE_HIT, label="Take the hit")),
-        payload={"outcome": outcome, "goal": goal},
+    return Defence(outcome=outcome, goal=goal).pending(
+        DEFENCE_PROMPT, (*unbroken, DecisionOption(id=TAKE_THE_HIT, label="Take the hit"))
     )
 
 
@@ -362,7 +361,7 @@ def resolve_attempt(draft: Game, action: Attempt, rng: Random) -> tuple[Fact, ..
     facts[resolved_at] = facts[resolved_at].model_copy(update={"event": card})
 
     # `Attempt` names no target, and the printed defence is the player's own: only their roll hits.
-    if action.actor_id == PLAYER_ID and outcome in HURT:
+    if action.actor_id == PLAYER_ID and outcome != "success":
         draft.pending = _defence_decision(draft, outcome, action.goal)
     return tuple(facts)
 

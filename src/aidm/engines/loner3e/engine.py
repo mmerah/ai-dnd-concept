@@ -1,4 +1,3 @@
-from collections.abc import Callable, Mapping
 from pathlib import Path
 from random import Random
 
@@ -6,8 +5,6 @@ from pydantic import Field
 
 from aidm.content.model import CharacterProfile, CreatedCharacter
 from aidm.engines.core import (
-    CharacterCreation,
-    Command,
     ProposalBase,
     SheetAdvancement,
     SheetEngine,
@@ -19,17 +16,16 @@ from aidm.engines.loner3e.rules import (
     GROWTH,
     AdventureGrowth,
     Change,
+    Conflict,
     Mechanics,
     Pack,
-    PackEntry,
     Question,
     Sheet,
     apply_restore_luck,
-    describe_entity,
     resolve_question,
     twist_table,
 )
-from aidm.engines.packs import load_packs, pack_options, pack_paths, pack_step
+from aidm.engines.packs import PackCreation, find_entry, load_packs, pack_options, pack_paths
 from aidm.state.creation import (
     AnyStep,
     CreationStep,
@@ -49,32 +45,10 @@ from aidm.state.entities import (
 )
 from aidm.state.facts import Fact, explained_fact
 from aidm.state.model import Game
-from aidm.state.play import PendingDecision
-
-type Twists = Callable[[Game], tuple[tuple[str, str], ...]]
 
 
 class RestoreLuck(Frozen):
     actor_id: CheckedEntityId = Field(description="Exact id of the player or an actor here.")
-
-
-def director_commands(twists: Twists) -> tuple[Command, ...]:
-    """Only the question roll needs the twist table, so only it is built per engine."""
-    return (
-        rule(
-            "roll_question",
-            "Roll Chance against Risk for one closed dramatic question.",
-            Question,
-            lambda draft, one, rng: resolve_question(draft, one, rng, twists(draft)),
-        ),
-        action(
-            "restore_luck",
-            "Restore an actor's luck after a conflict ends.",
-            RestoreLuck,
-            lambda draft, one: apply_restore_luck(draft, one.actor_id),
-        ),
-        chapter_command("Record that the current adventure has ended.", "the adventure has ended"),
-    )
 
 
 class Loner3eAdvancement(SheetAdvancement):
@@ -142,18 +116,10 @@ def _swapped(tags: tuple[str, ...], old: str, new: str) -> tuple[str, ...]:
     return tuple(new if tag == old else tag for tag in tags)
 
 
-class Loner3eCreation(CharacterCreation):
-    def __init__(self, packs: Mapping[str, Pack]) -> None:
-        self._packs = packs
-
-    def steps(self, picks: Picks) -> tuple[AnyStep, ...]:
-        first = pack_step(self._packs)
-        chosen = picked(picks, "pack")
-        pack = self._packs.get(chosen[0]) if chosen else None
-        if pack is None:
-            return (first,)
+class Loner3eCreation(PackCreation[Pack]):
+    def steps_for(self, pack: Pack, picks: Picks) -> tuple[AnyStep, ...]:
+        del picks
         return (
-            first,
             TextStep(
                 id="concept",
                 prompt="Write a one-line concept",
@@ -175,21 +141,19 @@ class Loner3eCreation(CharacterCreation):
 
     def create(self, name: str, brief: str, picks: Picks) -> CreatedCharacter:
         check_picks(self.steps(picks), picks)
-        pack = self._packs[picked(picks, "pack")[0]]
+        pack = self.packs[picked(picks, "pack")[0]]
         return CreatedCharacter(
             profile=CharacterProfile(name=name, brief=brief),
             rules={
                 "pack": picked(picks, "pack")[0],
                 "concept": picked(picks, "concept")[0],
-                "skills": [_label(pack.skills, skill) for skill in picked(picks, "skills")],
-                "frailties": [_label(pack.frailties, picked(picks, "frailty")[0])],
-                "gear": [_label(pack.gear, gear) for gear in picked(picks, "gear")],
+                "skills": [
+                    find_entry(pack.skills, skill).label for skill in picked(picks, "skills")
+                ],
+                "frailties": [find_entry(pack.frailties, picked(picks, "frailty")[0]).label],
+                "gear": [find_entry(pack.gear, gear).label for gear in picked(picks, "gear")],
             },
         )
-
-
-def _label(entries: tuple[PackEntry, ...], chosen: str) -> str:
-    return next(entry.label for entry in entries if entry.id == chosen)
 
 
 class Loner3eEngine(SheetEngine[Sheet]):
@@ -198,38 +162,35 @@ class Loner3eEngine(SheetEngine[Sheet]):
     engine_dir = Path(__file__).parent
     sheet_type = Sheet
     mechanics_type = Mechanics
+    decisions = (Conflict,)
 
     def __init__(self, extra_packs: Path | None = None) -> None:
         super().__init__(extra_packs)
         self.packs = load_packs(pack_paths(self.engine_dir / "packs", extra_packs), Pack)
         self.advancement = Loner3eAdvancement(self.engine_dir)
         self.creation = Loner3eCreation(self.packs)
-        self.director_commands = director_commands(self.twists)
+        self.director_commands = (
+            rule(
+                "roll_question",
+                "Roll Chance against Risk for one closed dramatic question.",
+                Question,
+                lambda draft, one, rng: resolve_question(draft, one, rng, self.twists(draft)),
+            ),
+            action(
+                "restore_luck",
+                "Restore an actor's luck after a conflict ends.",
+                RestoreLuck,
+                lambda draft, one: apply_restore_luck(draft, one.actor_id),
+            ),
+            chapter_command(
+                "Record that the current adventure has ended.", "the adventure has ended"
+            ),
+        )
 
     def validate(self, state: Game) -> None:
         super().validate(state)
         if (chosen := Mechanics.of_game(state).sheets[PLAYER_ID].pack) not in self.packs:
             raise ValueError(f"this game plays the {chosen!r} table set, which is not installed")
-
-    def describe(self, state: Game, entity: Entity) -> str:
-        return describe_entity(Mechanics.of_game(state), entity)
-
-    def sheet_view(self, state: Game) -> tuple[tuple[str, str], ...]:
-        sheet = Mechanics.of_game(state).sheets[PLAYER_ID]
-        return (
-            ("Concept", sheet.concept),
-            ("Skills", ", ".join(sheet.skills)),
-            ("Frailties", ", ".join(sheet.frailties)),
-            ("Gear", ", ".join(sheet.gear)),
-            ("Luck", f"{sheet.luck.current} / {sheet.luck.maximum}"),
-        )
-
-    def check_pending(self, pending: PendingDecision) -> None:
-        """The hand-back is the whole decision: no options, nothing frozen, no `resume`."""
-        if pending.kind != "conflict":
-            super().check_pending(pending)
-        elif pending.payload:
-            raise ValueError("a conflict decision freezes nothing, so it carries no payload")
 
     def twists(self, state: Game) -> tuple[tuple[str, str], ...]:
         """The player's own table set: an NPC sheet is seeded with the default and never selects."""

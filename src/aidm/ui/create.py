@@ -8,11 +8,10 @@ from nicegui.events import UploadEventArguments, ValueChangeEventArguments
 
 from aidm.app.launch import engine_ids
 from aidm.app.runtime import Runtime
-from aidm.authoring.draft import OPENING_SLICE, WHOLE_SCENARIO
+from aidm.authoring.draft import BRIEFS, WHOLE_SCENARIO, brief_named
 from aidm.authoring.run import ScenarioRun, scenario_run
 from aidm.config import Settings
 from aidm.content.io import write_character
-from aidm.content.model import CreatedCharacter
 from aidm.state.creation import AnyStep, CreationStep, TextStep, picked
 from aidm.state.entities import EngineId, Slug, content_id, slug
 
@@ -113,7 +112,10 @@ def character_page(runtime: Runtime, engine_id: EngineId) -> None:
                         ui.label(f"Not ready yet: {refused}").classes("text-sm opacity-50")
                         return
                     ui.separator().classes("q-my-sm")
-                    for label, text in _preview_lines(created):
+                    rows = [(trait.name, trait.text) for trait in created.profile.traits]
+                    rows.extend(("carrying", item.name) for item in created.profile.items)
+                    rows.extend(engine.overlay_rows(created.rules))
+                    for label, text in rows:
                         with ui.row().classes("items-baseline").style("gap: 0.5rem"):
                             ui.label(label).classes("text-sm font-bold")
                             if text:
@@ -128,23 +130,6 @@ def character_page(runtime: Runtime, engine_id: EngineId) -> None:
                 form()
             with ui.card().classes("q-pa-lg").style("flex: 1; min-width: 0"):
                 preview()
-
-
-def _preview_lines(created: CreatedCharacter) -> list[tuple[str, str]]:
-    """One (label, text) row per fact, engine-agnostic: the engine rules are an opaque dict here."""
-    lines = [(trait.name, trait.text) for trait in created.profile.traits]
-    lines.extend(("carrying", item.name) for item in created.profile.items)
-    for key, value in created.rules.items():
-        if isinstance(value, dict):
-            if "current" in value and "maximum" in value:
-                lines.append((key, f"{value['current']}/{value['maximum']}"))
-            else:
-                lines.extend((key, f"{inner}: {value[inner]}") for inner in value)
-        elif isinstance(value, list):
-            lines.extend((key, str(element)) for element in value)
-        else:
-            lines.append((key, str(value)))
-    return lines
 
 
 def _shape(steps: Sequence[AnyStep]) -> tuple[str, ...]:
@@ -275,9 +260,6 @@ def _taken(directory: Path) -> tuple[str, ...]:
     return tuple(path.name for path in directory.iterdir() if path.is_dir())
 
 
-_BRIEF_LABELS = {"full": "a whole scenario", "opening": "an opening slice, grown in play"}
-
-
 def scenario_page(settings: Settings) -> None:
     with page_header("New scenario"):
         pass
@@ -322,7 +304,11 @@ def scenario_page(settings: Settings) -> None:
                 .props("outlined")
             )
             brief = (
-                ui.select(options=_BRIEF_LABELS, label="How much to author", value="full")
+                ui.select(
+                    options=[one.label for one in BRIEFS],
+                    label="How much to author",
+                    value=WHOLE_SCENARIO.label,
+                )
                 .classes("w-full")
                 .props("outlined")
             )
@@ -356,7 +342,7 @@ def scenario_page(settings: Settings) -> None:
                         bool(grows.value),
                         _engines(engines.value),
                         document,
-                        brief=WHOLE_SCENARIO if brief.value == "full" else OPENING_SLICE,
+                        brief=brief_named(brief.value or WHOLE_SCENARIO.label),
                         art_style=(art_style.value or "").strip(),
                     )
                 except ValueError as error:

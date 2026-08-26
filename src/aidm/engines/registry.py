@@ -1,13 +1,30 @@
+from importlib import import_module
 from pathlib import Path
 
 from aidm.content.model import Character, Scenario
 from aidm.engines.core import Engine
-from aidm.engines.loner3e.engine import Loner3eEngine
-from aidm.engines.twentyfourxx.engine import TwentyfourxxEngine
 from aidm.state.entities import PLAYER_ID, EngineId, Entity, Slug
 from aidm.state.model import Game
 
-ENGINES: tuple[type[Engine], ...] = (Loner3eEngine, TwentyfourxxEngine)
+
+def _declared(package: str) -> type[Engine]:
+    """A new engine registers by existing; the class must be declared there, not imported in."""
+    module = import_module(f"aidm.engines.{package}.engine")
+    found = [
+        value
+        for value in vars(module).values()
+        if isinstance(value, type)
+        and issubclass(value, Engine)
+        and value.__module__ == module.__name__
+    ]
+    if len(found) != 1:
+        raise ValueError(f"{module.__name__} declares {len(found)} engine classes, not one")
+    return found[0]
+
+
+ENGINES: tuple[type[Engine], ...] = tuple(
+    _declared(path.parent.name) for path in sorted(Path(__file__).parent.glob("*/engine.py"))
+)
 
 
 def engine_class(engine_id: EngineId) -> type[Engine]:

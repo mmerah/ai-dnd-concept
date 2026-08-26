@@ -8,7 +8,7 @@ state:
   specialty: Sneak
   origin: Human
   skills: Climbing d10, Stealth d10, Tracking d8
-  pools: credits 2
+  credits: 2
   traits: Relic Hunter[id=relic-hunter] — (skill) Kael knows how old sanctums conceal what matters., Marked by the Past[id=marked-by-the-past] — (frailty) Old scars make certain memories hard to face., Listening[id=listening] — (condition) Listening for the next shift of weight behind the door.
 inventory:
 - a guttering lantern[id=lantern] — A dented tin lantern whose flame will not hold still.
@@ -19,7 +19,7 @@ inventory:
 HERE WITH THE PLAYER:
 - Mara[id=mara] (npc) — at the abbot's study — The abbey's last scribe, cautious and tired, still cataloguing books nobody will read.
   state:
-    pools: credits 2
+    credits: 2
 
 EXITS FROM HERE:
 - the cloister[id=cloister]
@@ -28,7 +28,7 @@ KNOWN TO THE PLAYER, BUT ELSEWHERE:
 - the cloister[id=cloister] (location) — A frost-rimed colonnade around a dead garden; Brother Tomas sweeps it to no purpose.
 - Brother Tomas[id=tomas] (npc) — at the cloister — A deaf old porter who sweeps the cloister and knows almost nothing about the vault.
   state:
-    pools: credits 2
+    credits: 2
 
 WHAT HAPPENED:
 - learned of the item the vault map[vault-map]

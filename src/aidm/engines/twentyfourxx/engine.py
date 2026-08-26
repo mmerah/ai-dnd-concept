@@ -1,4 +1,3 @@
-from collections.abc import Mapping
 from pathlib import Path
 from random import Random
 
@@ -6,7 +5,6 @@ from pydantic import Field, JsonValue
 
 from aidm.content.model import CharacterProfile, CreatedCharacter
 from aidm.engines.core import (
-    CharacterCreation,
     Command,
     DirectorContext,
     ProposalBase,
@@ -19,25 +17,27 @@ from aidm.engines.core import (
     command,
     rule,
 )
-from aidm.engines.packs import load_packs, pack_options, pack_paths, pack_step
+from aidm.engines.packs import (
+    PackCreation,
+    find_entry,
+    load_packs,
+    pack_options,
+    pack_paths,
+    picked_entry,
+)
 from aidm.engines.twentyfourxx.rules import (
     GROWTH,
-    TAKE_THE_HIT,
     Advance,
     Attempt,
     Defence,
     KitItem,
     LuckTest,
     Mechanics,
-    Origin,
     Pack,
     Sheet,
     SkillDie,
-    SkillGrant,
-    Specialty,
     StakedAttempt,
     apply_change_credits,
-    describe_entity,
     raised,
     resolve_attempt,
     resolve_defence,
@@ -47,7 +47,6 @@ from aidm.engines.twentyfourxx.rules import (
 from aidm.state.actions import roll_pool
 from aidm.state.creation import (
     AnyStep,
-    CreationOption,
     CreationStep,
     Picks,
     TextStep,
@@ -62,13 +61,11 @@ from aidm.state.entities import (
     Entity,
     EntityId,
     Frozen,
-    Slug,
     Trait,
     slug,
 )
 from aidm.state.facts import Fact, explained_fact
 from aidm.state.model import Game
-from aidm.state.play import PendingDecision
 
 
 class SettleDefence(Frozen):
@@ -163,25 +160,16 @@ def _on_sheet(sheet: Sheet, named: str) -> str:
     return next((skill for skill in sheet.skills if skill.lower() == named.lower()), named)
 
 
-class TwentyfourxxCreation(CharacterCreation):
-    def __init__(self, packs: Mapping[str, Pack]) -> None:
-        self._packs = packs
-
-    def steps(self, picks: Picks) -> tuple[AnyStep, ...]:
-        first = pack_step(self._packs)
-        chosen = picked(picks, "pack")
-        pack = self._packs.get(chosen[0]) if chosen else None
-        if pack is None:
-            return (first,)
+class TwentyfourxxCreation(PackCreation[Pack]):
+    def steps_for(self, pack: Pack, picks: Picks) -> tuple[AnyStep, ...]:
         steps: list[AnyStep] = [
-            first,
             CreationStep(
                 id="specialty",
                 prompt="Choose a specialty",
                 options=pack_options(pack.specialties),
             ),
         ]
-        specialty = _picked_entry(pack.specialties, picks, "specialty")
+        specialty = picked_entry(pack.specialties, picks, "specialty")
         if specialty is not None and specialty.choices:
             steps.append(
                 CreationStep(
@@ -193,7 +181,7 @@ class TwentyfourxxCreation(CharacterCreation):
         steps.append(
             CreationStep(id="origin", prompt="Choose an origin", options=pack_options(pack.origins))
         )
-        origin = _picked_entry(pack.origins, picks, "origin")
+        origin = picked_entry(pack.origins, picks, "origin")
         if origin is not None and origin.invents:
             steps.append(
                 TextStep(
@@ -217,20 +205,20 @@ class TwentyfourxxCreation(CharacterCreation):
 
     def create(self, name: str, brief: str, picks: Picks) -> CreatedCharacter:
         check_picks(self.steps(picks), picks)
-        pack = self._packs[picked(picks, "pack")[0]]
-        specialty = _find(pack.specialties, picked(picks, "specialty")[0])
-        origin = _find(pack.origins, picked(picks, "origin")[0])
+        pack = self.packs[picked(picks, "pack")[0]]
+        specialty = find_entry(pack.specialties, picked(picks, "specialty")[0])
+        origin = find_entry(pack.origins, picked(picks, "origin")[0])
 
         skills: dict[str, SkillDie] = {}
         for skill in specialty.skills:
             skills[skill] = raised(skills.get(skill))
         for grant_id in picked(picks, "training"):
-            grant = _find(specialty.choices, grant_id)
+            grant = find_entry(specialty.choices, grant_id)
             for skill in grant.skills:
                 held = skills.get(skill)
                 skills[skill] = grant.die if held is None else max(held, grant.die)
         for skill_id in picked(picks, "skills"):
-            label = _find(pack.skills, skill_id).label
+            label = find_entry(pack.skills, skill_id).label
             skills[label] = raised(skills.get(label))
         skills_json: dict[str, JsonValue] = {skill: die for skill, die in skills.items()}
 
@@ -267,21 +255,6 @@ def _carried(entry: KitItem) -> Entity:
     )
 
 
-def _find[T: Specialty | Origin | SkillGrant | CreationOption](
-    entries: tuple[T, ...], chosen: str
-) -> T:
-    return next(entry for entry in entries if entry.id == chosen)
-
-
-def _picked_entry[T: Specialty | Origin](
-    entries: tuple[T, ...], picks: Picks, step: str
-) -> T | None:
-    chosen = picked(picks, step)
-    if not chosen:
-        return None
-    return next((entry for entry in entries if entry.id == chosen[0]), None)
-
-
 def _count_prompt(what: str, count: int, verb: str = "Choose") -> str:
     return f"{verb} one {what}" if count == 1 else f"{verb} {count} {what}s"
 
@@ -292,6 +265,7 @@ class TwentyfourxxEngine(SheetEngine[Sheet]):
     engine_dir = Path(__file__).parent
     sheet_type = Sheet
     mechanics_type = Mechanics
+    decisions = (StakedAttempt, Defence)
 
     def __init__(self, extra_packs: Path | None = None) -> None:
         super().__init__(extra_packs)
@@ -299,39 +273,3 @@ class TwentyfourxxEngine(SheetEngine[Sheet]):
         self.advancement = TwentyfourxxAdvancement(self.engine_dir)
         self.creation = TwentyfourxxCreation(self.packs)
         self.director_commands = DIRECTOR_COMMANDS
-
-    def resume(
-        self, draft: Game, pending: PendingDecision, option_id: Slug, rng: Random
-    ) -> tuple[Fact, ...]:
-        match pending.kind, option_id:
-            case ("stake", "proceed"):
-                return resolve_attempt(draft, StakedAttempt.model_validate(pending.payload), rng)
-            case ("defence", _):
-                goal = Defence.model_validate(pending.payload).goal
-                item = None if option_id == TAKE_THE_HIT else EntityId(option_id)
-                return resolve_defence(draft, goal, item)
-            case _:
-                return super().resume(draft, pending, option_id, rng)
-
-    def check_pending(self, pending: PendingDecision) -> None:
-        if pending.kind == "stake":
-            _ = StakedAttempt.model_validate(pending.payload)
-        elif pending.kind == "defence":
-            _ = Defence.model_validate(pending.payload)
-        else:
-            super().check_pending(pending)
-
-    def describe(self, state: Game, entity: Entity) -> str:
-        return describe_entity(Mechanics.of_game(state), entity)
-
-    def sheet_view(self, state: Game) -> tuple[tuple[str, str], ...]:
-        sheet = Mechanics.of_game(state).sheets[PLAYER_ID]
-        return (
-            ("Specialty", sheet.specialty),
-            ("Origin", sheet.origin),
-            (
-                "Skills",
-                ", ".join(f"{name} d{face}" for name, face in sorted(sheet.skills.items())),
-            ),
-            ("Credits", str(sheet.credits.current)),
-        )

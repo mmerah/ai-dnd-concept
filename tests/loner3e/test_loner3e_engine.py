@@ -2,10 +2,10 @@ from random import Random
 
 import pytest
 from core_test_support import at_boundary, initialized
+from pydantic import ValidationError
 
 from aidm.engines.loner3e.engine import Loner3eEngine
 from aidm.engines.loner3e.rules import (
-    HARM,
     RULES,
     SRD_PACK,
     AdventureGrowth,
@@ -50,7 +50,7 @@ def test_the_outcome_ladder_covers_every_pair_of_dice() -> None:
     for chance in range(1, 7):
         for risk in range(1, 7):
             outcome = outcome_for(chance, risk)
-            tally[outcome] = tally.get(outcome, 0) + 1
+            tally[outcome.name] = tally.get(outcome.name, 0) + 1
     assert tally == {
         "yes-and": 3,
         "yes": 9,
@@ -133,15 +133,23 @@ def test_a_tie_ticks_the_twist_and_the_third_tie_calls_one() -> None:
 def test_a_conflict_exchange_moves_luck_off_whichever_side_lost_it() -> None:
     _, state = initialized()
     # Every answer the ladder can give costs somebody luck in a conflict.
-    assert set(HARM) == {"yes-and", "yes", "yes-but", "no-but", "no", "no-and"}
+    ladder = {outcome_for(chance, risk) for chance in range(1, 7) for risk in range(1, 7)}
+    assert all(outcome.harm != 0 for outcome in ladder)
+    assert {outcome.name for outcome in ladder} == {
+        "yes-and",
+        "yes",
+        "yes-but",
+        "no-but",
+        "no",
+        "no-and",
+    }
 
     for seed in range(200):
         draft = state.draft()
         facts = resolve_question(draft, _duel(), Random(seed), TWISTS)
         (oracle,) = player_events(facts)
-        outcome = oracle.outcome
         sheets = Mechanics.of_game(draft).sheets
-        harm = HARM[outcome]
+        harm = outcome_for(oracle.dice[0].kept, oracle.dice[1].kept).harm
         loser = FOE if harm > 0 else PLAYER_ID
         assert sheets[loser].luck.current == RULES.luck_max - abs(harm)
         assert sheets[FOE if loser == PLAYER_ID else PLAYER_ID].luck.current == RULES.luck_max
@@ -161,8 +169,7 @@ def test_luck_running_out_ends_the_conflict_and_resets_both_pools() -> None:
         draft = hurt.draft()
         facts = resolve_question(draft, _duel(), Random(seed), TWISTS)
         (oracle,) = player_events(facts)
-        outcome = oracle.outcome
-        if HARM[outcome] > 0:
+        if outcome_for(oracle.dice[0].kept, oracle.dice[1].kept).harm > 0:
             break
     else:
         raise AssertionError("no seed under 200 answered yes")
@@ -200,7 +207,7 @@ def test_the_engine_plays_the_hand_back_and_refuses_every_other_decision() -> No
 
     with pytest.raises(ValueError, match="cannot play a 'defence' decision"):
         engine.check_pending(hand_back.model_copy(update={"kind": "defence"}))
-    with pytest.raises(ValueError, match="carries no payload"):
+    with pytest.raises(ValidationError):
         engine.check_pending(hand_back.model_copy(update={"payload": {"outcome": "no"}}))
 
 

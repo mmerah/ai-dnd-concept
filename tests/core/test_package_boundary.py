@@ -80,7 +80,8 @@ def test_packages_import_only_in_the_allowed_direction(
     assert not violations
 
 
-def test_only_the_loader_names_a_concrete_engine() -> None:
+def test_no_module_names_a_concrete_engine() -> None:
+    # The registry discovers engines by module name, so not even it imports one.
     naming = {
         str(path.relative_to(SOURCE))
         for path in SOURCE.rglob("*.py")
@@ -88,4 +89,4 @@ def test_only_the_loader_names_a_concrete_engine() -> None:
         if name.startswith(ENGINES)
         if not name.startswith(f"aidm.engines.{path.parts[-2]}")
     }
-    assert naming == {"engines/registry.py"}
+    assert not naming

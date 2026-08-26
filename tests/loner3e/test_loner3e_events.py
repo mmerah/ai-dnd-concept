@@ -4,7 +4,6 @@ from core_test_support import initialized
 
 from aidm.engines.loner3e.engine import Loner3eEngine
 from aidm.engines.loner3e.rules import (
-    HARM,
     RULES,
     SRD_PACK,
     Mechanics,
@@ -72,7 +71,7 @@ def test_the_six_way_outcome_is_mapped_onto_the_card() -> None:
     facts = resolve_question(state.draft(), _seal(), Random(0), TWISTS)
 
     (oracle,) = player_events(facts)
-    assert oracle.outcome == outcome_for(oracle.dice[0].kept, oracle.dice[1].kept)
+    assert oracle.outcome == outcome_for(oracle.dice[0].kept, oracle.dice[1].kept).name
 
 
 def test_a_defeat_shows_the_owner_prefixed_effects_in_fact_order() -> None:
@@ -87,7 +86,7 @@ def test_a_defeat_shows_the_owner_prefixed_effects_in_fact_order() -> None:
     for seed in range(200):
         facts = resolve_question(weakened.draft(), duel, Random(seed), TWISTS)
         (oracle,) = player_events(facts)
-        if HARM[oracle.outcome] > 0:
+        if outcome_for(oracle.dice[0].kept, oracle.dice[1].kept).harm > 0:
             break
     else:
         raise AssertionError("no seed under 200 dealt the opponent harm")

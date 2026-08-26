@@ -30,7 +30,7 @@ def sheet_panel(session: GameSession) -> None:
                 badge = ui.badge(trait.name).props("color=grey-8 outline")
                 if trait.text:
                     badge.tooltip(trait.text)
-    for label, value in session.engine.sheet_view(session.state):
+    for label, value in session.engine.sheet_rows(session.state):
         labeled_value(label, value)
     inventory = player_scene(session.state).inventory
     if inventory:

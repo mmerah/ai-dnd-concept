@@ -137,7 +137,7 @@ async def test_the_engine_rolls_the_outcome_the_facts_then_record() -> None:
     rolled = [fact.trace for fact in result.turn.facts if fact.kind == "dice_rolled"]
     for die, trace in zip(answer.event.dice, rolled, strict=True):
         assert trace.endswith(f"-> {die.kept}")
-    assert answer.event.outcome == outcome_for(chance.kept, risk.kept)
+    assert answer.event.outcome == outcome_for(chance.kept, risk.kept).name
     engine.validate(result.state)
 
 

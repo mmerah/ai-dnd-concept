@@ -271,12 +271,21 @@ class AuthoringBrief:
 
     bar_prompt: str
     unmet: Callable[[Scenario], list[str]]
+    label: str = ""
     settled: frozenset[str] = frozenset()
 
 
-WHOLE_SCENARIO = AuthoringBrief("scenario_bar.md", _bar_unmet)
+WHOLE_SCENARIO = AuthoringBrief("scenario_bar.md", _bar_unmet, label="a whole scenario")
 # An opening slice is deliberately thin: the rest of the world is written during play.
-OPENING_SLICE = AuthoringBrief("scenario_opening.md", _opening_unmet)
+OPENING_SLICE = AuthoringBrief(
+    "scenario_opening.md", _opening_unmet, label="an opening slice, grown in play"
+)
+
+BRIEFS: tuple[AuthoringBrief, ...] = (WHOLE_SCENARIO, OPENING_SLICE)
+
+
+def brief_named(label: str) -> AuthoringBrief:
+    return next(one for one in BRIEFS if one.label == label)
 
 
 def extend_brief(before: WorldState) -> AuthoringBrief:
@@ -304,7 +313,9 @@ def extend_brief(before: WorldState) -> AuthoringBrief:
         return []
 
     return AuthoringBrief(
-        "scenario_extend.md", unmet, frozenset(held | {thread.id for thread in before.threads})
+        "scenario_extend.md",
+        unmet,
+        settled=frozenset(held | {thread.id for thread in before.threads}),
     )
 
 

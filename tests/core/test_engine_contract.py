@@ -104,8 +104,9 @@ def test_an_engine_that_declares_nothing_is_refused_before_it_plays() -> None:
         badge = ("UNDECLARED", "grey-6")
         engine_dir = Loner3eEngine.engine_dir
 
-        def check_overlay(self, rules: dict[str, JsonValue]) -> None:
+        def overlay_rows(self, rules: dict[str, JsonValue]) -> tuple[tuple[str, str], ...]:
             del rules
+            return ()
 
         def opening_mechanics(
             self, world: WorldState, player_rules: dict[str, JsonValue]
@@ -120,7 +121,7 @@ def test_an_engine_that_declares_nothing_is_refused_before_it_plays() -> None:
             del state, entity
             return ""
 
-        def sheet_view(self, state: Game) -> tuple[tuple[str, str], ...]:
+        def sheet_rows(self, state: Game) -> tuple[tuple[str, str], ...]:
             del state
             return ()
 

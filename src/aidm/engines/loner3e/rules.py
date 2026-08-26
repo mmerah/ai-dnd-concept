@@ -1,23 +1,23 @@
 from collections.abc import Mapping
 from dataclasses import dataclass
 from random import Random
-from typing import Literal, Self
+from typing import ClassVar, Literal, Self
 
 from pydantic import Field, model_validator
 
 from aidm.engines.core import (
+    Decision,
     ProposalBase,
     SheetBase,
     SheetMechanics,
     adjust,
-    render_counters,
+    pool,
     require_sheet,
 )
 from aidm.state.actions import require_actor_here, roll_pool
 from aidm.state.entities import PLAYER_ID, CheckedEntityId, Counter, Entity, EntityId, Frozen, Slug
 from aidm.state.facts import DiceEvent, EventBadge, Fact, MechanicEvent, entity_fact
 from aidm.state.model import Game
-from aidm.state.play import PendingDecision
 
 
 @dataclass(frozen=True, slots=True)
@@ -78,6 +78,12 @@ def twist_table(packs: Mapping[str, Pack], chosen: Slug) -> tuple[tuple[str, str
     return tuple(zip(source.twist_subjects, source.twist_actions, strict=True))
 
 
+class Conflict(Decision):
+    """The hand-back is the whole decision: no options, no payload, nothing to resolve."""
+
+    kind: ClassVar[Slug] = "conflict"
+
+
 def conflict_prompt(actor: Entity, opponent: Entity) -> str:
     foe = actor if opponent.id == PLAYER_ID else opponent
     return (
@@ -98,37 +104,19 @@ class Sheet(SheetBase):
     luck: Counter = Counter(current=RULES.luck_max, maximum=RULES.luck_max)
     milestones: Counter = Counter(current=0)
 
-    def counters(self) -> dict[Slug, Counter]:
-        return {"luck": self.luck}
+    def rows(self) -> tuple[tuple[str, str], ...]:
+        return (
+            ("Concept", self.concept),
+            ("Skills", ", ".join(self.skills)),
+            ("Frailties", ", ".join(self.frailties)),
+            ("Gear", ", ".join(self.gear)),
+            ("Luck", pool(self.luck)),
+        )
 
 
 class Mechanics(SheetMechanics[Sheet]):
     # One tally for the whole game, as the note it fires says: a tie anywhere moves the same one.
     twist: Counter = Counter(current=0, maximum=RULES.ties_per_twist)
-
-
-def describe_entity(mechanics: Mechanics, entity: Entity) -> str:
-    sheet = mechanics.sheets.get(entity.id)
-    if sheet is None:
-        return ""
-    lines = (
-        f"concept: {sheet.concept}" if sheet.concept else "",
-        f"skills: {', '.join(sheet.skills)}" if sheet.skills else "",
-        f"frailties: {', '.join(sheet.frailties)}" if sheet.frailties else "",
-        f"gear: {', '.join(sheet.gear)}" if sheet.gear else "",
-        f"pools: {render_counters(sheet.counters())}",
-    )
-    return "\n".join(line for line in lines if line)
-
-
-HARM: dict[Slug, int] = {
-    "yes-and": 3,
-    "yes": 2,
-    "yes-but": 1,
-    "no-but": -1,
-    "no": -2,
-    "no-and": -3,
-}
 
 
 type Position = Literal["advantage", "neutral", "disadvantage"]
@@ -179,15 +167,23 @@ def defeat_note(name: str) -> str:
     )
 
 
-def outcome_for(chance: int, risk: int) -> Slug:
+@dataclass(frozen=True, slots=True)
+class Outcome:
+    """One of the six answers, carrying the luck an exchange costs the side that lost it."""
+
+    name: Slug
+    harm: int
+
+
+def outcome_for(chance: int, risk: int) -> Outcome:
     if chance == risk:
-        return "yes-but"
-    side = "yes" if chance > risk else "no"
+        return Outcome("yes-but", 1)
+    side, sign = ("yes", 1) if chance > risk else ("no", -1)
     if min(chance, risk) >= RULES.and_at:
-        return f"{side}-and"
+        return Outcome(f"{side}-and", 3 * sign)
     if max(chance, risk) <= RULES.but_at:
-        return f"{side}-but"
-    return side
+        return Outcome(f"{side}-but", sign)
+    return Outcome(side, 2 * sign)
 
 
 def resolve_question(
@@ -208,16 +204,14 @@ def resolve_question(
 
     outcome = outcome_for(chance.kept, risk.kept)
     answered_at = len(facts)
-    facts.append(entity_fact(actor, "question_answered", f"{action.question} -> {outcome}"))
+    facts.append(entity_fact(actor, "question_answered", f"{action.question} -> {outcome.name}"))
     effects: tuple[str, ...] = ()
     if opponent is not None:
         exchange, effects = _absorbed(_strike(draft, mechanics, actor, opponent, outcome))
         facts.extend(exchange)
         # The pools are refilled the moment a side hits 0, so only the fact says the conflict ended.
         if not any(fact.kind == "conflict_lost" for fact in exchange):
-            draft.pending = PendingDecision(
-                kind="conflict", prompt=conflict_prompt(actor, opponent), options=(), payload={}
-            )
+            draft.pending = Conflict().pending(conflict_prompt(actor, opponent))
     elif chance.kept == risk.kept:
         # Keep pacing tallies from the Narrator and exclude conflict exchanges.
         mechanics.twist.current += 1
@@ -229,7 +223,7 @@ def resolve_question(
         title="Oracle",
         badges=_badges(action),
         dice=(chance, risk),
-        outcome=outcome,
+        outcome=outcome.name,
         effects=effects,
     )
     facts[answered_at] = facts[answered_at].model_copy(update={"event": oracle})
@@ -296,9 +290,9 @@ def _twist(
 
 
 def _strike(
-    draft: Game, mechanics: Mechanics, actor: Entity, opponent: Entity, outcome: Slug
+    draft: Game, mechanics: Mechanics, actor: Entity, opponent: Entity, outcome: Outcome
 ) -> list[Fact]:
-    harm = HARM[outcome]
+    harm = outcome.harm
     hit, striker = (opponent, actor) if harm > 0 else (actor, opponent)
     luck = require_sheet(mechanics.sheets, hit).luck
     why = f"{striker.name} gets the better of the exchange"

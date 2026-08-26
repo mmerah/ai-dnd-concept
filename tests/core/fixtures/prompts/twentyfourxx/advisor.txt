@@ -9,7 +9,7 @@ Kael
 specialty: Sneak
 origin: Human
 skills: Climbing d10, Stealth d10, Tracking d8
-pools: credits 2
+credits: 2
 traits: Relic Hunter[id=relic-hunter] — (skill) Kael knows how old sanctums conceal what matters., Marked by the Past[id=marked-by-the-past] — (frailty) Old scars make certain memories hard to face.
 
 WHAT THE PLAYER WANTS
