@@ -9,7 +9,7 @@ from pydantic_ai import Agent
 
 from aidm.authoring.draft import ExtensionPatch, apply_patch
 from aidm.authoring.run import growth_run
-from aidm.config import Settings
+from aidm.config import Settings, load_settings
 from aidm.content.io import FileStore, SavedGame, load_character, load_scenario
 from aidm.content.model import Character, Scenario
 from aidm.engines.core import AdvancementOffer, Engine, ProposalBase, transact
@@ -340,6 +340,16 @@ class Runtime:
     settings: Settings
     _engines: dict[EngineId, Engine] = field(default_factory=dict, repr=False)
     _sessions: dict[str, GameSession] = field(default_factory=dict, repr=False)
+
+    def busy_refusal(self) -> str | None:
+        """Evicting a session mid-turn would let the next tab open a rival writer on that save."""
+        playing = [slug for slug, session in self._sessions.items() if session.busy]
+        return f"A turn is in flight in {playing[0]!r}." if playing else None
+
+    def reload_settings(self) -> None:
+        self.settings = load_settings()
+        self._engines.clear()
+        self._sessions.clear()
 
     def engine(self, engine_id: EngineId) -> Engine:
         """Memoised: every open session shares the one built engine."""

@@ -173,6 +173,58 @@ have no in-band skill delivery and must read `.agents/skills/…/SKILL.md`; both
 `i-have-adhd` first, which a turn of play does not need. `agent_scenario_page` has no test. The
 in-process `claude` path is the cheap one; the spawned CLIs pay a full context per turn.
 
-## Not started
+## Phase 4 — I4: settings from the UI
 
-Phase 4 (I4).
+- [x] 1. `pyproject.toml` — `python-dotenv==1.2.3` promoted from transitive to direct
+- [x] 2. `ui/settings.py` — one recursive walk over `model_fields`: a nested model becomes a
+      `ui.expansion`, a leaf becomes one of five widgets by annotation, a `Path` leaf is skipped.
+      The env key is `"__".join(path).upper()`, pydantic-settings' own convention, so no table
+- [x] 3. `ui/app.py` — `/settings` page and the gear button in the launcher header
+- [x] 4. Save — only a box that differs is written; the merged dump must pass
+      `Settings.model_validate` before `dotenv.set_key` touches `.env`
+- [x] 4b. No restart: `Runtime.reload_settings()` re-reads `.env` and drops the memoised engines and
+      sessions, `apply_settings` closes every driver first, and the page reloads itself. It refuses
+      while a turn is in flight, and a game already open in a tab keeps its own session until that
+      tab reopens it. The plan's restart banner is gone
+- [x] 5. Secrets — the key input is built `password=True` with `value=""` and a "set"/"not set"
+      placeholder. Confirmed in the DOM: no stored key present, and a blank box writes nothing
+- [x] 6. `README.md` — one line pointing at `/settings`
+- [x] `config.py` marks the four settings one harness never reads (`json_schema_extra`), and the
+      form spells the mark into the label: `roles`, `turn.director_request_limit` and
+      `authoring.request_limit` are builtin only, `turn.harness_model` is code mode only
+- [x] One offline test — `tests/ui/test_settings.py`: a blank secret, an unchanged number and an
+      empty optional all write nothing; an int field writes `9000`, not `9000.0`
+
+Then an adversarial review, and its findings:
+
+- [x] `apply_settings` no longer calls `close_drivers()`. Both drivers hold nothing between turns,
+      so closing them could only ever kill live work: saving settings in one tab killed a code-mode
+      turn — or an authoring run, which no busy flag covered — in another. Dropping the memoised
+      map is enough; a run in flight holds its own driver and finishes
+- [x] `Runtime.busy_refusal()` split out of `reload_settings` and checked first, so the guard runs
+      before anything is evicted. It returns `str | None`, so a failed reload can no longer be
+      reported as "a turn is in flight" (`ValidationError` is a `ValueError`)
+- [x] Clearing a number now unsets its key instead of writing `""`. `ui.number` yields `None` for an
+      empty box, which made `temperature` impossible to clear and answered with a raw pydantic dump
+- [x] A shell-shadowed key is skipped by `_changes`, not just labelled: writing it and reporting
+      "Applied" while an exported variable outranked it was the same lie the label was added to stop
+- [x] The `.env` write moved to `config.py` beside the read — `ENV_FILE`, `env_key`, `save_settings`
+      — so the file name and the key convention exist once, and the round trip tests without NiceGUI
+- [x] Tests rewritten around what is load-bearing: the round trip through `save_settings` and
+      `load_settings`, the shell shadow, the busy refusal, and the change rules. The fictional case
+      that hid the cleared-number defect is gone
+- [x] `README.md` no longer claims every key is editable; the four directory paths are not
+- [x] Menu shape: the page is a vertical tab list over the top-level groups, Save is pinned in the
+      header where a taller panel cannot move it, and the launcher's gear button now says "Settings"
+
+Declined: mirroring `Ge`/`Le` into widget `min`/`max` (validation already reports it), renaming
+`reload_settings` to `reload` (`GameSession.reload` already means "re-read the save"), and deleting
+the `Box` protocol (the suggested alternative still needs the dict typed, and `Any` is banned).
+
+**Verified live** against a throwaway `.env` in another directory: `/settings` renders all six
+widget branches, toggling `media.enabled` and saving wrote that one key — comments and the key line
+untouched — and the reloaded page read the new value back with no restart. Setting
+`roles.director.temperature` to `0.7` wrote the key; clearing the same box removed it.
+
+**Known, accepted:** a scene illustration in flight when settings are saved may not finish — the
+session that retains its task is evicted. Refusing the save for up to the media timeout is worse.

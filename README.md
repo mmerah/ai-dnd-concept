@@ -35,7 +35,7 @@ uv sync
 uv run aidm     # http://localhost:8080
 ```
 
-Set `PROVIDERS__OPENROUTER__API_KEY` in `.env`. Code mode needs no key.
+Set `PROVIDERS__OPENROUTER__API_KEY` in `.env`. Code mode needs no key. Every `.env` key except the four directory paths is editable at `/settings` in the app, and a change applies as soon as it is saved.
 
 - The home page lists the saves, and starts a new game from a scenario, an engine and a character.
 - Content packs load from `packs/<engine>/*.json`. A user pack replaces a shipped pack of the same name, and `PACKS_DIR` moves the directory.

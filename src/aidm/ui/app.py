@@ -23,6 +23,7 @@ from aidm.state.entities import content_id
 
 from .create import agent_scenario_page, character_page, scenario_page
 from .game import game_page
+from .settings import settings_page
 from .widgets import page_header, show_engine_badge
 
 LOGGER = logging.getLogger(__name__)
@@ -31,6 +32,9 @@ LOGGER = logging.getLogger(__name__)
 def home_page(settings: Settings) -> None:
     controller = LauncherController(load_catalog(settings))
     with page_header("AI Dungeon Master", home=False):
+        ui.button("Settings", icon="settings", on_click=lambda: ui.navigate.to("/settings")).props(
+            "flat color=white"
+        )
         ui.space()
         ui.label("Choose your game").classes("text-sm opacity-80")
 
@@ -248,6 +252,14 @@ def _register_pages(runtime: Runtime) -> None:
 
     app.on_shutdown(close_drivers)  # pyright: ignore[reportUnknownMemberType]
 
+    def apply_settings() -> str | None:
+        """Only the memoised map is dropped: a driver mid-turn holds its own reference."""
+        refusal = runtime.busy_refusal()
+        if refusal is None:
+            drivers.clear()
+            runtime.reload_settings()
+        return refusal
+
     @ui.page("/")
     def _index() -> None:  # pyright: ignore[reportUnusedFunction]
         home_page(runtime.settings)
@@ -284,3 +296,7 @@ def _register_pages(runtime: Runtime) -> None:
             ui.label("Authoring runs in your terminal here: call begin_scenario().")
         else:
             scenario_page(runtime.settings)
+
+    @ui.page("/settings")
+    def _settings() -> None:  # pyright: ignore[reportUnusedFunction]
+        settings_page(runtime.settings, apply_settings)

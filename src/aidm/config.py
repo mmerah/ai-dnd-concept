@@ -1,7 +1,9 @@
+from collections.abc import Mapping
 from pathlib import Path
 from typing import Literal, Self, get_args
 
-from pydantic import BaseModel, ConfigDict, Field, SecretStr, model_validator
+from dotenv import set_key, unset_key
+from pydantic import BaseModel, ConfigDict, Field, JsonValue, SecretStr, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 from aidm.state.entities import Slug
@@ -10,6 +12,10 @@ ProviderName = Literal["openrouter", "local"]
 ReasoningEffort = Literal["none", "minimal", "low", "medium", "high", "xhigh", "max"]
 # A stage is built by name, so an unbuildable role cannot be configured.
 Role = Literal["director", "narrator", "advisor", "scenario_creator"]
+ENV_FILE = ".env"
+# Which harness reads a setting.
+BUILTIN_ONLY: dict[str, JsonValue] = {"applies": "builtin"}
+CODE_MODE_ONLY: dict[str, JsonValue] = {"applies": "code mode"}
 
 
 class ProviderConfig(BaseModel):
@@ -48,18 +54,18 @@ class MediaConfig(BaseModel):
 class TurnConfig(BaseModel):
     model_config = ConfigDict(frozen=True)
 
-    director_request_limit: int = Field(default=16, ge=1)
+    director_request_limit: int = Field(default=16, ge=1, json_schema_extra=BUILTIN_ONLY)
     # How many past exchanges an agent is shown; every harness reads the same depth.
     recent_exchanges: int = Field(default=20, ge=1)
     # Which model an agent harness plays on. Empty leaves the choice to the agent's own config.
-    harness_model: str = ""
+    harness_model: str = Field(default="", json_schema_extra=CODE_MODE_ONLY)
 
 
 class AuthoringConfig(BaseModel):
     model_config = ConfigDict(frozen=True)
 
     # An author works in passes; past this many calls the run is spinning, not authoring.
-    request_limit: int = Field(default=40, ge=1)
+    request_limit: int = Field(default=40, ge=1, json_schema_extra=BUILTIN_ONLY)
     # Every generated scenario must be playable by the character the app ships with.
     starter_character: Slug = "kael"
     worked_example: Slug = "whispering-vault"
@@ -109,14 +115,14 @@ class Providers(BaseModel):
 
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(
-        env_file=".env",
+        env_file=ENV_FILE,
         extra="ignore",
         env_nested_delimiter="__",
         nested_model_default_partial_update=True,
     )
 
     providers: Providers = Providers()
-    roles: Roles = Roles()
+    roles: Roles = Field(default=Roles(), json_schema_extra=BUILTIN_ONLY)
     media: MediaConfig = MediaConfig()
     turn: TurnConfig = TurnConfig()
     authoring: AuthoringConfig = AuthoringConfig()
@@ -153,3 +159,16 @@ class Settings(BaseSettings):
 
 def load_settings() -> Settings:
     return Settings.model_validate({})
+
+
+def env_key(path: tuple[str, ...]) -> str:
+    return "__".join(path).upper()
+
+
+def save_settings(changed: Mapping[tuple[str, ...], str | None]) -> None:
+    """`set_key` rewrites one line in place, so comments and untouched keys survive."""
+    for path, value in changed.items():
+        if value is None:
+            unset_key(ENV_FILE, env_key(path))
+        else:
+            set_key(ENV_FILE, env_key(path), value)
