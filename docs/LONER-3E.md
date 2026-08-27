@@ -10,7 +10,8 @@ resolved against Luck.
 - Document source (`content/core/loner-3e.md`): <https://github.com/zotiquestgames/lonersrd>
 - The deleted extraction was taken from the v.3.0 page as it stood at commit `2946f2f` (2026-08-13);
   the site carries no version pin of its own, so re-read the live page rather than trusting that.
-- Explanatory guide, covering Loner **2e** rather than 3e — the mechanics differ:
+- Explanatory guide, covering Loner **2e** rather than 3e — the mechanics differ, e.g. it prints
+  the equal result as *Yes, and...*, where 3e prints *Yes, but... +1 Twist*:
   <https://keeper.farirpgs.com/resources/zotiquest-games/loner/introduction/>
 
 This file used to hold a near-verbatim extraction of the 3e core rules. It was deleted so that no
@@ -37,7 +38,8 @@ S. John Ross for [Risus](https://www.risusrpg.com/); the Adventure Maker setup i
 
 ## Pack sources
 
-- `packs/srd.json` — the core rules page above.
+- `packs/srd.json` — written for this repo; only its twist columns come from the core rules
+  page above (deviation 6).
 - `packs/ap01-fantasy.json` — <https://lonersrd.zotiquestgames.com/adventure_packs/AP01_fantasy.html>.
 - Eleven more adventure packs at
   `https://lonersrd.zotiquestgames.com/adventure_packs/APnn_<name>.html`, `AP01_fantasy` through
@@ -61,10 +63,11 @@ a rule of this one.
 1. **Goal, Motive and Nemesis are not sheet fields.** They map to the shared world: threads carry
    what the character is working toward, and entities carry who stands in the way. The
    SRD asks for them to emerge from play, and in this app play writes them to the world.
-2. **Sheets are actors-only.** The SRD gives non-living characters — objects, vehicles, curses —
-   a Concept, Skills, Frailties and Luck. Here they are entities with traits, which the resolver
-   already reads as tags; a question aimed at a non-living character is refused rather than given
-   a sheet.
+2. **Only the played character's sheet is built from the tables.** The SRD gives every character a
+   Concept, Skills, Frailties and Luck — people, objects, vehicles and curses alike. A scenario may
+   author those tables for any entity via `rules`; an unauthored non-living character instead gets
+   a blank sheet with full Luck the first time a question or conflict names it, and the traits it
+   already carries stand in for the Concept, Skills and Frailties the SRD would have authored.
 3. **A twist fires inside the question that rolled it.** The SRD has a twist interrupt the scene
    the moment it fires; here the tie that calls one is inside a resolved question, so the
    narration shows the twist arriving in that same turn rather than cutting the question short.
@@ -76,8 +79,12 @@ a rule of this one.
 5. **The Twist Counter is hidden from the player.** The SRD's solo player keeps the tally
    themselves; here it lives in mechanics, paces the Director, and is never recited — rising
    tension shows only in the fiction.
+6. **`packs/srd.json`'s starter tables are this repo's, not the SRD's.** The concepts, skills,
+   frailties and gear in that pack are written for this repo; Loner 3e publishes no such tables.
+   Only the twist subject and action columns are the SRD's, and the pack's `license` line already
+   says so.
 
 ## Where the rules live
 
-Mechanics are in `src/aidm/engines/loner3e/`. `packs/srd.json` — not this file — is the
-transcription of record.
+Mechanics are in `src/aidm/engines/loner3e/`. `packs/srd.json`'s twist columns — not this file —
+are the transcription of record.

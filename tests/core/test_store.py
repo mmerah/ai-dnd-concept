@@ -85,4 +85,4 @@ def test_read_scenarios_skips_a_world_that_fails_to_validate(tmp_path: Path) -> 
     broken.mkdir()
     (broken / "world.json").write_text(json.dumps({"meta": {}}), encoding=ENCODING)
 
-    assert [slug for slug, _, _ in read_scenarios(tmp_path, engine_ids())] == ["good"]
+    assert [slug for slug, _ in read_scenarios(tmp_path, engine_ids())] == ["good"]

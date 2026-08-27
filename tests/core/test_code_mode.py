@@ -11,8 +11,10 @@ from core_test_support import (
     CHARACTERS,
     LONER3E,
     SCENARIOS,
+    TWENTYFOURXX,
     EnvFileFreeSettings,
     at_boundary,
+    scenario_for,
     updated,
     with_entity,
 )
@@ -28,7 +30,7 @@ from aidm.harness.claude import ClaudeDriver
 from aidm.harness.codemode import Harness
 from aidm.harness.exec import ExecDriver
 from aidm.harness.mcp import SERVER_NAME, call, offered
-from aidm.state.entities import PLAYER_ID, Entity, EntityId
+from aidm.state.entities import PLAYER_ID, EngineId, Entity, EntityId
 
 VAULT = EntityId("vault")
 CLOISTER = EntityId("cloister")
@@ -125,7 +127,7 @@ def _opened(
     tmp_path: Path, engine: str, growth_frontier: int = 1
 ) -> tuple[Harness, FileStore, str]:
     harness = _harness(_settings(tmp_path, growth_frontier))
-    slug = f"whispering-vault--kael--{engine}"
+    slug = f"{scenario_for(EngineId(engine))}--kael--{engine}"
     harness.open_game(slug)
     return harness, FileStore(tmp_path), slug
 
@@ -217,7 +219,7 @@ async def test_an_open_decision_blocks_every_other_tool_until_it_is_answered(
     _ = await call(
         harness,
         "stake_attempt",
-        {"actor_id": "player", "goal": "climb the shaft", "risk": "a long fall"},
+        {"actor_id": PLAYER_ID, "goal": "climb the shaft", "hit": True, "risk": "a long fall"},
     )
     assert _saved(store, slug).pending is not None
     with pytest.raises(ValueError, match="waiting on the player"):
@@ -276,7 +278,7 @@ async def test_an_answers_note_is_shown_now_and_spent_rather_than_leaking_a_turn
     _ = await call(
         harness,
         "stake_attempt",
-        {"actor_id": "player", "goal": "climb the shaft", "risk": "a long fall"},
+        {"actor_id": PLAYER_ID, "goal": "climb the shaft", "hit": True, "risk": "a long fall"},
     )
     _ = await call(harness, "end_turn", {"lines": [{"speaker_id": None, "text": "It yawns."}]})
     _ = await call(harness, "start_turn", {"prompt": "I go on.", "option_id": "proceed"})
@@ -354,7 +356,7 @@ async def test_opening_another_game_abandons_the_growth_run_of_the_first(tmp_pat
     harness, _, _ = _growing(tmp_path)
     _ = await call(harness, "begin_growth", {})
 
-    harness.open_game("whispering-vault--kael--twentyfourxx")
+    harness.open_game(f"{scenario_for(TWENTYFOURXX)}--kael--twentyfourxx")
 
     assert harness.authoring is None
 
@@ -448,7 +450,7 @@ async def test_a_scenario_run_writes_a_scenario_that_loads(tmp_path: Path) -> No
         {
             "slug": "sunken-mill",
             "premise": "A flooded mill hides a drowned bell.",
-            "engines": [LONER3E],
+            "engine": LONER3E,
             "grows": True,
         },
     )
@@ -483,6 +485,7 @@ async def test_a_scenario_run_writes_a_scenario_that_loads(tmp_path: Path) -> No
                         "name": "the miller",
                         "brief": "He has not left the mill since the flood.",
                         "parent_id": "wheelhouse",
+                        "rules": {"concept": "A Miller Who Stayed"},
                     },
                 ],
                 "threads": [{"id": "the-bell", "title": "The drowned bell"}],
@@ -494,7 +497,9 @@ async def test_a_scenario_run_writes_a_scenario_that_loads(tmp_path: Path) -> No
     written = await call(harness, "finish_scenario", {"summary": "A mill and its wheelhouse."})
 
     assert "The Sunken Mill" in written
-    assert load_scenario(scenarios, "sunken-mill").meta.title == "The Sunken Mill"
+    landed = load_scenario(scenarios, "sunken-mill")
+    assert landed.meta.title == "The Sunken Mill"
+    assert landed.packs == ("srd",)
     assert harness.authoring is None
 
 
@@ -508,7 +513,7 @@ async def test_a_resume_that_re_suspended_may_still_develop_what_the_answer_caus
     _ = await call(
         harness,
         "stake_attempt",
-        {"actor_id": "player", "goal": "climb the shaft", "risk": "a long fall"},
+        {"actor_id": PLAYER_ID, "goal": "climb the shaft", "hit": True, "risk": "a long fall"},
     )
     _ = await call(
         harness, "end_turn", {"lines": [{"speaker_id": None, "text": "The shaft yawns."}]}
@@ -519,4 +524,8 @@ async def test_a_resume_that_re_suspended_may_still_develop_what_the_answer_caus
         harness, "add_trait", {"entity_id": "player", "trait_id": "winded", "text": "Breath short."}
     )
     with pytest.raises(ValueError, match="waiting on the player"):
-        _ = await call(harness, "roll_attempt", {"actor_id": "player", "goal": "swing again"})
+        _ = await call(
+            harness,
+            "roll_attempt",
+            {"actor_id": PLAYER_ID, "goal": "swing again", "hit": True},
+        )

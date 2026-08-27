@@ -3,6 +3,7 @@ from pathlib import Path
 
 from aidm.content.model import Character, Scenario
 from aidm.engines.core import Engine
+from aidm.engines.sources import SHIPPED_PACKS, PackSources
 from aidm.state.entities import PLAYER_ID, EngineId, Entity, Slug
 from aidm.state.model import Game
 
@@ -34,13 +35,17 @@ def engine_class(engine_id: EngineId) -> type[Engine]:
     return found
 
 
-def build_engine(engine_id: EngineId, extra_packs: Path | None = None) -> Engine:
-    return engine_class(engine_id)(extra_packs)
+def build_engine(engine_id: EngineId, sources: PackSources = SHIPPED_PACKS) -> Engine:
+    return engine_class(engine_id)(sources)
 
 
 def begin_game(engine: Engine, scenario_id: Slug, scenario: Scenario, character: Character) -> Game:
-    """One opening state, so the app, the evals, and the tests all start a game the same way."""
-    # Loaded content outlives the mutable game state, which restart() rebuilds from it.
+    if scenario.engine != engine.id:
+        raise ValueError(
+            f"{scenario_id!r} is authored for the {scenario.engine!r} rules, "
+            f"which the {engine.id!r} engine does not play"
+        )
+    engine.check_scenario(scenario)
     world = scenario.world.model_copy(deep=True)
     player = Entity(
         id=PLAYER_ID,
@@ -60,10 +65,10 @@ def begin_game(engine: Engine, scenario_id: Slug, scenario: Scenario, character:
         character_id=character.id,
         scenario=scenario.meta,
         engine=engine.id,
+        player_id=PLAYER_ID,
         world=world,
         mechanics=engine.opening_mechanics(world, character.rules),
         turn_events=(),
     )
     engine.validate(state)
-    # The world was composed here by hand, so the commit is the only thing that validates it.
     return state.committed()

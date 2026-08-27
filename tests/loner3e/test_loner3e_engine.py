@@ -27,6 +27,7 @@ from aidm.state.play import PendingDecision
 
 TWISTS = twist_table(Loner3eEngine().packs, SRD_PACK)
 FOE = EntityId("mara")
+LANTERN = EntityId("lantern")
 
 
 def _seal(**args: object) -> Question:
@@ -192,9 +193,26 @@ def test_an_exchange_both_sides_survive_hands_the_next_key_action_to_the_player(
     decision = draft.pending
     assert decision is not None
     foe = draft.world.require(FOE)
-    assert (decision.kind, decision.prompt) == ("conflict", conflict_prompt(draft.player, foe))
+    expected = conflict_prompt(draft, draft.player, foe)
+    assert (decision.kind, decision.prompt) == ("conflict", expected)
     assert foe.name in decision.prompt
     assert decision.options == ()
+
+
+def test_a_thing_fights_back_with_a_sheet_of_its_own_when_it_is_here() -> None:
+    _, state = initialized()
+    draft = state.draft()
+
+    facts = resolve_question(draft, _seal(opponent_id=LANTERN), Random(0), TWISTS)
+
+    sheets = Mechanics.of_game(draft).sheets
+    assert any(fact.kind == "question_answered" for fact in facts)
+    assert min(sheets[LANTERN].luck.current, sheets[PLAYER_ID].luck.current) < RULES.luck_max
+
+    away = state.draft()
+    away.world.require(LANTERN).parent_id = EntityId("cloister")
+    with pytest.raises(ValueError, match="is not here with the player"):
+        _ = resolve_question(away, _seal(opponent_id=LANTERN), Random(0), TWISTS)
 
 
 def test_the_engine_plays_the_hand_back_and_refuses_every_other_decision() -> None:

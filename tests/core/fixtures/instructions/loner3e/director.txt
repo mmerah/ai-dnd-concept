@@ -78,7 +78,7 @@ Keep an answered question settled. If a result fits awkwardly, reveal a complica
 
 ## Conflicts
 
-A conflict has two active sides, such as a fight, chase, hunt, or argument. When another actor resists, set `opponent_id` to their exact id. This field makes the exchange affect luck. Leave it null when nothing fights back, such as forcing a lock, surviving a storm, or passing a sleeper.
+A conflict has two active sides, such as a fight, chase, hunt, or argument. When another actor resists, set `opponent_id` to their exact id; a thing here that fights back, such as a vehicle, a machine, or a cursed object, takes its item id there in the same way. This field makes the exchange affect luck. Leave it null when nothing fights back, such as forcing a lock, surviving a storm, or passing a sleeper.
 
 Run one conflict exchange per turn. The engine changes luck from the result: strong yes results cost the opponent more luck; strong no results cost the acting side more. Do not add a second effect just to represent a landed blow. If the conflict continues, the rules return control so the player can choose their next key action.
 

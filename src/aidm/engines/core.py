@@ -1,3 +1,4 @@
+import json
 from abc import ABC, abstractmethod
 from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass, field
@@ -5,12 +6,14 @@ from pathlib import Path
 from random import Random
 from typing import ClassVar, Self
 
-from pydantic import BaseModel, Field, JsonValue
+from pydantic import BaseModel, Field, JsonValue, ValidationError, model_validator
 
 from aidm.content.io import SavedGame, engine_text
-from aidm.content.model import CreatedCharacter
+from aidm.content.model import CreatedCharacter, Scenario
+from aidm.engines.sources import SHIPPED_PACKS, PackSources
 from aidm.state.creation import AnyStep, Picks
 from aidm.state.entities import (
+    DEAD,
     PLAYER_ID,
     CheckedEntityId,
     Counter,
@@ -20,13 +23,14 @@ from aidm.state.entities import (
     Frozen,
     Mutable,
     Slug,
+    require_unique,
 )
 from aidm.state.facts import (
     NOTHING_CHANGED,
     Fact,
     MechanicEvent,
+    entity_fact,
     explained_fact,
-    labeled,
     player_events,
     trace_lines,
 )
@@ -46,36 +50,48 @@ def pool(counter: Counter) -> str:
 
 
 def counter_fact(
-    entity: Entity, key: str, counter: Counter, delta: int, why: str, icon: str = "casino"
+    state: Game,
+    entity: Entity,
+    key: str,
+    counter: Counter,
+    delta: int,
+    why: str,
+    icon: str = "casino",
 ) -> Fact:
     moved = f"{key.capitalize()} {delta:+d} -> {pool(counter)}"
-    title = moved if entity.id == PLAYER_ID else f"{entity.name}: {moved}"
-    trace = f"{labeled(entity)} {key} {delta:+d} -> {pool(counter)}"
+    title = moved if entity.id == state.player_id else f"{entity.name}: {moved}"
+    trace = f"{state.label(entity)} {key} {delta:+d} -> {pool(counter)}"
     return explained_fact(
         entity, "counter_changed", trace, why, event=MechanicEvent(title=title, icon=icon)
     )
 
 
 def adjust(
-    entity: Entity, key: str, counter: Counter, amount: int, why: str, icon: str = "casino"
+    state: Game,
+    entity: Entity,
+    key: str,
+    counter: Counter,
+    amount: int,
+    why: str,
+    icon: str = "casino",
 ) -> list[Fact]:
     before = counter.current
     counter.current = counter.clamped(before + amount)
     landed = counter.current - before
     if landed == 0:
         return []
-    return [counter_fact(entity, key, counter, landed, why, icon)]
+    return [counter_fact(state, entity, key, counter, landed, why, icon)]
 
 
 def spend(
-    entity: Entity, key: str, counter: Counter, amount: int, icon: str = "casino"
+    state: Game, entity: Entity, key: str, counter: Counter, amount: int, icon: str = "casino"
 ) -> list[Fact]:
     if counter.current < amount:
         raise ValueError(
             f"{entity.name} holds {counter.current} {key}, so {amount} cannot be spent."
         )
     counter.current -= amount
-    return [counter_fact(entity, key, counter, -amount, f"spent {key}", icon)]
+    return [counter_fact(state, entity, key, counter, -amount, f"spent {key}", icon)]
 
 
 def require_sheet[S](sheets: Mapping[EntityId, S], actor: Entity) -> S:
@@ -160,7 +176,7 @@ class Advancement(ABC):
                 prompt=f"{state.world.require(subject_id).name} {self.occasion}.",
                 text=self.offer_text,
             )
-            for subject_id in (PLAYER_ID, *state.world.party)
+            for subject_id in (state.player_id, *state.world.party)
             if earned > self.ledger(state, subject_id).current
         )
 
@@ -171,7 +187,10 @@ class Advancement(ABC):
         ledger = self.ledger(draft, offer.subject_id)
         ledger.current += 1
         subject = draft.world.require(offer.subject_id)
-        return (*granted, counter_fact(subject, self.ledger_key, ledger, 1, self.spent_why))
+        return (
+            *granted,
+            counter_fact(draft, subject, self.ledger_key, ledger, 1, self.spent_why),
+        )
 
     def advance_refusal(
         self, state: Game, offer: AdvancementOffer, proposal: ProposalBase
@@ -184,18 +203,19 @@ class Advancement(ABC):
 
 
 class Engine(ABC):
-    """Everything a new engine supplies; `SheetEngine` below already answers most of it."""
-
     id: ClassVar[EngineId]
-    badge: ClassVar[tuple[str, str]]  # the launcher's label, and the Quasar colour behind it
+    badge: ClassVar[tuple[str, str]]
     engine_dir: ClassVar[Path]
     decisions: ClassVar[tuple[type[Decision], ...]] = ()
+    authoring_instructions: ClassVar[str] = ""
     mechanics_type: type[Mutable]
+    # The schema an authored pack is held to; None where an engine plays no content packs at all.
+    pack_type: ClassVar[type[BaseModel] | None] = None
     advancement: Advancement
     creation: CharacterCreation
 
-    def __init__(self, extra_packs: Path | None = None) -> None:
-        # Read once here so a missing declaration fails the build, not the turn that first needs it.
+    def __init__(self, sources: PackSources = SHIPPED_PACKS) -> None:
+        del sources
         _ = self.mechanics_type
         self.director_instructions: str = engine_text(self.engine_dir / "director.md")
         self.director_commands: tuple[Command, ...] = ()
@@ -230,13 +250,33 @@ class Engine(ABC):
         """Whatever this engine must give an entity created during play; a hook, not abstract."""
 
     def check_overlay(self, rules: dict[str, JsonValue]) -> None:
-        """Refuses authored rules this engine cannot play; rendering them is what checks them."""
         _ = self.overlay_rows(rules)
+
+    @property
+    def pack_ids(self) -> tuple[Slug, ...]:
+        return tuple(self.pack_models())
+
+    def pack_models(self) -> Mapping[str, BaseModel]:
+        return {}
+
+    def check_scenario(self, scenario: Scenario) -> None:
+        if missing := sorted(set(scenario.packs) - set(self.pack_models())):
+            raise ValueError(f"scenario names packs not installed for {self.id!r}: {missing}")
+
+    def authoring_context(self, pack_ids: tuple[Slug, ...]) -> str:
+        installed = self.pack_models()
+        # Defaults restate rules the guidance already carries; dropping them halves the prompt.
+        packs = {
+            pack_id: installed[pack_id].model_dump(mode="json", exclude_defaults=True)
+            for pack_id in pack_ids
+        }
+        return f"{self.authoring_instructions}\n\nSELECTED PACK CONTENT\n{json.dumps(packs)}"
 
     def restored(self, saved: SavedGame) -> Game:
         state = saved.game(self.mechanics_type.model_validate(saved.mechanics))
         if state.pending is not None:
             self.check_pending(state.pending)
+        self.validate(state)
         return state
 
     def resume(
@@ -253,7 +293,10 @@ class Engine(ABC):
         return lambda entity: self.describe(state, entity)
 
     def _decision(self, pending: PendingDecision) -> Decision:
-        found = next((one for one in self.decisions if one.kind == pending.kind), None)
+        # Core's death hand-over is prepended, so no engine declares it and none can shadow it.
+        found = next(
+            (one for one in (Succession, *self.decisions) if one.kind == pending.kind), None
+        )
         if found is None:
             raise ValueError(f"the {self.id!r} engine cannot play a {pending.kind!r} decision")
         return found.model_validate(pending.payload)
@@ -264,6 +307,15 @@ class Engine(ABC):
 
 class SheetBase(Mutable, ABC):
     """One actor's mechanics, whatever this engine's rules make of them."""
+
+    packs: tuple[Slug, ...] = ("srd",)
+
+    @model_validator(mode="after")
+    def _packs_include_srd(self) -> Self:
+        require_unique("sheet pack ids", self.packs)
+        if "srd" not in self.packs:
+            raise ValueError("sheet packs must include 'srd'")
+        return self
 
     @abstractmethod
     def rows(self) -> tuple[tuple[str, str], ...]:
@@ -292,8 +344,6 @@ class SheetAdvancement(Advancement):
 
 
 class SheetEngine[S: SheetBase](Engine):
-    """An engine whose mechanics are one sheet per actor; the shelf's shape."""
-
     sheet_type: type[S]
     # Narrows a class attribute the base only ever reads; `Engine` itself is not generic.
     mechanics_type: type[SheetMechanics[S]]  # pyright: ignore[reportIncompatibleVariableOverride]
@@ -304,40 +354,83 @@ class SheetEngine[S: SheetBase](Engine):
     def opening_mechanics(
         self, world: WorldState, player_rules: dict[str, JsonValue]
     ) -> SheetMechanics[S]:
-        return self.mechanics_type(
-            sheets={
-                entity.id: self.sheet_type.model_validate(
-                    player_rules if entity.id == PLAYER_ID else {}
-                )
-                for entity in world.of_kind("actor")
+        # Validated as one map so a bad overlay is refused at `sheets.<entity id>.<field>`.
+        return self.mechanics_type.model_validate(
+            {
+                "sheets": {
+                    entity.id: player_rules if entity.id == PLAYER_ID else entity.rules
+                    for entity in world.entities
+                    if entity.id == PLAYER_ID or self.uses_sheet(entity)
+                }
             }
         )
 
+    def uses_sheet(self, entity: Entity) -> bool:
+        return bool(entity.rules)
+
+    def check_scenario(self, scenario: Scenario) -> None:
+        super().check_scenario(scenario)
+        for entity in scenario.world.entities:
+            if not entity.rules:
+                continue
+            try:
+                sheet = self.sheet_type.model_validate(entity.rules)
+            except ValidationError as broken:
+                first = broken.errors()[0]
+                place = ".".join(str(part) for part in ("sheets", entity.id, *first["loc"]))
+                raise ValueError(f"{place}: {first['msg']}") from broken
+            if missing := sorted(set(sheet.packs) - set(scenario.packs)):
+                raise ValueError(
+                    f"{entity.id!r} uses packs the scenario does not select: {missing}"
+                )
+            self.check_sheet(entity, sheet)
+
+    def check_sheet(self, entity: Entity, sheet: S) -> None:
+        del entity, sheet
+
     def validate(self, state: Game) -> None:
         sheets = self.mechanics_type.of_game(state).sheets
-        if PLAYER_ID not in sheets:
+        if state.player_id not in sheets:
             raise ValueError(f"the {self.id} mechanics name no player")
-        actors = {entity.id for entity in state.world.of_kind("actor")}
-        if missing := sorted(actors - set(sheets)):
-            raise ValueError(f"actors carry no character sheet: {missing}")
+        required = {entity.id for entity in state.world.entities if self.uses_sheet(entity)}
+        if missing := sorted(required - set(sheets)):
+            raise ValueError(f"entities have no character sheet to play by: {missing}")
         if gone := sorted(set(sheets) - state.world.all_ids()):
             raise ValueError(f"mechanics name actors the world does not hold: {gone}")
+        installed = set(self.pack_ids)
+        if missing_packs := sorted(
+            {pack for sheet in sheets.values() for pack in sheet.packs if pack not in installed}
+        ):
+            raise ValueError(f"sheets use packs that are not installed: {missing_packs}")
+
+    def meanings(self, sheet: S) -> tuple[tuple[str, str], ...]:
+        del sheet
+        return ()
 
     def describe(self, state: Game, entity: Entity) -> str:
         sheet = self.mechanics_type.of_game(state).sheets.get(entity.id)
-        rows = sheet.rows() if sheet is not None else ()
-        return "\n".join(f"{label.lower()}: {value}" for label, value in rows if value)
+        if sheet is None:
+            return ""
+        meanings = self.meanings(sheet)
+        lines: list[str] = []
+        for label, value in sheet.rows():
+            if not value:
+                continue
+            lines.append(f"{label.lower()}: {value}")
+            listed = value.split(", ")
+            lines.extend(f"- {tag}: {detail}" for tag, detail in meanings if tag in listed)
+        return "\n".join(lines)
 
     def sheet_rows(self, state: Game) -> tuple[tuple[str, str], ...]:
-        return self.mechanics_type.of_game(state).sheets[PLAYER_ID].rows()
+        return self.mechanics_type.of_game(state).sheets[state.player_id].rows()
 
     def seed(self, draft: Game, entity: Entity, rng: Random) -> None:
         del rng
         mechanics = self.mechanics_type.of_game(draft)
-        if entity.kind != "actor" or entity.id in mechanics.sheets:
+        if not self.uses_sheet(entity) or entity.id in mechanics.sheets:
             return
         # The sheet lands first: the ledger this brings level is a counter on it.
-        mechanics.sheets[entity.id] = self.sheet_type()
+        mechanics.sheets[entity.id] = self.sheet_type.model_validate(entity.rules)
         # A newcomer starts level with the party: what closed before they joined is not owed.
         self.advancement.ledger(draft, entity.id).current = mechanics.completed.current
 
@@ -448,6 +541,65 @@ def _reached(draft: Game, facts: Sequence[Fact]) -> list[str]:
         if detail is not None and detail.when_reached:
             lines.append(f"- {detail.when_reached}")
     return lines
+
+
+# The played character's death: core-owned, so every engine hands the story on the same way.
+
+
+class Succession(Decision):
+    """A dead player character hands the game to a companion; every engine plays this one."""
+
+    kind: ClassVar[Slug] = "succession"
+
+    def resolve(self, draft: Game, option_id: Slug, rng: Random) -> tuple[Fact, ...]:
+        del rng
+        return take_over(draft, EntityId(option_id))
+
+
+def take_over(draft: Game, successor_id: EntityId) -> tuple[Fact, ...]:
+    """Only the played id moves: sheets, items and history keep pointing where they point."""
+    successor = draft.world.require_kind(successor_id, "actor")
+    if successor_id not in draft.world.party:
+        raise ValueError(f"{successor.name} does not travel with the player")
+    if successor.trait(DEAD) is not None:
+        raise ValueError(f"{successor.name} is dead and carries nothing on")
+    draft.world.party.remove(successor_id)
+    draft.player_id = successor_id
+    return (
+        entity_fact(
+            successor,
+            "player_succeeded",
+            f"{draft.label(successor)} is the played character from here on",
+            event=MechanicEvent(title=f"You play on as {successor.name}", icon="switch_account"),
+        ),
+    )
+
+
+def succession_decision(engine: Engine, state: Game) -> PendingDecision | None:
+    """None where nobody can carry the story on: the game ends with the played character."""
+    options: list[DecisionOption] = []
+    for member_id in state.world.party:
+        if _takeover_refusal(engine, state, member_id) is not None:
+            continue
+        member = state.world.require(member_id)
+        options.append(
+            DecisionOption(id=member_id, label=f"Play on as {member.name}", detail=member.brief)
+        )
+    if not options:
+        return None
+    return Succession().pending(
+        f"{state.player.name} is dead. Who carries the story on?", tuple(options)
+    )
+
+
+def _takeover_refusal(engine: Engine, state: Game, successor_id: EntityId) -> str | None:
+    """Eligible means the swap leaves a game this engine can play, so there is no second rule."""
+    return draft_refusal(
+        state,
+        lambda draft: apply_to_draft(
+            engine, draft, lambda copy, _rng: take_over(copy, successor_id), Random(0)
+        ),
+    )
 
 
 # Declaring a director command.

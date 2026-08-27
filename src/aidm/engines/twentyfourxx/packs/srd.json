@@ -3,6 +3,139 @@
   "source": "https://24xx-srd.carrd.co/",
   "license": "24XX rules are CC BY Jason Tocci",
   "starting_kit": [{ "id": "comm", "label": "Comm", "detail": "A smartphone." }],
+  "gear": [
+    { "id": "vest", "label": "Vest", "detail": "Breaks once for defense." },
+    {
+      "id": "battle-armor",
+      "label": "Battle armor",
+      "detail": "Breaks up to 3× for defense.",
+      "bulky": true,
+      "cost": 2,
+      "breaks": 3
+    },
+    {
+      "id": "hardsuit",
+      "label": "Hardsuit",
+      "detail": "Breaks up to 3× for defense, vacuum-rated, mag boots.",
+      "bulky": true,
+      "cost": 3,
+      "breaks": 3
+    },
+    {
+      "id": "cyber-ear",
+      "label": "Cyber-ear",
+      "detail": "Upgrade with echolocation, vocal stress detector."
+    },
+    {
+      "id": "cyber-eye",
+      "label": "Cyber-eye",
+      "detail": "Upgrade with infrared, telescopic, x-ray."
+    },
+    {
+      "id": "cyber-limb",
+      "label": "Cyber-limb",
+      "detail": "Upgrade with fast, strong, compartments, tool or weapon implant."
+    },
+    {
+      "id": "cranial-jack",
+      "label": "Cranial jack",
+      "detail": "Upgrade with sensory data backup, skill increase."
+    },
+    { "id": "healing-nanobots", "label": "Healing nanobots" },
+    { "id": "toxin-filter", "label": "Toxin filter" },
+    { "id": "voice-mimic", "label": "Voice mimic" },
+    { "id": "flamethrower", "label": "Flamethrower", "bulky": true },
+    { "id": "low-g-jetpack", "label": "Low-G jetpack" },
+    { "id": "med-scanner", "label": "Med scanner" },
+    { "id": "mini-drone", "label": "Mini drone" },
+    { "id": "repair-tools", "label": "Repair tools" },
+    {
+      "id": "survey-pack",
+      "label": "Survey pack",
+      "detail": "Climbing gear, flare gun, tent.",
+      "bulky": true
+    },
+    {
+      "id": "grenades",
+      "label": "Grenades",
+      "detail": "Four, any of fragmentation, flashbang, smoke, EMP."
+    },
+    { "id": "pistol", "label": "Pistol" },
+    { "id": "rifle", "label": "Rifle", "bulky": true },
+    { "id": "shotgun", "label": "Shotgun", "bulky": true },
+    { "id": "stun-baton", "label": "Stun baton" },
+    { "id": "tranq-gun", "label": "Tranq gun" }
+  ],
+  "ship": [
+    {
+      "id": "comms",
+      "label": "Comms",
+      "upgrades": [
+        { "id": "eavesdropper", "label": "Eavesdropper" },
+        { "id": "jammer", "label": "Jammer" },
+        { "id": "tachyon-burst", "label": "Tachyon burst", "detail": "No lag in-system." }
+      ]
+    },
+    {
+      "id": "crafts",
+      "label": "Crafts",
+      "detail": "Comes with escape pod.",
+      "upgrades": [
+        { "id": "fighter", "label": "Fighter" },
+        { "id": "shuttle", "label": "Shuttle", "detail": "Reentry-rated." }
+      ]
+    },
+    {
+      "id": "drive",
+      "label": "Drive",
+      "detail": "FTL jump and sublight speeds.",
+      "upgrades": [
+        { "id": "longer-jumps", "label": "Longer jumps" },
+        { "id": "faster-speed", "label": "Faster speed" },
+        { "id": "greater-agility", "label": "Greater agility" }
+      ]
+    },
+    {
+      "id": "equipment",
+      "label": "Equipment",
+      "detail": "Vac suits for crew.",
+      "upgrades": [
+        { "id": "armory", "label": "Armory" },
+        { "id": "heavy-loader", "label": "Heavy loader" },
+        { "id": "mining-gear", "label": "Mining gear" },
+        { "id": "tow-cable", "label": "Tow cable" }
+      ]
+    },
+    {
+      "id": "hull-armor",
+      "label": "Hull armor",
+      "detail": "Breaks harmlessly for defense.",
+      "upgrades": [
+        { "id": "reentry-rated", "label": "Reentry-rated" },
+        { "id": "sun-shielding", "label": "Sun shielding" }
+      ]
+    },
+    {
+      "id": "sensors",
+      "label": "Sensors",
+      "upgrades": [
+        { "id": "deep-space", "label": "Deep-space" },
+        { "id": "life-sign-scan", "label": "Life-sign scan" },
+        { "id": "planetary-survey", "label": "Planetary survey" },
+        { "id": "tactical-vessel-scan", "label": "Tactical vessel scan" }
+      ]
+    },
+    {
+      "id": "weapons",
+      "label": "Weapons",
+      "detail": "Deflector turrets.",
+      "upgrades": [
+        { "id": "laser-cutter", "label": "Laser cutter" },
+        { "id": "military-grade-turret", "label": "Military-grade turret" },
+        { "id": "torpedos", "label": "Torpedos" }
+      ]
+    }
+  ],
   "specialties": [
     {
       "id": "face",
@@ -18,6 +151,11 @@
       "label": "Muscle",
       "detail": "Take a sword, firearm, or cyber-arm.",
       "skills": ["Intimidation"],
+      "kit_choice": [
+        { "id": "sword", "label": "Sword" },
+        { "id": "firearm", "label": "Firearm" },
+        { "id": "cyber-arm", "label": "Cyber-arm" }
+      ],
       "choices": [
         { "id": "hand-to-hand", "label": "Hand-to-hand", "skills": ["Hand-to-hand"] },
         { "id": "shooting", "label": "Shooting", "skills": ["Shooting"] }
@@ -105,7 +243,11 @@
       "id": "android",
       "label": "Android",
       "detail": "Take an upgrade-ready cyber-body: synth skin (looks human) or a case (breaks harmlessly for defense).",
-      "increases": 1
+      "increases": 1,
+      "kit_choice": [
+        { "id": "synth-skin", "label": "Synth skin", "detail": "Looks human." },
+        { "id": "case", "label": "Case", "detail": "Breaks harmlessly for defense." }
+      ]
     },
     {
       "id": "human",

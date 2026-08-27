@@ -21,6 +21,7 @@ from aidm.engines.core import (
     TurnRecord,
     apply_to_draft,
     run_command,
+    succession_decision,
 )
 from aidm.engines.world import commands
 from aidm.llm import build_agent, schema_of
@@ -246,7 +247,7 @@ async def run_segment(
         )
 
     return TurnResult(
-        state=close_segment(draft, prompt, lines, tuple(log.events)),
+        state=close_segment(engine, draft, prompt, lines, tuple(log.events)),
         turn=TurnTrace(
             prompt=prompt,
             facts=tuple(facts),
@@ -257,10 +258,16 @@ async def run_segment(
 
 
 def close_segment(
-    draft: Game, prompt: str, lines: tuple[Line, ...], events: tuple[MechanicEvent, ...]
+    engine: Engine,
+    draft: Game,
+    prompt: str,
+    lines: tuple[Line, ...],
+    events: tuple[MechanicEvent, ...],
 ) -> Game:
     """The one place a segment becomes history: builtin and code mode differ only in when."""
     draft.turn_events = ()
+    if draft.pending is None and draft.player.trait(DEAD) is not None:
+        draft.pending = succession_decision(engine, draft)
     draft.history = (
         *draft.history,
         Exchange(
@@ -283,7 +290,9 @@ def consume_answer(
     log: TurnRecord,
 ) -> tuple[str, str, PendingDecision | None]:
     """The PLAYER ACTION, what a closed answer resolved, and the decision an open answer used."""
-    if draft.player.trait(DEAD) is not None:
+    chosen = player_input.option_id if isinstance(player_input, Answer) else None
+    # Only a listed option — succession, in practice — carries a dead player character's game on.
+    if chosen is None and draft.player.trait(DEAD) is not None:
         raise ValueError("the player is dead. The only way on is to restart.")
     # A new segment starts with no cards: an interrupted turn left its own on the draft.
     draft.turn_events = ()
@@ -291,7 +300,6 @@ def consume_answer(
     consumed, draft.pending = draft.pending, None
     if isinstance(player_input, str):
         return player_input, "", None
-    chosen = player_input.option_id
     if chosen is None:
         if consumed is not None:
             draft.world.pending_notes = (

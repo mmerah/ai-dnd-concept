@@ -1,9 +1,10 @@
+from collections.abc import Mapping, Sequence
 from pathlib import Path
 from random import Random
 
 from pydantic import Field
 
-from aidm.content.model import CharacterProfile, CreatedCharacter
+from aidm.content.model import CharacterProfile, CreatedCharacter, Scenario
 from aidm.engines.core import (
     ProposalBase,
     SheetAdvancement,
@@ -25,7 +26,14 @@ from aidm.engines.loner3e.rules import (
     resolve_question,
     twist_table,
 )
-from aidm.engines.packs import PackCreation, find_entry, load_packs, pack_options, pack_paths
+from aidm.engines.packs import (
+    PackChoice,
+    PackCreation,
+    character_packs,
+    find_entry,
+    pack_options,
+)
+from aidm.engines.sources import SHIPPED_PACKS, PackSources
 from aidm.state.creation import (
     AnyStep,
     CreationStep,
@@ -35,7 +43,6 @@ from aidm.state.creation import (
     picked,
 )
 from aidm.state.entities import (
-    PLAYER_ID,
     CheckedEntityId,
     Counter,
     EngineId,
@@ -112,6 +119,13 @@ def _rewrite(sheet: Sheet, subject: Entity, change: Change, why: str) -> Fact:
     )
 
 
+def pack_meanings(
+    entries: Sequence[PackChoice], tags: Sequence[str]
+) -> tuple[tuple[str, str], ...]:
+    detail_of = {entry.label: entry.detail for entry in entries if entry.detail}
+    return tuple((tag, detail_of[tag]) for tag in tags if tag in detail_of)
+
+
 def _swapped(tags: tuple[str, ...], old: str, new: str) -> tuple[str, ...]:
     return tuple(new if tag == old else tag for tag in tags)
 
@@ -142,11 +156,13 @@ class Loner3eCreation(PackCreation[Pack]):
     def create(self, name: str, brief: str, picks: Picks, rng: Random) -> CreatedCharacter:
         del rng
         check_picks(self.steps(picks), picks)
-        pack = self.packs[picked(picks, "pack")[0]]
+        chosen = picked(picks, "pack")[0]
+        pack = self.packs[chosen]
         return CreatedCharacter(
             profile=CharacterProfile(name=name, brief=brief),
             rules={
-                "pack": picked(picks, "pack")[0],
+                "packs": character_packs(chosen),
+                "twist_pack": chosen,
                 "concept": picked(picks, "concept")[0],
                 "skills": [
                     find_entry(pack.skills, skill).label for skill in picked(picks, "skills")
@@ -163,11 +179,19 @@ class Loner3eEngine(SheetEngine[Sheet]):
     engine_dir = Path(__file__).parent
     sheet_type = Sheet
     mechanics_type = Mechanics
+    pack_type = Pack
     decisions = (Conflict,)
+    authoring_instructions = (
+        "LONER 3E AUTHORING\n"
+        "Every actor needs a rules object with a concept and any fitting skills, frailties, or "
+        "gear. Loner tags are freeform descriptions: use selected pack entries when they fit and "
+        "invent scenario-specific tags when they are clearer. Set packs to every selected table "
+        "set the entity uses; twist_pack chooses its one Oracle table."
+    )
 
-    def __init__(self, extra_packs: Path | None = None) -> None:
-        super().__init__(extra_packs)
-        self.packs = load_packs(pack_paths(self.engine_dir / "packs", extra_packs), Pack)
+    def __init__(self, sources: PackSources = SHIPPED_PACKS) -> None:
+        super().__init__(sources)
+        self.packs = sources.load(self.engine_dir / "packs", Pack)
         self.advancement = Loner3eAdvancement(self.engine_dir)
         self.creation = Loner3eCreation(self.packs)
         self.director_commands = (
@@ -188,11 +212,26 @@ class Loner3eEngine(SheetEngine[Sheet]):
             ),
         )
 
-    def validate(self, state: Game) -> None:
-        super().validate(state)
-        if (chosen := Mechanics.of_game(state).sheets[PLAYER_ID].pack) not in self.packs:
-            raise ValueError(f"this game plays the {chosen!r} table set, which is not installed")
+    def pack_models(self) -> Mapping[str, Pack]:
+        return self.packs
+
+    def uses_sheet(self, entity: Entity) -> bool:
+        return entity.kind == "actor" or bool(entity.rules)
+
+    def check_scenario(self, scenario: Scenario) -> None:
+        if blank := sorted(
+            entity.id for entity in scenario.world.of_kind("actor") if not entity.rules
+        ):
+            raise ValueError(f"authored Loner actors carry no `rules`: {blank}")
+        super().check_scenario(scenario)
+
+    def meanings(self, sheet: Sheet) -> tuple[tuple[str, str], ...]:
+        packs = tuple(self.packs[pack_id] for pack_id in sheet.packs)
+        # The concept's pack blurb is generic where the entity's own brief is not: skip it.
+        return pack_meanings(
+            tuple(entry for pack in packs for entry in (*pack.skills, *pack.frailties, *pack.gear)),
+            (*sheet.skills, *sheet.frailties, *sheet.gear),
+        )
 
     def twists(self, state: Game) -> tuple[tuple[str, str], ...]:
-        """The player's own table set: an NPC sheet is seeded with the default and never selects."""
-        return twist_table(self.packs, Mechanics.of_game(state).sheets[PLAYER_ID].pack)
+        return twist_table(self.packs, Mechanics.of_game(state).sheets[state.player_id].twist_pack)

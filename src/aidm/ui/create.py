@@ -3,13 +3,14 @@ import tempfile
 from collections.abc import Callable, Sequence
 from pathlib import Path
 from random import Random
+from typing import cast
 
 from nicegui import ui
 from nicegui.events import UploadEventArguments, ValueChangeEventArguments
 
 from aidm.app.launch import engine_ids
 from aidm.app.runtime import Runtime
-from aidm.authoring.draft import BRIEFS, WHOLE_SCENARIO, brief_named
+from aidm.authoring.draft import BRIEFS, WHOLE_SCENARIO, brief_named, installed_pack_ids
 from aidm.authoring.run import ScenarioRun, scenario_run
 from aidm.config import Settings
 from aidm.content.io import write_character
@@ -273,6 +274,36 @@ def _taken(directory: Path) -> tuple[str, ...]:
     return tuple(path.name for path in directory.iterdir() if path.is_dir())
 
 
+def _engine_and_packs(settings: Settings) -> tuple[ui.select, ui.select]:
+    engine = (
+        ui.select(
+            options=list(engine_ids()),
+            value=engine_ids()[0],
+            label="Rules it plays under",
+        )
+        .classes("w-full")
+        .props("outlined")
+    )
+    packs = (
+        ui.select(
+            options=list(installed_pack_ids(settings, _engine(engine.value))),
+            value=["srd"],
+            label="Content packs",
+            multiple=True,
+        )
+        .classes("w-full")
+        .props("outlined")
+    )
+
+    def changed_engine(event: ValueChangeEventArguments[object]) -> None:
+        packs.options = list(installed_pack_ids(settings, _engine(event.value)))
+        packs.value = ["srd"]
+        packs.update()
+
+    engine.on_value_change(changed_engine)
+    return engine, packs
+
+
 def scenario_page(settings: Settings) -> None:
     with page_header("New scenario"):
         pass
@@ -306,16 +337,7 @@ def scenario_page(settings: Settings) -> None:
                 .props("outlined")
             )
             grows = ui.switch("Grows during play", value=True).classes("w-full")
-            engines = (
-                ui.select(
-                    options=list(engine_ids()),
-                    value=list(engine_ids()),
-                    multiple=True,
-                    label="Rules it plays under",
-                )
-                .classes("w-full")
-                .props("outlined")
-            )
+            engine, packs = _engine_and_packs(settings)
             brief = (
                 ui.select(
                     options=[one.label for one in BRIEFS],
@@ -353,8 +375,9 @@ def scenario_page(settings: Settings) -> None:
                         content_id(scenario_id.value or ""),
                         (premise.value or "").strip(),
                         bool(grows.value),
-                        _engines(engines.value),
+                        _engine(engine.value),
                         document,
+                        packs=_packs(packs.value),
                         brief=brief_named(brief.value or WHOLE_SCENARIO.label),
                         art_style=(art_style.value or "").strip(),
                     )
@@ -373,7 +396,8 @@ def scenario_page(settings: Settings) -> None:
                     premise,
                     upload,
                     grows,
-                    engines,
+                    engine,
+                    packs,
                     brief,
                     art_style,
                     author_button,
@@ -454,7 +478,7 @@ def scenario_page(settings: Settings) -> None:
             readback()
 
 
-def agent_scenario_page(driver: Driver) -> None:
+def agent_scenario_page(driver: Driver, settings: Settings) -> None:
     """Code mode has no api_key for the authoring roles, so the agent writes the scenario."""
     with page_header("New scenario"):
         pass
@@ -471,16 +495,7 @@ def agent_scenario_page(driver: Driver) -> None:
             .classes("w-full")
             .props("outlined autogrow")
         )
-        engines = (
-            ui.select(
-                options=list(engine_ids()),
-                value=list(engine_ids()),
-                multiple=True,
-                label="Rules it plays under",
-            )
-            .classes("w-full")
-            .props("outlined")
-        )
+        engine, packs = _engine_and_packs(settings)
         grows = ui.switch("Grows during play", value=True).classes("w-full")
 
         async def uploaded(event: UploadEventArguments) -> None:
@@ -496,7 +511,8 @@ def agent_scenario_page(driver: Driver) -> None:
 
         async def write() -> None:
             try:
-                chosen = _engines(engines.value)
+                chosen = _engine(engine.value)
+                chosen_packs = _packs(packs.value)
                 slug_value = content_id((scenario_id.value or "").strip())
             except ValueError as error:
                 ui.notify(str(error), type="negative")
@@ -506,7 +522,8 @@ def agent_scenario_page(driver: Driver) -> None:
             instruction = (
                 f"Write a scenario with slug {slug_value!r}, "
                 f"premise: {(premise.value or '').strip()}. "
-                f"It must play under {chosen}. grows={bool(grows.value)}.{source} "
+                f"It must play under {chosen!r} with packs={chosen_packs!r}. "
+                f"grows={bool(grows.value)}.{source} "
                 "Call begin_scenario with exactly those values, then run the authoring loop and "
                 "finish_scenario."
             )
@@ -529,12 +546,14 @@ def agent_scenario_page(driver: Driver) -> None:
         log = ui.log(max_lines=500).classes("w-full h-96 text-xs")
 
 
-def _engines(value: object) -> tuple[EngineId, ...]:
-    chosen = (
-        tuple(engine for engine in engine_ids() if engine in value)
-        if isinstance(value, list)
-        else ()
-    )
-    if not chosen:
-        raise ValueError("choose at least one ruleset")
+def _engine(value: object) -> EngineId:
+    chosen = next((engine for engine in engine_ids() if engine == value), None)
+    if chosen is None:
+        raise ValueError("choose a ruleset")
     return chosen
+
+
+def _packs(value: object) -> tuple[Slug, ...]:
+    if not isinstance(value, list):
+        return ()
+    return tuple(item for item in cast(list[object], value) if isinstance(item, str))

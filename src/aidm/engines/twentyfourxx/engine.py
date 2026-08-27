@@ -1,3 +1,4 @@
+from collections.abc import Iterable, Mapping
 from pathlib import Path
 from random import Random
 
@@ -19,25 +20,28 @@ from aidm.engines.core import (
 )
 from aidm.engines.packs import (
     PackCreation,
+    character_packs,
     find_entry,
-    load_packs,
     pack_options,
-    pack_paths,
     picked_entry,
 )
+from aidm.engines.sources import SHIPPED_PACKS, PackSources
 from aidm.engines.twentyfourxx.rules import (
     GROWTH,
     Advance,
     Attempt,
     Defence,
-    KitItem,
+    GearItem,
     LuckTest,
     Mechanics,
     Pack,
     Sheet,
+    ShipFunction,
+    ShipUpgrade,
     SkillDie,
     StakedAttempt,
     apply_change_credits,
+    breaks_trait,
     raised,
     resolve_attempt,
     resolve_defence,
@@ -61,7 +65,9 @@ from aidm.state.entities import (
     Entity,
     EntityId,
     Frozen,
+    Slug,
     Trait,
+    require_unique,
     slug,
 )
 from aidm.state.facts import Fact, explained_fact
@@ -71,6 +77,17 @@ from aidm.state.model import Game
 class SettleDefence(Frozen):
     item_id: CheckedEntityId | None = Field(
         description="Exact id of the carried, unbroken item to break, or null to take the hit."
+    )
+
+
+class BuyGear(Frozen):
+    actor_id: CheckedEntityId = Field(
+        description="Exact id of the player or an actor here who pays."
+    )
+    gear_id: Slug = Field(description="Exact id of a catalogue entry.")
+    onto_id: CheckedEntityId | None = Field(
+        default=None,
+        description="Exact id of the ship a ship upgrade is installed in, or null to be carried.",
     )
 
 
@@ -92,8 +109,8 @@ def _settle_defence(deps: DirectorContext, args: SettleDefence) -> str:
 DIRECTOR_COMMANDS: tuple[Command, ...] = (
     rule(
         "roll_attempt",
-        "Roll one risky attempt. Roll an NPC's attempt directly; put the player's own attempt\n"
-        "to `stake_attempt` first, unless their words already accepted the exact risk.",
+        "Roll an actor's risky attempt directly. For the player, use `stake_attempt` first unless "
+        "they already accepted the exact risk.",
         Attempt,
         resolve_attempt,
     ),
@@ -137,7 +154,7 @@ class TwentyfourxxAdvancement(SheetAdvancement):
         sheet = Mechanics.of_game(draft).sheets[subject_id]
         subject = draft.world.require(subject_id)
 
-        skill = _on_sheet(sheet, proposal.skill)
+        skill = _canonical_skill(sheet, proposal.skill)
         die = raised(sheet.skills.get(skill))
         sheet.skills[skill] = die
         grown = explained_fact(
@@ -150,13 +167,12 @@ class TwentyfourxxAdvancement(SheetAdvancement):
 
         earned, dice_fact = roll_pool((6,), "credits earned", rng, label="Credits")
         credit_facts = adjust(
-            subject, "credits", sheet.credits, earned.kept, "paid for the job", "payments"
+            draft, subject, "credits", sheet.credits, earned.kept, "paid for the job", "payments"
         )
         return (grown, dice_fact, *credit_facts)
 
 
-def _on_sheet(sheet: Sheet, named: str) -> str:
-    """A proposal that miscases a skill must raise the one already written, not take a twin."""
+def _canonical_skill(sheet: Sheet, named: str) -> str:
     return next((skill for skill in sheet.skills if skill.lower() == named.lower()), named)
 
 
@@ -178,10 +194,26 @@ class TwentyfourxxCreation(PackCreation[Pack]):
                     options=pack_options(specialty.choices),
                 )
             )
+        if specialty is not None and specialty.kit_choice:
+            steps.append(
+                CreationStep(
+                    id="specialty-kit",
+                    prompt="Choose your specialty gear",
+                    options=pack_options(specialty.kit_choice),
+                )
+            )
         steps.append(
             CreationStep(id="origin", prompt="Choose an origin", options=pack_options(pack.origins))
         )
         origin = picked_entry(pack.origins, picks, "origin")
+        if origin is not None and origin.kit_choice:
+            steps.append(
+                CreationStep(
+                    id="origin-kit",
+                    prompt="Choose your origin gear",
+                    options=pack_options(origin.kit_choice),
+                )
+            )
         if origin is not None and origin.invents:
             steps.append(
                 TextStep(
@@ -206,7 +238,8 @@ class TwentyfourxxCreation(PackCreation[Pack]):
     def create(self, name: str, brief: str, picks: Picks, rng: Random) -> CreatedCharacter:
         del rng
         check_picks(self.steps(picks), picks)
-        pack = self.packs[picked(picks, "pack")[0]]
+        chosen = picked(picks, "pack")[0]
+        pack = self.packs[chosen]
         specialty = find_entry(pack.specialties, picked(picks, "specialty")[0])
         origin = find_entry(pack.origins, picked(picks, "origin")[0])
 
@@ -227,11 +260,19 @@ class TwentyfourxxCreation(PackCreation[Pack]):
         for written in picked(picks, "traits"):
             taken = [trait.id for trait in traits]
             traits.append(Trait(id=slug(written, taken), name=written))
-        items = tuple(_carried(entry) for entry in (*pack.starting_kit, *specialty.kit))
+        chosen_kit = [
+            *(find_entry(specialty.kit_choice, one) for one in picked(picks, "specialty-kit")),
+            *(find_entry(origin.kit_choice, one) for one in picked(picks, "origin-kit")),
+        ]
+        items = tuple(
+            _carried(entry, EntityId(entry.id), PLAYER_ID)
+            for entry in (*pack.starting_kit, *specialty.kit, *chosen_kit)
+        )
 
         return CreatedCharacter(
             profile=CharacterProfile(name=name, brief=brief, traits=tuple(traits), items=items),
             rules={
+                "packs": character_packs(chosen),
                 "specialty": specialty.label,
                 "origin": origin.label,
                 "skills": skills_json,
@@ -244,16 +285,63 @@ BULKY = Trait(
 )
 
 
-def _carried(entry: KitItem) -> Entity:
+def _carried(entry: GearItem, item_id: EntityId, owner_id: EntityId) -> Entity:
+    traits = [BULKY] if entry.bulky else []
+    if entry.breaks > 1:
+        traits.append(breaks_trait(entry.breaks))
     return Entity(
-        id=EntityId(entry.id),
+        id=item_id,
         kind="item",
         name=entry.label,
         brief=entry.detail or entry.label,
         known=True,
-        parent_id=PLAYER_ID,
-        traits=[BULKY] if entry.bulky else [],
+        parent_id=owner_id,
+        traits=traits,
     )
+
+
+def _gear(packs: Mapping[str, Pack]) -> dict[Slug, GearItem]:
+    entries = tuple(
+        item
+        for pack in packs.values()
+        for item in (*pack.gear, *(up for one in pack.ship for up in one.upgrades))
+    )
+    require_unique("24XX gear ids across installed packs", (item.id for item in entries))
+    return {item.id: item for item in entries}
+
+
+def _ship(packs: Mapping[str, Pack]) -> tuple[ShipFunction, ...]:
+    functions = tuple(one for pack in packs.values() for one in pack.ship)
+    require_unique("24XX ship function ids across installed packs", (one.id for one in functions))
+    return functions
+
+
+def _catalogue(gear: Iterable[GearItem]) -> str:
+    return ", ".join(f"{one.id} (₡{one.cost})" if one.cost > 1 else one.id for one in gear)
+
+
+def _for_sale(packs: Mapping[str, Pack], ship: tuple[ShipFunction, ...]) -> str:
+    catalogue = _catalogue(item for pack in packs.values() for item in pack.gear)
+    offer = (
+        "Buy one catalogue item at its printed price, charged to the buyer. "
+        f"Most cost ₡1. For sale: {catalogue}"
+    )
+    if not ship:
+        return offer
+    return (
+        f"{offer}. Every starship already has the basic version of each function below; one of "
+        f"their upgrades costs ₡10 and needs `onto_id`. {_functions(ship)}"
+    )
+
+
+def _functions(ship: Iterable[ShipFunction]) -> str:
+    lines: list[str] = []
+    for one in ship:
+        printed = [one.detail] if one.detail else []
+        if one.upgrades:
+            printed.append(f"Upgrade with {', '.join(up.id for up in one.upgrades)}.")
+        lines.append(f"{one.label}: {' '.join(printed)}")
+    return " ".join(lines)
 
 
 def _count_prompt(what: str, count: int, verb: str = "Choose") -> str:
@@ -266,11 +354,59 @@ class TwentyfourxxEngine(SheetEngine[Sheet]):
     engine_dir = Path(__file__).parent
     sheet_type = Sheet
     mechanics_type = Mechanics
+    pack_type = Pack
     decisions = (StakedAttempt, Defence)
+    authoring_instructions = (
+        "24XX AUTHORING\n"
+        "Actors may omit rules; describe opposition through behavior, risks, and obstacles. When "
+        "an actor has rules, set packs to every table set it uses and use only skill names those "
+        "selected packs supply."
+    )
 
-    def __init__(self, extra_packs: Path | None = None) -> None:
-        super().__init__(extra_packs)
-        self.packs = load_packs(pack_paths(self.engine_dir / "packs", extra_packs), Pack)
+    def __init__(self, sources: PackSources = SHIPPED_PACKS) -> None:
+        super().__init__(sources)
+        self.packs = sources.load(self.engine_dir / "packs", Pack)
+        self.gear = _gear(self.packs)
+        self.ship = _ship(self.packs)
         self.advancement = TwentyfourxxAdvancement(self.engine_dir)
         self.creation = TwentyfourxxCreation(self.packs)
-        self.director_commands = DIRECTOR_COMMANDS
+        self.director_commands = (
+            *DIRECTOR_COMMANDS,
+            action("buy_gear", _for_sale(self.packs, self.ship), BuyGear, self._buy_gear),
+        )
+
+    def pack_models(self) -> Mapping[str, Pack]:
+        return self.packs
+
+    def check_sheet(self, entity: Entity, sheet: Sheet) -> None:
+        skills: set[str] = set()
+        for pack in (self.packs[pack_id] for pack_id in sheet.packs):
+            skills.update(option.label for option in pack.skills)
+            skills.update(skill for specialty in pack.specialties for skill in specialty.skills)
+            skills.update(
+                skill
+                for specialty in pack.specialties
+                for choice in specialty.choices
+                for skill in choice.skills
+            )
+        if unknown := sorted(set(sheet.skills) - skills):
+            raise ValueError(
+                f"{entity.id!r} uses skills outside packs {list(sheet.packs)!r}: {unknown}"
+            )
+
+    def _buy_gear(self, draft: Game, args: BuyGear) -> list[Fact]:
+        entry = self.gear.get(args.gear_id)
+        if entry is None:
+            on_sale = ", ".join(self.gear)
+            raise ValueError(
+                f"no gear {args.gear_id!r} is for sale. On offer: {on_sale or '(nothing)'}"
+            )
+        if isinstance(entry, ShipUpgrade):
+            if args.onto_id is None:
+                raise ValueError(f"{entry.label} is a ship upgrade: name the ship in `onto_id`")
+            _ = draft.world.require_kind(args.onto_id, "location")
+        elif args.onto_id is not None:
+            raise ValueError(f"{entry.label} is carried gear: leave `onto_id` null")
+        paid = apply_change_credits(draft, args.actor_id, -entry.cost)
+        item_id = EntityId(slug(entry.label, draft.world.all_ids()))
+        return [*paid, draft.add(_carried(entry, item_id, args.onto_id or args.actor_id))]

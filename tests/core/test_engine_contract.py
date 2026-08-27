@@ -1,14 +1,14 @@
 from random import Random
 
 import pytest
-from core_test_support import initialized
+from core_test_support import LONER3E, character, initialized, scenario, updated
 from pydantic import JsonValue
 
 from aidm.content.io import SavedGame
 from aidm.engines.core import Engine, apply_to_draft
 from aidm.engines.loner3e.engine import Loner3eEngine
 from aidm.engines.loner3e.rules import RULES, Mechanics, Sheet, apply_restore_luck
-from aidm.engines.registry import ENGINES, build_engine
+from aidm.engines.registry import ENGINES, begin_game, build_engine
 from aidm.state import actions
 from aidm.state.entities import PLAYER_ID, EngineId, Entity, EntityId
 from aidm.state.facts import Fact
@@ -98,6 +98,53 @@ def test_a_created_actor_is_refused_until_the_engine_seeds_it() -> None:
     assert item.id not in mechanics.sheets
 
 
+def test_rules_on_an_entity_created_in_play_reach_its_sheet() -> None:
+    engine, state = initialized()
+    hostile = Entity(
+        id=EntityId("grown-hostile"),
+        kind="actor",
+        name="A Grown Hostile",
+        brief="Written into the world by a growth pass.",
+        known=True,
+        parent_id=state.player_location,
+        rules={"concept": "A Bloated Cloister Rat", "skills": ["Bites and Holds On"]},
+    )
+    working = state.draft()
+    _ = working.add(hostile)
+    grown = working.committed()
+
+    engine.seed(grown, hostile, Random(0))
+
+    sheet = Mechanics.of_game(grown).sheets[hostile.id]
+    assert sheet.concept == "A Bloated Cloister Rat"
+    assert sheet.skills == ("Bites and Holds On",)
+
+
+def test_authored_rules_reach_the_sheet_of_whatever_carries_them() -> None:
+    """Every actor is rollable; anything else carries mechanics only where a scenario wrote them."""
+    engine, shipped = build_engine(LONER3E), scenario()
+    authored = updated(
+        shipped,
+        world=updated(
+            shipped.world,
+            entities=[
+                updated(entity, rules={"concept": "a chart that remembers"})
+                if entity.id == EntityId("vault-map")
+                else entity
+                for entity in shipped.world.entities
+            ],
+        ),
+    )
+
+    state = begin_game(engine, "whispering-vault", authored, character())
+
+    sheets = Mechanics.of_game(state).sheets
+    assert sheets[EntityId("vault-map")].concept == "a chart that remembers"
+    assert sheets[EntityId("tomas")].concept == "A Deaf Old Porter"
+    assert EntityId("lantern") not in sheets
+    engine.validate(state)
+
+
 def test_an_engine_that_declares_nothing_is_refused_before_it_plays() -> None:
     class Undeclared(Engine):
         id = EngineId("undeclared")
@@ -146,4 +193,4 @@ def test_settle_facts_land_in_what_apply_to_draft_returns() -> None:
 def test_every_registered_engine_builds_itself() -> None:
     assert len({engine.id for engine in ENGINES}) == len(ENGINES)
     for engine in ENGINES:
-        _ = build_engine(engine.id)
+        assert "srd" in build_engine(engine.id).pack_ids

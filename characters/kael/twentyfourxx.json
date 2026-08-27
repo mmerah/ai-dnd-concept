@@ -1,4 +1,5 @@
 {
+  "packs": ["srd"],
   "specialty": "Sneak",
   "origin": "Human",
   "skills": {

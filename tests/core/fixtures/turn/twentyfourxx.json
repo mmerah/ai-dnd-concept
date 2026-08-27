@@ -2,18 +2,18 @@
   "facts": [
     {
       "kind": "entity_discovered",
-      "trace": "learned of the item the vault map[vault-map]",
+      "trace": "learned of the item the cipher spike[cipher-spike]",
       "told": true,
-      "entity_id": "vault-map",
+      "entity_id": "cipher-spike",
       "event": null
     },
     {
       "kind": "entity_moved",
-      "trace": "the player Kael[player] took the item the vault map[vault-map]",
+      "trace": "the player Kael[player] took the item the cipher spike[cipher-spike]",
       "told": true,
-      "entity_id": "vault-map",
+      "entity_id": "cipher-spike",
       "event": {
-        "title": "Took the vault map",
+        "title": "Took the cipher spike",
         "badges": [],
         "dice": [],
         "outcome": "",

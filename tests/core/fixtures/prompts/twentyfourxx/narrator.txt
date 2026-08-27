@@ -1,9 +1,9 @@
 SCENARIO:
-The Whispering Vault
-The abbey of Saint Corvin was abandoned in a single night. Kael has come for the sealed vault beneath it, and the abbot's study is the only room still lit.
+The Drowned Road
+When Ashant's terraformers raised the sea, it swallowed the causeway out to Relay Nine, and the survey station was written off with its vault deck still sealed. Kael has come for what is locked down there: the founding survey nobody has read in thirty years. He starts at the siren mast on the Holdfast shore, where Ovid Sarn sounds the tide klaxon twice a day and nobody walks the drowned road without hearing it.
 
 PLAYER CHARACTER:
-Kael[id=player] — A scarred relic-hunter who came to the abbey for what is sealed beneath it. — at the abbot's study[id=study]
+Kael[id=player] — A scarred relic-hunter who comes wherever something old lies sealed, and does not leave it shut. — at the siren mast[id=siren-mast]
 state:
   specialty: Sneak
   origin: Human
@@ -14,25 +14,27 @@ inventory:
 - a guttering lantern[id=lantern] — A dented tin lantern whose flame will not hold still.
   state:
     traits: Unsteady Lantern[id=unsteady-lantern] — (gear) Its shifting light exposes seams and movement in deep shadow.
-- the vault map[id=vault-map] — A creased chart of the undercroft, marking a stair the abbey's own plans deny.
+- the cipher spike[id=cipher-spike] — A corroded survey key-spike in a sleeve of grease-paper, cut for a socket nothing on this shore has.
 
 HERE WITH THE PLAYER:
-- Mara[id=mara] (npc) — at the abbot's study — The abbey's last scribe, cautious and tired, still cataloguing books nobody will read.
+- Ovid Sarn[id=ovid-sarn] (npc) — at the siren mast — The siren keeper, heavy and silent, who sounds the tide klaxon twice a day and has not missed a sounding in eleven years.
   state:
+    skills: Electronics d8, Labor d10
     credits: 2
 
 EXITS FROM HERE:
-- the cloister[id=cloister]
+- Holdfast[id=holdfast]
 
 KNOWN TO THE PLAYER, BUT ELSEWHERE:
-- the cloister[id=cloister] (location) — A frost-rimed colonnade around a dead garden; Brother Tomas sweeps it to no purpose.
-- Brother Tomas[id=tomas] (npc) — at the cloister — A deaf old porter who sweeps the cloister and knows almost nothing about the vault.
+- Holdfast[id=holdfast] (location) — Forty pressure-huts stacked above the tideline around a bar and a salvage counter, with the crossing hours running in red on the counter's board.
+- Verrin Ade[id=verrin-ade] (npc) — at Holdfast — She runs Holdfast's salvage counter and prices everything the wrecks give up: plate, cyber-work, bottled air.
   state:
+    skills: Connections d10, Electronics d8
     credits: 2
 
 WHAT HAPPENED:
-- learned of the item the vault map[vault-map]
-- the player Kael[player] took the item the vault map[vault-map]
+- learned of the item the cipher spike[cipher-spike]
+- the player Kael[player] took the item the cipher spike[cipher-spike]
 - Listen at the vault door without being heard -> success
 - bad luck — something behind the door is already listening back: signs of it
 - the player Kael[player] gained the trait Listening[listening] — (condition) Listening for the next shift of weight behind the door.

@@ -18,8 +18,8 @@ from aidm.authoring.run import (
     AuthoringRun,
     GrowthRun,
     ScenarioRun,
-    authoring_context,
     briefing,
+    draft_context,
     growth_run,
     scenario_run,
 )
@@ -109,10 +109,12 @@ class BeginScenario(ToolArgs):
     """Directory name for the new scenario: lowercase words joined by hyphens."""
     premise: str
     """What the scenario is about, in a few sentences. Empty when `source` carries it."""
-    engines: tuple[EngineId, ...]
-    """Rules engines the finished scenario must be playable under."""
+    engine: EngineId
+    """Rules engine the finished scenario must be playable under."""
     grows: bool = False
     """Whether the world keeps writing itself in play. Then this run writes only the opening."""
+    packs: tuple[Slug, ...] = ("srd",)
+    """Selected pack ids, always including srd."""
     source: str = ""
     """Path to a .md, .txt or .pdf adventure to author from. Empty to author from the premise."""
 
@@ -239,7 +241,9 @@ class Harness:
             )
         if refused := speakers_refusal(player_scene(draft), lines):
             raise ModelRetry(refused)
-        state = close_segment(draft, turn.prompt, tuple(lines), tuple(turn.log.events))
+        state = close_segment(
+            session.engine, draft, turn.prompt, tuple(lines), tuple(turn.log.events)
+        )
         session.commit(
             state,
             TurnTrace(
@@ -308,7 +312,7 @@ class Harness:
             raise ModelRetry("the player still has places to find; grow the world when it is due.")
         run = growth_run(session.settings, session.engine, session.character, session.state)
         self._hold(run)
-        return briefing(session.settings, run.brief, run.opening_prompt, "finish_growth")
+        return briefing(run, "finish_growth")
 
     def begin_scenario(self, asked: BeginScenario) -> str:
         run = scenario_run(
@@ -316,17 +320,18 @@ class Harness:
             asked.slug,
             asked.premise,
             asked.grows,
-            asked.engines,
+            asked.engine,
             Path(asked.source) if asked.source else None,
+            packs=asked.packs,
         )
         self._hold(run)
-        return briefing(self.settings, run.brief, run.opening_prompt, "finish_scenario")
+        return briefing(run, "finish_scenario")
 
     async def authoring_tool(self, name: str, raw: dict[str, JsonValue]) -> str:
         run = self.authoring
         if run is None:
             raise ModelRetry("no authoring run is open; call begin_growth or begin_scenario.")
-        ctx = authoring_context(run.draft, name)
+        ctx = draft_context(run.draft, name)
         tool = (await run.toolset.get_tools(ctx))[name]
         answered = await run.toolset.call_tool(
             name, tool.args_validator.validate_python(raw), ctx, tool
@@ -377,7 +382,11 @@ def _target(catalog: LauncherCatalog, slug: str) -> LaunchTarget:
     scenario_id, character_id, engine = named
     try:
         controller.choose_scenario(scenario_id)
-        controller.choose_engine(as_engine_id(engine))
+        wanted_engine = as_engine_id(engine)
+        if controller.selected_engine != wanted_engine:
+            raise ValueError(
+                f"scenario {scenario_id!r} has no {wanted_engine!r} rules written for it"
+            )
         controller.choose_character(character_id)
     except ValueError as unknown:
         raise ModelRetry(f"{unknown}\n{_listing(catalog)}") from unknown

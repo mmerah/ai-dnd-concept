@@ -17,7 +17,8 @@ GOAL = "Kael scales the crumbling wall"
 
 
 def _climb(**args: object) -> Attempt:
-    return Attempt.model_validate({"actor_id": PLAYER_ID, "goal": GOAL, "skill": "Climbing"} | args)
+    base = {"actor_id": PLAYER_ID, "goal": GOAL, "skill": "Climbing", "hit": True}
+    return Attempt.model_validate(base | args)
 
 
 def test_the_pool_faces_rolls_and_kept_are_preserved_on_the_card() -> None:

@@ -12,15 +12,15 @@ from aidm.state.entities import (
     Frozen,
     Slug,
     Trait,
+    require_unique,
 )
 from aidm.state.model import ScenarioMeta, WorldState
 
 
 class Scenario(Frozen):
-    """`world.json`: the starting state, authored once for the rulesets it names."""
-
     meta: ScenarioMeta
-    engines: tuple[EngineId, ...] = Field(min_length=1)
+    engine: EngineId
+    packs: tuple[Slug, ...] = Field(min_length=1)
     grows: bool = False
     art_style: str = ""
     starting_location_id: CheckedEntityId
@@ -29,6 +29,9 @@ class Scenario(Frozen):
 
     @model_validator(mode="after")
     def _playable_canon(self) -> Self:
+        require_unique("scenario pack ids", self.packs)
+        if "srd" not in self.packs:
+            raise ValueError("scenario packs must include 'srd'")
         if self.world.find(PLAYER_ID) is not None:
             raise ValueError(f"an entity claims the reserved player id {PLAYER_ID!r}")
         starting_location = self.world.find(self.starting_location_id)

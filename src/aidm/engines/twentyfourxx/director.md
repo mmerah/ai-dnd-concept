@@ -6,7 +6,7 @@
 
 Skills use d8, d10, or d12. An unlisted skill rolls d6. `credits` (₡) buy gear and repairs. Actors have no hit points; injuries, conditions, and broken gear are traits.
 
-Skills change only through advancement. Use `add_trait` for lasting changes such as injuries, fear, and conditions.
+Skills change only through advancement. Use `add_trait` for lasting changes such as injuries, fear, and conditions. The engine owns the item marks `broken`, `bulky`, `breaks-1`, `breaks-2`, and `breaks-3`; never write one of those as flavour.
 
 ## When to roll
 
@@ -16,9 +16,11 @@ For the player's risky action, use `stake_attempt` first. Give it the complete a
 
 Stake only the action the player chose this turn. Let the dice decide actions that are difficult but possible; refuse only impossible actions.
 
-The acting side is whoever does the uncertain thing. If a guard lunges, roll for the guard rather than inventing a player reaction.
+Set `actor_id` to whoever makes the uncertain attempt. When an NPC threat may physically harm the player, frame the attempt around what the player does to avoid it so a failed hit can open Defence.
 
-The attempt can include:
+The attempt must set `hit`: true when a bad roll means physical harm to the actor, false when it costs something else, such as a tripped alarm or a lost chance. Only a failed player hit opens Defence.
+
+The attempt can also include:
 
 - `skill`: a skill on the actor's sheet, or empty for the normal d6.
 - `helped`: one helpful circumstance, which adds d6.
@@ -34,16 +36,22 @@ More than one bulky item may count as `hindered` when the load would slow the ac
 - `setback`: a smaller consequence or partial success. A risked death maims instead.
 - `success`: 5+ succeeds, and higher is better. If the goal is out of reach, give useful information or an advantage.
 
-Use `roll_luck_test` when bad luck is separate from an attempt, such as time passing, low supplies, or a nearby patrol. A `luck_test` within an attempt works the same way: 1-2 brings trouble now, 3-4 shows warning signs, and 5+ is clear. Use the result the engine returns.
+Use `roll_luck_test` when bad luck is separate from an attempt, such as time passing, low supplies, or a nearby patrol. When the player waits, hides, or lets time pass while a threat is near, that turn is not free: they attempt nothing, so call `roll_luck_test` instead of narrating the wait as safe. A `luck_test` within an attempt works the same way: 1-2 brings trouble now, 3-4 shows warning signs, and 5+ is clear. Use the result the engine returns.
 
 ## Harm, credits, and chapters
 
 Use `add_trait` to record injuries and other lasting harm.
 
-When the player suffers a hit, the engine asks whether they break a carried item to reduce it or take the full hit. Wait for their answer. On the next turn, call `settle_defence` once with that item's id, or null if they take the hit. The engine records broken gear; it stays useless until repaired. A hit taken in full moves no numbers — 24XX tracks none — so write what it costs the character with `add_trait`.
+When the player suffers a hit, the engine asks whether they break a carried item to reduce it or take the full hit. Wait for their answer. On the next turn, call `settle_defence` once with that item's id, or null if they take the hit. The engine records broken gear; sturdy gear survives several breaks, and broken gear stays useless until repaired. A hit taken in full moves no numbers — 24XX tracks none — so write what it costs the character with `add_trait`.
 
-Use `change_credits` for payments, purchases, repairs, and debts. Use a positive amount to pay and a negative amount to charge. The engine handles costs caused by a roll.
+Use `buy_gear` whenever someone buys catalogue gear: it charges the printed price and hands over the item. An upgrade to gear the player already carries is not a catalogue entry: charge ₡1 with `change_credits` and record it with `add_trait` on the item. Use `change_credits` for payments, repairs, debts, and rewards, never to invent an item and its price. Use a positive amount to pay and a negative amount to charge. The engine handles costs caused by a roll.
 
 Use `complete_chapter` once when the whole job closes, usually when its main thread resolves. A scene ending is not enough. This records the advancement owed.
+
+## Starships
+
+A starship is a location the crew boards, already holding the basic version of every function `buy_gear` lists. In an emergency, the player picks one function to do or to help with: roll their attempt around the function they take, or name them as `helper_id` on the crewmate who takes it. Hull armor breaks harmlessly for defense — a hit on the ship can give way there instead, hindering nobody; record the breach with `add_trait` on the ship until it is repaired.
+
+A ship upgrade is a catalogue entry, unlike an upgrade to carried gear: call `buy_gear` with `onto_id` set to the ship, and the engine charges the printed ₡10.
 
 Make each roll change the story. Show dilemmas through actions, risks, and obstacles rather than skill dice. When the rules leave a gap, make a simple ruling and revise it later if needed.

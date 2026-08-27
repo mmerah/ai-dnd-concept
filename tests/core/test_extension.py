@@ -25,7 +25,7 @@ from aidm.authoring.draft import (
     extension_patch,
     scenario_refusal,
 )
-from aidm.authoring.run import GrowthRun
+from aidm.authoring.run import GrowthRun, briefing, growth_run
 from aidm.content.io import FileStore
 from aidm.state.entities import PLAYER_ID, Entity, EntityId, Exit
 from aidm.state.model import Game, Thread
@@ -86,7 +86,7 @@ async def _turn(game: GameSession, on_step: Callable[[TurnStep], None] | None = 
 def test_the_live_world_becomes_a_scenario_the_extending_author_can_hold(tmp_path: Path) -> None:
     game = loner3e_session(tmp_path)
     draft = ScenarioDraft.from_game(game.state)
-    scenario = draft.scenario((LONER3E,))
+    scenario = draft.scenario(LONER3E)
 
     ids = {entity.id for entity in scenario.world.entities}
     assert PLAYER_ID not in ids
@@ -96,7 +96,7 @@ def test_the_live_world_becomes_a_scenario_the_extending_author_can_hold(tmp_pat
 
     unmet = scenario_refusal(
         draft,
-        (PlaytestCheck(engine=game.engine, character=game.character),),
+        PlaytestCheck(engine=game.engine, character=game.character, packs=("srd",)),
         extend_brief(game.state.world),
     )
     assert isinstance(unmet, str)
@@ -163,3 +163,34 @@ async def test_a_world_with_doors_left_to_find_grows_nothing(
     await _turn(plain)
 
     assert seen == []
+
+
+def test_a_grown_actor_without_rules_is_named_and_plays_once_it_carries_them(
+    tmp_path: Path,
+) -> None:
+    """The loop converges only if the briefing shows the shape the refusal asks for."""
+    game = _grown(tmp_path)
+    run = growth_run(game.settings, game.engine, game.character, game.state)
+    instructions = briefing(run, "finish_growth")
+    assert "content packs: srd" in instructions
+    assert '"concept": "A Wary Relic-Hunter"' in instructions
+    assert '"srd": {' in instructions and '"name": "Starter tables"' in instructions
+
+    warden = Entity(
+        id=EntityId("bone-warden"),
+        kind="actor",
+        name="the bone warden",
+        brief="He counts the niches every night and never leaves.",
+        parent_id=_CRYPT_ID,
+    )
+    _ = run.draft.apply(ScenarioPatch(entities=(updated(_crypt(), exits=[]), warden)))
+    _ = run.draft.connect(EntityId("cloister"), _CRYPT_ID, False, False, False)
+
+    refused = run.refusal()
+    assert refused is not None
+    assert "rules" in refused and "bone-warden" in refused
+
+    _ = run.draft.apply(
+        ScenarioPatch(entities=(updated(warden, rules={"concept": "A Patient Bone Warden"}),))
+    )
+    assert run.refusal() is None

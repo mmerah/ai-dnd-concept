@@ -30,7 +30,8 @@ def test_a_created_character_plays_through_the_authored_load_path(tmp_path: Path
     scenario = load_scenario(SCENARIOS, "whispering-vault")
     state = begin_game(engine, "whispering-vault", scenario, character)
     sheet = Mechanics.of_game(state).sheets[PLAYER_ID]
-    assert sheet.pack == "srd"
+    assert sheet.packs == ("srd",)
+    assert sheet.twist_pack == "srd"
     assert sheet.concept == "A wandering scribe who counts doors"
     assert sheet.skills == ("Quiet Hands", "Reads Old Stonework")
     assert sheet.frailties == ("Never Walks Away",)

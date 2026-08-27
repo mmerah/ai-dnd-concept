@@ -9,7 +9,7 @@ from nicegui import ui
 
 from aidm.app.runtime import GameSession
 from aidm.harness.driver import Driver
-from aidm.state.entities import DEAD, PLAYER_ID, Entity, EntityId
+from aidm.state.entities import DEAD, Entity, EntityId
 from aidm.state.facts import DiceEvent, MechanicEvent
 from aidm.state.play import Answer, DecisionOption
 from aidm.turn.context import player_scene
@@ -78,7 +78,7 @@ def chat(session: GameSession) -> None:
         if exchange.place != here:
             here = exchange.place
             ui.label(here).classes("w-full text-center text-xs uppercase opacity-50 q-mt-md")
-        _bubble(session, PLAYER_ID, exchange.prompt, sent=True)
+        _bubble(session, session.state.player_id, exchange.prompt, sent=True)
         for event in exchange.events:
             _mechanic_event(event)
         for line in exchange.lines:
@@ -152,7 +152,7 @@ def live_turn(
     session: GameSession, prompt: str | None, events: Sequence[MechanicEvent], elapsed: float
 ) -> ui.label | None:
     if prompt is not None:
-        _bubble(session, PLAYER_ID, prompt, sent=True)
+        _bubble(session, session.state.player_id, prompt, sent=True)
     for event in events:
         _mechanic_event(event)
     if session.step is not None:
@@ -378,7 +378,7 @@ def _can_type(session: GameSession, busy: bool) -> bool:
 
 def decision_panel(view: GameView) -> None:
     pending = view.session.state.pending
-    if pending is None or not _alive(view.session.state.player):
+    if pending is None:
         return
 
     async def answer(option: DecisionOption) -> None:
@@ -403,8 +403,10 @@ def decision_panel(view: GameView) -> None:
                     )
                     if option.detail:
                         button.tooltip(option.detail)
-        pointer = "Or answer" if pending.options else "Answer"
-        ui.label(f"{pointer} in your own words below.").classes("text-xs opacity-60")
+        # A dead player character answers by taking a successor's name, never in their own words.
+        if _alive(view.session.state.player):
+            pointer = "Or answer" if pending.options else "Answer"
+            ui.label(f"{pointer} in your own words below.").classes("text-xs opacity-60")
 
 
 def composer(view: GameView) -> None:

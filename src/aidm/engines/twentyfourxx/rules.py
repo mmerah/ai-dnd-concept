@@ -16,7 +16,15 @@ from aidm.engines.core import (
 )
 from aidm.state.actions import add_trait, require_actor_here, roll_pool
 from aidm.state.creation import CreationOption
-from aidm.state.entities import PLAYER_ID, CheckedEntityId, Counter, Entity, EntityId, Frozen, Slug
+from aidm.state.entities import (
+    CheckedEntityId,
+    Counter,
+    Entity,
+    EntityId,
+    Frozen,
+    Slug,
+    Trait,
+)
 from aidm.state.facts import DiceEvent, EventBadge, Fact, MechanicEvent, entity_fact
 from aidm.state.model import Game
 from aidm.state.play import DecisionOption, PendingDecision
@@ -24,8 +32,6 @@ from aidm.state.play import DecisionOption, PendingDecision
 
 @dataclass(frozen=True, slots=True)
 class Rules:
-    """24XX's numbers in one place; docs/24XX.md points at the SRD and its deviations."""
-
     starting_credits: int = 2
     default_face: int = 6  # an unlisted skill rolls the bare d6
     hindered_face: int = 4
@@ -33,6 +39,8 @@ class Rules:
     setback_at: int = 4  # kept 3-4
     trouble_at: int = 2  # 1-2 on the bad-luck die
     signs_at: int = 4  # 3-4 on the bad-luck die
+    max_breaks: int = 3  # the sturdiest printed armour breaks up to 3x
+    ship_upgrade: int = 10  # every starship upgrade is printed at the same price
 
 
 RULES = Rules()
@@ -45,8 +53,6 @@ LADDER: tuple[SkillDie, ...] = get_args(SkillDie.__value__)
 
 
 class Sheet(SheetBase):
-    """The one sheet shape, whether it belongs to the player or to an NPC."""
-
     specialty: str = ""
     origin: str = ""
     skills: dict[str, SkillDie] = Field(default_factory=dict)
@@ -70,7 +76,6 @@ class Mechanics(SheetMechanics[Sheet]): ...
 
 
 def raised(current: SkillDie | None) -> SkillDie:
-    """One step up the none -> d8 -> d10 -> d12 ladder; raises ValueError at the top."""
     if current is None:
         return LADDER[0]
     index = LADDER.index(current)
@@ -79,18 +84,29 @@ def raised(current: SkillDie | None) -> SkillDie:
     return LADDER[index + 1]
 
 
-class KitItem(Frozen):
-    """One piece of starting gear, carried as an item entity rather than written on the sheet."""
-
+class GearItem(Frozen):
     id: Slug
     label: str
     detail: str = ""
     bulky: bool = False
+    cost: int = Field(default=1, ge=1)
+    breaks: int = Field(default=1, ge=1, le=RULES.max_breaks)
+
+
+class ShipUpgrade(GearItem):
+    cost: int = Field(default=RULES.ship_upgrade, ge=1)
+
+
+class ShipFunction(Frozen):
+    """A function every starship has a basic version of, and what ₡10 buys for it."""
+
+    id: Slug
+    label: str
+    detail: str = ""
+    upgrades: tuple[ShipUpgrade, ...] = ()
 
 
 class SkillGrant(Frozen):
-    """One side of a specialty's either/or: its skills land on the sheet at `die`."""
-
     id: Slug
     label: str
     detail: str = ""
@@ -99,14 +115,13 @@ class SkillGrant(Frozen):
 
 
 class Specialty(Frozen):
-    """A specialty grants fixed skills, one chosen grant, and starting gear."""
-
     id: Slug
     label: str
     detail: str = ""
     skills: tuple[str, ...] = ()
     choices: tuple[SkillGrant, ...] = ()
-    kit: tuple[KitItem, ...] = ()
+    kit: tuple[GearItem, ...] = ()
+    kit_choice: tuple[GearItem, ...] = ()
 
     @model_validator(mode="after")
     def _grants_a_skill_some_way(self) -> Self:
@@ -123,16 +138,17 @@ class Origin(Frozen):
     # Example traits shown as hints when the player invents their own; not a bound on their answer.
     traits: tuple[CreationOption, ...] = ()
     invents: int = Field(default=0, ge=0)
+    kit_choice: tuple[GearItem, ...] = ()
 
 
 class Pack(Frozen):
-    """One published table set the player can build a character from."""
-
     name: str
     source: str
     license: str
     # What every character takes regardless of specialty: the SRD's comm.
-    starting_kit: tuple[KitItem, ...] = ()
+    starting_kit: tuple[GearItem, ...] = ()
+    gear: tuple[GearItem, ...] = ()
+    ship: tuple[ShipFunction, ...] = ()
     specialties: tuple[Specialty, ...] = Field(min_length=1)
     origins: tuple[Origin, ...] = Field(min_length=1)
     # The skill menu an origin's increases are chosen from.
@@ -147,6 +163,7 @@ class Attempt(Frozen):
         min_length=1,
         description="The actor's goal, in one line.",
     )
+    hit: bool = Field(description="True when a bad roll means physical harm to the actor.")
     skill: str = Field(
         default="",
         description="Matching skill from the actor's sheet, or empty for d6.",
@@ -213,6 +230,20 @@ BROKEN: Slug = "broken"
 BREAK_TEXT = "Broken turning a hit into a brief hindrance; useless until repaired."
 
 
+def breaks_trait(remaining: int) -> Trait:
+    return Trait(
+        id=f"breaks-{remaining}",
+        name=f"Breaks {remaining}x",
+        text=f"Sturdy: it can break {remaining} more times before it is useless.",
+    )
+
+
+def breaks_left(item: Entity) -> int:
+    """No `breaks-N` mark is the SRD's printed default: any item breaks once."""
+    faces = range(RULES.max_breaks, 1, -1)
+    return next((left for left in faces if item.trait(f"breaks-{left}") is not None), 1)
+
+
 TAKE_THE_HIT: Slug = "take-it"
 
 
@@ -222,11 +253,8 @@ DEFENCE_PROMPT = (
 
 
 class Defence(Decision):
-    """The hit a defence decision is answered against, frozen while the player chooses."""
-
     kind: ClassVar[Slug] = "defence"
 
-    outcome: Slug
     goal: str
 
     def resolve(self, draft: Game, option_id: Slug, rng: Random) -> tuple[Fact, ...]:
@@ -244,7 +272,6 @@ def outcome_for(kept: int) -> Slug:
 
 
 def pool_faces(sheet: Sheet, action: Attempt, helper: Sheet | None) -> tuple[int, ...]:
-    """Hindrance drops the die to a d4; help adds one die at most — the helper's own, or a d6."""
     base = RULES.hindered_face if action.hindered else sheet.face(action.skill)
     if helper is not None:
         return (base, helper.face(action.helper_skill))
@@ -267,32 +294,31 @@ def apply_change_credits(draft: Game, actor_id: EntityId, amount: int) -> list[F
     facts = draft.reveal(actor)
     credits = require_sheet(Mechanics.of_game(draft).sheets, actor).credits
     if amount > 0:
-        return [*facts, *adjust(actor, "credits", credits, amount, "paid", "payments")]
+        return [*facts, *adjust(draft, actor, "credits", credits, amount, "paid", "payments")]
     # `spend`, not a negative adjust: an overdraw is refused, not clamped.
-    return [*facts, *spend(actor, "credits", credits, -amount, "payments")]
+    return [*facts, *spend(draft, actor, "credits", credits, -amount, "payments")]
 
 
 def _require_playable(
     draft: Game, action: Attempt
 ) -> tuple[Entity, Sheet, Sheet | None, list[Fact]]:
-    """Everything an attempt must satisfy before any die is rolled, with the reveals it earns."""
     actor = require_actor_here(draft, action.actor_id)
     facts = draft.reveal(actor)
-    sheet = require_sheet(Mechanics.of_game(draft).sheets, actor)
+    sheet = Mechanics.of_game(draft).sheets.get(actor.id)
+    if sheet is None:
+        raise ValueError(
+            f"{actor.name} has no character sheet, so it never rolls: narrate its threat, "
+            "or put the risk on the player's own attempt or a luck test"
+        )
     helper_sheet = _helper_sheet(draft, actor, action, facts)
     _require_skill(actor, sheet, action.skill, "skill")
     return actor, sheet, helper_sheet, facts
 
 
 def resolve_stake(draft: Game, action: StakedAttempt) -> tuple[Fact, ...]:
-    if action.actor_id != PLAYER_ID:
-        raise ValueError(
-            "the advise step is the player's own: stake only the player's attempt, and roll an "
-            "NPC's directly"
-        )
-    # Validated against a copy: freezing an attempt reveals nothing and rolls nothing yet.
+    if action.actor_id != draft.player_id:
+        raise ValueError("stake only the player's attempt; roll an actor's attempt directly")
     _ = _require_playable(draft.draft(), action)
-    # SRD: a plan may be revised before it is committed, so the stake asks rather than tells.
     draft.pending = action.pending(
         f"{action.risk}\n\nProceed, or change your plan.",
         (DecisionOption(id="proceed", label="Proceed"),),
@@ -312,10 +338,26 @@ def resolve_defence(draft: Game, goal: str, item_id: EntityId | None) -> tuple[F
             ),
         )
     item = draft.world.require_kind(item_id, "item")
-    if item.parent_id != PLAYER_ID:
+    if item.parent_id != draft.player_id:
         raise ValueError(f"the player does not carry {item.name}, so it cannot break for them")
     if item.trait(BROKEN) is not None:
         raise ValueError(f"{item.name} is already broken, so it turns nothing")
+    if (left := breaks_left(item)) > 1:
+        spent = breaks_trait(left).id
+        # A budget of one is the unmarked default, so the last mark is removed, never rewritten.
+        item.traits[:] = [
+            breaks_trait(left - 1) if mark.id == spent else mark
+            for mark in item.traits
+            if not (mark.id == spent and left - 1 == 1)
+        ]
+        return (
+            entity_fact(
+                player,
+                "defence_turned",
+                f"{goal}: {item.name} takes the hit and holds; it can break {left - 1} more times",
+                event=MechanicEvent(title=f"{item.name} held", icon="shield"),
+            ),
+        )
     return (
         *add_trait(draft, item_id, BROKEN, BREAK_TEXT),
         entity_fact(
@@ -326,13 +368,13 @@ def resolve_defence(draft: Game, goal: str, item_id: EntityId | None) -> tuple[F
     )
 
 
-def _defence_decision(draft: Game, outcome: Slug, goal: str) -> PendingDecision:
+def _defence_decision(draft: Game, goal: str) -> PendingDecision:
     unbroken = tuple(
         DecisionOption(id=item.id, label=f"Break the {item.name}")
-        for item in draft.world.children(PLAYER_ID, "item")
+        for item in draft.world.children(draft.player_id, "item")
         if item.trait(BROKEN) is None
     )
-    return Defence(outcome=outcome, goal=goal).pending(
+    return Defence(goal=goal).pending(
         DEFENCE_PROMPT, (*unbroken, DecisionOption(id=TAKE_THE_HIT, label="Take the hit"))
     )
 
@@ -360,14 +402,12 @@ def resolve_attempt(draft: Game, action: Attempt, rng: Random) -> tuple[Fact, ..
     )
     facts[resolved_at] = facts[resolved_at].model_copy(update={"event": card})
 
-    # `Attempt` names no target, and the printed defence is the player's own: only their roll hits.
-    if action.actor_id == PLAYER_ID and outcome != "success":
-        draft.pending = _defence_decision(draft, outcome, action.goal)
+    if action.hit and action.actor_id == draft.player_id and outcome != "success":
+        draft.pending = _defence_decision(draft, action.goal)
     return tuple(facts)
 
 
 def _badges(action: Attempt, faces: tuple[int, ...]) -> tuple[EventBadge, ...]:
-    """Help shows only the die, never the helper's name, to match the unnamed skill badge."""
     badges = [EventBadge(label="Skill", value=action.skill)] if action.skill else []
     if len(faces) > 1:
         badges.append(EventBadge(label="Help", value=f"d{faces[-1]}"))
@@ -405,7 +445,6 @@ def _helper_sheet(draft: Game, actor: Entity, action: Attempt, facts: list[Fact]
 def _bad_luck(
     draft: Game, actor: Entity, subject: str, rng: Random
 ) -> tuple[DiceEvent, str, list[Fact]]:
-    """The die, the label a card shows (empty when the roll came up clear), and the facts."""
     die, rolled = roll_pool((6,), f"bad luck — {subject}", rng, label="Luck")
     if die.kept > RULES.signs_at:
         return die, "", [rolled]

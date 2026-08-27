@@ -263,7 +263,7 @@
   },
   {
     "name": "roll_attempt",
-    "description": "Roll one risky attempt. Roll an NPC's attempt directly; put the player's own attempt\nto `stake_attempt` first, unless their words already accepted the exact risk.",
+    "description": "Roll an actor's risky attempt directly. For the player, use `stake_attempt` first unless they already accepted the exact risk.",
     "parameters": {
       "additionalProperties": false,
       "properties": {
@@ -277,6 +277,10 @@
           "description": "The actor's goal, in one line.",
           "minLength": 1,
           "type": "string"
+        },
+        "hit": {
+          "description": "True when a bad roll means physical harm to the actor.",
+          "type": "boolean"
         },
         "skill": {
           "default": "",
@@ -320,7 +324,8 @@
       },
       "required": [
         "actor_id",
-        "goal"
+        "goal",
+        "hit"
       ],
       "type": "object"
     }
@@ -341,6 +346,10 @@
           "description": "The actor's goal, in one line.",
           "minLength": 1,
           "type": "string"
+        },
+        "hit": {
+          "description": "True when a bad roll means physical harm to the actor.",
+          "type": "boolean"
         },
         "skill": {
           "default": "",
@@ -390,6 +399,7 @@
       "required": [
         "actor_id",
         "goal",
+        "hit",
         "risk"
       ],
       "type": "object"
@@ -476,6 +486,46 @@
     "parameters": {
       "additionalProperties": false,
       "properties": {},
+      "type": "object"
+    }
+  },
+  {
+    "name": "buy_gear",
+    "description": "Buy one catalogue item at its printed price, charged to the buyer. Most cost ₡1. For sale: vest, battle-armor (₡2), hardsuit (₡3), cyber-ear, cyber-eye, cyber-limb, cranial-jack, healing-nanobots, toxin-filter, voice-mimic, flamethrower, low-g-jetpack, med-scanner, mini-drone, repair-tools, survey-pack, grenades, pistol, rifle, shotgun, stun-baton, tranq-gun. Every starship already has the basic version of each function below; one of their upgrades costs ₡10 and needs `onto_id`. Comms: Upgrade with eavesdropper, jammer, tachyon-burst. Crafts: Comes with escape pod. Upgrade with fighter, shuttle. Drive: FTL jump and sublight speeds. Upgrade with longer-jumps, faster-speed, greater-agility. Equipment: Vac suits for crew. Upgrade with armory, heavy-loader, mining-gear, tow-cable. Hull armor: Breaks harmlessly for defense. Upgrade with reentry-rated, sun-shielding. Sensors: Upgrade with deep-space, life-sign-scan, planetary-survey, tactical-vessel-scan. Weapons: Deflector turrets. Upgrade with laser-cutter, military-grade-turret, torpedos.",
+    "parameters": {
+      "additionalProperties": false,
+      "properties": {
+        "actor_id": {
+          "description": "Exact id of the player or an actor here who pays.",
+          "maxLength": 64,
+          "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$",
+          "type": "string"
+        },
+        "gear_id": {
+          "description": "Exact id of a catalogue entry.",
+          "maxLength": 64,
+          "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$",
+          "type": "string"
+        },
+        "onto_id": {
+          "anyOf": [
+            {
+              "maxLength": 64,
+              "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Exact id of the ship a ship upgrade is installed in, or null to be carried."
+        }
+      },
+      "required": [
+        "actor_id",
+        "gear_id"
+      ],
       "type": "object"
     }
   }

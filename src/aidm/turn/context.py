@@ -3,7 +3,7 @@ from pathlib import Path
 
 from aidm.content.io import engine_text
 from aidm.engines.core import AdvancementOffer, Engine, EntityRenderer
-from aidm.state.entities import PLAYER_ID, Entity, EntityId, Exit, Frozen, Trait, kind_word
+from aidm.state.entities import Entity, EntityId, Exit, Frozen, Trait, kind_word
 from aidm.state.model import Game, ScenarioMeta, Thread, WorldState
 
 
@@ -38,8 +38,8 @@ class SceneSnapshot(BaseScene):
         location = world.require_kind(state.player_location, "location")
         canon = tuple(world.entities)
         by_id = {entity.id: entity for entity in canon}
-        shown = [entity for entity in canon if entity.id != PLAYER_ID]
-        inventory = world.children(PLAYER_ID, "item")
+        shown = [entity for entity in canon if entity.id != player.id]
+        inventory = world.children(player.id, "item")
         carried_ids = {item.id for item in inventory}
         placed = [
             entity for entity in shown if entity.id not in carried_ids and entity.id != location.id
@@ -64,7 +64,7 @@ class SceneSnapshot(BaseScene):
             ),
             hidden=_reachable_hidden(world, location),
             canon=canon,
-            placements=_placements(by_id, canon, frozenset(by_id), party),
+            placements=_placements(by_id, canon, frozenset(by_id), party, player.id),
             exits=exits,
             exit_names=exit_names,
             party=party,
@@ -78,7 +78,7 @@ class SceneSnapshot(BaseScene):
         )
 
     def catalogue(self) -> tuple[Entity, ...]:
-        return tuple(entity for entity in self.canon if entity.id != PLAYER_ID)
+        return tuple(entity for entity in self.canon if entity.id != self.player.id)
 
 
 def _reachable_hidden(world: WorldState, here: Entity) -> tuple[Entity, ...]:
@@ -113,7 +113,7 @@ class VisibleScene(BaseScene):
             inventory=tuple(_undetailed(item) for item in snapshot.inventory),
             here=tuple(_undetailed(entity) for entity in snapshot.here),
             known_elsewhere=tuple(_undetailed(entity) for entity in snapshot.known_elsewhere),
-            placements=_placements(by_id, shown, met, snapshot.party),
+            placements=_placements(by_id, shown, met, snapshot.party, snapshot.player.id),
             exits=known_exits,
             exit_names={way.to: snapshot.exit_name(way) for way in known_exits},
         )
@@ -124,8 +124,9 @@ def _placements(
     entities: Iterable[Entity],
     nameable: frozenset[EntityId],
     party: tuple[EntityId, ...],
+    player_id: EntityId,
 ) -> dict[EntityId, str]:
-    return {entity.id: _placement(entity, by_id, nameable, party) for entity in entities}
+    return {entity.id: _placement(entity, by_id, nameable, party, player_id) for entity in entities}
 
 
 def _placement(
@@ -133,6 +134,7 @@ def _placement(
     by_id: Mapping[EntityId, Entity],
     nameable: frozenset[EntityId],
     party: tuple[EntityId, ...],
+    player_id: EntityId,
 ) -> str:
     """A placement names its holder only where the reader may be told that holder exists."""
     if entity.id in party:
@@ -142,7 +144,7 @@ def _placement(
         return ""
     if holder.kind == "location":
         return f"at {holder.name}"
-    return "carried" if holder.id == PLAYER_ID else f"held by {holder.name}"
+    return "carried" if holder.id == player_id else f"held by {holder.name}"
 
 
 def _undetailed(entity: Entity) -> Entity:

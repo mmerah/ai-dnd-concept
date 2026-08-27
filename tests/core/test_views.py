@@ -2,7 +2,7 @@ from core_test_support import LONER3E
 
 from aidm.app.runtime import journal_markdown
 from aidm.engines.loner3e.rules import Mechanics, Sheet
-from aidm.state.entities import Counter, Entity, EntityId, Exit, Kind
+from aidm.state.entities import PLAYER_ID, Counter, Entity, EntityId, Exit, Kind
 from aidm.state.model import Game, ScenarioMeta, Thread, WorldState
 from aidm.state.play import Exchange, Line
 from aidm.turn.context import player_scene
@@ -42,6 +42,7 @@ def state() -> Game:
         character_id="kael",
         scenario=ScenarioMeta(title="Test", premise="Test"),
         engine=LONER3E,
+        player_id=PLAYER_ID,
         world=WorldState(
             entities=list(entities),
             threads=list(threads),

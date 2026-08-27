@@ -42,6 +42,7 @@ def state() -> Game:
         character_id="kael",
         scenario=ScenarioMeta(title="Test", premise="Test"),
         engine=LONER3E,
+        player_id=PLAYER_ID,
         world=WorldState(entities=list(entities)),
         mechanics=Mechanics(
             sheets={entity.id: Sheet() for entity in entities if entity.kind == "actor"}

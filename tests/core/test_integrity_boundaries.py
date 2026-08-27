@@ -3,20 +3,25 @@ from pathlib import Path
 
 import pytest
 from core_test_support import (
+    CHARACTERS,
     LONER3E,
+    SCENARIOS,
+    TWENTYFOURXX,
     begin_game,
     build_engine,
     character,
     initialized,
     scenario,
+    scenario_for,
     updated,
     with_entity,
 )
 from pydantic import ValidationError
 
-from aidm.content.io import SavedGame, load_character
+from aidm.content.io import SavedGame, load_character, load_scenario
 from aidm.content.model import Character, CharacterProfile, Scenario
 from aidm.engines.loner3e.rules import RULES, Mechanics
+from aidm.engines.twentyfourxx.rules import Mechanics as TwentyfourxxMechanics
 from aidm.state.entities import PLAYER_ID, Entity, EntityId
 from aidm.state.model import Game
 
@@ -29,7 +34,8 @@ _DOUBLED = json.dumps(
     {
         "meta": {"title": "Twice Over", "premise": "One id, authored twice."},
         "starting_location_id": "hall",
-        "engines": ["loner3e"],
+        "engine": "loner3e",
+        "packs": ["srd"],
         "world": {"entities": [_HALL, {**_HALL, "name": "the hall again"}]},
     }
 )
@@ -117,13 +123,20 @@ def test_world_state_rejects_broken_exits_and_party() -> None:
 
     with pytest.raises(ValidationError, match="without being met"):
         updated(world, party=(ELENA,))
-    with pytest.raises(ValidationError, match="cannot travel with themselves"):
-        updated(world, party=(PLAYER_ID,))
 
     mara = world.require(MARA)
     wandering = updated(mara, exits=({"to": "study"},))
     with pytest.raises(ValidationError, match="cannot have exits"):
         updated(world, entities=tuple(wandering if e.id == mara.id else e for e in world.entities))
+
+
+def test_a_committed_game_refuses_a_player_who_travels_with_themselves() -> None:
+    """The played id is state, not world canon, so the party rule is checked at the commit."""
+    _, state = initialized()
+    draft = state.draft()
+    draft.world.party.append(draft.player_id)
+    with pytest.raises(ValueError, match="cannot travel with themselves"):
+        _ = draft.committed()
 
 
 def test_entity_ids_use_one_grammar() -> None:
@@ -144,6 +157,55 @@ def test_a_scenario_starts_the_party_it_authors() -> None:
     # Tomas is known and unique, so this is the stands-at-start check alone, not the party's own.
     with pytest.raises(ValidationError, match="who they set out with"):
         updated(authored, world=updated(authored.world, party=[TOMAS]))
+
+
+def test_a_scenario_is_refused_by_an_engine_it_was_not_authored_for() -> None:
+    with pytest.raises(ValueError, match="does not play"):
+        _ = begin_game(build_engine(TWENTYFOURXX), "whispering-vault", scenario(), character())
+
+
+def test_an_authored_actor_without_rules_is_refused() -> None:
+    authored = scenario()
+    bare = updated(authored.world.require(MARA), rules={})
+    stripped = updated(
+        authored,
+        world=updated(
+            authored.world,
+            entities=tuple(bare if e.id == MARA else e for e in authored.world.entities),
+        ),
+    )
+
+    with pytest.raises(ValueError, match=r"carry no `rules`.*mara"):
+        _ = begin_game(build_engine(LONER3E), "whispering-vault", stripped, character())
+
+
+def test_twentyfourxx_opposition_needs_no_sheet() -> None:
+    engine = build_engine(TWENTYFOURXX)
+    scenario_id = scenario_for(TWENTYFOURXX)
+    authored = load_scenario(SCENARIOS, scenario_id)
+    hostile = next(entity for entity in authored.world.of_kind("actor") if entity.rules)
+    stripped = updated(
+        authored,
+        world=updated(
+            authored.world,
+            entities=tuple(
+                updated(entity, rules={}) if entity.id == hostile.id else entity
+                for entity in authored.world.entities
+            ),
+        ),
+    )
+    player = load_character(CHARACTERS, "kael", engine.id, engine.check_overlay)
+
+    begun = begin_game(engine, scenario_id, stripped, player)
+
+    assert hostile.id not in TwentyfourxxMechanics.of_game(begun).sheets
+
+
+def test_scenario_packs_include_one_srd() -> None:
+    with pytest.raises(ValidationError, match="must include 'srd'"):
+        updated(scenario(), packs=("ap01-fantasy",))
+    with pytest.raises(ValueError, match="duplicate scenario pack ids"):
+        updated(scenario(), packs=("srd", "srd"))
 
 
 def test_a_character_knows_the_gear_they_start_with() -> None:

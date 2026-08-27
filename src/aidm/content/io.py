@@ -1,16 +1,17 @@
 import json
 import logging
 import re
-from collections.abc import Callable, Iterator, Sequence
+from collections.abc import Callable, Iterator, Mapping, Sequence
 from dataclasses import dataclass
 from pathlib import Path
 from re import fullmatch
+from types import MappingProxyType
 from typing import Self
 
 from pydantic import BaseModel, ConfigDict, Field, JsonValue, model_validator
 from pypdf import PdfReader
 
-from aidm.state.entities import EngineId, Mutable, Slug, content_id
+from aidm.state.entities import CheckedEntityId, EngineId, Mutable, Slug, content_id
 from aidm.state.facts import MechanicEvent
 from aidm.state.model import Game, ScenarioMeta, WorldState, check_player_playable
 from aidm.state.play import Exchange, PendingDecision
@@ -24,6 +25,7 @@ from .model import (
 
 ENCODING = "utf-8"
 WORLD_FILE = "world.json"
+PACKS_DIR = "packs"
 PROFILE_FILE = "base.json"
 SOURCE_STEM = "source"
 SOURCE_SUFFIXES = (".md", ".txt", ".pdf")
@@ -32,9 +34,7 @@ _SAVE_SLUG_PATTERN = r"[a-z0-9][a-z0-9-]*"
 LOGGER = logging.getLogger(__name__)
 
 
-def read_scenarios(
-    directory: Path, engines: Sequence[EngineId]
-) -> Iterator[tuple[Slug, Scenario, tuple[EngineId, ...]]]:
+def read_scenarios(directory: Path, engines: Sequence[EngineId]) -> Iterator[tuple[Slug, Scenario]]:
     for path in _content_dirs(directory, WORLD_FILE):
         try:
             scenario = _read(path / WORLD_FILE, Scenario)
@@ -42,12 +42,12 @@ def read_scenarios(
             # Skip incomplete scenarios so the home screen remains usable.
             LOGGER.warning("skipping scenario %r: %s", path.name, unreadable)
             continue
-        # Installed order, so a scenario naming an engine twice cannot offer it twice.
-        playable = tuple(engine for engine in engines if engine in scenario.engines)
-        if not playable:
-            LOGGER.warning("skipping scenario %r: it names no installed engine", path.name)
+        if scenario.engine not in engines:
+            LOGGER.warning(
+                "skipping scenario %r: it needs the %r engine", path.name, scenario.engine
+            )
             continue
-        yield content_id(path.name), scenario, playable
+        yield content_id(path.name), scenario
 
 
 def read_characters(
@@ -66,6 +66,11 @@ def _content_dirs(directory: Path, canon: str) -> Iterator[Path]:
 def load_scenario(directory: Path, name: Slug) -> Scenario:
     folder = directory / content_id(name)
     return _read(folder / WORLD_FILE, Scenario)
+
+
+def scenario_packs(directory: Path, name: Slug) -> Path:
+    """A scenario ships the content packs it needs beside its world, read like installed ones."""
+    return directory / content_id(name) / PACKS_DIR
 
 
 def source_file(directory: Path, name: Slug) -> Path | None:
@@ -104,12 +109,15 @@ def write_scenario(
     directory: Path,
     name: Slug,
     scenario: Scenario,
+    packs: Mapping[Slug, JsonValue] = MappingProxyType({}),
     source: str | Path | None = None,
 ) -> None:
     folder = directory / content_id(name)
     if folder.exists():
         raise ValueError(f"scenario {name!r} already exists")
     _write(folder / WORLD_FILE, scenario.model_dump_json(indent=2))
+    for pack_id, content in packs.items():
+        _write(folder / PACKS_DIR / f"{pack_id}.json", json.dumps(content, indent=2))
     if isinstance(source, Path):
         _copy(folder / f"{SOURCE_STEM}{source.suffix}", source)
     elif source is not None:
@@ -141,6 +149,7 @@ class SavedGame(BaseModel):
     character_id: Slug
     scenario: ScenarioMeta
     engine: EngineId
+    player_id: CheckedEntityId
     world: WorldState
     mechanics: JsonValue
     turn_events: tuple[MechanicEvent, ...]
@@ -150,7 +159,7 @@ class SavedGame(BaseModel):
 
     @model_validator(mode="after")
     def _the_player_is_playable(self) -> Self:
-        check_player_playable(self.world)
+        check_player_playable(self.world, self.player_id)
         return self
 
     @classmethod
@@ -160,6 +169,7 @@ class SavedGame(BaseModel):
             character_id=state.character_id,
             scenario=state.scenario,
             engine=state.engine,
+            player_id=state.player_id,
             world=state.world,
             mechanics=state.mechanics.model_dump(mode="json"),
             turn_events=state.turn_events,
@@ -174,6 +184,7 @@ class SavedGame(BaseModel):
             character_id=self.character_id,
             scenario=self.scenario,
             engine=self.engine,
+            player_id=self.player_id,
             world=self.world,
             mechanics=mechanics,
             turn_events=self.turn_events,

@@ -14,7 +14,7 @@ from pydantic_ai.toolsets import ToolsetTool
 
 from aidm.app.runtime import Runtime
 from aidm.authoring.draft import WHOLE_SCENARIO, ScenarioDraft
-from aidm.authoring.run import authoring_context, authoring_toolset
+from aidm.authoring.run import authoring_toolset, draft_context
 from aidm.config import load_settings
 from aidm.engines.core import Command, NoArgs, ProposalBase
 from aidm.engines.world import commands
@@ -133,8 +133,8 @@ APPLY_ADVANCE = ServerTool(
 DISPATCH = {tool.name: tool for tool in (*SERVER_TOOLS, PROPOSE_ADVANCE, APPLY_ADVANCE)}
 PUBLISHED = tuple(_published(tool) for tool in SERVER_TOOLS)
 
-# One instance: its tools are listed from here and called against whichever draft is open.
-AUTHORING = authoring_toolset((), WHOLE_SCENARIO)
+# Names and schemas only: a call routes to the open run's own toolset, which has an engine to play.
+AUTHORING = authoring_toolset(None, WHOLE_SCENARIO)
 AUTHORING_TOOLS = frozenset(AUTHORING.tools)
 
 
@@ -149,7 +149,7 @@ def _as_mcp_tool[D](tool: ToolsetTool[D]) -> types.Tool:
 
 async def _authoring_tools() -> list[types.Tool]:
     """Listed off an empty draft: their schemas never vary, so a driver sees them from the start."""
-    tools = await AUTHORING.get_tools(authoring_context(ScenarioDraft()))
+    tools = await AUTHORING.get_tools(draft_context(ScenarioDraft()))
     return [_as_mcp_tool(tool) for tool in tools.values()]
 
 

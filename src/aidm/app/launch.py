@@ -116,25 +116,12 @@ class LauncherController:
         self.selected_scenario = scenario_id
         self._select_engine()
 
-    def choose_engine(self, engine: EngineId) -> None:
-        if engine not in self.available_engines():
-            raise ValueError(
-                f"scenario {self.selected_scenario!r} has no {engine!r} rules written for it"
-            )
-        self.selected_engine = engine
-        self._select_character()
-
     def choose_character(self, character_id: Slug) -> None:
         if character_id not in {option.id for option in self.compatible_characters()}:
             raise ValueError(
                 f"character {character_id!r} has no {self.selected_engine!r} rules written for it"
             )
         self.selected_character = character_id
-
-    def available_engines(self) -> tuple[EngineId, ...]:
-        if self.selected_scenario is None:
-            return ()
-        return self.catalog.scenario(self.selected_scenario).engines
 
     def compatible_characters(self) -> tuple[CatalogEntry, ...]:
         if self.selected_engine is None:
@@ -168,9 +155,9 @@ class LauncherController:
         )
 
     def _select_engine(self) -> None:
-        engines = self.available_engines()
-        if self.selected_engine not in engines:
-            self.selected_engine = engines[0] if engines else None
+        scenario_id = self.selected_scenario
+        engines = () if scenario_id is None else self.catalog.scenario(scenario_id).engines
+        self.selected_engine = engines[0] if engines else None
         self._select_character()
 
     def _select_character(self) -> None:
@@ -184,9 +171,12 @@ def load_catalog(settings: Settings) -> LauncherCatalog:
     ids = engine_ids()
     scenarios = tuple(
         CatalogEntry(
-            id=name, title=scenario.meta.title, subtitle=scenario.meta.premise, engines=playable
+            id=name,
+            title=scenario.meta.title,
+            subtitle=scenario.meta.premise,
+            engines=(scenario.engine,),
         )
-        for name, scenario, playable in read_scenarios(settings.scenarios_dir, ids)
+        for name, scenario in read_scenarios(settings.scenarios_dir, ids)
     )
     characters = tuple(
         CatalogEntry(id=name, title=profile.name, subtitle=profile.brief, engines=engines)

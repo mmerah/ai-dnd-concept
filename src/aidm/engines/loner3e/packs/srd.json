@@ -1,6 +1,6 @@
 {
-  "name": "Core tables",
-  "source": "https://lonersrd.zotiquestgames.com/",
+  "name": "Starter tables",
+  "source": "This repository; twist columns adapted from https://lonersrd.zotiquestgames.com/core/loner-3e.html",
   "license": "Twist table from the Loner 3e SRD, CC BY-SA 4.0 (c) Roberto Bisceglie / Zotiquest Games",
   "concepts": [
     {

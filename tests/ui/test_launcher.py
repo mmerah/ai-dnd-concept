@@ -32,11 +32,11 @@ def _scenarios_copy(tmp_path: Path) -> Path:
     return scenarios
 
 
-def _declaring(tmp_path: Path, *engines: str) -> Path:
+def _declaring(tmp_path: Path, engine: str) -> Path:
     scenarios = _scenarios_copy(tmp_path)
     world = scenarios / "whispering-vault" / "world.json"
     canon: dict[str, JsonValue] = json.loads(world.read_text(encoding=ENCODING))
-    canon["engines"] = list(engines)
+    canon["engine"] = engine
     _ = world.write_text(json.dumps(canon), encoding=ENCODING)
     return scenarios
 
@@ -45,11 +45,11 @@ def test_an_overlay_decides_which_rules_a_character_offers(tmp_path: Path) -> No
     catalog = load_catalog(ui_settings(tmp_path))
     controller = LauncherController(catalog)
 
-    assert catalog.scenario("whispering-vault").engines == ("loner3e", "twentyfourxx")
+    assert catalog.scenario("whispering-vault").engines == ("loner3e",)
     assert [option.id for option in catalog.characters] == ["kael"]
     controller.choose_scenario("whispering-vault")
-    controller.choose_engine(LONER3E)
 
+    assert controller.selected_engine == LONER3E
     assert [option.id for option in controller.compatible_characters()] == ["kael"]
     assert controller.new_game().model_dump() == {
         "slug": "whispering-vault--kael--loner3e",
@@ -71,14 +71,13 @@ def test_a_directory_holding_no_canon_is_skipped(tmp_path: Path) -> None:
         "whispering-vault",
     ]
     controller.choose_scenario("aaa-draft")
-    assert controller.available_engines() == ("loner3e", "twentyfourxx")
     assert controller.selected_engine == "loner3e"
 
 
 def test_a_scenario_offers_only_the_rules_it_names(tmp_path: Path) -> None:
-    catalog = load_catalog(ui_settings(tmp_path, _declaring(tmp_path, "loner3e")))
+    catalog = load_catalog(ui_settings(tmp_path, _declaring(tmp_path, "twentyfourxx")))
 
-    assert catalog.scenario("whispering-vault").engines == ("loner3e",)
+    assert catalog.scenario("whispering-vault").engines == ("twentyfourxx",)
 
 
 def test_a_scenario_naming_an_uninstalled_engine_is_skipped(tmp_path: Path) -> None:

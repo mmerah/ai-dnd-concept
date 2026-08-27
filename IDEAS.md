@@ -17,6 +17,7 @@
 - [] I3: De-aify the codebase
 - [] I4: lots of testing to identify gaps of MVP0
 - [] I5: a new agent, state keeper, that adds/removes traits/tags, reveals, cleans up after the director. Observed with builtin-harness and cheap models: sometimes trait modifications are forgotten, sometimes a reveal is not done when it should have been done, ... Limited set of tools but could improve builtin-harness mode performance
+- [] I6: Rewrite: Skills, instructions, prompts. Easier english (ASD STE100). And content should be verified, not confusing, easy to understand. Particularly for instructions(prompts) since they describe how to actually play to the director (or whole session for codemode). Skills also need to be clearer, tell of everything, maybe indicate where (web link) to find SRD to reconciliate when needed? (but then harness need to authorize web fetch tool in some form, depend on the harness)
 
 ## Working order
 

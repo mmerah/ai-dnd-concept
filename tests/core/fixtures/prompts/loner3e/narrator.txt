@@ -3,12 +3,17 @@ The Whispering Vault
 The abbey of Saint Corvin was abandoned in a single night. Kael has come for the sealed vault beneath it, and the abbot's study is the only room still lit.
 
 PLAYER CHARACTER:
-Kael[id=player] — A scarred relic-hunter who came to the abbey for what is sealed beneath it. — at the abbot's study[id=study]
+Kael[id=player] — A scarred relic-hunter who comes wherever something old lies sealed, and does not leave it shut. — at the abbot's study[id=study]
 state:
   concept: A Wary Relic-Hunter
   skills: Reads Old Stonework, Quiet Hands
+  - Reads Old Stonework: Makes sense of inscriptions and stonework that everyone else reads as rubble.
+  - Quiet Hands: Picks locks, pockets, and latches without a sound.
   frailties: Never Walks Away
+  - Never Walks Away: Cannot leave a fight, or a wrong, unfinished.
   gear: Pry Bar, Chalk and Wire
+  - Pry Bar: Forces a door, a crate, or a stubborn slab of stone.
+  - Chalk and Wire: Marks a trail and rigs a lock from chalk and a length of wire.
   luck: 6/6
   traits: Relic Hunter[id=relic-hunter] — (skill) Kael knows how old sanctums conceal what matters., Marked by the Past[id=marked-by-the-past] — (frailty) Old scars make certain memories hard to face., Listening[id=listening] — (condition) Listening for the next shift of weight behind the door.
 inventory:
@@ -20,6 +25,10 @@ inventory:
 HERE WITH THE PLAYER:
 - Mara[id=mara] (npc) — at the abbot's study — The abbey's last scribe, cautious and tired, still cataloguing books nobody will read.
   state:
+    concept: A Cautious Scribe
+    skills: Reads a Faded Hand, Knows the Catalogue
+    frailties: Slow to Trust
+    gear: Ledger and Ink
     luck: 6/6
 
 EXITS FROM HERE:
@@ -29,6 +38,10 @@ KNOWN TO THE PLAYER, BUT ELSEWHERE:
 - the cloister[id=cloister] (location) — A frost-rimed colonnade around a dead garden; Brother Tomas sweeps it to no purpose.
 - Brother Tomas[id=tomas] (npc) — at the cloister — A deaf old porter who sweeps the cloister and knows almost nothing about the vault.
   state:
+    concept: A Deaf Old Porter
+    skills: Knows Every Door
+    frailties: Hears Almost Nothing
+    gear: Twig Broom
     luck: 6/6
 
 WHAT HAPPENED:

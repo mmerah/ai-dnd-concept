@@ -11,12 +11,19 @@ No game has to be open.
 Work from the repository root. Scenarios are written to `scenarios/` under the working directory.
 
 1. Ask the user for the premise, or for the path to a .md, .txt or .pdf adventure to author from.
-   Ask which rules engines the scenario must play under. Ask whether the scenario `grows`. A
+   Ask which rules engine the scenario plays under. Ask whether the scenario `grows`. A
    scenario that grows needs only an opening slice, because play writes the rest of its world.
-2. `begin_scenario(slug, premise, engines, grows, source)` — returns the briefing: the bar the
-   draft must meet and a worked example.
-3. `write(patch)` and `connect(from_id, to_id)` — build the world in passes. Every answer ends
+2. `begin_scenario(slug, premise, engine, grows, packs, source)` — returns the briefing: the bar
+   the draft must meet, engine-specific rules, selected pack content, and a worked example.
+   `packs` defaults to `srd`; always include it and add only installed pack ids the scenario uses.
+3. Follow the briefing's engine guidance for which entities need `rules`. Use selected-pack
+   vocabulary where the engine requires it; some engines explicitly allow freeform tags.
+4. `write(patch)` and `connect(from_id, to_id)` — build the world in passes. Every answer ends
    with what the draft still needs. Show the user each pass and follow their steering.
-4. `scenario_so_far()` — the whole draft as JSON. Call it whenever you lose track of the draft.
-5. `finish_scenario(summary)` — checks the draft and writes it to disk. A draft under the bar
+5. `write_pack(pack_id, content)` — only when the selected packs genuinely lack an item, table
+   entry or skill the scenario needs. The pack is checked against the engine's own pack schema and
+   ships in the scenario's directory, where play loads it like an installed pack. Shape `content`
+   like the selected pack content in the briefing, and write only what is missing.
+6. `scenario_so_far()` — the whole draft as JSON. Call it whenever you lose track of the draft.
+7. `finish_scenario(summary)` — checks the draft and writes it to disk. A draft under the bar
    comes back with the reason, and the run stays open.

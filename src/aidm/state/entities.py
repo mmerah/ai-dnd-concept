@@ -3,7 +3,7 @@ from collections import Counter as Tally
 from collections.abc import Iterable, Mapping
 from typing import Annotated, Literal, NewType, Self
 
-from pydantic import BaseModel, ConfigDict, Field, model_validator
+from pydantic import BaseModel, ConfigDict, Field, JsonValue, model_validator
 
 SLUG_PATTERN = r"[a-z0-9]+(?:-[a-z0-9]+)*"
 SLUG_MAX = 64
@@ -119,6 +119,8 @@ class Entity(Mutable):
     parent_id: CheckedEntityId | None = None
     traits: list[Trait] = Field(default_factory=list)
     exits: list[Exit] = Field(default_factory=list)
+    # Opaque to core, like a character overlay: the engine that reads them is their only validator.
+    rules: dict[str, JsonValue] = Field(default_factory=dict)
 
     def trait(self, trait_id: str) -> Trait | None:
         return next((held for held in self.traits if held.id == trait_id), None)

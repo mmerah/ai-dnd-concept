@@ -7,7 +7,6 @@ from pydantic import Field, ValidationError, model_validator
 
 from aidm.state.entities import (
     DEAD,
-    PLAYER_ID,
     Counter,
     EngineId,
     Entity,
@@ -104,8 +103,6 @@ class WorldState(Mutable):
 
     def _check_party(self) -> None:
         require_unique("party members", self.party)
-        if PLAYER_ID in self.party:
-            raise ValueError("the player cannot travel with themselves")
         for member_id in self.party:
             member = self.require_kind(member_id, "actor")
             if not member.known:
@@ -152,9 +149,11 @@ class WorldState(Mutable):
         return None if current.id == entity.id else current.id
 
 
-def check_player_playable(world: WorldState) -> None:
-    if not world.require_kind(PLAYER_ID, "actor").known:
+def check_player_playable(world: WorldState, player_id: EntityId) -> None:
+    if not world.require_kind(player_id, "actor").known:
         raise ValueError("the player entity must be known")
+    if player_id in world.party:
+        raise ValueError("the player cannot travel with themselves")
 
 
 def frontier(world: WorldState) -> int:
@@ -184,6 +183,8 @@ class Game:
     character_id: Slug
     scenario: ScenarioMeta
     engine: EngineId
+    # Which entity the player plays: it moves to a companion when the played character dies.
+    player_id: EntityId
     world: WorldState
     # Opaque to core: the engine that wrote it is the only reader and the only validator.
     mechanics: Mutable
@@ -195,7 +196,10 @@ class Game:
 
     @property
     def player(self) -> Entity:
-        return self.world.require_kind(PLAYER_ID, "actor")
+        return self.world.require_kind(self.player_id, "actor")
+
+    def label(self, entity: Entity) -> str:
+        return labeled(entity, self.player_id)
 
     @property
     def player_location(self) -> EntityId:
@@ -223,7 +227,7 @@ class Game:
             world=_revalidated(self.world),
             mechanics=_revalidated(self.mechanics),
         )
-        check_player_playable(landed.world)
+        check_player_playable(landed.world, landed.player_id)
         return landed
 
     def add(self, entity: Entity) -> Fact:
@@ -239,12 +243,12 @@ class Game:
         if entity.known:
             return []
         entity.known = True
-        summary = f"learned of {labeled(entity)}"
+        summary = f"learned of {self.label(entity)}"
         return [entity_fact(entity, "entity_discovered", summary)]
 
     def move(self, entity: Entity, destination: Entity) -> Fact:
         entity.parent_id = destination.id
-        trace, card = _move_summary(entity, destination)
+        trace, card = _move_summary(self, entity, destination)
         return entity_fact(entity, "entity_moved", trace, event=card)
 
 
@@ -267,26 +271,26 @@ def _revalidated[M: Mutable](model: M) -> M:
     return type(model).model_validate(model.model_dump(round_trip=True))
 
 
-def _move_summary(entity: Entity, destination: Entity) -> tuple[str, MechanicEvent]:
+def _move_summary(state: Game, entity: Entity, destination: Entity) -> tuple[str, MechanicEvent]:
     """Trace (ids, for the Director) and card (plain names, for the player), from one branch."""
     icon = "directions_walk"
     if entity.kind == "actor":
         return (
-            f"{labeled(entity)} moved to {labeled(destination)}",
+            f"{state.label(entity)} moved to {state.label(destination)}",
             MechanicEvent(title=f"{entity.name} moved to {destination.name}", icon=icon),
         )
-    if destination.id == PLAYER_ID:
+    if destination.id == state.player_id:
         return (
-            f"{labeled(destination)} took {labeled(entity)}",
+            f"{state.label(destination)} took {state.label(entity)}",
             MechanicEvent(title=f"Took {entity.name}", icon="back_hand"),
         )
     if destination.kind == "actor":
         # The giver is always the player: an item only ever moves to an actor by being handed over.
         return (
-            f"the player gave {labeled(entity)} to {labeled(destination)}",
+            f"the player gave {state.label(entity)} to {state.label(destination)}",
             MechanicEvent(title=f"Gave {entity.name} to {destination.name}", icon=icon),
         )
     return (
-        f"the player left {labeled(entity)} at {labeled(destination)}",
+        f"the player left {state.label(entity)} at {state.label(destination)}",
         MechanicEvent(title=f"Left {entity.name} at {destination.name}", icon=icon),
     )

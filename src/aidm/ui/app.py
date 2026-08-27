@@ -66,16 +66,6 @@ def _new_game(controller: LauncherController) -> None:
                 on_change=_chosen("scenario", controller.choose_scenario, form.refresh),  # pyright: ignore[reportUnknownArgumentType]
             ).classes("w-full")
             ui.label(scenario.subtitle).classes("text-sm opacity-70")
-            ui.select(
-                options={engine: engine for engine in controller.available_engines()},
-                value=controller.selected_engine,
-                label="Rules",
-                on_change=_chosen(  # pyright: ignore[reportUnknownArgumentType]
-                    "engine",
-                    lambda value: controller.choose_engine(as_engine_id(value)),
-                    form.refresh,
-                ),
-            ).classes("w-full")
             compatible = controller.compatible_characters()
             ui.select(
                 options={option.id: f"{option.title} — {option.subtitle}" for option in compatible},
@@ -291,7 +281,7 @@ def _register_pages(runtime: Runtime) -> None:
     def _create_scenario() -> None:  # pyright: ignore[reportUnusedFunction]
         writer = driver_for(None)
         if writer is not None:
-            agent_scenario_page(writer)
+            agent_scenario_page(writer, runtime.settings)
         elif runtime.settings.harness == "external":
             ui.label("Authoring runs in your terminal here: call begin_scenario().")
         else:

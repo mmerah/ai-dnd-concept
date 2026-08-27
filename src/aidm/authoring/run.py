@@ -1,8 +1,9 @@
-from collections.abc import Sequence
+import json
 from dataclasses import dataclass, field
 from functools import cached_property
 from pathlib import Path
 
+from pydantic import JsonValue
 from pydantic_ai import Agent, ModelRetry, RunContext, ToolOutput, UsageLimits
 from pydantic_ai.messages import ModelMessage
 from pydantic_ai.models.test import TestModel
@@ -18,17 +19,20 @@ from aidm.authoring.draft import (
     ScenarioDraft,
     ScenarioPatch,
     check_new_scenario,
+    engine_packs,
     extend_brief,
     extension_patch,
     extension_prompt,
+    pack_refusal,
     patch_refusal,
-    playtest_checks,
+    playtest_check,
     scenario_refusal,
+    selected_packs,
     world_prompt,
     write_draft,
 )
 from aidm.config import Settings
-from aidm.content.io import engine_text, load_scenario
+from aidm.content.io import engine_text, load_scenario, read_scenarios
 from aidm.content.model import Character
 from aidm.engines.core import Engine
 from aidm.llm import build_agent
@@ -38,30 +42,41 @@ from aidm.state.model import Game
 _PROMPTS_DIR = Path(__file__).parent / "prompts"
 
 
-def _instructions(settings: Settings, brief: AuthoringBrief) -> str:
-    """The worked example rides in the prompt, so reading it costs no tool call."""
-    example = ScenarioDraft.from_scenario(
-        load_scenario(settings.scenarios_dir, settings.authoring.worked_example)
-    ).as_json()
+def _example(settings: Settings, engine_id: EngineId) -> str | None:
+    """The example must speak the authored engine's `rules` dialect, or it teaches refusals."""
+    scenarios = dict(read_scenarios(settings.scenarios_dir, (engine_id,)))
+    preferred = scenarios.get(settings.authoring.worked_example)
+    chosen = preferred if preferred is not None else next(iter(scenarios.values()), None)
+    return None if chosen is None else ScenarioDraft.from_scenario(chosen).as_json()
+
+
+def _instructions(settings: Settings, brief: AuthoringBrief, playing: PlaytestCheck) -> str:
+    rules = json.dumps(playing.character.rules, indent=2)
+    example = _example(settings, playing.engine.id)
+    shown = (
+        ()
+        if example is None
+        else (engine_text(_PROMPTS_DIR / "scenario_example.md"), f"```json\n{example}\n```")
+    )
     return "\n\n".join(
         (
             engine_text(_PROMPTS_DIR / "scenario_world.md"),
             engine_text(_PROMPTS_DIR / brief.bar_prompt),
-            engine_text(_PROMPTS_DIR / "scenario_example.md"),
-            f"```json\n{example}\n```",
+            *shown,
+            engine_text(_PROMPTS_DIR / "scenario_rules.md"),
+            f"```json\n{rules}\n```",
+            playing.engine.authoring_context(playing.packs),
         )
     )
 
 
-def authoring_context(
-    draft: ScenarioDraft, tool_name: str | None = None
-) -> RunContext[ScenarioDraft]:
+def draft_context(draft: ScenarioDraft, tool_name: str | None = None) -> RunContext[ScenarioDraft]:
     # A RunContext needs a model; no authoring tool reads one.
     return RunContext(deps=draft, model=TestModel(), usage=RunUsage(), tool_name=tool_name)
 
 
 def authoring_toolset(
-    playing: Sequence[PlaytestCheck],
+    playing: PlaytestCheck | None,
     brief: AuthoringBrief = WHOLE_SCENARIO,
 ) -> FunctionToolset[ScenarioDraft]:
     def answer(draft: ScenarioDraft, changed: str) -> str:
@@ -82,6 +97,21 @@ def authoring_toolset(
             return answer(ctx.deps, ctx.deps.apply(patch))
         except ValueError as refused:
             raise ModelRetry(str(refused)) from refused
+
+    def write_pack(
+        ctx: RunContext[ScenarioDraft], pack_id: Slug, content: dict[str, JsonValue]
+    ) -> str:
+        """Ship a content pack with this scenario, for content the selected packs lack.
+
+        Args:
+            pack_id: Id for the new pack: lowercase words joined by hyphens.
+            content: The whole pack, shaped exactly like the selected pack content above.
+        """
+        if playing is None:
+            raise ModelRetry("no engine is loaded to check this pack against")
+        if refused := pack_refusal(ctx.deps, playing, brief, pack_id, content):
+            raise ModelRetry(refused)
+        return answer(ctx.deps, ctx.deps.write_pack(pack_id, content))
 
     def connect(
         ctx: RunContext[ScenarioDraft],
@@ -110,16 +140,14 @@ def authoring_toolset(
         except ValueError as refused:
             raise ModelRetry(str(refused)) from refused
 
-    return FunctionToolset(tools=[scenario_so_far, write, connect])
+    return FunctionToolset(tools=[scenario_so_far, write, connect, write_pack])
 
 
 def scenario_agent(
-    playing: Sequence[PlaytestCheck],
+    playing: PlaytestCheck,
     settings: Settings,
     brief: AuthoringBrief = WHOLE_SCENARIO,
 ) -> Agent[ScenarioDraft, str]:
-    """Ends on the `finish` tool, not bare text: a tool-only author would never end its own turn."""
-
     def playable(ctx: RunContext[ScenarioDraft], summary: str) -> str:
         if reason := scenario_refusal(ctx.deps, playing, brief):
             raise ModelRetry(f"the draft does not play yet, so it is not finished: {reason}")
@@ -128,7 +156,7 @@ def scenario_agent(
     return build_agent(
         "scenario_creator",
         settings,
-        instructions=_instructions(settings, brief),
+        instructions=_instructions(settings, brief, playing),
         output_type=ToolOutput(
             str,
             name="finish",
@@ -142,11 +170,9 @@ def scenario_agent(
 
 @dataclass(kw_only=True)
 class AuthoringRun:
-    """One draft under authorship, many turns; the UI drives `send`, code mode the toolset."""
-
     settings: Settings
     draft: ScenarioDraft
-    playing: tuple[PlaytestCheck, ...]
+    playing: PlaytestCheck
     brief: AuthoringBrief
     toolset: FunctionToolset[ScenarioDraft]
     opening_prompt: str
@@ -174,8 +200,6 @@ class AuthoringRun:
 
 @dataclass(kw_only=True)
 class GrowthRun(AuthoringRun):
-    """Grows a world in play; `base` is the state the finished draft is diffed against."""
-
     base: Game
 
     def patch(self) -> ExtensionPatch:
@@ -184,12 +208,9 @@ class GrowthRun(AuthoringRun):
 
 @dataclass(kw_only=True)
 class ScenarioRun(AuthoringRun):
-    """Writes a whole new scenario; needs no open game."""
-
     slug: Slug
     premise: str
     document: Path | None
-    engines: tuple[EngineId, ...]
     art_style: str = ""
     busy: bool = False
 
@@ -200,7 +221,12 @@ class ScenarioRun(AuthoringRun):
         # The form's style overrides whatever the author wrote from the source's own tone.
         self.draft.art_style = self.art_style or self.draft.art_style
         return write_draft(
-            self.settings, self.slug, self.draft, self.engines, self.document or self.premise
+            self.settings,
+            self.slug,
+            self.draft,
+            self.playing.engine.id,
+            self.playing.packs,
+            self.document or self.premise,
         )
 
 
@@ -211,13 +237,25 @@ _HOW_TO_WORK = (
 )
 
 
-def briefing(settings: Settings, brief: AuthoringBrief, prompt: str, finish: str) -> str:
-    return "\n\n".join((_instructions(settings, brief), prompt, _HOW_TO_WORK.format(finish=finish)))
+def briefing(run: AuthoringRun, finish: str) -> str:
+    return "\n\n".join(
+        (
+            _instructions(run.settings, run.brief, run.playing),
+            run.opening_prompt,
+            _HOW_TO_WORK.format(finish=finish),
+        )
+    )
 
 
 def growth_run(settings: Settings, engine: Engine, character: Character, state: Game) -> GrowthRun:
     brief = extend_brief(state.world)
-    playing = (PlaytestCheck(engine=engine, character=character),)
+    scenario = load_scenario(settings.scenarios_dir, state.scenario_id)
+    playing = PlaytestCheck(
+        engine=engine,
+        character=character,
+        packs=selected_packs(engine, scenario.packs),
+        sources=engine_packs(settings, engine.id, state.scenario_id),
+    )
     return GrowthRun(
         settings=settings,
         draft=ScenarioDraft.from_game(state),
@@ -234,16 +272,17 @@ def scenario_run(
     slug: Slug,
     premise: str,
     grows: bool,
-    engines: Sequence[EngineId],
+    engine: EngineId,
     document: Path | None,
     *,
+    packs: tuple[Slug, ...] = ("srd",),
     brief: AuthoringBrief | None = None,
     art_style: str = "",
 ) -> ScenarioRun:
     check_new_scenario(settings, slug, premise, document)
     if brief is None:
         brief = OPENING_SLICE if grows else WHOLE_SCENARIO
-    playing = playtest_checks(settings, engines)
+    playing = playtest_check(settings, engine, packs)
     return ScenarioRun(
         settings=settings,
         draft=ScenarioDraft(grows=grows),
@@ -254,6 +293,5 @@ def scenario_run(
         slug=slug,
         premise=premise,
         document=document,
-        engines=tuple(engines),
         art_style=art_style,
     )

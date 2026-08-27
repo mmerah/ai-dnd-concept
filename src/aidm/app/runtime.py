@@ -7,14 +7,14 @@ from random import Random
 
 from pydantic_ai import Agent
 
-from aidm.authoring.draft import ExtensionPatch, apply_patch
+from aidm.authoring.draft import ExtensionPatch, apply_patch, engine_packs
 from aidm.authoring.run import growth_run
 from aidm.config import Settings, load_settings
 from aidm.content.io import FileStore, SavedGame, load_character, load_scenario
 from aidm.content.model import Character, Scenario
 from aidm.engines.core import AdvancementOffer, Engine, ProposalBase, transact
 from aidm.engines.registry import begin_game, build_engine
-from aidm.state.entities import PLAYER_ID, EngineId, EntityId, Frozen
+from aidm.state.entities import PLAYER_ID, EngineId, EntityId, Frozen, Slug
 from aidm.state.facts import Fact
 from aidm.state.model import Game, ThreadStatus, frontier
 from aidm.state.play import (
@@ -338,7 +338,7 @@ class Runtime:
     """The composition root: settings, the built engines, and the games currently open."""
 
     settings: Settings
-    _engines: dict[EngineId, Engine] = field(default_factory=dict, repr=False)
+    _engines: dict[tuple[EngineId, Slug | None], Engine] = field(default_factory=dict, repr=False)
     _sessions: dict[str, GameSession] = field(default_factory=dict, repr=False)
 
     def busy_refusal(self) -> str | None:
@@ -351,12 +351,12 @@ class Runtime:
         self._engines.clear()
         self._sessions.clear()
 
-    def engine(self, engine_id: EngineId) -> Engine:
-        """Memoised: every open session shares the one built engine."""
-        held = self._engines.get(engine_id)
+    def engine(self, engine_id: EngineId, scenario_id: Slug | None = None) -> Engine:
+        """Memoised per scenario, because a scenario may ship content packs of its own."""
+        held = self._engines.get((engine_id, scenario_id))
         if held is None:
-            held = build_engine(engine_id, self.settings.packs_dir / engine_id)
-            self._engines[engine_id] = held
+            held = build_engine(engine_id, engine_packs(self.settings, engine_id, scenario_id))
+            self._engines[engine_id, scenario_id] = held
         return held
 
     def session(self, target: LaunchTarget) -> GameSession:
@@ -372,7 +372,7 @@ class Runtime:
 
     def _open(self, target: LaunchTarget) -> GameSession:
         settings = self.settings
-        engine = self.engine(target.engine)
+        engine = self.engine(target.engine, target.scenario_id)
         scenario = load_scenario(settings.scenarios_dir, target.scenario_id)
         character = load_character(
             settings.characters_dir, target.character_id, engine.id, engine.check_overlay

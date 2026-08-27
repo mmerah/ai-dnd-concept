@@ -1,154 +1,203 @@
 {
-  "scenario_id": "whispering-vault",
+  "scenario_id": "drowned-road",
   "character_id": "kael",
   "scenario": {
-    "title": "The Whispering Vault",
-    "premise": "The abbey of Saint Corvin was abandoned in a single night. Kael has come for the sealed vault beneath it, and the abbot's study is the only room still lit."
+    "title": "The Drowned Road",
+    "premise": "When Ashant's terraformers raised the sea, it swallowed the causeway out to Relay Nine, and the survey station was written off with its vault deck still sealed. Kael has come for what is locked down there: the founding survey nobody has read in thirty years. He starts at the siren mast on the Holdfast shore, where Ovid Sarn sounds the tide klaxon twice a day and nobody walks the drowned road without hearing it."
   },
   "engine": "twentyfourxx",
+  "player_id": "player",
   "world": {
     "entities": [
       {
-        "id": "study",
+        "id": "siren-mast",
         "kind": "location",
-        "name": "the abbot's study",
-        "brief": "A cramped room of ledgers and cold candle stubs; a loose flagstone hides something under the desk.",
-        "detail": null,
-        "known": true,
-        "parent_id": null,
-        "traits": [],
-        "exits": [
-          {
-            "to": "cloister",
-            "known": true,
-            "locked": false
-          }
-        ]
-      },
-      {
-        "id": "cloister",
-        "kind": "location",
-        "name": "the cloister",
-        "brief": "A frost-rimed colonnade around a dead garden; Brother Tomas sweeps it to no purpose.",
-        "detail": null,
-        "known": true,
-        "parent_id": null,
-        "traits": [],
-        "exits": [
-          {
-            "to": "study",
-            "known": true,
-            "locked": false
-          },
-          {
-            "to": "bell-tower",
-            "known": false,
-            "locked": false
-          },
-          {
-            "to": "vault",
-            "known": false,
-            "locked": true
-          }
-        ]
-      },
-      {
-        "id": "bell-tower",
-        "kind": "location",
-        "name": "the bell tower",
-        "brief": "A cramped climb of rotten ladders above the nave, its bell long since stilled.",
-        "detail": null,
-        "known": false,
-        "parent_id": null,
-        "traits": [],
-        "exits": [
-          {
-            "to": "cloister",
-            "known": false,
-            "locked": false
-          }
-        ]
-      },
-      {
-        "id": "vault",
-        "kind": "location",
-        "name": "the sealed vault",
-        "brief": "The undercroft chamber Kael came for, its door bearing a seal nobody living can read.",
+        "name": "the siren mast",
+        "brief": "A ferrocrete mast at the head of the causeway, carrying a tide klaxon that carries eight kilometres out over the water.",
         "detail": {
-          "description": "The door is stone, and the seal cut into it is unweathered where everything around it has worn.",
-          "when_reached": "Kael has found the vault door: advance thread vault-seal to stage door-found. The seal is the whole obstacle now — press on what opening it will cost."
+          "description": "An inspection panel low on the mast's seaward face sits a finger proud of its frame, and whatever is behind it has stayed dry.",
+          "when_reached": "Look behind the loose inspection panel for a hidden object."
+        },
+        "known": true,
+        "parent_id": null,
+        "traits": [],
+        "exits": [
+          {
+            "to": "holdfast",
+            "known": true,
+            "locked": false
+          },
+          {
+            "to": "relay-nine",
+            "known": false,
+            "locked": false
+          }
+        ],
+        "rules": {}
+      },
+      {
+        "id": "holdfast",
+        "kind": "location",
+        "name": "Holdfast",
+        "brief": "Forty pressure-huts stacked above the tideline around a bar and a salvage counter, with the crossing hours running in red on the counter's board.",
+        "detail": {
+          "description": "Verrin Ade's counter carries what comes off the wrecks — armour, cyber-work, air — racked behind her and priced in credits, paid before it leaves the rack.",
+          "when_reached": "Kael has come into Holdfast. Deel Hask drinks at the bar and marks anyone who asks after Relay Nine; he is here unless the fiction has moved him."
+        },
+        "known": true,
+        "parent_id": null,
+        "traits": [],
+        "exits": [
+          {
+            "to": "siren-mast",
+            "known": true,
+            "locked": false
+          }
+        ],
+        "rules": {}
+      },
+      {
+        "id": "relay-nine",
+        "kind": "location",
+        "name": "Relay Nine",
+        "brief": "A survey relay on a rock stack out in the shallows, reached up a corroded gantry ladder; its beacon has not missed a night in forty years.",
+        "detail": {
+          "description": "The gantry's lowest rungs are gone entirely, and the pressure hatch on the lower deck is shut and rimed white with salt.",
+          "when_reached": "Kael has crossed to Relay Nine: advance thread vault-survey to stage relay-reached. Mara Voss keeps the beacon here, and the hatch on the lower deck is the only way down — press on getting it open."
         },
         "known": false,
         "parent_id": null,
         "traits": [],
         "exits": [
           {
-            "to": "cloister",
+            "to": "siren-mast",
+            "known": false,
+            "locked": false
+          },
+          {
+            "to": "vault-deck",
             "known": false,
             "locked": true
           }
-        ]
+        ],
+        "rules": {}
       },
       {
-        "id": "mara",
-        "kind": "actor",
-        "name": "Mara",
-        "brief": "The abbey's last scribe, cautious and tired, still cataloguing books nobody will read.",
-        "detail": null,
-        "known": true,
-        "parent_id": "study",
-        "traits": [],
-        "exits": []
-      },
-      {
-        "id": "tomas",
-        "kind": "actor",
-        "name": "Brother Tomas",
-        "brief": "A deaf old porter who sweeps the cloister and knows almost nothing about the vault.",
-        "detail": null,
-        "known": true,
-        "parent_id": "cloister",
-        "traits": [],
-        "exits": []
-      },
-      {
-        "id": "elena",
-        "kind": "actor",
-        "name": "Elena",
-        "brief": "The vault's former archivist, hiding in the bell tower; she alone remembers the sealing rite; she catalogued the vault ledgers beside Mara for two winters, until the night she went below alone and never came back up.",
+        "id": "vault-deck",
+        "kind": "location",
+        "name": "the vault deck",
+        "brief": "The relay's lowest deck, flooded to the knee in cold black water, with the data vault shut behind a hatch nobody has opened since the station was written off.",
         "detail": {
-          "description": "She carries the sealing rite in her head and nowhere else.",
-          "when_reached": "Kael has found the archivist: advance thread vault-seal to stage archivist-found. She will name a price before she gives the rite up, and the rite is not known until she has."
+          "description": "The hatch reads a physical key-spike, not a code, and its socket is bright and clean where every surface around it has corroded.",
+          "when_reached": "Kael has found the way down: advance thread vault-survey to stage hatch-found. The spike socket on the hatch is the whole obstacle now — press on what filling it will cost him."
         },
         "known": false,
-        "parent_id": "bell-tower",
+        "parent_id": null,
         "traits": [],
-        "exits": []
+        "exits": [
+          {
+            "to": "relay-nine",
+            "known": false,
+            "locked": true
+          }
+        ],
+        "rules": {}
       },
       {
-        "id": "cloister-rat",
+        "id": "ovid-sarn",
         "kind": "actor",
-        "name": "a bloated rat",
-        "brief": "It has grown fat on the dead garden and does not run from a lantern.",
-        "detail": null,
-        "known": false,
-        "parent_id": "cloister",
+        "name": "Ovid Sarn",
+        "brief": "The siren keeper, heavy and silent, who sounds the tide klaxon twice a day and has not missed a sounding in eleven years.",
+        "detail": {
+          "description": "He keeps the mast's relay gear running on scavenged parts and times the soundings off a hand counter rather than the station clock he no longer trusts.",
+          "when_reached": "Ovid knows the crossing hour to the minute and will give it to anyone who asks straight. He will not walk the road himself, and he will say why if pressed."
+        },
+        "known": true,
+        "parent_id": "siren-mast",
         "traits": [],
-        "exits": []
+        "exits": [],
+        "rules": {
+          "skills": {
+            "Labor": 10,
+            "Electronics": 8
+          }
+        }
       },
       {
-        "id": "vault-map",
+        "id": "verrin-ade",
+        "kind": "actor",
+        "name": "Verrin Ade",
+        "brief": "She runs Holdfast's salvage counter and prices everything the wrecks give up: plate, cyber-work, bottled air.",
+        "detail": {
+          "description": "Her rack holds vests and battle armour off drowned divers, a case of cyber-eyes in gel, and survey packs still carrying another crew's tags.",
+          "when_reached": "Verrin sells at the printed price, in credits, before the goods leave the rack. She does not haggle, does not extend credit, and will not be talked past the board."
+        },
+        "known": true,
+        "parent_id": "holdfast",
+        "traits": [],
+        "exits": [],
+        "rules": {
+          "skills": {
+            "Connections": 10,
+            "Electronics": 8
+          }
+        }
+      },
+      {
+        "id": "mara-voss",
+        "kind": "actor",
+        "name": "Mara Voss",
+        "brief": "The last beacon tech on Relay Nine, forty years alone on the stack and unseen by anyone crossing below.",
+        "detail": {
+          "description": "She has kept the beacon lit on parts she machines herself, and she knows the lower deck floods on a schedule the tide tables get wrong.",
+          "when_reached": "Mara has held the relay alone since the station was written off and does not believe the vault should be opened. She will name what she wants before she helps with the hatch."
+        },
+        "known": false,
+        "parent_id": "relay-nine",
+        "traits": [],
+        "exits": [],
+        "rules": {
+          "skills": {
+            "Electronics": 10,
+            "Climbing": 8
+          }
+        }
+      },
+      {
+        "id": "deel-hask",
+        "kind": "actor",
+        "name": "Deel Hask",
+        "brief": "A wrecker who works the drowned road, cutting divers out of their suits when the tide catches them short; he drinks at Holdfast and marks who asks after Relay Nine.",
+        "detail": {
+          "description": "He carries a salvage cutting bar that goes through plate as readily as it goes through a suit seal, and he has never yet needed it twice on the same person.",
+          "when_reached": "Deel takes what the road takes. He follows anyone who asks after the relay, and he starts the fight at the moment the tide has already cut off the way back."
+        },
+        "known": false,
+        "parent_id": "holdfast",
+        "traits": [],
+        "exits": [],
+        "rules": {
+          "skills": {
+            "Intimidation": 10,
+            "Hand-to-hand": 8,
+            "Tracking": 8
+          }
+        }
+      },
+      {
+        "id": "cipher-spike",
         "kind": "item",
-        "name": "the vault map",
-        "brief": "A creased chart of the undercroft, marking a stair the abbey's own plans deny.",
+        "name": "the cipher spike",
+        "brief": "A corroded survey key-spike in a sleeve of grease-paper, cut for a socket nothing on this shore has.",
         "detail": {
-          "description": "Drawn in an old hand; the undercroft it maps is larger than the abbey standing over it.",
-          "when_reached": "Kael has the stair charted: advance thread vault-seal to stage stair-charted. The chart marks a way down from the cloister that the abbey's own plans deny — press on getting down there."
+          "description": "Survey issue, its contacts salt-pitted but whole; the sleeve is stamped with Relay Nine's registry and a hand-scratched date the station was already closed by.",
+          "when_reached": "Kael has the cipher spike: advance thread vault-survey to stage spike-found. It was cut for the vault hatch under Relay Nine — press on reaching the socket it fills."
         },
         "known": true,
         "parent_id": "player",
         "traits": [],
-        "exits": []
+        "exits": [],
+        "rules": {}
       },
       {
         "id": "lantern",
@@ -165,16 +214,17 @@
             "text": "(gear) Its shifting light exposes seams and movement in deep shadow."
           }
         ],
-        "exits": []
+        "exits": [],
+        "rules": {}
       },
       {
         "id": "player",
         "kind": "actor",
         "name": "Kael",
-        "brief": "A scarred relic-hunter who came to the abbey for what is sealed beneath it.",
+        "brief": "A scarred relic-hunter who comes wherever something old lies sealed, and does not leave it shut.",
         "detail": null,
         "known": true,
-        "parent_id": "study",
+        "parent_id": "siren-mast",
         "traits": [
           {
             "id": "relic-hunter",
@@ -192,16 +242,17 @@
             "text": "(condition) Listening for the next shift of weight behind the door."
           }
         ],
-        "exits": []
+        "exits": [],
+        "rules": {}
       }
     ],
     "threads": [
       {
-        "id": "vault-seal",
-        "title": "The sealed vault",
+        "id": "vault-survey",
+        "title": "The sealed vault deck",
         "status": "active",
         "stage": "unfound",
-        "note": "Kael came for the vault under the abbey: the way down to it, the seal on its door, and what opening that seal costs.",
+        "note": "Kael came for the founding survey locked under Relay Nine: the spike that fills the hatch socket, the crossing out to the stack between soundings, and what Mara Voss will want for letting him down there.",
         "clock": null
       }
     ],
@@ -212,10 +263,16 @@
   },
   "mechanics": {
     "sheets": {
-      "mara": {
+      "ovid-sarn": {
+        "packs": [
+          "srd"
+        ],
         "specialty": "",
         "origin": "",
-        "skills": {},
+        "skills": {
+          "Labor": 10,
+          "Electronics": 8
+        },
         "credits": {
           "current": 2,
           "maximum": null
@@ -225,10 +282,16 @@
           "maximum": null
         }
       },
-      "tomas": {
+      "verrin-ade": {
+        "packs": [
+          "srd"
+        ],
         "specialty": "",
         "origin": "",
-        "skills": {},
+        "skills": {
+          "Connections": 10,
+          "Electronics": 8
+        },
         "credits": {
           "current": 2,
           "maximum": null
@@ -238,10 +301,16 @@
           "maximum": null
         }
       },
-      "elena": {
+      "mara-voss": {
+        "packs": [
+          "srd"
+        ],
         "specialty": "",
         "origin": "",
-        "skills": {},
+        "skills": {
+          "Electronics": 10,
+          "Climbing": 8
+        },
         "credits": {
           "current": 2,
           "maximum": null
@@ -251,10 +320,17 @@
           "maximum": null
         }
       },
-      "cloister-rat": {
+      "deel-hask": {
+        "packs": [
+          "srd"
+        ],
         "specialty": "",
         "origin": "",
-        "skills": {},
+        "skills": {
+          "Intimidation": 10,
+          "Hand-to-hand": 8,
+          "Tracking": 8
+        },
         "credits": {
           "current": 2,
           "maximum": null
@@ -265,6 +341,9 @@
         }
       },
       "player": {
+        "packs": [
+          "srd"
+        ],
         "specialty": "Sneak",
         "origin": "Human",
         "skills": {
@@ -315,7 +394,7 @@
     },
     {
       "prompt": "I lever up the loose flagstone and listen at the vault door.",
-      "place": "the abbot's study",
+      "place": "the siren mast",
       "lines": [
         {
           "speaker_id": null,
@@ -324,7 +403,7 @@
       ],
       "events": [
         {
-          "title": "Took the vault map",
+          "title": "Took the cipher spike",
           "badges": [],
           "dice": [],
           "outcome": "",

@@ -19,6 +19,7 @@ diff. Every cut is recorded as a deviation.
 | 0 | L0 — docs become pointers, not copies | `plans/L0-docs-as-pointers.md` | no |
 | 1 | L3 — engine shape before the new engines | `plans/L3-engine-shape.md` | 1 signature + 1 hook |
 | 2 | L4 — Loner 3e / 24XX rules compliance | `plans/L4-rules-compliance.md` | no |
+| 2.5 | 24XX needs a scenario in its own genre | this file, below | no |
 | 3 | L6 — Cairn Barebones engine | `plans/L6-cairn-barebones.md` | no |
 | 4 | L5 — Fate Condensed engine | `plans/L5-fate-condensed.md` | no |
 
@@ -74,6 +75,45 @@ No drastic base-shape change; every gap is local to one engine's `rules.py`, `en
 
 Everything else is a pack rename, a `breaks` counter, a dead-payload deletion, or a deviation line.
 Both engines' dice maths is compliant as printed.
+
+## Phase 2.5 — 24XX needs a scenario in its own genre
+
+No plan file: the whole design is here, and it is one authoring conversation, not a code change.
+
+**The problem.** 24XX's SRD pack is science fiction — cyber-ears, cranial jacks, hardsuits, low-G
+jetpacks, flamethrowers, tranq guns. `drowned-road` is a tide-bell pilgrimage down a flooded
+causeway. That mismatch was harmless while scenarios named several engines and 24XX also ran on
+`whispering-vault`. Since the single-engine change it is load-bearing, because `drowned-road` is now
+24XX's **only** scenario:
+
+1. `buy_gear` ships the full catalogue in its tool description, so every Director prompt in that
+   scenario offers a hardsuit and a cyber-limb to a pilgrim at a chapel. The model is being asked to
+   choose from a list its own scene forbids.
+2. `evals/turn_eval.py` therefore measures a weak model's tool choice against a catalogue the
+   fiction cannot contain — the one place 24XX's numbers are supposed to be trustworthy.
+3. The combat and defence coverage runs against `deel-hask`, a wrecker with a knife. The break
+   budgets that Phase 2 built (`breaks-1..3`, vest through hardsuit) can never fire in that fiction.
+
+**The work.** Re-author `drowned-road` as a 24XX-genre scenario, or author a replacement and retire
+it. Use the `authoring-aidm` skill, which now takes `packs` and tells the author to read the pack
+files before writing entity `rules`. The premise is free; the shape is not — it must keep everything
+the eval and the engine already depend on:
+
+- `engine: "twentyfourxx"`, `packs: ["srd"]`, `grows: true`.
+- Four or so locations, with a far one reachable from the start, since the shared eval cases walk and
+  climb between them.
+- A companion NPC, a hostile, and an item the player carries.
+- Any authored actor `rules` use skills drawn from the selected pack. 24XX opposition may omit a
+  sheet and be expressed through behavior, risks, and obstacles.
+- At least two `detail.when_reached` stage directions naming a real thread and stage, which the
+  `Canon` record's stage expectations read.
+- Gear the catalogue can actually sell, so `buy_gear` and the break budgets are reachable in play.
+
+Then update that engine's entry in `evals/turn_eval.py`'s `CANON` with the new ids and stages.
+
+**Not in scope.** `whispering-vault` stays loner3e and stays `settings.authoring.worked_example`.
+`characters/kael/twentyfourxx.json` stays: Kael's brief was made scenario-agnostic — someone who
+"comes wherever something old lies sealed" reads as well on a dead colony as in an abbey.
 
 ## Phase 3 — L6, Cairn Barebones
 
@@ -136,26 +176,32 @@ fallback is not built.
 
 ## Scenarios
 
-No plan file: `Scenario` (`content/model.py:19-28`) has no per-engine field, so a per-engine scenario
-is the same JSON with a different `engines` list and different prose. There is nothing to design. The
-`authoring-aidm` skill already takes `engines`, already playtests a draft against every named engine
-(`authoring/draft.py:200-212`), and already has an opening-slice mode (`prompts/scenario_opening.md`)
-that is exactly the small generate-as-it-goes start Cairn wants. Four authoring conversations, no code.
+**Superseded by the single-engine decision (2026-08-26).** This section previously read "`Scenario`
+has no per-engine field, so a per-engine scenario is the same JSON with a different `engines` list
+... There is nothing to design", and kept `whispering-vault` multi-engine as the shared fixture.
+That is no longer true and the reasoning is recorded here so it is not re-proposed.
 
-1. Keep `whispering-vault` multi-engine as the eval and worked-example fixture; tailor it toward Loner
-   only as far as adding Goal / Motive / Nemesis threads, which L4 already treats as threads and
-   entities. Leave `drowned-road` as it is.
-2. Author one **single-engine** scenario per new engine, each after that engine's phase ships and its
-   `characters/kael/<engine>.json` overlay exists: 24XX and Fate at the full bar, Cairn with
-   `grows: true` and the opening slice only.
-3. Single-engine, not added to the two existing scenarios: once Cairn's trait-mark convention lands, a
-   scenario carrying `d8` / `armor-2` / `petty` leaks meaningless mechanical traits into every other
-   engine's prompt (`turn/context.py` renders traits per entity). Fate's aspects-as-traits are the same
-   problem, more weakly.
+A scenario names exactly one engine (`Scenario.engine`), and its entities carry that engine's
+authored values (`Entity.rules`). The multi-engine form could not express mechanics at all: every
+non-player entity was born with a blank sheet, so a trained scribe and a bloated rat rendered
+identically to the Director. Item 3 below already saw half of this — a scenario carrying `d8` or
+`armor-2` leaks meaningless traits into every other engine's prompt — and the answer is structural,
+not a matter of which scenario ships where.
 
-Note `settings.authoring.starter_character = "kael"` and `worked_example = "whispering-vault"`
-(`config.py:70-71`): that is why `characters/kael/cairn.json` and `kael/fate.json` are mandatory in
-L6 and L5, needed by any future authoring run and not only by play.
+1. `whispering-vault` is `loner3e` and stays `settings.authoring.worked_example`. `drowned-road` is
+   `twentyfourxx` and gained a hostile actor so the engine has combat and defence eval coverage.
+2. Still true: author one single-engine scenario per new engine, after that engine's phase ships and
+   its `characters/kael/<engine>.json` overlay exists. Cairn takes `grows: true` and the opening
+   slice only. `characters/kael/cairn.json` and `kael/fate.json` stay mandatory in L6 and L5 —
+   `settings.authoring.starter_character = "kael"` needs them for any authoring run, not only play.
+3. `evals/turn_eval.py` holds a per-engine `Canon` record naming each engine's scenario and the ids
+   its shared cases reach for. A new engine adds one entry; `cases_for` still raises for an engine
+   that declares nothing.
+4. `Scenario.packs` always includes `srd` and names every additional pack used by the scenario.
+   Authoring receives the selected, validated pack content; game startup rejects packs that are no
+   longer installed, and each engine validates the authored vocabulary it owns.
+5. `SheetBase.packs` does the same per entity and may name several selected packs. A mechanically
+   singular choice gets its own accurate field; Loner uses `twist_pack` for its Oracle table.
 
 ## Not in scope
 

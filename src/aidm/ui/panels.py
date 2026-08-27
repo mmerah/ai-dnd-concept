@@ -12,7 +12,6 @@ from aidm.app.runtime import (
     thread_summaries,
 )
 from aidm.content.io import SavedGame
-from aidm.state.entities import PLAYER_ID
 from aidm.state.facts import trace_lines, traced
 from aidm.state.play import AdvanceApplied, StepTrace, TraceEntry, TurnTrace, WorldExtended
 from aidm.turn.context import player_scene
@@ -22,7 +21,7 @@ from .widgets import entity_row, heading, labeled_value, refuse_if_busy, working
 
 def sheet_panel(session: GameSession) -> None:
     player = session.state.player
-    entity_row(session.icon(PLAYER_ID), player.name, player.brief)
+    entity_row(session.icon(player.id), player.name, player.brief)
     if player.traits:
         heading("Traits")
         with ui.row().classes("w-full items-center").style("gap: 0.35rem"):

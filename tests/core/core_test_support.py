@@ -17,12 +17,13 @@ from pydantic_ai.models import Model
 from pydantic_ai.models.function import AgentInfo, FunctionModel
 from pydantic_settings import SettingsConfigDict
 
+from aidm.app.launch import engine_ids
 from aidm.config import ProviderConfig, Providers, Settings
-from aidm.content.io import load_character, load_scenario
+from aidm.content.io import load_character, load_scenario, read_scenarios
 from aidm.content.model import Character, Scenario
 from aidm.engines.core import Engine, SheetMechanics
 from aidm.engines.registry import begin_game, build_engine
-from aidm.state.entities import EngineId, Entity
+from aidm.state.entities import EngineId, Entity, Slug
 from aidm.state.model import Game
 from aidm.state.play import Answer, MechanicEvent, TurnTrace
 from aidm.turn.run import TurnResult, TurnStep, build_turn_agents, run_segment
@@ -75,12 +76,25 @@ def character() -> Character:
     return load_character(CHARACTERS, "kael", engine.id, engine.check_overlay)
 
 
+def scenario_for(engine_id: EngineId) -> Slug:
+    """Read off the shipped content rather than tabulated, so a second one fails here loudly."""
+    shipped = [
+        slug
+        for slug, scenario in read_scenarios(SCENARIOS, engine_ids())
+        if scenario.engine == engine_id
+    ]
+    if len(shipped) != 1:
+        raise ValueError(f"{engine_id!r} ships {len(shipped)} scenarios, not one: {shipped}")
+    return shipped[0]
+
+
 def game(engine_id: EngineId) -> tuple[Engine, Game]:
-    """The shipped scenario and character, composed under one engine."""
+    """The scenario authored for this engine and the shipped character, composed together."""
     engine = build_engine(engine_id)
-    selected_scenario = load_scenario(SCENARIOS, "whispering-vault")
+    scenario_id = scenario_for(engine_id)
+    selected_scenario = load_scenario(SCENARIOS, scenario_id)
     selected_character = load_character(CHARACTERS, "kael", engine.id, engine.check_overlay)
-    return engine, begin_game(engine, "whispering-vault", selected_scenario, selected_character)
+    return engine, begin_game(engine, scenario_id, selected_scenario, selected_character)
 
 
 def initialized() -> tuple[Engine, Game]:

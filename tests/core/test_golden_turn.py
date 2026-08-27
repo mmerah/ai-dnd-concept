@@ -39,8 +39,13 @@ HISTORY = (
 )
 NARRATION = "The flagstone lifts. Beyond the door, something shifts its weight and waits."
 SEED = 11
-# One unconditional tool call every engine shares, so the two traces differ only by their roll.
-TAKE_THE_MAP = tool_call("move", entity_id="vault-map", to_id="player")
+
+
+# One unconditional tool call every engine shares, differing only in what its scenario hid.
+def _take(item_id: str) -> ModelResponse:
+    return tool_call("move", entity_id=item_id, to_id="player")
+
+
 # What the last tool call writes once the roll has landed: the same shape under every engine.
 LISTENING = tool_call(
     "add_trait",
@@ -51,7 +56,7 @@ LISTENING = tool_call(
 # The fiction resolved by the engine's own roll.
 SCRIPTS: Mapping[EngineId, tuple[ModelResponse, ...]] = {
     LONER3E: (
-        TAKE_THE_MAP,
+        _take("vault-map"),
         tool_call(
             "roll_question",
             actor_id="player",
@@ -63,11 +68,12 @@ SCRIPTS: Mapping[EngineId, tuple[ModelResponse, ...]] = {
         text(NARRATION),
     ),
     TWENTYFOURXX: (
-        TAKE_THE_MAP,
+        _take("cipher-spike"),
         tool_call(
             "roll_attempt",
             actor_id="player",
             goal="Listen at the vault door without being heard",
+            hit=False,
             skill="Stealth",
             helped="the relic-hunter's ear for old stone",
             luck_test="something behind the door is already listening back",

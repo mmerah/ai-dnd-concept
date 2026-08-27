@@ -1,12 +1,14 @@
-from collections.abc import Callable, Iterable, Sequence
-from dataclasses import dataclass
+from collections.abc import Callable, Iterable, Mapping
+from dataclasses import dataclass, replace
 from pathlib import Path
 
-from pydantic import Field, ValidationError
+from pydantic import Field, JsonValue, ValidationError
 
 from aidm.config import Settings
 from aidm.content.io import (
     load_character,
+    load_scenario,
+    scenario_packs,
     source_file,
     whole_text,
     write_scenario,
@@ -14,6 +16,7 @@ from aidm.content.io import (
 from aidm.content.model import Character, Scenario
 from aidm.engines.core import Engine
 from aidm.engines.registry import begin_game, build_engine
+from aidm.engines.sources import SHIPPED_PACKS, PackSources
 from aidm.state.entities import PLAYER_ID, EngineId, Entity, EntityId, Exit, Frozen, Mutable, Slug
 from aidm.state.facts import Fact
 from aidm.state.model import Game, ScenarioMeta, Thread, WorldState
@@ -74,9 +77,11 @@ class ScenarioPatch(Frozen):
         ]
 
 
-class ScenarioDraft(Mutable):
-    """The scenario under authorship, flat in `ScenarioPatch` vocabulary until `scenario()`."""
+# Read back but never written by `write`: the run settles `grows`, and `write_pack` owns `packs`.
+NOT_PATCHED = {"grows", "packs"}
 
+
+class ScenarioDraft(Mutable):
     grows: bool = False
     art_style: str = ""
     meta: ScenarioMeta | None = None
@@ -84,6 +89,8 @@ class ScenarioDraft(Mutable):
     starting_party: tuple[EntityId, ...] = ()
     entities: list[Entity] = Field(default_factory=list)
     threads: list[Thread] = Field(default_factory=list)
+    # Content packs this draft ships with; they reach disk beside the world it writes.
+    packs: dict[Slug, JsonValue] = Field(default_factory=dict)
 
     @classmethod
     def from_scenario(cls, scenario: Scenario) -> "ScenarioDraft":
@@ -99,8 +106,9 @@ class ScenarioDraft(Mutable):
 
     @classmethod
     def from_game(cls, state: Game) -> "ScenarioDraft":
-        """Exclude player-owned state because `Scenario` refuses it."""
+        """Exclude played-character state: `Scenario` refuses the reserved player id."""
         world = state.world
+        played = {PLAYER_ID, state.player_id}
         return cls(
             meta=state.scenario,
             starting_location_id=state.player_location,
@@ -112,7 +120,7 @@ class ScenarioDraft(Mutable):
             entities=[
                 entity.model_copy(deep=True)
                 for entity in world.entities
-                if PLAYER_ID not in (entity.id, entity.parent_id)
+                if played.isdisjoint({entity.id, entity.parent_id})
             ],
             threads=[thread.model_copy(deep=True) for thread in world.threads],
         )
@@ -165,10 +173,15 @@ class ScenarioDraft(Mutable):
             raise ValueError(f"the draft holds no location {entity_id!r}")
         return held
 
-    def as_json(self) -> str:
-        return self.model_dump_json(indent=2, exclude={"grows"})
+    def write_pack(self, pack_id: Slug, content: dict[str, JsonValue]) -> str:
+        wrote = "rewrote" if pack_id in self.packs else "wrote"
+        self.packs[pack_id] = content
+        return f"{wrote} content pack {pack_id}"
 
-    def scenario(self, engines: tuple[EngineId, ...]) -> Scenario:
+    def as_json(self) -> str:
+        return self.model_dump_json(indent=2, exclude=NOT_PATCHED)
+
+    def scenario(self, engine: EngineId, packs: tuple[Slug, ...] = ("srd",)) -> Scenario:
         if self.meta is None:
             raise ValueError("the draft has no `meta` yet: write a title and premise first")
         if self.starting_location_id is None:
@@ -176,7 +189,8 @@ class ScenarioDraft(Mutable):
         return Scenario(
             meta=self.meta,
             grows=self.grows,
-            engines=engines,
+            engine=engine,
+            packs=(*packs, *self.packs),
             art_style=self.art_style,
             starting_location_id=self.starting_location_id,
             world=WorldState(
@@ -191,24 +205,57 @@ class ScenarioDraft(Mutable):
 class PlaytestCheck:
     engine: Engine
     character: Character
+    packs: tuple[Slug, ...]
+    sources: PackSources = SHIPPED_PACKS
 
     def check(self, scenario: Scenario) -> None:
         # A playtest never saves, so the game's id is never read; any well-formed slug serves.
         _ = begin_game(self.engine, "draft", scenario, self.character)
 
-
-def playtest_checks(settings: Settings, engines: Sequence[EngineId]) -> tuple[PlaytestCheck, ...]:
-    built: list[PlaytestCheck] = []
-    for engine_id in engines:
-        engine = build_engine(engine_id)
-        character = load_character(
-            settings.characters_dir,
-            settings.authoring.starter_character,
-            engine.id,
-            engine.check_overlay,
+    def shipping(self, drafted: Mapping[Slug, JsonValue]) -> "PlaytestCheck":
+        """This check under an engine that also holds the packs a draft has written itself."""
+        if not drafted:
+            return self
+        return replace(
+            self, engine=build_engine(self.engine.id, replace(self.sources, drafted=drafted))
         )
-        built.append(PlaytestCheck(engine=engine, character=character))
-    return tuple(built)
+
+
+def engine_packs(
+    settings: Settings, engine_id: EngineId, scenario_id: Slug | None = None
+) -> PackSources:
+    """Installed user packs, then the packs one scenario ships; a run's own drafts join later."""
+    beside = () if scenario_id is None else (scenario_packs(settings.scenarios_dir, scenario_id),)
+    return PackSources((settings.packs_dir / engine_id, *beside))
+
+
+def selected_packs(engine: Engine, packs: tuple[Slug, ...]) -> tuple[Slug, ...]:
+    if "srd" not in packs:
+        raise ValueError("scenario packs must include 'srd'")
+    if len(packs) != len(set(packs)):
+        raise ValueError("scenario pack ids must be unique")
+    if missing := sorted(set(packs) - set(engine.pack_ids)):
+        raise ValueError(f"packs not installed for {engine.id!r}: {missing}")
+    return packs
+
+
+def installed_pack_ids(settings: Settings, engine_id: EngineId) -> tuple[Slug, ...]:
+    return build_engine(engine_id, engine_packs(settings, engine_id)).pack_ids
+
+
+def playtest_check(
+    settings: Settings, engine_id: EngineId, packs: tuple[Slug, ...] = ("srd",)
+) -> PlaytestCheck:
+    sources = engine_packs(settings, engine_id)
+    engine = build_engine(engine_id, sources)
+    chosen = selected_packs(engine, packs)
+    character = load_character(
+        settings.characters_dir,
+        settings.authoring.starter_character,
+        engine.id,
+        engine.check_overlay,
+    )
+    return PlaytestCheck(engine=engine, character=character, packs=chosen, sources=sources)
 
 
 MIN_LOCATIONS = 4
@@ -216,7 +263,6 @@ MIN_ACTORS = 2
 
 
 def _bar_unmet(scenario: Scenario) -> list[str]:
-    """The bar the instructions set, checked mechanically — every unmet item found at once."""
     unmet: list[str] = []
     entities, threads = scenario.world.entities, scenario.world.threads
     locations = sorted(entity.id for entity in entities if entity.kind == "location")
@@ -251,7 +297,6 @@ MIN_OPENING_ENTITIES = 2
 
 
 def _opening_unmet(scenario: Scenario) -> list[str]:
-    """An opening slice's bar: what the first scene needs, since the rest materializes in play."""
     unmet: list[str] = []
     beyond = [
         entity for entity in scenario.world.entities if entity.id != scenario.starting_location_id
@@ -267,12 +312,12 @@ def _opening_unmet(scenario: Scenario) -> list[str]:
 
 @dataclass(frozen=True, slots=True)
 class AuthoringBrief:
-    """How much world one run authors: the bar it is held to, and the canon it may not rewrite."""
-
     bar_prompt: str
     unmet: Callable[[Scenario], list[str]]
     label: str = ""
     settled: frozenset[str] = frozenset()
+    # A pack ships in a scenario's own directory, which a world grown mid-game no longer writes.
+    writes_packs: bool = True
 
 
 WHOLE_SCENARIO = AuthoringBrief("scenario_bar.md", _bar_unmet, label="a whole scenario")
@@ -289,7 +334,6 @@ def brief_named(label: str) -> AuthoringBrief:
 
 
 def extend_brief(before: WorldState) -> AuthoringBrief:
-    """Bind the extension bar to what the world already contains."""
     held = {entity.id for entity in before.entities}
 
     def unmet(scenario: Scenario) -> list[str]:
@@ -316,24 +360,59 @@ def extend_brief(before: WorldState) -> AuthoringBrief:
         "scenario_extend.md",
         unmet,
         settled=frozenset(held | {thread.id for thread in before.threads}),
+        writes_packs=False,
     )
 
 
 def scenario_refusal(
-    draft: ScenarioDraft, playing: Sequence[PlaytestCheck], brief: AuthoringBrief = WHOLE_SCENARIO
+    draft: ScenarioDraft, playing: PlaytestCheck | None, brief: AuthoringBrief = WHOLE_SCENARIO
 ) -> str | None:
-    """The exact reason the draft will not play, or None; ValidationError counts as ValueError."""
+    if playing is None:
+        return "no engine is loaded to play this draft against"
     try:
-        scenario = draft.scenario(tuple(playtest.engine.id for playtest in playing))
-        for playtest in playing:
-            playtest.check(scenario)
+        playing = playing.shipping(draft.packs)
+        scenario = draft.scenario(playing.engine.id, playing.packs)
+        playing.check(scenario)
     except ValidationError as broken:
-        return str(broken.errors()[0]["msg"])
+        error = broken.errors()[0]
+        where = ".".join(str(part) for part in error["loc"])
+        return f"{where}: {error['msg']}" if where else str(error["msg"])
     except ValueError as refused:
         return str(refused)
     if unmet := brief.unmet(scenario):
         listed = "\n".join(f"- {item}" for item in unmet)
         return f"the draft plays, but it is under the bar. Still missing:\n{listed}"
+    return None
+
+
+def pack_refusal(
+    draft: ScenarioDraft,
+    playing: PlaytestCheck,
+    brief: AuthoringBrief,
+    pack_id: Slug,
+    content: dict[str, JsonValue],
+) -> str | None:
+    """Refused before the draft holds it, so a pack that cannot be played never lands."""
+    schema = playing.engine.pack_type
+    if not brief.writes_packs:
+        return (
+            "a world grown in play cannot ship a content pack: the game is already running on "
+            "the packs its scenario named. Write what this pass needs as entities, traits and "
+            "threads instead."
+        )
+    if schema is None:
+        return f"the {playing.engine.id!r} engine plays no content packs"
+    if pack_id in playing.engine.pack_ids:
+        return (
+            f"{pack_id!r} is already installed for {playing.engine.id!r}. Give a pack of your own "
+            "an id of its own, and write only what the selected packs lack."
+        )
+    try:
+        _ = schema.model_validate(content)
+        # Rebuilt whole, so a pack colliding with an installed one is refused here and not later.
+        _ = playing.shipping({**draft.packs, pack_id: content})
+    except ValueError as broken:
+        return str(broken)
     return None
 
 
@@ -373,11 +452,12 @@ def write_draft(
     settings: Settings,
     slug: Slug,
     draft: ScenarioDraft,
-    engines: tuple[EngineId, ...],
+    engine: EngineId,
+    packs: tuple[Slug, ...],
     source: Path | str,
 ) -> str:
-    scenario = draft.scenario(engines)
-    write_scenario(settings.scenarios_dir, slug, scenario, source)
+    scenario = draft.scenario(engine, packs)
+    write_scenario(settings.scenarios_dir, slug, scenario, draft.packs, source)
     return summarize(scenario)
 
 
@@ -401,13 +481,17 @@ class ExtensionPatch(Frozen):
 
 
 def extension_prompt(settings: Settings, state: Game) -> str:
+    scenario = load_scenario(settings.scenarios_dir, state.scenario_id)
     document = source_file(settings.scenarios_dir, state.scenario_id)
     given = given_text(settings, state.scenario.premise, document)
-    return f"{given}\n\nExtend the world `scenario_so_far` holds."
+    packs = ", ".join(scenario.packs)
+    return (
+        f"{given}\n\nThis scenario is authored against these content packs: {packs}."
+        "\n\nExtend the world `scenario_so_far` holds."
+    )
 
 
 def extension_patch(before: WorldState, after: ScenarioDraft) -> ExtensionPatch:
-    """What the live world takes from the grown draft: new entities, new ways in, new threads."""
     held = {entity.id: entity for entity in before.entities}
     opened = {thread.id for thread in before.threads}
     return ExtensionPatch(
@@ -424,7 +508,6 @@ def extension_patch(before: WorldState, after: ScenarioDraft) -> ExtensionPatch:
 
 
 def apply_patch(draft: Game, patch: ExtensionPatch) -> tuple[Fact, ...]:
-    """Materialize additions as unknown canon and refuse existing ids."""
     facts = [_added_entity(draft, entity) for entity in patch.entities]
     facts.extend(_added_exit(draft, link) for link in patch.exits)
     facts.extend(_opened(draft, thread) for thread in patch.threads)

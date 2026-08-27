@@ -1,8 +1,8 @@
 from collections.abc import Sequence
 from random import Random
 
-from .entities import DEAD, PLAYER_ID, Entity, EntityId, Exit, Slug, Trait, slug
-from .facts import DiceEvent, Fact, MechanicEvent, entity_fact, labeled
+from .entities import DEAD, Entity, EntityId, Exit, Slug, Trait, slug
+from .facts import DiceEvent, Fact, MechanicEvent, entity_fact
 from .model import AdvanceThread, Game
 
 
@@ -43,11 +43,11 @@ def reveal(draft: Game, entity_id: EntityId) -> list[Fact]:
 
 
 def require_actor_here(state: Game, actor_id: EntityId) -> Entity:
-    actor = state.player if actor_id == PLAYER_ID else state.world.require_kind(actor_id, "actor")
+    actor = state.world.require_kind(actor_id, "actor")
     if actor.trait(DEAD) is not None:
         # ponytail: no resurrection path — a corpse takes no trait either way; restart is the exit.
         raise ValueError(f"{actor.name} is dead; they take no further part.")
-    if actor_id != PLAYER_ID and not state.is_here(actor):
+    if actor_id != state.player_id and not state.is_here(actor):
         raise ValueError(
             f"{actor_id!r} is not here with the player. "
             "Move them here first, or act on who is here."
@@ -59,7 +59,7 @@ def kill(draft: Game, actor_id: EntityId) -> list[Fact]:
     actor = draft.world.require_kind(actor_id, "actor")
     if actor.trait(DEAD) is not None:
         raise ValueError(f"{actor.name} is already dead")
-    if actor_id != PLAYER_ID and not draft.is_here(actor):
+    if actor_id != draft.player_id and not draft.is_here(actor):
         raise ValueError(f"{actor_id!r} is not here with the player, so they cannot die here")
     facts = draft.reveal(actor)
     actor.traits.append(Trait(id=DEAD, name="Dead"))
@@ -68,13 +68,15 @@ def kill(draft: Game, actor_id: EntityId) -> list[Fact]:
         where = draft.world.require(actor.parent_id)
         for item in carried:
             item.parent_id = where.id
-        loose = ", ".join(labeled(item) for item in carried)
+        loose = ", ".join(draft.label(item) for item in carried)
         # Untold: a dropped item may still be unrevealed, and its name must not reach the narrator.
-        facts.append(Fact(kind="items_dropped", trace=f"{loose} fell loose at {labeled(where)}"))
+        facts.append(
+            Fact(kind="items_dropped", trace=f"{loose} fell loose at {draft.label(where)}")
+        )
     if actor_id in draft.world.party:
         draft.world.party.remove(actor_id)
     card = MechanicEvent(title=f"{actor.name} is dead", icon="skull")
-    facts.append(entity_fact(actor, "actor_killed", f"{labeled(actor)} is dead", event=card))
+    facts.append(entity_fact(actor, "actor_killed", f"{draft.label(actor)} is dead", event=card))
     return facts
 
 
@@ -109,7 +111,7 @@ def move(draft: Game, entity_id: EntityId, to_id: EntityId) -> list[Fact]:
 def _move_actor(draft: Game, actor_id: EntityId, to_id: EntityId) -> list[Fact]:
     destination = draft.world.require_kind(to_id, "location")
     here = draft.player_location
-    if actor_id == PLAYER_ID:
+    if actor_id == draft.player_id:
         way = _walkable_exit(draft, draft.world.require(here), destination)
         # Arrival reveals both directions because the player can see the way back.
         way.known = True
@@ -132,8 +134,8 @@ def _move_actor(draft: Game, actor_id: EntityId, to_id: EntityId) -> list[Fact]:
 
 
 def _move_item(draft: Game, item: Entity, to_id: EntityId) -> list[Fact]:
-    if to_id == PLAYER_ID:
-        if item.parent_id == PLAYER_ID:
+    if to_id == draft.player_id:
+        if item.parent_id == draft.player_id:
             raise ValueError(f"the player already carries item {item.id!r}")
         if item.parent_id != draft.player_location:
             raise ValueError(f"item {item.id!r} is not loose at the player's location")
@@ -144,7 +146,7 @@ def _move_item(draft: Game, item: Entity, to_id: EntityId) -> list[Fact]:
             raise ValueError("an item is set down at the player's own location, nowhere else")
     else:
         receiver = require_actor_here(draft, to_id)
-    if item.parent_id != PLAYER_ID:
+    if item.parent_id != draft.player_id:
         raise ValueError(f"the player does not carry item {item.id!r}")
     return [*draft.reveal(item), draft.move(item, receiver)]
 
@@ -169,7 +171,7 @@ def add_trait(draft: Game, entity_id: EntityId, trait_id: Slug, text: str = "") 
         raise ValueError(f"{entity.name} already carries the trait {trait_id!r}")
     name = trait_id.replace("-", " ").title()
     entity.traits.append(Trait(id=trait_id, name=name, text=text))
-    trace = f"{labeled(entity)} gained the trait {name}[{trait_id}]"
+    trace = f"{draft.label(entity)} gained the trait {name}[{trait_id}]"
     if text:
         trace += f" — {text}"
     card = MechanicEvent(title=f"{entity.name} gained {name}", icon="add_circle")
@@ -185,7 +187,7 @@ def remove_trait(draft: Game, entity_id: EntityId, trait_id: Slug) -> list[Fact]
             f"{entity.name} carries no trait {trait_id!r}. Their traits are: {carried}"
         )
     entity.traits.remove(held)
-    trace = f"{labeled(entity)} lost the trait {held.name}[{held.id}]"
+    trace = f"{draft.label(entity)} lost the trait {held.name}[{held.id}]"
     card = MechanicEvent(title=f"{entity.name} lost {held.name}", icon="remove_circle")
     return [*seen, entity_fact(entity, "trait_removed", trace, event=card)]
 
@@ -221,7 +223,7 @@ def join_party(draft: Game, actor_id: EntityId) -> list[Fact]:
         raise ValueError(f"{actor.name} already travels with the player")
     seen = draft.reveal(actor)
     draft.world.party.append(actor_id)
-    trace = f"{labeled(actor)} travels with the player"
+    trace = f"{draft.label(actor)} travels with the player"
     card = MechanicEvent(title=f"{actor.name} joins your party", icon="group_add")
     return [*seen, entity_fact(actor, "party_joined", trace, event=card)]
 
@@ -231,7 +233,7 @@ def leave_party(draft: Game, actor_id: EntityId) -> list[Fact]:
     if actor_id not in draft.world.party:
         raise ValueError(f"{actor.name} does not travel with the player")
     draft.world.party.remove(actor_id)
-    trace = f"{labeled(actor)} no longer travels with the player"
+    trace = f"{draft.label(actor)} no longer travels with the player"
     card = MechanicEvent(title=f"{actor.name} leaves your party", icon="group_remove")
     return [entity_fact(actor, "party_left", trace, event=card)]
 

@@ -3,7 +3,7 @@ from typing import Self
 
 from pydantic import model_validator
 
-from aidm.state.entities import PLAYER_ID, Entity, EntityId, Frozen, kind_word
+from aidm.state.entities import Entity, EntityId, Frozen, kind_word
 
 NOTHING_MECHANICAL = "- (nothing mechanical happened)"
 NOTHING_CHANGED = "- (nothing changed)"
@@ -53,9 +53,9 @@ class Fact(Frozen):
     event: MechanicEvent | None = None
 
 
-def labeled(entity: Entity) -> str:
+def labeled(entity: Entity, player_id: EntityId) -> str:
     """A trace names an entity by kind, name, and exact id, so the Director can reuse the id."""
-    word = "player" if entity.id == PLAYER_ID else kind_word(entity.kind)
+    word = "player" if entity.id == player_id else kind_word(entity.kind)
     return f"the {word} {entity.name}[{entity.id}]"
 
 

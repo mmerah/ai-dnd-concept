@@ -310,7 +310,7 @@
             }
           ],
           "default": null,
-          "description": "Exact id of the actor here who resists. Null when no actor fights back."
+          "description": "Exact id of the actor or item here that resists. Null when nothing fights back."
         }
       },
       "required": [

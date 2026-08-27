@@ -15,7 +15,7 @@ from aidm.engines.core import (
     require_sheet,
 )
 from aidm.state.actions import require_actor_here, roll_pool
-from aidm.state.entities import PLAYER_ID, CheckedEntityId, Counter, Entity, EntityId, Frozen, Slug
+from aidm.state.entities import CheckedEntityId, Counter, Entity, EntityId, Frozen, Slug
 from aidm.state.facts import DiceEvent, EventBadge, Fact, MechanicEvent, entity_fact
 from aidm.state.model import Game
 
@@ -84,8 +84,8 @@ class Conflict(Decision):
     kind: ClassVar[Slug] = "conflict"
 
 
-def conflict_prompt(actor: Entity, opponent: Entity) -> str:
-    foe = actor if opponent.id == PLAYER_ID else opponent
+def conflict_prompt(state: Game, actor: Entity, opponent: Entity) -> str:
+    foe = actor if opponent.id == state.player_id else opponent
     return (
         f"The conflict with {foe.name} runs on: neither side is out of luck yet. Press the "
         "attack, try something else, or break away — what do you do?"
@@ -95,14 +95,19 @@ def conflict_prompt(actor: Entity, opponent: Entity) -> str:
 class Sheet(SheetBase):
     """The one sheet shape, whether it belongs to the player or to an NPC."""
 
-    # The table set this character was built from; the twist table is read from it.
-    pack: Slug = SRD_PACK
+    twist_pack: Slug = SRD_PACK
     concept: str = ""
     skills: tuple[str, ...] = ()
     frailties: tuple[str, ...] = ()
     gear: tuple[str, ...] = ()
     luck: Counter = Counter(current=RULES.luck_max, maximum=RULES.luck_max)
     milestones: Counter = Counter(current=0)
+
+    @model_validator(mode="after")
+    def _twist_pack_is_selected(self) -> Self:
+        if self.twist_pack not in self.packs:
+            raise ValueError("twist_pack must be one of the sheet packs")
+        return self
 
     def rows(self) -> tuple[tuple[str, str], ...]:
         return (
@@ -140,7 +145,9 @@ class Question(Frozen):
     )
     opponent_id: CheckedEntityId | None = Field(
         default=None,
-        description="Exact id of the actor here who resists. Null when no actor fights back.",
+        description=(
+            "Exact id of the actor or item here that resists. Null when nothing fights back."
+        ),
     )
 
 
@@ -195,7 +202,9 @@ def resolve_question(
     _ = require_sheet(mechanics.sheets, actor)
     opponent: Entity | None = None
     if action.opponent_id is not None:
-        opponent = require_actor_here(draft, action.opponent_id)
+        opponent = _require_opponent_here(draft, action.opponent_id)
+        # SRD "Everything is a Character": a thing gets its sheet the first time one is asked for.
+        mechanics.sheets.setdefault(opponent.id, Sheet())
         facts.extend(draft.reveal(opponent))
     _refuse_unless_ready(actor, mechanics, opponent)
 
@@ -211,7 +220,7 @@ def resolve_question(
         facts.extend(exchange)
         # The pools are refilled the moment a side hits 0, so only the fact says the conflict ended.
         if not any(fact.kind == "conflict_lost" for fact in exchange):
-            draft.pending = Conflict().pending(conflict_prompt(actor, opponent))
+            draft.pending = Conflict().pending(conflict_prompt(draft, actor, opponent))
     elif chance.kept == risk.kept:
         # Keep pacing tallies from the Narrator and exclude conflict exchanges.
         mechanics.twist.current += 1
@@ -228,6 +237,24 @@ def resolve_question(
     )
     facts[answered_at] = facts[answered_at].model_copy(update={"event": oracle})
     return tuple(facts)
+
+
+def _require_opponent_here(draft: Game, opponent_id: EntityId) -> Entity:
+    """SRD "Everything is a Character": a ship, an object or a curse resists as an actor does."""
+    opponent = draft.world.require(opponent_id)
+    if opponent.kind == "actor":
+        return require_actor_here(draft, opponent_id)
+    if opponent.kind != "item":
+        raise ValueError(
+            f"{opponent_id!r} is a {opponent.kind}, which cannot resist. "
+            "Name an actor or an item here."
+        )
+    if not draft.is_here(opponent):
+        raise ValueError(
+            f"{opponent_id!r} is not here with the player. "
+            "Bring it here first, or act on what is here."
+        )
+    return opponent
 
 
 def _badges(action: Question) -> tuple[EventBadge, ...]:
@@ -258,7 +285,7 @@ def apply_restore_luck(draft: Game, actor_id: EntityId) -> list[Fact]:
     # Already full is a quiet no-op: `adjust` writes no fact for a zero delta.
     return [
         *facts,
-        *adjust(actor, "luck", luck, refill, "the conflict is behind them", "favorite"),
+        *adjust(draft, actor, "luck", luck, refill, "the conflict is behind them", "favorite"),
     ]
 
 
@@ -296,7 +323,7 @@ def _strike(
     hit, striker = (opponent, actor) if harm > 0 else (actor, opponent)
     luck = require_sheet(mechanics.sheets, hit).luck
     why = f"{striker.name} gets the better of the exchange"
-    facts = adjust(hit, "luck", luck, -abs(harm), why, "favorite")
+    facts = adjust(draft, hit, "luck", luck, -abs(harm), why, "favorite")
     if luck.current == 0:
         draft.world.pending_notes = (*draft.world.pending_notes, defeat_note(hit.name))
         lost = f"{hit.name} is out of luck"
@@ -306,7 +333,9 @@ def _strike(
         for side in (hit, striker):
             pool = require_sheet(mechanics.sheets, side).luck
             refill = _shortfall(pool)
-            facts.extend(adjust(side, "luck", pool, refill, "the conflict is over", "favorite"))
+            facts.extend(
+                adjust(draft, side, "luck", pool, refill, "the conflict is over", "favorite")
+            )
     return facts
 
 
