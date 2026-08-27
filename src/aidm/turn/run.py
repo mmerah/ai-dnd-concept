@@ -1,7 +1,7 @@
-from collections.abc import Callable, Sequence
+from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass
 from random import Random
-from typing import Literal
+from typing import Literal, Self
 
 from pydantic import JsonValue
 from pydantic_ai import Agent, ModelRetry, NativeOutput, RunContext, Tool
@@ -42,10 +42,84 @@ from . import context
 from .context import SceneSnapshot, VisibleScene
 
 
-def as_tool(found: Command) -> Tool[DirectorContext]:
-    async def call(ctx: RunContext[DirectorContext], **raw: JsonValue) -> str:
+@dataclass(frozen=True, slots=True)
+class TurnResult:
+    state: Game
+    turn: TurnTrace
+
+
+@dataclass(frozen=True, slots=True, kw_only=True)
+class Turn(DirectorContext):
+    """One player input to the next hand-back; the draft is the only state that moves."""
+
+    # Receives the draft: builtin passes a no-op and commits once, code mode saves per call.
+    commit: Callable[[Game], None]
+    prompt: str
+    resumed: str
+    notes: tuple[str, ...]
+
+    @classmethod
+    def begin(
+        cls,
+        engine: Engine,
+        state: Game,
+        player_input: str | Answer,
+        rng: Random,
+        commit: Callable[[Game], None],
+        on_event: Callable[[MechanicEvent], None] | None = None,
+    ) -> Self:
+        log = TurnRecord(on_event=on_event)
+        draft = state.draft()
+        prompt, resumed, answered = consume_answer(engine, draft, player_input, rng, log)
+        notes = draft.take_notes()
+        commit(draft)
+        return cls(
+            engine=engine,
+            draft=draft,
+            rng=rng,
+            commit=commit,
+            prompt=prompt,
+            resumed=resumed,
+            notes=notes,
+            log=log,
+            answered=answered,
+            suspended_at_start=draft.pending is not None,
+        )
+
+    def picture(self) -> str:
+        draft = self.draft
+        notes = (*self.notes, *draft.world.pending_notes, *self.engine.advancement.notes(draft))
+        return context.render_director(
+            SceneSnapshot.from_game(draft, notes),
+            self.engine.renderer(draft),
+            draft.scenario,
+            self.prompt,
+            resumed=self.resumed,
+        )
+
+    def call(self, name: str, raw: Mapping[str, JsonValue]) -> str:
+        found = next((one for one in commands(self.engine) if one.name == name), None)
+        if found is None:
+            raise ValueError(f"{name!r} is not a command of the {self.engine.id!r} engine.")
+        answered = run_command(found, self, raw)
+        self.commit(self.draft)
+        return answered
+
+    def finish(self, lines: tuple[Line, ...], steps: tuple[StepTrace, ...] = ()) -> TurnResult:
+        state = close_segment(self.engine, self.draft, self.prompt, lines, tuple(self.log.events))
+        trace = TurnTrace(
+            prompt=self.prompt,
+            facts=tuple(self.log.facts),
+            narration=narration_text(lines),
+            steps=steps,
+        )
+        return TurnResult(state=state, turn=trace)
+
+
+def as_tool(found: Command) -> Tool[Turn]:
+    async def call(ctx: RunContext[Turn], **raw: JsonValue) -> str:
         try:
-            return run_command(found, ctx.deps, raw)
+            return ctx.deps.call(found.name, raw)
         except ValueError as refused:
             raise ModelRetry(str(refused)) from refused
 
@@ -59,27 +133,27 @@ def as_tool(found: Command) -> Tool[DirectorContext]:
     )
 
 
-def director_toolset(engine: Engine) -> FunctionToolset[DirectorContext]:
+def director_toolset(engine: Engine) -> FunctionToolset[Turn]:
     return FunctionToolset(tools=[as_tool(one) for one in commands(engine)], max_retries=2)
 
 
 @dataclass(frozen=True, slots=True)
 class TurnAgents:
-    director: Agent[DirectorContext, str]
+    director: Agent[Turn, str]
     narrator: Agent[VisibleScene, Narration]
 
 
 def director_agent(
     engine: Engine,
     settings: Settings,
-) -> Agent[DirectorContext, str]:
+) -> Agent[Turn, str]:
     """Everything that happens this turn happens through a tool; the closing text only traces."""
     return build_agent(
         "director",
         settings,
         instructions=context.director_instructions(engine.director_instructions),
         output_type=str,
-        deps_type=DirectorContext,
+        deps_type=Turn,
         toolsets=[director_toolset(engine)],
     )
 
@@ -140,12 +214,6 @@ def _replayed(exchange: Exchange) -> str:
     return f"[At {exchange.place}]\n{body}"
 
 
-@dataclass(frozen=True, slots=True)
-class TurnResult:
-    state: Game
-    turn: TurnTrace
-
-
 type TurnStep = Literal["director", "narrator", "scenario_creator"]
 
 
@@ -167,31 +235,18 @@ async def run_segment(
             on_step(step)
 
     history = exchanges_to_messages(state.history[-settings.turn.recent_exchanges :])
-    log = TurnRecord(on_event=on_event)
-    draft = state.draft()
-    prompt, resumed, answered = consume_answer(engine, draft, player_input, rng, log)
-
-    notes = (*draft.take_notes(), *engine.advancement.notes(draft))
-    scene, describe = SceneSnapshot.from_game(draft, notes), engine.renderer(draft)
+    turn = Turn.begin(engine, state, player_input, rng, lambda _: None, on_event)
+    draft, prompt = turn.draft, turn.prompt
 
     announce("director")
-    director_prompt = context.render_director(
-        scene, describe, draft.scenario, prompt, resumed=resumed
-    )
+    director_prompt = turn.picture()
     directed = await stages.director.run(
         director_prompt,
-        deps=DirectorContext(
-            engine=engine,
-            draft=draft,
-            rng=rng,
-            log=log,
-            suspended_at_start=draft.pending is not None,
-            answered=answered,
-        ),
+        deps=turn,
         message_history=history,
         usage_limits=UsageLimits(request_limit=settings.turn.director_request_limit),
     )
-    facts = list(log.facts)
+    facts = list(turn.log.facts)
     steps = [StepTrace(name="director", prompt=director_prompt, output=directed.output)]
 
     lines: tuple[Line, ...] = ()
@@ -217,15 +272,7 @@ async def run_segment(
             )
         )
 
-    return TurnResult(
-        state=close_segment(engine, draft, prompt, lines, tuple(log.events)),
-        turn=TurnTrace(
-            prompt=prompt,
-            facts=tuple(facts),
-            narration=narration_text(lines),
-            steps=tuple(steps),
-        ),
-    )
+    return turn.finish(lines, tuple(steps))
 
 
 def close_segment(

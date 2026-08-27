@@ -20,7 +20,7 @@ starts without them, and then the first call fails.
    with what the draft still needs.
 4. `scenario_so_far()` — the whole draft as JSON. Call it whenever you lose track of the draft.
    The server holds the draft, so a compaction costs you nothing.
-5. `finish_growth(summary)` — checks the draft, then makes it canon the player can discover. A
+5. `finish_growth()` — checks the draft, then makes it canon the player can discover. A
    draft under the bar comes back with the reason, and the run stays open. Fix the draft and call
    `finish_growth` again.
 

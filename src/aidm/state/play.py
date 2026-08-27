@@ -56,8 +56,14 @@ class PendingDecision(Frozen):
 class Answer(Frozen):
     """What the player submits: a chosen option or written text, never both."""
 
-    option_id: Slug | None = None
-    text: str = ""
+    option_id: Slug | None = Field(
+        default=None,
+        description="Exact id of the listed option the player's words chose, when a decision is "
+        "open; null otherwise.",
+    )
+    text: str = Field(
+        default="", description="What the player did, in their words. Empty when option_id is set."
+    )
 
     @model_validator(mode="after")
     def _answers_one_way(self) -> Self:

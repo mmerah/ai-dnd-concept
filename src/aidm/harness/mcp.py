@@ -18,16 +18,9 @@ from aidm.authoring.run import authoring_toolset, draft_context
 from aidm.config import load_settings
 from aidm.engines.core import Command, NoArgs
 from aidm.engines.world import commands
-from aidm.harness.codemode import (
-    BeginScenario,
-    EndTurn,
-    Harness,
-    OpenGame,
-    StartTurn,
-    Summary,
-    catalogue,
-)
+from aidm.harness.codemode import BeginScenario, Harness, OpenGame, catalogue
 from aidm.llm import schema_of
+from aidm.state.play import Answer, Narration
 
 SERVER_NAME = "aidm"
 
@@ -77,8 +70,8 @@ SERVER_TOOLS: tuple[ServerTool, ...] = (
         "start_turn",
         "Open a turn with the player's action and get the whole game back: canon, canon the player"
         " has not found, threads, rules notes, recent play. Call it first every turn.",
-        lambda harness, raw: harness.start_turn(StartTurn.model_validate(raw)),
-        StartTurn,
+        lambda harness, raw: harness.start_turn(Answer.model_validate(raw)),
+        Answer,
     ),
     ServerTool(
         "scene",
@@ -88,8 +81,8 @@ SERVER_TOOLS: tuple[ServerTool, ...] = (
     ServerTool(
         "end_turn",
         "Close the turn with the prose the player reads.",
-        lambda harness, raw: harness.end_turn(EndTurn.model_validate(raw)),
-        EndTurn,
+        lambda harness, raw: harness.end_turn(Narration.model_validate(raw)),
+        Narration,
     ),
     ServerTool(
         "begin_growth",
@@ -105,14 +98,12 @@ SERVER_TOOLS: tuple[ServerTool, ...] = (
     ServerTool(
         "finish_growth",
         "Check the grown draft and materialize it into the open game as canon to be found.",
-        lambda harness, raw: harness.finish_growth(Summary.model_validate(raw).summary),
-        Summary,
+        lambda harness, _raw: harness.finish_growth(),
     ),
     ServerTool(
         "finish_scenario",
         "Check the draft and write it to disk as a scenario anyone can play.",
-        lambda harness, raw: harness.finish_scenario(Summary.model_validate(raw).summary),
-        Summary,
+        lambda harness, _raw: harness.finish_scenario(),
     ),
 )
 
@@ -150,6 +141,8 @@ async def offered(harness: Harness) -> list[types.Tool]:
 async def call(harness: Harness, name: str, raw: dict[str, JsonValue]) -> str:
     tool = DISPATCH.get(name)
     if tool is not None:
+        # A NoArgs tool ignores `raw` in its handler, so junk arguments need a guard of their own.
+        _ = tool.args.model_validate(raw)
         return tool.run(harness, raw)
     if name in AUTHORING_TOOLS:
         return await harness.authoring_tool(name, raw)

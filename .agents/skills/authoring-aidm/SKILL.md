@@ -25,5 +25,5 @@ Work from the repository root. Scenarios are written to `scenarios/` under the w
    ships in the scenario's directory, where play loads it like an installed pack. Shape `content`
    like the selected pack content in the briefing, and write only what is missing.
 6. `scenario_so_far()` — the whole draft as JSON. Call it whenever you lose track of the draft.
-7. `finish_scenario(summary)` — checks the draft and writes it to disk. A draft under the bar
+7. `finish_scenario()` — checks the draft and writes it to disk. A draft under the bar
    comes back with the reason, and the run stays open.

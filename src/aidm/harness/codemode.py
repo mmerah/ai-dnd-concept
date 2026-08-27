@@ -23,17 +23,13 @@ from aidm.authoring.run import (
     scenario_run,
 )
 from aidm.config import Settings
-from aidm.engines.core import DirectorContext, TurnRecord, run_command
-from aidm.engines.world import commands
 from aidm.state.entities import EngineId, Frozen, Slug
 from aidm.state.facts import traced
 from aidm.state.model import Game
 from aidm.state.play import (
     Answer,
-    Line,
+    Narration,
     PendingDecision,
-    TurnTrace,
-    narration_text,
 )
 from aidm.turn.context import (
     NARRATOR,
@@ -42,7 +38,7 @@ from aidm.turn.context import (
     player_scene,
     render_director,
 )
-from aidm.turn.run import close_segment, consume_answer, speakers_refusal
+from aidm.turn.run import Turn, speakers_refusal
 
 LOGGER = logging.getLogger(__name__)
 
@@ -83,18 +79,6 @@ class OpenGame(ToolArgs):
     """An existing save's slug, or `<scenario>--<character>` to begin a new game."""
 
 
-class StartTurn(ToolArgs):
-    prompt: str
-    """What the player did, in their words."""
-    option_id: Slug | None = None
-    """Exact id of the listed option their words chose, when a decision is open."""
-
-
-class EndTurn(ToolArgs):
-    lines: tuple[Line, ...]
-    """The prose the player reads, in order."""
-
-
 class BeginScenario(ToolArgs):
     slug: Slug
     """Directory name for the new scenario: lowercase words joined by hyphens."""
@@ -108,23 +92,6 @@ class BeginScenario(ToolArgs):
     """Selected pack ids, always including srd."""
     source: str = ""
     """Path to a .md, .txt or .pdf adventure to author from. Empty to author from the premise."""
-
-
-class Summary(ToolArgs):
-    summary: str
-    """Two or three sentences on what this run wrote."""
-
-
-@dataclass
-class Turn:
-    """Turn-scoped state the per-call commits must not lose."""
-
-    prompt: str
-    notes: tuple[str, ...] = ()
-    log: TurnRecord = field(default_factory=TurnRecord)
-    answered: PendingDecision | None = None
-    # The answer re-suspended: core tools may still develop what it caused.
-    suspended_at_start: bool = False
 
 
 @dataclass
@@ -174,24 +141,25 @@ class Harness:
         return f"{PREAMBLE}\n{director_instructions(engine.director_instructions)}\n\n{NARRATOR}"
 
     def scene(self) -> str:
-        turn = self.turn
-        return self._picture(
-            NO_TURN_OPEN if turn is None else turn.prompt, () if turn is None else turn.notes
-        )
+        return self._picture()
 
-    def _picture(self, action: str, notes: tuple[str, ...], resumed: str = "") -> str:
+    def _picture(self) -> str:
         session = self.opened()
         state = session.state
         recent = self.settings.turn.recent_exchanges
-        rendered = render_director(
-            SceneSnapshot.from_game(
-                state,
-                (*notes, *state.world.pending_notes, *session.engine.advancement.notes(state)),
-            ),
-            session.engine.renderer(state),
-            state.scenario,
-            action,
-            resumed=resumed,
+        turn = self.turn
+        rendered = (
+            turn.picture()
+            if turn is not None
+            else render_director(
+                SceneSnapshot.from_game(
+                    state,
+                    (*state.world.pending_notes, *session.engine.advancement.notes(state)),
+                ),
+                session.engine.renderer(state),
+                state.scenario,
+                NO_TURN_OPEN,
+            )
         )
         sections = [
             f"RECENT PLAY (this is turn {state.turn + 1}):\n{_recent(state, recent)}",
@@ -203,68 +171,36 @@ class Harness:
             sections.append(GROWTH_DUE)
         return "\n\n".join(sections)
 
-    def start_turn(self, asked: StartTurn) -> str:
+    def start_turn(self, answer: Answer) -> str:
         session = self.opened()
-        draft = session.state.draft()
-        log = TurnRecord()
-        chose = asked.option_id
-        answer = Answer(option_id=chose) if chose is not None else Answer(text=asked.prompt)
-        prompt, resumed, answered = consume_answer(session.engine, draft, answer, session.rng, log)
-        notes = draft.take_notes()
-        session.commit(draft.committed())
-        self.turn = Turn(
-            prompt=prompt,
-            notes=notes,
-            log=log,
-            answered=answered,
-            suspended_at_start=draft.pending is not None,
+        self.turn = Turn.begin(
+            session.engine,
+            session.state,
+            answer,
+            session.rng,
+            lambda draft: session.commit(draft.committed()),
         )
-        return self._picture(prompt, notes, resumed=resumed)
+        return self._picture()
 
-    def end_turn(self, closing: EndTurn) -> str:
+    def end_turn(self, closing: Narration) -> str:
         session = self.opened()
         turn = self.started()
         lines = closing.lines
-        draft = session.state.draft()
-        if not lines and draft.pending is None:
+        if not lines and turn.draft.pending is None:
             raise ModelRetry(
                 "write the narration lines: a turn with neither prose nor an open "
                 "decision shows the player nothing."
             )
-        if refused := speakers_refusal(player_scene(draft), lines):
+        if refused := speakers_refusal(player_scene(turn.draft), lines):
             raise ModelRetry(refused)
-        state = close_segment(
-            session.engine, draft, turn.prompt, tuple(lines), tuple(turn.log.events)
-        )
-        session.commit(
-            state,
-            TurnTrace(
-                prompt=turn.prompt,
-                facts=tuple(turn.log.facts),
-                narration=narration_text(lines),
-            ),
-        )
+        result = turn.finish(lines)
+        session.commit(result.state, result.turn)
         self.turn = None
-        closed = f"turn {state.turn} committed."
+        closed = f"turn {result.state.turn} committed."
         return f"{closed}\n{GROWTH_DUE}" if session.growth_due() else closed
 
     def call_director_tool(self, name: str, raw: dict[str, JsonValue]) -> str:
-        session = self.opened()
-        turn = self.started()
-        found = next((one for one in commands(session.engine) if one.name == name), None)
-        if found is None:
-            raise ModelRetry(f"{name!r} is not a command of the {session.engine.id!r} engine.")
-        deps = DirectorContext(
-            engine=session.engine,
-            draft=session.state.draft(),
-            rng=session.rng,
-            log=turn.log,
-            suspended_at_start=turn.suspended_at_start,
-            answered=turn.answered,
-        )
-        answered = run_command(found, deps, raw)
-        session.commit(deps.draft.committed())
-        return answered
+        return self.started().call(name, raw)
 
     def begin_growth(self) -> str:
         session = self.opened()
@@ -301,7 +237,7 @@ class Harness:
         )
         return str(answered)
 
-    def finish_growth(self, summary: str) -> str:
+    def finish_growth(self) -> str:
         session = self.opened()
         run = self.authoring
         if not isinstance(run, GrowthRun):
@@ -309,16 +245,16 @@ class Harness:
         _check_playable(run)
         landed = session.apply_growth(run.patch())
         self.authoring = None
-        return f"{summary}\n{traced(landed)}"
+        return traced(landed)
 
-    def finish_scenario(self, summary: str) -> str:
+    def finish_scenario(self) -> str:
         run = self.authoring
         if not isinstance(run, ScenarioRun):
             raise ModelRetry("no scenario run is open; call begin_scenario first.")
         _check_playable(run)
         written = run.write()
         self.authoring = None
-        return f"{summary}\n{written}"
+        return written
 
     def _hold(self, run: AuthoringRun) -> None:
         """Beginning replaces: a driver that died mid-draft left nothing durable behind."""

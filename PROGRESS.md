@@ -2,7 +2,7 @@
 
 Tracks `PLAN.md`. One section per phase; closed phases are recorded in git history, not here.
 
-## Phase 2.9 — simplification pass — in progress (Steps 1–3 done)
+## Phase 2.9 — simplification pass — in progress (Steps 1–4 done)
 
 `SIMPLIFICATION_PLAN.md`, six steps, decided 2026-08-27 with every candidate verified against the
 code. Ships: launch loses `engine`, `SavedGame` folded into `Game`, `pack_type` required, Advisor
@@ -145,6 +145,44 @@ deterministically by the resolver and retried through the toolset's existing `Va
   (it lands in the trace) and the `ProposalBase` name.
 - Accepted losses as recorded in the plan: no confirm-before-commit, no separate advisor budget.
 - Verified: 266 passing, `ruff check`, `ruff format --check`, `basedpyright` clean.
+
+### Step 4 — one turn lifecycle, MCP wrapper types, one guard — DONE
+
+- **4a, one turn lifecycle — DONE.** `turn/run.py`: `Turn(DirectorContext)` dataclass adding
+  `commit, prompt, resumed, notes`, with `Turn.begin(engine, state, input, rng, commit, on_event)`
+  (`consume_answer`, `take_notes`, one commit), `picture()` (notes + pending notes + advancement
+  notes rendered live, so `scene()` after `advance` drops the owed note), `call(name, raw)`
+  (lookup → `run_command(found, self, raw)` → `commit(draft)`) and `finish(lines, steps=()) ->
+  TurnResult` (`close_segment` + `TurnTrace`, no commit). `commit` receives the draft: builtin
+  passes a no-op, code mode `lambda draft: session.commit(draft.committed())`, so the builtin
+  never revalidates per call. `run_segment` is `Turn.begin` → director with `deps=turn` →
+  narrator → `finish`; `as_tool`/`director_toolset`/`TurnAgents` typed on `Turn`.
+  `harness/codemode.py`: own `Turn` deleted; `start_turn` = `Turn.begin(...)`,
+  `call_director_tool` = `started().call(name, raw)`, `end_turn` checks `turn.draft` then
+  `turn.finish` + `session.commit(state, trace)`; `_picture()` takes no args (turn open →
+  `turn.picture()`, else `NO_TURN_OPEN` off `session.state`). One draft per code-mode turn.
+  `close_segment`/`consume_answer` stay module functions. No test changed.
+  - Rejected: dropping `_picture`'s no-turn branch — `scene()` after `end_turn` is how a
+    compacted driver reads `GROWTH_DUE` (`test_code_mode.py:298`).
+  - Review fix: the first cut froze advancement notes into `Turn.notes` at `begin`, so code
+    mode's `scene()` still showed "advance owed" after `advance` landed; `picture()` now computes
+    them live, as `_picture` did before.
+- **4b, MCP wrapper types — DONE.** `StartTurn`/`EndTurn`/`Summary` deleted from
+  `harness/codemode.py`; `start_turn` takes `state/play.py:Answer` (both fields gained
+  `Field(description=...)` so `schema_of` publishes them), `end_turn` takes `Narration`,
+  `finish_growth()`/`finish_scenario()` take `NoArgs` and return `traced(landed)`/`written`.
+  `mcp.py` publishes `Answer`/`Narration`. `_HOW_TO_WORK` (code-mode briefing) drops the summary
+  ask; three skill files updated (`start_turn(text)`, `finish_growth()`, `finish_scenario()`).
+  - Deviation from the plan: the builtin `scenario_agent`'s `ToolOutput(str, name="finish")`
+    **keeps** its summary string. The plan said it was read by nobody; `ui/create.py` shows it
+    as the authoring chat reply. The subagent's `NoArgs` version was reverted.
+  - Test literals: `{"prompt": …}` → `{"text": …}`, option answers carry only `option_id`,
+    `{"summary": …}` → `{}`.
+- **4c, one guard — DONE.** `mcp.py:call` runs `tool.args.model_validate(raw)` before every
+  `ServerTool`, so a `NoArgs` tool refuses junk arguments; one test
+  (`test_a_no_args_tool_refuses_junk_arguments`).
+- Verified: 267 passing, `ruff check`, `ruff format --check`, `basedpyright` clean. `src/` net
+  −28 lines (134+/162−).
 
 ## Phase 3 — L6 Cairn Barebones — not started (after Phase 2.9)
 ## Phase 4 — L5 Fate Condensed — not started

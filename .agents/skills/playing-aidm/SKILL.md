@@ -15,7 +15,7 @@ and the server wiring (`.mcp.json`, `.codex/config.toml`) is read from there.
 2. `open_game(slug)` — opens one game. Nothing else works until this call succeeds.
 3. `rules()` — the rules for a turn under this engine. Read it once at the start. Read it again
    after a compaction.
-4. The player writes their action as a chat message. `start_turn(prompt)` — pass their message,
+4. The player writes their action as a chat message. `start_turn(text)` — pass their message,
    and `option_id` too when their words chose one of the options the rules are waiting on. It
    opens the turn and returns the whole state of the game.
 5. Turn their message into tool calls. Make one call at a time. Read each result before you make

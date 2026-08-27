@@ -233,7 +233,7 @@ class ScenarioRun(AuthoringRun):
 _HOW_TO_WORK = (
     "Write with `write`, join locations with `connect`, and read the whole draft back with "
     "`scenario_so_far` whenever you have lost track of it. Each answer ends with what the draft "
-    "still needs. Call `{finish}` with a two or three sentence summary once it plays."
+    "still needs. Call `{finish}` once it plays."
 )
 
 
