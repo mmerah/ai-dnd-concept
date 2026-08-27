@@ -11,7 +11,7 @@ from aidm.state.entities import Slug
 ProviderName = Literal["openrouter", "local"]
 ReasoningEffort = Literal["none", "minimal", "low", "medium", "high", "xhigh", "max"]
 # A stage is built by name, so an unbuildable role cannot be configured.
-Role = Literal["director", "narrator", "advisor", "scenario_creator"]
+Role = Literal["director", "narrator", "scenario_creator"]
 ENV_FILE = ".env"
 # Which harness reads a setting.
 BUILTIN_ONLY: dict[str, JsonValue] = {"applies": "builtin"}
@@ -80,7 +80,6 @@ class Roles(BaseModel):
     # Tool loops divide the budget across calls and need reasoning to choose among tools.
     director: RoleConfig = RoleConfig(max_tokens=8192, reasoning_effort="low")
     narrator: RoleConfig = RoleConfig()
-    advisor: RoleConfig = RoleConfig()
     scenario_creator: RoleConfig = RoleConfig(max_tokens=32768, reasoning_effort="medium")
 
     def for_name(self, name: Role) -> RoleConfig:
@@ -89,8 +88,6 @@ class Roles(BaseModel):
                 return self.director
             case "narrator":
                 return self.narrator
-            case "advisor":
-                return self.advisor
             case "scenario_creator":
                 return self.scenario_creator
 

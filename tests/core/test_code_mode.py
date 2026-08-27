@@ -1,5 +1,4 @@
 import asyncio
-import json
 import shutil
 from pathlib import Path
 from random import Random
@@ -13,7 +12,6 @@ from core_test_support import (
     SCENARIOS,
     TWENTYFOURXX,
     EnvFileFreeSettings,
-    at_boundary,
     scenario_for,
     updated,
     with_entity,
@@ -25,7 +23,6 @@ from aidm.app.launch import LaunchTarget
 from aidm.app.runtime import Runtime
 from aidm.config import AuthoringConfig, Settings
 from aidm.content.io import load_scenario
-from aidm.engines.loner3e.rules import AdventureGrowth, Change, Mechanics
 from aidm.harness.claude import ClaudeDriver
 from aidm.harness.codemode import Harness
 from aidm.harness.exec import ExecDriver
@@ -37,13 +34,6 @@ VAULT = EntityId("vault")
 CLOISTER = EntityId("cloister")
 GROWN = EntityId("sub-crypt")
 
-LEGAL = AdventureGrowth(
-    changes=(Change(kind="gear", tag="Waxed Rope"),), why="he never climbs without it now"
-)
-ILLEGAL = AdventureGrowth(
-    changes=(Change(kind="rewrite", tag="Never Held a Blade", into="Holds It Well"),),
-    why="a tag the sheet does not carry",
-)
 A_QUESTION: dict[str, JsonValue] = {
     "actor_id": PLAYER_ID,
     "question": "Does he hear what waits past the vault door?",
@@ -390,51 +380,6 @@ async def test_an_id_the_game_took_meanwhile_reaches_the_author_at_finish(
         _ = await call(harness, "finish_growth", {"summary": "A crypt below the cloister."})
 
     assert harness.authoring is not None
-
-
-async def test_propose_advance_publishes_the_engines_own_proposal_schema(
-    tmp_path: Path,
-) -> None:
-    harness = _harness(_settings(tmp_path))
-    assert "propose_advance" not in {tool.name for tool in await offered(harness)}
-
-    _ = harness.open_game("whispering-vault--kael")
-
-    published = next(one for one in await offered(harness) if one.name == "propose_advance")
-    assert AdventureGrowth.__name__ in json.dumps(published.input_schema)
-
-
-async def test_a_proposal_previews_and_only_apply_advance_commits_it(tmp_path: Path) -> None:
-    harness = _opened(tmp_path, "loner3e")
-    session = harness.opened()
-    session.commit(at_boundary(session.state))
-    asked: dict[str, JsonValue] = {
-        "subject_id": PLAYER_ID,
-        "proposal": LEGAL.model_dump(mode="json"),
-    }
-
-    previewed = await call(harness, "propose_advance", asked)
-
-    assert "Waxed Rope" in previewed
-    assert "Waxed Rope" not in Mechanics.of_game(session.state).sheets[PLAYER_ID].gear
-    _ = await call(harness, "apply_advance", {})
-    assert "Waxed Rope" in Mechanics.of_game(session.state).sheets[PLAYER_ID].gear
-
-
-async def test_an_illegal_proposal_comes_back_with_the_engines_reason(tmp_path: Path) -> None:
-    harness = _opened(tmp_path, "loner3e")
-    session = harness.opened()
-    session.commit(at_boundary(session.state))
-
-    with pytest.raises(ModelRetry) as refused:
-        _ = await call(
-            harness,
-            "propose_advance",
-            {"subject_id": PLAYER_ID, "proposal": ILLEGAL.model_dump(mode="json")},
-        )
-
-    assert "Never Held a Blade" in str(refused.value)
-    assert session.drafted is None
 
 
 async def test_a_scenario_run_writes_a_scenario_that_loads(tmp_path: Path) -> None:

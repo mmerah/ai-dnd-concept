@@ -147,13 +147,17 @@ def test_naming_both_an_ally_and_a_helped_tag_is_refused_at_the_schema() -> None
 def test_a_job_raises_one_skill_a_step_and_pays_rolled_credits() -> None:
     engine, state = game(TWENTYFOURXX)
     advancement = engine.advancement
+    assert advancement.owed(state) == ()
+
     ready = at_boundary(state)
-    (offer,) = advancement.offers(ready)
+    assert advancement.owed(ready) == (PLAYER_ID,)
     before = Mechanics.of_game(ready).sheets[PLAYER_ID]
 
-    raise_existing = Advance(skill="Tracking", why="the climb taught them the route")
+    raise_existing = Advance(
+        subject_id=PLAYER_ID, skill="Tracking", why="the climb taught them the route"
+    )
     draft = ready.draft()
-    facts = advancement.resolve(draft, offer, raise_existing, Random(3))
+    facts = advancement.advance(draft, raise_existing, Random(3))
     grown = draft.committed()
 
     sheet = Mechanics.of_game(grown).sheets[PLAYER_ID]
@@ -163,40 +167,21 @@ def test_a_job_raises_one_skill_a_step_and_pays_rolled_credits() -> None:
     paid = sheet.credits.current - before.credits.current
     assert dice_fact.trace.endswith(f"-> {paid}")
 
-    take_new = Advance(skill="Lockpicking", why="the job called for it")
+    take_new = Advance(subject_id=PLAYER_ID, skill="Lockpicking", why="the job called for it")
     draft = ready.draft()
-    advancement.resolve(draft, offer, take_new, Random(4))
-    grown = Mechanics.of_game(draft.committed())
-    assert grown.sheets[PLAYER_ID].skills["Lockpicking"] == 8
+    _ = advancement.advance(draft, take_new, Random(4))
+    assert Mechanics.of_game(draft.committed()).sheets[PLAYER_ID].skills["Lockpicking"] == 8
 
 
-def test_an_advance_is_offered_only_once_a_job_is_recorded() -> None:
+def test_a_skill_already_at_d12_is_refused_with_the_engines_own_reason() -> None:
     engine, state = game(TWENTYFOURXX)
-    advancement = engine.advancement
-    assert advancement.offers(state) == ()
-
-    after = at_boundary(state)
-
-    (offer,) = advancement.offers(after)
-    assert offer.subject_id == PLAYER_ID
-
-
-def test_a_skill_already_at_d12_is_refused_and_the_refusal_reaches_the_advisor() -> None:
-    engine, state = game(TWENTYFOURXX)
-    advancement = engine.advancement
-    ready = at_boundary(state)
-
-    draft = ready.draft()
-    mechanics = Mechanics.of_game(draft)
-    mechanics.sheets[PLAYER_ID].skills["Climbing"] = 12
+    draft = at_boundary(state).draft()
+    Mechanics.of_game(draft).sheets[PLAYER_ID].skills["Climbing"] = 12
     maxed = draft.committed()
 
-    (offer,) = advancement.offers(maxed)
-    capped = Advance(skill="Climbing", why="there is nowhere higher to climb")
-
-    message = advancement.advance_refusal(maxed, offer, capped)
-    assert message is not None
-    assert "d12" in message
+    capped = Advance(subject_id=PLAYER_ID, skill="Climbing", why="there is nowhere higher to climb")
+    with pytest.raises(ValueError, match="d12"):
+        _ = engine.advancement.advance(maxed.draft(), capped, Random(0))
 
 
 def test_credits_are_paid_charged_and_never_overdrawn() -> None:

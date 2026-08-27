@@ -50,7 +50,7 @@ from aidm.state.entities import (
     EntityId,
     Frozen,
 )
-from aidm.state.facts import Fact, explained_fact
+from aidm.state.facts import Fact, MechanicEvent, explained_fact
 from aidm.state.model import Game
 
 
@@ -61,20 +61,17 @@ class RestoreLuck(Frozen):
 class Loner3eAdvancement(SheetAdvancement):
     proposal_type = AdventureGrowth
     ledger_key = "milestones"
-    occasion = "finishes an adventure"
-    offer_text = GROWTH
+    text = GROWTH
     spent_why = "a milestone spent"
 
     def ledger(self, state: Game, subject_id: EntityId) -> Counter:
         return Mechanics.of_game(state).sheets[subject_id].milestones
 
-    def grant(
-        self, draft: Game, subject_id: EntityId, proposal: ProposalBase, rng: Random
-    ) -> tuple[Fact, ...]:
+    def grant(self, draft: Game, proposal: ProposalBase, rng: Random) -> tuple[Fact, ...]:
         del rng
         assert isinstance(proposal, AdventureGrowth)
-        sheet = Mechanics.of_game(draft).sheets[subject_id]
-        subject = draft.world.require(subject_id)
+        sheet = Mechanics.of_game(draft).sheets[proposal.subject_id]
+        subject = draft.world.require(proposal.subject_id)
         # Sequential against the live sheet, so a rewrite may name what an earlier change wrote.
         return tuple(
             _rewrite(sheet, subject, change, proposal.why)
@@ -85,6 +82,8 @@ class Loner3eAdvancement(SheetAdvancement):
 
 
 def _gain(sheet: Sheet, subject: Entity, change: Change, why: str) -> Fact:
+    if change.tag in (*sheet.skills, *sheet.gear, *sheet.frailties):
+        raise ValueError(f"{subject.name} already has the tag {change.tag!r}")
     if change.kind == "skill":
         sheet.skills = (*sheet.skills, change.tag)
     elif change.kind == "gear":
@@ -96,7 +95,9 @@ def _gain(sheet: Sheet, subject: Entity, change: Change, why: str) -> Fact:
         f"{change.kind}_gained",
         f"{subject.name} gained {change.kind} {change.tag}",
         why,
-        narrate=False,
+        event=MechanicEvent(
+            title=f"{subject.name}: new {change.kind} {change.tag}", icon="military_tech"
+        ),
     )
 
 
@@ -115,7 +116,7 @@ def _rewrite(sheet: Sheet, subject: Entity, change: Change, why: str) -> Fact:
         "tag_rewritten",
         f"{subject.name} rewrote {old} as {new}",
         why,
-        narrate=False,
+        event=MechanicEvent(title=f"{subject.name}: {old} → {new}", icon="military_tech"),
     )
 
 
@@ -192,7 +193,7 @@ class Loner3eEngine(SheetEngine[Sheet]):
     def __init__(self, sources: PackSources = SHIPPED_PACKS) -> None:
         super().__init__(sources)
         self.packs = sources.load(self.engine_dir / "packs", Pack)
-        self.advancement = Loner3eAdvancement(self.engine_dir)
+        self.advancement = Loner3eAdvancement()
         self.creation = Loner3eCreation(self.packs)
         self.director_commands = (
             rule(
@@ -210,6 +211,7 @@ class Loner3eEngine(SheetEngine[Sheet]):
             chapter_command(
                 "Record that the current adventure has ended.", "the adventure has ended"
             ),
+            self.advancement.command(),
         )
 
     def pack_models(self) -> Mapping[str, Pack]:

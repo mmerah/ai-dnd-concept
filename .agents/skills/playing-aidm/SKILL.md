@@ -21,10 +21,9 @@ and the server wiring (`.mcp.json`, `.codex/config.toml`) is read from there.
 5. Turn their message into tool calls. Make one call at a time. Read each result before you make
    the next call. `scene()` gives the picture back if you were compacted mid-turn.
 6. `end_turn(lines)` — closes the turn with the prose you wrote.
-7. `propose_advance(subject_id, proposal)` — call it when `scene()` shows an advancement on offer
-   and the player asks to grow their character. Write the proposal yourself. `rules()` carries the
-   advancement rules of this engine. Show the player what the proposal changes. Then call
-   `apply_advance()`.
+7. When `NOTES FROM THE RULES` in `scene()` says an advance is owed and the player asks to grow
+   their character, call `advance(subject_id, ...)` — the tool's own schema carries the engine's
+   fields for the change. It refuses when none is owed.
 8. The server answers WORLD GROWTH DUE when the player is nearly out of places to find. Grow the
    world before the player's next action. Spawn a subagent and tell it to run the `growing-aidm`
    skill; a subagent can reach the `aidm` server, and its long loop stays out of this

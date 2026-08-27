@@ -132,7 +132,7 @@ def _read[T: BaseModel](path: Path, model: type[T]) -> T:
 
 
 def engine_text(path: Path) -> str:
-    """In content so `engines.engine` and `engines.advancement` share it without a cycle."""
+    """In content so `engines.core` and `turn.context` share it without a cycle."""
     if not path.is_file():
         raise ValueError(f"engine file {str(path)!r} is missing")
     return path.read_text(encoding=ENCODING)

@@ -12,12 +12,9 @@ from pydantic_ai.usage import UsageLimits
 from aidm.config import Settings
 from aidm.engines.core import (
     RULES_WAIT,
-    Advancement,
-    AdvancementOffer,
     Command,
     DirectorContext,
     Engine,
-    ProposalBase,
     TurnRecord,
     apply_to_draft,
     run_command,
@@ -64,13 +61,6 @@ def as_tool(found: Command) -> Tool[DirectorContext]:
 
 def director_toolset(engine: Engine) -> FunctionToolset[DirectorContext]:
     return FunctionToolset(tools=[as_tool(one) for one in commands(engine)], max_retries=2)
-
-
-@dataclass(frozen=True, slots=True)
-class AdvancementContext:
-    advancement: Advancement
-    state: Game
-    offer: AdvancementOffer
 
 
 @dataclass(frozen=True, slots=True)
@@ -128,26 +118,6 @@ def narrator_agent(settings: Settings) -> Agent[VisibleScene, Narration]:
     )
 
 
-def advisor_agent(
-    advancement: Advancement, settings: Settings
-) -> Agent[AdvancementContext, ProposalBase]:
-    def legal(ctx: RunContext[AdvancementContext], proposal: ProposalBase) -> ProposalBase:
-        deps = ctx.deps
-        refused = deps.advancement.advance_refusal(deps.state, deps.offer, proposal)
-        if refused is not None:
-            raise ModelRetry(refused)
-        return proposal
-
-    return build_agent(
-        "advisor",
-        settings,
-        instructions=context.advisor_instructions(advancement.instructions),
-        output_type=NativeOutput(advancement.proposal_type),
-        deps_type=AdvancementContext,
-        validator=legal,
-    )
-
-
 def build_turn_agents(engine: Engine, settings: Settings) -> TurnAgents:
     return TurnAgents(director=director_agent(engine, settings), narrator=narrator_agent(settings))
 
@@ -201,7 +171,8 @@ async def run_segment(
     draft = state.draft()
     prompt, resumed, answered = consume_answer(engine, draft, player_input, rng, log)
 
-    scene, describe = SceneSnapshot.from_game(draft, draft.take_notes()), engine.renderer(draft)
+    notes = (*draft.take_notes(), *engine.advancement.notes(draft))
+    scene, describe = SceneSnapshot.from_game(draft, notes), engine.renderer(draft)
 
     announce("director")
     director_prompt = context.render_director(

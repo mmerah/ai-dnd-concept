@@ -97,14 +97,8 @@ class TurnTrace(TraceEntryBase):
     steps: tuple[StepTrace, ...] = ()
 
 
-class AdvanceApplied(TraceEntryBase):
-    """One advancement change: the same transaction as a turn, without a prompt or a narration."""
-
-    subject_id: CheckedEntityId
-
-
 class WorldExtended(TraceEntryBase):
     """Canon a background authoring run appended."""
 
 
-type TraceEntry = TurnTrace | AdvanceApplied | WorldExtended
+type TraceEntry = TurnTrace | WorldExtended

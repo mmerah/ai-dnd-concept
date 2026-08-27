@@ -2,7 +2,7 @@ from collections.abc import Callable, Iterable, Mapping, Sequence
 from pathlib import Path
 
 from aidm.content.io import engine_text
-from aidm.engines.core import AdvancementOffer, Engine, EntityRenderer
+from aidm.engines.core import EntityRenderer
 from aidm.state.entities import Entity, EntityId, Exit, Frozen, Trait, kind_word
 from aidm.state.model import Game, ScenarioMeta, Thread, WorldState
 
@@ -194,17 +194,6 @@ def render_narrator(
     )
 
 
-def render_proposal(engine: Engine, state: Game, offer: AdvancementOffer, intent: str) -> str:
-    subject = state.world.require(offer.subject_id)
-    sections = (
-        ("ON OFFER", offer.prompt),
-        ("RULES TEXT", offer.text),
-        ("THE CHARACTER", f"{subject.name}\n{entity_state(subject, engine.renderer(state))}"),
-        ("WHAT THE PLAYER WANTS", intent),
-    )
-    return "\n\n".join(f"{title}\n{body}" for title, body in sections if body)
-
-
 def _sections(parts: Iterable[tuple[str, str]]) -> str:
     return "\n\n".join(f"{name}:\n{body}" for name, body in parts)
 
@@ -337,16 +326,11 @@ def _with_state(line: str, state: str, indent: str = "") -> str:
 _PROMPTS_DIR = Path(__file__).parent / "prompts"
 
 DIRECTOR = engine_text(_PROMPTS_DIR / "director.md")
-CORE_ADVISOR = engine_text(_PROMPTS_DIR / "core_advisor.md")
 NARRATOR = engine_text(_PROMPTS_DIR / "narrator.md")
 
 
 def director_instructions(engine_instructions: str) -> str:
     return f"{DIRECTOR}\n\n{engine_instructions}"
-
-
-def advisor_instructions(engine_instructions: str) -> str:
-    return f"{CORE_ADVISOR}\n\n{engine_instructions}"
 
 
 def player_scene(state: Game) -> VisibleScene:

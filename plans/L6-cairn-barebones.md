@@ -100,7 +100,8 @@ per-item `ItemRules`, blast/joined attacks. None of it comes back.
    `occasion` must not claim "has trained between expeditions". Record the ungated grant as a deviation in
    `docs/CAIRN-BAREBONES.md`;
    `ledger()` returns `sheets[subject_id].trainings`; `grant()` calls `state.actions.add_trait` with
-   `slug(ability, taken)`. ~12 lines. `advancement.md`: one trained ability, named master, mechanical text.
+   `slug(ability, taken)`. ~12 lines. `text` class var carries the rule (one trained ability, named
+   master, mechanical text) — a `GROWTH`-style constant in `rules.py`, not a separate file.
 7b. **Roll NPC sheets** — override **both** `seed` (entities created mid-play; it already receives an `rng`
    it discards, `engines/core.py:328`) **and `opening_mechanics`** (scenario-authored NPCs, rolling with its
    own `Random()`). Overriding only `seed` gives every authored monster identical 10/10/10/HP 4 stats:

@@ -2,7 +2,7 @@
 
 Tracks `PLAN.md`. One section per phase; closed phases are recorded in git history, not here.
 
-## Phase 2.9 — simplification pass — in progress (Steps 1–2 done)
+## Phase 2.9 — simplification pass — in progress (Steps 1–3 done)
 
 `SIMPLIFICATION_PLAN.md`, six steps, decided 2026-08-27 with every candidate verified against the
 code. Ships: launch loses `engine`, `SavedGame` folded into `Game`, `pack_type` required, Advisor
@@ -96,6 +96,55 @@ Done in order 2c → 2a → 2b, smallest first, as the plan specifies.
   `.committed()` instead of the non-validating `model_copy`; `_saved` helper reads the store off
   the harness; stale "engine and character" wording in README, the home page and `plans/L3`.
 - Verified: 276 passing, `ruff check`, `ruff format --check`, `basedpyright` clean.
+
+### Step 3 — delete the Advisor role — DONE
+
+Net −535 lines (38 files, 260+/795−). An advance is now one Director tool, `advance`, refused
+deterministically by the resolver and retried through the toolset's existing `ValueError` →
+`ModelRetry` loop.
+
+- `src/aidm/engines/core.py`: `ProposalBase.subject_id: CheckedEntityId`; `Advancement` keeps
+  `proposal_type`/`ledger_key`/`occasion`/`spent_why`, renames `offer_text` → `text`, drops
+  `__init__` (no `advancement.md`), `offers`, `resolve`, `advance_refusal`; `AdvancementOffer`
+  deleted. New: `owed(state)`, `advance(draft, proposal, rng)` (party check → owed check →
+  `grant` → ledger + `counter_fact`), `advance_command(advancement)` built on `rule(...)` so rng
+  reaches 24XX's credit roll, `owed_notes(engine, state)` (empty while a decision is pending).
+- Engines: `text = GROWTH`, no-arg advancement ctor, `advance_command(self.advancement)` in
+  `director_commands`; both `advancement.md` deleted. `director.md`s untouched (still true).
+- `turn/run.py`: `AdvancementContext`/`advisor_agent` gone; director notes are
+  `(*draft.take_notes(), *owed_notes(engine, draft))`. `turn/context.py`: `render_proposal`,
+  `CORE_ADVISOR`, `advisor_instructions` and `prompts/core_advisor.md` gone.
+- `app/runtime.py`: `DraftedAdvance`, `GameSession.advisor/drafted/offers/advancement_offered/
+  propose/preview/apply_proposal` gone. `ui/panels.py`/`ui/game.py`: advancement tab, panel and
+  the "on offer" notify gone. `harness/codemode.py`: `AdvanceArgs`, `propose_advance`,
+  `apply_advance`, `_offers`, `ADVANCEMENT ON OFFER` gone; `_picture` appends `owed_notes`.
+  `harness/mcp.py`: `PROPOSE_ADVANCE`/`APPLY_ADVANCE` gone. `state/play.py`: `AdvanceApplied`
+  gone. `config.py`: `Roles.advisor` and the `"advisor"` literal gone.
+- Tests: `test_proposals.py`, four `advisor.txt` and two `proposal.json` fixtures and their golden
+  tests deleted; code-mode advance tests deleted; loner3e/24XX advancement tests rewritten onto
+  `advance`/`owed`/`pytest.raises`. One replacement test in `test_pipeline.py`: owed note in the
+  director prompt → `advance` moves the ledger → second call refused "has no advance owed".
+  `director_tools.json` fixtures regenerated only for the added `advance` entry.
+- Docs: README (roles, code-mode losses, tabs), `playing-aidm/SKILL.md` step 7, `plans/L5` item
+  16 and `plans/L6` item 7 (rules text is a `text` class var, not an `advancement.md`).
+- Deviation from the plan's item 4 wording: `proposal_type` and `text` stay as class vars — the
+  command needs an args type and a description.
+- Follow-up (maintainer ask): the advance now shows as cards in the turn feed — each `grant` fact
+  carries a `MechanicEvent` (`military_tech` icon: loner3e new/rewritten tag, 24XX raised skill), and
+  the ledger `counter_fact` uses the same icon. No new type; the existing `Fact.event` channel.
+  Scripted check (`player_events` on a played turn) showed the grant cards were dropped: they were
+  `narrate=False` from the advisor era, when the panel showed them. Now told, so the card renders
+  and the narrator hears the growth. Same check exposed a pre-existing hole: loner3e `_gain` added a
+  tag the sheet already had; it now refuses (`"already has the tag"`), one test tag renamed.
+- Adversarial review (Fable), applied: stale "before confirmation" text on `why` (both `rules.py`,
+  fixtures regenerated) and `explained_fact`'s docstring + dead `narrate` param gone; the owed note
+  no longer repeats the rules text or reads as an order ("has an advance owed; call advance only
+  when the player asks") since `director.md` says to follow every note this turn; `occasion` cut;
+  `grant` reads `proposal.subject_id`; `advance_command`/`owed_notes` became
+  `Advancement.command()`/`.notes()`; the pipeline test pins the two grant cards. Kept `why`
+  (it lands in the trace) and the `ProposalBase` name.
+- Accepted losses as recorded in the plan: no confirm-before-commit, no separate advisor budget.
+- Verified: 266 passing, `ruff check`, `ruff format --check`, `basedpyright` clean.
 
 ## Phase 3 — L6 Cairn Barebones — not started (after Phase 2.9)
 ## Phase 4 — L5 Fate Condensed — not started

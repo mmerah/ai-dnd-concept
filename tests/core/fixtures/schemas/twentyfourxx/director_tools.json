@@ -528,5 +528,36 @@
       ],
       "type": "object"
     }
+  },
+  {
+    "name": "advance",
+    "description": "Spend one advance a party member has earned, when the player asks for it. Choose one skill this job improves. Raise an existing skill one step or add a new one at d8.",
+    "parameters": {
+      "additionalProperties": false,
+      "description": "The skill increase earned by one job.",
+      "properties": {
+        "subject_id": {
+          "description": "Exact id of the party member who advances.",
+          "maxLength": 64,
+          "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$",
+          "type": "string"
+        },
+        "skill": {
+          "description": "Title-case skill to raise one step or add at d8.",
+          "minLength": 1,
+          "type": "string"
+        },
+        "why": {
+          "description": "One short reason, in the fiction, for the change.",
+          "type": "string"
+        }
+      },
+      "required": [
+        "subject_id",
+        "skill",
+        "why"
+      ],
+      "type": "object"
+    }
   }
 ]

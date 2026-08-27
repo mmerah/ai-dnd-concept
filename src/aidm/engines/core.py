@@ -132,15 +132,7 @@ class Decision(Frozen):
 
 
 class ProposalBase(Frozen):
-    """What the advisor writes, in the engine's own vocabulary."""
-
-
-class AdvancementOffer(Frozen):
-    """One change advancement holds open for one subject, already resolved out of content."""
-
-    subject_id: CheckedEntityId
-    prompt: str
-    text: str = ""
+    subject_id: CheckedEntityId = Field(description="Exact id of the party member who advances.")
 
 
 class Advancement(ABC):
@@ -148,12 +140,8 @@ class Advancement(ABC):
 
     proposal_type: ClassVar[type[ProposalBase]]
     ledger_key: ClassVar[Slug]
-    occasion: ClassVar[str]
-    offer_text: ClassVar[str]
+    text: ClassVar[str]
     spent_why: ClassVar[str]
-
-    def __init__(self, engine_dir: Path) -> None:
-        self.instructions = engine_text(engine_dir / "advancement.md")
 
     @abstractmethod
     def ledger(self, state: Game, subject_id: EntityId) -> Counter: ...
@@ -163,42 +151,50 @@ class Advancement(ABC):
         """How many boundaries the fiction has closed: what an advance is owed against."""
 
     @abstractmethod
-    def grant(
-        self, draft: Game, subject_id: EntityId, proposal: ProposalBase, rng: Random
-    ) -> tuple[Fact, ...]:
+    def grant(self, draft: Game, proposal: ProposalBase, rng: Random) -> tuple[Fact, ...]:
         """Writes what the proposal buys; moving the ledger itself belongs to the base."""
 
-    def offers(self, state: Game) -> tuple[AdvancementOffer, ...]:
+    def owed(self, state: Game) -> tuple[EntityId, ...]:
         earned = self.earned(state)
         return tuple(
-            AdvancementOffer(
-                subject_id=subject_id,
-                prompt=f"{state.world.require(subject_id).name} {self.occasion}.",
-                text=self.offer_text,
-            )
+            subject_id
             for subject_id in (state.player_id, *state.world.party)
             if earned > self.ledger(state, subject_id).current
         )
 
-    def resolve(
-        self, draft: Game, offer: AdvancementOffer, proposal: ProposalBase, rng: Random
-    ) -> tuple[Fact, ...]:
-        granted = self.grant(draft, offer.subject_id, proposal, rng)
-        ledger = self.ledger(draft, offer.subject_id)
+    def advance(self, draft: Game, proposal: ProposalBase, rng: Random) -> tuple[Fact, ...]:
+        subject = draft.world.require(proposal.subject_id)
+        if proposal.subject_id not in (draft.player_id, *draft.world.party):
+            raise ValueError(f"{subject.name} is not in the party")
+        ledger = self.ledger(draft, proposal.subject_id)
+        if self.earned(draft) <= ledger.current:
+            raise ValueError(f"{subject.name} has no advance owed")
+        granted = self.grant(draft, proposal, rng)
         ledger.current += 1
-        subject = draft.world.require(offer.subject_id)
         return (
             *granted,
-            counter_fact(draft, subject, self.ledger_key, ledger, 1, self.spent_why),
+            counter_fact(
+                draft, subject, self.ledger_key, ledger, 1, self.spent_why, "military_tech"
+            ),
         )
 
-    def advance_refusal(
-        self, state: Game, offer: AdvancementOffer, proposal: ProposalBase
-    ) -> str | None:
-        return draft_refusal(
-            state,
-            lambda draft: self.resolve(draft, offer, proposal, Random(0)),
-            "the sheet this leaves",
+    def command(self) -> "Command":
+        return rule(
+            "advance",
+            "Spend one advance a party member has earned, when the player asks for it. "
+            f"{self.text}",
+            self.proposal_type,
+            self.advance,
+        )
+
+    def notes(self, state: Game) -> tuple[str, ...]:
+        # An advance mid-suspension could invalidate the frozen payload the open decision holds.
+        if state.pending is not None:
+            return ()
+        return tuple(
+            f"{state.world.require(subject_id).name} has an advance owed; call advance only when "
+            "the player asks for it."
+            for subject_id in self.owed(state)
         )
 
 

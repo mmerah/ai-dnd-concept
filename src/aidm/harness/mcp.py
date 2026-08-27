@@ -2,7 +2,7 @@ import asyncio
 import logging
 import sys
 from collections.abc import Callable
-from dataclasses import dataclass, replace
+from dataclasses import dataclass
 from typing import Any
 
 import mcp_types as types
@@ -16,10 +16,9 @@ from aidm.app.runtime import Runtime
 from aidm.authoring.draft import WHOLE_SCENARIO, ScenarioDraft
 from aidm.authoring.run import authoring_toolset, draft_context
 from aidm.config import load_settings
-from aidm.engines.core import Command, NoArgs, ProposalBase
+from aidm.engines.core import Command, NoArgs
 from aidm.engines.world import commands
 from aidm.harness.codemode import (
-    AdvanceArgs,
     BeginScenario,
     EndTurn,
     Harness,
@@ -117,20 +116,7 @@ SERVER_TOOLS: tuple[ServerTool, ...] = (
     ),
 )
 
-# Published only while the open engine has advancement, so they sit outside SERVER_TOOLS.
-PROPOSE_ADVANCE = ServerTool(
-    "propose_advance",
-    "Draft one advancement the player asked for; nothing commits until `apply_advance`.",
-    lambda harness, raw: harness.propose_advance(raw),
-    AdvanceArgs[ProposalBase],
-)
-APPLY_ADVANCE = ServerTool(
-    "apply_advance",
-    "Commit the drafted advancement.",
-    lambda harness, _raw: harness.apply_advance(),
-)
-
-DISPATCH = {tool.name: tool for tool in (*SERVER_TOOLS, PROPOSE_ADVANCE, APPLY_ADVANCE)}
+DISPATCH = {tool.name: tool for tool in SERVER_TOOLS}
 PUBLISHED = tuple(_published(tool) for tool in SERVER_TOOLS)
 
 # Names and schemas only: a call routes to the open run's own toolset, which has an engine to play.
@@ -157,10 +143,7 @@ async def offered(harness: Harness) -> list[types.Tool]:
     tools = [*PUBLISHED, *await _authoring_tools()]
     if harness.session is None:
         return tools
-    engine = harness.session.engine
-    tools.append(_published(replace(PROPOSE_ADVANCE, args=harness.advance_args())))
-    tools.append(_published(APPLY_ADVANCE))
-    tools.extend(_published(one) for one in commands(engine))
+    tools.extend(_published(one) for one in commands(harness.session.engine))
     return tools
 
 

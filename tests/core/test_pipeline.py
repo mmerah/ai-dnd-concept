@@ -3,6 +3,7 @@ from random import Random
 import pytest
 from core_test_support import (
     TWENTYFOURXX,
+    at_boundary,
     game,
     initialized,
     narrated,
@@ -17,9 +18,11 @@ from core_test_support import (
 from pydantic_ai.messages import ModelMessage, ModelResponse, ToolReturnPart
 from pydantic_ai.models.function import AgentInfo, FunctionModel
 
+from aidm.engines.loner3e.rules import Mechanics as LonerMechanics
 from aidm.engines.loner3e.rules import outcome_for
 from aidm.engines.twentyfourxx.rules import Mechanics
 from aidm.state.entities import PLAYER_ID, EntityId
+from aidm.state.facts import player_events
 from aidm.turn.run import TurnStep
 
 
@@ -279,3 +282,26 @@ async def test_a_director_run_that_fails_discards_what_the_earlier_tool_call_did
 
     assert state.model_dump_json() == before
     assert state.world.require(EntityId("vault-map")).parent_id != PLAYER_ID
+
+
+async def test_an_owed_advance_is_noted_lands_on_call_and_is_refused_once_spent() -> None:
+    engine, state = initialized()
+    growth: dict[str, object] = {
+        "subject_id": PLAYER_ID,
+        "changes": [{"kind": "gear", "tag": "Waxed Rope"}],
+        "why": "he never climbs without it now",
+    }
+    director = recorded(
+        tool_call("advance", **growth),
+        tool_call("advance", **growth),
+        text("The rope is his for good."),
+    )
+    result = await played(
+        engine, at_boundary(state), "I keep the rope.", director=FunctionModel(director.stub)
+    )
+
+    assert "Kael has an advance owed" in shown(result.turn, "director")
+    assert [event.icon for event in player_events(result.turn.facts)] == ["military_tech"] * 2
+    sheet = LonerMechanics.of_game(result.state).sheets[PLAYER_ID]
+    assert (sheet.gear[-1], sheet.milestones.current) == ("Waxed Rope", 1)
+    assert any("has no advance owed" in reason for reason in director.reasons())

@@ -474,4 +474,4 @@ class Advance(ProposalBase):
         min_length=1,
         description="Title-case skill to raise one step or add at d8.",
     )
-    why: str = Field(description="One short reason shown to the player before confirmation.")
+    why: str = Field(description="One short reason, in the fiction, for the change.")

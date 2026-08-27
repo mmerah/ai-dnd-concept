@@ -83,12 +83,10 @@ def explained_fact(
     trace: str,
     why: str,
     *,
-    narrate: bool = True,
     event: MechanicEvent | None = None,
 ) -> Fact:
-    """The `why` is what the advancement panel shows the player before they confirm."""
     rendered = f"{trace} ({why})" if why else trace
-    return entity_fact(entity, kind, rendered, narrate=narrate, event=event)
+    return entity_fact(entity, kind, rendered, event=event)
 
 
 def player_events(facts: Sequence[Fact]) -> tuple[MechanicEvent, ...]:

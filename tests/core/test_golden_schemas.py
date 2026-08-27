@@ -15,15 +15,6 @@ SHARED_OUTPUTS: dict[str, type[BaseModel]] = {
 
 
 @pytest.mark.parametrize("engine_id", engine_ids())
-def test_the_proposal_schema_the_advisor_answers_with_is_unchanged(engine_id: EngineId) -> None:
-    engine, _ = game(engine_id)
-    golden_json(
-        FIXTURES / "schemas" / engine_id / "proposal.json",
-        engine.advancement.proposal_type.model_json_schema(),
-    )
-
-
-@pytest.mark.parametrize("engine_id", engine_ids())
 def test_the_director_is_offered_the_same_tools(engine_id: EngineId) -> None:
     engine, _ = game(engine_id)
     golden_json(

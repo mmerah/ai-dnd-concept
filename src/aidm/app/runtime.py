@@ -5,20 +5,17 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from random import Random
 
-from pydantic_ai import Agent
-
 from aidm.authoring.draft import ExtensionPatch, apply_patch, engine_packs
 from aidm.authoring.run import growth_run
 from aidm.config import Settings, load_settings
 from aidm.content.io import FileStore, load_character, load_scenario
 from aidm.content.model import Character, Scenario
-from aidm.engines.core import AdvancementOffer, Engine, ProposalBase, transact
+from aidm.engines.core import Engine, transact
 from aidm.engines.registry import begin_game, build_engine
 from aidm.state.entities import PLAYER_ID, EngineId, EntityId, Frozen, Slug
 from aidm.state.facts import Fact
 from aidm.state.model import Game, ThreadStatus, frontier
 from aidm.state.play import (
-    AdvanceApplied,
     Answer,
     Line,
     MechanicEvent,
@@ -26,15 +23,7 @@ from aidm.state.play import (
     TurnTrace,
     WorldExtended,
 )
-from aidm.turn.context import render_proposal
-from aidm.turn.run import (
-    AdvancementContext,
-    TurnAgents,
-    TurnStep,
-    advisor_agent,
-    build_turn_agents,
-    run_segment,
-)
+from aidm.turn.run import TurnAgents, TurnStep, build_turn_agents, run_segment
 
 from .launch import LaunchTarget
 from .media import ICON_DIR, Illustrator
@@ -90,14 +79,6 @@ def _thread_line(thread: ThreadSummary) -> str:
 LOGGER = logging.getLogger(__name__)
 
 
-@dataclass(frozen=True, slots=True)
-class DraftedAdvance:
-    """Hold an advancement offer and its uncommitted proposal."""
-
-    offer: AdvancementOffer
-    proposal: ProposalBase
-
-
 def open_media(
     settings: Settings,
     target: LaunchTarget,
@@ -132,7 +113,6 @@ class GameSession:
     character: Character
     engine: Engine
     stages: TurnAgents | None
-    advisor: Agent[AdvancementContext, ProposalBase] | None
     store: FileStore
     settings: Settings
     media: Illustrator | None = None
@@ -140,7 +120,6 @@ class GameSession:
     entries: list[TraceEntry] = field(default_factory=list)
     busy: bool = False
     step: TurnStep | None = None
-    drafted: DraftedAdvance | None = None
     _illustrations: set[Task[None]] = field(default_factory=set, repr=False)
     state: Game = field(init=False)
     _stamp: int = field(init=False, default=0)
@@ -208,61 +187,11 @@ class GameSession:
         self._illustrations.add(task)
         task.add_done_callback(self._illustrations.discard)
 
-    def offers(self) -> tuple[AdvancementOffer, ...]:
-        advancement = self.engine.advancement
-        # An advance mid-suspension could invalidate the frozen payload the decision holds.
-        if self.state.pending is not None:
-            return ()
-        return advancement.offers(self.state)
-
-    def advancement_offered(self) -> bool:
-        return bool(self.offers())
-
-    async def propose(self, offer: AdvancementOffer, intent: str) -> ProposalBase:
-        """The advisor drafts the change; nothing is committed until the player confirms it."""
-        if self.advisor is None:
-            raise ValueError("code mode drafts the proposal in the MCP server, not here")
-        advancement = self.engine.advancement
-        deps = AdvancementContext(advancement=advancement, state=self.state, offer=offer)
-        prompt = render_proposal(self.engine, self.state, offer, intent)
-        return (await self.advisor.run(prompt, deps=deps)).output
-
-    def preview(self, drafted: DraftedAdvance) -> tuple[Fact, ...]:
-        """What the change would write, read off a throwaway draft, not the committed state."""
-        advancement = self.engine.advancement
-        _, facts = transact(
-            self.engine,
-            self.state.draft(),
-            lambda draft, rng: tuple(
-                advancement.resolve(draft, drafted.offer, drafted.proposal, rng)
-            ),
-            Random(0),
-        )
-        return facts
-
-    def apply_proposal(self, drafted: DraftedAdvance) -> tuple[Fact, ...]:
-        """The legality rule runs again here: a turn since the draft may have made it illegal."""
-        advancement = self.engine.advancement
-        offer, proposal = drafted.offer, drafted.proposal
-        if offer not in advancement.offers(self.state):
-            raise ValueError("that change is no longer on offer")
-        if refused := advancement.advance_refusal(self.state, offer, proposal):
-            raise ValueError(refused)
-        state, facts = transact(
-            self.engine,
-            self.state.draft(),
-            lambda draft, rng: tuple(advancement.resolve(draft, offer, proposal, rng)),
-            self.rng,
-        )
-        self.commit(state, AdvanceApplied(subject_id=offer.subject_id, facts=facts))
-        return facts
-
     def restart(self) -> None:
         opening = self._begun()
         self.store.discard(self.slug)
         self.state = opening
         self.entries = []
-        self.drafted = None
         self.illustrate_scene()
 
     def commit(self, state: Game, entry: TraceEntry | None = None) -> None:
@@ -380,7 +309,6 @@ class Runtime:
             character=character,
             engine=engine,
             stages=None if settings.code_mode else build_turn_agents(engine, settings),
-            advisor=None if settings.code_mode else advisor_agent(engine.advancement, settings),
             store=store,
             settings=settings,
             media=open_media(settings, target, scenario, character, store),

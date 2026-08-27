@@ -15,7 +15,7 @@ from aidm.state.play import Answer, DecisionOption
 from aidm.turn.context import player_scene
 from aidm.turn.run import TurnStep
 
-from .panels import advancement_panel, journal_panel, sheet_panel, state_panel, trace_panel
+from .panels import journal_panel, sheet_panel, state_panel, trace_panel
 from .widgets import avatar, entity_row, heading, page_header, refuse_if_busy, working
 
 _SCENE_HEIGHT = "calc(25vh - 1rem)"
@@ -237,10 +237,6 @@ class GameView:
         trace_panel(self.session)
 
     @ui.refreshable_method
-    def advancement(self) -> None:
-        advancement_panel(self.session, self.refresh_all)
-
-    @ui.refreshable_method
     def state(self) -> None:
         state_panel(self.session)
 
@@ -253,7 +249,6 @@ class GameView:
             self.sheet,
             self.journal,
             self.trace,
-            self.advancement,
             self.state,
         ):
             panel.refresh()
@@ -318,14 +313,11 @@ async def _send(view: GameView, player_input: str | Answer, bubble: str) -> None
             await _play_with_agent(view, view.driver, player_input, bubble)
         else:
             loop = get_running_loop()
-            was_offered = session.advancement_offered()
             await session.submit(
                 player_input,
                 on_step=lambda step: on_step(view, step),
                 on_event=lambda event: on_event(view, event, loop),
             )
-            if not was_offered and session.advancement_offered():
-                ui.notify("Something is on offer. Check the advancement tab.")
     session.step = None
     view.live_prompt, view.live_events, view.step_started = None, [], None
     if view.composer is not None:
@@ -483,15 +475,12 @@ def game_page(session: GameSession, driver: Driver | None = None) -> None:
             with ui.tabs().classes("w-full") as tabs:
                 scene_tab = ui.tab("scene")
                 journal_tab = ui.tab("journal")
-                advancement_tab = ui.tab("advancement")
                 dev_tab = ui.tab("dev", icon="code").classes("game-dev-tab")
             with ui.tab_panels(tabs, value=scene_tab).classes("w-full flex-grow"):
                 with ui.tab_panel(scene_tab), ui.scroll_area().classes("w-full h-full"):
                     view.sheet()
                 with ui.tab_panel(journal_tab), ui.scroll_area().classes("w-full h-full"):
                     view.journal()
-                with ui.tab_panel(advancement_tab), ui.scroll_area().classes("w-full h-full"):
-                    view.advancement()
                 with ui.tab_panel(dev_tab), ui.scroll_area().classes("w-full h-full"):
                     with ui.expansion("trace", value=True).classes("w-full"):
                         view.trace()

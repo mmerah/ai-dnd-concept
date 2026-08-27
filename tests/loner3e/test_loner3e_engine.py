@@ -239,51 +239,48 @@ def test_an_actor_already_at_zero_luck_refuses_another_exchange() -> None:
         _ = resolve_question(spent.draft(), _duel(), Random(0), TWISTS)
 
 
-def test_an_adventures_end_opens_an_offer_and_the_caps_refuse_what_breaks_them() -> None:
+def test_an_adventures_end_owes_an_advance_and_a_tag_the_sheet_lacks_is_refused() -> None:
     engine, state = initialized()
     advancement = engine.advancement
-    assert advancement.offers(state) == ()
+    assert advancement.owed(state) == ()
 
     ready = at_boundary(state)
-    (offer,) = advancement.offers(ready)
+    assert advancement.owed(ready) == (PLAYER_ID,)
 
-    legal = AdventureGrowth(
-        changes=(Change(kind="skill", tag="Reads a Second Tongue"),),
-        why="the old texts finally make sense",
-    )
     rewrite = AdventureGrowth(
+        subject_id=PLAYER_ID,
         changes=(Change(kind="rewrite", tag="Never Walks Away", into="Knows When to Walk Away"),),
         why="the vault taught him the cost",
     )
-    unwritten = AdventureGrowth(
-        changes=(Change(kind="rewrite", tag="Never Held a Blade", into="Knows When to Walk Away"),),
-        why="the vault taught him the cost",
-    )
+    assert advancement.advance(ready.draft(), rewrite, Random(0))
 
-    assert advancement.advance_refusal(ready, offer, legal) is None
-    assert advancement.advance_refusal(ready, offer, rewrite) is None
-    assert advancement.advance_refusal(ready, offer, unwritten) == (
-        "Kael carries no tag 'Never Held a Blade' to rewrite"
+    unwritten = AdventureGrowth(
+        subject_id=PLAYER_ID,
+        changes=(Change(kind="rewrite", tag="Never Held a Blade", into="Holds It Well"),),
+        why="a tag the sheet does not carry",
     )
+    with pytest.raises(ValueError, match="carries no tag 'Never Held a Blade'"):
+        _ = advancement.advance(ready.draft(), unwritten, Random(0))
 
 
 def test_an_npc_party_members_growth_writes_their_own_sheet_not_the_players() -> None:
     engine, state = initialized()
-    draft = state.draft()
-    draft.world.party.append(FOE)
-    with_companion = draft.committed()
-
     advancement = engine.advancement
-    ready = at_boundary(with_companion)
-    offers = {offer.subject_id: offer for offer in advancement.offers(ready)}
-    assert set(offers) == {PLAYER_ID, FOE}
-
     grow_mara = AdventureGrowth(
+        subject_id=FOE,
         changes=(Change(kind="skill", tag="Reads Old Stonework"),),
         why="she has read enough of it now",
     )
+    with pytest.raises(ValueError, match="is not in the party"):
+        _ = advancement.advance(at_boundary(state).draft(), grow_mara, Random(0))
+
+    draft = state.draft()
+    draft.world.party.append(FOE)
+    ready = at_boundary(draft.committed())
+    assert set(advancement.owed(ready)) == {PLAYER_ID, FOE}
+
     draft = ready.draft()
-    facts = advancement.resolve(draft, offers[FOE], grow_mara, Random(0))
+    facts = advancement.advance(draft, grow_mara, Random(0))
     grown = draft.committed()
 
     sheets = Mechanics.of_game(grown).sheets
@@ -310,51 +307,48 @@ def test_an_actor_seeded_after_an_adventure_is_not_owed_the_growth_they_missed()
     walked_in = draft.committed()
 
     engine.validate(walked_in)
-    offered = {offer.subject_id for offer in engine.advancement.offers(walked_in)}
-    assert offered == {PLAYER_ID}
+    assert engine.advancement.owed(walked_in) == (PLAYER_ID,)
 
 
-def test_a_closed_chapter_gates_the_offer_and_a_second_one_earns_a_second() -> None:
+def test_a_closed_chapter_gates_the_advance_and_a_second_one_earns_another() -> None:
     engine, state = initialized()
     advancement = engine.advancement
-    assert advancement.offers(state) == ()
-
-    once = at_boundary(state)
-    (offer,) = advancement.offers(once)
-
     change = AdventureGrowth(
-        changes=(Change(kind="gear", tag="Waxed Rope"),), why="he never climbs without it now"
+        subject_id=PLAYER_ID,
+        changes=(Change(kind="gear", tag="Waxed Rope"),),
+        why="he never climbs without it now",
     )
-    draft = once.draft()
-    advancement.resolve(draft, offer, change, Random(0))
+    draft = at_boundary(state).draft()
+    _ = advancement.advance(draft, change, Random(0))
     spent = draft.committed()
-    assert advancement.offers(spent) == ()
 
-    twice = at_boundary(spent)
-    assert len(advancement.offers(twice)) == 1
+    assert advancement.owed(spent) == ()
+    with pytest.raises(ValueError, match="has no advance owed"):
+        _ = advancement.advance(spent.draft(), change, Random(0))
+    assert advancement.owed(at_boundary(spent)) == (PLAYER_ID,)
 
 
 def test_an_adventure_growth_with_three_changes_lands_all_three_on_the_sheet() -> None:
     engine, state = initialized()
     advancement = engine.advancement
     ready = at_boundary(state)
-    (offer,) = advancement.offers(ready)
 
     growth = AdventureGrowth(
+        subject_id=PLAYER_ID,
         changes=(
-            Change(kind="skill", tag="Reads Old Stonework"),
+            Change(kind="skill", tag="Reads Tide Marks"),
             Change(kind="gear", tag="Waxed Rope"),
             Change(kind="frailty", tag="Flinches at the Dark"),
         ),
         why="the vault left its mark on him",
     )
     draft = ready.draft()
-    facts = advancement.resolve(draft, offer, growth, Random(0))
+    facts = advancement.advance(draft, growth, Random(0))
     grown = draft.committed()
 
     sheet = Mechanics.of_game(grown).sheets[PLAYER_ID]
     assert (sheet.skills[-1], sheet.gear[-1], sheet.frailties[-1]) == (
-        "Reads Old Stonework",
+        "Reads Tide Marks",
         "Waxed Rope",
         "Flinches at the Dark",
     )

@@ -347,5 +347,74 @@
       "properties": {},
       "type": "object"
     }
+  },
+  {
+    "name": "advance",
+    "description": "Spend one advance a party member has earned, when the player asks for it. Choose 1-4 changes from this adventure: a new skill, signature gear, a frailty, or a rewrite of an existing tag.",
+    "parameters": {
+      "$defs": {
+        "Change": {
+          "additionalProperties": false,
+          "description": "One sheet change earned by the adventure.",
+          "properties": {
+            "kind": {
+              "description": "Type of sheet change.",
+              "enum": [
+                "skill",
+                "gear",
+                "frailty",
+                "rewrite"
+              ],
+              "type": "string"
+            },
+            "tag": {
+              "description": "New title-case tag, or the exact current tag for a rewrite.",
+              "minLength": 1,
+              "type": "string"
+            },
+            "into": {
+              "default": "",
+              "description": "New title-case tag for a rewrite. Empty for other kinds.",
+              "type": "string"
+            }
+          },
+          "required": [
+            "kind",
+            "tag"
+          ],
+          "title": "Change",
+          "type": "object"
+        }
+      },
+      "additionalProperties": false,
+      "description": "All sheet changes earned by one adventure.",
+      "properties": {
+        "subject_id": {
+          "description": "Exact id of the party member who advances.",
+          "maxLength": 64,
+          "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$",
+          "type": "string"
+        },
+        "changes": {
+          "description": "One to four earned changes, in reading order.",
+          "items": {
+            "$ref": "#/$defs/Change"
+          },
+          "maxItems": 4,
+          "minItems": 1,
+          "type": "array"
+        },
+        "why": {
+          "description": "One short reason, in the fiction, for the change.",
+          "type": "string"
+        }
+      },
+      "required": [
+        "subject_id",
+        "changes",
+        "why"
+      ],
+      "type": "object"
+    }
   }
 ]

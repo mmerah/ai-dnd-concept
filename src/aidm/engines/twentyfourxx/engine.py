@@ -70,7 +70,7 @@ from aidm.state.entities import (
     require_unique,
     slug,
 )
-from aidm.state.facts import Fact, explained_fact
+from aidm.state.facts import Fact, MechanicEvent, explained_fact
 from aidm.state.model import Game
 
 
@@ -140,19 +140,16 @@ DIRECTOR_COMMANDS: tuple[Command, ...] = (
 class TwentyfourxxAdvancement(SheetAdvancement):
     proposal_type = Advance
     ledger_key = "jobs"
-    occasion = "finishes a job"
-    offer_text = GROWTH
+    text = GROWTH
     spent_why = "a job's advance taken"
 
     def ledger(self, state: Game, subject_id: EntityId) -> Counter:
         return Mechanics.of_game(state).sheets[subject_id].jobs
 
-    def grant(
-        self, draft: Game, subject_id: EntityId, proposal: ProposalBase, rng: Random
-    ) -> tuple[Fact, ...]:
+    def grant(self, draft: Game, proposal: ProposalBase, rng: Random) -> tuple[Fact, ...]:
         assert isinstance(proposal, Advance)
-        sheet = Mechanics.of_game(draft).sheets[subject_id]
-        subject = draft.world.require(subject_id)
+        sheet = Mechanics.of_game(draft).sheets[proposal.subject_id]
+        subject = draft.world.require(proposal.subject_id)
 
         skill = _canonical_skill(sheet, proposal.skill)
         die = raised(sheet.skills.get(skill))
@@ -162,7 +159,7 @@ class TwentyfourxxAdvancement(SheetAdvancement):
             "skill_increased",
             f"{subject.name} raised {skill} to d{die}",
             proposal.why,
-            narrate=False,
+            event=MechanicEvent(title=f"{subject.name}: {skill} d{die}", icon="military_tech"),
         )
 
         earned, dice_fact = roll_pool((6,), "credits earned", rng, label="Credits")
@@ -368,11 +365,12 @@ class TwentyfourxxEngine(SheetEngine[Sheet]):
         self.packs = sources.load(self.engine_dir / "packs", Pack)
         self.gear = _gear(self.packs)
         self.ship = _ship(self.packs)
-        self.advancement = TwentyfourxxAdvancement(self.engine_dir)
+        self.advancement = TwentyfourxxAdvancement()
         self.creation = TwentyfourxxCreation(self.packs)
         self.director_commands = (
             *DIRECTOR_COMMANDS,
             action("buy_gear", _for_sale(self.packs, self.ship), BuyGear, self._buy_gear),
+            self.advancement.command(),
         )
 
     def pack_models(self) -> Mapping[str, Pack]:

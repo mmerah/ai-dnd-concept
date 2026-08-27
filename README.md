@@ -48,7 +48,7 @@ Both modes use the same engines, state and saves. `HARNESS` in `.env` selects on
 
 In **builtin mode**, the default, the browser is the game. The Director and the Narrator run on the models named in `.env`, or on your own machine through the `local` provider.
 
-In **code mode** one coding agent plays the Director, the Narrator, the advisor and the scenario creator over an MCP server. With a subscription, only scene illustrations would need an API key and billing.
+In **code mode** one coding agent plays the Director, the Narrator and the scenario creator over an MCP server. With a subscription, only scene illustrations would need an API key and billing.
 
 | `HARNESS` | Who plays the turn | The browser |
 |---|---|---|
@@ -84,11 +84,10 @@ Nothing is installed. Every config file is in the repository, and `.claude/skill
 
 `codex` runs with `--approve-for-me`, because `codex exec` cancels every MCP call under its default `never` policy ([codex#24135](https://github.com/openai/codex/issues/24135)). `pi` ships no MCP client, so the extension proxies every tool behind one `mcp` tool.
 
-Code mode gives up three things:
+Code mode gives up two things:
 
 - The hidden-canon boundary for narration is only a prompt rule, not enforced.
 - The model half has no offline test. `tests/core/test_code_mode.py` drives the MCP handlers as plain functions.
-- The advancement tab is read-only, and the agent drafts the proposal itself.
 
 Characters and scenarios are still made in the browser, and the scenario page asks the agent when `HARNESS` names one. Under `external` it sends you to `begin_scenario()` in the terminal.
 
@@ -115,7 +114,7 @@ state ← content ← engines ← turn ← authoring ← app ← harness ← ui
 
 `aidm/config.py` is a leaf that every layer may read. An engine never imports another engine, and only `ui` imports NiceGUI.
 
-Each engine subsystem gets a tab. Both shipped engines ship **Advancement**. The **dev** tab holds **trace** (the plan, the resolved facts and each role's exact prompt), **state**, and the **agent** log when the app launched an agent.
+The **dev** tab holds **trace** (the plan, the resolved facts and each role's exact prompt), **state**, and the **agent** log when the app launched an agent.
 
 ## Docs
 

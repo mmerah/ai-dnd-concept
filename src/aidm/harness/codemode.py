@@ -12,7 +12,7 @@ from aidm.app.launch import (
     LaunchTarget,
     load_catalog,
 )
-from aidm.app.runtime import DraftedAdvance, GameSession, Runtime
+from aidm.app.runtime import GameSession, Runtime
 from aidm.authoring.run import (
     AuthoringRun,
     GrowthRun,
@@ -23,9 +23,9 @@ from aidm.authoring.run import (
     scenario_run,
 )
 from aidm.config import Settings
-from aidm.engines.core import DirectorContext, ProposalBase, TurnRecord, run_command
+from aidm.engines.core import DirectorContext, TurnRecord, run_command
 from aidm.engines.world import commands
-from aidm.state.entities import CheckedEntityId, EngineId, Frozen, Slug
+from aidm.state.entities import EngineId, Frozen, Slug
 from aidm.state.facts import traced
 from aidm.state.model import Game
 from aidm.state.play import (
@@ -38,7 +38,6 @@ from aidm.state.play import (
 from aidm.turn.context import (
     NARRATOR,
     SceneSnapshot,
-    advisor_instructions,
     director_instructions,
     player_scene,
     render_director,
@@ -94,13 +93,6 @@ class StartTurn(ToolArgs):
 class EndTurn(ToolArgs):
     lines: tuple[Line, ...]
     """The prose the player reads, in order."""
-
-
-class AdvanceArgs[P: ProposalBase](ToolArgs):
-    subject_id: CheckedEntityId
-    """Exact id of the character the offer names."""
-    proposal: P
-    """The change to draft, in this engine's own vocabulary."""
 
 
 class BeginScenario(ToolArgs):
@@ -179,8 +171,7 @@ class Harness:
 
     def rules(self) -> str:
         engine = self.opened().engine
-        rules = f"{PREAMBLE}\n{director_instructions(engine.director_instructions)}\n\n{NARRATOR}"
-        return f"{rules}\n\n{advisor_instructions(engine.advancement.instructions)}"
+        return f"{PREAMBLE}\n{director_instructions(engine.director_instructions)}\n\n{NARRATOR}"
 
     def scene(self) -> str:
         turn = self.turn
@@ -193,7 +184,10 @@ class Harness:
         state = session.state
         recent = self.settings.turn.recent_exchanges
         rendered = render_director(
-            SceneSnapshot.from_game(state, (*notes, *state.world.pending_notes)),
+            SceneSnapshot.from_game(
+                state,
+                (*notes, *state.world.pending_notes, *session.engine.advancement.notes(state)),
+            ),
             session.engine.renderer(state),
             state.scenario,
             action,
@@ -203,7 +197,6 @@ class Harness:
             f"RECENT PLAY (this is turn {state.turn + 1}):\n{_recent(state, recent)}",
             rendered,
             f"WAITING ON THE PLAYER:\n{_waiting(state.pending)}",
-            f"ADVANCEMENT ON OFFER:\n{_offers(session)}",
         ]
         # A compacted session that missed the `end_turn` note still reads it here.
         if session.growth_due():
@@ -272,35 +265,6 @@ class Harness:
         answered = run_command(found, deps, raw)
         session.commit(deps.draft.committed())
         return answered
-
-    def advance_args(self) -> type[AdvanceArgs[ProposalBase]]:
-        return AdvanceArgs[self.opened().engine.advancement.proposal_type]
-
-    def propose_advance(self, raw: dict[str, JsonValue]) -> str:
-        session = self.opened()
-        advancement = session.engine.advancement
-        asked = self.advance_args().model_validate(raw)
-        offer = next((one for one in session.offers() if one.subject_id == asked.subject_id), None)
-        if offer is None:
-            raise ModelRetry(f"nothing is on offer for {asked.subject_id!r}.")
-        # The same refusal the builtin advisor retries against, run here against live state.
-        if refused := advancement.advance_refusal(session.state, offer, asked.proposal):
-            raise ModelRetry(refused)
-        drafted = DraftedAdvance(offer=offer, proposal=asked.proposal)
-        session.drafted = drafted
-        return (
-            f"proposed for {asked.subject_id}:\n{traced(session.preview(drafted))}\n"
-            "Show the player, then call apply_advance() if they accept."
-        )
-
-    def apply_advance(self) -> str:
-        session = self.opened()
-        drafted = session.drafted
-        if drafted is None:
-            raise ModelRetry("nothing is drafted; call propose_advance first.")
-        landed = session.apply_proposal(drafted)
-        session.drafted = None
-        return traced(landed)
 
     def begin_growth(self) -> str:
         session = self.opened()
@@ -417,12 +381,3 @@ def _waiting(pending: PendingDecision | None) -> str:
         f"{pending.kind}: {pending.prompt}\n"
         f"{options or '- (the player answers in their own words)'}"
     )
-
-
-def _offers(session: GameSession) -> str:
-    """The offer's rules text rides along: it is what an advance may buy under this engine."""
-    listed = [
-        f"- {offer.subject_id}: {offer.prompt}" + (f"\n{offer.text}" if offer.text else "")
-        for offer in session.offers()
-    ]
-    return "\n".join(listed) or "- (none)"

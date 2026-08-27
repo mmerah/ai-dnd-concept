@@ -164,8 +164,8 @@ the inherited `seed()` covers actors made in play.
 16. `director.md` (~90 lines) — fiction first; when to roll; the four actions and their outcome
     tables; aspects are true and are traits, so `add_trait` writes a situation aspect the scene
     already has; one exchange per turn; locations are zones; compel the trouble when the story
-    turns on it; a thread clock is how a contest runs. `advancement.md` (~25 lines) for the
-    breakthrough proposal.
+    turns on it; a thread clock is how a contest runs. The breakthrough's rules text is a `text`
+    class var on `FateAdvancement` (a `GROWTH`-style constant in `rules.py`), not a separate file.
 17. `characters/kael/fate.json` — mandatory, since `settings.authoring.starter_character` is `"kael"`
     (`config.py:70-71`), so every future authoring run needs it. Add an `engines/fate/` row (CC BY 3.0,
     Evil Hat) to the README licensing table (`README.md:129-131`) and drop "planned" at

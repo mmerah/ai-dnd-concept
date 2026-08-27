@@ -399,4 +399,4 @@ class AdventureGrowth(ProposalBase):
         max_length=4,
         description="One to four earned changes, in reading order.",
     )
-    why: str = Field(description="One short reason shown to the player before confirmation.")
+    why: str = Field(description="One short reason, in the fiction, for the change.")
