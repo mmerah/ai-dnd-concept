@@ -4,7 +4,7 @@ Five phases, in order. Each has a self-standing plan under `plans/`, concrete en
 from. This file is the authority where those plans disagreed.
 
 Progress is tracked in `PROGRESS.md`, one section per phase. Verify every phase with `uv run pytest && uv run ruff check && uv run ruff format --check &&
-uv run basedpyright`, with `UV_CACHE_DIR` unset. Baseline is 253 passing.
+uv run basedpyright`, with `UV_CACHE_DIR` unset. Baseline is 267 passing.
 
 Citations like `CAIRN-BAREBONES.md:204` are evidence gathered against the **pre-Phase-0** extractions.
 Phase 0 replaces those files, so after it lands follow the official URL in the matching pointer file
@@ -20,7 +20,6 @@ diff. Every cut is recorded as a deviation.
 | 1 | L3 — engine shape before the new engines | `plans/L3-engine-shape.md` | 1 signature + 1 hook |
 | 2 | L4 — Loner 3e / 24XX rules compliance | `plans/L4-rules-compliance.md` | no |
 | 2.5 | 24XX needs a scenario in its own genre | this file, below | no |
-| 2.9 | Simplification pass — **must land before Phase 3** | `SIMPLIFICATION_PLAN.md` | yes: advisor deleted, one turn lifecycle, `SavedGame` folded, launch loses `engine` |
 | 3 | L6 — Cairn Barebones engine | `plans/L6-cairn-barebones.md` | no |
 | 4 | L5 — Fate Condensed engine | `plans/L5-fate-condensed.md` | no |
 
@@ -116,12 +115,22 @@ Then update that engine's entry in `evals/turn_eval.py`'s `CANON` with the new i
 `characters/kael/twentyfourxx.json` stays: Kael's brief was made scenario-agnostic — someone who
 "comes wherever something old lies sealed" reads as well on a dead colony as in an abbey.
 
-## Phase 2.9 — simplification before the new engines
+## Settled: the simplification pass (landed 2026-08-27)
 
-`SIMPLIFICATION_PLAN.md` runs whole before Phase 3 starts. Two of its steps change what L6 and L5
-write: an engine's advancement is one `advance_command(self.advancement)` line, not an
-`advancement.md` plus a proposal fixture (Step 3); and an engine declares `pack_type`, loads `self.packs` in `__init__` and returns them from `pack_models()` (Step 2c). Read the
-L5/L6 plans through that file where they disagree.
+`SIMPLIFICATION_PLAN.md` ran whole before Phase 3 and is deleted; the commits are the record. Two of
+its results change what L6 and L5 write, so read those plans through them where they disagree:
+
+- The Advisor role is gone. An engine's advancement is one `Advancement.command()` line in
+  `director_commands` — no `advancement.md`, no golden proposal fixture — and the resolver refuses a
+  non-owed advance deterministically.
+- An engine declares `pack_type` (no `None` branch), loads its own typed `self.packs` in `__init__`
+  and returns them from `pack_models()`.
+
+Scratched there with the measurements that scratched them, recorded so they are not re-proposed:
+splitting `Entity(kind=…)` into `Location`/`Actor`/`Item`, typed per-kind authoring commands, one
+tool type across director/server/authoring, a state-dependent MCP tool surface, `Engine` as
+composition instead of `SheetEngine` inheritance, and a `domain/rules/application/adapters` tree.
+The numbers are in the file's deletion commit.
 
 ## Phase 3 — L6, Cairn Barebones
 
