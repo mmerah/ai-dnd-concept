@@ -6,7 +6,6 @@ from pydantic import ValidationError
 from pydantic_ai.messages import TextPart, ToolReturnPart
 from pydantic_ai.models.function import FunctionModel
 
-from aidm.content.io import SavedGame
 from aidm.engines.core import (
     RULES_WAIT,
     Command,
@@ -224,7 +223,7 @@ def test_a_paused_exchange_replays_as_a_message_and_a_silent_one_refuses() -> No
 
 def test_a_save_carries_a_decision_and_restore_refuses_one_the_engine_cannot_play() -> None:
     engine, state = _deciding()
-    saved = SavedGame.model_validate_json(SavedGame.from_game(_suspended(state)).model_dump_json())
+    saved = _suspended(state).model_dump_json()
 
     assert engine.restored(saved).pending == DECISION
 
@@ -232,4 +231,4 @@ def test_a_save_carries_a_decision_and_restore_refuses_one_the_engine_cannot_pla
         kind="spend-momentum", prompt="Spend a point?", options=(), payload={}
     )
     with pytest.raises(ValueError, match="cannot play a 'spend-momentum' decision"):
-        _ = engine.restored(SavedGame.from_game(_suspended(state, unplayable)))
+        _ = engine.restored(_suspended(state, unplayable).model_dump_json())

@@ -6,7 +6,7 @@ from loner3e_test_support import TARGET
 from loner3e_test_support import loner3e_session as session
 
 from aidm.app.runtime import Runtime
-from aidm.content.io import FileStore, SavedGame
+from aidm.content.io import FileStore
 from aidm.content.model import ScenarioMeta
 
 
@@ -15,7 +15,7 @@ def test_opening_does_not_save_and_restart_discards_durable_state(tmp_path: Path
     game = session(tmp_path)
     assert store.slugs() == ()
 
-    store.save("poc", updated(SavedGame.from_game(game.state), turn=7))
+    store.save("poc", game.state.model_copy(update={"turn": 7}).committed())
     assert session(tmp_path).state.turn == 7
 
     game = session(tmp_path)
@@ -48,7 +48,7 @@ def test_resume_refuses_a_save_that_is_not_this_game(
     tmp_path: Path, change: dict[str, object], message: str
 ) -> None:
     game = session(tmp_path)
-    FileStore(tmp_path).save("poc", updated(SavedGame.from_game(game.state), **change))
+    FileStore(tmp_path).save("poc", game.state.model_copy(update=change).committed())
 
     with pytest.raises(ValueError, match=message):
         session(tmp_path)

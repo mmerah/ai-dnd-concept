@@ -10,7 +10,7 @@ from pydantic_ai import Agent
 from aidm.authoring.draft import ExtensionPatch, apply_patch, engine_packs
 from aidm.authoring.run import growth_run
 from aidm.config import Settings, load_settings
-from aidm.content.io import FileStore, SavedGame, load_character, load_scenario
+from aidm.content.io import FileStore, load_character, load_scenario
 from aidm.content.model import Character, Scenario
 from aidm.engines.core import AdvancementOffer, Engine, ProposalBase, transact
 from aidm.engines.registry import begin_game, build_engine
@@ -147,14 +147,10 @@ class GameSession:
 
     def __post_init__(self) -> None:
         self._stamp = self.store.stamp(self.slug)
-        if self.engine.id != self.target.engine:
-            raise ValueError(f"{self.target} was opened with the {self.engine.id!r} engine")
         saved = self.store.load(self.slug)
         if saved is None:
             self.state = self._begun()
             return
-        if saved.engine != self.engine.id:
-            raise ValueError(f"save {self.slug!r} plays {saved.engine!r}, not {self.engine.id!r}")
         self.state = self._resumable(self.engine.restored(saved))
 
     @property
@@ -271,7 +267,7 @@ class GameSession:
 
     def commit(self, state: Game, entry: TraceEntry | None = None) -> None:
         """Code mode commits per tool call, so a landed change has no turn trace to record yet."""
-        self.store.save(self.slug, SavedGame.from_game(state))
+        self.store.save(self.slug, state)
         self.state = state
         self._stamp = self.store.stamp(self.slug)
         if entry is not None:
@@ -372,8 +368,8 @@ class Runtime:
 
     def _open(self, target: LaunchTarget) -> GameSession:
         settings = self.settings
-        engine = self.engine(target.engine, target.scenario_id)
         scenario = load_scenario(settings.scenarios_dir, target.scenario_id)
+        engine = self.engine(scenario.engine, target.scenario_id)
         character = load_character(
             settings.characters_dir, target.character_id, engine.id, engine.check_overlay
         )

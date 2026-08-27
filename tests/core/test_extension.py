@@ -143,7 +143,7 @@ async def test_a_thin_world_grows_inside_the_turn_that_ran_it_thin(
 
     saved = FileStore(tmp_path).load("poc")
     assert saved is not None
-    assert _CRYPT_ID in {entity.id for entity in saved.world.entities}
+    assert _CRYPT_ID in {entity.id for entity in game.engine.restored(saved).world.entities}
 
     assert any(isinstance(entry, WorldExtended) for entry in game.entries)
     assert (SCENARIOS / "whispering-vault" / "world.json").read_bytes() == authored

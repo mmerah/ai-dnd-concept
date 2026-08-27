@@ -8,9 +8,7 @@ from aidm.content.io import FileStore
 from aidm.engines.registry import build_engine
 from aidm.turn.run import advisor_agent, build_turn_agents
 
-TARGET = LaunchTarget(
-    slug="poc", scenario_id="whispering-vault", character_id="kael", engine=LONER3E
-)
+TARGET = LaunchTarget(slug="poc", scenario_id="whispering-vault", character_id="kael")
 
 
 def loner3e_session(directory: Path) -> GameSession:

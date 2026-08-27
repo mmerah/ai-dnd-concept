@@ -1,7 +1,8 @@
+from collections.abc import Mapping
 from pathlib import Path
 
 import pytest
-from pydantic import JsonValue
+from pydantic import BaseModel, JsonValue
 
 from aidm.engines.core import Engine, command
 from aidm.state.entities import EngineId, Entity, Frozen, Mutable
@@ -9,6 +10,9 @@ from aidm.state.model import Game, WorldState
 
 
 class BareMechanics(Mutable): ...
+
+
+class BarePack(BaseModel): ...
 
 
 def _engine(tmp_path: Path) -> Engine:
@@ -19,6 +23,7 @@ def _engine(tmp_path: Path) -> Engine:
         badge = ("TEST", "grey-6")
         engine_dir = tmp_path
         mechanics_type = BareMechanics
+        pack_type = BarePack
 
         def overlay_rows(self, rules: dict[str, JsonValue]) -> tuple[tuple[str, str], ...]:
             del rules
@@ -40,6 +45,9 @@ def _engine(tmp_path: Path) -> Engine:
         def sheet_rows(self, state: Game) -> tuple[tuple[str, str], ...]:
             del state
             return ()
+
+        def pack_models(self) -> Mapping[str, BarePack]:
+            return {}
 
     return BareEngine()
 

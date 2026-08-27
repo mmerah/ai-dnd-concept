@@ -10,8 +10,8 @@ The `aidm` MCP server holds the game and the rules. This skill tells you how to 
 Work from the repository root. The game reads and writes `saves/` under the working directory,
 and the server wiring (`.mcp.json`, `.codex/config.toml`) is read from there.
 
-1. `list_games()` — lists the saves you can resume. It also lists the scenario, character and
-   engine names that a new `<scenario>--<character>--<engine>` slug is built from.
+1. `list_games()` — lists the saves you can resume. It also lists the scenario and character names
+   that a new `<scenario>--<character>` slug is built from.
 2. `open_game(slug)` — opens one game. Nothing else works until this call succeeds.
 3. `rules()` — the rules for a turn under this engine. Read it once at the start. Read it again
    after a compaction.

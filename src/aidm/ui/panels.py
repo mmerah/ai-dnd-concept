@@ -11,7 +11,6 @@ from aidm.app.runtime import (
     attributed_line,
     thread_summaries,
 )
-from aidm.content.io import SavedGame
 from aidm.state.facts import trace_lines, traced
 from aidm.state.play import AdvanceApplied, StepTrace, TraceEntry, TurnTrace, WorldExtended
 from aidm.turn.context import player_scene
@@ -215,6 +214,6 @@ def _review(session: GameSession, drafted: DraftedAdvance, refresh: Callable[[],
 
 def state_panel(session: GameSession) -> None:
     ui.code(
-        SavedGame.from_game(session.state).model_dump_json(indent=2),
+        session.state.model_dump_json(indent=2),
         language="json",
     ).classes("w-full text-xs")

@@ -120,7 +120,7 @@ Then update that engine's entry in `evals/turn_eval.py`'s `CANON` with the new i
 
 `SIMPLIFICATION_PLAN.md` runs whole before Phase 3 starts. Two of its steps change what L6 and L5
 write: an engine's advancement is one `advance_command(self.advancement)` line, not an
-`advancement.md` plus a proposal fixture (Step 3); and `Engine.pack_type` is required (Step 2c). Read the
+`advancement.md` plus a proposal fixture (Step 3); and an engine declares `pack_type`, loads `self.packs` in `__init__` and returns them from `pack_models()` (Step 2c). Read the
 L5/L6 plans through that file where they disagree.
 
 ## Phase 3 — L6, Cairn Barebones

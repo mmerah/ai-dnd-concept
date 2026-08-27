@@ -18,7 +18,7 @@ from core_test_support import (
 )
 from pydantic import ValidationError
 
-from aidm.content.io import SavedGame, load_character, load_scenario
+from aidm.content.io import load_character, load_scenario
 from aidm.content.model import Character, CharacterProfile, Scenario
 from aidm.engines.loner3e.rules import RULES, Mechanics
 from aidm.engines.twentyfourxx.rules import Mechanics as TwentyfourxxMechanics
@@ -225,5 +225,5 @@ def test_a_mechanics_mutation_lands_on_the_commit_and_nowhere_else() -> None:
     committed = draft.committed()
 
     assert _luck(committed) == 1
-    assert SavedGame.from_game(committed).mechanics != SavedGame.from_game(state).mechanics
+    assert committed.mechanics != state.mechanics
     assert _luck(state) == RULES.luck_max

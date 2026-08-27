@@ -393,22 +393,19 @@ def pack_refusal(
     content: dict[str, JsonValue],
 ) -> str | None:
     """Refused before the draft holds it, so a pack that cannot be played never lands."""
-    schema = playing.engine.pack_type
     if not brief.writes_packs:
         return (
             "a world grown in play cannot ship a content pack: the game is already running on "
             "the packs its scenario named. Write what this pass needs as entities, traits and "
             "threads instead."
         )
-    if schema is None:
-        return f"the {playing.engine.id!r} engine plays no content packs"
     if pack_id in playing.engine.pack_ids:
         return (
             f"{pack_id!r} is already installed for {playing.engine.id!r}. Give a pack of your own "
             "an id of its own, and write only what the selected packs lack."
         )
     try:
-        _ = schema.model_validate(content)
+        _ = playing.engine.pack_type.model_validate(content)
         # Rebuilt whole, so a pack colliding with an installed one is refused here and not later.
         _ = playing.shipping({**draft.packs, pack_id: content})
     except ValueError as broken:

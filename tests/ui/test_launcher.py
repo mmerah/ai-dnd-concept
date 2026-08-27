@@ -2,26 +2,20 @@ import json
 import shutil
 from pathlib import Path
 
-from core_test_support import LONER3E, updated
+from core_test_support import LONER3E
 from pydantic import JsonValue
 from ui_test_support import SCENARIOS, ui_settings
 
 from aidm.app.launch import LauncherController, LaunchTarget, load_catalog
 from aidm.app.runtime import Runtime
 from aidm.config import Settings
-from aidm.content.io import ENCODING, FileStore, SavedGame
-from aidm.state.entities import EngineId
+from aidm.content.io import ENCODING, FileStore
 from aidm.state.model import Game
 
 
-def _opening_state(settings: Settings, engine: EngineId) -> Game:
+def _opening_state(settings: Settings) -> Game:
     """The launcher reads saves, so a test needs a state a real game would have written."""
-    target = LaunchTarget(
-        slug="poc",
-        scenario_id="whispering-vault",
-        character_id="kael",
-        engine=engine,
-    )
+    target = LaunchTarget(slug="poc", scenario_id="whispering-vault", character_id="kael")
     return Runtime(settings).session(target).state
 
 
@@ -52,10 +46,9 @@ def test_an_overlay_decides_which_rules_a_character_offers(tmp_path: Path) -> No
     assert controller.selected_engine == LONER3E
     assert [option.id for option in controller.compatible_characters()] == ["kael"]
     assert controller.new_game().model_dump() == {
-        "slug": "whispering-vault--kael--loner3e",
+        "slug": "whispering-vault--kael",
         "scenario_id": "whispering-vault",
         "character_id": "kael",
-        "engine": "loner3e",
     }
 
 
@@ -88,7 +81,7 @@ def test_a_scenario_naming_an_uninstalled_engine_is_skipped(tmp_path: Path) -> N
 
 def test_launcher_lists_and_resolves_an_existing_save(tmp_path: Path) -> None:
     settings = ui_settings(tmp_path)
-    FileStore(tmp_path).save("old-game", SavedGame.from_game(_opening_state(settings, LONER3E)))
+    FileStore(tmp_path).save("old-game", _opening_state(settings))
 
     controller = LauncherController(load_catalog(settings))
     saved = controller.catalog.save("old-game")
@@ -102,14 +95,15 @@ def test_launcher_lists_and_resolves_an_existing_save(tmp_path: Path) -> None:
         "slug": "old-game",
         "scenario_id": "whispering-vault",
         "character_id": "kael",
-        "engine": "loner3e",
     }
 
 
 def test_a_save_whose_rules_were_withdrawn_is_reported_not_offered(tmp_path: Path) -> None:
     settings = ui_settings(tmp_path)
-    state = _opening_state(settings, LONER3E)
-    FileStore(tmp_path).save("withdrawn", updated(SavedGame.from_game(state), engine="retired"))
+    state = _opening_state(settings)
+    FileStore(tmp_path).save(
+        "withdrawn", state.model_copy(update={"engine": "retired"}).committed()
+    )
 
     saved = load_catalog(settings).save("withdrawn")
 
@@ -119,7 +113,7 @@ def test_a_save_whose_rules_were_withdrawn_is_reported_not_offered(tmp_path: Pat
 
 def test_one_corrupt_save_does_not_hide_the_others_and_stays_readable(tmp_path: Path) -> None:
     settings = ui_settings(tmp_path)
-    FileStore(tmp_path).save("good", SavedGame.from_game(_opening_state(settings, LONER3E)))
+    FileStore(tmp_path).save("good", _opening_state(settings))
     (tmp_path / "broken.json").write_text("{not json", encoding=ENCODING)
 
     catalog = load_catalog(settings)
@@ -132,12 +126,12 @@ def test_one_corrupt_save_does_not_hide_the_others_and_stays_readable(tmp_path: 
 
     controller = LauncherController(catalog)
     controller.choose_scenario("whispering-vault")
-    assert controller.new_game().slug == "whispering-vault--kael--loner3e"
+    assert controller.new_game().slug == "whispering-vault--kael"
 
 
 def test_a_save_whose_body_is_stale_is_reported_not_offered(tmp_path: Path) -> None:
     settings = ui_settings(tmp_path)
-    body = json.loads(SavedGame.from_game(_opening_state(settings, LONER3E)).model_dump_json())
+    body = json.loads(_opening_state(settings).model_dump_json())
     body["history"] = [{"prompt": "test", "lines": [], "events": [], "outcomes": []}]
     (tmp_path / "stale.json").write_text(json.dumps(body), encoding=ENCODING)
 
@@ -150,7 +144,7 @@ def test_a_save_whose_body_is_stale_is_reported_not_offered(tmp_path: Path) -> N
 
 def test_a_save_whose_mechanics_are_broken_is_reported_not_offered(tmp_path: Path) -> None:
     settings = ui_settings(tmp_path)
-    body = json.loads(SavedGame.from_game(_opening_state(settings, LONER3E)).model_dump_json())
+    body = json.loads(_opening_state(settings).model_dump_json())
     body["mechanics"] = {"not": "the loner3e shape"}
     (tmp_path / "broken-mechanics.json").write_text(json.dumps(body), encoding=ENCODING)
 

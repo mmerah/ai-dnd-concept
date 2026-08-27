@@ -3,7 +3,6 @@ from random import Random
 import pytest
 from core_test_support import initialized
 
-from aidm.content.io import SavedGame
 from aidm.engines.core import Engine, TurnRecord
 from aidm.engines.loner3e.rules import Mechanics
 from aidm.state import actions
@@ -32,8 +31,7 @@ def _answered(engine: Engine, state: Game, option_id: str) -> Game:
 
 
 def _reopened(engine: Engine, state: Game) -> Game:
-    saved = SavedGame.from_game(state).model_dump_json()
-    return engine.restored(SavedGame.model_validate_json(saved))
+    return engine.restored(state.model_dump_json())
 
 
 def test_a_takeover_moves_the_played_id_and_leaves_the_rest_of_the_game_alone() -> None:

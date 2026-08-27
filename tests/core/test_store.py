@@ -1,5 +1,4 @@
 import json
-from dataclasses import fields
 from pathlib import Path
 
 import pytest
@@ -9,7 +8,6 @@ from aidm.app.launch import engine_ids
 from aidm.content.io import (
     ENCODING,
     FileStore,
-    SavedGame,
     load_character,
     load_scenario,
     read_scenarios,
@@ -17,16 +15,11 @@ from aidm.content.io import (
 )
 from aidm.engines.registry import build_engine
 from aidm.state.facts import EventBadge, MechanicEvent
-from aidm.state.model import Game
 from aidm.state.play import Exchange
 
 
-def test_a_save_carries_every_field_the_played_game_holds() -> None:
-    assert {field.name for field in fields(Game)} == set(SavedGame.model_fields)
-
-
 def test_a_saved_games_exchange_events_round_trip(tmp_path: Path) -> None:
-    _, state = initialized()
+    engine, state = initialized()
     draft = state.draft()
     draft.history = (
         Exchange(
@@ -41,14 +34,14 @@ def test_a_saved_games_exchange_events_round_trip(tmp_path: Path) -> None:
             ),
         ),
     )
-    saved = SavedGame.from_game(draft.committed())
+    saved = draft.committed()
     store = FileStore(tmp_path)
 
     store.save("roundtrip", saved)
     reloaded = store.load("roundtrip")
 
     assert reloaded is not None
-    assert reloaded.history == saved.history
+    assert engine.restored(reloaded).history == saved.history
 
 
 @pytest.mark.parametrize("slug", ("../escape", "/absolute", "bad slug", ""))

@@ -1,13 +1,13 @@
+from collections.abc import Mapping
 from random import Random
 
 import pytest
 from core_test_support import LONER3E, character, initialized, scenario, updated
 from pydantic import JsonValue
 
-from aidm.content.io import SavedGame
 from aidm.engines.core import Engine, apply_to_draft
 from aidm.engines.loner3e.engine import Loner3eEngine
-from aidm.engines.loner3e.rules import RULES, Mechanics, Sheet, apply_restore_luck
+from aidm.engines.loner3e.rules import RULES, Mechanics, Pack, Sheet, apply_restore_luck
 from aidm.engines.registry import ENGINES, begin_game, build_engine
 from aidm.state import actions
 from aidm.state.entities import PLAYER_ID, EngineId, Entity, EntityId
@@ -39,25 +39,24 @@ def test_engine_initialization_and_state_contract() -> None:
     assert Mechanics.of_game(state).sheets[PLAYER_ID].luck.current == RULES.luck_max
     engine.validate(state)
 
-    saved = SavedGame.model_validate_json(SavedGame.from_game(state).model_dump_json())
-    assert engine.restored(saved) == state
+    assert engine.restored(state.model_dump_json()) == state
 
 
 def test_action_resolution_is_pure_and_renders_every_fact() -> None:
     engine, state = initialized()
     state = _spent(state)
-    before = SavedGame.from_game(state).model_dump_json()
+    before = state.model_dump_json()
 
     first_state, first_facts = _turn(state)
 
     assert (first_state, first_facts) == _turn(state)
-    assert SavedGame.from_game(state).model_dump_json() == before
+    assert state.model_dump_json() == before
     assert {fact.kind for fact in first_facts} >= {
         "entity_discovered",
         "entity_moved",
         "counter_changed",
     }
-    assert SavedGame.from_game(first_state).model_dump_json() != before
+    assert first_state.model_dump_json() != before
     engine.validate(first_state)
     for fact in first_facts:
         assert fact.trace
@@ -172,7 +171,10 @@ def test_an_engine_that_declares_nothing_is_refused_before_it_plays() -> None:
             del state
             return ()
 
-    with pytest.raises(AttributeError, match="mechanics_type"):
+        def pack_models(self) -> Mapping[str, Pack]:
+            return {}
+
+    with pytest.raises(AttributeError, match="mechanics_type|pack_type"):
         _ = Undeclared()
 
 

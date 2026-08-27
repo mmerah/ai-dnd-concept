@@ -6,15 +6,12 @@ from dataclasses import dataclass
 from pathlib import Path
 from re import fullmatch
 from types import MappingProxyType
-from typing import Self
 
-from pydantic import BaseModel, ConfigDict, Field, JsonValue, model_validator
+from pydantic import BaseModel, ConfigDict, JsonValue
 from pypdf import PdfReader
 
-from aidm.state.entities import CheckedEntityId, EngineId, Mutable, Slug, content_id
-from aidm.state.facts import MechanicEvent
-from aidm.state.model import Game, ScenarioMeta, WorldState, check_player_playable
-from aidm.state.play import Exchange, PendingDecision
+from aidm.state.entities import EngineId, Slug, content_id
+from aidm.state.model import Game, ScenarioMeta
 
 from .model import (
     Character,
@@ -141,57 +138,16 @@ def engine_text(path: Path) -> str:
     return path.read_text(encoding=ENCODING)
 
 
-class SavedGame(BaseModel):
-    # Revalidated on the way out too: a runtime `Game` validates nothing itself.
-    model_config = ConfigDict(extra="forbid", revalidate_instances="always")
+class SaveHeader(BaseModel):
+    """What the launcher reads off a save before any engine is built to read the rest of it."""
 
+    model_config = ConfigDict(extra="ignore")
+
+    engine: EngineId
     scenario_id: Slug
     character_id: Slug
     scenario: ScenarioMeta
-    engine: EngineId
-    player_id: CheckedEntityId
-    world: WorldState
-    mechanics: JsonValue
-    turn_events: tuple[MechanicEvent, ...]
-    history: tuple[Exchange, ...] = ()
-    turn: int = Field(default=0, ge=0)
-    pending: PendingDecision | None
-
-    @model_validator(mode="after")
-    def _the_player_is_playable(self) -> Self:
-        check_player_playable(self.world, self.player_id)
-        return self
-
-    @classmethod
-    def from_game(cls, state: Game) -> Self:
-        return cls(
-            scenario_id=state.scenario_id,
-            character_id=state.character_id,
-            scenario=state.scenario,
-            engine=state.engine,
-            player_id=state.player_id,
-            world=state.world,
-            mechanics=state.mechanics.model_dump(mode="json"),
-            turn_events=state.turn_events,
-            history=state.history,
-            turn=state.turn,
-            pending=state.pending,
-        )
-
-    def game(self, mechanics: Mutable) -> Game:
-        return Game(
-            scenario_id=self.scenario_id,
-            character_id=self.character_id,
-            scenario=self.scenario,
-            engine=self.engine,
-            player_id=self.player_id,
-            world=self.world,
-            mechanics=mechanics,
-            turn_events=self.turn_events,
-            history=self.history,
-            turn=self.turn,
-            pending=self.pending,
-        )
+    turn: int
 
 
 @dataclass(frozen=True, slots=True)
@@ -205,14 +161,12 @@ class FileStore:
             if fullmatch(_SAVE_SLUG_PATTERN, path.stem) is not None
         )
 
-    def load(self, slug: str) -> SavedGame | None:
+    def load(self, slug: str) -> str | None:
         path = self._save_path(slug)
-        if not path.exists():
-            return None
-        return SavedGame.model_validate_json(path.read_text(encoding=ENCODING))
+        return path.read_text(encoding=ENCODING) if path.exists() else None
 
-    def save(self, slug: str, saved: SavedGame) -> None:
-        _write(self._save_path(slug), saved.model_dump_json(indent=2))
+    def save(self, slug: str, state: Game) -> None:
+        _write(self._save_path(slug), state.model_dump_json(indent=2))
 
     def stamp(self, slug: str) -> int:
         """A viewer in another process polls this rather than re-parsing the save every tick."""

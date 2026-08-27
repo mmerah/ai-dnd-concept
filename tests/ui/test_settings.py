@@ -2,7 +2,6 @@ from dataclasses import dataclass
 from pathlib import Path
 
 import pytest
-from core_test_support import LONER3E
 from ui_test_support import ui_settings
 
 from aidm.app.launch import LaunchTarget
@@ -67,9 +66,7 @@ def test_a_saved_key_reads_back_and_the_rest_of_the_file_survives(
 def test_settings_are_not_reloaded_under_a_turn_in_flight(tmp_path: Path) -> None:
     runtime = Runtime(ui_settings(saves_dir=tmp_path))
     session = runtime.session(
-        LaunchTarget(
-            slug="poc", scenario_id="whispering-vault", character_id="kael", engine=LONER3E
-        )
+        LaunchTarget(slug="poc", scenario_id="whispering-vault", character_id="kael")
     )
     assert runtime.busy_refusal() is None
     session.busy = True

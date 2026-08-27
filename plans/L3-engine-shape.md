@@ -119,5 +119,5 @@ a change with exactly one consumer lands in the phase that brings that consumer.
 - No advancement-less tab hiding in the UI, and no null-object `Advancement`.
 - No rewrite of the per-engine cases in `evals/turn_eval.py`: engine vocabulary and content.
 - No change to `Scenario.engines`, the `characters/<id>/<engine>.json` overlay layout, or
-  `SavedGame`: two new engines add content, not format.
+  `Game` (the save boundary): two new engines add content, not format.
 - No prompt or `director.md` restructuring — L4 rewrites those against the source rules anyway.

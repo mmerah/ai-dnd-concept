@@ -10,7 +10,6 @@ from aidm.app.launch import (
     LauncherCatalog,
     LauncherController,
     LaunchTarget,
-    as_engine_id,
     load_catalog,
 )
 from aidm.app.runtime import DraftedAdvance, GameSession, Runtime
@@ -82,7 +81,7 @@ class ToolArgs(Frozen):
 
 class OpenGame(ToolArgs):
     slug: str
-    """An existing save's slug, or `<scenario>--<character>--<engine>` to begin a new game."""
+    """An existing save's slug, or `<scenario>--<character>` to begin a new game."""
 
 
 class StartTurn(ToolArgs):
@@ -374,19 +373,13 @@ def _target(catalog: LauncherCatalog, slug: str) -> LaunchTarget:
     if any(save.slug == slug for save in catalog.saves):
         return controller.resume(slug)
     named = slug.split("--")
-    if len(named) != 3:
+    if len(named) != 2:
         raise ModelRetry(
-            f"{slug!r} is neither a save nor <scenario>--<character>--<engine>.\n"
-            f"{_listing(catalog)}"
+            f"{slug!r} is neither a save nor <scenario>--<character>.\n{_listing(catalog)}"
         )
-    scenario_id, character_id, engine = named
+    scenario_id, character_id = named
     try:
         controller.choose_scenario(scenario_id)
-        wanted_engine = as_engine_id(engine)
-        if controller.selected_engine != wanted_engine:
-            raise ValueError(
-                f"scenario {scenario_id!r} has no {wanted_engine!r} rules written for it"
-            )
         controller.choose_character(character_id)
     except ValueError as unknown:
         raise ModelRetry(f"{unknown}\n{_listing(catalog)}") from unknown

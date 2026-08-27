@@ -41,7 +41,7 @@ def home_page(settings: Settings) -> None:
     with ui.column().classes("w-full q-pa-lg items-center").style("gap: 1.5rem"):
         with ui.column().style("width: min(64rem, 100%); gap: 1.5rem"):
             ui.label("Begin an adventure").classes("text-h4 font-bold")
-            ui.label("Choose a scenario, the rules to play it under, then a character.").classes(
+            ui.label("Choose a scenario, then a character written for its rules.").classes(
                 "text-body1 opacity-70"
             )
             _new_game(controller)
@@ -254,12 +254,11 @@ def _register_pages(runtime: Runtime) -> None:
     def _index() -> None:  # pyright: ignore[reportUnusedFunction]
         home_page(runtime.settings)
 
-    @ui.page("/game/{slug}/{scenario}/{character}/{engine}")
+    @ui.page("/game/{slug}/{scenario}/{character}")
     def _game(  # pyright: ignore[reportUnusedFunction]
         slug: str,
         scenario: str,
         character: str,
-        engine: str,
     ) -> None:
         game_page(
             runtime.session(
@@ -267,7 +266,6 @@ def _register_pages(runtime: Runtime) -> None:
                     slug=slug,
                     scenario_id=content_id(scenario),
                     character_id=content_id(character),
-                    engine=as_engine_id(engine),
                 )
             ),
             driver_for(slug),

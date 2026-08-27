@@ -1,12 +1,12 @@
 from collections.abc import Callable, Iterator
 from copy import deepcopy
-from dataclasses import dataclass, replace
 from typing import Literal, Self
 
-from pydantic import Field, ValidationError, model_validator
+from pydantic import Field, SerializeAsAny, ValidationError, model_validator
 
 from aidm.state.entities import (
     DEAD,
+    CheckedEntityId,
     Counter,
     EngineId,
     Entity,
@@ -151,13 +151,6 @@ class WorldState(Mutable):
         return None if current.id == entity.id else current.id
 
 
-def check_player_playable(world: WorldState, player_id: EntityId) -> None:
-    if not world.require_kind(player_id, "actor").known:
-        raise ValueError("the player entity must be known")
-    if player_id in world.party:
-        raise ValueError("the player cannot travel with themselves")
-
-
 def frontier(world: WorldState) -> int:
     """Unknown locations a known location leads to: doors the player can still find."""
     known = {entity.id for entity in world.entities if entity.known}
@@ -177,24 +170,31 @@ class ScenarioMeta(Frozen):
     premise: str
 
 
-@dataclass(slots=True)
-class Game:
-    """The game as it is played; `SavedGame` is the boundary that validates one."""
+class Game(Mutable):
+    """The game as it is played, and the boundary a save on disk is validated through."""
 
     scenario_id: Slug
     character_id: Slug
     scenario: ScenarioMeta
     engine: EngineId
     # Which entity the player plays: it moves to a companion when the played character dies.
-    player_id: EntityId
+    player_id: CheckedEntityId
     world: WorldState
     # Opaque to core: the engine that wrote it is the only reader and the only validator.
-    mechanics: Mutable
+    mechanics: SerializeAsAny[Mutable]
     # Cards of the turn in flight; a harness in another process reaches the page through the save.
     turn_events: tuple[MechanicEvent, ...]
     history: tuple[Exchange, ...] = ()
-    turn: int = 0
+    turn: int = Field(default=0, ge=0)
     pending: PendingDecision | None = None
+
+    @model_validator(mode="after")
+    def _the_player_is_playable(self) -> Self:
+        if not self.player.known:
+            raise ValueError("the player entity must be known")
+        if self.player_id in self.world.party:
+            raise ValueError("the player cannot travel with themselves")
+        return self
 
     @property
     def player(self) -> Entity:
@@ -223,14 +223,10 @@ class Game:
         return deepcopy(self)
 
     def committed(self) -> Self:
-        """One validation per transaction, over the whole copy rather than per field change."""
-        landed = replace(
-            self,
-            world=_revalidated(self.world),
-            mechanics=_revalidated(self.mechanics),
-        )
-        check_player_playable(landed.world, landed.player_id)
-        return landed
+        """`mechanics` revalidates separately: `Mutable` forbids extra fields on a whole dump."""
+        mechanics = _revalidated(self.mechanics)
+        dump = self.model_dump(round_trip=True, exclude={"mechanics"})
+        return type(self).model_validate({**dump, "mechanics": mechanics})
 
     def add(self, entity: Entity) -> Fact:
         """Copy into the fact, so a later move in the same turn cannot rewrite the entry."""

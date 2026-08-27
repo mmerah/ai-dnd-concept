@@ -6,9 +6,9 @@ from pathlib import Path
 from random import Random
 from typing import ClassVar, Self
 
-from pydantic import BaseModel, Field, JsonValue, ValidationError, model_validator
+from pydantic import BaseModel, Field, JsonValue, TypeAdapter, ValidationError, model_validator
 
-from aidm.content.io import SavedGame, engine_text
+from aidm.content.io import engine_text
 from aidm.content.model import CreatedCharacter, Scenario
 from aidm.engines.sources import SHIPPED_PACKS, PackSources
 from aidm.state.creation import AnyStep, Picks
@@ -202,6 +202,16 @@ class Advancement(ABC):
         )
 
 
+_SAVE_BODY = TypeAdapter(dict[str, JsonValue])
+
+
+def parse_save(raw: str, mechanics_type: type[Mutable]) -> Game:
+    """The engine's mechanics type is the only reader of that field, so it validates first."""
+    body = _SAVE_BODY.validate_json(raw)
+    mechanics = mechanics_type.model_validate(body.get("mechanics"))
+    return Game.model_validate({**body, "mechanics": mechanics})
+
+
 class Engine(ABC):
     id: ClassVar[EngineId]
     badge: ClassVar[tuple[str, str]]
@@ -209,14 +219,14 @@ class Engine(ABC):
     decisions: ClassVar[tuple[type[Decision], ...]] = ()
     authoring_instructions: ClassVar[str] = ""
     mechanics_type: type[Mutable]
-    # The schema an authored pack is held to; None where an engine plays no content packs at all.
-    pack_type: ClassVar[type[BaseModel] | None] = None
+    pack_type: ClassVar[type[BaseModel]]
     advancement: Advancement
     creation: CharacterCreation
 
     def __init__(self, sources: PackSources = SHIPPED_PACKS) -> None:
+        # Subclasses load `sources` themselves so their packs keep their own type.
         del sources
-        _ = self.mechanics_type
+        _ = self.mechanics_type, self.pack_type
         self.director_instructions: str = engine_text(self.engine_dir / "director.md")
         self.director_commands: tuple[Command, ...] = ()
 
@@ -256,8 +266,9 @@ class Engine(ABC):
     def pack_ids(self) -> tuple[Slug, ...]:
         return tuple(self.pack_models())
 
+    @abstractmethod
     def pack_models(self) -> Mapping[str, BaseModel]:
-        return {}
+        """Every installed pack by id; the schema each was validated against is `pack_type`."""
 
     def check_scenario(self, scenario: Scenario) -> None:
         if missing := sorted(set(scenario.packs) - set(self.pack_models())):
@@ -272,8 +283,10 @@ class Engine(ABC):
         }
         return f"{self.authoring_instructions}\n\nSELECTED PACK CONTENT\n{json.dumps(packs)}"
 
-    def restored(self, saved: SavedGame) -> Game:
-        state = saved.game(self.mechanics_type.model_validate(saved.mechanics))
+    def restored(self, raw: str) -> Game:
+        state = parse_save(raw, self.mechanics_type)
+        if state.engine != self.id:
+            raise ValueError(f"the save plays {state.engine!r}, not {self.id!r}")
         if state.pending is not None:
             self.check_pending(state.pending)
         self.validate(state)

@@ -17,7 +17,6 @@ from core_test_support import (
 from pydantic_ai.messages import ModelMessage, ModelResponse, ToolReturnPart
 from pydantic_ai.models.function import AgentInfo, FunctionModel
 
-from aidm.content.io import SavedGame
 from aidm.engines.loner3e.rules import outcome_for
 from aidm.engines.twentyfourxx.rules import Mechanics
 from aidm.state.entities import PLAYER_ID, EntityId
@@ -247,18 +246,18 @@ async def test_a_failed_role_never_mutates_the_input_state() -> None:
             text("The map is in hand."),
         )
     )
-    before = SavedGame.from_game(state).model_dump_json()
+    before = state.model_dump_json()
     with pytest.raises(RuntimeError, match="narrator exploded"):
         await played(
             engine, state, "I take the map.", director=director, narrator=FunctionModel(boom)
         )
 
-    assert SavedGame.from_game(state).model_dump_json() == before
+    assert state.model_dump_json() == before
 
 
 async def test_a_director_run_that_fails_discards_what_the_earlier_tool_call_did() -> None:
     engine, state = initialized()
-    before = SavedGame.from_game(state).model_dump_json()
+    before = state.model_dump_json()
     first = tool_call("move", entity_id="vault-map", to_id="player")
     calls = 0
 
@@ -278,5 +277,5 @@ async def test_a_director_run_that_fails_discards_what_the_earlier_tool_call_did
             director=FunctionModel(stub),
         )
 
-    assert SavedGame.from_game(state).model_dump_json() == before
+    assert state.model_dump_json() == before
     assert state.world.require(EntityId("vault-map")).parent_id != PLAYER_ID

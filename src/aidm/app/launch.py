@@ -5,7 +5,8 @@ from textwrap import shorten
 from pydantic import ValidationError
 
 from aidm.config import Settings
-from aidm.content.io import FileStore, SavedGame, read_characters, read_scenarios
+from aidm.content.io import FileStore, SaveHeader, read_characters, read_scenarios
+from aidm.engines.core import parse_save
 from aidm.engines.registry import ENGINES, engine_class
 from aidm.state.entities import EngineId, Frozen, Slug
 
@@ -89,32 +90,37 @@ class LaunchTarget(Frozen):
     slug: str
     scenario_id: Slug
     character_id: Slug
-    engine: EngineId
 
     @property
     def path(self) -> str:
-        return f"/game/{self.slug}/{self.scenario_id}/{self.character_id}/{self.engine}"
+        return f"/game/{self.slug}/{self.scenario_id}/{self.character_id}"
 
     def __str__(self) -> str:
-        return f"{self.scenario_id}/{self.character_id} under {self.engine}"
+        return f"{self.scenario_id}/{self.character_id}"
 
 
 @dataclass(slots=True)
 class LauncherController:
     catalog: LauncherCatalog
     selected_scenario: Slug | None = None
-    selected_engine: EngineId | None = None
     selected_character: Slug | None = None
 
     def __post_init__(self) -> None:
         if self.selected_scenario is None and self.catalog.scenarios:
             self.selected_scenario = self.catalog.scenarios[0].id
-        self._select_engine()
+        self._select_character()
+
+    @property
+    def selected_engine(self) -> EngineId | None:
+        """A scenario names its one engine, so nothing else chooses it."""
+        if self.selected_scenario is None:
+            return None
+        return self.catalog.scenario(self.selected_scenario).engines[0]
 
     def choose_scenario(self, scenario_id: Slug) -> None:
         self.catalog.scenario(scenario_id)
         self.selected_scenario = scenario_id
-        self._select_engine()
+        self._select_character()
 
     def choose_character(self, character_id: Slug) -> None:
         if character_id not in {option.id for option in self.compatible_characters()}:
@@ -129,18 +135,13 @@ class LauncherController:
         return self.catalog.characters_for(self.selected_engine)
 
     def new_game(self) -> LaunchTarget:
-        scenario, engine, character = (
-            self.selected_scenario,
-            self.selected_engine,
-            self.selected_character,
-        )
-        if scenario is None or engine is None or character is None:
-            raise ValueError("choose a scenario, its rules, and a character written for them")
+        scenario, character = self.selected_scenario, self.selected_character
+        if scenario is None or character is None:
+            raise ValueError("choose a scenario and a character written for it")
         return LaunchTarget(
-            slug=f"{scenario}--{character}--{engine}",
+            slug=f"{scenario}--{character}",
             scenario_id=scenario,
             character_id=character,
-            engine=engine,
         )
 
     def resume(self, slug: str) -> LaunchTarget:
@@ -151,14 +152,7 @@ class LauncherController:
             slug=saved.slug,
             scenario_id=saved.scenario_id,
             character_id=saved.character_id,
-            engine=saved.engine,
         )
-
-    def _select_engine(self) -> None:
-        scenario_id = self.selected_scenario
-        engines = () if scenario_id is None else self.catalog.scenario(scenario_id).engines
-        self.selected_engine = engines[0] if engines else None
-        self._select_character()
 
     def _select_character(self) -> None:
         compatible = self.compatible_characters()
@@ -187,12 +181,13 @@ def load_catalog(settings: Settings) -> LauncherCatalog:
     unreadable: list[UnreadableSave] = []
     for slug in files.slugs():
         try:
-            saved = files.load(slug)
-            if saved is None:
+            raw = files.load(slug)
+            if raw is None:
                 continue
-            # An installed engine's mechanics must still parse, or /game would crash on resume.
+            saved = SaveHeader.model_validate_json(raw)
+            # An installed engine's save must still parse whole, or /game would crash on resume.
             if saved.engine in ids:
-                engine_class(saved.engine).mechanics_type.model_validate(saved.mechanics)
+                _ = parse_save(raw, engine_class(saved.engine).mechanics_type)
         except (ValidationError, ValueError) as error:
             unreadable.append(UnreadableSave(slug=slug, problem=_short_reason(error)))
             continue
@@ -208,7 +203,7 @@ def load_catalog(settings: Settings) -> LauncherCatalog:
 
 def _save_option(
     slug: str,
-    saved: SavedGame,
+    saved: SaveHeader,
     scenarios: Sequence[CatalogEntry],
     characters: Sequence[CatalogEntry],
 ) -> SaveOption:
@@ -226,7 +221,7 @@ def _save_option(
 
 
 def _save_refusal(
-    saved: SavedGame,
+    saved: SaveHeader,
     scenarios: Sequence[CatalogEntry],
     characters: Sequence[CatalogEntry],
 ) -> str | None:

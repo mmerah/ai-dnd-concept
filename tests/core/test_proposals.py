@@ -8,7 +8,7 @@ from pydantic_ai.messages import ModelMessage, ModelResponse, TextPart
 from pydantic_ai.models.function import AgentInfo, FunctionModel
 
 from aidm.app.runtime import DraftedAdvance
-from aidm.content.io import FileStore, SavedGame
+from aidm.content.io import FileStore
 from aidm.engines.loner3e.rules import AdventureGrowth, Change, Mechanics
 from aidm.state.entities import PLAYER_ID
 from aidm.state.play import AdvanceApplied
@@ -63,7 +63,8 @@ def test_confirming_commits_exactly_the_proposed_delta(tmp_path: Path) -> None:
     ]
     entry = AdvanceApplied(subject_id=PLAYER_ID, facts=facts)
     assert game.entries == [entry]
-    assert FileStore(tmp_path).load("poc") == SavedGame.from_game(game.state)
+    raw = FileStore(tmp_path).load("poc")
+    assert raw is not None and game.engine.restored(raw) == game.state
     assert game.offers() == ()
     with pytest.raises(ValueError, match="no longer on offer"):
         _ = game.apply_proposal(drafted)
@@ -72,13 +73,13 @@ def test_confirming_commits_exactly_the_proposed_delta(tmp_path: Path) -> None:
 def test_a_refused_proposal_leaves_the_committed_state_untouched(tmp_path: Path) -> None:
     game = loner3e_session(tmp_path)
     game.state = at_boundary(game.state)
-    before = SavedGame.from_game(game.state).model_dump_json()
+    before = game.state.model_dump_json()
     offer = game.offers()[0]
     drafted = DraftedAdvance(offer=offer, proposal=ILLEGAL)
 
     with pytest.raises(ValueError, match="carries no tag"):
         _ = game.apply_proposal(drafted)
 
-    assert SavedGame.from_game(game.state).model_dump_json() == before
+    assert game.state.model_dump_json() == before
     assert game.entries == []
     assert FileStore(tmp_path).load("poc") is None
