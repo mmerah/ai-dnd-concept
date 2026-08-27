@@ -5,15 +5,8 @@ from typing import ClassVar, Literal, Self
 
 from pydantic import Field, model_validator
 
-from aidm.engines.core import (
-    Decision,
-    ProposalBase,
-    SheetBase,
-    SheetMechanics,
-    adjust,
-    pool,
-    require_sheet,
-)
+from aidm.engines.core import Decision, ProposalBase, adjust, pool
+from aidm.engines.sheets import SheetBase, SheetMechanics, require_sheet
 from aidm.state.actions import require_actor_here, roll_pool
 from aidm.state.entities import CheckedEntityId, Counter, Entity, EntityId, Frozen, Slug
 from aidm.state.facts import DiceEvent, EventBadge, Fact, MechanicEvent, entity_fact

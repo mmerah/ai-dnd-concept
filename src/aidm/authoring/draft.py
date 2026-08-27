@@ -1,8 +1,10 @@
-from collections.abc import Callable, Iterable, Mapping
+import re
+from collections.abc import Callable, Iterable, Iterator, Mapping
 from dataclasses import dataclass, replace
 from pathlib import Path
 
 from pydantic import Field, JsonValue, ValidationError
+from pypdf import PdfReader
 
 from aidm.config import Settings
 from aidm.content.io import (
@@ -10,7 +12,6 @@ from aidm.content.io import (
     load_scenario,
     scenario_packs,
     source_file,
-    whole_text,
     write_scenario,
 )
 from aidm.content.model import Character, Scenario
@@ -538,3 +539,40 @@ def _opened(draft: Game, thread: Thread) -> Fact:
 def _materialized(what: str) -> Fact:
     """Private canon coming into being is not a fictional event, so it narrates nothing."""
     return Fact(kind="canon_materialized", trace=f"materialized {what}")
+
+
+MIN_PASSAGE = 24
+_BLANK_LINE = re.compile(r"\n\s*\n")
+_LINE_BREAK_HYPHEN = re.compile(r"(\w)-\s+(\w)")
+
+
+def whole_text(path: Path, max_chars: int) -> str:
+    pages = (
+        _pdf_pages(path) if path.suffix.lower() == ".pdf" else (path.read_text(encoding="utf-8"),)
+    )
+    text = "\n\n".join(passage for page in pages for passage in _passages(page))
+    if not text:
+        raise ValueError(f"{path.name} holds no readable text")
+    if len(text) > max_chars:
+        raise ValueError(
+            f"{path.name} is {len(text)} characters, too large to hand to a model whole"
+        )
+    return text
+
+
+def _pdf_pages(path: Path) -> tuple[str, ...]:
+    # Layout mode interleaves columns and mangles letter-spaced display text.
+    return tuple(page.extract_text() for page in PdfReader(path).pages)
+
+
+def _passages(body: str) -> Iterator[str]:
+    for block in _BLANK_LINE.split(body.strip()):
+        text = " ".join(_LINE_BREAK_HYPHEN.sub(r"\1-\2", _unquoted(block)).split())
+        # A page number or a running header is not a passage.
+        if len(text) >= MIN_PASSAGE:
+            yield text
+
+
+def _unquoted(block: str) -> str:
+    """A Markdown quote marker is punctuation around a line, not part of its text."""
+    return "\n".join(line.strip().removeprefix(">").strip() for line in block.splitlines())

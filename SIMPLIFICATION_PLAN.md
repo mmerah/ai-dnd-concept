@@ -196,13 +196,11 @@ with no args ignore `raw`, so junk arguments pass silently. Route them through
 
 ### Step 5 — authored JSON and two file moves (about 2 hours)
 
-**5a. Authored JSON without defaults.** `write_scenario` and `ScenarioDraft.as_json` (the readback
-the authoring agent sees) dump every default and null. Add `exclude_defaults=True,
-exclude_none=True` to both, authored content only; saves stay explicit. Measured: the readback
-shrinks 10–17%; every lean dump re-validates; `Scenario.packs` has no default so it is always
-written. **Do not regenerate the shipped `world.json`s** — they are hand-formatted (`"packs":
-["srd"]` on one line) and a machine dump makes whispering-vault larger, not smaller. Known
-tradeoff: a field the agent set explicitly to its default disappears from the readback.
+**5a. Authored JSON without defaults — scratched 2026-08-27.** Implemented, then reverted the
+same day: with `exclude_defaults`, the authoring readback cannot tell "unset" from "set to its
+default", so a weak model rewrites fields it already wrote, and freshly authored `world.json`s would
+differ in shape from the hand-formatted shipped ones the agent reads as its worked example. The
+10–17% readback shrink does not pay for that.
 
 **5b. `whole_text` and PDF extraction** move from `content/io.py` (34 lines and the only `pypdf`
 import) to `authoring/draft.py`, their one caller. `tests/core/test_sources.py:5` follows. Pure

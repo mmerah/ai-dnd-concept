@@ -21,8 +21,9 @@ from aidm.app.launch import engine_ids
 from aidm.config import ProviderConfig, Providers, Settings
 from aidm.content.io import load_character, load_scenario, read_scenarios
 from aidm.content.model import Character, Scenario
-from aidm.engines.core import Engine, SheetMechanics
+from aidm.engines.core import Engine
 from aidm.engines.registry import begin_game, build_engine
+from aidm.engines.sheets import SheetMechanics
 from aidm.state.entities import EngineId, Entity, Slug
 from aidm.state.model import Game
 from aidm.state.play import Answer, MechanicEvent, TurnTrace

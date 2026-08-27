@@ -4,16 +4,8 @@ from typing import ClassVar, Literal, Self, get_args
 
 from pydantic import Field, model_validator
 
-from aidm.engines.core import (
-    Decision,
-    ProposalBase,
-    SheetBase,
-    SheetMechanics,
-    adjust,
-    pool,
-    require_sheet,
-    spend,
-)
+from aidm.engines.core import Decision, ProposalBase, adjust, pool, spend
+from aidm.engines.sheets import SheetBase, SheetMechanics, require_sheet
 from aidm.state.actions import add_trait, require_actor_here, roll_pool
 from aidm.state.creation import CreationOption
 from aidm.state.entities import (

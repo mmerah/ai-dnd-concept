@@ -2,7 +2,7 @@
 
 Tracks `PLAN.md`. One section per phase; closed phases are recorded in git history, not here.
 
-## Phase 2.9 — simplification pass — in progress (Steps 1–4 done)
+## Phase 2.9 — simplification pass — in progress (Steps 1–5 done)
 
 `SIMPLIFICATION_PLAN.md`, six steps, decided 2026-08-27 with every candidate verified against the
 code. Ships: launch loses `engine`, `SavedGame` folded into `Game`, `pack_type` required, Advisor
@@ -183,6 +183,19 @@ deterministically by the resolver and retried through the toolset's existing `Va
   (`test_a_no_args_tool_refuses_junk_arguments`).
 - Verified: 267 passing, `ruff check`, `ruff format --check`, `basedpyright` clean. `src/` net
   −28 lines (134+/162−).
+
+### Step 5 — authored JSON and two file moves — DONE
+
+- **5a**: reverted after landing (maintainer call); reason recorded in `SIMPLIFICATION_PLAN.md`.
+- **5b**: `whole_text`, `_pdf_pages`, `_passages`, `_unquoted`, `MIN_PASSAGE` and the `pypdf`
+  import moved from `content/io.py` to `authoring/draft.py`; `tests/core/test_sources.py` imports
+  from there.
+- **5c**: new `src/aidm/engines/sheets.py` (178 lines) holds `SheetBase`, `SheetMechanics`,
+  `SheetAdvancement`, `SheetEngine`, `require_sheet`, `complete_chapter`, `chapter_command`.
+  `core.py` 715 → 551.
+  Six import sites rewired (both engines' `rules.py`/`engine.py`, `core_test_support.py`,
+  `test_player_events.py`). No `game/` package.
+- Verified: 267 passing, `ruff check`, `ruff format --check`, `basedpyright` clean. `src/` net −6 lines: a move, not a cut.
 
 ## Phase 3 — L6 Cairn Barebones — not started (after Phase 2.9)
 ## Phase 4 — L5 Fate Condensed — not started

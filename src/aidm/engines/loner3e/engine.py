@@ -5,14 +5,7 @@ from random import Random
 from pydantic import Field
 
 from aidm.content.model import CharacterProfile, CreatedCharacter, Scenario
-from aidm.engines.core import (
-    ProposalBase,
-    SheetAdvancement,
-    SheetEngine,
-    action,
-    chapter_command,
-    rule,
-)
+from aidm.engines.core import ProposalBase, action, rule
 from aidm.engines.loner3e.rules import (
     GROWTH,
     AdventureGrowth,
@@ -33,6 +26,7 @@ from aidm.engines.packs import (
     find_entry,
     pack_options,
 )
+from aidm.engines.sheets import SheetAdvancement, SheetEngine, chapter_command
 from aidm.engines.sources import SHIPPED_PACKS, PackSources
 from aidm.state.creation import (
     AnyStep,

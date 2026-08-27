@@ -35,8 +35,8 @@ the inherited `seed()` covers actors made in play.
 
 1. `src/aidm/engines/fate/rules.py` — `Sheet(SheetBase)`: `high_concept: Slug = HIGH_CONCEPT`
    (trait id of the one aspect a breakthrough may not rewrite; aspects are traits, so the sheet keeps
-   no copy). **It needs a default**: `SheetEngine.seed` (`engines/core.py:333`) and
-   `opening_mechanics` (`:302`) build `self.sheet_type()` for every non-player actor and `Slug`
+   no copy). **It needs a default**: `SheetEngine.seed` (`engines/sheets.py`) and
+   `opening_mechanics` build `self.sheet_type()` for every non-player actor and `Slug`
    rejects `""`, so an undefaulted field raises on the first NPC made in play.
    `skills: dict[str, int]`, `stunts: tuple[str, ...]` (**three**, see step 14), `fate: Counter`,
    `refresh: int = 3`, `physical: Counter`,

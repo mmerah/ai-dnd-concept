@@ -29,7 +29,7 @@ per-item `ItemRules`, blast/joined attacks. None of it comes back.
 
 1. `src/aidm/engines/cairn/rules.py` — `RULES` dataclass (`max_slots=10`, `max_armor=3`, `unarmed=4`,
    `impaired=4`, `enhanced=12`); `class Sheet(SheetBase)` with `pack: Slug = SRD_PACK` (**it needs a
-   default**: `SheetEngine.seed` (`engines/core.py:333`) and `opening_mechanics` (`:302`) build
+   default**: `SheetEngine.seed` (`engines/sheets.py`) and `opening_mechanics` build
    `self.sheet_type()` for every non-player actor, and `Slug` rejects `""` — cf.
    `loner3e/rules.py: pack: Slug = SRD_PACK`), `background: str`,
    `strength/dexterity/willpower` (`Counter`, bounded), `hp`, `gold`, `fatigue`, `trainings` ledger,
@@ -103,7 +103,7 @@ per-item `ItemRules`, blast/joined attacks. None of it comes back.
    `slug(ability, taken)`. ~12 lines. `text` class var carries the rule (one trained ability, named
    master, mechanical text) — a `GROWTH`-style constant in `rules.py`, not a separate file.
 7b. **Roll NPC sheets** — override **both** `seed` (entities created mid-play; it already receives an `rng`
-   it discards, `engines/core.py:328`) **and `opening_mechanics`** (scenario-authored NPCs, rolling with its
+   it discards, `engines/sheets.py`) **and `opening_mechanics`** (scenario-authored NPCs, rolling with its
    own `Random()`). Overriding only `seed` gives every authored monster identical 10/10/10/HP 4 stats:
    `begin_game` calls `opening_mechanics(world, character.rules)` (`registry.py:64`), which builds a bare
    `self.sheet_type()` per actor (`core.py:300-307`), while `seed` fires only on `entity_created` facts

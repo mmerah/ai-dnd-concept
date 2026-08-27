@@ -1,6 +1,5 @@
 import json
 import logging
-import re
 from collections.abc import Callable, Iterator, Mapping, Sequence
 from dataclasses import dataclass
 from pathlib import Path
@@ -8,7 +7,6 @@ from re import fullmatch
 from types import MappingProxyType
 
 from pydantic import BaseModel, ConfigDict, JsonValue
-from pypdf import PdfReader
 
 from aidm.state.entities import EngineId, Slug, content_id
 from aidm.state.model import Game, ScenarioMeta
@@ -209,40 +207,3 @@ def _safe_path(directory: Path, stem: str, suffix: str) -> Path:
     if fullmatch(_SAVE_SLUG_PATTERN, stem) is None:
         raise ValueError(f"invalid storage slug {stem!r}")
     return directory / f"{stem}{suffix}"
-
-
-MIN_PASSAGE = 24
-_BLANK_LINE = re.compile(r"\n\s*\n")
-_LINE_BREAK_HYPHEN = re.compile(r"(\w)-\s+(\w)")
-
-
-def whole_text(path: Path, max_chars: int) -> str:
-    pages = (
-        _pdf_pages(path) if path.suffix.lower() == ".pdf" else (path.read_text(encoding="utf-8"),)
-    )
-    text = "\n\n".join(passage for page in pages for passage in _passages(page))
-    if not text:
-        raise ValueError(f"{path.name} holds no readable text")
-    if len(text) > max_chars:
-        raise ValueError(
-            f"{path.name} is {len(text)} characters, too large to hand to a model whole"
-        )
-    return text
-
-
-def _pdf_pages(path: Path) -> tuple[str, ...]:
-    # Layout mode interleaves columns and mangles letter-spaced display text.
-    return tuple(page.extract_text() for page in PdfReader(path).pages)
-
-
-def _passages(body: str) -> Iterator[str]:
-    for block in _BLANK_LINE.split(body.strip()):
-        text = " ".join(_LINE_BREAK_HYPHEN.sub(r"\1-\2", _unquoted(block)).split())
-        # A page number or a running header is not a passage.
-        if len(text) >= MIN_PASSAGE:
-            yield text
-
-
-def _unquoted(block: str) -> str:
-    """A Markdown quote marker is punctuation around a line, not part of its text."""
-    return "\n".join(line.strip().removeprefix(">").strip() for line in block.splitlines())

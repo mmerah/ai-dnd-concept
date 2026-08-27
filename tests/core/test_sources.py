@@ -2,7 +2,7 @@ from pathlib import Path
 
 import pytest
 
-from aidm.content.io import whole_text
+from aidm.authoring.draft import whole_text
 
 FIXTURES = Path(__file__).parent / "fixtures" / "source"
 MAX_CHARS = 120_000
