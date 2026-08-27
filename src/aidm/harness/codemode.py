@@ -138,7 +138,7 @@ class Turn:
 
 @dataclass
 class Harness:
-    """The composition root of code mode: one game, one lock, one turn in flight."""
+    """One game, one lock, one turn in flight."""
 
     settings: Settings
     runtime: Runtime

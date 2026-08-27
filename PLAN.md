@@ -20,6 +20,7 @@ diff. Every cut is recorded as a deviation.
 | 1 | L3 — engine shape before the new engines | `plans/L3-engine-shape.md` | 1 signature + 1 hook |
 | 2 | L4 — Loner 3e / 24XX rules compliance | `plans/L4-rules-compliance.md` | no |
 | 2.5 | 24XX needs a scenario in its own genre | this file, below | no |
+| 2.9 | Simplification pass — **must land before Phase 3** | `SIMPLIFICATION_PLAN.md` | yes: advisor deleted, one turn lifecycle, `SavedGame` folded, launch loses `engine` |
 | 3 | L6 — Cairn Barebones engine | `plans/L6-cairn-barebones.md` | no |
 | 4 | L5 — Fate Condensed engine | `plans/L5-fate-condensed.md` | no |
 
@@ -114,6 +115,13 @@ Then update that engine's entry in `evals/turn_eval.py`'s `CANON` with the new i
 **Not in scope.** `whispering-vault` stays loner3e and stays `settings.authoring.worked_example`.
 `characters/kael/twentyfourxx.json` stays: Kael's brief was made scenario-agnostic — someone who
 "comes wherever something old lies sealed" reads as well on a dead colony as in an abbey.
+
+## Phase 2.9 — simplification before the new engines
+
+`SIMPLIFICATION_PLAN.md` runs whole before Phase 3 starts. Two of its steps change what L6 and L5
+write: an engine's advancement is one `advance_command(self.advancement)` line, not an
+`advancement.md` plus a proposal fixture (Step 3); and `Engine.pack_type` is required (Step 2c). Read the
+L5/L6 plans through that file where they disagree.
 
 ## Phase 3 — L6, Cairn Barebones
 

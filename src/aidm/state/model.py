@@ -64,8 +64,10 @@ class AdvanceThread(Frozen):
     def _moves_something(self) -> Self:
         if self.tick < 0:
             raise ValueError("a tick fills a clock; it never runs one backwards")
-        if self.status is None and self.stage is None and not self.tick:
-            raise ValueError("advance-thread moves a thread's status, its stage, or its clock")
+        if self.status is None and self.stage is None and not self.tick and self.note is None:
+            raise ValueError(
+                "advance-thread moves a thread's status, its stage, its clock, or its note"
+            )
         return self
 
 

@@ -26,7 +26,8 @@ prompt → DIRECTOR → resolve → NARRATOR → commit
 - The Director calls one tool for each mechanic, and reads tool results before the next call.
 - Engine code resolves each call on a draft: the rolls, the costs and the outcome.
 - Core commits a validated state, and owns the fiction: entities, placement, threads, traits.
-- The Narrator writes the prose based on the mechanical facts. It receives no unrevealed canon.
+- The Narrator writes the prose based on the mechanical facts. It receives no unrevealed canon in
+  builtin mode; code mode holds this by prompt.
 
 ## Run
 

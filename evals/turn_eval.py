@@ -1,3 +1,4 @@
+# CLAUDE.md's 1000-line file cap is waived for this eval script.
 import argparse
 import asyncio
 from collections.abc import Callable, Sequence

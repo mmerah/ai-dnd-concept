@@ -33,8 +33,9 @@ every turn, but as a durable fact per entity, deduped on text so the same
 fact is never written twice. It is written by a role that runs *after* narration, so it records
 what actually happened rather than what a plan predicted. It is shown only to roles that may see
 canon — the Director and anything else that resolves mechanics — and never the Narrator:
-the Narrator's input type must carry no field an unrevealed fact could travel through, the same
-rule that already keeps hidden entities out of its prompt. The old shape is worth copying almost
+the Narrator's input type must carry no field an unrevealed fact could travel through (in builtin
+mode; code mode holds this by prompt), the same rule that already keeps hidden entities out of its
+prompt. The old shape is worth copying almost
 whole: `owner: EntityId | None` for the world itself or one entity, `text` as one concrete
 sentence, kept behind a casefolded dedupe set. What should change is the trigger — write on
 retrieval failure or window pressure, not unconditionally every turn — so the round-trip is paid

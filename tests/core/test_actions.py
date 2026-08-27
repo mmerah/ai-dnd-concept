@@ -171,6 +171,16 @@ def test_a_tick_fills_the_threads_clock_and_stops_at_its_maximum() -> None:
     assert renoted.trace.endswith("— note: the rite is complete")
 
 
+def test_advance_thread_accepts_a_note_only_patch() -> None:
+    draft = _draft()
+    draft.world.threads.append(Thread(id="ritual", title="The rite"))
+
+    (noted,) = actions.advance_thread(draft, AdvanceThread(thread_id="ritual", note="a quiet clue"))
+    ritual = draft.world.thread("ritual")
+    assert ritual is not None and ritual.note == "a quiet clue"
+    assert noted.trace.endswith("— note: a quiet clue")
+
+
 def test_a_kill_drops_items_and_party_and_then_refuses_the_dead_actor() -> None:
     draft = _draft()
     _ = actions.move(draft, PLAYER_ID, CLOISTER)

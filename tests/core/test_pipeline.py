@@ -198,7 +198,8 @@ async def test_a_call_its_own_fields_refuse_is_retried_rather_than_killing_the_t
 
     thread = result.state.world.thread("vault-seal")
     assert thread is not None and thread.stage == "seal-found"
-    assert any("status, its stage, or its clock" in reason for reason in director.reasons())
+    reason = "status, its stage, its clock, or its note"
+    assert any(reason in seen for seen in director.reasons())
 
 
 async def test_a_later_call_is_judged_against_the_mechanics_the_earlier_one_moved() -> None:
