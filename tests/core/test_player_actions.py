@@ -1,3 +1,4 @@
+from dataclasses import replace
 from random import Random
 
 import pytest
@@ -8,7 +9,7 @@ from aidm.engines.core import play_action
 
 def test_a_player_action_lands_as_an_exchange_that_tells_only_told_facts() -> None:
     engine, state = game(TWENTYFOURXX)
-    engine.player_actions = (CATCH_BREATH,)
+    engine = replace(engine, player_actions=(CATCH_BREATH,))
 
     landed, facts = play_action(engine, state, "catch-breath", {"deep": True}, Random(0))
 
@@ -21,6 +22,6 @@ def test_a_player_action_lands_as_an_exchange_that_tells_only_told_facts() -> No
 
 def test_an_action_not_offered_right_now_is_refused() -> None:
     engine, state = game(TWENTYFOURXX)
-    engine.player_actions = (CATCH_BREATH,)
+    engine = replace(engine, player_actions=(CATCH_BREATH,))
     with pytest.raises(ValueError, match="not offered"):
         _ = play_action(engine, state, "catch-breath", {"deep": False}, Random(0))

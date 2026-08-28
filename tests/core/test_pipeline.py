@@ -306,5 +306,5 @@ async def test_an_owed_advance_is_noted_lands_on_call_and_is_refused_once_spent(
     assert "Kael has an advance owed" in shown(result.turn, "director")
     assert [event.icon for event in player_events(result.turn.facts)] == ["military_tech"] * 2
     sheet = sheet_of(result.state, PLAYER_ID, LonerSheet)
-    assert (sheet.gear[-1], sheet.milestones.current) == ("Waxed Rope", 1)
+    assert (sheet.gear[-1], sheet.milestones) == ("Waxed Rope", 1)
     assert any("has no advance owed" in reason for reason in director.reasons())

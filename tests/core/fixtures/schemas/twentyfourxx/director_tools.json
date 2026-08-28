@@ -411,32 +411,6 @@
     }
   },
   {
-    "name": "settle_defence",
-    "description": "Settle a hit the player answered in their own words: break the named item, or null to take it. Never after an answer the picture shows as already resolved.",
-    "parameters": {
-      "additionalProperties": false,
-      "properties": {
-        "item_id": {
-          "anyOf": [
-            {
-              "maxLength": 64,
-              "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$",
-              "type": "string"
-            },
-            {
-              "type": "null"
-            }
-          ],
-          "description": "Exact id of the carried, unbroken item to break, or null to take the hit."
-        }
-      },
-      "required": [
-        "item_id"
-      ],
-      "type": "object"
-    }
-  },
-  {
     "name": "roll_luck_test",
     "description": "Roll a standalone bad-luck test.",
     "parameters": {

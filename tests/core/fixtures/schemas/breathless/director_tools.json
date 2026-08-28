@@ -45,23 +45,6 @@
     }
   },
   {
-    "name": "gain_improvised_item",
-    "description": "Give the player an ordinary, unimportant object not already in the world.",
-    "parameters": {
-      "additionalProperties": false,
-      "properties": {
-        "item_name": {
-          "description": "The object's name, such as `a handful of gravel`.",
-          "type": "string"
-        }
-      },
-      "required": [
-        "item_name"
-      ],
-      "type": "object"
-    }
-  },
-  {
     "name": "add_trait",
     "description": "Add a lasting condition or quality to an entity.",
     "parameters": {

@@ -1,47 +1,12 @@
-from collections.abc import Mapping
-from pathlib import Path
-from typing import ClassVar
-
 import pytest
-from pydantic import BaseModel
 
-from aidm.engines.core import Engine, EntityRules, NoRules, command
-from aidm.state.entities import EngineId, Frozen, Kind
-
-
-class BarePack(BaseModel): ...
+from aidm.engines.core import director_tool
+from aidm.state.entities import Frozen
 
 
-def _engine(tmp_path: Path) -> Engine:
-    (tmp_path / "director.md").write_text("Test procedure.\n", encoding="utf-8")
-
-    class BareEngine(Engine):
-        id = EngineId("test")
-        badge = ("TEST", "grey-6")
-        engine_dir = tmp_path
-        pack_type = BarePack
-        rules_types: ClassVar[Mapping[Kind, type[EntityRules]]] = {
-            "actor": NoRules,
-            "item": NoRules,
-            "location": NoRules,
-        }
-
-        def pack_models(self) -> Mapping[str, BarePack]:
-            return {}
-
-    return BareEngine()
-
-
-def test_an_engine_without_content_loads_and_advertises_no_command(tmp_path: Path) -> None:
-    engine = _engine(tmp_path)
-
-    assert engine.director_commands == ()
-    assert engine.director_instructions == "Test procedure.\n"
-
-
-def test_a_command_parameter_the_model_cannot_read_is_refused() -> None:
+def test_a_tool_parameter_the_model_cannot_read_is_refused() -> None:
     class Undescribed(Frozen):
         entity_id: str
 
     with pytest.raises(ValueError, match="carry no description"):
-        _ = command("touch", "Touch a thing.", Undescribed, lambda _deps, _args: "")
+        _ = director_tool("touch", "Touch a thing.", Undescribed, lambda _draft, _args, _rng: ())

@@ -43,8 +43,9 @@ class PendingDecision(Frozen):
     kind: Slug
     # A prose-less segment replays into model history from this alone, so it can never be empty.
     prompt: str = Field(min_length=1)
-    # Options are a shortcut, never the only way: the player may always answer in their own words.
     options: tuple[DecisionOption, ...]
+    # False where the SRD gives the player a pick and the options are that pick, whole.
+    allows_text: bool
     payload: dict[str, JsonValue]
 
     @model_validator(mode="after")

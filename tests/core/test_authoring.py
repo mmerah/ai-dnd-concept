@@ -270,7 +270,7 @@ def test_the_shipped_world_written_as_one_patch_is_playable() -> None:
 
 def _extra_pack(playing: PlaytestCheck) -> dict[str, JsonValue]:
     """The engine's own srd under another name: the exact shape its pack schema accepts."""
-    return playing.engine.pack_models()["srd"].model_dump(mode="json") | {"name": "Vault Extras"}
+    return playing.engine.packs["srd"].model_dump(mode="json") | {"name": "Vault Extras"}
 
 
 async def test_a_pack_the_author_wrote_ships_with_the_scenario(tmp_path: Path) -> None:

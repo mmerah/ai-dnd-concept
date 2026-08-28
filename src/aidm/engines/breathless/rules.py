@@ -367,6 +367,7 @@ def resolve_loot(draft: Game, action: LootCheck, rng: Random) -> tuple[Fact, ...
                 DecisionOption(id="item", label=f"Take {action.seeking} (d{rating})"),
                 DecisionOption(id="med-kit", label="Take a med kit"),
             ),
+            allows_text=False,
         )
         outcome = f"a d{rating} item or a med kit"
         card = MechanicEvent(title="Loot", dice=(die,), outcome=outcome, effects=(wear,))

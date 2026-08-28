@@ -5,7 +5,7 @@ from core_test_support import at_boundary, initialized, sheet_of
 from pydantic import ValidationError
 
 from aidm.engines.core import rules
-from aidm.engines.loner3e.engine import Loner3eEngine, advance
+from aidm.engines.loner3e.engine import advance, load_packs
 from aidm.engines.loner3e.rules import (
     RULES,
     SRD_PACK,
@@ -26,7 +26,7 @@ from aidm.state.entities import PLAYER_ID, Counter, Entity, EntityId
 from aidm.state.facts import EventBadge, player_events
 from aidm.state.play import PendingDecision
 
-TWISTS = twist_table(Loner3eEngine().packs, SRD_PACK)
+TWISTS = twist_table(load_packs(), SRD_PACK)
 FOE = EntityId("mara")
 LANTERN = EntityId("lantern")
 
@@ -219,7 +219,11 @@ def test_a_thing_fights_back_with_a_sheet_of_its_own_when_it_is_here() -> None:
 def test_the_engine_plays_the_hand_back_and_refuses_every_other_decision() -> None:
     engine, _ = initialized()
     hand_back = PendingDecision(
-        kind="conflict", prompt="Say your next key action.", options=(), payload={}
+        kind="conflict",
+        prompt="Say your next key action.",
+        options=(),
+        allows_text=True,
+        payload={},
     )
 
     engine.check_pending(hand_back)
@@ -299,7 +303,7 @@ def test_an_npc_party_members_growth_writes_their_own_sheet_not_the_players() ->
 
     assert sheet_of(grown, FOE, Sheet).skills[-1] == "Reads Old Stonework"
     assert sheet_of(grown, PLAYER_ID, Sheet).skills == sheet_of(ready, PLAYER_ID, Sheet).skills
-    assert [fact.kind for fact in facts] == ["skill_gained", "counter_changed"]
+    assert [fact.kind for fact in facts] == ["skill_gained", "milestone_spent"]
 
 
 def test_an_actor_who_joins_after_an_adventure_is_not_owed_the_growth_they_missed() -> None:
@@ -366,7 +370,7 @@ def test_an_adventure_growth_with_three_changes_lands_all_three_on_the_sheet() -
         "skill_gained",
         "gear_gained",
         "frailty_gained",
-        "counter_changed",
+        "milestone_spent",
     ]
 
 

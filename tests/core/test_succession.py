@@ -3,13 +3,13 @@ from random import Random
 import pytest
 from core_test_support import initialized, sheet_of
 
-from aidm.engines.core import Engine, TurnRecord
+from aidm.engines.core import Engine
 from aidm.engines.loner3e.rules import Sheet
 from aidm.state import actions
 from aidm.state.entities import DEAD, PLAYER_ID, EntityId
 from aidm.state.model import Game
 from aidm.state.play import Answer, Line
-from aidm.turn.run import close_segment, consume_answer
+from aidm.turn.run import TurnRecord, close_segment, consume_answer
 
 MARA = EntityId("mara")
 FELL = (Line(text="Kael falls, and does not get up."),)

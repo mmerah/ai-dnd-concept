@@ -1,3 +1,4 @@
+from collections.abc import Callable, Mapping
 from importlib import import_module
 from pathlib import Path
 
@@ -7,36 +8,21 @@ from aidm.engines.sources import SHIPPED_PACKS, PackSources
 from aidm.state.entities import PLAYER_ID, EngineId, Entity, Slug
 from aidm.state.model import Game
 
-
-def _declared(package: str) -> type[Engine]:
-    """A new engine registers by existing; the class must be declared there, not imported in."""
-    module = import_module(f"aidm.engines.{package}.engine")
-    found = [
-        value
-        for value in vars(module).values()
-        if isinstance(value, type)
-        and issubclass(value, Engine)
-        and value.__module__ == module.__name__
-    ]
-    if len(found) != 1:
-        raise ValueError(f"{module.__name__} declares {len(found)} engine classes, not one")
-    return found[0]
-
-
-ENGINES: tuple[type[Engine], ...] = tuple(
-    _declared(path.parent.name) for path in sorted(Path(__file__).parent.glob("*/engine.py"))
-)
-
-
-def engine_class(engine_id: EngineId) -> type[Engine]:
-    found = next((engine for engine in ENGINES if engine.id == engine_id), None)
-    if found is None:
-        raise ValueError(f"unknown engine {engine_id!r}")
-    return found
+# A new engine registers by existing; its folder name is the id its `build` must declare.
+ENGINES: Mapping[EngineId, Callable[[PackSources], Engine]] = {
+    EngineId(path.parent.name): import_module(f"aidm.engines.{path.parent.name}.engine").build
+    for path in sorted(Path(__file__).parent.glob("*/engine.py"))
+}
 
 
 def build_engine(engine_id: EngineId, sources: PackSources = SHIPPED_PACKS) -> Engine:
-    return engine_class(engine_id)(sources)
+    build = ENGINES.get(engine_id)
+    if build is None:
+        raise ValueError(f"unknown engine {engine_id!r}")
+    built = build(sources)
+    if built.id != engine_id:
+        raise ValueError(f"the {engine_id!r} package builds the {built.id!r} engine")
+    return built
 
 
 def begin_game(engine: Engine, scenario_id: Slug, scenario: Scenario, character: Character) -> Game:

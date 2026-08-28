@@ -6,18 +6,20 @@ from pydantic import ValidationError
 
 from aidm.config import Settings
 from aidm.content.io import FileStore, SaveHeader, read_characters, read_scenarios
-from aidm.engines.registry import ENGINES, engine_class
+from aidm.engines.registry import ENGINES, build_engine
 from aidm.state.entities import EngineId, Frozen, Slug
 from aidm.state.model import Game
 
 
 def engine_ids() -> tuple[EngineId, ...]:
-    return tuple(engine.id for engine in ENGINES)
+    return tuple(ENGINES)
 
 
 def as_engine_id(value: str) -> EngineId:
     """Narrow a routed string, so an unknown engine cannot reach a filename downstream."""
-    return engine_class(EngineId(value)).id
+    if value not in ENGINES:
+        raise ValueError(f"unknown engine {value!r}")
+    return EngineId(value)
 
 
 class EngineOption(Frozen):
@@ -161,8 +163,10 @@ class LauncherController:
 
 
 def load_catalog(settings: Settings) -> LauncherCatalog:
-    engine_options = tuple(EngineOption(id=engine.id, badge=engine.badge) for engine in ENGINES)
     ids = engine_ids()
+    engine_options = tuple(
+        EngineOption(id=engine_id, badge=build_engine(engine_id).badge) for engine_id in ids
+    )
     scenarios = tuple(
         CatalogEntry(
             id=name,

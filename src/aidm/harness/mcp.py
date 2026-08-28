@@ -16,8 +16,7 @@ from aidm.app.runtime import Runtime
 from aidm.authoring.draft import WHOLE_SCENARIO, ScenarioDraft
 from aidm.authoring.run import authoring_toolset, draft_context
 from aidm.config import load_settings
-from aidm.engines.core import Command, NoArgs
-from aidm.engines.world import commands
+from aidm.engines.core import DirectorTool, NoArgs
 from aidm.harness.codemode import BeginScenario, Harness, OpenGame, PlayerActionCall, catalogue
 from aidm.llm import schema_of
 from aidm.state.play import Answer, Narration
@@ -43,7 +42,7 @@ class ServerTool:
     args: type[BaseModel] = NoArgs
 
 
-def _published(tool: ServerTool | Command) -> types.Tool:
+def _published(tool: ServerTool | DirectorTool) -> types.Tool:
     return types.Tool(
         name=tool.name, description=tool.description, input_schema=schema_of(tool.args)
     )
@@ -140,7 +139,7 @@ async def offered(harness: Harness) -> list[types.Tool]:
     tools = [*PUBLISHED, *await _authoring_tools()]
     if harness.session is None:
         return tools
-    tools.extend(_published(one) for one in commands(harness.session.engine))
+    tools.extend(_published(one) for one in harness.session.engine.director_tools)
     return tools
 
 

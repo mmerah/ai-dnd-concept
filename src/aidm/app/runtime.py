@@ -147,7 +147,7 @@ class GameSession:
         """Commit only after the full segment succeeds."""
         if self.stages is None:
             raise ValueError("code mode plays the turn in the MCP server, not here")
-        result = await run_segment(
+        state, trace = await run_segment(
             self.state,
             player_input,
             engine=self.engine,
@@ -157,13 +157,13 @@ class GameSession:
             on_step=on_step,
             on_event=on_event,
         )
-        self.commit(result.state, result.turn)
-        self._illustrate(result.turn.narration)
+        self.commit(state, trace)
+        self._illustrate(trace.narration)
         if self.growth_due():
             if on_step is not None:
                 on_step("scenario_creator")
             await self._extend()
-        return result.turn
+        return trace
 
     def offers(self) -> tuple[tuple[PlayerAction, Offer], ...]:
         return offered(self.engine, self.state)

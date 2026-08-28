@@ -1,11 +1,10 @@
 from collections.abc import Mapping
 from pathlib import Path
-from random import Random
-from typing import ClassVar
 
 from pydantic import JsonValue
 
-from aidm.content.model import CharacterProfile, CreatedCharacter
+from aidm.content.io import engine_text
+from aidm.content.model import Character, CharacterProfile
 from aidm.engines.breathless.rules import (
     RULES,
     SKILLS,
@@ -33,17 +32,25 @@ from aidm.engines.core import (
     Engine,
     EntityRules,
     NoRules,
-    action,
+    describe_by,
+    director_tool,
     player_action,
-    rule,
 )
-from aidm.engines.packs import PackCreation, character_packs, pack_options
+from aidm.engines.packs import PackCreation, character_packs
 from aidm.engines.sources import SHIPPED_PACKS, PackSources
+from aidm.engines.world import CORE_TOOLS
 from aidm.state.creation import AnyStep, CreationStep, Picks, TextStep, check_picks, picked
 from aidm.state.entities import PLAYER_ID, EngineId, Entity, EntityId, Kind, slug
 from aidm.state.model import Game
 
+ENGINE_DIR = Path(__file__).parent
 RATED = (10, 8, 6)
+# Every item is a die, so a rules-less one is a d10 item rather than no item.
+RULES_TYPES: Mapping[Kind, type[EntityRules]] = {
+    "actor": Sheet,
+    "item": ItemSheet,
+    "location": NoRules,
+}
 
 
 class BreathlessCreation(PackCreation[Pack]):
@@ -54,7 +61,7 @@ class BreathlessCreation(PackCreation[Pack]):
                 CreationStep(
                     id=f"d{die}",
                     prompt=f"Choose the skill rated d{die}",
-                    options=pack_options(pack.skills),
+                    options=pack.skills,
                 )
                 for die in RATED
             ),
@@ -67,8 +74,7 @@ class BreathlessCreation(PackCreation[Pack]):
             ),
         )
 
-    def create(self, name: str, brief: str, picks: Picks, rng: Random) -> CreatedCharacter:
-        del rng
+    def create(self, name: str, brief: str, picks: Picks) -> Character:
         check_picks(self.steps(picks), picks)
         chosen = picked(picks, "pack")[0]
         rated = {picked(picks, f"d{die}")[0]: die for die in RATED}
@@ -87,7 +93,8 @@ class BreathlessCreation(PackCreation[Pack]):
             parent_id=PLAYER_ID,
             rules={"die": RULES.starting_item},
         )
-        return CreatedCharacter(
+        return Character(
+            id=slug(name, ()),
             profile=CharacterProfile(name=name, brief=brief, items=(item,)),
             rules={
                 "packs": character_packs(chosen),
@@ -98,72 +105,80 @@ class BreathlessCreation(PackCreation[Pack]):
         )
 
 
-class BreathlessEngine(Engine):
-    id = EngineId("breathless")
-    badge = ("BREATHLESS", "red-7")
-    engine_dir = Path(__file__).parent
-    # Every item is a die, so a rules-less one is a d10 item rather than no item.
-    rules_types: ClassVar[Mapping[Kind, type[EntityRules]]] = {
-        "actor": Sheet,
-        "item": ItemSheet,
-        "location": NoRules,
-    }
-    pack_type = Pack
-    decisions = (StakedCheck, Loot)
-    authoring_instructions = (
-        "BREATHLESS AUTHORING\n"
-        "Actors may omit rules; describe threats through risks and complications. An actor with "
-        "rules names the skills rated above d4 (Bash, Dash, Sneak, Shoot, Think, Sway). Every "
-        "item is a die: give a usable one rules with its die (6 to 12) and leave set dressing "
-        "without rules, which makes it a d10 item."
-    )
+def _checks(state: Game) -> None:
+    # The played character rolls their own skills, so a successor without rules cannot play.
+    if not state.player.rules:
+        raise ValueError(f"{state.player.name} has no character sheet")
+    for actor in state.world.of_kind("actor"):
+        held = len(state.world.children(actor.id, "item"))
+        if actor.rules and held > RULES.carry:
+            raise ValueError(f"{actor.id!r} carries {held} items; the backpack holds {RULES.carry}")
 
-    def __init__(self, sources: PackSources = SHIPPED_PACKS) -> None:
-        super().__init__(sources)
-        self.packs = sources.load(self.engine_dir / "packs", Pack)
-        self.creation = BreathlessCreation(self.packs)
-        self.director_commands = (
-            action(
+
+def build(sources: PackSources = SHIPPED_PACKS) -> Engine:
+    packs = sources.load(ENGINE_DIR / "packs", Pack)
+    return Engine(
+        id=EngineId("breathless"),
+        badge=("BREATHLESS", "red-7"),
+        director_instructions=engine_text(ENGINE_DIR / "director.md"),
+        rules_types=RULES_TYPES,
+        pack_type=Pack,
+        packs=packs,
+        creation=BreathlessCreation(packs),
+        checks=_checks,
+        describe=describe_by(RULES_TYPES),
+        decisions=(StakedCheck, Loot),
+        authoring_instructions=(
+            "BREATHLESS AUTHORING\n"
+            "Actors may omit rules; describe threats through risks and complications. An actor "
+            "with rules names the skills rated above d4 (Bash, Dash, Sneak, Shoot, Think, Sway). "
+            "Every item is a die: give a usable one rules with its die (6 to 12) and leave set "
+            "dressing without rules, which makes it a d10 item."
+        ),
+        director_tools=(
+            # Every item is a die a loot check hands out, so nothing here is improvised.
+            *(one for one in CORE_TOOLS if one.name != "gain_improvised_item"),
+            director_tool(
                 "stake_check",
                 "Show the player one check's `risk` and let them accept or revise it before "
                 "rolling.",
                 StakedCheck,
-                resolve_stake,
+                lambda draft, one, _rng: resolve_stake(draft, one),
             ),
-            rule(
+            director_tool(
                 "roll_check",
                 "Roll an actor's risky check directly. For the player, use `stake_check` first "
                 "unless they already accepted the exact `risk`.",
                 Check,
                 resolve_check,
             ),
-            rule(
+            director_tool(
                 "test_luck",
                 "Let a die decide whether something happens.",
                 LuckTest,
                 resolve_luck_test,
             ),
-            rule(
+            director_tool(
                 "loot_check",
                 "Roll the actor's loot die to scavenge, when the fiction allows it.",
                 LootCheck,
                 resolve_loot,
             ),
-            action(
+            director_tool(
                 "change_stress",
                 "Add stress for a complication, or clear it for a secure rest.",
                 ChangeStress,
-                apply_change_stress,
+                lambda draft, one, _rng: apply_change_stress(draft, one),
             ),
-            action(
+            director_tool(
                 "use_med_kit",
                 f"Spend the actor's med kit to clear {RULES.med_kit_clears} stress, when they say "
                 "they use it.",
                 Breathe,
-                apply_use_med_kit,
+                lambda draft, one, _rng: apply_use_med_kit(draft, one),
             ),
-        )
-        self.player_actions = (
+        ),
+        player_actions=(
             player_action(
                 "catch_breath",
                 "Reset skills, loot die and stunt; the group faces a new complication.",
@@ -178,19 +193,5 @@ class BreathlessEngine(Engine):
                 apply_use_med_kit,
                 med_kit_holders,
             ),
-        )
-
-    def pack_models(self) -> Mapping[str, Pack]:
-        return self.packs
-
-    def validate(self, state: Game) -> None:
-        super().validate(state)
-        # The played character rolls their own skills, so a successor without rules cannot play.
-        if not state.player.rules:
-            raise ValueError(f"{state.player.name} has no character sheet")
-        for actor in state.world.of_kind("actor"):
-            held = len(state.world.children(actor.id, "item"))
-            if actor.rules and held > RULES.carry:
-                raise ValueError(
-                    f"{actor.id!r} carries {held} items; the backpack holds {RULES.carry}"
-                )
+        ),
+    )

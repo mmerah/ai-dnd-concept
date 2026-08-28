@@ -28,6 +28,6 @@ Use `test_luck` when you would rather let a die decide, with a die rated by the 
 
 ## Scavenging
 
-A hidden thing the picture already lists is found with `reveal`, not a loot check. When the fiction allows scavenging for something not in the world yet, call `loot_check` with what the actor hopes to find. The engine rolls their loot die, wears it down, and hands back trouble or the item with its die; on a high roll it asks the player whether they take the item or a med kit, and the turn waits on that answer. Never call `gain_improvised_item`: every item has a die, and loot is the only way to find one. A backpack holds three items and one med kit: a find past that lies where they stand, and they drop an item with `move` to the location to take it.
+A hidden thing the picture already lists is found with `reveal`, not a loot check. When the fiction allows scavenging for something not in the world yet, call `loot_check` with what the actor hopes to find. The engine rolls their loot die, wears it down, and hands back trouble or the item with its die; on a high roll it asks the player whether they take the item or a med kit, and the turn waits on that answer. A backpack holds three items and one med kit: a find past that lies where they stand, and they drop an item with `move` to the location to take it.
 
 Make each roll change the story. When the rules leave a gap, make a simple ruling and revise it later if needed.

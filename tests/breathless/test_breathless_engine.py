@@ -226,7 +226,7 @@ def test_creation_rates_three_skills_and_packs_a_d10_item() -> None:
         "pronouns": ("she/her",),
         "item": ("a fire axe",),
     }
-    created = engine.creation.create("Ines", "A nurse who kept her axe.", picks, Random(0))
+    created = engine.creation.create("Ines", "A nurse who kept her axe.", picks)
     assert created.rules["skills"] == {
         "Bash": 4,
         "Dash": 6,
@@ -237,4 +237,4 @@ def test_creation_rates_three_skills_and_packs_a_d10_item() -> None:
     }
     assert created.profile.items[0].rules == {"die": 10}
     with pytest.raises(ValueError, match="three different skills"):
-        _ = engine.creation.create("Ines", "", picks | {"d8": ("shoot",)}, Random(0))
+        _ = engine.creation.create("Ines", "", picks | {"d8": ("shoot",)})

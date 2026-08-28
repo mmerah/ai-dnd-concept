@@ -1,7 +1,7 @@
 from collections.abc import Callable, Mapping, Sequence
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from random import Random
-from typing import Literal, Self
+from typing import Literal, NamedTuple, Self
 
 from pydantic import JsonValue
 from pydantic_ai import Agent, ModelRetry, NativeOutput, RunContext, Tool
@@ -18,28 +18,22 @@ from pydantic_ai.usage import UsageLimits
 
 from aidm.config import Settings
 from aidm.engines.core import (
-    RULES_WAIT,
-    Command,
-    DirectorContext,
+    DirectorTool,
     Engine,
-    TurnRecord,
+    Play,
     apply_to_draft,
-    run_command,
     succession_decision,
 )
-from aidm.engines.world import commands
 from aidm.llm import build_agent, schema_of
 from aidm.state.entities import DEAD
-from aidm.state.facts import Fact, narrator_evidence, narrator_lines, player_events, traced
+from aidm.state.facts import NOTHING, Fact, player_events, told_traces, traced
 from aidm.state.model import Game, draft_refusal
 from aidm.state.play import (
     Answer,
-    DecisionOption,
     Exchange,
     Line,
     MechanicEvent,
     Narration,
-    PendingDecision,
     StepTrace,
     TurnTrace,
     narration_text,
@@ -48,17 +42,42 @@ from aidm.state.play import (
 from . import context
 from .context import SceneSnapshot, VisibleScene
 
+RULES_WAIT = "the rules now wait on the player's decision"
 
-@dataclass(frozen=True, slots=True)
-class TurnResult:
+
+class TurnResult(NamedTuple):
     state: Game
     turn: TurnTrace
 
 
+@dataclass(slots=True)
+class TurnRecord:
+    facts: list[Fact] = field(default_factory=list)
+    events: list[MechanicEvent] = field(default_factory=list)
+    on_event: Callable[[MechanicEvent], None] | None = None
+
+    def landed(
+        self, draft: Game, facts: tuple[Fact, ...], events: tuple[MechanicEvent, ...]
+    ) -> None:
+        self.facts.extend(facts)
+        self.events.extend(events)
+        # On the draft too: a harness that commits per tool call reaches the page only through it.
+        draft.turn_events = tuple(self.events)
+        if self.on_event is not None:
+            for event in events:
+                self.on_event(event)
+
+
 @dataclass(frozen=True, slots=True, kw_only=True)
-class Turn(DirectorContext):
+class Turn:
     """One player input to the next hand-back; the draft is the only state that moves."""
 
+    engine: Engine
+    draft: Game
+    rng: Random
+    log: TurnRecord
+    # The run began with a re-suspended decision: it develops what the answer caused, no more.
+    suspended_at_start: bool = False
     # Receives the draft: builtin passes a no-op and commits once, code mode saves per call.
     commit: Callable[[Game], None]
     prompt: str
@@ -77,7 +96,7 @@ class Turn(DirectorContext):
     ) -> Self:
         log = TurnRecord(on_event=on_event)
         draft = state.draft()
-        prompt, resumed, answered = consume_answer(engine, draft, player_input, rng, log)
+        prompt, resumed = consume_answer(engine, draft, player_input, rng, log)
         notes = draft.take_notes()
         commit(draft)
         return cls(
@@ -89,7 +108,6 @@ class Turn(DirectorContext):
             resumed=resumed,
             notes=notes,
             log=log,
-            answered=answered,
             suspended_at_start=draft.pending is not None,
         )
 
@@ -105,12 +123,32 @@ class Turn(DirectorContext):
         )
 
     def call(self, name: str, raw: Mapping[str, JsonValue]) -> str:
-        found = next((one for one in commands(self.engine) if one.name == name), None)
+        """The one gate: a decision on the table blocks everything but developing its answer."""
+        found = next((one for one in self.engine.director_tools if one.name == name), None)
         if found is None:
-            raise ValueError(f"{name!r} is not a command of the {self.engine.id!r} engine.")
-        answered = run_command(found, self, raw)
+            raise ValueError(f"{name!r} is not a tool of the {self.engine.id!r} engine.")
+        pending = self.draft.pending
+        if pending is not None and not (found.during_suspension and self.suspended_at_start):
+            # A plain answer, not a refusal: a retry prompt would tell the model to try again.
+            return (
+                f"the rules are waiting on the player: {pending.prompt}\n"
+                "Put that to the player, then start the next turn with their answer."
+            )
+        answered = self._applied(lambda draft, rng: found.call(draft, raw, rng))
         self.commit(self.draft)
         return answered
+
+    def _applied(self, play: Play) -> str:
+        """What the call changed, as the Director reads it back."""
+        already_pending = len(self.draft.world.pending_notes)
+        decided_before = self.draft.pending
+        landed = _apply(self.engine, self.draft, play, self.rng, self.log)
+        lines = [f"- {fact.trace}" for fact in landed]
+        lines.extend(f"- {note}" for note in self.draft.world.pending_notes[already_pending:])
+        lines.extend(_reached(self.draft, landed))
+        if decided_before is None and self.draft.pending is not None:
+            lines.append(f"- {RULES_WAIT}")
+        return "\n".join(lines) or NOTHING
 
     def finish(self, lines: tuple[Line, ...], steps: tuple[StepTrace, ...] = ()) -> TurnResult:
         state = close_segment(self.engine, self.draft, self.prompt, lines, tuple(self.log.events))
@@ -120,10 +158,33 @@ class Turn(DirectorContext):
             narration=narration_text(lines),
             steps=steps,
         )
-        return TurnResult(state=state, turn=trace)
+        return TurnResult(state, trace)
 
 
-def as_tool(found: Command) -> Tool[Turn]:
+def _apply(
+    engine: Engine, draft: Game, play: Play, rng: Random, log: TurnRecord
+) -> tuple[Fact, ...]:
+    """Refused whole against a throwaway copy before one change of it reaches the draft."""
+    if refused := draft_refusal(draft, lambda copy: apply_to_draft(engine, copy, play, Random(0))):
+        raise ValueError(refused)
+    landed = apply_to_draft(engine, draft, play, rng)
+    log.landed(draft, landed, player_events(landed))
+    return landed
+
+
+def _reached(draft: Game, facts: Sequence[Fact]) -> list[str]:
+    # The prompt was rendered before the discovery, so the instruction authored for it arrives here.
+    lines: list[str] = []
+    for fact in facts:
+        if fact.kind != "entity_discovered" or fact.entity_id is None:
+            continue
+        detail = draft.world.require(fact.entity_id).detail
+        if detail is not None and detail.when_reached:
+            lines.append(f"- {detail.when_reached}")
+    return lines
+
+
+def as_tool(found: DirectorTool) -> Tool[Turn]:
     async def call(ctx: RunContext[Turn], **raw: JsonValue) -> str:
         try:
             return ctx.deps.call(found.name, raw)
@@ -141,7 +202,7 @@ def as_tool(found: Command) -> Tool[Turn]:
 
 
 def director_toolset(engine: Engine) -> FunctionToolset[Turn]:
-    return FunctionToolset(tools=[as_tool(one) for one in commands(engine)], max_retries=2)
+    return FunctionToolset(tools=[as_tool(one) for one in engine.director_tools], max_retries=2)
 
 
 @dataclass(frozen=True, slots=True)
@@ -266,14 +327,14 @@ async def run_segment(
     ]
 
     lines: tuple[Line, ...] = ()
-    if draft.pending is None or narrator_lines(facts):
+    if draft.pending is None or told_traces(facts):
         announce("narrator")
         visible = VisibleScene.revealed_from(SceneSnapshot.from_game(draft))
         narrator_prompt = context.render_narrator(
             visible,
             engine.describe,
             draft.scenario,
-            evidence=narrator_evidence(facts),
+            evidence=traced(facts, told_only=True),
             prompt=prompt,
         )
         narration = (
@@ -320,8 +381,8 @@ def consume_answer(
     player_input: str | Answer,
     rng: Random,
     log: TurnRecord,
-) -> tuple[str, str, PendingDecision | None]:
-    """The PLAYER ACTION, what a closed answer resolved, and the decision an open answer used."""
+) -> tuple[str, str]:
+    """The PLAYER ACTION and what a closed answer resolved."""
     chosen = player_input.option_id if isinstance(player_input, Answer) else None
     # Only a listed option — succession, in practice — carries a dead player character's game on.
     if chosen is None and draft.player.trait(DEAD) is not None:
@@ -330,8 +391,10 @@ def consume_answer(
     draft.turn_events = ()
     # Any input consumes the decision, a revision included: it never survives its own answer.
     consumed, draft.pending = draft.pending, None
+    if consumed is not None and not consumed.allows_text and chosen is None:
+        raise ValueError(f"the {consumed.kind!r} decision takes one of its options, not words")
     if isinstance(player_input, str):
-        return player_input, "", None
+        return player_input, ""
     if chosen is None:
         if consumed is not None:
             draft.world.pending_notes = (
@@ -339,36 +402,19 @@ def consume_answer(
                 f'The rules paused play to ask the player: "{consumed.prompt}" '
                 "The PLAYER ACTION is their answer.",
             )
-        return player_input.text, "", consumed
+        return player_input.text, ""
     if consumed is None:
         raise ValueError(f"no decision is open, so option {chosen!r} answers nothing")
     option = next((one for one in consumed.options if one.id == chosen), None)
     if option is None:
         raise ValueError(f"the {consumed.kind!r} decision offers no option {chosen!r}")
-    landed = _resume(engine, draft, consumed, option, rng, log)
+    # A refusal raises: the engine enumerated the option, so it is never model error.
+    landed = _apply(
+        engine, draft, lambda copy, dice: engine.resume(copy, consumed, option.id, dice), rng, log
+    )
     traces = traced(landed)
     # A resume that re-suspended has no tool answer to carry the wait, so the prompt says it.
     if draft.pending is not None:
         traces += f"\n- {RULES_WAIT}"
     section = f"asked: {consumed.prompt}\nthe player chose: {option.label}\n{traces}"
-    return option.label, section, None
-
-
-def _resume(
-    engine: Engine,
-    draft: Game,
-    pending: PendingDecision,
-    option: DecisionOption,
-    rng: Random,
-    log: TurnRecord,
-) -> tuple[Fact, ...]:
-    """A refusal raises: the engine enumerated the option, so it is never model error."""
-
-    def play(target: Game, dice: Random) -> tuple[Fact, ...]:
-        return engine.resume(target, pending, option.id, dice)
-
-    if refused := draft_refusal(draft, lambda copy: apply_to_draft(engine, copy, play, Random(0))):
-        raise ValueError(refused)
-    landed = apply_to_draft(engine, draft, play, rng)
-    log.landed(draft, landed, player_events(landed))
-    return landed
+    return option.label, section

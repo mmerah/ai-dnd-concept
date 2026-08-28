@@ -1,23 +1,21 @@
 from collections.abc import Mapping, Sequence
 from pathlib import Path
 from random import Random
-from typing import ClassVar
 
 from pydantic import Field
 
-from aidm.content.model import CharacterProfile, CreatedCharacter
+from aidm.content.io import engine_text
+from aidm.content.model import Character, CharacterProfile
 from aidm.engines.core import (
     ADVANCE_TOOL,
     Engine,
     EntityRules,
     NoRules,
-    action,
     advances_owed,
-    chapter_command,
-    counter_fact,
+    chapter_tool,
     describe_rows,
+    director_tool,
     party_member,
-    rule,
     rules,
 )
 from aidm.engines.loner3e.rules import (
@@ -32,16 +30,12 @@ from aidm.engines.loner3e.rules import (
     resolve_question,
     twist_table,
 )
-from aidm.engines.packs import (
-    PackChoice,
-    PackCreation,
-    character_packs,
-    find_entry,
-    pack_options,
-)
+from aidm.engines.packs import PackCreation, character_packs, find_entry
 from aidm.engines.sources import SHIPPED_PACKS, PackSources
+from aidm.engines.world import CORE_TOOLS
 from aidm.state.creation import (
     AnyStep,
+    CreationOption,
     CreationStep,
     Picks,
     TextStep,
@@ -54,9 +48,18 @@ from aidm.state.entities import (
     Entity,
     Frozen,
     Kind,
+    slug,
 )
-from aidm.state.facts import Fact, MechanicEvent, explained_fact
+from aidm.state.facts import Fact, MechanicEvent, entity_fact
 from aidm.state.model import Game
+
+ENGINE_DIR = Path(__file__).parent
+# SRD "Everything is a Character": a thing that resists plays by the one sheet an actor does.
+RULES_TYPES: Mapping[Kind, type[EntityRules]] = {
+    "actor": Sheet,
+    "item": Sheet,
+    "location": NoRules,
+}
 
 
 class RestoreLuck(Frozen):
@@ -68,7 +71,7 @@ def advance(draft: Game, proposal: AdventureGrowth, rng: Random) -> tuple[Fact, 
     del rng
     subject = party_member(draft, proposal.subject_id)
     with rules(subject, Sheet) as sheet:
-        if sheet.chapters.current <= sheet.milestones.current:
+        if sheet.chapters <= sheet.milestones:
             raise ValueError(f"{subject.name} has no advance owed")
         # Sequential against the live sheet, so a rewrite may name what an earlier change wrote.
         granted = tuple(
@@ -77,9 +80,14 @@ def advance(draft: Game, proposal: AdventureGrowth, rng: Random) -> tuple[Fact, 
             else _gain(sheet, subject, change)
             for change in proposal.changes
         )
-        sheet.milestones.current += 1
-        spent = counter_fact(
-            draft, subject, "milestones", sheet.milestones, 1, "a milestone spent", "military_tech"
+        sheet.milestones += 1
+        spent = entity_fact(
+            subject,
+            "milestone_spent",
+            f"{draft.label(subject)} milestones -> {sheet.milestones} (a milestone spent)",
+            event=MechanicEvent(
+                title=f"{subject.name}: milestone {sheet.milestones} spent", icon="military_tech"
+            ),
         )
     return (*granted, spent)
 
@@ -93,11 +101,10 @@ def _gain(sheet: Sheet, subject: Entity, change: Change) -> Fact:
         sheet.gear = (*sheet.gear, change.tag)
     else:
         sheet.frailties = (*sheet.frailties, change.tag)
-    return explained_fact(
+    return entity_fact(
         subject,
         f"{change.kind}_gained",
-        f"{subject.name} gained {change.kind} {change.tag}",
-        change.why,
+        f"{subject.name} gained {change.kind} {change.tag} ({change.why})",
         event=MechanicEvent(
             title=f"{subject.name}: new {change.kind} {change.tag}", icon="military_tech"
         ),
@@ -114,17 +121,16 @@ def _rewrite(sheet: Sheet, subject: Entity, change: Change) -> Fact:
         sheet.gear = _swapped(sheet.gear, old, new)
     else:
         raise ValueError(f"{subject.name} carries no tag {old!r} to rewrite")
-    return explained_fact(
+    return entity_fact(
         subject,
         "tag_rewritten",
-        f"{subject.name} rewrote {old} as {new}",
-        change.why,
+        f"{subject.name} rewrote {old} as {new} ({change.why})",
         event=MechanicEvent(title=f"{subject.name}: {old} → {new}", icon="military_tech"),
     )
 
 
 def pack_meanings(
-    entries: Sequence[PackChoice], tags: Sequence[str]
+    entries: Sequence[CreationOption], tags: Sequence[str]
 ) -> tuple[tuple[str, str], ...]:
     detail_of = {entry.label: entry.detail for entry in entries if entry.detail}
     return tuple((tag, detail_of[tag]) for tag in tags if tag in detail_of)
@@ -143,26 +149,22 @@ class Loner3eCreation(PackCreation[Pack]):
                 prompt="Write a one-line concept",
                 hint=", ".join(entry.label for entry in pack.concepts[:3]),
             ),
-            CreationStep(
-                id="skills", prompt="Choose two skills", options=pack_options(pack.skills), choose=2
-            ),
-            CreationStep(
-                id="frailty", prompt="Choose a frailty", options=pack_options(pack.frailties)
-            ),
+            CreationStep(id="skills", prompt="Choose two skills", options=pack.skills, choose=2),
+            CreationStep(id="frailty", prompt="Choose a frailty", options=pack.frailties),
             CreationStep(
                 id="gear",
                 prompt="Choose two pieces of gear",
-                options=pack_options(pack.gear),
+                options=pack.gear,
                 choose=2,
             ),
         )
 
-    def create(self, name: str, brief: str, picks: Picks, rng: Random) -> CreatedCharacter:
-        del rng
+    def create(self, name: str, brief: str, picks: Picks) -> Character:
         check_picks(self.steps(picks), picks)
         chosen = picked(picks, "pack")[0]
         pack = self.packs[chosen]
-        return CreatedCharacter(
+        return Character(
+            id=slug(name, ()),
             profile=CharacterProfile(name=name, brief=brief),
             rules={
                 "packs": character_packs(chosen),
@@ -177,76 +179,76 @@ class Loner3eCreation(PackCreation[Pack]):
         )
 
 
-class Loner3eEngine(Engine):
-    id = EngineId("loner3e")
-    badge = ("LONER 3E", "teal-7")
-    engine_dir = Path(__file__).parent
-    # SRD "Everything is a Character": a thing that resists plays by the one sheet an actor does.
-    rules_types: ClassVar[Mapping[Kind, type[EntityRules]]] = {
-        "actor": Sheet,
-        "item": Sheet,
-        "location": NoRules,
-    }
-    pack_type = Pack
-    decisions = (Conflict,)
-    authoring_instructions = (
-        "LONER 3E AUTHORING\n"
-        "Every actor needs a rules object with a concept and any fitting skills, frailties, or "
-        "gear. Loner tags are freeform descriptions: use selected pack entries when they fit and "
-        "invent scenario-specific tags when they are clearer. Set packs to every selected table "
-        "set the entity uses; twist_pack chooses its one Oracle table."
+def _checks(state: Game) -> None:
+    # Every actor rolls by a sheet: one nobody wrote is refused, not given a blank one.
+    for actor in state.world.of_kind("actor"):
+        if not actor.rules:
+            raise ValueError(f"{actor.id!r} has no rules; a Loner actor needs a sheet")
+
+
+def meanings(packs: Mapping[str, Pack], sheet: Sheet) -> tuple[tuple[str, str], ...]:
+    chosen = tuple(packs[pack_id] for pack_id in sheet.packs)
+    # The concept's pack blurb is generic where the entity's own brief is not: skip it.
+    return pack_meanings(
+        tuple(entry for pack in chosen for entry in (*pack.skills, *pack.frailties, *pack.gear)),
+        (*sheet.skills, *sheet.frailties, *sheet.gear),
     )
 
-    def __init__(self, sources: PackSources = SHIPPED_PACKS) -> None:
-        super().__init__(sources)
-        self.packs = sources.load(self.engine_dir / "packs", Pack)
-        self.creation = Loner3eCreation(self.packs)
-        self.director_commands = (
-            rule(
+
+def _describe(packs: Mapping[str, Pack], entity: Entity) -> str:
+    # An item is described only once play has written rules on it; before that it is scenery.
+    if entity.kind != "actor" and not entity.rules:
+        return ""
+    sheet = Sheet.model_validate(entity.rules)
+    return describe_rows(sheet.rows(), meanings(packs, sheet))
+
+
+def twists(packs: Mapping[str, Pack], state: Game) -> tuple[tuple[str, str], ...]:
+    return twist_table(packs, Sheet.model_validate(state.player.rules).twist_pack)
+
+
+def load_packs(sources: PackSources = SHIPPED_PACKS) -> dict[str, Pack]:
+    return sources.load(ENGINE_DIR / "packs", Pack)
+
+
+def build(sources: PackSources = SHIPPED_PACKS) -> Engine:
+    packs = load_packs(sources)
+    return Engine(
+        id=EngineId("loner3e"),
+        badge=("LONER 3E", "teal-7"),
+        director_instructions=engine_text(ENGINE_DIR / "director.md"),
+        rules_types=RULES_TYPES,
+        pack_type=Pack,
+        packs=packs,
+        creation=Loner3eCreation(packs),
+        checks=_checks,
+        describe=lambda entity: _describe(packs, entity),
+        decisions=(Conflict,),
+        owed_notes=lambda state: advances_owed(state, Sheet, lambda sheet: sheet.milestones),
+        authoring_instructions=(
+            "LONER 3E AUTHORING\n"
+            "Every actor needs a rules object with a concept and any fitting skills, frailties, or "
+            "gear. Loner tags are freeform descriptions: use selected pack entries when they fit "
+            "and invent scenario-specific tags when they are clearer. Set packs to every selected "
+            "table set the entity uses; twist_pack chooses its one Oracle table."
+        ),
+        director_tools=(
+            *CORE_TOOLS,
+            director_tool(
                 "roll_question",
                 "Roll Chance against Risk for one closed dramatic question.",
                 Question,
-                lambda draft, one, rng: resolve_question(draft, one, rng, self.twists(draft)),
+                lambda draft, one, rng: resolve_question(draft, one, rng, twists(packs, draft)),
             ),
-            action(
+            director_tool(
                 "restore_luck",
                 "Restore an actor's luck after a conflict ends.",
                 RestoreLuck,
-                lambda draft, one: apply_restore_luck(draft, one.actor_id),
+                lambda draft, one, _rng: apply_restore_luck(draft, one.actor_id),
             ),
-            chapter_command(
+            chapter_tool(
                 "Record that the current adventure has ended.", "the adventure has ended", Sheet
             ),
-            rule("advance", ADVANCE_TOOL + GROWTH, AdventureGrowth, advance),
-        )
-
-    def pack_models(self) -> Mapping[str, Pack]:
-        return self.packs
-
-    def describe(self, entity: Entity) -> str:
-        # An item is described only once play has written rules on it; before that it is scenery.
-        if entity.kind != "actor" and not entity.rules:
-            return ""
-        sheet = Sheet.model_validate(entity.rules)
-        return describe_rows(sheet.rows(), self.meanings(sheet))
-
-    def validate(self, state: Game) -> None:
-        super().validate(state)
-        # Every actor rolls by a sheet: one nobody wrote is refused, not given a blank one.
-        for actor in state.world.of_kind("actor"):
-            if not actor.rules:
-                raise ValueError(f"{actor.id!r} has no rules; a Loner actor needs a sheet")
-
-    def owed_notes(self, state: Game) -> tuple[str, ...]:
-        return advances_owed(state, Sheet, lambda sheet: sheet.milestones)
-
-    def meanings(self, sheet: Sheet) -> tuple[tuple[str, str], ...]:
-        packs = tuple(self.packs[pack_id] for pack_id in sheet.packs)
-        # The concept's pack blurb is generic where the entity's own brief is not: skip it.
-        return pack_meanings(
-            tuple(entry for pack in packs for entry in (*pack.skills, *pack.frailties, *pack.gear)),
-            (*sheet.skills, *sheet.frailties, *sheet.gear),
-        )
-
-    def twists(self, state: Game) -> tuple[tuple[str, str], ...]:
-        return twist_table(self.packs, Sheet.model_validate(state.player.rules).twist_pack)
+            director_tool("advance", ADVANCE_TOOL + GROWTH, AdventureGrowth, advance),
+        ),
+    )

@@ -260,7 +260,10 @@ def _composer_placeholder(view: GameView) -> str:
     step = view.session.step
     if step is not None:
         return f"{_STEP_COPY[step][0]} is working..."
-    if view.session.state.pending is not None:
+    pending = view.session.state.pending
+    if pending is not None:
+        if not pending.allows_text:
+            return "Choose an option above."
         return "The game is waiting on your answer."
     return "What do you do?"
 
@@ -367,7 +370,9 @@ def _alive(entity: Entity) -> bool:
 
 
 def _can_type(session: GameSession, busy: bool) -> bool:
-    return not busy and _alive(session.state.player)
+    pending = session.state.pending
+    typed = pending is None or pending.allows_text
+    return not busy and typed and _alive(session.state.player)
 
 
 def decision_panel(view: GameView) -> None:
@@ -398,7 +403,7 @@ def decision_panel(view: GameView) -> None:
                     if option.detail:
                         button.tooltip(option.detail)
         # A dead player character answers by taking a successor's name, never in their own words.
-        if _alive(view.session.state.player):
+        if pending.allows_text and _alive(view.session.state.player):
             pointer = "Or answer" if pending.options else "Answer"
             ui.label(f"{pointer} in your own words below.").classes("text-xs opacity-60")
 

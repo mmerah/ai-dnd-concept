@@ -2,7 +2,6 @@ import logging
 import tempfile
 from collections.abc import Callable, Sequence
 from pathlib import Path
-from random import Random
 from typing import cast
 
 from nicegui import ui
@@ -16,7 +15,7 @@ from aidm.config import Settings
 from aidm.content.io import write_character
 from aidm.harness.driver import Driver
 from aidm.state.creation import AnyStep, CreationStep, TextStep, picked
-from aidm.state.entities import EngineId, Slug, content_id, slug
+from aidm.state.entities import EngineId, Slug, content_id
 
 from .widgets import page_header, refuse_if_busy, working
 
@@ -30,7 +29,6 @@ def character_page(runtime: Runtime, engine_id: EngineId) -> None:
     creation = engine.creation
     with ui.column().classes("w-full q-pa-lg items-center"):
         picks: dict[Slug, tuple[str, ...]] = {}
-        seed = 0
         with ui.row().classes("no-wrap items-start").style("width: min(80rem, 100%); gap: 1rem"):
             with ui.card().classes("q-pa-lg").style("flex: 1; min-width: 0"):
                 name = (
@@ -80,8 +78,6 @@ def character_page(runtime: Runtime, engine_id: EngineId) -> None:
                         ui.button("Create", icon="person_add", on_click=create).props(
                             "color=primary"
                         )
-                        if creation.rolls:
-                            ui.button("Reroll", icon="casino", on_click=reroll)
 
                 def create() -> None:
                     title = (name.value or "").strip()
@@ -89,17 +85,12 @@ def character_page(runtime: Runtime, engine_id: EngineId) -> None:
                         ui.notify("Name the character.", type="warning")
                         return
                     try:
-                        created = creation.create(
-                            title, (brief.value or "").strip(), picks, Random(seed)
-                        )
-                        character_id = slug(title, _taken(runtime.settings.characters_dir))
-                        write_character(
-                            runtime.settings.characters_dir, character_id, engine_id, created
-                        )
+                        created = creation.create(title, (brief.value or "").strip(), picks)
+                        write_character(runtime.settings.characters_dir, engine_id, created)
                     except ValueError as refused:
                         ui.notify(str(refused), type="negative")
                         return
-                    LOGGER.info("character created: slug=%s engine=%s", character_id, engine_id)
+                    LOGGER.info("character created: slug=%s engine=%s", created.id, engine_id)
                     ui.navigate.to("/")
 
                 @ui.refreshable
@@ -115,7 +106,7 @@ def character_page(runtime: Runtime, engine_id: EngineId) -> None:
                             ui.label(chosen or "—").classes("text-sm")
                     try:
                         created = creation.create(
-                            (name.value or "").strip() or "Unnamed", brief_text, picks, Random(seed)
+                            (name.value or "").strip() or "Unnamed", brief_text, picks
                         )
                     except ValueError as refused:
                         ui.label(f"Not ready yet: {refused}").classes("text-sm opacity-50")
@@ -134,11 +125,6 @@ def character_page(runtime: Runtime, engine_id: EngineId) -> None:
                     # Rebuild only changed widgets to preserve unfinished input.
                     if _shape(creation.steps(picks)) != rendered:
                         form.refresh()
-                    preview.refresh()
-
-                def reroll() -> None:
-                    nonlocal seed
-                    seed += 1
                     preview.refresh()
 
                 form()
@@ -266,12 +252,6 @@ def _write_answer(
         picks[step_id] = tuple(answers)
     else:
         picks.pop(step_id, None)
-
-
-def _taken(directory: Path) -> tuple[str, ...]:
-    if not directory.is_dir():
-        return ()
-    return tuple(path.name for path in directory.iterdir() if path.is_dir())
 
 
 def _engine_and_packs(settings: Settings) -> tuple[ui.select, ui.select]:

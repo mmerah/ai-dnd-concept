@@ -13,23 +13,11 @@ class PackName(Protocol):
     name: str
 
 
-class PackChoice(Protocol):
-    id: str
-    label: str
-    detail: str
-
-
-def pack_options(entries: Sequence[PackChoice]) -> tuple[CreationOption, ...]:
-    return tuple(
-        CreationOption(id=entry.id, label=entry.label, detail=entry.detail) for entry in entries
-    )
-
-
-def find_entry[T: PackChoice](entries: Sequence[T], chosen: str) -> T:
+def find_entry[T: CreationOption](entries: Sequence[T], chosen: str) -> T:
     return next(entry for entry in entries if entry.id == chosen)
 
 
-def picked_entry[T: PackChoice](entries: Sequence[T], picks: Picks, step: Slug) -> T | None:
+def picked_entry[T: CreationOption](entries: Sequence[T], picks: Picks, step: Slug) -> T | None:
     chosen = picked(picks, step)[:1]
     return next((entry for entry in entries if entry.id in chosen), None)
 

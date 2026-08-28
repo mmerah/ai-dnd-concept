@@ -10,6 +10,8 @@ Luck is not health. It shows how long an actor can avoid losing a conflict.
 
 Skills, frailties, and gear change only through advancement. Use `add_trait` for other lasting changes, such as an injury, fear, or condition.
 
+Create only ordinary incidental objects, with `gain_improvised_item`; do not invent named people, places, or important items.
+
 ## When to roll
 
 Use `roll_question` when the answer is uncertain and both yes and no would change the story. When in doubt, roll: any real cost for no qualifies. Danger, combat, pursuit, stealth, and haste always qualify: roll before you tell the outcome. Skip the roll for safe movement, simple conversation, and a certain outcome, such as finishing a helpless foe: then use `kill` or the fitting tool.

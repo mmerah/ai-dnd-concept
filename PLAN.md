@@ -15,7 +15,8 @@ bar above lines: a cut that plays worse is out.
    `uv run ruff format --check`, `uv run basedpyright`, `uv run pytest`.
 2. Golden fixtures: run `AIDM_GOLDEN_REGEN=1 uv run pytest` once at the end of the phase, then
    read `git diff tests/core/fixtures` line by line. A diff you cannot explain is a bug.
-3. Eval gate: `uv run python evals/turn_eval.py run` then `compare --baseline <previous>`. Ship at
+3. Eval gate: `uv run python evals/turn_eval.py run --label <phase> --concurrency 16` then
+   `compare --baseline <previous>`. High concurrency: the default of 4 is slow. Ship at
    or above the current baseline (96/99). Below it: revert the phase, do not patch.
 4. Saves are invalid after every phase. No compatibility code, no version field.
 5. Shipped content is migrated by hand in the same phase: `scenarios/*/world.json`,

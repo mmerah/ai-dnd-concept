@@ -198,10 +198,10 @@ class Harness:
             )
         if refused := speakers_refusal(player_scene(turn.draft), lines):
             raise ModelRetry(refused)
-        result = turn.finish(lines)
-        session.commit(result.state, result.turn)
+        state, trace = turn.finish(lines)
+        session.commit(state, trace)
         self.turn = None
-        closed = f"turn {result.state.turn} committed."
+        closed = f"turn {state.turn} committed."
         return f"{closed}\n{GROWTH_DUE}" if session.growth_due() else closed
 
     def call_director_tool(self, name: str, raw: dict[str, JsonValue]) -> str:
@@ -327,11 +327,13 @@ def _recent(state: Game, limit: int) -> str:
 def _waiting(pending: PendingDecision | None) -> str:
     if pending is None:
         return "- (nothing; the turn is yours to run)"
-    options = "\n".join(f"- {one.id}: {one.label} {one.detail}".rstrip() for one in pending.options)
-    return (
-        f"{pending.kind}: {pending.prompt}\n"
-        f"{options or '- (the player answers in their own words)'}"
+    lines = [f"- {one.id}: {one.label} {one.detail}".rstrip() for one in pending.options]
+    lines.append(
+        "- (the player answers in their own words)"
+        if pending.allows_text
+        else "- (choose one option above)"
     )
+    return "\n".join([f"{pending.kind}: {pending.prompt}", *lines])
 
 
 def _offers_listing(session: GameSession) -> str:

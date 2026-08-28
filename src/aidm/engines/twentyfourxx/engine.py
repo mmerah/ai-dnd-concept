@@ -1,34 +1,29 @@
 from collections.abc import Iterable, Mapping
 from pathlib import Path
 from random import Random
-from typing import ClassVar
 
 from pydantic import Field, JsonValue
 
-from aidm.content.model import CharacterProfile, CreatedCharacter
+from aidm.content.io import engine_text
+from aidm.content.model import Character, CharacterProfile
 from aidm.engines.core import (
     ADVANCE_TOOL,
-    Command,
-    DirectorContext,
+    DirectorTool,
     Engine,
     EntityRules,
     NoRules,
-    action,
     adjust,
     advances_owed,
-    apply_play,
-    chapter_command,
-    command,
-    counter_fact,
+    chapter_tool,
+    describe_by,
+    director_tool,
     party_member,
-    rule,
     rules,
 )
 from aidm.engines.packs import (
     PackCreation,
     character_packs,
     find_entry,
-    pack_options,
     picked_entry,
 )
 from aidm.engines.sources import SHIPPED_PACKS, PackSources
@@ -49,10 +44,10 @@ from aidm.engines.twentyfourxx.rules import (
     apply_change_credits,
     raised,
     resolve_attempt,
-    resolve_defence,
     resolve_luck_test,
     resolve_stake,
 )
+from aidm.engines.world import CORE_TOOLS
 from aidm.state.actions import roll_pool
 from aidm.state.creation import (
     AnyStep,
@@ -75,14 +70,15 @@ from aidm.state.entities import (
     require_unique,
     slug,
 )
-from aidm.state.facts import Fact, MechanicEvent, explained_fact
+from aidm.state.facts import Fact, MechanicEvent, entity_fact
 from aidm.state.model import Game
 
-
-class SettleDefence(Frozen):
-    item_id: CheckedEntityId | None = Field(
-        description="Exact id of the carried, unbroken item to break, or null to take the hit."
-    )
+ENGINE_DIR = Path(__file__).parent
+RULES_TYPES: Mapping[Kind, type[EntityRules]] = {
+    "actor": Sheet,
+    "item": ItemSheet,
+    "location": NoRules,
+}
 
 
 class BuyGear(Frozen):
@@ -101,48 +97,30 @@ class ChangeCredits(Frozen):
     amount: int = Field(description="Positive pays the actor; negative charges them.")
 
 
-def _settle_defence(deps: DirectorContext, args: SettleDefence) -> str:
-    # One hit, one settlement: the decision an open answer consumed, until this run settles it.
-    answered = deps.answered
-    settled = any(fact.kind in ("defence_turned", "defence_taken") for fact in deps.log.facts)
-    if answered is None or answered.kind != "defence" or settled:
-        raise ValueError(
-            "no hit is waiting: the engine already settled it or none was staked. Do not call "
-            "settle_defence again; narrate what the hit cost."
-        )
-    goal = Defence.model_validate(answered.payload).goal
-    return apply_play(deps, lambda draft, _rng: resolve_defence(draft, goal, args.item_id))
-
-
-DIRECTOR_COMMANDS: tuple[Command, ...] = (
-    rule(
+DIRECTOR_TOOLS: tuple[DirectorTool, ...] = (
+    director_tool(
         "roll_attempt",
         "Roll an actor's risky attempt directly. For the player, use `stake_attempt` first unless "
         "they already accepted the exact `risk`.",
         Attempt,
         resolve_attempt,
     ),
-    action(
+    director_tool(
         "stake_attempt",
         "Show the player one attempt's `risk` and let them accept or revise it before rolling.",
         StakedAttempt,
-        resolve_stake,
+        lambda draft, one, _rng: resolve_stake(draft, one),
     ),
-    command(
-        "settle_defence",
-        "Settle a hit the player answered in their own words: break the named item, or null to "
-        "take it. Never after an answer the picture shows as already resolved.",
-        SettleDefence,
-        _settle_defence,
+    director_tool(
+        "roll_luck_test", "Roll a standalone bad-luck test.", LuckTest, resolve_luck_test
     ),
-    rule("roll_luck_test", "Roll a standalone bad-luck test.", LuckTest, resolve_luck_test),
-    action(
+    director_tool(
         "change_credits",
         "Pay or charge an actor.",
         ChangeCredits,
-        lambda draft, one: apply_change_credits(draft, one.actor_id, one.amount),
+        lambda draft, one, _rng: apply_change_credits(draft, one.actor_id, one.amount),
     ),
-    chapter_command("Record that the current job has ended.", "the job is done", Sheet),
+    chapter_tool("Record that the current job has ended.", "the job is done", Sheet),
 )
 
 
@@ -150,25 +128,29 @@ def advance(draft: Game, proposal: Advance, rng: Random) -> tuple[Fact, ...]:
     """One advance per job a party member worked: a skill raised and the job's pay."""
     subject = party_member(draft, proposal.subject_id)
     with rules(subject, Sheet) as sheet:
-        if sheet.chapters.current <= sheet.jobs.current:
+        if sheet.chapters <= sheet.jobs:
             raise ValueError(f"{subject.name} has no advance owed")
         skill = _canonical_skill(sheet, proposal.skill)
         die = raised(sheet.skills.get(skill))
         sheet.skills[skill] = die
-        grown = explained_fact(
+        grown = entity_fact(
             subject,
             "skill_increased",
-            f"{subject.name} raised {skill} to d{die}",
-            proposal.why,
+            f"{subject.name} raised {skill} to d{die} ({proposal.why})",
             event=MechanicEvent(title=f"{subject.name}: {skill} d{die}", icon="military_tech"),
         )
         earned, dice_fact = roll_pool((6,), "credits earned", rng, label="Credits")
         credit_facts = adjust(
             draft, subject, "credits", sheet.credits, earned.kept, "paid for the job", "payments"
         )
-        sheet.jobs.current += 1
-        spent = counter_fact(
-            draft, subject, "jobs", sheet.jobs, 1, "a job's advance taken", "military_tech"
+        sheet.jobs += 1
+        spent = entity_fact(
+            subject,
+            "job_advance_taken",
+            f"{draft.label(subject)} jobs -> {sheet.jobs} (a job's advance taken)",
+            event=MechanicEvent(
+                title=f"{subject.name}: job {sheet.jobs} advance taken", icon="military_tech"
+            ),
         )
     return (grown, dice_fact, *credit_facts, spent)
 
@@ -183,7 +165,7 @@ class TwentyfourxxCreation(PackCreation[Pack]):
             CreationStep(
                 id="specialty",
                 prompt="Choose a specialty",
-                options=pack_options(pack.specialties),
+                options=pack.specialties,
             ),
         ]
         specialty = picked_entry(pack.specialties, picks, "specialty")
@@ -192,7 +174,7 @@ class TwentyfourxxCreation(PackCreation[Pack]):
                 CreationStep(
                     id="training",
                     prompt="Choose training",
-                    options=pack_options(specialty.choices),
+                    options=specialty.choices,
                 )
             )
         if specialty is not None and specialty.kit_choice:
@@ -200,19 +182,17 @@ class TwentyfourxxCreation(PackCreation[Pack]):
                 CreationStep(
                     id="specialty-kit",
                     prompt="Choose your specialty gear",
-                    options=pack_options(specialty.kit_choice),
+                    options=specialty.kit_choice,
                 )
             )
-        steps.append(
-            CreationStep(id="origin", prompt="Choose an origin", options=pack_options(pack.origins))
-        )
+        steps.append(CreationStep(id="origin", prompt="Choose an origin", options=pack.origins))
         origin = picked_entry(pack.origins, picks, "origin")
         if origin is not None and origin.kit_choice:
             steps.append(
                 CreationStep(
                     id="origin-kit",
                     prompt="Choose your origin gear",
-                    options=pack_options(origin.kit_choice),
+                    options=origin.kit_choice,
                 )
             )
         if origin is not None and origin.invents:
@@ -236,8 +216,7 @@ class TwentyfourxxCreation(PackCreation[Pack]):
             )
         return tuple(steps)
 
-    def create(self, name: str, brief: str, picks: Picks, rng: Random) -> CreatedCharacter:
-        del rng
+    def create(self, name: str, brief: str, picks: Picks) -> Character:
         check_picks(self.steps(picks), picks)
         chosen = picked(picks, "pack")[0]
         pack = self.packs[chosen]
@@ -270,7 +249,8 @@ class TwentyfourxxCreation(PackCreation[Pack]):
             for entry in (*pack.starting_kit, *specialty.kit, *chosen_kit)
         )
 
-        return CreatedCharacter(
+        return Character(
+            id=slug(name, ()),
             profile=CharacterProfile(name=name, brief=brief, traits=tuple(traits), items=items),
             rules={
                 "packs": character_packs(chosen),
@@ -347,61 +327,60 @@ def _count_prompt(what: str, count: int, verb: str = "Choose") -> str:
     return f"{verb} one {what}" if count == 1 else f"{verb} {count} {what}s"
 
 
-class TwentyfourxxEngine(Engine):
-    id = EngineId("twentyfourxx")
-    badge = ("24XX", "indigo-7")
-    engine_dir = Path(__file__).parent
-    rules_types: ClassVar[Mapping[Kind, type[EntityRules]]] = {
-        "actor": Sheet,
-        "item": ItemSheet,
-        "location": NoRules,
-    }
-    pack_type = Pack
-    decisions = (StakedAttempt, Defence)
-    authoring_instructions = (
-        "24XX AUTHORING\n"
-        "Actors may omit rules; describe opposition through behavior, risks, and obstacles. When "
-        "an actor has rules, set packs to every table set it uses and use only skill names those "
-        "selected packs supply."
-    )
+def _checks(state: Game) -> None:
+    # The played character rolls their own skills, so a successor without rules cannot play.
+    if not state.player.rules:
+        raise ValueError(f"{state.player.name} has no character sheet")
 
-    def __init__(self, sources: PackSources = SHIPPED_PACKS) -> None:
-        super().__init__(sources)
-        self.packs = sources.load(self.engine_dir / "packs", Pack)
-        self.gear = _gear(self.packs)
-        self.ship = _ship(self.packs)
-        self.creation = TwentyfourxxCreation(self.packs)
-        self.director_commands = (
-            *DIRECTOR_COMMANDS,
-            action("buy_gear", _for_sale(self.packs, self.ship), BuyGear, self._buy_gear),
-            rule("advance", ADVANCE_TOOL + GROWTH, Advance, advance),
+
+def _buy_gear(gear: Mapping[Slug, GearItem], draft: Game, args: BuyGear) -> list[Fact]:
+    entry = gear.get(args.gear_id)
+    if entry is None:
+        on_sale = ", ".join(gear)
+        raise ValueError(
+            f"no gear {args.gear_id!r} is for sale. On offer: {on_sale or '(nothing)'}"
         )
+    if isinstance(entry, ShipUpgrade):
+        if args.onto_id is None:
+            raise ValueError(f"{entry.label} is a ship upgrade: name the ship in `onto_id`")
+        _ = draft.world.require_kind(args.onto_id, "location")
+    elif args.onto_id is not None:
+        raise ValueError(f"{entry.label} is carried gear: leave `onto_id` null")
+    paid = apply_change_credits(draft, args.actor_id, -entry.cost)
+    item_id = EntityId(slug(entry.label, draft.world.all_ids()))
+    return [*paid, draft.add(_carried(entry, item_id, args.onto_id or args.actor_id))]
 
-    def pack_models(self) -> Mapping[str, Pack]:
-        return self.packs
 
-    def validate(self, state: Game) -> None:
-        super().validate(state)
-        # The played character rolls their own skills, so a successor without rules cannot play.
-        if not state.player.rules:
-            raise ValueError(f"{state.player.name} has no character sheet")
-
-    def owed_notes(self, state: Game) -> tuple[str, ...]:
-        return advances_owed(state, Sheet, lambda sheet: sheet.jobs)
-
-    def _buy_gear(self, draft: Game, args: BuyGear) -> list[Fact]:
-        entry = self.gear.get(args.gear_id)
-        if entry is None:
-            on_sale = ", ".join(self.gear)
-            raise ValueError(
-                f"no gear {args.gear_id!r} is for sale. On offer: {on_sale or '(nothing)'}"
-            )
-        if isinstance(entry, ShipUpgrade):
-            if args.onto_id is None:
-                raise ValueError(f"{entry.label} is a ship upgrade: name the ship in `onto_id`")
-            _ = draft.world.require_kind(args.onto_id, "location")
-        elif args.onto_id is not None:
-            raise ValueError(f"{entry.label} is carried gear: leave `onto_id` null")
-        paid = apply_change_credits(draft, args.actor_id, -entry.cost)
-        item_id = EntityId(slug(entry.label, draft.world.all_ids()))
-        return [*paid, draft.add(_carried(entry, item_id, args.onto_id or args.actor_id))]
+def build(sources: PackSources = SHIPPED_PACKS) -> Engine:
+    packs = sources.load(ENGINE_DIR / "packs", Pack)
+    gear, ship = _gear(packs), _ship(packs)
+    return Engine(
+        id=EngineId("twentyfourxx"),
+        badge=("24XX", "indigo-7"),
+        director_instructions=engine_text(ENGINE_DIR / "director.md"),
+        rules_types=RULES_TYPES,
+        pack_type=Pack,
+        packs=packs,
+        creation=TwentyfourxxCreation(packs),
+        checks=_checks,
+        describe=describe_by(RULES_TYPES),
+        decisions=(StakedAttempt, Defence),
+        owed_notes=lambda state: advances_owed(state, Sheet, lambda sheet: sheet.jobs),
+        authoring_instructions=(
+            "24XX AUTHORING\n"
+            "Actors may omit rules; describe opposition through behavior, risks, and obstacles. "
+            "When an actor has rules, set packs to every table set it uses and use only skill "
+            "names those selected packs supply."
+        ),
+        director_tools=(
+            *CORE_TOOLS,
+            *DIRECTOR_TOOLS,
+            director_tool(
+                "buy_gear",
+                _for_sale(packs, ship),
+                BuyGear,
+                lambda draft, one, _rng: _buy_gear(gear, draft, one),
+            ),
+            director_tool("advance", ADVANCE_TOOL + GROWTH, Advance, advance),
+        ),
+    )

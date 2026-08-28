@@ -5,8 +5,7 @@ from pydantic import model_validator
 
 from aidm.state.entities import Entity, EntityId, Frozen, kind_word
 
-NOTHING_MECHANICAL = "- (nothing mechanical happened)"
-NOTHING_CHANGED = "- (nothing changed)"
+NOTHING = "- (nothing changed)"
 
 
 class EventBadge(Frozen):
@@ -77,35 +76,15 @@ def entity_fact(
     )
 
 
-def explained_fact(
-    entity: Entity,
-    kind: str,
-    trace: str,
-    why: str,
-    *,
-    event: MechanicEvent | None = None,
-) -> Fact:
-    rendered = f"{trace} ({why})" if why else trace
-    return entity_fact(entity, kind, rendered, event=event)
-
-
 def player_events(facts: Sequence[Fact]) -> tuple[MechanicEvent, ...]:
     """The narrator's gate is the player's: an unrevealed entity earns no card of its own."""
     return tuple(fact.event for fact in facts if fact.event is not None and fact.told)
 
 
-def trace_lines(facts: Sequence[Fact]) -> list[str]:
+def traced(facts: Sequence[Fact], *, told_only: bool = False) -> str:
     """One bullet per fact: how every surface that reports what landed renders it."""
-    return [f"- {fact.trace}" for fact in facts]
+    return "\n".join(f"- {fact.trace}" for fact in facts if fact.told or not told_only) or NOTHING
 
 
-def traced(facts: Sequence[Fact], empty: str = NOTHING_CHANGED) -> str:
-    return "\n".join(trace_lines(facts)) or empty
-
-
-def narrator_lines(facts: Sequence[Fact]) -> tuple[str, ...]:
+def told_traces(facts: Sequence[Fact]) -> tuple[str, ...]:
     return tuple(fact.trace for fact in facts if fact.told)
-
-
-def narrator_evidence(facts: Sequence[Fact]) -> str:
-    return "\n".join(f"- {told}" for told in narrator_lines(facts)) or NOTHING_MECHANICAL

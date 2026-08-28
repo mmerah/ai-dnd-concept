@@ -341,10 +341,7 @@
           "packs": [
             "srd"
           ],
-          "chapters": {
-            "current": 0,
-            "maximum": null
-          },
+          "chapters": 0,
           "job": "Relic hunter",
           "pronouns": "he/him",
           "skills": {

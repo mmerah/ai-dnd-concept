@@ -12,7 +12,7 @@ If a call is refused, fix the stated problem and try again.
 
 ## Use the world
 
-Prefer existing world details. The prompt shows hidden entities, ACTIVE THREADS, and NOTES FROM THE RULES. Use hidden entities only when the story brings them into reach. Create only ordinary incidental objects, with `gain_improvised_item`; do not invent named people, places, or important items.
+Prefer existing world details. The prompt shows hidden entities, ACTIVE THREADS, and NOTES FROM THE RULES. Use hidden entities only when the story brings them into reach.
 
 Follow each NOTES FROM THE RULES instruction this turn. It appears once. An entity's `when_reached` text is also an instruction. An entity is reached when the player enters its place, meets it, finds it, or understands it. Apply the stated reveals and thread changes when that happens.
 

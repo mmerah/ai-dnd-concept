@@ -6,29 +6,18 @@ from core_test_support import (
     TWENTYFOURXX,
     at_boundary,
     game,
-    played,
-    scripted,
     sheet_of,
-    text,
-    tool_call,
 )
 from pydantic import ValidationError
-from pydantic_ai.models.function import FunctionModel
 
 from aidm.engines.core import (
-    DirectorContext,
     Engine,
-    TurnRecord,
     complete_chapter,
     rules,
     take_over,
 )
 from aidm.engines.sources import PackSources
-from aidm.engines.twentyfourxx.engine import (
-    DIRECTOR_COMMANDS,
-    TwentyfourxxEngine,
-    advance,
-)
+from aidm.engines.twentyfourxx.engine import advance, build
 from aidm.engines.twentyfourxx.rules import (
     RULES,
     Advance,
@@ -50,7 +39,7 @@ from aidm.state.creation import Picks
 from aidm.state.entities import PLAYER_ID, EntityId
 from aidm.state.facts import Fact, player_events
 from aidm.state.model import Game
-from aidm.state.play import Answer, DecisionOption, PendingDecision
+from aidm.state.play import DecisionOption, PendingDecision
 
 ALLY = EntityId("ovid-sarn")
 LANTERN = EntityId("lantern")
@@ -173,7 +162,7 @@ def test_a_job_raises_one_skill_a_step_and_pays_rolled_credits() -> None:
 
     sheet = sheet_of(grown, PLAYER_ID, Sheet)
     assert sheet.skills["Tracking"] == 10
-    assert sheet.jobs.current == before.jobs.current + 1
+    assert sheet.jobs == before.jobs + 1
     (dice_fact,) = [fact for fact in facts if fact.kind == "dice_rolled"]
     paid = sheet.credits.current - before.credits.current
     assert dice_fact.trace.endswith(f"-> {paid}")
@@ -416,10 +405,13 @@ def test_an_actors_failed_hit_hands_the_player_no_defence() -> None:
     assert draft.pending is None
 
 
-def _bought(engine: Engine, draft: Game, gear_id: str, onto_id: str | None = None) -> str:
-    buy = next(one for one in engine.director_commands if one.name == "buy_gear")
-    deps = DirectorContext(engine=engine, draft=draft, rng=Random(0), log=TurnRecord())
-    return buy.call(deps, {"actor_id": "player", "gear_id": gear_id, "onto_id": onto_id})
+def _bought(
+    engine: Engine, draft: Game, gear_id: str, onto_id: str | None = None
+) -> tuple[Fact, ...]:
+    buy = next(one for one in engine.director_tools if one.name == "buy_gear")
+    return buy.call(
+        draft, {"actor_id": "player", "gear_id": gear_id, "onto_id": onto_id}, Random(0)
+    )
 
 
 def test_gear_that_breaks_three_times_holds_twice_before_it_is_broken() -> None:
@@ -485,56 +477,11 @@ def test_a_ship_upgrade_is_charged_at_ten_and_installed_in_the_ship() -> None:
 
 
 def test_duplicate_shop_ids_across_packs_are_refused(tmp_path: Path) -> None:
-    srd = TwentyfourxxEngine().packs["srd"]
+    srd = build().packs["srd"]
     (tmp_path / "duplicate.json").write_text(srd.model_dump_json())
 
     with pytest.raises(ValueError, match="duplicate 24XX gear ids"):
-        _ = TwentyfourxxEngine(PackSources((tmp_path,)))
-
-
-def _settle(engine: Engine, state: Game, answered: PendingDecision | None, *, settled: bool) -> str:
-    found = next(one for one in DIRECTOR_COMMANDS if one.name == "settle_defence")
-    landed = [Fact(kind="defence_taken", trace="the hit lands in full")] if settled else []
-    deps = DirectorContext(
-        engine=engine,
-        draft=state.draft(),
-        rng=Random(0),
-        log=TurnRecord(facts=landed),
-        answered=answered,
-    )
-    return found.call(deps, {"item_id": None})
-
-
-def test_one_hit_is_settled_once() -> None:
-    """A second call would break a second item for the same blow."""
-    engine, state = game(TWENTYFOURXX)
-    _, decision = _hit(state)
-
-    with pytest.raises(ValueError, match="no hit is waiting"):
-        _ = _settle(engine, state, None, settled=False)
-    assert _settle(engine, state, decision, settled=False)
-    with pytest.raises(ValueError, match="no hit is waiting"):
-        _ = _settle(engine, state, decision, settled=True)
-
-
-async def test_a_hit_the_player_answered_in_their_own_words_is_still_turned() -> None:
-    engine, state = game(TWENTYFOURXX)
-    draft, decision = _hit(state)
-    draft.pending = decision
-    suspended = draft.committed()
-
-    result = await played(
-        engine,
-        suspended,
-        Answer(text="I swing the lantern into the gap and let it take the blow."),
-        director=FunctionModel(
-            scripted(tool_call("settle_defence", item_id="lantern"), text("The glass gives way."))
-        ),
-    )
-
-    assert [fact.kind for fact in result.turn.facts] == ["defence_turned"]
-    assert sheet_of(result.state, LANTERN, ItemSheet).broken
-    assert result.state.pending is None
+        _ = build(PackSources((tmp_path,)))
 
 
 def test_a_decision_this_engine_cannot_play_or_read_is_refused() -> None:
@@ -542,7 +489,13 @@ def test_a_decision_this_engine_cannot_play_or_read_is_refused() -> None:
 
     with pytest.raises(ValueError, match="cannot play a 'spend-momentum' decision"):
         engine.check_pending(
-            PendingDecision(kind="spend-momentum", prompt="Spend a point?", options=(), payload={})
+            PendingDecision(
+                kind="spend-momentum",
+                prompt="Spend a point?",
+                options=(),
+                allows_text=True,
+                payload={},
+            )
         )
     with pytest.raises(ValidationError):
         engine.check_pending(
@@ -550,13 +503,14 @@ def test_a_decision_this_engine_cannot_play_or_read_is_refused() -> None:
                 kind="stake",
                 prompt=RISK,
                 options=(DecisionOption(id="proceed", label="Proceed"),),
+                allows_text=True,
                 payload={"goal": "an attempt with no actor"},
             )
         )
 
 
 def test_creation_hands_over_the_kit_as_carried_items_and_lands_the_training_die() -> None:
-    creation = TwentyfourxxEngine().creation
+    creation = build().creation
     picks: Picks = {
         "pack": ("srd",),
         "specialty": ("psychic",),
@@ -564,7 +518,7 @@ def test_creation_hands_over_the_kit_as_carried_items_and_lands_the_training_die
         "origin": ("human",),
         "skills": ("stealth", "deception", "connections"),
     }
-    created = creation.create("Vex", "A quiet reader of rooms.", picks, Random(0))
+    created = creation.create("Vex", "A quiet reader of rooms.", picks)
     assert [item.name for item in created.profile.items] == ["Comm", "Bottle of PsychOut"]
     assert created.profile.traits == ()
     assert created.rules["packs"] == ["srd"]
@@ -577,38 +531,38 @@ def test_creation_hands_over_the_kit_as_carried_items_and_lands_the_training_die
 
 
 def test_a_bulky_kit_item_carries_the_bulky_mark() -> None:
-    creation = TwentyfourxxEngine().creation
+    creation = build().creation
     picks: Picks = {
         "pack": ("srd",),
         "specialty": ("tech",),
         "origin": ("human",),
         "skills": ("climbing", "stealth", "tracking"),
     }
-    created = creation.create("Wren", "Solders anything.", picks, Random(0))
+    created = creation.create("Wren", "Solders anything.", picks)
     computer = next(item for item in created.profile.items if item.id == "custom-computer")
     assert computer.traits == [] and computer.rules == {"bulky": True}
 
 
 def test_an_alien_invents_traits_the_menu_never_listed() -> None:
-    creation = TwentyfourxxEngine().creation
+    creation = build().creation
     picks: Picks = {
         "pack": ("srd",),
         "specialty": ("sneak",),
         "origin": ("alien",),
         "traits": ("Wings", "A tail that reads the air"),
     }
-    created = creation.create("Ixl", "Feathered and patient.", picks, Random(0))
+    created = creation.create("Ixl", "Feathered and patient.", picks)
     names = [trait.name for trait in created.profile.traits]
     assert names == ["Wings", "A tail that reads the air"]
 
 
 def test_a_humans_three_increases_can_stack_onto_one_skill() -> None:
-    creation = TwentyfourxxEngine().creation
+    creation = build().creation
     picks: Picks = {
         "pack": ("srd",),
         "specialty": ("sneak",),
         "origin": ("human",),
         "skills": ("tracking", "tracking", "tracking"),
     }
-    created = creation.create("Rho", "Never stops moving.", picks, Random(0))
+    created = creation.create("Rho", "Never stops moving.", picks)
     assert created.rules["skills"] == {"Climbing": 8, "Stealth": 8, "Tracking": 12}

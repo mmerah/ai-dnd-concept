@@ -1,5 +1,4 @@
 from pathlib import Path
-from random import Random
 
 import pytest
 from core_test_support import SCENARIOS
@@ -21,10 +20,8 @@ def test_a_created_character_plays_through_the_authored_load_path(tmp_path: Path
         "frailty": ("never-walks-away",),
         "gear": ("pry-bar", "chalk-and-wire"),
     }
-    created = creation.create(
-        "Fen", "A wandering scribe with too many questions.", picks, Random(0)
-    )
-    write_character(tmp_path, "fen", LONER3E, created)
+    created = creation.create("Fen", "A wandering scribe with too many questions.", picks)
+    write_character(tmp_path, LONER3E, created)
     character = load_character(tmp_path, "fen", engine.id, engine.check_overlay)
     scenario = load_scenario(SCENARIOS, "whispering-vault")
     state = begin_game(engine, "whispering-vault", scenario, character)
@@ -51,16 +48,16 @@ def test_an_illegal_pick_set_is_refused_with_the_reason(tmp_path: Path) -> None:
         for step in creation.steps(chosen)
     }
     with pytest.raises(ValueError, match="no creation step"):
-        creation.create("Fen", "", {**legal, "class": ("fighter",)}, Random(0))
+        creation.create("Fen", "", {**legal, "class": ("fighter",)})
     with pytest.raises(ValueError, match="exactly 1"):
-        creation.create("Fen", "", {**legal, "concept": ()}, Random(0))
+        creation.create("Fen", "", {**legal, "concept": ()})
     with pytest.raises(ValueError, match="offers no"):
-        creation.create("Fen", "", {**legal, "frailty": ("unwritten",)}, Random(0))
+        creation.create("Fen", "", {**legal, "frailty": ("unwritten",)})
     with pytest.raises(ValueError, match="an answer in words"):
-        creation.create("Fen", "", {**legal, "concept": ("",)}, Random(0))
+        creation.create("Fen", "", {**legal, "concept": ("",)})
     with pytest.raises(ValueError, match="at most 100 characters"):
-        creation.create("Fen", "", {**legal, "concept": ("x" * 200,)}, Random(0))
-    created = creation.create("Fen", "", legal, Random(0))
-    write_character(tmp_path, "fen", LONER3E, created)
+        creation.create("Fen", "", {**legal, "concept": ("x" * 200,)})
+    created = creation.create("Fen", "", legal)
+    write_character(tmp_path, LONER3E, created)
     with pytest.raises(ValueError, match="already exists"):
-        write_character(tmp_path, "fen", LONER3E, created)
+        write_character(tmp_path, LONER3E, created)

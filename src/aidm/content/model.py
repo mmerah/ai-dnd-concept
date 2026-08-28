@@ -99,13 +99,6 @@ class CharacterProfile(Frozen):
         return self
 
 
-class CreatedCharacter(Frozen):
-    """What in-app creation produces: exactly the two files hand-authoring writes."""
-
-    profile: CharacterProfile
-    rules: dict[str, JsonValue]
-
-
 class Character(Frozen):
     id: Slug
     profile: CharacterProfile

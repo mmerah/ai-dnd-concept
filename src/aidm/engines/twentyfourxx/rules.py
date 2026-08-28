@@ -56,7 +56,7 @@ class Sheet(SheetBase):
     origin: str = ""
     skills: dict[str, SkillDie] = Field(default_factory=dict)
     credits: Counter = Counter(current=RULES.starting_credits)
-    jobs: Counter = Counter(current=0)
+    jobs: int = 0
 
     def rows(self) -> tuple[tuple[str, str], ...]:
         skills = ", ".join(f"{name} d{face}" for name, face in sorted(self.skills.items()))
@@ -107,10 +107,7 @@ def raised(current: SkillDie | None) -> SkillDie:
     return LADDER[index + 1]
 
 
-class GearItem(Frozen):
-    id: Slug
-    label: str
-    detail: str = ""
+class GearItem(CreationOption):
     bulky: bool = False
     cost: int = Field(default=1, ge=1)
     breaks: int = Field(default=1, ge=1, le=RULES.max_breaks)
@@ -129,18 +126,12 @@ class ShipFunction(Frozen):
     upgrades: tuple[ShipUpgrade, ...] = ()
 
 
-class SkillGrant(Frozen):
-    id: Slug
-    label: str
-    detail: str = ""
+class SkillGrant(CreationOption):
     skills: tuple[str, ...] = Field(min_length=1)
     die: SkillDie = 8
 
 
-class Specialty(Frozen):
-    id: Slug
-    label: str
-    detail: str = ""
+class Specialty(CreationOption):
     skills: tuple[str, ...] = ()
     choices: tuple[SkillGrant, ...] = ()
     kit: tuple[GearItem, ...] = ()
@@ -153,10 +144,7 @@ class Specialty(Frozen):
         return self
 
 
-class Origin(Frozen):
-    id: Slug
-    label: str
-    detail: str = ""
+class Origin(CreationOption):
     increases: int = Field(default=0, ge=0, le=3)
     # Example traits shown as hints when the player invents their own; not a bound on their answer.
     traits: tuple[CreationOption, ...] = ()
@@ -384,7 +372,9 @@ def _defence_decision(draft: Game, goal: str) -> PendingDecision:
         if not ItemSheet.model_validate(item.rules).broken
     )
     return Defence(goal=goal).pending(
-        DEFENCE_PROMPT, (*unbroken, DecisionOption(id=TAKE_THE_HIT, label="Take the hit"))
+        DEFENCE_PROMPT,
+        (*unbroken, DecisionOption(id=TAKE_THE_HIT, label="Take the hit")),
+        allows_text=False,
     )
 
 

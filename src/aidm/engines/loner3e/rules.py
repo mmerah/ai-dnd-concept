@@ -7,6 +7,7 @@ from pydantic import Field, model_validator
 
 from aidm.engines.core import Decision, ProposalBase, SheetBase, adjust, pool, rules
 from aidm.state.actions import require_actor_here, roll_pool
+from aidm.state.creation import CreationOption
 from aidm.state.entities import (
     CheckedEntityId,
     Counter,
@@ -36,23 +37,16 @@ RULES = Rules()
 SRD_PACK: Slug = "srd"
 
 
-class PackEntry(Frozen):
-    id: Slug
-    label: str
-    # Empty for packs whose entries are bare phrases, such as AP01.
-    detail: str = ""
-
-
 class Pack(Frozen):
     """One published table set the player can build a character from."""
 
     name: str
     source: str
     license: str
-    concepts: tuple[PackEntry, ...] = Field(min_length=1)
-    skills: tuple[PackEntry, ...] = Field(min_length=1)
-    frailties: tuple[PackEntry, ...] = Field(min_length=1)
-    gear: tuple[PackEntry, ...] = Field(min_length=1)
+    concepts: tuple[CreationOption, ...] = Field(min_length=1)
+    skills: tuple[CreationOption, ...] = Field(min_length=1)
+    frailties: tuple[CreationOption, ...] = Field(min_length=1)
+    gear: tuple[CreationOption, ...] = Field(min_length=1)
     twist_subjects: tuple[str, ...] | None = None
     twist_actions: tuple[str, ...] | None = None
 
@@ -100,7 +94,7 @@ class Sheet(SheetBase):
     frailties: tuple[str, ...] = ()
     gear: tuple[str, ...] = ()
     luck: Counter = Counter(current=RULES.luck_max, maximum=RULES.luck_max)
-    milestones: Counter = Counter(current=0)
+    milestones: int = 0
     # The played character's tally paces the whole game, so `rows()` leaves it off the sheet views.
     twist: Counter = Counter(current=0, maximum=RULES.ties_per_twist)
 

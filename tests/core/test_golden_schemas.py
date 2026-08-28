@@ -4,7 +4,6 @@ from golden_test_support import FIXTURES, golden_json
 from pydantic import BaseModel
 
 from aidm.app.launch import engine_ids
-from aidm.engines.world import commands
 from aidm.state.entities import EngineId, EntityDetail
 from aidm.turn.run import schema_of
 
@@ -21,7 +20,7 @@ def test_the_director_is_offered_the_same_tools(engine_id: EngineId) -> None:
         FIXTURES / "schemas" / engine_id / "director_tools.json",
         [
             {"name": one.name, "description": one.description, "parameters": schema_of(one.args)}
-            for one in commands(engine)
+            for one in engine.director_tools
         ],
     )
 

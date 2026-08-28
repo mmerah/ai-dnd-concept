@@ -1,14 +1,10 @@
-from collections.abc import Mapping
-
-import pytest
 from core_test_support import LONER3E, character, initialized, scenario, sheet_of, updated
 
-from aidm.engines.core import Engine, rules
-from aidm.engines.loner3e.engine import Loner3eEngine
-from aidm.engines.loner3e.rules import RULES, Pack, Sheet, apply_restore_luck
+from aidm.engines.core import rules
+from aidm.engines.loner3e.rules import RULES, Sheet, apply_restore_luck
 from aidm.engines.registry import ENGINES, begin_game, build_engine
 from aidm.state import actions
-from aidm.state.entities import PLAYER_ID, EngineId, Entity, EntityId
+from aidm.state.entities import PLAYER_ID, Entity, EntityId
 from aidm.state.facts import Fact
 from aidm.state.model import Game
 
@@ -107,20 +103,6 @@ def test_authored_rules_are_the_sheet_of_whatever_carries_them() -> None:
     engine.validate(state)
 
 
-def test_an_engine_that_declares_nothing_is_refused_before_it_plays() -> None:
-    class Undeclared(Engine):
-        id = EngineId("undeclared")
-        badge = ("UNDECLARED", "grey-6")
-        engine_dir = Loner3eEngine.engine_dir
-
-        def pack_models(self) -> Mapping[str, Pack]:
-            return {}
-
-    with pytest.raises(AttributeError, match="rules_types|pack_type"):
-        _ = Undeclared()
-
-
-def test_every_registered_engine_builds_itself() -> None:
-    assert len({engine.id for engine in ENGINES}) == len(ENGINES)
-    for engine in ENGINES:
-        assert "srd" in build_engine(engine.id).pack_ids
+def test_every_registered_engine_builds_itself_under_its_own_id() -> None:
+    for engine_id in ENGINES:
+        assert "srd" in build_engine(engine_id).pack_ids

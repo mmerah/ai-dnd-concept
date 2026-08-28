@@ -1,4 +1,6 @@
+from dataclasses import replace
 from random import Random
+from typing import ClassVar
 
 import pytest
 from core_test_support import LONER3E, game, played, recorded, scripted, shown, text, tool_call
@@ -7,22 +9,20 @@ from pydantic_ai.messages import TextPart, ToolReturnPart
 from pydantic_ai.models.function import FunctionModel
 
 from aidm.engines.core import (
-    RULES_WAIT,
-    Command,
-    DirectorContext,
+    Decision,
+    DirectorTool,
     Engine,
     NoArgs,
-    apply_play,
     apply_to_draft,
-    command,
+    director_tool,
     transact,
 )
-from aidm.engines.loner3e.engine import Loner3eEngine
+from aidm.engines.registry import build_engine
 from aidm.state.entities import Slug
 from aidm.state.facts import Fact
 from aidm.state.model import Game
 from aidm.state.play import Answer, DecisionOption, Exchange, Line, PendingDecision
-from aidm.turn.run import exchanges_to_messages
+from aidm.turn.run import RULES_WAIT, TurnRecord, consume_answer, exchanges_to_messages
 
 DECISION = PendingDecision(
     kind="defence",
@@ -30,32 +30,29 @@ DECISION = PendingDecision(
     options=(
         DecisionOption(id="lantern", label="Break the lantern", detail="Its glass shatters."),
     ),
+    allows_text=True,
     payload={"outcome": "setback"},
 )
 
 
-class Deciding(Loner3eEngine):
-    """The shipped engine plus the one decision kind these tests suspend on."""
+class Defence(Decision):
+    """The one decision kind these tests suspend on."""
 
-    chains = False
+    kind: ClassVar[Slug] = "defence"
+    outcome: str
 
-    def check_pending(self, pending: PendingDecision) -> None:
-        if pending.kind != DECISION.kind:
-            raise ValueError(f"this engine cannot play a {pending.kind!r} decision")
+    def resolve(self, draft: Game, option_id: Slug, rng: Random) -> tuple[Fact, ...]:
+        del draft, rng
+        return (Fact(kind="defence_turned", trace=f"{option_id} broke to turn the hit", told=True),)
 
-    def resume(
-        self, draft: Game, pending: PendingDecision, option_id: Slug, rng: Random
-    ) -> tuple[Fact, ...]:
-        del pending, rng
-        if self.chains:
-            draft.pending = DECISION
-        return (
-            Fact(
-                kind="defence_turned",
-                trace=f"{option_id} broke to turn the hit",
-                told=True,
-            ),
-        )
+
+class ChainingDefence(Defence):
+    """Answering leaves the rules waiting on the same decision again."""
+
+    def resolve(self, draft: Game, option_id: Slug, rng: Random) -> tuple[Fact, ...]:
+        landed = super().resolve(draft, option_id, rng)
+        draft.pending = DECISION
+        return landed
 
 
 def _hit(draft: Game, *, narrate: bool) -> tuple[Fact, ...]:
@@ -69,19 +66,21 @@ def _hit(draft: Game, *, narrate: bool) -> tuple[Fact, ...]:
     )
 
 
-def _strike_command(*, narrate: bool) -> Command:
-    def strike(deps: DirectorContext, _args: NoArgs) -> str:
-        return apply_play(deps, lambda draft, _rng: _hit(draft, narrate=narrate))
-
-    return command(
-        "strike", "Take a hit the player may turn by breaking something of theirs.", NoArgs, strike
+def _strike_tool(*, narrate: bool) -> DirectorTool:
+    return director_tool(
+        "strike",
+        "Take a hit the player may turn by breaking something of theirs.",
+        NoArgs,
+        lambda draft, _args, _rng: _hit(draft, narrate=narrate),
     )
 
 
 def _deciding(*, narrate: bool = True, chains: bool = False) -> tuple[Engine, Game]:
-    engine = Deciding()
-    engine.chains = chains
-    engine.director_commands = (_strike_command(narrate=narrate),)
+    engine = replace(
+        build_engine(LONER3E),
+        director_tools=(_strike_tool(narrate=narrate),),
+        decisions=(ChainingDefence if chains else Defence,),
+    )
     _, state = game(LONER3E)
     return engine, state
 
@@ -228,7 +227,15 @@ def test_a_save_carries_a_decision_and_restore_refuses_one_the_engine_cannot_pla
     assert engine.restored(saved).pending == DECISION
 
     unplayable = PendingDecision(
-        kind="spend-momentum", prompt="Spend a point?", options=(), payload={}
+        kind="spend-momentum", prompt="Spend a point?", options=(), allows_text=True, payload={}
     )
     with pytest.raises(ValueError, match="cannot play a 'spend-momentum' decision"):
         _ = engine.restored(_suspended(state, unplayable).model_dump_json())
+
+
+def test_a_decision_whose_options_are_the_whole_pick_refuses_an_answer_in_words() -> None:
+    engine, state = _deciding()
+    draft = _suspended(state, DECISION.model_copy(update={"allows_text": False})).draft()
+
+    with pytest.raises(ValueError, match="takes one of its options, not words"):
+        _ = consume_answer(engine, draft, Answer(text="I dive aside"), Random(0), TurnRecord())

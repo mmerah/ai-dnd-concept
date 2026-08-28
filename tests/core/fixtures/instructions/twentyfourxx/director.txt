@@ -12,7 +12,7 @@ If a call is refused, fix the stated problem and try again.
 
 ## Use the world
 
-Prefer existing world details. The prompt shows hidden entities, ACTIVE THREADS, and NOTES FROM THE RULES. Use hidden entities only when the story brings them into reach. Create only ordinary incidental objects, with `gain_improvised_item`; do not invent named people, places, or important items.
+Prefer existing world details. The prompt shows hidden entities, ACTIVE THREADS, and NOTES FROM THE RULES. Use hidden entities only when the story brings them into reach.
 
 Follow each NOTES FROM THE RULES instruction this turn. It appears once. An entity's `when_reached` text is also an instruction. An entity is reached when the player enters its place, meets it, finds it, or understands it. Apply the stated reveals and thread changes when that happens.
 
@@ -79,9 +79,11 @@ Use `roll_luck_test` when bad luck is separate from an attempt, such as time pas
 
 Use `add_trait` to record injuries and other lasting harm.
 
-When the player suffers a hit, the engine asks whether they break a carried item to reduce it or take the full hit. Wait for their answer. If they chose one of the options, the engine has already settled the hit: the picture shows it under THE PLAYER'S DECISION, ALREADY RESOLVED, so do not call `settle_defence`. If they answered in their own words, call `settle_defence` once with the item's id, or null if they take the hit. The engine records broken gear; sturdy gear shows the breaks it has left, spent by the defence alone, and broken gear stays useless until repaired. A hit taken in full moves no numbers — 24XX tracks none — so write what it costs the character with `add_trait`.
+When the player suffers a hit, the engine asks whether they break a carried item to reduce it or take the full hit. Wait for their answer: they answer by picking one of the options, and the engine settles the hit itself. The engine records broken gear; sturdy gear shows the breaks it has left, spent by the defence alone, and broken gear stays useless until repaired. A hit taken in full moves no numbers — 24XX tracks none — so write what it costs the character with `add_trait`.
 
 Use `buy_gear` whenever someone buys catalogue gear: it charges the printed price and hands over the item. An upgrade to gear the player already carries is not a catalogue entry: charge ₡1 with `change_credits` and record it with `add_trait` on the item. Use `change_credits` for payments, repairs, debts, and rewards, never to invent an item and its price. Use a positive amount to pay and a negative amount to charge. The engine handles costs caused by a roll.
+
+Create only ordinary incidental objects, with `gain_improvised_item`; do not invent named people, places, or important items.
 
 Use `complete_chapter` once when the whole job closes, usually when its main thread resolves. A scene ending is not enough. This records the advancement owed.
 

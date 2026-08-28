@@ -3,7 +3,7 @@ from random import Random
 from core_test_support import initialized
 
 from aidm.engines.core import rules
-from aidm.engines.loner3e.engine import Loner3eEngine
+from aidm.engines.loner3e.engine import load_packs
 from aidm.engines.loner3e.rules import (
     RULES,
     SRD_PACK,
@@ -17,7 +17,7 @@ from aidm.engines.loner3e.rules import (
 from aidm.state.entities import PLAYER_ID, EntityId
 from aidm.state.facts import EventBadge, player_events
 
-TWISTS = twist_table(Loner3eEngine().packs, SRD_PACK)
+TWISTS = twist_table(load_packs(), SRD_PACK)
 FOE = EntityId("mara")
 
 

@@ -1,19 +1,9 @@
-from collections.abc import Callable, Sequence
+from pydantic import Field
 
-from pydantic import BaseModel, Field
-
-from aidm.engines.core import Command, Engine, action
+from aidm.engines.core import DirectorTool, director_tool
 from aidm.state import actions
 from aidm.state.entities import CheckedEntityId, Frozen, Slug
-from aidm.state.facts import Fact
-from aidm.state.model import AdvanceThread, Game
-
-
-def _world_command[A: BaseModel](
-    name: str, description: str, args: type[A], act: Callable[[Game, A], Sequence[Fact]]
-) -> Command:
-    """Carried by every core command here, so a new one cannot forget the suspension rule."""
-    return action(name, description, args, act, during_suspension=True)
+from aidm.state.model import AdvanceThread
 
 
 class Reveal(Frozen):
@@ -73,70 +63,75 @@ class LeaveParty(Frozen):
     actor_id: CheckedEntityId = Field(description="Exact id of the actor leaving.")
 
 
-CORE_COMMANDS: tuple[Command, ...] = (
-    _world_command(
+CORE_TOOLS: tuple[DirectorTool, ...] = (
+    director_tool(
         "reveal",
         "Make a hidden entity known when the player notices, finds, or reaches it.",
         Reveal,
-        lambda draft, one: actions.reveal(draft, one.entity_id),
+        lambda draft, one, _rng: actions.reveal(draft, one.entity_id),
+        during_suspension=True,
     ),
-    _world_command(
+    director_tool(
         "move",
         "Move an actor to a new location, or move a nearby item.",
         Move,
-        lambda draft, one: actions.move(draft, one.entity_id, one.to_id),
+        lambda draft, one, _rng: actions.move(draft, one.entity_id, one.to_id),
+        during_suspension=True,
     ),
-    _world_command(
+    director_tool(
         "gain_improvised_item",
         "Give the player an ordinary, unimportant object not already in the world.",
         GainImprovisedItem,
-        lambda draft, one: actions.improvise(draft, one.item_name),
+        lambda draft, one, _rng: actions.improvise(draft, one.item_name),
+        during_suspension=True,
     ),
-    _world_command(
+    director_tool(
         "add_trait",
         "Add a lasting condition or quality to an entity.",
         AddTrait,
-        lambda draft, one: actions.add_trait(draft, one.entity_id, one.name, one.text),
+        lambda draft, one, _rng: actions.add_trait(draft, one.entity_id, one.name, one.text),
+        during_suspension=True,
     ),
-    _world_command(
+    director_tool(
         "remove_trait",
         "Remove a lasting condition or quality that has ended.",
         RemoveTrait,
-        lambda draft, one: actions.remove_trait(draft, one.entity_id, one.trait_id),
+        lambda draft, one, _rng: actions.remove_trait(draft, one.entity_id, one.trait_id),
+        during_suspension=True,
     ),
-    _world_command(
+    director_tool(
         "kill",
         "Record that an actor has died. Their body and what they carried stay in the world.",
         Kill,
-        lambda draft, one: actions.kill(draft, one.actor_id),
+        lambda draft, one, _rng: actions.kill(draft, one.actor_id),
+        during_suspension=True,
     ),
-    _world_command(
+    director_tool(
         "advance_thread",
         "Update an active storyline's status, stage, clock, or note.",
         AdvanceThread,
-        actions.advance_thread,
+        lambda draft, one, _rng: actions.advance_thread(draft, one),
+        during_suspension=True,
     ),
-    _world_command(
+    director_tool(
         "unlock_exit",
         "Unlock an exit from the player's location.",
         UnlockExit,
-        lambda draft, one: actions.unlock_exit(draft, one.to_id),
+        lambda draft, one, _rng: actions.unlock_exit(draft, one.to_id),
+        during_suspension=True,
     ),
-    _world_command(
+    director_tool(
         "join_party",
         "Add an actor here to the player's party.",
         JoinParty,
-        lambda draft, one: actions.join_party(draft, one.actor_id),
+        lambda draft, one, _rng: actions.join_party(draft, one.actor_id),
+        during_suspension=True,
     ),
-    _world_command(
+    director_tool(
         "leave_party",
         "Remove an actor from the player's party.",
         LeaveParty,
-        lambda draft, one: actions.leave_party(draft, one.actor_id),
+        lambda draft, one, _rng: actions.leave_party(draft, one.actor_id),
+        during_suspension=True,
     ),
 )
-
-
-def commands(engine: Engine) -> tuple[Command, ...]:
-    """The shared world vocabulary always comes first; an engine only adds its own mechanics."""
-    return (*CORE_COMMANDS, *engine.director_commands)

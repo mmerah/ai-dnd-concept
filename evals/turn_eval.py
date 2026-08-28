@@ -480,6 +480,7 @@ def _mid_conflict(state: Game) -> Game:
             "the attack, try something else, or break away — what do you do?"
         ),
         options=(),
+        allows_text=True,
         payload={},
     )
     return draft.committed()
@@ -710,9 +711,7 @@ def cases_for(engine_id: EngineId, settings: Settings) -> tuple[Case, ...]:
         return any(f.kind in ("defence_taken", "defence_turned") for f in result.turn.facts)
 
     # Only engines that declare a stake tool can miss by skipping it.
-    stakes = any(
-        command.name.startswith("stake_") for command in build_engine(engine_id).director_commands
-    )
+    stakes = any(one.name.startswith("stake_") for one in build_engine(engine_id).director_tools)
     stake_checks = (Expectation("staked", staked_before_rolling),) if stakes else ()
     # Scored only where the scenario's own `when_reached` tells the Director which stage to set.
     find_stage = (
@@ -1553,10 +1552,8 @@ async def play(case: Case, settings: Settings, seed: int) -> Run:
         return Run(
             error=f"{type(error).__name__}: {error}",
             passed={check.name: False for check in case.expectations},
-            facts=[
-                f"{fact.kind}: {fact.trace}" for segment in segments for fact in segment.turn.facts
-            ],
-            steps=[step for segment in segments for step in segment.turn.steps],
+            facts=[f"{fact.kind}: {fact.trace}" for _, trace in segments for fact in trace.facts],
+            steps=[step for _, trace in segments for step in trace.steps],
             seconds=perf_counter() - started,
         )
 
@@ -1564,14 +1561,12 @@ async def play(case: Case, settings: Settings, seed: int) -> Run:
 def _merged(prompt: str, segments: Sequence[TurnResult]) -> TurnResult:
     """The interaction as one result: every segment's prose, facts and steps, the last state."""
     return TurnResult(
-        state=segments[-1].state,
-        turn=TurnTrace(
+        segments[-1].state,
+        TurnTrace(
             prompt=prompt,
-            facts=tuple(fact for segment in segments for fact in segment.turn.facts),
-            narration="\n".join(
-                segment.turn.narration for segment in segments if segment.turn.narration
-            ),
-            steps=tuple(step for segment in segments for step in segment.turn.steps),
+            facts=tuple(fact for _, trace in segments for fact in trace.facts),
+            narration="\n".join(trace.narration for _, trace in segments if trace.narration),
+            steps=tuple(step for _, trace in segments for step in trace.steps),
         ),
     )
 
