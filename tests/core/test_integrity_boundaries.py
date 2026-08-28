@@ -165,8 +165,8 @@ def test_a_scenario_is_refused_by_an_engine_it_was_not_authored_for() -> None:
         _ = begin_game(build_engine(TWENTYFOURXX), "whispering-vault", scenario(), character())
 
 
-def test_an_authored_actor_without_rules_plays_with_a_blank_sheet() -> None:
-    """Loner deviation 2: every character is playable, authored tables or not."""
+def test_an_authored_actor_without_rules_is_refused() -> None:
+    """Loner deviation 2 covers things, not actors: an actor nobody wrote has no sheet to roll."""
     authored = scenario()
     bare = updated(authored.world.require(MARA), rules={})
     stripped = updated(
@@ -177,9 +177,8 @@ def test_an_authored_actor_without_rules_plays_with_a_blank_sheet() -> None:
         ),
     )
 
-    begun = begin_game(build_engine(LONER3E), "whispering-vault", stripped, character())
-
-    assert sheet_of(begun, MARA, Sheet) == Sheet()
+    with pytest.raises(ValueError, match="has no rules"):
+        _ = begin_game(build_engine(LONER3E), "whispering-vault", stripped, character())
 
 
 def test_twentyfourxx_opposition_needs_no_sheet() -> None:

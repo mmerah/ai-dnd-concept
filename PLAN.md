@@ -5,7 +5,9 @@ SRD procedure, and a `director.md`. Adding engine #4 touches nothing outside `en
 
 Line counts below are estimates. The bar is the one already in use: smaller, or break-even but
 more maintainable, measured after the phase lands. Re-measured on 2026-08-28 after Phase 1:
-phases 1–6 sum to about −780 lines, not −1650.
+phases 1–6 sum to about −780 lines, not −1650. Audited the same day for extra cuts: phases 2–6
+now estimate about −700; Phase 7 as decided about −265 more. Player-facing behaviour is the
+bar above lines: a cut that plays worse is out.
 
 ## Rules for every phase
 
@@ -76,43 +78,39 @@ Steps, in order:
 9. `parse_save` special case goes with `Game.mechanics`.
 10. Hand-edit nothing: the JSON shape of `rules` is unchanged.
 
+Follow-up (decided 2026-08-28): the Loner widening in step 6 was a downgrade. Loner `validate`
+refuses an actor with empty rules again; `_sheeted` applies to items only ("Everything is a
+Character" is for things, not for an actor nobody wrote). Restore deviation 2 in
+`docs/LONER-3E.md` to its Phase 0 wording.
+
 Measured 2026-08-28: −30 lines as written; the deletion was counted but not the rebuild. Extra
 cuts landed the same day: Game.mechanics deleted (twist on the Loner sheet), Advancement ABC
 collapsed, 24XX _check_skills gone, check_sheet folded into rules(), describe overrides folded
 into Engine.describe.
 
-## Phase 2 — Cards are one string, not a struct
+## Phase 2 — Cards keep their shape, the helpers around them go
 
-Every resolver writes a trace and a `MechanicEvent(title, badges, dice, outcome, effects, icon)`.
-The struct is half the resolver. The leak guarantee stays: a card is engine text, never Director
-text.
+Decided 2026-08-28: `MechanicEvent(title, badges, dice, outcome, effects, icon)` stays as is.
+The card is the fun part of a turn. Only the ceremony around it goes.
 
-1. First, in its own commit: rewrite `evals/turn_eval.py` to read the new shape (it reads
-   `fact.event.outcome`, `fact.event.badges`, `history[0].events` today). The eval must run
-   before and after the phase.
-2. `Fact(kind, trace, told, entity_id, card: str = "", dice: tuple[DiceEvent, ...] = ())`.
-   A non-empty `card` is the player's line. `trace` is the Director's line and may name canon;
-   it never reaches the player. Delete `MechanicEvent`, `EventBadge`, `explained_fact`'s event,
-   `player_events`, `_absorbed`, every `_badges`.
-3. Each resolver writes the card as one f-string: `card=f"Attempt: {outcome} — {skill} d{face}"`.
-   Dice ride on the same fact.
-4. `Exchange.events` → `Exchange.cards: tuple[Fact, ...]` (told facts with a card).
-   `Game.turn_events` same. Callers: `Game.record`, `close_segment`, `play_action`,
-   `TurnRecord.landed`, `ui/game.py` chat and live turn, `codemode._picture`.
-5. `ui/game.py::_mechanic_event` renders card text + dice. Icons go.
-6. Delete `tests/core/test_player_events.py`. Regenerate goldens.
+1. Fold `explained_fact` into its callers: `entity_fact(e, kind, f"{trace} ({why})")`.
+2. Four join helpers (`trace_lines`, `traced`, `narrator_lines`, `narrator_evidence`) become
+   two; `NOTHING_MECHANICAL` and `NOTHING_CHANGED` become one constant.
+3. `chapters`, `jobs`, `milestones` only count up: `int`, not `Counter`. `counter_fact` is for
+   pools with a maximum; a ledger step is a plain `entity_fact`.
+4. Loner `_absorbed` and the three `_badges` builders stay: they are card content.
 
-Measured estimate: −85 lines (the struct is 12 lines; 33 build sites ≈ 53 lines). Worst
-lines-per-risk in the plan: every card is player-facing text. Optional; do only if card-as-string
-is wanted for its own sake.
+Measured estimate: −30 lines. One hour. No eval needed: no prompt text changes.
 
 ## Phase 3 — Flat tool ladder, engine as a value
 
 Order matters: 3.1 removes the only reader of `DirectorContext.answered`, so it comes first.
 
-1. Options-only decisions. `PendingDecision.allows_text: bool`. Defence, Loot and stake-proceed
-   are options-only. `consume_answer` raises on `Answer(text=...)` when `allows_text` is false;
-   `ui/game.py` disables the composer then; `codemode.start_turn` gets the same refusal. Delete
+1. Options-only decisions. `PendingDecision.allows_text: bool`. Defence and Loot are
+   options-only: the SRD gives the player a pick, and the buttons are that pick. Stake-proceed
+   keeps text: "Proceed, or change your plan" is how the player revises. Conflict (Loner) keeps
+   text. `consume_answer` raises on `Answer(text=...)` when `allows_text` is false; `ui/game.py`
+   disables the composer then; `codemode.start_turn` gets the same refusal. Delete
    `settle_defence`, `DirectorContext.answered`. Keep `suspended_at_start` and
    `during_suspension`: a turn that opened re-suspended still develops the answer with core tools.
 2. One constructor `director_tool(name, description, Args, resolve: (draft, args, rng) -> facts,
@@ -133,37 +131,56 @@ Order matters: 3.1 removes the only reader of `DirectorContext.answered`, so it 
    are listed as soon as a game is open (unchanged). The Claude SDK lists tools once at connect,
    so nothing may depend on a later `list_changed`.
 8. Regenerate `tests/core/fixtures/schemas/*/director_tools.json`; read the diff.
+9. After 3.1 no tool reads `deps` (`_settle_defence` was the only reader). Delete
+   `DirectorContext`; `apply_play` and `run_command`'s suspension gate become `Turn.call`.
+   `TurnRecord` stays: `on_event` streams cards to the page.
+10. `CharacterCreation.rolls` is never `True`. Delete it, the Reroll button, `seed`, and the
+    `rng` parameter of every `create` (all three `del rng`).
+11. `TurnResult` is a tuple. Loner `PackEntry` is `CreationOption`; 24XX `Specialty`, `Origin`,
+    `SkillGrant`, `GearItem` subclass it, so `pack_options` goes.
+12. `mcp.py`: the `AUTHORING`/`AUTHORING_TOOLS` module constants go with 3.7; `call` routes by
+    `name in run.toolset`.
 
-Measured estimate: −80 lines (3.2 ≈ −25, 3.5 ≈ −40, 3.6 −8). Half a day.
+Measured estimate: −145 lines (3.2 ≈ −25, 3.5 ≈ −40, 3.6 −8, 3.9 ≈ −25, 3.10 −15, 3.11 −17,
+3.12 −10). One day.
 
-## Phase 4 — Packs are engine-shipped creation menus, nothing more
+## Phase 4 — One pack list per scenario, no scenario-shipped packs
 
-Decided: keep the user directory `packs/<engine>/` (one glob). Delete every scenario-level pack
-concept.
+Decided 2026-08-28: a scenario still chooses which installed packs it plays with (a Loner
+scenario picks its table sets), and the authoring prompt still shows their content. What goes is
+the second layer: packs a scenario ships in its own folder, and a pack list on every sheet.
 
 1. Each engine constructor loads `{stem: Pack}` from `engine_dir / "packs"` then
-   `settings.packs_dir / engine.id` (later wins). Delete `engines/sources.py` and
-   `engines/packs.py`; `pack_options`, `find_entry`, `picked_entry`, `PackCreation` move next to
-   their callers (two engines use `pack_options` → core).
-2. Delete `Scenario.packs`, `SheetBase.packs`, `character_packs`, the `check_scenario` pack
-   checks, the `validate` installed-pack checks, 24XX `_check_skills` (already deleted in Phase
-   1's extra cuts; the SRD leaves skills open). `_packs_include_srd` is on `SheetBase` in core.
-   Loner keeps `twist_pack`; `meanings` reads every installed pack.
-3. Delete `write_pack`, `pack_refusal`, `PlaytestCheck.shipping`, `PlaytestCheck.sources`,
-   `ScenarioDraft.packs`, `engine_packs`, `installed_pack_ids`, `selected_packs`,
-   `scenario_packs`, `AuthoringBrief.writes_packs`, `BeginScenario.packs`, the pack multiselect
-   on both authoring pages, the "SELECTED PACK CONTENT" dump and workflow step 4 in
-   `scenario_world.md`. Update the 24XX `authoring_instructions` string (it points at pack skill
-   names). Grep `packs` under `.claude/skills/` and fix the skills too.
-4. Also delete the "How much to author" select: `scenario_run` derives the brief from `grows`.
+   `settings.packs_dir / engine.id` (later wins). A broken file raises. Delete
+   `engines/sources.py` (`PackSources`, `drafted`, the warn-and-skip) and `engines/packs.py`;
+   `pack_options`, `find_entry`, `picked_entry`, `PackCreation` move next to their callers.
+2. `Scenario.packs` stays and is copied to a new `Game.packs` in `begin_game`. Delete
+   `SheetBase.packs`, `_packs_include_srd`, `character_packs`, the per-entity installed-pack
+   check in `validate`; `validate` checks `state.packs` against the installed packs once. Loner
+   keeps `twist_pack` and checks it is in `state.packs`; `meanings` reads `state.packs`.
+3. Delete scenario-shipped packs: `write_pack`, `pack_refusal`, `PlaytestCheck.shipping`,
+   `PlaytestCheck.sources`, `ScenarioDraft.packs`, `scenario_packs`, `AuthoringBrief.writes_packs`,
+   `PACKS_DIR`, the `packs` argument of `write_scenario`, the `(engine, scenario)` memo key. The
+   pack multiselect on both authoring pages, `selected_packs`, `installed_pack_ids`,
+   `BeginScenario.packs` and the "SELECTED PACK CONTENT" dump stay. Update the 24XX
+   `authoring_instructions` string (it says "set packs" per actor). Grep `packs` under
+   `.claude/skills/` and fix the skills.
+4. Delete the "How much to author" select: `scenario_run` derives the brief from `grows`.
    Delete `AuthoringBrief.label`, `BRIEFS`, `brief_named`.
-5. `Runtime.engine(engine_id)`: one instance per engine. Callers: `runtime.py`, `create.py`,
-   `draft.py`.
-6. Hand-edit: remove `"packs"` from `characters/kael/*.json` and from every `rules` in
-   `scenarios/*/world.json`; remove `"packs"` from each `world.json` top level. Delete
+5. `Runtime` builds every engine once at start: `engines: dict[EngineId, Engine]`. Delete
+   `build_engine`, `engine_class`, `engine_ids`, `as_engine_id`. Callers: `runtime.py`,
+   `create.py`, `draft.py`, `launch.py`, `ui/app.py`.
+6. `PlaytestCheck` keeps `engine`, `character`, `packs`; `playing` is never `None`: the MCP tool
+   listing uses any built engine, so both "no engine is loaded" branches go.
+7. `ScenarioDraft.grows` moves to `ScenarioRun`; `NOT_PATCHED` and the `exclude=` go.
+   `ScenarioRun.art_style` goes: the form seeds `draft.art_style` before the run.
+8. `AuthoringConfig.worked_example` goes: `_example` takes the first scenario for the engine.
+   `Pack.source` and `Pack.license` are never read; keep them only if the JSON needs them.
+9. Hand-edit: remove `"packs"` from every `rules` in `characters/kael/*.json` and
+   `scenarios/*/world.json`; the top-level `"packs"` of each `world.json` stays. Delete
    `tests/core/test_sources.py`.
 
-Measured estimate: −230 lines; the authoring side is the real win. Half a day.
+Measured estimate: −175 lines. Half a day.
 
 ## Phase 5 — Fewer fields for the Director
 
@@ -179,11 +196,15 @@ what does not. Regenerate prompt goldens after each.
    ""`. Touch `_undetailed` (strip both), `_detail`, `_reached`, `_bar_unmet`, and the prompts
    `scenario_world.md`, `scenario_bar.md`, `scenario_opening.md`, `scenario_extend.md`,
    `director.md`. Hand-edit every entity in the three scenarios.
-4. Delete `Attempt.luck_test` (24XX): `roll_luck_test` is the one place. Remove the riding path
-   in `resolve_attempt` and the two `director.md` sentences about it.
+4. Dropped 2026-08-28: `Attempt.luck_test` stays. A riding luck test is one call for the
+   Director; a second tool call is one more thing a weak model forgets.
+5. `ThreadSummary`, `thread_summaries` and `_thread_line` are a UI projection of `Thread`; the
+   panels read `Thread`. No eval needed.
+6. Eval candidate: `Thread.stage`. The Director invents free slugs; `note` carries the same.
+   Delete `AdvanceThread.stage`, the `_thread_line` stage branch, `_thread_card`'s stage part.
 
-Measured estimate: −46 lines. This phase is four prompt experiments, scored in eval runs, not
-lines.
+Measured estimate: −70 lines (5.5 −25, 5.6 −15). This phase is four prompt experiments, scored
+in eval runs, not lines.
 
 ## Phase 6 — Dict-keyed world, creation through the decision panel
 
@@ -201,35 +222,41 @@ lines.
    becomes N single-choice steps. The character page is name + brief inputs plus the existing
    decision widget; delete the bespoke widgets in `ui/create.py` (the character half, ~275
    lines; the scenario pages stay). This is also the path to a new character on death (24XX
-   deviation 1): a succession option "new character" starts the same loop.
+   deviation 1): a succession option "new character" starts the same loop. Once choose-N is N
+   steps, delete `CreationStep.choose`/`repeats`, `TextStep.count`/`max_length`, and
+   `_check_chosen`/`_check_written`: `check_picks` is "every step answered with a legal option
+   or non-empty text".
 3. `turn/context.py`: replace `placements`/`exit_names` dicts and `_placements/_placement` with
    one `placement(world, entity, nameable)` function; fold `BaseScene` into the two scenes.
 4. `state/play.py`: delete `TraceEntryBase`, `WorldExtended`, the `TraceEntry` union and the
    `match` in `ui/panels.py`; the dev tab shows `TurnTrace` only. Growth logs a line.
 
-Measured estimate: −250 lines; 6.2 alone is −180. 6.1 is ≈ −20 lines and is kept for the
+Measured estimate: −275 lines; 6.2 alone is −205. 6.1 is ≈ −20 lines and is kept for the
 key==id invariant and the end of O(n) scans, not for lines.
 
 ## Phase 7 — Optional cuts, each needs the maintainer's say
 
-1. Player actions. `Offer`, `PlayerAction`, `player_action`, `offered`, `play_action`, the
-   Breathless `breathers`/`med_kit_holders`, the "You can" panel, the MCP `player_action` tool.
-   `use_med_kit` is already both a Director tool and a player action. Make `catch_breath` a
-   Director tool the player asks for, delete the rest. −105 lines. Shipped in 7d9afeb, so this
-   reverses a recent decision.
-2. Live-turn streaming: `TurnRecord.on_event`, `on_step`/`on_event` plumbing, `_STEP_COPY`,
-   `live_turn`, `_inline_status`, `_clock`, `tick_elapsed`, `GameView.live_*`. One spinner with the
-   step name. Keep `Game.turn_events` for the external viewer. −110 lines.
-3. One `ExecDriver` with `HARNESS_COMMAND` in `.env`; the dev log shows raw lines. Delete
-   `codex.py`, `opencode.py`, `pi.py`. Keep `claude.py`. `Settings.harness` becomes
-   `"builtin" | "external" | "claude" | "exec"`. −125 lines.
-4. Launcher: replace `LauncherController` and its four option models with `load_catalog` plus
-   `launch_target(catalog, scenario_id, character_id)`. `codemode._target` uses the same
-   function. −80 lines.
+1. Refused 2026-08-28: player actions stay. The "You can" buttons are a player feature.
+2. Refused 2026-08-28: live-turn streaming stays. Cards landing during the turn is the feel of
+   the game.
+3. Decided 2026-08-28: keep `claude.py`, `codex.py` and `external`; delete `opencode.py` and
+   `pi.py` (both play through `external`). `Settings.harness` becomes
+   `"builtin" | "external" | "claude" | "codex"`; drop the pi `limit=2**20` note in `exec.py`.
+   −75 lines.
+4. Decided 2026-08-28. Launcher: replace `LauncherController` and its four option models with
+   `load_catalog` plus `launch_target(catalog, scenario_id, character_id)`. `codemode._target`
+   uses the same function. A save that does not parse as `Game` is skipped with a log line,
+   like `read_scenarios`: delete `SaveHeader`, `UnreadableSave`, `SaveOption.problem`,
+   `_save_refusal`, `_short_reason` and the unreadable cards. `LauncherCatalog.badge` reads
+   `runtime.engines[id].badge`. −125 lines.
 5. Journal export (`journal_markdown`, `write_journal`, the export button): the journal tab
    already shows the chronicle. −24 lines.
 6. Authoring `write` takes the whole draft; delete `ScenarioPatch`, `connect`, `patch_refusal`.
    Only after an authoring eval exists. −65 lines.
+
+Refused 2026-08-28, do not re-propose: narration as one string (NPC bubbles stay), deleting
+media (always played on), deleting the settings page, player actions, live streaming, card as a
+string, per-scenario pack choice, the riding 24XX luck test, options-only stake.
 
 ## Deviations
 

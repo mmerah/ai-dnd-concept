@@ -230,6 +230,13 @@ class Loner3eEngine(Engine):
         sheet = Sheet.model_validate(entity.rules)
         return describe_rows(sheet.rows(), self.meanings(sheet))
 
+    def validate(self, state: Game) -> None:
+        super().validate(state)
+        # Every actor rolls by a sheet: one nobody wrote is refused, not given a blank one.
+        for actor in state.world.of_kind("actor"):
+            if not actor.rules:
+                raise ValueError(f"{actor.id!r} has no rules; a Loner actor needs a sheet")
+
     def owed_notes(self, state: Game) -> tuple[str, ...]:
         return advances_owed(state, Sheet, lambda sheet: sheet.milestones)
 

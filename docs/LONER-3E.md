@@ -65,9 +65,10 @@ a rule of this one.
    SRD asks for them to emerge from play, and in this app play writes them to the world.
 2. **Only the played character's sheet is built from the tables.** The SRD gives every character a
    Concept, Skills, Frailties and Luck — people, objects, vehicles and curses alike. A scenario may
-   author those tables for any entity via `rules`; anything unauthored — an actor as much as an
-   object, a vehicle or a curse — instead plays with a blank sheet at full Luck, and the traits it
-   already carries stand in for the Concept, Skills and Frailties the SRD would have authored.
+   author those tables for any entity via `rules`; every actor must have them, and an unauthored
+   non-living character — an object, a vehicle or a curse — instead gets a blank sheet with full
+   Luck the first time a question or conflict names it, and the traits it already carries stand
+   in for the Concept, Skills and Frailties the SRD would have authored.
    A milestone is owed for each adventure a character was there for: `complete_chapter` credits
    the played character and everyone travelling with them whose rules are written, and the count
    lives on that sheet, so somebody who joins later is not owed the adventures they never played.

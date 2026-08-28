@@ -191,7 +191,7 @@ def outcome_for(chance: int, risk: int) -> Outcome:
 
 def _sheeted(entity: Entity) -> Entity:
     """SRD "Everything is a Character": a thing gets its sheet the first time one is asked for."""
-    if not entity.rules:
+    if entity.kind == "item" and not entity.rules:
         entity.rules = Sheet().model_dump(mode="json")
     return entity
 
@@ -199,7 +199,7 @@ def _sheeted(entity: Entity) -> Entity:
 def resolve_question(
     draft: Game, action: Question, rng: Random, twists: tuple[tuple[str, str], ...]
 ) -> tuple[Fact, ...]:
-    actor = _sheeted(require_actor_here(draft, action.actor_id))
+    actor = require_actor_here(draft, action.actor_id)
     facts = draft.reveal(actor)
     opponent: Entity | None = None
     if action.opponent_id is not None:
@@ -221,7 +221,7 @@ def resolve_question(
         if not any(fact.kind == "conflict_lost" for fact in exchange):
             draft.pending = Conflict().pending(conflict_prompt(draft, actor, opponent))
     if chance.kept == risk.kept:
-        with rules(_sheeted(draft.player), Sheet) as sheet:
+        with rules(draft.player, Sheet) as sheet:
             sheet.twist.current += 1
             if _shortfall(sheet.twist) == 0:
                 sheet.twist.current = 0
@@ -277,7 +277,7 @@ def _shortfall(pool: Counter) -> int:
 
 
 def apply_restore_luck(draft: Game, actor_id: EntityId) -> list[Fact]:
-    actor = _sheeted(require_actor_here(draft, actor_id))
+    actor = require_actor_here(draft, actor_id)
     facts = draft.reveal(actor)
     with rules(actor, Sheet) as sheet:
         # Already full is a quiet no-op: `adjust` writes no fact for a zero delta.

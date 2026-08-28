@@ -313,6 +313,7 @@ def test_an_actor_who_joins_after_an_adventure_is_not_owed_the_growth_they_misse
         brief="Falls in beside Kael.",
         known=True,
         parent_id=draft.player_location,
+        rules={"concept": "A Newcomer"},
     )
     _ = draft.add(newcomer)
     draft.world.party.append(newcomer.id)

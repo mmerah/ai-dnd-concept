@@ -183,6 +183,7 @@ def test_a_grown_world_is_briefed_with_its_sheets_and_refused_until_it_hangs_tog
         name="the bone warden",
         brief="He counts the niches every night and never leaves.",
         parent_id=_CRYPT_ID,
+        rules={"concept": "A Bone Warden"},
     )
     _ = run.draft.apply(ScenarioPatch(entities=(updated(_crypt(), exits=[]), warden)))
 
